@@ -23,7 +23,8 @@ type windowView struct {
 	Top         int             `json:"top"`
 	Width       int             `json:"width"`
 	Height      int             `json:"height"`
-	Tabs        []tab           `json:"tabs,omitempty"`
+	// Tabs are the window's tabs when the caller asked for them, [] for a window with none.
+	Tabs *[]tab `json:"tabs,omitempty"`
 }
 
 // Chrome's words for a window's state, and Go's for each.
@@ -51,9 +52,11 @@ func (a *API) windowFor(e engine.Extension, w window.Window, populate bool) wind
 		Width: int(math.Round(r.W)), Height: int(math.Round(r.H)),
 	}
 	if populate {
+		list := []tab{}
 		for _, t := range a.tabs.AllIn(w.ID) {
-			out.Tabs = append(out.Tabs, a.tabFor(e, t))
+			list = append(list, a.tabFor(e, t))
 		}
+		out.Tabs = &list
 	}
 	return out
 }
