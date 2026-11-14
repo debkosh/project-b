@@ -21,6 +21,10 @@ const emptyTab = { id: 0, url: '', title: '', loading: false, blocked: false, cr
 // state is everything Go sends, as it last sent it. Each field is replaced whole when it
 // changes, never changed in place: a tab's new state comes as a new tabs list.
 export const state = {
+  // Whether Go's snapshot is in. Until it is, the shell has none of Go's data, not even
+  // the layout, the theme or the frame colour, and draws a basic splash of its own; then
+  // it draws its view from the data. It never goes back to false.
+  loaded: false,
   // This window's tabs in order, and the active one's id.
   tabs: [],
   active: 0,
@@ -228,7 +232,7 @@ export function connect(handlers = {}, drawn = (fn) => fn()) {
       switch (m.t) {
         case 'snapshot': {
           const { t, ...all } = m;
-          change(all);
+          change({ ...all, loaded: true });
           mark('shell.snapshot');
           break;
         }

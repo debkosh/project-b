@@ -77,7 +77,7 @@ of it.
 
 | From | What |
 |---|---|
-| `@/sdk/shell.js` | `state`: everything Go sends, as a plain object; a field is replaced whole when it changes, never changed in place. `onChange(fn)`: calls `fn(fields)` after each change, with the fields that changed. `connect(handlers, afterDraw)`: says `ready`, keeps `state`, calls the shell's `handlers[kind](message)` after each message, and once the snapshot is drawn reports the layout and says `shown`. `send(msg)`. `saveData(value)`. `saveProfileData(value)`. `setPref(name, value)`. `focusPage()`. `setFrame(width)`. The helpers, each given the state it reads: `activeTab(state)`, `workspaceOf(state, tab)`, `controlSpace(state)`, `keyLabel(state, action)`, and `tabLabel(tab)`. It puts the theme's colours on the root. |
+| `@/sdk/shell.js` | `state`: everything Go sends, as a plain object; a field is replaced whole when it changes, never changed in place. Its `loaded` is false until Go's snapshot is in, and true from then on ([the splash](#the-splash)). `onChange(fn)`: calls `fn(fields)` after each change, with the fields that changed. `connect(handlers, afterDraw)`: says `ready`, keeps `state`, calls the shell's `handlers[kind](message)` after each message, and once the snapshot is drawn reports the layout and says `shown`. `send(msg)`. `saveData(value)`. `saveProfileData(value)`. `setPref(name, value)`. `focusPage()`. `setFrame(width)`. The helpers, each given the state it reads: `activeTab(state)`, `workspaceOf(state, tab)`, `controlSpace(state)`, `keyLabel(state, action)`, and `tabLabel(tab)`. It puts the theme's colours on the root. |
 | `@/sdk/regions.js` | The markers a shell marks its elements with, each with `mark(el)` and `unmark(el)`. `shell`: this element is the shell's, so presses on it reach the shell. `drag`: this element moves the window wherever it has no control: an empty space, or a whole bar of controls, whose gaps then drag; its controls, and anything in it marked `shell`, stay the shell's. `page`: `mark(el, tab)` and `update(el, tab)`, this tab's page shows here; 0 shows none. |
 | `@/sdk/contextmenu.js` | What a shell sends about the right-click menu, `state.contextMenu`: `chooseContextItem(menu, id)`, `closeContextMenu(menu)`, and `contextMenuPoint(menu)`, where in the window the press was. |
 | `@/sdk/dialogs.js` | `answerDialog(id, ok, text)`, and `dialogFor(state, tab)`, the dialog a tab's page waits on. |
@@ -360,6 +360,12 @@ it there; a phone shell may be left out of a rule for a desktop feature.
     its accessible name, never by a class or where it sits, and presses it or types into
     it to see Go do what it says.
 13. It logs no errors.
+14. **Before Go's data comes it draws a splash of its own, marked `aria-busy="true"`, with
+    none of its controls; when the data comes the splash goes and the UI shows.** The
+    check holds the shell's `ready`, so the snapshot doesn't come, and finds the splash and
+    none of rule 12's controls by role and name; then it lets the snapshot through, and
+    once the transition is over finds no `aria-busy="true"` left and the controls there.
+    The shells that don't have it yet are listed in the check, with who brings each.
 15. **A page's alert, confirm and prompt show as a `role=alertdialog`** with Go's words and
     buttons by their names (`ok` and `cancel` in `state.dialogs`), and a text box for a
     prompt; answering reaches the page. Another tab shown hides it, and showing its tab
@@ -405,6 +411,23 @@ own. What a shell draws carries the hooks the real app's extensions tests
 
 A shell that draws them itself draws them only when `extensionsBuilt` from `@extensions`
 says the build has them, so a build without extensions has none of it.
+
+### The splash
+
+Until Go's snapshot is in, a shell knows nothing of the window: not its tabs, its layout,
+its theme or its frame colour; the SDK's `state.loaded` says so. Each shell draws a splash
+then: the app's name, centred, in white at 85% on the window's own colour, which the
+engine paints under the transparent shell; the minimal shells set it in their Space
+Grotesk and Terminal in its monospace. When the data comes, the UI is made at once and
+takes input at once, and the two cross-fade in 100 ms, `var(--motion) var(--ease)`
+([design-system.md](design-system.md#motion)): the splash fades out as the UI fades in,
+only their opacity moving. It is plain CSS, with no timer. The splash stays in the
+document, `aria-busy` while `loaded` is false, and goes with `display: none` once it
+isn't, a discrete transition so it fades first; the UI's root starts from `opacity: 0` in
+`@starting-style`. With reduced motion `--motion` is 0, so it is a cut. As the UI is made
+with the data already in, what it did on the first change from the empty state it does on
+mount too: the address field takes the keyboard for an empty tab, a strip scrolls the
+active tab into view.
 
 ## Building one
 

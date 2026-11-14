@@ -29,6 +29,7 @@ const rules = {
   11: 'Settings is one press away, or two: a control named Settings, on the shell or in a menu one of its controls opens, opens the settings page',
   12: 'The basic controls are somewhere in the shell, found by role and name, and each does its job',
   13: 'It logs no errors',
+  14: 'Before Go\'s data comes it draws a splash of its own, marked aria-busy="true", with none of its controls; when the data comes the splash goes and the UI shows',
   15: 'A page\'s alert, confirm and prompt show as an alertdialog with Go\'s buttons by name, a prompt with a field; the answer reaches the page; another tab shown hides it, and back shows it',
   16: 'On a desktop, a right click in a page opens a menu of Go\'s actions there; choosing one makes Go do it; Escape, or a press outside, closes it',
   17: 'On a desktop, a control named Downloads shows once there is a download, and opens a list of them by file name, a finished one with Open and Show in Finder',
@@ -70,6 +71,13 @@ const noDownloadsYet = {
   example: 'r4 brings it',
 };
 
+// The shells that don't draw a splash yet, and who brings it to each. Rule 14 holds every
+// other shell to it.
+const noSplashYet = {
+  glide: 'r6 brings it',
+  mobile: 'r3 brings it',
+};
+
 (async () => {
   // What a control is, as the SDK has it: the same selector it finds them in a drag bar by.
   const { controls: control } = await import('../src/sdk/controls.js');
@@ -87,7 +95,7 @@ const noDownloadsYet = {
       return ok;
     };
     await lib.start([`-use=${id}`]);
-    const w = await lib.openWindow(browser);
+    const w = await lib.openWindow(browser, { held: true });
     const { page, ui } = w;
     page.setDefaultTimeout(5000);
     const tabEls = ui.locator('[role=tab]');
@@ -101,6 +109,30 @@ const noDownloadsYet = {
       const r = await regions();
       return r.shell === id && (await tabEls.count()) === r.tabs.length && shows(r);
     };
+
+    // 14. Before Go's data, a splash with none of the shell's controls; then the UI. The
+    // window holds the shell's ready, so Go's snapshot doesn't come until it lets it go.
+    if (!(await until(w.waiting, 10000))) {
+      rule(14, 'not checked: the shell never said ready', false);
+    } else if (noSplashYet[id]) {
+      rule(14, `not checked yet: ${noSplashYet[id]}`, true);
+      await w.release();
+    } else {
+      // Rule 12's controls, by role and name, wherever they show on the shell.
+      const name = /^(Back|Forward|Reload|Stop|New Tab|Close|Settings|Extensions)\b/;
+      const basics = ui.getByRole('button', { name }).or(ui.getByRole('menuitem', { name }))
+        .or(ui.getByRole('textbox', { name: 'Address', exact: true })).or(ui.getByRole('combobox', { name: 'Address', exact: true }));
+      const busy = ui.locator('[aria-busy="true"]');
+      const html = (locator) => locator.evaluateAll((els) => els.map((el) => el.outerHTML.slice(0, 80)).join(' | '));
+      rule(14, 'before Go\'s data comes it draws a splash, marked aria-busy="true"', await until(async () => (await busy.filter({ visible: true }).count()) > 0));
+      rule(14, 'with none of its controls', (await basics.count()) === 0, await html(basics));
+      await w.release();
+      // The splash and the UI cross-fade; once the transitions are over the splash is gone.
+      const over = () => w.shell().evaluate(() => !document.getAnimations().some((a) => a instanceof CSSTransition));
+      await until(async () => (await up()) && (await over()), 10000);
+      rule(14, 'when the data comes, once the transition is over, no aria-busy="true" is left', (await busy.count()) === 0, await html(busy));
+      rule(14, 'and its controls are there', (await basics.count()) > 0);
+    }
 
     // 1. ready, the snapshot drawn, shown.
     let ready = await until(up, 10000);
