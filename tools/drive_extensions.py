@@ -90,6 +90,13 @@ def settings_wait(app, expr, timeout=20):
     raise TimeoutError(f"settings: {expr} last={last}")
 
 
+def settings_point(x, y, app):
+    """A point in the settings page, moved into the window by where the settings tab's page,
+    the shown one, sits."""
+    px, py = json.loads(app.cmd("bounds"))["reported"][:2]
+    return px + x, py + y
+
+
 def settings_click(app, selector):
     """Clicks the middle of what selector finds in the settings page, after checking that
     a press there lands on it: when something else is on top, it says what."""
@@ -97,7 +104,7 @@ def settings_click(app, selector):
         t=document.elementFromPoint(x,y);return [x,y,e===t||e.contains(t)?'':(t?t.outerHTML.slice(0,160):'nothing')+' at '+[Math.round(x),Math.round(y)]+' of '+[innerWidth,innerHeight]]}})()""")
     if on:
         raise RuntimeError(f"{selector} is under {on}")
-    app.cmd("click", x, y)
+    app.cmd("click", *settings_point(x, y, app))
 
 
 def settings_click_found(app, find):
@@ -109,7 +116,7 @@ def settings_click_found(app, find):
         if time.time() > deadline:
             raise TimeoutError(f"nothing found by {find}")
         time.sleep(0.1)
-    app.cmd("click", *at)
+    app.cmd("click", *settings_point(*at, app))
 
 
 def remove_in_settings(app, name):
@@ -148,13 +155,13 @@ def open_extension_settings(app):
 
 
 def close_settings(app):
-    """Escape closes the settings page, which is gone when a press in the middle of the
-    window no longer lands on it."""
-    app.cmd("key", "escape")
+    """Cmd+W closes the settings tab, the active one, as it closes any tab; its page is gone
+    once the driver finds none to evaluate in."""
+    app.cmd("key", "cmd+w")
     deadline = time.time() + 10
-    while app.cmd("hit", 500, 300) == "settings":
+    while not app.cmd("evalsettings", "1").startswith("ERR"):
         if time.time() > deadline:
-            raise TimeoutError("the settings page stayed open")
+            raise TimeoutError("the settings tab stayed open")
         time.sleep(0.05)
 
 
@@ -375,20 +382,50 @@ def extension_checks():
 def workspace_checks():
     """Deleting Main, the profile's own storage, erases the sites' data there and leaves an
     extension's own: with it gone, the test extension's content script still runs in a page,
-    its service worker answers, and its count in storage goes on. The window, whose only tab
-    is Main's, stays, with no tabs; the page loaded next opens in Work, the first left."""
+    its service worker answers, and its count in storage goes on. The window, whose only web
+    tab is Main's, stays with its settings tab, which is in no workspace, and New Tab from
+    it opens in Work, the first workspace left."""
     profile = new_profile()
     with open(os.path.join(profile, "workspaces.json"), "w") as f:
         json.dump({"version": 2, "workspaces": [{"id": "", "name": "Main", "color": "#3470d0"}, {"id": "0a1b2c3d", "name": "Work", "color": "#d03434"}]}, f)
     app = App(profile, MOCK_STORE)
     install_from_store(app, TEST_ID)
     before = pages_seen(app)
-    drive_first_app.delete_workspace(app, "")
+    drive_first_app.delete_workspace(app, "", close=False)
     drive_first_app.erased(app, "")
     left = drive_first_app.tabs_of(app)["tabs"]
-    check("deleting Main, which the window's only tab is in, keeps the window, with no tabs", left == [], left)
+    check("deleting Main, which the window's only web tab is in, keeps the window, with its settings tab", [t.get("page") for t in left] == ["settings"], left)
+    drive_first_app.new_tab(app, drive_first_app.URL_A)
+    left = drive_first_app.tabs_of(app)
+    check("and New Tab from it opens in Work", next(t for t in left["tabs"] if t["id"] == left["active"]).get("workspace") == "0a1b2c3d", left)
     after = pages_seen(app)
     check("with Main deleted and its storage erased, the test extension still runs and keeps its count", after > before, (before, after))
+    app.close()
+
+
+def internal_checks():
+    """Extensions don't see our own tabs (docs/extensions.md): with the settings tab open
+    and active, the test extension's content script, which matches every address, doesn't
+    run in the settings page, and its chrome.tabs.query, which its popup shows, lists the
+    web tab and not the settings tab."""
+    app = App(new_profile(), MOCK_STORE)
+    # The window starts with no tabs, as the standard shell takes New Tab: a web tab first.
+    drive_first_app.open_in(app, "", PAGE)
+    install_from_store(app, TEST_ID)
+    pin(app, TEST_NAME, True)
+    visit(app, PAGE)
+    app.wait("!!document.documentElement.dataset.pbTestExtension", 30, page=True)
+    app.cmd("key", "cmd+,")
+    settings_wait(app, "!!document.querySelector('h1')", 30)
+    check("the content script, which matches every address, doesn't run in the settings page",
+          settings(app, "document.documentElement.dataset.pbTestExtension===undefined") is True)
+    open_popup(app)
+    deadline = time.time() + 20
+    tabs = []
+    while not tabs and time.time() < deadline:
+        tabs = json.loads(app.cmd("evalpopup", "[...document.querySelectorAll('li')].map(e=>e.textContent)") or "[]")
+        time.sleep(0.1)
+    check("its chrome.tabs.query lists the web tab, and not the settings tab", any(PAGE in t for t in tabs) and not any(t.startswith("chrome://") for t in tabs), tabs)
     app.close()
 
 
@@ -435,8 +472,8 @@ def web_store_checks():
     # The extension manager's way to the store.
     open_extension_settings(app)
     settings_click(app, "section[aria-labelledby=pbx-store] button")
-    app.wait(f"{drive_first_app.ROWS}===2&&{drive_first_app.VALUE}.startsWith({json.dumps(WEB_STORE)})", 30)
-    check("the extension manager opens the Chrome Web Store in a tab", app.cmd("hit", 500, 300) != "settings")
+    app.wait(f"{drive_first_app.ROWS}===3&&{drive_first_app.VALUE}.startsWith({json.dumps(WEB_STORE)})", 30)
+    check("the extension manager opens the Chrome Web Store in a tab beside the settings tab, which stays", app.cmd("evalsettings", "1") == "1")
 
     # uBlock Origin Lite's page there, and its own "Add to Chrome".
     visit(app, f"{WEB_STORE}detail/ublock-origin-lite/{UBOL_ID}")
@@ -563,7 +600,7 @@ if __name__ == "__main__":
     MOCK_STORE = [f"--apps-gallery-url={STORE}", f"--apps-gallery-download-url={STORE}/download/%s"]
     try:
         # One part by name, such as "fonts_ninja", or all of them.
-        parts = [extension_checks, workspace_checks, flag_off_checks, fonts_ninja_checks, web_store_checks]
+        parts = [extension_checks, workspace_checks, internal_checks, flag_off_checks, fonts_ninja_checks, web_store_checks]
         run_parts([p for p in parts if sys.argv[1:] in ([], [p.__name__.removesuffix("_checks")])])
     finally:
         store.terminate()

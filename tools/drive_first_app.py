@@ -23,6 +23,7 @@ session (tools/check_full_screen.py, tools/check_clipboard.py). This needs no di
     python3 tools/drive_first_app.py workspaces # only workspaces: their storage, New Tab in Workspace, and deleting one
     python3 tools/drive_first_app.py shells     # only every shell: starting on it, and switching to it live
     python3 tools/drive_first_app.py webapis    # only the web APIs in core/webfeatures/registry.json
+    python3 tools/drive_first_app.py internal   # only our own pages as tabs: settings, and the navigation rule
 
 Results go to build/real/. Each screenshot is what content rendered, drawn shell over
 page by the driver. It is not read back from the window.
@@ -544,7 +545,7 @@ def timeline_checks():
 
     opened = span_after(lambda: click(app, "button.settings"), "settings.open")
     check("opening settings is a span from the click to its first frame on screen, through Go, the engine and the page",
-          in_order(opened, ["settings.open.go", "settings.open.created", "settings.open.shown", "settings.navigation_start",
+          in_order(opened, ["settings.open.go", "settings.open.done", "settings.navigation_start",
                             "settings.committed", "settings.script", "settings.mounted", "settings.snapshot",
                             "settings.first_paint", "settings.on_screen"]), opened)
     app.cmd("key", "cmd+w")
@@ -590,7 +591,7 @@ def timeline_checks():
 
 def settings_checks():
     """Menus, keys and the settings page in the real app: the menu bar Go builds, keys
-    through Go, and the settings page, a page of its own over the whole window."""
+    through Go, and the settings page, in a tab of ours."""
     profile = tempfile.mkdtemp(prefix="pb-profile-")
     app = App(profile)
     time.sleep(0.5)
@@ -609,8 +610,9 @@ def settings_checks():
     check("the hidden Select Tab submenu isn't drawn", bool(tab) and find(tab["items"], "Select Tab") is None)
     check("AppKit added no Full Screen item of its own", sum(1 for m in menu for i in m.get("items", []) if isinstance(i, dict) and "Full Screen" in i["title"]) == 1)
 
-    # Cmd+, opens the settings page over the whole window.
+    # Cmd+, opens the settings tab, beside the active tab, and shows it.
     settings = lambda expr: json.loads(app.cmd("evalsettings", expr))
+    rows = app.js(ROWS)
     app.cmd("key", "cmd+,")
     try:
         deadline = time.time() + 10
@@ -627,7 +629,8 @@ def settings_checks():
         app.close()
         return
     time.sleep(0.5)
-    check("it covers the window: the middle and the top row are the settings page's", app.cmd("hit", 600, 300) == "settings" and app.cmd("hit", 300, BAR_Y) == "settings", (app.cmd("hit", 600, 300), app.cmd("hit", 300, BAR_Y)))
+    check("it is a tab, its page where the layout puts a page, under the shell's top row",
+          app.js(ROWS) == rows + 1 and app.cmd("hit", 600, 300) == "page" and app.cmd("hit", 300, BAR_Y) == "shell", (app.js(ROWS), app.cmd("hit", 600, 300), app.cmd("hit", 300, BAR_Y)))
     check("it shows the general settings", settings("!!document.querySelector('.version')"))
     print(app.cmd("capture", os.path.join(OUT, "settings-general.png")), flush=True)
 
@@ -647,11 +650,10 @@ def settings_checks():
           (os.listdir(profile), app.cmd("evalsettings", "[document.activeElement.className, document.querySelector('[aria-label=File]').textContent.slice(0,80)]")))
     print(app.cmd("capture", os.path.join(OUT, "settings-keyboard.png")), flush=True)
 
-    # Cmd+W closes the settings page, not the tab under it.
-    rows = app.js(ROWS)
+    # Cmd+W closes the settings tab, as it closes any tab.
     app.cmd("key", "cmd+w")
     time.sleep(0.5)
-    check("Cmd+W closes the settings page, not the tab", app.cmd("evalsettings", "1").startswith("ERR") and app.js(ROWS) == rows)
+    check("Cmd+W closes the settings tab", app.cmd("evalsettings", "1").startswith("ERR") and app.js(ROWS) == rows)
     # The key runs New Tab, which Standard takes: it opens the command box and makes no tab.
     app.cmd("key", "cmd+shift+k")
     check("the new key runs New Tab: Standard's command box opens, and no tab", holds(app, BOX_FOCUSED, 5) and app.js(ROWS) == rows, app.js(ROWS))
@@ -1922,10 +1924,11 @@ def in_settings(app, expr, timeout=10):
         time.sleep(0.1)
 
 
-def delete_workspace(app, workspace):
+def delete_workspace(app, workspace, close=True):
     """Deletes a workspace, by its id, as a person does in Settings, Workspaces: its row's
-    menu, Delete…, then Delete in the dialog that asks first. The page opens on Cmd+, and
-    closes on Escape."""
+    menu, Delete…, then Delete in the dialog that asks first. The settings tab opens on
+    Cmd+, and with close closes on Cmd+W, as it is still the active tab: it is in no
+    workspace. Without, it stays, as it must when the window has no other tab left."""
     row = json.dumps(f'[data-workspace="{workspace}"]')
     click = "(b=>b&&(b.click(),1))"
     app.cmd("key", "cmd+,")
@@ -1934,11 +1937,13 @@ def delete_workspace(app, workspace):
     in_settings(app, click + "([...document.querySelectorAll('[role=menuitem]')].find(b=>b.textContent.trim()==='Delete…'))")
     in_settings(app, click + "([...document.querySelectorAll('dialog[open] button')].find(b=>b.textContent.trim()==='Delete'))")
     in_settings(app, f"!document.querySelector({row})")
-    app.cmd("key", "escape")
+    if not close:
+        return
+    app.cmd("key", "cmd+w")
     deadline = time.time() + 10
     while not app.cmd("evalsettings", "1").startswith("ERR"):
         if time.time() > deadline:
-            raise TimeoutError("the settings page stayed open")
+            raise TimeoutError("the settings tab stayed open")
         time.sleep(0.1)
 
 
@@ -2206,7 +2211,135 @@ def quit_checks():
     app.close()
 
 
+def internal_checks():
+    """Our own pages are tabs (docs/windows.md), settings first. It opens beside the active
+    tab as a tab of ours, in our pages' context, one a window; it is shown, laid out, given
+    the keyboard and closed as any tab is; New Tab from it opens in the workspace it was
+    opened from. And the one navigation rule, however a navigation starts in it: our pages
+    in place, any other address in a new web tab beside it; a web tab asked for one of ours
+    shows the settings tab. That extensions don't see it is checked in
+    tools/drive_extensions.py, part internal."""
+    work = "0a1b2c3d"
+    profile = tempfile.mkdtemp(prefix="pb-profile-")
+    with open(os.path.join(profile, "workspaces.json"), "w") as f:
+        json.dump({"version": 2, "workspaces": [{"id": "", "name": "Main", "color": "#3470d0"}, {"id": work, "name": "Work", "color": "#d03434"}]}, f)
+    app = App(profile, ["--remote-debugging-port=0"])
+
+    def order():
+        return [t["id"] for t in tabs_of(app)["tabs"]]
+
+    def ours():
+        return [t for t in tabs_of(app)["tabs"] if t.get("page") == "settings"]
+
+    def settings_ready():
+        deadline = time.time() + 15
+        while app.cmd("evalsettings", "!!document.querySelector('h1')") != "true":
+            if time.time() > deadline:
+                raise TimeoutError("the settings page never came")
+            time.sleep(0.1)
+
+    # 1. A tab of ours, beside the active tab, opened from it, one a window. The window
+    # starts with no tabs, as the standard shell takes New Tab.
+    first = open_in(app, "", PAGES + "links")
+    in_work = open_in(app, work, PAGES + "store")
+    click(app, f'[role=tab][data-tab="{first}"]')
+    app.wait(f"document.querySelector('[role=tab][data-tab=\"{first}\"]').getAttribute('aria-selected')==='true'")
+    click(app, f'[role=tab][data-tab="{in_work}"]')
+    app.wait(f"document.querySelector('[role=tab][data-tab=\"{in_work}\"]').getAttribute('aria-selected')==='true'")
+    app.cmd("key", "cmd+,")
+    settings_ready()
+    found = ours()
+    settings = found[0]["id"] if found else 0
+    check("Settings opens a tab of ours beside the active tab, made active, remembering the workspace it was opened from",
+          len(found) == 1 and order() == [first, in_work, settings] and tabs_of(app)["active"] == settings and found[0]["workspace"] == work
+          and found[0]["url"] == "chrome://settings/", tabs_of(app))
+    check("its page is ours, with the settings page's channel", app.cmd("evalsettings", "typeof chrome.send") == '"function"')
+    click(app, f'[role=tab][data-tab="{first}"]')
+    app.wait(f"document.querySelector('[role=tab][data-tab=\"{first}\"]').getAttribute('aria-selected')==='true'")
+    app.cmd("key", "cmd+,")
+    app.wait(f"document.querySelector('[role=tab][data-tab=\"{settings}\"]').getAttribute('aria-selected')==='true'")
+    check("Settings again shows the window's settings tab, and opens no other", [t["id"] for t in ours()] == [settings] and tabs_of(app)["active"] == settings, tabs_of(app))
+
+    # 2. Shown, laid out, given the keyboard and closed as any tab is.
+    visible = json.loads(app.cmd("visible"))
+    check("the window shows it where the layout puts a page, told it is shown",
+          [v["tab"] for v in visible] == [settings] and visible[0]["shown"] and not visible[0]["hidden"] and app.cmd("hit", 600, 300) == "page", visible)
+    check("it is visible to itself", app.cmd("evalsettings", "document.visibilityState") == '"visible"')
+    click(app, "input")
+    app.cmd("click", 600, 300)
+    deadline = time.time() + 5
+    while app.cmd("evalsettings", "document.hasFocus()") != "true" and time.time() < deadline:
+        time.sleep(0.05)
+    check("a press in its page gives it the keyboard", app.cmd("evalsettings", "document.hasFocus()") == "true")
+    check("the window is titled after it", app.cmd("title") == "Settings", app.cmd("title"))
+    app.cmd("key", "cmd+t")
+    app.wait(f"{ROWS}===4")
+    made = tabs_of(app)
+    check("New Tab from it opens in the workspace it was opened from", next(t for t in made["tabs"] if t["id"] == made["active"]).get("workspace") == work, made)
+    app.cmd("key", "cmd+w")
+    app.wait(f"{ROWS}===3")
+    click(app, f'[role=tab][data-tab="{settings}"]')
+    app.wait(f"document.querySelector('[role=tab][data-tab=\"{settings}\"]').getAttribute('aria-selected')==='true'")
+
+    # 3. The one navigation rule, from every way a navigation starts there.
+    def opened_beside(start, what):
+        before = order()
+        start()
+        deadline = time.time() + 15
+        while len(order()) == len(before) and time.time() < deadline:
+            time.sleep(0.05)
+        now = tabs_of(app)
+        new = [t for t in now["tabs"] if t["id"] not in before]
+        ok = (len(new) == 1 and not new[0].get("page") and new[0].get("workspace") == work
+              and [t["id"] for t in now["tabs"]].index(new[0]["id"]) == [t["id"] for t in now["tabs"]].index(settings) + 1
+              and now["active"] == new[0]["id"])
+        if ok:
+            app.wait("location.pathname==='/store'&&document.readyState==='complete'", tab=new[0]["id"])
+        stayed = app.cmd("evalsettings", "location.href")
+        check(f"{what} opens in a new web tab beside it, in its workspace, and the settings tab stays", ok and stayed == '"chrome://settings/"', (now, stayed))
+        if new:
+            app.cmd("key", "cmd+w")
+            app.wait(f"{ROWS}==={len(before)}")
+        click(app, f'[role=tab][data-tab="{settings}"]')
+        app.wait(f"document.querySelector('[role=tab][data-tab=\"{settings}\"]').getAttribute('aria-selected')==='true'")
+
+    page = json.dumps(PAGES + "store")
+    opened_beside(lambda: app.cmd("evalsettings", f"location.href={page}"), "a web address its page goes to")
+    opened_beside(lambda: app.cmd("evalsettings", f"(()=>{{const a=document.createElement('a');a.href={page};a.target='_blank';document.body.append(a);a.click();a.remove()}})()"),
+                  "a link with target=_blank")
+    opened_beside(lambda: app.cmd("evalsettings", f"(window.open({page}),1)"), "window.open")
+    port = open(os.path.join(profile, "DevToolsActivePort")).read().split()[0]
+    target = next(t for t in json.load(urllib.request.urlopen(f"http://127.0.0.1:{port}/json/list")) if t["url"].startswith("chrome://settings/"))
+    devtools = ws_open(target["webSocketDebuggerUrl"])[0]
+    opened_beside(lambda: cdp(devtools, 1, "Page.navigate", {"url": PAGES + "store"}), "a DevTools navigation")
+    devtools.close()
+
+    app.cmd("evalsettings", "location.href='chrome://settings/flags'")
+    deadline = time.time() + 10
+    while app.cmd("evalsettings", "location.href") != '"chrome://settings/flags"' and time.time() < deadline:
+        time.sleep(0.1)
+    settings_ready()
+    check("one of our pages its page goes to opens in place", app.cmd("evalsettings", "location.href") == '"chrome://settings/flags"' and len(order()) == 3, tabs_of(app))
+
+    click(app, f'[role=tab][data-tab="{in_work}"]')
+    app.wait(f"document.querySelector('[role=tab][data-tab=\"{in_work}\"]').getAttribute('aria-selected')==='true'")
+    focus_bar(app)
+    app.cmd("type", "chrome://settings")
+    app.cmd("key", "enter")
+    app.wait(f"document.querySelector('[role=tab][data-tab=\"{settings}\"]').getAttribute('aria-selected')==='true'")
+    stayed = app.js("location.href", tab=in_work)
+    check("chrome://settings typed in a web tab shows the settings tab, and the web tab stays", len(order()) == 3 and stayed == PAGES + "store", (tabs_of(app), stayed))
+    print(app.cmd("capture", os.path.join(OUT, "internal-settings-tab.png")), flush=True)
+
+    app.cmd("key", "cmd+w")
+    deadline = time.time() + 10
+    while not app.cmd("evalsettings", "1").startswith("ERR") and time.time() < deadline:
+        time.sleep(0.05)
+    check("Cmd+W closes it, as any tab", not ours() and len(order()) == 2, tabs_of(app))
+    app.close()
+
+
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
-    parts = {"driver": [driver_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [empty_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "quit": [quit_checks]}
-    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, settings_checks, visible_tabs_checks, window_checks, empty_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, shell_checks, glide_checks, web_api_checks, quit_checks]))
+    parts = {"driver": [driver_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [empty_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "quit": [quit_checks], "internal": [internal_checks]}
+    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, settings_checks, internal_checks, visible_tabs_checks, window_checks, empty_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, shell_checks, glide_checks, web_api_checks, quit_checks]))
