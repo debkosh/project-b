@@ -31,6 +31,9 @@ class PageTab : public WebContentsObserverHooks, public WebContentsDelegateHooks
   // Go's id for the workspace the tab is in, "" for the profile's own storage. It never
   // changes.
   const std::string& workspace() const { return workspace_; }
+  // Whether it is one of ours, a tab for our own pages in their context, not the
+  // profile's. It never changes.
+  bool internal() const;
   // Go's id for the window whose layout last showed this tab, 0 before any has.
   int64_t window() const { return window_; }
   void set_window(int64_t window) { window_ = window; }

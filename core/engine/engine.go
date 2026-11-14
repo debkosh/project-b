@@ -171,6 +171,10 @@ type Engine interface {
 	// shows it. A workspace keeps its own cookies and site storage, and a tab stays in its
 	// workspace for its life, as does every tab it opens.
 	CreateTab(workspace string) TabID
+	// CreateInternalTab makes a hidden tab of ours: one for our own pages, in their own
+	// context, where the shells load, in no workspace, and that context's for its life. A
+	// window's layout shows it, and LoadURL takes it to its page, chrome://<page>/.
+	CreateInternalTab() TabID
 	// SetFirstWorkspace says which workspace a tab the engine makes on its own goes in, one
 	// a client of the debugging port or an extension asks for: the first in the profile's
 	// list. The app says so at start, before any such tab, and whenever the first changes.
@@ -194,7 +198,8 @@ type Engine interface {
 	// for the page's host, as browsers do. ZoomOf says what it is now.
 	Zoom(tab TabID, factor float64)
 	ZoomOf(tab TabID) float64
-	// DuplicateTab makes a hidden copy of the tab, its history included, in its workspace.
+	// DuplicateTab makes a hidden copy of the tab, its history included, of its kind: in its
+	// workspace, or in our pages' context for one of ours.
 	DuplicateTab(tab TabID) TabID
 	// Edit runs a text-editing command in whichever page has the keyboard.
 	Edit(c EditCommand)

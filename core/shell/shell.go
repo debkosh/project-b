@@ -226,12 +226,7 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 			case c.GroupWith != 0:
 				id = m.tabs.CreateWith(c.GroupWith, !c.Background)
 			case c.Workspace == nil:
-				// The active tab's workspace, or the first when the window has no tab.
-				workspace := m.tabs.FirstWorkspace()
-				if active, ok := m.tabs.Get(m.tabs.ActiveIn(w)); ok {
-					workspace = active.Workspace
-				}
-				id = m.tabs.Add(w, workspace, !c.Background)
+				id = m.tabs.Add(w, m.tabs.NewTabWorkspace(w), !c.Background)
 			default:
 				id = m.tabs.Add(w, *c.Workspace, !c.Background)
 			}

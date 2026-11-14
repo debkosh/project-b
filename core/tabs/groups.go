@@ -54,15 +54,15 @@ func (m *Manager) group(id string) (*Group, *window) {
 }
 
 // fits says whether tab id can be in a group whose window is w and whose tabs are in
-// workspace.
+// workspace. One of our tabs is in no workspace, so in no group.
 func (m *Manager) fits(id engine.TabID, w engine.WindowID, workspace string) bool {
 	t := m.tabs[id]
-	return t != nil && m.windowOf[id] == w && t.Workspace == workspace
+	return t != nil && t.Page == "" && m.windowOf[id] == w && t.Workspace == workspace
 }
 
 // CreateGroup makes a group of the tabs ids: the first's window and workspace, and those
 // of the rest that share them, each leaving any group it was in. An empty color takes
-// the next free one. Returns the group's id, or "" when the first is no tab.
+// the next free one. Returns the group's id, or "" when the first is no web tab.
 func (m *Manager) CreateGroup(ids []engine.TabID, name, color string) string {
 	id := m.newGroup(ids, name, color)
 	if id != "" {
@@ -72,7 +72,7 @@ func (m *Manager) CreateGroup(ids []engine.TabID, name, color string) string {
 }
 
 func (m *Manager) newGroup(ids []engine.TabID, name, color string) string {
-	if len(ids) == 0 || m.tabs[ids[0]] == nil {
+	if len(ids) == 0 || m.tabs[ids[0]] == nil || m.tabs[ids[0]].Page != "" {
 		return ""
 	}
 	w := m.windowOf[ids[0]]
@@ -201,13 +201,17 @@ func (m *Manager) CloseGroup(group string) {
 // CreateWith opens a new tab beside tab with in its group, starting one of the two when
 // it is in none, as a new tab in a group does: at the end of with's window, in with's
 // workspace; active when foreground, or behind the active one, as a link opened in a new
-// tab is. Returns 0 when with is no tab.
+// tab is. Beside one of our tabs, which is in no group, it is a new tab in its home
+// workspace. Returns 0 when with is no tab.
 func (m *Manager) CreateWith(with engine.TabID, foreground bool) engine.TabID {
 	t := m.tabs[with]
 	if t == nil {
 		return 0
 	}
 	w := m.windowOf[with]
+	if t.Page != "" {
+		return m.Add(w, m.HomeOf(with), foreground)
+	}
 	id := m.create(w, t.Workspace)
 	if t.Group == "" {
 		m.newGroup([]engine.TabID{with, id}, "", "")

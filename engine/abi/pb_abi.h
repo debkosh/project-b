@@ -261,6 +261,9 @@ typedef struct PBEngineCalls {
   // Makes a hidden tab in a workspace, by Go's id for it: "" is the profile's own storage.
   // A window's layout shows it.
   int64_t (*create_tab)(const char* workspace);
+  // Makes a hidden tab of ours, for one of our own pages, in their context: in no
+  // workspace, and of that kind for its life. load_url takes it to its page.
+  int64_t (*create_internal_tab)(void);
   // The workspace a tab the engine makes on its own goes in, one a client of the debugging
   // port or an extension asks for: the first in the profile's list. Go says which at start,
   // before anything asks for such a tab, and again whenever the first changes.
@@ -279,7 +282,7 @@ typedef struct PBEngineCalls {
   // Page zoom as a factor, 1 for actual size, kept for the page's host.
   void (*set_zoom)(int64_t tab, double factor);
   double (*get_zoom)(int64_t tab);
-  // Makes a hidden copy of the tab, history included, and returns its id.
+  // Makes a hidden copy of the tab, history included, of its kind, and returns its id.
   int64_t (*duplicate_tab)(int64_t tab);
   // Runs a PBEditCommand in whichever of our pages has the keyboard.
   void (*edit)(int32_t command);
