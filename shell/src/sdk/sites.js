@@ -1,4 +1,4 @@
-// What a shell sends about the permission prompts. What Go sends is state.permissionPrompts
+// A site's settings, as a shell meets them. What Go sends is state.permissionPrompts
 // (shell.js): each prompt open in the profile, {id, tab, origin, kinds, once}, one per tab
 // at most. A shell draws those of its own tabs; how is its own (docs/daily-driver.md).
 
@@ -30,4 +30,14 @@ export function permissionAsk(prompt) {
   if (use.length) parts.push('use your ' + use.join(' and '));
   if (prompt.kinds.includes('notifications')) parts.push('show notifications');
   return parts.join(' and ');
+}
+
+// openSiteSettings opens settings on the site of the window's active tab.
+export function openSiteSettings() {
+  send({ t: 'openSiteSettings' });
+}
+
+// hasSite says whether a tab's page is a site, which has settings of its own.
+export function hasSite(tab) {
+  return /^https?:\/\//.test(tab?.url || '');
 }

@@ -294,6 +294,32 @@ func (m *Manager) Sites() []Site {
 	return list
 }
 
+// Set keeps value, Allow or Block, as origin's setting of kind, or forgets it for "". Only
+// a kind that can be asked about can be set: the rest have their default.
+func (m *Manager) Set(origin, kind, value string) {
+	k, ok := kindOf(kind)
+	if !ok || !k.Askable || Origin(origin) != origin || origin == "" {
+		return
+	}
+	switch value {
+	case "":
+		m.Forget(origin, kind)
+	case Allow, Block:
+		m.keep(origin, []string{kind}, value)
+	}
+}
+
+// Settable is the kinds settings can set for a site, in order: each one's name and title.
+func Settable() []Setting {
+	list := []Setting{}
+	for _, k := range Kinds {
+		if k.Askable {
+			list = append(list, Setting{Kind: k.Name, Title: k.Title})
+		}
+	}
+	return list
+}
+
 // Forget removes the decision for origin's kind, or every one of origin's with kind "".
 // The site asks again next time.
 func (m *Manager) Forget(origin, kind string) {
@@ -315,7 +341,7 @@ func (m *Manager) Forget(origin, kind string) {
 // TabChanged drops the tab's prompt when it left the page that asked, and what it was
 // allowed this time when it left the origin.
 func (m *Manager) TabChanged(tab engine.TabID, u string) {
-	if g, ok := m.once[tab]; ok && origin(u) != g.origin {
+	if g, ok := m.once[tab]; ok && Origin(u) != g.origin {
 		delete(m.once, tab)
 	}
 	if p := m.open[tab]; p != nil && page(u) != p.url {
@@ -423,9 +449,9 @@ func page(u string) string {
 	return u
 }
 
-// origin is an address's origin as the engine writes one: scheme, host, and a port that
+// Origin is an address's origin as the engine writes one: scheme, host, and a port that
 // isn't the scheme's own.
-func origin(u string) string {
+func Origin(u string) string {
 	p, err := url.Parse(u)
 	if err != nil || p.Host == "" {
 		return ""

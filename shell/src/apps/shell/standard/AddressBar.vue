@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { activeTab, chooseSuggestion, focusPage, send, state, suggest } from '@/sdk/vue.js';
 import SuggestionList from './SuggestionList.vue';
-import { promptFor } from '@/sdk/permissions.js';
+import { hasSite, openSiteSettings, promptFor } from '@/sdk/sites.js';
 import PermissionPrompt from '@/ui/PermissionPrompt.vue';
 import { addressBar, nextQuery } from './state.js';
 
@@ -165,6 +165,22 @@ onMounted(follow);
 
 <template>
   <form class="field" :class="{ open }" @submit.prevent="go()">
+    <!-- The site's settings: on any web page, at the field's start. -->
+    <button
+      v-if="hasSite(activeTab)"
+      type="button"
+      class="site"
+      aria-label="Site settings"
+      title="Site settings"
+      @mousedown.prevent
+      @click="openSiteSettings()"
+    >
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+        <path d="M2.5 5h5M11.5 5h2M2.5 11h2M8.5 11h5" />
+        <circle cx="9.5" cy="5" r="1.75" />
+        <circle cx="6.5" cy="11" r="1.75" />
+      </svg>
+    </button>
     <input
       ref="input"
       v-model="text"
@@ -236,6 +252,32 @@ input {
 input::placeholder {
   color: var(--muted);
   opacity: 1;
+}
+
+/* A quiet icon button inside the field, 24px, with the field's start padding outside it. */
+.site {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-left: 6px;
+  margin-right: -6px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--icon);
+  cursor: pointer;
+}
+
+.site:hover {
+  background: var(--accent-tint);
+}
+
+.site:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .status {

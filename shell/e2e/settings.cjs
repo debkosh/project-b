@@ -618,14 +618,32 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   await page.getByRole('menuitem', { name: 'Reset camera' }).click();
   check('Reset camera forgets only that', await until(() => JSON.stringify(sitesFile()['https://meet.test']) === '{"microphone":"block"}'), JSON.stringify(sitesFile()));
   check('and the row says so at once', await until(async () => !(await sites.textContent()).includes('Camera allowed')));
+  // The row opens the site's own view: each setting settings can set, Ask, Allow or Block.
+  await sites.getByRole('button', { name: 'meet.test', exact: true }).click();
+  const site = page.getByRole('region', { name: 'meet.test' });
+  const siteRadio = (group, name) => site.getByRole('radiogroup', { name: group }).getByRole('radio', { name });
+  check('a site\'s row opens its own view, with each setting as it is',
+    await until(async () => (await siteRadio('Microphone', 'Block').getAttribute('aria-checked')) === 'true' && (await siteRadio('Camera', 'Ask').getAttribute('aria-checked')) === 'true' && (await siteRadio('Notifications', 'Ask').getAttribute('aria-checked')) === 'true'));
+  await settle(page);
+  await page.screenshot({ path: path.join(out, 'settings-site.png') });
+  await siteRadio('Camera', 'Allow').click();
+  check('Allow there sets it for the site', await until(() => sitesFile()['https://meet.test']?.camera === 'allow'), JSON.stringify(sitesFile()));
+  await siteRadio('Camera', 'Ask').click();
+  check('and Ask resets it', await until(() => !('camera' in (sitesFile()['https://meet.test'] || {}))), JSON.stringify(sitesFile()));
+  await site.getByRole('button', { name: 'All sites' }).click();
+  check('All sites goes back to every site', await until(() => sites.isVisible()));
+  await sites.getByRole('button', { name: 'meet.test', exact: true }).click();
+  await site.getByRole('button', { name: 'Remove all for this site…' }).click();
+  const removeAll = page.getByRole('dialog', { name: 'Remove all for meet.test?' });
+  check('Remove all for this site asks first', await until(() => removeAll.isVisible()));
+  await removeAll.getByRole('button', { name: 'Remove', exact: true }).click();
+  check('and Remove forgets the site and goes back to every site', await until(async () => !('https://meet.test' in sitesFile()) && (await sites.isVisible()) && !(await sites.textContent()).includes('meet.test')), JSON.stringify(sitesFile()));
   await page.getByRole('button', { name: 'Actions for news.test' }).click();
   const removeItem = page.getByRole('menuitem', { name: 'Remove' });
   check('a site\'s menu ends with Remove, in the danger colour', await removeItem.evaluate((e) => e.classList.contains('danger') && !e.nextElementSibling));
   await removeItem.click();
   check('Remove forgets the site', await until(async () => !('https://news.test' in sitesFile()) && !(await sites.textContent()).includes('news.test')));
-  await page.getByRole('button', { name: 'Actions for meet.test' }).click();
-  await page.getByRole('menuitem', { name: 'Remove' }).click();
-  check('with none left, the list says so', await until(async () => (await sites.textContent()).includes('No site has its own settings')));
+  check('with none left, the list says so', await until(async () => (await sites.textContent()).includes('No site has asked for a permission yet')));
   await page.close();
   await fetch(`${base}/mock/fire`, { method: 'POST', body: new URLSearchParams({ kind: 'key', value: 'closeTab' }) });
   await until(async () => (await regions()).settings === 0);

@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, onUnmounted } from 'vue';
-import { answerPermission, permissionAsk, permissionHost } from '@/sdk/permissions.js';
+import { answerPermission, permissionAsk, permissionHost } from '@/sdk/sites.js';
 import { pushEscape } from './escape.js';
 
 // A site asking to use its camera, microphone or notifications (docs/daily-driver.md): the
