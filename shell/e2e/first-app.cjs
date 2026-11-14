@@ -492,6 +492,9 @@ const stopServer = lib.stop;
   check('closing the last tab leaves the window open, with no tabs and no page shown',
     await until(async () => { const r = await regions(); return r.tabs.length === 0 && r.active === 0 && r.visible.length === 0; }) && !(await regions()).closed,
     JSON.stringify(await regions().then((r) => ({ tabs: r.tabs, active: r.active, visible: r.visible, closed: r.closed }))));
+  // Close Tab in it closes the window.
+  await lib.fire('key', 'closeTab');
+  check('Cmd+W in the window with no tabs closes it', await until(async () => (await regions()).closed === true));
 
   // History survives a restart.
   await stopServer();

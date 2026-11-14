@@ -615,7 +615,7 @@ def go_to(url):
 def window_checks():
     """Several windows, with the real keyboard and mouse: Cmd+N, keys and commands going to the
     window clicked, a second start's URL in the window used last, the Window menu's list and
-    Cmd+`, a window closing with its last tab, and the app quitting with its last window. Which window shows what is read from
+    Cmd+`, Cmd+W twice on a window's last tab closing it, and the app quitting with its last window. Which window shows what is read from
     the windows' titles, each its shown tab's."""
     guest("/usr/bin/killall", "project_b")
     fresh_profile()
@@ -664,11 +664,14 @@ def window_checks():
     now = until(titles, lambda t: t[:1] == ["Bravo"])
     check("Cmd+` brings the other window to the front", now[:1] == ["Bravo"], str(now))
 
+    # The first Cmd+W closes the window's last tab and leaves it with none; the second, Close
+    # Tab in a window with no tabs, closes the window.
     desk.click(*in_second)
     until(titles, lambda t: t[:1] == ["Bravo"])
     desk.key("cmd+w")
+    desk.key("cmd+w")
     now = until(windows, lambda w: len(w) == 1)
-    check("closing a window's last tab closes the window", len(now) == 1 and until(titles, lambda t: t == ["Charlie"]) == ["Charlie"],
+    check("Cmd+W twice on a window's last tab closes the window", len(now) == 1 and until(titles, lambda t: t == ["Charlie"]) == ["Charlie"],
           f"{now} {titles()}")
     desk.key("cmd+shift+w")
     gone = until(lambda: guest("/usr/bin/pgrep", "-x", "project_b"), lambda p: p == "", 10) == ""
@@ -1576,7 +1579,7 @@ check("Cmd+W twice fast closes two tabs", closed_two,
       f"differs from one tab {changed(now, one):.3f}, from two tabs {changed(now, two):.3f}")
 if not closed_two and changed(now, two) < changed(now, one):
     # Two tabs left: close one, so the checks below start from one. Never otherwise, because
-    # Cmd+W on the last tab ends the app.
+    # Cmd+W on the last tab leaves the window with none.
     desk.key("cmd+w")
     time.sleep(1)
 

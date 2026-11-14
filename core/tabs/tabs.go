@@ -409,9 +409,6 @@ func (m *Manager) left(w engine.WindowID, id engine.TabID, i int, moved bool) {
 	m.listChanged()
 }
 
-// CloseActive closes the active tab of the window in front.
-func (m *Manager) CloseActive() { m.Close(m.ActiveID()) }
-
 // All returns copies of every tab, window by window in the order they were opened, each
 // window's in order.
 func (m *Manager) All() []Tab {

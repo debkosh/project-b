@@ -177,8 +177,9 @@ The last checks, after Cmd+Q, are of several windows ([windows.md](windows.md)),
 app with real keys and clicks: Cmd+N makes a second window, a little down and right of the
 first and the same size; Cmd+L and typing go to the window clicked; a second start of the app
 with a URL opens it in a new tab in the window used last, which comes to the front; the Window
-menu lists both windows, and Cmd+` brings the other one to the front; Cmd+W on
-a window's last tab closes that window; Shift+Cmd+W on the last window quits the app; and
+menu lists both windows, and Cmd+` brings the other one to the front; Cmd+W twice on
+a window's last tab closes that window, the first leaving it with no tabs; Shift+Cmd+W on the
+last window quits the app; and
 a tab moved to the other window, through the driver's `ProjectB.moveTab`, arrives there
 still showing its page; a window's frame goes where Go asks and Go reads it back; and Cmd+M
 minimises it, which Go reads and its tab is told as hidden.

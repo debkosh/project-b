@@ -46,7 +46,10 @@ gives one path, and `engine.Shortcut` and the switch in `app.go` go away.
   plus a removed one.
 - An action has a title, the function that runs it, whether it is enabled, and for some
   whether it is checked. Back is disabled with no history; Full Screen is checked in full
-  screen.
+  screen. In a window with no tabs every action that needs one is disabled: the
+  navigation, the zooms, View Source, focusing the page, and choosing, duplicating or
+  moving a tab. New Tab, Open Location, the windows' own, Settings and the shells' own
+  stay as they are, and so does Close Tab, which then closes the window.
 - Managers don't know about `commands`. `app.go` registers each action with the manager
   that does the work, as it wires hooks today.
 - Actions the shell performs, such as focusing the address bar or opening settings, are

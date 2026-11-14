@@ -18,6 +18,7 @@ func (a *App) registerActions(e engine.Engine) {
 		a.actions = append(a.actions, act)
 		return act
 	}
+	// An action that needs a tab is off in a window with none.
 	active := func() bool { return a.Tabs.Active().ID != 0 }
 
 	a.actions = append(a.actions, copyActions(e, a.quit, func(r engine.WindowRequest) { a.Window.Request(a.Tabs.Front(), r) })...)
@@ -39,13 +40,13 @@ func (a *App) registerActions(e engine.Engine) {
 	add("window.new", "New Window", func() { a.NewWindow("") })
 	add("window.close", "Close Window", func() { a.Window.Request(a.Tabs.Front(), engine.WindowClose) })
 	// The settings page sits over the tabs like a tab of its own, so closing the tab
-	// closes it first.
+	// closes it first. In a window with no tabs it closes the window, so it stays enabled.
 	add("tab.close", "Close Tab", func() {
 		if a.Settings.IsOpen(a.Tabs.Front()) {
 			a.Settings.Close(a.Tabs.Front())
 			return
 		}
-		a.Shell.Interaction(a.Tabs.Front(), "tab.close", a.Tabs.CloseActive)
+		a.Shell.CloseTab(a.Tabs.Front())
 	})
 
 	side := add("view.tabsSide", "Tabs on Side", func() { a.Shell.SwitchTabLayout(prefs.TabsVertical) })
@@ -84,26 +85,28 @@ func (a *App) registerActions(e engine.Engine) {
 			a.Shell.FocusAddressBar(a.Tabs.Front())
 		}
 	}
-	add("focus.nextPane", "Focus Next Pane", nextPane)
-	add("focus.previousPane", "Focus Previous Pane", nextPane)
+	add("focus.nextPane", "Focus Next Pane", nextPane).Enabled = active
+	add("focus.previousPane", "Focus Previous Pane", nextPane).Enabled = active
 
 	back := add("nav.back", "Back", a.Tabs.Back)
 	back.Enabled = func() bool { return a.Tabs.Active().CanGoBack }
 	forward := add("nav.forward", "Forward", a.Tabs.Forward)
 	forward.Enabled = func() bool { return a.Tabs.Active().CanGoForward }
 
-	add("tab.next", "Select Next Tab", func() { a.Tabs.ActivateNext(false) })
-	add("tab.previous", "Select Previous Tab", func() { a.Tabs.ActivateNext(true) })
+	add("tab.next", "Select Next Tab", func() { a.Tabs.ActivateNext(false) }).Enabled = active
+	add("tab.previous", "Select Previous Tab", func() { a.Tabs.ActivateNext(true) }).Enabled = active
 	// Held like the OS's app switcher: each press goes one tab further back in recent
 	// order, and letting go of the modifier settles on the tab it reached.
-	add("tab.recentNext", "Select Recent Tab", func() { a.Tabs.CycleRecent(false) }).Release = a.Tabs.EndCycle
-	add("tab.recentPrevious", "Select Recent Tab Backward", func() { a.Tabs.CycleRecent(true) }).Release = a.Tabs.EndCycle
+	recent := add("tab.recentNext", "Select Recent Tab", func() { a.Tabs.CycleRecent(false) })
+	recent.Release, recent.Enabled = a.Tabs.EndCycle, active
+	recentBack := add("tab.recentPrevious", "Select Recent Tab Backward", func() { a.Tabs.CycleRecent(true) })
+	recentBack.Release, recentBack.Enabled = a.Tabs.EndCycle, active
 	add("tab.duplicate", "Duplicate Tab", a.Tabs.Duplicate).Enabled = active
 	add("tab.moveToNewWindow", "Move Tab to New Window", func() { a.NewWindowWith(a.Tabs.ActiveID()) }).Enabled = active
 	for i := range 8 {
-		add(fmt.Sprintf("tab.select%d", i+1), fmt.Sprintf("Tab %d", i+1), func() { a.Tabs.ActivateAt(i) })
+		add(fmt.Sprintf("tab.select%d", i+1), fmt.Sprintf("Tab %d", i+1), func() { a.Tabs.ActivateAt(i) }).Enabled = active
 	}
-	add("tab.selectLast", "Last Tab", a.Tabs.ActivateLast)
+	add("tab.selectLast", "Last Tab", a.Tabs.ActivateLast).Enabled = active
 
 	for _, act := range a.actions {
 		a.Commands.Register(*act)
