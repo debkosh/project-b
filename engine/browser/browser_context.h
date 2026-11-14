@@ -4,10 +4,13 @@
 #include <memory>
 
 #include "base/files/file_path.h"
+#include "build/build_config.h"
 #include "content/public/browser/browser_context.h"
 #include "project_b/engine/browser/permissions.h"
 
 namespace project_b {
+
+class Downloads;
 
 // A context content asks for: a profile's, kept in its folder, or the one our own pages
 // load in, which has no folder and is off the record, so content keeps its storage in
@@ -48,6 +51,10 @@ class BrowserContext : public content::BrowserContext {
 
   const base::FilePath path_;
   Permissions permissions_;
+#if BUILDFLAG(IS_MAC)
+  // A profile's downloads, made when content first asks.
+  std::unique_ptr<Downloads> downloads_;
+#endif
 };
 
 }  // namespace project_b
