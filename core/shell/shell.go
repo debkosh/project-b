@@ -50,6 +50,9 @@ type command struct {
 	Value string `json:"value"`
 	// Rect is where the control that asked for a share sheet is, to anchor it.
 	Rect engine.Rect `json:"rect"`
+	// Then is what closeTab makes active when it closes the active tab: "recent", the
+	// tab used before it; anything else, its neighbour.
+	Then string `json:"then"`
 }
 
 // requests are the names the shell uses for engine.WindowRequest.
@@ -231,11 +234,20 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 			m.tabs.Move(id, to, max(0, min(c.Index, len(m.tabs.AllIn(to)))))
 		}
 	case "closeTab":
-		if c.ID == 0 {
+		if c.ID == 0 && c.Then != "recent" {
 			m.CloseTab(w)
 			return
 		}
-		m.Interaction(w, "tab.close", func() { m.tabs.Close(engine.TabID(c.ID)) })
+		id := engine.TabID(c.ID)
+		if id == 0 {
+			id = m.tabs.ActiveIn(w)
+		}
+		if c.Then == "recent" {
+			// The tab used before it takes its place, as a phone's back key wants.
+			m.Interaction(w, "tab.close", func() { m.tabs.CloseToRecent(id) })
+			return
+		}
+		m.Interaction(w, "tab.close", func() { m.tabs.Close(id) })
 	case "activateTab":
 		m.Interaction(w, "tab.activate", func() { m.tabs.Activate(engine.TabID(c.ID)) })
 	case "createGroup":
