@@ -137,20 +137,20 @@ watch(
 );
 
 // A tab that becomes active with nothing in it wants the address field; one with a page
-// wants the page.
-watch(
-  () => state.active,
-  () => {
-    close();
-    text.value = activeTab.value.url;
-    if (activeTab.value.url === '') {
-      focusField();
-    } else {
-      input.value.blur();
-      focusPage();
-    }
-  },
-);
+// wants the page. The field is made once Go's data is in, with a tab already active, so
+// that one counts too.
+function follow() {
+  close();
+  text.value = activeTab.value.url;
+  if (activeTab.value.url === '') {
+    focusField();
+  } else {
+    input.value.blur();
+    focusPage();
+  }
+}
+watch(() => state.active, follow);
+onMounted(follow);
 </script>
 
 <template>

@@ -75,6 +75,9 @@ const { check, fire, out, regions, settle, until } = lib;
   };
 
   check('the window loads the fox shell with its one tab', await tabCount(1) && (await go()).shell === 'fox');
+  // The bars are made once Go's data is in, with the tab already active: an empty one
+  // wants the address field.
+  check('it opens with the keyboard in the address field, as a new tab does', await until(() => field.evaluate((el) => el === document.activeElement)));
 
   // The page under both bars, inside the frame.
   let r = await go();
@@ -94,6 +97,13 @@ const { check, fire, out, regions, settle, until } = lib;
   check('once it has loaded the line goes, and Stop is Reload again',
     await until(async () => (await activeURL()) === 'https://example.com/docs' && (await ui.locator('.progress.on').count()) === 0 && (await ui.getByRole('button', { name: 'Reload' }).isEnabled())));
   check('the address field shows the active tab\'s address', (await field.inputValue()) === 'https://example.com/docs', await field.inputValue());
+  // Reloaded, the bars are made again with that tab active: the field shows its address,
+  // and its page gets the keyboard back.
+  await fetch(`${lib.base}/shell/send`, { method: 'POST', body: JSON.stringify({ t: 'focusTab', id: 0 }) });
+  await until(async () => (await go()).focused === 0);
+  await w.shell().evaluate(() => location.reload());
+  check('reloaded on a page, the field shows its address and the page gets the keyboard',
+    await until(async () => (await go()).focused === (await go()).active && (await field.inputValue()) === 'https://example.com/docs'), String((await go()).focused));
 
   // New Tab: after the last tab, and active.
   await ui.getByRole('button', { name: 'New Tab', exact: true }).click();
