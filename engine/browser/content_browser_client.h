@@ -49,7 +49,6 @@ class ContentBrowserClient : public ContentBrowserClientHooks {
   void CreateThrottlesForNavigation(
       content::NavigationThrottleRegistry& registry) override;
   std::string GetProduct() override;
-#if BUILDFLAG(IS_MAC)
   // A site's or a proxy's request for a username and password goes to Go as a dialog.
   std::unique_ptr<content::LoginDelegate> CreateLoginDelegate(
       const net::AuthChallengeInfo& auth_info,
@@ -63,7 +62,6 @@ class ContentBrowserClient : public ContentBrowserClientHooks {
       bool first_auth_attempt,
       content::GuestPageHolder* guest_page_holder,
       content::LoginDelegate::LoginAuthRequiredCallback auth_required_callback) override;
-#endif
   std::string GetUserAgent() override;
   // A page's preferred colour scheme is the app's theme, or as the system is.
   void OverrideWebPreferences(content::WebContents* web_contents,
