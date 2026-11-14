@@ -41,6 +41,9 @@ type Config struct {
 	// DownloadsDir is where downloads go: the user's Downloads folder in the real app, and
 	// a Downloads folder in the profile when it is "".
 	DownloadsDir string
+	// System is what this platform says of itself in a crash report: the version, the
+	// OS and the device, and on Android the app's own log.
+	System func() []crash.Section
 }
 
 // App holds the managers and is the engine's listener: each function only forwards.
@@ -88,6 +91,7 @@ var starters []func(a *App, e engine.Engine, cfg Config)
 func Start(e engine.Engine, cfg Config) *App {
 	a := &App{profiles: cfg.Profiles}
 	a.Crash = crash.New(cfg.ProfileDir, cfg.CrashReports)
+	a.Crash.System = cfg.System
 	a.Policy = policy.New(cfg.BlockedHosts)
 	a.History = history.New(cfg.ProfileDir, e.Post)
 	a.Suggest = suggest.New(a.History)

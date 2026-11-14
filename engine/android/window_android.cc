@@ -340,6 +340,12 @@ void Window::InstallPackage(const std::string& path) {
                                     base::android::ConvertUTF8ToJavaString(env, path));
 }
 
+void Window::ShareFile(const std::string& path, const gfx::RectF& anchor) {
+  JNIEnv* env = AttachCurrentThread();
+  Java_BrowserWindow_shareFile(env, g_browser_window->java(),
+                               base::android::ConvertUTF8ToJavaString(env, path));
+}
+
 void Window::Minimize() {
   Java_BrowserWindow_minimize(AttachCurrentThread(), g_browser_window->java());
 }

@@ -1,12 +1,18 @@
 <script>
   import { send, shell, state } from '@/sdk/svelte.svelte.js';
 
-  // The last run's crash, in a line over the toolbar until it is dismissed.
+  // The last run's crash, in a line over the toolbar until it is dismissed, with Share
+  // report, which hands one file with all of it to the phone's share sheet.
+  function share(e) {
+    const r = e.currentTarget.getBoundingClientRect();
+    send({ t: 'shareReport', rect: { x: r.x, y: r.y, w: r.width, h: r.height } });
+  }
 </script>
 
 {#if state.crashLog}
   <div class="crash" use:shell title={state.crashReport}>
     <span role="status">Project B crashed last time. The log is at {state.crashLog}</span>
+    <button class="text-button quiet" onclick={share}>Share report</button>
     <button class="text-button quiet" onclick={() => send({ t: 'dismissCrash' })}>Dismiss</button>
   </div>
 {/if}

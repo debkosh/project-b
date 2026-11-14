@@ -2,15 +2,22 @@
 import { send, state } from '@/sdk/vue.js';
 
 // Says the last run crashed, where its log is and where macOS's report is, until the user
-// closes it. Go decides whether there is one.
+// closes it. Go decides whether there is one. Share report hands one file with all of it
+// to the system's share sheet, beside the button.
 function close() {
   send({ t: 'dismissCrash' });
+}
+
+function share(e) {
+  const r = e.currentTarget.getBoundingClientRect();
+  send({ t: 'shareReport', rect: { x: r.x, y: r.y, w: r.width, h: r.height } });
 }
 </script>
 
 <template>
   <div v-if="state.crashLog" v-shell class="crash" role="status">
     <span>Project B crashed last time. The log is at {{ state.crashLog }}, macOS's report at {{ state.crashReport }}</span>
+    <button class="share" type="button" @click="share">Share report</button>
     <button class="close" type="button" aria-label="Close" @click="close">
       <svg width="9" height="9" viewBox="0 0 9 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M7.43.9.75 7.58M.9.75l6.68 6.68"/></svg>
     </button>
@@ -44,6 +51,22 @@ function close() {
 
 .crash span {
   overflow-wrap: anywhere;
+}
+
+.share {
+  flex: none;
+  height: 20px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+}
+
+.share:hover {
+  background: var(--accent-tint);
 }
 
 .close {

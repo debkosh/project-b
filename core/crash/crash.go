@@ -28,6 +28,9 @@ type Manager struct {
 	children string
 	last     string
 	report   string
+	// System is what the platform says of itself for a report: the version, the OS and
+	// the device, and on Android the app's own log. Nil says nothing.
+	System func() []Section
 }
 
 // New starts this run's crash.log in dir, after keeping the last run's, if there is one,

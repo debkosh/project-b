@@ -427,6 +427,8 @@ namespace project_b {
 struct Window::Impl {
   PBNSWindow* __strong window;
   PBContainerView* __strong container;
+  // The sharing picker while it is open.
+  NSSharingServicePicker* __strong share_picker;
   PBWindowDelegate* __strong delegate;
   size_t ignored_stale_bounds = 0;
   uint32_t shown_rgb = 0;
@@ -616,6 +618,18 @@ void Window::Close() {
 
 void Window::SetTitle(const std::u16string& title) {
   impl_->window.title = base::SysUTF16ToNSString(title);
+}
+
+void Window::ShareFile(const std::string& path, const gfx::RectF& anchor) {
+  NSURL* url = [NSURL fileURLWithPath:base::SysUTF8ToNSString(path)];
+  impl_->share_picker = [[NSSharingServicePicker alloc] initWithItems:@[ url ]];
+  // Shell coordinates measure y from the top; the container's from the bottom.
+  NSRect rect = NSMakeRect(anchor.x(),
+                           impl_->container.bounds.size.height - anchor.bottom(),
+                           anchor.width(), anchor.height());
+  [impl_->share_picker showRelativeToRect:rect
+                                   ofView:impl_->container
+                            preferredEdge:NSRectEdgeMinY];
 }
 
 void Window::SetShellView(gfx::NativeView view) {

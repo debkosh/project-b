@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The one folder the package installer may read: where Go's updater stages a downloaded APK,
-     in the profile (core/cmd/lib/update_android.go). The profile is in Chromium's data folder,
-     app_project_b beside files/, which FileProvider has no tag for. -->
+<!-- The folders other apps may read, through the one FileProvider: where Go's updater stages a
+     downloaded APK for the package installer (core/cmd/lib/update_android.go), and where Go
+     writes the crash reports the user shares (core/crash/report.go). The profile is in
+     Chromium's data folder, app_project_b beside files/, which FileProvider has no tag for. -->
 <paths>
     <files-path name="updates" path="../app_project_b/profile/updates/stage/" />
+    <files-path name="reports" path="../app_project_b/profile/reports/" />
 </paths>
