@@ -57,6 +57,9 @@ const { check, fire, regions, settle, until } = lib;
   const t1 = (await regions()).active;
   check('opens with one group of one pane', (await chips.count()) === 1 && (await ui.locator('[role=tab]').count()) === 1 && (await showsOnly([t1])));
   check('the pane\'s title bar is marked active', await marked(t1));
+  // The prompt line is made once Go's data is in, with the pane already active: an empty
+  // one wants an address.
+  check('it opens with the keyboard in the prompt, as a new tab does', await until(() => prompt.evaluate((el) => el === document.activeElement)));
   await page.frameLocator('iframe.mock-page').getByRole('button', { name: 'Navigate' }).waitFor();
   await shoot('one');
   const one = (await shown())[t1];
@@ -129,12 +132,19 @@ const { check, fire, regions, settle, until } = lib;
   await page.mouse.up();
   check('dragged back, the sizes are as they were', await until(async () => near((await shown())[t1].w, s[t1].w)), JSON.stringify({ s, now: await shown() }));
 
-  // Reloaded, the same groups, splits and sizes.
+  // Reloaded, the same groups, splits and sizes; and the prompt line, made again with the
+  // pane on a page active, shows its address and gives its page the keyboard back.
+  await ui.locator(`[role=tab][data-tab="${t1}"]`).click();
+  await until(async () => (await regions()).active === t1);
+  await fetch(`${lib.base}/shell/send`, { method: 'POST', body: JSON.stringify({ t: 'focusTab', id: 0 }) });
+  await until(async () => (await regions()).focused === 0);
   const sized = JSON.stringify(await shown());
   await w.shell().evaluate(() => { window.beforeReload = true; location.reload(); });
   await until(async () => (await w.shell()?.evaluate(() => !window.beforeReload).catch(() => false)), 10000);
   check('reloaded, the same splits and sizes come back', await until(async () => JSON.stringify(await shown()) === sized), JSON.stringify({ before: sized, after: await shown() }));
   check('reloaded, one group of three', (await chips.count()) === 1 && (await ui.locator('.chip [role=tab]').count()) === 3);
+  check('reloaded, the prompt shows the active pane\'s address and its page gets the keyboard',
+    await until(async () => (await regions()).focused === t1 && (await prompt.inputValue()).startsWith('https://one.test')), String((await regions()).focused));
 
   // A resize keeps every pane inside the frame.
   await page.setViewportSize({ width: 760, height: 480 });
