@@ -149,12 +149,17 @@ nothing. Its `actions` is every action in the menus that can run then, `{id, tit
 the menus' order, for a shell that lists them to run by name (`run`).
 
 A tab is `{id, url, title, loading, progress, blocked, crashed, error, errorCode, favicon,
-canGoBack, canGoForward, workspace, group}`, `group` the id of its tab group, absent when it
-is in none. `error` says why its page failed to load, absent when it didn't: `not-found`,
-`offline`, `refused`, `unreachable`, `timeout`, `tls`, `proxy`, `redirects`,
+canGoBack, canGoForward, workspace, group, page}`, `group` the id of its tab group, absent
+when it is in none. `error` says why its page failed to load, absent when it didn't:
+`not-found`, `offline`, `refused`, `unreachable`, `timeout`, `tls`, `proxy`, `redirects`,
 `bad-response`, `blocked`, `file` or `other` (engine.Failure). `errorCode` is the engine's
 own name for the error, such as `ERR_NAME_NOT_RESOLVED`, to show under the sentence and
-never to match on. The snapshot also has `running` (the version), `platform`
+never to match on. `page` says the tab is one of ours, and which of our pages it shows:
+`settings`, the only one so far; it is absent for a web tab. A tab of ours is drawn,
+switched, laid out and closed as any tab is ([windows.md](windows.md#our-own-pages-are-tabs-decided-2026-11-14)),
+but it is in no workspace and no group: its `workspace` is the one it was opened from, where
+New Tab from it goes, so `workspaceOf` gives a shell no dot for it. Rule 19 says how a shell
+shows it. The snapshot also has `running` (the version), `platform`
 (`mac`, as the keymap names it) and `data`, and `extensions` only while their flag is on.
 
 - `controls` is `{x, y, w, h}`, where the native window buttons are, zero size when there
@@ -378,7 +383,7 @@ it there; a phone shell may be left out of a rule for a desktop feature.
    ([groups.md](groups.md)) are no different: a shell that draws no groups lists them as
    any other, and every tab stays one click or one sheet away.
 5. **`focusAddressBar` puts the keyboard in the field named Address,** where an address
-   and Enter take the active tab there.
+   and Enter take the active tab there, while a web tab is active.
 6. **Every control it draws is the shell's,** a control as `@/sdk/controls.js` says: it
    lies in a region it marked `shell`, or in a `drag` bar, so a press reaches it and not
    the page beneath, nor the window's drag.
@@ -387,7 +392,8 @@ it there; a phone shell may be left out of a rule for a desktop feature.
 9. Reloaded, it comes back showing the same pages: what it needs to do so it saved.
 10. Switched to and away from, it starts from Go's data alone.
 11. **Settings is one press away, or two:** a control named Settings, on the shell or in a
-    menu one of its controls opens, opens the settings page.
+    menu one of its controls opens, opens the settings tab, or shows it when the window
+    has one.
 12. **The basic controls are somewhere in the shell, found by role and name, and each does
     its job.** The check finds each one only as a screen reader would, by its role and
     its accessible name, never by a class or where it sits, and presses it or types into
@@ -424,6 +430,11 @@ it there; a phone shell may be left out of a rule for a desktop feature.
     Tab then closes the window. What the empty state is, each shell decides; each so far
     shows a quiet No tabs and New Tab. The check holds every shell to it but the two
     hidden shells, which are being removed.
+19. **For one of our tabs, the shell shows the page's title where the address goes, with a
+    way to close the tab, and no field to type in.** The title is the tab's, as Go sends
+    it, which the page may change, such as "Downloads › In progress". The check holds every
+    shell to it but those not drawing it yet, each named with who brings it there
+    (`shell/e2e/shell-contract.cjs`).
 20. **The find key (`find.open`), or on a phone the menu's item for it, opens a text box
     named Find in page with the keyboard in it;** what is typed searches the active tab's
     page and the count shows, Enter shows the next match, and Escape, or a phone's back
@@ -448,7 +459,7 @@ one of the shell's controls opens; a menu item's name may end with its key.
 - A way to close a tab: **Close Tab**, for the active one, or **Close** and the tab's
   label as `tabLabel` gives it, such as Close Mock example.com.
 - **Address**: a text box or a combo box, where an address and Enter take the active tab
-  there.
+  there, while a web tab is active: for one of ours, rule 19.
 - **Settings**.
 - **Extensions**, while their flag is on, whose menu has **Manage extensions**.
 
@@ -828,7 +839,8 @@ What every shell needs, whatever it looks like:
 - `activeTab(state)`, `workspaceOf(state, tab)`, `tabLabel(tab)`, `keyLabel(state,
   action)`, `controlSpace(state)`: helpers that read the state they are given.
   `workspaceOf` is the workspace a shell shows a tab in, by a dot or its name, and is
-  undefined while the profile has one workspace only, so every shell leaves the dot out
+  undefined for one of our tabs, and while the profile has one workspace only, so every
+  shell leaves the dot out
   then.
 - `pressExtension(id, el)`, `pinExtension(id, on)`, `manageExtensions()`,
   `answerExtensionPrompt(on)`: what goes back about extensions.
