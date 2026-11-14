@@ -203,6 +203,9 @@ source_set("browser") {
     "abi/pb_abi.h",
     "abi/pb_content_abi.h",
     "browser/browser_context.cc",
+    "browser/notifications.cc",
+    "browser/notifications.h",
+    "browser/notifications_mac.mm",
     "browser/permissions.cc",
     "browser/browser_context.h",
     "browser/browser_main_parts.h",
@@ -283,6 +286,7 @@ source_set("browser") {
     "AppKit.framework",
     "Cocoa.framework",
     "QuartzCore.framework",
+    "UserNotifications.framework",
   ]
 
   # The extension runtime: Chromium's //extensions, and our embedder for it.

@@ -423,6 +423,22 @@ type Listener interface {
 	// PermissionStatusOf is a kind's state for origin, as a page reads it, in tab's page or
 	// 0 for a page in no tab: a worker's, or one of our own pages'.
 	PermissionStatusOf(tab TabID, origin, kind string) PermissionStatus
+
+	// NotificationShown is a page showing a notification. True shows it on the system.
+	NotificationShown(n Notification) bool
+	// NotificationClicked says the person clicked a notification the system showed; the
+	// page has had its click.
+	NotificationClicked(id string)
+}
+
+// Notification is one a page shows: the engine's id for it, the origin showing it, the
+// page's address, "" for a service worker's, and what it says.
+type Notification struct {
+	ID     string
+	Origin string
+	Page   string
+	Title  string
+	Body   string
 }
 
 // PermissionID is the engine's number for a permission request, for this run only.

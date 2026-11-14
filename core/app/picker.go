@@ -222,6 +222,10 @@ func (p *Picker) PermissionRequested(r engine.PermissionRequest) {
 	p.e.AnswerPermission(r.ID, statuses)
 }
 
+// The picker shows no notifications.
+func (p *Picker) NotificationShown(engine.Notification) bool { return false }
+func (p *Picker) NotificationClicked(string)                 {}
+
 func (p *Picker) PermissionStatusOf(_ engine.TabID, _, kind string) engine.PermissionStatus {
 	return sites.Default(kind)
 }

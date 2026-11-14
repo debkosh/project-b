@@ -105,6 +105,8 @@ type App struct {
 	finds *pageFinds
 	// fulls are the windows whose page fills the screen.
 	fulls *pageFulls
+	// notified is the page each notification shown on the system came from, by its id.
+	notified map[string]string
 	// keyIn is which page had the keyboard at the last key press.
 	keyIn engine.Surface
 	// lastWindow is the id of the window made last; Go numbers them from 1.

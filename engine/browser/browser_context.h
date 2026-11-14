@@ -11,6 +11,7 @@
 namespace project_b {
 
 class Downloads;
+class Notifications;
 
 // A context content asks for: a profile's, kept in its folder, or the one our own pages
 // load in, which has no folder and is off the record, so content keeps its storage in
@@ -53,6 +54,10 @@ class BrowserContext : public content::BrowserContext {
   Permissions permissions_;
   // A profile's downloads, made when content first asks.
   std::unique_ptr<Downloads> downloads_;
+#if BUILDFLAG(IS_MAC)
+  // A profile's notifications, made when content first asks.
+  std::unique_ptr<Notifications> notifications_;
+#endif
 };
 
 }  // namespace project_b
