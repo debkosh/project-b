@@ -703,10 +703,12 @@ void Engine::TabTitleChanged(PageTab* tab) {
   }
 }
 
+// A window is titled after its focused tab, and with no tab shown, as with no tabs, with
+// the app's own title.
 void Engine::UpdateTitle(AppWindow* window) {
-  if (PageTab* t = FocusedTab(window)) {
-    window->window->SetTitle(t->contents()->GetTitle());
-  }
+  PageTab* t = FocusedTab(window);
+  window->window->SetTitle(t ? t->contents()->GetTitle()
+                             : std::u16string(Window::kTitle));
 }
 
 void Engine::OpenProfile(const char* dir) {

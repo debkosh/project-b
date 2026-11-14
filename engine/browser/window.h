@@ -32,6 +32,9 @@ namespace project_b {
 // Layout; the window only follows it, and reports its State back.
 class Window {
  public:
+  // The title a window has while it shows no tab: before its first, and with none.
+  static constexpr char16_t kTitle[] = u"Project B";
+
   // What a press inside a region does. Matches PBArea.
   enum class Area { kPage = 0, kShell = 1, kDrag = 2 };
   struct Region {
