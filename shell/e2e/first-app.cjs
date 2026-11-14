@@ -485,11 +485,13 @@ const stopServer = lib.stop;
   await ui.getByRole('button', { name: 'Tabs on top' }).click();
   await strip.waitFor();
 
-  // Closing the last tab closes the window.
+  // Closing the last tab leaves the window open, with no tabs and no page.
   await shortcut('closeTab');
   await shortcut('closeTab');
   await shellFrame().waitForFunction(() => document.querySelectorAll('[role=tab]').length === 0);
-  check('closing the last tab closes the window', await until(async () => (await regions()).closed === true));
+  check('closing the last tab leaves the window open, with no tabs and no page shown',
+    await until(async () => { const r = await regions(); return r.tabs.length === 0 && r.active === 0 && r.visible.length === 0; }) && !(await regions()).closed,
+    JSON.stringify(await regions().then((r) => ({ tabs: r.tabs, active: r.active, visible: r.visible, closed: r.closed }))));
 
   // History survives a restart.
   await stopServer();
