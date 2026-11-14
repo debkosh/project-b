@@ -46,6 +46,8 @@ type command struct {
 	Window engine.WindowID `json:"window"`
 	// Value is what setPref sets the pref Name to.
 	Value string `json:"value"`
+	// Rect is where the control that asked for a share sheet is, to anchor it.
+	Rect engine.Rect `json:"rect"`
 }
 
 // requests are the names the shell uses for engine.WindowRequest.
@@ -236,6 +238,15 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 		m.SwitchTabLayout(c.Text)
 	case "setAddressBarPosition":
 		m.prefs.SetAddressBarPosition(c.Text)
+	case "shareReport":
+		// A crash report, written now, to the system's share sheet: nothing leaves the
+		// device unless the user sends it.
+		path, err := m.crash.WriteReport()
+		if err != nil {
+			timeline.Errorf("crash report: %v", err)
+			return
+		}
+		m.eng.ShareFile(w, path, c.Rect)
 	case "backCloses":
 		m.eng.SetShellBack(w, c.On)
 	case "backKey":

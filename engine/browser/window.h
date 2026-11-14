@@ -88,6 +88,9 @@ class Window {
   void Show();
   void Close();
   void SetTitle(const std::u16string& title);
+  // Offers the file at path to the system's share sheet, anchored on anchor, in shell
+  // coordinates: Android's chooser, or the Mac's sharing picker beside it.
+  void ShareFile(const std::string& path, const gfx::RectF& anchor);
 #if BUILDFLAG(IS_ANDROID)
   // Android's views need the Java WebContents, which a native view can't lead back to.
   void SetShellContents(content::WebContents* contents);

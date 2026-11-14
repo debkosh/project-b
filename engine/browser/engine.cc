@@ -380,6 +380,18 @@ void CallSetShellBack(int64_t window, int on) {
   }
 }
 
+void CallShareFile(int64_t window,
+                   const char* path,
+                   double x,
+                   double y,
+                   double w,
+                   double h) {
+  CheckMainThread();
+  if (auto* app_window = g_engine->window(window)) {
+    app_window->window->ShareFile(path, gfx::RectF(x, y, w, h));
+  }
+}
+
 void CallSendToShell(int64_t window, const char* json, size_t length) {
   CheckMainThread();
   g_engine->SendToShell(window, json, length);
@@ -478,6 +490,7 @@ const PBEngineCalls* Engine::Calls() {
       .focus_shell = CallFocusShell,
       .send_to_shell = CallSendToShell,
       .set_shell_back = CallSetShellBack,
+      .share_file = CallShareFile,
       .open_settings = CallOpenSettings,
       .close_settings = CallCloseSettings,
       .send_to_settings = CallSendToSettings,

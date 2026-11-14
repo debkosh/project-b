@@ -3,7 +3,8 @@
   import Icon from './Icon.svelte';
 
   // Over a page that crashed, failed to load or was blocked, which otherwise shows blank:
-  // one plain sentence, the error's own name under it, and Try again or Reload.
+  // one plain sentence, the error's own name under it, and Try again or Reload; a crashed
+  // page also offers Share report, to hand on what the app knows of the crash.
   let { tab } = $props();
 
   const host = $derived.by(() => {
@@ -22,6 +23,11 @@
     return `Can't reach ${host}`;
   });
 
+  function share(e) {
+    const r = e.currentTarget.getBoundingClientRect();
+    send({ t: 'shareReport', rect: { x: r.x, y: r.y, w: r.width, h: r.height } });
+  }
+
   function again() {
     send({ t: 'reload' });
     focusPage();
@@ -34,6 +40,9 @@
   {#if code && !tab.crashed && !tab.blocked}<p class="code">{code}</p>{/if}
   {#if !tab.blocked}
     <button class="text-button primary" onclick={again}>{tab.crashed ? 'Reload' : 'Try again'}</button>
+  {/if}
+  {#if tab.crashed}
+    <button class="text-button quiet" onclick={share}>Share report</button>
   {/if}
 </div>
 

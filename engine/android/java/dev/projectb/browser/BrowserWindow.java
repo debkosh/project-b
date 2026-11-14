@@ -357,6 +357,23 @@ final class BrowserWindow extends FrameLayout {
     }
 
     private static FrameLayout.LayoutParams copy(FrameLayout.LayoutParams p) {
+    /** Hands a file to Android's chooser, to send or save where the user picks. */
+    @CalledByNative
+    private void shareFile(String path) {
+        Intent send =
+                new Intent(Intent.ACTION_SEND)
+                        .setType("text/plain")
+                        .putExtra(
+                                Intent.EXTRA_STREAM,
+                                FileProvider.getUriForFile(
+                                        activity,
+                                        activity.getPackageName() + ".updates",
+                                        new File(path)))
+                        .putExtra(Intent.EXTRA_SUBJECT, new File(path).getName())
+                        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        activity.startActivity(Intent.createChooser(send, null));
+    }
+
         return new FrameLayout.LayoutParams(p);
     }
 

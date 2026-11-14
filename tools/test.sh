@@ -101,6 +101,7 @@ mock() {
     need_store mock
     run "extensions on the mock engine" node shell/e2e/extensions.cjs
 }
+    run "the crash report on the mock engine" node shell/e2e/crash-report.cjs
 
 app() {
     need_app app

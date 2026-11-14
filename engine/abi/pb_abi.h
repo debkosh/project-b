@@ -272,6 +272,14 @@ typedef struct PBEngineCalls {
   // Whether the phone's back key goes to the shell first: while on, the window reports
   // the key on the shell's channel as {"t":"backKey"}. Only Android has the key.
   void (*set_shell_back)(int64_t window, int on);
+  // Offers the file at path to the system's share sheet, anchored on x, y, w, h, a
+  // rectangle in the window's shell coordinates: Android's chooser, the Mac's picker.
+  void (*share_file)(int64_t window,
+                     const char* path,
+                     double x,
+                     double y,
+                     double w,
+                     double h);
   // A window's settings page, over the whole window in its own page while open.
   void (*open_settings)(int64_t window);
   void (*close_settings)(int64_t window);

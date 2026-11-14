@@ -205,6 +205,7 @@ none. The snapshot also has `running` (the version), `platform`
 | `answerDialog` | `id`, `ok`, `text` | Answers a page's dialog; `text` is a prompt's |
 | `downloadAction` | `id`, `action`: `open`, `reveal`, `cancel`, `pause`, `resume` or `remove` | Acts on one download; `remove` takes it off the list and leaves the file |
 | `clearDownloads` | | Takes every finished download off the list |
+| `shareReport` | `rect`: where the control that asked is | Writes a crash report in the profile (core/crash/report.go) and hands it to the system's share sheet, anchored there. Nothing leaves the device unless the user sends it |
 | `backCloses` | `on` | While on, the phone's back key comes to the shell as `backKey`, before the page's history: the shell has a sheet open, or the address in edit |
 | `extensionClick` | `extension`, `rect` | A press on an extension's button at `rect`: Go opens its popup under it, closes it when it is the one open, or tells the extension it was clicked |
 | `extensionPin` | `extension`, `on` | Puts the extension's button on the toolbar, or takes it off |
@@ -616,6 +617,8 @@ address field, and a menu button at the far right, in our tones.
 - **A page that failed, crashed or was blocked** gets a notice over it rather than a blank:
   one sentence (Can't find example.com, This page crashed, example.com is blocked), the
   error's own name under it, and Try again or Reload.
+- **Share report**, on the last run's crash notice and on a crashed page's notice, hands
+  one text report to the phone's share sheet (`shareReport`).
 - **The pill's end** says Blocked, Crashed or Failed when the page is, as the standard
   shell's address bar does.
 - **The switcher** lies over the page, the bar still under it: a card per tab in two

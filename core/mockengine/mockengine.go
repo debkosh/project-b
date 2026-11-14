@@ -97,6 +97,8 @@ type Engine struct {
 	focused engine.TabID
 	// unshownFocus are the tabs FocusTab was asked for while no window showed them.
 	unshownFocus []engine.TabID
+	// shared is the file ShareFile last offered, as a share sheet would.
+	shared string
 	// showRegions is the Show window regions flag, as the app launched with it.
 	showRegions bool
 
@@ -681,6 +683,19 @@ func (e *Engine) Focused() engine.TabID {
 func (e *Engine) FocusShell(engine.WindowID) {}
 
 func (e *Engine) SendToShell(w engine.WindowID, msg []byte) { e.Feeds(w).Shell.Publish(msg) }
+
+func (e *Engine) ShareFile(w engine.WindowID, path string, anchor engine.Rect) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.shared = path
+}
+
+// Shared is the file ShareFile last offered, or "".
+func (e *Engine) Shared() string {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.shared
+}
 
 func (e *Engine) SetShellBack(w engine.WindowID, on bool) {
 	e.mu.Lock()

@@ -213,6 +213,9 @@ type Engine interface {
 	// has something open that the key closes: the engine then sends {"t":"backKey"} on
 	// the shell's channel, as if the shell had, instead of going back in the page.
 	SetShellBack(w WindowID, on bool)
+	// ShareFile offers the file at path to the system's share sheet, anchored on a
+	// rectangle in the window's shell coordinates.
+	ShareFile(w WindowID, path string, anchor Rect)
 
 	// OpenSettings puts the settings page over the whole of a window, in a page of its
 	// own, and gives it the keyboard; CloseSettings takes it away. SendToSettings delivers
