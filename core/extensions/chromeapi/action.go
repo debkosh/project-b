@@ -138,8 +138,13 @@ func init() {
 	}
 }
 
-// Clicked tells an extension its button was pressed, with the tab that was showing.
+// Clicked tells an extension its button was pressed, with the tab that was showing; over
+// one of our tabs, which it doesn't see, it hears nothing.
 func (a *API) Clicked(id string) {
+	t, ok := a.get(a.tabs.ActiveID())
+	if !ok {
+		return
+	}
 	e, _ := a.ext.Get(id)
-	a.dispatch(id, "action.onClicked", a.tabFor(e, a.tabs.Active()))
+	a.dispatch(id, "action.onClicked", a.tabFor(e, t))
 }

@@ -9,6 +9,7 @@ package chromeapi
 
 import (
 	"encoding/json"
+	"fmt"
 	"slices"
 	"time"
 
@@ -20,6 +21,29 @@ import (
 
 // Chrome's API takes -2 for "the current window".
 const currentWindow = -2
+
+// The extensions see the web tabs only: our own tabs are in our pages' context, out of an
+// extension's reach, as Chrome keeps its own pages (docs/windows.md). No call finds one, no
+// event names one, and none opens one.
+
+// web is the web tabs of a list, in its order.
+func web(list []tabs.Tab) []tabs.Tab {
+	return slices.DeleteFunc(list, func(t tabs.Tab) bool { return t.Page != "" })
+}
+
+// get is a web tab by its id.
+func (a *API) get(id engine.TabID) (tabs.Tab, bool) {
+	t, ok := a.tabs.Get(id)
+	return t, ok && t.Page == ""
+}
+
+// ours refuses an address of one of our pages, which no extension opens.
+func (a *API) ours(u string) error {
+	if a.tabs.PageOf(u) != "" {
+		return fmt.Errorf("Cannot open %s: it is the browser's own page.", u)
+	}
+	return nil
+}
 
 // Opener opens windows, as the app does.
 type Opener interface {

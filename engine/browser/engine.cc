@@ -1022,6 +1022,11 @@ content::WebContents* Engine::Contents(int64_t tab) const {
   return it == tabs_.end() ? nullptr : it->second->contents();
 }
 
+content::WebContents* Engine::WebTabContents(int64_t tab) const {
+  PageTab* t = this->tab(tab);
+  return t && !t->internal() ? t->contents() : nullptr;
+}
+
 void Engine::ReloadBypassingCache(int64_t tab) {
   if (content::WebContents* contents = Contents(tab)) {
     contents->GetController().Reload(content::ReloadType::BYPASSING_CACHE,

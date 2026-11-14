@@ -187,6 +187,9 @@ class Engine {
 
   // A tab's page, or null for an id that isn't a tab's.
   content::WebContents* Contents(int64_t tab) const;
+  // A web tab's page, or null for an id that isn't a web tab's: what an extension may
+  // reach by a tab's id. Our own tabs are out of its reach.
+  content::WebContents* WebTabContents(int64_t tab) const;
 
  private:
   PageTab* Add(std::unique_ptr<content::WebContents> contents,
