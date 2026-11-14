@@ -271,6 +271,7 @@ source_set("browser") {
   frameworks = [
     "AppKit.framework",
     "Cocoa.framework",
+    "QuartzCore.framework",
   ]
 
   # The extension runtime: Chromium's //extensions, and our embedder for it.

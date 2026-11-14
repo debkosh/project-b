@@ -10,6 +10,7 @@
 #include "base/files/file_path.h"
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
+#include "base/memory/weak_ptr.h"
 #include "project_b/engine/abi/pb_abi.h"
 #include "project_b/engine/browser/window.h"
 #include "ui/gfx/geometry/rect_f.h"
@@ -51,6 +52,15 @@ class Engine {
     int64_t focused_tab = 0;
     // Whether the phone's back key goes to the shell first (set_shell_back).
     bool shell_back = false;
+#if !BUILDFLAG(IS_ANDROID)
+    // Whether the window shows its pages: once its shell has drawn a layout that places
+    // one, and not again from when the shell's document goes until the next one has.
+    bool pages_shown = false;
+    // The shell's documents so far, so a frame of one that has gone shows nothing.
+    int shell_document = 0;
+    // Whether the shell's frame with such a layout is awaited.
+    bool awaiting_frame = false;
+#endif
   };
 
   // Makes the profile's context, with Chromium's files in a folder of the profile's.
@@ -103,6 +113,11 @@ class Engine {
   // Puts the tabs a window's layout lists in it, and tells each tab that comes or goes
   // that it is shown or hidden.
   void ShowTabs(AppWindow* window, std::vector<VisibleTab> tabs);
+#if !BUILDFLAG(IS_ANDROID)
+  // A window's shell document went: it crashed, reloaded, or another shell loaded. The
+  // window's pages wait, unseen, until the next one has drawn a layout that places them.
+  void ShellGone(int64_t window);
+#endif
   // A tab's page took the keyboard; a tab's title changed.
   void TabFocused(PageTab* tab);
   void TabTitleChanged(PageTab* tab);
@@ -178,6 +193,11 @@ class Engine {
   // A minimised window's tabs are told they are hidden, and shown again when it comes
   // back.
   void WindowMinimised(int64_t id, bool minimised);
+#if !BUILDFLAG(IS_ANDROID)
+  // Shows a window's pages once its shell has drawn the layout that just placed them.
+  void ShowPagesOnceDrawn(AppWindow* window);
+  void ShellDrew(int64_t window, int document, bool drawn);
+#endif
 
   const raw_ptr<content::BrowserContext> pages_context_;
   const OpenProfileCallback open_profile_;
@@ -189,6 +209,9 @@ class Engine {
   std::map<int64_t, std::unique_ptr<PageTab>> tabs_;
   int64_t next_tab_ = 1;
   std::string first_workspace_;
+  // A shell's frame drawn as the engine goes, its windows and their shells with it, shows
+  // nothing.
+  base::WeakPtrFactory<Engine> weak_factory_{this};
 };
 
 }  // namespace project_b

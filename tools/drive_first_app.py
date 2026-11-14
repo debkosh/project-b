@@ -414,10 +414,10 @@ def timeline_checks():
             time.sleep(0.1)
         return False
 
-    wait_for(lambda es: {"shell.on_screen", "tab.committed"} <= set(timeline.marks(es)))
+    wait_for(lambda es: {"shell.on_screen", "window.pages_shown", "tab.committed"} <= set(timeline.marks(es)))
     m = timeline.marks(read())
     ms = lambda name: m[name] / 1e6
-    missing = [n for n in STARTUP + ["shell.first_paint", "shell.on_screen", "tab.committed"] if n not in m]
+    missing = [n for n in STARTUP + ["shell.first_paint", "shell.on_screen", "window.pages_shown", "tab.committed"] if n not in m]
     check("every start-up milestone is on the timeline", not missing, missing)
     if missing:
         app.close()
@@ -430,6 +430,9 @@ def timeline_checks():
     check("the shell paints after its script runs, and that frame reaches the screen after it is painted",
           ms("shell.script") <= ms("shell.first_paint") <= ms("shell.on_screen") < ms("shell.first_paint") + 5000,
           (ms("shell.script"), ms("shell.first_paint"), ms("shell.on_screen")))
+    check("the window shows its pages only after the shell has drawn the layout that places them, sent before it says shown",
+          ms("shell.snapshot") <= ms("app.ready") <= ms("window.pages_shown"),
+          (ms("shell.snapshot"), ms("app.ready"), ms("window.pages_shown")))
     check("the first tab commits after Go starts it", ms("go.starting") <= ms("tab.committed") < ms("go.starting") + 15000, (ms("go.starting"), ms("tab.committed")))
 
     def span_after(action, name):

@@ -24,6 +24,7 @@
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/navigation_controller.h"
+#include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/url_data_source.h"
@@ -401,14 +402,26 @@ void ShellPage::RenderFrameCreated(content::RenderFrameHost* frame) {
   }
 }
 
+// A new document, the first, another shell or the same one again, shows the window's pages
+// only once it has drawn a layout that places them.
 void ShellPage::DidFinishNavigation(content::NavigationHandle* handle) {
   timeline::PageCommitted(app(), handle);
+#if !BUILDFLAG(IS_ANDROID)
+  if (handle->IsInPrimaryMainFrame() && handle->HasCommitted() &&
+      !handle->IsSameDocument()) {
+    Engine::Get()->ShellGone(window_);
+  }
+#endif
 }
 
 // Go's window manager takes back what a dead shell claimed, so the page keeps working
-// until the new shell reports its layout again.
+// until the new shell reports its layout again. The window holds it unseen meanwhile, as
+// nothing of the shell is drawn around it.
 void ShellPage::PrimaryMainFrameRenderProcessGone(
     base::TerminationStatus status) {
+#if !BUILDFLAG(IS_ANDROID)
+  Engine::Get()->ShellGone(window_);
+#endif
   hooks::Args args;
   args.Int(window_);
   hooks::Fire(PB_EVENT_SHELL_CRASHED, args);

@@ -119,6 +119,16 @@ lib.openWindow = async (browser, { window = 1, viewport = { width: 1100, height:
   let ready = null;
   const hold = (route) => (JSON.parse(route.request().postData()).t === 'ready' ? (ready = route) : route.continue());
   if (held) await page.route(sends, hold);
+  // What the shell had drawn when the window first showed its pages: the tabs, for the
+  // check that the pages wait for the layout's frame.
+  await page.addInitScript(() => {
+    if (window !== window.top) return;
+    new MutationObserver((records, observer) => {
+      if (!document.querySelector('#window.pages-shown')) return;
+      observer.disconnect();
+      window.pagesShownWith = document.querySelector('iframe.shell').contentDocument.querySelectorAll('[role=tab]').length;
+    }).observe(document, { subtree: true, attributes: true, attributeFilter: ['class'] });
+  });
   await page.goto(`${lib.base}/?window=${window}`);
   const shellURL = new RegExp(`/shell/[a-z0-9-]+/\\?window=${window}$`);
   return {

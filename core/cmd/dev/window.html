@@ -13,7 +13,9 @@
     pages     a mock page for each tab the layout shows, where the layout puts it, in its
               order, each kept by its place in the list, its slot, and marked with its
               tab, data-tab. The first is always there, hidden while the layout shows
-              no tab.
+              no tab. As the real window holds its pages until its shell has drawn the
+              layout that places them, they are transparent until the shell's frame
+              after the first such layout has drawn.
     shell     the shell the window loads, /shell/<id>/, over the whole window and
               transparent, so the page shows through its unpainted hole.
     band      the frame band around the window's edge, and the window controls where the
@@ -42,6 +44,7 @@
   #window { position: fixed; inset: 0; overflow: hidden; transform: translate(0); }
   iframe { position: absolute; border: 0; }
   .mock-page { display: none; }
+  #window:not(.pages-shown) .mock-page { opacity: 0; }
   .shell { inset: 0; width: 100%; height: 100%; background: transparent; }
   .band { position: absolute; inset: 0; box-sizing: border-box; border-style: solid; pointer-events: none; }
   .controls { position: absolute; display: none; justify-content: space-between; align-items: center; pointer-events: none; }
@@ -132,9 +135,20 @@
     if (shell.getAttribute('src') !== src) shell.src = src;
   }
 
+  // Whether the pages wait for the shell's frame after the first layout that places one.
+  let held = true;
+
   // placePages puts a mock page where the layout puts each tab, a new one under the shell
   // for a slot that had none, and takes away the slots it no longer has, but the first.
   function placePages(shown) {
+    if (held && shown.length) {
+      held = false;
+      requestAnimationFrame(() => {
+        const drawn = new MessageChannel();
+        drawn.port1.onmessage = () => win.classList.add('pages-shown');
+        drawn.port2.postMessage(0);
+      });
+    }
     while (pages.length < shown.length) {
       const frame = document.createElement('iframe');
       frame.className = 'mock-page';
