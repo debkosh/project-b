@@ -66,7 +66,8 @@ the default for new profiles and both profile templates.
 - **Switching is a reload.** When the pref changes, every window's shell page loads the
   other shell. It says `ready` and gets the snapshot, as a shell does after a crash. The
   tabs keep running: their views stay where they were until the new shell reports its
-  layout. Go drops what the old shell claimed of the window, and its data.
+  layout, unseen until it has drawn it. Go drops what the old shell claimed of the window,
+  and its data.
 
 ## The SDK
 
@@ -242,7 +243,9 @@ The SDK does these for a shell on it. A shell that talks to Go itself does them 
 1. It sets `window.__shellReceive`, sends `ready`, and keeps what each message says: the
    snapshot has it all, a message of state sets the fields it carries, and `tab`
    replaces that one tab in `tabs`.
-2. It draws the snapshot, sends `layout`, then sends `shown`.
+2. It draws the snapshot, sends `layout`, then sends `shown`. It sends a layout only once
+   it has drawn what it measured: the window shows the pages a layout first places after
+   the shell's next frame, so that frame has to hold it.
 3. It sends `layout` again whenever anything in it changes: a resize, a tab shown in
    another place, a control that comes or goes in a drag bar, something that moves in an
    animation. The SDK sends it at most once a frame, and only when it changed.
@@ -339,7 +342,8 @@ the same one (settled 2026-11-14):
 A rule whose feature a shell doesn't have yet lists that shell in the check, with who brings
 it there; a phone shell may be left out of a rule for a desktop feature.
 
-1. It says `ready`, draws the snapshot, and says `shown`.
+1. It says `ready`, draws the snapshot, and says `shown`. The window shows its pages only
+   after the shell's frame with the layout that places them, never on the bare window.
 2. **The active tab's page shows,** after every change: a new tab, another made active, a
    close, a tab a page opened, a resize. It asks for a page's keyboard (`focusTab`) only once
    the layout it sent shows that page: the window can't give the keyboard to a page it

@@ -133,6 +133,14 @@ class Window {
   bool SetLayout(Layout layout);
   // Shows these pages, each where it says, and hides every other the window holds.
   void SetPages(const std::vector<Page>& pages);
+#if !BUILDFLAG(IS_ANDROID)
+  // The window holds its pages unseen until its shell has drawn the layout that places
+  // them, so no page shows on the bare window before the shell around it: ShowPages fades
+  // them in, and HidePages holds them again at once, while a shell that went is replaced.
+  // Held pages are placed, and draw, as shown ones do.
+  void ShowPages();
+  void HidePages();
+#endif
 
   // Reports the window's state now and whenever it changes.
   void ListenForState(base::RepeatingCallback<void(const State&)> on_change);

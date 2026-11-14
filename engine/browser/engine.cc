@@ -21,6 +21,7 @@
 #include "content/public/browser/host_zoom_map.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/reload_type.h"
+#include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/site_instance.h"
 #include "content/public/browser/storage_partition.h"
@@ -616,7 +617,54 @@ void Engine::ShowTabs(AppWindow* window, std::vector<VisibleTab> tabs) {
         window->visible.empty() ? 0 : window->visible.front().tab;
   }
   UpdateTitle(window);
+#if !BUILDFLAG(IS_ANDROID)
+  if (!window->visible.empty()) {
+    ShowPagesOnceDrawn(window);
+  }
+#endif
 }
+
+#if !BUILDFLAG(IS_ANDROID)
+// The shell sends a layout only once it has drawn what it measured, so its next frame
+// holds that layout, whatever it drew before, such as a splash. Content runs the callback
+// once the shell has submitted that frame; the frame or so it then takes to reach the
+// screen, the pages take too, and their fade in covers the difference.
+void Engine::ShowPagesOnceDrawn(AppWindow* window) {
+  if (window->pages_shown || window->awaiting_frame) {
+    return;
+  }
+  window->awaiting_frame = true;
+  window->shell->contents()->GetPrimaryMainFrame()->InsertVisualStateCallback(
+      base::BindOnce(&Engine::ShellDrew, weak_factory_.GetWeakPtr(), window->id,
+                     window->shell_document));
+}
+
+// drawn is false when the shell's renderer went first; the next shell's layout shows the
+// pages then. The window may have closed meanwhile.
+void Engine::ShellDrew(int64_t id, int document, bool drawn) {
+  AppWindow* w = window(id);
+  if (!w || w->shell_document != document) {
+    return;
+  }
+  w->awaiting_frame = false;
+  if (drawn) {
+    w->pages_shown = true;
+    w->window->ShowPages();
+  }
+}
+
+// A window closing may hear its shell go after it has gone.
+void Engine::ShellGone(int64_t id) {
+  AppWindow* w = window(id);
+  if (!w) {
+    return;
+  }
+  w->shell_document++;
+  w->awaiting_frame = false;
+  w->pages_shown = false;
+  w->window->HidePages();
+}
+#endif
 
 void Engine::TabFocused(PageTab* tab) {
   if (AppWindow* w = WindowOf(tab->id())) {

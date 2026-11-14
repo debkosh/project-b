@@ -16,7 +16,7 @@ const registry = JSON.parse(fs.readFileSync(path.join(lib.root, 'core/shells/reg
 const ids = process.argv[2] ? [process.argv[2]] : registry.map((s) => s.id);
 
 const rules = {
-  1: 'It says ready, draws the snapshot, and says shown',
+  1: 'It says ready, draws the snapshot, and says shown; the window shows its pages only after the frame with the layout that places them',
   2: "The active tab's page shows, after every change, and no page is given the keyboard before it shows",
   3: "The pages it shows lie inside the band it asked for, don't overlap, and are all tabs of this window",
   4: 'Each tab is an element with role=tab and data-tab, the active one aria-selected; a click makes it active, on the shell or in a sheet one of its controls opens',
@@ -165,6 +165,13 @@ const noSplashYet = {
     let ready = await until(up, 10000);
     rule(1, 'it draws the snapshot: a tab for each of Go\'s', ready, JSON.stringify({ drawn: await tabEls.count(), go: (await regions()).tabs.length }));
     rule(1, 'and says shown, so Go marks the app ready', await until(() => /\bapp\.ready\b/.test(lib.log)));
+    // The window shows its pages after the shell's next frame once the layout that places
+    // them comes, so the shell sends that layout only once it has drawn what it measured.
+    await until(() => page.evaluate(() => window.pagesShownWith !== undefined));
+    const drawnThen = await page.evaluate(() => window.pagesShownWith);
+    const go = (await regions()).tabs.length;
+    rule(1, 'the window shows its pages only after the shell has drawn the layout that places them: a tab for each of Go\'s',
+      drawnThen === go, JSON.stringify({ drawnThen, go }));
 
     // 3, for the layout as it is now.
     const insideAndApart = async (when) => {

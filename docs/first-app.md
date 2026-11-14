@@ -103,11 +103,23 @@ window because the window hands a press there to the server itself
 (`performWindowDragWithEvent:` in `PBNSWindow`'s `sendEvent:`).
 
 The window goes on screen once Go has given it its first layout, frame included, so even its
-first frame has them. Until the shell's first frame, content paints the shell's view
-white over all of it, as it does any view it has no frame for yet. A new tab loads
-`about:blank`, so every tab has a page view that paints in content's default colour from
-the start. The tab still reads as new: no address, titled New Tab, and `about:blank`
-stays out of history. A crashed page has no view, so the frame colour shows there.
+first frame has them. The shell's view is transparent, so the window shows the frame colour
+until the shell paints. The window holds its pages unseen until the shell has drawn the
+layout that places them, then fades them in over 100ms with Core Animation, so a start
+shows the frame colour, then the shell, then the pages, never a page alone. The shell sends
+a layout only once it has drawn what it measured, so its next frame holds that layout,
+whatever it drew before. When the first layout that places pages comes, the engine asks
+for a visual state callback on the shell's main frame, which content runs once the shell
+has submitted that frame, and the fade then covers the frame or so it takes to reach the
+screen. Content offers no callback for when a frame is presented, only for when it is
+submitted. The pages are placed and draw meanwhile: their holder is transparent, not
+hidden, which content would take as the pages hidden. When the shell's document goes, a
+crash, a reload or another shell, the pages wait again for the next one's layout.
+
+A new tab loads `about:blank`, so every tab has a page view that paints in content's default
+colour from the start. The tab still reads as new: no address, titled New Tab, and
+`about:blank` stays out of history. A crashed page has no view, so the frame colour shows
+there.
 
 ## Several windows
 

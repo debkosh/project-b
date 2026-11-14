@@ -1,6 +1,7 @@
 #include "project_b/engine/browser/window.h"
 
 #import <Cocoa/Cocoa.h>
+#import <QuartzCore/QuartzCore.h>
 
 #include <algorithm>
 #include <cmath>
@@ -577,6 +578,9 @@ Window::Window(base::OnceClosure on_close,
   // anything.
   impl_->container.pages = [[NSView alloc] initWithFrame:impl_->container.bounds];
   impl_->container.pages.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+  // Unseen until ShowPages. Transparent rather than hidden: content takes a page in a
+  // hidden view as hidden, and it would only begin to draw once shown.
+  impl_->container.pages.alphaValue = 0;
   [impl_->container addSubview:impl_->container.pages];
 
   if (base::CommandLine::ForCurrentProcess()->HasSwitch("pb-show-regions")) {
@@ -674,6 +678,24 @@ void Window::SetPages(const std::vector<Page>& pages) {
     }
     impl_->Outline();
   }
+}
+
+// Core Animation fades the holder in over 100ms, as the shell's own UI comes in, which
+// also covers the frame or so the shell's frame may take to reach the screen after it.
+void Window::ShowPages() {
+  NSView* pages = impl_->container.pages;
+  pages.alphaValue = 1;
+  CABasicAnimation* fade = [CABasicAnimation animationWithKeyPath:@"opacity"];
+  fade.fromValue = @0;
+  fade.duration = 0.1;
+  [pages.layer addAnimation:fade forKey:@"opacity"];
+  timeline::Mark("window.pages_shown");
+}
+
+void Window::HidePages() {
+  NSView* pages = impl_->container.pages;
+  [pages.layer removeAnimationForKey:@"opacity"];
+  pages.alphaValue = 0;
 }
 
 void Window::RemovePageView(gfx::NativeView view) {

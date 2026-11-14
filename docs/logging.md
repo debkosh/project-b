@@ -143,6 +143,7 @@ In the order they happen on a Mac:
 | `app.ready` | Go | The shell shows that state, so the app can be used. Marked once a process |
 | `shell.first_paint` | JS | The renderer first painted the shell's content |
 | `shell.on_screen` | JS | That frame reached the screen: the compositor's presentation time |
+| `window.pages_shown` | C++ | The shell has drawn the layout that places the window's pages, and the window begins fading them in |
 | `tab.committed`, `tab.first_paint` | C++ | Any tab's page committed; first painted something. `tab=1` is the first tab |
 
 `app.ready` is the line the test drivers wait for before they begin, as printed:
