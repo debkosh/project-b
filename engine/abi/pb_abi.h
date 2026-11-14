@@ -92,6 +92,10 @@ typedef enum PBEvent {
                                         // answer_permission, now or later
   PB_EVENT_PERMISSION_STATUS = 41,      // i: tab or 0, s: origin, s: kind; answers i: a
                                         // PBPermissionStatus
+  PB_EVENT_NOTIFICATION_SHOW = 42,      // s: notification, s: origin, s: the page showing
+                                        // it or "" for a service worker, s: title, s:
+                                        // body; answers i: 1 to show it on the system
+  PB_EVENT_NOTIFICATION_CLICKED = 43,   // s: notification; the page has its click event
 
   // What a tab's page does, 60 to 79, as any engine can say it: Go's core/abi turns each
   // into the engine.Listener call of its name. A tab here is never a page of ours.

@@ -1,7 +1,11 @@
 #include "project_b/engine/browser/browser_context.h"
 
-#include "project_b/engine/browser/downloads.h"
+#include "build/build_config.h"
 #include "content/public/browser/media_capture_devices.h"
+#include "project_b/engine/browser/downloads.h"
+#if BUILDFLAG(IS_MAC)
+#include "project_b/engine/browser/notifications.h"
+#endif
 
 namespace project_b {
 
@@ -49,9 +53,18 @@ storage::SpecialStoragePolicy* BrowserContext::GetSpecialStoragePolicy() {
   return nullptr;
 }
 
+// A profile's pages' notifications; our own pages show none. A phone's come later
+// (docs/daily-driver.md).
 content::PlatformNotificationService*
 BrowserContext::GetPlatformNotificationService() {
+#if BUILDFLAG(IS_MAC)
+  if (!notifications_ && !path_.empty()) {
+    notifications_ = std::make_unique<Notifications>(this);
+  }
+  return notifications_.get();
+#else
   return nullptr;
+#endif
 }
 
 content::PushMessagingService* BrowserContext::GetPushMessagingService() {

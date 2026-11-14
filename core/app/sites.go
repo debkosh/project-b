@@ -94,3 +94,42 @@ func (a *App) PermissionRequested(r engine.PermissionRequest) { a.Sites.Request(
 func (a *App) PermissionStatusOf(tab engine.TabID, origin, kind string) engine.PermissionStatus {
 	return a.Sites.Status(tab, origin, kind)
 }
+
+// NotificationShown shows a page's notification on the system when its site may notify,
+// and keeps the page it came from, for its click.
+func (a *App) NotificationShown(n engine.Notification) bool {
+	if a.Sites.Status(0, n.Origin, sites.Notifications) != engine.PermissionGranted {
+		return false
+	}
+	if a.notified == nil {
+		a.notified = map[string]string{}
+	}
+	a.notified[n.ID] = n.Page
+	return true
+}
+
+// NotificationClicked brings the tab that showed the notification to the front: the one
+// at its page's address, or else the first on its site. A service worker's has no page; its
+// own click handler opens one, as the web does it.
+func (a *App) NotificationClicked(id string) {
+	page, ok := a.notified[id]
+	delete(a.notified, id)
+	if !ok || page == "" {
+		return
+	}
+	var found engine.TabID
+	for _, w := range a.Tabs.Windows() {
+		for _, t := range a.Tabs.AllIn(w) {
+			if t.URL == page {
+				a.ActivateRequested(t.ID)
+				return
+			}
+			if found == 0 && sites.Origin(t.URL) == sites.Origin(page) {
+				found = t.ID
+			}
+		}
+	}
+	if found != 0 {
+		a.ActivateRequested(found)
+	}
+}

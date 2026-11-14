@@ -78,3 +78,24 @@ func TestAPromptGoesWhenItsTabNavigates(t *testing.T) {
 }
 
 func jsonNumber(v any) string { return strconv.FormatFloat(v.(float64), 'f', -1, 64) }
+
+func TestANotificationShowsOnceItsSiteMayAndItsClickBringsItsTabForward(t *testing.T) {
+	r := start(t, t.TempDir())
+	defer r.stop()
+	r.visit("https://chat.test/room")
+	r.e.Fire(1, 1, "notification", "before")
+	r.e.Fire(1, 1, "permission", "notifications")
+	p := r.prompts(1)[0].(map[string]any)
+	r.shell(`{"t":"permissionAnswer","id":` + jsonNumber(p["id"]) + `,"choice":"allow"}`)
+	r.answers(1)
+	r.e.Fire(1, 1, "notification", "after")
+	r.e.Settle()
+	if got := r.e.NotificationsShown(); !reflect.DeepEqual(got, []string{"after"}) {
+		t.Fatalf("shown %v, want only the one after Allow", got)
+	}
+	// Another tab is active when the person clicks it.
+	r.shell(`{"t":"newTab"}`)
+	r.waitFor(func(m map[string]any) bool { return m["t"] == "tabs" && m["active"] != float64(1) })
+	r.e.Fire(1, 0, "notificationClick", "after")
+	r.waitFor(func(m map[string]any) bool { return m["t"] == "tabs" && m["active"] == float64(1) })
+}

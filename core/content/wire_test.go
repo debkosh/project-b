@@ -159,6 +159,11 @@ func (r *recorder) PermissionStatusOf(tab engine.TabID, origin, kind string) eng
 	r.note(fmt.Sprintf("status tab %d %s %s", tab, origin, kind))
 	return engine.PermissionAsk
 }
+func (r *recorder) NotificationShown(n engine.Notification) bool {
+	r.note(fmt.Sprintf("notification %s %s %s %q %q", n.ID, n.Origin, n.Page, n.Title, n.Body))
+	return true
+}
+func (r *recorder) NotificationClicked(id string) { r.note("clicked " + id) }
 func (r *recorder) DevToolsCommand(method string, params []byte) (any, error) {
 	r.note("devtools " + method + " " + string(params))
 	switch method {
@@ -244,6 +249,19 @@ func TestPermissionRequestsAndReadsReachTheListener(t *testing.T) {
 		t.Fatalf("the status read answered %v %v", ok, v)
 	}
 	want := []string{"permission 7 tab 3 https://meet.test [camera microphone] gesture=true", "status tab 3 https://meet.test notifications"}
+	if !reflect.DeepEqual(r.got, want) {
+		t.Fatalf("got %v", r.got)
+	}
+}
+
+func TestNotificationsReachTheListener(t *testing.T) {
+	h, r, _ := wired(t)
+	v, ok := h.Dispatch(eventNotification, pack("n1", "https://chat.test", "https://chat.test/room", "Ana", "hello"))
+	if !ok || v.I != 1 {
+		t.Fatalf("show answered %v %v", ok, v)
+	}
+	h.Dispatch(eventNotifyClicked, pack("n1"))
+	want := []string{`notification n1 https://chat.test https://chat.test/room "Ana" "hello"`, "clicked n1"}
 	if !reflect.DeepEqual(r.got, want) {
 		t.Fatalf("got %v", r.got)
 	}

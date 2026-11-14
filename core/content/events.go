@@ -36,6 +36,8 @@ const (
 	eventDialogClosed   Hook = 22
 	eventPermissionAsk  Hook = 40
 	eventPermissionGet  Hook = 41
+	eventNotification   Hook = 42
+	eventNotifyClicked  Hook = 43
 )
 
 // dialogKinds name PBDialogKind's values.
@@ -66,6 +68,8 @@ var eventNames = map[Hook]string{
 	eventDialogClosed:   "engine.DialogClosed",
 	eventPermissionAsk:  "engine.PermissionRequested",
 	eventPermissionGet:  "engine.PermissionStatusOf",
+	eventNotification:   "engine.NotificationShown",
+	eventNotifyClicked:  "engine.NotificationClicked",
 }
 
 // Events is what the adapter itself reports. Always on; there is nothing to subscribe.
@@ -93,6 +97,8 @@ type Events struct {
 	OnDialogClosed    func(id engine.DialogID)
 	OnPermission      func(r engine.PermissionRequest)
 	OnPermissionOf    func(tab engine.TabID, origin, kind string) engine.PermissionStatus
+	OnNotification    func(n engine.Notification) bool
+	OnNotifyClicked   func(id string)
 
 	// more are the events a build tag adds, by number.
 	more map[Hook]func(r *reader) (Value, bool)
@@ -226,6 +232,17 @@ func (e *Events) dispatch(id Hook, r *reader) (Value, bool) {
 			return Value{}, false
 		}
 		return Value{I: int64(e.OnPermissionOf(engine.TabID(r.int()), r.str(), r.str()))}, true
+	case eventNotification:
+		// With no one to ask, the engine shows nothing.
+		if e.OnNotification == nil {
+			return Value{}, false
+		}
+		n := engine.Notification{ID: r.str(), Origin: r.str(), Page: r.str(), Title: r.str(), Body: r.str()}
+		return boolValue(e.OnNotification(n)), true
+	case eventNotifyClicked:
+		if e.OnNotifyClicked != nil {
+			e.OnNotifyClicked(r.str())
+		}
 	case eventMenuList:
 		// The answer is the list's items now, as the menu bar's JSON has them.
 		if e.OnMenuList == nil {
