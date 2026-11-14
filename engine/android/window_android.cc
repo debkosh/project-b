@@ -155,9 +155,9 @@ class BrowserWindow : public content::CompositorClient {
   }
 
   // The phone's back key closes settings while it is open, as its close button does; then
-  // goes to the shell while it has something open the key closes; and is otherwise the
-  // shell's back button while the tab has somewhere to go back to. Android has one
-  // window, 1.
+  // goes to the shell while it has something open the key closes; then goes back in the
+  // tab's history; and on a tab with none closes it, the tab used before it taking its
+  // place. With no tabs left it is Android's: the app goes. Android has one window, 1.
   bool BackKey(JNIEnv* env) {
     if (Engine::Get()->window(1)->settings) {
       hooks::Args args;
@@ -173,13 +173,16 @@ class BrowserWindow : public content::CompositorClient {
       hooks::Fire(PB_EVENT_SHELL_MESSAGE, args);
       return true;
     }
-    PageTab* tab = Engine::Get()->FocusedTab(Engine::Get()->window(1));
-    if (!tab || !tab->contents()->GetController().CanGoBack()) {
+    Engine::AppWindow* window = Engine::Get()->window(1);
+    if (window->visible.empty()) {
       return false;
     }
+    PageTab* tab = Engine::Get()->FocusedTab(window);
     hooks::Args args;
     args.Int(1);
-    args.Str(R"({"t":"back"})");
+    args.Str(tab && tab->contents()->GetController().CanGoBack()
+                 ? R"({"t":"back"})"
+                 : R"({"t":"closeTab","then":"recent"})");
     hooks::Fire(PB_EVENT_SHELL_MESSAGE, args);
     return true;
   }

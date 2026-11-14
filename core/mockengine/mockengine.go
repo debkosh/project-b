@@ -113,6 +113,9 @@ type Engine struct {
 	unshownFocus []engine.TabID
 	// shared is the file ShareFile last offered, as a share sheet would.
 	shared string
+	// left is whether the back key left the app, as Android does with no tab to go back
+	// in or close.
+	left bool
 	// showRegions is the Show window regions flag, as the app launched with it.
 	showRegions bool
 
@@ -711,6 +714,13 @@ func (e *Engine) Shared() string {
 	return e.shared
 }
 
+// Left is whether the back key left the app, with no tab to go back in or close.
+func (e *Engine) Left() bool {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.left
+}
+
 func (e *Engine) SetShellBack(w engine.WindowID, on bool) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -781,14 +791,21 @@ func (e *Engine) Fire(w engine.WindowID, tab engine.TabID, kind, value string) {
 			e.listener.TitleChanged(shown, value)
 		case "backKey":
 			// The phone's back key, as Android's window takes it: settings, then the
-			// shell's own, then the page's history.
+			// shell's own, then the page's history, then the tab itself, the one used
+			// before it taking its place. With no tab shown it is Android's: the app goes.
 			switch {
 			case win.settings:
 				e.listener.SettingsMessage(w, []byte(`{"t":"close"}`))
 			case win.shellBack:
 				e.listener.ShellMessage(w, []byte(`{"t":"backKey"}`))
-			default:
+			case len(win.visible) == 0:
+				e.mu.Lock()
+				e.left = true
+				e.mu.Unlock()
+			case t != nil && t.pos > 0:
 				e.listener.ShellMessage(w, []byte(`{"t":"back"}`))
+			default:
+				e.listener.ShellMessage(w, []byte(`{"t":"closeTab","then":"recent"}`))
 			}
 		case "contextMenu":
 			// A right-click or a long press, as content reports it: on a link to value, or
