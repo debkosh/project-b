@@ -26,6 +26,8 @@ type command struct {
 	Data json.RawMessage `json:"data"`
 	// Workspace is where newTab opens its tab, by the workspace's id. Without it the tab
 	// opens in the workspace of the window's active tab, or the first in a window with none.
+	// For navigate in a window with no tabs, it is where the tab it opens goes, the first
+	// without it.
 	Workspace *string `json:"workspace"`
 	// The tab groups' (tabs/groups.go): GroupWith is the tab newTab opens beside in its
 	// group; Group a group's id; IDs the tabs createGroup groups; and what editGroup
@@ -182,7 +184,13 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 	case "timeline":
 		timeline.FromPage("shell", msg)
 	case "navigate":
-		m.tabs.Navigate(c.Text)
+		// In a window with no tabs the address opens one, in the workspace named or the
+		// first.
+		workspace := m.tabs.FirstWorkspace()
+		if c.Workspace != nil {
+			workspace = *c.Workspace
+		}
+		m.tabs.Navigate(w, c.Text, workspace)
 	case "back":
 		m.tabs.Back()
 	case "forward":
