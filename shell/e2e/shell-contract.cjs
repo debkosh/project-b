@@ -21,13 +21,13 @@ const rules = {
   2: "The active tab's page shows, after every change, and no page is given the keyboard before it shows; with no tabs, no page shows",
   3: "The pages it shows lie inside the band it asked for, don't overlap, and are all tabs of this window",
   4: 'Each tab is an element with role=tab and data-tab, the active one aria-selected; a click makes it active, on the shell or in a sheet one of its controls opens',
-  5: 'focusAddressBar puts the keyboard in the field named Address, where an address and Enter take the active tab there',
+  5: 'focusAddressBar puts the keyboard in the field named Address, where an address and Enter take the active tab there, while a web tab is active',
   6: 'Every control it draws is the shell\'s: a press on it reaches the shell',
   7: 'A press in the middle of a page it shows reaches that page',
   8: 'Some space is marked drag, and no page lies under the native window buttons',
   9: 'Reloaded, it comes back showing the same pages',
   10: 'Switched to and away from, it starts from Go\'s data alone',
-  11: 'Settings is one press away, or two: a control named Settings, on the shell or in a menu one of its controls opens, opens the settings page',
+  11: 'Settings is one press away, or two: a control named Settings, on the shell or in a menu one of its controls opens, opens the settings tab or shows it',
   12: 'The basic controls are somewhere in the shell, found by role and name, and each does its job',
   13: 'It logs no errors',
   14: 'Before Go\'s data comes it draws a splash of its own, marked aria-busy="true", with none of its controls; when the data comes the splash goes and the UI shows',
@@ -35,6 +35,7 @@ const rules = {
   16: 'On a desktop, a right click in a page opens a menu of Go\'s actions there; choosing one makes Go do it; Escape, or a press outside, closes it',
   17: 'A control named Downloads shows once there is a download, and opens a list of them by file name, a finished one with Open and Show in Finder (on a phone, Show in Downloads)',
   18: 'A window with no tabs: the shell draws its own empty state where the page was, New Tab and Address are each a way to a tab there, and Close Tab then closes the window',
+  19: 'For one of our tabs, it shows the page\'s title where the address goes, with a way to close the tab, and no field to type in',
   20: 'The find key (on a phone, the menu) opens a text box named Find in page with the keyboard in it; typing searches and shows the count; Enter shows the next match; Escape (a phone\'s back key) closes it',
   21: 'A page in full screen covers the whole window with nothing of the shell on it, and when it ends (Escape, or a phone\'s back key) the window is as it was',
   22: 'A site\'s sign-in shows as an alertdialog with text boxes named Username and Password, and Go\'s Sign in answers with both',
@@ -89,6 +90,18 @@ const noSplashYet = {
 // The shells that don't draw an empty state yet, and who brings it to each. Rule 18 holds
 // every other shell to it.
 const noEmptyStateYet = {
+};
+
+// The shells that don't draw our tabs' title yet, and who brings it to each: their
+// owners. Rule 19 holds every other shell to it.
+const noTitleYet = {
+  standard: 'r5, the standard shell\'s session, brings it',
+  glide: 'r6 brings it',
+  mobile: 'r3 brings it',
+  'mobile-native': 'r3 brings it',
+  terminal: 'r4 brings it',
+  fox: 'r4 brings it',
+  minimal: 'r4 brings it',
 };
 
 (async () => {
@@ -654,6 +667,36 @@ const noEmptyStateYet = {
         rule(21, `${shell.phone ? 'The back key' : 'Escape'} ends it, and the window is as it was`, await until(async () => JSON.stringify((await regions()).visible.map((v) => v.rect)) === JSON.stringify(before)));
       } catch (e) {
         rule(21, 'its checks ran to their end', false, e.message.split('\n')[0]);
+      }
+    }
+
+    // 19. One of our tabs: the settings tab, with its title where the address goes, no
+    // field to type in, and a way to close it.
+    if (noTitleYet[id]) {
+      rule(19, `not checked yet: ${noTitleYet[id]}`, true);
+    } else if (ready) {
+      try {
+        await fire('menu', 'app.settings');
+        const shown = await until(async () => {
+          const r = await regions();
+          return r.settings !== 0 && r.active === r.settings && r.tabs.find((t) => t.id === r.settings).title !== '';
+        });
+        const r = await regions();
+        const title = r.tabs.find((t) => t.id === r.settings)?.title;
+        rule(19, 'the settings tab shows, with its title', shown, JSON.stringify(r.tabs));
+        await settle(page);
+        const field = ui.getByRole('textbox', { name: 'Address', exact: true }).or(ui.getByRole('combobox', { name: 'Address', exact: true }));
+        rule(19, 'no field named Address shows for it', (await field.filter({ visible: true }).count()) === 0);
+        const titled = await ui.getByText(title, { exact: true }).filter({ visible: true })
+          .evaluateAll((els) => els.filter((el) => !el.closest('[role=tab]')).length);
+        rule(19, `its title, ${title}, shows outside the tabs`, titled > 0);
+        const close = ui.getByRole('button', { name: new RegExp(`^Close (Tab|${title})\\b`) }).filter({ visible: true });
+        if (rule(19, 'a way to close it shows', (await close.count()) > 0)) {
+          await close.first().click();
+          rule(19, 'and closes it', await until(async () => (await regions()).settings === 0));
+        }
+      } catch (e) {
+        rule(19, 'its checks ran to their end', false, e.message.split('\n')[0]);
       }
     }
 
