@@ -271,7 +271,7 @@ unpacks them at install, which costs about 200 MB of phone storage. The version 
 `tools/drive_android.py`, on an Android 14 emulator and an Android 16 emulator with 16 KB memory pages, both
 headless. Before tabs, 29 checks passed on both. The driver presses the Mobile shell's controls, its menu
 sheet and its switcher, and checks its own: the back key on each sheet, the long-press link menu and the group
-strip, with a screenshot of each screen in light and dark. See [The shell on a phone](#the-shell-on-a-phone). Results and screenshots land in `build/android-drive-content`.
+strip, with a screenshot of each screen in light and dark. See [The shell on a phone](#the-shell-on-a-phone). `tools/test.sh android` runs it on each emulator in turn, Android 10, 14, 16 with 16 KB pages and 17 (the amarit units `project-b-emu-29`, `project-b-emu`, `project-b-emu-16k`, `project-b-emu-37`), starting any that isn't running and stopping it after. Results and screenshots land in `build/android-drive-content/<unit>`.
 
 - Typing a URL, a tap on a link, back, forward, reload, the phone's back key.
 - Suggestions from history, over the page, with the keyboard up. A tap on one loads it.
