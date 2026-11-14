@@ -148,12 +148,7 @@ function hint(name, action) {
   opacity: 1;
 }
 
-.title.active .control.on {
-  background: var(--press);
-  opacity: 1;
-}
-
-.control:focus-visible {
+.title.active .control:focus-visible {
   box-shadow: inset 0 0 0 1px var(--on-accent);
 }
 
