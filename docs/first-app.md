@@ -80,7 +80,9 @@ because fresher ones follow.
 Focus is its own call: the shell asks for a tab's page with `focusTab`, after sending
 its layout, so the tab is already showing, and Go calls `FocusTab`. When a click or Tab
 moves the keyboard into a visible page, content's `OnWebContentsFocused` hook tells Go
-which tab, and it becomes the active one.
+which tab, and it becomes the active one. So Go gives the keyboard only to the tab it has
+active: a `focusTab` sent for a tab Go has since left, as when it took the address typed
+for it to the window's settings tab, is stale, and would make the left tab active again.
 
 The shell's top row is 44px, centred on the window buttons of a unified toolbar, and
 the window uses `NSWindowStyleMaskFullSizeContentView` with a transparent title bar, so

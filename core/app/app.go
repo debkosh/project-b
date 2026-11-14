@@ -402,7 +402,7 @@ func (a *App) Stop() {
 
 func (a *App) ShellMessage(w engine.WindowID, msg []byte) { a.Shell.Handle(w, msg) }
 
-func (a *App) NavigationStarting(tab engine.TabID, nav int64, url string) bool {
+func (a *App) NavigationStarting(tab engine.TabID, nav int64, url string) engine.Navigation {
 	return a.Tabs.HandleNavigationStarting(tab, nav, url)
 }
 

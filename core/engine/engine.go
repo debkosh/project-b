@@ -301,10 +301,10 @@ type Listener interface {
 	// ShellMessage is one message from a window's shell page.
 	ShellMessage(w WindowID, msg []byte)
 
-	// NavigationStarting fires at the start and on each redirect. Returning false
-	// blocks the navigation. nav is the engine's id for the navigation, larger for one
-	// started later; its finish or failure carries the same.
-	NavigationStarting(tab TabID, nav int64, url string) bool
+	// NavigationStarting fires at the start and on each redirect, whatever started it,
+	// and its answer says what becomes of it. nav is the engine's id for the navigation,
+	// larger for one started later; its finish or failure carries the same.
+	NavigationStarting(tab TabID, nav int64, url string) Navigation
 	NavigationFinished(tab TabID, nav int64, url string)
 	// NavigationFailed says why, as one of the Failure words, and code is the engine's
 	// own name for it, only to show.
@@ -528,6 +528,19 @@ const (
 	FailBlocked     Failure = "blocked"      // The page's own rules or a port browsers refuse. The app's own block is the gate's.
 	FailFile        Failure = "file"         // A local file is missing or can't be read.
 	FailOther       Failure = "other"
+)
+
+// Navigation is what becomes of a navigation a tab is about to make.
+type Navigation int
+
+const (
+	// NavigationProceed lets it go on.
+	NavigationProceed Navigation = iota
+	// NavigationBlock stops it, and the tab shows that it was blocked.
+	NavigationBlock
+	// NavigationElsewhere stops it, and the tab stays as it was: the app has taken the
+	// address to another tab.
+	NavigationElsewhere
 )
 
 // ErrUnknownCommand is DevToolsCommand's answer for a method it doesn't have.

@@ -578,6 +578,10 @@ func (m *Manager) Navigate(w engine.WindowID, text, workspace string) {
 		return
 	}
 	id := m.ActiveIn(w)
+	if page := m.PageOf(u); id == 0 && page != "" {
+		m.OpenPage(w, page)
+		return
+	}
 	if id == 0 {
 		id = m.eng.CreateTab(workspace)
 		t := m.add(id, w)
@@ -682,7 +686,15 @@ func (m *Manager) beside(id, after engine.TabID) {
 	win.order = slices.Insert(win.order[:len(win.order)-1], slices.Index(win.order, after)+1, id)
 }
 
+// open opens a URL in a new web tab, or one of our pages in the window's tab of it.
 func (m *Manager) open(opener engine.TabID, u, workspace string, foreground bool) engine.TabID {
+	if page := m.PageOf(u); page != "" {
+		w := m.windowOf[opener]
+		if w == 0 {
+			w = m.Front()
+		}
+		return m.OpenPage(w, page)
+	}
 	id := m.eng.CreateTab(workspace)
 	m.HandleTabOpened(opener, id, u, workspace, foreground)
 	m.eng.LoadURL(id, u)
@@ -775,24 +787,43 @@ func (m *Manager) HandleTabOpened(opener, id engine.TabID, u, workspace string, 
 // HandleTabFocused makes the tab whose page took the keyboard the active one.
 func (m *Manager) HandleTabFocused(id engine.TabID) { m.Activate(id) }
 
-// HandleNavigationStarting runs the gates and records the result. nav is the engine's id
-// for the navigation.
-func (m *Manager) HandleNavigationStarting(id engine.TabID, nav int64, u string) bool {
+// HandleNavigationStarting is the one check every navigation in a tab passes, however it
+// started. A tab of ours goes on only to one of our pages, and takes any other address to
+// a new web tab beside it. A web tab takes one of our pages to the window's tab of it.
+// Otherwise a web tab runs the gates, and the tab records the result. nav is the engine's
+// id for the navigation; one taken elsewhere is none of the tab's.
+func (m *Manager) HandleNavigationStarting(id engine.TabID, nav int64, u string) engine.Navigation {
 	t := m.tabs[id]
 	if t == nil {
-		return false
+		return engine.NavigationBlock
+	}
+	switch page := m.PageOf(u); {
+	case t.Page != "" && page == "":
+		m.OpenBeside(id, u)
+		return engine.NavigationElsewhere
+	case t.Page == "" && page != "":
+		m.OpenPage(m.windowOf[id], page)
+		return engine.NavigationElsewhere
 	}
 	t.started = nav
 	t.URL, t.Error, t.ErrorCode, t.Crashed = address(u), "", "", false
-	for _, g := range m.gates {
-		if !g(u) {
-			t.Blocked, t.Loading = true, false
-			m.changed(t)
-			return false
-		}
+	if t.Page == "" && !m.allowed(u) {
+		t.Blocked, t.Loading = true, false
+		m.changed(t)
+		return engine.NavigationBlock
 	}
 	t.Blocked, t.Title, t.Favicon, t.Progress = false, "", "", 0
 	m.changed(t)
+	return engine.NavigationProceed
+}
+
+// allowed runs the gates, in order, until one says no.
+func (m *Manager) allowed(u string) bool {
+	for _, g := range m.gates {
+		if !g(u) {
+			return false
+		}
+	}
 	return true
 }
 
