@@ -105,11 +105,15 @@ export const state = {
   // What the shell saved for the whole profile with saveProfileData, or null: kept on disk,
   // the same in every window, and there again after a restart.
   profileData: null,
+  // The permission prompts open in the profile, each {id, tab, origin, kinds, once}: a
+  // site asking to use its camera, microphone or notifications. A shell draws those of its
+  // own tabs and answers with permissions.js (docs/daily-driver.md).
+  permissionPrompts: [],
 };
 
 // The messages that are only state: each sets the fields it carries, whole. The one
 // exception is tabs, whose tabs carry no favicon: each keeps the one it had (below).
-const updates = new Set(['theme', 'windowColor', 'controls', 'keys', 'workspaces', 'update', 'crashLog', 'tabLayout', 'addressBarPosition', 'extensions', 'profileData', 'contextMenu', 'downloads', 'dialogs', 'prefs', 'find', 'pageFullScreen', 'searchEngine']);
+const updates = new Set(['theme', 'windowColor', 'controls', 'keys', 'workspaces', 'update', 'crashLog', 'tabLayout', 'addressBarPosition', 'extensions', 'profileData', 'contextMenu', 'downloads', 'dialogs', 'prefs', 'find', 'pageFullScreen', 'searchEngine', 'permissionPrompts']);
 
 const listeners = [];
 

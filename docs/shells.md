@@ -85,6 +85,7 @@ of it.
 | `@/sdk/find.js` | `findText(tab, text)`, `findNext(tab, forward)` and `closeFind(tab)`, for `state.find`, each naming the tab whose bar it is. |
 | `@/sdk/dialogs.js` | `answerDialog(id, ok, text, password)`, and `dialogFor(state, tab)`, the dialog a tab's page waits on. |
 | `@/sdk/downloads.js` | What a shell sends about `state.downloads`: `downloadAction(id, action)` and `clearDownloads()`. |
+| `@/sdk/permissions.js` | The permission prompts ([daily-driver.md](daily-driver.md#permissions)): `promptFor(state, tab)`, `answerPermission(prompt, choice)`, and the words `permissionHost(prompt)` and `permissionAsk(prompt)`. `@/ui/PermissionPrompt.vue` draws one in the design system's look. |
 | `@/sdk/extensions.js` | What a shell sends about extensions: `pressExtension(id, el)`, `pinExtension(id, on)`, `manageExtensions()`, `answerExtensionPrompt(on)`. |
 | `@/sdk/controls.js` | `controls`: the one selector for what a control is, something the user presses or types in (buttons, links with an address, fields, selects, text areas, `role="tab"` and `role="button"`, anything with a `tabindex`). The SDK finds a drag bar's controls by it, and the check reads it for rule 6. |
 | `@/sdk/vue.js` | The Vue adapter: `state`, a reactive copy that follows the SDK's; `activeTab` and `controlSpace` as computeds; `workspaceOf(tab)` and `keyLabel(action)`; `connect(handlers)`, which waits for Vue's `nextTick`; the directives `v-shell`, `v-drag` and `v-page="tab.id"`; and `send`, `saveData`, `focusPage`, `setFrame`, `tabLabel`. |
@@ -143,6 +144,7 @@ gives the page the same two.
 | `extensions` | `extensions`: the buttons, the open popup and the prompt | While the Extensions flag is on: an extension changed, or the active tab did |
 | `profileData` | `profileData`: what this shell saved for the profile | A shell in any window of the profile saved it |
 | `prefs` | `prefs`: every one of Go's prefs by its name in the file (`frameColor`, `theme`, `tabLayout`, `shell`, `addressBarPosition`); the snapshot carries it too | Any pref changed, after the message of its own (`windowColor`, `theme`, ...) |
+| `permissionPrompts` | `permissionPrompts`: every prompt open in the profile, `{id, tab, origin, kinds, once}` | A site asked to use its camera, microphone or notifications, or a prompt was answered or dropped |
 
 The snapshot's `profileData` is what this shell last saved for the profile, `null` when
 nothing. Its `actions` is every action in the menus that can run then, `{id, title}`, in
@@ -233,6 +235,7 @@ shows it. The snapshot also has `running` (the version), `platform`
 | `extensionsManage` | | Opens settings at its Extensions section |
 | `extensionClosePopup` | | Closes the extension popup that is open |
 | `extensionAnswerPrompt` | `on` | Answers the install or removal prompt |
+| `permissionAnswer` | `id`, `choice`: `allow`, `once`, `block` or `dismiss` | Answers a permission prompt; `once` only where the prompt says `once` |
 | `timeline` | `kind`, `name`, `text`, `at` | An entry on the app's timeline ([logging.md](logging.md)): `kind` is `mark`, `begin`, `end`, `info`, `warn` or `error`, and `at` the page's `performance.now()`. The SDK sends them |
 
 **The layout.** Each rectangle is `{x, y, w, h}` in CSS pixels of the shell's page, which
@@ -449,6 +452,13 @@ it there; a phone shell may be left out of a rule for a desktop feature.
     with text boxes named Username and Password,** and Go's Sign in button answers with both
     ([daily-driver.md](daily-driver.md#sign-in-to-a-site)). Every shell that draws dialogs;
     the check skips the shells rule 15 lists as not yet.
+
+30. **A site's question shows on its tab** ([daily-driver.md](daily-driver.md#permissions)):
+    while the active tab has a prompt in `permissionPrompts`, the shell shows a `dialog`
+    named by its question, "*site* wants to use your camera and microphone", with buttons
+    named Block and Allow, or, where `once`, Block, Always allow and Allow this time; an
+    Allow grants it, Block denies it, and Escape dismisses it. Not yet in Glide, Terminal, Fox, Minimal, Minimal JS and
+    Example, which r10 brings; Mobile gets it as a sheet with Android, from r10.
 
 **The names a shell gives its basic controls.** Each is a button, or a menu item in a menu
 one of the shell's controls opens; a menu item's name may end with its key.

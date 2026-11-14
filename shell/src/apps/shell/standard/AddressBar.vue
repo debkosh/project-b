@@ -2,6 +2,8 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { activeTab, chooseSuggestion, focusPage, send, state, suggest } from '@/sdk/vue.js';
 import SuggestionList from './SuggestionList.vue';
+import { promptFor } from '@/sdk/permissions.js';
+import PermissionPrompt from '@/ui/PermissionPrompt.vue';
 import { addressBar, nextQuery } from './state.js';
 
 const input = ref(null);
@@ -18,6 +20,8 @@ const edited = ref(false);
 let latestQuery = 0;
 
 const open = computed(() => focused.value && items.value.length > 0);
+// A site's question about the active tab hangs from the field's start, as the site's own.
+const prompt = computed(() => promptFor(state, state.active));
 const status = computed(() => {
   const t = activeTab.value;
   if (t.blocked) return 'Blocked';
@@ -189,6 +193,7 @@ onMounted(follow);
       @hover="(i) => (highlight = i)"
       @choose="go"
     />
+    <PermissionPrompt v-if="prompt && !open" :key="prompt.id" v-shell class="prompt" :prompt="prompt" />
   </form>
 </template>
 
@@ -247,6 +252,13 @@ input::placeholder {
   top: calc(100% + 6px);
   left: 0;
   right: 0;
+  z-index: 10;
+}
+
+.prompt {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
   z-index: 10;
 }
 
