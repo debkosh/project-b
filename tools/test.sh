@@ -18,8 +18,10 @@
 #                           it, checks and stops the VM again. Known bugs don't fail it.
 #                           NEEDS A PERSON to have logged in at this Mac's desktop once since
 #                           it booted.
-#   tools/test.sh android   The Android app on the emulator.
-#                           Needs the emulator running and the APK, or PB_APK.
+#   tools/test.sh android   The Android app on each emulator, one after another: Android 10,
+#                           14, 16 with 16 KB pages, and 17 (the amarit units in EMULATORS).
+#                           Starts each that isn't running and stops it after. Needs the APK,
+#                           or PB_APK; EMULATORS names fewer, as unit:port.
 #
 # The tests follow the build flags (core/flags/registry.json) as tools/build.sh does: all
 # in unless WITHOUT names them. With extensions in, mock and app add Go's tests with the
@@ -44,7 +46,9 @@ print(",".join(f["id"] for f in json.load(open("core/flags/registry.json")) if f
 built() { case ",$BUILT," in *",$1,"*) return 0 ;; esac; return 1; }
 BIN=${PB_BIN:-build/pb/project_b}
 APK=${PB_APK:-build/android/project-b-content.apk}
-ADB="$HOME/Library/Android/sdk/platform-tools/adb -s ${ADB_SERIAL:-emulator-5600}"
+ADB="$HOME/Library/Android/sdk/platform-tools/adb"
+# Each emulator the android group runs on, as its amarit unit and its adb port.
+EMULATORS=${EMULATORS:-project-b-emu-29:5604 project-b-emu:5600 project-b-emu-16k:5602 project-b-emu-37:5606}
 VM_PYTHON=$HOME/PW_TOOLS/macos-vm/venv/bin/python
 SUMMARY=""
 FAILED=0
@@ -97,11 +101,11 @@ mock() {
     done
     run "the settings page on the mock engine" node shell/e2e/settings.cjs
     run "the picker on the mock engine" node shell/e2e/picker.cjs
+    run "the crash report on the mock engine" node shell/e2e/crash-report.cjs
     built extensions || return
     need_store mock
     run "extensions on the mock engine" node shell/e2e/extensions.cjs
 }
-    run "the crash report on the mock engine" node shell/e2e/crash-report.cjs
 
 app() {
     need_app app
@@ -137,9 +141,18 @@ vm() {
 
 android() {
     [ -f "$APK" ] || cannot android "no APK at $APK. Build it (docs/android.md), or point PB_APK at one."
-    [ "$($ADB get-state 2>/dev/null)" = device ] || cannot android "no emulator answers. Start it with \`amarit start project-b-emu\`."
-    until [ "$($ADB shell getprop sys.boot_completed | tr -d '\r')" = 1 ]; do /bin/sleep 2; done
-    run "the Android app on the emulator" env PB_APK="$APK" python3 tools/drive_android.py
+    command -v amarit >/dev/null || cannot android "amarit is not on PATH: it starts the emulators."
+    for emulator in $EMULATORS; do
+        local unit=${emulator%%:*} serial=emulator-${emulator##*:} started=
+        if [ "$($ADB -s "$serial" get-state 2>/dev/null)" != device ]; then
+            amarit start "$unit" >/dev/null || { run "the Android app on $unit" false; continue; }
+            started=1
+        fi
+        until [ "$($ADB -s "$serial" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ]; do /bin/sleep 2; done
+        run "the Android app on $unit ($($ADB -s "$serial" shell getprop ro.build.version.release | tr -d '\r'))" \
+            env PB_APK="$APK" ADB_SERIAL="$serial" OUT="build/android-drive-content/$unit" python3 tools/drive_android.py
+        [ -z "$started" ] || amarit stop "$unit" >/dev/null
+    done
 }
 
 [ $# -gt 0 ] || { sed -n '2,/^set -u/p' "$0" | sed '$d' | cut -c3-; exit 2; }
