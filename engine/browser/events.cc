@@ -83,8 +83,14 @@ content::NavigationThrottle::ThrottleCheckResult Gate::Ask() {
   args.Int(handle->GetNavigationId());
   args.Str(handle->GetURL().spec());
   PBValue result;
-  if (hooks::Ask(PB_EVENT_NAVIGATION_STARTING, args, &result) && result.i == 0) {
-    return BLOCK_REQUEST;
+  if (!hooks::Ask(PB_EVENT_NAVIGATION_STARTING, args, &result)) {
+    return PROCEED;
+  }
+  switch (result.i) {
+    case PB_NAVIGATION_BLOCK:
+      return BLOCK_REQUEST;
+    case PB_NAVIGATION_ELSEWHERE:
+      return CANCEL_AND_IGNORE;
   }
   return PROCEED;
 }

@@ -221,6 +221,11 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 		m.tabs.Reload()
 	case "newTab":
 		m.Interaction(w, "tab.new", func() {
+			// An address of one of our pages shows the window's tab of it.
+			if page := m.tabs.PageOf(m.tabs.Normalize(c.Text)); page != "" {
+				m.tabs.OpenPage(w, page)
+				return
+			}
 			var id engine.TabID
 			switch {
 			case c.GroupWith != 0:
@@ -329,7 +334,13 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 			timeline.Warnf("shell: unknown window request %q", c.Text)
 		}
 	case "focusTab":
-		m.eng.FocusTab(engine.TabID(c.ID))
+		// A shell asks for its active tab's page. One no longer active, as when Go took
+		// the address typed for it to another tab while the request was on its way, would
+		// take the keyboard back to a page about to be hidden, and with it make that tab
+		// active again.
+		if id := engine.TabID(c.ID); m.tabs.ActiveIn(w) == id {
+			m.eng.FocusTab(id)
+		}
 	case "focusShell":
 		m.eng.FocusShell(w)
 	case "data":

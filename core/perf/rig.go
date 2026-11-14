@@ -297,7 +297,7 @@ func (r *Rig) Navigate(w engine.WindowID, text string) {
 func (r *Rig) Events(id engine.TabID, u string) {
 	a := r.A
 	r.nav++
-	if !a.NavigationStarting(id, r.nav, u) {
+	if a.NavigationStarting(id, r.nav, u) != engine.NavigationProceed {
 		return
 	}
 	a.LoadingChanged(id, true)

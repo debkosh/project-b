@@ -48,17 +48,18 @@ func packOne(v reflect.Value) []Value {
 
 // recorder is an engine.Listener that writes down what it hears.
 type recorder struct {
-	got   []string
-	allow bool
+	got []string
+	// answer is what NavigationStarting says.
+	answer engine.Navigation
 }
 
 func (r *recorder) note(s string) { r.got = append(r.got, s) }
 func (r *recorder) ShellMessage(w engine.WindowID, msg []byte) {
 	r.note(fmt.Sprintf("shell %d %s", w, msg))
 }
-func (r *recorder) NavigationStarting(tab engine.TabID, nav int64, url string) bool {
+func (r *recorder) NavigationStarting(tab engine.TabID, nav int64, url string) engine.Navigation {
 	r.note("starting " + url)
-	return r.allow
+	return r.answer
 }
 func (r *recorder) NavigationFinished(tab engine.TabID, nav int64, url string) {
 	r.note("finished " + url)
@@ -166,7 +167,7 @@ func wired(t *testing.T) (*Hooks, *recorder, map[Hook]bool) {
 	t.Helper()
 	subscribed := map[Hook]bool{}
 	h := New(func(id Hook) { subscribed[id] = true })
-	r := &recorder{allow: true}
+	r := &recorder{}
 	Wire(h, r)
 	return h, r, subscribed
 }

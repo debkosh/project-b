@@ -98,7 +98,7 @@ func (e *Events) Dispatch(id Event, args []Value) (Value, bool) {
 	r := &reader{v: args}
 	switch id {
 	case NavigationStarting:
-		return yes(l.NavigationStarting(engine.TabID(r.int()), r.int(), r.str())), true
+		return Value{I: navigationAnswers[l.NavigationStarting(engine.TabID(r.int()), r.int(), r.str())]}, true
 	case NavigationFinished:
 		l.NavigationFinished(engine.TabID(r.int()), r.int(), r.str())
 	case NavigationFailed:
@@ -150,6 +150,13 @@ func (e *Events) Counts() map[string]int {
 		out[names[id]] = n
 	}
 	return out
+}
+
+// navigationAnswers are PBNavigation's numbers for the app's answers to a navigation.
+var navigationAnswers = map[engine.Navigation]int64{
+	engine.NavigationBlock:     0,
+	engine.NavigationProceed:   1,
+	engine.NavigationElsewhere: 2,
 }
 
 func yes(b bool) Value {
