@@ -9,7 +9,6 @@ import (
 	"projectb/engine"
 	"projectb/settings"
 	"projectb/shell"
-	"projectb/tabs"
 	"projectb/timeline"
 	"projectb/tones"
 	"projectb/workspaces"
@@ -131,17 +130,11 @@ func (a *App) workspaceSettingsPart(e engine.Engine) settings.Part {
 
 // deleteWorkspace deletes a workspace. It leaves the list first, which refuses the last one
 // and tells everyone the list as it is now; then its tabs close in every window; then the
-// engine erases its storage, once those tabs are gone. A delete never closes a window: one
-// whose every tab is in the workspace first gets a new tab in the first workspace, so the
-// window stays, a settings page open in it too, and the app is running when the erase is.
+// engine erases its storage, once those tabs are gone. A window that held only its tabs
+// stays open with none, as any window does whose last tab closes.
 func (a *App) deleteWorkspace(e engine.Engine, id string) error {
 	if err := a.Workspaces.Delete(id); err != nil {
 		return err
-	}
-	for _, w := range a.Tabs.Windows() {
-		if !slices.ContainsFunc(a.Tabs.AllIn(w), func(t tabs.Tab) bool { return t.Workspace != id }) {
-			a.Tabs.CreateIn(w, a.Workspaces.First())
-		}
 	}
 	for _, t := range a.Tabs.All() {
 		if t.Workspace == id {

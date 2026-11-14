@@ -1856,13 +1856,14 @@ def workspace_delete_checks():
     """Deleting a workspace in settings closes its tabs and then erases its storage: a tab
     opened in its partition again finds no cookie and no local storage, and the other
     workspaces keep theirs. Deleting Main erases the profile's own site data. With Main
-    deleted, a tab made over DevTools is in the first workspace. That an extension still
-    works with Main deleted is checked in tools/drive_extensions.py."""
-    work, shop = "0a1b2c3d", "4e5f6a7b"
+    deleted, a tab made over DevTools is in the first workspace. A window whose tabs were
+    all in the workspace deleted stays open with none. That an extension still works with
+    Main deleted is checked in tools/drive_extensions.py."""
+    work, shop, spare = "0a1b2c3d", "4e5f6a7b", "8c9d0e1f"
     profile = tempfile.mkdtemp(prefix="pb-profile-")
     with open(os.path.join(profile, "workspaces.json"), "w") as f:
         json.dump({"version": 2, "workspaces": [{"id": "", "name": "Main", "color": "#3470d0"}, {"id": work, "name": "Work", "color": "#d03434"},
-                                                {"id": shop, "name": "Shop", "color": "#4f9e9e"}]}, f)
+                                                {"id": shop, "name": "Shop", "color": "#4f9e9e"}, {"id": spare, "name": "Spare", "color": "#b07a2a"}]}, f)
     app = App(profile, ["--remote-debugging-port=0"])
 
     def keep(tab, value):
@@ -1896,7 +1897,24 @@ def workspace_delete_checks():
     made = max(tabs_of(app)["tabs"], key=lambda t: t["id"])
     app.wait("document.readyState==='complete'&&location.pathname==='/store'", tab=made["id"])
     check("with Main deleted, a tab made over DevTools is in the first workspace", made.get("workspace") == shop and stored(app, made["id"]) == ["w=shop", "shop"], made)
-    app.close()
+
+    # Shop's first tab moves into a window of its own, and Shop goes.
+    windows = lambda: json.loads(app.cmd("windows"))
+    app.cmd("projectb", "moveTab", json.dumps({"tab": in_shop, "window": 0, "index": 0}))
+    deadline = time.time() + 10
+    while len(windows()) < 2 and time.time() < deadline:
+        time.sleep(0.05)
+    app.cmd("window", 2)
+    delete_workspace(app, shop)
+    deadline = time.time() + 10
+    while windows()[1]["tabs"] and time.time() < deadline:
+        time.sleep(0.05)
+    check("a window whose tabs were all in the workspace deleted stays open, with none",
+          [w["id"] for w in windows()] == [1, 2] and windows()[1]["tabs"] == [] and app.js(ROWS) == 0, windows())
+    # Both windows go at once, as Cmd+Q does.
+    app.cmd("key", "cmd+q")
+    check("Cmd+Q ends the app with both windows, cleanly", app.proc.wait(timeout=20) == 0)
+    App.running.remove(app)
 
 
 def shell_checks():
