@@ -14,7 +14,7 @@
   // scrolled to scroll, moving it as little as it takes.
   const into = (scroll, size, start, length) => Math.min(Math.max(scroll, start + length - size), start);
 
-  // There is no active tab before the snapshot.
+  // A window with no tab has no active one.
   $effect(() => {
     const cell = strip.children[index];
     if (!cell) return;

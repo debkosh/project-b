@@ -127,6 +127,9 @@ const names = ['Example Domain', 'Mail · Work', 'Project B on GitHub', 'Weather
     await w.shell().evaluate(() => [...document.fonts].filter((f) => f.status === 'loaded').map((f) => f.family.replace(/"/g, '')).sort().join() === 'Space Grotesk,Space Mono'));
   let r = await regions();
   check('it asks for no band', r.frameWidth === 0, String(r.frameWidth));
+  // The UI is made once Go's data is in, with the tab already active: an empty one wants
+  // the address field.
+  check('it opens with the keyboard in the address field, as a new tab does', await until(() => field.evaluate((el) => el === document.activeElement)));
 
   // Tabs down the side, the pref's default: no tab bar, the toolbar on top after the
   // window buttons, the list on the left under it, the page beside it.
@@ -174,6 +177,13 @@ const names = ['Example Domain', 'Mail · Work', 'Project B on GitHub', 'Weather
   check('the address is in Space Mono, the rest in Space Grotesk',
     (await field.evaluate((el) => getComputedStyle(el).fontFamily)).startsWith('"Space Mono"') && (await tabs.first().evaluate((el) => getComputedStyle(el).fontFamily)).startsWith('"Space Grotesk"'));
   check('the keyboard went back to the page', await until(async () => (await regions()).focused === (await regions()).active));
+  // Reloaded, the UI is made again with that tab active: the field shows its address, and
+  // its page gets the keyboard back.
+  await fetch(`${lib.base}/shell/send`, { method: 'POST', body: JSON.stringify({ t: 'focusTab', id: 0 }) });
+  await until(async () => (await regions()).focused === 0);
+  await w.shell().evaluate(() => location.reload());
+  check('reloaded on a page, the field shows its address and the page gets the keyboard',
+    await until(async () => (await regions()).focused === (await regions()).active && (await field.inputValue()) === 'https://example.com/news/today'), String((await regions()).focused));
 
   // focusAddressBar puts the keyboard in the field with the address selected.
   await fire('key', 'focusAddressBar', { tab: (await regions()).active });
