@@ -13,15 +13,15 @@ has a plan yet. "Proposed" means the plan is written down but waits on the owner
 
 | # | Feature | Status | Plan |
 |---|---|---|---|
-| 1 | Downloads: saving a file from a link | missing: no file arrives (basics 15) | proposed, waiting on him: session r6, Mac then Android, fourth |
-| 2 | File upload: a file input opens a chooser | missing: no chooser (basics 14) | proposed, waiting on him: session r6, third |
-| 3 | JavaScript dialogs: alert, confirm, prompt, and "leave this page?" on close | missing: alert returns at once, a tab closes without asking (basics 13, 1) | proposed, waiting on him: session r6, second |
-| 4 | Right-click menu on a page: open link in a new tab, copy link, copy and save images | missing: a right-click never reaches Go (basics 22) | proposed, waiting on him: session r6, first. System menu or a shell-drawn one is also his call; mocks in `project-b-ux-audit/shots/context-menus/` |
-| 5 | Find in page | missing: no action, menu item or key | needs discussion |
-| 6 | Passwords to sites that ask (HTTP auth) | missing: the 401 page shows without asking (basics 12) | needs discussion |
-| 7 | Camera and microphone, for Meet and Zoom on the web | missing: NotSupportedError, no prompt (basics 17) | needs discussion |
-| 8 | Video full screen | missing: requestFullscreen stays pending (basics 18) | needs discussion |
-| 9 | Tabs come back after a crash | missing: the app comes back with 1 tab (basics 32) | needs discussion |
+| 1 | Downloads: saving a file from a link | works in Standard: files go to ~/Downloads, with a Downloads list, and Save Link As opens the Save panel | done, r6 ([daily-driver.md](daily-driver.md#downloads)); Glide and the other shells to come, rule 17; Android later |
+| 2 | File upload: a file input opens a chooser | works on the Mac: the system's panel, as a sheet | done, r6 ([daily-driver.md](daily-driver.md#file-upload)); Android already opens its own |
+| 3 | JavaScript dialogs: alert, confirm, prompt, and "leave this page?" on close | works in Standard, over the page | done, r6 ([daily-driver.md](daily-driver.md#javascript-dialogs)); the other shells to come, rule 15; Android with the Mobile shell |
+| 4 | Right-click menu on a page: open link in a new tab, copy link, copy and save images | works in Standard: drawn by the shell from Go's actions | done, r6 ([daily-driver.md](daily-driver.md#right-click)); the other shells to come, rule 16 |
+| 5 | Find in page | missing: no action, menu item or key | r6, next |
+| 6 | Passwords to sites that ask (HTTP auth) | missing: the 401 page shows without asking (basics 12) | r6, after video full screen |
+| 7 | Camera and microphone, for Meet and Zoom on the web | missing: NotSupportedError, no prompt (basics 17) | the permissions and restore session |
+| 8 | Video full screen | missing: requestFullscreen stays pending (basics 18) | r6, after find in page |
+| 9 | Tabs come back after a crash | missing: the app comes back with 1 tab (basics 32) | the permissions and restore session |
 | 10 | Bookmarks | missing in Standard. Glide, an optional style, has favorites and pins | needs discussion |
 | 11 | A history page | partly: history is kept and feeds the address bar's suggestions; the History menu has only Back and Forward | needs discussion |
 | 12 | Saved passwords and autofill | missing: nothing of ours; the Edit menu's Passwords… and Contact… are macOS's AutoFill | needs discussion |
