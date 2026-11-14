@@ -327,6 +327,24 @@ const { check, fire, regions, settle, until } = lib;
   await fire('key', 'closeTab');
   check('Cmd+W closes it', await until(async () => (await regions()).settingsOpen === false));
 
+  // With no tabs the shell draws the panes' area itself, as its own: No tabs, and New Tab
+  // with its key, which opens a tab there. The prompt has the keyboard.
+  for (let n = (await regions()).tabs.length; n > 0; n--) {
+    await fire('menu', 'tab.close');
+    await until(async () => (await regions()).tabs.length === n - 1);
+  }
+  const empty = ui.locator('.empty');
+  check('with no tabs the panes\' area says No tabs, with New Tab and its key',
+    await until(() => empty.getByText('No tabs', { exact: true }).isVisible()) && (await empty.locator('.key').textContent()) === '⌘T');
+  const area = await empty.boundingBox();
+  check('and is the shell\'s: a press there reaches the shell', await until(async () => (await regions({ x: area.x + area.width / 2, y: area.y + 40 })).hit === 'shell'));
+  check('the prompt has the keyboard', await until(() => prompt.evaluate((el) => el === document.activeElement)));
+  await settle(page);
+  await page.screenshot({ path: path.join(lib.out, 'terminal-empty-light.png') });
+  await empty.getByRole('button', { name: 'New Tab' }).click();
+  check('New Tab there opens a tab, and the empty state goes',
+    await until(async () => (await regions()).tabs.length === 1 && (await regions()).visible.length === 1 && (await empty.count()) === 0));
+
   // With another shell on, Cmd+D is the page's: Go doesn't run the terminal's action, so
   // the shell hears nothing of it. A title set after it is the mark that it has heard all
   // Cmd+D could have sent.
