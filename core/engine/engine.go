@@ -259,10 +259,11 @@ type Listener interface {
 	ShellMessage(w WindowID, msg []byte)
 
 	// NavigationStarting fires at the start and on each redirect. Returning false
-	// blocks the navigation.
-	NavigationStarting(tab TabID, url string) bool
-	NavigationFinished(tab TabID, url string)
-	NavigationFailed(tab TabID, url, reason string)
+	// blocks the navigation. nav is the engine's id for the navigation, larger for one
+	// started later; its finish or failure carries the same.
+	NavigationStarting(tab TabID, nav int64, url string) bool
+	NavigationFinished(tab TabID, nav int64, url string)
+	NavigationFailed(tab TabID, nav int64, url, reason string)
 	// HistoryChanged says whether the tab can currently go back and forward.
 	HistoryChanged(tab TabID, canGoBack, canGoForward bool)
 	TitleChanged(tab TabID, title string)

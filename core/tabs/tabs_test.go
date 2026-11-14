@@ -121,12 +121,12 @@ func TestATabAPageOpensIsShownOnlyInTheForeground(t *testing.T) {
 func TestFaviconFollowsThePage(t *testing.T) {
 	m := oneWindow(&fakeEngine{})
 	id := m.Create(1)
-	m.HandleNavigationStarting(id, "https://a.test/")
+	m.HandleNavigationStarting(id, 1, "https://a.test/")
 	m.HandleFaviconChanged(id, "data:image/png;base64,AAAA")
 	if m.Active().Favicon == "" {
 		t.Fatal("favicon not recorded")
 	}
-	m.HandleNavigationStarting(id, "https://b.test/")
+	m.HandleNavigationStarting(id, 2, "https://b.test/")
 	if m.Active().Favicon != "" {
 		t.Fatal("a new page keeps the old page's favicon")
 	}
@@ -165,17 +165,38 @@ func TestANewTabHoldsTheBlankPageAndReadsAsEmpty(t *testing.T) {
 	if !slices.Equal(e.urls, []string{BlankURL}) {
 		t.Fatalf("loaded %v", e.urls)
 	}
-	m.HandleNavigationStarting(id, BlankURL)
-	m.HandleNavigationFinished(id, BlankURL)
+	m.HandleNavigationStarting(id, 1, BlankURL)
+	m.HandleNavigationFinished(id, 1, BlankURL)
 	m.HandleTitleChanged(id, BlankURL) // Content's title for an untitled page.
 	if tab := m.Active(); tab.URL != "" || tab.Title != "" {
 		t.Fatalf("the blank page shows as url %q title %q", tab.URL, tab.Title)
 	}
-	m.HandleNavigationStarting(id, "https://example.com/")
-	m.HandleNavigationFinished(id, "https://example.com/")
+	m.HandleNavigationStarting(id, 2, "https://example.com/")
+	m.HandleNavigationFinished(id, 2, "https://example.com/")
 	m.HandleTitleChanged(id, "Example Domain")
 	if tab := m.Active(); tab.URL != "https://example.com/" || tab.Title != "Example Domain" {
 		t.Fatalf("a real page shows as url %q title %q", tab.URL, tab.Title)
+	}
+}
+
+// A new tab's blank page can commit, or fail, after the user's navigation has begun. That
+// late result leaves the address the user is going to, which shows until its own commit.
+func TestALateBlankPageLeavesTheNewerAddress(t *testing.T) {
+	m := oneWindow(&fakeEngine{})
+	id := m.Create(1)
+	m.HandleNavigationStarting(id, 1, BlankURL)
+	m.HandleNavigationStarting(id, 2, "https://example.com/")
+	m.HandleNavigationFinished(id, 1, BlankURL)
+	if tab := m.Active(); tab.URL != "https://example.com/" {
+		t.Fatalf("after the blank page's late commit the tab shows %q", tab.URL)
+	}
+	m.HandleNavigationFailed(id, 1, BlankURL, "ERR_FAILED")
+	if tab := m.Active(); tab.URL != "https://example.com/" || tab.Error != "" {
+		t.Fatalf("after the blank page's late failure the tab shows %q, error %q", tab.URL, tab.Error)
+	}
+	m.HandleNavigationFinished(id, 2, "https://example.com/")
+	if tab := m.Active(); tab.URL != "https://example.com/" {
+		t.Fatalf("the newer navigation's commit shows %q", tab.URL)
 	}
 }
 

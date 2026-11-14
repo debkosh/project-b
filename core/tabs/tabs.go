@@ -37,6 +37,10 @@ type Tab struct {
 	CanGoForward bool `json:"canGoForward"`
 	// Group is the id of the tab group it is in, "" for none (groups.go).
 	Group string `json:"group,omitempty"`
+
+	// started is the engine's id for the latest navigation that started, whose address
+	// the tab shows until it commits or fails.
+	started int64
 }
 
 // Gate runs before a navigation. Returning false blocks it, and later gates don't run.
@@ -618,12 +622,14 @@ func (m *Manager) HandleTabOpened(opener, id engine.TabID, u, workspace string, 
 // HandleTabFocused makes the tab whose page took the keyboard the active one.
 func (m *Manager) HandleTabFocused(id engine.TabID) { m.Activate(id) }
 
-// HandleNavigationStarting runs the gates and records the result.
-func (m *Manager) HandleNavigationStarting(id engine.TabID, u string) bool {
+// HandleNavigationStarting runs the gates and records the result. nav is the engine's id
+// for the navigation.
+func (m *Manager) HandleNavigationStarting(id engine.TabID, nav int64, u string) bool {
 	t := m.tabs[id]
 	if t == nil {
 		return false
 	}
+	t.started = nav
 	t.URL, t.Error, t.Crashed = address(u), "", false
 	for _, g := range m.gates {
 		if !g(u) {
@@ -637,10 +643,13 @@ func (m *Manager) HandleNavigationStarting(id engine.TabID, u string) bool {
 	return true
 }
 
-// HandleNavigationFinished records a committed navigation.
-func (m *Manager) HandleNavigationFinished(id engine.TabID, u string) {
+// HandleNavigationFinished records a committed navigation. One older than the latest
+// started leaves the tab as it is: a new tab's blank page can commit after the user's
+// navigation began, and the address that navigation is going to shows until it commits or
+// fails, as Chrome shows its pending entry.
+func (m *Manager) HandleNavigationFinished(id engine.TabID, nav int64, u string) {
 	t := m.tabs[id]
-	if t == nil {
+	if t == nil || nav < t.started {
 		return
 	}
 	// A page restored from the back-forward cache never reports a start, so a commit
@@ -652,10 +661,11 @@ func (m *Manager) HandleNavigationFinished(id engine.TabID, u string) {
 	m.changed(t)
 }
 
-// HandleNavigationFailed records a failed navigation.
-func (m *Manager) HandleNavigationFailed(id engine.TabID, u, reason string) {
+// HandleNavigationFailed records a failed navigation, unless it is older than the latest
+// started, as HandleNavigationFinished does.
+func (m *Manager) HandleNavigationFailed(id engine.TabID, nav int64, u, reason string) {
 	t := m.tabs[id]
-	if t == nil {
+	if t == nil || nav < t.started {
 		return
 	}
 	t.URL, t.Error, t.Loading = address(u), reason, false

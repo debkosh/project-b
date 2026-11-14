@@ -118,8 +118,11 @@ crash, a reload or another shell, the pages wait again for the next one's layout
 
 A new tab loads `about:blank`, so every tab has a page view that paints in content's default
 colour from the start. The tab still reads as new: no address, titled New Tab, and
-`about:blank` stays out of history. A crashed page has no view, so the frame colour shows
-there.
+`about:blank` stays out of history. The blank page can commit after the user's first
+navigation has begun; a navigation's finish older than the latest one started leaves the
+tab's address alone, by content's navigation id, so the address it is going to shows until
+that commits or fails, as Chrome shows a pending entry. A crashed page has no view, so the
+frame colour shows there.
 
 ## Several windows
 

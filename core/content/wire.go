@@ -77,7 +77,7 @@ func Wire(h *Hooks, l engine.Listener) {
 		if !nav.IsInPrimaryMainFrame || nav.TabID <= 0 {
 			return 0, false
 		}
-		if l.NavigationStarting(engine.TabID(nav.TabID), nav.URL) {
+		if l.NavigationStarting(engine.TabID(nav.TabID), nav.NavigationID, nav.URL) {
 			return NavigationThrottleThrottleActionProceed, true
 		}
 		return NavigationThrottleThrottleActionBlockRequest, true
@@ -92,7 +92,7 @@ func Wire(h *Hooks, l engine.Listener) {
 		tab := engine.TabID(c.ID)
 		l.HistoryChanged(tab, c.CanGoBack, c.CanGoForward)
 		if nav.HasCommitted && !nav.IsErrorPage {
-			l.NavigationFinished(tab, nav.URL)
+			l.NavigationFinished(tab, nav.NavigationID, nav.URL)
 			// A page coming back from history already has its title and won't announce
 			// it again.
 			if c.Title != "" {
@@ -101,7 +101,7 @@ func Wire(h *Hooks, l engine.Listener) {
 			return
 		}
 		if nav.NetError != 0 && nav.NetError != netErrAborted {
-			l.NavigationFailed(tab, nav.URL, nav.NetErrorName)
+			l.NavigationFailed(tab, nav.NavigationID, nav.URL, nav.NetErrorName)
 		}
 	})
 	h.Observer.OnDidStartLoading(func(c WebContents) {

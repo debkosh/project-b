@@ -177,9 +177,9 @@ func (p *Picker) OSBindings(byTitle map[string]engine.Key) { p.commands.OSBindin
 
 func (p *Picker) ShellMessage(engine.WindowID, []byte)                             {}
 func (p *Picker) SettingsMessage(engine.WindowID, []byte)                          {}
-func (p *Picker) NavigationStarting(engine.TabID, string) bool                     { return false }
-func (p *Picker) NavigationFinished(engine.TabID, string)                          {}
-func (p *Picker) NavigationFailed(engine.TabID, string, string)                    {}
+func (p *Picker) NavigationStarting(engine.TabID, int64, string) bool              { return false }
+func (p *Picker) NavigationFinished(engine.TabID, int64, string)                   {}
+func (p *Picker) NavigationFailed(engine.TabID, int64, string, string)             {}
 func (p *Picker) HistoryChanged(engine.TabID, bool, bool)                          {}
 func (p *Picker) TitleChanged(engine.TabID, string)                                {}
 func (p *Picker) LoadingChanged(engine.TabID, bool)                                {}
