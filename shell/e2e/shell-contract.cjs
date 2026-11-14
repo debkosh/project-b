@@ -55,9 +55,8 @@ const noDialogsYet = {
   glide: 'r6 brings it',
   terminal: 'r4 brings it',
   fox: 'r4 brings it',
-  'minimal-svelte': 'r4 brings it',
+  minimal: 'r4 brings it',
   'minimal-js': 'r4 brings it',
-  'minimal-vue': 'r4 brings it',
   example: 'r4 brings it',
   mobile: 'r3 brings it, with the dialogs on Android',
 };
@@ -68,9 +67,8 @@ const noPageFullYet = {
   glide: 'r6 brings it',
   terminal: 'r4 brings it',
   fox: 'r4 brings it',
-  'minimal-svelte': 'r4 brings it',
+  minimal: 'r4 brings it',
   'minimal-js': 'r4 brings it',
-  'minimal-vue': 'r4 brings it',
   example: 'r4 brings it',
 };
 
@@ -80,9 +78,8 @@ const noFindYet = {
   glide: 'r6 brings it',
   terminal: 'r4 brings it',
   fox: 'r4 brings it',
-  'minimal-svelte': 'r4 brings it',
+  minimal: 'r4 brings it',
   'minimal-js': 'r4 brings it',
-  'minimal-vue': 'r4 brings it',
   example: 'r4 brings it',
 };
 
@@ -92,9 +89,8 @@ const noDownloadsYet = {
   glide: 'r6 brings it',
   terminal: 'r4 brings it',
   fox: 'r4 brings it',
-  'minimal-svelte': 'r4 brings it',
+  minimal: 'r4 brings it',
   'minimal-js': 'r4 brings it',
-  'minimal-vue': 'r4 brings it',
   example: 'r4 brings it',
 };
 
