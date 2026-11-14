@@ -119,6 +119,14 @@ class PageTab : public WebContentsObserverHooks, public WebContentsDelegateHooks
                       scoped_refptr<content::FileSelectListener> listener,
                       const blink::mojom::FileChooserParams& params) override;
 #endif
+#if BUILDFLAG(IS_ANDROID)
+  // Android has no colour picker inside the page, so a colour input asks for one.
+  std::unique_ptr<content::ColorChooser> OpenColorChooser(
+      content::WebContents* web_contents,
+      SkColor color,
+      const std::vector<blink::mojom::ColorSuggestionPtr>& suggestions)
+      override;
+#endif
 
   const int64_t id_;
   const std::string workspace_;
