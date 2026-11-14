@@ -9,11 +9,12 @@ behind it is `project-b-research/windows-survey.md`.
 - Go makes the windows (`CreateWindow`), each with its own shell page and settings page,
   and keeps each one's tabs and active tab, and the window in front, which the engine
   reports (`WindowFocused`). Commands and the menu follow the window in front. File, New
-  Window (Cmd+N) opens one. A window's close button, or its last tab closing, closes it
-  (`WindowClosed`); closing the last one quits, and Quit (`AppQuit`) ends every window
-  at once. A second start's URLs open in the window used last. The Window menu lists the
-  windows by title and Cmd+` cycles them: AppKit does both by itself, and the window it
-  brings forward reports itself to Go as any key window does.
+  Window (Cmd+N) opens one. A window's close button closes it (`WindowClosed`), and so does
+  Close Tab in a window with no tabs: closing its last tab leaves it open
+  ([below](#a-window-with-no-tabs)). Closing the last one quits, and Quit (`AppQuit`) ends
+  every window at once. A second start's URLs open in the window used last. The Window menu
+  lists the windows by title and Cmd+` cycles them: AppKit does both by itself, and the
+  window it brings forward reports itself to Go as any key window does.
 - The window's layout lists the tabs it shows, each with a rectangle; the shell lists one,
   the active tab. The engine places each listed tab's view, tells a tab that joins or
   leaves the list that it is shown or hidden, and says when a click moves the keyboard
@@ -41,7 +42,8 @@ behind it is `project-b-research/windows-survey.md`.
   which then holds only that tab (`tabs.Manager.Move`, `App.NewWindowWith`). The tab keeps
   its id and its page goes on running: the engine moves its view when the other window's
   layout lists it, and tells it nothing hidden. The window it arrives in makes it active;
-  the one it left goes on as if it had closed there, and closes if it was its last tab.
+  the one it left goes on as if it had closed there, but closes if it was its last tab, as
+  what it held went elsewhere.
   Both shells hear it in their tab lists. Tab, Move Tab to New Window moves the active tab
   of the window in front; the driver and DevTools ask through `ProjectB.moveTab`.
 
@@ -71,7 +73,8 @@ front.
 
 - A new window (Cmd+N) starts with one new tab, and opens a little down and right of the
   window in front.
-- Closing a window's last tab closes the window.
+- A window may have no tabs (2026-11-14, [below](#a-window-with-no-tabs)): closing its last
+  tab leaves it open, and Close Tab then closes it.
 - Closing a profile's last window quits its process.
 - Quit closes every window at once, with no question.
 - A link from another app, or from a second start of the app, opens as a new tab in the
@@ -81,6 +84,52 @@ front.
 - Ctrl+Tab stays within a window.
 - A tab in a minimised window is told it is hidden.
 - A shell's own data, when shells have any, is kept per window.
+
+## A window with no tabs
+
+2026-11-14, the owner: "closing the window on last tab closure seems like something we
+copied from chrome without actual need for it right.. the shell might decide what to do
+when no tabs aare there and then another close actiually closes". He decided the rest the
+same day: a window whose last tab moves out still closes, New Window and the app's start
+keep their one new tab, and a workspace delete leaves a window with none.
+
+- **A window may have no tabs.** Closing its last tab leaves it open, with no tabs and no
+  active tab: its shell hears `tabs: []` and `active: 0`, and shows no page. Only closing
+  the window closes it. A window with tabs always has an active one, so a tab that comes
+  into a window with none is its active tab, even one opened behind.
+- **Two kinds of window still close with their last tab** (`Tabs.OnEmpty` in `App.Start`):
+  - one made for a tab opened in a window of its own, `TabOpened` with `newWindow`, which Go
+    remembers per window (`App.madeForTab`). Only a client of the debugging port asks for
+    one (`Target.createTarget` with `newWindow`): a page's `window.open` and `target=_blank`
+    open a tab in the page's own window;
+  - one whose last tab moved to another window: dragged out, `ProjectB.moveTab`, an
+    extension's move. What it held went elsewhere.
+- **Close Tab,** Cmd+W, the menu, or a shell's `closeTab` naming no tab, closes the active
+  tab, and in a window with no tabs the window. So two Cmd+W on a window's only tab close
+  the window. It stays enabled in a window with no tabs.
+- **The actions that need a tab are disabled with none:** Back, Forward, Reload, Force
+  Reload, Stop, the zooms, View Source, Focus Next and Previous Pane, Duplicate, Move Tab to
+  New Window, and choosing a tab (next, previous, recent, Tab 1 to 8, Last Tab). New Tab,
+  Open Location, New Window, Close Window, Settings and the shells' own actions stay as
+  they are.
+- **The address still works:** `navigate` in a window with no tabs opens a tab there, in the
+  workspace the message names or the first in the list, at the address.
+- **New Window and the app's start open with one new tab,** as before.
+- **Its title** is the app's own, Project B, as a new window's is before its first tab: the
+  engine titles a window after its focused tab, and with none shown, after the app
+  (`Engine::UpdateTitle`). The Window menu and Cmd+` list it so.
+- **Each shell draws an empty state of its own** ([shells.md](shells.md#what-every-shell-does),
+  rule 18): a quiet "No tabs" and New Tab with its key where the page goes, as its own, in
+  the shell's own type and colours; Glide's is a card where the page's card goes. Most give
+  the address the keyboard. Mobile doesn't draw one yet: on a phone the back key is to go
+  back in the page, else close the tab and show the one used before it, down to no tabs,
+  and only then close the app.
+- **Extensions** see a window with no tabs as one whose `tabs` are `[]`, with no active tab,
+  and its last tab closing as `tabs.onRemoved` with `isWindowClosing` false
+  ([extensions.md](extensions.md)). Chrome never has a normal window without a tab, so an
+  extension may assume one has.
+- **Deleting a workspace** closes its tabs, and a window that held only them stays open
+  with none ([workspaces.md](workspaces.md)).
 
 ## Order of building
 
