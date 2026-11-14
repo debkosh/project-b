@@ -23,15 +23,21 @@
   const tokens = $derived(styleOf(glideTones(g.space().color, g.space().tones || go.tones, dark)));
 
   let bar = $state();
+  // Whether the snapshot is in: before it the shell knows nothing of the window's tabs.
+  let started = $state(false);
   // The tab last made active, so each change of it is seen once.
   let active = 0;
 
   // A tab that becomes active with nothing in it opens the Command Bar to say where to go;
-  // one with a page gets the keyboard.
+  // one with a page gets the keyboard. With no tabs left, a bar opened on a tab's address,
+  // with nothing typed, went with the tab.
   function activated() {
     if (go.active === active) return;
     active = go.active;
-    if (!go.active) return;
+    if (!go.active) {
+      if (g.ui.bar?.mode === 'address' && !g.ui.bar.typed) g.ui.bar = null;
+      return;
+    }
     if (activeTab(go).url === '') openBar('address');
     else if (g.ui.bar?.mode === 'address' && !g.ui.bar.typed) closeBar();
     else if (!g.ui.bar) focusPage();
@@ -87,6 +93,7 @@
 
   connect({
     snapshot: () => {
+      started = true;
       g.load(go.data);
       activated();
     },
@@ -127,7 +134,7 @@
     {#if !g.win.hidden}
       <Sidebar onaddress={() => openBar('address')} oncopy={copyAddress} onnew={() => send({ t: 'newTab', workspace: g.spaceId() })} onclosebar={() => (g.ui.bar = null)} />
     {/if}
-    <Panes hidden={g.win.hidden} />
+    <Panes hidden={g.win.hidden} empty={started && !go.tabs.length} />
   </div>
   {#if g.ui.bar}
     <CommandBar bind:this={bar} close={closeBar} />

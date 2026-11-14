@@ -1,8 +1,8 @@
 // Glide's own tests, on the mock engine: the sidebar of the Space shown, the Command Bar,
 // Favorites and pinned tabs kept for the profile across a restart, folders on Go's tab
-// groups, split view, Spaces as workspaces, and the sidebar hidden. The contract every
-// shell keeps is shell-contract.cjs's. It leaves light and dark screenshots of the window
-// in build/e2e/glide-*.png.
+// groups, split view, Spaces as workspaces, the sidebar hidden, and the card a window with
+// no tabs shows. The contract every shell keeps is shell-contract.cjs's. It leaves light and
+// dark screenshots of the window in build/e2e/glide-*.png.
 // Run: node shell/e2e/shells/glide.cjs   (from the repo root, after `npm run build` in shell/)
 
 const fs = require('fs');
@@ -200,6 +200,23 @@ const { check, fire, regions, settle, until } = lib;
   await page.keyboard.press('Escape');
   await pinRow.click();
   check('a press opens it at its address, pinned', await until(async () => (await active())?.url === 'https://one.test' && (await ui.locator('.pinned [role=tab]').count()) === 1));
+
+  // With no tabs the shell draws a card of its own where the page goes: No tabs, and New
+  // Tab with its key, which opens a tab there.
+  for (let n = (await regions()).tabs.length; n > 0; n--) {
+    await fire('menu', 'tab.close');
+    await until(async () => (await regions()).tabs.length === n - 1);
+  }
+  const emptyCard = ui.locator('.empty');
+  check('with no tabs the page\'s card says No tabs, with New Tab and its key',
+    await until(() => emptyCard.getByText('No tabs', { exact: true }).isVisible()) && (await emptyCard.locator('.key').textContent()) === '⌘T');
+  const card = await emptyCard.boundingBox();
+  check('and is the shell\'s: a press there reaches the shell', await until(async () => (await regions({ x: card.x + card.width / 2, y: card.y + 40 })).hit === 'shell'));
+  await page.mouse.move(1099, 699);
+  await settle(page);
+  await page.screenshot({ path: path.join(lib.out, 'glide-empty-light.png') });
+  await emptyCard.getByRole('button', { name: 'New Tab' }).click();
+  check('New Tab there opens a tab, and the card goes', await until(async () => (await regions()).tabs.length === 1 && (await regions()).visible.length === 1 && (await emptyCard.count()) === 0));
 
   check('it logged no errors', w.errors.length === 0, w.errors.join(' | '));
   await browser.close();
