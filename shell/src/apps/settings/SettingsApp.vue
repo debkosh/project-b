@@ -30,7 +30,8 @@ const sections = computed(() =>
     { id: 'webFeatures', label: 'Web features', component: WebFeatures },
   ].filter((s) => s),
 );
-const section = computed(() => sections.value.find((s) => s.id === state.section) || sections.value[0]);
+// A section's address may name more after a slash, which the section reads: sites/<origin>.
+const section = computed(() => sections.value.find((s) => s.id === state.section.split('/')[0]) || sections.value[0]);
 </script>
 
 <template>

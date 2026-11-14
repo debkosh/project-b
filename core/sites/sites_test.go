@@ -202,8 +202,24 @@ func TestOriginIsTheEnginesForm(t *testing.T) {
 		"http://localhost:8080/x": "http://localhost:8080",
 		"about:blank":             "",
 	} {
-		if got := origin(u); got != o {
+		if got := Origin(u); got != o {
 			t.Errorf("%s: %q, want %q", u, got, o)
 		}
+	}
+}
+
+func TestSettingsSetsAnAskableKindForASite(t *testing.T) {
+	m, _, got := setup(t, t.TempDir())
+	m.Set("https://meet.test", Camera, Block)
+	m.Set("https://meet.test", ClipboardWrite, Block) // not askable: ignored
+	m.Set("https://meet.test/x", Camera, Allow)       // not an origin: ignored
+	ask(m, 1, 1, "https://meet.test", true, Camera, ClipboardWrite)
+	want(t, got, 1, D, G)
+	m.Set("https://meet.test", Camera, "")
+	if m.Status(0, "https://meet.test", Camera) != A || len(m.Sites()) != 0 {
+		t.Fatalf("reset kept %+v", m.Sites())
+	}
+	if s := Settable(); len(s) != 3 || s[0].Kind != Camera || s[0].Title != "Camera" {
+		t.Fatalf("settable %+v", s)
 	}
 }

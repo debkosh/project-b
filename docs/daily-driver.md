@@ -299,8 +299,19 @@ the first. A shell shows the one on its active tab, and sends `permissionAnswer 
 | `dismiss` | Answers `ask`, keeping nothing: the prompt was closed |
 
 Go drops a prompt, answering `dismiss`, when its tab closes or navigates to another
-document, and ignores an answer to a prompt it dropped. Settings has a Site settings
-section listing each site's settings, with a menu to reset one or Remove them all.
+document, and ignores an answer to a prompt it dropped.
+
+**The site settings page.** The owner: "we should have a page which shows either all site
+settings or jsut the current pages permissions... like who chrome shows the site settings
+icon in the omnibox.. but make it look like ours". One section of settings, Site settings,
+with two views by its address: `sites`, every site with a setting, a row each saying how
+each is by Go's title, which opens the site's view, and a menu to reset one or Remove them
+all; and `sites/<origin>`, one site alone, every setting settings can set (Go's
+`siteKinds`), each Ask, Allow or Block (`setSiteSetting`). The address is all the section
+reads, so it shows the same once settings is a tab of its own. A shell's control named Site
+settings sends `openSiteSettings`, and Go opens settings at the active tab's site. In
+Standard it is an icon at the start of the address field, on every web page. The contract's
+rule 31 checks it.
 
 **Notifications** a page shows are the system's: the engine sends each to Go
 (`PB_EVENT_NOTIFICATION_SHOW`, with its title, body, origin and tab), Go checks the origin
@@ -318,7 +329,19 @@ type into it, and follows the address field in tab order, so F6 then Tab reach i
 contract's rule 30 checks it, by role and name, on the mock.
 
 **The numbers.** Events 40 to 43: `PB_EVENT_PERMISSION_REQUEST`, `PB_EVENT_PERMISSION_STATUS`,
-`PB_EVENT_NOTIFICATION_SHOW`, `PB_EVENT_NOTIFICATION_CLICKED`. Rule 30.
+`PB_EVENT_NOTIFICATION_SHOW`, `PB_EVENT_NOTIFICATION_CLICKED`. Rules 30 and 31.
+
+**Not yet expressed,** none needed now, each one engine call or one field when it is:
+
+- **Telling an open page its setting changed.** A Reset or a change in Site settings
+  doesn't fire the page's `permissionStatus.onchange`; it would be one engine call from Go,
+  the origin and kind.
+- **A permission's options.** Camera pan-tilt-zoom and MIDI with sysex are kinds of their
+  own; any other option a page's request carries is dropped by the adapter.
+- **Settings by the page a site is embedded in.** A setting is by the origin asking, not
+  by that origin within another site.
+- **Which camera or microphone.** The adapter gives the one the page named, else the
+  system's first; Go has no say in it yet.
 
 **Android.** The same messages, and the Mobile shell's prompt as a sheet. Once Go allows the
 camera or microphone, the adapter asks Android for its own grant before the page gets a

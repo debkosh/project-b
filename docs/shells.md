@@ -85,7 +85,7 @@ of it.
 | `@/sdk/find.js` | `findText(tab, text)`, `findNext(tab, forward)` and `closeFind(tab)`, for `state.find`, each naming the tab whose bar it is. |
 | `@/sdk/dialogs.js` | `answerDialog(id, ok, text, password)`, and `dialogFor(state, tab)`, the dialog a tab's page waits on. |
 | `@/sdk/downloads.js` | What a shell sends about `state.downloads`: `downloadAction(id, action)` and `clearDownloads()`. |
-| `@/sdk/permissions.js` | The permission prompts ([daily-driver.md](daily-driver.md#permissions)): `promptFor(state, tab)`, `answerPermission(prompt, choice)`, and the words `permissionHost(prompt)` and `permissionAsk(prompt)`. `@/ui/PermissionPrompt.vue` draws one in the design system's look. |
+| `@/sdk/sites.js` | A site's settings ([daily-driver.md](daily-driver.md#permissions)): the permission prompts, `promptFor(state, tab)`, `answerPermission(prompt, choice)`, and the words `permissionHost(prompt)` and `permissionAsk(prompt)`; and `hasSite(tab)` and `openSiteSettings()`. `@/ui/PermissionPrompt.vue` draws a prompt in the design system's look. |
 | `@/sdk/extensions.js` | What a shell sends about extensions: `pressExtension(id, el)`, `pinExtension(id, on)`, `manageExtensions()`, `answerExtensionPrompt(on)`. |
 | `@/sdk/controls.js` | `controls`: the one selector for what a control is, something the user presses or types in (buttons, links with an address, fields, selects, text areas, `role="tab"` and `role="button"`, anything with a `tabindex`). The SDK finds a drag bar's controls by it, and the check reads it for rule 6. |
 | `@/sdk/vue.js` | The Vue adapter: `state`, a reactive copy that follows the SDK's; `activeTab` and `controlSpace` as computeds; `workspaceOf(tab)` and `keyLabel(action)`; `connect(handlers)`, which waits for Vue's `nextTick`; the directives `v-shell`, `v-drag` and `v-page="tab.id"`; and `send`, `saveData`, `focusPage`, `setFrame`, `tabLabel`. |
@@ -236,6 +236,7 @@ shows it. The snapshot also has `running` (the version), `platform`
 | `extensionClosePopup` | | Closes the extension popup that is open |
 | `extensionAnswerPrompt` | `on` | Answers the install or removal prompt |
 | `permissionAnswer` | `id`, `choice`: `allow`, `once`, `block` or `dismiss` | Answers a permission prompt; `once` only where the prompt says `once` |
+| `openSiteSettings` | | Opens settings at the site of the window's active tab |
 | `timeline` | `kind`, `name`, `text`, `at` | An entry on the app's timeline ([logging.md](logging.md)): `kind` is `mark`, `begin`, `end`, `info`, `warn` or `error`, and `at` the page's `performance.now()`. The SDK sends them |
 
 **The layout.** Each rectangle is `{x, y, w, h}` in CSS pixels of the shell's page, which
@@ -459,6 +460,9 @@ it there; a phone shell may be left out of a rule for a desktop feature.
     named Block and Allow, or, where `once`, Block, Always allow and Allow this time; an
     Allow grants it, Block denies it, and Escape dismisses it. Not yet in Glide, Terminal, Fox, Minimal, Minimal JS and
     Example, which r10 brings; Mobile gets it as a sheet with Android, from r10.
+31. **A site's settings are one press away on a web page:** a control named Site settings
+    (`openSiteSettings`) opens settings on the active tab's site. Not yet in the shells
+    rule 30 lists, which r10 brings.
 
 **The names a shell gives its basic controls.** Each is a button, or a menu item in a menu
 one of the shell's controls opens; a menu item's name may end with its key.

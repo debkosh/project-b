@@ -50,6 +50,8 @@ export const state = reactive({
   // Each site's settings, by origin: each {origin, settings}, a setting being {kind, title,
   // value}, value 'allow' or 'block'.
   siteSettings: [],
+  // The kinds of setting settings can set for a site, in order, each {kind, title}.
+  siteKinds: [],
 });
 
 export function connect() {
@@ -78,6 +80,7 @@ export function connect() {
             workspaces: m.workspaces,
             workspaceTabs: m.workspaceTabs,
             siteSettings: m.siteSettings,
+            siteKinds: m.siteKinds,
             ready: true,
           });
           mark('settings.snapshot');

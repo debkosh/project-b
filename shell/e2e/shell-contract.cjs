@@ -40,6 +40,7 @@ const rules = {
   21: 'A page in full screen covers the whole window with nothing of the shell on it, and when it ends (Escape, or a phone\'s back key) the window is as it was',
   22: 'A site\'s sign-in shows as an alertdialog with text boxes named Username and Password, and Go\'s Sign in answers with both',
   30: 'A site asking for its camera, microphone or notifications in the active tab brings a dialog named by its question, with Block and Allow, or Block, Always allow and Allow this time; an Allow grants it, Block denies it, Escape dismisses it',
+  31: 'On a web page, a control named Site settings opens settings on that site',
 };
 
 // The desktop shells that don't draw the right-click menu yet, and who brings it to each
@@ -104,8 +105,9 @@ const noTitleYet = {
   minimal: 'r4 brings it',
 };
 
-// The shells that don't draw the permission prompt yet, and who brings it to each
-// (docs/daily-driver.md). Rule 30 holds every other shell to it.
+// The shells that don't draw the permission prompt and the Site settings control yet, and
+// who brings them to each (docs/daily-driver.md). Rules 30 and 31 hold every other shell to
+// them.
 const noPromptYet = {
   glide: 'r10 brings it',
   terminal: 'r10 brings it',
@@ -652,6 +654,29 @@ const noPromptYet = {
         rule(30, 'Escape dismisses it, answering neither', JSON.stringify(await answered(3)) === '[0]' && (await until(async () => (await again.count()) === 0)));
       } catch (e) {
         rule(30, 'its checks ran to their end', false, e.message.split('\n')[0]);
+      }
+    }
+
+    // 31. Site settings, from the page's site.
+    if (noPromptYet[id]) {
+      rule(31, `not checked yet: ${noPromptYet[id]}`, true);
+    } else {
+      try {
+        const tab = (await regions()).active;
+        await fire('navigate', 'https://contract.test/site', { tab });
+        await until(async () => {
+          const t = (await regions()).tabs.find((x) => x.id === tab);
+          return t?.url === 'https://contract.test/site' && !t.loading;
+        });
+        await fire('focusTab', '', { tab });
+        const control = ui.getByRole('button', { name: 'Site settings' });
+        rule(31, 'on a web page, a control named Site settings is there', await until(() => control.first().isVisible()));
+        await control.first().click();
+        const site = page.frameLocator('iframe.our-page[data-page="settings"]').getByRole('region', { name: 'contract.test' });
+        rule(31, 'pressed, it opens settings on that site', (await settingsShown()) && (await until(async () => (await site.count()) === 1)));
+        await closeSettings();
+      } catch (e) {
+        rule(31, 'its checks ran to their end', false, e.message.split('\n')[0]);
       }
     }
 

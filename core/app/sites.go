@@ -40,31 +40,50 @@ func (a *App) startSites(e engine.Engine, dir string) {
 	})
 	a.Shell.AddPart(shell.Part{
 		Snapshot: func(into map[string]any) { into["permissionPrompts"] = a.Sites.Prompts() },
-		Handle: func(_ engine.WindowID, t string, msg []byte) bool {
-			if t != "permissionAnswer" {
+		Handle: func(w engine.WindowID, t string, msg []byte) bool {
+			switch t {
+			case "permissionAnswer":
+				var c struct {
+					ID     int    `json:"id"`
+					Choice string `json:"choice"`
+				}
+				json.Unmarshal(msg, &c)
+				a.Sites.Answer(c.ID, c.Choice)
+			case "openSiteSettings":
+				// Settings, on the site of the window's active tab: its own address.
+				t, _ := a.Tabs.Get(a.Tabs.ActiveIn(w))
+				if o := sites.Origin(t.URL); o != "" {
+					a.Settings.OpenSection(w, "sites/"+o)
+				} else {
+					a.Settings.OpenSection(w, "sites")
+				}
+			default:
 				return false
 			}
-			var c struct {
-				ID     int    `json:"id"`
-				Choice string `json:"choice"`
-			}
-			json.Unmarshal(msg, &c)
-			a.Sites.Answer(c.ID, c.Choice)
 			return true
 		},
 	})
 	a.Settings.AddPart(settings.Part{
-		Snapshot: func(into map[string]any) { into["siteSettings"] = a.Sites.Sites() },
+		Snapshot: func(into map[string]any) {
+			into["siteSettings"] = a.Sites.Sites()
+			into["siteKinds"] = sites.Settable()
+		},
 		Handle: func(_ engine.TabID, t string, msg []byte) bool {
-			if t != "forgetSiteSetting" {
-				return false
-			}
 			var c struct {
 				Origin string `json:"origin"`
 				Kind   string `json:"kind"`
+				Value  string `json:"value"`
 			}
-			json.Unmarshal(msg, &c)
-			a.Sites.Forget(c.Origin, c.Kind)
+			switch t {
+			case "forgetSiteSetting":
+				json.Unmarshal(msg, &c)
+				a.Sites.Forget(c.Origin, c.Kind)
+			case "setSiteSetting":
+				json.Unmarshal(msg, &c)
+				a.Sites.Set(c.Origin, c.Kind, c.Value)
+			default:
+				return false
+			}
 			return true
 		},
 	})
