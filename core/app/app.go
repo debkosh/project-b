@@ -20,6 +20,7 @@ import (
 	"projectb/shell"
 	"projectb/shelldata"
 	"projectb/shells"
+	"projectb/sites"
 	"projectb/suggest"
 	"projectb/tabs"
 	"projectb/timeline"
@@ -90,6 +91,8 @@ type App struct {
 	ShellData *shelldata.Manager
 	// Downloads is the profile's downloads.
 	Downloads *downloads.Manager
+	// Sites is each site's settings, what it may use among them, and the prompts open for the rest.
+	Sites *sites.Manager
 
 	actions []*commands.Action
 	// menus are the windows' open right-click menus.
@@ -169,6 +172,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Settings = settings.New(e, a.Tabs, a.Window, a.Prefs, a.Flags, a.Update, a.Commands)
 	a.Settings.OnRelaunch(func() { relaunch.Self(); a.quit() })
 	a.Settings.AddPart(a.workspaceSettingsPart(e))
+	a.startSites(e, cfg.ProfileDir)
 	a.registerActions(e)
 
 	a.Tabs.AddGate(a.Policy.IsAllowedURL)

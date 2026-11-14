@@ -225,6 +225,9 @@ type Engine interface {
 	// ExitPageFullScreen takes a tab's page out of full screen, as its own
 	// exitFullscreen() would; PageFullScreen follows.
 	ExitPageFullScreen(tab TabID)
+	// AnswerPermission answers a page's PermissionRequested, one status for each of its
+	// kinds, in their order.
+	AnswerPermission(id PermissionID, statuses []PermissionStatus)
 
 	// CreateWindow makes window w, with its page, and puts it on screen with its first
 	// layout, a little down and right of window near, or where a first window goes when
@@ -412,7 +415,41 @@ type Listener interface {
 	// button does, or to stop. IsPageFullScreen is the engine asking whether it does now.
 	PageFullScreen(tab TabID, on bool)
 	IsPageFullScreen(tab TabID) bool
+
+	// PermissionRequested is a page asking to use what kinds name. Every kind a page can
+	// ask for comes here, those the app answers without asking the person too. The app
+	// answers with AnswerPermission, now or once the person has.
+	PermissionRequested(r PermissionRequest)
+	// PermissionStatusOf is a kind's state for origin, as a page reads it, in tab's page or
+	// 0 for a page in no tab: a worker's, or one of our own pages'.
+	PermissionStatusOf(tab TabID, origin, kind string) PermissionStatus
 }
+
+// PermissionID is the engine's number for a permission request, for this run only.
+type PermissionID uint32
+
+// PermissionRequest is a page's request: its tab, 0 for none, the origin asking, the kinds
+// it asks for, and whether a press or a key led to it. A kind is named as the Permissions
+// API names it ("camera", "microphone", "notifications", "clipboard-write",
+// "geolocation"...), "unknown" for one the engine has no name for.
+type PermissionRequest struct {
+	ID      PermissionID
+	Tab     TabID
+	Origin  string
+	Kinds   []string
+	Gesture bool
+}
+
+// PermissionStatus is a permission's state. Matches PBPermissionStatus.
+type PermissionStatus int
+
+const (
+	// PermissionAsk is undecided: a request may ask. A page that asked and got it back
+	// was neither granted nor denied, as when a prompt is closed.
+	PermissionAsk PermissionStatus = iota
+	PermissionGranted
+	PermissionDenied
+)
 
 // DialogID is the engine's number for a page's dialog.
 type DialogID int64

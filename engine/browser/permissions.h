@@ -1,21 +1,40 @@
 #ifndef PROJECT_B_ENGINE_BROWSER_PERMISSIONS_H_
 #define PROJECT_B_ENGINE_BROWSER_PERMISSIONS_H_
 
+#include <cstddef>
+#include <cstdint>
+#include <string>
 #include <vector>
 
 #include "content/public/browser/permission_controller_delegate.h"
+#include "content/public/browser/web_contents_delegate.h"
 
 namespace project_b {
 
-// What a page may do without asking: write to the clipboard, as every browser lets a page
-// do (Blink holds it to a focused page). Everything else is denied with no prompt, as it
-// was before there was this delegate, until a prompt and a Go manager decide it.
+// What a page may use (docs/daily-driver.md): the adapter between content's permissions
+// and Go's. Every request and every read goes to Go, by the kind's name and our statuses;
+// Go decides, and answers a request later, with Answer. Content's types stop here.
 class Permissions : public content::PermissionControllerDelegate {
  public:
   Permissions();
   Permissions(const Permissions&) = delete;
   Permissions& operator=(const Permissions&) = delete;
   ~Permissions() override;
+
+  // Go's answer to a request: a PBPermissionStatus for each of its kinds. A request
+  // answered already is ignored.
+  static void Answer(uint32_t request, const int32_t* statuses, size_t count);
+
+  // Whether a page may see its devices' names (enumerateDevices): as it may use them.
+  static bool CheckMediaAccess(content::RenderFrameHost* frame,
+                               const url::Origin& origin,
+                               blink::mojom::MediaStreamType type);
+
+  // getUserMedia's camera and microphone: asks this delegate, as any request does, and
+  // gives the page the devices it was allowed, the ones it named or the system's first.
+  static void RequestMediaAccess(content::WebContents* contents,
+                                 const content::MediaStreamRequest& request,
+                                 content::MediaResponseCallback callback);
 
   void RequestPermissionsFromCurrentDocument(
       content::RenderFrameHost* render_frame_host,
@@ -45,6 +64,16 @@ class Permissions : public content::PermissionControllerDelegate {
   void ResetPermission(blink::PermissionType permission,
                        const GURL& requesting_origin,
                        const GURL& embedding_origin) override;
+
+ private:
+  // A kind's status for origin in tab's page, 0 for none, as Go says it.
+  static blink::mojom::PermissionStatus StatusOf(
+      const blink::mojom::PermissionDescriptorPtr& descriptor,
+      int64_t tab,
+      const url::Origin& origin);
+  static blink::mojom::PermissionStatus StatusOf(const std::string& kind,
+                                                 int64_t tab,
+                                                 const url::Origin& origin);
 };
 
 }  // namespace project_b

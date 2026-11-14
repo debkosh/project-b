@@ -23,6 +23,7 @@
 #include "project_b/engine/browser/engine.h"
 #include "project_b/engine/browser/events.h"
 #include "project_b/engine/browser/hooks.h"
+#include "project_b/engine/browser/permissions.h"
 #include "project_b/engine/browser/timeline.h"
 #include "project_b/engine/browser/window.h"
 #include "project_b/engine/browser/dialogs.h"
@@ -541,6 +542,20 @@ void PageTab::SynchronizeVisualProperties() {
   if (content::RenderWidgetHostView* view = contents_->GetRenderWidgetHostView()) {
     view->GetRenderWidgetHost()->SynchronizeVisualProperties();
   }
+}
+
+bool PageTab::CheckMediaAccessPermission(
+    content::RenderFrameHost* render_frame_host,
+    const url::Origin& security_origin,
+    blink::mojom::MediaStreamType type) {
+  return Permissions::CheckMediaAccess(render_frame_host, security_origin, type);
+}
+
+void PageTab::RequestMediaAccessPermission(
+    content::WebContents* web_contents,
+    const content::MediaStreamRequest& request,
+    content::MediaResponseCallback callback) {
+  Permissions::RequestMediaAccess(web_contents, request, std::move(callback));
 }
 
 bool PageTab::TakeFocus(content::WebContents* source, bool reverse) {

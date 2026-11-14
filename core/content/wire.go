@@ -29,4 +29,6 @@ func Wire(h *Hooks, l engine.Listener) {
 	h.Events.OnFilesChosen = l.FilesChosen
 	h.Events.OnDialogOpened = l.DialogOpened
 	h.Events.OnDialogClosed = l.DialogClosed
+	h.Events.OnPermission = l.PermissionRequested
+	h.Events.OnPermissionOf = l.PermissionStatusOf
 }

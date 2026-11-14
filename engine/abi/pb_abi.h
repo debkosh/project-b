@@ -84,6 +84,15 @@ typedef enum PBEvent {
   PB_EVENT_DIALOG_CLOSED = 22,          // i: dialog; content gave up on it, as when its
                                         // tab navigated or closed
 
+  // A page's requests for what it may use, 40 to 49 (docs/daily-driver.md).
+  PB_EVENT_PERMISSION_REQUEST = 40,     // i: request, i: its tab or 0, s: the origin
+                                        // asking, s: its kinds, comma-separated, as the
+                                        // Permissions API names them, i: a user gesture
+                                        // led to it. No answer: Go answers with
+                                        // answer_permission, now or later
+  PB_EVENT_PERMISSION_STATUS = 41,      // i: tab or 0, s: origin, s: kind; answers i: a
+                                        // PBPermissionStatus
+
   // What a tab's page does, 60 to 79, as any engine can say it: Go's core/abi turns each
   // into the engine.Listener call of its name. A tab here is never a page of ours.
   PB_EVENT_NAVIGATION_STARTING = 60,    // i: tab, i: navigation, s: url; answers i: a
@@ -169,6 +178,13 @@ typedef enum PBDownloadCommand {
   PB_DOWNLOAD_RESUME = 3,
   PB_DOWNLOAD_REMOVE = 4,
 } PBDownloadCommand;
+
+// A permission's state. Matches engine.PermissionStatus.
+typedef enum PBPermissionStatus {
+  PB_PERMISSION_ASK = 0,  // undecided; as an answer, neither granted nor denied
+  PB_PERMISSION_GRANTED = 1,
+  PB_PERMISSION_DENIED = 2,
+} PBPermissionStatus;
 
 // Modifier bits, as Go's engine.Mods has them.
 typedef enum PBMods {
@@ -313,6 +329,9 @@ typedef struct PBEngineCalls {
   void (*stop_finding)(int64_t tab);
   // Takes a tab's page out of full screen, as its own exitFullscreen() would.
   void (*exit_page_full_screen)(int64_t tab);
+  // Answers PB_EVENT_PERMISSION_REQUEST: a PBPermissionStatus for each of its kinds, in
+  // their order. A request answered already, or whose page has gone, is ignored.
+  void (*answer_permission)(uint32_t request, const int32_t* statuses, size_t count);
   // Makes a window and the page covering it, chrome://<page>/: a shell, "shell/<id>", or
   // "picker" in a copy that hasn't chosen its profile. It puts it on screen with its first layout, a
   // little down and right of window near, or where a first window goes when near is 0.

@@ -38,6 +38,7 @@
 #include "project_b/engine/common/block_rules.h"
 #include "project_b/engine/browser/hooks.h"
 #include "project_b/engine/browser/page_tab.h"
+#include "project_b/engine/browser/permissions.h"
 #include "project_b/engine/buildflags/buildflags.h"
 #if !BUILDFLAG(IS_ANDROID)
 #include "project_b/engine/browser/mac_app.h"
@@ -272,6 +273,11 @@ void CallExitPageFullScreen(int64_t tab) {
   if (PageTab* page = g_engine->tab(tab)) {
     page->contents()->ExitFullscreen(/*will_cause_resize=*/true);
   }
+}
+
+void CallAnswerPermission(uint32_t request, const int32_t* statuses, size_t count) {
+  CheckMainThread();
+  Permissions::Answer(request, statuses, count);
 }
 
 void CallSendToSettings(int64_t tab, const char* json, size_t length) {
@@ -548,6 +554,7 @@ const PBEngineCalls* Engine::Calls() {
       .find = CallFind,
       .stop_finding = CallStopFinding,
       .exit_page_full_screen = CallExitPageFullScreen,
+      .answer_permission = CallAnswerPermission,
       .create_window = CallCreateWindow,
       .set_window_page = CallSetWindowPage,
       .request_window = CallRequestWindow,

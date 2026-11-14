@@ -8,6 +8,7 @@ import (
 	"projectb/engine"
 	"projectb/prefs"
 	"projectb/profiles"
+	"projectb/sites"
 	"projectb/timeline"
 	"projectb/tones"
 	"projectb/window"
@@ -211,6 +212,19 @@ func (p *Picker) FindReply(engine.TabID, int, int, int, bool) {}
 func (p *Picker) PageFullScreen(engine.TabID, bool)           {}
 func (p *Picker) IsPageFullScreen(engine.TabID) bool          { return false }
 func (p *Picker) DevToolsCommand(string, []byte) (any, error) { return nil, engine.ErrUnknownCommand }
+
+// The picker's page is our own, in no tab: each kind has its default, with no prompt.
+func (p *Picker) PermissionRequested(r engine.PermissionRequest) {
+	statuses := make([]engine.PermissionStatus, len(r.Kinds))
+	for i, k := range r.Kinds {
+		statuses[i] = sites.Default(k)
+	}
+	p.e.AnswerPermission(r.ID, statuses)
+}
+
+func (p *Picker) PermissionStatusOf(_ engine.TabID, _, kind string) engine.PermissionStatus {
+	return sites.Default(kind)
+}
 
 // Handover is the request of a copy started to pick while this one runs: the picker comes
 // to the front.
