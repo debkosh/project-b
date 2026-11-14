@@ -545,7 +545,7 @@ Window::Window(base::OnceClosure on_close,
                   backing:NSBackingStoreBuffered
                     defer:NO];
   impl_->window.releasedWhenClosed = NO;
-  impl_->window.title = @"Project B";
+  impl_->window.title = base::SysUTF16ToNSString(kTitle);
   // The shell draws all the way to the top of the window, with the window buttons on it.
   // An empty unified toolbar puts the buttons 26px down, the centre of the shell's 44px
   // top row inside its 4px frame.

@@ -1276,6 +1276,7 @@ def empty_checks():
         time.sleep(0.05)
     check("closing the only tab leaves the window open, showing no page",
           [(v["id"], v["tabs"]) for v in windows()] == [(1, [])] and json.loads(app.cmd("visible")) == [], (windows(), app.cmd("visible")))
+    check("it takes the app's own title, as a new window has before its first tab", windows()[0]["title"] == "Project B", windows()[0]["title"])
     check("the shell draws its empty state where the page was, as its own",
           app.js("!!document.querySelector('.empty')") and app.cmd("hit", x + w / 2, y + h / 2) == "shell", app.cmd("hit", x + w / 2, y + h / 2))
     try:
