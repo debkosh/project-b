@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue';
 import { keyLabel, send, state, tabLabel } from '@/sdk/vue.js';
-import { close, split } from './panes.js';
+import { close, shown, split, zoom, zoomed } from './panes.js';
 
 // One pane: a title bar over the place its tab's page shows. A press on the bar makes the
 // pane active.
@@ -41,6 +41,9 @@ function hint(name, action) {
       </button>
       <button class="control" type="button" aria-label="Split down" :title="hint('Split down', 'terminal.splitDown')" @pointerdown.stop @click="split(id, 'column')">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2"><rect x=".6" y=".6" width="10.8" height="10.8"/><path d="M.6 6h10.8"/></svg>
+      </button>
+      <button v-if="shown?.parts" class="control" type="button" aria-label="Zoom" :aria-pressed="zoomed === id" :class="{ on: zoomed === id }" :title="hint(zoomed === id ? 'Unzoom' : 'Zoom', 'terminal.zoom')" @pointerdown.stop @click="press(); zoom(id)">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M1 4.5V1h3.5M7.5 1H11v3.5M11 7.5V11H7.5M4.5 11H1V7.5"/></svg>
       </button>
       <button class="control" type="button" :aria-label="`Close ${tabLabel(tab)}`" title="Close" @pointerdown.stop @click="close(id)">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M9.5 2.5l-7 7M2.5 2.5l7 7"/></svg>
@@ -134,13 +137,23 @@ function hint(name, action) {
   background: var(--press);
 }
 
+.control.on {
+  background: var(--press);
+  opacity: 1;
+}
+
 .control:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring-inset);
   opacity: 1;
 }
 
-.title.active .control:focus-visible {
+.title.active .control.on {
+  background: var(--press);
+  opacity: 1;
+}
+
+.control:focus-visible {
   box-shadow: inset 0 0 0 1px var(--on-accent);
 }
 
