@@ -115,21 +115,19 @@ func extensionsShellPart(a *App, m *extensions.Manager, buttons func() map[strin
 func extensionsSettingsPart(a *App, m *extensions.Manager) settings.Part {
 	return settings.Part{
 		Snapshot: func(into map[string]any) { into["extensions"] = m.View() },
-		Handle: func(w engine.WindowID, t string, msg []byte) bool {
+		Handle: func(tab engine.TabID, t string, msg []byte) bool {
 			var c extensionCommand
 			json.Unmarshal(msg, &c)
 			switch t {
 			case "extensionOpenStore":
-				// The store is a website: it opens in a tab, which the settings page
-				// would cover.
-				a.Settings.Close(w)
-				a.Tabs.Open(webStore)
+				// The store is a website, which the settings page opens as it opens any.
+				a.Tabs.OpenBeside(tab, webStore)
 			case "extensionAnswerPrompt":
 				m.AnswerPrompt(c.On)
 			case "extensionLoadUnpacked":
-				m.LoadUnpacked(w)
+				m.LoadUnpacked(a.Tabs.WindowOf(tab))
 			case "extensionInstallPackage":
-				m.InstallPackage(w)
+				m.InstallPackage(a.Tabs.WindowOf(tab))
 			case "extensionDismissError":
 				m.DismissError()
 			case "extensionRemove":

@@ -38,6 +38,8 @@ type rig struct {
 	a     *app.App
 	got   <-chan []byte
 	pages <-chan []byte // What the mock page is told to show.
+	// settingsTab is the tab openSettings opened, whose page settings speaks for.
+	settingsTab engine.TabID
 }
 
 func start(t *testing.T, dir string, blocked ...string) *rig {
@@ -567,24 +569,36 @@ func TestSnapshotCarriesTheWindowControls(t *testing.T) {
 
 var _ engine.Listener = (*app.App)(nil)
 
-// openSettings opens the settings page from the shell's gear and reads its snapshot.
+// openSettings opens window 1's settings tab from the shell's gear and reads its page's
+// snapshot.
 func (r *rig) openSettings() (<-chan []byte, map[string]any) {
 	r.t.Helper()
-	got, stop := r.e.Feeds(1).Settings.Subscribe()
-	r.t.Cleanup(stop)
 	r.shell(`{"t":"run","text":"app.settings"}`)
 	deadline := time.Now().Add(5 * time.Second)
-	for !r.e.SettingsOpen(1) {
+	for r.settingsTab = r.settingsIn(1); r.settingsTab == 0; r.settingsTab = r.settingsIn(1) {
 		if time.Now().After(deadline) {
 			r.t.Fatal("settings never opened")
 		}
 		time.Sleep(5 * time.Millisecond)
 	}
+	got, stop := r.e.SettingsFeed(r.settingsTab).Subscribe()
+	r.t.Cleanup(stop)
 	r.settings(`{"t":"ready"}`)
 	return got, r.waitOn(got, func(m map[string]any) bool { return m["t"] == "snapshot" })
 }
 
-func (r *rig) settings(cmd string) { r.e.Post(func() { r.a.SettingsMessage(1, []byte(cmd)) }) }
+// settingsIn is window w's settings tab, or 0 when it has none.
+func (r *rig) settingsIn(w engine.WindowID) engine.TabID {
+	var tab engine.TabID
+	r.e.Post(func() { tab = r.a.Tabs.PageIn(w, "settings") })
+	r.e.Settle()
+	return tab
+}
+
+// settings sends a message from the page of the tab openSettings opened.
+func (r *rig) settings(cmd string) {
+	r.e.Post(func() { r.a.SettingsMessage(r.settingsTab, []byte(cmd)) })
+}
 
 func (r *rig) waitOn(ch <-chan []byte, match func(map[string]any) bool) map[string]any {
 	r.t.Helper()
@@ -635,8 +649,6 @@ func TestTheSettingsPageReadsAndSetsTheSettings(t *testing.T) {
 	if !strings.Contains(string(b), `"theme":"dark"`) {
 		t.Fatalf("prefs.json = %s", b)
 	}
-	r.settings(`{"t":"close"}`)
-	r.waitOn(got, func(m map[string]any) bool { return m["t"] == "closed" })
 }
 
 // The frame colour is a pref: setting it from the settings page repaints the window and
@@ -662,7 +674,7 @@ func TestTheFrameColorChangesTheWindowAndTheShellLive(t *testing.T) {
 }
 
 // A key added in the settings page runs its action, and the keymap now belongs to the
-// user. Closing a tab while settings is open closes settings.
+// user. Cmd+W closes the settings tab, as it closes any tab.
 func TestAKeyAddedInSettingsRunsItsAction(t *testing.T) {
 	dir := t.TempDir()
 	r := start(t, dir)
@@ -677,9 +689,9 @@ func TestAKeyAddedInSettingsRunsItsAction(t *testing.T) {
 
 	r.e.Fire(1, 0, "key", "closeTab")
 	deadline := time.Now().Add(5 * time.Second)
-	for r.e.SettingsOpen(1) {
+	for r.settingsIn(1) != 0 {
 		if time.Now().After(deadline) {
-			t.Fatal("Cmd+W didn't close settings")
+			t.Fatal("Cmd+W didn't close the settings tab")
 		}
 		time.Sleep(5 * time.Millisecond)
 	}
@@ -688,6 +700,45 @@ func TestAKeyAddedInSettingsRunsItsAction(t *testing.T) {
 		r.a.Key(engine.Key{Code: 'Y', Mods: engine.ModCmd | engine.ModShift}, engine.KeyBeforePage, engine.SurfacePage)
 	})
 	r.waitFor(func(m map[string]any) bool { return m["t"] == "tabs" && len(m["tabs"].([]any)) == 2 })
+}
+
+// Settings is a tab of the window: opening it again shows that tab at the section asked
+// for, and a key its page was recording stops when the tab closes, by Close Tab or with
+// its window.
+func TestTheSettingsTabOpensAtASectionAndEndsItsRecording(t *testing.T) {
+	r := start(t, t.TempDir())
+	defer r.stop()
+	got, snap := r.openSettings()
+	if snap["section"] != "" {
+		t.Fatalf("the first section is %v", snap["section"])
+	}
+	r.e.Post(func() { r.a.Tabs.Create(1) })
+	r.e.Post(func() { r.a.Settings.OpenSection(1, "keyboard") })
+	m := r.waitOn(got, func(m map[string]any) bool { return m["t"] == "section" })
+	var active engine.TabID
+	var count int
+	r.e.Post(func() { active, count = r.a.Tabs.ActiveID(), len(r.a.Tabs.AllIn(1)) })
+	r.e.Settle()
+	if m["section"] != "keyboard" || active != r.settingsTab || count != 3 {
+		t.Fatalf("heard %v; active %v of %d tabs, settings %v", m, active, count, r.settingsTab)
+	}
+
+	ran := func() bool {
+		var ok bool
+		r.e.Post(func() {
+			ok = r.a.Key(engine.Key{Code: 'T', Mods: engine.ModCmd}, engine.KeyBeforePage, engine.SurfacePage)
+		})
+		r.e.Settle()
+		return ok
+	}
+	r.settings(`{"t":"recording","on":true}`)
+	if ran() {
+		t.Fatal("a key ran while the page recorded one")
+	}
+	r.shell(fmt.Sprintf(`{"t":"closeTab","id":%d}`, r.settingsTab))
+	if r.e.Settle(); r.settingsIn(1) != 0 || !ran() {
+		t.Fatal("closing the settings tab left the keys recording")
+	}
 }
 
 // Ctrl+Tab goes back through recent tabs while Ctrl is held, as Cmd+Tab does through apps,
@@ -800,16 +851,16 @@ func TestASecondWindow(t *testing.T) {
 	r.e.Fire(1, 0, "key", "newTab")
 	r.waitFor(isTabs(2))
 
-	// Settings opens over the window it was asked in.
+	// Settings opens as a tab of the window it was asked in.
 	r.e.Fire(2, 0, "focus", "")
 	r.e.Post(func() { r.a.ShellMessage(2, []byte(`{"t":"run","text":"app.settings"}`)) })
 	r.e.Settle()
-	if !r.e.SettingsOpen(2) || r.e.SettingsOpen(1) {
-		t.Fatalf("settings open: window 1 %v, window 2 %v", r.e.SettingsOpen(1), r.e.SettingsOpen(2))
+	if r.settingsIn(2) == 0 || r.settingsIn(1) != 0 {
+		t.Fatalf("settings tabs: window 1 %v, window 2 %v", r.settingsIn(1), r.settingsIn(2))
 	}
 
-	// Closing window 2's tabs leaves it open with none: its settings page goes first,
-	// then a tab at a time. Close Tab again closes it, and the app goes on with window 1.
+	// Closing window 2's tabs leaves it open with none, a tab at a time, the settings tab
+	// among them. Close Tab again closes it, and the app goes on with window 1.
 	for range 3 {
 		r.e.Fire(2, 0, "key", "closeTab")
 	}
@@ -1407,8 +1458,8 @@ func TestTheSettingsPageEditsMovesAndCountsWorkspaces(t *testing.T) {
 	}
 }
 
-// New tab in workspace, from a workspace's row menu, opens a tab in it in the page's own
-// window and closes the page, so the tab is what shows. An id the list doesn't hold opens
+// New tab in workspace, from a workspace's row menu, opens a tab in it at the end of the
+// page's own window and shows it; the settings tab stays. An id the list doesn't hold opens
 // nothing.
 func TestTheSettingsPageOpensATabInAWorkspace(t *testing.T) {
 	r := start(t, t.TempDir())
@@ -1427,19 +1478,19 @@ func TestTheSettingsPageOpensATabInAWorkspace(t *testing.T) {
 	r.settings(`{"t":"openInWorkspace","id":"` + work + `"}`)
 	r.e.Settle()
 	var in []string
-	var open bool
+	var active engine.TabID
 	r.e.Post(func() {
 		for _, tab := range r.a.Tabs.All()[before:] {
 			in = append(in, tab.Workspace)
 		}
-		open = r.a.Settings.IsOpen(r.a.Tabs.Front())
+		active = r.a.Tabs.ActiveID()
 	})
 	r.e.Settle()
 	if len(in) != 1 || in[0] != work {
 		t.Fatalf("new tabs are in %q, want one in %s", in, work)
 	}
-	if open {
-		t.Fatal("the settings page is still open")
+	if r.settingsIn(1) != r.settingsTab || active == r.settingsTab {
+		t.Fatalf("the settings tab %v, now %v; active %v", r.settingsTab, r.settingsIn(1), active)
 	}
 }
 
@@ -1487,7 +1538,8 @@ func TestTheSettingsPageDeletesAWorkspace(t *testing.T) {
 		left, inW2, erased, first, items = r.a.Tabs.AllIn(1), r.a.Tabs.AllIn(w2), r.e.Erased(), r.e.FirstWorkspace(), r.a.MenuList("workspaces")
 	})
 	r.e.Settle()
-	if len(left) != 1 || left[0].Workspace != "" || len(inW2) != 0 || r.e.Closed(w2) || r.e.Closed(1) {
+	// Window 1 keeps its tab in Main, and the settings tab, which is in no workspace.
+	if len(left) != 2 || left[0].Workspace != "" || left[1].ID != r.settingsTab || len(inW2) != 0 || r.e.Closed(w2) || r.e.Closed(1) {
 		t.Fatalf("window 1 has %+v and window 2 %+v; window 2 closed %v, window 1 %v", left, inW2, r.e.Closed(w2), r.e.Closed(1))
 	}
 	if !reflect.DeepEqual(erased, []mockengine.Erase{{Workspace: work}}) || first != "" || len(items) != 1 || items[0].Title != "Main" {
@@ -1500,31 +1552,28 @@ func TestTheSettingsPageDeletesAWorkspace(t *testing.T) {
 	r.e.Settle()
 	r.e.Post(func() { left, erased = r.a.Tabs.All(), r.e.Erased() })
 	r.e.Settle()
-	if len(left) != 1 || len(erased) != 1 || len(workspaces.New(dir).List()) != 1 {
+	if len(left) != 2 || len(erased) != 1 || len(workspaces.New(dir).List()) != 1 {
 		t.Fatalf("deleting the last left %+v and erased %+v", left, erased)
 	}
 }
 
-// A window whose every tab is in the workspace deleted, with the settings page open in it,
-// stays open with no tabs and the page still open, and the engine is asked to erase the
-// workspace.
+// A window whose every tab is in the workspace deleted stays open with no tabs, and the
+// engine is asked to erase the workspace.
 func TestDeletingAWorkspaceLeavesAWindowOfOnlyItsTabsEmpty(t *testing.T) {
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "workspaces.json"), []byte(`{"version":2,"workspaces":[{"id":"0a1b2c3d","name":"Work","color":"#5b7fd6"},{"id":"","name":"Main","color":"#3470d0"}]}`), 0o600)
 	r := start(t, dir)
 	defer r.stop()
 	r.e.Post(func() { r.a.Tabs.Create(1) })
-	r.openSettings()
-	r.settings(`{"t":"deleteWorkspace","id":"0a1b2c3d"}`)
+	r.shell(`{"t":"deleteWorkspace","workspace":"0a1b2c3d"}`)
 	r.waitFor(isTabs(0))
 	r.e.Settle()
 	var left []tabs.Tab
 	var erased []mockengine.Erase
-	var open bool
-	r.e.Post(func() { left, erased, open = r.a.Tabs.AllIn(1), r.e.Erased(), r.a.Settings.IsOpen(1) })
+	r.e.Post(func() { left, erased = r.a.Tabs.AllIn(1), r.e.Erased() })
 	r.e.Settle()
-	if r.e.Closed(1) || r.e.Quit() || !open || len(left) != 0 {
-		t.Fatalf("window 1 closed %v, the app quit %v, settings open %v; the window has %+v", r.e.Closed(1), r.e.Quit(), open, left)
+	if r.e.Closed(1) || r.e.Quit() || len(left) != 0 {
+		t.Fatalf("window 1 closed %v, the app quit %v; the window has %+v", r.e.Closed(1), r.e.Quit(), left)
 	}
 	if !reflect.DeepEqual(erased, []mockengine.Erase{{Workspace: "0a1b2c3d"}}) {
 		t.Fatalf("the engine erased %+v", erased)

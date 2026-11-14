@@ -7,9 +7,10 @@
 #include "base/functional/bind.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/utf_string_conversions.h"
+#include "base/values.h"
+#include "build/build_config.h"
 #include "components/input/native_web_keyboard_event.h"
 #include "content/public/browser/context_menu_params.h"
-#include "build/build_config.h"
 #include "content/public/browser/keyboard_event_processing_result.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
@@ -17,6 +18,7 @@
 #include "content/public/browser/render_widget_host.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/web_contents.h"
+#include "content/public/browser/web_ui.h"
 #include "net/base/net_errors.h"
 #include "project_b/engine/browser/engine.h"
 #include "project_b/engine/browser/events.h"
@@ -130,6 +132,13 @@ PageTab::PageTab(int64_t id,
 
 bool PageTab::internal() const {
   return contents_->GetBrowserContext() == Engine::Get()->pages_context();
+}
+
+void PageTab::SendToPage(const std::string& json) {
+  if (content::WebUI* web_ui = contents_->GetWebUI()) {
+    std::vector<base::ValueView> args = {json};
+    web_ui->CallJavascriptFunctionUnsafe("__shellReceive", args);
+  }
 }
 
 PageTab::~PageTab() {

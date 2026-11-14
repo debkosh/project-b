@@ -80,6 +80,12 @@ async function until(fn, ms = 5000) {
   return false;
 }
 const regions = async (q = '') => (await fetch(`${base}/mock/regions${q}`)).json();
+// The window's settings tab, 0 for none, and its closing, as a shell asks for it.
+const settingsTab = async () => (await regions()).settings;
+const closeSettings = async () => {
+  await fetch(`${base}/shell/send`, { method: 'POST', body: JSON.stringify({ t: 'closeTab', id: await settingsTab() }) });
+  await until(async () => (await settingsTab()) === 0);
+};
 const runtime = async () => (await fetch(`${base}/mock/extensions`)).json();
 const fire = (kind, extension, value) => fetch(`${base}/mock/extensions/fire`, { method: 'POST', body: new URLSearchParams({ kind, extension, value }) });
 const call = async (extension, fn, args) =>
@@ -107,19 +113,19 @@ const same = (a, b) => !!a && !!b && ['x', 'y', 'w', 'h'].every((k) => Math.abs(
   await fetch(`${base}/shell/send`, { method: 'POST', body: JSON.stringify({ t: 'newTab', text: 'https://example.com/' }) });
   await shell.frameLocator('iframe.mock-page').getByRole('button', { name: 'Navigate' }).waitFor();
 
-  // The dev window draws the settings page over the shell once Go asks for it, as the real
-  // window does (core/cmd/dev/window.html). The test drives a page of its own at
-  // /settings, which talks to Go the same way, and stays usable once Go has closed the one
-  // over the shell.
+  // The dev window shows the settings page in the settings tab's frame once Go opens it, as
+  // the real window does (core/cmd/dev/window.html). The test drives a page of its own,
+  // the same tab's at /settings/?tab=<id>, which talks to Go the same way, and stays
+  // usable once Go has closed the tab.
   const open = async () => {
     const p = await browser.newPage({ viewport: { width: 1100, height: 800 } });
     watch(p);
-    await p.goto(base + '/settings/');
+    await p.goto(`${base}/settings/?tab=${await settingsTab()}`);
     await p.getByRole('heading', { name: 'Settings' }).waitFor();
     return p;
   };
   await ui.getByRole('button', { name: 'Settings', exact: true }).click();
-  await until(async () => (await regions()).settingsOpen === true);
+  await until(async () => (await settingsTab()) !== 0);
   let page = await open();
 
   await page.getByRole('button', { name: 'Extensions' }).click();
@@ -127,14 +133,14 @@ const same = (a, b) => !!a && !!b && ['x', 'y', 'w', 'h'].every((k) => Math.abs(
   const storeRow = page.getByRole('region', { name: 'Store' });
   check('settings shows the Extensions section', await installed.getByText('No extensions installed').isVisible() && await storeRow.getByText('Chrome Web Store').isVisible());
 
-  // The store is a website, which opens in a tab.
+  // The store is a website, which opens in a tab beside the settings tab.
   await storeRow.getByRole('button', { name: 'Open' }).click();
-  check('the store opens in a tab, from under the settings page', await until(async () => (await regions()).settingsOpen === false && (await ui.getByRole('tab').count()) === 2));
+  check('the store opens in a tab beside the settings tab, which stays', await until(async () => {
+    const r = await regions();
+    return r.tabs.length === 3 && r.tabs[1].id === r.settings && r.tabs[2].url === 'https://chromewebstore.google.com/' && r.active === r.tabs[2].id;
+  }), JSON.stringify((await regions()).tabs));
   await ui.getByRole('button', { name: 'Settings', exact: true }).click();
-  await until(async () => (await regions()).settingsOpen === true);
-  page = await open();
-  await page.getByRole('button', { name: 'Extensions' }).click();
-  installed = page.getByRole('region', { name: 'Installed' });
+  await until(async () => (await regions()).active === (await settingsTab()));
 
   // A package file, which the engine asks about before it installs.
   const pick = async () => {
@@ -150,16 +156,15 @@ const same = (a, b) => !!a && !!b && ['x', 'y', 'w', 'h'].every((k) => Math.abs(
   await page.keyboard.press('Escape');
   check('Escape answers Cancel', await until(async () => (await dialog.count()) === 0));
   await sleep(200);
-  check('and leaves the settings page open', (await regions()).settingsOpen === true);
+  check('and leaves the settings tab open', (await settingsTab()) !== 0);
   await pick();
   await dialog.waitFor();
   await dialog.getByRole('button', { name: 'Cancel' }).click();
   check('Cancel installs nothing', await until(async () => (await dialog.count()) === 0) && await installed.getByText('No extensions installed').isVisible());
 
-  // The shell's copy answers as the settings page's does. The settings page covers it, as
-  // in the real window, so its button is pressed without the mouse.
+  // The shell's copy answers as the settings page's does.
   await pick();
-  await ui.getByRole('dialog').getByRole('button', { name: 'Add extension' }).dispatchEvent('click');
+  await ui.getByRole('dialog').getByRole('button', { name: 'Add extension' }).click();
   const rows = installed.getByRole('group', { name });
   // A row's actions are in its menu: Details, Pin and Remove….
   const act = async (row, item) => {
@@ -184,10 +189,6 @@ const same = (a, b) => !!a && !!b && ['x', 'y', 'w', 'h'].every((k) => Math.abs(
   await removeDialog.getByRole('button', { name: 'Remove', exact: true }).click();
   check('and then takes the unpacked one away', await until(async () => (await rows.count()) === 1));
 
-  // The settings page covers the toolbar, as in the real window, so it closes before the
-  // toolbar's checks; the test's own copy of it still turns the extension off and on.
-  await page.getByRole('button', { name: 'Close settings' }).click();
-  await until(async () => (await regions()).settingsOpen === false);
   const enabled = rows.first().getByRole('switch');
   await enabled.click();
   check('the switch turns it off', await until(async () => !(await enabled.isChecked())));
@@ -248,29 +249,26 @@ const same = (a, b) => !!a && !!b && ['x', 'y', 'w', 'h'].every((k) => Math.abs(
   await ui.getByRole('combobox', { name: 'Address' }).click();
   check('a click elsewhere in the shell closes the menu', await until(async () => (await menu.count()) === 0));
 
-  // Manage extensions opens the settings page at its Extensions section, from closed and
+  // Manage extensions opens the settings tab at its Extensions section, from closed and
   // from another section.
-  await page.getByRole('button', { name: 'Close settings' }).click();
-  await until(async () => (await regions()).settingsOpen === false);
   await page.close();
+  await closeSettings();
   await puzzle.click();
   await menu.getByRole('button', { name: 'Manage extensions' }).click();
-  check('Manage extensions opens the settings page', await until(async () => (await regions()).settingsOpen === true));
+  check('Manage extensions opens the settings tab', await until(async () => (await settingsTab()) !== 0 && (await regions()).active === (await settingsTab())));
   page = await open();
   const nav = (label) => page.getByRole('navigation').getByRole('button', { name: label });
   check('at its Extensions section', (await nav('Extensions').getAttribute('aria-current')) === 'page' && await page.getByRole('region', { name: 'Installed' }).isVisible());
   await nav('General').click();
-  // With the settings page over the toolbar, a person can't reach the menu; the test
-  // presses its buttons without the mouse.
-  await puzzle.dispatchEvent('click');
-  await menu.getByRole('button', { name: 'Manage extensions' }).dispatchEvent('click');
+  await puzzle.click();
+  await menu.getByRole('button', { name: 'Manage extensions' }).click();
   check('and goes back there when it is already open', await until(async () => (await nav('Extensions').getAttribute('aria-current')) === 'page'));
 
   await page.getByRole('region', { name: 'Installed' }).getByRole('button', { name: `Actions for ${name}` }).click();
   await page.getByRole('menuitem', { name: 'Remove…' }).click();
   await page.getByRole('dialog', { name: `Remove ${name}?` }).getByRole('button', { name: 'Remove', exact: true }).click();
   check('Remove takes it away', await until(async () => await page.getByRole('region', { name: 'Installed' }).getByText('No extensions installed').isVisible()));
-  await puzzle.dispatchEvent('click');
+  await puzzle.click();
   check('and from the menu', await until(async () => (await menu.textContent()).includes('No extensions installed')));
 
   // With the flag off, the build's extensions don't start. The server's restart cuts the
@@ -286,7 +284,7 @@ const same = (a, b) => !!a && !!b && ['x', 'y', 'w', 'h'].every((k) => Math.abs(
   errors.splice(before);
   check('with the flag off the shell has no extensions toolbar', (await ui.locator('.pbx-toolbar').count()) === 0);
   await ui.getByRole('button', { name: 'Settings', exact: true }).click();
-  await until(async () => (await regions()).settingsOpen === true);
+  await until(async () => (await settingsTab()) !== 0);
   page = await open();
   check('and settings no Extensions section', (await page.getByRole('navigation').getByRole('button', { name: 'Extensions' }).count()) === 0);
   await page.getByRole('button', { name: 'Flags' }).click();

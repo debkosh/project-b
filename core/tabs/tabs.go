@@ -105,6 +105,7 @@ type Manager struct {
 	onFinished []func(Tab)
 	onTitle    []func(Tab)
 	onList     []func()
+	onClosed   []func(Tab)
 	onEmpty    []func(w engine.WindowID, moved bool)
 	onFront    []func(engine.WindowID)
 	onMoved    []func(tab engine.TabID, from engine.WindowID, fromIndex int, to engine.WindowID)
@@ -151,6 +152,9 @@ func (m *Manager) OnTitleChanged(f func(Tab)) { m.onTitle = append(m.onTitle, f)
 // OnListChanged subscribes to a tab opening or closing, or a window's active tab changing.
 func (m *Manager) OnListChanged(f func()) { m.onList = append(m.onList, f) }
 
+// OnClosed subscribes to a tab closing, on its own or with its window.
+func (m *Manager) OnClosed(f func(Tab)) { m.onClosed = append(m.onClosed, f) }
+
 // OnEmpty subscribes to a window's last tab leaving it: closed there, or, with moved,
 // moved to another window.
 func (m *Manager) OnEmpty(f func(w engine.WindowID, moved bool)) { m.onEmpty = append(m.onEmpty, f) }
@@ -188,9 +192,11 @@ func (m *Manager) frontMaybeChanged(was engine.WindowID) {
 // front now.
 func (m *Manager) RemoveWindow(w engine.WindowID) {
 	for _, id := range m.windows[w].order {
+		t := *m.tabs[id]
 		delete(m.tabs, id)
 		delete(m.windowOf, id)
 		m.eng.CloseTab(id)
+		m.closed(t)
 	}
 	delete(m.windows, w)
 	was := m.Front()
@@ -269,14 +275,12 @@ func (m *Manager) OpenPage(w engine.WindowID, page string) engine.TabID {
 		m.Activate(id)
 		return id
 	}
-	win := m.windows[w]
-	workspace := m.NewTabWorkspace(w)
+	workspace, active := m.NewTabWorkspace(w), m.ActiveIn(w)
 	id := m.eng.CreateInternalTab()
 	t := m.add(id, w)
 	t.Page, t.Workspace, t.URL = page, workspace, m.PageURL(page)
-	// add put it last; it goes beside the active tab instead.
-	if i := slices.Index(win.order, win.active); i >= 0 {
-		win.order = slices.Insert(win.order[:len(win.order)-1], i+1, id)
+	if active != 0 {
+		m.beside(id, active)
 	}
 	m.eng.LoadURL(id, t.URL)
 	m.Activate(id)
@@ -438,9 +442,17 @@ func (m *Manager) close(id engine.TabID, recent bool) {
 	w := m.windowOf[id]
 	m.leaveGroup(id)
 	i := m.detach(id)
+	t := *m.tabs[id]
 	delete(m.tabs, id)
 	m.eng.CloseTab(id)
+	m.closed(t)
 	m.left(w, id, i, false, recent)
+}
+
+func (m *Manager) closed(t Tab) {
+	for _, f := range m.onClosed {
+		f(t)
+	}
 }
 
 // Move moves a tab to window w, at index in its list, and makes it the active tab there.
@@ -649,6 +661,25 @@ func (m *Manager) OpenFor(tab engine.TabID, u string) {
 // workspace given, shown or behind the active one.
 func (m *Manager) OpenFrom(opener engine.TabID, u, workspace string, foreground bool) engine.TabID {
 	return m.open(opener, u, workspace, foreground)
+}
+
+// OpenBeside opens a URL one of our tabs asked for, which isn't one of our pages, as a web tab
+// beside it, in the workspace it was opened from, and shows it.
+func (m *Manager) OpenBeside(ours engine.TabID, u string) engine.TabID {
+	workspace := m.HomeOf(ours)
+	id := m.eng.CreateTab(workspace)
+	t := m.add(id, m.windowOf[ours])
+	t.URL, t.Workspace = address(u), workspace
+	m.beside(id, ours)
+	m.Activate(id)
+	m.eng.LoadURL(id, u)
+	return id
+}
+
+// beside moves tab id, which add just put last in its window, to after tab after.
+func (m *Manager) beside(id, after engine.TabID) {
+	win := m.windows[m.windowOf[id]]
+	win.order = slices.Insert(win.order[:len(win.order)-1], slices.Index(win.order, after)+1, id)
 }
 
 func (m *Manager) open(opener engine.TabID, u, workspace string, foreground bool) engine.TabID {

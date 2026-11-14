@@ -60,6 +60,7 @@ type Eng struct {
 }
 
 func (e *Eng) CreateTab(string) engine.TabID     { e.Calls[CCreateTab]++; e.next++; return e.next }
+func (e *Eng) CreateInternalTab() engine.TabID   { e.Calls[CCreateTab]++; e.next++; return e.next }
 func (e *Eng) SetFirstWorkspace(string)          { e.Calls[COther]++ }
 func (e *Eng) EraseWorkspace(string)             { e.Calls[COther]++ }
 func (e *Eng) CloseTab(engine.TabID)             { e.Calls[CCloseTab]++ }
@@ -88,9 +89,7 @@ func (e *Eng) SetWindowLayout(engine.WindowID, engine.WindowLayout) { e.Calls[CL
 func (e *Eng) FocusTab(engine.TabID)                                { e.Calls[CFocus]++ }
 func (e *Eng) FocusShell(engine.WindowID)                           { e.Calls[CFocus]++ }
 func (e *Eng) SetShellBack(engine.WindowID, bool)                   { e.Calls[COther]++ }
-func (e *Eng) OpenSettings(engine.WindowID)                         { e.Calls[COther]++ }
-func (e *Eng) CloseSettings(engine.WindowID)                        { e.Calls[COther]++ }
-func (e *Eng) SendToSettings(engine.WindowID, []byte)               { e.Calls[CSendToSettings]++ }
+func (e *Eng) SendToSettings(engine.TabID, []byte)                  { e.Calls[CSendToSettings]++ }
 func (e *Eng) AppCommand(engine.AppCommand)                         { e.Calls[COther]++ }
 func (e *Eng) SetDockColor(string)                                  { e.Calls[COther]++ }
 func (e *Eng) SendToShell(w engine.WindowID, msg []byte) {

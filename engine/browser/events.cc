@@ -5,7 +5,6 @@
 #include "content/public/browser/web_contents.h"
 #include "project_b/engine/browser/hooks.h"
 #include "project_b/engine/common/block_rules.h"
-#include "project_b/engine/browser/settings_page.h"
 #include "third_party/blink/public/common/input/web_input_event.h"
 
 namespace project_b {
@@ -13,15 +12,9 @@ namespace events {
 
 namespace {
 
-// The shell's id is 0, the settings page's its own, and a tab's is positive.
+// The shell's id is 0, and a tab's is positive.
 PBSurface SurfaceOf(content::WebContents* source) {
-  switch (hooks::TabOf(source)) {
-    case 0:
-      return PB_SURFACE_SHELL;
-    case kSettingsPageId:
-      return PB_SURFACE_SETTINGS;
-  }
-  return PB_SURFACE_PAGE;
+  return hooks::TabOf(source) == 0 ? PB_SURFACE_SHELL : PB_SURFACE_PAGE;
 }
 
 int64_t ModsOf(const input::NativeWebKeyboardEvent& event) {

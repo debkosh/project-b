@@ -90,8 +90,8 @@ func (a *App) changeWorkspaces(e engine.Engine, t string, c workspaceChange) boo
 }
 
 // workspaceSettingsPart is the settings page's Workspaces section: the list, each with the
-// number of tabs open in it, New workspace with a name and a colour, editing one's name and
-// colour, moving one up or down the list, deleting one, and a new tab in one. Every copy
+// number of web tabs open in it, New workspace with a name and a colour, editing one's name
+// and colour, moving one up or down the list, deleting one, and a new tab in one. Every copy
 // has it, a copy on a folder named outright too, since the list is the profile folder's.
 // The pages hear the list again through its OnChanged, as the shells do, and the counts
 // again when a tab opens or closes and they differ.
@@ -108,21 +108,20 @@ func (a *App) workspaceSettingsPart(e engine.Engine) settings.Part {
 			into["workspaces"] = a.workspacesShown()
 			into["workspaceTabs"] = counts
 		},
-		Handle: func(w engine.WindowID, t string, msg []byte) bool {
+		Handle: func(tab engine.TabID, t string, msg []byte) bool {
 			var c workspaceChange
 			json.Unmarshal(msg, &c)
 			if t != "openInWorkspace" {
 				return a.changeWorkspaces(e, t, c)
 			}
-			// New tab in workspace: a tab in it at the end of the page's own window, and the
-			// page closes so the tab is what the user sees, as choosing it in the Tab menu
-			// does.
+			// New tab in workspace: a tab in it at the end of the page's own window, made
+			// active, as choosing it in the Tab menu does.
 			if !slices.ContainsFunc(a.Workspaces.List(), func(x workspaces.Workspace) bool { return x.ID == c.ID }) {
 				timeline.Warnf("workspaces: no workspace %s", c.ID)
 				return true
 			}
+			w := a.Tabs.WindowOf(tab)
 			a.Shell.Interaction(w, "tab.new", func() { a.Tabs.CreateIn(w, c.ID) })
-			a.Settings.Close(w)
 			return true
 		},
 	}

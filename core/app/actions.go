@@ -45,15 +45,8 @@ func (a *App) registerActions(e engine.Engine) {
 		a.NewWindow("")
 	})
 	add("window.close", "Close Window", func() { a.Window.Request(a.Tabs.Front(), engine.WindowClose) })
-	// The settings page sits over the tabs like a tab of its own, so closing the tab
-	// closes it first. In a window with no tabs it closes the window, so it stays enabled.
-	add("tab.close", "Close Tab", func() {
-		if a.Settings.IsOpen(a.Tabs.Front()) {
-			a.Settings.Close(a.Tabs.Front())
-			return
-		}
-		a.Shell.CloseTab(a.Tabs.Front())
-	})
+	// In a window with no tabs it closes the window, so it stays enabled.
+	add("tab.close", "Close Tab", func() { a.Shell.CloseTab(a.Tabs.Front()) })
 
 	side := add("view.tabsSide", "Tabs on Side", func() { a.Shell.SwitchTabLayout(prefs.TabsVertical) })
 	side.Checked = func() bool { return a.Prefs.TabLayout() == prefs.TabsVertical }

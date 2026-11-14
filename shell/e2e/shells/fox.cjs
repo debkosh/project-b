@@ -246,12 +246,13 @@ const { check, fire, out, regions, settle, until } = lib;
   check('New Tab in the menu opens a tab', await tabCount(24));
   await menuButton.click();
   await rows.filter({ hasText: 'Settings' }).click();
-  check('Settings opens the settings page', await until(async () => (await go()).settingsOpen));
+  check('Settings opens the settings tab', await until(async () => (await go()).settings !== 0));
 
   // With no tabs the shell draws the page area itself, as its own: No tabs, and New Tab
-  // with its key, which opens a tab there. Close Tab closes the settings page first.
+  // with its key, which opens a tab there. Close Tab closes the settings tab, the active
+  // one, first.
   await fire('menu', 'tab.close');
-  await until(async () => !(await go()).settingsOpen);
+  await until(async () => (await go()).settings === 0);
   for (let n = (await go()).tabs.length; n > 0; n--) {
     await fire('menu', 'tab.close');
     await tabCount(n - 1);

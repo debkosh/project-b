@@ -48,6 +48,20 @@ func TestExtensionsWaitForTheirFlag(t *testing.T) {
 	}
 }
 
+// The extension manager's Chrome Web Store opens as the settings page opens any website:
+// a tab beside it, in the workspace it was opened from.
+func TestTheStoreOpensBesideTheSettingsTab(t *testing.T) {
+	r := startExtensions(t, t.TempDir())
+	defer r.stop()
+	r.openSettings()
+	r.settings(`{"t":"extensionOpenStore"}`)
+	r.until("the store's tab", func() bool {
+		in := r.a.Tabs.AllIn(1)
+		return len(in) == 3 && in[1].ID == r.settingsTab && in[2].URL == "https://chromewebstore.google.com/" &&
+			in[2].Workspace == in[0].Workspace && r.a.Tabs.ActiveID() == in[2].ID && in[2].Title != "" && !in[2].Loading
+	})
+}
+
 // on runs fn on the main thread and waits for it.
 func (r *extRig) on(fn func()) {
 	done := make(chan struct{})

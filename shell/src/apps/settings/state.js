@@ -7,7 +7,7 @@ import { extensionsMessage } from '@extensions';
 
 const channel = bridge('settings');
 export const send = channel.send;
-export const { mark, end, firstPaint, inputs } = channel.timeline;
+export const { mark, end, firstPaint } = channel.timeline;
 
 export const state = reactive({
   ready: false,
@@ -15,7 +15,6 @@ export const state = reactive({
   // Its tones, light and dark, from Go, which the page paints itself with: null until the
   // snapshot.
   tones: null,
-  controls: { x: 0, y: 0, w: 0, h: 0 },
   tabLayout: 'vertical',
   // Where a phone shell puts its address bar: 'bottom' or 'top'.
   addressBarPosition: 'bottom',
@@ -59,7 +58,6 @@ export function connect() {
           Object.assign(state, {
             windowColor: m.windowColor,
             tones: m.tones,
-            controls: m.controls,
             tabLayout: m.tabLayout,
             addressBarPosition: m.addressBarPosition,
             phoneShells: m.phoneShells || null,
@@ -104,9 +102,6 @@ export function connect() {
         case 'windowColor':
           state.windowColor = m.windowColor;
           state.tones = m.tones;
-          break;
-        case 'controls':
-          state.controls = m.controls;
           break;
         case 'section':
           state.section = m.section;

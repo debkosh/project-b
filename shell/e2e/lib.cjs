@@ -87,6 +87,10 @@ lib.regions = async ({ window = 1, x, y } = {}) => {
   return (await fetch(`${lib.base}/mock/regions?${q}`)).json();
 };
 
+// closeTab closes a tab as a shell asks for it.
+lib.closeTab = (id, { window = 1 } = {}) =>
+  fetch(`${lib.base}/shell/send?window=${window}`, { method: 'POST', body: JSON.stringify({ t: 'closeTab', id }) });
+
 // fire does what a page or the user can (/mock/fire): kind 'menu' with an action's id runs
 // it, 'focusTab' is a press in a tab's page, and every button of the mock page is a kind.
 lib.fire = (kind, value = '', { window = 1, tab = 0 } = {}) =>
@@ -108,6 +112,7 @@ lib.watch = (page, errors) => {
 //   ui            a locator into the shell's frame, which survives it loading again
 //   shell()       the shell's frame itself, to evaluate in
 //   mockPage(t)   a locator into the mock page of tab t
+//   settings      a locator into the settings page, which the window's settings tab shows
 //   errors        every error the window and its frames logged
 //   waiting()     with held, whether the shell has said ready and waits for the snapshot
 //   release()     with held, lets its ready through, and the snapshot comes
@@ -142,6 +147,7 @@ lib.openWindow = async (browser, { window = 1, viewport = { width: 1100, height:
       await ready.continue();
       await page.unroute(sends, hold);
     },
+    settings: page.frameLocator('iframe.our-page[data-page="settings"]'),
   };
 };
 

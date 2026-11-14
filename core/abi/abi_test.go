@@ -140,10 +140,10 @@ func TestKeysReachTheAppWithItsAnswer(t *testing.T) {
 	if key('W', 0, engine.KeyBeforePage, engine.SurfacePage) != 0 {
 		t.Error("a W the app didn't want was taken from the page")
 	}
-	if key('L', engine.ModCmd, engine.KeyUnhandled, engine.SurfaceSettings) != 1 {
-		t.Error("Cmd+L after the settings page was not used")
+	if key('L', engine.ModCmd, engine.KeyUnhandled, engine.SurfaceShell) != 1 {
+		t.Error("Cmd+L after the shell was not used")
 	}
-	want := []string{"key 87 12 1 1", "key 87 0 1 1", "key 76 8 2 3"}
+	want := []string{"key 87 12 1 1", "key 87 0 1 1", "key 76 8 2 2"}
 	if !reflect.DeepEqual(r.got, want) {
 		t.Fatalf("got %q, want %q", r.got, want)
 	}

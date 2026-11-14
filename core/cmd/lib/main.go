@@ -42,9 +42,7 @@ static inline void call_stop_finding(const PBEngineCalls* c, int64_t tab) { c->s
 static inline void call_exit_page_full_screen(const PBEngineCalls* c, int64_t tab) { c->exit_page_full_screen(tab); }
 static inline void call_answer_sign_in(const PBEngineCalls* c, int64_t dialog, int ok, const char* username, const char* password) { c->answer_sign_in(dialog, ok, username, password); }
 static inline void call_answer_dialog(const PBEngineCalls* c, int64_t dialog, int ok, const char* text) { c->answer_dialog(dialog, ok, text); }
-static inline void call_open_settings(const PBEngineCalls* c, int64_t window) { c->open_settings(window); }
-static inline void call_close_settings(const PBEngineCalls* c, int64_t window) { c->close_settings(window); }
-static inline void call_send_to_settings(const PBEngineCalls* c, int64_t window, const char* json, size_t length) { c->send_to_settings(window, json, length); }
+static inline void call_send_to_settings(const PBEngineCalls* c, int64_t tab, const char* json, size_t length) { c->send_to_settings(tab, json, length); }
 static inline void call_set_menu(const PBEngineCalls* c, const char* json, size_t length) { c->set_menu(json, length); }
 static inline void call_app_command(const PBEngineCalls* c, int32_t command) { c->app_command(command); }
 static inline void call_set_window_layout(const PBEngineCalls* c, int64_t window, const PBWindowLayout* layout, const PBRegion* regions, size_t count, const PBVisibleTab* tabs, size_t tab_count) { c->set_window_layout(window, layout, regions, count, tabs, tab_count); }
@@ -232,15 +230,11 @@ func (e *nativeEngine) AnswerSignIn(id engine.DialogID, ok bool, username, passw
 	C.call_answer_sign_in(e.calls, C.int64_t(id), yes, u, p)
 }
 
-func (e *nativeEngine) OpenSettings(w engine.WindowID) { C.call_open_settings(e.calls, C.int64_t(w)) }
-
-func (e *nativeEngine) CloseSettings(w engine.WindowID) { C.call_close_settings(e.calls, C.int64_t(w)) }
-
-func (e *nativeEngine) SendToSettings(w engine.WindowID, msg []byte) {
+func (e *nativeEngine) SendToSettings(tab engine.TabID, msg []byte) {
 	if len(msg) == 0 {
 		return
 	}
-	C.call_send_to_settings(e.calls, C.int64_t(w), (*C.char)(unsafe.Pointer(&msg[0])), C.size_t(len(msg)))
+	C.call_send_to_settings(e.calls, C.int64_t(tab), (*C.char)(unsafe.Pointer(&msg[0])), C.size_t(len(msg)))
 }
 
 func (e *nativeEngine) SetMenu(m engine.Menu) {

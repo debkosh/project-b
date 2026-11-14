@@ -46,7 +46,6 @@ struct Outlines {
   // while its outline is still drawn.
   std::vector<std::pair<int64_t, gfx::RectF>> pages;
   gfx::RectF controls;
-  bool overlay = false;
   double frame_width = 0;
 };
 
@@ -105,8 +104,8 @@ NSColor* Hex(uint32_t rgb) {
   [path stroke];
 }
 
-// Bottom to top: the frame band, the pages, the shell, the drag areas, the window
-// buttons, and the settings page over everything while it is open.
+// Bottom to top: the frame band, the pages, the shell, the drag areas and the window
+// buttons.
 - (void)drawRect:(NSRect)dirty {
   const NSSize size = self.bounds.size;
   const double band = _outlines.frame_width;
@@ -135,9 +134,6 @@ NSColor* Hex(uint32_t rgb) {
     }
   }
   [self stroke:_outlines.controls color:0xa855f7 dash:0];
-  if (_outlines.overlay) {
-    [self stroke:gfx::RectF(0, 0, size.width, size.height) color:0xf97316 dash:0];
-  }
 }
 
 @end
@@ -151,8 +147,6 @@ NSColor* Hex(uint32_t rgb) {
 // area by itself, because the app areas leave it to the server.
 @interface PBContainerView : NSView
 @property(nonatomic, weak) NSView* shellView;
-// Over everything while it is there, and it takes every press.
-@property(nonatomic, weak) NSView* overlayView;
 #if BUILDFLAG(PB_EXTENSIONS)
 // Floats over the shell and the pages, and takes the presses inside it: an
 // extension's popup.
@@ -170,7 +164,6 @@ NSColor* Hex(uint32_t rgb) {
 }
 
 @synthesize shellView = _shellView;
-@synthesize overlayView = _overlayView;
 #if BUILDFLAG(PB_EXTENSIONS)
 @synthesize popupView = _popupView;
 #endif
@@ -181,31 +174,23 @@ NSColor* Hex(uint32_t rgb) {
   [self updateAppAreas];
 }
 
-- (void)setOverlayView:(NSView*)overlayView {
-  _overlayView = overlayView;
-  [self updateAppAreas];
-}
-
 // The app's areas are everything but the drag areas, as hitTest: answers them: the
 // regions are in order, so the part of a drag area an earlier region holds, such as a
-// control in a bar that drags, stays the app's. The overlay takes every press, so while
-// it is there the whole window is the app's.
+// control in a bar that drags, stays the app's.
 - (void)updateAppAreas {
   const NSSize size = self.bounds.size;
   SkRegion app(SkIRect::MakeWH(std::ceil(size.width), std::ceil(size.height)));
-  if (!self.overlayView) {
-    SkRegion earlier;
-    for (const project_b::Window::Region& r : _regions) {
-      if (r.area == project_b::Window::Area::kDrag) {
-        const gfx::Rect drag = gfx::ToEnclosedRect(r.rect);
-        SkRegion moves(SkIRect::MakeXYWH(drag.x(), drag.y(), drag.width(), drag.height()));
-        moves.op(earlier, SkRegion::kDifference_Op);
-        app.op(moves, SkRegion::kDifference_Op);
-      }
-      const gfx::Rect held = gfx::ToEnclosingRect(r.rect);
-      earlier.op(SkIRect::MakeXYWH(held.x(), held.y(), held.width(), held.height()),
-                 SkRegion::kUnion_Op);
+  SkRegion earlier;
+  for (const project_b::Window::Region& r : _regions) {
+    if (r.area == project_b::Window::Area::kDrag) {
+      const gfx::Rect drag = gfx::ToEnclosedRect(r.rect);
+      SkRegion moves(SkIRect::MakeXYWH(drag.x(), drag.y(), drag.width(), drag.height()));
+      moves.op(earlier, SkRegion::kDifference_Op);
+      app.op(moves, SkRegion::kDifference_Op);
     }
+    const gfx::Rect held = gfx::ToEnclosingRect(r.rect);
+    earlier.op(SkIRect::MakeXYWH(held.x(), held.y(), held.width(), held.height()),
+               SkRegion::kUnion_Op);
   }
   for (PBAppAreaView* view in _appAreas) {
     [view removeFromSuperview];
@@ -227,9 +212,6 @@ NSColor* Hex(uint32_t rgb) {
   NSPoint p = [self convertPoint:point fromView:self.superview];
   if (!NSPointInRect(p, self.bounds)) {
     return nil;
-  }
-  if (self.overlayView) {
-    return [self.overlayView hitTest:p];
   }
 #if BUILDFLAG(PB_EXTENSIONS)
   if (self.popupView && NSPointInRect(p, self.popupView.frame)) {
@@ -452,7 +434,6 @@ struct Window::Impl {
       return;
     }
     outlines.controls = Controls();
-    outlines.overlay = container.overlayView != nil;
     [outline setOutlines:outlines];
     if (container.subviews.lastObject != outline) {
       [container addSubview:outline positioned:NSWindowAbove relativeTo:nil];
@@ -702,15 +683,6 @@ void Window::RemovePageView(gfx::NativeView view) {
   [view.GetNativeNSView() removeFromSuperview];
 }
 
-void Window::SetOverlayView(gfx::NativeView view) {
-  NSView* overlay = view.GetNativeNSView();
-  overlay.frame = impl_->container.bounds;
-  overlay.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
-  impl_->container.overlayView = overlay;
-  [impl_->container addSubview:overlay];
-  impl_->Outline();
-}
-
 #if BUILDFLAG(PB_EXTENSIONS)
 // The popup's view sits in a holder that rounds its corners and draws a hairline
 // around it, as the system's own popovers have. The holder goes over everything.
@@ -764,20 +736,9 @@ gfx::RectF Window::popup_bounds() const {
 void Window::NoteClick(const gfx::PointF& in_window, base::TimeTicks made) {
   PBContainerView* container = impl_->container;
   NSView* hit = [container hitTest:NSMakePoint(in_window.x(), in_window.y())];
-  if (hit && ([hit isDescendantOf:container.shellView] ||
-              (container.overlayView &&
-               [hit isDescendantOf:container.overlayView]))) {
+  if (hit && [hit isDescendantOf:container.shellView]) {
     timeline::Input("input.click", made);
   }
-}
-
-void Window::RemoveOverlayView(gfx::NativeView view) {
-  NSView* overlay = view.GetNativeNSView();
-  if (impl_->container.overlayView == overlay) {
-    impl_->container.overlayView = nil;
-  }
-  [overlay removeFromSuperview];
-  impl_->Outline();
 }
 
 bool Window::SetLayout(Layout layout) {

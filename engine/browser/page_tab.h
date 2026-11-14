@@ -37,6 +37,8 @@ class PageTab : public WebContentsObserverHooks, public WebContentsDelegateHooks
   // Go's id for the window whose layout last showed this tab, 0 before any has.
   int64_t window() const { return window_; }
   void set_window(int64_t window) { window_ = window; }
+  // Delivers one message from Go to our page in a tab of ours, as the shell gets its own.
+  void SendToPage(const std::string& json);
 
  private:
   // content::WebContentsObserver:

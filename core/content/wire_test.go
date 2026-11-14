@@ -104,8 +104,8 @@ func (r *recorder) ModsChanged(m engine.Mods)                { r.note(fmt.Sprint
 func (r *recorder) MenuChosen(action string)                 { r.note("menu " + action) }
 func (r *recorder) MenuList(name string) engine.Menu         { r.note("menu list " + name); return nil }
 func (r *recorder) OSBindings(byTitle map[string]engine.Key) { r.note(fmt.Sprint("os ", byTitle)) }
-func (r *recorder) SettingsMessage(w engine.WindowID, msg []byte) {
-	r.note(fmt.Sprintf("settings %d %s", w, msg))
+func (r *recorder) SettingsMessage(tab engine.TabID, msg []byte) {
+	r.note(fmt.Sprintf("settings %d %s", tab, msg))
 }
 func (r *recorder) PickerMessage(w engine.WindowID, msg []byte) {
 	r.note(fmt.Sprintf("picker %d %s", w, msg))
@@ -199,12 +199,12 @@ func TestEngineEventsNeedNoSubscription(t *testing.T) {
 	h.Dispatch(eventWindowChanged, []Value{{I: 2}, {D: 1100}, {D: 700}, {D: 1}, {D: 2}, {D: 3}, {D: 4}, {D: 20}, {I: 1}})
 	h.Dispatch(eventShellCrashed, []Value{{I: 2}})
 	h.Dispatch(eventShellMessage, []Value{{I: 2}, {S: `{"t":"ready"}`}})
-	h.Dispatch(eventSettingsMsg, []Value{{I: 2}, {S: `{"t":"close"}`}})
+	h.Dispatch(eventSettingsMsg, []Value{{I: 2}, {S: `{"t":"ready"}`}})
 	h.Dispatch(eventPickerMessage, []Value{{I: 2}, {S: `{"t":"open"}`}})
 	h.Dispatch(eventWindowFocused, []Value{{I: 2}})
 	h.Dispatch(eventWindowClosed, []Value{{I: 2}})
 	h.Dispatch(eventProcessCrashed, []Value{{S: "renderer"}, {S: "crashed"}, {I: 11}, {I: 42}, {S: "https://p.test/"}})
-	if !reflect.DeepEqual(r.got, []string{"opened https://p.test/ in a1b2c3d4 new window true", "window 2 1100x700 r=20 full=true", "shell 2 crashed", `shell 2 {"t":"ready"}`, `settings 2 {"t":"close"}`, `picker 2 {"t":"open"}`, "window 2 focused", "window 2 closed", "renderer crashed 11 42 https://p.test/"}) {
+	if !reflect.DeepEqual(r.got, []string{"opened https://p.test/ in a1b2c3d4 new window true", "window 2 1100x700 r=20 full=true", "shell 2 crashed", `shell 2 {"t":"ready"}`, `settings 2 {"t":"ready"}`, `picker 2 {"t":"open"}`, "window 2 focused", "window 2 closed", "renderer crashed 11 42 https://p.test/"}) {
 		t.Fatalf("got %v", r.got)
 	}
 	if h.Counts()["engine.TabOpened"] != 1 {

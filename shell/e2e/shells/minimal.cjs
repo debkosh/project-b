@@ -295,20 +295,19 @@ const names = ['Example Domain', 'Mail · Work', 'Project B on GitHub', 'Weather
   check('Escape closes it', await until(async () => (await menu.count()) === 0));
 
   // An install from the mock store's package, begun on a settings page of the test's own,
-  // asks in the shell too. That page talks to Go once Go has opened settings, and stays
-  // usable once Go has closed the one over the shell, which would cover the prompt.
-  const closeSettings = async () => {
-    await page.frameLocator('iframe.mock-settings').getByRole('button', { name: 'Close settings' }).click();
-    await until(async () => (await regions()).settingsOpen === false);
-  };
+  // asks in the shell too. That page is the settings tab's, which talks to Go while the
+  // tab is open, here behind the tab the test goes back to.
+  const was = (await regions()).active;
   await ui.getByRole('button', { name: 'Settings' }).click();
-  await until(async () => (await regions()).settingsOpen === true);
+  await until(async () => (await regions()).settings !== 0);
+  const settingsTab = (await regions()).settings;
   const settings = await browser.newPage({ viewport: { width: 1100, height: 800 } });
   const settingsErrors = [];
   lib.watch(settings, settingsErrors);
-  await settings.goto(lib.base + '/settings/');
+  await settings.goto(`${lib.base}/settings/?tab=${settingsTab}`);
   await settings.getByRole('button', { name: 'Extensions' }).click();
-  await closeSettings();
+  await ui.locator(`[role=tab][data-tab="${was}"]`).click();
+  await until(async () => (await regions()).active === was);
   const install = async () => {
     await fetch(`${lib.base}/mock/extensions/fire`, { method: 'POST', body: new URLSearchParams({ kind: 'choose', extension: '', value: packaged }) });
     await settings.getByRole('button', { name: 'Install package' }).click();
@@ -351,9 +350,10 @@ const names = ['Example Domain', 'Mail · Work', 'Project B on GitHub', 'Weather
   await page.keyboard.press('Escape');
   await extensions.click();
   await menu.locator('.pbx-manage').click();
-  check('Manage extensions opens the settings page, and closes the menu', await until(async () => (await regions()).settingsOpen === true) && (await menu.count()) === 0);
-  await closeSettings();
+  check('Manage extensions shows the settings tab, and closes the menu', await until(async () => (await regions()).active === settingsTab) && (await menu.count()) === 0);
   await settings.close();
+  await lib.closeTab(settingsTab);
+  await until(async () => (await regions()).settings === 0);
   check('the settings page logged no errors', settingsErrors.length === 0, settingsErrors.join(' | '));
   await shots('extensions');
 

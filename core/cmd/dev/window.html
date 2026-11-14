@@ -15,12 +15,15 @@
               tab, data-tab. The first is always there, hidden while the layout shows
               no tab. As the real window holds its pages until its shell has drawn the
               layout that places them, they are transparent until the shell's frame
-              after the first such layout has drawn.
+              after the first such layout has drawn. A tab of ours shows its page
+              instead, our real one, such as /settings/?tab=<id>, in a frame of its own
+              marked data-tab and data-page, which the window keeps while it holds the
+              tab, as the real window keeps its view, hidden while the layout doesn't
+              show it.
     shell     the shell the window loads, /shell/<id>/, over the whole window and
               transparent, so the page shows through its unpainted hole.
     band      the frame band around the window's edge, and the window controls where the
               engine reports them (none in full screen), over both.
-    settings  the settings page over everything while it is open.
     popup     an extension's popup under its button. The mock runs no extension pages, so
               it is a card that names the page; a click outside it closes it.
     outlines  with the Show window regions flag on, a 1px border around every rectangle
@@ -52,7 +55,7 @@
   .controls i:nth-child(1) { background: #ff5f57; }
   .controls i:nth-child(2) { background: #febc2e; }
   .controls i:nth-child(3) { background: #28c840; }
-  .mock-settings { inset: 0; width: 100%; height: 100%; background: Canvas; }
+  .our-page { display: none; }
   .mock-popup-backdrop { position: absolute; inset: 0; }
   .mock-popup {
     position: absolute; width: 320px; padding: 12px 14px; border-radius: 12px; box-sizing: border-box;
@@ -86,8 +89,9 @@
   const outlines = win.querySelector('.outlines');
   let state = { pages: [], regions: [] };
   let pointer = null;
-  let settings = null;
   let popup = null;
+  // The frames of our pages, by tab: each tab of ours whose page the window holds.
+  const ours = new Map();
   pages[0].src = `/mock/page?window=${id}&slot=0`;
 
   // What a press at x, y does, as engine.WindowLayout.At decides it: the first region
@@ -117,6 +121,8 @@
   watch(window, origin);
   const follow = (frame) => frame.addEventListener('load', () => watch(frame.contentWindow, () => ({ x: frame.offsetLeft, y: frame.offsetTop })));
   follow(pages[0]);
+  // What a page or the user does to a tab, as a mock page fires it.
+  const fire = (kind, value, tab) => fetch(`/mock/fire?window=${id}`, { method: 'POST', body: new URLSearchParams({ kind, value, tab }) });
   shell.addEventListener('load', () => {
     watch(shell.contentWindow, origin);
     // Chrome paints a frame opaque when its document's colour scheme differs from the
@@ -161,10 +167,47 @@
     while (pages.length > Math.max(1, shown.length)) pages.pop().remove();
     pages.forEach((frame, slot) => {
       const p = shown[slot];
-      frame.style.display = p ? 'block' : 'none';
-      frame.dataset.tab = p ? p.tab : '';
-      if (p) Object.assign(frame.style, { left: `${p.rect.x}px`, top: `${p.rect.y}px`, width: `${p.rect.w}px`, height: `${p.rect.h}px` });
+      frame.style.display = p && !p.page ? 'block' : 'none';
+      frame.dataset.tab = p && !p.page ? p.tab : '';
+      if (p) place(frame, p.rect);
     });
+  }
+
+  function place(frame, r) {
+    Object.assign(frame.style, { left: `${r.x}px`, top: `${r.y}px`, width: `${r.w}px`, height: `${r.h}px` });
+  }
+
+  // placeOurs keeps a frame of our page for each tab of ours the window holds, made the
+  // first time, and shows those the layout shows where it puts them. Its page's title is
+  // the tab's, and a press in it gives the tab the keyboard, as the real engine tells Go.
+  function placeOurs(held, shown) {
+    for (const [tab, frame] of ours) {
+      if (!held.some((o) => o.tab === tab)) {
+        frame.remove();
+        ours.delete(tab);
+      }
+    }
+    for (const o of held) {
+      if (ours.has(o.tab)) continue;
+      const frame = document.createElement('iframe');
+      frame.className = 'our-page';
+      frame.title = o.page;
+      frame.dataset.tab = o.tab;
+      frame.dataset.page = o.page;
+      frame.src = `/${o.page}/?tab=${o.tab}`;
+      follow(frame);
+      frame.addEventListener('load', () => {
+        fire('title', frame.contentDocument.title, o.tab);
+        frame.contentWindow.addEventListener('pointerdown', () => fire('focusTab', '', o.tab), true);
+      });
+      shell.before(frame);
+      ours.set(o.tab, frame);
+    }
+    for (const [tab, frame] of ours) {
+      const p = shown.find((s) => s.tab === tab);
+      frame.style.display = p ? 'block' : 'none';
+      if (p) place(frame, p.rect);
+    }
   }
 
   function drawFrame(s) {
@@ -175,22 +218,6 @@
     const c = s.controls;
     controls.style.display = c ? 'flex' : 'none';
     if (c) Object.assign(controls.style, { left: `${c.x}px`, top: `${c.y}px`, width: `${c.w}px`, height: `${c.h}px` });
-  }
-
-  function showSettings(open) {
-    if (open && !settings) {
-      settings = document.createElement('iframe');
-      settings.className = 'mock-settings';
-      settings.title = 'Settings';
-      settings.src = `/settings/?window=${id}`;
-      // The real overlay takes the keyboard as it opens, and gives it back as it closes.
-      settings.addEventListener('load', () => settings?.contentWindow?.focus());
-      win.append(settings);
-    } else if (!open && settings) {
-      settings.remove();
-      settings = null;
-      shell.contentWindow.focus();
-    }
   }
 
   function showPopup(p) {
@@ -216,15 +243,13 @@
 
   // drawOutlines draws what the real window's region outlines do, bottom to top: the frame
   // band's inner edge, each shown tab's page with its id, the shell's areas, the drag
-  // areas, the window buttons, and the settings page while it is open. Each kind's border
-  // is data-kind on its rectangle.
+  // areas and the window buttons. Each kind's border is data-kind on its rectangle.
   const kinds = {
     frame: { color: '#9ca3af', dash: '2 2' },
     page: { color: '#16a34a' },
     shell: { color: '#dc2626' },
     drag: { color: '#2563eb', dash: '4 3' },
     buttons: { color: '#a855f7' },
-    settings: { color: '#f97316' },
   };
   function drawOutlines(s) {
     outlines.hidden = !s.showRegions;
@@ -261,7 +286,6 @@
       for (const r of s.regions) if (r.area === kind) stroke(kind, r);
     }
     if (s.controls) stroke('buttons', s.controls);
-    if (s.settings) stroke('settings', { x: 0, y: 0, w: W, h: H });
   }
 
   new EventSource(`/mock/window/events?window=${id}`).onmessage = (e) => {
@@ -275,9 +299,9 @@
     state = msg;
     loadShell(msg.shell);
     placePages(msg.pages);
+    placeOurs(msg.ours, msg.pages);
     drawFrame(msg);
     route();
-    showSettings(msg.settings);
     showPopup(msg.popup);
     drawOutlines(msg);
   };

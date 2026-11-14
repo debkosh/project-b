@@ -38,7 +38,7 @@
 #include "project_b/engine/browser/engine.h"
 #include "project_b/engine/browser/events.h"
 #include "project_b/engine/browser/hooks.h"
-#include "project_b/engine/browser/settings_page.h"
+#include "project_b/engine/browser/page_tab.h"
 #include "project_b/engine/browser/timeline.h"
 #include "project_b/engine/browser/window.h"
 #include "services/network/public/mojom/content_security_policy.mojom.h"
@@ -58,16 +58,19 @@ namespace {
 
 // Our pages, each an app of its own (shell/src/apps/<app>) at chrome://<app>/, served from
 // shell/<app>/ beside the binary. Every shell is an app of "shell": shell <id> is
-// chrome://shell/<id>/, served from shell/shell/<id>/. Each window has the one WebContents
-// each belongs in, and their messages cross to Go as one event, with the window.
+// chrome://shell/<id>/, served from shell/shell/<id>/. A window's page, a shell or the
+// picker, belongs in the WebContents that covers its window, and its messages cross to Go
+// as one event with the window. A page a tab shows, settings, belongs in a tab of ours, and
+// its messages cross with the tab.
 struct App {
   const char* host;
   PBEvent event;
+  bool in_tab;
 };
 constexpr App kApps[] = {
-    {"shell", PB_EVENT_SHELL_MESSAGE},
-    {"settings", PB_EVENT_SETTINGS_MESSAGE},
-    {"picker", PB_EVENT_PICKER_MESSAGE},
+    {"shell", PB_EVENT_SHELL_MESSAGE, false},
+    {"settings", PB_EVENT_SETTINGS_MESSAGE, true},
+    {"picker", PB_EVENT_PICKER_MESSAGE, false},
 };
 
 const App* AppFor(const GURL& url) {
@@ -82,79 +85,84 @@ const App* AppFor(const GURL& url) {
   return nullptr;
 }
 
-// The window whose page for app this WebContents is: the page covering it when that is
-// app's, or its settings page while that is open. 0 when it is no window's.
-int64_t HomeWindow(const App& app, content::WebContents* contents) {
+// Whom this WebContents is app's page for: Go's id for the tab of ours it is, for a page a
+// tab shows; for a window's page, the window it covers when that page is app's. 0 when it
+// is neither.
+int64_t Home(const App& app, content::WebContents* contents) {
+  if (app.in_tab) {
+    const int64_t tab = hooks::TabOf(contents);
+    PageTab* t = tab > 0 ? Engine::Get()->tab(tab) : nullptr;
+    return t && t->internal() ? tab : 0;
+  }
   for (const auto& [id, w] : Engine::Get()->windows()) {
-    content::WebContents* home =
-        app.event == PB_EVENT_SETTINGS_MESSAGE
-            ? (w->settings ? w->settings->contents() : nullptr)
-        : w->shell && w->shell->app() == app.host ? w->shell->contents()
-                                      : nullptr;
-    if (home == contents) {
+    if (w->shell && w->shell->app() == app.host &&
+        w->shell->contents() == contents) {
       return id;
     }
   }
   return 0;
 }
 
-// Forwards chrome.send(name, [json]) to Go as one event, with the window: 'shell' from a
-// shell, 'settings' from a settings page.
+// Whether a page's home is still there: its tab, or its window.
+bool HomeIsThere(const App& app, int64_t home) {
+  return app.in_tab ? Engine::Get()->tab(home) != nullptr
+                    : Engine::Get()->window(home) != nullptr;
+}
+
+// Forwards chrome.send(name, [json]) to Go as one event, with the page's home: 'shell' from
+// a shell, with its window; 'settings' from the settings page, with its tab.
 class ShellMessageHandler : public content::WebUIMessageHandler {
  public:
-  ShellMessageHandler(const char* name, PBEvent event, int64_t window)
-      : name_(name), event_(event), window_(window) {}
+  ShellMessageHandler(const App& app, int64_t home) : app_(app), home_(home) {}
 
   void RegisterMessages() override {
     web_ui()->RegisterMessageCallback(
-        name_, base::BindRepeating(&ShellMessageHandler::OnMessage,
-                                   base::Unretained(this)));
+        app_.host, base::BindRepeating(&ShellMessageHandler::OnMessage,
+                                       base::Unretained(this)));
   }
 
  private:
   void OnMessage(const base::ListValue& args) {
     if (args.size() != 1 || !args[0].is_string()) {
-      LOG(WARNING) << "dropped a malformed message from " << name_;
+      LOG(WARNING) << "dropped a malformed message from " << app_.host;
       return;
     }
-    // One sent just before its window closed arrives with the window gone.
-    if (!Engine::Get()->window(window_)) {
+    // One sent just before its window or its tab closed arrives with it gone.
+    if (!HomeIsThere(app_, home_)) {
       return;
     }
     hooks::Args hook_args;
-    hook_args.Int(window_);
+    hook_args.Int(home_);
     hook_args.Str(args[0].GetString());
-    hooks::Fire(event_, hook_args);
+    hooks::Fire(app_.event, hook_args);
   }
 
-  const char* const name_;
-  const PBEvent event_;
-  const int64_t window_;
+  const App app_;
+  const int64_t home_;
 };
 
-// The bridge to Go belongs to each app's own WebContents in a window. The factory sees only the URL,
-// so content makes a controller for chrome://shell/ or chrome://settings/ wherever it
-// loads; anywhere else the controller takes away the page's bindings, so it has no
-// chrome.send, and drops whatever arrives anyway.
+// The bridge to Go belongs to each app's own WebContents: a window's page, or a tab of
+// ours. The factory sees only the URL, so content makes a controller for chrome://shell/
+// or chrome://settings/ wherever it loads; anywhere else the controller takes away the
+// page's bindings, so it has no chrome.send, and drops whatever arrives anyway.
 class AppController : public content::WebUIController {
  public:
   AppController(content::WebUI* web_ui, const App& app)
       : content::WebUIController(web_ui),
         app_(app),
-        window_(HomeWindow(app, web_ui->GetWebContents())) {
-    if (!window_) {
+        home_(Home(app, web_ui->GetWebContents())) {
+    if (!home_) {
       LOG(WARNING) << "chrome://" << app_.host << "/ outside its page: no bindings";
       web_ui->SetBindings(content::BindingsPolicySet());
       return;
     }
-    web_ui->AddMessageHandler(
-        std::make_unique<ShellMessageHandler>(app_.host, app_.event, window_));
+    web_ui->AddMessageHandler(std::make_unique<ShellMessageHandler>(app_, home_));
   }
 
   bool OverrideHandleWebUIMessage(const GURL& source_url,
                                   const std::string& message,
                                   const base::ListValue& args) override {
-    if (window_) {
+    if (home_) {
       return false;
     }
     LOG(WARNING) << "dropped \"" << message << "\" from chrome://" << app_.host
@@ -166,8 +174,8 @@ class AppController : public content::WebUIController {
 
  private:
   const App app_;
-  // The window this is the page of, or 0 when it is outside its page.
-  const int64_t window_;
+  // The window or the tab this is the page of, or 0 when it is outside its page.
+  const int64_t home_;
 };
 
 WEB_UI_CONTROLLER_TYPE_IMPL(AppController)

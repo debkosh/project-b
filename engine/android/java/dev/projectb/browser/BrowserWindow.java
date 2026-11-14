@@ -59,9 +59,6 @@ final class BrowserWindow extends FrameLayout {
     private final Map<WebContents, ContentView> pages = new HashMap<>();
     private WebContents shownContents;
     private ContentView shownView;
-    // The settings page while it is open, over everything.
-    private WebContents overlayContents;
-    private ContentView overlayView;
     // Go's theme for the window's own parts: 0 as the system is, 1 light, 2 dark.
     private int theme;
     private FrameLayout.LayoutParams pageParams = matchParent();
@@ -126,9 +123,6 @@ final class BrowserWindow extends FrameLayout {
         if (shownContents != null) {
             shownContents.updateWebContentsVisibility(visibility);
         }
-        if (overlayContents != null) {
-            overlayContents.updateWebContentsVisibility(visibility);
-        }
     }
 
     @Override
@@ -159,9 +153,7 @@ final class BrowserWindow extends FrameLayout {
     @Override
     public boolean dispatchTouchEvent(MotionEvent e) {
         if (e.getActionMasked() == MotionEvent.ACTION_DOWN && shellHolder != null) {
-            if (overlayView != null) {
-                overlayView.requestFocus();
-            } else if (inShell(e.getX(), e.getY())) {
+            if (inShell(e.getX(), e.getY())) {
                 // A native shell's own views take the keyboard as they are touched.
                 if (shellView != null) {
                     shellView.requestFocus();
@@ -234,13 +226,11 @@ final class BrowserWindow extends FrameLayout {
                         json -> BrowserWindowJni.get().shellMessage(nativeWindow, json));
         shellHolder.addView(nativeShell.getView(), matchParent());
         addShellHolder();
-        // Chosen in settings, it comes while settings is still open over it.
-        showNativeShell(overlayView == null);
     }
 
-    // Over the pages, under settings when it is open.
+    // Over the pages.
     private void addShellHolder() {
-        addView(shellHolder, overlayView != null ? indexOfChild(overlayView) : -1, matchParent());
+        addView(shellHolder, matchParent());
     }
 
     /** What Go sends the native shell, as a shell's page hears it through __shellReceive. */
@@ -293,40 +283,8 @@ final class BrowserWindow extends FrameLayout {
         }
     }
 
-    /** The settings page: a view over everything, which takes every touch while it is there. */
-    @CalledByNative
-    private void setOverlay(WebContents contents) {
-        overlayContents = contents;
-        overlayView = attach(contents, this, matchParent(), -1);
-        contents.updateWebContentsVisibility(Visibility.VISIBLE);
-        overlayView.requestFocus();
-        showNativeShell(false);
-    }
-
-    @CalledByNative
-    private void removeOverlay() {
-        removeView(overlayView);
-        overlayContents = null;
-        overlayView = null;
-        showNativeShell(true);
-    }
-
-    // The settings page is drawn in the surface, and Android draws every view over the
-    // surface: a native shell would cover it, so it hides while settings is open. A shell
-    // page is drawn in the surface too, under settings, and needs nothing.
-    private void showNativeShell(boolean show) {
-        if (nativeShell != null) {
-            nativeShell.getView().setVisibility(show ? View.VISIBLE : View.INVISIBLE);
-        }
-    }
-
+    // At the bottom: pages go under the shell, and the surface under them all.
     private ContentView attach(WebContents contents, ViewGroup parent, FrameLayout.LayoutParams params) {
-        // At the bottom: pages go under the shell, and the surface under them all.
-        return attach(contents, parent, params, 0);
-    }
-
-    private ContentView attach(
-            WebContents contents, ViewGroup parent, FrameLayout.LayoutParams params, int index) {
         ContentView view = ContentView.createContentView(getContext(), contents);
         contents.setDelegates(
                 "",
@@ -340,7 +298,7 @@ final class BrowserWindow extends FrameLayout {
                     BrowserWindowJni.get()
                             .contentsMoved(nativeWindow, contents, left, top, right - left, bottom - top);
                 });
-        parent.addView(view, index, params);
+        parent.addView(view, 0, params);
         return view;
     }
 

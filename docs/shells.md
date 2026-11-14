@@ -583,8 +583,11 @@ a port of its own and a profile of its own, so tests run side by side, and has t
 **What the mock tells a test.** `/mock/regions?window=<n>` answers with the last layout:
 `regions` (the shell's, a drag bar's controls among them) and `drag`, `visible` (each shown tab and its rectangle), `shell` (the id of the
 shell the window loads), `focused` (the tab last given the keyboard), `unshownFocus` (the
-tabs a shell asked to give the keyboard while no window showed them), Go's `tabs` and
-`active`, and what it had before; with `x` and `y`, `hit` says what a press there does.
+tabs a shell asked to give the keyboard while no window showed them), Go's `tabs`,
+`active` and `settings` (the window's settings tab, 0 for none), and what it had before;
+with `x` and `y`, `hit` says what a press there does. The settings tab's page shows in a
+frame of its own, `iframe.our-page[data-page=settings]`, the settings page at
+`/settings/?tab=<id>`.
 `/mock/fire` does what a page or the user can: `kind=menu` with an action's id runs it,
 `kind=focusTab` is a press in a tab's page, and each button of the mock page is a kind,
 acting on the tab `tab` names. `go run ./cmd/dev -addr=127.0.0.1:0` takes a free port and
