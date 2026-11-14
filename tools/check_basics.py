@@ -346,18 +346,35 @@ def a15(app):
     return bool(done), f"no download finished{'' if asked else ', and the link was never fetched'}"
 
 
+# The shell's prompt's button named name, pressed, as a person would answer it.
+ALLOW = """(() => {{ const b = [...document.querySelectorAll('[role=dialog] button')].find((b) => b.textContent.trim() === {name}); if (b) b.click(); return !!b; }})()"""
+
+
+def asked(app, allow):
+    """Whether the page waits on a prompt in the shell, and gets its answer once allowed."""
+    if title(app) != "pending":
+        return False, f"no prompt, the answer was {title(app)!r}"
+    if not app.js(ALLOW.format(name=json.dumps(allow))):
+        return False, "the page waits, but the shell shows no prompt with " + allow
+    for _ in range(30):
+        if title(app) == "granted":
+            return True, ""
+        time.sleep(0.1)
+    return False, f"{allow} answered {title(app)!r}"
+
+
 def a16(app):
     go(app, P + "/perm")
     d.page_click(app, "#b")
     time.sleep(1.5)
-    return title(app) == "pending", f"no prompt, the answer was {title(app)!r}"
+    return asked(app, "Allow")
 
 
 def a17(app):
     go(app, P + "/cam")
     d.page_click(app, "#b")
     time.sleep(1.5)
-    return title(app) == "pending", f"no prompt, the answer was {title(app)!r}"
+    return asked(app, "Allow this time")
 
 
 def a18(app):

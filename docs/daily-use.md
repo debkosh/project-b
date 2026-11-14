@@ -23,7 +23,7 @@ and Android, in the web-features registry: [web-features.md](web-features.md).
 | 4 | Right-click menu on a page: open link in a new tab, copy link, copy and save images | works in Standard: drawn by the shell from Go's actions | done, r6 ([daily-driver.md](daily-driver.md#right-click)); the other shells to come, rule 16 |
 | 5 | Find in page | works in Standard: Cmd+F, Cmd+G and Shift+Cmd+G, with the match count | done, r6 ([daily-driver.md](daily-driver.md#find-in-page)); the other shells to come, rule 20 |
 | 6 | Passwords to sites that ask (HTTP auth) | works in Standard: a Sign in dialog over the page, for a site or a proxy | done, r6 ([daily-driver.md](daily-driver.md#sign-in-to-a-site)); the other shells to come, rule 22; nothing is saved yet |
-| 7 | Camera and microphone, for Meet and Zoom on the web | missing: NotSupportedError, no prompt (basics 17) | the permissions and restore session |
+| 7 | Camera and microphone, for Meet and Zoom on the web | works in Standard: a prompt in the shell, and the page gets its stream once allowed (basics 17) | done, r10 ([daily-driver.md](daily-driver.md#permissions)) |
 | 8 | Video full screen | works in Standard: the window goes full screen with only the page, and Escape gives it back | done, r6 ([daily-driver.md](daily-driver.md#video-full-screen)); the other shells to come, rule 21 |
 | 9 | Tabs come back after a crash | missing: the app comes back with 1 tab (basics 32) | the permissions and restore session |
 | 10 | Bookmarks | missing in Standard. Glide, an optional style, has favorites and pins | needs discussion |
@@ -47,7 +47,7 @@ and Android, in the web-features registry: [web-features.md](web-features.md).
 
 | Feature | Status | Plan |
 |---|---|---|
-| Notification permission | missing: no prompt, always denied (basics 16) | needs discussion |
+| Notification permission | works in Standard: a prompt from a press, notifications in macOS's notification centre (basics 16) | done, r10 |
 | Picture-in-picture | missing: NotSupportedError (basics 36) | needs discussion |
 | A proxy | missing: `--proxy-server` isn't used (basics 26) | needs discussion |
 | A second browser context, for automation | missing (basics 23) | needs discussion (in [todo.md](todo.md)) |
