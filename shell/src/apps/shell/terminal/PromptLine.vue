@@ -93,12 +93,12 @@ onMounted(() => {
   prompt.focus = () => input.value.focus();
 });
 
-// A pane that becomes active with nothing in it wants an address; one with a page wants
-// the keyboard in its page. The shell has to hold the keyboard before its field can. The
-// line is made once Go's data is in, with a pane already active, so that one counts too.
-// Not while Go is being asked for the heir of a pane that closed.
+// A pane that becomes active with nothing in it wants an address, as does a window left
+// with no panes; one with a page wants the keyboard in its page. The shell has to hold the
+// keyboard before its field can. The line is made once Go's data is in, so the state it
+// is made in counts too. Not while Go is being asked for the heir of a pane that closed.
 function activated() {
-  if (state.active === 0 || heirAsked.value) return;
+  if (heirAsked.value) return;
   close();
   text.value = activeTab.value.url;
   if (activeTab.value.url === '') {

@@ -2,7 +2,8 @@
 import PaneTree from './PaneTree.vue';
 import PromptLine from './PromptLine.vue';
 import TopStrip from './TopStrip.vue';
-import { connect, setFrame, state } from '@/sdk/vue.js';
+import { shown as keyShown } from '@/keys.js';
+import { connect, send, setFrame, state } from '@/sdk/vue.js';
 import { focusToward, follow, load, resizeToward, shown, split, zoom, zoomed } from './panes.js';
 import { prompt } from './prompt.js';
 
@@ -50,8 +51,15 @@ connect({
       <div class="band side"></div>
       <div class="inner">
         <TopStrip />
+        <!-- With no tabs the shell draws the panes' area itself, as its own. -->
         <div class="body">
           <PaneTree v-if="shown" :node="zoomed ? { tab: zoomed } : shown" />
+          <div v-else-if="!state.tabs.length" v-shell class="empty">
+            <p>No tabs</p>
+            <button type="button" @click="send({ t: 'newTab' })">
+              New Tab<span v-if="state.keys['tab.new']" class="key" aria-hidden="true">{{ keyShown(state.keys['tab.new'], state.platform) }}</span>
+            </button>
+          </div>
         </div>
         <PromptLine />
       </div>
@@ -130,5 +138,46 @@ connect({
   display: flex;
   flex: 1;
   min-height: 0;
+}
+
+.empty {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.empty p {
+  margin: 0;
+}
+
+/* A word button, hairline and square-cornered as the strip's chips are. */
+.empty button {
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.empty button:hover {
+  background: var(--accent-tint);
+}
+
+.empty button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.empty .key {
+  margin-left: 8px;
+  color: var(--muted);
 }
 </style>
