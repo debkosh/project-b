@@ -449,13 +449,22 @@ func (m *Manager) Active() Tab {
 	return Tab{}
 }
 
-// Navigate turns what the user typed into a URL and loads it in the active tab.
-func (m *Manager) Navigate(text string) {
+// Navigate turns what the user typed into a URL and loads it in window w's active tab, or,
+// in a window with no tabs, in a new tab there, in workspace. That tab has the URL from the
+// start, as a tab a page opens does, so it never reads as a new tab.
+func (m *Manager) Navigate(w engine.WindowID, text, workspace string) {
 	u := NormalizeInput(text)
-	if u == "" || m.tabs[m.ActiveID()] == nil {
+	if u == "" {
 		return
 	}
-	m.eng.LoadURL(m.ActiveID(), u)
+	id := m.ActiveIn(w)
+	if id == 0 {
+		id = m.eng.CreateTab(workspace)
+		t := m.add(id, w)
+		t.URL, t.Workspace = address(u), workspace
+		m.Activate(id)
+	}
+	m.eng.LoadURL(id, u)
 }
 
 // Back moves the active tab back in its history.

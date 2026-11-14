@@ -374,6 +374,54 @@ func TestTheShellsCloseTabInAWindowWithNoTabs(t *testing.T) {
 	}
 }
 
+// The address in a window with no tabs opens a tab there and takes it to what was typed:
+// in the first workspace, or in the one the shell names. Nothing typed opens nothing.
+func TestTheAddressInAWindowWithNoTabsOpensOne(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "workspaces.json"), []byte(`{"version":2,"workspaces":[{"id":"0a1b2c3d","name":"Work","color":"#5b7fd6"},{"id":"","name":"Main","color":"#3470d0"}]}`), 0o600)
+	r := start(t, dir)
+	defer r.stop()
+	empty := func() {
+		r.t.Helper()
+		r.e.Fire(1, 0, "key", "closeTab")
+		r.waitFor(isTabs(0))
+	}
+	// opened says what one tab the window has: its id, its workspace in Go and in the
+	// engine, and the active tab.
+	opened := func(m map[string]any) (any, string, any) {
+		tab := m["tabs"].([]any)[0].(map[string]any)
+		var in string
+		r.e.Post(func() { in = r.e.Workspace(engine.TabID(tab["id"].(float64))) })
+		r.e.Settle()
+		return tab["id"], tab["workspace"].(string) + "/" + in, m["active"]
+	}
+	empty()
+	r.shell(`{"t":"navigate","text":"  "}`)
+	r.e.Settle()
+	var n int
+	r.e.Post(func() { n = len(r.a.Tabs.AllIn(1)) })
+	r.e.Settle()
+	if n != 0 {
+		t.Fatalf("nothing typed opened %d tabs", n)
+	}
+
+	// The tab is the window's, in the first workspace, and has the address from the first
+	// the shell hears of it.
+	r.shell(`{"t":"navigate","text":"n.test/"}`)
+	m := r.waitFor(isTabs(1))
+	if id, in, active := opened(m); active != id || in != "0a1b2c3d/0a1b2c3d" || m["tabs"].([]any)[0].(map[string]any)["url"] != "https://n.test/" {
+		t.Fatalf("the tab the address opened: %v in %q, active %v; %v", id, in, active, m["tabs"])
+	}
+	r.waitForTab(func(t map[string]any) bool { return t["url"] == "https://n.test/" && t["title"] == "Mock n.test" })
+
+	empty()
+	r.shell(`{"t":"navigate","text":"m.test/","workspace":""}`)
+	if id, in, active := opened(r.waitFor(isTabs(1))); active != id || in != "/" {
+		t.Fatalf("the tab the address opened in Main: %v in %q, active %v", id, in, active)
+	}
+	r.waitForTab(func(t map[string]any) bool { return t["url"] == "https://m.test/" && t["title"] == "Mock m.test" })
+}
+
 // In a window with no tabs every action that needs one is off, in the menu and for a
 // shell that lists them; New Tab, the address, the windows' own and Settings stay on, and
 // so does Close Tab, which closes the window.
