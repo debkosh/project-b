@@ -100,6 +100,13 @@ const stopServer = lib.stop;
   await visit('https://example.org/', 'https://example.org/');
   check('address bar shows the final URL', (await bar.inputValue()) === 'https://example.org/');
   check('the progress bar shows the page\'s real load progress', (await ui.locator('.progress').evaluate((el) => el.style.width)) === '100%');
+  // Reloaded, the bars are made again once Go's data is in, with that tab active: the bar
+  // shows its address, and its page gets the keyboard back.
+  await fetch(`${base}/shell/send`, { method: 'POST', body: JSON.stringify({ t: 'focusTab', id: 0 }) });
+  await until(async () => (await regions()).focused === 0);
+  await shellFrame().evaluate(() => location.reload());
+  check('reloaded on a page, the bar shows its address and the page gets the keyboard',
+    await until(async () => (await regions()).focused === (await regions()).active && (await bar.inputValue()) === 'https://example.org/'), String((await regions()).focused));
 
   // Back, forward and reload.
   check('back is on and forward is off after new pages', (await back.isEnabled()) && (await forward.isDisabled()) && (await reload.isEnabled()));
