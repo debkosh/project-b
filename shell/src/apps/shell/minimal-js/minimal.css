@@ -1,5 +1,6 @@
 /* The minimal look: a tab bar and a toolbar, or a list down the side, flat and square,
-   hairlines between the parts, and no animation but the loading mark. The colours are the
+   hairlines between the parts, and no animation but the loading mark and the cross-fade
+   from the splash. The colours are the
    SDK's tones, set on the root for any frame colour, light and dark; the type is the Deb
    Design System's, Space Grotesk and, for the address, Space Mono (OFL), kept here. */
 
@@ -23,11 +24,40 @@
 }
 
 /* A 16px line, so a label cut short keeps its descenders. */
-#app {
+.window {
   display: flex;
   flex-direction: column;
+  height: 100%;
   font: 13px/16px var(--sans);
   color: var(--text);
+  transition: opacity var(--motion) var(--ease);
+}
+
+/* The window fades in as it goes in, as the splash fades out. */
+@starting-style {
+  .window {
+    opacity: 0;
+  }
+}
+
+/* The splash, in the shell's own type. It is only a picture, so a press goes through it to
+   the window while it fades; then it goes. */
+.splash {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font: 500 15px/1 var(--sans);
+  letter-spacing: 0.02em;
+  color: rgb(255 255 255 / 0.85);
+  user-select: none;
+  pointer-events: none;
+  transition: opacity var(--motion) var(--ease), display var(--motion) allow-discrete;
+}
+
+.splash[aria-busy='false'] {
+  display: none;
+  opacity: 0;
 }
 
 /* Every button starts bare, below any class, so each part sets only what it draws. */
