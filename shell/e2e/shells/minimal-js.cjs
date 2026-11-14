@@ -93,6 +93,9 @@ const names = ['Example Domain', 'Mail · Work', 'Project B on GitHub', 'Weather
   };
 
   check('the window loads the minimal-js shell with its one tab', await tabCount(1) && (await go()).shell === id);
+  // The window goes in once Go's data is in, with the tab already active: an empty one
+  // wants the address field.
+  check('it opens with the keyboard in the address field, as a new tab does', await until(() => field.evaluate((el) => el === document.activeElement)));
 
   // The last run's crash: one line under the toolbar until it is dismissed.
   const crash = ui.locator('.crash');
@@ -158,6 +161,13 @@ const names = ['Example Domain', 'Mail · Work', 'Project B on GitHub', 'Weather
   check('the address follows another tab made active', await until(async () => (await field.inputValue()) === '' && (await go()).active === (await go()).tabs[0].id));
   await tabs.nth(1).click();
   check('and back', await until(async () => (await field.inputValue()) === 'https://example.com/news/today'));
+  // Reloaded, the window goes in again with that tab active: the field shows its address,
+  // and its page gets the keyboard back.
+  await fetch(`${lib.base}/shell/send`, { method: 'POST', body: JSON.stringify({ t: 'focusTab', id: 0 }) });
+  await until(async () => (await go()).focused === 0);
+  await w.shell().evaluate(() => location.reload());
+  check('reloaded on a page, the field shows its address and the page gets the keyboard',
+    await until(async () => (await go()).focused === (await go()).active && (await field.inputValue()) === 'https://example.com/news/today'), String((await go()).focused));
 
   // focusAddressBar: the keyboard in the field with all of it selected.
   await fire('key', 'focusAddressBar', { tab: (await go()).active });

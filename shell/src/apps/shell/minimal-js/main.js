@@ -9,14 +9,19 @@ import { extensionsBuilt } from '@extensions';
 import { activeTab, connect, controlSpace, focusPage, onChange, send, state } from '@/sdk/shell.js';
 import { drag, page, shell } from '@/sdk/regions.js';
 import { address } from './address.js';
-import { h } from './dom.js';
+import { h, set } from './dom.js';
 import { drawTabs, reveal, sideList, tabBar } from './tabs.js';
 import { drawNav, drawUpdate, settings, toolbar } from './toolbar.js';
 
+// Until Go's snapshot is in, the shell knows nothing of the window: its splash is the
+// window's own colour, which the engine paints under the shell, and the app's name. When
+// the data comes the window goes in, drawn from it, and the two cross-fade.
 const app = document.getElementById('app');
+const splash = h('div', { class: 'splash', 'aria-busy': 'true' }, 'Project B');
 const main = h('main');
 const body = h('div', { class: 'body' }, main);
-app.append(toolbar, body);
+const win = h('div', { class: 'window' }, toolbar, body);
+app.append(splash);
 shell.mark(toolbar);
 page.mark(main, 0);
 
@@ -41,10 +46,10 @@ function drawLayout() {
     body.prepend(strip.el);
     strip.marks.push([drag, toolbar]);
   } else {
-    app.prepend(strip.el);
+    win.prepend(strip.el);
   }
   for (const [marker, el] of strip.marks) marker.mark(el);
-  app.classList.toggle('vertical', vertical);
+  win.classList.toggle('vertical', vertical);
 }
 
 // The room the native window buttons take at each end of the top row.
@@ -77,6 +82,10 @@ function drawCrash() {
 
 onChange((fields) => {
   const has = (name) => name in fields;
+  if (has('loaded')) {
+    set(splash, 'aria-busy', 'false');
+    app.append(win);
+  }
   if (has('controls')) drawControls();
   if (has('tabLayout')) drawLayout();
   if (has('tabs') || has('active') || has('workspaces') || has('tabLayout')) drawTabs(has('workspaces'));
