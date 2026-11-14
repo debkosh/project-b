@@ -39,6 +39,7 @@ const rules = {
   20: 'The find key (on a phone, the menu) opens a text box named Find in page with the keyboard in it; typing searches and shows the count; Enter shows the next match; Escape (a phone\'s back key) closes it',
   21: 'A page in full screen covers the whole window with nothing of the shell on it, and when it ends (Escape, or a phone\'s back key) the window is as it was',
   22: 'A site\'s sign-in shows as an alertdialog with text boxes named Username and Password, and Go\'s Sign in answers with both',
+  30: 'A site asking for its camera, microphone or notifications in the active tab brings a dialog named by its question, with Block and Allow, or Block, Always allow and Allow this time; an Allow grants it, Block denies it, Escape dismisses it',
 };
 
 // The desktop shells that don't draw the right-click menu yet, and who brings it to each
@@ -101,6 +102,19 @@ const noTitleYet = {
   terminal: 'r4 brings it',
   fox: 'r4 brings it',
   minimal: 'r4 brings it',
+};
+
+// The shells that don't draw the permission prompt yet, and who brings it to each
+// (docs/daily-driver.md). Rule 30 holds every other shell to it.
+const noPromptYet = {
+  glide: 'r10 brings it',
+  terminal: 'r10 brings it',
+  fox: 'r10 brings it',
+  minimal: 'r10 brings it',
+  'minimal-js': 'r10 brings it',
+  example: 'r10 brings it',
+  mobile: 'r10 brings it, as a sheet, with Android',
+  'mobile-native': 'r10 brings it, with Android',
 };
 
 (async () => {
@@ -595,6 +609,49 @@ const noTitleYet = {
         rule(16, 'a press outside closes it, and nothing ran', (await closed()) && (await regions()).clipboard === 'https://contract.test/menu');
       } catch (e) {
         rule(16, 'its checks ran to their end', false, e.message.split('\n')[0]);
+      }
+    }
+
+    // 30. The permission prompt.
+    if (noPromptYet[id]) {
+      rule(30, `not checked yet: ${noPromptYet[id]}`, true);
+    } else {
+      try {
+        const asked = (host, kinds) => ui.getByRole('dialog', { name: `${host} wants to ${kinds}` });
+        // Go's statuses, as the mock reports them: 0 ask, 1 granted, 2 denied.
+        const answered = async (n) => {
+          let a = [];
+          await until(async () => (a = (await regions()).permissions).length === n);
+          return a[n - 1]?.statuses || [];
+        };
+        // Whether tab has committed url: Go has the address from the load's start.
+        const loaded = (tab, url) => until(async () => {
+          const t = (await regions()).tabs.find((x) => x.id === tab);
+          return t?.url === url && !t.loading;
+        });
+        const tab = (await regions()).active;
+        await fire('navigate', 'https://contract.test/call', { tab });
+        await loaded(tab, 'https://contract.test/call');
+        await fire('permission', 'camera,microphone', { tab });
+        const prompt = asked('contract.test', 'use your camera and microphone');
+        rule(30, 'a request for the camera and microphone brings a dialog named by its question, with the site', await until(() => prompt.isVisible()));
+        await prompt.getByRole('button', { name: 'Allow this time', exact: true }).click();
+        rule(30, 'Allow this time grants both, and the dialog goes', JSON.stringify(await answered(1)) === '[1,1]' && (await until(async () => (await prompt.count()) === 0)));
+        await fire('permission', 'notifications', { tab });
+        const notify = asked('contract.test', 'show notifications');
+        await until(() => notify.isVisible());
+        rule(30, 'a notifications question has Block and Allow, and no Allow this time', (await notify.getByRole('button', { name: 'Allow', exact: true }).count()) === 1 && (await notify.getByRole('button', { name: 'Allow this time' }).count()) === 0);
+        await notify.getByRole('button', { name: 'Block' }).click();
+        rule(30, 'Block denies it', JSON.stringify(await answered(2)) === '[2]');
+        await fire('navigate', 'https://other.test/call', { tab });
+        await loaded(tab, 'https://other.test/call');
+        await fire('permission', 'camera', { tab });
+        const again = asked('other.test', 'use your camera');
+        await until(() => again.isVisible());
+        await page.keyboard.press('Escape');
+        rule(30, 'Escape dismisses it, answering neither', JSON.stringify(await answered(3)) === '[0]' && (await until(async () => (await again.count()) === 0)));
+      } catch (e) {
+        rule(30, 'its checks ran to their end', false, e.message.split('\n')[0]);
       }
     }
 
