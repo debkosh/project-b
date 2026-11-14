@@ -119,6 +119,13 @@ function contrast(a, b) {
 }
 const menuHas = (menu, title) => JSON.stringify(menu).includes(`"title":"${title}"`);
 
+// Two sites' settings, as Go keeps them in the profile.
+const sitesFile = () => JSON.parse(fs.readFileSync(path.join(profile, 'sites.json'), 'utf8'));
+fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
+  'https://meet.test': { camera: 'allow', microphone: 'block' },
+  'https://news.test': { notifications: 'block' },
+}));
+
 (async () => {
   await new Promise((r) => releaseServer.listen(0, '127.0.0.1', r));
   await startServer();
@@ -594,6 +601,34 @@ const menuHas = (menu, title) => JSON.stringify(menu).includes(`"title":"${title
   await fetch(`${base}/mock/fire`, { method: 'POST', body: new URLSearchParams({ kind: 'key', value: 'closeTab' }) });
   check('Cmd+W closes the settings tab', await until(async () => (await regions()).settings === 0));
   check('and the dev window lets its page go', await until(async () => (await shell.locator('iframe.our-page').count()) === 0));
+
+  // Site settings: a row per site saying how each of its settings is, and its menu to reset
+  // one, or Remove, last, for all of them.
+  await ui.getByRole('button', { name: 'Settings', exact: true }).click();
+  await until(settingsShown);
+  page = await open();
+  await page.getByRole('button', { name: 'Site settings', exact: true }).click();
+  const sites = page.getByRole('region', { name: 'Site settings' });
+  check('Site settings lists each site with how each of its settings is',
+    await until(async () => (await sites.textContent()).includes('meet.test') && (await sites.textContent()).includes('Camera allowed, Microphone blocked') && (await sites.textContent()).includes('Notifications blocked')),
+    await sites.textContent());
+  await settle(page);
+  await page.screenshot({ path: path.join(out, 'settings-sites.png') });
+  await page.getByRole('button', { name: 'Actions for meet.test' }).click();
+  await page.getByRole('menuitem', { name: 'Reset camera' }).click();
+  check('Reset camera forgets only that', await until(() => JSON.stringify(sitesFile()['https://meet.test']) === '{"microphone":"block"}'), JSON.stringify(sitesFile()));
+  check('and the row says so at once', await until(async () => !(await sites.textContent()).includes('Camera allowed')));
+  await page.getByRole('button', { name: 'Actions for news.test' }).click();
+  const removeItem = page.getByRole('menuitem', { name: 'Remove' });
+  check('a site\'s menu ends with Remove, in the danger colour', await removeItem.evaluate((e) => e.classList.contains('danger') && !e.nextElementSibling));
+  await removeItem.click();
+  check('Remove forgets the site', await until(async () => !('https://news.test' in sitesFile()) && !(await sites.textContent()).includes('news.test')));
+  await page.getByRole('button', { name: 'Actions for meet.test' }).click();
+  await page.getByRole('menuitem', { name: 'Remove' }).click();
+  check('with none left, the list says so', await until(async () => (await sites.textContent()).includes('No site has its own settings')));
+  await page.close();
+  await fetch(`${base}/mock/fire`, { method: 'POST', body: new URLSearchParams({ kind: 'key', value: 'closeTab' }) });
+  await until(async () => (await regions()).settings === 0);
 
   check('no errors in the pages', errors.length === 0, errors.join(' | '));
   await browser.close();
