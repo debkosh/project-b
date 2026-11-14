@@ -1,6 +1,6 @@
 <script>
   import { untrack } from 'svelte';
-  import { activeTab, connect, focusPage, page, send, setFrame, state as go } from '@/sdk/svelte.svelte.js';
+  import { activeTab, connect, focusPage, keyLabel, page, send, setFrame, shell, state as go } from '@/sdk/svelte.svelte.js';
   import Address from './Address.svelte';
   import CrashBar from './CrashBar.svelte';
   import SideList from './SideList.svelte';
@@ -17,8 +17,9 @@
 
   // A tab that becomes active with nothing in it wants the address; one with a page wants
   // the page. What was typed in the field was for the tab before. The shell has to hold
-  // the keyboard before its field can. It runs once the view has drawn the change, and the
-  // view is made once Go's data is in, with a tab already active, so that one counts too.
+  // the keyboard before its field can. A window left with no tabs wants the address too. It
+  // runs once the view has drawn the change, and the view is made once Go's data is in, so
+  // the state it is made in counts too.
   function activated() {
     address.blur();
     if (activeTab(go).url === '') {
@@ -30,7 +31,8 @@
   }
 
   $effect(() => {
-    if (go.active !== 0) untrack(activated);
+    go.active;
+    if (go.loaded) untrack(activated);
   });
 
   connect({
@@ -56,7 +58,17 @@
       {#if !horizontal}
         <SideList />
       {/if}
-      <main use:page={go.active}></main>
+      <!-- With no tabs the shell draws the page's area itself, as its own. -->
+      <main use:page={go.active}>
+        {#if !go.tabs.length}
+          <div class="empty" use:shell>
+            <p>No tabs</p>
+            <button class="words" type="button" onclick={() => send({ t: 'newTab' })}>
+              New Tab{#if keyLabel(go, 'tab.new')}<span class="key" aria-hidden="true">{keyLabel(go, 'tab.new')}</span>{/if}
+            </button>
+          </div>
+        {/if}
+      </main>
     </div>
   </div>
 {/if}
@@ -105,7 +117,30 @@
   }
 
   main {
+    position: relative;
     flex: 1;
     min-width: 0;
+  }
+
+  .empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: var(--surface);
+  }
+
+  .empty p {
+    margin: 0;
+    color: var(--muted);
+  }
+
+  .key {
+    margin-left: 8px;
+    color: var(--muted);
+    font-weight: 400;
   }
 </style>
