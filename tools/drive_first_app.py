@@ -1126,8 +1126,8 @@ def browsing_checks():
     click(app, "[aria-label='Tabs on top']")
     app.wait("!!document.querySelector('.strip')", 5)
 
-    # Closing the last tab closes the window, which ends the app. After each close the
-    # shell puts focus back in the next tab, so the next key waits for that.
+    # Closing the tabs down to the last. After each close the shell puts focus back in the
+    # next tab, so the next key waits for that.
     while app.js(ROWS) > 1:
         n = app.js(ROWS)
         app.cmd("key", "cmd+w")
@@ -1137,13 +1137,7 @@ def browsing_checks():
             if time.time() > deadline:
                 raise TimeoutError("nothing has focus after closing a tab")
             time.sleep(0.1)
-    app.cmd("key", "cmd+w")
-    try:
-        app.proc.wait(timeout=30)
-        check("closing the last tab closes the window and ends the app", True)
-    except subprocess.TimeoutExpired:
-        check("closing the last tab closes the window and ends the app", False)
-        app.close()
+    app.close()
 
     # History survives a restart.
     app = App(profile)
@@ -1194,9 +1188,9 @@ def visible_tabs_checks():
 def window_checks():
     """Several windows: Cmd+N makes a second window with one new tab and its own shell, a
     little down and right of the first; a command acts on the window in front; a second
-    start's URL opens in the window used last; closing a window's last tab closes it, and
-    closing the last window quits. The driver makes a window the key window, as a click
-    on it would on a real desktop."""
+    start's URL opens in the window used last; closing a window's last tab leaves it open
+    with no page, Close Window closes it, and closing the last window quits. The driver
+    makes a window the key window, as a click on it would on a real desktop."""
     profile = tempfile.mkdtemp(prefix="pb-profile-")
     app = App(profile)
     windows = lambda: json.loads(app.cmd("windows"))
@@ -1239,14 +1233,21 @@ def window_checks():
     app.cmd("window", 2)
     check("and not in the other window", app.js(f"{ROWS}") == 2)
 
-    # Closing the second window's last tab closes it; the app goes on.
+    # Closing the second window's last tab leaves it open, showing no page; Close Window
+    # closes it, and the app goes on.
     app.cmd("key", "cmd+w")
     app.wait(f"{ROWS}===1")
     app.cmd("key", "cmd+w")
+    app.wait(f"{ROWS}===0")
+    deadline = time.time() + 10
+    while windows()[1]["tabs"] and time.time() < deadline:
+        time.sleep(0.05)
+    check("closing a window's last tab leaves it open, showing no page", [w["id"] for w in windows()] == [1, 2] and windows()[1]["tabs"] == [], windows())
+    app.cmd("key", "cmd+shift+w")
     deadline = time.time() + 10
     while len(windows()) > 1 and time.time() < deadline:
         time.sleep(0.05)
-    check("closing a window's last tab closes the window", [w["id"] for w in windows()] == [1], windows())
+    check("Close Window closes it", [w["id"] for w in windows()] == [1], windows())
     app.cmd("window", 1)
     check("the other window goes on with its tabs", app.js(f"{ROWS}") == 2)
 

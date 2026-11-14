@@ -334,16 +334,13 @@ func TestTabsThroughTheShellAndKeys(t *testing.T) {
 		t.Fatalf("closed tab still active: %v", m)
 	}
 
-	// Closing the rest closes the window.
+	// Closing the rest leaves the window open, with no tabs and no active tab.
 	r.e.Fire(1, 0, "key", "closeTab")
 	r.e.Fire(1, 0, "key", "closeTab")
-	r.waitFor(func(m map[string]any) bool { return m["t"] == "tabs" && len(m["tabs"].([]any)) == 0 })
-	deadline := time.Now().Add(time.Second)
-	for !r.e.Closed(1) {
-		if time.Now().After(deadline) {
-			t.Fatal("window never closed")
-		}
-		time.Sleep(5 * time.Millisecond)
+	m = r.waitFor(func(m map[string]any) bool { return m["t"] == "tabs" && len(m["tabs"].([]any)) == 0 })
+	r.e.Settle()
+	if m["active"] != float64(0) || r.e.Closed(1) || r.e.Quit() {
+		t.Fatalf("after the last tab: active %v, closed %v, quit %v", m["active"], r.e.Closed(1), r.e.Quit())
 	}
 }
 
@@ -600,7 +597,8 @@ func (r *rig) openSecondWindow() <-chan []byte {
 
 // Cmd+N opens a second window with one new tab of its own and its own shell, in front.
 // Commands act on the window in front, settings opens over the window it was asked in,
-// closing a window's last tab closes it, and closing the last window quits.
+// closing a window's last tab leaves it open with none, its close button closes it, and
+// closing the last window quits.
 func TestASecondWindow(t *testing.T) {
 	r := start(t, t.TempDir())
 	defer r.stop()
@@ -627,14 +625,20 @@ func TestASecondWindow(t *testing.T) {
 		t.Fatalf("settings open: window 1 %v, window 2 %v", r.e.SettingsOpen(1), r.e.SettingsOpen(2))
 	}
 
-	// Closing window 2's tabs closes window 2: its settings page goes first, then a tab
-	// at a time. The app goes on with window 1.
+	// Closing window 2's tabs leaves it open with none: its settings page goes first,
+	// then a tab at a time. Its close button closes it, and the app goes on with window 1.
 	for range 3 {
 		r.e.Fire(2, 0, "key", "closeTab")
 	}
+	m := r.waitOn(second, isTabs(0))
+	r.e.Settle()
+	if m["active"] != float64(0) || r.e.Closed(2) || !slices.Equal(r.e.Windows(), []engine.WindowID{1, 2}) {
+		t.Fatalf("after window 2's last tab: active %v, closed %v, windows %v", m["active"], r.e.Closed(2), r.e.Windows())
+	}
+	r.e.Fire(2, 0, "close", "")
 	r.e.Settle()
 	if !r.e.Closed(2) || !slices.Equal(r.e.Windows(), []engine.WindowID{1}) || r.e.Quit() {
-		t.Fatalf("after window 2's last tab: closed %v, windows %v, quit %v", r.e.Closed(2), r.e.Windows(), r.e.Quit())
+		t.Fatalf("after window 2's close button: closed %v, windows %v, quit %v", r.e.Closed(2), r.e.Windows(), r.e.Quit())
 	}
 
 	// Window 1's own close button closes it, the last window, which quits.
@@ -853,6 +857,30 @@ func TestADevToolsTargetInANewWindow(t *testing.T) {
 	r.e.Settle()
 	if req := r.e.Requests()[before:]; !slices.Equal(req, []engine.WindowRequest{engine.WindowFront}) {
 		t.Fatalf("requests %v", req)
+	}
+}
+
+// A window made for a tab opened in a window of its own, as a DevTools client's new target
+// with newWindow is, closes with its last tab: here its page closes itself, as
+// window.close() does. A window the user opened stays.
+func TestAWindowMadeForATabClosesWithIt(t *testing.T) {
+	r := start(t, t.TempDir())
+	defer r.stop()
+	var tab engine.TabID
+	r.e.Post(func() {
+		tab = r.e.CreateTab("")
+		r.a.TabOpened(0, tab, "https://n.test/", "", true, true)
+	})
+	r.e.Settle()
+	r.e.Post(func() { r.a.CloseRequested(tab) })
+	r.e.Settle()
+	if !r.e.Closed(2) || !slices.Equal(r.e.Windows(), []engine.WindowID{1}) || r.e.Quit() {
+		t.Fatalf("after its tab closed: closed %v, windows %v, quit %v", r.e.Closed(2), r.e.Windows(), r.e.Quit())
+	}
+	r.e.Post(func() { r.a.CloseRequested(1) })
+	r.e.Settle()
+	if r.e.Closed(1) || r.e.Quit() {
+		t.Fatalf("window 1 after its tab closed: closed %v, quit %v", r.e.Closed(1), r.e.Quit())
 	}
 }
 

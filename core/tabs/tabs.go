@@ -2,7 +2,8 @@
 // each one's tabs in order and which of them is active, and each tab's state, the
 // workspace it is in among it. Tab state changes only through this manager. A window's active tab is the one the user acts on
 // there: its shell shows it and gives it the keyboard, and says where it put it in its
-// layout, which shows it. Commands act on the active tab of the window in front. A tab
+// layout, which shows it. A window may have no tabs, and then has no active tab; one with
+// tabs always has one. Commands act on the active tab of the window in front. A tab
 // keeps its id for its life.
 package tabs
 
@@ -71,7 +72,7 @@ type Manager struct {
 	onFinished []func(Tab)
 	onTitle    []func(Tab)
 	onList     []func()
-	onEmpty    []func(engine.WindowID)
+	onEmpty    []func(w engine.WindowID, moved bool)
 	onFront    []func(engine.WindowID)
 	onMoved    []func(tab engine.TabID, from engine.WindowID, fromIndex int, to engine.WindowID)
 	// groupSeq numbers the groups, for their ids.
@@ -112,8 +113,9 @@ func (m *Manager) OnTitleChanged(f func(Tab)) { m.onTitle = append(m.onTitle, f)
 // OnListChanged subscribes to a tab opening or closing, or a window's active tab changing.
 func (m *Manager) OnListChanged(f func()) { m.onList = append(m.onList, f) }
 
-// OnEmpty subscribes to a window's last tab closing.
-func (m *Manager) OnEmpty(f func(engine.WindowID)) { m.onEmpty = append(m.onEmpty, f) }
+// OnEmpty subscribes to a window's last tab leaving it: closed there, or, with moved,
+// moved to another window.
+func (m *Manager) OnEmpty(f func(w engine.WindowID, moved bool)) { m.onEmpty = append(m.onEmpty, f) }
 
 // OnFrontChanged subscribes to another window coming to the front.
 func (m *Manager) OnFrontChanged(f func(engine.WindowID)) { m.onFront = append(m.onFront, f) }
@@ -210,9 +212,10 @@ func (m *Manager) Add(w engine.WindowID, workspace string, foreground bool) engi
 	return id
 }
 
-// shown makes a new tab active, or tells of it behind the active one.
+// shown makes a new tab active, or tells of it behind the active one. In a window with
+// no tabs before it, it is the active one either way.
 func (m *Manager) shown(id engine.TabID, foreground bool) {
-	if foreground {
+	if foreground || m.windows[m.windowOf[id]].active == 0 {
 		m.Activate(id)
 	} else {
 		m.listChanged()
@@ -334,7 +337,8 @@ func (m *Manager) ActivateNext(reverse bool) {
 }
 
 // Close closes a tab. Closing the active one activates its right neighbour, or the
-// left one at the end. Closing a window's last tab leaves it no tabs and fires OnEmpty.
+// left one at the end. Closing a window's last tab leaves it no tabs and no active tab,
+// and fires OnEmpty.
 func (m *Manager) Close(id engine.TabID) {
 	if m.tabs[id] == nil {
 		return
@@ -344,7 +348,7 @@ func (m *Manager) Close(id engine.TabID) {
 	i := m.detach(id)
 	delete(m.tabs, id)
 	m.eng.CloseTab(id)
-	m.left(w, id, i)
+	m.left(w, id, i, false)
 }
 
 // Move moves a tab to window w, at index in its list, and makes it the active tab there.
@@ -368,7 +372,7 @@ func (m *Manager) Move(id engine.TabID, w engine.WindowID, index int) {
 	for _, f := range m.onMoved {
 		f(id, from, i, w)
 	}
-	m.left(from, id, i)
+	m.left(from, id, i, true)
 }
 
 // detach takes a tab out of its window's lists, and says where it was in its order.
@@ -384,15 +388,16 @@ func (m *Manager) detach(id engine.TabID) int {
 	return i
 }
 
-// left is what window w does once a tab at position i has left it: with no tabs it fires
-// OnEmpty; if the tab was active, its right neighbour, or the left one at the end, is.
-func (m *Manager) left(w engine.WindowID, id engine.TabID, i int) {
+// left is what window w does once a tab at position i has left it, closed or moved: with
+// no tabs it fires OnEmpty; if the tab was active, its right neighbour, or the left one at
+// the end, is.
+func (m *Manager) left(w engine.WindowID, id engine.TabID, i int, moved bool) {
 	win := m.windows[w]
 	if len(win.order) == 0 {
 		win.active = 0
 		m.listChanged()
 		for _, f := range m.onEmpty {
-			f(w)
+			f(w, moved)
 		}
 		return
 	}
@@ -600,7 +605,8 @@ func (m *Manager) zoomTo(f float64) {
 
 // HandleTabOpened records a tab a page opened, in the opener's window, or in the window
 // in front when no tab opened it, in the workspace the engine made it in, and in its
-// opener's group, and shows it if the page asked for the foreground.
+// opener's group, and shows it if the page asked for the foreground, or if its window had
+// no tabs.
 func (m *Manager) HandleTabOpened(opener, id engine.TabID, u, workspace string, foreground bool) {
 	w := m.windowOf[opener]
 	if w == 0 {
@@ -612,11 +618,7 @@ func (m *Manager) HandleTabOpened(opener, id engine.TabID, u, workspace string, 
 	if o := m.tabs[opener]; o != nil && o.Group != "" {
 		m.join(id, o.Group, opener)
 	}
-	if foreground {
-		m.Activate(id)
-	} else {
-		m.listChanged()
-	}
+	m.shown(id, foreground)
 }
 
 // HandleTabFocused makes the tab whose page took the keyboard the active one.

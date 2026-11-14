@@ -92,15 +92,37 @@ func TestCreateCloseAndActivate(t *testing.T) {
 	}
 }
 
+// Closing a window's last tab leaves the window with no tabs and no active tab, and says
+// the tab closed there rather than moved.
 func TestClosingTheLastTabEmptiesTheList(t *testing.T) {
 	e := &fakeEngine{}
 	m := oneWindow(e)
-	empty := false
-	m.OnEmpty(func(w engine.WindowID) { empty = w == 1 })
+	empty, moved := false, true
+	m.OnEmpty(func(w engine.WindowID, wasMoved bool) { empty, moved = w == 1, wasMoved })
 	m.Create(1)
 	m.CloseActive()
-	if !empty || len(m.All()) != 0 || m.ActiveID() != 0 {
-		t.Fatalf("empty %v all %v active %v", empty, m.All(), m.ActiveID())
+	if !empty || moved || len(m.All()) != 0 || m.ActiveID() != 0 || !slices.Equal(m.Windows(), []engine.WindowID{1}) {
+		t.Fatalf("empty %v moved %v all %v active %v windows %v", empty, moved, m.All(), m.ActiveID(), m.Windows())
+	}
+}
+
+// A window with tabs always has an active one: a tab that comes into a window with none is
+// its active tab, though it was opened behind.
+func TestATabIntoAWindowWithNoTabsIsActive(t *testing.T) {
+	m := oneWindow(&fakeEngine{})
+	m.Close(m.Create(1))
+	a := m.Add(1, work, false)
+	if m.ActiveIn(1) != a {
+		t.Fatalf("added behind into a window with none: active %v", m.ActiveIn(1))
+	}
+	m.Close(a)
+	m.HandleTabOpened(0, 9, "https://b.test/", work, false)
+	if m.ActiveIn(1) != 9 {
+		t.Fatalf("opened behind into a window with none: active %v", m.ActiveIn(1))
+	}
+	b := m.Add(1, work, false)
+	if m.ActiveIn(1) != 9 || m.WindowOf(b) != 1 {
+		t.Fatalf("added behind beside a tab: active %v", m.ActiveIn(1))
 	}
 }
 
@@ -243,7 +265,7 @@ func TestWindowsKeepTheirOwnTabs(t *testing.T) {
 
 	// Closing window 2's last tab empties window 2 only.
 	var emptied []engine.WindowID
-	m.OnEmpty(func(w engine.WindowID) { emptied = append(emptied, w) })
+	m.OnEmpty(func(w engine.WindowID, _ bool) { emptied = append(emptied, w) })
 	m.Close(9)
 	m.Close(c)
 	if !slices.Equal(emptied, []engine.WindowID{2}) || len(m.AllIn(1)) != 3 {
@@ -268,7 +290,8 @@ func TestRemovingAWindowClosesItsTabs(t *testing.T) {
 }
 
 // A tab moves to a place in another window's list, keeps its id and is active there; the
-// window it left goes on as if it had closed there, and one left empty is emptied.
+// window it left goes on as if it had closed there, and one left empty is emptied, by a
+// move.
 func TestMovingATabBetweenWindows(t *testing.T) {
 	e := &fakeEngine{}
 	m := oneWindow(e)
@@ -276,7 +299,11 @@ func TestMovingATabBetweenWindows(t *testing.T) {
 	m.AddWindow(2)
 	c := m.Create(2)
 	var emptied []engine.WindowID
-	m.OnEmpty(func(w engine.WindowID) { emptied = append(emptied, w) })
+	m.OnEmpty(func(w engine.WindowID, moved bool) {
+		if moved {
+			emptied = append(emptied, w)
+		}
+	})
 
 	m.Move(b, 2, 0)
 	if m.WindowOf(b) != 2 || !slices.Equal(ids(m.AllIn(2)), []engine.TabID{b, c}) || m.ActiveIn(2) != b {

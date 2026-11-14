@@ -83,6 +83,9 @@ type App struct {
 	keyIn engine.Surface
 	// lastWindow is the id of the window made last; Go numbers them from 1.
 	lastWindow engine.WindowID
+	// madeForTab are the windows made for a tab opened in a window of its own, which close
+	// with their last tab.
+	madeForTab map[engine.WindowID]bool
 	quit       func()
 	profiles   *profiles.Manager
 }
@@ -94,7 +97,7 @@ var starters []func(a *App, e engine.Engine, cfg Config)
 // Start builds everything, on the main thread. The caller then gives the returned App
 // to the engine as its listener.
 func Start(e engine.Engine, cfg Config) *App {
-	a := &App{profiles: cfg.Profiles}
+	a := &App{profiles: cfg.Profiles, madeForTab: map[engine.WindowID]bool{}}
 	a.Crash = crash.New(cfg.ProfileDir, cfg.CrashReports)
 	a.Crash.System = cfg.System
 	a.Policy = policy.New(cfg.BlockedHosts)
@@ -147,8 +150,14 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Tabs.OnTitleChanged(func(t tabs.Tab) { a.History.UpdateTitle(t.URL, t.Title) })
 	a.Tabs.OnChanged(a.Shell.TabChanged)
 	a.Tabs.OnListChanged(a.Shell.TabsChanged)
-	// Closing a window's last tab closes the window.
-	a.Tabs.OnEmpty(func(w engine.WindowID) { a.Window.Request(w, engine.WindowClose) })
+	// A window may have no tabs: closing its last one leaves it open. It closes with its
+	// last tab only when that tab moved to another window, as what it held went there, or
+	// when the window was made for a tab of its own.
+	a.Tabs.OnEmpty(func(w engine.WindowID, moved bool) {
+		if moved || a.madeForTab[w] {
+			a.Window.Request(w, engine.WindowClose)
+		}
+	})
 	a.Window.OnControlsChanged(a.Shell.WindowControlsChanged)
 	a.Window.OnControlsChanged(a.Settings.WindowControlsChanged)
 	a.Window.OnColorChanged(a.Shell.WindowColorChanged)
@@ -371,9 +380,10 @@ func (a *App) FaviconChanged(tab engine.TabID, dataURL string) {
 }
 
 func (a *App) TabOpened(opener, tab engine.TabID, url, workspace string, foreground, newWindow bool) {
-	// A tab nothing opened goes in the window in front, which a new one is.
+	// A tab nothing opened goes in the window in front, which a new one is. A window made
+	// for the tab closes with its last tab.
 	if newWindow {
-		a.openWindow()
+		a.madeForTab[a.openWindow()] = true
 	}
 	a.Tabs.HandleTabOpened(opener, tab, url, workspace, foreground)
 }
@@ -447,6 +457,7 @@ func (a *App) WindowClosed(w engine.WindowID) {
 	a.Shell.WindowClosed(w)
 	a.Window.Close(w)
 	a.Tabs.RemoveWindow(w)
+	delete(a.madeForTab, w)
 	if len(a.Tabs.Windows()) == 0 {
 		a.quit()
 		return
