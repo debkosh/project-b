@@ -1,10 +1,9 @@
 <script setup>
-import { watch } from 'vue';
 import PaneTree from './PaneTree.vue';
 import PromptLine from './PromptLine.vue';
 import TopStrip from './TopStrip.vue';
 import { connect, setFrame, state } from '@/sdk/vue.js';
-import { follow, heirAsked, load, shown, split } from './panes.js';
+import { follow, load, shown, split } from './panes.js';
 import { prompt } from './prompt.js';
 
 // A terminal's window: a strip of groups on top, the shown group's panes in the body, and
@@ -26,21 +25,16 @@ connect({
   focusAddressBar: () => prompt.focus(),
   action: (m) => actions[m.id](),
 });
-
-// A pane that becomes active with nothing in it wants an address; one with a page wants
-// the keyboard in its page. Not while Go is being asked for the heir of a pane that closed.
-watch(
-  () => state.active,
-  () => {
-    if (state.active !== 0 && !heirAsked.value) prompt.activated();
-  },
-);
 </script>
 
 <!-- The frame's bands are painted as the window paints them, and nothing is painted under
-     the panes, so their pages show through. -->
+     the panes, so their pages show through. Until Go's snapshot is in, the shell knows
+     nothing of the window: its splash is the window's own colour, which the engine paints
+     under the shell, and the app's name. When the data comes the UI is made, and the two
+     cross-fade. -->
 <template>
-  <div class="app">
+  <div class="splash" :aria-busy="!state.loaded">Project B</div>
+  <div v-if="state.loaded" class="app">
     <div v-drag class="band across"></div>
     <div class="middle">
       <div class="band side"></div>
@@ -66,6 +60,34 @@ watch(
   font-family: ui-monospace, 'SF Mono', Menlo, monospace;
   font-size: 12px;
   line-height: 16px;
+  transition: opacity var(--motion) var(--ease);
+}
+
+/* The UI fades in as it is made, as the splash fades out. */
+@starting-style {
+  .app {
+    opacity: 0;
+  }
+}
+
+/* The splash is only a picture, so a press goes through it to the UI while it fades; then
+   it goes. In the terminal's own type. */
+.splash {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font: 500 15px/1 ui-monospace, 'SF Mono', Menlo, monospace;
+  letter-spacing: 0.02em;
+  color: rgb(255 255 255 / 0.85);
+  user-select: none;
+  pointer-events: none;
+  transition: opacity var(--motion) var(--ease), display var(--motion) allow-discrete;
+}
+
+.splash[aria-busy='false'] {
+  display: none;
+  opacity: 0;
 }
 
 .band {

@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { activeTab, focusPage, send, state } from '@/sdk/vue.js';
+import { heirAsked } from './panes.js';
 import { prompt } from './prompt.js';
 
 // The foot of the window: back, forward and reload for the active pane, then its address
@@ -90,19 +91,26 @@ onMounted(() => {
     }
   };
   prompt.focus = () => input.value.focus();
-  // The shell has to hold the keyboard before its field can.
-  prompt.activated = () => {
-    close();
-    text.value = activeTab.value.url;
-    if (activeTab.value.url === '') {
-      send({ t: 'focusShell' });
-      input.value.focus();
-    } else {
-      input.value.blur();
-      focusPage();
-    }
-  };
 });
+
+// A pane that becomes active with nothing in it wants an address; one with a page wants
+// the keyboard in its page. The shell has to hold the keyboard before its field can. The
+// line is made once Go's data is in, with a pane already active, so that one counts too.
+// Not while Go is being asked for the heir of a pane that closed.
+function activated() {
+  if (state.active === 0 || heirAsked.value) return;
+  close();
+  text.value = activeTab.value.url;
+  if (activeTab.value.url === '') {
+    send({ t: 'focusShell' });
+    input.value.focus();
+  } else {
+    input.value.blur();
+    focusPage();
+  }
+}
+watch(() => state.active, activated);
+onMounted(activated);
 
 watch(
   () => activeTab.value.url,
