@@ -84,6 +84,12 @@ class Engine {
   content::BrowserContext* browser_context() const { return browser_context_; }
   // A window by Go's id, or null for one that isn't open.
   AppWindow* window(int64_t id) const;
+  // The theme Go's layouts ask for, 0 as the system is, 1 light, 2 dark: the pages'
+  // preferred colour scheme follows it (ContentBrowserClient::OverrideWebPreferences).
+  int theme() const { return theme_; }
+  // Takes the theme a layout asks for, and has every page work out its colour scheme
+  // again when it changed.
+  void SetTheme(int theme);
   const std::map<int64_t, std::unique_ptr<AppWindow>>& windows() const {
     return windows_;
   }
@@ -178,6 +184,7 @@ class Engine {
   raw_ptr<content::BrowserContext> browser_context_ = nullptr;
   const base::RepeatingClosure quit_;
   std::map<int64_t, std::unique_ptr<AppWindow>> windows_;
+  int theme_ = 0;
 
   std::map<int64_t, std::unique_ptr<PageTab>> tabs_;
   int64_t next_tab_ = 1;

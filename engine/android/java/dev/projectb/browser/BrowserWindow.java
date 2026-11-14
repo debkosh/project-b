@@ -30,6 +30,7 @@ import org.chromium.content_public.browser.Visibility;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.ui.base.ViewAndroidDelegate;
 import org.chromium.ui.base.WindowAndroid;
+import org.chromium.ui.native_theme.OsSettingsProviderAndroidBridge;
 
 /**
  * The window. One SurfaceView at the bottom, where the native compositor draws the shown page and the
@@ -308,7 +309,10 @@ final class BrowserWindow extends FrameLayout {
         applyTheme();
     }
 
-    /** As the system is, the phone's own dark mode decides, now and when it changes. */
+    /**
+     * As the system is, the phone's own dark mode decides, now and when it changes. The pages,
+     * ours and the web's, hear it as their preferred colour scheme.
+     */
     void applyTheme() {
         boolean dark =
                 theme == 2
@@ -316,6 +320,7 @@ final class BrowserWindow extends FrameLayout {
                                 && (getResources().getConfiguration().uiMode
                                                 & Configuration.UI_MODE_NIGHT_MASK)
                                         == Configuration.UI_MODE_NIGHT_YES);
+        OsSettingsProviderAndroidBridge.setPreferredColorScheme(dark);
         activity.getWindow().setNavigationBarColor(dark ? 0xff1b1c1e : 0xffffffff);
         int flags = getSystemUiVisibility();
         setSystemUiVisibility(
@@ -352,11 +357,6 @@ final class BrowserWindow extends FrameLayout {
         activity.startActivity(install);
     }
 
-    private int px(double css) {
-        return (int) Math.round(css * density);
-    }
-
-    private static FrameLayout.LayoutParams copy(FrameLayout.LayoutParams p) {
     /** Hands a file to Android's chooser, to send or save where the user picks. */
     @CalledByNative
     private void shareFile(String path) {
@@ -374,6 +374,11 @@ final class BrowserWindow extends FrameLayout {
         activity.startActivity(Intent.createChooser(send, null));
     }
 
+    private int px(double css) {
+        return (int) Math.round(css * density);
+    }
+
+    private static FrameLayout.LayoutParams copy(FrameLayout.LayoutParams p) {
         return new FrameLayout.LayoutParams(p);
     }
 

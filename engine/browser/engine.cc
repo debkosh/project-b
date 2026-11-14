@@ -44,6 +44,7 @@
 #include "ui/gfx/geometry/rect_conversions.h"
 #include "ui/gfx/geometry/rect_f.h"
 #include "ui/gfx/geometry/size_f.h"
+#include "ui/native_theme/native_theme.h"
 #include "url/gurl.h"
 
 #if BUILDFLAG(PB_EXTENSIONS)
@@ -344,6 +345,7 @@ void CallSetWindowLayout(int64_t window,
                          const PBVisibleTab* tabs,
                          size_t tab_count) {
   CheckMainThread();
+  g_engine->SetTheme(l->theme);
   if (NativeWindow(window)->SetLayout(LayoutOf(l, regions, region_count))) {
     g_engine->ShowTabs(g_engine->window(window), TabsOf(tabs, tab_count));
   }
@@ -514,6 +516,16 @@ const PBEngineCalls* Engine::Calls() {
 PageTab* Engine::tab(int64_t id) const {
   auto it = tabs_.find(id);
   return it == tabs_.end() ? nullptr : it->second.get();
+}
+
+void Engine::SetTheme(int theme) {
+  if (theme == theme_) {
+    return;
+  }
+  theme_ = theme;
+  // Every page hears it as an update of the web's native theme, and asks again
+  // (ContentBrowserClient::WebPreferencesNeedUpdateForColorRelatedStateChanges).
+  ui::NativeTheme::GetInstanceForWeb()->NotifyOnNativeThemeUpdated();
 }
 
 Engine::AppWindow* Engine::window(int64_t id) const {
