@@ -218,3 +218,100 @@ join the list when bookmarks exist.
 **The new tab.** A tab with nothing in it shows the shell's own command box where the page
 would be, drawing this list; the look is the standard shell session's mock. Glide's Command
 Bar moves onto this list, in place of its own search of tabs and actions.
+
+## Permissions
+
+**The interface.** The owner, 2026-11-14: "we should have an interface for it and not just
+follow contents stuff... keep that decoupled behind the engine interface". So a page's
+request crosses into Go in our own terms, and every request feature after this one follows
+the same shape:
+
+- The engine interface (`core/engine`, `pb_abi.h`) names things as the web platform does,
+  never as content does: a kind is the Permissions API's name (`camera`, `microphone`,
+  `notifications`, `clipboard-write`, `geolocation`...), a status is ours (`ask`, `granted`,
+  `denied`, numbered 0, 1, 2 by us). Another engine could implement it unchanged.
+- The C++ adapter, `engine/browser/permissions.cc`, is the only code that knows content's
+  permission types and statuses and its camera path; it translates both ways
+  and decides nothing.
+- Go's sites manager, `core/sites`, is the one place a decision is made. Every kind a page
+  can ask for reaches it, as a request or a read, even those answered without a prompt:
+  clipboard write is granted there, and a kind it doesn't know is denied there.
+- The kinds are one table in Go (`sites.Kinds`): its title, whether a page asks for it,
+  whether it can be asked about, its answer otherwise, whether its prompt needs a press, and whether it offers Allow this time.
+  Adding geolocation is one row there and the adapter's name for it.
+- The shell only draws what Go sends and sends back the choice.
+
+**Where per-site settings live.** The owner, 2026-11-14: "we might have other site level
+permissons or configs that we might want later and go core should own those... like down
+the line we can have an option to let extensions content script run on a page or some other
+injected script based feature for the page and that time the config to diable that would
+live in that domain and should ideall sit with the site permissions". So `core/sites` is the
+home of every setting kept per site, not a copy of the web's permission list. A kind is ours:
+some are what a page asks for (camera, microphone, notifications, clipboard), and a later
+kind may be a switch of our own that no page asks for, which is one more row in the table
+with `Requested` off. The store is per site (`sites.json`: origin, then kind, then value),
+the messages and the settings section speak of a site's settings with Go's title for each,
+and nothing in them assumes a kind came from the engine. Only the kinds built here exist.
+
+Before this, the engine's delegate granted clipboard write and denied everything else
+itself, so `getUserMedia` failed with NotSupportedError and `Notification.requestPermission()`
+answered `denied` (basics 16 and 17). The OS's own question, macOS asking once whether the
+app may use the camera, stays the system's.
+
+**What Go offers.** Three kinds can be asked about: `camera`, `microphone` and
+`notifications`. `clipboard-write` is granted without asking; every other kind is denied
+without asking until it gets a row. Content keeps these from insecure pages, so only
+`https` pages and `localhost` ask. Our own pages, which are in no tab, get each kind's
+answer with no prompt.
+
+**The flow.** A page asks (`getUserMedia`, `Notification.requestPermission()`). The engine
+sends `PB_EVENT_PERMISSION_REQUEST`: the request's id, its tab, the origin asking, the kinds,
+and whether a user gesture led to it. Go answers later, with the engine call
+`answer_permission(id, statuses)`, one status per kind. A page reading the state
+(`navigator.permissions.query`, `Notification.permission`, a device's label) asks
+synchronously, `PB_EVENT_PERMISSION_STATUS`: tab, origin and kind, answered with a status.
+For `getUserMedia`, the adapter asks for `camera` and `microphone` the same way, then gives
+the page the devices it named, or the system's first.
+
+**What Go decides.** The person's decisions are the profile's, in `sites.json`, by origin
+and kind: `allow` or `block`. A kind already decided is answered at once, with no
+prompt. A kind whose prompt needs a press (`notifications`), asked without one, is answered
+`ask` with no prompt, so a page can't put one up on load (the page sees `default`). Anything
+else undecided becomes a prompt.
+
+**The prompt.** `state.permissionPrompts` is every prompt open in the profile, one per tab at
+most, each `{id, tab, origin, kinds, once}`; a second request from the same tab waits behind
+the first. A shell shows the one on its active tab, and sends `permissionAnswer {id, choice}`:
+
+| `choice` | What Go does |
+|---|---|
+| `allow` | Grants it and keeps `allow` for the origin |
+| `once` | Grants it until the tab leaves the origin or closes; offered (`once`) when every kind asked offers it: camera and microphone |
+| `block` | Denies it and keeps `block` |
+| `dismiss` | Answers `ask`, keeping nothing: the prompt was closed |
+
+Go drops a prompt, answering `dismiss`, when its tab closes or navigates to another
+document, and ignores an answer to a prompt it dropped. Settings has a Site settings
+section listing each site's settings, with a menu to reset one or Remove them all.
+
+**Notifications** a page shows are the system's: the engine sends each to Go
+(`PB_EVENT_NOTIFICATION_SHOW`, with its title, body, origin and tab), Go checks the origin
+is allowed and asks the engine to post it to macOS's notification centre.
+A click on it comes back to Go (`PB_EVENT_NOTIFICATION_CLICKED`), which brings the tab's
+window to the front, makes the tab active and fires the page's `click` event. A packaged app
+only: a bare binary can't post to the notification centre.
+
+**The shell.** In Standard the prompt is the design system's floating surface, from the
+address field's start: a glyph of what is asked, then "*site* wants to use your camera and
+microphone". Where Go offers this time, its buttons are Block, Always allow and Allow this
+time, the primary, as a quick press should give the least; otherwise Block and Allow. It is
+a `dialog` named by that sentence; Escape dismisses it. It takes no focus, so a page can't
+type into it, and follows the address field in tab order, so F6 then Tab reach it. The
+contract's rule 30 checks it, by role and name, on the mock.
+
+**The numbers.** Events 40 to 43: `PB_EVENT_PERMISSION_REQUEST`, `PB_EVENT_PERMISSION_STATUS`,
+`PB_EVENT_NOTIFICATION_SHOW`, `PB_EVENT_NOTIFICATION_CLICKED`. Rule 30.
+
+**Android.** The same messages, and the Mobile shell's prompt as a sheet. Once Go allows the
+camera or microphone, the adapter asks Android for its own grant before the page gets a
+device. Built after the Mac's.
