@@ -100,17 +100,25 @@ lib.watch = (page, errors) => {
 
 // openWindow opens one of Go's windows in a page of browser, the OS window: the shell in a
 // frame, and a mock page for each tab the layout shows (core/cmd/dev/window.html); with
-// hasTouch, a touch screen's, as a phone's is. It has
+// hasTouch, a touch screen's, as a phone's is. With held, the shell's first ready waits
+// until release(): Go answers ready with the snapshot and sends a shell nothing before it
+// (docs/shells.md, The messages), so until then the shell has none of Go's data. It has
 //
 //   page          the window, whose mouse, keyboard and screenshots are the window's
 //   ui            a locator into the shell's frame, which survives it loading again
 //   shell()       the shell's frame itself, to evaluate in
 //   mockPage(t)   a locator into the mock page of tab t
 //   errors        every error the window and its frames logged
-lib.openWindow = async (browser, { window = 1, viewport = { width: 1100, height: 700 }, hasTouch = false } = {}) => {
+//   waiting()     with held, whether the shell has said ready and waits for the snapshot
+//   release()     with held, lets its ready through, and the snapshot comes
+lib.openWindow = async (browser, { window = 1, viewport = { width: 1100, height: 700 }, hasTouch = false, held = false } = {}) => {
   const page = await browser.newPage({ viewport, hasTouch });
   const errors = [];
   lib.watch(page, errors);
+  const sends = (url) => url.pathname === '/shell/send';
+  let ready = null;
+  const hold = (route) => (JSON.parse(route.request().postData()).t === 'ready' ? (ready = route) : route.continue());
+  if (held) await page.route(sends, hold);
   await page.goto(`${lib.base}/?window=${window}`);
   const shellURL = new RegExp(`/shell/[a-z0-9-]+/\\?window=${window}$`);
   return {
@@ -119,6 +127,11 @@ lib.openWindow = async (browser, { window = 1, viewport = { width: 1100, height:
     ui: page.frameLocator('iframe.shell'),
     shell: () => page.frame({ url: shellURL }),
     mockPage: (tab) => page.frameLocator(`iframe.mock-page[data-tab="${tab}"]`),
+    waiting: () => ready !== null,
+    release: async () => {
+      await ready.continue();
+      await page.unroute(sends, hold);
+    },
   };
 };
 
