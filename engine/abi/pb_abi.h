@@ -86,12 +86,11 @@ typedef enum PBEvent {
 
   // What a tab's page does, 60 to 79, as any engine can say it: Go's core/abi turns each
   // into the engine.Listener call of its name. A tab here is never a page of ours.
-  PB_EVENT_NAVIGATION_STARTING = 60,    // i: tab, i: navigation, s: url; answers i: 1 to
-                                        // let it go on, 0 to block it. Asked as a
-                                        // top-level navigation starts and on each
-                                        // redirect. navigation is the engine's number for
-                                        // it, greater for each newer one, the same until
-                                        // it finishes or fails
+  PB_EVENT_NAVIGATION_STARTING = 60,    // i: tab, i: navigation, s: url; answers i: a
+                                        // PBNavigation. Asked as a top-level navigation
+                                        // starts and on each redirect. navigation is the
+                                        // engine's number for it, greater for each newer
+                                        // one, the same until it finishes or fails
   PB_EVENT_NAVIGATION_FINISHED = 61,    // i: tab, i: navigation, s: url; the page there is
                                         // now the tab's
   PB_EVENT_NAVIGATION_FAILED = 62,      // i: tab, i: navigation, s: url, s: why, in
@@ -123,6 +122,15 @@ typedef enum PBEvent {
   PB_EVENT_IS_PAGE_FULL_SCREEN = 76,    // i: tab; answers i: 1 when its page has the
                                         // screen now
 } PBEvent;
+
+// What becomes of a navigation, PB_EVENT_NAVIGATION_STARTING's answer. Matches
+// engine.Navigation. Any other answer blocks it.
+typedef enum PBNavigation {
+  PB_NAVIGATION_BLOCK = 0,      // it stops, and the tab shows that it was blocked
+  PB_NAVIGATION_PROCEED = 1,    // it goes on
+  PB_NAVIGATION_ELSEWHERE = 2,  // it stops with nothing shown, the tab staying as it was:
+                                // the app took the address to another tab
+} PBNavigation;
 
 // When the engine asks about a key. Matches engine.KeyPhase.
 typedef enum PBKeyPhase {

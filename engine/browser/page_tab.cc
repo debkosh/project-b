@@ -349,12 +349,15 @@ void PageTab::OnFaviconDownloaded(int request,
   hooks::Fire(PB_EVENT_FAVICON_CHANGED, args);
 }
 
+// A link in a tab of ours navigates the tab itself, whatever it asked for: Go's one check
+// on every navigation keeps it to our pages there, and takes any other address to a new
+// tab beside it.
 content::WebContents* PageTab::OpenURLFromTab(
     content::WebContents* source,
     const content::OpenURLParams& params,
     base::OnceCallback<void(content::NavigationHandle&)> callback) {
   content::WebContents* target = source;
-  if (params.disposition != WindowOpenDisposition::CURRENT_TAB) {
+  if (params.disposition != WindowOpenDisposition::CURRENT_TAB && !internal()) {
     // A link asked for another tab, which is in this tab's workspace. Go hears about
     // the tab before its first navigation, so the gate finds it.
     PageTab* tab = Engine::Get()->CreateTab(workspace_);
@@ -384,6 +387,9 @@ content::WebContents* PageTab::OpenURLFromTab(
 // its own, referrer and form data included. Its sessionStorage starts empty in the
 // workspace, as a tab's without an opener does anywhere, so no storage of the dropped one's
 // is left with it.
+//
+// A tab of ours opens no window: its page's window.open goes nowhere, and the tab is asked
+// to load the address itself, as its links are.
 content::WebContents* PageTab::AddNewContents(
     content::WebContents* source,
     std::unique_ptr<content::WebContents> new_contents,
@@ -392,6 +398,12 @@ content::WebContents* PageTab::AddNewContents(
     const blink::mojom::WindowFeatures& window_features,
     bool user_gesture,
     bool* was_blocked) {
+  if (internal()) {
+    new_contents.reset();
+    contents_->GetController().LoadURLWithParams(
+        content::NavigationController::LoadURLParams(target_url));
+    return nullptr;
+  }
   Engine* engine = Engine::Get();
   PageTab* tab = nullptr;
   if (engine->WorkspaceOf(new_contents.get()) == workspace_) {

@@ -741,6 +741,47 @@ func TestTheSettingsTabOpensAtASectionAndEndsItsRecording(t *testing.T) {
 	}
 }
 
+// Our pages' one navigation rule, through the engine: a page the settings tab is asked to
+// go to opens in a web tab beside it, and the settings tab stays; an address of ours typed
+// or asked for in a new tab shows the settings tab, and the web tab stays as it was.
+func TestTheNavigationRuleThroughTheEngine(t *testing.T) {
+	r := start(t, t.TempDir())
+	defer r.stop()
+	r.visit("https://example.com/")
+	r.openSettings()
+	var first engine.TabID
+	var all []tabs.Tab
+	read := func() {
+		r.e.Settle()
+		r.e.Post(func() { all, first = r.a.Tabs.AllIn(1), r.a.Tabs.ActiveID() })
+		r.e.Settle()
+	}
+
+	r.e.Fire(1, r.settingsTab, "navigate", "https://p.test/")
+	r.waitForTab(func(t map[string]any) bool { return t["url"] == "https://p.test/" && t["title"] == "Mock p.test" })
+	read()
+	if len(all) != 3 || all[1].ID != r.settingsTab || all[1].URL != "chrome://settings/" || all[2].URL != "https://p.test/" || first != all[2].ID {
+		t.Fatalf("after the settings tab was asked for a web page: %+v, active %v", all, first)
+	}
+
+	r.e.Post(func() { r.a.Tabs.Activate(all[0].ID) })
+	r.shell(`{"t":"navigate","text":"chrome://settings"}`)
+	// The shell asks for the page of the tab it typed in, still its active one when it asked.
+	r.shell(fmt.Sprintf(`{"t":"focusTab","id":%d}`, all[0].ID))
+	read()
+	if len(all) != 3 || first != r.settingsTab || all[0].URL != "https://example.com/" {
+		t.Fatalf("after chrome://settings was typed in a web tab: %+v, active %v", all, first)
+	}
+	if r.e.Focused() == all[0].ID || slices.Contains(r.e.UnshownFocus(), all[0].ID) {
+		t.Fatalf("the web tab the shell asked to focus, no longer active, was given the keyboard")
+	}
+	r.shell(`{"t":"newTab","text":"chrome://settings/"}`)
+	read()
+	if len(all) != 3 || first != r.settingsTab {
+		t.Fatalf("after a new tab for chrome://settings/: %+v, active %v", all, first)
+	}
+}
+
 // Ctrl+Tab goes back through recent tabs while Ctrl is held, as Cmd+Tab does through apps,
 // and letting go settles on the tab it reached.
 func TestCtrlTabCyclesRecentTabs(t *testing.T) {

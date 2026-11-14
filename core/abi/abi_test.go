@@ -13,16 +13,16 @@ import (
 type recorder struct {
 	engine.Listener
 	got        []string
-	allow      bool
+	answer     engine.Navigation
 	fullScreen bool
 }
 
 func (r *recorder) note(format string, args ...any) {
 	r.got = append(r.got, fmt.Sprintf(format, args...))
 }
-func (r *recorder) NavigationStarting(tab engine.TabID, nav int64, url string) bool {
+func (r *recorder) NavigationStarting(tab engine.TabID, nav int64, url string) engine.Navigation {
 	r.note("starting %d %d %s", tab, nav, url)
-	return r.allow
+	return r.answer
 }
 func (r *recorder) NavigationFinished(tab engine.TabID, nav int64, url string) {
 	r.note("finished %d %d %s", tab, nav, url)
@@ -64,7 +64,7 @@ func (r *recorder) PageFullScreen(tab engine.TabID, on bool) {
 func (r *recorder) IsPageFullScreen(engine.TabID) bool { return r.fullScreen }
 
 func listening() (*Events, *recorder) {
-	e, r := New(), &recorder{allow: true}
+	e, r := New(), &recorder{}
 	e.Listen(r)
 	return e, r
 }
@@ -108,18 +108,21 @@ func TestEachEventReachesTheListener(t *testing.T) {
 	}
 }
 
-// The gate's answer is the app's: 1 lets the navigation go on, 0 blocks it.
+// The gate's answer is the app's: 1 lets the navigation go on, 0 blocks it, and 2 drops
+// it, the app having taken the address to another tab.
 func TestTheGateAnswersWithTheAppsDecision(t *testing.T) {
 	e, r := listening()
 	args := []Value{i(2), i(41), s("https://blocked.test/")}
-	if v, ok := e.Dispatch(NavigationStarting, args); !ok || v.I != 1 {
-		t.Fatalf("allowed: %v %v", v, ok)
+	for _, c := range []struct {
+		answer engine.Navigation
+		want   int64
+	}{{engine.NavigationProceed, 1}, {engine.NavigationBlock, 0}, {engine.NavigationElsewhere, 2}} {
+		r.answer = c.answer
+		if v, ok := e.Dispatch(NavigationStarting, args); !ok || v.I != c.want {
+			t.Fatalf("for %v: %v %v", c.answer, v, ok)
+		}
 	}
-	r.allow = false
-	if v, ok := e.Dispatch(NavigationStarting, args); !ok || v.I != 0 {
-		t.Fatalf("blocked: %v %v", v, ok)
-	}
-	if !reflect.DeepEqual(r.got, []string{"starting 2 41 https://blocked.test/", "starting 2 41 https://blocked.test/"}) {
+	if len(r.got) != 3 || r.got[0] != "starting 2 41 https://blocked.test/" {
 		t.Fatalf("got %q", r.got)
 	}
 }

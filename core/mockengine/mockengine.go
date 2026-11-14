@@ -1003,18 +1003,24 @@ func (e *Engine) load(id engine.TabID, u string, commit func(*tab)) {
 		e.Post(func() { e.load(id, u, commit) })
 		return
 	}
-	t.navSeq++
-	seq := t.navSeq
 	e.nextNav++
-	t.nav = e.nextNav
-	nav := t.nav
-	if t.internal {
-		t.page = hostOf(u)
-	}
-	if !e.listener.NavigationStarting(id, nav, u) {
+	nav := e.nextNav
+	switch e.listener.NavigationStarting(id, nav, u) {
+	case engine.NavigationElsewhere:
+		// The app took the address to another tab: this one stays as it was.
+		return
+	case engine.NavigationBlock:
+		t.navSeq++
+		t.nav = nav
 		t.state = "blocked"
 		e.showPage(id, t.state, u)
 		return
+	}
+	t.navSeq++
+	seq := t.navSeq
+	t.nav = nav
+	if t.internal {
+		t.page = hostOf(u)
 	}
 	e.listener.LoadingChanged(id, true)
 	e.listener.LoadProgressChanged(id, 0.5)

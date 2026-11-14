@@ -536,3 +536,63 @@ func TestOurTabKeepsItsKind(t *testing.T) {
 		t.Fatalf("moved: %+v in window %v", moved, m.WindowOf(s))
 	}
 }
+
+// The one navigation rule. A tab of ours goes on to our pages, without the web's gates; any
+// other address, however its navigation started, goes nowhere there and opens in a new
+// web tab beside it, in the workspace it was opened from. A web tab asked for one of our
+// pages stays as it was, and the window's tab of that page shows.
+func TestOurPagesNavigateInPlaceAndAnythingElseOpensBeside(t *testing.T) {
+	e := &loads{}
+	m := oneWindow(e)
+	m.AddGate(func(string) bool { return false })
+	web := m.CreateIn(1, "")
+	ours := m.OpenPage(1, "settings")
+	last := m.Create(1)
+	m.Activate(ours)
+
+	if got := m.HandleNavigationStarting(ours, 1, "chrome://settings/keyboard"); got != engine.NavigationProceed {
+		t.Fatalf("to our page: %v", got)
+	}
+	if tab, _ := m.Get(ours); tab.URL != "chrome://settings/keyboard" || tab.Blocked {
+		t.Fatalf("our tab after its page: %+v", tab)
+	}
+
+	m.HandleNavigationFinished(ours, 1, "chrome://settings/")
+	before := len(e.urls)
+	if got := m.HandleNavigationStarting(ours, 2, "https://a.test/"); got != engine.NavigationElsewhere {
+		t.Fatalf("to the web: %v", got)
+	}
+	opened := m.Active()
+	if !slices.Equal(ids(m.AllIn(1)), []engine.TabID{web, ours, opened.ID, last}) || opened.Page != "" || opened.Workspace != "" ||
+		opened.URL != "https://a.test/" || !slices.Equal(e.urls[before:], []string{"https://a.test/"}) {
+		t.Fatalf("order %v, opened %+v, loads %v", ids(m.AllIn(1)), opened, e.urls[before:])
+	}
+	if tab, _ := m.Get(ours); tab.URL != "chrome://settings/" {
+		t.Fatalf("our tab went with it: %+v", tab)
+	}
+
+	m.Activate(web)
+	if got := m.HandleNavigationStarting(web, 3, "chrome://settings/"); got != engine.NavigationElsewhere || m.ActiveID() != ours || len(e.ours) != 1 {
+		t.Fatalf("a web tab to our page: %v, active %v, ours made %v", got, m.ActiveID(), e.ours)
+	}
+	if tab, _ := m.Get(web); tab.URL != "" {
+		t.Fatalf("the web tab went with it: %+v", tab)
+	}
+}
+
+// An address of one of our pages asked for in a new tab, or typed in a window with no
+// tabs, shows the window's tab of it, and opens no web tab for it.
+func TestOpeningOurAddressShowsOurTab(t *testing.T) {
+	e := &fakeEngine{}
+	m := oneWindow(e)
+	m.CreateIn(1, "")
+	id := m.OpenIn("chrome://settings/", true)
+	if tab, _ := m.Get(id); tab.Page != "settings" || len(m.AllIn(1)) != 2 || len(e.in) != 1 {
+		t.Fatalf("opened %+v; tabs %v", tab, ids(m.AllIn(1)))
+	}
+	m.AddWindow(2)
+	m.Navigate(2, "chrome://settings", work)
+	if in := m.AllIn(2); len(in) != 1 || in[0].Page != "settings" || len(e.in) != 1 {
+		t.Fatalf("typed in a window with no tabs: %+v", in)
+	}
+}

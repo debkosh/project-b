@@ -26,9 +26,10 @@ bool Key(content::WebContents* source,
          const input::NativeWebKeyboardEvent& event,
          PBKeyPhase phase);
 
-// The gate: every top-level navigation in a tab asks Go before it starts and on each
-// redirect. A frame inside a tab's page is refused on a blocked host (block_rules.h).
-// Our own pages' navigations go on unasked.
+// The gate: every top-level navigation in a tab, ours too, asks Go before it starts and
+// on each redirect. One Go takes to another tab is dropped with nothing shown, the tab
+// staying as it was. A frame inside a tab's page is refused on a blocked host
+// (block_rules.h). The shell's and the picker's navigations go on unasked.
 class Gate : public content::NavigationThrottle {
  public:
   explicit Gate(content::NavigationThrottleRegistry& registry);
