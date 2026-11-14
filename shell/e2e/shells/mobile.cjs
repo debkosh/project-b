@@ -519,14 +519,13 @@ const H = 915;
   // Settings, from the menu.
   await menuButton.tap();
   await menu.getByRole('menuitem', { name: 'Settings' }).tap();
-  check('Settings in the menu opens the settings page', await until(async () => (await regions()).settingsOpen === true));
+  check('Settings in the menu opens the settings tab', await until(async () => (await regions()).settings !== 0 && (await regions()).active === (await regions()).settings));
 
   // The address bar on top, from settings on a phone: the toolbar moves under the status
   // bar, the strip stays at the foot, the suggestions grow down.
-  const settings = page.frameLocator('iframe.mock-settings');
-  await settings.getByRole('radiogroup', { name: 'Address bar' }).getByRole('radio', { name: 'Top' }).tap();
-  await settings.getByRole('button', { name: 'Close settings' }).tap();
-  await until(async () => (await regions()).settingsOpen === false);
+  await w.settings.getByRole('radiogroup', { name: 'Address bar' }).getByRole('radio', { name: 'Top' }).tap();
+  await lib.closeTab((await regions()).settings);
+  await until(async () => (await regions()).settings === 0);
   const clear = (await regions()).window.Controls;
   const topY = clear.h > 0 ? clear.y + clear.h : 0;
   check('Top in settings moves the toolbar to the top', await until(async () => {

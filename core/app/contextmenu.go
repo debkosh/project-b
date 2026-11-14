@@ -169,10 +169,11 @@ func (c *contextMenus) actions(t tabs.Tab, cm engine.ContextMenu) []menuAction {
 
 // run does what action id of menu m says.
 func (c *contextMenus) run(m *contextMenu, id string) {
-	t, ok := c.a.Tabs.Get(m.Tab)
-	if !ok || !m.has(id) {
+	if _, ok := c.a.Tabs.Get(m.Tab); !ok || !m.has(id) {
 		return
 	}
+	// What a tab of ours opens goes in the workspace it was opened from.
+	home := c.a.Tabs.HomeOf(m.Tab)
 	edit := func(cmd engine.EditCommand) {
 		// The menu may have taken the keyboard: the page gets it back first.
 		c.e.FocusTab(m.Tab)
@@ -180,9 +181,9 @@ func (c *contextMenus) run(m *contextMenu, id string) {
 	}
 	switch {
 	case id == "link.newTab":
-		c.a.Tabs.OpenFrom(m.Tab, m.Link, t.Workspace, false)
+		c.a.Tabs.OpenFrom(m.Tab, m.Link, home, false)
 	case id == "link.newWindow":
-		c.a.NewWindowWith(c.a.Tabs.OpenFrom(m.Tab, m.Link, t.Workspace, false))
+		c.a.NewWindowWith(c.a.Tabs.OpenFrom(m.Tab, m.Link, home, false))
 	case strings.HasPrefix(id, "link.workspace."):
 		c.a.Tabs.OpenFrom(0, m.Link, strings.TrimPrefix(id, "link.workspace."), false)
 	case id == "link.copy":
@@ -192,13 +193,13 @@ func (c *contextMenus) run(m *contextMenu, id string) {
 	case id == "image.saveAs":
 		c.e.DownloadURL(m.Tab, m.Src, true)
 	case id == "image.newTab":
-		c.a.Tabs.OpenFrom(m.Tab, m.Src, t.Workspace, false)
+		c.a.Tabs.OpenFrom(m.Tab, m.Src, home, false)
 	case id == "image.copyAddress":
 		c.e.WriteClipboard(m.Src)
 	case id == "selection.copy":
 		c.e.WriteClipboard(m.Selection)
 	case id == "selection.search":
-		c.a.Tabs.OpenFrom(m.Tab, c.a.Tabs.SearchURL(m.Selection), t.Workspace, true)
+		c.a.Tabs.OpenFrom(m.Tab, c.a.Tabs.SearchURL(m.Selection), home, true)
 	case id == "edit.undo":
 		edit(engine.EditUndo)
 	case id == "edit.redo":

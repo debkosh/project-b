@@ -17,7 +17,6 @@ const look = {
   shell: ['#dc2626', null],
   drag: ['#2563eb', '4 3'],
   buttons: ['#a855f7', null],
-  settings: ['#f97316', null],
 };
 
 const flags = (value) => fs.writeFileSync(path.join(lib.profile, 'flags.json'), JSON.stringify(value));
@@ -42,7 +41,6 @@ const tracked = (r) => ({
   shell: r.regions,
   drag: r.drag,
   buttons: r.window.Controls.w > 0 ? [r.window.Controls] : [],
-  settings: r.settingsOpen ? [{ x: 0, y: 0, w: r.window.W, h: r.window.H }] : [],
 });
 
 const outlinesMatch = async (page, when) => {
@@ -78,10 +76,14 @@ const outlinesMatch = async (page, when) => {
   const points = [tab.rect, ...r.regions, ...r.drag].map((g) => ({ x: g.x + g.w / 2, y: g.y + g.h / 2 }));
   check('the outlines take no presses', await w.page.evaluate((points) => points.every(({ x, y }) => document.elementFromPoint(x, y).matches('iframe')), points));
 
+  // The settings tab's page is a tab's page like any other.
   await lib.fire('menu', 'app.settings');
-  check('settings opens', await until(async () => (await regions()).settingsOpen));
-  await until(async () => (await drawn(w.page)).some((o) => o.kind === 'settings'));
-  await outlinesMatch(w.page, 'the settings page open');
+  check('settings opens in a tab, which shows', await until(async () => {
+    const r = await regions();
+    return r.settings !== 0 && r.active === r.settings && r.visible.some((v) => v.tab === r.settings);
+  }));
+  await settle(w.page);
+  await outlinesMatch(w.page, 'the settings tab shown');
   await w.page.screenshot({ path: path.join(lib.out, 'outlines-settings.png') });
   check('it logged no errors', w.errors.length === 0, w.errors.join(' | '));
   await w.page.close();

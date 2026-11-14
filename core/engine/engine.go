@@ -72,13 +72,13 @@ const (
 	KeyUnhandled
 )
 
-// Surface is which of our pages had the keyboard when a key was pressed.
+// Surface is which kind of page had the keyboard when a key was pressed: a tab's, ours
+// among them, or the shell.
 type Surface int
 
 const (
 	SurfacePage Surface = iota + 1
 	SurfaceShell
-	SurfaceSettings
 )
 
 // Page is which of our pages covers a window: a shell, or the picker in a copy that
@@ -264,12 +264,8 @@ type Engine interface {
 	// rectangle in the window's shell coordinates.
 	ShareFile(w WindowID, path string, anchor Rect)
 
-	// OpenSettings puts the settings page over the whole of a window, in a page of its
-	// own, and gives it the keyboard; CloseSettings takes it away. SendToSettings delivers
-	// one message to it while it is open.
-	OpenSettings(w WindowID)
-	CloseSettings(w WindowID)
-	SendToSettings(w WindowID, msg []byte)
+	// SendToSettings delivers one message to the settings page a tab of ours shows.
+	SendToSettings(tab TabID, msg []byte)
 
 	// SetMenu replaces the native menu bar, where the platform has one.
 	SetMenu(m Menu)
@@ -362,14 +358,14 @@ type Listener interface {
 	// title, as macOS App Shortcuts does. It fires after start and whenever they change.
 	OSBindings(byTitle map[string]Key)
 
-	// SettingsMessage is one message from a window's settings page.
-	SettingsMessage(w WindowID, msg []byte)
+	// SettingsMessage is one message from the settings page a tab of ours shows.
+	SettingsMessage(tab TabID, msg []byte)
 	// PickerMessage is one message from the picker's page, in a copy that hasn't chosen
 	// its profile.
 	PickerMessage(w WindowID, msg []byte)
 
 	// WindowClosed says a window closed, asked by the app or by its own close button.
-	// Its shell and settings pages are gone with it; its tabs are still there.
+	// Its shell page is gone with it; its tabs are still there.
 	WindowClosed(w WindowID)
 	// WindowFocused says a window became the one in front, the one keys go to.
 	WindowFocused(w WindowID)

@@ -40,7 +40,6 @@
 #include "project_b/engine/browser/hooks_gen.h"
 #include "project_b/engine/browser/mac_app.h"
 #include "project_b/engine/browser/page_tab.h"
-#include "project_b/engine/browser/settings_page.h"
 #include "project_b/engine/browser/shell_page.h"
 #include "project_b/engine/browser/window.h"
 #include "project_b/engine/buildflags/buildflags.h"
@@ -103,6 +102,18 @@ PageTab* Focused() {
   return Engine::Get()->FocusedTab(Current());
 }
 
+// The driver's window's settings tab: a tab of ours there showing chrome://settings/, or
+// null.
+PageTab* SettingsTab() {
+  for (const auto& [id, tab] : Engine::Get()->tabs()) {
+    if (tab->internal() && tab->window() == g_window &&
+        tab->contents()->GetVisibleURL().host() == "settings") {
+      return tab.get();
+    }
+  }
+  return nullptr;
+}
+
 // Where the layout put the focused tab's page, in shell coordinates, or nothing.
 gfx::RectF FocusedBounds() {
   for (const Engine::VisibleTab& v : Current()->visible) {
@@ -148,11 +159,6 @@ std::string Classify(NSView* hit) {
       return "page";
     }
   }
-  SettingsPage* settings = Current()->settings.get();
-  if (settings &&
-      [hit isDescendantOf:settings->contents()->GetNativeView().GetNativeNSView()]) {
-    return "settings";
-  }
 #if BUILDFLAG(PB_EXTENSIONS)
   content::WebContents* popup =
       Extensions::Get() ? Extensions::Get()->popup_contents() : nullptr;
@@ -191,8 +197,7 @@ std::string SendMouse(NSEventType type, double x, double y, int clicks) {
                                       pressure:clicks ? 1.0 : 0.0];
   NSView* hit = HitFromFrame(x, y);
   const std::string kind = Classify(hit);
-  if (kind != "shell" && kind != "page" && kind != "settings" &&
-      kind != "popup") {
+  if (kind != "shell" && kind != "page" && kind != "popup") {
     return kind;
   }
   switch (type) {
@@ -207,7 +212,7 @@ std::string SendMouse(NSEventType type, double x, double y, int clicks) {
       break;
     case NSEventTypeLeftMouseUp:
       // What the window's sendEvent: does, which nothing calls here.
-      if (kind == "shell" || kind == "settings") {
+      if (kind == "shell") {
         timeline::Input("input.click",
                         base::TimeTicks() + base::Seconds(event.timestamp));
       }
@@ -272,7 +277,7 @@ unsigned short CodeForChar(unichar c) {
 void Capture(const std::string& id, const std::string& path);
 
 // The reply to one eval. Content drops the result's callback, unrun, when the page the
-// script went to is destroyed first, as a settings page is when it closes. So the reply
+// script went to is destroyed first, as a tab's is when it closes. So the reply
 // watches the page, and answers "ERR gone" if it goes before the result comes. It
 // answers once either way, and goes with its answer.
 class EvalReply : public content::WebContentsObserver {
@@ -609,7 +614,8 @@ void Run(const std::string& line) {
                                   .Set("loading", contents->IsLoading()))
                   .value_or("{}"));
   } else if (cmd == "evalsettings") {
-    if (SettingsPage* settings = Current()->settings.get()) {
+    // In the settings page of the driver's window: its tab of ours whose page settings is.
+    if (PageTab* settings = SettingsTab()) {
       Eval(id, settings->contents(), rest(2));
     } else {
       Reply(id, "ERR no settings page");
@@ -868,10 +874,8 @@ void Capture(const std::string& id, const std::string& path) {
     view->CopyFromSurface(gfx::Rect(), gfx::Size(), base::Seconds(5), std::move(done));
   };
 
-  // The settings page covers the whole window while it is open: it alone is the picture.
   // A window that shows no tab has no page under its shell: the shell is the picture.
-  SettingsPage* settings = Current()->settings.get();
-  copy(settings ? settings->contents() : Current()->shell->contents(),
+  copy(Current()->shell->contents(),
        base::BindOnce(
            [](scoped_refptr<CaptureState> state,
               const content::CopyFromSurfaceResult& result) {
@@ -885,7 +889,7 @@ void Capture(const std::string& id, const std::string& path) {
            },
            state));
   PageTab* page = Focused();
-  if (settings || !page) {
+  if (!page) {
     state->page_done = true;
     return;
   }

@@ -38,7 +38,6 @@
 #include "project_b/engine/common/block_rules.h"
 #include "project_b/engine/browser/hooks.h"
 #include "project_b/engine/browser/page_tab.h"
-#include "project_b/engine/browser/settings_page.h"
 #include "project_b/engine/buildflags/buildflags.h"
 #if !BUILDFLAG(IS_ANDROID)
 #include "project_b/engine/browser/mac_app.h"
@@ -275,19 +274,9 @@ void CallExitPageFullScreen(int64_t tab) {
   }
 }
 
-void CallOpenSettings(int64_t window) {
+void CallSendToSettings(int64_t tab, const char* json, size_t length) {
   CheckMainThread();
-  g_engine->OpenSettings(window);
-}
-
-void CallCloseSettings(int64_t window) {
-  CheckMainThread();
-  g_engine->CloseSettings(window);
-}
-
-void CallSendToSettings(int64_t window, const char* json, size_t length) {
-  CheckMainThread();
-  g_engine->SendToSettings(window, json, length);
+  g_engine->SendToSettings(tab, json, length);
 }
 
 void CallSetMenu(const char* json, size_t length) {
@@ -570,8 +559,6 @@ const PBEngineCalls* Engine::Calls() {
       .send_to_shell = CallSendToShell,
       .set_shell_back = CallSetShellBack,
       .share_file = CallShareFile,
-      .open_settings = CallOpenSettings,
-      .close_settings = CallCloseSettings,
       .send_to_settings = CallSendToSettings,
       .set_menu = CallSetMenu,
       .app_command = CallAppCommand,
@@ -1076,14 +1063,15 @@ int64_t Engine::DuplicateTab(int64_t tab) {
 
 content::WebContents* Engine::FocusedContents() const {
   for (const auto& [id, w] : windows_) {
-    std::vector<content::WebContents*> pages = {
-        w->settings ? w->settings->contents() : nullptr,
-        w->shell ? w->shell->contents() : nullptr};
+    std::vector<content::WebContents*> pages;
+    if (w->shell) {
+      pages.push_back(w->shell->contents());
+    }
     for (const VisibleTab& v : w->visible) {
       pages.push_back(tab(v.tab)->contents());
     }
     for (content::WebContents* contents : pages) {
-      if (contents && contents->GetRenderWidgetHostView() &&
+      if (contents->GetRenderWidgetHostView() &&
           contents->GetRenderWidgetHostView()->HasFocus()) {
         return contents;
       }
@@ -1129,46 +1117,9 @@ void Engine::Edit(int32_t command) {
   }
 }
 
-void Engine::OpenSettings(int64_t window) {
-  AppWindow* w = this->window(window);
-  if (w->settings) {
-    return;
-  }
-  w->settings = std::make_unique<SettingsPage>(pages_context_);
-  timeline::Mark("settings.open.created");
-#if BUILDFLAG(IS_ANDROID)
-  w->window->SetOverlayContents(w->settings->contents());
-#else
-  w->window->SetOverlayView(w->settings->contents()->GetNativeView());
-#endif
-  timeline::Mark("settings.open.shown");
-  w->settings->Load();
-  w->settings->contents()->Focus();
-}
-
-// Like CloseTab, the request can come from the page's own key event, so the page dies
-// on a later task.
-void Engine::CloseSettings(int64_t window) {
-  AppWindow* w = this->window(window);
-  if (!w->settings) {
-    return;
-  }
-#if BUILDFLAG(IS_ANDROID)
-  w->window->RemoveOverlayContents(w->settings->contents());
-#else
-  w->window->RemoveOverlayView(w->settings->contents()->GetNativeView());
-#endif
-  content::GetUIThreadTaskRunner({})->DeleteSoon(FROM_HERE,
-                                                 std::move(w->settings));
-  if (PageTab* tab = FocusedTab(w)) {
-    tab->contents()->Focus();
-  }
-}
-
-void Engine::SendToSettings(int64_t window, const char* json, size_t length) {
-  AppWindow* w = this->window(window);
-  if (w->settings) {
-    w->settings->Send(std::string(json, length));
+void Engine::SendToSettings(int64_t tab, const char* json, size_t length) {
+  if (PageTab* t = this->tab(tab); t && t->internal()) {
+    t->SendToPage(std::string(json, length));
   }
 }
 
@@ -1185,22 +1136,15 @@ void Engine::CloseWindow(int64_t window) {
                      base::Unretained(this), window));
 }
 
-// While a window's settings page is open it keeps the keyboard: a focus request from
-// the shell or Go, such as one still on its way from before it opened, waits until it
-// closes.
 void Engine::FocusTab(int64_t tab) {
   PageTab* t = this->tab(tab);
-  AppWindow* w = WindowOf(tab);
-  if (t && w && !w->settings) {
+  if (t && WindowOf(tab)) {
     t->contents()->Focus();
   }
 }
 
 void Engine::FocusShell(int64_t window) {
   AppWindow* w = this->window(window);
-  if (w->settings) {
-    return;
-  }
 #if BUILDFLAG(IS_ANDROID)
   if (w->native_shell) {
     w->window->FocusNativeShell();

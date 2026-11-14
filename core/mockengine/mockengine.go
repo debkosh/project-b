@@ -74,8 +74,10 @@ type tab struct {
 	zoom    float64
 	// workspace is the app's id for the workspace the tab is in, "" for the profile's own storage.
 	workspace string
-	// internal says it is one of ours, in our pages' context.
+	// internal says it is one of ours, in our pages' context, and page is which of our
+	// pages it shows, as its address names it.
 	internal bool
+	page     string
 }
 
 // Engine implements engine.Engine. Run is the main thread: everything happens there,
@@ -123,6 +125,8 @@ type Engine struct {
 	left bool
 	// showRegions is the Show window regions flag, as the app launched with it.
 	showRegions bool
+	// settings are what the settings page in each tab of ours hears.
+	settings map[engine.TabID]*Feed
 
 	// The fake extension runtime, in a build with extensions.
 	extensions extensionRuntime
@@ -141,18 +145,26 @@ type window struct {
 	w, h              float64        // The window's content size.
 	bounds            engine.Rect    // Its frame on screen.
 	minimised, zoomed bool
-	settings          bool
-	shellBack         bool               // The phone's back key goes to the shell.
-	reported          engine.WindowState // The last one reported.
+	// ours are our tabs whose page this window holds, as the real window holds their
+	// views: the tabs of ours its layout was the last to show, until they close. The dev
+	// window keeps a frame of our page for each.
+	ours      []our
+	shellBack bool               // The phone's back key goes to the shell.
+	reported  engine.WindowState // The last one reported.
+}
+
+// our is one of our tabs, and which of our pages it shows.
+type our struct {
+	Tab  engine.TabID `json:"tab"`
+	Page string       `json:"page"`
 }
 
 // Feeds are what one window's dev window hears.
 type Feeds struct {
-	Shell    Feed // Messages to the shell page.
-	Settings Feed // Messages to the settings page.
-	Page     Feed // State for the mock pages, each message for one slot.
+	Shell Feed // Messages to the shell page.
+	Page  Feed // State for the mock pages, each message for one slot.
 	// What the dev window draws with the shell, where the real window has views of its
-	// own: the page, the settings page and an extension's popup. Each message is
+	// own: the pages, ours among them, and an extension's popup. Each message is
 	// WindowState's.
 	Window Feed
 }
@@ -160,7 +172,7 @@ type Feeds struct {
 // New returns an engine. Call Run to start its main thread.
 func New() *Engine {
 	return &Engine{queue: make(chan func(), 4096), tabs: map[engine.TabID]*tab{},
-		windows: map[engine.WindowID]*window{}, feeds: map[engine.WindowID]*Feeds{}}
+		windows: map[engine.WindowID]*window{}, feeds: map[engine.WindowID]*Feeds{}, settings: map[engine.TabID]*Feed{}}
 }
 
 // Run is the main loop. It never returns.
@@ -212,6 +224,17 @@ func (e *Engine) Feeds(w engine.WindowID) *Feeds {
 		e.feeds[w] = &Feeds{}
 	}
 	return e.feeds[w]
+}
+
+// SettingsFeed is what the settings page in tab hears, whether or not the tab exists yet.
+// Any goroutine.
+func (e *Engine) SettingsFeed(tab engine.TabID) *Feed {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.settings[tab] == nil {
+		e.settings[tab] = &Feed{}
+	}
+	return e.settings[tab]
 }
 
 // SetListener sets who hears the engine's events, and reports the windows the app has
@@ -345,7 +368,19 @@ func (e *Engine) CloseTab(id engine.TabID) {
 				e.publishPage(w, slot, 0, "none", "")
 			}
 		}
+		if e.letGo(win, id) {
+			e.Feeds(w).Window.Publish(e.WindowState(w))
+		}
 	}
+}
+
+// letGo takes one of our tabs out of the window's, and says whether it was there.
+func (e *Engine) letGo(win *window, id engine.TabID) bool {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	n := len(win.ours)
+	win.ours = slices.DeleteFunc(win.ours, func(o our) bool { return o.Tab == id })
+	return len(win.ours) != n
 }
 
 func (e *Engine) LoadURL(id engine.TabID, u string) { e.navigate(id, u) }
@@ -428,6 +463,19 @@ func (e *Engine) SetWindowLayout(w engine.WindowID, l engine.WindowLayout) {
 	for _, v := range l.Tabs {
 		if e.tabs[v.Tab] != nil {
 			visible = append(visible, v.Tab)
+		}
+	}
+	// Our tabs it shows are its now, and no other window's.
+	for _, id := range visible {
+		if t := e.tabs[id]; t.internal && !slices.ContainsFunc(win.ours, func(o our) bool { return o.Tab == id }) {
+			for other, o := range e.windows {
+				if other != w && e.letGo(o, id) {
+					e.Feeds(other).Window.Publish(e.WindowState(other))
+				}
+			}
+			e.mu.Lock()
+			win.ours = append(win.ours, our{id, t.page})
+			e.mu.Unlock()
 		}
 	}
 	e.mu.Lock()
@@ -586,31 +634,16 @@ func (e *Engine) Edits() []engine.EditCommand {
 	return append([]engine.EditCommand(nil), e.edits...)
 }
 
-// The real window puts the settings page in a view over everything. The mock says so on
-// the window's Window feed, and its dev window draws it there.
-func (e *Engine) OpenSettings(w engine.WindowID) {
-	e.mu.Lock()
-	e.windows[w].settings = true
-	e.mu.Unlock()
-	e.Feeds(w).Window.Publish(e.WindowState(w))
-}
-
-func (e *Engine) CloseSettings(w engine.WindowID) {
-	e.mu.Lock()
-	e.windows[w].settings = false
-	e.mu.Unlock()
-	e.Feeds(w).Settings.Publish([]byte(`{"t":"closed"}`))
-	e.Feeds(w).Window.Publish(e.WindowState(w))
-}
-
 // WindowState is what window w holds besides the shell, and how it draws and hit-tests,
 // as its Window feed sends it:
 //
 //	{"t":"window", "shell":the id of the shell the window loads,
-//	 "pages":[{"tab":id,"rect":{x,y,w,h}}] where each mock page goes, by slot,
+//	 "pages":[{"tab":id,"rect":{x,y,w,h},"page":one of ours}] where each tab's page goes,
+//	  by slot, page only for a tab of ours, whose page shows there in place of a mock one,
+//	 "ours":[{"tab":id,"page":"settings"}] our tabs whose page the window holds,
 //	 "regions":[{x,y,w,h,"area":"drag"|"shell"}],
 //	 "frameColor":"#rrggbb", "frameWidth":px, "controls":the window buttons or null,
-//	 "cornerRadius":px, "settings":open, "popup":the extension popup or null,
+//	 "cornerRadius":px, "popup":the extension popup or null,
 //	 "showRegions":whether to outline every rectangle the window manager tracks}
 //
 // The rectangles are the layout's, in the shell's coordinates, which on
@@ -621,17 +654,25 @@ func (e *Engine) WindowState(w engine.WindowID) []byte {
 		engine.Rect
 		Area string `json:"area"`
 	}
+	type shown struct {
+		engine.VisibleTab
+		Page string `json:"page,omitempty"`
+	}
 	e.mu.Lock()
 	var l engine.WindowLayout
 	var s engine.WindowState
 	var page engine.Page
-	pages := []engine.VisibleTab{}
-	settings := false
+	pages := []shown{}
+	ours := []our{}
 	if win := e.windows[w]; win != nil {
-		l, s, page, settings = win.layout, win.reported, win.page, win.settings
+		l, s, page, ours = win.layout, win.reported, win.page, append(ours, win.ours...)
 		for _, v := range l.Tabs {
 			if slices.Contains(win.visible, v.Tab) {
-				pages = append(pages, v)
+				p := shown{VisibleTab: v}
+				if i := slices.IndexFunc(win.ours, func(o our) bool { return o.Tab == v.Tab }); i >= 0 {
+					p.Page = win.ours[i].Page
+				}
+				pages = append(pages, p)
 			}
 		}
 	}
@@ -644,24 +685,16 @@ func (e *Engine) WindowState(w engine.WindowID) []byte {
 	if s.Controls != (engine.Rect{}) {
 		controls = &s.Controls
 	}
-	b, _ := json.Marshal(map[string]any{"t": "window", "shell": page.Shell(), "pages": pages, "regions": regions,
+	b, _ := json.Marshal(map[string]any{"t": "window", "shell": page.Shell(), "pages": pages, "ours": ours, "regions": regions,
 		"frameColor": l.FrameColor, "frameWidth": l.FrameWidth, "controls": controls, "cornerRadius": s.CornerRadius,
-		"settings": settings, "popup": e.openPopup(w), "showRegions": e.showRegions})
+		"popup": e.openPopup(w), "showRegions": e.showRegions})
 	return b
 }
 
 // AreaNames are what the dev window and its tests call each area.
 var AreaNames = [...]string{engine.AreaPage: "page", engine.AreaShell: "shell", engine.AreaDrag: "drag"}
 
-// SettingsOpen says whether window w has its settings page open.
-func (e *Engine) SettingsOpen(w engine.WindowID) bool {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	win := e.windows[w]
-	return win != nil && win.settings
-}
-
-func (e *Engine) SendToSettings(w engine.WindowID, msg []byte) { e.Feeds(w).Settings.Publish(msg) }
+func (e *Engine) SendToSettings(tab engine.TabID, msg []byte) { e.SettingsFeed(tab).Publish(msg) }
 
 func (e *Engine) SetMenu(m engine.Menu) {
 	e.mu.Lock()
@@ -837,12 +870,10 @@ func (e *Engine) Fire(w engine.WindowID, tab engine.TabID, kind, value string) {
 		case "title":
 			e.listener.TitleChanged(shown, value)
 		case "backKey":
-			// The phone's back key, as Android's window takes it: settings, then the
-			// shell's own, then the page's history, then the tab itself, the one used
-			// before it taking its place. With no tab shown it is Android's: the app goes.
+			// The phone's back key, as Android's window takes it: the shell's own, then the
+			// page's history, then the tab itself, the one used before it taking its place.
+			// With no tab shown it is Android's: the app goes.
 			switch {
-			case win.settings:
-				e.listener.SettingsMessage(w, []byte(`{"t":"close"}`))
 			case win.shellBack:
 				e.listener.ShellMessage(w, []byte(`{"t":"backKey"}`))
 			case len(win.visible) == 0:
@@ -977,6 +1008,9 @@ func (e *Engine) load(id engine.TabID, u string, commit func(*tab)) {
 	e.nextNav++
 	t.nav = e.nextNav
 	nav := t.nav
+	if t.internal {
+		t.page = hostOf(u)
+	}
 	if !e.listener.NavigationStarting(id, nav, u) {
 		t.state = "blocked"
 		e.showPage(id, t.state, u)
@@ -996,7 +1030,10 @@ func (e *Engine) load(id engine.TabID, u string, commit func(*tab)) {
 			t.state = "loaded"
 			e.listener.HistoryChanged(id, t.pos > 0, t.pos < len(t.history)-1)
 			e.listener.NavigationFinished(id, nav, u)
-			e.listener.TitleChanged(id, titleOf(u))
+			// Our page is the real one, which gives its own title (core/cmd/dev).
+			if !t.internal {
+				e.listener.TitleChanged(id, titleOf(u))
+			}
 			e.listener.LoadProgressChanged(id, 1)
 			e.listener.LoadingChanged(id, false)
 			e.showPage(id, t.state, u)

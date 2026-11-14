@@ -39,7 +39,7 @@ func (a *App) profileSettingsPart(list *profiles.Manager, id string) settings.Pa
 	a.Prefs.OnShellChanged(func(string) { a.Settings.Send(map[string]any{"t": "profile", "profile": view()}) })
 	return settings.Part{
 		Snapshot: func(into map[string]any) { into["profile"] = view() },
-		Handle: func(w engine.WindowID, t string, msg []byte) bool {
+		Handle: func(_ engine.TabID, t string, msg []byte) bool {
 			var c profileCommand
 			json.Unmarshal(msg, &c)
 			switch t {

@@ -66,13 +66,13 @@ every checkout on the machine shares and the next build replaces. Run the copy d
     (cd core && go run ./cmd/dev -shell ../shell/dist)    # then open http://127.0.0.1:8765
 
 The browser tab is the OS window (`core/cmd/dev/window.html`): it holds what the real window
-holds in views, a mock page for each tab the layout shows, where it puts it, the shell over them in a
-transparent frame, the frame band and window controls, the settings page over everything
-when the gear opens it, and an extension's popup, a card naming the page. Each press goes
+holds in views, a page for each tab the layout shows, where it puts it: a mock page, or for the
+settings tab the settings page; the shell over them in a transparent frame, the frame band
+and window controls, and an extension's popup, a card naming the page. Each press goes
 where the real window sends it, by the layout's regions. The shell and the settings page
 are the real app's, unchanged: the server gives them `chrome.send` as the engine does
 (`core/cmd/dev/webui.js`). The shell also opens alone at http://127.0.0.1:8765/shell/standard/, and
-the settings page at http://127.0.0.1:8765/settings/. With `npm run dev` in `shell/`, open
+the settings page, while settings is open, at http://127.0.0.1:8765/settings/?tab=<its tab>. With `npm run dev` in `shell/`, open
 the window at `/mock/window` on Vite's server. Each window Go makes is a page of its own:
 window 1 at `/`, and the one New Window makes at `/?window=2`, in a tab you open.
 

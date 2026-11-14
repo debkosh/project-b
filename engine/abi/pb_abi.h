@@ -43,7 +43,7 @@ typedef enum PBEvent {
                                         // main screen; i: minimised; i: zoomed
   PB_EVENT_PING = 5,                    // nothing; the driver measures the crossing
   PB_EVENT_SHELL_CRASHED = 6,           // i: window; its shell page's renderer died
-  PB_EVENT_SETTINGS_MESSAGE = 7,        // i: window, s: json, from its settings page
+  PB_EVENT_SETTINGS_MESSAGE = 7,        // i: tab, s: json, from the settings page it shows
   PB_EVENT_MENU_CHOSEN = 8,             // s: the chosen item's action id
   PB_EVENT_OS_BINDINGS = 9,             // s: json, {title: {code, mods}}, the keys the
                                         // OS gives our menu items (macOS App Shortcuts)
@@ -134,7 +134,6 @@ typedef enum PBKeyPhase {
 typedef enum PBSurface {
   PB_SURFACE_PAGE = 1,
   PB_SURFACE_SHELL = 2,
-  PB_SURFACE_SETTINGS = 3,
 } PBSurface;
 
 // What a page's dialog asks.
@@ -349,10 +348,8 @@ typedef struct PBEngineCalls {
                      double y,
                      double w,
                      double h);
-  // A window's settings page, over the whole window in its own page while open.
-  void (*open_settings)(int64_t window);
-  void (*close_settings)(int64_t window);
-  void (*send_to_settings)(int64_t window, const char* json, size_t length);
+  // Delivers one message to the settings page a tab of ours shows.
+  void (*send_to_settings)(int64_t tab, const char* json, size_t length);
   // Replaces the native menu bar: json is Go's engine.Menu.
   void (*set_menu)(const char* json, size_t length);
   void (*app_command)(int32_t command);  // PBAppCommand

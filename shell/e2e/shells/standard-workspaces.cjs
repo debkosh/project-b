@@ -95,7 +95,7 @@ const WORK = '0a1b2c3d';
   check('Escape closes it', await until(async () => (await menu.count()) === 0));
 
   // With one workspace there is nothing to choose.
-  await fetch(`${lib.base}/settings/send?window=1`, { method: 'POST', body: JSON.stringify({ t: 'deleteWorkspace', id: WORK }) });
+  await fetch(`${lib.base}/shell/send?window=1`, { method: 'POST', body: JSON.stringify({ t: 'deleteWorkspace', workspace: WORK }) });
   check('with one workspace left, the switcher goes, and every tab is listed', await until(async () => (await button.count()) === 0, 10000));
 
   check('no errors in the pages', w.errors.length === 0, w.errors.join(' | '));

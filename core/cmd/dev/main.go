@@ -1,8 +1,8 @@
 // Command dev runs the real managers on the mock engine, with no Chromium. The browser
-// tab is the OS window: the window page at / holds the mock page, the shell and the
-// settings page in frames where the real window holds views (window.html). The shell and
-// the settings page are the real app's, unchanged; the server plays the engine's side of
-// their channel (webui.js).
+// tab is the OS window: the window page at / holds the shell, and a page for each tab its
+// layout shows, a mock page or one of ours, in frames where the real window holds views
+// (window.html). The shell and our pages, such as settings, are the real app's,
+// unchanged; the server plays the engine's side of their channel (webui.js).
 package main
 
 import (
@@ -222,19 +222,21 @@ func main() {
 			}
 		})
 	})
-	// The settings page, an app of its own as in the real app, with its own channel.
+	// The settings page, an app of its own as in the real app, in a tab of ours: its
+	// channel is the tab's, /settings/?tab=<id>.
 	mux.Handle("GET /settings/", http.StripPrefix("/settings/", webUI(filepath.Join(*shellDir, "settings"))))
-	mux.HandleFunc("GET /settings/events", func(w http.ResponseWriter, r *http.Request) { stream(w, r, &e.Feeds(windowOf(r)).Settings) })
+	mux.HandleFunc("GET /settings/events", func(w http.ResponseWriter, r *http.Request) { stream(w, r, e.SettingsFeed(tabOf(r))) })
 	mux.HandleFunc("POST /settings/send", func(w http.ResponseWriter, r *http.Request) {
 		msg, err := io.ReadAll(r.Body)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		win := windowOf(r)
+		tab := tabOf(r)
 		e.Post(func() {
-			if e.Open(win) {
-				a.SettingsMessage(win, msg)
+			// As in the real engine, only a tab of ours speaks on its page's channel.
+			if e.Internal(tab) {
+				a.SettingsMessage(tab, msg)
 			}
 		})
 	})
@@ -268,17 +270,18 @@ func main() {
 				shell = append(shell, g.Rect)
 			}
 		}
-		// Go's own state of the window: its tabs in order, and the active one.
-		goTabs, active := []tabs.Tab{}, engine.TabID(0)
+		// Go's own state of the window: its tabs in order, the active one, and its settings
+		// tab, 0 for none.
+		goTabs, active, settings := []tabs.Tab{}, engine.TabID(0), engine.TabID(0)
 		done := make(chan struct{})
 		e.Post(func() {
 			if a != nil && e.Open(win) {
-				goTabs, active = a.Tabs.AllIn(win), a.Tabs.ActiveIn(win)
+				goTabs, active, settings = a.Tabs.AllIn(win), a.Tabs.ActiveIn(win), a.Tabs.PageIn(win, "settings")
 			}
 			close(done)
 		})
 		<-done
-		out := map[string]any{"tabs": goTabs, "active": active, "regions": shell, "drag": drag, "bounds": mockengine.Page(l), "visible": append([]engine.VisibleTab{}, l.Tabs...), "closed": e.Closed(win), "quit": e.Quit(), "windows": e.Windows(), "hidden": e.Hidden(win), "windowColor": l.FrameColor, "shownColor": e.ShownColor(), "frameWidth": l.FrameWidth, "settingsOpen": e.SettingsOpen(win), "page": e.PageOf(win), "shell": e.PageOf(win).Shell(), "focused": e.Focused(), "unshownFocus": e.UnshownFocus(), "leftApp": e.Left(), "dock": e.DockColor(), "opened": opened.Load(), "menu": e.Menu(), "edits": e.Edits(), "clipboard": e.Clipboard(), "openedFiles": e.Opened(), "shown": e.Shown(), "dialogAnswers": e.DialogAnswers(), "window": e.Reported(win), "shared": e.Shared(), "findsStopped": e.FindsStopped()}
+		out := map[string]any{"tabs": goTabs, "active": active, "settings": settings, "regions": shell, "drag": drag, "bounds": mockengine.Page(l), "visible": append([]engine.VisibleTab{}, l.Tabs...), "closed": e.Closed(win), "quit": e.Quit(), "windows": e.Windows(), "hidden": e.Hidden(win), "windowColor": l.FrameColor, "shownColor": e.ShownColor(), "frameWidth": l.FrameWidth, "page": e.PageOf(win), "shell": e.PageOf(win).Shell(), "focused": e.Focused(), "unshownFocus": e.UnshownFocus(), "leftApp": e.Left(), "dock": e.DockColor(), "opened": opened.Load(), "menu": e.Menu(), "edits": e.Edits(), "clipboard": e.Clipboard(), "openedFiles": e.Opened(), "shown": e.Shown(), "dialogAnswers": e.DialogAnswers(), "window": e.Reported(win), "shared": e.Shared(), "findsStopped": e.FindsStopped()}
 		if q := r.URL.Query(); q.Has("x") {
 			x, _ := strconv.ParseFloat(q.Get("x"), 64)
 			y, _ := strconv.ParseFloat(q.Get("y"), 64)
@@ -335,6 +338,12 @@ func webUI(dir string) http.Handler {
 		w.Header().Set("Content-Security-Policy", pageCSP)
 		w.Write(b)
 	})
+}
+
+// tabOf is the tab a request for one of our pages is for: its tab parameter.
+func tabOf(r *http.Request) engine.TabID {
+	tab, _ := strconv.ParseInt(r.URL.Query().Get("tab"), 10, 64)
+	return engine.TabID(tab)
 }
 
 // windowOf is the window a request is for: its window parameter, or 1.

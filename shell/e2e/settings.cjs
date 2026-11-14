@@ -1,8 +1,8 @@
-// The settings page on the mock engine, in a real browser: the gear opens it, what it
-// shows, that its changes go through Go, and the keyboard section. The dev window draws the
-// page over the shell once Go asks for it, as the real window does
-// (core/cmd/dev/window.html); the test drives a page of its own at /settings, which talks
-// to Go the same way.
+// The settings page on the mock engine, in a real browser: the gear opens it in a tab,
+// what it shows, that its changes go through Go, and the keyboard section. The dev window
+// shows the page in the settings tab's frame once Go opens the tab, as the real window
+// does (core/cmd/dev/window.html); the test drives a page of its own, the same tab's at
+// /settings/?tab=<id>, which talks to Go the same way.
 // Run: node shell/e2e/settings.cjs   (from the repo root, after `npm run build` in shell/)
 
 const { spawn, execFileSync } = require('child_process');
@@ -140,21 +140,25 @@ const menuHas = (menu, title) => JSON.stringify(menu).includes(`"title":"${title
   await settle(shell);
   const root = (name) => shellFrame().evaluate((n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim(), name);
 
-  // The gear asks Go, and Go opens the settings page.
-  check('settings starts closed', (await regions()).settingsOpen === false);
+  // The gear asks Go, and Go opens the settings tab, beside the active tab, and shows it.
+  const settingsShown = async () => {
+    const r = await regions();
+    return r.settings !== 0 && r.active === r.settings && r.tabs.find((t) => t.id === r.settings).page === 'settings';
+  };
+  check('settings starts closed', (await regions()).settings === 0);
   await ui.getByRole('button', { name: 'Settings', exact: true }).click();
-  check('the gear opens the settings page', await until(async () => (await regions()).settingsOpen === true));
-  check('and the dev window shows it over the shell', await until(() => shell.locator('iframe.mock-settings').isVisible()));
+  check('the gear opens the settings tab and shows it', await until(settingsShown));
+  check('and the dev window shows the page in the tab\'s frame', await until(() => shell.locator('iframe.our-page[data-page="settings"]').isVisible()));
+  check('its title is the page\'s own', await until(async () => (await regions()).tabs.find((t) => t.page === 'settings').title === 'Settings'));
   await settle(shell);
   await shell.screenshot({ path: path.join(out, 'window-settings.png') });
 
-  // The window under the settings page, saved as name: the middle of the page area looks
-  // the same with the shell's frame over it as without.
+  // The window, saved as name: the middle of the page area, the settings tab's, looks the
+  // same with the shell's frame over it as without.
   const seesThrough = async (name) => {
     const b = (await regions()).bounds;
     const clip = { x: b.x + b.w / 4, y: b.y + b.h / 2, width: b.w / 2, height: b.h / 4 };
     const show = (selector, on) => shell.locator(selector).evaluate((el, v) => (el.style.visibility = v), on ? '' : 'hidden');
-    await show('iframe.mock-settings', false);
     await settle(shell);
     await shell.screenshot({ path: path.join(out, name) });
     const over = await shell.screenshot({ clip });
@@ -162,14 +166,13 @@ const menuHas = (menu, title) => JSON.stringify(menu).includes(`"title":"${title
     await settle(shell);
     const under = await shell.screenshot({ clip });
     await show('iframe.shell', true);
-    await show('iframe.mock-settings', true);
     return over.equals(under);
   };
 
   const open = async () => {
     const p = await browser.newPage({ viewport: { width: 1100, height: 700 } });
     watch(p);
-    await p.goto(base + '/settings/');
+    await p.goto(`${base}/settings/?tab=${(await regions()).settings}`);
     await p.getByRole('heading', { name: 'Settings' }).waitFor();
     return p;
   };
@@ -205,9 +208,7 @@ const menuHas = (menu, title) => JSON.stringify(menu).includes(`"title":"${title
 
   await radio('Horizontal').check();
   check('choosing Horizontal switches the shell and is saved', await until(async () => (await ui.locator('.strip').count()) > 0 && prefsFile().tabLayout === 'horizontal'), JSON.stringify(prefsFile()));
-  // The settings page covers the toolbar, as in the real window, so the button is pressed
-  // without the mouse, as its menu command would.
-  await ui.getByRole('button', { name: 'Tabs on the side' }).dispatchEvent('click');
+  await ui.getByRole('button', { name: 'Tabs on the side' }).click();
   check('a change from the toolbar reaches the settings page', await until(async () => await radio('Vertical').isChecked()));
 
   // The update manager checks by itself two seconds after it starts. Let that one land
@@ -265,7 +266,7 @@ const menuHas = (menu, title) => JSON.stringify(menu).includes(`"title":"${title
   await nameField.press('Enter');
   check('a blank name is refused under the field, and nothing is saved', await until(async () => (await page.getByRole('alert').textContent()) === 'A profile needs a name') && listed().name === 'Personal');
   await nameField.press('Escape');
-  check('Escape puts the name back, and the page stays open', await until(async () => (await nameField.inputValue()) === 'Personal') && (await regions()).settingsOpen === true);
+  check('Escape puts the name back, and the tab stays open', await until(async () => (await nameField.inputValue()) === 'Personal') && (await regions()).settings !== 0);
   await nameField.fill('Home');
   await nameField.press('Enter');
   check('a new name is the list\'s', await until(() => listed().name === 'Home'), JSON.stringify(listed()));
@@ -274,7 +275,7 @@ const menuHas = (menu, title) => JSON.stringify(menu).includes(`"title":"${title
   const shellChoice = page.getByLabel('Shell', { exact: true });
   check('Profile shows the shell in use, and offers only the listed shells', (await shellChoice.inputValue()) === 'standard' &&
     JSON.stringify(await shellChoice.locator('option').allTextContents()) === JSON.stringify(listedShells));
-  await fetch(`${base}/settings/send`, { method: 'POST', body: JSON.stringify({ t: 'setShell', text: 'minimal' }) });
+  await fetch(`${base}/settings/send?tab=${(await regions()).settings}`, { method: 'POST', body: JSON.stringify({ t: 'setShell', text: 'minimal' }) });
   check('choosing a shell saves it and the window loads it', await until(async () => prefsFile().shell === 'minimal' && (await regions()).shell === 'minimal'));
   await shellChoice.selectOption('standard');
   check('and choosing the standard one loads it again', await until(async () => prefsFile().shell === 'standard' && (await regions()).shell === 'standard' && (await ui.getByRole('button', { name: 'Settings', exact: true }).count()) === 1));
@@ -285,7 +286,7 @@ const menuHas = (menu, title) => JSON.stringify(menu).includes(`"title":"${title
   await confirm.getByLabel('Template').selectOption('Work');
   await page.screenshot({ path: path.join(out, 'settings-profile-reset.png') });
   await page.keyboard.press('Escape');
-  check('Escape answers Cancel, gives focus back and leaves the page open', await until(async () => (await confirm.count()) === 0) && (await regions()).settingsOpen === true && prefsFile().frameColor === '#384562' &&
+  check('Escape answers Cancel, gives focus back and leaves the tab open', await until(async () => (await confirm.count()) === 0) && (await regions()).settings !== 0 && prefsFile().frameColor === '#384562' &&
     (await resetButton.evaluate((e) => e === document.activeElement)));
   await resetButton.click();
   await confirm.getByLabel('Template').selectOption('Work');
@@ -327,13 +328,14 @@ const menuHas = (menu, title) => JSON.stringify(menu).includes(`"title":"${title
   await wsName.press('Enter');
   check('a name the list has is refused under the field', await until(async () => (await wsDialog.getByRole('alert').textContent()).includes('already') && workspacesFile().length === 2));
   await page.keyboard.press('Escape');
-  check('Escape cancels the dialog and leaves the page open', await until(async () => (await wsDialog.count()) === 0) && (await regions()).settingsOpen === true);
+  check('Escape cancels the dialog and leaves the tab open', await until(async () => (await wsDialog.count()) === 0) && (await regions()).settings !== 0);
   const made = workspacesFile()[1].id;
   await fetch(`${base}/mock/fire`, { method: 'POST', body: new URLSearchParams({ kind: 'menu', value: 'workspaces:' + made }) });
   const dots = ui.locator('[role=tab] .workspace');
   const dot = dots.nth(1);
   check('a tab opened in it shows its dot in the shell at once', await until(async () => (await dots.count()) === 2 && (await dot.getAttribute('aria-label')) === 'In Work' &&
     (await dot.evaluate((e) => getComputedStyle(e).backgroundColor)) === 'rgb(194, 65, 12)'));
+  check('and the settings tab, which is in no workspace, has none', (await ui.locator(`[role=tab][data-tab="${(await regions()).settings}"] .workspace`).count()) === 0);
   check('and the row counts it', await until(async () => (await workspacesSection.locator('.row', { hasText: 'Work' }).textContent()).includes('1 tab')));
   await workspacesSection.locator('.row', { hasText: 'Work' }).click({ button: 'right' });
   check('a right-click opens the row\'s menu', await until(async () => (await page.getByRole('menu', { name: 'Actions for Work' }).count()) === 1));
@@ -345,9 +347,12 @@ const menuHas = (menu, title) => JSON.stringify(menu).includes(`"title":"${title
   check('and the dot in the shell says it at once', await until(async () => (await dot.getAttribute('aria-label')) === 'In Office'));
   await page.getByRole('button', { name: 'Actions for Office' }).click();
   await page.getByRole('menuitem', { name: 'New tab in workspace' }).click();
-  check('New tab in workspace opens a tab in it and closes the page', await until(async () => (await dots.count()) === 3 && (await regions()).settingsOpen === false));
+  check('New tab in workspace opens a tab in it and shows it, the settings tab staying', await until(async () => {
+    const r = await regions();
+    return (await dots.count()) === 3 && r.settings !== 0 && r.active !== r.settings && r.tabs.find((t) => t.id === r.active).workspace === made;
+  }));
   await ui.getByRole('button', { name: 'Settings', exact: true }).click();
-  await until(async () => (await regions()).settingsOpen === true);
+  check('and the gear shows the settings tab again, the one the window has', await until(async () => (await settingsShown()) && (await regions()).tabs.filter((t) => t.page === 'settings').length === 1));
   await page.close();
   page = await open();
   await page.getByRole('button', { name: 'Workspaces', exact: true }).click();
@@ -374,31 +379,44 @@ const menuHas = (menu, title) => JSON.stringify(menu).includes(`"title":"${title
   await page.getByRole('button', { name: 'Actions for Office' }).click();
   await page.getByRole('menuitem', { name: 'Delete…' }).click();
   await deleteButton.click();
-  check('Delete closes its tabs and takes it out of the list', await until(async () => {
-    const tabs = (await regions()).tabs;
-    return workspacesFile().length === 1 && workspacesFile()[0].name === 'Main' && tabs.length === 1 && tabs[0].workspace === '';
+  check('Delete closes its tabs and takes it out of the list, the settings tab staying', await until(async () => {
+    const r = await regions();
+    const web = r.tabs.filter((t) => !t.page);
+    return workspacesFile().length === 1 && workspacesFile()[0].name === 'Main' && web.length === 1 && web[0].workspace === '' && r.settings !== 0;
   }), JSON.stringify(workspacesFile()));
   check('and focus goes to the row left', await until(async () => page.getByRole('button', { name: 'Actions for Main' }).evaluate((e) => e === document.activeElement)));
   check('with one workspace left the shell shows no dot', await until(async () => (await dots.count()) === 0));
   await page.getByRole('button', { name: 'Actions for Main' }).click();
   check('and Delete… is disabled', await page.getByRole('menuitem', { name: 'Delete…' }).isDisabled());
   await page.keyboard.press('Escape');
-  // Deleting Main, which the window's only tab is in, leaves the window open with no tabs,
-  // and the page open over it. Another workspace first, as the last can't go.
+  // A delete never closes the window, nor the settings tab, which is in no workspace:
+  // deleting Main, which the window's only web tab is in, leaves the window its settings
+  // tab. Another workspace first, as the last can't go.
   await page.getByRole('button', { name: 'New workspace…' }).click();
   const spareName = page.getByRole('dialog', { name: 'New workspace' }).getByLabel('Name', { exact: true });
   await spareName.fill('Spare');
   await spareName.press('Enter');
   await until(() => workspacesFile().length === 2);
+  const spare = workspacesFile()[1].id;
   await page.getByRole('button', { name: 'Actions for Main' }).click();
   await page.getByRole('menuitem', { name: 'Delete…' }).click();
   const deleteMain = page.getByRole('dialog', { name: 'Delete Main?' });
   check('Main\'s delete says its one tab closes', (await deleteMain.textContent()).includes('Its 1 open tab closes'), await deleteMain.textContent());
   await deleteMain.getByRole('button', { name: 'Delete', exact: true }).click();
-  check('deleting the workspace every tab of the window is in leaves the window open with none, and the page open', await until(async () => {
+  check('deleting the workspace every web tab of the window is in keeps the window, with its settings tab', await until(async () => {
     const r = await regions();
-    return workspacesFile().length === 1 && r.tabs.length === 0 && !r.closed && !r.quit && r.settingsOpen;
+    return workspacesFile().length === 1 && r.tabs.length === 1 && r.tabs[0].id === r.settings && !r.closed && !r.quit;
   }), JSON.stringify(await regions()));
+  // Standard takes New Tab: its command box opens over the settings page, and an address
+  // chosen there opens in a new tab.
+  await ui.getByRole('button', { name: 'New Tab' }).first().click();
+  const box = ui.getByRole('combobox', { name: 'Search tabs, history, actions or the web' });
+  await box.fill('https://example.com/');
+  await box.press('Enter');
+  check('and a new tab from it opens in the first workspace left', await until(async () => {
+    const r = await regions();
+    return r.tabs.length === 2 && r.tabs[1].workspace === spare && r.active === r.tabs[1].id;
+  }), JSON.stringify((await regions()).tabs));
 
   // Flags: saved for the next launch, with Relaunch offered until they are what runs.
   const flagsFile = () => {
@@ -492,7 +510,7 @@ const menuHas = (menu, title) => JSON.stringify(menu).includes(`"title":"${title
   await featureFilter.fill('getInstalledRelatedApps');
   check('but not by the API', await until(async () => (await featureSection.getByText('No features match').isVisible()) && (await featureRows.count()) === 1));
   await featureFilter.press('Escape');
-  check('Escape empties the filter, and leaves the page', await until(async () => (await featureRows.count()) === webFeatures.length) && (await regions()).settingsOpen === true);
+  check('Escape empties the filter, and leaves the page', await until(async () => (await featureRows.count()) === webFeatures.length) && (await regions()).settings !== 0);
   await page.screenshot({ path: path.join(out, 'settings-web-features.png') });
 
   // Keyboard.
@@ -504,7 +522,7 @@ const menuHas = (menu, title) => JSON.stringify(menu).includes(`"title":"${title
   check('the keymap follows its template until an edit', keymapFile() === null);
   check('with the standard shell in use, no shell\'s own actions show, and no Shells part', (await page.getByRole('region', { name: 'Shells' }).count()) === 0 &&
     (await page.locator('button.action', { hasText: 'Split right' }).count()) === 0 && (await page.locator('button.action', { hasText: 'Open Command Bar' }).count()) === 0);
-  await fetch(`${base}/settings/send`, { method: 'POST', body: JSON.stringify({ t: 'setShell', text: 'glide' }) });
+  await fetch(`${base}/settings/send?tab=${(await regions()).settings}`, { method: 'POST', body: JSON.stringify({ t: 'setShell', text: 'glide' }) });
   check('with Glide in use, its own actions are listed last, under a Shells part, marked In use', await until(async () => {
     const glide = page.getByRole('region', { name: 'Glide', exact: true });
     if (!(await glide.count()) || !(await page.getByRole('region', { name: 'Shells' }).count())) return false;
@@ -514,7 +532,7 @@ const menuHas = (menu, title) => JSON.stringify(menu).includes(`"title":"${title
   }));
   check('and the shells that are off show none of theirs', (await page.locator('button.action', { hasText: 'Split right' }).count()) === 0);
   await page.screenshot({ path: path.join(out, 'settings-keyboard-shells.png'), fullPage: true });
-  await fetch(`${base}/settings/send`, { method: 'POST', body: JSON.stringify({ t: 'setShell', text: 'standard' }) });
+  await fetch(`${base}/settings/send?tab=${(await regions()).settings}`, { method: 'POST', body: JSON.stringify({ t: 'setShell', text: 'standard' }) });
   check('switching back takes the Shells part away', await until(async () => (await page.getByRole('region', { name: 'Shells' }).count()) === 0));
   await openRow('New Tab');
   await page.getByRole('button', { name: 'Add key' }).click();
@@ -539,7 +557,7 @@ const menuHas = (menu, title) => JSON.stringify(menu).includes(`"title":"${title
   const discard = page.getByRole('dialog', { name: /^Discard 1 changed shortcut and use/ });
   check('picking a template with a changed shortcut asks first, saying how many', await until(async () => (await discard.count()) === 1) && keymapFile()?.follows === undefined);
   await page.keyboard.press('Escape');
-  check('Escape keeps the shortcuts and the page', await until(async () => (await discard.count()) === 0) && keymapFile()?.follows === undefined && (await regions()).settingsOpen === true);
+  check('Escape keeps the shortcuts and the tab', await until(async () => (await discard.count()) === 0) && keymapFile()?.follows === undefined && (await regions()).settings !== 0);
   await page.getByRole('combobox', { name: 'Template' }).selectOption('chrome');
   await discard.getByRole('button', { name: 'Discard' }).click();
   check('Discard resets to following the template', await until(() => keymapFile()?.follows === 'chrome'), JSON.stringify(keymapFile()));
@@ -548,16 +566,17 @@ const menuHas = (menu, title) => JSON.stringify(menu).includes(`"title":"${title
 
   await page.locator('body').click({ position: { x: 5, y: 300 } });
   await page.keyboard.press('Escape');
-  check('Escape closes the open editor first, and leaves the page', await until(async () => (await page.locator('.editor').count()) === 0) && (await regions()).settingsOpen === true);
+  check('Escape closes the open editor, and leaves the tab', await until(async () => (await page.locator('.editor').count()) === 0) && (await regions()).settings !== 0);
   await page.keyboard.press('Escape');
-  check('Escape closes it', await until(async () => (await regions()).settingsOpen === false));
-  check('and the dev window takes it off the shell', await until(async () => (await shell.locator('iframe.mock-settings').count()) === 0));
+  await sleep(200);
+  check('and Escape again leaves it too: the page closes as a tab does, not by itself', (await regions()).settings !== 0);
+
+  // It closes as any tab does: Cmd+W while it is active.
   await ui.getByRole('button', { name: 'Settings', exact: true }).click();
-  await until(async () => (await regions()).settingsOpen === true);
-  await page.close();
-  page = await open();
-  await page.getByRole('button', { name: 'Close settings' }).click();
-  check('the close button closes it', await until(async () => (await regions()).settingsOpen === false));
+  await until(settingsShown);
+  await fetch(`${base}/mock/fire`, { method: 'POST', body: new URLSearchParams({ kind: 'key', value: 'closeTab' }) });
+  check('Cmd+W closes the settings tab', await until(async () => (await regions()).settings === 0));
+  check('and the dev window lets its page go', await until(async () => (await shell.locator('iframe.our-page').count()) === 0));
 
   check('no errors in the pages', errors.length === 0, errors.join(' | '));
   await browser.close();

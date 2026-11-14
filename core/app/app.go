@@ -166,7 +166,7 @@ func Start(e engine.Engine, cfg Config) *App {
 		Snapshot: func(into map[string]any) { into["actions"] = a.Commands.Titles() },
 		Handle:   func(engine.WindowID, string, []byte) bool { return false },
 	})
-	a.Settings = settings.New(e, a.Window, a.Prefs, a.Flags, a.Update, a.Commands)
+	a.Settings = settings.New(e, a.Tabs, a.Window, a.Prefs, a.Flags, a.Update, a.Commands)
 	a.Settings.OnRelaunch(func() { relaunch.Self(); a.quit() })
 	a.Settings.AddPart(a.workspaceSettingsPart(e))
 	a.registerActions(e)
@@ -185,6 +185,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	})
 	a.Tabs.OnChanged(a.Shell.TabChanged)
 	a.Tabs.OnListChanged(a.Shell.TabsChanged)
+	a.Tabs.OnClosed(a.Settings.TabClosed)
 	// A window may have no tabs: closing its last one leaves it open. It closes with its
 	// last tab only when that tab moved to another window, as what it held went there, or
 	// when the window was made for a tab of its own.
@@ -194,7 +195,6 @@ func Start(e engine.Engine, cfg Config) *App {
 		}
 	})
 	a.Window.OnControlsChanged(a.Shell.WindowControlsChanged)
-	a.Window.OnControlsChanged(a.Settings.WindowControlsChanged)
 	a.Window.OnColorChanged(a.Shell.WindowColorChanged)
 	a.Window.OnColorChanged(a.Settings.WindowColorChanged)
 	a.Prefs.OnFrameColorChanged(a.Window.SetColor)
@@ -324,7 +324,7 @@ func (a *App) phoneShellPart() settings.Part {
 	a.Prefs.OnShellChanged(func(string) { a.Settings.Send(map[string]any{"t": "phoneShells", "phoneShells": view()}) })
 	return settings.Part{
 		Snapshot: func(into map[string]any) { into["phoneShells"] = view() },
-		Handle: func(w engine.WindowID, t string, msg []byte) bool {
+		Handle: func(_ engine.TabID, t string, msg []byte) bool {
 			if t != "setShell" {
 				return false
 			}
@@ -502,7 +502,7 @@ func (a *App) MenuList(name string) engine.Menu { return a.Commands.ListItems(na
 
 func (a *App) OSBindings(byTitle map[string]engine.Key) { a.Commands.OSBindings(byTitle) }
 
-func (a *App) SettingsMessage(w engine.WindowID, msg []byte) { a.Settings.Handle(w, msg) }
+func (a *App) SettingsMessage(tab engine.TabID, msg []byte) { a.Settings.Handle(tab, msg) }
 
 // PickerMessage is the picker's, which a copy with a profile never shows.
 func (a *App) PickerMessage(engine.WindowID, []byte) {}
@@ -519,7 +519,6 @@ func (a *App) ShellCrashed(w engine.WindowID) {
 
 // WindowClosed forgets the window and closes its tabs. Closing the last window quits.
 func (a *App) WindowClosed(w engine.WindowID) {
-	a.Settings.WindowClosed(w)
 	a.Shell.WindowClosed(w)
 	a.Window.Close(w)
 	a.Tabs.RemoveWindow(w)

@@ -86,7 +86,7 @@ again at the next start; a half-finished download is cleared when the next one b
 
 ## Settings
 
-The settings page, which the toolbar's gear opens over the whole window, shows the running
+The settings page, which the toolbar's gear opens in a tab, shows the running
 version, a Check for updates button and the automatic updates switch.
 
 - **Check for updates** runs one check at once, whatever the switch says (`CheckNow`). The

@@ -6,8 +6,8 @@ behind it is `project-b-research/windows-survey.md`.
 
 ## Today
 
-- Go makes the windows (`CreateWindow`), each with its own shell page and settings page,
-  and keeps each one's tabs and active tab, and the window in front, which the engine
+- Go makes the windows (`CreateWindow`), each with its own shell page, and keeps each
+  one's tabs, its settings tab among them while it has one, and active tab, and the window in front, which the engine
   reports (`WindowFocused`). Commands and the menu follow the window in front. File, New
   Window (Cmd+N) opens one. A window's close button closes it (`WindowClosed`), and so does
   Close Tab in a window with no tabs: closing its last tab leaves it open
@@ -195,8 +195,7 @@ applied and its own state, over everything else:
 | The window buttons | purple `#a855f7` |
 | Drag areas | blue `#2563eb`, dashed |
 | Shell areas | red `#dc2626` |
-| Each shown tab's page | green `#16a34a`, labelled `tab <id>` |
-| The settings page, while it is open | orange `#f97316` |
+| Each shown tab's page, a settings tab's too | green `#16a34a`, labelled `tab <id>` |
 | The frame band's inner edge | grey `#9ca3af`, dashed |
 
 It only draws: it takes no presses and claims no part of the title bar, so the window
@@ -211,4 +210,4 @@ app the flag takes effect at launch: the dev server hands the mock engine the sw
 the profile's saved flags as it starts, so after turning it on in settings, start
 `go run ./cmd/dev` again.
 `shell/e2e/outlines.cjs` checks an outline of the right kind on each tracked rectangle,
-with one tab and with the settings page open, and none with the flag off.
+with one tab and with the settings tab shown, and none with the flag off.

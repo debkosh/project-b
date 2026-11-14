@@ -341,13 +341,13 @@ const { check, fire, regions, settle, until } = lib;
   }), JSON.stringify(await shown()));
   check('pages inside the frame and apart', await insideAndApart());
 
-  // The gear at the strip's far end opens the settings page.
-  check('settings starts closed', (await regions()).settingsOpen === false);
+  // The gear at the strip's far end opens the settings tab.
+  check('settings starts closed', (await regions()).settings === 0);
   await ui.getByRole('button', { name: 'Settings', exact: true }).click();
-  check('the gear opens the settings page', await until(async () => (await regions()).settingsOpen === true));
+  check('the gear opens the settings tab', await until(async () => (await regions()).settings !== 0 && (await regions()).active === (await regions()).settings));
 
   await fire('key', 'closeTab');
-  check('Cmd+W closes it', await until(async () => (await regions()).settingsOpen === false));
+  check('Cmd+W closes it', await until(async () => (await regions()).settings === 0));
 
   // With no tabs the shell draws the panes' area itself, as its own: No tabs, and New Tab
   // with its key, which opens a tab there. The prompt has the keyboard.

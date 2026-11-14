@@ -208,10 +208,18 @@ const noEmptyStateYet = {
       await insideAndApart(when);
     };
     const tabCount = async (n) => until(async () => (await regions()).tabs.length === n && (await drawn()).length === n);
-    // The settings page closed with its own button, as settings.cjs closes it.
+    // The settings page opens in a tab of the window, which becomes active.
+    const settingsShown = () => until(async () => {
+      const r = await regions();
+      return r.settings !== 0 && r.active === r.settings;
+    });
+    // And closes as any tab does, the window then showing the tab made active.
     const closeSettings = async () => {
-      await page.frameLocator('iframe.mock-settings').getByRole('button', { name: 'Close settings' }).click();
-      await until(async () => (await regions()).settingsOpen === false);
+      await lib.closeTab((await regions()).settings);
+      await until(async () => {
+        const r = await regions();
+        return r.settings === 0 && shows(r);
+      });
     };
 
     // The field named Address, as a text box or a combo box.
@@ -406,8 +414,7 @@ const noEmptyStateYet = {
         rule(11, 'a control named Settings is on the shell, or in a menu one of its controls opens', found);
         if (found) {
           await settings.first().click();
-          rule(11, 'pressed, it opens the settings page', await until(async () => (await regions()).settingsOpen === true));
-          // Closed again with the page's own button, as settings.cjs closes it.
+          rule(11, 'pressed, it opens the settings tab', await settingsShown());
           await closeSettings();
         }
 
@@ -483,13 +490,13 @@ const noEmptyStateYet = {
         await basic(`a way to close a tab, Close Tab or Close ${title}`, byName(`Close Tab|Close ${escaped(title)}`), click,
           () => until(async () => !(await regions()).tabs.some((t) => t.id === opened)));
 
-        await basic('Settings', byName('Settings'), click, () => until(async () => (await regions()).settingsOpen === true));
+        await basic('Settings', byName('Settings'), click, settingsShown);
         await closeSettings();
         // Extensions, whose menu's Manage extensions opens the settings page.
         await basic('Extensions', byName('Extensions'), async (el) => {
           await el.click();
           await byName('Manage extensions').filter({ visible: true }).first().click();
-        }, () => until(async () => (await regions()).settingsOpen === true));
+        }, settingsShown);
         await closeSettings();
       } catch (e) {
         rule(current, 'its checks ran to their end', false, e.message.split('\n')[0]);

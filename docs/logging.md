@@ -99,8 +99,8 @@ On the mock engine the dev server plays the engine: the page's `performance.time
 its navigation start in wall time, goes to Go before anything the page sends
 (`core/cmd/dev/webui.js`), and Go places it on the timeline (`timeline.FromWall`).
 
-Every window's shell is the page `shell` on the timeline, and every settings page the page
-`settings`, so with several windows the one that started last sets that page's clock.
+Every window's shell is the page `shell` on the timeline, and every settings tab's page the
+page `settings`, so with several windows the one that started last sets that page's clock.
 
 Entries are numbered in the order they were recorded. A page's entries arrive a little
 after they happened, so sort by time when reading.
@@ -160,7 +160,7 @@ The shell's first paint and the first tab race the lines around them. Android ha
 
 | Span | Begins | Stages | Ends |
 |---|---|---|---|
-| `settings.open` | The click on the gear, or Go's action from the menu or a key | `.go` Go has it; `.created` the page's `WebContents` exists; `.shown` it is over the window; then the page's own `settings.navigation_start`, `settings.committed`, `settings.script`, `settings.mounted`, `settings.ready`, `settings.snapshot`, `settings.first_paint` | `settings.on_screen`: its first frame is on screen |
+| `settings.open` | The click on the gear, or Go's action from the menu or a key, in a window with no settings tab | `.go` Go has it; `.done` the settings tab is made, active and loading, and the shell told; then the page's own `settings.navigation_start`, `settings.committed`, `settings.script`, `settings.mounted`, `settings.ready`, `settings.snapshot`, `settings.first_paint` | `settings.on_screen`: its first frame is on screen |
 | `tab.new` | The click on New Tab, or Go's action | `.go`; `.done` the tab is made, shown, and the shell told | The shell has drawn it |
 | `tab.close` | The click on a tab's close button, or Go's action | `.go`; `.done` | The shell has drawn it |
 | `tab.activate` | The click on a tab | `.go`; `.done` | The shell has drawn it |
@@ -168,9 +168,7 @@ The shell's first paint and the first tab race the lines around them. Android ha
 
 "The shell has drawn it" is the renderer finishing the frame (`painted` in
 `shell/src/timeline.js`). That frame reaches the screen a frame or so later, and nothing
-tells a page when: only a page's first paint has its time on screen. On Android,
-`settings.open.overlay_on_screen` is also marked: when the window's first frame with the
-settings page laid over it reached the screen, whatever that page had drawn by then.
+tells a page when: only a page's first paint has its time on screen.
 
 ## Input: the OS's lag or ours
 
@@ -179,7 +177,7 @@ slow answer:
 
 | Span | Begins | Stage | Ends |
 |---|---|---|---|
-| `input.click` | When the OS made the mouse-up: the `NSEvent`'s own timestamp, which counts on our clock | `.window`: the application's `sendEvent:` has it | The shell or the settings page has it as a DOM event |
+| `input.click` | When the OS made the mouse-up: the `NSEvent`'s own timestamp, which counts on our clock | `.window`: the application's `sendEvent:` has it | The shell has it as a DOM event |
 | `input.key` | When the OS made the key-down | `.window` | Go has the key, before any page does |
 
 The interaction's span, such as `tabs.layout`, begins where the input's ends. Read the two
@@ -196,7 +194,7 @@ together:
 `python3 tools/timeline.py <profile>/timeline.log` prints exactly these lines for any run,
 a VM's included; `tools/measure.py` gives their medians, though its clicks are the
 driver's and are made inside the app, so its begin to `.window` is always near zero. Only
-clicks the shell or the settings page gets are tracked, and not key repeats.
+clicks the shell gets are tracked, and not key repeats.
 
 To add a span ended by the shell: wrap what Go does in `Shell.Interaction(name, func)`,
 and add the command that starts it to `spans` in `shell/src/bridge.js`.

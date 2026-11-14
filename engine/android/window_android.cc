@@ -16,7 +16,6 @@
 #include "base/memory/raw_ptr.h"
 #include "cc/slim/layer.h"
 #include "cc/slim/solid_color_layer.h"
-#include "components/viz/common/frame_timing_details.h"
 #include "content/public/browser/android/compositor.h"
 #include "content/public/browser/android/compositor_client.h"
 #include "content/public/browser/browser_child_process_observer.h"
@@ -83,22 +82,6 @@ class BrowserWindow : public content::CompositorClient,
     root_->InsertChild(contents->GetNativeView()->GetLayer(), 0);
   }
 
-  // Over the shell, last in the tree.
-  void SetOverlay(content::WebContents* contents) {
-    root_->AddChild(contents->GetNativeView()->GetLayer());
-    // When the window's first frame with the overlay in it reached the screen, whatever
-    // the overlay's page had drawn by then.
-    compositor_->RequestSuccessfulPresentationTimeForNextFrame(
-        base::BindOnce([](const viz::FrameTimingDetails& details) {
-          timeline::MarkAt("settings.open.overlay_on_screen",
-                           details.presentation_feedback.timestamp);
-        }));
-  }
-
-  void RemoveOverlay(content::WebContents* contents) {
-    contents->GetNativeView()->GetLayer()->RemoveFromParent();
-  }
-
   void RemovePage(content::WebContents* contents) {
     if (shown_ == contents) {
       contents->GetNativeView()->GetLayer()->RemoveFromParent();
@@ -159,18 +142,11 @@ class BrowserWindow : public content::CompositorClient,
     view->OnPhysicalBackingSizeChanged(gfx::Size(width, height));
   }
 
-  // The phone's back key closes settings while it is open, as its close button does; then
-  // goes to the shell while it has something open the key closes; then goes back in the
-  // tab's history; and on a tab with none closes it, the tab used before it taking its
-  // place. With no tabs left it is Android's: the app goes. Android has one window, 1.
+  // The phone's back key goes to the shell while it has something open the key closes;
+  // then goes back in the tab's history; and on a tab with none, as a tab of ours, closes
+  // it, the tab used before it taking its place. With no tabs left it is Android's: the
+  // app goes. Android has one window, 1.
   bool BackKey(JNIEnv* env) {
-    if (Engine::Get()->window(1)->settings) {
-      hooks::Args args;
-      args.Int(1);
-      args.Str(R"({"t":"close"})");
-      hooks::Fire(PB_EVENT_SETTINGS_MESSAGE, args);
-      return true;
-    }
     if (Engine::Get()->window(1)->shell_back) {
       hooks::Args args;
       args.Int(1);
@@ -333,17 +309,6 @@ void Window::RemoveShell() {
 void Window::AddPageContents(content::WebContents* contents) {
   Java_BrowserWindow_addPage(AttachCurrentThread(), g_browser_window->java(),
                              contents->GetJavaWebContents());
-}
-
-void Window::SetOverlayContents(content::WebContents* contents) {
-  g_browser_window->SetOverlay(contents);
-  Java_BrowserWindow_setOverlay(AttachCurrentThread(), g_browser_window->java(),
-                                contents->GetJavaWebContents());
-}
-
-void Window::RemoveOverlayContents(content::WebContents* contents) {
-  g_browser_window->RemoveOverlay(contents);
-  Java_BrowserWindow_removeOverlay(AttachCurrentThread(), g_browser_window->java());
 }
 
 void Window::RemovePageContents(content::WebContents* contents) {

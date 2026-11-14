@@ -55,8 +55,6 @@ source_set("browser") {
     "../browser/hooks_gen.h",
     "../browser/page_tab.cc",
     "../browser/page_tab.h",
-    "../browser/settings_page.cc",
-    "../browser/settings_page.h",
     "../browser/shell_page.cc",
     "../browser/shell_page.h",
     "../browser/timeline.cc",

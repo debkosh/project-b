@@ -282,9 +282,9 @@ hidden or not, and macOS remaps work for all of them.
 
 ### The settings page
 
-Settings is an app of its own at `chrome://settings/`, in a WebContents of its own that
-the gear (or Settings…, Cmd+,) puts over the whole window and takes away again, so the
-shell never carries it. Each of our pages is a separate app, built the way pweb builds its
+Settings is an app of its own at `chrome://settings/`, which a tab of ours shows: the gear
+(or Settings…, Cmd+,) opens the window's settings tab, or shows it when the window has one,
+and it closes as any tab does ([windows.md](windows.md#our-own-pages-are-tabs-decided-2026-11-14)). Each of our pages is a separate app, built the way pweb builds its
 pages: `shell/src/apps/<app>/` has the app's `index.html` and code, what apps share sits in
 `shell/src/` (imported as `@/`), and `VITE_APP=<app> vite build` builds one app into
 `dist/<app>/` as `index.html`, `<app>.js` and `<app>.css`; `npm run build` builds them all.
@@ -492,8 +492,8 @@ Mac only, on branch `menus-shortcuts`.
   `PreHandleKeyboardEvent` before the page and `HandleKeyboardEvent` after it, for the
   shell, the tabs and the settings page alike; a key Go doesn't use goes to the menu bar.
   macOS App Shortcuts are read at start and on every change (key-value observing on our
-  defaults, All Applications included) and sent to Go. `settings_page.cc` is the settings
-  page; `Window::SetOverlayView` puts it over everything and gives it every press.
+  defaults, All Applications included) and sent to Go. The settings page is in a tab of
+  ours, a `PageTab` in our pages' context, whose WebUI speaks for its tab.
 - **Shell:** `shell/src/apps/settings/` is the settings app and `shell/src/apps/shell/standard/`
   the standard shell, each built on its own (`npm run build` builds both). The shell's panel is gone; the gear runs
   `app.settings`, and the sidebar's New Tab hint shows whatever key New Tab has now.
@@ -528,8 +528,8 @@ Where the build differs from the design, or decided something the design left op
 Tests: `core/commands` (keys, who wins a key, the first edit, the update merge, a bad
 file, macOS bindings), `core/app` (the menu from the tree, a key added in settings, the
 settings page's prefs), `shell/e2e/settings.cjs` (26 checks on the mock) and
-`tools/drive_first_app.py settings` (the real app: the menu bar, Cmd+, opening settings
-over the window, recording a key, Cmd+W closing settings, Ctrl+Tab through recent tabs,
+`tools/drive_first_app.py settings` (the real app: the menu bar, Cmd+, opening the
+settings tab, recording a key, Cmd+W closing it, Ctrl+Tab through recent tabs,
 and the key surviving a restart). Copy and paste through Go and Ctrl+Cmd+F need a person's
 desktop session, so they are in the `screen` group: `tools/check_clipboard.py` and
 `tools/check_full_screen.py`. The

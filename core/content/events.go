@@ -73,7 +73,7 @@ type Events struct {
 	OnShellCrashed    func(w engine.WindowID)
 	OnWindowClosed    func(w engine.WindowID)
 	OnWindowFocused   func(w engine.WindowID)
-	OnSettingsMessage func(w engine.WindowID, msg []byte)
+	OnSettingsMessage func(tab engine.TabID, msg []byte)
 	OnMenuChosen      func(action string)
 	OnMenuList        func(name string) engine.Menu
 	OnPickerMessage   func(w engine.WindowID, msg []byte)
@@ -137,7 +137,7 @@ func (e *Events) dispatch(id Hook, r *reader) (Value, bool) {
 		}
 	case eventSettingsMsg:
 		if e.OnSettingsMessage != nil {
-			e.OnSettingsMessage(engine.WindowID(r.int()), []byte(r.str()))
+			e.OnSettingsMessage(engine.TabID(r.int()), []byte(r.str()))
 		}
 	case eventMenuChosen:
 		if e.OnMenuChosen != nil {

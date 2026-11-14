@@ -24,7 +24,6 @@ class WebContents;
 namespace project_b {
 
 class PageTab;
-class SettingsPage;
 class ShellPage;
 
 // What the Go core calls. It owns the tabs and the windows, and is the one place every
@@ -37,8 +36,8 @@ class Engine {
     gfx::RectF rect;
   };
 
-  // One of Go's windows, by Go's id for it: the native window, the shell page on it, the
-  // settings page over it while that is open, and the tabs it shows.
+  // One of Go's windows, by Go's id for it: the native window, the shell page on it, and
+  // the tabs it shows.
   struct AppWindow {
     explicit AppWindow(int64_t id);
     ~AppWindow();
@@ -48,7 +47,6 @@ class Engine {
     // platform's own views (native_shell, docs/native-shell.md).
     std::unique_ptr<ShellPage> shell;
     bool native_shell = false;
-    std::unique_ptr<SettingsPage> settings;
     std::vector<VisibleTab> visible;
     // The visible tab whose page has, or last had, the keyboard here, or 0. The window
     // is titled after it.
@@ -70,9 +68,9 @@ class Engine {
   using OpenProfileCallback =
       base::RepeatingCallback<content::BrowserContext*(const base::FilePath&)>;
 
-  // Our pages (the shells, the settings pages and the picker) load in pages_context, and
-  // the tabs in the profile's context, which open_profile makes when Go opens the profile.
-  // quit ends the app.
+  // Our pages (the shells, the picker, and the pages our own tabs show, such as settings)
+  // load in pages_context, and the web tabs in the profile's context, which open_profile
+  // makes when Go opens the profile. quit ends the app.
   Engine(content::BrowserContext* pages_context,
          OpenProfileCallback open_profile,
          base::RepeatingClosure quit);
@@ -108,6 +106,9 @@ class Engine {
   }
   // A tab by Go's id, or null.
   PageTab* tab(int64_t id) const;
+  const std::map<int64_t, std::unique_ptr<PageTab>>& tabs() const {
+    return tabs_;
+  }
   // The window whose layout last showed a tab, or null when none has.
   AppWindow* WindowOf(int64_t tab) const;
   // A window's focused tab, or null when it shows none.
@@ -177,9 +178,8 @@ class Engine {
   int64_t DuplicateTab(int64_t tab);
   void Edit(int32_t command);
   void WriteClipboard(const std::string& text);
-  void OpenSettings(int64_t window);
-  void CloseSettings(int64_t window);
-  void SendToSettings(int64_t window, const char* json, size_t length);
+  // Delivers one message to the settings page a tab of ours shows.
+  void SendToSettings(int64_t tab, const char* json, size_t length);
   void CloseWindow(int64_t window);
   void FocusTab(int64_t tab);
   void FocusShell(int64_t window);
@@ -192,7 +192,7 @@ class Engine {
   PageTab* Add(std::unique_ptr<content::WebContents> contents,
                const std::string& workspace);
   void Erase(const std::string& workspace);
-  // Whichever of our pages has the keyboard: a settings page, a shell or a tab's.
+  // Whichever page has the keyboard: a shell or a tab's.
   content::WebContents* FocusedContents() const;
   void UpdateTitle(AppWindow* window);
   // The native window closed: Go hears, and the window's pages go with it.

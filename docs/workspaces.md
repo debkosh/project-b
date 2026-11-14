@@ -83,17 +83,17 @@ as built so far, and the order of building at the end says which steps are done.
   to a screen reader. With one, every tab is in it, and no tab shows a dot. The SDK's
   `workspaceOf` says so for every shell (`shell/src/sdk/shell.js`): the fox shell's line on
   a tab and the workspace's name in its address field, and the minimal shells' square, go
-  with it. A tab in a workspace the list doesn't hold shows none. Every shell has the list
+  with it. A tab in a workspace the list doesn't hold shows none, nor does one of ours. Every shell has the list
   in its snapshot, and hears it again, `{"t": "workspaces", "workspaces": [...]}`, when it
   changes, so the dots follow at once (`core/app/workspaces.go`,
   `shell/src/apps/shell/standard/`). The mock's page fires a menu item by its action, as
   the menu bar does (`/mock/fire`, kind `menu`).
 - Settings has a Workspaces section, after Profile: a list of rows, each with the
-  workspace's colour, its name and the number of tabs open in it, and a menu (the ⋯
+  workspace's colour, its name and the number of web tabs open in it, and a menu (the ⋯
   button, or a right-click on the row) with New tab in workspace, Edit…, Move up, Move
   down and, after a separator, Delete… in the danger colour. Main is a row like any other.
-  New tab in workspace opens a tab in it in the page's window and closes the page
-  (`openInWorkspace`). New workspace… on the heading's right and Edit… open one dialog
+  New tab in workspace opens a tab in it in the page's window and shows it, the settings tab
+  staying (`openInWorkspace`). New workspace… on the heading's right and Edit… open one dialog
   with the name and the colour (the presets, or any other). A new one starts on the first preset no workspace has. Names are
   unique whatever their case: the dialog says so under the name, and Go refuses one too.
   The order is the user's, and the Tab menu lists them in it. Go answers with the list as
@@ -112,9 +112,9 @@ as built so far, and the order of building at the end says which steps are done.
   takes the workspace out of the list, which everyone hears: every shell and settings
   page, the Tab menu the next time it opens, and the engine, when the first changes. Then Go
   closes the workspace's tabs in every window, a window whose every tab was in it staying
-  open with none and a settings page open in it staying too, and has the engine erase its
-  storage (`erase_workspace`): every kind of site data and the cache in its partition,
-  after its tabs are gone, in an app still running. For Main, the profile's own storage,
+  open with none, and a settings tab, which is in no workspace, staying too, and has the
+  engine erase its storage (`erase_workspace`): every kind of site data and the cache in
+  its partition, after its tabs are gone, in an app still running. For Main, the profile's own storage,
   extensions keep their own data, so they keep working, and history stays, as it is the
   profile's (`App.deleteWorkspace`, `Engine::EraseWorkspace`). A Main deleted stays
   deleted: the list says version 2 by then.

@@ -128,7 +128,8 @@ frame colour shows there.
 
 Go owns which windows exist and makes them: `CreateWindow` with Go's id for it, 1 for the
 first, the window in front to open near, and its first layout. Each window has its own
-shell page and its own settings page, and every call and event about a window names it.
+shell page, and its own settings tab when settings is open there, and every call and
+event about a window names it.
 Go keeps each window's tabs in order with its own active tab, and the window in front:
 the last one the engine reported as the key window (`WindowFocused`), or the one Go made
 last. Keys, menu items and commands act on the active tab of the window in front, and
@@ -140,8 +141,9 @@ tabs; closing the last window quits, and Quit ends the app with every window at 
 tab a page opens goes in its opener's window, and one nothing opened, from DevTools or an
 extension, in the window in front. A minimised window's tabs are told they are hidden. On
 the mock engine each window is an OS window page of its own, `/?window=<id>` on the dev
-server, window 1 at `/`, and the id goes on to its shell, its settings page, its mock page
-and its feeds. The design and what is still to come: [windows.md](windows.md).
+server, window 1 at `/`, and the id goes on to its shell, its mock pages and its feeds; a
+settings tab's page is `/settings/?tab=<id>`, by its tab. The design and what is still to
+come: [windows.md](windows.md).
 
 ## Our own page
 
