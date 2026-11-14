@@ -11,6 +11,7 @@ package main
 #include "pb_content_abi.h"
 
 static inline int64_t call_create_tab(const PBEngineCalls* c, const char* workspace) { return c->create_tab(workspace); }
+static inline int64_t call_create_internal_tab(const PBEngineCalls* c) { return c->create_internal_tab(); }
 static inline void call_set_first_workspace(const PBEngineCalls* c, const char* workspace) { c->set_first_workspace(workspace); }
 static inline void call_erase_workspace(const PBEngineCalls* c, const char* workspace) { c->erase_workspace(workspace); }
 static inline void call_close_tab(const PBEngineCalls* c, int64_t tab) { c->close_tab(tab); }
@@ -104,6 +105,10 @@ func (e *nativeEngine) CreateTab(workspace string) engine.TabID {
 	c := C.CString(workspace)
 	defer C.free(unsafe.Pointer(c))
 	return engine.TabID(C.call_create_tab(e.calls, c))
+}
+
+func (e *nativeEngine) CreateInternalTab() engine.TabID {
+	return engine.TabID(C.call_create_internal_tab(e.calls))
 }
 
 func (e *nativeEngine) SetFirstWorkspace(workspace string) {

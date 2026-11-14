@@ -1,7 +1,9 @@
 package tabs
 
 import (
+	"net/url"
 	"slices"
+	"strings"
 	"testing"
 
 	"projectb/engine"
@@ -14,6 +16,25 @@ type fakeEngine struct {
 	closed []engine.TabID
 	// in is the workspace each tab was made in, by its id.
 	in map[engine.TabID]string
+	// ours are the tabs made in our pages' context.
+	ours []engine.TabID
+}
+
+func (f *fakeEngine) CreateInternalTab() engine.TabID {
+	f.next++
+	f.ours = append(f.ours, f.next)
+	return f.next
+}
+
+// PageURL and OurPage name our pages' addresses as the real engine does.
+func (f *fakeEngine) PageURL(p engine.Page) string { return "chrome://" + string(p) + "/" }
+
+func (f *fakeEngine) OurPage(raw string) (engine.Page, bool) {
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme != "chrome" || u.Host == "" {
+		return "", false
+	}
+	return engine.Page(u.Host + strings.TrimSuffix(u.Path, "/")), true
 }
 
 func (f *fakeEngine) CreateTab(workspace string) engine.TabID {
@@ -33,9 +54,16 @@ func (f *fakeEngine) LoadURL(engine.TabID, string)           {}
 // work is the first workspace in the tests' list.
 const work = "0a1b2c3d"
 
-// oneWindow is a manager with window 1, whose list has work first.
+// list is a profile's list of workspaces, by their ids.
+type list []string
+
+func (l *list) First() string      { return (*l)[0] }
+func (l *list) Has(id string) bool { return slices.Contains(*l, id) }
+func (l *list) remove(id string)   { *l = slices.DeleteFunc(*l, func(x string) bool { return x == id }) }
+
+// oneWindow is a manager with window 1, whose list has work first, then Main.
 func oneWindow(e engine.Engine) *Manager {
-	m := New(e, func() string { return work })
+	m := New(e, &list{work, ""})
 	m.AddWindow(1)
 	return m
 }
@@ -154,7 +182,7 @@ func TestFaviconFollowsThePage(t *testing.T) {
 }
 
 func TestWordsGoToTheSearchGiven(t *testing.T) {
-	m := New(&fakeEngine{}, func() string { return "" })
+	m := New(&fakeEngine{}, &list{""})
 	if got := m.Normalize("two words"); got != "https://duckduckgo.com/?q=two+words" {
 		t.Fatalf("before any engine is given: %q", got)
 	}
@@ -404,5 +432,107 @@ func TestClosingToTheRecentTab(t *testing.T) {
 	m.CloseToRecent(a)
 	if len(m.AllIn(1)) != 0 || m.ActiveIn(1) != 0 {
 		t.Fatalf("tabs %v, active %d", ids(m.AllIn(1)), m.ActiveIn(1))
+	}
+}
+
+func TestPageOf(t *testing.T) {
+	m := oneWindow(&fakeEngine{})
+	for in, want := range map[string]string{
+		"chrome://settings/":            "settings",
+		"chrome://settings/keyboard":    "settings",
+		"chrome://shell/standard/":      "",
+		"chrome://picker/":              "",
+		"https://settings/":             "",
+		"https://example.com/settings/": "",
+		"about:blank":                   "",
+	} {
+		if got := m.PageOf(in); got != want {
+			t.Errorf("PageOf(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+// Opening one of our pages opens a tab of ours beside the active tab and shows it; a
+// window has one for each page, so opening it again shows that one, and another window
+// gets its own.
+func TestOurPageIsOneTabAWindowBesideTheActiveOne(t *testing.T) {
+	e := &loads{}
+	m := oneWindow(e)
+	a, b := m.CreateIn(1, ""), m.Create(1)
+	m.Activate(a)
+	s := m.OpenPage(1, "settings")
+	tab, _ := m.Get(s)
+	if !slices.Equal(ids(m.AllIn(1)), []engine.TabID{a, s, b}) || m.ActiveID() != s || !slices.Equal(e.ours, []engine.TabID{s}) {
+		t.Fatalf("order %v, active %v, made in our context %v", ids(m.AllIn(1)), m.ActiveID(), e.ours)
+	}
+	if tab.Page != "settings" || tab.URL != "chrome://settings/" || e.urls[len(e.urls)-1] != "chrome://settings/" || tab.Workspace != "" {
+		t.Fatalf("the tab is %+v, the last load %q", tab, e.urls[len(e.urls)-1])
+	}
+	m.Activate(b)
+	if again := m.OpenPage(1, "settings"); again != s || m.ActiveID() != s || len(m.AllIn(1)) != 3 || len(e.ours) != 1 {
+		t.Fatalf("opened again: %v, active %v, tabs %v", again, m.ActiveID(), ids(m.AllIn(1)))
+	}
+	m.AddWindow(2)
+	if other := m.OpenPage(2, "settings"); other == s || m.WindowOf(other) != 2 || len(e.ours) != 2 {
+		t.Fatalf("in window 2: %v, in window %v", other, m.WindowOf(other))
+	}
+}
+
+// One of our tabs remembers the workspace of the tab it was opened from: New Tab from it
+// goes there, or to the first workspace once that one is gone.
+func TestANewTabFromOurTabGoesToTheWorkspaceItWasOpenedFrom(t *testing.T) {
+	l := &list{work, ""}
+	m := New(&fakeEngine{}, l)
+	m.AddWindow(1)
+	m.CreateIn(1, "")
+	s := m.OpenPage(1, "settings")
+	workspace := func(id engine.TabID) string { t, _ := m.Get(id); return t.Workspace }
+	if fromIt := m.Create(1); workspace(fromIt) != "" {
+		t.Fatalf("from our tab, in %q", workspace(fromIt))
+	}
+	m.Activate(s)
+	if beside := m.CreateWith(s, true); workspace(beside) != "" {
+		t.Fatalf("beside it, in %q", workspace(beside))
+	}
+	l.remove("")
+	m.Activate(s)
+	if gone := m.Create(1); workspace(gone) != work || workspace(s) != "" {
+		t.Fatalf("with Main gone, in %q; our tab remembers %q", workspace(gone), workspace(s))
+	}
+}
+
+// One of our tabs is in no workspace, so in no tab group.
+func TestOurTabIsInNoGroup(t *testing.T) {
+	m := oneWindow(&fakeEngine{})
+	a := m.CreateIn(1, work)
+	s := m.OpenPage(1, "settings")
+	b := m.CreateIn(1, work)
+	if g := m.CreateGroup([]engine.TabID{s, a}, "", ""); g != "" {
+		t.Fatalf("a group led by our tab: %q", g)
+	}
+	g := m.CreateGroup([]engine.TabID{a, s, b}, "", "")
+	m.AddToGroup(s, g)
+	if groups := m.GroupsIn(1); len(groups) != 1 || !slices.Equal(groups[0].Tabs, []engine.TabID{a, b}) {
+		t.Fatalf("groups %+v", groups)
+	}
+	if beside := m.CreateWith(s, true); len(m.GroupsIn(1)[0].Tabs) != 2 || m.ActiveID() != beside {
+		t.Fatalf("a new tab beside ours joined a group: %+v", m.GroupsIn(1))
+	}
+}
+
+// Duplicating and moving keep a tab's kind.
+func TestOurTabKeepsItsKind(t *testing.T) {
+	m := oneWindow(&fakeEngine{})
+	m.CreateIn(1, "")
+	s := m.OpenPage(1, "settings")
+	m.Duplicate()
+	copied := m.Active()
+	if copied.ID == s || copied.Page != "settings" || copied.URL != "chrome://settings/" {
+		t.Fatalf("the copy is %+v", copied)
+	}
+	m.AddWindow(2)
+	m.Move(s, 2, 0)
+	if moved, _ := m.Get(s); moved.Page != "settings" || m.WindowOf(s) != 2 {
+		t.Fatalf("moved: %+v in window %v", moved, m.WindowOf(s))
 	}
 }

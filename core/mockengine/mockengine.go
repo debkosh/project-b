@@ -74,6 +74,8 @@ type tab struct {
 	zoom    float64
 	// workspace is the app's id for the workspace the tab is in, "" for the profile's own storage.
 	workspace string
+	// internal says it is one of ours, in our pages' context.
+	internal bool
 }
 
 // Engine implements engine.Engine. Run is the main thread: everything happens there,
@@ -289,6 +291,18 @@ func (e *Engine) CreateTab(workspace string) engine.TabID {
 	return e.nextTab
 }
 
+func (e *Engine) CreateInternalTab() engine.TabID {
+	id := e.CreateTab("")
+	e.tabs[id].internal = true
+	return id
+}
+
+// Internal says whether a tab is one of ours. Main thread.
+func (e *Engine) Internal(id engine.TabID) bool {
+	t := e.tabs[id]
+	return t != nil && t.internal
+}
+
 // Workspace is the workspace a tab is in, "" for the profile's own storage. Main thread.
 func (e *Engine) Workspace(id engine.TabID) string {
 	if t := e.tabs[id]; t != nil {
@@ -312,7 +326,7 @@ type Erase struct {
 func (e *Engine) EraseWorkspace(workspace string) {
 	open := 0
 	for _, t := range e.tabs {
-		if t.workspace == workspace {
+		if t.workspace == workspace && !t.internal {
 			open++
 		}
 	}
@@ -527,7 +541,8 @@ func (e *Engine) ZoomOf(id engine.TabID) float64 {
 	return 1
 }
 
-// DuplicateTab copies the tab's history into a new hidden tab, in its workspace.
+// DuplicateTab copies the tab's history into a new hidden tab, of its kind and in its
+// workspace.
 func (e *Engine) DuplicateTab(id engine.TabID) engine.TabID {
 	n := e.CreateTab(e.Workspace(id))
 	if t := e.tabs[id]; t != nil {

@@ -83,6 +83,12 @@ func (m *Manager) List() []Workspace { return slices.Clone(m.list) }
 // picks a workspace for it.
 func (m *Manager) First() string { return m.list[0].ID }
 
+// Has says whether the list has a workspace, by its id.
+func (m *Manager) Has(id string) bool {
+	_, err := m.index(id)
+	return err == nil
+}
+
 // OnChanged subscribes to a workspace being made, renamed, recoloured, moved or deleted.
 func (m *Manager) OnChanged(f func()) { m.onChanged = append(m.onChanged, f) }
 

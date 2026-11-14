@@ -13,6 +13,10 @@ as built so far, and the order of building at the end says which steps are done.
   with one, Main, whose storage is the profile's own: the storage tabs used before there
   were workspaces. Every workspace made later has storage of its own. No workspace is
   special to the user.
+- Our own tabs, settings first, are in none ([windows.md](windows.md#our-own-pages-are-tabs-decided-2026-11-14)):
+  no count has them and a delete leaves them. Each remembers the workspace of the tab it
+  was opened from, its `workspace`, where New Tab from it goes, or the first when that one
+  is gone (`tabs.Manager.HomeOf`).
 - The engine makes a tab in a workspace: `create_tab` takes Go's id for one
   (`engine.Engine.CreateTab(workspace)`). Main's id is "", the engine's meaning of "the
   profile's own storage": the context's own partition, so its tabs get no SiteInstance, as

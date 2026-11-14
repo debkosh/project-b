@@ -135,7 +135,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	}
 	a.Downloads = downloads.New(e, cfg.ProfileDir, cfg.DownloadsDir)
 	a.Downloads.Load()
-	a.Tabs = tabs.New(e, a.Workspaces.First)
+	a.Tabs = tabs.New(e, a.Workspaces)
 	a.Prefs = prefs.New(cfg.ProfileDir)
 	a.Flags = flags.New(cfg.ProfileDir)
 	a.Window = window.New(e, shells.Page(a.Prefs.Shell()), a.Prefs.FrameColor(), themeOf(a.Prefs.Theme()), a.Tabs.Front)
@@ -172,8 +172,17 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.registerActions(e)
 
 	a.Tabs.AddGate(a.Policy.IsAllowedURL)
-	a.Tabs.OnNavigationFinished(func(t tabs.Tab) { a.History.AddVisit(t.URL, t.Title) })
-	a.Tabs.OnTitleChanged(func(t tabs.Tab) { a.History.UpdateTitle(t.URL, t.Title) })
+	// History is the web's: our own tabs record nothing.
+	a.Tabs.OnNavigationFinished(func(t tabs.Tab) {
+		if t.Page == "" {
+			a.History.AddVisit(t.URL, t.Title)
+		}
+	})
+	a.Tabs.OnTitleChanged(func(t tabs.Tab) {
+		if t.Page == "" {
+			a.History.UpdateTitle(t.URL, t.Title)
+		}
+	})
 	a.Tabs.OnChanged(a.Shell.TabChanged)
 	a.Tabs.OnListChanged(a.Shell.TabsChanged)
 	// A window may have no tabs: closing its last one leaves it open. It closes with its

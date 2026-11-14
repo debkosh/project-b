@@ -1531,6 +1531,49 @@ func TestDeletingAWorkspaceLeavesAWindowOfOnlyItsTabsEmpty(t *testing.T) {
 	}
 }
 
+// One of our tabs is in no workspace: the counts leave it out, history records nothing of
+// it, and deleting the workspace it was opened from leaves it, a new tab from it then
+// opening in the first.
+func TestOurTabIsInNoWorkspace(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "workspaces.json"), []byte(`{"version":2,"workspaces":[{"id":"0a1b2c3d","name":"Work","color":"#5b7fd6"},{"id":"","name":"Main","color":"#3470d0"}]}`), 0o600)
+	r := start(t, dir)
+	defer r.stop()
+	// The first tab is in Work, the first workspace; then one in Main, and ours opened from it.
+	var main, ours engine.TabID
+	r.e.Post(func() {
+		main = r.a.Tabs.CreateIn(1, "")
+		ours = r.a.Tabs.OpenPage(1, "settings")
+	})
+	r.waitForTab(func(t map[string]any) bool {
+		return t["id"] == float64(ours) && t["page"] == "settings" && t["url"] == "chrome://settings/" && t["loading"] == false
+	})
+	if items := r.suggestions("settings"); len(items) != 0 {
+		t.Fatalf("history has %v", items)
+	}
+	_, snap := r.openSettings()
+	if c := snap["workspaceTabs"].(map[string]any); len(c) != 2 || c[""] != float64(1) || c["0a1b2c3d"] != float64(1) {
+		t.Fatalf("the counts are %v", c)
+	}
+	r.settings(`{"t":"deleteWorkspace","id":""}`)
+	r.e.Settle()
+	var left []tabs.Tab
+	var erased []mockengine.Erase
+	var fromOurs tabs.Tab
+	r.e.Post(func() {
+		left, erased = r.a.Tabs.AllIn(1), r.e.Erased()
+		r.a.Tabs.Activate(ours)
+		fromOurs, _ = r.a.Tabs.Get(r.a.Tabs.Create(1))
+	})
+	r.e.Settle()
+	if len(left) != 2 || left[1].ID != ours || slices.ContainsFunc(left, func(t tabs.Tab) bool { return t.ID == main }) {
+		t.Fatalf("after deleting Main window 1 has %+v", left)
+	}
+	if !reflect.DeepEqual(erased, []mockengine.Erase{{Workspace: ""}}) || fromOurs.Workspace != "0a1b2c3d" {
+		t.Fatalf("the engine erased %+v; a new tab from ours is in %q", erased, fromOurs.Workspace)
+	}
+}
+
 // A shell changes the workspaces with the settings page's messages, naming a workspace by
 // "workspace", under the same rules: it makes, edits and moves one, and every shell hears
 // the list; its delete closes the workspace's tabs and only then has the engine erase it;

@@ -133,6 +133,11 @@ int64_t CallCreateTab(const char* workspace) {
   return g_engine->CreateTab(workspace)->id();
 }
 
+int64_t CallCreateInternalTab() {
+  CheckMainThread();
+  return g_engine->CreateInternalTab()->id();
+}
+
 void CallSetFirstWorkspace(const char* workspace) {
   CheckMainThread();
   g_engine->SetFirstWorkspace(workspace);
@@ -530,6 +535,7 @@ const PBEngineCalls* Engine::Calls() {
   static const PBEngineCalls calls = {
       .open_profile = CallOpenProfile,
       .create_tab = CallCreateTab,
+      .create_internal_tab = CallCreateInternalTab,
       .set_first_workspace = CallSetFirstWorkspace,
       .erase_workspace = CallEraseWorkspace,
       .close_tab = CallCloseTab,
@@ -887,6 +893,12 @@ PageTab* Engine::CreateTab(const std::string& workspace) {
   return Add(content::WebContents::Create(params), workspace);
 }
 
+PageTab* Engine::CreateInternalTab() {
+  content::WebContents::CreateParams params(pages_context_);
+  params.initially_hidden = true;
+  return Add(content::WebContents::Create(params), std::string());
+}
+
 PageTab* Engine::AdoptTab(std::unique_ptr<content::WebContents> contents) {
   const std::string workspace = WorkspaceOf(contents.get());
   return Add(std::move(contents), workspace);
@@ -937,8 +949,9 @@ PageTab* Engine::Add(std::unique_ptr<content::WebContents> contents,
   PageTab* raw = tab.get();
   tab->contents()->WasHidden();
 #if BUILDFLAG(PB_EXTENSIONS)
-  // Extensions run in every tab: content scripts, messages, chrome.scripting.
-  if (Extensions::Get()) {
+  // Extensions run in every web tab: content scripts, messages, chrome.scripting. They are
+  // the profile's, and none of ours is in its context.
+  if (Extensions::Get() && !raw->internal()) {
     extensions::ExtensionsBrowserClient::Get()
         ->CreateExtensionWebContentsObserver(tab->contents());
   }

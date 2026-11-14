@@ -148,6 +148,9 @@ class Engine {
   // Any other workspace is a storage partition of the profile's context, which the tab
   // keeps for its life, across every site it visits and every tab it opens.
   PageTab* CreateTab(const std::string& workspace);
+  // Makes a hidden tab of ours, in our pages' context: in no workspace, and one of ours for
+  // its life.
+  PageTab* CreateInternalTab();
   // Takes a WebContents content made for a page's window.open or link, or for an
   // extension's page, and makes it a hidden tab, in the workspace content made it in.
   PageTab* AdoptTab(std::unique_ptr<content::WebContents> contents);

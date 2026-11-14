@@ -5,6 +5,10 @@
 // layout, which shows it. A window may have no tabs, and then has no active tab; one with
 // tabs always has one. Commands act on the active tab of the window in front. A tab
 // keeps its id for its life.
+//
+// A tab is a web tab or one of ours, an internal tab: one of our own pages, such as
+// settings, in our pages' own context. Its kind is fixed for life, and every manager and
+// shell hears it in the tab's page (docs/windows.md, "Our own pages are tabs").
 package tabs
 
 import (
@@ -19,9 +23,13 @@ import (
 // Tab is a copy of one tab's state. Subscribers can keep it.
 type Tab struct {
 	ID engine.TabID `json:"id"`
+	// Page is the internal page one of our tabs shows, "settings", or "" for a web tab. It
+	// is given when the tab is made and never changes.
+	Page string `json:"page,omitempty"`
 	// Workspace is the id of the workspace the tab is in: "" is the profile's own storage,
 	// Main's. It is given when the tab is made and never changes, whichever window the tab
-	// is in.
+	// is in. One of our tabs is in no workspace: this is the one of the tab it was opened
+	// from, where New Tab from it goes (HomeOf).
 	Workspace string `json:"workspace"`
 	URL       string `json:"url"`
 	Title     string `json:"title"`
@@ -50,6 +58,30 @@ type Tab struct {
 // Gate runs before a navigation. Returning false blocks it, and later gates don't run.
 type Gate func(url string) bool
 
+// Pages are our pages a tab of ours can show, each at the engine's address for it.
+var Pages = []string{"settings"}
+
+// PageOf is which of Pages an address is, whichever of its sections it names, or "" for
+// any other address.
+func (m *Manager) PageOf(u string) string {
+	p, ours := m.eng.OurPage(u)
+	page, _, _ := strings.Cut(string(p), "/")
+	if !ours || !slices.Contains(Pages, page) {
+		return ""
+	}
+	return page
+}
+
+// PageURL is the address of one of Pages.
+func (m *Manager) PageURL(page string) string { return m.eng.PageURL(engine.Page(page)) }
+
+// Workspaces is what the manager reads of the profile's list of workspaces.
+type Workspaces interface {
+	// First is the first workspace in the list, where a tab opens when nothing picks one.
+	First() string
+	Has(id string) bool
+}
+
 // BlankURL is what a new tab loads, so its page area holds a real page in the engine's
 // default colours from the start, rather than no page at all. The tab still reads as
 // empty: no address, titled New Tab, nothing in history.
@@ -57,10 +89,8 @@ const BlankURL = engine.BlankURL
 
 // Manager owns the tabs.
 type Manager struct {
-	eng engine.Engine
-	// first is the first workspace in the profile's list, where a tab opens when nothing
-	// picks one.
-	first func() string
+	eng        engine.Engine
+	workspaces Workspaces
 	// search turns words into a search's address.
 	search   func(words string) string
 	tabs     map[engine.TabID]*Tab
@@ -95,10 +125,9 @@ type window struct {
 	groups []*Group
 }
 
-// New returns a manager with no windows. first says which workspace is first in the
-// profile's list.
-func New(eng engine.Engine, first func() string) *Manager {
-	return &Manager{eng: eng, first: first, search: defaultEngine().For, tabs: map[engine.TabID]*Tab{}, windowOf: map[engine.TabID]engine.WindowID{}, windows: map[engine.WindowID]*window{}}
+// New returns a manager with no windows, on the profile's list of workspaces.
+func New(eng engine.Engine, w Workspaces) *Manager {
+	return &Manager{eng: eng, workspaces: w, search: defaultEngine().For, tabs: map[engine.TabID]*Tab{}, windowOf: map[engine.TabID]engine.WindowID{}, windows: map[engine.WindowID]*window{}}
 }
 
 // defaultEngine is the engine a manager searches with until SetSearch says another.
@@ -195,17 +224,64 @@ func (m *Manager) WindowOf(id engine.TabID) engine.WindowID { return m.windowOf[
 func (m *Manager) front() *window { return m.windows[m.Front()] }
 
 // Create is New Tab: it opens a new tab at the end of window w, on the blank page, in the
-// workspace of w's active tab, or in the first one when w has none, and makes it active.
+// workspace New Tab takes there (NewTabWorkspace), and makes it active.
 func (m *Manager) Create(w engine.WindowID) engine.TabID {
-	if active, ok := m.Get(m.ActiveIn(w)); ok {
-		return m.CreateIn(w, active.Workspace)
+	return m.CreateIn(w, m.NewTabWorkspace(w))
+}
+
+// NewTabWorkspace is the workspace a new tab in window w opens in: that of w's active tab,
+// or the first when w has none.
+func (m *Manager) NewTabWorkspace(w engine.WindowID) string {
+	if t := m.tabs[m.ActiveIn(w)]; t != nil {
+		return m.HomeOf(t.ID)
 	}
-	return m.CreateIn(w, m.first())
+	return m.workspaces.First()
+}
+
+// HomeOf is the workspace a tab's new tabs go in: the one it is in, or for one of ours the
+// one it was opened from, or the first when that one is gone.
+func (m *Manager) HomeOf(id engine.TabID) string {
+	t := m.tabs[id]
+	if t.Page != "" && !m.workspaces.Has(t.Workspace) {
+		return m.workspaces.First()
+	}
+	return t.Workspace
 }
 
 // FirstWorkspace is the first workspace in the profile's list, where a tab opens when
 // nothing picks one.
-func (m *Manager) FirstWorkspace() string { return m.first() }
+func (m *Manager) FirstWorkspace() string { return m.workspaces.First() }
+
+// PageIn is window w's tab of one of our pages, or 0 when it has none.
+func (m *Manager) PageIn(w engine.WindowID, page string) engine.TabID {
+	for _, id := range m.windows[w].order {
+		if m.tabs[id].Page == page {
+			return id
+		}
+	}
+	return 0
+}
+
+// OpenPage shows one of our pages in window w, which has one tab for each: its tab, or a
+// new one beside the active tab, opened from it. Either is made active.
+func (m *Manager) OpenPage(w engine.WindowID, page string) engine.TabID {
+	if id := m.PageIn(w, page); id != 0 {
+		m.Activate(id)
+		return id
+	}
+	win := m.windows[w]
+	workspace := m.NewTabWorkspace(w)
+	id := m.eng.CreateInternalTab()
+	t := m.add(id, w)
+	t.Page, t.Workspace, t.URL = page, workspace, m.PageURL(page)
+	// add put it last; it goes beside the active tab instead.
+	if i := slices.Index(win.order, win.active); i >= 0 {
+		win.order = slices.Insert(win.order[:len(win.order)-1], i+1, id)
+	}
+	m.eng.LoadURL(id, t.URL)
+	m.Activate(id)
+	return id
+}
 
 // CreateIn opens a new tab at the end of window w, on the blank page, in a workspace, by
 // its id, and makes it active.
@@ -440,12 +516,14 @@ func (m *Manager) All() []Tab {
 	return out
 }
 
-// CountByWorkspace returns how many tabs each workspace has open, in every window, by the
-// workspace's id, copying none.
+// CountByWorkspace returns how many web tabs each workspace has open, in every window, by
+// the workspace's id, copying none. Our tabs are in none.
 func (m *Manager) CountByWorkspace() map[string]int {
 	counts := map[string]int{}
 	for _, t := range m.tabs {
-		counts[t.Workspace]++
+		if t.Page == "" {
+			counts[t.Workspace]++
+		}
 	}
 	return counts
 }
@@ -532,14 +610,20 @@ func (m *Manager) Stop() {
 	}
 }
 
-// Duplicate opens a copy of the active tab, history and all, as the last tab, in its
-// workspace, and shows it.
+// Duplicate opens a copy of the active tab, history and all, as the last tab, of its kind
+// and in its workspace, and shows it.
 func (m *Manager) Duplicate() {
 	t := m.tabs[m.ActiveID()]
 	if t == nil {
 		return
 	}
-	m.HandleTabOpened(m.ActiveID(), m.eng.DuplicateTab(m.ActiveID()), t.URL, t.Workspace, true)
+	id := m.eng.DuplicateTab(t.ID)
+	c := m.add(id, m.windowOf[t.ID])
+	c.URL, c.Workspace, c.Page = t.URL, t.Workspace, t.Page
+	if t.Group != "" {
+		m.join(id, t.Group, t.ID)
+	}
+	m.Activate(id)
 }
 
 // Open opens a URL in a new last tab of the window in front and shows it.
@@ -548,15 +632,15 @@ func (m *Manager) Open(u string) { m.OpenIn(u, true) }
 // OpenIn opens a URL in a new last tab of the window in front, in the first workspace,
 // shown or behind the active one.
 func (m *Manager) OpenIn(u string, foreground bool) engine.TabID {
-	return m.open(m.ActiveID(), u, m.first(), foreground)
+	return m.open(m.ActiveID(), u, m.workspaces.First(), foreground)
 }
 
 // OpenFor opens a URL about a tab's page, such as its source, in a new last tab of that
 // tab's window, in its workspace, and shows it. The URL loads the page again, so in another
 // workspace it would load it without the tab's cookies.
 func (m *Manager) OpenFor(tab engine.TabID, u string) {
-	if t := m.tabs[tab]; t != nil {
-		m.open(tab, u, t.Workspace, true)
+	if m.tabs[tab] != nil {
+		m.open(tab, u, m.HomeOf(tab), true)
 	}
 }
 

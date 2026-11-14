@@ -124,6 +124,10 @@ PageTab::PageTab(int64_t id,
   contents_->SetDelegate(this);
 }
 
+bool PageTab::internal() const {
+  return contents_->GetBrowserContext() == Engine::Get()->pages_context();
+}
+
 PageTab::~PageTab() {
   // Tearing down the WebContents finishes its pending navigations, which would
   // otherwise arrive here mid-destruction.
