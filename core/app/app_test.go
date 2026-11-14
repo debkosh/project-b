@@ -1736,3 +1736,26 @@ func TestTheTonesComeWithTheFrameColour(t *testing.T) {
 		t.Fatalf("windowColor tones = %v", m["tones"])
 	}
 }
+
+// On a phone, the settings page offers the phone's shells, and a choice there loads it:
+// a phone has no Profile section or View menu.
+func TestAPhonesSettingsChooseItsShell(t *testing.T) {
+	defer func(was bool) { shells.OnPhone = was }(shells.OnPhone)
+	shells.OnPhone = true
+	r := start(t, t.TempDir())
+	defer r.stop()
+	_, snap := r.openSettings()
+	ps, _ := snap["phoneShells"].(map[string]any)
+	list, _ := ps["shells"].([]any)
+	if ps["shell"] != "mobile" || len(list) == 0 || list[0].(map[string]any)["id"] != "mobile" {
+		t.Fatalf("phone shells %v", snap["phoneShells"])
+	}
+	r.settings(`{"t":"setShell","text":"mobile"}`)
+	// Off a phone the part isn't there: the Profile section offers the shells.
+	shells.OnPhone = false
+	r2 := start(t, t.TempDir())
+	defer r2.stop()
+	if _, snap2 := r2.openSettings(); snap2["phoneShells"] != nil {
+		t.Fatalf("a desktop's settings offer phone shells: %v", snap2["phoneShells"])
+	}
+}

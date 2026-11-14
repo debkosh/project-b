@@ -3,6 +3,7 @@
 package app
 
 import (
+	"encoding/json"
 	"path/filepath"
 
 	"projectb/commands"
@@ -157,6 +158,9 @@ func Start(e engine.Engine, cfg Config) *App {
 		})
 		a.Settings.AddPart(a.profileSettingsPart(cfg.Profiles, cfg.Profile))
 	}
+	if shells.OnPhone {
+		a.Settings.AddPart(a.phoneShellPart())
+	}
 	// A change to the workspaces reaches every shell at once, for the dots, and every
 	// settings page; the Tab menu reads the list as it opens. The engine hears which is
 	// first, at start and whenever that changes, for the tabs it makes on its own.
@@ -229,6 +233,34 @@ func (a *App) profileList(cfg Config) commands.List {
 			return items
 		},
 		Choose: func(id string) { relaunch.Copy("--root="+cfg.Profiles.Root(), "--profile="+id) },
+	}
+}
+
+// phoneShellPart is a phone's choice of shell, in General: a phone has no Profile
+// section or View menu, the desktop's two places for it. The shells it offers are a
+// phone's own (shells.Listed).
+func (a *App) phoneShellPart() settings.Part {
+	view := func() map[string]any {
+		listed := []map[string]string{}
+		for _, s := range shells.Listed() {
+			listed = append(listed, map[string]string{"id": s.ID, "name": s.Name})
+		}
+		return map[string]any{"shell": a.Prefs.Shell(), "shells": listed}
+	}
+	a.Prefs.OnShellChanged(func(string) { a.Settings.Send(map[string]any{"t": "phoneShells", "phoneShells": view()}) })
+	return settings.Part{
+		Snapshot: func(into map[string]any) { into["phoneShells"] = view() },
+		Handle: func(w engine.WindowID, t string, msg []byte) bool {
+			if t != "setShell" {
+				return false
+			}
+			var c struct {
+				Text string `json:"text"`
+			}
+			json.Unmarshal(msg, &c)
+			a.Prefs.SetShell(c.Text)
+			return true
+		},
 	}
 }
 

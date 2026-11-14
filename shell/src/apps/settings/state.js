@@ -19,6 +19,8 @@ export const state = reactive({
   tabLayout: 'vertical',
   // Where a phone shell puts its address bar: 'bottom' or 'top'.
   addressBarPosition: 'bottom',
+  // A phone's shells to choose from, and the one in use: {shell, shells}, null off a phone.
+  phoneShells: null,
   // 'system', 'light' or 'dark', as Go's theme pref says.
   theme: 'system',
   autoUpdate: true,
@@ -53,6 +55,7 @@ export function connect() {
             controls: m.controls,
             tabLayout: m.tabLayout,
             addressBarPosition: m.addressBarPosition,
+            phoneShells: m.phoneShells || null,
             theme: m.theme,
             autoUpdate: m.autoUpdate,
             update: m.update,
@@ -75,6 +78,9 @@ export function connect() {
           break;
         case 'addressBarPosition':
           state.addressBarPosition = m.addressBarPosition;
+          break;
+        case 'phoneShells':
+          state.phoneShells = m.phoneShells;
           break;
         case 'autoUpdate':
           state.autoUpdate = m.autoUpdate;

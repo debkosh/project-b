@@ -602,7 +602,9 @@ address field, and a menu button at the far right, in our tones.
   and the APK carries only those (owner, 2026-11-14: more phone shells can join it later),
   so it starts on Mobile even where a profile's pref names `standard`, as the templates do;
   a desktop offers none, though it loads one named outright, as the mock does for the
-  shell's tests in a phone-sized window.
+  shell's tests in a phone-sized window. With more than one phone shell, Settings, General
+  on a phone has Shell to choose between them (a phone has no Profile section or View
+  menu).
 - **One bar at the foot, 48px:** the address pill, which shows the host and the lock and
   becomes the field when tapped, with the suggestions over it, the closest nearest the
   thumb; the tab count, which opens the switcher; and ⋯, the menu sheet. A swipe along

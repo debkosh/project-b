@@ -69,6 +69,15 @@ const busy = computed(() => state.update.check === 'checking' || state.update.ph
           <span class="label">Theme</span>
           <Segmented label="Theme" :options="themes" :model-value="state.theme" @update:model-value="send({ t: 'setTheme', text: $event })" />
         </div>
+        <div v-if="phone && state.phoneShells?.shells.length > 1" class="row">
+          <span class="label">Shell</span>
+          <Segmented
+            label="Shell"
+            :options="state.phoneShells.shells.map((s) => ({ value: s.id, label: s.name }))"
+            :model-value="state.phoneShells.shell"
+            @update:model-value="send({ t: 'setShell', text: $event })"
+          />
+        </div>
         <div v-if="phone" class="row">
           <span class="label">Address bar</span>
           <Segmented label="Address bar" :options="positions" :model-value="state.addressBarPosition" @update:model-value="send({ t: 'setAddressBarPosition', text: $event })" />
