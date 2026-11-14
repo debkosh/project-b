@@ -1,5 +1,5 @@
 <script setup>
-import { watchEffect } from 'vue';
+import { computed, watchEffect } from 'vue';
 import FloatMenu from './FloatMenu.vue';
 import PageMenu from './PageMenu.vue';
 import PageView from './PageView.vue';
@@ -16,7 +16,9 @@ import { tabsOnTop } from './state.js';
 // source for both; every other tone of the shell derives from that colour. The window's
 // corner radius comes from the managers. The curve over the corners is the window's own
 // border, drawn by the engine. Light or dark follows Go's theme pref.
-setFrame(4);
+// A page in full screen has the whole window: no band, no bars, nothing over it.
+const pageFull = computed(() => state.pageFullScreen !== 0 && state.pageFullScreen === state.active);
+watchEffect(() => setFrame(pageFull.value ? 0 : 4));
 watchEffect(() => {
   document.documentElement.style.setProperty('--window-radius', state.cornerRadius + 'px');
 });
@@ -30,16 +32,18 @@ watchEffect(() => {
        window's own colour, which the engine paints under the shell, and the app's name.
        When the data comes the UI is made, and the two cross-fade. -->
   <div class="splash" :aria-busy="!state.loaded">Project B</div>
-  <div v-if="state.loaded" class="app">
-    <TabStrip v-if="tabsOnTop" />
-    <TopBar />
+  <div v-if="state.loaded" class="app" :class="{ 'page-full': pageFull }">
+    <!-- Hidden, not taken away, while a page fills the screen: each keeps what it holds,
+         as the address it shows. -->
+    <TabStrip v-if="tabsOnTop" v-show="!pageFull" />
+    <TopBar v-show="!pageFull" />
     <div class="body">
-      <div class="edge left"></div>
-      <Sidebar v-if="!tabsOnTop" />
+      <div v-show="!pageFull" class="edge left"></div>
+      <Sidebar v-if="!tabsOnTop" v-show="!pageFull" />
       <PageView />
-      <div class="edge right"></div>
+      <div v-show="!pageFull" class="edge right"></div>
     </div>
-    <div class="edge bottom"></div>
+    <div v-show="!pageFull" class="edge bottom"></div>
     <FloatMenu />
     <PageMenu />
   </div>
