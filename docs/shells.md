@@ -411,8 +411,8 @@ it there; a phone shell may be left out of a rule for a desktop feature.
     draws an empty state of its own where the page was, as its own, so a press there
     reaches the shell. New Tab and Address still work, each a way to a tab there, and Close
     Tab then closes the window. What the empty state is, each shell decides; each so far
-    shows a quiet No tabs and New Tab. The check holds every shell to it but Mobile, which
-    doesn't draw one yet, and the two hidden shells, which are being removed.
+    shows a quiet No tabs and New Tab. The check holds every shell to it but the two
+    hidden shells, which are being removed.
 20. **On a desktop, the find key (`find.open`) opens a text box named Find in page with the
     keyboard in it;** what is typed searches the active tab's page and the count shows,
     Enter shows the next match, and Escape closes it and ends the search
@@ -673,8 +673,12 @@ address field, and a menu button at the far right, in our tones.
   becomes the field when tapped, with the suggestions over it, the closest nearest the
   thumb; the tab count, which opens the switcher; and ⋯, the menu sheet. A swipe along
   the bar goes to the tab before or after. Back is the phone's back key, and in the menu
-  while there is somewhere to go back to. While a sheet is open or the address is
-  edited, the back key closes that first (`backCloses`).
+  while there is somewhere to go back to. The back key, in order (owner, 2026-11-14): it
+  closes an open sheet or ends the address's editing (`backCloses`); else goes back in the
+  page; else, on a tab with no history, closes the tab, and the one used before it shows
+  (`closeTab` with `then: "recent"`); down to a window with no tabs, which says No tabs
+  with New tab (rule 18); and only from there does the app go, as Android's back does.
+  Closing the last tab another way leaves No tabs too.
 - **A long press on a link** in the page opens the shell's sheet for it, since a phone
   has no menu of its own: Open in new tab in group first, as Chrome has it, then Open in
   new tab, Open in workspace, and Copy link; on an image, Open image in new tab and Copy

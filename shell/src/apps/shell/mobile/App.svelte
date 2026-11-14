@@ -106,6 +106,8 @@
     bars(true);
     workspace = tab.workspace || '';
     address.blur();
+    // With no tabs there is nothing to edit: No tabs shows, and the back key leaves.
+    if (go.active === 0) return;
     if (tab.url === '') {
       send({ t: 'focusShell' });
       address.focus();
@@ -127,12 +129,11 @@
     else focusPage();
   }
 
-  // The window never has no tabs: closing the last ones leaves a new one. Closing the
-  // active tab of a group goes to its neighbour in the group, as the strip shows it.
+  // Closing the active tab of a group goes to its neighbour in the group, as the strip
+  // shows it. Closing the last tabs leaves the window with none, and its No tabs.
   function closeTabs(ids) {
     if (ids.length >= go.tabs.length) {
       sheet = '';
-      send({ t: 'newTab', workspace });
     } else if (ids.includes(go.active) && group) {
       const left = group.tabs.filter((id) => !ids.includes(id));
       const at = group.tabs.indexOf(go.active);
@@ -196,7 +197,13 @@
   {/if}
   <div class="stage">
     <main use:page={go.active}>
-      {#if tab.url && !tab.loading && (tab.crashed || tab.error || tab.blocked)}
+      {#if go.tabs.length === 0}
+        <!-- A window with no tabs, as the back key leaves one before the app goes. -->
+        <div class="empty" use:shell>
+          <p>No tabs</p>
+          <button class="text-button primary" aria-label="New Tab" onclick={() => newTab()}>New tab</button>
+        </div>
+      {:else if tab.url && !tab.loading && (tab.crashed || tab.error || tab.blocked)}
         <PageNotice {tab} />
       {/if}
     </main>
@@ -246,7 +253,6 @@
         }}
         onclosegroup={() => {
           sheet = '';
-          if (shownGroup.tabs.length >= go.tabs.length) send({ t: 'newTab', workspace });
           send({ t: 'closeGroup', group: shownGroup.id });
         }}
       />
@@ -311,6 +317,29 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
+  }
+
+  .empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    background: var(--bar);
+    color: var(--muted);
+  }
+
+  .empty p {
+    margin: 0;
+    font-size: 15px;
+  }
+
+  .empty button {
+    height: 48px;
+    padding: 0 24px;
+    border-radius: 24px;
   }
 
   main {
