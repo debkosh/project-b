@@ -330,16 +330,16 @@ func (a *App) Stop() {
 
 func (a *App) ShellMessage(w engine.WindowID, msg []byte) { a.Shell.Handle(w, msg) }
 
-func (a *App) NavigationStarting(tab engine.TabID, url string) bool {
-	return a.Tabs.HandleNavigationStarting(tab, url)
+func (a *App) NavigationStarting(tab engine.TabID, nav int64, url string) bool {
+	return a.Tabs.HandleNavigationStarting(tab, nav, url)
 }
 
-func (a *App) NavigationFinished(tab engine.TabID, url string) {
-	a.Tabs.HandleNavigationFinished(tab, url)
+func (a *App) NavigationFinished(tab engine.TabID, nav int64, url string) {
+	a.Tabs.HandleNavigationFinished(tab, nav, url)
 }
 
-func (a *App) NavigationFailed(tab engine.TabID, url, reason string) {
-	a.Tabs.HandleNavigationFailed(tab, url, reason)
+func (a *App) NavigationFailed(tab engine.TabID, nav int64, url, reason string) {
+	a.Tabs.HandleNavigationFailed(tab, nav, url, reason)
 }
 
 func (a *App) HistoryChanged(tab engine.TabID, canGoBack, canGoForward bool) {

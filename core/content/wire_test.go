@@ -56,12 +56,14 @@ func (r *recorder) note(s string) { r.got = append(r.got, s) }
 func (r *recorder) ShellMessage(w engine.WindowID, msg []byte) {
 	r.note(fmt.Sprintf("shell %d %s", w, msg))
 }
-func (r *recorder) NavigationStarting(tab engine.TabID, url string) bool {
+func (r *recorder) NavigationStarting(tab engine.TabID, nav int64, url string) bool {
 	r.note("starting " + url)
 	return r.allow
 }
-func (r *recorder) NavigationFinished(tab engine.TabID, url string) { r.note("finished " + url) }
-func (r *recorder) NavigationFailed(tab engine.TabID, url, reason string) {
+func (r *recorder) NavigationFinished(tab engine.TabID, nav int64, url string) {
+	r.note("finished " + url)
+}
+func (r *recorder) NavigationFailed(tab engine.TabID, nav int64, url, reason string) {
 	r.note("failed " + url + " " + reason)
 }
 func (r *recorder) HistoryChanged(tab engine.TabID, back, fwd bool) {

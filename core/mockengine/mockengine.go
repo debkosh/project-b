@@ -67,6 +67,8 @@ type tab struct {
 	history []string // The committed URLs.
 	pos     int      // The current one in history, or -1 before the first.
 	navSeq  int
+	// nav is the id of the latest navigation, from the engine's one counter, as content's.
+	nav     int64
 	state   string // What the mock page shows: empty, loading, loaded, blocked, crashed.
 	current string
 	zoom    float64
@@ -81,6 +83,7 @@ type Engine struct {
 	queue    chan func()
 	listener engine.Listener
 	nextTab  engine.TabID
+	nextNav  int64
 	tabs     map[engine.TabID]*tab
 	// first is the workspace the app last said is first; erased are the erases it asked
 	// for, in order. The mock makes no tab on its own, so only tests read them.
@@ -822,7 +825,7 @@ func (e *Engine) Fire(w engine.WindowID, tab engine.TabID, kind, value string) {
 			if t != nil {
 				t.navSeq++
 				e.listener.LoadingChanged(shown, false)
-				e.listener.NavigationFailed(shown, t.current, value)
+				e.listener.NavigationFailed(shown, t.nav, t.current, value)
 			}
 		case "crash":
 			if t != nil {
@@ -905,7 +908,10 @@ func (e *Engine) load(id engine.TabID, u string, commit func(*tab)) {
 	}
 	t.navSeq++
 	seq := t.navSeq
-	if !e.listener.NavigationStarting(id, u) {
+	e.nextNav++
+	t.nav = e.nextNav
+	nav := t.nav
+	if !e.listener.NavigationStarting(id, nav, u) {
 		t.state = "blocked"
 		e.showPage(id, t.state, u)
 		return
@@ -923,7 +929,7 @@ func (e *Engine) load(id engine.TabID, u string, commit func(*tab)) {
 			t.current = u
 			t.state = "loaded"
 			e.listener.HistoryChanged(id, t.pos > 0, t.pos < len(t.history)-1)
-			e.listener.NavigationFinished(id, u)
+			e.listener.NavigationFinished(id, nav, u)
 			e.listener.TitleChanged(id, titleOf(u))
 			e.listener.LoadProgressChanged(id, 1)
 			e.listener.LoadingChanged(id, false)
