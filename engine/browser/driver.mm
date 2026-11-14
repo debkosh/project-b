@@ -859,6 +859,7 @@ void Capture(const std::string& id, const std::string& path) {
   };
 
   // The settings page covers the whole window while it is open: it alone is the picture.
+  // A window that shows no tab has no page under its shell: the shell is the picture.
   SettingsPage* settings = Current()->settings.get();
   copy(settings ? settings->contents() : Current()->shell->contents(),
        base::BindOnce(
@@ -873,11 +874,12 @@ void Capture(const std::string& id, const std::string& path) {
              FinishCapture(state);
            },
            state));
-  if (settings) {
+  PageTab* page = Focused();
+  if (settings || !page) {
     state->page_done = true;
     return;
   }
-  copy(Focused()->contents(),
+  copy(page->contents(),
        base::BindOnce(
            [](scoped_refptr<CaptureState> state,
               const content::CopyFromSurfaceResult& result) {
