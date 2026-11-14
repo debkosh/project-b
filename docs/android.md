@@ -380,7 +380,7 @@ What doesn't apply on a phone, and what the app does instead:
   so it sends no drag areas.
 - **Window buttons.** There are none, so the shell leaves its 8px ends. Minimise, which nothing on a phone sends, moves
   the app to the background; zoom and full screen do nothing, because the window already fills the screen. Close
-  finishes the activity, which ends the process, as closing the last tab does.
+  finishes the activity, which ends the process.
 - **The frame's band.** The shell's own edge strips draw it. With square corners there is no curve for the window to
   draw over the page, so `frame_width` isn't used.
 - **The window title.** A phone doesn't show one.

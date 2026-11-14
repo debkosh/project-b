@@ -401,7 +401,7 @@ it there; a phone shell may be left out of a rule for a desktop feature.
     reaches the shell. New Tab and Address still work, each opening a tab there, and Close
     Tab then closes the window. What the empty state is, each shell decides; each so far
     shows a quiet No tabs and New Tab. The check holds every shell to it but Mobile, which
-    doesn't draw one yet.
+    doesn't draw one yet, and the two hidden shells, which are being removed.
 20. **On a desktop, the find key (`find.open`) opens a text box named Find in page with the
     keyboard in it;** what is typed searches the active tab's page and the count shows,
     Enter shows the next match, and Escape closes it and ends the search

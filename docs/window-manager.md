@@ -195,7 +195,8 @@ const (
 )
 ```
 
-`RequestWindow(w WindowID, r WindowRequest)` on `Engine` replaces `CloseWindow`: the tabs closing the
-last tab and the updater relaunching ask the window manager too. The shell sends
+`RequestWindow(w WindowID, r WindowRequest)` on `Engine` replaces `CloseWindow`: Close Tab in a
+window with no tabs, a window whose last tab moved out, and the updater relaunching ask the
+window manager too. The shell sends
 `{"t":"window","text":"close" | "minimise" | "zoom" | "fullScreen"}`. On macOS nothing in
 the shell sends one yet, since the system's buttons do the job.
