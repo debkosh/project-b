@@ -47,6 +47,9 @@ export const state = reactive({
   workspaces: [],
   // The number of tabs open in each workspace, by its id; one with none isn't in it.
   workspaceTabs: {},
+  // Each site's settings, by origin: each {origin, settings}, a setting being {kind, title,
+  // value}, value 'allow' or 'block'.
+  siteSettings: [],
 });
 
 export function connect() {
@@ -74,6 +77,7 @@ export function connect() {
             profile: m.profile || null,
             workspaces: m.workspaces,
             workspaceTabs: m.workspaceTabs,
+            siteSettings: m.siteSettings,
             ready: true,
           });
           mark('settings.snapshot');
@@ -120,6 +124,9 @@ export function connect() {
           break;
         case 'workspaceTabs':
           state.workspaceTabs = m.workspaceTabs;
+          break;
+        case 'siteSettings':
+          state.siteSettings = m.siteSettings;
           break;
       }
     },
