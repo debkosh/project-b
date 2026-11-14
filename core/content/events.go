@@ -34,6 +34,8 @@ const (
 	eventFilesChosen    Hook = 20
 	eventDialogOpened   Hook = 21
 	eventDialogClosed   Hook = 22
+	eventPermissionAsk  Hook = 40
+	eventPermissionGet  Hook = 41
 )
 
 // dialogKinds name PBDialogKind's values.
@@ -62,6 +64,8 @@ var eventNames = map[Hook]string{
 	eventFilesChosen:    "engine.FilesChosen",
 	eventDialogOpened:   "engine.DialogOpened",
 	eventDialogClosed:   "engine.DialogClosed",
+	eventPermissionAsk:  "engine.PermissionRequested",
+	eventPermissionGet:  "engine.PermissionStatusOf",
 }
 
 // Events is what the adapter itself reports. Always on; there is nothing to subscribe.
@@ -87,6 +91,8 @@ type Events struct {
 	OnFilesChosen     func(tab engine.TabID, count int, folder string)
 	OnDialogOpened    func(d engine.Dialog)
 	OnDialogClosed    func(id engine.DialogID)
+	OnPermission      func(r engine.PermissionRequest)
+	OnPermissionOf    func(tab engine.TabID, origin, kind string) engine.PermissionStatus
 
 	// more are the events a build tag adds, by number.
 	more map[Hook]func(r *reader) (Value, bool)
@@ -210,6 +216,16 @@ func (e *Events) dispatch(id Hook, r *reader) (Value, bool) {
 		if e.OnFilesChosen != nil {
 			e.OnFilesChosen(engine.TabID(r.int()), int(r.int()), r.str())
 		}
+	case eventPermissionAsk:
+		if e.OnPermission != nil {
+			e.OnPermission(engine.PermissionRequest{ID: engine.PermissionID(r.int()), Tab: engine.TabID(r.int()), Origin: r.str(), Kinds: strings.Split(r.str(), ","), Gesture: r.bool()})
+		}
+	case eventPermissionGet:
+		// With no one to ask, content takes no answer as denied.
+		if e.OnPermissionOf == nil {
+			return Value{}, false
+		}
+		return Value{I: int64(e.OnPermissionOf(engine.TabID(r.int()), r.str(), r.str()))}, true
 	case eventMenuList:
 		// The answer is the list's items now, as the menu bar's JSON has them.
 		if e.OnMenuList == nil {

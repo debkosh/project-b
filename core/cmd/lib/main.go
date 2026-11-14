@@ -42,6 +42,7 @@ static inline void call_stop_finding(const PBEngineCalls* c, int64_t tab) { c->s
 static inline void call_exit_page_full_screen(const PBEngineCalls* c, int64_t tab) { c->exit_page_full_screen(tab); }
 static inline void call_answer_sign_in(const PBEngineCalls* c, int64_t dialog, int ok, const char* username, const char* password) { c->answer_sign_in(dialog, ok, username, password); }
 static inline void call_answer_dialog(const PBEngineCalls* c, int64_t dialog, int ok, const char* text) { c->answer_dialog(dialog, ok, text); }
+static inline void call_answer_permission(const PBEngineCalls* c, uint32_t id, const int32_t* statuses, size_t count) { c->answer_permission(id, statuses, count); }
 static inline void call_send_to_settings(const PBEngineCalls* c, int64_t tab, const char* json, size_t length) { c->send_to_settings(tab, json, length); }
 static inline void call_set_menu(const PBEngineCalls* c, const char* json, size_t length) { c->set_menu(json, length); }
 static inline void call_app_command(const PBEngineCalls* c, int32_t command) { c->app_command(command); }
@@ -228,6 +229,14 @@ func (e *nativeEngine) AnswerSignIn(id engine.DialogID, ok bool, username, passw
 		yes = 1
 	}
 	C.call_answer_sign_in(e.calls, C.int64_t(id), yes, u, p)
+}
+
+func (e *nativeEngine) AnswerPermission(id engine.PermissionID, statuses []engine.PermissionStatus) {
+	s := make([]C.int32_t, len(statuses)+1) // never empty, so &s[0] is always there
+	for i, v := range statuses {
+		s[i] = C.int32_t(v)
+	}
+	C.call_answer_permission(e.calls, C.uint32_t(id), &s[0], C.size_t(len(statuses)))
 }
 
 func (e *nativeEngine) SendToSettings(tab engine.TabID, msg []byte) {

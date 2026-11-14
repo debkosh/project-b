@@ -129,6 +129,13 @@ class PageTab : public WebContentsObserverHooks, public WebContentsDelegateHooks
       const std::vector<blink::mojom::ColorSuggestionPtr>& suggestions)
       override;
 #endif
+  // getUserMedia, and whether a page may see its devices' names: Go decides.
+  bool CheckMediaAccessPermission(content::RenderFrameHost* render_frame_host,
+                                  const url::Origin& security_origin,
+                                  blink::mojom::MediaStreamType type) override;
+  void RequestMediaAccessPermission(content::WebContents* web_contents,
+                                    const content::MediaStreamRequest& request,
+                                    content::MediaResponseCallback callback) override;
 
   const int64_t id_;
   const std::string workspace_;

@@ -152,6 +152,13 @@ func (r *recorder) PageFullScreen(tab engine.TabID, on bool) {
 }
 func (r *recorder) IsPageFullScreen(engine.TabID) bool { return false }
 
+func (r *recorder) PermissionRequested(p engine.PermissionRequest) {
+	r.note(fmt.Sprintf("permission %d tab %d %s %v gesture=%v", p.ID, p.Tab, p.Origin, p.Kinds, p.Gesture))
+}
+func (r *recorder) PermissionStatusOf(tab engine.TabID, origin, kind string) engine.PermissionStatus {
+	r.note(fmt.Sprintf("status tab %d %s %s", tab, origin, kind))
+	return engine.PermissionAsk
+}
 func (r *recorder) DevToolsCommand(method string, params []byte) (any, error) {
 	r.note("devtools " + method + " " + string(params))
 	switch method {
@@ -226,5 +233,18 @@ func TestDevToolsCommandsAnswerWithTheirResultOrError(t *testing.T) {
 	}
 	if _, ok := h.Dispatch(eventDevTools, pack("ProjectB.nothing", `{}`)); ok {
 		t.Error("an unknown command was answered, not left to content")
+	}
+}
+
+func TestPermissionRequestsAndReadsReachTheListener(t *testing.T) {
+	h, r, _ := wired(t)
+	h.Dispatch(eventPermissionAsk, pack(7, 3, "https://meet.test", "camera,microphone", true))
+	v, ok := h.Dispatch(eventPermissionGet, pack(3, "https://meet.test", "notifications"))
+	if !ok || v.I != int64(engine.PermissionAsk) {
+		t.Fatalf("the status read answered %v %v", ok, v)
+	}
+	want := []string{"permission 7 tab 3 https://meet.test [camera microphone] gesture=true", "status tab 3 https://meet.test notifications"}
+	if !reflect.DeepEqual(r.got, want) {
+		t.Fatalf("got %v", r.got)
 	}
 }

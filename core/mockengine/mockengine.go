@@ -96,6 +96,8 @@ type Engine struct {
 	erased   []Erase
 	profiles []string
 	rules    []engine.BlockRules
+	// perms is the page's permission requests and the app's answers.
+	perms permissionLog
 
 	// Written on the main thread, read by the dev server's goroutines.
 	mu         sync.Mutex
@@ -777,7 +779,9 @@ func (e *Engine) Focused() engine.TabID {
 
 // FocusShell gives window w's shell the keyboard: the dev window focuses the shell's
 // frame, as the real window gives the shell's view focus.
-func (e *Engine) FocusShell(w engine.WindowID) { e.Feeds(w).Window.Publish([]byte(`{"t":"focusShell"}`)) }
+func (e *Engine) FocusShell(w engine.WindowID) {
+	e.Feeds(w).Window.Publish([]byte(`{"t":"focusShell"}`))
+}
 
 func (e *Engine) SendToShell(w engine.WindowID, msg []byte) { e.Feeds(w).Shell.Publish(msg) }
 
@@ -913,6 +917,9 @@ func (e *Engine) Fire(w engine.WindowID, tab engine.TabID, kind, value string) {
 		case "download":
 			// The page starts a download of value.
 			e.download(shown, value, false)
+		case "permission", "permissionQuiet":
+			// The page asks for the kinds in value, from a press, or on its own.
+			e.requestPermission(shown, value, kind == "permission")
 		case "scroll":
 			// value is down or up, as a page that scrolls makes content say.
 			e.listener.ScrollDirectionChanged(shown, value == "down")
