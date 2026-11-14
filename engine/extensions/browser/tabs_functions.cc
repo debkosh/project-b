@@ -26,7 +26,7 @@ ExtensionFunction::ResponseAction TabsCaptureVisibleTabFunction::Run() {
   if (answer.result && answer.result->is_dict()) {
     tab = answer.result->GetDict().FindInt("tab");
   }
-  content::WebContents* contents = tab ? Engine::Get()->Contents(*tab) : nullptr;
+  content::WebContents* contents = tab ? Engine::Get()->WebTabContents(*tab) : nullptr;
   if (!contents) {
     return RespondNow(Error("No active web contents to capture"));
   }

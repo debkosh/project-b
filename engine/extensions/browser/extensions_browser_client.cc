@@ -546,7 +546,7 @@ bool ExtensionsBrowserClient::IsValidTabId(
     int tab_id,
     bool include_incognito,
     content::WebContents** web_contents) const {
-  content::WebContents* contents = Engine::Get()->Contents(tab_id);
+  content::WebContents* contents = Engine::Get()->WebTabContents(tab_id);
   if (web_contents) {
     *web_contents = contents;
   }

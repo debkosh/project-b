@@ -40,9 +40,9 @@ func status(t tabs.Tab) string {
 	return "complete"
 }
 
-// index is a tab's place in its window.
+// index is a tab's place in its window, among its web tabs.
 func (a *API) index(id engine.TabID) int {
-	return slices.IndexFunc(a.tabs.AllIn(a.tabs.WindowOf(id)), func(o tabs.Tab) bool { return o.ID == id })
+	return slices.IndexFunc(web(a.tabs.AllIn(a.tabs.WindowOf(id))), func(o tabs.Tab) bool { return o.ID == id })
 }
 
 func (a *API) tabFor(e engine.Extension, t tabs.Tab) tab {
@@ -66,7 +66,7 @@ func (a *API) tabArg(c call, i int) (tabs.Tab, error) {
 	if !c.arg(i, &id) {
 		id = a.tabs.ActiveID()
 	}
-	t, ok := a.tabs.Get(id)
+	t, ok := a.get(id)
 	if !ok {
 		return t, fmt.Errorf("No tab with id: %d.", id)
 	}
@@ -86,7 +86,7 @@ func init() {
 	functions["tabs.get"] = func(a *API, c call) (any, error) {
 		var id engine.TabID
 		c.arg(0, &id)
-		t, ok := a.tabs.Get(id)
+		t, ok := a.get(id)
 		if !ok {
 			return nil, fmt.Errorf("No tab with id: %d.", id)
 		}
@@ -94,7 +94,7 @@ func init() {
 	}
 	// The tab the caller runs in. A popup or a background script is in none.
 	functions["tabs.getCurrent"] = func(a *API, c call) (any, error) {
-		t, ok := a.tabs.Get(c.Tab)
+		t, ok := a.get(c.Tab)
 		if !ok {
 			return nil, nil
 		}
@@ -107,7 +107,7 @@ func init() {
 			return nil, err
 		}
 		active := a.tabs.ActiveIn(w.ID)
-		if _, ok := a.tabs.Get(active); !ok {
+		if _, ok := a.get(active); !ok {
 			return nil, fmt.Errorf("No active web contents to capture")
 		}
 		return map[string]engine.TabID{"tab": active}, nil
@@ -144,7 +144,7 @@ func init() {
 		}
 		current, front := a.current(c), a.tabs.Front()
 		out := []tab{}
-		for _, t := range a.tabs.All() {
+		for _, t := range web(a.tabs.All()) {
 			w := a.tabs.WindowOf(t.ID)
 			active := t.ID == a.tabs.ActiveIn(w)
 			if q.Active != nil && *q.Active != active ||
@@ -177,6 +177,9 @@ func init() {
 		u := tabs.BlankURL
 		if p.URL != "" {
 			u = resolve(c.Extension, p.URL)
+		}
+		if err := a.ours(u); err != nil {
+			return nil, err
 		}
 		// Into the window named, or the caller's current one, in the first workspace.
 		w := a.current(c)
@@ -223,7 +226,11 @@ func init() {
 			}
 		}
 		if p.URL != "" {
-			a.tabs.Load(t.ID, resolve(c.Extension, p.URL))
+			u := resolve(c.Extension, p.URL)
+			if err := a.ours(u); err != nil {
+				return nil, err
+			}
+			a.tabs.Load(t.ID, u)
 		}
 		t, _ = a.tabs.Get(t.ID)
 		return a.tabFor(a.caller(c), t), nil
@@ -250,7 +257,7 @@ func init() {
 			c.arg(0, &ids)
 		}
 		for _, id := range ids {
-			if _, ok := a.tabs.Get(id); !ok {
+			if _, ok := a.get(id); !ok {
 				return nil, fmt.Errorf("No tab with id: %d.", id)
 			}
 		}
@@ -261,12 +268,14 @@ func init() {
 	}
 }
 
-// TabsChanged tells the extensions which tabs opened and closed and which is active in
-// each window now, from what they were last told.
+// TabsChanged tells the extensions which web tabs opened and closed and which is active in
+// each window now, from what they were last told. A window whose active tab is one of ours
+// has none they see.
 func (a *API) TabsChanged() {
 	now := map[engine.TabID]tabs.Tab{}
 	in := map[engine.TabID]engine.WindowID{}
-	for _, t := range a.tabs.All() {
+	all := web(a.tabs.All())
+	for _, t := range all {
 		now[t.ID] = t
 		in[t.ID] = a.tabs.WindowOf(t.ID)
 	}
@@ -274,7 +283,7 @@ func (a *API) TabsChanged() {
 	open := a.tabs.Windows()
 	active := map[engine.WindowID]engine.TabID{}
 	for _, w := range a.tabs.Windows() {
-		if id := a.tabs.ActiveIn(w); id != 0 {
+		if id := a.tabs.ActiveIn(w); now[id].ID != 0 {
 			active[w] = id
 			if a.active[w] != id {
 				a.accessed[id] = time.Now()
@@ -282,7 +291,7 @@ func (a *API) TabsChanged() {
 		}
 	}
 	for _, e := range a.enabled() {
-		for _, t := range a.tabs.All() {
+		for _, t := range all {
 			if _, was := a.known[t.ID]; !was {
 				a.dispatch(e.ID, "tabs.onCreated", a.tabFor(e, t))
 			}
