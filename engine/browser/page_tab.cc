@@ -32,6 +32,10 @@
 #include "ui/base/window_open_disposition.h"
 #include "ui/gfx/codec/png_codec.h"
 
+#if BUILDFLAG(IS_ANDROID)
+#include "components/embedder_support/android/delegate/html_color_picker_bridge.h"
+#endif
+
 namespace project_b {
 
 namespace {
@@ -137,11 +141,15 @@ PageTab::~PageTab() {
 }
 
 // A page coming back from history already has its icon and may not announce it again,
-// nor its title.
+// nor its title. One of our pages in a tab of ours is also on the timeline by its name,
+// as the shell is.
 void PageTab::DidFinishNavigation(content::NavigationHandle* handle) {
   if (handle->IsInPrimaryMainFrame() && handle->HasCommitted() &&
       !handle->IsSameDocument()) {
     timeline::Mark("tab.committed", "tab=" + base::NumberToString(id_));
+    if (internal()) {
+      timeline::PageCommitted(handle->GetURL().host(), handle);
+    }
   }
   if (handle->IsInPrimaryMainFrame() && handle->HasCommitted() &&
       !handle->IsErrorPage() && !contents_->GetFaviconURLs().empty()) {
@@ -518,6 +526,16 @@ bool PageTab::TakeFocus(content::WebContents* source, bool reverse) {
   Engine::Get()->FocusShellForTraversal(id_, reverse);
   return true;
 }
+
+#if BUILDFLAG(IS_ANDROID)
+std::unique_ptr<content::ColorChooser> PageTab::OpenColorChooser(
+    content::WebContents* web_contents,
+    SkColor color,
+    const std::vector<blink::mojom::ColorSuggestionPtr>& suggestions) {
+  return std::make_unique<web_contents_delegate_android::HtmlColorPickerBridge>(
+      web_contents, color, suggestions);
+}
+#endif
 
 content::WebContents* PageTab::hook_contents() const {
   return contents_.get();
