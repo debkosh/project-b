@@ -145,11 +145,10 @@ watch(
   },
 );
 
-// A tab that becomes active with nothing in it wants the address bar; one with a page
-// wants the page. The bar is made once Go's data is in, with a tab already active, so
-// that one counts too.
+// A tab that becomes active with nothing in it wants the address bar, as does a window
+// left with no tabs; one with a page wants the page. The bar is made once Go's data is in,
+// so the state it is made in counts too.
 function follow() {
-  if (state.active === 0) return;
   close();
   edited.value = false;
   text.value = activeTab.value.url;

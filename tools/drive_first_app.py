@@ -14,6 +14,7 @@ session (tools/check_full_screen.py, tools/check_clipboard.py). This needs no di
     python3 tools/drive_first_app.py cookies    # only cookies kept across a restart
     python3 tools/drive_first_app.py visible    # only the tabs a window shows
     python3 tools/drive_first_app.py windows    # only several windows
+    python3 tools/drive_first_app.py empty      # only a window with no tabs
     python3 tools/drive_first_app.py move       # only moving a tab between windows
     python3 tools/drive_first_app.py bounds     # only a window's frame, set and read
     python3 tools/drive_first_app.py profiles   # only the start choosing a profile from the list
@@ -1261,6 +1262,40 @@ def window_checks():
     App.running.remove(app)
 
 
+def empty_checks():
+    """A window may have no tabs: closing its only tab leaves it open, showing no page, with
+    the shell's own empty state where the page was and the keyboard in the address. Close
+    Tab, Cmd+W, then closes the window, which ends the app."""
+    app = App(tempfile.mkdtemp(prefix="pb-profile-"))
+    windows = lambda: json.loads(app.cmd("windows"))
+    x, y, w, h = json.loads(app.cmd("visible"))[0]["frame"]
+    app.cmd("key", "cmd+w")
+    app.wait(f"{ROWS}===0", 10)
+    deadline = time.time() + 10
+    while windows()[0]["tabs"] and time.time() < deadline:
+        time.sleep(0.05)
+    check("closing the only tab leaves the window open, showing no page",
+          [(v["id"], v["tabs"]) for v in windows()] == [(1, [])] and json.loads(app.cmd("visible")) == [], (windows(), app.cmd("visible")))
+    check("the shell draws its empty state where the page was, as its own",
+          app.js("!!document.querySelector('.empty')") and app.cmd("hit", x + w / 2, y + h / 2) == "shell", app.cmd("hit", x + w / 2, y + h / 2))
+    try:
+        app.wait(f"document.hasFocus()&&document.activeElement==={INPUT}", 10)
+        check("the address has the keyboard", True)
+    except TimeoutError as e:
+        check("the address has the keyboard", False, e)
+    print(app.cmd("capture", os.path.join(OUT, "empty-window.png")), flush=True)
+    app.cmd("key", "cmd+w")
+    try:
+        code = app.proc.wait(timeout=20)
+    except subprocess.TimeoutExpired:
+        code = None
+    check("Cmd+W in it closes the window, which ends the app, cleanly", code == 0, code)
+    if code is None:
+        app.close()
+    else:
+        App.running.remove(app)
+
+
 def move_checks():
     """A tab moving to another window keeps its id and its page: nothing reloads, a form
     keeps what was typed, a timer goes on, and the window it arrives in shows it. A tab can
@@ -2049,5 +2084,5 @@ def quit_checks():
 
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
-    parts = {"driver": [driver_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "quit": [quit_checks]}
-    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, settings_checks, visible_tabs_checks, window_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, shell_checks, glide_checks, web_api_checks, quit_checks]))
+    parts = {"driver": [driver_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [empty_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "quit": [quit_checks]}
+    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, settings_checks, visible_tabs_checks, window_checks, empty_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, shell_checks, glide_checks, web_api_checks, quit_checks]))

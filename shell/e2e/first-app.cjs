@@ -492,6 +492,59 @@ const stopServer = lib.stop;
   check('closing the last tab leaves the window open, with no tabs and no page shown',
     await until(async () => { const r = await regions(); return r.tabs.length === 0 && r.active === 0 && r.visible.length === 0; }) && !(await regions()).closed,
     JSON.stringify(await regions().then((r) => ({ tabs: r.tabs, active: r.active, visible: r.visible, closed: r.closed }))));
+
+  // The shell draws the page area itself, as its own: a short message, and New Tab with its
+  // key. The address is empty and has the keyboard. Light and dark, from the system's
+  // setting, which the shell follows by default, with the tabs on top and on the side.
+  const empty = ui.locator('.empty');
+  const emptyNewTab = empty.getByRole('button', { name: 'New Tab', exact: true });
+  const emptyShots = async (name) => {
+    for (const scheme of ['light', 'dark']) {
+      await page.emulateMedia({ colorScheme: scheme });
+      await settle(page);
+      await page.screenshot({ path: path.join(out, `standard-empty-${name}-${scheme}.png`) });
+    }
+    await page.emulateMedia({ colorScheme: 'light' });
+  };
+  // area is where the page was, in each layout; name is the screenshots'.
+  const emptyState = async (layout, name, area) => {
+    await empty.waitFor();
+    check(`${layout}: the page area says No tabs, with New Tab and its key`,
+      (await empty.getByText('No tabs', { exact: true }).isVisible()) && (await emptyNewTab.locator('.key').textContent()) === '⌘T');
+    const b = await empty.boundingBox();
+    check(`${layout}: it fills the page area, as the shell's: a press there reaches the shell`,
+      b.x === area.x && b.y === area.y && b.width === area.w && b.height === area.h && await until(async () => (await regions({ x: b.x + b.width / 2, y: b.y + 40 })).hit === 'shell'),
+      JSON.stringify({ empty: b, area }));
+    check(`${layout}: the tabs hold New Tab alone`, (await rows.count()) === 0 && (await ui.getByRole('button', { name: 'New Tab', exact: true }).count()) === 2);
+    check(`${layout}: the address is empty, and back, forward and reload are off`,
+      (await bar.inputValue()) === '' && (await back.isDisabled()) && (await forward.isDisabled()) && (await reload.isDisabled()));
+    await emptyShots(name);
+  };
+  check('the address bar has the keyboard once the window has no tabs', await until(() => bar.evaluate((el) => el === document.activeElement)));
+  await emptyState('tabs on top', 'top', { x: 4, y: 92, w: 1100 - 8, h: 700 - 92 - 4 });
+  await ui.getByRole('button', { name: 'Tabs on the side' }).click();
+  await ui.locator('nav').waitFor();
+  await settle(page);
+  await emptyState('tabs on the side', 'side', { x: 224, y: 48, w: 1100 - 224 - 4, h: 700 - 48 - 4 });
+  await ui.getByRole('button', { name: 'Tabs on top' }).click();
+  await strip.waitFor();
+
+  // New Tab in the page area opens a tab, as any New Tab does, and Cmd+W empties the window
+  // again.
+  await emptyNewTab.click();
+  check('New Tab in the empty page area opens a tab, and the empty state goes',
+    await until(async () => (await rows.count()) === 1 && (await regions()).visible.length === 1 && (await empty.count()) === 0) && (await bar.inputValue()) === '');
+  await lib.fire('key', 'closeTab');
+  await empty.waitFor();
+  // The address opens a tab there, at the address, and gives its page the keyboard.
+  await bar.fill('empty.test/typed');
+  await bar.press('Enter');
+  await loaded('https://empty.test/typed');
+  check('an address and Enter in the window with no tabs open a tab there, at it', (await rows.count()) === 1 && (await empty.count()) === 0 && (await rows.first().innerText()).includes('empty.test'), await rows.first().innerText());
+  check('and its page has the keyboard', await until(async () => (await regions()).focused === (await regions()).active && !(await bar.evaluate((el) => el === document.activeElement))));
+  await lib.fire('key', 'closeTab');
+  await empty.waitFor();
+
   // Close Tab in it closes the window.
   await lib.fire('key', 'closeTab');
   check('Cmd+W in the window with no tabs closes it', await until(async () => (await regions()).closed === true));

@@ -115,7 +115,7 @@ gives the page the same two.
 | `t` | Carries | When |
 |---|---|---|
 | `snapshot` | Everything below at once, and `data` | In answer to `ready` |
-| `tabs` | `tabs`, `active`, `groups`: this window's tabs in order, the active one's id, and its tab groups | Tabs open, close, move, another becomes active, or a group changes |
+| `tabs` | `tabs`, `active`, `groups`: this window's tabs in order, the active one's id (0 when it has none), and its tab groups | Tabs open, close, move, another becomes active, or a group changes |
 | `tab` | `tab`: one tab's new state | Its title, address, loading, favicon or history changed |
 | `theme` | `theme`: `system`, `light` or `dark` | The pref changed |
 | `windowColor` | `windowColor`: `#rrggbb`, and `tones`: `{light, dark}`, every colour made from it, each palette the design system's tokens by name (`core/tones`) | The frame colour changed |
@@ -346,9 +346,9 @@ it there; a phone shell may be left out of a rule for a desktop feature.
 1. It says `ready`, draws the snapshot, and says `shown`. The window shows its pages only
    after the shell's frame with the layout that places them, never on the bare window.
 2. **The active tab's page shows,** after every change: a new tab, another made active, a
-   close, a tab a page opened, a resize. It asks for a page's keyboard (`focusTab`) only once
-   the layout it sent shows that page: the window can't give the keyboard to a page it
-   hides, and no key reaches Go until something takes it.
+   close, a tab a page opened, a resize; with no tabs, no page shows. It asks for a page's
+   keyboard (`focusTab`) only once the layout it sent shows that page: the window can't give
+   the keyboard to a page it hides, and no key reaches Go until something takes it.
 3. The pages it shows lie inside the band it asked for, don't overlap, and are all tabs of
    this window.
 4. **Each tab of the window is an element with `role="tab"` and `data-tab="<id>"`,** the
@@ -396,6 +396,12 @@ it there; a phone shell may be left out of a rule for a desktop feature.
     Open and Show in Finder, which make Go open the file or show it
     ([daily-driver.md](daily-driver.md#downloads)). The shells that don't have it yet are
     listed in the check, with who brings each.
+18. **A window with no tabs** ([windows.md](windows.md#a-window-with-no-tabs)): the shell
+    draws an empty state of its own where the page was, as its own, so a press there
+    reaches the shell. New Tab and Address still work, each opening a tab there, and Close
+    Tab then closes the window. What the empty state is, each shell decides; each so far
+    shows a quiet No tabs and New Tab. The check holds every shell to it but Mobile, which
+    doesn't draw one yet.
 20. **On a desktop, the find key (`find.open`) opens a text box named Find in page with the
     keyboard in it;** what is typed searches the active tab's page and the count shows,
     Enter shows the next match, and Escape closes it and ends the search

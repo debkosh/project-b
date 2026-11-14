@@ -18,7 +18,7 @@ const ids = process.argv[2] ? [process.argv[2]] : registry.filter((s) => !s.nati
 
 const rules = {
   1: 'It says ready, draws the snapshot, and says shown; the window shows its pages only after the frame with the layout that places them',
-  2: "The active tab's page shows, after every change, and no page is given the keyboard before it shows",
+  2: "The active tab's page shows, after every change, and no page is given the keyboard before it shows; with no tabs, no page shows",
   3: "The pages it shows lie inside the band it asked for, don't overlap, and are all tabs of this window",
   4: 'Each tab is an element with role=tab and data-tab, the active one aria-selected; a click makes it active, on the shell or in a sheet one of its controls opens',
   5: 'focusAddressBar puts the keyboard in the field named Address, where an address and Enter take the active tab there',
@@ -34,6 +34,7 @@ const rules = {
   15: 'A page\'s alert, confirm and prompt show as an alertdialog with Go\'s buttons by name, a prompt with a field; the answer reaches the page; another tab shown hides it, and back shows it',
   16: 'On a desktop, a right click in a page opens a menu of Go\'s actions there; choosing one makes Go do it; Escape, or a press outside, closes it',
   17: 'On a desktop, a control named Downloads shows once there is a download, and opens a list of them by file name, a finished one with Open and Show in Finder',
+  18: 'A window with no tabs: the shell draws its own empty state where the page was, New Tab and Address open a tab there, and Close Tab then closes the window',
   20: 'On a desktop, the find key opens a text box named Find in page with the keyboard in it; typing searches and shows the count; Enter shows the next match; Escape closes it',
   21: 'On a desktop, a page in full screen covers the whole window with nothing of the shell on it, and when it ends the window is as it was',
   22: 'A site\'s sign-in shows as an alertdialog with text boxes named Username and Password, and Go\'s Sign in answers with both',
@@ -100,6 +101,14 @@ const noDownloadsYet = {
 const noSplashYet = {
   glide: 'r6 brings it',
   mobile: 'r3 brings it',
+};
+
+// The shells that don't draw an empty state yet, and who brings it to each. Rule 18 holds
+// every other shell to it.
+const noEmptyStateYet = {
+  mobile: 'r3 brings it',
+  'minimal-js': 'none: the shell is being removed',
+  example: 'none: the shell is being removed',
 };
 
 (async () => {
@@ -204,6 +213,47 @@ const noSplashYet = {
       await until(async () => (await regions()).settingsOpen === false);
     };
 
+    // The field named Address, as a text box or a combo box.
+    const address = ui.getByRole('textbox', { name: 'Address', exact: true }).or(ui.getByRole('combobox', { name: 'Address', exact: true }));
+    // A control by its name: a button or a menu item, whose name may end with its key.
+    const byName = (name) => {
+      const pattern = new RegExp(`^(${name})\\b`);
+      return ui.getByRole('button', { name: pattern }).or(ui.getByRole('menuitem', { name: pattern }));
+    };
+    // reach is the first of what locator finds that shows: on the shell, or once one of the
+    // shell's controls that open something is pressed. One that shows nothing is closed again
+    // with Escape. null when none shows it.
+    const reach = async (locator) => {
+      const shown = locator.filter({ visible: true });
+      if (await shown.count()) return shown.first();
+      for (const opener of await ui.locator('[aria-haspopup], [aria-expanded]').filter({ visible: true }).all()) {
+        await opener.click();
+        if (await until(async () => (await shown.count()) > 0, 500)) return shown.first();
+        await page.keyboard.press('Escape');
+      }
+      return null;
+    };
+    // The controls the shell shows, and those a press on misses: the layout follows what the
+    // shell draws a frame or more later, so this looks until every control is the shell's.
+    const shellsControls = async () => {
+      let controls = [];
+      let outsideShell = [];
+      await until(async () => {
+        controls = await w.shell().evaluate((control) => [...document.querySelectorAll(control)]
+          .filter((el) => el.checkVisibility({ visibilityProperty: true, opacityProperty: true }))
+          .map((el) => ({ what: el.outerHTML.slice(0, 60), rect: el.getBoundingClientRect().toJSON() }))
+          .filter(({ rect }) => rect.width > 0 && rect.height > 0 && rect.right > 0 && rect.bottom > 0 && rect.left < innerWidth && rect.top < innerHeight), control);
+        outsideShell = [];
+        for (const c of controls) {
+          const x = Math.min(Math.max(c.rect.x + c.rect.width / 2, 0), 1099);
+          const y = Math.min(Math.max(c.rect.y + c.rect.height / 2, 0), 699);
+          if ((await regions({ x, y })).hit !== 'shell') outsideShell.push(c.what);
+        }
+        return controls.length > 0 && outsideShell.length === 0;
+      });
+      return { controls, outsideShell };
+    };
+
     // A check that throws fails the rule it was checking, and leaves the rest unchecked.
     let current = 2;
     if (!ready) {
@@ -274,7 +324,6 @@ const noSplashYet = {
         // 5. The address bar.
         current = 5;
         await fire('key', 'focusAddressBar', { tab: other });
-        const address = ui.getByRole('textbox', { name: 'Address', exact: true }).or(ui.getByRole('combobox', { name: 'Address', exact: true }));
         const inField = () => address.evaluateAll((els) => document.hasFocus() && els.includes(document.activeElement));
         rule(5, 'focusAddressBar puts the keyboard in the text field named Address', await until(inField), await w.shell().evaluate(() => document.activeElement?.outerHTML.slice(0, 80)));
         await page.keyboard.press('ControlOrMeta+A');
@@ -285,23 +334,7 @@ const noSplashYet = {
 
         // 6. What the shell draws to be pressed is the shell's.
         current = 6;
-        // The layout follows what the shell draws a frame or more later, so this looks
-        // until every control is the shell's.
-        let controls = [];
-        let outsideShell = [];
-        await until(async () => {
-          controls = await w.shell().evaluate((control) => [...document.querySelectorAll(control)]
-            .filter((el) => el.checkVisibility({ visibilityProperty: true, opacityProperty: true }))
-            .map((el) => ({ what: el.outerHTML.slice(0, 60), rect: el.getBoundingClientRect().toJSON() }))
-            .filter(({ rect }) => rect.width > 0 && rect.height > 0 && rect.right > 0 && rect.bottom > 0 && rect.left < innerWidth && rect.top < innerHeight), control);
-          outsideShell = [];
-          for (const c of controls) {
-            const x = Math.min(Math.max(c.rect.x + c.rect.width / 2, 0), 1099);
-            const y = Math.min(Math.max(c.rect.y + c.rect.height / 2, 0), 699);
-            if ((await regions({ x, y })).hit !== 'shell') outsideShell.push(c.what);
-          }
-          return controls.length > 0 && outsideShell.length === 0;
-        });
+        const { controls, outsideShell } = await shellsControls();
         rule(6, `every one of the ${controls.length} controls is the shell's`, controls.length > 0 && outsideShell.length === 0, outsideShell.join(' | '));
 
         // 7. A press in the middle of each page it shows.
@@ -375,25 +408,7 @@ const noSplashYet = {
         // reader finds it, on the shell or in a menu one of its controls opens, and pressed
         // or typed into to see it work.
         current = 12;
-        // A control is a button or a menu item, whose name may end with its key.
         const escaped = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const byName = (name) => {
-          const pattern = new RegExp(`^(${name})\\b`);
-          return ui.getByRole('button', { name: pattern }).or(ui.getByRole('menuitem', { name: pattern }));
-        };
-        // reach is the first of what locator finds that shows: on the shell, or once one of
-        // the shell's controls that open something is pressed. One that shows nothing is
-        // closed again with Escape. null when none shows it.
-        const reach = async (locator) => {
-          const shown = locator.filter({ visible: true });
-          if (await shown.count()) return shown.first();
-          for (const opener of await ui.locator('[aria-haspopup], [aria-expanded]').filter({ visible: true }).all()) {
-            await opener.click();
-            if (await until(async () => (await shown.count()) > 0, 500)) return shown.first();
-            await page.keyboard.press('Escape');
-          }
-          return null;
-        };
         // basic checks one control: that it is there, and that pressing it does what done
         // waits for.
         const basic = async (what, locator, press, done) => {
@@ -607,6 +622,61 @@ const noSplashYet = {
         rule(21, 'Escape ends it, and the window is as it was', await until(async () => JSON.stringify((await regions()).visible.map((v) => v.rect)) === JSON.stringify(before)));
       } catch (e) {
         rule(21, 'its checks ran to their end', false, e.message.split('\n')[0]);
+      }
+    }
+
+    // 18. A window with no tabs: its tabs closed one at a time, as Close Tab does. It ends
+    // with the window closed, so it runs last.
+    if (noEmptyStateYet[id]) {
+      rule(18, `not checked yet: ${noEmptyStateYet[id]}`, true);
+    } else if (!ready) {
+      rule(18, 'not checked: the shell never came up', false);
+    } else {
+      try {
+        let r = await regions();
+        // Where the last page showed, which the shell draws itself once it is gone.
+        let where = r.visible[0].rect;
+        for (let n = r.tabs.length; n > 0; n--) {
+          where = (await regions()).visible[0]?.rect || where;
+          await fire('menu', 'tab.close');
+          await tabCount(n - 1);
+        }
+        await settle(page);
+        r = await regions();
+        rule(2, 'with no tabs: no page shows', r.visible.length === 0 && r.active === 0 && !r.closed, JSON.stringify({ visible: r.visible, active: r.active, closed: r.closed }));
+        rule(18, 'with no tabs: the shell draws no tab', (await drawn()).length === 0, JSON.stringify(await drawn()));
+        const middle = { x: where.x + where.w / 2, y: where.y + where.h / 2 };
+        rule(18, 'it draws its own empty state where the page was: a press there reaches the shell', await until(async () => (await regions(middle)).hit === 'shell'), JSON.stringify({ where, hit: (await regions(middle)).hit }));
+        const empty = await shellsControls();
+        rule(18, `every one of the ${empty.controls.length} controls of the empty state is the shell's`, empty.controls.length > 0 && empty.outsideShell.length === 0, empty.outsideShell.join(' | '));
+        // A tab opened from the empty state is active and shown; closing it empties the
+        // window again.
+        const opens = async (what, press, url) => {
+          await press();
+          const ok = await until(async () => {
+            const r = await regions();
+            return r.tabs.length === 1 && shows(r) && (!url || r.tabs[0].url === url) &&
+              (await page.locator(`iframe.mock-page[data-tab="${r.active}"]`).isVisible());
+          });
+          rule(18, `${what} opens a tab there, active and shown`, ok, JSON.stringify(await regions().then((r) => ({ tabs: r.tabs.map((t) => [t.id, t.url]), active: r.active, visible: r.visible }))));
+          await fire('menu', 'tab.close');
+          await tabCount(0);
+        };
+        const newTab = await reach(byName('New Tab'));
+        if (rule(18, 'New Tab: found by its role and name', !!newTab)) await opens('New Tab', () => newTab.click());
+        const field = await reach(address);
+        if (rule(18, 'the text field named Address: found by its role and name', !!field)) {
+          await opens('an address and Enter', async () => {
+            await field.click();
+            await page.keyboard.press('ControlOrMeta+A');
+            await page.keyboard.type('contract.test/empty');
+            await page.keyboard.press('Enter');
+          }, 'https://contract.test/empty');
+        }
+        await fire('menu', 'tab.close');
+        rule(18, 'Close Tab then closes the window', await until(async () => (await regions()).closed === true));
+      } catch (e) {
+        rule(18, 'its checks ran to their end', false, e.message.split('\n')[0]);
       }
     }
 
