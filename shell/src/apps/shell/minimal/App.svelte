@@ -1,5 +1,6 @@
 <script>
-  import { activeTab, connect, focusPage, page, send, setFrame, state } from '@/sdk/svelte.svelte.js';
+  import { untrack } from 'svelte';
+  import { activeTab, connect, focusPage, page, send, setFrame, state as go } from '@/sdk/svelte.svelte.js';
   import Address from './Address.svelte';
   import CrashBar from './CrashBar.svelte';
   import SideList from './SideList.svelte';
@@ -11,19 +12,16 @@
   // list on the left. The bars and the page reach the window's edges: it asks for no band.
   setFrame(0);
 
-  const horizontal = $derived(state.tabLayout === 'horizontal');
-  let address;
-  // The tab last made active, so each change of it is seen once.
-  let active = 0;
+  const horizontal = $derived(go.tabLayout === 'horizontal');
+  let address = $state();
 
   // A tab that becomes active with nothing in it wants the address; one with a page wants
   // the page. What was typed in the field was for the tab before. The shell has to hold
-  // the keyboard before its field can.
+  // the keyboard before its field can. It runs once the view has drawn the change, and the
+  // view is made once Go's data is in, with a tab already active, so that one counts too.
   function activated() {
-    if (state.active === active) return;
-    active = state.active;
     address.blur();
-    if (activeTab(state).url === '') {
+    if (activeTab(go).url === '') {
       send({ t: 'focusShell' });
       address.focus();
     } else {
@@ -31,29 +29,37 @@
     }
   }
 
+  $effect(() => {
+    if (go.active !== 0) untrack(activated);
+  });
+
   connect({
-    snapshot: activated,
-    tabs: activated,
     focusAddressBar: () => address.focus(),
     suggestions: (m) => address.suggestions(m),
   });
 </script>
 
-<div class="window">
-  {#if horizontal}
-    <TabBar />
-  {/if}
-  <Toolbar vertical={!horizontal}>
-    <Address bind:this={address} url={activeTab(state).url} />
-  </Toolbar>
-  <CrashBar />
-  <div class="body">
-    {#if !horizontal}
-      <SideList />
+<!-- Until Go's snapshot is in, the shell knows nothing of the window: its splash is the
+     window's own colour, which the engine paints under the shell, and the app's name. When
+     the data comes the UI is made, and the two cross-fade. -->
+<div class="splash" aria-busy={!go.loaded}>Project B</div>
+{#if go.loaded}
+  <div class="window">
+    {#if horizontal}
+      <TabBar />
     {/if}
-    <main use:page={state.active}></main>
+    <Toolbar vertical={!horizontal}>
+      <Address bind:this={address} url={activeTab(go).url} />
+    </Toolbar>
+    <CrashBar />
+    <div class="body">
+      {#if !horizontal}
+        <SideList />
+      {/if}
+      <main use:page={go.active}></main>
+    </div>
   </div>
-</div>
+{/if}
 
 <style>
   .window {
@@ -62,6 +68,34 @@
     height: 100%;
     font: 13px/1 var(--sans);
     color: var(--text);
+    transition: opacity var(--motion) var(--ease);
+  }
+
+  /* The UI fades in as it is made, as the splash fades out. */
+  @starting-style {
+    .window {
+      opacity: 0;
+    }
+  }
+
+  /* The splash is only a picture, so a press goes through it to the UI while it fades; then
+     it goes. In the shell's own type. */
+  .splash {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font: 500 15px/1 var(--sans);
+    letter-spacing: 0.02em;
+    color: rgb(255 255 255 / 0.85);
+    user-select: none;
+    pointer-events: none;
+    transition: opacity var(--motion) var(--ease), display var(--motion) allow-discrete;
+  }
+
+  .splash[aria-busy='false'] {
+    display: none;
+    opacity: 0;
   }
 
   .body {
