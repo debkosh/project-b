@@ -61,3 +61,6 @@ export const addressBar = {
   suggestions() {},
   focus() {},
 };
+
+// empty says the window has no tabs, once Go's data is in.
+export const empty = computed(() => state.loaded && state.tabs.length === 0);
