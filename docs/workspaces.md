@@ -177,7 +177,7 @@ app, a tab made over DevTools, a tab an extension opens, a new window's first ta
 - The shell shows a tab's workspace as a dot in the workspace's colour on the tab, while
   there are two or more.
 
-**Extensions see every tab and aren't told its workspace,** as decided. Content scripts
+**Extensions see every web tab and aren't told its workspace,** as decided. Content scripts
 and network rules work in every workspace.
 
 ## Defaults

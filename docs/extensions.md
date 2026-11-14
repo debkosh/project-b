@@ -99,6 +99,13 @@ profile with no incognito, kiosk, guest or policy side, most answers are one lin
 | `browser/popup.cc` | The popup: a page of the extension that sizes itself, in a view over the shell |
 
 The tab and window ids `//extensions` sees are the engine's own, which are Go's.
+**Extensions see the web tabs only.** Our own tabs, settings first, are in our pages'
+context, which has no extensions, and Go leaves them out of every answer and event: no call
+finds one, a tab's index counts the web tabs, a window whose active tab is ours has no
+active tab an extension sees, a button pressed over one tells its extension nothing, and
+`tabs.create` and `update` refuse an address of ours. The engine finds an extension only web
+tabs by their ids (`Engine::WebTabContents`), as Chrome keeps its own pages out of reach
+([windows.md](windows.md#our-own-pages-are-tabs-decided-2026-11-14)).
 `chrome.windows` answers from Go's windows (`core/window`): each window's frame, state and
 whether it is in front, its tabs, each with its index there, and one active tab per window.
 "The current window" is the window of the caller's tab, or for a popup or a service worker

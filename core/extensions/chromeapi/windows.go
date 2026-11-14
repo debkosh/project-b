@@ -53,7 +53,7 @@ func (a *API) windowFor(e engine.Extension, w window.Window, populate bool) wind
 	}
 	if populate {
 		list := []tab{}
-		for _, t := range a.tabs.AllIn(w.ID) {
+		for _, t := range web(a.tabs.AllIn(w.ID)) {
 			list = append(list, a.tabFor(e, t))
 		}
 		out.Tabs = &list
@@ -188,7 +188,7 @@ func init() {
 		var w engine.WindowID
 		switch {
 		case p.TabID != nil:
-			if _, ok := a.tabs.Get(*p.TabID); !ok {
+			if _, ok := a.get(*p.TabID); !ok {
 				return nil, fmt.Errorf("No tab with id: %d.", *p.TabID)
 			}
 			w = a.open.NewWindowWith(*p.TabID)
@@ -244,6 +244,9 @@ func (a *API) WindowEvent(ev window.Event) {
 		case window.BoundsChanged:
 			a.dispatch(e.ID, "windows.onBoundsChanged", a.windowFor(e, w, false))
 		case window.TabMoved:
+			if _, ok := a.get(ev.Tab); !ok {
+				continue
+			}
 			a.dispatch(e.ID, "tabs.onDetached", ev.Tab, map[string]any{"oldWindowId": ev.From, "oldPosition": ev.FromIndex})
 			a.dispatch(e.ID, "tabs.onAttached", ev.Tab, map[string]any{"newWindowId": ev.Window, "newPosition": a.index(ev.Tab)})
 		}

@@ -302,6 +302,54 @@ func TestDisabledExtensionHasNoButton(t *testing.T) {
 	r.until("the button to return", func() bool { return len(r.m.Buttons()) == 1 })
 }
 
+// Extensions don't see our tabs: no call finds the settings tab, no event names it, its
+// index counts only web tabs, and no extension opens one of our pages. With it active, a
+// window has no active tab an extension sees, and its button's press tells it nothing.
+func TestExtensionsDontSeeOurTabs(t *testing.T) {
+	r := startExtensions(t, t.TempDir())
+	r.install()
+	r.visit("https://example.com/")
+	r.openSettings()
+	r.call("tabs.create", `[{"url":"https://example.org/","active":false}]`, 0)
+	r.until("the web tab's onCreated", func() bool { return len(r.events("tabs.onCreated")) == 1 })
+
+	var all []map[string]any
+	json.Unmarshal(r.call("tabs.query", `[{}]`, 0).Result, &all)
+	if len(all) != 2 || all[0]["url"] != "https://example.com/" || all[1]["index"] != 1.0 {
+		t.Fatalf("tabs.query: %v", all)
+	}
+	json.Unmarshal(r.call("tabs.query", `[{"active":true}]`, 0).Result, &all)
+	if len(all) != 0 {
+		t.Fatalf("an active tab with settings active: %v", all)
+	}
+	settings := itoa(r.settingsTab)
+	for _, c := range []struct{ name, args string }{
+		{"tabs.get", `[` + settings + `]`},
+		{"tabs.update", `[` + settings + `,{"active":true}]`},
+		{"tabs.remove", `[` + settings + `]`},
+		{"tabs.create", `[{"url":"chrome://settings/"}]`},
+		{"tabs.update", `[{"url":"chrome://settings/"}]`},
+	} {
+		if a := r.x.Call(testExtensionID, c.name, c.args, 0); a.Error == "" {
+			t.Fatalf("%s%s found it: %s", c.name, c.args, a.Result)
+		}
+	}
+	// With no popup, a press on its button would tell it, with the tab showing.
+	r.call("action.setPopup", `[{"popup":""}]`, 0)
+	r.shell(`{"t":"extensionClick","extension":"` + testExtensionID + `","rect":{"x":900,"y":8,"w":28,"h":28}}`)
+	r.e.Settle()
+	for _, e := range r.x.ExtensionState().Events {
+		var args []struct {
+			ID    engine.TabID `json:"id"`
+			TabID engine.TabID `json:"tabId"`
+		}
+		json.Unmarshal(e.Args, &args)
+		if len(args) > 0 && (args[0].ID == r.settingsTab || args[0].TabID == r.settingsTab) || e.Name == "action.onClicked" {
+			t.Fatalf("an event named the settings tab: %s %s", e.Name, e.Args)
+		}
+	}
+}
+
 func TestTabsAPI(t *testing.T) {
 	r := startExtensions(t, t.TempDir())
 	r.install()

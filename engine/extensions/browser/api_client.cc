@@ -41,7 +41,7 @@ class MessagingDelegate : public extensions::MessagingDelegate {
   content::WebContents* GetWebContentsByTabId(
       content::BrowserContext* browser_context,
       int tab_id) override {
-    return Engine::Get()->Contents(tab_id);
+    return Engine::Get()->WebTabContents(tab_id);
   }
 };
 
