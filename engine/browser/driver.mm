@@ -588,6 +588,16 @@ void Run(const std::string& line) {
                                        content::Visibility::VISIBLE));
     }
     Reply(id, base::WriteJson(out).value_or("[]"));
+  } else if (cmd == "committed") {
+    // The focused tab's page as content has it: the URL it last committed, and whether it
+    // is still loading. The shell can show a typed address with no progress a moment before
+    // its navigation begins, and an eval sent to a page about to be replaced is never
+    // answered, so a test waits on this before it talks to the page it asked for.
+    content::WebContents* contents = Focused()->contents();
+    Reply(id, base::WriteJson(base::DictValue()
+                                  .Set("url", contents->GetLastCommittedURL().spec())
+                                  .Set("loading", contents->IsLoading()))
+                  .value_or("{}"));
   } else if (cmd == "evalsettings") {
     if (SettingsPage* settings = Current()->settings.get()) {
       Eval(id, settings->contents(), rest(2));

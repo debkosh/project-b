@@ -296,12 +296,21 @@ def leave_bar(app):
 
 
 def visit(app, url):
+    """Types url in the bar and returns once the tab has its page: the shell shows it, and the
+    engine has committed it and finished loading. The shell alone can show the address and no
+    progress a moment before the navigation begins, and the page asked about then is the one
+    being replaced, whose answer never comes."""
     focus_bar(app)
     app.cmd("type", url)
     app.wait(f"{VALUE}==={json.dumps(url)}")
     app.cmd("key", "enter")
     app.wait(f"{VALUE}.startsWith({json.dumps(url)})&&document.activeElement!=={INPUT}", 30)
     app.wait(TAB_READY, 30)
+    deadline = time.time() + 30
+    while not ((page := json.loads(app.cmd("committed")))["url"].startswith(url) and not page["loading"]):
+        if time.time() > deadline:
+            raise TimeoutError(f"the tab never committed {url}: {page}")
+        time.sleep(0.05)
 
 
 def process_table(pid):
@@ -378,10 +387,14 @@ STARTUP = ["process.start", "main.entered", "content.ready", "go.starting", "win
 
 
 def driver_checks():
-    """The driver itself: every command answers. An eval in a page that is destroyed before
-    its result comes is answered ERR gone: here a page held by a server that takes the
+    """The driver itself: every command answers. committed is the focused tab's page as
+    content has it, which visit waits on. An eval in a page that is destroyed before its
+    result comes is answered ERR gone: here a page held by a server that takes the
     connection and never answers, whose tab then closes."""
     app = App(tempfile.mkdtemp(prefix="pb-profile-"))
+    visit(app, PAGES + "links")
+    page = json.loads(app.cmd("committed"))
+    check("committed is the URL the focused tab's page last committed, done loading", page == {"url": app.js("location.href", page=True), "loading": False}, page)
     silent = socket.create_server(("127.0.0.1", 0))
     tab = open_in(app, "", PAGES)
     held = app.send("evaltab", tab, f"(()=>{{const r=new XMLHttpRequest();r.open('GET','http://127.0.0.1:{silent.getsockname()[1]}/',false);r.send();return 1}})()")
