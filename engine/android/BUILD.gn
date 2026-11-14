@@ -81,6 +81,7 @@ source_set("browser") {
     "//services/network/public/mojom",
     "//skia",
     "//third_party/blink/public/common",
+    "//ui/native_theme",
     "//third_party/blink/public/mojom:mojom_platform",
     "//ui/android",
     "//ui/base",
@@ -229,6 +230,7 @@ android_library("java") {
     "//third_party/androidx:androidx_core_core_java",
     "//third_party/jni_zero:jni_zero_java",
     "//ui/android:ui_java",
+    "//ui/native_theme:os_settings_provider_android_bridge_java",
   ]
   srcjar_deps = [ ":jni_headers" ]
   sources = [

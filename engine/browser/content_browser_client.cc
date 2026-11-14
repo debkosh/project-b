@@ -11,10 +11,14 @@
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/service_worker_version_base_info.h"
 #include "mojo/public/cpp/bindings/binder_map.h"
+#include "content/public/browser/web_contents.h"
 #include "project_b/engine/browser/browser_main_parts.h"
+#include "project_b/engine/browser/engine.h"
 #include "services/network/public/mojom/network_context.mojom.h"
 #include "third_party/blink/public/mojom/badging/badging.mojom.h"
 #include "third_party/blink/public/mojom/persistent_renderer_prefs.mojom.h"
+#include "third_party/blink/public/common/web_preferences/web_preferences.h"
+#include "ui/native_theme/native_theme.h"
 
 #if BUILDFLAG(IS_ANDROID)
 #include "base/posix/global_descriptors.h"
@@ -139,6 +143,37 @@ void ContentBrowserClient::RegisterBrowserInterfaceBindersForServiceWorker(
   map->Add<blink::mojom::BadgeService>(
       &DropReceiver<const content::ServiceWorkerVersionBaseInfo&,
                     blink::mojom::BadgeService>);
+}
+
+namespace {
+
+// The colour scheme pages prefer: the app's theme when it is light or dark, and as the
+// system is otherwise, which the web's native theme follows: on the Mac its appearance,
+// on Android the phone's dark mode (BrowserWindow.applyTheme).
+blink::mojom::PreferredColorScheme PagesColorScheme() {
+  int theme = Engine::Get() ? Engine::Get()->theme() : 0;
+  bool dark = theme == 2 ||
+              (theme == 0 && ui::NativeTheme::GetInstanceForWeb()->preferred_color_scheme() ==
+                                 ui::NativeTheme::PreferredColorScheme::kDark);
+  return dark ? blink::mojom::PreferredColorScheme::kDark
+              : blink::mojom::PreferredColorScheme::kLight;
+}
+
+}  // namespace
+
+void ContentBrowserClient::OverrideWebPreferences(
+    content::WebContents* web_contents,
+    content::SiteInstance& main_frame_site,
+    blink::web_pref::WebPreferences* prefs) {
+  prefs->preferred_color_scheme = PagesColorScheme();
+  prefs->preferred_root_scrollbar_color_scheme = prefs->preferred_color_scheme;
+}
+
+bool ContentBrowserClient::WebPreferencesNeedUpdateForColorRelatedStateChanges(
+    content::WebContents& web_contents,
+    const content::SiteInstance& main_frame_site) const {
+  return web_contents.GetOrCreateWebPreferences().preferred_color_scheme !=
+         PagesColorScheme();
 }
 
 }  // namespace project_b
