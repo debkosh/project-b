@@ -26,6 +26,9 @@ class ContentClient : public content::ContentClient {
   scoped_refptr<base::RefCountedMemory> GetDataResourceBytes(
       int resource_id) override;
   gfx::Image& GetNativeImageNamed(int resource_id) override;
+  // The words content and Blink show in pages, such as a file input's Choose File, from
+  // the strings in our pak.
+  std::u16string GetLocalizedString(int message_id) override;
 };
 
 }  // namespace project_b
