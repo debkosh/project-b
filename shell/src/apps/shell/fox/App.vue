@@ -11,8 +11,12 @@ import { setFrame, state } from '@/sdk/vue.js';
 setFrame(4);
 </script>
 
+<!-- Until Go's snapshot is in, the shell knows nothing of the window: its splash is the
+     window's own colour, which the engine paints under the shell, and the app's name. When
+     the data comes the UI is made, and the two cross-fade. -->
 <template>
-  <div class="window">
+  <div class="splash" :aria-busy="!state.loaded">Project B</div>
+  <div v-if="state.loaded" class="window">
     <TabStrip />
     <NavBar />
     <CrashBar />
@@ -32,6 +36,34 @@ setFrame(4);
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  transition: opacity var(--motion) var(--ease);
+}
+
+/* The UI fades in as it is made, as the splash fades out. */
+@starting-style {
+  .window {
+    opacity: 0;
+  }
+}
+
+/* The splash is only a picture, so a press goes through it to the UI while it fades; then
+   it goes. */
+.splash {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font: 500 15px/1 system-ui, sans-serif;
+  letter-spacing: 0.02em;
+  color: rgb(255 255 255 / 0.85);
+  user-select: none;
+  pointer-events: none;
+  transition: opacity var(--motion) var(--ease), display var(--motion) allow-discrete;
+}
+
+.splash[aria-busy='false'] {
+  display: none;
+  opacity: 0;
 }
 
 .body {

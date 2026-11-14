@@ -26,7 +26,7 @@ function measure() {
 function reveal() {
   const s = scroller.value;
   const el = tabEls.get(state.active);
-  // Before the snapshot there is no tab to bring into view.
+  // A window with no tab has none to bring into view.
   if (!el) return;
   const left = el.offsetLeft;
   const right = left + el.offsetWidth;
