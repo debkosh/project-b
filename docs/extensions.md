@@ -138,6 +138,11 @@ browser finds the tab by Go's id in `api_client.cc`.
 `action.onClicked` with `DispatchExtensionEvent`, one extension at a time, because what a tab
 object holds depends on who reads it.
 
+**A window with no tabs** ([windows.md](windows.md#a-window-with-no-tabs)), which Chrome never
+has, is one whose `tabs` are `[]` when asked for, with no active tab; its last tab closing is
+`tabs.onRemoved` with `isWindowClosing` false, which is true only for a tab that closed with its
+window.
+
 What Go answers today:
 
 | API | Functions |

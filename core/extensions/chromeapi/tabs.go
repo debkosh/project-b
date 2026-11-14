@@ -266,12 +266,12 @@ func init() {
 func (a *API) TabsChanged() {
 	now := map[engine.TabID]tabs.Tab{}
 	in := map[engine.TabID]engine.WindowID{}
-	left := map[engine.WindowID]int{}
 	for _, t := range a.tabs.All() {
 		now[t.ID] = t
 		in[t.ID] = a.tabs.WindowOf(t.ID)
-		left[in[t.ID]]++
 	}
+	// A tab closed with its window is the window closing; a window may stay with none.
+	open := a.tabs.Windows()
 	active := map[engine.WindowID]engine.TabID{}
 	for _, w := range a.tabs.Windows() {
 		if id := a.tabs.ActiveIn(w); id != 0 {
@@ -290,7 +290,7 @@ func (a *API) TabsChanged() {
 		for id := range a.known {
 			if _, is := now[id]; !is {
 				w := a.knownIn[id]
-				a.dispatch(e.ID, "tabs.onRemoved", id, map[string]any{"windowId": w, "isWindowClosing": left[w] == 0})
+				a.dispatch(e.ID, "tabs.onRemoved", id, map[string]any{"windowId": w, "isWindowClosing": !slices.Contains(open, w)})
 			}
 		}
 		for w, id := range active {
