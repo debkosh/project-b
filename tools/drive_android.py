@@ -622,6 +622,43 @@ def mobile_shell():
           until(lambda: find("shell", label=lambda l: (l or "").startswith("Group ")) is None) is not None)
 
 
+def in_front():
+    """Whether the app's window is the one Android shows."""
+    return PACKAGE in adb("shell", "dumpsys", "window", "displays").split("mCurrentFocus", 1)[-1].split("\n", 1)[0]
+
+
+def back_key_chain():
+    """The phone's back key goes back in the page, then closes a tab with no history, the tab
+    used before it showing, down to No tabs, and only then leaves the app."""
+    launch()
+    go(BASE + "/a")
+    asked("/a")
+    tap(middle(see("page", label="to b")))
+    asked("/b")
+    menu("New Tab")
+    see("shell", kind=FIELD, focused="true")
+    go(BASE + "/c")
+    asked("/c")
+    served.clear()
+    key(4)  # The new tab's blank page is its history.
+    key(4)
+    check("back on a tab with no history closes it, and the tab used before it shows",
+          until(lambda: find("page", text="b")) is not None)
+    served.clear()
+    key(4)
+    check("back in that tab goes back in its page", asked("/a"), str(served))
+    for _ in range(4):
+        if find("shell", text="No tabs") is not None:
+            break
+        key(4)
+        time.sleep(1)
+    check("back down the last tab leaves the window with No tabs, the app still there",
+          until(lambda: find("shell", text="No tabs")) is not None and in_front())
+    shot("22-no-tabs")
+    key(4)
+    check("back with no tabs leaves the app", until(lambda: not in_front()) is not None)
+
+
 def history_after_a_restart():
     launch()
     type_in_bar("page")
@@ -763,7 +800,7 @@ def main():
     adb("shell", "pm", "clear", PACKAGE)
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
-    for part in (browsing, mobile_shell, history_after_a_restart, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
+    for part in (browsing, mobile_shell, back_key_chain, history_after_a_restart, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
                  the_gpu_process_dies, a_page_spins, web_apis, the_real_web):
         try:
             part()
