@@ -149,8 +149,12 @@ const H = 915;
   await cards.nth(1).getByRole('button', { name: /^Close / }).tap();
   check('its × closes that tab and keeps the switcher open', await tabCount(1) && await switcher.isVisible());
   await cards.first().getByRole('button', { name: /^Close / }).tap();
-  check('closing the last tab leaves one new, empty tab in edit mode', await until(async () => (await regions()).tabs.length === 1 && (await active()).url === '' && await inField()));
+  const empty = ui.getByText('No tabs');
+  check('closing the last tab leaves the window with none, and says No tabs', await until(async () => (await regions()).tabs.length === 0 && await empty.isVisible()));
   check('and the switcher shut', !(await switcher.isVisible()));
+  await shots('no-tabs');
+  await ui.locator('.empty').getByRole('button', { name: 'New Tab' }).tap();
+  check('its New tab opens a tab in edit mode', await until(async () => (await regions()).tabs.length === 1 && (await active()).url === '' && await inField()));
 
   // A swipe along the bar goes to the tab after or before.
   await visit('example.com/one', 'https://example.com/one');
@@ -425,6 +429,34 @@ const H = 915;
     report.includes('Project B on the mock engine') && report.includes("This run's timeline"), (await regions()).shared);
   await notice.getByRole('button', { name: 'Reload' }).tap();
   check('Reload brings it back', await until(async () => !(await notice.isVisible()) && !(await active()).crashed));
+
+  // The back key with nothing open: back in the page, then on a tab with no history the
+  // tab closes and the one used before it shows, down to No tabs, and only then the app goes.
+  await settle(page);
+  const hadTabs = (await regions()).tabs.length;
+  const used = (await regions()).active;
+  await fire('menu', 'tab.new');
+  await until(async () => (await regions()).tabs.length === hadTabs + 1);
+  await visit('example.com/fresh', 'https://example.com/fresh');
+  const fresh = (await regions()).active;
+  // Back to the new tab's blank page first, then the tab has no history left.
+  for (let i = 0; i < 3 && (await regions()).tabs.some((t) => t.id === fresh); i++) {
+    await backKey();
+    await until(async () => !(await regions()).tabs.some((t) => t.id === fresh), 1500);
+  }
+  check('the back key on a tab with no history closes it, and the tab used before it shows', await until(async () =>
+    !(await regions()).tabs.some((t) => t.id === fresh) && (await regions()).active === used), JSON.stringify({ used, now: (await regions()).active }));
+  for (let i = 0; i < 40 && (await regions()).tabs.length > 0; i++) {
+    const n = (await regions()).tabs.length;
+    await backKey();
+    await until(async () => (await regions()).tabs.length < n || (await active())?.url !== undefined, 3000);
+  }
+  check('back after back closes every tab, down to No tabs', await until(async () => (await regions()).tabs.length === 0 && await ui.getByText('No tabs').isVisible()));
+  check('and the app is still there', !(await regions()).leftApp);
+  await backKey();
+  check('back with no tabs leaves the app', await until(async () => (await regions()).leftApp), JSON.stringify({ visible: (await regions()).visible, focus: await w.shell().evaluate(() => document.activeElement?.outerHTML.slice(0, 60)) }));
+  await ui.locator('.empty').getByRole('button', { name: 'New Tab' }).tap();
+  await until(async () => (await regions()).tabs.length === 1);
 
   // Settings, from the menu.
   await menuButton.tap();

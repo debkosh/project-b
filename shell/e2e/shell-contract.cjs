@@ -106,7 +106,6 @@ const noSplashYet = {
 // The shells that don't draw an empty state yet, and who brings it to each. Rule 18 holds
 // every other shell to it.
 const noEmptyStateYet = {
-  mobile: 'r3 brings it',
   'minimal-js': 'none: the shell is being removed',
   example: 'none: the shell is being removed',
 };
