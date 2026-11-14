@@ -146,22 +146,22 @@ watch(
 );
 
 // A tab that becomes active with nothing in it wants the address bar; one with a page
-// wants the page.
-watch(
-  () => state.active,
-  () => {
-    if (state.active === 0) return;
-    close();
-    edited.value = false;
-    text.value = activeTab.value.url;
-    if (activeTab.value.url === '') {
-      focusBar();
-    } else {
-      input.value.blur();
-      focusPage();
-    }
-  },
-);
+// wants the page. The bar is made once Go's data is in, with a tab already active, so
+// that one counts too.
+function follow() {
+  if (state.active === 0) return;
+  close();
+  edited.value = false;
+  text.value = activeTab.value.url;
+  if (activeTab.value.url === '') {
+    focusBar();
+  } else {
+    input.value.blur();
+    focusPage();
+  }
+}
+watch(() => state.active, follow);
+onMounted(follow);
 </script>
 
 <template>
