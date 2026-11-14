@@ -191,7 +191,7 @@ none. The snapshot also has `running` (the version), `platform`
 | `editGroup` | `group`, and any of `name`, `color`, `collapsed` | Changes what is sent |
 | `ungroup`, `closeGroup` | `group` | Ends a group, its tabs staying; or closes its tabs |
 | `moveTab` | `id`, `index`, optional `window` | Moves a tab to `index` in its window's order, the place it has after the move, clamped; the active tab stays. Between two tabs of a group it joins the group, and out of its group's run it leaves it ([groups.md](groups.md)). With `window`, another window's id, it moves into that window at `index`, which it leaves if it was its last tab; an unknown window changes nothing. Tearing a tab off into a new window comes with the standard shell's dragging. With pins: an unpinned tab stops after the pinned ones, and a pinned tab moves only among them |
-| `closeTab` | `id` | Closes a tab. With no `id`, or 0, it is Close Tab: the active tab, or the window when it has no tabs |
+| `closeTab` | `id`, optional `then` | Closes a tab. With no `id`, or 0, it is Close Tab: the active tab, or the window when it has no tabs. With `then: "recent"` it closes the tab given or the active one, and when that was active the tab used just before it takes its place rather than its neighbour (Go keeps each window's tabs in the order they were last used) |
 | `activateTab` | `id` | Makes a tab the active one |
 | `navigate` | `text`; optional `workspace` | Takes the active tab to an address or a search. In a window with no tabs it opens one there, in the workspace named or the first in the list, and takes it there |
 | `back`, `forward`, `reload` | | Act on the active tab |

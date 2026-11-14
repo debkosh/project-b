@@ -366,3 +366,26 @@ func TestAURLOpensInTheFirstWorkspace(t *testing.T) {
 		t.Fatalf("the tab is %+v, in %q in the engine", tab, e.in[id])
 	}
 }
+
+// Closing the active tab to the recent one makes the tab used before it active, not its
+// neighbour; a plain close keeps the neighbour.
+func TestClosingToTheRecentTab(t *testing.T) {
+	m := oneWindow(&fakeEngine{})
+	a, b, c := m.Create(1), m.Create(1), m.Create(1)
+	m.Activate(a)
+	m.Activate(c)
+	// c was opened last, a used before it; b is c's neighbour.
+	m.CloseToRecent(c)
+	if m.ActiveIn(1) != a {
+		t.Fatalf("active %d, want the tab used before, %d", m.ActiveIn(1), a)
+	}
+	m.Activate(b)
+	m.Close(b)
+	if got := ids(m.AllIn(1)); !slices.Equal(got, []engine.TabID{a}) || m.ActiveIn(1) != a {
+		t.Fatalf("tabs %v, active %d", got, m.ActiveIn(1))
+	}
+	m.CloseToRecent(a)
+	if len(m.AllIn(1)) != 0 || m.ActiveIn(1) != 0 {
+		t.Fatalf("tabs %v, active %d", ids(m.AllIn(1)), m.ActiveIn(1))
+	}
+}

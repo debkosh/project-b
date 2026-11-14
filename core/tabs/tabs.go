@@ -339,7 +339,14 @@ func (m *Manager) ActivateNext(reverse bool) {
 // Close closes a tab. Closing the active one activates its right neighbour, or the
 // left one at the end. Closing a window's last tab leaves it no tabs and no active tab,
 // and fires OnEmpty.
-func (m *Manager) Close(id engine.TabID) {
+func (m *Manager) Close(id engine.TabID) { m.close(id, false) }
+
+// CloseToRecent closes a tab as Close does, but when it was the active one, the tab used
+// just before it becomes active rather than its neighbour, as a phone's back key does on
+// a tab with no history left.
+func (m *Manager) CloseToRecent(id engine.TabID) { m.close(id, true) }
+
+func (m *Manager) close(id engine.TabID, recent bool) {
 	if m.tabs[id] == nil {
 		return
 	}
@@ -348,7 +355,7 @@ func (m *Manager) Close(id engine.TabID) {
 	i := m.detach(id)
 	delete(m.tabs, id)
 	m.eng.CloseTab(id)
-	m.left(w, id, i, false)
+	m.left(w, id, i, false, recent)
 }
 
 // Move moves a tab to window w, at index in its list, and makes it the active tab there.
@@ -372,7 +379,7 @@ func (m *Manager) Move(id engine.TabID, w engine.WindowID, index int) {
 	for _, f := range m.onMoved {
 		f(id, from, i, w)
 	}
-	m.left(from, id, i, true)
+	m.left(from, id, i, true, false)
 }
 
 // detach takes a tab out of its window's lists, and says where it was in its order.
@@ -390,8 +397,8 @@ func (m *Manager) detach(id engine.TabID) int {
 
 // left is what window w does once a tab at position i has left it, closed or moved: with
 // no tabs it fires OnEmpty; if the tab was active, its right neighbour, or the left one at
-// the end, is.
-func (m *Manager) left(w engine.WindowID, id engine.TabID, i int, moved bool) {
+// the end, is, or with recent the tab used before it.
+func (m *Manager) left(w engine.WindowID, id engine.TabID, i int, moved, recent bool) {
 	win := m.windows[w]
 	if len(win.order) == 0 {
 		win.active = 0
@@ -403,7 +410,11 @@ func (m *Manager) left(w engine.WindowID, id engine.TabID, i int, moved bool) {
 	}
 	if id == win.active {
 		win.active = 0
-		m.Activate(win.order[min(i, len(win.order)-1)])
+		next := win.order[min(i, len(win.order)-1)]
+		if recent && len(win.recent) > 0 {
+			next = win.recent[0]
+		}
+		m.Activate(next)
 		return
 	}
 	m.listChanged()
