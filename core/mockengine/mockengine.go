@@ -389,6 +389,14 @@ func (e *Engine) letGo(win *window, id engine.TabID) bool {
 
 func (e *Engine) LoadURL(id engine.TabID, u string) { e.navigate(id, u) }
 
+// Loaded is the address a tab's page last committed, "" for none. Main thread.
+func (e *Engine) Loaded(id engine.TabID) string {
+	if t := e.tabs[id]; t != nil {
+		return t.current
+	}
+	return ""
+}
+
 func (e *Engine) GoBack(id engine.TabID) {
 	if t := e.tabs[id]; t != nil && t.pos > 0 {
 		e.moveTo(id, t.pos-1)

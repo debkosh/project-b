@@ -122,6 +122,9 @@ type Manager struct {
 	// the hosts whose certificate errors the person chose to pass, until the app quits.
 	certificates map[engine.TabID]*certificate
 	passed       map[string]bool
+	// waiting is each restored tab not shown yet, with the address it loads when it is
+	// first made active. Until then it has its address and title, and the blank page.
+	waiting map[engine.TabID]string
 }
 
 // window is one window's tabs: their order, the active one, and recent use.
@@ -139,7 +142,7 @@ type window struct {
 
 // New returns a manager with no windows, on the profile's list of workspaces.
 func New(eng engine.Engine, w Workspaces) *Manager {
-	return &Manager{eng: eng, workspaces: w, search: defaultEngine().For, tabs: map[engine.TabID]*Tab{}, windowOf: map[engine.TabID]engine.WindowID{}, windows: map[engine.WindowID]*window{}, certificates: map[engine.TabID]*certificate{}, passed: map[string]bool{}}
+	return &Manager{eng: eng, workspaces: w, search: defaultEngine().For, tabs: map[engine.TabID]*Tab{}, windowOf: map[engine.TabID]engine.WindowID{}, windows: map[engine.WindowID]*window{}, certificates: map[engine.TabID]*certificate{}, passed: map[string]bool{}, waiting: map[engine.TabID]string{}}
 }
 
 // defaultEngine is the engine a manager searches with until SetSearch says another.
@@ -206,6 +209,7 @@ func (m *Manager) RemoveWindow(w engine.WindowID) {
 		t := *m.tabs[id]
 		delete(m.tabs, id)
 		delete(m.certificates, id)
+		delete(m.waiting, id)
 		delete(m.windowOf, id)
 		m.eng.CloseTab(id)
 		m.closed(t)
@@ -313,6 +317,21 @@ func (m *Manager) Add(w engine.WindowID, workspace string, foreground bool) engi
 	return id
 }
 
+// Restore opens a tab the profile had before, at the end of window w, behind the active
+// one, with its address and title. It loads now when load, else once first made active.
+func (m *Manager) Restore(w engine.WindowID, workspace, u, title string, load bool) engine.TabID {
+	id := m.create(w, workspace)
+	t := m.tabs[id]
+	t.URL, t.Title = u, title
+	if load {
+		m.eng.LoadURL(id, u)
+	} else {
+		m.waiting[id] = u
+	}
+	m.shown(id, false)
+	return id
+}
+
 // shown makes a new tab active, or tells of it behind the active one. In a window with
 // no tabs before it, it is the active one either way.
 func (m *Manager) shown(id engine.TabID, foreground bool) {
@@ -361,6 +380,10 @@ func (m *Manager) Activate(id engine.TabID) {
 	win.active = id
 	if win.cycle == nil {
 		win.touch(id)
+	}
+	if u, ok := m.waiting[id]; ok {
+		delete(m.waiting, id)
+		m.eng.LoadURL(id, u)
 	}
 	m.listChanged()
 }
@@ -457,6 +480,7 @@ func (m *Manager) close(id engine.TabID, recent bool) {
 	t := *m.tabs[id]
 	delete(m.tabs, id)
 	delete(m.certificates, id)
+	delete(m.waiting, id)
 	m.eng.CloseTab(id)
 	m.closed(t)
 	m.left(w, id, i, false, recent)
@@ -827,6 +851,14 @@ func (m *Manager) HandleNavigationStarting(id engine.TabID, nav int64, u string)
 		m.OpenPage(m.windowOf[id], page)
 		return engine.NavigationElsewhere
 	}
+	// A restored tab keeps its address and title over the blank page under it, until
+	// anything else loads.
+	if _, ok := m.waiting[id]; ok {
+		if u == BlankURL {
+			return engine.NavigationProceed
+		}
+		delete(m.waiting, id)
+	}
 	t.started = nav
 	t.URL, t.Error, t.ErrorCode, t.Crashed = address(u), "", "", false
 	delete(m.certificates, id)
@@ -856,7 +888,7 @@ func (m *Manager) allowed(u string) bool {
 // fails, as Chrome shows its pending entry.
 func (m *Manager) HandleNavigationFinished(id engine.TabID, nav int64, u string) {
 	t := m.tabs[id]
-	if t == nil || nav < t.started {
+	if _, ok := m.waiting[id]; t == nil || ok || nav < t.started {
 		return
 	}
 	// A page restored from the back-forward cache never reports a start, so a commit
@@ -896,7 +928,7 @@ func (m *Manager) HandleTitleChanged(id engine.TabID, title string) {
 		title = ""
 	}
 	t := m.tabs[id]
-	if t == nil || t.Title == title {
+	if _, ok := m.waiting[id]; t == nil || ok || t.Title == title {
 		return
 	}
 	t.Title = title

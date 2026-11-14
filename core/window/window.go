@@ -169,6 +169,15 @@ func (m *Manager) HandleWindowChanged(id engine.WindowID, s engine.WindowState) 
 	}
 }
 
+// Bounds is a window's frame on screen as the engine last reported it, y down from the
+// top of the main screen; zero before it has.
+func (m *Manager) Bounds(id engine.WindowID) engine.Rect {
+	if w := m.windows[id]; w != nil {
+		return w.state.Bounds
+	}
+	return engine.Rect{}
+}
+
 // FullScreen says whether a window is in full screen. No window, as after the last one
 // closed, is not.
 func (m *Manager) FullScreen(id engine.WindowID) bool {

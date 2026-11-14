@@ -16,6 +16,7 @@ import (
 	"projectb/prefs"
 	"projectb/profiles"
 	"projectb/relaunch"
+	"projectb/session"
 	"projectb/settings"
 	"projectb/shell"
 	"projectb/shelldata"
@@ -93,6 +94,8 @@ type App struct {
 	Downloads *downloads.Manager
 	// Sites is each site's settings, what it may use among them, and the prompts open for the rest.
 	Sites *sites.Manager
+	// Session is the profile's windows and tabs as the last run left them, and as they are.
+	Session *session.Manager
 
 	actions []*commands.Action
 	// menus are the windows' open right-click menus.
@@ -129,6 +132,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	a := &App{profiles: cfg.Profiles, madeForTab: map[engine.WindowID]bool{}}
 	a.Crash = crash.New(cfg.ProfileDir, cfg.CrashReports)
 	a.Crash.System = cfg.System
+	a.Session = session.New(cfg.ProfileDir)
 	a.Policy = policy.New(cfg.BlockedHosts, e.OurPage)
 	e.SetBlockRules(a.Policy.BlockRules())
 	a.History = history.New(cfg.ProfileDir, e.Post)
@@ -283,14 +287,18 @@ func Start(e engine.Engine, cfg Config) *App {
 	}
 
 	a.History.Load(nil)
+	// After a crash the last run's windows come back; addresses given at the start open
+	// beside them.
+	restored := a.restore(e, first)
 	switch {
 	case len(cfg.URLs) > 0:
 		for _, u := range cfg.URLs {
 			a.Tabs.OpenIn(u, true)
 		}
-	case !a.startsEmpty():
+	case !restored && !a.startsEmpty():
 		a.Tabs.Create(first)
 	}
+	a.keepSession()
 	a.Update.Start()
 	return a
 }
