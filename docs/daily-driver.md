@@ -394,3 +394,34 @@ keeps its own notice, drawn from the same tab, until it takes Go's.
 
 **Android.** The same messages; the certificate question comes with the Mac's, as the
 engine's client is shared.
+
+
+## Tabs after a crash
+
+Today nothing of a window's tabs is kept: after a crash, or a kill, the app comes back with
+one empty tab (basics 32). Go keeps the profile's windows and tabs as they are, and puts
+them back when the last run crashed.
+
+**What Go keeps.** `session.json` in the profile: each window, in front-to-back order, with
+its frame on screen and its tabs in order, each tab's address, title, workspace and tab
+group, the active tab, and the window's groups (name, colour, folded). Go writes it when
+any of that changes, a new file renamed over the old, and only when what it would write
+differs from the last, so a page's loading progress writes nothing. A clean quit leaves it
+in place, and so does closing the last window.
+
+**When it comes back.** At start, when the crash manager found the last run's `crash.log`,
+which only a crash or a kill leaves behind. Go then opens each window where it was, its tabs
+in their workspaces and groups, the active one active, in place of the usual one empty tab.
+Each window's active tab loads at once; every other tab shows its address and title and
+loads when it is first made active, so a start after a crash doesn't start a renderer per
+tab. A shell sees such a tab as any other. A tab whose workspace was deleted since goes in
+the first one. The crash notice the shell shows is unchanged. A clean quit starts as today,
+with one empty tab: a setting to always continue where you left off is a later choice, his
+to make.
+
+**What doesn't come back.** A tab's back and forward history (it loads its address alone),
+its scroll position and form fields, and a shell's own per-window data.
+
+**The shell.** Nothing new: it hears the windows and tabs as it does at any start. No rule.
+
+**Android.** The same Go, so a phone's tabs come back after a crash too, in its one window.
