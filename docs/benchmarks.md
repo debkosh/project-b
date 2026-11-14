@@ -41,7 +41,7 @@ to 29 gave 379 warm and 309 fresh, so a gap between the two under load is noise.
 
 ## Results, 0.2.50, 2026-11-13
 
-`minimal-svelte` here is the shell now called Minimal (`minimal`).
+`minimal-svelte` here is the shell now called Minimal (`minimal`); `minimal-js` is gone.
 
 On a Mac Studio (M3 Ultra), from an agent's session; ms from process start, medians of starts
 after a warm-up, each on a new profile with only the shell set in its prefs.
