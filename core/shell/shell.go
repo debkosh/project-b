@@ -113,6 +113,16 @@ func (m *Manager) Interaction(w engine.WindowID, name string, do func()) {
 	m.send(w, map[string]any{"t": "paint", "span": name})
 }
 
+// CloseTab is Close Tab in window w: it closes the active tab, or, in a window with no
+// tabs, the window.
+func (m *Manager) CloseTab(w engine.WindowID) {
+	if len(m.tabs.AllIn(w)) == 0 {
+		m.window.Request(w, engine.WindowClose)
+		return
+	}
+	m.Interaction(w, "tab.close", func() { m.tabs.Close(m.tabs.ActiveIn(w)) })
+}
+
 // SwitchTabLayout is the interaction that moves the tabs. The page moves too, a step
 // later: the shell measures where it now goes and Go places it. So this span ends once
 // the shell has drawn after that.
@@ -213,6 +223,10 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 			m.tabs.Move(id, to, max(0, min(c.Index, len(m.tabs.AllIn(to)))))
 		}
 	case "closeTab":
+		if c.ID == 0 {
+			m.CloseTab(w)
+			return
+		}
 		m.Interaction(w, "tab.close", func() { m.tabs.Close(engine.TabID(c.ID)) })
 	case "activateTab":
 		m.Interaction(w, "tab.activate", func() { m.tabs.Activate(engine.TabID(c.ID)) })

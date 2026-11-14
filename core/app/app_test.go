@@ -342,6 +342,97 @@ func TestTabsThroughTheShellAndKeys(t *testing.T) {
 	if m["active"] != float64(0) || r.e.Closed(1) || r.e.Quit() {
 		t.Fatalf("after the last tab: active %v, closed %v, quit %v", m["active"], r.e.Closed(1), r.e.Quit())
 	}
+	// Close Tab in a window with no tabs closes it, the last, which quits.
+	r.e.Fire(1, 0, "key", "closeTab")
+	r.e.Settle()
+	if !r.e.Closed(1) || !r.e.Quit() {
+		t.Fatalf("Close Tab in the empty window: closed %v, quit %v", r.e.Closed(1), r.e.Quit())
+	}
+}
+
+// The shell's Close Tab names the active tab, which in a window with no tabs is none: it
+// closes the window. A tab the shell names that is gone closes nothing.
+func TestTheShellsCloseTabInAWindowWithNoTabs(t *testing.T) {
+	r := start(t, t.TempDir())
+	defer r.stop()
+	second := r.openSecondWindow()
+	snap := r.waitOn(second, func(m map[string]any) bool { return m["t"] == "snapshot" })
+	only := snap["active"].(float64)
+	closeTab := func(id float64) {
+		r.e.Post(func() { r.a.ShellMessage(2, fmt.Appendf(nil, `{"t":"closeTab","id":%v}`, id)) })
+		r.e.Settle()
+	}
+	closeTab(only)
+	r.waitOn(second, isTabs(0))
+	closeTab(only)
+	if r.e.Closed(2) {
+		t.Fatal("closing a tab that is gone closed its window")
+	}
+	closeTab(0)
+	if !r.e.Closed(2) || !slices.Equal(r.e.Windows(), []engine.WindowID{1}) {
+		t.Fatalf("Close Tab in the empty window: closed %v, windows %v", r.e.Closed(2), r.e.Windows())
+	}
+}
+
+// In a window with no tabs every action that needs one is off, in the menu and for a
+// shell that lists them; New Tab, the address, the windows' own and Settings stay on, and
+// so does Close Tab, which closes the window.
+func TestActionsThatNeedATabAreOffWithNone(t *testing.T) {
+	r := start(t, t.TempDir())
+	defer r.stop()
+	r.visit("https://a.test/")
+	r.visit("https://b.test/")
+	need := []string{"nav.back", "nav.reload", "nav.reloadHard", "view.zoomIn", "view.zoomOut", "view.zoomReset", "dev.viewSource",
+		"tab.duplicate", "tab.moveToNewWindow", "tab.next", "tab.previous", "tab.recentNext", "tab.recentPrevious",
+		"tab.select1", "tab.select8", "tab.selectLast", "focus.nextPane", "focus.previousPane"}
+	stay := []string{"tab.new", "tab.close", "address.focus", "window.new", "window.close", "app.settings", "view.fullScreen", "view.tabsTop"}
+	// What can run now, as a shell that lists the actions hears it, and what the menu bar
+	// shows enabled.
+	state := func() (runs, menu map[string]bool) {
+		runs, menu = map[string]bool{}, map[string]bool{}
+		var walk func([]engine.MenuItem)
+		walk = func(items []engine.MenuItem) {
+			for _, it := range items {
+				if it.Action != "" {
+					menu[it.Action] = it.Enabled
+				}
+				walk(it.Items)
+			}
+		}
+		done := make(chan struct{})
+		r.e.Post(func() {
+			for _, a := range r.a.Commands.Titles() {
+				runs[a.ID] = true
+			}
+			walk(r.e.Menu())
+			close(done)
+		})
+		<-done
+		return runs, menu
+	}
+	runs, menu := state()
+	for _, id := range append(slices.Clone(need), stay...) {
+		if !runs[id] {
+			t.Errorf("with a tab, %s can't run", id)
+		}
+	}
+	r.e.Fire(1, 0, "key", "closeTab")
+	r.waitFor(isTabs(0))
+	r.e.Settle()
+	runs, menu = state()
+	for _, id := range need {
+		if runs[id] || menu[id] {
+			t.Errorf("with no tab, %s can run %v, or is on in the menu %v", id, runs[id], menu[id])
+		}
+	}
+	for _, id := range stay {
+		if !runs[id] {
+			t.Errorf("with no tab, %s can't run", id)
+		}
+	}
+	if menu["nav.reload"] || !menu["tab.close"] || !menu["tab.new"] {
+		t.Errorf("the menu: reload %v, close tab %v, new tab %v", menu["nav.reload"], menu["tab.close"], menu["tab.new"])
+	}
 }
 
 func TestTabLayoutIsAnnouncedAndSurvivesARestart(t *testing.T) {
@@ -597,7 +688,7 @@ func (r *rig) openSecondWindow() <-chan []byte {
 
 // Cmd+N opens a second window with one new tab of its own and its own shell, in front.
 // Commands act on the window in front, settings opens over the window it was asked in,
-// closing a window's last tab leaves it open with none, its close button closes it, and
+// closing a window's last tab leaves it open with none, Close Tab then closes it, and
 // closing the last window quits.
 func TestASecondWindow(t *testing.T) {
 	r := start(t, t.TempDir())
@@ -626,7 +717,7 @@ func TestASecondWindow(t *testing.T) {
 	}
 
 	// Closing window 2's tabs leaves it open with none: its settings page goes first,
-	// then a tab at a time. Its close button closes it, and the app goes on with window 1.
+	// then a tab at a time. Close Tab again closes it, and the app goes on with window 1.
 	for range 3 {
 		r.e.Fire(2, 0, "key", "closeTab")
 	}
@@ -635,10 +726,10 @@ func TestASecondWindow(t *testing.T) {
 	if m["active"] != float64(0) || r.e.Closed(2) || !slices.Equal(r.e.Windows(), []engine.WindowID{1, 2}) {
 		t.Fatalf("after window 2's last tab: active %v, closed %v, windows %v", m["active"], r.e.Closed(2), r.e.Windows())
 	}
-	r.e.Fire(2, 0, "close", "")
+	r.e.Fire(2, 0, "key", "closeTab")
 	r.e.Settle()
 	if !r.e.Closed(2) || !slices.Equal(r.e.Windows(), []engine.WindowID{1}) || r.e.Quit() {
-		t.Fatalf("after window 2's close button: closed %v, windows %v, quit %v", r.e.Closed(2), r.e.Windows(), r.e.Quit())
+		t.Fatalf("after Close Tab in empty window 2: closed %v, windows %v, quit %v", r.e.Closed(2), r.e.Windows(), r.e.Quit())
 	}
 
 	// Window 1's own close button closes it, the last window, which quits.

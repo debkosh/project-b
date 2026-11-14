@@ -99,8 +99,7 @@ func TestClosingTheLastTabEmptiesTheList(t *testing.T) {
 	m := oneWindow(e)
 	empty, moved := false, true
 	m.OnEmpty(func(w engine.WindowID, wasMoved bool) { empty, moved = w == 1, wasMoved })
-	m.Create(1)
-	m.CloseActive()
+	m.Close(m.Create(1))
 	if !empty || moved || len(m.All()) != 0 || m.ActiveID() != 0 || !slices.Equal(m.Windows(), []engine.WindowID{1}) {
 		t.Fatalf("empty %v moved %v all %v active %v windows %v", empty, moved, m.All(), m.ActiveID(), m.Windows())
 	}
