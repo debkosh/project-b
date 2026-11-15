@@ -754,6 +754,10 @@ def page_dialogs():
     tap(middle(see("shell", text="Sign in", kind=lambda k: k != FIELD, clickable="true")))
     check("a site's sign-in takes a username and password, and the page loads",
           until(lambda: find("page", text="signed in")) is not None)
+    # Leave a plain page, as the next part's start restores this tab, and a signed-in page
+    # restored asks for the sign-in again.
+    go(BASE + "/a")
+    asked("/a")
 def in_front_now():
     """The window Android shows in front: its package and activity."""
     return adb("shell", "dumpsys", "window", "displays").split("mCurrentFocus", 1)[-1].split("\n", 1)[0]
