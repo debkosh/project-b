@@ -5,6 +5,7 @@
 #include <unistd.h>
 
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -404,6 +405,15 @@ void Run(const std::string& line) {
     return base::JoinString(
         std::vector<std::string>(parts.begin() + i, parts.end()), " ");
   };
+
+  // The commands that act on the focused tab's page, which a window with no tabs hasn't.
+  static const base::NoDestructor<std::set<std::string>> kNeedTab(
+      std::set<std::string>{"evalpage", "committed", "bounds", "pids", "pagecolor",
+                            "crashpage", "stats"});
+  if (kNeedTab->contains(cmd) && !Focused()) {
+    Reply(id, "ERR no tab");
+    return;
+  }
 
   if (cmd == "window") {
     // "window <id>" acts on that window from now on, and makes it the key window.
