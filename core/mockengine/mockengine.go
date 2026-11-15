@@ -720,7 +720,9 @@ func (e *Engine) Focused() engine.TabID {
 	return e.focused
 }
 
-func (e *Engine) FocusShell(engine.WindowID) {}
+// FocusShell gives window w's shell the keyboard: the dev window focuses the shell's
+// frame, as the real window gives the shell's view focus.
+func (e *Engine) FocusShell(w engine.WindowID) { e.Feeds(w).Window.Publish([]byte(`{"t":"focusShell"}`)) }
 
 func (e *Engine) SendToShell(w engine.WindowID, msg []byte) { e.Feeds(w).Shell.Publish(msg) }
 
