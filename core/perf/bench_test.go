@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"projectb/engine"
+	"projectb/mockengine"
 	"projectb/policy"
 	"projectb/prefs"
 )
@@ -130,7 +131,7 @@ func BenchmarkPolicy(b *testing.B) {
 			for i := 0; i < n; i++ {
 				hosts = append(hosts, fmt.Sprintf("blocked%d.example.org", i))
 			}
-			p := policy.New(hosts)
+			p := policy.New(hosts, mockengine.New().OurPage)
 			urls := []string{"https://www.news.example.com/world/2026/11/14/story.html?ref=home", "https://mail.blocked7.example.org/inbox", "http://localhost:8080/x"}
 			b.ReportAllocs()
 			b.ResetTimer()
