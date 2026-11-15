@@ -39,7 +39,7 @@
     </div>
   {/if}
   <div class="field" class:hidden={tab.page}>
-    <Address bind:this={address} {tab} {top} onedit={(on) => {
+    <Address bind:this={address} {tab} {top} onsite={() => onsheet('site')} onedit={(on) => {
       editing = on;
       onedit(on);
     }} />

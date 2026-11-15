@@ -8,6 +8,7 @@
   import GroupSheet from './GroupSheet.svelte';
   import LinkSheet from './LinkSheet.svelte';
   import MenuSheet from './MenuSheet.svelte';
+  import SiteSheet from './SiteSheet.svelte';
   import PageDialog from './PageDialog.svelte';
   import PageNotice from './PageNotice.svelte';
   import Strip from './Strip.svelte';
@@ -269,6 +270,8 @@
   </div>
   {#if sheet === 'menu'}
     <MenuSheet {tab} {group} {workspace} onclose={() => (sheet = '')} onnewtab={(inGroup) => newTab(inGroup ? go.active : 0)} {onsheet} onworkspace={(id) => (workspace = id)} />
+  {:else if sheet === 'site' && /^https?:/.test(tab.url || '')}
+    <SiteSheet {tab} onclose={() => (sheet = '')} />
   {:else if sheet === 'group' && shownGroup}
     {#key shownGroup.id}
       <GroupSheet

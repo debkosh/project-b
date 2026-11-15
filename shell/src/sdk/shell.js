@@ -117,11 +117,12 @@ export const state = {
   // site asking to use its camera, microphone or notifications. A shell draws those of its
   // own tabs and answers with permissions.js (docs/daily-driver.md).
   permissionPrompts: [],
+  openSites: {},
 };
 
 // The messages that are only state: each sets the fields it carries, whole. The one
 // exception is tabs, whose tabs carry no favicon: each keeps the one it had (below).
-const updates = new Set(['theme', 'windowColor', 'controls', 'keys', 'workspaces', 'update', 'crashLog', 'tabLayout', 'addressBarPosition', 'extensions', 'profileData', 'contextMenu', 'downloads', 'dialogs', 'prefs', 'find', 'pageFullScreen', 'searchEngine', 'permissionPrompts', 'bookmarks', 'pins']);
+const updates = new Set(['theme', 'windowColor', 'controls', 'keys', 'workspaces', 'update', 'crashLog', 'tabLayout', 'addressBarPosition', 'extensions', 'profileData', 'contextMenu', 'downloads', 'dialogs', 'prefs', 'find', 'pageFullScreen', 'searchEngine', 'permissionPrompts', 'openSites', 'bookmarks', 'pins']);
 
 const listeners = [];
 

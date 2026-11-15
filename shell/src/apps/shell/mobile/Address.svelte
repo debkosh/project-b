@@ -7,7 +7,7 @@
   // asks Go for suggestions, listed away from the field towards the page, the closest next
   // to it: a tap on one goes there, its ↖ puts its address in the field. Enter goes; Escape
   // or a press in the page puts the address back.
-  let { tab, top, onedit } = $props();
+  let { tab, top, onedit, onsite } = $props();
   let input;
   let editing = $state(false);
   let text = $state('');
@@ -92,7 +92,7 @@
 
 <div class="address" class:editing>
   {#if !editing && secure}
-    <span class="mark" aria-hidden="true"><Icon name={secure} size={16} /></span>
+    <button type="button" class="mark" aria-label="Site settings" onclick={onsite}><Icon name={secure} size={16} /></button>
   {/if}
   <input
     bind:this={input}
@@ -169,8 +169,17 @@
     box-shadow: inset 0 0 0 1.5px var(--accent);
   }
 
+  /* The site's mark opens its sheet: a 48px target, past the pill's own height. */
   .mark {
     display: grid;
+    place-items: center;
+    flex: none;
+    width: 48px;
+    height: 48px;
+    margin: -4px -12px -4px -16px;
+    padding: 0;
+    border: 0;
+    background: none;
     color: var(--icon);
   }
 

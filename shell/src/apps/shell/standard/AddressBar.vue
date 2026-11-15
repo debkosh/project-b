@@ -2,8 +2,9 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { activeTab, bookmark, chooseSuggestion, focusPage, isBookmarked, send, state, suggest, tabLabel } from '@/sdk/vue.js';
 import SuggestionList from './SuggestionList.vue';
-import { hasSite, openSiteSettings, promptFor } from '@/sdk/sites.js';
+import { hasSite, openSite, promptFor } from '@/sdk/sites.js';
 import PermissionPrompt from '@/ui/PermissionPrompt.vue';
+import SitePanel from '@/ui/SitePanel.vue';
 import { addressBar, nextQuery } from './state.js';
 
 const input = ref(null);
@@ -22,6 +23,10 @@ let latestQuery = 0;
 const open = computed(() => focused.value && items.value.length > 0);
 // A site's question about the active tab hangs from the field's start, as the site's own.
 const prompt = computed(() => promptFor(state, state.active));
+// The site panel, which the site icon opens over the page; it closes with another tab.
+const panel = ref(false);
+watch(() => state.active, () => (panel.value = false));
+const site = computed(() => openSite(state, activeTab.value));
 // A tab of ours (settings, and our other pages) shows its icon in the slot and its title in
 // the field, with a close control; there is nothing to type.
 const ours = computed(() => !!activeTab.value.page);
@@ -199,7 +204,8 @@ const starred = computed(() => isBookmarked(state, activeTab.value.url));
       :aria-label="slot === 'insecure' ? 'Not secure · Site settings' : 'Site settings'"
       :title="slot === 'insecure' ? 'Not secure · Site settings' : 'Site settings'"
       @mousedown.prevent
-      @click="openSiteSettings()"
+      :aria-expanded="panel"
+      @click="panel = !panel"
     >
       <svg v-if="slot === 'insecure'" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M8 2.5 14 13H2zM8 6.5v3M8 11.2v.1" />
@@ -267,7 +273,8 @@ const starred = computed(() => isBookmarked(state, activeTab.value.url));
       @hover="(i) => (highlight = i)"
       @choose="go"
     />
-    <PermissionPrompt v-if="prompt && !open" :key="prompt.id" v-shell class="prompt" :prompt="prompt" />
+    <PermissionPrompt v-if="prompt && !open && !panel" :key="prompt.id" v-shell class="prompt" :prompt="prompt" />
+    <SitePanel v-if="panel && !open && hasSite(activeTab)" v-shell class="prompt" :tab="activeTab" :site="site" @close="panel = false" />
   </form>
 </template>
 
