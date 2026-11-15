@@ -246,7 +246,8 @@ const same = (a, b) => !!a && !!b && ['x', 'y', 'w', 'h'].every((k) => Math.abs(
   await fire('closePopup', '', '');
   await until(async () => (await runtime()).popup === null);
   await puzzle.click();
-  await ui.getByRole('combobox', { name: 'Address' }).click();
+  // The address field's own area: a text field on a web tab, a title on a tab of ours.
+  await ui.locator('form.field').click();
   check('a click elsewhere in the shell closes the menu', await until(async () => (await menu.count()) === 0));
 
   // Manage extensions opens the settings tab at its Extensions section, from closed and
