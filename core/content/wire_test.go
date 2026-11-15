@@ -164,6 +164,9 @@ func (r *recorder) NotificationShown(n engine.Notification) bool {
 	return true
 }
 func (r *recorder) NotificationClicked(id string) { r.note("clicked " + id) }
+func (r *recorder) ConnectionChanged(tab engine.TabID, c engine.Connection) {
+	r.note(fmt.Sprintf("connection %d %d %s", tab, c.State, c.Reason))
+}
 func (r *recorder) DevToolsCommand(method string, params []byte) (any, error) {
 	r.note("devtools " + method + " " + string(params))
 	switch method {
@@ -263,6 +266,14 @@ func TestNotificationsReachTheListener(t *testing.T) {
 	h.Dispatch(eventNotifyClicked, pack("n1"))
 	want := []string{`notification n1 https://chat.test https://chat.test/room "Ana" "hello"`, "clicked n1"}
 	if !reflect.DeepEqual(r.got, want) {
+		t.Fatalf("got %v", r.got)
+	}
+}
+
+func TestAConnectionChangeReachesTheListener(t *testing.T) {
+	h, r, _ := wired(t)
+	h.Dispatch(eventConnection, pack(3, int(engine.ConnectionInsecure), "certificate"))
+	if !reflect.DeepEqual(r.got, []string{"connection 3 2 certificate"}) {
 		t.Fatalf("got %v", r.got)
 	}
 }

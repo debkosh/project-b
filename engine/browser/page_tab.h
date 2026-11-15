@@ -49,6 +49,7 @@ class PageTab : public WebContentsObserverHooks, public WebContentsDelegateHooks
   void LoadProgressChanged(double progress) override;
   void DidChangeVerticalScrollDirection(
       viz::VerticalScrollDirection scroll_direction) override;
+  void DidChangeVisibleSecurityState() override;
   void TitleWasSet(content::NavigationEntry* entry) override;
   void OnWebContentsFocused(
       content::RenderWidgetHost* render_widget_host) override;
@@ -137,7 +138,13 @@ class PageTab : public WebContentsObserverHooks, public WebContentsDelegateHooks
                                     const content::MediaStreamRequest& request,
                                     content::MediaResponseCallback callback) override;
 
+  // Tells Go how the page shown reached it, when that changed.
+  void ReportConnection();
+
   const int64_t id_;
+  // What Go was last told of the connection: a PBConnection, and its reason.
+  int32_t connection_ = 0;
+  std::string connection_reason_;
   const std::string workspace_;
   int64_t window_ = 0;
   std::unique_ptr<content::WebContents> contents_;

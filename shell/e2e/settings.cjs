@@ -618,12 +618,17 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   await page.getByRole('menuitem', { name: 'Reset camera' }).click();
   check('Reset camera forgets only that', await until(() => JSON.stringify(sitesFile()['https://meet.test']) === '{"microphone":"block"}'), JSON.stringify(sitesFile()));
   check('and the row says so at once', await until(async () => !(await sites.textContent()).includes('Camera allowed')));
+  // A page of the site open in a tab: its view says first how the page reached it.
+  await fetch(`${base}/shell/send`, { method: 'POST', body: JSON.stringify({ t: 'newTab', text: 'https://meet.test/room' }) });
+  await until(async () => (await regions()).tabs.some((t) => t.url === 'https://meet.test/room' && !t.loading));
   // The row opens the site's own view: each setting settings can set, Ask, Allow or Block.
   await sites.getByRole('button', { name: 'meet.test', exact: true }).click();
   const site = page.getByRole('region', { name: 'meet.test' });
   const siteRadio = (group, name) => site.getByRole('radiogroup', { name: group }).getByRole('radio', { name });
   check('a site\'s row opens its own view, with each setting as it is',
     await until(async () => (await siteRadio('Microphone', 'Block').getAttribute('aria-checked')) === 'true' && (await siteRadio('Camera', 'Ask').getAttribute('aria-checked')) === 'true' && (await siteRadio('Notifications', 'Ask').getAttribute('aria-checked')) === 'true'));
+  check('with a page of the site open, its view says first how the page reached it',
+    await until(async () => (await site.locator('.row').first().textContent()).includes('Connection is secure')), await site.textContent());
   await settle(page);
   await page.screenshot({ path: path.join(out, 'settings-site.png') });
   await siteRadio('Camera', 'Allow').click();

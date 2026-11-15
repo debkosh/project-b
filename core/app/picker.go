@@ -222,6 +222,9 @@ func (p *Picker) PermissionRequested(r engine.PermissionRequest) {
 	p.e.AnswerPermission(r.ID, statuses)
 }
 
+// The picker has no tabs.
+func (p *Picker) ConnectionChanged(engine.TabID, engine.Connection) {}
+
 // The picker shows no notifications.
 func (p *Picker) NotificationShown(engine.Notification) bool { return false }
 func (p *Picker) NotificationClicked(string)                 {}

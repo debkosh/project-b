@@ -424,12 +424,33 @@ type Listener interface {
 	// 0 for a page in no tab: a worker's, or one of our own pages'.
 	PermissionStatusOf(tab TabID, origin, kind string) PermissionStatus
 
+	// ConnectionChanged says how the page a tab shows reached it: over a secure
+	// connection, an insecure one and why, or neither, as for one of our pages.
+	ConnectionChanged(tab TabID, c Connection)
+
 	// NotificationShown is a page showing a notification. True shows it on the system.
 	NotificationShown(n Notification) bool
 	// NotificationClicked says the person clicked a notification the system showed; the
 	// page has had its click.
 	NotificationClicked(id string)
 }
+
+// Connection is how a tab's page reached it. Reason says why an insecure one is:
+// "not-encrypted" (plain http), "certificate" (its certificate has an error) or
+// "mixed-content" (a secure page that loaded something over plain http).
+type Connection struct {
+	State  ConnectionState
+	Reason string
+}
+
+// ConnectionState matches PBConnection.
+type ConnectionState int
+
+const (
+	ConnectionNone ConnectionState = iota
+	ConnectionSecure
+	ConnectionInsecure
+)
 
 // Notification is one a page shows: the engine's id for it, the origin showing it, the
 // page's address, "" for a service worker's, and what it says.

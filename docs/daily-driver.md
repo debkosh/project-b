@@ -328,8 +328,21 @@ a `dialog` named by that sentence; Escape dismisses it. It takes no focus, so a 
 type into it, and follows the address field in tab order, so F6 then Tab reach it. The
 contract's rule 30 checks it, by role and name, on the mock.
 
-**The numbers.** Events 40 to 43: `PB_EVENT_PERMISSION_REQUEST`, `PB_EVENT_PERMISSION_STATUS`,
-`PB_EVENT_NOTIFICATION_SHOW`, `PB_EVENT_NOTIFICATION_CLICKED`. Rules 30 and 31.
+**The connection.** The owner: "clicking gives one list of everything site related... so the
+button get gains the unsecure data and doenot loose the site settings data". Each tab says
+how its page reached it, in our own terms: `tab.connection`, `secure` or `insecure`, absent
+for our own pages and the blank page, and `tab.connectionNote`, why in one line. The adapter
+maps content's security state (`PB_EVENT_CONNECTION_CHANGED`, 44: none, secure or insecure,
+and a reason, `not-encrypted`, `certificate` or `mixed-content`), and Go words the note. A
+shell draws any value other than `secure` as not secure: Standard's address-field slot
+changes its icon, and its press opens the same one-site view, whose first row is the
+connection of the site's open pages (`siteConnections`, by origin, insecure when any of
+them is). The certificate warnings extend it: a page whose certificate the person went past
+is `insecure` for `certificate`.
+
+**The numbers.** Events 40 to 44: `PB_EVENT_PERMISSION_REQUEST`, `PB_EVENT_PERMISSION_STATUS`,
+`PB_EVENT_NOTIFICATION_SHOW`, `PB_EVENT_NOTIFICATION_CLICKED`, `PB_EVENT_CONNECTION_CHANGED`.
+Rules 30 and 31.
 
 **Not yet expressed,** none needed now, each one engine call or one field when it is:
 

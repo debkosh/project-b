@@ -151,8 +151,10 @@ nothing. Its `actions` is every action in the menus that can run then, `{id, tit
 the menus' order, for a shell that lists them to run by name (`run`).
 
 A tab is `{id, url, title, loading, progress, blocked, crashed, error, errorCode, favicon,
-canGoBack, canGoForward, workspace, group, page}`, `group` the id of its tab group, absent
-when it is in none. `error` says why its page failed to load, absent when it didn't:
+canGoBack, canGoForward, workspace, group, page, connection, connectionNote}`, `group` the
+id of its tab group, absent when it is in none; `connection` how its page reached it,
+`secure` or `insecure`, absent when it isn't a site, and `connectionNote` why, in one line
+([daily-driver.md](daily-driver.md#permissions)). `error` says why its page failed to load, absent when it didn't:
 `not-found`, `offline`, `refused`, `unreachable`, `timeout`, `tls`, `proxy`, `redirects`,
 `bad-response`, `blocked`, `file` or `other` (engine.Failure). `errorCode` is the engine's
 own name for the error, such as `ERR_NAME_NOT_RESOLVED`, to show under the sentence and

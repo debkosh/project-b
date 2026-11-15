@@ -1049,6 +1049,7 @@ func (e *Engine) load(id engine.TabID, u string, commit func(*tab)) {
 			t.state = "loaded"
 			e.listener.HistoryChanged(id, t.pos > 0, t.pos < len(t.history)-1)
 			e.listener.NavigationFinished(id, nav, u)
+			e.listener.ConnectionChanged(id, connectionOf(u))
 			// Our page is the real one, which gives its own title (core/cmd/dev).
 			if !t.internal {
 				e.listener.TitleChanged(id, titleOf(u))
@@ -1145,4 +1146,16 @@ func (f *Feed) Publish(msg []byte) {
 		default:
 		}
 	}
+}
+
+// connectionOf is how the mock says a page at u reached it: https is secure, http isn't
+// encrypted, and anything else isn't a site.
+func connectionOf(u string) engine.Connection {
+	switch {
+	case strings.HasPrefix(u, "https://"):
+		return engine.Connection{State: engine.ConnectionSecure}
+	case strings.HasPrefix(u, "http://"):
+		return engine.Connection{State: engine.ConnectionInsecure, Reason: "not-encrypted"}
+	}
+	return engine.Connection{}
 }

@@ -38,6 +38,7 @@ const (
 	eventPermissionGet  Hook = 41
 	eventNotification   Hook = 42
 	eventNotifyClicked  Hook = 43
+	eventConnection     Hook = 44
 )
 
 // dialogKinds name PBDialogKind's values.
@@ -70,6 +71,7 @@ var eventNames = map[Hook]string{
 	eventPermissionGet:  "engine.PermissionStatusOf",
 	eventNotification:   "engine.NotificationShown",
 	eventNotifyClicked:  "engine.NotificationClicked",
+	eventConnection:     "engine.ConnectionChanged",
 }
 
 // Events is what the adapter itself reports. Always on; there is nothing to subscribe.
@@ -99,6 +101,7 @@ type Events struct {
 	OnPermissionOf    func(tab engine.TabID, origin, kind string) engine.PermissionStatus
 	OnNotification    func(n engine.Notification) bool
 	OnNotifyClicked   func(id string)
+	OnConnection      func(tab engine.TabID, c engine.Connection)
 
 	// more are the events a build tag adds, by number.
 	more map[Hook]func(r *reader) (Value, bool)
@@ -239,6 +242,10 @@ func (e *Events) dispatch(id Hook, r *reader) (Value, bool) {
 		}
 		n := engine.Notification{ID: r.str(), Origin: r.str(), Page: r.str(), Title: r.str(), Body: r.str()}
 		return boolValue(e.OnNotification(n)), true
+	case eventConnection:
+		if e.OnConnection != nil {
+			e.OnConnection(engine.TabID(r.int()), engine.Connection{State: engine.ConnectionState(r.int()), Reason: r.str()})
+		}
 	case eventNotifyClicked:
 		if e.OnNotifyClicked != nil {
 			e.OnNotifyClicked(r.str())

@@ -47,6 +47,11 @@ type Tab struct {
 
 	CanGoBack    bool `json:"canGoBack"`
 	CanGoForward bool `json:"canGoForward"`
+	// Connection is how its page reached it: "secure", "insecure", or "" for one that
+	// isn't a site, as our own pages and the blank page aren't. ConnectionNote says why in
+	// one line, when there is something to say (docs/daily-driver.md).
+	Connection     string `json:"connection,omitempty"`
+	ConnectionNote string `json:"connectionNote,omitempty"`
 	// Group is the id of the tab group it is in, "" for none (groups.go).
 	Group string `json:"group,omitempty"`
 
@@ -889,6 +894,33 @@ func (m *Manager) HandleTitleChanged(id engine.TabID, title string) {
 	for _, f := range m.onTitle {
 		f(*t)
 	}
+	m.changed(t)
+}
+
+// connectionNotes are what the site view says of an insecure connection, by reason.
+var connectionNotes = map[string]string{
+	"not-encrypted": "Your connection to this site isn't encrypted, so others on the network can see what you send",
+	"certificate":   "This site's certificate isn't valid, so it may not be the site it says it is",
+	"mixed-content": "Parts of this page load without encryption",
+}
+
+// HandleConnectionChanged records how the tab's page reached it.
+func (m *Manager) HandleConnectionChanged(id engine.TabID, c engine.Connection) {
+	t := m.tabs[id]
+	if t == nil {
+		return
+	}
+	state, note := "", ""
+	switch c.State {
+	case engine.ConnectionSecure:
+		state = "secure"
+	case engine.ConnectionInsecure:
+		state, note = "insecure", connectionNotes[c.Reason]
+	}
+	if t.Connection == state && t.ConnectionNote == note {
+		return
+	}
+	t.Connection, t.ConnectionNote = state, note
 	m.changed(t)
 }
 

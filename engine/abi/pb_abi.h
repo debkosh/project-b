@@ -96,6 +96,9 @@ typedef enum PBEvent {
                                         // it or "" for a service worker, s: title, s:
                                         // body; answers i: 1 to show it on the system
   PB_EVENT_NOTIFICATION_CLICKED = 43,   // s: notification; the page has its click event
+  PB_EVENT_CONNECTION_CHANGED = 44,     // i: tab, i: PBConnection, s: why it is insecure:
+                                        // "not-encrypted", "certificate" or
+                                        // "mixed-content", "" when it isn't
 
   // What a tab's page does, 60 to 79, as any engine can say it: Go's core/abi turns each
   // into the engine.Listener call of its name. A tab here is never a page of ours.
@@ -189,6 +192,13 @@ typedef enum PBPermissionStatus {
   PB_PERMISSION_GRANTED = 1,
   PB_PERMISSION_DENIED = 2,
 } PBPermissionStatus;
+
+// How the page a tab shows reached it. Matches engine.ConnectionState.
+typedef enum PBConnection {
+  PB_CONNECTION_NONE = 0,  // not a site: one of our pages, the blank page, a file
+  PB_CONNECTION_SECURE = 1,
+  PB_CONNECTION_INSECURE = 2,
+} PBConnection;
 
 // Modifier bits, as Go's engine.Mods has them.
 typedef enum PBMods {
