@@ -79,6 +79,9 @@ front.
 - A window may have no tabs (2026-11-14, [below](#a-window-with-no-tabs)): closing its last
   tab leaves it open, and Close Tab then closes it.
 - Closing a profile's last window quits its process.
+- Addresses on the app's command line open as tabs of its first window at the start, in
+  place of the blank one, whatever the shell; ChromeDriver starts the app with one and looks
+  for a page. A second start on the same profile hands them to the first copy, as before.
 - Quit closes every window at once, with no question.
 - A link from another app, or from a second start of the app, opens as a new tab in the
   window used last.
