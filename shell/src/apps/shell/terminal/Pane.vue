@@ -4,12 +4,17 @@ import { keyLabel, send, state, tabLabel } from '@/sdk/vue.js';
 import { close, shown, smallest, split, zoom, zoomed } from './panes.js';
 import FindBar from '@/ui/FindBar.vue';
 import PageDialog from '@/ui/PageDialog.vue';
+import PageNotice from '@/ui/PageNotice.vue';
+import PermissionPrompt from '@/ui/PermissionPrompt.vue';
+import { promptFor } from '@/sdk/sites.js';
 
 // One pane: a title bar over the place its tab's page shows. A press on the bar makes the
 // pane active.
 const props = defineProps({ id: { type: Number, required: true } });
 
 const tab = computed(() => state.tabs.find((t) => t.id === props.id));
+// A site's question about this pane's page, drawn while the pane is the active one.
+const asking = computed(() => promptFor(state, props.id));
 const active = computed(() => props.id === state.active);
 const host = computed(() => (tab.value.title && tab.value.url ? new URL(tab.value.url).host : ''));
 const status = computed(() => {
@@ -67,7 +72,10 @@ function hint(name, action) {
     <!-- The active pane's page carries its dialog and its find bar, as Standard's does. -->
     <div class="body">
       <div v-page="id" class="page"></div>
+      <!-- Go's notice over a page with nothing to show, on any pane; it fills the page. -->
+      <PageNotice v-if="tab.notice" v-shell :tab="tab" />
       <template v-if="active">
+        <PermissionPrompt v-if="asking" :key="asking.id" v-shell class="asking" :prompt="asking" />
         <PageDialog />
         <FindBar />
       </template>
@@ -195,6 +203,13 @@ function hint(name, action) {
 
 .progress.on {
   opacity: 1;
+}
+
+.asking {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 6;
 }
 
 .body {

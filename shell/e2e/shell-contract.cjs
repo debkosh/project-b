@@ -104,7 +104,6 @@ const noTitleYet = {
 // them.
 const noPromptYet = {
   glide: 'the daily driver session brings it',
-  terminal: 'the terminal session brings it',
   mobile: 'the android session brings it, as a sheet',
   'mobile-native': 'the native mobile shell session brings it',
 };
@@ -113,7 +112,6 @@ const noPromptYet = {
 // (docs/daily-driver.md). Rule 32 holds every other shell to it.
 const noNoticeYet = {
   glide: 'the daily driver session brings it',
-  terminal: 'the terminal session brings it',
   mobile: 'it draws a notice of its own from the same tab; the android session moves it to Go\'s',
   'mobile-native': 'it draws a notice of its own; the native mobile shell session moves it to Go\'s',
 };
