@@ -8,6 +8,7 @@
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
+#include "build/build_config.h"
 #include "components/download/public/common/download_item.h"
 #include "content/public/browser/download_manager.h"
 #include "content/public/browser/download_manager_delegate.h"
@@ -78,6 +79,16 @@ void RevealFile(const base::FilePath& path);
 // the shared Downloads, through which it is then opened. Nothing on the Mac, where it already
 // is in the user's Downloads folder.
 void PublishFile(const base::FilePath& path, const std::string& mime_type);
+#if BUILDFLAG(IS_ANDROID)
+// Shows how a download stands in the phone's notification for it (pb_abi.h show_download).
+void ShowDownload(int64_t id,
+                  const std::string& name,
+                  const base::FilePath& path,
+                  int32_t state,
+                  int64_t received,
+                  int64_t total,
+                  bool paused);
+#endif
 
 }  // namespace project_b
 

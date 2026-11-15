@@ -37,6 +37,9 @@ static inline void call_download_url(const PBEngineCalls* c, int64_t tab, const 
 static inline void call_download_command(const PBEngineCalls* c, uint32_t download, int32_t command) { c->download_command(download, command); }
 static inline void call_open_file(const PBEngineCalls* c, const char* path) { c->open_file(path); }
 static inline void call_reveal_file(const PBEngineCalls* c, const char* path) { c->reveal_file(path); }
+static inline void call_show_download(const PBEngineCalls* c, int64_t id, const char* name, const char* path, int32_t state, int64_t received, int64_t total, int paused) {
+  if (c->show_download) c->show_download(id, name, path, state, received, total, paused);
+}
 static inline void call_find(const PBEngineCalls* c, int64_t tab, int32_t request, const char* text, int forward, int find_next) { c->find(tab, request, text, forward, find_next); }
 static inline void call_stop_finding(const PBEngineCalls* c, int64_t tab) { c->stop_finding(tab); }
 static inline void call_exit_page_full_screen(const PBEngineCalls* c, int64_t tab) { c->exit_page_full_screen(tab); }
@@ -184,6 +187,17 @@ func (e *nativeEngine) OpenFile(path string) {
 	cs := C.CString(path)
 	defer C.free(unsafe.Pointer(cs))
 	C.call_open_file(e.calls, cs)
+}
+
+func (e *nativeEngine) ShowDownload(id int, d engine.Download) {
+	name, path := C.CString(filepath.Base(d.Path)), C.CString(d.Path)
+	defer C.free(unsafe.Pointer(name))
+	defer C.free(unsafe.Pointer(path))
+	paused := 0
+	if d.Paused {
+		paused = 1
+	}
+	C.call_show_download(e.calls, C.int64_t(id), name, path, C.int32_t(d.State), C.int64_t(d.Received), C.int64_t(d.Total), C.int(paused))
 }
 
 func (e *nativeEngine) RevealFile(path string) {

@@ -1,17 +1,27 @@
 package dev.projectb.browser;
 
+import android.Manifest;
+import android.app.Activity;
 import android.app.DownloadManager;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Environment;
+import android.os.SystemClock;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.webkit.MimeTypeMap;
 
+import org.chromium.base.ApplicationStatus;
 import org.chromium.base.ContextUtils;
 import org.jni_zero.CalledByNative;
 import org.jni_zero.JNINamespace;
@@ -20,6 +30,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -81,8 +93,14 @@ final class Downloads {
         });
     }
 
+    // Opens the shared copy, once the copy publish started is made: Open right after a
+    // download ends would otherwise find nothing yet and do nothing.
     @CalledByNative
     static void open(String path) {
+        sCopier.execute(() -> openNow(path));
+    }
+
+    private static void openNow(String path) {
         Context context = ContextUtils.getApplicationContext();
         String shared = published().getString(path, null);
         if (shared == null) {
@@ -93,14 +111,8 @@ final class Downloads {
         Intent intent = new Intent(Intent.ACTION_VIEW)
                 .setDataAndType(uri, context.getContentResolver().getType(uri))
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
-    // Opens the shared copy, once the copy publish started is made: Open right after a
-    // download ends would otherwise find nothing yet and do nothing.
         try {
             context.startActivity(Intent.createChooser(intent, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-        sCopier.execute(() -> openNow(path));
-    }
-
-    private static void openNow(String path) {
         } catch (Exception e) {
             Log.w(TAG, "nothing opens " + path, e);
         }
@@ -115,5 +127,103 @@ final class Downloads {
         } catch (Exception e) {
             Log.w(TAG, "no downloads app", e);
         }
+    }
+
+    // The notification of each download (pb_abi.h show_download), by Go's id for it: its
+    // progress while it runs, at most a few times a second as Android drops faster updates;
+    // once done, a tap opens the shared copy, posted once that copy is made; cancelled, it
+    // goes; failed, it says so. PBDownloadState: 0 progress, 1 done, 2 cancelled, 3 failed.
+    private static final String CHANNEL = "downloads";
+    // The action, and its extra, the path, of a tap on a finished download's notification.
+    static final String OPEN = "dev.projectb.browser.OPEN_DOWNLOAD";
+    private static final Map<Long, Long> sShownAt = new HashMap<>();
+    private static boolean sAsked;
+
+    @CalledByNative
+    static void show(long id, String name, String path, int state, long received, long total, boolean paused) {
+        Context context = ContextUtils.getApplicationContext();
+        NotificationManager manager = context.getSystemService(NotificationManager.class);
+        if (manager.getNotificationChannel(CHANNEL) == null) {
+            manager.createNotificationChannel(new NotificationChannel(CHANNEL, "Downloads", NotificationManager.IMPORTANCE_LOW));
+        }
+        askToNotify(context);
+        int tag = (int) id;
+        if (state == 2) {
+            sShownAt.remove(id);
+            manager.cancel(CHANNEL, tag);
+            return;
+        }
+        if (state == 0) {
+            long now = SystemClock.elapsedRealtime();
+            Long at = sShownAt.get(id);
+            if (at != null && now - at < 500 && !paused) return;
+            sShownAt.put(id, now);
+            Notification.Builder b = new Notification.Builder(context, CHANNEL)
+                    .setSmallIcon(android.R.drawable.stat_sys_download)
+                    .setContentTitle(name)
+                    .setContentText(paused ? "Paused" : total > 0 ? sizeOf(received) + " of " + sizeOf(total) : sizeOf(received))
+                    .setProgress(total > 0 ? 100 : 0, total > 0 ? (int) (received * 100 / total) : 0, total <= 0)
+                    .setOngoing(!paused)
+                    .setOnlyAlertOnce(true)
+                    .setContentIntent(app(context));
+            manager.notify(CHANNEL, tag, b.build());
+            return;
+        }
+        sShownAt.remove(id);
+        if (state == 3) {
+            manager.notify(CHANNEL, tag, new Notification.Builder(context, CHANNEL)
+                    .setSmallIcon(android.R.drawable.stat_notify_error)
+                    .setContentTitle(name)
+                    .setContentText("Download failed")
+                    .setAutoCancel(true)
+                    .setContentIntent(app(context))
+                    .build());
+            return;
+        }
+        // Done: a tap opens the file as Open does. It goes through the app's activity, which
+        // opens it: Android lets only the app itself hand its shared copy to another app.
+        PendingIntent tap = PendingIntent.getActivity(context, tag,
+                new Intent(context, BrowserActivity.class).setAction(OPEN).putExtra(OPEN, path)
+                        .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        sCopier.execute(() -> {
+            manager.notify(CHANNEL, tag, new Notification.Builder(context, CHANNEL)
+                    .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                    .setContentTitle(name)
+                    .setContentText(total > 0 ? "Downloaded · " + sizeOf(total) : "Downloaded")
+                    .setAutoCancel(true)
+                    .setContentIntent(tap)
+                    .build());
+        });
+    }
+
+    // A tap that brings the app forward.
+    private static PendingIntent app(Context context) {
+        Intent intent = new Intent(context, BrowserActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        return PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    // Android 13 and later show an app's notifications only once the person allows them:
+    // asked for at the first download, once a run.
+    private static void askToNotify(Context context) {
+        if (sAsked || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return;
+        if (context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return;
+        Activity activity = ApplicationStatus.getLastTrackedFocusedActivity();
+        if (activity == null) return;
+        sAsked = true;
+        activity.requestPermissions(new String[] {Manifest.permission.POST_NOTIFICATIONS}, 7);
+    }
+
+    // A size as the phone gives it: 1000 to a kilobyte, one decimal place under ten.
+    private static String sizeOf(long n) {
+        if (n < 1000) return n + " B";
+        String[] units = {"KB", "MB", "GB", "TB"};
+        double v = n;
+        int u = -1;
+        do {
+            v /= 1000;
+            u++;
+        } while (v >= 1000 && u < units.length - 1);
+        return (v < 10 ? String.format(java.util.Locale.ROOT, "%.1f", v) : String.valueOf(Math.round(v))) + " " + units[u];
     }
 }
