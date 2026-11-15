@@ -30,3 +30,7 @@ func systemReport() []crash.Section {
 		{Title: "The app's log, its end (logcat)", Text: string(logcat)},
 	}
 }
+
+// downloadsDir is "" on a phone: a download lands in the profile's own Downloads folder, and
+// the engine copies it, once done, into the phone's shared Downloads (docs/daily-driver.md).
+func downloadsDir(string) string { return "" }

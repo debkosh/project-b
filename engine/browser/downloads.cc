@@ -102,6 +102,9 @@ void Downloads::OnDownloadUpdated(download::DownloadItem* item) {
   }
   if (item->IsDone()) {
     item->RemoveObserver(this);
+    if (item->GetState() == download::DownloadItem::COMPLETE) {
+      PublishFile(item->GetTargetFilePath(), item->GetMimeType());
+    }
   }
 }
 

@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -23,3 +24,6 @@ func systemReport() []crash.Section {
 		{Title: "Device", Text: run("/usr/sbin/sysctl", "-n", "hw.model")},
 	}
 }
+
+// downloadsDir is where downloads go: the user's own Downloads folder.
+func downloadsDir(home string) string { return filepath.Join(home, "Downloads") }

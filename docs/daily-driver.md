@@ -89,8 +89,11 @@ each download a `listitem` by its file name, its progress while it runs, Open an
 Finder once done, Cancel while it runs. Standard puts the control in its toolbar and shows a
 download's progress on it. The contract's rule 17 checks it, by role and name.
 
-**Android.** Downloads go to the app's own files and open through Android's share sheet.
-Built after the Mac's.
+**Android.** There is no Save panel: a download goes where Go says, the profile's own
+Downloads folder. Once done, the engine copies it into the phone's shared Downloads through
+MediaStore, where the Files app and other apps find it, and removes the app's own copy. Open
+opens the shared copy with the app the phone picks, and Show opens the phone's own list of
+downloads. What each file became is kept in the app, so Open still works after a restart.
 
 ## File upload
 

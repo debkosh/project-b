@@ -201,9 +201,6 @@ void CallWriteClipboard(const char* text, size_t length) {
   g_engine->WriteClipboard(std::string(text, length));
 }
 
-// Downloads are the Mac's so far: a phone has no delegate yet, and these do nothing there
-// (docs/daily-driver.md).
-#if BUILDFLAG(IS_MAC)
 void CallDownloadURL(int64_t tab, const char* url, int save_as) {
   CheckMainThread();
   PageTab* page = g_engine->tab(tab);
@@ -233,12 +230,6 @@ void CallRevealFile(const char* path) {
   CheckMainThread();
   RevealFile(base::FilePath::FromUTF8Unsafe(path));
 }
-#else
-void CallDownloadURL(int64_t tab, const char* url, int save_as) {}
-void CallDownloadCommand(uint32_t download, int32_t command) {}
-void CallOpenFile(const char* path) {}
-void CallRevealFile(const char* path) {}
-#endif
 
 void CallAnswerDialog(int64_t dialog, int ok, const char* text) {
   CheckMainThread();
