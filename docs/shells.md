@@ -409,11 +409,13 @@ it there; a phone shell may be left out of a rule for a desktop feature.
     actions it shows, and in what order, is the shell's ([daily-driver.md](daily-driver.md#right-click)).
     A shell that draws nothing shows no menu, which this catches. The shells that don't have
     it yet are listed in the check, with who brings each.
-17. **On a desktop, a control named Downloads shows once the profile has a download,** and
-    opens a list where each download is a `listitem` by its file name, a finished one with
-    Open and Show in Finder, which make Go open the file or show it
-    ([daily-driver.md](daily-driver.md#downloads)). The shells that don't have it yet are
-    listed in the check, with who brings each.
+17. **A control named Downloads shows once the profile has a download,** and opens a list
+    where each download is a `listitem` by its file name, a finished one with Open and Show
+    in Finder, which make Go open the file or show it
+    ([daily-driver.md](daily-driver.md#downloads)). On a phone the control may be an item of
+    the menu one of the shell's controls opens, and Show in Finder is Show in Downloads, the
+    phone's Downloads app. The shells that don't have it yet are listed in the check, with
+    who brings each.
 18. **A window with no tabs** ([windows.md](windows.md#a-window-with-no-tabs)): the shell
     draws an empty state of its own where the page was, as its own, so a press there
     reaches the shell. New Tab and Address still work, each a way to a tab there, and Close
@@ -691,6 +693,11 @@ address field, and a menu button at the far right, in our tones.
   (`closeTab` with `then: "recent"`); down to a window with no tabs, which says No tabs
   with New tab (rule 18); and only from there does the app go, as Android's back does.
   Closing the last tab another way leaves No tabs too.
+- **Downloads** is an item of the ⋯ menu once the profile has a download, with how many
+  are in progress; it opens a sheet of them, newest first, each by its file name with its
+  size or how far it has got. A running one has Pause or Resume and Cancel; a finished one
+  Open, and Show in Downloads, which opens the phone's Downloads app, where the file is
+  kept (rule 17). Clear takes the finished ones off the list.
 - **A long press on a link** in the page opens the shell's sheet for it, since a phone
   has no menu of its own: Open in new tab in group first, as Chrome has it, then Open in
   new tab, Open in workspace, and Copy link; on an image, Open image in new tab and Copy

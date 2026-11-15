@@ -477,6 +477,28 @@ const H = 915;
   await backKey();
   check('and the back key answers it no too', await until(async () => (await answers()).at(-1).ok === false && (await ask.count()) === 0));
 
+  // Downloads: the menu has them once there is one, and they open in a sheet of their own,
+  // each a finger's reach, which the back key closes.
+  check('with no download, the menu has no Downloads', await (async () => {
+    await menuButton.tap();
+    await until(() => menu.isVisible());
+    const none = (await ui.getByRole('menuitem', { name: 'Downloads' }).count()) === 0;
+    await backKey();
+    await until(async () => !(await menu.isVisible()));
+    return none;
+  })());
+  await fire('download', 'https://example.com/files/report.pdf');
+  await menuButton.tap();
+  await until(() => menu.isVisible());
+  const downloadsItem = ui.getByRole('menuitem', { name: 'Downloads' });
+  check('a download brings Downloads to the menu', await until(() => downloadsItem.isVisible()));
+  await downloadsItem.tap();
+  const downloads = ui.getByRole('dialog', { name: 'Downloads' });
+  check('which opens the downloads sheet, with the file by its name', await until(async () => (await downloads.isVisible()) && (await downloads.getByRole('listitem', { name: 'report.pdf' }).isVisible())));
+  await shots('downloads');
+  await backKey();
+  check('the back key closes it', await until(async () => !(await downloads.isVisible())));
+
   // Settings, from the menu.
   await menuButton.tap();
   await menu.getByRole('menuitem', { name: 'Settings' }).tap();

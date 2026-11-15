@@ -33,7 +33,7 @@ const rules = {
   14: 'Before Go\'s data comes it draws a splash of its own, marked aria-busy="true", with none of its controls; when the data comes the splash goes and the UI shows',
   15: 'A page\'s alert, confirm and prompt show as an alertdialog with Go\'s buttons by name, a prompt with a field; the answer reaches the page; another tab shown hides it, and back shows it',
   16: 'On a desktop, a right click in a page opens a menu of Go\'s actions there; choosing one makes Go do it; Escape, or a press outside, closes it',
-  17: 'On a desktop, a control named Downloads shows once there is a download, and opens a list of them by file name, a finished one with Open and Show in Finder',
+  17: 'A control named Downloads shows once there is a download, and opens a list of them by file name, a finished one with Open and Show in Finder (on a phone, Show in Downloads)',
   18: 'A window with no tabs: the shell draws its own empty state where the page was, New Tab and Address are each a way to a tab there, and Close Tab then closes the window',
   20: 'On a desktop, the find key opens a text box named Find in page with the keyboard in it; typing searches and shows the count; Enter shows the next match; Escape closes it',
   21: 'On a desktop, a page in full screen covers the whole window with nothing of the shell on it, and when it ends the window is as it was',
@@ -566,22 +566,28 @@ const noEmptyStateYet = {
       }
     }
 
-    // 17. Downloads, on a desktop shell.
-    if (shell.phone) {
-      rule(17, 'not for a phone yet: a phone\'s downloads come later', true);
-    } else if (noDownloadsYet[id]) {
+    // 17. Downloads. On a phone the control may be an item of the menu one of the shell's
+    // controls opens, and the file shows in the phone's Downloads rather than Finder.
+    if (noDownloadsYet[id]) {
       rule(17, `not checked yet: ${noDownloadsYet[id]}`, true);
     } else {
       try {
-        const control = ui.getByRole('button', { name: 'Downloads' });
+        const reveal = shell.phone ? 'Show in Downloads' : 'Show in Finder';
+        const control = ui.getByRole('button', { name: 'Downloads' }).or(ui.getByRole('menuitem', { name: 'Downloads' }));
         await fire('download', 'https://contract.test/files/contract.pdf');
-        rule(17, 'a download brings a control named Downloads', await until(() => control.first().isVisible()));
+        const menu = ui.getByRole('button', { name: 'Menu', exact: true });
+        const shows = async () => {
+          if (await control.first().isVisible()) return true;
+          if (shell.phone && await menu.isVisible()) await menu.click();
+          return control.first().isVisible();
+        };
+        rule(17, 'a download brings a control named Downloads', await until(shows));
         await control.first().click();
         const entry = ui.getByRole('listitem', { name: 'contract.pdf' });
         rule(17, 'which opens a list with the download by its file name', await until(() => entry.isVisible()));
-        rule(17, 'finished, it has Open and Show in Finder', await until(async () => (await entry.getByRole('button', { name: 'Open' }).count()) === 1 && (await entry.getByRole('button', { name: 'Show in Finder' }).count()) === 1));
-        await entry.getByRole('button', { name: 'Show in Finder' }).click();
-        rule(17, 'Show in Finder makes Go show the file', await until(async () => (await regions()).shown?.length > 0));
+        rule(17, `finished, it has Open and ${reveal}`, await until(async () => (await entry.getByRole('button', { name: 'Open' }).count()) === 1 && (await entry.getByRole('button', { name: reveal }).count()) === 1));
+        await entry.getByRole('button', { name: reveal }).click();
+        rule(17, `${reveal} makes Go show the file`, await until(async () => (await regions()).shown?.length > 0));
         await page.keyboard.press('Escape');
       } catch (e) {
         rule(17, 'its checks ran to their end', false, e.message.split('\n')[0]);
