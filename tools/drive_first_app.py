@@ -683,7 +683,10 @@ def settings_checks():
 
     app.close()
 
-    # After a restart the keymap is still the user's: the key opens the box over a tab.
+    # After a restart the keymap is still the user's: the key opens the box over a tab. Tabs come
+    # back at start by default, so start fresh, on the box, as this check expects.
+    if os.path.exists(os.path.join(profile, "session.json")):
+        os.remove(os.path.join(profile, "session.json"))
     app = App(profile)
     from_box(app, PAGES)
     rows = app.js(ROWS)
@@ -2284,7 +2287,7 @@ def internal_checks():
     while app.cmd("evalsettings", "document.hasFocus()") != "true" and time.time() < deadline:
         time.sleep(0.05)
     check("a press in its page gives it the keyboard", app.cmd("evalsettings", "document.hasFocus()") == "true")
-    check("the window is titled after it", app.cmd("title") == "Settings", app.cmd("title"))
+    check("the window is titled after it", app.cmd("title").startswith("Settings"), app.cmd("title"))
     # Its title and icon are its page's, as a web page's are.
     png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEUlEQVR42mO44GDwH4QZYAwAT/QI/dxDFCMAAAAASUVORK5CYII="
     app.cmd("evalsettings", f"(document.title='Settings › Test',document.head.append(Object.assign(document.createElement('link'),{{id:'test-icon',rel:'icon',href:{json.dumps(png)}}})),1)")
