@@ -173,13 +173,21 @@
     });
   }
 
+  // dataURL is an image as a data: URL, as the engine hands Go a page's icon.
+  const dataURL = (u) => fetch(u).then((r) => r.blob()).then((b) => new Promise((done) => {
+    const reader = new FileReader();
+    reader.onload = () => done(reader.result);
+    reader.readAsDataURL(b);
+  }));
+
   function place(frame, r) {
     Object.assign(frame.style, { left: `${r.x}px`, top: `${r.y}px`, width: `${r.w}px`, height: `${r.h}px` });
   }
 
   // placeOurs keeps a frame of our page for each tab of ours the window holds, made the
-  // first time, and shows those the layout shows where it puts them. Its page's title is
-  // the tab's, and a press in it gives the tab the keyboard, as the real engine tells Go.
+  // first time, and shows those the layout shows where it puts them. Its page's title and
+  // icon are the tab's, each time they change, and a press in it gives the tab the
+  // keyboard, as the real engine tells Go of a page's.
   function placeOurs(held, shown) {
     for (const [tab, frame] of ours) {
       if (!held.some((o) => o.tab === tab)) {
@@ -197,7 +205,18 @@
       frame.src = `/${o.page}/?tab=${o.tab}`;
       follow(frame);
       frame.addEventListener('load', () => {
-        fire('title', frame.contentDocument.title, o.tab);
+        const doc = frame.contentDocument;
+        const said = {};
+        const tell = async () => {
+          if (doc.title !== said.title) fire('title', (said.title = doc.title), o.tab);
+          const icon = doc.querySelector('link[rel~=icon]')?.href || '';
+          if (icon !== said.icon) {
+            said.icon = icon;
+            fire('favicon', icon && (await dataURL(icon)), o.tab);
+          }
+        };
+        new MutationObserver(tell).observe(doc.head, { subtree: true, childList: true, characterData: true, attributes: true });
+        tell();
         frame.contentWindow.addEventListener('pointerdown', () => fire('focusTab', '', o.tab), true);
       });
       shell.before(frame);
