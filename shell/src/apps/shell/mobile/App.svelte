@@ -4,6 +4,7 @@
   import CardMenu from './CardMenu.svelte';
   import CrashBar from './CrashBar.svelte';
   import DownloadsSheet from './DownloadsSheet.svelte';
+  import FindBar from './FindBar.svelte';
   import Extensions from './Extensions.svelte';
   import GroupSheet from './GroupSheet.svelte';
   import LinkSheet from './LinkSheet.svelte';
@@ -49,13 +50,17 @@
   // The shown tab's page dialog, which the back key answers no, before any sheet.
   let pageDialog;
   const asking = $derived(go.dialogs.some((d) => d.tab === go.active));
-  $effect(() => send({ t: 'backCloses', on: !!sheet || editing || asking }));
+  // The shown tab's find bar, in the toolbar's place, which the back key closes.
+  let findBar = $state();
+  const finding = $derived(!!go.find && go.find.tab === go.active);
+  $effect(() => send({ t: 'backCloses', on: !!sheet || editing || asking || finding }));
 
   // The phone's back key: the page's dialog is answered no, the sheet open closes, or the
   // editing ends.
   function backKey() {
     if (asking) pageDialog.cancel();
     else if (sheet) sheet = '';
+    else if (finding) findBar.close();
     else if (editing) {
       address.blur();
       focusPage();
@@ -90,7 +95,7 @@
 
   function scrolled(m) {
     const editing = document.activeElement?.getAttribute('aria-label') === 'Address';
-    if (m.tab === go.active && !sheet && !editing) bars(m.direction !== 'down');
+    if (m.tab === go.active && !sheet && !editing && !finding) bars(m.direction !== 'down');
   }
 
   $effect(() => {
@@ -174,6 +179,12 @@
   connect({
     snapshot: activated,
     tabs: activated,
+    // The find key, or Find in page from the menu: the bar shows with the keyboard in it.
+    focusFind: () => {
+      sheet = '';
+      bars(true);
+      queueMicrotask(() => findBar?.focus());
+    },
     focusAddressBar: () => {
       sheet = '';
       bars(true);
@@ -200,7 +211,10 @@
   {/if}
   {#if top}
     <div class="bars head" class:away class:gone>
-      <Toolbar {tab} top count={go.tabs.length} {sheet} {onsheet} onswipe={swipe} onedit={(on) => (editing = on)} bind:address />
+      <div class="tool">
+        <Toolbar {tab} top count={go.tabs.length} {sheet} {onsheet} onswipe={swipe} onedit={(on) => (editing = on)} bind:address />
+        {#if finding}<FindBar bind:this={findBar} />{/if}
+      </div>
     </div>
   {/if}
   <div class="stage">
@@ -239,7 +253,10 @@
   <div class="bars" class:away class:gone>
     <CrashBar />
     {#if !top}
-      <Toolbar {tab} count={go.tabs.length} {sheet} {onsheet} onswipe={swipe} onedit={(on) => (editing = on)} bind:address />
+      <div class="tool">
+        <Toolbar {tab} count={go.tabs.length} {sheet} {onsheet} onswipe={swipe} onedit={(on) => (editing = on)} bind:address />
+        {#if finding}<FindBar bind:this={findBar} />{/if}
+      </div>
     {/if}
   </div>
   {#if sheet === 'menu'}
@@ -357,6 +374,10 @@
     position: relative;
     flex: 1;
     min-height: 0;
+  }
+
+  .tool {
+    position: relative;
   }
 
   .bars {

@@ -422,10 +422,10 @@ it there; a phone shell may be left out of a rule for a desktop feature.
     Tab then closes the window. What the empty state is, each shell decides; each so far
     shows a quiet No tabs and New Tab. The check holds every shell to it but the two
     hidden shells, which are being removed.
-20. **On a desktop, the find key (`find.open`) opens a text box named Find in page with the
-    keyboard in it;** what is typed searches the active tab's page and the count shows,
-    Enter shows the next match, and Escape closes it and ends the search
-    ([daily-driver.md](daily-driver.md#find-in-page)). The shells that don't have it yet are
+20. **The find key (`find.open`), or on a phone the menu's item for it, opens a text box
+    named Find in page with the keyboard in it;** what is typed searches the active tab's
+    page and the count shows, Enter shows the next match, and Escape, or a phone's back
+    key, closes it and ends the search ([daily-driver.md](daily-driver.md#find-in-page)). The shells that don't have it yet are
     listed in the check, with who brings each.
 21. **On a desktop, a page in full screen (`state.pageFullScreen`, the active tab) covers
     the whole window with nothing of the shell on it,** no band and no controls; when it
@@ -693,6 +693,9 @@ address field, and a menu button at the far right, in our tones.
   (`closeTab` with `then: "recent"`); down to a window with no tabs, which says No tabs
   with New tab (rule 18); and only from there does the app go, as Android's back does.
   Closing the last tab another way leaves No tabs too.
+- **Find in page**, from the ⋯ menu, puts a find bar in the toolbar's place with the
+  keyboard in it: the field with the count at its end, the match before and after, and
+  ×, as the back key, closes it. The bars stay while it is open (rule 20).
 - **Downloads** is an item of the ⋯ menu once the profile has a download, with how many
   are in progress; it opens a sheet of them, newest first, each by its file name with its
   size or how far it has got. A running one has Pause or Resume and Cancel; a finished one
