@@ -35,6 +35,9 @@ const { check, fire, regions, settle, until } = lib;
     await page.emulateMedia({ colorScheme: 'light' });
   };
 
+  // Standard starts with no tab; the checks want one.
+  await until(async () => (await regions()).shell === 'standard', 10000);
+  await fetch(`${lib.base}/shell/send?window=1`, { method: 'POST', body: JSON.stringify({ t: 'newTab' }) });
   check('comes up', await until(async () => (await regions()).shell === 'standard' && (await regions()).visible.length === 1, 10000));
   await fire('navigate', 'https://a.test/');
   await until(async () => (await regions()).tabs[0]?.title !== '');
@@ -105,7 +108,8 @@ const { check, fire, regions, settle, until } = lib;
   check('Paste pastes into the page', await until(async () => JSON.stringify((await regions()).edits) === '[5]'), JSON.stringify((await regions()).edits));
 
   await rightClick({});
-  check('the page offers Back, Forward disabled with nowhere to go, and Reload', (await item('Back').getAttribute('aria-disabled')) === null && (await item('Forward').getAttribute('aria-disabled')) === 'true' && (await item('Reload').count()) === 1);
+  // The tab began at a.test, made by newTab with nothing in it, so there is nowhere back.
+  check('the page offers Back and Forward disabled with nowhere to go, and Reload', (await item('Back').getAttribute('aria-disabled')) === 'true' && (await item('Forward').getAttribute('aria-disabled')) === 'true' && (await item('Reload').count()) === 1);
   await shoot('page');
   await page.keyboard.press('Escape');
   await gone();
@@ -146,7 +150,7 @@ const { check, fire, regions, settle, until } = lib;
   check('its field starts with the page\'s text', (await ask.getByRole('textbox').inputValue()) === 'mock');
   await shoot('prompt');
   const t1 = (await regions()).active;
-  await ui.getByRole('button', { name: 'New Tab' }).first().click();
+  await fetch(`${lib.base}/shell/send?window=1`, { method: 'POST', body: JSON.stringify({ t: 'newTab', text: 'https://b.test/' }) });
   check('another tab shown hides it', await until(async () => (await ask.count()) === 0 && (await regions()).active !== t1));
   check('and its tab\'s row says it waits', await until(async () => (await ui.locator(`[role=tab][data-tab="${t1}"] [aria-label="Waiting for an answer"]`).count()) === 1));
   await ui.locator(`[role=tab][data-tab="${t1}"]`).click();
