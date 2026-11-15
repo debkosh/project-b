@@ -40,7 +40,6 @@ ICON = (66, 133, 133)  # --icon, the toolbar's buttons: the frame mixed 0.16 tow
 # (shell/src/apps/shell/standard/CommandBox.vue). Standard takes New Tab: the app starts and
 # New Window opens with no tab and this box in the page area, and Cmd+T opens it over the
 # page and makes no tab; an address typed in it with Enter makes the tab.
-BOX_TINT = (241, 247, 247)
 PAGE_LOAD = 3.0
 ANIMATION = 2.0
 MOVE = (60, 40)
@@ -1583,13 +1582,22 @@ def side():
     return crop(desk.image(), PX + SIDE[0], PY + SIDE[1], SIDE[2], SIDE[3])
 
 
-def boxed():
-    """How much of the page area shows the command box's colour."""
-    return float(np.mean(near(crop(desk.image(), PX + PAGE_V[0], PY + PAGE_V[1], PAGE_V[2], PAGE_V[3]), BOX_TINT, 6)))
+def page_area():
+    return crop(desk.image(), PX + PAGE_V[0], PY + PAGE_V[1], PAGE_V[2], PAGE_V[3])
 
 
 # Standard takes New Tab: Cmd+T opens the command box over the page and makes no tab, Escape
-# goes back to the page, and an address typed in the box with Enter makes the tab.
+# goes back to the page, and an address typed in the box with Enter makes the tab. The box
+# lays a scrim over the whole page area, so how much of it differs from the page before is
+# how much of it the box covers.
+under = page_area()
+
+
+def boxed():
+    """How much of the page area the command box's scrim has changed."""
+    return changed(under, page_area())
+
+
 one = side()
 desk.key("cmd+t")
 start = time.time()
@@ -1865,11 +1873,11 @@ def page_until(want, limit=PAGE_LOAD + 5):
 
 on_top = page(PAGE_H)
 desk.key("cmd+t")
-boxed_top = page_until(lambda p: float(np.mean(near(p, BOX_TINT, 6))) > 0.5)
-check("Cmd+T opens the command box, tabs on top", float(np.mean(near(boxed_top, BOX_TINT, 6))) > 0.5)
+boxed_top = page_until(lambda p: changed(on_top, p) > 0.5)
+check("Cmd+T opens the command box, tabs on top", changed(on_top, boxed_top) > 0.5)
 desk.type(CHARLIE)
 desk.key("return")
-second_tab = page_until(lambda p: changed(on_top, p) > 0.001 and float(np.mean(near(p, BOX_TINT, 6))) < 0.2)
+second_tab = page_until(lambda p: changed(on_top, p) > 0.001 and changed(boxed_top, p) > 0.5)
 click_on(T["tabs"][0])
 check("a click reaches a tab at title-bar height", changed(page_until(lambda p: changed(p, on_top) < 0.01), on_top) < 0.01 and still())
 click_on(T["tabs"][1])
