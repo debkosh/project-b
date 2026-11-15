@@ -63,7 +63,6 @@ const noDialogsYet = {
 const noPageFullYet = {
   terminal: 'r4 brings it',
   fox: 'r4 brings it',
-  minimal: 'r4 brings it',
 };
 
 // The desktop shells that don't draw a find bar yet, and who brings each. Rule 20 holds
