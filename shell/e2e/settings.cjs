@@ -650,6 +650,12 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
     await until(async () => (await site.locator('.row').first().textContent()).includes('Connection is secure')), await site.textContent());
   await settle(page);
   await page.screenshot({ path: path.join(out, 'settings-site.png') });
+  check('the site\'s view has the ad blocker, on, and links to other sites, allowed',
+    (await siteRadio('Ad blocker', 'On').getAttribute('aria-checked')) === 'true' && (await siteRadio('Links to other sites', 'Allow').getAttribute('aria-checked')) === 'true');
+  await siteRadio('Links to other sites', 'New tab').click();
+  check('New tab there sets it for the site', await until(() => sitesFile()['https://meet.test']?.links === 'newtab'), JSON.stringify(sitesFile()));
+  await siteRadio('Links to other sites', 'Allow').click();
+  check('and Allow, the default, forgets it', await until(() => !('links' in (sitesFile()['https://meet.test'] || {}))), JSON.stringify(sitesFile()));
   await siteRadio('Camera', 'Allow').click();
   check('Allow there sets it for the site', await until(() => sitesFile()['https://meet.test']?.camera === 'allow'), JSON.stringify(sitesFile()));
   await siteRadio('Camera', 'Ask').click();
@@ -668,6 +674,34 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   await removeItem.click();
   check('Remove forgets the site', await until(async () => !('https://news.test' in sitesFile()) && !(await sites.textContent()).includes('news.test')));
   check('with none left, the list says so', await until(async () => (await sites.textContent()).includes('No site has asked for a permission yet')));
+  await page.close();
+  await fetch(`${base}/mock/fire`, { method: 'POST', body: new URLSearchParams({ kind: 'key', value: 'closeTab' }) });
+  await until(async () => (await regions()).settings === 0);
+
+  // Sparks: New opens an editor; a save Go refuses says why; one it takes is listed, with
+  // its switch, and Delete removes it.
+  await ui.getByRole('button', { name: 'Settings', exact: true }).click();
+  await until(settingsShown);
+  page = await open();
+  await page.getByRole('button', { name: 'Sparks', exact: true }).click();
+  const sparksRegion = page.getByRole('region', { name: 'Sparks' });
+  check('Sparks says there are none yet', await until(async () => (await sparksRegion.textContent()).includes('No sparks yet')));
+  await sparksRegion.getByRole('button', { name: 'New' }).click();
+  const source = sparksRegion.getByRole('textbox', { name: 'Spark source' });
+  await source.fill('// ==UserScript==\n// @name Nameless match\n// ==/UserScript==\n');
+  await sparksRegion.getByRole('button', { name: 'Save' }).click();
+  check('a spark without @match is refused, saying why', await until(async () => /@match/.test((await sparksRegion.getByRole('alert').textContent().catch(() => '')) || '')));
+  await source.fill('// ==UserScript==\n// @name Wide pages\n// @match https://news.test/*\n// ==/UserScript==\ndocument.body.style.maxWidth = "none";\n');
+  await sparksRegion.getByRole('button', { name: 'Save' }).click();
+  const row = sparksRegion.getByRole('group', { name: 'Wide pages' });
+  check('a good one is listed, on, with where it runs', await until(async () => (await row.isVisible()) && (await row.getByRole('checkbox').isChecked()) && (await row.textContent()).includes('https://news.test/*')));
+  check('and the editor closes', await until(async () => (await source.count()) === 0));
+  await settle(page);
+  await page.screenshot({ path: path.join(out, 'settings-sparks.png') });
+  await row.getByRole('checkbox').click();
+  check('its switch turns it off', await until(async () => !(await row.getByRole('checkbox').isChecked())));
+  await row.getByRole('button', { name: 'Delete' }).click();
+  check('Delete removes it', await until(async () => (await row.count()) === 0));
   await page.close();
   await fetch(`${base}/mock/fire`, { method: 'POST', body: new URLSearchParams({ kind: 'key', value: 'closeTab' }) });
   await until(async () => (await regions()).settings === 0);

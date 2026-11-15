@@ -40,7 +40,8 @@ const rules = {
   21: 'A page in full screen covers the whole window with nothing of the shell on it, and when it ends (Escape, or a phone\'s back key) the window is as it was',
   22: 'A site\'s sign-in shows as an alertdialog with text boxes named Username and Password, and Go\'s Sign in answers with both',
   30: 'A site asking for its camera, microphone or notifications in the active tab brings a dialog named by its question, with Block and Allow, or Block, Always allow and Allow this time; an Allow grants it, Block denies it, Escape dismisses it',
-  31: 'On a web page, a control named Site settings opens settings on that site',
+  31: 'On a web page, a control named Site settings opens settings on that site, at once or from its panel\'s Details',
+  33: 'The Site settings control opens a panel over the page, a dialog named Site settings for the site\'s host, with a switch named Ad blocker and a choice of Links to other sites, each Go\'s and each changing Go\'s setting; Escape closes it',
   32: 'A page that failed to load, or has a bad certificate, is covered by an alert with Go\'s sentence and its actions as buttons; Try again loads it again, and Open anyway opens it',
 };
 
@@ -94,6 +95,15 @@ const noPromptYet = {
   glide: 'the daily driver session brings it',
   mobile: 'the android session brings it, as a sheet',
   'mobile-native': 'the native mobile shell session brings it',
+};
+
+// The shells whose Site settings control goes straight to settings, without the site panel,
+// and why (docs/site-features.md). Rule 33 holds every other shell to the panel.
+const noPanelYet = {
+  minimal: 'goes straight to settings, as a minimal shell',
+  terminal: 'the terminal session brings it',
+  glide: 'the daily driver session brings it',
+  'mobile-native': 'the native mobile shell is on hold',
 };
 
 // The shells that don't draw Go's notice over a page yet, and who brings it to each
@@ -665,11 +675,57 @@ const noNoticeYet = {
         const control = ui.getByRole('button', { name: 'Site settings' });
         rule(31, 'on a web page, a control named Site settings is there', await until(() => control.first().isVisible()));
         await control.first().click();
+        if (!noPanelYet[id]) {
+          await ui.getByRole('dialog', { name: 'Site settings for contract.test' }).getByRole('button', { name: 'Details' }).click();
+        }
         const site = page.frameLocator('iframe.our-page[data-page="settings"]').getByRole('region', { name: 'contract.test' });
         rule(31, 'pressed, it opens settings on that site', (await settingsShown()) && (await until(async () => (await site.count()) === 1)));
         await closeSettings();
       } catch (e) {
         rule(31, 'its checks ran to their end', false, e.message.split('\n')[0]);
+      }
+    }
+
+    // 33. The site panel.
+    if (noPanelYet[id]) {
+      rule(33, `not checked yet: ${noPanelYet[id]}`, true);
+    } else {
+      try {
+        const tab = (await regions()).active;
+        await fire('navigate', 'https://contract.test/panel', { tab });
+        await until(async () => {
+          const t = (await regions()).tabs.find((x) => x.id === tab);
+          return t?.url === 'https://contract.test/panel' && !t.loading;
+        });
+        await fire('focusTab', '', { tab });
+        const control = ui.getByRole('button', { name: 'Site settings' }).first();
+        const panel = ui.getByRole('dialog', { name: 'Site settings for contract.test' });
+        const reopen = async () => {
+          await page.keyboard.press('Escape');
+          await until(async () => (await panel.count()) === 0);
+          await control.click();
+          return until(() => panel.isVisible());
+        };
+        await control.click();
+        rule(33, 'pressed, it opens a dialog named for the site', await until(() => panel.isVisible()));
+        await page.waitForTimeout(200);
+        fs.mkdirSync(path.join(__dirname, '../../build/e2e'), { recursive: true });
+        await page.screenshot({ path: path.join(__dirname, `../../build/e2e/site-panel-${id}.png`) });
+        const ads = panel.getByRole('checkbox', { name: /Ad blocker/ });
+        rule(33, 'the ad blocker is on, as Go has it', await until(() => ads.isChecked()));
+        await ads.click();
+        await reopen();
+        rule(33, 'switched off, Go keeps it off', await until(async () => !(await ads.isChecked())));
+        const block = panel.getByRole('radiogroup', { name: 'Links to other sites' }).getByRole('radio', { name: 'Block' });
+        await block.click();
+        await reopen();
+        rule(33, 'Links to other sites set to Block, Go keeps it', await until(async () => (await block.getAttribute('aria-checked')) === 'true'));
+        await ads.click();
+        await panel.getByRole('radiogroup', { name: 'Links to other sites' }).getByRole('radio', { name: 'Allow' }).click();
+        await page.keyboard.press('Escape');
+        rule(33, 'Escape closes it', await until(async () => (await panel.count()) === 0));
+      } catch (e) {
+        rule(33, 'its checks ran to their end', false, e.message.split('\n')[0]);
       }
     }
 
