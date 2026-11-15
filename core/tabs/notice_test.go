@@ -1,0 +1,106 @@
+package tabs
+
+import (
+	"testing"
+
+	"projectb/engine"
+)
+
+func actionIDs(n *Notice) []string {
+	var ids []string
+	for _, a := range n.Actions {
+		ids = append(ids, a.ID)
+	}
+	return ids
+}
+
+func TestAFailedLoadGetsANoticeToTryAgain(t *testing.T) {
+	e := &fakeEngine{}
+	m := oneWindow(e)
+	id := m.Create(1)
+	m.HandleNavigationStarting(id, 1, "https://www.gone.test/x")
+	m.HandleLoadingChanged(id, true)
+	if tab, _ := m.Get(id); tab.Notice != nil {
+		t.Fatalf("a notice while loading: %+v", tab.Notice)
+	}
+	m.HandleLoadingChanged(id, false)
+	m.HandleNavigationFailed(id, 1, "https://www.gone.test/x", engine.FailNotFound, "ERR_NAME_NOT_RESOLVED")
+	tab, _ := m.Get(id)
+	n := tab.Notice
+	if n == nil || n.Kind != "failed" || n.Title != "Can't find gone.test" || n.Detail != "ERR_NAME_NOT_RESOLVED" || len(n.Actions) != 1 || n.Actions[0].ID != "reload" || !n.Actions[0].Primary {
+		t.Fatalf("notice %+v", n)
+	}
+	m.NoticeAction(id, "proceed") // not offered: ignored
+	m.NoticeAction(id, "reload")
+	if e.reloads != 1 {
+		t.Fatalf("%d reloads, want only Try again's", e.reloads)
+	}
+	m.HandleNavigationStarting(id, 1, "https://www.gone.test/x")
+	m.HandleNavigationFinished(id, 1, "https://www.gone.test/x")
+	if tab, _ := m.Get(id); tab.Notice != nil {
+		t.Fatalf("the notice stayed after the page loaded: %+v", tab.Notice)
+	}
+}
+
+func TestACrashedPageAndABlockedOneGetTheirNotices(t *testing.T) {
+	m := oneWindow(&fakeEngine{})
+	id := m.Create(1)
+	m.HandleNavigationStarting(id, 1, "https://a.test/")
+	m.HandleNavigationFinished(id, 1, "https://a.test/")
+	m.HandlePageCrashed(id)
+	if tab, _ := m.Get(id); tab.Notice == nil || tab.Notice.Kind != "crashed" || tab.Notice.Actions[0].Title != "Reload" {
+		t.Fatalf("crashed: %+v", tab.Notice)
+	}
+	m.AddGate(func(u string) bool { return u != "https://bad.test/" })
+	m.HandleHistoryChanged(id, true, false)
+	m.HandleNavigationStarting(id, 1, "https://bad.test/")
+	tab, _ := m.Get(id)
+	if n := tab.Notice; n == nil || n.Kind != "blocked" || n.Title != "bad.test is blocked" || len(n.Actions) != 1 || n.Actions[0].ID != "back" {
+		t.Fatalf("blocked: %+v", n)
+	}
+}
+
+func TestABadCertificateIsRefusedUntilThePersonPassesItsHost(t *testing.T) {
+	m := oneWindow(&fakeEngine{})
+	id := m.Create(1)
+	bad := engine.CertificateError{URL: "https://old.test/", Reason: "expired", MainFrame: true, Passable: true}
+	load := func(e engine.CertificateError) bool {
+		m.HandleNavigationStarting(id, 1, e.URL)
+		if m.HandleCertificateError(id, e) {
+			m.HandleNavigationFinished(id, 1, e.URL)
+			return true
+		}
+		m.HandleNavigationFailed(id, 1, e.URL, engine.FailTLS, "ERR_CERT_DATE_INVALID")
+		return false
+	}
+	if load(bad) {
+		t.Fatal("a bad certificate was let through")
+	}
+	tab, _ := m.Get(id)
+	n := tab.Notice
+	if n == nil || n.Kind != "certificate" || n.Title != "old.test's certificate has expired" || n.Detail == "" || actionIDs(n)[len(n.Actions)-1] != "proceed" {
+		t.Fatalf("notice %+v", n)
+	}
+	// A subresource of another host with a bad certificate is refused, with no notice.
+	if m.HandleCertificateError(id, engine.CertificateError{URL: "https://cdn.test/a.js", Reason: "untrusted", Passable: true}) {
+		t.Fatal("a subresource's bad certificate was let through")
+	}
+	m.NoticeAction(id, "proceed")
+	if !load(bad) {
+		t.Fatal("refused after Open anyway")
+	}
+	if tab, _ := m.Get(id); tab.Notice != nil {
+		t.Fatalf("notice after it loaded: %+v", tab.Notice)
+	}
+	// A site that demands a valid certificate can't be passed, and offers no Open anyway.
+	strict := engine.CertificateError{URL: "https://bank.test/", Reason: "wrong-host", MainFrame: true}
+	if load(strict) {
+		t.Fatal("a strict site's bad certificate was let through")
+	}
+	tab, _ = m.Get(id)
+	for _, a := range tab.Notice.Actions {
+		if a.ID == "proceed" {
+			t.Fatal("a strict site offers Open anyway")
+		}
+	}
+}

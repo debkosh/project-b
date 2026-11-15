@@ -39,6 +39,8 @@ type command struct {
 	Color     *string        `json:"color"`
 	Collapsed *bool          `json:"collapsed"`
 	On        bool           `json:"on"`
+	// Action is the action chosen on a tab's notice.
+	Action string `json:"action"`
 	// Background opens newTab's tab behind the active one, as a link opened in a new
 	// tab is.
 	Background bool `json:"background"`
@@ -252,6 +254,9 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 		} else if m.tabs.WindowOf(id) != 0 && slices.Contains(m.window.Windows(), to) {
 			m.tabs.Move(id, to, max(0, min(c.Index, len(m.tabs.AllIn(to)))))
 		}
+	case "noticeAction":
+		// What the person chose on a tab's notice: the tab by id, the action by text.
+		m.tabs.NoticeAction(engine.TabID(c.ID), c.Action)
 	case "closeTab":
 		if c.ID == 0 && c.Then != "recent" {
 			m.CloseTab(w)

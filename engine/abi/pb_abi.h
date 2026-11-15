@@ -99,6 +99,10 @@ typedef enum PBEvent {
   PB_EVENT_CONNECTION_CHANGED = 44,     // i: tab, i: PBConnection, s: why it is insecure:
                                         // "not-encrypted", "certificate" or
                                         // "mixed-content", "" when it isn't
+  PB_EVENT_CERTIFICATE_ERROR = 45,      // i: tab or 0, s: the address asked for, s: why:
+                                        // "expired", "untrusted", "wrong-host", "revoked"
+                                        // or "invalid", i: it is a tab's own page, i: it
+                                        // may be passed; answers i: 1 to let it through
 
   // What a tab's page does, 60 to 79, as any engine can say it: Go's core/abi turns each
   // into the engine.Listener call of its name. A tab here is never a page of ours.

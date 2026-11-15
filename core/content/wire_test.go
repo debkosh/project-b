@@ -164,6 +164,10 @@ func (r *recorder) NotificationShown(n engine.Notification) bool {
 	return true
 }
 func (r *recorder) NotificationClicked(id string) { r.note("clicked " + id) }
+func (r *recorder) CertificateError(tab engine.TabID, e engine.CertificateError) bool {
+	r.note(fmt.Sprintf("certificate %d %s %s main=%v passable=%v", tab, e.URL, e.Reason, e.MainFrame, e.Passable))
+	return false
+}
 func (r *recorder) ConnectionChanged(tab engine.TabID, c engine.Connection) {
 	r.note(fmt.Sprintf("connection %d %d %s", tab, c.State, c.Reason))
 }
@@ -274,6 +278,17 @@ func TestAConnectionChangeReachesTheListener(t *testing.T) {
 	h, r, _ := wired(t)
 	h.Dispatch(eventConnection, pack(3, int(engine.ConnectionInsecure), "certificate"))
 	if !reflect.DeepEqual(r.got, []string{"connection 3 2 certificate"}) {
+		t.Fatalf("got %v", r.got)
+	}
+}
+
+func TestACertificateErrorAsksTheListener(t *testing.T) {
+	h, r, _ := wired(t)
+	v, ok := h.Dispatch(eventCertificate, pack(3, "https://old.test/", "expired", true, true))
+	if !ok || v.I != 0 {
+		t.Fatalf("answered %v %v", ok, v)
+	}
+	if !reflect.DeepEqual(r.got, []string{"certificate 3 https://old.test/ expired main=true passable=true"}) {
 		t.Fatalf("got %v", r.got)
 	}
 }

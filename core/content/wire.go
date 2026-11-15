@@ -34,4 +34,5 @@ func Wire(h *Hooks, l engine.Listener) {
 	h.Events.OnNotification = l.NotificationShown
 	h.Events.OnNotifyClicked = l.NotificationClicked
 	h.Events.OnConnection = l.ConnectionChanged
+	h.Events.OnCertificate = l.CertificateError
 }

@@ -428,6 +428,10 @@ type Listener interface {
 	// connection, an insecure one and why, or neither, as for one of our pages.
 	ConnectionChanged(tab TabID, c Connection)
 
+	// CertificateError asks about a certificate error on a request of tab's, 0 for none.
+	// True lets the request through; false refuses it.
+	CertificateError(tab TabID, e CertificateError) bool
+
 	// NotificationShown is a page showing a notification. True shows it on the system.
 	NotificationShown(n Notification) bool
 	// NotificationClicked says the person clicked a notification the system showed; the
@@ -451,6 +455,17 @@ const (
 	ConnectionSecure
 	ConnectionInsecure
 )
+
+// CertificateError is what is wrong with a site's certificate: the address asked for,
+// why ("expired", "untrusted", "wrong-host", "revoked" or "invalid"), whether the request
+// is for a tab's own page, and whether the person may pass it: not for a site that
+// demands a valid certificate.
+type CertificateError struct {
+	URL       string
+	Reason    string
+	MainFrame bool
+	Passable  bool
+}
 
 // Notification is one a page shows: the engine's id for it, the origin showing it, the
 // page's address, "" for a service worker's, and what it says.

@@ -96,6 +96,8 @@ type Engine struct {
 	erased   []Erase
 	profiles []string
 	rules    []engine.BlockRules
+	// badCerts is the hosts a test gave a bad certificate. Main thread.
+	badCerts map[string]bool
 	// perms is the page's permission requests and the app's answers.
 	perms permissionLog
 
@@ -929,6 +931,13 @@ func (e *Engine) Fire(w engine.WindowID, tab engine.TabID, kind, value string) {
 		case "scroll":
 			// value is down or up, as a page that scrolls makes content say.
 			e.listener.ScrollDirectionChanged(shown, value == "down")
+		case "certificate":
+			// The page goes to value, whose host has an expired certificate from now on.
+			if e.badCerts == nil {
+				e.badCerts = map[string]bool{}
+			}
+			e.badCerts[hostOf(value)] = true
+			e.navigate(shown, value)
 		case "fail":
 			// value is why, as engine.Failure says it, then the error's own name.
 			if t != nil {
@@ -1044,12 +1053,33 @@ func (e *Engine) load(id engine.TabID, u string, commit func(*tab)) {
 			if e.tabs[id] != t || seq != t.navSeq {
 				return
 			}
+			// A host the test gave a bad certificate: the app says whether it loads. Refused,
+			// the address is the tab's entry all the same, as content's error page is, so a
+			// reload asks again.
+			insecure := false
+			if e.badCerts[hostOf(u)] {
+				if !e.listener.CertificateError(id, engine.CertificateError{URL: u, Reason: "expired", MainFrame: true, Passable: true}) {
+					commit(t)
+					t.current = u
+					t.state = "failed"
+					e.listener.HistoryChanged(id, t.pos > 0, t.pos < len(t.history)-1)
+					e.listener.LoadingChanged(id, false)
+					e.listener.NavigationFailed(id, nav, u, engine.FailTLS, "ERR_CERT_DATE_INVALID")
+					e.showPage(id, t.state, u)
+					return
+				}
+				insecure = true
+			}
 			commit(t)
 			t.current = u
 			t.state = "loaded"
 			e.listener.HistoryChanged(id, t.pos > 0, t.pos < len(t.history)-1)
 			e.listener.NavigationFinished(id, nav, u)
-			e.listener.ConnectionChanged(id, connectionOf(u))
+			if insecure {
+				e.listener.ConnectionChanged(id, engine.Connection{State: engine.ConnectionInsecure, Reason: "certificate"})
+			} else {
+				e.listener.ConnectionChanged(id, connectionOf(u))
+			}
 			// Our page is the real one, which gives its own title (core/cmd/dev).
 			if !t.internal {
 				e.listener.TitleChanged(id, titleOf(u))
