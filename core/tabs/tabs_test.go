@@ -520,20 +520,30 @@ func TestOurTabIsInNoGroup(t *testing.T) {
 	}
 }
 
-// Duplicating and moving keep a tab's kind.
-func TestOurTabKeepsItsKind(t *testing.T) {
-	m := oneWindow(&fakeEngine{})
+// A window has one tab of each of our pages: one of ours has no copy, and one moved to a
+// window that has its page shows that window's tab and stays where it was. Moved to a
+// window without, it moves as any tab, keeping its kind.
+func TestOurTabStaysOneAWindow(t *testing.T) {
+	e := &fakeEngine{}
+	m := oneWindow(e)
 	m.CreateIn(1, "")
 	s := m.OpenPage(1, "settings")
 	m.Duplicate()
-	copied := m.Active()
-	if copied.ID == s || copied.Page != "settings" || copied.URL != "chrome://settings/" {
-		t.Fatalf("the copy is %+v", copied)
+	if len(m.AllIn(1)) != 2 || m.ActiveID() != s || e.next != 2 {
+		t.Fatalf("a duplicate of ours: tabs %v, active %v", ids(m.AllIn(1)), m.ActiveID())
 	}
 	m.AddWindow(2)
+	m.CreateIn(2, "")
+	there := m.OpenPage(2, "settings")
+	other := m.Create(2)
 	m.Move(s, 2, 0)
-	if moved, _ := m.Get(s); moved.Page != "settings" || m.WindowOf(s) != 2 {
-		t.Fatalf("moved: %+v in window %v", moved, m.WindowOf(s))
+	if m.WindowOf(s) != 1 || m.ActiveIn(2) != there || len(m.AllIn(2)) != 3 || m.ActiveIn(1) != s {
+		t.Fatalf("moved where its page is: in window %v, window 2 %v active %v", m.WindowOf(s), ids(m.AllIn(2)), m.ActiveIn(2))
+	}
+	m.AddWindow(3)
+	m.Move(s, 3, 0)
+	if moved, _ := m.Get(s); m.WindowOf(s) != 3 || moved.Page != "settings" || m.ActiveIn(2) != there || other == 0 {
+		t.Fatalf("moved where its page isn't: %+v in window %v", moved, m.WindowOf(s))
 	}
 }
 

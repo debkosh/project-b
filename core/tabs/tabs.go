@@ -459,10 +459,19 @@ func (m *Manager) closed(t Tab) {
 // The tab keeps its id and its page goes on running. The window it left goes on as if the
 // tab had closed there.
 func (m *Manager) Move(id engine.TabID, w engine.WindowID, index int) {
-	if m.tabs[id] == nil {
+	t := m.tabs[id]
+	if t == nil {
 		return
 	}
 	from := m.windowOf[id]
+	// A window has one tab of each of our pages: one of ours moved to a window that has its
+	// page shows that window's tab, and stays where it was.
+	if t.Page != "" && from != w {
+		if there := m.PageIn(w, t.Page); there != 0 {
+			m.Activate(there)
+			return
+		}
+	}
 	if from != w {
 		m.leaveGroup(id)
 	}
@@ -626,16 +635,16 @@ func (m *Manager) Stop() {
 	}
 }
 
-// Duplicate opens a copy of the active tab, history and all, as the last tab, of its kind
-// and in its workspace, and shows it.
+// Duplicate opens a copy of the active web tab, history and all, as the last tab, in its
+// workspace, and shows it. A tab of ours has no copy: a window has one of each.
 func (m *Manager) Duplicate() {
 	t := m.tabs[m.ActiveID()]
-	if t == nil {
+	if t == nil || t.Page != "" {
 		return
 	}
 	id := m.eng.DuplicateTab(t.ID)
 	c := m.add(id, m.windowOf[t.ID])
-	c.URL, c.Workspace, c.Page = t.URL, t.Workspace, t.Page
+	c.URL, c.Workspace = t.URL, t.Workspace
 	if t.Group != "" {
 		m.join(id, t.Group, t.ID)
 	}
