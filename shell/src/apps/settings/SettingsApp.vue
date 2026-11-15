@@ -32,13 +32,19 @@ const sections = computed(() =>
 );
 // A section's address may name more after a slash, which the section reads: sites/<origin>.
 const section = computed(() => sections.value.find((s) => s.id === state.section.split('/')[0]) || sections.value[0]);
+
+// The tab's title is the page's: Settings and the section showing, which the shell shows in
+// the tab and in place of the address (docs/design-system.md, The address field's slot).
+watchEffect(() => {
+  document.title = phone ? 'Settings' : `Settings › ${section.value.label}`;
+});
 </script>
 
 <template>
   <div v-if="state.ready" class="page">
-    <header class="header">
-      <h1>Settings</h1>
-    </header>
+    <!-- The page's name is the tab's title, which the shell shows; the heading is kept for
+         a screen reader, and out of sight. -->
+    <h1 class="hidden-heading">Settings</h1>
     <div class="body">
       <!-- A phone has no keyboard shortcuts or extensions, so only General applies there. -->
       <nav v-if="!phone" class="nav" aria-label="Settings sections">
@@ -72,25 +78,22 @@ body {
   height: 100%;
 }
 
-.header {
-  flex: none;
-  display: flex;
-  align-items: center;
-  height: 52px;
-  padding: 0 16px 0 24px;
-  box-sizing: border-box;
-}
 
-h1 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
+.hidden-heading {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .body {
   flex: 1;
   display: flex;
   min-height: 0;
+  padding-top: 16px;
+  box-sizing: border-box;
 }
 
 .nav {

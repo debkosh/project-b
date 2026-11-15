@@ -156,7 +156,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   await ui.getByRole('button', { name: 'Settings', exact: true }).click();
   check('the gear opens the settings tab and shows it', await until(settingsShown));
   check('and the dev window shows the page in the tab\'s frame', await until(() => shell.locator('iframe.our-page[data-page="settings"]').isVisible()));
-  check('its title is the page\'s own', await until(async () => (await regions()).tabs.find((t) => t.page === 'settings').title === 'Settings'));
+  check('its title is the page\'s own, with the section showing', await until(async () => (await regions()).tabs.find((t) => t.page === 'settings').title === 'Settings › General'), JSON.stringify((await regions()).tabs.find((t) => t.page === 'settings')?.title));
   const titleBox = await ui.locator('form.field').boundingBox();
   check('the title in the address field is the shell\'s, not a drag area', await until(async () => (await regions(`?x=${Math.round(titleBox.x + titleBox.width / 2)}&y=${Math.round(titleBox.y + titleBox.height / 2)}`)).hit === 'shell'));
   // Its title and icon follow the page, as a web page's do.
@@ -548,6 +548,8 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
 
   // Keyboard.
   await page.getByRole('button', { name: 'Keyboard' }).click();
+  check('the page\'s title follows the section, under its gear', await until(async () => (await page.title()) === 'Settings › Keyboard') &&
+    (await page.locator('link[rel=icon]').getAttribute('href')).startsWith('data:image/svg+xml'), await page.title());
   // The list only shows; clicking an action opens its editor.
   const openRow = (title) => page.locator('button.action').filter({ has: page.locator('.name', { hasText: new RegExp('^\\s*' + title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*$') }) }).click();
   check('a key the browser wins carries a tag, and a page-first key none', await until(async () => (await page.locator('button.action', { hasText: 'Close Tab' }).textContent()).includes('Browser first, not in full screen') && !(await page.locator('button.action', { hasText: 'Open Location' }).textContent()).includes('Browser first')));
