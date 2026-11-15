@@ -486,13 +486,21 @@ it there; a phone shell may be left out of a rule for a desktop feature.
     Terminal have it. Not yet in Glide, whose own session brings it, nor in Mobile,
     which gets it as a sheet from the Android session, nor in Mobile Native, from its session.
 31. **A site's settings are one press away on a web page:** a control named Site settings
-    (`openSiteSettings`) opens settings on the active tab's site. Not yet in the shells
-    rule 30 lists.
+    opens settings on the active tab's site (`openSiteSettings`): at once, or from Details in
+    the site panel where the shell has one (rule 33). Not yet in the shells rule 30 lists.
 32. **A page with nothing to show says why:** while the active tab has a `notice`, the
     shell covers its page with an `alert` holding Go's title, its detail, and a button for
     each of its actions, by Go's titles, which sends `noticeAction`. Standard, Fox, Minimal
     and Terminal have it. Not yet in Glide, whose own session brings it; Mobile and
     Mobile Native draw a notice of their own until their sessions move them to Go's.
+
+33. **The site panel** ([site-features.md](site-features.md)): the Site settings control
+    opens a `dialog` named Site settings for the site's host over the page, drawn from
+    `state.openSites` (`@/sdk/sites.js`): a switch named Ad blocker, a choice of Links to
+    other sites (Allow, New tab, Block), the page's sparks, the site's permissions, and
+    Details. Each change is `setSiteSetting`; Escape (a phone's back key) closes it. Standard
+    and Fox draw the shared `@/ui/SitePanel.vue`; Mobile, a sheet. Minimal goes straight to
+    settings; Terminal and Glide, from their sessions.
 
 **The names a shell gives its basic controls.** Each is a button, or a menu item in a menu
 one of the shell's controls opens; a menu item's name may end with its key.
