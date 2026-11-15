@@ -658,6 +658,12 @@ address field, and a menu button at the far right, in our tones.
   new tab, Open in workspace, and Copy link; on an image, Open image in new tab and Copy
   image address. Tabs opened from it open behind, so the group's strip gathers them while
   the user reads on. A long press on text keeps Android's own selection.
+- **A page's dialog** (alert, confirm, prompt, leave-page question or a site's sign-in,
+  rules 15 and 22) is a card in the middle of the screen over the dimmed window, sheets and
+  bars too, as Android's dialogs are, with Go's words and buttons 48px tall. Only the shown
+  tab's shows; another tab's waits until its tab is shown. A prompt or a sign-in starts
+  with the keyboard in its first field. The back key answers it no, before it closes a
+  sheet (`backCloses` is on while one shows).
 - **A page that failed, crashed or was blocked** gets a notice over it rather than a blank:
   one sentence (Can't find example.com, This page crashed, example.com is blocked), the
   error's own name under it, and Try again or Reload.

@@ -426,6 +426,26 @@ const H = 915;
   await notice.getByRole('button', { name: 'Reload' }).tap();
   check('Reload brings it back', await until(async () => !(await notice.isVisible()) && !(await active()).crashed));
 
+  // A page's dialog: in the middle over the dimmed window, its buttons a finger's size,
+  // and the back key answers it no, as Android's dialogs go.
+  const ask = ui.getByRole('alertdialog');
+  const answers = async () => (await regions()).dialogAnswers || [];
+  await fire('confirm', 'Leave this page? What you typed will be lost.');
+  check('a page\'s confirm shows as an alertdialog', await until(() => ask.isVisible()));
+  const asked = await ask.boundingBox();
+  check('in the middle of the screen', Math.abs(asked.x + asked.width / 2 - W / 2) < 2 && Math.abs(asked.y + asked.height / 2 - H / 2) < 2, JSON.stringify(asked));
+  await shots('dialog');
+  const had = (await answers()).length;
+  await backKey();
+  check('the back key answers it Cancel', await until(async () => (await answers()).length === had + 1 && (await answers()).at(-1).ok === false));
+  check('and it goes', await until(async () => (await ask.count()) === 0));
+  await fire('signin', 'Staff only');
+  await until(() => ask.isVisible());
+  check('a sign-in starts with the keyboard in Username', await until(async () => (await w.shell().evaluate(() => document.activeElement?.id)) === 'm-sign-in-user'));
+  await shots('sign-in');
+  await backKey();
+  check('and the back key answers it no too', await until(async () => (await answers()).at(-1).ok === false && (await ask.count()) === 0));
+
   // Settings, from the menu.
   await menuButton.tap();
   await menu.getByRole('menuitem', { name: 'Settings' }).tap();
