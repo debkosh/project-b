@@ -85,7 +85,7 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
     // Back with the page scrolling up, another tab, the address or a sheet.
     private var away = false
     private var gone = false
-    private val slide = if (reducedMotion(context)) 0L else 150L
+    private val slide = Motion.ms(context)
 
     private val toolbar = Toolbar(context)
     private val pill = FrameLayout(context)
@@ -333,11 +333,11 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
             gone = false
             for (s in stacks) s.visibility = VISIBLE
             report()
-            for (s in stacks) s.animate().translationY(0f).setDuration(slide).start()
+            for (s in stacks) s.animate().translationY(0f).setDuration(slide).setInterpolator(Motion.ease).start()
         } else {
             away = true
-            topStack.animate().translationY(-topStack.height.toFloat()).setDuration(slide).start()
-            bottomStack.animate().translationY(bottomStack.height.toFloat()).setDuration(slide).withEndAction {
+            topStack.animate().translationY(-topStack.height.toFloat()).setDuration(slide).setInterpolator(Motion.ease).start()
+            bottomStack.animate().translationY(bottomStack.height.toFloat()).setDuration(slide).setInterpolator(Motion.ease).withEndAction {
                 if (!away) return@withEndAction
                 gone = true
                 for (s in stacks) s.visibility = INVISIBLE

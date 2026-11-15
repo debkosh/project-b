@@ -19,7 +19,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.accessibility.AccessibilityNodeInfo
-import android.view.animation.DecelerateInterpolator
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -72,6 +71,16 @@ fun View.dpf(v: Number): Float = v.toFloat() * resources.displayMetrics.density
 /** Whether motion is reduced, as prefers-reduced-motion says on the web: animations off. */
 fun reducedMotion(context: Context): Boolean =
     Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+
+/**
+ * The design system's motion (docs/design-system.md, "Motion"; design.css's --motion and
+ * --ease): every movement 100 ms on one curve that starts fast and settles, and none at all
+ * with reduced motion.
+ */
+object Motion {
+    fun ms(context: Context): Long = if (reducedMotion(context)) 0L else 100L
+    val ease: android.view.animation.Interpolator = android.view.animation.PathInterpolator(0.2f, 0f, 0f, 1f)
+}
 
 fun rounded(color: Int, radius: Float, stroke: Int = Color.TRANSPARENT, strokeWidth: Int = 0) =
     GradientDrawable().apply {
@@ -179,12 +188,12 @@ class Sheet(context: Context, name: String, palette: Palette, private val onClos
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        if (reducedMotion(context)) return
+        if (Motion.ms(context) == 0L) return
         panel.translationY = 10000f
         panel.post {
             ValueAnimator.ofFloat(panel.height.toFloat(), 0f).apply {
-                duration = 200
-                interpolator = DecelerateInterpolator()
+                duration = Motion.ms(context)
+                interpolator = Motion.ease
                 addUpdateListener { panel.translationY = it.animatedValue as Float }
                 start()
             }
