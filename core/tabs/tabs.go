@@ -437,6 +437,16 @@ func (m *Manager) All() []Tab {
 	return out
 }
 
+// CountByWorkspace returns how many tabs each workspace has open, in every window, by the
+// workspace's id, copying none.
+func (m *Manager) CountByWorkspace() map[string]int {
+	counts := map[string]int{}
+	for _, t := range m.tabs {
+		counts[t.Workspace]++
+	}
+	return counts
+}
+
 // AllIn returns copies of window w's tabs, in order.
 func (m *Manager) AllIn(w engine.WindowID) []Tab {
 	order := m.windows[w].order
