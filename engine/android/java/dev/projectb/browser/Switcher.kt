@@ -263,9 +263,9 @@ class Switcher(context: Context, private val on: Actions) : FrameLayout(context)
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> if (sliding) {
                     val dx = e.rawX - x0
                     if (e.actionMasked == MotionEvent.ACTION_UP && abs(dx) > view.width / 3f) {
-                        view.animate().translationX(if (dx > 0) view.width * 1.2f else -view.width * 1.2f).alpha(0f).setDuration(120).withEndAction { close() }.start()
+                        view.animate().translationX(if (dx > 0) view.width * 1.2f else -view.width * 1.2f).alpha(0f).setDuration(Motion.ms(context)).setInterpolator(Motion.ease).withEndAction { close() }.start()
                     } else {
-                        view.animate().translationX(0f).alpha(1f).setDuration(150).start()
+                        view.animate().translationX(0f).alpha(1f).setDuration(Motion.ms(context)).setInterpolator(Motion.ease).start()
                     }
                     sliding = false
                     return@setOnTouchListener true
