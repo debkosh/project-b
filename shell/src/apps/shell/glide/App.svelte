@@ -1,4 +1,5 @@
 <script>
+  import { tick } from 'svelte';
   import { activeTab, chooseContextItem, closeContextMenu, connect, contextMenuPoint, focusPage, page, send, setFrame, state as go } from '@/sdk/svelte.svelte.js';
   import CommandBar from './CommandBar.svelte';
   import Menu from './Menu.svelte';
@@ -93,8 +94,9 @@
     const url = mode === 'address' ? activeTab(go).url : '';
     g.ui.bar = { mode, text: url, typed: false, at: Date.now() };
     send({ t: 'focusShell' });
-    // The bar takes the keyboard once it has drawn.
-    queueMicrotask(() => bar?.focus());
+    // The bar takes the keyboard once it has drawn: the first time, the window is made in the
+    // same draw.
+    tick().then(() => bar?.focus());
   }
 
   export function closeBar() {
@@ -177,6 +179,11 @@
   }}
 />
 
+<!-- Until Go's data is in, Glide knows nothing of the window, not even its Space's colour:
+     its splash is the window's own colour, which the engine paints under it, and the app's
+     name. When the data comes Glide is made, and the two cross-fade. -->
+<div class="splash" aria-busy={!go.loaded}>Project B</div>
+{#if go.loaded}
 <div class="glide" style={tokens} class:dark>
   {#if pageFull}
     <main class="page-full" use:page={go.active}></main>
@@ -204,3 +211,4 @@
     <div class="toast" role="status">{g.ui.toast}</div>
   {/if}
 </div>
+{/if}
