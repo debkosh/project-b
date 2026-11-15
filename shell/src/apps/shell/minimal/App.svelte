@@ -5,6 +5,7 @@
   import CrashBar from './CrashBar.svelte';
   import Notice from './Notice.svelte';
   import PageDialog from './PageDialog.svelte';
+  import PageTitle from './PageTitle.svelte';
   import Prompt from './Prompt.svelte';
   import SideList from './SideList.svelte';
   import TabBar from './TabBar.svelte';
@@ -22,9 +23,9 @@
   // the page. What was typed in the field was for the tab before. The shell has to hold
   // the keyboard before its field can. A window left with no tabs wants the address too. It
   // runs once the view has drawn the change, and the view is made once Go's data is in, so
-  // the state it is made in counts too.
+  // the state it is made in counts too. One of our tabs has no field: its title is there.
   function activated() {
-    address.blur();
+    address?.blur();
     if (activeTab(go).url === '') {
       send({ t: 'focusShell' });
       address.focus();
@@ -39,8 +40,8 @@
   });
 
   connect({
-    focusAddressBar: () => address.focus(),
-    suggestions: (m) => address.suggestions(m),
+    focusAddressBar: () => address?.focus(),
+    suggestions: (m) => address?.suggestions(m),
   });
 </script>
 
@@ -54,7 +55,11 @@
       <TabBar />
     {/if}
     <Toolbar vertical={!horizontal}>
-      <Address bind:this={address} url={activeTab(go).url} tab={activeTab(go)} />
+      {#if activeTab(go).page}
+        <PageTitle />
+      {:else}
+        <Address bind:this={address} url={activeTab(go).url} tab={activeTab(go)} />
+      {/if}
     </Toolbar>
     <CrashBar />
     <Prompt />
