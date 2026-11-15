@@ -105,6 +105,21 @@ class Server(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         served.append(self.path)
         path = self.path.split("?")[0]
+        if path == "/signin" and self.headers.get("Authorization") != "Basic YWRhOnNlY3JldA==":  # ada:secret
+            self.send_response(401)
+            self.send_header("WWW-Authenticate", 'Basic realm="Staff only"')
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
+        if path == "/signin":
+            body = "<title>Signed in</title><p>signed in"
+            data = body.encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+            return
         if path == "/to-blocked":
             self.send_response(302)
             self.send_header("Location", "http://blocked.test/")
@@ -123,6 +138,15 @@ class Server(http.server.BaseHTTPRequestHandler):
 
     def log_message(self, *args):
         pass
+
+
+# A page that asks each of its dialogs from a tap, and says what it got back.
+PAGES["/dialogs"] = ("<title>Dialogs</title><style>button{display:block;width:100%;height:30vh;font-size:40px}</style>"
+                     "<button id=c>confirm</button><button id=p>prompt</button><button id=al>alert</button><script>"
+                     "const say = (what, v) => fetch('/said?' + what + '=' + encodeURIComponent(String(v)));"
+                     "c.onclick = () => say('confirm', confirm('Go on?'));"
+                     "p.onclick = () => say('prompt', prompt('Name?', ''));"
+                     "al.onclick = () => { alert('Hello'); say('alert', 'closed'); };</script>")
 
 
 server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Server)
@@ -163,7 +187,9 @@ def asked(path, timeout=15):
 # tab's page. A node's attributes are Android's: class, text, content-desc (an aria-label),
 # focused, selected, and bounds in device pixels.
 PARTS = {
-    "shell": lambda labels: "Menu" in labels,
+    # The shell, or, while a page's dialog shows, the dialog alone, as aria-modal hides the
+    # rest of the shell from the tree: its title, Go's words, ends in " says" or is Sign in.
+    "shell": lambda labels: "Menu" in labels or any(l.endswith(" says") or l == "Sign in" for l in labels),
     "settings": lambda labels: "Close settings" in labels,
     "page": lambda labels: "Menu" not in labels and "Close settings" not in labels,
 }
@@ -183,7 +209,7 @@ def screen_parts():
         if view.get("class") == "dev.projectb.browser.NativeShell":
             parts["shell"] = view
         elif view.get("class") == "android.webkit.WebView":
-            labels = {n.get("content-desc") for n in view.iter("node")}
+            labels = {n.get("content-desc") for n in view.iter("node")} | {n.get("text") for n in view.iter("node")}
             parts[next(name for name, test in PARTS.items() if test(labels))] = view
     return parts
 
@@ -622,6 +648,42 @@ def mobile_shell():
           until(lambda: find("shell", label=lambda l: (l or "").startswith("Group ")) is None) is not None)
 
 
+def page_dialogs():
+    """A page's confirm, prompt and alert show in the shell, and its answer reaches the page;
+    the back key answers no; a site's sign-in takes a username and password."""
+    launch()
+    go(BASE + "/dialogs")
+    asked("/dialogs")
+    served.clear()
+    tap(middle(see("page", text="confirm")))
+    see("shell", text="Go on?")
+    shot("23-confirm")
+    tap(middle(see("shell", text="OK")))
+    check("a confirm shows in the shell, and OK answers the page yes", asked("/said?confirm=true"), str(served))
+    tap(middle(see("page", text="confirm")))
+    see("shell", text="Go on?")
+    key(4)
+    check("the back key answers it no", asked("/said?confirm=false"), str(served))
+    tap(middle(see("page", text="prompt")))
+    see("shell", kind=FIELD, focused="true", label=lambda l: l != "Address")
+    type_text("Ada")
+    tap(middle(see("shell", text="OK")))
+    check("a prompt takes text from the keyboard, already in its field", asked("/said?prompt=Ada"), str(served))
+    tap(middle(see("page", text="alert")))
+    see("shell", text="Hello")
+    tap(middle(see("shell", text="OK")))
+    check("an alert shows and OK lets the page go on", asked("/said?alert=closed"), str(served))
+    go(BASE + "/signin")
+    see("shell", text="Username")
+    shot("24-sign-in")
+    type_text("ada")
+    tap(middle(see("shell", password="true")))
+    type_text("secret")
+    tap(middle(see("shell", text="Sign in", kind=lambda k: k != FIELD, clickable="true")))
+    check("a site's sign-in takes a username and password, and the page loads",
+          until(lambda: find("page", text="signed in")) is not None)
+
+
 def history_after_a_restart():
     launch()
     type_in_bar("page")
@@ -763,7 +825,7 @@ def main():
     adb("shell", "pm", "clear", PACKAGE)
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
-    for part in (browsing, mobile_shell, history_after_a_restart, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
+    for part in (browsing, mobile_shell, page_dialogs, history_after_a_restart, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
                  the_gpu_process_dies, a_page_spins, web_apis, the_real_web):
         try:
             part()
