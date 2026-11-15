@@ -215,7 +215,11 @@ and built in its simplest form; what goes further is listed at the end.
   unpinned tab after the pinned ones, and a pinned tab where it is.
 - **Shells** hear `pins` in the snapshot and again on any change, and each tab's `pin`
   ([shells.md](shells.md#the-messages)). No contract rule holds a shell to drawing them:
-  Glide draws them ([glide.md](glide.md)); the standard shell's are its own next step.
+  Glide draws them ([glide.md](glide.md)). The standard shell lists them first, in the
+  sidebar or the strip, with a rule after them: a pin with its tab here as that tab, one
+  without muted, a press opening its tab and its × unpinning it. Its tab menu has Pin Tab,
+  off on a tab of ours or one with nothing in it, and Unpin Tab on a pinned tab, which
+  offers no group.
 
 Later steps, not built:
 - Reordering pins, by `moveTab` on a pinned tab or a drag in a shell's list of them; pins
