@@ -275,6 +275,16 @@ class AppDataSource : public content::URLDataSource {
     if (base::EndsWith(name, ".woff2")) {
       return "font/woff2";
     }
+    // A page's icon, which the engine fetches for its tab as it does a web page's.
+    if (base::EndsWith(name, ".svg")) {
+      return "image/svg+xml";
+    }
+    if (base::EndsWith(name, ".png")) {
+      return "image/png";
+    }
+    if (base::EndsWith(name, ".ico")) {
+      return "image/x-icon";
+    }
     return "text/html";
   }
 
@@ -307,16 +317,17 @@ class AppDataSource : public content::URLDataSource {
   }
 
  private:
-  // The file a URL names, as a path in the folder of our pages, or "" for none. Settings
-  // and the picker have their index.html, their one script and their one stylesheet; any
-  // other path of theirs is their index.html. A shell's folder is its id, the path's first
-  // part, and a shell has any file its build put in that folder, such as its fonts, by a
-  // plain name: lower-case letters, digits, dashes and dots, not starting with a dot. So
-  // no path reaches outside its folder.
+  // The file a URL names, as a path in the folder of our pages, or "" for none. Every app
+  // has any file its build put in its folder, such as its script, its stylesheet, its fonts
+  // or its icon, by a plain name: lower-case letters, digits, dashes and dots, not starting
+  // with a dot. Settings and the picker have their own folders, and any other path of
+  // theirs, such as a section of settings, is their index.html. A shell's folder is its id,
+  // the path's first part. So no path reaches outside its folder.
   std::string Name(const GURL& url) const {
     std::string_view path = url.path().substr(1);
     if (host_ != "shell") {
-      return host_ + "/" + (IsOwnFile(host_, path) ? std::string(path) : "index.html");
+      return host_ + "/" +
+             (IsFile(path) ? std::string(path) : std::string("index.html"));
     }
     size_t slash = path.find('/');
     if (slash == std::string_view::npos) {
@@ -330,19 +341,26 @@ class AppDataSource : public content::URLDataSource {
     if (id.empty() || !std::ranges::all_of(id, [](char c) {
           return base::IsAsciiLower(c) || base::IsAsciiDigit(c) || c == '-';
         }) ||
-        file.front() == '.' || !std::ranges::all_of(file, [](char c) {
-          return base::IsAsciiLower(c) || base::IsAsciiDigit(c) || c == '-' ||
-                 c == '.';
-        })) {
+        !IsPlainName(file)) {
       return "";
     }
     return base::StrCat({"shell/", id, "/", file});
   }
 
-  // Whether file is the script or the stylesheet of the app whose files are called name.
-  static bool IsOwnFile(std::string_view name, std::string_view file) {
-    return file == base::StrCat({name, ".js"}) ||
-           file == base::StrCat({name, ".css"});
+  // Whether name is a plain file name: lower-case letters, digits, dashes and dots, not
+  // starting with a dot.
+  static bool IsPlainName(std::string_view name) {
+    return !name.empty() && name.front() != '.' &&
+           std::ranges::all_of(name, [](char c) {
+             return base::IsAsciiLower(c) || base::IsAsciiDigit(c) || c == '-' ||
+                    c == '.';
+           });
+  }
+
+  // Whether a path of settings or the picker names a file: a plain name with a dot in it,
+  // where a section's path has none.
+  static bool IsFile(std::string_view path) {
+    return IsPlainName(path) && path.find('.') != std::string_view::npos;
   }
 
   const std::string host_;

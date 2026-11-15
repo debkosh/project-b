@@ -2272,6 +2272,15 @@ def internal_checks():
         time.sleep(0.05)
     check("a press in its page gives it the keyboard", app.cmd("evalsettings", "document.hasFocus()") == "true")
     check("the window is titled after it", app.cmd("title") == "Settings", app.cmd("title"))
+    # Its title and icon are its page's, as a web page's are.
+    png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEUlEQVR42mO44GDwH4QZYAwAT/QI/dxDFCMAAAAASUVORK5CYII="
+    app.cmd("evalsettings", f"(document.title='Settings › Test',document.head.append(Object.assign(document.createElement('link'),{{id:'test-icon',rel:'icon',href:{json.dumps(png)}}})),1)")
+    deadline = time.time() + 10
+    while time.time() < deadline and not ((t := ours()) and t[0]["title"] == "Settings › Test" and t[0].get("favicon", "").startswith("data:image/png")):
+        time.sleep(0.1)
+    t = ours()
+    check("a title and an icon its page sets are the tab's", bool(t) and t[0]["title"] == "Settings › Test" and t[0].get("favicon", "").startswith("data:image/png"), t)
+    app.cmd("evalsettings", "(document.title='Settings',document.getElementById('test-icon').remove(),1)")
     app.cmd("key", "cmd+t")
     app.wait(f"{ROWS}===4")
     made = tabs_of(app)
