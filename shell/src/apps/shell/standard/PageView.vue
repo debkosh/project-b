@@ -4,6 +4,7 @@ import CrashNotice from './CrashNotice.vue';
 import FindBar from './FindBar.vue';
 import PageDialog from './PageDialog.vue';
 import UpdateStatus from './UpdateStatus.vue';
+import PageNotice from '@/ui/PageNotice.vue';
 import CommandBox from './CommandBox.vue';
 import { empty, view } from './state.js';
 import { activeTab, state } from '@/sdk/vue.js';
@@ -20,6 +21,7 @@ const shown = computed(() => !state.pageFullScreen && (view.box || blank.value))
   <div class="main">
     <div v-page="state.active" class="page-view"></div>
     <CommandBox v-if="shown" :key="state.active" :over-page="view.box && !blank" />
+    <PageNotice v-if="activeTab.notice" v-shell :tab="activeTab" />
     <CrashNotice />
     <FindBar />
     <PageDialog />
