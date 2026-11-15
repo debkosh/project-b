@@ -9,6 +9,8 @@
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "base/no_destructor.h"
+#include "base/task/sequenced_task_runner.h"
+#include "base/time/time.h"
 #include "base/strings/string_util.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/media_capture_devices.h"
@@ -132,6 +134,48 @@ std::optional<blink::MediaStreamDevice> Pick(
     return std::nullopt;
   }
   return devices.front();
+}
+
+// How long a first camera or microphone request waits for content's list of devices: the
+// first read starts the capture service, which lists them a moment later.
+constexpr int kDeviceTries = 30;
+constexpr base::TimeDelta kDeviceWait = base::Milliseconds(100);
+
+// Gives the page the devices it was allowed, once content lists them. The capture service
+// starts only when a page first asks, so the list may still be empty then; it waits up to
+// three seconds for it before saying there is no such device.
+void GiveDevices(content::MediaStreamRequest request,
+                 bool audio,
+                 bool video,
+                 content::MediaResponseCallback callback,
+                 int tries) {
+  using blink::mojom::MediaStreamRequestResult;
+  auto* capture = content::MediaCaptureDevices::GetInstance();
+  blink::mojom::StreamDevicesSet set;
+  set.stream_devices.emplace_back(blink::mojom::StreamDevices::New());
+  blink::mojom::StreamDevices& devices = *set.stream_devices[0];
+  if (audio) {
+    devices.audio_device = Pick(capture->GetAudioCaptureDevices(),
+                                request.requested_audio_device_ids);
+  }
+  if (video) {
+    devices.video_device = Pick(capture->GetVideoCaptureDevices(),
+                                request.requested_video_device_ids);
+  }
+  if ((audio && !devices.audio_device) || (video && !devices.video_device)) {
+    if (tries < kDeviceTries) {
+      base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
+          FROM_HERE,
+          base::BindOnce(&GiveDevices, std::move(request), audio, video,
+                         std::move(callback), tries + 1),
+          kDeviceWait);
+      return;
+    }
+    std::move(callback).Run(blink::mojom::StreamDevicesSet(),
+                            MediaStreamRequestResult::NO_HARDWARE, nullptr);
+    return;
+  }
+  std::move(callback).Run(set, MediaStreamRequestResult::OK, nullptr);
 }
 
 }  // namespace
@@ -319,29 +363,7 @@ void Permissions::RequestMediaAccess(content::WebContents* contents,
                       MediaStreamRequestResult::PERMISSION_DENIED, nullptr);
                   return;
                 }
-                blink::mojom::StreamDevicesSet set;
-                set.stream_devices.emplace_back(blink::mojom::StreamDevices::New());
-                blink::mojom::StreamDevices& devices = *set.stream_devices[0];
-                auto* capture = content::MediaCaptureDevices::GetInstance();
-                if (audio) {
-                  devices.audio_device =
-                      Pick(capture->GetAudioCaptureDevices(),
-                           request.requested_audio_device_ids);
-                }
-                if (video) {
-                  devices.video_device =
-                      Pick(capture->GetVideoCaptureDevices(),
-                           request.requested_video_device_ids);
-                }
-                if ((audio && !devices.audio_device) ||
-                    (video && !devices.video_device)) {
-                  std::move(callback).Run(blink::mojom::StreamDevicesSet(),
-                                          MediaStreamRequestResult::NO_HARDWARE,
-                                          nullptr);
-                  return;
-                }
-                std::move(callback).Run(set, MediaStreamRequestResult::OK,
-                                        nullptr);
+                GiveDevices(request, audio, video, std::move(callback), 0);
               },
               request, audio, video, std::move(callback)));
 }
