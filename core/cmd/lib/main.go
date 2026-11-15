@@ -17,6 +17,7 @@ static inline void call_erase_workspace(const PBEngineCalls* c, const char* work
 static inline void call_close_tab(const PBEngineCalls* c, int64_t tab) { c->close_tab(tab); }
 static inline void call_open_profile(const PBEngineCalls* c, const char* dir) { c->open_profile(dir); }
 static inline void call_set_block_rules(const PBEngineCalls* c, const char* hosts) { c->set_block_rules(hosts); }
+static inline void call_set_ad_rules(const PBEngineCalls* c, const char* hosts, const char* off) { c->set_ad_rules(hosts, off); }
 static inline void call_set_window_page(const PBEngineCalls* c, int64_t window, const char* page) { c->set_window_page(window, page); }
 static inline void call_create_window(const PBEngineCalls* c, int64_t window, int64_t near, const char* page, const PBWindowLayout* layout, const PBRegion* regions, size_t count, const PBVisibleTab* tabs, size_t tab_count) { c->create_window(window, near, page, layout, regions, count, tabs, tab_count); }
 static inline void call_set_window_bounds(const PBEngineCalls* c, int64_t window, double x, double y, double w, double h) { c->set_window_bounds(window, x, y, w, h); }
@@ -303,6 +304,13 @@ func (e *nativeEngine) SetBlockRules(r engine.BlockRules) {
 	c := C.CString(strings.Join(r.Hosts, "\n"))
 	defer C.free(unsafe.Pointer(c))
 	C.call_set_block_rules(e.calls, c)
+}
+
+func (e *nativeEngine) SetAdRules(r engine.AdRules) {
+	hosts, off := C.CString(strings.Join(r.Hosts, "\n")), C.CString(strings.Join(r.Off, "\n"))
+	defer C.free(unsafe.Pointer(hosts))
+	defer C.free(unsafe.Pointer(off))
+	C.call_set_ad_rules(e.calls, hosts, off)
 }
 
 func (e *nativeEngine) SetWindowLayout(w engine.WindowID, l engine.WindowLayout) {

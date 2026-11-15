@@ -103,6 +103,21 @@ typedef enum PBEvent {
                                         // "expired", "untrusted", "wrong-host", "revoked"
                                         // or "invalid", i: it is a tab's own page, i: it
                                         // may be passed; answers i: 1 to let it through
+  PB_EVENT_LEAVING_SITE = 46,           // i: tab, s: the page it leaves, s: url, i: a
+                                        // press led to it; answers
+                                        // i: a PBNavigation. A top-level navigation the
+                                        // page started (a link, a form, a script, or a
+                                        // redirect of one) to another site, the
+                                        // registrable domain, than the page's; asked
+                                        // before NAVIGATION_STARTING, which hears only one
+                                        // it lets go on
+  PB_EVENT_SPARKS_FOR = 47,             // i: tab, s: url, i: the tab's own frame;
+                                        // answers s: json, [{"id", "source", "runAt":
+                                        // "document-start" or "document-end"}], or "" for
+                                        // none: the scripts a frame runs in the page it is
+                                        // about to show, each in a world of its own
+  PB_EVENT_AD_BLOCKED = 48,             // i: tab; the ad blocker kept one request of its
+                                        // page from its host
 
   // What a tab's page does, 60 to 79, as any engine can say it: Go's core/abi turns each
   // into the engine.Listener call of its name. A tab here is never a page of ours.
@@ -410,6 +425,10 @@ typedef struct PBEngineCalls {
   // case: the page, its frames, its subresources and its WebSockets. Go sets them once, at
   // start, before any tab.
   void (*set_block_rules)(const char* hosts);
+  // The ad blocker's rules: the hosts it keeps a page's requests from, and any under them,
+  // one per line, lower case; and the origins of the pages it lets reach them, one per line.
+  // Go sets them at start, before any tab, and again whenever they change.
+  void (*set_ad_rules)(const char* hosts, const char* off);
   // What an engine built on Chromium's content layer adds: its generated hooks, the
   // table in pb_content_abi.h. Null in an engine without them.
   const struct PBContentHooks* (*content_hooks)(void);

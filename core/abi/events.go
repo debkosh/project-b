@@ -40,6 +40,9 @@ const (
 	NotificationClicked Event = 43
 	ConnectionChanged   Event = 44
 	CertificateError    Event = 45
+	LeavingSite         Event = 46
+	SparksFor           Event = 47
+	AdBlocked           Event = 48
 )
 
 func init() {
@@ -55,6 +58,7 @@ func init() {
 		PermissionRequested: "engine.PermissionRequested", PermissionStatusOf: "engine.PermissionStatusOf",
 		NotificationShown: "engine.NotificationShown", NotificationClicked: "engine.NotificationClicked",
 		ConnectionChanged: "engine.ConnectionChanged", CertificateError: "engine.CertificateError",
+		LeavingSite: "engine.LeavingSite", SparksFor: "engine.SparksFor", AdBlocked: "engine.AdBlocked",
 	} {
 		names[id] = name
 	}
@@ -158,6 +162,17 @@ func (e *Events) adapter(id Event, l engine.Listener, r *reader) (Value, bool) {
 	case CertificateError:
 		tab := engine.TabID(r.int())
 		return yes(l.CertificateError(tab, engine.CertificateError{URL: r.str(), Reason: r.str(), MainFrame: r.bool(), Passable: r.bool()})), true
+	case LeavingSite:
+		return Value{I: navigationAnswers[l.LeavingSite(engine.TabID(r.int()), r.str(), r.str(), r.bool())]}, true
+	case SparksFor:
+		scripts := l.SparksFor(engine.TabID(r.int()), r.str(), r.bool())
+		if len(scripts) == 0 {
+			return Value{}, true
+		}
+		b, _ := json.Marshal(scripts)
+		return Value{S: string(b)}, true
+	case AdBlocked:
+		l.AdBlocked(engine.TabID(r.int()))
 	}
 	return Value{}, false
 }

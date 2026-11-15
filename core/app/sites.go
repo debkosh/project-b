@@ -7,6 +7,7 @@ import (
 	"projectb/settings"
 	"projectb/shell"
 	"projectb/sites"
+	"projectb/sparks"
 	"projectb/tabs"
 )
 
@@ -24,12 +25,27 @@ func (u tabURLs) URLOf(tab engine.TabID) (string, bool) {
 
 func (a *App) startSites(e engine.Engine, dir string) {
 	a.Sites = sites.New(dir, tabURLs{a.Tabs}, e.AnswerPermission)
+	a.Sparks = sparks.New(dir)
+	a.startSiteFeatures(e)
 	a.Sites.OnPromptsChanged(func() {
 		a.Shell.Send(map[string]any{"t": "permissionPrompts", "permissionPrompts": a.Sites.Prompts()})
 	})
+	// Every shell hears the settings of each site a tab is open on, for its site panel.
+	var open string
+	sendOpen := func() {
+		o := a.openSites()
+		if b, _ := json.Marshal(o); string(b) != open {
+			open = string(b)
+			a.Shell.Send(map[string]any{"t": "openSites", "openSites": o})
+		}
+	}
 	a.Sites.OnSitesChanged(func() {
 		a.Settings.Send(map[string]any{"t": "siteSettings", "siteSettings": a.Sites.Sites()})
+		sendOpen()
 	})
+	a.Sparks.OnChanged(sendOpen)
+	a.Tabs.OnChanged(func(tabs.Tab) { sendOpen() })
+	a.Tabs.OnListChanged(sendOpen)
 	a.Tabs.OnChanged(func(t tabs.Tab) { a.Sites.TabChanged(t.ID, t.URL) })
 	// The site view's connection row follows the open pages.
 	var connections string
@@ -50,7 +66,10 @@ func (a *App) startSites(e engine.Engine, dir string) {
 		}
 	})
 	a.Shell.AddPart(shell.Part{
-		Snapshot: func(into map[string]any) { into["permissionPrompts"] = a.Sites.Prompts() },
+		Snapshot: func(into map[string]any) {
+			into["permissionPrompts"] = a.Sites.Prompts()
+			into["openSites"] = a.openSites()
+		},
 		Handle: func(w engine.WindowID, t string, msg []byte) bool {
 			switch t {
 			case "permissionAnswer":
@@ -60,6 +79,15 @@ func (a *App) startSites(e engine.Engine, dir string) {
 				}
 				json.Unmarshal(msg, &c)
 				a.Sites.Answer(c.ID, c.Choice)
+			case "setSiteSetting":
+				// A setting changed in the site panel, as Site settings changes one.
+				var c struct {
+					Origin string `json:"origin"`
+					Kind   string `json:"kind"`
+					Value  string `json:"value"`
+				}
+				json.Unmarshal(msg, &c)
+				a.Sites.Set(c.Origin, c.Kind, c.Value)
 			case "openSiteSettings":
 				// Settings, on the site of the window's active tab: its own address.
 				t, _ := a.Tabs.Get(a.Tabs.ActiveIn(w))
@@ -99,6 +127,38 @@ func (a *App) startSites(e engine.Engine, dir string) {
 			return true
 		},
 	})
+}
+
+// openSite is what a shell's site panel shows of one site: each kind it can set, with the
+// site's value ("" for a permission it hasn't set), and the sparks its open pages match.
+type openSite struct {
+	Settings []sites.Setting `json:"settings"`
+	Sparks   []siteSpark     `json:"sparks"`
+}
+
+// siteSpark is a spark on a site's page: on is whether it runs on the site.
+type siteSpark struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	On   bool   `json:"on"`
+}
+
+// openSites is, by origin, each site a web tab is open on.
+func (a *App) openSites() map[string]openSite {
+	out := map[string]openSite{}
+	for _, t := range a.Tabs.All() {
+		o := sites.Origin(t.URL)
+		if t.Page != "" || o == "" {
+			continue
+		}
+		site, ok := out[o]
+		if !ok {
+			site = openSite{Settings: a.Sites.SettingsOf(o), Sparks: []siteSpark{}}
+		}
+		site.Sparks = a.sparksOn(o, t.URL, site.Sparks)
+		out[o] = site
+	}
+	return out
 }
 
 func (a *App) PermissionRequested(r engine.PermissionRequest) { a.Sites.Request(r) }
@@ -166,4 +226,23 @@ func (a *App) siteConnections() map[string]siteConnection {
 		}
 	}
 	return out
+}
+
+// LeavingSite carries out the Links to other sites of the page it leaves, from: Allow lets
+// the page go; New tab opens the address in a tab beside it when a press led there; Block,
+// or New tab with no press, keeps the tab where it is.
+func (a *App) LeavingSite(tab engine.TabID, from, url string, pressed bool) engine.Navigation {
+	if _, ok := a.Tabs.Get(tab); !ok {
+		return engine.NavigationProceed
+	}
+	switch a.Sites.Value(sites.Origin(from), sites.Links) {
+	case sites.NewTab:
+		if pressed {
+			a.Tabs.OpenFor(tab, url)
+		}
+		return engine.NavigationElsewhere
+	case sites.Block:
+		return engine.NavigationElsewhere
+	}
+	return engine.NavigationProceed
 }
