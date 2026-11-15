@@ -232,8 +232,21 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
         }
     }
 
+    // The keyboard for the address, once the shell is on screen: chosen in settings, it is made
+    // while settings is still in front of it, and its address would bring the keyboard up over
+    // settings. It takes the keyboard when settings closes.
     override fun focus() {
-        address.requestFocus()
+        if (isShown) address.requestFocus() else focusWhenShown = true
+    }
+
+    private var focusWhenShown = false
+
+    override fun onVisibilityChanged(changed: View, visibility: Int) {
+        super.onVisibilityChanged(changed, visibility)
+        if (isShown && focusWhenShown) {
+            focusWhenShown = false
+            address.requestFocus()
+        }
     }
 
     private fun take(m: JSONObject) {
@@ -387,6 +400,7 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
         if (activeTab()?.optString("url").isNullOrEmpty()) {
             focus()
         } else {
+            focusWhenShown = false
             address.clearFocus()
             post { focusPage() }
         }
