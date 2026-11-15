@@ -8,6 +8,7 @@ import General from './General.vue';
 import Keyboard from './Keyboard.vue';
 import Profile from './Profile.vue';
 import SiteSettings from './SiteSettings.vue';
+import Sparks from './Sparks.vue';
 import WebFeatures from './WebFeatures.vue';
 import Workspaces from './Workspaces.vue';
 import { state } from './state.js';
@@ -24,6 +25,7 @@ const sections = computed(() =>
     state.profile && { id: 'profile', label: 'Profile', component: Profile },
     { id: 'workspaces', label: 'Workspaces', component: Workspaces },
     { id: 'sites', label: 'Site settings', component: SiteSettings },
+    { id: 'sparks', label: 'Sparks', component: Sparks },
     { id: 'keyboard', label: 'Keyboard', component: Keyboard },
     extensionsSection?.shown() && extensionsSection,
     { id: 'flags', label: 'Flags', component: Flags },
