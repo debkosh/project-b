@@ -215,9 +215,12 @@ const stopServer = lib.stop;
   await mock.getByRole('button', { name: 'Fail' }).click();
   await ui.getByText('Failed', { exact: true }).waitFor();
   check('a failed navigation shows', true);
-  await mock.getByRole('button', { name: 'Crash' }).click();
+  check('and a notice covers its page, with Try again', await until(() => ui.getByRole('alert').getByRole('button', { name: 'Try again' }).isVisible()));
+  // The notice covers the page's own buttons, so the page crashes as the engine says it.
+  await fetch(`${base}/mock/fire`, { method: 'POST', body: new URLSearchParams({ kind: 'crash' }) });
   await ui.getByText('Crashed', { exact: true }).waitFor();
   check('a crashed page shows', true);
+  check('and its notice offers Reload', await until(() => ui.getByRole('alert').getByRole('button', { name: 'Reload' }).isVisible()));
 
   // Policy.
   await bar.fill('https://www.blocked.test/secret');
@@ -269,6 +272,10 @@ const stopServer = lib.stop;
   await mock.locator('form[data-kind=navigate] input').fill('chrome://shell/');
   await mock.getByRole('button', { name: 'Navigate' }).click();
   check('a page linking to chrome://shell/ is refused', await mockShows('Blocked', 'chrome://shell/'));
+  // A blocked page is covered by its notice; what follows presses the page's own buttons.
+  await bar.fill('https://links.test/');
+  await bar.press('Enter');
+  await mockShows('Loaded', 'https://links.test/');
   await ui.getByRole('button', { name: 'Tabs on top' }).click();
   await ui.locator('.strip').waitFor();
   await ui.getByRole('button', { name: 'Tabs on the side' }).click();

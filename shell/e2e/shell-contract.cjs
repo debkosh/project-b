@@ -41,6 +41,7 @@ const rules = {
   22: 'A site\'s sign-in shows as an alertdialog with text boxes named Username and Password, and Go\'s Sign in answers with both',
   30: 'A site asking for its camera, microphone or notifications in the active tab brings a dialog named by its question, with Block and Allow, or Block, Always allow and Allow this time; an Allow grants it, Block denies it, Escape dismisses it',
   31: 'On a web page, a control named Site settings opens settings on that site',
+  32: 'A page that failed to load, or has a bad certificate, is covered by an alert with Go\'s sentence and its actions as buttons; Try again loads it again, and Open anyway opens it',
 };
 
 // The desktop shells that don't draw the right-click menu yet, and who brings it to each
@@ -117,6 +118,18 @@ const noPromptYet = {
   example: 'r10 brings it',
   mobile: 'r10 brings it, as a sheet, with Android',
   'mobile-native': 'r10 brings it, with Android',
+};
+
+// The shells that don't draw Go's notice over a page yet, and who brings it to each
+// (docs/daily-driver.md). Rule 32 holds every other shell to it.
+const noNoticeYet = {
+  glide: 'r10 brings it',
+  terminal: 'r10 brings it',
+  fox: 'r10 brings it',
+  minimal: 'r10 brings it',
+  'minimal-js': 'r10 brings it',
+  example: 'r10 brings it',
+  mobile: 'it draws a notice of its own from the same tab; r10 moves it to Go\'s with Android',
 };
 
 (async () => {
@@ -677,6 +690,35 @@ const noPromptYet = {
         await closeSettings();
       } catch (e) {
         rule(31, 'its checks ran to their end', false, e.message.split('\n')[0]);
+      }
+    }
+
+    // 32. The notice over a page with nothing to show.
+    if (noNoticeYet[id]) {
+      rule(32, `not checked yet: ${noNoticeYet[id]}`, true);
+    } else {
+      try {
+        const tab = (await regions()).active;
+        const tabNow = async () => (await regions()).tabs.find((x) => x.id === tab);
+        const loaded = (url) => until(async () => {
+          const t = await tabNow();
+          return t?.url === url && !t.loading && !t.notice;
+        });
+        const alert = (text) => ui.getByRole('alert').filter({ hasText: text });
+        await fire('navigate', 'https://contract.test/down', { tab });
+        await loaded('https://contract.test/down');
+        await fire('fail', 'refused ERR_CONNECTION_REFUSED', { tab });
+        const failed = alert("Can't reach contract.test");
+        rule(32, 'a load that fails brings an alert with Go\'s sentence', await until(() => failed.isVisible()));
+        await failed.getByRole('button', { name: 'Try again' }).click();
+        rule(32, 'Try again loads the page again, and the alert goes', (await loaded('https://contract.test/down')) && (await until(async () => (await ui.getByRole('alert').count()) === 0)));
+        await fire('certificate', 'https://old.test/', { tab });
+        const warning = alert("old.test's certificate has expired");
+        rule(32, 'a bad certificate brings an alert that says what is wrong with it', await until(() => warning.isVisible()));
+        await warning.getByRole('button', { name: 'Open anyway' }).click();
+        rule(32, 'Open anyway opens the page, which is then not secure', (await loaded('https://old.test/')) && (await tabNow()).connection === 'insecure' && (await until(async () => (await ui.getByRole('alert').count()) === 0)));
+      } catch (e) {
+        rule(32, 'its checks ran to their end', false, e.message.split('\n')[0]);
       }
     }
 

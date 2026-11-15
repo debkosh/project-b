@@ -86,6 +86,7 @@ of it.
 | `@/sdk/dialogs.js` | `answerDialog(id, ok, text, password)`, and `dialogFor(state, tab)`, the dialog a tab's page waits on. |
 | `@/sdk/downloads.js` | What a shell sends about `state.downloads`: `downloadAction(id, action)` and `clearDownloads()`. |
 | `@/sdk/sites.js` | A site's settings ([daily-driver.md](daily-driver.md#permissions)): the permission prompts, `promptFor(state, tab)`, `answerPermission(prompt, choice)`, and the words `permissionHost(prompt)` and `permissionAsk(prompt)`; and `hasSite(tab)` and `openSiteSettings()`. `@/ui/PermissionPrompt.vue` draws a prompt in the design system's look. |
+| `@/sdk/notice.js` | A tab's notice, `tab.notice`: `runNotice(tab, action)`. `@/ui/PageNotice.vue` draws one in the design system's look. |
 | `@/sdk/extensions.js` | What a shell sends about extensions: `pressExtension(id, el)`, `pinExtension(id, on)`, `manageExtensions()`, `answerExtensionPrompt(on)`. |
 | `@/sdk/controls.js` | `controls`: the one selector for what a control is, something the user presses or types in (buttons, links with an address, fields, selects, text areas, `role="tab"` and `role="button"`, anything with a `tabindex`). The SDK finds a drag bar's controls by it, and the check reads it for rule 6. |
 | `@/sdk/vue.js` | The Vue adapter: `state`, a reactive copy that follows the SDK's; `activeTab` and `controlSpace` as computeds; `workspaceOf(tab)` and `keyLabel(action)`; `connect(handlers)`, which waits for Vue's `nextTick`; the directives `v-shell`, `v-drag` and `v-page="tab.id"`; and `send`, `saveData`, `focusPage`, `setFrame`, `tabLabel`. |
@@ -151,7 +152,7 @@ nothing. Its `actions` is every action in the menus that can run then, `{id, tit
 the menus' order, for a shell that lists them to run by name (`run`).
 
 A tab is `{id, url, title, loading, progress, blocked, crashed, error, errorCode, favicon,
-canGoBack, canGoForward, workspace, group, page, connection, connectionNote}`, `group` the
+canGoBack, canGoForward, workspace, group, page, connection, connectionNote, notice}`, `group` the
 id of its tab group, absent when it is in none; `connection` how its page reached it,
 `secure` or `insecure`, absent when it isn't a site, and `connectionNote` why, in one line
 ([daily-driver.md](daily-driver.md#permissions)). `error` says why its page failed to load, absent when it didn't:
@@ -163,7 +164,9 @@ never to match on. `page` says the tab is one of ours, and which of our pages it
 switched, laid out and closed as any tab is ([windows.md](windows.md#our-own-pages-are-tabs-decided-2026-11-14)),
 but it is in no workspace and no group: its `workspace` is the one it was opened from, where
 New Tab from it goes, so `workspaceOf` gives a shell no dot for it. Rule 19 says how a shell
-shows it. The snapshot also has `running` (the version), `platform`
+shows it. `notice` is what to draw over its page while it has nothing to show, `{kind,
+title, detail, actions}`, absent otherwise
+([daily-driver.md](daily-driver.md#error-pages-and-certificate-warnings)). The snapshot also has `running` (the version), `platform`
 (`mac`, as the keymap names it) and `data`, and `extensions` only while their flag is on.
 
 - `controls` is `{x, y, w, h}`, where the native window buttons are, zero size when there
@@ -239,6 +242,7 @@ shows it. The snapshot also has `running` (the version), `platform`
 | `extensionAnswerPrompt` | `on` | Answers the install or removal prompt |
 | `permissionAnswer` | `id`, `choice`: `allow`, `once`, `block` or `dismiss` | Answers a permission prompt; `once` only where the prompt says `once` |
 | `openSiteSettings` | | Opens settings at the site of the window's active tab |
+| `noticeAction` | `id`: the tab, `action`: one of its notice's actions' ids | Does what the person chose on a tab's notice: `reload`, `back` or `proceed` |
 | `timeline` | `kind`, `name`, `text`, `at` | An entry on the app's timeline ([logging.md](logging.md)): `kind` is `mark`, `begin`, `end`, `info`, `warn` or `error`, and `at` the page's `performance.now()`. The SDK sends them |
 
 **The layout.** Each rectangle is `{x, y, w, h}` in CSS pixels of the shell's page, which
@@ -465,6 +469,11 @@ it there; a phone shell may be left out of a rule for a desktop feature.
 31. **A site's settings are one press away on a web page:** a control named Site settings
     (`openSiteSettings`) opens settings on the active tab's site. Not yet in the shells
     rule 30 lists, which r10 brings.
+32. **A page with nothing to show says why:** while the active tab has a `notice`, the
+    shell covers its page with an `alert` holding Go's title, its detail, and a button for
+    each of its actions, by Go's titles, which sends `noticeAction`. Not yet in Glide,
+    Terminal, Fox, Minimal, Minimal JS and Example, which r10 brings; Mobile draws a notice
+    of its own from the same tab until it takes Go's.
 
 **The names a shell gives its basic controls.** Each is a button, or a menu item in a menu
 one of the shell's controls opens; a menu item's name may end with its key.
