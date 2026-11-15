@@ -74,6 +74,8 @@ cat > "$OUT/args.gn" <<ARGS
 target_os = "android"
 target_cpu = "arm64"
 is_debug = false
+proprietary_codecs = true
+ffmpeg_branding = "Chrome"
 is_official_build = false
 is_component_build = false
 dcheck_always_on = false
