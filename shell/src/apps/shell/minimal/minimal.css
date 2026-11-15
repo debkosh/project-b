@@ -79,6 +79,7 @@
 
 /* The design system's controls where the shell draws them: square, as everything here is. */
 .text-button,
+.icon-button,
 .text-field {
   border-radius: 0;
 }
