@@ -128,21 +128,42 @@ def ready(app):
 
 
 def go(app, url, wait=True):
-    """Types a URL into the address bar and presses enter; waits for the load unless told not to."""
+    """Types a URL into the address bar and presses enter; waits for the load unless told not to.
+    In a window with no tabs, as Standard's is at the start, the address opens one."""
     d.focus_bar(app)
     app.cmd("type", url)
     app.wait(f"{VALUE}==={json.dumps(url)}")
     app.cmd("key", "enter")
     if wait:
-        time.sleep(0.3)
-        app.wait(READY, 30)
-        time.sleep(0.3)
+        loads(app)
 
 
-def new_tab(app):
+def loads(app):
+    """Waits for the load in the tab the window shows, once it shows one: the driver's page
+    commands have no page before."""
+    time.sleep(0.3)
+    deadline = time.time() + 30
+    while not json.loads(app.cmd("visible")):
+        if time.time() > deadline:
+            raise TimeoutError("the window never showed a tab")
+        time.sleep(0.05)
+    app.wait(READY, 30)
+    time.sleep(0.3)
+
+
+def new_tab(app, url, wait=True):
+    """Opens url in a new tab as a person does on Standard, which takes New Tab: Cmd+T opens its
+    command box, and the address typed there with Enter makes the tab. Waits for the load
+    unless told not to."""
     n = app.js(ROWS)
     app.cmd("key", "cmd+t")
+    app.wait(d.BOX_FOCUSED, 10)
+    app.cmd("type", url)
+    app.wait(f"{d.BOX}.value==={json.dumps(url)}")
+    app.cmd("key", "enter")
     app.wait(f"{ROWS}=={n + 1}")
+    if wait:
+        loads(app)
 
 
 def title(app):
@@ -190,8 +211,7 @@ def not_written(reason):
 
 def a01(app):
     go(app, P + "/a")
-    new_tab(app)
-    go(app, P + "/unload")
+    new_tab(app, P + "/unload")
     d.page_click(app, "body")
     app.cmd("key", "cmd+w")
     time.sleep(1.5)
@@ -199,8 +219,8 @@ def a01(app):
 
 
 def a02(app):
-    new_tab(app)
-    go(app, P + "/slow", wait=False)
+    go(app, P + "/a")
+    new_tab(app, P + "/slow", wait=False)
     time.sleep(0.5)
     app.cmd("key", "cmd+w")
     time.sleep(1.5)
@@ -327,12 +347,16 @@ def a18(app):
 
 
 def a19(app):
+    # Standard takes New Tab: Cmd+T reaching the shell opens its command box, and no tab.
     go(app, P + "/keys")
     d.page_click(app, "body")
     time.sleep(0.3)
     app.cmd("key", "cmd+t")
-    time.sleep(0.8)
-    return app.js(ROWS) == 2, "a page that swallows keys kept Cmd+T from opening a tab"
+    try:
+        app.wait(d.BOX_FOCUSED, 3)
+    except TimeoutError:
+        return False, "a page that swallows keys kept Cmd+T from opening the command box"
+    return app.js(ROWS) == 1, f"Cmd+T opened the command box and {app.js(ROWS)} tabs, not 1"
 
 
 def a20(app):
@@ -437,8 +461,9 @@ def a31(app):
     command, panics inside Go's hook as a bug would."""
     version = json.load(urllib.request.urlopen(f"http://127.0.0.1:{devtools(app.profile)}/json/version"))
     s = ws_open(version["webSocketDebuggerUrl"])[0]
+    # Standard starts with no tab, so the list is empty, but it answers.
     tabs = cdp(s, 1, "ProjectB.getTabs")
-    if len(tabs.get("result", {}).get("tabs", [])) != 1:
+    if not isinstance(tabs.get("result", {}).get("tabs"), list):
         return False, f"ProjectB.getTabs gave {tabs}"
     ws_send(s, json.dumps({"id": 2, "method": "ProjectB.panic", "params": {}}))
     try:
@@ -452,8 +477,7 @@ def a31(app):
 
 def a32(app):
     go(app, P + "/a")
-    new_tab(app)
-    go(app, P + "/b")
+    new_tab(app, P + "/b")
     time.sleep(1)
     app.proc.kill()
     app.proc.wait()
@@ -556,7 +580,7 @@ AREAS = [
     (16, "permissions: a notification request asks the user", a16, ()),
     (17, "camera: getUserMedia asks the user", a17, ("--use-fake-device-for-media-stream",)),
     (18, "page fullscreen: requestFullscreen after a click works", a18, ()),
-    (19, "keyboard: Cmd+T opens a tab when a page swallows keys", a19, ()),
+    (19, "keyboard: Cmd+T reaches the shell when a page swallows keys, and opens Standard's command box", a19, ()),
     (20, "focus: a page can't take focus from the address bar while typing", a20, ()),
     (21, "hit-testing: the page and the top row's empty space", a21, ()),
     (22, "context menu: right-click on a link shows a menu", a22, ("--remote-debugging-port=0",)),
