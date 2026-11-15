@@ -93,7 +93,6 @@ const noDownloadsYet = {
 // The shells that don't draw a splash yet, and who brings it to each. Rule 14 holds every
 // other shell to it.
 const noSplashYet = {
-  glide: 'r6 brings it',
   mobile: 'r3 brings it',
 };
 

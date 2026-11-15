@@ -102,3 +102,33 @@
   position: fixed;
   inset: 0;
 }
+
+/* Glide fades in as it is made, as the splash fades out. */
+.glide {
+  transition: opacity var(--motion) var(--ease);
+}
+
+@starting-style {
+  .glide {
+    opacity: 0;
+  }
+}
+
+/* The splash is only a picture: a press goes through it to Glide while it fades. */
+.splash {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font: 500 15px/1 system-ui, sans-serif;
+  letter-spacing: 0.02em;
+  color: rgb(255 255 255 / 0.85);
+  user-select: none;
+  pointer-events: none;
+  transition: opacity var(--motion) var(--ease), display var(--motion) allow-discrete;
+}
+
+.splash[aria-busy='false'] {
+  display: none;
+  opacity: 0;
+}
