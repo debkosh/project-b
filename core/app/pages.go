@@ -9,14 +9,15 @@ import (
 	"projectb/tones"
 )
 
-// The History and Bookmarks pages (docs/daily-driver.md): pages of ours, each in a tab of
-// ours, one per window. Go keeps what they show; each page asks for it and sends back what
+// The History, Bookmarks and Downloads pages (docs/daily-driver.md): pages of ours, each in
+// a tab of ours, one per window. Go keeps what they show; each page asks for it and sends back what
 // the user does.
 
 // historyPage is how many visits the history page shows at a time.
 const historyPage = 100
 
-// ourPages keeps which tabs show the History and Bookmarks pages, to send them changes.
+// ourPages keeps which tabs show the History, Bookmarks and Downloads pages, to send them
+// changes.
 type ourPages struct {
 	a     *App
 	e     engine.Engine
@@ -28,6 +29,7 @@ func newOurPages(a *App, e engine.Engine) *ourPages {
 	a.Prefs.OnThemeChanged(func(t string) { p.sendAll("", map[string]any{"t": "theme", "theme": t}) })
 	a.Window.OnColorChanged(func(c string) { p.sendAll("", map[string]any{"t": "tones", "tones": tones.Of(c)}) })
 	a.Bookmarks.OnChanged(func() { p.sendAll("bookmarks", map[string]any{"t": "bookmarks", "bookmarks": a.Bookmarks.List()}) })
+	a.Downloads.OnChanged(func() { p.sendAll("downloads", map[string]any{"t": "downloads", "downloads": a.Downloads.List()}) })
 	return p
 }
 
@@ -54,8 +56,9 @@ func (p *ourPages) sendAll(page engine.Page, v any) {
 	}
 }
 
-// pageMessage is what the two pages send: t, and what each needs of text, a time, the
-// addresses, a bookmark's id, title and address, and whether to open in a new tab.
+// pageMessage is what the pages send: t, and what each needs of text, a time, the
+// addresses, a bookmark's or a download's id, a title and address, and what to do to a
+// download.
 type pageMessage struct {
 	T      string   `json:"t"`
 	Text   string   `json:"text"`
@@ -65,6 +68,7 @@ type pageMessage struct {
 	ID     int      `json:"id"`
 	Title  string   `json:"title"`
 	URL    string   `json:"url"`
+	Action string   `json:"action"`
 }
 
 func (p *ourPages) handle(tab engine.TabID, page engine.Page, msg []byte) {
@@ -80,10 +84,13 @@ func (p *ourPages) handle(tab engine.TabID, page engine.Page, msg []byte) {
 	if m.T == "ready" {
 		p.shown[tab] = page
 		snapshot := map[string]any{"t": "snapshot", "theme": p.a.Prefs.Theme(), "tones": tones.Of(p.a.Window.Color())}
-		if page == "history" {
+		switch page {
+		case "history":
 			snapshot["items"] = p.a.History.List("", 0, historyPage)
 			snapshot["now"] = time.Now().Unix()
-		} else {
+		case "downloads":
+			snapshot["downloads"] = p.a.Downloads.List()
+		default:
 			snapshot["bookmarks"] = p.a.Bookmarks.List()
 		}
 		p.send(tab, snapshot)
@@ -109,6 +116,10 @@ func (p *ourPages) handle(tab engine.TabID, page engine.Page, msg []byte) {
 		}
 	case "removeBookmark":
 		p.a.Bookmarks.Remove(m.ID)
+	case "downloadAction":
+		p.a.Downloads.Act(m.ID, m.Action)
+	case "clearDownloads":
+		p.a.Downloads.Clear()
 	default:
 		timeline.Warnf("pages: %s sent %q, which it has no use for", page, m.T)
 	}
