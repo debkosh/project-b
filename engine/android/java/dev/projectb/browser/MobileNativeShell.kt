@@ -185,6 +185,19 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
             addView(clear, LinearLayout.LayoutParams(dp(48), dp(48)))
         }
         pill.addView(pillRow, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        ours.orientation = LinearLayout.HORIZONTAL
+        ours.gravity = Gravity.CENTER_VERTICAL
+        ours.setPadding(dp(14), 0, dp(0), 0)
+        ours.visibility = GONE
+        oursTitle.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14f)
+        oursTitle.typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+        oursTitle.setSingleLine(true)
+        oursTitle.ellipsize = android.text.TextUtils.TruncateAt.END
+        oursClose.iconSize = 18f
+        oursClose.setOnClickListener { activeTab()?.let { send(JSONObject().put("t", "closeTab").put("id", it.getLong("id"))) } }
+        ours.addView(oursTitle, LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        ours.addView(oursClose, LinearLayout.LayoutParams(dp(48), dp(48)))
+        pill.addView(ours, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         pill.addView(progress, LayoutParams(0, dp(2), Gravity.BOTTOM or Gravity.START).apply { bottomMargin = dp(4) })
         pill.clipToOutline = true
         // The pill is 40dp; the field in it and its Clear reach the bar's 48dp, as the web
@@ -349,6 +362,15 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
         val tab = activeTab()
         val url = tab?.optString("url") ?: ""
         if (!editing) address.setText(host(url))
+        val page = tab?.optString("page") ?: ""
+        if (page.isNotEmpty() && editing) leave()
+        ours.visibility = if (page.isNotEmpty()) VISIBLE else GONE
+        (pill.getChildAt(0)).visibility = if (page.isNotEmpty()) GONE else VISIBLE
+        if (page.isNotEmpty()) {
+            val title = tab!!.optString("title")
+            oursTitle.text = title
+            asButton(oursClose, "Close $title")
+        }
         val state = when {
             tab == null -> ""
             tab.optBoolean("blocked") -> "Blocked"
@@ -548,7 +570,8 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
         address.setTextColor(palette.text)
         address.setHintTextColor(palette.muted)
         status.setTextColor(palette.danger)
-        for (b in listOf(count, menu, clear)) {
+        oursTitle.setTextColor(palette.text)
+        for (b in listOf(count, menu, clear, oursClose)) {
             b.ink = palette.icon
             b.press = palette.press
         }
