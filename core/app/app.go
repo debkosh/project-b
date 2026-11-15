@@ -47,8 +47,28 @@ type Config struct {
 	System func() []crash.Section
 }
 
+// menuRead is what the menu reads of the front window's active tab: which tab, whether it
+// loads (Stop), has a page (View Source), and can go back and forward.
+type menuRead struct {
+	tab                          engine.TabID
+	loading, page, back, forward bool
+}
+
+func readOf(t tabs.Tab) menuRead {
+	return menuRead{t.ID, t.Loading, t.URL != "", t.CanGoBack, t.CanGoForward}
+}
+
+// refreshMenu sends the menu again if it changed, and keeps what it read of the active
+// tab, so a tab's change that leaves that alone needn't build it.
+func (a *App) refreshMenu() {
+	a.menuRead = readOf(a.Tabs.Active())
+	a.Commands.RefreshMenu()
+}
+
 // App holds the managers and is the engine's listener: each function only forwards.
 type App struct {
+	// menuRead is what the menu last read of the front window's active tab.
+	menuRead menuRead
 	Crash    *crash.Manager
 	Tabs     *tabs.Manager
 	History  *history.Manager
@@ -219,14 +239,23 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Flags.OnChanged(a.Settings.FlagsChanged)
 	a.Commands.OnChanged(a.Shell.KeysChanged)
 	// What the menu shows enabled or checked follows the window in front: its active tab
-	// and full screen, the layout, and the shell.
-	a.Tabs.OnChanged(func(tabs.Tab) { a.Commands.RefreshMenu() })
-	a.Tabs.OnListChanged(a.Commands.RefreshMenu)
-	a.Prefs.OnTabLayoutChanged(func(string) { a.Commands.RefreshMenu() })
-	a.Prefs.OnShellChanged(func(string) { a.Commands.RefreshMenu() })
+	// and full screen, the layout, and the shell. Of a tab's changes, only those to the
+	// front window's active tab that Stop, View Source, Back and Forward read can change
+	// it: building the menu was most of what Go did for each of a navigation's events.
+	a.Tabs.OnChanged(func(t tabs.Tab) {
+		if t.ID != a.Tabs.ActiveID() {
+			return
+		}
+		if readOf(t) != a.menuRead {
+			a.refreshMenu()
+		}
+	})
+	a.Tabs.OnListChanged(a.refreshMenu)
+	a.Prefs.OnTabLayoutChanged(func(string) { a.refreshMenu() })
+	a.Prefs.OnShellChanged(func(string) { a.refreshMenu() })
 	// Keyboard settings lists only the shell in use's own actions.
 	a.Prefs.OnShellChanged(func(string) { a.Settings.KeyboardChanged() })
-	a.Window.OnControlsChanged(func(engine.WindowID, engine.Rect, float64) { a.Commands.RefreshMenu() })
+	a.Window.OnControlsChanged(func(engine.WindowID, engine.Rect, float64) { a.refreshMenu() })
 	a.Commands.Load()
 	for _, start := range starters {
 		start(a, e, cfg)
@@ -475,13 +504,13 @@ func (a *App) WindowClosed(w engine.WindowID) {
 		a.quit()
 		return
 	}
-	a.Commands.RefreshMenu()
+	a.refreshMenu()
 }
 
 // WindowFocused puts the window in front: commands and the menu follow it.
 func (a *App) WindowFocused(w engine.WindowID) {
 	a.Tabs.Focus(w)
-	a.Commands.RefreshMenu()
+	a.refreshMenu()
 }
 
 func (a *App) ProcessCrashed(p engine.ProcessCrash) { a.Crash.ProcessCrashed(p) }

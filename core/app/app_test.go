@@ -2016,3 +2016,48 @@ func TestAPhonesSettingsChooseItsShell(t *testing.T) {
 		t.Fatalf("a desktop's settings offer phone shells: %v", snap2["phoneShells"])
 	}
 }
+
+// The menu skips a tab's changes it doesn't read, and still follows the ones it does: a tab
+// that began loading while in the background shows Stop when made active, and Stop goes
+// off when it finishes there.
+func TestTheMenuFollowsTheActiveTabsLoading(t *testing.T) {
+	r := start(t, t.TempDir())
+	defer r.stop()
+	r.shell(`{"t":"newTab"}`)
+	r.e.Settle()
+	stop := func() bool {
+		var on bool
+		done := make(chan struct{})
+		r.e.Post(func() {
+			for _, top := range r.e.Menu() {
+				for _, item := range top.Items {
+					if item.Action == "nav.stop" {
+						on = item.Enabled
+					}
+				}
+			}
+			close(done)
+		})
+		<-done
+		return on
+	}
+	// The mock's new tabs are loading their blank page: both stop first.
+	r.e.Post(func() { r.a.LoadingChanged(1, false); r.a.LoadingChanged(2, false) })
+	r.e.Post(func() { r.a.Tabs.Activate(1) })
+	r.e.Post(func() { r.a.LoadingChanged(2, true) })
+	r.e.Settle()
+	if stop() {
+		t.Fatal("Stop is on for a tab in the background that loads")
+	}
+	r.e.Post(func() { r.a.Tabs.Activate(2) })
+	r.e.Settle()
+	if !stop() {
+		t.Fatal("Stop is off for the active tab while it loads")
+	}
+	r.e.Post(func() { r.a.TitleChanged(2, "A title") })
+	r.e.Post(func() { r.a.LoadingChanged(2, false) })
+	r.e.Settle()
+	if stop() {
+		t.Fatal("Stop is still on once the active tab finished loading")
+	}
+}
