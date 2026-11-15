@@ -421,6 +421,17 @@ typedef struct PBEngineCalls {
   // What a build with extensions adds: the table in pb_extensions_abi.h. Null in a build
   // without, where nothing calls it.
   const struct PBExtensionCalls* (*extensions)(void);
+  // Android only: shows how a download stands in its notification, id being Go's for the
+  // download's whole life: its name, its file, a PBDownloadState, the bytes so far and of
+  // all (-1 unknown), and whether paused. Running, it shows progress; done, a tap opens the
+  // file; cancelled, it goes; failed, it says so. The Mac leaves this null.
+  void (*show_download)(int64_t id,
+                        const char* name,
+                        const char* path,
+                        int32_t state,
+                        int64_t received,
+                        int64_t total,
+                        int paused);
 } PBEngineCalls;
 
 // What the adapter can tell the Go core. The main binary fills it in from Go's exports

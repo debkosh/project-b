@@ -477,6 +477,18 @@ void CallInstallUpdate(const char* path) {
   // Android has one window, and the installer belongs to the app, not to it.
   g_engine->windows().begin()->second->window->InstallPackage(path);
 }
+
+void CallShowDownload(int64_t id,
+                      const char* name,
+                      const char* path,
+                      int32_t state,
+                      int64_t received,
+                      int64_t total,
+                      int paused) {
+  CheckMainThread();
+  ShowDownload(id, name, base::FilePath::FromUTF8Unsafe(path), state, received, total,
+               paused != 0);
+}
 #endif
 
 // The one call that any thread may make.
@@ -580,6 +592,9 @@ const PBEngineCalls* Engine::Calls() {
 #endif
 #if BUILDFLAG(PB_EXTENSIONS)
       .extensions = Extensions::Calls,
+#endif
+#if BUILDFLAG(IS_ANDROID)
+      .show_download = CallShowDownload,
 #endif
   };
   return &calls;

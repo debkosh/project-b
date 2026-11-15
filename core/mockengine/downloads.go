@@ -27,6 +27,7 @@ type downloads struct {
 	mu      sync.Mutex
 	next    engine.DownloadID
 	running map[engine.DownloadID]*mockDownload
+	notices []engine.Download // What ShowDownload was asked to show, in order.
 	opened  []string
 	shown   []string
 }
@@ -124,6 +125,21 @@ func (e *Engine) RevealFile(p string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.shown = append(d.shown, p)
+}
+
+func (e *Engine) ShowDownload(id int, n engine.Download) {
+	d := e.dl()
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.notices = append(d.notices, n)
+}
+
+// Notices is what ShowDownload was asked to show, in order.
+func (e *Engine) Notices() []engine.Download {
+	d := e.dl()
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return append([]engine.Download(nil), d.notices...)
 }
 
 // Opened and Shown are the files the app asked to open, and to show in the file manager.

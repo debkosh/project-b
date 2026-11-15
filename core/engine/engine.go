@@ -212,6 +212,11 @@ type Engine interface {
 	// OpenFile opens a file as the OS would; RevealFile shows it in the file manager.
 	OpenFile(path string)
 	RevealFile(path string)
+	// ShowDownload shows how a download stands where the system shows such things: on a
+	// phone, its notification, with its progress while it runs and, once done, a tap that
+	// opens the file. id is Go's, the same for the download's whole life. An engine with
+	// nowhere to show it does nothing.
+	ShowDownload(id int, d Download)
 	// AnswerDialog answers a page's dialog: OK or not, and a prompt's text.
 	AnswerDialog(id DialogID, ok bool, text string)
 	// AnswerSignIn answers a site's or a proxy's sign-in: the username and password, or

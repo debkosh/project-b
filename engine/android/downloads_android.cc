@@ -36,4 +36,17 @@ void RevealFile(const base::FilePath& path) {
   Java_Downloads_reveal(AttachCurrentThread());
 }
 
+void ShowDownload(int64_t id,
+                  const std::string& name,
+                  const base::FilePath& path,
+                  int32_t state,
+                  int64_t received,
+                  int64_t total,
+                  bool paused) {
+  JNIEnv* env = AttachCurrentThread();
+  Java_Downloads_show(env, id, ConvertUTF8ToJavaString(env, name),
+                      ConvertUTF8ToJavaString(env, path.AsUTF8Unsafe()), state, received, total,
+                      paused);
+}
+
 }  // namespace project_b

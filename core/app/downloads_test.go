@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"projectb/engine"
 	"slices"
 	"testing"
 
@@ -122,5 +123,23 @@ func TestSaveLinkAsDownloadsThroughThePanel(t *testing.T) {
 	list := r.downloads(func(l []any) bool { return len(l) == 1 && first(l)["state"] == "done" })
 	if first(list)["path"] != filepath.Join(dir, "notes.txt") {
 		t.Fatalf("download = %v", first(list))
+	}
+}
+
+func TestEachDownloadChangeIsShownBySystem(t *testing.T) {
+	profile, dir := t.TempDir(), t.TempDir()
+	r := startDownloading(t, profile, dir)
+	defer r.stop()
+	r.visit("https://a.test/")
+	r.show(1)
+	r.e.Fire(1, 0, "download", "https://a.test/files/report.pdf")
+	list := r.downloads(func(l []any) bool { return len(l) == 1 && first(l)["state"] == "done" })
+	r.e.Settle()
+	notices := r.e.Notices()
+	if len(notices) == 0 {
+		t.Fatal("the system was shown nothing of the download")
+	}
+	if last := notices[len(notices)-1]; last.State != engine.DownloadDone || last.Path != first(list)["path"] {
+		t.Fatalf("the last shown = %+v, want it done at %v", last, first(list)["path"])
 	}
 }
