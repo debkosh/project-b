@@ -20,6 +20,25 @@ has no screen, and AppKit can be slower there. Measure on a quiet machine: with 
 VM or a build running, `uptime`'s load runs past 20 and every mark moves later, Go's start
 among them, so compare only numbers taken under the same load.
 
+## Start-up baseline, 0.2.63, 2026-11-15
+
+`tools/bench/first_paint.py -n 10` on the released package, from the desktop session
+(`deskrig run`), on a quiet Mac Studio (M3 Ultra, load about 3); ms from process start.
+
+| | warm (profile reused) | fresh (new profile) |
+|---|---:|---:|
+| main.entered | 34 | 40 |
+| content.ready | 81 | 83 |
+| go.started | 172 | 175 |
+| shell.committed | 235 | 239 |
+| shell.ready | 249 | 252 |
+| shell.first_paint | 263 | 271 |
+| shell.on_screen | 332 | 339 |
+| tab.committed | 239 | 280 |
+
+Quote the warm row's first paint, 263 ms, as the baseline. The same package under a load of 22
+to 29 gave 379 warm and 309 fresh, so a gap between the two under load is noise.
+
 ## Results, 0.2.50, 2026-11-13
 
 `minimal-svelte` here is the shell now called Minimal (`minimal`).
