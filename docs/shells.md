@@ -715,7 +715,7 @@ address field, and a menu button at the far right, in our tones.
   phone: the bar moves under the status bar, the suggestions grow down from it, and the
   group strip stays at the foot, as Chrome's does. Sheets stay at the foot.
 - **The bars hide on scroll.** While the active tab's page scrolls down, the toolbar and
-  the strip slide off the screen in 150ms, and then give their room to the page: one
+  the strip slide off the screen in the design system's 100 ms (`--motion`, as the sheets do), and then give their room to the page: one
   layout, so the page is resized once, not every frame. They come back when it scrolls
   up, for another tab, the address, or a sheet. With reduced motion they don't slide.
 - **The band:** none. A desktop window's buttons, as on the mock, get a strip of their

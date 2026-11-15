@@ -58,7 +58,8 @@
   let away = $state(false);
   let gone = $state(false);
   let sliding = 0;
-  const slide = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 150;
+  // How long the bars take, the design system's --motion: 0 with reduced motion.
+  const slide = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--motion')) || 0;
 
   function bars(show) {
     if (show !== away) return;
@@ -352,7 +353,7 @@
     flex: none;
     display: flex;
     flex-direction: column;
-    transition: transform 150ms ease-out;
+    transition: transform var(--motion) var(--ease);
   }
 
   .bars.away {
@@ -366,12 +367,6 @@
   .bars.gone {
     height: 0;
     overflow: hidden;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .bars {
-      transition: none;
-    }
   }
 
   :global(button) {

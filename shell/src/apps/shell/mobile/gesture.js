@@ -79,15 +79,16 @@ export function gesture(el, params) {
     const was = mode;
     if (was) noClick();
     if (was === 'swipe' && Math.abs(dx) > el.offsetWidth / 3) {
-      el.style.transition = 'transform 150ms ease-out';
+      el.style.transition = 'transform var(--motion) var(--ease)';
       el.style.transform = `translateX(${Math.sign(dx) * el.offsetWidth * 1.5}px)`;
       start = null;
       clearTimeout(timer);
+      // Once it has slid away, in the design system's --motion.
       setTimeout(() => {
         el.style.opacity = '';
         reset();
         p.onclose();
-      }, 150);
+      }, parseFloat(getComputedStyle(el).getPropertyValue('--motion')) || 0);
       return;
     }
     el.style.opacity = '';
