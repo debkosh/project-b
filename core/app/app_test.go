@@ -98,6 +98,18 @@ func TestStartOpensTheProfileInTheEngine(t *testing.T) {
 	}
 }
 
+// The app hands the engine its blocked hosts as it starts, once, so the engine refuses
+// a page's own requests to them.
+func TestStartHandsTheEngineTheBlockedHosts(t *testing.T) {
+	r := start(t, t.TempDir(), "blocked.test", " Other.Test ")
+	got := make(chan []engine.BlockRules)
+	r.e.Post(func() { got <- r.e.BlockRules() })
+	want := []engine.BlockRules{{Hosts: []string{"blocked.test", "other.test"}}}
+	if rules := <-got; !reflect.DeepEqual(rules, want) {
+		t.Fatalf("rules %v, want %v", rules, want)
+	}
+}
+
 func (r *rig) shell(cmd string) { r.e.Post(func() { r.a.ShellMessage(1, []byte(cmd)) }) }
 
 // show reports a layout from the shell that shows one tab, as the shell does for the

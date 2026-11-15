@@ -14,10 +14,10 @@
 #include "project_b/engine/buildflags/buildflags.h"
 #include "project_b/engine/common/content_client.h"
 #include "project_b/engine/common/extensions_on.h"
+#include "project_b/engine/common/renderer_client.h"
 #include "ui/base/resource/resource_bundle.h"
 
 #if BUILDFLAG(PB_EXTENSIONS)
-#include "content/public/renderer/content_renderer_client.h"
 #include "content/public/utility/content_utility_client.h"
 #include "project_b/engine/extensions/common/extensions_client.h"
 #include "project_b/engine/extensions/renderer/content_renderer_client.h"
@@ -137,14 +137,18 @@ void MainDelegate::PreSandboxStartup() {
 #endif
 }
 
-#if BUILDFLAG(PB_EXTENSIONS)
 content::ContentRendererClient* MainDelegate::CreateContentRendererClient() {
-  if (!ExtensionsOn()) {
-    return content::ContentMainDelegate::CreateContentRendererClient();
+#if BUILDFLAG(PB_EXTENSIONS)
+  if (ExtensionsOn()) {
+    renderer_client_ = std::make_unique<ContentRendererClient>();
+    return renderer_client_.get();
   }
-  renderer_client_ = std::make_unique<ContentRendererClient>();
+#endif
+  renderer_client_ = std::make_unique<RendererClient>();
   return renderer_client_.get();
 }
+
+#if BUILDFLAG(PB_EXTENSIONS)
 
 content::ContentUtilityClient* MainDelegate::CreateContentUtilityClient() {
   if (!ExtensionsOn()) {

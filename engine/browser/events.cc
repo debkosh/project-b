@@ -4,6 +4,7 @@
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/web_contents.h"
 #include "project_b/engine/browser/hooks.h"
+#include "project_b/engine/common/block_rules.h"
 #include "project_b/engine/browser/settings_page.h"
 #include "third_party/blink/public/common/input/web_input_event.h"
 
@@ -78,8 +79,11 @@ const char* Gate::GetNameForLogging() {
 content::NavigationThrottle::ThrottleCheckResult Gate::Ask() {
   content::NavigationHandle* handle = navigation_handle();
   const int64_t tab = hooks::TabOf(handle->GetWebContents());
-  if (!handle->IsInPrimaryMainFrame() || tab <= 0) {
+  if (tab <= 0) {
     return PROCEED;
+  }
+  if (!handle->IsInPrimaryMainFrame()) {
+    return block_rules::Blocks(handle->GetURL()) ? BLOCK_REQUEST : PROCEED;
   }
   hooks::Args args;
   args.Int(tab);

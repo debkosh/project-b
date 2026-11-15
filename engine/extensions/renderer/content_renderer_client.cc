@@ -20,10 +20,10 @@ namespace project_b {
 
 namespace {
 
-class RendererClient : public extensions::ExtensionsRendererClient {
+class ExtensionsHooks : public extensions::ExtensionsRendererClient {
  public:
-  RendererClient() { extensions::ExtensionsRendererClient::Set(this); }
-  ~RendererClient() override {
+  ExtensionsHooks() { extensions::ExtensionsRendererClient::Set(this); }
+  ~ExtensionsHooks() override {
     extensions::ExtensionsRendererClient::Set(nullptr);
   }
 
@@ -73,7 +73,7 @@ ContentRendererClient::ContentRendererClient() = default;
 ContentRendererClient::~ContentRendererClient() = default;
 
 void ContentRendererClient::RenderThreadStarted() {
-  extensions_ = std::make_unique<RendererClient>();
+  extensions_ = std::make_unique<ExtensionsHooks>();
   extensions_->AddAPIProvider(
       std::make_unique<extensions::CoreExtensionsRendererAPIProvider>());
   extensions_->AddAPIProvider(std::make_unique<RendererAPIProvider>());

@@ -172,6 +172,12 @@ process, where it becomes a hook like any other.
   Go, serialize it, and evaluate it in a C++ renderer-side throttle fed over Mojo: no hop,
   no Go in the renderer, but Go only decides the rules, not the requests. Recommendation:
   (b) for allow and block lists, (a) when DLP or logging needs the request itself.
+  Built: (b) for the blocked hosts, without Mojo. Go hands them over once at start
+  (`set_block_rules`), each renderer gets them on its command line and refuses them in a
+  `URLLoaderThrottle` (`engine/common/renderer_client.cc`), the gate refuses a tab's
+  frames there, and `CreateWebSocket` drops a WebSocket to one. A list that changed while
+  the app runs would reach only renderers started after; the list is fixed at launch
+  today.
 - **Downloads.** `CanDownload` (callback) and the `DownloadManagerDelegate` (factory):
   the callback mechanism plus one generated class.
 - **Prompts and permissions.** Callbacks, and `DEFER` on the gate: the callback mechanism.

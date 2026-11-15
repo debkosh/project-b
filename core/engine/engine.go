@@ -161,6 +161,11 @@ type Engine interface {
 	// once, as this copy becomes the profile's, before it asks for any tab; a copy that
 	// starts on the picker calls it in the copy it starts for the chosen profile.
 	OpenProfile(dir string)
+	// SetBlockRules says which hosts no request of a page may reach: the page itself, its
+	// frames, images, scripts, fetches, workers and WebSockets. A tab's own navigation also
+	// asks NavigationStarting, which decides what the tab shows. The app sets them once,
+	// at start, before any tab.
+	SetBlockRules(r BlockRules)
 	// CreateTab makes a hidden tab in a workspace, by the app's id for it: "" is the
 	// profile's own storage, which a profile's first workspace, Main, has. A window's layout
 	// shows it. A workspace keeps its own cookies and site storage, and a tab stays in its
@@ -277,6 +282,13 @@ type Engine interface {
 	PageURL(p Page) string
 	OurPage(url string) (Page, bool)
 	ViewSourceURL(url string) string
+}
+
+// BlockRules are what the app's policy blocks, compiled for the engine to refuse
+// requests by.
+type BlockRules struct {
+	// Hosts are blocked with every host under them, each lower case.
+	Hosts []string
 }
 
 // BlankURL is the empty page every engine has, which a new tab loads so its page area

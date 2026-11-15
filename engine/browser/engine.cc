@@ -33,7 +33,9 @@
 #include "project_b/engine/browser/dialogs.h"
 #include "project_b/engine/browser/downloads.h"
 #include "project_b/engine/browser/go.h"
+#include "base/strings/string_split.h"
 #include "project_b/engine/abi/pb_content_abi.h"
+#include "project_b/engine/common/block_rules.h"
 #include "project_b/engine/browser/hooks.h"
 #include "project_b/engine/browser/page_tab.h"
 #include "project_b/engine/browser/settings_page.h"
@@ -455,6 +457,12 @@ void CallSetHookSubscribed(int32_t hook, int on) {
   hooks::SetSubscribed(hook, on != 0);
 }
 
+void CallSetBlockRules(const char* hosts) {
+  CheckMainThread();
+  block_rules::Set(base::SplitString(hosts, "\n", base::TRIM_WHITESPACE,
+                                     base::SPLIT_WANT_NONEMPTY));
+}
+
 const PBContentHooks* CallContentHooks() {
   static const PBContentHooks kHooks = {
       .table_hash = hooks::kTableHash,
@@ -564,6 +572,7 @@ const PBEngineCalls* Engine::Calls() {
 #if !BUILDFLAG(IS_ANDROID)
       .set_dock_color = CallSetDockColor,
 #endif
+      .set_block_rules = CallSetBlockRules,
       .content_hooks = CallContentHooks,
       .post_wakeup = CallPostWakeup,
 #if BUILDFLAG(IS_ANDROID)

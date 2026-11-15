@@ -34,9 +34,10 @@ class MainDelegate : public content::ContentMainDelegate {
  protected:
   std::optional<int> BasicStartupComplete() override;
   void PreSandboxStartup() override;
-#if BUILDFLAG(PB_EXTENSIONS)
-  // Extensions run code of ours in renderers and in a utility process.
+  // Every renderer refuses blocked hosts; with extensions it also runs theirs.
   content::ContentRendererClient* CreateContentRendererClient() override;
+#if BUILDFLAG(PB_EXTENSIONS)
+  // Extensions run code of ours in a utility process.
   content::ContentUtilityClient* CreateContentUtilityClient() override;
 #endif
 #if BUILDFLAG(IS_ANDROID)
@@ -47,9 +48,9 @@ class MainDelegate : public content::ContentMainDelegate {
 
  private:
   std::unique_ptr<content::ContentClient> content_client_;
+  std::unique_ptr<content::ContentRendererClient> renderer_client_;
 #if BUILDFLAG(PB_EXTENSIONS)
   std::unique_ptr<extensions::ExtensionsClient> extensions_client_;
-  std::unique_ptr<content::ContentRendererClient> renderer_client_;
   std::unique_ptr<content::ContentUtilityClient> utility_client_;
 #endif
 };

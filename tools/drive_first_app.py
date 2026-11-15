@@ -53,6 +53,9 @@ BIN = os.environ.get("PB_BIN") or os.path.join(ROOT, "build/pb/project_b")
 OUT = os.path.join(ROOT, "build/real")
 BAR_Y = 26  # The middle of the top row, where the window buttons centre.
 BLOCKED = "blocked.test"
+# A blocked host that resolves, to this machine as every *.localhost does, so a request
+# the engine failed to refuse would reach the test server.
+BLOCKED_LOCAL = "blocked.localhost"
 URL_A = "https://example.com/"
 URL_B = "https://www.iana.org/help/example-domains"
 
@@ -61,7 +64,26 @@ failures = 0
 
 # Pages served on this machine for the tests that need a server's answer.
 class Pages(http.server.BaseHTTPRequestHandler):
+    # Every request's host and path, in order, for the checks that something never came.
+    seen = []
+
     def do_GET(self):
+        Pages.seen.append(f"{self.headers.get('Host', '').split(':')[0]}{self.path}")
+        if self.path == "/subresources":
+            # A page on an allowed host asking a blocked one for an image, a fetch and a
+            # frame, and this host for an image, which says when the page has loaded.
+            port = self.server.server_port
+            blocked = f"http://{BLOCKED_LOCAL}:{port}"
+            body = (f'<!doctype html><title>Subresources</title><img src="{blocked}/img-blocked">'
+                    f'<iframe src="{blocked}/frame-blocked"></iframe>'
+                    f'<script>fetch("{blocked}/fetch-blocked").catch(() => {{}})</script>'
+                    f'<img src="/img-allowed" onload="document.title=\'loaded\'" onerror="document.title=\'loaded\'">').encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
         if self.path == "/redirect":
             self.send_response(302)
             self.send_header("Location", "chrome://shell/standard/")
@@ -132,7 +154,7 @@ class App:
         self.next = 0
         self.started = time.time()
         self.proc = subprocess.Popen(
-            [bin or BIN, *([f"--user-data-dir={profile}"] if profile else []), f"--block={BLOCKED}", f"--pb-driver={self.fifo}", "--disable-backgrounding-occluded-windows", *extra],
+            [bin or BIN, *([f"--user-data-dir={profile}"] if profile else []), f"--block={BLOCKED},{BLOCKED_LOCAL}", f"--pb-driver={self.fifo}", "--disable-backgrounding-occluded-windows", *extra],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace", bufsize=1,
         )
         App.running.append(self)
@@ -803,6 +825,18 @@ def browsing_checks():
         check("going back clears the blocked chip", True)
     except TimeoutError as e:
         check("going back clears the blocked chip", False, e)
+
+    # A page on an allowed host can't reach a blocked one by its own requests either: its
+    # images, fetches and frames there never leave the engine.
+    visit(app, PAGES + "subresources")
+    try:
+        app.wait("document.title==='loaded'", 20, page=True)
+        time.sleep(0.5)
+        check("the page's request to an allowed host arrives", "127.0.0.1/img-allowed" in Pages.seen, Pages.seen[-5:])
+        reached = [s for s in Pages.seen if s.startswith(BLOCKED_LOCAL)]
+        check("its image, fetch and frame on a blocked host never arrive", reached == [], reached)
+    except TimeoutError as e:
+        check("the page with subresources on a blocked host loads", False, e)
 
     # The shell's own page never loads in a tab, however it's asked for: a copy there
     # would talk to Go as the shell. Content's other internal pages are let through.

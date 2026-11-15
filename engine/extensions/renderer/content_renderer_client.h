@@ -3,7 +3,7 @@
 
 #include <memory>
 
-#include "content/public/renderer/content_renderer_client.h"
+#include "project_b/engine/common/renderer_client.h"
 
 namespace extensions {
 class ExtensionsRendererClient;
@@ -12,8 +12,8 @@ class ExtensionsRendererClient;
 namespace project_b {
 
 // Content's hooks in a renderer, handed to //extensions: content scripts, the chrome.*
-// bindings, and extension service workers. Nothing else of ours runs in a renderer.
-class ContentRendererClient : public content::ContentRendererClient {
+// bindings, and extension service workers, beside what every renderer of ours does.
+class ContentRendererClient : public RendererClient {
  public:
   ContentRendererClient();
   ContentRendererClient(const ContentRendererClient&) = delete;
