@@ -177,7 +177,9 @@ onMounted(follow);
 </script>
 
 <template>
-  <form class="field" :class="{ open }" @submit.prevent="go()">
+  <!-- The field is the shell's all over, in the bar that drags: its slot, a tab of ours's
+       title, and the field, so a drag across it never moves the window. -->
+  <form v-shell class="field" :class="{ open }" @submit.prevent="go()">
     <!-- The field's own icon, in a slot fused to its start (docs/design-system.md, The
          address field's slot): a page of ours's own icon; the site's settings on a web page,
          a button; search while there is no site or the field is being typed in. -->
