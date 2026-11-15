@@ -76,3 +76,9 @@
   outline: none;
   box-shadow: var(--focus-ring);
 }
+
+/* The design system's controls where the shell draws them: square, as everything here is. */
+.text-button,
+.text-field {
+  border-radius: 0;
+}

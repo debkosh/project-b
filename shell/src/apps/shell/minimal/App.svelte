@@ -4,6 +4,7 @@
   import Address from './Address.svelte';
   import CrashBar from './CrashBar.svelte';
   import Notice from './Notice.svelte';
+  import PageDialog from './PageDialog.svelte';
   import Prompt from './Prompt.svelte';
   import SideList from './SideList.svelte';
   import TabBar from './TabBar.svelte';
@@ -74,6 +75,7 @@
         {#if activeTab(go).notice}
           <Notice tab={activeTab(go)} />
         {/if}
+        <PageDialog />
       </main>
     </div>
   </div>
