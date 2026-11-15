@@ -1387,7 +1387,14 @@ def empty_checks():
         time.sleep(0.05)
     check("closing the only tab leaves the window open, showing no page",
           [(v["id"], v["tabs"]) for v in windows()] == [(1, [])] and json.loads(app.cmd("visible")) == [], (windows(), app.cmd("visible")))
+    # The title and the box follow Standard's redraw, a moment after Go's tab list empties.
+    deadline = time.time() + 2
+    while windows()[0]["title"] != "Project B" and time.time() < deadline:
+        time.sleep(0.05)
     check("it takes the app's own title, as a new window has before its first tab", windows()[0]["title"] == "Project B", windows()[0]["title"])
+    deadline = time.time() + 2
+    while not (app.js(f"!!{BOX}") and app.cmd("hit", x + w / 2, y + h / 2) == "shell") and time.time() < deadline:
+        time.sleep(0.05)
     check("the shell draws its command box where the page was, as its own",
           app.js(f"!!{BOX}") and app.cmd("hit", x + w / 2, y + h / 2) == "shell", app.cmd("hit", x + w / 2, y + h / 2))
     check("the command box has the keyboard", holds(app, BOX_FOCUSED))
