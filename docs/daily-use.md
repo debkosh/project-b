@@ -25,7 +25,7 @@ and Android, in the web-features registry: [web-features.md](web-features.md).
 | 6 | Passwords to sites that ask (HTTP auth) | works in Standard: a Sign in dialog over the page, for a site or a proxy | done, r6 ([daily-driver.md](daily-driver.md#sign-in-to-a-site)); the other shells to come, rule 22; nothing is saved yet |
 | 7 | Camera and microphone, for Meet and Zoom on the web | works in Standard: a prompt in the shell, and the page gets its stream once allowed (basics 17) | done, r10 ([daily-driver.md](daily-driver.md#permissions)) |
 | 8 | Video full screen | works in Standard: the window goes full screen with only the page, and Escape gives it back | done, r6 ([daily-driver.md](daily-driver.md#video-full-screen)); the other shells to come, rule 21 |
-| 9 | Tabs come back after a crash | missing: the app comes back with 1 tab (basics 32) | the permissions and restore session |
+| 9 | Tabs come back after a crash | works: the windows and tabs open again after a crash or a kill, the background ones loading when first shown (basics 32). A clean quit still starts with one tab | done, r10 ([daily-driver.md](daily-driver.md#tabs-after-a-crash)) |
 | 10 | Bookmarks | missing in Standard. Glide, an optional style, has favorites and pins | needs discussion |
 | 11 | A history page | partly: history is kept and feeds the address bar's suggestions; the History menu has only Back and Forward | needs discussion |
 | 12 | Saved passwords and autofill | missing: nothing of ours; the Edit menu's Passwords… and Contact… are macOS's AutoFill | needs discussion |
