@@ -417,5 +417,8 @@ same flags, for example:
       ~/Library/Android/sdk/emulator/emulator -avd project-b-test-16k -port 5602 -no-window -no-audio \
       -no-boot-anim -no-snapshot-save -gpu swiftshader_indirect -packet-streamer-endpoint localhost:8877
 
+To remake a running one, `amarit rm` it and `amarit run` it again, then `amarit restart` it: `run` adopts the
+emulator still running with the old flags rather than starting it again.
+
 After an emulator dies mid-run, the installed app can fail every launch with SIGBUS in `libproject_b_content.so`;
 uninstalling it and installing again clears it.
