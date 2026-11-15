@@ -41,6 +41,8 @@ void OpenFile(const base::FilePath& path) {
   [NSWorkspace.sharedWorkspace openURL:base::apple::FilePathToNSURL(path)];
 }
 
+void PublishFile(const base::FilePath& path, const std::string& mime_type) {}
+
 void RevealFile(const base::FilePath& path) {
   [NSWorkspace.sharedWorkspace activateFileViewerSelectingURLs:@[ base::apple::FilePathToNSURL(path) ]];
 }

@@ -23,7 +23,10 @@ manifest = "$target_gen_dir/AndroidManifest.xml"
 library_name = "project_b_content"
 
 generate_jni("jni_headers") {
-  sources = [ "java/dev/projectb/browser/BrowserWindow.java" ]
+  sources = [
+    "java/dev/projectb/browser/BrowserWindow.java",
+    "java/dev/projectb/browser/Downloads.java",
+  ]
 }
 
 source_set("browser") {
@@ -37,6 +40,8 @@ source_set("browser") {
     "../browser/content_browser_client.cc",
     "../browser/content_browser_client.h",
     "../browser/dialogs.cc",
+    "../browser/downloads.cc",
+    "../browser/downloads.h",
     "../browser/dialogs.h",
     "../browser/engine.cc",
     "../browser/engine.h",
@@ -62,10 +67,12 @@ source_set("browser") {
     "../common/main_delegate.cc",
     "../common/main_delegate.h",
     "browser_main_parts_android.cc",
+    "downloads_android.cc",
     "descriptors.h",
     "window_android.cc",
   ]
   deps = [
+    "//components/download/public/common:public",
     ":jni_headers",
     "//base",
     "//project_b/engine/buildflags",
@@ -276,6 +283,7 @@ android_library("java") {
     "java/dev/projectb/browser/BrowserActivity.java",
     "java/dev/projectb/browser/BrowserApplication.java",
     "java/dev/projectb/browser/BrowserWindow.java",
+    "java/dev/projectb/browser/Downloads.java",
     "java/dev/projectb/browser/GoCore.java",
   ]
 }

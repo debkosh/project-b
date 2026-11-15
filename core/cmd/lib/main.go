@@ -453,7 +453,7 @@ func startProfile(c profiles.Choice) {
 		BlockedHosts: blocked,
 		Update:       updateConfig(c),
 		CrashReports: filepath.Join(home, "Library/Logs/DiagnosticReports"),
-		DownloadsDir: filepath.Join(home, "Downloads"),
+		DownloadsDir: downloadsDir(home),
 		System:       systemReport,
 	})
 	content.Wire(hooks, theApp)

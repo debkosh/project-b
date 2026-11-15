@@ -51,10 +51,8 @@ class BrowserContext : public content::BrowserContext {
 
   const base::FilePath path_;
   Permissions permissions_;
-#if BUILDFLAG(IS_MAC)
   // A profile's downloads, made when content first asks.
   std::unique_ptr<Downloads> downloads_;
-#endif
 };
 
 }  // namespace project_b
