@@ -659,8 +659,8 @@ dense and square.
   right, split down and close; a press on it makes the pane active. The prompt line at the
   foot is the address bar, with back, forward and reload, and the update when one is ready.
 - **Its keys are chords, with no prefix key** (owner, 2026-11-14), each one of its own
-  actions: Cmd+D splits the active pane right and Shift+Cmd+D down (`terminal.splitRight`,
-  `terminal.splitDown`); Ctrl+Cmd and an arrow makes the pane that way active, the nearest
+  actions: Option+Cmd+D splits the active pane right and Shift+Cmd+D down
+  (`terminal.splitRight`, `terminal.splitDown`), Cmd+D being Bookmark in every shell; Ctrl+Cmd and an arrow makes the pane that way active, the nearest
   sharing most of its height or width (`terminal.focusLeft` and so on); Ctrl+Shift+Cmd and
   an arrow moves a divider of the active pane 32px that way, the one on that side of it,
   else the one on its other side (`terminal.resizeLeft` and so on); Shift+Cmd+Enter zooms
