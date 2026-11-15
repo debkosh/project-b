@@ -336,6 +336,9 @@ def launch(block=""):
     # reused the dying zygote once and hung for good, so wait it out. Killing it ourselves is worse:
     # the system never makes another, and no renderer starts.
     until(lambda: PACKAGE + "_zygote" not in adb("shell", "ps", "-A", "-o", "NAME"))
+    # Tabs come back at start, and one of our pages (Downloads, Settings) has no address field
+    # to type in: each part starts fresh, on a web tab, as it expects.
+    adb("shell", "rm", "-f", "/data/data/%s/%s/session.json" % (PACKAGE, PROFILE))
     args = ["shell", "am", "start", "-W", "-n", PACKAGE + "/" + ACTIVITY]
     if block:
         args += ["--es", "block", block]
