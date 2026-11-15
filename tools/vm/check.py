@@ -357,13 +357,19 @@ def layout():
                    "n=document.querySelector('form.field').nextElementSibling.getBoundingClientRect();"
                    "return [f.right,f.y,n.left-f.right,f.height]})(),"
                    "tabs:[...document.querySelectorAll('[role=tab]')].map(r)}})()")
-        found["bounds"] = json.loads(ask("bounds"))
+        for _ in range(50):  # The shown page's bounds, once it shows.
+            bounds = ask("bounds")
+            if bounds.startswith("{"):
+                break
+            time.sleep(0.2)
+        found["bounds"] = json.loads(bounds)
         return found
 
     # Standard starts with no tab and its New Tab makes none: the driver opens the two, as a
     # page opens one.
-    ask("opentab", "", "about:blank")
-    ask("opentab", "", "about:blank")
+    # Real pages: Standard shows no page for a blank tab, and the bounds speak of the shown page.
+    ask("opentab", "", ALPHA)
+    ask("opentab", "", BRAVO)
     until("document.querySelectorAll('[role=tab]').length===2")
     side = measure()
     js("document.querySelector('button.layout').click()")

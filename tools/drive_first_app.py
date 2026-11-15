@@ -241,8 +241,8 @@ class App:
 INPUT = "document.querySelector('input')"
 VALUE = INPUT + ".value"
 OPTIONS = "document.querySelectorAll('[role=option]').length"
-# Rows other than the search row, which every typed word now gets first.
-FOUND = "document.querySelectorAll('[role=option]:not([data-kind=search])').length"
+# History's rows: every typed word also gets a search row, and may get an address or action row.
+FOUND = "document.querySelectorAll('[role=option][data-kind=history]').length"
 ACTIVE = "document.querySelectorAll('li.active').length"
 TAB_READY = "!document.querySelector('.progress.on')"
 ROWS = "document.querySelectorAll('[role=tab]').length"
