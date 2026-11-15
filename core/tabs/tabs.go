@@ -56,6 +56,8 @@ type Tab struct {
 	ConnectionNote string `json:"connectionNote,omitempty"`
 	// Notice is what a shell draws over its page while it has nothing to show (notice.go).
 	Notice *Notice `json:"notice,omitempty"`
+	// AdsBlocked is how many requests of its page the ad blocker kept from their hosts.
+	AdsBlocked int `json:"adsBlocked,omitempty"`
 	// Group is the id of the tab group it is in, "" for none (groups.go).
 	Group string `json:"group,omitempty"`
 	// Pin is the id of the pin the tab is open for, "" for none (package pins). A window
@@ -1009,10 +1011,19 @@ func (m *Manager) HandleNavigationFinished(id engine.TabID, nav int64, u string)
 	// A page restored from the back-forward cache never reports a start, so a commit
 	// has to clear what an earlier navigation left behind.
 	t.URL, t.Error, t.ErrorCode, t.Blocked, t.Crashed = address(u), "", "", false, false
+	t.AdsBlocked = 0
 	for _, f := range m.onFinished {
 		f(*t)
 	}
 	m.changed(t)
+}
+
+// HandleAdBlocked counts one request of the tab's page the ad blocker kept from its host.
+func (m *Manager) HandleAdBlocked(id engine.TabID) {
+	if t := m.tabs[id]; t != nil {
+		t.AdsBlocked++
+		m.changed(t)
+	}
 }
 
 // HandleNavigationFailed records a failed navigation, unless it is older than the latest

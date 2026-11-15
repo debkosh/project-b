@@ -96,6 +96,7 @@ type Engine struct {
 	erased   []Erase
 	profiles []string
 	rules    []engine.BlockRules
+	adRules  engine.AdRules
 	// badCerts is the hosts a test gave a bad certificate. Main thread.
 	badCerts map[string]bool
 	// perms is the page's permission requests and the app's answers.
@@ -209,6 +210,12 @@ func (e *Engine) Profiles() []string { return e.profiles }
 
 // SetBlockRules records the rules. The mock's pages make no requests to refuse.
 func (e *Engine) SetBlockRules(r engine.BlockRules) { e.rules = append(e.rules, r) }
+
+// SetAdRules keeps the rules, for a test to read. The mock's pages make no requests.
+func (e *Engine) SetAdRules(r engine.AdRules) { e.adRules = r }
+
+// AdRules is what the app last set.
+func (e *Engine) AdRules() engine.AdRules { return e.adRules }
 
 // BlockRules are the rules the app set, in order. On the main thread.
 func (e *Engine) BlockRules() []engine.BlockRules { return e.rules }

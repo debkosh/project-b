@@ -178,6 +178,15 @@ func (r *adapterRecorder) CertificateError(tab engine.TabID, e engine.Certificat
 	r.note(fmt.Sprintf("certificate %d %s %s main=%v passable=%v", tab, e.URL, e.Reason, e.MainFrame, e.Passable))
 	return false
 }
+func (r *adapterRecorder) LeavingSite(tab engine.TabID, from, url string, pressed bool) engine.Navigation {
+	r.note(fmt.Sprintf("leaving %d %s %s pressed=%v", tab, from, url, pressed))
+	return engine.NavigationElsewhere
+}
+func (r *adapterRecorder) SparksFor(tab engine.TabID, url string, mainFrame bool) []engine.Script {
+	r.note(fmt.Sprintf("sparks %d %s main=%v", tab, url, mainFrame))
+	return []engine.Script{{ID: "ab12cd34", Source: "1", RunAt: "document-end"}}
+}
+func (r *adapterRecorder) AdBlocked(tab engine.TabID) { r.note(fmt.Sprintf("ad %d", tab)) }
 func (r *adapterRecorder) ConnectionChanged(tab engine.TabID, c engine.Connection) {
 	r.note(fmt.Sprintf("connection %d %d %s", tab, c.State, c.Reason))
 }
@@ -276,6 +285,29 @@ func TestACertificateErrorAsksTheListener(t *testing.T) {
 		t.Fatalf("answered %v %v", ok, v)
 	}
 	if !reflect.DeepEqual(r.got, []string{"certificate 3 https://old.test/ expired main=true passable=true"}) {
+		t.Fatalf("got %v", r.got)
+	}
+}
+
+func TestLeavingTheSiteAsksTheListener(t *testing.T) {
+	h, r := wired(t)
+	v, ok := h.Dispatch(LeavingSite, pack(3, "https://shop.test/", "https://other.test/", true))
+	if !ok || v.I != int64(navigationAnswers[engine.NavigationElsewhere]) {
+		t.Fatalf("answered %v %v", ok, v)
+	}
+	if !reflect.DeepEqual(r.got, []string{"leaving 3 https://shop.test/ https://other.test/ pressed=true"}) {
+		t.Fatalf("got %v", r.got)
+	}
+}
+
+func TestAFrameAsksForItsSparksAndAnAdBlockIsTold(t *testing.T) {
+	h, r := wired(t)
+	v, ok := h.Dispatch(SparksFor, pack(3, "https://a.test/", true))
+	if !ok || v.S != `[{"id":"ab12cd34","source":"1","runAt":"document-end"}]` {
+		t.Fatalf("answered %v %q", ok, v.S)
+	}
+	h.Dispatch(AdBlocked, pack(3))
+	if !reflect.DeepEqual(r.got, []string{"sparks 3 https://a.test/ main=true", "ad 3"}) {
 		t.Fatalf("got %v", r.got)
 	}
 }

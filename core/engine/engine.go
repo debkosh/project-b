@@ -166,6 +166,10 @@ type Engine interface {
 	// asks NavigationStarting, which decides what the tab shows. The app sets them once,
 	// at start, before any tab.
 	SetBlockRules(r BlockRules)
+	// SetAdRules says which hosts the ad blocker keeps a page's requests from, and the
+	// sites, by origin, where it is off. The app sets them at start, before any tab, and
+	// again whenever they change; a page's requests follow the rules of when they start.
+	SetAdRules(r AdRules)
 	// CreateTab makes a hidden tab in a workspace, by the app's id for it: "" is the
 	// profile's own storage, which a profile's first workspace, Main, has. A window's layout
 	// shows it. A workspace keeps its own cookies and site storage, and a tab stays in its
@@ -298,6 +302,21 @@ type Engine interface {
 type BlockRules struct {
 	// Hosts are blocked with every host under them, each lower case.
 	Hosts []string
+}
+
+// AdRules are the ad blocker's: the hosts it keeps requests from, and any under them, and
+// the origins of the pages it lets reach them.
+type AdRules struct {
+	Hosts []string
+	Off   []string
+}
+
+// Script is one of the person's scripts for a page: its id, its source, and when it runs,
+// "document-start" or "document-end".
+type Script struct {
+	ID     string `json:"id"`
+	Source string `json:"source"`
+	RunAt  string `json:"runAt"`
 }
 
 // BlankURL is the empty page every engine has, which a new tab loads so its page area
@@ -436,6 +455,18 @@ type Listener interface {
 	// CertificateError asks about a certificate error on a request of tab's, 0 for none.
 	// True lets the request through; false refuses it.
 	CertificateError(tab TabID, e CertificateError) bool
+
+	// LeavingSite asks about a navigation of tab's page to another site, which the page
+	// started: a link, a form, a script, a redirect of one of those. pressed says a press
+	// led to it; from is the page it leaves. Asked before NavigationStarting, which hears
+	// only one this lets go on, so a tab that stays keeps its page as it was.
+	LeavingSite(tab TabID, from, url string, pressed bool) Navigation
+
+	// SparksFor is the scripts a frame of tab's runs in the page it is about to show at
+	// url, each in a world of its own: mainFrame says it is the tab's own.
+	SparksFor(tab TabID, url string, mainFrame bool) []Script
+	// AdBlocked says the ad blocker kept one request of tab's page from its host.
+	AdBlocked(tab TabID)
 
 	// NotificationShown is a page showing a notification. True shows it on the system.
 	NotificationShown(n Notification) bool

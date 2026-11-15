@@ -24,6 +24,7 @@ import (
 	"projectb/shelldata"
 	"projectb/shells"
 	"projectb/sites"
+	"projectb/sparks"
 	"projectb/suggest"
 	"projectb/tabs"
 	"projectb/timeline"
@@ -98,6 +99,8 @@ type App struct {
 	Downloads *downloads.Manager
 	// Sites is each site's settings, what it may use among them, and the prompts open for the rest.
 	Sites *sites.Manager
+	// Sparks are the person's scripts for pages (docs/site-features.md).
+	Sparks *sparks.Manager
 	// Session is the profile's windows and tabs as the last run left them, and as they are.
 	Session *session.Manager
 	// Bookmarks is the profile's bookmarks.
