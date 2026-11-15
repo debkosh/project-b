@@ -219,7 +219,33 @@ func TestSettingsSetsAnAskableKindForASite(t *testing.T) {
 	if m.Status(0, "https://meet.test", Camera) != A || len(m.Sites()) != 0 {
 		t.Fatalf("reset kept %+v", m.Sites())
 	}
-	if s := Settable(); len(s) != 3 || s[0].Kind != Camera || s[0].Title != "Camera" {
+	if s := Settable(); len(s) != 5 || s[3].Kind != Ads || s[4].Kind != Links || s[0].Kind != Camera || s[0].Title != "Camera" {
 		t.Fatalf("settable %+v", s)
+	}
+}
+
+func TestOurOwnKindsKeepOnlyWhatIsntTheirDefault(t *testing.T) {
+	m, _, _ := setup(t, t.TempDir())
+	o := "https://news.test"
+	if m.Value(o, Ads) != On || m.Value(o, Links) != Allow || m.Value(o, Spark+"ab12cd34") != On {
+		t.Fatalf("defaults %q %q", m.Value(o, Ads), m.Value(o, Links))
+	}
+	m.Set(o, Ads, Off)
+	m.Set(o, Links, NewTab)
+	m.Set(o, Spark+"ab12cd34", Off)
+	m.Set(o, Links, "sideways") // not a choice: ignored
+	m.Set(o, Spark, Off)        // no spark named: ignored
+	if m.Value(o, Ads) != Off || m.Value(o, Links) != NewTab || m.Value(o, Spark+"ab12cd34") != Off {
+		t.Fatalf("set %+v", m.Sites())
+	}
+	got := m.SettingsOf(o)
+	if got[3].Value != Off || got[4].Value != NewTab || got[0].Value != "" {
+		t.Fatalf("settings of %+v", got)
+	}
+	m.Set(o, Ads, On)
+	m.Set(o, Links, Allow)
+	m.Set(o, Spark+"ab12cd34", On)
+	if len(m.Sites()) != 0 {
+		t.Fatalf("the defaults are kept: %+v", m.Sites())
 	}
 }
