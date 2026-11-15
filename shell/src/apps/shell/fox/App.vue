@@ -3,9 +3,10 @@ import CrashBar from './CrashBar.vue';
 import NavBar from './NavBar.vue';
 import TabStrip from './TabStrip.vue';
 import UpdateBar from './UpdateBar.vue';
+import PageNotice from '@/ui/PageNotice.vue';
 import { keyOf } from './hints.js';
 import { started } from './started.js';
-import { send, setFrame, state } from '@/sdk/vue.js';
+import { activeTab, send, setFrame, state } from '@/sdk/vue.js';
 
 // The tabs on top, the navigation bar under them, any notice under that, then the page,
 // inside the window's 4px band. The frame's sides and foot are strips of their own, so
@@ -33,6 +34,7 @@ setFrame(4);
             New Tab<span v-if="keyOf('tab.new')" class="key" aria-hidden="true">{{ keyOf('tab.new') }}</span>
           </button>
         </div>
+        <PageNotice v-if="activeTab.notice" v-shell :tab="activeTab" />
       </div>
       <div class="edge side"></div>
     </div>
