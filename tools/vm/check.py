@@ -36,6 +36,11 @@ FRAME = (79, 158, 158)  # --frame and --accent
 BAR = (232, 242, 242)  # --bar, the frame mixed 0.87 toward white
 WHITE = (255, 255, 255)  # --surface
 ICON = (66, 133, 133)  # --icon, the toolbar's buttons: the frame mixed 0.16 toward black
+# Standard's command box fills the page area with the bar's colour mixed 60% into --surface
+# (shell/src/apps/shell/standard/CommandBox.vue). Standard takes New Tab: the app starts and
+# New Window opens with no tab and this box in the page area, and Cmd+T opens it over the
+# page and makes no tab; an address typed in it with Enter makes the tab.
+BOX_TINT = (241, 247, 247)
 PAGE_LOAD = 3.0
 ANIMATION = 2.0
 MOVE = (60, 40)
@@ -355,7 +360,10 @@ def layout():
         found["bounds"] = json.loads(ask("bounds"))
         return found
 
-    js("document.querySelector('.new-tab').click()")
+    # Standard starts with no tab and its New Tab makes none: the driver opens the two, as a
+    # page opens one.
+    ask("opentab", "", "about:blank")
+    ask("opentab", "", "about:blank")
     until("document.querySelectorAll('[role=tab]').length===2")
     side = measure()
     js("document.querySelector('button.layout').click()")
@@ -605,8 +613,18 @@ def window_menu():
 
 
 def go_to(url):
-    """Cmd+L in the window in front, then the address."""
+    """Cmd+L in the window in front, then the address. In a window with no tabs, as Standard's
+    are at the start, the address opens one."""
     desk.key("cmd+l")
+    time.sleep(0.4)
+    desk.type(url)
+    desk.key("return")
+
+
+def new_tab(url):
+    """New Tab the user's way on Standard: Cmd+T opens the command box, focused, and url typed
+    there with Enter opens in a new tab."""
+    desk.key("cmd+t")
     time.sleep(0.4)
     desk.type(url)
     desk.key("return")
@@ -717,19 +735,21 @@ ALPHA_RGB = (43, 108, 176)  # alpha.html's colour.
 
 def move_checks():
     """A tab moved to the other window arrives there still showing its page. The move is
-    Go's, asked for through the driver's own DevTools command, ProjectB.moveTab."""
+    Go's, asked for through the driver's own DevTools command, ProjectB.moveTab. On Standard
+    the app starts with no tab and New Window makes none: Alpha's is typed in the empty
+    window's address field, and Bravo's in the command box Cmd+T opens."""
     guest("/usr/bin/killall", "project_b")
     ask = driven(MOVED, f"{MOVED}/profile")
     window_or_stop("the app starts with one window")
     go_to(ALPHA)
     until(titles, lambda t: t == ["Alpha"])
-    desk.key("cmd+t")
-    go_to(BRAVO)
+    alpha = json.loads(ask("projectb", "getTabs", "{}"))["result"]["active"]
+    new_tab(BRAVO)
     until(titles, lambda t: t == ["Bravo"])
     desk.key("cmd+n")
     until(windows, lambda w: len(w) == 2)
     shot("move-before")
-    ask("projectb", "moveTab", json.dumps({"tab": 1, "window": 2, "index": 0}))
+    ask("projectb", "moveTab", json.dumps({"tab": alpha, "window": 2, "index": 0}))
     now = until(titles, lambda t: sorted(t) == ["Alpha", "Bravo"])
     front = windows()[0]
     middle_of_page = crop(desk.image(), front[0] + front[2] / 2, front[1] + front[3] / 2, 40, 40)
@@ -750,6 +770,8 @@ def state_checks():
     guest("/usr/bin/killall", "project_b")
     ask = driven(STATE, f"{STATE}/profile")
     window_or_stop("the app starts with one window")
+    # Standard starts with no tab: the driver opens the one Cmd+M hides.
+    tab = ask("opentab", "", ALPHA)
     windows_of_go = lambda: json.loads(ask("projectb", "getWindows", "{}"))["result"]["windows"]
     ask("projectb", "setWindowBounds", json.dumps({"window": 1, "bounds": {"x": 200, "y": 150, "w": 900, "h": 600}}))
     now = until(windows, lambda w: w == [(200, 150, 900, 600)])
@@ -758,7 +780,7 @@ def state_checks():
     check("and Go reads back where it is", seen[0]["bounds"] == {"x": 200, "y": 150, "w": 900, "h": 600}, str(seen))
     desk.key("cmd+m")
     seen = until(windows_of_go, lambda w: w[0]["state"] == "minimised")
-    hidden = until(lambda: json.loads(ask("evaltab", "1", "document.visibilityState")), lambda v: v == "hidden")
+    hidden = until(lambda: json.loads(ask("evaltab", tab, "document.visibilityState")), lambda v: v == "hidden")
     check("Cmd+M minimises the window, Go reads it so, and its tab is told it is hidden",
           seen[0]["state"] == "minimised" and hidden == "hidden", f"{seen} {hidden}")
     guest("/usr/bin/killall", "project_b")
@@ -884,6 +906,9 @@ def workspace_checks():
     launch()
     time.sleep(1.5)
     win = window_or_stop("the app starts on its first profile")
+    # Standard starts with no tab: the one the checks look at is typed in the address field.
+    go_to(ALPHA)
+    until(titles, lambda t: t == ["Alpha"])
     blue = near(crop(desk.image(), win[0], win[1] + 40, 220, 200), MAIN_DOT, 24).sum()
     check("a fresh profile's tab shows no workspace dot", blue <= 4, f"{blue} pixels of Main's blue")
     guest("/usr/bin/killall", "project_b")
@@ -893,6 +918,8 @@ def workspace_checks():
     launch()
     time.sleep(1.5)
     win = window_or_stop("the app starts on its first profile")
+    go_to(ALPHA)
+    until(titles, lambda t: t == ["Alpha"])
     sidebar = crop(desk.image(), win[0], win[1] + 40, 220, 200)
     check("with three workspaces, the first tab shows Main's blue dot", near(sidebar, MAIN_DOT, 24).sum() > 4)
     names = new_tab_in("Work")
@@ -935,6 +962,9 @@ def workspace_delete_checks():
 
     win = window_or_stop("the app starts with its driver")
     tabs = lambda: js("document.querySelectorAll('[role=tab]').length")
+    # Standard starts with no tab: the driver opens Main's.
+    ask("opentab", "", ALPHA)
+    until(tabs, lambda n: n == 1)
     new_tab_in("Work")
     new_tab_in("Work")
     check("two tabs opened in Work, beside Main's", until(tabs, lambda n: n == 3) == 3, str(tabs()))
@@ -1189,6 +1219,10 @@ def region_checks():
     PX, PY, W, H = home
     TOP = middle(V["field"])[1]
     NEUTRAL = (PX + W / 2, PY + H / 2)
+    # Standard starts with no tab, so no page: the address typed opens one.
+    go_to(ALPHA)
+    until(titles, lambda t: t == ["Alpha"])
+    time.sleep(1)
     shot("regions-side")
     seen = outlines(home)
     for name in ("drag", "shell", "page", "window buttons"):
@@ -1539,20 +1573,33 @@ def side():
     return crop(desk.image(), PX + SIDE[0], PY + SIDE[1], SIDE[2], SIDE[3])
 
 
+def boxed():
+    """How much of the page area shows the command box's colour."""
+    return float(np.mean(near(crop(desk.image(), PX + PAGE_V[0], PY + PAGE_V[1], PAGE_V[2], PAGE_V[3]), BOX_TINT, 6)))
+
+
+# Standard takes New Tab: Cmd+T opens the command box over the page and makes no tab, Escape
+# goes back to the page, and an address typed in the box with Enter makes the tab.
 one = side()
 desk.key("cmd+t")
 start = time.time()
-two = one
-while changed(one, two) <= 0.005 and time.time() - start < 5:
+while boxed() <= 0.5 and time.time() - start < 5:
     time.sleep(0.05)
-    two = crop(desk.image(), PX + SIDE[0], PY + SIDE[1], SIDE[2], SIDE[3])
 took = time.time() - start
-check("Cmd+T adds a tab within 0.5 s", changed(one, two) > 0.005 and took <= 0.5,
-      f"the tab showed after {took:.2f} s" if changed(one, two) > 0.005 else "no tab after 5 s")
-if changed(one, two) <= 0.005:
-    # So the checks below still have their two tabs.
-    desk.key("cmd+t")
-    until(side, lambda n: changed(one, n) > 0.005, 5)
+opened = boxed() > 0.5
+shot("command-box")
+check("Cmd+T opens the command box within 0.5 s", opened and took <= 0.5,
+      f"the box showed after {took:.2f} s" if opened else "no box after 5 s")
+check("and makes no tab", changed(one, side()) <= 0.005, f"the sidebar changed {changed(one, side()):.3f}")
+desk.key("escape")
+gone = until(boxed, lambda b: b < 0.2, 5) < 0.2
+check("Escape closes the box, back to the page, with no tab made", gone and changed(one, side()) <= 0.005,
+      f"box colour in the page area {boxed():.2f}, the sidebar changed {changed(one, side()):.3f}")
+if not gone:
+    desk.key("escape")
+new_tab(CHARLIE)
+two = until(side, lambda n: changed(one, n) > 0.005, 5)
+check("an address typed in the box with Enter adds a tab", changed(one, two) > 0.005, f"the sidebar changed {changed(one, two):.3f}")
 time.sleep(0.5)
 two = side()
 shot("two-tabs")
@@ -1561,12 +1608,12 @@ shown = until(address, lambda a: changed(a, example_at) < 0.01)
 check("a click reaches a tab in the sidebar", changed(shown, example_at) < 0.01, f"address differs from the first page's by {changed(shown, example_at):.3f}")
 click_on(V["tabs"][1])
 until(address, lambda a: changed(a, example_at) >= 0.01)
-desk.key("cmd+t")
+new_tab(BRAVO)
 until(side, lambda n: changed(two, n) > 0.005, 5)
 desk.key("cmd+w")
 check("Cmd+W closes a tab", changed(until(side, lambda n: changed(n, two) < 0.05, 5), two) < 0.05,
       f"differs from two tabs {changed(side(), two):.3f}")
-desk.key("cmd+t")
+new_tab(BRAVO)
 until(side, lambda n: changed(two, n) > 0.005, 5)
 desk.key("cmd+w")
 desk.key("cmd+w")
@@ -1808,12 +1855,15 @@ def page_until(want, limit=PAGE_LOAD + 5):
 
 on_top = page(PAGE_H)
 desk.key("cmd+t")
-blank_tab = page_until(lambda p: changed(on_top, p) > 0.001)
-check("Cmd+T adds a tab, tabs on top", changed(on_top, blank_tab) > 0.001)
+boxed_top = page_until(lambda p: float(np.mean(near(p, BOX_TINT, 6))) > 0.5)
+check("Cmd+T opens the command box, tabs on top", float(np.mean(near(boxed_top, BOX_TINT, 6))) > 0.5)
+desk.type(CHARLIE)
+desk.key("return")
+second_tab = page_until(lambda p: changed(on_top, p) > 0.001 and float(np.mean(near(p, BOX_TINT, 6))) < 0.2)
 click_on(T["tabs"][0])
 check("a click reaches a tab at title-bar height", changed(page_until(lambda p: changed(p, on_top) < 0.01), on_top) < 0.01 and still())
 click_on(T["tabs"][1])
-page_until(lambda p: changed(p, blank_tab) < 0.01)
+page_until(lambda p: changed(p, second_tab) < 0.01)
 desk.key("cmd+w")
 page_until(lambda p: changed(p, on_top) < 0.01)
 click_on(T["field"])
