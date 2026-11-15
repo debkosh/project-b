@@ -7,9 +7,9 @@
   // The ⋯ sheet: a row of the page's actions, Back while there is somewhere to go back to
   // (the phone's back key does it too), Forward, Reload or Stop, New tab, and New tab in
   // group while the tab is in one; then Find in page, Workspaces, where new tabs open,
-  // while there are two or more, Downloads once the profile has one, Extensions while their flag is on, the
-  // update while one is ready, and Settings. Each acts and closes the sheet, but Workspaces,
-  // Downloads and Extensions, which open their own.
+  // while there are two or more, Downloads, the page of ours (with how many are running),
+  // Extensions while their flag is on, the update while one is ready, and Settings. Each acts
+  // and closes the sheet, but Workspaces and Extensions, which open their own.
   let { tab, group, workspace, onclose, onnewtab, onsheet, onworkspace } = $props();
   let list = $state('');
 
@@ -62,14 +62,11 @@
         <Icon name="find" />
         <span class="name">Find in page</span>
       </button>
-      {#if go.downloads.length}
-        <button class="row" role="menuitem" aria-label="Downloads" onclick={() => onsheet('downloads')}>
-          <Icon name="download" />
-          <span class="name">Downloads</span>
-          {#if running}<span class="note">{running} in progress</span>{/if}
-          <Icon name="chevron" />
-        </button>
-      {/if}
+      <button class="row" role="menuitem" aria-label="Downloads" onclick={() => act({ t: 'run', text: 'downloads.show' })}>
+        <Icon name="download" />
+        <span class="name">Downloads</span>
+        {#if running}<span class="note">{running} in progress</span>{/if}
+      </button>
       {#if extensionsBuilt && go.extensions}
         <button class="row" role="menuitem" aria-label="Extensions" onclick={() => onsheet('extensions')}>
           <Icon name="extensions" />
