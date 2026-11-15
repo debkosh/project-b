@@ -243,7 +243,24 @@ void PageTab::ReportNavigation(content::NavigationHandle* handle) {
     return;
   }
   const net::Error error = handle->GetNetErrorCode();
-  if (error != net::OK && error != net::ERR_ABORTED) {
+  if (error == net::OK || error == net::ERR_ABORTED) {
+    // Nothing shows instead: the navigation became a download, was stopped, or had nothing
+    // to show (a 204). The tab is still at the page it shows, so it ends as a failure with
+    // no failure named, at that page's address: Go's address goes back to it, rather than
+    // keeping one that would load, and download again, on a restore, and History counts no
+    // visit.
+    hooks::Args args;
+    args.Int(id_);
+    args.Int(handle->GetNavigationId());
+    args.Str(contents_->GetController().GetLastCommittedEntry()
+                 ? contents_->GetLastCommittedURL().spec()
+                 : std::string());
+    args.Str(std::string());
+    args.Str(std::string());
+    hooks::Fire(PB_EVENT_NAVIGATION_FAILED, args);
+    return;
+  }
+  {
     hooks::Args args;
     args.Int(id_);
     args.Int(handle->GetNavigationId());

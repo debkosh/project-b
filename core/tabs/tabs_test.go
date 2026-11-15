@@ -275,6 +275,21 @@ func TestALateBlankPageLeavesTheNewerAddress(t *testing.T) {
 	}
 }
 
+// A navigation that shows nothing instead, as one that becomes a download, ends as a
+// failure with none named, at the page still shown: the address goes back to that page, so
+// a restore loads it and not the download, and no error shows.
+func TestANavigationThatBecomesADownloadLeavesThePageShown(t *testing.T) {
+	m := oneWindow(&fakeEngine{})
+	id := m.Create(1)
+	m.HandleNavigationStarting(id, 1, "https://example.com/")
+	m.HandleNavigationFinished(id, 1, "https://example.com/")
+	m.HandleNavigationStarting(id, 2, "https://example.com/report.pdf")
+	m.HandleNavigationFailed(id, 2, "https://example.com/", "", "")
+	if tab := m.Active(); tab.URL != "https://example.com/" || tab.Error != "" || tab.Loading {
+		t.Fatalf("after the download the tab shows %q, error %q, loading %v", tab.URL, tab.Error, tab.Loading)
+	}
+}
+
 // Each window has its own tabs, its own active tab and its own recent order; commands act
 // on the window in front, and a tab a page opens goes in its opener's window.
 func TestWindowsKeepTheirOwnTabs(t *testing.T) {
