@@ -1561,9 +1561,10 @@ listed = until(suggested, lambda l: changed(before, l) > 0.05, 5)
 time.sleep(0.5)  # The list can still be growing.
 shot("suggestions")
 check("Cmd+L and typing shows suggestions over the page", changed(before, listed) > 0.05, f"changed {changed(before, listed):.3f}")
-# The second item, history's Alpha: the first searches what was typed. Rows start 6 below the
-# field, inside the list's 1 border and 4 padding, and are 32 high.
-desk.click(PX + middle(V["field"])[0], PY + V["field"][1] + V["field"][3] + 6 + 1 + 4 + 32 + 16)
+# History's Alpha: the first row searches what was typed, and a History heading comes between.
+# Rows start 6 below the field, inside the list's 1 border and 4 padding, and are 32 high;
+# Alpha's middle is 60 below the search row's.
+desk.click(PX + middle(V["field"])[0], PY + V["field"][1] + V["field"][3] + 6 + 1 + 4 + 16 + 60)
 picked = until(address, lambda a: changed(a, example_at) < 0.01)
 check("a click picks a suggestion", changed(picked, example_at) < 0.01, f"address differs from the first page's by {changed(picked, example_at):.3f}")
 
