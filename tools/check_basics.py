@@ -265,11 +265,16 @@ def a06(app):
     return app.js(ROWS) == 1, f"{app.js(ROWS)} tabs: the popup opened without a click"
 
 
+# What the shell's notice over the page says, '' with none, and its button named name, pressed.
+NOTICE = "(document.querySelector('[role=alert]')||{innerText:''}).innerText"
+PRESS = """(() => {{ const b = [...document.querySelectorAll('[role=alert] button')].find((b) => b.textContent.trim() === {name}); if (b) b.click(); return !!b; }})()"""
+
+
 def a07(app):
-    go(app, f"http://127.0.0.1:{closed_port()}/")
-    time.sleep(1)
-    text = page_text(app)
-    return bool(text and text.strip()), "the failed load shows an empty page"
+    go(app, f"http://127.0.0.1:{closed_port()}/", wait=False)
+    time.sleep(1.5)
+    said = app.js(NOTICE)
+    return "Can't reach" in said and "Try again" in said, f"the failed load shows {said!r} over an empty page"
 
 
 def a08(app):
@@ -285,10 +290,18 @@ def a09(app):
 
 
 def a10(app):
-    go(app, HTTPS + "/a")
-    time.sleep(1)
-    text = page_text(app)
-    return bool(text and text.strip()), f"a self-signed certificate shows {'an empty page' if not text else repr(text[:60])}"
+    go(app, HTTPS + "/a", wait=False)
+    time.sleep(1.5)
+    said = app.js(NOTICE)
+    if "certificate" not in said:
+        return False, f"a self-signed certificate shows {said!r} over an empty page"
+    if not app.js(PRESS.format(name=json.dumps("Open anyway"))):
+        return False, "the warning offers no Open anyway"
+    for _ in range(30):
+        if title(app) == "A":
+            return app.js(NOTICE) == "", "the warning stayed over the page"
+        time.sleep(0.1)
+    return False, f"Open anyway left {title(app)!r}"
 
 
 def a11(app):
