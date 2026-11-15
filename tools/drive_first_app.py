@@ -1378,6 +1378,23 @@ def empty_checks():
     closed here is made from the box first."""
     app = App(tempfile.mkdtemp(prefix="pb-profile-"))
     windows = lambda: json.loads(app.cmd("windows"))
+    # New Tab in a window with no tab keeps the box, which is there already; an address
+    # typed in the field instead opens a tab whose page shows, and the box goes.
+    holds(app, BOX_FOCUSED, 10)
+    app.cmd("key", "cmd+t")
+    holds(app, BOX_FOCUSED, 5)
+    focus_bar(app)
+    app.cmd("type", PAGES)
+    app.wait(f"{VALUE}==={json.dumps(PAGES)}")
+    app.cmd("key", "enter")
+    deadline = time.time() + 10
+    while not (json.loads(app.cmd("visible")) and not app.js(f"!!{BOX}")) and time.time() < deadline:
+        time.sleep(0.05)
+    check("an address typed in the field of a window with no tab opens it, and the box goes",
+          bool(json.loads(app.cmd("visible"))) and not app.js(f"!!{BOX}"), (app.cmd("visible"), app.js(f"!!{BOX}")))
+    print(app.cmd("capture", os.path.join(OUT, "empty-field-opens.png")), flush=True)
+    app.cmd("key", "cmd+w")
+    app.wait(f"{ROWS}===0", 10)
     from_box(app, PAGES)
     x, y, w, h = json.loads(app.cmd("visible"))[0]["frame"]
     app.cmd("key", "cmd+w")
