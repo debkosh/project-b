@@ -309,7 +309,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	case !restored && !a.startsEmpty():
 		a.Tabs.Create(first)
 	}
-	a.keepSession()
+	a.keepSession(e)
 	a.Update.Start()
 	return a
 }
@@ -421,6 +421,7 @@ func (a *App) NewWindowWith(tab engine.TabID) engine.WindowID {
 func (a *App) Stop() {
 	a.Update.Stop()
 	a.History.Close()
+	a.Session.Close()
 	a.Prefs.Close()
 	a.Crash.Stop()
 }

@@ -1,6 +1,7 @@
 package session
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -19,14 +20,37 @@ func TestKeepsTheSessionAcrossManagersAndWritesOnlyChanges(t *testing.T) {
 		Tabs:   []Tab{{URL: "https://a.test/", Title: "A", Workspace: ""}, {URL: "https://b.test/", Workspace: "w1", Group: "g1"}},
 		Groups: []Group{{ID: "g1", Name: "Work", Color: "#3470d0"}}}}}
 	m.Save(s)
+	m.Close()
 	path := filepath.Join(dir, "session.json")
 	info, _ := os.Stat(path)
 	os.Chtimes(path, info.ModTime().Add(-1e9*60), info.ModTime().Add(-1e9*60))
+	m = New(dir)
 	m.Save(s)
+	m.Close()
 	if again, _ := os.Stat(path); !again.ModTime().Before(info.ModTime()) {
 		t.Fatal("the same session was written again")
 	}
 	if got := New(dir).Last(); !reflect.DeepEqual(got, s) {
 		t.Fatalf("read back %+v", got)
+	}
+}
+
+// BenchmarkSave is what a tab closing costs the main thread: encoding a session of 3
+// windows of 20 tabs each and handing it to the writer.
+func BenchmarkSave(b *testing.B) {
+	m := New(b.TempDir())
+	defer m.Close()
+	var s Session
+	for w := 0; w < 3; w++ {
+		var win Window
+		for i := 0; i < 20; i++ {
+			win.Tabs = append(win.Tabs, Tab{URL: fmt.Sprintf("https://site%d.test/some/longer/path", i), Title: "A page with a title"})
+		}
+		s.Windows = append(s.Windows, win)
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		s.Windows[0].Active = i % 20
+		m.Save(s)
 	}
 }

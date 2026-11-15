@@ -84,6 +84,13 @@ func startWith(t *testing.T, cfg app.Config) *rig {
 	})
 	go e.Run()
 	<-ready
+	// The session's writer ends with the test, before its folder goes, whether or not the
+	// test stopped the app.
+	t.Cleanup(func() {
+		done := make(chan struct{})
+		e.Post(func() { r.a.Session.Close(); close(done) })
+		<-done
+	})
 	// The shell says it's ready as it starts, and only then hears from Go.
 	r.shell(`{"t":"ready"}`)
 	return r
