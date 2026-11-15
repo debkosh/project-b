@@ -701,8 +701,12 @@ def back_key_chain():
     go(BASE + "/c")
     asked("/c")
     served.clear()
-    key(4)  # The new tab's blank page is its history.
-    key(4)
+    # Back until the tab is gone: the first may only put the keyboard away, and the new tab's
+    # blank page may be in its history.
+    for _ in range(3):
+        if until(lambda: find("page", text="b"), 2) is not None:
+            break
+        key(4)
     check("back on a tab with no history closes it, and the tab used before it shows",
           until(lambda: find("page", text="b")) is not None)
     served.clear()
