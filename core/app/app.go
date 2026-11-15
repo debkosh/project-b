@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"path/filepath"
 
+	"projectb/bookmarks"
 	"projectb/commands"
 	"projectb/crash"
 	"projectb/downloads"
@@ -96,6 +97,8 @@ type App struct {
 	Sites *sites.Manager
 	// Session is the profile's windows and tabs as the last run left them, and as they are.
 	Session *session.Manager
+	// Bookmarks is the profile's bookmarks.
+	Bookmarks *bookmarks.Manager
 
 	actions []*commands.Action
 	// menus are the windows' open right-click menus.
@@ -110,6 +113,8 @@ type App struct {
 	fulls *pageFulls
 	// notified is the page each notification shown on the system came from, by its id.
 	notified map[string]string
+	// pages are the History and Bookmarks pages shown in tabs.
+	pages *ourPages
 	// keyIn is which page had the keyboard at the last key press.
 	keyIn engine.Surface
 	// lastWindow is the id of the window made last; Go numbers them from 1.
@@ -144,6 +149,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	}
 	a.Downloads = downloads.New(e, cfg.ProfileDir, cfg.DownloadsDir)
 	a.Downloads.Load()
+	a.Bookmarks = bookmarks.New(cfg.ProfileDir)
 	a.Tabs = tabs.New(e, a.Workspaces)
 	a.Prefs = prefs.New(cfg.ProfileDir)
 	a.Flags = flags.New(cfg.ProfileDir)
@@ -168,6 +174,8 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Shell.AddPart(a.finds.shellPart())
 	a.fulls = newPageFulls(a, e)
 	a.Shell.OnBack(a.fulls.back)
+	a.pages = newOurPages(a, e)
+	a.Shell.AddPart(a.bookmarksShellPart())
 	a.Shell.AddPart(a.menus.shellPart())
 	// Every action a shell can run by name, for a shell that lists them, as Glide's
 	// Command Bar does.
@@ -529,6 +537,8 @@ func (a *App) PageMessage(tab engine.TabID, page engine.Page, msg []byte) {
 	switch page {
 	case "settings":
 		a.Settings.Handle(tab, msg)
+	case "history", "bookmarks":
+		a.pages.handle(tab, page, msg)
 	default:
 		timeline.Warnf("app: a message from %q, which isn't a page of ours", page)
 	}

@@ -1152,6 +1152,57 @@
           "reserve": "page"
         }
       ]
+    },
+    "history.show": {
+      "mac": [
+        {
+          "keys": "Cmd+Y"
+        }
+      ],
+      "windows": [
+        {
+          "keys": "Ctrl+H"
+        }
+      ],
+      "linux": [
+        {
+          "keys": "Ctrl+H"
+        }
+      ]
+    },
+    "bookmarks.show": {
+      "mac": [
+        {
+          "keys": "Option+Cmd+B"
+        }
+      ],
+      "windows": [
+        {
+          "keys": "Ctrl+Shift+O"
+        }
+      ],
+      "linux": [
+        {
+          "keys": "Ctrl+Shift+O"
+        }
+      ]
+    },
+    "bookmarks.toggle": {
+      "mac": [
+        {
+          "keys": "Cmd+D"
+        }
+      ],
+      "windows": [
+        {
+          "keys": "Ctrl+D"
+        }
+      ],
+      "linux": [
+        {
+          "keys": "Ctrl+D"
+        }
+      ]
     }
   }
 }

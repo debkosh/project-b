@@ -27,6 +27,10 @@ func (a *App) registerActions(e engine.Engine) {
 		a.Settings.Open(a.Tabs.Front())
 		a.Update.CheckNow()
 	})
+	add("history.show", "Show All History", func() { a.Tabs.OpenPage(a.Tabs.Front(), "history") })
+	add("bookmarks.show", "Bookmark Manager", func() { a.Tabs.OpenPage(a.Tabs.Front(), "bookmarks") })
+	bookmark := add("bookmarks.toggle", "Bookmark This Page", a.toggleBookmark)
+	bookmark.Enabled = func() bool { return a.Tabs.Active().URL != "" }
 	add("profile.picker", "Profiles…", func() { relaunch.Copy("--root="+a.profiles.Root(), "--picker") })
 
 	add("tab.new", "New Tab", func() { a.Shell.Interaction(a.Tabs.Front(), "tab.new", func() { a.Tabs.Create(a.Tabs.Front()) }) })

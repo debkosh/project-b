@@ -61,7 +61,7 @@ namespace {
 // chrome://shell/<id>/, served from shell/shell/<id>/. A window's page, a shell or the
 // picker, belongs in the WebContents that covers its window, and its messages cross to Go
 // as one event with the window. A page a tab shows, settings, belongs in a tab of ours, and
-// its messages cross with the tab.
+// its messages cross with the tab. Settings, History and Bookmarks are such pages.
 struct App {
   const char* host;
   PBEvent event;
@@ -70,6 +70,8 @@ struct App {
 constexpr App kApps[] = {
     {"shell", PB_EVENT_SHELL_MESSAGE, false},
     {"settings", PB_EVENT_PAGE_MESSAGE, true},
+    {"history", PB_EVENT_PAGE_MESSAGE, true},
+    {"bookmarks", PB_EVENT_PAGE_MESSAGE, true},
     {"picker", PB_EVENT_PICKER_MESSAGE, false},
 };
 
