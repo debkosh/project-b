@@ -34,7 +34,7 @@ const rules = {
   15: 'A page\'s alert, confirm and prompt show as an alertdialog with Go\'s buttons by name, a prompt with a field; the answer reaches the page; another tab shown hides it, and back shows it',
   16: 'On a desktop, a right click in a page opens a menu of Go\'s actions there; choosing one makes Go do it; Escape, or a press outside, closes it',
   17: 'On a desktop, a control named Downloads shows once there is a download, and opens a list of them by file name, a finished one with Open and Show in Finder',
-  18: 'A window with no tabs: the shell draws its own empty state where the page was, New Tab and Address open a tab there, and Close Tab then closes the window',
+  18: 'A window with no tabs: the shell draws its own empty state where the page was, New Tab and Address are each a way to a tab there, and Close Tab then closes the window',
   20: 'On a desktop, the find key opens a text box named Find in page with the keyboard in it; typing searches and shows the count; Enter shows the next match; Escape closes it',
   21: 'On a desktop, a page in full screen covers the whole window with nothing of the shell on it, and when it ends the window is as it was',
   22: 'A site\'s sign-in shows as an alertdialog with text boxes named Username and Password, and Go\'s Sign in answers with both',
@@ -120,6 +120,11 @@ const noEmptyStateYet = {
     const { page, ui } = w;
     page.setDefaultTimeout(5000);
     const tabEls = ui.locator('[role=tab]');
+    // A tab made as a shell asks for one, by its newTab message. New Tab the action may be
+    // the shell's own to run, which by itself makes no tab.
+    const openTab = () => fetch(`${lib.base}/shell/send?window=1`, { method: 'POST', body: JSON.stringify({ t: 'newTab' }) });
+    // Whether the keyboard is in a field of the shell's to type in.
+    const inField = async () => (await ui.locator('input:focus, textarea:focus, [contenteditable]:focus, [role=textbox]:focus, [role=combobox]:focus, [role=searchbox]:focus').count()) > 0;
 
     // The window as Go and the mock have it now, and the tabs as the shell draws them.
     const drawn = () => tabEls.evaluateAll((els) => els.map((el) => ({ tab: Number(el.dataset.tab), selected: el.getAttribute('aria-selected') })));
@@ -249,10 +254,10 @@ const noEmptyStateYet = {
     } else {
       try {
         await activeShows('at the start');
-        await fire('menu', 'tab.new');
+        await openTab();
         await tabCount(2);
         await activeShows('after a new tab');
-        await fire('menu', 'tab.new');
+        await openTab();
         await tabCount(3);
         await activeShows('after another');
         await fire('menu', 'tab.select1');
@@ -435,13 +440,23 @@ const noEmptyStateYet = {
         await basic('Reload', byName('Reload'), click, async () =>
           await until(() => mockPage.evaluate(() => window.states.includes('Loading'))) && at('https://contract.test/two'));
 
+        // New Tab is a way to a new tab: the press makes one, or puts the keyboard in a field
+        // where an address and Enter make one.
         const had = (await regions()).tabs.map((t) => t.id);
         let opened = 0;
-        await basic('New Tab', byName('New Tab'), click, () => until(async () => {
+        const fresh = async (url) => {
           const r = await regions();
-          opened = r.tabs.find((t) => !had.includes(t.id))?.id || 0;
-          return opened !== 0 && r.active === opened;
-        }));
+          const t = r.tabs.find((t) => !had.includes(t.id));
+          opened = t?.id || 0;
+          return opened !== 0 && r.active === opened && (!url || (t.url === url && !t.loading));
+        };
+        await basic('New Tab', byName('New Tab'), click, async () => {
+          if (!(await until(async () => (await fresh()) || (await inField())))) return false;
+          if (await fresh()) return true;
+          await page.keyboard.type('contract.test/new');
+          await page.keyboard.press('Enter');
+          return until(() => fresh('https://contract.test/new'));
+        });
         await basic('the text field named Address', address, async (field) => {
           await field.click();
           await page.keyboard.press('ControlOrMeta+A');
@@ -480,7 +495,7 @@ const noEmptyStateYet = {
         rule(15, 'a confirm shows as an alertdialog with its words', await until(async () => (await ask.isVisible()) && (await ask.innerText()).includes('Go on?')));
         rule(15, "with Go's buttons, OK and Cancel, by name", (await ask.getByRole('button', { name: 'OK' }).count()) === 1 && (await ask.getByRole('button', { name: 'Cancel' }).count()) === 1);
         const home = (await regions()).active;
-        await fire('menu', 'tab.new');
+        await openTab();
         rule(15, 'another tab shown hides it', await until(async () => (await regions()).active !== home && (await ask.count()) === 0));
         await ui.locator(`[role=tab][data-tab="${home}"]`).first().click({ force: true });
         rule(15, 'and showing its tab again brings it back', await until(() => ask.isVisible()));
@@ -651,7 +666,15 @@ const noEmptyStateYet = {
           await tabCount(0);
         };
         const newTab = await reach(byName('New Tab'));
-        if (rule(18, 'New Tab: found by its role and name', !!newTab)) await opens('New Tab', () => newTab.click());
+        if (rule(18, 'New Tab: found by its role and name', !!newTab)) {
+          await opens('New Tab', async () => {
+            await newTab.click();
+            await until(async () => (await regions()).tabs.length === 1 || (await inField()));
+            if ((await regions()).tabs.length === 1) return;
+            await page.keyboard.type('contract.test/new');
+            await page.keyboard.press('Enter');
+          });
+        }
         const field = await reach(address);
         if (rule(18, 'the text field named Address: found by its role and name', !!field)) {
           await opens('an address and Enter', async () => {

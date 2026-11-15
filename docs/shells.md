@@ -408,7 +408,7 @@ it there; a phone shell may be left out of a rule for a desktop feature.
     listed in the check, with who brings each.
 18. **A window with no tabs** ([windows.md](windows.md#a-window-with-no-tabs)): the shell
     draws an empty state of its own where the page was, as its own, so a press there
-    reaches the shell. New Tab and Address still work, each opening a tab there, and Close
+    reaches the shell. New Tab and Address still work, each a way to a tab there, and Close
     Tab then closes the window. What the empty state is, each shell decides; each so far
     shows a quiet No tabs and New Tab. The check holds every shell to it but Mobile, which
     doesn't draw one yet, and the two hidden shells, which are being removed.
@@ -431,7 +431,8 @@ it there; a phone shell may be left out of a rule for a desktop feature.
 one of the shell's controls opens; a menu item's name may end with its key.
 
 - **Back**, **Forward**, and **Reload**, which may be **Stop** while a page loads.
-- **New Tab**.
+- **New Tab**: a way to a new tab. A press makes one, or puts the keyboard in a field of
+  the shell's where an address and Enter make one, as the standard shell's box does.
 - A way to close a tab: **Close Tab**, for the active one, or **Close** and the tab's
   label as `tabLabel` gives it, such as Close Mock example.com.
 - **Address**: a text box or a combo box, where an address and Enter take the active tab
