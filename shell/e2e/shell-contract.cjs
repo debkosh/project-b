@@ -48,7 +48,6 @@ const rules = {
 // (docs/daily-driver.md). Rule 16 holds every other desktop shell to it.
 const noMenuYet = {
   terminal: 'r4 brings it',
-  minimal: 'r4 brings it',
 };
 
 // The shells that don't draw a page's dialogs yet, and who brings each. Rule 15 holds

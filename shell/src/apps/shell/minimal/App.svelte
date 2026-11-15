@@ -5,6 +5,7 @@
   import CrashBar from './CrashBar.svelte';
   import Notice from './Notice.svelte';
   import PageDialog from './PageDialog.svelte';
+  import PageMenu from './PageMenu.svelte';
   import PageTitle from './PageTitle.svelte';
   import Prompt from './Prompt.svelte';
   import SideList from './SideList.svelte';
@@ -83,6 +84,7 @@
         <PageDialog />
       </main>
     </div>
+    <PageMenu />
   </div>
 {/if}
 
