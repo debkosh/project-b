@@ -2,6 +2,8 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { keyLabel, send, state, tabLabel } from '@/sdk/vue.js';
 import { close, shown, smallest, split, zoom, zoomed } from './panes.js';
+import FindBar from '@/ui/FindBar.vue';
+import PageDialog from '@/ui/PageDialog.vue';
 
 // One pane: a title bar over the place its tab's page shows. A press on the bar makes the
 // pane active.
@@ -62,7 +64,14 @@ function hint(name, action) {
       </button>
       <span class="progress" :class="{ on: tab.loading }" :style="{ width: (tab.progress || 0) * 100 + '%' }"></span>
     </div>
-    <div v-page="id" class="page"></div>
+    <!-- The active pane's page carries its dialog and its find bar, as Standard's does. -->
+    <div class="body">
+      <div v-page="id" class="page"></div>
+      <template v-if="active">
+        <PageDialog />
+        <FindBar />
+      </template>
+    </div>
   </div>
 </template>
 
@@ -186,6 +195,14 @@ function hint(name, action) {
 
 .progress.on {
   opacity: 1;
+}
+
+.body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 .page {

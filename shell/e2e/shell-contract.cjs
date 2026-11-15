@@ -47,13 +47,11 @@ const rules = {
 // The desktop shells that don't draw the right-click menu yet, and who brings it to each
 // (docs/daily-driver.md). Rule 16 holds every other desktop shell to it.
 const noMenuYet = {
-  terminal: 'r4 brings it',
 };
 
 // The shells that don't draw a page's dialogs yet, and who brings each. Rule 15 holds
 // every other shell to them.
 const noDialogsYet = {
-  terminal: 'r4 brings it',
 };
 
 // The desktop shells that don't lay a page in full screen across the window yet, and who
@@ -64,13 +62,11 @@ const noPageFullYet = {
 // The desktop shells that don't draw a find bar yet, and who brings each. Rule 20 holds
 // every other desktop shell to it.
 const noFindYet = {
-  terminal: 'r4 brings it',
 };
 
 // The desktop shells that don't draw the downloads list yet, and who brings it to each.
 // Rule 17 holds every other desktop shell to it.
 const noDownloadsYet = {
-  terminal: 'r4 brings it',
 };
 
 // The shells that don't draw a splash yet, and who brings it to each. Rule 14 holds every

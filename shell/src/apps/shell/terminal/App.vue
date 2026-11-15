@@ -1,6 +1,8 @@
 <script setup>
 import { computed, watchEffect } from 'vue';
 import PaneTree from './PaneTree.vue';
+import PageMenu from '@/ui/PageMenu.vue';
+import { findBar } from '@/ui/find.js';
 import PromptLine from './PromptLine.vue';
 import TopStrip from './TopStrip.vue';
 import { shown as keyShown } from '@/keys.js';
@@ -37,6 +39,7 @@ connect({
   tabs: follow,
   suggestions: (m) => prompt.suggestions(m.id, m.items || []),
   focusAddressBar: () => prompt.focus(),
+  focusFind: () => findBar.focus(),
   action: (m) => actions[m.id](),
 });
 </script>
@@ -70,6 +73,7 @@ connect({
       <div v-show="!pageFull" class="band side"></div>
     </div>
     <div v-show="!pageFull" class="band across"></div>
+    <PageMenu />
   </div>
 </template>
 
