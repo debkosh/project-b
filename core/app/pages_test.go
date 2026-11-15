@@ -105,3 +105,30 @@ func TestBookmarksFromTheShellAndThePage(t *testing.T) {
 		t.Fatalf("after the removal: %v", b)
 	}
 }
+
+func TestTheDownloadsPageListsAndActs(t *testing.T) {
+	profile, dir := t.TempDir(), t.TempDir()
+	r := startDownloading(t, profile, dir)
+	defer r.stop()
+	r.visit("https://a.test/")
+	r.show(1)
+	r.e.Fire(1, 0, "download", "https://a.test/files/report.pdf")
+	r.downloads(func(l []any) bool { return len(l) == 1 && first(l)["state"] == "done" })
+
+	tab, got := r.openPage("downloads.show", "downloads")
+	list := next(t, got, "snapshot")["downloads"].([]any)
+	if len(list) != 1 || list[0].(map[string]any)["name"] != "report.pdf" {
+		t.Fatalf("the page's downloads = %v", list)
+	}
+	say := func(msg string) { r.e.Post(func() { r.a.PageMessage(tab, "downloads", []byte(msg)) }) }
+	say(fmt.Sprintf(`{"t":"downloadAction","id":%v,"action":"open"}`, list[0].(map[string]any)["id"]))
+	r.e.Settle()
+	if opened := r.e.Opened(); len(opened) != 1 {
+		t.Fatalf("Open from the page opened %v", opened)
+	}
+	// Clear empties the list, and the page hears of it as of any change.
+	say(`{"t":"clearDownloads"}`)
+	if list := next(t, got, "downloads")["downloads"].([]any); len(list) != 0 {
+		t.Fatalf("after Clear: %v", list)
+	}
+}

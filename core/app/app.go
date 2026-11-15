@@ -556,7 +556,7 @@ func (a *App) PageMessage(tab engine.TabID, page engine.Page, msg []byte) {
 	switch page {
 	case "settings":
 		a.Settings.Handle(tab, msg)
-	case "history", "bookmarks":
+	case "history", "bookmarks", "downloads":
 		a.pages.handle(tab, page, msg)
 	default:
 		timeline.Warnf("app: a message from %q, which isn't a page of ours", page)

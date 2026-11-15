@@ -89,6 +89,14 @@ each download a `listitem` by its file name, its progress while it runs, Open an
 Finder once done, Cancel while it runs. Standard puts the control in its toolbar and shows a
 download's progress on it. The contract's rule 17 checks it, by role and name.
 
+**The Downloads page.** A page of ours, in a tab of ours as History and Bookmarks are
+(`downloads.show`, "Downloads", Shift+Cmd+J, in the Window menu): the same list, newest
+first, with Pause or Resume and Cancel while one runs, Open (a tap on its name too) and Show
+in Finder, or Show in Downloads on a phone, once done, a × to take one off the list, and
+Clear all. Go sends it the list in its snapshot and on each change, and takes
+`downloadAction` and `clearDownloads` from it as from a shell. A phone's shells reach it from
+their menu, always there, with how many are running beside it (owner, 2026-11-15).
+
 **Android.** There is no Save panel: a download goes where Go says, the profile's own
 Downloads folder. Once done, the engine copies it into the phone's shared Downloads through
 MediaStore, where the Files app and other apps find it, and removes the app's own copy. Open

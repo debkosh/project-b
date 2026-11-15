@@ -72,6 +72,7 @@ constexpr App kApps[] = {
     {"settings", PB_EVENT_PAGE_MESSAGE, true},
     {"history", PB_EVENT_PAGE_MESSAGE, true},
     {"bookmarks", PB_EVENT_PAGE_MESSAGE, true},
+    {"downloads", PB_EVENT_PAGE_MESSAGE, true},
     {"picker", PB_EVENT_PICKER_MESSAGE, false},
 };
 
