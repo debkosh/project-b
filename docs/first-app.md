@@ -42,10 +42,10 @@ Every call is on the main thread, except `post_wakeup`. Mojo and content's types
 inside the adapter.
 
 Everything the adapter tells Go goes through one function, `hook`: a number and a flat
-list of values. Content's own hooks are carried by generated classes that check one bit
-each and cross only when Go subscribed; the adapter's four own events (a shell message,
-a tab a page opened, a favicon, the window controls) use the same call. Adding a use of a
-content hook is a Go change only; see [content-hooks.md](content-hooks.md).
+list of values. The app hears only the adapter's own events, which any engine can fire
+([engine-interface.md](engine-interface.md)). Content's own hooks are carried by generated
+classes that check one bit each and cross only when Go subscribed, for trying something
+content can do; see [content-hooks.md](content-hooks.md).
 
 ## The window
 
