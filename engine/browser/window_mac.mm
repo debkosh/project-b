@@ -837,6 +837,8 @@ void Window::Zoom() {
   [impl_->window performZoom:nil];
 }
 
+void Window::SetSystemBarsHidden(bool hidden) {}
+
 void Window::ToggleFullScreen() {
   [impl_->window toggleFullScreen:nil];
 }

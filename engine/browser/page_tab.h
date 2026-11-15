@@ -104,6 +104,7 @@ class PageTab : public WebContentsObserverHooks, public WebContentsDelegateHooks
   void ReportTitle();
   std::string Title() const;
   void SynchronizeVisualProperties();
+  void SystemBarsHidden(bool hidden);
   // Go hears of a page's full screen first, then the page is told its new size.
   void EnterFullscreenModeForTab(content::RenderFrameHost* requesting_frame,
                                  const blink::mojom::FullscreenOptions& options) override;
