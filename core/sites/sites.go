@@ -28,6 +28,11 @@ const (
 	Microphone     = "microphone"
 	Notifications  = "notifications"
 	ClipboardWrite = "clipboard-write"
+	// Our own, which no page asks for (docs/site-features.md).
+	Ads   = "ads"
+	Links = "links"
+	// Spark is the prefix of one spark's kind on a site, spark:<id>.
+	Spark = "spark:"
 )
 
 // Kind is one kind of per-site setting, in our terms.
@@ -45,7 +50,22 @@ type Kind struct {
 	Gesture bool
 	// Once offers Allow this time.
 	Once bool
+	// Choices are the values one of our own kinds takes, its default first.
+	Choices []string
+	// Prefix: the kind is every name that starts with Name.
+	Prefix bool
 }
+
+// The values of our own kinds.
+const (
+	On     = "on"
+	Off    = "off"
+	NewTab = "newtab"
+)
+
+// AdsDefault is whether the ad blocker is on where a site has no setting: on, the owner
+// decided.
+const AdsDefault = On
 
 // Kinds is every kind the manager knows, in the order settings lists them. A requested
 // kind it doesn't know is denied without asking; adding one here is all Go needs to offer
@@ -56,11 +76,27 @@ var Kinds = []Kind{
 	{Name: Notifications, Title: "Notifications", Requested: true, Askable: true, Gesture: true},
 	// As every browser grants it: Blink holds it to a focused page.
 	{Name: ClipboardWrite, Title: "Clipboard", Requested: true, Default: engine.PermissionGranted},
+	{Name: Ads, Title: "Ad blocker", Choices: adsChoices()},
+	{Name: Links, Title: "Links to other sites", Choices: []string{Allow, NewTab, Block}},
+	// A spark the person switched off for the site.
+	{Name: Spark, Title: "Spark", Choices: []string{On, Off}, Prefix: true},
+}
+
+func adsChoices() []string {
+	if AdsDefault == On {
+		return []string{On, Off}
+	}
+	return []string{Off, On}
 }
 
 // kindOf is the kind named name, and whether the manager knows it.
 func kindOf(name string) (Kind, bool) {
-	i := slices.IndexFunc(Kinds, func(k Kind) bool { return k.Name == name })
+	i := slices.IndexFunc(Kinds, func(k Kind) bool {
+		if k.Prefix {
+			return len(name) > len(k.Name) && strings.HasPrefix(name, k.Name)
+		}
+		return k.Name == name
+	})
 	if i < 0 {
 		return Kind{}, false
 	}
@@ -113,6 +149,8 @@ type Setting struct {
 	Kind  string `json:"kind"`
 	Title string `json:"title"`
 	Value string `json:"value"`
+	// Choices are one of our own kinds' values; none for one a page asks for.
+	Choices []string `json:"choices,omitempty"`
 }
 
 // Tabs is what the manager reads of the tabs.
@@ -285,7 +323,7 @@ func (m *Manager) Sites() []Site {
 		site := Site{Origin: o, Settings: []Setting{}}
 		for _, k := range Kinds {
 			if v, ok := values[k.Name]; ok {
-				site.Settings = append(site.Settings, Setting{Kind: k.Name, Title: k.Title, Value: v})
+				site.Settings = append(site.Settings, Setting{Kind: k.Name, Title: k.Title, Value: v, Choices: k.Choices})
 			}
 		}
 		list = append(list, site)
@@ -294,11 +332,24 @@ func (m *Manager) Sites() []Site {
 	return list
 }
 
-// Set keeps value, Allow or Block, as origin's setting of kind, or forgets it for "". Only
-// a kind that can be asked about can be set: the rest have their default.
+// Set keeps value as origin's setting of kind, or forgets it for "": Allow or Block for a
+// kind that can be asked about, one of its choices for one of ours, where its default is
+// forgetting. The rest have their default.
 func (m *Manager) Set(origin, kind, value string) {
 	k, ok := kindOf(kind)
-	if !ok || !k.Askable || Origin(origin) != origin || origin == "" {
+	if !ok || Origin(origin) != origin || origin == "" {
+		return
+	}
+	if len(k.Choices) > 0 {
+		switch {
+		case value == "" || value == k.Choices[0]:
+			m.Forget(origin, kind)
+		case slices.Contains(k.Choices, value):
+			m.keep(origin, []string{kind}, value)
+		}
+		return
+	}
+	if !k.Askable {
 		return
 	}
 	switch value {
@@ -309,12 +360,38 @@ func (m *Manager) Set(origin, kind, value string) {
 	}
 }
 
+// Value is origin's value of one of our own kinds: what it keeps, or the kind's default.
+func (m *Manager) Value(origin, kind string) string {
+	k, ok := kindOf(kind)
+	if !ok || len(k.Choices) == 0 {
+		return ""
+	}
+	if v, ok := m.sites[origin][kind]; ok {
+		return v
+	}
+	return k.Choices[0]
+}
+
+// SettingsOf is origin's value of each kind settings can set, in order, "" where it has
+// none.
+func (m *Manager) SettingsOf(origin string) []Setting {
+	list := Settable()
+	for i := range list {
+		if len(list[i].Choices) > 0 {
+			list[i].Value = m.Value(origin, list[i].Kind)
+		} else {
+			list[i].Value = m.sites[origin][list[i].Kind]
+		}
+	}
+	return list
+}
+
 // Settable is the kinds settings can set for a site, in order: each one's name and title.
 func Settable() []Setting {
 	list := []Setting{}
 	for _, k := range Kinds {
-		if k.Askable {
-			list = append(list, Setting{Kind: k.Name, Title: k.Title})
+		if k.Askable || len(k.Choices) > 0 && !k.Prefix {
+			list = append(list, Setting{Kind: k.Name, Title: k.Title, Choices: k.Choices})
 		}
 	}
 	return list
