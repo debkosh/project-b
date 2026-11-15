@@ -31,7 +31,7 @@ const keys = {
   'selection.copy': 'edit.copy',
 };
 
-// Where Standard draws a line: between Go's groups, and inside one between these sections.
+// Where the menu draws a line: between Go's groups, and inside one between these sections.
 const sections = { 'link.copy': 'keep', 'link.saveAs': 'keep', 'edit.undo': 'undo', 'edit.redo': 'undo' };
 const sectionOf = (a) => sections[a.id] || a.group;
 

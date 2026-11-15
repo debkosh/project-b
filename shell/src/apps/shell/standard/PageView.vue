@@ -1,8 +1,8 @@
 <script setup>
 import { computed } from 'vue';
 import CrashNotice from './CrashNotice.vue';
-import FindBar from './FindBar.vue';
-import PageDialog from './PageDialog.vue';
+import FindBar from '@/ui/FindBar.vue';
+import PageDialog from '@/ui/PageDialog.vue';
 import UpdateStatus from './UpdateStatus.vue';
 import PageNotice from '@/ui/PageNotice.vue';
 import CommandBox from './CommandBox.vue';
