@@ -100,7 +100,8 @@ func (a *App) registerActions(e engine.Engine) {
 	recent.Release, recent.Enabled = a.Tabs.EndCycle, active
 	recentBack := add("tab.recentPrevious", "Select Recent Tab Backward", func() { a.Tabs.CycleRecent(true) })
 	recentBack.Release, recentBack.Enabled = a.Tabs.EndCycle, active
-	add("tab.duplicate", "Duplicate Tab", a.Tabs.Duplicate).Enabled = active
+	// A tab of ours has no copy: a window has one of each.
+	add("tab.duplicate", "Duplicate Tab", a.Tabs.Duplicate).Enabled = func() bool { return active() && a.Tabs.Active().Page == "" }
 	add("tab.moveToNewWindow", "Move Tab to New Window", func() { a.NewWindowWith(a.Tabs.ActiveID()) }).Enabled = active
 	for i := range 8 {
 		add(fmt.Sprintf("tab.select%d", i+1), fmt.Sprintf("Tab %d", i+1), func() { a.Tabs.ActivateAt(i) }).Enabled = active
