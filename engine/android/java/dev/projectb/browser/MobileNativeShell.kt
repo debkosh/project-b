@@ -598,7 +598,6 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
             "group" -> groupSheetView()
             "card" -> cardSheet()
             "link" -> linkSheetView()
-            "downloads" -> if (downloads.isEmpty()) null else Sheet(context, "Downloads", palette) { open("") }.also { downloadsSheet(it, palette, downloads) { m -> send(m) } }
             else -> null
         }
         if (made != null) sheets.addView(made, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
@@ -661,11 +660,13 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
             open("")
             send(JSONObject().put("t", "run").put("text", "find.open"))
         })
-        if (downloads.isNotEmpty()) {
-            val running = downloads.count { it.optString("state") == "progress" }
-            s.content.addView(sheetRow(context, palette, "download", "Downloads", "chevron",
-                note = if (running > 0) "$running in progress" else null) { open("downloads") })
-        }
+        // Downloads, the page of ours, always here, with how many are running.
+        val running = downloads.count { it.optString("state") == "progress" }
+        s.content.addView(sheetRow(context, palette, "download", "Downloads",
+            note = if (running > 0) "$running in progress" else null) {
+            open("")
+            send(JSONObject().put("t", "run").put("text", "downloads.show"))
+        })
         if (update?.optString("phase") == "ready") {
             s.content.addView(sheetRow(context, palette, "update", "Install update to ${update?.optString("version")}") {
                 send(JSONObject().put("t", "relaunch")); open("")
