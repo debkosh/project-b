@@ -304,6 +304,20 @@
         },
         {
           "action": "nav.forward"
+        },
+        {
+          "separator": true
+        },
+        {
+          "action": "tab.reopenClosed"
+        },
+        {
+          "title": "Recently Closed",
+          "items": [
+            {
+              "list": "recentlyClosed"
+            }
+          ]
         }
       ]
     },

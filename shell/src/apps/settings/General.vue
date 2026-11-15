@@ -33,6 +33,13 @@ const positions = [
   { value: 'bottom', label: 'Bottom' },
 ];
 
+// What a start opens: the windows and tabs as they were, or a window opened fresh, as the
+// shell opens one: Standard on its command box, another shell on a new tab.
+const starts = [
+  { value: 'continue', label: 'Where you left off' },
+  { value: 'fresh', label: 'Start fresh' },
+];
+
 const layouts = [
   { value: 'vertical', label: 'Vertical' },
   { value: 'horizontal', label: 'Horizontal' },
@@ -85,6 +92,16 @@ const busy = computed(() => state.update.check === 'checking' || state.update.ph
         <div v-if="!phone" class="row">
           <span class="label">Tab layout</span>
           <Segmented label="Tab layout" :options="layouts" :model-value="state.tabLayout" @update:model-value="send({ t: 'setTabLayout', text: $event })" />
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="start">
+      <h2 id="start">Start</h2>
+      <div class="card">
+        <div class="row">
+          <span class="label">On start, open</span>
+          <Segmented label="On start, open" :options="starts" :model-value="state.start" @update:model-value="send({ t: 'setStart', text: $event })" />
         </div>
       </div>
     </section>

@@ -239,6 +239,14 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   await page.getByRole('radio', { name: 'System' }).check();
   await until(() => prefsFile().theme === 'system');
 
+  // On start: where you left off, the default, or a new tab.
+  const start = page.getByRole('radiogroup', { name: 'On start, open' });
+  check('On start opens where you left off by default', (await start.getByRole('radio', { name: 'Where you left off' }).getAttribute('aria-checked')) === 'true');
+  await start.getByRole('radio', { name: 'Start fresh' }).click();
+  check('Start fresh is saved', await until(() => prefsFile().start === 'fresh'));
+  await start.getByRole('radio', { name: 'Where you left off' }).click();
+  await until(() => prefsFile().start === 'continue');
+
   await radio('Horizontal').check();
   check('choosing Horizontal switches the shell and is saved', await until(async () => (await ui.locator('.strip').count()) > 0 && prefsFile().tabLayout === 'horizontal'), JSON.stringify(prefsFile()));
   await ui.getByRole('button', { name: 'Tabs on the side' }).click();

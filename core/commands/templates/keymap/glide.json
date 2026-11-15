@@ -108,6 +108,26 @@
         }
       ]
     },
+    "tab.reopenClosed": {
+      "mac": [
+        {
+          "keys": "Shift+Cmd+T",
+          "reserve": "windowed"
+        }
+      ],
+      "windows": [
+        {
+          "keys": "Ctrl+Shift+T",
+          "reserve": "windowed"
+        }
+      ],
+      "linux": [
+        {
+          "keys": "Ctrl+Shift+T",
+          "reserve": "windowed"
+        }
+      ]
+    },
     "tab.close": {
       "mac": [
         {
