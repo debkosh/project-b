@@ -3,6 +3,8 @@
   import { activeTab, connect, focusPage, keyLabel, page, send, setFrame, shell, state as go } from '@/sdk/svelte.svelte.js';
   import Address from './Address.svelte';
   import CrashBar from './CrashBar.svelte';
+  import Notice from './Notice.svelte';
+  import Prompt from './Prompt.svelte';
   import SideList from './SideList.svelte';
   import TabBar from './TabBar.svelte';
   import Toolbar from './Toolbar.svelte';
@@ -51,9 +53,10 @@
       <TabBar />
     {/if}
     <Toolbar vertical={!horizontal}>
-      <Address bind:this={address} url={activeTab(go).url} />
+      <Address bind:this={address} url={activeTab(go).url} tab={activeTab(go)} />
     </Toolbar>
     <CrashBar />
+    <Prompt />
     <div class="body">
       {#if !horizontal}
         <SideList />
@@ -67,6 +70,9 @@
               New Tab{#if keyLabel(go, 'tab.new')}<span class="key" aria-hidden="true">{keyLabel(go, 'tab.new')}</span>{/if}
             </button>
           </div>
+        {/if}
+        {#if activeTab(go).notice}
+          <Notice tab={activeTab(go)} />
         {/if}
       </main>
     </div>

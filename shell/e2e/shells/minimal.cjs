@@ -298,7 +298,7 @@ const names = ['Example Domain', 'Mail · Work', 'Project B on GitHub', 'Weather
   // asks in the shell too. That page is the settings tab's, which talks to Go while the
   // tab is open, here behind the tab the test goes back to.
   const was = (await regions()).active;
-  await ui.getByRole('button', { name: 'Settings' }).click();
+  await ui.getByRole('button', { name: 'Settings', exact: true }).click();
   await until(async () => (await regions()).settings !== 0);
   const settingsTab = (await regions()).settings;
   const settings = await browser.newPage({ viewport: { width: 1100, height: 800 } });
