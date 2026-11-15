@@ -3,6 +3,7 @@
   import { extensionsBuilt } from '@extensions';
   import CardMenu from './CardMenu.svelte';
   import CrashBar from './CrashBar.svelte';
+  import DownloadsSheet from './DownloadsSheet.svelte';
   import Extensions from './Extensions.svelte';
   import GroupSheet from './GroupSheet.svelte';
   import LinkSheet from './LinkSheet.svelte';
@@ -243,6 +244,8 @@
   </div>
   {#if sheet === 'menu'}
     <MenuSheet {tab} {group} {workspace} onclose={() => (sheet = '')} onnewtab={(inGroup) => newTab(inGroup ? go.active : 0)} {onsheet} onworkspace={(id) => (workspace = id)} />
+  {:else if sheet === 'downloads'}
+    <DownloadsSheet onclose={() => (sheet = '')} />
   {:else if sheet === 'group' && shownGroup}
     {#key shownGroup.id}
       <GroupSheet
