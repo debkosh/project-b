@@ -30,6 +30,9 @@ TRANSITION = 1.0
 def full_screen_checks():
     """Into full screen and out again, three ways."""
     app = drive.App(tempfile.mkdtemp(prefix="pb-profile-"))
+    # Standard starts with no tab, and the driver's bounds speak of the focused tab's page:
+    # the driver opens one, as a page opens one.
+    drive.open_in(app, "", drive.PAGES)
     state = lambda: json.loads(app.cmd("state"))
     native = lambda: json.loads(app.cmd("frame"))  # The border the window itself draws.
     windowed = app.js(RADIUS)
