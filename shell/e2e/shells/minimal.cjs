@@ -138,11 +138,14 @@ const names = ['Example Domain', 'Mail · Work', 'Project B on GitHub', 'Weather
   let side = await box('.side');
   const back = await ui.getByRole('button', { name: 'Back' }).boundingBox();
   const c = r.window.Controls;
-  check('the toolbar is the top row, 38px and a hairline, its first button after the window buttons',
-    toolbar.y === 0 && toolbar.height === 39 && back.x >= c.x + c.w, JSON.stringify({ toolbar, back, controls: c }));
-  check('the list is 220px wide and a hairline, under the toolbar, down to the foot', side.x === 0 && side.width === 221 && side.y === 39 && side.bottom === 700, JSON.stringify(side));
+  // The top row is as tall as centring the window buttons takes: their top's distance
+  // above them and below.
+  const row = c.y * 2 + c.h;
+  check('the toolbar is the top row, centred on the window buttons, a hairline under it, its first button after them',
+    toolbar.y === 0 && toolbar.height === row + 1 && near(back.y + back.height / 2, c.y + c.h / 2) && back.x >= c.x + c.w, JSON.stringify({ toolbar, back, controls: c }));
+  check('the list is 220px wide and a hairline, under the toolbar, down to the foot', side.x === 0 && side.width === 221 && side.y === row + 1 && side.bottom === 700, JSON.stringify(side));
   let p = r.visible[0].rect;
-  check('the page fills the rest, to the window\'s edges', p.x === 221 && p.y === 39 && p.x + p.w === r.window.W && p.y + p.h === r.window.H, JSON.stringify(p));
+  check('the page fills the rest, to the window\'s edges', p.x === 221 && p.y === row + 1 && p.x + p.w === r.window.W && p.y + p.h === r.window.H, JSON.stringify(p));
   check('the window buttons\' space in the toolbar drags', (await hitAt(c.x + c.w + 4, 19)) === 'drag');
 
   // Tabs on top.
@@ -153,14 +156,16 @@ const names = ['Example Domain', 'Mail · Work', 'Project B on GitHub', 'Weather
   toolbar = await box('.toolbar');
   r = await regions();
   p = r.visible[0].rect;
-  check('the tab bar is 34px and a hairline, the toolbar 38px and a hairline, edge to edge',
-    bar.x === 0 && bar.y === 0 && bar.width === 1100 && bar.height === 35 && toolbar.y === 35 && toolbar.height === 39 && toolbar.width === 1100, JSON.stringify({ bar, toolbar }));
+  check('the tab bar is centred on the window buttons and a hairline, the toolbar 38px and a hairline, edge to edge',
+    bar.x === 0 && bar.y === 0 && bar.width === 1100 && bar.height === row + 1 && toolbar.y === row + 1 && toolbar.height === 39 && toolbar.width === 1100, JSON.stringify({ bar, toolbar, row }));
   check('the page lies under them, to the window\'s edges', await until(async () => {
     const v = (await regions()).visible[0].rect;
-    return v.x === 0 && v.y === 74 && v.w === 1100 && v.y + v.h === 700;
+    return v.x === 0 && v.y === row + 40 && v.w === 1100 && v.y + v.h === 700;
   }), JSON.stringify((await regions()).visible));
   const first = await tabs.first().boundingBox();
   check('the tabs begin after the window buttons\' space', first.x >= c.x + c.w, JSON.stringify({ first, controls: c }));
+  check('the tabs are 30px, at the row\'s foot, the active one over its hairline', first.height === 31 && first.y + first.height === row + 1, JSON.stringify(first));
+  check('the empty space above the tabs drags the window', (await hitAt(first.x + first.width / 2, (row - 30) / 2)) === 'drag');
   check('the window buttons\' space drags', (await hitAt(c.x + c.w + 4, 10)) === 'drag');
   check('one tab is 200px wide', near(first.width, 200), String(first.width));
 
@@ -223,7 +228,7 @@ const names = ['Example Domain', 'Mail · Work', 'Project B on GitHub', 'Weather
   const active = await tabs.first().evaluate((el) => ({ bg: getComputedStyle(el).backgroundColor, h: el.getBoundingClientRect().height }));
   const toolbarBg = await ui.locator('.toolbar').evaluate((el) => getComputedStyle(el).backgroundColor);
   const other = await tabs.nth(1).evaluate((el) => el.getBoundingClientRect().height);
-  check('the active tab has the toolbar\'s tone and covers the bar\'s hairline to join it', active.bg === toolbarBg && active.h === 35 && other === 34, JSON.stringify({ active, toolbarBg, other }));
+  check('the active tab has the toolbar\'s tone and covers the bar\'s hairline to join it', active.bg === toolbarBg && active.h === 31 && other === 30, JSON.stringify({ active, toolbarBg, other }));
   check('with the tabs on top every control is the shell\'s', await until(async () => (await strays()).length === 0), (await strays()).join(' | '));
   await shots('top-4');
 
@@ -386,7 +391,7 @@ const names = ['Example Domain', 'Mail · Work', 'Project B on GitHub', 'Weather
   const eighteenth = (await regions()).tabs[17].id;
   await tabs.nth(17).click();
   check('a click on a tab makes it active, in view', await until(async () => (await regions()).active === eighteenth && (await inView('.tabs', eighteenth))));
-  check('every page lies inside the window, under the bars', (await regions()).visible.every((v) => v.rect.y === 74 && v.rect.x === 0));
+  check('every page lies inside the window, under the bars', (await regions()).visible.every((v) => v.rect.y === row + 40 && v.rect.x === 0));
   await shots('top-30');
 
   // Thirty down the side: the list scrolls and keeps the active one in view.
@@ -401,7 +406,7 @@ const names = ['Example Domain', 'Mail · Work', 'Project B on GitHub', 'Weather
   await fire('menu', 'tab.select1');
   check('and the first, back up', await until(async () => (await inView('.list', firstId)) && (await strip('.list')).scrollTop === 0));
   const sideNew = await newTab.boundingBox();
-  check('New Tab stays at the top of the list', sideNew.y === 39 && (await hitOf(newTab)) === 'shell', JSON.stringify(sideNew));
+  check('New Tab stays at the top of the list', sideNew.y === row + 1 && (await hitOf(newTab)) === 'shell', JSON.stringify(sideNew));
   await tabs.nth(17).click();
   await until(async () => (await regions()).active === eighteenth && (await inView('.list', eighteenth)));
   await shots('side-30');
@@ -490,7 +495,7 @@ const names = ['Example Domain', 'Mail · Work', 'Project B on GitHub', 'Weather
     (await relaunch.evaluate((el) => !!el.closest('.toolbar'))) && (await hitOf(relaunch)) === 'shell');
   await shots('notices');
   await crash.getByRole('button', { name: 'Dismiss' }).click();
-  check('Dismiss closes the crash notice', await until(async () => (await crash.count()) === 0 && (await regions()).visible[0].rect.y === 39));
+  check('Dismiss closes the crash notice', await until(async () => (await crash.count()) === 0 && (await regions()).visible[0].rect.y === row + 1));
   await relaunch.click();
   check('Relaunch to update puts the release in place and quits, to start it', await until(async () => (await regions()).quit === true, 10000));
   check('no errors logged with the notices', w.errors.length === 0, w.errors.join(' | '));

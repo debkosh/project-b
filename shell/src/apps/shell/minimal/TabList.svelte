@@ -56,7 +56,7 @@
     align-items: flex-start;
     flex: 0 1 auto;
     min-width: 0;
-    height: 35px;
+    height: 31px;
     overflow: auto hidden;
     border-left: 1px solid var(--line);
   }

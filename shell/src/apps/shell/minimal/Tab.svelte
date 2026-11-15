@@ -52,7 +52,7 @@
     flex: 0 1 auto;
     width: 200px;
     min-width: 96px;
-    height: 34px;
+    height: 30px;
     padding: 0 10px;
     box-sizing: border-box;
     border-right: 1px solid var(--line);
@@ -62,7 +62,7 @@
   }
 
   .tab.active {
-    height: 35px;
+    height: 31px;
     background: var(--bar);
     color: var(--text);
     font-weight: 500;

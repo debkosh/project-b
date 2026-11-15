@@ -3,11 +3,12 @@
   import { extensionsBuilt } from '@extensions';
   import Extensions from './Extensions.svelte';
   import { hint } from './hint.js';
+  import { topRow } from './rows.js';
 
   // Back, Forward, Reload (Stop while the page loads), the address field it is given,
   // filling the rest, the extensions, Relaunch when an update is ready, and Settings. Its
   // gaps move the window. With the tabs down the side it is the top row, after the window
-  // buttons' space.
+  // buttons' space, as tall as centring them takes.
   let { vertical, children } = $props();
   const tab = $derived(activeTab(state));
 
@@ -18,7 +19,7 @@
   }
 </script>
 
-<div class="toolbar" use:shell use:drag style:padding-left={vertical ? controlSpace(state).left : null}>
+<div class="toolbar" use:shell use:drag style:padding-left={vertical ? controlSpace(state).left : null} style:height={vertical ? `${Math.max(topRow(state), 38)}px` : null}>
   <button class="btn" aria-label="Back" title={hint('Back', 'nav.back')} disabled={!tab.canGoBack} onclick={() => act({ t: 'back' })}>
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 3 5 8l5 5" /></svg>
   </button>
