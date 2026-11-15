@@ -5,6 +5,16 @@ Take an item off when it lands or is dropped.
 
 ## For discussion with the owner first
 
+- **A start that gives the UI thread back.** On a cold start the shell's request for its page
+  waits about 90 ms on the browser's UI thread: first for Go's synchronous start (the window,
+  about 35 to 40 ms, its show, the menus and managers, until about 140 ms), then for macOS's
+  launch step, about 50 ms with no Chromium task. Serving the request takes under 1 ms. Making
+  the shell first and starting its load before the window (branch `shell-first` on origin)
+  moved the load from about 52 to 11 ms but the first paint not at all, interleaved 2x5 on
+  2026-11-15 (warm 247 main, 253 branch; fresh 259, 243). Serving chrome://shell's files off
+  the UI thread gains nothing: they are read on the ThreadPool already. What could gain is
+  making Go's start asynchronous, so the request is served while Go builds its managers and
+  window: a change to how Go and the engine start, with at most those 90 ms to win.
 - **Dragging tabs** between workspaces (Spaces), onto groups, and in a sidebar: not designed
   yet. The Mobile shell's switcher drags a card onto another within one workspace only.
 - **URL policy on every request.** Each request is allowed or blocked by policy. The options so
