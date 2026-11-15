@@ -46,6 +46,8 @@ final class BrowserWindow extends FrameLayout {
     private final float density;
 
     private long nativeWindow;
+    // Where the native compositor draws.
+    private SurfaceView surface;
     private ContentView shellView;
     private WebContents shellContents;
     private final Map<WebContents, ContentView> pages = new HashMap<>();
@@ -77,7 +79,7 @@ final class BrowserWindow extends FrameLayout {
         nativeWindow =
                 BrowserWindowJni.get()
                         .start(this, windowAndroid, goTable, processAgeMs, blockedHosts);
-        SurfaceView surface = new SurfaceView(getContext());
+        surface = new SurfaceView(getContext());
         surface.setZOrderMediaOverlay(true);
         // A SurfaceView defaults to 16 bits per pixel.
         surface.getHolder().setFormat(PixelFormat.OPAQUE);
@@ -191,6 +193,16 @@ final class BrowserWindow extends FrameLayout {
             }
         }
         return false;
+    }
+
+    /**
+     * After the GPU process died: Android destroys a hidden SurfaceView's surface and makes
+     * another when it shows again, and the compositor takes that one in surfaceChanged.
+     */
+    @CalledByNative
+    private void recreateSurface() {
+        surface.setVisibility(View.GONE);
+        surface.setVisibility(View.VISIBLE);
     }
 
     @CalledByNative

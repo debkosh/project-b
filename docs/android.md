@@ -282,7 +282,8 @@ strip, with a screenshot of each screen in light and dark. See [The shell on a p
 - Go in the main process only: not in either renderer, the GPU process or the app zygote.
 - Separate renderers for the shell and the page. A page in an endless loop while the bar takes typing.
 - The page's renderer killed: the bar says Crashed, and reload recovers. The shell's renderer killed: it comes back
-  and works. The GPU process killed: the app keeps working.
+  and works. The GPU process killed: the app keeps working. The window then takes a new surface, as Chrome's
+  `CompositorView` does: the next GPU process never drew to the dead one's, and the window kept its last frame.
 - Real sites over the office network: `example.com`, Wikipedia.
 
 Measured on the Android 16 emulator, before tabs, both builds showing `example.com`, one run each:

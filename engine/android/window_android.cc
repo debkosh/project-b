@@ -17,8 +17,11 @@
 #include "components/viz/common/frame_timing_details.h"
 #include "content/public/browser/android/compositor.h"
 #include "content/public/browser/android/compositor_client.h"
+#include "content/public/browser/browser_child_process_observer.h"
+#include "content/public/browser/child_process_data.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/web_contents.h"
+#include "content/public/common/process_type.h"
 #include "project_b/engine/abi/pb_abi.h"
 #include "project_b/engine/browser/browser_main_parts.h"
 #include "project_b/engine/browser/engine.h"
@@ -43,7 +46,8 @@ using base::android::ScopedJavaGlobalRef;
 namespace project_b {
 
 // The native side of BrowserWindow.java.
-class BrowserWindow : public content::CompositorClient {
+class BrowserWindow : public content::CompositorClient,
+                      public content::BrowserChildProcessObserver {
  public:
   BrowserWindow(JNIEnv* env,
                 const JavaRef<jobject>& obj,
@@ -53,6 +57,7 @@ class BrowserWindow : public content::CompositorClient {
     root_->SetIsDrawable(true);
     compositor_.reset(content::Compositor::Create(this, window_android));
     compositor_->SetRootLayer(root_);
+    content::BrowserChildProcessObserver::Add(this);
   }
 
   const JavaRef<jobject>& java() const { return java_; }
@@ -178,6 +183,18 @@ class BrowserWindow : public content::CompositorClient {
   }
 
   void Stop(JNIEnv* env) { Go().stop(); }
+
+  // When the GPU process dies, the next one never draws to the surface the dead one
+  // drew to: the window kept its last frame for good, though pages and the shell went on.
+  // A new surface, as Chrome's CompositorView makes, brings drawing back.
+  void BrowserChildProcessKilled(
+      const content::ChildProcessData& data,
+      const content::ChildProcessTerminationInfo& info) override {
+    if (data.process_type == content::PROCESS_TYPE_GPU) {
+      compositor_->SetSurface(nullptr, false, nullptr);
+      Java_BrowserWindow_recreateSurface(AttachCurrentThread(), java_);
+    }
+  }
 
  private:
   // A phone's window fills the screen and never moves, which is what full screen means to the
