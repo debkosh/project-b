@@ -52,7 +52,7 @@ static inline void call_focus_shell(const PBEngineCalls* c, int64_t window) { c-
 static inline void call_send_to_shell(const PBEngineCalls* c, int64_t window, const char* json, size_t length) { c->send_to_shell(window, json, length); }
 static inline void call_set_shell_back(const PBEngineCalls* c, int64_t window, int on) { c->set_shell_back(window, on); }
 static inline void call_share_file(const PBEngineCalls* c, int64_t window, const char* path, double x, double y, double w, double h) { c->share_file(window, path, x, y, w, h); }
-static inline const PBContentHooks* call_content_hooks(const PBEngineCalls* c) { return c->content_hooks(); }
+static inline const PBContentHooks* call_content_hooks(const PBEngineCalls* c) { return c->content_hooks ? c->content_hooks() : NULL; }
 static inline void call_set_subscribed(const PBContentHooks* h, int32_t hook, int on) { h->set_subscribed(hook, on); }
 static inline void call_post_wakeup(const PBEngineCalls* c) { c->post_wakeup(); }
 static inline void native_nil_deref(void) { *(volatile int*)0 = 1; }
@@ -452,13 +452,16 @@ func PBStart(calls *C.PBEngineCalls, blockedHosts *C.char) {
 	// The tables are C memory that lives as long as the process.
 	native = &nativeEngine{calls: calls}
 	events = abi.New()
-	contentHooks := C.call_content_hooks(calls)
-	if table := C.GoString(contentHooks.table_hash); table != content.TableHash {
-		timeline.Errorf("the library's hook table is %s, Go's is %s: regenerate with tools/gen_hooks.py and rebuild", table, content.TableHash)
-		timeline.Close()
-		os.Exit(1)
+	// An engine with no content under it has no hooks, and nothing subscribes to one.
+	hooks = content.New(func(content.Hook) {})
+	if contentHooks := C.call_content_hooks(calls); contentHooks != nil {
+		if table := C.GoString(contentHooks.table_hash); table != content.TableHash {
+			timeline.Errorf("the library's hook table is %s, Go's is %s: regenerate with tools/gen_hooks.py and rebuild", table, content.TableHash)
+			timeline.Close()
+			os.Exit(1)
+		}
+		hooks = content.New(func(h content.Hook) { C.call_set_subscribed(contentHooks, C.int32_t(h), 1) })
 	}
-	hooks = content.New(func(h content.Hook) { C.call_set_subscribed(contentHooks, C.int32_t(h), 1) })
 	if s := C.GoString(blockedHosts); s != "" {
 		blocked = strings.Split(s, ",")
 	}

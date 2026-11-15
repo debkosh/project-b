@@ -361,7 +361,7 @@ typedef struct PBEngineCalls {
   // start, before any tab.
   void (*set_block_rules)(const char* hosts);
   // What an engine built on Chromium's content layer adds: its generated hooks, the
-  // table in pb_content_abi.h.
+  // table in pb_content_abi.h. Null in an engine without them.
   const struct PBContentHooks* (*content_hooks)(void);
   // Asks the main thread to call run_posted soon.
   void (*post_wakeup)(void);
