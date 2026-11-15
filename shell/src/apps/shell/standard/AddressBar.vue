@@ -22,6 +22,14 @@ let latestQuery = 0;
 const open = computed(() => focused.value && items.value.length > 0);
 // A site's question about the active tab hangs from the field's start, as the site's own.
 const prompt = computed(() => promptFor(state, state.active));
+// What the slot shows: the site's settings on a web page, marked when its connection is
+// anything but secure, and search with no site or while the field is being typed in.
+const slot = computed(() => {
+  const t = activeTab.value;
+  if (focused.value || !hasSite(t)) return 'search';
+  return t.connection && t.connection !== 'secure' ? 'insecure' : 'site';
+});
+
 const status = computed(() => {
   const t = activeTab.value;
   if (t.blocked) return 'Blocked';
@@ -165,22 +173,34 @@ onMounted(follow);
 
 <template>
   <form class="field" :class="{ open }" @submit.prevent="go()">
-    <!-- The site's settings: on any web page, at the field's start. -->
+    <!-- The field's own icon, in a slot fused to its start (docs/design-system.md, The
+         address field's slot): the site's settings on a web page, a button; search while
+         there is no site or the field is being typed in. -->
     <button
-      v-if="hasSite(activeTab)"
+      v-if="slot !== 'search'"
       type="button"
-      class="site"
-      aria-label="Site settings"
-      title="Site settings"
+      class="slot site"
+      :class="{ insecure: slot === 'insecure' }"
+      :aria-label="slot === 'insecure' ? 'Not secure · Site settings' : 'Site settings'"
+      :title="slot === 'insecure' ? 'Not secure · Site settings' : 'Site settings'"
       @mousedown.prevent
       @click="openSiteSettings()"
     >
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+      <svg v-if="slot === 'insecure'" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M8 2.5 14 13H2zM8 6.5v3M8 11.2v.1" />
+      </svg>
+      <svg v-else width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
         <path d="M2.5 5h5M11.5 5h2M2.5 11h2M8.5 11h5" />
         <circle cx="9.5" cy="5" r="1.75" />
         <circle cx="6.5" cy="11" r="1.75" />
       </svg>
     </button>
+    <span v-else class="slot" aria-hidden="true" @mousedown.prevent="input.focus()">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+        <circle cx="7" cy="7" r="4.25" />
+        <path d="m10.25 10.25 3.25 3.25" />
+      </svg>
+    </span>
     <input
       ref="input"
       v-model="text"
@@ -255,29 +275,38 @@ input::placeholder {
 }
 
 /* A quiet icon button inside the field, 24px, with the field's start padding outside it. */
-.site {
-  flex: none;
+/* The slot: 34px at the field's start, inside its edge, tinted and parted from the white
+   area by a hairline, so it reads as the field's own icon. */
+.slot {
   display: grid;
   place-items: center;
-  width: 24px;
-  height: 24px;
-  margin-left: 6px;
-  margin-right: -6px;
+  flex: none;
+  align-self: stretch;
+  width: 34px;
   padding: 0;
   border: 0;
-  border-radius: 4px;
-  background: none;
+  border-right: 1px solid var(--line);
+  border-radius: 6px 0 0 6px;
+  background: var(--accent-tint);
+  color: var(--muted);
+}
+
+.slot.site {
   color: var(--icon);
   cursor: pointer;
 }
 
-.site:hover {
-  background: var(--accent-tint);
+.slot.site:hover {
+  background: var(--accent-soft);
 }
 
-.site:focus-visible {
+.slot.site:focus-visible {
   outline: none;
-  box-shadow: var(--focus-ring);
+  box-shadow: var(--focus-ring-inset);
+}
+
+.slot.insecure {
+  color: var(--danger);
 }
 
 .status {
