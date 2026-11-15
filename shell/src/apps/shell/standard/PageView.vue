@@ -10,7 +10,7 @@ import { empty, view } from './state.js';
 import { activeTab, state } from '@/sdk/vue.js';
 
 // The command box shows over the page area: opened by New Tab, on a tab with nothing in it,
-// and in a window with no tabs. The page hole stays under it, so nothing moves.
+// and in a window with no tabs; no page shows under it.
 const blank = computed(() => empty.value || (state.active !== 0 && activeTab.value.url === '' && !activeTab.value.loading));
 const shown = computed(() => !state.pageFullScreen && (view.box || blank.value));
 </script>
@@ -19,7 +19,9 @@ const shown = computed(() => !state.pageFullScreen && (view.box || blank.value))
      draws the area itself, as its own: a press there reaches no page and doesn't drag. -->
 <template>
   <div class="main">
-    <div v-page="state.active" class="page-view"></div>
+    <!-- While the command box shows, it has the page area to itself: no page is shown under
+         it, so every press there is the shell's, in the real window as on the mock. -->
+    <div v-if="!shown" v-page="state.active" class="page-view"></div>
     <CommandBox v-if="shown" :key="state.active" :over-page="view.box && !blank" />
     <PageNotice v-if="activeTab.notice" v-shell :tab="activeTab" />
     <CrashNotice />

@@ -126,8 +126,14 @@ const stopServer = lib.stop;
   await forward.click();
   await loaded('https://example.org/');
   check('forward returns to the next page', await forward.isDisabled());
+  // Loading lasts a moment on the mock, so the page's states are recorded from before the
+  // press, as the contract does, rather than looked for after it.
+  await mock.locator('#state').evaluate((shown) => {
+    window.states = [];
+    new MutationObserver(() => window.states.push(shown.textContent)).observe(shown, { childList: true, characterData: true, subtree: true });
+  });
   await reload.click();
-  await mock.getByText('Loading', { exact: true }).waitFor();
+  await until(() => mock.locator('#state').evaluate(() => window.states.includes('Loading')));
   await loaded('https://example.org/');
   check('reload loads the page again', (await bar.inputValue()) === 'https://example.org/');
   await back.click();
@@ -359,22 +365,12 @@ const stopServer = lib.stop;
   await shellFrame().waitForFunction(() => document.querySelectorAll('[role=tab]').length === 2);
   check('a new tab is made and made active', (await activeRow.innerText()).startsWith('New Tab'), await activeRow.innerText());
   check('a new tab shows the command box, focused, over an empty address bar', (await bar.inputValue()) === '' && (await newTabBox.evaluate((el) => el === document.activeElement)));
-  await mock.getByText('tab 2', { exact: true }).waitFor();
-  // A new tab holds the blank page, so its page area is a page in the page's own
-  // colours, never the frame colour showing through. It still reads as a new tab.
-  let blank = false;
-  for (let i = 0; i < 100 && !blank; i++) {
-    blank = (await mock.locator('#state').textContent()) === 'Loaded' && (await mock.locator('#url').textContent()) === 'about:blank';
-    if (!blank) await new Promise((r) => setTimeout(r, 30));
-  }
-  const pageColour = await mock.locator('body').evaluate((b) => getComputedStyle(b).backgroundColor);
-  check("a new tab holds the blank page, in the page's colour, not the frame colour", blank && pageColour !== 'rgb(79, 158, 158)', pageColour);
-  check('and reads as a new tab: no address, titled New Tab', (await bar.inputValue()) === '' && (await activeRow.innerText()).startsWith('New Tab'), await activeRow.innerText());
+  // A new tab with nothing in it shows Standard's command box in the page area, and no
+  // page: the window shows no tab's page while the box has the area.
   r = await regions();
-  // The command box over the new tab sends a layout of its own, so the hidden list may
-  // already be the next layout's: what counts is that the first tab no longer shows.
-  check('the first tab no longer shows', !r.visible.some((v) => v.tab === 1), JSON.stringify(r.visible));
-  check('the layout lists the new tab as the one visible tab', r.visible.length === 1 && r.visible[0].tab === 2 && JSON.stringify(r.visible[0].rect) === pageBounds, JSON.stringify(r.visible));
+  check('and reads as a new tab: no address, titled New Tab', (await bar.inputValue()) === '' && (await activeRow.innerText()).startsWith('New Tab'), await activeRow.innerText());
+  check('no page shows under the box: the window shows neither tab\'s page', await until(async () => (await regions()).visible.length === 0), JSON.stringify((await regions()).visible));
+  check('and the page area is the shell\'s', await until(async () => (await regions({ x: 600, y: 400 })).hit === 'shell'));
   check('back and reload follow the new, empty tab', (await back.isDisabled()) && (await reload.isDisabled()));
   await visit('https://example.net/', 'https://example.net/');
   check('each tab keeps its own title', JSON.stringify(await rowTitles()) === JSON.stringify(['Mock example.org', 'Mock example.net']), JSON.stringify(await rowTitles()));
@@ -458,7 +454,11 @@ const stopServer = lib.stop;
   await shellFrame().waitForFunction(() => document.querySelectorAll('[role=tab]').length === 2);
   check('the close button on a row closes that tab', !(await rowTitles()).some((t) => t.includes('opened.test')), JSON.stringify(await rowTitles()));
 
-  // The sidebar collapses and the page follows.
+  // The sidebar collapses and the page follows. A page shows, not the command box.
+  if ((await bar.inputValue()) === '') {
+    await visit('https://example.com/side', 'https://example.com/side');
+    await until(async () => (await regions({ x: 600, y: 400 })).hit === 'page');
+  }
   await toggle.click();
   await shellFrame().waitForFunction(() => document.querySelector('nav').getBoundingClientRect().width === 0);
   await settle(page);
