@@ -1,6 +1,7 @@
 // Package content is where content's hooks arrive in Go. Nothing outside it sees a
-// raw hook: Wire turns the few the app needs into engine.Listener calls, and a new
-// use of a hook is a Go change here, with no C or C++ touched.
+// raw hook, and the app needs none: what a tab's page does reaches it as the adapter's
+// own events (core/abi). A hook is for trying something content can do before it has an
+// event of ours: subscribing is a Go change here, with no C or C++ touched.
 //
 // Every carried hook has a number and a flat list of values (engine/abi/pb_abi.h).
 // The generated files (*_gen.go, from tools/gen_hooks.py) know each hook's layout
@@ -9,15 +10,13 @@
 // hook never does.
 package content
 
+import "projectb/abi"
+
 // Hook is a hook's number, shared with the adapter.
 type Hook int32
 
 // Value is one value as it crosses: an integer, a float or a string, by layout.
-type Value struct {
-	I int64
-	D float64
-	S string
-}
+type Value = abi.Value
 
 // Optional is a std::optional that crossed: Set says whether Value means anything.
 type Optional[T any] struct {

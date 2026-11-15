@@ -361,7 +361,7 @@ def a22(app):
     cdp_click(s, x, y, button="right")
     time.sleep(1)
     shown = app.js("!!document.querySelector('[role=menu]')")
-    asked = json.loads(app.cmd("stats")).get("hooks", {}).get("HandleContextMenu", 0)
+    asked = json.loads(app.cmd("stats")).get("hooks", {}).get("engine.ContextMenu", 0)
     return shown, f"no menu in the shell after a right-click on a link; Go was asked {asked} time(s)"
 
 

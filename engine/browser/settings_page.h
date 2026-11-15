@@ -40,6 +40,9 @@ class SettingsPage : public content::WebContentsObserver,
 
   // content::WebContentsDelegate:
   content::WebContents* hook_contents() const override;
+  content::KeyboardEventProcessingResult PreHandleKeyboardEvent(
+      content::WebContents* source,
+      const input::NativeWebKeyboardEvent& event) override;
   bool HandleKeyboardEvent(content::WebContents* source,
                            const input::NativeWebKeyboardEvent& event) override;
 #if BUILDFLAG(IS_ANDROID)

@@ -213,6 +213,8 @@ source_set("browser") {
     "browser/driver.mm",
     "browser/engine.cc",
     "browser/engine.h",
+    "browser/events.cc",
+    "browser/events.h",
     "browser/file_chooser.cc",
     "browser/file_chooser.h",
     "browser/go.cc",

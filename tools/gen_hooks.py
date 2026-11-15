@@ -1180,7 +1180,7 @@ def grep_uses(method):
     out = []
     for root, _, files in os.walk(os.path.join(ROOT, "core")):
         for fn in files:
-            if fn.endswith(".go") and not fn.endswith("_gen.go"):
+            if fn.endswith(".go") and not fn.endswith(("_gen.go", "_test.go")):
                 path = os.path.join(root, fn)
                 text = open(path).read()
                 if re.search(r"\." + re.escape(method) + r"\(", text):

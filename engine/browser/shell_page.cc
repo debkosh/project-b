@@ -20,6 +20,7 @@
 #include "base/task/thread_pool.h"
 #include "base/values.h"
 #include "build/build_config.h"
+#include "content/public/browser/keyboard_event_processing_result.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
@@ -35,6 +36,7 @@
 #include "content/public/browser/web_ui_message_handler.h"
 #include "content/public/common/bindings_policy.h"
 #include "project_b/engine/browser/engine.h"
+#include "project_b/engine/browser/events.h"
 #include "project_b/engine/browser/hooks.h"
 #include "project_b/engine/browser/settings_page.h"
 #include "project_b/engine/browser/timeline.h"
@@ -440,10 +442,20 @@ void ShellPage::PrimaryMainFrameRenderProcessGone(
 }
 
 // Go gets the key first; one it doesn't use goes to the menu bar.
+content::KeyboardEventProcessingResult ShellPage::PreHandleKeyboardEvent(
+    content::WebContents* source,
+    const input::NativeWebKeyboardEvent& event) {
+  if (events::Key(source, event, PB_KEY_BEFORE_PAGE)) {
+    return content::KeyboardEventProcessingResult::HANDLED;
+  }
+  return WebContentsDelegateHooks::PreHandleKeyboardEvent(source, event);
+}
+
 bool ShellPage::HandleKeyboardEvent(
     content::WebContents* source,
     const input::NativeWebKeyboardEvent& event) {
-  return WebContentsDelegateHooks::HandleKeyboardEvent(source, event) ||
+  return events::Key(source, event, PB_KEY_UNHANDLED) ||
+         WebContentsDelegateHooks::HandleKeyboardEvent(source, event) ||
          Window::HandleUnhandledKey(event);
 }
 

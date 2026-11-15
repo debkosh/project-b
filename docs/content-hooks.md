@@ -9,11 +9,11 @@ generated hook; Go acts on it only where it subscribes or answers, counted as us
 
 | Class | Hooks | Carried, plain data | Carried, struct copy | Left | Used by Go |
 |---|---:|---:|---:|---:|---:|
-| `WebContentsObserver` | 124 | 45 | 59 | 20 | 8 |
-| `WebContentsDelegate` | 120 | 32 | 56 | 32 | 5 |
+| `WebContentsObserver` | 124 | 45 | 59 | 20 | 0 |
+| `WebContentsDelegate` | 120 | 32 | 56 | 32 | 0 |
 | `ContentBrowserClient` | 347 | 77 | 84 | 186 | 0 |
-| `NavigationThrottle` | 7 | 6 | 0 | 1 | 2 |
-| **Total** | **598** | **160** | **199** | **239** | **15** |
+| `NavigationThrottle` | 7 | 6 | 0 | 1 | 0 |
+| **Total** | **598** | **160** | **199** | **239** | **0** |
 | `ContentRendererClient` (renderer process) | 62 | 0 | 0 | 62 | 0 |
 | `ContentUtilityClient` (utility process) | 5 | 0 | 0 | 5 | 0 |
 
@@ -43,19 +43,27 @@ cross: a `WebContents` crosses as a `content.WebContents` copy, a `NavigationHan
 `content.NavigationHandle` copy, and so on. The copiers are the `COPIERS` table at the top
 of `tools/gen_hooks.py`: each line is a field Go may know about the object.
 
-Raw hooks stop in `core/content`. `wire.go` turns the ones the app uses into
-`engine.Listener` calls; managers never see content's names, so the mock and any second
-engine still fit the same interface.
+Raw hooks stop in `core/content`, and the app is built on none of them. What a tab's
+page does (navigation, title, loading, the context menu, keys and the rest) reaches Go
+as events the adapter fires itself, `PB_EVENT` 60 to 79 in `engine/abi/pb_abi.h`, which
+`core/abi` turns into `engine.Listener` calls. An engine with no content under it can
+fire the same events, so managers, the mock and a second engine all fit one interface. A
+hook is the quick way to try something content can do; what the app comes to rely on
+becomes an event.
 
 Every tab hook arrives with the tab's state at that moment (`content.WebContents`: id, URL,
 title, back and forward, loading, visibility) as its first argument, so Go never has to
 ask content anything. The shell's own page is tab 0.
 
-**To use a hook nobody uses yet:** find it in the table at the bottom, subscribe to it in
-`core/content/wire.go`, say what it means in `engine.Listener`, and wire the manager in
-`core/app/app.go`. No C, no C++, no library rebuild. `LoadProgressChanged` was added this
-way: the library kept the same bytes and mtime, and the incremental build took 17 s
-(`project_b` relinked, nothing else).
+**To try a hook nobody uses yet:** find it in the table at the bottom and subscribe to it
+in `core/content/wire.go`. No C, no C++, no library rebuild. `LoadProgressChanged` was
+first tried this way: the library kept the same bytes and mtime, and the incremental
+build took 17 s (`project_b` relinked, nothing else).
+
+**To make it part of the app:** give it a `PB_EVENT` number in `engine/abi/pb_abi.h`,
+fire it from the adapter where content's call arrives (`engine/browser/page_tab.cc` for a
+tab's), decode it in `core/abi`, say what it means in `engine.Listener`, and wire the
+manager in `core/app/app.go`. The subscription in `wire.go` then goes.
 
 **When Chromium is upgraded:** first run `python3 tools/web_features_bump.py`, which says
 what the web-features registry lacks and what it names that Chromium dropped
@@ -195,11 +203,12 @@ crossing the engine interface stays ours and generalised.
   would put the URL there; the shell does that fallback itself.
 - The shell's `WebContents` is tab 0: its keyboard hook crosses like a tab's, its observer
   hooks do not (`ShellPage` observes content directly).
-- Reserved keys (Cmd+L, Cmd+T, Cmd+W, Cmd+1..9, Ctrl+Tab) are decided in Go,
-  `core/content/wire.go`, with the generated `KeyboardCode` and modifier constants.
-- The gate throttle is added to every navigation; Go answers only for tabs' primary main
-  frames, and the rest run content's default.
-- Hooks that fire while `app.Start` runs, before `Wire`, are dropped. None matter today.
+- Keys are decided in Go. The adapter asks about each key press with `PB_EVENT_KEY`,
+  as a Windows virtual-key code and our own modifier bits, before the page and after.
+- The gate (`engine/browser/events.h`) is added to every navigation; it asks Go only for
+  tabs' primary main frames, and the rest go on unasked.
+- Events and hooks that fire while `app.Start` runs, before anyone listens, are dropped.
+  None matter today.
 - A Go panic inside a hook still ends the process, as it did before.
 - Thread classification comes from content's header comments, with a CHECK as the net.
 <!-- /hand -->
@@ -222,21 +231,21 @@ crossing the engine interface stays ours and generalised.
 | `WebContentsObserver` | `DidAcquireFullscreen` | carried, struct copy | `WebContentsObserverHooks::DidAcquireFullscreen` · `Hooks.Observer.OnDidAcquireFullscreen` |
 | `WebContentsObserver` | `DidActivatePreviewedPage` | carried | `WebContentsObserverHooks::DidActivatePreviewedPage` · `Hooks.Observer.OnDidActivatePreviewedPage` |
 | `WebContentsObserver` | `DidChangeThemeColor` | carried | `WebContentsObserverHooks::DidChangeThemeColor` · `Hooks.Observer.OnDidChangeThemeColor` |
-| `WebContentsObserver` | `DidChangeVerticalScrollDirection` | carried | `WebContentsObserverHooks::DidChangeVerticalScrollDirection` · `Hooks.Observer.OnDidChangeVerticalScrollDirection` · used by `core/content/wire.go` |
+| `WebContentsObserver` | `DidChangeVerticalScrollDirection` | carried | `WebContentsObserverHooks::DidChangeVerticalScrollDirection` · `Hooks.Observer.OnDidChangeVerticalScrollDirection` |
 | `WebContentsObserver` | `DidChangeVisibleSecurityState` | carried | `WebContentsObserverHooks::DidChangeVisibleSecurityState` · `Hooks.Observer.OnDidChangeVisibleSecurityState` |
 | `WebContentsObserver` | `DidCloneToNewWebContents` | carried, struct copy | `WebContentsObserverHooks::DidCloneToNewWebContents` · `Hooks.Observer.OnDidCloneToNewWebContents` |
 | `WebContentsObserver` | `DidFailLoad` | carried, struct copy | `WebContentsObserverHooks::DidFailLoad` · `Hooks.Observer.OnDidFailLoad` |
 | `WebContentsObserver` | `DidFinishLoad` | carried, struct copy | `WebContentsObserverHooks::DidFinishLoad` · `Hooks.Observer.OnDidFinishLoad` |
-| `WebContentsObserver` | `DidFinishNavigation` | carried, struct copy | `WebContentsObserverHooks::DidFinishNavigation` · `Hooks.Observer.OnDidFinishNavigation` · used by `core/content/wire.go` |
+| `WebContentsObserver` | `DidFinishNavigation` | carried, struct copy | `WebContentsObserverHooks::DidFinishNavigation` · `Hooks.Observer.OnDidFinishNavigation` |
 | `WebContentsObserver` | `DidFirstVisuallyNonEmptyPaint` | carried | `WebContentsObserverHooks::DidFirstVisuallyNonEmptyPaint` · `Hooks.Observer.OnDidFirstVisuallyNonEmptyPaint` |
 | `WebContentsObserver` | `DidGetIgnoredUIEvent` | carried | `WebContentsObserverHooks::DidGetIgnoredUIEvent` · `Hooks.Observer.OnDidGetIgnoredUIEvent` |
 | `WebContentsObserver` | `DidGetUserInteraction` | carried, struct copy | `WebContentsObserverHooks::DidGetUserInteraction` · `Hooks.Observer.OnDidGetUserInteraction` |
 | `WebContentsObserver` | `DidLoadResourceFromMemoryCache` | carried, struct copy | `WebContentsObserverHooks::DidLoadResourceFromMemoryCache` · `Hooks.Observer.OnDidLoadResourceFromMemoryCache` |
 | `WebContentsObserver` | `DidOpenRequestedURL` | carried, struct copy | `WebContentsObserverHooks::DidOpenRequestedURL` · `Hooks.Observer.OnDidOpenRequestedURL` |
 | `WebContentsObserver` | `DidRedirectNavigation` | carried, struct copy | `WebContentsObserverHooks::DidRedirectNavigation` · `Hooks.Observer.OnDidRedirectNavigation` |
-| `WebContentsObserver` | `DidStartLoading` | carried | `WebContentsObserverHooks::DidStartLoading` · `Hooks.Observer.OnDidStartLoading` · used by `core/content/wire.go` |
+| `WebContentsObserver` | `DidStartLoading` | carried | `WebContentsObserverHooks::DidStartLoading` · `Hooks.Observer.OnDidStartLoading` |
 | `WebContentsObserver` | `DidStartNavigation` | carried, struct copy | `WebContentsObserverHooks::DidStartNavigation` · `Hooks.Observer.OnDidStartNavigation` |
-| `WebContentsObserver` | `DidStopLoading` | carried | `WebContentsObserverHooks::DidStopLoading` · `Hooks.Observer.OnDidStopLoading` · used by `core/content/wire.go` |
+| `WebContentsObserver` | `DidStopLoading` | carried | `WebContentsObserverHooks::DidStopLoading` · `Hooks.Observer.OnDidStopLoading` |
 | `WebContentsObserver` | `DidToggleFullscreenModeForTab` | carried | `WebContentsObserverHooks::DidToggleFullscreenModeForTab` · `Hooks.Observer.OnDidToggleFullscreenModeForTab` |
 | `WebContentsObserver` | `DidUpdateAudioMutingState` | carried | `WebContentsObserverHooks::DidUpdateAudioMutingState` · `Hooks.Observer.OnDidUpdateAudioMutingState` |
 | `WebContentsObserver` | `DidUpdateFaviconURL` | left: no copier for blink::mojom::FaviconURLPtr | `content/public/browser/web_contents_observer.h:770` |
@@ -253,7 +262,7 @@ crossing the engine interface stays ours and generalised.
 | `WebContentsObserver` | `InnerWebContentsAttached` | carried, struct copy | `WebContentsObserverHooks::InnerWebContentsAttached` · `Hooks.Observer.OnInnerWebContentsAttached` |
 | `WebContentsObserver` | `InnerWebContentsCreated` | carried, struct copy | `WebContentsObserverHooks::InnerWebContentsCreated` · `Hooks.Observer.OnInnerWebContentsCreated` |
 | `WebContentsObserver` | `KeyboardLockRequested` | carried | `WebContentsObserverHooks::KeyboardLockRequested` · `Hooks.Observer.OnKeyboardLockRequested` |
-| `WebContentsObserver` | `LoadProgressChanged` | carried | `WebContentsObserverHooks::LoadProgressChanged` · `Hooks.Observer.OnLoadProgressChanged` · used by `core/content/wire.go` |
+| `WebContentsObserver` | `LoadProgressChanged` | carried | `WebContentsObserverHooks::LoadProgressChanged` · `Hooks.Observer.OnLoadProgressChanged` |
 | `WebContentsObserver` | `MediaDestroyed` | carried, struct copy | `WebContentsObserverHooks::MediaDestroyed` · `Hooks.Observer.OnMediaDestroyed` |
 | `WebContentsObserver` | `MediaEffectivelyFullscreenChanged` | carried | `WebContentsObserverHooks::MediaEffectivelyFullscreenChanged` · `Hooks.Observer.OnMediaEffectivelyFullscreenChanged` |
 | `WebContentsObserver` | `MediaMetadataChanged` | carried, struct copy | `WebContentsObserverHooks::MediaMetadataChanged` · `Hooks.Observer.OnMediaMetadataChanged` |
@@ -303,11 +312,11 @@ crossing the engine interface stays ours and generalised.
 | `WebContentsObserver` | `OnTrustTokensAccessed` | left: no copier for content::TrustTokenAccessDetails | `content/public/browser/web_contents_observer.h:542` |
 | `WebContentsObserver` | `OnVisibilityChanged` | carried | `WebContentsObserverHooks::OnVisibilityChanged` · `Hooks.Observer.OnVisibilityChanged` |
 | `WebContentsObserver` | `OnVisibilityWillChange` | carried | `WebContentsObserverHooks::OnVisibilityWillChange` · `Hooks.Observer.OnVisibilityWillChange` |
-| `WebContentsObserver` | `OnWebContentsFocused` | carried, struct copy | `WebContentsObserverHooks::OnWebContentsFocused` · `Hooks.Observer.OnWebContentsFocused` · used by `core/content/wire.go` |
+| `WebContentsObserver` | `OnWebContentsFocused` | carried, struct copy | `WebContentsObserverHooks::OnWebContentsFocused` · `Hooks.Observer.OnWebContentsFocused` |
 | `WebContentsObserver` | `OnWebContentsLostFocus` | carried, struct copy | `WebContentsObserverHooks::OnWebContentsLostFocus` · `Hooks.Observer.OnWebContentsLostFocus` |
 | `WebContentsObserver` | `PointerLockRequested` | carried | `WebContentsObserverHooks::PointerLockRequested` · `Hooks.Observer.OnPointerLockRequested` |
 | `WebContentsObserver` | `PrimaryMainDocumentElementAvailable` | carried | `WebContentsObserverHooks::PrimaryMainDocumentElementAvailable` · `Hooks.Observer.OnPrimaryMainDocumentElementAvailable` |
-| `WebContentsObserver` | `PrimaryMainFrameRenderProcessGone` | carried | `WebContentsObserverHooks::PrimaryMainFrameRenderProcessGone` · `Hooks.Observer.OnPrimaryMainFrameRenderProcessGone` · used by `core/content/wire.go` |
+| `WebContentsObserver` | `PrimaryMainFrameRenderProcessGone` | carried | `WebContentsObserverHooks::PrimaryMainFrameRenderProcessGone` · `Hooks.Observer.OnPrimaryMainFrameRenderProcessGone` |
 | `WebContentsObserver` | `PrimaryMainFrameWasResized` | carried | `WebContentsObserverHooks::PrimaryMainFrameWasResized` · `Hooks.Observer.OnPrimaryMainFrameWasResized` |
 | `WebContentsObserver` | `PrimaryPageChanged` | carried, struct copy | `WebContentsObserverHooks::PrimaryPageChanged` · `Hooks.Observer.OnPrimaryPageChanged` |
 | `WebContentsObserver` | `PrimaryPageWillBeDeactivated` | carried, struct copy | `WebContentsObserverHooks::PrimaryPageWillBeDeactivated` · `Hooks.Observer.OnPrimaryPageWillBeDeactivated` |
@@ -323,7 +332,7 @@ crossing the engine interface stays ours and generalised.
 | `WebContentsObserver` | `SafeAreaConstraintChanged` | carried | `WebContentsObserverHooks::SafeAreaConstraintChanged` · `Hooks.Observer.OnSafeAreaConstraintChanged` |
 | `WebContentsObserver` | `SurfaceEmbedChildWebContentsAttached` | carried, struct copy | `WebContentsObserverHooks::SurfaceEmbedChildWebContentsAttached` · `Hooks.Observer.OnSurfaceEmbedChildWebContentsAttached` |
 | `WebContentsObserver` | `SurfaceEmbedChildWebContentsDetached` | carried, struct copy | `WebContentsObserverHooks::SurfaceEmbedChildWebContentsDetached` · `Hooks.Observer.OnSurfaceEmbedChildWebContentsDetached` |
-| `WebContentsObserver` | `TitleWasSet` | carried, struct copy | `WebContentsObserverHooks::TitleWasSet` · `Hooks.Observer.OnTitleWasSet` · used by `core/content/wire.go` |
+| `WebContentsObserver` | `TitleWasSet` | carried, struct copy | `WebContentsObserverHooks::TitleWasSet` · `Hooks.Observer.OnTitleWasSet` |
 | `WebContentsObserver` | `TitleWasSetForMainFrame` | carried, struct copy | `WebContentsObserverHooks::TitleWasSetForMainFrame` · `Hooks.Observer.OnTitleWasSetForMainFrame` |
 | `WebContentsObserver` | `UserAgentOverrideSet` | left: no copier for blink::UserAgentOverride | `content/public/browser/web_contents_observer.h:760` |
 | `WebContentsObserver` | `VibrationRequested` | carried | `WebContentsObserverHooks::VibrationRequested` · `Hooks.Observer.OnVibrationRequested` |
@@ -332,7 +341,7 @@ crossing the engine interface stays ours and generalised.
 | `WebContentsObserver` | `WasDiscarded` | carried | `WebContentsObserverHooks::WasDiscarded` · `Hooks.Observer.OnWasDiscarded` |
 | `WebContentsObserver` | `WebAuthnAssertionRequestSucceeded` | carried, struct copy | `WebContentsObserverHooks::WebAuthnAssertionRequestSucceeded` · `Hooks.Observer.OnWebAuthnAssertionRequestSucceeded` |
 | `WebContentsObserver` | `WebContentsDestroyed` | carried | `WebContentsObserverHooks::WebContentsDestroyed` · `Hooks.Observer.OnWebContentsDestroyed` |
-| `WebContentsDelegate` | `ActivateContents` | carried, struct copy | `WebContentsDelegateHooks::ActivateContents` · `Hooks.Delegate.OnActivateContents` · used by `core/content/wire.go` |
+| `WebContentsDelegate` | `ActivateContents` | carried, struct copy | `WebContentsDelegateHooks::ActivateContents` · `Hooks.Delegate.OnActivateContents` |
 | `WebContentsDelegate` | `AddNewContents` | left: ownership | `content/public/browser/web_contents_delegate.h:203` |
 | `WebContentsDelegate` | `AllowKeyboardLockForInnerContents` | carried, struct copy | `WebContentsDelegateHooks::AllowKeyboardLockForInnerContents` · `Hooks.Delegate.AnswerAllowKeyboardLockForInnerContents` |
 | `WebContentsDelegate` | `AllowedPrerenderingCount` | carried, struct copy | `WebContentsDelegateHooks::AllowedPrerenderingCount` · `Hooks.Delegate.AnswerAllowedPrerenderingCount` |
@@ -345,7 +354,7 @@ crossing the engine interface stays ours and generalised.
 | `WebContentsDelegate` | `CancelKeyboardLockRequest` | carried, struct copy | `WebContentsDelegateHooks::CancelKeyboardLockRequest` · `Hooks.Delegate.OnCancelKeyboardLockRequest` |
 | `WebContentsDelegate` | `CapturePaintPreviewOfSubframe` | left: no copier for base::UnguessableToken | `content/public/browser/web_contents_delegate.h:780` |
 | `WebContentsDelegate` | `CheckMediaAccessPermission` | carried, struct copy | `WebContentsDelegateHooks::CheckMediaAccessPermission` · `Hooks.Delegate.AnswerCheckMediaAccessPermission` |
-| `WebContentsDelegate` | `CloseContents` | carried, struct copy | `WebContentsDelegateHooks::CloseContents` · `Hooks.Delegate.OnCloseContents` · used by `core/content/wire.go` |
+| `WebContentsDelegate` | `CloseContents` | carried, struct copy | `WebContentsDelegateHooks::CloseContents` · `Hooks.Delegate.OnCloseContents` |
 | `WebContentsDelegate` | `ContentsMouseEvent` | left: no copier for ui::Event | `content/public/browser/web_contents_delegate.h:249` |
 | `WebContentsDelegate` | `ContentsZoomChange` | carried | `WebContentsDelegateHooks::ContentsZoomChange` · `Hooks.Delegate.OnContentsZoomChange` |
 | `WebContentsDelegate` | `CreateAudioStreamBrokerFactory` | left: returns ownership | `content/public/browser/web_contents_delegate.h:685` |
@@ -383,9 +392,9 @@ crossing the engine interface stays ours and generalised.
 | `WebContentsDelegate` | `GetWindowBoundsInScreen` | left: returns optional object | `content/public/browser/web_contents_delegate.h:806` |
 | `WebContentsDelegate` | `GetWindowShowState` | left: returns no copier for ui::mojom::WindowShowState | `content/public/browser/web_contents_delegate.h:533` |
 | `WebContentsDelegate` | `GuestSaveFrame` | carried, struct copy | `WebContentsDelegateHooks::GuestSaveFrame` · `Hooks.Delegate.AnswerGuestSaveFrame` |
-| `WebContentsDelegate` | `HandleContextMenu` | carried, struct copy | `WebContentsDelegateHooks::HandleContextMenu` · `Hooks.Delegate.AnswerHandleContextMenu` · used by `core/content/wire.go` |
+| `WebContentsDelegate` | `HandleContextMenu` | carried, struct copy | `WebContentsDelegateHooks::HandleContextMenu` · `Hooks.Delegate.AnswerHandleContextMenu` |
 | `WebContentsDelegate` | `HandleDragEnded` | carried | `WebContentsDelegateHooks::HandleDragEnded` · `Hooks.Delegate.OnHandleDragEnded` |
-| `WebContentsDelegate` | `HandleKeyboardEvent` | carried, struct copy | `WebContentsDelegateHooks::HandleKeyboardEvent` · `Hooks.Delegate.AnswerHandleKeyboardEvent` · used by `core/content/wire.go` |
+| `WebContentsDelegate` | `HandleKeyboardEvent` | carried, struct copy | `WebContentsDelegateHooks::HandleKeyboardEvent` · `Hooks.Delegate.AnswerHandleKeyboardEvent` |
 | `WebContentsDelegate` | `IsBackForwardCacheSupported` | carried, struct copy | `WebContentsDelegateHooks::IsBackForwardCacheSupported` · `Hooks.Delegate.AnswerIsBackForwardCacheSupported` |
 | `WebContentsDelegate` | `IsContentsActive` | carried, struct copy | `WebContentsDelegateHooks::IsContentsActive` · `Hooks.Delegate.AnswerIsContentsActive` |
 | `WebContentsDelegate` | `IsDocumentPictureInPictureBlockedBySystem` | carried | `WebContentsDelegateHooks::IsDocumentPictureInPictureBlockedBySystem` · `Hooks.Delegate.AnswerIsDocumentPictureInPictureBlockedBySystem` |
@@ -411,7 +420,7 @@ crossing the engine interface stays ours and generalised.
 | `WebContentsDelegate` | `PreHandleDragExit` | carried | `WebContentsDelegateHooks::PreHandleDragExit` · `Hooks.Delegate.OnPreHandleDragExit` |
 | `WebContentsDelegate` | `PreHandleDragUpdate` | left: no copier for content::DropData | `content/public/browser/web_contents_delegate.h:335` |
 | `WebContentsDelegate` | `PreHandleGestureEvent` | left: no copier for blink::WebGestureEvent | `content/public/browser/web_contents_delegate.h:358` |
-| `WebContentsDelegate` | `PreHandleKeyboardEvent` | carried, struct copy | `WebContentsDelegateHooks::PreHandleKeyboardEvent` · `Hooks.Delegate.AnswerPreHandleKeyboardEvent` · used by `core/content/wire.go` |
+| `WebContentsDelegate` | `PreHandleKeyboardEvent` | carried, struct copy | `WebContentsDelegateHooks::PreHandleKeyboardEvent` · `Hooks.Delegate.AnswerPreHandleKeyboardEvent` |
 | `WebContentsDelegate` | `PrerenderWebContentsCreated` | carried, struct copy | `WebContentsDelegateHooks::PrerenderWebContentsCreated` · `Hooks.Delegate.OnPrerenderWebContentsCreated` |
 | `WebContentsDelegate` | `PrerenderWebContentsReleased` | carried, struct copy | `WebContentsDelegateHooks::PrerenderWebContentsReleased` · `Hooks.Delegate.OnPrerenderWebContentsReleased` |
 | `WebContentsDelegate` | `PrintCrossProcessSubframe` | carried, struct copy | `WebContentsDelegateHooks::PrintCrossProcessSubframe` · `Hooks.Delegate.OnPrintCrossProcessSubframe` |
@@ -804,5 +813,5 @@ crossing the engine interface stays ours and generalised.
 | `NavigationThrottle` | `WillCommitWithoutUrlLoader` | carried | `NavigationThrottleHooks::WillCommitWithoutUrlLoader` · `Hooks.Throttle.AnswerWillCommitWithoutUrlLoader` |
 | `NavigationThrottle` | `WillFailRequest` | carried | `NavigationThrottleHooks::WillFailRequest` · `Hooks.Throttle.AnswerWillFailRequest` |
 | `NavigationThrottle` | `WillProcessResponse` | carried | `NavigationThrottleHooks::WillProcessResponse` · `Hooks.Throttle.AnswerWillProcessResponse` |
-| `NavigationThrottle` | `WillRedirectRequest` | carried | `NavigationThrottleHooks::WillRedirectRequest` · `Hooks.Throttle.AnswerWillRedirectRequest` · used by `core/content/wire.go` |
-| `NavigationThrottle` | `WillStartRequest` | carried | `NavigationThrottleHooks::WillStartRequest` · `Hooks.Throttle.AnswerWillStartRequest` · used by `core/content/wire.go` |
+| `NavigationThrottle` | `WillRedirectRequest` | carried | `NavigationThrottleHooks::WillRedirectRequest` · `Hooks.Throttle.AnswerWillRedirectRequest` |
+| `NavigationThrottle` | `WillStartRequest` | carried | `NavigationThrottleHooks::WillStartRequest` · `Hooks.Throttle.AnswerWillStartRequest` |

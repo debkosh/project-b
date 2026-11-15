@@ -3,10 +3,12 @@
 #include <vector>
 
 #include "base/values.h"
+#include "content/public/browser/keyboard_event_processing_result.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_ui.h"
 #include "project_b/engine/browser/engine.h"
+#include "project_b/engine/browser/events.h"
 #include "project_b/engine/browser/hooks.h"
 #include "project_b/engine/browser/timeline.h"
 #include "project_b/engine/browser/window.h"
@@ -49,10 +51,20 @@ void SettingsPage::DidFinishNavigation(content::NavigationHandle* handle) {
 }
 
 // Go gets the key first; one it doesn't use goes to the menu bar.
+content::KeyboardEventProcessingResult SettingsPage::PreHandleKeyboardEvent(
+    content::WebContents* source,
+    const input::NativeWebKeyboardEvent& event) {
+  if (events::Key(source, event, PB_KEY_BEFORE_PAGE)) {
+    return content::KeyboardEventProcessingResult::HANDLED;
+  }
+  return WebContentsDelegateHooks::PreHandleKeyboardEvent(source, event);
+}
+
 bool SettingsPage::HandleKeyboardEvent(
     content::WebContents* source,
     const input::NativeWebKeyboardEvent& event) {
-  return WebContentsDelegateHooks::HandleKeyboardEvent(source, event) ||
+  return events::Key(source, event, PB_KEY_UNHANDLED) ||
+         WebContentsDelegateHooks::HandleKeyboardEvent(source, event) ||
          Window::HandleUnhandledKey(event);
 }
 

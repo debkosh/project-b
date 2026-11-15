@@ -1,17 +1,11 @@
 package content
 
 import (
-	"runtime"
-
 	"projectb/engine"
 )
 
-// linksAndImagesOnly is a phone's way: only a long press on a link or an image is the
-// shell's, and one on text or in a field keeps Android's own selection bar.
-var linksAndImagesOnly = runtime.GOOS == "android"
-
 // Picker is the engine's listener in a copy that hasn't chosen its profile: the picker's
-// window, its page, the menu and the keys.
+// window, its page and the menu. Its keys reach it through core/abi.
 type Picker interface {
 	Message(w engine.WindowID, msg []byte)
 	WindowChanged(w engine.WindowID, s engine.WindowState)
@@ -22,7 +16,6 @@ type Picker interface {
 	MenuList(name string) engine.Menu
 	OSBindings(byTitle map[string]engine.Key)
 	ModsChanged(m engine.Mods)
-	Key(k engine.Key, phase engine.KeyPhase, in engine.Surface) bool
 }
 
 // WirePicker gives the picker what it hears, until the choice: Wire then gives each of
@@ -37,18 +30,11 @@ func WirePicker(h *Hooks, p Picker) {
 	h.Events.OnMenuList = p.MenuList
 	h.Events.OnOSBindings = p.OSBindings
 	h.Events.OnModsChanged = p.ModsChanged
-	wireKeys(h, p.Key)
 }
 
-// mediaTypes names blink::mojom::ContextMenuDataMediaType's values.
-var mediaTypes = map[int64]string{1: "image", 2: "video", 3: "audio", 4: "canvas", 5: "file", 6: "plugin"}
-
-// netErrAborted is net::ERR_ABORTED: a navigation replaced by a newer one, not a failure.
-const netErrAborted = -3
-
-// Wire subscribes to the hooks the app needs and turns each into the engine.Listener
-// call it means. This is the only place raw hooks become our events; managers never
-// see content's names.
+// Wire gives the app the adapter's events that are still decoded here. It subscribes to
+// no hook: what a tab's page does reaches the app as events of the adapter's own, which
+// core/abi decodes, so the app never depends on what content calls a thing.
 func Wire(h *Hooks, l engine.Listener) {
 	h.Events.OnShellMessage = l.ShellMessage
 	h.Events.OnTabOpened = l.TabOpened
@@ -70,172 +56,4 @@ func Wire(h *Hooks, l engine.Listener) {
 	h.Events.OnFilesChosen = l.FilesChosen
 	h.Events.OnDialogOpened = l.DialogOpened
 	h.Events.OnDialogClosed = l.DialogClosed
-
-	// The gate: every top-level navigation in a tab asks Go before it starts and on
-	// each redirect. The shell's and the settings page's own navigations (ids 0 and -1) have no gate.
-	gate := func(nav NavigationHandle) (NavigationThrottleThrottleAction, bool) {
-		if !nav.IsInPrimaryMainFrame || nav.TabID <= 0 {
-			return 0, false
-		}
-		if l.NavigationStarting(engine.TabID(nav.TabID), nav.NavigationID, nav.URL) {
-			return NavigationThrottleThrottleActionProceed, true
-		}
-		return NavigationThrottleThrottleActionBlockRequest, true
-	}
-	h.Throttle.AnswerWillStartRequest(gate)
-	h.Throttle.AnswerWillRedirectRequest(gate)
-
-	h.Observer.OnDidFinishNavigation(func(c WebContents, nav NavigationHandle) {
-		if !nav.IsInPrimaryMainFrame || c.ID <= 0 {
-			return
-		}
-		tab := engine.TabID(c.ID)
-		l.HistoryChanged(tab, c.CanGoBack, c.CanGoForward)
-		if nav.HasCommitted && !nav.IsErrorPage {
-			l.NavigationFinished(tab, nav.NavigationID, nav.URL)
-			// A page coming back from history already has its title and won't announce
-			// it again.
-			if c.Title != "" {
-				l.TitleChanged(tab, c.Title)
-			}
-			return
-		}
-		if nav.NetError != 0 && nav.NetError != netErrAborted {
-			l.NavigationFailed(tab, nav.NavigationID, nav.URL, nav.NetErrorName)
-		}
-	})
-	h.Observer.OnDidStartLoading(func(c WebContents) {
-		if c.ID > 0 {
-			l.LoadingChanged(engine.TabID(c.ID), true)
-		}
-	})
-	h.Observer.OnDidStopLoading(func(c WebContents) {
-		if c.ID > 0 {
-			l.LoadingChanged(engine.TabID(c.ID), false)
-		}
-	})
-	h.Observer.OnLoadProgressChanged(func(c WebContents, progress float64) {
-		if c.ID > 0 {
-			l.LoadProgressChanged(engine.TabID(c.ID), progress)
-		}
-	})
-	// A right click, or a long press, in a tab's page: the shell draws the menu
-	// (docs/daily-driver.md), except where linksAndImagesOnly says it stays content's.
-	h.Delegate.AnswerHandleContextMenu(func(c WebContents, _ RenderFrameHost, p ContextMenuParams) (bool, bool) {
-		if c.ID <= 0 || linksAndImagesOnly && p.LinkURL == "" && p.SrcURL == "" {
-			return false, false
-		}
-		l.ContextMenu(engine.TabID(c.ID), engine.ContextMenu{X: float64(p.X), Y: float64(p.Y), Link: p.LinkURL, LinkText: p.LinkText,
-			Src: p.SrcURL, Media: mediaTypes[p.MediaType], Selection: p.SelectionText, Editable: p.IsEditable})
-		return true, true
-	})
-	// A page's full screen: Go decides how the window shows it, and says whether a tab's
-	// page has it when content asks.
-	h.Delegate.OnEnterFullscreenModeForTab(func(c WebContents, _ RenderFrameHost, _ FullscreenOptions) {
-		if c.ID > 0 {
-			l.PageFullScreen(engine.TabID(c.ID), true)
-		}
-	})
-	h.Delegate.OnExitFullscreenModeForTab(func(c WebContents, _ WebContents) {
-		if c.ID > 0 {
-			l.PageFullScreen(engine.TabID(c.ID), false)
-		}
-	})
-	h.Delegate.AnswerIsFullscreenForTabOrPending(func(c WebContents, _ WebContents) (bool, bool) {
-		return c.ID > 0 && l.IsPageFullScreen(engine.TabID(c.ID)), true
-	})
-	h.Delegate.OnFindReply(func(c WebContents, _ WebContents, request, matches int64, _ GfxRect, active int64, final bool) {
-		if c.ID > 0 {
-			l.FindReply(engine.TabID(c.ID), int(request), int(matches), int(active), final)
-		}
-	})
-	h.Observer.OnDidChangeVerticalScrollDirection(func(c WebContents, d VerticalScrollDirection) {
-		if c.ID > 0 && d != VerticalScrollDirectionNull {
-			l.ScrollDirectionChanged(engine.TabID(c.ID), d == VerticalScrollDirectionDown)
-		}
-	})
-	h.Observer.OnTitleWasSet(func(c WebContents, entry NavigationEntry) {
-		if c.ID > 0 {
-			l.TitleChanged(engine.TabID(c.ID), c.Title)
-		}
-	})
-	h.Observer.OnWebContentsFocused(func(c WebContents, _ RenderWidgetHost) {
-		if c.ID > 0 {
-			l.TabFocused(engine.TabID(c.ID))
-		}
-	})
-	h.Observer.OnPrimaryMainFrameRenderProcessGone(func(c WebContents, status TerminationStatus) {
-		if c.ID > 0 {
-			l.PageCrashed(engine.TabID(c.ID))
-		}
-	})
-
-	// Content asks the tab's delegate to close or show it. The shell and the settings page
-	// are no tabs.
-	h.Delegate.OnCloseContents(func(_, source WebContents) {
-		if source.ID > 0 {
-			l.CloseRequested(engine.TabID(source.ID))
-		}
-	})
-	h.Delegate.OnActivateContents(func(_, contents WebContents) {
-		if contents.ID > 0 {
-			l.ActivateRequested(engine.TabID(contents.ID))
-		}
-	})
-
-	wireKeys(h, l.Key)
-}
-
-// wireKeys sends every key press in any of our pages to key before the page sees it, and
-// again if the page didn't use it.
-func wireKeys(h *Hooks, key func(engine.Key, engine.KeyPhase, engine.Surface) bool) {
-	h.Delegate.AnswerPreHandleKeyboardEvent(func(c, source WebContents, event NativeWebKeyboardEvent) (KeyboardEventProcessingResult, bool) {
-		if k, ok := keyOf(event); ok && key(k, engine.KeyBeforePage, surfaceOf(source)) {
-			return KeyboardEventProcessingResultHandled, true
-		}
-		return 0, false
-	})
-	h.Delegate.AnswerHandleKeyboardEvent(func(c, source WebContents, event NativeWebKeyboardEvent) (bool, bool) {
-		if k, ok := keyOf(event); ok && key(k, engine.KeyUnhandled, surfaceOf(source)) {
-			return true, true
-		}
-		return false, false
-	})
-}
-
-// settingsID is the id the adapter gives the settings page; the shell's is 0 and tabs'
-// are positive.
-const settingsID = -1
-
-func surfaceOf(c WebContents) engine.Surface {
-	switch c.ID {
-	case 0:
-		return engine.SurfaceShell
-	case settingsID:
-		return engine.SurfaceSettings
-	}
-	return engine.SurfacePage
-}
-
-// keyOf is the key a key-down event is. Other events (key up, typed characters) are no
-// key press.
-func keyOf(e NativeWebKeyboardEvent) (engine.Key, bool) {
-	if e.Type != WebInputEventTypeRawKeyDown && e.Type != WebInputEventTypeKeyDown {
-		return engine.Key{}, false
-	}
-	k := engine.Key{Code: int(e.WindowsKeyCode)}
-	for _, m := range []struct {
-		web WebInputEventModifiers
-		mod engine.Mods
-	}{
-		{WebInputEventModifiersControlKey, engine.ModCtrl},
-		{WebInputEventModifiersAltKey, engine.ModAlt},
-		{WebInputEventModifiersShiftKey, engine.ModShift},
-		{WebInputEventModifiersMetaKey, engine.ModCmd},
-	} {
-		if e.Modifiers&m.web != 0 {
-			k.Mods |= m.mod
-		}
-	}
-	return k, true
 }
