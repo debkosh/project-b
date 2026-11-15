@@ -63,7 +63,6 @@ const noDialogsYet = {
 // The desktop shells that don't lay a page in full screen across the window yet, and who
 // brings each. Rule 21 holds every other desktop shell to it.
 const noPageFullYet = {
-  terminal: 'r4 brings it',
   fox: 'r4 brings it',
   minimal: 'r4 brings it',
 };
