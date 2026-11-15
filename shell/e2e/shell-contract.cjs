@@ -142,10 +142,10 @@ const noEmptyStateYet = {
     const drawn = () => tabEls.evaluateAll((els) => els.map((el) => ({ tab: Number(el.dataset.tab), selected: el.getAttribute('aria-selected') })));
     const shows = (r) => r.visible.some((v) => v.tab === r.active);
     // The shell is up when it loads this shell, draws a tab for each of Go's, and shows the
-    // active one.
+    // active one, if the window has any: a shell that takes New Tab starts with none.
     const up = async () => {
       const r = await regions();
-      return r.shell === id && (await tabEls.count()) === r.tabs.length && shows(r);
+      return r.shell === id && (await tabEls.count()) === r.tabs.length && (r.tabs.length === 0 || shows(r));
     };
 
     // 14. Before Go's data, a splash with none of the shell's controls; then the UI. The
@@ -178,11 +178,20 @@ const noEmptyStateYet = {
     rule(1, 'and says shown, so Go marks the app ready', await until(() => /\bapp\.ready\b/.test(lib.log)));
     // The window shows its pages after the shell's next frame once the layout that places
     // them comes, so the shell sends that layout only once it has drawn what it measured.
-    await until(() => page.evaluate(() => window.pagesShownWith !== undefined));
-    const drawnThen = await page.evaluate(() => window.pagesShownWith);
-    const go = (await regions()).tabs.length;
-    rule(1, 'the window shows its pages only after the shell has drawn the layout that places them: a tab for each of Go\'s',
-      drawnThen === go, JSON.stringify({ drawnThen, go }));
+    // A window that starts with no tabs, as with a shell that takes New Tab, has no page to
+    // show yet; the rules after this one start from a tab, so the check makes one as such
+    // a shell does, by its newTab, and they hold the shell to the rest as ever.
+    if ((await regions()).tabs.length === 0) {
+      rule(1, 'the window shows its pages only after the shell has drawn the layout that places them: it starts with no tabs, so none to show', true);
+      await openTab();
+      ready = ready && (await until(async () => (await regions()).tabs.length === 1 && (await up())));
+    } else {
+      await until(() => page.evaluate(() => window.pagesShownWith !== undefined));
+      const drawnThen = await page.evaluate(() => window.pagesShownWith);
+      const go = (await regions()).tabs.length;
+      rule(1, 'the window shows its pages only after the shell has drawn the layout that places them: a tab for each of Go\'s',
+        drawnThen === go, JSON.stringify({ drawnThen, go }));
+    }
 
     // 3, for the layout as it is now.
     const insideAndApart = async (when) => {

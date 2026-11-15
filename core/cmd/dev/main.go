@@ -29,6 +29,7 @@ import (
 	"projectb/engine"
 	"projectb/flags"
 	"projectb/mockengine"
+	"projectb/prefs"
 	"projectb/profiles"
 	"projectb/shells"
 	"projectb/tabs"
@@ -69,7 +70,7 @@ func main() {
 	appPath := flag.String("app", "", "the installed bundle to replace on relaunch")
 	// A test can add flags of its own, in registry.json's form, to see every type drawn.
 	moreFlags := flag.String("flags", "", "a file of flags to add to the registry's")
-	use := flag.String("use", "", "the shell to choose at start, by its id, as the settings page would")
+	use := flag.String("use", "", "the shell the profile has chosen, by its id, as if the settings page had chosen it before this start")
 	flag.Parse()
 	if *use != "" && !shells.Has(*use) {
 		log.Fatalf("-use: no shell %q in core/shells/registry.json", *use)
@@ -87,6 +88,11 @@ func main() {
 		}
 	}
 
+	// The shell is the profile's choice before the app starts, so the app starts as it does
+	// for a profile that chose it: with no tabs when that shell takes New Tab.
+	if *use != "" && !*pick {
+		prefs.New(*profile).SetShell(*use)
+	}
 	e := mockengine.New()
 	// The flags saved in the profile reach the engine at launch, as the real engine's
 	// command line, so one turned on in settings takes effect on Relaunch, as it does there.
@@ -131,9 +137,6 @@ func main() {
 		} else {
 			a = start(*profile, *id)
 			e.SetListener(a)
-			if *use != "" {
-				a.Prefs.SetShell(*use)
-			}
 		}
 		close(started)
 	})
