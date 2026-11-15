@@ -1644,6 +1644,74 @@ func TestAShellsOwnActionRunsOnlyWhileItsShellIsOn(t *testing.T) {
 	}
 }
 
+// A shell that takes New Tab runs it itself: with it on, New Tab from the menu or its key
+// sends the shell the action, and its span to end once the shell has drawn what it does,
+// and makes no tab, while the shell's own newTab still makes one; with another shell on,
+// New Tab makes a tab as ever. It runs on the first desktop shell the registry has taking
+// tab.new, and is skipped while none does.
+func TestAShellTakesNewTab(t *testing.T) {
+	var taker, other string
+	for _, s := range shells.Listed() {
+		switch {
+		case taker == "" && slices.Contains(s.Takes, "tab.new"):
+			taker = s.ID
+		case other == "" && !slices.Contains(s.Takes, "tab.new"):
+			other = s.ID
+		}
+	}
+	if taker == "" {
+		t.Skip("no shell in the registry takes tab.new yet")
+	}
+	r := start(t, t.TempDir())
+	defer r.stop()
+	snapshot := func(m map[string]any) bool { return m["t"] == "snapshot" }
+	r.waitFor(snapshot)
+	use := func(id string) {
+		r.e.Post(func() { r.a.MenuChosen("shells:" + id) })
+		r.shell(`{"t":"ready"}`)
+		r.waitFor(snapshot)
+	}
+	tabs := func() int {
+		var n int
+		r.e.Post(func() { n = len(r.a.Tabs.AllIn(1)) })
+		r.e.Settle()
+		return n
+	}
+	if taker != shells.Default() {
+		use(taker)
+	}
+	before := tabs()
+	told := func(how string) {
+		t.Helper()
+		if m := r.waitFor(func(m map[string]any) bool { return m["t"] == "action" }); m["id"] != "tab.new" {
+			t.Fatalf("New Tab from %s sent %v", how, m)
+		}
+		if m := r.waitFor(func(m map[string]any) bool { return m["t"] == "paint" }); m["span"] != "tab.new" {
+			t.Fatalf("New Tab from %s asked for the end of %v", how, m)
+		}
+		if n := tabs(); n != before {
+			t.Fatalf("New Tab from %s made a tab: %d, were %d", how, n, before)
+		}
+	}
+	r.e.Post(func() { r.a.MenuChosen("tab.new") })
+	told("the menu")
+	r.e.Post(func() { r.a.Key(engine.Key{Code: 'T', Mods: engine.ModCmd}, engine.KeyUnhandled, engine.SurfacePage) })
+	told("its key")
+
+	r.shell(`{"t":"newTab"}`)
+	r.waitFor(func(m map[string]any) bool { return m["t"] == "tabs" })
+	if n := tabs(); n != before+1 {
+		t.Fatalf("the shell's newTab left %d tabs, were %d", n, before)
+	}
+
+	use(other)
+	r.e.Post(func() { r.a.MenuChosen("tab.new") })
+	r.waitFor(func(m map[string]any) bool { return m["t"] == "tabs" })
+	if n := tabs(); n != before+2 {
+		t.Fatalf("with %s on, New Tab left %d tabs, were %d", other, n, before+1)
+	}
+}
+
 // The tab groups through the shell's messages: a new tab beside one starts a group of the
 // two, which every tabs message carries; a tab a page opens joins its opener's group;
 // editGroup renames it; closeGroup closes its tabs.

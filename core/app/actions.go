@@ -108,6 +108,31 @@ func (a *App) registerActions(e engine.Engine) {
 	}
 	add("tab.selectLast", "Last Tab", a.Tabs.ActivateLast).Enabled = active
 
+	// An action a shell takes is the shell's to run while that shell is the profile's:
+	// Go tells the shell in front, and the action's span ends when the shell has drawn
+	// what it does.
+	byID := map[string]*commands.Action{}
+	for _, act := range a.actions {
+		byID[act.ID] = act
+	}
+	for _, s := range shells.All() {
+		for _, id := range s.Takes {
+			act, ok := byID[id]
+			if !ok {
+				panic(fmt.Sprintf("shells: registry.json: %s takes %q, which is no action", s.ID, id))
+			}
+			run := act.Run
+			act.Run = func() {
+				if a.Prefs.Shell() != s.ID {
+					run()
+					return
+				}
+				w := a.Tabs.Front()
+				a.Shell.Interaction(w, id, func() { a.Shell.Action(w, id) })
+			}
+		}
+	}
+
 	for _, act := range a.actions {
 		a.Commands.Register(*act)
 	}

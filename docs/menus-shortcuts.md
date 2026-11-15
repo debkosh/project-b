@@ -403,6 +403,12 @@ Cmd+D and Shift+Cmd+D, as iTerm has them.
   there to rebind like any other. An owned keymap gets them through the update merge.
 - **Disabled, the key goes on.** With another shell on the action is disabled, so `Key`
   doesn't take its key and the page gets it, as before.
+- **A shell may take one of Go's actions** (`"takes"` in its registry entry), such as the
+  standard shell's New Tab. While that shell is the profile's, running the action sends
+  the shell `action` with its id in place of what Go does. Nothing about the action
+  changes for the keymap or the menu: it keeps its id, its keys and its item, and a key maps
+  to one action as before, which is why a shell takes the action and has no second action
+  on the same key ([shells.md](shells.md#a-shells-own-actions)).
 
 ## From the guidelines, not yet discussed
 
