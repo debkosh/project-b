@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { send, state, tabLabel, workspaceOf } from '@/sdk/vue.js';
 import { shown } from '@/keys.js';
 import { entries, groupLabel } from './groups.js';
+import { dragEnd, dragOver, dragStart, drop, dropClass } from './drag.js';
 import { openMenu } from './menu.js';
 import { openBox, view, waiting, workspaces } from './state.js';
 import WorkspaceButton from './WorkspaceButton.vue';
@@ -43,7 +44,7 @@ const rows = computed(() =>
         <div
           v-else
           class="row tab"
-          :class="{ active: r.tab.id === state.active, grouped: r.group }"
+          :class="[{ active: r.tab.id === state.active, grouped: r.group }, dropClass(r.tab.id)]"
           :style="r.group ? { '--group': r.group.color } : null"
           role="tab"
           :data-tab="r.tab.id"
@@ -54,6 +55,11 @@ const rows = computed(() =>
           @keydown.shift.f10="openMenu('tab', r.tab.id, $event)"
           @auxclick.middle="send({ t: 'closeTab', id: r.tab.id })"
           @contextmenu="openMenu('tab', r.tab.id, $event)"
+          draggable="true"
+          @dragstart="dragStart($event, r.tab.id)"
+          @dragover="dragOver($event, r.tab.id, 'y')"
+          @drop="drop"
+          @dragend="dragEnd"
         >
           <span class="icon">
             <img v-if="r.tab.favicon" :src="r.tab.favicon" alt="" width="16" height="16" />
@@ -173,6 +179,15 @@ const rows = computed(() =>
 
 .title.muted {
   color: var(--muted);
+}
+
+/* Where a dragged tab would land: a line in the accent on that side of the row. */
+.tab.drop-before {
+  box-shadow: 0 -2px 0 var(--accent);
+}
+
+.tab.drop-after {
+  box-shadow: 0 2px 0 var(--accent);
 }
 
 /* A group's header: its colour, its name, and a chevron that folds it. */
