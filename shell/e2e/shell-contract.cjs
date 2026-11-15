@@ -97,8 +97,7 @@ const noEmptyStateYet = {
 const noTitleYet = {
   standard: 'r5, the standard shell\'s session, brings it',
   glide: 'r6 brings it',
-  mobile: 'r3 brings it',
-  'mobile-native': 'r3 brings it',
+  'mobile-native': 'r8, the native mobile shell\'s session, brings it',
   terminal: 'r4 brings it',
   fox: 'r4 brings it',
   minimal: 'r4 brings it',
