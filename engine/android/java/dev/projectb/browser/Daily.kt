@@ -22,7 +22,7 @@ import android.widget.TextView
 import org.json.JSONObject
 
 // The native Mobile shell's daily-driver parts (docs/daily-driver.md), each the web Mobile
-// shell's: the find bar, a page's dialog, the downloads sheet, and No tabs.
+// shell's: the find bar, a page's dialog, and No tabs. Downloads is a page of ours, in a tab.
 
 /** A text button of the design system: 48dp high, its words in the accent, or white on it. */
 fun textButton(context: Context, palette: Palette, words: String, primary: Boolean = false, color: Int? = null, run: () -> Unit) =
@@ -241,79 +241,6 @@ class PageDialog(context: Context, palette: Palette, private val dialog: JSONObj
             .put("password", if (yes) password?.text?.toString() ?: "" else ""))
         (context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager).hideSoftInputFromWindow(windowToken, 0)
         answered()
-    }
-}
-
-/** A size as a phone gives it: 1000 to a kilobyte, one decimal place under ten. */
-fun fileSize(n: Long): String {
-    if (n < 1000) return "$n B"
-    for ((unit, by) in listOf("KB" to 1e3, "MB" to 1e6, "GB" to 1e9, "TB" to 1e12)) {
-        val v = n / by
-        if (v < 1000 || unit == "TB") return "${if (v < 10) String.format("%.1f", v).removeSuffix(".0") else Math.round(v).toString()} $unit"
-    }
-    return "$n B"
-}
-
-/**
- * The profile's downloads, newest first: each by its file name, with how far it has got or how
- * it ended. A running one can be paused, resumed or cancelled; a finished one opens, or shows in
- * the phone's Downloads. Clear takes the finished ones off the list, leaving their files.
- */
-fun downloadsSheet(s: Sheet, palette: Palette, downloads: List<JSONObject>, send: (JSONObject) -> Unit) {
-    val context = s.context
-    val c = s.content
-    fun act(id: Any, action: String) = send(JSONObject().put("t", "downloadAction").put("id", id).put("action", action))
-    val head = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-    head.setPadding(head.dp(20), 0, head.dp(12), 0)
-    head.addView(label(context, 16f, palette.text, bold = true).apply { text = "Downloads" }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-    if (downloads.any { it.optString("state") != "progress" }) {
-        head.addView(textButton(context, palette, "Clear") { send(JSONObject().put("t", "clearDownloads")) }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, head.dp(48)))
-    }
-    c.addView(head, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, head.dp(48)))
-    for (d in downloads) {
-        val id = d.opt("id") ?: continue
-        val state = d.optString("state")
-        val received = d.optLong("received")
-        val total = d.optLong("total")
-        val status = when (state) {
-            "progress" -> (if (d.optBoolean("paused")) "Paused, " else "") + if (total > 0) "${fileSize(received)} of ${fileSize(total)}" else fileSize(received)
-            "done" -> if (total > 0) fileSize(total) else "Done"
-            "cancelled" -> "Cancelled"
-            else -> "Failed"
-        }
-        val row = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        row.setPadding(row.dp(16), row.dp(4), row.dp(4), row.dp(4))
-        row.contentDescription = d.optString("name")
-        val bad = state == "failed" || state == "cancelled"
-        row.addView(IconView(context, "file", if (bad) palette.danger else palette.icon), LinearLayout.LayoutParams(row.dp(24), row.dp(24)).apply { marginEnd = row.dp(16) })
-        val lines = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
-        lines.addView(label(context, 14f, palette.text).apply { text = d.optString("name") })
-        lines.addView(label(context, 12f, palette.muted).apply { text = status })
-        if (state == "progress") {
-            val bar = FrameLayout(context).apply { background = rounded(palette.accentTint, dpf(2)) }
-            val fill = View(context).apply { background = rounded(palette.accent, dpf(2)) }
-            bar.addView(fill, FrameLayout.LayoutParams(0, FrameLayout.LayoutParams.MATCH_PARENT))
-            bar.post { fill.layoutParams = (fill.layoutParams as FrameLayout.LayoutParams).apply { width = if (total > 0) (bar.width * received / total).toInt() else bar.width / 3 } }
-            lines.addView(bar, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, bar.dp(4)).apply { topMargin = bar.dp(6) })
-        }
-        row.addView(lines, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        fun icon(name: String, label: String, action: String) = row.addView(IconButton(context, name, label).apply {
-            ink = palette.icon; press = palette.press
-            setOnClickListener { act(id, action) }
-        }, LinearLayout.LayoutParams(row.dp(48), row.dp(48)))
-        when (state) {
-            "progress" -> {
-                if (d.optBoolean("paused")) icon("play", "Resume", "resume") else icon("pause", "Pause", "pause")
-                icon("close", "Cancel", "cancel")
-            }
-            "done" -> {
-                row.addView(textButton(context, palette, "Open") { act(id, "open") }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, row.dp(48)))
-                icon("download", "Show in Downloads", "reveal")
-            }
-            else -> icon("close", "Remove ${d.optString("name")}", "remove")
-        }
-        row.minimumHeight = row.dp(56)
-        c.addView(row, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
     }
 }
 
