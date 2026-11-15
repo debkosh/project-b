@@ -233,17 +233,17 @@ const { check, fire, regions, settle, until } = lib;
   await title(t2).getByRole('button', { name: /^Close/ }).click();
   check('closing the other leaves one pane with the body to itself', await until(async () => JSON.stringify((await shown())[t1]) === JSON.stringify(one)), JSON.stringify({ one, now: await shown() }));
 
-  // Its own keys, which Go sends it as actions while it is on: Cmd+D splits the active pane
-  // right and Shift+Cmd+D down, as the buttons do, whose titles show the keys.
+  // Its own keys, which Go sends it as actions while it is on: Option+Cmd+D splits the
+  // active pane right and Shift+Cmd+D down, as the buttons do, whose titles show the keys.
   const button = (name) => title(t1).getByRole('button', { name });
-  check('the split buttons show their keys', (await button('Split right').getAttribute('title')) === 'Split right (⌘D)' && (await button('Split down').getAttribute('title')) === 'Split down (⇧⌘D)');
+  check('the split buttons show their keys', (await button('Split right').getAttribute('title')) === 'Split right (⌥⌘D)' && (await button('Split down').getAttribute('title')) === 'Split down (⇧⌘D)');
   await fire('key', 'splitRight');
-  check('Cmd+D splits the active pane right', await until(async () => (await regions()).visible.length === 2));
+  check('Option+Cmd+D splits the active pane right', await until(async () => (await regions()).visible.length === 2));
   const t6 = (await regions()).tabs.find((t) => t.id !== t1 && t.id !== t4).id;
   s = await shown();
-  check('Cmd+D: the new pane beside it, on the same line, and active', near(s[t1].y, s[t6].y) && near(s[t1].h, s[t6].h) && s[t1].x + s[t1].w <= s[t6].x && (await regions()).active === t6, JSON.stringify(s));
+  check('Option+Cmd+D: the new pane beside it, on the same line, and active', near(s[t1].y, s[t6].y) && near(s[t1].h, s[t6].h) && s[t1].x + s[t1].w <= s[t6].x && (await regions()).active === t6, JSON.stringify(s));
   await fire('key', 'splitDown');
-  check('Shift+Cmd+D splits the active pane down', await until(async () => (await regions()).visible.length === 3));
+  check('Shift+Option+Cmd+D splits the active pane down', await until(async () => (await regions()).visible.length === 3));
   const t7 = (await regions()).tabs.find((t) => t.id !== t1 && t.id !== t4 && t.id !== t6).id;
   s = await shown();
   check('Shift+Cmd+D: the new pane under it, in the same column', near(s[t6].x, s[t7].x) && near(s[t6].w, s[t7].w) && s[t6].y + s[t6].h <= s[t7].y, JSON.stringify(s));
@@ -367,9 +367,9 @@ const { check, fire, regions, settle, until } = lib;
   check('New Tab there opens a tab, and the empty state goes',
     await until(async () => (await regions()).tabs.length === 1 && (await regions()).visible.length === 1 && (await empty.count()) === 0));
 
-  // With another shell on, Cmd+D is the page's: Go doesn't run the terminal's action, so
+  // With another shell on, Option+Cmd+D is the page's: Go doesn't run the terminal's action, so
   // the shell hears nothing of it. A title set after it is the mark that it has heard all
-  // Cmd+D could have sent.
+  // Option+Cmd+D could have sent.
   await fire('menu', 'shells:standard');
   check('View, Shell switches to standard', await until(async () => /\/shell\/standard\//.test(w.shell()?.url()) && (await ui.locator('[role=tab]').count()) === (await regions()).tabs.length, 10000));
   await w.shell().evaluate(() => {
@@ -382,9 +382,9 @@ const { check, fire, regions, settle, until } = lib;
   });
   const count = (await regions()).tabs.length;
   await fire('key', 'splitRight');
-  await fire('title', 'After Cmd+D', { tab: (await regions()).active });
+  await fire('title', 'After Option+Cmd+D', { tab: (await regions()).active });
   const heard = () => w.shell().evaluate(() => window.heard.map((m) => (m.t === 'tab' ? m.tab.title : m.t)));
-  check('with standard on, Cmd+D does nothing to the shell', await until(async () => (await heard()).includes('After Cmd+D')) && !(await heard()).includes('action') && (await regions()).tabs.length === count, JSON.stringify(await heard()));
+  check('with standard on, Option+Cmd+D does nothing to the shell', await until(async () => (await heard()).includes('After Option+Cmd+D')) && !(await heard()).includes('action') && (await regions()).tabs.length === count, JSON.stringify(await heard()));
 
   check('no errors', w.errors.length === 0, w.errors.join(' | '));
   await browser.close();

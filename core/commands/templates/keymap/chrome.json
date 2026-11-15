@@ -559,7 +559,7 @@
       "hidden": true,
       "mac": [
         {
-          "keys": "Cmd+D",
+          "keys": "Option+Cmd+D",
           "reserve": "page"
         }
       ]

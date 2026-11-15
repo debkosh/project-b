@@ -552,7 +552,12 @@
     },
     "terminal.splitRight": {
       "hidden": true,
-      "mac": []
+      "mac": [
+        {
+          "keys": "Option+Cmd+D",
+          "reserve": "page"
+        }
+      ]
     },
     "terminal.splitDown": {
       "hidden": true,
@@ -1143,14 +1148,7 @@
         }
       ]
     },
-    "glide.pin": {
-      "mac": [
-        {
-          "keys": "Cmd+D",
-          "reserve": "page"
-        }
-      ]
-    },
+    "glide.pin": {},
     "glide.spacePrevious": {
       "mac": [
         {
