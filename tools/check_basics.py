@@ -52,6 +52,9 @@ PAGE = {
     "/steal": "<title>Steal</title><input id=i><script>setTimeout(()=>i.focus(),1500)</script>",
     "/download": "<title>Download</title><a id=a style='font-size:40px' href=/dl>file</a>",
     "/find": "<title>Find</title><p style='font-size:40px'>apple pear apple plum apple",
+    # H.264 and AAC in MP4, the common web video: MDN's public sample, so no video is kept here.
+    "/video": "<title>ready</title><video id=v muted autoplay playsinline width=320 "
+              "src='https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4'></video>",
     "/cookie": "<title>Cookie</title><script>document.cookie='basics=kept; Max-Age=3600'</script>",
     "/pip": """<title>ready</title><canvas id=c width=64 height=64></canvas><video id=v muted></video>
 <button id=b style='font-size:40px' onclick="go()">pip</button><script>
@@ -612,6 +615,18 @@ def a40(app):
     return not app.js(f"!!{bar}"), "Escape left the find bar open"
 
 
+def a41(app):
+    go(app, P + "/video")
+    can = app.js("document.getElementById('v').canPlayType('video/mp4; codecs=avc1.42E01E')", page=True)
+    try:
+        app.wait("(v => v.currentTime > 0.5 && v.readyState === 4 && !v.error)(document.getElementById('v'))", 15, page=True)
+        played = True
+    except TimeoutError:
+        played = False
+    error = app.js("(e => e && e.code)(document.getElementById('v').error)", page=True)
+    return can in ("probably", "maybe") and played, f"canPlayType {can!r}, played {played}, error {error}"
+
+
 AREAS = [
     (1, "window lifecycle: a page's beforeunload asks before its tab closes", a01, ()),
     (2, "tab lifecycle: a tab closes while it is still loading", a02, ()),
@@ -653,6 +668,7 @@ AREAS = [
     (38, "captive portals", a38, ()),
     (39, "DevTools: off unless the switch is given", a39, ()),
     (40, "find in page: Cmd+F counts the matches and Enter moves to the next", a40, ()),
+    (41, "video: an H.264 MP4 plays", a41, ()),
 ]
 
 
