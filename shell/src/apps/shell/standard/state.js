@@ -53,11 +53,6 @@ export const waiting = (tab) => tab.id !== state.active && state.dialogs.some((d
 // tabsOnTop says the tabs are a strip above the toolbar rather than a sidebar.
 export const tabsOnTop = computed(() => state.tabLayout === 'horizontal');
 
-// The find bar's answer to focusFind, set once it is mounted.
-export const find = {
-  focus() {},
-};
-
 // Go's suggestion answers, sent on to whichever field asked: the address bar or the new
 // tab's box. Each asks with an id from nextQuery, so ids never meet, and keeps only the
 // answer to its own last one.

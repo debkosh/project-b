@@ -1,7 +1,7 @@
 <script setup>
 import { computed, watchEffect } from 'vue';
 import FloatMenu from './FloatMenu.vue';
-import PageMenu from './PageMenu.vue';
+import PageMenu from '@/ui/PageMenu.vue';
 import TabMenu from './TabMenu.vue';
 import PageView from './PageView.vue';
 import Sidebar from './Sidebar.vue';

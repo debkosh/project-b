@@ -2,7 +2,7 @@
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue';
 import { pushEscape } from '@/ui/escape.js';
 import { closeFind, findNext, findText, focusPage, keyLabel, send, state } from '@/sdk/vue.js';
-import { find } from './state.js';
+import { findBar } from './find.js';
 
 // Find in page (docs/daily-driver.md): a bar hung from the page's top right while the active
 // tab's search is open, each tab keeping its own. What is typed searches as it changes, with
@@ -41,7 +41,7 @@ async function focus() {
   field.value?.focus();
   field.value?.select();
 }
-find.focus = focus;
+findBar.focus = focus;
 
 function close() {
   closeFind(tab());
