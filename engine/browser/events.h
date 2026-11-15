@@ -41,6 +41,9 @@ class Gate : public content::NavigationThrottle {
 
  private:
   ThrottleCheckResult Ask();
+  // Asks the app about a navigation the page started to another site, before the app hears
+  // the navigation start: a PBNavigation.
+  int64_t AskLeaving(int64_t tab);
 };
 
 }  // namespace events

@@ -3,6 +3,7 @@
 #include "components/input/native_web_keyboard_event.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/web_contents.h"
+#include "net/base/registry_controlled_domains/registry_controlled_domain.h"
 #include "project_b/engine/browser/hooks.h"
 #include "project_b/engine/common/block_rules.h"
 #include "third_party/blink/public/common/input/web_input_event.h"
@@ -78,13 +79,18 @@ content::NavigationThrottle::ThrottleCheckResult Gate::Ask() {
   if (!handle->IsInPrimaryMainFrame()) {
     return block_rules::Blocks(handle->GetURL()) ? BLOCK_REQUEST : PROCEED;
   }
-  hooks::Args args;
-  args.Int(tab);
-  args.Int(handle->GetNavigationId());
-  args.Str(handle->GetURL().spec());
+  // A page leaving its site is asked about first, so one that stays never starts in Go's
+  // tab, which keeps its title and icon.
   PBValue result;
-  if (!hooks::Ask(PB_EVENT_NAVIGATION_STARTING, args, &result)) {
-    return PROCEED;
+  result.i = AskLeaving(tab);
+  if (result.i == PB_NAVIGATION_PROCEED) {
+    hooks::Args args;
+    args.Int(tab);
+    args.Int(handle->GetNavigationId());
+    args.Str(handle->GetURL().spec());
+    if (!hooks::Ask(PB_EVENT_NAVIGATION_STARTING, args, &result)) {
+      return PROCEED;
+    }
   }
   switch (result.i) {
     case PB_NAVIGATION_PROCEED:
@@ -93,6 +99,32 @@ content::NavigationThrottle::ThrottleCheckResult Gate::Ask() {
       return CANCEL_AND_IGNORE;
   }
   return BLOCK_REQUEST;
+}
+
+int64_t Gate::AskLeaving(int64_t tab) {
+  content::NavigationHandle* handle = navigation_handle();
+  // Only the page's own way out: what the person asks for from the shell goes anywhere.
+  if (!handle->IsRendererInitiated()) {
+    return PB_NAVIGATION_PROCEED;
+  }
+  const GURL& from = handle->GetWebContents()->GetLastCommittedURL();
+  const GURL& to = handle->GetURL();
+  if (!from.SchemeIsHTTPOrHTTPS() || !to.SchemeIsHTTPOrHTTPS() ||
+      net::registry_controlled_domains::SameDomainOrHost(
+          from, to,
+          net::registry_controlled_domains::INCLUDE_PRIVATE_REGISTRIES)) {
+    return PB_NAVIGATION_PROCEED;
+  }
+  hooks::Args args;
+  args.Int(tab);
+  args.Str(from.spec());
+  args.Str(to.spec());
+  args.Int(handle->HasUserGesture() ? 1 : 0);
+  PBValue result;
+  if (!hooks::Ask(PB_EVENT_LEAVING_SITE, args, &result)) {
+    return PB_NAVIGATION_PROCEED;
+  }
+  return result.i;
 }
 
 }  // namespace events
