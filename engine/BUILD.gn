@@ -438,9 +438,18 @@ executable("project_b") {
   ]
 }
 
+# The helper, packed in an app of its own inside the app's Frameworks
+# (Project B Helper.app/Contents/MacOS), finds the library three folders up.
+config("helper_finds_content_library") {
+  ldflags = [ "-Wl,-rpath,@executable_path/../../.." ]
+}
+
 # Child processes: the library, no Go.
 executable("project_b_helper") {
   sources = [ "app/helper_main.cc" ]
-  configs += [ ":finds_content_library" ]
+  configs += [
+    ":finds_content_library",
+    ":helper_finds_content_library",
+  ]
   deps = [ ":project_b_content" ]
 }

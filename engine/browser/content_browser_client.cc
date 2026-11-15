@@ -40,6 +40,11 @@
 #include "net/http/http_response_headers.h"
 #include "project_b/engine/browser/dialogs.h"
 
+#if BUILDFLAG(IS_MAC)
+#include "base/apple/bundle_locations.h"
+#include "base/apple/foundation_util.h"
+#endif
+
 namespace project_b {
 
 ContentBrowserClient::ContentBrowserClient() = default;
@@ -62,7 +67,15 @@ void ContentBrowserClient::GetAdditionalMappedFilesForChildProcess(
 }
 #else
 // Every child process runs the helper, which has no Go in it.
+// The helper beside the main binary in a build, and in an app of its own in the packed app:
+// one whose Info.plist says LSUIElement, so no child process ever shows in the Dock, as a
+// capture service that touches the camera would otherwise.
 base::FilePath ContentBrowserClient::GetChildProcessPath(int flags) {
+  if (base::apple::AmIBundled()) {
+    return base::apple::OuterBundlePath()
+        .Append(FILE_PATH_LITERAL("Contents/Frameworks/Project B Helper.app"))
+        .Append(FILE_PATH_LITERAL("Contents/MacOS/project_b_helper"));
+  }
   base::FilePath dir;
   CHECK(base::PathService::Get(base::DIR_EXE, &dir));
   return dir.Append(FILE_PATH_LITERAL("project_b_helper"));

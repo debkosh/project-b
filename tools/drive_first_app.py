@@ -1217,6 +1217,8 @@ def browsing_checks():
     # Binaries: Go only in the main one, content only in the library.
     macos = os.path.dirname(BIN)
     helper = os.path.join(macos, "project_b_helper")
+    if not os.path.exists(helper):  # the packed app's, in an app of its own
+        helper = os.path.join(macos, "../Frameworks/Project B Helper.app/Contents/MacOS/project_b_helper")
     library = os.path.join(macos, "../Frameworks/libproject_b_content.dylib")
     if not os.path.exists(library):
         library = os.path.join(macos, "libproject_b_content.dylib")
