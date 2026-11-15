@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { activeTab, focusPage, send, state, tabLabel } from '@/sdk/vue.js';
+import { hasSite, openSiteSettings } from '@/sdk/sites.js';
 import { heirAsked } from './panes.js';
 import { prompt } from './prompt.js';
 
@@ -133,6 +134,18 @@ watch(
     <button class="tool" type="button" aria-label="Reload" :disabled="!activeTab.url" @click="act('reload')">
       <svg width="12" height="12" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12.35 1.4.24 4.28-3.78.22"/><path d="M11.68 9.55a5.15 5.15 0 1 1 .19-4.39"/></svg>
     </button>
+    <!-- A web page's site has settings of its own, marked when its connection isn't secure. -->
+    <button
+      v-if="hasSite(activeTab)"
+      class="tool"
+      :class="{ insecure: activeTab.connection && activeTab.connection !== 'secure' }"
+      type="button"
+      :aria-label="activeTab.connection && activeTab.connection !== 'secure' ? 'Not secure · Site settings' : 'Site settings'"
+      :title="activeTab.connection && activeTab.connection !== 'secure' ? 'Not secure · Site settings' : 'Site settings'"
+      @click="openSiteSettings()"
+    >
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M1 3h4M8 3h3M1 9h2M6 9h5"/><rect x="5" y="1.5" width="3" height="3"/><rect x="3" y="7.5" width="3" height="3"/></svg>
+    </button>
     <!-- One of our tabs, such as settings, has nothing to type: its title, after the mark. -->
     <span v-if="ours" class="field ours"><span class="mark" aria-hidden="true">&gt;</span><span class="page-name">{{ tabLabel(activeTab) }}</span></span>
     <form v-else class="field" @submit.prevent="go()">
@@ -208,6 +221,10 @@ watch(
 
 .tool:hover:not(:disabled) {
   background: var(--accent-tint);
+}
+
+.tool.insecure {
+  color: var(--danger);
 }
 
 .tool:disabled {
