@@ -407,6 +407,13 @@ func rootOf(root string) string {
 	return filepath.Join(home, ".project-b")
 }
 
+// Go's own work runs on the main thread, one event at a time, so the collector is what
+// uses Go's other cores: at most 4 of them keeps it off the cores Chromium's renderers
+// and GPU process need, with no change to how long an event takes.
+func init() {
+	runtime.GOMAXPROCS(min(4, runtime.NumCPU()))
+}
+
 // PBStart starts what a copy has before and apart from its profile, the engine and the
 // list, then the profile's managers, or the picker when the copy has no profile yet.
 //
