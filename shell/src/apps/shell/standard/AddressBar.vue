@@ -1,6 +1,6 @@
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
-import { activeTab, chooseSuggestion, focusPage, send, state, suggest } from '@/sdk/vue.js';
+import { activeTab, chooseSuggestion, focusPage, send, state, suggest, tabLabel } from '@/sdk/vue.js';
 import SuggestionList from './SuggestionList.vue';
 import { hasSite, openSiteSettings, promptFor } from '@/sdk/sites.js';
 import PermissionPrompt from '@/ui/PermissionPrompt.vue';
@@ -22,10 +22,15 @@ let latestQuery = 0;
 const open = computed(() => focused.value && items.value.length > 0);
 // A site's question about the active tab hangs from the field's start, as the site's own.
 const prompt = computed(() => promptFor(state, state.active));
-// What the slot shows: the site's settings on a web page, marked when its connection is
-// anything but secure, and search with no site or while the field is being typed in.
+// A tab of ours (settings, and our other pages) shows its icon in the slot and its title in
+// the field, with a close control; there is nothing to type.
+const ours = computed(() => !!activeTab.value.page);
+// What the slot shows: the page's own icon on a tab of ours, the site's settings on a web
+// page, marked when its connection is anything but secure, and search with no site or while
+// the field is being typed in.
 const slot = computed(() => {
   const t = activeTab.value;
+  if (ours.value) return 'page';
   if (focused.value || !hasSite(t)) return 'search';
   return t.connection && t.connection !== 'secure' ? 'insecure' : 'site';
 });
@@ -92,7 +97,7 @@ function onKeydown(e) {
       } else {
         edited.value = false;
         text.value = activeTab.value.url;
-        input.value.blur();
+        input.value?.blur();
         focusPage();
       }
       break;
@@ -109,7 +114,7 @@ function go(i = highlight.value) {
   close();
   if (row) chooseSuggestion(row);
   else send({ t: 'navigate', text: value });
-  input.value.blur();
+  input.value?.blur();
   focusPage();
 }
 
@@ -146,7 +151,7 @@ onMounted(() => {
       highlight.value = -1;
     }
   };
-  addressBar.focus = () => input.value.focus();
+  addressBar.focus = () => input.value?.focus();
 });
 
 watch(
@@ -164,7 +169,7 @@ function follow() {
   edited.value = false;
   text.value = activeTab.value.url;
   // A blank tab's, or an empty window's, command box takes the keyboard (CommandBox.vue).
-  input.value.blur();
+  input.value?.blur();
   if (activeTab.value.url) focusPage();
 }
 watch(() => state.active, follow);
@@ -174,10 +179,16 @@ onMounted(follow);
 <template>
   <form class="field" :class="{ open }" @submit.prevent="go()">
     <!-- The field's own icon, in a slot fused to its start (docs/design-system.md, The
-         address field's slot): the site's settings on a web page, a button; search while
-         there is no site or the field is being typed in. -->
+         address field's slot): a page of ours's own icon; the site's settings on a web page,
+         a button; search while there is no site or the field is being typed in. -->
+    <span v-if="slot === 'page'" class="slot" aria-hidden="true">
+      <img v-if="activeTab.favicon" :src="activeTab.favicon" alt="" width="16" height="16" />
+      <svg v-else width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 2.5h5.5L12 5v8.5H4z" />
+      </svg>
+    </span>
     <button
-      v-if="slot !== 'search'"
+      v-else-if="slot !== 'search'"
       type="button"
       class="slot site"
       :class="{ insecure: slot === 'insecure' }"
@@ -201,7 +212,15 @@ onMounted(follow);
         <path d="m10.25 10.25 3.25 3.25" />
       </svg>
     </span>
+    <!-- A tab of ours: its title where the address would be, and a close control. -->
+    <template v-if="ours">
+      <span class="page-title" :title="tabLabel(activeTab)">{{ tabLabel(activeTab) }}</span>
+      <button type="button" class="page-close" :aria-label="`Close ${tabLabel(activeTab)}`" @click="send({ t: 'closeTab', id: state.active })">
+        <svg width="9" height="9" viewBox="0 0 9 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M7.43.9.75 7.58M.9.75l6.68 6.68" /></svg>
+      </button>
+    </template>
     <input
+      v-else
       ref="input"
       v-model="text"
       aria-label="Address"
@@ -219,7 +238,7 @@ onMounted(follow);
       @focus="onFocus"
       @blur="onBlur"
     />
-    <span v-if="status" class="status">{{ status }}</span>
+    <span v-if="status && !ours" class="status">{{ status }}</span>
     <SuggestionList
       v-if="open"
       id="suggestions"
@@ -303,6 +322,48 @@ input::placeholder {
 .slot.site:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring-inset);
+}
+
+.page-title {
+  flex: 1;
+  min-width: 0;
+  padding: 0 12px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.page-close {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin-right: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.page-close:hover {
+  background: var(--press);
+  color: var(--text);
+}
+
+.page-close:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring-inset);
+}
+
+.slot img {
+  display: block;
+  width: 16px;
+  height: 16px;
 }
 
 .slot.insecure {

@@ -215,7 +215,14 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   const savedEngine = () => (fs.existsSync(path.join(profile, 'prefs.json')) ? prefsFile().searchEngine : '');
   check('the search engine shows DuckDuckGo, the default', (await engine.inputValue()) === 'duckduckgo');
   await engine.selectOption('brave');
+  // The address field shows on a web tab, not on the settings tab: the window shows the web
+  // tab while the field is read, then the settings tab again.
+  const ours = (await regions()).tabs.find((t) => t.page === 'settings');
+  const web = (await regions()).tabs.find((t) => !t.page);
+  const showTab = (id) => fetch(`${base}/shell/send`, { method: 'POST', body: JSON.stringify({ t: 'activateTab', id }) });
+  await showTab(web.id);
   check('another chosen is saved, and the address field names it', await until(async () => savedEngine() === 'brave' && (await ui.getByRole('combobox', { name: 'Address' }).getAttribute('placeholder')) === 'Search Brave Search or type a URL'), savedEngine());
+  await showTab(ours.id);
   await engine.selectOption('duckduckgo');
   await until(() => savedEngine() === 'duckduckgo');
 
