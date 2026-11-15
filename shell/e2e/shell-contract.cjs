@@ -56,8 +56,6 @@ const noDialogsYet = {
   terminal: 'r4 brings it',
   fox: 'r4 brings it',
   minimal: 'r4 brings it',
-  'minimal-js': 'r4 brings it',
-  example: 'r4 brings it',
   mobile: 'r3 brings it, with the dialogs on Android',
 };
 
@@ -68,8 +66,6 @@ const noPageFullYet = {
   terminal: 'r4 brings it',
   fox: 'r4 brings it',
   minimal: 'r4 brings it',
-  'minimal-js': 'r4 brings it',
-  example: 'r4 brings it',
 };
 
 // The desktop shells that don't draw a find bar yet, and who brings each. Rule 20 holds
@@ -79,8 +75,6 @@ const noFindYet = {
   terminal: 'r4 brings it',
   fox: 'r4 brings it',
   minimal: 'r4 brings it',
-  'minimal-js': 'r4 brings it',
-  example: 'r4 brings it',
 };
 
 // The desktop shells that don't draw the downloads list yet, and who brings it to each.
@@ -90,8 +84,6 @@ const noDownloadsYet = {
   terminal: 'r4 brings it',
   fox: 'r4 brings it',
   minimal: 'r4 brings it',
-  'minimal-js': 'r4 brings it',
-  example: 'r4 brings it',
 };
 
 // The shells that don't draw a splash yet, and who brings it to each. Rule 14 holds every
@@ -105,8 +97,6 @@ const noSplashYet = {
 // every other shell to it.
 const noEmptyStateYet = {
   mobile: 'r3 brings it',
-  'minimal-js': 'none: the shell is being removed',
-  example: 'none: the shell is being removed',
 };
 
 (async () => {
