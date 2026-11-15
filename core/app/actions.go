@@ -80,7 +80,7 @@ func (a *App) registerActions(e engine.Engine) {
 	add("view.zoomIn", "Zoom In", a.Tabs.ZoomIn).Enabled = active
 	add("view.zoomOut", "Zoom Out", a.Tabs.ZoomOut).Enabled = active
 	// The source is the page fetched again, with the cookies of the tab's workspace.
-	source := add("dev.viewSource", "View Source", func() { a.Tabs.OpenFor(a.Tabs.ActiveID(), "view-source:"+a.Tabs.Active().URL) })
+	source := add("dev.viewSource", "View Source", func() { a.Tabs.OpenFor(a.Tabs.ActiveID(), e.ViewSourceURL(a.Tabs.Active().URL)) })
 	source.Enabled = func() bool { return a.Tabs.Active().URL != "" }
 
 	// F6 moves between the shell and the active tab's page, whichever had the keyboard.

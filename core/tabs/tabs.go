@@ -50,10 +50,10 @@ type Tab struct {
 // Gate runs before a navigation. Returning false blocks it, and later gates don't run.
 type Gate func(url string) bool
 
-// BlankURL is what a new tab loads, so its page area holds a real page in content's
+// BlankURL is what a new tab loads, so its page area holds a real page in the engine's
 // default colours from the start, rather than no page at all. The tab still reads as
 // empty: no address, titled New Tab, nothing in history.
-const BlankURL = "about:blank"
+const BlankURL = engine.BlankURL
 
 // Manager owns the tabs.
 type Manager struct {
@@ -814,7 +814,6 @@ func NormalizeInput(text string, search func(words string) string) string {
 		return ""
 	case strings.Contains(s, "://"),
 		strings.HasPrefix(s, "about:"),
-		strings.HasPrefix(s, "chrome:"),
 		strings.HasPrefix(s, "data:"):
 		return s
 	case strings.ContainsAny(s, " \t"):

@@ -61,6 +61,7 @@ import "C"
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -335,6 +336,23 @@ func (e *nativeEngine) SendToShell(w engine.WindowID, msg []byte) {
 		return
 	}
 	C.call_send_to_shell(e.calls, C.int64_t(w), (*C.char)(unsafe.Pointer(&msg[0])), C.size_t(len(msg)))
+}
+
+// Our pages are WebUI apps, each at chrome://<page>/.
+func (e *nativeEngine) PageURL(p engine.Page) string { return "chrome://" + string(p) + "/" }
+
+func (e *nativeEngine) OurPage(u string) (engine.Page, bool) { return ourPageOf(u) }
+
+func (e *nativeEngine) ViewSourceURL(u string) string { return "view-source:" + u }
+
+// ourPageOf is the page at a chrome:// address, as PageURL makes them: its host and
+// path, without the slash after.
+func ourPageOf(raw string) (engine.Page, bool) {
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme != "chrome" || u.Host == "" {
+		return "", false
+	}
+	return engine.Page(strings.ToLower(u.Host) + strings.TrimSuffix(u.Path, "/")), true
 }
 
 // Post runs fn on the main thread. Any goroutine may call it.

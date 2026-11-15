@@ -121,7 +121,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	a := &App{profiles: cfg.Profiles, madeForTab: map[engine.WindowID]bool{}}
 	a.Crash = crash.New(cfg.ProfileDir, cfg.CrashReports)
 	a.Crash.System = cfg.System
-	a.Policy = policy.New(cfg.BlockedHosts)
+	a.Policy = policy.New(cfg.BlockedHosts, e.OurPage)
 	a.History = history.New(cfg.ProfileDir, e.Post)
 	a.Suggest = suggest.New(a.History)
 	a.Workspaces = workspaces.New(cfg.ProfileDir)
