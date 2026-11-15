@@ -464,16 +464,17 @@ it there; a phone shell may be left out of a rule for a desktop feature.
     while the active tab has a prompt in `permissionPrompts`, the shell shows a `dialog`
     named by its question, "*site* wants to use your camera and microphone", with buttons
     named Block and Allow, or, where `once`, Block, Always allow and Allow this time; an
-    Allow grants it, Block denies it, and Escape dismisses it. Not yet in Glide, Terminal, Fox, Minimal, Minimal JS and
-    Example, which r10 brings; Mobile gets it as a sheet with Android, from r10.
+    Allow grants it, Block denies it, and Escape dismisses it. Standard, Fox and Minimal
+    have it. Not yet in Glide and Terminal, whose own sessions bring it, nor in Mobile,
+    which gets it as a sheet from the Android session, nor in Mobile Native, from its session.
 31. **A site's settings are one press away on a web page:** a control named Site settings
     (`openSiteSettings`) opens settings on the active tab's site. Not yet in the shells
-    rule 30 lists, which r10 brings.
+    rule 30 lists.
 32. **A page with nothing to show says why:** while the active tab has a `notice`, the
     shell covers its page with an `alert` holding Go's title, its detail, and a button for
-    each of its actions, by Go's titles, which sends `noticeAction`. Not yet in Glide,
-    Terminal, Fox, Minimal, Minimal JS and Example, which r10 brings; Mobile draws a notice
-    of its own from the same tab until it takes Go's.
+    each of its actions, by Go's titles, which sends `noticeAction`. Standard, Fox and
+    Minimal have it. Not yet in Glide and Terminal, whose own sessions bring it; Mobile and
+    Mobile Native draw a notice of their own until their sessions move them to Go's.
 
 **The names a shell gives its basic controls.** Each is a button, or a menu item in a menu
 one of the shell's controls opens; a menu item's name may end with its key.

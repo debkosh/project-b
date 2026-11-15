@@ -110,26 +110,19 @@ const noTitleYet = {
 // who brings them to each (docs/daily-driver.md). Rules 30 and 31 hold every other shell to
 // them.
 const noPromptYet = {
-  glide: 'r10 brings it',
-  terminal: 'r10 brings it',
-  fox: 'r10 brings it',
-  minimal: 'r10 brings it',
-  'minimal-js': 'r10 brings it',
-  example: 'r10 brings it',
-  mobile: 'r10 brings it, as a sheet, with Android',
-  'mobile-native': 'r10 brings it, with Android',
+  glide: 'the daily driver session brings it',
+  terminal: 'the terminal session brings it',
+  mobile: 'the android session brings it, as a sheet',
+  'mobile-native': 'the native mobile shell session brings it',
 };
 
 // The shells that don't draw Go's notice over a page yet, and who brings it to each
 // (docs/daily-driver.md). Rule 32 holds every other shell to it.
 const noNoticeYet = {
-  glide: 'r10 brings it',
-  terminal: 'r10 brings it',
-  fox: 'r10 brings it',
-  minimal: 'r10 brings it',
-  'minimal-js': 'r10 brings it',
-  example: 'r10 brings it',
-  mobile: 'it draws a notice of its own from the same tab; r10 moves it to Go\'s with Android',
+  glide: 'the daily driver session brings it',
+  terminal: 'the terminal session brings it',
+  mobile: 'it draws a notice of its own from the same tab; the android session moves it to Go\'s',
+  'mobile-native': 'it draws a notice of its own; the native mobile shell session moves it to Go\'s',
 };
 
 (async () => {
