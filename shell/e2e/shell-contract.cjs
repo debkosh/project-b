@@ -57,7 +57,6 @@ const noMenuYet = {
 const noDialogsYet = {
   terminal: 'r4 brings it',
   fox: 'r4 brings it',
-  minimal: 'r4 brings it',
 };
 
 // The desktop shells that don't lay a page in full screen across the window yet, and who
