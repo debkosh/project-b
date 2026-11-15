@@ -1,6 +1,6 @@
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
-import { activeTab, focusPage, send, state } from '@/sdk/vue.js';
+import { activeTab, focusPage, send, state, tabLabel } from '@/sdk/vue.js';
 import { heirAsked } from './panes.js';
 import { prompt } from './prompt.js';
 
@@ -15,6 +15,8 @@ const highlight = ref(-1);
 let latest = 0;
 
 const open = computed(() => focused.value && items.value.length > 0);
+// One of our tabs, such as settings: no address to type, its title in the field's place.
+const ours = computed(() => !!activeTab.value.page);
 
 function act(t) {
   send({ t });
@@ -56,7 +58,7 @@ function onKeydown(e) {
   } else if (e.key === 'Escape') {
     e.preventDefault();
     text.value = activeTab.value.url;
-    input.value.blur();
+    input.value?.blur();
     focusPage();
   }
 }
@@ -67,14 +69,14 @@ function go(target) {
   text.value = value;
   close();
   send({ t: 'navigate', text: value });
-  input.value.blur();
+  input.value?.blur();
   focusPage();
 }
 
 function onFocus() {
   focused.value = true;
   typed.value = text.value;
-  nextTick(() => input.value.select());
+  nextTick(() => input.value?.select());
 }
 
 function onBlur() {
@@ -90,7 +92,7 @@ onMounted(() => {
       highlight.value = -1;
     }
   };
-  prompt.focus = () => input.value.focus();
+  prompt.focus = () => input.value?.focus();
 });
 
 // A pane that becomes active with nothing in it wants an address, as does a window left
@@ -101,11 +103,11 @@ function activated() {
   if (heirAsked.value) return;
   close();
   text.value = activeTab.value.url;
-  if (activeTab.value.url === '') {
+  if (activeTab.value.url === '' && input.value) {
     send({ t: 'focusShell' });
     input.value.focus();
   } else {
-    input.value.blur();
+    input.value?.blur();
     focusPage();
   }
 }
@@ -131,7 +133,9 @@ watch(
     <button class="tool" type="button" aria-label="Reload" :disabled="!activeTab.url" @click="act('reload')">
       <svg width="12" height="12" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12.35 1.4.24 4.28-3.78.22"/><path d="M11.68 9.55a5.15 5.15 0 1 1 .19-4.39"/></svg>
     </button>
-    <form class="field" @submit.prevent="go()">
+    <!-- One of our tabs, such as settings, has nothing to type: its title, after the mark. -->
+    <span v-if="ours" class="field ours"><span class="mark" aria-hidden="true">&gt;</span><span class="page-name">{{ tabLabel(activeTab) }}</span></span>
+    <form v-else class="field" @submit.prevent="go()">
       <span class="mark" aria-hidden="true">&gt;</span>
       <input
         ref="input"
@@ -214,6 +218,16 @@ watch(
 .tool:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
+}
+
+.ours {
+  color: var(--text);
+}
+
+.ours .page-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .field {
