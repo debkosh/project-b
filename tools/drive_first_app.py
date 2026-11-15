@@ -1044,6 +1044,11 @@ def browsing_checks():
     app.cmd("key", "cmd+t")
     check("Cmd+T opens the command box over the page, focused, and makes no tab", holds(app, BOX_FOCUSED, 5) and app.js(ROWS) == 1, app.js(ROWS))
     bx, by = center(app, ".command-box input")
+    # The box has the keyboard before the window has the shell's next layout, which shows no
+    # page under it: the page's view goes a frame or so later.
+    deadline = time.time() + 2
+    while (app.cmd("hit", bx, by), app.cmd("hit", 600, 300)) != ("shell", "shell") and time.time() < deadline:
+        time.sleep(0.05)
     check("the box over the page is the shell's", app.cmd("hit", bx, by) == "shell" and app.cmd("hit", 600, 300) == "shell", (app.cmd("hit", bx, by), app.cmd("hit", 600, 300)))
     check("back and reload still follow the tab under the box", not disabled("Back") and not disabled("Reload"))
     app.cmd("key", "escape")
