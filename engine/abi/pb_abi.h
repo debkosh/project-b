@@ -142,7 +142,7 @@ typedef enum PBEvent {
   PB_EVENT_IS_PAGE_FULL_SCREEN = 76,    // i: tab; answers i: 1 when its page has the
                                         // screen now
   PB_EVENT_PAGE_MESSAGE = 23,           // i: tab, s: the page's name ("settings",
-                                        // "history", "bookmarks"), s: json, from the page
+                                        // "history", "bookmarks", "downloads"), s: json, from the page
                                         // of ours the tab shows
 } PBEvent;
 
@@ -396,7 +396,7 @@ typedef struct PBEngineCalls {
                      double y,
                      double w,
                      double h);
-  // Delivers one message to the page of ours a tab shows: settings, history or bookmarks.
+  // Delivers one message to the page of ours a tab shows: settings, history, bookmarks or downloads.
   void (*send_to_page)(int64_t tab, const char* json, size_t length);
   // Replaces the native menu bar: json is Go's engine.Menu.
   void (*set_menu)(const char* json, size_t length);

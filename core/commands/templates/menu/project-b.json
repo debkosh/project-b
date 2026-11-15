@@ -436,6 +436,12 @@
           "separator": true
         },
         {
+          "action": "downloads.show"
+        },
+        {
+          "separator": true
+        },
+        {
           "action": "window.bringAllToFront",
           "only": "mac"
         }

@@ -1191,6 +1191,23 @@
         }
       ]
     },
+    "downloads.show": {
+      "mac": [
+        {
+          "keys": "Shift+Cmd+J"
+        }
+      ],
+      "windows": [
+        {
+          "keys": "Ctrl+J"
+        }
+      ],
+      "linux": [
+        {
+          "keys": "Ctrl+J"
+        }
+      ]
+    },
     "bookmarks.show": {
       "mac": [
         {
