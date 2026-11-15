@@ -134,6 +134,8 @@ const menuHas = (menu, title) => JSON.stringify(menu).includes(`"title":"${title
   const ui = shell.frameLocator('iframe.shell');
   const shellFrame = () => shell.frame({ url: /\/shell\/standard\/\?window=1$/ });
   await shell.goto(base + '/');
+  // Standard starts with no tab: the checks want a page, so one is opened.
+  await fetch(`${base}/shell/send`, { method: 'POST', body: JSON.stringify({ t: 'newTab', text: 'https://example.com/' }) });
   await shell.frameLocator('iframe.mock-page').getByRole('button', { name: 'Navigate' }).waitFor();
   await settle(shell);
   const root = (name) => shellFrame().evaluate((n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim(), name);

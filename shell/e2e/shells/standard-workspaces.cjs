@@ -10,7 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright');
 const lib = require('../lib.cjs');
-const { check, fire, settle, until } = lib;
+const { check, fire, regions, settle, until } = lib;
 
 const send = (m) => fetch(`${lib.base}/shell/send?window=1`, { method: 'POST', body: JSON.stringify(m) });
 const WORK = '0a1b2c3d';
@@ -23,7 +23,7 @@ const WORK = '0a1b2c3d';
   const { page, ui } = w;
   page.setDefaultTimeout(5000);
   const tabs = ui.locator('.sidebar [role=tab]');
-  await until(async () => (await tabs.count()) === 1, 10000);
+  await until(async () => (await regions()).shell === 'standard', 10000);
   // Two tabs in the first workspace, Main, as New Tab opens beside the active one; then two
   // in Work.
   await send({ t: 'navigate', text: 'https://docs.example.com/' });
@@ -46,8 +46,13 @@ const WORK = '0a1b2c3d';
     return (await ui.locator('.sidebar [role=tab][aria-selected=true]').count()) === 1;
   }));
   check('the button says Work', (await button.innerText()).includes('Work'));
+  // New Tab opens Standard's command box; an address chosen there opens in a new tab, in
+  // the workspace shown.
   await ui.locator('.sidebar .new-tab').click();
-  check('New Tab opens in Work, and the list shows it', await until(async () => (await tabs.count()) === 3));
+  const box = ui.getByRole('combobox', { name: 'Search tabs, history, actions or the web' });
+  await box.fill('https://desk.example.com/');
+  await box.press('Enter');
+  check('a tab opened from New Tab opens in Work, and the list shows it', await until(async () => (await tabs.count()) === 3));
   for (const scheme of ['light', 'dark']) {
     await page.emulateMedia({ colorScheme: scheme });
     await button.click();

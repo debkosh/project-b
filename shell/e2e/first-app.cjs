@@ -59,7 +59,15 @@ const stopServer = lib.stop;
   const list = ui.locator('#suggestions');
   const options = ui.getByRole('option');
   const mock = page.frameLocator('iframe.mock-page');
-  await mock.getByRole('button', { name: 'Navigate' }).waitFor();
+  // A new tab with nothing in it shows our box in the page area, not a blank page.
+  const newTabBox = ui.getByRole('combobox', { name: 'Search tabs, history, actions or the web' });
+  await newTabBox.waitFor();
+  // Standard starts on its command box with no tab: a page is opened from it.
+  const openFromBox = async (text, expected) => {
+    await newTabBox.fill(text);
+    await newTabBox.press('Enter');
+    await page.frameLocator('iframe.mock-page').getByText(expected, { exact: true }).waitFor();
+  };
   await settle(page);
   await page.screenshot({ path: path.join(out, '1-empty.png') });
 
@@ -71,17 +79,8 @@ const stopServer = lib.stop;
   let r = await regions();
   check('opens empty with the top bar and the sidebar as shell', r.regions.some((g) => g.x === 0 && g.y === 0 && g.w === 1100) && (await regions({ x: 100, y: 600 })).hit === 'shell' && (await bar.inputValue()) === '', JSON.stringify(r));
   check('the window loads the standard shell', r.shell === 'standard', r.shell);
-  check('page sits right of the sidebar, below the bar, inside the frame', r.bounds.x === 224 && r.bounds.y === 48 && r.bounds.w === 1100 - 224 - 4 && r.bounds.y + r.bounds.h === 700 - 4, JSON.stringify(r));
-  // The dev window places the mock page where the layout puts it, as the real window does.
-  const placed = async () => {
-    const want = (await regions()).bounds;
-    const box = await page.locator('iframe.mock-page').boundingBox();
-    return !!box && box.x === want.x && box.y === want.y && box.width === want.w && box.height === want.h;
-  };
-  check('the dev window puts the page where the layout says', await until(placed), JSON.stringify(await page.locator('iframe.mock-page').boundingBox()));
-  check('opens with the address bar focused, as a new tab does', await bar.evaluate((el) => el === document.activeElement));
+  check('opens with the new tab\'s box focused, and the page area the shell\'s', await newTabBox.evaluate((el) => el === document.activeElement) && (await regions({ x: 600, y: 400 })).hit === 'shell');
   check('no update bubble when nothing is happening', (await ui.locator('.update').count()) === 0);
-  const pageBounds = JSON.stringify(r.bounds);
 
   // Waits for the commit. The URL shows as soon as loading starts, and a new navigation
   // before the commit would correctly replace this one.
@@ -96,6 +95,16 @@ const stopServer = lib.stop;
     await loaded(expected);
   };
   await visit('example.com/docs', 'https://example.com/docs');
+  r = await regions();
+  check('page sits right of the sidebar, below the bar, inside the frame', r.bounds.x === 224 && r.bounds.y === 48 && r.bounds.w === 1100 - 224 - 4 && r.bounds.y + r.bounds.h === 700 - 4, JSON.stringify(r));
+  // The dev window places the mock page where the layout puts it, as the real window does.
+  const placed = async () => {
+    const want = (await regions()).bounds;
+    const frame = await page.locator('iframe.mock-page').boundingBox();
+    return !!frame && frame.x === want.x && frame.y === want.y && frame.width === want.w && frame.height === want.h;
+  };
+  check('the dev window puts the page where the layout says', await until(placed), JSON.stringify(await page.locator('iframe.mock-page').boundingBox()));
+  const pageBounds = JSON.stringify(r.bounds);
   await visit('https://go.dev/learn', 'https://go.dev/learn');
   await visit('https://example.org/', 'https://example.org/');
   check('address bar shows the final URL', (await bar.inputValue()) === 'https://example.org/');
@@ -132,8 +141,10 @@ const stopServer = lib.stop;
   await options.first().waitFor();
   await settle(page);
   await page.screenshot({ path: path.join(out, '2-suggestions.png') });
-  check('suggestions come from visited pages', (await options.count()) === 2, String(await options.count()));
-  check('titles arrive after the visit', /Mock example/.test(await options.first().innerText()));
+  const history = ui.locator('#suggestions [data-kind=history]');
+  const visited = ui.locator('#suggestions [data-kind=history], #suggestions [data-kind=tab]');
+  check('Go\'s list: what Enter does first, then the visited pages, an open one as its tab', ['search', 'address'].includes(await options.first().getAttribute('data-kind')) && (await visited.count()) === 2, String(await visited.count()));
+  check('titles arrive after the visit', /Mock example/.test(await history.first().innerText()));
 
   r = await regions();
   const box = await list.boundingBox();
@@ -147,7 +158,7 @@ const stopServer = lib.stop;
 
   // Bar and list behave as one UI.
   await page.keyboard.press('ArrowDown');
-  check('down moves into the list', (await bar.inputValue()).startsWith('https://example') && (await ui.locator('li.active').count()) === 1);
+  check('down moves into the list, and the bar shows the row', (await bar.inputValue()) !== 'exam' && (await ui.locator('li.active').count()) === 1, await bar.inputValue());
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
@@ -161,7 +172,7 @@ const stopServer = lib.stop;
   // Clicking a suggestion.
   await bar.fill('');
   await page.keyboard.type('go.d');
-  await options.first().click();
+  await history.first().click();
   await shellFrame().waitForFunction(() => document.querySelector('input').value === 'https://go.dev/learn');
   check('clicking a suggestion navigates', (await list.count()) === 0);
 
@@ -216,11 +227,11 @@ const stopServer = lib.stop;
   await bar.fill('');
   await page.keyboard.type('secret');
   await settle(page);
-  check('a blocked URL stays out of history', (await options.count()) === 0);
+  check('a blocked URL stays out of history', (await history.count()) === 0);
   await bar.fill('');
   await page.keyboard.type('blank');
   await settle(page);
-  check('the blank page a new tab holds stays out of history', (await options.count()) === 0);
+  check('the blank page a new tab holds stays out of history', (await history.count()) === 0);
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
 
@@ -322,16 +333,24 @@ const stopServer = lib.stop;
   await page.setViewportSize({ width: 1100, height: 700 });
   check('and back', await until(() => sized(1100, 700)), JSON.stringify(await regions()));
 
-  // Tabs.
+  // Tabs. Standard's New Tab opens its command box; a tab is made by Go's newTab, as any
+  // shell's row choice makes one.
+  const makeTab = () => fetch(`${base}/shell/send`, { method: 'POST', body: JSON.stringify({ t: 'newTab' }) });
   const rows = ui.getByRole('tab');
   const activeRow = ui.locator('.row.tab.active');
   const rowTitles = () => rows.evaluateAll((els) => els.map((el) => el.querySelector('.title').textContent));
   check('one tab to start with, active', (await rows.count()) === 1 && (await activeRow.count()) === 1);
   await visit('https://example.org/', 'https://example.org/');
+  const commandBox = ui.locator('.command-box');
   await ui.getByRole('button', { name: 'New Tab', exact: true }).click();
+  check('Standard\'s New Tab opens its command box over the page, focused, and makes no tab', await until(async () => (await commandBox.count()) === 1) &&
+    (await newTabBox.evaluate((el) => el === document.activeElement)) && (await rows.count()) === 1, JSON.stringify(await rowTitles()));
+  await page.keyboard.press('Escape');
+  check('Escape closes it and the page is back', await until(async () => (await commandBox.count()) === 0) && (await regions({ x: 600, y: 400 })).hit === 'page');
+  await makeTab();
   await shellFrame().waitForFunction(() => document.querySelectorAll('[role=tab]').length === 2);
-  check('New Tab adds a tab and makes it active', (await activeRow.innerText()).startsWith('New Tab'), await activeRow.innerText());
-  check('a new tab has an empty, focused address bar', (await bar.inputValue()) === '' && (await bar.evaluate((el) => el === document.activeElement)));
+  check('a new tab is made and made active', (await activeRow.innerText()).startsWith('New Tab'), await activeRow.innerText());
+  check('a new tab shows the command box, focused, over an empty address bar', (await bar.inputValue()) === '' && (await newTabBox.evaluate((el) => el === document.activeElement)));
   await mock.getByText('tab 2', { exact: true }).waitFor();
   // A new tab holds the blank page, so its page area is a page in the page's own
   // colours, never the frame colour showing through. It still reads as a new tab.
@@ -344,7 +363,9 @@ const stopServer = lib.stop;
   check("a new tab holds the blank page, in the page's colour, not the frame colour", blank && pageColour !== 'rgb(79, 158, 158)', pageColour);
   check('and reads as a new tab: no address, titled New Tab', (await bar.inputValue()) === '' && (await activeRow.innerText()).startsWith('New Tab'), await activeRow.innerText());
   r = await regions();
-  check('the first tab was told it is hidden', JSON.stringify(r.hidden) === '[1]', JSON.stringify(r.hidden));
+  // The command box over the new tab sends a layout of its own, so the hidden list may
+  // already be the next layout's: what counts is that the first tab no longer shows.
+  check('the first tab no longer shows', !r.visible.some((v) => v.tab === 1), JSON.stringify(r.visible));
   check('the layout lists the new tab as the one visible tab', r.visible.length === 1 && r.visible[0].tab === 2 && JSON.stringify(r.visible[0].rect) === pageBounds, JSON.stringify(r.visible));
   check('back and reload follow the new, empty tab', (await back.isDisabled()) && (await reload.isDisabled()));
   await visit('https://example.net/', 'https://example.net/');
@@ -353,7 +374,9 @@ const stopServer = lib.stop;
   // A layout that lists two tabs, as a shell with panes sends, gets a mock page for each,
   // where it puts them, in its order. Each page's buttons act on its own tab, and a press
   // in one gives its tab the keyboard, which makes it active; the shell then lists that
-  // tab alone again.
+  // tab alone again. The shell's own layout settles first, the command box gone.
+  await until(async () => (await ui.locator('.command-box').count()) === 0);
+  await settle(page);
   r = await regions();
   const half = { ...r.bounds, w: r.bounds.w / 2 };
   await fetch(`${base}/shell/send`, { method: 'POST', body: JSON.stringify({ t: 'layout', shell: r.regions, drag: r.drag, viewW: 1100, viewH: 700,
@@ -406,8 +429,11 @@ const stopServer = lib.stop;
   await shellFrame().waitForFunction(() => document.querySelectorAll('[role=tab]').length === 2);
   check('Cmd+W closes the active tab and its right neighbour takes over', (await activeRow.innerText()).includes('opened.test'), await activeRow.innerText());
   await shortcut('newTab');
+  check('Cmd+T opens the command box, and no tab', await until(async () => (await ui.locator('.command-box').count()) === 1) && (await rows.count()) === 2);
+  await page.keyboard.press('Escape');
+  await makeTab();
   await shellFrame().waitForFunction(() => document.querySelectorAll('[role=tab]').length === 3);
-  check('Cmd+T opens a tab', (await bar.inputValue()) === '');
+  check('a new tab has an empty address field', (await bar.inputValue()) === '');
 
   // Close with the button on the row.
   await hover(rows.nth(1));
@@ -443,6 +469,11 @@ const stopServer = lib.stop;
   check('and the dev window moves the page there', await until(placed), JSON.stringify(await page.locator('iframe.mock-page').boundingBox()));
   check('the empty strip drags the window', (await regions({ x: 900, y: 16 })).hit === 'drag');
   check('the bands beside the toolbar under the strip drag too, as the row they are in', (await regions({ x: 2, y: 60 })).hit === 'drag');
+  // The active tab has a page, so the page area is the page's, not the command box's.
+  if ((await bar.inputValue()) === '') {
+    await visit('https://example.com/top', 'https://example.com/top');
+    await until(async () => (await regions({ x: 600, y: 400 })).hit === 'page');
+  }
   await toolbarDrags('tabs on top');
   const firstTab = await rows.first().boundingBox();
   check('a tab in the strip is shell', (await regions({ x: firstTab.x + firstTab.width / 2, y: firstTab.y + firstTab.height / 2 })).hit === 'shell');
@@ -465,7 +496,7 @@ const stopServer = lib.stop;
   check('a control that comes into a drag bar is shell, measured by the kit alone', await until(async () => (await regions(end)).hit === 'shell'), (await regions(end)).hit);
   await shellFrame().evaluate(() => document.getElementById('by-hand').remove());
   check('and where it went drags again', await until(async () => (await regions(end)).hit === 'drag'), (await regions(end)).hit);
-  await ui.getByRole('button', { name: 'New Tab', exact: true }).click();
+  await makeTab();
   await shellFrame().waitForFunction(() => document.querySelectorAll('[role=tab]').length === 3);
   check('New Tab works from the strip', (await bar.inputValue()) === '');
   const added = await rows.nth(2).boundingBox();
@@ -493,11 +524,10 @@ const stopServer = lib.stop;
     await until(async () => { const r = await regions(); return r.tabs.length === 0 && r.active === 0 && r.visible.length === 0; }) && !(await regions()).closed,
     JSON.stringify(await regions().then((r) => ({ tabs: r.tabs, active: r.active, visible: r.visible, closed: r.closed }))));
 
-  // The shell draws the page area itself, as its own: a short message, and New Tab with its
-  // key. The address is empty and has the keyboard. Light and dark, from the system's
-  // setting, which the shell follows by default, with the tabs on top and on the side.
-  const empty = ui.locator('.empty');
-  const emptyNewTab = empty.getByRole('button', { name: 'New Tab', exact: true });
+  // Standard draws the page area itself, as its own: the command box, with the keyboard.
+  // Light and dark, from the system's setting, which the shell follows by default, with the
+  // tabs on top and on the side.
+  const empty = ui.locator('.command-box');
   const emptyShots = async (name) => {
     for (const scheme of ['light', 'dark']) {
       await page.emulateMedia({ colorScheme: scheme });
@@ -509,18 +539,17 @@ const stopServer = lib.stop;
   // area is where the page was, in each layout; name is the screenshots'.
   const emptyState = async (layout, name, area) => {
     await empty.waitFor();
-    check(`${layout}: the page area says No tabs, with New Tab and its key`,
-      (await empty.getByText('No tabs', { exact: true }).isVisible()) && (await emptyNewTab.locator('.key').textContent()) === '⌘T');
+    check(`${layout}: the page area shows the command box`, await newTabBox.isVisible());
     const b = await empty.boundingBox();
     check(`${layout}: it fills the page area, as the shell's: a press there reaches the shell`,
       b.x === area.x && b.y === area.y && b.width === area.w && b.height === area.h && await until(async () => (await regions({ x: b.x + b.width / 2, y: b.y + 40 })).hit === 'shell'),
       JSON.stringify({ empty: b, area }));
-    check(`${layout}: the tabs hold New Tab alone`, (await rows.count()) === 0 && (await ui.getByRole('button', { name: 'New Tab', exact: true }).count()) === 2);
+    check(`${layout}: there are no tabs`, (await rows.count()) === 0);
     check(`${layout}: the address is empty, and back, forward and reload are off`,
       (await bar.inputValue()) === '' && (await back.isDisabled()) && (await forward.isDisabled()) && (await reload.isDisabled()));
     await emptyShots(name);
   };
-  check('the address bar has the keyboard once the window has no tabs', await until(() => bar.evaluate((el) => el === document.activeElement)));
+  check('the command box has the keyboard once the window has no tabs', await until(() => newTabBox.evaluate((el) => el === document.activeElement)));
   await emptyState('tabs on top', 'top', { x: 4, y: 92, w: 1100 - 8, h: 700 - 92 - 4 });
   await ui.getByRole('button', { name: 'Tabs on the side' }).click();
   await ui.locator('nav').waitFor();
@@ -529,11 +558,12 @@ const stopServer = lib.stop;
   await ui.getByRole('button', { name: 'Tabs on top' }).click();
   await strip.waitFor();
 
-  // New Tab in the page area opens a tab, as any New Tab does, and Cmd+W empties the window
-  // again.
-  await emptyNewTab.click();
-  check('New Tab in the empty page area opens a tab, and the empty state goes',
-    await until(async () => (await rows.count()) === 1 && (await regions()).visible.length === 1 && (await empty.count()) === 0) && (await bar.inputValue()) === '');
+  // An address and Enter in the command box open a tab there, at it.
+  await newTabBox.fill('empty.test/box');
+  await newTabBox.press('Enter');
+  await loaded('https://empty.test/box');
+  check('an address and Enter in the command box open a tab, and the box goes',
+    (await rows.count()) === 1 && (await regions()).visible.length === 1 && (await empty.count()) === 0);
   await lib.fire('key', 'closeTab');
   await empty.waitFor();
   // The address opens a tab there, at the address, and gives its page the keyboard.
@@ -554,12 +584,13 @@ const stopServer = lib.stop;
   await startServer();
   await page.goto(base + '/');
   errors.length = 0; // Stopping the server breaks the event stream, as it should.
-  await mock.getByRole('button', { name: 'Navigate' }).waitFor();
+  // Standard starts on the command box, with no tab.
+  await newTabBox.waitFor();
   await bar.click();
   await page.keyboard.type('exam');
   await options.first().waitFor();
-  check('history survives a restart', (await options.count()) === 3, String(await options.count()));
-  check('titles survive a restart', /Mock example/.test(await options.first().innerText()));
+  check('history survives a restart', (await history.count()) >= 3, String(await history.count()));
+  check('titles survive a restart', /Mock example/.test(await history.first().innerText()));
   await page.keyboard.press('Escape');
   check('the tab layout survives a restart', (await ui.locator('.strip').count()) === 1);
   await ui.getByRole('button', { name: 'Tabs on the side' }).click();
@@ -571,7 +602,7 @@ const stopServer = lib.stop;
   await phone.goto(base + '/');
   const phoneUi = phone.frameLocator('iframe.shell');
   const phoneBar = phoneUi.getByRole('combobox', { name: 'Address' });
-  await phone.frameLocator('iframe.mock-page').getByRole('button', { name: 'Navigate' }).waitFor();
+  await phoneUi.getByRole('combobox', { name: 'Search tabs, history, actions or the web' }).waitFor();
   await phoneBar.click();
   await phone.keyboard.type('exam');
   await phoneUi.getByRole('option').first().waitFor();
@@ -629,7 +660,7 @@ const stopServer = lib.stop;
   await startServer(updateArgs());
   await page.goto(base + '/');
   errors.length = 0;
-  await mock.getByRole('button', { name: 'Navigate' }).waitFor();
+  await openFromBox('example.com/update', 'https://example.com/update');
   await ui.getByText(/Downloading Project B 0\.2\.0… [1-9]\d?%/).waitFor({ timeout: 10000 });
   await settle(page);
   const progress = Number(await ui.getByRole('progressbar', { name: 'Update download' }).getAttribute('aria-valuenow'));
@@ -695,6 +726,7 @@ const stopServer = lib.stop;
   await startServer();
   await page.goto(base + '/');
   errors.length = 0;
+  await openFromBox('example.com/work', 'https://example.com/work');
   await ui.locator('nav [role=tab]').first().waitFor();
   await fetch(`${base}/mock/fire`, { method: 'POST', body: new URLSearchParams({ kind: 'menu', value: 'workspaces:0a1b2c3d' }) });
   const sideRows = ui.locator('nav [role=tab]');
@@ -715,7 +747,7 @@ const stopServer = lib.stop;
   await page.screenshot({ path: path.join(out, '12-workspace-dot-top.png') });
   await ui.getByRole('button', { name: 'Tabs on the side' }).click();
   await ui.locator('nav').waitFor();
-  await ui.getByRole('button', { name: 'New Tab', exact: true }).click();
+  await makeTab();
   check('New Tab from a tab in a workspace opens in it',
     await until(async () => (await sideRows.count()) === 3 && (await sideRows.nth(2).locator('.workspace').getAttribute('aria-label')) === 'In Work'));
 
