@@ -32,12 +32,21 @@ import drive_first_app as d  # noqa: E402
 SETTLE = 5
 
 
-def footprint(pid):
-    """A process's footprint in MiB."""
-    out = subprocess.run(["footprint", "-f", "bytes", "--noCategories", "-p", str(pid)],
-                         capture_output=True, text=True).stdout
+def footprints(pid):
+    """A process's footprint in MiB, and the part of it that is graphics memory it owns but
+    hasn't mapped. That part is purgeable: macOS counts it in the footprint only while it isn't
+    marked volatile, so the GPU process's footprint swings by hundreds of MiB from one sample to
+    the next with no change in the code. It is left out of the footprint and given apart."""
+    out = subprocess.run(["footprint", "-f", "bytes", "-p", str(pid)], capture_output=True, text=True).stdout
     m = re.search(r"Footprint:\s*(\d+)", out)
-    return int(m.group(1)) / 2**20 if m else 0
+    total = int(m.group(1)) if m else 0
+    graphics = sum(int(g.group(1)) for g in re.finditer(r"^\s*(\d+) B .*\(unmapped\) \(graphics\)\s*$", out, re.M))
+    return (total - graphics) / 2**20, graphics / 2**20
+
+
+def footprint(pid):
+    """A process's footprint in MiB, without its purgeable graphics memory (see footprints)."""
+    return footprints(pid)[0]
 
 
 def kind(pid):
@@ -63,7 +72,9 @@ def measure(shell):
         row = collections.Counter({"browser": footprint(app.proc.pid)})
         children = subprocess.run(["pgrep", "-P", str(app.proc.pid)], capture_output=True, text=True).stdout.split()
         for pid in children:
-            row[kind(pid)] += footprint(pid)
+            mine, graphics = footprints(pid)
+            row[kind(pid)] += mine
+            row["purgeable graphics, apart"] += graphics
             if kind(pid) == "renderer":
                 row["renderers"] += 1
         row["shell JS heap"] = app.js("performance.memory.usedJSHeapSize") / 2**20
@@ -92,7 +103,7 @@ def main():
     keys = sorted({k for r in res.values() for k in r}, key=lambda k: (k.startswith("shell") or k == "renderers", k))
     print(f"{'MiB, median of %d' % a.n:22}" + "".join(f"{s:>15}" for s in res))
     print(f"{'total footprint':22}" + "".join(
-        f"{sum(v for k, v in res[s].items() if not k.startswith('shell') and k != 'renderers'):15.1f}" for s in res))
+        f"{sum(v for k, v in res[s].items() if not k.startswith(('shell', 'purgeable')) and k != 'renderers'):15.1f}" for s in res))
     for k in keys:
         print(f"{k:22}" + "".join(f"{res[s].get(k, 0):15.1f}" for s in res))
 

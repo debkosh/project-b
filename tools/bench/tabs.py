@@ -31,7 +31,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.dirname(__file__))
 import drive_first_app as d  # noqa: E402
 import timeline  # noqa: E402
-from memory import footprint, kind  # noqa: E402
+from memory import footprint, footprints, kind  # noqa: E402
 
 SETTLE = 5
 # A press for each span: switching is a click on another tab's row, as Go's tab.activate is the
@@ -79,9 +79,11 @@ def measure(count):
         time.sleep(SETTLE)
         row = collections.Counter({"browser": footprint(app.proc.pid)})
         for pid in subprocess.run(["pgrep", "-P", str(app.proc.pid)], capture_output=True, text=True).stdout.split():
-            row[kind(pid)] += footprint(pid)
+            mine, graphics = footprints(pid)
+            row[kind(pid)] += mine
+            row["purgeable graphics, apart"] += graphics
             row["renderers"] += kind(pid) == "renderer"
-        out = {"MiB": dict(row), "total MiB": sum(v for k, v in row.items() if k != "renderers")}
+        out = {"MiB": dict(row), "total MiB": sum(v for k, v in row.items() if k not in ("renderers", "purgeable graphics, apart"))}
         # Switching needs two tabs, and each close a tab to spare, so the window stays: close
         # is timed last, on the tabs opened above.
         stats = json.loads(app.cmd("stats"))
