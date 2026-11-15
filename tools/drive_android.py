@@ -221,10 +221,16 @@ def screen_parts():
             parts["shell"] = view
         elif view.get("class") == "android.webkit.WebView":
             labels = {n.get("content-desc") for n in view.iter("node")} | {n.get("text") for n in view.iter("node")}
-            # The shell under a page in full screen draws nothing, so it has no labels at all.
-            if labels <= {None, ""}:
+            name = next(name for name, test in PARTS.items() if test(labels))
+            # The shell under a page in full screen draws nothing, so it reads as a page too:
+            # the page is the one with words in it, or failing that more in it, as a page with
+            # only a field.
+            def weight(v):
+                said = {n.get("content-desc") for n in v.iter("node")} | {n.get("text") for n in v.iter("node")}
+                return (not said <= {None, ""}, len(list(v.iter("node"))))
+            if name in parts and weight(parts[name]) >= weight(view):
                 continue
-            parts[next(name for name, test in PARTS.items() if test(labels))] = view
+            parts[name] = view
     shell = parts.get("shell")
     if "page" in parts and shell is not None and any(n.get("content-desc") == "Close Settings" for n in shell.iter("node")):
         parts["settings"] = parts["page"]
