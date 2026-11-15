@@ -96,15 +96,17 @@ void Downloads::OnDownloadCreated(content::DownloadManager* manager,
 }
 
 void Downloads::OnDownloadUpdated(download::DownloadItem* item) {
-  // Nothing until Go has placed it: its path is what the list shows.
-  if (!item->GetTargetFilePath().empty()) {
-    Report(item);
-  }
+  // A finished file is handed on first, so what Go does on hearing it is done, such as a
+  // phone's notification that opens it, comes after the copy it opens.
   if (item->IsDone()) {
     item->RemoveObserver(this);
     if (item->GetState() == download::DownloadItem::COMPLETE) {
       PublishFile(item->GetTargetFilePath(), item->GetMimeType());
     }
+  }
+  // Nothing until Go has placed it: its path is what the list shows.
+  if (!item->GetTargetFilePath().empty()) {
+    Report(item);
   }
 }
 
