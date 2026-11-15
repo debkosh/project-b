@@ -3,6 +3,7 @@
   import { activeTab, connect, focusPage, keyLabel, page, send, setFrame, shell, state as go } from '@/sdk/svelte.svelte.js';
   import Address from './Address.svelte';
   import CrashBar from './CrashBar.svelte';
+  import FindBar from './FindBar.svelte';
   import Notice from './Notice.svelte';
   import PageDialog from './PageDialog.svelte';
   import PageMenu from './PageMenu.svelte';
@@ -19,6 +20,7 @@
 
   const horizontal = $derived(go.tabLayout === 'horizontal');
   let address = $state();
+  let find = $state();
 
   // A tab that becomes active with nothing in it wants the address; one with a page wants
   // the page. What was typed in the field was for the tab before. The shell has to hold
@@ -42,6 +44,7 @@
 
   connect({
     focusAddressBar: () => address?.focus(),
+    focusFind: () => find.focus(),
     suggestions: (m) => address?.suggestions(m),
   });
 </script>
@@ -81,6 +84,7 @@
         {#if activeTab(go).notice}
           <Notice tab={activeTab(go)} />
         {/if}
+        <FindBar bind:this={find} />
         <PageDialog />
       </main>
     </div>
