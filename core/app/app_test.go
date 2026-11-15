@@ -45,9 +45,29 @@ func start(t *testing.T, dir string, blocked ...string) *rig {
 	return startWith(t, app.Config{ProfileDir: dir, Profiles: profiles.New(t.TempDir()), BlockedHosts: blocked, Update: update.Config{StateDir: filepath.Join(dir, "updates")}})
 }
 
-// startWith starts the app as start does, on cfg.
+// plainShell is the first shell the registry lists that takes none of Go's actions.
+func plainShell() string {
+	for _, s := range shells.Listed() {
+		if len(s.Takes) == 0 {
+			return s.ID
+		}
+	}
+	panic("every listed shell takes an action of Go's")
+}
+
+// startWith starts the app as start does, on cfg. A profile folder with no prefs yet gets
+// a shell that takes none of Go's actions, so these tests see Go's own New Tab and a first
+// window with its tab, whichever shell is the default; a test of a shell that takes one
+// writes its own prefs first.
 func startWith(t *testing.T, cfg app.Config) *rig {
 	t.Helper()
+	if prefsFile := filepath.Join(cfg.ProfileDir, "prefs.json"); cfg.ProfileDir != "" {
+		if _, err := os.Stat(prefsFile); os.IsNotExist(err) {
+			if err := os.WriteFile(prefsFile, []byte(`{"shell":"`+plainShell()+`"}`), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
 	e := mockengine.New()
 	got, stop := e.Feeds(1).Shell.Subscribe()
 	t.Cleanup(stop)
@@ -1537,7 +1557,7 @@ func TestViewShellSwitchesTheShellLive(t *testing.T) {
 		t.Fatalf("View, Shell lists %+v", items)
 	}
 	for i, s := range listed {
-		if items[i].Title != s.Name || items[i].Action != "shells:"+s.ID || items[i].Checked != (s.ID == "standard") {
+		if items[i].Title != s.Name || items[i].Action != "shells:"+s.ID || items[i].Checked != (s.ID == plainShell()) {
 			t.Fatalf("View, Shell lists %+v", items)
 		}
 	}
@@ -1644,11 +1664,12 @@ func TestAShellsOwnActionRunsOnlyWhileItsShellIsOn(t *testing.T) {
 	}
 }
 
-// A shell that takes New Tab runs it itself: with it on, New Tab from the menu or its key
+// A shell that takes New Tab runs it itself. With it the profile's shell, the app starts
+// with a window of no tabs, and New Window opens another; New Tab from the menu or its key
 // sends the shell the action, and its span to end once the shell has drawn what it does,
-// and makes no tab, while the shell's own newTab still makes one; with another shell on,
-// New Tab makes a tab as ever. It runs on the first desktop shell the registry has taking
-// tab.new, and is skipped while none does.
+// and makes no tab, while the shell's own newTab still makes one. With another shell on,
+// New Tab makes a tab and New Window opens with one, as ever. It runs on the first shell
+// the registry lists that takes tab.new, and is skipped while none does.
 func TestAShellTakesNewTab(t *testing.T) {
 	var taker, other string
 	for _, s := range shells.Listed() {
@@ -1662,25 +1683,32 @@ func TestAShellTakesNewTab(t *testing.T) {
 	if taker == "" {
 		t.Skip("no shell in the registry takes tab.new yet")
 	}
-	r := start(t, t.TempDir())
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "prefs.json"), []byte(`{"shell":"`+taker+`"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	r := start(t, dir)
 	defer r.stop()
 	snapshot := func(m map[string]any) bool { return m["t"] == "snapshot" }
 	r.waitFor(snapshot)
-	use := func(id string) {
-		r.e.Post(func() { r.a.MenuChosen("shells:" + id) })
-		r.shell(`{"t":"ready"}`)
-		r.waitFor(snapshot)
-	}
-	tabs := func() int {
-		var n int
-		r.e.Post(func() { n = len(r.a.Tabs.AllIn(1)) })
+	// How many tabs each window has, in the order the windows were opened.
+	tabs := func() []int {
+		var n []int
+		r.e.Post(func() {
+			for _, w := range r.a.Window.Windows() {
+				n = append(n, len(r.a.Tabs.AllIn(w)))
+			}
+		})
 		r.e.Settle()
 		return n
 	}
-	if taker != shells.Default() {
-		use(taker)
+	want := func(when string, counts ...int) {
+		t.Helper()
+		if got := tabs(); !slices.Equal(got, counts) {
+			t.Fatalf("%s the windows' tabs are %v, want %v", when, got, counts)
+		}
 	}
-	before := tabs()
+	want("at the start", 0)
 	told := func(how string) {
 		t.Helper()
 		if m := r.waitFor(func(m map[string]any) bool { return m["t"] == "action" }); m["id"] != "tab.new" {
@@ -1689,9 +1717,7 @@ func TestAShellTakesNewTab(t *testing.T) {
 		if m := r.waitFor(func(m map[string]any) bool { return m["t"] == "paint" }); m["span"] != "tab.new" {
 			t.Fatalf("New Tab from %s asked for the end of %v", how, m)
 		}
-		if n := tabs(); n != before {
-			t.Fatalf("New Tab from %s made a tab: %d, were %d", how, n, before)
-		}
+		want("after New Tab from "+how, 0)
 	}
 	r.e.Post(func() { r.a.MenuChosen("tab.new") })
 	told("the menu")
@@ -1700,16 +1726,18 @@ func TestAShellTakesNewTab(t *testing.T) {
 
 	r.shell(`{"t":"newTab"}`)
 	r.waitFor(func(m map[string]any) bool { return m["t"] == "tabs" })
-	if n := tabs(); n != before+1 {
-		t.Fatalf("the shell's newTab left %d tabs, were %d", n, before)
-	}
+	want("after the shell's newTab", 1)
 
-	use(other)
+	r.e.Post(func() { r.a.MenuChosen("window.new") })
+	want("after New Window", 1, 0)
+
+	r.e.Post(func() { r.a.MenuChosen("shells:" + other) })
+	r.shell(`{"t":"ready"}`)
+	r.waitFor(snapshot)
+	r.e.Post(func() { r.a.MenuChosen("window.new") })
+	want("with "+other+" on, after New Window", 1, 0, 1)
 	r.e.Post(func() { r.a.MenuChosen("tab.new") })
-	r.waitFor(func(m map[string]any) bool { return m["t"] == "tabs" })
-	if n := tabs(); n != before+2 {
-		t.Fatalf("with %s on, New Tab left %d tabs, were %d", other, n, before+1)
-	}
+	want("with "+other+" on, after New Tab in it", 1, 0, 2)
 }
 
 // The tab groups through the shell's messages: a new tab beside one starts a group of the

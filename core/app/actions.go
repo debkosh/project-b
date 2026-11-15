@@ -37,7 +37,13 @@ func (a *App) registerActions(e engine.Engine) {
 	next.Enabled = active
 	previous := add("find.previous", "Find Previous", func() { a.finds.step(a.Tabs.Front(), false) })
 	previous.Enabled = active
-	add("window.new", "New Window", func() { a.NewWindow("") })
+	add("window.new", "New Window", func() {
+		if a.startsEmpty() {
+			a.openWindow()
+			return
+		}
+		a.NewWindow("")
+	})
 	add("window.close", "Close Window", func() { a.Window.Request(a.Tabs.Front(), engine.WindowClose) })
 	// The settings page sits over the tabs like a tab of its own, so closing the tab
 	// closes it first. In a window with no tabs it closes the window, so it stays enabled.

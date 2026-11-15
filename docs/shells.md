@@ -325,7 +325,8 @@ ordinary action in the keymap ([menus-shortcuts.md](menus-shortcuts.md#a-shells-
   the user's own key for it still applies. Go begins a span named for the action and asks
   the shell to end it (`paint`), which the SDK does once the shell has drawn. What a
   shell asks of Go by its own messages is unchanged: a shell that takes New Tab still
-  opens a tab with `newTab`. The owner, 2026-11-16: the standard shell opens its box for
+  opens a tab with `newTab`. With a shell that takes New Tab, a window opens with no tabs,
+  at the app's start and for New Window, for the shell to show its own way to one. The owner, 2026-11-16: the standard shell opens its box for
   New Tab and makes a tab only when a row is chosen, while "there stays a new tab page that
   other shells keep using".
 

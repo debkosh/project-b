@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"regexp"
 	"runtime"
+	"slices"
 	"strings"
 
 	"projectb/engine"
@@ -93,6 +94,16 @@ func Listed() []Shell {
 		}
 	}
 	return out
+}
+
+// Takes says whether the shell named id takes Go's action named action, to run it itself.
+func Takes(id, action string) bool {
+	for _, s := range all {
+		if s.ID == id {
+			return slices.Contains(s.Takes, action)
+		}
+	}
+	return false
 }
 
 // Default is the shell a profile loads until it chooses one: the first the user can
