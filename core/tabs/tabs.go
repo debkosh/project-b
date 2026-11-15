@@ -66,7 +66,7 @@ type Tab struct {
 type Gate func(url string) bool
 
 // Pages are our pages a tab of ours can show, each at the engine's address for it.
-var Pages = []string{"settings"}
+var Pages = []string{"settings", "history", "bookmarks"}
 
 // PageOf is which of Pages an address is, whichever of its sections it names, or "" for
 // any other address.

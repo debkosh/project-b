@@ -304,6 +304,23 @@
         },
         {
           "action": "nav.forward"
+        },
+        {
+          "separator": true
+        },
+        {
+          "action": "history.show"
+        }
+      ]
+    },
+    {
+      "title": "Bookmarks",
+      "items": [
+        {
+          "action": "bookmarks.toggle"
+        },
+        {
+          "action": "bookmarks.show"
         }
       ]
     },
