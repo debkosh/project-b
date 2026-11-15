@@ -26,8 +26,8 @@ and Android, in the web-features registry: [web-features.md](web-features.md).
 | 7 | Camera and microphone, for Meet and Zoom on the web | works in Standard: a prompt in the shell, and the page gets its stream once allowed (basics 17) | done, r10 ([daily-driver.md](daily-driver.md#permissions)) |
 | 8 | Video full screen | works in Standard: the window goes full screen with only the page, and Escape gives it back | done, r6 ([daily-driver.md](daily-driver.md#video-full-screen)); the other shells to come, rule 21 |
 | 9 | Tabs come back after a crash | works: the windows and tabs open again after a crash or a kill, the background ones loading when first shown (basics 32). A clean quit still starts with one tab | done, r10 ([daily-driver.md](daily-driver.md#tabs-after-a-crash)) |
-| 10 | Bookmarks | missing in Standard. Glide, an optional style, has favorites and pins | needs discussion |
-| 11 | A history page | partly: history is kept and feeds the address bar's suggestions; the History menu has only Back and Forward | needs discussion |
+| 10 | Bookmarks | works in Standard: the star, Cmd+D, and the Bookmarks page to rename and remove them; flat, no folders yet | done, r6 ([daily-driver.md](daily-driver.md#history-and-bookmarks)) |
+| 11 | A history page | works: Show All History (Cmd+Y), grouped by day, with search, removal and Clear history | done, r6 ([daily-driver.md](daily-driver.md#history-and-bookmarks)) |
 | 12 | Saved passwords and autofill | missing: nothing of ours; the Edit menu's Passwords… and Contact… are macOS's AutoFill | needs discussion |
 | 13 | Printing | missing: `window.print()` returns at once, and there is no Print item | needs discussion |
 | 14 | Error pages: a failed load, a bad certificate | missing on the desktop shells: an empty page (basics 7, 10). The Mobile shell shows a notice with Try again since 0.2.58. Certificate page mock in `project-b-research/morning-2026-11-10/` | needs discussion (in [todo.md](todo.md)) |

@@ -81,6 +81,7 @@ of it.
 | `@/sdk/shell.js` | `state`: everything Go sends, as a plain object; a field is replaced whole when it changes, never changed in place, except that a `tabs` message's tabs keep the favicon each had. Its `loaded` is false until Go's snapshot is in, and true from then on ([the splash](#the-splash)). `onChange(fn)`: calls `fn(fields)` after each change, with the fields that changed. `connect(handlers, afterDraw)`: says `ready`, keeps `state`, calls the shell's `handlers[kind](message)` after each message, and once the snapshot is drawn reports the layout and says `shown`. `send(msg)`. `saveData(value)`. `saveProfileData(value)`. `setPref(name, value)`. `focusPage()`. `setFrame(width)`. The helpers, each given the state it reads: `activeTab(state)`, `workspaceOf(state, tab)`, `controlSpace(state)`, `keyLabel(state, action)`, and `tabLabel(tab)`. It puts the theme's colours on the root. |
 | `@/sdk/regions.js` | The markers a shell marks its elements with, each with `mark(el)` and `unmark(el)`. `shell`: this element is the shell's, so presses on it reach the shell. `drag`: this element moves the window wherever it has no control: an empty space, or a whole bar of controls, whose gaps then drag; its controls, and anything in it marked `shell`, stay the shell's. `page`: `mark(el, tab)` and `update(el, tab)`, this tab's page shows here; 0 shows none. |
 | `@/sdk/contextmenu.js` | What a shell sends about the right-click menu, `state.contextMenu`: `chooseContextItem(menu, id)`, `closeContextMenu(menu)`, and `contextMenuPoint(menu)`, where in the window the press was. |
+| `@/sdk/bookmarks.js` | `bookmark(url, title, on)` and `isBookmarked(state, url)`, for a star on `state.bookmarks`. |
 | `@/sdk/suggest.js` | `suggest(id, text, kinds)`, `chooseSuggestion(row, newTab)` and `suggestionKinds`, every kind. `state.searchEngine` names the engine, for a placeholder. |
 | `@/sdk/find.js` | `findText(tab, text)`, `findNext(tab, forward)` and `closeFind(tab)`, for `state.find`, each naming the tab whose bar it is. |
 | `@/sdk/dialogs.js` | `answerDialog(id, ok, text, password)`, and `dialogFor(state, tab)`, the dialog a tab's page waits on. |
@@ -132,6 +133,7 @@ gives the page the same two.
 | `focusAddressBar` | | The user asked for the address bar |
 | `action` | `id`: one of the shell's own actions | Its key was pressed, or its menu item chosen, while this shell is on |
 | `suggestions` | `id`, `items`: rows `{kind, title, detail, url, tab, action}` | In answer to `suggest`: one ranked list, each row an `address`, a `search`, a `tab`, a `history` page or an `action` ([daily-driver.md](daily-driver.md#search-engines-and-one-suggestion-source)) |
+| `bookmarks` | `bookmarks`: the profile's bookmarks, newest first, each `{id, title, url, added}` | One was added, edited or removed ([daily-driver.md](daily-driver.md#history-and-bookmarks)) |
 | `searchEngine` | `searchEngine`: `{id, name}` | Another search engine was chosen in settings |
 | `paint` | `span` | Go wants a timeline span ended once this is drawn |
 | `find` | `find`: the active tab's search while its find bar is open, `{tab, text, matches, active}`, or `null` | A search ran, its count changed, the bar opened or closed, or another tab shows ([daily-driver.md](daily-driver.md#find-in-page)) |
@@ -216,6 +218,7 @@ title, detail, actions}`, absent otherwise
 | `focusTab` | `id` | Gives the active tab's page the keyboard. One for a tab no longer active, as when the address typed for it went to another tab, does nothing |
 | `focusShell` | | Gives the shell the keyboard |
 | `suggest` | `id`, `text`, `kinds` | Asks for suggestions with rows of the kinds named. The bare message without `kinds` gets history alone, as it always did; the SDK's `suggest()` asks for every kind unless told otherwise. With no text, the pages visited most |
+| `bookmark` | `url`, `title`, `on` | Bookmarks the address, or takes its bookmark away: the address bar's star |
 | `chooseSuggestion` | `row`, `newTab` | Runs a row: Go loads its address or search in the active tab, or a new one, shows its tab, or runs its action |
 | `run` | `text`: an action's id | Runs an action, as its menu item would |
 | `window` | `text`: `close`, `minimise`, `zoom` or `fullScreen` | Asks the window |

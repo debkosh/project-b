@@ -14,6 +14,7 @@ export { clearDownloads, downloadAction } from './downloads.js';
 export { answerDialog, dialogFor } from './dialogs.js';
 export { closeFind, findNext, findText } from './find.js';
 export { chooseSuggestion, suggest, suggestionKinds } from './suggest.js';
+export { bookmark, isBookmarked } from './bookmarks.js';
 
 export const state = reactive({ ...sdk.state });
 sdk.onChange((fields) => Object.assign(state, fields));
