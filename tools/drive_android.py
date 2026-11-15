@@ -789,6 +789,22 @@ def where_go_runs():
     check("the shell and the page have separate renderers", len(renderers()) >= 2, str(kids))
 
 
+def links_from_other_apps():
+    """A link another app sends opens in the app, running or not."""
+    view = lambda path: adb("shell", "am", "start", "-W", "-a", "android.intent.action.VIEW",
+                            "-d", url(path), PACKAGE)
+    launch()
+    served.clear()
+    view("/b")
+    check("a link from another app opens while the app runs", asked("/b"), str(served))
+    adb("shell", "am", "force-stop", PACKAGE)
+    until(lambda: PACKAGE + "_zygote" not in adb("shell", "ps", "-A", "-o", "NAME"))
+    served.clear()
+    view("/a")
+    check("a link from another app opens the app and the link", asked("/a", 60), str(served))
+    shot("15b-link-from-another-app")
+
+
 def the_page_renderer_dies():
     launch()
     go(BASE + "/a")
@@ -901,7 +917,7 @@ def main():
     adb("shell", "pm", "clear", PACKAGE)
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
-    for part in (browsing, mobile_shell, back_key_chain, page_dialogs, downloads, history_after_a_restart, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
+    for part in (browsing, mobile_shell, back_key_chain, page_dialogs, downloads, history_after_a_restart, links_from_other_apps, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
                  the_gpu_process_dies, a_page_spins, web_apis, the_real_web):
         try:
             part()
