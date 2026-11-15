@@ -1006,7 +1006,12 @@ def main():
         except TimeoutError as e:
             # Something the next step needed never came on screen.
             shot("stopped-" + part.__name__)
-            check("%s ran to its end" % part.__name__.replace("_", " "), False, "%s; the app is %s" % (e, "running" if alive() else "gone"))
+            running = alive()
+            if not running:
+                # The app died with nothing in the crash buffer once: keep every log buffer for it.
+                with open("%s/gone-%s.logcat.txt" % (OUT, part.__name__), "w") as f:
+                    f.write(adb("logcat", "-b", "all", "-d"))
+            check("%s ran to its end" % part.__name__.replace("_", " "), False, "%s; the app is %s" % (e, "running" if running else "gone"))
     adb("shell", "am", "force-stop", PACKAGE)
 
     failed = [r for r in results if not r[1]]
