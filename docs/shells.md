@@ -429,9 +429,9 @@ it there; a phone shell may be left out of a rule for a desktop feature.
     Enter shows the next match, and Escape closes it and ends the search
     ([daily-driver.md](daily-driver.md#find-in-page)). The shells that don't have it yet are
     listed in the check, with who brings each.
-21. **On a desktop, a page in full screen (`state.pageFullScreen`, the active tab) covers
-    the whole window with nothing of the shell on it,** no band and no controls; when it
-    ends, on Escape, which Go takes, the window is as it was
+21. **A page in full screen (`state.pageFullScreen`, the active tab) covers the whole
+    window with nothing of the shell on it,** no band and no controls; when it ends, on
+    Escape, which Go takes, or a phone's back key, the window is as it was
     ([daily-driver.md](daily-driver.md#video-full-screen)). The shells that don't have it yet
     are listed in the check, with who brings each.
 22. **A site's sign-in (`kind` `signin` in `state.dialogs`) shows as a `role=alertdialog`
@@ -700,6 +700,9 @@ address field, and a menu button at the far right, in our tones.
   size or how far it has got. A running one has Pause or Resume and Cancel; a finished one
   Open, and Show in Downloads, which opens the phone's Downloads app, where the file is
   kept (rule 17). Clear takes the finished ones off the list.
+- **A page in full screen**, as a video's, has the whole screen: the bars, the strip and
+  the notices go, and any sheet closes; Android hides its status and navigation bars, and
+  the back key ends it (rule 21).
 - **A long press on a link** in the page opens the shell's sheet for it, since a phone
   has no menu of its own: Open in new tab in group first, as Chrome has it, then Open in
   new tab, Open in workspace, and Copy link; on an image, Open image in new tab and Copy
