@@ -63,7 +63,7 @@ func TestApplySetsWhatTheValuesHoldThroughTheSetters(t *testing.T) {
 	if strings.Join(heard, " ") != "horizontal #5b7fd6" {
 		t.Fatalf("heard %v", heard)
 	}
-	if got := New(dir).All(); got != (Prefs{TabLayout: TabsHorizontal, FrameColor: "#5b7fd6", Theme: ThemeDark, Shell: "standard", AddressBarPosition: AddressBottom}) {
+	if got := New(dir).All(); got != (Prefs{TabLayout: TabsHorizontal, FrameColor: "#5b7fd6", Theme: ThemeDark, Shell: "standard", AddressBarPosition: AddressBottom, SearchEngine: "duckduckgo"}) {
 		t.Fatalf("saved %+v", got)
 	}
 }
@@ -113,5 +113,25 @@ func TestTheAddressBarPosition(t *testing.T) {
 	}
 	if New(dir).AddressBarPosition() != AddressBottom {
 		t.Fatalf("a position that isn't one loads as %q", New(dir).AddressBarPosition())
+	}
+}
+
+// The search engine is one of the list's, DuckDuckGo by default, and survives a restart.
+func TestTheSearchEngineIsOneOfTheList(t *testing.T) {
+	dir := t.TempDir()
+	m := New(dir)
+	if m.SearchEngine().ID != "duckduckgo" {
+		t.Fatalf("default = %+v", m.SearchEngine())
+	}
+	var heard []string
+	m.OnSearchEngineChanged(func(id string) { heard = append(heard, id) })
+	m.SetSearchEngine("nobody")
+	m.SetSearchEngine("google")
+	m.SetSearchEngine("google")
+	if strings.Join(heard, " ") != "google" {
+		t.Fatalf("heard %v", heard)
+	}
+	if got := New(dir).SearchEngine(); got.Name != "Google" || got.For("a b") != "https://www.google.com/search?q=a+b" {
+		t.Fatalf("after a restart: %+v", got)
 	}
 }

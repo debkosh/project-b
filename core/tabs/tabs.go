@@ -9,11 +9,11 @@ package tabs
 
 import (
 	"maps"
-	"net/url"
 	"slices"
 	"strings"
 
 	"projectb/engine"
+	"projectb/search"
 )
 
 // Tab is a copy of one tab's state. Subscribers can keep it.
@@ -47,8 +47,6 @@ type Tab struct {
 // Gate runs before a navigation. Returning false blocks it, and later gates don't run.
 type Gate func(url string) bool
 
-const searchURL = "https://duckduckgo.com/?q="
-
 // BlankURL is what a new tab loads, so its page area holds a real page in content's
 // default colours from the start, rather than no page at all. The tab still reads as
 // empty: no address, titled New Tab, nothing in history.
@@ -59,7 +57,9 @@ type Manager struct {
 	eng engine.Engine
 	// first is the first workspace in the profile's list, where a tab opens when nothing
 	// picks one.
-	first    func() string
+	first func() string
+	// search turns words into a search's address.
+	search   func(words string) string
 	tabs     map[engine.TabID]*Tab
 	windowOf map[engine.TabID]engine.WindowID
 	windows  map[engine.WindowID]*window
@@ -95,7 +95,13 @@ type window struct {
 // New returns a manager with no windows. first says which workspace is first in the
 // profile's list.
 func New(eng engine.Engine, first func() string) *Manager {
-	return &Manager{eng: eng, first: first, tabs: map[engine.TabID]*Tab{}, windowOf: map[engine.TabID]engine.WindowID{}, windows: map[engine.WindowID]*window{}}
+	return &Manager{eng: eng, first: first, search: defaultEngine().For, tabs: map[engine.TabID]*Tab{}, windowOf: map[engine.TabID]engine.WindowID{}, windows: map[engine.WindowID]*window{}}
+}
+
+// defaultEngine is the engine a manager searches with until SetSearch says another.
+func defaultEngine() search.Engine {
+	e, _ := search.Get(search.Default)
+	return e
 }
 
 // AddGate adds a gate. Gates run in the order they were added.
@@ -464,7 +470,7 @@ func (m *Manager) Active() Tab {
 // in a window with no tabs, in a new tab there, in workspace. That tab has the URL from the
 // start, as a tab a page opens does, so it never reads as a new tab.
 func (m *Manager) Navigate(w engine.WindowID, text, workspace string) {
-	u := NormalizeInput(text)
+	u := m.Normalize(text)
 	if u == "" {
 		return
 	}
@@ -770,11 +776,25 @@ func (m *Manager) listChanged() {
 	}
 }
 
-// SearchURL is a search for the words, however they read.
-func SearchURL(words string) string { return searchURL + url.QueryEscape(strings.TrimSpace(words)) }
+// SetSearch gives the manager what turns words into a search's address: the profile's
+// search engine.
+func (m *Manager) SetSearch(f func(words string) string) { m.search = f }
 
-// NormalizeInput turns address bar text into a URL, or a search for anything else.
-func NormalizeInput(text string) string {
+// SearchURL is a search for the words, however they read.
+func (m *Manager) SearchURL(words string) string { return m.search(words) }
+
+// Normalize turns address bar text into a URL, or a search for anything else.
+func (m *Manager) Normalize(text string) string { return NormalizeInput(text, m.search) }
+
+// LooksLikeAddress says text reads as an address, not as words to search for.
+func LooksLikeAddress(text string) bool {
+	never := func(string) string { return "" }
+	return NormalizeInput(text, never) != ""
+}
+
+// NormalizeInput turns address bar text into a URL, or into what search makes of anything
+// else.
+func NormalizeInput(text string, search func(words string) string) string {
 	s := strings.TrimSpace(text)
 	switch {
 	case s == "":
@@ -785,11 +805,11 @@ func NormalizeInput(text string) string {
 		strings.HasPrefix(s, "data:"):
 		return s
 	case strings.ContainsAny(s, " \t"):
-		return searchURL + url.QueryEscape(s)
+		return search(s)
 	case s == "localhost", strings.HasPrefix(s, "localhost:"), strings.HasPrefix(s, "127.0.0.1"):
 		return "http://" + s
 	case strings.Contains(s, "."):
 		return "https://" + s
 	}
-	return searchURL + url.QueryEscape(s)
+	return search(s)
 }

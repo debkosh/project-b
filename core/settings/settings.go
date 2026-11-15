@@ -12,6 +12,7 @@ import (
 	"projectb/engine"
 	"projectb/flags"
 	"projectb/prefs"
+	"projectb/search"
 	"projectb/timeline"
 	"projectb/tones"
 	"projectb/update"
@@ -145,6 +146,8 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 			"tabLayout":          m.prefs.TabLayout(),
 			"theme":              m.prefs.Theme(),
 			"addressBarPosition": m.prefs.AddressBarPosition(),
+			"searchEngine":       m.prefs.SearchEngine().ID,
+			"searchEngines":      search.All(),
 			"autoUpdate":         m.update.Auto(),
 			"update":             m.update.State(),
 			"running":            m.update.Running(),
@@ -168,6 +171,8 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 		m.prefs.SetTheme(c.Text)
 	case "setAddressBarPosition":
 		m.prefs.SetAddressBarPosition(c.Text)
+	case "setSearchEngine":
+		m.prefs.SetSearchEngine(c.Text)
 	case "setAutoUpdate":
 		m.update.SetAuto(c.On)
 	case "setFrameColor":
@@ -216,6 +221,11 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 // TabLayoutChanged, ThemeChanged, AutoUpdateChanged, UpdateChanged and WindowColorChanged
 // tell every open settings page what the managers now say; WindowControlsChanged tells
 // window w's.
+// SearchEngineChanged tells the settings pages the engine chosen, by its id.
+func (m *Manager) SearchEngineChanged(id string) {
+	m.sendAll(map[string]any{"t": "searchEngine", "searchEngine": id})
+}
+
 func (m *Manager) TabLayoutChanged(layout string) {
 	m.sendAll(map[string]any{"t": "tabLayout", "tabLayout": layout})
 }

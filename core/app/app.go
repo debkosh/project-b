@@ -195,6 +195,13 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Prefs.OnThemeChanged(a.Shell.ThemeChanged)
 	a.Prefs.OnChanged(a.Shell.PrefsChanged)
 	a.Prefs.OnThemeChanged(a.Settings.ThemeChanged)
+	// Typed words go to the profile's search engine, from the start and after a change.
+	a.Tabs.SetSearch(a.Prefs.SearchEngine().For)
+	a.Prefs.OnSearchEngineChanged(func(string) { a.Tabs.SetSearch(a.Prefs.SearchEngine().For) })
+	a.Prefs.OnSearchEngineChanged(a.Shell.SearchEngineChanged)
+	a.Prefs.OnSearchEngineChanged(a.Settings.SearchEngineChanged)
+	a.Suggest.SetSources(a.suggestSources())
+	a.Shell.AddPart(a.suggestShellPart())
 	// Another shell loads in every window at once. The old one's regions go, as after a
 	// crash, and the tabs stay where they were until the new one reports.
 	a.Prefs.OnShellChanged(func(id string) {
