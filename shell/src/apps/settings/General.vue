@@ -89,6 +89,18 @@ const busy = computed(() => state.update.check === 'checking' || state.update.ph
       </div>
     </section>
 
+    <section aria-labelledby="search">
+      <h2 id="search">Search</h2>
+      <div class="card">
+        <div class="row">
+          <label class="label" for="search-engine">Search engine</label>
+          <select id="search-engine" :value="state.searchEngine" @change="send({ t: 'setSearchEngine', text: $event.target.value })">
+            <option v-for="e in state.searchEngines" :key="e.id" :value="e.id">{{ e.name }}</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
     <section aria-labelledby="colours">
       <h2 id="colours">Colours</h2>
       <div class="card">

@@ -83,6 +83,8 @@ export const state = {
   // total, paused}: state is progress, done, cancelled or failed, and total -1 when
   // unknown. downloads.js acts on one (docs/daily-driver.md).
   downloads: [],
+  // The search engine typed words go to, {id, name}, for a field's placeholder.
+  searchEngine: { id: '', name: '' },
   // The dialogs pages wait on, oldest first, each {id, tab, kind, title, message,
   // defaultText, ok, cancel, realm}: kind is alert, confirm, prompt, beforeunload or
   // signin, a site's request for a username and password, realm being its own words; ok and cancel
@@ -106,7 +108,7 @@ export const state = {
 };
 
 // The messages that are only state: each sets the fields it carries.
-const updates = new Set(['tabs', 'theme', 'windowColor', 'controls', 'keys', 'workspaces', 'update', 'crashLog', 'tabLayout', 'addressBarPosition', 'extensions', 'profileData', 'contextMenu', 'downloads', 'dialogs', 'prefs', 'find', 'pageFullScreen']);
+const updates = new Set(['tabs', 'theme', 'windowColor', 'controls', 'keys', 'workspaces', 'update', 'crashLog', 'tabLayout', 'addressBarPosition', 'extensions', 'profileData', 'contextMenu', 'downloads', 'dialogs', 'prefs', 'find', 'pageFullScreen', 'searchEngine']);
 
 const listeners = [];
 

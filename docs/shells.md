@@ -81,6 +81,7 @@ of it.
 | `@/sdk/shell.js` | `state`: everything Go sends, as a plain object; a field is replaced whole when it changes, never changed in place. Its `loaded` is false until Go's snapshot is in, and true from then on ([the splash](#the-splash)). `onChange(fn)`: calls `fn(fields)` after each change, with the fields that changed. `connect(handlers, afterDraw)`: says `ready`, keeps `state`, calls the shell's `handlers[kind](message)` after each message, and once the snapshot is drawn reports the layout and says `shown`. `send(msg)`. `saveData(value)`. `saveProfileData(value)`. `setPref(name, value)`. `focusPage()`. `setFrame(width)`. The helpers, each given the state it reads: `activeTab(state)`, `workspaceOf(state, tab)`, `controlSpace(state)`, `keyLabel(state, action)`, and `tabLabel(tab)`. It puts the theme's colours on the root. |
 | `@/sdk/regions.js` | The markers a shell marks its elements with, each with `mark(el)` and `unmark(el)`. `shell`: this element is the shell's, so presses on it reach the shell. `drag`: this element moves the window wherever it has no control: an empty space, or a whole bar of controls, whose gaps then drag; its controls, and anything in it marked `shell`, stay the shell's. `page`: `mark(el, tab)` and `update(el, tab)`, this tab's page shows here; 0 shows none. |
 | `@/sdk/contextmenu.js` | What a shell sends about the right-click menu, `state.contextMenu`: `chooseContextItem(menu, id)`, `closeContextMenu(menu)`, and `contextMenuPoint(menu)`, where in the window the press was. |
+| `@/sdk/suggest.js` | `suggest(id, text, kinds)`, `chooseSuggestion(row, newTab)` and `suggestionKinds`, every kind. `state.searchEngine` names the engine, for a placeholder. |
 | `@/sdk/find.js` | `findText(tab, text)`, `findNext(tab, forward)` and `closeFind(tab)`, for `state.find`, each naming the tab whose bar it is. |
 | `@/sdk/dialogs.js` | `answerDialog(id, ok, text, password)`, and `dialogFor(state, tab)`, the dialog a tab's page waits on. |
 | `@/sdk/downloads.js` | What a shell sends about `state.downloads`: `downloadAction(id, action)` and `clearDownloads()`. |
@@ -128,7 +129,8 @@ gives the page the same two.
 | `addressBarPosition` | `addressBarPosition`: `bottom` or `top` | The Mobile shell's address bar moved, from settings on a phone |
 | `focusAddressBar` | | The user asked for the address bar |
 | `action` | `id`: one of the shell's own actions | Its key was pressed, or its menu item chosen, while this shell is on |
-| `suggestions` | `id`, `items` | In answer to `suggest` |
+| `suggestions` | `id`, `items`: rows `{kind, title, detail, url, tab, action}` | In answer to `suggest`: one ranked list, each row an `address`, a `search`, a `tab`, a `history` page or an `action` ([daily-driver.md](daily-driver.md#search-engines-and-one-suggestion-source)) |
+| `searchEngine` | `searchEngine`: `{id, name}` | Another search engine was chosen in settings |
 | `paint` | `span` | Go wants a timeline span ended once this is drawn |
 | `find` | `find`: the active tab's search while its find bar is open, `{tab, text, matches, active}`, or `null` | A search ran, its count changed, the bar opened or closed, or another tab shows ([daily-driver.md](daily-driver.md#find-in-page)) |
 | `pageFullScreen` | `pageFullScreen`: the tab whose page fills the screen in this window, or 0 | A page asked to fill the screen, as a video's button does, or it ended ([daily-driver.md](daily-driver.md#video-full-screen)). While it is the active tab, the shell lays that page across the whole window and drops its band too (`setFrame(0)`), and puts both back after |
@@ -196,7 +198,8 @@ none. The snapshot also has `running` (the version), `platform`
 | `back`, `forward`, `reload` | | Act on the active tab |
 | `focusTab` | `id` | Gives a tab's page the keyboard |
 | `focusShell` | | Gives the shell the keyboard |
-| `suggest` | `id`, `text` | Asks for address suggestions |
+| `suggest` | `id`, `text`, `kinds` | Asks for suggestions with rows of the kinds named; without `kinds`, history alone. With no text, the pages visited most |
+| `chooseSuggestion` | `row`, `newTab` | Runs a row: Go loads its address or search in the active tab, or a new one, shows its tab, or runs its action |
 | `run` | `text`: an action's id | Runs an action, as its menu item would |
 | `window` | `text`: `close`, `minimise`, `zoom` or `fullScreen` | Asks the window |
 | `data` | `data`: any JSON | Replaces this window's copy of the shell's own data |

@@ -180,6 +180,16 @@ const menuHas = (menu, title) => JSON.stringify(menu).includes(`"title":"${title
   check('it shows automatic updates on, the default', await autoUpdate.isChecked());
   await page.screenshot({ path: path.join(out, 'settings-general.png') });
 
+  // The search engine: chosen here, saved, and named in the shell's address field.
+  const engine = page.getByRole('combobox', { name: 'Search engine' });
+  // The prefs file is first written by the first change.
+  const savedEngine = () => (fs.existsSync(path.join(profile, 'prefs.json')) ? prefsFile().searchEngine : '');
+  check('the search engine shows DuckDuckGo, the default', (await engine.inputValue()) === 'duckduckgo');
+  await engine.selectOption('brave');
+  check('another chosen is saved, and the address field names it', await until(async () => savedEngine() === 'brave' && (await ui.getByRole('combobox', { name: 'Address' }).getAttribute('placeholder')) === 'Search Brave Search or type a URL'), savedEngine());
+  await engine.selectOption('duckduckgo');
+  await until(() => savedEngine() === 'duckduckgo');
+
   await page.getByRole('radio', { name: 'Dark' }).check();
   check('Dark turns the shell dark and is saved', await until(async () => (await root('--text')) === '#e8eaed' && prefsFile().theme === 'dark'), await root('--text'));
   check('and the settings page too', await until(async () => (await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme)) === 'dark'));

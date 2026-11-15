@@ -207,8 +207,9 @@ its own may still act on a row's `url` itself.
 
 **Speed.** A key must not scan and lowercase everything again: at 100,000 visits that took
 30 to 38 ms a key. History keeps each entry's lowercased address and title from when it is
-stored, and the search picks its best few without sorting every hit; actions' lowercased
-titles are kept until the keymap changes. A benchmark in `core/suggest` holds it.
+stored, and the search picks its best few without sorting every hit: about 8.5 ms a key at
+100,000 visits. The actions are few, so they are matched as they are. A benchmark in
+`core/suggest` measures it.
 
 **Not in this step.** Suggestions fetched from the search engine as one types: they send every
 keystroke to the engine, so they are a setting to decide, off by default if added. Bookmarks
