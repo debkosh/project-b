@@ -115,8 +115,15 @@ const noEmptyStateYet = {
     // A tab made as a shell asks for one, by its newTab message. New Tab the action may be
     // the shell's own to run, which by itself makes no tab.
     const openTab = () => fetch(`${lib.base}/shell/send?window=1`, { method: 'POST', body: JSON.stringify({ t: 'newTab' }) });
-    // Whether the keyboard is in a field of the shell's to type in.
-    const inField = async () => (await ui.locator('input:focus, textarea:focus, [contenteditable]:focus, [role=textbox]:focus, [role=combobox]:focus, [role=searchbox]:focus').count()) > 0;
+    // Whether the keyboard is in a field of the shell's to type in: its focused element is
+    // a text field, a text area, editable, or has a text box's role.
+    const inTextField = () => w.shell().evaluate(() => {
+      const el = document.activeElement;
+      if (!el || el === document.body) return false;
+      const role = el.getAttribute('role');
+      return (el.tagName === 'INPUT' && ['text', 'search', 'url', ''].includes(el.getAttribute('type') || '')) ||
+        el.tagName === 'TEXTAREA' || el.isContentEditable || ['textbox', 'combobox', 'searchbox'].includes(role);
+    });
 
     // The window as Go and the mock have it now, and the tabs as the shell draws them.
     const drawn = () => tabEls.evaluateAll((els) => els.map((el) => ({ tab: Number(el.dataset.tab), selected: el.getAttribute('aria-selected') })));
@@ -452,7 +459,7 @@ const noEmptyStateYet = {
           return opened !== 0 && r.active === opened && (!url || (t.url === url && !t.loading));
         };
         await basic('New Tab', byName('New Tab'), click, async () => {
-          if (!(await until(async () => (await fresh()) || (await inField())))) return false;
+          if (!(await until(async () => (await fresh()) || (await inTextField())))) return false;
           if (await fresh()) return true;
           await page.keyboard.type('contract.test/new');
           await page.keyboard.press('Enter');
@@ -680,7 +687,7 @@ const noEmptyStateYet = {
         if (rule(18, 'New Tab: found by its role and name', !!newTab)) {
           await opens('New Tab', async () => {
             await newTab.click();
-            await until(async () => (await regions()).tabs.length === 1 || (await inField()));
+            await until(async () => (await regions()).tabs.length === 1 || (await inTextField()));
             if ((await regions()).tabs.length === 1) return;
             await page.keyboard.type('contract.test/new');
             await page.keyboard.press('Enter');
