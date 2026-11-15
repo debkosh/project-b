@@ -730,10 +730,15 @@ void Engine::CreateWindow(int64_t id,
                           const std::string& page,
                           Window::Layout layout,
                           std::vector<VisibleTab> tabs) {
-  auto w = std::make_unique<AppWindow>(id);
+  auto made = std::make_unique<AppWindow>(id);
+  AppWindow* w = made.get();
+  // Listed before its shell loads: the shell's page finds its window here when its
+  // controller is made, as the load starts.
+  windows_[id] = std::move(made);
 #if !BUILDFLAG(IS_ANDROID)
   // The shell first: its renderer starts and its page loads while the window, much of a
-  // cold start's work on this thread, is made.
+  // cold start's work on this thread, is made. Nothing runs between, so nothing finds
+  // this window before it has its native window.
   w->shell = std::make_unique<ShellPage>(pages_context_, id, page);
   w->shell->Load();
   timeline::Mark("shell.created");
@@ -765,8 +770,7 @@ void Engine::CreateWindow(int64_t id,
 #else
   w->window->SetShellView(w->shell->contents()->GetNativeView());
 #endif
-  AppWindow* raw = w.get();
-  windows_[id] = std::move(w);
+  AppWindow* raw = w;
 #if BUILDFLAG(IS_ANDROID)
   if (raw->shell) {
     raw->shell->Load();
