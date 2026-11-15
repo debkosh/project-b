@@ -43,7 +43,7 @@ func TestTheSuggestionListAndChoosingFromIt(t *testing.T) {
 	})
 	r.shell(`{"t":"chooseSuggestion","row":{"kind":"tab","tab":1}}`)
 	r.waitFor(func(m map[string]any) bool { return m["t"] == "tabs" && m["active"] == float64(1) })
-	// An action's row runs it.
-	r.shell(`{"t":"chooseSuggestion","row":{"kind":"action","action":"tab.new"}}`)
+	// An action's row runs it: Duplicate Tab makes a third.
+	r.shell(`{"t":"chooseSuggestion","row":{"kind":"action","action":"tab.duplicate"}}`)
 	r.waitFor(func(m map[string]any) bool { return m["t"] == "tabs" && len(m["tabs"].([]any)) == 3 })
 }
