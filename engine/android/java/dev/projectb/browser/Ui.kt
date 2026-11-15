@@ -203,7 +203,7 @@ class Sheet(context: Context, name: String, palette: Palette, private val onClos
 
 /** A 48dp row of a sheet: an icon, its name, and a chevron or a tick at its end. */
 fun sheetRow(context: Context, palette: Palette, icon: String?, name: String, end: String? = null,
-             nameColor: Int = palette.text, onClick: () -> Unit): View {
+             nameColor: Int = palette.text, enabled: Boolean = true, note: String? = null, onClick: () -> Unit): View {
     val row = LinearLayout(context)
     row.orientation = LinearLayout.HORIZONTAL
     row.gravity = Gravity.CENTER_VERTICAL
@@ -211,15 +211,20 @@ fun sheetRow(context: Context, palette: Palette, icon: String?, name: String, en
     row.background = android.graphics.drawable.StateListDrawable().apply {
         addState(intArrayOf(android.R.attr.state_pressed), android.graphics.drawable.ColorDrawable(palette.press))
     }
-    row.isClickable = true
-    row.setOnClickListener { onClick() }
+    row.isClickable = enabled
+    row.isEnabled = enabled
+    row.setOnClickListener { if (enabled) onClick() }
     asButton(row, name)
+    // Disabled, as the web shell's: dimmed, and pressing it does nothing.
+    val fade = { c: Int -> if (enabled) c else Palette.alpha(c, 0.38f) }
     if (icon != null) {
-        row.addView(IconView(context, icon, palette.icon), LinearLayout.LayoutParams(row.dp(24), row.dp(24)).apply { marginEnd = row.dp(16) })
+        row.addView(IconView(context, icon, fade(palette.icon)), LinearLayout.LayoutParams(row.dp(24), row.dp(24)).apply { marginEnd = row.dp(16) })
     }
-    row.addView(label(context, 14f, nameColor), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+    row.addView(label(context, 14f, fade(nameColor)), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
     (row.getChildAt(row.childCount - 1) as TextView).text = name
-    if (end != null) row.addView(IconView(context, end, palette.icon), LinearLayout.LayoutParams(row.dp(24), row.dp(24)))
+    if (note != null) row.addView(label(context, 12f, palette.muted).apply { text = note },
+        LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginEnd = row.dp(8) })
+    if (end != null) row.addView(IconView(context, end, fade(palette.icon)), LinearLayout.LayoutParams(row.dp(24), row.dp(24)))
     row.minimumHeight = row.dp(48)
     return row
 }

@@ -37,6 +37,13 @@ object Icons {
         "copy" to "M9 9h10v10H9zM5 15V5h10",
         "tab" to "M4 6h16v13H4zM4 10h16",
         "image" to "M4 5h16v14H4zM4 16l5-5 4 4 2-2 5 5M15.5 9.5h.01",
+        "download" to "M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19h14",
+        "file" to "M7 3.5h6.5L18 8v12.5H7zM13.5 3.5V8H18",
+        "pause" to "M9 6.5v11M15 6.5v11",
+        "up" to "M6 15l6-6 6 6",
+        "down" to "M6 9l6 6 6-6",
+        "find" to "M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13zM15.5 15.5L20 20",
+        "play" to "M8 6l10 6-10 6z",
     )
 
     private val parsed = HashMap<String, Path>()
