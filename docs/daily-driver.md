@@ -164,3 +164,56 @@ ok, text, password}`, the username as `text`; Go hands them to the engine's `ans
 which answers content outside its own call, as content asks. When content drops the request,
 as when its tab navigates, the dialog goes. Contract rule 22 holds every shell that draws
 dialogs to it. Nothing is remembered yet: saved passwords are a later step.
+
+## Search engines and one suggestion source
+
+Two things that go together: which search engine a typed text goes to, and one list of
+suggestions for every place text is typed: the address field, Glide's Command Bar, and the
+command box a new tab shows in the page's place.
+
+**Search engines.** Go has a short built-in list (`core/search`): DuckDuckGo, Google, Bing,
+Brave Search and Ecosia, each an id, a name and an address with the words' place in it. The
+profile's `searchEngine` pref names one; DuckDuckGo until it is set. Everything that turns
+words into a search uses it: the address field's Enter, the right-click menu's Search for,
+and the suggestion list's search row. The settings page has a Search engine row, a select
+of the list. The engine's name comes in the snapshot (`searchEngine: {id, name}`), for a
+field's placeholder, "Search DuckDuckGo or type a URL". Adding one's own engine is a later
+step.
+
+**The suggestion source.** `core/suggest` answers a query with one ranked list, at most ten
+rows, each tagged with where it comes from:
+
+| `kind` | What it is | It carries |
+|---|---|---|
+| `address` | What was typed, read as an address | `url` |
+| `search` | "Search DuckDuckGo for …" | `url`, the search |
+| `tab` | A tab open in any window and workspace of the profile, matched by title or address | `tab`, `url`, `workspace` |
+| `history` | A page visited before | `url` |
+| `action` | An action that can run now, matched by its title | `action` |
+
+Every row has `kind`, `title` and `detail`, a second line: the address's host, the tab's
+workspace, or an action's key. The order: first what Enter does, the `address` row when the
+text reads as one and the `search` row otherwise; then up to three tabs, five from history and
+three actions, best first in each; and the `search` row last when an address came first. With
+nothing typed, as in a new tab's box, the list is the pages visited most.
+
+**The messages.** As today, `suggest {id, text}` and `suggestions {id, items}`, with two
+additions. The shell names the kinds it draws, `kinds: ["tab", "history", …]`; without it the
+list is history alone, as it was, so a shell that hasn't changed still works. And a shell runs
+a row with `chooseSuggestion {row, newTab}`: Go loads the address or the search in the active
+tab, or a new one, shows the tab, in whichever window it is, or runs the action. The SDK has
+`suggest(text, kinds)` and `chooseSuggestion(row, newTab)`. A shell with a split or a mode of
+its own may still act on a row's `url` itself.
+
+**Speed.** A key must not scan and lowercase everything again: at 100,000 visits that took
+30 to 38 ms a key. History keeps each entry's lowercased address and title from when it is
+stored, and the search picks its best few without sorting every hit; actions' lowercased
+titles are kept until the keymap changes. A benchmark in `core/suggest` holds it.
+
+**Not in this step.** Suggestions fetched from the search engine as one types: they send every
+keystroke to the engine, so they are a setting to decide, off by default if added. Bookmarks
+join the list when bookmarks exist.
+
+**The new tab.** A tab with nothing in it shows the shell's own command box where the page
+would be, drawing this list; the look is the standard shell session's mock. Glide's Command
+Bar moves onto this list, in place of its own search of tabs and actions.
