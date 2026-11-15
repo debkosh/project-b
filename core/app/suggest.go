@@ -68,12 +68,10 @@ func (a *App) suggestShellPart() shell.Part {
 				switch {
 				case c.Row.URL == "":
 				case c.NewTab || active == 0:
-					// In the active tab's workspace, or the first in a window with no tab.
-					workspace := a.Tabs.FirstWorkspace()
-					if t, ok := a.Tabs.Get(active); ok {
-						workspace = t.Workspace
-					}
-					a.Tabs.OpenFrom(active, c.Row.URL, workspace, true)
+					// Where New Tab opens one: the active tab's workspace, or for a tab of ours
+					// the one it was opened from, or the first when that is gone or the window
+					// has no tab.
+					a.Tabs.OpenFrom(active, c.Row.URL, a.Tabs.NewTabWorkspace(w), true)
 				default:
 					a.Tabs.Load(active, c.Row.URL)
 				}
