@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 
 	"projectb/engine"
 )
@@ -53,4 +54,22 @@ func BenchmarkSave(b *testing.B) {
 		s.Windows[0].Active = i % 20
 		m.Save(s)
 	}
+}
+
+// A change is on disk within a second with no Close: the writer has no timer, so a crash
+// loses at most the change being written.
+func TestASaveReachesTheDiskWithoutClose(t *testing.T) {
+	dir := t.TempDir()
+	m := New(dir)
+	defer m.Close()
+	m.Save(Session{Windows: []Window{{Tabs: []Tab{{URL: "https://a.test/"}}}}})
+	m.Save(Session{Windows: []Window{{Tabs: []Tab{{URL: "https://b.test/"}}}}})
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		if got := New(dir).Last(); len(got.Windows) == 1 && got.Windows[0].Tabs[0].URL == "https://b.test/" {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatalf("not on disk after a second: %+v", New(dir).Last())
 }
