@@ -116,7 +116,9 @@ typedef enum PBEvent {
   PB_EVENT_NAVIGATION_FAILED = 62,      // i: tab, i: navigation, s: url, s: why, in
                                         // engine.Failure's words; s: the engine's own
                                         // name for it, to show. Not for one a newer
-                                        // navigation replaced
+                                        // navigation replaced. With why and the name "",
+                                        // nothing showed instead (a download, a stop, a
+                                        // 204), and url is the page the tab still shows
   PB_EVENT_HISTORY_CHANGED = 63,        // i: tab, i: can go back, i: can go forward
   PB_EVENT_TITLE_CHANGED = 64,          // i: tab, s: the page's own title, "" for none
   PB_EVENT_LOADING_CHANGED = 65,        // i: tab, i: loading
