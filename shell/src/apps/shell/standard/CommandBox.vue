@@ -80,7 +80,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div v-shell class="command-box">
+  <div v-shell class="command-box" :class="{ 'over-page': overPage }">
     <div class="box">
       <svg class="glyph" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.25" /><path d="m10.25 10.25 3.25 3.25" /></svg>
       <input
@@ -115,6 +115,17 @@ onMounted(() => {
   padding-top: max(48px, 22vh);
   background: color-mix(in srgb, var(--bar) 60%, var(--surface));
   animation: appear var(--motion) var(--ease);
+}
+
+/* Over a page, New Tab's: the page shows faintly through a scrim in the bar's tint, and the
+   box floats on it. The page is a view of its own under the shell, so the scrim can tint it
+   but not blur it. */
+.command-box.over-page {
+  background: color-mix(in srgb, var(--bar) 80%, transparent);
+}
+
+.over-page .box {
+  box-shadow: 0 0 0 1px var(--line), var(--shadow-float);
 }
 
 @keyframes appear {

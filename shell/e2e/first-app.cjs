@@ -359,6 +359,17 @@ const stopServer = lib.stop;
   await ui.getByRole('button', { name: 'New Tab', exact: true }).click();
   check('Standard\'s New Tab opens its command box over the page, focused, and makes no tab', await until(async () => (await commandBox.count()) === 1) &&
     (await newTabBox.evaluate((el) => el === document.activeElement)) && (await rows.count()) === 1, JSON.stringify(await rowTitles()));
+  // The page shows through the box's scrim, which is the shell's, so a press there is too.
+  check('the page stays shown under the box\'s translucent scrim', await until(async () => (await regions()).visible.length === 1) &&
+    (await commandBox.evaluate((el) => getComputedStyle(el).backgroundColor)).startsWith('color(srgb') || /rgba\(.*, 0\.\d+\)/.test(await commandBox.evaluate((el) => getComputedStyle(el).backgroundColor)), await commandBox.evaluate((el) => getComputedStyle(el).backgroundColor));
+  check('and the box and the scrim are the shell\'s', await until(async () => (await regions({ x: 600, y: 400 })).hit === 'shell' && (await regions({ x: 600, y: 650 })).hit === 'shell'), JSON.stringify([(await regions({ x: 600, y: 400 })).hit, (await regions({ x: 600, y: 650 })).hit, (await regions()).regions.filter((g) => g.w > 300)]));
+  await settle(page);
+  for (const scheme of ['light', 'dark']) {
+    await page.emulateMedia({ colorScheme: scheme });
+    await settle(page);
+    await page.screenshot({ path: path.join(out, `box-over-page-${scheme}.png`) });
+  }
+  await page.emulateMedia({ colorScheme: 'light' });
   await page.keyboard.press('Escape');
   check('Escape closes it and the page is back', await until(async () => (await commandBox.count()) === 0) && (await regions({ x: 600, y: 400 })).hit === 'page');
   await makeTab();
