@@ -477,27 +477,22 @@ const H = 915;
   await backKey();
   check('and the back key answers it no too', await until(async () => (await answers()).at(-1).ok === false && (await ask.count()) === 0));
 
-  // Downloads: the menu has them once there is one, and they open in a sheet of their own,
-  // each a finger's reach, which the back key closes.
-  check('with no download, the menu has no Downloads', await (async () => {
-    await menuButton.tap();
-    await until(() => menu.isVisible());
-    const none = (await ui.getByRole('menuitem', { name: 'Downloads' }).count()) === 0;
-    await backKey();
-    await until(async () => !(await menu.isVisible()));
-    return none;
-  })());
+  // Downloads: always in the menu, with how many are running, and it opens the Downloads
+  // page, a tab of ours, its title where the address goes.
   await fire('download', 'https://example.com/files/report.pdf');
   await menuButton.tap();
   await until(() => menu.isVisible());
   const downloadsItem = ui.getByRole('menuitem', { name: 'Downloads' });
-  check('a download brings Downloads to the menu', await until(() => downloadsItem.isVisible()));
+  check('the menu has Downloads', await downloadsItem.isVisible());
   await downloadsItem.tap();
-  const downloads = ui.getByRole('dialog', { name: 'Downloads' });
-  check('which opens the downloads sheet, with the file by its name', await until(async () => (await downloads.isVisible()) && (await downloads.getByRole('listitem', { name: 'report.pdf' }).isVisible())));
+  const downloadsTab = async () => (await regions()).tabs.find((t) => t.page === 'downloads');
+  check('which opens the Downloads page in a tab of ours, shown', await until(async () => (await downloadsTab())?.id === (await regions()).active));
+  const dlFrame = page.frameLocator('iframe.our-page[data-page="downloads"]');
+  check('the page lists the download by its name, with Open', await until(async () => (await dlFrame.getByRole('listitem', { name: 'report.pdf' }).getByRole('button', { name: 'Open' }).count()) > 0));
+  check('and the pill says Downloads, with a close', await ui.getByRole('button', { name: 'Close Downloads' }).isVisible());
   await shots('downloads');
-  await backKey();
-  check('the back key closes it', await until(async () => !(await downloads.isVisible())));
+  await ui.getByRole('button', { name: 'Close Downloads' }).tap();
+  check('its close closes it', await until(async () => !(await downloadsTab())));
 
   // Find in page, from the menu: a bar in the toolbar's place, the keyboard in it, closed
   // by its × as by the back key. An empty tab has nothing to find in.

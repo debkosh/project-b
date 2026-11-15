@@ -756,11 +756,9 @@ address field, and a menu button at the far right, in our tones.
 - **Find in page**, from the ⋯ menu, puts a find bar in the toolbar's place with the
   keyboard in it: the field with the count at its end, the match before and after, and
   ×, as the back key, closes it. The bars stay while it is open (rule 20).
-- **Downloads** is an item of the ⋯ menu once the profile has a download, with how many
-  are in progress; it opens a sheet of them, newest first, each by its file name with its
-  size or how far it has got. A running one has Pause or Resume and Cancel; a finished one
-  Open, and Show in Downloads, which opens the phone's Downloads app, where the file is
-  kept (rule 17). Clear takes the finished ones off the list.
+- **Downloads** is always an item of the ⋯ menu, with how many are in progress beside it;
+  it opens the Downloads page, a tab of ours ([daily-driver.md](daily-driver.md#downloads)),
+  its title and a close in the pill (rule 19).
 - **A page in full screen**, as a video's, has the whole screen: the bars, the strip and
   the notices go, and any sheet closes; Android hides its status and navigation bars, and
   the back key ends it (rule 21).
