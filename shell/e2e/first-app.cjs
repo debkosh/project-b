@@ -9,7 +9,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const { chromium } = require('playwright');
 const lib = require('./lib.cjs');
-const { check, out, profile, regions, settle, until } = lib;
+const { check, fire, out, profile, regions, settle, until } = lib;
 
 // Each start has a port of its own, so the address follows the server.
 let base = '';
@@ -95,7 +95,12 @@ const stopServer = lib.stop;
     await bar.press('Enter');
     await loaded(expected);
   };
+  // New Tab with no tab keeps the box, and a page opened from the address field instead
+  // closes it and shows: the box never sits over a tab it didn't open on.
+  await fire('menu', 'tab.new');
+  await settle(page);
   await visit('example.com/docs', 'https://example.com/docs');
+  check('a page opened from the address field closes the box and shows', await until(async () => (await newTabBox.count()) === 0 && (await regions()).visible.length === 1 && (await regions({ x: 600, y: 400 })).hit === 'page'), JSON.stringify((await regions()).visible));
   r = await regions();
   check('page sits right of the sidebar, below the bar, inside the frame', r.bounds.x === 224 && r.bounds.y === 48 && r.bounds.w === 1100 - 224 - 4 && r.bounds.y + r.bounds.h === 700 - 4, JSON.stringify(r));
   // The dev window places the mock page where the layout puts it, as the real window does.
