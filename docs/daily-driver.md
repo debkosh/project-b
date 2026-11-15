@@ -396,35 +396,46 @@ keeps its own notice, drawn from the same tab, until it takes Go's.
 engine's client is shared.
 
 
-## Tabs after a crash
+## Tabs come back, and closed ones reopen
 
-Today nothing of a window's tabs is kept: after a crash, or a kill, the app comes back with
-one empty tab (basics 32). Go keeps the profile's windows and tabs as they are, and puts
-them back when the last run crashed.
+The owner, 2026-11-15: "default is continue where you left off... and something cimila to
+crtl at t for getting back recently closed tabs windows etc...". Before this, nothing of a
+window's tabs was kept: the app always came back with one empty tab (basics 32).
 
 **What Go keeps.** `session.json` in the profile: each window, in front-to-back order, with
 its frame on screen and its tabs in order, each tab's address, title, workspace and tab
-group, the active tab, and the window's groups (name, colour, folded). Go writes it when
-any of that changes, a new file renamed over the old, and only when what it would write
-differs from the last, so a page's loading progress writes nothing. A clean quit leaves it
-in place, and so does closing the last window.
+group, the active tab, and the window's groups (name, colour, folded); and what was closed
+recently, newest first. Go writes it when any of that changes, a new file renamed over the
+old, and only when what it would write differs from the last, so a page's loading progress
+writes nothing. Quitting keeps it as it was before the quit began, and so does closing the
+last window.
 
-**When it comes back.** At start, when the crash manager found the last run's `crash.log`,
-which only a crash or a kill leaves behind. Go then opens each window where it was, its tabs
-in their workspaces and groups, the active one active, in place of the usual one empty tab.
-Each window's active tab loads at once; every other tab shows its address and title and
-loads when it is first made active, so a start after a crash doesn't start a renderer per
-tab. A shell sees such a tab as any other. A tab whose workspace was deleted since goes in
-the first one. The crash notice the shell shows is unchanged. A clean quit starts as today,
-with one empty tab: a setting to always continue where you left off is a later choice, his
-to make.
+**When it comes back.** At every start, by default: the setting On start, in General, is
+Where you left off, or Start fresh: a window opened as the profile's shell opens one,
+Standard on its command box and other shells on a new tab. After a crash or a kill the
+windows come back whatever the setting says. Go opens each window where it was, its tabs in
+their workspaces and groups, the active one active, in place of the usual empty start. Each
+window's active tab loads at once; every other tab shows its address and title and loads
+when it is first made active, so a start doesn't start a renderer per tab. A shell sees such
+a tab as any other. A tab whose workspace was deleted since goes in the first one. Addresses
+given at the start open beside the windows that came back.
+
+**Recently closed.** Go keeps the last 25 tabs and windows the person closed, newest first,
+across restarts: a tab with its window, place, workspace, address and title; a window with
+everything a window keeps above. Reopen Closed Tab (Shift+Cmd+T, Ctrl+Shift+T elsewhere, in
+every keymap template) brings back the newest: a tab into its window at its place, or into
+the window in front when its own is gone, made active and loading; a window where it was,
+with its tabs. The History menu lists them as Recently Closed, each by its title, a window
+as "N tabs", and choosing one brings that one back. Our own pages, such as settings, aren't
+kept, and nor is a tab closed by quitting.
 
 **What doesn't come back.** A tab's back and forward history (it loads its address alone),
 its scroll position and form fields, and a shell's own per-window data.
 
-**The shell.** Nothing new: it hears the windows and tabs as it does at any start. No rule.
+**The shell.** Nothing new: it hears the windows and tabs as it does at any start, and the
+action and the menu list are Go's. No rule.
 
-**Android.** The same Go, so a phone's tabs come back after a crash too, in its one window.
+**Android.** The same Go, so a phone's tabs come back too, in its one window.
 
 ## History and Bookmarks
 
