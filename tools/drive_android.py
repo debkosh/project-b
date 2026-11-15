@@ -164,6 +164,12 @@ PAGES["/full"] = ("<title>Full</title><button id=f style='position:fixed;inset:0
                   "document.onfullscreenchange = () => document.fullscreenElement || fetch('/full-off');</script>")
 
 
+# The Downloads page with five files, as the phone drew it, kept as it rendered (its
+# styles inlined): with multisampled raster on a phone it left tiles undrawn, its header's
+# among them, though Chrome drew it whole.
+PAGES["/paint"] = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "android-paint-page.html")).read().replace("<!doctype html>", "")
+
+
 server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Server)
 threading.Thread(target=server.serve_forever, daemon=True).start()
 PORT = server.server_port
@@ -883,6 +889,31 @@ def find_in_page():
     check("the back key closes the bar", until(lambda: find("shell", text="1/1") is None and find("shell", label="Menu") is not None) is not None)
 
 
+def pixel_at(x, y):
+    """The screen's colour at device pixel x, y, as (r, g, b)."""
+    raw = subprocess.run(ADB + ["exec-out", "screencap"], capture_output=True).stdout
+    width = int.from_bytes(raw[0:4], "little")
+    at = 16 + (y * width + x) * 4
+    return tuple(raw[at:at + 3])
+
+
+def page_paints():
+    """A page with SVG icons in a tall rounded box draws whole: the Downloads page's header
+    row in the page's colour, not left undrawn as white, black, stale or magenta tiles."""
+    launch()
+    if find("shell", kind=FIELD) is None:
+        menu("New Tab")
+    go(BASE + "/paint")
+    asked("/paint")
+    time.sleep(2)
+    left, top, right, _ = box(screen_parts()["page"])
+    at = ((left + right) // 2, top + 60)
+    near = lambda c, want: all(abs(a - b) < 10 for a, b in zip(c, want))
+    drawn = until(lambda: near(pixel_at(*at), (0xe8, 0xf2, 0xf2)) or None, 5)
+    check("a page with SVG icons in a rounded box draws its header row", drawn is not None, str(pixel_at(*at)))
+    shot("35-paint")
+
+
 def history_after_a_restart():
     launch()
     type_in_bar("page")
@@ -1040,7 +1071,7 @@ def main():
     adb("shell", "pm", "clear", PACKAGE)
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
-    for part in (browsing, mobile_shell, back_key_chain, page_dialogs, downloads, page_full_screen, find_in_page, history_after_a_restart, links_from_other_apps, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
+    for part in (browsing, mobile_shell, back_key_chain, page_dialogs, downloads, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
                  the_gpu_process_dies, a_page_spins, web_apis, the_real_web):
         try:
             part()
