@@ -741,14 +741,7 @@
       ]
     },
     "tab.duplicate": {},
-    "tab.pin": {
-      "mac": [
-        {
-          "keys": "Cmd+D",
-          "reserve": "page"
-        }
-      ]
-    },
+    "tab.pin": {},
     "tab.moveToNewWindow": {},
     "tab.select1": {
       "hidden": true,

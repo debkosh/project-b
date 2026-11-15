@@ -71,7 +71,7 @@ It uses what Go already gives every shell: the workspace messages (`createWorksp
   1 to 9 Ctrl+1..9, Add to Split View Ctrl+Shift+=, Separate Split View Ctrl+Shift+-.
 - **A `glide` keymap template,** chosen in Settings, Keyboard like any other; the keymap
   and the shell stay separate prefs. Over Project B's keys it gives Cmd+T to Open Command
-  Bar, Cmd+D to Go's Pin Tab, and Option+Cmd+Left and Right to the previous and next
+  Bar, and Option+Cmd+Left and Right to the previous and next
   Space. With another keymap, Cmd+T opens a new empty tab, which opens the Command Bar.
 
 ## Left out, on purpose

@@ -346,7 +346,7 @@ pages, profiles, extensions, spelling, the task manager, Cast, Translate, the Go
 services). Keys are Chrome's Mac keys; `*` marks the ones reserved outside full screen.
 
 `glide.json` is `project-b.json` with Glide's keys over it ([glide.md](glide.md)): Cmd+T opens
-the Command Bar, Cmd+D is Pin Tab, and Option+Cmd+Left and Right go to the previous and next
+the Command Bar, and Option+Cmd+Left and Right go to the previous and next
 Space, so New Tab, the terminal's Split right, and Previous and Next Tab lose those keys
 there. Choosing it is the user's, in Keyboard settings; the shell doesn't choose a keymap.
 

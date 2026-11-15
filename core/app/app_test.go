@@ -2052,7 +2052,7 @@ func TestTheShellHearsTheActionsByTitle(t *testing.T) {
 	}
 }
 
-// The glide keymap gives Cmd+T to the Command Bar, Cmd+D to Pin Tab and Option+Cmd+Right to
+// The glide keymap gives Cmd+T to the Command Bar and Option+Cmd+Right to
 // the next Space; Ctrl+1 is Space 1 in every keymap. Each of Glide's own reaches it as its
 // action, and Pin Tab, Go's, pins the tab.
 func TestTheGlideKeymap(t *testing.T) {
@@ -2089,9 +2089,6 @@ func TestTheGlideKeymap(t *testing.T) {
 	r.e.Settle()
 	press("Cmd+T", "glide.commandBar")
 	press("Option+Cmd+Right", "glide.spaceNext")
-	r.visit("https://a.test/")
-	take("Cmd+D")
-	r.waitFor(isPins(1))
 }
 
 // The settings page's Install update hands a ready release to the installer, as the
