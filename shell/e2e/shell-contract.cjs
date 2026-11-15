@@ -345,12 +345,17 @@ const noEmptyStateYet = {
           const x = v.rect.x + v.rect.w / 2;
           const y = v.rect.y + v.rect.h / 2;
           // The keyboard goes elsewhere first, as a shell can send it.
+          // Its end is the shell's frame holding the keyboard too, which the window gives it
+          // a moment after Go has it; a press before that would lose the keyboard to it.
           await fetch(`${lib.base}/shell/send`, { method: 'POST', body: JSON.stringify({ t: 'focusTab', id: 0 }) });
-          await until(async () => (await regions()).focused === 0);
+          await until(async () => (await regions()).focused === 0 && (await w.shell().evaluate(() => document.hasFocus())));
           // With the middle button: the middle of a mock page may hold one of its buttons,
           // which a left press would set off, and a right press opens the right-click menu,
           // which a shell draws and gives the keyboard (rule 16).
+          // The pointer over the page first: the window lets presses through the shell's frame
+          // to the page under it once it has seen the pointer there (core/cmd/dev).
           await page.mouse.move(x - 1, y);
+          await until(() => page.evaluate(() => document.querySelector('iframe.shell').style.pointerEvents === 'none'));
           await page.mouse.click(x, y, { button: 'middle' });
           rule(7, `a press in the middle of tab ${v.tab}'s page reaches it`, (await regions({ x, y })).hit === 'page' && await until(async () => (await regions()).focused === v.tab), JSON.stringify(await regions({ x, y }).then((h) => ({ hit: h.hit, focused: h.focused }))));
         }
