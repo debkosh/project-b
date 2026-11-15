@@ -444,6 +444,10 @@ func (a *App) LoadProgressChanged(tab engine.TabID, progress float64) {
 
 func (a *App) PageCrashed(tab engine.TabID) { a.Tabs.HandlePageCrashed(tab) }
 
+func (a *App) ConnectionChanged(tab engine.TabID, c engine.Connection) {
+	a.Tabs.HandleConnectionChanged(tab, c)
+}
+
 func (a *App) FaviconChanged(tab engine.TabID, dataURL string) {
 	a.Tabs.HandleFaviconChanged(tab, dataURL)
 }

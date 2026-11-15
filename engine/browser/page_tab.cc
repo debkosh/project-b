@@ -17,8 +17,10 @@
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/render_widget_host.h"
 #include "content/public/browser/render_widget_host_view.h"
+#include "content/public/browser/ssl_status.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_ui.h"
+#include "net/cert/cert_status_flags.h"
 #include "net/base/net_errors.h"
 #include "project_b/engine/browser/engine.h"
 #include "project_b/engine/browser/events.h"
@@ -34,6 +36,7 @@
 #include "third_party/blink/public/mojom/favicon/favicon_url.mojom.h"
 #include "ui/base/window_open_disposition.h"
 #include "ui/gfx/codec/png_codec.h"
+#include "url/url_constants.h"
 
 #if BUILDFLAG(IS_ANDROID)
 #include "components/embedder_support/android/delegate/html_color_picker_bridge.h"
@@ -169,6 +172,53 @@ void PageTab::DidFinishNavigation(content::NavigationHandle* handle) {
     ReportNavigation(handle);
   }
   WebContentsObserverHooks::DidFinishNavigation(handle);
+  // After Go has the commit, so the tab it describes is the page now shown.
+  if (handle->IsInPrimaryMainFrame() && handle->HasCommitted()) {
+    ReportConnection();
+  }
+}
+
+void PageTab::DidChangeVisibleSecurityState() {
+  WebContentsObserverHooks::DidChangeVisibleSecurityState();
+  ReportConnection();
+}
+
+// How the page shown reached it, in our terms (docs/daily-driver.md): content's security
+// state stays here.
+void PageTab::ReportConnection() {
+  content::NavigationEntry* entry = contents_->GetController().GetVisibleEntry();
+  int32_t state = PB_CONNECTION_NONE;
+  std::string reason;
+  if (entry) {
+    const GURL& url = entry->GetURL();
+    const content::SSLStatus& ssl = entry->GetSSL();
+    if (url.SchemeIs(url::kHttpScheme)) {
+      state = PB_CONNECTION_INSECURE;
+      reason = "not-encrypted";
+    } else if (url.SchemeIs(url::kHttpsScheme)) {
+      state = PB_CONNECTION_SECURE;
+      if (net::IsCertStatusError(ssl.cert_status)) {
+        state = PB_CONNECTION_INSECURE;
+        reason = "certificate";
+      } else if (ssl.content_status &
+                 (content::SSLStatus::DISPLAYED_INSECURE_CONTENT |
+                  content::SSLStatus::RAN_INSECURE_CONTENT |
+                  content::SSLStatus::DISPLAYED_FORM_WITH_INSECURE_ACTION)) {
+        state = PB_CONNECTION_INSECURE;
+        reason = "mixed-content";
+      }
+    }
+  }
+  if (state == connection_ && reason == connection_reason_) {
+    return;
+  }
+  connection_ = state;
+  connection_reason_ = reason;
+  hooks::Args args;
+  args.Int(id_);
+  args.Int(state);
+  args.Str(reason);
+  hooks::Fire(PB_EVENT_CONNECTION_CHANGED, args);
 }
 
 // What a top-level navigation came to: where the tab's history stands, then the page it

@@ -51,6 +51,9 @@ const settingsOf = (o) => state.siteSettings.find((s) => s.origin === o)?.settin
 const valueOf = (kind) => settingsOf(origin.value).find((x) => x.kind === kind)?.value || '';
 const set = (kind, value) => send({ t: 'setSiteSetting', origin: origin.value, kind, value });
 
+// How the site's open pages reached it, first in its view; nothing when none is open.
+const connection = computed(() => state.siteConnections[origin.value] || null);
+
 // Remove all for this site asks first, then goes back to every site.
 const removing = ref(false);
 function removeAll() {
@@ -70,6 +73,22 @@ function removeAll() {
     </div>
     <h2 class="site" :title="origin">{{ host(origin) }}</h2>
     <div class="card">
+      <div v-if="connection" class="row connection" :class="connection.connection">
+        <svg class="glyph" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <template v-if="connection.connection === 'secure'">
+            <rect x="3.25" y="7" width="9.5" height="6.5" rx="1.5" />
+            <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" />
+          </template>
+          <template v-else>
+            <path d="M8 2.25 14.25 13.25H1.75z" />
+            <path d="M8 6.5v3M8 11.5v.01" />
+          </template>
+        </svg>
+        <span class="label">
+          {{ connection.connection === 'secure' ? 'Connection is secure' : 'Not secure' }}
+          <span v-if="connection.note" class="secondary">{{ connection.note }}</span>
+        </span>
+      </div>
       <div v-for="k in state.siteKinds" :key="k.kind" class="row">
         <span class="label">{{ k.title }}</span>
         <Segmented :label="k.title" :options="choices" :model-value="valueOf(k.kind)" @update:model-value="set(k.kind, $event)" />
@@ -143,6 +162,20 @@ function removeAll() {
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.connection .glyph {
+  flex: none;
+  color: var(--icon);
+}
+
+.connection.insecure .glyph {
+  color: var(--danger);
+}
+
+.connection .secondary {
+  display: block;
+  font-weight: 400;
 }
 
 .after {

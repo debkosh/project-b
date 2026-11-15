@@ -31,6 +31,17 @@ func (a *App) startSites(e engine.Engine, dir string) {
 		a.Settings.Send(map[string]any{"t": "siteSettings", "siteSettings": a.Sites.Sites()})
 	})
 	a.Tabs.OnChanged(func(t tabs.Tab) { a.Sites.TabChanged(t.ID, t.URL) })
+	// The site view's connection row follows the open pages.
+	var connections string
+	sendConnections := func() {
+		c := a.siteConnections()
+		if b, _ := json.Marshal(c); string(b) != connections {
+			connections = string(b)
+			a.Settings.Send(map[string]any{"t": "siteConnections", "siteConnections": c})
+		}
+	}
+	a.Tabs.OnChanged(func(tabs.Tab) { sendConnections() })
+	a.Tabs.OnListChanged(sendConnections)
 	a.Tabs.OnListChanged(func() {
 		for _, p := range a.Sites.Prompts() {
 			if _, ok := a.Tabs.Get(p.Tab); !ok {
@@ -67,6 +78,7 @@ func (a *App) startSites(e engine.Engine, dir string) {
 		Snapshot: func(into map[string]any) {
 			into["siteSettings"] = a.Sites.Sites()
 			into["siteKinds"] = sites.Settable()
+			into["siteConnections"] = a.siteConnections()
 		},
 		Handle: func(_ engine.TabID, t string, msg []byte) bool {
 			var c struct {
@@ -132,4 +144,26 @@ func (a *App) NotificationClicked(id string) {
 	if found != 0 {
 		a.ActivateRequested(found)
 	}
+}
+
+// siteConnection is how a site's open pages reached it, for its site view.
+type siteConnection struct {
+	Connection string `json:"connection"`
+	Note       string `json:"note,omitempty"`
+}
+
+// siteConnections is, by origin, how the open pages of each site reached them: insecure
+// when any of them did, and why.
+func (a *App) siteConnections() map[string]siteConnection {
+	out := map[string]siteConnection{}
+	for _, t := range a.Tabs.All() {
+		o := sites.Origin(t.URL)
+		if o == "" || t.Connection == "" {
+			continue
+		}
+		if have, ok := out[o]; !ok || have.Connection == "secure" {
+			out[o] = siteConnection{Connection: t.Connection, Note: t.ConnectionNote}
+		}
+	}
+	return out
 }

@@ -52,6 +52,9 @@ export const state = reactive({
   siteSettings: [],
   // The kinds of setting settings can set for a site, in order, each {kind, title}.
   siteKinds: [],
+  // How each site's open pages reached them, by origin: {connection, note}, connection
+  // 'secure' or 'insecure', note why in one line.
+  siteConnections: {},
 });
 
 export function connect() {
@@ -81,6 +84,7 @@ export function connect() {
             workspaceTabs: m.workspaceTabs,
             siteSettings: m.siteSettings,
             siteKinds: m.siteKinds,
+            siteConnections: m.siteConnections,
             ready: true,
           });
           mark('settings.snapshot');
@@ -127,6 +131,9 @@ export function connect() {
           break;
         case 'workspaceTabs':
           state.workspaceTabs = m.workspaceTabs;
+          break;
+        case 'siteConnections':
+          state.siteConnections = m.siteConnections;
           break;
         case 'siteSettings':
           state.siteSettings = m.siteSettings;

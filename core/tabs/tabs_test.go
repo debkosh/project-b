@@ -606,3 +606,19 @@ func TestOpeningOurAddressShowsOurTab(t *testing.T) {
 		t.Fatalf("typed in a window with no tabs: %+v", in)
 	}
 }
+
+func TestATabSaysHowItsPageReachedIt(t *testing.T) {
+	m := oneWindow(&fakeEngine{})
+	id := m.Create(1)
+	changes := 0
+	m.OnChanged(func(Tab) { changes++ })
+	m.HandleConnectionChanged(id, engine.Connection{State: engine.ConnectionInsecure, Reason: "not-encrypted"})
+	if tab, _ := m.Get(id); tab.Connection != "insecure" || !strings.Contains(tab.ConnectionNote, "isn't encrypted") {
+		t.Fatalf("insecure: %+v", tab)
+	}
+	m.HandleConnectionChanged(id, engine.Connection{State: engine.ConnectionInsecure, Reason: "not-encrypted"})
+	m.HandleConnectionChanged(id, engine.Connection{State: engine.ConnectionSecure})
+	if tab, _ := m.Get(id); tab.Connection != "secure" || tab.ConnectionNote != "" || changes != 2 {
+		t.Fatalf("secure: %+v after %d changes", tab, changes)
+	}
+}

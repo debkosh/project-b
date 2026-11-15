@@ -33,4 +33,5 @@ func Wire(h *Hooks, l engine.Listener) {
 	h.Events.OnPermissionOf = l.PermissionStatusOf
 	h.Events.OnNotification = l.NotificationShown
 	h.Events.OnNotifyClicked = l.NotificationClicked
+	h.Events.OnConnection = l.ConnectionChanged
 }
