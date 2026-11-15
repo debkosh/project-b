@@ -451,6 +451,7 @@ func TestTheSettingsPageReadsAndSetsTheSettings(t *testing.T) {
 	if r.e.Layout(1).Theme != engine.ThemeDark {
 		t.Fatalf("window theme = %v", r.e.Layout(1).Theme)
 	}
+	r.flushPrefs()
 	b, _ = os.ReadFile(filepath.Join(dir, "prefs.json"))
 	if !strings.Contains(string(b), `"theme":"dark"`) {
 		t.Fatalf("prefs.json = %s", b)
@@ -1386,6 +1387,7 @@ func TestViewShellSwitchesTheShellLive(t *testing.T) {
 	r.e.Post(func() { r.a.MenuChosen("shells:example") })
 	r.e.Settle()
 	l := r.e.Layout(1)
+	r.flushPrefs()
 	if r.e.PageOf(1) != "shell/example" || prefs.New(dir).Shell() != "example" || len(l.Regions) != 0 || len(l.Tabs) != 1 {
 		t.Fatalf("the window loads %q, the pref is %q, the layout %+v", r.e.PageOf(1), prefs.New(dir).Shell(), l)
 	}
@@ -1694,6 +1696,7 @@ func TestAShellSetsGoPrefsByName(t *testing.T) {
 	if p := m["prefs"].(map[string]any); p["frameColor"] != "#d03434" {
 		t.Fatalf("prefs after setPref: %v", p)
 	}
+	r.flushPrefs()
 	if prefs.New(dir).FrameColor() != "#d03434" || r.e.Layout(1).FrameColor != "#d03434" {
 		t.Fatal("the frame colour wasn't kept, or the window isn't painted with it")
 	}
@@ -1703,6 +1706,7 @@ func TestAShellSetsGoPrefsByName(t *testing.T) {
 		r.shell(bad)
 	}
 	r.e.Settle()
+	r.flushPrefs()
 	if got := prefs.New(dir).All(); got.FrameColor != "#d03434" || got.Theme != "dark" {
 		t.Fatalf("a refused setPref changed the prefs to %+v", got)
 	}
@@ -1803,4 +1807,13 @@ func TestTheMenuFollowsTheActiveTabsLoading(t *testing.T) {
 	if stop() {
 		t.Fatal("Stop is still on once the active tab finished loading")
 	}
+}
+
+// flushPrefs waits until the prefs are written, which happens off the main thread, as the
+// app does on its way out.
+func (r *rig) flushPrefs() {
+	r.t.Helper()
+	done := make(chan struct{})
+	r.e.Post(func() { r.a.Prefs.Close(); close(done) })
+	<-done
 }

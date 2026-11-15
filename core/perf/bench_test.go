@@ -160,6 +160,10 @@ func BenchmarkPrefsSave(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		r.A.Prefs.SetTheme(themes[i%2])
 	}
+	// What the main thread pays; the writer finishes on its own, as the app's does on the
+	// way out.
+	b.StopTimer()
+	r.A.Prefs.Close()
 }
 
 // What the snapshot and the tabs message cost in JSON alone: n tabs as the shell's tabs
