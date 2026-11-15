@@ -19,8 +19,16 @@ func withTabs(b *testing.B, n int, o Options) *Rig {
 		o.FaviconBytes = 2000
 	}
 	o.Tabs = n
-	r := New(b.TempDir(), o)
+	r := start(b, o)
 	r.Drain()
+	return r
+}
+
+// start is a rig in a folder of its own, stopped as the app stops before the folder goes,
+// so no writer is still writing in it.
+func start(b *testing.B, o Options) *Rig {
+	r := New(b.TempDir(), o)
+	b.Cleanup(r.A.Stop)
 	return r
 }
 
@@ -109,7 +117,7 @@ func BenchmarkSnapshot(b *testing.B) {
 func BenchmarkTypeSuggest(b *testing.B) {
 	for _, h := range []int{100, 1000, 10000, 100000} {
 		b.Run(fmt.Sprint(h), func(b *testing.B) {
-			r := New(b.TempDir(), Options{History: h})
+			r := start(b, Options{History: h})
 			c, by, m := mark(r)
 			b.ReportAllocs()
 			b.ResetTimer()
@@ -144,7 +152,7 @@ func BenchmarkPolicy(b *testing.B) {
 
 // One visit recorded: the map, and the copy handed to the writer, which writes on its own.
 func BenchmarkHistoryAdd(b *testing.B) {
-	r := New(b.TempDir(), Options{})
+	r := start(b, Options{})
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -154,7 +162,7 @@ func BenchmarkHistoryAdd(b *testing.B) {
 
 // A pref changed from settings: the file written on the main thread and every listener told.
 func BenchmarkPrefsSave(b *testing.B) {
-	r := New(b.TempDir(), Options{})
+	r := start(b, Options{})
 	themes := []string{prefs.ThemeLight, prefs.ThemeDark}
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -187,7 +195,7 @@ func BenchmarkTabsJSON(b *testing.B) {
 
 // The menu rebuilt and compared, which every tab change does.
 func BenchmarkRefreshMenu(b *testing.B) {
-	r := New(b.TempDir(), Options{})
+	r := start(b, Options{})
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
