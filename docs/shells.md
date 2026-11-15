@@ -324,7 +324,7 @@ now, and will be saved with the windows and tabs when sessions are.
 shell in every window, and it comes back as `state.profileData` in every snapshot. Go never
 reads it. It survives a restart, a closed window and a switch to another shell and back; a
 reset to a template keeps it, as it keeps the workspaces. It names no tabs, since a tab's id
-lasts only as long as the tab: Glide keeps its Favorites and pinned addresses here.
+lasts only as long as the tab: Glide keeps its Favorites here.
 
 A shell's data names tabs by id. A tab in the data that Go no longer lists is gone, and a
 tab Go lists that the data doesn't have is new: Go's list is the truth.

@@ -190,9 +190,6 @@
               "action": "glide.sidebar"
             },
             {
-              "action": "glide.pin"
-            },
-            {
               "action": "glide.favorite"
             },
             {

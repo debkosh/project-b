@@ -2113,7 +2113,7 @@ def glide_checks():
     tabs = json.loads(app.js("JSON.stringify([...document.querySelectorAll('[role=tab]')].map(e => +e.dataset.tab))"))
     send({"t": "activateTab", "id": tabs[1]})
     app.wait(f"document.querySelector('[role=tab][aria-selected=true]').dataset.tab==='{tabs[1]}'", 10)
-    send({"t": "run", "text": "glide.pin"})
+    send({"t": "run", "text": "tab.pin"})
     check("Pin Tab keeps it at the top", bool(app.wait(f"document.querySelector('.pinned [role=tab]')?.dataset.tab==='{tabs[1]}'", 10)))
     send({"t": "createGroup", "ids": tabs[2:], "name": "Reading"})
     check("a tab group is a folder", bool(app.wait("document.querySelector('.folder')?.textContent.includes('Reading')", 10)))

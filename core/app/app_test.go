@@ -2052,8 +2052,9 @@ func TestTheShellHearsTheActionsByTitle(t *testing.T) {
 	}
 }
 
-// The glide keymap gives Cmd+T to the Command Bar, Cmd+D to pinning and Option+Cmd+Right to
-// the next Space; Ctrl+1 is Space 1 in every keymap. Each reaches Glide as its action.
+// The glide keymap gives Cmd+T to the Command Bar, Cmd+D to Pin Tab and Option+Cmd+Right to
+// the next Space; Ctrl+1 is Space 1 in every keymap. Each of Glide's own reaches it as its
+// action, and Pin Tab, Go's, pins the tab.
 func TestTheGlideKeymap(t *testing.T) {
 	r := start(t, t.TempDir())
 	defer r.stop()
@@ -2061,7 +2062,7 @@ func TestTheGlideKeymap(t *testing.T) {
 	r.e.Post(func() { r.a.MenuChosen("shells:glide") })
 	r.shell(`{"t":"ready"}`)
 	r.waitFor(func(m map[string]any) bool { return m["t"] == "snapshot" })
-	press := func(keys, want string) {
+	take := func(keys string) {
 		t.Helper()
 		k, err := commands.ParseKeys(keys)
 		if err != nil {
@@ -2075,16 +2076,22 @@ func TestTheGlideKeymap(t *testing.T) {
 		if !took {
 			t.Fatalf("%v wasn't taken", k)
 		}
+	}
+	press := func(keys, want string) {
+		t.Helper()
+		take(keys)
 		if m := r.waitFor(func(m map[string]any) bool { return m["t"] == "action" }); m["id"] != want {
-			t.Fatalf("%v sent %v, want %s", k, m, want)
+			t.Fatalf("%s sent %v, want %s", keys, m, want)
 		}
 	}
 	press("Ctrl+1", "glide.space1")
 	r.e.Post(func() { r.a.Commands.UseTemplate("glide") })
 	r.e.Settle()
 	press("Cmd+T", "glide.commandBar")
-	press("Cmd+D", "glide.pin")
 	press("Option+Cmd+Right", "glide.spaceNext")
+	r.visit("https://a.test/")
+	take("Cmd+D")
+	r.waitFor(isPins(1))
 }
 
 // The settings page's Install update hands a ready release to the installer, as the

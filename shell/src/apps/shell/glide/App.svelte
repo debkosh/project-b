@@ -111,10 +111,6 @@
       g.win.hidden = !g.win.hidden;
       g.save();
     },
-    'glide.pin': () => {
-      const t = activeTab(go);
-      if (t.id) g.isPinned(t) ? g.unpinTab(t) : g.pin(t);
-    },
     'glide.favorite': () => g.addFavorite(activeTab(go)),
     'glide.copyAddress': copyAddress,
     'glide.splitAdd': g.splitWithRecent,

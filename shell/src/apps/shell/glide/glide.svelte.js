@@ -3,9 +3,10 @@
 //
 // - A Space is a workspace, one to one, Main among them. The Space shown is the active
 //   tab's: there is no other "current Space" to disagree with Go.
-// - Favorites and pinned tabs are kept for the profile (saveProfileData), per Space, by
-//   address: they outlive a restart, and every window shows the same. While the app runs,
-//   a pinned entry is bound to the tab it opened, in this window's own data.
+// - Favorites are kept for the profile (saveProfileData), per Space, by address: they
+//   outlive a restart, and every window shows the same.
+// - Pinned tabs are Go's pins, a Space's its workspace's; a pin's tab is the one whose pin
+//   is its id (docs/windows.md, "Pinned tabs").
 // - A split is this window's own data: tabs shown side by side, naming tabs by id.
 
 import { activeTab, saveData, saveProfileData, send, state as go } from '@/sdk/svelte.svelte.js';
@@ -14,8 +15,8 @@ const MAX_FAVORITES = 12;
 const MAX_SPLIT = 4;
 
 // What only this window keeps (saveData): the sidebar's width and whether it shows, the tab
-// each Space last showed, the tab each pinned entry is open in, and the splits.
-export const win = $state({ width: 240, hidden: false, last: {}, bound: {}, splits: [] });
+// each Space last showed, and the splits.
+export const win = $state({ width: 240, hidden: false, last: {}, splits: [] });
 
 // What is open over the window: the Command Bar, a menu, a dialog, and a short notice.
 // created is how many workspaces there were when New Space asked Go for one.
@@ -23,7 +24,7 @@ export const ui = $state({ bar: null, menu: null, dialog: null, toast: '', creat
 
 // The tabs most recently shown, newest first, for Add to Split View.
 let recent = [];
-// What the next new tab is for: binding to a pinned entry, or joining a split beside a tab.
+// What the next new tab is for: joining a split beside a tab.
 let pending = null;
 // Every tab id seen, so a new one is known as new.
 let known = new Set();
@@ -72,8 +73,7 @@ export function stepSpace(by) {
 // --- What the profile keeps -------------------------------------------------------------
 
 function kept() {
-  const p = go.profileData || {};
-  return { favorites: p.favorites || {}, pinned: p.pinned || {} };
+  return { favorites: go.profileData?.favorites || {} };
 }
 
 function keep(change) {
@@ -131,53 +131,20 @@ export function openFavorite(fav) {
 
 // --- Pinned tabs ------------------------------------------------------------------------
 
-// pins is a Space's pinned entries, each with the tab it is open in, if any.
+// pins is a Space's pins, each with its tab in this window, if any.
 export function pins(id = spaceId()) {
-  const live = new Map(go.tabs.map((t) => [t.id, t]));
-  return (kept().pinned[id] || []).map((p) => ({ ...p, tab: live.get(win.bound[p.id]) || null }));
+  return go.pins.filter((p) => p.workspace === id).map((p) => ({ ...p, tab: go.tabs.find((t) => t.pin === p.id) || null }));
 }
 
-// pinnedTabs is the ids of the tabs open for pinned entries in this window.
+// pinnedTabs is the ids of this window's tabs open for pins.
 export function pinnedTabs() {
-  return new Set(Object.values(win.bound));
+  return new Set(go.tabs.filter((t) => t.pin).map((t) => t.id));
 }
 
-export const isPinned = (tab) => pinnedTabs().has(tab.id);
+export const isPinned = (tab) => !!tab.pin;
 
-export function pin(tab) {
-  if (isPinned(tab)) return;
-  const id = crypto.randomUUID();
-  keep((k) => (k.pinned[spaceOf(tab)] = [...(k.pinned[spaceOf(tab)] || []), { id, ...entryOf(tab) }]));
-  win.bound[id] = tab.id;
-  for (const s of win.splits) s.tabs = s.tabs.filter((t) => t !== tab.id);
-  fitSplits();
-  save();
-}
-
-// unpin takes a pinned entry away. Its tab, if open, stays, as a tab.
-export function unpin(entryId) {
-  keep((k) => {
-    for (const id of Object.keys(k.pinned)) k.pinned[id] = k.pinned[id].filter((p) => p.id !== entryId);
-  });
-  delete win.bound[entryId];
-  save();
-}
-
-export function unpinTab(tab) {
-  const entry = Object.keys(win.bound).find((k) => win.bound[k] === tab.id);
-  if (entry) unpin(entry);
-}
-
-// openPin opens a pinned entry that has no tab in this window: a new tab in its Space at
-// its address, bound to it once Go lists it.
-export function openPin(entry) {
-  pending = { pin: entry.id };
-  send({ t: 'newTab', workspace: spaceId(), text: entry.url });
-}
-
-// closeTab closes a tab. A pinned tab that closes is unpinned with it: closing closes.
+// closeTab closes a tab. A pinned tab's pin stays, with no tab until it is opened again.
 export function closeTab(tab) {
-  unpinTab(tab);
   send({ t: 'closeTab', id: tab.id });
 }
 
@@ -243,10 +210,10 @@ export function takeOut(id) {
   save();
 }
 
-// fitSplits keeps the splits to Go's tabs: a tab gone leaves its split, a split of one ends,
-// and the shares are made to add up again.
+// fitSplits keeps the splits to Go's tabs: a tab gone or pinned, as a pinned tab shows
+// alone, leaves its split, a split of one ends, and the shares are made to add up again.
 function fitSplits() {
-  const live = new Set(go.tabs.map((t) => t.id));
+  const live = new Set(go.tabs.filter((t) => !t.pin).map((t) => t.id));
   for (const s of win.splits) {
     const kept = s.tabs.map((t, i) => [t, s.sizes?.[i] || 0]).filter(([t]) => live.has(t));
     const total = kept.reduce((a, [, size]) => a + size, 0) || 1;
@@ -260,7 +227,7 @@ function fitSplits() {
 
 // load takes this window's own data, none for a new window, and fits it to Go's tabs.
 export function load(data) {
-  Object.assign(win, { width: 240, hidden: false, last: {}, bound: {}, splits: [] }, data || {});
+  Object.assign(win, { width: 240, hidden: false, last: {}, splits: [] }, data || {});
   known = new Set(go.tabs.map((t) => t.id));
   saved = JSON.stringify(data || null);
   follow();
@@ -269,18 +236,10 @@ export function load(data) {
 // follow fits what this window keeps to Go's tabs, after each change of them.
 export function follow() {
   const live = new Set(go.tabs.map((t) => t.id));
-  // A pinned tab that closed is unpinned: closing closes, from a key or from the page too.
-  for (const [entry, tab] of Object.entries(win.bound)) {
-    if (!live.has(tab)) {
-      delete win.bound[entry];
-      if (known.has(tab)) unpin(entry);
-    }
-  }
   const fresh = go.tabs.filter((t) => !known.has(t.id));
   known = live;
   if (pending && fresh.length) {
     const tab = fresh[fresh.length - 1];
-    if (pending.pin) win.bound[pending.pin] = tab.id;
     // The new tab is active now, so it goes beside the tab the split was asked from.
     const beside = pending.split;
     if (beside && live.has(beside)) {

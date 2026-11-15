@@ -741,7 +741,14 @@
       ]
     },
     "tab.duplicate": {},
-    "tab.pin": {},
+    "tab.pin": {
+      "mac": [
+        {
+          "keys": "Cmd+D",
+          "reserve": "page"
+        }
+      ]
+    },
     "tab.moveToNewWindow": {},
     "tab.select1": {
       "hidden": true,
@@ -1141,14 +1148,6 @@
         {
           "keys": "Cmd+T",
           "reserve": "always"
-        }
-      ]
-    },
-    "glide.pin": {
-      "mac": [
-        {
-          "keys": "Cmd+D",
-          "reserve": "page"
         }
       ]
     },
