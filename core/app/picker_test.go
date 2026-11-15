@@ -48,7 +48,7 @@ func TestThePickerShowsTheProfilesAndTheTemplates(t *testing.T) {
 	if e.PageOf(1) != engine.PagePicker {
 		t.Fatalf("window 1 holds %q", e.PageOf(1))
 	}
-	e.Post(func() { p.Message(1, []byte(`{"t":"ready"}`)) })
+	e.Post(func() { p.PickerMessage(1, []byte(`{"t":"ready"}`)) })
 	s := state(t, got)
 	b, _ := json.Marshal([]any{s["profiles"], s["templates"]})
 	if string(b) != `[[{"color":"#4f9e9e","id":"default","name":"Personal"}],["Personal","Work"]]` {
@@ -64,7 +64,7 @@ func TestChoosingAProfileOpensItInACopyOfItsOwnAndQuits(t *testing.T) {
 	list.Choose("", false)
 	var opened []string
 	e, p, _ := picker(t, list, func(id string) { opened = append(opened, id) })
-	e.Post(func() { p.Message(1, []byte(`{"t":"open","id":"default"}`)) })
+	e.Post(func() { p.PickerMessage(1, []byte(`{"t":"open","id":"default"}`)) })
 	e.Settle()
 	if len(opened) != 1 || opened[0] != "default" || !e.Quit() {
 		t.Fatalf("opened %v, quit %v", opened, e.Quit())
@@ -76,7 +76,7 @@ func TestNewProfileMakesOneFromATemplateAndOpensIt(t *testing.T) {
 	list.Choose("", false)
 	var opened []string
 	e, p, _ := picker(t, list, func(id string) { opened = append(opened, id) })
-	e.Post(func() { p.Message(1, []byte(`{"t":"create","name":"Office","template":"Work"}`)) })
+	e.Post(func() { p.PickerMessage(1, []byte(`{"t":"create","name":"Office","template":"Work"}`)) })
 	e.Settle()
 	made, _ := list.List()
 	if len(made) != 2 || made[1].Name != "Office" || made[1].Color != "#5b7fd6" {
@@ -92,7 +92,7 @@ func TestAProfileThatIsntListedOpensNothing(t *testing.T) {
 	list.Choose("", false)
 	called := false
 	e, p, _ := picker(t, list, func(string) { called = true })
-	e.Post(func() { p.Message(1, []byte(`{"t":"open","id":"nobody"}`)) })
+	e.Post(func() { p.PickerMessage(1, []byte(`{"t":"open","id":"nobody"}`)) })
 	e.Settle()
 	if called || e.Quit() {
 		t.Fatalf("opened %v, quit %v", called, e.Quit())
@@ -126,13 +126,13 @@ func TestAPickerCopyIsReadyOnceItsPageShowsTheProfiles(t *testing.T) {
 	list := profiles.New(t.TempDir())
 	list.Choose("", false)
 	e, p, _ := picker(t, list, nil)
-	e.Post(func() { p.Message(1, []byte(`{"t":"ready"}`)) })
+	e.Post(func() { p.PickerMessage(1, []byte(`{"t":"ready"}`)) })
 	e.Settle()
 	if n := readies(); n != 0 {
 		t.Fatalf("app.ready marked %d times before the page showed anything", n)
 	}
-	e.Post(func() { p.Message(1, []byte(`{"t":"shown"}`)) })
-	e.Post(func() { p.Message(1, []byte(`{"t":"shown"}`)) })
+	e.Post(func() { p.PickerMessage(1, []byte(`{"t":"shown"}`)) })
+	e.Post(func() { p.PickerMessage(1, []byte(`{"t":"shown"}`)) })
 	e.Settle()
 	if n := readies(); n != 1 {
 		t.Fatalf("app.ready marked %d times once the page showed the profiles", n)

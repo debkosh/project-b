@@ -267,8 +267,6 @@ func (e *nativeEngine) SetWindowPage(w engine.WindowID, page engine.Page) {
 	C.call_set_window_page(e.calls, C.int64_t(w), p)
 }
 
-// OpenProfile makes the profile's context in the engine, with Chromium's files in its
-// folder dir. It is called once, as the copy becomes that profile's.
 func (e *nativeEngine) OpenProfile(dir string) {
 	c := C.CString(dir)
 	defer C.free(unsafe.Pointer(c))
@@ -441,7 +439,7 @@ func PBStart(calls *C.PBEngineCalls, blockedHosts, hookTable *C.char) {
 			relaunch.Copy("--root="+list.Root(), "--profile="+id)
 		})
 		events.Listen(picker)
-		content.WirePicker(hooks, picker)
+		content.Wire(hooks, picker)
 		owner.Serve(func([]string) { native.Post(picker.Handover) }, quit)
 	} else {
 		startProfile(profile)
@@ -449,10 +447,9 @@ func PBStart(calls *C.PBEngineCalls, blockedHosts, hookTable *C.char) {
 	timeline.Mark("go.started")
 }
 
-// startProfile makes this copy the profile c's, whose folder it owns: the profile's
-// context in the engine, then its managers.
+// startProfile makes this copy the profile c's, whose folder it owns: its managers, which
+// open the profile in the engine first.
 func startProfile(c profiles.Choice) {
-	native.OpenProfile(c.Dir)
 	if c.ID != "" {
 		if err := list.MarkUsed(c.ID); err != nil {
 			timeline.Errorf("profiles: %v", err)
