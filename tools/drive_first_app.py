@@ -2281,8 +2281,8 @@ def internal_checks():
     t = ours()
     check("a title and an icon its page sets are the tab's", bool(t) and t[0]["title"] == "Settings › Test" and t[0].get("favicon", "").startswith("data:image/png"), t)
     app.cmd("evalsettings", "(document.title='Settings',document.getElementById('test-icon').remove(),1)")
-    app.cmd("key", "cmd+t")
-    app.wait(f"{ROWS}===4")
+    # New Tab opens Standard's command box over it, and an address there makes the tab.
+    new_tab(app, PAGES + "links")
     made = tabs_of(app)
     check("New Tab from it opens in the workspace it was opened from", next(t for t in made["tabs"] if t["id"] == made["active"]).get("workspace") == work, made)
     app.cmd("key", "cmd+w")

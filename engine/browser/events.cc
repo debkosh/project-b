@@ -87,12 +87,12 @@ content::NavigationThrottle::ThrottleCheckResult Gate::Ask() {
     return PROCEED;
   }
   switch (result.i) {
-    case PB_NAVIGATION_BLOCK:
-      return BLOCK_REQUEST;
+    case PB_NAVIGATION_PROCEED:
+      return PROCEED;
     case PB_NAVIGATION_ELSEWHERE:
       return CANCEL_AND_IGNORE;
   }
-  return PROCEED;
+  return BLOCK_REQUEST;
 }
 
 }  // namespace events

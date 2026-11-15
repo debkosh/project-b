@@ -50,7 +50,7 @@ focus, crash, close and activate requests, keys, find and full screen.
   on every redirect, including back and forward, reloads and POSTs. Its answer is one of
   three (`engine.Navigation`, `PBNavigation`): go on; block, and the tab shows it was blocked;
   or elsewhere, which drops the navigation with nothing shown, because the app has taken the
-  address to another tab.
+  address to another tab. Any other answer blocks it.
 - `TabOpened` reaches Go before the new tab's first `NavigationStarting`.
 - `Key` is asked synchronously, before a page sees the key and again if the page didn't use
   it, as a Windows virtual-key code with our modifier bits.

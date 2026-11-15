@@ -124,7 +124,7 @@ typedef enum PBEvent {
 } PBEvent;
 
 // What becomes of a navigation, PB_EVENT_NAVIGATION_STARTING's answer. Matches
-// engine.Navigation.
+// engine.Navigation. Any other answer blocks it.
 typedef enum PBNavigation {
   PB_NAVIGATION_BLOCK = 0,      // it stops, and the tab shows that it was blocked
   PB_NAVIGATION_PROCEED = 1,    // it goes on
