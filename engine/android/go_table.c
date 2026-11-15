@@ -28,3 +28,13 @@ JNIEXPORT jlong JNICALL Java_dev_projectb_browser_GoCore_table(JNIEnv* env, jcla
   };
   return (jlong)(intptr_t)&go;
 }
+
+// Android's own: the link another app sent, from BrowserActivity, after Go started.
+void PBOpenURL(char* url);
+
+JNIEXPORT void JNICALL Java_dev_projectb_browser_GoCore_openUrl(JNIEnv* env, jclass cls,
+                                                                 jstring url) {
+  const char* s = (*env)->GetStringUTFChars(env, url, NULL);
+  PBOpenURL((char*)s);
+  (*env)->ReleaseStringUTFChars(env, url, s);
+}

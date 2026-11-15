@@ -276,6 +276,8 @@ strip, with a screenshot of each screen in light and dark. See [The shell on a p
 - Typing a URL, a tap on a link, back, forward, reload, the phone's back key.
 - Suggestions from history, over the page, with the keyboard up. A tap on one loads it.
 - History surviving a force stop. An emoji in a title reaching Go intact.
+- A link from another app (an http or https `VIEW` intent) opening as a new tab, with the app running and from a
+  cold start. The activity hands it to Go's handover, the one a second copy uses on the Mac, once Go has started.
 - A tap and a swipe just below the bar going to the page. Typing into a form in the page. Holding a finger on text.
   A tap in landscape.
 - A blocked host, typed, through a redirect, and as a form POST. A failed load staying out of history.

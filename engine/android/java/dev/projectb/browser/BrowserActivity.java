@@ -1,6 +1,7 @@
 package dev.projectb.browser;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
 
@@ -14,6 +15,9 @@ import org.chromium.ui.base.IntentRequestTracker;
 /** The main process's one window. Go's managers live exactly as long as it does. */
 public final class BrowserActivity extends Activity {
     private BrowserWindow window;
+    // Go has started: until then a link from another app waits here.
+    private boolean started;
+    private String pendingLink;
 
     @Override
     protected void onCreate(Bundle saved) {
@@ -35,6 +39,7 @@ public final class BrowserActivity extends Activity {
 
         // The same list the Mac app takes as --block.
         String blocked = getIntent().getStringExtra("block");
+        pendingLink = linkOf(getIntent());
         long goTable = GoCore.table();
         BrowserStartupController.getInstance()
                 .startBrowserProcessesAsync(
@@ -47,6 +52,8 @@ public final class BrowserActivity extends Activity {
                             public void onSuccess(
                                     BrowserStartupController.StartupMetrics metrics) {
                                 window.start(goTable, blocked == null ? "" : blocked);
+                                started = true;
+                                open(pendingLink);
                             }
 
                             @Override
@@ -54,6 +61,30 @@ public final class BrowserActivity extends Activity {
                                 finish();
                             }
                         });
+    }
+
+    // A link from another app while the app runs: the activity is singleTask, so Android
+    // brings it forward with the link here.
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        open(linkOf(intent));
+    }
+
+    private void open(String link) {
+        if (link == null) {
+            return;
+        }
+        if (!started) {
+            pendingLink = link;
+            return;
+        }
+        pendingLink = null;
+        GoCore.openUrl(link);
+    }
+
+    private static String linkOf(Intent intent) {
+        return Intent.ACTION_VIEW.equals(intent.getAction()) ? intent.getDataString() : null;
     }
 
     @Override

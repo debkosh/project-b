@@ -15,4 +15,7 @@ final class GoCore {
 
     /** The address of the table of Go's functions, for the content library. */
     static native long table();
+
+    /** Opens a link another app sent, as a new tab. Only after Go started. */
+    static native void openUrl(String url);
 }
