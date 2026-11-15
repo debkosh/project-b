@@ -15,7 +15,9 @@ Flags draws each row by its type, saves its value in the profile's `flags.json`,
 ```
 
 `id`, `name`, `description`, `switch` and `type` are required. A key Go doesn't know stops the
-app at its start and fails `TestTheRegistry`.
+app at its start and fails `TestTheRegistry`. `"engine": "chromium"` marks a switch that is
+Chromium's own, passed through as it is (`remote-debugging-port`, `enable-features`), rather
+than one of ours (`pb-…`), which any engine is told.
 
 | Type | Constraints | A value | Becomes | Settings draws |
 |---|---|---|---|---|

@@ -12,6 +12,7 @@
     "name": "Remote debugging port",
     "description": "Let DevTools clients connect on this port",
     "switch": "remote-debugging-port",
+    "engine": "chromium",
     "type": "number",
     "min": 1024,
     "max": 65535
@@ -21,6 +22,7 @@
     "name": "Chromium features",
     "description": "Chromium features to turn on, separated by commas",
     "switch": "enable-features",
+    "engine": "chromium",
     "type": "strings",
     "pattern": "^[A-Za-z0-9_.:<>]+$"
   },

@@ -37,6 +37,9 @@ type Flag struct {
 	Description string `json:"description"`
 	// Switch is the command-line switch, without its dashes.
 	Switch string `json:"switch"`
+	// Engine names the engine whose own switch it is, "chromium", for a switch we pass
+	// through rather than define; "" for one of ours.
+	Engine string `json:"engine,omitempty"`
 	Type   string `json:"type"`
 	// Build says the flag's code can be left out of a build: WITHOUT=<id> tools/build.sh.
 	Build bool `json:"build,omitempty"`
@@ -92,6 +95,8 @@ func (f *Flag) check() error {
 		return fmt.Errorf("min and max are for numbers")
 	case !text && f.Pattern != "":
 		return fmt.Errorf("a pattern is for strings")
+	case f.Engine != "" && f.Engine != "chromium":
+		return fmt.Errorf("engine %q", f.Engine)
 	}
 	if f.Pattern != "" {
 		p, err := regexp.Compile(f.Pattern)

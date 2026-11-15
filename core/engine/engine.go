@@ -82,8 +82,8 @@ const (
 )
 
 // Page is which of our pages covers a window: a shell, or the picker in a copy that
-// hasn't chosen its profile. Each is an app of its own, chrome://<page>/: a shell's page
-// is "shell/<id>", at chrome://shell/<id>/. A native shell, drawn by the platform's own
+// hasn't chosen its profile. Each is an app of its own, at an address of the engine's
+// (Engine.PageURL): a shell's page is "shell/<id>". A native shell, drawn by the platform's own
 // views and not a page, is "native/<id>": the engine makes that shell's view where it
 // would load a page (docs/native-shell.md).
 type Page string
@@ -270,7 +270,18 @@ type Engine interface {
 
 	// Post runs fn on the main thread, later.
 	Post(fn func())
+
+	// PageURL is the address one of our pages has in this engine, and OurPage the page an
+	// address is, when it is one of ours. ViewSourceURL is the address that shows a
+	// page's source. Each only names an address; nothing loads.
+	PageURL(p Page) string
+	OurPage(url string) (Page, bool)
+	ViewSourceURL(url string) string
 }
+
+// BlankURL is the empty page every engine has, which a new tab loads so its page area
+// holds a page from the start.
+const BlankURL = "about:blank"
 
 // Listener is what an engine tells the app. There is exactly one.
 type Listener interface {

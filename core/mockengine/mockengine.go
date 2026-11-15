@@ -164,6 +164,20 @@ func (e *Engine) Run() {
 	}
 }
 
+// PageURL, OurPage and ViewSourceURL name addresses as the real engine does, though
+// the mock loads none of them.
+func (e *Engine) PageURL(p engine.Page) string { return "chrome://" + string(p) + "/" }
+
+func (e *Engine) OurPage(raw string) (engine.Page, bool) {
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme != "chrome" || u.Host == "" {
+		return "", false
+	}
+	return engine.Page(strings.ToLower(u.Host) + strings.TrimSuffix(u.Path, "/")), true
+}
+
+func (e *Engine) ViewSourceURL(u string) string { return "view-source:" + u }
+
 // OpenProfile records the profile's folder. The mock keeps no site data, so the folder
 // is only for tests.
 func (e *Engine) OpenProfile(dir string) { e.profiles = append(e.profiles, dir) }
@@ -989,7 +1003,7 @@ func (e *Engine) showPage(id engine.TabID, state, u string) {
 // titleOf is a mock page's title. The blank page has none, so content titles it with
 // its address, as it does any untitled page.
 func titleOf(u string) string {
-	if u == "about:blank" {
+	if u == engine.BlankURL {
 		return u
 	}
 	return "Mock " + hostOf(u)
