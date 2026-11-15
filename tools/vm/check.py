@@ -1289,12 +1289,12 @@ def shell_checks():
     until(titles, lambda t: t == ["Alpha"])
     split = js(f"{RECT}(document.querySelector('[aria-label=\"Split right\"]'))")
     desk.click(win[0] + middle(split)[0], win[1] + middle(split)[1])
-    panes = until(lambda: js("document.querySelectorAll('.pane').length"), lambda n: n == 2, 10)
+    panes = until(lambda: js("document.querySelectorAll('.pane:has(.page)').length"), lambda n: n == 2, 10)
     check("a click on Split right splits the pane in two", panes == 2, f"{panes} panes")
     go_to(BRAVO)
     until(titles, lambda t: t == ["Bravo"])
     shot("terminal-split")
-    pages = js("[...document.querySelectorAll('.pane')].map(p=>({tab:+p.querySelector('.title').dataset.pane,"
+    pages = js("[...document.querySelectorAll('.pane:has(.page)')].map(p=>({tab:+p.querySelector('.title').dataset.pane,"
                f"page:{RECT}(p.querySelector('.page'))}}))")
     for pane in pages:
         x, y = middle(pane["page"])
@@ -1561,8 +1561,9 @@ listed = until(suggested, lambda l: changed(before, l) > 0.05, 5)
 time.sleep(0.5)  # The list can still be growing.
 shot("suggestions")
 check("Cmd+L and typing shows suggestions over the page", changed(before, listed) > 0.05, f"changed {changed(before, listed):.3f}")
-# The first item: 6 below the field, inside the list's 1 border and 4 padding, 32 high.
-desk.click(PX + middle(V["field"])[0], PY + V["field"][1] + V["field"][3] + 6 + 1 + 4 + 16)
+# The second item, history's Alpha: the first searches what was typed. Rows start 6 below the
+# field, inside the list's 1 border and 4 padding, and are 32 high.
+desk.click(PX + middle(V["field"])[0], PY + V["field"][1] + V["field"][3] + 6 + 1 + 4 + 32 + 16)
 picked = until(address, lambda a: changed(a, example_at) < 0.01)
 check("a click picks a suggestion", changed(picked, example_at) < 0.01, f"address differs from the first page's by {changed(picked, example_at):.3f}")
 
