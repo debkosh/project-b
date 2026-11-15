@@ -87,3 +87,10 @@ Take an item off when it lands or is dropped.
 - The first real click after leaving full screen doesn't land; keys work.
 - `tools/vm/check.py` times clicks by pixels, so it measures the VM's display; time inside the
   app instead.
+- Quitting a dev build sometimes aborts with "A freed allocation is still referenced by a
+  dangling pointer at exit" (partition_alloc_support.cc): something still holds a `raw_ptr` to a
+  `BrowserContext` when `BrowserMainParts::PostMainMessageLoopRun` frees it, though the engine
+  and extensions go first. Users never see it: the check exists only where
+  `enable_dangling_raw_ptr_checks` is on (`out/pb`, non-official), not in the official build
+  every release comes from. Finding the holder takes a build with
+  `enable_backup_ref_ptr_instance_tracer = true` in an out dir of its own, a near-full rebuild.
