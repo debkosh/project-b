@@ -33,8 +33,11 @@ type Config struct {
 	ProfileDir string
 	// Profiles is the list of profiles, and Profile this copy's: its id is "" for a folder
 	// named outright, which isn't listed.
-	Profiles     *profiles.Manager
-	Profile      string
+	Profiles *profiles.Manager
+	Profile  string
+	// URLs are the addresses the command line names, which the first window opens as its
+	// tabs at the start, in place of the blank one; ChromeDriver starts the app so.
+	URLs         []string
 	BlockedHosts []string
 	Update       update.Config
 	// CrashReports is the folder macOS writes its crash reports to.
@@ -264,7 +267,12 @@ func Start(e engine.Engine, cfg Config) *App {
 	}
 
 	a.History.Load(nil)
-	if !a.startsEmpty() {
+	switch {
+	case len(cfg.URLs) > 0:
+		for _, u := range cfg.URLs {
+			a.Tabs.OpenIn(u, true)
+		}
+	case !a.startsEmpty():
 		a.Tabs.Create(first)
 	}
 	a.Update.Start()

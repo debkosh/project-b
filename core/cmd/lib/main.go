@@ -386,6 +386,9 @@ var (
 	profile profiles.Choice
 	owner   *instance.Owner
 	theApp  *app.App
+	// The addresses the command line named, which this copy opens as it starts when it owns
+	// its profile; otherwise they are handed to the copy that does.
+	startURLs []string
 )
 
 // PBClaimProfile is the first call, before anything is written to the profile. It chooses
@@ -424,6 +427,7 @@ func PBClaimProfile(root, id, userDataDir *C.char, picker C.int, urls *C.char) *
 		return nil
 	}
 	owner = o
+	startURLs = handed
 	return C.CString(dir)
 }
 
@@ -491,6 +495,7 @@ func startProfile(c profiles.Choice) {
 		ProfileDir:   c.Dir,
 		Profiles:     list,
 		Profile:      c.ID,
+		URLs:         startURLs,
 		BlockedHosts: blocked,
 		Update:       updateConfig(c),
 		CrashReports: filepath.Join(home, "Library/Logs/DiagnosticReports"),

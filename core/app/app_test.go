@@ -1695,6 +1695,50 @@ func TestAShellsOwnActionRunsOnlyWhileItsShellIsOn(t *testing.T) {
 	}
 }
 
+// The addresses on the command line open as the first window's tabs at the start, in place
+// of the blank one, whether the shell takes New Tab or not: ChromeDriver starts the app so
+// and looks for a page.
+func TestTheCommandLinesAddressesOpenAtTheStart(t *testing.T) {
+	urls := []string{"https://example.com/", "https://example.org/"}
+	shellsToTry := []string{plainShell()}
+	for _, s := range shells.Listed() {
+		if slices.Contains(s.Takes, "tab.new") {
+			shellsToTry = append(shellsToTry, s.ID)
+			break
+		}
+	}
+	for _, id := range shellsToTry {
+		t.Run(id, func(t *testing.T) {
+			dir := t.TempDir()
+			if err := os.WriteFile(filepath.Join(dir, "prefs.json"), []byte(`{"shell":"`+id+`"}`), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			r := startWith(t, app.Config{ProfileDir: dir, Profiles: profiles.New(t.TempDir()), URLs: urls, Update: update.Config{StateDir: filepath.Join(dir, "updates")}})
+			defer r.stop()
+			// Each loads, and only then is the run stopped, as a load ends in history.
+			var got []string
+			for deadline := time.Now().Add(5 * time.Second); ; {
+				loading := false
+				got = got[:0]
+				r.e.Post(func() {
+					for _, tab := range r.a.Tabs.AllIn(1) {
+						got = append(got, tab.URL)
+						loading = loading || tab.Loading
+					}
+				})
+				r.e.Settle()
+				if (!loading && len(got) == len(urls)) || time.Now().After(deadline) {
+					break
+				}
+				time.Sleep(20 * time.Millisecond)
+			}
+			if !slices.Equal(got, urls) {
+				t.Fatalf("the first window's tabs load %v, want %v", got, urls)
+			}
+		})
+	}
+}
+
 // A shell that takes New Tab runs it itself. With it the profile's shell, the app starts
 // with a window of no tabs, and New Window opens another; New Tab from the menu or its key
 // sends the shell the action, and its span to end once the shell has drawn what it does,
