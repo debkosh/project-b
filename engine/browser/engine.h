@@ -179,7 +179,7 @@ class Engine {
   void Edit(int32_t command);
   void WriteClipboard(const std::string& text);
   // Delivers one message to the settings page a tab of ours shows.
-  void SendToSettings(int64_t tab, const char* json, size_t length);
+  void SendToPage(int64_t tab, const char* json, size_t length);
   void CloseWindow(int64_t window);
   void FocusTab(int64_t tab);
   void FocusShell(int64_t window);

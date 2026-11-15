@@ -35,13 +35,13 @@ const (
 	CLayout
 	CFocus
 	CSendToShell
-	CSendToSettings
+	CSendToPage
 	CSetMenu
 	COther
 	NumCalls
 )
 
-var CallNames = [NumCalls]string{"CreateTab", "CloseTab", "LoadURL", "Back/Fwd/Reload", "Window", "SetWindowLayout", "Focus", "SendToShell", "SendToSettings", "SetMenu", "Other"}
+var CallNames = [NumCalls]string{"CreateTab", "CloseTab", "LoadURL", "Back/Fwd/Reload", "Window", "SetWindowLayout", "Focus", "SendToShell", "SendToPage", "SetMenu", "Other"}
 
 // Eng is the engine as Go sees it in the real app: every call is one crossing to C and
 // no Go work, except SetMenu, which marshals the menu in cmd/lib.
@@ -89,7 +89,7 @@ func (e *Eng) SetWindowLayout(engine.WindowID, engine.WindowLayout) { e.Calls[CL
 func (e *Eng) FocusTab(engine.TabID)                                { e.Calls[CFocus]++ }
 func (e *Eng) FocusShell(engine.WindowID)                           { e.Calls[CFocus]++ }
 func (e *Eng) SetShellBack(engine.WindowID, bool)                   { e.Calls[COther]++ }
-func (e *Eng) SendToSettings(engine.TabID, []byte)                  { e.Calls[CSendToSettings]++ }
+func (e *Eng) SendToPage(engine.TabID, []byte)                      { e.Calls[CSendToPage]++ }
 func (e *Eng) AppCommand(engine.AppCommand)                         { e.Calls[COther]++ }
 func (e *Eng) SetDockColor(string)                                  { e.Calls[COther]++ }
 func (e *Eng) SendToShell(w engine.WindowID, msg []byte) {

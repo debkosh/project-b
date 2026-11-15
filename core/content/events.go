@@ -18,7 +18,6 @@ const (
 	eventWindowChanged  Hook = 4
 	eventPing           Hook = 5
 	eventShellCrashed   Hook = 6
-	eventSettingsMsg    Hook = 7
 	eventMenuChosen     Hook = 8
 	eventOSBindings     Hook = 9
 	eventModsChanged    Hook = 10
@@ -34,6 +33,7 @@ const (
 	eventFilesChosen    Hook = 20
 	eventDialogOpened   Hook = 21
 	eventDialogClosed   Hook = 22
+	eventPageMessage    Hook = 23
 	eventPermissionAsk  Hook = 40
 	eventPermissionGet  Hook = 41
 	eventNotification   Hook = 42
@@ -52,7 +52,6 @@ var eventNames = map[Hook]string{
 	eventWindowChanged:  "engine.WindowChanged",
 	eventPing:           "engine.Ping",
 	eventShellCrashed:   "engine.ShellCrashed",
-	eventSettingsMsg:    "engine.SettingsMessage",
 	eventMenuChosen:     "engine.MenuChosen",
 	eventOSBindings:     "engine.OSBindings",
 	eventModsChanged:    "engine.ModsChanged",
@@ -68,6 +67,7 @@ var eventNames = map[Hook]string{
 	eventFilesChosen:    "engine.FilesChosen",
 	eventDialogOpened:   "engine.DialogOpened",
 	eventDialogClosed:   "engine.DialogClosed",
+	eventPageMessage:    "engine.PageMessage",
 	eventPermissionAsk:  "engine.PermissionRequested",
 	eventPermissionGet:  "engine.PermissionStatusOf",
 	eventNotification:   "engine.NotificationShown",
@@ -85,7 +85,7 @@ type Events struct {
 	OnShellCrashed    func(w engine.WindowID)
 	OnWindowClosed    func(w engine.WindowID)
 	OnWindowFocused   func(w engine.WindowID)
-	OnSettingsMessage func(tab engine.TabID, msg []byte)
+	OnPageMessage     func(tab engine.TabID, page engine.Page, msg []byte)
 	OnMenuChosen      func(action string)
 	OnMenuList        func(name string) engine.Menu
 	OnPickerMessage   func(w engine.WindowID, msg []byte)
@@ -153,9 +153,9 @@ func (e *Events) dispatch(id Hook, r *reader) (Value, bool) {
 		if e.OnWindowFocused != nil {
 			e.OnWindowFocused(engine.WindowID(r.int()))
 		}
-	case eventSettingsMsg:
-		if e.OnSettingsMessage != nil {
-			e.OnSettingsMessage(engine.TabID(r.int()), []byte(r.str()))
+	case eventPageMessage:
+		if e.OnPageMessage != nil {
+			e.OnPageMessage(engine.TabID(r.int()), engine.Page(r.str()), []byte(r.str()))
 		}
 	case eventMenuChosen:
 		if e.OnMenuChosen != nil {

@@ -222,24 +222,26 @@ func main() {
 			}
 		})
 	})
-	// The settings page, an app of its own as in the real app, in a tab of ours: its
-	// channel is the tab's, /settings/?tab=<id>.
-	mux.Handle("GET /settings/", http.StripPrefix("/settings/", webUI(filepath.Join(*shellDir, "settings"))))
-	mux.HandleFunc("GET /settings/events", func(w http.ResponseWriter, r *http.Request) { stream(w, r, e.SettingsFeed(tabOf(r))) })
-	mux.HandleFunc("POST /settings/send", func(w http.ResponseWriter, r *http.Request) {
-		msg, err := io.ReadAll(r.Body)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		tab := tabOf(r)
-		e.Post(func() {
-			// As in the real engine, only a tab of ours speaks on its page's channel.
-			if e.Internal(tab) {
-				a.SettingsMessage(tab, msg)
+	// Our pages in tabs, each an app of its own as in the real app: its channel is the
+	// tab's, /<page>/?tab=<id>.
+	for _, page := range tabs.Pages {
+		mux.Handle("GET /"+page+"/", http.StripPrefix("/"+page+"/", webUI(filepath.Join(*shellDir, page))))
+		mux.HandleFunc("GET /"+page+"/events", func(w http.ResponseWriter, r *http.Request) { stream(w, r, e.PageFeed(tabOf(r))) })
+		mux.HandleFunc("POST /"+page+"/send", func(w http.ResponseWriter, r *http.Request) {
+			msg, err := io.ReadAll(r.Body)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
 			}
+			tab := tabOf(r)
+			e.Post(func() {
+				// As in the real engine, only a tab of ours speaks on its page's channel.
+				if e.Internal(tab) {
+					a.PageMessage(tab, engine.Page(page), msg)
+				}
+			})
 		})
-	})
+	}
 	mux.HandleFunc("GET /mock/page", serve("mock_page.html", "text/html; charset=utf-8"))
 	// Each mock page is one slot of its window's, ?slot=<n>, and hears its slot's state, the
 	// last one first.

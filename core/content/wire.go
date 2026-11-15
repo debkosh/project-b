@@ -15,7 +15,7 @@ func Wire(h *Hooks, l engine.Listener) {
 	h.Events.OnShellCrashed = l.ShellCrashed
 	h.Events.OnWindowClosed = l.WindowClosed
 	h.Events.OnWindowFocused = l.WindowFocused
-	h.Events.OnSettingsMessage = l.SettingsMessage
+	h.Events.OnPageMessage = l.PageMessage
 	h.Events.OnPickerMessage = l.PickerMessage
 	h.Events.OnMenuChosen = l.MenuChosen
 	h.Events.OnMenuList = l.MenuList
