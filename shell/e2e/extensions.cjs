@@ -103,6 +103,8 @@ const same = (a, b) => !!a && !!b && ['x', 'y', 'w', 'h'].every((k) => Math.abs(
   // The window page, which holds the shell in a frame: see first-app.cjs.
   const ui = shell.frameLocator('iframe.shell');
   await shell.goto(base + '/');
+  // Standard starts on its command box with no tab: the checks want a page, so one is opened.
+  await fetch(`${base}/shell/send`, { method: 'POST', body: JSON.stringify({ t: 'newTab', text: 'https://example.com/' }) });
   await shell.frameLocator('iframe.mock-page').getByRole('button', { name: 'Navigate' }).waitFor();
 
   // The dev window draws the settings page over the shell once Go asks for it, as the real
@@ -279,6 +281,7 @@ const same = (a, b) => !!a && !!b && ['x', 'y', 'w', 'h'].every((k) => Math.abs(
   setFlag(false);
   await startServers();
   await shell.goto(base + '/');
+  await fetch(`${base}/shell/send`, { method: 'POST', body: JSON.stringify({ t: 'newTab', text: 'https://example.com/' }) });
   await shell.frameLocator('iframe.mock-page').getByRole('button', { name: 'Navigate' }).waitFor();
   errors.splice(before);
   check('with the flag off the shell has no extensions toolbar', (await ui.locator('.pbx-toolbar').count()) === 0);
