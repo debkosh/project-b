@@ -347,10 +347,11 @@ const noEmptyStateYet = {
           // The keyboard goes elsewhere first, as a shell can send it.
           await fetch(`${lib.base}/shell/send`, { method: 'POST', body: JSON.stringify({ t: 'focusTab', id: 0 }) });
           await until(async () => (await regions()).focused === 0);
-          // With the right button: the middle of a mock page may hold one of its buttons,
-          // which a left press would set off.
+          // With the middle button: the middle of a mock page may hold one of its buttons,
+          // which a left press would set off, and a right press opens the right-click menu,
+          // which a shell draws and gives the keyboard (rule 16).
           await page.mouse.move(x - 1, y);
-          await page.mouse.click(x, y, { button: 'right' });
+          await page.mouse.click(x, y, { button: 'middle' });
           rule(7, `a press in the middle of tab ${v.tab}'s page reaches it`, (await regions({ x, y })).hit === 'page' && await until(async () => (await regions()).focused === v.tab), JSON.stringify(await regions({ x, y }).then((h) => ({ hit: h.hit, focused: h.focused }))));
         }
         await activeShows('after a press in a page');
