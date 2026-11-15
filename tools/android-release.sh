@@ -18,7 +18,9 @@ echo "=== $(date '+%F %T') build the shell"
 
 echo "=== $(date '+%F %T') start the VM"
 colima start -p pb-android --activate=false
-trap 'colima stop -p pb-android' EXIT
+# Stopped after, unless another session's build holds the VM (tools/android-content-build.sh's
+# lock), which stopping would kill.
+trap 'docker exec pb flock -n /work/.android-build.lock true && colima stop -p pb-android' EXIT
 docker start pb >/dev/null
 
 echo "=== $(date '+%F %T') copy the tree in"
