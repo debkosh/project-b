@@ -1,6 +1,6 @@
 # To do
 
-What is decided but not built, and what is waiting for a discussion. Last updated 2026-11-12.
+What is decided but not built, and what is waiting for a discussion. Last updated 2026-11-16.
 Take an item off when it lands or is dropped.
 
 ## For discussion with the owner first
@@ -111,3 +111,12 @@ Take an item off when it lands or is dropped.
   waits for a renderer for good. It shows only deep in full runs on a loaded emulator. The fix
   is in how a launch that never attaches reaches the browser: as a dead renderer, which the
   shell's page already recovers from.
+- Closing a tab (Cmd+W) takes Go's part of the span about 3.4 ms at 10 tabs and 3.8 at 50 on
+  0.2.70 (`tools/bench/tabs.py`, 2026-11-16), against 0.3 to 0.7 in 0.2.64. It isn't Go's own
+  work: that is 126 µs for an open and a close on `core/perf`'s rig, where the engine does
+  nothing, and it doesn't grow with the tabs open. So it is inside the engine's `CloseTab`,
+  which Go calls in that span. The likely cause: since 0.2.65 each tab has its own renderer,
+  which bought about 12 MiB a tab, so closing one now tears its renderer process down inside
+  that call. Timeline marks around `CloseTab` would prove it; tearing the renderer down after
+  `CloseTab` returns is the fix, if 3 ms ever matters. The Go side's own part, a session
+  saved twice per close, is gone (1e5b1932, and 5c9f4e58 in 0.2.70).
