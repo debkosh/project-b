@@ -36,7 +36,7 @@ const rules = {
   17: 'A control named Downloads shows once there is a download, and opens a list of them by file name, a finished one with Open and Show in Finder (on a phone, Show in Downloads)',
   18: 'A window with no tabs: the shell draws its own empty state where the page was, New Tab and Address are each a way to a tab there, and Close Tab then closes the window',
   20: 'On a desktop, the find key opens a text box named Find in page with the keyboard in it; typing searches and shows the count; Enter shows the next match; Escape closes it',
-  21: 'On a desktop, a page in full screen covers the whole window with nothing of the shell on it, and when it ends the window is as it was',
+  21: 'A page in full screen covers the whole window with nothing of the shell on it, and when it ends (Escape, or a phone\'s back key) the window is as it was',
   22: 'A site\'s sign-in shows as an alertdialog with text boxes named Username and Password, and Go\'s Sign in answers with both',
 };
 
@@ -624,10 +624,8 @@ const noEmptyStateYet = {
       }
     }
 
-    // 21. A page in full screen, on a desktop shell.
-    if (shell.phone) {
-      rule(21, 'not for a phone yet', true);
-    } else if (noPageFullYet[id]) {
+    // 21. A page in full screen. A phone ends it with its back key rather than Escape.
+    if (noPageFullYet[id]) {
       rule(21, `not checked yet: ${noPageFullYet[id]}`, true);
     } else {
       try {
@@ -640,8 +638,8 @@ const noEmptyStateYet = {
         }), JSON.stringify((await regions()).visible));
         const controls = await ui.locator(control).evaluateAll((els) => els.filter((el) => el.getClientRects().length > 0).length);
         rule(21, 'with nothing of the shell on it', controls === 0, `${controls} controls show`);
-        await fire('key', 'escape');
-        rule(21, 'Escape ends it, and the window is as it was', await until(async () => JSON.stringify((await regions()).visible.map((v) => v.rect)) === JSON.stringify(before)));
+        await fire(...(shell.phone ? ['backKey'] : ['key', 'escape']));
+        rule(21, `${shell.phone ? 'The back key' : 'Escape'} ends it, and the window is as it was`, await until(async () => JSON.stringify((await regions()).visible.map((v) => v.rect)) === JSON.stringify(before)));
       } catch (e) {
         rule(21, 'its checks ran to their end', false, e.message.split('\n')[0]);
       }

@@ -99,6 +99,15 @@
 
   // Space for the native window buttons, which a phone hasn't: a desktop window, as on
   // the mock, keeps the page from under them.
+  // A page in full screen, the shown tab's: the shell draws nothing over it, its bars and
+  // notices gone and their room the page's, and a sheet open or the address being edited
+  // ends as it starts. Go ends it on the back key.
+  const full = $derived(go.pageFullScreen !== 0 && go.pageFullScreen === go.active);
+  $effect(() => {
+    if (!full) return;
+    sheet = '';
+    address?.blur();
+  });
   const clear = $derived(go.controls?.h > 0 ? go.controls.y + go.controls.h : 0);
 
   // Go's tab groups (docs/groups.md): the active tab's, and the one whose sheet is open.
@@ -195,11 +204,11 @@
 <svelte:window onkeydown={(e) => e.key === 'Escape' && sheet && ((sheet = ''), e.preventDefault())} />
 
 <div class="window">
-  {#if clear}
+  {#if clear && !full}
     <div class="clear" use:shell use:drag style:height="{clear}px"></div>
   {/if}
   {#if top}
-    <div class="bars head" class:away class:gone>
+    <div class="bars head" class:away class:gone class:full>
       <Toolbar {tab} top count={go.tabs.length} {sheet} {onsheet} onswipe={swipe} onedit={(on) => (editing = on)} bind:address />
     </div>
   {/if}
@@ -211,12 +220,12 @@
           <p>No tabs</p>
           <button class="text-button primary" aria-label="New Tab" onclick={() => newTab()}>New tab</button>
         </div>
-      {:else if tab.url && !tab.loading && (tab.crashed || tab.error || tab.blocked)}
+      {:else if !full && tab.url && !tab.loading && (tab.crashed || tab.error || tab.blocked)}
         <PageNotice {tab} />
       {/if}
     </main>
     {#if group}
-      <div class="bars" class:away class:gone>
+      <div class="bars" class:away class:gone class:full>
         <Strip {group} tabs={tabsOf(group)} active={go.active} onsheet={() => onsheet('group')} onpick={pick} onclosetab={(id) => closeTabs([id])} onnewtab={() => newTab(go.active)} />
       </div>
     {/if}
@@ -236,7 +245,7 @@
       onclosegroup={(id) => openGroup(id, true)}
     />
   </div>
-  <div class="bars" class:away class:gone>
+  <div class="bars" class:away class:gone class:full>
     <CrashBar />
     {#if !top}
       <Toolbar {tab} count={go.tabs.length} {sheet} {onsheet} onswipe={swipe} onedit={(on) => (editing = on)} bind:address />
@@ -372,6 +381,11 @@
 
   .head.away {
     transform: translateY(-100%);
+  }
+
+  /* Under a page in full screen: not there at all, to the eye or a screen reader. */
+  .bars.full {
+    display: none;
   }
 
   .bars.gone {
