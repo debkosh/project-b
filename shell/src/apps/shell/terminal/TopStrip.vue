@@ -2,6 +2,7 @@
 import { shown as keyShown } from '@/keys.js';
 import { controlSpace, send, state, tabLabel, workspaceOf } from '@/sdk/vue.js';
 import { ExtensionsToolbar } from '@extensions';
+import Downloads from '@/ui/Downloads.vue';
 import { chips, shown } from './panes.js';
 
 // The title bar: one chip per window, numbered, named for its tab group or the host it
@@ -45,6 +46,7 @@ import { chips, shown } from './panes.js';
       <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M6 1v10M1 6h10"/></svg>
     </button>
     <div v-drag class="rest"></div>
+    <Downloads />
     <component :is="ExtensionsToolbar" v-if="ExtensionsToolbar" :extensions="state.extensions" />
     <!-- The Reference design's gear, as the standard shell draws it. -->
     <button class="settings" type="button" aria-label="Settings" title="Settings" @click="send({ t: 'run', text: 'app.settings' })">
