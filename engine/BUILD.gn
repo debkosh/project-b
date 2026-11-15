@@ -63,6 +63,8 @@ source_set("go_core_lib") {
 # What every process needs from the adapter.
 source_set("common") {
   sources = [
+    "common/ad_rules.cc",
+    "common/ad_rules.h",
     "common/block_rules.cc",
     "common/block_rules.h",
     "common/content_client.cc",
@@ -80,6 +82,7 @@ source_set("common") {
     "//content/public/renderer",
     "//net",
     "//project_b/engine/buildflags",
+    "//project_b/engine/mojom",
     "//services/network/public/cpp",
     "//third_party/blink/public:blink_headers",
     "//third_party/blink/public/common",
@@ -243,6 +246,8 @@ source_set("browser") {
     "browser/page_tab.h",
     "browser/shell_page.cc",
     "browser/shell_page.h",
+    "browser/site_features.cc",
+    "browser/site_features.h",
     "browser/timeline.cc",
     "browser/timeline.h",
     "browser/window.h",
@@ -256,6 +261,7 @@ source_set("browser") {
     "//components/download/public/common:public",
     ":common",
     ":protocol_sources",
+    "//project_b/engine/mojom",
     "//base",
     "//components/embedder_support:user_agent",
     "//components/input",

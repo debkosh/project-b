@@ -1,0 +1,34 @@
+// What the browser process tells a renderer of ours: the ad blocker's rules for all its
+// pages, and a frame's sparks for the page about to commit in it (docs/site-features.md).
+module project_b.mojom;
+
+import "mojo/public/mojom/base/unguessable_token.mojom";
+
+// One of the person's scripts, which runs in a world of its own.
+struct Spark {
+  // Go's id for it; each id gets its own world.
+  string id;
+  string source;
+  // At document start, as the page's first element is made; else once its document has
+  // loaded (DOMContentLoaded).
+  bool at_start;
+};
+
+// Every renderer's, on its channel.
+interface Renderer {
+  // The hosts the ad blocker keeps requests from, and any under them, lower case; and the
+  // origins of the pages it lets reach them.
+  SetAdRules(array<string> hosts, array<string> off);
+};
+
+// The browser's, on each renderer's channel: what the renderer tells it.
+interface AdReports {
+  // The ad blocker refused a request of the frame's, named by its frame token.
+  Blocked(mojo_base.mojom.UnguessableToken frame);
+};
+
+// Each frame's, on its channel, told before a page commits in the frame.
+interface Frame {
+  // The scripts the page at url runs; none clears them.
+  SetSparks(string url, array<Spark> sparks);
+};

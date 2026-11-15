@@ -16,6 +16,7 @@
 #include "net/base/net_errors.h"
 #include "net/http/http_request_headers.h"
 #include "services/network/public/mojom/websocket.mojom.h"
+#include "project_b/engine/browser/site_features.h"
 #include "project_b/engine/common/block_rules.h"
 #include "project_b/engine/abi/pb_abi.h"
 #include "project_b/engine/browser/hooks.h"
@@ -91,6 +92,19 @@ void ContentBrowserClient::AppendExtraCommandLineSwitches(
     base::CommandLine* command_line,
     int child_process_id) {
   block_rules::AppendTo(command_line);
+}
+
+void ContentBrowserClient::ExposeInterfacesToRenderer(
+    service_manager::BinderRegistry* registry,
+    blink::AssociatedInterfaceRegistry* associated_registry,
+    content::RenderProcessHost* render_process_host) {
+  site_features::ExposeTo(associated_registry, render_process_host);
+}
+
+void ContentBrowserClient::RenderProcessWillLaunch(
+    content::RenderProcessHost* host) {
+  site_features::RendererLaunching(host);
+  ContentBrowserClientHooks::RenderProcessWillLaunch(host);
 }
 
 bool ContentBrowserClient::WillInterceptWebSocket(

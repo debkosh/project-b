@@ -35,6 +35,7 @@
 #include "project_b/engine/browser/go.h"
 #include "base/strings/string_split.h"
 #include "project_b/engine/abi/pb_content_abi.h"
+#include "project_b/engine/browser/site_features.h"
 #include "project_b/engine/common/block_rules.h"
 #include "project_b/engine/browser/hooks.h"
 #include "project_b/engine/browser/page_tab.h"
@@ -463,6 +464,15 @@ void CallSetBlockRules(const char* hosts) {
                                      base::SPLIT_WANT_NONEMPTY));
 }
 
+void CallSetAdRules(const char* hosts, const char* off) {
+  CheckMainThread();
+  site_features::SetAdRules(
+      base::SplitString(hosts, "\n", base::TRIM_WHITESPACE,
+                        base::SPLIT_WANT_NONEMPTY),
+      base::SplitString(off, "\n", base::TRIM_WHITESPACE,
+                        base::SPLIT_WANT_NONEMPTY));
+}
+
 const PBContentHooks* CallContentHooks() {
   static const PBContentHooks kHooks = {
       .table_hash = hooks::kTableHash,
@@ -585,6 +595,7 @@ const PBEngineCalls* Engine::Calls() {
       .set_dock_color = CallSetDockColor,
 #endif
       .set_block_rules = CallSetBlockRules,
+      .set_ad_rules = CallSetAdRules,
       .content_hooks = CallContentHooks,
       .post_wakeup = CallPostWakeup,
 #if BUILDFLAG(IS_ANDROID)
@@ -965,6 +976,9 @@ PageTab* Engine::Add(std::unique_ptr<content::WebContents> contents,
         ->CreateExtensionWebContentsObserver(tab->contents());
   }
 #endif
+  if (!raw->internal()) {
+    site_features::Follow(raw->contents());
+  }
 #if BUILDFLAG(IS_ANDROID)
   // Android has one window, and every tab's view is in it from the start.
   windows_.begin()->second->window->AddPageContents(raw->contents());
