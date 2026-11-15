@@ -154,6 +154,12 @@ PAGES["/dialogs"] = ("<title>Dialogs</title><style>button{display:block;width:10
                      "al.onclick = () => { alert('Hello'); say('alert', 'closed'); };</script>")
 
 
+# A page that fills the screen at a tap, as a video's full screen does, and says when it has.
+PAGES["/full"] = ("<title>Full</title><button id=f style='position:fixed;inset:0;width:100%;height:100%;font-size:40px'>full</button><script>"
+                  "f.onclick = () => document.documentElement.requestFullscreen().then(() => fetch('/full-on'));"
+                  "document.onfullscreenchange = () => document.fullscreenElement || fetch('/full-off');</script>")
+
+
 server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Server)
 threading.Thread(target=server.serve_forever, daemon=True).start()
 PORT = server.server_port
@@ -215,6 +221,9 @@ def screen_parts():
             parts["shell"] = view
         elif view.get("class") == "android.webkit.WebView":
             labels = {n.get("content-desc") for n in view.iter("node")} | {n.get("text") for n in view.iter("node")}
+            # The shell under a page in full screen draws nothing, so it has no labels at all.
+            if labels <= {None, ""}:
+                continue
             parts[next(name for name, test in PARTS.items() if test(labels))] = view
     return parts
 
@@ -760,6 +769,36 @@ def downloads():
     key(4)
 
 
+def screen_size():
+    """The phone's screen in device pixels: width, height."""
+    w, h = re.search(r"(\d+)x(\d+)", adb("shell", "wm", "size").split("Physical size:", 1)[1]).groups()
+    return int(w), int(h)
+
+
+def page_full_screen():
+    """A page in full screen has the whole screen: Android's bars hide and the shell draws
+    nothing; the back key ends it, and the page and the shell are as they were."""
+    # Android's one-time note on how to leave full screen, already seen, as after a person's
+    # first Got it.
+    adb("shell", "settings", "put", "secure", "immersive_mode_confirmations", "confirmed")
+    launch()
+    go(BASE + "/full")
+    asked("/full")
+    before = box(see("page", text="full"))
+    tap(middle(see("page", text="full")))
+    check("a page's requestFullscreen is granted", asked("/full-on"), str(served))
+    width, height = screen_size()
+    covers = until(lambda: find("shell", label="Menu") is None and (lambda b: b[1] == 0 and b[3] == height and b[2] == width)(box(see("page", text="full"))), 10)
+    check("it covers the whole screen, with nothing of the shell or Android's bars on it", covers is not None,
+          "%s on a %dx%d screen" % (box(see("page", text="full")), width, height))
+    shot("30-full-screen")
+    served.clear()
+    key(4)
+    check("the back key ends it and stays on the page", asked("/full-off") and find("page", text="full") is not None, str(served))
+    check("and the window is as it was", until(lambda: find("shell", label="Menu") is not None and box(see("page", text="full")) == before) is not None,
+          "%s, was %s" % (box(see("page", text="full")), before))
+
+
 def history_after_a_restart():
     launch()
     type_in_bar("page")
@@ -917,7 +956,7 @@ def main():
     adb("shell", "pm", "clear", PACKAGE)
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
-    for part in (browsing, mobile_shell, back_key_chain, page_dialogs, downloads, history_after_a_restart, links_from_other_apps, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
+    for part in (browsing, mobile_shell, back_key_chain, page_dialogs, downloads, page_full_screen, history_after_a_restart, links_from_other_apps, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
                  the_gpu_process_dies, a_page_spins, web_apis, the_real_web):
         try:
             part()
