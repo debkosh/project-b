@@ -10,16 +10,25 @@ export function groupLabel(g) {
   return g.name || `${g.tabs.length} ${g.tabs.length === 1 ? 'tab' : 'tabs'}`;
 }
 
-// entries turns the window's tabs into what the list draws, in order: { tab } for a tab in
-// no group, { group, tabs } for a group, tabs being the ones it shows. With workspace, only
-// that workspace's tabs; a group is in one workspace, so it comes whole or not at all.
+// entries turns the window's tabs into what the list draws, in order. First Go's pins
+// (docs/windows.md, "Pinned tabs"): { tab, pin } for one with its tab in this window,
+// { pin } for one without, then { pinsEnd } once if there were any. Then { tab } for a tab
+// in no group, and { group, tabs } for a group, tabs being the ones it shows. With
+// workspace, only that workspace's; a group is in one workspace, so it comes whole or not
+// at all.
 export function entries(state, workspace = null) {
   const shown = workspace === null ? state.tabs : state.tabs.filter((t) => t.workspace === workspace);
+  const pins = (state.pins || []).filter((p) => workspace === null || p.workspace === workspace);
+  const out = pins.map((pin) => {
+    const tab = shown.find((t) => t.pin === pin.id);
+    return tab ? { tab, pin } : { pin };
+  });
+  if (out.length) out.push({ pinsEnd: true });
   const byId = new Map(shown.map((t) => [t.id, t]));
   const groups = new Map((state.groups || []).map((g) => [g.id, g]));
   const done = new Set();
-  const out = [];
   for (const tab of shown) {
+    if (tab.pin) continue;
     const g = tab.group && groups.get(tab.group);
     if (!g) {
       out.push({ tab });

@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue';
 import ContextMenu from '@/ui/ContextMenu.vue';
-import { keyLabel, send, state } from '@/sdk/vue.js';
+import { keyLabel, pinTab, send, state, unpin } from '@/sdk/vue.js';
 import { groupLabel } from './groups.js';
 import { closeMenu, menu } from './menu.js';
 import { view } from './state.js';
@@ -17,6 +17,7 @@ const icons = {
   group: '<rect x="2" y="4" width="8" height="8" rx="1.5"/><path d="M12 5v6M14 6.5v3"/>',
   workspace: '<circle cx="8" cy="8" r="5.5"/>',
   window: '<rect x="2.5" y="3" width="11" height="10" rx="1.5"/><path d="M2.5 6h11"/>',
+  pin: '<path d="M6 2.5h4M7 2.5v4L4.5 9h7L9 6.5v-4M8 9v4.5"/>',
   close: '<path d="m4.5 4.5 7 7M11.5 4.5l-7 7"/>',
 };
 
@@ -36,6 +37,13 @@ const items = computed(() => {
   const others = state.tabs.filter((x) => x.id !== t.id && (view.workspace === null || x.workspace === view.workspace));
   const out = [
     { label: 'Duplicate Tab', icon: icons.duplicate, key: keyLabel('tab.duplicate'), run: onTab(t, { t: 'run', text: 'tab.duplicate' }) },
+    // Go pins a web tab with an address: not a tab of ours, nor one with nothing in it yet.
+    t.pin
+      ? { label: 'Unpin Tab', icon: icons.pin, key: keyLabel('tab.pin'), run: () => unpin(t.pin) }
+      : { label: 'Pin Tab', icon: icons.pin, key: keyLabel('tab.pin'), disabled: !t.url || !!t.page, run: () => pinTab(t.id) },
+  ];
+  // A pinned tab is in no group (docs/windows.md, "Pinned tabs").
+  if (!t.pin) out.push(
     {
       label: 'Add Tab to Group',
       icon: icons.group,
@@ -44,7 +52,7 @@ const items = computed(() => {
         ...groups.map((g) => ({ label: groupLabel(g), dot: g.color, run: () => send({ t: 'addToGroup', id: t.id, group: g.id }) })),
       ],
     },
-  ];
+  );
   if (t.group) out.push({ label: 'Remove from Group', run: () => send({ t: 'removeFromGroup', id: t.id }) });
   // A tab's workspace is fixed (docs/workspaces.md): another workspace gets the same address
   // in a tab of its own.
