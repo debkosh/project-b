@@ -97,9 +97,9 @@ func (a *App) changeWorkspaces(e engine.Engine, t string, c workspaceChange) boo
 // The pages hear the list again through its OnChanged, as the shells do, and the counts
 // again when a tab opens or closes and they differ.
 func (a *App) workspaceSettingsPart(e engine.Engine) settings.Part {
-	counts := a.workspaceTabs()
+	counts := a.Tabs.CountByWorkspace()
 	a.Tabs.OnListChanged(func() {
-		if now := a.workspaceTabs(); !maps.Equal(now, counts) {
+		if now := a.Tabs.CountByWorkspace(); !maps.Equal(now, counts) {
 			counts = now
 			a.Settings.Send(map[string]any{"t": "workspaceTabs", "workspaceTabs": counts})
 		}
@@ -150,16 +150,6 @@ func (a *App) deleteWorkspace(e engine.Engine, id string) error {
 	}
 	e.EraseWorkspace(id)
 	return nil
-}
-
-// workspaceTabs counts the tabs open in each workspace, by its id, in every window. A
-// workspace with none isn't in it.
-func (a *App) workspaceTabs() map[string]int {
-	counts := map[string]int{}
-	for _, t := range a.Tabs.All() {
-		counts[t.Workspace]++
-	}
-	return counts
 }
 
 // shownWorkspace is a workspace as the shells and settings hear of it: with the tones of
