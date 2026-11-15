@@ -220,6 +220,26 @@ draws, opened at the pointer, so the shells that want the default look share
   as; for a tab, New tab below, Duplicate, Pin, Add to tab group, Move to workspace, Move
   to new window, then the closing ones. A shell lists only what Go can run today.
 
+### The address field's slot
+
+The owner, 2026-11-14: one icon for the address field, attached to its start rather than
+inside the white area, so it reads as the field's own. A shell with an address field
+that wants the default look follows it.
+
+- **The slot** is 34px wide at the field's start, inside its hairline: `--accent-tint`,
+  parted from the white area by a `--line` rule, with a 16px line icon.
+- **On a web page** it is the site's settings, in `--icon`, always there, and a button
+  named Site settings: a press opens that site's one view, which holds everything about
+  the site. Never a lock, and never a second icon beside it.
+- **When the page isn't secure** the icon itself changes, a warning glyph in `--danger`,
+  named "Not secure · Site settings". It stays one button: the site's view says why, on
+  its first row, above the site's settings.
+- **With no site** (a new tab, a window with no tabs) and **while the field is typed in**,
+  it is a search icon in `--muted`, and no button: it says what Enter will do.
+- **On one of our own pages** it is that page's own icon, and the white area shows the
+  page's title with a close control, with nothing to type.
+- Hover is `--accent-soft`; keyboard focus is `--focus-ring-inset`.
+
 ### Destructive actions
 
 - **Confirm whatever deletes the user's data or more than one of their changes** in a
