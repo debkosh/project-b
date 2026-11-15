@@ -1,7 +1,8 @@
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
-import { activeTab, focusPage, send, state } from '@/sdk/vue.js';
-import { addressBar } from './state.js';
+import { activeTab, chooseSuggestion, focusPage, send, state, suggest } from '@/sdk/vue.js';
+import SuggestionList from './SuggestionList.vue';
+import { addressBar, nextQuery } from './state.js';
 
 const input = ref(null);
 const focused = ref(false);
@@ -28,7 +29,7 @@ const status = computed(() => {
 function close() {
   items.value = [];
   highlight.value = -1;
-  latestQuery++;
+  latestQuery = 0;
 }
 
 function onInput() {
@@ -39,7 +40,8 @@ function onInput() {
     close();
     return;
   }
-  send({ t: 'suggest', id: ++latestQuery, text: text.value });
+  latestQuery = nextQuery();
+  suggest(latestQuery, text.value);
 }
 
 // Moving through the list shows that item in the bar. Up from the first item, or down
@@ -52,7 +54,7 @@ function move(delta) {
     return;
   }
   highlight.value = next;
-  text.value = items.value[next].url;
+  text.value = items.value[next].url || items.value[next].title;
 }
 
 function onKeydown(e) {
@@ -85,13 +87,16 @@ function onKeydown(e) {
   }
 }
 
-function go(target) {
-  const value = (target ?? text.value).trim();
-  if (value === '') return;
-  text.value = value;
+// go takes a row of Go's list, the chosen one or the first, which is what Enter does; with
+// no list yet, what was typed.
+function go(i = highlight.value) {
+  const row = items.value[i >= 0 ? i : 0];
+  const value = text.value.trim();
+  if (!row && value === '') return;
   edited.value = false;
   close();
-  send({ t: 'navigate', text: value });
+  if (row) chooseSuggestion(row);
+  else send({ t: 'navigate', text: value });
   input.value.blur();
   focusPage();
 }
@@ -122,12 +127,6 @@ function onBlur() {
   if (!edited.value) text.value = activeTab.value.url;
 }
 
-// The shell page has to hold the keyboard before the input can.
-function focusBar() {
-  send({ t: 'focusShell' });
-  input.value.focus();
-}
-
 onMounted(() => {
   addressBar.suggestions = (id, list) => {
     if (id === latestQuery) {
@@ -145,19 +144,16 @@ watch(
   },
 );
 
-// A tab that becomes active with nothing in it wants the address bar, as does a window
-// left with no tabs; one with a page wants the page. The bar is made once Go's data is in,
-// so the state it is made in counts too.
+// A tab that becomes active with a page wants the page; one with nothing in it, or a window
+// with no tabs, shows the command box, which takes the keyboard itself. The bar is made once
+// Go's data is in, so the state it is made in counts too.
 function follow() {
   close();
   edited.value = false;
   text.value = activeTab.value.url;
-  if (activeTab.value.url === '') {
-    focusBar();
-  } else {
-    input.value.blur();
-    focusPage();
-  }
+  // A blank tab's, or an empty window's, command box takes the keyboard (CommandBox.vue).
+  input.value.blur();
+  if (activeTab.value.url) focusPage();
 }
 watch(() => state.active, follow);
 onMounted(follow);
@@ -184,22 +180,15 @@ onMounted(follow);
       @blur="onBlur"
     />
     <span v-if="status" class="status">{{ status }}</span>
-    <ul v-if="open" id="suggestions" v-shell class="list" role="listbox" @mousedown.prevent>
-      <li
-        v-for="(item, i) in items"
-        :id="`suggestion-${i}`"
-        :key="item.url"
-        role="option"
-        :aria-selected="i === highlight"
-        :class="{ active: i === highlight }"
-        @mouseenter="highlight = i"
-        @click="go(item.url)"
-      >
-        <span class="title">{{ item.title || item.url }}</span>
-        <span v-if="item.title" class="dash" aria-hidden="true"></span>
-        <span v-if="item.title" class="url">{{ item.url }}</span>
-      </li>
-    </ul>
+    <SuggestionList
+      v-if="open"
+      id="suggestions"
+      class="list"
+      :items="items"
+      :highlight="highlight"
+      @hover="(i) => (highlight = i)"
+      @choose="go"
+    />
   </form>
 </template>
 
@@ -252,62 +241,13 @@ input::placeholder {
   font-weight: 500;
 }
 
-/* A floating surface, with the shadow the Reference design gives its menus. */
+/* The list floats under the field, as wide as it (SuggestionList.vue draws it). */
 .list {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
   right: 0;
   z-index: 10;
-  margin: 0;
-  padding: 4px;
-  list-style: none;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  box-shadow: var(--shadow-float);
-}
-
-/* One line per item, the title then the address, the way a tab row in the design reads
-   "title – detail". The title keeps its words; the address gives way first. */
-li {
-  display: flex;
-  align-items: center;
-  height: 32px;
-  padding: 0 10px;
-  border-radius: 4px;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-li.active {
-  background: var(--accent-tint);
-}
-
-.title,
-.url {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.title {
-  flex: none;
-  max-width: 60%;
-}
-
-.url {
-  flex: 1;
-  min-width: 0;
-  color: var(--muted);
-}
-
-.dash {
-  flex: none;
-  width: 5px;
-  height: 1px;
-  margin: 0 8px;
-  background: var(--muted);
 }
 
 </style>
