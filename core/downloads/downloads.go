@@ -162,6 +162,7 @@ func (m *Manager) Updated(d engine.Download) {
 	}
 	it.Path, it.Name = d.Path, filepath.Base(d.Path)
 	it.State, it.Received, it.Total, it.Paused = states[d.State], d.Received, d.Total, d.Paused
+	m.e.ShowDownload(it.ID, d)
 	if it.State != "progress" {
 		delete(m.byEngine, d.ID)
 		m.save()

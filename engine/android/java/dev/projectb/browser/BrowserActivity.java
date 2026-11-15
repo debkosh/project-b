@@ -40,6 +40,7 @@ public final class BrowserActivity extends Activity {
         // The same list the Mac app takes as --block.
         String blocked = getIntent().getStringExtra("block");
         pendingLink = linkOf(getIntent());
+        openDownload(getIntent());
         long goTable = GoCore.table();
         BrowserStartupController.getInstance()
                 .startBrowserProcessesAsync(
@@ -69,6 +70,14 @@ public final class BrowserActivity extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         open(linkOf(intent));
+        openDownload(intent);
+    }
+
+    // A tap on a finished download's notification: its file opens as the list's Open does.
+    private static void openDownload(Intent intent) {
+        if (Downloads.OPEN.equals(intent.getAction())) {
+            Downloads.open(intent.getStringExtra(Downloads.OPEN));
+        }
     }
 
     private void open(String link) {
