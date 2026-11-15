@@ -651,6 +651,9 @@ func TestASecondWindow(t *testing.T) {
 func TestAHandoverOpensInTheWindowUsedLast(t *testing.T) {
 	r := start(t, t.TempDir())
 	defer r.stop()
+	// Tab 1 done loading, so nothing else of it is sent once it moves.
+	r.e.Post(func() { r.a.LoadingChanged(1, false) })
+	r.e.Settle()
 	second := r.openSecondWindow()
 	r.waitOn(second, func(m map[string]any) bool { return m["t"] == "snapshot" })
 	r.e.Fire(1, 0, "focus", "")
@@ -674,6 +677,9 @@ func TestAHandoverOpensInTheWindowUsedLast(t *testing.T) {
 func TestAShellCrashResetsOnlyItsWindow(t *testing.T) {
 	r := start(t, t.TempDir())
 	defer r.stop()
+	// Tab 1 done loading, so nothing else of it is sent once it moves.
+	r.e.Post(func() { r.a.LoadingChanged(1, false) })
+	r.e.Settle()
 	second := r.openSecondWindow()
 	r.waitOn(second, func(m map[string]any) bool { return m["t"] == "snapshot" })
 	r.e.Post(func() { r.a.ShellCrashed(2) })
@@ -1816,4 +1822,36 @@ func (r *rig) flushPrefs() {
 	done := make(chan struct{})
 	r.e.Post(func() { r.a.Prefs.Close(); close(done) })
 	<-done
+}
+
+// The tabs message carries no favicons, a data URL each that it would send again on every
+// change: a favicon comes in a tab message, when it changes and when its tab moves into
+// another window, after the list that has it there.
+func TestFaviconsComeOnlyInTabMessages(t *testing.T) {
+	r := start(t, t.TempDir())
+	defer r.stop()
+	r.shell(`{"t":"newTab"}`)
+	r.waitFor(isTabs(2))
+	const icon = "data:image/png;base64,AAAA"
+	r.e.Post(func() { r.a.FaviconChanged(1, icon) })
+	r.waitForTab(func(tab map[string]any) bool { return tab["id"] == 1.0 && tab["favicon"] == icon })
+	r.shell(`{"t":"newTab"}`)
+	m := r.waitFor(isTabs(3))
+	for _, tab := range m["tabs"].([]any) {
+		if f, ok := tab.(map[string]any)["favicon"]; ok {
+			t.Fatalf("the tabs message carries a favicon: %v", f)
+		}
+	}
+
+	// Tab 1 done loading, so nothing else of it is sent once it moves.
+	r.e.Post(func() { r.a.LoadingChanged(1, false) })
+	r.e.Settle()
+	second := r.openSecondWindow()
+	r.waitOn(second, func(m map[string]any) bool { return m["t"] == "snapshot" })
+	r.shell(`{"t":"moveTab","id":1,"index":0,"window":2}`)
+	r.waitOn(second, isTabs(2))
+	r.waitOn(second, func(m map[string]any) bool {
+		tab, ok := m["tab"].(map[string]any)
+		return m["t"] == "tab" && ok && tab["id"] == 1.0 && tab["favicon"] == icon
+	})
 }

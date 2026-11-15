@@ -79,6 +79,10 @@ type Manager struct {
 	// outlives a shell that crashed and reloaded, and goes with the shell, the window, or
 	// a reset to a template.
 	data map[engine.WindowID]json.RawMessage
+	// listed is the tabs each window's shell was last sent, by window. The tabs message
+	// carries no favicons, a data URL each that it would send again on every change to
+	// every window, so a tab new to a window's list is sent with its favicon on its own.
+	listed map[engine.WindowID]map[engine.TabID]bool
 	// Whether app.ready is marked: a shell first showed Go's state. Once a process.
 	ready bool
 	// moving is the span waiting for a shell's next layout report, or "".
@@ -99,7 +103,7 @@ func (m *Manager) AddPart(p Part) { m.parts = append(m.parts, p) }
 // New returns a manager. run runs an action by id, as a menu item would; keys says the key
 // each action shows, on platform os, for the shell's hints.
 func New(eng engine.Engine, t *tabs.Manager, s *suggest.Manager, w *window.Manager, p *prefs.Manager, u *update.Manager, c *crash.Manager, run func(action string), keys func() map[string]string, os string) *Manager {
-	return &Manager{eng: eng, tabs: t, suggest: s, window: w, prefs: p, update: u, crash: c, run: run, keys: keys, os: os, heard: map[engine.WindowID]bool{}, data: map[engine.WindowID]json.RawMessage{}}
+	return &Manager{eng: eng, tabs: t, suggest: s, window: w, prefs: p, update: u, crash: c, run: run, keys: keys, os: os, heard: map[engine.WindowID]bool{}, data: map[engine.WindowID]json.RawMessage{}, listed: map[engine.WindowID]map[engine.TabID]bool{}}
 }
 
 // Interaction runs what one thing the user asked for in window w does, as a span on the
@@ -137,9 +141,14 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 	switch c.T {
 	case "ready":
 		m.heard[w] = true
+		all := m.tabs.AllIn(w)
+		m.listed[w] = map[engine.TabID]bool{}
+		for _, t := range all {
+			m.listed[w][t.ID] = true
+		}
 		snapshot := map[string]any{
 			"t":                  "snapshot",
-			"tabs":               m.tabs.AllIn(w),
+			"tabs":               all,
 			"active":             m.tabs.ActiveIn(w),
 			"groups":             m.tabs.GroupsIn(w),
 			"windowColor":        m.window.Color(),
@@ -301,10 +310,27 @@ func (m *Manager) TabChanged(t tabs.Tab) {
 	m.send(m.tabs.WindowOf(t.ID), map[string]any{"t": "tab", "tab": t})
 }
 
-// TabsChanged tells each window's shell which tabs it has now and which is active.
+// TabsChanged tells each window's shell which tabs it has now and which is active, with
+// no favicons: the shell keeps each tab's from the snapshot and the tab messages. A tab
+// new to the window's list, such as one moved in from another window, follows as a tab
+// message of its own when it has a favicon.
 func (m *Manager) TabsChanged() {
 	for _, w := range m.window.Windows() {
-		m.send(w, map[string]any{"t": "tabs", "tabs": m.tabs.AllIn(w), "active": m.tabs.ActiveIn(w), "groups": m.tabs.GroupsIn(w)})
+		list := m.tabs.AllIn(w)
+		listed := make(map[engine.TabID]bool, len(list))
+		var arrived []tabs.Tab
+		for i, t := range list {
+			listed[t.ID] = true
+			if t.Favicon != "" && !m.listed[w][t.ID] {
+				arrived = append(arrived, t)
+			}
+			list[i].Favicon = ""
+		}
+		m.listed[w] = listed
+		m.send(w, map[string]any{"t": "tabs", "tabs": list, "active": m.tabs.ActiveIn(w), "groups": m.tabs.GroupsIn(w)})
+		for _, t := range arrived {
+			m.send(w, map[string]any{"t": "tab", "tab": t})
+		}
 	}
 }
 
@@ -418,6 +444,7 @@ func (m *Manager) ForgetData() { clear(m.data) }
 func (m *Manager) WindowClosed(w engine.WindowID) {
 	delete(m.heard, w)
 	delete(m.data, w)
+	delete(m.listed, w)
 }
 
 // derefOr is what s points at, or "" for nil.

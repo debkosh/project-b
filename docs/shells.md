@@ -78,7 +78,7 @@ of it.
 
 | From | What |
 |---|---|
-| `@/sdk/shell.js` | `state`: everything Go sends, as a plain object; a field is replaced whole when it changes, never changed in place. Its `loaded` is false until Go's snapshot is in, and true from then on ([the splash](#the-splash)). `onChange(fn)`: calls `fn(fields)` after each change, with the fields that changed. `connect(handlers, afterDraw)`: says `ready`, keeps `state`, calls the shell's `handlers[kind](message)` after each message, and once the snapshot is drawn reports the layout and says `shown`. `send(msg)`. `saveData(value)`. `saveProfileData(value)`. `setPref(name, value)`. `focusPage()`. `setFrame(width)`. The helpers, each given the state it reads: `activeTab(state)`, `workspaceOf(state, tab)`, `controlSpace(state)`, `keyLabel(state, action)`, and `tabLabel(tab)`. It puts the theme's colours on the root. |
+| `@/sdk/shell.js` | `state`: everything Go sends, as a plain object; a field is replaced whole when it changes, never changed in place, except that a `tabs` message's tabs keep the favicon each had. Its `loaded` is false until Go's snapshot is in, and true from then on ([the splash](#the-splash)). `onChange(fn)`: calls `fn(fields)` after each change, with the fields that changed. `connect(handlers, afterDraw)`: says `ready`, keeps `state`, calls the shell's `handlers[kind](message)` after each message, and once the snapshot is drawn reports the layout and says `shown`. `send(msg)`. `saveData(value)`. `saveProfileData(value)`. `setPref(name, value)`. `focusPage()`. `setFrame(width)`. The helpers, each given the state it reads: `activeTab(state)`, `workspaceOf(state, tab)`, `controlSpace(state)`, `keyLabel(state, action)`, and `tabLabel(tab)`. It puts the theme's colours on the root. |
 | `@/sdk/regions.js` | The markers a shell marks its elements with, each with `mark(el)` and `unmark(el)`. `shell`: this element is the shell's, so presses on it reach the shell. `drag`: this element moves the window wherever it has no control: an empty space, or a whole bar of controls, whose gaps then drag; its controls, and anything in it marked `shell`, stay the shell's. `page`: `mark(el, tab)` and `update(el, tab)`, this tab's page shows here; 0 shows none. |
 | `@/sdk/contextmenu.js` | What a shell sends about the right-click menu, `state.contextMenu`: `chooseContextItem(menu, id)`, `closeContextMenu(menu)`, and `contextMenuPoint(menu)`, where in the window the press was. |
 | `@/sdk/find.js` | `findText(tab, text)`, `findNext(tab, forward)` and `closeFind(tab)`, for `state.find`, each naming the tab whose bar it is. |
@@ -115,8 +115,8 @@ gives the page the same two.
 | `t` | Carries | When |
 |---|---|---|
 | `snapshot` | Everything below at once, and `data` | In answer to `ready` |
-| `tabs` | `tabs`, `active`, `groups`: this window's tabs in order, the active one's id, and its tab groups | Tabs open, close, move, another becomes active, or a group changes |
-| `tab` | `tab`: one tab's new state | Its title, address, loading, favicon or history changed |
+| `tabs` | `tabs`, `active`, `groups`: this window's tabs in order, with no `favicon`, the active one's id, and its tab groups | Tabs open, close, move, another becomes active, or a group changes |
+| `tab` | `tab`: one tab's new state, its favicon with it | Its title, address, loading, favicon or history changed; or it is new to this window's list, as a tab moved in from another window is, with a favicon: then after the `tabs` that lists it |
 | `theme` | `theme`: `system`, `light` or `dark` | The pref changed |
 | `windowColor` | `windowColor`: `#rrggbb`, and `tones`: `{light, dark}`, every colour made from it, each palette the design system's tokens by name (`core/tones`) | The frame colour changed |
 | `controls` | `controls`, `cornerRadius` | The native window buttons moved, or full screen |
@@ -242,7 +242,9 @@ The SDK does these for a shell on it. A shell that talks to Go itself does them 
 
 1. It sets `window.__shellReceive`, sends `ready`, and keeps what each message says: the
    snapshot has it all, a message of state sets the fields it carries, and `tab`
-   replaces that one tab in `tabs`.
+   replaces that one tab in `tabs`. A `tabs` message's tabs carry no favicon: each keeps
+   the one it had, by its id. Go leaves them out of the list, a data URL each that it
+   would send again on every change to every window; the snapshot and `tab` carry them.
 2. It draws the snapshot, sends `layout`, then sends `shown`. It sends a layout only once
    it has drawn what it measured: the window shows the pages a layout first places after
    the shell's next frame, so that frame has to hold it.
@@ -751,7 +753,8 @@ What every shell needs, whatever it looks like:
 
 ### The SDK's names
 
-- `state`: Go's state, a plain object; a field is replaced whole when it changes.
+- `state`: Go's state, a plain object; a field is replaced whole when it changes, except
+  that a `tabs` message's tabs keep the favicon each had.
 - `onChange(fn)`: calls `fn(fields)` after each change, with what changed.
 - `connect(handlers, afterDraw)`: says ready, keeps the state, calls the shell's handler
   for each message, and says shown once the snapshot is drawn.

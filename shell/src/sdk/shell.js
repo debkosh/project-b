@@ -105,8 +105,9 @@ export const state = {
   profileData: null,
 };
 
-// The messages that are only state: each sets the fields it carries.
-const updates = new Set(['tabs', 'theme', 'windowColor', 'controls', 'keys', 'workspaces', 'update', 'crashLog', 'tabLayout', 'addressBarPosition', 'extensions', 'profileData', 'contextMenu', 'downloads', 'dialogs', 'prefs', 'find', 'pageFullScreen']);
+// The messages that are only state: each sets the fields it carries, whole. The one
+// exception is tabs, whose tabs carry no favicon: each keeps the one it had (below).
+const updates = new Set(['theme', 'windowColor', 'controls', 'keys', 'workspaces', 'update', 'crashLog', 'tabLayout', 'addressBarPosition', 'extensions', 'profileData', 'contextMenu', 'downloads', 'dialogs', 'prefs', 'find', 'pageFullScreen']);
 
 const listeners = [];
 
@@ -252,6 +253,16 @@ export function connect(handlers = {}, drawn = (fn) => fn()) {
         case 'tab':
           change({ tabs: state.tabs.map((t) => (t.id === m.tab.id ? m.tab : t)) });
           break;
+        // Go leaves the favicons out of the list, a data URL each it would send again on
+        // every change: a tab keeps the favicon it had. A tab new to the window comes with
+        // its own in a tab message after this.
+        case 'tabs': {
+          const { t, ...fields } = m;
+          const had = new Map(state.tabs.map((x) => [x.id, x.favicon]));
+          fields.tabs = m.tabs.map((x) => (had.get(x.id) ? { ...x, favicon: had.get(x.id) } : x));
+          change(fields);
+          break;
+        }
         default:
           if (updates.has(m.t)) {
             const { t, ...fields } = m;
