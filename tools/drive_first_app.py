@@ -545,14 +545,15 @@ def timeline_checks():
 
     opened = span_after(lambda: click(app, "button.settings"), "settings.open")
     check("opening settings is a span from the click to its first frame on screen, through Go, the engine and the page",
-          in_order(opened, ["settings.open.go", "settings.open.done", "settings.navigation_start",
+          in_order(opened, ["settings.open.go", "settings.navigation_start", "settings.open.done",
                             "settings.committed", "settings.script", "settings.mounted", "settings.snapshot",
                             "settings.first_paint", "settings.on_screen"]), opened)
     app.cmd("key", "cmd+w")
     time.sleep(0.5)
     # Standard takes New Tab: its span ends when the shell has drawn its box, and no tab is made.
     rows = app.js(ROWS)
-    new = span_after(lambda: click(app, ".new-tab"), "tab.new")
+    # Cmd+T runs Go's tab.new; Standard's own + opens the box without it.
+    new = span_after(lambda: app.cmd("key", "cmd+t"), "tab.new")
     check("New Tab is a span that ends when the shell has drawn what it does, Standard's command box", in_order(new, ["tab.new.go", "tab.new.done"]), new)
     check("and it made no tab", holds(app, BOX_FOCUSED) and app.js(ROWS) == rows, (app.js(ROWS), rows))
     app.cmd("key", "escape")
@@ -801,7 +802,8 @@ def browsing_checks():
     time.sleep(0.3)
     print(app.cmd("capture", os.path.join(OUT, "3-suggestions.png")), flush=True)
     check("typing shows suggestions from history", app.js(OPTIONS) >= 1, app.js(OPTIONS))
-    check("the suggestion has the real page's title", "Example" in app.js("document.querySelector('[role=option]').innerText"))
+    # The first row searches what was typed; history's rows follow it.
+    check("a suggestion has the real page's title", app.js("[...document.querySelectorAll('[role=option]')].some(o => o.innerText.includes('Example'))"))
     x, y, w, h = box(app)
     check("the box belongs to the shell", app.cmd("hit", x + 30, y + h - 6) == "shell")
     check("below the box belongs to the page", app.cmd("hit", x + 30, y + h + 40) == "page")
@@ -829,8 +831,9 @@ def browsing_checks():
     app.cmd("type", "exam")
     app.wait(OPTIONS)
     time.sleep(0.2)
-    x, y, w, h = box(app)
-    app.cmd("click", x + 40, y + 20)
+    # History's row for the page, not the search row first.
+    x, y = app.js("(r => [r.x + 40, r.y + r.height / 2])([...document.querySelectorAll('[role=option]')].find(o => o.innerText.includes('example.com')).getBoundingClientRect())")
+    app.cmd("click", x, y)
     app.wait(f"{VALUE}.startsWith('https://example.com')", 30)
     app.wait(TAB_READY, 30)
     check("clicking a suggestion navigates, so the shell got the click and not the page", True)
@@ -2265,7 +2268,8 @@ def internal_checks():
     check("the window shows it where the layout puts a page, told it is shown",
           [v["tab"] for v in visible] == [settings] and visible[0]["shown"] and not visible[0]["hidden"] and app.cmd("hit", 600, 300) == "page", visible)
     check("it is visible to itself", app.cmd("evalsettings", "document.visibilityState") == '"visible"')
-    click(app, "input")
+    # Into the shell first: a tab of ours has a title, not an address field.
+    click(app, "[role=tab][aria-selected=true]")
     app.cmd("click", 600, 300)
     deadline = time.time() + 5
     while app.cmd("evalsettings", "document.hasFocus()") != "true" and time.time() < deadline:
