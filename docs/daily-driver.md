@@ -102,6 +102,19 @@ Downloads folder. Once done, the engine copies it into the phone's shared Downlo
 MediaStore, where the Files app and other apps find it, and removes the app's own copy. Open
 opens the shared copy with the app the phone picks, and Show opens the phone's own list of
 downloads. What each file became is kept in the app, so Open still works after a restart.
+Open waits for that copy, so it works the moment a download ends.
+
+**A phone's notification.** Go shows each download where the system shows such things
+(`ShowDownload`, the engine's `show_download`; nothing on the Mac): on Android, a
+notification per download, quiet, its progress while it runs (a few updates a second at
+most), "Downloaded" with the size once done, which opens the file at a tap as Open does,
+and "Download failed"; a cancelled one goes. Android 13 and later ask the person to allow
+notifications at the first download.
+
+**A navigation that becomes a download** shows nothing instead, so the tab stays at the page
+it shows: the engine ends it as a failure with no failure named, at that page's address, and
+Go puts the tab's address back. Before, the tab kept the download's address, and a restart
+loaded it and downloaded the file again.
 
 ## File upload
 

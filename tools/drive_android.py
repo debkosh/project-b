@@ -767,9 +767,23 @@ def in_front_now():
     return adb("shell", "dumpsys", "window", "displays").split("mCurrentFocus", 1)[-1].split("\n", 1)[0]
 
 
+def notification_of(name):
+    """The download notification for the file name, its title and text as Android keeps them,
+    or None."""
+    text = adb("shell", "dumpsys", "notification", "--noredact")
+    for record in text.split("NotificationRecord(")[1:]:
+        if "pkg=" + PACKAGE in record and "android.title=String (%s)" % name in record:
+            said = re.search(r"android\.text=String \(([^)]*)\)", record)
+            return said.group(1) if said else ""
+    return None
+
+
 def downloads():
-    """A file the page downloads goes to the phone's Downloads; the menu's Downloads lists it,
-    Open opens it in another app, and Show in Downloads opens the phone's Downloads app."""
+    """A file the page downloads goes to the phone's Downloads, with a notification that
+    says so and opens it at a tap; the menu's Downloads opens the Downloads page, which lists
+    it, Open opens it in another app, and Show in Downloads opens the phone's Downloads app;
+    and a restart doesn't download it again."""
+    adb("shell", "pm", "grant", PACKAGE, "android.permission.POST_NOTIFICATIONS")
     launch()
     name = "pb-check-%d.txt" % int(time.time())
     go(BASE + "/a")
@@ -778,24 +792,44 @@ def downloads():
     check("a download keeps the page where it was", until(lambda: find("page", text="to b")) is not None)
     stored = until(lambda: name in adb("shell", "ls", "/sdcard/Download/"), 20)
     check("the file reaches the phone's Downloads", stored is not None, adb("shell", "ls", "/sdcard/Download/")[-200:])
+    said = until(lambda: (notification_of(name) or "").startswith("Downloaded") or None, 10)
+    check("a notification says it is downloaded", said is not None, str(notification_of(name)))
     menu("Downloads")
-    row = until(lambda: find("shell", text=name))
-    check("the menu's Downloads lists it by its name", row is not None)
+    row = until(lambda: find("page", text=lambda t: (t or "").startswith(name)))
+    check("the menu's Downloads opens the Downloads page, which lists it by its name", row is not None)
+    check("and the pill says Downloads, with a close", find("shell", label="Close Downloads") is not None)
     shot("25-downloads")
-    tap(middle(see("shell", text="Open")))
+    tap(middle(see("page", text="Open")))
     # A window other than ours, once Android has one in front: the chooser, or the app.
     opened = until(lambda: "Window{" in in_front_now() and "BrowserActivity" not in in_front_now(), 10)
     check("Open hands the file to another app", opened is not None, in_front_now())
     shot("26-downloads-open")
     key(4)
     until(lambda: "BrowserActivity" in in_front_now(), 10)
-    if find("shell", label="Show in Downloads") is None:
-        menu("Downloads")
-    press("Show in Downloads")
+    tap(middle(see("page", text="Show in Downloads")))
     shown = until(lambda: "documentsui" in in_front_now().lower() or "downloads" in in_front_now().lower(), 10)
     check("Show in Downloads opens the phone's Downloads app", shown is not None, in_front_now())
     shot("27-downloads-shown")
     key(4)
+    until(lambda: "BrowserActivity" in in_front_now(), 10)
+    press("Close Downloads")
+    # A tap on the notification opens the file, as Open does.
+    adb("shell", "cmd", "statusbar", "expand-notifications")
+    time.sleep(1)
+    dump = adb("exec-out", "uiautomator", "dump", "/dev/tty")
+    at = re.search(r'text="%s"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"' % re.escape(name), dump)
+    if at:
+        a, b, c, e = map(int, at.groups())
+        tap(((a + c) // 2, (b + e) // 2))
+    opened = until(lambda: "Window{" in in_front_now() and "BrowserActivity" not in in_front_now() and "NotificationShade" not in in_front_now(), 10)
+    check("a tap on the notification opens the file", at is not None and opened is not None, in_front_now())
+    key(4)
+    adb("shell", "cmd", "statusbar", "collapse")
+    # The tab is still at the page it showed, so a restart loads that, not the download.
+    served.clear()
+    launch()
+    time.sleep(3)
+    check("a restart doesn't download it again", not any(s.startswith("/dl/") for s in served), str(served))
 
 
 def screen_size():
