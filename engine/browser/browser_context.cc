@@ -1,7 +1,6 @@
 #include "project_b/engine/browser/browser_context.h"
 
 #include "build/build_config.h"
-#include "content/public/browser/media_capture_devices.h"
 #include "project_b/engine/browser/downloads.h"
 #if BUILDFLAG(IS_MAC)
 #include "project_b/engine/browser/notifications.h"
@@ -11,11 +10,7 @@ namespace project_b {
 
 BrowserContext::BrowserContext() = default;
 
-BrowserContext::BrowserContext(const base::FilePath& path) : path_(path) {
-  // Content's first read of the devices starts it watching them and answers before it
-  // has: read now, so the list is there when a page first asks for a camera.
-  content::MediaCaptureDevices::GetInstance()->GetVideoCaptureDevices();
-}
+BrowserContext::BrowserContext(const base::FilePath& path) : path_(path) {}
 
 BrowserContext::~BrowserContext() {
   NotifyWillBeDestroyed();
