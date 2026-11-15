@@ -71,7 +71,6 @@ const noPageFullYet = {
 const noFindYet = {
   terminal: 'r4 brings it',
   fox: 'r4 brings it',
-  minimal: 'r4 brings it',
 };
 
 // The desktop shells that don't draw the downloads list yet, and who brings it to each.
