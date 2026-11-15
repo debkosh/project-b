@@ -1,5 +1,5 @@
 // Glide's own tests, on the mock engine: the sidebar of the Space shown, the Command Bar,
-// Favorites and pinned tabs kept for the profile across a restart, folders on Go's tab
+// Favorites and Go's pins kept for the profile across a restart, folders on Go's tab
 // groups, split view, Spaces as workspaces, the sidebar hidden, and the card a window with
 // no tabs shows. The contract every shell keeps is shell-contract.cjs's. It leaves light and
 // dark screenshots of the window in build/e2e/glide-*.png.
@@ -24,6 +24,7 @@ const { check, fire, regions, settle, until } = lib;
   const bar = ui.getByRole('dialog', { name: 'Command Bar' });
   const field = ui.getByRole('combobox', { name: 'Address' });
   const kept = () => JSON.parse(fs.readFileSync(path.join(lib.profile, 'shells', 'glide.json'), 'utf8'));
+  const pins = () => JSON.parse(fs.readFileSync(path.join(lib.profile, 'pins.json'), 'utf8'));
   const active = async () => {
     const r = await regions();
     return r.tabs.find((t) => t.id === r.active);
@@ -93,12 +94,12 @@ const { check, fire, regions, settle, until } = lib;
   await ui.getByRole('button', { name: /^Close Mock elsewhere/ }).click();
   await until(async () => (await regions()).tabs.length === 2);
 
-  // Pinning keeps a tab at the top of its Space, for the profile.
+  // Pinning, Go's, keeps a tab at the top of its Space, for the profile.
   await tab(t2).click();
   await until(async () => (await tab(t2).getAttribute('aria-selected')) === 'true');
-  await fire('menu', 'glide.pin');
+  await fire('menu', 'tab.pin');
   check('Pin Tab moves it above New Tab', await until(async () => (await ui.locator('.pinned [role=tab]').count()) === 1 && (await ui.locator('.pinned [role=tab]').getAttribute('data-tab')) === String(t2)));
-  check('and the profile keeps its address', kept().pinned?.['']?.[0]?.url === 'https://docs.test');
+  check('and the profile keeps its address', pins()[0]?.url === 'https://docs.test' && pins()[0]?.workspace === '');
 
   // Folders are Go's tab groups.
   await command('one.test');
@@ -178,16 +179,19 @@ const { check, fire, regions, settle, until } = lib;
   await ui.getByRole('button', { name: 'Show Sidebar' }).click();
   check('Show Sidebar brings it back', await until(() => ui.locator('.sidebar').isVisible()));
 
-  // Closing a pinned tab closes it, and unpins it.
+  // Closing a pinned tab closes it and keeps the pin, which shows with no tab; its Unpin
+  // button removes it.
   await tab(t2).click();
   await ui.getByRole('button', { name: 'Close Mock docs.test' }).click();
-  check('closing a pinned tab closes it and unpins it', await until(async () => !(await regions()).tabs.some((t) => t.id === t2) && (kept().pinned?.[''] || []).length === 0));
+  check('closing a pinned tab closes it and keeps the pin', await until(async () => !(await regions()).tabs.some((t) => t.id === t2) && pins().length === 1 && (await ui.locator('.unloaded').count()) === 1));
+  await ui.getByRole('button', { name: 'Unpin Mock docs.test', exact: true }).click();
+  check('Unpin removes it', await until(async () => pins().length === 0 && (await ui.locator('.unloaded').count()) === 0));
 
   // Kept across a restart: the Favorites and a pinned tab, which then opens on a press.
   await tab(t3).click();
   await until(async () => (await tab(t3).getAttribute('aria-selected')) === 'true');
-  await fire('menu', 'glide.pin');
-  await until(() => (kept().pinned?.[''] || []).length === 1);
+  await fire('menu', 'tab.pin');
+  await until(() => pins().length === 1);
   await page.close();
   await lib.stop();
   await lib.start(['-use=glide']);
