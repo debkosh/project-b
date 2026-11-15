@@ -36,16 +36,20 @@ Start-up, ms from process start, warm / fresh:
 | app.ready | 273 / 278 | 246 / 245 |
 | tab.committed | 251 / 254 | none: Standard starts on its box |
 
-Memory after start (footprint, MiB): 0.2.64 909, its GPU process alone 821; 0.2.65 101, GPU 31.
-0.2.64's GPU process held about 820 MiB in every run, at any tab count; 0.2.65 doesn't.
+Memory, footprint in MiB of the browser and every child, without the graphics memory each owns
+unmapped: that part is purgeable, and macOS counts it only while it isn't volatile, so the GPU
+process read about 820 or about 30 on the same package from one start to the next.
+`memory.py` and `tabs.py` now give it apart ("purgeable graphics, apart"). Measured again
+with that, at load 3 to 5:
 
-With tabs open (footprint, MiB; every tab got its own renderer, about 14 MiB each):
+| | 0.2.64 | 0.2.65 |
+|---|---:|---:|
+| after start | 116 | 95 |
+| 10 tabs | 452 | 245 |
+| 50 tabs | 1181 | 849 |
 
-| tabs | 0.2.64 | 0.2.65 |
-|---:|---:|---:|
-| 1 | 925 | 120 |
-| 10 | 1226 | 251 |
-| 50 | 1939 | 857 |
+The difference at 10 and 50 tabs is the renderers: about 26 MiB a tab in 0.2.64, 14 in 0.2.65.
+Every tab got its own renderer.
 
 The tab spans, median of five, ms: the whole span, and when Go's part finished inside it.
 
