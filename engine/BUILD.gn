@@ -63,18 +63,28 @@ source_set("go_core_lib") {
 # What every process needs from the adapter.
 source_set("common") {
   sources = [
+    "common/block_rules.cc",
+    "common/block_rules.h",
     "common/content_client.cc",
     "common/content_client.h",
     "common/extensions_on.h",
     "common/main_delegate.cc",
     "common/main_delegate.h",
+    "common/renderer_client.cc",
+    "common/renderer_client.h",
   ]
   deps = [
     "//base",
     "//content/public/app",
     "//content/public/common",
+    "//content/public/renderer",
+    "//net",
     "//project_b/engine/buildflags",
+    "//services/network/public/cpp",
+    "//third_party/blink/public:blink_headers",
+    "//third_party/blink/public/common",
     "//ui/base",
+    "//url",
   ]
 
   # In a build with extensions, every process knows the chrome-extension: scheme and

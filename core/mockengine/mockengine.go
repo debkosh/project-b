@@ -91,6 +91,7 @@ type Engine struct {
 	first    string
 	erased   []Erase
 	profiles []string
+	rules    []engine.BlockRules
 
 	// Written on the main thread, read by the dev server's goroutines.
 	mu         sync.Mutex
@@ -184,6 +185,12 @@ func (e *Engine) OpenProfile(dir string) { e.profiles = append(e.profiles, dir) 
 
 // Profiles are the folders the app opened, in order. On the main thread.
 func (e *Engine) Profiles() []string { return e.profiles }
+
+// SetBlockRules records the rules. The mock's pages make no requests to refuse.
+func (e *Engine) SetBlockRules(r engine.BlockRules) { e.rules = append(e.rules, r) }
+
+// BlockRules are the rules the app set, in order. On the main thread.
+func (e *Engine) BlockRules() []engine.BlockRules { return e.rules }
 
 // SetSwitches takes the switches the app launches with, from the flags saved in the
 // profile, as the real engine finds them on its command line before content starts.

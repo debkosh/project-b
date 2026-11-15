@@ -12,6 +12,9 @@
 #include "content/public/browser/service_worker_version_base_info.h"
 #include "mojo/public/cpp/bindings/binder_map.h"
 #include "content/public/browser/web_contents.h"
+#include "net/http/http_request_headers.h"
+#include "services/network/public/mojom/websocket.mojom.h"
+#include "project_b/engine/common/block_rules.h"
 #include "project_b/engine/browser/browser_main_parts.h"
 #include "project_b/engine/browser/engine.h"
 #include "project_b/engine/browser/events.h"
@@ -68,6 +71,40 @@ ContentBrowserClient::CreateDevToolsManagerDelegate() {
   return std::make_unique<DevToolsManagerDelegate>();
 }
 #endif
+
+void ContentBrowserClient::AppendExtraCommandLineSwitches(
+    base::CommandLine* command_line,
+    int child_process_id) {
+  block_rules::AppendTo(command_line);
+}
+
+bool ContentBrowserClient::WillInterceptWebSocket(
+    content::RenderFrameHost* frame) {
+  return block_rules::Any();
+}
+
+// One to a blocked host is dropped, which the page sees as a failed connection; any
+// other opens as content would have opened it.
+void ContentBrowserClient::CreateWebSocket(
+    content::RenderFrameHost* frame,
+    WebSocketFactory factory,
+    const GURL& url,
+    const net::SiteForCookies& site_for_cookies,
+    const std::optional<std::string>& user_agent,
+    mojo::PendingRemote<network::mojom::WebSocketHandshakeClient>
+        handshake_client,
+    WebSocketOptions options) {
+  if (block_rules::Blocks(url)) {
+    return;
+  }
+  std::vector<network::mojom::HttpHeaderPtr> headers;
+  if (user_agent) {
+    headers.push_back(network::mojom::HttpHeader::New(
+        net::HttpRequestHeaders::kUserAgent, *user_agent));
+  }
+  std::move(factory).Run(url, std::move(headers), std::move(handshake_client),
+                         mojo::NullRemote(), std::move(options.header_client));
+}
 
 // Every navigation gets the gate, which asks Go about a tab's top-level ones, and the
 // generated throttle, whose hooks cross to Go only when something subscribed to them.

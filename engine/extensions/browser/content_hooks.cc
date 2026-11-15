@@ -160,6 +160,8 @@ bool ExtensionsContentBrowserClient::ShouldUseSpareRenderProcessHost(
 void ExtensionsContentBrowserClient::AppendExtraCommandLineSwitches(
     base::CommandLine* command_line,
     int child_process_id) {
+  ContentBrowserClient::AppendExtraCommandLineSwitches(command_line,
+                                                       child_process_id);
   content::RenderProcessHost* process =
       content::RenderProcessHost::FromID(child_process_id);
   if (process && !HasExtensions(process)) {

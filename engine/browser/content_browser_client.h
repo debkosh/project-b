@@ -33,6 +33,10 @@ class ContentBrowserClient : public ContentBrowserClientHooks {
       mojo::BinderMapWithContext<const content::ServiceWorkerVersionBaseInfo&>* map)
       override;
 
+  // A renderer learns the blocked hosts on its command line, and refuses them itself.
+  void AppendExtraCommandLineSwitches(base::CommandLine* command_line,
+                                      int child_process_id) override;
+
  private:
   std::unique_ptr<content::BrowserMainParts> CreateBrowserMainParts(
       bool is_integration_test) override;
@@ -48,6 +52,17 @@ class ContentBrowserClient : public ContentBrowserClientHooks {
 #endif
   void CreateThrottlesForNavigation(
       content::NavigationThrottleRegistry& registry) override;
+  // A page's WebSocket to a blocked host never opens.
+  bool WillInterceptWebSocket(content::RenderFrameHost* frame) override;
+  void CreateWebSocket(
+      content::RenderFrameHost* frame,
+      WebSocketFactory factory,
+      const GURL& url,
+      const net::SiteForCookies& site_for_cookies,
+      const std::optional<std::string>& user_agent,
+      mojo::PendingRemote<network::mojom::WebSocketHandshakeClient>
+          handshake_client,
+      WebSocketOptions options) override;
   std::string GetProduct() override;
 #if BUILDFLAG(IS_MAC)
   // A site's or a proxy's request for a username and password goes to Go as a dialog.

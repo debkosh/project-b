@@ -27,6 +27,12 @@ func New(blocked []string, ourPage func(url string) (engine.Page, bool)) *Manage
 	return m
 }
 
+// BlockRules are the blocked hosts as the engine refuses them, for every request a page
+// makes.
+func (m *Manager) BlockRules() engine.BlockRules {
+	return engine.BlockRules{Hosts: append([]string(nil), m.blocked...)}
+}
+
 // IsAllowedURL is the one function every URL decision goes through. It's in memory
 // and never waits.
 func (m *Manager) IsAllowedURL(raw string) bool {

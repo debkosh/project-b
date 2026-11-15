@@ -27,7 +27,8 @@ bool Key(content::WebContents* source,
          PBKeyPhase phase);
 
 // The gate: every top-level navigation in a tab asks Go before it starts and on each
-// redirect. Our own pages' navigations and frames inside a page go on unasked.
+// redirect. A frame inside a tab's page is refused on a blocked host (block_rules.h).
+// Our own pages' navigations go on unasked.
 class Gate : public content::NavigationThrottle {
  public:
   explicit Gate(content::NavigationThrottleRegistry& registry);

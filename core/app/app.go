@@ -99,6 +99,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Crash = crash.New(cfg.ProfileDir, cfg.CrashReports)
 	a.Crash.System = cfg.System
 	a.Policy = policy.New(cfg.BlockedHosts, e.OurPage)
+	e.SetBlockRules(a.Policy.BlockRules())
 	a.History = history.New(cfg.ProfileDir, e.Post)
 	a.Suggest = suggest.New(a.History)
 	a.Workspaces = workspaces.New(cfg.ProfileDir)

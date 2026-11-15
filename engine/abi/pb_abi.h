@@ -356,6 +356,10 @@ typedef struct PBEngineCalls {
   // Draws the app's Dock icon with a small dot in the profile's colour, 0xRRGGBB, at its
   // bottom right. Null on Android, where nothing calls it.
   void (*set_dock_color)(int32_t rgb);
+  // The hosts no request of a page may reach, nor any under them, one per line, lower
+  // case: the page, its frames, its subresources and its WebSockets. Go sets them once, at
+  // start, before any tab.
+  void (*set_block_rules)(const char* hosts);
   // What an engine built on Chromium's content layer adds: its generated hooks, the
   // table in pb_content_abi.h.
   const struct PBContentHooks* (*content_hooks)(void);
