@@ -95,7 +95,6 @@ const noTitleYet = {
   glide: 'r6 brings it',
   'mobile-native': 'r8, the native mobile shell\'s session, brings it',
   terminal: 'r4 brings it',
-  minimal: 'r4 brings it',
 };
 
 // The shells that don't draw the permission prompt and the Site settings control yet, and
