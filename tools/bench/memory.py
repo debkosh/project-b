@@ -4,7 +4,9 @@
 Starts the app on each shell given, waits five seconds, and reads macOS's footprint, the
 number Activity Monitor shows, of the browser and each child process by its kind, and the
 shell page's JS heap and element count. The first start of each shell is a warm-up; the
-rest give the median.
+rest give the median. A shell that takes New Tab ("takes" in core/shells/registry.json), as
+the standard shell does for its command box, starts with no tab, so its numbers have no
+tab's page in them, where every other shell's have its first, new tab's.
 
     python3 tools/bench/memory.py standard minimal minimal-js terminal fox
     python3 tools/bench/memory.py -n 5 --out build/bench/memory.json standard
