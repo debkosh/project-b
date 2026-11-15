@@ -944,7 +944,7 @@ def workspace_delete_checks():
     """Deleting a workspace in Settings, Workspaces, by real clicks: its row's menu ends with
     Delete… in red, a dialog asks first and names its open tabs, and Delete closes them while
     settings stays open. Deleting the workspace that holds all a window's tabs keeps the
-    window with one new tab. With one workspace left, Delete… can't be chosen. The driver
+    window, with no tabs. With one workspace left, Delete… can't be chosen. The driver
     only finds the controls; that storage is erased is checked in tools/drive_first_app.py."""
     guest("/usr/bin/killall", "project_b")
     profile = f"{WSDEL}-profile"  # Beside WSDEL, which driven() empties.
@@ -1004,8 +1004,8 @@ def workspace_delete_checks():
     click("[...document.querySelectorAll('dialog[open] button')].find(b=>b.textContent.trim()==='Delete')")
     gone = until(lambda: settings(f"!document.querySelector({row('')})"), bool, 10)
     shot("p4-workspace-last")
-    check("deleting the workspace that held all of a window's tabs keeps the window, with one new tab",
-          gone and len(windows()) == 1 and until(tabs, lambda n: n == 1) == 1, f"{gone} {windows()} {tabs()}")
+    check("deleting the workspace that held all of a window's tabs keeps the window, with no tabs",
+          gone and len(windows()) == 1 and until(tabs, lambda n: n == 0) == 0, f"{gone} {windows()} {tabs()}")
 
     click(actions("Shopping"))
     off = settings(f"(e=>!!e&&(e.disabled||e.getAttribute('aria-disabled')==='true'))({delete_item})")
