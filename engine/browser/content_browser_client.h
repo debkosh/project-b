@@ -34,6 +34,11 @@ class ContentBrowserClient : public ContentBrowserClientHooks {
       override;
 
   // A renderer learns the blocked hosts on its command line, and refuses them itself.
+  void RenderProcessWillLaunch(content::RenderProcessHost* host) override;
+  void ExposeInterfacesToRenderer(
+      service_manager::BinderRegistry* registry,
+      blink::AssociatedInterfaceRegistry* associated_registry,
+      content::RenderProcessHost* render_process_host) override;
   void AppendExtraCommandLineSwitches(base::CommandLine* command_line,
                                       int child_process_id) override;
 

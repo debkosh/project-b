@@ -1,0 +1,8 @@
+# The messages the adapter's browser process sends its renderers, for the Mac and Android.
+
+import("//mojo/public/tools/bindings/mojom.gni")
+
+mojom("mojom") {
+  sources = [ "project_b.mojom" ]
+  public_deps = [ "//mojo/public/mojom/base" ]
+}

@@ -184,6 +184,8 @@ void ExtensionsContentBrowserClient::ExposeInterfacesToRenderer(
     service_manager::BinderRegistry* registry,
     blink::AssociatedInterfaceRegistry* associated_registry,
     content::RenderProcessHost* render_process_host) {
+  ContentBrowserClient::ExposeInterfacesToRenderer(registry, associated_registry,
+                                                   render_process_host);
   if (!HasExtensions(render_process_host)) {
     return;
   }

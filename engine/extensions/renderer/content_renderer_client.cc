@@ -73,6 +73,7 @@ ContentRendererClient::ContentRendererClient() = default;
 ContentRendererClient::~ContentRendererClient() = default;
 
 void ContentRendererClient::RenderThreadStarted() {
+  RendererClient::RenderThreadStarted();
   extensions_ = std::make_unique<ExtensionsHooks>();
   extensions_->AddAPIProvider(
       std::make_unique<extensions::CoreExtensionsRendererAPIProvider>());
@@ -86,6 +87,7 @@ void ContentRendererClient::RenderThreadStarted() {
 
 void ContentRendererClient::RenderFrameCreated(
     content::RenderFrame* render_frame) {
+  RendererClient::RenderFrameCreated(render_frame);
   extensions_->RenderFrameCreated(
       render_frame, (new FrameInterfaces(render_frame))->registry());
 }
@@ -105,11 +107,13 @@ void ContentRendererClient::RunScriptsAtDocumentStart(
         blink::WebString::FromUtf8(kWebStoreCss));
   }
   extensions_->RunScriptsAtDocumentStart(render_frame);
+  RendererClient::RunScriptsAtDocumentStart(render_frame);
 }
 
 void ContentRendererClient::RunScriptsAtDocumentEnd(
     content::RenderFrame* render_frame) {
   extensions_->RunScriptsAtDocumentEnd(render_frame);
+  RendererClient::RunScriptsAtDocumentEnd(render_frame);
 }
 
 void ContentRendererClient::RunScriptsAtDocumentIdle(
