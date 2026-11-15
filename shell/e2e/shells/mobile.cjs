@@ -524,6 +524,10 @@ const H = 915;
   // The address bar on top, from settings on a phone: the toolbar moves under the status
   // bar, the strip stays at the foot, the suggestions grow down.
   await w.settings.getByRole('radiogroup', { name: 'Address bar' }).getByRole('radio', { name: 'Top' }).tap();
+  // The settings page's message goes on its tab's channel, which a closed tab no longer has,
+  // so the tab closes only once Go has kept the choice.
+  const pref = () => JSON.parse(fs.readFileSync(path.join(lib.profile, 'prefs.json'), 'utf8')).addressBarPosition;
+  check('Top in settings reaches Go', await until(async () => fs.existsSync(path.join(lib.profile, 'prefs.json')) && pref() === 'top'));
   await lib.closeTab((await regions()).settings);
   await until(async () => (await regions()).settings === 0);
   const clear = (await regions()).window.Controls;
