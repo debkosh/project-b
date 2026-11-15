@@ -164,6 +164,8 @@ use_remoteexec = false
 use_siso = true
 target_cpu = "arm64"
 root_extra_deps = [ "//project_b/engine" ]
+proprietary_codecs = true
+ffmpeg_branding = "Chrome"
 project_b_go = "$GO"
 project_b_node = "$NODE"
 ARGS
