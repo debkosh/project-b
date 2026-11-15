@@ -222,9 +222,13 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
             "scroll" -> {
                 if (m.optLong("tab") == active && sheet.isEmpty() && !editing) bars(m.optString("direction") != "down")
             }
-            "contextMenu" -> if (m.optLong("tab") == active) {
-                pressed = m
-                open("link")
+            // Go's menu for a long press on a link or an image, or null once it has gone; the
+            // sheet builds its own items from what was pressed, as the web shell's does.
+            "contextMenu" -> m.optJSONObject("contextMenu")?.let { menu ->
+                if (menu.optLong("tab") == active) {
+                    pressed = menu
+                    open("link")
+                }
             }
             "suggestions" -> if (m.optInt("id") == asked && editing) suggest(m.optJSONArray("items") ?: JSONArray())
             // The phone's back key, while the shell said it closes something: the sheet open,
