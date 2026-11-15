@@ -146,9 +146,13 @@ The snapshot's `profileData` is what this shell last saved for the profile, `nul
 nothing. Its `actions` is every action in the menus that can run then, `{id, title}`, in
 the menus' order, for a shell that lists them to run by name (`run`).
 
-A tab is `{id, url, title, loading, progress, blocked, crashed, error, favicon, canGoBack,
-canGoForward, workspace, group}`, `group` the id of its tab group, absent when it is in
-none. The snapshot also has `running` (the version), `platform`
+A tab is `{id, url, title, loading, progress, blocked, crashed, error, errorCode, favicon,
+canGoBack, canGoForward, workspace, group}`, `group` the id of its tab group, absent when it
+is in none. `error` says why its page failed to load, absent when it didn't: `not-found`,
+`offline`, `refused`, `unreachable`, `timeout`, `tls`, `proxy`, `redirects`,
+`bad-response`, `blocked`, `file` or `other` (engine.Failure). `errorCode` is the engine's
+own name for the error, such as `ERR_NAME_NOT_RESOLVED`, to show under the sentence and
+never to match on. The snapshot also has `running` (the version), `platform`
 (`mac`, as the keymap names it) and `data`, and `extensions` only while their flag is on.
 
 - `controls` is `{x, y, w, h}`, where the native window buttons are, zero size when there

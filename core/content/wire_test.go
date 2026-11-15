@@ -63,8 +63,8 @@ func (r *recorder) NavigationStarting(tab engine.TabID, nav int64, url string) b
 func (r *recorder) NavigationFinished(tab engine.TabID, nav int64, url string) {
 	r.note("finished " + url)
 }
-func (r *recorder) NavigationFailed(tab engine.TabID, nav int64, url, reason string) {
-	r.note("failed " + url + " " + reason)
+func (r *recorder) NavigationFailed(tab engine.TabID, nav int64, url string, reason engine.Failure, code string) {
+	r.note("failed " + url + " " + string(reason))
 }
 func (r *recorder) HistoryChanged(tab engine.TabID, back, fwd bool) {
 	if back {
@@ -203,7 +203,7 @@ func TestEngineEventsNeedNoSubscription(t *testing.T) {
 	h.Dispatch(eventPickerMessage, []Value{{I: 2}, {S: `{"t":"open"}`}})
 	h.Dispatch(eventWindowFocused, []Value{{I: 2}})
 	h.Dispatch(eventWindowClosed, []Value{{I: 2}})
-	h.Dispatch(eventProcessCrashed, []Value{{S: "renderer"}, {I: int64(TerminationStatusProcessCrashed)}, {I: 11}, {I: 42}, {S: "https://p.test/"}})
+	h.Dispatch(eventProcessCrashed, []Value{{S: "renderer"}, {S: "crashed"}, {I: 11}, {I: 42}, {S: "https://p.test/"}})
 	if !reflect.DeepEqual(r.got, []string{"opened https://p.test/ in a1b2c3d4 new window true", "window 2 1100x700 r=20 full=true", "shell 2 crashed", `shell 2 {"t":"ready"}`, `settings 2 {"t":"close"}`, `picker 2 {"t":"open"}`, "window 2 focused", "window 2 closed", "renderer crashed 11 42 https://p.test/"}) {
 		t.Fatalf("got %v", r.got)
 	}

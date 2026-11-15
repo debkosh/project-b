@@ -27,8 +27,8 @@ func (r *recorder) NavigationStarting(tab engine.TabID, nav int64, url string) b
 func (r *recorder) NavigationFinished(tab engine.TabID, nav int64, url string) {
 	r.note("finished %d %d %s", tab, nav, url)
 }
-func (r *recorder) NavigationFailed(tab engine.TabID, nav int64, url, reason string) {
-	r.note("failed %d %d %s %s", tab, nav, url, reason)
+func (r *recorder) NavigationFailed(tab engine.TabID, nav int64, url string, why engine.Failure, code string) {
+	r.note("failed %d %d %s %s %s", tab, nav, url, why, code)
 }
 func (r *recorder) HistoryChanged(tab engine.TabID, back, forward bool) {
 	r.note("history %d %v %v", tab, back, forward)
@@ -83,7 +83,7 @@ func TestEachEventReachesTheListener(t *testing.T) {
 		want string
 	}{
 		{NavigationFinished, []Value{i(3), i(41), s("https://a.test/")}, "finished 3 41 https://a.test/"},
-		{NavigationFailed, []Value{i(3), i(42), s("https://x.test/"), s("net::ERR_NAME_NOT_RESOLVED")}, "failed 3 42 https://x.test/ net::ERR_NAME_NOT_RESOLVED"},
+		{NavigationFailed, []Value{i(3), i(42), s("https://x.test/"), s("not-found"), s("ERR_NAME_NOT_RESOLVED")}, "failed 3 42 https://x.test/ not-found ERR_NAME_NOT_RESOLVED"},
 		{HistoryChanged, []Value{i(3), i(1), i(0)}, "history 3 true false"},
 		{TitleChanged, []Value{i(3), s("A")}, "title 3 A"},
 		{LoadingChanged, []Value{i(3), i(1)}, "loading 3 true"},

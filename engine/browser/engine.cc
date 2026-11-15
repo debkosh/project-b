@@ -33,6 +33,7 @@
 #include "project_b/engine/browser/dialogs.h"
 #include "project_b/engine/browser/downloads.h"
 #include "project_b/engine/browser/go.h"
+#include "project_b/engine/abi/pb_content_abi.h"
 #include "project_b/engine/browser/hooks.h"
 #include "project_b/engine/browser/page_tab.h"
 #include "project_b/engine/browser/settings_page.h"
@@ -463,6 +464,14 @@ void CallSetHookSubscribed(int32_t hook, int on) {
   hooks::SetSubscribed(hook, on != 0);
 }
 
+const PBContentHooks* CallContentHooks() {
+  static const PBContentHooks kHooks = {
+      .table_hash = hooks::kTableHash,
+      .set_subscribed = CallSetHookSubscribed,
+  };
+  return &kHooks;
+}
+
 #if BUILDFLAG(IS_ANDROID)
 void CallInstallUpdate(const char* path) {
   CheckMainThread();
@@ -564,7 +573,7 @@ const PBEngineCalls* Engine::Calls() {
 #if !BUILDFLAG(IS_ANDROID)
       .set_dock_color = CallSetDockColor,
 #endif
-      .set_hook_subscribed = CallSetHookSubscribed,
+      .content_hooks = CallContentHooks,
       .post_wakeup = CallPostWakeup,
 #if BUILDFLAG(IS_ANDROID)
       .install_update = CallInstallUpdate,

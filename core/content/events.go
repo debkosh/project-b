@@ -64,17 +64,6 @@ var eventNames = map[Hook]string{
 	eventDialogClosed:   "engine.DialogClosed",
 }
 
-// terminationNames are how a child process ended, as engine.ProcessCrash says it. The
-// engine reports only these.
-var terminationNames = map[TerminationStatus]string{
-	TerminationStatusAbnormalTermination: "exited abnormally",
-	TerminationStatusProcessWasKilled:    "was killed",
-	TerminationStatusProcessCrashed:      "crashed",
-	TerminationStatusLaunchFailed:        "failed to launch",
-	TerminationStatusOom:                 "ran out of memory",
-	TerminationStatusEvictedForMemory:    "was evicted for memory",
-}
-
 // Events is what the adapter itself reports. Always on; there is nothing to subscribe.
 type Events struct {
 	OnShellMessage    func(w engine.WindowID, msg []byte)
@@ -174,7 +163,7 @@ func (e *Events) dispatch(id Hook, r *reader) (Value, bool) {
 		if e.OnProcessCrashed != nil {
 			e.OnProcessCrashed(engine.ProcessCrash{
 				Type:     r.str(),
-				Status:   terminationNames[TerminationStatus(r.int())],
+				Status:   r.str(),
 				ExitCode: int(r.int()),
 				PID:      int(r.int()),
 				URL:      r.str(),

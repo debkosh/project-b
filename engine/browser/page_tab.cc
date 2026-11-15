@@ -56,6 +56,61 @@ const char* MediumOf(blink::mojom::ContextMenuDataMediaType type) {
   }
 }
 
+// Why a navigation failed, in engine.Failure's words: the one place a net error becomes
+// ours.
+const char* FailureOf(net::Error error) {
+  if (net::IsCertificateError(error)) {
+    return "tls";
+  }
+  switch (error) {
+    case net::ERR_NAME_NOT_RESOLVED:
+    case net::ERR_NAME_RESOLUTION_FAILED:
+      return "not-found";
+    case net::ERR_INTERNET_DISCONNECTED:
+      return "offline";
+    case net::ERR_CONNECTION_REFUSED:
+    case net::ERR_CONNECTION_RESET:
+    case net::ERR_CONNECTION_CLOSED:
+    case net::ERR_CONNECTION_ABORTED:
+    case net::ERR_CONNECTION_FAILED:
+      return "refused";
+    case net::ERR_ADDRESS_UNREACHABLE:
+    case net::ERR_ADDRESS_INVALID:
+      return "unreachable";
+    case net::ERR_TIMED_OUT:
+    case net::ERR_CONNECTION_TIMED_OUT:
+      return "timeout";
+    case net::ERR_SSL_PROTOCOL_ERROR:
+    case net::ERR_SSL_VERSION_OR_CIPHER_MISMATCH:
+    case net::ERR_BAD_SSL_CLIENT_AUTH_CERT:
+      return "tls";
+    case net::ERR_PROXY_CONNECTION_FAILED:
+    case net::ERR_TUNNEL_CONNECTION_FAILED:
+    case net::ERR_MANDATORY_PROXY_CONFIGURATION_FAILED:
+      return "proxy";
+    case net::ERR_TOO_MANY_REDIRECTS:
+      return "redirects";
+    case net::ERR_EMPTY_RESPONSE:
+    case net::ERR_INVALID_RESPONSE:
+    case net::ERR_INVALID_HTTP_RESPONSE:
+    case net::ERR_CONTENT_DECODING_FAILED:
+    case net::ERR_RESPONSE_HEADERS_TOO_BIG:
+      return "bad-response";
+    case net::ERR_BLOCKED_BY_CLIENT:
+    case net::ERR_BLOCKED_BY_ADMINISTRATOR:
+    case net::ERR_BLOCKED_BY_RESPONSE:
+    case net::ERR_BLOCKED_BY_CSP:
+    case net::ERR_UNSAFE_PORT:
+    case net::ERR_UNSAFE_REDIRECT:
+      return "blocked";
+    case net::ERR_FILE_NOT_FOUND:
+    case net::ERR_ACCESS_DENIED:
+      return "file";
+    default:
+      return "other";
+  }
+}
+
 }  // namespace
 
 PageTab::PageTab(int64_t id,
@@ -121,7 +176,8 @@ void PageTab::ReportNavigation(content::NavigationHandle* handle) {
     args.Int(id_);
     args.Int(handle->GetNavigationId());
     args.Str(handle->GetURL().spec());
-    args.Str(net::ErrorToString(error));
+    args.Str(FailureOf(error));
+    args.Str(net::ErrorToShortString(error));
     hooks::Fire(PB_EVENT_NAVIGATION_FAILED, args);
   }
 }

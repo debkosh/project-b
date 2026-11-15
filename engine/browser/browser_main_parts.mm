@@ -87,8 +87,7 @@ int BrowserMainParts::PreMainMessageLoopRun() {
           &quit_));
 
   Go().start(Engine::Calls(),
-             command_line->GetSwitchValueASCII("block").c_str(),
-             hooks::kTableHash);
+             command_line->GetSwitchValueASCII("block").c_str());
   WatchOSKeyBindings();
   child_processes_ = std::make_unique<ChildProcesses>();
   StartRemoteDebugging();

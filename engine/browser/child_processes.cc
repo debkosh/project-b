@@ -18,13 +18,31 @@ namespace project_b {
 
 namespace {
 
+// How a child process ended, in the words of the crash event.
+const char* Ending(base::TerminationStatus status) {
+  switch (status) {
+    case base::TERMINATION_STATUS_PROCESS_WAS_KILLED:
+      return "was killed";
+    case base::TERMINATION_STATUS_PROCESS_CRASHED:
+      return "crashed";
+    case base::TERMINATION_STATUS_LAUNCH_FAILED:
+      return "failed to launch";
+    case base::TERMINATION_STATUS_OOM:
+      return "ran out of memory";
+    case base::TERMINATION_STATUS_EVICTED_FOR_MEMORY:
+      return "was evicted for memory";
+    default:
+      return "exited abnormally";
+  }
+}
+
 void Fire(const std::string& type,
           const content::ChildProcessTerminationInfo& info,
           base::ProcessId pid,
           const std::string& url) {
   hooks::Args args;
   args.Str(type);
-  args.Int(info.status);
+  args.Str(Ending(info.status));
   args.Int(info.exit_code);
   args.Int(pid);
   args.Str(url);

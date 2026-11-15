@@ -29,7 +29,10 @@ type Tab struct {
 	Progress float64 `json:"progress"`
 	Blocked  bool    `json:"blocked"`
 	Crashed  bool    `json:"crashed"`
-	Error    string  `json:"error,omitempty"`
+	// Error is why its page failed to load, one of engine.Failure's words, and ErrorCode
+	// the engine's own name for it, only to show.
+	Error     engine.Failure `json:"error,omitempty"`
+	ErrorCode string         `json:"errorCode,omitempty"`
 	// Favicon is a data: URL, or "" when the page has none.
 	Favicon string `json:"favicon,omitempty"`
 
@@ -630,7 +633,7 @@ func (m *Manager) HandleNavigationStarting(id engine.TabID, nav int64, u string)
 		return false
 	}
 	t.started = nav
-	t.URL, t.Error, t.Crashed = address(u), "", false
+	t.URL, t.Error, t.ErrorCode, t.Crashed = address(u), "", "", false
 	for _, g := range m.gates {
 		if !g(u) {
 			t.Blocked, t.Loading = true, false
@@ -654,7 +657,7 @@ func (m *Manager) HandleNavigationFinished(id engine.TabID, nav int64, u string)
 	}
 	// A page restored from the back-forward cache never reports a start, so a commit
 	// has to clear what an earlier navigation left behind.
-	t.URL, t.Error, t.Blocked, t.Crashed = address(u), "", false, false
+	t.URL, t.Error, t.ErrorCode, t.Blocked, t.Crashed = address(u), "", "", false, false
 	for _, f := range m.onFinished {
 		f(*t)
 	}
@@ -663,12 +666,12 @@ func (m *Manager) HandleNavigationFinished(id engine.TabID, nav int64, u string)
 
 // HandleNavigationFailed records a failed navigation, unless it is older than the latest
 // started, as HandleNavigationFinished does.
-func (m *Manager) HandleNavigationFailed(id engine.TabID, nav int64, u, reason string) {
+func (m *Manager) HandleNavigationFailed(id engine.TabID, nav int64, u string, why engine.Failure, code string) {
 	t := m.tabs[id]
 	if t == nil || nav < t.started {
 		return
 	}
-	t.URL, t.Error, t.Loading = address(u), reason, false
+	t.URL, t.Error, t.ErrorCode, t.Loading = address(u), why, code, false
 	m.changed(t)
 }
 

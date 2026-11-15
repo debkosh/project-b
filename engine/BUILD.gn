@@ -191,6 +191,7 @@ inspector_protocol_generate("protocol_sources") {
 source_set("browser") {
   sources = [
     "abi/pb_abi.h",
+    "abi/pb_content_abi.h",
     "browser/browser_context.cc",
     "browser/permissions.cc",
     "browser/browser_context.h",

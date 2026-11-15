@@ -190,7 +190,7 @@ func TestALateBlankPageLeavesTheNewerAddress(t *testing.T) {
 	if tab := m.Active(); tab.URL != "https://example.com/" {
 		t.Fatalf("after the blank page's late commit the tab shows %q", tab.URL)
 	}
-	m.HandleNavigationFailed(id, 1, BlankURL, "ERR_FAILED")
+	m.HandleNavigationFailed(id, 1, BlankURL, engine.FailOther, "ERR_FAILED")
 	if tab := m.Active(); tab.URL != "https://example.com/" || tab.Error != "" {
 		t.Fatalf("after the blank page's late failure the tab shows %q, error %q", tab.URL, tab.Error)
 	}
