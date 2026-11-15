@@ -150,6 +150,23 @@ const menuHas = (menu, title) => JSON.stringify(menu).includes(`"title":"${title
   check('the gear opens the settings tab and shows it', await until(settingsShown));
   check('and the dev window shows the page in the tab\'s frame', await until(() => shell.locator('iframe.our-page[data-page="settings"]').isVisible()));
   check('its title is the page\'s own', await until(async () => (await regions()).tabs.find((t) => t.page === 'settings').title === 'Settings'));
+  // Its title and icon follow the page, as a web page's do.
+  const ownFrame = () => shell.frame({ url: /\/settings\/\?tab=\d+$/ });
+  const icon = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7'/%3E%3C/svg%3E";
+  await ownFrame().evaluate((href) => {
+    document.title = 'Settings › Test';
+    const link = Object.assign(document.createElement('link'), { id: 'test-icon', rel: 'icon', href });
+    document.head.append(link);
+  }, icon);
+  check('a title and an icon the page sets are its tab\'s, and the shell shows the title', await until(async () => {
+    const t = (await regions()).tabs.find((t) => t.page === 'settings');
+    return t.title === 'Settings › Test' && t.favicon?.startsWith('data:image/svg+xml') && (await ui.locator(`[role=tab][data-tab="${t.id}"]`).textContent()).includes('Settings › Test');
+  }), JSON.stringify((await regions()).tabs));
+  await ownFrame().evaluate(() => {
+    document.title = 'Settings';
+    document.getElementById('test-icon').remove();
+  });
+  await until(async () => (await regions()).tabs.find((t) => t.page === 'settings').title === 'Settings');
   await settle(shell);
   await shell.screenshot({ path: path.join(out, 'window-settings.png') });
 
