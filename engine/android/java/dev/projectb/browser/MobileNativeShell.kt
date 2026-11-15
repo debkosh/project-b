@@ -257,7 +257,15 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
 
     private fun take(m: JSONObject) {
         fun list(name: String) = m.optJSONArray(name)?.let { a -> List(a.length()) { a.getJSONObject(it) } }
-        list("tabs")?.let { tabs = it }
+        // A tab's favicon comes in the snapshot and its own tab message, not in tabs: each tab
+        // keeps the one it had, by id.
+        list("tabs")?.let { fresh ->
+            val had = tabs.associateBy { it.getLong("id") }
+            for (t in fresh) {
+                if (!t.has("favicon")) had[t.getLong("id")]?.optString("favicon")?.let { t.put("favicon", it) }
+            }
+            tabs = fresh
+        }
         if (m.has("active")) active = m.getLong("active")
         list("groups")?.let { groups = it }
         list("workspaces")?.let { workspaces = it }
