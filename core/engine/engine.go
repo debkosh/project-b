@@ -282,7 +282,9 @@ type Listener interface {
 	// started later; its finish or failure carries the same.
 	NavigationStarting(tab TabID, nav int64, url string) bool
 	NavigationFinished(tab TabID, nav int64, url string)
-	NavigationFailed(tab TabID, nav int64, url, reason string)
+	// NavigationFailed says why, as one of the Failure words, and code is the engine's
+	// own name for it, only to show.
+	NavigationFailed(tab TabID, nav int64, url string, why Failure, code string)
 	// HistoryChanged says whether the tab can currently go back and forward.
 	HistoryChanged(tab TabID, canGoBack, canGoForward bool)
 	TitleChanged(tab TabID, title string)
@@ -485,6 +487,25 @@ const (
 	DownloadRemove
 )
 
+// Failure is why a navigation failed, in words any engine can say. A shell may match on
+// them; the engine's own name for the error comes beside them, only to show.
+type Failure string
+
+const (
+	FailNotFound    Failure = "not-found"    // The host's name doesn't resolve.
+	FailOffline     Failure = "offline"      // There is no network.
+	FailRefused     Failure = "refused"      // The host refused, reset or closed the connection.
+	FailUnreachable Failure = "unreachable"  // No route to the host's address.
+	FailTimeout     Failure = "timeout"      // The connection or the response took too long.
+	FailTLS         Failure = "tls"          // The certificate or the TLS handshake failed.
+	FailProxy       Failure = "proxy"        // The proxy failed.
+	FailRedirects   Failure = "redirects"    // Too many redirects.
+	FailBadResponse Failure = "bad-response" // An empty, invalid or undecodable response.
+	FailBlocked     Failure = "blocked"      // The page's own rules or a port browsers refuse. The app's own block is the gate's.
+	FailFile        Failure = "file"         // A local file is missing or can't be read.
+	FailOther       Failure = "other"
+)
+
 // ErrUnknownCommand is DevToolsCommand's answer for a method it doesn't have.
 var ErrUnknownCommand = errors.New("unknown command")
 
@@ -542,7 +563,7 @@ func (l WindowLayout) At(x, y float64) Area {
 // process or a utility process. The engine starts another when one is needed.
 type ProcessCrash struct {
 	Type     string // The kind of process, as the engine names it.
-	Status   string // How it ended: crashed, killed, out of memory, and so on.
+	Status   string // How it ended: "crashed", "was killed", "ran out of memory", "failed to launch", "was evicted for memory" or "exited abnormally".
 	ExitCode int
 	PID      int
 	URL      string // The page a renderer showed, or "".

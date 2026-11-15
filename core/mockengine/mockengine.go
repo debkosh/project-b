@@ -848,10 +848,12 @@ func (e *Engine) Fire(w engine.WindowID, tab engine.TabID, kind, value string) {
 			// value is down or up, as a page that scrolls makes content say.
 			e.listener.ScrollDirectionChanged(shown, value == "down")
 		case "fail":
+			// value is why, as engine.Failure says it, then the error's own name.
 			if t != nil {
 				t.navSeq++
+				why, code, _ := strings.Cut(value, " ")
 				e.listener.LoadingChanged(shown, false)
-				e.listener.NavigationFailed(shown, t.nav, t.current, value)
+				e.listener.NavigationFailed(shown, t.nav, t.current, engine.Failure(why), code)
 			}
 		case "crash":
 			if t != nil {

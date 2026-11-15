@@ -8,6 +8,7 @@ package main
 #cgo CFLAGS: -I${SRCDIR}/../../../engine/abi
 #include <stdlib.h>
 #include "pb_abi.h"
+#include "pb_content_abi.h"
 
 static inline int64_t call_create_tab(const PBEngineCalls* c, const char* workspace) { return c->create_tab(workspace); }
 static inline void call_set_first_workspace(const PBEngineCalls* c, const char* workspace) { c->set_first_workspace(workspace); }
@@ -50,7 +51,8 @@ static inline void call_focus_shell(const PBEngineCalls* c, int64_t window) { c-
 static inline void call_send_to_shell(const PBEngineCalls* c, int64_t window, const char* json, size_t length) { c->send_to_shell(window, json, length); }
 static inline void call_set_shell_back(const PBEngineCalls* c, int64_t window, int on) { c->set_shell_back(window, on); }
 static inline void call_share_file(const PBEngineCalls* c, int64_t window, const char* path, double x, double y, double w, double h) { c->share_file(window, path, x, y, w, h); }
-static inline void call_set_hook_subscribed(const PBEngineCalls* c, int32_t hook, int on) { c->set_hook_subscribed(hook, on); }
+static inline const PBContentHooks* call_content_hooks(const PBEngineCalls* c) { return c->content_hooks(); }
+static inline void call_set_subscribed(const PBContentHooks* h, int32_t hook, int on) { h->set_subscribed(hook, on); }
 static inline void call_post_wakeup(const PBEngineCalls* c) { c->post_wakeup(); }
 static inline void native_nil_deref(void) { *(volatile int*)0 = 1; }
 */
@@ -420,17 +422,18 @@ func init() {
 // list, then the profile's managers, or the picker when the copy has no profile yet.
 //
 //export PBStart
-func PBStart(calls *C.PBEngineCalls, blockedHosts, hookTable *C.char) {
+func PBStart(calls *C.PBEngineCalls, blockedHosts *C.char) {
 	timeline.Mark("go.starting")
-	if table := C.GoString(hookTable); table != content.TableHash {
+	// The tables are C memory that lives as long as the process.
+	native = &nativeEngine{calls: calls}
+	events = abi.New()
+	contentHooks := C.call_content_hooks(calls)
+	if table := C.GoString(contentHooks.table_hash); table != content.TableHash {
 		timeline.Errorf("the library's hook table is %s, Go's is %s: regenerate with tools/gen_hooks.py and rebuild", table, content.TableHash)
 		timeline.Close()
 		os.Exit(1)
 	}
-	// The table is C memory that lives as long as the process.
-	native = &nativeEngine{calls: calls}
-	events = abi.New()
-	hooks = content.New(func(h content.Hook) { C.call_set_hook_subscribed(native.calls, C.int32_t(h), 1) })
+	hooks = content.New(func(h content.Hook) { C.call_set_subscribed(contentHooks, C.int32_t(h), 1) })
 	if s := C.GoString(blockedHosts); s != "" {
 		blocked = strings.Split(s, ",")
 	}

@@ -14,12 +14,12 @@
       return tab.url;
     }
   });
-  const code = $derived((tab.error || '').replace(/^net::/, ''));
+  const code = $derived(tab.errorCode || '');
   const said = $derived.by(() => {
     if (tab.blocked) return `${host} is blocked`;
     if (tab.crashed) return 'This page crashed';
-    if (/NAME_NOT_RESOLVED|NAME_RESOLUTION_FAILED/.test(code)) return `Can't find ${host}`;
-    if (/INTERNET_DISCONNECTED/.test(code)) return 'No internet connection';
+    if (tab.error === 'not-found') return `Can't find ${host}`;
+    if (tab.error === 'offline') return 'No internet connection';
     return `Can't reach ${host}`;
   });
 

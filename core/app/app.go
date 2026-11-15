@@ -391,8 +391,8 @@ func (a *App) NavigationFinished(tab engine.TabID, nav int64, url string) {
 	a.Tabs.HandleNavigationFinished(tab, nav, url)
 }
 
-func (a *App) NavigationFailed(tab engine.TabID, nav int64, url, reason string) {
-	a.Tabs.HandleNavigationFailed(tab, nav, url, reason)
+func (a *App) NavigationFailed(tab engine.TabID, nav int64, url string, why engine.Failure, code string) {
+	a.Tabs.HandleNavigationFailed(tab, nav, url, why, code)
 }
 
 func (a *App) HistoryChanged(tab engine.TabID, canGoBack, canGoForward bool) {

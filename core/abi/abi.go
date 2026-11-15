@@ -102,7 +102,7 @@ func (e *Events) Dispatch(id Event, args []Value) (Value, bool) {
 	case NavigationFinished:
 		l.NavigationFinished(engine.TabID(r.int()), r.int(), r.str())
 	case NavigationFailed:
-		l.NavigationFailed(engine.TabID(r.int()), r.int(), r.str(), r.str())
+		l.NavigationFailed(engine.TabID(r.int()), r.int(), r.str(), engine.Failure(r.str()), r.str())
 	case HistoryChanged:
 		l.HistoryChanged(engine.TabID(r.int()), r.bool(), r.bool())
 	case TitleChanged:

@@ -3,10 +3,9 @@
 // functions, so the library has no link-time reference to Go.
 //
 // Everything the adapter tells Go goes through one call, hook: a number and a flat
-// list of values. The numbers are the adapter's own events below (PBEvent) and
-// content's hooks from 100 up, generated into engine/browser/hooks_gen.h and
-// core/content/hooks_gen.go by tools/gen_hooks.py. Go's app is told only through events;
-// no hook is subscribed to on its behalf.
+// list of values. The numbers are the adapter's own events below (PBEvent), which any
+// engine can fire. A Chromium engine also carries content's hooks, from 100 up
+// (pb_content_abi.h); Go's app is told only through events.
 //
 // Threading: every call in both directions happens on the main thread, except
 // post_wakeup and the timeline's calls, which any thread may make.
@@ -49,7 +48,10 @@ typedef enum PBEvent {
   PB_EVENT_OS_BINDINGS = 9,             // s: json, {title: {code, mods}}, the keys the
                                         // OS gives our menu items (macOS App Shortcuts)
   PB_EVENT_MODS_CHANGED = 10,           // i: the modifiers held now, PBMods
-  PB_EVENT_PROCESS_CRASHED = 11,        // s: process type, i: base::TerminationStatus,
+  PB_EVENT_PROCESS_CRASHED = 11,        // s: process type, s: how it ended, "exited
+                                        // abnormally", "was killed", "crashed", "failed to
+                                        // launch", "ran out of memory" or "was evicted for
+                                        // memory";
                                         // i: exit code, i: pid, s: a renderer's page or ""
   PB_EVENT_DEVTOOLS_COMMAND = 12,       // s: method, s: params json; answers s: the
                                         // reply's body, {"result": ...} or {"error": ...}.
@@ -92,8 +94,10 @@ typedef enum PBEvent {
                                         // it finishes or fails
   PB_EVENT_NAVIGATION_FINISHED = 61,    // i: tab, i: navigation, s: url; the page there is
                                         // now the tab's
-  PB_EVENT_NAVIGATION_FAILED = 62,      // i: tab, i: navigation, s: url, s: why. Not for
-                                        // one a newer navigation replaced
+  PB_EVENT_NAVIGATION_FAILED = 62,      // i: tab, i: navigation, s: url, s: why, in
+                                        // engine.Failure's words; s: the engine's own
+                                        // name for it, to show. Not for one a newer
+                                        // navigation replaced
   PB_EVENT_HISTORY_CHANGED = 63,        // i: tab, i: can go back, i: can go forward
   PB_EVENT_TITLE_CHANGED = 64,          // i: tab, s: the page's own title, "" for none
   PB_EVENT_LOADING_CHANGED = 65,        // i: tab, i: loading
@@ -352,8 +356,9 @@ typedef struct PBEngineCalls {
   // Draws the app's Dock icon with a small dot in the profile's colour, 0xRRGGBB, at its
   // bottom right. Null on Android, where nothing calls it.
   void (*set_dock_color)(int32_t rgb);
-  // Lets a content hook cross to Go, or stops it. Unsubscribed hooks never cross.
-  void (*set_hook_subscribed)(int32_t hook, int on);
+  // What an engine built on Chromium's content layer adds: its generated hooks, the
+  // table in pb_content_abi.h.
+  const struct PBContentHooks* (*content_hooks)(void);
   // Asks the main thread to call run_posted soon.
   void (*post_wakeup)(void);
   // Android only: opens the system's package installer for the APK at path, where the user
@@ -382,11 +387,7 @@ typedef struct PBGoCalls {
                          int picker,
                          const char* urls);
 
-  // hook_table is the hash of the generated hook list the adapter was built with; Go
-  // refuses a library whose list differs from its own.
-  void (*start)(const PBEngineCalls* calls,
-                const char* blocked_hosts,
-                const char* hook_table);
+  void (*start)(const PBEngineCalls* calls, const char* blocked_hosts);
   void (*stop)(void);
   void (*run_posted)(void);
 

@@ -410,7 +410,7 @@ const H = 915;
   // A page that fails, crashes or is blocked gets a plain notice over it, not a blank.
   const notice = ui.getByRole('alert');
   const nowTab = (await regions()).active;
-  await fire('fail', 'net::ERR_NAME_NOT_RESOLVED', { tab: nowTab });
+  await fire('fail', 'not-found ERR_NAME_NOT_RESOLVED', { tab: nowTab });
   check('a page that fails to load says so over it, with the error and Try again', await until(async () => (await notice.isVisible()) &&
     /Can't find/.test(await notice.innerText()) && /ERR_NAME_NOT_RESOLVED/.test(await notice.innerText())), await notice.innerText().catch(() => ''));
   check('a press on the notice reaches the shell', await until(async () => {

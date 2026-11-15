@@ -77,7 +77,7 @@ void BrowserMainParts::StartApp(const std::string& blocked_hosts) {
                                      ProfileDir().value().c_str(), 0, "");
   CHECK(claimed);
   Go().free(claimed);
-  Go().start(Engine::Calls(), blocked_hosts.c_str(), hooks::kTableHash);
+  Go().start(Engine::Calls(), blocked_hosts.c_str());
   child_processes_ = std::make_unique<ChildProcesses>();
 }
 
