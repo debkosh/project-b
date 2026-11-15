@@ -38,3 +38,35 @@ func TestVisitsAddUp(t *testing.T) {
 		t.Fatalf("got %v", got)
 	}
 }
+
+// The history page's list is the latest first, searchable, and pages through by time; what
+// is deleted or cleared stays gone after a restart.
+func TestListDeleteAndClearOutliveARestart(t *testing.T) {
+	dir := t.TempDir()
+	m := New(dir, func(f func()) { f() })
+	for i, u := range []string{"https://a.test/", "https://b.test/news", "https://c.test/"} {
+		m.AddVisit(u, "Page "+u)
+		m.entries[u].LastVisit = int64(100 + i)
+	}
+	if got := m.List("", 0, 10); len(got) != 3 || got[0].URL != "https://c.test/" || got[2].URL != "https://a.test/" {
+		t.Fatalf("list = %+v", got)
+	}
+	if got := m.List("news", 0, 10); len(got) != 1 || got[0].URL != "https://b.test/news" {
+		t.Fatalf("search = %+v", got)
+	}
+	if got := m.List("", 102, 10); len(got) != 2 || got[0].URL != "https://b.test/news" {
+		t.Fatalf("before = %+v", got)
+	}
+	m.Delete("https://b.test/news")
+	m.Clear(102)
+	m.Close()
+
+	again := New(dir, func(f func()) { f() })
+	defer again.Close()
+	done := make(chan struct{})
+	again.Load(func() { close(done) })
+	<-done
+	if got := again.List("", 0, 10); len(got) != 1 || got[0].URL != "https://a.test/" {
+		t.Fatalf("after a restart: %+v", got)
+	}
+}
