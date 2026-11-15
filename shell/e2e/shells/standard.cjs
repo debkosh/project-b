@@ -39,8 +39,10 @@ const { check, fire, regions, settle, until } = lib;
   await until(async () => (await regions()).shell === 'standard', 10000);
   await fetch(`${lib.base}/shell/send?window=1`, { method: 'POST', body: JSON.stringify({ t: 'newTab', text: 'https://start.test/' }) });
   check('comes up', await until(async () => (await regions()).shell === 'standard' && (await regions()).visible.length === 1, 10000));
+  // start.test loads before the tab goes on, or a.test takes its place and Back has nowhere to go.
+  await until(async () => (await regions()).tabs[0]?.title.includes('start.test'));
   await fire('navigate', 'https://a.test/');
-  await until(async () => (await regions()).tabs[0]?.title !== '');
+  await until(async () => (await regions()).tabs[0]?.title.includes('a.test'));
   const first = (await regions()).active;
 
   // A link: Go's actions, in a menu at the press, over the page and the shell's.
