@@ -1048,10 +1048,10 @@ def main():
             # Something the next step needed never came on screen.
             shot("stopped-" + part.__name__)
             running = alive()
-            if not running:
-                # The app died with nothing in the crash buffer once: keep every log buffer for it.
-                with open("%s/gone-%s.logcat.txt" % (OUT, part.__name__), "w") as f:
-                    f.write(adb("logcat", "-b", "all", "-d"))
+            # A part that stops keeps every log buffer: the app has died with nothing in the crash
+            # buffer, and has started without drawing its shell, each now and then.
+            with open("%s/%s-%s.logcat.txt" % (OUT, "running" if running else "gone", part.__name__), "w") as f:
+                f.write(adb("logcat", "-b", "all", "-d"))
             check("%s ran to its end" % part.__name__.replace("_", " "), False, "%s; the app is %s" % (e, "running" if running else "gone"))
     adb("shell", "am", "force-stop", PACKAGE)
 
