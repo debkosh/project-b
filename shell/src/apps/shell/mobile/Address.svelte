@@ -26,7 +26,9 @@
   });
   // What went wrong with the page, said at the pill's end.
   const status = $derived(tab.blocked ? 'Blocked' : tab.crashed ? 'Crashed' : tab.error ? 'Failed' : '');
-  const secure = $derived(tab.url.startsWith('https:') ? 'lock' : tab.url.startsWith('http:') ? 'warn' : '');
+  // The lock only for a page that shows: one that failed, crashed or was blocked has the
+  // warning, beside the pill's word for what went wrong.
+  const secure = $derived(status ? 'warn' : tab.url.startsWith('https:') ? 'lock' : tab.url.startsWith('http:') ? 'warn' : '');
   // The list from the field outwards: under a field on top, over one at the bottom with
   // the first suggestion nearest it.
   const shown = $derived(top ? items : [...items].reverse());
@@ -234,10 +236,10 @@
 
   .suggestions {
     position: absolute;
-    left: -8px;
-    right: -104px;
     /* The toolbar's width: the 8px before the pill, and the count and ⋯ after it, 48px each
        with a 4px gap before each. */
+    left: -8px;
+    right: -104px;
     bottom: calc(100% + 4px);
     z-index: 5;
     margin: 0;
