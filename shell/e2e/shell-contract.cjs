@@ -74,7 +74,6 @@ const noFindYet = {
 // Rule 17 holds every other desktop shell to it.
 const noDownloadsYet = {
   terminal: 'r4 brings it',
-  minimal: 'r4 brings it',
 };
 
 // The shells that don't draw a splash yet, and who brings it to each. Rule 14 holds every

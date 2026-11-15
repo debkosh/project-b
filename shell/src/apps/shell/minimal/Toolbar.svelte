@@ -1,14 +1,15 @@
 <script>
   import { activeTab, controlSpace, drag, focusPage, send, shell, state } from '@/sdk/svelte.svelte.js';
   import { extensionsBuilt } from '@extensions';
+  import Downloads from './Downloads.svelte';
   import Extensions from './Extensions.svelte';
   import { hint } from './hint.js';
   import { topRow } from './rows.js';
 
   // Back, Forward, Reload (Stop while the page loads), the address field it is given,
-  // filling the rest, the extensions, Relaunch when an update is ready, and Settings. Its
-  // gaps move the window. With the tabs down the side it is the top row, after the window
-  // buttons' space, as tall as centring them takes.
+  // filling the rest, the extensions, Downloads once there is one, Relaunch when an update
+  // is ready, and Settings. Its gaps move the window. With the tabs down the side it is the
+  // top row, after the window buttons' space, as tall as centring them takes.
   let { vertical, children } = $props();
   const tab = $derived(activeTab(state));
 
@@ -39,6 +40,7 @@
   {#if extensionsBuilt}
     <Extensions extensions={state.extensions} />
   {/if}
+  <Downloads />
   {#if state.update.phase === 'ready'}
     <button class="words" title="Project B {state.update.version} is ready" onclick={() => send({ t: 'relaunch' })}>Relaunch to update</button>
   {/if}
