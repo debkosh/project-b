@@ -130,6 +130,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.finds = newPageFinds(a, e)
 	a.Shell.AddPart(a.finds.shellPart())
 	a.fulls = newPageFulls(a, e)
+	a.Shell.OnBack(a.fulls.back)
 	a.Shell.AddPart(a.menus.shellPart())
 	// Every action a shell can run by name, for a shell that lists them, as Glide's
 	// Command Bar does.

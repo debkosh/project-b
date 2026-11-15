@@ -74,6 +74,7 @@ class PageTab : public WebContentsObserverHooks, public WebContentsDelegateHooks
                            const input::NativeWebKeyboardEvent& event) override;
   bool TakeFocus(content::WebContents* source, bool reverse) override;
   void SynchronizeVisualProperties();
+  void SystemBarsHidden(bool hidden);
   // Go hears of a page's full screen first, then the page is told its new size.
   void EnterFullscreenModeForTab(content::RenderFrameHost* requesting_frame,
                                  const blink::mojom::FullscreenOptions& options) override;

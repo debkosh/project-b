@@ -156,6 +156,9 @@ class Window {
   void Minimize();
   void Zoom();
   void ToggleFullScreen();
+  // Hides a phone's status and navigation bars while a page fills the screen, and shows
+  // them again after. Nothing on the Mac, where the window itself goes full screen.
+  void SetSystemBarsHidden(bool hidden);
   // Brings the window to the front and makes the app the active one, as when another
   // copy started on this profile hands over to this one.
   void BringToFront();

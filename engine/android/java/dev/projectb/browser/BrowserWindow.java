@@ -390,6 +390,27 @@ final class BrowserWindow extends FrameLayout {
                         : flags | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
     }
 
+    // A page in full screen: the status and navigation bars go, and a swipe from an edge
+    // shows them for a moment.
+    @CalledByNative
+    private void setSystemBarsHidden(boolean hidden) {
+        android.view.Window window = activity.getWindow();
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            android.view.WindowInsetsController controller = window.getInsetsController();
+            if (controller == null) return;
+            if (hidden) {
+                controller.setSystemBarsBehavior(android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                controller.hide(android.view.WindowInsets.Type.systemBars());
+            } else {
+                controller.show(android.view.WindowInsets.Type.systemBars());
+            }
+            return;
+        }
+        int flags = View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
+        window.getDecorView().setSystemUiVisibility(hidden ? flags : 0);
+    }
+
     @CalledByNative
     private void minimize() {
         activity.moveTaskToBack(true);

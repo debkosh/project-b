@@ -50,6 +50,12 @@ func TestAPageFillsTheScreenAndEscapeEndsIt(t *testing.T) {
 	full(0)
 	windowFull(false)
 
+	// A phone's back key leaves it too, before going back in the page's history.
+	r.e.Fire(1, 0, "pageFullscreen", "")
+	full(1)
+	r.shell(`{"t":"back"}`)
+	full(0)
+
 	// Already in full screen, the window stays so after.
 	r.e.Fire(1, 0, "fullscreen", "")
 	windowFull(true)

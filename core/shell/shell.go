@@ -63,14 +63,16 @@ type Manager struct {
 	eng     engine.Engine
 	tabs    *tabs.Manager
 	suggest *suggest.Manager
-	window  *window.Manager
-	prefs   *prefs.Manager
-	update  *update.Manager
-	crash   *crash.Manager
-	run     func(action string)
-	keys    func() map[string]string
-	os      string
-	parts   []Part
+	// onBack takes the back key first, when set.
+	onBack func(w engine.WindowID) bool
+	window *window.Manager
+	prefs  *prefs.Manager
+	update *update.Manager
+	crash  *crash.Manager
+	run    func(action string)
+	keys   func() map[string]string
+	os     string
+	parts  []Part
 	// The windows whose shell page has said it's ready. Until then nothing reaches it:
 	// its script isn't there to take a message, and the snapshot it asks for has it all,
 	// a new window's first tab included.
@@ -174,6 +176,10 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 	case "navigate":
 		m.tabs.Navigate(c.Text)
 	case "back":
+		// A phone's back key leaves a page's full screen before it goes back.
+		if m.onBack != nil && m.onBack(w) {
+			return
+		}
 		m.tabs.Back()
 	case "forward":
 		m.tabs.Forward()
@@ -322,6 +328,9 @@ func (m *Manager) ThemeChanged(theme string) {
 func (m *Manager) TabLayoutChanged(layout string) {
 	m.sendAll(map[string]any{"t": "tabLayout", "tabLayout": layout})
 }
+
+// OnBack gives f the shell's back first, the phone's back key: f says whether it used it.
+func (m *Manager) OnBack(f func(w engine.WindowID) bool) { m.onBack = f }
 
 // SendTo sends one window's shell a message.
 func (m *Manager) SendTo(w engine.WindowID, v any) { m.send(w, v) }
