@@ -33,6 +33,10 @@ type Shell struct {
 	// the others, enabled only while this shell is the profile's; running one sends the
 	// shell action with its id. An id starts with the shell's and a dot.
 	Actions []Action `json:"actions,omitempty"`
+	// Takes are Go's own actions this shell runs itself while it is the profile's, by id:
+	// run by a key, a menu item or anything else, one of them sends the shell action with
+	// its id in place of what Go does, as the standard shell opens its box for New Tab.
+	Takes []string `json:"takes,omitempty"`
 }
 
 // Action is one of a shell's own actions: its id, which never changes once released, and
@@ -65,6 +69,11 @@ var all = func() []Shell {
 		for _, a := range s.Actions {
 			if !strings.HasPrefix(a.ID, s.ID+".") || a.Title == "" {
 				panic(fmt.Sprintf("shells: registry.json: %s: %+v", s.ID, a))
+			}
+		}
+		for _, t := range s.Takes {
+			if t == "" || strings.HasPrefix(t, s.ID+".") {
+				panic(fmt.Sprintf("shells: registry.json: %s takes %q", s.ID, t))
 			}
 		}
 	}

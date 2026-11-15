@@ -33,7 +33,7 @@ the real app; "What the real app adds" lists the little the mock can't show.
 - **A shell is one folder,** `shell/src/apps/shell/<id>/`, with an `index.html` and a
   `main.js`, and **one line in `core/shells/registry.json`:** its id and the name the user
   sees, `"example": true` for a shell that is built but offered nowhere, and its own
-  actions, if it has any ([below](#a-shells-own-actions)). The id is lower-case letters,
+  actions and those of Go's it takes, if it has any ([below](#a-shells-own-actions)). The id is lower-case letters,
   digits and dashes.
 - Each shell builds into `shell/<id>/` beside the other pages, and loads at
   `chrome://shell/<id>/` in the real app and at `/shell/<id>/` on the mock. Nothing in the
@@ -318,6 +318,16 @@ ordinary action in the keymap ([menus-shortcuts.md](menus-shortcuts.md#a-shells-
 - **Running one sends the shell `action`** with its id. The shell handles it as it would
   its own control: with the SDK, `connect({ action: (m) => ... })`. With another shell on,
   the action is disabled: its key goes on to the page and no shell hears it.
+- **A shell may take one of Go's actions,** to run it its own way while it is the
+  profile's: `"takes": ["tab.new"]` in its entry. The action then reaches the shell as
+  `action` with its id, whichever way it was run (its key, its menu item, anything else
+  that runs it), in place of what Go does. The key and the menu item stay Go's, so
+  the user's own key for it still applies. Go begins a span named for the action and asks
+  the shell to end it (`paint`), which the SDK does once the shell has drawn. What a
+  shell asks of Go by its own messages is unchanged: a shell that takes New Tab still
+  opens a tab with `newTab`. The owner, 2026-11-16: the standard shell opens its box for
+  New Tab and makes a tab only when a row is chosen, while "there stays a new tab page that
+  other shells keep using".
 
 ## What every shell does
 
