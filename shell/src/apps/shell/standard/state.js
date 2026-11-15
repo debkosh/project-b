@@ -78,3 +78,8 @@ export function openBox() {
 export function closeBox() {
   view.box = false;
 }
+
+// The box is over the tab it opened on. Another tab made active, from the box or from
+// anywhere else (the address field, a link from another app, a page's popup), closes it, so
+// that tab's page shows.
+watch(() => state.active, closeBox);
