@@ -116,6 +116,11 @@ class Server(http.server.BaseHTTPRequestHandler):
             data = body.encode()
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
+        if path.startswith("/dl/"):
+            data = b"Project B download check\n"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Content-Disposition", 'attachment; filename="%s"' % path[4:])
             self.send_header("Content-Length", str(len(data)))
             self.end_headers()
             self.wfile.write(data)
@@ -719,6 +724,40 @@ def page_dialogs():
     tap(middle(see("shell", text="Sign in", kind=lambda k: k != FIELD, clickable="true")))
     check("a site's sign-in takes a username and password, and the page loads",
           until(lambda: find("page", text="signed in")) is not None)
+def in_front_now():
+    """The window Android shows in front: its package and activity."""
+    return adb("shell", "dumpsys", "window", "displays").split("mCurrentFocus", 1)[-1].split("\n", 1)[0]
+
+
+def downloads():
+    """A file the page downloads goes to the phone's Downloads; the menu's Downloads lists it,
+    Open opens it in another app, and Show in Downloads opens the phone's Downloads app."""
+    launch()
+    name = "pb-check-%d.txt" % int(time.time())
+    go(BASE + "/a")
+    asked("/a")
+    go(BASE + "/dl/" + name)
+    check("a download keeps the page where it was", until(lambda: find("page", text="to b")) is not None)
+    stored = until(lambda: name in adb("shell", "ls", "/sdcard/Download/"), 20)
+    check("the file reaches the phone's Downloads", stored is not None, adb("shell", "ls", "/sdcard/Download/")[-200:])
+    menu("Downloads")
+    row = until(lambda: find("shell", text=name))
+    check("the menu's Downloads lists it by its name", row is not None)
+    shot("25-downloads")
+    tap(middle(see("shell", text="Open")))
+    # A window other than ours, once Android has one in front: the chooser, or the app.
+    opened = until(lambda: "Window{" in in_front_now() and "BrowserActivity" not in in_front_now(), 10)
+    check("Open hands the file to another app", opened is not None, in_front_now())
+    shot("26-downloads-open")
+    key(4)
+    until(lambda: "BrowserActivity" in in_front_now(), 10)
+    if find("shell", label="Show in Downloads") is None:
+        menu("Downloads")
+    press("Show in Downloads")
+    shown = until(lambda: "documentsui" in in_front_now().lower() or "downloads" in in_front_now().lower(), 10)
+    check("Show in Downloads opens the phone's Downloads app", shown is not None, in_front_now())
+    shot("27-downloads-shown")
+    key(4)
 
 
 def history_after_a_restart():
@@ -862,7 +901,7 @@ def main():
     adb("shell", "pm", "clear", PACKAGE)
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
-    for part in (browsing, mobile_shell, back_key_chain, page_dialogs, history_after_a_restart, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
+    for part in (browsing, mobile_shell, back_key_chain, page_dialogs, downloads, history_after_a_restart, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
                  the_gpu_process_dies, a_page_spins, web_apis, the_real_web):
         try:
             part()
