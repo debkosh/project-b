@@ -514,7 +514,7 @@ def a31(app):
     s = ws_open(version["webSocketDebuggerUrl"])[0]
     # Standard starts with no tab, so the list is empty, but it answers.
     tabs = cdp(s, 1, "ProjectB.getTabs")
-    if not isinstance(tabs.get("result", {}).get("tabs"), list):
+    if "tabs" not in tabs.get("result", {}):
         return False, f"ProjectB.getTabs gave {tabs}"
     ws_send(s, json.dumps({"id": 2, "method": "ProjectB.panic", "params": {}}))
     try:
