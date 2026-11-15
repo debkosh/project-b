@@ -11,7 +11,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-// Matches core/content/extensions.go.
+// Matches core/abi/extensions.go.
 typedef enum PBExtensionEvent {
   PB_EVENT_EXTENSIONS_CHANGED = 50,        // nothing
   PB_EVENT_EXTENSION_INSTALL_PROMPT = 51,  // i: prompt, s: json, Go's engine.InstallPrompt

@@ -56,14 +56,15 @@ title, back and forward, loading, visibility) as its first argument, so Go never
 ask content anything. The shell's own page is tab 0.
 
 **To try a hook nobody uses yet:** find it in the table at the bottom and subscribe to it
-in `core/content/wire.go`. No C, no C++, no library rebuild. `LoadProgressChanged` was
+on the `content.Hooks` that `core/cmd/lib` makes (`hooks.Observer.On…`). No C, no C++, no
+library rebuild. `LoadProgressChanged` was
 first tried this way: the library kept the same bytes and mtime, and the incremental
 build took 17 s (`project_b` relinked, nothing else).
 
 **To make it part of the app:** give it a `PB_EVENT` number in `engine/abi/pb_abi.h`,
 fire it from the adapter where content's call arrives (`engine/browser/page_tab.cc` for a
 tab's), decode it in `core/abi`, say what it means in `engine.Listener`, and wire the
-manager in `core/app/app.go`. The subscription in `wire.go` then goes.
+manager in `core/app/app.go`. The subscription then goes.
 
 **When Chromium is upgraded:** first run `python3 tools/web_features_bump.py`, which says
 what the web-features registry lacks and what it names that Chromium dropped

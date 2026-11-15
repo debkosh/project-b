@@ -94,7 +94,5 @@ Enough for the first app (one window, tabs, the shell, the gate):
 - Workspaces as fixed storage partitions that popups inherit, and `DuplicateTab` with
   history.
 - On Android, the Java side and the one-compositor window.
-- Events 1 to 59 are still decoded in `core/content/events.go`. They move into `core/abi`
-  once the open branches adding to them have landed.
 
 The audit behind this is in `project-b-research/engines/engine-boundary-audit.md`.

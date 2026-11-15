@@ -24,7 +24,6 @@ import (
 	"encoding/json"
 	"unsafe"
 
-	"projectb/content"
 	"projectb/engine"
 	"projectb/timeline"
 )
@@ -39,7 +38,7 @@ func cstr(s string) (*C.char, func()) {
 // The adapter's extension events reach the listener as soon as the app names it, which
 // it does while it starts.
 func (e *nativeEngine) SetExtensionsListener(l engine.ExtensionsListener) {
-	content.WireExtensions(hooks, l)
+	events.ListenExtensions(l)
 }
 
 func (e *nativeEngine) InstallExtension(path string) {

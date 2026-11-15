@@ -1,10 +1,8 @@
 // Package abi is where an engine's events arrive in Go: the numbered events of
 // engine/abi/pb_abi.h, each a flat list of values, turned into the engine.Listener call
 // it means. It knows nothing of any one engine. Whatever an engine is built on, its
-// adapter says what a tab's page did in these events, and the app hears it here.
-//
-// It holds the events 60 to 79 today. The earlier ones are still decoded in
-// core/content, beside content's own hooks, and move here.
+// adapter says what happened in these events, and the app hears it here. Content's own
+// hooks, from 100 up, are core/content's.
 package abi
 
 import (
@@ -42,9 +40,6 @@ const (
 	FindReply              Event = 74
 	PageFullScreen         Event = 75
 	IsPageFullScreen       Event = 76
-
-	first Event = 60
-	end   Event = 80
 )
 
 var names = map[Event]string{
@@ -76,26 +71,34 @@ var linksAndImagesOnly = runtime.GOOS == "android"
 type Events struct {
 	l      engine.Listener
 	counts map[Event]int
+	// more are the events a build tag adds, by number, with their own listener.
+	more map[Event]func(r *reader) (Value, bool)
 }
 
 // New returns an Events with nobody listening yet.
-func New() *Events { return &Events{counts: map[Event]int{}} }
+func New() *Events {
+	return &Events{counts: map[Event]int{}, more: map[Event]func(r *reader) (Value, bool){}}
+}
 
 // Listen says who hears the events from now on: the picker, then the app.
 func (e *Events) Listen(l engine.Listener) { e.l = l }
 
-// Has reports whether id is an event decoded here.
-func Has(id int32) bool { return Event(id) >= first && Event(id) < end }
+// Has reports whether id is an event decoded here: every number below content's hooks,
+// which start at 100.
+func Has(id int32) bool { return id > 0 && id < 100 }
 
 // Dispatch takes one crossing and returns the answer, for an event that asks. An event
 // that arrives before anyone listens is dropped, and one that asks gets no answer.
 func (e *Events) Dispatch(id Event, args []Value) (Value, bool) {
 	e.counts[id]++
+	r := &reader{v: args}
+	if f := e.more[id]; f != nil {
+		return f(r)
+	}
 	l := e.l
 	if l == nil {
 		return Value{}, false
 	}
-	r := &reader{v: args}
 	switch id {
 	case NavigationStarting:
 		return Value{I: navigationAnswers[l.NavigationStarting(engine.TabID(r.int()), r.int(), r.str())]}, true
@@ -139,6 +142,8 @@ func (e *Events) Dispatch(id Event, args []Value) (Value, bool) {
 		l.PageFullScreen(engine.TabID(r.int()), r.bool())
 	case IsPageFullScreen:
 		return yes(l.IsPageFullScreen(engine.TabID(r.int()))), true
+	default:
+		return e.adapter(id, l, r)
 	}
 	return Value{}, false
 }

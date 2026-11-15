@@ -34,7 +34,6 @@ type Hooks struct {
 	Delegate DelegateHooks
 	Browser  BrowserHooks
 	Throttle ThrottleHooks
-	Events   Events
 }
 
 // New returns a Hooks whose subscriptions reach the adapter through subscribe.
@@ -53,7 +52,7 @@ func (h *Hooks) Dispatch(id Hook, args []Value) (Value, bool) {
 	r := &reader{v: args}
 	switch {
 	case id < FirstHook:
-		return h.Events.dispatch(id, r)
+		return Value{}, false
 	case id < firstDelegate:
 		return h.Observer.dispatch(id, r)
 	case id < firstBrowser:
@@ -68,11 +67,7 @@ func (h *Hooks) Dispatch(id Hook, args []Value) (Value, bool) {
 func (h *Hooks) Counts() map[string]int {
 	out := map[string]int{}
 	for id, n := range h.counts {
-		name, ok := Names[id]
-		if !ok {
-			name = eventNames[id]
-		}
-		out[name] = n
+		out[Names[id]] = n
 	}
 	return out
 }

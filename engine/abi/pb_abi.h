@@ -29,7 +29,7 @@ typedef struct PBValue {
 } PBValue;
 
 // The adapter's own events, which are not content hooks. Their values are listed
-// beside each. Matches core/content/events.go.
+// beside each. Matches core/abi.
 typedef enum PBEvent {
   PB_EVENT_SHELL_MESSAGE = 1,           // i: window, s: json
   PB_EVENT_TAB_OPENED = 2,              // i: opener, i: tab, s: url, s: its workspace,

@@ -347,7 +347,7 @@
     "delegate": "WebContentsDelegate::HandleContextMenu",
     "status": {"mac": "partly", "android": "works"},
     "why": "Go answers for links and images; on Mac a right-click on plain text gets no menu",
-    "owner": "core/content/wire.go:HandleContextMenu",
+    "owner": "engine/browser/page_tab.cc:HandleContextMenu",
     "test": ["basics:22"]
   },
   {

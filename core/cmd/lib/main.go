@@ -1,6 +1,6 @@
 // Command lib is the Go core as a c-archive, linked statically into the main binary.
 // It implements engine.Engine on the C function table and hands every event from the
-// adapter to the package that decodes it: abi, or content for the ones not moved yet. Nothing else in core/ touches cgo, so everything
+// adapter to the package that decodes it: abi for its events, content for content's hooks. Nothing else in core/ touches cgo, so everything
 // else still builds and tests with no C++.
 package main
 
@@ -383,8 +383,8 @@ func (e *nativeEngine) Post(fn func()) {
 
 var (
 	native *nativeEngine
-	// What the adapter tells Go: its events of a tab's page and of keys, and the rest,
-	// which content's package still decodes beside content's hooks.
+	// What the adapter tells Go: its events, and content's hooks, which nothing in the app
+	// subscribes to.
 	events  *abi.Events
 	hooks   *content.Hooks
 	list    *profiles.Manager
@@ -482,7 +482,6 @@ func PBStart(calls *C.PBEngineCalls, blockedHosts *C.char) {
 			relaunch.Copy("--root="+list.Root(), "--profile="+id)
 		})
 		events.Listen(picker)
-		content.Wire(hooks, picker)
 		owner.Serve(func([]string) { native.Post(picker.Handover) }, quit)
 	} else {
 		startProfile(profile)
@@ -511,7 +510,6 @@ func startProfile(c profiles.Choice) {
 		System:       systemReport,
 	})
 	events.Listen(theApp)
-	content.Wire(hooks, theApp)
 	owner.Serve(func(urls []string) { native.Post(func() { theApp.Handover(urls) }) }, quit)
 }
 

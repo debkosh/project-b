@@ -215,10 +215,9 @@ func TestEventsBeforeAListenerAreDropped(t *testing.T) {
 	}
 }
 
-// Has holds for this package's numbers only: the earlier events and content's hooks are
-// someone else's.
+// Has holds for every adapter event, and not for content's hooks, which start at 100.
 func TestHasIsTheRangeOfTheseEvents(t *testing.T) {
-	for id, want := range map[int32]bool{1: false, 59: false, 60: true, 76: true, 79: true, 80: false, 100: false} {
+	for id, want := range map[int32]bool{0: false, 1: true, 59: true, 60: true, 79: true, 99: true, 100: false} {
 		if Has(id) != want {
 			t.Errorf("Has(%d) = %v", id, !want)
 		}
