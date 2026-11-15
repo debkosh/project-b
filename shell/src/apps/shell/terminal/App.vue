@@ -1,4 +1,5 @@
 <script setup>
+import { computed, watchEffect } from 'vue';
 import PaneTree from './PaneTree.vue';
 import PromptLine from './PromptLine.vue';
 import TopStrip from './TopStrip.vue';
@@ -9,8 +10,10 @@ import { prompt } from './prompt.js';
 
 // A terminal's window: a strip of windows on top, the shown window's panes in the body, and
 // a prompt line at the foot that is the active pane's address bar, inside the window's
-// 4px band.
-setFrame(4);
+// 4px band. A page in full screen has the whole window: no band, no strip, no line, no
+// other pane; each part is hidden rather than taken away, so it keeps what it holds.
+const pageFull = computed(() => state.pageFullScreen !== 0 && state.pageFullScreen === state.active);
+watchEffect(() => setFrame(pageFull.value ? 0 : 4));
 
 // Its own actions, as the registry lists them, which Go sends while this shell is on: the
 // splits, as the panes' buttons do; moving to the pane beside, by Ctrl+Cmd and an arrow;
@@ -46,14 +49,15 @@ connect({
 <template>
   <div class="splash" :aria-busy="!state.loaded">Project B</div>
   <div v-if="state.loaded" class="app">
-    <div v-drag class="band across"></div>
+    <div v-show="!pageFull" v-drag class="band across"></div>
     <div class="middle">
-      <div class="band side"></div>
+      <div v-show="!pageFull" class="band side"></div>
       <div class="inner">
-        <TopStrip />
+        <TopStrip v-show="!pageFull" />
         <!-- With no tabs the shell draws the panes' area itself, as its own. -->
         <div class="body">
-          <PaneTree v-if="shown" :node="zoomed ? { tab: zoomed } : shown" />
+          <div v-if="pageFull" v-page="state.active" class="full"></div>
+          <PaneTree v-else-if="shown" :node="zoomed ? { tab: zoomed } : shown" />
           <div v-else-if="!state.tabs.length" v-shell class="empty">
             <p>No tabs</p>
             <button type="button" @click="send({ t: 'newTab' })">
@@ -61,11 +65,11 @@ connect({
             </button>
           </div>
         </div>
-        <PromptLine />
+        <PromptLine v-show="!pageFull" />
       </div>
-      <div class="band side"></div>
+      <div v-show="!pageFull" class="band side"></div>
     </div>
-    <div class="band across"></div>
+    <div v-show="!pageFull" class="band across"></div>
   </div>
 </template>
 
@@ -119,6 +123,10 @@ connect({
 
 .band.side {
   width: var(--frame-width);
+}
+
+.full {
+  flex: 1;
 }
 
 .middle {
