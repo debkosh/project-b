@@ -2323,9 +2323,11 @@ def internal_checks():
     opened_beside(lambda: cdp(devtools, 1, "Page.navigate", {"url": PAGES + "store"}), "a DevTools navigation")
     devtools.close()
 
+    # The settings tab, the focused one, is asked for its address by what content committed:
+    # an eval sent to its page while that page is being replaced is never answered.
     app.cmd("evalsettings", "location.href='chrome://settings/flags'")
     deadline = time.time() + 10
-    while app.cmd("evalsettings", "location.href") != '"chrome://settings/flags"' and time.time() < deadline:
+    while not ((page := json.loads(app.cmd("committed")))["url"] == "chrome://settings/flags" and not page["loading"]) and time.time() < deadline:
         time.sleep(0.1)
     settings_ready()
     check("one of our pages its page goes to opens in place", app.cmd("evalsettings", "location.href") == '"chrome://settings/flags"' and len(order()) == 3, tabs_of(app))
