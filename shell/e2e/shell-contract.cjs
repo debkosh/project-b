@@ -54,7 +54,6 @@ const noDialogsYet = {
   terminal: 'r4 brings it',
   fox: 'r4 brings it',
   minimal: 'r4 brings it',
-  mobile: 'r3 brings it, with the dialogs on Android',
 };
 
 // The desktop shells that don't lay a page in full screen across the window yet, and who
@@ -500,7 +499,11 @@ const noEmptyStateYet = {
         const home = (await regions()).active;
         await openTab();
         rule(15, 'another tab shown hides it', await until(async () => (await regions()).active !== home && (await ask.count()) === 0));
-        await ui.locator(`[role=tab][data-tab="${home}"]`).first().click({ force: true });
+        // By its tab where one shows; a phone's tabs sit in a switcher that's shut, so there
+        // Go shows it, as the switcher would.
+        const homeTab = ui.locator(`[role=tab][data-tab="${home}"]`).first();
+        if (await homeTab.isVisible()) await homeTab.click({ force: true });
+        else await fetch(`${lib.base}/shell/send`, { method: 'POST', body: JSON.stringify({ t: 'activateTab', id: home }) });
         rule(15, 'and showing its tab again brings it back', await until(() => ask.isVisible()));
         await ask.getByRole('button', { name: 'OK' }).click();
         rule(15, 'OK answers the page yes', await until(async () => (await answers()).length === before + 1 && (await answers()).at(-1).ok === true));

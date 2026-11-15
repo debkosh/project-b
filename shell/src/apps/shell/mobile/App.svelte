@@ -7,6 +7,7 @@
   import GroupSheet from './GroupSheet.svelte';
   import LinkSheet from './LinkSheet.svelte';
   import MenuSheet from './MenuSheet.svelte';
+  import PageDialog from './PageDialog.svelte';
   import PageNotice from './PageNotice.svelte';
   import Strip from './Strip.svelte';
   import Switcher from './Switcher.svelte';
@@ -44,11 +45,16 @@
   // Whether the address is being edited, which the phone's back key ends, as it closes a
   // sheet: while either is so, the engine gives the key to the shell (backCloses).
   let editing = $state(false);
-  $effect(() => send({ t: 'backCloses', on: !!sheet || editing }));
+  // The shown tab's page dialog, which the back key answers no, before any sheet.
+  let pageDialog;
+  const asking = $derived(go.dialogs.some((d) => d.tab === go.active));
+  $effect(() => send({ t: 'backCloses', on: !!sheet || editing || asking }));
 
-  // The phone's back key: the sheet open closes, or the editing ends.
+  // The phone's back key: the page's dialog is answered no, the sheet open closes, or the
+  // editing ends.
   function backKey() {
-    if (sheet) sheet = '';
+    if (asking) pageDialog.cancel();
+    else if (sheet) sheet = '';
     else if (editing) {
       address.blur();
       focusPage();
@@ -294,6 +300,7 @@
     <Extensions extensions={go.extensions} open={sheet === 'extensions'} onclose={() => (sheet = '')} />
   {/if}
 </div>
+<PageDialog bind:this={pageDialog} />
 
 <style>
   .window {

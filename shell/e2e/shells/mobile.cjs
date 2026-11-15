@@ -457,6 +457,25 @@ const H = 915;
   check('back with no tabs leaves the app', await until(async () => (await regions()).leftApp), JSON.stringify({ visible: (await regions()).visible, focus: await w.shell().evaluate(() => document.activeElement?.outerHTML.slice(0, 60)) }));
   await ui.locator('.empty').getByRole('button', { name: 'New Tab' }).tap();
   await until(async () => (await regions()).tabs.length === 1);
+  // A page's dialog: in the middle over the dimmed window, its buttons a finger's size,
+  // and the back key answers it no, as Android's dialogs go.
+  const ask = ui.getByRole('alertdialog');
+  const answers = async () => (await regions()).dialogAnswers || [];
+  await fire('confirm', 'Leave this page? What you typed will be lost.');
+  check('a page\'s confirm shows as an alertdialog', await until(() => ask.isVisible()));
+  const asked = await ask.boundingBox();
+  check('in the middle of the screen', Math.abs(asked.x + asked.width / 2 - W / 2) < 2 && Math.abs(asked.y + asked.height / 2 - H / 2) < 2, JSON.stringify(asked));
+  await shots('dialog');
+  const had = (await answers()).length;
+  await backKey();
+  check('the back key answers it Cancel', await until(async () => (await answers()).length === had + 1 && (await answers()).at(-1).ok === false));
+  check('and it goes', await until(async () => (await ask.count()) === 0));
+  await fire('signin', 'Staff only');
+  await until(() => ask.isVisible());
+  check('a sign-in starts with the keyboard in Username', await until(async () => (await w.shell().evaluate(() => document.activeElement?.id)) === 'm-sign-in-user'));
+  await shots('sign-in');
+  await backKey();
+  check('and the back key answers it no too', await until(async () => (await answers()).at(-1).ok === false && (await ask.count()) === 0));
 
   // Settings, from the menu.
   await menuButton.tap();
