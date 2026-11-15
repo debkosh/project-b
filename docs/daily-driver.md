@@ -156,6 +156,10 @@ another tab shows or the tab closes, and when the window leaves full screen thro
 button. The window then goes back to how it was. Contract rule 21 holds every desktop shell to
 it.
 
+**Android.** A phone's window already fills the screen, so a page in full screen there is the
+window without the system's status and navigation bars (a swipe from an edge shows them for a
+moment), and the phone's back key ends it before it goes back in the page's history.
+
 ## Sign-in to a site
 
 A site or a proxy that answers 401 or 407 asks for a username and password. Content asks the

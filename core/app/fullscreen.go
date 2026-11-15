@@ -82,6 +82,15 @@ func (f *pageFulls) end(w engine.WindowID) {
 	f.send(w)
 }
 
+// back takes a phone's back key while window w shows a page in full screen.
+func (f *pageFulls) back(w engine.WindowID) bool {
+	p, ok := f.byWind[w]
+	if ok {
+		f.e.ExitPageFullScreen(p.tab)
+	}
+	return ok
+}
+
 // key takes Escape while the window in front shows a page in full screen.
 func (f *pageFulls) key(k engine.Key) bool {
 	p, ok := f.byWind[f.a.Tabs.Front()]
