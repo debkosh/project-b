@@ -49,7 +49,7 @@ var Keys = map[string]engine.Key{
 	"tab3":            {Code: '3', Mods: engine.ModCmd},
 	"tab9":            {Code: '9', Mods: engine.ModCmd},
 	"settings":        {Code: 0xBC, Mods: engine.ModCmd},
-	"splitRight":      {Code: 'D', Mods: engine.ModCmd},
+	"splitRight":      {Code: 'D', Mods: engine.ModCmd | engine.ModAlt},
 	"splitDown":       {Code: 'D', Mods: engine.ModCmd | engine.ModShift},
 	"paneLeft":        {Code: 0x25, Mods: engine.ModCtrl | engine.ModCmd},
 	"paneRight":       {Code: 0x27, Mods: engine.ModCtrl | engine.ModCmd},

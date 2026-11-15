@@ -1836,7 +1836,7 @@ func TestAShellsOwnActionRunsOnlyWhileItsShellIsOn(t *testing.T) {
 		r.e.Settle()
 		return ok
 	}
-	cmdD := engine.Key{Code: 'D', Mods: engine.ModCmd}
+	cmdD := engine.Key{Code: 'D', Mods: engine.ModCmd | engine.ModAlt}
 	shiftCmdD := engine.Key{Code: 'D', Mods: engine.ModCmd | engine.ModShift}
 	r.waitFor(func(m map[string]any) bool { return m["t"] == "snapshot" })
 	if took(cmdD) || took(shiftCmdD) {
@@ -1856,10 +1856,10 @@ func TestAShellsOwnActionRunsOnlyWhileItsShellIsOn(t *testing.T) {
 	r.shell(`{"t":"ready"}`)
 	r.waitFor(func(m map[string]any) bool { return m["t"] == "snapshot" })
 	if !took(cmdD) {
-		t.Fatal("with the terminal shell on, Cmd+D wasn't taken")
+		t.Fatal("with the terminal shell on, Option+Cmd+D wasn't taken")
 	}
 	if m := r.waitFor(func(m map[string]any) bool { return m["t"] == "action" }); m["id"] != "terminal.splitRight" {
-		t.Fatalf("Cmd+D sent %v", m)
+		t.Fatalf("Option+Cmd+D sent %v", m)
 	}
 	if !took(shiftCmdD) {
 		t.Fatal("with the terminal shell on, Shift+Cmd+D wasn't taken")
@@ -2052,7 +2052,7 @@ func TestTheShellHearsTheActionsByTitle(t *testing.T) {
 	}
 }
 
-// The glide keymap gives Cmd+T to the Command Bar, Cmd+D to pinning and Option+Cmd+Right to
+// The glide keymap gives Cmd+T to the Command Bar and Option+Cmd+Right to
 // the next Space; Ctrl+1 is Space 1 in every keymap. Each reaches Glide as its action.
 func TestTheGlideKeymap(t *testing.T) {
 	r := start(t, t.TempDir())
@@ -2083,7 +2083,6 @@ func TestTheGlideKeymap(t *testing.T) {
 	r.e.Post(func() { r.a.Commands.UseTemplate("glide") })
 	r.e.Settle()
 	press("Cmd+T", "glide.commandBar")
-	press("Cmd+D", "glide.pin")
 	press("Option+Cmd+Right", "glide.spaceNext")
 }
 

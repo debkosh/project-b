@@ -346,7 +346,7 @@ pages, profiles, extensions, spelling, the task manager, Cast, Translate, the Go
 services). Keys are Chrome's Mac keys; `*` marks the ones reserved outside full screen.
 
 `glide.json` is `project-b.json` with Glide's keys over it ([glide.md](glide.md)): Cmd+T opens
-the Command Bar, Cmd+D pins, and Option+Cmd+Left and Right go to the previous and next
+the Command Bar, and Option+Cmd+Left and Right go to the previous and next
 Space, so New Tab, the terminal's Split right, and Previous and Next Tab lose those keys
 there. Choosing it is the user's, in Keyboard settings; the shell doesn't choose a keymap.
 
@@ -385,7 +385,9 @@ content call, 13 come from the OS, and 74 open features we don't have.
 The owner, 2026-11-14: a shell that is on may take keys, as long as the keymap stays as it
 is. So a shell's key is an ordinary action's, and nothing about how keys are matched,
 reserved, stored, edited or merged changes. The first are the terminal shell's splits,
-Cmd+D and Shift+Cmd+D, as iTerm has them.
+Option+Cmd+D and Shift+Cmd+D. A key runs one action in every shell, so the owner chose,
+2026-11-16, that Cmd+D bookmarks the page everywhere, as in Chrome; the terminal's split
+right, iTerm's Cmd+D, moved to Option+Cmd+D, and Pin Tab has no default key.
 
 - **Declared in the registry.** A shell lists its actions in its entry in
   `core/shells/registry.json`, each an id and a title: `"actions": [{"id":
