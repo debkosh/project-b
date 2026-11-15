@@ -26,6 +26,13 @@ const (
 	AddressTop    = "top"
 )
 
+// What a start opens: the windows and tabs as they were, or a window opened fresh, as the
+// profile's shell opens one.
+const (
+	StartContinue = "continue"
+	StartFresh    = "fresh"
+)
+
 // Themes: the shell and the window follow the system's light or dark, or stay one.
 const (
 	ThemeSystem = "system"
@@ -44,11 +51,13 @@ type Prefs struct {
 	AddressBarPosition string `json:"addressBarPosition"`
 	// SearchEngine is the id of the engine typed words are searched with (package search).
 	SearchEngine string `json:"searchEngine"`
+	// Start is what a start opens: StartContinue or StartFresh.
+	Start string `json:"start"`
 }
 
 // Defaults are the settings before the user changes any.
 func Defaults() Prefs {
-	return Prefs{TabLayout: TabsVertical, FrameColor: "#4f9e9e", Theme: ThemeSystem, Shell: shells.Default(), AddressBarPosition: AddressBottom, SearchEngine: search.Default}
+	return Prefs{TabLayout: TabsVertical, FrameColor: "#4f9e9e", Theme: ThemeSystem, Shell: shells.Default(), AddressBarPosition: AddressBottom, SearchEngine: search.Default, Start: StartContinue}
 }
 
 func isTheme(t string) bool { return t == ThemeSystem || t == ThemeLight || t == ThemeDark }
@@ -93,6 +102,9 @@ func New(dir string) *Manager {
 			}
 			if s.AddressBarPosition != AddressBottom && s.AddressBarPosition != AddressTop {
 				s.AddressBarPosition = AddressBottom
+			}
+			if s.Start != StartContinue && s.Start != StartFresh {
+				s.Start = StartContinue
 			}
 			if _, ok := search.Get(s.SearchEngine); !ok {
 				s.SearchEngine = search.Default
@@ -232,6 +244,19 @@ func (m *Manager) SetAddressBarPosition(at string) {
 	m.changed()
 }
 
+// Start is what a start opens: StartContinue or StartFresh.
+func (m *Manager) Start() string { return m.prefs.Start }
+
+// SetStart sets what a start opens. Anything but the two is ignored.
+func (m *Manager) SetStart(start string) {
+	if start != StartContinue && start != StartFresh || start == m.prefs.Start {
+		return
+	}
+	m.prefs.Start = start
+	m.save()
+	m.changed()
+}
+
 // OnChanged subscribes to any setting changing, with them all as they are now.
 func (m *Manager) OnChanged(f func(Prefs)) { m.onChanged = append(m.onChanged, f) }
 
@@ -276,6 +301,7 @@ func (m *Manager) Apply(values json.RawMessage) error {
 	m.SetShell(p.Shell)
 	m.SetAddressBarPosition(p.AddressBarPosition)
 	m.SetSearchEngine(p.SearchEngine)
+	m.SetStart(p.Start)
 	return nil
 }
 

@@ -14,10 +14,24 @@ import (
 	"projectb/timeline"
 )
 
-// Session is the profile's windows, the one in front first.
+// Session is the profile's windows, the one in front first, and what the person closed
+// recently, newest first.
 type Session struct {
 	Windows []Window `json:"windows"`
+	Closed  []Closed `json:"closed,omitempty"`
 }
+
+// Closed is a tab or a window the person closed. A tab says its window, by Go's id for it
+// in the run that closed it, and its place there; a window is all of it.
+type Closed struct {
+	Tab    *Tab    `json:"tab,omitempty"`
+	Window *Window `json:"window,omitempty"`
+	In     int64   `json:"in,omitempty"`
+	Index  int     `json:"index,omitempty"`
+}
+
+// ClosedLimit is how many closed tabs and windows are kept.
+const ClosedLimit = 25
 
 // Window is one window: where it was on screen, its tabs in order, the index of the active
 // one, and its tab groups.

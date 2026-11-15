@@ -32,8 +32,13 @@ let server = null;
 const lib = { root, out, profile, base: '', log: '' };
 
 // start runs the mock engine with the built pages and the profile, and args, on a port
-// the system gives it, and returns once it answers.
-lib.start = async (args = []) => {
+// the system gives it, and returns once it answers. The profile keeps what it keeps, but
+// its windows and tabs start afresh, as the app would otherwise bring back the last run's:
+// with keepTabs, they come back as the app brings them back.
+lib.start = async (args = [], { keepTabs = false } = {}) => {
+  if (!keepTabs) {
+    fs.rmSync(path.join(profile, 'session.json'), { force: true });
+  }
   server = spawn(bin, ['-addr=127.0.0.1:0', `-shell=${path.join(root, 'shell/dist')}`, `-profile=${profile}`, ...args], { stdio: ['ignore', 'ignore', 'pipe'] });
   lib.log = '';
   lib.base = await new Promise((resolve, reject) => {

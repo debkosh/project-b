@@ -138,6 +138,8 @@ type Manager struct {
 	// waiting is each restored tab not shown yet, with the address it loads when it is
 	// first made active. Until then it has its address and title, and the blank page.
 	waiting map[engine.TabID]string
+	// onClosedAt hear of a tab the person closed: as it was, its window and its place.
+	onClosedAt []func(t Tab, w engine.WindowID, index int)
 }
 
 // window is one window's tabs: their order, the active one, and recent use.
@@ -330,6 +332,12 @@ func (m *Manager) Add(w engine.WindowID, workspace string, foreground bool) engi
 	return id
 }
 
+// OnClosedAt subscribes to a tab closing on its own, not with its window: the tab as it
+// was, group and all, its window and its place there.
+func (m *Manager) OnClosedAt(f func(t Tab, w engine.WindowID, index int)) {
+	m.onClosedAt = append(m.onClosedAt, f)
+}
+
 // Restore opens a tab the profile had before, at the end of window w, behind the active
 // one, with its address and title. It loads now when load, else once first made active.
 func (m *Manager) Restore(w engine.WindowID, workspace, u, title string, load bool) engine.TabID {
@@ -488,6 +496,11 @@ func (m *Manager) close(id engine.TabID, recent bool) {
 		return
 	}
 	w := m.windowOf[id]
+	// As it was, in its group, for whoever keeps closed tabs to bring back.
+	was := *m.tabs[id]
+	if u, ok := m.waiting[id]; ok {
+		was.URL = u
+	}
 	m.leaveGroup(id)
 	i := m.detach(id)
 	t := *m.tabs[id]
@@ -496,6 +509,9 @@ func (m *Manager) close(id engine.TabID, recent bool) {
 	delete(m.waiting, id)
 	m.eng.CloseTab(id)
 	m.closed(t)
+	for _, f := range m.onClosedAt {
+		f(was, w, i)
+	}
 	m.left(w, id, i, false, recent)
 }
 

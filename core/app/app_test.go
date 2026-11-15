@@ -168,6 +168,23 @@ func (r *rig) suggestions(text string) []any {
 }
 
 func (r *rig) stop() {
+	// Tabs that came back from the last run may still be loading; their loads finish
+	// first, as they would before a person quits.
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		loading := make(chan bool)
+		r.e.Post(func() {
+			l := false
+			for _, t := range r.a.Tabs.All() {
+				l = l || t.Loading
+			}
+			loading <- l
+		})
+		if !<-loading {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
 	done := make(chan struct{})
 	r.e.Post(func() { r.a.Stop(); close(done) })
 	<-done

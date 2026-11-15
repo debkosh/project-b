@@ -307,6 +307,17 @@
         },
         {
           "action": "history.show"
+        },
+        {
+          "action": "tab.reopenClosed"
+        },
+        {
+          "title": "Recently Closed",
+          "items": [
+            {
+              "list": "recentlyClosed"
+            }
+          ]
         }
       ]
     },

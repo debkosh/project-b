@@ -20,6 +20,9 @@ export const state = reactive({
   addressBarPosition: 'bottom',
   // A phone's shells to choose from, and the one in use: {shell, shells}, null off a phone.
   phoneShells: null,
+  // What a start opens: 'continue', the windows and tabs as they were, or 'fresh', a window opened
+  // as the shell opens one.
+  start: 'continue',
   // 'system', 'light' or 'dark', as Go's theme pref says.
   theme: 'system',
   // The search engine typed words go to, by its id, and the list to choose from, each
@@ -70,6 +73,7 @@ export function connect() {
             addressBarPosition: m.addressBarPosition,
             phoneShells: m.phoneShells || null,
             theme: m.theme,
+            start: m.start,
             searchEngine: m.searchEngine,
             searchEngines: m.searchEngines || [],
             autoUpdate: m.autoUpdate,
@@ -91,6 +95,9 @@ export function connect() {
           break;
         case 'searchEngine':
           state.searchEngine = m.searchEngine;
+          break;
+        case 'start':
+          state.start = m.start;
           break;
         case 'theme':
           state.theme = m.theme;

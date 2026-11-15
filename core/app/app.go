@@ -102,6 +102,10 @@ type App struct {
 	Session *session.Manager
 	// Bookmarks is the profile's bookmarks.
 	Bookmarks *bookmarks.Manager
+	// closed is the tabs and windows the person closed, newest first; quitting says the
+	// app is ending, so what closes now isn't.
+	closed   []session.Closed
+	quitting bool
 
 	actions []*commands.Action
 	// menus are the windows' open right-click menus.
@@ -161,12 +165,18 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Tabs.OnFrontChanged(a.Window.HandleFrontChanged)
 	a.Tabs.OnMoved(a.Window.HandleTabMoved)
 	first := a.openWindow()
-	a.quit = func() { e.AppCommand(engine.AppQuit) }
+	// Quitting keeps the session as it was before: the windows that close as the app ends
+	// aren't closed by the person.
+	a.quit = func() {
+		a.quitting = true
+		e.AppCommand(engine.AppQuit)
+	}
 	a.Update = update.New(cfg.Update, e.Post, a.quit)
 	a.Commands = commands.New(e, cfg.ProfileDir, func() bool { return a.Window.FullScreen(a.Tabs.Front()) })
 	a.Commands.RegisterList(a.profileList(cfg))
 	a.Commands.RegisterList(a.workspaceList())
 	a.Commands.RegisterList(a.shellList())
+	a.Commands.RegisterList(a.closedList(e))
 	a.Shell = shell.New(e, a.Tabs, a.Suggest, a.Window, a.Prefs, a.Update, a.Crash, a.Commands.Run, a.Commands.ShownKeys, a.Commands.Platform())
 	a.Shell.AddPart(a.workspaceShellPart(e))
 	a.Shell.AddPart(a.pinShellPart())
@@ -192,6 +202,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Settings.OnRelaunch(func() { relaunch.Self(); a.quit() })
 	a.Settings.AddPart(a.workspaceSettingsPart(e))
 	a.startSites(e, cfg.ProfileDir)
+	a.Settings.AddPart(a.startSettingsPart())
 	a.registerActions(e)
 
 	a.Tabs.AddGate(a.Policy.IsAllowedURL)
@@ -566,6 +577,7 @@ func (a *App) ShellCrashed(w engine.WindowID) {
 
 // WindowClosed forgets the window and closes its tabs. Closing the last window quits.
 func (a *App) WindowClosed(w engine.WindowID) {
+	a.windowClosing(w)
 	a.Shell.WindowClosed(w)
 	a.Window.Close(w)
 	a.Tabs.RemoveWindow(w)
