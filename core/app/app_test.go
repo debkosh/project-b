@@ -1703,6 +1703,18 @@ func TestOurTabIsInNoWorkspace(t *testing.T) {
 	if !reflect.DeepEqual(erased, []mockengine.Erase{{Workspace: ""}}) || fromOurs.Workspace != "0a1b2c3d" {
 		t.Fatalf("the engine erased %+v; a new tab from ours is in %q", erased, fromOurs.Workspace)
 	}
+	// So does an address the shell's box opens in a new tab, as a shell that takes New Tab does.
+	r.e.Post(func() { r.a.Tabs.Activate(ours) })
+	r.shell(`{"t":"chooseSuggestion","row":{"kind":"address","url":"https://b.test/"},"newTab":true}`)
+	r.waitForTab(func(t map[string]any) bool {
+		return t["url"] == "https://b.test/" && t["loading"] == false && strings.HasPrefix(t["title"].(string), "Mock")
+	})
+	var opened tabs.Tab
+	r.e.Post(func() { opened, _ = r.a.Tabs.Get(r.a.Tabs.ActiveIn(1)) })
+	r.e.Settle()
+	if opened.URL != "https://b.test/" || opened.Workspace != "0a1b2c3d" {
+		t.Fatalf("the box's new tab from ours is %+v", opened)
+	}
 }
 
 // A shell changes the workspaces with the settings page's messages, naming a workspace by
