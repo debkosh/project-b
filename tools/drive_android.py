@@ -116,6 +116,10 @@ class Server(http.server.BaseHTTPRequestHandler):
             data = body.encode()
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+            return
         if path.startswith("/dl/"):
             data = b"Project B download check\n"
             self.send_response(200)
