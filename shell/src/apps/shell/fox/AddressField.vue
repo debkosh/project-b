@@ -2,6 +2,8 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { addressField } from './address.js';
 import { activeTab, focusPage, send, state, workspaceOf } from '@/sdk/vue.js';
+import { hasSite, openSiteSettings, promptFor } from '@/sdk/sites.js';
+import PermissionPrompt from '@/ui/PermissionPrompt.vue';
 
 // The active tab's address. Focused, it selects everything and grows a little; typing
 // asks Go for suggestions, which open in a panel attached under it, as wide as it. Up and
@@ -151,10 +153,34 @@ function follow() {
 }
 watch(() => state.active, follow);
 onMounted(follow);
+
+// A site's question about the active tab hangs under the field, and its settings open from
+// the field's start (docs/daily-driver.md).
+const prompt = computed(() => promptFor(state, state.active));
 </script>
 
 <template>
   <form class="field" :class="{ focused, open }" @submit.prevent="go()">
+    <button
+      v-if="hasSite(activeTab)"
+      type="button"
+      class="site"
+      :class="{ insecure: activeTab.connection && activeTab.connection !== 'secure' }"
+      :aria-label="activeTab.connection && activeTab.connection !== 'secure' ? 'Not secure · Site settings' : 'Site settings'"
+      :title="activeTab.connectionNote || 'Site settings'"
+      @mousedown.prevent
+      @click="openSiteSettings()"
+    >
+      <svg v-if="activeTab.connection && activeTab.connection !== 'secure'" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M8 2.25 14.25 13.25H1.75z" />
+        <path d="M8 6.5v3M8 11.5v.01" />
+      </svg>
+      <svg v-else width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+        <path d="M2.5 5h5M11.5 5h2M2.5 11h2M8.5 11h5" />
+        <circle cx="9.5" cy="5" r="1.75" />
+        <circle cx="6.5" cy="11" r="1.75" />
+      </svg>
+    </button>
     <input
       ref="input"
       v-model="text"
@@ -193,6 +219,7 @@ onMounted(follow);
         <span v-if="item.title" class="url">{{ item.url }}</span>
       </li>
     </ul>
+    <PermissionPrompt v-if="prompt && !open" :key="prompt.id" v-shell class="prompt" :prompt="prompt" />
   </form>
 </template>
 
@@ -222,6 +249,43 @@ onMounted(follow);
 .field.open {
   border-radius: 8px 8px 0 0;
   box-shadow: var(--shadow-float);
+}
+
+/* The site's settings, a quiet icon button at the field's start. */
+.site {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-left: 4px;
+  margin-right: -8px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--icon);
+  cursor: pointer;
+}
+
+.site.insecure {
+  color: var(--danger);
+}
+
+.site:hover {
+  background: var(--accent-tint);
+}
+
+.site:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.prompt {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 10;
 }
 
 input {
