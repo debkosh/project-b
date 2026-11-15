@@ -150,7 +150,8 @@ mkdir -p "$OUT"
 # Any script that builds another checkout into a shared out dir writes its own path here.
 if [ "$(cat "$OUT/.pb-tree" 2>/dev/null)" != "$ROOT" ]; then
   echo "  last built from $(cat "$OUT/.pb-tree" 2>/dev/null || echo nothing recorded); rebuilding project_b from $ROOT"
-  (cd "$ROOT" && git ls-files -z engine core shell | xargs -0 touch)
+  # Only files there now: touching one a branch deletes would make it again, empty.
+  (cd "$ROOT" && git ls-files -z engine core shell | xargs -0 touch -c)
 fi
 echo "$ROOT" > "$OUT/.pb-tree"
 cat > "$OUT/args.gn" <<ARGS
