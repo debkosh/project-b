@@ -14,6 +14,7 @@
 #include "content/public/browser/web_contents.h"
 #include "project_b/engine/browser/browser_main_parts.h"
 #include "project_b/engine/browser/engine.h"
+#include "project_b/engine/browser/events.h"
 #include "services/network/public/mojom/network_context.mojom.h"
 #include "third_party/blink/public/mojom/badging/badging.mojom.h"
 #include "third_party/blink/public/mojom/persistent_renderer_prefs.mojom.h"
@@ -68,10 +69,11 @@ ContentBrowserClient::CreateDevToolsManagerDelegate() {
 }
 #endif
 
-// Every navigation gets the generated throttle, whose hooks cross to Go only when Go
-// subscribed to them (core/content/wire.go decides which navigations it gates).
+// Every navigation gets the gate, which asks Go about a tab's top-level ones, and the
+// generated throttle, whose hooks cross to Go only when something subscribed to them.
 void ContentBrowserClient::CreateThrottlesForNavigation(
     content::NavigationThrottleRegistry& registry) {
+  registry.AddThrottle(std::make_unique<events::Gate>(registry));
   registry.AddThrottle(std::make_unique<NavigationThrottleHooks>(registry));
 }
 

@@ -1,6 +1,6 @@
 // Command lib is the Go core as a c-archive, linked statically into the main binary.
 // It implements engine.Engine on the C function table and hands every event from the
-// adapter to the content package. Nothing else in core/ touches cgo, so everything
+// adapter to the package that decodes it: abi, or content for the ones not moved yet. Nothing else in core/ touches cgo, so everything
 // else still builds and tests with no C++.
 package main
 
@@ -69,6 +69,7 @@ import (
 	"time"
 	"unsafe"
 
+	"projectb/abi"
 	"projectb/app"
 	"projectb/content"
 	"projectb/engine"
@@ -348,7 +349,10 @@ func (e *nativeEngine) Post(fn func()) {
 }
 
 var (
-	native  *nativeEngine
+	native *nativeEngine
+	// What the adapter tells Go: its events of a tab's page and of keys, and the rest,
+	// which content's package still decodes beside content's hooks.
+	events  *abi.Events
 	hooks   *content.Hooks
 	list    *profiles.Manager
 	blocked []string
@@ -427,6 +431,7 @@ func PBStart(calls *C.PBEngineCalls, blockedHosts, hookTable *C.char) {
 	}
 	// The table is C memory that lives as long as the process.
 	native = &nativeEngine{calls: calls}
+	events = abi.New()
 	hooks = content.New(func(h content.Hook) { C.call_set_hook_subscribed(native.calls, C.int32_t(h), 1) })
 	if s := C.GoString(blockedHosts); s != "" {
 		blocked = strings.Split(s, ",")
@@ -435,6 +440,7 @@ func PBStart(calls *C.PBEngineCalls, blockedHosts, hookTable *C.char) {
 		picker := app.StartPicker(native, list, func(id string) {
 			relaunch.Copy("--root="+list.Root(), "--profile="+id)
 		})
+		events.Listen(picker)
 		content.WirePicker(hooks, picker)
 		owner.Serve(func([]string) { native.Post(picker.Handover) }, quit)
 	} else {
@@ -463,6 +469,7 @@ func startProfile(c profiles.Choice) {
 		DownloadsDir: filepath.Join(home, "Downloads"),
 		System:       systemReport,
 	})
+	events.Listen(theApp)
 	content.Wire(hooks, theApp)
 	owner.Serve(func(urls []string) { native.Post(func() { theApp.Handover(urls) }) }, quit)
 }
@@ -537,7 +544,13 @@ func PBHook(id C.int32_t, args *C.PBValue, count C.size_t, result *C.PBValue) C.
 			values[i].S = C.GoStringN(a.s, C.int(a.len))
 		}
 	}
-	v, ok := hooks.Dispatch(content.Hook(id), values)
+	var v content.Value
+	var ok bool
+	if abi.Has(int32(id)) {
+		v, ok = events.Dispatch(abi.Event(id), values)
+	} else {
+		v, ok = hooks.Dispatch(content.Hook(id), values)
+	}
 	if !ok {
 		return 0
 	}
@@ -609,9 +622,18 @@ func PBGoStats() *C.char {
 		"numGC":       m.NumGC,
 		"maxPauseUs":  maxPauseNs / 1000,
 		"cgoCalls":    runtime.NumCgoCall(),
-		"hooks":       hooks.Counts(),
+		"hooks":       crossings(),
 	})
 	return C.CString(string(b))
+}
+
+// crossings is how often each event and hook has crossed, by name.
+func crossings() map[string]int {
+	out := hooks.Counts()
+	for name, n := range events.Counts() {
+		out[name] = n
+	}
+	return out
 }
 
 // PBFree frees a string Go returned, for the engine, whose own free may be another

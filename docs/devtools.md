@@ -39,7 +39,7 @@ it either, below).
 - **Close and activate**: `Target.closeTarget` runs the page's unload and then asks the
   tab's delegate to close it; `Target.activateTarget` asks it to show the tab, whose window comes to the front (Chrome's
   `ChromeDevToolsManagerDelegate::Activate`). Both cross to Go's tab manager
-  (`core/content/wire.go`), which decides. A page's own `window.close()` takes the same
+  (`PB_EVENT_CLOSE_REQUESTED` and `PB_EVENT_ACTIVATE_REQUESTED`), which decides. A page's own `window.close()` takes the same
   path, which closes the tab where Chrome would.
 
 ## The Browser domain

@@ -14,8 +14,9 @@
 
 namespace project_b {
 
-// One tab's connection to content. The generated bases carry every hook to Go; what is
-// overridden here needs content's objects first, and still calls the base after.
+// One tab's connection to content. What is overridden here tells Go what its page does,
+// as the events in pb_abi.h, or needs content's objects first. Each still calls its
+// generated base after, which carries the raw hook to Go when something subscribed.
 class PageTab : public WebContentsObserverHooks, public WebContentsDelegateHooks {
  public:
   PageTab(int64_t id,
@@ -38,9 +39,16 @@ class PageTab : public WebContentsObserverHooks, public WebContentsDelegateHooks
   // content::WebContentsObserver:
   void DidFinishNavigation(content::NavigationHandle* handle) override;
   void DidFirstVisuallyNonEmptyPaint() override;
+  void DidStartLoading() override;
+  void DidStopLoading() override;
+  void LoadProgressChanged(double progress) override;
+  void DidChangeVerticalScrollDirection(
+      viz::VerticalScrollDirection scroll_direction) override;
   void TitleWasSet(content::NavigationEntry* entry) override;
   void OnWebContentsFocused(
       content::RenderWidgetHost* render_widget_host) override;
+  void PrimaryMainFrameRenderProcessGone(
+      base::TerminationStatus status) override;
   void DidUpdateFaviconURL(
       content::RenderFrameHost* render_frame_host,
       const std::vector<blink::mojom::FaviconURLPtr>& candidates,
@@ -70,9 +78,31 @@ class PageTab : public WebContentsObserverHooks, public WebContentsDelegateHooks
       const blink::mojom::WindowFeatures& window_features,
       bool user_gesture,
       bool* was_blocked) override;
+  content::KeyboardEventProcessingResult PreHandleKeyboardEvent(
+      content::WebContents* source,
+      const input::NativeWebKeyboardEvent& event) override;
   bool HandleKeyboardEvent(content::WebContents* source,
                            const input::NativeWebKeyboardEvent& event) override;
   bool TakeFocus(content::WebContents* source, bool reverse) override;
+  bool HandleContextMenu(content::RenderFrameHost& render_frame_host,
+                         const content::ContextMenuParams& params) override;
+  void CloseContents(content::WebContents* source) override;
+  void ActivateContents(content::WebContents* contents) override;
+  bool IsFullscreenForTabOrPending(
+      const content::WebContents* web_contents) override;
+  void FindReply(content::WebContents* web_contents,
+                 int request_id,
+                 int number_of_matches,
+                 const gfx::Rect& selection_rect,
+                 int active_match_ordinal,
+                 bool final_update) override;
+
+  // Tells Go one thing about this tab: the event with the tab's id, and a yes or no.
+  void Fire(PBEvent event);
+  void Fire(PBEvent event, bool value);
+  void ReportNavigation(content::NavigationHandle* handle);
+  void ReportTitle();
+  std::string Title() const;
   void SynchronizeVisualProperties();
   // Go hears of a page's full screen first, then the page is told its new size.
   void EnterFullscreenModeForTab(content::RenderFrameHost* requesting_frame,

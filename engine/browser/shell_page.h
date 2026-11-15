@@ -58,6 +58,9 @@ class ShellPage : public content::WebContentsObserver,
 
   // content::WebContentsDelegate:
   content::WebContents* hook_contents() const override;
+  content::KeyboardEventProcessingResult PreHandleKeyboardEvent(
+      content::WebContents* source,
+      const input::NativeWebKeyboardEvent& event) override;
   bool HandleKeyboardEvent(content::WebContents* source,
                            const input::NativeWebKeyboardEvent& event) override;
   bool TakeFocus(content::WebContents* source, bool reverse) override;

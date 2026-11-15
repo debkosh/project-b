@@ -5,7 +5,8 @@
 // Everything the adapter tells Go goes through one call, hook: a number and a flat
 // list of values. The numbers are the adapter's own events below (PBEvent) and
 // content's hooks from 100 up, generated into engine/browser/hooks_gen.h and
-// core/content/hooks_gen.go by tools/gen_hooks.py.
+// core/content/hooks_gen.go by tools/gen_hooks.py. Go's app is told only through events;
+// no hook is subscribed to on its behalf.
 //
 // Threading: every call in both directions happens on the main thread, except
 // post_wakeup and the timeline's calls, which any thread may make.
@@ -80,7 +81,57 @@ typedef enum PBEvent {
                                         // for a reload. The page waits for answer_dialog
   PB_EVENT_DIALOG_CLOSED = 22,          // i: dialog; content gave up on it, as when its
                                         // tab navigated or closed
+
+  // What a tab's page does, 60 to 79, as any engine can say it: Go's core/abi turns each
+  // into the engine.Listener call of its name. A tab here is never a page of ours.
+  PB_EVENT_NAVIGATION_STARTING = 60,    // i: tab, i: navigation, s: url; answers i: 1 to
+                                        // let it go on, 0 to block it. Asked as a
+                                        // top-level navigation starts and on each
+                                        // redirect. navigation is the engine's number for
+                                        // it, greater for each newer one, the same until
+                                        // it finishes or fails
+  PB_EVENT_NAVIGATION_FINISHED = 61,    // i: tab, i: navigation, s: url; the page there is
+                                        // now the tab's
+  PB_EVENT_NAVIGATION_FAILED = 62,      // i: tab, i: navigation, s: url, s: why. Not for
+                                        // one a newer navigation replaced
+  PB_EVENT_HISTORY_CHANGED = 63,        // i: tab, i: can go back, i: can go forward
+  PB_EVENT_TITLE_CHANGED = 64,          // i: tab, s: the page's own title, "" for none
+  PB_EVENT_LOADING_CHANGED = 65,        // i: tab, i: loading
+  PB_EVENT_LOAD_PROGRESS_CHANGED = 66,  // i: tab, d: 0 to 1
+  PB_EVENT_CONTEXT_MENU = 67,           // i: tab, d: x, d: y, in the page; s: link, s: its
+                                        // words, s: src, s: its medium, "image", "video",
+                                        // "audio", "canvas", "file", "plugin" or "";
+                                        // s: selection, i: in a field. Answers i: 1 when
+                                        // the app shows a menu of its own, 0 to leave the
+                                        // press to the engine
+  PB_EVENT_SCROLL_DIRECTION_CHANGED = 68,  // i: tab, i: 1 down, 0 up
+  PB_EVENT_TAB_FOCUSED = 69,            // i: tab; the keyboard went into its page
+  PB_EVENT_PAGE_CRASHED = 70,           // i: tab; its page's process died
+  PB_EVENT_CLOSE_REQUESTED = 71,        // i: tab; something asked to close it
+  PB_EVENT_ACTIVATE_REQUESTED = 72,     // i: tab; something asked to show it
+  PB_EVENT_KEY = 73,                    // i: Windows virtual-key code, i: PBMods,
+                                        // i: PBKeyPhase, i: PBSurface; answers i: 1 when
+                                        // the app used the key. Key presses only
+  PB_EVENT_FIND_REPLY = 74,             // i: tab, i: request, i: matches so far, i: the
+                                        // active one, from 1; i: final
+  PB_EVENT_PAGE_FULL_SCREEN = 75,       // i: tab, i: 1 its page asked to fill the screen,
+                                        // 0 to stop
+  PB_EVENT_IS_PAGE_FULL_SCREEN = 76,    // i: tab; answers i: 1 when its page has the
+                                        // screen now
 } PBEvent;
+
+// When the engine asks about a key. Matches engine.KeyPhase.
+typedef enum PBKeyPhase {
+  PB_KEY_BEFORE_PAGE = 1,  // it is about to go to a page; a yes keeps it from the page
+  PB_KEY_UNHANDLED = 2,    // the page had it and didn't use it
+} PBKeyPhase;
+
+// Which of our pages had the keyboard. Matches engine.Surface.
+typedef enum PBSurface {
+  PB_SURFACE_PAGE = 1,
+  PB_SURFACE_SHELL = 2,
+  PB_SURFACE_SETTINGS = 3,
+} PBSurface;
 
 // What a page's dialog asks.
 typedef enum PBDialogKind {

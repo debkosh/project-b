@@ -42,6 +42,8 @@ source_set("browser") {
     "../browser/engine.h",
     "../browser/go.cc",
     "../browser/go.h",
+    "../browser/events.cc",
+    "../browser/events.h",
     "../browser/hooks.cc",
     "../browser/hooks.h",
     "../browser/hooks_gen.cc",
