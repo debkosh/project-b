@@ -175,7 +175,7 @@ func New(dir string, o Options) *Rig {
 		BlockedHosts: o.Blocked, Update: update.Config{StateDir: filepath.Join(dir, "updates")}})
 	// History loads on a worker and posts back.
 	deadline := time.Now().Add(10 * time.Second)
-	for o.History > 0 && len(r.A.Suggest.Query("site")) == 0 && time.Now().Before(deadline) {
+	for o.History > 0 && len(r.A.Suggest.Query("site", nil)) == 0 && time.Now().Before(deadline) {
 		r.Drain()
 		time.Sleep(time.Millisecond)
 	}
