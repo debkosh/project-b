@@ -266,6 +266,11 @@
 
   new EventSource(`/mock/window/events?window=${id}`).onmessage = (e) => {
     const msg = JSON.parse(e.data);
+    // Go gives the shell the keyboard, as the real window gives its view focus.
+    if (msg.t === 'focusShell') {
+      shell.contentWindow.focus();
+      return;
+    }
     if (msg.t !== 'window') return;
     state = msg;
     loadShell(msg.shell);
