@@ -241,6 +241,8 @@ class App:
 INPUT = "document.querySelector('input')"
 VALUE = INPUT + ".value"
 OPTIONS = "document.querySelectorAll('[role=option]').length"
+# Rows other than the search row, which every typed word now gets first.
+FOUND = "document.querySelectorAll('[role=option]:not([data-kind=search])').length"
 ACTIVE = "document.querySelectorAll('li.active').length"
 TAB_READY = "!document.querySelector('.progress.on')"
 ROWS = "document.querySelectorAll('[role=tab]').length"
@@ -875,7 +877,7 @@ def browsing_checks():
     app.cmd("type", "secret")
     app.wait(f"{VALUE}==='secret'")
     time.sleep(0.4)
-    check("a blocked URL stays out of history", app.js(OPTIONS) == 0, app.js(OPTIONS))
+    check("a blocked URL stays out of history", app.js(FOUND) == 0, app.js(FOUND))
     # With no suggestions open, Escape leaves the bar and the shell asks for the page's
     # keyboard. A click on the bar before that request lands loses the keyboard to it, so
     # wait for the page to have it.
@@ -884,7 +886,7 @@ def browsing_checks():
     app.cmd("type", "blank")
     app.wait(f"{VALUE}==='blank'")
     time.sleep(0.4)
-    check("the blank page a new tab holds stays out of history", app.js(OPTIONS) == 0, app.js(OPTIONS))
+    check("the blank page a new tab holds stays out of history", app.js(FOUND) == 0, app.js(FOUND))
     leave_bar(app)
 
     # A page restored from the back-forward cache never reports a start, so its commit
@@ -1247,7 +1249,7 @@ def browsing_checks():
     try:
         app.wait(OPTIONS, 10)
         check("history survives a restart", True)
-        check("titles survive a restart", "Example" in app.js("document.querySelector('[role=option]').innerText"))
+        check("titles survive a restart", app.js("[...document.querySelectorAll('[role=option][data-kind=history]')].some(o => o.innerText.includes('Example'))"))
     except TimeoutError as e:
         check("history survives a restart", False, e)
     app.cmd("key", "escape")
