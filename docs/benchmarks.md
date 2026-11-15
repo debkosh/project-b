@@ -20,6 +20,48 @@ has no screen, and AppKit can be slower there. Measure on a quiet machine: with 
 VM or a build running, `uptime`'s load runs past 20 and every mark moves later, Go's start
 among them, so compare only numbers taken under the same load.
 
+## 0.2.64 against 0.2.65, 2026-11-15
+
+The released packages, one unattended run from the desktop session on the Mac Studio, load 7 to
+12 (busier than the quiet baseline, the same for both). `first_paint.py -n 10`,
+`memory.py -n 3 standard`, `tabs.py --counts 1 10 50`. 0.2.65 brought Standard's command box (no
+first tab) and the Go performance work.
+
+Start-up, ms from process start, warm / fresh:
+
+| | 0.2.64 | 0.2.65 |
+|---|---:|---:|
+| go.started | 178 / 179 | 158 / 163 |
+| shell.first_paint | 267 / 263 | 246 / 245 |
+| app.ready | 273 / 278 | 246 / 245 |
+| tab.committed | 251 / 254 | none: Standard starts on its box |
+
+Memory, footprint in MiB of the browser and every child, without the graphics memory each owns
+unmapped: that part is purgeable, and macOS counts it only while it isn't volatile, so the GPU
+process read about 820 or about 30 on the same package from one start to the next.
+`memory.py` and `tabs.py` now give it apart ("purgeable graphics, apart"). Measured again
+with that, at load 3 to 5:
+
+| | 0.2.64 | 0.2.65 |
+|---|---:|---:|
+| after start | 116 | 95 |
+| 10 tabs | 452 | 245 |
+| 50 tabs | 1181 | 849 |
+
+The difference at 10 and 50 tabs is the renderers: about 26 MiB a tab in 0.2.64, 14 in 0.2.65.
+Every tab got its own renderer.
+
+The tab spans, median of five, ms: the whole span, and when Go's part finished inside it.
+
+| | 0.2.64, 10 tabs | 0.2.64, 50 | 0.2.65, 10 | 0.2.65, 50 |
+|---|---:|---:|---:|---:|
+| New Tab (on 0.2.65 Standard's box) | 12.2, Go 6.3 | 16.8, Go 3.8 | 17.0, Go 0.04 | 21.6, Go 0.04 |
+| Switch tab (a click on its row) | 22.6, Go 6.4 | 46.0, Go 33.8 | 11.9, Go 2.3 | 11.1, Go 2.2 |
+| Close tab (Cmd+W) | 10.5, Go 0.7 | 13.0, Go 0.3 | 24.6, Go 2.9 | 15.8, Go 3.8 |
+
+Go after 50 tabs: 1003 GCs, longest pause 1.19 ms, heap 2.6 MB (0.2.64); 171 GCs, longest
+pause 0.10 ms, heap 2.1 MB (0.2.65). A cgo call costs 62 to 86 ns.
+
 ## Start-up baseline, 0.2.63, 2026-11-15
 
 `tools/bench/first_paint.py -n 10` on the released package, from the desktop session
