@@ -741,6 +741,47 @@ func TestTheSettingsTabOpensAtASectionAndEndsItsRecording(t *testing.T) {
 	}
 }
 
+// A window has one settings tab: with it active, Duplicate Tab is off in the menu and runs
+// nothing from a shell, and a move of it into a window that has its own shows that one.
+func TestTheSettingsTabIsOneAWindow(t *testing.T) {
+	r := start(t, t.TempDir())
+	defer r.stop()
+	r.openSettings()
+	enabled := func(action string) bool {
+		on := false
+		var walk func([]engine.MenuItem)
+		walk = func(items []engine.MenuItem) {
+			for _, it := range items {
+				if it.Action == action {
+					on = it.Enabled
+				}
+				walk(it.Items)
+			}
+		}
+		r.e.Post(func() { walk(r.e.Menu()) })
+		r.e.Settle()
+		return on
+	}
+	if enabled("tab.duplicate") {
+		t.Fatal("Duplicate Tab is on for the settings tab")
+	}
+	r.shell(`{"t":"run","text":"tab.duplicate"}`)
+	var count int
+	var w2, there engine.TabID
+	var second engine.WindowID
+	r.e.Post(func() {
+		count = len(r.a.Tabs.AllIn(1))
+		second, _ = r.a.NewWindow("")
+		there = r.a.Settings.Open(second)
+		r.a.Tabs.Move(r.settingsTab, second, 0)
+		w2 = r.a.Tabs.ActiveIn(second)
+	})
+	r.e.Settle()
+	if count != 2 || w2 != there || r.settingsIn(1) != r.settingsTab {
+		t.Fatalf("tabs in window 1 %d; window %v shows %v, its settings tab %v; window 1's %v", count, second, w2, there, r.settingsIn(1))
+	}
+}
+
 // Our pages' one navigation rule, through the engine: a page the settings tab is asked to
 // go to opens in a web tab beside it, and the settings tab stays; an address of ours typed
 // or asked for in a new tab shows the settings tab, and the web tab stays as it was.

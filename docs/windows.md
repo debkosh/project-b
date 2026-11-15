@@ -116,14 +116,26 @@ bookmarks and downloads follow it.
   remembers. One check in our pages' context does it, for every way a navigation can
   start there: a link, a link dragged onto the page, an extension, DevTools or ChromeDriver
   (so a WebDriver navigation of an internal tab yields a new tab). A web tab asked to load
-  one of our addresses opens or switches to the internal tab instead.
-- **Pinning, moving to another window and duplicating keep a tab's kind,** which its
-  address says.
+  one of our addresses opens or switches to the internal tab instead. The check is Go's
+  gate, which every navigation in a tab passes: it lets a navigation go on, blocks it, or
+  drops it with nothing shown, the tab staying as it was, when it takes the address to
+  another tab (`tabs.Manager.HandleNavigationStarting`).
+- **Pinning and moving to another window keep a tab's kind,** which its address says. An
+  internal tab is never duplicated (Duplicate Tab is off for one), and one moved to a
+  window that has a tab of its page shows that tab and stays where it was, so a window
+  keeps one of each.
 - **To a shell an internal tab is a tab:** drawn, switched, closed and laid out as any
   other. The shell's state says which tabs are ours, and the contract holds a shell to
   showing a title, not a text field, where the address goes for one.
 - **Extensions don't see internal tabs:** they live in another context, as Chrome keeps
   its own pages out of reach of extensions.
+
+Known gaps, as built:
+- A tab the engine makes by itself for one of our addresses, such as DevTools'
+  `Target.createTarget` on `chrome://settings`, leaves a blank web tab beside the settings
+  tab, as the tab is made before Go sees the address.
+- An extension's button pressed while a settings tab is active tells the extension
+  nothing, as it doesn't see that tab.
 
 ## A window with no tabs
 
