@@ -142,7 +142,10 @@ func (m *Manager) Query(text string, kinds []string) []Row {
 			n++
 		}
 	}
-	if want[KindAction] && m.src.Actions != nil && len(q) >= 2 {
+	// Asked for alone, as a field's actions-only mode does, the actions have the whole list
+	// and one letter is enough.
+	only := len(want) == 1
+	if want[KindAction] && m.src.Actions != nil && (len(q) >= 2 || only) {
 		// One whose title starts with the text comes before one that only holds it.
 		var starts, holds []Row
 		for _, a := range m.src.Actions() {
@@ -155,7 +158,11 @@ func (m *Manager) Query(text string, kinds []string) []Row {
 			}
 		}
 		all := append(starts, holds...)
-		rows = append(rows, all[:min(len(all), maxActions)]...)
+		most := maxActions
+		if only {
+			most = maxRows
+		}
+		rows = append(rows, all[:min(len(all), most)]...)
 	}
 	if search != nil {
 		rows = append(rows, *search)

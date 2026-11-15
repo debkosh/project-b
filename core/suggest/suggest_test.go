@@ -63,6 +63,13 @@ func TestWordsSearchFirstThenTabsHistoryAndActions(t *testing.T) {
 	}
 }
 
+func TestActionsAskedForAloneFillTheList(t *testing.T) {
+	m := manager(t)
+	if rows := m.Query("t", []string{KindAction}); kinds(rows) != "action action action" {
+		t.Fatalf("rows = %+v", rows)
+	}
+}
+
 func TestAnAddressGoesFirstAndTheSearchLast(t *testing.T) {
 	m := manager(t, "https://mail.test/ Mail")
 	rows := m.Query("mail.test", all)

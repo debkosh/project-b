@@ -199,7 +199,7 @@ none. The snapshot also has `running` (the version), `platform`
 | `back`, `forward`, `reload` | | Act on the active tab |
 | `focusTab` | `id` | Gives a tab's page the keyboard |
 | `focusShell` | | Gives the shell the keyboard |
-| `suggest` | `id`, `text`, `kinds` | Asks for suggestions with rows of the kinds named; without `kinds`, history alone. With no text, the pages visited most |
+| `suggest` | `id`, `text`, `kinds` | Asks for suggestions with rows of the kinds named. The bare message without `kinds` gets history alone, as it always did; the SDK's `suggest()` asks for every kind unless told otherwise. With no text, the pages visited most |
 | `chooseSuggestion` | `row`, `newTab` | Runs a row: Go loads its address or search in the active tab, or a new one, shows its tab, or runs its action |
 | `run` | `text`: an action's id | Runs an action, as its menu item would |
 | `window` | `text`: `close`, `minimise`, `zoom` or `fullScreen` | Asks the window |
