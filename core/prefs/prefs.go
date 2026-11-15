@@ -67,6 +67,11 @@ type Manager struct {
 	onAddress    []func(string)
 	onSearch     []func(string)
 	onChanged    []func(Prefs)
+	// writes hands the settings, as JSON, to the writer, which writes them off the main
+	// thread as history's does. At most one copy waits: a newer one takes its place. Nil
+	// until the first change, so a manager made only to read starts nothing.
+	writes chan []byte
+	done   chan struct{}
 }
 
 // New returns a manager with the settings saved under dir, or the defaults. A setting the
@@ -274,8 +279,39 @@ func (m *Manager) Apply(values json.RawMessage) error {
 	return nil
 }
 
+// save hands the settings to the writer, starting it on the first change.
 func (m *Manager) save() {
 	b, _ := json.Marshal(m.prefs)
+	if m.writes == nil {
+		m.writes = make(chan []byte, 1)
+		m.done = make(chan struct{})
+		go m.writer(m.writes, m.done)
+	}
+	select {
+	case <-m.writes:
+	default:
+	}
+	m.writes <- b
+}
+
+// Close writes what is waiting and stops the writer. A change after it starts another.
+func (m *Manager) Close() {
+	if m.writes == nil {
+		return
+	}
+	close(m.writes)
+	<-m.done
+	m.writes = nil
+}
+
+func (m *Manager) writer(writes <-chan []byte, done chan<- struct{}) {
+	defer close(done)
+	for b := range writes {
+		m.write(b)
+	}
+}
+
+func (m *Manager) write(b []byte) {
 	if err := os.MkdirAll(filepath.Dir(m.path), 0o700); err != nil {
 		timeline.Errorf("prefs: %v", err)
 		return

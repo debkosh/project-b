@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestTabLayoutSurvivesARestart(t *testing.T) {
@@ -23,6 +24,8 @@ func TestTabLayoutSurvivesARestart(t *testing.T) {
 		t.Fatalf("changes = %v", got)
 	}
 
+	// The settings are written off the main thread; Close waits for that.
+	m.Close()
 	if New(dir).TabLayout() != TabsHorizontal {
 		t.Fatal("layout not saved")
 	}
@@ -42,6 +45,7 @@ func TestFrameColorIsDustyTealByDefaultAndSurvivesARestart(t *testing.T) {
 	if len(got) != 1 || got[0] != "#3470d0" {
 		t.Fatalf("changes = %v", got)
 	}
+	m.Close()
 	if New(dir).FrameColor() != "#3470d0" {
 		t.Fatal("colour not saved")
 	}
@@ -63,6 +67,7 @@ func TestApplySetsWhatTheValuesHoldThroughTheSetters(t *testing.T) {
 	if strings.Join(heard, " ") != "horizontal #5b7fd6" {
 		t.Fatalf("heard %v", heard)
 	}
+	m.Close()
 	if got := New(dir).All(); got != (Prefs{TabLayout: TabsHorizontal, FrameColor: "#5b7fd6", Theme: ThemeDark, Shell: "standard", AddressBarPosition: AddressBottom, SearchEngine: "duckduckgo"}) {
 		t.Fatalf("saved %+v", got)
 	}
@@ -81,12 +86,14 @@ func TestTheShellIsAShellsIDAndSurvivesARestart(t *testing.T) {
 	m.SetShell("no-such-shell")
 	m.SetShell("minimal")
 	m.SetShell("minimal")
+	m.Close()
 	if len(got) != 1 || got[0] != "minimal" || New(dir).Shell() != "minimal" {
 		t.Fatalf("changes %v, saved %q", got, New(dir).Shell())
 	}
 	if err := m.Apply(json.RawMessage(`{"shell":"standard"}`)); err != nil || m.Shell() != "standard" || len(got) != 2 {
 		t.Fatalf("apply: %v, shell %q, changes %v", err, m.Shell(), got)
 	}
+	m.Close()
 	if err := os.WriteFile(filepath.Join(dir, "prefs.json"), []byte(`{"shell":"gone"}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -105,6 +112,7 @@ func TestTheAddressBarPosition(t *testing.T) {
 	m.SetAddressBarPosition("middle")
 	m.SetAddressBarPosition(AddressTop)
 	m.SetAddressBarPosition(AddressTop)
+	m.Close()
 	if m.AddressBarPosition() != AddressTop || len(got) != 1 || New(dir).AddressBarPosition() != AddressTop {
 		t.Fatalf("changes %v, saved %q", got, New(dir).AddressBarPosition())
 	}
@@ -131,7 +139,24 @@ func TestTheSearchEngineIsOneOfTheList(t *testing.T) {
 	if strings.Join(heard, " ") != "google" {
 		t.Fatalf("heard %v", heard)
 	}
+	m.Close()
 	if got := New(dir).SearchEngine(); got.Name != "Google" || got.For("a b") != "https://www.google.com/search?q=a+b" {
 		t.Fatalf("after a restart: %+v", got)
+	}
+}
+
+// A change is on disk at once, written by the writer as soon as it hears of it, not only
+// when Close waits for it: an app killed without Stop, as Android's often is, keeps it.
+func TestAChangeReachesTheDiskWithoutClose(t *testing.T) {
+	dir := t.TempDir()
+	m := New(dir)
+	defer m.Close()
+	m.SetTheme(ThemeDark)
+	deadline := time.Now().Add(time.Second)
+	for New(dir).Theme() != ThemeDark {
+		if time.Now().After(deadline) {
+			t.Fatal("the change wasn't on disk a second later")
+		}
+		time.Sleep(time.Millisecond)
 	}
 }

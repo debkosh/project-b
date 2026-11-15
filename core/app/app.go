@@ -376,6 +376,7 @@ func (a *App) NewWindowWith(tab engine.TabID) engine.WindowID {
 func (a *App) Stop() {
 	a.Update.Stop()
 	a.History.Close()
+	a.Prefs.Close()
 	a.Crash.Stop()
 }
 
