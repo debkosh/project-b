@@ -48,7 +48,6 @@ const rules = {
 // (docs/daily-driver.md). Rule 16 holds every other desktop shell to it.
 const noMenuYet = {
   terminal: 'r4 brings it',
-  fox: 'r4 brings it',
   minimal: 'r4 brings it',
 };
 
@@ -56,7 +55,6 @@ const noMenuYet = {
 // every other shell to them.
 const noDialogsYet = {
   terminal: 'r4 brings it',
-  fox: 'r4 brings it',
   minimal: 'r4 brings it',
 };
 
@@ -64,7 +62,6 @@ const noDialogsYet = {
 // brings each. Rule 21 holds every other desktop shell to it.
 const noPageFullYet = {
   terminal: 'r4 brings it',
-  fox: 'r4 brings it',
   minimal: 'r4 brings it',
 };
 
@@ -72,7 +69,6 @@ const noPageFullYet = {
 // every other desktop shell to it.
 const noFindYet = {
   terminal: 'r4 brings it',
-  fox: 'r4 brings it',
   minimal: 'r4 brings it',
 };
 
@@ -80,7 +76,6 @@ const noFindYet = {
 // Rule 17 holds every other desktop shell to it.
 const noDownloadsYet = {
   terminal: 'r4 brings it',
-  fox: 'r4 brings it',
   minimal: 'r4 brings it',
 };
 
@@ -101,7 +96,6 @@ const noTitleYet = {
   glide: 'r6 brings it',
   'mobile-native': 'r8, the native mobile shell\'s session, brings it',
   terminal: 'r4 brings it',
-  fox: 'r4 brings it',
   minimal: 'r4 brings it',
 };
 

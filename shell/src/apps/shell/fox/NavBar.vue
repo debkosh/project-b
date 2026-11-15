@@ -1,8 +1,10 @@
 <script setup>
 import AddressField from './AddressField.vue';
+import PageTitle from './PageTitle.vue';
 import AppMenu from './AppMenu.vue';
 import { withKey } from './hints.js';
 import { ExtensionsToolbar } from '@extensions';
+import Downloads from '@/ui/Downloads.vue';
 import { activeTab, focusPage, send, state } from '@/sdk/vue.js';
 
 // Back, forward and reload on the left, the address field centred in the row, the
@@ -30,9 +32,11 @@ function act(msg) {
           <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12.35 1.4.24 4.28-3.78.22" /><path d="M11.68 9.55a5.15 5.15 0 1 1 .19-4.39" /></svg>
         </button>
       </div>
-      <AddressField />
+      <PageTitle v-if="activeTab.page" />
+      <AddressField v-else />
       <div class="side end">
         <component :is="ExtensionsToolbar" v-if="ExtensionsToolbar" :extensions="state.extensions" />
+        <Downloads />
         <AppMenu />
       </div>
       <!-- The active page's load progress, along the bar's foot while it loads. -->

@@ -1,8 +1,12 @@
 <script setup>
+import { computed, watchEffect } from 'vue';
 import CrashBar from './CrashBar.vue';
 import NavBar from './NavBar.vue';
 import TabStrip from './TabStrip.vue';
 import UpdateBar from './UpdateBar.vue';
+import FindBar from '@/ui/FindBar.vue';
+import PageDialog from '@/ui/PageDialog.vue';
+import PageMenu from '@/ui/PageMenu.vue';
 import PageNotice from '@/ui/PageNotice.vue';
 import { keyOf } from './hints.js';
 import { started } from './started.js';
@@ -11,8 +15,10 @@ import { activeTab, send, setFrame, state } from '@/sdk/vue.js';
 // The tabs on top, the navigation bar under them, any notice under that, then the page,
 // inside the window's 4px band. The frame's sides and foot are strips of their own, so
 // nothing is painted under the page: it shows through the hole. With no tabs the shell
-// draws that area itself, as its own.
-setFrame(4);
+// draws that area itself, as its own. A page in full screen has the whole window: no band,
+// no bars, which are hidden rather than taken away, so each keeps what it holds.
+const pageFull = computed(() => state.pageFullScreen !== 0 && state.pageFullScreen === state.active);
+watchEffect(() => setFrame(pageFull.value ? 0 : 4));
 </script>
 
 <!-- Until Go's snapshot is in, the shell knows nothing of the window: its splash is the
@@ -21,12 +27,12 @@ setFrame(4);
 <template>
   <div class="splash" :aria-busy="!state.loaded">Project B</div>
   <div v-if="state.loaded" class="window">
-    <TabStrip />
-    <NavBar />
-    <CrashBar />
-    <UpdateBar />
+    <TabStrip v-show="!pageFull" />
+    <NavBar v-show="!pageFull" />
+    <CrashBar v-show="!pageFull" />
+    <UpdateBar v-show="!pageFull" />
     <div class="body">
-      <div class="edge side"></div>
+      <div v-show="!pageFull" class="edge side"></div>
       <div v-page="state.active" class="page">
         <div v-if="started && !state.tabs.length" v-shell class="empty">
           <p>No tabs</p>
@@ -35,10 +41,13 @@ setFrame(4);
           </button>
         </div>
         <PageNotice v-if="activeTab.notice" v-shell :tab="activeTab" />
+        <FindBar />
+        <PageDialog />
       </div>
-      <div class="edge side"></div>
+      <div v-show="!pageFull" class="edge side"></div>
     </div>
-    <div class="edge foot"></div>
+    <div v-show="!pageFull" class="edge foot"></div>
+    <PageMenu />
   </div>
 </template>
 
