@@ -178,11 +178,12 @@
     "name": "Built-in AI: translate and detect language",
     "api": "Translator, LanguageDetector",
     "delegate": "ContentBrowserClient::BindTranslationManager",
-    "status": {"mac": "quiet", "android": "absent"},
-    "why": "On Mac content drops the request, so availability() never answers; off on Android",
+    "status": {"mac": "off", "android": "off"},
+    "disable_blink_features": ["TranslationAPI", "LanguageDetectionAPI"],
+    "why": "Only Chrome binds its interface, and on Mac a page that asked was killed in 0.2.65",
     "needs": ["stay-off"],
-    "probe": [{"name": "translator", "call": "Translator.availability({sourceLanguage: 'en', targetLanguage: 'fr'})"}],
-    "test": ["probe:translator"]
+    "probe": [{"name": "translator", "call": "Translator.availability({sourceLanguage: 'en', targetLanguage: 'fr'})"}, {"name": "languageDetector", "call": "LanguageDetector.availability()"}],
+    "test": ["probe:translator", "probe:languageDetector"]
   },
   {
     "id": "js-dialogs",
