@@ -19,6 +19,14 @@ export PATH=$WORK/depot_tools:/usr/local/go/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export GODEBUG=asyncpreemptoff=1
 export PYTHONUNBUFFERED=1 DEPOT_TOOLS_UPDATE=0
 
+# One build at a time: every build copies its tree into $TREE and builds the one out dir, so two
+# at once overwrite each other's sources. Whoever comes second waits here for the first.
+exec 9>"$WORK/.android-build.lock"
+if ! flock -n 9; then
+  echo "=== $(date '+%F %T') another build holds the VM; waiting for it to finish"
+  flock 9
+fi
+
 [ -x /usr/local/go/bin/go ] || curl -fsSL "https://go.dev/dl/go$GO_VERSION.linux-amd64.tar.gz" | tar -C /usr/local -xz
 
 # GN builds a copy of the tree in which a file is rewritten only when its content changes. Ninja
