@@ -422,12 +422,14 @@ void PageTab::EnterFullscreenModeForTab(content::RenderFrameHost* requesting_fra
                                         const blink::mojom::FullscreenOptions& options) {
   Fire(PB_EVENT_PAGE_FULL_SCREEN, true);
   WebContentsDelegateHooks::EnterFullscreenModeForTab(requesting_frame, options);
+  SystemBarsHidden(true);
   SynchronizeVisualProperties();
 }
 
 void PageTab::ExitFullscreenModeForTab(content::WebContents* web_contents) {
   Fire(PB_EVENT_PAGE_FULL_SCREEN, false);
   WebContentsDelegateHooks::ExitFullscreenModeForTab(web_contents);
+  SystemBarsHidden(false);
   SynchronizeVisualProperties();
 }
 
@@ -490,6 +492,14 @@ void PageTab::CloseContents(content::WebContents* source) {
 void PageTab::ActivateContents(content::WebContents* contents) {
   Fire(PB_EVENT_ACTIVATE_REQUESTED);
   WebContentsDelegateHooks::ActivateContents(contents);
+}
+
+// A phone's window always fills the screen, so a page's full screen there is its window
+// without the system's bars.
+void PageTab::SystemBarsHidden(bool hidden) {
+  if (Engine::AppWindow* w = Engine::Get()->window(window_)) {
+    w->window->SetSystemBarsHidden(hidden);
+  }
 }
 
 // Content asks Go whether the page is in full screen as it sizes the page, and tells the

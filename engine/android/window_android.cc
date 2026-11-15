@@ -428,6 +428,10 @@ void Window::Zoom() {}
 
 void Window::ToggleFullScreen() {}
 
+void Window::SetSystemBarsHidden(bool hidden) {
+  Java_BrowserWindow_setSystemBarsHidden(AttachCurrentThread(), g_browser_window->java(), hidden);
+}
+
 // Android runs one copy of the app, so no other copy hands over to bring it forward.
 void Window::BringToFront() {}
 
