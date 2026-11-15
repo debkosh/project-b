@@ -93,8 +93,14 @@ final class Downloads {
         Intent intent = new Intent(Intent.ACTION_VIEW)
                 .setDataAndType(uri, context.getContentResolver().getType(uri))
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+    // Opens the shared copy, once the copy publish started is made: Open right after a
+    // download ends would otherwise find nothing yet and do nothing.
         try {
             context.startActivity(Intent.createChooser(intent, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        sCopier.execute(() -> openNow(path));
+    }
+
+    private static void openNow(String path) {
         } catch (Exception e) {
             Log.w(TAG, "nothing opens " + path, e);
         }
