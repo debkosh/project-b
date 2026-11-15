@@ -25,7 +25,8 @@ export const state = {
   // the layout, the theme or the frame colour, and draws a basic splash of its own; then
   // it draws its view from the data. It never goes back to false.
   loaded: false,
-  // This window's tabs in order, and the active one's id.
+  // This window's tabs in order, and the active one's id. A tab open for a pin has the
+  // pin's id in pin, and the pinned tabs come first.
   tabs: [],
   active: 0,
   // This window's tab groups, each {id, name, color, collapsed, tabs}, in the order made;
@@ -64,6 +65,10 @@ export const state = {
   // colour as state.tones has the frame's, in the user's order: one at least once the
   // snapshot is in. Main, the profile's own storage, has the id ''.
   workspaces: [],
+  // The profile's pins, each {id, workspace, url, title, favicon}, in their order, a
+  // workspace's in the order pinned. A pin has a tab in this window when a tab's pin is its
+  // id. pins.js pins, unpins and opens one (docs/windows.md, "Pinned tabs").
+  pins: [],
   // The report of the last run's crash, '' when it didn't crash or the notice was closed.
   crashLog: '',
   // macOS's report of that crash, or the folder it keeps its reports in.
@@ -113,7 +118,7 @@ export const state = {
 
 // The messages that are only state: each sets the fields it carries, whole. The one
 // exception is tabs, whose tabs carry no favicon: each keeps the one it had (below).
-const updates = new Set(['theme', 'windowColor', 'controls', 'keys', 'workspaces', 'update', 'crashLog', 'tabLayout', 'addressBarPosition', 'extensions', 'profileData', 'contextMenu', 'downloads', 'dialogs', 'prefs', 'find', 'pageFullScreen', 'searchEngine', 'permissionPrompts']);
+const updates = new Set(['theme', 'windowColor', 'controls', 'keys', 'workspaces', 'pins', 'update', 'crashLog', 'tabLayout', 'addressBarPosition', 'extensions', 'profileData', 'contextMenu', 'downloads', 'dialogs', 'prefs', 'find', 'pageFullScreen', 'searchEngine', 'permissionPrompts']);
 
 const listeners = [];
 

@@ -87,6 +87,7 @@ of it.
 | `@/sdk/downloads.js` | What a shell sends about `state.downloads`: `downloadAction(id, action)` and `clearDownloads()`. |
 | `@/sdk/sites.js` | A site's settings ([daily-driver.md](daily-driver.md#permissions)): the permission prompts, `promptFor(state, tab)`, `answerPermission(prompt, choice)`, and the words `permissionHost(prompt)` and `permissionAsk(prompt)`; and `hasSite(tab)` and `openSiteSettings()`. `@/ui/PermissionPrompt.vue` draws a prompt in the design system's look. |
 | `@/sdk/notice.js` | A tab's notice, `tab.notice`: `runNotice(tab, action)`. `@/ui/PageNotice.vue` draws one in the design system's look. |
+| `@/sdk/pins.js` | What a shell sends about `state.pins`, the profile's pinned tabs, and each tab's `pin`: `pinTab(id)`, `unpin(pin)` and `openPin(pin)` ([windows.md](windows.md#pinned-tabs)). Both adapters give them too. |
 | `@/sdk/extensions.js` | What a shell sends about extensions: `pressExtension(id, el)`, `pinExtension(id, on)`, `manageExtensions()`, `answerExtensionPrompt(on)`. |
 | `@/sdk/controls.js` | `controls`: the one selector for what a control is, something the user presses or types in (buttons, links with an address, fields, selects, text areas, `role="tab"` and `role="button"`, anything with a `tabindex`). The SDK finds a drag bar's controls by it, and the check reads it for rule 6. |
 | `@/sdk/vue.js` | The Vue adapter: `state`, a reactive copy that follows the SDK's; `activeTab` and `controlSpace` as computeds; `workspaceOf(tab)` and `keyLabel(action)`; `connect(handlers)`, which waits for Vue's `nextTick`; the directives `v-shell`, `v-drag` and `v-page="tab.id"`; and `send`, `saveData`, `focusPage`, `setFrame`, `tabLabel`. |
@@ -125,6 +126,7 @@ gives the page the same two.
 | `controls` | `controls`, `cornerRadius` | The native window buttons moved, or full screen |
 | `keys` | `keys`: the key each action shows, by action id | The keymap changed |
 | `workspaces` | `workspaces`: id, name and colour of each | The list changed |
+| `pins` | `pins`: the profile's pins, each `{id, workspace, url, title, favicon}`, in their order | A pin was made or removed |
 | `update` | `update`: what the updater is doing | It changed |
 | `crashLog` | `crashLog`, `crashReport` | The notice of the last run's crash was closed |
 | `tabLayout` | `tabLayout` | The standard shell's tab position changed |
@@ -152,9 +154,11 @@ nothing. Its `actions` is every action in the menus that can run then, `{id, tit
 the menus' order, for a shell that lists them to run by name (`run`).
 
 A tab is `{id, url, title, loading, progress, blocked, crashed, error, errorCode, favicon,
-canGoBack, canGoForward, workspace, group, page, connection, connectionNote, notice}`, `group` the
-id of its tab group, absent when it is in none; `connection` how its page reached it,
-`secure` or `insecure`, absent when it isn't a site, and `connectionNote` why, in one line
+canGoBack, canGoForward, workspace, group, page, pin, connection, connectionNote, notice}`,
+`group` the id of its tab group, absent when it is in none; `pin` the id of the pin it is
+open for, absent when it is open for none (a window's pinned tabs come first in its list, in
+the pins' order); `connection` how its page reached it, `secure` or `insecure`, absent when
+it isn't a site, and `connectionNote` why, in one line
 ([daily-driver.md](daily-driver.md#permissions)). `error` says why its page failed to load, absent when it didn't:
 `not-found`, `offline`, `refused`, `unreachable`, `timeout`, `tls`, `proxy`, `redirects`,
 `bad-response`, `blocked`, `file` or `other` (engine.Failure). `errorCode` is the engine's
@@ -181,6 +185,11 @@ title, detail, actions}`, absent otherwise
   changed it. The workspace messages are the settings page's, and keep its rules: a name
   no other workspace has, whatever its case, and never deleting the last. A shell names
   the workspace by `workspace`, as `newTab` does, where the settings page says `id`.
+- `pins` is every pin of the profile, in every workspace, `{id, workspace, url, title,
+  favicon}`, the title and icon its tab had when pinned. Every window hears the same list;
+  a pin is open in a window when one of its tabs has its id in `pin`, and has no tab after
+  a restart, or once its tab closed, until `openPin`. Go has no rule that a shell draw
+  them: one that draws none still lists the pinned tabs first ([windows.md](windows.md#pinned-tabs)).
 - `groups` is each of the window's tab groups, `{id, name, color, collapsed, tabs}`, in the
   order they were made, `tabs` its tabs' ids in the group's own order
   ([groups.md](groups.md)).
@@ -204,11 +213,14 @@ title, detail, actions}`, absent otherwise
 | `editWorkspace` | `workspace`, `text`, `color` | Renames and recolours a workspace together; a name refused changes neither |
 | `moveWorkspace` | `workspace`, `by`: -1 or 1 | Moves a workspace one place up or down the list |
 | `deleteWorkspace` | `workspace` | Deletes a workspace: Go takes it out of the list, closes its tabs in every window, a window whose every tab was in it staying open with none, and erases its storage. The last one is refused |
+| `pinTab` | `id` | Pins a web tab with an address: a pin of it at the end of its workspace's pins, with the tab open for it, which goes among the window's pinned tabs and out of its group. A tab of ours, or one with no address yet, isn't pinned |
+| `unpin` | `pin`: a pin's id | Removes the pin. A tab open for it stays, as an ordinary tab first after the pinned ones |
+| `openPin` | `pin` | Shows this window's tab for the pin, or opens one for it in its workspace and at its address, in its place among the pinned tabs |
 | `createGroup` | `ids`, optional `name` and `color` | Makes a group of the tabs: the first's window and workspace, and the rest that share them |
 | `addToGroup`, `removeFromGroup` | `id`, and `group` to add to | Puts a tab in a group, or takes it out |
 | `editGroup` | `group`, and any of `name`, `color`, `collapsed` | Changes what is sent |
 | `ungroup`, `closeGroup` | `group` | Ends a group, its tabs staying; or closes its tabs |
-| `moveTab` | `id`, `index`, optional `window` | Moves a tab to `index` in its window's order, the place it has after the move, clamped; the active tab stays. Between two tabs of a group it joins the group, and out of its group's run it leaves it ([groups.md](groups.md)). With `window`, another window's id, it moves into that window at `index`, which it leaves if it was its last tab; an unknown window changes nothing. The standard shell's dragging sends it; a tab let go outside the window goes to a window of its own, by the Move Tab to New Window action. With pins: an unpinned tab stops after the pinned ones, and a pinned tab moves only among them |
+| `moveTab` | `id`, `index`, optional `window` | Moves a tab to `index` in its window's order, the place it has after the move, clamped; the active tab stays. Between two tabs of a group it joins the group, and out of its group's run it leaves it ([groups.md](groups.md)). With `window`, another window's id, it moves into that window at `index`, which it leaves if it was its last tab; an unknown window changes nothing. The standard shell's dragging sends it; a tab let go outside the window goes to a window of its own, by the Move Tab to New Window action. With pins: an unpinned tab stops after the pinned ones, and a pinned tab stays where it is, as pins keep their order; a pinned tab moved into a window that has a tab for its pin shows that tab instead ([windows.md](windows.md#pinned-tabs)) |
 | `closeTab` | `id`, optional `then` | Closes a tab. With no `id`, or 0, it is Close Tab: the active tab, or the window when it has no tabs. With `then: "recent"` it closes the tab given or the active one, and when that was active the tab used just before it takes its place rather than its neighbour (Go keeps each window's tabs in the order they were last used) |
 | `activateTab` | `id` | Makes a tab the active one |
 | `navigate` | `text`; optional `workspace` | Takes the active tab to an address or a search. In a window with no tabs it opens one there, in the workspace named or the first in the list, and takes it there. One of our pages' addresses shows the window's tab of that page instead, and one of our tabs takes any other address to a new tab beside it |
