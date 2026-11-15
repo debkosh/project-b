@@ -328,6 +328,7 @@ source_set("browser") {
 
 repack("pak") {
   sources = [
+    "$root_gen_dir/components/strings/components_strings_en-US.pak",
     "$root_gen_dir/content/content_resources.pak",
     "$root_gen_dir/mojo/public/js/mojo_bindings_resources.pak",
     "$root_gen_dir/net/net_resources.pak",
@@ -340,6 +341,7 @@ repack("pak") {
     "$root_gen_dir/ui/strings/ui_strings_en-US.pak",
   ]
   deps = [
+    "//components/strings",
     "//content:content_resources",
     "//mojo/public/js:resources",
     "//net:net_resources",
