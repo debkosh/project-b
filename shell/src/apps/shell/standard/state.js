@@ -6,6 +6,8 @@ import { saveData, send, state } from '@/sdk/vue.js';
 export const view = reactive({
   // Whether the sidebar is open.
   sidebar: true,
+  // Whether the command box is open over the page: New Tab opens it (CommandBox.vue).
+  box: false,
   // The workspace whose tabs the window lists, by id, or null for all of them. Kept as
   // this window's shell data, so a reload or a crash keeps it.
   workspace: null,
@@ -56,6 +58,13 @@ export const find = {
   focus() {},
 };
 
+// Go's suggestion answers, sent on to whichever field asked: the address bar or the new
+// tab's box. Each asks with an id from nextQuery, so ids never meet, and keeps only the
+// answer to its own last one.
+let query = 0;
+export const nextQuery = () => ++query;
+export const newTabBox = { suggestions() {} };
+
 // The address bar's answers to what Go sends it, set once it is mounted.
 export const addressBar = {
   suggestions() {},
@@ -64,3 +73,13 @@ export const addressBar = {
 
 // empty says the window has no tabs, once Go's data is in.
 export const empty = computed(() => state.loaded && state.tabs.length === 0);
+
+// openBox opens the command box over the page, as New Tab does in Standard; closeBox shuts it.
+export function openBox() {
+  view.box = true;
+  newTabBox.focus?.();
+}
+
+export function closeBox() {
+  view.box = false;
+}

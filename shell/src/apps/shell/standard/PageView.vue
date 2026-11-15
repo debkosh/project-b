@@ -1,11 +1,17 @@
 <script setup>
+import { computed } from 'vue';
 import CrashNotice from './CrashNotice.vue';
 import FindBar from './FindBar.vue';
 import PageDialog from './PageDialog.vue';
 import UpdateStatus from './UpdateStatus.vue';
-import { shown } from '@/keys.js';
-import { send, state } from '@/sdk/vue.js';
-import { empty } from './state.js';
+import CommandBox from './CommandBox.vue';
+import { empty, view } from './state.js';
+import { activeTab, state } from '@/sdk/vue.js';
+
+// The command box shows over the page area: opened by New Tab, on a tab with nothing in it,
+// and in a window with no tabs. The page hole stays under it, so nothing moves.
+const blank = computed(() => empty.value || (state.active !== 0 && activeTab.value.url === '' && !activeTab.value.loading));
+const shown = computed(() => !state.pageFullScreen && (view.box || blank.value));
 </script>
 
 <!-- The page hole shows the active tab. With no tabs no page shows there, and the shell
@@ -13,12 +19,7 @@ import { empty } from './state.js';
 <template>
   <div class="main">
     <div v-page="state.active" class="page-view"></div>
-    <div v-if="empty" v-shell class="empty">
-      <p>No tabs</p>
-      <button class="text-button" type="button" @click="send({ t: 'newTab' })">
-        New Tab<span v-if="state.keys['tab.new']" class="key" aria-hidden="true">{{ shown(state.keys['tab.new'], state.platform) }}</span>
-      </button>
-    </div>
+    <CommandBox v-if="shown" :key="state.active" :over-page="view.box && !blank" />
     <CrashNotice />
     <FindBar />
     <PageDialog />
@@ -38,31 +39,6 @@ import { empty } from './state.js';
 
 .page-view {
   height: 100%;
-}
-
-/* Where the page would be, in the surface a card has, flat as the page it stands for. */
-.empty {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  background: var(--surface);
-  color: var(--text);
-}
-
-.empty p {
-  margin: 0;
-  color: var(--muted);
-  font-weight: 500;
-}
-
-.key {
-  margin-left: 8px;
-  color: var(--muted);
-  font-weight: 400;
 }
 
 </style>
