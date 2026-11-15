@@ -404,3 +404,18 @@ the shell's layout needs no new numbers; a control that loses its label does.
     # (Android 16, 16 KB pages, emulator-5602) and project-b-emu-37 (Android 17, emulator-5606).
     tools/test.sh android               # PB_APK picks another APK than build/android/project-b-content.apk
     amarit stop project-b-emu
+
+The emulators share one netsimd, which carries their Wi-Fi, and each exits when it goes. It runs as its own unit,
+`project-b-netsim` (`netsimd -i 2 --no-shutdown --grpc-port 8877`), and every emulator unit connects to it with
+`-packet-streamer-endpoint localhost:8877`. A unit made without that flag spawns its own netsimd in its process
+group, and amarit stops a unit by killing the whole group: stopping or restarting that one emulator then takes
+every other one down with it, each log ending in `Netsim Wifi ... is gone ... GOAWAY`. Instance 1 is netsim's
+default, which an emulator started without the flag may hold, hence 2. Make or remake an emulator unit with the
+same flags, for example:
+
+    amarit run -name project-b-emu-16k -restart never -dir ~/PW_TOOLS/project-b-android-work \
+      ~/Library/Android/sdk/emulator/emulator -avd project-b-test-16k -port 5602 -no-window -no-audio \
+      -no-boot-anim -no-snapshot-save -gpu swiftshader_indirect -packet-streamer-endpoint localhost:8877
+
+After an emulator dies mid-run, the installed app can fail every launch with SIGBUS in `libproject_b_content.so`;
+uninstalling it and installing again clears it.
