@@ -380,7 +380,10 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
         }
         status.text = state
         status.visibility = if (state.isNotEmpty() && !editing) VISIBLE else GONE
+        // The lock, or a warning on plain http; and the warning beside Failed, Crashed or
+        // Blocked, never the lock.
         val secure = when {
+            state.isNotEmpty() -> "warn"
             url.startsWith("https:") -> "lock"
             url.startsWith("http:") -> "warn"
             else -> ""
