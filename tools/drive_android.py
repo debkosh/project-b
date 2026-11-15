@@ -799,6 +799,24 @@ def page_full_screen():
           "%s, was %s" % (box(see("page", text="full")), before))
 
 
+def find_in_page():
+    """Find in page from the menu: the bar takes the keyboard, a word typed is found and
+    counted, and the back key closes the bar."""
+    launch()
+    go(BASE + "/a")
+    asked("/a")
+    menu("Find in page")
+    field = until(lambda: find("shell", kind=FIELD, focused="true", label=lambda l: l != "Address"))
+    check("Find in page in the menu opens the find bar with the keyboard in it", field is not None)
+    type_text("to")
+    check("a word typed is found in the page and counted", until(lambda: find("shell", text="1/1")) is not None)
+    shot("31-find")
+    key(4)
+    if find("shell", text="1/1") is not None:
+        key(4)  # The first back may only put the keyboard away, as Android's back does.
+    check("the back key closes the bar", until(lambda: find("shell", text="1/1") is None and find("shell", label="Menu") is not None) is not None)
+
+
 def history_after_a_restart():
     launch()
     type_in_bar("page")
@@ -956,7 +974,7 @@ def main():
     adb("shell", "pm", "clear", PACKAGE)
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
-    for part in (browsing, mobile_shell, back_key_chain, page_dialogs, downloads, page_full_screen, history_after_a_restart, links_from_other_apps, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
+    for part in (browsing, mobile_shell, back_key_chain, page_dialogs, downloads, page_full_screen, find_in_page, history_after_a_restart, links_from_other_apps, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
                  the_gpu_process_dies, a_page_spins, web_apis, the_real_web):
         try:
             part()
