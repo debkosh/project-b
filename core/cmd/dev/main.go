@@ -91,7 +91,10 @@ func main() {
 	// The shell is the profile's choice before the app starts, so the app starts as it does
 	// for a profile that chose it: with no tabs when that shell takes New Tab.
 	if *use != "" && !*pick {
-		prefs.New(*profile).SetShell(*use)
+		p := prefs.New(*profile)
+		p.SetShell(*use)
+		// Saves are written in the background; Close waits for this one, so the app reads it.
+		p.Close()
 	}
 	e := mockengine.New()
 	// The flags saved in the profile reach the engine at launch, as the real engine's
