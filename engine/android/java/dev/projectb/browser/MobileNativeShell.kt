@@ -109,8 +109,10 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
     private val suggestions = LinearLayout(context)
     private val switcher = Switcher(context, SwitcherActions())
     private val strip = Strip(context, StripActions())
-    private val crashBar = CrashBar(context, { send(JSONObject().put("t", "dismissCrash")) }) { button ->
-        // Share report hands one file with all of it to the phone's share sheet, from the button.
+    private val crashBar = CrashBar(context, { send(JSONObject().put("t", "dismissCrash")) }) { shareReport(it) }
+
+    // Share report hands one file with all of it to the phone's share sheet, from the button.
+    private fun shareReport(button: View) {
         val at = IntArray(2)
         val me = IntArray(2)
         button.getLocationInWindow(at)
@@ -119,14 +121,20 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
             ((at[0] - me[0]) / density).toDouble(), ((at[1] - me[1]) / density).toDouble(),
             (button.width / density).toDouble(), (button.height / density).toDouble())))
     }
+
+    // One of our tabs (its page is set, as settings is): its title in the pill's place and a
+    // close, with no address to type in (rule 19).
+    private val ours = LinearLayout(context)
+    private val oursTitle = TextView(context)
+    private val oursClose = IconButton(context, "close", "Close")
     private val findBar = FindBar(context, { send(it) }) { focusPage() }
     private val noTabs = NoTabs(context) { newTab(0) }
     // Where a page's dialog goes, over everything, sheets and bars too: the page waits on it.
     private val dialogLayer = FrameLayout(context)
-    private val notice = PageNotice(context) {
+    private val notice = PageNotice(context, again = {
         send(JSONObject().put("t", "reload"))
         focusPage()
-    }
+    }) { shareReport(it) }
     // The bars: the address bar on top, when the setting has it there; and at the foot the
     // crash notice, the group strip, and the address bar.
     private val topStack = LinearLayout(context)

@@ -219,11 +219,13 @@ fun linkSheet(s: Sheet, palette: Palette, menu: JSONObject, workspaces: List<JSO
  * Over a page that crashed, failed to load or was blocked, which otherwise shows blank: one
  * plain sentence, the error's own name under it, and Try again or Reload.
  */
-class PageNotice(context: Context, private val again: () -> Unit) : LinearLayout(context) {
+class PageNotice(context: Context, private val again: () -> Unit, private val share: (View) -> Unit) : LinearLayout(context) {
     private val mark = IconView(context, "warn", 0, 32f)
     private val said = TextView(context)
     private val code = TextView(context)
     private val button = TextView(context)
+    // A crashed page offers Share report too, to hand on what the app knows of the crash.
+    private val shareButton = TextView(context)
 
     init {
         orientation = VERTICAL
@@ -242,12 +244,22 @@ class PageNotice(context: Context, private val again: () -> Unit) : LinearLayout
         button.isClickable = true
         button.setOnClickListener { again() }
         addView(button, LayoutParams(LayoutParams.WRAP_CONTENT, dp(48)).apply { topMargin = dp(20) })
+        shareButton.text = "Share report"
+        shareButton.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14f)
+        shareButton.gravity = Gravity.CENTER
+        shareButton.setPadding(dp(20), 0, dp(20), 0)
+        shareButton.isClickable = true
+        shareButton.setOnClickListener { share(it) }
+        asButton(shareButton, "Share report")
+        addView(shareButton, LayoutParams(LayoutParams.WRAP_CONTENT, dp(48)).apply { topMargin = dp(8) })
     }
 
     fun show(palette: Palette, tab: JSONObject) {
         setBackgroundColor(palette.bar)
         val host = hostOf(tab.optString("url"))
-        val err = tab.optString("error").removePrefix("net::")
+        // Go says why as a kind (engine.Failure); the engine's own name for it goes under.
+        val kind = tab.optString("error")
+        val err = tab.optString("errorCode")
         val crashed = tab.optBoolean("crashed")
         val blocked = tab.optBoolean("blocked")
         mark.icon = if (crashed) "reload" else "warn"
@@ -256,10 +268,12 @@ class PageNotice(context: Context, private val again: () -> Unit) : LinearLayout
         said.text = when {
             blocked -> "$host is blocked"
             crashed -> "This page crashed"
-            Regex("NAME_NOT_RESOLVED|NAME_RESOLUTION_FAILED").containsMatchIn(err) -> "Can't find $host"
-            err.contains("INTERNET_DISCONNECTED") -> "No internet connection"
+            kind == "not-found" -> "Can't find $host"
+            kind == "offline" -> "No internet connection"
             else -> "Can't reach $host"
         }
+        shareButton.setTextColor(palette.muted)
+        shareButton.visibility = if (crashed) VISIBLE else GONE
         code.setTextColor(palette.muted)
         code.text = err
         code.visibility = if (err.isNotEmpty() && !crashed && !blocked) VISIBLE else GONE
