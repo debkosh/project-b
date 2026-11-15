@@ -13,15 +13,20 @@ MACOS=$APP/Contents/MacOS
 RESOURCES=$APP/Contents/Resources
 LIBRARIES=$APP/Contents/Libraries
 FRAMEWORKS=$APP/Contents/Frameworks
+# Every child process runs the helper, in an app of its own whose Info.plist says
+# LSUIElement: none of them can ever show in the Dock as a second Project B.
+HELPER_APP="$FRAMEWORKS/Project B Helper.app"
+HELPER=$HELPER_APP/Contents/MacOS/project_b_helper
 . "$ROOT/tools/keys.sh"                       # the signing key, from tools/signing-setup.sh
 need_key identity.p12
 RCODESIGN=$HOME/PW_TOOLS/project-b-signing/rcodesign   # tools/signing-setup.sh fetches it
 VERSION=$(tr -d '[:space:]' < "$ROOT/VERSION")   # what the installed app says it is, and compares releases against
 
 rm -rf "$STAGE" "$DMG"
-mkdir -p "$MACOS" "$RESOURCES/shell" "$LIBRARIES" "$FRAMEWORKS"
+mkdir -p "$MACOS" "$RESOURCES/shell" "$LIBRARIES" "$FRAMEWORKS" "$HELPER_APP/Contents/MacOS"
 
-cp "$FROM/project_b" "$FROM/project_b_helper" "$MACOS/"
+cp "$FROM/project_b" "$MACOS/"
+cp "$FROM/project_b_helper" "$HELPER"
 cp "$FROM/libproject_b_content.dylib" "$FRAMEWORKS/"
 cp "$FROM/project_b.pak" "$FROM/icudtl.dat" "$FROM/snapshot_blob.bin" "$FROM"/v8_context_snapshot.*.bin "$RESOURCES/"
 cp -R "$FROM"/shell/* "$RESOURCES/shell/"
@@ -47,11 +52,29 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
+cat > "$HELPER_APP/Contents/Info.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleDisplayName</key><string>Project B Helper</string>
+  <key>CFBundleExecutable</key><string>project_b_helper</string>
+  <key>CFBundleIdentifier</key><string>dev.projectb.helper</string>
+  <key>CFBundleName</key><string>Project B Helper</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleShortVersionString</key><string>$VERSION</string>
+  <key>CFBundleVersion</key><string>155.0.8059.41</string>
+  <key>LSMinimumSystemVersion</key><string>13.0</string>
+  <key>LSUIElement</key><true/>
+</dict>
+</plist>
+PLIST
+
 # Symbol names are about a third of a non-official binary and do nothing at run time.
 # Stripping breaks the linker's signature, and rcodesign crashes reading what's left on a
 # release build, so the old signature goes first. The graphics libraries keep the linker's
 # signature, because rcodesign can't parse them after a release build.
-for binary in "$MACOS/project_b" "$MACOS/project_b_helper" "$FRAMEWORKS"/*.dylib; do
+for binary in "$MACOS/project_b" "$HELPER" "$FRAMEWORKS"/*.dylib; do
     codesign --remove-signature "$binary"
     strip -x "$binary" 2>/dev/null
 done
@@ -60,7 +83,6 @@ done
     --p12-password-file <(grep '^PROJECT_B_SIGNING_P12_PASSWORD=' "$HOME/PW_TOOLS/lab-secrets.env" | cut -d= -f2- | tr -d '\n') \
     --timestamp-url none \
     --exclude "Contents/Libraries/**" \
-    --binary-identifier "Contents/MacOS/project_b_helper:dev.projectb.helper" \
     "$APP"
 codesign --verify --deep --strict "$APP"
 codesign --verify -R="certificate leaf = H\"$(cat "$KEYS/identity.sha1")\"" "$APP"

@@ -83,10 +83,14 @@ std::optional<int> MainDelegate::BasicStartupComplete() {
   DisableChromeOnlyBlinkFeatures();
 #if BUILDFLAG(IS_MAC)
   // Inside an app, content looks for its files under the "framework bundle". We have
-  // no framework, so that's the app's Contents folder.
+  // no framework, so that's the app's Contents folder: the helper's own app sits in
+  // Contents/Frameworks, and finds the app's three folders up from its own.
   if (base::apple::AmIBundled()) {
-    base::apple::SetOverrideFrameworkBundlePath(
-        base::apple::MainBundlePath().Append(FILE_PATH_LITERAL("Contents")));
+    base::FilePath bundle = base::apple::MainBundlePath();
+    base::FilePath contents = bundle.DirName().BaseName().value() == "Frameworks"
+                                  ? bundle.DirName().DirName()
+                                  : bundle.Append(FILE_PATH_LITERAL("Contents"));
+    base::apple::SetOverrideFrameworkBundlePath(contents);
   }
 #endif
 #if BUILDFLAG(IS_ANDROID)
