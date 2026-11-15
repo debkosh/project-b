@@ -169,7 +169,7 @@ onMounted(follow);
       ref="input"
       v-model="text"
       aria-label="Address"
-      placeholder="Search DuckDuckGo or type a URL"
+      :placeholder="state.searchEngine.name ? `Search ${state.searchEngine.name} or type a URL` : 'Search or type a URL'"
       role="combobox"
       :aria-expanded="open"
       aria-controls="suggestions"

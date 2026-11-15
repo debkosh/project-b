@@ -23,6 +23,10 @@ export const state = reactive({
   phoneShells: null,
   // 'system', 'light' or 'dark', as Go's theme pref says.
   theme: 'system',
+  // The search engine typed words go to, by its id, and the list to choose from, each
+  // {id, name}.
+  searchEngine: '',
+  searchEngines: [],
   autoUpdate: true,
   update: { phase: '' },
   running: '',
@@ -60,6 +64,8 @@ export function connect() {
             addressBarPosition: m.addressBarPosition,
             phoneShells: m.phoneShells || null,
             theme: m.theme,
+            searchEngine: m.searchEngine,
+            searchEngines: m.searchEngines || [],
             autoUpdate: m.autoUpdate,
             update: m.update,
             running: m.running,
@@ -73,6 +79,9 @@ export function connect() {
             ready: true,
           });
           mark('settings.snapshot');
+          break;
+        case 'searchEngine':
+          state.searchEngine = m.searchEngine;
           break;
         case 'theme':
           state.theme = m.theme;
