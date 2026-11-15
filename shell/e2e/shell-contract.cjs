@@ -35,7 +35,7 @@ const rules = {
   16: 'On a desktop, a right click in a page opens a menu of Go\'s actions there; choosing one makes Go do it; Escape, or a press outside, closes it',
   17: 'A control named Downloads shows once there is a download, and opens a list of them by file name, a finished one with Open and Show in Finder (on a phone, Show in Downloads)',
   18: 'A window with no tabs: the shell draws its own empty state where the page was, New Tab and Address are each a way to a tab there, and Close Tab then closes the window',
-  20: 'On a desktop, the find key opens a text box named Find in page with the keyboard in it; typing searches and shows the count; Enter shows the next match; Escape closes it',
+  20: 'The find key (on a phone, the menu) opens a text box named Find in page with the keyboard in it; typing searches and shows the count; Enter shows the next match; Escape (a phone\'s back key) closes it',
   21: 'A page in full screen covers the whole window with nothing of the shell on it, and when it ends (Escape, or a phone\'s back key) the window is as it was',
   22: 'A site\'s sign-in shows as an alertdialog with text boxes named Username and Password, and Go\'s Sign in answers with both',
 };
@@ -602,10 +602,9 @@ const noEmptyStateYet = {
       }
     }
 
-    // 20. Find in page, on a desktop shell.
-    if (shell.phone) {
-      rule(20, 'not for a phone yet', true);
-    } else if (noFindYet[id]) {
+    // 20. Find in page. A phone has no find key, so its menu runs the action, and its back
+    // key closes the bar rather than Escape.
+    if (noFindYet[id]) {
       rule(20, `not checked yet: ${noFindYet[id]}`, true);
     } else {
       try {
@@ -617,8 +616,9 @@ const noEmptyStateYet = {
         rule(20, 'typing searches, and the count shows', await shows('3'));
         await field.press('Enter');
         rule(20, 'Enter shows the next match', await shows('2'));
-        await field.press('Escape');
-        rule(20, 'Escape closes it, and Go ends the search', await until(async () => (await field.count()) === 0 && (await regions()).findsStopped?.length > 0));
+        if (shell.phone) await fire('backKey');
+        else await field.press('Escape');
+        rule(20, `${shell.phone ? 'The back key' : 'Escape'} closes it, and Go ends the search`, await until(async () => (await field.count()) === 0 && (await regions()).findsStopped?.length > 0));
       } catch (e) {
         rule(20, 'its checks ran to their end', false, e.message.split('\n')[0]);
       }

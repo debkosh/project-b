@@ -6,8 +6,8 @@
 
   // The ⋯ sheet: a row of the page's actions, Back while there is somewhere to go back to
   // (the phone's back key does it too), Forward, Reload or Stop, New tab, and New tab in
-  // group while the tab is in one; then Workspaces, where new tabs open, while there are
-  // two or more, Downloads once the profile has one, Extensions while their flag is on, the
+  // group while the tab is in one; then Find in page, Workspaces, where new tabs open,
+  // while there are two or more, Downloads once the profile has one, Extensions while their flag is on, the
   // update while one is ready, and Settings. Each acts and closes the sheet, but Workspaces,
   // Downloads and Extensions, which open their own.
   let { tab, group, workspace, onclose, onnewtab, onsheet, onworkspace } = $props();
@@ -58,6 +58,10 @@
           <Icon name="chevron" />
         </button>
       {/if}
+      <button class="row" role="menuitem" aria-label="Find in page" disabled={!tab.url} onclick={() => act({ t: 'run', text: 'find.open' })}>
+        <Icon name="find" />
+        <span class="name">Find in page</span>
+      </button>
       {#if go.downloads.length}
         <button class="row" role="menuitem" aria-label="Downloads" onclick={() => onsheet('downloads')}>
           <Icon name="download" />
