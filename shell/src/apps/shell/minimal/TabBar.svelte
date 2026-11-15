@@ -1,14 +1,21 @@
 <script>
   import { controlSpace, drag, send, shell, state } from '@/sdk/svelte.svelte.js';
   import { hint } from './hint.js';
+  import { TAB, topRow } from './rows.js';
   import TabList from './TabList.svelte';
 
   // The tabs on top: the native window buttons' space, the tabs, New Tab, then empty space
-  // that moves the window, never less than 48px. The tabs scroll sideways, and the SDK
-  // doesn't measure on a scroll, so the bar is the shell's and only its two spaces drag.
+  // that moves the window, never less than 48px. The row is as tall as centring the window
+  // buttons takes, and the tabs sit at its foot, joining the toolbar; the space above them
+  // moves the window too. The tabs scroll sideways, and the SDK doesn't measure on a scroll,
+  // so the bar is the shell's and only its empty spaces drag.
+  const row = $derived(topRow(state));
 </script>
 
-<div class="tabbar" use:shell>
+<div class="tabbar" use:shell style:height="{row + 1}px">
+  {#if row > TAB}
+    <div class="lift" use:drag style:left={controlSpace(state).left} style:height="{row - TAB}px"></div>
+  {/if}
   <div class="space" use:drag style:width={controlSpace(state).left}></div>
   <TabList tabs={state.tabs} active={state.active} />
   <button class="new" aria-label="New Tab" title={hint('New Tab', 'tab.new')} onclick={() => send({ t: 'newTab' })}>
@@ -18,15 +25,21 @@
 </div>
 
 <style>
-  /* 34px of tabs and a hairline under them, which the active tab covers to join the
-     toolbar. */
+  /* 30px of tabs at the row's foot and a hairline under them, which the active tab covers
+     to join the toolbar. */
   .tabbar {
+    position: relative;
     display: flex;
-    align-items: flex-start;
+    align-items: flex-end;
     flex: none;
-    height: 35px;
     background: var(--tabbar);
     box-shadow: inset 0 -1px var(--line);
+  }
+
+  .lift {
+    position: absolute;
+    top: 0;
+    right: 0;
   }
 
   .space {
@@ -39,7 +52,8 @@
     display: grid;
     place-items: center;
     width: 34px;
-    height: 34px;
+    height: 30px;
+    margin-bottom: 1px;
     padding: 0;
     border: 0;
     background: none;
