@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"projectb/timeline"
-	"sort"
 	"strings"
 	"time"
 )
@@ -19,6 +18,17 @@ type Entry struct {
 	Title     string `json:"title"`
 	Visits    int    `json:"visits"`
 	LastVisit int64  `json:"lastVisit"`
+
+	// What a search compares, lowercased once when the entry is stored, not on each key:
+	// the address, the address without its scheme and www., and the title.
+	lowURL, bare, lowTitle string
+}
+
+// index keeps what a search compares in step with the entry's address and title.
+func (e *Entry) index() {
+	e.lowURL = strings.ToLower(e.URL)
+	e.bare = bareURL(e.lowURL)
+	e.lowTitle = strings.ToLower(e.Title)
 }
 
 // Manager owns the history.
@@ -56,8 +66,10 @@ func (m *Manager) Load(ready func()) {
 					cur.Visits += e.Visits
 					if cur.Title == "" {
 						cur.Title = e.Title
+						cur.index()
 					}
 				} else {
+					e.index()
 					m.entries[url] = e
 				}
 			}
@@ -84,6 +96,7 @@ func (m *Manager) AddVisit(url, title string) {
 	if title != "" {
 		e.Title = title
 	}
+	e.index()
 	m.save(e)
 }
 
@@ -95,36 +108,62 @@ func (m *Manager) UpdateTitle(url, title string) {
 		return
 	}
 	e.Title = title
+	e.index()
 	m.save(e)
 }
 
-// Search returns the best matches for text, best first.
+// Search returns the best matches for text, best first. It keeps only the best limit
+// as it goes, so a long history costs one pass and no sort of every hit.
 func (m *Manager) Search(text string, limit int) []Entry {
 	q := strings.ToLower(strings.TrimSpace(text))
-	if q == "" {
+	if q == "" || limit <= 0 {
 		return nil
 	}
+	return m.best(limit, func(e *Entry) int { return score(e, q) })
+}
+
+// Top returns the pages visited most, most first.
+func (m *Manager) Top(limit int) []Entry {
+	return m.best(limit, func(e *Entry) int { return e.Visits })
+}
+
+// best is the limit entries score rates highest, above 0, best first: by score, then the
+// latest visit, then the address.
+func (m *Manager) best(limit int, score func(*Entry) int) []Entry {
 	type scored struct {
 		e     *Entry
 		score int
 	}
-	var hits []scored
-	for _, e := range m.entries {
-		if s := score(e, q); s > 0 {
-			hits = append(hits, scored{e, s})
+	before := func(a, b scored) bool {
+		if a.score != b.score {
+			return a.score > b.score
 		}
+		if a.e.LastVisit != b.e.LastVisit {
+			return a.e.LastVisit > b.e.LastVisit
+		}
+		return a.e.URL < b.e.URL
 	}
-	sort.Slice(hits, func(i, j int) bool {
-		if hits[i].score != hits[j].score {
-			return hits[i].score > hits[j].score
+	hits := make([]scored, 0, limit+1)
+	for _, e := range m.entries {
+		s := score(e)
+		if s <= 0 {
+			continue
 		}
-		if hits[i].e.LastVisit != hits[j].e.LastVisit {
-			return hits[i].e.LastVisit > hits[j].e.LastVisit
+		h := scored{e, s}
+		if len(hits) == limit && !before(h, hits[limit-1]) {
+			continue
 		}
-		return hits[i].e.URL < hits[j].e.URL
-	})
-	if len(hits) > limit {
-		hits = hits[:limit]
+		// Into its place among the few kept.
+		i := len(hits)
+		hits = append(hits, h)
+		for i > 0 && before(h, hits[i-1]) {
+			hits[i] = hits[i-1]
+			i--
+		}
+		hits[i] = h
+		if len(hits) > limit {
+			hits = hits[:limit]
+		}
 	}
 	out := make([]Entry, len(hits))
 	for i, h := range hits {
@@ -139,15 +178,15 @@ func (m *Manager) Close() {
 	<-m.done
 }
 
+// score rates an entry against q, already lowercased.
 func score(e *Entry, q string) int {
-	bare := bareURL(e.URL)
 	base := 0
 	switch {
-	case strings.HasPrefix(bare, q):
+	case strings.HasPrefix(e.bare, q):
 		base = 1000
-	case strings.Contains(strings.ToLower(e.URL), q):
+	case strings.Contains(e.lowURL, q):
 		base = 100
-	case strings.Contains(strings.ToLower(e.Title), q):
+	case strings.Contains(e.lowTitle, q):
 		base = 50
 	default:
 		return 0
@@ -155,8 +194,8 @@ func score(e *Entry, q string) int {
 	return base + min(e.Visits, 50)*2
 }
 
+// bareURL is a lowercased address without its scheme and www.
 func bareURL(u string) string {
-	u = strings.ToLower(u)
 	u = strings.TrimPrefix(u, "https://")
 	u = strings.TrimPrefix(u, "http://")
 	return strings.TrimPrefix(u, "www.")

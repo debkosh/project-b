@@ -153,6 +153,23 @@ func TestFaviconFollowsThePage(t *testing.T) {
 	}
 }
 
+func TestWordsGoToTheSearchGiven(t *testing.T) {
+	m := New(&fakeEngine{}, func() string { return "" })
+	if got := m.Normalize("two words"); got != "https://duckduckgo.com/?q=two+words" {
+		t.Fatalf("before any engine is given: %q", got)
+	}
+	m.SetSearch(func(w string) string { return "https://find.test/?q=" + w })
+	if got := m.Normalize("word"); got != "https://find.test/?q=word" {
+		t.Fatalf("Normalize = %q", got)
+	}
+	if got := m.Normalize("example.com"); got != "https://example.com" {
+		t.Fatalf("an address stays an address: %q", got)
+	}
+	if !LooksLikeAddress("example.com") || LooksLikeAddress("two words") || LooksLikeAddress("word") {
+		t.Fatal("LooksLikeAddress is wrong")
+	}
+}
+
 func TestNormalizeInput(t *testing.T) {
 	for in, want := range map[string]string{
 		"":                      "",
@@ -165,7 +182,7 @@ func TestNormalizeInput(t *testing.T) {
 		"how do tabs work":      "https://duckduckgo.com/?q=how+do+tabs+work",
 		"tabs":                  "https://duckduckgo.com/?q=tabs",
 	} {
-		if got := NormalizeInput(in); got != want {
+		if got := NormalizeInput(in, defaultEngine().For); got != want {
 			t.Errorf("NormalizeInput(%q) = %q, want %q", in, got, want)
 		}
 	}
