@@ -147,7 +147,11 @@ const noNoticeYet = {
     const tabEls = ui.locator('[role=tab]');
     // A tab made as a shell asks for one, by its newTab message. New Tab the action may be
     // the shell's own to run, which by itself makes no tab.
-    const openTab = () => fetch(`${lib.base}/shell/send?window=1`, { method: 'POST', body: JSON.stringify({ t: 'newTab' }) });
+    // Each tab the check opens holds a page of its own, by newTab with an address: a shell
+    // may draw its own view over a tab with no address, as a shell that takes New Tab
+    // does, and rule 2 is about pages.
+    let opened = 0;
+    const openTab = () => fetch(`${lib.base}/shell/send?window=1`, { method: 'POST', body: JSON.stringify({ t: 'newTab', text: `https://contract.test/tab-${++opened}` }) });
     // Whether the keyboard is in a field of the shell's to type in: its focused element is
     // a text field, a text area, editable, or has a text box's role.
     const inTextField = () => w.shell().evaluate(() => {
@@ -776,8 +780,9 @@ const noNoticeYet = {
           const r = await regions();
           return r.visible.length === 1 && r.visible[0].rect.x === 0 && r.visible[0].rect.y === 0 && Math.round(r.visible[0].rect.w) === screen.width && Math.round(r.visible[0].rect.h) === screen.height;
         }), JSON.stringify((await regions()).visible));
-        const controls = await ui.locator(control).evaluateAll((els) => els.filter((el) => el.getClientRects().length > 0).length);
-        rule(21, 'with nothing of the shell on it', controls === 0, `${controls} controls show`);
+        const controls = await ui.locator(control).evaluateAll((els) => els.filter((el) => el.getClientRects().length > 0)
+          .map((el) => el.getAttribute('aria-label') || el.title || el.textContent.trim().slice(0, 30) || el.tagName));
+        rule(21, 'with nothing of the shell on it', controls.length === 0, `${controls.length} controls show: ${controls.join(' | ')}`);
         await fire(...(shell.phone ? ['backKey'] : ['key', 'escape']));
         rule(21, `${shell.phone ? 'The back key' : 'Escape'} ends it, and the window is as it was`, await until(async () => JSON.stringify((await regions()).visible.map((v) => v.rect)) === JSON.stringify(before)));
       } catch (e) {

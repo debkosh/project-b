@@ -383,7 +383,9 @@ it there; a phone shell may be left out of a rule for a desktop feature.
 2. **The active tab's page shows,** after every change: a new tab, another made active, a
    close, a tab a page opened, a resize; with no tabs, no page shows. It asks for a page's
    keyboard (`focusTab`) only once the layout it sent shows that page: the window can't give
-   the keyboard to a page it hides, and no key reaches Go until something takes it.
+   the keyboard to a page it hides, and no key reaches Go until something takes it. A tab
+   with no address holds no page of anyone's yet, so a shell may show its own view there
+   instead, as Standard's command box does over a new tab; the check's tabs hold pages.
 3. The pages it shows lie inside the band it asked for, don't overlap, and are all tabs of
    this window.
 4. **Each tab of the window is an element with `role="tab"` and `data-tab="<id>"`,** the
