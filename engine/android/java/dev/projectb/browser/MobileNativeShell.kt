@@ -152,12 +152,14 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
             addView(mark, LinearLayout.LayoutParams(dp(16), dp(16)).apply { marginStart = dp(12); marginEnd = -dp(6) })
             addView(address, LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
             addView(status, LinearLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
-            addView(clear, LinearLayout.LayoutParams(dp(40), dp(40)))
+            addView(clear, LinearLayout.LayoutParams(dp(48), dp(48)))
         }
         pill.addView(pillRow, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
-        pill.addView(progress, LayoutParams(0, dp(2), Gravity.BOTTOM or Gravity.START))
+        pill.addView(progress, LayoutParams(0, dp(2), Gravity.BOTTOM or Gravity.START).apply { bottomMargin = dp(4) })
         pill.clipToOutline = true
-        toolbar.addView(pill, LinearLayout.LayoutParams(0, dp(40), 1f).apply { marginEnd = dp(4) })
+        // The pill is 40dp; the field in it and its Clear reach the bar's 48dp, as the web
+        // shell's do, so every target is Android's least.
+        toolbar.addView(pill, LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginEnd = dp(4) })
         count.setOnClickListener { open(if (sheet == "switcher") "" else "switcher") }
         menu.setOnClickListener { open(if (sheet == "menu") "" else "menu") }
         toolbar.addView(count, LinearLayout.LayoutParams(dp(48), dp(48)))
@@ -410,7 +412,10 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
     private fun paint() {
         toolbar.setBackgroundColor(palette.bar)
         toolbar.line = palette.line
-        pill.background = rounded(palette.surface, dpf(20))
+        // The 40dp surface inside the 48dp pill. An inset background pads its view by the
+        // insets, which would shrink the field back to 40dp: the field keeps the whole 48.
+        pill.background = android.graphics.drawable.InsetDrawable(rounded(palette.surface, dpf(20)), 0, dp(4), 0, dp(4))
+        pill.setPadding(0, 0, 0, 0)
         progress.setBackgroundColor(palette.accent)
         address.setTextColor(palette.text)
         address.setHintTextColor(palette.muted)
