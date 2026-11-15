@@ -194,15 +194,15 @@ def asked(path, timeout=15):
 
 
 # What is on the screen, asked from the app. Content gives Android's accessibility tree one
-# WebView per page it shows: the shell, the settings page while it is open, and the shown
-# tab's page. A node's attributes are Android's: class, text, content-desc (an aria-label),
-# focused, selected, and bounds in device pixels.
+# WebView per page it shows: the shell and the shown tab's page. Settings is a tab of ours, so
+# while it is the shown tab its page is "settings" too, as the shell then offers Close Settings.
+# A node's attributes are Android's: class, text, content-desc (an aria-label), focused,
+# selected, and bounds in device pixels.
 PARTS = {
     # The shell, or, while a page's dialog shows, the dialog alone, as aria-modal hides the
     # rest of the shell from the tree: its title, Go's words, ends in " says" or is Sign in.
     "shell": lambda labels: "Menu" in labels or any(l.endswith(" says") or l == "Sign in" for l in labels),
-    "settings": lambda labels: "Close settings" in labels,
-    "page": lambda labels: "Menu" not in labels and "Close settings" not in labels,
+    "page": lambda labels: "Menu" not in labels,
 }
 
 
@@ -225,7 +225,16 @@ def screen_parts():
             if labels <= {None, ""}:
                 continue
             parts[next(name for name, test in PARTS.items() if test(labels))] = view
+    shell = parts.get("shell")
+    if "page" in parts and shell is not None and any(n.get("content-desc") == "Close Settings" for n in shell.iter("node")):
+        parts["settings"] = parts["page"]
     return parts
+
+
+def close_settings():
+    """Closes the settings tab by the shell's close in the address's place, as any tab of ours."""
+    press("Close Settings")
+    until(lambda: "settings" not in screen_parts())
 
 
 def find(part, **want):
@@ -469,12 +478,16 @@ def browsing():
     tap(middle(see("shell", text="Page B \U0001F642")))
     check("a tap on a card shows that tab", until(lambda: find("page", text="b")) is not None and find("shell", label="Close Page C") is None)
 
-    # Settings is a page of its own over the window.
+    # Settings is a tab of ours: its title and a close where the address goes.
     menu("Settings")
-    check("the settings button opens settings over the window", until(lambda: find("settings", label="Close settings")) is not None)
+    check("the settings button opens settings as a tab, its title where the address goes",
+          until(lambda: find("settings", text="Theme")) is not None and find("shell", text="Settings") is not None and
+          find("shell", label="Address", kind=FIELD) is None)
     shot("06c-settings")
-    key(4)
-    check("the phone's back key closes settings", until(lambda: "settings" not in screen_parts()))
+    menu("Settings")
+    check("settings again shows the same tab", until(lambda: find("settings", text="Theme")) is not None)
+    close_settings()
+    check("its close closes the settings tab", "settings" not in screen_parts())
 
     # Suggestions come from history, shown over the page.
     go(BASE + "/c")
@@ -631,8 +644,7 @@ def mobile_shell():
     for scheme in ("light", "dark"):
         menu("Settings")
         tap(middle(see("settings", text=scheme.capitalize())))
-        key(4)
-        until(lambda: "settings" not in screen_parts())
+        close_settings()
         time.sleep(1)
         shot("30-page-" + scheme)
         press("Tabs")
@@ -654,9 +666,8 @@ def mobile_shell():
         key(4)
     menu("Settings")
     tap(middle(see("settings", text="System")))
-    key(4)
+    close_settings()
     # The active favicon in the strip closes its tab at a tap; a group of one then ends.
-    until(lambda: "settings" not in screen_parts())
     tap(middle(see("shell", label=lambda l: (l or "").startswith("Close Page"), kind="android.widget.Button")))
     check("a tap on the active favicon in the strip closes its tab, and the group of one left ends",
           until(lambda: find("shell", label=lambda l: (l or "").startswith("Group ")) is None) is not None)

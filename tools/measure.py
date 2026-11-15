@@ -206,8 +206,7 @@ class Android:
         d = self.d
         d.press("Settings")
         ended(self, "settings.open")
-        d.key(4)  # Back.
-        until(lambda: "settings" not in d.screen_parts())
+        d.close_settings()
 
         d.press("Show sidebar")
         d.tap(d.middle(d.see("shell", text="New Tab", kind="android.widget.Button")))
