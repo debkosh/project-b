@@ -15,6 +15,7 @@
 #include "project_b/engine/common/content_client.h"
 #include "project_b/engine/common/extensions_on.h"
 #include "project_b/engine/common/renderer_client.h"
+#include "third_party/blink/public/common/switches.h"
 #include "ui/base/resource/resource_bundle.h"
 
 #if BUILDFLAG(PB_EXTENSIONS)
@@ -74,6 +75,21 @@ void DisableChromeOnlyBlinkFeatures() {
                BUILDFLAG(PB_DISABLE_FEATURES));
 }
 
+#if BUILDFLAG(IS_ANDROID)
+// A phone's pages raster on the GPU without multisampling. With content's default of four
+// samples, a page with SVG paths inside a rounded box left tiles of its own undrawn, stale
+// or magenta, on the emulators' GPUs both emulated and the host's, while the same page in
+// Chrome on them drew right; with none, it draws right and still rasters on the GPU.
+void RasterWithoutMultisampling() {
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+  if (command_line->HasSwitch(switches::kProcessType) ||
+      command_line->HasSwitch(blink::switches::kGpuRasterizationMSAASampleCount)) {
+    return;
+  }
+  command_line->AppendSwitchASCII(blink::switches::kGpuRasterizationMSAASampleCount, "0");
+}
+#endif
+
 }  // namespace
 
 MainDelegate::MainDelegate() = default;
@@ -81,6 +97,9 @@ MainDelegate::~MainDelegate() = default;
 
 std::optional<int> MainDelegate::BasicStartupComplete() {
   DisableChromeOnlyBlinkFeatures();
+#if BUILDFLAG(IS_ANDROID)
+  RasterWithoutMultisampling();
+#endif
 #if BUILDFLAG(IS_MAC)
   // Inside an app, content looks for its files under the "framework bundle". We have
   // no framework, so that's the app's Contents folder: the helper's own app sits in
