@@ -4,6 +4,10 @@ What a browser engine must give the Go core, and the smallest part of it that ru
 app. The Go core knows nothing of Chromium's content layer: Chromium is one engine behind
 this interface, and the mock (`core/mockengine`) is another.
 
+**The rule:** the engine gives us page views; the window is ours. Go's window manager decides
+what a window shows and where, and the engine places its views where it is told. An engine
+that would own the window itself doesn't fit.
+
 ## Where it is
 
 - **Go:** `core/engine/engine.go`. `Engine` is what the app asks of an engine, and `Listener` is
