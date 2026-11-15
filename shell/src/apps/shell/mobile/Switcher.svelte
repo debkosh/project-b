@@ -145,7 +145,7 @@
     display: flex;
     flex-direction: column;
     background: var(--bar);
-    animation: rise 200ms ease-out;
+    animation: rise var(--motion) var(--ease);
   }
 
   .switcher[hidden] {
@@ -260,7 +260,7 @@
   .card:global(.lifted) {
     z-index: 2;
     box-shadow: var(--shadow-float);
-    transition: box-shadow 150ms;
+    transition: box-shadow var(--motion) var(--ease);
   }
 
   .card[hidden] {
@@ -361,9 +361,5 @@
 
   @keyframes rise {
     from { transform: translateY(24px); opacity: 0; }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .switcher { animation: none; }
   }
 </style>

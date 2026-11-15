@@ -229,7 +229,7 @@
     height: 2px;
     border-radius: 1px;
     background: var(--accent);
-    transition: width 150ms;
+    transition: width var(--motion) var(--ease);
   }
 
   .suggestions {

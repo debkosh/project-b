@@ -44,7 +44,7 @@
     background: var(--surface);
     border-radius: 16px 16px 0 0;
     box-shadow: var(--shadow-float);
-    animation: rise 200ms ease-out;
+    animation: rise var(--motion) var(--ease);
   }
 
   .handle {
@@ -63,9 +63,5 @@
 
   @keyframes rise {
     from { transform: translateY(100%); }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .sheet { animation: none; }
   }
 </style>
