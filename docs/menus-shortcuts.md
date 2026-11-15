@@ -368,13 +368,14 @@ there. Choosing it is the user's, in Keyboard settings; the shell doesn't choose
 - **History**: Back, Cmd+[ and Cmd+Left; Forward, Cmd+] and Cmd+Right.
 - **Tab**: Select Next Tab, Shift+Cmd+], Option+Cmd+Right and Ctrl+PageDown*; Select
   Previous Tab, the mirror keys*; Select Recent Tab, Ctrl+Tab*; Select Recent Tab
-  Backward, Ctrl+Shift+Tab*; Duplicate Tab; Move Tab to New Window; Select Tab (hidden): Tab 1 to 8,
+  Backward, Ctrl+Shift+Tab*; Duplicate Tab; Pin Tab, which says Unpin Tab on a pinned tab
+  ([windows.md](windows.md#pinned-tabs)); Move Tab to New Window; Select Tab (hidden): Tab 1 to 8,
   Cmd+1 to 8, and Last Tab, Cmd+9.
 - **Window** (locked): Minimize, Cmd+M; Zoom; Bring All to Front; macOS adds the window
   list.
 
 Later, each with its feature: Reopen Closed Tab, Open File, Save Page, Email
-Link, the find bar, Pin and Mute Tab, Search Tabs, Move Tab, Developer Tools, Home, Show
+Link, the find bar, Mute Tab, Search Tabs, Move Tab, Developer Tools, Home, Show
 Full History, a Help menu.
 
 Counted from Chrome's source, Chrome has 194 actions: 58 need only Go and the shell, 49 a

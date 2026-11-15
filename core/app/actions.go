@@ -102,6 +102,15 @@ func (a *App) registerActions(e engine.Engine) {
 	recentBack.Release, recentBack.Enabled = a.Tabs.EndCycle, active
 	// A tab of ours has no copy: a window has one of each.
 	add("tab.duplicate", "Duplicate Tab", a.Tabs.Duplicate).Enabled = func() bool { return active() && a.Tabs.Active().Page == "" }
+	// Pin Tab, which reads Unpin Tab on a pinned tab.
+	pin := add("tab.pin", "Pin Tab", a.togglePin)
+	pin.Enabled = func() bool { t := a.Tabs.Active(); return t.Pin != "" || pinnable(t) }
+	pin.Label = func() string {
+		if a.Tabs.Active().Pin != "" {
+			return "Unpin Tab"
+		}
+		return "Pin Tab"
+	}
 	add("tab.moveToNewWindow", "Move Tab to New Window", func() { a.NewWindowWith(a.Tabs.ActiveID()) }).Enabled = active
 	for i := range 8 {
 		add(fmt.Sprintf("tab.select%d", i+1), fmt.Sprintf("Tab %d", i+1), func() { a.Tabs.ActivateAt(i) }).Enabled = active

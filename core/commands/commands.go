@@ -22,6 +22,9 @@ import (
 type Action struct {
 	ID    string
 	Title string
+	// Label, when set, is what its menu item says now, in place of Title, as Pin Tab says
+	// Unpin Tab on a pinned tab. Title stays its name everywhere else.
+	Label func() string
 	Run   func()
 	// Enabled says whether it can run now; nil means always. Checked, when set, makes
 	// its menu item show a check.
@@ -423,8 +426,12 @@ func (m *Manager) menu(nodes []Node) engine.Menu {
 			if !ok || m.hidden(n) {
 				continue
 			}
+			title := a.Title
+			if a.Label != nil {
+				title = a.Label()
+			}
 			item := engine.MenuItem{
-				Title:   a.Title,
+				Title:   title,
 				Action:  a.ID,
 				Key:     m.shownKey(a.ID),
 				Enabled: a.Enabled == nil || a.Enabled(),

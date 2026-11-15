@@ -120,10 +120,10 @@ bookmarks and downloads follow it.
   gate, which every navigation in a tab passes: it lets a navigation go on, blocks it, or
   drops it with nothing shown, the tab staying as it was, when it takes the address to
   another tab (`tabs.Manager.HandleNavigationStarting`).
-- **Pinning and moving to another window keep a tab's kind,** which its address says. An
-  internal tab is never duplicated (Duplicate Tab is off for one), and one moved to a
-  window that has a tab of its page shows that tab and stays where it was, so a window
-  keeps one of each.
+- **Moving to another window keeps a tab's kind,** which its address says. An internal tab
+  is never duplicated (Duplicate Tab is off for one) nor pinned, and one moved to a window
+  that has a tab of its page shows that tab and stays where it was, so a window keeps one
+  of each.
 - **To a shell an internal tab is a tab:** drawn, switched, closed and laid out as any
   other. The shell's state says which tabs are ours, and the contract holds a shell to
   showing a title, not a text field, where the address goes for one.
@@ -182,6 +182,49 @@ keep their one new tab, and a workspace delete leaves a window with none.
   extension may assume one has.
 - **Deleting a workspace** closes its tabs, and a window that held only them stays open
   with none ([workspaces.md](workspaces.md)).
+
+## Pinned tabs
+
+The owner approved the design on 2026-11-14, with closing a pinned tab keeping the pin,
+and built in its simplest form; what goes further is listed at the end.
+
+- **A pin is a saved place in a workspace,** kept by Go for the profile in its own file,
+  `pins.json` beside `workspaces.json` (`core/pins`): `[{id, workspace, url, title,
+  favicon}]`, in the order pinned, a new pin after the others of its workspace, with the
+  title and icon its tab had then. Pins survive a restart; tabs don't, so after one a pin
+  has no tab until it is opened.
+- **A tab open for a pin carries its id,** `pin`, and a window has one tab for a pin at most
+  (`tabs.Tab.Pin`). Go keeps a window's pinned tabs first in its order, in the pins' order,
+  so a shell that draws nothing for pins still lists them first. A pinned tab is in no tab
+  group: pinning takes it out of its own.
+- **Pinning** (`pinTab {id}`, or Pin Tab in the Tab menu, `tab.pin`, with no default key)
+  makes a pin of a web tab's address, at the end of its workspace's pins, bound to the tab.
+  A tab of ours can't be pinned, nor a tab with no address yet. Other windows show the pin
+  with no tab.
+- **Unpin** (`unpin {pin}`, or the same menu item, which says Unpin Tab on a pinned tab)
+  removes the pin. Each tab open for it stays, as an ordinary tab first after the pinned
+  ones.
+- **Opening a pin** (`openPin {pin}`) shows this window's tab for it, or opens one bound to
+  it, in the pin's workspace and at its address, in its place among the pinned tabs.
+- **Closing a pinned tab** closes the tab and keeps the pin, which then shows with no tab,
+  as after a restart. Only Unpin removes a pin.
+- **Deleting a workspace** deletes its pins, as it closes its tabs.
+- **Moving tabs:** a pinned tab moved into another window stays bound there, among its
+  pinned tabs; if that window already has a tab for the pin, the move shows that tab
+  instead and leaves the moved one where it was, as for our pages' tabs. `moveTab` keeps an
+  unpinned tab after the pinned ones, and a pinned tab where it is.
+- **Shells** hear `pins` in the snapshot and again on any change, and each tab's `pin`
+  ([shells.md](shells.md#the-messages)). No contract rule holds a shell to drawing them:
+  Glide draws them ([glide.md](glide.md)); the standard shell's are its own next step.
+
+Later steps, not built:
+- Reordering pins, by `moveTab` on a pinned tab or a drag in a shell's list of them; pins
+  stay in the order they were pinned.
+- A pin that follows its tab: its title and icon are its tab's when it was pinned, and a
+  pinned tab that goes elsewhere stays bound, the pin keeping its address.
+- Extensions see `pinned: false` on every tab; `chrome.tabs` could report and set it from
+  the pins.
+- A contract rule (rules 40 to 49 are kept for pinned tabs), once the shells draw them.
 
 ## Order of building
 
