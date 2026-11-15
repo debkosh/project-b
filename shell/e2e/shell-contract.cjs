@@ -134,6 +134,9 @@ const noNoticeYet = {
   for (const id of ids) {
     if (!registry.some((s) => s.id === id)) throw new Error(`no shell ${id} in core/shells/registry.json`);
     console.log(`\n=== the ${id} shell`);
+    // Each shell meets the sites as a new profile does: what the shell before it allowed
+    // or blocked (rules 30 and 31) would answer its questions with no prompt.
+    fs.rmSync(path.join(lib.profile, 'sites.json'), { force: true });
     const broken = new Set();
     // rule records one check of rule n.
     const rule = (n, name, ok, detail) => {
