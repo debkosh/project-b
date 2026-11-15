@@ -19,6 +19,9 @@
   setFrame(0);
 
   const horizontal = $derived(go.tabLayout === 'horizontal');
+  // A page in full screen has the whole window: the bars and the side list are hidden
+  // rather than taken away, so each keeps what it holds.
+  const pageFull = $derived(go.pageFullScreen !== 0 && go.pageFullScreen === go.active);
   let address = $state();
   let find = $state();
 
@@ -54,7 +57,7 @@
      the data comes the UI is made, and the two cross-fade. -->
 <div class="splash" aria-busy={!go.loaded}>Project B</div>
 {#if go.loaded}
-  <div class="window">
+  <div class="window" class:full={pageFull}>
     {#if horizontal}
       <TabBar />
     {/if}
@@ -127,6 +130,10 @@
   .splash[aria-busy='false'] {
     display: none;
     opacity: 0;
+  }
+
+  .full :global(:is(.tabbar, .toolbar, .crash, .prompt, .side)) {
+    display: none;
   }
 
   .body {
