@@ -2,8 +2,9 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { addressField } from './address.js';
 import { activeTab, focusPage, send, state, workspaceOf } from '@/sdk/vue.js';
-import { hasSite, openSiteSettings, promptFor } from '@/sdk/sites.js';
+import { hasSite, openSite, promptFor } from '@/sdk/sites.js';
 import PermissionPrompt from '@/ui/PermissionPrompt.vue';
+import SitePanel from '@/ui/SitePanel.vue';
 
 // The active tab's address. Focused, it selects everything and grows a little; typing
 // asks Go for suggestions, which open in a panel attached under it, as wide as it. Up and
@@ -157,6 +158,10 @@ onMounted(follow);
 // A site's question about the active tab hangs under the field, and its settings open from
 // the field's start (docs/daily-driver.md).
 const prompt = computed(() => promptFor(state, state.active));
+// The site panel, which the site control opens over the page; it closes with another tab.
+const panel = ref(false);
+watch(() => state.active, () => (panel.value = false));
+const site = computed(() => openSite(state, activeTab.value));
 </script>
 
 <template>
@@ -169,7 +174,8 @@ const prompt = computed(() => promptFor(state, state.active));
       :aria-label="activeTab.connection && activeTab.connection !== 'secure' ? 'Not secure · Site settings' : 'Site settings'"
       :title="activeTab.connectionNote || 'Site settings'"
       @mousedown.prevent
-      @click="openSiteSettings()"
+      :aria-expanded="panel"
+      @click="panel = !panel"
     >
       <svg v-if="activeTab.connection && activeTab.connection !== 'secure'" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M8 2.25 14.25 13.25H1.75z" />
@@ -219,7 +225,8 @@ const prompt = computed(() => promptFor(state, state.active));
         <span v-if="item.title" class="url">{{ item.url }}</span>
       </li>
     </ul>
-    <PermissionPrompt v-if="prompt && !open" :key="prompt.id" v-shell class="prompt" :prompt="prompt" />
+    <PermissionPrompt v-if="prompt && !open && !panel" :key="prompt.id" v-shell class="prompt" :prompt="prompt" />
+    <SitePanel v-if="panel && !open && hasSite(activeTab)" v-shell class="prompt" :tab="activeTab" :site="site" @close="panel = false" />
   </form>
 </template>
 

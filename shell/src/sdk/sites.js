@@ -41,3 +41,46 @@ export function openSiteSettings() {
 export function hasSite(tab) {
   return /^https?:\/\//.test(tab?.url || '');
 }
+
+// The site panel (docs/site-features.md). Go sends state.openSites: by origin, each site a
+// web tab is open on, {settings: [{kind, title, value, choices?}], sparks: [{id, name, on}]}.
+// Settings with choices are ours (ads: on or off; links: allow, newtab or block); the rest
+// are a page's permissions, "" (ask), "allow" or "block". A tab's adsBlocked counts what the
+// ad blocker kept from its page.
+
+// siteOrigin is the origin of a tab's page, "" for one that isn't a site.
+export function siteOrigin(tab) {
+  if (!hasSite(tab)) return '';
+  try {
+    return new URL(tab.url).origin;
+  } catch {
+    return '';
+  }
+}
+
+// openSite is the settings of the site a tab shows, or null.
+export function openSite(state, tab) {
+  return state.openSites?.[siteOrigin(tab)] || null;
+}
+
+// setSiteSetting changes one of a site's settings: a kind's value, or a spark's on the site,
+// kind "spark:<id>" with "on" or "off".
+export function setSiteSetting(origin, kind, value) {
+  send({ t: 'setSiteSetting', origin, kind, value });
+}
+
+// siteSetting is the setting of kind in a site's list, or null.
+export function siteSetting(site, kind) {
+  return site?.settings.find((s) => s.kind === kind) || null;
+}
+
+// The words for our own kinds' values, and a permission's.
+export const linkChoices = [
+  { value: 'allow', label: 'Allow' },
+  { value: 'newtab', label: 'New tab' },
+  { value: 'block', label: 'Block' },
+];
+
+export function permissionWord(value) {
+  return { allow: 'Allowed', block: 'Blocked' }[value] || 'Ask';
+}
