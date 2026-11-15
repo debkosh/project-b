@@ -14,7 +14,7 @@ import { send, state } from './state.js';
 // list and names the kinds.
 
 const host = (origin) => origin.replace(/^https:\/\//, '');
-const word = { allow: 'allowed', block: 'blocked' };
+const word = { allow: 'allowed', block: 'blocked', on: 'on', off: 'off', newtab: 'in a new tab' };
 const summary = (s) => s.settings.map((x) => `${x.title} ${word[x.value]}`).join(', ');
 
 const forget = (origin, kind) => send({ t: 'forgetSiteSetting', origin, kind });
@@ -48,7 +48,11 @@ const choices = [
   { value: 'block', label: 'Block' },
 ];
 const settingsOf = (o) => state.siteSettings.find((s) => s.origin === o)?.settings || [];
-const valueOf = (kind) => settingsOf(origin.value).find((x) => x.kind === kind)?.value || '';
+// One of our own kinds has no Ask: a site without a setting has its default, the first
+// choice.
+const valueOf = (k) => settingsOf(origin.value).find((x) => x.kind === k.kind)?.value || (k.choices ? k.choices[0] : '');
+const ourWords = { on: 'On', off: 'Off', allow: 'Allow', newtab: 'New tab', block: 'Block' };
+const choicesOf = (k) => (k.choices ? k.choices.map((v) => ({ value: v, label: ourWords[v] || v })) : choices);
 const set = (kind, value) => send({ t: 'setSiteSetting', origin: origin.value, kind, value });
 
 // How the site's open pages reached it, first in its view; nothing when none is open.
@@ -91,7 +95,7 @@ function removeAll() {
       </div>
       <div v-for="k in state.siteKinds" :key="k.kind" class="row">
         <span class="label">{{ k.title }}</span>
-        <Segmented :label="k.title" :options="choices" :model-value="valueOf(k.kind)" @update:model-value="set(k.kind, $event)" />
+        <Segmented :label="k.title" :options="choicesOf(k)" :model-value="valueOf(k)" @update:model-value="set(k.kind, $event)" />
       </div>
     </div>
     <div class="after">
