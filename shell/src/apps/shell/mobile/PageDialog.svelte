@@ -159,7 +159,8 @@
     font-size: 15px;
   }
 
+  /* A fade only: the card is its own size from the first frame. */
   @keyframes grow {
-    from { opacity: 0; transform: scale(0.96); }
+    from { opacity: 0; }
   }
 </style>
