@@ -61,9 +61,14 @@ func (l *list) First() string      { return (*l)[0] }
 func (l *list) Has(id string) bool { return slices.Contains(*l, id) }
 func (l *list) remove(id string)   { *l = slices.DeleteFunc(*l, func(x string) bool { return x == id }) }
 
-// oneWindow is a manager with window 1, whose list has work first, then Main.
+// pinList is a profile's pins, by their ids, in their order.
+type pinList []string
+
+func (l *pinList) Index(id string) int { return slices.Index(*l, id) }
+
+// oneWindow is a manager with window 1, whose list has work first, then Main, and no pins.
 func oneWindow(e engine.Engine) *Manager {
-	m := New(e, &list{work, ""})
+	m := New(e, &list{work, ""}, &pinList{})
 	m.AddWindow(1)
 	return m
 }
@@ -182,7 +187,7 @@ func TestFaviconFollowsThePage(t *testing.T) {
 }
 
 func TestWordsGoToTheSearchGiven(t *testing.T) {
-	m := New(&fakeEngine{}, &list{""})
+	m := New(&fakeEngine{}, &list{""}, &pinList{})
 	if got := m.Normalize("two words"); got != "https://duckduckgo.com/?q=two+words" {
 		t.Fatalf("before any engine is given: %q", got)
 	}
@@ -482,7 +487,7 @@ func TestOurPageIsOneTabAWindowBesideTheActiveOne(t *testing.T) {
 // goes there, or to the first workspace once that one is gone.
 func TestANewTabFromOurTabGoesToTheWorkspaceItWasOpenedFrom(t *testing.T) {
 	l := &list{work, ""}
-	m := New(&fakeEngine{}, l)
+	m := New(&fakeEngine{}, l, &pinList{})
 	m.AddWindow(1)
 	m.CreateIn(1, "")
 	s := m.OpenPage(1, "settings")

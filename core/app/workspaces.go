@@ -128,10 +128,10 @@ func (a *App) workspaceSettingsPart(e engine.Engine) settings.Part {
 }
 
 // deleteWorkspace deletes a workspace. It leaves the list first, which refuses the last one
-// and tells everyone the list as it is now; then its tabs close in every window; then the
-// engine erases its storage, once those tabs are gone. A window that held only its tabs
-// stays open with none, as any window does whose last tab closes. Our own tabs are in no
-// workspace: they stay, and their new tabs go in the first.
+// and tells everyone the list as it is now; then its tabs close in every window, and its
+// pins go; then the engine erases its storage, once those tabs are gone. A window that held
+// only its tabs stays open with none, as any window does whose last tab closes. Our own tabs
+// are in no workspace: they stay, and their new tabs go in the first.
 func (a *App) deleteWorkspace(e engine.Engine, id string) error {
 	if err := a.Workspaces.Delete(id); err != nil {
 		return err
@@ -141,6 +141,7 @@ func (a *App) deleteWorkspace(e engine.Engine, id string) error {
 			a.Tabs.Close(t.ID)
 		}
 	}
+	a.Pins.RemoveWorkspace(id)
 	e.EraseWorkspace(id)
 	return nil
 }

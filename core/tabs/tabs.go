@@ -12,7 +12,9 @@
 package tabs
 
 import (
+	"cmp"
 	"maps"
+	"math"
 	"slices"
 	"strings"
 
@@ -49,6 +51,10 @@ type Tab struct {
 	CanGoForward bool `json:"canGoForward"`
 	// Group is the id of the tab group it is in, "" for none (groups.go).
 	Group string `json:"group,omitempty"`
+	// Pin is the id of the pin the tab is open for, "" for none (package pins). A window
+	// has one tab for a pin at most, and its pinned tabs come first in its order, in the
+	// pins' order. A pinned tab is in no group.
+	Pin string `json:"pin,omitempty"`
 
 	// started is the engine's id for the latest navigation that started, whose address
 	// the tab shows until it commits or fails.
@@ -82,6 +88,12 @@ type Workspaces interface {
 	Has(id string) bool
 }
 
+// Pins is what the manager reads of the profile's pins.
+type Pins interface {
+	// Index is where a pin is in the profile's order of pins.
+	Index(id string) int
+}
+
 // BlankURL is what a new tab loads, so its page area holds a real page in the engine's
 // default colours from the start, rather than no page at all. The tab still reads as
 // empty: no address, titled New Tab, nothing in history.
@@ -91,6 +103,7 @@ const BlankURL = engine.BlankURL
 type Manager struct {
 	eng        engine.Engine
 	workspaces Workspaces
+	pins       Pins
 	// search turns words into a search's address.
 	search   func(words string) string
 	tabs     map[engine.TabID]*Tab
@@ -126,9 +139,9 @@ type window struct {
 	groups []*Group
 }
 
-// New returns a manager with no windows, on the profile's list of workspaces.
-func New(eng engine.Engine, w Workspaces) *Manager {
-	return &Manager{eng: eng, workspaces: w, search: defaultEngine().For, tabs: map[engine.TabID]*Tab{}, windowOf: map[engine.TabID]engine.WindowID{}, windows: map[engine.WindowID]*window{}}
+// New returns a manager with no windows, on the profile's workspaces and pins.
+func New(eng engine.Engine, w Workspaces, p Pins) *Manager {
+	return &Manager{eng: eng, workspaces: w, pins: p, search: defaultEngine().For, tabs: map[engine.TabID]*Tab{}, windowOf: map[engine.TabID]engine.WindowID{}, windows: map[engine.WindowID]*window{}}
 }
 
 // defaultEngine is the engine a manager searches with until SetSearch says another.
@@ -455,19 +468,21 @@ func (m *Manager) closed(t Tab) {
 	}
 }
 
-// Move moves a tab to window w, at index in its list, and makes it the active tab there.
-// The tab keeps its id and its page goes on running. The window it left goes on as if the
-// tab had closed there.
+// Move moves a tab to window w, at index in its list, and makes it the active tab there:
+// a pinned tab goes to its place among the pinned tabs, and another tab after them. The
+// tab keeps its id, its pin and its page, which goes on running. The window it left goes on
+// as if the tab had closed there.
 func (m *Manager) Move(id engine.TabID, w engine.WindowID, index int) {
 	t := m.tabs[id]
 	if t == nil {
 		return
 	}
 	from := m.windowOf[id]
-	// A window has one tab of each of our pages: one of ours moved to a window that has its
-	// page shows that window's tab, and stays where it was.
-	if t.Page != "" && from != w {
-		if there := m.PageIn(w, t.Page); there != 0 {
+	// A window has one tab of each of our pages, and one for each pin: a tab moved to a
+	// window that has a tab of its page or its pin shows that window's tab, and stays where
+	// it was.
+	if from != w {
+		if there := m.twinIn(w, t); there != 0 {
 			m.Activate(there)
 			return
 		}
@@ -479,6 +494,7 @@ func (m *Manager) Move(id engine.TabID, w engine.WindowID, index int) {
 	m.windowOf[id] = w
 	win := m.windows[w]
 	win.order = slices.Insert(win.order, index, id)
+	m.arrange(w)
 	win.recent = append(win.recent, id)
 	win.active = id
 	win.touch(id)
@@ -486,6 +502,18 @@ func (m *Manager) Move(id engine.TabID, w engine.WindowID, index int) {
 		f(id, from, i, w)
 	}
 	m.left(from, id, i, true, false)
+}
+
+// twinIn is window w's tab of the same one of our pages as tab t, or open for the same pin,
+// or 0 when it has none.
+func (m *Manager) twinIn(w engine.WindowID, t *Tab) engine.TabID {
+	switch {
+	case t.Page != "":
+		return m.PageIn(w, t.Page)
+	case t.Pin != "":
+		return m.PinIn(w, t.Pin)
+	}
+	return 0
 }
 
 // detach takes a tab out of its window's lists, and says where it was in its order.
@@ -689,10 +717,81 @@ func (m *Manager) OpenBeside(ours engine.TabID, u string) engine.TabID {
 	return id
 }
 
-// beside moves tab id, which add just put last in its window, to after tab after.
+// beside moves tab id, which add just put last in its window, to after tab after, or after
+// the pinned tabs when after is one.
 func (m *Manager) beside(id, after engine.TabID) {
-	win := m.windows[m.windowOf[id]]
+	w := m.windowOf[id]
+	win := m.windows[w]
 	win.order = slices.Insert(win.order[:len(win.order)-1], slices.Index(win.order, after)+1, id)
+	m.arrange(w)
+}
+
+// PinIn is window w's tab open for a pin, or 0 when it has none.
+func (m *Manager) PinIn(w engine.WindowID, pin string) engine.TabID {
+	for _, id := range m.windows[w].order {
+		if m.tabs[id].Pin == pin {
+			return id
+		}
+	}
+	return 0
+}
+
+// Bind makes a web tab the one open for a pin in its window: it leaves its group, as a
+// pinned tab is in none, and takes its place among the window's pinned tabs. Making the pin,
+// and seeing the tab is one to pin, are the caller's.
+func (m *Manager) Bind(id engine.TabID, pin string) {
+	m.leaveGroup(id)
+	m.tabs[id].Pin = pin
+	m.arrange(m.windowOf[id])
+	m.listChanged()
+}
+
+// Unbind makes each tab open for a pin an ordinary tab again, first after its window's
+// pinned tabs, as the pin goes.
+func (m *Manager) Unbind(pin string) {
+	for id, t := range m.tabs {
+		if t.Pin == pin {
+			t.Pin = ""
+			m.arrange(m.windowOf[id])
+		}
+	}
+	m.listChanged()
+}
+
+// OpenPin opens a tab for a pin in window w, in its place among the pinned tabs, in the
+// pin's workspace and at its address, and makes it active. It has the address from the
+// start, as a tab a page opens does.
+func (m *Manager) OpenPin(w engine.WindowID, pin, workspace, u string) engine.TabID {
+	id := m.eng.CreateTab(workspace)
+	t := m.add(id, w)
+	t.URL, t.Workspace, t.Pin = address(u), workspace, pin
+	m.arrange(w)
+	m.Activate(id)
+	m.eng.LoadURL(id, u)
+	return id
+}
+
+// arrange keeps window w's pinned tabs first, in their pins' order, and the rest in their
+// own after them.
+func (m *Manager) arrange(w engine.WindowID) {
+	rank := func(id engine.TabID) int {
+		if pin := m.tabs[id].Pin; pin != "" {
+			return m.pins.Index(pin)
+		}
+		return math.MaxInt
+	}
+	slices.SortStableFunc(m.windows[w].order, func(a, b engine.TabID) int { return cmp.Compare(rank(a), rank(b)) })
+}
+
+// pinnedIn is how many of window w's tabs are pinned: the first that many in its order.
+func (m *Manager) pinnedIn(w engine.WindowID) int {
+	n := 0
+	for _, id := range m.windows[w].order {
+		if m.tabs[id].Pin != "" {
+			n++
+		}
+	}
+	return n
 }
 
 // open opens a URL in a new web tab, or one of our pages in the window's tab of it.
