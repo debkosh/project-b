@@ -21,6 +21,13 @@ run finds the controls by role and name (docs/shells.md, "What every shell does"
 same run measures any shell. Only the standard shell can move its tabs, so only its runs
 have tabs.layout.
 
+A shell that takes New Tab ("takes" in core/shells/registry.json), as the standard shell
+does, starts with no tab, so its start is over without tab.committed, and its tab.new is
+New Tab opening its command box: the span ends once the shell has drawn the box, and no
+tab is made. Its first tab is typed in the address field of the empty window, and the tab
+each New Tab is followed by, for the close and the switch after it, is typed in the box;
+the spans that typing begins, its keys among them, are left out of the numbers.
+
 PB_BIN picks another Mac binary; PB_APK and ADB_SERIAL another APK and device. On a Mac
 an agent's or ssh session has no screen, and AppKit has at times taken seconds to start
 there that it doesn't take for a person. So there are two Mac baselines,
@@ -46,8 +53,19 @@ import timeline  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
-# A start is over when all of these are on the timeline.
+# A start is over when all of these are on the timeline. A shell that takes New Tab starts
+# with no tab, so without tab.committed.
 STARTED = ("shell.snapshot", "shell.on_screen", "tab.committed")
+STARTED_EMPTY = ("shell.snapshot", "shell.on_screen")
+
+# Pages typed for the tabs a shell that takes New Tab makes: no server is needed.
+PAGE = "data:text/html,<title>%s</title>"
+
+
+def takes_new_tab(shell):
+    """Whether the shell, by its id, takes New Tab, as the standard shell does for its box."""
+    with open(os.path.join(ROOT, "core/shells/registry.json")) as f:
+        return any(s["id"] == shell and "tab.new" in s.get("takes", []) for s in json.load(f))
 
 
 # A shell's button by its accessible name, aria-label else its text, which may end with its
@@ -72,6 +90,8 @@ class Mac:
         import drive_first_app
         self.d = drive_first_app
         self.shell = shell
+        self.empty = takes_new_tab(shell or "standard")
+        self.started = STARTED_EMPTY if self.empty else STARTED
         # A session without a screen has numbers of its own, and a baseline of its own.
         self.session = subprocess.run(["launchctl", "managername"], capture_output=True, text=True).stdout.strip()
         self.name = "mac" if self.session == "Aqua" else "mac-headless"
@@ -99,9 +119,15 @@ class Mac:
         ended(self, "settings.open")
         app.cmd("key", "cmd+w")
         until(lambda: app.cmd("evalsettings", "1").startswith("ERR"))
+        if self.empty:
+            # No tab yet: the address typed in the empty window's field opens one, with no span.
+            self.aside(lambda: d.visit(app, PAGE % "First"))
 
         self.press("New Tab")
         ended(self, "tab.new")
+        if self.empty:
+            # New Tab opened the box and made no tab: the tab to close is typed in it.
+            self.aside(lambda: d.from_box(app, PAGE % "Second"))
         # A tab's close button may show only under the pointer.
         x, y = d.center(app, "[role=tab][aria-selected=true]")
         app.cmd("move", x, y)
@@ -116,10 +142,26 @@ class Mac:
         # The same from the keyboard, and a click on the tab behind.
         app.cmd("key", "cmd+t")
         ended(self, "tab.new")
+        if self.empty:
+            self.aside(lambda: d.from_box(app, PAGE % "Third"))
         d.click(app, "[role=tab][aria-selected=false]")
         ended(self, "tab.activate")
         app.cmd("key", "cmd+w")
         ended(self, "tab.close")
+
+    def aside(self, typing):
+        """Runs typing, which makes a tab by typing an address, and leaves the spans it begins
+        out of the numbers: its clicks and keys, and the tab.new the command box begins when
+        Enter comes before Go's list, which is the tab being made, not New Tab."""
+        entries = self.read()
+        since = max(e["t"] for e in entries) if entries else 0
+        typing()
+        entries = self.read()
+        self.dropped.append((since, max(e["t"] for e in entries)))
+        # So the next ended() waits for a span of its own, not one the typing ended.
+        for e in entries:
+            if e["kind"] == "end":
+                self.ends[e["name"]] = sum(1 for x in entries if x["kind"] == "end" and x["name"] == e["name"])
 
     def find(self, name):
         """The middle of the shell's shown button whose accessible name starts with the
@@ -144,6 +186,7 @@ class Android:
     app prints it, from logcat. Starts are warm for Android: its zygote is already up."""
 
     name = "android"
+    started = STARTED
 
     def __init__(self):
         import drive_android
@@ -196,15 +239,17 @@ def ended(target, span):
 
 def one_start(target):
     target.ends = {}
+    target.dropped = []  # (from, to): a span begun between, by typing, isn't measured.
     target.start()
-    until(lambda: all(m in timeline.marks(target.read()) for m in STARTED), 60)
+    until(lambda: all(m in timeline.marks(target.read()) for m in target.started), 60)
     time.sleep(0.5)  # Let the start settle before the first click.
     started = timeline.marks(target.read())
-    done = max(started[m] for m in STARTED)
+    done = max(started[m] for m in target.started)
     target.interact()
     entries = target.read()
     target.stop()
-    return {"startup": {name: t for name, t in started.items() if t <= done}, "spans": timeline.spans(entries), "entries": entries}
+    spans = [s for s in timeline.spans(entries) if not any(a < s["begin"] <= b for a, b in target.dropped)]
+    return {"startup": {name: t for name, t in started.items() if t <= done}, "spans": spans, "entries": entries}
 
 
 def gather(runs):
@@ -264,7 +309,9 @@ def main():
     runs = []
     for i in range(args.n):
         runs.append(one_start(target))
-        print("start %d: %s" % (i + 1, ", ".join("%s %.0f ms" % (m, runs[-1]["startup"][m] / 1e6) for m in STARTED)), flush=True)
+        print("start %d: %s" % (i + 1, ", ".join("%s %.0f ms" % (m, runs[-1]["startup"][m] / 1e6) for m in target.started)), flush=True)
+    if getattr(target, "empty", False):
+        print("\nthis shell takes New Tab: tab.new is its command box shown, and no tab made; the start has no tab, so no tab.committed")
 
     result = gather(runs)
     baseline = None
