@@ -407,7 +407,19 @@ final class BrowserWindow extends FrameLayout {
     @CalledByNative
     private void setSystemBarsHidden(boolean hidden) {
         android.view.Window window = activity.getWindow();
+        // Into the camera's notch too while hidden, or the window keeps the status bar's room
+        // there as a strip in the frame colour.
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            android.view.WindowManager.LayoutParams params = window.getAttributes();
+            params.layoutInDisplayCutoutMode = hidden
+                    ? android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+                    : android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT;
+            window.setAttributes(params);
+        }
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            // Laid out across the whole screen while the bars are hidden, and within them again
+            // after.
+            window.setDecorFitsSystemWindows(!hidden);
             android.view.WindowInsetsController controller = window.getInsetsController();
             if (controller == null) return;
             if (hidden) {
