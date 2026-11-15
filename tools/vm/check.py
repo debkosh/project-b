@@ -944,7 +944,7 @@ def workspace_delete_checks():
     """Deleting a workspace in Settings, Workspaces, by real clicks: its row's menu ends with
     Delete… in red, a dialog asks first and names its open tabs, and Delete closes them while
     settings stays open. Deleting the workspace that holds all a window's tabs keeps the
-    window, with no tabs. With one workspace left, Delete… can't be chosen. The driver
+    window with its settings tab. With one workspace left, Delete… can't be chosen. The driver
     only finds the controls; that storage is erased is checked in tools/drive_first_app.py."""
     guest("/usr/bin/killall", "project_b")
     profile = f"{WSDEL}-profile"  # Beside WSDEL, which driven() empties.
@@ -969,13 +969,15 @@ def workspace_delete_checks():
     new_tab_in("Work")
     check("two tabs opened in Work, beside Main's", until(tabs, lambda n: n == 3) == 3, str(tabs()))
 
-    # Settings covers the whole window, so its page's points are the window's.
+    # Settings is a tab: its page's points start where the window's page view does.
     def click(finder):
         r = until(lambda: settings(f"(e=>e&&{RECT}(e))({finder})"), bool, 10)
         if not r:
             check(f"settings shows {finder}", False)
             sys.exit(1)
-        desk.click(win[0] + r[0] + r[2] / 2, win[1] + r[1] + r[3] / 2)
+        # Bounds report the focused tab's page, the settings tab's once it has the keyboard.
+        x0, y0, w0, _ = until(lambda: json.loads(ask("bounds"))["reported"], lambda b: b[2] > 0, 10)
+        desk.click(win[0] + x0 + r[0] + r[2] / 2, win[1] + y0 + r[1] + r[3] / 2)
         time.sleep(0.6)
 
     row = lambda ws: json.dumps(f'[data-workspace="{ws}"]')
@@ -997,15 +999,16 @@ def workspace_delete_checks():
           "Delete Work?" in asked and "Its 2 open tabs close, and its cookies and site data are erased." in asked, asked)
     click("[...document.querySelectorAll('dialog[open] button')].find(b=>b.textContent.trim()==='Delete')")
     gone = until(lambda: settings(f"!document.querySelector({row(WORK_ID)})"), bool, 10)
-    check("Delete removes it and closes its tabs, with settings still open", gone and until(tabs, lambda n: n == 1) == 1, f"{gone} {tabs()}")
+    # Main's tab and the settings tab are left.
+    check("Delete removes it and closes its tabs, with settings still open", gone and until(tabs, lambda n: n == 2) == 2, f"{gone} {tabs()}")
 
     click(actions("Main"))
     click(delete_item)
     click("[...document.querySelectorAll('dialog[open] button')].find(b=>b.textContent.trim()==='Delete')")
     gone = until(lambda: settings(f"!document.querySelector({row('')})"), bool, 10)
     shot("p4-workspace-last")
-    check("deleting the workspace that held all of a window's tabs keeps the window, with no tabs",
-          gone and len(windows()) == 1 and until(tabs, lambda n: n == 0) == 0, f"{gone} {windows()} {tabs()}")
+    check("deleting the workspace that held all of a window's web tabs keeps the window, with its settings tab",
+          gone and len(windows()) == 1 and until(tabs, lambda n: n == 1) == 1, f"{gone} {windows()} {tabs()}")
 
     click(actions("Shopping"))
     off = settings(f"(e=>!!e&&(e.disabled||e.getAttribute('aria-disabled')==='true'))({delete_item})")
@@ -1150,7 +1153,7 @@ def update_checks(retry=False):
         ask("evalsettings", f"({find}.click(), 1)")
         shot("u0-checked")
         # Closed again, so the bubble's button is the shell's to press.
-        ask("evalsettings", "(document.querySelector('[aria-label=\"Close settings\"]').click(), 1)")
+        desk.key("cmd+w")  # Settings is a tab, closed like any.
     offered = until(lambda: js(f"{button}?.textContent.trim() || ''"), bool, 600)
     shot("u1-ready")
     check(f"Check for updates tries the refused {after} again: it is downloaded and offered" if retry else
@@ -1197,7 +1200,7 @@ time.sleep(1)
 # "check.py profiles" runs only the checks of several profiles.
 # The Show window regions flag's colours, docs/windows.md.
 REGION_COLOURS = {"drag": (37, 99, 235), "shell": (220, 38, 38), "page": (22, 163, 74),
-                  "window buttons": (168, 85, 247), "settings page": (249, 115, 22)}
+                  "window buttons": (168, 85, 247)}
 
 
 def outlines(win):
@@ -1208,7 +1211,7 @@ def outlines(win):
 
 def region_checks():
     """--pb-show-regions outlines each kind of region in its colour, in both layouts and over
-    the settings page, and the window drags and takes clicks just as it does without them."""
+    the settings tab, and the window drags and takes clicks just as it does without them."""
     global V, home, PX, PY, W, H, TOP, NEUTRAL
     V, T = layout()
     fresh_profile()
@@ -1227,7 +1230,6 @@ def region_checks():
     seen = outlines(home)
     for name in ("drag", "shell", "page", "window buttons"):
         check(f"the {name} outlines show, tabs on the side", seen[name] > 20, str(seen))
-    check("no settings page outline while settings is closed", seen["settings page"] <= 20, str(seen))
 
     L = lights(desk.image(), home)
     check("the window buttons are visible under their outline", L is not None, str(L))
@@ -1254,7 +1256,7 @@ def region_checks():
     time.sleep(1.5)
     shot("regions-settings")
     seen = outlines(home)
-    check("the settings page's outline shows while it is open", seen["settings page"] > 20, str(seen))
+    check("the settings tab is outlined as a page", seen["page"] > 20, str(seen))
     quit_app()
 
 
