@@ -101,12 +101,25 @@ func (a *App) knownWorkspace(id string) bool {
 
 // keepSession writes the profile's windows and tabs whenever they change: a tab's
 // address, title or place, a group, a window's frame; and keeps what the person closes.
-func (a *App) keepSession() {
-	a.Tabs.OnListChanged(a.saveSession)
-	a.Tabs.OnChanged(func(tabs.Tab) { a.saveSession() })
+func (a *App) keepSession(e engine.Engine) {
+	// A change comes in a burst (a close moves the active tab and changes the list): one
+	// save after the burst, in the main loop's next turn.
+	pending := false
+	later := func() {
+		if pending {
+			return
+		}
+		pending = true
+		e.Post(func() {
+			pending = false
+			a.saveSession()
+		})
+	}
+	a.Tabs.OnListChanged(later)
+	a.Tabs.OnChanged(func(tabs.Tab) { later() })
 	a.Window.OnEvent(func(ev window.Event) {
 		if ev.Kind == window.BoundsChanged {
-			a.saveSession()
+			later()
 		}
 	})
 	a.Tabs.OnClosedAt(func(t tabs.Tab, w engine.WindowID, index int) {

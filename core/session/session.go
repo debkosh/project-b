@@ -58,12 +58,17 @@ type Group struct {
 	Collapsed bool   `json:"collapsed,omitempty"`
 }
 
-// Manager keeps one profile's session file.
+// Manager keeps one profile's session file. Save encodes on the caller's thread and a writer
+// of its own puts it on disk, so a tab closing never waits for the disk.
 type Manager struct {
 	path string
 	last Session
-	// written is the file as last written, or read at start.
+	// written is the file as last handed to the writer, or read at start.
 	written []byte
+	writes  chan []byte
+	done    chan struct{}
+	// closed says the app has stopped: nothing is written after.
+	closed bool
 }
 
 // New reads what the last run kept in the profile folder dir.
@@ -86,24 +91,56 @@ func New(dir string) *Manager {
 // Last is what the last run kept, read at start.
 func (m *Manager) Last() Session { return m.last }
 
-// Save keeps s, when it differs from what the file holds.
+// Save keeps s, when it differs from what the file holds: the writer has it at once, and
+// only the newest waits when the disk is behind.
 func (m *Manager) Save(s Session) {
 	b, err := json.Marshal(s)
 	if err != nil {
 		timeline.Errorf("session: %v", err)
 		return
 	}
-	if bytes.Equal(b, m.written) {
+	if m.closed || bytes.Equal(b, m.written) {
 		return
 	}
-	// A new file renamed over the old, so no crash leaves half of one.
+	m.written = b
+	if m.writes == nil {
+		m.writes = make(chan []byte, 1)
+		m.done = make(chan struct{})
+		go m.writer(m.writes, m.done)
+	}
+	select {
+	case <-m.writes:
+	default:
+	}
+	m.writes <- b
+}
+
+// Close writes what is waiting and stops the writer, for good: the app is stopping.
+func (m *Manager) Close() {
+	m.closed = true
+	if m.writes == nil {
+		return
+	}
+	close(m.writes)
+	<-m.done
+	m.writes = nil
+}
+
+func (m *Manager) writer(writes <-chan []byte, done chan<- struct{}) {
+	defer close(done)
+	for b := range writes {
+		m.write(b)
+	}
+}
+
+// write puts b on disk, a new file renamed over the old, so no crash leaves half of one.
+func (m *Manager) write(b []byte) {
 	tmp := m.path + ".tmp"
-	if err := os.WriteFile(tmp, append(b, '\n'), 0o600); err == nil {
+	err := os.WriteFile(tmp, append(b, '\n'), 0o600)
+	if err == nil {
 		err = os.Rename(tmp, m.path)
 	}
 	if err != nil {
 		timeline.Errorf("session: %v", err)
-		return
 	}
-	m.written = b
 }
