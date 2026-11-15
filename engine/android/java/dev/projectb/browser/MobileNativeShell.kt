@@ -74,6 +74,15 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
     private var asked = 0
     // The last run's crash, "" when there was none or its notice was dismissed.
     private var crashLog = ""
+    // The dialogs pages wait on, oldest first; the profile's downloads, newest first; the
+    // active tab's search while its find bar is open; the tab whose page fills the screen.
+    private var dialogs = listOf<JSONObject>()
+    private var downloads = listOf<JSONObject>()
+    private var find: JSONObject? = null
+    private var pageFullScreen = 0L
+    // The page dialog shown, by its id, so a dialog is drawn once and answered once.
+    private var dialogShown: PageDialog? = null
+    private var dialogShownId: Any? = null
     // What a long press in the page was on, for the "link" sheet; the group whose sheet is
     // open, and whether it opens asking to close it; the tab whose card menu is open.
     private var pressed: JSONObject? = null
@@ -100,7 +109,20 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
     private val suggestions = LinearLayout(context)
     private val switcher = Switcher(context, SwitcherActions())
     private val strip = Strip(context, StripActions())
-    private val crashBar = CrashBar(context) { send(JSONObject().put("t", "dismissCrash")) }
+    private val crashBar = CrashBar(context, { send(JSONObject().put("t", "dismissCrash")) }) { button ->
+        // Share report hands one file with all of it to the phone's share sheet, from the button.
+        val at = IntArray(2)
+        val me = IntArray(2)
+        button.getLocationInWindow(at)
+        getLocationInWindow(me)
+        send(JSONObject().put("t", "shareReport").put("rect", rect(
+            ((at[0] - me[0]) / density).toDouble(), ((at[1] - me[1]) / density).toDouble(),
+            (button.width / density).toDouble(), (button.height / density).toDouble())))
+    }
+    private val findBar = FindBar(context, { send(it) }) { focusPage() }
+    private val noTabs = NoTabs(context) { newTab(0) }
+    // Where a page's dialog goes, over everything, sheets and bars too: the page waits on it.
+    private val dialogLayer = FrameLayout(context)
     private val notice = PageNotice(context) {
         send(JSONObject().put("t", "reload"))
         focusPage()
@@ -177,6 +199,7 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
         bottomStack.orientation = LinearLayout.VERTICAL
         bottomStack.addView(crashBar, LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, dp(48) + 1))
         bottomStack.addView(strip, LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, dp(48) + 1))
+        bottomStack.addView(findBar, LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, dp(48) + 1))
         bottomStack.addView(toolbar, LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, dp(48) + 1))
 
         // In drawing order: the switcher over the group strip, which it hides as the web
@@ -187,6 +210,10 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
         addView(switcher, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         addView(suggestions, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
         addView(sheets, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        addView(dialogLayer, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        findBar.visibility = GONE
+        noTabs.visibility = GONE
+        addView(noTabs, 0, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     }
 
     override fun onAttachedToWindow() {
@@ -204,7 +231,8 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
                 snapshotted = true
                 draw()
             }
-            "tabs", "theme", "windowColor", "addressBarPosition", "workspaces", "update", "crashLog" -> {
+            "tabs", "theme", "windowColor", "addressBarPosition", "workspaces", "update", "crashLog",
+            "dialogs", "downloads", "find", "pageFullScreen" -> {
                 take(m)
                 draw()
             }
@@ -217,10 +245,18 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
             "focusAddressBar" -> {
                 open("")
                 bars(true)
-                focus()
+                focusAddress()
             }
             "scroll" -> {
-                if (m.optLong("tab") == active && sheet.isEmpty() && !editing) bars(m.optString("direction") != "down")
+                if (m.optLong("tab") == active && sheet.isEmpty() && !editing && !finding()) bars(m.optString("direction") != "down")
+            }
+            // The find key, or Find in page from the menu: the bar shows with the keyboard in it.
+            "focusFind" -> {
+                open("")
+                bars(true)
+                // Go's search may come after this: the bar takes the keyboard once it shows.
+                findFocus = true
+                draw()
             }
             // Go's menu for a long press on a link or an image, or null once it has gone; the
             // sheet builds its own items from what was pressed, as the web shell's does.
@@ -233,15 +269,31 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
             "suggestions" -> if (m.optInt("id") == asked && editing) suggest(m.optJSONArray("items") ?: JSONArray())
             // The phone's back key, while the shell said it closes something: the sheet open,
             // or the editing.
-            "backKey" -> if (sheet.isNotEmpty()) open("") else leave()
+            "backKey" -> when {
+                dialogShown != null -> dialogShown!!.answer(false)
+                sheet.isNotEmpty() -> open("")
+                finding() -> findBar.close()
+                else -> leave()
+            }
             "paint" -> send(JSONObject().put("t", "timeline").put("kind", "end").put("name", m.optString("span")))
         }
+    }
+
+    // The engine's focus_shell: the shell takes the window's keyboard from the page. Which of
+    // its fields has it is the shell's to say (the address, the find bar, a dialog's field), so
+    // with none of them asking it is the shell itself, and no keyboard comes up: a window with
+    // No tabs or a page's confirm must leave the back key to the shell.
+    override fun focus() {
+        if (findFocus() != null) return
+        isFocusableInTouchMode = true
+        requestFocus()
+        (context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager).hideSoftInputFromWindow(windowToken, 0)
     }
 
     // The keyboard for the address, once the shell is on screen: chosen in settings, it is made
     // while settings is still in front of it, and its address would bring the keyboard up over
     // settings. It takes the keyboard when settings closes.
-    override fun focus() {
+    private fun focusAddress() {
         if (isShown) address.requestFocus() else focusWhenShown = true
     }
 
@@ -274,6 +326,10 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
         if (m.has("theme")) theme = m.getString("theme")
         if (m.has("addressBarPosition")) addressBarPosition = m.getString("addressBarPosition")
         if (m.has("crashLog")) crashLog = m.optString("crashLog")
+        list("dialogs")?.let { dialogs = it }
+        list("downloads")?.let { downloads = it }
+        if (m.has("find")) find = m.optJSONObject("find")
+        if (m.has("pageFullScreen")) pageFullScreen = m.optLong("pageFullScreen")
     }
 
     private fun activeTab(): JSONObject? = tabs.firstOrNull { it.getLong("id") == active }
@@ -317,7 +373,28 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
         if (group != null) strip.show(palette, group, Switcher.memberTabs(group, tabs), active)
         crashBar.visibility = if (crashLog.isNotEmpty()) VISIBLE else GONE
         if (crashLog.isNotEmpty()) crashBar.show(palette, crashLog)
-        val failed = tab != null && url.isNotEmpty() && !tab.optBoolean("loading") &&
+        // A page in full screen, the shown tab's: the shell draws nothing over it, and a sheet
+        // or the address being edited ends as it starts. Go ends it on the back key.
+        if (full()) {
+            if (sheet.isNotEmpty()) { sheet = ""; sheets.removeAllViews(); switcher.visibility = GONE }
+            if (editing) { address.clearFocus(); end() }
+        }
+        for (s in listOf(topStack, bottomStack)) s.visibility = if (full() || gone) INVISIBLE else VISIBLE
+        // The find bar in the toolbar's place while the shown tab's search is open.
+        val finding = finding()
+        if (finding) findBar.show(palette, find!!)
+        if (finding != (findBar.visibility == VISIBLE)) {
+            findBar.visibility = if (finding) VISIBLE else GONE
+            toolbar.visibility = if (finding) GONE else VISIBLE
+        }
+        if (finding && findFocus) {
+            findFocus = false
+            findBar.focus()
+        }
+        noTabs.visibility = if (tabs.isEmpty() && snapshotted) VISIBLE else GONE
+        if (tabs.isEmpty()) noTabs.show(palette)
+        showDialog()
+        val failed = !full() && tab != null && url.isNotEmpty() && !tab.optBoolean("loading") &&
             (tab.optBoolean("crashed") || tab.optString("error").isNotEmpty() || tab.optBoolean("blocked"))
         notice.visibility = if (failed) VISIBLE else GONE
         if (failed) notice.show(palette, tab!!)
@@ -333,6 +410,29 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
         report()
     }
 
+    // Whether focusFind came, so the find bar takes the keyboard as soon as it shows.
+    private var findFocus = false
+
+    private fun finding() = find != null && find!!.optLong("tab") == active && active != 0L
+
+    private fun full() = pageFullScreen != 0L && pageFullScreen == active
+
+    // The shown tab's page dialog, the oldest it waits on: another tab's waits until it shows.
+    private fun showDialog() {
+        val d = dialogs.firstOrNull { it.optLong("tab") == active }
+        if (d?.opt("id") == dialogShownId && (d == null) == (dialogShown == null)) return
+        dialogLayer.removeAllViews()
+        dialogShown = null
+        dialogShownId = d?.opt("id")
+        if (d != null) {
+            if (editing) leave()
+            val v = PageDialog(context, palette, d, { send(it) }) { focusPage() }
+            dialogShown = v
+            dialogLayer.addView(v, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        }
+        backClosesNow()
+    }
+
     // The address the active tab was last seen loading, so each new load is seen once.
     private var loadingUrl = ""
 
@@ -345,7 +445,7 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
         if (show) {
             away = false
             gone = false
-            for (s in stacks) s.visibility = VISIBLE
+            if (!full()) for (s in stacks) s.visibility = VISIBLE
             report()
             for (s in stacks) s.animate().translationY(0f).setDuration(slide).setInterpolator(Motion.ease).start()
         } else {
@@ -370,8 +470,11 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
         val home = if (top) topStack else bottomStack
         if (toolbar.parent !== home) {
             (toolbar.parent as? LinearLayout)?.removeView(toolbar)
+            (findBar.parent as? LinearLayout)?.removeView(findBar)
             home.addView(toolbar, LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, dp(48) + 1))
+            home.addView(findBar, home.indexOfChild(toolbar), LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, dp(48) + 1))
         }
+        findBar.lineOnTop = !top
         toolbar.lineOnTop = !top
         val h = heights()
         // The switcher between the bars, over the group strip; the suggestions against the
@@ -396,7 +499,7 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
     private class Heights(val top: Int, val bottom: Int, val strip: Int)
 
     private fun heights(): Heights {
-        if (gone) return Heights(0, 0, 0)
+        if (gone || full()) return Heights(0, 0, 0)
         val bar = dp(48) + 1
         val top = addressBarPosition == "top"
         val strip = if (activeGroup() != null) bar else 0
@@ -409,10 +512,15 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
     private fun activated() {
         if (!snapshotted || active == lastActive) return
         lastActive = active
+        // With no tabs there is nothing to edit: No tabs shows, and the back key leaves.
+        if (active == 0L) {
+            address.clearFocus()
+            return
+        }
         bars(true)
         workspace = activeTab()?.optString("workspace") ?: ""
         if (activeTab()?.optString("url").isNullOrEmpty()) {
-            focus()
+            focusAddress()
         } else {
             focusWhenShown = false
             address.clearFocus()
@@ -459,6 +567,7 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
             "group" -> groupSheetView()
             "card" -> cardSheet()
             "link" -> linkSheetView()
+            "downloads" -> if (downloads.isEmpty()) null else Sheet(context, "Downloads", palette) { open("") }.also { downloadsSheet(it, palette, downloads) { m -> send(m) } }
             else -> null
         }
         if (made != null) sheets.addView(made, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
@@ -467,7 +576,7 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
     }
 
     private fun backClosesNow() {
-        val on = sheet.isNotEmpty() || editing
+        val on = sheet.isNotEmpty() || editing || dialogShown != null || finding()
         if (on != backCloses) {
             backCloses = on
             send(JSONObject().put("t", "backCloses").put("on", on))
@@ -516,6 +625,15 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
         s.content.addView(View(context).apply { setBackgroundColor(palette.line) }, LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, 1))
         if (workspaces.size > 1) {
             s.content.addView(sheetRow(context, palette, "workspace", "Workspaces", "chevron") { workspaceList(s) })
+        }
+        s.content.addView(sheetRow(context, palette, "find", "Find in page", enabled = !tab?.optString("url").isNullOrEmpty()) {
+            open("")
+            send(JSONObject().put("t", "run").put("text", "find.open"))
+        })
+        if (downloads.isNotEmpty()) {
+            val running = downloads.count { it.optString("state") == "progress" }
+            s.content.addView(sheetRow(context, palette, "download", "Downloads", "chevron",
+                note = if (running > 0) "$running in progress" else null) { open("downloads") })
         }
         if (update?.optString("phase") == "ready") {
             s.content.addView(sheetRow(context, palette, "update", "Install update to ${update?.optString("version")}") {
@@ -639,8 +757,8 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
     private fun closeTabs(ids: List<Long>) {
         val group = groups.firstOrNull { Switcher.inGroup(it, active) }
         if (ids.size >= tabs.size) {
+            // Closing the last tabs leaves the window with none, and its No tabs.
             open("")
-            send(JSONObject().put("t", "newTab").put("workspace", workspace))
         } else if (active in ids && group != null) {
             val members = Switcher.memberTabs(group, tabs).map { it.getLong("id") }
             val left = members.filter { it !in ids }
@@ -769,9 +887,11 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
         val shell = JSONArray()
         // A sheet covers the window, the switcher all but the bars; the bars are always the
         // shell's, and the suggestions and a page's notice while they show.
-        if (sheet.isNotEmpty()) {
+        // A page's dialog covers the whole window too, and No tabs the page's room.
+        if (sheet.isNotEmpty() || dialogShown != null) {
             shell.put(rect(0.0, 0.0, w, h))
         } else {
+            if (noTabs.visibility == VISIBLE) shell.put(rect(0.0, topH, w, h - topH - bottomH))
             if (topH > 0) shell.put(rect(0.0, 0.0, w, topH))
             if (bottomH > 0) shell.put(rect(0.0, h - bottomH, w, bottomH))
             if (suggestions.visibility == VISIBLE && suggestions.height > 0) {
@@ -802,7 +922,7 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
         if (!shown) {
             shown = true
             send(JSONObject().put("t", "shown"))
-            if (activeTab()?.optString("url").isNullOrEmpty()) focus() else focusPage()
+            if (activeTab()?.optString("url").isNullOrEmpty()) focusAddress() else focusPage()
         }
     }
 
