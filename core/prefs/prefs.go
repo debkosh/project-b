@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"projectb/search"
 	"projectb/shells"
 	"projectb/timeline"
 	"regexp"
@@ -41,11 +42,13 @@ type Prefs struct {
 	Shell string `json:"shell"`
 	// AddressBarPosition is AddressBottom or AddressTop. Only the Mobile shell reads it.
 	AddressBarPosition string `json:"addressBarPosition"`
+	// SearchEngine is the id of the engine typed words are searched with (package search).
+	SearchEngine string `json:"searchEngine"`
 }
 
 // Defaults are the settings before the user changes any.
 func Defaults() Prefs {
-	return Prefs{TabLayout: TabsVertical, FrameColor: "#4f9e9e", Theme: ThemeSystem, Shell: shells.Default(), AddressBarPosition: AddressBottom}
+	return Prefs{TabLayout: TabsVertical, FrameColor: "#4f9e9e", Theme: ThemeSystem, Shell: shells.Default(), AddressBarPosition: AddressBottom, SearchEngine: search.Default}
 }
 
 func isTheme(t string) bool { return t == ThemeSystem || t == ThemeLight || t == ThemeDark }
@@ -62,6 +65,7 @@ type Manager struct {
 	onTheme      []func(string)
 	onShell      []func(string)
 	onAddress    []func(string)
+	onSearch     []func(string)
 	onChanged    []func(Prefs)
 }
 
@@ -84,6 +88,9 @@ func New(dir string) *Manager {
 			}
 			if s.AddressBarPosition != AddressBottom && s.AddressBarPosition != AddressTop {
 				s.AddressBarPosition = AddressBottom
+			}
+			if _, ok := search.Get(s.SearchEngine); !ok {
+				s.SearchEngine = search.Default
 			}
 			if !shells.Fits(s.Shell) {
 				s.Shell = Defaults().Shell
@@ -176,6 +183,28 @@ func (m *Manager) SetShell(id string) {
 	m.changed()
 }
 
+// SearchEngine is the engine typed words are searched with.
+func (m *Manager) SearchEngine() search.Engine {
+	e, _ := search.Get(m.prefs.SearchEngine)
+	return e
+}
+
+// OnSearchEngineChanged subscribes to another engine being chosen, by its id.
+func (m *Manager) OnSearchEngineChanged(f func(string)) { m.onSearch = append(m.onSearch, f) }
+
+// SetSearchEngine chooses the engine by its id. An id that isn't one is ignored.
+func (m *Manager) SetSearchEngine(id string) {
+	if _, ok := search.Get(id); !ok || id == m.prefs.SearchEngine {
+		return
+	}
+	m.prefs.SearchEngine = id
+	m.save()
+	for _, f := range m.onSearch {
+		f(id)
+	}
+	m.changed()
+}
+
 // AddressBarPosition is where a phone shell puts its address bar: AddressBottom or
 // AddressTop.
 func (m *Manager) AddressBarPosition() string { return m.prefs.AddressBarPosition }
@@ -241,6 +270,7 @@ func (m *Manager) Apply(values json.RawMessage) error {
 	m.SetTheme(p.Theme)
 	m.SetShell(p.Shell)
 	m.SetAddressBarPosition(p.AddressBarPosition)
+	m.SetSearchEngine(p.SearchEngine)
 	return nil
 }
 

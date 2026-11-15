@@ -198,7 +198,7 @@ func (c *contextMenus) run(m *contextMenu, id string) {
 	case id == "selection.copy":
 		c.e.WriteClipboard(m.Selection)
 	case id == "selection.search":
-		c.a.Tabs.OpenFrom(m.Tab, tabs.SearchURL(m.Selection), t.Workspace, true)
+		c.a.Tabs.OpenFrom(m.Tab, c.a.Tabs.SearchURL(m.Selection), t.Workspace, true)
 	case id == "edit.undo":
 		edit(engine.EditUndo)
 	case id == "edit.redo":

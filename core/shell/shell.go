@@ -40,6 +40,9 @@ type command struct {
 	// Background opens newTab's tab behind the active one, as a link opened in a new
 	// tab is.
 	Background bool `json:"background"`
+	// Kinds are the kinds of row suggest's shell draws (package suggest); none is
+	// history alone.
+	Kinds []string `json:"kinds"`
 	// moveTab's: Index is the place the tab has in its window's order after the move, and
 	// Window the window it moves into, this one when left out.
 	Index  int             `json:"index"`
@@ -149,6 +152,7 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 			"tabLayout":          m.prefs.TabLayout(),
 			"theme":              m.prefs.Theme(),
 			"addressBarPosition": m.prefs.AddressBarPosition(),
+			"searchEngine":       m.prefs.SearchEngine(),
 			"prefs":              m.prefs.All(),
 			"update":             m.update.State(),
 			"running":            m.update.Running(),
@@ -197,7 +201,7 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 			}
 			// With text, the new tab goes there: an address or a search.
 			if c.Text != "" {
-				m.tabs.Load(id, tabs.NormalizeInput(c.Text))
+				m.tabs.Load(id, m.tabs.Normalize(c.Text))
 			}
 		})
 	// A tab moves within its window, or into another at index; a window it leaves empty
@@ -261,7 +265,7 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 		m.crash.Dismiss()
 		m.sendAll(map[string]any{"t": "crashLog", "crashLog": "", "crashReport": ""})
 	case "suggest":
-		m.send(w, map[string]any{"t": "suggestions", "id": c.ID, "items": m.suggest.Query(c.Text)})
+		m.send(w, map[string]any{"t": "suggestions", "id": c.ID, "items": m.suggest.Query(c.Text, c.Kinds)})
 	case "layout":
 		var l window.ShellLayout
 		if err := json.Unmarshal(msg, &l); err != nil {
@@ -325,6 +329,11 @@ func (m *Manager) TabLayoutChanged(layout string) {
 
 // SendTo sends one window's shell a message.
 func (m *Manager) SendTo(w engine.WindowID, v any) { m.send(w, v) }
+
+// SearchEngineChanged tells the shells the engine typed words go to now.
+func (m *Manager) SearchEngineChanged(string) {
+	m.sendAll(map[string]any{"t": "searchEngine", "searchEngine": m.prefs.SearchEngine()})
+}
 
 // ScrollDirectionChanged tells a tab's shell its page began to scroll down, or up.
 func (m *Manager) ScrollDirectionChanged(tab engine.TabID, down bool) {
