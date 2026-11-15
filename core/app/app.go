@@ -13,6 +13,7 @@ import (
 	"projectb/engine"
 	"projectb/flags"
 	"projectb/history"
+	"projectb/pins"
 	"projectb/policy"
 	"projectb/prefs"
 	"projectb/profiles"
@@ -89,6 +90,8 @@ type App struct {
 	Settings *settings.Manager
 	// Workspaces is the profile's list of workspaces, beside its prefs.
 	Workspaces *workspaces.Manager
+	// Pins is the profile's pinned tabs, beside its workspaces.
+	Pins *pins.Manager
 	// ShellData is what each shell saves for the whole profile, beside its prefs.
 	ShellData *shelldata.Manager
 	// Downloads is the profile's downloads.
@@ -143,6 +146,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.History = history.New(cfg.ProfileDir, e.Post)
 	a.Suggest = suggest.New(a.History)
 	a.Workspaces = workspaces.New(cfg.ProfileDir)
+	a.Pins = pins.New(cfg.ProfileDir)
 	a.ShellData = shelldata.New(cfg.ProfileDir)
 	if cfg.DownloadsDir == "" {
 		cfg.DownloadsDir = filepath.Join(cfg.ProfileDir, "Downloads")
@@ -150,7 +154,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Downloads = downloads.New(e, cfg.ProfileDir, cfg.DownloadsDir)
 	a.Downloads.Load()
 	a.Bookmarks = bookmarks.New(cfg.ProfileDir)
-	a.Tabs = tabs.New(e, a.Workspaces)
+	a.Tabs = tabs.New(e, a.Workspaces, a.Pins)
 	a.Prefs = prefs.New(cfg.ProfileDir)
 	a.Flags = flags.New(cfg.ProfileDir)
 	a.Window = window.New(e, shells.Page(a.Prefs.Shell()), a.Prefs.FrameColor(), themeOf(a.Prefs.Theme()), a.Tabs.Front)
@@ -165,6 +169,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Commands.RegisterList(a.shellList())
 	a.Shell = shell.New(e, a.Tabs, a.Suggest, a.Window, a.Prefs, a.Update, a.Crash, a.Commands.Run, a.Commands.ShownKeys, a.Commands.Platform())
 	a.Shell.AddPart(a.workspaceShellPart(e))
+	a.Shell.AddPart(a.pinShellPart())
 	a.Shell.AddPart(a.shellDataPart())
 	a.menus = newContextMenus(a, e)
 	a.Shell.AddPart(a.downloadsShellPart())
@@ -244,6 +249,8 @@ func Start(e engine.Engine, cfg Config) *App {
 			e.SetFirstWorkspace(now)
 		}
 	})
+	// A change to the pins reaches every shell at once.
+	a.Pins.OnChanged(func() { a.Shell.Send(map[string]any{"t": "pins", "pins": a.Pins.List()}) })
 	a.Prefs.OnThemeChanged(func(t string) { a.Window.SetTheme(themeOf(t)) })
 	a.Prefs.OnThemeChanged(a.Shell.ThemeChanged)
 	a.Prefs.OnChanged(a.Shell.PrefsChanged)

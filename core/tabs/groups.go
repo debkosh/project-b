@@ -54,15 +54,20 @@ func (m *Manager) group(id string) (*Group, *window) {
 }
 
 // fits says whether tab id can be in a group whose window is w and whose tabs are in
-// workspace. One of our tabs is in no workspace, so in no group.
+// workspace.
 func (m *Manager) fits(id engine.TabID, w engine.WindowID, workspace string) bool {
 	t := m.tabs[id]
-	return t != nil && t.Page == "" && m.windowOf[id] == w && t.Workspace == workspace
+	return t != nil && groupable(t) && m.windowOf[id] == w && t.Workspace == workspace
 }
+
+// groupable says whether a tab can be in a group at all. One of our tabs is in no
+// workspace, so in no group, and a pinned tab is among the pinned ones, out of any group's
+// run.
+func groupable(t *Tab) bool { return t.Page == "" && t.Pin == "" }
 
 // CreateGroup makes a group of the tabs ids: the first's window and workspace, and those
 // of the rest that share them, each leaving any group it was in. An empty color takes
-// the next free one. Returns the group's id, or "" when the first is no web tab.
+// the next free one. Returns the group's id, or "" when the first can be in no group.
 func (m *Manager) CreateGroup(ids []engine.TabID, name, color string) string {
 	id := m.newGroup(ids, name, color)
 	if id != "" {
@@ -72,7 +77,7 @@ func (m *Manager) CreateGroup(ids []engine.TabID, name, color string) string {
 }
 
 func (m *Manager) newGroup(ids []engine.TabID, name, color string) string {
-	if len(ids) == 0 || m.tabs[ids[0]] == nil || m.tabs[ids[0]].Page != "" {
+	if len(ids) == 0 || m.tabs[ids[0]] == nil || !groupable(m.tabs[ids[0]]) {
 		return ""
 	}
 	w := m.windowOf[ids[0]]
@@ -202,7 +207,8 @@ func (m *Manager) CloseGroup(group string) {
 // it is in none, as a new tab in a group does: at the end of with's window, in with's
 // workspace; active when foreground, or behind the active one, as a link opened in a new
 // tab is. Beside one of our tabs, which is in no group, it is a new tab in its home
-// workspace. Returns 0 when with is no tab.
+// workspace, and beside a pinned tab, a new tab in its workspace. Returns 0 when with is no
+// tab.
 func (m *Manager) CreateWith(with engine.TabID, foreground bool) engine.TabID {
 	t := m.tabs[with]
 	if t == nil {
@@ -224,16 +230,18 @@ func (m *Manager) CreateWith(with engine.TabID, foreground bool) engine.TabID {
 }
 
 // Reorder moves tab id to index in its window's order, the place it has after the move,
-// clamped to the window. Its group follows where it lands, as dragging a tab does in
-// Chrome: between two tabs of one group it joins that group; out of its own group's run,
-// with neither neighbour in it, it leaves. The active tab stays as it was.
+// clamped to the window, and to after its pinned tabs: those stay in their pins' order, so
+// a pinned tab stays where it is. Its group follows where it lands, as dragging a tab does
+// in Chrome: between two tabs of one group it joins that group; out of its own group's
+// run, with neither neighbour in it, it leaves. The active tab stays as it was.
 func (m *Manager) Reorder(id engine.TabID, index int) {
-	win := m.windows[m.windowOf[id]]
-	if win == nil {
+	w := m.windowOf[id]
+	win := m.windows[w]
+	if win == nil || m.tabs[id].Pin != "" {
 		return
 	}
 	from := slices.Index(win.order, id)
-	index = max(0, min(index, len(win.order)-1))
+	index = max(m.pinnedIn(w), min(index, len(win.order)-1))
 	if index == from {
 		return
 	}

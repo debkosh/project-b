@@ -476,7 +476,7 @@ func TestActionsThatNeedATabAreOffWithNone(t *testing.T) {
 	r.visit("https://a.test/")
 	r.visit("https://b.test/")
 	need := []string{"nav.back", "nav.reload", "nav.reloadHard", "view.zoomIn", "view.zoomOut", "view.zoomReset", "dev.viewSource",
-		"tab.duplicate", "tab.moveToNewWindow", "tab.next", "tab.previous", "tab.recentNext", "tab.recentPrevious",
+		"tab.duplicate", "tab.pin", "tab.moveToNewWindow", "tab.next", "tab.previous", "tab.recentNext", "tab.recentPrevious",
 		"tab.select1", "tab.select8", "tab.selectLast", "focus.nextPane", "focus.previousPane"}
 	stay := []string{"tab.new", "tab.close", "address.focus", "window.new", "window.close", "app.settings", "view.fullScreen", "view.tabsTop"}
 	// What can run now, as a shell that lists the actions hears it, and what the menu bar

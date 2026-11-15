@@ -357,6 +357,9 @@
           "action": "tab.duplicate"
         },
         {
+          "action": "tab.pin"
+        },
+        {
           "action": "tab.moveToNewWindow"
         },
         {
