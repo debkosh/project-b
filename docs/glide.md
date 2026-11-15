@@ -29,9 +29,12 @@ kept simple. Nothing of Arc's name, icons or assets is used.
 - **A tab is a tab.** Closing closes it.
 - **Favorites** are saved addresses, per Space, up to 12. A press switches to the Space's
   tab at that address (or on that site), else opens it in a new tab.
-- **Pinned** keeps a tab at the top of its Space. Closing a pinned tab closes it and
-  unpins it. After a restart a pinned entry shows as a row in the muted ink, with no tab
-  until a press opens it.
+- **Pinned tabs are Go's pins** ([windows.md](windows.md#pinned-tabs)), a Space's those of
+  its workspace, drawn at the top of the Space above New Tab. Pin Tab and Unpin Tab are
+  Go's `tab.pin`, in a tab's menu too. Closing a pinned tab closes it and keeps the pin,
+  which shows as a row in the muted ink with no tab, as after a restart, until a press
+  opens it; its menu and its Unpin button remove it. A pinned tab is in no split or
+  folder.
 - **Folders are Go's tab groups** (`docs/groups.md`), drawn as a coloured folder where the
   group's first tab is; a press folds it, and a folded folder still shows its active tab.
   From a tab's menu: Add to New Folder, New Tab in Folder, Move to a folder, Remove from
@@ -44,15 +47,17 @@ kept simple. Nothing of Arc's name, icons or assets is used.
 
 ## Where its data lives
 
-- **For the profile (new in Go, `core/shelldata`):** Favorites and pinned addresses, per
-  Space. A shell saves any JSON for the whole profile with `saveProfileData`; Go writes it
-  to `shells/<id>.json` in the profile folder and sends it to the shell in every window, and
-  it is in every snapshot as `profileData`. Go never reads it. It survives a restart, a
-  closed window and a switch to another shell and back. The smallest design that does: one
-  message, one file per shell, no Glide concept in Go. It names addresses, never tab ids,
-  which last only as long as a tab.
+- **For the profile (new in Go, `core/shelldata`):** Favorites, per Space. A shell saves
+  any JSON for the whole profile with `saveProfileData`; Go writes it to `shells/<id>.json`
+  in the profile folder and sends it to the shell in every window, and it is in every
+  snapshot as `profileData`. Go never reads it. It survives a restart, a closed window and
+  a switch to another shell and back. The smallest design that does: one message, one file
+  per shell, no Glide concept in Go. It names addresses, never tab ids, which last only as
+  long as a tab.
 - **For the window (`saveData`, in memory):** the sidebar's width and whether it shows, the
-  tab each Space showed last, the tab each pinned entry is open in, and the splits.
+  tab each Space showed last, and the splits.
+- **Go's:** the pins, and which tab is open for each. Glide kept its pins in its own data
+  before they were Go's; those are not carried over.
 
 ## Go changes it brought
 

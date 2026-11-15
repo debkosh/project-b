@@ -1,5 +1,5 @@
 // Package shelldata keeps what a shell saves for the whole profile, such as Glide's
-// Favorites and pinned tabs: one file per shell, shells/<id>.json in the profile folder,
+// Favorites: one file per shell, shells/<id>.json in the profile folder,
 // read when asked for and written when the shell saves. Go never reads what is in it.
 // Unlike a shell's own data for a window (package shell), it outlives the window, a
 // restart and a switch to another shell and back; a reset to a template keeps it, as it

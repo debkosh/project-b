@@ -1,7 +1,7 @@
 // The menus Glide's rows open, each a list of items: {label, run, action} where action is
 // the id whose key the item shows, or {separator: true}. Glide's Menu draws them.
 
-import { activeTab, send, state } from '@/sdk/svelte.svelte.js';
+import { activeTab, openPin, pinTab, send, state, unpin } from '@/sdk/svelte.svelte.js';
 import * as g from './glide.svelte.js';
 
 // The colours a Space or a folder can take: the workspace colours Go picks from.
@@ -12,7 +12,10 @@ const sep = { separator: true };
 export function tabMenu(tab) {
   const items = [];
   const pinned = g.isPinned(tab);
-  items.push(pinned ? { label: 'Unpin Tab', run: () => g.unpinTab(tab), action: 'glide.pin' } : { label: 'Pin Tab', run: () => g.pin(tab), action: 'glide.pin' });
+  // Go pins a web tab with an address; a pinned tab leaves its split once Go lists it so
+  // (fitSplits).
+  if (pinned) items.push({ label: 'Unpin Tab', run: () => unpin(tab.pin), action: 'tab.pin' });
+  else if (tab.url && !tab.page) items.push({ label: 'Pin Tab', run: () => pinTab(tab.id), action: 'tab.pin' });
   if (tab.url) {
     items.push(
       g.isFavorite(tab)
@@ -106,10 +109,10 @@ export function favoriteMenu(fav) {
 
 export function pinMenu(entry) {
   return [
-    { label: 'Open', run: () => g.openPin(entry) },
+    { label: 'Open', run: () => openPin(entry.id) },
     { label: 'Copy Address', run: () => copy(entry.url) },
     sep,
-    { label: 'Unpin', run: () => g.unpin(entry.id) },
+    { label: 'Unpin', run: () => unpin(entry.id) },
   ];
 }
 

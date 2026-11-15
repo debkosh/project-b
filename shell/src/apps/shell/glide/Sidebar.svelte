@@ -1,6 +1,6 @@
 <script>
   import { extensionsBuilt } from '@extensions';
-  import { activeTab, controlSpace, drag, send, shell, state, tabLabel } from '@/sdk/svelte.svelte.js';
+  import { activeTab, controlSpace, drag, openPin, send, shell, state, tabLabel, unpin } from '@/sdk/svelte.svelte.js';
   import Extensions from './Extensions.svelte';
   import Favicon from './Favicon.svelte';
   import Downloads from './Downloads.svelte';
@@ -152,10 +152,10 @@
       {#if p.tab}
         <div class="pinned"><TabRow tab={p.tab} /></div>
       {:else}
-        <div class="g-row unloaded" role="button" tabindex="0" title={p.title || p.url} onclick={() => g.openPin(p)} onkeydown={(e) => e.key === 'Enter' && g.openPin(p)} oncontextmenu={(e) => openMenu(e, p.title || p.url, pinMenu(p))}>
+        <div class="g-row unloaded" role="button" tabindex="0" title={p.title || p.url} onclick={() => openPin(p.id)} onkeydown={(e) => e.key === 'Enter' && openPin(p.id)} oncontextmenu={(e) => openMenu(e, p.title || p.url, pinMenu(p))}>
           <Favicon tab={p} />
           <span class="label">{p.title || p.url}</span>
-          <button class="g-icon x" aria-label="Unpin {p.title || p.url}" title="Unpin" onclick={(e) => (e.stopPropagation(), g.unpin(p.id))}><Icon name="close" size={14} /></button>
+          <button class="g-icon x" aria-label="Unpin {p.title || p.url}" title="Unpin" onclick={(e) => (e.stopPropagation(), unpin(p.id))}><Icon name="close" size={14} /></button>
         </div>
       {/if}
     {/each}
