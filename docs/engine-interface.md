@@ -40,8 +40,8 @@ The engine owns the process and its run loop, and calls Go in this order:
 **Calls** (`Engine`): profile and policy (`OpenProfile`, `SetBlockRules`); tabs and
 navigation; workspaces (`CreateTab(workspace)`, `SetFirstWorkspace`, `EraseWorkspace`);
 windows and their layout (`CreateWindow`, `SetWindowLayout`, `RequestWindow`,
-`SetWindowBounds`, `SetWindowMode`, `FocusTab`, `FocusShell`); the shell, settings and picker
-channels; menu and app commands; downloads, dialogs, find and page full screen; and the
+`SetWindowBounds`, `SetWindowMode`, `FocusTab`, `FocusShell`); the shell's, the picker's and our
+pages' channels (`PageMessage`, `SendToPage`); menu and app commands; downloads, dialogs, find and page full screen; and the
 names of our pages' addresses (`PageURL`, `OurPage`, `ViewSourceURL`).
 
 **Events** (`Listener`): the adapter fires each one itself, from what the engine reports.

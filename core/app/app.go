@@ -524,7 +524,15 @@ func (a *App) MenuList(name string) engine.Menu { return a.Commands.ListItems(na
 
 func (a *App) OSBindings(byTitle map[string]engine.Key) { a.Commands.OSBindings(byTitle) }
 
-func (a *App) SettingsMessage(tab engine.TabID, msg []byte) { a.Settings.Handle(tab, msg) }
+// PageMessage hands a message from a page of ours to that page's manager.
+func (a *App) PageMessage(tab engine.TabID, page engine.Page, msg []byte) {
+	switch page {
+	case "settings":
+		a.Settings.Handle(tab, msg)
+	default:
+		timeline.Warnf("app: a message from %q, which isn't a page of ours", page)
+	}
+}
 
 // PickerMessage is the picker's, which a copy with a profile never shows.
 func (a *App) PickerMessage(engine.WindowID, []byte) {}

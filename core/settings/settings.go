@@ -267,5 +267,5 @@ func (m *Manager) send(tab engine.TabID, v any) {
 		timeline.Errorf("settings: %v", err)
 		return
 	}
-	m.eng.SendToSettings(tab, b)
+	m.eng.SendToPage(tab, b)
 }

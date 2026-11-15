@@ -69,7 +69,7 @@ struct App {
 };
 constexpr App kApps[] = {
     {"shell", PB_EVENT_SHELL_MESSAGE, false},
-    {"settings", PB_EVENT_SETTINGS_MESSAGE, true},
+    {"settings", PB_EVENT_PAGE_MESSAGE, true},
     {"picker", PB_EVENT_PICKER_MESSAGE, false},
 };
 
@@ -133,6 +133,10 @@ class ShellMessageHandler : public content::WebUIMessageHandler {
     }
     hooks::Args hook_args;
     hook_args.Int(home_);
+    // A page in a tab shares one event with the others, so it says which it is.
+    if (app_.in_tab) {
+      hook_args.Str(app_.host);
+    }
     hook_args.Str(args[0].GetString());
     hooks::Fire(app_.event, hook_args);
   }

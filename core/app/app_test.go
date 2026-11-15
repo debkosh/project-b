@@ -581,7 +581,7 @@ func (r *rig) openSettings() (<-chan []byte, map[string]any) {
 		}
 		time.Sleep(5 * time.Millisecond)
 	}
-	got, stop := r.e.SettingsFeed(r.settingsTab).Subscribe()
+	got, stop := r.e.PageFeed(r.settingsTab).Subscribe()
 	r.t.Cleanup(stop)
 	r.settings(`{"t":"ready"}`)
 	return got, r.waitOn(got, func(m map[string]any) bool { return m["t"] == "snapshot" })
@@ -597,7 +597,7 @@ func (r *rig) settingsIn(w engine.WindowID) engine.TabID {
 
 // settings sends a message from the page of the tab openSettings opened.
 func (r *rig) settings(cmd string) {
-	r.e.Post(func() { r.a.SettingsMessage(r.settingsTab, []byte(cmd)) })
+	r.e.Post(func() { r.a.PageMessage(r.settingsTab, "settings", []byte(cmd)) })
 }
 
 func (r *rig) waitOn(ch <-chan []byte, match func(map[string]any) bool) map[string]any {

@@ -267,8 +267,8 @@ type Engine interface {
 	// rectangle in the window's shell coordinates.
 	ShareFile(w WindowID, path string, anchor Rect)
 
-	// SendToSettings delivers one message to the settings page a tab of ours shows.
-	SendToSettings(tab TabID, msg []byte)
+	// SendToPage delivers one message to the page of ours a tab shows.
+	SendToPage(tab TabID, msg []byte)
 
 	// SetMenu replaces the native menu bar, where the platform has one.
 	SetMenu(m Menu)
@@ -361,8 +361,8 @@ type Listener interface {
 	// title, as macOS App Shortcuts does. It fires after start and whenever they change.
 	OSBindings(byTitle map[string]Key)
 
-	// SettingsMessage is one message from the settings page a tab of ours shows.
-	SettingsMessage(tab TabID, msg []byte)
+	// PageMessage is one message from the page of ours a tab shows, page being its name.
+	PageMessage(tab TabID, page Page, msg []byte)
 	// PickerMessage is one message from the picker's page, in a copy that hasn't chosen
 	// its profile.
 	PickerMessage(w WindowID, msg []byte)

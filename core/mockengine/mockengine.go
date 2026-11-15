@@ -230,9 +230,9 @@ func (e *Engine) Feeds(w engine.WindowID) *Feeds {
 	return e.feeds[w]
 }
 
-// SettingsFeed is what the settings page in tab hears, whether or not the tab exists yet.
-// Any goroutine.
-func (e *Engine) SettingsFeed(tab engine.TabID) *Feed {
+// PageFeed is what the page of ours in tab hears, whether or not the tab exists yet. Any
+// goroutine.
+func (e *Engine) PageFeed(tab engine.TabID) *Feed {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	if e.settings[tab] == nil {
@@ -706,7 +706,7 @@ func (e *Engine) WindowState(w engine.WindowID) []byte {
 // AreaNames are what the dev window and its tests call each area.
 var AreaNames = [...]string{engine.AreaPage: "page", engine.AreaShell: "shell", engine.AreaDrag: "drag"}
 
-func (e *Engine) SendToSettings(tab engine.TabID, msg []byte) { e.SettingsFeed(tab).Publish(msg) }
+func (e *Engine) SendToPage(tab engine.TabID, msg []byte) { e.PageFeed(tab).Publish(msg) }
 
 func (e *Engine) SetMenu(m engine.Menu) {
 	e.mu.Lock()

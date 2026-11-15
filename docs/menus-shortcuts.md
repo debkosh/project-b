@@ -488,7 +488,7 @@ Mac only, on branch `menus-shortcuts`.
   `core/settings` (the settings page's contract, as `core/shell` is the shell's).
   `core/app/actions.go` registers every action with the one manager call it makes. The
   engine contract lost `Shortcut` and gained `Key`, `MenuChosen`, `OSBindings` and
-  `SettingsMessage` on the listener, and the content calls each action needs.
+  `PageMessage` on the listener, and the content calls each action needs.
 - **Engine:** the menu bar is built from Go's menu (`SetMainMenu` in `mac_app.mm`), each
   item telling Go its action. Keys reach Go twice through content's own hooks:
   `PreHandleKeyboardEvent` before the page and `HandleKeyboardEvent` after it, for the

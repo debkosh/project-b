@@ -43,7 +43,7 @@ typedef enum PBEvent {
                                         // main screen; i: minimised; i: zoomed
   PB_EVENT_PING = 5,                    // nothing; the driver measures the crossing
   PB_EVENT_SHELL_CRASHED = 6,           // i: window; its shell page's renderer died
-  PB_EVENT_SETTINGS_MESSAGE = 7,        // i: tab, s: json, from the settings page it shows
+  // 7 was the settings page's own; every page of ours in a tab now has PB_EVENT_PAGE_MESSAGE.
   PB_EVENT_MENU_CHOSEN = 8,             // s: the chosen item's action id
   PB_EVENT_OS_BINDINGS = 9,             // s: json, {title: {code, mods}}, the keys the
                                         // OS gives our menu items (macOS App Shortcuts)
@@ -141,6 +141,9 @@ typedef enum PBEvent {
                                         // 0 to stop
   PB_EVENT_IS_PAGE_FULL_SCREEN = 76,    // i: tab; answers i: 1 when its page has the
                                         // screen now
+  PB_EVENT_PAGE_MESSAGE = 23,           // i: tab, s: the page's name ("settings",
+                                        // "history", "bookmarks"), s: json, from the page
+                                        // of ours the tab shows
 } PBEvent;
 
 // What becomes of a navigation, PB_EVENT_NAVIGATION_STARTING's answer. Matches
@@ -393,8 +396,8 @@ typedef struct PBEngineCalls {
                      double y,
                      double w,
                      double h);
-  // Delivers one message to the settings page a tab of ours shows.
-  void (*send_to_settings)(int64_t tab, const char* json, size_t length);
+  // Delivers one message to the page of ours a tab shows: settings, history or bookmarks.
+  void (*send_to_page)(int64_t tab, const char* json, size_t length);
   // Replaces the native menu bar: json is Go's engine.Menu.
   void (*set_menu)(const char* json, size_t length);
   void (*app_command)(int32_t command);  // PBAppCommand

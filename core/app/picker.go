@@ -176,8 +176,8 @@ func (p *Picker) OSBindings(byTitle map[string]engine.Key) { p.commands.OSBindin
 
 // A picker copy has no tabs, no shell and no settings page, so it hears nothing of them.
 
-func (p *Picker) ShellMessage(engine.WindowID, []byte) {}
-func (p *Picker) SettingsMessage(engine.TabID, []byte) {}
+func (p *Picker) ShellMessage(engine.WindowID, []byte)          {}
+func (p *Picker) PageMessage(engine.TabID, engine.Page, []byte) {}
 func (p *Picker) NavigationStarting(engine.TabID, int64, string) engine.Navigation {
 	return engine.NavigationBlock
 }

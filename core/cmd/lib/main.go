@@ -43,7 +43,7 @@ static inline void call_exit_page_full_screen(const PBEngineCalls* c, int64_t ta
 static inline void call_answer_sign_in(const PBEngineCalls* c, int64_t dialog, int ok, const char* username, const char* password) { c->answer_sign_in(dialog, ok, username, password); }
 static inline void call_answer_dialog(const PBEngineCalls* c, int64_t dialog, int ok, const char* text) { c->answer_dialog(dialog, ok, text); }
 static inline void call_answer_permission(const PBEngineCalls* c, uint32_t id, const int32_t* statuses, size_t count) { c->answer_permission(id, statuses, count); }
-static inline void call_send_to_settings(const PBEngineCalls* c, int64_t tab, const char* json, size_t length) { c->send_to_settings(tab, json, length); }
+static inline void call_send_to_page(const PBEngineCalls* c, int64_t tab, const char* json, size_t length) { c->send_to_page(tab, json, length); }
 static inline void call_set_menu(const PBEngineCalls* c, const char* json, size_t length) { c->set_menu(json, length); }
 static inline void call_app_command(const PBEngineCalls* c, int32_t command) { c->app_command(command); }
 static inline void call_set_window_layout(const PBEngineCalls* c, int64_t window, const PBWindowLayout* layout, const PBRegion* regions, size_t count, const PBVisibleTab* tabs, size_t tab_count) { c->set_window_layout(window, layout, regions, count, tabs, tab_count); }
@@ -239,11 +239,11 @@ func (e *nativeEngine) AnswerPermission(id engine.PermissionID, statuses []engin
 	C.call_answer_permission(e.calls, C.uint32_t(id), &s[0], C.size_t(len(statuses)))
 }
 
-func (e *nativeEngine) SendToSettings(tab engine.TabID, msg []byte) {
+func (e *nativeEngine) SendToPage(tab engine.TabID, msg []byte) {
 	if len(msg) == 0 {
 		return
 	}
-	C.call_send_to_settings(e.calls, C.int64_t(tab), (*C.char)(unsafe.Pointer(&msg[0])), C.size_t(len(msg)))
+	C.call_send_to_page(e.calls, C.int64_t(tab), (*C.char)(unsafe.Pointer(&msg[0])), C.size_t(len(msg)))
 }
 
 func (e *nativeEngine) SetMenu(m engine.Menu) {

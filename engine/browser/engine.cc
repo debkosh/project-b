@@ -280,9 +280,9 @@ void CallAnswerPermission(uint32_t request, const int32_t* statuses, size_t coun
   Permissions::Answer(request, statuses, count);
 }
 
-void CallSendToSettings(int64_t tab, const char* json, size_t length) {
+void CallSendToPage(int64_t tab, const char* json, size_t length) {
   CheckMainThread();
-  g_engine->SendToSettings(tab, json, length);
+  g_engine->SendToPage(tab, json, length);
 }
 
 void CallSetMenu(const char* json, size_t length) {
@@ -566,7 +566,7 @@ const PBEngineCalls* Engine::Calls() {
       .send_to_shell = CallSendToShell,
       .set_shell_back = CallSetShellBack,
       .share_file = CallShareFile,
-      .send_to_settings = CallSendToSettings,
+      .send_to_page = CallSendToPage,
       .set_menu = CallSetMenu,
       .app_command = CallAppCommand,
 #if !BUILDFLAG(IS_ANDROID)
@@ -1129,7 +1129,7 @@ void Engine::Edit(int32_t command) {
   }
 }
 
-void Engine::SendToSettings(int64_t tab, const char* json, size_t length) {
+void Engine::SendToPage(int64_t tab, const char* json, size_t length) {
   if (PageTab* t = this->tab(tab); t && t->internal()) {
     t->SendToPage(std::string(json, length));
   }
