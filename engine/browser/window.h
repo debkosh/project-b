@@ -32,6 +32,11 @@ namespace project_b {
 // Layout; the window only follows it, and reports its State back.
 class Window {
  public:
+  // The size a new window's content starts at, which the shell is made at too, so it
+  // lays out once, before the window exists.
+  static constexpr int kInitialWidth = 1280;
+  static constexpr int kInitialHeight = 720;
+
   // The title a window has while it shows no tab: before its first, and with none.
   static constexpr char16_t kTitle[] = u"Project B";
 

@@ -731,6 +731,13 @@ void Engine::CreateWindow(int64_t id,
                           Window::Layout layout,
                           std::vector<VisibleTab> tabs) {
   auto w = std::make_unique<AppWindow>(id);
+#if !BUILDFLAG(IS_ANDROID)
+  // The shell first: its renderer starts and its page loads while the window, much of a
+  // cold start's work on this thread, is made.
+  w->shell = std::make_unique<ShellPage>(pages_context_, id, page);
+  w->shell->Load();
+  timeline::Mark("shell.created");
+#endif
   w->window = std::make_unique<Window>(
       base::BindOnce(&Engine::WindowClosed, base::Unretained(this), id),
       base::BindRepeating(
@@ -754,16 +761,17 @@ void Engine::CreateWindow(int64_t id,
     w->shell = std::make_unique<ShellPage>(pages_context_, id, page);
     w->window->SetShellContents(w->shell->contents());
   }
+  timeline::Mark("shell.created");
 #else
-  w->shell = std::make_unique<ShellPage>(pages_context_, id, page);
   w->window->SetShellView(w->shell->contents()->GetNativeView());
 #endif
-  timeline::Mark("shell.created");
   AppWindow* raw = w.get();
   windows_[id] = std::move(w);
+#if BUILDFLAG(IS_ANDROID)
   if (raw->shell) {
     raw->shell->Load();
   }
+#endif
   // The frame is in the first layout, so even the window's first frame on screen is the
   // frame colour. It still shows before any renderer has drawn.
   if (raw->window->SetLayout(std::move(layout))) {

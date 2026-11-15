@@ -518,7 +518,8 @@ Window::Window(base::OnceClosure on_close,
                base::RepeatingCallback<void(bool)> on_minimised)
     : impl_(std::make_unique<Impl>()) {
   impl_->window = [[PBNSWindow alloc]
-      initWithContentRect:NSMakeRect(80, 120, 1280, 720)
+      initWithContentRect:NSMakeRect(80, 120, Window::kInitialWidth,
+                                     Window::kInitialHeight)
                 styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable |
                           NSWindowStyleMaskMiniaturizable |
                           NSWindowStyleMaskResizable |

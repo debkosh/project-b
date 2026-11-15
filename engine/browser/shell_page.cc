@@ -390,6 +390,10 @@ ShellPage::ShellPage(content::BrowserContext* browser_context,
       page_(page),
       contents_(content::WebContents::Create(
           content::WebContents::CreateParams(browser_context))) {
+#if !BUILDFLAG(IS_ANDROID)
+  // The window's size, so the shell lays out once, even before its window exists.
+  contents_->Resize(gfx::Rect(Window::kInitialWidth, Window::kInitialHeight));
+#endif
   Observe(contents_.get());
   contents_->SetDelegate(this);
   contents_->SetPageBaseBackgroundColor(SK_ColorTRANSPARENT);
