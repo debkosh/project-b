@@ -104,3 +104,10 @@ Take an item off when it lands or is dropped.
   `enable_dangling_raw_ptr_checks` is on (`out/pb`, non-official), not in the official build
   every release comes from. Finding the holder takes a build with
   `enable_backup_ref_ptr_instance_tracer = true` in an out dir of its own, a near-full rebuild.
+- On Android 17 a cold start now and then shows the frame colour and no shell, the app running.
+  The log of one (drive_android's GPU part on 0.2.69, emu-37) shows why: Android started the
+  shell's renderer, `NativeOnlySandboxedProcessService0`, and killed it ten seconds later for
+  a start timeout ("failed to attach"), and the browser heard nothing, so the shell's page
+  waits for a renderer for good. It shows only deep in full runs on a loaded emulator. The fix
+  is in how a launch that never attaches reaches the browser: as a dead renderer, which the
+  shell's page already recovers from.
