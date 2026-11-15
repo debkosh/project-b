@@ -157,6 +157,8 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   check('the gear opens the settings tab and shows it', await until(settingsShown));
   check('and the dev window shows the page in the tab\'s frame', await until(() => shell.locator('iframe.our-page[data-page="settings"]').isVisible()));
   check('its title is the page\'s own', await until(async () => (await regions()).tabs.find((t) => t.page === 'settings').title === 'Settings'));
+  const titleBox = await ui.locator('form.field').boundingBox();
+  check('the title in the address field is the shell\'s, not a drag area', await until(async () => (await regions(`?x=${Math.round(titleBox.x + titleBox.width / 2)}&y=${Math.round(titleBox.y + titleBox.height / 2)}`)).hit === 'shell'));
   // Its title and icon follow the page, as a web page's do.
   const ownFrame = () => shell.frame({ url: /\/settings\/\?tab=\d+$/ });
   const icon = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7'/%3E%3C/svg%3E";

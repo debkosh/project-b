@@ -45,15 +45,16 @@ const stopServer = lib.stop;
   // address field and the buttons after it drags, the field and a button are shell, and
   // the page is the page's.
   const toolbarDrags = async (layout) => {
-    const { gap, field, back: b } = await shellFrame().evaluate(() => {
+    const { gap, field, slot, back: b } = await shellFrame().evaluate(() => {
       const middle = (r) => ({ x: r.x + r.width / 2, y: r.y + r.height / 2 });
       const f = document.querySelector('form.field').getBoundingClientRect();
       const after = document.querySelector('form.field').nextElementSibling.getBoundingClientRect();
-      return { gap: { x: (f.right + after.left) / 2, y: f.y + f.height / 2 }, field: middle(f), back: middle(document.querySelector('[aria-label=Back]').getBoundingClientRect()) };
+      return { gap: { x: (f.right + after.left) / 2, y: f.y + f.height / 2 }, field: middle(f), slot: { x: f.x + 10, y: f.y + f.height / 2 }, back: middle(document.querySelector('[aria-label=Back]').getBoundingClientRect()) };
     });
     const hit = async (at) => (await regions(at)).hit;
     check(`${layout}: the gap between the address field and the buttons drags`, (await hit(gap)) === 'drag', JSON.stringify({ gap, hit: await hit(gap) }));
     check(`${layout}: the address field and the back button are shell`, (await hit(field)) === 'shell' && (await hit(b)) === 'shell', JSON.stringify([await hit(field), await hit(b)]));
+    check(`${layout}: the field's slot is shell too, so a drag from it selects rather than moves the window`, (await hit(slot)) === 'shell', await hit(slot));
     check(`${layout}: the page is the page's`, (await hit({ x: 600, y: 400 })) === 'page');
   };
   const list = ui.locator('#suggestions');
