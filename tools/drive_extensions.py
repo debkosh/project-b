@@ -42,11 +42,15 @@ AD_URL = "https://ad.doubleclick.net/ddm/ad/pb"
 
 
 def new_profile(extensions=True):
-    """A new profile, with the Extensions flag on as the settings page saves it."""
+    """A new profile, with the Extensions flag on as the settings page saves it, and the
+    app's own ad blocker off for the test page's site, as its panel turns it off, so what
+    blocks the ad host is the extension alone."""
     profile = tempfile.mkdtemp(prefix="pb-profile-")
     if extensions:
         with open(os.path.join(profile, "flags.json"), "w") as f:
             json.dump({"extensions": "on"}, f)
+    with open(os.path.join(profile, "sites.json"), "w") as f:
+        json.dump({PAGE.rstrip("/"): {"ads": "off"}}, f)
     return profile
 
 
