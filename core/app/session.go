@@ -142,13 +142,14 @@ func (a *App) windowClosing(w engine.WindowID) {
 	}
 }
 
+// keepClosed adds what was closed to Recently Closed. The change to the tab list that
+// follows every close saves the session, after the burst, and builds the menu again, so
+// neither is done here a second time.
 func (a *App) keepClosed(c session.Closed) {
 	a.closed = append([]session.Closed{c}, a.closed...)
 	if len(a.closed) > session.ClosedLimit {
 		a.closed = a.closed[:session.ClosedLimit]
 	}
-	a.saveSession()
-	a.refreshMenu()
 }
 
 // reopen brings back the closed tab or window at i, newest first: a tab into its window at
