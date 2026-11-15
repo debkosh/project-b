@@ -359,3 +359,38 @@ Rules 30 and 31.
 **Android.** The same messages, and the Mobile shell's prompt as a sheet. Once Go allows the
 camera or microphone, the adapter asks Android for its own grant before the page gets a
 device. Built after the Mac's.
+## Error pages and certificate warnings
+
+Today a page that fails to load, crashes or is blocked shows an empty page in the desktop
+shells (basics 7), and a bad certificate does the same (basics 10): content refuses the
+certificate and nothing says why. The Mobile shell draws a notice of its own over such a
+page since 0.2.58. Now Go says what the notice is, and every shell draws it.
+
+**The notice.** `tab.notice` is absent, or `{kind, title, detail, actions}` while the tab's
+page has nothing to show: `kind` is `failed`, `crashed`, `blocked` or `certificate`; `title`
+one plain sentence ("Can't reach example.com", "This page crashed", "example.com's
+certificate has expired"); `detail` a second line where there is one, the error's own name
+or what a certificate warning means; and `actions`, each `{id, title, primary}`, what the
+person can do: `reload` (Try again, or Reload after a crash), `back` (Go back, when there
+is a page to go back to) and `proceed` (Open anyway). The shell draws it over the tab's
+page and sends `noticeAction {id, action}`, the tab's id; Go does it. The notice goes when
+the tab loads anything.
+
+**A bad certificate.** The engine asks Go about each certificate error, in our own terms
+(`PB_EVENT_CERTIFICATE_ERROR`, 45: the tab, the address, why, one of `expired`, `untrusted`,
+`wrong-host`, `revoked` or `invalid`, and whether it may be passed; answered at once, allow
+or refuse). Go refuses, so the page doesn't load, and the tab's notice is the warning. Where
+the error may be passed (content says not for a site that demands a valid certificate, as
+HSTS sites do), the notice offers Open anyway: Go then allows that host's certificate
+errors until the app quits, kept nowhere, and loads the page again. A page opened that way
+is `insecure` for `certificate` ([the connection](#permissions)), so the address field's
+slot and the site's view say so for as long as it shows.
+
+**The shell.** In Standard the notice fills the page's area, on the bar's colour: an icon,
+the title, the detail in the muted colour, and the actions as buttons, the primary one
+first. It is an `alert`, its buttons by Go's titles. The contract's rule 32 checks it on the
+mock: a load that fails brings an alert with Try again, which loads the page again. Mobile
+keeps its own notice, drawn from the same tab, until it takes Go's.
+
+**Android.** The same messages; the certificate question comes with the Mac's, as the
+engine's client is shared.
