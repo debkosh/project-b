@@ -499,6 +499,23 @@ const H = 915;
   await backKey();
   check('the back key closes it', await until(async () => !(await downloads.isVisible())));
 
+  // Find in page, from the menu: a bar in the toolbar's place, the keyboard in it, closed
+  // by its × as by the back key. An empty tab has nothing to find in.
+  await visit('example.com/find', 'https://example.com/find');
+  await menuButton.tap();
+  await until(() => menu.isVisible());
+  await ui.getByRole('menuitem', { name: 'Find in page' }).tap();
+  const findField = ui.getByRole('textbox', { name: 'Find in page' });
+  check('Find in page in the menu opens the find bar, with the keyboard in it', await until(async () => (await findField.isVisible()) && (await findField.evaluate((el) => el === document.activeElement))));
+  const findBox = await ui.getByRole('search', { name: 'Find in page' }).boundingBox();
+  const toolBox = await ui.getByRole('group', { name: 'Toolbar' }).boundingBox();
+  check('in the toolbar\'s place', Math.abs(findBox.y - toolBox.y) < 1 && Math.abs(findBox.height - toolBox.height) < 1, JSON.stringify({ findBox, toolBox }));
+  await findField.pressSequentially('mock');
+  check('typing searches, and the count shows', await until(async () => /\d+\/\d+/.test(await ui.getByRole('status').filter({ visible: true }).first().innerText())));
+  await shots('find');
+  await ui.getByRole('button', { name: 'Close find' }).tap();
+  check('its × closes it', await until(async () => (await findField.count()) === 0));
+
   // Settings, from the menu.
   await menuButton.tap();
   await menu.getByRole('menuitem', { name: 'Settings' }).tap();
