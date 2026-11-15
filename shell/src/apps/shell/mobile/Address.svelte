@@ -235,7 +235,9 @@
   .suggestions {
     position: absolute;
     left: -8px;
-    right: -92px;
+    right: -104px;
+    /* The toolbar's width: the 8px before the pill, and the count and ⋯ after it, 48px each
+       with a 4px gap before each. */
     bottom: calc(100% + 4px);
     z-index: 5;
     margin: 0;

@@ -100,6 +100,7 @@ const H = 915;
   const list = await box('.suggestions');
   const fieldBox = await field.boundingBox();
   check('they lie over the field, the toolbar under them', list.bottom <= fieldBox.y, JSON.stringify({ list, fieldBox }));
+  check('and span the screen, edge to edge', Math.round(list.left) === 0 && Math.round(list.right) === W, JSON.stringify(list));
   const rows = await suggestions.evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height));
   check('each row is 48px', rows.every((h) => Math.round(h) === 48 || Math.round(h) === 49), JSON.stringify(rows));
   check('a press on them reaches the shell, over the page', await until(async () => (await regions({ x: 100, y: list.bottom - 10 })).hit === 'shell'));
