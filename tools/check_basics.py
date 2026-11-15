@@ -7,7 +7,6 @@ Each check starts its own app with a fresh profile and pages served on this mach
 is ok, FAIL, or NOT WRITTEN with the reason it can't be written yet. The last line counts them.
 PB_BIN picks another binary. Exit 1 if any failed.
 """
-import glob
 import json
 import os
 import re
@@ -31,6 +30,8 @@ ROOT = d.ROOT
 OUT = os.path.join(ROOT, "build/basics")
 d.OUT = OUT
 INPUT, VALUE, ROWS, TITLE, READY = d.INPUT, d.VALUE, d.ROWS, d.ACTIVE_ROW_TITLE, d.TAB_READY
+# A page's dialog, a sign-in too, as the shell draws it.
+DIALOG = "document.querySelector('[role=alertdialog]')"
 
 results = []  # (area, name, "ok" | "FAIL" | "NOT WRITTEN", detail)
 seen = []  # (Host header, path) of every request the pages' server answered
@@ -70,6 +71,9 @@ class Pages(http.server.BaseHTTPRequestHandler):
             time.sleep(4)
             return self.page("<title>Slow</title>slow")
         if path == "/auth":
+            # Any username and password let the page through; none is a 401 that asks for one.
+            if self.headers.get("Authorization", "").startswith("Basic "):
+                return self.page("<title>Signed in</title>yes")
             return self.page("<title>Denied</title>no", 401, [("WWW-Authenticate", 'Basic realm="basics"')])
         if path == "/dl":
             return self.page("a file", 200, [("Content-Disposition", f"attachment; filename={DL_NAME}")], "text/plain")
@@ -272,9 +276,20 @@ def a11(app):
 
 
 def a12(app):
-    go(app, P + "/auth")
-    time.sleep(1.5)
-    return title(app) != "Denied", "the 401 page showed without asking for a password"
+    # The page waits while the browser asks, so its load doesn't finish until signed in.
+    go(app, P + "/auth", wait=False)
+    asked = "!!(" + DIALOG + "&&" + DIALOG + ".querySelector('input[type=password]'))"
+    try:
+        app.wait(asked, 10)
+    except Exception:
+        return False, f"the 401 page showed without asking for a password (title {title(app)!r})"
+    d.click(app, "[role=alertdialog] input[type=text]")
+    app.cmd("type", "basics")
+    app.cmd("key", "tab")
+    app.cmd("type", "secret")
+    app.cmd("key", "enter")
+    app.wait(READY, 30)
+    return title(app) == "Signed in", f"signing in didn't reach the page (title {title(app)!r})"
 
 
 def a13(app):
@@ -292,17 +307,23 @@ def a14(app):
 
 
 def a15(app):
-    # Only the profile is searched: reading ~/Downloads waits on a macOS privacy prompt that
-    # no one is there to answer.
+    # Go keeps the finished downloads in the profile's downloads.json, with where each went:
+    # the user's Downloads folder, which this doesn't read, as that waits on a macOS privacy
+    # prompt no one is there to answer.
     go(app, P + "/download")
     d.page_click(app, "#a")
-    deadline = time.time() + 6
-    found = []
-    while time.time() < deadline and not found:
-        found = glob.glob(os.path.join(app.profile, "**", DL_NAME + "*"), recursive=True)
+    listed = os.path.join(app.profile, "downloads.json")
+    deadline = time.time() + 8
+    done = []
+    while time.time() < deadline and not done:
+        try:
+            with open(listed) as f:
+                done = [x for x in json.load(f)["downloads"] if x["name"].startswith(DL_NAME.split(".")[0]) and x["state"] == "done"]
+        except (OSError, ValueError, KeyError):
+            pass
         time.sleep(0.3)
     asked = any(p.startswith("/dl") for _, p in seen)
-    return bool(found), f"no file arrived in the profile{'' if asked else ', and the link was never fetched'}"
+    return bool(done), f"no download finished{'' if asked else ', and the link was never fetched'}"
 
 
 def a16(app):
