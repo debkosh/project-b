@@ -1,12 +1,12 @@
 <script>
-  import { activeTab, keyLabel, send, shell, state as go, tabLabel } from '@/sdk/svelte.svelte.js';
+  import { activeTab, chooseSuggestion, send, shell, state as go, suggest, tabLabel } from '@/sdk/svelte.svelte.js';
   import Favicon from './Favicon.svelte';
   import Icon from './Icon.svelte';
   import * as g from './glide.svelte.js';
 
   // The Command Bar: one field for where to go and what to do. It finds open tabs in every
   // Space, actions by name (a leading / lists only them), the history, and the address or
-  // search typed. Opened on the address (Cmd+L, the address bar, a new empty tab), Enter
+  // search typed: Go's one list of suggestions. Opened on the address (Cmd+L, the address bar, a new empty tab), Enter
   // takes the active tab there; opened empty (Open Command Bar), it opens a new tab in the
   // Space. Cmd+Enter opens it in a split beside the active tab instead. Up and Down choose,
   // Escape or a press outside closes.
@@ -15,38 +15,37 @@
   let input;
   let text = $state(bar.text);
   let chosen = $state(0);
-  let history = $state([]);
+  // Go's list for what is typed: rows of the address, the search, tabs, history and actions.
+  let list = $state([]);
   let asked = 0;
 
   const query = $derived(text.trim());
-  const words = $derived(query.replace(/^\//, '').toLowerCase().split(/\s+/).filter(Boolean));
-  const matches = (s) => words.every((w) => s.toLowerCase().includes(w));
-  // Whether the text reads as an address rather than words to search for.
-  const address = $derived(/^[a-z][a-z0-9+.-]*:\/?\/?\S*$/i.test(query) || (/^\S+\.\S+$/.test(query) && !/\s/.test(query)) || /^localhost(:\d+)?(\/|$)/.test(query));
-  const spaceName = (t) => g.spaces().find((s) => s.id === (g.spaceOf(t)))?.name;
+  const sections = { address: 'Open', search: 'Search', tab: 'Tabs', history: 'History', action: 'Actions' };
+  const kinds = { address: 'go', search: 'go', tab: 'tab', history: 'visit', action: 'action' };
 
+  // With nothing typed, the other tabs of this Space; once something is, Go's one list,
+  // which every field that takes an address draws (docs/daily-driver.md).
   const rows = $derived.by(() => {
-    const actionsOnly = query.startsWith('/');
-    const here = g.spaceId();
-    const out = [];
-    if (!actionsOnly) {
-      const tabs = query === '' ? g.tabsIn(here).filter((t) => t.id !== go.active).slice(0, 6) : go.tabs.filter((t) => matches(tabLabel(t) + ' ' + t.url)).sort((a, b) => ((b.workspace || '') === here) - ((a.workspace || '') === here)).slice(0, 4);
-      for (const t of tabs) out.push({ kind: 'tab', section: 'Tabs', tab: t, label: tabLabel(t), detail: (g.spaceOf(t)) !== here ? spaceName(t) : g.hostOf(t.url) });
+    if (query === '' || query === '/') {
+      return g
+        .tabsIn(g.spaceId())
+        .filter((t) => t.id !== go.active)
+        .slice(0, 6)
+        .map((t) => ({ kind: 'tab', section: 'Tabs', tab: t, label: tabLabel(t), detail: g.hostOf(t.url), row: { kind: 'tab', tab: t.id } }));
     }
-    if (words.length) {
-      for (const a of (go.actions || []).filter((a) => matches(a.title)).slice(0, actionsOnly ? 12 : 3)) {
-        out.push({ kind: 'action', section: 'Actions', action: a, label: a.title, detail: keyLabel(go, a.id) });
-      }
-    }
-    if (!actionsOnly && query) {
-      const open = new Set(go.tabs.map((t) => t.url));
-      for (const h of history.filter((h) => !open.has(h.url)).slice(0, 4)) out.push({ kind: 'visit', section: 'History', url: h.url, label: h.title || h.url, detail: h.title ? h.url : '' });
-      const goRow = { kind: 'go', section: address ? 'Open' : 'Search', url: query, label: address ? query : `Search for "${query}"` };
-      // An address goes first; words look among the tabs and actions first.
-      if (address || out.length === 0) out.unshift(goRow);
-      else out.push(goRow);
-    }
-    return out;
+    // Glide's own order: words look among the tabs, history and actions first, so the
+    // search Go puts first goes last when anything else matched.
+    const ordered = list.length > 1 && list[0].kind === 'search' ? [...list.slice(1), list[0]] : list;
+    return ordered.map((r) => ({
+      kind: kinds[r.kind],
+      section: sections[r.kind],
+      row: r,
+      url: r.url,
+      // A tab of another window isn't among this window's: it shows without its icon.
+      tab: r.kind === 'tab' ? go.tabs.find((t) => t.id === r.tab) || { id: r.tab, url: r.url, title: r.title } : null,
+      label: r.kind === 'search' ? `Search for "${r.title}"` : r.title,
+      detail: r.kind === 'search' || r.kind === 'address' ? '' : r.detail,
+    }));
   });
 
   $effect(() => {
@@ -56,17 +55,31 @@
   function oninput() {
     bar.typed = true;
     chosen = 0;
-    history = [];
-    if (query && !query.startsWith('/')) send({ t: 'suggest', id: ++asked, text: query });
+    list = [];
+    // A leading / lists only actions.
+    if (query.startsWith('/')) {
+      if (query.length > 1) suggest(++asked, query.slice(1), ['action']);
+    } else if (query) suggest(++asked, query);
   }
 
+  // Go runs the row, except where Glide places it itself: beside the active tab in a split,
+  // or as a new tab in the Space shown.
   function run(row, aside) {
-    if (!row) return;
-    if (row.kind === 'tab') send({ t: 'activateTab', id: row.tab.id });
-    else if (row.kind === 'action') send({ t: 'run', text: row.action.id });
-    else if (aside && activeTab(go).id) g.openInSplit(row.url);
-    else if (bar.mode === 'address' && activeTab(go).id) send({ t: 'navigate', text: row.url });
-    else send({ t: 'newTab', workspace: g.spaceId(), text: row.url });
+    if (!row) {
+      // Enter before Go's list has come: what was typed goes as it is, and Go reads it as
+      // an address or a search.
+      if (!query || query.startsWith('/')) return;
+      if (aside && activeTab(go).id) g.openInSplit(query);
+      else if (bar.mode === 'address' && activeTab(go).id) send({ t: 'navigate', text: query });
+      else send({ t: 'newTab', workspace: g.spaceId(), text: query });
+      close();
+      return;
+    }
+    const r = row.row;
+    if (r.kind === 'tab' || r.kind === 'action') chooseSuggestion(r);
+    else if (aside && activeTab(go).id) g.openInSplit(r.url);
+    else if (bar.mode === 'address' && activeTab(go).id) chooseSuggestion(r);
+    else send({ t: 'newTab', workspace: g.spaceId(), text: r.url });
     close();
   }
 
@@ -91,7 +104,7 @@
   }
 
   export function suggestions(m) {
-    if (m.id === asked) history = m.items || [];
+    if (m.id === asked) list = m.items || [];
   }
 
   const icons = { tab: 'tab', action: 'bolt', visit: 'clock', go: 'globe' };
