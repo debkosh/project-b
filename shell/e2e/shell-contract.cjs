@@ -98,7 +98,6 @@ const noEmptyStateYet = {
 // The shells that don't draw our tabs' title yet, and who brings it to each: their
 // owners. Rule 19 holds every other shell to it.
 const noTitleYet = {
-  standard: 'r5, the standard shell\'s session, brings it',
   glide: 'r6 brings it',
   'mobile-native': 'r8, the native mobile shell\'s session, brings it',
   terminal: 'r4 brings it',
