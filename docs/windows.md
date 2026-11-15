@@ -72,7 +72,10 @@ front.
 ## Behaviour, as decided
 
 - A new window (Cmd+N) starts with one new tab, and opens a little down and right of the
-  window in front.
+  window in front. With a shell that takes New Tab (`"takes"` in the registry, as the
+  standard shell does for its box), it starts with no tabs, and so does the app's first
+  window: the shell shows its own way to a tab there (the owner, 2026-11-16: "yes on open
+  no tab page created").
 - A window may have no tabs (2026-11-14, [below](#a-window-with-no-tabs)): closing its last
   tab leaves it open, and Close Tab then closes it.
 - Closing a profile's last window quits its process.

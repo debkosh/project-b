@@ -226,7 +226,9 @@ func Start(e engine.Engine, cfg Config) *App {
 	}
 
 	a.History.Load(nil)
-	a.Tabs.Create(first)
+	if !a.startsEmpty() {
+		a.Tabs.Create(first)
+	}
 	a.Update.Start()
 	return a
 }
@@ -306,6 +308,10 @@ func (a *App) openWindow() engine.WindowID {
 	a.Tabs.AddWindow(w)
 	return w
 }
+
+// startsEmpty says whether a window opens with no tabs, at the app's start and for New
+// Window: when the profile's shell takes New Tab, it shows its own way to a tab there.
+func (a *App) startsEmpty() bool { return shells.Takes(a.Prefs.Shell(), "tab.new") }
 
 // NewWindow opens a window with one tab, in the first workspace, and returns both: a new
 // tab, or one loading u when it isn't "".
