@@ -409,6 +409,15 @@ const stopServer = lib.stop;
   await mock.getByRole('button', { name: 'Favicon' }).click();
   await ui.locator('[role=tab][aria-selected=true] img').waitFor();
   check('the favicon the page gives shows on its row only', (await ui.locator('[role=tab] img').count()) === 1);
+  // Go's tab list carries no favicons: another tab made active, a list without them, leaves
+  // the icon where it was.
+  const iconRow = await ui.locator('[role=tab][aria-selected=true]').getAttribute('data-tab');
+  await ui.locator('[role=tab][aria-selected=false]').first().click();
+  await shellFrame().waitForFunction((id) => document.querySelector(`[role=tab][data-tab="${id}"]`).getAttribute('aria-selected') === 'false', iconRow);
+  await settle(page);
+  check('a favicon stays when the tab list changes', (await ui.locator(`[role=tab][data-tab="${iconRow}"] img`).count()) === 1);
+  await ui.locator(`[role=tab][data-tab="${iconRow}"]`).click();
+  await shellFrame().waitForFunction((id) => document.querySelector(`[role=tab][data-tab="${id}"]`).getAttribute('aria-selected') === 'true', iconRow);
   await visit('https://example.org/', 'https://example.org/');
   await shellFrame().waitForFunction(() => document.querySelectorAll('[role=tab] img').length === 0);
   check('a new page drops the old favicon', true);
