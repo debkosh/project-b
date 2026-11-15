@@ -4,7 +4,8 @@
 
   // A menu at a point, over a cover that takes every other press and closes it: {x, y,
   // label, items}, or {anchor, ...} to open under or over an element. Up and Down move,
-  // Enter chooses, Escape closes.
+  // Enter chooses, Escape closes. A press on a page goes to the page, not the cover, so the
+  // shell losing the keyboard closes it too.
   let { menu } = $props();
   let box = $state();
   let left = $state(0);
@@ -51,6 +52,7 @@
   }
 </script>
 
+<svelte:window onblur={dismiss} />
 <div class="cover" use:shell role="presentation" onpointerdown={dismiss} oncontextmenu={(e) => e.preventDefault()}></div>
 <div bind:this={box} class="menu" use:shell role="menu" aria-label={menu.label} tabindex="-1" style:left="{left}px" style:top="{top}px" {onkeydown}>
   {#each items as item, i (i)}
