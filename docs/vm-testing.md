@@ -236,7 +236,7 @@ release. Run it with the older release's DMG:
 The Show window regions flag ([windows.md](windows.md#seeing-the-regions)) gets a run of its
 own: the app started with `--pb-show-regions` shows the drag, shell, page and window-button
 outlines in their colours with the tabs on the side, the drag, shell and page ones with the
-tabs on top, and the settings page's only while it is open. With the outlines over
+tabs on top, and the settings tab outlined as a page, like any tab. With the outlines over
 everything, the window still drags from the top row's gaps and the top edge, not
 from the empty sidebar, and a click on the layout button still reaches the shell. Each colour counts as
 seen at more than 20 pixels within 24 of it. The shots `regions-side`, `regions-top` and
