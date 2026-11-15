@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue';
-import { send, state, tabLabel, workspaceOf } from '@/sdk/vue.js';
+import { openPin, send, state, tabLabel, unpin, workspaceOf } from '@/sdk/vue.js';
 import { shown } from '@/keys.js';
 import { entries, groupLabel } from './groups.js';
 import { dragEnd, dragOver, dragStart, drop, dropClass } from './drag.js';
@@ -8,7 +8,9 @@ import { openMenu } from './menu.js';
 import { openBox, view, waiting, workspaces } from './state.js';
 import WorkspaceButton from './WorkspaceButton.vue';
 
-// The list, flat: a group's header, then its tabs, which carry the group for their rule.
+// The list, flat: the pins and a rule under them, then a group's header and its tabs,
+// which carry the group for their rule.
+const key = (r) => (r.pinsEnd ? 'pins-end' : r.header ? 'g' + r.header.id : r.tab ? r.tab.id : 'p' + r.pin.id);
 const rows = computed(() =>
   entries(state, view.workspace).flatMap((e) => (e.group ? [{ header: e.group }, ...e.tabs.map((tab) => ({ tab, group: e.group }))] : [e])),
 );
@@ -25,9 +27,30 @@ const rows = computed(() =>
         <span v-if="state.keys['tab.new']" class="hint" aria-hidden="true">{{ shown(state.keys['tab.new'], state.platform) }}</span>
       </button>
       <div class="tabs" role="tablist" aria-label="Open tabs">
-        <template v-for="r in rows" :key="r.header ? 'g' + r.header.id : r.tab.id">
+        <template v-for="r in rows" :key="key(r)">
+        <div v-if="r.pinsEnd" class="pins-end" role="separator"></div>
+        <!-- A pin with no tab here: muted, as a tab not loaded; a press opens its tab, and its
+             × unpins it. -->
+        <div
+          v-else-if="r.pin && !r.tab"
+          class="row tab pin-closed"
+          role="button"
+          tabindex="0"
+          :data-pin="r.pin.id"
+          :title="r.pin.title || r.pin.url"
+          @click="openPin(r.pin.id)"
+          @keydown.enter="openPin(r.pin.id)"
+        >
+          <span class="icon">
+            <img v-if="r.pin.favicon" :src="r.pin.favicon" alt="" width="16" height="16" />
+          </span>
+          <span class="title muted">{{ r.pin.title || r.pin.url }}</span>
+          <button class="close" type="button" :aria-label="`Unpin ${r.pin.title || r.pin.url}`" title="Unpin" @click.stop="unpin(r.pin.id)">
+            <svg width="9" height="9" viewBox="0 0 9 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M7.43.9.75 7.58M.9.75l6.68 6.68"/></svg>
+          </button>
+        </div>
         <button
-          v-if="r.header"
+          v-else-if="r.header"
           type="button"
           class="row group"
           :data-group="r.header.id"
@@ -44,7 +67,7 @@ const rows = computed(() =>
         <div
           v-else
           class="row tab"
-          :class="[{ active: r.tab.id === state.active, grouped: r.group }, dropClass(r.tab.id)]"
+          :class="[{ active: r.tab.id === state.active, grouped: r.group, pinned: r.pin }, dropClass(r.tab.id)]"
           :style="r.group ? { '--group': r.group.color } : null"
           role="tab"
           :data-tab="r.tab.id"
@@ -175,6 +198,13 @@ const rows = computed(() =>
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+.pins-end {
+  flex: none;
+  height: 1px;
+  margin: 2px 6px;
+  background: var(--line);
 }
 
 .title.muted {
