@@ -1,6 +1,6 @@
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
-import { activeTab, chooseSuggestion, focusPage, send, state, suggest, tabLabel } from '@/sdk/vue.js';
+import { activeTab, bookmark, chooseSuggestion, focusPage, isBookmarked, send, state, suggest, tabLabel } from '@/sdk/vue.js';
 import SuggestionList from './SuggestionList.vue';
 import { hasSite, openSiteSettings, promptFor } from '@/sdk/sites.js';
 import PermissionPrompt from '@/ui/PermissionPrompt.vue';
@@ -174,6 +174,8 @@ function follow() {
 }
 watch(() => state.active, follow);
 onMounted(follow);
+// The star: the page shown is bookmarked, or not.
+const starred = computed(() => isBookmarked(state, activeTab.value.url));
 </script>
 
 <template>
@@ -241,6 +243,21 @@ onMounted(follow);
       @blur="onBlur"
     />
     <span v-if="status && !ours" class="status">{{ status }}</span>
+    <button
+      v-if="activeTab.url && !ours && !focused"
+      type="button"
+      class="star"
+      :class="{ on: starred }"
+      :aria-label="starred ? 'Remove bookmark' : 'Bookmark this page'"
+      :aria-pressed="starred"
+      :title="starred ? 'Remove bookmark' : 'Bookmark this page'"
+      @mousedown.prevent
+      @click="bookmark(activeTab.url, activeTab.title, !starred)"
+    >
+      <svg width="15" height="15" viewBox="0 0 16 16" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" :fill="starred ? 'currentColor' : 'none'" aria-hidden="true">
+        <path d="M8 1.8l1.9 3.9 4.3.6-3.1 3 .7 4.3L8 11.6l-3.8 2 .7-4.3-3.1-3 4.3-.6z" />
+      </svg>
+    </button>
     <SuggestionList
       v-if="open"
       id="suggestions"
@@ -274,6 +291,28 @@ onMounted(follow);
 
 .field:focus-within {
   box-shadow: var(--focus-ring);
+}
+
+.star {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-right: 2px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--icon);
+  cursor: pointer;
+}
+
+.star:hover {
+  background: var(--accent-tint);
+}
+
+.star.on {
+  color: var(--accent);
 }
 
 input {

@@ -425,3 +425,24 @@ its scroll position and form fields, and a shell's own per-window data.
 **The shell.** Nothing new: it hears the windows and tabs as it does at any start. No rule.
 
 **Android.** The same Go, so a phone's tabs come back after a crash too, in its one window.
+
+## History and Bookmarks
+
+Two pages of ours, each in a tab of ours, one per window, as Settings is: `chrome://history/`
+and `chrome://bookmarks/`, the apps `shell/src/apps/history` and `shell/src/apps/bookmarks`.
+Every page of ours in a tab talks to Go over one channel, `PB_EVENT_PAGE_MESSAGE` with the
+page's name one way and the engine's `send_to_page` the other; Go hands each message to that
+page's manager.
+
+**History** shows the pages visited, the latest first and grouped by day, a hundred at a time
+with Show more, and a search. A row opens its page in a new tab beside, can be removed, and
+Clear history takes away the last hour, today, or everything. Go keeps one entry per address;
+a removal is written to the history file as a line that takes it out, so it stays gone after a
+restart. Show All History (Cmd+Y) is in the History menu.
+
+**Bookmarks** are flat: a title and an address each, newest first, in the profile's
+`bookmarks.json`. The address bar's star bookmarks the page shown, or takes its bookmark away;
+shells have `state.bookmarks` and `bookmark(url, title, on)` for it. Bookmark This Page (Cmd+D, in
+every shell) and Bookmark Manager (Option+Cmd+B) are in the Bookmarks menu. The page lists them with a
+search, and each can be renamed, re-addressed or removed; an address bookmarked twice is
+refused. Folders, import, and bookmarks in the suggestion list are later steps.

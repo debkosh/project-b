@@ -83,6 +83,9 @@ export const state = {
   // total, paused}: state is progress, done, cancelled or failed, and total -1 when
   // unknown. downloads.js acts on one (docs/daily-driver.md).
   downloads: [],
+  // The profile's bookmarks, newest first, each {id, title, url, added}: a shell shows a
+  // star on an address that is one, and bookmark() sets it.
+  bookmarks: [],
   // The search engine typed words go to, {id, name}, for a field's placeholder.
   searchEngine: { id: '', name: '' },
   // The dialogs pages wait on, oldest first, each {id, tab, kind, title, message,
@@ -113,7 +116,7 @@ export const state = {
 
 // The messages that are only state: each sets the fields it carries, whole. The one
 // exception is tabs, whose tabs carry no favicon: each keeps the one it had (below).
-const updates = new Set(['theme', 'windowColor', 'controls', 'keys', 'workspaces', 'update', 'crashLog', 'tabLayout', 'addressBarPosition', 'extensions', 'profileData', 'contextMenu', 'downloads', 'dialogs', 'prefs', 'find', 'pageFullScreen', 'searchEngine', 'permissionPrompts']);
+const updates = new Set(['theme', 'windowColor', 'controls', 'keys', 'workspaces', 'update', 'crashLog', 'tabLayout', 'addressBarPosition', 'extensions', 'profileData', 'contextMenu', 'downloads', 'dialogs', 'prefs', 'find', 'pageFullScreen', 'searchEngine', 'permissionPrompts', 'bookmarks']);
 
 const listeners = [];
 
