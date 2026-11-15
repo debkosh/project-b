@@ -100,7 +100,6 @@ const noEmptyStateYet = {
 const noTitleYet = {
   glide: 'r6 brings it',
   'mobile-native': 'r8, the native mobile shell\'s session, brings it',
-  terminal: 'r4 brings it',
   fox: 'r4 brings it',
   minimal: 'r4 brings it',
 };
