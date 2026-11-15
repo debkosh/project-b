@@ -444,6 +444,10 @@ func (a *App) LoadProgressChanged(tab engine.TabID, progress float64) {
 
 func (a *App) PageCrashed(tab engine.TabID) { a.Tabs.HandlePageCrashed(tab) }
 
+func (a *App) CertificateError(tab engine.TabID, e engine.CertificateError) bool {
+	return a.Tabs.HandleCertificateError(tab, e)
+}
+
 func (a *App) ConnectionChanged(tab engine.TabID, c engine.Connection) {
 	a.Tabs.HandleConnectionChanged(tab, c)
 }

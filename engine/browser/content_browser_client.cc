@@ -10,11 +10,15 @@
 #include "content/public/browser/navigation_throttle_registry.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/service_worker_version_base_info.h"
-#include "mojo/public/cpp/bindings/binder_map.h"
+#include "content/public/browser/certificate_request_result_type.h"
 #include "content/public/browser/web_contents.h"
+#include "mojo/public/cpp/bindings/binder_map.h"
+#include "net/base/net_errors.h"
 #include "net/http/http_request_headers.h"
 #include "services/network/public/mojom/websocket.mojom.h"
 #include "project_b/engine/common/block_rules.h"
+#include "project_b/engine/abi/pb_abi.h"
+#include "project_b/engine/browser/hooks.h"
 #include "project_b/engine/browser/browser_main_parts.h"
 #include "project_b/engine/browser/engine.h"
 #include "project_b/engine/browser/events.h"
@@ -110,6 +114,44 @@ void ContentBrowserClient::CreateThrottlesForNavigation(
     content::NavigationThrottleRegistry& registry) {
   registry.AddThrottle(std::make_unique<events::Gate>(registry));
   registry.AddThrottle(std::make_unique<NavigationThrottleHooks>(registry));
+}
+
+// Content's certificate errors as Go names them; the rest are "invalid".
+void ContentBrowserClient::AllowCertificateError(
+    content::WebContents* web_contents,
+    int cert_error,
+    const net::SSLInfo& ssl_info,
+    const GURL& request_url,
+    bool is_primary_main_frame_request,
+    bool strict_enforcement,
+    base::OnceCallback<void(content::CertificateRequestResultType)> callback) {
+  std::string reason = "invalid";
+  switch (cert_error) {
+    case net::ERR_CERT_DATE_INVALID:
+      reason = "expired";
+      break;
+    case net::ERR_CERT_AUTHORITY_INVALID:
+      reason = "untrusted";
+      break;
+    case net::ERR_CERT_COMMON_NAME_INVALID:
+      reason = "wrong-host";
+      break;
+    case net::ERR_CERT_REVOKED:
+      reason = "revoked";
+      break;
+  }
+  hooks::Args args;
+  args.Int(web_contents ? hooks::TabOf(web_contents) : 0);
+  args.Str(request_url.spec());
+  args.Str(reason);
+  args.Bool(is_primary_main_frame_request);
+  // A revoked certificate, and a site that demands a valid one, can't be passed.
+  args.Bool(!strict_enforcement && cert_error != net::ERR_CERT_REVOKED);
+  PBValue allow;
+  bool go = hooks::Ask(PB_EVENT_CERTIFICATE_ERROR, args, &allow) && allow.i;
+  std::move(callback).Run(
+      go ? content::CERTIFICATE_REQUEST_RESULT_TYPE_CONTINUE
+         : content::CERTIFICATE_REQUEST_RESULT_TYPE_DENY);
 }
 
 // What Chrome reports, "Chrome/155.0.8059.41": DevTools' /json/version and

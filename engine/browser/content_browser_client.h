@@ -93,6 +93,17 @@ class ContentBrowserClient : public ContentBrowserClientHooks {
       cert_verifier::mojom::CertVerifierCreationParams*
           cert_verifier_creation_params) override;
   std::vector<base::FilePath> GetNetworkContextsParentDirectory() override;
+  // A certificate error: Go says whether the request goes through, in our own terms
+  // (docs/daily-driver.md).
+  void AllowCertificateError(
+      content::WebContents* web_contents,
+      int cert_error,
+      const net::SSLInfo& ssl_info,
+      const GURL& request_url,
+      bool is_primary_main_frame_request,
+      bool strict_enforcement,
+      base::OnceCallback<void(content::CertificateRequestResultType)> callback)
+      override;
 
 };
 

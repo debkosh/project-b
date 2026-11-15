@@ -52,6 +52,8 @@ type Tab struct {
 	// one line, when there is something to say (docs/daily-driver.md).
 	Connection     string `json:"connection,omitempty"`
 	ConnectionNote string `json:"connectionNote,omitempty"`
+	// Notice is what a shell draws over its page while it has nothing to show (notice.go).
+	Notice *Notice `json:"notice,omitempty"`
 	// Group is the id of the tab group it is in, "" for none (groups.go).
 	Group string `json:"group,omitempty"`
 
@@ -116,6 +118,10 @@ type Manager struct {
 	onMoved    []func(tab engine.TabID, from engine.WindowID, fromIndex int, to engine.WindowID)
 	// groupSeq numbers the groups, for their ids.
 	groupSeq int
+	// certificates is each tab's certificate error, until it navigates again; passed is
+	// the hosts whose certificate errors the person chose to pass, until the app quits.
+	certificates map[engine.TabID]*certificate
+	passed       map[string]bool
 }
 
 // window is one window's tabs: their order, the active one, and recent use.
@@ -133,7 +139,7 @@ type window struct {
 
 // New returns a manager with no windows, on the profile's list of workspaces.
 func New(eng engine.Engine, w Workspaces) *Manager {
-	return &Manager{eng: eng, workspaces: w, search: defaultEngine().For, tabs: map[engine.TabID]*Tab{}, windowOf: map[engine.TabID]engine.WindowID{}, windows: map[engine.WindowID]*window{}}
+	return &Manager{eng: eng, workspaces: w, search: defaultEngine().For, tabs: map[engine.TabID]*Tab{}, windowOf: map[engine.TabID]engine.WindowID{}, windows: map[engine.WindowID]*window{}, certificates: map[engine.TabID]*certificate{}, passed: map[string]bool{}}
 }
 
 // defaultEngine is the engine a manager searches with until SetSearch says another.
@@ -199,6 +205,7 @@ func (m *Manager) RemoveWindow(w engine.WindowID) {
 	for _, id := range m.windows[w].order {
 		t := *m.tabs[id]
 		delete(m.tabs, id)
+		delete(m.certificates, id)
 		delete(m.windowOf, id)
 		m.eng.CloseTab(id)
 		m.closed(t)
@@ -449,6 +456,7 @@ func (m *Manager) close(id engine.TabID, recent bool) {
 	i := m.detach(id)
 	t := *m.tabs[id]
 	delete(m.tabs, id)
+	delete(m.certificates, id)
 	m.eng.CloseTab(id)
 	m.closed(t)
 	m.left(w, id, i, false, recent)
@@ -821,6 +829,7 @@ func (m *Manager) HandleNavigationStarting(id engine.TabID, nav int64, u string)
 	}
 	t.started = nav
 	t.URL, t.Error, t.ErrorCode, t.Crashed = address(u), "", "", false
+	delete(m.certificates, id)
 	if t.Page == "" && !m.allowed(u) {
 		t.Blocked, t.Loading = true, false
 		m.changed(t)
@@ -965,6 +974,7 @@ func (m *Manager) HandlePageCrashed(id engine.TabID) {
 }
 
 func (m *Manager) changed(t *Tab) {
+	t.Notice = m.noticeOf(t)
 	for _, f := range m.onChanged {
 		f(*t)
 	}

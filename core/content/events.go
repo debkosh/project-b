@@ -39,6 +39,7 @@ const (
 	eventNotification   Hook = 42
 	eventNotifyClicked  Hook = 43
 	eventConnection     Hook = 44
+	eventCertificate    Hook = 45
 )
 
 // dialogKinds name PBDialogKind's values.
@@ -72,6 +73,7 @@ var eventNames = map[Hook]string{
 	eventNotification:   "engine.NotificationShown",
 	eventNotifyClicked:  "engine.NotificationClicked",
 	eventConnection:     "engine.ConnectionChanged",
+	eventCertificate:    "engine.CertificateError",
 }
 
 // Events is what the adapter itself reports. Always on; there is nothing to subscribe.
@@ -102,6 +104,7 @@ type Events struct {
 	OnNotification    func(n engine.Notification) bool
 	OnNotifyClicked   func(id string)
 	OnConnection      func(tab engine.TabID, c engine.Connection)
+	OnCertificate     func(tab engine.TabID, e engine.CertificateError) bool
 
 	// more are the events a build tag adds, by number.
 	more map[Hook]func(r *reader) (Value, bool)
@@ -246,6 +249,13 @@ func (e *Events) dispatch(id Hook, r *reader) (Value, bool) {
 		if e.OnConnection != nil {
 			e.OnConnection(engine.TabID(r.int()), engine.Connection{State: engine.ConnectionState(r.int()), Reason: r.str()})
 		}
+	case eventCertificate:
+		// With no one to ask, the engine refuses it.
+		if e.OnCertificate == nil {
+			return Value{}, false
+		}
+		tab := engine.TabID(r.int())
+		return boolValue(e.OnCertificate(tab, engine.CertificateError{URL: r.str(), Reason: r.str(), MainFrame: r.bool(), Passable: r.bool()})), true
 	case eventNotifyClicked:
 		if e.OnNotifyClicked != nil {
 			e.OnNotifyClicked(r.str())

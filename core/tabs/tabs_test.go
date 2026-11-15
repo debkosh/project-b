@@ -14,6 +14,8 @@ type fakeEngine struct {
 	engine.Engine
 	next   engine.TabID
 	closed []engine.TabID
+	// reloads counts the reloads asked for.
+	reloads int
 	// in is the workspace each tab was made in, by its id.
 	in map[engine.TabID]string
 	// ours are the tabs made in our pages' context.
@@ -50,6 +52,8 @@ func (f *fakeEngine) DuplicateTab(engine.TabID) engine.TabID { f.next++; return 
 func (f *fakeEngine) WriteClipboard(string)                  {}
 func (f *fakeEngine) CloseTab(id engine.TabID)               { f.closed = append(f.closed, id) }
 func (f *fakeEngine) LoadURL(engine.TabID, string)           {}
+func (f *fakeEngine) Reload(engine.TabID)                    { f.reloads++ }
+func (f *fakeEngine) GoBack(engine.TabID)                    {}
 
 // work is the first workspace in the tests' list.
 const work = "0a1b2c3d"
