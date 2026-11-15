@@ -18,6 +18,9 @@ type Entry struct {
 	Title     string `json:"title"`
 	Visits    int    `json:"visits"`
 	LastVisit int64  `json:"lastVisit"`
+	// Removed is a line that takes the address out of the history, as Delete and Clear
+	// write it to the file; no entry in memory has it.
+	Removed bool `json:"removed,omitempty"`
 
 	// What a search compares, lowercased once when the entry is stored, not on each key:
 	// the address, the address without its scheme and www., and the title.
@@ -172,6 +175,42 @@ func (m *Manager) best(limit int, score func(*Entry) int) []Entry {
 	return out
 }
 
+// List is what the history page shows: the pages visited, the latest first, those whose
+// address or title holds text when it isn't "", visited before the Unix time before when it
+// isn't 0, at most limit of them.
+func (m *Manager) List(text string, before int64, limit int) []Entry {
+	q := strings.ToLower(strings.TrimSpace(text))
+	return m.best(limit, func(e *Entry) int {
+		if before != 0 && e.LastVisit >= before || q != "" && !strings.Contains(e.lowURL, q) && !strings.Contains(e.lowTitle, q) {
+			return 0
+		}
+		// The latest first: best puts the higher score first, then the later visit.
+		return 1
+	})
+}
+
+// Delete takes the addresses out of the history.
+func (m *Manager) Delete(urls ...string) {
+	for _, u := range urls {
+		if _, ok := m.entries[u]; ok {
+			delete(m.entries, u)
+			m.save(&Entry{URL: u, Removed: true})
+		}
+	}
+}
+
+// Clear takes out every page last visited at or after the Unix time since, or every page
+// for 0.
+func (m *Manager) Clear(since int64) {
+	var gone []string
+	for u, e := range m.entries {
+		if e.LastVisit >= since {
+			gone = append(gone, u)
+		}
+	}
+	m.Delete(gone...)
+}
+
 // Close waits for pending writes.
 func (m *Manager) Close() {
 	close(m.writes)
@@ -245,7 +284,12 @@ func readAll(path string) map[string]*Entry {
 	sc.Buffer(make([]byte, 64*1024), 8*1024*1024)
 	for sc.Scan() {
 		var e Entry
-		if json.Unmarshal(sc.Bytes(), &e) == nil && e.URL != "" {
+		if json.Unmarshal(sc.Bytes(), &e) != nil || e.URL == "" {
+			continue
+		}
+		if e.Removed {
+			delete(out, e.URL)
+		} else {
 			out[e.URL] = &e
 		}
 	}
