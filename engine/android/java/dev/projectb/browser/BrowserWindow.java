@@ -47,6 +47,8 @@ final class BrowserWindow extends FrameLayout {
     private final float density;
 
     private long nativeWindow;
+    // Where the native compositor draws.
+    private SurfaceView surface;
     // The view the shell is in, which refuses a touch the layout says is the page's.
     private ShellHolder shellHolder;
     // The shell: a page's ContentView, or a native shell drawn by Android's own views
@@ -83,7 +85,7 @@ final class BrowserWindow extends FrameLayout {
         nativeWindow =
                 BrowserWindowJni.get()
                         .start(this, windowAndroid, goTable, processAgeMs, blockedHosts);
-        SurfaceView surface = new SurfaceView(getContext());
+        surface = new SurfaceView(getContext());
         surface.setZOrderMediaOverlay(true);
         // A SurfaceView defaults to 16 bits per pixel.
         surface.getHolder().setFormat(PixelFormat.OPAQUE);
@@ -200,6 +202,16 @@ final class BrowserWindow extends FrameLayout {
             }
         }
         return false;
+    }
+
+    /**
+     * After the GPU process died: Android destroys a hidden SurfaceView's surface and makes
+     * another when it shows again, and the compositor takes that one in surfaceChanged.
+     */
+    @CalledByNative
+    private void recreateSurface() {
+        surface.setVisibility(View.GONE);
+        surface.setVisibility(View.VISIBLE);
     }
 
     @CalledByNative
