@@ -5,6 +5,20 @@
 //
 // Threading: every Engine call and every Listener call happens on the main thread.
 // A worker goroutine that finishes something uses Post to get back onto it.
+//
+// Start-up. An engine owns the process and its run loop, and calls the app's core in this
+// order (core/cmd/lib, PBGoCalls in engine/abi/pb_abi.h):
+//
+//  1. claim_profile, with the command line's --root, --profile, --user-data-dir and
+//     --picker: the core chooses the profile and answers with the folder this copy keeps
+//     its files in, or none, when another copy has it and has been handed the addresses,
+//     and this copy then quits.
+//  2. launch_switches, with that folder: the switches the profile's flags ask for, which
+//     the engine applies as it starts.
+//  3. timeline_start, then start, handing over the engine's calls: the core opens the
+//     profile (Engine.OpenProfile) and its first windows, or the picker's window.
+//  4. run_posted, on the main thread, each time Engine.Post asks for a wakeup.
+//  5. stop, as the app ends.
 package engine
 
 import (
@@ -142,6 +156,11 @@ const (
 
 // Engine is what the app can ask a browser engine to do.
 type Engine interface {
+	// OpenProfile makes the profile's own storage, its cookies, site data and cache, in its
+	// folder dir, where the engine keeps its files in a folder of its own. The app calls it
+	// once, as this copy becomes the profile's, before it asks for any tab; a copy that
+	// starts on the picker calls it in the copy it starts for the chosen profile.
+	OpenProfile(dir string)
 	// CreateTab makes a hidden tab in a workspace, by the app's id for it: "" is the
 	// profile's own storage, which a profile's first workspace, Main, has. A window's layout
 	// shows it. A workspace keeps its own cookies and site storage, and a tab stays in its
@@ -315,6 +334,9 @@ type Listener interface {
 
 	// SettingsMessage is one message from a window's settings page.
 	SettingsMessage(w WindowID, msg []byte)
+	// PickerMessage is one message from the picker's page, in a copy that hasn't chosen
+	// its profile.
+	PickerMessage(w WindowID, msg []byte)
 
 	// WindowClosed says a window closed, asked by the app or by its own close button.
 	// Its shell and settings pages are gone with it; its tabs are still there.

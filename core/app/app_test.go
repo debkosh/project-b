@@ -67,6 +67,17 @@ func startWith(t *testing.T, cfg app.Config) *rig {
 	return r
 }
 
+// The app opens its profile in the engine as it starts, once, with the profile's folder.
+func TestStartOpensTheProfileInTheEngine(t *testing.T) {
+	dir := t.TempDir()
+	r := start(t, dir)
+	opened := make(chan []string)
+	r.e.Post(func() { opened <- r.e.Profiles() })
+	if got := <-opened; !reflect.DeepEqual(got, []string{dir}) {
+		t.Fatalf("opened %q, want %q", got, dir)
+	}
+}
+
 func (r *rig) shell(cmd string) { r.e.Post(func() { r.a.ShellMessage(1, []byte(cmd)) }) }
 
 // show reports a layout from the shell that shows one tab, as the shell does for the

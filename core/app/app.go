@@ -94,6 +94,7 @@ var starters []func(a *App, e engine.Engine, cfg Config)
 // Start builds everything, on the main thread. The caller then gives the returned App
 // to the engine as its listener.
 func Start(e engine.Engine, cfg Config) *App {
+	e.OpenProfile(cfg.ProfileDir)
 	a := &App{profiles: cfg.Profiles}
 	a.Crash = crash.New(cfg.ProfileDir, cfg.CrashReports)
 	a.Crash.System = cfg.System
@@ -430,6 +431,9 @@ func (a *App) MenuList(name string) engine.Menu { return a.Commands.ListItems(na
 func (a *App) OSBindings(byTitle map[string]engine.Key) { a.Commands.OSBindings(byTitle) }
 
 func (a *App) SettingsMessage(w engine.WindowID, msg []byte) { a.Settings.Handle(w, msg) }
+
+// PickerMessage is the picker's, which a copy with a profile never shows.
+func (a *App) PickerMessage(engine.WindowID, []byte) {}
 
 func (a *App) WindowChanged(w engine.WindowID, s engine.WindowState) {
 	a.Window.HandleWindowChanged(w, s)

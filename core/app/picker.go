@@ -78,8 +78,8 @@ func (p *Picker) profiles() []profiles.Profile {
 	return list
 }
 
-// Message is a message from the picker page.
-func (p *Picker) Message(w engine.WindowID, msg []byte) {
+// PickerMessage is a message from the picker page.
+func (p *Picker) PickerMessage(w engine.WindowID, msg []byte) {
 	var c pickerCommand
 	if err := json.Unmarshal(msg, &c); err != nil {
 		timeline.Warnf("picker: a bad message: %v", err)

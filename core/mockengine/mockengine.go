@@ -86,9 +86,11 @@ type Engine struct {
 	nextNav  int64
 	tabs     map[engine.TabID]*tab
 	// first is the workspace the app last said is first; erased are the erases it asked
-	// for, in order. The mock makes no tab on its own, so only tests read them.
-	first  string
-	erased []Erase
+	// for, in order. The mock makes no tab on its own, so only tests read them, as they do
+	// the profile folders the app opened.
+	first    string
+	erased   []Erase
+	profiles []string
 
 	// Written on the main thread, read by the dev server's goroutines.
 	mu         sync.Mutex
@@ -161,6 +163,13 @@ func (e *Engine) Run() {
 		fn()
 	}
 }
+
+// OpenProfile records the profile's folder. The mock keeps no site data, so the folder
+// is only for tests.
+func (e *Engine) OpenProfile(dir string) { e.profiles = append(e.profiles, dir) }
+
+// Profiles are the folders the app opened, in order. On the main thread.
+func (e *Engine) Profiles() []string { return e.profiles }
 
 // SetSwitches takes the switches the app launches with, from the flags saved in the
 // profile, as the real engine finds them on its command line before content starts.

@@ -215,7 +215,7 @@ func main() {
 		win := windowOf(r)
 		e.Post(func() {
 			if e.Open(win) && e.PageOf(win) == engine.PagePicker {
-				p.Message(win, msg)
+				p.PickerMessage(win, msg)
 			}
 		})
 	})
