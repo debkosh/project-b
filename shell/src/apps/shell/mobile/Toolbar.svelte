@@ -1,12 +1,14 @@
 <script>
-  import { drag, shell } from '@/sdk/svelte.svelte.js';
+  import { drag, send, shell } from '@/sdk/svelte.svelte.js';
   import Address from './Address.svelte';
   import Icon from './Icon.svelte';
 
   // The one bar: the address pill filling it, the tab count, which opens the switcher, and
   // ⋯, which opens the menu; they stay while the address is edited, so the tabs are a tap
   // away from an empty new tab too. A swipe
-  // sideways along it goes to the tab before or after (onswipe, -1 or 1).
+  // sideways along it goes to the tab before or after (onswipe, -1 or 1). For one of our
+  // tabs, settings, the pill is its title and a close instead, with nothing to type (rule
+  // 19); the field stays, hidden, for the next web tab.
   let { tab, count, top, sheet, onsheet, onswipe, onedit, address = $bindable() } = $props();
   let editing = $state(false);
   let start = null;
@@ -30,10 +32,18 @@
 </script>
 
 <div class="toolbar" role="group" aria-label="Toolbar" class:top use:shell use:drag onpointerdown={down} onpointerup={up} onpointercancel={() => (start = null)}>
-  <Address bind:this={address} {tab} {top} onedit={(on) => {
-    editing = on;
-    onedit(on);
-  }} />
+  {#if tab.page}
+    <div class="ours">
+      <span class="title">{tab.title}</span>
+      <button class="close" aria-label="Close {tab.title}" onclick={() => send({ t: 'closeTab', id: tab.id })}><Icon name="close" size={18} /></button>
+    </div>
+  {/if}
+  <div class="field" class:hidden={tab.page}>
+    <Address bind:this={address} {tab} {top} onedit={(on) => {
+      editing = on;
+      onedit(on);
+    }} />
+  </div>
   <button class="count" aria-label="Tabs" aria-haspopup="dialog" aria-expanded={sheet === 'switcher'} onclick={() => onsheet(sheet === 'switcher' ? '' : 'switcher')}>
     <span>{count > 99 ? ':D' : count}</span>
   </button>
@@ -43,6 +53,54 @@
 </div>
 
 <style>
+  .field {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+  }
+
+  .hidden {
+    display: none;
+  }
+
+  /* Our tab's title in the pill's place, as the pill looks, its close reaching 48px. */
+  .ours {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    height: 40px;
+    padding: 0 6px 0 14px;
+    box-sizing: border-box;
+    border-radius: 20px;
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  .title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    font-size: 14px;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .close {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    margin: -4px -6px -4px 0;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    color: var(--icon);
+  }
+
   .toolbar {
     position: relative;
     z-index: 3;

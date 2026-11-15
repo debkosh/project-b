@@ -708,7 +708,8 @@ address field, and a menu button at the far right, in our tones.
   page; else, on a tab with no history, closes the tab, and the one used before it shows
   (`closeTab` with `then: "recent"`); down to a window with no tabs, which says No tabs
   with New tab (rule 18); and only from there does the app go, as Android's back does.
-  Closing the last tab another way leaves No tabs too.
+  Closing the last tab another way leaves No tabs too. For one of our tabs, settings, the
+  pill is the tab's title with a close, and nothing to type (rule 19).
 - **Find in page**, from the ⋯ menu, puts a find bar in the toolbar's place with the
   keyboard in it: the field with the count at its end, the match before and after, and
   ×, as the back key, closes it. The bars stay while it is open (rule 20).
