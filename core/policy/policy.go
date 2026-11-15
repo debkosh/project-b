@@ -10,6 +10,9 @@ import (
 // Manager holds the current policy.
 type Manager struct {
 	blocked []string
+	// dotted is each blocked host with a dot before it, the suffix its subdomains end in,
+	// made once so a check builds no string.
+	dotted []string
 }
 
 // New returns a manager blocking these hosts and their subdomains.
@@ -18,6 +21,7 @@ func New(blocked []string) *Manager {
 	for _, h := range blocked {
 		if h = strings.ToLower(strings.TrimSpace(h)); h != "" {
 			m.blocked = append(m.blocked, h)
+			m.dotted = append(m.dotted, "."+h)
 		}
 	}
 	return m
@@ -36,8 +40,8 @@ func (m *Manager) IsAllowedURL(raw string) bool {
 	if u.Scheme == "chrome" && host == "shell" {
 		return false
 	}
-	for _, b := range m.blocked {
-		if host == b || strings.HasSuffix(host, "."+b) {
+	for i, b := range m.blocked {
+		if host == b || strings.HasSuffix(host, m.dotted[i]) {
 			return false
 		}
 	}
