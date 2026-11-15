@@ -5,6 +5,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.view.Gravity
+import android.view.View
 import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
@@ -143,13 +144,22 @@ class Strip(context: Context, private val on: Actions) : Bar(context) {
 }
 
 /** The last run's crash, in a line over the toolbar until it is dismissed. */
-class CrashBar(context: Context, private val dismiss: () -> Unit) : Bar(context) {
+class CrashBar(context: Context, private val dismiss: () -> Unit, private val share: (View) -> Unit) : Bar(context) {
     private val text = label(context, 12f, 0).apply { maxLines = 2; setSingleLine(false) }
+    private val shareButton = TextView(context)
     private val button = TextView(context)
 
     init {
         setPadding(dp(16), 1, dp(4), 0)
         addView(text, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        // Share report hands one file with all of it to the phone's share sheet.
+        shareButton.text = "Share report"
+        shareButton.gravity = Gravity.CENTER
+        shareButton.setPadding(dp(12), 0, dp(12), 0)
+        shareButton.isClickable = true
+        shareButton.setOnClickListener { share(it) }
+        asButton(shareButton, "Share report")
+        addView(shareButton, LayoutParams(LayoutParams.WRAP_CONTENT, dp(48)))
         button.text = "Dismiss"
         button.gravity = Gravity.CENTER
         button.setPadding(dp(16), 0, dp(16), 0)
@@ -165,5 +175,6 @@ class CrashBar(context: Context, private val dismiss: () -> Unit) : Bar(context)
         text.setTextColor(palette.text)
         text.text = "Project B crashed last time. The log is at $log"
         button.setTextColor(palette.muted)
+        shareButton.setTextColor(palette.muted)
     }
 }
