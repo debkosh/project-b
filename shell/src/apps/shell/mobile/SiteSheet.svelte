@@ -147,9 +147,10 @@
   .choices button + button {
     border-left: 1px solid var(--line);
   }
+  /* The choice that is on: filled, as the switches beside it are, readable in both themes. */
   .choices button[aria-checked='true'] {
-    background: var(--accent-soft);
-    color: var(--accent);
+    background: var(--accent);
+    color: var(--on-accent);
     font-weight: 600;
   }
   .value {
@@ -160,7 +161,7 @@
     color: var(--icon);
   }
   .value.block {
-    color: var(--danger, #c62828);
+    color: var(--danger);
   }
   .foot {
     display: flex;

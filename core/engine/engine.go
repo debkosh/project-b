@@ -456,11 +456,16 @@ type Listener interface {
 	// True lets the request through; false refuses it.
 	CertificateError(tab TabID, e CertificateError) bool
 
-	// LeavingSite asks about a navigation of tab's page to another site, which the page
+	// LeavingSite asks about a navigation of tab's page to another site, or a popup it
+	// opens on the blank page (url BlankURL), which the page
 	// started: a link, a form, a script, a redirect of one of those. pressed says a press
-	// led to it; from is the page it leaves. Asked before NavigationStarting, which hears
-	// only one this lets go on, so a tab that stays keeps its page as it was.
-	LeavingSite(tab TabID, from, url string, pressed bool) Navigation
+	// led to it; from is the page it leaves. For a new tab the page opens (window.open, a
+	// link to a new tab), opener is the tab whose page asks, and from its page: asked before
+	// the tab is made, tab is opener too; asked as a tab made blank first navigates, tab is
+	// the new one. Else opener is 0.
+	// Asked before NavigationStarting, which hears only one this lets go on, so a tab that
+	// stays keeps its page as it was.
+	LeavingSite(tab TabID, from, url string, pressed bool, opener TabID) Navigation
 
 	// SparksFor is the scripts a frame of tab's runs in the page it is about to show at
 	// url, each in a world of its own: mainFrame says it is the tab's own.

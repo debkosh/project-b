@@ -101,6 +101,8 @@ type App struct {
 	Sites *sites.Manager
 	// Sparks are the person's scripts for pages (docs/site-features.md).
 	Sparks *sparks.Manager
+	// post runs f in the main loop's next turn: the engine's Post.
+	post func(f func())
 	// Session is the profile's windows and tabs as the last run left them, and as they are.
 	Session *session.Manager
 	// Bookmarks is the profile's bookmarks.

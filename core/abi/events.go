@@ -163,7 +163,7 @@ func (e *Events) adapter(id Event, l engine.Listener, r *reader) (Value, bool) {
 		tab := engine.TabID(r.int())
 		return yes(l.CertificateError(tab, engine.CertificateError{URL: r.str(), Reason: r.str(), MainFrame: r.bool(), Passable: r.bool()})), true
 	case LeavingSite:
-		return Value{I: navigationAnswers[l.LeavingSite(engine.TabID(r.int()), r.str(), r.str(), r.bool())]}, true
+		return Value{I: navigationAnswers[l.LeavingSite(engine.TabID(r.int()), r.str(), r.str(), r.bool(), engine.TabID(r.int()))]}, true
 	case SparksFor:
 		scripts := l.SparksFor(engine.TabID(r.int()), r.str(), r.bool())
 		if len(scripts) == 0 {

@@ -230,12 +230,40 @@ func (a *App) siteConnections() map[string]siteConnection {
 
 // LeavingSite carries out the Links to other sites of the page it leaves, from: Allow lets
 // the page go; New tab opens the address in a tab beside it when a press led there; Block,
-// or New tab with no press, keeps the tab where it is.
-func (a *App) LeavingSite(tab engine.TabID, from, url string, pressed bool) engine.Navigation {
+// or New tab with no press, keeps the tab where it is, with nothing shown or kept of the
+// navigation. A new tab the page opens (opener, the tab whose page asks) is a new tab
+// already: New tab lets it go; Block keeps it from opening, asked before it is made (tab is
+// opener), or closes one made blank first and shows its opener again, as if it never opened.
+func (a *App) LeavingSite(tab engine.TabID, from, url string, pressed bool, opener engine.TabID) engine.Navigation {
 	if _, ok := a.Tabs.Get(tab); !ok {
 		return engine.NavigationProceed
 	}
-	switch a.Sites.Value(sites.Origin(from), sites.Links) {
+	links := a.Sites.Value(sites.Origin(from), sites.Links)
+	// The blank page a popup opens on, which Android would load over the page: blocked
+	// under Block, as the popup's own address would be; there is nothing to open beside.
+	if url == engine.BlankURL {
+		if links == sites.Block {
+			return engine.NavigationElsewhere
+		}
+		return engine.NavigationProceed
+	}
+	if opener != 0 {
+		if links != sites.Block {
+			return engine.NavigationProceed
+		}
+		if tab == opener {
+			return engine.NavigationElsewhere
+		}
+		// After the engine has its answer, not inside its question.
+		a.post(func() {
+			a.Tabs.Close(tab)
+			if _, ok := a.Tabs.Get(opener); ok {
+				a.Tabs.Activate(opener)
+			}
+		})
+		return engine.NavigationElsewhere
+	}
+	switch links {
 	case sites.NewTab:
 		if pressed {
 			a.Tabs.OpenFor(tab, url)

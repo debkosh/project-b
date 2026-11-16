@@ -130,7 +130,7 @@ onUnmounted(() => pop());
 }
 
 .ui-site-glyph.insecure {
-  color: var(--danger, #c62828);
+  color: var(--danger);
 }
 
 .ui-site-host {
@@ -197,7 +197,7 @@ onUnmounted(() => pop());
 }
 
 .ui-site-value.block {
-  color: var(--danger, #c62828);
+  color: var(--danger);
 }
 
 .ui-site-foot {
