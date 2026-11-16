@@ -61,76 +61,58 @@ func TestTheShellHearsEachOpenSitesSettingsAndSetsThem(t *testing.T) {
 	}
 }
 
-// Links to other sites: Allow lets the page go; New tab opens a pressed link beside it and
-// keeps the tab; Block, or New tab with no press, keeps the tab and opens nothing.
-func TestLinksToOtherSitesFollowTheSitesSetting(t *testing.T) {
+// Links to other sites holds a page's own navigations, not the person's: under Block, a
+// link or script of the page's to another site goes nowhere and the page stays; one to its
+// own site goes; the address field goes anywhere; a tab the page opens on another site is
+// closed and counted on its opener; and Allow lets the page go anywhere.
+func TestLinksToOtherSitesHoldThePagesOwnNavigations(t *testing.T) {
 	r := start(t, t.TempDir())
 	defer r.stop()
 	r.visit("https://shop.test/")
-	ask := func(pressed bool) (n engine.Navigation, count int) {
-		r.main(func() {
-			n = r.a.LeavingSite(1, "https://shop.test/", "https://elsewhere.test/", pressed, 0)
-			count = len(r.a.Tabs.All())
-		})
-		return
-	}
-	if n, c := ask(true); n != engine.NavigationProceed || c != 1 {
-		t.Fatalf("allow: %v, %d tabs", n, c)
-	}
-	r.main(func() { r.a.Sites.Set("https://shop.test", sites.Links, sites.NewTab) })
-	if n, c := ask(false); n != engine.NavigationElsewhere || c != 1 {
-		t.Fatalf("new tab with no press: %v, %d tabs", n, c)
-	}
-	if n, c := ask(true); n != engine.NavigationElsewhere || c != 2 {
-		t.Fatalf("new tab: %v, %d tabs", n, c)
-	}
-	r.waitForTab(func(tab map[string]any) bool { return tab["url"] == "https://elsewhere.test/" })
 	r.main(func() { r.a.Sites.Set("https://shop.test", sites.Links, sites.Block) })
-	if n, c := ask(true); n != engine.NavigationElsewhere || c != 2 {
-		t.Fatalf("block: %v, %d tabs", n, c)
-	}
-	// A popup on the blank page: blocked under Block, let go else.
-	var blank engine.Navigation
-	r.main(func() { blank = r.a.LeavingSite(1, "https://shop.test/", engine.BlankURL, true, 1) })
-	if blank != engine.NavigationElsewhere {
-		t.Fatalf("a blank popup under Block: %v", blank)
-	}
-	// A popup the page opened, with no page yet: Block closes it and shows its opener again;
-	// New tab lets it go, as it is a new tab already.
-	var popup engine.TabID
-	popupAsks := func() (n engine.Navigation) {
+	tabNow := func() (u string, n int, popups int) {
 		r.main(func() {
-			for _, x := range r.a.Tabs.All() {
-				if x.ID != 1 {
-					popup = x.ID
-				}
-			}
-			n = r.a.LeavingSite(popup, "https://shop.test/", "https://ads.test/", true, 1)
+			tb, _ := r.a.Tabs.Get(1)
+			u, n, popups = tb.URL, len(r.a.Tabs.All()), tb.PopupsBlocked
 		})
 		return
 	}
-	var asked engine.Navigation
-	var tabsNow int
+	settle := func() { r.e.Settle(); r.main(func() {}); r.e.Settle() }
+
+	r.e.Fire(1, 1, "navigate", "https://elsewhere.test/")
+	settle()
+	if u, _, _ := tabNow(); u != "https://shop.test/" {
+		t.Fatalf("a page's link to another site under Block took the tab to %q", u)
+	}
+	r.e.Fire(1, 1, "navigate", "https://shop.test/cart")
+	r.waitForTab(func(tab map[string]any) bool { return tab["url"] == "https://shop.test/cart" && tab["loading"] == false })
+
+	r.e.Fire(1, 1, "open", "https://ads.test/")
+	settle()
+	if _, n, popups := tabNow(); n != 1 || popups != 1 {
+		t.Fatalf("a popup to another site under Block: %d tabs, %d counted", n, popups)
+	}
+	r.e.Fire(1, 1, "open", "https://shop.test/help")
+	settle()
+	if _, n, _ := tabNow(); n != 2 {
+		t.Fatalf("a popup to the page's own site under Block: %d tabs", n)
+	}
 	r.main(func() {
-		asked = r.a.LeavingSite(1, "https://shop.test/", "https://ads.test/", true, 1)
-		tabsNow = len(r.a.Tabs.All())
+		for _, x := range r.a.Tabs.All() {
+			if x.ID != 1 {
+				r.a.Tabs.Close(x.ID)
+			}
+		}
+		r.a.Tabs.Activate(1)
 	})
-	if asked != engine.NavigationElsewhere || tabsNow != 2 {
-		t.Fatalf("a popup refused before it is made: %v, %d tabs", asked, tabsNow)
-	}
-	if n := popupAsks(); n != engine.NavigationElsewhere {
-		t.Fatalf("a blocked popup: %v", n)
-	}
-	r.waitFor(func(m map[string]any) bool {
-		ids, _ := m["tabs"].([]any)
-		return m["t"] == "tabs" && len(ids) == 1 && m["active"] == float64(1)
-	})
-	r.main(func() { r.a.Sites.Set("https://shop.test", sites.Links, sites.NewTab) })
-	r.shell(`{"t":"newTab"}`)
-	r.waitFor(func(m map[string]any) bool { ids, _ := m["tabs"].([]any); return m["t"] == "tabs" && len(ids) == 2 })
-	if n := popupAsks(); n != engine.NavigationProceed {
-		t.Fatalf("a popup under New tab: %v", n)
-	}
+
+	// The person's own way goes anywhere.
+	r.visit("https://elsewhere.test/")
+
+	r.visit("https://shop.test/")
+	r.main(func() { r.a.Sites.Set("https://shop.test", sites.Links, sites.Allow) })
+	r.e.Fire(1, 1, "navigate", "https://elsewhere.test/")
+	r.waitForTab(func(tab map[string]any) bool { return tab["url"] == "https://elsewhere.test/" })
 }
 
 // The engine has the ad blocker's hosts from the start, and the sites it is off for as each

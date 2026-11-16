@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { activeTab, bookmark, chooseSuggestion, focusPage, isBookmarked, send, state, suggest, tabLabel } from '@/sdk/vue.js';
 import SuggestionList from './SuggestionList.vue';
-import { hasSite, openSite, promptFor } from '@/sdk/sites.js';
+import { hasSite, openSite, popupsWord, promptFor } from '@/sdk/sites.js';
 import PermissionPrompt from '@/ui/PermissionPrompt.vue';
 import SitePanel from '@/ui/SitePanel.vue';
 import { addressBar, nextQuery } from './state.js';
@@ -249,6 +249,22 @@ const starred = computed(() => isBookmarked(state, activeTab.value.url));
       @blur="onBlur"
     />
     <span v-if="status && !ours" class="status">{{ status }}</span>
+    <!-- The popups Links to other sites closed on this page: a press opens the site panel. -->
+    <button
+      v-if="activeTab.popupsBlocked && !ours && !focused"
+      type="button"
+      class="popups"
+      :aria-label="popupsWord(activeTab.popupsBlocked)"
+      :title="popupsWord(activeTab.popupsBlocked)"
+      @mousedown.prevent
+      @click="panel = true"
+    >
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="2" y="3.5" width="9" height="8" rx="1.5" />
+        <path d="M5 1.75h7.75a1.5 1.5 0 0 1 1.5 1.5V9M2.5 13.5l11-11" />
+      </svg>
+      <span>{{ activeTab.popupsBlocked }}</span>
+    </button>
     <button
       v-if="activeTab.url && !ours && !focused"
       type="button"
@@ -298,6 +314,23 @@ const starred = computed(() => isBookmarked(state, activeTab.value.url));
 
 .field:focus-within {
   box-shadow: var(--focus-ring);
+}
+
+.popups {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 24px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--accent-tint);
+  color: var(--icon);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .star {

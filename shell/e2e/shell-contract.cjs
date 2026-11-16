@@ -41,7 +41,7 @@ const rules = {
   22: 'A site\'s sign-in shows as an alertdialog with text boxes named Username and Password, and Go\'s Sign in answers with both',
   30: 'A site asking for its camera, microphone or notifications in the active tab brings a dialog named by its question, with Block and Allow, or Block, Always allow and Allow this time; an Allow grants it, Block denies it, Escape dismisses it',
   31: 'On a web page, a control named Site settings opens settings on that site, at once or from its panel\'s Details',
-  33: 'The Site settings control opens a panel over the page, a dialog named Site settings for the site\'s host, with a switch named Ad blocker and a choice of Links to other sites, each Go\'s and each changing Go\'s setting; Escape closes it',
+  33: 'The Site settings control opens a panel over the page, a dialog named Site settings for the site\'s host, with a switch named Ad blocker and a choice of Links to other sites, Allow or Block, each Go\'s and each changing Go\'s setting; Escape closes it; a popup Links to other sites closed shows in the address field as a button named by its count, which opens the panel',
   32: 'A page that failed to load, or has a bad certificate, is covered by an alert with Go\'s sentence and its actions as buttons; Try again loads it again, and Open anyway opens it',
 };
 
@@ -706,6 +706,7 @@ const noNoticeYet = {
           await control.click();
           return until(() => panel.isVisible());
         };
+        const tabsBefore = (await regions()).tabs.length;
         await control.click();
         rule(33, 'pressed, it opens a dialog named for the site', await until(() => panel.isVisible()));
         await page.waitForTimeout(200);
@@ -720,6 +721,15 @@ const noNoticeYet = {
         await block.click();
         await reopen();
         rule(33, 'Links to other sites set to Block, Go keeps it', await until(async () => (await block.getAttribute('aria-checked')) === 'true'));
+        // Under Block, a popup the page opens to another site closes at once, and the
+        // address field counts it: a press opens the panel.
+        await page.keyboard.press('Escape');
+        await until(async () => (await panel.count()) === 0);
+        await fire('open', 'https://elsewhere.test/', { tab });
+        const popups = ui.getByRole('button', { name: '1 popup blocked' });
+        rule(33, 'a popup to another site under Block closes, and the field counts it', (await until(() => popups.isVisible())) && (await regions()).tabs.length === tabsBefore);
+        await popups.click();
+        rule(33, 'the count opens the panel', await until(() => panel.isVisible()));
         await ads.click();
         await panel.getByRole('radiogroup', { name: 'Links to other sites' }).getByRole('radio', { name: 'Allow' }).click();
         await page.keyboard.press('Escape');
