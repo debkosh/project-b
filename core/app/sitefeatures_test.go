@@ -69,7 +69,7 @@ func TestLinksToOtherSitesFollowTheSitesSetting(t *testing.T) {
 	r.visit("https://shop.test/")
 	ask := func(pressed bool) (n engine.Navigation, count int) {
 		r.main(func() {
-			n = r.a.LeavingSite(1, "https://shop.test/", "https://elsewhere.test/", pressed)
+			n = r.a.LeavingSite(1, "https://shop.test/", "https://elsewhere.test/", pressed, 0)
 			count = len(r.a.Tabs.All())
 		})
 		return
@@ -88,6 +88,48 @@ func TestLinksToOtherSitesFollowTheSitesSetting(t *testing.T) {
 	r.main(func() { r.a.Sites.Set("https://shop.test", sites.Links, sites.Block) })
 	if n, c := ask(true); n != engine.NavigationElsewhere || c != 2 {
 		t.Fatalf("block: %v, %d tabs", n, c)
+	}
+	// A popup on the blank page: blocked under Block, let go else.
+	var blank engine.Navigation
+	r.main(func() { blank = r.a.LeavingSite(1, "https://shop.test/", engine.BlankURL, true, 1) })
+	if blank != engine.NavigationElsewhere {
+		t.Fatalf("a blank popup under Block: %v", blank)
+	}
+	// A popup the page opened, with no page yet: Block closes it and shows its opener again;
+	// New tab lets it go, as it is a new tab already.
+	var popup engine.TabID
+	popupAsks := func() (n engine.Navigation) {
+		r.main(func() {
+			for _, x := range r.a.Tabs.All() {
+				if x.ID != 1 {
+					popup = x.ID
+				}
+			}
+			n = r.a.LeavingSite(popup, "https://shop.test/", "https://ads.test/", true, 1)
+		})
+		return
+	}
+	var asked engine.Navigation
+	var tabsNow int
+	r.main(func() {
+		asked = r.a.LeavingSite(1, "https://shop.test/", "https://ads.test/", true, 1)
+		tabsNow = len(r.a.Tabs.All())
+	})
+	if asked != engine.NavigationElsewhere || tabsNow != 2 {
+		t.Fatalf("a popup refused before it is made: %v, %d tabs", asked, tabsNow)
+	}
+	if n := popupAsks(); n != engine.NavigationElsewhere {
+		t.Fatalf("a blocked popup: %v", n)
+	}
+	r.waitFor(func(m map[string]any) bool {
+		ids, _ := m["tabs"].([]any)
+		return m["t"] == "tabs" && len(ids) == 1 && m["active"] == float64(1)
+	})
+	r.main(func() { r.a.Sites.Set("https://shop.test", sites.Links, sites.NewTab) })
+	r.shell(`{"t":"newTab"}`)
+	r.waitFor(func(m map[string]any) bool { ids, _ := m["tabs"].([]any); return m["t"] == "tabs" && len(ids) == 2 })
+	if n := popupAsks(); n != engine.NavigationProceed {
+		t.Fatalf("a popup under New tab: %v", n)
 	}
 }
 

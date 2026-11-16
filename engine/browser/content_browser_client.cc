@@ -94,6 +94,30 @@ void ContentBrowserClient::AppendExtraCommandLineSwitches(
   block_rules::AppendTo(command_line);
 }
 
+bool ContentBrowserClient::CanCreateWindow(
+    content::RenderFrameHost* opener,
+    const GURL& opener_url,
+    const GURL& opener_top_level_frame_url,
+    const url::Origin& source_origin,
+    content::mojom::WindowContainerType container_type,
+    const GURL& target_url,
+    const content::Referrer& referrer,
+    const std::string& frame_name,
+    WindowOpenDisposition disposition,
+    const blink::mojom::WindowFeatures& features,
+    bool user_gesture,
+    bool opener_suppressed,
+    bool* no_javascript_access) {
+  // A popup the page's Links to other sites refuses is blocked, as a popup blocker would.
+  if (!events::MayOpenWindow(opener, target_url, user_gesture)) {
+    return false;
+  }
+  return ContentBrowserClientHooks::CanCreateWindow(
+      opener, opener_url, opener_top_level_frame_url, source_origin,
+      container_type, target_url, referrer, frame_name, disposition, features,
+      user_gesture, opener_suppressed, no_javascript_access);
+}
+
 void ContentBrowserClient::ExposeInterfacesToRenderer(
     service_manager::BinderRegistry* registry,
     blink::AssociatedInterfaceRegistry* associated_registry,

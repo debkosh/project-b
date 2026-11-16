@@ -104,7 +104,10 @@ typedef enum PBEvent {
                                         // or "invalid", i: it is a tab's own page, i: it
                                         // may be passed; answers i: 1 to let it through
   PB_EVENT_LEAVING_SITE = 46,           // i: tab, s: the page it leaves, s: url, i: a
-                                        // press led to it; answers
+                                        // press led to it, i: for a new tab the page
+                                        // opens, the tab whose page asks (the tab itself
+                                        // when asked before the new one is made), else 0;
+                                        // answers
                                         // i: a PBNavigation. A top-level navigation the
                                         // page started (a link, a form, a script, or a
                                         // redirect of one) to another site, the

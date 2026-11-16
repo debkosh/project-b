@@ -16,6 +16,7 @@ import (
 // startSiteFeatures hands the engine the ad blocker's rules, again whenever a site switches
 // it, and gives settings the Sparks section.
 func (a *App) startSiteFeatures(e engine.Engine) {
+	a.post = e.Post
 	hosts := adblock.Hosts()
 	var off []string
 	setRules := func() {
