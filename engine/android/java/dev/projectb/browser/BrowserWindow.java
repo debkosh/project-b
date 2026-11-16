@@ -5,9 +5,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.graphics.PixelFormat;
+import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Process;
 import android.os.SystemClock;
+import android.view.ActionMode;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -26,6 +30,10 @@ import org.jni_zero.JNINamespace;
 import org.jni_zero.NativeMethods;
 
 import org.chromium.components.embedder_support.view.ContentView;
+import org.chromium.content_public.browser.ActionModeCallback;
+import org.chromium.content_public.browser.ActionModeCallbackHelper;
+import org.chromium.content_public.browser.SelectionMenuItem;
+import org.chromium.content_public.browser.SelectionPopupController;
 import org.chromium.content_public.browser.Visibility;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.ui.base.ViewAndroidDelegate;
@@ -292,6 +300,12 @@ final class BrowserWindow extends FrameLayout {
                 view,
                 windowAndroid,
                 WebContents.createDefaultInternalsHolder());
+        // A page's text selection: the handles, and Android's floating Copy, Share and Select
+        // all, as content_shell sets it up. Without a controller, the first handle a long press
+        // on text makes has nothing to draw it, and the browser crashes (a null drawable in
+        // ui::TouchHandle's constructor).
+        SelectionPopupController selection = SelectionPopupController.fromWebContents(contents);
+        selection.setActionModeCallback(defaultActionModeCallback(selection.getActionModeCallbackHelper()));
         view.addOnLayoutChangeListener(
                 (v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
                     contents.setSize(right - left, bottom - top);
@@ -300,6 +314,43 @@ final class BrowserWindow extends FrameLayout {
                 });
         parent.addView(view, 0, params);
         return view;
+    }
+
+    // Android's own text selection menu for a page, as content_shell has it: every answer is
+    // the helper's.
+    private static ActionModeCallback defaultActionModeCallback(ActionModeCallbackHelper helper) {
+        return new ActionModeCallback() {
+            @Override
+            public boolean onCreateActionMode(ActionMode mode, Menu menu) {
+                helper.onCreateActionMode(mode, menu);
+                return true;
+            }
+
+            @Override
+            public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
+                return helper.onPrepareActionMode(mode, menu);
+            }
+
+            @Override
+            public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
+                return helper.onActionItemClicked(mode, item);
+            }
+
+            @Override
+            public boolean onDropdownItemClicked(SelectionMenuItem item, boolean closeMenu) {
+                return helper.onDropdownItemClicked(item, closeMenu);
+            }
+
+            @Override
+            public void onDestroyActionMode(ActionMode mode) {
+                helper.onDestroyActionMode();
+            }
+
+            @Override
+            public void onGetContentRect(ActionMode mode, View view, Rect outRect) {
+                helper.onGetContentRect(mode, view, outRect);
+            }
+        };
     }
 
     @CalledByNative
