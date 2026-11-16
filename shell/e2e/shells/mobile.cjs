@@ -89,6 +89,34 @@ const H = 915;
   await settle(page);
   check('at rest the pill shows the host alone', await until(async () => (await field.inputValue()) === 'example.com'), await field.inputValue());
   check('with a lock, the page being https', (await ui.locator('.address .mark').count()) === 1);
+  // A page whose connection isn't secure says so in words at the pill's start, in --danger,
+  // and the words are the site's mark, which opens the site's sheet.
+  const notSecure = ui.getByRole('button', { name: 'Not secure · Site settings' });
+  check('a secure page has no Not secure', (await notSecure.count()) === 0);
+  await visit('http://example.com/plain', 'http://example.com/plain');
+  check('an http page says Not secure at the pill\'s start', await until(() => notSecure.isVisible()) && (await notSecure.innerText()).trim() === 'Not secure');
+  const danger = await w.shell().evaluate(() => {
+    const probe = document.createElement('i');
+    probe.style.color = 'var(--danger)';
+    document.body.append(probe);
+    const c = getComputedStyle(probe).color;
+    probe.remove();
+    return c;
+  });
+  check('in --danger', (await notSecure.evaluate((el) => getComputedStyle(el).color)) === danger);
+  const notSecureBox = await notSecure.boundingBox();
+  check('before the host', notSecureBox.x + notSecureBox.width <= (await field.boundingBox()).x + 1);
+  await shots('not-secure');
+  await notSecure.tap();
+  const siteSheet = ui.getByRole('dialog', { name: /^Site settings for / });
+  check('a tap on it opens the site\'s sheet, which says why', await until(async () => (await siteSheet.isVisible()) && /Not secure/.test(await siteSheet.innerText())), await siteSheet.innerText().catch(() => ''));
+  await page.keyboard.press('Escape');
+  check('Escape closes it', await until(async () => (await siteSheet.count()) === 0));
+  await fire('certificate', 'https://old.test/');
+  const certificate = ui.getByRole('alert');
+  check('a bad certificate brings Go\'s notice over the page', await until(async () => (await active()).notice && (await certificate.getByRole('button', { name: 'Open anyway' }).isVisible())), JSON.stringify((await active()).notice));
+  await certificate.getByRole('button', { name: 'Open anyway' }).tap();
+  check('an https page whose certificate was passed with Open anyway says Not secure too', await until(async () => (await active()).url === 'https://old.test/' && (await notSecure.isVisible())));
   await visit('example.com/docs/rollout', 'https://example.com/docs/rollout');
   await visit('example.org/release-notes', 'https://example.org/release-notes');
   await shots('page');

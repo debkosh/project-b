@@ -825,6 +825,10 @@ address field, and a menu button at the far right, in our tones.
   one text report to the phone's share sheet (`shareReport`).
 - **The pill's end** says Blocked, Crashed or Failed when the page is, as the standard
   shell's address bar does.
+- **Not secure** in words at the pill's start, with the warning mark, in `--danger`, when
+  the active tab's `connection` isn't secure: an http page, or a certificate passed with
+  Open anyway, as Chrome does. It is the site's mark, named "Not secure · Site settings",
+  and opens the site's sheet, which says why. A secure page keeps the lock.
 - **The switcher** lies over the page, the bar still under it: a card per tab in two
   columns, the workspaces as chips that choose which cards show and where + opens a tab.
   Its cards are the tabs' `role="tab"` elements, kept in the document while it is closed.

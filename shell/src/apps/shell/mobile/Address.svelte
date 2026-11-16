@@ -31,6 +31,10 @@
   // The lock only for a page that shows: one that failed, crashed or was blocked has the
   // warning, beside the pill's word for what went wrong.
   const secure = $derived(status ? 'warn' : tab.url.startsWith('https:') ? 'lock' : tab.url.startsWith('http:') ? 'warn' : '');
+  // A page that reached the tab over a connection that isn't secure, an http page or a
+  // certificate passed with Open anyway, says so in words at the pill's start, as Chrome
+  // does; the words are part of the site's mark, which opens the site's sheet.
+  const insecure = $derived(!status && !!tab.connection && tab.connection !== 'secure');
   // The list from the field outwards: under a field on top, over one at the bottom with
   // the first suggestion nearest it.
   const shown = $derived(top ? items : [...items].reverse());
@@ -93,7 +97,9 @@
 </script>
 
 <div class="address" class:editing>
-  {#if !editing && secure}
+  {#if !editing && insecure}
+    <button type="button" class="mark insecure" aria-label="Not secure · Site settings" onclick={onsite}><Icon name="warn" size={16} /><span aria-hidden="true">Not secure</span></button>
+  {:else if !editing && secure}
     <button type="button" class="mark" aria-label="Site settings" onclick={onsite}><Icon name={secure} size={16} /></button>
   {/if}
   <input
@@ -193,6 +199,27 @@
     border: 0;
     background: none;
     color: var(--icon);
+  }
+
+  /* Not secure: the warning and the words in --danger, a hairline parting them from the
+     host. The button grows to hold the words, keeping its 48px height. */
+  .mark.insecure {
+    display: flex;
+    gap: 4px;
+    width: auto;
+    margin-right: 0;
+    padding: 0 8px 0 16px;
+    color: var(--danger);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .mark.insecure span {
+    padding-right: 8px;
+    border-right: 1px solid var(--line);
+    line-height: 16px;
   }
 
   /* The field and its Clear reach 48px, the toolbar's height, past the 40px pill. */
