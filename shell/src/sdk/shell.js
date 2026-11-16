@@ -69,6 +69,8 @@ export const state = {
   // workspace's in the order pinned. A pin has a tab in this window when a tab's pin is its
   // id. pins.js pins, unpins and opens one (docs/windows.md, "Pinned tabs").
   pins: [],
+  // The shell's own menu, as Go last sent it when asked (menu.js).
+  menu: [],
   // The report of the last run's crash, '' when it didn't crash or the notice was closed.
   crashLog: '',
   // macOS's report of that crash, or the folder it keeps its reports in.
@@ -122,7 +124,7 @@ export const state = {
 
 // The messages that are only state: each sets the fields it carries, whole. The one
 // exception is tabs, whose tabs carry no favicon: each keeps the one it had (below).
-const updates = new Set(['theme', 'windowColor', 'controls', 'keys', 'workspaces', 'update', 'crashLog', 'tabLayout', 'addressBarPosition', 'extensions', 'profileData', 'contextMenu', 'downloads', 'dialogs', 'prefs', 'find', 'pageFullScreen', 'searchEngine', 'permissionPrompts', 'openSites', 'bookmarks', 'pins']);
+const updates = new Set(['theme', 'windowColor', 'controls', 'keys', 'workspaces', 'update', 'crashLog', 'tabLayout', 'addressBarPosition', 'extensions', 'profileData', 'contextMenu', 'downloads', 'dialogs', 'prefs', 'find', 'pageFullScreen', 'searchEngine', 'permissionPrompts', 'openSites', 'bookmarks', 'pins', 'menu']);
 
 const listeners = [];
 
