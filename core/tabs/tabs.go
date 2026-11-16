@@ -68,6 +68,10 @@ type Tab struct {
 	// started is the engine's id for the latest navigation that started, whose address
 	// the tab shows until it commits or fails.
 	started int64
+	// The title and icon of the page shown as a navigation started, which it gets back when
+	// the navigation ends with nothing shown instead (refused on its way, stopped, a
+	// download).
+	shownTitle, shownFavicon string
 }
 
 // Gate runs before a navigation. Returning false blocks it, and later gates don't run.
@@ -984,6 +988,7 @@ func (m *Manager) HandleNavigationStarting(id engine.TabID, nav int64, u string)
 		m.changed(t)
 		return engine.NavigationBlock
 	}
+	t.shownTitle, t.shownFavicon = t.Title, t.Favicon
 	t.Blocked, t.Title, t.Favicon, t.Progress = false, "", "", 0
 	m.changed(t)
 	return engine.NavigationProceed
@@ -1034,6 +1039,9 @@ func (m *Manager) HandleNavigationFailed(id engine.TabID, nav int64, u string, w
 		return
 	}
 	t.URL, t.Error, t.ErrorCode, t.Loading = address(u), why, code, false
+	if why == "" && code == "" && t.Title == "" {
+		t.Title, t.Favicon = t.shownTitle, t.shownFavicon
+	}
 	m.changed(t)
 }
 
