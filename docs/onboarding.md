@@ -66,7 +66,7 @@ which opens the Welcome tab ([mock](screenshots/onboarding/mock-d6.png)).
 | Feature | Where | Slice |
 |---|---|---|
 | A first-run marker, the Welcome page, Run setup again | Go (`core/app`), `shell/src/apps/welcome`, settings | 1 |
-| Make default browser | Mac: `LSSetDefaultHandlerForURLScheme` for http and https; Android: `RoleManager` | 1 |
+| Make default browser | Mac: the app can't be a browser yet. Its Info.plist (`tools/package.sh`) declares no `CFBundleURLTypes` for http and https nor `CFBundleDocumentTypes` for html, and nothing in the engine takes a link macOS hands over (`application:openURLs:`), as Android's `PBOpenURL` does. Then `NSWorkspace`'s `setDefaultApplicationAtURL:toOpenURLsWithScheme:`, which asks the user itself. Android: the manifest already takes http and https links, so `RoleManager`'s `ROLE_BROWSER` request is all | 1 |
 | Preview pictures of each shell | made from the mock engine by a tool, kept in the app | 1 |
 | Bookmark folders | `core/bookmarks`, the Bookmarks page | 2 |
 | Importers: the Chromium family (Chrome, Edge, Brave, Arc), Firefox | Go, a package of its own; Settings' Import | 3 |
