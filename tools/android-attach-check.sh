@@ -20,6 +20,8 @@ for run in $(seq 1 $N); do
   kill $loop 2>/dev/null
   adb logcat -b all -d > $OUT/run$run.txt
   echo "run $run: froze pid $(adb shell cat /data/local/tmp/frozen | tr -d '\r'); shell $shown; failed to attach $(grep -c 'failed to attach' $OUT/run$run.txt); unattached $(grep -c shell.unattached $OUT/run$run.txt); renderers started $(grep -c 'am_proc_start.*ProcessService0' $OUT/run$run.txt)"
-  adb shell rm -f /data/local/tmp/frozen
+  # The frozen process is ours to end: Android may never kill a stopped one, and one left over
+  # reads as a stray renderer in the next run's process list.
+  adb shell 'p=$(cat /data/local/tmp/frozen 2>/dev/null); [ -n "$p" ] && kill -9 $p; rm -f /data/local/tmp/frozen'
 done
 adb shell am force-stop $P
