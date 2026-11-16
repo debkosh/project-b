@@ -125,17 +125,15 @@ const char* FailureOf(net::Error error) {
 
 PageTab::PageTab(int64_t id,
                  std::unique_ptr<content::WebContents> contents,
-                 const std::string& workspace)
+                 const std::string& workspace,
+                 bool internal)
     : WebContentsObserverHooks(contents.get()),
       id_(id),
       workspace_(workspace),
+      internal_(internal),
       contents_(std::move(contents)) {
   hooks::TagTab(contents_.get(), id_);
   contents_->SetDelegate(this);
-}
-
-bool PageTab::internal() const {
-  return contents_->GetBrowserContext() == Engine::Get()->pages_context();
 }
 
 void PageTab::SendToPage(const std::string& json) {

@@ -21,7 +21,8 @@ class PageTab : public WebContentsObserverHooks, public WebContentsDelegateHooks
  public:
   PageTab(int64_t id,
           std::unique_ptr<content::WebContents> contents,
-          const std::string& workspace);
+          const std::string& workspace,
+          bool internal);
   PageTab(const PageTab&) = delete;
   PageTab& operator=(const PageTab&) = delete;
   ~PageTab() override;
@@ -31,9 +32,10 @@ class PageTab : public WebContentsObserverHooks, public WebContentsDelegateHooks
   // Go's id for the workspace the tab is in, "" for the profile's own storage. It never
   // changes.
   const std::string& workspace() const { return workspace_; }
-  // Whether it is one of ours, a tab for our own pages in their context, not the
-  // profile's. It never changes.
-  bool internal() const;
+  // Whether it is one of ours, a tab for our own pages, made for them (CreateInternalTab),
+  // not a web tab. It never changes. On Android our pages and the web share one context, so
+  // the context can't tell.
+  bool internal() const { return internal_; }
   // Go's id for the window whose layout last showed this tab, 0 before any has.
   int64_t window() const { return window_; }
   void set_window(int64_t window) { window_ = window; }
@@ -146,6 +148,7 @@ class PageTab : public WebContentsObserverHooks, public WebContentsDelegateHooks
   int32_t connection_ = 0;
   std::string connection_reason_;
   const std::string workspace_;
+  const bool internal_;
   int64_t window_ = 0;
   std::unique_ptr<content::WebContents> contents_;
   // Counts favicon fetches, so a slow one for an earlier page is dropped.

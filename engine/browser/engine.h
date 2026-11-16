@@ -192,8 +192,10 @@ class Engine {
   content::WebContents* WebTabContents(int64_t tab) const;
 
  private:
+  // internal: a tab of ours, for our pages.
   PageTab* Add(std::unique_ptr<content::WebContents> contents,
-               const std::string& workspace);
+               const std::string& workspace,
+               bool internal = false);
   void Erase(const std::string& workspace);
   // Whichever page has the keyboard: a shell or a tab's.
   content::WebContents* FocusedContents() const;
