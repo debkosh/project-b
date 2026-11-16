@@ -26,6 +26,7 @@ const edge = 4;
 const hasIcons = computed(() => props.items.some((i) => i.icon || i.dot));
 const subItems = computed(() => props.items[open.value]?.items || []);
 const subIcons = computed(() => subItems.value.some((i) => i.icon || i.dot));
+const subDots = computed(() => subItems.value.every((i) => i.separator || i.dot));
 
 function entries(el) {
   return [...(el?.querySelectorAll(':scope > [role="menuitem"]:not([aria-disabled="true"])') || [])];
@@ -190,9 +191,10 @@ function onKey(e, inSub) {
     @pointerenter="keepSub"
     @contextmenu.prevent
   >
+    <template v-for="(item, i) in subItems" :key="i">
+    <div v-if="item.separator" class="ui-menu-separator" role="separator"></div>
     <div
-      v-for="(item, i) in subItems"
-      :key="i"
+      v-else
       role="menuitem"
       tabindex="-1"
       class="ui-menu-item"
@@ -202,12 +204,14 @@ function onKey(e, inSub) {
       @click="choose(item, i)"
       @keydown.enter.space.prevent="choose(item, i)"
     >
-      <span v-if="subIcons" class="ui-menu-icon" :class="{ dot: subItems.every((i) => i.dot) }" aria-hidden="true">
+      <span v-if="subIcons" class="ui-menu-icon" :class="{ dot: subDots }" aria-hidden="true">
         <i v-if="item.dot" class="ui-menu-dot" :style="{ background: item.dot }"></i>
         <svg v-else-if="item.icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" v-html="item.icon"></svg>
       </span>
       <span class="ui-menu-label">{{ item.label }}</span>
+      <span v-if="item.key" class="ui-menu-key">{{ item.key }}</span>
     </div>
+    </template>
   </div>
   </div>
 </template>
