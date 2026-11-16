@@ -621,8 +621,8 @@ const stopServer = lib.stop;
   await newTabBox.waitFor();
   await bar.click();
   await page.keyboard.type('exam');
-  await options.first().waitFor();
-  check('history survives a restart', (await history.count()) >= 3, String(await history.count()));
+  // The address field's own list: the command box under it lists the new tab's rows at once.
+  check('history survives a restart', await until(async () => (await history.count()) >= 3), String(await history.count()));
   check('titles survive a restart', /Mock example/.test(await history.first().innerText()));
   await page.keyboard.press('Escape');
   check('the tab layout survives a restart', (await ui.locator('.strip').count()) === 1);
