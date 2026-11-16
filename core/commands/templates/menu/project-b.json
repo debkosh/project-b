@@ -7,7 +7,8 @@
       "locked": true,
       "items": [
         {
-          "action": "app.about"
+          "action": "app.about",
+          "scope": "app"
         },
         {
           "separator": true
@@ -17,7 +18,8 @@
           "locked": true
         },
         {
-          "action": "app.checkUpdate"
+          "action": "app.checkUpdate",
+          "scope": "app"
         },
         {
           "separator": true
@@ -26,29 +28,34 @@
           "title": "Services",
           "role": "services",
           "only": "mac",
-          "items": []
+          "items": [],
+          "scope": "app"
         },
         {
           "separator": true
         },
         {
           "action": "app.hide",
-          "only": "mac"
+          "only": "mac",
+          "scope": "app"
         },
         {
           "action": "app.hideOthers",
-          "only": "mac"
+          "only": "mac",
+          "scope": "app"
         },
         {
           "action": "app.showAll",
-          "only": "mac"
+          "only": "mac",
+          "scope": "app"
         },
         {
           "separator": true
         },
         {
           "action": "app.quit",
-          "locked": true
+          "locked": true,
+          "scope": "app"
         }
       ]
     },
@@ -59,7 +66,8 @@
           "action": "tab.new"
         },
         {
-          "action": "window.new"
+          "action": "window.new",
+          "desktop": true
         },
         {
           "action": "address.focus"
@@ -68,7 +76,8 @@
           "separator": true
         },
         {
-          "action": "window.close"
+          "action": "window.close",
+          "desktop": true
         },
         {
           "action": "tab.close"
@@ -80,31 +89,39 @@
       "locked": true,
       "items": [
         {
-          "action": "edit.undo"
+          "action": "edit.undo",
+          "scope": "keys"
         },
         {
-          "action": "edit.redo"
+          "action": "edit.redo",
+          "scope": "keys"
         },
         {
           "separator": true
         },
         {
-          "action": "edit.cut"
+          "action": "edit.cut",
+          "scope": "keys"
         },
         {
-          "action": "edit.copy"
+          "action": "edit.copy",
+          "scope": "keys"
         },
         {
-          "action": "edit.paste"
+          "action": "edit.paste",
+          "scope": "keys"
         },
         {
-          "action": "edit.pasteAndMatchStyle"
+          "action": "edit.pasteAndMatchStyle",
+          "scope": "keys"
         },
         {
-          "action": "edit.delete"
+          "action": "edit.delete",
+          "scope": "keys"
         },
         {
-          "action": "edit.selectAll"
+          "action": "edit.selectAll",
+          "scope": "keys"
         },
         {
           "separator": true
@@ -116,10 +133,12 @@
               "action": "find.open"
             },
             {
-              "action": "find.next"
+              "action": "find.next",
+              "scope": "keys"
             },
             {
-              "action": "find.previous"
+              "action": "find.previous",
+              "scope": "keys"
             }
           ]
         }
@@ -129,10 +148,12 @@
       "title": "View",
       "items": [
         {
-          "action": "view.tabsSide"
+          "action": "view.tabsSide",
+          "desktop": true
         },
         {
-          "action": "view.tabsTop"
+          "action": "view.tabsTop",
+          "desktop": true
         },
         {
           "title": "Shell",
@@ -255,19 +276,23 @@
           "separator": true
         },
         {
-          "action": "view.fullScreen"
+          "action": "view.fullScreen",
+          "desktop": true
         },
         {
           "separator": true
         },
         {
-          "action": "view.zoomReset"
+          "action": "view.zoomReset",
+          "desktop": true
         },
         {
-          "action": "view.zoomIn"
+          "action": "view.zoomIn",
+          "desktop": true
         },
         {
-          "action": "view.zoomOut"
+          "action": "view.zoomOut",
+          "desktop": true
         },
         {
           "separator": true
@@ -289,7 +314,8 @@
             {
               "action": "focus.previousPane"
             }
-          ]
+          ],
+          "scope": "keys"
         }
       ]
     },
@@ -336,19 +362,23 @@
       "title": "Tab",
       "items": [
         {
-          "action": "tab.next"
+          "action": "tab.next",
+          "scope": "keys"
         },
         {
-          "action": "tab.previous"
+          "action": "tab.previous",
+          "scope": "keys"
         },
         {
           "separator": true
         },
         {
-          "action": "tab.recentNext"
+          "action": "tab.recentNext",
+          "scope": "keys"
         },
         {
-          "action": "tab.recentPrevious"
+          "action": "tab.recentPrevious",
+          "scope": "keys"
         },
         {
           "separator": true
@@ -368,7 +398,8 @@
           "action": "tab.pin"
         },
         {
-          "action": "tab.moveToNewWindow"
+          "action": "tab.moveToNewWindow",
+          "desktop": true
         },
         {
           "separator": true
@@ -403,7 +434,8 @@
             {
               "action": "tab.selectLast"
             }
-          ]
+          ],
+          "scope": "keys"
         }
       ]
     },
@@ -419,7 +451,8 @@
         {
           "action": "profile.picker"
         }
-      ]
+      ],
+      "scope": "app"
     },
     {
       "title": "Window",
@@ -427,10 +460,12 @@
       "locked": true,
       "items": [
         {
-          "action": "window.minimize"
+          "action": "window.minimize",
+          "scope": "app"
         },
         {
-          "action": "window.zoom"
+          "action": "window.zoom",
+          "scope": "app"
         },
         {
           "separator": true
@@ -443,7 +478,8 @@
         },
         {
           "action": "window.bringAllToFront",
-          "only": "mac"
+          "only": "mac",
+          "scope": "app"
         }
       ]
     }
