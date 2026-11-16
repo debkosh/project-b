@@ -85,7 +85,7 @@ of it.
 | `@/sdk/suggest.js` | `suggest(id, text, kinds)`, `chooseSuggestion(row, newTab)` and `suggestionKinds`, every kind. `state.searchEngine` names the engine, for a placeholder. |
 | `@/sdk/find.js` | `findText(tab, text)`, `findNext(tab, forward)` and `closeFind(tab)`, for `state.find`, each naming the tab whose bar it is. `@/ui/FindBar.vue` draws the bar, hung from the top right of the box that holds the page; a shell gives `connect({ focusFind: () => findBar.focus() })`, `findBar` from `@/ui/find.js`. |
 | `@/sdk/dialogs.js` | `answerDialog(id, ok, text, password)`, and `dialogFor(state, tab)`, the dialog a tab's page waits on. `@/ui/PageDialog.vue` draws a page's dialog and a site's sign-in over the box that holds the active page, which is `position: relative`. |
-| `@/sdk/downloads.js` | What a shell sends about `state.downloads`: `downloadAction(id, action)` and `clearDownloads()`. `@/ui/Downloads.vue` is the Downloads button, shown once there is one, with its list. |
+| `@/sdk/downloads.js` | What a shell sends about `state.downloads`: `downloadAction(id, action)` and `clearDownloads()`. `@/ui/Downloads.vue` is the Downloads button, shown once there is one, with its list; with `peek`, the list also opens by itself when a download begins, for a shell that gives `connect({ downloadStarted: () => downloadsPanel.started() })`, `downloadsPanel` from `@/ui/downloads.js`. |
 | `@/sdk/sites.js` | A site's settings ([daily-driver.md](daily-driver.md#permissions)): the permission prompts, `promptFor(state, tab)`, `answerPermission(prompt, choice)`, and the words `permissionHost(prompt)` and `permissionAsk(prompt)`; and `hasSite(tab)` and `openSiteSettings()`. `@/ui/PermissionPrompt.vue` draws a prompt in the design system's look. |
 | `@/sdk/notice.js` | A tab's notice, `tab.notice`: `runNotice(tab, action)`. `@/ui/PageNotice.vue` draws one in the design system's look. |
 | `@/sdk/menu.js` | The shell's own menu, `state.menu`: `requestMenu()` as it opens, and `runMenuItem(item)` ([menus-shortcuts.md](menus-shortcuts.md#the-shells-menu)). Both adapters give them too. |
@@ -145,6 +145,7 @@ gives the page the same two.
 | `focusFind` | | The find key was pressed: the keyboard goes to the find bar |
 | `dialogs` | `dialogs`: the dialogs pages wait on, oldest first | A page asked, or one was answered or dropped ([daily-driver.md](daily-driver.md#javascript-dialogs)) |
 | `downloads` | `downloads`: the profile's downloads, newest first | One started, moved on, ended or left the list ([daily-driver.md](daily-driver.md#downloads)) |
+| `downloadStarted` | `id`: the download's id in `downloads` | A tab of this window began a download while the window was in front; after the `downloads` that lists it. Standard opens its Downloads list by itself on it |
 | `contextMenu` | `contextMenu`: the open right-click menu, or `null` | A right click in a tab's page, or a long press on a link or an image on a phone: what it was on and the actions that can run there ([daily-driver.md](daily-driver.md#right-click)); `null` once it is answered, or its tab closes, navigates or is no longer shown |
 | `backKey` | | The phone's back key, while the shell said it closes something (`backCloses`) |
 | `scroll` | `tab`, `direction`: `down` or `up` | A tab's page began to scroll down, or back up (content's `DidChangeVerticalScrollDirection`) |

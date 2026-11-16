@@ -109,6 +109,20 @@ Finder once done, Cancel while it runs, and Retry and Copy link once it failed o
 cancelled. Standard puts the control in its toolbar and shows a download's progress on it.
 The contract's rule 17 checks it, by role and name.
 
+**A download you see start** (owner approved, item 9 of the UX comparison). When a tab of
+the window in front begins a download, Go tells that window's shell, `downloadStarted {id}`,
+after the `downloads` that lists it, and marks `download.started` on the timeline; a window
+behind hears nothing. Go knows which of the app's windows is in front, not whether the app
+is, so the shell also checks that its page is visible. Standard's Downloads list then opens
+by itself under its button, the same floating list the button opens, so the newest is at
+its top with its progress. It closes after five seconds, unless the pointer is over it or a
+control in it has the keyboard, and at once on Escape or a press outside it. Unlike the list
+the button opens, it has no cover: the page around it stays usable. It takes the keyboard
+while it shows, so Escape reaches it and a press on the page, which takes the keyboard from
+the shell, closes it, and it gives the keyboard back as it closes; a download begins from a
+press, so no typing is lost. A press on the button makes it the person's list, which stays;
+a list the person opened stays as it is.
+
 **A connection that goes silent.** Across the Mac's sleep a download's connection can die
 without a word, and content waits on it for good. The engine watches every running download:
 one that receives nothing for 30 seconds of waking time is interrupted as a network timeout,

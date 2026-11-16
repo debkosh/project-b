@@ -123,6 +123,9 @@ type App struct {
 	fulls *pageFulls
 	// notified is the page each notification shown on the system came from, by its id.
 	notified map[string]string
+	// startedIn is the window in front that each new download began in, by the engine's
+	// number for it, until its first report says the list has it.
+	startedIn map[engine.DownloadID]engine.WindowID
 	// pages are the History and Bookmarks pages shown in tabs.
 	pages *ourPages
 	// keyIn is which page had the keyboard at the last key press.
@@ -144,7 +147,7 @@ var starters []func(a *App, e engine.Engine, cfg Config)
 // to the engine as its listener.
 func Start(e engine.Engine, cfg Config) *App {
 	e.OpenProfile(cfg.ProfileDir)
-	a := &App{profiles: cfg.Profiles, madeForTab: map[engine.WindowID]bool{}}
+	a := &App{profiles: cfg.Profiles, madeForTab: map[engine.WindowID]bool{}, startedIn: map[engine.DownloadID]engine.WindowID{}}
 	a.Crash = crash.New(cfg.ProfileDir, cfg.CrashReports)
 	a.Crash.System = cfg.System
 	a.Session = session.New(cfg.ProfileDir)
@@ -603,12 +606,27 @@ func (a *App) WindowFocused(w engine.WindowID) {
 func (a *App) ProcessCrashed(p engine.ProcessCrash) { a.Crash.ProcessCrashed(p) }
 
 // DownloadTarget refuses a download from an address policy blocks; the list says where
-// the rest go.
+// the rest go. One a tab of the window in front began is noted, so that window's shell
+// hears it start.
 func (a *App) DownloadTarget(r engine.DownloadRequest) engine.DownloadTarget {
 	if !a.Policy.IsAllowedURL(r.URL) {
 		return engine.DownloadTarget{}
 	}
-	return a.Downloads.Target(r)
+	t := a.Downloads.Target(r)
+	if w := a.Tabs.WindowOf(r.Tab); t.Path != "" && w != 0 && w == a.Tabs.Front() {
+		a.startedIn[r.ID] = w
+	}
+	return t
 }
 
-func (a *App) DownloadUpdated(d engine.Download) { a.Downloads.Updated(d) }
+// DownloadUpdated takes a download's news. The first news of one begun in the window in
+// front tells that window's shell, after the list that has it, with downloadStarted, so a
+// shell can show the download begin (Standard opens its Downloads panel).
+func (a *App) DownloadUpdated(d engine.Download) {
+	id := a.Downloads.Updated(d)
+	if w, ok := a.startedIn[d.ID]; ok {
+		delete(a.startedIn, d.ID)
+		timeline.Mark("download.started")
+		a.Shell.SendTo(w, map[string]any{"t": "downloadStarted", "id": id})
+	}
+}

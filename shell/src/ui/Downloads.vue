@@ -1,13 +1,30 @@
 <script setup>
-import { computed, nextTick, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { pushEscape } from '@/ui/escape.js';
-import { clearDownloads, downloadAction, state } from '@/sdk/vue.js';
+import { downloadsPanel } from '@/ui/downloads.js';
+import { clearDownloads, downloadAction, focusPage, send, state } from '@/sdk/vue.js';
 
 // The toolbar's Downloads control, there once the profile has a download, with the running
 // ones' progress round it, and the list it opens: each download by its file name, its
 // progress or how it ended, and what can be done to it (docs/daily-driver.md).
+//
+// With peek, the list also opens by itself when Go says a download began in this window
+// (downloadStarted), so the person sees it start. It closes after peekFor unless the pointer
+// is over it or a control in it has the keyboard, and at once on Escape or a press outside
+// it. It has no cover while it peeks, so the page under it stays usable: it takes the
+// keyboard while it shows, so Escape reaches it and a press on the page, which takes the
+// keyboard from the shell, closes it; and it gives the keyboard back as it closes. A press
+// on the control makes it the person's list, as if the control had opened it.
+const props = defineProps({ peek: Boolean });
+const peekFor = 5000;
 
 const open = ref(false);
+// Whether the list opened by itself, and not yet touched.
+const peeking = ref(false);
+let peekTimer = 0;
+let pointerIn = false;
+// Whether the page had the keyboard when the list peeked, to give it back.
+let tookKeyboard = false;
 const button = ref(null);
 const panel = ref(null);
 // Under the control, its right edge with the control's.
@@ -58,8 +75,86 @@ function close(refocus) {
   if (!open.value) return;
   open.value = false;
   pop?.();
+  pop = null;
+  const back = peeking.value && tookKeyboard;
+  stopPeeking();
+  tookKeyboard = false;
   if (refocus) button.value?.focus();
+  else if (back) focusPage();
 }
+
+// The control: it opens or closes the list, and makes a list that peeked the person's.
+function onControl() {
+  if (peeking.value) {
+    stopPeeking();
+    panel.value?.querySelector('button')?.focus();
+  } else if (open.value) close(true);
+  else show();
+}
+
+function stopPeeking() {
+  peeking.value = false;
+  clearTimeout(peekTimer);
+  removeEventListener('blur', closePeek);
+  removeEventListener('pointerdown', pressWhilePeeking, true);
+}
+
+function closePeek() {
+  if (peeking.value) close(false);
+}
+
+// A press in the shell outside the list and its control closes a list that peeked.
+function pressWhilePeeking(e) {
+  if (!panel.value?.contains(e.target) && !button.value?.contains(e.target)) closePeek();
+}
+
+// peekOpen opens the list by itself for a download that began, unless the person has it
+// open already, where it shows the download anyway.
+async function peekOpen() {
+  if (!props.peek || document.visibilityState !== 'visible' || (open.value && !peeking.value)) return;
+  // The control comes with the list's first download, drawn after the list arrived.
+  await nextTick();
+  if (!button.value) return;
+  const r = button.value.getBoundingClientRect();
+  at.value = { top: r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) };
+  if (!open.value) {
+    open.value = true;
+    peeking.value = true;
+    pop = pushEscape(() => close(false));
+    tookKeyboard = !document.hasFocus();
+    if (tookKeyboard) send({ t: 'focusShell' });
+    await nextTick();
+    panel.value?.focus();
+    addEventListener('pointerdown', pressWhilePeeking, true);
+    // The shell losing the keyboard means a press on the page, or another window.
+    addEventListener('blur', closePeek);
+  }
+  waitThenClose();
+}
+
+// waitThenClose closes a list that peeked after peekFor, unless the pointer is over it or a
+// control in it has the keyboard then.
+function waitThenClose() {
+  clearTimeout(peekTimer);
+  peekTimer = setTimeout(() => {
+    const inside = panel.value?.contains(document.activeElement) && document.activeElement !== panel.value;
+    if (peeking.value && !pointerIn && !inside) close(false);
+  }, peekFor);
+}
+
+function onPointer(over) {
+  pointerIn = over;
+  if (peeking.value && !over) waitThenClose();
+}
+
+// A control in the list taking the keyboard makes it the person's: it stays open.
+function onFocusIn(e) {
+  if (e.target !== panel.value) stopPeeking();
+}
+
+onMounted(() => {
+  if (props.peek) downloadsPanel.started = peekOpen;
+});
 
 // Another tab shown closes it, as the menus close, and so does the list emptying, which
 // takes the control away.
@@ -69,7 +164,11 @@ watch(
   (n) => n === 0 && close(false),
 );
 
-onUnmounted(() => pop?.());
+onUnmounted(() => {
+  pop?.();
+  stopPeeking();
+  if (downloadsPanel.started === peekOpen) downloadsPanel.started = () => {};
+});
 </script>
 
 <template>
@@ -82,7 +181,7 @@ onUnmounted(() => pop?.());
     title="Downloads"
     aria-haspopup="dialog"
     :aria-expanded="open"
-    @click="open ? close(true) : show()"
+    @click="onControl"
   >
     <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M3 13.5h10" />
@@ -105,8 +204,21 @@ onUnmounted(() => pop?.());
     </svg>
   </button>
   <Teleport to="body">
-    <div v-if="open" v-shell class="downloads-cover" @pointerdown.self="close(false)" @contextmenu.self.prevent="close(false)">
-      <div ref="panel" class="downloads-panel" role="dialog" aria-label="Downloads" :style="{ top: at.top + 'px', right: at.right + 'px' }">
+    <!-- Opened by the control, a cover takes every press outside; peeking, only the list is
+         the shell's. -->
+    <div v-if="open" v-shell :class="peeking ? 'downloads-peek' : 'downloads-cover'" @pointerdown.self="close(false)" @contextmenu.self.prevent="close(false)">
+      <div
+        ref="panel"
+        v-shell
+        class="downloads-panel"
+        role="dialog"
+        aria-label="Downloads"
+        tabindex="-1"
+        :style="{ top: at.top + 'px', right: at.right + 'px' }"
+        @pointerenter="onPointer(true)"
+        @pointerleave="onPointer(false)"
+        @focusin="onFocusIn"
+      >
         <div class="head">
           <span>Downloads</span>
           <button type="button" class="text-button quiet" :disabled="!state.downloads.some((d) => d.state !== 'progress')" @click="clearDownloads()">Clear</button>
@@ -168,6 +280,12 @@ onUnmounted(() => pop?.());
   }
 }
 
+/* Peeking, the list alone is the shell's: the page under the rest stays usable. */
+.downloads-peek {
+  position: fixed;
+  z-index: 100;
+}
+
 .downloads-cover {
   position: fixed;
   inset: 0;
@@ -177,6 +295,7 @@ onUnmounted(() => pop?.());
 /* The design system's floating surface, as its menus have it. */
 .downloads-panel {
   position: fixed;
+  outline: none;
   width: 340px;
   max-height: min(480px, calc(100vh - 80px));
   overflow: auto;

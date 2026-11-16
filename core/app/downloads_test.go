@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"projectb/engine"
 	"slices"
+	"strings"
 	"testing"
 
 	"projectb/app"
@@ -185,5 +186,48 @@ func TestACancelledDownloadStartsOverOnRetry(t *testing.T) {
 	list = r.downloads(func(l []any) bool { return len(l) == 1 && first(l)["state"] == "done" })
 	if first(list)["id"] != id || first(list)["name"] != "big.iso" {
 		t.Fatalf("the retry should finish in the same row, by its name: %v", list)
+	}
+}
+
+// A download a tab of the window in front begins tells that window's shell, after the list
+// that has it, so it can show the download begin; one begun in a window behind tells none.
+func TestADownloadBegunInTheWindowInFrontIsAnnounced(t *testing.T) {
+	profile, dir := t.TempDir(), t.TempDir()
+	r := startDownloading(t, profile, dir)
+	defer r.stop()
+	r.visit("https://a.test/")
+	r.show(1)
+
+	r.e.Fire(1, 0, "download", "https://a.test/files/report.pdf")
+	listed := false
+	m := r.waitFor(func(m map[string]any) bool {
+		if l, ok := m["downloads"].([]any); ok && m["t"] == "downloads" && len(l) == 1 {
+			listed = true
+		}
+		return m["t"] == "downloadStarted"
+	})
+	if !listed || m["id"] != float64(1) {
+		t.Fatalf("downloadStarted = %v, after the list: %v", m, listed)
+	}
+
+	second := r.openSecondWindow()
+	r.e.Fire(1, 0, "download", "https://a.test/files/other.pdf")
+	r.waitFor(func(m map[string]any) bool {
+		if m["t"] == "downloadStarted" {
+			t.Fatalf("window 1, behind, heard %v", m)
+		}
+		l, ok := m["downloads"].([]any)
+		return m["t"] == "downloads" && ok && len(l) == 2 && first(l)["state"] == "done"
+	})
+	for {
+		select {
+		case b := <-second:
+			if strings.Contains(string(b), `"downloadStarted"`) {
+				t.Fatalf("window 2 heard %s", b)
+			}
+			continue
+		default:
+		}
+		break
 	}
 }

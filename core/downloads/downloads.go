@@ -153,8 +153,8 @@ func (m *Manager) running(path string) bool {
 	return false
 }
 
-// Updated takes what the engine says a download is now.
-func (m *Manager) Updated(d engine.Download) {
+// Updated takes what the engine says a download is now, and returns its id in the list.
+func (m *Manager) Updated(d engine.Download) int {
 	it := m.byEngine[d.ID]
 	if it == nil {
 		it = m.retried(d.URL)
@@ -181,6 +181,7 @@ func (m *Manager) Updated(d engine.Download) {
 		m.save()
 	}
 	m.changed()
+	return it.ID
 }
 
 // retried is the item Retry started again as a new download of url, moved to the top.

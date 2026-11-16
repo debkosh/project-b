@@ -42,7 +42,8 @@ function switchLayout() {
     <NavButtons />
     <AddressBar />
     <component :is="ExtensionsToolbar" v-if="ExtensionsToolbar" :extensions="state.extensions" />
-    <Downloads />
+    <!-- It opens by itself under its button when a download begins in this window. -->
+    <Downloads peek />
     <button
       class="icon-button layout"
       type="button"
