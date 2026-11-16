@@ -160,7 +160,7 @@ The shell's first paint and the first tab race the lines around them. Android ha
 
 | Span | Begins | Stages | Ends |
 |---|---|---|---|
-| `settings.open` | The click on the gear, or Go's action from the menu or a key, in a window with no settings tab | `.go` Go has it; `.done` the settings tab is made, active and loading, and the shell told; then the page's own `settings.navigation_start`, `settings.committed`, `settings.script`, `settings.mounted`, `settings.ready`, `settings.snapshot`, `settings.first_paint` | `settings.on_screen`: its first frame is on screen |
+| `settings.open` | The click on Settings…, in a shell's menu or on a shell's own button, or Go's action from the menu bar or a key, in a window with no settings tab | `.go` Go has it; `.done` the settings tab is made, active and loading, and the shell told; then the page's own `settings.navigation_start`, `settings.committed`, `settings.script`, `settings.mounted`, `settings.ready`, `settings.snapshot`, `settings.first_paint` | `settings.on_screen`: its first frame is on screen |
 | `tab.new` | The click on New Tab, or Go's action | `.go`; `.done` the tab is made, shown, and the shell told | The shell has drawn it |
 | `tab.close` | The click on a tab's close button, or Go's action | `.go`; `.done` | The shell has drawn it |
 | `tab.activate` | The click on a tab | `.go`; `.done` | The shell has drawn it |

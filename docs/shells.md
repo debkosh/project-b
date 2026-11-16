@@ -88,6 +88,7 @@ of it.
 | `@/sdk/downloads.js` | What a shell sends about `state.downloads`: `downloadAction(id, action)` and `clearDownloads()`. `@/ui/Downloads.vue` is the Downloads button, shown once there is one, with its list. |
 | `@/sdk/sites.js` | A site's settings ([daily-driver.md](daily-driver.md#permissions)): the permission prompts, `promptFor(state, tab)`, `answerPermission(prompt, choice)`, and the words `permissionHost(prompt)` and `permissionAsk(prompt)`; and `hasSite(tab)` and `openSiteSettings()`. `@/ui/PermissionPrompt.vue` draws a prompt in the design system's look. |
 | `@/sdk/notice.js` | A tab's notice, `tab.notice`: `runNotice(tab, action)`. `@/ui/PageNotice.vue` draws one in the design system's look. |
+| `@/sdk/menu.js` | The shell's own menu, `state.menu`: `requestMenu()` as it opens, and `runMenuItem(item)` ([menus-shortcuts.md](menus-shortcuts.md#the-shells-menu)). Both adapters give them too. |
 | `@/sdk/pins.js` | What a shell sends about `state.pins`, the profile's pinned tabs, and each tab's `pin`: `pinTab(id)`, `unpin(pin)` and `openPin(pin)` ([windows.md](windows.md#pinned-tabs)). Both adapters give them too. |
 | `@/sdk/extensions.js` | What a shell sends about extensions: `pressExtension(id, el)`, `pinExtension(id, on)`, `manageExtensions()`, `answerExtensionPrompt(on)`. |
 | `@/sdk/controls.js` | `controls`: the one selector for what a control is, something the user presses or types in (buttons, links with an address, fields, selects, text areas, `role="tab"` and `role="button"`, anything with a `tabindex`). The SDK finds a drag bar's controls by it, and the check reads it for rule 6. |
@@ -128,6 +129,7 @@ gives the page the same two.
 | `keys` | `keys`: the key each action shows, by action id | The keymap changed |
 | `workspaces` | `workspaces`: id, name and colour of each | The list changed |
 | `pins` | `pins`: the profile's pins, each `{id, workspace, url, title, favicon}`, in their order | A pin was made or removed |
+| `menu` | `menu`: the menu bar's menus for this window, each item `{title, action, enabled, checked}`, `{separator}` or `{title, items}` | The shell asked, with `menu` |
 | `update` | `update`: what the updater is doing | It changed |
 | `crashLog` | `crashLog`, `crashReport` | The notice of the last run's crash was closed |
 | `tabLayout` | `tabLayout` | The standard shell's tab position changed |
@@ -233,6 +235,7 @@ title, detail, actions}`, absent otherwise
 | `bookmark` | `url`, `title`, `on` | Bookmarks the address, or takes its bookmark away: the address bar's star |
 | `chooseSuggestion` | `row`, `newTab` | Runs a row: Go loads its address or search in the active tab, or a new one, shows its tab, or runs its action |
 | `run` | `text`: an action's id | Runs an action, as its menu item would |
+| `menu` | | Asks for the menu bar's menus for this window, as the shell opens its own menu; Go answers with `menu` ([menus-shortcuts.md](menus-shortcuts.md#the-shells-menu)) |
 | `window` | `text`: `close`, `minimise`, `zoom` or `fullScreen` | Asks the window |
 | `data` | `data`: any JSON | Replaces this window's copy of the shell's own data |
 | `profileData` | `data`: any JSON | Replaces what this shell keeps for the whole profile, on disk |
