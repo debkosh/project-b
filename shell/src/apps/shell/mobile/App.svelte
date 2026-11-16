@@ -42,9 +42,6 @@
   let address = $state();
   // The tab last made active, so each change of it is seen once.
   let active = 0;
-  // The bars while the page scrolls down: away, sliding off the screen, then gone, their
-  // room given to the page in one step, so the page is resized once and not every frame.
-  // Back with the page scrolling up, another tab, the address or a sheet.
   // Whether the address is being edited, which the phone's back key ends, as it closes a
   // sheet: while either is so, the engine gives the key to the shell (backCloses).
   let editing = $state(false);
@@ -70,21 +67,50 @@
     }
   }
 
+  // The bars while the page scrolls down: away, sliding off the screen, then gone, their
+  // room given to the page in one step, so the page is resized once and not every frame.
+  // Back with the page scrolling up, another tab, the address or a sheet. shown is what
+  // was last asked for, which away and gone follow a frame or a slide later.
   let away = $state(false);
   let gone = $state(false);
+  let shown = true;
   let sliding = 0;
   // How long the bars take, the design system's --motion: 0 with reduced motion.
   const slide = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--motion')) || 0;
+  // Whether the bars have just given the page their room or taken it back. Resizing the
+  // page under a finger is a scroll of its own to content: the page moves under the finger,
+  // or its end comes closer, and content says the direction changed. Near the top of a page
+  // that turned the bars back and forth, as each change of room was taken for the person's
+  // scroll. A direction while settling, settle ms from a resize, is the resize's, and is
+  // let go; it also keeps a finger's small wobble from turning the bars at once. The window
+  // carries data-settling meanwhile, for a test to wait on.
+  let settling = $state(false);
+  let settled = 0;
+  const settle = 300;
+
+  function resized() {
+    settling = true;
+    clearTimeout(settled);
+    settled = setTimeout(() => (settling = false), settle);
+  }
 
   function bars(show) {
-    if (show !== away) return;
+    if (show === shown) return;
+    shown = show;
     clearTimeout(sliding);
     if (show) {
-      gone = false;
-      requestAnimationFrame(() => requestAnimationFrame(() => (away = false)));
+      if (gone) {
+        gone = false;
+        resized();
+      }
+      // Slide in once the room is back, unless the page has scrolled down again since.
+      requestAnimationFrame(() => requestAnimationFrame(() => shown && (away = false)));
     } else {
       away = true;
-      sliding = setTimeout(() => (gone = true), slide);
+      sliding = setTimeout(() => {
+        gone = true;
+        resized();
+      }, slide);
     }
   }
 
@@ -98,6 +124,7 @@
 
   function scrolled(m) {
     const editing = document.activeElement?.getAttribute('aria-label') === 'Address';
+    if (settling) return;
     if (m.tab === go.active && !sheet && !editing && !finding) bars(m.direction !== 'down');
   }
 
@@ -215,7 +242,7 @@
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && sheet && ((sheet = ''), e.preventDefault())} />
 
-<div class="window">
+<div class="window" data-settling={settling || undefined}>
   {#if clear && !full}
     <div class="clear" use:shell use:drag style:height="{clear}px"></div>
   {/if}

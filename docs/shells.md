@@ -852,6 +852,13 @@ address field, and a menu button at the far right, in our tones.
   the strip slide off the screen in the design system's 100 ms (`--motion`, as the sheets do), and then give their room to the page: one
   layout, so the page is resized once, not every frame. They come back when it scrolls
   up, for another tab, the address, or a sheet. With reduced motion they don't slide.
+  Giving the page their room, or taking it back, is a scroll of its own to content: the
+  page moves under the finger, or its end comes closer, and content reports a change of
+  direction. Taken for the person's, that turned the bars back and forth near the top of a
+  page, so a direction that comes within 300 ms of the bars' resize is let go; the same
+  pause keeps a finger's small wobble from turning them at once. The `scroll` message has
+  the direction only, not where the page is, so the shell can't yet keep the bars at the
+  very top of a page.
 - **The band:** none. A desktop window's buttons, as on the mock, get a strip of their
   own above the page, which a phone has no need of.
 

@@ -333,21 +333,55 @@ const H = 915;
   const foot = async () => H - 48 - ((await strip.isVisible()) ? 49 : 0);
   await until(async () => (await pageRect()).y + (await pageRect()).h === await foot());
   const withBars = await pageRect();
-  await fire('scroll', 'down', { tab: act });
+  // The shell lets go of a direction while the bars' own resize settles (data-settling on
+  // the window); a person's scroll comes after it.
+  const settled = () => w.shell().evaluate(() => !document.querySelector('.window[data-settling]'));
+  const scroll = async (direction) => {
+    await until(settled);
+    await fire('scroll', direction, { tab: act });
+  };
+  await scroll('down');
   check('scrolling down, the bars go and the page takes the window to its foot', await until(async () => {
     const v = await pageRect();
     return v.y === withBars.y && v.y + v.h === H;
   }), JSON.stringify(await pageRect()));
   await shots('scrolled');
-  await fire('scroll', 'up', { tab: act });
+  await scroll('up');
   check('scrolling up, they come back', await until(async () => JSON.stringify(await pageRect()) === JSON.stringify(withBars) && (await box('.toolbar')).bottom === H), JSON.stringify({ now: await pageRect(), withBars, bar: await box('.toolbar') }));
+  // Content's report of the resize itself comes at once, as the bars move: the shell's frame
+  // hands it in, as Go would send it, the moment the bars give their room or take it back,
+  // and says how the bars are once it has drawn that.
+  const whenBars = (gone, direction) => w.shell().evaluate(({ gone, direction, tab }) => {
+    window.barsAnswer = new Promise((resolve) => {
+      const seen = new MutationObserver(() => {
+        if (!!document.querySelector('.bars.gone') !== gone) return;
+        seen.disconnect();
+        window.__shellReceive(JSON.stringify({ t: 'scroll', tab, direction }));
+        const frame = (n) => (n ? requestAnimationFrame(() => frame(n - 1)) : resolve({ gone: !!document.querySelector('.bars.gone'), away: !!document.querySelector('.bars.away') }));
+        frame(3);
+      });
+      seen.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] });
+    });
+  }, { gone, direction, tab: act });
+  const barsAnswer = () => w.shell().evaluate(() => window.barsAnswer);
+  await until(settled);
+  await whenBars(true, 'up');
   await fire('scroll', 'down', { tab: act });
-  await until(async () => (await pageRect()).h > withBars.h);
+  const afterUp = await barsAnswer();
+  check('scrolling up just as the page took their room is the resize\'s own, and they stay away', afterUp.gone && afterUp.away, JSON.stringify(afterUp));
+  await until(settled);
+  await whenBars(false, 'down');
+  await fire('scroll', 'up', { tab: act });
+  const afterDown = await barsAnswer();
+  check('and scrolling down just as they took it back leaves them there', !afterDown.gone && !afterDown.away, JSON.stringify(afterDown));
+  await until(async () => JSON.stringify(await pageRect()) === JSON.stringify(withBars));
+  await scroll('down');
+  check('scrolling down after that sends them away again', await until(async () => (await pageRect()).h > withBars.h));
   await fire('navigate', 'https://example.com/scrolled/next', { tab: act });
   check('a page that starts loading brings them back', await until(async () => (await box('.toolbar')).bottom === H && JSON.stringify(await pageRect()) === JSON.stringify(withBars)));
   await until(async () => !(await active()).loading);
-  await fire('scroll', 'down', { tab: act });
-  await until(async () => (await pageRect()).h > withBars.h);
+  await scroll('down');
+  check('and down again, they go', await until(async () => (await pageRect()).h > withBars.h));
   await fire('key', 'focusAddressBar', { tab: act });
   check('the address bar called for brings them back', await until(async () => (await box('.toolbar')).bottom === H && await inField()));
   await page.keyboard.press('Escape');
