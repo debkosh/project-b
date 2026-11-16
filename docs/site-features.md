@@ -13,7 +13,7 @@ requests (`Requested` off), with their own values.
 | Kind | Values | Default |
 |---|---|---|
 | `ads` | `on`, `off` (the blocker on this site) | `on` |
-| `links` | `allow`, `newtab`, `block` (a page's links to other sites) | `allow` |
+| `links` | `allow`, `block` (a page's own navigations to other sites) | `allow` |
 | `spark:<id>` | `on`, `off` (this spark on this site) | `on` |
 
 A site is its origin, as for permissions. A value that is the kind's default is never kept,
@@ -31,7 +31,7 @@ Go's state: `state.openSites`, by origin, each site a web tab is open on, `{sett
 
 - **The site:** its host and its connection (secure, or not secure and why).
 - **Ad blocker** (switch), with how many requests it blocked on this page.
-- **Links to other sites:** Allow, New tab or Block, one three-way picker (`Segmented`).
+- **Links to other sites:** Allow or Block (`Segmented`).
 - **Sparks on this site:** each spark that matches the page, with a switch for this site.
   Shown only when one matches.
 - **Permissions:** each the site has set or asked for, Allowed or Blocked.
@@ -71,27 +71,51 @@ its own on the page.
 
 ## Links to other sites
 
-The owner: "links to other site can be blocked or new tab or allowed". One setting per site,
-`links`, with three values: **Allow** (the default, as every browser does), **New tab** and
-**Block**.
+One setting per site, `links`: **Allow** (the default) or **Block**. A site kept at New tab,
+which 0.2.70 had, reads as Allow.
 
-- **What counts as going to another site:** a navigation of the tab's main frame, started
-  by the page (a link, a form, a script, `window.location`, a meta refresh), to an address
-  whose site, the registrable domain, isn't the page's. Frames inside the page are
-  untouched. The shell (the address field, the command box, back and forward) goes
-  anywhere.
-- **New tab:** the navigation is refused, and when a press led to it the address opens in
-  a new tab beside this one, in front; with no press (a script, a redirect the page
-  started), it is refused and nothing opens.
-- **Block:** the navigation is refused, and nothing opens.
-- **A redirect** from the site's own server to another site counts too, so New tab and
-  Block break a sign-in that goes through another site (accounts.google.com). The setting
-  is the person's, per site, and Allow by default.
-- **The engine** asks Go, before Go hears the navigation start, when a page-started
-  top-level navigation goes to an address whose registrable domain isn't the page's
-  (`PB_EVENT_LEAVING_SITE`, 46: the tab, the page it leaves, the address, whether a press
-  led to it). Go
-  answers as for any navigation; it needs no public suffix list of its own.
+**What it holds: the page's own navigations, never the person's.**
+
+- **The person's** reach the engine through Go: the address field, the command box, a
+  bookmark, Back, Forward, Reload, Open link in new tab from our menu, a tab restored. The
+  tabs manager sends each through one wrapper of the engine (`core/tabs/pagenav.go`, `own`),
+  which marks the tab before the engine hears it.
+- **The page's** is every other navigation that starts in a tab: a link pressed in the
+  page, a script, a form, a redirect of one of those, and a tab the page opens
+  (`target=_blank`, `window.open`). A redirect belongs to its navigation's start.
+
+**Where it is decided: one place, in Go, as a navigation starts.** The tabs manager's
+`HandleNavigationStarting` (event 60) puts each of the page's navigations to the page
+guard, `App.pageMay` (`core/app/sites.go`), which says go or not:
+
+| Setting | To the page's own site | To another site, or the blank page |
+|---|---|---|
+| Allow | go | go |
+| Block | go | refused |
+
+- **The parent site.** In its own tab, the page the tab shows. A tab the page opened goes
+  by its opener's page until it has a page of its own (event 2, `TAB_OPENED`, names the
+  opener); the blank page a popup opens on isn't one.
+- **A site** is one registrable domain, over http or https alike, by the public suffix list
+  (`sites.SameSite`, `golang.org/x/net/publicsuffix`).
+- **Refused in place:** the navigation goes nowhere (`NavigationElsewhere`): nothing
+  commits, no history, the page stays live, its title and icon kept.
+- **Refused in a tab the page opened:** the tab closes as it opens, its opener shows again,
+  and the opener's `popupsBlocked` counts it; a new page in the opener starts the count
+  again. A blank popup closes at once; one the page later sends to another site closes then.
+- **The address field** shows the count with an icon, a button named "1 popup blocked",
+  which opens the site panel (contract rule 33). It is the place a general popup blocker
+  will count too.
+
+**The engine** has no part of it: it asks Go about every navigation start as it always has.
+One Android fix came with it: a tab is one of ours by how it was made, not by its browser
+context, which Android shares between our pages and the web. Before it, every Android web
+tab counted as ours, and a popup its page opened loaded over the page itself: the blank page
+of an ad's `window.open()` blanked the page.
+
+**Later, if wanted:** separate settings for a page's navigations in place and for its
+popups; a popup let open hidden and closed after a second, for sites that wait on
+`window.opener`.
 
 ## The ad blocker
 

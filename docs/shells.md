@@ -497,8 +497,10 @@ it there; a phone shell may be left out of a rule for a desktop feature.
 33. **The site panel** ([site-features.md](site-features.md)): the Site settings control
     opens a `dialog` named Site settings for the site's host over the page, drawn from
     `state.openSites` (`@/sdk/sites.js`): a switch named Ad blocker, a choice of Links to
-    other sites (Allow, New tab, Block), the page's sparks, the site's permissions, and
-    Details. Each change is `setSiteSetting`; Escape (a phone's back key) closes it. Standard
+    other sites (Allow, Block), the page's sparks, the site's permissions, and Details.
+    Each change is `setSiteSetting`; Escape (a phone's back key) closes it. A tab's
+    `popupsBlocked`, when above 0, shows in the address field as a button named by its count
+    ("1 popup blocked"), which opens the panel. Standard
     and Fox draw the shared `@/ui/SitePanel.vue`; Mobile, a sheet. Minimal goes straight to
     settings; Terminal and Glide, from their sessions.
 
