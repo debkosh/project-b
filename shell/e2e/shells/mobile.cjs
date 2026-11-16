@@ -645,6 +645,67 @@ const H = 915;
   await backKey();
   check('and the back key answers it no too', await until(async () => (await answers()).at(-1).ok === false && (await ask.count()) === 0));
 
+  // A download seen as it happens: a bar over the foot of the page, above the toolbar,
+  // "Downloading big.zip", then "big.zip downloaded" with Open; a failed one says so with
+  // Retry. What it says is kept as it changes, as a mock download takes a moment.
+  const dlBar = ui.getByRole('group', { name: 'Download' });
+  await w.shell().evaluate(() => {
+    window.barSaid = [];
+    new MutationObserver(() => {
+      const t = document.querySelector('[role=group][aria-label=Download] .words')?.textContent.trim();
+      if (t && window.barSaid.at(-1) !== t) window.barSaid.push(t);
+    }).observe(document.body, { subtree: true, childList: true, characterData: true });
+  });
+  const barSaid = () => w.shell().evaluate(() => window.barSaid);
+  await fire('download', 'https://example.com/files/big.zip');
+  check('a download starting says Downloading big.zip in a bar', await until(async () => (await barSaid()).includes('Downloading big.zip')), JSON.stringify(await barSaid()));
+  check('and once done, big.zip downloaded, with Open', await until(async () => (await barSaid()).at(-1) === 'big.zip downloaded' && (await dlBar.getByRole('button', { name: 'Open' }).isVisible())), JSON.stringify(await barSaid()));
+  // Where it ends once it has risen.
+  const barBox = await dlBar.evaluate(async (el) => {
+    await Promise.all(el.getAnimations().map((a) => a.finished));
+    return el.getBoundingClientRect().toJSON();
+  });
+  const toolTop = (await box('.toolbar')).top;
+  check('the bar lies over the page, just above the toolbar', barBox.bottom <= toolTop && barBox.bottom > toolTop - 24, JSON.stringify({ barBox, toolTop }));
+  check('a press on it reaches the shell', (await regions({ x: barBox.x + 40, y: barBox.y + barBox.height / 2 })).hit === 'shell');
+  await dlBar.getByRole('button', { name: 'Open' }).tap();
+  check('Open opens the file, as the Downloads page\'s Open does, and the bar goes', await until(async () => ((await regions()).openedFiles || []).some((f) => f.endsWith('big.zip')) && !(await dlBar.isVisible())), JSON.stringify((await regions()).openedFiles));
+  await fire('download', 'https://example.com/files/broken.zip');
+  await fire('downloadsFail');
+  check('a download that fails says so, with Retry', await until(async () => (await barSaid()).at(-1) === "Couldn't download broken.zip" && (await dlBar.getByRole('button', { name: 'Retry' }).isVisible())), JSON.stringify(await barSaid()));
+  await dlBar.getByRole('button', { name: 'Retry' }).tap();
+  check('Retry runs it again, and the bar says so as it ends', await until(async () => (await barSaid()).at(-1) === 'broken.zip downloaded' && (await dlBar.isVisible())), JSON.stringify(await barSaid()));
+  const b = await dlBar.boundingBox();
+  await page.mouse.move(b.x + 40, b.y + 10);
+  await page.mouse.down();
+  await page.mouse.move(b.x + 40, b.y + 30);
+  await page.mouse.move(b.x + 40, b.y + 50);
+  await page.mouse.up();
+  check('a swipe down puts the bar away', await until(async () => !(await dlBar.isVisible())));
+  await fire('download', 'https://example.com/files/third.zip');
+  check('another download brings it back', await until(() => dlBar.isVisible()));
+  await page.mouse.click(4, H - 24);
+  check('and a tap elsewhere puts it away', await until(async () => !(await dlBar.isVisible())));
+  // A sheet that opens on its own, as a long press in the page opens one, puts it away
+  // too, and it doesn't come back over what the person went on to.
+  await fire('download', 'https://example.com/files/fourth.zip');
+  await until(() => dlBar.isVisible());
+  const pressSheet = ui.getByRole('dialog', { name: 'Link' });
+  await fire('contextMenu', 'https://example.com/linked/sheet', { tab: (await regions()).active });
+  check('a sheet opening puts it away, never under the bar', await until(async () => (await pressSheet.isVisible()) && !(await dlBar.isVisible())));
+  await page.keyboard.press('Escape');
+  check('and once the sheet closes it stays away', await until(async () => (await pressSheet.count()) === 0) && !(await dlBar.isVisible()));
+  // Pictures of it, after the checks, as it lasts only a few seconds.
+  await fire('download', 'https://example.com/files/picture.zip');
+  await until(async () => (await barSaid()).at(-1) === 'picture.zip downloaded');
+  await shots('download-bar');
+  await fire('download', 'https://example.com/files/failing.zip');
+  await fire('downloadsFail');
+  await until(async () => (await barSaid()).at(-1) === "Couldn't download failing.zip");
+  await shots('download-failed');
+  await page.mouse.click(4, H - 24);
+  await until(async () => !(await dlBar.isVisible()));
+
   // Downloads: always in the menu, with how many are running, and it opens the Downloads
   // page, a tab of ours, its title where the address goes.
   await fire('download', 'https://example.com/files/report.pdf');
@@ -657,6 +718,7 @@ const H = 915;
   check('which opens the Downloads page in a tab of ours, shown', await until(async () => (await downloadsTab())?.id === (await regions()).active));
   const dlFrame = page.frameLocator('iframe.our-page[data-page="downloads"]');
   check('the page lists the download by its name, with Open', await until(async () => (await dlFrame.getByRole('listitem', { name: 'report.pdf' }).getByRole('button', { name: 'Open' }).count()) > 0));
+  check('and the bar says nothing over it, as the page says it all', !(await dlBar.isVisible()));
   check('and the pill says Downloads, with a close', await ui.getByRole('button', { name: 'Close Downloads' }).isVisible());
   await shots('downloads');
   await ui.getByRole('button', { name: 'Close Downloads' }).tap();

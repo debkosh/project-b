@@ -808,6 +808,17 @@ address field, and a menu button at the far right, in our tones.
   `closed` alone, so the two never list the same rows and the page stays in view when
   there are none. Every suggest the shell sends takes its id from one count
   (`queries.js`), so the bar's and the new tab page's answers never mix.
+- **A download you can see.** A download that starts while the app is showing raises a
+  small bar over the foot of the page, just above the toolbar, for about 4 seconds:
+  "Downloading big.zip". When it ends while the bar or the app is showing, the bar says
+  "big.zip downloaded" with Open, which does what the Downloads page's Open does
+  (`downloadAction` `open`), or "Couldn't download big.zip" with Retry (`retry`); those
+  stay about 6 seconds. A tap anywhere else in the shell or a swipe down on it puts it
+  away, and so does a sheet opening or the Downloads page showing, which says it all
+  already; it says nothing while either is there, so it never comes back over what the
+  person went on to. The find bar, in the toolbar's place, is never under it.
+  It follows `state.downloads`, telling each change of a download's state once; what the
+  snapshot already had is not told. Android's notifications are the engine's and Go's.
 - **Find in page**, from the ⋯ menu, puts a find bar in the toolbar's place with the
   keyboard in it: the field with the count at its end, the match before and after, and
   ×, as the back key, closes it. The bars stay while it is open (rule 20).

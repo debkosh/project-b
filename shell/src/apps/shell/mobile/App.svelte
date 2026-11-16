@@ -3,6 +3,7 @@
   import { extensionsBuilt } from '@extensions';
   import CardMenu from './CardMenu.svelte';
   import CrashBar from './CrashBar.svelte';
+  import DownloadBar from './DownloadBar.svelte';
   import FindBar from './FindBar.svelte';
   import Extensions from './Extensions.svelte';
   import GroupSheet from './GroupSheet.svelte';
@@ -267,6 +268,9 @@
       {:else if !full && !tab.url && !tab.loading}
         {#key tab.id}<NewTab bind:this={newTabPage} />{/key}
       {/if}
+      <!-- A download as it happens, over the foot of the page; never over a sheet, nor over
+           the Downloads page, which shows it already. -->
+      <DownloadBar hidden={!!sheet || full || tab.page === 'downloads'} />
     </main>
     {#if group}
       <div class="bars" class:away class:gone class:full>
