@@ -163,7 +163,7 @@ thumb, canGoBack, canGoForward, workspace, group, page, pin, connection, connect
 `thumb` the address of a picture of its page as it last looked, a small image for an `<img>`
 that changes with each new picture, absent before the first and once the tab commits a page at
 another address (a reload or a new `#fragment` keeps it); a shell shows the favicon without it.
-`group` the id of its tab group, absent when it is in none; `pin` the id of the pin it is open
+Only a phone shell's windows get pictures (`captureTab`). `group` the id of its tab group, absent when it is in none; `pin` the id of the pin it is open
 for, absent when it is open for none (a window's pinned tabs come first in its list, in
 the pins' order); `connection` how its page reached it, `secure` or `insecure`, absent when
 it isn't a site, and `connectionNote` why, in one line
@@ -235,6 +235,7 @@ title, detail, actions}`, absent otherwise
 | `back`, `forward`, `reload` | | Act on the active tab |
 | `focusTab` | `id` | Gives the active tab's page the keyboard. One for a tab no longer active, as when the address typed for it went to another tab, does nothing |
 | `focusShell` | | Gives the shell the keyboard |
+| `captureTab` | | Asks for a picture of the active tab's page, for its `thumb`, as the Mobile shell's switcher opens: send it before the layout that covers or hides the page. Only a phone shell's windows get one, and Go itself pictures the tab a window leaves as another becomes active. A window gets one picture each half second at most, one asked for sooner being dropped; never one of a tab with no address, which shows the shell's new tab page, nor of a tab with a `notice` |
 | `suggest` | `id`, `text`, `kinds` | Asks for suggestions with rows of the kinds named. The bare message without `kinds` gets history alone, as it always did; the SDK's `suggest()` asks for every kind unless told otherwise. With no text, what a new tab offers: with `tab` and `closed`, the window's other tabs, the most recently used first, and the tabs closed lately; then the sites visited most and the newest bookmarks (docs/daily-driver.md, A new tab) |
 | `forgetSite` | `url` | Takes the site at `url` out of history, every page of it, as the new tab page's × does |
 | `bookmark` | `url`, `title`, `on` | Bookmarks the address, or takes its bookmark away: the address bar's star |

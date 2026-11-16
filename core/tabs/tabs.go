@@ -154,6 +154,7 @@ type Manager struct {
 	onEmpty    []func(w engine.WindowID, moved bool)
 	onFront    []func(engine.WindowID)
 	onMoved    []func(tab engine.TabID, from engine.WindowID, fromIndex int, to engine.WindowID)
+	onLeaving  []func(engine.TabID)
 	// groupSeq numbers the groups, for their ids.
 	groupSeq int
 	// certificates is each tab's certificate error, until it navigates again; passed is
@@ -213,6 +214,10 @@ func (m *Manager) OnClosed(f func(Tab)) { m.onClosed = append(m.onClosed, f) }
 // OnEmpty subscribes to a window's last tab leaving it: closed there, or, with moved,
 // moved to another window.
 func (m *Manager) OnEmpty(f func(w engine.WindowID, moved bool)) { m.onEmpty = append(m.onEmpty, f) }
+
+// OnLeaving subscribes to a window's active tab just before another becomes active there,
+// while its page still shows. Not for a tab that closed or moved away.
+func (m *Manager) OnLeaving(f func(engine.TabID)) { m.onLeaving = append(m.onLeaving, f) }
 
 // OnFrontChanged subscribes to another window coming to the front.
 func (m *Manager) OnFrontChanged(f func(engine.WindowID)) { m.onFront = append(m.onFront, f) }
@@ -423,6 +428,11 @@ func (m *Manager) Activate(id engine.TabID) {
 	win := m.windows[m.windowOf[id]]
 	if id == win.active {
 		return
+	}
+	if win.active != 0 {
+		for _, f := range m.onLeaving {
+			f(win.active)
+		}
 	}
 	win.active = id
 	if win.cycle == nil {

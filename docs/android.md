@@ -352,6 +352,7 @@ adapter here, with `Window` as the one Android file (`engine/android/window_andr
 | The frame colour | Paints the root layer, the window's background and the status bar, and changes live with the shell |
 | The window manager's one layout | `SetWindowLayout` places every tab's view and gives `BrowserWindow.java` the regions; the first region holding a finger decides |
 | `WindowState` | The window's size in CSS pixels, no buttons, square corners, and `full_screen` true |
+| Pictures of the pages | The Mobile shell's switcher shows each tab's page as it last looked (`thumb`). Go asks the engine to copy the page as a tab is left and as the switcher opens (`captureTab`); the engine copies it from the compositor, 720 pixels wide at most, keeps a JPEG per tab and serves it to the shell at `chrome://thumb/<tab>`. The copy completes though the tab is hidden just after: the window's one compositor keeps the page's surface until it is done. The Mac makes them only for a phone shell named outright |
 | Updates | The same manager and the same `amarit.Client`, every minute, on the `android/arm64` asset. The APK is downloaded into the profile, size and sha256 checked by amarit, and the bubble and the settings panel offer to install it: see [Updates on a phone](#updates-on-a-phone) |
 
 **The Mobile shell.** A phone loads only the shells the registry marks `phone`, and the APK carries only those

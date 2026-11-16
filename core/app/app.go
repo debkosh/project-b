@@ -121,6 +121,8 @@ type App struct {
 	finds *pageFinds
 	// fulls are the windows whose page fills the screen.
 	fulls *pageFulls
+	// thumbs asks for pictures of the tabs' pages, for a phone shell.
+	thumbs *pageThumbs
 	// notified is the page each notification shown on the system came from, by its id.
 	notified map[string]string
 	// startedIn is the window in front that each new download began in, by the engine's
@@ -197,6 +199,8 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.fulls = newPageFulls(a, e)
 	a.Shell.OnBack(a.fulls.back)
 	a.pages = newOurPages(a, e)
+	a.thumbs = newPageThumbs(a, e)
+	a.Shell.AddPart(a.thumbs.shellPart())
 	a.Shell.AddPart(a.bookmarksShellPart())
 	a.Shell.AddPart(a.menus.shellPart())
 	// Every action a shell can run by name, for a shell that lists them, as Glide's

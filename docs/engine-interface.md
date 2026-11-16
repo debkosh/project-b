@@ -80,7 +80,8 @@ focus, crash, close and activate requests, keys, find, full screen and a new pic
   serves it at `/mock/thumb/<tab>`. A copy asked for just before the tab is hidden still
   completes on Android, as the window's one compositor keeps the page's surface until it is
   done; on a Mac a tab's view has a compositor of its own, which goes with it, so the copy can
-  time out there.
+  time out there. Go asks only while the profile's shell is a phone shell, 720 pixels wide at
+  most ([shells.md](shells.md), `captureTab`).
 
 **Hosting our pages:** the shell is a transparent web view over the tabs' views, and presses go
 where `WindowLayout.At` says. It needs a JS-to-native call and a native-to-JS call

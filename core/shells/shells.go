@@ -129,6 +129,16 @@ func Page(id string) engine.Page {
 	return engine.ShellPage(id)
 }
 
+// Phone says whether the shell called id is made for a phone.
+func Phone(id string) bool {
+	for _, s := range all {
+		if s.ID == id {
+			return s.Phone
+		}
+	}
+	return false
+}
+
 // Has says whether id is a shell's.
 func Has(id string) bool {
 	for _, s := range all {
