@@ -101,9 +101,23 @@ type Node struct {
 	// Role names a menu the OS knows: "app", "window", "services".
 	Role string `json:"role,omitempty"`
 	// Only limits the entry to one platform.
-	Only  string `json:"only,omitempty"`
-	Items []Node `json:"items,omitempty"`
+	Only string `json:"only,omitempty"`
+	// Scope says where else the entry belongs than the menu bar, for it and what it holds
+	// ("The shell's menu" in docs/menus-shortcuts.md): "" for this window, its tabs, its
+	// page or its profile, in the shell's menu too; ScopeApp for the whole program or the
+	// OS, and ScopeKeys for what is made for a key, which stay in the menu bar only.
+	Scope string `json:"scope,omitempty"`
+	// Desktop leaves the entry out of a phone shell's menu: a phone has one window, and no
+	// tab layout, full screen or zoom of its own to choose.
+	Desktop bool   `json:"desktop,omitempty"`
+	Items   []Node `json:"items,omitempty"`
 }
+
+// The scopes of the entries that stay in the menu bar.
+const (
+	ScopeApp  = "app"
+	ScopeKeys = "keys"
+)
 
 // MenuFile is menu.json and every menu template. Until there is a menu editor the
 // current file only ever follows a template.

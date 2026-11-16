@@ -183,6 +183,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Shell = shell.New(e, a.Tabs, a.Suggest, a.Window, a.Prefs, a.Update, a.Crash, a.Commands.Run, a.Commands.ShownKeys, a.Commands.Platform())
 	a.Shell.AddPart(a.workspaceShellPart(e))
 	a.Shell.AddPart(a.pinShellPart())
+	a.Shell.AddPart(a.menuShellPart())
 	a.Shell.AddPart(a.shellDataPart())
 	a.menus = newContextMenus(a, e)
 	a.Shell.AddPart(a.downloadsShellPart())
