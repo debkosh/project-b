@@ -234,7 +234,7 @@
           <p>No tabs</p>
           <button class="text-button primary" aria-label="New Tab" onclick={() => newTab()}>New tab</button>
         </div>
-      {:else if !full && tab.url && !tab.loading && (tab.crashed || tab.error || tab.blocked)}
+      {:else if !full && tab.notice}
         <PageNotice {tab} />
       {/if}
     </main>

@@ -1,48 +1,39 @@
 <script>
   import { focusPage, send, shell } from '@/sdk/svelte.svelte.js';
+  import { runNotice } from '@/sdk/notice.js';
   import Icon from './Icon.svelte';
 
-  // Over a page that crashed, failed to load or was blocked, which otherwise shows blank:
-  // one plain sentence, the error's own name under it, and Try again or Reload; a crashed
-  // page also offers Share report, to hand on what the app knows of the crash.
+  // Over a page that failed, crashed, was blocked or has a bad certificate, which otherwise
+  // shows blank: Go's notice (docs/daily-driver.md), its sentence, its second line and its
+  // actions as buttons, the primary one first. A crashed page also offers Share report, to
+  // hand on what the app knows of the crash.
   let { tab } = $props();
-
-  const host = $derived.by(() => {
-    try {
-      return new URL(tab.url).host.replace(/^www\./, '') || tab.url;
-    } catch {
-      return tab.url;
-    }
-  });
-  const code = $derived(tab.errorCode || '');
-  const said = $derived.by(() => {
-    if (tab.blocked) return `${host} is blocked`;
-    if (tab.crashed) return 'This page crashed';
-    if (tab.error === 'not-found') return `Can't find ${host}`;
-    if (tab.error === 'offline') return 'No internet connection';
-    return `Can't reach ${host}`;
-  });
+  const notice = $derived(tab.notice);
 
   function share(e) {
     const r = e.currentTarget.getBoundingClientRect();
     send({ t: 'shareReport', rect: { x: r.x, y: r.y, w: r.width, h: r.height } });
   }
 
-  function again() {
-    send({ t: 'reload' });
-    focusPage();
+  function run(id) {
+    runNotice(tab, id);
+    if (id !== 'back') focusPage();
   }
 </script>
 
-<div class="notice" use:shell role="alert">
-  <span class="mark"><Icon name={tab.crashed ? 'reload' : 'warn'} size={32} /></span>
-  <p class="said">{said}</p>
-  {#if code && !tab.crashed && !tab.blocked}<p class="code">{code}</p>{/if}
-  {#if !tab.blocked}
-    <button class="text-button primary" onclick={again}>{tab.crashed ? 'Reload' : 'Try again'}</button>
-  {/if}
-  {#if tab.crashed}
-    <button class="text-button quiet" onclick={share}>Share report</button>
+<div class="notice" use:shell role="alert" data-kind={notice.kind}>
+  <span class="mark"><Icon name={notice.kind === 'crashed' ? 'reload' : 'warn'} size={32} /></span>
+  <p class="said">{notice.title}</p>
+  {#if notice.detail}<p class="code">{notice.detail}</p>{/if}
+  {#if notice.actions.length || notice.kind === 'crashed'}
+    <div class="actions">
+      {#each notice.actions as a (a.id)}
+        <button class="text-button" class:primary={a.primary} class:quiet={!a.primary} onclick={() => run(a.id)}>{a.title}</button>
+      {/each}
+      {#if notice.kind === 'crashed'}
+        <button class="text-button quiet" onclick={share}>Share report</button>
+      {/if}
+    </div>
   {/if}
 </div>
 
@@ -66,6 +57,10 @@
     color: var(--muted);
   }
 
+  [data-kind='certificate'] .mark {
+    color: var(--danger);
+  }
+
   p {
     margin: 0;
     overflow-wrap: anywhere;
@@ -77,12 +72,21 @@
   }
 
   .code {
+    max-width: 320px;
     color: var(--muted);
     font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 12px;
   }
 
   button {
-    margin-top: 12px;
     height: 48px;
     padding: 0 20px;
     border-radius: 20px;
