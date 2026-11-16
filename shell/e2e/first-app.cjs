@@ -726,8 +726,12 @@ const stopServer = lib.stop;
   check('the running release is kept as the previous one', version(path.join(profile, 'updates/previous/Project B.app')) === '0.1.0');
   await stopServer();
   const ran = path.join(installed, 'Project B.app/Contents/MacOS/ran');
-  for (let i = 0; i < 60 && !fs.existsSync(ran); i++) await new Promise((r) => setTimeout(r, 50));
-  check('the new release starts once the old process has exited', fs.existsSync(ran) && fs.readFileSync(ran, 'utf8').trim() === '0.2.0');
+  // The fake release's shell makes the file before it writes the version into it, so wait for
+  // what it says, not for the file; and the helper polls the old process every 0.2 s, which a
+  // loaded machine can stretch.
+  const said = () => (fs.existsSync(ran) ? fs.readFileSync(ran, 'utf8').trim() : '');
+  for (let i = 0; i < 200 && said() !== '0.2.0'; i++) await new Promise((r) => setTimeout(r, 50));
+  check('the new release starts once the old process has exited', said() === '0.2.0', said());
 
   // A corrupted download is refused and the installed release keeps working.
   served = Buffer.from(good);
