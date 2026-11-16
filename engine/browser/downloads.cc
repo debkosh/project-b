@@ -9,6 +9,8 @@
 #include "base/json/json_reader.h"
 #include "base/task/thread_pool.h"
 #include "base/values.h"
+#include "components/download/public/common/download_interrupt_reasons.h"
+#include "components/download/public/common/download_item_impl.h"
 #include "components/download/public/common/download_target_info.h"
 #include "components/download/public/common/download_url_parameters.h"
 #include "content/public/browser/download_item_utils.h"
@@ -24,6 +26,13 @@ namespace project_b {
 namespace {
 
 Downloads* g_downloads = nullptr;
+
+// A running download that receives nothing for this long has a connection that died
+// without saying so, as one does across the Mac's sleep: it is interrupted as a network
+// timeout, which content resumes at once on a new connection from where the file got to.
+// The time stops while the Mac sleeps, so it counts from the wake.
+constexpr base::TimeDelta kStalled = base::Seconds(30);
+constexpr base::TimeDelta kStallCheck = base::Seconds(5);
 
 // The file name content would give the download, from its headers and address.
 std::string NameOf(const GURL& url,
@@ -78,6 +87,7 @@ void Downloads::Shutdown() {
 }
 
 void Downloads::OnDownloadDestroyed(download::DownloadItem* item) {
+  heard_.erase(item->GetId());
   item->RemoveObserver(this);
 }
 
@@ -96,6 +106,7 @@ void Downloads::OnDownloadCreated(content::DownloadManager* manager,
 }
 
 void Downloads::OnDownloadUpdated(download::DownloadItem* item) {
+  Watch(item);
   // A finished file is handed on first, so what Go does on hearing it is done, such as a
   // phone's notification that opens it, comes after the copy it opens.
   if (item->IsDone()) {
@@ -107,6 +118,48 @@ void Downloads::OnDownloadUpdated(download::DownloadItem* item) {
   // Nothing until Go has placed it: its path is what the list shows.
   if (!item->GetTargetFilePath().empty()) {
     Report(item);
+  }
+}
+
+void Downloads::Watch(download::DownloadItem* item) {
+  const uint32_t id = item->GetId();
+  if (item->GetState() != download::DownloadItem::IN_PROGRESS || item->IsPaused() ||
+      item->GetTargetFilePath().empty()) {
+    heard_.erase(id);
+  } else {
+    auto it = heard_.find(id);
+    if (it == heard_.end() || it->second.received != item->GetReceivedBytes()) {
+      heard_[id] = {item->GetReceivedBytes(), base::TimeTicks::Now()};
+    }
+  }
+  if (heard_.empty()) {
+    stall_timer_.Stop();
+  } else if (!stall_timer_.IsRunning()) {
+    stall_timer_.Start(FROM_HERE, kStallCheck, this, &Downloads::CheckStalls);
+  }
+}
+
+void Downloads::CheckStalls() {
+  const base::TimeTicks now = base::TimeTicks::Now();
+  std::vector<uint32_t> stalled;
+  for (const auto& [id, heard] : heard_) {
+    if (now - heard.at >= kStalled) {
+      stalled.push_back(id);
+    }
+  }
+  for (uint32_t id : stalled) {
+    heard_.erase(id);
+    download::DownloadItem* item = manager_ ? manager_->GetDownload(id) : nullptr;
+    if (!item || item->GetState() != download::DownloadItem::IN_PROGRESS || item->IsPaused()) {
+      continue;
+    }
+    // Content's items are all DownloadItemImpl; this is the error its file would report.
+    static_cast<download::DownloadItemImpl*>(item)->DestinationError(
+        download::DOWNLOAD_INTERRUPT_REASON_NETWORK_TIMEOUT, item->GetReceivedBytes(),
+        std::nullopt);
+  }
+  if (heard_.empty()) {
+    stall_timer_.Stop();
   }
 }
 
@@ -182,12 +235,14 @@ void Downloads::Targeted(uint32_t id,
 }
 
 void Downloads::DownloadURL(content::WebContents* contents, const GURL& url, bool save_as) {
-  if (!manager_ || !contents) {
+  if (!manager_) {
     return;
   }
   std::unique_ptr<download::DownloadUrlParameters> params =
-      content::DownloadRequestUtils::CreateDownloadForWebContentsMainFrame(
-          contents, url, NO_TRAFFIC_ANNOTATION_YET);
+      contents ? content::DownloadRequestUtils::CreateDownloadForWebContentsMainFrame(
+                     contents, url, NO_TRAFFIC_ANNOTATION_YET)
+               : std::make_unique<download::DownloadUrlParameters>(
+                     url, NO_TRAFFIC_ANNOTATION_YET);
   params->set_prompt(save_as);
   manager_->DownloadUrl(std::move(params));
 }
@@ -205,6 +260,15 @@ void Downloads::Command(uint32_t id, int32_t command) {
       item->Pause();
       break;
     case PB_DOWNLOAD_RESUME:
+      // Retry: an interrupted download content can't pick up again starts over, as a
+      // new download of its address, and this one goes.
+      if (item->GetState() == download::DownloadItem::INTERRUPTED && !item->CanResume()) {
+        const GURL url = item->GetURL();
+        item->RemoveObserver(this);
+        item->Remove();
+        DownloadURL(nullptr, url, false);
+        break;
+      }
       item->Resume(/*user_resume=*/true);
       break;
     case PB_DOWNLOAD_REMOVE:

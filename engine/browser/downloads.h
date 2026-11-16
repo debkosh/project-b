@@ -2,12 +2,15 @@
 #define PROJECT_B_ENGINE_BROWSER_DOWNLOADS_H_
 
 #include <cstdint>
+#include <map>
 #include <string>
 
 #include "base/files/file_path.h"
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
+#include "base/time/time.h"
+#include "base/timer/timer.h"
 #include "build/build_config.h"
 #include "components/download/public/common/download_item.h"
 #include "content/public/browser/download_manager.h"
@@ -37,7 +40,8 @@ class Downloads : public content::DownloadManagerDelegate,
 
   void SetDownloadManager(content::DownloadManager* manager);
 
-  // Downloads url as tab's page would, showing the Save panel first when save_as.
+  // Downloads url as tab's page would, showing the Save panel first when save_as; with
+  // no page, as the browser itself, as Retry does for a download that can't resume.
   void DownloadURL(content::WebContents* contents, const GURL& url, bool save_as);
   // Runs a PBDownloadCommand on download id.
   void Command(uint32_t id, int32_t command);
@@ -62,6 +66,17 @@ class Downloads : public content::DownloadManagerDelegate,
   void Targeted(uint32_t id,
                 download::DownloadTargetCallback callback,
                 const base::FilePath& path);
+  // Watch keeps the time each running download last received anything; CheckStalls
+  // interrupts the ones silent too long.
+  void Watch(download::DownloadItem* item);
+  void CheckStalls();
+
+  struct Heard {
+    int64_t received;
+    base::TimeTicks at;
+  };
+  std::map<uint32_t, Heard> heard_;
+  base::RepeatingTimer stall_timer_;
 
   raw_ptr<content::DownloadManager> manager_;
   uint32_t next_id_ = download::DownloadItem::kInvalidId + 1;

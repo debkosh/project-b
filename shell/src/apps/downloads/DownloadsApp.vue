@@ -74,6 +74,10 @@ const share = (d) => (d.total > 0 ? Math.min(1, d.received / d.total) : 0);
             <button type="button" class="text-button quiet open" @click="act(d.id, 'open')">Open</button>
             <button type="button" class="text-button quiet" @click="act(d.id, 'reveal')">{{ reveal }}</button>
           </template>
+          <template v-else>
+            <button type="button" class="text-button quiet" @click="act(d.id, 'retry')">Retry</button>
+            <button type="button" class="text-button quiet" @click="act(d.id, 'copyLink')">Copy link</button>
+          </template>
           <button v-if="d.state !== 'progress'" type="button" class="icon-button remove" :aria-label="`Remove ${d.name} from the list`" title="Remove from the list" @click="act(d.id, 'remove')">
             <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="m2 2 6 6M8 2 2 8" /></svg>
           </button>

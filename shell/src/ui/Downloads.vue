@@ -130,6 +130,10 @@ onUnmounted(() => pop?.());
                 <button type="button" class="text-button quiet" @click="downloadAction(d.id, d.paused ? 'resume' : 'pause')">{{ d.paused ? 'Resume' : 'Pause' }}</button>
                 <button type="button" class="text-button quiet" @click="downloadAction(d.id, 'cancel')">Cancel</button>
               </template>
+              <template v-else>
+                <button type="button" class="text-button quiet" @click="downloadAction(d.id, 'retry')">Retry</button>
+                <button type="button" class="text-button quiet" @click="downloadAction(d.id, 'copyLink')">Copy link</button>
+              </template>
               <button type="button" class="icon-button remove" :aria-label="`Remove ${d.name} from the list`" :title="'Remove from the list'" @click="downloadAction(d.id, 'remove')">
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="m2 2 6 6M8 2 2 8" /></svg>
               </button>

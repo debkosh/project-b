@@ -211,14 +211,16 @@ void CallWriteClipboard(const char* text, size_t length) {
 
 void CallDownloadURL(int64_t tab, const char* url, int save_as) {
   CheckMainThread();
-  PageTab* page = g_engine->tab(tab);
-  if (!page) {
+  // Tab 0 is the browser's own download, as Retry starts one again.
+  PageTab* page = tab ? g_engine->tab(tab) : nullptr;
+  if (tab && !page) {
     return;
   }
   // Asking for the manager makes the profile's downloads, if nothing has yet.
-  page->contents()->GetBrowserContext()->GetDownloadManager();
+  (page ? page->contents()->GetBrowserContext() : g_engine->browser_context())
+      ->GetDownloadManager();
   if (Downloads* downloads = Downloads::Get()) {
-    downloads->DownloadURL(page->contents(), GURL(url), save_as);
+    downloads->DownloadURL(page ? page->contents() : nullptr, GURL(url), save_as);
   }
 }
 
