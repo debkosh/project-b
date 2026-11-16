@@ -506,9 +506,11 @@ def browsing():
     check("an emoji in a title reaches Go whole", until(lambda: history_title(url("/b")) == "Page B \U0001F642"),
           repr(history_title(url("/b"))))
 
-    # Tabs: New Tab is in the menu, the count opens the switcher, a card per tab.
+    # Tabs: New Tab is in the menu, the count opens the switcher, a card per tab. A new tab
+    # shows the new tab page with the keyboard down (docs/daily-driver.md, A new tab).
     menu("New Tab")
-    see("shell", kind=FIELD, text="", focused="true")
+    see("shell", text="All bookmarks")
+    check("a new tab shows the new tab page, the keyboard down", find("shell", kind=FIELD, focused="true") is None)
     go(BASE + "/c")
     check("New Tab in the menu opens a tab", asked("/c"))
     press("Tabs")
@@ -728,7 +730,7 @@ def back_key_chain():
     tap(middle(see("page", label="to b")))
     asked("/b")
     menu("New Tab")
-    see("shell", kind=FIELD, focused="true")
+    see("shell", text="All bookmarks")
     go(BASE + "/c")
     asked("/c")
     served.clear()
