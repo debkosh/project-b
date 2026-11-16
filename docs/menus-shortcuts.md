@@ -415,8 +415,11 @@ what doesn't make sense there; approved as built, with the defaults below.
   submenu's title (New Tab in Workspace › Main); no line is left at an end or doubled.
 - **Drawn.** Standard's ☰ at the toolbar's end, in place of its Settings button, with the
   shared menu (`@/ui/ContextMenu.vue`): the menu bar's menus as submenus, a submenu's own
-  (View's Shell) as its items between lines, a check on what is checked. Mobile lists them in
-  its ⋯ sheet under the page's actions, a submenu opening in the sheet with a row back.
+  (View's Shell) as its items between lines, a check on what is checked. Mobile's ⋯ sheet is
+  shaped for a phone ([shells.md](shells.md#the-mobile-shell)): the page's actions, a flat
+  list with the entries lifted to the top, the places as tiles and Settings, each running
+  Go's action by its id, and last More, which lists the whole tree, a submenu opening in the
+  sheet with a row back.
   The other shells keep their menus for now, and each can draw this one the same way.
 
 ## A shell's own actions

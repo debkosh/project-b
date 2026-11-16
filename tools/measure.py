@@ -209,7 +209,7 @@ class Android:
 
     def interact(self):
         d = self.d
-        d.menu("Settings…")
+        d.menu("Settings")
         ended(self, "settings.open")
         d.close_settings()
 

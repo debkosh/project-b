@@ -811,7 +811,7 @@ address field, and a menu button at the far right, in our tones.
 - **Find in page**, from the ⋯ menu, puts a find bar in the toolbar's place with the
   keyboard in it: the field with the count at its end, the match before and after, and
   ×, as the back key, closes it. The bars stay while it is open (rule 20).
-- **Downloads** is always an item of the ⋯ menu, with how many are in progress beside it;
+- **Downloads** is always a tile of the ⋯ menu, with how many are running under it;
   it opens the Downloads page, a tab of ours ([daily-driver.md](daily-driver.md#downloads)),
   its title and a close in the pill (rule 19).
 - **A page in full screen**, as a video's, has the whole screen: the bars, the strip and
@@ -855,10 +855,22 @@ address field, and a menu button at the far right, in our tones.
   group (the groups of its workspace, or a new one with a new tab), Remove from group,
   Close. Held and dragged onto another card, a card joins that card's group or starts one
   with it; swiped sideways, it closes. A swipe along the bar stays in the group.
-- **The menu sheet:** Back, Forward, Reload or Stop, New tab, New tab in group while the
-  tab is in one; then Workspaces (where new
-  tabs open), Extensions while their flag is on, the update when one is ready, and
-  Settings.
+- **The menu sheet** (⋯) is shaped for a phone, as Firefox's is: first a row of the page's
+  actions, Back while there is somewhere to go back to, Forward, Bookmark (a star, filled
+  while the page is bookmarked, through the SDK's `bookmark`), Reload or Stop, and New tab.
+  Then a flat list: what Go's menu lifts to its top level (`"shell": "top"`, Print… the
+  first: the tree's top-level actions the sheet has no place of its own for), New tab in
+  group while the tab is in one, Find in page, and Workspaces, where new tabs open, while
+  there are two or more. Then the places as tiles in one row, each running Go's action by
+  its id: History (`history.show`), Bookmarks (`bookmarks.show`), Downloads
+  (`downloads.show`, with how many are running) and Extensions while their flag is on,
+  which opens its sheet. Then the update while one is ready, Settings (`app.settings`),
+  and last a quiet More: the menu bar's whole tree as Go gives it, its submenus opening in
+  the sheet with a row back, so nothing in it is out of reach (the owner, 2026-11-16: the
+  shells draw Go's menu). Its accessible names are those words: Back, Forward, Bookmark,
+  Reload, Stop, New Tab, Find in page, Workspaces, History, Bookmarks, Downloads,
+  Extensions, Settings and More; `tools/drive_android.py` and `tools/measure.py` find them
+  so.
 - **The address bar on top** is a setting, `addressBarPosition`, in Settings, General on a
   phone: the bar moves under the status bar, the suggestions grow down from it, and the
   group strip stays at the foot, as Chrome's does. Sheets stay at the foot.

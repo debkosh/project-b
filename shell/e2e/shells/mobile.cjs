@@ -149,11 +149,50 @@ const H = 915;
   await suggestions.last().getByRole('button').first().tap();
   check('a tap on a suggestion goes there', await until(async () => (await active()).url.endsWith(go) && (await suggestions.count()) === 0), JSON.stringify({ go, now: (await active()).url }));
 
-  // A new tab from the menu starts in edit mode.
+  // A new tab from the menu starts in edit mode. The page loaded first, so the menu offers
+  // Reload rather than Stop.
+  await until(async () => !(await active()).loading);
   await menuButton.tap();
   check('⋯ opens the menu sheet', await until(() => menu.isVisible()));
   check('with Back, as the tab has somewhere to go back to', await menu.getByRole('button', { name: 'Back' }).isVisible());
+  // Shaped for a phone: the page's actions in a row, a flat list, the places as tiles,
+  // Settings, and More last (docs/shells.md, "The menu sheet").
+  const menuItem = (name) => menu.getByRole('menuitem', { name, exact: true });
+  const actionRow = () => menu.locator('.actions button').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')));
+  check('its row of the page\'s actions: Back, Forward, Bookmark, Reload and New tab', await until(async () => JSON.stringify(await actionRow()) === JSON.stringify(['Back', 'Forward', 'Bookmark', 'Reload', 'New Tab'])), JSON.stringify(await actionRow()));
+  check('then the flat list: Print…, which Go\'s menu lifts to its top, Find in page, and Workspaces, as there are two', await until(async () => JSON.stringify(await menu.getByRole('menu', { name: 'Page' }).getByRole('menuitem').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')))) === JSON.stringify(['Print…', 'Find in page', 'Workspaces'])),
+    JSON.stringify(await menu.getByRole('menu', { name: 'Page' }).getByRole('menuitem').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')))));
+  const tileRow = menu.getByRole('menu', { name: 'Places' }).getByRole('menuitem');
+  check('then History, Bookmarks and Downloads as tiles in one row', JSON.stringify(await tileRow.evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')))) === JSON.stringify(['History', 'Bookmarks', 'Downloads']) &&
+    new Set(await tileRow.evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)))).size === 1);
+  check('then Settings, and More last', JSON.stringify(await menu.getByRole('menu', { name: 'App' }).getByRole('menuitem').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')))) === JSON.stringify(['Settings', 'More']));
+  check('and none of the menu bar\'s menus at its top level', (await menuItem('File').count()) === 0 && (await menuItem('View').count()) === 0);
   await shots('menu');
+  // The star bookmarks the page, filled while it is one; a second tap takes it away.
+  const star = menu.getByRole('button', { name: 'Bookmark' });
+  const bookmarked = () => { try { return JSON.parse(fs.readFileSync(path.join(lib.profile, 'bookmarks.json'), 'utf8')); } catch { return null; } };
+  const marked = (url) => JSON.stringify(bookmarked() || '').includes(url);
+  const starredUrl = (await active()).url;
+  await star.tap();
+  check('Bookmark bookmarks the page, and its star is filled', await until(async () => (await star.getAttribute('aria-pressed')) === 'true' && marked(starredUrl)), JSON.stringify(bookmarked()));
+  await shots('menu-bookmarked');
+  await star.tap();
+  check('a second tap takes the bookmark away', await until(async () => (await star.getAttribute('aria-pressed')) === 'false' && !marked(starredUrl)));
+  // The tiles run Go's actions: History and Bookmarks open those pages of ours, in tabs.
+  for (const [name, kind] of [['History', 'history'], ['Bookmarks', 'bookmarks']]) {
+    if (!(await menu.isVisible())) {
+      await menuButton.tap();
+      await until(() => menu.isVisible());
+    }
+    await menuItem(name).tap();
+    const ours = async () => (await regions()).tabs.find((t) => t.page === kind);
+    check(`the ${name} tile opens the ${name} page, a tab of ours, shown`, await until(async () => (await ours())?.id === (await regions()).active), JSON.stringify((await regions()).tabs.map((t) => [t.id, t.page, t.url])));
+    await ui.getByRole('button', { name: `Close ${name}` }).tap();
+    await until(async () => !(await ours()));
+  }
+  await until(async () => (await active()).url === starredUrl);
+  await menuButton.tap();
+  await until(() => menu.isVisible());
   await page.keyboard.press('Escape');
   check('Escape closes it', await until(async () => !(await menu.isVisible())));
   await menuButton.tap();
@@ -628,9 +667,9 @@ const H = 915;
   await visit('example.com/find', 'https://example.com/find');
   await menuButton.tap();
   await until(() => menu.isVisible());
-  await ui.getByRole('menuitem', { name: 'Find…' }).tap();
+  await ui.getByRole('menuitem', { name: 'Find in page' }).tap();
   const findField = ui.getByRole('textbox', { name: 'Find in page' });
-  check('Find… in the menu opens the find bar, with the keyboard in it', await until(async () => (await findField.isVisible()) && (await findField.evaluate((el) => el === document.activeElement))));
+  check('Find in page in the menu opens the find bar, with the keyboard in it', await until(async () => (await findField.isVisible()) && (await findField.evaluate((el) => el === document.activeElement))));
   const findBox = await ui.getByRole('search', { name: 'Find in page' }).boundingBox();
   const toolBox = await ui.getByRole('group', { name: 'Toolbar' }).boundingBox();
   check('in the toolbar\'s place', Math.abs(findBox.y - toolBox.y) < 1 && Math.abs(findBox.height - toolBox.height) < 1, JSON.stringify({ findBox, toolBox }));
@@ -640,13 +679,15 @@ const H = 915;
   await ui.getByRole('button', { name: 'Close find' }).tap();
   check('its × closes it', await until(async () => (await findField.count()) === 0));
 
-  // Under the page's actions, the menu bar's menus for this window, as Go gives them
-  // (docs/menus-shortcuts.md, "The shell's menu"): a submenu opens in the sheet, with a row
-  // back; nothing of the whole program's, nor the desktop's.
+  // More, last in the sheet: the menu bar's menus for this window, as Go gives them
+  // (docs/menus-shortcuts.md, "The shell's menu"), so nothing in them is out of reach: a
+  // submenu opens in the sheet, with a row back; nothing of the whole program's, nor the
+  // desktop's.
   await menuButton.tap();
   await until(() => menu.isVisible());
   const item = (name) => menu.getByRole('menuitem', { name, exact: true });
-  check('the menu lists the menu bar\'s menus: Settings…, File, View, History, Bookmarks, Tab and Downloads',
+  await item('More').tap();
+  check('More lists the menu bar\'s menus: Settings…, File, View, History, Bookmarks, Tab and Downloads',
     await until(async () => (await Promise.all(['Settings…', 'File', 'View', 'History', 'Bookmarks', 'Tab', 'Downloads'].map((n) => item(n).count()))).every((n) => n === 1)));
   check('and nothing of the whole program\'s, such as Quit', (await item('Quit Project B').count()) === 0);
   await item('View').tap();
@@ -654,9 +695,11 @@ const H = 915;
   check('and without the desktop\'s, such as Full Screen', (await item('Full Screen').count()) === 0);
   await menu.getByRole('menuitem', { name: 'Back to the menu' }).tap();
   check('the row back shows the menus again', await until(() => item('File').isVisible()));
+  await menu.getByRole('menuitem', { name: 'Back to the menu' }).tap();
+  check('and from there, the sheet\'s own rows', await until(() => item('Settings').isVisible()) && (await item('File').count()) === 0);
 
   // Settings, from the menu.
-  await menu.getByRole('menuitem', { name: 'Settings' }).tap();
+  await item('Settings').tap();
   check('Settings in the menu opens the settings tab', await until(async () => (await regions()).settings !== 0 && (await regions()).active === (await regions()).settings));
 
   // The address bar on top, from settings on a phone: the toolbar moves under the status

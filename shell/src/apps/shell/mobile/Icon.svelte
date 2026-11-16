@@ -1,6 +1,7 @@
 <script>
-  // The shell's line icons: 20px on a 24px box at a 1.5px stroke, in the colour around them.
-  let { name, size = 20 } = $props();
+  // The shell's line icons: 20px on a 24px box at a 1.5px stroke, in the colour around them;
+  // filled, the shape is filled with it too, as a star that is on.
+  let { name, size = 20, filled = false } = $props();
   const paths = {
     back: 'M15 5l-7 7 7 7',
     forward: 'M9 5l7 7-7 7',
@@ -30,10 +31,11 @@
     star: 'M12 4l2.4 5 5.4.6-4 3.7 1.1 5.3L12 16l-4.9 2.6 1.1-5.3-4-3.7 5.4-.6z',
     history: 'M12 20a8 8 0 1 0-8-8M4 7v5h5M12 8v4l3 2',
     closed: 'M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11',
+    print: 'M7 9V4h10v5M7 17H5v-7h14v7h-2M7 14h10v6H7z',
   };
 </script>
 
-<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+<svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
   {#if name === 'more'}
     <g fill="currentColor" stroke="none"><circle cx="12" cy="6" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="12" cy="18" r="1.6" /></g>
   {:else}

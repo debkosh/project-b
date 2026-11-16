@@ -522,12 +522,12 @@ def browsing():
     check("a tap on a card shows that tab", until(lambda: find("page", text="b")) is not None and find("shell", label="Close Page C") is None)
 
     # Settings is a tab of ours: its title and a close where the address goes.
-    menu("Settings…")
+    menu("Settings")
     check("the settings button opens settings as a tab, its title where the address goes",
           until(lambda: find("settings", text="Theme")) is not None and find("shell", text="Settings") is not None and
           find("shell", label="Address", kind=FIELD) is None)
     shot("06c-settings")
-    menu("Settings…")
+    menu("Settings")
     check("settings again shows the same tab", until(lambda: find("settings", text="Theme")) is not None)
     close_settings()
     check("its close closes the settings tab", "settings" not in screen_parts())
@@ -656,9 +656,9 @@ def mobile_shell():
     key(4)
     check("the back key closes the switcher", bool(until(lambda: find("shell", label="Close Page A") is None)))
     press("Menu")
-    see("shell", label="Settings…")
+    see("shell", label="Settings")
     key(4)
-    check("the back key closes the menu", bool(until(lambda: find("shell", label="Settings…") is None)))
+    check("the back key closes the menu", bool(until(lambda: find("shell", label="Settings") is None)))
     tap(middle(see("shell", kind=FIELD)))
     see("shell", kind=FIELD, focused="true")
     key(4)  # The keyboard goes first.
@@ -685,7 +685,7 @@ def mobile_shell():
 
     # Each screen in light and dark, the theme chosen in settings.
     for scheme in ("light", "dark"):
-        menu("Settings…")
+        menu("Settings")
         tap(middle(see("settings", text=scheme.capitalize())))
         close_settings()
         time.sleep(1)
@@ -695,7 +695,7 @@ def mobile_shell():
         shot("31-switcher-" + scheme)
         key(4)
         press("Menu")
-        see("shell", label="Settings…")
+        see("shell", label="Settings")
         shot("32-menu-" + scheme)
         key(4)
         tap(middle(see("shell", kind="android.widget.Button", label=lambda l: (l or "").startswith("Group "))))
@@ -707,7 +707,7 @@ def mobile_shell():
         shot("34-suggestions-" + scheme)
         key(4)
         key(4)
-    menu("Settings…")
+    menu("Settings")
     tap(middle(see("settings", text="System")))
     close_settings()
     # The active favicon in the strip closes its tab at a tap; a group of one then ends.
@@ -901,9 +901,9 @@ def find_in_page():
     launch()
     go(BASE + "/a")
     asked("/a")
-    menu("Find…")
+    menu("Find in page")
     field = until(lambda: find("shell", kind=FIELD, focused="true", label=lambda l: l != "Address"))
-    check("Find… in the menu opens the find bar with the keyboard in it", field is not None)
+    check("Find in page in the menu opens the find bar with the keyboard in it", field is not None)
     type_text("to")
     check("a word typed is found in the page and counted", until(lambda: find("shell", text="1/1")) is not None)
     shot("31-find")
