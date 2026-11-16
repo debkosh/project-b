@@ -74,7 +74,7 @@ FIND = """(() => {
   const want = new RegExp('^' + %s.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') + '\\\\b');
   const name = (e) => (e.getAttribute('aria-label') || e.textContent || '').trim();
   const at = (e) => { const r = e.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; };
-  const found = [...document.querySelectorAll('button, [role=button]')]
+  const found = [...document.querySelectorAll('button, [role=button], [role=menuitem]')]
     .filter((e) => e.checkVisibility({ visibilityProperty: true }) && want.test(name(e)));
   const tab = document.querySelector('[role=tab][aria-selected=true]');
   const off = (e) => { if (!tab) return 0; const [x, y] = at(e), [tx, ty] = at(tab); return Math.hypot(x - tx, y - ty); };
@@ -115,6 +115,11 @@ class Mac:
 
     def interact(self):
         d, app = self.d, self.app
+        # Settings is a button, or an item of the ☰ menu, the menu bar's menus, as in the
+        # standard shell (docs/menus-shortcuts.md, "The shell's menu").
+        if not self.find("Settings"):
+            self.press("Menu")
+            until(lambda: self.find("Settings"))
         self.press("Settings")
         ended(self, "settings.open")
         app.cmd("key", "cmd+w")
@@ -204,7 +209,7 @@ class Android:
 
     def interact(self):
         d = self.d
-        d.press("Settings")
+        d.menu("Settings…")
         ended(self, "settings.open")
         d.close_settings()
 
