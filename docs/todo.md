@@ -150,18 +150,23 @@ Take an item off when it lands or is dropped.
   every release comes from. Finding the holder takes a build with
   `enable_backup_ref_ptr_instance_tracer = true` in an out dir of its own, a near-full rebuild.
 - On Android 17 a cold start now and then shows the frame colour and no shell, the app running.
-  The log of one (drive_android's GPU part on 0.2.69, emu-37) shows why: Android started the
-  shell's renderer, `NativeOnlySandboxedProcessService0`, and killed it ten seconds later for
-  a start timeout ("failed to attach"), and the browser heard nothing, so the shell's page
-  waits for a renderer for good. It shows only deep in full runs on a loaded emulator. The fix
-  is in how a launch that never attaches reaches the browser: as a dead renderer, which the
-  shell's page already recovers from. Branch `shell-attach` (4a58733e, on 0.2.72) does it: the
-  shell page watches each load, and one whose renderer isn't ready after 15 s is shut down and
-  goes the crash path (Go hears SHELL_CRASHED, the page reloads). It builds on the Mac; it is
-  not yet checked on Android. To check it on an emulator with root (`su 0`), stop the first
-  sandboxed process as the app starts (`kill -STOP $(pgrep -f sandboxed_process0 | head -1)`)
-  and see the shell come back about 15 s later; the stop needs no `pidof`, whose name match
-  misses the zygote child's longer name.
+  Android starts the shell's renderer, `NativeOnlySandboxedProcessService0:0`, kills it ten
+  seconds later for a start timeout ("failed to attach"), and the browser hears nothing, so the
+  shell's page waits for a renderer for good. It shows on a loaded emulator: once in the first
+  start after install while a script polled adb hard, none in 24 quiet starts. Branch
+  `shell-attach-renew` fixes it: the shell page watches each load on Android, and one whose
+  renderer isn't ready after 15 s is made again, a new page with a new renderer (Go hears
+  SHELL_CRASHED and waits for its ready). A shutdown and reload, the first try (`shell-attach`,
+  4a58733e), can't work: content can't stop a launch it is still waiting on
+  (`ChildProcessLauncher::Terminate` returns false while starting), so the reload went back to
+  the stuck process. To check it, freeze the shell's renderer before it attaches, from a loop on
+  the device (from the Mac, adb's round trips come too late, and a renderer stopped after it
+  attached only hangs): `tools/android-attach-check.sh` (`S=` the emulator, `APK=` to install
+  one first).
+  On Android 17 (emu-37, 2026-11-17) the branch shows the shell again at +21 to 22 s, 3 of 3,
+  and 0.2.75 never does, 2 of 2. Android 14 counts that process as attached and kills it with a
+  service ANR at 20 s, which content hears, so 0.2.74 comes back there too, at +36 s against
+  +20 s: Android 17 is the real check. Once this lands, take the item off.
 - Closing a tab (Cmd+W) takes Go's part of the span about 3.4 ms at 10 tabs and 3.8 at 50 on
   0.2.70 (`tools/bench/tabs.py`, 2026-11-16), against 0.3 to 0.7 in 0.2.64. It isn't Go's own
   work: that is 126 µs for an open and a close on `core/perf`'s rig, where the engine does

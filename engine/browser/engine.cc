@@ -884,6 +884,20 @@ void Engine::SetWindowPage(int64_t window, const std::string& page) {
   w->shell->SetPage(page);
 }
 
+#if BUILDFLAG(IS_ANDROID)
+void Engine::RenewShell(int64_t window) {
+  AppWindow* w = this->window(window);
+  if (!w || !w->shell) {
+    return;
+  }
+  const std::string page = w->shell->page();
+  w->window->RemoveShell();
+  w->shell = std::make_unique<ShellPage>(pages_context_, window, page);
+  w->window->SetShellContents(w->shell->contents());
+  w->shell->Load();
+}
+#endif
+
 void Engine::FocusShellForTraversal(int64_t from_tab, bool reverse) {
 #if BUILDFLAG(IS_ANDROID)
   if (WindowOf(from_tab)->native_shell) {

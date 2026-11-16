@@ -27,6 +27,7 @@
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/render_frame_host.h"
+#include "content/public/browser/render_process_host.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/url_data_source.h"
 #include "content/public/browser/web_contents.h"
@@ -408,7 +409,38 @@ void ShellPage::Load() {
   contents_->GetController().LoadURLWithParams(
       content::NavigationController::LoadURLParams(
           GURL("chrome://" + page_ + "/")));
+  Watch();
 }
+
+void ShellPage::Watch() {
+#if BUILDFLAG(IS_ANDROID)
+  // Longer than Android gives a sandboxed process to attach, so the system has killed one
+  // that didn't by then; a renderer that attached and is only slow is left to finish.
+  constexpr base::TimeDelta kAttachWait = base::Seconds(15);
+  watch_.Start(FROM_HERE, kAttachWait,
+               base::BindOnce(&ShellPage::Unattached, base::Unretained(this)));
+#endif
+}
+
+#if BUILDFLAG(IS_ANDROID)
+// Content can't stop a launch it is still waiting on, so neither a shutdown nor a reload
+// gets this page a renderer: the engine makes the page again, with a process of its own.
+// Go hears of it as of a crash, and waits for the new shell to say it's ready.
+void ShellPage::Unattached() {
+  if (contents_->GetPrimaryMainFrame()->GetProcess()->IsReady()) {
+    Watch();
+    return;
+  }
+  timeline::Mark("shell.unattached");
+  hooks::Args args;
+  args.Int(window_);
+  hooks::Fire(PB_EVENT_SHELL_CRASHED, args);
+  // Making the page again ends this one, so it waits for the timer's task to return.
+  content::GetUIThreadTaskRunner({})->PostTask(
+      FROM_HERE, base::BindOnce(&Engine::RenewShell,
+                                base::Unretained(Engine::Get()), window_));
+}
+#endif
 
 void ShellPage::SetPage(const std::string& page) {
   page_ = page;
@@ -441,6 +473,9 @@ void ShellPage::RenderFrameCreated(content::RenderFrameHost* frame) {
 // only once it has drawn a layout that places them.
 void ShellPage::DidFinishNavigation(content::NavigationHandle* handle) {
   timeline::PageCommitted(app(), handle);
+  if (handle->IsInPrimaryMainFrame() && handle->HasCommitted()) {
+    watch_.Stop();
+  }
 #if !BUILDFLAG(IS_ANDROID)
   if (handle->IsInPrimaryMainFrame() && handle->HasCommitted() &&
       !handle->IsSameDocument()) {
@@ -469,6 +504,7 @@ void ShellPage::PrimaryMainFrameRenderProcessGone(
                        if (self) {
                          self->contents_->GetController().Reload(
                              content::ReloadType::NORMAL, false);
+                         self->Watch();
                        }
                      },
                      weak_factory_.GetWeakPtr()));
