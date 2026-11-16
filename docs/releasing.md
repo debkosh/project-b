@@ -76,3 +76,15 @@ reads that checkout. It takes about four minutes.
   check the id against it, before building.
 - GitHub sometimes refuses a push ("missing necessary objects", "failed"); pushing again works.
 - Never a bare `git stash`: the stash is shared with every worktree.
+- A new worktree has no `chromium` or `depot_tools`: link both to the main checkout's
+  (`ln -s ../project-b/chromium chromium`, the same for `depot_tools`) before
+  `tools/build.sh`, which otherwise reports them missing; a `chromium/` folder the build's
+  lock left behind goes first. `.tools` links to the main checkout's too, for the mock suites.
+- When a shell control goes away, search the tools for it by every name they may use: its
+  label, its class (`button.settings`) and its text. The real-app driver and the VM check find
+  controls by CSS selectors, and a missed one stops their run early.
+- Test races seen in this repo, each fixed in the test, not the app: a tab closed right after
+  its page sent a message (the message goes on the tab's channel, which a closed tab no longer
+  has); a setting read before a shell's background prefs write landed; a tab navigated before
+  its first page loaded, so the page replaced it in history. Wait for Go's state, a file Go
+  wrote, or the page's title, never a fixed time.
