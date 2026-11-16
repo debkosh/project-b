@@ -16,16 +16,27 @@ const text = ref('');
 const items = ref([]);
 const highlight = ref(0);
 let latest = 0;
+// The text the latest ask was for, and the text the list on screen answers: until Go's
+// answer comes, the list is an earlier text's, such as the new tab's for nothing typed.
+let asked = '';
+let shownFor = '';
+// The arrow keys chose a row in the list on screen, since the last key typed.
+let picked = false;
 
 function onInput() {
   latest = nextQuery();
-  suggest(latest, text.value.trim() === '' ? '' : text.value);
+  asked = text.value.trim();
+  picked = false;
+  suggest(latest, asked === '' ? '' : text.value);
 }
 
-// choose takes a row of Go's list; Enter before the list has come takes what was typed, as
-// the address field does: in a new tab over a page or with no tabs, else in this one.
-function choose(i = highlight.value) {
-  const row = items.value[i];
+// choose takes a row of Go's list, one pressed or the arrow keys' choice. Enter takes the
+// first row only once the list answers what is typed now; before that it takes what was
+// typed, as the address field does: in a new tab over a page or with no tabs, else in this
+// one. So a fast typist's Enter never opens a row of the list for an earlier text.
+function choose(i = highlight.value, pressed = false) {
+  const current = pressed || picked || shownFor === text.value.trim();
+  const row = current ? items.value[i] : undefined;
   const typed = text.value.trim();
   const fresh = props.overPage || state.active === 0;
   if (row) chooseSuggestion(row, fresh);
@@ -39,9 +50,11 @@ function onKeydown(e) {
   if (e.key === 'ArrowDown' && n) {
     e.preventDefault();
     highlight.value = (highlight.value + 1) % n;
+    picked = true;
   } else if (e.key === 'ArrowUp' && n) {
     e.preventDefault();
     highlight.value = (highlight.value - 1 + n) % n;
+    picked = true;
   } else if (e.key === 'Enter') {
     e.preventDefault();
     choose();
@@ -67,6 +80,7 @@ onMounted(() => {
   newTabBox.suggestions = (id, list) => {
     if (id === latest) {
       items.value = list;
+      shownFor = asked;
       highlight.value = 0;
     }
   };
@@ -96,7 +110,7 @@ onMounted(() => {
         @keydown="onKeydown"
       />
     </div>
-    <SuggestionList v-if="items.length" id="new-tab-list" class="list" :items="items" :highlight="highlight" :first="text.trim() === ''" @hover="(i) => (highlight = i)" @choose="choose" />
+    <SuggestionList v-if="items.length" id="new-tab-list" class="list" :items="items" :highlight="highlight" :first="text.trim() === ''" @hover="(i) => (highlight = i)" @choose="(i) => choose(i, true)" />
   </div>
 </template>
 
