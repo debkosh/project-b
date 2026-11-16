@@ -113,26 +113,21 @@ context, which Android shares between our pages and the web. Before it, every An
 tab counted as ours, and a popup its page opened loaded over the page itself: the blank page
 of an ad's `window.open()` blanked the page.
 
-**Checking it.** A page with each way a page leaves, served on one host, with
-`sites.json` setting `links: block` for that origin: on the Mac `http://localhost:8765`, on an
-emulator `http://10.0.2.2:8765` (the Mac seen from the emulator); `example.com` is the other
-site. The page counts clicks, so a page that reloaded shows it; a pass is the page still there,
-its count risen, Back still off, one tab, and the address field counting the popups (five of
-the ten open one). The person's own way (an address typed) must still go under Block, and every
-link under Allow. The ten links:
-
-```html
-<a href="http://example.com/a1">1 link</a>
-<a href="http://example.com/a2" target="_blank">2 target=_blank</a>
-<a href="http://example.com/a3" target="_blank" rel="noopener">3 noopener</a>
-<button onclick="window.open('http://example.com/b4')">4 window.open</button>
-<button onclick="location.href='http://example.com/b5'">5 location.href</button>
-<button onclick="location.replace('http://example.com/b6')">6 location.replace</button>
-<form action="http://example.com/f7"><button>7 form</button></form>
-<button onclick="var w=window.open('about:blank');w.location='http://example.com/b8'">8 popup, then its location</button>
-<a href="/redirect">9 same-site link the server redirects to http://example.com/ (a 302)</a>
-<button onclick="window.open('http://example.com/ad1');setTimeout(()=>location.href='http://example.com/ad2',50)">10 popup and leave</button>
-```
+**Checking it.** The real-app drivers do it: `python3 tools/drive_first_app.py links` on the
+Mac and `python3 tools/drive_android.py links_to_other_sites` on an emulator, each part of its
+full run, with the page in `tools/links_page.py`. The page is served on one host and the other
+site is the same test server by its other name (the Mac: `127.0.0.1` and `localhost`; the
+emulator, through `adb reverse`: `localhost` and `127.0.0.1`), so no request leaves the machine
+and the server sees whether the other site was ever asked. Block is set as a person sets it:
+the site's panel message on the Mac, the site sheet's Block on a phone, waited for in
+`sites.json`. A press is followed 1.5 s later by the page asking its own host for
+`/alive?<n>`, so a page still there says so. A pass under Block is the page still there, its
+count risen, one tab, nothing of the other site in history (on the Mac, Back still off), the
+other site never asked, and the address field counting the popups: five of the ten open one.
+The person's own way, an address typed, still goes under Block, and every way goes under
+Allow. The ten ways are a link, `target=_blank`, `rel=noopener`, `window.open`,
+`location.href`, `location.replace`, a form, a blank popup sent on, a same-site link the
+server redirects (a 302) and a popup opened as the page leaves.
 
 **What was learned on the way** (0.2.70 to 0.2.72):
 

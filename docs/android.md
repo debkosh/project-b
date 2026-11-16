@@ -309,6 +309,11 @@ One driver trap: Android takes the app zygote down a few seconds after a force s
 reused the dying zygote once and hung until it was killed, after which no renderer would start. The driver waits for
 it to go. A user won't force-stop and relaunch inside a few seconds, but it's worth knowing.
 
+Two more for whoever writes a part: an ElementTree node with no children counts as false, so
+`find(...) or find(...)` drops a real match (a `<button>`'s node has none); test against `None`.
+And the Mobile shell's tab count isn't in the accessibility tree, where the Tabs button is only
+its label: count the switcher's "Close …" buttons instead.
+
 ### Android 17's renderers
 
 From Android 17 (API 37) content starts renderers with no Java in them, as native services, so the app needs two

@@ -10,6 +10,7 @@ screenshots go to build/android-drive-content.
 
     amarit start project-b-emu          # the emulator; docs/android.md says how it was made
     tools/test.sh android               # or: python3 tools/drive_android.py
+    python3 tools/drive_android.py links_to_other_sites   # only the parts named
 
 ADB_SERIAL picks another device than emulator-5600, and PB_APK another APK than
 build/android/project-b-content.apk. The APK is installed over what is there and the
@@ -28,6 +29,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import links_page  # noqa: E402
 import web_features  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -98,13 +100,33 @@ PAGES["/apis"] = ("<title>APIs</title><button style='position:fixed;inset:0;widt
                   "run('load'); document.querySelector('button').onclick = () => run('tap')</script>")
 
 served = []
+# Each request's host and path, for Links to other sites, which serves two sites.
+seen = []
 results = []
 
 
 class Server(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         served.append(self.path)
+        seen.append(self.headers.get("Host", "").split(":")[0] + self.path)
         path = self.path.split("?")[0]
+        if path in ("/leave", "/leave-redirect"):
+            # Links to other sites (tools/links_page.py): the other site is this server as
+            # 127.0.0.1, which isn't localhost's site.
+            other = "http://127.0.0.1:%d" % self.server.server_port
+            if path == "/leave-redirect":
+                self.send_response(302)
+                self.send_header("Location", other + "/r9")
+                self.end_headers()
+                return
+            data = links_page.page(other).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(data)
+            return
         if path == "/signin" and self.headers.get("Authorization") != "Basic YWRhOnNlY3JldA==":  # ada:secret
             self.send_response(401)
             self.send_header("WWW-Authenticate", 'Basic realm="Staff only"')
@@ -1051,6 +1073,94 @@ def web_apis():
     shot("18b-web-apis")
 
 
+def links_to_other_sites():
+    """Links to other sites (docs/site-features.md#checking-it), set to Block from the site's
+    sheet: each of the ten ways a page leaves for another site goes nowhere, the page staying
+    with its count risen, one tab and nothing in history, and the address pill counting the tabs
+    it closed; an address typed still goes; under Allow every way goes."""
+    launch()
+    go(BASE + "/leave")
+    asked("/leave")
+    other = "127.0.0.1"
+    sites = "/data/data/%s/%s/sites.json" % (PACKAGE, PROFILE)
+    origin = "http://" + BASE
+
+    def kept():
+        try:
+            return json.loads(adb("shell", "cat", sites) or "{}").get(origin, {}).get("links", "allow")
+        except ValueError:
+            return "allow"
+
+    def set_links(value):
+        press("Site settings")
+        tap(middle(see("shell", text=value.capitalize())))
+        if until(lambda: kept() == value, 10) is None:
+            raise TimeoutError("Go never kept links=%s for %s" % (value, origin))
+        key(4)
+        until(lambda: find("shell", text=value.capitalize()) is None)
+
+    def shown(words):
+        """The page's node with these words, as its text or its label. A node with no
+        children is false, so each is tested against None."""
+        node = find("page", text=words)
+        return node if node is not None else find("page", label=words)
+
+    def way(words):
+        return until(lambda: shown(words))
+
+    def reached():
+        return [x for x in seen if x.startswith(other + "/")]
+
+    def tabs():
+        """How many tabs the switcher shows, by its cards' close buttons: the Tabs button's
+        count isn't in the accessibility tree, its label is."""
+        press("Tabs")
+        closes = lambda: [n for n in screen_parts().get("shell", ET.Element("x")).iter("node")
+                          if (n.get("content-desc") or "").startswith("Close ")]
+        until(closes, 5)
+        count = len(closes())
+        key(4)
+        until(lambda: find("shell", label=lambda l: (l or "").startswith("Close ")) is None, 5)
+        return count
+
+    set_links("block")
+    shot("40-links-block-sheet")
+    del seen[:]
+    blocked = 0
+    for n, words, opens, paths in links_page.WAYS:
+        node = way(words)
+        if node is None:
+            raise TimeoutError("the page never showed %r" % words)
+        tap(middle(node))
+        alive = until(lambda: "localhost/alive?%d" % n in seen, 10)
+        if opens:
+            blocked += 1
+            until(lambda: find("shell", label=links_page.popups_word(blocked)), 5)
+        count = until(lambda: shown("clicks %d" % n), 3)
+        check("under Block, %s goes nowhere: the page stays, its count risen, one tab, the other site never asked%s"
+              % (words, ", and the pill says " + links_page.popups_word(blocked) if opens else ""),
+              alive and count is not None and tabs() == 1 and not reached()
+              and (not opens or find("shell", label=links_page.popups_word(blocked)) is not None),
+              "alive=%s count=%s tabs=%s reached=%s" % (bool(alive), count is not None, tabs(), reached()))
+    shot("41-links-blocked")
+    check("under Block, nothing of the other site went into history", other not in history_file())
+    go("%s:%d/typed" % (other, PORT))
+    check("under Block, an address typed still goes", until(lambda: "%s/typed" % other in seen, 15))
+
+    go(BASE + "/leave")
+    asked("/leave")
+    set_links("allow")
+    for n, words, opens, paths in links_page.WAYS:
+        go(BASE + "/leave")
+        node = way(words)
+        if node is None:
+            raise TimeoutError("the page never showed %r" % words)
+        del seen[:]
+        tap(middle(node))
+        went = until(lambda: all(other + p in [x.split("?")[0] for x in seen] for p in paths), 10)
+        check("under Allow, %s goes to the other site" % words, went, reached())
+
+
 def the_real_web():
     """Over the office's 443-only egress."""
     launch()
@@ -1071,8 +1181,9 @@ def main():
     adb("shell", "pm", "clear", PACKAGE)
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
-    for part in (browsing, mobile_shell, back_key_chain, page_dialogs, downloads, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
-                 the_gpu_process_dies, a_page_spins, web_apis, the_real_web):
+    every = (browsing, mobile_shell, back_key_chain, page_dialogs, downloads, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
+             the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web)
+    for part in [p for p in every if not sys.argv[1:] or p.__name__ in sys.argv[1:]]:
         try:
             part()
         except TimeoutError as e:
