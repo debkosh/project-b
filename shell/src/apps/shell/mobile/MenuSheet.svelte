@@ -97,7 +97,7 @@
         {#if item.separator}
           <div class="rule" role="separator"></div>
         {:else}
-          <button class="row" role={item.checked ? 'menuitemcheckbox' : 'menuitem'} aria-checked={item.checked ? 'true' : undefined} disabled={!item.items && !item.enabled} onclick={() => choose(item, i)}>
+          <button class="row" role={item.checked ? 'menuitemcheckbox' : 'menuitem'} aria-label={item.title} aria-checked={item.checked ? 'true' : undefined} disabled={!item.items && !item.enabled} onclick={() => choose(item, i)}>
             {#if icons[item.action]}<Icon name={icons[item.action]} />{:else}<span class="blank"></span>{/if}
             <span class="name">{item.title}</span>
             {#if item.action === 'downloads.show' && running}<span class="note">{running} in progress</span>{/if}

@@ -108,6 +108,11 @@ const same = (a, b) => !!a && !!b && ['x', 'y', 'w', 'h'].every((k) => Math.abs(
   watch(shell);
   // The window page, which holds the shell in a frame: see first-app.cjs.
   const ui = shell.frameLocator('iframe.shell');
+  // Settings is in the standard shell's ☰ menu, the menu bar's menus (docs/menus-shortcuts.md).
+  const openSettings = async () => {
+    await ui.getByRole('button', { name: 'Menu', exact: true }).click();
+    await ui.getByRole('menuitem', { name: /^Settings…/ }).click();
+  };
   await shell.goto(base + '/');
   // Standard starts on its command box with no tab: the checks want a page, so one is opened.
   await fetch(`${base}/shell/send`, { method: 'POST', body: JSON.stringify({ t: 'newTab', text: 'https://example.com/' }) });
@@ -124,7 +129,7 @@ const same = (a, b) => !!a && !!b && ['x', 'y', 'w', 'h'].every((k) => Math.abs(
     await p.getByRole('heading', { name: 'Settings' }).waitFor();
     return p;
   };
-  await ui.getByRole('button', { name: 'Settings', exact: true }).click();
+  await openSettings();
   await until(async () => (await settingsTab()) !== 0);
   let page = await open();
 
@@ -139,7 +144,7 @@ const same = (a, b) => !!a && !!b && ['x', 'y', 'w', 'h'].every((k) => Math.abs(
     const r = await regions();
     return r.tabs.length === 3 && r.tabs[1].id === r.settings && r.tabs[2].url === 'https://chromewebstore.google.com/' && r.active === r.tabs[2].id;
   }), JSON.stringify((await regions()).tabs));
-  await ui.getByRole('button', { name: 'Settings', exact: true }).click();
+  await openSettings();
   await until(async () => (await regions()).active === (await settingsTab()));
 
   // A package file, which the engine asks about before it installs.
@@ -284,7 +289,7 @@ const same = (a, b) => !!a && !!b && ['x', 'y', 'w', 'h'].every((k) => Math.abs(
   await shell.frameLocator('iframe.mock-page').getByRole('button', { name: 'Navigate' }).waitFor();
   errors.splice(before);
   check('with the flag off the shell has no extensions toolbar', (await ui.locator('.pbx-toolbar').count()) === 0);
-  await ui.getByRole('button', { name: 'Settings', exact: true }).click();
+  await openSettings();
   await until(async () => (await settingsTab()) !== 0);
   page = await open();
   check('and settings no Extensions section', (await page.getByRole('navigation').getByRole('button', { name: 'Extensions' }).count()) === 0);

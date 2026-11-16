@@ -139,6 +139,11 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   watch(shell);
   // The window page, which holds the shell in a frame: see first-app.cjs.
   const ui = shell.frameLocator('iframe.shell');
+  // Settings is in the standard shell's ☰ menu, the menu bar's menus (docs/menus-shortcuts.md).
+  const openSettings = async () => {
+    await ui.getByRole('button', { name: 'Menu', exact: true }).click();
+    await ui.getByRole('menuitem', { name: /^Settings…/ }).click();
+  };
   const shellFrame = () => shell.frame({ url: /\/shell\/standard\/\?window=1$/ });
   await shell.goto(base + '/');
   // Standard starts with no tab: the checks want a page, so one is opened.
@@ -153,7 +158,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
     return r.settings !== 0 && r.active === r.settings && r.tabs.find((t) => t.id === r.settings).page === 'settings';
   };
   check('settings starts closed', (await regions()).settings === 0);
-  await ui.getByRole('button', { name: 'Settings', exact: true }).click();
+  await openSettings();
   check('the gear opens the settings tab and shows it', await until(settingsShown));
   check('and the dev window shows the page in the tab\'s frame', await until(() => shell.locator('iframe.our-page[data-page="settings"]').isVisible()));
   check('its title is the page\'s own, with the section showing', await until(async () => (await regions()).tabs.find((t) => t.page === 'settings').title === 'Settings › General'), JSON.stringify((await regions()).tabs.find((t) => t.page === 'settings')?.title));
@@ -319,7 +324,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   await fetch(`${base}/settings/send?tab=${(await regions()).settings}`, { method: 'POST', body: JSON.stringify({ t: 'setShell', text: 'minimal' }) });
   check('choosing a shell saves it and the window loads it', await until(async () => prefsFile().shell === 'minimal' && (await regions()).shell === 'minimal'));
   await shellChoice.selectOption('standard');
-  check('and choosing the standard one loads it again', await until(async () => prefsFile().shell === 'standard' && (await regions()).shell === 'standard' && (await ui.getByRole('button', { name: 'Settings', exact: true }).count()) === 1));
+  check('and choosing the standard one loads it again', await until(async () => prefsFile().shell === 'standard' && (await regions()).shell === 'standard' && (await ui.getByRole('button', { name: 'Menu', exact: true }).count()) === 1));
   const resetButton = page.getByRole('button', { name: 'Reset to template…' });
   await resetButton.click();
   const confirm = page.getByRole('dialog', { name: "Reset this profile's settings?" });
@@ -392,7 +397,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
     const r = await regions();
     return (await dots.count()) === 3 && r.settings !== 0 && r.active !== r.settings && r.tabs.find((t) => t.id === r.active).workspace === made;
   }));
-  await ui.getByRole('button', { name: 'Settings', exact: true }).click();
+  await openSettings();
   check('and the gear shows the settings tab again, the one the window has', await until(async () => (await settingsShown()) && (await regions()).tabs.filter((t) => t.page === 'settings').length === 1));
   await page.close();
   page = await open();
@@ -615,7 +620,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   check('and Escape again leaves it too: the page closes as a tab does, not by itself', (await regions()).settings !== 0);
 
   // It closes as any tab does: Cmd+W while it is active.
-  await ui.getByRole('button', { name: 'Settings', exact: true }).click();
+  await openSettings();
   await until(settingsShown);
   await fetch(`${base}/mock/fire`, { method: 'POST', body: new URLSearchParams({ kind: 'key', value: 'closeTab' }) });
   check('Cmd+W closes the settings tab', await until(async () => (await regions()).settings === 0));
@@ -623,7 +628,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
 
   // Site settings: a row per site saying how each of its settings is, and its menu to reset
   // one, or Remove, last, for all of them.
-  await ui.getByRole('button', { name: 'Settings', exact: true }).click();
+  await openSettings();
   await until(settingsShown);
   page = await open();
   await page.getByRole('button', { name: 'Site settings', exact: true }).click();
@@ -680,7 +685,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
 
   // Sparks: New opens an editor; a save Go refuses says why; one it takes is listed, with
   // its switch, and Delete removes it.
-  await ui.getByRole('button', { name: 'Settings', exact: true }).click();
+  await openSettings();
   await until(settingsShown);
   page = await open();
   await page.getByRole('button', { name: 'Sparks', exact: true }).click();
