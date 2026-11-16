@@ -282,8 +282,8 @@ hidden or not, and macOS remaps work for all of them.
 
 ### The settings page
 
-Settings is an app of its own at `chrome://settings/`, which a tab of ours shows: the gear
-(or Settings…, Cmd+,) opens the window's settings tab, or shows it when the window has one,
+Settings is an app of its own at `chrome://settings/`, which a tab of ours shows: Settings…
+(in the menu bar, in a shell's menu such as Standard's ☰, or Cmd+,) opens the window's settings tab, or shows it when the window has one,
 and it closes as any tab does ([windows.md](windows.md#our-own-pages-are-tabs-decided-2026-11-14)). Each of our pages is a separate app, built the way pweb builds its
 pages: `shell/src/apps/<app>/` has the app's `index.html` and code, what apps share sits in
 `shell/src/` (imported as `@/`), and `VITE_APP=<app> vite build` builds one app into
@@ -380,6 +380,39 @@ Full History, a Help menu.
 
 Counted from Chrome's source, Chrome has 194 actions: 58 need only Go and the shell, 49 a
 content call, 13 come from the OS, and 74 open features we don't have.
+
+## The shell's menu
+
+The owner, 2026-11-16: "the shell menu should not directly mean settings.. it should be a drop
+down menu with everything the user should be able to do from there.. basically the same menu
+in the title bar", drawn by the shell from what the same menu manager gives it, leaving out
+what doesn't make sense there; approved as built, with the defaults below.
+
+- **One tree.** The shell's menu is the menu tree above, the one that makes the menu bar. A
+  shell asks for it as it opens its menu (`menu`), as the menu bar reads its lists as it
+  opens, and Go answers with the tree as it is then: each item `{title, action, enabled,
+  checked}`, a line, or `{title, items}`. Choosing one runs its action with `run`, a list's
+  item by its `<list>:<key>`; the key it shows is the keymap's (`keys`). The shell adds no
+  item of its own.
+- **What stays in the menu bar.** Every entry is in the shell's menu too, unless the menu
+  tree says otherwise, for it and what it holds: `"scope": "app"` for the whole program or
+  the OS (About, Check for Updates, Services, Hide, Hide Others, Show All, Quit, Minimize,
+  Zoom, Bring All to Front, and Profiles, the other profiles' windows and the picker);
+  `"scope": "keys"` for what is made for a key: what acts on whatever has the keyboard,
+  which the open menu has taken (Undo, Redo, Cut, Copy, Paste, Paste and Match Style,
+  Delete, Select All, Find Next and Previous, Keyboard's pane focus), and stepping through
+  tabs (Select Next and Previous Tab, Select Recent Tab, Select Tab 1 to 9).
+- **A phone** leaves out the entries marked `"desktop": true`: New Window, Close Window, Tabs on
+  Side and on Top, Full Screen, the zooms, Move Tab to New Window.
+- **Shells' own actions** show only the shell's, as in the menu bar while it is on.
+- **Tidy.** The program's menu gives its items first, Settings…, not a submenu; a submenu left
+  with one action is that action (Edit is Find…, Window is Downloads), while a list keeps its
+  submenu's title (New Tab in Workspace › Main); no line is left at an end or doubled.
+- **Drawn.** Standard's ☰ at the toolbar's end, in place of its Settings button, with the
+  shared menu (`@/ui/ContextMenu.vue`): the menu bar's menus as submenus, a submenu's own
+  (View's Shell) as its items between lines, a check on what is checked. Mobile lists them in
+  its ⋯ sheet under the page's actions, a submenu opening in the sheet with a row back.
+  The other shells keep their menus for now, and each can draw this one the same way.
 
 ## A shell's own actions
 
