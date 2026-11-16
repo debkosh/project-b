@@ -137,6 +137,11 @@ class Engine {
   // Loads another page over the window: a shell's, the picker, or a native shell, whose
   // page is "native/<id>" and which the window makes as its platform's view.
   void SetWindowPage(int64_t window, const std::string& page);
+#if BUILDFLAG(IS_ANDROID)
+  // Makes a window's shell page again, the same page in a new one, whose renderer is a new
+  // process: for a page whose renderer never attached (ShellPage::Watch).
+  void RenewShell(int64_t window);
+#endif
   // Ends the app, every window at once.
   void Quit();
 
