@@ -131,12 +131,15 @@ Take an item off when it lands or is dropped.
 - `tools/vm/check.py` times clicks by pixels, so it measures the VM's display; time inside the
   app instead.
 - Quitting a dev build sometimes aborts with "A freed allocation is still referenced by a
-  dangling pointer at exit" (partition_alloc_support.cc): something still holds a `raw_ptr` to a
-  `BrowserContext` when `BrowserMainParts::PostMainMessageLoopRun` frees it, though the engine
-  and extensions go first. Users never see it: the check exists only where
-  `enable_dangling_raw_ptr_checks` is on (`out/pb`, non-official), not in the official build
-  every release comes from. Finding the holder takes a build with
-  `enable_backup_ref_ptr_instance_tracer = true` in an out dir of its own, a near-full rebuild.
+  dangling pointer at exit" (partition_alloc_support.cc), as `BrowserMainParts::PostMainMessageLoopRun`
+  frees a `BrowserContext`. One holder of that kind is fixed in branch `quit-after-download`:
+  a profile's `Downloads`, our download manager delegate, is a member of its context, so it
+  went before the base destructor shut the download manager down, which then called the freed
+  delegate. Release builds crashed on it at Cmd+Q after a download (0.2.74, EXC_BAD_ACCESS in
+  `DownloadManagerImpl::Shutdown`); `~Downloads` now leaves the manager and its items nothing
+  pointing at it. If the dev abort never shows again after that lands, take this off; if it
+  does, finding the holder takes a build with `enable_backup_ref_ptr_instance_tracer = true` in
+  an out dir of its own, a near-full rebuild.
 - On Android 17 a cold start now and then shows the frame colour and no shell, the app running.
   The log of one (drive_android's GPU part on 0.2.69, emu-37) shows why: Android started the
   shell's renderer, `NativeOnlySandboxedProcessService0`, and killed it ten seconds later for
