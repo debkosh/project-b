@@ -126,7 +126,41 @@ Take an item off when it lands or is dropped.
   `CloseTab` returns is the fix, if 3 ms ever matters. The Go side's own part, a session
   saved twice per close, is gone (1e5b1932, and 5c9f4e58 in 0.2.70).
 
+## Terminal shell
+
+The UX pass of 2026-11-14 (owner: "terminal stays... but it gets a good research ux pass"):
+steps 1 to 4 and every contract rule are on main, described in
+[shells.md](shells.md#the-terminal-shell). Left:
+
+- **Step 5, waiting for the owner to try steps 1 to 4** (he asked that it wait). Each piece,
+  in Terminal's look:
+  - The prompt as a command line: `:open <url>` (`navigate`), `:tab <url>` (`newTab` with
+    `text`), `:split` and `:vsplit <url>` (a split, then the address), `:ws <name>` and
+    `:ws new <name>`, `:group <name>` (`editGroup` on the window's group), `:close`,
+    `:only`, `:zoom`, `:run <action>` (by name from the snapshot's `actions`, as Glide's
+    Command Bar does), `:b <words>` to jump to a pane by title. History in the shell's
+    profile data (Up, Ctrl+R), Tab to complete. Shift+Cmd+; (reads as Cmd+:) focuses it.
+  - Workspaces shown one at a time or all, all by default: a pill at the strip's left with
+    the workspace's colour and name; new tabs open in the one shown.
+  - Go's tab groups as coloured brackets over their chips, the group's name on the bracket.
+  - Pinned tabs (Go has them now) as favicon squares after the pill, never closed by `:only`.
+  - The research and mocks: `project-b-ux-audit/terminal/` beside the repo (summary,
+    research, audit, mocks.html and PNGs). An opt-in, unbound `terminal.prefix` action for
+    tmux users was proposed; the owner chose chords only.
+- **Check in the real app:** the chips, Split down disabled under 321px, and rules 15 to 32
+  have run only on the mock. The chords were checked with real keys in the VM on 0.2.64:
+  none is taken by macOS.
+- **Cmd+1 to 9 count tabs, the chips count windows.** Go's `tab.select` picks the Nth tab in
+  the strip's order; a chip's number is its window's. Recommendation: leave it unless the
+  owner finds it confusing; then Terminal's own `terminal.window1`..`9` on Ctrl+1 to 9.
+- The shared page parts (dialog, find bar, menu, downloads, prompt, notice) have the design
+  system's look, not Terminal's square monospace; restyling them means Terminal's own copies.
+
 ## Build, release and test tooling
+
+- The mock holds six connections per host, so four mock pages on screen hang a test
+  ([shells.md](shells.md#testing-one)): serve the mock pages from a second host
+  (`localhost` beside `127.0.0.1`).
 
 - `locked-release.py` lives outside the repo (`~/PW_TOOLS/project-b-release`): fold its lock
   into `tools/release.sh`, as `tools/build.sh` holds its own, so a release needs only the repo.

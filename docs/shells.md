@@ -648,6 +648,12 @@ a port of its own and a profile of its own, so tests run side by side, and has t
 
 `tools/test.sh mock` runs the check and every shell's own tests with the rest.
 
+**The mock's limit: three mock pages on screen.** Each mock page shown keeps an event stream
+open, and Chrome holds six connections per host, so with four or more mock pages showing, plus
+the shell's own stream, the shell's next `POST /shell/send` waits for good and everything it
+sends after is lost, with Go idle. A test of panes (Terminal's) keeps to three on screen.
+Serving the mock pages from a second host would lift it ([todo.md](todo.md)).
+
 **What the mock tells a test.** `/mock/regions?window=<n>` answers with the last layout:
 `regions` (the shell's, a drag bar's controls among them) and `drag`, `visible` (each shown tab and its rectangle), `shell` (the id of the
 shell the window loads), `focused` (the tab last given the keyboard), `unshownFocus` (the

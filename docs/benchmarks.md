@@ -12,6 +12,8 @@ against a baseline; these are the deeper looks, run by hand when a question need
 | `python3 tools/bench/first_paint.py` | The start-up marks for a reused profile (every day) and a new one (first start), side by side |
 | `python3 tools/bench/memory.py <shell>...` | Footprint per process kind, the shell's JS heap and element count |
 | `python3 tools/bench/native.py` | The same marks and footprint for a bare AppKit app, plain and with a WKWebView |
+| `go test ./perf -run xxx -bench .` (in `core/`) | Go's own cost per user action (open and close, switch, navigate, type, policy, prefs, the menu) at 1 to 5,000 tabs, on a counting engine that does nothing: ns, allocations, engine calls and shell bytes per action |
+| `go run ./perf/cmd/stress` (in `core/`) | A mixed workload at several tab counts: per-action latency, GC pauses and CPU, threads |
 
 Point `PB_BIN` at the package (`build/package/Project B.app/Contents/MacOS/project_b`)
 for what a user gets. The CPU view needs symbols, so it runs `chromium/src/out/pb/project_b`.
@@ -19,6 +21,15 @@ Run from a person's desktop session where you can (`deskrig run -- ...`): an age
 has no screen, and AppKit can be slower there. Measure on a quiet machine: with emulators, the
 VM or a build running, `uptime`'s load runs past 20 and every mark moves later, Go's start
 among them, so compare only numbers taken under the same load.
+
+**Go alone.** `core/perf` takes the engine out, so it says what Go's code costs and nothing
+of Chromium's. Compare a change with `-count 5`, before and after on the same machine and
+load, and put the medians in the commit message, as the Go performance commits of 0.2.65 did
+(policy 13 to 18 times faster at 1,000 hosts, a navigation 3.5 times, a settings change from
+384 to 2.3 µs on the main thread, a tab switch at 1,000 tabs from 2.30 to 0.41 ms). When the
+real app's span (`tabs.py`) moves and `core/perf` doesn't, the time is in the engine: Cmd+W's
+3 ms since 0.2.65 is that ([todo.md](todo.md)). A rig stops its app at cleanup, as the app
+does on the way out, so the writers finish before the temp folder goes.
 
 ## 0.2.64 against 0.2.65, 2026-11-15
 
