@@ -263,10 +263,15 @@ const noNoticeYet = {
     // reach is the first of what locator finds that shows: on the shell, or once one of the
     // shell's controls that open something is pressed. One that shows nothing is closed again
     // with Escape. null when none shows it.
+    // The controls that open something, to look in what each opens: those that say they open
+    // a popup first, then other expanders, as a sidebar's toggle is one too and Escape
+    // doesn't undo it.
+    const openersOf = async () => [...await ui.locator('[aria-haspopup]').filter({ visible: true }).all(),
+      ...await ui.locator('[aria-expanded]:not([aria-haspopup])').filter({ visible: true }).all()];
     const reach = async (locator) => {
       const shown = locator.filter({ visible: true });
       if (await shown.count()) return shown.first();
-      for (const opener of await ui.locator('[aria-haspopup], [aria-expanded]').filter({ visible: true }).all()) {
+      for (const opener of await openersOf()) {
         await opener.click();
         if (await until(async () => (await shown.count()) > 0, 500)) return shown.first();
         await page.keyboard.press('Escape');
@@ -334,7 +339,7 @@ const noNoticeYet = {
         // A tab may be in a sheet one of the shell's controls opens, as a phone's switcher
         // is: each is pressed in turn until the tab shows, and closed again with Escape.
         const otherEl = tabEls.nth(r.tabs.findIndex((t) => t.id === other));
-        for (const opener of await ui.locator('[aria-haspopup], [aria-expanded]').filter({ visible: true }).all()) {
+        for (const opener of await openersOf()) {
           if (await otherEl.isVisible()) break;
           await opener.click();
           if (!(await until(() => otherEl.isVisible(), 500))) await page.keyboard.press('Escape');
@@ -350,7 +355,7 @@ const noNoticeYet = {
         rule(4, 'with two tabs in a group, each tab is still an element', r.tabs.every((t) => d.some((x) => x.tab === t.id)), JSON.stringify(d));
         const grouped = r.tabs[1].id === r.active ? r.tabs[0].id : r.tabs[1].id;
         const groupedEl = tabEls.nth((await drawn()).findIndex((t) => t.tab === grouped));
-        for (const opener of await ui.locator('[aria-haspopup], [aria-expanded]').filter({ visible: true }).all()) {
+        for (const opener of await openersOf()) {
           if (await groupedEl.isVisible()) break;
           await opener.click();
           if (!(await until(() => groupedEl.isVisible(), 500))) await page.keyboard.press('Escape');
@@ -435,7 +440,7 @@ const noNoticeYet = {
         const settings = ui.getByRole('button', { name: named }).or(ui.getByRole('menuitem', { name: named })).filter({ visible: true });
         // None on the shell: each control that opens something is pressed in turn, until
         // one shows it.
-        const openers = await ui.locator('[aria-haspopup], [aria-expanded]').filter({ visible: true }).all();
+        const openers = await openersOf();
         // One that shows nothing is closed again with Escape, as rule 12 does.
         while ((await settings.count()) === 0 && openers.length > 0) {
           await openers.shift().click();
