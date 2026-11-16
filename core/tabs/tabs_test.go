@@ -275,18 +275,20 @@ func TestALateBlankPageLeavesTheNewerAddress(t *testing.T) {
 	}
 }
 
-// A navigation that shows nothing instead, as one that becomes a download, ends as a
-// failure with none named, at the page still shown: the address goes back to that page, so
-// a restore loads it and not the download, and no error shows.
+// A navigation that shows nothing instead, as one that becomes a download or is refused on
+// its way, ends as a failure with none named, at the page still shown: the address goes back
+// to that page, so a restore loads it and not the download, no error shows, and the page's
+// title and icon come back.
 func TestANavigationThatBecomesADownloadLeavesThePageShown(t *testing.T) {
 	m := oneWindow(&fakeEngine{})
 	id := m.Create(1)
 	m.HandleNavigationStarting(id, 1, "https://example.com/")
 	m.HandleNavigationFinished(id, 1, "https://example.com/")
+	m.HandleTitleChanged(id, "Example")
 	m.HandleNavigationStarting(id, 2, "https://example.com/report.pdf")
 	m.HandleNavigationFailed(id, 2, "https://example.com/", "", "")
-	if tab := m.Active(); tab.URL != "https://example.com/" || tab.Error != "" || tab.Loading {
-		t.Fatalf("after the download the tab shows %q, error %q, loading %v", tab.URL, tab.Error, tab.Loading)
+	if tab := m.Active(); tab.URL != "https://example.com/" || tab.Error != "" || tab.Loading || tab.Title != "Example" {
+		t.Fatalf("after the download the tab shows %q, %q, error %q, loading %v", tab.URL, tab.Title, tab.Error, tab.Loading)
 	}
 }
 
