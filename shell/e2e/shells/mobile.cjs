@@ -37,6 +37,9 @@ const H = 915;
   };
   const tabCount = (n) => until(async () => (await regions()).tabs.length === n);
   const inField = () => w.shell().evaluate(() => document.hasFocus() && document.activeElement?.getAttribute('aria-label') === 'Address');
+  // A tab with nothing in it shows the new tab page, with the keyboard down
+  // (docs/daily-driver.md, A new tab).
+  const newTabPage = async () => (await ui.getByRole('region', { name: 'New tab' }).isVisible()) && !(await inField());
   const visit = async (text, url) => {
     await field.tap();
     await page.keyboard.press('ControlOrMeta+A');
@@ -79,8 +82,8 @@ const H = 915;
   const pill = await field.boundingBox();
   check('the address pill fills the bar beside the count and ⋯', pill.width > W - 140, JSON.stringify(pill));
 
-  // A first tab with nothing in it starts with the keyboard in the field.
-  check('the first, empty tab starts with the keyboard in the address field', await until(inField));
+  // A first tab with nothing in it shows the new tab page, the keyboard down.
+  check('the first, empty tab shows the new tab page, the keyboard down', await until(newTabPage));
   await visit('example.com/docs/release', 'https://example.com/docs/release');
   check('an address and Enter take the tab there', true);
   await settle(page);
@@ -131,7 +134,7 @@ const H = 915;
   await menuButton.tap();
   await menu.getByRole('button', { name: 'New Tab' }).tap();
   await tabCount(2);
-  check('New tab opens an empty tab with the keyboard in the field', await until(async () => (await active()).url === '' && await inField()));
+  check('New tab opens an empty tab with the new tab page, the keyboard down', await until(async () => (await active()).url === '' && await newTabPage()));
   check('the count says 2', (await tabsButton.innerText()) === '2');
   await visit('example.net/mail', 'https://example.net/mail');
 
@@ -155,7 +158,7 @@ const H = 915;
   check('and the switcher shut', !(await switcher.isVisible()));
   await shots('no-tabs');
   await ui.locator('.empty').getByRole('button', { name: 'New Tab' }).tap();
-  check('its New tab opens a tab in edit mode', await until(async () => (await regions()).tabs.length === 1 && (await active()).url === '' && await inField()));
+  check('its New tab opens an empty tab with the new tab page', await until(async () => (await regions()).tabs.length === 1 && (await active()).url === '' && await newTabPage()));
 
   // A swipe along the bar goes to the tab after or before.
   await visit('example.com/one', 'https://example.com/one');
@@ -204,7 +207,7 @@ const H = 915;
   check('a long press on a card opens its menu', await until(() => cardMenu.isVisible()));
   await cardMenu.getByRole('menuitem', { name: 'Add to group' }).tap();
   await cardMenu.getByRole('menuitem', { name: 'New group' }).tap();
-  check('New group opens a new tab in edit mode', await until(async () => (await regions()).tabs.length === 4 && (await active()).url === '' && await inField()));
+  check('New group opens an empty tab with the new tab page', await until(async () => (await regions()).tabs.length === 4 && (await active()).url === '' && await newTabPage()));
   check('and the strip shows the group, the tab and the new one', await until(async () => (await strip.isVisible()) && (await stripTabs.count()) === 2));
   const stripBox = await box('[role=group][aria-label^="Group "]');
   check('the strip is 49px with its hairline, just over the toolbar', Math.round(stripBox.height) === 49 && Math.round(stripBox.bottom) === H - 48, JSON.stringify(stripBox));
@@ -551,6 +554,8 @@ const H = 915;
     return v.y === topY + 48 && v.y + v.h === H - ((await strip.isVisible()) ? 49 : 0);
   }), JSON.stringify((await regions()).visible));
   await fire('menu', 'tab.new');
+  await until(newTabPage);
+  await field.tap();
   await until(inField);
   await page.keyboard.type('example.com/docs');
   await until(async () => (await suggestions.count()) >= 2);

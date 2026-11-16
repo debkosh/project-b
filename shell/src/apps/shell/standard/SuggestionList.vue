@@ -4,18 +4,24 @@ import { state } from '@/sdk/vue.js';
 
 // Go's one suggestion list (docs/daily-driver.md), as the standard shell draws it wherever
 // it is asked for: under the address field, or under the new tab's box. Rows keep Go's
-// order; a heading goes before each run of open tabs, history and actions. The first row is
-// what Enter does, and is chosen until the arrow keys move.
-const props = defineProps({ items: Array, highlight: Number, id: String });
+// order; a heading goes before each run of open tabs, history, actions and bookmarks. The
+// first row is what Enter does, and is chosen until the arrow keys move. With nothing typed
+// (first), Go's history rows are the sites visited most.
+const props = defineProps({ items: Array, highlight: Number, id: String, first: Boolean });
 const emit = defineEmits(['choose', 'hover']);
 
-const headings = { tab: 'Open tabs', history: 'History', action: 'Actions' };
+const headings = computed(() => ({
+  tab: 'Open tabs',
+  history: props.first ? 'Frequently visited' : 'History',
+  action: 'Actions',
+  bookmark: 'Bookmarks',
+}));
 
 const rows = computed(() =>
   props.items.map((row, i) => ({
     row,
     i,
-    heading: headings[row.kind] && props.items[i - 1]?.kind !== row.kind ? headings[row.kind] : '',
+    heading: headings.value[row.kind] && props.items[i - 1]?.kind !== row.kind ? headings.value[row.kind] : '',
   })),
 );
 
@@ -42,6 +48,7 @@ const favicon = (row) => (row.kind === 'tab' ? state.tabs.find((t) => t.id === r
           <template v-else-if="r.row.kind === 'search'"><circle cx="7" cy="7" r="4.25" /><path d="m10.25 10.25 3.25 3.25" /></template>
           <template v-else-if="r.row.kind === 'history'"><circle cx="8" cy="8" r="5.5" /><path d="M8 5v3l2 1.5" /></template>
           <path v-else-if="r.row.kind === 'action'" d="M9 2 4 9h4l-1 5 5-7H8z" />
+          <path v-else-if="r.row.kind === 'bookmark'" d="m8 2.5 1.7 3.5 3.8.5-2.8 2.6.7 3.8L8 11.1l-3.4 1.8.7-3.8-2.8-2.6 3.8-.5z" />
           <template v-else><rect x="2.5" y="4" width="11" height="9" rx="1.5" /><path d="M2.5 6.5h11" /></template>
         </svg>
         <span class="title">{{ r.row.title || r.row.url }}</span>

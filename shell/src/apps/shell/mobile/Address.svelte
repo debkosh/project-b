@@ -2,6 +2,7 @@
   import { focusPage, send, shell } from '@/sdk/svelte.svelte.js';
   import Icon from './Icon.svelte';
   import { popupsWord } from '@/sdk/sites.js';
+  import { nextQuery } from './queries.js';
 
   // The address pill. At rest it shows the host and the page's lock; a tap turns it into
   // the field, with the whole address selected. Typing
@@ -47,15 +48,15 @@
   function end() {
     editing = false;
     items = [];
-    asked++;
+    asked = 0;
   }
 
   function oninput() {
     if (text.trim() === '') {
       items = [];
-      asked++;
+      asked = 0;
     } else {
-      send({ t: 'suggest', id: ++asked, text });
+      send({ t: 'suggest', id: (asked = nextQuery()), text });
     }
   }
 

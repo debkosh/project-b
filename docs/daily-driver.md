@@ -17,16 +17,17 @@ right-click, downloads (with Retry and Copy link, and a stalled connection resum
 sleep), file upload (Mac), the page's dialogs, find in page, video full screen, sign-in to a
 site, search engines with one suggestion source, permissions, tabs coming back, History
 and Bookmarks (desktop; Cmd+D bookmarks in every shell), error pages with certificate
-warnings (Standard and the Mobile web shell), and printing through the system's panel. The
-list with owners is
+warnings (Standard and the Mobile web shell), printing through the system's panel, and a
+new tab page (Standard's box and the Mobile web shell, which reaches History and Bookmarks
+from it). The list with owners is
 [daily-use.md](daily-use.md).
 
 **Planned**, decided and not started ([todo.md](todo.md#daily-driver)): bookmark folders and
-import, bookmarks in the address bar's suggestions, and History and Bookmarks on a phone.
+import, and bookmarks in the address bar's suggestions as you type.
 
-**Needs discussion** ([todo.md](todo.md#daily-driver)), in this order: a new tab page,
-saved passwords and autofill, engine-fetched search suggestions (off by default if built),
-and where a phone's downloads go.
+**Needs discussion** ([todo.md](todo.md#daily-driver)), in this order: saved passwords and
+autofill, engine-fetched search suggestions (off by default if built), and where a phone's
+downloads go.
 
 ## Right-click
 
@@ -249,12 +250,13 @@ rows, each tagged with where it comes from:
 | `tab` | A tab open in any window and workspace of the profile, matched by title or address | `tab`, `url`, `workspace` |
 | `history` | A page visited before | `url` |
 | `action` | An action that can run now, matched by its title | `action` |
+| `bookmark` | A bookmark, with nothing typed ([A new tab](#a-new-tab)) | `url` |
 
 Every row has `kind`, `title` and `detail`, a second line: the address's host, the tab's
 workspace, or an action's key. The order: first what Enter does, the `address` row when the
 text reads as one and the `search` row otherwise; then up to three tabs, five from history and
 three actions, best first in each; and the `search` row last when an address came first. With
-nothing typed, as in a new tab's box, the list is the pages visited most.
+nothing typed, the list is what a new tab offers ([A new tab](#a-new-tab)).
 
 **The messages.** As today, `suggest {id, text}` and `suggestions {id, items}`, with two
 additions. The shell names the kinds it draws, `kinds: ["tab", "history", …]`; without it the
@@ -492,6 +494,37 @@ page's own call, and not from a tab behind). In the real app on the Mac, 2026-11
 its preview, Cancel closes it, and the page's `afterprint` runs; deskrig has no right click,
 so the right-click's Print… is the tests'. On an Android 16 emulator, ⋯ › Print… opens the
 print sheet with the page, on Letter there by the locale.
+
+## A new tab
+
+The owner, 2026-11-16, approved the mocks: on a phone "tiles, recent bookmarks, then All
+bookmarks and History", the keyboard staying down; and in Standard's box "yes to frequent
+sites and latest bookmarks or stuff with a cap on how many to list total".
+
+**One list from Go.** What a new tab offers is Go's suggestion list for nothing typed: the
+sites visited most, as `history` rows, then the newest bookmarks not among them, as
+`bookmark` rows, eight rows at most. A site is a host without www.; its visits are its pages'
+added up, and its row is its page visited most (`history.TopSites`). Asked for both kinds,
+the sites keep up to five rows when there are bookmarks to show, the bookmarks fill the rest,
+and the sites any rows the bookmarks leave. Asked for one kind, it has all eight. Choosing a
+row loads it as any row does.
+
+**Standard.** New Tab opens the command box ([shells.md](shells.md#a-shells-own-actions)),
+which now shows the list before anything is typed, under Frequently visited and Bookmarks,
+so Cmd+T and Enter goes to the top site. Typing replaces it with the usual list, and
+emptying the box brings it back.
+
+**The Mobile web shell.** A tab with no page yet, a new tab, shows the new tab page over it
+instead of a blank page: the sites as tiles, four to a row, each a letter on a colour taken
+from its host, with the page's title under it; the newest three bookmarks as rows; then All
+bookmarks and History, which open those pages of ours (`bookmarks.show`, `history.show`).
+It asks Go twice, once per kind. The keyboard stays down, so nothing covers the tiles; a tap
+on the address field starts typing. A long press on a tile shows a × on each, which takes
+that site out of history, every page of it (`forgetSite {url}`); a tap elsewhere ends that.
+The page goes as soon as the tab starts loading anything.
+
+**Not built:** pinned or edited tiles, and a background picture. Glide and the other shells
+keep what they had.
 
 ## Tabs come back, and closed ones reopen
 

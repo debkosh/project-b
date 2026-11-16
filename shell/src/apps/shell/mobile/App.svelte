@@ -11,6 +11,7 @@
   import SiteSheet from './SiteSheet.svelte';
   import PageDialog from './PageDialog.svelte';
   import PageNotice from './PageNotice.svelte';
+  import NewTab from './NewTab.svelte';
   import Strip from './Strip.svelte';
   import Switcher from './Switcher.svelte';
   import Toolbar from './Toolbar.svelte';
@@ -52,6 +53,8 @@
   const asking = $derived(go.dialogs.some((d) => d.tab === go.active));
   // The shown tab's find bar, in the toolbar's place, which the back key closes.
   let findBar = $state();
+  // The new tab page, while the shown tab has no page yet.
+  let newTabPage = $state();
   const finding = $derived(!!go.find && go.find.tab === go.active);
   $effect(() => send({ t: 'backCloses', on: !!sheet || editing || asking || finding }));
 
@@ -120,8 +123,8 @@
   const tabsOf = (g) => g.tabs.map((id) => go.tabs.find((t) => t.id === id)).filter(Boolean);
   const shownGroup = $derived(go.groups.find((g) => g.id === sheetGroup) || null);
 
-  // A tab that becomes active with nothing in it wants the address; one with a page wants
-  // the page. The shell has to hold the keyboard before its field can.
+  // A tab that becomes active with a page wants the page. One with nothing in it shows the
+  // new tab page, with the keyboard down so it covers none of it; a tap on the field types.
   function activated() {
     if (go.active === active) return;
     active = go.active;
@@ -130,12 +133,7 @@
     address.blur();
     // With no tabs there is nothing to edit: No tabs shows, and the back key leaves.
     if (go.active === 0) return;
-    if (tab.url === '') {
-      send({ t: 'focusShell' });
-      address.focus();
-    } else {
-      focusPage();
-    }
+    if (tab.url !== '') focusPage();
   }
 
   // A new tab, or with a tab's id, one in that tab's group, starting one with it when it
@@ -208,7 +206,10 @@
       sheet = 'link';
     },
     backKey,
-    suggestions: (m) => address.suggestions(m),
+    suggestions: (m) => {
+      address.suggestions(m);
+      newTabPage?.suggestions(m);
+    },
   });
 </script>
 
@@ -236,6 +237,8 @@
         </div>
       {:else if !full && tab.notice}
         <PageNotice {tab} />
+      {:else if !full && !tab.url && !tab.loading}
+        {#key tab.id}<NewTab bind:this={newTabPage} />{/key}
       {/if}
     </main>
     {#if group}

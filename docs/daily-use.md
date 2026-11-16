@@ -31,7 +31,7 @@ and Android, in the web-features registry: [web-features.md](web-features.md).
 | 12 | Saved passwords and autofill | missing: nothing of ours; the Edit menu's Passwords… and Contact… are macOS's AutoFill | needs discussion |
 | 13 | Printing | works: Print… (Cmd+P, under File, and at the top of the shell's menu), the right-click menu and the page's own `window.print()` open the system's print panel, the Mac's or Android's, with the page as a PDF | done ([daily-driver.md](daily-driver.md#printing)) |
 | 14 | Error pages: a failed load, a bad certificate | works in Standard since 0.2.65 and the Mobile web shell after 0.2.74: Go's notice over the page, with Try again, Go back, and Open anyway for a certificate that may be passed | done ([daily-driver.md](daily-driver.md#error-pages-and-certificate-warnings)); Glide and the native Mobile shell to come, rule 32 |
-| 15 | A new tab page | missing: a new tab is `about:blank` | needs discussion (in [todo.md](todo.md)) |
+| 15 | A new tab page | works: Standard's box lists the sites visited most and the newest bookmarks before anything is typed; on a phone a new tab shows them as tiles and rows, with All bookmarks and History | done ([daily-driver.md](daily-driver.md#a-new-tab)) |
 
 ## Safety, which a person doesn't see until it matters
 

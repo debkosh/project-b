@@ -6,7 +6,8 @@ import { closeBox, newTabBox, nextQuery } from './state.js';
 
 // Standard's command box, the shell's own view in the page area: the bar's quiet tint and
 // one box in the middle. Typing there asks Go for the same list the address field gets, and
-// draws it under the box; Enter takes the first row, or the one the arrow keys chose. Over
+// draws it under the box; with nothing typed, Go's list for a new tab: the sites visited
+// most and the newest bookmarks. Enter takes the first row, or the one the arrow keys chose. Over
 // a page (New Tab), a chosen row opens in a new tab and Escape goes back to the page; on a
 // tab with nothing in it, the row loads there.
 const props = defineProps({ overPage: Boolean });
@@ -17,13 +18,8 @@ const highlight = ref(0);
 let latest = 0;
 
 function onInput() {
-  if (text.value.trim() === '') {
-    items.value = [];
-    latest = 0;
-    return;
-  }
   latest = nextQuery();
-  suggest(latest, text.value);
+  suggest(latest, text.value.trim() === '' ? '' : text.value);
 }
 
 // choose takes a row of Go's list; Enter before the list has come takes what was typed, as
@@ -76,6 +72,7 @@ onMounted(() => {
   };
   newTabBox.focus = focusBox;
   focusBox();
+  onInput();
 });
 </script>
 
@@ -99,7 +96,7 @@ onMounted(() => {
         @keydown="onKeydown"
       />
     </div>
-    <SuggestionList v-if="items.length" id="new-tab-list" class="list" :items="items" :highlight="highlight" @hover="(i) => (highlight = i)" @choose="choose" />
+    <SuggestionList v-if="items.length" id="new-tab-list" class="list" :items="items" :highlight="highlight" :first="text.trim() === ''" @hover="(i) => (highlight = i)" @choose="choose" />
   </div>
 </template>
 
