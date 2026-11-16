@@ -425,13 +425,6 @@ content::WebContents* PageTab::OpenURLFromTab(
     const content::OpenURLParams& params,
     base::OnceCallback<void(content::NavigationHandle&)> callback) {
   content::WebContents* target = source;
-  // A page's way to another site that its Links to other sites refuses goes nowhere, in
-  // this tab or a new one; New tab opens it beside, as for a link in the page.
-  if (params.is_renderer_initiated && !internal() &&
-      !events::MayGo(source, params.url, params.user_gesture,
-                     params.disposition != WindowOpenDisposition::CURRENT_TAB)) {
-    return nullptr;
-  }
   if (params.disposition != WindowOpenDisposition::CURRENT_TAB && !internal()) {
     // A link asked for another tab, which is in this tab's workspace. Go hears about
     // the tab before its first navigation, so the gate finds it.
@@ -477,11 +470,6 @@ content::WebContents* PageTab::AddNewContents(
     new_contents.reset();
     contents_->GetController().LoadURLWithParams(
         content::NavigationController::LoadURLParams(target_url));
-    return nullptr;
-  }
-  // A popup to another site that the page's Links to other sites refuses never opens.
-  if (!events::MayGo(source, target_url, user_gesture, /*new_tab=*/true)) {
-    new_contents.reset();
     return nullptr;
   }
   Engine* engine = Engine::Get();
