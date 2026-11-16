@@ -1,21 +1,28 @@
 <script>
-  import { focusPage, send, shell } from '@/sdk/svelte.svelte.js';
+  import { chooseSuggestion, focusPage, send, shell } from '@/sdk/svelte.svelte.js';
   import Icon from './Icon.svelte';
   import { popupsWord } from '@/sdk/sites.js';
   import { nextQuery } from './queries.js';
 
   // The address pill. At rest it shows the host and the page's lock; a tap turns it into
-  // the field, with the whole address selected. Typing
-  // asks Go for suggestions, listed away from the field towards the page, the closest next
-  // to it: a tap on one goes there, its ↖ puts its address in the field. Enter goes; Escape
-  // or a press in the page puts the address back.
+  // the field, with the whole address selected. Before anything is typed, and once the
+  // field is emptied, it lists what one more tap reaches: Go's list for nothing typed, the
+  // open tabs, the tabs closed lately, the sites visited most and the newest bookmarks,
+  // under a heading each. Typing asks Go for suggestions instead. Either list lies away
+  // from the field towards the page, the closest next to it: a tap on a row goes there,
+  // its ↖ puts its address in the field. Enter goes; Escape or a press in the page puts
+  // the address back.
   let { tab, top, onedit, onsite } = $props();
   let input;
+  let list = $state();
   let editing = $state(false);
   let text = $state('');
   let items = $state([]);
-  // The id of the last suggest sent: only its answer is listed.
+  // The id of the last suggest sent: only its answer is listed. first is the id of the
+  // last one for nothing typed, and listed whether items is its answer.
   let asked = 0;
+  let first = 0;
+  let listed = $state(false);
 
   const host = $derived.by(() => {
     if (!tab.url) return '';
@@ -35,9 +42,33 @@
   // certificate passed with Open anyway, says so in words at the pill's start, as Chrome
   // does; the words are part of the site's mark, which opens the site's sheet.
   const insecure = $derived(!status && !!tab.connection && tab.connection !== 'secure');
+  // The headings of the list for nothing typed, by the kind of row under them.
+  const kindIcons = { tab: 'tab', closed: 'closed', history: 'history', bookmark: 'star' };
+  const headings = { tab: 'Open tabs', closed: 'Recently closed', history: 'Frequently visited', bookmark: 'Bookmarks' };
   // The list from the field outwards: under a field on top, over one at the bottom with
-  // the first suggestion nearest it.
-  const shown = $derived(top ? items : [...items].reverse());
+  // the first suggestion nearest it. The list for nothing typed comes in groups, each row
+  // kind's under its heading, the heading above its rows either way.
+  const shown = $derived.by(() => {
+    const groups = [];
+    for (const row of items) {
+      const kind = listed ? row.kind : '';
+      if (groups.at(-1)?.kind === kind) groups.at(-1).rows.push(row);
+      else groups.push({ kind, rows: [row] });
+    }
+    if (!top) {
+      groups.reverse();
+      for (const g of groups) g.rows.reverse();
+    }
+    return groups.flatMap((g) => [
+      ...(headings[g.kind] ? [{ key: `h:${g.kind}`, heading: headings[g.kind] }] : []),
+      ...g.rows.map((row) => ({ key: `${g.kind}:${row.tab || row.url}`, row })),
+    ]);
+  });
+  // Over a bar at the foot, a list taller than its room starts scrolled to the rows nearest
+  // the field.
+  $effect(() => {
+    if (shown.length && list && !top) list.scrollTop = list.scrollHeight;
+  });
 
   $effect(() => onedit(editing));
 
@@ -47,26 +78,37 @@
     text = tab.url;
     // After the value is in, so the whole of it is selected.
     queueMicrotask(() => input.select());
+    askFirst();
   }
 
   function end() {
     editing = false;
     items = [];
-    asked = 0;
+    asked = first = 0;
+  }
+
+  // Go's list for nothing typed. Over a new tab, whose page already shows the sites and the
+  // bookmarks, it is the open and closed tabs alone, so the two don't list the same rows.
+  function askFirst() {
+    const kinds = tab.url ? ['tab', 'closed', 'history', 'bookmark'] : ['tab', 'closed'];
+    send({ t: 'suggest', id: (asked = first = nextQuery()), text: '', kinds });
   }
 
   function oninput() {
-    if (text.trim() === '') {
-      items = [];
-      asked = 0;
-    } else {
-      send({ t: 'suggest', id: (asked = nextQuery()), text });
-    }
+    if (text.trim() === '') askFirst();
+    else send({ t: 'suggest', id: (asked = nextQuery()), text });
   }
 
   function go(value) {
     if (value.trim() === '') return;
     send({ t: 'navigate', text: value.trim() });
+    leave();
+  }
+
+  // A row of the list for nothing typed: Go shows its tab, reopens the closed one, or loads
+  // its address in this tab.
+  function choose(row) {
+    chooseSuggestion(row);
     leave();
   }
 
@@ -92,7 +134,9 @@
   }
 
   export function suggestions(m) {
-    if (m.id === asked && editing) items = m.items;
+    if (m.id !== asked || !editing) return;
+    items = m.items;
+    listed = m.id === first;
   }
 </script>
 
@@ -150,18 +194,35 @@
   {/if}
   {#if editing && items.length}
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <ul class="suggestions" class:below={top} use:shell aria-label="Suggestions" onmousedown={(e) => e.preventDefault()}>
-      {#each shown as item (item.url)}
-        <li>
-          <button class="go" onclick={() => go(item.url)}>
-            <Icon name={item.title ? 'globe' : 'search'} />
-            <span class="lines">
-              <span class="title">{item.title || item.url}</span>
-              {#if item.title}<span class="url">{item.url.replace(/^https?:\/\/(www\.)?/, '')}</span>{/if}
-            </span>
-          </button>
-          <button class="fill" aria-label="Edit {item.url}" onclick={() => fill(item.url)}><Icon name="fill" /></button>
-        </li>
+    <ul class="suggestions" class:below={top} bind:this={list} use:shell aria-label="Suggestions" onmousedown={(e) => e.preventDefault()}>
+      {#each shown as { key, heading, row: item } (key)}
+        {#if heading}
+          <li class="heading" role="presentation">{heading}</li>
+        {:else if listed}
+          <li>
+            <button class="go" onclick={() => choose(item)}>
+              <Icon name={kindIcons[item.kind] || 'globe'} />
+              <span class="lines">
+                <span class="title">{item.title || item.url}</span>
+                <span class="url">{item.url.replace(/^https?:\/\/(www\.)?/, '')}</span>
+              </span>
+            </button>
+            {#if item.kind === 'history' || item.kind === 'bookmark'}
+              <button class="fill" aria-label="Edit {item.url}" onclick={() => fill(item.url)}><Icon name="fill" /></button>
+            {/if}
+          </li>
+        {:else}
+          <li>
+            <button class="go" onclick={() => go(item.url)}>
+              <Icon name={item.title ? 'globe' : 'search'} />
+              <span class="lines">
+                <span class="title">{item.title || item.url}</span>
+                {#if item.title}<span class="url">{item.url.replace(/^https?:\/\/(www\.)?/, '')}</span>{/if}
+              </span>
+            </button>
+            <button class="fill" aria-label="Edit {item.url}" onclick={() => fill(item.url)}><Icon name="fill" /></button>
+          </li>
+        {/if}
       {/each}
     </ul>
   {/if}
@@ -313,6 +374,10 @@
     list-style: none;
     background: var(--surface);
     border-top: 1px solid var(--line);
+    /* The window's height less the bar's and a little: a long list scrolls. */
+    max-height: calc(100vh - 64px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   .suggestions.below {
@@ -336,6 +401,20 @@
 
   li:last-child {
     border-bottom: 0;
+  }
+
+  /* A group's heading in the list for nothing typed: a muted line, nothing to press. */
+  li.heading {
+    height: 32px;
+    padding: 0 16px;
+    border: 0;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .below li.heading {
+    border: 0;
   }
 
   .go {

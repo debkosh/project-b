@@ -798,6 +798,16 @@ address field, and a menu button at the far right, in our tones.
   with New tab (rule 18); and only from there does the app go, as Android's back does.
   Closing the last tab another way leaves No tabs too. For one of our tabs, settings, the
   pill is the tab's title with a close, and nothing to type (rule 19).
+- **The bar tapped with nothing typed** lists what one more tap reaches, before a letter is
+  typed and again once the field is emptied: Go's list for nothing typed (`suggest` with
+  empty text and kinds `tab`, `closed`, `history`, `bookmark`), under a heading per kind,
+  Open tabs, Recently closed, Frequently visited and Bookmarks, the first row nearest the
+  thumb as in the typed list. A row is chosen with `chooseSuggestion`: an open tab shows,
+  a closed one reopens, a site or a bookmark loads; only a site or a bookmark has ↖. Over
+  a new tab, whose page already shows the sites and the bookmarks, it asks for `tab` and
+  `closed` alone, so the two never list the same rows and the page stays in view when
+  there are none. Every suggest the shell sends takes its id from one count
+  (`queries.js`), so the bar's and the new tab page's answers never mix.
 - **Find in page**, from the ⋯ menu, puts a find bar in the toolbar's place with the
   keyboard in it: the field with the count at its end, the match before and after, and
   ×, as the back key, closes it. The bars stay while it is open (rule 20).

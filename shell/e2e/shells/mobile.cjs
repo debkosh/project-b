@@ -166,6 +166,69 @@ const H = 915;
   check('the count says 2', (await tabsButton.innerText()) === '2');
   await visit('example.net/mail', 'https://example.net/mail');
 
+  // The bar tapped with nothing typed lists what one more tap reaches, Go's list for nothing
+  // typed, the closest nearest the thumb. The shell's suggests and Go's answers are watched
+  // in the shell's frame, and a whole answer is handed to it as Go would send one.
+  await w.shell().evaluate(() => {
+    const send = window.chrome.send;
+    window.chrome.send = (channel, args) => {
+      const m = JSON.parse(args[0]);
+      if (m.t === 'suggest') window.lastSuggest = m;
+      return send.call(window.chrome, channel, args);
+    };
+    const receive = window.__shellReceive;
+    window.__shellReceive = (json) => {
+      const m = JSON.parse(json);
+      if (m.t === 'suggestions') window.lastAnswer = m;
+      receive(json);
+    };
+  });
+  const lastSuggest = () => w.shell().evaluate(() => window.lastSuggest);
+  const headingsShown = () => ui.locator('.suggestions li.heading').allInnerTexts();
+  await field.tap();
+  check('a tap on the bar asks Go for its list for nothing typed: open and closed tabs, top sites and bookmarks', await until(async () => {
+    const m = await lastSuggest();
+    return m && m.text === '' && JSON.stringify(m.kinds) === JSON.stringify(['tab', 'closed', 'history', 'bookmark']);
+  }), JSON.stringify(await lastSuggest()));
+  check('and lists it before anything is typed, the sites visited under Frequently visited', await until(async () => (await suggestions.count()) >= 1 && (await headingsShown()).includes('Frequently visited')), JSON.stringify(await headingsShown()));
+  const answer = await w.shell().evaluate(() => window.lastAnswer);
+  check('Go\'s first row nearest the thumb', (await suggestions.last().locator('.title').innerText()) === answer.items[0].title, JSON.stringify(answer.items[0]));
+  // Go's whole list, as the suggestions' contract has it: the open tabs (the active one left
+  // out), the tabs closed lately, the sites visited most and the newest bookmarks. Closed
+  // rows come from Go once the suggestions' branch lands; until then this one is handed in.
+  const before4 = await regions();
+  const other = before4.tabs.find((t) => t.id !== before4.active);
+  await w.shell().evaluate(({ id, other }) => window.__shellReceive(JSON.stringify({ t: 'suggestions', id, items: [
+    { kind: 'tab', title: other.title || other.url, detail: '', url: other.url, tab: other.id },
+    { kind: 'closed', title: 'A page closed lately', detail: 'closed.example', url: 'https://closed.example/page' },
+    { kind: 'history', title: 'Example Domain', detail: 'example.com', url: 'https://example.com/' },
+    { kind: 'history', title: 'Example Org', detail: 'example.org', url: 'https://example.org/' },
+    { kind: 'bookmark', title: 'Release notes', detail: 'example.org', url: 'https://example.org/release-notes' },
+  ] })), { id: (await lastSuggest()).id, other });
+  check('each kind under its heading, Open tabs nearest the thumb and Bookmarks furthest', await until(async () => JSON.stringify(await headingsShown()) === JSON.stringify(['Bookmarks', 'Frequently visited', 'Recently closed', 'Open tabs'])), JSON.stringify(await headingsShown()));
+  check('the open tab the row nearest the field', (await suggestions.last().locator('.url').innerText()) === other.url.replace(/^https?:\/\/(www\.)?/, ''));
+  check('only a page or a bookmark has ↖, not a tab', (await suggestions.last().getByRole('button', { name: /^Edit / }).count()) === 0 && (await suggestions.first().getByRole('button', { name: /^Edit / }).count()) === 1);
+  const listBox = await box('.suggestions');
+  check('the list lies over the field', listBox.bottom <= (await field.boundingBox()).y, JSON.stringify(listBox));
+  await shots('empty-list');
+  await suggestions.last().getByRole('button').first().tap();
+  check('a tap on an open tab\'s row shows that tab, and the list goes', await until(async () => (await regions()).active === other.id && (await suggestions.count()) === 0));
+  // Over a new tab, whose page shows the sites and bookmarks, the bar lists the tabs alone.
+  await fire('menu', 'tab.new');
+  await until(newTabPage);
+  await field.tap();
+  check('on a new tab it asks for the open and closed tabs alone, which its page doesn\'t show', await until(async () => JSON.stringify((await lastSuggest())?.kinds) === JSON.stringify(['tab', 'closed'])), JSON.stringify(await lastSuggest()));
+  await page.keyboard.type('example');
+  check('typing replaces the list with the usual one, without headings', await until(async () => (await suggestions.count()) >= 1 && (await headingsShown()).length === 0));
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.press('Backspace');
+  check('and emptying the field asks for the list for nothing typed again', await until(async () => (await lastSuggest()).text === ''));
+  await page.keyboard.press('Escape');
+  await lib.closeTab((await regions()).active);
+  await tabCount(2);
+  await fire('menu', 'tab.select2');
+  await until(async () => (await active()).url === 'https://example.net/mail');
+
   // The switcher.
   await tabsButton.tap();
   // Once it has slid in.
