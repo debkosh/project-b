@@ -23,11 +23,14 @@ let shownFor = '';
 // The arrow keys chose a row in the list on screen, since the last key typed.
 let picked = false;
 
+// With nothing typed the box lists the sites visited most and the newest bookmarks, so it
+// asks for those two kinds alone, not the open and closed tabs a phone's field lists.
 function onInput() {
   latest = nextQuery();
   asked = text.value.trim();
   picked = false;
-  suggest(latest, asked === '' ? '' : text.value);
+  if (asked === '') suggest(latest, '', ['history', 'bookmark']);
+  else suggest(latest, text.value);
 }
 
 // choose takes a row of Go's list, one pressed or the arrow keys' choice. Enter takes the

@@ -164,6 +164,7 @@ The shell's first paint and the first tab race the lines around them. Android ha
 | `tab.new` | The click on New Tab, or Go's action | `.go`; `.done` the tab is made, shown, and the shell told | The shell has drawn it |
 | `tab.close` | The click on a tab's close button, or Go's action | `.go`; `.done` | The shell has drawn it |
 | `tab.activate` | The click on a tab | `.go`; `.done` | The shell has drawn it |
+| `tab.reopen` | A closed tab's suggestion row chosen | `.go`; `.done` the tab is back, active and loading | The shell has drawn it |
 | `tabs.layout` | The click on the layout button, or Go's action | `.go`; `.done`; `.page_moved` the shell measured where the page now goes and Go placed it | The shell has drawn after that |
 
 "The shell has drawn it" is the renderer finishing the frame (`painted` in

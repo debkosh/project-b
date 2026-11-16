@@ -660,6 +660,22 @@ func (m *Manager) AllIn(w engine.WindowID) []Tab {
 	return out
 }
 
+// RecentIn returns copies of window w's tabs, the most recently shown first, its active
+// tab left out.
+func (m *Manager) RecentIn(w engine.WindowID) []Tab {
+	win := m.windows[w]
+	if win == nil {
+		return nil
+	}
+	var out []Tab
+	for _, id := range win.recent {
+		if t, ok := m.tabs[id]; ok && id != win.active {
+			out = append(out, *t)
+		}
+	}
+	return out
+}
+
 // ActiveID returns the active tab of the window in front, or zero when there is none.
 func (m *Manager) ActiveID() engine.TabID {
 	if win := m.front(); win != nil {

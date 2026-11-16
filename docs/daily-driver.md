@@ -251,6 +251,7 @@ rows, each tagged with where it comes from:
 | `history` | A page visited before | `url` |
 | `action` | An action that can run now, matched by its title | `action` |
 | `bookmark` | A bookmark whose title or address holds the text, or with nothing typed one of the newest ([A new tab](#a-new-tab)) | `url` |
+| `closed` | A tab closed lately, with nothing typed only ([A new tab](#a-new-tab)). Choosing it reopens that tab | `url` |
 
 Every row has `kind`, `title` and `detail`, a second line: the address's host, the tab's
 workspace, or an action's key. The order: first what Enter does, the `address` row when the
@@ -524,6 +525,16 @@ added up, and its row is its page visited most (`history.TopSites`). Asked for b
 the sites keep up to five rows when there are bookmarks to show, the bookmarks fill the rest,
 and the sites any rows the bookmarks leave. Asked for one kind, it has all eight. Choosing a
 row loads it as any row does.
+
+**Open and closed tabs, for a phone's field as it is tapped** (ux-comparison.md item 4).
+A shell that asks for `tab` with nothing typed gets the window's other tabs first, the most
+recently used first, its active tab left out, three at most, as `tab` rows; one that asks for
+`closed` gets the tabs closed lately next, the newest first, three at most, as `closed` rows
+`{kind, title, detail: the host, url}`. Then come the sites and the bookmarks in the rows
+left, eight in all, each address once. Choosing a `closed` row reopens the newest closed tab
+at its address, the way History > Recently Closed does (`reopen` in `core/app/session.go`,
+the span `tab.reopen`). A shell that asks for neither kind gets what it got before: Standard's
+command box asks for `history` and `bookmark` alone.
 
 **Standard.** New Tab opens the command box ([shells.md](shells.md#a-shells-own-actions)),
 which now shows the list before anything is typed, under Frequently visited and Bookmarks,

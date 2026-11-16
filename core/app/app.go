@@ -276,7 +276,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Prefs.OnSearchEngineChanged(a.Shell.SearchEngineChanged)
 	a.Prefs.OnSearchEngineChanged(a.Settings.SearchEngineChanged)
 	a.Suggest.SetSources(a.suggestSources())
-	a.Shell.AddPart(a.suggestShellPart())
+	a.Shell.AddPart(a.suggestShellPart(e))
 	// Another shell loads in every window at once. The old one's regions go, as after a
 	// crash, and the tabs stay where they were until the new one reports.
 	a.Prefs.OnShellChanged(func(id string) {

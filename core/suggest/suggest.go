@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strings"
 
+	"projectb/engine"
 	"projectb/history"
 	"projectb/tabs"
 )
@@ -21,6 +22,8 @@ const (
 	KindHistory  = "history"
 	KindAction   = "action"
 	KindBookmark = "bookmark"
+	// KindClosed is a tab closed lately, offered with nothing typed: choosing it reopens it.
+	KindClosed = "closed"
 )
 
 // How many rows of each kind a list has at most, and how many rows in all.
@@ -30,10 +33,11 @@ const (
 	maxBookmarks = 3
 	maxActions   = 3
 	maxRows      = 10
-	// With nothing typed: how many rows in all, and how many of them the sites visited most
-	// keep when there are bookmarks too.
+	// With nothing typed: how many rows in all, how many of them the sites visited most
+	// keep when there are bookmarks too, and how many open and closed tabs come first.
 	maxFirst   = 8
 	firstSites = 5
+	firstTabs  = 3
 	// legacy is how many a shell that names no kinds gets: history alone, as it was.
 	legacy = 6
 )
@@ -73,14 +77,23 @@ type Bookmark struct {
 	URL   string
 }
 
+// Closed is a tab closed lately, as the list shows it.
+type Closed struct {
+	Title string
+	URL   string
+}
+
 // Sources are where the rows come from, beside history: every open tab of the profile,
-// the actions that can run now, the search engine's name and what it makes of words, and
-// the bookmarks, the newest first.
+// the actions that can run now, the search engine's name and what it makes of words, the
+// bookmarks, the newest first; and for nothing typed, a window's tabs the most recently
+// used first with its active one left out, and the tabs closed lately, the newest first.
 type Sources struct {
 	Tabs      func() []Tab
 	Actions   func() []Action
 	Engine    func() (name string, search func(words string) string)
 	Bookmarks func() []Bookmark
+	Recent    func(w engine.WindowID) []Tab
+	Closed    func() []Closed
 }
 
 // Manager answers suggestion queries.
@@ -95,10 +108,10 @@ func New(hist *history.Manager) *Manager { return &Manager{hist: hist} }
 // SetSources gives the manager its other sources. Until then it has history alone.
 func (m *Manager) SetSources(s Sources) { m.src = s }
 
-// Query returns the list for what has been typed so far, with rows of the kinds named.
-// With no kinds it is history alone, for a shell that draws nothing else. With nothing
-// typed it is what a new tab offers (first).
-func (m *Manager) Query(text string, kinds []string) []Row {
+// Query returns the list for what has been typed so far in window w, with rows of the
+// kinds named. With no kinds it is history alone, for a shell that draws nothing else.
+// With nothing typed it is what a new tab offers (first).
+func (m *Manager) Query(w engine.WindowID, text string, kinds []string) []Row {
 	if len(kinds) == 0 {
 		return historyRows(m.hist.Search(text, legacy))
 	}
@@ -108,7 +121,7 @@ func (m *Manager) Query(text string, kinds []string) []Row {
 	}
 	q := strings.ToLower(strings.TrimSpace(text))
 	if q == "" {
-		return m.first(want)
+		return m.first(w, want)
 	}
 
 	rows := make([]Row, 0, maxRows)
@@ -220,17 +233,46 @@ func (m *Manager) Query(text string, kinds []string) []Row {
 	return rows[:min(len(rows), maxRows)]
 }
 
-// first is the list with nothing typed, what a new tab offers: the sites visited most, as
-// history rows, and the newest bookmarks not among them, at most maxFirst in all. Asked for
-// both, the sites come first and keep up to firstSites rows, the bookmarks fill the rest,
-// and the sites any rows the bookmarks leave.
-func (m *Manager) first(want map[string]bool) []Row {
-	var sites, marks []Row
+// first is the list with nothing typed in window w, what a new tab, or a phone's field
+// as it is tapped, offers, at most maxFirst rows in all and each address once: asked for,
+// the window's other tabs the most recently used first, then the tabs closed lately, the
+// newest first, up to firstTabs of each; then the sites visited most, as history rows, and
+// the newest bookmarks. Asked for both, the sites keep up to firstSites of the rows left,
+// the bookmarks fill the rest, and the sites any rows the bookmarks leave.
+func (m *Manager) first(w engine.WindowID, want map[string]bool) []Row {
+	var rows, sites, marks []Row
 	shown := map[string]bool{}
+	if want[KindTab] && m.src.Recent != nil {
+		for _, t := range m.src.Recent(w) {
+			if len(rows) == firstTabs {
+				break
+			}
+			if t.URL != "" && !shown[t.URL] {
+				rows = append(rows, Row{Kind: KindTab, Title: orURL(t.Title, t.URL), Detail: t.Detail, URL: t.URL, Tab: t.ID})
+				shown[t.URL] = true
+			}
+		}
+	}
+	if want[KindClosed] && m.src.Closed != nil {
+		n := 0
+		for _, c := range m.src.Closed() {
+			if n == firstTabs {
+				break
+			}
+			if c.URL != "" && !shown[c.URL] {
+				rows = append(rows, Row{Kind: KindClosed, Title: orURL(c.Title, c.URL), Detail: host(c.URL), URL: c.URL})
+				shown[c.URL] = true
+				n++
+			}
+		}
+	}
+	room := maxFirst - len(rows)
 	if want[KindHistory] {
 		for _, e := range m.hist.TopSites(maxFirst) {
-			sites = append(sites, Row{Kind: KindHistory, Title: orURL(e.Title, e.URL), Detail: host(e.URL), URL: e.URL})
-			shown[e.URL] = true
+			if !shown[e.URL] {
+				sites = append(sites, Row{Kind: KindHistory, Title: orURL(e.Title, e.URL), Detail: host(e.URL), URL: e.URL})
+				shown[e.URL] = true
+			}
 		}
 	}
 	if want[KindBookmark] && m.src.Bookmarks != nil {
@@ -243,8 +285,9 @@ func (m *Manager) first(want map[string]bool) []Row {
 			}
 		}
 	}
-	n := min(len(marks), maxFirst-min(len(sites), firstSites))
-	rows := append(sites[:min(len(sites), maxFirst-n)], marks[:n]...)
+	n := min(len(marks), room-min(len(sites), firstSites, room))
+	rows = append(rows, sites[:min(len(sites), room-n)]...)
+	rows = append(rows, marks[:n]...)
 	if rows == nil {
 		return []Row{}
 	}

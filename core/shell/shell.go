@@ -319,7 +319,7 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 		m.crash.Dismiss()
 		m.sendAll(map[string]any{"t": "crashLog", "crashLog": "", "crashReport": ""})
 	case "suggest":
-		m.send(w, map[string]any{"t": "suggestions", "id": c.ID, "items": m.suggest.Query(c.Text, c.Kinds)})
+		m.send(w, map[string]any{"t": "suggestions", "id": c.ID, "items": m.suggest.Query(w, c.Text, c.Kinds)})
 	case "layout":
 		var l window.ShellLayout
 		if err := json.Unmarshal(msg, &l); err != nil {

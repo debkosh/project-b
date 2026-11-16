@@ -1,6 +1,7 @@
 package app_test
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -47,4 +48,47 @@ func TestTheSuggestionListAndChoosingFromIt(t *testing.T) {
 	// An action's row runs it: Duplicate Tab makes a third.
 	r.shell(`{"t":"chooseSuggestion","row":{"kind":"action","action":"tab.duplicate"}}`)
 	r.waitFor(func(m map[string]any) bool { return m["t"] == "tabs" && len(m["tabs"].([]any)) == 3 })
+}
+
+// With nothing typed, a phone's field as it is tapped asks for the window's other tabs and
+// the tabs closed lately; choosing a closed one reopens it, as Recently Closed does.
+func TestNothingTypedOffersTabsAndReopensAClosedOne(t *testing.T) {
+	r := start(t, t.TempDir())
+	defer r.stop()
+	r.visit("https://a.test/")
+	r.shell(`{"t":"newTab"}`)
+	m := r.waitFor(func(m map[string]any) bool { return m["t"] == "tabs" && len(m["tabs"].([]any)) == 2 })
+	b := m["active"].(float64)
+	r.visit("https://b.test/")
+	r.shell(`{"t":"newTab"}`)
+	r.waitFor(func(m map[string]any) bool { return m["t"] == "tabs" && len(m["tabs"].([]any)) == 3 })
+	r.visit("https://c.test/")
+	r.shell(fmt.Sprintf(`{"t":"closeTab","id":%v}`, b))
+	r.waitFor(func(m map[string]any) bool { return m["t"] == "tabs" && len(m["tabs"].([]any)) == 2 })
+
+	r.shell(`{"t":"suggest","id":9,"text":"","kinds":["tab","closed"]}`)
+	items := r.waitFor(func(m map[string]any) bool { return m["t"] == "suggestions" && m["id"] == float64(9) })["items"].([]any)
+	if len(items) != 2 {
+		t.Fatalf("items = %v", items)
+	}
+	tab, closed := items[0].(map[string]any), items[1].(map[string]any)
+	// c.test is the active tab, left out; a.test is the other.
+	if tab["kind"] != "tab" || tab["url"] != "https://a.test/" || tab["tab"] != float64(1) {
+		t.Fatalf("tab row = %v", tab)
+	}
+	if closed["kind"] != "closed" || closed["url"] != "https://b.test/" || closed["title"] != "Mock b.test" || closed["detail"] != "b.test" {
+		t.Fatalf("closed row = %v", closed)
+	}
+
+	r.shell(`{"t":"chooseSuggestion","row":{"kind":"closed","url":"https://b.test/"}}`)
+	r.waitFor(func(m map[string]any) bool { return m["t"] == "paint" && m["span"] == "tab.reopen" })
+	r.onMain(func() {
+		in1 := r.a.Tabs.AllIn(1)
+		if len(in1) != 3 || in1[1].URL != "https://b.test/" || r.a.Tabs.ActiveIn(1) != in1[1].ID {
+			t.Errorf("after choosing the closed row: %+v, active %v", in1, r.a.Tabs.ActiveIn(1))
+		}
+		if len(r.a.Commands.ListItems("recentlyClosed")) != 0 {
+			t.Error("Recently Closed still lists what came back")
+		}
+	})
 }

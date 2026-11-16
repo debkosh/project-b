@@ -6,22 +6,34 @@ import (
 	"projectb/engine"
 	"projectb/shell"
 	"projectb/suggest"
+	"projectb/tabs"
 )
 
 // suggestSources gives the suggestion list its sources beside history: every open tab of
 // the profile, with its workspace's name; the actions that can run now, with their keys;
-// and the search engine (docs/daily-driver.md).
+// the search engine; the bookmarks; a window's tabs in the order they were used; and the
+// tabs closed lately (docs/daily-driver.md).
 func (a *App) suggestSources() suggest.Sources {
+	listed := func(all []tabs.Tab) []suggest.Tab {
+		names := map[string]string{}
+		for _, w := range a.Workspaces.List() {
+			names[w.ID] = w.Name
+		}
+		out := make([]suggest.Tab, len(all))
+		for i, t := range all {
+			out[i] = suggest.Tab{ID: int64(t.ID), Title: t.Title, URL: t.URL, Detail: names[t.Workspace]}
+		}
+		return out
+	}
 	return suggest.Sources{
-		Tabs: func() []suggest.Tab {
-			names := map[string]string{}
-			for _, w := range a.Workspaces.List() {
-				names[w.ID] = w.Name
-			}
-			all := a.Tabs.All()
-			out := make([]suggest.Tab, len(all))
-			for i, t := range all {
-				out[i] = suggest.Tab{ID: int64(t.ID), Title: t.Title, URL: t.URL, Detail: names[t.Workspace]}
+		Tabs:   func() []suggest.Tab { return listed(a.Tabs.All()) },
+		Recent: func(w engine.WindowID) []suggest.Tab { return listed(a.Tabs.RecentIn(w)) },
+		Closed: func() []suggest.Closed {
+			var out []suggest.Closed
+			for _, c := range a.closed {
+				if c.Tab != nil {
+					out = append(out, suggest.Closed{Title: c.Tab.Title, URL: c.Tab.URL})
+				}
 			}
 			return out
 		},
@@ -51,9 +63,9 @@ func (a *App) suggestSources() suggest.Sources {
 
 // suggestShellPart runs the row a shell's user chose: an address, a search, a page or a
 // bookmark loads in the window's active tab, or a new one; a tab is shown, in whichever
-// window it is; an action runs. forgetSite takes a site the new tab offers out of history,
-// every page of it.
-func (a *App) suggestShellPart() shell.Part {
+// window it is; a closed tab is reopened, as History > Recently Closed reopens it; an
+// action runs. forgetSite takes a site the new tab offers out of history, every page of it.
+func (a *App) suggestShellPart(e engine.Engine) shell.Part {
 	return shell.Part{
 		Snapshot: func(map[string]any) {},
 		Handle: func(w engine.WindowID, t string, msg []byte) bool {
@@ -81,6 +93,15 @@ func (a *App) suggestShellPart() shell.Part {
 				}
 			case suggest.KindAction:
 				a.Commands.Run(c.Row.Action)
+			case suggest.KindClosed:
+				// The newest closed tab at that address: the list may have changed since it
+				// was sent, so the row names it by its address, not its place.
+				for i, x := range a.closed {
+					if x.Tab != nil && x.Tab.URL == c.Row.URL {
+						a.Shell.Interaction(w, "tab.reopen", func() { a.reopen(e, i) })
+						break
+					}
+				}
 			case suggest.KindAddress, suggest.KindSearch, suggest.KindHistory, suggest.KindBookmark:
 				switch {
 				case c.Row.URL == "":

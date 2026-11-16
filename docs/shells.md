@@ -136,7 +136,7 @@ gives the page the same two.
 | `addressBarPosition` | `addressBarPosition`: `bottom` or `top` | The Mobile shell's address bar moved, from settings on a phone |
 | `focusAddressBar` | | The user asked for the address bar |
 | `action` | `id`: one of the shell's own actions | Its key was pressed, or its menu item chosen, while this shell is on |
-| `suggestions` | `id`, `items`: rows `{kind, title, detail, url, tab, action, inline}` | In answer to `suggest`: one ranked list, each row an `address`, a `search`, a `tab`, a `history` page, a `bookmark` or an `action`. The first row may carry `inline`, the rest of the address the typed text starts, for the field to show selected after the caret ([daily-driver.md](daily-driver.md#search-engines-and-one-suggestion-source)) |
+| `suggestions` | `id`, `items`: rows `{kind, title, detail, url, tab, action, inline}` | In answer to `suggest`: one ranked list, each row an `address`, a `search`, a `tab`, a `history` page, a `bookmark`, an `action` or, with nothing typed, a `closed` tab. The first row may carry `inline`, the rest of the address the typed text starts, for the field to show selected after the caret ([daily-driver.md](daily-driver.md#search-engines-and-one-suggestion-source)) |
 | `bookmarks` | `bookmarks`: the profile's bookmarks, newest first, each `{id, title, url, added}` | One was added, edited or removed ([daily-driver.md](daily-driver.md#history-and-bookmarks)) |
 | `searchEngine` | `searchEngine`: `{id, name}` | Another search engine was chosen in settings |
 | `paint` | `span` | Go wants a timeline span ended once this is drawn |
@@ -231,10 +231,10 @@ title, detail, actions}`, absent otherwise
 | `back`, `forward`, `reload` | | Act on the active tab |
 | `focusTab` | `id` | Gives the active tab's page the keyboard. One for a tab no longer active, as when the address typed for it went to another tab, does nothing |
 | `focusShell` | | Gives the shell the keyboard |
-| `suggest` | `id`, `text`, `kinds` | Asks for suggestions with rows of the kinds named. The bare message without `kinds` gets history alone, as it always did; the SDK's `suggest()` asks for every kind unless told otherwise. With no text, what a new tab offers: the sites visited most and the newest bookmarks (docs/daily-driver.md, A new tab) |
+| `suggest` | `id`, `text`, `kinds` | Asks for suggestions with rows of the kinds named. The bare message without `kinds` gets history alone, as it always did; the SDK's `suggest()` asks for every kind unless told otherwise. With no text, what a new tab offers: with `tab` and `closed`, the window's other tabs, the most recently used first, and the tabs closed lately; then the sites visited most and the newest bookmarks (docs/daily-driver.md, A new tab) |
 | `forgetSite` | `url` | Takes the site at `url` out of history, every page of it, as the new tab page's × does |
 | `bookmark` | `url`, `title`, `on` | Bookmarks the address, or takes its bookmark away: the address bar's star |
-| `chooseSuggestion` | `row`, `newTab` | Runs a row: Go loads its address or search in the active tab, or a new one, shows its tab, or runs its action |
+| `chooseSuggestion` | `row`, `newTab` | Runs a row: Go loads its address or search in the active tab, or a new one, shows its tab, reopens a `closed` tab, or runs its action |
 | `run` | `text`: an action's id | Runs an action, as its menu item would |
 | `menu` | | Asks for the menu bar's menus for this window, as the shell opens its own menu; Go answers with `menu` ([menus-shortcuts.md](menus-shortcuts.md#the-shells-menu)) |
 | `window` | `text`: `close`, `minimise`, `zoom` or `fullScreen` | Asks the window |
