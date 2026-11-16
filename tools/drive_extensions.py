@@ -26,7 +26,7 @@ import time
 import urllib.parse
 
 import drive_first_app
-from drive_first_app import App, check, click, click_at, run_parts, visit
+from drive_first_app import App, check, click, open_settings, run_parts, visit
 
 ROOT = drive_first_app.ROOT
 STORE_DIR = os.path.join(ROOT, ".tools/extensions")
@@ -74,16 +74,6 @@ class Pages(http.server.BaseHTTPRequestHandler):
 
     def log_message(self, *args):
         pass
-
-
-def open_settings(app):
-    """Opens settings as a person does in the standard shell: its ☰ menu, the menu bar's
-    menus (docs/menus-shortcuts.md, "The shell's menu"), then Settings…."""
-    click(app, "[aria-label=Menu]")
-    item = "[...document.querySelectorAll('[role=menuitem]')].find(e=>e.textContent.trim().startsWith('Settings…'))"
-    app.wait(f"!!{item}", 10)
-    x, y = app.js(f"(()=>{{const r={item}.getBoundingClientRect();return [r.x+r.width/2,r.y+r.height/2]}})()")
-    click_at(app, x, y, "Settings…")
 
 
 def settings(app, expr, timeout=20):

@@ -351,7 +351,7 @@ def layout():
                    "const q=s=>r(document.querySelector(s));"
                    "return {w:innerWidth,h:innerHeight,field:q('form.field'),back:q('[aria-label=Back]'),"
                    "forward:q('[aria-label=Forward]'),toggle:q('[aria-label$=sidebar]'),layout:q('button.layout'),"
-                   "settings:q('button.settings'),sidebar:q('nav.sidebar'),strip:q('.strip'),"
+                   "menu:q('[aria-label=Menu]'),sidebar:q('nav.sidebar'),strip:q('.strip'),"
                    "gap:(()=>{const f=document.querySelector('form.field').getBoundingClientRect(),"
                    "n=document.querySelector('form.field').nextElementSibling.getBoundingClientRect();"
                    "return [f.right,f.y,n.left-f.right,f.height]})(),"
@@ -374,6 +374,10 @@ def layout():
     js("document.querySelector('button.layout').click()")
     until("!!document.querySelector('.strip')")
     top = measure()
+    # Settings… in the ☰ menu, where region_checks clicks it with no driver to ask.
+    js("document.querySelector('[aria-label=Menu]').click()")
+    until(f"!!{SETTINGS_ITEM}")
+    top["settingsItem"] = js(f"{RECT}({SETTINGS_ITEM})")
     ask("close")
     for _ in range(50):
         if guest("/usr/bin/pgrep", "-x", "project_b") == "":
@@ -988,7 +992,7 @@ def workspace_delete_checks():
     row = lambda ws: json.dumps(f'[data-workspace="{ws}"]')
     actions = lambda name: f"document.querySelector('[aria-label=\"Actions for {name}\"]')"
     delete_item = "[...document.querySelectorAll('[role=menuitem]')].find(b=>b.textContent.trim()==='Delete…')"
-    click_on(js(f"{RECT}(document.querySelector('button.settings'))"), win)
+    open_settings(js, win)
     click("[...document.querySelectorAll('.nav-item')].find(b=>b.textContent==='Workspaces')")
     click(actions("Work"))
     items = settings("[...document.querySelectorAll('[role=menuitem]')].map(b=>b.textContent.trim())") or []
@@ -1150,7 +1154,9 @@ def update_checks(retry=False):
     if retry:
         held = until(lambda: js(f"{button}?.textContent.trim() || ''"), bool, 100)
         check(f"a refused {after} is held through the automatic rounds", held == "", held)
-        js("document.querySelector('button.settings').click()")
+        js("document.querySelector('[aria-label=Menu]').click()")
+        until(lambda: js(f"!!{SETTINGS_ITEM}"), bool, 10)
+        js(f"{SETTINGS_ITEM}.click()")
         # After a refused release the button says Try again; otherwise Check for updates.
         find = "[...document.querySelectorAll('button')].find(b => ['Check for updates', 'Try again'].includes(b.textContent.trim()))"
         shown = until(lambda: json.loads(ask("evalsettings", f"!!{find}") or "false"), bool, 15)
@@ -1257,7 +1263,9 @@ def region_checks():
     for name in ("drag", "shell", "page"):
         check(f"the {name} outlines show, tabs on top", seen[name] > 20, str(seen))
 
-    click_on(T["settings"], right=True)
+    click_on(T["menu"], right=True)
+    time.sleep(0.5)
+    click_on(T["settingsItem"], right=True)
     time.sleep(1.5)
     shot("regions-settings")
     seen = outlines(home)
@@ -1280,6 +1288,15 @@ def on_shell(shell):
 
 
 RECT = "(e=>{const b=e.getBoundingClientRect();return [b.x,b.y,b.width,b.height]})"
+# Settings… in the standard shell's ☰ menu, the menu bar's menus (docs/menus-shortcuts.md,
+# "The shell's menu"), which has no Settings button of its own.
+SETTINGS_ITEM = "[...document.querySelectorAll('[role=menuitem]')].find(e=>e.textContent.trim().startsWith('Settings…'))"
+
+
+def open_settings(js, win=None):
+    """Opens settings by real clicks, as a person does in the standard shell: ☰, then Settings…."""
+    click_on(js(f"{RECT}(document.querySelector('[aria-label=Menu]'))"), win, right=True)
+    click_on(until(lambda: js(f"(e=>e&&{RECT}(e))({SETTINGS_ITEM})"), bool, 10), win, right=True)
 
 
 def shell_checks():

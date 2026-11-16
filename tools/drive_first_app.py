@@ -264,6 +264,22 @@ def click(app, selector):
     return click_at(app, x, y, selector)
 
 
+def click_menu_item(app, title):
+    """Clicks the item of an open menu of the shell's whose text starts with title, once it
+    shows: the standard shell's ☰ menu fills as Go answers."""
+    item = "[...document.querySelectorAll('[role=menuitem]')].find(e=>e.textContent.trim().startsWith(%s))" % json.dumps(title)
+    app.wait(f"!!{item}", 10)
+    x, y = app.js(f"(()=>{{const r={item}.getBoundingClientRect();return [r.x+r.width/2,r.y+r.height/2]}})()")
+    return click_at(app, x, y, title)
+
+
+def open_settings(app):
+    """Opens settings as a person does in the standard shell: its ☰ menu, the menu bar's
+    menus (docs/menus-shortcuts.md, "The shell's menu"), then Settings…."""
+    click(app, "[aria-label=Menu]")
+    return click_menu_item(app, "Settings…")
+
+
 def click_at(app, x, y, what):
     """Clicks the shell at x, y once the window agrees the point is the shell's, as click does."""
     end = time.time() + 5
@@ -545,7 +561,8 @@ def timeline_checks():
         return span is not None and all(s in span["stages"] for s in stages) and \
             [span["stages"][s] for s in stages] == sorted(span["stages"][s] for s in stages) and 0 < span["dur"] < 10e9
 
-    opened = span_after(lambda: click(app, "button.settings"), "settings.open")
+    click(app, "[aria-label=Menu]")
+    opened = span_after(lambda: click_menu_item(app, "Settings…"), "settings.open")
     check("opening settings is a span from the click to its first frame on screen, through Go, the engine and the page",
           in_order(opened, ["settings.open.go", "settings.navigation_start", "settings.open.done",
                             "settings.committed", "settings.script", "settings.mounted", "settings.snapshot",
