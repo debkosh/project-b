@@ -229,6 +229,9 @@ How they work is in [site-features.md](site-features.md).
 - `tools/android-release.sh` empties `/work/release` in the container before it takes
   `/work/.android-build.lock`, so a second session's APK build wipes the tree of one already
   building. Take the lock before the copy.
+- A release keeps no symbols: the APK's library is stripped, and the unstripped one in the
+  container's one `out/android` is replaced by the next Android build. Keep each release's
+  `lib.unstripped/libproject_b_content.so` beside its assets, so a crash's BuildId can be read.
 - The desktop and the emulators have no lock, unlike `out/` and the Android VM. Give
   `tools/test.sh android` and the drivers one (per emulator, and one for the desktop).
 - The README's screenshots show the Standard shell from before 0.2.63: retake them from a
