@@ -1,5 +1,5 @@
 <script>
-  import { send, state as go } from '@/sdk/svelte.svelte.js';
+  import { requestMenu, send, state as go } from '@/sdk/svelte.svelte.js';
   import { extensionsBuilt } from '@extensions';
   import Icon from './Icon.svelte';
   import Sheet from './Sheet.svelte';
@@ -16,6 +16,18 @@
   function act(msg) {
     send(msg);
     onclose();
+  }
+
+  // Under the page's actions, the menu bar's menus for this window, which Go sends as the
+  // sheet opens (docs/menus-shortcuts.md, "The shell's menu"): a submenu opens in the sheet,
+  // with a row back. path is the submenus open, by index.
+  requestMenu();
+  let path = $state([]);
+  const menu = $derived(path.reduce((items, i) => items[i]?.items || [], go.menu || []));
+  const icons = { 'find.open': 'find', 'downloads.show': 'download', 'app.settings': 'settings' };
+  function choose(item, i) {
+    if (item.items) path = [...path, i];
+    else act({ t: 'run', text: item.action });
   }
 
   const workspaces = $derived(go.workspaces || []);
@@ -50,6 +62,7 @@
         <button aria-label="New tab in group" onclick={() => { onnewtab(true); onclose(); }}><Icon name="group" /><span aria-hidden="true">In group</span></button>
       {/if}
     </div>
+    {#if workspaces.length > 1 || (extensionsBuilt && go.extensions) || ready}
     <div class="rows" role="menu" aria-label="More">
       {#if workspaces.length > 1}
         <button class="row" role="menuitem" onclick={() => (list = 'workspaces')}>
@@ -58,15 +71,6 @@
           <Icon name="chevron" />
         </button>
       {/if}
-      <button class="row" role="menuitem" aria-label="Find in page" disabled={!tab.url} onclick={() => act({ t: 'run', text: 'find.open' })}>
-        <Icon name="find" />
-        <span class="name">Find in page</span>
-      </button>
-      <button class="row" role="menuitem" aria-label="Downloads" onclick={() => act({ t: 'run', text: 'downloads.show' })}>
-        <Icon name="download" />
-        <span class="name">Downloads</span>
-        {#if running}<span class="note">{running} in progress</span>{/if}
-      </button>
       {#if extensionsBuilt && go.extensions}
         <button class="row" role="menuitem" aria-label="Extensions" onclick={() => onsheet('extensions')}>
           <Icon name="extensions" />
@@ -80,10 +84,28 @@
           <span class="name">Install update to {go.update.version}</span>
         </button>
       {/if}
-      <button class="row" role="menuitem" aria-label="Settings" onclick={() => act({ t: 'run', text: 'app.settings' })}>
-        <Icon name="settings" />
-        <span class="name">Settings</span>
-      </button>
+    </div>
+    {/if}
+    <div class="rows" role="menu" aria-label="Menu bar">
+      {#if path.length}
+        <button class="row" role="menuitem" aria-label="Back to the menu" onclick={() => (path = path.slice(0, -1))}>
+          <Icon name="back" />
+          <span class="name">{path.reduce((items, i, n) => (n === path.length - 1 ? items[i] : items[i].items), go.menu)?.title}</span>
+        </button>
+      {/if}
+      {#each menu as item, i (i)}
+        {#if item.separator}
+          <div class="rule" role="separator"></div>
+        {:else}
+          <button class="row" role={item.checked ? 'menuitemcheckbox' : 'menuitem'} aria-checked={item.checked ? 'true' : undefined} disabled={!item.items && !item.enabled} onclick={() => choose(item, i)}>
+            {#if icons[item.action]}<Icon name={icons[item.action]} />{:else}<span class="blank"></span>{/if}
+            <span class="name">{item.title}</span>
+            {#if item.action === 'downloads.show' && running}<span class="note">{running} in progress</span>{/if}
+            {#if item.checked}<span class="tick">✓</span>{/if}
+            {#if item.items}<Icon name="chevron" />{/if}
+          </button>
+        {/if}
+      {/each}
     </div>
   {/if}
 </Sheet>
@@ -129,6 +151,26 @@
     display: flex;
     flex-direction: column;
     padding: 4px 0;
+  }
+
+  /* The More rows, then the menu bar's, under a line; inside a menu, its groups apart. */
+  .rows + .rows,
+  .rule {
+    border-top: 1px solid var(--line);
+  }
+
+  .rule {
+    margin: 4px 0;
+  }
+
+  .row:disabled {
+    opacity: 0.4;
+  }
+
+  /* An icon's room, so each row's name starts in one column. */
+  .blank {
+    flex: none;
+    width: 20px;
   }
 
   .row {
