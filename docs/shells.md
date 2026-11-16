@@ -159,9 +159,12 @@ nothing. Its `actions` is every action in the menus that can run then, `{id, tit
 the menus' order, for a shell that lists them to run by name (`run`).
 
 A tab is `{id, url, title, loading, progress, blocked, crashed, error, errorCode, favicon,
-canGoBack, canGoForward, workspace, group, page, pin, connection, connectionNote, notice}`,
-`group` the id of its tab group, absent when it is in none; `pin` the id of the pin it is
-open for, absent when it is open for none (a window's pinned tabs come first in its list, in
+thumb, canGoBack, canGoForward, workspace, group, page, pin, connection, connectionNote, notice}`,
+`thumb` the address of a picture of its page as it last looked, a small image for an `<img>`
+that changes with each new picture, absent before the first and once the tab commits a page at
+another address (a reload or a new `#fragment` keeps it); a shell shows the favicon without it.
+`group` the id of its tab group, absent when it is in none; `pin` the id of the pin it is open
+for, absent when it is open for none (a window's pinned tabs come first in its list, in
 the pins' order); `connection` how its page reached it, `secure` or `insecure`, absent when
 it isn't a site, and `connectionNote` why, in one line
 ([daily-driver.md](daily-driver.md#permissions)). `error` says why its page failed to load, absent when it didn't:

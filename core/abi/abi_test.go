@@ -62,6 +62,9 @@ func (r *recorder) PageFullScreen(tab engine.TabID, on bool) {
 	r.fullScreen = on
 }
 func (r *recorder) IsPageFullScreen(engine.TabID) bool { return r.fullScreen }
+func (r *recorder) Thumbnail(tab engine.TabID, revision int64) {
+	r.note("thumbnail %d %d", tab, revision)
+}
 
 func listening() (*Events, *recorder) {
 	e, r := New(), &recorder{}
@@ -97,6 +100,7 @@ func TestEachEventReachesTheListener(t *testing.T) {
 		{ActivateRequested, []Value{i(5)}, "activate 5"},
 		{FindReply, []Value{i(2), i(7), i(12), i(3), i(1)}, "find 2 7 3/12 true"},
 		{PageFullScreen, []Value{i(2), i(1)}, "full screen 2 true"},
+		{Thumbnail, []Value{i(2), i(5)}, "thumbnail 2 5"},
 	} {
 		r.got = nil
 		if _, answered := e.Dispatch(c.id, c.args); answered {

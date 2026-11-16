@@ -101,6 +101,10 @@ type Engine struct {
 	badCerts map[string]bool
 	// printed is the tabs whose pages the app printed, in order. Under mu.
 	printed []engine.TabID
+	// captures are the pictures the app asked for, in order, and thumbs each tab's latest.
+	// Under mu.
+	captures []Capture
+	thumbs   map[engine.TabID]thumbnail
 	// perms is the page's permission requests and the app's answers.
 	perms permissionLog
 
@@ -374,6 +378,7 @@ func (e *Engine) Erased() []Erase { return slices.Clone(e.erased) }
 
 func (e *Engine) CloseTab(id engine.TabID) {
 	e.dropDialogs(id)
+	e.dropThumbnail(id)
 	delete(e.tabs, id)
 	for w, win := range e.windows {
 		for slot, v := range win.visible {

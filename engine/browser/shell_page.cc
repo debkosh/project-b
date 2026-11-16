@@ -16,6 +16,7 @@
 #include "base/no_destructor.h"
 #include "base/path_service.h"
 #include "base/strings/strcat.h"
+#include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
 #include "base/task/thread_pool.h"
 #include "base/values.h"
@@ -309,8 +310,10 @@ class AppDataSource : public content::URLDataSource {
       // The inline <style> in index.html paints before any JS has run.
       case Name::StyleSrc:
         return "style-src 'self' 'unsafe-inline';";
+      // A shell draws the tabs' pictures, from chrome://thumb, and no other page of ours.
       case Name::ImgSrc:
-        return "img-src 'self' data:;";
+        return host_ == "shell" ? "img-src 'self' data: chrome://thumb;"
+                                : "img-src 'self' data:;";
       case Name::FontSrc:
         return "font-src 'self';";
       case Name::RequireTrustedTypesFor:
@@ -374,6 +377,33 @@ class AppDataSource : public content::URLDataSource {
   const std::string host_;
 };
 
+// Serves the latest picture of a tab's page, chrome://thumb/<tab>, that
+// PageTab::CaptureThumbnail kept; a query, the revision Go adds so the address changes with
+// the picture, is ignored. None yet, or no such tab, is a 404. It is in our pages' context
+// only, and only a page at a chrome:// address has a loader for it there, so a web page
+// can't load it, even on Android, where the web shares that context.
+class ThumbDataSource : public content::URLDataSource {
+ public:
+  std::string GetSource() override { return "thumb"; }
+
+  void StartDataRequest(const GURL& url,
+                        const content::WebContents::Getter& wc_getter,
+                        GotDataCallback callback) override {
+    std::string_view path = url.path();
+    if (path.starts_with('/')) {
+      path.remove_prefix(1);
+    }
+    int64_t id = 0;
+    PageTab* tab =
+        base::StringToInt64(path, &id) ? Engine::Get()->tab(id) : nullptr;
+    std::move(callback).Run(tab ? tab->thumbnail() : nullptr);
+  }
+
+  std::string GetMimeType(const GURL& url) override { return "image/jpeg"; }
+
+  bool ShouldServeMimeTypeAsContentTypeHeader() override { return true; }
+};
+
 }  // namespace
 
 void RegisterShellWebUI(content::BrowserContext* pages_context) {
@@ -383,6 +413,8 @@ void RegisterShellWebUI(content::BrowserContext* pages_context) {
     content::URLDataSource::Add(pages_context,
                                 std::make_unique<AppDataSource>(app.host));
   }
+  content::URLDataSource::Add(pages_context,
+                              std::make_unique<ThumbDataSource>());
 }
 
 ShellPage::ShellPage(content::BrowserContext* browser_context,

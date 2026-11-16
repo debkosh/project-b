@@ -3,11 +3,15 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
+#include "base/memory/ref_counted_memory.h"
 #include "base/memory/weak_ptr.h"
+#include "base/time/time.h"
 #include "build/build_config.h"
+#include "content/public/browser/render_widget_host_view.h"
 #include "project_b/engine/browser/hooks_gen.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "ui/gfx/geometry/size.h"
@@ -41,6 +45,12 @@ class PageTab : public WebContentsObserverHooks, public WebContentsDelegateHooks
   void set_window(int64_t window) { window_ = window; }
   // Delivers one message from Go to our page in a tab of ours, as the shell gets its own.
   void SendToPage(const std::string& json);
+  // Copies what the page shows now, at most max_width pixels across, and keeps it as a
+  // JPEG in thumbnail(), telling Go with PB_EVENT_THUMBNAIL. A newer copy asked for while
+  // one is on its way replaces it.
+  void CaptureThumbnail(int max_width);
+  // The latest picture of the page, or null before the first. It goes with the tab.
+  scoped_refptr<base::RefCountedMemory> thumbnail() const { return thumbnail_; }
 
  private:
   // content::WebContentsObserver:
@@ -71,6 +81,15 @@ class PageTab : public WebContentsObserverHooks, public WebContentsDelegateHooks
                            const GURL& image_url,
                            const std::vector<SkBitmap>& bitmaps,
                            const std::vector<gfx::Size>& sizes);
+
+  void OnThumbnailCopied(int request,
+                         base::TimeTicks asked,
+                         const content::CopyFromSurfaceResult& result);
+  void OnThumbnailEncoded(int request,
+                          base::TimeDelta copy,
+                          base::TimeTicks copied,
+                          gfx::Size size,
+                          std::optional<std::vector<uint8_t>> jpeg);
 
   // content::WebContentsDelegate: these hand over content's objects, so they stay here.
   content::WebContents* hook_contents() const override;
@@ -153,6 +172,10 @@ class PageTab : public WebContentsObserverHooks, public WebContentsDelegateHooks
   std::unique_ptr<content::WebContents> contents_;
   // Counts favicon fetches, so a slow one for an earlier page is dropped.
   int favicon_request_ = 0;
+  // Counts the copies asked for, so only the newest is kept; revision counts those kept.
+  int thumbnail_request_ = 0;
+  int64_t thumbnail_revision_ = 0;
+  scoped_refptr<base::RefCountedMemory> thumbnail_;
   base::WeakPtrFactory<PageTab> weak_factory_{this};
 };
 

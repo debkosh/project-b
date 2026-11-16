@@ -1,15 +1,19 @@
 #include "project_b/engine/browser/page_tab.h"
 
+#include <algorithm>
 #include <cstdlib>
 #include <string>
 
 #include "base/base64.h"
 #include "base/functional/bind.h"
 #include "base/strings/string_number_conversions.h"
+#include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
+#include "base/task/thread_pool.h"
 #include "base/values.h"
 #include "build/build_config.h"
 #include "components/input/native_web_keyboard_event.h"
+#include "components/viz/common/frame_sinks/copy_output_result.h"
 #include "content/public/browser/context_menu_params.h"
 #include "content/public/browser/keyboard_event_processing_result.h"
 #include "content/public/browser/navigation_controller.h"
@@ -35,7 +39,10 @@
 #include "third_party/blink/public/mojom/context_menu/context_menu.mojom.h"
 #include "third_party/blink/public/mojom/favicon/favicon_url.mojom.h"
 #include "ui/base/window_open_disposition.h"
+#include "ui/gfx/codec/jpeg_codec.h"
 #include "ui/gfx/codec/png_codec.h"
+#include "ui/gfx/geometry/rect.h"
+#include "ui/gfx/geometry/size_conversions.h"
 #include "url/url_constants.h"
 
 #if BUILDFLAG(IS_ANDROID)
@@ -45,6 +52,12 @@
 namespace project_b {
 
 namespace {
+
+// A page's picture for the tab switcher: a JPEG of about this quality, small enough to
+// keep one for every tab, and the longest its copy may take once the compositor has the
+// request before it is given up.
+constexpr int kThumbnailQuality = 70;
+constexpr base::TimeDelta kThumbnailTimeout = base::Seconds(2);
 
 // What a press was on, in the words the context menu event has.
 const char* MediumOf(blink::mojom::ContextMenuDataMediaType type) {
@@ -413,6 +426,82 @@ void PageTab::OnFaviconDownloaded(int request,
   args.Int(id_);
   args.Str(png ? "data:image/png;base64," + base::Base64Encode(*png) : "");
   hooks::Fire(PB_EVENT_FAVICON_CHANGED, args);
+}
+
+// The copy is the compositor's, of the page's surface as last drawn, scaled down there.
+// Go asks just before the tab is hidden, and on Android it still completes once it is: the
+// window's one compositor keeps the surface until the copy is done (DelegatedFrameHostAndroid
+// takes a ScopedKeepSurfaceAlive for it). On a Mac a tab's view has a compositor of its own,
+// which goes as it is hidden, so a copy not yet made may time out there.
+void PageTab::CaptureThumbnail(int max_width) {
+  content::RenderWidgetHostView* view = contents_->GetRenderWidgetHostView();
+  if (!view || !view->IsSurfaceAvailableForCopy() || max_width <= 0) {
+    return;
+  }
+  const gfx::Size pixels = gfx::ScaleToCeiledSize(view->GetViewBounds().size(),
+                                                  view->GetDeviceScaleFactor());
+  if (pixels.IsEmpty()) {
+    return;
+  }
+  const int width = std::min(max_width, pixels.width());
+  const gfx::Size size(
+      width, std::max(1, pixels.height() * width / pixels.width()));
+  view->CopyFromSurface(
+      gfx::Rect(), size, kThumbnailTimeout,
+      base::BindOnce(&PageTab::OnThumbnailCopied, weak_factory_.GetWeakPtr(),
+                     ++thumbnail_request_, base::TimeTicks::Now()));
+}
+
+// The JPEG is made off the main thread: a phone's screenful takes some milliseconds.
+void PageTab::OnThumbnailCopied(int request,
+                                base::TimeTicks asked,
+                                const content::CopyFromSurfaceResult& result) {
+  if (request != thumbnail_request_) {
+    return;
+  }
+  if (!result.has_value() || result->bitmap.drawsNothing()) {
+    LOG(WARNING) << "thumbnail: tab=" << id_ << " the copy failed";
+    return;
+  }
+  const base::TimeTicks copied = base::TimeTicks::Now();
+  const SkBitmap& bitmap = result->bitmap;
+  base::ThreadPool::PostTaskAndReplyWithResult(
+      FROM_HERE, {base::TaskPriority::USER_VISIBLE},
+      base::BindOnce(
+          [](const SkBitmap& bitmap) {
+            return gfx::JPEGCodec::Encode(bitmap, kThumbnailQuality);
+          },
+          bitmap),
+      base::BindOnce(&PageTab::OnThumbnailEncoded, weak_factory_.GetWeakPtr(),
+                     request, copied - asked, copied,
+                     gfx::Size(bitmap.width(), bitmap.height())));
+}
+
+void PageTab::OnThumbnailEncoded(int request,
+                                 base::TimeDelta copy,
+                                 base::TimeTicks copied,
+                                 gfx::Size size,
+                                 std::optional<std::vector<uint8_t>> jpeg) {
+  if (request != thumbnail_request_) {
+    return;
+  }
+  if (!jpeg) {
+    LOG(WARNING) << "thumbnail: tab=" << id_ << " the JPEG failed";
+    return;
+  }
+  const size_t bytes = jpeg->size();
+  thumbnail_ = base::MakeRefCounted<base::RefCountedBytes>(std::move(*jpeg));
+  ++thumbnail_revision_;
+  timeline::Mark("tab.thumbnail",
+                 base::StringPrintf("tab=%lld copy=%.1fms jpeg=%.1fms %dx%d %zuKB",
+                                    static_cast<long long>(id_),
+                                    copy.InMillisecondsF(),
+                                    (base::TimeTicks::Now() - copied).InMillisecondsF(),
+                                    size.width(), size.height(), bytes / 1024));
+  hooks::Args args;
+  args.Int(id_);
+  args.Int(thumbnail_revision_);
+  hooks::Fire(PB_EVENT_THUMBNAIL, args);
 }
 
 // A link in a tab of ours navigates the tab itself, whatever it asked for: Go's one check

@@ -153,6 +153,9 @@ typedef enum PBEvent {
                                         // 0 to stop
   PB_EVENT_IS_PAGE_FULL_SCREEN = 76,    // i: tab; answers i: 1 when its page has the
                                         // screen now
+  PB_EVENT_THUMBNAIL = 77,              // i: tab, i: revision, greater for each newer
+                                        // one; capture_thumbnail kept a new picture of
+                                        // its page, at chrome://thumb/<tab> for our pages
   PB_EVENT_PAGE_MESSAGE = 23,           // i: tab, s: the page's name ("settings",
                                         // "history", "bookmarks", "downloads"), s: json, from the page
                                         // of ours the tab shows
@@ -364,6 +367,13 @@ typedef struct PBEngineCalls {
   // Prints a tab's page through the system's print panel, which has its own preview:
   // the Mac's as a sheet on its window, Android's print sheet on a phone.
   void (*print)(int64_t tab);
+  // Copies what a tab's page shows now, scaled down to at most max_width pixels across,
+  // never up, its shape kept, and keeps it as a JPEG, one per tab, until the next or the
+  // tab closes. Our pages' context serves it at chrome://thumb/<tab>, any query ignored,
+  // and PB_EVENT_THUMBNAIL follows once it is kept; a copy that fails tells nothing. A tab
+  // hidden just after still gets its copy on Android: the window's compositor keeps the
+  // page's surface until it is done.
+  void (*capture_thumbnail)(int64_t tab, int32_t max_width);
   // Takes a tab's page out of full screen, as its own exitFullscreen() would.
   void (*exit_page_full_screen)(int64_t tab);
   // Answers PB_EVENT_PERMISSION_REQUEST: a PBPermissionStatus for each of its kinds, in

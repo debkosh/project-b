@@ -235,6 +235,13 @@ type Engine interface {
 	// Print prints a tab's page through the system's print panel, over its window on a
 	// Mac and Android's print sheet on a phone, which have their own preview.
 	Print(tab TabID)
+	// CaptureThumbnail copies what a tab's page shows now, scaled down to at most maxWidth
+	// device pixels across, never up, and keeps it in the engine as the tab's picture
+	// until the next or the tab closes. Thumbnail follows once it is kept; a copy that
+	// fails says nothing. ThumbnailURL is the address our pages load that picture at,
+	// changing with each revision; it only names it.
+	CaptureThumbnail(tab TabID, maxWidth int)
+	ThumbnailURL(tab TabID, revision int64) string
 	// ExitPageFullScreen takes a tab's page out of full screen, as its own
 	// exitFullscreen() would; PageFullScreen follows.
 	ExitPageFullScreen(tab TabID)
@@ -443,6 +450,9 @@ type Listener interface {
 	// button does, or to stop. IsPageFullScreen is the engine asking whether it does now.
 	PageFullScreen(tab TabID, on bool)
 	IsPageFullScreen(tab TabID) bool
+	// Thumbnail says the engine kept a new picture of a tab's page, as CaptureThumbnail
+	// asked: revision is greater for each newer one, for ThumbnailURL.
+	Thumbnail(tab TabID, revision int64)
 
 	// PermissionRequested is a page asking to use what kinds name. Every kind a page can
 	// ask for comes here, those the app answers without asking the person too. The app

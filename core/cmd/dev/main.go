@@ -245,6 +245,18 @@ func main() {
 			})
 		})
 	}
+	// A tab's picture, as the engine serves chrome://thumb/<tab> to our pages; the query, its
+	// revision, is ignored.
+	mux.HandleFunc("GET /mock/thumb/{tab}", func(w http.ResponseWriter, r *http.Request) {
+		tab, _ := strconv.ParseInt(r.PathValue("tab"), 10, 64)
+		b, ok := e.ThumbnailImage(engine.TabID(tab))
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "image/svg+xml")
+		w.Write(b)
+	})
 	mux.HandleFunc("GET /mock/page", serve("mock_page.html", "text/html; charset=utf-8"))
 	// Each mock page is one slot of its window's, ?slot=<n>, and hears its slot's state, the
 	// last one first.
@@ -319,7 +331,8 @@ func serve(name, contentType string) http.HandlerFunc {
 
 // pageCSP is the policy the engine serves our pages with (engine/browser/shell_page.cc,
 // GetContentSecurityPolicy), so a page that breaks it breaks here too, and connect-src
-// for the mock's own way to Go, which the engine's pages don't have.
+// for the mock's own way to Go, which the engine's pages don't have. The tabs' pictures,
+// chrome://thumb in the engine's shell policy, are this server's own here.
 const pageCSP = "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; " +
 	"font-src 'self'; require-trusted-types-for 'script'; trusted-types vue svelte-trusted-html; connect-src 'self'"
 

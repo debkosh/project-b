@@ -1,6 +1,7 @@
 package tabs
 
 import (
+	"fmt"
 	"net/url"
 	"slices"
 	"strings"
@@ -46,6 +47,10 @@ func (f *fakeEngine) CreateTab(workspace string) engine.TabID {
 	}
 	f.in[f.next] = workspace
 	return f.next
+}
+
+func (f *fakeEngine) ThumbnailURL(tab engine.TabID, revision int64) string {
+	return fmt.Sprintf("chrome://thumb/%d?v=%d", tab, revision)
 }
 
 func (f *fakeEngine) DuplicateTab(engine.TabID) engine.TabID { f.next++; return f.next }
@@ -188,6 +193,37 @@ func TestFaviconFollowsThePage(t *testing.T) {
 	if m.Active().Favicon != "" {
 		t.Fatal("a new page keeps the old page's favicon")
 	}
+}
+
+// A tab's picture is of the page it was taken of: a reload or a new #fragment keeps it, and
+// a page at another address drops it once it commits, not while the old page still shows.
+func TestThumbFollowsThePage(t *testing.T) {
+	m := oneWindow(&fakeEngine{})
+	id := m.Create(1)
+	m.HandleNavigationStarting(id, 1, "https://a.test/")
+	m.HandleNavigationFinished(id, 1, "https://a.test/")
+	if m.Active().Thumb != "" {
+		t.Fatal("a picture before any was taken")
+	}
+	m.HandleThumbnail(id, 3)
+	if got := m.Active().Thumb; got != fmt.Sprintf("chrome://thumb/%d?v=3", id) {
+		t.Fatalf("thumb %q", got)
+	}
+	m.HandleNavigationFinished(id, 2, "https://a.test/#part")
+	m.HandleNavigationStarting(id, 3, "https://a.test/")
+	m.HandleNavigationFinished(id, 3, "https://a.test/")
+	if m.Active().Thumb == "" {
+		t.Fatal("a reload or a #fragment dropped the picture")
+	}
+	m.HandleNavigationStarting(id, 4, "https://b.test/")
+	if m.Active().Thumb == "" {
+		t.Fatal("the picture went while the old page still showed")
+	}
+	m.HandleNavigationFinished(id, 4, "https://b.test/")
+	if m.Active().Thumb != "" {
+		t.Fatal("a new page keeps the old page's picture")
+	}
+	m.HandleThumbnail(99, 1)
 }
 
 func TestWordsGoToTheSearchGiven(t *testing.T) {

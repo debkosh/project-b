@@ -46,6 +46,10 @@ type Tab struct {
 	ErrorCode string         `json:"errorCode,omitempty"`
 	// Favicon is a data: URL, or "" when the page has none.
 	Favicon string `json:"favicon,omitempty"`
+	// Thumb is the address of a picture of its page as it last looked, a small JPEG our
+	// pages can load, or "" for none yet. A commit at another address drops it, as it is of
+	// the page before; one that only changes the #fragment keeps it.
+	Thumb string `json:"thumb,omitempty"`
 
 	CanGoBack    bool `json:"canGoBack"`
 	CanGoForward bool `json:"canGoForward"`
@@ -67,6 +71,8 @@ type Tab struct {
 	// pins' order. A pinned tab is in no group.
 	Pin string `json:"pin,omitempty"`
 
+	// committed is the address of the page the tab last committed, which Thumb is of.
+	committed string
 	// started is the engine's id for the latest navigation that started, whose address
 	// the tab shows until it commits or fails.
 	started int64
@@ -1060,6 +1066,10 @@ func (m *Manager) HandleNavigationFinished(id engine.TabID, nav int64, u string)
 	// A page restored from the back-forward cache never reports a start, so a commit
 	// has to clear what an earlier navigation left behind.
 	t.URL, t.Error, t.ErrorCode, t.Blocked, t.Crashed = address(u), "", "", false, false
+	if withoutFragment(u) != withoutFragment(t.committed) {
+		t.Thumb = ""
+	}
+	t.committed = u
 	t.AdsBlocked, t.PopupsBlocked = 0, 0
 	// The blank page a popup opens on isn't a page of its own: it still goes by its
 	// opener's.
@@ -1154,6 +1164,22 @@ func (m *Manager) HandleFaviconChanged(id engine.TabID, dataURL string) {
 	}
 	t.Favicon = dataURL
 	m.changed(t)
+}
+
+// HandleThumbnail records that the engine has a new picture of the tab's page.
+func (m *Manager) HandleThumbnail(id engine.TabID, revision int64) {
+	t := m.tabs[id]
+	if t == nil {
+		return
+	}
+	t.Thumb = m.eng.ThumbnailURL(id, revision)
+	m.changed(t)
+}
+
+// withoutFragment is an address without its #fragment.
+func withoutFragment(u string) string {
+	u, _, _ = strings.Cut(u, "#")
+	return u
 }
 
 // HandleLoadingChanged records the loading state.

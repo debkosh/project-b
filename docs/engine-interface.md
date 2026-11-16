@@ -41,13 +41,15 @@ The engine owns the process and its run loop, and calls Go in this order:
 navigation; workspaces (`CreateTab(workspace)`, `SetFirstWorkspace`, `EraseWorkspace`);
 windows and their layout (`CreateWindow`, `SetWindowLayout`, `RequestWindow`,
 `SetWindowBounds`, `SetWindowMode`, `FocusTab`, `FocusShell`); the shell's, the picker's and our
-pages' channels (`PageMessage`, `SendToPage`); menu and app commands; downloads, dialogs, find and page full screen; and the
-names of our pages' addresses (`PageURL`, `OurPage`, `ViewSourceURL`).
+pages' channels (`PageMessage`, `SendToPage`); menu and app commands; downloads, dialogs, find and page full screen;
+pictures of the tabs' pages (`CaptureThumbnail`); and the names of our pages' addresses (`PageURL`, `OurPage`,
+`ViewSourceURL`, `ThumbnailURL`).
 
 **Events** (`Listener`): the adapter fires each one itself, from what the engine reports.
 Events 1 to 59 are windows, pages of ours, menus, crashes, downloads, dialogs and permissions.
 Events 60 to 79 are what a tab's page does: navigation, title, loading, context menu, scroll,
-focus, crash, close and activate requests, keys, find and full screen.
+focus, crash, close and activate requests, keys, find, full screen and a new picture of it
+(`Thumbnail`).
 
 **Rules an engine must keep:**
 - `NavigationStarting` is asked synchronously, before a tab's top-level navigation starts and
@@ -66,6 +68,19 @@ focus, crash, close and activate requests, keys, find and full screen.
   `ProcessCrash.Status`. The engine's own vocabulary never crosses as something Go matches on.
 - A tab of one workspace keeps that workspace's cookies and storage, and so does every tab it
   opens.
+- `CaptureThumbnail(tab, maxWidth)` copies what the page shows now, scaled down to at most
+  `maxWidth` device pixels across, never up, with its shape kept, and keeps it in the engine,
+  one per tab, until the next or the tab closes; then `Thumbnail(tab, revision)` tells Go,
+  the revision greater each time. A copy that fails, or a tab with nothing drawn yet, tells
+  nothing; one kept is marked `tab.thumbnail` on the timeline with how long the copy and the
+  JPEG took, its size and its bytes. The picture never crosses to Go: our pages load it at `ThumbnailURL(tab,
+  revision)`, and no web page can. Chromium keeps a JPEG of about quality 70 and serves it at
+  `chrome://thumb/<tab>?v=<revision>` in our pages' context, only the shell's policy letting
+  it in (`img-src chrome://thumb`); the mock draws an SVG of the address and its dev server
+  serves it at `/mock/thumb/<tab>`. A copy asked for just before the tab is hidden still
+  completes on Android, as the window's one compositor keeps the page's surface until it is
+  done; on a Mac a tab's view has a compositor of its own, which goes with it, so the copy can
+  time out there.
 
 **Hosting our pages:** the shell is a transparent web view over the tabs' views, and presses go
 where `WindowLayout.At` says. It needs a JS-to-native call and a native-to-JS call

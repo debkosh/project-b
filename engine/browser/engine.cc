@@ -267,6 +267,13 @@ void CallPrint(int64_t tab) {
   }
 }
 
+void CallCaptureThumbnail(int64_t tab, int32_t max_width) {
+  CheckMainThread();
+  if (PageTab* page = g_engine->tab(tab)) {
+    page->CaptureThumbnail(max_width);
+  }
+}
+
 void CallStopFinding(int64_t tab) {
   CheckMainThread();
   if (PageTab* page = g_engine->tab(tab)) {
@@ -586,6 +593,7 @@ const PBEngineCalls* Engine::Calls() {
       .find = CallFind,
       .stop_finding = CallStopFinding,
       .print = CallPrint,
+      .capture_thumbnail = CallCaptureThumbnail,
       .exit_page_full_screen = CallExitPageFullScreen,
       .answer_permission = CallAnswerPermission,
       .create_window = CallCreateWindow,
