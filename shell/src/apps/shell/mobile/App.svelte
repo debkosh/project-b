@@ -199,7 +199,12 @@
   }
 
   function onsheet(name) {
-    if (name === 'switcher') workspace = tab.workspace || '';
+    // A picture of the page as it is now for its card, asked for before the switcher
+    // covers it (docs/shells.md, captureTab).
+    if (name === 'switcher') {
+      send({ t: 'captureTab' });
+      workspace = tab.workspace || '';
+    }
     if (name === 'group') sheetGroup = group?.id || '';
     askClose = false;
     sheet = name;

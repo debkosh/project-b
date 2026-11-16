@@ -21,6 +21,9 @@ const H = 915;
   const browser = await chromium.launch();
   const w = await lib.openWindow(browser, { viewport: { width: W, height: H }, hasTouch: true });
   const { page, ui } = w;
+  // Console messages for a page picture that failed to load, as lib.watch words them.
+  const thumbMisses = [];
+  page.on('console', (m) => m.type() === 'error' && /\/mock\/thumb\//.test(m.location().url) && thumbMisses.push(m.text()));
   page.setDefaultTimeout(5000);
 
   const field = ui.getByRole('textbox', { name: 'Address' });
@@ -206,12 +209,15 @@ const H = 915;
   await visit('example.net/mail', 'https://example.net/mail');
 
   // The bar tapped with nothing typed lists what one more tap reaches, Go's list for nothing
-  // typed, the closest nearest the thumb. The shell's suggests and Go's answers are watched
-  // in the shell's frame, and a whole answer is handed to it as Go would send one.
+  // typed, the closest nearest the thumb. What the shell sends and Go's answers are
+  // watched in the shell's frame, each sent message with whether the switcher showed, and
+  // a whole answer is handed to it as Go would send one.
   await w.shell().evaluate(() => {
     const send = window.chrome.send;
+    window.sent = [];
     window.chrome.send = (channel, args) => {
       const m = JSON.parse(args[0]);
+      window.sent.push({ t: m.t, switcher: !document.querySelector('.switcher')?.hidden });
       if (m.t === 'suggest') window.lastSuggest = m;
       return send.call(window.chrome, channel, args);
     };
@@ -272,10 +278,40 @@ const H = 915;
   await tabsButton.tap();
   // Once it has slid in.
   check('the count opens the switcher over the page, the toolbar still under it', await until(async () => await switcher.isVisible() && (await box('.switcher')).bottom === H - 48), JSON.stringify(await box('.switcher')));
+  const captures = (await w.shell().evaluate(() => window.sent)).filter((m) => m.t === 'captureTab');
+  check('opening, it asks Go for a picture of the page first, before it covers it', captures.length === 1 && captures[0].switcher === false, JSON.stringify(captures));
   check('a card per tab, the active one selected', (await cards.count()) === 2 && (await cards.nth(1).getAttribute('aria-selected')) === 'true');
   const card = await cards.first().boundingBox();
   check('two columns', card.width > 150 && card.width < W / 2, JSON.stringify(card));
   await shots('switcher');
+  // A search over the tabs: with three or fewer, behind a search button.
+  const searchField = switcher.getByRole('textbox', { name: 'Search tabs' });
+  check('with two tabs the search waits behind a button', (await searchField.count()) === 0);
+  await switcher.getByRole('button', { name: 'Search tabs' }).tap();
+  check('which shows the field, the keyboard in it', await until(async () => (await searchField.isVisible()) && await searchField.evaluate((el) => el === document.activeElement)));
+  await page.keyboard.type('MAIL');
+  check('typing keeps the cards whose title or address holds it, any case', await until(async () => (await cards.filter({ visible: true }).count()) === 1 && /example\.net/.test(await cards.filter({ visible: true }).first().innerText())), await switcher.innerText());
+  await shots('switcher-search');
+  await page.keyboard.type('zzz');
+  check('none found says so', await until(() => switcher.getByText('No tabs found').isVisible()));
+  await switcher.getByRole('button', { name: 'Clear search' }).tap();
+  check('its × clears it, every card back, and on a short list puts the field away', await until(async () => (await cards.filter({ visible: true }).count()) === 2 && (await searchField.count()) === 0));
+  // Page pictures: a card shows tab.thumb, Go's picture of its page, cropped from the top
+  // of a phone-shaped place; one without shows its favicon or letter. The engine's pictures
+  // come on their own branch; here one is handed to the shell as Go sends a tab.
+  const pictured = (await regions()).tabs.find((t) => t.url === 'https://example.net/mail');
+  const thumb = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="412" height="1200"><rect width="412" height="1200" fill="#fff"/><rect width="412" height="96" fill="#24292f"/><text x="24" y="60" font-family="sans-serif" font-size="32" fill="#fff">example.net</text><text x="24" y="190" font-family="sans-serif" font-size="40" font-weight="700" fill="#111">Mail</text><rect x="24" y="230" width="364" height="18" fill="#ddd"/><rect x="24" y="266" width="260" height="18" fill="#ddd"/><rect x="24" y="320" width="160" height="56" rx="8" fill="#1f883d"/><rect y="1100" width="412" height="100" fill="#d33"/></svg>');
+  await w.shell().evaluate(({ tab, thumb }) => window.__shellReceive(JSON.stringify({ t: 'tab', tab: { ...tab, thumb } })), { tab: pictured, thumb });
+  const picture = switcher.locator(`[data-tab="${pictured.id}"] img.thumb`);
+  check('a card with a picture shows it', await until(() => picture.isVisible()));
+  const pic = await picture.evaluate((img) => ({ fit: getComputedStyle(img).objectFit, at: getComputedStyle(img).objectPosition, box: img.getBoundingClientRect().toJSON(), place: img.parentElement.getBoundingClientRect().toJSON() }));
+  check('filling an upright, phone-shaped place, cropped from the top', pic.fit === 'cover' && pic.at.startsWith('50% 0') && Math.abs(pic.place.width / pic.place.height - 3 / 4) < 0.02 && Math.abs(pic.box.height - pic.place.height) < 1, JSON.stringify(pic));
+  // The other tab as Go sends one with no picture yet.
+  const { thumb: _, ...unpictured } = (await regions()).tabs.find((t) => t.id !== pictured.id);
+  await w.shell().evaluate((tab) => window.__shellReceive(JSON.stringify({ t: 'tab', tab })), unpictured);
+  const plain = switcher.locator(`.card[data-tab="${unpictured.id}"]`);
+  check('one without a picture keeps its favicon or letter', await until(async () => (await plain.locator('img.thumb').count()) === 0 && (await plain.locator('.body .letter, .body img').count()) === 1));
+  await shots('switcher-thumb');
   const first = (await regions()).tabs[0].id;
   await cards.first().tap();
   check('a tap on a card shows its tab and closes the switcher', await until(async () => (await regions()).active === first && !(await switcher.isVisible())));
@@ -440,11 +476,31 @@ const H = 915;
   await tabCount(4);
   for (const t of (await regions()).tabs) if (!t.url) await fire('navigate', `https://example.com/card/${t.id}`, { tab: t.id });
   await until(async () => (await regions()).tabs.every((t) => t.url && !t.loading));
+  // With four tabs or more in the workspace, the search field is there at once.
+  const extra = (await regions()).tabs.length;
+  await fire('menu', 'tab.new');
+  await tabCount(extra + 1);
+  const extraTab = (await regions()).active;
+  await fire('navigate', 'https://example.com/card/extra', { tab: extraTab });
+  await until(async () => !(await active()).loading && (await active()).url !== '');
+  await tabsButton.tap();
+  await until(() => switcher.isVisible());
+  // The shown workspace's tabs: each card's, and each in a group's card.
+  const shownTabs = await w.shell().evaluate(() => [...document.querySelectorAll('.switcher [data-tab]')].filter((el) => !el.closest('.card').hidden).length);
+  check(`with ${shownTabs} tabs, more than three, the search field is there at once`, shownTabs > 3 && (await switcher.getByRole('textbox', { name: 'Search tabs' }).isVisible()) && (await switcher.getByRole('button', { name: 'Search tabs' }).count()) === 0, String(shownTabs));
+  await page.keyboard.press('Escape');
+  await lib.closeTab(extraTab);
+  await tabCount(extra);
   await tabsButton.tap();
   const visibleCards = switcher.locator('.card:not([data-group])').filter({ visible: true });
   await until(async () => (await visibleCards.count()) >= 3 && (await box('.switcher')).bottom === H - 48);
-  const doomed = Number(await visibleCards.last().getAttribute('data-tab'));
-  await swipeCard(visibleCards.last(), -170);
+  // A card other than the active tab's, whose picture Go may be making as the switcher
+  // opens, once its own picture, if it has one, has loaded: a tab closed while its picture
+  // is on its way has none to load.
+  const doomedCard = switcher.locator('.card:not([data-group]):not(.active)').filter({ visible: true }).last();
+  const doomed = Number(await doomedCard.getAttribute('data-tab'));
+  await until(() => doomedCard.locator('img.thumb').evaluateAll((els) => els.every((e) => e.complete)));
+  await swipeCard(doomedCard, -170);
   check('a swipe sideways closes a card', await until(async () => !(await regions()).tabs.some((t) => t.id === doomed)) && await switcher.isVisible(), JSON.stringify({ doomed, tabs: (await regions()).tabs.map((t) => t.id), open: await switcher.isVisible() }));
   const small = Number(await visibleCards.nth(0).getAttribute('data-tab'));
   await swipeCard(visibleCards.nth(0), 40);
@@ -819,7 +875,11 @@ const H = 915;
   await page.keyboard.press('Escape');
   await shots('top-strip');
 
-  check('it logged no errors', w.errors.length === 0, w.errors.join(' | '));
+  // A tab's picture is let go as the tab closes, so one on its way then fails to load, and
+  // its card, gone or going, shows the favicon: not an error.
+  const errors = [...w.errors];
+  for (const miss of thumbMisses) errors.splice(errors.indexOf(miss) >>> 0, errors.includes(miss) ? 1 : 0);
+  check('it logged no errors', errors.length === 0, errors.join(' | '));
   await browser.close();
   await lib.done();
 })();

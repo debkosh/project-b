@@ -1,5 +1,5 @@
 <script>
-  import { shell, state, tabLabel } from '@/sdk/svelte.svelte.js';
+  import { shell, state as go, tabLabel } from '@/sdk/svelte.svelte.js';
   import Favicon from './Favicon.svelte';
   import Icon from './Icon.svelte';
   import { gesture } from './gesture.js';
@@ -13,8 +13,41 @@
   // group is one card where its first tab is, with its colour along the top and its tabs'
   // favicons, a tap on which goes to that tab; a tap elsewhere on it opens the group's
   // sheet. It stays in the document while closed, so every tab is always an element
-  // (docs/shells.md, rule 4).
+  // (docs/shells.md, rule 4). A card shows its page as it last looked, Go's tab.thumb,
+  // cropped from the top, or its favicon or letter until there is a picture.
+  // A search over the workspace's tabs, by title and address, sits at the top: always there
+  // with four tabs or more, behind a search button with three or fewer.
   let { open, groups, workspace = $bindable(), onpick, onclosetab, onnewtab, oncard, ongroup, onclosegroup, ondrop } = $props();
+
+  // The pictures that didn't load, as one of a tab closed meanwhile: its favicon instead. A
+  // picture is drawn only while the switcher is open, so a new one is fetched only when it
+  // can be seen, not each time Go makes one.
+  const broken = $state({});
+  let query = $state('');
+  // Whether the field was opened with the search button, on a short list.
+  let searching = $state(false);
+  let field = $state();
+  const inWorkspace = (tab) => (tab.workspace || '') === workspace;
+  const long = $derived(go.tabs.filter(inWorkspace).length > 3);
+  const words = $derived(query.trim().toLowerCase());
+  const matches = (tab) => !words || tabLabel(tab).toLowerCase().includes(words) || (tab.url || '').toLowerCase().includes(words);
+  // Each search starts afresh: closed, the switcher forgets it.
+  $effect(() => {
+    if (open) return;
+    query = '';
+    searching = false;
+  });
+
+  function search() {
+    searching = true;
+    queueMicrotask(() => field?.focus());
+  }
+
+  function clear() {
+    query = '';
+    if (long) field?.focus();
+    else searching = false;
+  }
 
   // Where a card was let go: on a group's card, or one of its tabs, it joins that group;
   // on a tab's card, that tab's group, or a new one of the two.
@@ -29,23 +62,26 @@
   const items = $derived.by(() => {
     const out = [];
     const done = new Set();
-    for (const tab of state.tabs) {
+    for (const tab of go.tabs) {
       const g = groupOf(groups, tab.id);
       if (!g) out.push({ key: `t${tab.id}`, tab });
       else if (!done.has(g.id)) {
         done.add(g.id);
-        out.push({ key: `g${g.id}`, group: g, tabs: g.tabs.map((id) => state.tabs.find((t) => t.id === id)).filter(Boolean) });
+        out.push({ key: `g${g.id}`, group: g, tabs: g.tabs.map((id) => go.tabs.find((t) => t.id === id)).filter(Boolean) });
       }
     }
     return out;
   });
+  // What the search leaves of the workspace's cards: a group's while any of its tabs match.
+  const shows = (item) => (item.tab ? inWorkspace(item.tab) && matches(item.tab) : inWorkspace(item.tabs[0] || {}) && item.tabs.some(matches));
+  const none = $derived(!!words && !items.some(shows));
 
   function menu(e, tab) {
     e.preventDefault();
     oncard(tab.id);
   }
 
-  const workspaces = $derived(state.workspaces || []);
+  const workspaces = $derived(go.workspaces || []);
   const host = (url) => {
     try {
       return new URL(url).host.replace(/^www\./, '') || url;
@@ -68,21 +104,48 @@
     {:else}
       <span class="spacer"></span>
     {/if}
+    {#if !long && !searching}
+      <button class="new" aria-label="Search tabs" onclick={search}><Icon name="search" /></button>
+    {/if}
     <button class="new" aria-label="New Tab" onclick={onnewtab}><Icon name="plus" /></button>
   </div>
+  {#if long || searching}
+    <div class="search" role="search" aria-label="Search tabs">
+      <Icon name="search" size={18} />
+      <input
+        bind:this={field}
+        bind:value={query}
+        aria-label="Search tabs"
+        placeholder="Search tabs"
+        autocomplete="off"
+        autocapitalize="off"
+        spellcheck="false"
+        enterkeyhint="search"
+        onkeydown={(e) => {
+          // Enter shows the first tab found.
+          const first = e.key === 'Enter' && items.find((item) => item.tab && shows(item));
+          if (first) onpick(first.tab.id);
+        }}
+      />
+      {#if query || !long}
+        <button class="clear" aria-label="Clear search" onmousedown={(e) => e.preventDefault()} onclick={clear}><Icon name="close" size={18} /></button>
+      {/if}
+    </div>
+  {/if}
   <div class="grid">
+    {#if none}<p class="none">No tabs found</p>{/if}
     {#each items as item (item.key)}
       {#if item.tab}
         {@const tab = item.tab}
         <!-- svelte-ignore a11y_click_events_have_key_events -->
         <div
           class="card"
-          class:active={tab.id === state.active}
-          hidden={(tab.workspace || '') !== workspace}
+          class:active={tab.id === go.active}
+          hidden={!shows(item)}
           role="tab"
           tabindex="0"
           data-tab={tab.id}
-          aria-selected={tab.id === state.active}
+          aria-selected={tab.id === go.active}
           onclick={() => onpick(tab.id)}
           oncontextmenu={(e) => menu(e, tab)}
           use:gesture={{ onclose: () => onclosetab(tab.id), onmenu: () => oncard(tab.id), ondrop: (target) => dropped(tab.id, target) }}
@@ -92,7 +155,13 @@
             <span class="title">{tabLabel(tab)}</span>
             <button class="close" aria-label="Close {tabLabel(tab)}" onclick={(e) => { e.stopPropagation(); onclosetab(tab.id); }}><Icon name="close" size={16} /></button>
           </div>
-          <div class="body"><Favicon {tab} size={32} /></div>
+          <div class="body">
+            {#if open && tab.thumb && !broken[tab.thumb]}
+              <img class="thumb" src={tab.thumb} alt="" draggable="false" onerror={() => (broken[tab.thumb] = true)} />
+            {:else}
+              <Favicon {tab} size={32} />
+            {/if}
+          </div>
           <span class="host">{tab.url ? host(tab.url) : 'New tab'}</span>
         </div>
       {:else}
@@ -100,8 +169,8 @@
         <!-- svelte-ignore a11y_click_events_have_key_events -->
         <div
           class="card group"
-          class:active={g.tabs.includes(state.active)}
-          hidden={(item.tabs[0]?.workspace || '') !== workspace}
+          class:active={g.tabs.includes(go.active)}
+          hidden={!shows(item)}
           style:--group={g.color}
           role="button"
           tabindex="0"
@@ -124,7 +193,7 @@
                 tabindex="-1"
                 data-tab={tab.id}
                 aria-label={tabLabel(tab)}
-                aria-selected={tab.id === state.active}
+                aria-selected={tab.id === go.active}
                 onclick={(e) => { e.stopPropagation(); onpick(tab.id); }}
                 oncontextmenu={(e) => { e.stopPropagation(); menu(e, tab); }}
               ><Favicon {tab} size={28} /></span>
@@ -227,6 +296,59 @@
     color: var(--icon);
   }
 
+  /* The search: a field the width of the grid, on the surface, its clear reaching 48px. */
+  .search {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    margin: 0 12px 8px;
+    padding: 0 0 0 14px;
+    border-radius: 20px;
+    background: var(--surface);
+    color: var(--muted);
+  }
+
+  .search input {
+    flex: 1;
+    min-width: 0;
+    height: 48px;
+    margin: -4px 0;
+    padding: 0;
+    border: 0;
+    outline: none;
+    background: none;
+    color: var(--text);
+    font: inherit;
+    font-size: 14px;
+  }
+
+  .search input::placeholder {
+    color: var(--muted);
+  }
+
+  .search .clear {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    margin: -4px 0;
+    padding: 0;
+    border: 0;
+    border-radius: 24px;
+    background: none;
+    color: var(--icon);
+  }
+
+  .none {
+    grid-column: 1 / -1;
+    margin: 24px 0;
+    color: var(--muted);
+    text-align: center;
+  }
+
   .grid {
     flex: 1;
     min-height: 0;
@@ -311,7 +433,6 @@
     color: var(--icon);
   }
 
-  /* With the title and the host about it, the card is 1:1.1. */
   .card.group {
     border-top: 4px solid var(--group);
   }
@@ -333,13 +454,27 @@
     display: none;
   }
 
+  /* The picture's place: a phone's page, upright, 3:4, the same for every card so the
+     grid stays even. The picture fills it without stretching, cropped from the top, as
+     Chrome's are; without one, the favicon or letter sits in the middle. */
   .body {
-    aspect-ratio: 5 / 4;
+    position: relative;
+    aspect-ratio: 3 / 4;
     display: grid;
     place-items: center;
     margin: 0 8px;
+    overflow: hidden;
     border-radius: 8px;
     background: var(--accent-tint);
+  }
+
+  .thumb {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top;
   }
 
   .host {

@@ -854,6 +854,13 @@ address field, and a menu button at the far right, in our tones.
   columns, the workspaces as chips that choose which cards show and where + opens a tab.
   Its cards are the tabs' `role="tab"` elements, kept in the document while it is closed.
   Closing the last tab leaves a new one: the window never has none.
+  A card shows its page as it last looked, the tab's `thumb`, in an upright 3:4 place the
+  same for every card, the picture filling it without stretching and cropped from the top,
+  as Chrome's are; without one, the favicon or the first letter. Opening, the switcher
+  sends `captureTab` before it covers the page, so the active tab's picture is fresh.
+  A search over the shown workspace's tabs, by title and address in any case, is at the
+  top: there at once with four tabs or more, behind a search button with three or fewer.
+  Its × clears it; Enter shows the first tab found; closing the switcher forgets it.
 - **Tab groups** are Go's ([groups.md](groups.md)). While the active tab is in one, a strip
   over the bar shows the group: its dot, which opens the group's sheet (name, colour, its
   tabs, New tab, Ungroup, Close group with a confirm), its tabs' favicons, and + for a new
