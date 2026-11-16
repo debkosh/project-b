@@ -405,7 +405,10 @@ def history_title(url):
 
 
 def children():
-    """The app's child processes as (pid, process name), from what the system knows it bound."""
+    """The app's child processes as (pid, process name), from what the system knows it bound.
+    Only live ones: the system can keep a service's record of a process long gone, such as one
+    stopped and killed by a test, across later runs of the app."""
+    alive = {pid for pid, _ in processes()}
     out = []
     pending = False
     for line in adb("shell", "dumpsys", "activity", "services", PACKAGE).splitlines():
@@ -413,7 +416,8 @@ def children():
             pending = (PACKAGE + "/" in line) and "ProcessService" in line
         elif pending and "app=ProcessRecord{" in line:
             pid, name = line.split("ProcessRecord{")[1].split()[1].split(":", 1)
-            out.append((pid, name.split("/")[0]))
+            if pid in alive:
+                out.append((pid, name.split("/")[0]))
             pending = False
     return out
 
