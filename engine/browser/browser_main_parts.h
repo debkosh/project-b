@@ -53,6 +53,12 @@ class BrowserMainParts : public content::BrowserMainParts {
   // Makes the profile's context, and the extension runtime with it, when Go asks.
   content::BrowserContext* OpenProfile(const base::FilePath& dir);
 
+#if BUILDFLAG(IS_ANDROID)
+  // Before content makes the network's change notifier: Android's, which follows the
+  // phone's connection. Without it net takes the phone for offline, and a host that
+  // doesn't exist fails as "no internet connection".
+  int PreEarlyInitialization() override;
+#endif
   int PreMainMessageLoopRun() override;
   void WillRunMainMessageLoop(
       std::unique_ptr<base::RunLoop>& run_loop) override;

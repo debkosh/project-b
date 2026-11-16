@@ -6,6 +6,9 @@
 #include "base/files/file_util.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
+#include "content/public/common/result_codes.h"
+#include "net/android/network_change_notifier_factory_android.h"
+#include "net/base/network_change_notifier.h"
 #include "project_b/engine/browser/browser_context.h"
 #include "project_b/engine/browser/child_processes.h"
 #include "project_b/engine/browser/engine.h"
@@ -46,6 +49,11 @@ BrowserMainParts::~BrowserMainParts() = default;
 // static
 BrowserMainParts* BrowserMainParts::Get() {
   return g_parts;
+}
+
+int BrowserMainParts::PreEarlyInitialization() {
+  net::NetworkChangeNotifier::SetFactory(new net::NetworkChangeNotifierFactoryAndroid());
+  return content::RESULT_CODE_NORMAL_EXIT;
 }
 
 // Android owns the message loop and the window, so the window can't come first here as it does on
