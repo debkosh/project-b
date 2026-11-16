@@ -96,6 +96,9 @@
               {:else if d.state === 'progress'}
                 <button type="button" class="text-button quiet" onclick={() => downloadAction(d.id, d.paused ? 'resume' : 'pause')}>{d.paused ? 'Resume' : 'Pause'}</button>
                 <button type="button" class="text-button quiet" onclick={() => downloadAction(d.id, 'cancel')}>Cancel</button>
+              {:else}
+                <button type="button" class="text-button quiet" onclick={() => downloadAction(d.id, 'retry')}>Retry</button>
+                <button type="button" class="text-button quiet" onclick={() => downloadAction(d.id, 'copyLink')}>Copy link</button>
               {/if}
               <button type="button" class="g-icon remove" aria-label="Remove {d.name} from the list" title="Remove from the list" onclick={() => downloadAction(d.id, 'remove')}>
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="m2 2 6 6M8 2 2 8" /></svg>

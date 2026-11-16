@@ -143,3 +143,47 @@ func TestEachDownloadChangeIsShownBySystem(t *testing.T) {
 		t.Fatalf("the last shown = %+v, want it done at %v", last, first(list)["path"])
 	}
 }
+
+// A download that failed, as one whose connection died across the Mac's sleep, can be
+// retried, from where it got to, in its own row, and its address copied.
+func TestAFailedDownloadCanBeRetriedAndItsLinkCopied(t *testing.T) {
+	r := startDownloading(t, t.TempDir(), t.TempDir())
+	defer r.stop()
+	r.visit("https://a.test/")
+	r.show(1)
+	r.e.Fire(1, 0, "download", "https://a.test/big.iso")
+	list := r.downloads(func(l []any) bool { return len(l) == 1 && first(l)["state"] == "progress" })
+	id := first(list)["id"]
+	r.e.Fire(1, 0, "downloadsFail", "")
+	r.downloads(func(l []any) bool { return len(l) == 1 && first(l)["state"] == "failed" })
+
+	r.shell(fmt.Sprintf(`{"t":"downloadAction","id":%v,"action":"copyLink"}`, id))
+	r.e.Settle()
+	if got := r.e.Clipboard(); got != "https://a.test/big.iso" {
+		t.Fatalf("clipboard = %q", got)
+	}
+	r.shell(fmt.Sprintf(`{"t":"downloadAction","id":%v,"action":"retry"}`, id))
+	list = r.downloads(func(l []any) bool { return len(l) == 1 && first(l)["state"] == "done" })
+	if first(list)["id"] != id || first(list)["name"] != "big.iso" {
+		t.Fatalf("the retry should finish in the same row: %v", list)
+	}
+}
+
+// One cancelled, or failed in an earlier run, starts over as a new download of its address,
+// in the same row and under the same name.
+func TestACancelledDownloadStartsOverOnRetry(t *testing.T) {
+	r := startDownloading(t, t.TempDir(), t.TempDir())
+	defer r.stop()
+	r.visit("https://a.test/")
+	r.show(1)
+	r.e.Fire(1, 0, "download", "https://a.test/big.iso")
+	list := r.downloads(func(l []any) bool { return len(l) == 1 && first(l)["state"] == "progress" })
+	id := first(list)["id"]
+	r.shell(fmt.Sprintf(`{"t":"downloadAction","id":%v,"action":"cancel"}`, id))
+	r.downloads(func(l []any) bool { return len(l) == 1 && first(l)["state"] == "cancelled" })
+	r.shell(fmt.Sprintf(`{"t":"downloadAction","id":%v,"action":"retry"}`, id))
+	list = r.downloads(func(l []any) bool { return len(l) == 1 && first(l)["state"] == "done" })
+	if first(list)["id"] != id || first(list)["name"] != "big.iso" {
+		t.Fatalf("the retry should finish in the same row, by its name: %v", list)
+	}
+}

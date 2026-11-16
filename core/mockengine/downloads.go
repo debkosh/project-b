@@ -92,7 +92,8 @@ func (e *Engine) DownloadCommand(id engine.DownloadID, c engine.DownloadCommand)
 	d.mu.Lock()
 	m := d.running[id]
 	d.mu.Unlock()
-	if m == nil || m.d.State != engine.DownloadProgress && c != engine.DownloadRemove {
+	failed := m != nil && m.d.State == engine.DownloadFailed
+	if m == nil || m.d.State != engine.DownloadProgress && c != engine.DownloadRemove && !(failed && c == engine.DownloadResume) {
 		return
 	}
 	switch c {
@@ -101,7 +102,8 @@ func (e *Engine) DownloadCommand(id engine.DownloadID, c engine.DownloadCommand)
 	case engine.DownloadPause:
 		m.d.Paused = true
 	case engine.DownloadResume:
-		m.d.Paused = false
+		// A failed one picks up where it got to, as content resumes one.
+		m.d.Paused, m.d.State = false, engine.DownloadProgress
 		e.step(m, downloadSize)
 	case engine.DownloadRemove:
 		m.stop = true
@@ -111,6 +113,24 @@ func (e *Engine) DownloadCommand(id engine.DownloadID, c engine.DownloadCommand)
 		return
 	}
 	e.listener.DownloadUpdated(m.d)
+}
+
+// failDownloads fails every running download where it got to, as the engine does to one
+// whose connection died, across a sleep, once content's own resumes gave up.
+func (e *Engine) failDownloads() {
+	d := e.dl()
+	d.mu.Lock()
+	var failing []*mockDownload
+	for _, m := range d.running {
+		if m.d.State == engine.DownloadProgress {
+			m.d.State = engine.DownloadFailed
+			failing = append(failing, m)
+		}
+	}
+	d.mu.Unlock()
+	for _, m := range failing {
+		e.listener.DownloadUpdated(m.d)
+	}
 }
 
 func (e *Engine) OpenFile(p string) {

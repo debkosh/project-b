@@ -32,6 +32,8 @@ type Item struct {
 
 	// engine is the engine's number for it while this run has it.
 	engine engine.DownloadID
+	// retrying is set by Retry until the engine's download for it shows up.
+	retrying bool
 }
 
 var states = map[engine.DownloadState]string{
@@ -155,23 +157,46 @@ func (m *Manager) running(path string) bool {
 func (m *Manager) Updated(d engine.Download) {
 	it := m.byEngine[d.ID]
 	if it == nil {
-		it = &Item{ID: m.next, URL: d.URL, engine: d.ID}
+		it = m.retried(d.URL)
+	}
+	if it == nil {
+		it = &Item{ID: m.next, URL: d.URL}
 		m.next++
-		m.byEngine[d.ID] = it
 		m.list = append([]*Item{it}, m.list...)
 	}
+	if it.engine != d.ID {
+		delete(m.byEngine, it.engine)
+		it.engine = d.ID
+		m.byEngine[d.ID] = it
+	}
+	it.retrying = false
 	it.Path, it.Name = d.Path, filepath.Base(d.Path)
 	it.State, it.Received, it.Total, it.Paused = states[d.State], d.Received, d.Total, d.Paused
 	m.e.ShowDownload(it.ID, d)
-	if it.State != "progress" {
+	// A failed download stays the engine's: it may resume, by itself or by Retry.
+	if it.State == "done" || it.State == "cancelled" {
 		delete(m.byEngine, d.ID)
+	}
+	if it.State != "progress" {
 		m.save()
 	}
 	m.changed()
 }
 
+// retried is the item Retry started again as a new download of url, moved to the top.
+func (m *Manager) retried(url string) *Item {
+	for i, x := range m.list {
+		if x.retrying && x.URL == url {
+			m.list = append(append([]*Item{x}, m.list[:i]...), m.list[i+1:]...)
+			return x
+		}
+	}
+	return nil
+}
+
 // Act does what a shell asks to one download: open or reveal its file, cancel, pause or
-// resume it, or remove it from the list, which leaves the file where it is.
+// resume it, retry one that failed or was cancelled, copy its address, or remove it from
+// the list, which leaves the file where it is.
 func (m *Manager) Act(id int, action string) {
 	var it *Item
 	for _, x := range m.list {
@@ -204,8 +229,22 @@ func (m *Manager) Act(id int, action string) {
 		if live {
 			m.e.DownloadCommand(it.engine, engine.DownloadResume)
 		}
+	case "retry":
+		if it.State != "failed" && it.State != "cancelled" {
+			return
+		}
+		// One this run still has resumes from where it got to, or starts over when it
+		// can't; any other starts over as a new download of its address, in this row.
+		it.retrying = true
+		if _, ours := m.byEngine[it.engine]; ours && it.State == "failed" {
+			m.e.DownloadCommand(it.engine, engine.DownloadResume)
+		} else {
+			m.e.DownloadURL(0, it.URL, false)
+		}
+	case "copyLink":
+		m.e.WriteClipboard(it.URL)
 	case "remove":
-		if live {
+		if live || m.byEngine[it.engine] == it {
 			m.e.DownloadCommand(it.engine, engine.DownloadCancel)
 			m.e.DownloadCommand(it.engine, engine.DownloadRemove)
 			delete(m.byEngine, it.engine)
@@ -224,6 +263,8 @@ func (m *Manager) drop(gone func(*Item) bool) {
 	for _, x := range m.list {
 		if !gone(x) {
 			kept = append(kept, x)
+		} else if m.byEngine[x.engine] == x {
+			delete(m.byEngine, x.engine)
 		}
 	}
 	m.list = kept

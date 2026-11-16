@@ -209,7 +209,8 @@ type Engine interface {
 	Edit(c EditCommand)
 	// WriteClipboard puts plain text on the system clipboard.
 	WriteClipboard(text string)
-	// DownloadURL downloads url as tab's page would, through the Save panel when saveAs.
+	// DownloadURL downloads url as tab's page would, through the Save panel when saveAs;
+	// tab 0 downloads it as the browser's own.
 	DownloadURL(tab TabID, url string, saveAs bool)
 	// DownloadCommand acts on a running download.
 	DownloadCommand(id DownloadID, c DownloadCommand)

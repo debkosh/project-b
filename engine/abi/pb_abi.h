@@ -341,7 +341,8 @@ typedef struct PBEngineCalls {
   void (*edit)(int32_t command);
   // Puts plain text on the system clipboard, as a page's Copy would.
   void (*write_clipboard)(const char* text, size_t length);
-  // Downloads url as tab's page would, through the Save panel when save_as.
+  // Downloads url as tab's page would, through the Save panel when save_as; tab 0
+  // downloads it as the browser's own.
   void (*download_url)(int64_t tab, const char* url, int save_as);
   // Runs a PBDownloadCommand on a running download.
   void (*download_command)(uint32_t download, int32_t command);

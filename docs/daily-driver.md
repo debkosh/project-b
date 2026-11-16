@@ -86,13 +86,25 @@ stays). `clearDownloads` removes every finished one.
 
 **The shell.** A control named Downloads shows once the list has one, and opens the list:
 each download a `listitem` by its file name, its progress while it runs, Open and Show in
-Finder once done, Cancel while it runs. Standard puts the control in its toolbar and shows a
-download's progress on it. The contract's rule 17 checks it, by role and name.
+Finder once done, Cancel while it runs, and Retry and Copy link once it failed or was
+cancelled. Standard puts the control in its toolbar and shows a download's progress on it.
+The contract's rule 17 checks it, by role and name.
+
+**A connection that goes silent.** Across the Mac's sleep a download's connection can die
+without a word, and content waits on it for good. The engine watches every running download:
+one that receives nothing for 30 seconds of waking time is interrupted as a network timeout,
+which content resumes at once on a new connection from where the file got to. When resuming
+fails too, the download shows as failed, with Retry and Copy link (`downloadAction` `retry`,
+`copyLink`). Retry resumes one this run still has, or starts it over as a new download of its
+address in the same row (`download_url` with tab 0, the browser's own). The app's own update
+download is watched the same way: one silent for 30 seconds fails, Settings shows Try again,
+and the next check downloads it again.
 
 **The Downloads page.** A page of ours, in a tab of ours as History and Bookmarks are
 (`downloads.show`, "Downloads", Shift+Cmd+J, in the Window menu): the same list, newest
 first, with Pause or Resume and Cancel while one runs, Open (a tap on its name too) and Show
-in Finder, or Show in Downloads on a phone, once done, a × to take one off the list, and
+in Finder, or Show in Downloads on a phone, once done, Retry and Copy link once it failed or
+was cancelled, a × to take one off the list, and
 Clear all. Go sends it the list in its snapshot and on each change, and takes
 `downloadAction` and `clearDownloads` from it as from a shell. A phone's shells reach it from
 their menu, always there, with how many are running beside it (owner, 2026-11-15).
