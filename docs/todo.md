@@ -120,3 +120,14 @@ Take an item off when it lands or is dropped.
   that call. Timeline marks around `CloseTab` would prove it; tearing the renderer down after
   `CloseTab` returns is the fix, if 3 ms ever matters. The Go side's own part, a session
   saved twice per close, is gone (1e5b1932, and 5c9f4e58 in 0.2.70).
+
+## Build, release and test tooling
+
+- `locked-release.py` lives outside the repo (`~/PW_TOOLS/project-b-release`): fold its lock
+  into `tools/release.sh`, as `tools/build.sh` holds its own, so a release needs only the repo.
+- The desktop and the emulators have no lock, unlike `out/` and the Android VM. Give
+  `tools/test.sh android` and the drivers one (per emulator, and one for the desktop).
+- The README's screenshots show the Standard shell from before 0.2.63: retake them from a
+  release run (`tools/readme-shots.py`).
+- Each checkout's `build/pb/` copy costs about 455 MB once `out/pb` is rebuilt. A merged
+  worktree's copy can go with the worktree.

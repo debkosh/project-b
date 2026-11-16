@@ -4,7 +4,7 @@ An experiment in how a browser could be built with a better architecture: Go man
 Vue shell and Chromium's content layer (155.0.8059.41, unpatched) behind one engine interface. Apple
 silicon Macs, and arm64 Android phones built on the same Mac.
 
-Releases with a DMG and self-update: https://github.com/sudiptadeb/project-b/releases.
+Releases with a DMG and self-update: https://github.com/sudiptadeb/project-b/releases; how one is made: [docs/releasing.md](docs/releasing.md).
 Where the project stands: [docs/status.md](docs/status.md). How it is built:
 [docs/first-app.md](docs/first-app.md). Android: [docs/android.md](docs/android.md). How our UI
 looks, for anyone drawing any of it: [docs/design-system.md](docs/design-system.md). How every
