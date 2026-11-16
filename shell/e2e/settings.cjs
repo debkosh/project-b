@@ -652,8 +652,8 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   await page.screenshot({ path: path.join(out, 'settings-site.png') });
   check('the site\'s view has the ad blocker, on, and links to other sites, allowed',
     (await siteRadio('Ad blocker', 'On').getAttribute('aria-checked')) === 'true' && (await siteRadio('Links to other sites', 'Allow').getAttribute('aria-checked')) === 'true');
-  await siteRadio('Links to other sites', 'New tab').click();
-  check('New tab there sets it for the site', await until(() => sitesFile()['https://meet.test']?.links === 'newtab'), JSON.stringify(sitesFile()));
+  await siteRadio('Links to other sites', 'Block').click();
+  check('Block there sets it for the site', await until(() => sitesFile()['https://meet.test']?.links === 'block'), JSON.stringify(sitesFile()));
   await siteRadio('Links to other sites', 'Allow').click();
   check('and Allow, the default, forgets it', await until(() => !('links' in (sitesFile()['https://meet.test'] || {}))), JSON.stringify(sitesFile()));
   await siteRadio('Camera', 'Allow').click();

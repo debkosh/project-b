@@ -14,7 +14,7 @@ import { send, state } from './state.js';
 // list and names the kinds.
 
 const host = (origin) => origin.replace(/^https:\/\//, '');
-const word = { allow: 'allowed', block: 'blocked', on: 'on', off: 'off', newtab: 'in a new tab' };
+const word = { allow: 'allowed', block: 'blocked', on: 'on', off: 'off' };
 const summary = (s) => s.settings.map((x) => `${x.title} ${word[x.value]}`).join(', ');
 
 const forget = (origin, kind) => send({ t: 'forgetSiteSetting', origin, kind });
@@ -51,7 +51,7 @@ const settingsOf = (o) => state.siteSettings.find((s) => s.origin === o)?.settin
 // One of our own kinds has no Ask: a site without a setting has its default, the first
 // choice.
 const valueOf = (k) => settingsOf(origin.value).find((x) => x.kind === k.kind)?.value || (k.choices ? k.choices[0] : '');
-const ourWords = { on: 'On', off: 'Off', allow: 'Allow', newtab: 'New tab', block: 'Block' };
+const ourWords = { on: 'On', off: 'Off', allow: 'Allow', block: 'Block' };
 const choicesOf = (k) => (k.choices ? k.choices.map((v) => ({ value: v, label: ourWords[v] || v })) : choices);
 const set = (kind, value) => send({ t: 'setSiteSetting', origin: origin.value, kind, value });
 

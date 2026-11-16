@@ -213,9 +213,9 @@ func (c *contextMenus) run(m *contextMenu, id string) {
 	case id == "edit.selectAll":
 		edit(engine.EditSelectAll)
 	case id == "page.back":
-		c.e.GoBack(m.Tab)
+		c.a.Tabs.GoBackIn(m.Tab)
 	case id == "page.forward":
-		c.e.GoForward(m.Tab)
+		c.a.Tabs.GoForwardIn(m.Tab)
 	case id == "page.reload":
 		c.a.Tabs.ReloadTab(m.Tab, false)
 	}

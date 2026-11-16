@@ -44,9 +44,10 @@ export function hasSite(tab) {
 
 // The site panel (docs/site-features.md). Go sends state.openSites: by origin, each site a
 // web tab is open on, {settings: [{kind, title, value, choices?}], sparks: [{id, name, on}]}.
-// Settings with choices are ours (ads: on or off; links: allow, newtab or block); the rest
+// Settings with choices are ours (ads: on or off; links: allow or block); the rest
 // are a page's permissions, "" (ask), "allow" or "block". A tab's adsBlocked counts what the
-// ad blocker kept from its page.
+// ad blocker kept from its page, and its popupsBlocked the tabs its page opened that
+// Links to other sites closed.
 
 // siteOrigin is the origin of a tab's page, "" for one that isn't a site.
 export function siteOrigin(tab) {
@@ -77,9 +78,13 @@ export function siteSetting(site, kind) {
 // The words for our own kinds' values, and a permission's.
 export const linkChoices = [
   { value: 'allow', label: 'Allow' },
-  { value: 'newtab', label: 'New tab' },
   { value: 'block', label: 'Block' },
 ];
+
+// popupsWord says how many popups Links to other sites closed on a tab's page.
+export function popupsWord(n) {
+  return n === 1 ? '1 popup blocked' : `${n} popups blocked`;
+}
 
 export function permissionWord(value) {
   return { allow: 'Allowed', block: 'Blocked' }[value] || 'Ask';

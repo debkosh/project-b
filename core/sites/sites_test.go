@@ -1,6 +1,8 @@
 package sites
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -231,15 +233,15 @@ func TestOurOwnKindsKeepOnlyWhatIsntTheirDefault(t *testing.T) {
 		t.Fatalf("defaults %q %q", m.Value(o, Ads), m.Value(o, Links))
 	}
 	m.Set(o, Ads, Off)
-	m.Set(o, Links, NewTab)
+	m.Set(o, Links, Block)
 	m.Set(o, Spark+"ab12cd34", Off)
 	m.Set(o, Links, "sideways") // not a choice: ignored
 	m.Set(o, Spark, Off)        // no spark named: ignored
-	if m.Value(o, Ads) != Off || m.Value(o, Links) != NewTab || m.Value(o, Spark+"ab12cd34") != Off {
+	if m.Value(o, Ads) != Off || m.Value(o, Links) != Block || m.Value(o, Spark+"ab12cd34") != Off {
 		t.Fatalf("set %+v", m.Sites())
 	}
 	got := m.SettingsOf(o)
-	if got[3].Value != Off || got[4].Value != NewTab || got[0].Value != "" {
+	if got[3].Value != Off || got[4].Value != Block || got[0].Value != "" {
 		t.Fatalf("settings of %+v", got)
 	}
 	m.Set(o, Ads, On)
@@ -247,5 +249,42 @@ func TestOurOwnKindsKeepOnlyWhatIsntTheirDefault(t *testing.T) {
 	m.Set(o, Spark+"ab12cd34", On)
 	if len(m.Sites()) != 0 {
 		t.Fatalf("the defaults are kept: %+v", m.Sites())
+	}
+}
+
+// A site is one registrable domain, over http or https: subdomains are one site, two
+// domains under a public suffix are two, and the blank page is none.
+func TestSameSiteIsOneRegistrableDomain(t *testing.T) {
+	for _, c := range []struct {
+		a, b string
+		same bool
+	}{
+		{"https://narto-drama.com/x", "https://www.narto-drama.com/y", true},
+		{"http://news.example.co.uk/", "https://shop.example.co.uk/", true},
+		{"https://example.co.uk/", "https://other.co.uk/", false},
+		{"https://a.github.io/", "https://b.github.io/", false},
+		{"http://localhost:8765/", "http://localhost:9000/", true},
+		{"http://localhost:8765/", "http://127.0.0.1:8765/", false},
+		{"https://shop.test/", "about:blank", false},
+		{"https://shop.test/", "", false},
+	} {
+		if got := SameSite(c.a, c.b); got != c.same {
+			t.Errorf("%s and %s: %v, want %v", c.a, c.b, got, c.same)
+		}
+	}
+}
+
+// Links to other sites is Allow or Block; a site kept at New tab, which it no longer
+// offers, reads as Allow.
+func TestLinksIsAllowOrBlock(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "sites.json"), []byte(`{"https://shop.test":{"links":"newtab"}}`), 0o600)
+	m, _, _ := setup(t, dir)
+	if v := m.Value("https://shop.test", Links); v != Allow {
+		t.Fatalf("a kept New tab reads %q", v)
+	}
+	m.Set("https://shop.test", Links, "newtab")
+	if v := m.Value("https://shop.test", Links); v != Allow {
+		t.Fatalf("New tab set reads %q", v)
 	}
 }

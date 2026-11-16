@@ -1,6 +1,7 @@
 <script>
   import { focusPage, send, shell } from '@/sdk/svelte.svelte.js';
   import Icon from './Icon.svelte';
+  import { popupsWord } from '@/sdk/sites.js';
 
   // The address pill. At rest it shows the host and the page's lock; a tap turns it into
   // the field, with the whole address selected. Typing
@@ -120,6 +121,16 @@
       else if (e.key === 'Escape') leave();
     }}
   />
+  {#if !editing && tab.popupsBlocked}
+    <!-- The popups Links to other sites closed on this page: a tap opens the site's sheet. -->
+    <button type="button" class="popups" aria-label={popupsWord(tab.popupsBlocked)} onclick={onsite}>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="2" y="3.5" width="9" height="8" rx="1.5" />
+        <path d="M5 1.75h7.75a1.5 1.5 0 0 1 1.5 1.5V9M2.5 13.5l11-11" />
+      </svg>
+      {tab.popupsBlocked}
+    </button>
+  {/if}
   {#if !editing && status}
     <span class="status">{status}</span>
   {/if}
@@ -207,6 +218,24 @@
   input::placeholder {
     color: var(--muted);
     font-weight: 400;
+  }
+
+  /* A 48px target past the pill's height, as the site's mark is. */
+  .popups {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    min-width: 48px;
+    height: 48px;
+    margin: -4px 0;
+    padding: 0 8px;
+    border: 0;
+    background: none;
+    color: var(--icon);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
   }
 
   .status {

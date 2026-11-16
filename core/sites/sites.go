@@ -17,6 +17,8 @@ import (
 	"sort"
 	"strings"
 
+	"golang.org/x/net/publicsuffix"
+
 	"projectb/engine"
 	"projectb/timeline"
 )
@@ -60,7 +62,6 @@ type Kind struct {
 const (
 	On     = "on"
 	Off    = "off"
-	NewTab = "newtab"
 )
 
 // AdsDefault is whether the ad blocker is on where a site has no setting: on, the owner
@@ -77,7 +78,7 @@ var Kinds = []Kind{
 	// As every browser grants it: Blink holds it to a focused page.
 	{Name: ClipboardWrite, Title: "Clipboard", Requested: true, Default: engine.PermissionGranted},
 	{Name: Ads, Title: "Ad blocker", Choices: adsChoices()},
-	{Name: Links, Title: "Links to other sites", Choices: []string{Allow, NewTab, Block}},
+	{Name: Links, Title: "Links to other sites", Choices: []string{Allow, Block}},
 	// A spark the person switched off for the site.
 	{Name: Spark, Title: "Spark", Choices: []string{On, Off}, Prefix: true},
 }
@@ -366,7 +367,8 @@ func (m *Manager) Value(origin, kind string) string {
 	if !ok || len(k.Choices) == 0 {
 		return ""
 	}
-	if v, ok := m.sites[origin][kind]; ok {
+	// A value no longer among the kind's choices, as New tab of Links, reads as its default.
+	if v, ok := m.sites[origin][kind]; ok && slices.Contains(k.Choices, v) {
 		return v
 	}
 	return k.Choices[0]
@@ -544,4 +546,26 @@ func Origin(u string) string {
 func gesture(kind string) bool {
 	k, _ := kindOf(kind)
 	return k.Gesture
+}
+
+// SameSite says whether two addresses are on one site: the same registrable domain, by the
+// public suffix list (a.example.co.uk and b.example.co.uk are; example.co.uk and
+// other.co.uk aren't), over http or https alike. The blank page, or an address with no
+// host, is no site's.
+func SameSite(a, b string) bool {
+	ua, errA := url.Parse(a)
+	ub, errB := url.Parse(b)
+	if errA != nil || errB != nil || ua.Hostname() == "" || ub.Hostname() == "" {
+		return false
+	}
+	return siteOf(ua.Hostname()) == siteOf(ub.Hostname())
+}
+
+func siteOf(host string) string {
+	host = strings.ToLower(host)
+	if d, err := publicsuffix.EffectiveTLDPlusOne(host); err == nil {
+		return d
+	}
+	// An address, localhost, or a suffix itself is its own site.
+	return host
 }

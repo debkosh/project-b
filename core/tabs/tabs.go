@@ -58,6 +58,8 @@ type Tab struct {
 	Notice *Notice `json:"notice,omitempty"`
 	// AdsBlocked is how many requests of its page the ad blocker kept from their hosts.
 	AdsBlocked int `json:"adsBlocked,omitempty"`
+	// PopupsBlocked is how many tabs its page opened that Links to other sites closed.
+	PopupsBlocked int `json:"popupsBlocked,omitempty"`
 	// Group is the id of the tab group it is in, "" for none (groups.go).
 	Group string `json:"group,omitempty"`
 	// Pin is the id of the pin the tab is open for, "" for none (package pins). A window
@@ -72,6 +74,15 @@ type Tab struct {
 	// the navigation ends with nothing shown instead (refused on its way, stopped, a
 	// download).
 	shownTitle, shownFavicon string
+	// byPage says the page started the latest navigation (pagenav.go).
+	byPage bool
+	// The tab whose page opened this one, and its page then; ownPage says this tab has
+	// had a page of its own since.
+	opener    engine.TabID
+	openerURL string
+	ownPage   bool
+	// refused: Links to other sites closes the tab, which nothing may load meanwhile.
+	refused bool
 }
 
 // Gate runs before a navigation. Returning false blocks it, and later gates don't run.
@@ -115,6 +126,8 @@ const BlankURL = engine.BlankURL
 // Manager owns the tabs.
 type Manager struct {
 	eng        engine.Engine
+	own        own
+	guard      func(PageNavigation) bool
 	workspaces Workspaces
 	pins       Pins
 	// search turns words into a search's address.
@@ -163,7 +176,8 @@ type window struct {
 
 // New returns a manager with no windows, on the profile's workspaces and pins.
 func New(eng engine.Engine, w Workspaces, p Pins) *Manager {
-	return &Manager{eng: eng, workspaces: w, pins: p, search: defaultEngine().For, tabs: map[engine.TabID]*Tab{}, windowOf: map[engine.TabID]engine.WindowID{}, windows: map[engine.WindowID]*window{}, certificates: map[engine.TabID]*certificate{}, passed: map[string]bool{}, waiting: map[engine.TabID]string{}}
+	o := own{Engine: eng, issued: map[engine.TabID]string{}}
+	return &Manager{eng: o, own: o, workspaces: w, pins: p, search: defaultEngine().For, tabs: map[engine.TabID]*Tab{}, windowOf: map[engine.TabID]engine.WindowID{}, windows: map[engine.WindowID]*window{}, certificates: map[engine.TabID]*certificate{}, passed: map[string]bool{}, waiting: map[engine.TabID]string{}}
 }
 
 // defaultEngine is the engine a manager searches with until SetSearch says another.
@@ -944,6 +958,15 @@ func (m *Manager) HandleTabOpened(opener, id engine.TabID, u, workspace string, 
 	}
 	t := m.add(id, w)
 	t.URL, t.Workspace = address(u), workspace
+	// It goes by its opener's page until it has a page of its own: one that opens on the
+	// blank page, or another site, its opener's Links to other sites may refuse at once.
+	if o := m.tabs[opener]; o != nil {
+		t.opener, t.openerURL = opener, o.URL
+		t.byPage = true
+		if m.guard != nil && !m.pageMayOpen(t, u) {
+			return
+		}
+	}
 	// A tab a page opens joins its opener's group, after it.
 	if o := m.tabs[opener]; o != nil && o.Group != "" {
 		m.join(id, o.Group, opener)
@@ -979,6 +1002,11 @@ func (m *Manager) HandleNavigationStarting(id engine.TabID, nav int64, u string)
 			return engine.NavigationProceed
 		}
 		delete(m.waiting, id)
+	}
+	// A page's navigation its site's Links to other sites refuses goes nowhere, and the tab
+	// stays as it was.
+	if !m.pageMay(t, nav, u) {
+		return engine.NavigationElsewhere
 	}
 	t.started = nav
 	t.URL, t.Error, t.ErrorCode, t.Crashed = address(u), "", "", false
@@ -1016,7 +1044,10 @@ func (m *Manager) HandleNavigationFinished(id engine.TabID, nav int64, u string)
 	// A page restored from the back-forward cache never reports a start, so a commit
 	// has to clear what an earlier navigation left behind.
 	t.URL, t.Error, t.ErrorCode, t.Blocked, t.Crashed = address(u), "", "", false, false
-	t.AdsBlocked = 0
+	t.AdsBlocked, t.PopupsBlocked = 0, 0
+	// The blank page a popup opens on isn't a page of its own: it still goes by its
+	// opener's.
+	t.ownPage = t.ownPage || t.URL != ""
 	for _, f := range m.onFinished {
 		f(*t)
 	}

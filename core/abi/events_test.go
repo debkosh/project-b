@@ -178,10 +178,6 @@ func (r *adapterRecorder) CertificateError(tab engine.TabID, e engine.Certificat
 	r.note(fmt.Sprintf("certificate %d %s %s main=%v passable=%v", tab, e.URL, e.Reason, e.MainFrame, e.Passable))
 	return false
 }
-func (r *adapterRecorder) LeavingSite(tab engine.TabID, from, url string, pressed bool, opener engine.TabID) engine.Navigation {
-	r.note(fmt.Sprintf("leaving %d %s %s pressed=%v opener=%d", tab, from, url, pressed, opener))
-	return engine.NavigationElsewhere
-}
 func (r *adapterRecorder) SparksFor(tab engine.TabID, url string, mainFrame bool) []engine.Script {
 	r.note(fmt.Sprintf("sparks %d %s main=%v", tab, url, mainFrame))
 	return []engine.Script{{ID: "ab12cd34", Source: "1", RunAt: "document-end"}}
@@ -285,17 +281,6 @@ func TestACertificateErrorAsksTheListener(t *testing.T) {
 		t.Fatalf("answered %v %v", ok, v)
 	}
 	if !reflect.DeepEqual(r.got, []string{"certificate 3 https://old.test/ expired main=true passable=true"}) {
-		t.Fatalf("got %v", r.got)
-	}
-}
-
-func TestLeavingTheSiteAsksTheListener(t *testing.T) {
-	h, r := wired(t)
-	v, ok := h.Dispatch(LeavingSite, pack(3, "https://shop.test/", "https://other.test/", true, 2))
-	if !ok || v.I != int64(navigationAnswers[engine.NavigationElsewhere]) {
-		t.Fatalf("answered %v %v", ok, v)
-	}
-	if !reflect.DeepEqual(r.got, []string{"leaving 3 https://shop.test/ https://other.test/ pressed=true opener=2"}) {
 		t.Fatalf("got %v", r.got)
 	}
 }

@@ -228,9 +228,6 @@ func (p *Picker) ConnectionChanged(engine.TabID, engine.Connection) {}
 func (p *Picker) CertificateError(engine.TabID, engine.CertificateError) bool { return false }
 func (p *Picker) SparksFor(engine.TabID, string, bool) []engine.Script        { return nil }
 func (p *Picker) AdBlocked(engine.TabID)                                      {}
-func (p *Picker) LeavingSite(engine.TabID, string, string, bool, engine.TabID) engine.Navigation {
-	return engine.NavigationProceed
-}
 
 // The picker shows no notifications.
 func (p *Picker) NotificationShown(engine.Notification) bool { return false }
