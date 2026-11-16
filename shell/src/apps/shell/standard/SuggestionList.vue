@@ -5,7 +5,8 @@ import { state } from '@/sdk/vue.js';
 // Go's one suggestion list (docs/daily-driver.md), as the standard shell draws it wherever
 // it is asked for: under the address field, or under the new tab's box. Rows keep Go's
 // order; a heading goes before each run of open tabs, history, actions and bookmarks. The
-// first row is what Enter does, and is chosen until the arrow keys move. With nothing typed
+// first row is what Enter does, and is chosen until the arrow keys move; one that completes
+// the field (inline) has no heading, as it is what the field shows. With nothing typed
 // (first), Go's history rows are the sites visited most.
 const props = defineProps({ items: Array, highlight: Number, id: String, first: Boolean });
 const emit = defineEmits(['choose', 'hover']);
@@ -21,7 +22,7 @@ const rows = computed(() =>
   props.items.map((row, i) => ({
     row,
     i,
-    heading: headings.value[row.kind] && props.items[i - 1]?.kind !== row.kind ? headings.value[row.kind] : '',
+    heading: headings.value[row.kind] && !(i === 0 && row.inline) && (props.items[i - 1]?.kind !== row.kind || (i === 1 && props.items[0].inline)) ? headings.value[row.kind] : '',
   })),
 );
 

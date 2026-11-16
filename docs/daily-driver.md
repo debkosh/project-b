@@ -275,6 +275,13 @@ addresses complete, and a shell that names no kinds never gets one. A completed 
 a tab is that tab's row, listed once, so Enter shows the tab rather than loading the page a
 second time. Enter takes the first row, so it goes where the field shows.
 
+Standard's address field shows the completion as Chrome and Safari do: the rest selected
+after the caret. A key that matches its next letter carries it on at once, without waiting
+for Go; Backspace takes the selected part away first, and the next answer then completes
+nothing, the completing row moving a place down so Enter is what was typed; the arrow keys
+replace it with the row they choose; the first Escape drops it with the list. The row has
+no heading over it, as it is what the field shows. Bookmark rows carry the star.
+
 **The messages.** As today, `suggest {id, text}` and `suggestions {id, items}`, with two
 additions. The shell names the kinds it draws, `kinds: ["tab", "history", …]`; without it the
 list is history alone, as it was, so a shell that hasn't changed still works. And a shell runs

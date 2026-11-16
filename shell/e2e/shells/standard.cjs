@@ -240,6 +240,55 @@ const { check, fire, regions, settle, until } = lib;
   await top.getByRole('menuitem', { name: /^Downloads/ }).click();
   check('choosing Downloads runs it: the Downloads page opens, and the menu closes', await until(async () => (await regions()).tabs.some((t) => t.page === 'downloads') && (await top.count()) === 0));
 
+  // The address field completes a visited address in place, the rest selected after the
+  // caret, from Go's first row (docs/daily-driver.md, Inline completion).
+  const send = (msg) => fetch(`${lib.base}/shell/send?window=1`, { method: 'POST', body: JSON.stringify(msg) });
+  const field = ui.getByRole('combobox', { name: 'Address' });
+  const shown = () => field.evaluate((el) => [el.value, el.selectionStart, el.selectionEnd]);
+  const shows = (value, start, end) => until(async () => JSON.stringify(await shown()) === JSON.stringify([value, start, end]));
+  // The active tab, as Go has it.
+  const current = async () => {
+    const g = await regions();
+    return g.tabs.find((t) => t.id === g.active);
+  };
+  await send({ t: 'newTab', text: 'https://www.wikipedia.test/wiki/Web_browser' });
+  await until(async () => (await current())?.title.includes('wikipedia.test'));
+  await send({ t: 'bookmark', url: 'https://recipes.test/bread', title: 'Bread recipes', on: true });
+  await send({ t: 'newTab', text: 'https://b.test/' });
+  await until(async () => (await current())?.url === 'https://b.test/');
+  await field.click();
+  await page.keyboard.type('wikip');
+  check('typing the start of a visited host completes it in the field, the rest selected', await shows('wikipedia.test', 5, 14), JSON.stringify(await shown()));
+  const rowsNow = ui.locator('#suggestions [role=option]');
+  check('and the first row is that address, with no heading over it', (await rowsNow.first().innerText()).includes('wikipedia.test') && (await ui.locator('#suggestions > li').first().getAttribute('role')) === 'option');
+  await shoot('inline-completion');
+  await page.keyboard.type('e');
+  check('a key that matches carries on with the completion', await shows('wikipedia.test', 6, 14), JSON.stringify(await shown()));
+  await page.keyboard.press('Backspace');
+  check('Backspace takes away the completion first', await shows('wikipe', 6, 6), JSON.stringify(await shown()));
+  await settle(page);
+  check('and it stays away while what was typed is kept', (await shows('wikipe', 6, 6)) && (await rowsNow.first().getAttribute('data-kind')) === 'search');
+  await page.keyboard.type('d');
+  check('typing again completes again', await shows('wikipedia.test', 7, 14), JSON.stringify(await shown()));
+  await page.keyboard.press('ArrowDown');
+  check('the arrows replace the completion with the row chosen', (await field.inputValue()) === 'https://www.wikipedia.test/', await field.inputValue());
+  await page.keyboard.press('ArrowUp');
+  check('and coming back up shows what was typed', await shows('wikiped', 7, 7), JSON.stringify(await shown()));
+  await field.fill('');
+  await page.keyboard.type('wikip');
+  await shows('wikipedia.test', 5, 14);
+  await page.keyboard.press('Enter');
+  check('Enter goes where the field shows', await until(async () => (await current())?.url === 'https://www.wikipedia.test/'), JSON.stringify(await current()));
+
+  // Bookmarks whose title or address holds the text are rows, with the star.
+  await field.click();
+  await page.keyboard.type('bread');
+  const mark = ui.locator('#suggestions [data-kind=bookmark]');
+  check('a bookmark whose title holds the text is a row, under Bookmarks', await until(async () => (await mark.count()) === 1 && (await mark.innerText()).includes('Bread recipes') && (await ui.locator('#suggestions .heading').allInnerTexts()).includes('Bookmarks')));
+  await shoot('bookmark-rows');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+
   check('no errors', w.errors.length === 0, w.errors.join(' | '));
   await browser.close();
   await lib.done();

@@ -17,6 +17,11 @@ const highlight = ref(-1);
 // stays through a blur, the window losing focus or the page loading, as browsers keep it,
 // until Enter, Escape or another tab takes it away.
 const edited = ref(false);
+// The inline completion: the rest of the first row's address after what was typed, shown
+// selected after the caret, as Chrome and Safari show it (docs/daily-driver.md). A delete
+// says the person wants what they typed, so the next answer completes nothing.
+const inline = ref('');
+let deleting = false;
 
 let latestQuery = 0;
 
@@ -51,24 +56,56 @@ const status = computed(() => {
 function close() {
   items.value = [];
   highlight.value = -1;
+  inline.value = '';
   latestQuery = 0;
 }
 
-function onInput() {
+function ask() {
+  latestQuery = nextQuery();
+  suggest(latestQuery, typed.value);
+}
+
+function onInput(e) {
   edited.value = true;
   typed.value = text.value;
   highlight.value = -1;
+  inline.value = '';
+  deleting = e?.inputType?.startsWith('delete') ?? false;
   if (text.value.trim() === '') {
     close();
     return;
   }
-  latestQuery = nextQuery();
-  suggest(latestQuery, text.value);
+  ask();
+}
+
+// showInline puts the completion after what was typed, selected, so the next key replaces
+// it, Backspace takes it away, and Enter goes where the field shows.
+function showInline(rest) {
+  inline.value = rest;
+  text.value = typed.value + rest;
+  nextTick(() => input.value?.setSelectionRange(typed.value.length, text.value.length, 'backward'));
+}
+
+// A key that matches the completion's next letter keeps the rest of it on show, rather than
+// dropping it until Go answers again.
+function onBeforeInput(e) {
+  const rest = inline.value;
+  if (!rest || e.inputType !== 'insertText' || !e.data || highlight.value >= 0) return;
+  const el = input.value;
+  if (el.selectionStart !== typed.value.length || el.selectionEnd !== text.value.length) return;
+  if (!rest.toLowerCase().startsWith(e.data.toLowerCase())) return;
+  e.preventDefault();
+  edited.value = true;
+  typed.value += e.data;
+  showInline(rest.slice(e.data.length));
+  if (!inline.value) items.value = items.value.map((r, i) => (i === 0 ? { ...r, inline: '' } : r));
+  ask();
 }
 
 // Moving through the list shows that item in the bar. Up from the first item, or down
 // from the last, comes back to what the user typed.
 function move(delta) {
+  inline.value = '';
   const next = highlight.value + delta;
   if (next < 0 || next >= items.value.length) {
     highlight.value = -1;
@@ -145,15 +182,33 @@ function onMouseUp(e) {
 
 function onBlur() {
   focused.value = false;
+  if (inline.value) text.value = typed.value;
   close();
   if (!edited.value) text.value = activeTab.value.url;
 }
 
 onMounted(() => {
   addressBar.suggestions = (id, list) => {
-    if (id === latestQuery) {
-      items.value = list;
-      highlight.value = -1;
+    if (id !== latestQuery) return;
+    const first = list[0];
+    if (first?.inline && deleting) {
+      // After a delete Enter is what was typed: the completing row moves down a place,
+      // as a row like the others.
+      list = list.length > 1 ? [list[1], { ...first, inline: '' }, ...list.slice(2)] : [{ ...first, inline: '' }];
+    }
+    items.value = list;
+    highlight.value = -1;
+    // Completed only while the field holds what was typed with the caret at its end, or
+    // with the completion still selected after it.
+    const el = input.value;
+    if (!el) return;
+    const end = el.selectionEnd === text.value.length;
+    const plain = text.value === typed.value && el.selectionStart === el.selectionEnd && end;
+    const shown = !!inline.value && text.value === typed.value + inline.value && el.selectionStart === typed.value.length && end;
+    if (list[0]?.inline && (plain || shown)) showInline(list[0].inline);
+    else if (shown) {
+      inline.value = '';
+      text.value = typed.value;
     }
   };
   addressBar.focus = () => input.value?.focus();
@@ -242,6 +297,7 @@ const starred = computed(() => isBookmarked(state, activeTab.value.url));
       autocomplete="off"
       autocapitalize="off"
       spellcheck="false"
+      @beforeinput="onBeforeInput"
       @input="onInput"
       @keydown="onKeydown"
       @mouseup="onMouseUp"
