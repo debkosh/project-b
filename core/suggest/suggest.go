@@ -15,11 +15,12 @@ import (
 
 // The kinds of row, which a shell names to say what it draws.
 const (
-	KindAddress = "address"
-	KindSearch  = "search"
-	KindTab     = "tab"
-	KindHistory = "history"
-	KindAction  = "action"
+	KindAddress  = "address"
+	KindSearch   = "search"
+	KindTab      = "tab"
+	KindHistory  = "history"
+	KindAction   = "action"
+	KindBookmark = "bookmark"
 )
 
 // How many rows of each kind a list has at most, and how many rows in all.
@@ -28,6 +29,10 @@ const (
 	maxHistory = 5
 	maxActions = 3
 	maxRows    = 10
+	// With nothing typed: how many rows in all, and how many of them the sites visited most
+	// keep when there are bookmarks too.
+	maxFirst   = 8
+	firstSites = 5
 	// legacy is how many a shell that names no kinds gets: history alone, as it was.
 	legacy = 6
 )
@@ -58,12 +63,20 @@ type Action struct {
 	Detail string
 }
 
+// Bookmark is a bookmark as the list shows it.
+type Bookmark struct {
+	Title string
+	URL   string
+}
+
 // Sources are where the rows come from, beside history: every open tab of the profile,
-// the actions that can run now, and the search engine's name and what it makes of words.
+// the actions that can run now, the search engine's name and what it makes of words, and
+// the bookmarks, the newest first.
 type Sources struct {
-	Tabs    func() []Tab
-	Actions func() []Action
-	Engine  func() (name string, search func(words string) string)
+	Tabs      func() []Tab
+	Actions   func() []Action
+	Engine    func() (name string, search func(words string) string)
+	Bookmarks func() []Bookmark
 }
 
 // Manager answers suggestion queries.
@@ -80,7 +93,7 @@ func (m *Manager) SetSources(s Sources) { m.src = s }
 
 // Query returns the list for what has been typed so far, with rows of the kinds named.
 // With no kinds it is history alone, for a shell that draws nothing else. With nothing
-// typed it is the pages visited most.
+// typed it is what a new tab offers (first).
 func (m *Manager) Query(text string, kinds []string) []Row {
 	if len(kinds) == 0 {
 		return historyRows(m.hist.Search(text, legacy))
@@ -91,10 +104,7 @@ func (m *Manager) Query(text string, kinds []string) []Row {
 	}
 	q := strings.ToLower(strings.TrimSpace(text))
 	if q == "" {
-		if !want[KindHistory] {
-			return []Row{}
-		}
-		return historyRows(m.hist.Top(maxHistory + 1))
+		return m.first(want)
 	}
 
 	rows := make([]Row, 0, maxRows)
@@ -168,6 +178,37 @@ func (m *Manager) Query(text string, kinds []string) []Row {
 		rows = append(rows, *search)
 	}
 	return rows[:min(len(rows), maxRows)]
+}
+
+// first is the list with nothing typed, what a new tab offers: the sites visited most, as
+// history rows, and the newest bookmarks not among them, at most maxFirst in all. Asked for
+// both, the sites come first and keep up to firstSites rows, the bookmarks fill the rest,
+// and the sites any rows the bookmarks leave.
+func (m *Manager) first(want map[string]bool) []Row {
+	var sites, marks []Row
+	shown := map[string]bool{}
+	if want[KindHistory] {
+		for _, e := range m.hist.TopSites(maxFirst) {
+			sites = append(sites, Row{Kind: KindHistory, Title: orURL(e.Title, e.URL), Detail: host(e.URL), URL: e.URL})
+			shown[e.URL] = true
+		}
+	}
+	if want[KindBookmark] && m.src.Bookmarks != nil {
+		for _, b := range m.src.Bookmarks() {
+			if len(marks) == maxFirst {
+				break
+			}
+			if !shown[b.URL] {
+				marks = append(marks, Row{Kind: KindBookmark, Title: orURL(b.Title, b.URL), Detail: host(b.URL), URL: b.URL})
+			}
+		}
+	}
+	n := min(len(marks), maxFirst-min(len(sites), firstSites))
+	rows := append(sites[:min(len(sites), maxFirst-n)], marks[:n]...)
+	if rows == nil {
+		return []Row{}
+	}
+	return rows
 }
 
 func historyRows(entries []history.Entry) []Row {

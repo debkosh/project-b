@@ -1,6 +1,9 @@
 package history
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func newManager(t *testing.T) *Manager {
 	t.Helper()
@@ -68,5 +71,37 @@ func TestListDeleteAndClearOutliveARestart(t *testing.T) {
 	<-done
 	if got := again.List("", 0, 10); len(got) != 1 || got[0].URL != "https://a.test/" {
 		t.Fatalf("after a restart: %+v", got)
+	}
+}
+
+// The sites visited most: a site's visits add up across its pages, www. or not, and the
+// page it is listed by is the one visited most.
+func TestTopSites(t *testing.T) {
+	m := newManager(t)
+	for _, v := range []string{
+		"https://mail.test/inbox", "https://mail.test/inbox", "https://www.mail.test/sent",
+		"https://news.test/", "https://news.test/", "https://news.test/",
+		"https://one.test/",
+	} {
+		m.AddVisit(v, "")
+	}
+	got := []string{}
+	for _, e := range m.TopSites(2) {
+		got = append(got, e.URL)
+	}
+	if strings.Join(got, " ") != "https://mail.test/inbox https://news.test/" {
+		t.Fatalf("top sites = %v", got)
+	}
+}
+
+// Forgetting a site takes every page of it out, www. or not, and no other.
+func TestDeleteSite(t *testing.T) {
+	m := newManager(t)
+	for _, v := range []string{"https://mail.test/inbox", "https://www.mail.test/sent", "https://news.test/"} {
+		m.AddVisit(v, "")
+	}
+	m.DeleteSite("https://mail.test/inbox")
+	if got := m.TopSites(5); len(got) != 1 || got[0].URL != "https://news.test/" {
+		t.Fatalf("left = %+v", got)
 	}
 }

@@ -38,16 +38,33 @@ func (a *App) suggestSources() suggest.Sources {
 			e := a.Prefs.SearchEngine()
 			return e.Name, e.For
 		},
+		Bookmarks: func() []suggest.Bookmark {
+			list := a.Bookmarks.List()
+			out := make([]suggest.Bookmark, len(list))
+			for i, b := range list {
+				out[i] = suggest.Bookmark{Title: b.Title, URL: b.URL}
+			}
+			return out
+		},
 	}
 }
 
-// suggestShellPart runs the row a shell's user chose: an address or a search loads in the
-// window's active tab, or a new one; a tab is shown, in whichever window it is; an action
-// runs.
+// suggestShellPart runs the row a shell's user chose: an address, a search, a page or a
+// bookmark loads in the window's active tab, or a new one; a tab is shown, in whichever
+// window it is; an action runs. forgetSite takes a site the new tab offers out of history,
+// every page of it.
 func (a *App) suggestShellPart() shell.Part {
 	return shell.Part{
 		Snapshot: func(map[string]any) {},
 		Handle: func(w engine.WindowID, t string, msg []byte) bool {
+			if t == "forgetSite" {
+				var c struct {
+					URL string `json:"url"`
+				}
+				json.Unmarshal(msg, &c)
+				a.History.DeleteSite(c.URL)
+				return true
+			}
 			if t != "chooseSuggestion" {
 				return false
 			}
@@ -64,7 +81,7 @@ func (a *App) suggestShellPart() shell.Part {
 				}
 			case suggest.KindAction:
 				a.Commands.Run(c.Row.Action)
-			case suggest.KindAddress, suggest.KindSearch, suggest.KindHistory:
+			case suggest.KindAddress, suggest.KindSearch, suggest.KindHistory, suggest.KindBookmark:
 				switch {
 				case c.Row.URL == "":
 				case c.NewTab || active == 0:

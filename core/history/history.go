@@ -125,9 +125,36 @@ func (m *Manager) Search(text string, limit int) []Entry {
 	return m.best(limit, func(e *Entry) int { return score(e, q) })
 }
 
-// Top returns the pages visited most, most first.
-func (m *Manager) Top(limit int) []Entry {
-	return m.best(limit, func(e *Entry) int { return e.Visits })
+// TopSites returns a page for each of the sites visited most, most first: a site's visits
+// are its pages' added up, and its page is the one of them visited most, then latest. A site is a host
+// without www.; only web pages count.
+func (m *Manager) TopSites(limit int) []Entry {
+	type site struct {
+		visits int
+		page   *Entry
+	}
+	sites := map[string]*site{}
+	for _, e := range m.entries {
+		if !strings.HasPrefix(e.lowURL, "http://") && !strings.HasPrefix(e.lowURL, "https://") {
+			continue
+		}
+		host, _, _ := strings.Cut(e.bare, "/")
+		s := sites[host]
+		if s == nil {
+			s = &site{}
+			sites[host] = s
+		}
+		s.visits += e.Visits
+		if s.page == nil || e.Visits > s.page.Visits || e.Visits == s.page.Visits &&
+			(e.LastVisit > s.page.LastVisit || e.LastVisit == s.page.LastVisit && e.URL < s.page.URL) {
+			s.page = e
+		}
+	}
+	visits := map[*Entry]int{}
+	for _, s := range sites {
+		visits[s.page] = s.visits
+	}
+	return m.best(limit, func(e *Entry) int { return visits[e] })
 }
 
 // best is the limit entries score rates highest, above 0, best first: by score, then the
@@ -197,6 +224,22 @@ func (m *Manager) Delete(urls ...string) {
 			m.save(&Entry{URL: u, Removed: true})
 		}
 	}
+}
+
+// DeleteSite removes every page of the site at url, its host with or without www., as
+// TopSites counts a site.
+func (m *Manager) DeleteSite(url string) {
+	host, _, _ := strings.Cut(bareURL(strings.ToLower(url)), "/")
+	if host == "" {
+		return
+	}
+	var urls []string
+	for u, e := range m.entries {
+		if h, _, _ := strings.Cut(e.bare, "/"); h == host {
+			urls = append(urls, u)
+		}
+	}
+	m.Delete(urls...)
 }
 
 // Clear takes out every page last visited at or after the Unix time since, or every page

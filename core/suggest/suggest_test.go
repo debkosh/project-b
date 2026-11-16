@@ -26,11 +26,15 @@ func manager(t testing.TB, visits ...string) *Manager {
 		Engine: func() (string, func(string) string) {
 			return "Find", func(w string) string { return "https://find.test/?q=" + strings.ReplaceAll(w, " ", "+") }
 		},
+		Bookmarks: func() []Bookmark { return marks },
 	})
 	return m
 }
 
-var all = []string{KindAddress, KindSearch, KindTab, KindHistory, KindAction}
+var all = []string{KindAddress, KindSearch, KindTab, KindHistory, KindAction, KindBookmark}
+
+// marks are the bookmarks the tests' manager has, the newest first.
+var marks []Bookmark
 
 func kinds(rows []Row) string {
 	var out []string
@@ -78,11 +82,39 @@ func TestAnAddressGoesFirstAndTheSearchLast(t *testing.T) {
 	}
 }
 
-func TestNothingTypedListsThePagesVisitedMost(t *testing.T) {
-	m := manager(t, "https://a.test/ A", "https://b.test/ B", "https://b.test/ B")
+func TestNothingTypedListsTheSitesVisitedMost(t *testing.T) {
+	marks = nil
+	m := manager(t, "https://a.test/ A", "https://a.test/ A", "https://b.test/x B", "https://b.test/y B", "https://b.test/y B")
 	rows := m.Query("", all)
-	if len(rows) != 2 || rows[0].URL != "https://b.test/" || rows[0].Kind != KindHistory {
+	if len(rows) != 2 || rows[0].URL != "https://b.test/y" || rows[0].Kind != KindHistory || rows[0].Detail != "b.test" {
 		t.Fatalf("rows = %+v", rows)
+	}
+}
+
+// With nothing typed the sites visited most come first, then the newest bookmarks not
+// among them, eight rows at most: the sites keep five when there are bookmarks to show, and
+// either fills what the other leaves.
+func TestNothingTypedAddsTheNewestBookmarks(t *testing.T) {
+	var visits []string
+	for i := range 9 {
+		visits = append(visits, fmt.Sprintf("https://site%d.test/ Site %d", i, i))
+	}
+	marks = []Bookmark{{Title: "Site 0", URL: "https://site0.test/"}, {Title: "Docs", URL: "https://docs.test/"}, {Title: "Spec", URL: "https://spec.test/"}, {Title: "Go", URL: "https://go.test/"}, {Title: "Blog", URL: "https://blog.test/"}}
+	m := manager(t, visits...)
+	if rows := m.Query("", all); kinds(rows) != "history history history history history bookmark bookmark bookmark" || rows[5].URL != "https://docs.test/" {
+		t.Fatalf("rows = %+v", rows)
+	}
+	if rows := m.Query("", []string{KindBookmark}); len(rows) != 5 || rows[0].Title != "Site 0" {
+		t.Fatalf("bookmarks alone = %+v", rows)
+	}
+	marks = marks[:2]
+	if rows := m.Query("", all); kinds(rows) != "history history history history history history history bookmark" {
+		t.Fatalf("one bookmark to show = %+v", rows)
+	}
+	marks = nil
+	m = manager(t)
+	if rows := m.Query("", all); rows == nil || len(rows) != 0 {
+		t.Fatalf("nothing at all = %#v", rows)
 	}
 }
 

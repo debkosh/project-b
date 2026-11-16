@@ -231,7 +231,8 @@ title, detail, actions}`, absent otherwise
 | `back`, `forward`, `reload` | | Act on the active tab |
 | `focusTab` | `id` | Gives the active tab's page the keyboard. One for a tab no longer active, as when the address typed for it went to another tab, does nothing |
 | `focusShell` | | Gives the shell the keyboard |
-| `suggest` | `id`, `text`, `kinds` | Asks for suggestions with rows of the kinds named. The bare message without `kinds` gets history alone, as it always did; the SDK's `suggest()` asks for every kind unless told otherwise. With no text, the pages visited most |
+| `suggest` | `id`, `text`, `kinds` | Asks for suggestions with rows of the kinds named. The bare message without `kinds` gets history alone, as it always did; the SDK's `suggest()` asks for every kind unless told otherwise. With no text, what a new tab offers: the sites visited most and the newest bookmarks (docs/daily-driver.md, A new tab) |
+| `forgetSite` | `url` | Takes the site at `url` out of history, every page of it, as the new tab page's × does |
 | `bookmark` | `url`, `title`, `on` | Bookmarks the address, or takes its bookmark away: the address bar's star |
 | `chooseSuggestion` | `row`, `newTab` | Runs a row: Go loads its address or search in the active tab, or a new one, shows its tab, or runs its action |
 | `run` | `text`: an action's id | Runs an action, as its menu item would |
