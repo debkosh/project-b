@@ -68,9 +68,17 @@ void Downloads::SetDownloadManager(content::DownloadManager* manager) {
   manager_->AddObserver(this);
 }
 
+// The manager outlives us: it goes with the content side of the profile's context, after
+// the context's own members, this among them. So nothing of it may still point here.
 Downloads::~Downloads() {
   if (manager_) {
+    content::DownloadManager::DownloadVector items;
+    manager_->GetAllDownloads(&items);
+    for (download::DownloadItem* item : items) {
+      item->RemoveObserver(this);
+    }
     manager_->RemoveObserver(this);
+    manager_->SetDelegate(nullptr);
   }
   if (g_downloads == this) {
     g_downloads = nullptr;
