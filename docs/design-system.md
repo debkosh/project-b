@@ -231,9 +231,12 @@ that wants the default look follows it.
 - **On a web page** it is the site's settings, in `--icon`, always there, and a button
   named Site settings: a press opens that site's one view, which holds everything about
   the site. Never a lock, and never a second icon beside it.
-- **When the page isn't secure** the icon itself changes, a warning glyph in `--danger`,
-  named "Not secure · Site settings". It stays one button: the site's view says why, on
-  its first row, above the site's settings.
+- **When the page isn't secure** (an http page, or a certificate passed with Open anyway)
+  the icon itself changes, a warning glyph in `--danger`, and the words "Not secure" follow
+  it in `--danger`, 12px at 500, as Chrome and Edge write them (owner approved, item 7 of the
+  UX comparison). The slot grows to fit them, 10px either side, and keeps the field's
+  height. It stays one button, named "Not secure · Site settings": the site's view says why,
+  on its first row, above the site's settings.
 - **With no site** (a new tab, a window with no tabs) and **while the field is typed in**,
   it is a search icon in `--muted`, and no button: it says what Enter will do.
 - **On one of our own pages** it is that page's own icon, and the white area shows the

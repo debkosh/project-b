@@ -274,9 +274,14 @@ const starred = computed(() => isBookmarked(state, activeTab.value.url));
       :aria-expanded="panel"
       @click="panel = !panel"
     >
-      <svg v-if="slot === 'insecure'" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M8 2.5 14 13H2zM8 6.5v3M8 11.2v.1" />
-      </svg>
+      <!-- Not secure says so in words, as Chrome and Edge do: an http page, or a certificate
+           passed with Open anyway. -->
+      <template v-if="slot === 'insecure'">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M8 2.5 14 13H2zM8 6.5v3M8 11.2v.1" />
+        </svg>
+        <span class="words" aria-hidden="true">Not secure</span>
+      </template>
       <svg v-else width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
         <path d="M2.5 5h5M11.5 5h2M2.5 11h2M8.5 11h5" />
         <circle cx="9.5" cy="5" r="1.75" />
@@ -515,8 +520,20 @@ input::placeholder {
   height: 16px;
 }
 
+/* Not secure: the warning and the words in --danger, the slot as wide as they need, the
+   words at the size of the field's other small labels. */
 .slot.insecure {
+  display: flex;
+  gap: 6px;
+  width: auto;
+  padding: 0 10px 0 9px;
   color: var(--danger);
+}
+
+.words {
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .status {

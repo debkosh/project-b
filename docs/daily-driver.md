@@ -416,7 +416,7 @@ for our own pages and the blank page, and `tab.connectionNote`, why in one line.
 maps content's security state (`PB_EVENT_CONNECTION_CHANGED`, 44: none, secure or insecure,
 and a reason, `not-encrypted`, `certificate` or `mixed-content`), and Go words the note. A
 shell draws any value other than `secure` as not secure: Standard's address-field slot
-changes its icon, and its press opens the same one-site view, whose first row is the
+changes its icon and writes "Not secure" beside it, and its press opens the same one-site view, whose first row is the
 connection of the site's open pages (`siteConnections`, by origin, insecure when any of
 them is). The certificate warnings extend it: a page whose certificate the person went past
 is `insecure` for `certificate`.

@@ -38,7 +38,7 @@ and Android, in the web-features registry: [web-features.md](web-features.md).
 | Feature | Status | Plan |
 |---|---|---|
 | Safe Browsing warnings | missing: the test malware page loads (basics 28) | needs discussion |
-| "Not secure" on http pages | missing (basics 9) | needs discussion |
+| "Not secure" on http pages | Standard writes it in words at the address field's start, in `--danger`; the phone shells don't yet (basics 9) | approved (UX comparison item 7); the phone's next |
 | The address bar hides a password in a URL | missing: it shows it (basics 8) | needs discussion |
 | Popup blocking | missing: `window.open` without a click opens a tab (basics 6) | needs discussion |
 | Blocked hosts' images and scripts | missing: only navigations are blocked (basics 27) | needs discussion (URL policy, in [todo.md](todo.md)) |
