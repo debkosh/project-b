@@ -210,8 +210,6 @@ How they work is in [site-features.md](site-features.md).
   ([shells.md](shells.md#testing-one)): serve the mock pages from a second host
   (`localhost` beside `127.0.0.1`).
 
-- `locked-release.py` lives outside the repo (`~/PW_TOOLS/project-b-release`): fold its lock
-  into `tools/release.sh`, as `tools/build.sh` holds its own, so a release needs only the repo.
 - The desktop and the emulators have no lock, unlike `out/` and the Android VM. Give
   `tools/test.sh android` and the drivers one (per emulator, and one for the desktop).
 - The README's screenshots show the Standard shell from before 0.2.63: retake them from a

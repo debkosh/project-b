@@ -10,6 +10,17 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
+# The release builds into the shared out/, so it holds out/.pb-build.lock from here to the end,
+# as tools/build.sh does for one build, and its builds see PB_BUILD_LOCKED=1 and don't wait.
+if [ "${PB_BUILD_LOCKED:-}" != 1 ]; then
+  mkdir -p "$ROOT/chromium/src/out"
+  exec python3 -I -c 'import fcntl, os, sys
+f = open(sys.argv[1], "a")
+fcntl.flock(f, fcntl.LOCK_EX)
+os.set_inheritable(f.fileno(), True)
+os.environ["PB_BUILD_LOCKED"] = "1"
+os.execv("/bin/bash", ["/bin/bash"] + sys.argv[2:])' "$ROOT/chromium/src/out/.pb-build.lock" "$0" "$@"
+fi
 REPO=sudiptadeb/project-b
 VERSION=$(tr -d '[:space:]' < "$ROOT/VERSION")
 TAG=v$VERSION

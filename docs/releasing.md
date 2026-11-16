@@ -45,13 +45,13 @@ the failed parts run again. Android 17's one known flake is the blank-shell star
 
     amarit rm pb-release
     amarit run -name pb-release -restart never -dir <main checkout> /bin/bash -c \
-      "env HOME=$HOME KEYKOSH_ROOT=$KEYKOSH_ROOT PATH=$PATH caffeinate -i python3 -I \
-       ~/PW_TOOLS/project-b-release/locked-release.py > ~/PW_TOOLS/project-b-release/<v>.log 2>&1"
+      "env HOME=$HOME KEYKOSH_ROOT=$KEYKOSH_ROOT PATH=$PATH caffeinate -i \
+       tools/release.sh > ~/PW_TOOLS/project-b-release/<v>.log 2>&1"
 
 Before it: fast-forward main to the release branch, bump `VERSION`, commit "Bump the version
-to <v>" and push. `locked-release.py` takes `chromium/src/out/.pb-build.lock` and runs
-`tools/release.sh` in the checkout amarit starts it in. Don't merge into main while it runs; it
-reads that checkout. It takes about four minutes.
+to <v>" and push. `tools/release.sh` takes `chromium/src/out/.pb-build.lock` for its whole
+run, waiting for any build that holds it, and releases the checkout amarit starts it in. Don't
+merge into main while it runs; it reads that checkout. It takes about four minutes.
 
 ## Shared machines
 
