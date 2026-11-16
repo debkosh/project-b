@@ -656,6 +656,17 @@ tabs a shell asked to give the keyboard while no window showed them), Go's `tabs
 with `x` and `y`, `hit` says what a press there does. The settings tab's page shows in a
 frame of its own, `iframe.our-page[data-page=settings]`, the settings page at
 `/settings/?tab=<id>`.
+**Pitfalls the Standard tests met.**
+- The shell page enforces Trusted Types: no `v-html` or `innerHTML`, so icons are SVG in the
+  template.
+- A mock page's Loading lasts a moment, so record its states from before the press (a
+  MutationObserver on `#state`, as the contract's Reload rule does) rather than look after it.
+- A navigation before the previous page has loaded replaces it, with no history entry: wait
+  for each page's title before the next, or Back has nowhere to go.
+- The layout reaches the mock a frame after the DOM changes: read `regions()` inside `until`.
+- A control hidden with `visibility: hidden` (a row's ×) can't take even a forced click, and
+  a row that moves under a pointer that stays still gets no `:hover`; focus the row instead.
+
 `/mock/fire` does what a page or the user can: `kind=menu` with an action's id runs it,
 `kind=focusTab` is a press in a tab's page, and each button of the mock page is a kind,
 acting on the tab `tab` names. `go run ./cmd/dev -addr=127.0.0.1:0` takes a free port and
@@ -667,6 +678,14 @@ The mock can't show these, so the real app's own tests cover them once for every
 the registry (`tools/drive_first_app.py`): the app starts on the shell and marks
 `app.ready`; switching to it live leaves the tabs loaded; the page shows through the
 shell's unpainted part; a press in each shown page gives that page the keyboard.
+
+How the real window decides a press: the shell's regions first, in their order (a drag area
+moves the window, a shell area goes to the shell), then the shown page under the point
+(`window_mac.mm`, the container's `hitTest:`). So anything a shell marks as its own over a
+page, a suggestion list or Standard's command box over its translucent scrim, takes the
+press there. The shell draws above the pages, so its translucent pixels tint the page; it
+can't blur it, since the page is a view of its own. A layout reaches the window a frame or
+so after the shell's DOM changes, so a real-app check of a region waits for it (up to 2 s).
 
 ## The terminal shell
 
