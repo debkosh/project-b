@@ -214,11 +214,6 @@ How they work is in [site-features.md](site-features.md).
   and for its popups; a popup let open hidden and closed after about a second, for sites that
   wait on `window.opener`; a general popup blocker counting in the same `popupsBlocked`.
 - Sparks' editor is a plain text area, without highlighting; no sync, no enterprise lists.
-- The ten-path check of Links to other sites (a link, `target=_blank`, noopener,
-  `window.open`, `location.href` and `replace`, a form, a popup then its location, a same-site
-  link redirecting off-site, a popup and a location change together) was run by hand on the Mac
-  and an emulator for 0.2.72. It belongs in `drive_first_app.py` and `drive_android.py` as an
-  automated part; the page is in [site-features.md](site-features.md#checking-it).
 
 ## Build, release and test tooling
 
