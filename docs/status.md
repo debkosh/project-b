@@ -23,6 +23,7 @@ Where the project stands, for the next person or agent. Last updated 2026-11-10.
 - [android.md](android.md): the same shell and managers on Android's content layer, built in a Linux VM on this Mac.
 - [extensions.md](extensions.md): Chrome extensions, in every build and run only with their flag on: the layers, the mock store, the build flag, and the checks left out on purpose.
 - [flags.md](flags.md): every flag in one file, `core/flags/registry.json`: the six types, build flags and `WITHOUT`, and how a flag reaches the engine.
+- [ux-comparison.md](ux-comparison.md): Standard and Mobile against Chrome, Safari, Arc, Firefox, Edge and Brave on 0.2.74, area by area with screenshots, and a ranked list of what to do.
 - [web-features.md](web-features.md): every web feature whose browser side is Chrome's, in one file, `core/webfeatures/registry.json`: what a page gets of each on Mac and Android, the features the engine turns off, the probes that hold each row to its status, and the check after a Chromium bump.
 
 ## Daily commands

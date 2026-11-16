@@ -5,6 +5,10 @@ Take an item off when it lands or is dropped.
 
 ## For discussion with the owner first
 
+- **The UX comparison's ranked list** ([ux-comparison.md](ux-comparison.md#what-to-do-ranked)):
+  twenty items against Chrome, Safari, Arc, Firefox, Edge and Brave, each with its size, and
+  three faults found on 0.2.74 (a crash on Quit on the Mac, one crash on Android, and Mobile
+  calling an unknown host "No internet connection").
 - **A start that gives the UI thread back.** On a cold start the shell's request for its page
   waits about 90 ms on the browser's UI thread: first for Go's synchronous start (the window,
   about 35 to 40 ms, its show, the menus and managers, until about 140 ms), then for macOS's
