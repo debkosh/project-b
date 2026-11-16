@@ -113,6 +113,40 @@ context, which Android shares between our pages and the web. Before it, every An
 tab counted as ours, and a popup its page opened loaded over the page itself: the blank page
 of an ad's `window.open()` blanked the page.
 
+**Checking it.** A page with each way a page leaves, served on one host, with
+`sites.json` setting `links: block` for that origin: on the Mac `http://localhost:8765`, on an
+emulator `http://10.0.2.2:8765` (the Mac seen from the emulator); `example.com` is the other
+site. The page counts clicks, so a page that reloaded shows it; a pass is the page still there,
+its count risen, Back still off, one tab, and the address field counting the popups (five of
+the ten open one). The person's own way (an address typed) must still go under Block, and every
+link under Allow. The ten links:
+
+```html
+<a href="http://example.com/a1">1 link</a>
+<a href="http://example.com/a2" target="_blank">2 target=_blank</a>
+<a href="http://example.com/a3" target="_blank" rel="noopener">3 noopener</a>
+<button onclick="window.open('http://example.com/b4')">4 window.open</button>
+<button onclick="location.href='http://example.com/b5'">5 location.href</button>
+<button onclick="location.replace('http://example.com/b6')">6 location.replace</button>
+<form action="http://example.com/f7"><button>7 form</button></form>
+<button onclick="var w=window.open('about:blank');w.location='http://example.com/b8'">8 popup, then its location</button>
+<a href="/redirect">9 same-site link the server redirects to http://example.com/ (a 302)</a>
+<button onclick="window.open('http://example.com/ad1');setTimeout(()=>location.href='http://example.com/ad2',50)">10 popup and leave</button>
+```
+
+**What was learned on the way** (0.2.70 to 0.2.72):
+
+- Go misses a navigation start that comes before it listens (the start URL at launch), so a
+  mark of "the person asked" has to match what starts, not stand as a flag: a load's mark is
+  its host.
+- Android's popups loaded over their page because `PageTab::internal()` came from the browser
+  context, which Android shares between our pages and the web; it is now fixed at creation.
+- Chromium commits `about:blank` with no navigation throttle, so nothing gate-side can stop a
+  blank page; what stops it is the popup not being made over the page in the first place.
+- A renderer's request throttle never reaches the browser's `ResourceLoadComplete`, so the
+  ad blocker's count comes over mojom (`AdReports`); Blink drops script run from its own
+  observer callbacks, so Sparks run at `RunScriptsAtDocumentStart/End`.
+
 **Later, if wanted:** separate settings for a page's navigations in place and for its
 popups; a popup let open hidden and closed after a second, for sites that wait on
 `window.opener`.

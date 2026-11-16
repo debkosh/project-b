@@ -110,7 +110,13 @@ Take an item off when it lands or is dropped.
   a start timeout ("failed to attach"), and the browser heard nothing, so the shell's page
   waits for a renderer for good. It shows only deep in full runs on a loaded emulator. The fix
   is in how a launch that never attaches reaches the browser: as a dead renderer, which the
-  shell's page already recovers from.
+  shell's page already recovers from. Branch `shell-attach` (4a58733e, on 0.2.72) does it: the
+  shell page watches each load, and one whose renderer isn't ready after 15 s is shut down and
+  goes the crash path (Go hears SHELL_CRASHED, the page reloads). It builds on the Mac; it is
+  not yet checked on Android. To check it on an emulator with root (`su 0`), stop the first
+  sandboxed process as the app starts (`kill -STOP $(pgrep -f sandboxed_process0 | head -1)`)
+  and see the shell come back about 15 s later; the stop needs no `pidof`, whose name match
+  misses the zygote child's longer name.
 - Closing a tab (Cmd+W) takes Go's part of the span about 3.4 ms at 10 tabs and 3.8 at 50 on
   0.2.70 (`tools/bench/tabs.py`, 2026-11-16), against 0.3 to 0.7 in 0.2.64. It isn't Go's own
   work: that is 126 µs for an open and a close on `core/perf`'s rig, where the engine does
@@ -120,6 +126,24 @@ Take an item off when it lands or is dropped.
   that call. Timeline marks around `CloseTab` would prove it; tearing the renderer down after
   `CloseTab` returns is the fix, if 3 ms ever matters. The Go side's own part, a session
   saved twice per close, is gone (1e5b1932, and 5c9f4e58 in 0.2.70).
+
+## Site features (the site panel, Links to other sites, the ad blocker, Sparks)
+
+How they work is in [site-features.md](site-features.md).
+
+- The site panel is in Standard, Fox and Mobile (contract rule 33); Minimal goes straight to
+  settings; Terminal and Glide don't have it yet.
+- The ad blocker's list (`core/adblock/hosts.txt`) is a few hundred hosts kept by hand, with no
+  cosmetic rules. A published list (EasyList's hosts) is the next step, once its licence fits.
+- Links to other sites, later if wanted: separate settings for a page's navigations in place
+  and for its popups; a popup let open hidden and closed after about a second, for sites that
+  wait on `window.opener`; a general popup blocker counting in the same `popupsBlocked`.
+- Sparks' editor is a plain text area, without highlighting; no sync, no enterprise lists.
+- The ten-path check of Links to other sites (a link, `target=_blank`, noopener,
+  `window.open`, `location.href` and `replace`, a form, a popup then its location, a same-site
+  link redirecting off-site, a popup and a location change together) was run by hand on the Mac
+  and an emulator for 0.2.72. It belongs in `drive_first_app.py` and `drive_android.py` as an
+  automated part; the page is in [site-features.md](site-features.md#checking-it).
 
 ## Build, release and test tooling
 
