@@ -24,6 +24,7 @@ session (tools/check_full_screen.py, tools/check_clipboard.py). This needs no di
     python3 tools/drive_first_app.py shells     # only every shell: starting on it, and switching to it live
     python3 tools/drive_first_app.py webapis    # only the web APIs in core/webfeatures/registry.json
     python3 tools/drive_first_app.py internal   # only our own pages as tabs: settings, and the navigation rule
+    python3 tools/drive_first_app.py links      # only Links to other sites: the ten ways a page leaves
 
 Results go to build/real/. Each screenshot is what content rendered, drawn shell over
 page by the driver. It is not read back from the window.
@@ -45,6 +46,7 @@ import traceback
 import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import links_page  # noqa: E402
 import timeline  # noqa: E402
 import web_features  # noqa: E402
 from drive_chromedriver import cdp, ws_open  # noqa: E402
@@ -79,6 +81,20 @@ class Pages(http.server.BaseHTTPRequestHandler):
                     f'<iframe src="{blocked}/frame-blocked"></iframe>'
                     f'<script>fetch("{blocked}/fetch-blocked").catch(() => {{}})</script>'
                     f'<img src="/img-allowed" onload="document.title=\'loaded\'" onerror="document.title=\'loaded\'">').encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        if self.path == "/leave-redirect":
+            # Links to other sites' ninth way: a same-site link the server sends elsewhere.
+            self.send_response(302)
+            self.send_header("Location", f"{OTHER}/r9")
+            self.end_headers()
+            return
+        if self.path == "/leave":
+            body = links_page.page(OTHER).encode()
             self.send_response(200)
             self.send_header("Content-Type", "text/html")
             self.send_header("Content-Length", str(len(body)))
@@ -125,6 +141,8 @@ class Pages(http.server.BaseHTTPRequestHandler):
 pages = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Pages)
 threading.Thread(target=pages.serve_forever, daemon=True).start()
 PAGES = f"http://127.0.0.1:{pages.server_port}/"
+# Another site on the same server, for Links to other sites: localhost isn't 127.0.0.1's site.
+OTHER = f"http://localhost:{pages.server_port}"
 
 
 def check(name, ok, detail=""):
@@ -2406,8 +2424,89 @@ def internal_checks():
     check("Cmd+W closes it, as any tab", not ours() and len(order()) == 2, tabs_of(app))
     app.close()
 
+def links_checks():
+    """Links to other sites (docs/site-features.md#checking-it): under Block each of the ten
+    ways a page leaves for another site goes nowhere, the page staying with its count risen, no
+    history and one tab, and the address field counting the tabs it closed; the person's own
+    way still goes; under Allow every way goes."""
+    profile = tempfile.mkdtemp(prefix="pb-links-")
+    app = App(profile)
+    own = PAGES + "leave"
+    origin = PAGES.rstrip("/")
+    other_host = "localhost"
+
+    def setting(value):
+        """Sets the site's Links to other sites as its panel does, and waits for Go to keep it:
+        sites.json holds only what isn't the default, Allow."""
+        app.js(f"(chrome.send('shell',[{json.dumps(json.dumps({'t': 'setSiteSetting', 'origin': origin, 'kind': 'links', 'value': value}))}]),1)")
+        deadline = time.time() + 10
+        while time.time() < deadline:
+            try:
+                kept = json.load(open(os.path.join(profile, "sites.json"))).get(origin, {}).get("links", "allow")
+            except (OSError, ValueError):
+                kept = "allow"
+            if kept == value:
+                return
+            time.sleep(0.05)
+        raise TimeoutError(f"Go never kept links={value} for {origin}")
+
+    def reached():
+        return [p for p in Pages.seen if p.startswith(other_host + "/")]
+
+    def popups():
+        return app.js("document.querySelector('.popups')?.getAttribute('aria-label')||''")
+
+    def fresh():
+        """One tab, on the page, nothing from the other site yet."""
+        while len(tabs_of(app)["tabs"]) > 1:
+            rows = len(tabs_of(app)["tabs"])
+            app.cmd("key", "cmd+w")
+            app.wait(f"{ROWS}==={rows - 1}")
+        visit(app, own)
+        Pages.seen.clear()
+
+    visit(app, own)
+    setting("block")
+    Pages.seen.clear()
+    blocked = 0
+    for n, words, opens, paths in links_page.WAYS:
+        page_click(app, f"#l{n}")
+        alive = f"127.0.0.1/alive?{n}"
+        deadline = time.time() + 10
+        while alive not in Pages.seen and time.time() < deadline:
+            time.sleep(0.05)
+        if opens:
+            blocked += 1
+            want = links_page.popups_word(blocked)
+            deadline = time.time() + 5
+            while popups() != want and time.time() < deadline:
+                time.sleep(0.05)
+        page = app.js("[location.href, count.textContent]", page=True)
+        tabs = tabs_of(app)["tabs"]
+        check(f"under Block, {words} goes nowhere: the page stays, its count risen, one tab, the other site never asked"
+              + (f", and the address field says {links_page.popups_word(blocked)}" if opens else ""),
+              alive in Pages.seen and page == [own, f"clicks {n}"] and len(tabs) == 1 and not reached()
+              and (not opens or popups() == links_page.popups_word(blocked)),
+              (page, len(tabs), reached(), popups()))
+    check("under Block, nothing went into the tab's history: Back stays off",
+          app.js("document.querySelector('[aria-label=Back]').disabled") is True)
+    visit(app, OTHER + "/typed")
+    check("under Block, an address the person types still goes", "localhost/typed" in Pages.seen, Pages.seen[-3:])
+
+    setting("allow")
+    for n, words, opens, paths in links_page.WAYS:
+        fresh()
+        page_click(app, f"#l{n}")
+        deadline = time.time() + 10
+        # A form's GET asks for its path with a query.
+        went = lambda: all(other_host + p in [s.split("?")[0] for s in Pages.seen] for p in paths)
+        while not went() and time.time() < deadline:
+            time.sleep(0.05)
+        check(f"under Allow, {words} goes to the other site", went(), reached())
+    app.close()
+
 
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
-    parts = {"driver": [driver_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [empty_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "quit": [quit_checks], "internal": [internal_checks]}
-    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, settings_checks, internal_checks, visible_tabs_checks, window_checks, empty_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, shell_checks, glide_checks, web_api_checks, quit_checks]))
+    parts = {"driver": [driver_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [empty_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks]}
+    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, settings_checks, internal_checks, visible_tabs_checks, window_checks, empty_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, shell_checks, glide_checks, web_api_checks, links_checks, quit_checks]))
