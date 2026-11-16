@@ -1,0 +1,400 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Onboarding mocks</title>
+<!-- Mocks of the first-run onboarding (docs/onboarding.md). Open with ?m=<id>; render with
+     tools in the doc. Pictures only: nothing here is code the app runs. -->
+<style>
+:root{--frame:#4f9e9e;--accent:#3f8f8f;--on-accent:#fff;--accent-soft:#d3e8e8;--accent-tint:#e6f1f1;--bar:#eaf3f3;--surface:#fff;--text:#1f2a2a;--muted:#6b7878;--icon:#4a5a5a;--line:#d6e2e2;--danger:#c63b32}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.4 -apple-system,"Helvetica Neue",Arial,sans-serif;color:var(--text);background:#f4f6f6;-webkit-font-smoothing:antialiased}
+.mock{display:none;padding:24px}.mock.on{display:block}
+.pair{display:flex;gap:24px;align-items:flex-start}
+
+/* The Standard window, holding the welcome tab */
+.win{width:1280px;height:800px;border:4px solid var(--frame);border-radius:14px;background:var(--bar);position:relative;overflow:hidden;flex:none}
+.top{height:52px;display:flex;align-items:center;gap:6px;padding:0 12px}
+.dots{display:flex;gap:8px;width:76px}.dots i{width:12px;height:12px;border-radius:50%;background:#ec6a5e}.dots i:nth-child(2){background:#f4bf4f}.dots i:nth-child(3){background:#61c554}
+.ib{width:28px;height:28px;border-radius:6px;display:grid;place-items:center;color:var(--icon)}
+.ib svg,.slot svg,.side svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+.dim{opacity:.4}
+.field{flex:1;height:34px;border:1px solid var(--line);background:var(--surface);border-radius:8px;display:flex;align-items:center;overflow:hidden;font-size:13px;margin-left:6px}
+.slot{width:34px;height:100%;background:var(--accent-tint);border-right:1px solid var(--line);display:grid;place-items:center;color:var(--icon)}
+.field .t{padding:0 10px;flex:1}.field .x{width:28px;color:var(--muted);text-align:center}
+.side{position:absolute;left:0;top:52px;bottom:0;width:220px;padding:8px 12px}
+.tab{height:32px;border-radius:6px;display:flex;align-items:center;gap:10px;padding:0 10px;font-size:13px}
+.tab.new{color:var(--accent)}.tab.new span{margin-left:auto;color:var(--muted)}
+.tab.act{background:var(--surface);box-shadow:0 0 0 1px var(--line)}
+.page{position:absolute;left:224px;top:52px;right:0;bottom:0;background:var(--bar);overflow:hidden}
+
+/* The onboarding page */
+.ob{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center}
+.steps{display:flex;gap:6px;margin-top:40px}.steps i{width:28px;height:4px;border-radius:2px;background:var(--line)}.steps i.d{background:var(--accent-soft)}.steps i.c{background:var(--accent)}
+.col{width:640px;margin-top:40px;flex:1}
+h1{font-size:24px;font-weight:600;margin:0 0 6px;letter-spacing:-.01em}
+.lead{color:var(--muted);margin:0 0 24px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px}
+.row{display:flex;align-items:center;gap:12px;padding:8px 16px;min-height:56px}
+.row+.row,.row+.more,.more+.row{border-top:1px solid var(--line)}
+.lab{flex:1;min-width:0}.lab b{font-weight:500;display:block}
+.sec{font-size:12px;color:var(--muted)}
+h2{font-size:13px;font-weight:500;color:var(--muted);margin:20px 0 8px}
+.foot{width:640px;display:flex;align-items:center;gap:8px;padding:20px 0 32px}
+.foot .sp{flex:1}
+.btn{height:30px;padding:0 12px;border-radius:6px;border:1px solid var(--line);background:var(--surface);display:inline-flex;align-items:center;font-weight:500;font-size:13px;white-space:nowrap;gap:6px}
+.btn.p{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.btn.q{border-color:transparent;background:none;color:var(--muted)}
+.btn.big{height:36px;padding:0 18px;font-size:14px}
+.sw{width:32px;height:18px;border-radius:9px;background:var(--line);position:relative;flex:none}.sw::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.sw.on{background:var(--accent)}.sw.on::after{left:16px}
+.seg{display:inline-flex;border:1px solid var(--line);background:var(--accent-tint);border-radius:6px;padding:2px;font-size:13px}.seg span{padding:3px 10px;border-radius:4px;color:var(--muted)}.seg span.on{background:var(--surface);color:var(--text);box-shadow:0 0 0 1px var(--line)}
+.sel{height:30px;border:1px solid var(--line);border-radius:6px;background:var(--surface);display:inline-flex;align-items:center;padding:0 10px;gap:8px;font-size:13px}.sel::after{content:"";width:6px;height:6px;border-right:1.4px solid var(--icon);border-bottom:1.4px solid var(--icon);transform:rotate(45deg) translateY(-2px)}
+.swatches{display:flex;gap:8px}.swatches i{width:22px;height:22px;border-radius:50%;display:block}.swatches i.on{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--text)}
+.bi{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;color:#fff;font-weight:600;font-size:14px;flex:none}
+.tag{font-size:12px;border:1px solid var(--line);border-radius:4px;padding:0 6px;color:var(--muted);white-space:nowrap}
+.check{width:20px;height:20px;border-radius:50%;background:var(--accent);display:grid;place-items:center;flex:none;position:relative}.check::after{content:"";width:8px;height:4px;border-left:1.6px solid #fff;border-bottom:1.6px solid #fff;transform:rotate(-45deg) translate(1px,-1px)}
+.more{background:var(--accent-tint);padding:12px 16px 14px 60px}
+.picks{display:flex;flex-wrap:wrap;gap:8px}
+.pick{height:30px;border:1px solid var(--line);background:var(--surface);border-radius:6px;display:inline-flex;align-items:center;gap:8px;padding:0 10px;font-size:13px}
+.pick .cb{width:14px;height:14px;border-radius:4px;border:1px solid var(--line)}
+.pick.on .cb{background:var(--accent);border-color:var(--accent);position:relative}.pick.on .cb::after{content:"";position:absolute;left:3px;top:3.5px;width:6px;height:3px;border-left:1.5px solid #fff;border-bottom:1.5px solid #fff;transform:rotate(-45deg)}
+.pick em{font-style:normal;color:var(--muted)}
+.bar6{height:4px;border-radius:2px;background:var(--accent-tint);overflow:hidden;width:120px}.bar6 i{display:block;height:100%;background:var(--accent)}
+.note{position:absolute;background:#fff8d6;border:1px solid #e8d48a;color:#5b4a00;font-size:12px;padding:6px 10px;border-radius:6px;max-width:250px;line-height:1.35;z-index:5}
+
+/* Style cards */
+.shells{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.sh{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:6px 6px 8px;font-size:13px}
+.sh img{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;object-position:top left;border-radius:4px;border:1px solid var(--line)}
+.sh div{padding:6px 4px 0;display:flex;justify-content:space-between}
+.sh.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.sh.small{opacity:1}
+
+/* The welcome page */
+.mark{width:88px;height:88px;border-radius:22px;background:var(--frame);display:grid;place-items:center;margin:0 auto 24px}
+.mark i{width:48px;height:36px;border:3px solid #fff;border-radius:6px;position:relative}.mark i::before{content:"";position:absolute;left:12px;top:0;bottom:0;border-left:3px solid #fff}
+
+/* Tips */
+.tips{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.tip{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px}
+.tip .pic{height:84px;border-radius:6px;background:var(--accent-tint);margin-bottom:10px;position:relative;overflow:hidden}
+.kbd{font-size:12px;border:1px solid var(--line);border-radius:4px;padding:0 5px;color:var(--muted);background:var(--surface)}
+
+/* macOS's own dialog over the page */
+.sys{position:absolute;width:260px;background:rgba(246,246,246,.98);border-radius:12px;box-shadow:0 20px 50px rgba(0,0,0,.3),0 0 0 .5px rgba(0,0,0,.2);padding:18px 16px 14px;text-align:center;font-size:13px;z-index:4}
+.sys .ic{width:48px;height:48px;border-radius:12px;background:var(--frame);margin:0 auto 10px}
+.sys b{display:block;margin-bottom:8px}
+.sys .bt{display:block;height:28px;border-radius:6px;background:#e3e3e3;margin-top:6px;line-height:28px}.sys .bt.p{background:#2f7cf6;color:#fff}
+
+/* Phone */
+.ph{width:412px;height:892px;border-radius:28px;overflow:hidden;position:relative;background:var(--bar);border:1px solid #c8d0d0;flex:none}
+.sb{height:36px;background:var(--frame);color:#fff;font-size:13px;display:flex;align-items:center;padding:0 22px;justify-content:space-between}
+.tb{position:absolute;left:0;right:0;bottom:22px;height:64px;display:flex;align-items:center;gap:6px;padding:0 10px;background:var(--bar);border-top:1px solid var(--line)}
+.tb.topbar{top:36px;bottom:auto;border-top:0;border-bottom:1px solid var(--line)}
+.pill{flex:1;height:44px;border-radius:22px;border:1px solid var(--line);background:var(--surface);display:flex;align-items:center;padding:0 16px;gap:10px;font-size:15px}
+.tc{width:48px;height:48px;display:grid;place-items:center}.tc b{border:2px solid var(--icon);border-radius:5px;font-size:11px;padding:0 5px;color:var(--icon)}
+.tc.m{font-size:20px;color:var(--icon)}
+.nav{position:absolute;bottom:0;left:0;right:0;height:22px;display:grid;place-items:center;background:var(--bar)}.nav i{width:110px;height:4px;border-radius:2px;background:#555}
+.pob{position:absolute;left:0;right:0;top:36px;bottom:86px;display:flex;flex-direction:column;padding:0 20px}
+.pob.tbtop{top:100px;bottom:22px}
+.pob .steps{margin:20px auto 0}
+.pob h1{font-size:24px;margin-top:28px}
+.pob .grow{flex:1}
+.pob .fbtn{height:48px;border-radius:10px;background:var(--accent);color:var(--on-accent);font-weight:500;font-size:16px;display:grid;place-items:center;margin-bottom:8px}
+.pob .fq{height:48px;display:grid;place-items:center;color:var(--muted);font-size:15px;margin-bottom:8px}
+.pob .row{min-height:60px;font-size:15px}
+.pob .sec{font-size:13px}
+.pos{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pos div{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px;text-align:center;font-size:15px}
+.pos div.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.mini{height:200px;border-radius:8px;background:var(--bar);border:1px solid var(--line);position:relative;margin-bottom:10px;overflow:hidden}
+.mini .pg{position:absolute;left:8px;right:8px;background:#fff;border-radius:4px}
+.mini .pb{position:absolute;left:8px;right:8px;height:22px;border-radius:11px;background:#fff;border:1px solid var(--line)}
+.sheetsys{position:absolute;left:12px;right:12px;bottom:30px;background:#f2f4f4;border-radius:24px;padding:22px 20px 14px;box-shadow:0 -4px 30px rgba(0,0,0,.25);z-index:4;font-size:15px}
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.35);z-index:3}
+.label{font:600 15px -apple-system,Arial;margin:0 0 8px;color:#445}
+</style></head><body>
+
+<!-- ============ DESKTOP ============ -->
+<template id="window">
+ <div class="top"><div class="dots"><i></i><i></i><i></i></div>
+  <div class="ib"><svg viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10" rx="2"/><path d="M6 3v10"/></svg></div>
+  <div class="ib dim"><svg viewBox="0 0 16 16"><path d="M10 3 5 8l5 5"/></svg></div>
+  <div class="ib dim"><svg viewBox="0 0 16 16"><path d="m6 3 5 5-5 5"/></svg></div>
+  <div class="ib"><svg viewBox="0 0 16 16"><path d="M13 8a5 5 0 1 1-1.5-3.5M13 3v3h-3"/></svg></div>
+  <div class="field"><div class="slot"><svg viewBox="0 0 16 16"><path d="M8 2.5 9.6 6l3.9.4-2.9 2.6.8 3.8L8 10.9 4.6 12.8l.8-3.8L2.5 6.4 6.4 6z"/></svg></div><div class="t">Welcome</div><div class="x">✕</div></div>
+  <div class="ib"><svg viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10" rx="2"/><path d="M2 6h12"/></svg></div>
+  <div class="ib"><svg viewBox="0 0 16 16"><path d="M3 4.5h10M3 8h10M3 11.5h10"/></svg></div>
+ </div>
+ <div class="side">
+  <div class="tab new"><svg viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></svg>New Tab<span>⌘T</span></div>
+  <div class="tab act"><svg viewBox="0 0 16 16" style="color:var(--icon)"><path d="M8 2.5 9.6 6l3.9.4-2.9 2.6.8 3.8L8 10.9 4.6 12.8l.8-3.8L2.5 6.4 6.4 6z"/></svg>Welcome</div>
+ </div>
+</template>
+
+<!-- 1 Welcome -->
+<div class="mock" id="d1"><div class="win"><div class="page">
+ <div class="ob" style="justify-content:center">
+  <div style="text-align:center;margin-top:-40px">
+   <div class="mark"><i></i></div>
+   <h1 style="font-size:30px">Welcome to Project B</h1>
+   <p class="lead" style="font-size:15px;margin-bottom:32px">A browser you shape to fit.</p>
+   <span class="btn p big">Get started</span>
+   <div style="margin-top:14px"><span class="btn q">Skip setup</span></div>
+  </div>
+ </div>
+</div></div></div>
+
+<!-- 2 Bring your things over: choosing -->
+<div class="mock" id="d2"><div class="win"><div class="page">
+ <div class="ob">
+  <div class="steps"><i class="d"></i><i class="c"></i><i></i><i></i><i></i></div>
+  <div class="col">
+   <h1>Bring your things over</h1>
+   <p class="lead">Found on this Mac. Nothing leaves it.</p>
+   <div class="card">
+    <div class="row"><span class="bi" style="background:#1a73e8">C</span><div class="lab"><b>Chrome · Personal</b><span class="sec">412 bookmarks · 8,210 pages · 36 passwords · 9 tabs</span></div><span class="sw on"></span></div>
+    <div class="more">
+     <div class="picks">
+      <span class="pick on"><span class="cb"></span>Bookmarks <em>412</em></span>
+      <span class="pick on"><span class="cb"></span>History <em>8,210</em></span>
+      <span class="pick on"><span class="cb"></span>Passwords <em>36</em></span>
+      <span class="pick on"><span class="cb"></span>Open tabs <em>9</em></span>
+      <span class="pick on"><span class="cb"></span>Search engine <em>Google</em></span>
+      <span class="pick"><span class="cb"></span>Extensions <em>5</em></span>
+     </div>
+    </div>
+    <div class="row"><span class="bi" style="background:#1a73e8">C</span><div class="lab"><b>Chrome · Work</b><span class="sec">88 bookmarks · 2,904 pages · 12 passwords</span></div><span class="sw"></span></div>
+    <div class="row"><span class="bi" style="background:#fc5c7d">A</span><div class="lab"><b>Arc</b><span class="sec">Pinned tabs and Spaces · 1,120 pages · 4 passwords</span></div><span class="sw"></span></div>
+    <div class="row"><span class="bi" style="background:#ff7139">F</span><div class="lab"><b>Firefox · default-release</b><span class="sec">120 bookmarks · 640 pages</span></div><span class="sw"></span></div>
+    <div class="row"><span class="bi" style="background:#1e90ff">S</span><div class="lab"><b>Safari</b><span class="sec">Needs Full Disk Access, once</span></div><span class="btn">Allow…</span></div>
+   </div>
+  </div>
+  <div class="foot"><span class="btn q">Back</span><span class="sp"></span><span class="btn q">Skip</span><span class="btn p">Bring over</span></div>
+ </div>
+</div></div></div>
+
+<!-- 2b Safari: Full Disk Access -->
+<div class="mock" id="d2b"><div class="win"><div class="page">
+ <div class="ob">
+  <div class="steps"><i class="d"></i><i class="c"></i><i></i><i></i><i></i></div>
+  <div class="col">
+   <h1>Allow Safari's things</h1>
+   <p class="lead">macOS keeps Safari's files behind Full Disk Access.</p>
+   <div class="card" style="padding:24px;display:flex;gap:24px;align-items:center">
+    <div style="flex:none;width:300px;border:1px solid var(--line);border-radius:8px;background:#f6f6f6;padding:12px;font-size:12px">
+     <div style="color:#888;margin-bottom:8px">Privacy &amp; Security › Full Disk Access</div>
+     <div style="display:flex;align-items:center;gap:8px;background:#fff;border-radius:6px;padding:8px;border:1px solid #e3e3e3"><span style="width:20px;height:20px;border-radius:5px;background:var(--frame)"></span>Project B<span style="flex:1"></span><span class="sw on" style="background:#2f7cf6"></span></div>
+    </div>
+    <ol style="margin:0;padding-left:18px;line-height:1.9">
+     <li>Turn on <b style="font-weight:500">Project B</b></li>
+     <li>Come back here</li>
+    </ol>
+   </div>
+   <div class="card" style="margin-top:12px"><div class="row"><span class="bar6" style="width:20px;height:20px;border-radius:50%;border:2px solid var(--accent-soft);border-top-color:var(--accent);background:none"></span><div class="lab">Waiting for access…</div><span class="btn">Open System Settings</span></div></div>
+  </div>
+  <div class="foot"><span class="btn q">Back</span><span class="sp"></span><span class="btn q">Not now</span></div>
+ </div>
+</div></div></div>
+
+<!-- 2c Bringing over / done -->
+<div class="mock" id="d2c"><div class="win"><div class="page">
+ <div class="ob">
+  <div class="steps"><i class="d"></i><i class="c"></i><i></i><i></i><i></i></div>
+  <div class="col">
+   <h1>Brought over</h1>
+   <p class="lead">Your bookmarks are under Imported from Chrome.</p>
+   <div class="card">
+    <div class="row"><span class="check"></span><div class="lab">412 bookmarks, in 18 folders</div></div>
+    <div class="row"><span class="check"></span><div class="lab">8,210 pages of history</div></div>
+    <div class="row"><span class="check"></span><div class="lab">36 passwords</div><span class="sec">2 already saved</span></div>
+    <div class="row"><span class="check"></span><div class="lab">9 tabs, in a workspace named Chrome</div></div>
+    <div class="row"><span class="check"></span><div class="lab">Google as the search engine</div></div>
+    <div class="row"><span class="bar6"><i style="width:60%"></i></span><div class="lab">Installing 3 of 5 extensions…</div></div>
+   </div>
+  </div>
+  <div class="foot"><span class="btn q">Back</span><span class="sp"></span><span class="btn p">Continue</span></div>
+ </div>
+</div></div></div>
+
+<!-- 3 Style -->
+<div class="mock" id="d3"><div class="win"><div class="page">
+ <div class="ob">
+  <div class="steps"><i class="d"></i><i class="d"></i><i class="c"></i><i></i><i></i></div>
+  <div class="col" style="width:720px">
+   <h1>Pick your style</h1>
+   <p class="lead">The window changes as you choose.</p>
+   <div class="shells">
+    <div class="sh on"><img src="../standard.png"><div>Tabs on the side<span class="sec">Standard</span></div></div>
+    <div class="sh"><img src="../horizontal.png"><div>Tabs on top<span class="sec">Standard</span></div></div>
+    <div class="sh"><img src="../glide.png"><div>Glide</div></div>
+   </div>
+   <div class="card" style="margin-top:16px">
+    <div class="row"><div class="lab">Theme</div><span class="seg"><span class="on">System</span><span>Light</span><span>Dark</span></span></div>
+    <div class="row"><div class="lab">Colour</div><span class="swatches"><i class="on" style="background:#4f9e9e"></i><i style="background:#0faaaa"></i><i style="background:#5b7fd6"></i><i style="background:#faa804"></i><i style="background:#d82b1f"></i><i style="background:#384562"></i></span></div>
+    <div class="row"><div class="lab">Keys<span class="sec" style="display:block">⌘T, ⌘L, ⌘⇧T and the rest</span></div><span class="seg"><span class="on">Like Chrome</span><span>Project B</span></span></div>
+   </div>
+  </div>
+  <div class="foot" style="width:720px"><span class="btn q">Back</span><span class="sp"></span><span class="btn q">Skip</span><span class="btn p">Continue</span></div>
+ </div>
+</div></div>
+ <div class="note" style="left:20px;top:560px">Choosing a card changes this window at once (Go's shell pref), so the choice is seen, not described. Only the shells we keep up: Standard and Glide. Fox, Minimal and Terminal stay in Settings.</div>
+</div>
+
+<!-- 4 Protection -->
+<div class="mock" id="d4"><div class="win"><div class="page">
+ <div class="ob">
+  <div class="steps"><i class="d"></i><i class="d"></i><i class="d"></i><i class="c"></i><i></i></div>
+  <div class="col">
+   <h1>Protection</h1>
+   <p class="lead">On by default. Each one is in Settings later.</p>
+   <div class="card">
+    <div class="row"><div class="lab"><b>Block ads and trackers</b></div><span class="sw on"></span></div>
+    <div class="row"><div class="lab"><b>Warn about dangerous sites</b><span class="sec">Safe Browsing, checked against Google's list on this Mac</span></div><span class="sw on"></span></div>
+    <div class="row"><div class="lab"><b>Links to other sites</b><span class="sec">A page sending you to another site</span></div><span class="seg"><span class="on">Allow</span><span>Block</span></span></div>
+    <div class="row"><div class="lab"><b>Search engine</b></div><span class="sel">DuckDuckGo</span></div>
+    <div class="row"><div class="lab"><b>Automatic updates</b></div><span class="sw on"></span></div>
+   </div>
+  </div>
+  <div class="foot"><span class="btn q">Back</span><span class="sp"></span><span class="btn q">Skip</span><span class="btn p">Continue</span></div>
+ </div>
+</div></div></div>
+
+<!-- 5 Finish -->
+<div class="mock" id="d5"><div class="win"><div class="page">
+ <div class="ob">
+  <div class="steps"><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="c"></i></div>
+  <div class="col" style="width:720px">
+   <h1>You're set</h1>
+   <p class="lead">Three things worth knowing.</p>
+   <div class="tips">
+    <div class="tip"><div class="pic"><div style="position:absolute;left:14px;right:14px;top:30px;height:26px;border:1px solid var(--accent);background:#fff;border-radius:6px;font-size:11px;color:var(--muted);padding:5px 8px">Search tabs, history, actions…</div></div><b style="font-weight:500">The command box</b><div class="sec">Tabs, history and actions in one place <span class="kbd">⌘T</span></div></div>
+    <div class="tip"><div class="pic"><div style="position:absolute;left:14px;top:14px;width:22px;height:22px;background:#fff;border:1px solid var(--line);border-radius:5px"></div><div style="position:absolute;left:14px;top:40px;width:130px;height:40px;background:#fff;border:1px solid var(--line);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.08)"></div></div><b style="font-weight:500">The site panel</b><div class="sec">Ads blocked, links and permissions, per site</div></div>
+    <div class="tip"><div class="pic"><span style="position:absolute;left:14px;top:18px;width:10px;height:10px;border-radius:5px;background:#3470d0"></span><span style="position:absolute;left:30px;top:15px;font-size:12px">Work</span><span style="position:absolute;left:14px;top:40px;width:10px;height:10px;border-radius:5px;background:#d82b1f"></span><span style="position:absolute;left:30px;top:37px;font-size:12px">Personal</span></div><b style="font-weight:500">Workspaces</b><div class="sec">Separate sets of tabs, a colour each <span class="kbd">⌃1</span></div></div>
+   </div>
+   <div class="card" style="margin-top:20px"><div class="row"><span class="bi" style="background:var(--frame)"></span><div class="lab"><b>Make Project B your default browser</b><span class="sec">Links from Mail, Slack and other apps open here</span></div><span class="btn">Make default</span></div></div>
+  </div>
+  <div class="foot" style="width:720px"><span class="btn q">Back</span><span class="sp"></span><span class="btn p big">Start browsing</span></div>
+ </div>
+</div></div>
+ <div class="sys" style="left:610px;top:430px"><div class="ic"></div><b>Do you want to change your default web browser to "Project B" or keep "Google Chrome"?</b><span class="bt p">Use "Project B"</span><span class="bt">Keep "Google Chrome"</span></div>
+ <div class="note" style="left:20px;top:600px">macOS asks this itself after Make default; the row turns into "Project B is your default browser" with a check.</div>
+</div>
+
+<!-- Settings: Import and Run setup again -->
+<div class="mock" id="d6"><div class="win"><div class="page" style="padding:24px 0 0 0">
+ <div style="display:flex;gap:20px;padding:0 24px">
+  <div style="width:180px;font-size:14px">
+   <div class="tab">General</div><div class="tab">Workspaces</div><div class="tab">Keyboard</div><div class="tab" style="background:var(--accent-soft)">Import</div><div class="tab">Flags</div>
+  </div>
+  <div style="width:720px">
+   <div class="card">
+    <div class="row"><span class="bi" style="background:#1a73e8">C</span><div class="lab"><b>Chrome · Personal</b><span class="sec">Brought over today: 412 bookmarks, 8,210 pages, 36 passwords</span></div><span class="btn">Import…</span></div>
+    <div class="row"><span class="bi" style="background:#1a73e8">C</span><div class="lab"><b>Chrome · Work</b><span class="sec">88 bookmarks · 2,904 pages · 12 passwords</span></div><span class="btn">Import…</span></div>
+    <div class="row"><span class="bi" style="background:#fc5c7d">A</span><div class="lab"><b>Arc</b><span class="sec">1,120 pages · 4 passwords</span></div><span class="btn">Import…</span></div>
+    <div class="row"><span class="bi" style="background:#ff7139">F</span><div class="lab"><b>Firefox · default-release</b><span class="sec">120 bookmarks · 640 pages</span></div><span class="btn">Import…</span></div>
+    <div class="row"><span class="bi" style="background:#1e90ff">S</span><div class="lab"><b>Safari</b><span class="sec">Needs Full Disk Access, once</span></div><span class="btn">Allow…</span></div>
+   </div>
+   <h2>Setup</h2>
+   <div class="card"><div class="row"><div class="lab">The first-run pages</div><span class="btn">Run setup again</span></div></div>
+  </div>
+ </div>
+</div></div>
+ <div class="note" style="left:960px;top:120px">Import… opens the same choices as the first run's row, in a Dialog. Import is a section of its own; Run setup again opens the Welcome tab.</div>
+</div>
+
+<!-- ============ PHONE ============ -->
+<template id="phonebar">
+ <div class="tb"><div class="tc m">⌂</div><div class="pill"><span style="color:var(--icon)">★</span>Welcome</div><div class="tc"><b>1</b></div><div class="tc m">⋮</div></div>
+ <div class="nav"><i></i></div>
+</template>
+
+<div class="mock" id="p1"><div class="pair">
+ <!-- 1 Welcome -->
+ <div class="ph"><div class="sb"><span>9:41</span><span>▾ ▮</span></div>
+  <div class="pob" style="justify-content:center;text-align:center">
+   <div class="grow"></div>
+   <div class="mark"><i></i></div>
+   <h1 style="font-size:28px;margin-top:0">Welcome to Project B</h1>
+   <p class="lead" style="font-size:16px">A browser you shape to fit.</p>
+   <div class="grow"></div>
+   <div class="fbtn">Get started</div><div class="fq">Skip setup</div>
+  </div><span class="phonebar"></span></div>
+ <!-- 2 Address bar -->
+ <div class="ph"><div class="sb"><span>9:41</span><span>▾ ▮</span></div>
+  <div class="pob">
+   <div class="steps"><i class="c"></i><i></i><i></i><i></i></div>
+   <h1>Where's the address bar?</h1>
+   <p class="lead" style="font-size:15px">It moves as you choose.</p>
+   <div class="pos">
+    <div class="on"><div class="mini"><div class="pg" style="top:8px;bottom:40px"></div><div class="pb" style="bottom:9px"></div></div>Bottom</div>
+    <div><div class="mini"><div class="pb" style="top:9px"></div><div class="pg" style="top:40px;bottom:8px"></div></div>Top</div>
+   </div>
+   <div class="grow"></div>
+   <div class="fbtn">Continue</div>
+  </div><span class="phonebar"></span></div>
+ <!-- 3 Search and ads -->
+ <div class="ph"><div class="sb"><span>9:41</span><span>▾ ▮</span></div>
+  <div class="pob">
+   <div class="steps"><i class="d"></i><i class="c"></i><i></i><i></i></div>
+   <h1>Search and protection</h1>
+   <p class="lead" style="font-size:15px">Each one is in Settings later.</p>
+   <h2 style="font-size:14px">Search with</h2>
+   <div class="card">
+    <div class="row"><div class="lab">DuckDuckGo</div><span class="check"></span></div>
+    <div class="row"><div class="lab">Google</div></div>
+    <div class="row"><div class="lab">Bing</div></div>
+   </div>
+   <div class="card" style="margin-top:16px">
+    <div class="row"><div class="lab"><b>Block ads and trackers</b></div><span class="sw on"></span></div>
+    <div class="row"><div class="lab"><b>Warn about dangerous sites</b></div><span class="sw on"></span></div>
+   </div>
+   <div class="grow"></div>
+   <div class="fbtn">Continue</div>
+  </div><span class="phonebar"></span></div>
+</div></div>
+
+<div class="mock" id="p2"><div class="pair">
+ <!-- 4 Default browser, Android's sheet -->
+ <div class="ph"><div class="sb"><span>9:41</span><span>▾ ▮</span></div>
+  <div class="pob">
+   <div class="steps"><i class="d"></i><i class="d"></i><i class="c"></i><i></i></div>
+   <h1>Open links here</h1>
+   <p class="lead" style="font-size:15px">Links from other apps open in Project B.</p>
+   <div class="grow"></div>
+   <div class="fbtn">Make default</div><div class="fq">Not now</div>
+  </div><span class="phonebar"></span>
+  <div class="scrim"></div>
+  <div class="sheetsys"><div style="font-size:20px;margin-bottom:6px">Set Project B as your default browser app?</div><div style="color:#555;font-size:14px;margin-bottom:14px">Currently: Chrome</div>
+   <div style="display:flex;align-items:center;gap:14px;padding:10px 0"><span style="width:36px;height:36px;border-radius:10px;background:var(--frame)"></span>Project B<span style="flex:1"></span><span style="width:20px;height:20px;border-radius:50%;border:6px solid #2f6fd6"></span></div>
+   <div style="display:flex;justify-content:flex-end;gap:28px;color:#2f6fd6;font-weight:500;padding-top:10px">Cancel<span>Set as default</span></div></div>
+ </div>
+ <!-- 5 Notifications -->
+ <div class="ph"><div class="sb"><span>9:41</span><span>▾ ▮</span></div>
+  <div class="pob">
+   <div class="steps"><i class="d"></i><i class="d"></i><i class="d"></i><i class="c"></i></div>
+   <h1>Know when downloads finish</h1>
+   <p class="lead" style="font-size:15px">A notification with Open, nothing else.</p>
+   <div class="card" style="padding:14px;display:flex;gap:12px;align-items:center;margin-top:12px"><span style="width:28px;height:28px;border-radius:50%;background:var(--frame);flex:none"></span><div class="lab" style="font-size:14px"><b>report-q3.pdf</b><span class="sec">Download complete · Open</span></div></div>
+   <div class="grow"></div>
+   <div class="fbtn">Allow notifications</div><div class="fq">Not now</div>
+  </div><span class="phonebar"></span></div>
+ <!-- 6 Done -->
+ <div class="ph"><div class="sb"><span>9:41</span><span>▾ ▮</span></div>
+  <div class="pob" style="text-align:center">
+   <div class="grow"></div>
+   <div class="check" style="width:64px;height:64px;margin:0 auto 20px;transform:none"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="position:absolute"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+   <h1 style="margin-top:0">You're set</h1>
+   <p class="lead" style="font-size:15px">Swipe the bar for your other tabs.</p>
+   <div class="grow"></div>
+   <div class="fbtn">Start browsing</div>
+  </div><span class="phonebar"></span></div>
+</div></div>
+
+<script>
+const m = new URLSearchParams(location.search).get('m') || 'd1';
+const w = document.getElementById('window').innerHTML;
+document.querySelectorAll('.win').forEach((el) => el.insertAdjacentHTML('afterbegin', w));
+const pb = document.getElementById('phonebar').innerHTML;
+document.querySelectorAll('.phonebar').forEach((el) => (el.outerHTML = pb));
+document.getElementById(m).classList.add('on');
+</script>
+</body></html>
