@@ -89,6 +89,14 @@ Take an item off when it lands or is dropped.
   extension pages. Contract tests, the same scenarios run against the mock and the real
   engine, are how a gap gets found and closed.
 
+## The standard shell
+
+- See the command box over a page in the real app (0.2.69 on): the page through the 80%
+  scrim, light and dark. Seen on the mock only.
+- For the owner: a pinned tab is marked only by its place, first with a rule after the pins.
+  A pin glyph on the row is the next step if that's not enough; recommended to wait for his
+  use of it.
+
 ## Small fixes
 
 - The first real click after leaving full screen doesn't land; keys work.
