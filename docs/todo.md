@@ -159,14 +159,18 @@ Take an item off when it lands or is dropped.
   SHELL_CRASHED and waits for its ready). A shutdown and reload, the first try (`shell-attach`,
   4a58733e), can't work: content can't stop a launch it is still waiting on
   (`ChildProcessLauncher::Terminate` returns false while starting), so the reload went back to
-  the stuck process. To check it, freeze the shell's renderer before it attaches, from a loop on
-  the device (from the Mac, adb's round trips come too late, and a renderer stopped after it
-  attached only hangs): `tools/android-attach-check.sh` (`S=` the emulator, `APK=` to install
-  one first).
-  On Android 17 (emu-37, 2026-11-17) the branch shows the shell again at +21 to 22 s, 3 of 3,
-  and 0.2.75 never does, 2 of 2. Android 14 counts that process as attached and kills it with a
-  service ANR at 20 s, which content hears, so 0.2.74 comes back there too, at +36 s against
-  +20 s: Android 17 is the real check. Once this lands, take the item off.
+  the stuck process. It has been seen working on the real failure: 0.2.76's release run on
+  emu-37 (2026-11-17, `next76/attach.txt` run 1) had Android kill the shell's renderer for
+  "failed to attach" at 10 s, the watch fire at 15.4 s, a new renderer start 23 ms later and
+  the app ready at 15.5 s. There's no reliable way to bring the race on yet: it came under
+  load (a script polling processes hard), not on demand. `tools/android-attach-check.sh`
+  starts the app under such load and reads each run's log, passing only runs where the race
+  came and the shell showed again; it says "inconclusive" when the race never came. Freezing
+  the renderer instead (SIGSTOP) doesn't model the failure: one stopped after it bound its
+  service blocks the browser's calls into it, so the GPU process's setup waits and the browser
+  dies on "Timed out waiting for GPU channel" (0.2.76's run, runs 2 and 3), and one killed after
+  it bound is heard as a crash and recovers without the watch. Once this lands, take the item
+  off.
 - Closing a tab (Cmd+W) takes Go's part of the span about 3.4 ms at 10 tabs and 3.8 at 50 on
   0.2.70 (`tools/bench/tabs.py`, 2026-11-16), against 0.3 to 0.7 in 0.2.64. It isn't Go's own
   work: that is 126 µs for an open and a close on `core/perf`'s rig, where the engine does
