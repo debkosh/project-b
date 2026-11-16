@@ -97,6 +97,30 @@ Take an item off when it lands or is dropped.
   A pin glyph on the row is the next step if that's not enough; recommended to wait for his
   use of it.
 
+## Shells, the contract and the shell menu
+
+- **The shell menu in the other shells.** Standard's ☰ and Mobile's ⋯ draw Go's menu
+  ([menus-shortcuts.md](menus-shortcuts.md#the-shells-menu)); Fox, Minimal, Terminal and Glide
+  still have a Settings button or a menu of their own. Next: move Standard's `AppMenu.vue` to
+  `shell/src/ui` for Fox and Terminal; a Svelte one for Minimal and Glide. Ask the owner whether
+  each shell should have it (recommended: yes, it is the "everything you can do" menu).
+- **A submenu's own submenu** shows as its items between lines in the shared menu (View's
+  Shell). Make `ui/ContextMenu.vue` open a third level only if the owner asks.
+- **Pinned tabs, later steps** ([windows.md](windows.md#pinned-tabs)): reordering pins, a pin
+  that follows its tab, extensions seeing `pinned`, and a contract rule (40 to 49 are free for
+  it), once more shells draw pins.
+- **Rules not yet met:** rule 19 (our tab's title) by Glide and mobile-native; rule 30's
+  prompt by Glide, Mobile and mobile-native; the lists in `shell/e2e/shell-contract.cjs` name who
+  brings each.
+- **Minimal's Svelte parts are ports** of the shared Vue ones (`PageDialog`, `PageMenu`,
+  `Downloads`, `FindBar`): a change to one is made to the other, or both become shared Svelte
+  parts once a second Svelte shell wants them.
+- **The memory bench's GPU figure swings.** `tools/bench/memory.py` reads macOS's footprint,
+  which counts the GPU process's purgeable graphics memory (about 640 MB) only when it isn't
+  volatile at the sample: the same build read 821 MB and then 38 MB. Read the footprint by
+  category without the reclaimable graphics memory, or take several samples, before trusting
+  a GPU number.
+
 ## Small fixes
 
 - The first real click after leaving full screen doesn't land; keys work.
