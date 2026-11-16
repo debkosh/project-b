@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "base/memory/weak_ptr.h"
+#include "base/timer/timer.h"
 #include "build/build_config.h"
 #include "content/public/browser/web_contents_observer.h"
 #include "project_b/engine/browser/hooks_gen.h"
@@ -56,6 +57,12 @@ class ShellPage : public content::WebContentsObserver,
   void PrimaryMainFrameRenderProcessGone(
       base::TerminationStatus status) override;
 
+  // Watches a load of the shell's page until it commits: one whose renderer never
+  // attaches (Android kills a sandboxed process that doesn't attach within ten seconds,
+  // and the browser hears nothing) is taken as a dead renderer, and the page reloads.
+  void Watch();
+  void Unattached();
+
   // content::WebContentsDelegate:
   content::WebContents* hook_contents() const override;
   content::KeyboardEventProcessingResult PreHandleKeyboardEvent(
@@ -68,6 +75,9 @@ class ShellPage : public content::WebContentsObserver,
   const int64_t window_;
   std::string page_;
   std::unique_ptr<content::WebContents> contents_;
+  base::OneShotTimer watch_;
+  // How many times the renderer has gone, to tell whether a shutdown reached us as one.
+  int gone_ = 0;
   base::WeakPtrFactory<ShellPage> weak_factory_{this};
 };
 

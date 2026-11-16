@@ -27,6 +27,8 @@
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/render_frame_host.h"
+#include "content/public/browser/render_process_host.h"
+#include "content/public/common/result_codes.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/url_data_source.h"
 #include "content/public/browser/web_contents.h"
@@ -408,6 +410,39 @@ void ShellPage::Load() {
   contents_->GetController().LoadURLWithParams(
       content::NavigationController::LoadURLParams(
           GURL("chrome://" + page_ + "/")));
+  Watch();
+}
+
+// Longer than Android gives a sandboxed process to attach, so the system has killed one that
+// didn't by then; a renderer that attached and is only slow is left to finish.
+constexpr base::TimeDelta kAttachWait = base::Seconds(15);
+
+void ShellPage::Watch() {
+  watch_.Start(FROM_HERE, kAttachWait,
+               base::BindOnce(&ShellPage::Unattached, base::Unretained(this)));
+}
+
+void ShellPage::Unattached() {
+  content::RenderProcessHost* process =
+      contents_->GetPrimaryMainFrame()->GetProcess();
+  if (process->IsReady()) {
+    Watch();
+    return;
+  }
+  timeline::Mark("shell.unattached");
+  const int gone = gone_;
+  process->Shutdown(content::RESULT_CODE_KILLED);
+  // Content tells of a process that never started as gone only when its page was live; one
+  // it didn't tell of goes the same way here.
+  content::GetUIThreadTaskRunner({})->PostTask(
+      FROM_HERE, base::BindOnce(
+                     [](base::WeakPtr<ShellPage> self, int gone) {
+                       if (self && self->gone_ == gone) {
+                         self->PrimaryMainFrameRenderProcessGone(
+                             base::TERMINATION_STATUS_LAUNCH_FAILED);
+                       }
+                     },
+                     weak_factory_.GetWeakPtr(), gone));
 }
 
 void ShellPage::SetPage(const std::string& page) {
@@ -441,6 +476,9 @@ void ShellPage::RenderFrameCreated(content::RenderFrameHost* frame) {
 // only once it has drawn a layout that places them.
 void ShellPage::DidFinishNavigation(content::NavigationHandle* handle) {
   timeline::PageCommitted(app(), handle);
+  if (handle->IsInPrimaryMainFrame() && handle->HasCommitted()) {
+    watch_.Stop();
+  }
 #if !BUILDFLAG(IS_ANDROID)
   if (handle->IsInPrimaryMainFrame() && handle->HasCommitted() &&
       !handle->IsSameDocument()) {
@@ -454,6 +492,7 @@ void ShellPage::DidFinishNavigation(content::NavigationHandle* handle) {
 // nothing of the shell is drawn around it.
 void ShellPage::PrimaryMainFrameRenderProcessGone(
     base::TerminationStatus status) {
+  gone_++;
 #if !BUILDFLAG(IS_ANDROID)
   Engine::Get()->ShellGone(window_);
 #endif
@@ -469,6 +508,7 @@ void ShellPage::PrimaryMainFrameRenderProcessGone(
                        if (self) {
                          self->contents_->GetController().Reload(
                              content::ReloadType::NORMAL, false);
+                         self->Watch();
                        }
                      },
                      weak_factory_.GetWeakPtr()));
