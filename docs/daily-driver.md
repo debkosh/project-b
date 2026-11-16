@@ -523,6 +523,11 @@ on the address field starts typing. A long press on a tile shows a × on each, w
 that site out of history, every page of it (`forgetSite {url}`); a tap elsewhere ends that.
 The page goes as soon as the tab starts loading anything.
 
+**Checked** on the mock by the mobile and Standard suites and the contract, and on an
+Android 16 emulator, 2026-11-17: a new tab shows the tiles by host and the newest bookmark
+with the keyboard down, a long press shows each tile's ×, and All bookmarks and History open
+those pages, which the APK now carries as it carries Settings and Downloads.
+
 **Not built:** pinned or edited tiles, and a background picture. Glide and the other shells
 keep what they had.
 
