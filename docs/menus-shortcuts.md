@@ -341,7 +341,7 @@ neither. Policy sits on top of the current file and is never written into it.
 The default tree is `core/commands/templates/menu/project-b.json`. The keymap templates
 `project-b.json` and `chrome.json` are the same for now. The tree has only actions that
 work today; Chrome actions for features we don't have are added with their feature
-(private windows, split view, tab groups, printing, bookmarks, the history and downloads
+(private windows, split view, tab groups, bookmarks, the history and downloads
 pages, profiles, extensions, spelling, the task manager, Cast, Translate, the Google
 services). Keys are Chrome's Mac keys; `*` marks the ones reserved outside full screen.
 
@@ -354,7 +354,7 @@ there. Choosing it is the user's, in Keyboard settings; the shell doesn't choose
   Services; Hide Project B, Cmd+H; Hide Others, Option+Cmd+H; Show All; Quit Project B,
   Cmd+Q (locked).
 - **File**: New Tab, Cmd+T*; New Window, Cmd+N*; Open Location…, Cmd+L; Close Window,
-  Shift+Cmd+W*; Close Tab, Cmd+W*.
+  Shift+Cmd+W*; Close Tab, Cmd+W*; Print…, Cmd+P, `"shell": "top"`.
 - **Edit** (locked): Undo, Cmd+Z; Redo, Shift+Cmd+Z; Cut, Copy, Paste; Paste and Match
   Style, Shift+Cmd+V and Option+Shift+Cmd+V; Delete; Select All, Cmd+A.
 - **View**: Tabs on Side, Tabs on Top (checked); Shell, the list `shells` (checked); Stop, Cmd+.; Reload This Page, Cmd+R;
@@ -402,6 +402,11 @@ what doesn't make sense there; approved as built, with the defaults below.
   which the open menu has taken (Undo, Redo, Cut, Copy, Paste, Paste and Match Style,
   Delete, Select All, Find Next and Previous, Keyboard's pane focus), and stepping through
   tabs (Select Next and Previous Tab, Select Recent Tab, Select Tab 1 to 9).
+- **Lifted to the top.** An entry marked `"shell": "top"` stays where it is in the menu bar,
+  and the shell's menu shows it at its own top level, just after the menu that holds it. The
+  owner, 2026-11-16: "print can be under file in system menu.. but for app menu it can be
+  direct... our menu data structure should somehow encode this". Print… is the first: under
+  File in the menu bar, one press away in Standard's ☰ and the phone's ⋯ sheet.
 - **A phone** leaves out the entries marked `"desktop": true`: New Window, Close Window, Tabs on
   Side and on Top, Full Screen, the zooms, Move Tab to New Window.
 - **Shells' own actions** show only the shell's, as in the menu bar while it is on.

@@ -109,9 +109,17 @@ type Node struct {
 	Scope string `json:"scope,omitempty"`
 	// Desktop leaves the entry out of a phone shell's menu: a phone has one window, and no
 	// tab layout, full screen or zoom of its own to choose.
-	Desktop bool   `json:"desktop,omitempty"`
-	Items   []Node `json:"items,omitempty"`
+	Desktop bool `json:"desktop,omitempty"`
+	// Shell places the entry differently in the shell's menu than in the menu bar:
+	// ShellTop lifts it out of its submenu to the shell's menu's top level, just after the
+	// menu that holds it, as Print is under File in the menu bar and one press away in the
+	// shell's menu.
+	Shell string `json:"shell,omitempty"`
+	Items []Node `json:"items,omitempty"`
 }
+
+// ShellTop is Node.Shell for an entry the shell's menu shows at its top level.
+const ShellTop = "top"
 
 // The scopes of the entries that stay in the menu bar.
 const (

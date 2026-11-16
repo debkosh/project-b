@@ -17,28 +17,38 @@ type ShellItem struct {
 // entries for this window and its profile (Node.Scope), on a phone without the desktop's,
 // and of the shells' own actions only the shell's, whose id is shell. The menu bar's menus
 // are its submenus, but the program's own, whose items come first; a submenu left with one
-// item is that item, and lists are their items.
+// item is that item, and lists are their items. An entry marked ShellTop leaves its submenu
+// for the top level, just after the menu it was in.
 func (m *Manager) ShellMenu(shell string, phone bool) []ShellItem {
 	var out []ShellItem
 	for _, n := range m.tree {
-		items := m.shellItems(n.Items, n.Scope, shell, phone)
+		var top []ShellItem
+		items := m.shellItems(n.Items, n.Scope, shell, phone, &top)
 		if n.Role == "app" {
 			out = append(out, items...)
-			if len(items) > 0 {
+			out = append(out, top...)
+			if len(items)+len(top) > 0 {
 				out = append(out, ShellItem{Separator: true})
 			}
 			continue
 		}
-		if sub, ok := m.shellSub(n, n.Scope, shell, phone); ok {
+		if sub, ok := shellSub(n, items); ok {
 			out = append(out, sub)
 		}
+		out = append(out, top...)
 	}
 	return tidy(out)
 }
 
-func (m *Manager) shellItems(nodes []Node, scope, shell string, phone bool) []ShellItem {
+// shellItems is what nodes show in the shell's menu, each lifted to its top level added to
+// top instead.
+func (m *Manager) shellItems(nodes []Node, scope, shell string, phone bool, top *[]ShellItem) []ShellItem {
 	var out []ShellItem
 	for _, n := range nodes {
+		dest := &out
+		if n.Shell == ShellTop {
+			dest = top
+		}
 		s := scope
 		if n.Scope != "" {
 			s = n.Scope
@@ -48,10 +58,10 @@ func (m *Manager) shellItems(nodes []Node, scope, shell string, phone bool) []Sh
 		}
 		switch {
 		case n.Separator:
-			out = append(out, ShellItem{Separator: true})
+			*dest = append(*dest, ShellItem{Separator: true})
 		case n.List != "":
 			for _, it := range m.ListItems(n.List) {
-				out = append(out, ShellItem{Title: it.Title, Action: it.Action, Enabled: true, Checked: it.Checked})
+				*dest = append(*dest, ShellItem{Title: it.Title, Action: it.Action, Enabled: true, Checked: it.Checked})
 			}
 		case n.Action != "":
 			a, ok := m.actions[n.Action]
@@ -62,21 +72,20 @@ func (m *Manager) shellItems(nodes []Node, scope, shell string, phone bool) []Sh
 			if a.Label != nil {
 				title = a.Label()
 			}
-			out = append(out, ShellItem{Title: title, Action: a.ID, Enabled: a.Enabled == nil || a.Enabled(), Checked: a.Checked != nil && a.Checked()})
+			*dest = append(*dest, ShellItem{Title: title, Action: a.ID, Enabled: a.Enabled == nil || a.Enabled(), Checked: a.Checked != nil && a.Checked()})
 		default:
-			if sub, ok := m.shellSub(n, s, shell, phone); ok {
-				out = append(out, sub)
+			if sub, ok := shellSub(n, m.shellItems(n.Items, s, shell, phone, top)); ok {
+				*dest = append(*dest, sub)
 			}
 		}
 	}
 	return tidy(out)
 }
 
-// shellSub is a submenu with what it holds, or what it holds alone when that is one action,
+// shellSub is submenu n holding items, or what it holds alone when that is one action,
 // whose title says what it does; none when it holds nothing. A list's item needs its
 // submenu's title, as Main does under New Tab in Workspace.
-func (m *Manager) shellSub(n Node, scope, shell string, phone bool) (ShellItem, bool) {
-	items := m.shellItems(n.Items, scope, shell, phone)
+func shellSub(n Node, items []ShellItem) (ShellItem, bool) {
 	switch {
 	case len(items) == 0:
 		return ShellItem{}, false
