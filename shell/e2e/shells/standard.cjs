@@ -226,6 +226,20 @@ const { check, fire, regions, settle, until } = lib;
   check('Escape gives the window back as it was', await until(async () => JSON.stringify((await regions()).visible[0].rect) === JSON.stringify(before)), JSON.stringify({ before, now: (await regions()).visible[0].rect }));
   check('and the address bar still shows the page\'s address', await until(async () => (await ui.getByRole('combobox', { name: 'Address' }).inputValue()).includes('a.test')), await ui.getByRole('combobox', { name: 'Address' }).inputValue().catch((e) => e.message));
 
+  // The ☰ menu: the menu bar's menus for this window, as Go gives them as it opens
+  // (docs/menus-shortcuts.md, "The shell's menu"), Settings… first, nothing of the whole
+  // program's; a submenu at the pointer; choosing an item runs its action.
+  await ui.getByRole('button', { name: 'Menu', exact: true }).click();
+  const top = ui.getByRole('menu', { name: 'Menu' });
+  check('the ☰ menu opens with Settings… first', await until(async () => (await top.getByRole('menuitem').first().innerText()).startsWith('Settings…')));
+  check('with the menu bar\'s menus, and not Quit', (await Promise.all(['File', 'View', 'History', 'Bookmarks', 'Tab'].map((n) => top.getByRole('menuitem', { name: n, exact: true }).count()))).every((n) => n === 1) &&
+    (await ui.getByRole('menuitem', { name: /^Quit/ }).count()) === 0);
+  await top.getByRole('menuitem', { name: 'View', exact: true }).hover();
+  const zoomIn = ui.getByRole('menuitem', { name: /^Zoom In/ });
+  check('View opens its submenu, with its keys', await until(async () => (await zoomIn.isVisible()) && (await zoomIn.innerText()).includes('⌘')));
+  await top.getByRole('menuitem', { name: /^Downloads/ }).click();
+  check('choosing Downloads runs it: the Downloads page opens, and the menu closes', await until(async () => (await regions()).tabs.some((t) => t.page === 'downloads') && (await top.count()) === 0));
+
   check('no errors', w.errors.length === 0, w.errors.join(' | '));
   await browser.close();
   await lib.done();

@@ -500,9 +500,9 @@ const H = 915;
   await visit('example.com/find', 'https://example.com/find');
   await menuButton.tap();
   await until(() => menu.isVisible());
-  await ui.getByRole('menuitem', { name: 'Find in page' }).tap();
+  await ui.getByRole('menuitem', { name: 'Find…' }).tap();
   const findField = ui.getByRole('textbox', { name: 'Find in page' });
-  check('Find in page in the menu opens the find bar, with the keyboard in it', await until(async () => (await findField.isVisible()) && (await findField.evaluate((el) => el === document.activeElement))));
+  check('Find… in the menu opens the find bar, with the keyboard in it', await until(async () => (await findField.isVisible()) && (await findField.evaluate((el) => el === document.activeElement))));
   const findBox = await ui.getByRole('search', { name: 'Find in page' }).boundingBox();
   const toolBox = await ui.getByRole('group', { name: 'Toolbar' }).boundingBox();
   check('in the toolbar\'s place', Math.abs(findBox.y - toolBox.y) < 1 && Math.abs(findBox.height - toolBox.height) < 1, JSON.stringify({ findBox, toolBox }));
@@ -512,8 +512,22 @@ const H = 915;
   await ui.getByRole('button', { name: 'Close find' }).tap();
   check('its × closes it', await until(async () => (await findField.count()) === 0));
 
-  // Settings, from the menu.
+  // Under the page's actions, the menu bar's menus for this window, as Go gives them
+  // (docs/menus-shortcuts.md, "The shell's menu"): a submenu opens in the sheet, with a row
+  // back; nothing of the whole program's, nor the desktop's.
   await menuButton.tap();
+  await until(() => menu.isVisible());
+  const item = (name) => menu.getByRole('menuitem', { name, exact: true });
+  check('the menu lists the menu bar\'s menus: Settings…, File, View, History, Bookmarks, Tab and Downloads',
+    await until(async () => (await Promise.all(['Settings…', 'File', 'View', 'History', 'Bookmarks', 'Tab', 'Downloads'].map((n) => item(n).count()))).every((n) => n === 1)));
+  check('and nothing of the whole program\'s, such as Quit', (await item('Quit Project B').count()) === 0);
+  await item('View').tap();
+  check('View opens in the sheet, with Reload This Page and a row back', await until(async () => (await item('Reload This Page').isVisible()) && (await menu.getByRole('menuitem', { name: 'Back to the menu' }).isVisible())));
+  check('and without the desktop\'s, such as Full Screen', (await item('Full Screen').count()) === 0);
+  await menu.getByRole('menuitem', { name: 'Back to the menu' }).tap();
+  check('the row back shows the menus again', await until(() => item('File').isVisible()));
+
+  // Settings, from the menu.
   await menu.getByRole('menuitem', { name: 'Settings' }).tap();
   check('Settings in the menu opens the settings tab', await until(async () => (await regions()).settings !== 0 && (await regions()).active === (await regions()).settings));
 
