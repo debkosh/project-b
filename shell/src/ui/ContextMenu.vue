@@ -233,11 +233,22 @@ function onKey(e, inSub) {
   outline: none;
 }
 
-/* Rows are divs, not RowMenu's buttons, so they need the buttons' box. */
-.ui-context-menu .ui-menu-item {
+/* Rows are divs, not RowMenu's buttons, so they need the buttons' box. Compact, as a menu
+   bar's menu is: 26px rows and tight lines, so a long menu fits; a touch screen keeps its
+   finger's rows. */
+.ui-menu.ui-context-menu .ui-menu-item {
   box-sizing: border-box;
+  height: 26px;
   gap: 10px;
   user-select: none;
+}
+
+.touch .ui-menu.ui-context-menu .ui-menu-item {
+  height: 40px;
+}
+
+.ui-menu.ui-context-menu .ui-menu-separator {
+  margin: 3px 0;
 }
 
 .ui-context-menu .ui-menu-item[aria-disabled='true'] {
