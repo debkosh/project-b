@@ -91,9 +91,6 @@ Take an item off when it lands or is dropped.
 
 ## Small fixes
 
-- A page's own full screen (`requestFullscreen()`, such as a video's full-screen button) isn't
-  supported: no tab hook takes the window to full screen, so the page's promise never settles.
-  Supporting it is the fix; how it behaves is for the owner.
 - The first real click after leaving full screen doesn't land; keys work.
 - `tools/vm/check.py` times clicks by pixels, so it measures the VM's display; time inside the
   app instead.
@@ -120,3 +117,20 @@ Take an item off when it lands or is dropped.
   that call. Timeline marks around `CloseTab` would prove it; tearing the renderer down after
   `CloseTab` returns is the fix, if 3 ms ever matters. The Go side's own part, a session
   saved twice per close, is gone (1e5b1932, and 5c9f4e58 in 0.2.70).
+
+## Daily driver
+
+What a browser needs to be used all day ([daily-driver.md](daily-driver.md)).
+
+- **Bookmarks, next steps.** Folders, import from another browser, and bookmarks among the
+  address bar's suggestions. Today the list is flat.
+- **History and Bookmarks on a phone.** The pages work in a desktop tab of ours; the Mobile
+  shells don't reach them yet, nor draw a star.
+- **Retry keeps the name.** A download that starts over can take the next free name
+  ("big (1).bin") when an earlier attempt's file is still there; it should reuse its own.
+- **For the owner:** where a phone's downloads go. Built: the shared Downloads folder, so
+  other apps and the Files app see them. The other choice is the app's own storage.
+- **For the owner:** suggestions fetched from the search engine as you type. Left out by the
+  owner's call; if wanted, a setting, off by default, since every keystroke goes to the engine.
+- **For the owner** (rows 12 to 15 of [daily-use.md](daily-use.md)): saved passwords and
+  autofill, printing, error pages, and a new tab page.
