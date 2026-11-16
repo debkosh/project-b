@@ -5,10 +5,22 @@ Take an item off when it lands or is dropped.
 
 ## For discussion with the owner first
 
-- **The UX comparison's ranked list** ([ux-comparison.md](ux-comparison.md#what-to-do-ranked)):
-  twenty items against Chrome, Safari, Arc, Firefox, Edge and Brave, each with its size, and
-  three faults found on 0.2.74 (a crash on Quit on the Mac, one crash on Android, and Mobile
-  calling an unknown host "No internet connection").
+- **The UX comparison's items 11 to 20** ([ux-comparison.md](ux-comparison.md#what-to-do-ranked)),
+  to talk through with the owner one at a time (2026-11-16: "rest goes to todo and lets
+  discuss those here one at a time"). The three faults and items 1 to 10 are being built.
+  - *11, phone gestures:* pull down to reload, and a swipe up on the bar for the switcher. M.
+  - *12, settings for a daily browser:* a search field, a Privacy section (clear browsing
+    data, cookies), where downloads go, and Import. M.
+  - *13, a first-run walkthrough:* bring bookmarks, history and passwords over from another
+    browser on the first start, as Edge does. L. Discussed first.
+  - *14, saved passwords and autofill* (daily-use row 12). L.
+  - *15, printing* (daily-use row 13). L.
+  - *16, the ☰ menu:* a zoom row and New window at its top level. S.
+  - *17, Mobile error pages:* the main button at the foot, in the thumb's reach. S.
+  - *18, the site panel:* cookies and site data with Clear, and the certificate's details. S.
+  - *19, HTTPS first:* try https before http, and warn before an http-only site. M.
+  - *20, Mobile:* settings and downloads outside the tab count (our pages are tabs, decided
+    2026-11-14). S.
 - **A start that gives the UI thread back.** On a cold start the shell's request for its page
   waits about 90 ms on the browser's UI thread: first for Go's synchronous start (the window,
   about 35 to 40 ms, its show, the menus and managers, until about 140 ms), then for macOS's
