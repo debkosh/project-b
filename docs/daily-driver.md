@@ -10,6 +10,22 @@ request has an id and sits in the state the SDK keeps; the shell answers by that
 an answer to one it has dropped. What the OS already draws stays native: the file chooser and the
 Save panel.
 
+## Where it stands (2026-11-16)
+
+**Done**, on the Mac in every desktop shell and on Android in both Mobile shells unless noted:
+right-click, downloads (with Retry and Copy link, and a stalled connection resumed after
+sleep), file upload (Mac), the page's dialogs, find in page, video full screen, sign-in to a
+site, search engines with one suggestion source, permissions, tabs coming back, and History
+and Bookmarks (desktop; Cmd+D bookmarks in every shell). The list with owners is
+[daily-use.md](daily-use.md).
+
+**Planned**, decided and not started ([todo.md](todo.md#daily-driver)): bookmark folders and
+import, bookmarks in the address bar's suggestions, and History and Bookmarks on a phone.
+
+**Needs discussion** ([todo.md](todo.md#daily-driver)): saved passwords and autofill,
+printing, error pages, a new tab page, engine-fetched search suggestions (off by default if
+built), and where a phone's downloads go.
+
 ## Right-click
 
 A right-click in a page, or a long press on a phone, reaches Go through content's
