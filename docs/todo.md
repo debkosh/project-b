@@ -231,5 +231,8 @@ What a browser needs to be used all day ([daily-driver.md](daily-driver.md)).
   other apps and the Files app see them. The other choice is the app's own storage.
 - **For the owner:** suggestions fetched from the search engine as you type. Left out by the
   owner's call; if wanted, a setting, off by default, since every keystroke goes to the engine.
-- **For the owner** (rows 12 to 15 of [daily-use.md](daily-use.md)): saved passwords and
-  autofill, printing, error pages, and a new tab page.
+- **For the owner** (rows 12, 13 and 15 of [daily-use.md](daily-use.md)), in this order:
+  printing, a new tab page, then saved passwords and autofill. Each is discussed with mocks
+  before it is built, Standard and the Mobile web shell only.
+- **Error pages in Glide and the native Mobile shell.** Rule 32 exempts both until they draw
+  Go's notice.
