@@ -36,6 +36,8 @@ func (a *App) registerActions(e engine.Engine) {
 
 	add("tab.new", "New Tab", func() { a.Shell.Interaction(a.Tabs.Front(), "tab.new", func() { a.Tabs.Create(a.Tabs.Front()) }) })
 	add("address.focus", "Open Location…", func() { a.Shell.FocusAddressBar(a.Tabs.Front()) })
+	printing := add("page.print", "Print…", func() { e.Print(a.Tabs.ActiveID()) })
+	printing.Enabled = func() bool { return a.Tabs.Active().URL != "" }
 	find := add("find.open", "Find…", func() { a.finds.open(a.Tabs.Front()) })
 	find.Enabled = active
 	next := add("find.next", "Find Next", func() { a.finds.step(a.Tabs.Front(), true) })

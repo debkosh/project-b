@@ -35,6 +35,7 @@
 #include "project_b/engine/browser/go.h"
 #include "base/strings/string_split.h"
 #include "project_b/engine/abi/pb_content_abi.h"
+#include "project_b/engine/browser/printing.h"
 #include "project_b/engine/browser/site_features.h"
 #include "project_b/engine/common/block_rules.h"
 #include "project_b/engine/browser/hooks.h"
@@ -257,6 +258,13 @@ void CallFind(int64_t tab, int32_t request, const char* text, int forward, int f
   options->new_session = !find_next;
   page->contents()->Find(request, base::UTF8ToUTF16(text), std::move(options),
                          /*skip_delay=*/false);
+}
+
+void CallPrint(int64_t tab) {
+  CheckMainThread();
+  if (PageTab* page = g_engine->tab(tab)) {
+    printing::Print(page->contents());
+  }
 }
 
 void CallStopFinding(int64_t tab) {
@@ -577,6 +585,7 @@ const PBEngineCalls* Engine::Calls() {
       .answer_sign_in = CallAnswerSignIn,
       .find = CallFind,
       .stop_finding = CallStopFinding,
+      .print = CallPrint,
       .exit_page_full_screen = CallExitPageFullScreen,
       .answer_permission = CallAnswerPermission,
       .create_window = CallCreateWindow,
@@ -983,6 +992,7 @@ PageTab* Engine::Add(std::unique_ptr<content::WebContents> contents,
   if (!raw->internal()) {
     site_features::Follow(raw->contents());
   }
+  printing::Follow(raw->contents());
 #if BUILDFLAG(IS_ANDROID)
   // Android has one window, and every tab's view is in it from the start.
   windows_.begin()->second->window->AddPageContents(raw->contents());

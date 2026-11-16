@@ -1,13 +1,13 @@
 #ifndef PROJECT_B_ENGINE_EXTENSIONS_UTILITY_CONTENT_UTILITY_CLIENT_H_
 #define PROJECT_B_ENGINE_EXTENSIONS_UTILITY_CONTENT_UTILITY_CLIENT_H_
 
-#include "content/public/utility/content_utility_client.h"
+#include "project_b/engine/common/utility_client.h"
 
 namespace project_b {
 
-// The one service of ours a utility process runs: unzipping, which unpacking an
+// What a utility process runs with extensions: ours, and unzipping, which unpacking an
 // extension package asks for in a sandboxed process.
-class ContentUtilityClient : public content::ContentUtilityClient {
+class ContentUtilityClient : public UtilityClient {
  public:
   ContentUtilityClient();
   ContentUtilityClient(const ContentUtilityClient&) = delete;

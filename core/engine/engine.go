@@ -232,6 +232,9 @@ type Engine interface {
 	// selected.
 	Find(tab TabID, request int, text string, forward, next bool)
 	StopFinding(tab TabID)
+	// Print prints a tab's page through the system's print panel, over its window on a
+	// Mac and Android's print sheet on a phone, which have their own preview.
+	Print(tab TabID)
 	// ExitPageFullScreen takes a tab's page out of full screen, as its own
 	// exitFullscreen() would; PageFullScreen follows.
 	ExitPageFullScreen(tab TabID)
@@ -462,6 +465,9 @@ type Listener interface {
 	SparksFor(tab TabID, url string, mainFrame bool) []Script
 	// AdBlocked says the ad blocker kept one request of tab's page from its host.
 	AdBlocked(tab TabID)
+	// PrintRequested asks whether a frame of tab's page may print itself, as its
+	// window.print() asks. True prints it, as Print does.
+	PrintRequested(tab TabID) bool
 
 	// NotificationShown is a page showing a notification. True shows it on the system.
 	NotificationShown(n Notification) bool

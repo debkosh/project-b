@@ -43,6 +43,7 @@ static inline void call_show_download(const PBEngineCalls* c, int64_t id, const 
 }
 static inline void call_find(const PBEngineCalls* c, int64_t tab, int32_t request, const char* text, int forward, int find_next) { c->find(tab, request, text, forward, find_next); }
 static inline void call_stop_finding(const PBEngineCalls* c, int64_t tab) { c->stop_finding(tab); }
+static inline void call_print(const PBEngineCalls* c, int64_t tab) { c->print(tab); }
 static inline void call_exit_page_full_screen(const PBEngineCalls* c, int64_t tab) { c->exit_page_full_screen(tab); }
 static inline void call_answer_sign_in(const PBEngineCalls* c, int64_t dialog, int ok, const char* username, const char* password) { c->answer_sign_in(dialog, ok, username, password); }
 static inline void call_answer_dialog(const PBEngineCalls* c, int64_t dialog, int ok, const char* text) { c->answer_dialog(dialog, ok, text); }
@@ -230,6 +231,7 @@ func (e *nativeEngine) Find(tab engine.TabID, request int, text string, forward,
 }
 
 func (e *nativeEngine) StopFinding(tab engine.TabID) { C.call_stop_finding(e.calls, C.int64_t(tab)) }
+func (e *nativeEngine) Print(tab engine.TabID)       { C.call_print(e.calls, C.int64_t(tab)) }
 
 func (e *nativeEngine) ExitPageFullScreen(tab engine.TabID) {
 	C.call_exit_page_full_screen(e.calls, C.int64_t(tab))

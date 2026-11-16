@@ -163,6 +163,7 @@ func (c *contextMenus) actions(t tabs.Tab, cm engine.ContextMenu) []menuAction {
 		add("page", "page.back", "Back", t.CanGoBack)
 		add("page", "page.forward", "Forward", t.CanGoForward)
 		add("page", "page.reload", "Reload", true)
+		add("page", "page.print", "Print…", true)
 	}
 	return list
 }
@@ -218,6 +219,8 @@ func (c *contextMenus) run(m *contextMenu, id string) {
 		c.a.Tabs.GoForwardIn(m.Tab)
 	case id == "page.reload":
 		c.a.Tabs.ReloadTab(m.Tab, false)
+	case id == "page.print":
+		c.e.Print(m.Tab)
 	}
 }
 

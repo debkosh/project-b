@@ -15,6 +15,7 @@
 #include "project_b/engine/common/content_client.h"
 #include "project_b/engine/common/extensions_on.h"
 #include "project_b/engine/common/renderer_client.h"
+#include "project_b/engine/common/utility_client.h"
 #include "third_party/blink/public/common/switches.h"
 #include "ui/base/resource/resource_bundle.h"
 
@@ -171,16 +172,16 @@ content::ContentRendererClient* MainDelegate::CreateContentRendererClient() {
   return renderer_client_.get();
 }
 
-#if BUILDFLAG(PB_EXTENSIONS)
-
 content::ContentUtilityClient* MainDelegate::CreateContentUtilityClient() {
-  if (!ExtensionsOn()) {
-    return content::ContentMainDelegate::CreateContentUtilityClient();
+#if BUILDFLAG(PB_EXTENSIONS)
+  if (ExtensionsOn()) {
+    utility_client_ = std::make_unique<ContentUtilityClient>();
+    return utility_client_.get();
   }
-  utility_client_ = std::make_unique<ContentUtilityClient>();
+#endif
+  utility_client_ = std::make_unique<UtilityClient>();
   return utility_client_.get();
 }
-#endif
 
 #if BUILDFLAG(IS_ANDROID)
 // Android's looper is the message loop, so this only starts the browser and returns. Content never

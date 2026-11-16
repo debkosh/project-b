@@ -16,6 +16,7 @@
 #include "net/base/net_errors.h"
 #include "net/http/http_request_headers.h"
 #include "services/network/public/mojom/websocket.mojom.h"
+#include "project_b/engine/browser/printing.h"
 #include "project_b/engine/browser/site_features.h"
 #include "project_b/engine/common/block_rules.h"
 #include "project_b/engine/abi/pb_abi.h"
@@ -99,6 +100,14 @@ void ContentBrowserClient::ExposeInterfacesToRenderer(
     blink::AssociatedInterfaceRegistry* associated_registry,
     content::RenderProcessHost* render_process_host) {
   site_features::ExposeTo(associated_registry, render_process_host);
+}
+
+void ContentBrowserClient::RegisterAssociatedInterfaceBindersForRenderFrameHost(
+    content::RenderFrameHost& render_frame_host,
+    blink::AssociatedInterfaceRegistry& associated_registry) {
+  ContentBrowserClientHooks::RegisterAssociatedInterfaceBindersForRenderFrameHost(
+      render_frame_host, associated_registry);
+  printing::BindFrame(render_frame_host, associated_registry);
 }
 
 void ContentBrowserClient::RenderProcessWillLaunch(

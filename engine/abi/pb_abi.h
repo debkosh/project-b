@@ -103,6 +103,9 @@ typedef enum PBEvent {
                                         // "expired", "untrusted", "wrong-host", "revoked"
                                         // or "invalid", i: it is a tab's own page, i: it
                                         // may be passed; answers i: 1 to let it through
+  PB_EVENT_PRINT_REQUESTED = 46,        // i: tab; a frame of its page asked to print, as
+                                        // window.print() does; answers i: 1 to print it,
+                                        // through the system's panel as print does
   PB_EVENT_SPARKS_FOR = 47,             // i: tab, s: url, i: the tab's own frame;
                                         // answers s: json, [{"id", "source", "runAt":
                                         // "document-start" or "document-end"}], or "" for
@@ -358,6 +361,9 @@ typedef struct PBEngineCalls {
   void (*find)(int64_t tab, int32_t request, const char* text, int forward, int find_next);
   // Ends a tab's search, keeping the active match selected.
   void (*stop_finding)(int64_t tab);
+  // Prints a tab's page through the system's print panel, which has its own preview:
+  // the Mac's as a sheet on its window, Android's print sheet on a phone.
+  void (*print)(int64_t tab);
   // Takes a tab's page out of full screen, as its own exitFullscreen() would.
   void (*exit_page_full_screen)(int64_t tab);
   // Answers PB_EVENT_PERMISSION_REQUEST: a PBPermissionStatus for each of its kinds, in

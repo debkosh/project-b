@@ -72,7 +72,7 @@ func TestARightClickSendsWhatCanRunThere(t *testing.T) {
 		t.Fatalf("cut needs a selection: %v", cut)
 	}
 	page := r.rightClick(`{}`)
-	if got := ids(page); !slices.Equal(got, []string{"page.back", "page.forward", "page.reload"}) {
+	if got := ids(page); !slices.Equal(got, []string{"page.back", "page.forward", "page.reload", "page.print"}) {
 		t.Fatalf("page menu = %v", got)
 	}
 	if back := page["actions"].([]any)[0].(map[string]any); back["enabled"] != false {

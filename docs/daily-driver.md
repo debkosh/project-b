@@ -16,16 +16,17 @@ Save panel.
 right-click, downloads (with Retry and Copy link, and a stalled connection resumed after
 sleep), file upload (Mac), the page's dialogs, find in page, video full screen, sign-in to a
 site, search engines with one suggestion source, permissions, tabs coming back, History
-and Bookmarks (desktop; Cmd+D bookmarks in every shell), and error pages with certificate
-warnings (Standard and the Mobile web shell). The list with owners is
+and Bookmarks (desktop; Cmd+D bookmarks in every shell), error pages with certificate
+warnings (Standard and the Mobile web shell), and printing through the system's panel. The
+list with owners is
 [daily-use.md](daily-use.md).
 
 **Planned**, decided and not started ([todo.md](todo.md#daily-driver)): bookmark folders and
 import, bookmarks in the address bar's suggestions, and History and Bookmarks on a phone.
 
-**Needs discussion** ([todo.md](todo.md#daily-driver)), in this order: printing, a new tab
-page, saved passwords and autofill, engine-fetched search suggestions (off by default if
-built), and where a phone's downloads go.
+**Needs discussion** ([todo.md](todo.md#daily-driver)), in this order: a new tab page,
+saved passwords and autofill, engine-fetched search suggestions (off by default if built),
+and where a phone's downloads go.
 
 ## Right-click
 
@@ -55,11 +56,11 @@ shell may give an id an icon, or leave it out.
 | `image` | `image.newTab` Open Image in New Tab, `image.copyAddress` Copy Image Address |
 | `selection` | `selection.copy` Copy, `selection.search` Search for "…" |
 | `edit` | `edit.undo`, `edit.redo`, `edit.cut`, `edit.copy`, `edit.paste`, `edit.selectAll` |
-| `page` | `page.back` Back, `page.forward` Forward, `page.reload` Reload |
+| `page` | `page.back` Back, `page.forward` Forward, `page.reload` Reload, `page.print` Print… |
 
 Back and Forward come disabled when there is nowhere to go. A press on a link in a field gets both
 groups. Save Link As and Save Image As come with downloads, Copy Image and Inspect when the engine
-has them, and Print and View Source later.
+has them, and View Source later. `page.print` Print… follows Reload ([Printing](#printing)).
 
 **The messages.** The shell sends `contextMenuChoose {id, item}` to run an action, or
 `contextMenuClose {id}` when the menu goes without one. Go then sends `contextMenu` with `null`.
@@ -450,6 +451,47 @@ and the native Mobile shell are still to take it.
 **Android.** The same messages; the certificate question comes with the Mac's, as the
 engine's client is shared.
 
+
+## Printing
+
+The owner, 2026-11-16: "yes system print is fine... under file is fine", and then "print can
+be under file in system menu.. but for app menu it can be direct". The page prints through
+the system's own print panel, which has its preview, the printers, the page range and Save
+as PDF. There is no print preview of ours.
+
+**How it prints.** Chromium's printing component, unpatched, renders the page to a PDF: a
+printing helper in each frame's renderer, and in the browser a print manager per tab
+(headless Chrome's, which only makes PDFs) and, where a page's frames of other sites run in
+processes of their own, the print compositor in a utility process, which puts them together.
+The engine hands the PDF to the system: on the Mac the print panel as a sheet on the tab's
+window, its preview that PDF; on Android the print sheet (`PrintManager`, with a
+`PrintDocumentAdapter` that writes the PDF). The page is drawn on the paper the default
+printer uses on the Mac, and on the locale's usual paper, Letter or A4, on a phone, whose
+sheet fits it to the paper chosen there. Margins are Chromium's default; no header or footer
+and no backgrounds, as Chrome prints by default; a page's own `@page` size wins.
+
+**Four ways in.** All end in the engine's `print(tab)`.
+
+- **Print…, Cmd+P** (`page.print`), Chrome's key, in the File menu of the menu bar, enabled
+  while the active tab shows a page.
+- **The shell's menu** (Standard's ☰, the phone's ⋯ sheet) shows it at its top level, just
+  after File: the menu tree marks it `"shell": "top"`
+  ([menus-shortcuts.md](menus-shortcuts.md#the-shells-menu)).
+- **A right-click** on a page, with nothing under the press: Print… in the `page` group,
+  after Reload. A phone's long press has no page group, so the ⋯ sheet is its way in.
+- **The page's own `window.print()`.** Chromium's helper hands it to the browser instead
+  of printing (its delegate overrides it), on our `FrameHost` interface, by the frame that
+  asked. The engine asks Go (`PB_EVENT_PRINT_REQUESTED`, 46, answered at once), which lets
+  it print while its tab is the one its window shows; a tab behind waits for no panel. The
+  frame that asked is what prints, as in Chrome. The call returns at once, and the page
+  gets `beforeprint` and `afterprint` once, as its PDF is drawn.
+
+**Checked** on the mock by Go's tests (`TestPrintingAPage`: the menu, the right-click, a
+page's own call, and not from a tab behind). In the real app on the Mac, 2026-11-17: Cmd+P,
+☰ › Print… and a page's `window.print()` each open the panel as a sheet with the page in
+its preview, Cancel closes it, and the page's `afterprint` runs; deskrig has no right click,
+so the right-click's Print… is the tests'. On an Android 16 emulator, ⋯ › Print… opens the
+print sheet with the page, on Letter there by the locale.
 
 ## Tabs come back, and closed ones reopen
 

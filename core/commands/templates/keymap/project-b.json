@@ -1241,6 +1241,23 @@
           "keys": "Ctrl+D"
         }
       ]
+    },
+    "page.print": {
+      "mac": [
+        {
+          "keys": "Cmd+P"
+        }
+      ],
+      "windows": [
+        {
+          "keys": "Ctrl+P"
+        }
+      ],
+      "linux": [
+        {
+          "keys": "Ctrl+P"
+        }
+      ]
     }
   }
 }

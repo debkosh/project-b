@@ -40,6 +40,7 @@ const (
 	NotificationClicked Event = 43
 	ConnectionChanged   Event = 44
 	CertificateError    Event = 45
+	PrintRequested      Event = 46
 	SparksFor           Event = 47
 	AdBlocked           Event = 48
 )
@@ -57,7 +58,7 @@ func init() {
 		PermissionRequested: "engine.PermissionRequested", PermissionStatusOf: "engine.PermissionStatusOf",
 		NotificationShown: "engine.NotificationShown", NotificationClicked: "engine.NotificationClicked",
 		ConnectionChanged: "engine.ConnectionChanged", CertificateError: "engine.CertificateError",
-		SparksFor: "engine.SparksFor", AdBlocked: "engine.AdBlocked",
+		SparksFor: "engine.SparksFor", AdBlocked: "engine.AdBlocked", PrintRequested: "engine.PrintRequested",
 	} {
 		names[id] = name
 	}
@@ -170,6 +171,8 @@ func (e *Events) adapter(id Event, l engine.Listener, r *reader) (Value, bool) {
 		return Value{S: string(b)}, true
 	case AdBlocked:
 		l.AdBlocked(engine.TabID(r.int()))
+	case PrintRequested:
+		return yes(l.PrintRequested(engine.TabID(r.int()))), true
 	}
 	return Value{}, false
 }

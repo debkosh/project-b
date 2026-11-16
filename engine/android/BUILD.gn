@@ -26,6 +26,7 @@ generate_jni("jni_headers") {
   sources = [
     "java/dev/projectb/browser/BrowserWindow.java",
     "java/dev/projectb/browser/Downloads.java",
+    "java/dev/projectb/browser/Printing.java",
   ]
 }
 
@@ -33,6 +34,8 @@ source_set("browser") {
   sources = [
     "../browser/browser_context.cc",
     "../browser/permissions.cc",
+    "../browser/printing.cc",
+    "../browser/printing.h",
     "../browser/browser_context.h",
     "../browser/browser_main_parts.h",
     "../browser/child_processes.cc",
@@ -72,15 +75,31 @@ source_set("browser") {
     "../common/content_client.h",
     "../common/main_delegate.cc",
     "../common/main_delegate.h",
+    "../common/print_helper.cc",
+    "../common/print_helper.h",
     "../common/renderer_client.cc",
     "../common/renderer_client.h",
+    "../common/utility_client.cc",
+    "../common/utility_client.h",
     "browser_main_parts_android.cc",
     "downloads_android.cc",
     "descriptors.h",
+    "printing_android.cc",
     "window_android.cc",
   ]
   deps = [
     "//components/download/public/common:public",
+    "//components/printing/browser",
+    "//components/printing/browser/headless",
+    "//components/printing/browser/print_to_pdf",
+    "//components/printing/common:mojo_interfaces",
+    "//components/printing/renderer",
+    "//components/services/print_compositor",
+    "//components/services/print_compositor/public/mojom",
+    "//content/public/utility",
+    "//mojo/public/cpp/bindings",
+    "//printing",
+    "//printing/mojom",
     ":jni_headers",
     "//base",
     "//project_b/engine/buildflags",
@@ -301,6 +320,7 @@ android_library("java") {
     "java/dev/projectb/browser/BrowserWindow.java",
     "java/dev/projectb/browser/Downloads.java",
     "java/dev/projectb/browser/GoCore.java",
+    "java/dev/projectb/browser/Printing.java",
   ]
 }
 

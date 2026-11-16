@@ -81,6 +81,13 @@
         },
         {
           "action": "tab.close"
+        },
+        {
+          "separator": true
+        },
+        {
+          "action": "page.print",
+          "shell": "top"
         }
       ]
     },

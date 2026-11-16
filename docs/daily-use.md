@@ -29,7 +29,7 @@ and Android, in the web-features registry: [web-features.md](web-features.md).
 | 10 | Bookmarks | works in Standard: the star, Cmd+D, and the Bookmarks page to rename and remove them; flat, no folders yet | done, r6 ([daily-driver.md](daily-driver.md#history-and-bookmarks)) |
 | 11 | A history page | works: Show All History (Cmd+Y), grouped by day, with search, removal and Clear history | done, r6 ([daily-driver.md](daily-driver.md#history-and-bookmarks)) |
 | 12 | Saved passwords and autofill | missing: nothing of ours; the Edit menu's Passwords… and Contact… are macOS's AutoFill | needs discussion |
-| 13 | Printing | missing: `window.print()` returns at once, and there is no Print item | needs discussion |
+| 13 | Printing | works: Print… (Cmd+P, under File, and at the top of the shell's menu), the right-click menu and the page's own `window.print()` open the system's print panel, the Mac's or Android's, with the page as a PDF | done ([daily-driver.md](daily-driver.md#printing)) |
 | 14 | Error pages: a failed load, a bad certificate | works in Standard since 0.2.65 and the Mobile web shell after 0.2.74: Go's notice over the page, with Try again, Go back, and Open anyway for a certificate that may be passed | done ([daily-driver.md](daily-driver.md#error-pages-and-certificate-warnings)); Glide and the native Mobile shell to come, rule 32 |
 | 15 | A new tab page | missing: a new tab is `about:blank` | needs discussion (in [todo.md](todo.md)) |
 

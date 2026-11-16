@@ -22,6 +22,7 @@ ContentUtilityClient::~ContentUtilityClient() = default;
 
 void ContentUtilityClient::RegisterMainThreadServices(
     mojo::ServiceFactory& services) {
+  UtilityClient::RegisterMainThreadServices(services);
   services.Add(RunUnzipper);
 }
 

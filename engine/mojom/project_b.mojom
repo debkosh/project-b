@@ -32,3 +32,10 @@ interface Frame {
   // The scripts the page at url runs; none clears them.
   SetSparks(string url, array<Spark> sparks);
 };
+
+// The browser's, on each frame's channel: what the frame asks of it.
+interface FrameHost {
+  // The page called window.print(). The browser asks Go, and prints the frame through the
+  // system's panel if Go says so (docs/daily-driver.md, Printing).
+  Print();
+};

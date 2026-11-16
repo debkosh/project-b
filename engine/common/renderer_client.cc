@@ -27,6 +27,7 @@
 #include "net/base/net_errors.h"
 #include "net/url_request/redirect_info.h"
 #include "project_b/engine/common/block_rules.h"
+#include "project_b/engine/common/print_helper.h"
 #include "services/network/public/cpp/resource_request.h"
 #include "third_party/blink/public/common/loader/url_loader_throttle.h"
 #include "third_party/blink/public/platform/url_loader_throttle_provider.h"
@@ -261,6 +262,7 @@ void RendererClient::RenderThreadStarted() {
 
 void RendererClient::RenderFrameCreated(content::RenderFrame* render_frame) {
   new Sparks(render_frame);
+  printing::Attach(render_frame);
 }
 
 void RendererClient::RunScriptsAtDocumentStart(content::RenderFrame* render_frame) {

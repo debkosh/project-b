@@ -183,6 +183,10 @@ func (r *adapterRecorder) SparksFor(tab engine.TabID, url string, mainFrame bool
 	return []engine.Script{{ID: "ab12cd34", Source: "1", RunAt: "document-end"}}
 }
 func (r *adapterRecorder) AdBlocked(tab engine.TabID) { r.note(fmt.Sprintf("ad %d", tab)) }
+func (r *adapterRecorder) PrintRequested(tab engine.TabID) bool {
+	r.note(fmt.Sprintf("print %d", tab))
+	return true
+}
 func (r *adapterRecorder) ConnectionChanged(tab engine.TabID, c engine.Connection) {
 	r.note(fmt.Sprintf("connection %d %d %s", tab, c.State, c.Reason))
 }
@@ -293,6 +297,17 @@ func TestAFrameAsksForItsSparksAndAnAdBlockIsTold(t *testing.T) {
 	}
 	h.Dispatch(AdBlocked, pack(3))
 	if !reflect.DeepEqual(r.got, []string{"sparks 3 https://a.test/ main=true", "ad 3"}) {
+		t.Fatalf("got %v", r.got)
+	}
+}
+
+func TestAPageAsksToPrint(t *testing.T) {
+	h, r := wired(t)
+	v, ok := h.Dispatch(PrintRequested, pack(3))
+	if !ok || v.I != 1 {
+		t.Fatalf("answered %v %v", ok, v)
+	}
+	if !reflect.DeepEqual(r.got, []string{"print 3"}) {
 		t.Fatalf("got %v", r.got)
 	}
 }

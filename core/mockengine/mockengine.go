@@ -99,6 +99,8 @@ type Engine struct {
 	adRules  engine.AdRules
 	// badCerts is the hosts a test gave a bad certificate. Main thread.
 	badCerts map[string]bool
+	// printed is the tabs whose pages the app printed, in order. Under mu.
+	printed []engine.TabID
 	// perms is the page's permission requests and the app's answers.
 	perms permissionLog
 
@@ -973,6 +975,9 @@ func (e *Engine) Fire(w engine.WindowID, tab engine.TabID, kind, value string) {
 			}
 		case "favicon":
 			e.listener.FaviconChanged(shown, value)
+		case "print":
+			// The page calls window.print().
+			e.printRequested(shown)
 		case "focusTab":
 			// A press in the page, which takes the keyboard, as a click does in the real
 			// window's.

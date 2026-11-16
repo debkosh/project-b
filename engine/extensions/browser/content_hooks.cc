@@ -200,9 +200,8 @@ void ExtensionsContentBrowserClient::ExposeInterfacesToRenderer(
 void ExtensionsContentBrowserClient::RegisterAssociatedInterfaceBindersForRenderFrameHost(
     content::RenderFrameHost& render_frame_host,
     blink::AssociatedInterfaceRegistry& associated_registry) {
-  ContentBrowserClientHooks::
-      RegisterAssociatedInterfaceBindersForRenderFrameHost(render_frame_host,
-                                                           associated_registry);
+  ContentBrowserClient::RegisterAssociatedInterfaceBindersForRenderFrameHost(
+      render_frame_host, associated_registry);
   if (!HasExtensions(render_frame_host.GetProcess())) {
     return;
   }
