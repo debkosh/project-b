@@ -585,3 +585,30 @@ func TestCheckNowTriesARefusedReleaseAgain(t *testing.T) {
 		t.Fatalf("state %+v, downloads %d", s, rs.downloads.Load())
 	}
 }
+
+// A download whose connection dies without a word, as across the Mac's sleep, is given up
+// once nothing arrives for a while, shown as failed, and the next check gets it.
+func TestAStalledDownloadFailsAndTheNextCheckGetsIt(t *testing.T) {
+	defer func(d time.Duration) { stalledAfter = d }(stalledAfter)
+	stalledAfter = 500 * time.Millisecond
+	good := archive(t, fakeApp(t, t.TempDir(), "0.2.0"))
+	rs := release(t, "0.2.0", good, good)
+	hold := make(chan struct{})
+	defer close(hold)
+	rs.serve = func(w http.ResponseWriter) {
+		w.Header().Set("Content-Length", fmt.Sprint(len(good)))
+		w.Write(good[:len(good)/2])
+		w.(http.Flusher).Flush()
+		<-hold
+	}
+	r := start(t, "0.1.0", rs.url, nil)
+	r.check()
+	if s := r.m.State(); s.Phase != Failed || s.Error != errStalled.Error() {
+		t.Fatalf("a stalled download should fail: %+v", s)
+	}
+	rs.serve = nil
+	r.check()
+	if s := r.m.State(); s.Phase != Ready {
+		t.Fatalf("the next check should stage it: %+v", s)
+	}
+}
