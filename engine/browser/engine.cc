@@ -916,7 +916,8 @@ PageTab* Engine::CreateTab(const std::string& workspace) {
 PageTab* Engine::CreateInternalTab() {
   content::WebContents::CreateParams params(pages_context_);
   params.initially_hidden = true;
-  return Add(content::WebContents::Create(params), std::string());
+  return Add(content::WebContents::Create(params), std::string(),
+             /*internal=*/true);
 }
 
 PageTab* Engine::AdoptTab(std::unique_ptr<content::WebContents> contents) {
@@ -963,9 +964,10 @@ void Engine::Erase(const std::string& workspace) {
 // A new tab starts hidden, whoever made it. A window's layout is the only way to the
 // screen.
 PageTab* Engine::Add(std::unique_ptr<content::WebContents> contents,
-                     const std::string& workspace) {
+                     const std::string& workspace,
+                     bool internal) {
   const int64_t id = next_tab_++;
-  auto tab = std::make_unique<PageTab>(id, std::move(contents), workspace);
+  auto tab = std::make_unique<PageTab>(id, std::move(contents), workspace, internal);
   PageTab* raw = tab.get();
   tab->contents()->WasHidden();
 #if BUILDFLAG(PB_EXTENSIONS)
@@ -1097,7 +1099,8 @@ int64_t Engine::DuplicateTab(int64_t tab) {
     return 0;
   }
   // The copy has the tab's SiteInstance, so it is in the same workspace.
-  PageTab* copy = Add(contents->Clone(), this->tab(tab)->workspace());
+  PageTab* copy = Add(contents->Clone(), this->tab(tab)->workspace(),
+                      this->tab(tab)->internal());
   copy->contents()->GetController().LoadIfNecessary();
   return copy->id();
 }
