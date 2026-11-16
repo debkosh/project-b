@@ -13,11 +13,12 @@ func TestTheSuggestionListAndChoosingFromIt(t *testing.T) {
 	r.visit("https://mail.test/")
 	r.show(1)
 
-	// Words: the search first, with the profile's engine, then the open tab.
+	// Words: the visited host they start, completed, which is open in a tab, so its row is
+	// the tab's; then the search, with the profile's engine.
 	r.shell(`{"t":"suggest","id":3,"text":"mail","kinds":["address","search","tab","history","action"]}`)
 	items := r.waitFor(func(m map[string]any) bool { return m["t"] == "suggestions" && m["id"] == float64(3) })["items"].([]any)
 	first, second := items[0].(map[string]any), items[1].(map[string]any)
-	if first["kind"] != "search" || first["url"] != "https://duckduckgo.com/?q=mail" || second["kind"] != "tab" || second["tab"] != float64(1) {
+	if first["kind"] != "tab" || first["tab"] != float64(1) || first["inline"] != ".test" || second["kind"] != "search" || second["url"] != "https://duckduckgo.com/?q=mail" {
 		t.Fatalf("items = %v", items)
 	}
 

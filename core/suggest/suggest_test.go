@@ -45,20 +45,33 @@ func kinds(rows []Row) string {
 }
 
 func TestWordsSearchFirstThenTabsHistoryAndActions(t *testing.T) {
+	marks = nil
 	m := manager(t, "https://mail.test/ Mail", "https://news.test/mail-digest Digest")
-	rows := m.Query("mail", all)
-	if kinds(rows) != "search tab history" {
+	rows := m.Query("news", all)
+	if kinds(rows) != "address search history" || rows[0].URL != "https://news.test/" || rows[0].Inline != ".test" {
+		t.Fatalf("a visited host the text starts is completed first: %+v", rows)
+	}
+	rows = m.Query("inbox", all)
+	if kinds(rows) != "search tab" {
 		t.Fatalf("kinds = %q: %+v", kinds(rows), rows)
 	}
-	if rows[0].URL != "https://find.test/?q=mail" || rows[0].Detail != "Search Find" {
+	if rows[0].URL != "https://find.test/?q=inbox" || rows[0].Detail != "Search Find" {
 		t.Fatalf("search row = %+v", rows[0])
 	}
 	if rows[1].Tab != 7 || rows[1].Detail != "Work" {
 		t.Fatalf("tab row = %+v", rows[1])
 	}
 	// The page open in a tab is listed once, as the tab.
-	if rows[2].URL != "https://news.test/mail-digest" || rows[2].Detail != "news.test" {
-		t.Fatalf("history row = %+v", rows[2])
+	rows = m.Query("mail-", all)
+	if kinds(rows) != "search history" || rows[1].URL != "https://news.test/mail-digest" || rows[1].Detail != "news.test" {
+		t.Fatalf("history row = %+v", rows)
+	}
+	rows = m.Query("Mail", []string{KindSearch, KindTab, KindHistory})
+	if kinds(rows) != "tab search history" || rows[0].Tab != 7 || rows[0].Inline != ".test" || rows[2].URL != "https://news.test/mail-digest" {
+		t.Fatalf("a completed page open in a tab is the tab's row, listed once: %+v", rows)
+	}
+	if rows := m.Query("Mail", []string{KindSearch, KindHistory}); kinds(rows) != "history search history" || rows[0].URL != "https://mail.test/" {
+		t.Fatalf("with no tab rows, the page's own: %+v", rows)
 	}
 
 	rows = m.Query("tab", all)
@@ -79,6 +92,113 @@ func TestAnAddressGoesFirstAndTheSearchLast(t *testing.T) {
 	rows := m.Query("mail.test", all)
 	if kinds(rows) != "address tab search" || rows[0].URL != "https://mail.test" {
 		t.Fatalf("rows = %+v", rows)
+	}
+}
+
+// Typed, the bookmarks whose title or address holds the text join the list after history,
+// the newest first, three at most, past what a tab or history already shows.
+func TestTypedBookmarks(t *testing.T) {
+	marks = []Bookmark{
+		{Title: "Recipes", URL: "https://food.test/recipes"},
+		{Title: "Mail inbox", URL: "https://mail.test/"},
+		{Title: "Old recipes", URL: "https://food.test/old"},
+		{Title: "Recipe index", URL: "https://cook.test/"},
+		{Title: "More recipes", URL: "https://more.test/"},
+		{Title: "Seen", URL: "https://seen.test/recipes"},
+	}
+	defer func() { marks = nil }()
+	m := manager(t, "https://seen.test/recipes Seen")
+	rows := m.Query("recipe", all)
+	if kinds(rows) != "search history bookmark bookmark bookmark" || rows[2].URL != "https://food.test/recipes" || rows[3].Title != "Old recipes" || rows[4].Detail != "cook.test" {
+		t.Fatalf("rows = %+v", rows)
+	}
+	// The bookmark open in a tab is listed once, as the tab.
+	if rows := m.Query("inbox", all); kinds(rows) != "search tab" {
+		t.Fatalf("rows = %+v", rows)
+	}
+	// Not asked for, none.
+	if rows := m.Query("recipe", []string{KindSearch, KindHistory}); kinds(rows) != "search history" {
+		t.Fatalf("rows = %+v", rows)
+	}
+}
+
+// Inline completion: a visited or bookmarked address the text starts, without its scheme
+// and www., goes first, with the rest of it in Inline.
+func TestInlineCompletion(t *testing.T) {
+	marks = nil
+	defer func() { marks = nil }()
+	m := manager(t,
+		"https://www.wikipedia.org/ Wikipedia",
+		"https://en.wikipedia.org/wiki/Web_browser Web browser",
+		"https://en.wikipedia.org/wiki/Web_browser Web browser",
+		"https://docs.test/Guide/Start Start",
+		"https://docs.test/Guide/Start Start",
+		"http://plain.test/a/b B",
+	)
+	first := func(text string, kinds []string) Row {
+		t.Helper()
+		rows := m.Query(text, kinds)
+		if len(rows) == 0 {
+			t.Fatalf("%q: no rows", text)
+		}
+		return rows[0]
+	}
+
+	// Inside the host, to the host alone: its own page when it was visited.
+	if r := first("wikip", all); r.Kind != KindHistory || r.URL != "https://www.wikipedia.org/" || r.Inline != "edia.org" || r.Title != "Wikipedia" {
+		t.Fatalf("wikip = %+v", r)
+	}
+	// The host's own page not visited: an address row for the host, in the scheme the
+	// page had.
+	if r := first("en.wik", all); r.Kind != KindAddress || r.URL != "https://en.wikipedia.org/" || r.Inline != "ipedia.org" || r.Title != "en.wikipedia.org" {
+		t.Fatalf("en.wik = %+v", r)
+	}
+	if r := first("pla", all); r.Kind != KindAddress || r.URL != "http://plain.test/" || r.Inline != "in.test" {
+		t.Fatalf("pla = %+v", r)
+	}
+	// A shell that draws no address rows gets the page itself, completed whole.
+	if r := first("en.wik", []string{KindSearch, KindHistory}); r.Kind != KindHistory || r.Inline != "ipedia.org/wiki/Web_browser" {
+		t.Fatalf("en.wik, no address rows = %+v", r)
+	}
+	// Past the host, the whole address, in its own case.
+	if r := first("docs.test/gu", all); r.URL != "https://docs.test/Guide/Start" || r.Inline != "ide/Start" {
+		t.Fatalf("docs.test/gu = %+v", r)
+	}
+	// A typed scheme or www. is kept: the rest follows what was typed.
+	if r := first("https://www.wiki", all); r.URL != "https://www.wikipedia.org/" || r.Inline != "pedia.org" {
+		t.Fatalf("https://www.wiki = %+v", r)
+	}
+	if r := first("WIKIP", all); r.Inline != "edia.org" {
+		t.Fatalf("WIKIP = %+v", r)
+	}
+	// Nothing to add, a space, or a text inside an address but not at its start: none.
+	for _, text := range []string{"wikipedia.org", "wiki pedia", "wikip ", "pedia", "https://"} {
+		for _, r := range m.Query(text, all) {
+			if r.Inline != "" {
+				t.Fatalf("%q completes: %+v", text, r)
+			}
+		}
+	}
+	// The completed page isn't listed again from history.
+	rows := m.Query("wikip", all)
+	for _, r := range rows[1:] {
+		if r.URL == "https://www.wikipedia.org/" {
+			t.Fatalf("listed twice: %+v", rows)
+		}
+	}
+	// A bookmark completes too, when history has nothing; Enter's row comes second.
+	marks = []Bookmark{{Title: "Notes", URL: "https://notes.test/today"}, {Title: "Not web", URL: "javascript:void(0)"}}
+	if rows := m.Query("notes.test/t", all); kinds(rows) != "bookmark address search" || rows[0].Inline != "oday" {
+		t.Fatalf("notes.test/t = %+v", rows)
+	}
+	if r := first("java", all); r.Inline != "" {
+		t.Fatalf("only web addresses complete: %+v", r)
+	}
+	// History asked for alone, as a shell that names no kinds is, never completes.
+	for _, r := range m.Query("wikip", nil) {
+		if r.Inline != "" {
+			t.Fatalf("no kinds: %+v", r)
+		}
 	}
 }
 

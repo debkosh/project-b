@@ -136,7 +136,7 @@ gives the page the same two.
 | `addressBarPosition` | `addressBarPosition`: `bottom` or `top` | The Mobile shell's address bar moved, from settings on a phone |
 | `focusAddressBar` | | The user asked for the address bar |
 | `action` | `id`: one of the shell's own actions | Its key was pressed, or its menu item chosen, while this shell is on |
-| `suggestions` | `id`, `items`: rows `{kind, title, detail, url, tab, action}` | In answer to `suggest`: one ranked list, each row an `address`, a `search`, a `tab`, a `history` page or an `action` ([daily-driver.md](daily-driver.md#search-engines-and-one-suggestion-source)) |
+| `suggestions` | `id`, `items`: rows `{kind, title, detail, url, tab, action, inline}` | In answer to `suggest`: one ranked list, each row an `address`, a `search`, a `tab`, a `history` page, a `bookmark` or an `action`. The first row may carry `inline`, the rest of the address the typed text starts, for the field to show selected after the caret ([daily-driver.md](daily-driver.md#search-engines-and-one-suggestion-source)) |
 | `bookmarks` | `bookmarks`: the profile's bookmarks, newest first, each `{id, title, url, added}` | One was added, edited or removed ([daily-driver.md](daily-driver.md#history-and-bookmarks)) |
 | `searchEngine` | `searchEngine`: `{id, name}` | Another search engine was chosen in settings |
 | `paint` | `span` | Go wants a timeline span ended once this is drawn |

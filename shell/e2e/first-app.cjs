@@ -155,7 +155,8 @@ const stopServer = lib.stop;
   await page.screenshot({ path: path.join(out, '2-suggestions.png') });
   const history = ui.locator('#suggestions [data-kind=history]');
   const visited = ui.locator('#suggestions [data-kind=history], #suggestions [data-kind=tab]');
-  check('Go\'s list: what Enter does first, then the visited pages, an open one as its tab', ['search', 'address'].includes(await options.first().getAttribute('data-kind')) && (await visited.count()) === 2, String(await visited.count()));
+  // example.org is open, so the page the text completes is its tab's row, first.
+  check('Go\'s list: what Enter does first, the open page the text completes, then the visited pages', (await options.first().getAttribute('data-kind')) === 'tab' && (await visited.count()) === 2, String(await visited.count()));
   check('titles arrive after the visit', /Mock example/.test(await history.first().innerText()));
 
   r = await regions();

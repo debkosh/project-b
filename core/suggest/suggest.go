@@ -25,10 +25,11 @@ const (
 
 // How many rows of each kind a list has at most, and how many rows in all.
 const (
-	maxTabs    = 3
-	maxHistory = 5
-	maxActions = 3
-	maxRows    = 10
+	maxTabs      = 3
+	maxHistory   = 5
+	maxBookmarks = 3
+	maxActions   = 3
+	maxRows      = 10
 	// With nothing typed: how many rows in all, and how many of them the sites visited most
 	// keep when there are bookmarks too.
 	maxFirst   = 8
@@ -38,7 +39,9 @@ const (
 )
 
 // Row is one suggestion: its kind, a title and a second line, and what choosing it needs:
-// an address, a tab or an action.
+// an address, a tab or an action. Inline is set on the first row only, when it completes
+// what was typed: the rest of the address after the typed text, for the field to show
+// selected after the caret.
 type Row struct {
 	Kind   string `json:"kind"`
 	Title  string `json:"title"`
@@ -46,6 +49,7 @@ type Row struct {
 	URL    string `json:"url,omitempty"`
 	Tab    int64  `json:"tab,omitempty"`
 	Action string `json:"action,omitempty"`
+	Inline string `json:"inline,omitempty"`
 }
 
 // Tab is an open tab as the list shows it: Detail is its second line, its workspace.
@@ -108,7 +112,27 @@ func (m *Manager) Query(text string, kinds []string) []Row {
 	}
 
 	rows := make([]Row, 0, maxRows)
-	// First, what Enter does: the address when the text reads as one, the search otherwise.
+	shown := map[string]bool{}
+	// First, what Enter does: a visited or bookmarked address the text completes, then the
+	// address when the text reads as one, the search otherwise.
+	var open []Tab
+	if want[KindTab] && m.src.Tabs != nil {
+		open = m.src.Tabs()
+	}
+	completed := int64(0)
+	if c, ok := m.completion(text, want); ok {
+		// A completed page open in a tab is that tab's row: Enter shows the tab rather than
+		// loading the page a second time.
+		for _, t := range open {
+			if t.URL != "" && strings.TrimSuffix(t.URL, "/") == strings.TrimSuffix(c.URL, "/") {
+				c = Row{Kind: KindTab, Title: orURL(t.Title, t.URL), Detail: t.Detail, URL: t.URL, Tab: t.ID, Inline: c.Inline}
+				completed = t.ID
+				break
+			}
+		}
+		rows = append(rows, c)
+		shown[c.URL] = true
+	}
 	var search *Row
 	if m.src.Engine != nil && want[KindSearch] {
 		name, find := m.src.Engine()
@@ -123,14 +147,13 @@ func (m *Manager) Query(text string, kinds []string) []Row {
 		search = nil
 	}
 
-	shown := map[string]bool{}
-	if want[KindTab] && m.src.Tabs != nil {
+	if want[KindTab] {
 		n := 0
-		for _, t := range m.src.Tabs() {
+		for _, t := range open {
 			if n == maxTabs {
 				break
 			}
-			if t.URL == "" || !strings.Contains(strings.ToLower(t.Title), q) && !strings.Contains(strings.ToLower(t.URL), q) {
+			if t.URL == "" || t.ID == completed || !strings.Contains(strings.ToLower(t.Title), q) && !strings.Contains(strings.ToLower(t.URL), q) {
 				continue
 			}
 			rows = append(rows, Row{Kind: KindTab, Title: orURL(t.Title, t.URL), Detail: t.Detail, URL: t.URL, Tab: t.ID})
@@ -149,6 +172,23 @@ func (m *Manager) Query(text string, kinds []string) []Row {
 				continue
 			}
 			rows = append(rows, Row{Kind: KindHistory, Title: orURL(e.Title, e.URL), Detail: host(e.URL), URL: e.URL})
+			shown[e.URL] = true
+			n++
+		}
+	}
+	// The bookmarks whose title or address holds the text, the newest first, past those
+	// already shown as a tab or a page from history.
+	if want[KindBookmark] && m.src.Bookmarks != nil {
+		n := 0
+		for _, b := range m.src.Bookmarks() {
+			if n == maxBookmarks {
+				break
+			}
+			if b.URL == "" || shown[b.URL] || !strings.Contains(strings.ToLower(b.Title), q) && !strings.Contains(strings.ToLower(b.URL), q) {
+				continue
+			}
+			rows = append(rows, Row{Kind: KindBookmark, Title: orURL(b.Title, b.URL), Detail: host(b.URL), URL: b.URL})
+			shown[b.URL] = true
 			n++
 		}
 	}
@@ -209,6 +249,97 @@ func (m *Manager) first(want map[string]bool) []Row {
 		return []Row{}
 	}
 	return rows
+}
+
+// completion is the row that completes what was typed, as Chrome and Safari complete it in
+// the field: a page from history, or a bookmark, whose bare address (no scheme, no www.)
+// starts with the text, which has no space. The page visited most wins, then the newest
+// bookmark. It completes to the host alone while the text is still inside the host
+// (wikip → wikipedia.org): the row for the host's own page when there is one, else an
+// address row for the host. Past the host, or with no address rows asked for, it completes
+// to the whole address. Query makes it the tab's row when the page is open in one. The text
+// may start with a scheme or www., which the completion keeps.
+func (m *Manager) completion(text string, want map[string]bool) (Row, bool) {
+	if text == "" || strings.ContainsAny(text, " \t") {
+		return Row{}, false
+	}
+	q := strings.ToLower(bare(text))
+	if q == "" {
+		return Row{}, false
+	}
+	var found []Row
+	if want[KindHistory] {
+		for _, e := range m.hist.Search(q, maxHistory+maxTabs) {
+			if web(e.URL) && strings.HasPrefix(strings.ToLower(bare(e.URL)), q) {
+				found = append(found, Row{Kind: KindHistory, Title: orURL(e.Title, e.URL), Detail: host(e.URL), URL: e.URL})
+			}
+		}
+	}
+	if want[KindBookmark] && m.src.Bookmarks != nil {
+		for _, b := range m.src.Bookmarks() {
+			if web(b.URL) && strings.HasPrefix(strings.ToLower(bare(b.URL)), q) {
+				found = append(found, Row{Kind: KindBookmark, Title: orURL(b.Title, b.URL), Detail: host(b.URL), URL: b.URL})
+			}
+		}
+	}
+	if len(found) == 0 {
+		return Row{}, false
+	}
+	row := found[0]
+	full := bare(row.URL)
+	h := full[:hostEnd(full)]
+	if !strings.Contains(q, "/") && strings.HasPrefix(strings.ToLower(h), q) {
+		// The host alone: its own page's row when one was found, else an address row for it,
+		// in the scheme and www. of the page that was. A shell that draws no address rows
+		// gets the page's whole address instead.
+		var own *Row
+		for i, r := range found {
+			if strings.EqualFold(strings.TrimSuffix(bare(r.URL), "/"), h) {
+				own = &found[i]
+				break
+			}
+		}
+		switch {
+		case own != nil:
+			row, full = *own, h
+		case want[KindAddress]:
+			row = Row{Kind: KindAddress, Title: h, Detail: "Go to address", URL: row.URL[:len(row.URL)-len(full)] + h + "/"}
+			full = h
+		}
+	}
+	if len(full) <= len(q) || !strings.EqualFold(full[:len(q)], q) {
+		return Row{}, false
+	}
+	row.Inline = full[len(q):]
+	return row, true
+}
+
+// bare is an address without its scheme and www., in its own case.
+func bare(u string) string {
+	for _, p := range []string{"https://", "http://"} {
+		if len(u) >= len(p) && strings.EqualFold(u[:len(p)], p) {
+			u = u[len(p):]
+			break
+		}
+	}
+	if len(u) >= 4 && strings.EqualFold(u[:4], "www.") {
+		u = u[4:]
+	}
+	return u
+}
+
+// hostEnd is where the host ends in a bare address: at its path, query or fragment.
+func hostEnd(b string) int {
+	if i := strings.IndexAny(b, "/?#"); i >= 0 {
+		return i
+	}
+	return len(b)
+}
+
+// web is whether an address is a web page's, the only ones that complete.
+func web(u string) bool {
+	l := strings.ToLower(u)
+	return strings.HasPrefix(l, "http://") || strings.HasPrefix(l, "https://")
 }
 
 func historyRows(entries []history.Entry) []Row {

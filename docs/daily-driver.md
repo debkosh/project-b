@@ -250,13 +250,29 @@ rows, each tagged with where it comes from:
 | `tab` | A tab open in any window and workspace of the profile, matched by title or address | `tab`, `url`, `workspace` |
 | `history` | A page visited before | `url` |
 | `action` | An action that can run now, matched by its title | `action` |
-| `bookmark` | A bookmark, with nothing typed ([A new tab](#a-new-tab)) | `url` |
+| `bookmark` | A bookmark whose title or address holds the text, or with nothing typed one of the newest ([A new tab](#a-new-tab)) | `url` |
 
 Every row has `kind`, `title` and `detail`, a second line: the address's host, the tab's
 workspace, or an action's key. The order: first what Enter does, the `address` row when the
-text reads as one and the `search` row otherwise; then up to three tabs, five from history and
-three actions, best first in each; and the `search` row last when an address came first. With
-nothing typed, the list is what a new tab offers ([A new tab](#a-new-tab)).
+text reads as one and the `search` row otherwise; then up to three tabs, five from history,
+three bookmarks and three actions, best first in each (the bookmarks newest first); and the
+`search` row last when an address came first. A page shows once: history and the bookmarks
+leave out what a tab already lists. With nothing typed, the list is what a new tab offers
+([A new tab](#a-new-tab)).
+
+**Inline completion,** all local, as the owner approved (item 5 of the UX comparison). When
+the text has no space and the bare address (no scheme, no `www.`) of a page from history or
+a bookmark starts with it, that row comes first, before what Enter would
+otherwise do, and carries `inline`: the rest of the address after what was typed, which the
+field shows selected after the caret. The page visited most wins, then the newest bookmark.
+While the text is still inside the host it completes to the host alone, as Chrome does:
+`wikip` gives `edia.org`, on the row of the host's own page when it was visited, else on an
+`address` row for the host, in the scheme and `www.` the page had. Past the host (`docs.test/gu`),
+or for a shell that asks for no `address` rows, it completes to the whole address, in its own
+case. A typed scheme or `www.` stays (`https://www.wiki` gives `pedia.org`). Only web
+addresses complete, and a shell that names no kinds never gets one. A completed page open in
+a tab is that tab's row, listed once, so Enter shows the tab rather than loading the page a
+second time. Enter takes the first row, so it goes where the field shows.
 
 **The messages.** As today, `suggest {id, text}` and `suggestions {id, items}`, with two
 additions. The shell names the kinds it draws, `kinds: ["tab", "history", …]`; without it the
@@ -273,8 +289,8 @@ stored, and the search picks its best few without sorting every hit: about 8.5 m
 `core/suggest` measures it.
 
 **Not in this step.** Suggestions fetched from the search engine as one types: they send every
-keystroke to the engine, so they are a setting to decide, off by default if added. Bookmarks
-join the list when bookmarks exist.
+keystroke to the engine, so they are a setting to decide, off by default if added; the owner
+keeps them off.
 
 **The new tab.** A tab with nothing in it shows the shell's own command box where the page
 would be, drawing this list; the look is the standard shell session's mock. Glide's Command
