@@ -267,7 +267,11 @@ that wants the default look follows it.
 - **When an action removes what had focus,** focus goes to a stated place: the next row, or
   the button that opened it. A `Dialog` gives focus back to what opened it.
 - **Escape closes the innermost thing open:** a menu, then a dialog, then a field's edit or
-  an open row, then the page (`ui/escape.js`).
+  an open row, then the page (`ui/escape.js`). A field that has the keyboard is the
+  innermost while it has it, so a find bar open beside it never takes its Escape. In an
+  address field the first Escape closes the suggestions and drops a completion, leaving
+  what was typed, and the second puts the page's address back and gives the page the
+  keyboard, as every browser does.
 
 ### Copy
 

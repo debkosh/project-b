@@ -1,9 +1,10 @@
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { activeTab, bookmark, chooseSuggestion, focusPage, isBookmarked, send, state, suggest, tabLabel } from '@/sdk/vue.js';
 import SuggestionList from './SuggestionList.vue';
 import { hasSite, openSite, popupsWord, promptFor } from '@/sdk/sites.js';
 import PermissionPrompt from '@/ui/PermissionPrompt.vue';
+import { pushEscape } from '@/ui/escape.js';
 import SitePanel from '@/ui/SitePanel.vue';
 import { addressBar, nextQuery } from './state.js';
 
@@ -131,20 +132,27 @@ function onKeydown(e) {
         move(-1);
       }
       break;
-    case 'Escape':
-      if (open.value) {
-        e.preventDefault();
-        text.value = typed.value;
-        close();
-      } else {
-        edited.value = false;
-        text.value = activeTab.value.url;
-        input.value?.blur();
-        focusPage();
-      }
-      break;
   }
 }
+
+// Escape, while the field has the keyboard: the first closes the list and drops the
+// completion, leaving what was typed; the next puts the page's address back and gives the
+// page the keyboard. The field takes Escape ahead of anything else open, such as the find
+// bar, by being the innermost layer of ui/escape.js while it has focus: before, an open find
+// bar took the second Escape and the typed text stayed.
+function escape() {
+  if (open.value) {
+    text.value = typed.value;
+    close();
+    return;
+  }
+  edited.value = false;
+  text.value = activeTab.value.url;
+  input.value?.blur();
+  focusPage();
+}
+let dropEscape = null;
+onUnmounted(() => dropEscape?.());
 
 // go takes a row of Go's list, the chosen one or the first, which is what Enter does; with
 // no list yet, what was typed.
@@ -167,6 +175,8 @@ let selectOnMouseUp = false;
 
 function onFocus() {
   focused.value = true;
+  dropEscape?.();
+  dropEscape = pushEscape(escape);
   typed.value = text.value;
   selectOnMouseUp = true;
   nextTick(() => input.value.select());
@@ -182,6 +192,8 @@ function onMouseUp(e) {
 
 function onBlur() {
   focused.value = false;
+  dropEscape?.();
+  dropEscape = null;
   if (inline.value) text.value = typed.value;
   close();
   if (!edited.value) text.value = activeTab.value.url;

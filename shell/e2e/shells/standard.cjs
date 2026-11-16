@@ -289,6 +289,27 @@ const { check, fire, regions, settle, until } = lib;
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
 
+  // Escape: the first drops the list and the completion, the second puts the page's address
+  // back, even with the find bar open, which once took the second one.
+  const page1 = (await current()).url;
+  for (const findOpen of [false, true]) {
+    if (findOpen) {
+      await fire('menu', 'find.open');
+      await until(() => finder.isVisible());
+    }
+    const how = findOpen ? ', with the find bar open' : '';
+    await field.click();
+    await page.keyboard.type('wikip');
+    await shows('wikipedia.test', 5, 14);
+    await page.keyboard.press('Escape');
+    check(`the first Escape closes the list and drops the completion${how}`, (await shows('wikip', 5, 5)) && (await ui.locator('#suggestions').count()) === 0, JSON.stringify(await shown()));
+    await page.keyboard.press('Escape');
+    check(`the second puts the page's address back${how}`, await until(async () => (await field.inputValue()) === page1), await field.inputValue());
+    check(`and gives the page the keyboard${how}`, await until(async () => (await regions()).focused === (await regions()).active));
+  }
+  check('the find bar stays open through it', await finder.isVisible());
+  await finder.press('Escape');
+
   check('no errors', w.errors.length === 0, w.errors.join(' | '));
   await browser.close();
   await lib.done();
