@@ -411,6 +411,8 @@ func (m *Manager) check(ctx context.Context) (current bool, err error) {
 // check; a bundle that fails its checks is refused for good, so a bad release is downloaded
 // once, not every minute. With Install set, the download itself is staged.
 func (m *Manager) fetch(ctx context.Context, d *amarit.Decision) (string, error) {
+	ctx, cancel := context.WithCancelCause(ctx)
+	defer cancel(nil)
 	stage, downloads := m.stageDir(), m.downloadDir()
 	os.RemoveAll(stage)
 	os.RemoveAll(downloads)
@@ -421,12 +423,15 @@ func (m *Manager) fetch(ctx context.Context, d *amarit.Decision) (string, error)
 	stop := make(chan struct{})
 	watched := make(chan struct{})
 	go func() {
-		m.watchDownload(downloads, stop)
+		m.watchDownload(downloads, stop, func() { cancel(errStalled) })
 		close(watched)
 	}()
 	archive, err := m.client.Download(ctx, d, downloads)
 	close(stop)
 	<-watched
+	if errors.Is(context.Cause(ctx), errStalled) {
+		return "", errStalled
+	}
 	if err != nil {
 		return "", err
 	}
@@ -567,12 +572,21 @@ func (m *Manager) notify(s State) {
 	})
 }
 
+// stalledAfter is how long a release download may receive nothing before it is given up:
+// its connection died without saying so, as one does across the Mac's sleep. It shows as
+// failed, and the next check downloads it again. The time stops while the Mac sleeps.
+var stalledAfter = 30 * time.Second
+
+var errStalled = errors.New("the download stopped arriving")
+
 // watchDownload tells the shell how much of the release is in the download directory,
-// four times a second, until stop is closed. amarit's Download doesn't report progress, so
-// the file it writes there is the measure.
-func (m *Manager) watchDownload(dir string, stop <-chan struct{}) {
+// four times a second, until stop is closed, and calls stalled once nothing more has
+// arrived for stalledAfter. amarit's Download doesn't report progress, so the file it
+// writes there is the measure.
+func (m *Manager) watchDownload(dir string, stop <-chan struct{}, stalled func()) {
 	t := time.NewTicker(250 * time.Millisecond)
 	defer t.Stop()
+	last, heard := int64(-1), time.Now()
 	for {
 		select {
 		case <-stop:
@@ -585,6 +599,12 @@ func (m *Manager) watchDownload(dir string, stop <-chan struct{}) {
 			if info, err := e.Info(); err == nil {
 				done += info.Size()
 			}
+		}
+		if done != last {
+			last, heard = done, time.Now()
+		} else if time.Since(heard) >= stalledAfter {
+			stalled()
+			return
 		}
 		m.mu.Lock()
 		s := m.state
