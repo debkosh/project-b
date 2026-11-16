@@ -15,15 +15,16 @@ Save panel.
 **Done**, on the Mac in every desktop shell and on Android in both Mobile shells unless noted:
 right-click, downloads (with Retry and Copy link, and a stalled connection resumed after
 sleep), file upload (Mac), the page's dialogs, find in page, video full screen, sign-in to a
-site, search engines with one suggestion source, permissions, tabs coming back, and History
-and Bookmarks (desktop; Cmd+D bookmarks in every shell). The list with owners is
+site, search engines with one suggestion source, permissions, tabs coming back, History
+and Bookmarks (desktop; Cmd+D bookmarks in every shell), and error pages with certificate
+warnings (Standard and the Mobile web shell). The list with owners is
 [daily-use.md](daily-use.md).
 
 **Planned**, decided and not started ([todo.md](todo.md#daily-driver)): bookmark folders and
 import, bookmarks in the address bar's suggestions, and History and Bookmarks on a phone.
 
-**Needs discussion** ([todo.md](todo.md#daily-driver)): saved passwords and autofill,
-printing, error pages, a new tab page, engine-fetched search suggestions (off by default if
+**Needs discussion** ([todo.md](todo.md#daily-driver)), in this order: printing, a new tab
+page, saved passwords and autofill, engine-fetched search suggestions (off by default if
 built), and where a phone's downloads go.
 
 ## Right-click
@@ -414,10 +415,9 @@ camera or microphone, the adapter asks Android for its own grant before the page
 device. Built after the Mac's.
 ## Error pages and certificate warnings
 
-Today a page that fails to load, crashes or is blocked shows an empty page in the desktop
-shells (basics 7), and a bad certificate does the same (basics 10): content refuses the
-certificate and nothing says why. The Mobile shell draws a notice of its own over such a
-page since 0.2.58. Now Go says what the notice is, and every shell draws it.
+A page that fails to load, crashes or is blocked, or has a bad certificate, has nothing to
+show. Go says what the tab shows instead, a notice, and every shell draws it: Standard since
+0.2.65, the Mobile web shell from its own notice to Go's after 0.2.74.
 
 **The notice.** `tab.notice` is absent, or `{kind, title, detail, actions}` while the tab's
 page has nothing to show: `kind` is `failed`, `crashed`, `blocked` or `certificate`; `title`
@@ -442,8 +442,10 @@ slot and the site's view say so for as long as it shows.
 **The shell.** In Standard the notice fills the page's area, on the bar's colour: an icon,
 the title, the detail in the muted colour, and the actions as buttons, the primary one
 first. It is an `alert`, its buttons by Go's titles. The contract's rule 32 checks it on the
-mock: a load that fails brings an alert with Try again, which loads the page again. Mobile
-keeps its own notice, drawn from the same tab, until it takes Go's.
+mock: a load that fails brings an alert with Try again, which loads the page again, and a bad
+certificate one with Open anyway. In the Mobile web shell it is the same, sized for a thumb:
+48 px buttons in a row, the others quiet, and Share report beside Reload after a crash. Glide
+and the native Mobile shell are still to take it.
 
 **Android.** The same messages; the certificate question comes with the Mac's, as the
 engine's client is shared.
