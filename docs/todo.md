@@ -235,6 +235,8 @@ How they work is in [site-features.md](site-features.md).
 - A release keeps no symbols: the APK's library is stripped, and the unstripped one in the
   container's one `out/android` is replaced by the next Android build. Keep each release's
   `lib.unstripped/libproject_b_content.so` beside its assets, so a crash's BuildId can be read.
+- On Android 10 (emu-29) a page's full screen leaves the navigation bar: it covers
+  (0, 0, 1080, 2274) of a 1080x2400 screen. Seen in 0.2.69 and 0.2.76; Android 17 is right.
 - The desktop and the emulators have no lock, unlike `out/` and the Android VM. Give
   `tools/test.sh android` and the drivers one (per emulator, and one for the desktop).
 - The README's screenshots show the Standard shell from before 0.2.63: retake them from a
