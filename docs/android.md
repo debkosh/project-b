@@ -6,7 +6,7 @@ All Chromium paths below are in the 155.0.8059.41 tree (`chromium/src`).
 ## The short answer
 
 - **Yes, on real content.** The same Go managers, the same `PBEngineCalls` table, the same C++ adapter files and
-  the same Vue shell, transparent over the page, run on Chromium 155's content layer on Android. Tested on two
+  the same web shell, transparent over the page, run on Chromium 155's content layer on Android. Tested on two
   emulators. Only the window and the start-up are new code.
 - **It can't be built on macOS itself.** Chromium only builds Android on Linux x86-64. An amd64 container under
   Rosetta in a Colima VM on the Mac Studio does it: about 2.5 hours for the first build, and about 2 minutes after a

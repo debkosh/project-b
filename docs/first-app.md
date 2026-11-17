@@ -11,7 +11,7 @@ below them. The address bar's suggestion box, fed by real history, extends over 
 |---|---|---|
 | `core/` | Go managers (tabs, history, suggest, policy, window, prefs, update, shell), the timeline that all logging goes through, and the engine contract | No |
 | `core/mockengine`, `core/cmd/dev` | Mock engine and dev server | No |
-| `shell/` | Vue 3 shell | No |
+| `shell/` | The web shells, the settings page and our other pages | No |
 | `core/cmd/lib` | The cgo layer: the Go core as a c-archive | Links into the main binary |
 | `engine/` | C++ adapter on Chromium's content layer, built into the library | Yes |
 
