@@ -1,6 +1,11 @@
 # Status
 
-Where the project stands, for the next person or agent. Last updated 2026-11-10.
+Where the project stands, for the next person or agent. Last updated 2026-11-17.
+
+Project B is an experiment in browser architecture, and development is ongoing. The latest
+release is 0.2.80, for Apple silicon Macs and arm64 Android. What works for daily use and what
+doesn't yet is in [daily-use.md](daily-use.md); what is decided but not built is in
+[todo.md](todo.md).
 
 ## Docs
 
@@ -11,7 +16,7 @@ Where the project stands, for the next person or agent. Last updated 2026-11-10.
 - [profiles.md](profiles.md) and [profiles-build.md](profiles-build.md): profiles, each in a copy of the app of its own, the list beside their folders, templates, the Profiles menu, the picker, the Profile section in settings, and updates shared by every copy.
 - [windows.md](windows.md): several windows, each with its own shell and settings, and the list of tabs each one shows.
 - [workspaces.md](workspaces.md): workspaces, sets of tabs inside a profile with cookies and site storage of their own.
-- [shells.md](shells.md): several shells, each a folder, on an SDK with no framework in it and adapters for Vue and Svelte, chosen per profile and switched live; the messages a shell is held to, how to build one, the check every shell passes on the mock engine, and the proposal for the shell API without Vue.
+- [shells.md](shells.md): several shells, each a folder, on an SDK with no framework in it, chosen per profile and switched live; the messages a shell is held to, how to build one, the check every shell passes on the mock engine, and the proposal for the shell API without Vue.
 - [architecture-review.md](architecture-review.md): an independent verdict from building tabs.
 - [engine-interface.md](engine-interface.md): what an engine must implement for the Go core, which knows nothing of content, and the minimal slice.
 - [content-hooks.md](content-hooks.md): every content hook, carried or left, and what to do about the rest.
@@ -50,11 +55,10 @@ off by default. [extensions.md](extensions.md) and [flags.md](flags.md) have the
 
 ## Shipping a build to try
 
-    amarit restart projectb-release            # RELEASE=1 OUT=out/rel tools/build.sh
+    RELEASE=1 OUT=out/rel tools/build.sh       # the release build
     OUT=out/rel tools/package.sh               # signed build/project-b.dmg
     hdiutil attach -nobrowse -readonly -mountpoint <dir> build/project-b.dmg
     PB_BIN="<dir>/Project B.app/Contents/MacOS/project_b" tools/test.sh app
-    ~/my-claude-setup/dropd/drop build/project-b.dmg     # prints the link
 
 A Mac installs `project-b-trust.mobileconfig` once, from `tools/signing-setup.sh`. The key
 stays on the build Mac. `tools/gen_hooks.py` reruns only on a Chromium upgrade.
