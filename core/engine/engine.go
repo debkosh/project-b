@@ -241,6 +241,17 @@ type Engine interface {
 	// fails says nothing. ThumbnailURL is the address our pages load that picture at,
 	// changing with each revision; it only names it.
 	CaptureThumbnail(tab TabID, maxWidth int)
+	// AskDefaultBrowser asks the system to make the app the default browser, which asks
+	// the person itself: macOS's question, Android's sheet. DefaultBrowserChanged follows
+	// with how it ended. IsDefaultBrowser says whether the app is it now.
+	AskDefaultBrowser()
+	IsDefaultBrowser() bool
+	// AskNotifications asks a phone's system to let the app show its notifications, as a
+	// download's, which asks the person; NotificationsAnswered follows. NotificationsAllowed
+	// says whether it may now. A desktop's are the app's own to show: allowed, and asking
+	// does nothing.
+	AskNotifications()
+	NotificationsAllowed() bool
 	ThumbnailURL(tab TabID, revision int64) string
 	// ExitPageFullScreen takes a tab's page out of full screen, as its own
 	// exitFullscreen() would; PageFullScreen follows.
@@ -458,6 +469,11 @@ type Listener interface {
 	// Thumbnail says the engine kept a new picture of a tab's page, as CaptureThumbnail
 	// asked: revision is greater for each newer one, for ThumbnailURL.
 	Thumbnail(tab TabID, revision int64)
+	// DefaultBrowserChanged is how AskDefaultBrowser ended: whether the app is the default
+	// browser now.
+	DefaultBrowserChanged(is bool)
+	// NotificationsAnswered is how AskNotifications ended: whether the app may show them.
+	NotificationsAnswered(allowed bool)
 
 	// PermissionRequested is a page asking to use what kinds name. Every kind a page can
 	// ask for comes here, those the app answers without asking the person too. The app

@@ -23,6 +23,10 @@ export const state = reactive({
   prefs: {},
   searchEngines: [],
   autoUpdate: true,
+  // Whether the app is the default browser, as the system says.
+  isDefault: false,
+  // Whether the app may show its notifications, a download's: a phone asks the person.
+  notifications: true,
   // The ways to work the style step offers, each {id, shell, tabLayout, name}.
   layouts: [],
 });
@@ -45,6 +49,8 @@ export function connect() {
             prefs: m.prefs,
             searchEngines: m.searchEngines || [],
             autoUpdate: m.autoUpdate,
+            isDefault: m.isDefault,
+            notifications: m.notifications,
             layouts: m.layouts || [],
           });
           break;
@@ -59,6 +65,12 @@ export function connect() {
           break;
         case 'autoUpdate':
           state.autoUpdate = m.autoUpdate;
+          break;
+        case 'isDefault':
+          state.isDefault = m.isDefault;
+          break;
+        case 'notifications':
+          state.notifications = m.notifications;
           break;
       }
     },

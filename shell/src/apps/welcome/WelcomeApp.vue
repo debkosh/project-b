@@ -165,6 +165,18 @@ onMounted(() => heading.value?.focus());
           <li><b>Each site's own settings</b><span>From the address: what the site may use, and its ads.</span></li>
           <li><b>Workspaces</b><span>Sets of tabs, each with its own sign-ins.</span></li>
         </ul>
+        <div class="card default">
+          <div class="row">
+            <span class="label">Default browser</span>
+            <span v-if="state.isDefault" class="state">This is your default browser</span>
+            <button v-else type="button" class="text-button" @click="send({ t: 'makeDefault' })">Make default browser</button>
+          </div>
+          <div v-if="state.phone" class="row">
+            <span class="label">Download notifications</span>
+            <span v-if="state.notifications" class="state">On</span>
+            <button v-else type="button" class="text-button" @click="send({ t: 'askNotifications' })">Allow</button>
+          </div>
+        </div>
         <div class="actions">
           <button type="button" class="text-button primary" @click="finish">Start browsing</button>
         </div>
@@ -478,6 +490,10 @@ h1 {
 
 .done .actions {
   justify-content: flex-start;
+}
+
+.card.default {
+  margin-bottom: 32px;
 }
 
 .nav {

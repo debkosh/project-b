@@ -124,8 +124,7 @@ Each slice goes out through a release of its own.
   welcome's share the presets, `shell/src/ui/colours.js`, None first, struck through.
 - **The page,** `shell/src/apps/welcome`, at `chrome://welcome/`, one of `tabs.Pages`, with
   Go's side in `core/app/welcome.go`. Desktop: Welcome, Pick your style, Protection, You're
-  set; Bring things over joins in slice 3 with the importers, and Make default browser in
-  the next commit. Every choice is a pref, set as it is made (`setPref`, `setSearchEngine`,
+  set; Bring things over joins in slice 3 with the importers. Every choice is a pref, set as it is made (`setPref`, `setSearchEngine`,
   `setAutoUpdate`), and comes back as a change: the page repaints from the tones Go sends,
   the window's frame with it, and the picture of the browser (`Preview.vue`) is drawn in
   those tones, so nothing is a picture to keep up. Skip setup and Start browsing both
@@ -150,6 +149,29 @@ Each slice goes out through a release of its own.
   (today each is a site's own setting, the ad blocker on by default, links allowed), and the
   keys like Chrome's or Project B's (Settings, Keyboard, has it).
 - **Run setup again** in Settings, General, opens the page in a tab.
+- **Make default browser,** on the last step. Go asks the engine (`AskDefaultBrowser`), and
+  the system asks the person: on the Mac `NSWorkspace`'s `setDefaultApplicationAtURL:`
+  for http then https, on Android `RoleManager`'s `ROLE_BROWSER` sheet. The answer comes
+  back as `PB_EVENT_DEFAULT_BROWSER`, and the row says so. The Mac app declares itself a
+  browser in its Info.plist (`tools/package.sh`: http and https, html and xhtml), and a
+  delegate takes the links and pages macOS hands it to Go (`PBGoCalls.open_urls`), which
+  opens them as a second copy's are. Checked on the mock; on a real Mac only in the VM, as
+  pressing it changes the Mac's own default browser.
+- **Download notifications,** on a phone's last step: `AskNotifications` asks Android for
+  `POST_NOTIFICATIONS`, and `PB_EVENT_NOTIFICATIONS` brings the answer back. The ask at the
+  first download stays, for a person who skipped setup; once allowed here it never comes.
+- **Checked on the real Mac app,** 2026-11-17, on a fresh `--root`: the welcome over the whole
+  window, the grey frame, Blue and Dark repainting the page and the window's own border at
+  once, None in dark painting the dark grey (`#3a3f4a`), and Start browsing giving the
+  window back with its command box and noting `{"done": true}`.
+- **Make default browser checked in a VM clone** (pb-onboard, 2026-11-17): macOS's own
+  question, Use "Project B", the row saying so, then `open https://example.com/` from the
+  guest opening a tab in the running app, and with the app quit, starting it on the link.
+- **Checked on Android 14** (emulator-5600, 2026-11-17), after `pm clear`: the welcome over the
+  screen (the first build packed no welcome page: `engine/android/BUILD.gn` lists each page),
+  the grey status bar, Red repainting the status bar and the page, the address bar on top,
+  RoleManager's sheet setting Project B as default, Android's notifications question, and
+  the Mobile shell back in red with its bar on top.
 
 ## The importer, a module of its own
 

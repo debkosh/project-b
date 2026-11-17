@@ -326,6 +326,36 @@ void CallAppCommand(int32_t command) {
 #endif
 }
 
+void CallAskDefaultBrowser() {
+  CheckMainThread();
+#if BUILDFLAG(IS_ANDROID)
+  g_engine->windows().begin()->second->window->AskDefaultBrowser();
+#else
+  AskDefaultBrowser();
+#endif
+}
+
+int CallIsDefaultBrowser() {
+  CheckMainThread();
+#if BUILDFLAG(IS_ANDROID)
+  return g_engine->windows().begin()->second->window->IsDefaultBrowser();
+#else
+  return IsDefaultBrowser();
+#endif
+}
+
+#if BUILDFLAG(IS_ANDROID)
+void CallAskNotifications() {
+  CheckMainThread();
+  g_engine->windows().begin()->second->window->AskNotifications();
+}
+
+int CallNotificationsAllowed() {
+  CheckMainThread();
+  return g_engine->windows().begin()->second->window->NotificationsAllowed();
+}
+#endif
+
 #if !BUILDFLAG(IS_ANDROID)
 void CallSetDockColor(int32_t rgb) {
   CheckMainThread();
@@ -624,6 +654,12 @@ const PBEngineCalls* Engine::Calls() {
       .set_ad_rules = CallSetAdRules,
       .content_hooks = CallContentHooks,
       .post_wakeup = CallPostWakeup,
+      .ask_default_browser = CallAskDefaultBrowser,
+      .is_default_browser = CallIsDefaultBrowser,
+#if BUILDFLAG(IS_ANDROID)
+      .ask_notifications = CallAskNotifications,
+      .notifications_allowed = CallNotificationsAllowed,
+#endif
 #if BUILDFLAG(IS_ANDROID)
       .install_update = CallInstallUpdate,
 #endif

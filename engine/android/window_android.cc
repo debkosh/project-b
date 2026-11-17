@@ -124,6 +124,20 @@ class BrowserWindow : public content::CompositorClient,
     root_->SetBounds(size);
   }
 
+  // How asking Android to make the app the default browser ended.
+  void DefaultBrowserAnswered(JNIEnv* env, bool is_default) {
+    hooks::Args args;
+    args.Int(is_default ? 1 : 0);
+    hooks::Fire(PB_EVENT_DEFAULT_BROWSER, args);
+  }
+
+  // How asking Android to show the app's notifications ended.
+  void NotificationsAnswered(JNIEnv* env, bool allowed) {
+    hooks::Args args;
+    args.Int(allowed ? 1 : 0);
+    hooks::Fire(PB_EVENT_NOTIFICATIONS, args);
+  }
+
   // The frame colour Java painted, for the theme it shows: here too, where nothing draws.
   void FrameShown(JNIEnv* env, int32_t rgb) { SetColor(rgb); }
 
@@ -376,6 +390,24 @@ void Window::SetPages(const std::vector<Page>& pages) {
 void Window::ListenForState(
     base::RepeatingCallback<void(const State&)> on_change) {
   g_browser_window->ListenForState(std::move(on_change));
+}
+
+void Window::AskDefaultBrowser() {
+  Java_BrowserWindow_askDefaultBrowser(AttachCurrentThread(), g_browser_window->java());
+}
+
+bool Window::IsDefaultBrowser() {
+  return Java_BrowserWindow_isDefaultBrowser(AttachCurrentThread(),
+                                             g_browser_window->java());
+}
+
+void Window::AskNotifications() {
+  Java_BrowserWindow_askNotifications(AttachCurrentThread(), g_browser_window->java());
+}
+
+bool Window::NotificationsAllowed() {
+  return Java_BrowserWindow_notificationsAllowed(AttachCurrentThread(),
+                                                 g_browser_window->java());
 }
 
 void Window::InstallPackage(const std::string& path) {

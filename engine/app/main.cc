@@ -17,6 +17,7 @@ int main(int argc, const char** argv) {
       .go_stats = PBGoStats,
       .version = PBVersion,
       .launch_switches = PBLaunchSwitches,
+      .open_urls = PBOpenURLs,
       .timeline_start = PBTimelineStart,
       .timeline_now = PBTimelineNow,
       .timeline_record = PBTimelineRecord,

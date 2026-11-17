@@ -45,6 +45,8 @@ static inline void call_find(const PBEngineCalls* c, int64_t tab, int32_t reques
 static inline void call_stop_finding(const PBEngineCalls* c, int64_t tab) { c->stop_finding(tab); }
 static inline void call_print(const PBEngineCalls* c, int64_t tab) { c->print(tab); }
 static inline void call_capture_thumbnail(const PBEngineCalls* c, int64_t tab, int32_t max_width) { c->capture_thumbnail(tab, max_width); }
+static inline void call_ask_default_browser(const PBEngineCalls* c) { c->ask_default_browser(); }
+static inline int call_is_default_browser(const PBEngineCalls* c) { return c->is_default_browser(); }
 static inline void call_exit_page_full_screen(const PBEngineCalls* c, int64_t tab) { c->exit_page_full_screen(tab); }
 static inline void call_answer_sign_in(const PBEngineCalls* c, int64_t dialog, int ok, const char* username, const char* password) { c->answer_sign_in(dialog, ok, username, password); }
 static inline void call_answer_dialog(const PBEngineCalls* c, int64_t dialog, int ok, const char* text) { c->answer_dialog(dialog, ok, text); }
@@ -238,6 +240,10 @@ func (e *nativeEngine) Print(tab engine.TabID)       { C.call_print(e.calls, C.i
 func (e *nativeEngine) CaptureThumbnail(tab engine.TabID, maxWidth int) {
 	C.call_capture_thumbnail(e.calls, C.int64_t(tab), C.int32_t(maxWidth))
 }
+
+func (e *nativeEngine) AskDefaultBrowser() { C.call_ask_default_browser(e.calls) }
+
+func (e *nativeEngine) IsDefaultBrowser() bool { return C.call_is_default_browser(e.calls) != 0 }
 
 // ThumbnailURL is where the engine serves a tab's picture to our pages; the revision only
 // makes each picture's address its own.

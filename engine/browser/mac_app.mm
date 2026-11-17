@@ -16,6 +16,7 @@
 #include "base/values.h"
 #include "project_b/engine/abi/pb_abi.h"
 #include "project_b/engine/browser/engine.h"
+#include "project_b/engine/browser/go.h"
 #include "project_b/engine/browser/hooks.h"
 #include "project_b/engine/browser/timeline.h"
 #include "project_b/engine/browser/window.h"
@@ -32,6 +33,22 @@
 
 @interface PBApplication
     : NSApplication <CrAppProtocol, CrAppControlProtocol, NativeEventProcessor>
+@end
+
+// Takes the links and files macOS hands the app, as its default browser or from a file
+// opened with it (Info.plist's URL and document types), to Go: they open as Go opens a
+// second copy's, beside the window used last.
+@interface PBLinkReceiver : NSObject <NSApplicationDelegate>
+@end
+
+@implementation PBLinkReceiver
+- (void)application:(NSApplication*)application openURLs:(NSArray<NSURL*>*)urls {
+  NSMutableArray<NSString*>* lines = [NSMutableArray array];
+  for (NSURL* url in urls) {
+    [lines addObject:url.absoluteString];
+  }
+  project_b::Go().open_urls([lines componentsJoinedByString:@"\n"].UTF8String);
+}
 @end
 
 @implementation PBApplication {
@@ -295,6 +312,48 @@ void InitMacApp() {
   // Go's menu has its own Full Screen item, so AppKit mustn't add another.
   [NSUserDefaults.standardUserDefaults
       registerDefaults:@{@"NSFullScreenMenuItemEverywhere" : @NO}];
+}
+
+void ReceiveLinks() {
+  // NSApp's delegate is weak, so the receiver lives as long as the app.
+  static PBLinkReceiver* receiver = [[PBLinkReceiver alloc] init];
+  NSApp.delegate = receiver;
+}
+
+bool IsDefaultBrowser() {
+  NSURL* app = [NSWorkspace.sharedWorkspace
+      URLForApplicationToOpenURL:[NSURL URLWithString:@"https://example.com/"]];
+  return app && [[NSBundle bundleWithURL:app].bundleIdentifier
+                    isEqualToString:NSBundle.mainBundle.bundleIdentifier];
+}
+
+void AskDefaultBrowser() {
+  // macOS asks the person once, for http, and changes https with it; https is set too in
+  // case it didn't. Go hears how it ended, on the main thread.
+  NSURL* app = NSBundle.mainBundle.bundleURL;
+  auto report = ^{
+    dispatch_async(dispatch_get_main_queue(), ^{
+      hooks::Args args;
+      args.Int(IsDefaultBrowser() ? 1 : 0);
+      hooks::Fire(PB_EVENT_DEFAULT_BROWSER, args);
+    });
+  };
+  [NSWorkspace.sharedWorkspace setDefaultApplicationAtURL:app
+                                     toOpenURLsWithScheme:@"http"
+                      completionHandler:^(NSError* error) {
+                        if (error) {
+                          LOG(WARNING) << "default browser: "
+                                       << base::SysNSStringToUTF8(
+                                              error.localizedDescription);
+                          report();
+                          return;
+                        }
+                        [NSWorkspace.sharedWorkspace setDefaultApplicationAtURL:app
+                                         toOpenURLsWithScheme:@"https"
+                                            completionHandler:^(NSError*) {
+                                              report();
+                                            }];
+                      }];
 }
 
 void SetMainMenu(const std::string& json) {

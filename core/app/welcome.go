@@ -161,11 +161,28 @@ func (w *welcome) handle(tab engine.TabID, msg []byte) {
 		w.a.Prefs.SetSearchEngine(m.Value)
 	case "setAutoUpdate":
 		w.a.Update.SetAuto(m.On)
+	case "makeDefault":
+		timeline.Infof("welcome: asking the system to make this the default browser")
+		w.e.AskDefaultBrowser()
+	case "askNotifications":
+		w.e.AskNotifications()
 	case "done":
 		w.finish(tab)
 	default:
 		timeline.Warnf("welcome: the page sent %q, which it has no use for", m.T)
 	}
+}
+
+// DefaultBrowserChanged tells the welcome pages how asking to be the default browser ended.
+func (a *App) DefaultBrowserChanged(is bool) {
+	timeline.Infof("welcome: the default browser is this one: %v", is)
+	a.welcome.sendAll(map[string]any{"t": "isDefault", "isDefault": is})
+}
+
+// NotificationsAnswered tells the welcome pages whether the app may show its notifications.
+func (a *App) NotificationsAnswered(allowed bool) {
+	timeline.Infof("welcome: notifications allowed: %v", allowed)
+	a.welcome.sendAll(map[string]any{"t": "notifications", "notifications": allowed})
 }
 
 // welcomeShell is a way to work the style step offers: a shell, and for Standard where
@@ -187,6 +204,8 @@ func (w *welcome) snapshot(tab engine.TabID) map[string]any {
 		"prefs":         w.a.Prefs.All(),
 		"searchEngines": search.All(),
 		"autoUpdate":    w.a.Update.Auto(),
+		"isDefault":     w.e.IsDefaultBrowser(),
+		"notifications": w.e.NotificationsAllowed(),
 		"layouts": []welcomeShell{
 			{ID: "side", Shell: "standard", TabLayout: "vertical", Name: "Tabs on the side"},
 			{ID: "top", Shell: "standard", TabLayout: "horizontal", Name: "Tabs on top"},

@@ -92,6 +92,10 @@ func (e *Eng) SetShellBack(engine.WindowID, bool)                   { e.Calls[CO
 func (e *Eng) SendToPage(engine.TabID, []byte)                      { e.Calls[CSendToPage]++ }
 func (e *Eng) AppCommand(engine.AppCommand)                         { e.Calls[COther]++ }
 func (e *Eng) SetDockColor(string)                                  { e.Calls[COther]++ }
+func (e *Eng) AskDefaultBrowser()                                   { e.Calls[COther]++ }
+func (e *Eng) IsDefaultBrowser() bool                               { return false }
+func (e *Eng) AskNotifications()                                    { e.Calls[COther]++ }
+func (e *Eng) NotificationsAllowed() bool                           { return true }
 func (e *Eng) SendToShell(w engine.WindowID, msg []byte) {
 	e.Calls[CSendToShell]++
 	e.ShellMsgs++

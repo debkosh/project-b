@@ -137,6 +137,10 @@ type Engine struct {
 	left bool
 	// showRegions is the Show window regions flag, as the app launched with it.
 	showRegions bool
+	// defaultBrowser: AskDefaultBrowser made the app the default browser.
+	defaultBrowser bool
+	// notificationsAllowed: AskNotifications was answered yes.
+	notificationsAllowed bool
 	// settings are what the settings page in each tab of ours hears.
 	settings map[engine.TabID]*Feed
 
@@ -751,6 +755,44 @@ func (e *Engine) SetDockColor(color string) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.dockColor = color
+}
+
+// AskDefaultBrowser answers as a person who says yes does: the app is the default browser.
+func (e *Engine) AskDefaultBrowser() {
+	e.Post(func() {
+		e.mu.Lock()
+		e.defaultBrowser = true
+		e.mu.Unlock()
+		if e.listener != nil {
+			e.listener.DefaultBrowserChanged(true)
+		}
+	})
+}
+
+// AskNotifications answers as a person who allows them does.
+func (e *Engine) AskNotifications() {
+	e.Post(func() {
+		e.mu.Lock()
+		e.notificationsAllowed = true
+		e.mu.Unlock()
+		if e.listener != nil {
+			e.listener.NotificationsAnswered(true)
+		}
+	})
+}
+
+// NotificationsAllowed is whether AskNotifications has been answered with yes.
+func (e *Engine) NotificationsAllowed() bool {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.notificationsAllowed
+}
+
+// IsDefaultBrowser is whether AskDefaultBrowser has made the app the default browser.
+func (e *Engine) IsDefaultBrowser() bool {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.defaultBrowser
 }
 
 // DockColor is the colour the app last put on its Dock icon, or "".

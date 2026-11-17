@@ -1,8 +1,11 @@
 package dev.projectb.browser;
 
+import android.Manifest;
 import android.app.Activity;
+import android.app.role.RoleManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
@@ -496,6 +499,70 @@ final class BrowserWindow extends FrameLayout {
         activity.startActivity(install);
     }
 
+    /** What BrowserActivity hears back from Android's sheet asking to be the default browser. */
+    static final int DEFAULT_BROWSER_REQUEST = 1;
+
+    /**
+     * Asks Android to make the app the default browser: its own sheet asks the user, and
+     * defaultBrowserAnswered says how it ended. Already the default, it says so at once.
+     */
+    @CalledByNative
+    private void askDefaultBrowser() {
+        RoleManager roles = activity.getSystemService(RoleManager.class);
+        if (roles.isRoleHeld(RoleManager.ROLE_BROWSER)) {
+            defaultBrowserAnswered();
+            return;
+        }
+        activity.startActivityForResult(
+                roles.createRequestRoleIntent(RoleManager.ROLE_BROWSER), DEFAULT_BROWSER_REQUEST);
+    }
+
+    /** Whether the app is the default browser now. */
+    @CalledByNative
+    private boolean isDefaultBrowser() {
+        return activity.getSystemService(RoleManager.class).isRoleHeld(RoleManager.ROLE_BROWSER);
+    }
+
+    /** Tells Go how asking to be the default browser ended. */
+    void defaultBrowserAnswered() {
+        if (nativeWindow != 0) {
+            BrowserWindowJni.get().defaultBrowserAnswered(nativeWindow, isDefaultBrowser());
+        }
+    }
+
+    /** What BrowserActivity hears back from Android's question about notifications. */
+    static final int NOTIFICATIONS_REQUEST = 2;
+
+    /**
+     * Asks Android to let the app show its notifications, a download's: Android asks the user
+     * from 13 on, and notificationsAnswered says how it ended. Allowed already, or before 13,
+     * where nothing asks, it says so at once.
+     */
+    @CalledByNative
+    private void askNotifications() {
+        if (notificationsAllowed()) {
+            notificationsAnswered();
+            return;
+        }
+        activity.requestPermissions(
+                new String[] {Manifest.permission.POST_NOTIFICATIONS}, NOTIFICATIONS_REQUEST);
+    }
+
+    /** Whether the app may show its notifications now. */
+    @CalledByNative
+    private boolean notificationsAllowed() {
+        return android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU
+                || activity.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                        == PackageManager.PERMISSION_GRANTED;
+    }
+
+    /** Tells Go how asking to show notifications ended. */
+    void notificationsAnswered() {
+        if (nativeWindow != 0) {
+            BrowserWindowJni.get().notificationsAnswered(nativeWindow, notificationsAllowed());
+        }
+    }
+
     /** Hands a file to Android's chooser, to send or save where the user picks. */
     @CalledByNative
     private void shareFile(String path) {
@@ -549,6 +616,10 @@ final class BrowserWindow extends FrameLayout {
         void sizeChanged(long nativeBrowserWindow, double width, double height);
 
         void frameShown(long nativeBrowserWindow, int rgb);
+
+        void defaultBrowserAnswered(long nativeBrowserWindow, boolean isDefault);
+
+        void notificationsAnswered(long nativeBrowserWindow, boolean allowed);
 
         void contentsMoved(
                 long nativeBrowserWindow,

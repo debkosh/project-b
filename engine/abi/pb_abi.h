@@ -156,6 +156,10 @@ typedef enum PBEvent {
   PB_EVENT_THUMBNAIL = 77,              // i: tab, i: revision, greater for each newer
                                         // one; capture_thumbnail kept a new picture of
                                         // its page, at chrome://thumb/<tab> for our pages
+  PB_EVENT_DEFAULT_BROWSER = 78,        // i: 1 when the app is the default browser now;
+                                        // how ask_default_browser ended
+  PB_EVENT_NOTIFICATIONS = 79,          // i: 1 when the app may show its notifications
+                                        // now; how ask_notifications ended
   PB_EVENT_PAGE_MESSAGE = 23,           // i: tab, s: the page's name ("settings",
                                         // "history", "bookmarks", "downloads",
                                         // "welcome"), s: json, from the page of ours
@@ -450,6 +454,16 @@ typedef struct PBEngineCalls {
   const struct PBContentHooks* (*content_hooks)(void);
   // Asks the main thread to call run_posted soon.
   void (*post_wakeup)(void);
+  // Asks the system to make the app the default browser, which asks the person itself:
+  // macOS's question, Android's sheet. PB_EVENT_DEFAULT_BROWSER says how it ended.
+  void (*ask_default_browser)(void);
+  // 1 when the app is the default browser now.
+  int (*is_default_browser)(void);
+  // Android only: asks to show the app's notifications, a download's, which Android asks
+  // the person; PB_EVENT_NOTIFICATIONS says how it ended. notifications_allowed is 1 when
+  // it may now. The Mac's are its own to show, and it leaves both null.
+  void (*ask_notifications)(void);
+  int (*notifications_allowed)(void);
   // Android only: opens the system's package installer for the APK at path, where the user
   // confirms. The Mac swaps its own bundle, and leaves this null.
   void (*install_update)(const char* path);
@@ -513,6 +527,11 @@ typedef struct PBGoCalls {
   // Called once, before content starts, with the folder claim_profile returned. The caller
   // frees it.
   char* (*launch_switches)(const char* profile_dir);
+
+  // The links and files the system opens with the app, one per line, as its default
+  // browser: they open as a second copy's do. The Mac's; Android hands its own to
+  // PBOpenURL.
+  void (*open_urls)(const char* urls);
 
   // The timeline, Go's record of what happened and when (core/timeline). The adapter
   // uses these through engine/browser/timeline.h. Times are nanoseconds since process

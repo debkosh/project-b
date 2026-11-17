@@ -108,6 +108,24 @@ public final class BrowserActivity extends Activity {
         window.setActivityVisible(false);
     }
 
+    // Android's sheet asking to be the default browser has been answered.
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == BrowserWindow.DEFAULT_BROWSER_REQUEST) {
+            window.defaultBrowserAnswered();
+        }
+    }
+
+    // Android's question about notifications has been answered.
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
+        super.onRequestPermissionsResult(requestCode, permissions, results);
+        if (requestCode == BrowserWindow.NOTIFICATIONS_REQUEST) {
+            window.notificationsAnswered();
+        }
+    }
+
     // The activity handles uiMode itself, so a theme that follows the system follows it here.
     @Override
     public void onConfigurationChanged(Configuration config) {

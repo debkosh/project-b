@@ -41,6 +41,8 @@ const (
 	PageFullScreen         Event = 75
 	IsPageFullScreen       Event = 76
 	Thumbnail              Event = 77
+	DefaultBrowser         Event = 78
+	Notifications          Event = 79
 )
 
 var names = map[Event]string{
@@ -62,6 +64,8 @@ var names = map[Event]string{
 	PageFullScreen:         "engine.PageFullScreen",
 	IsPageFullScreen:       "engine.IsPageFullScreen",
 	Thumbnail:              "engine.Thumbnail",
+	DefaultBrowser:         "engine.DefaultBrowserChanged",
+	Notifications:          "engine.NotificationsAnswered",
 }
 
 // linksAndImagesOnly is a phone's way: only a long press on a link or an image is the
@@ -146,6 +150,10 @@ func (e *Events) Dispatch(id Event, args []Value) (Value, bool) {
 		return yes(l.IsPageFullScreen(engine.TabID(r.int()))), true
 	case Thumbnail:
 		l.Thumbnail(engine.TabID(r.int()), r.int())
+	case DefaultBrowser:
+		l.DefaultBrowserChanged(r.bool())
+	case Notifications:
+		l.NotificationsAnswered(r.bool())
 	default:
 		return e.adapter(id, l, r)
 	}

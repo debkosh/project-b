@@ -55,6 +55,11 @@ const bars = async (w) => (await w.ui.getByRole('tab').first().isVisible()) || (
   await w.page.screenshot({ path: path.join(lib.out, 'welcome-style.png') });
   await welcome.getByRole('button', { name: 'Continue' }).click();
   await welcome.getByRole('button', { name: 'Continue' }).click();
+  // Make default browser asks the system, which the mock answers yes for.
+  await welcome.getByRole('button', { name: 'Make default browser' }).click();
+  check('Make default browser asks, and the page says it is the default', await until(() => welcome.getByText('This is your default browser').isVisible()));
+  await settle(w.page);
+  await w.page.screenshot({ path: path.join(lib.out, 'welcome-done.png') });
   await welcome.getByRole('button', { name: 'Start browsing' }).click();
   check('Start browsing closes it and the shell comes back', await until(async () => !welcomeTab(await regions()) && (await bars(w))));
   check('and welcome.json says it was finished', done() === true, String(done()));
