@@ -263,7 +263,8 @@ What a browser needs to be used all day ([daily-driver.md](daily-driver.md)).
 - **For the owner:** suggestions fetched from the search engine as you type. Left out by the
   owner's call; if wanted, a setting, off by default, since every keystroke goes to the engine.
 - **For the owner** (row 12 of [daily-use.md](daily-use.md)): saved passwords and autofill,
-  discussed with mocks before it is built, Standard and the Mobile web shell only.
+  Standard and the Mobile web shell only. The research and the recommendations are in
+  [password-autofill.md](password-autofill.md), with three questions for the owner.
 - **Printing, later.** Headers and footers (the date, title, address and page numbers, as
   Chrome's option prints them) need Chromium's template page in our pak; backgrounds and a
   page's selection alone are the system panel's to offer, which it can't for a PDF.

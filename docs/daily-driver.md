@@ -26,7 +26,7 @@ from it). The list with owners is
 import, and bookmarks in the address bar's suggestions as you type.
 
 **Needs discussion** ([todo.md](todo.md#daily-driver)), in this order: saved passwords and
-autofill, engine-fetched search suggestions (off by default if built), and where a phone's
+autofill ([password-autofill.md](password-autofill.md)), engine-fetched search suggestions (off by default if built), and where a phone's
 downloads go.
 
 ## Right-click
