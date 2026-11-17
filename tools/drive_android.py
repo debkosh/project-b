@@ -393,7 +393,7 @@ def launch(block=""):
     # A run that ended in a kill leaves a notice over the top of the page. It is shell, so
     # it would take the touches meant for the page.
     # The Mobile shell's has Dismiss.
-    dismiss = lambda: find("shell", label="Close") or find("shell", text="Dismiss")
+    dismiss = lambda: first(lambda: find("shell", label="Close"), lambda: find("shell", text="Dismiss"))
     notice = dismiss()
     if notice is not None:
         tap(middle(notice))
