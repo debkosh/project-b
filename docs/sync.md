@@ -7,7 +7,8 @@ users control". The research behind it, with a source for each fact, is in
 [prior-art.md](sync-research/prior-art.md) (how browsers and other apps do it) and
 [merge-and-keys.md](sync-research/merge-and-keys.md) (merging and encryption), and
 [merging.md](sync-research/merging.md) (how the industry merges edits made at once). A simpler
-model, with one item shape and one passphrase, is drafted in [sync-model.md](sync-model.md). Mocks:
+model, with one item shape and one passphrase, is drafted in [sync-model.md](sync-model.md); the
+owner then chose a small server, now [synckosh](https://github.com/sudiptadeb/synckosh). Mocks:
 [mocks.html](screenshots/sync/mocks.html), pictures linked below.
 
 ## The idea

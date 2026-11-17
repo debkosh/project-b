@@ -1,10 +1,20 @@
 # Sync model: a draft for discussion
 
-A draft for the owner, 2026-11-17, from three asks of his: one item shape, with a guid, a type
-and a timestamp, and the type owning parent and child; a public and a private part, sealed with
-a passphrase as keykosh does; and no server, kept fast, with import and export easy. Nothing here
-is built. The merge research behind it is [sync-research/merging.md](sync-research/merging.md).
+**Where it went, 2026-11-17.** The owner chose a small sync server over files in a place the user
+owns: "type buckets with items inside... latest item wins... custom mergers for specific data
+types... default merger takes newest item", with the spec and a reference Go library in a public
+repo that other projects can use. That is [synckosh](https://github.com/sudiptadeb/synckosh):
+its [SPEC.md](https://github.com/sudiptadeb/synckosh/blob/main/SPEC.md) is the protocol, and
+Project B will use its Go package. What it takes from this draft: the item shape, the
+passphrase-sealed key as in keykosh, the timestamp rules, and order kept on the child. His later
+points are in it too: guids are UUIDv7, so they sort by when they were made, and order keys may
+repeat, with a list sorted by order key and then guid. The rest of this page, the files in a
+place, is the earlier option.
 
+A draft for the owner, from three asks of his: one item shape, with a guid, a type and a
+timestamp, and the type owning parent and child; a public and a private part, sealed with a
+passphrase as keykosh does; and no server, kept fast, with import and export easy. Nothing here
+is built. The merge research behind it is [sync-research/merging.md](sync-research/merging.md).
 ## The mental model
 
 Everything is an item. An item is `{guid, type, ts, deleted, data}`. For each guid, the item with
