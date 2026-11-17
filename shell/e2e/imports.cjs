@@ -35,6 +35,8 @@ const folders = () => (read('bookmarks.json')?.entries || []).filter((e) => e.ki
   const rows = welcome.getByRole('switch', { name: /^Bring over from / });
   check('a row for each profile found', await until(async () => (await rows.count()) === 3));
   check('each says what it holds', await welcome.getByText('4 bookmarks · 3 pages · Bing for search').isVisible());
+  // Chrome's and Firefox's logos ship with us: the test home has neither app.
+  check('each row shows its browser\'s logo', await until(async () => (await welcome.locator('img.ui-browser-icon').evaluateAll((imgs) => imgs.filter((i) => i.complete && i.naturalWidth > 0).length)) === 3));
   check('with no row on, the way on is Continue', await welcome.getByRole('button', { name: 'Continue' }).isVisible());
   await welcome.getByRole('switch', { name: 'Bring over from Chrome · Personal' }).check();
   const boxes = welcome.getByRole('group', { name: 'What to bring over from Chrome · Personal' }).getByRole('checkbox');

@@ -36,7 +36,7 @@ const line = (p) => (p.last ? lastLine(p.last, state.searchEngines) : holds(p));
     </div>
     <div v-else class="card">
       <div v-for="p in state.browsers" :key="p.key" class="row browser">
-        <BrowserIcon :icon="p.icon" :title="p.title" />
+        <BrowserIcon :browser="p.browser" :icon="p.icon" :title="p.title" />
         <span class="label">
           <span class="name">{{ p.title }}</span>
           <span class="secondary">{{ state.importing.includes(p.key) ? 'Bringing over…' : line(p) }}</span>

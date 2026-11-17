@@ -124,7 +124,7 @@ onMounted(() => heading.value?.focus());
             <div v-if="state.browsers === null" class="row"><span class="state">Looking for other browsers…</span></div>
             <div v-for="p in state.browsers || []" :key="p.key" class="browser">
               <label class="row">
-                <BrowserIcon :icon="p.icon" :title="p.title" />
+                <BrowserIcon :browser="p.browser" :icon="p.icon" :title="p.title" />
                 <span class="what">
                   <span class="label">{{ p.title }}</span>
                   <span class="state">{{ holds(p) }}</span>
@@ -152,7 +152,7 @@ onMounted(() => heading.value?.focus());
           <div class="card">
             <div v-for="p in brought" :key="p.key" class="browser">
               <div class="row">
-                <BrowserIcon :icon="p.icon" :title="p.title" />
+                <BrowserIcon :browser="p.browser" :icon="p.icon" :title="p.title" />
                 <span class="what">
                   <span class="label">{{ p.title }}</span>
                   <span v-if="!state.imported[p.key]" class="state">Bringing over…</span>

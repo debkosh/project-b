@@ -40,9 +40,11 @@ And on the second mocks, 2026-11-17:
   we can test the welcome full screen". Go keeps whether the welcome was shown; a flag in
   Settings, Flags, "Show the welcome at the next start", clears it, and the next start opens the
   welcome over the whole window as a first start does.
-- **The browsers' own logos** on the import rows, for easy recognition. The app reads each
-  browser's icon from its installed app (`NSWorkspace`'s `iconForFile:`), so the logo is the
-  browser's own and nothing of theirs ships with us. The mock draws stand-ins.
+- **The browsers' own logos** on the import rows, for easy recognition. The owner,
+  2026-11-17: "jist default chrome firefox logos.. not profile specific", then yes to
+  shipping them: Chrome's and Firefox's logos ship with us (`shell/src/ui/logos`), the same
+  for every profile, whether or not the app is installed. Another browser's is read from
+  its installed app (`NSWorkspace`'s `iconForFile:`), or is its first letter.
 - **Reading another browser's data is a module of its own,** "so that we can use it as a
   separate project too if required": see [The importer](#the-importer-a-module-of-its-own).
 - **Sync** is a discussion of its own, in its own session ("[project-b] sync"): many ways to
@@ -182,7 +184,7 @@ Each slice goes out through a release of its own.
 **Slice 3, bringing things over** (branch `importers`):
 
 - **Bring your things over,** the welcome's second step on the desktop, lists each profile
-  of another browser on the Mac, with the browser's own logo and what it holds: "4
+  of another browser on the Mac, with the browser's logo and what it holds: "4
   bookmarks · 3 pages · Bing for search". A row turned on opens to what it brings, each
   ticked: Bookmarks, History, Search engine. Bring over sends each row, and the step
   becomes Brought over, a line for each thing as it lands ("4 bookmarks, in 5 folders,
