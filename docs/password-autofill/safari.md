@@ -455,7 +455,7 @@ pages to evaluate and improve the AutoFill experience". So the heuristics are tu
   - To be added, raise an issue or PR with: bundle ID, code-signing identifier, **team ID**, the
     extensions path relative to `~/Library`, and the store IDs.
   - Arc, Brave, Vivaldi, Opera, Helium, Comet, ChatGPT Atlas, ungoogled-chromium and many more are
-    already listed. Reference is not.
+    already listed. Project B is not.
   - Check a build with `codesign -d -vvvv …/PasswordManagerBrowserExtensionHelper`.
 - **What the constraint actually allows** (dumped on this Mac, macOS 26.7.1). The *parent* launch
   constraint is an `$or-array`:
