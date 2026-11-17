@@ -6,7 +6,7 @@
   // Over a page that failed, crashed, was blocked or has a bad certificate, which otherwise
   // shows blank: Go's notice (docs/daily-driver.md), its sentence, its second line and its
   // actions as buttons, the primary one first. A crashed page also offers Share report, to
-  // hand on what the app knows of the crash.
+  // hand on what the app knows of the crash, and Save report, to keep it in Downloads.
   let { tab } = $props();
   const notice = $derived(tab.notice);
 
@@ -32,6 +32,7 @@
       {/each}
       {#if notice.kind === 'crashed'}
         <button class="text-button quiet" onclick={share}>Share report</button>
+        <button class="text-button quiet" onclick={() => send({ t: 'saveReport' })}>Save report</button>
       {/if}
     </div>
   {/if}

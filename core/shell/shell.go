@@ -305,6 +305,15 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 			return
 		}
 		m.eng.ShareFile(w, path, c.Rect)
+	case "saveReport":
+		// The same report, copied into the user's Downloads: a phone's share sheet may
+		// have nowhere to save it.
+		path, err := m.crash.WriteReport()
+		if err != nil {
+			timeline.Errorf("crash report: %v", err)
+			return
+		}
+		m.eng.SaveFile(path)
 	case "backCloses":
 		m.eng.SetShellBack(w, c.On)
 	case "backKey":
