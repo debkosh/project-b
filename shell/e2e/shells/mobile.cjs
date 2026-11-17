@@ -258,6 +258,16 @@ const H = 915;
   await shots('empty-list');
   await suggestions.last().getByRole('button').first().tap();
   check('a tap on an open tab\'s row shows that tab, and the list goes', await until(async () => (await regions()).active === other.id && (await suggestions.count()) === 0));
+  // Enter goes to what is typed, never to a row: keys and Enter sent in one go, before Go
+  // can answer the new text, as a fast typist's do, with the list for nothing typed on screen.
+  await field.tap();
+  await until(async () => (await headingsShown()).length > 0);
+  await field.evaluate((el) => {
+    el.select();
+    document.execCommand('insertText', false, 'example.com/typed-fast');
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  });
+  check('typing and Enter before Go answers goes to what was typed, not a row of the list for nothing typed', await until(async () => (await active()).url === 'https://example.com/typed-fast' && !(await active()).loading), JSON.stringify(await active()));
   // Over a new tab, whose page shows the sites and bookmarks, the bar lists the tabs alone.
   await fire('menu', 'tab.new');
   await until(newTabPage);

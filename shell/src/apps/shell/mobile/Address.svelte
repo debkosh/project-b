@@ -10,8 +10,10 @@
   // open tabs, the tabs closed lately, the sites visited most and the newest bookmarks,
   // under a heading each. Typing asks Go for suggestions instead. Either list lies away
   // from the field towards the page, the closest next to it: a tap on a row goes there,
-  // its ↖ puts its address in the field. Enter goes; Escape or a press in the page puts
-  // the address back.
+  // its ↖ puts its address in the field. Enter goes to what is in the field, never to a
+  // row: a row is taken only by a tap, so a list still answering an earlier text, as the
+  // list for nothing typed does just after fast typing, never takes Enter elsewhere. Escape
+  // or a press in the page puts the address back.
   let { tab, top, onedit, onsite } = $props();
   let input;
   let list = $state();
