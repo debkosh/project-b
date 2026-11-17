@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Bookmark folders</title>
+<style>
+:root{--frame:#dcdee2;--accent:#23272f;--on-accent:#fff;--accent-tint:rgba(35,39,47,.06);--accent-soft:rgba(35,39,47,.12);--bar:#fafbfb;--surface:#fff;--text:#1f1f1f;--muted:#5c6270;--icon:#4a4f58;--line:rgba(15,20,25,.1)}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.4 -apple-system,"Helvetica Neue",Arial,sans-serif;color:var(--text);background:#f1f2f4;-webkit-font-smoothing:antialiased}
+.mock{display:none;padding:24px}.mock.on{display:block}
+.win{width:1180px;height:700px;border:4px solid var(--frame);border-radius:14px;background:var(--bar);overflow:hidden;display:flex;flex-direction:column}
+.top{height:48px;display:flex;align-items:center;gap:8px;padding:0 12px}
+.dots{display:flex;gap:8px;width:72px}.dots i{width:12px;height:12px;border-radius:50%;background:#ec6a5e}.dots i:nth-child(2){background:#f4bf4f}.dots i:nth-child(3){background:#61c554}
+.field{flex:1;height:32px;border:1px solid var(--line);background:var(--surface);border-radius:8px;display:flex;align-items:center;padding:0 12px;color:var(--muted);font-size:13px;position:relative}
+.field .star{margin-left:auto;color:var(--accent);font-size:16px}
+.body{flex:1;display:flex;gap:4px;padding:0 4px 4px;min-height:0}
+.side{width:216px;padding:4px 8px;display:flex;flex-direction:column;gap:4px}
+.tab{height:32px;border-radius:6px;display:flex;align-items:center;padding:0 10px;font-size:13px;color:var(--muted)}
+.tab.on{background:var(--surface);color:var(--text);box-shadow:inset 0 0 0 1px var(--line)}
+.page{flex:1;background:var(--surface);border-radius:8px;box-shadow:inset 0 0 0 1px var(--line);display:flex;min-height:0}
+.tree{width:240px;border-right:1px solid var(--line);padding:16px 8px;display:flex;flex-direction:column;gap:2px}
+.tree .row{height:32px;border-radius:6px;display:flex;align-items:center;gap:8px;padding:0 8px;font-size:13px}
+.tree .row.on{background:var(--accent-tint);font-weight:600}
+.tree .row .n{margin-left:auto;color:var(--muted);font-weight:400;font-size:12px}
+.tree .in{padding-left:24px}
+.ic{width:16px;height:16px;flex:none;color:var(--icon)}
+.ic svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linejoin:round;stroke-linecap:round}
+.new{margin-top:8px;color:var(--muted)}
+.list{flex:1;padding:16px 24px;display:flex;flex-direction:column;gap:12px}
+.head{display:flex;align-items:center;gap:8px}
+.head h1{font-size:18px;margin:0;font-weight:600}
+.crumb{color:var(--muted);font-size:13px}
+.search{margin-left:auto;width:240px;height:32px;border:1px solid var(--line);border-radius:8px;padding:0 10px;display:flex;align-items:center;color:var(--muted);font-size:13px}
+.card{border:1px solid var(--line);border-radius:8px}
+.item{height:48px;display:flex;align-items:center;gap:12px;padding:0 16px;border-top:1px solid var(--line)}
+.item:first-child{border-top:0}
+.fav{width:16px;height:16px;border-radius:4px;background:var(--accent-soft)}
+.t{font-size:13px}.u{color:var(--muted);font-size:12px;margin-left:8px}
+.more{margin-left:auto;color:var(--muted)}
+.drag{box-shadow:0 8px 28px rgba(16,24,40,.14);background:var(--surface);transform:translate(-120px,-58px) rotate(-1deg);width:420px;border:1px solid var(--line);border-radius:8px;position:relative}
+.drop{background:var(--accent-tint);box-shadow:inset 0 0 0 2px var(--accent)}
+.pop{position:absolute;right:0;top:40px;width:300px;background:var(--surface);border-radius:8px;box-shadow:0 8px 28px rgba(16,24,40,.14),0 1px 3px rgba(16,24,40,.08);padding:16px;display:flex;flex-direction:column;gap:12px;color:var(--text);z-index:2}
+.pop b{font-size:14px}
+.pop label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+.pop .in2{height:32px;border:1px solid var(--line);border-radius:6px;padding:0 10px;display:flex;align-items:center;color:var(--text);font-size:13px}
+.pop .sel{justify-content:space-between}
+.pop .btns{display:flex;gap:8px;justify-content:flex-end}
+.btn{height:32px;padding:0 12px;border-radius:6px;display:inline-flex;align-items:center;font-size:13px}
+.btn.p{background:var(--accent);color:var(--on-accent)}.btn.q{color:var(--muted)}
+.menu{position:absolute;right:16px;top:30px;width:200px;background:var(--surface);border-radius:8px;box-shadow:0 8px 28px rgba(16,24,40,.14);padding:4px;z-index:2}
+.menu div{height:32px;display:flex;align-items:center;padding:0 10px;border-radius:6px;font-size:13px}
+.menu div.on{background:var(--accent-tint)}
+.menu hr{border:0;border-top:1px solid var(--line);margin:4px 0}
+</style>
+</head>
+<body>
+<template id="folder"><span class="ic"><svg viewBox="0 0 16 16"><path d="M2 4.5a1 1 0 0 1 1-1h3l1.5 1.5H13a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/></svg></span></template>
+
+<!-- b1: the Bookmarks page with folders on the left -->
+<div class="mock" id="b1"><div class="win">
+  <div class="top"><span class="dots"><i></i><i></i><i></i></span><div class="field">chrome://bookmarks</div></div>
+  <div class="body">
+    <div class="side"><div class="tab">Inbox</div><div class="tab on">Bookmarks</div><div class="tab">Docs</div></div>
+    <div class="page">
+      <div class="tree">
+        <div class="row">F All bookmarks<span class="n">42</span></div>
+        <div class="row in">F Reading<span class="n">9</span></div>
+        <div class="row in on">F Work<span class="n">14</span></div>
+        <div class="row in" style="padding-left:40px">F Design<span class="n">5</span></div>
+        <div class="row in">F From Chrome<span class="n">18</span></div>
+        <div class="row new">+ New folder</div>
+      </div>
+      <div class="list">
+        <div class="head"><span class="crumb">All bookmarks ›</span><h1>Work</h1><div class="search">Search bookmarks</div></div>
+        <div class="card">
+          <div class="item">F <span class="t">Design</span><span class="u">5 bookmarks</span><span class="more">⋯</span></div>
+          <div class="item"><span class="fav"></span><span class="t">Sprint board</span><span class="u">tracker.example.com</span><span class="more">⋯</span></div>
+          <div class="item"><span class="fav"></span><span class="t">Release checklist</span><span class="u">docs.example.com/release</span><span class="more">⋯</span></div>
+          <div class="item"><span class="fav"></span><span class="t">On-call rota</span><span class="u">rota.example.com</span><span class="more">⋯</span></div>
+          <div class="item"><span class="fav"></span><span class="t">Expense policy</span><span class="u">hr.example.com/expenses</span><span class="more">⋯</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></div>
+
+<!-- b2: a bookmark dragged onto a folder, and the row's menu -->
+<div class="mock" id="b2"><div class="win">
+  <div class="top"><span class="dots"><i></i><i></i><i></i></span><div class="field">chrome://bookmarks</div></div>
+  <div class="body">
+    <div class="side"><div class="tab">Inbox</div><div class="tab on">Bookmarks</div><div class="tab">Docs</div></div>
+    <div class="page">
+      <div class="tree">
+        <div class="row">F All bookmarks<span class="n">42</span></div>
+        <div class="row in drop">F Reading<span class="n">9</span></div>
+        <div class="row in on">F Work<span class="n">14</span></div>
+        <div class="row in" style="padding-left:40px">F Design<span class="n">5</span></div>
+        <div class="row in">F From Chrome<span class="n">18</span></div>
+        <div class="row new">+ New folder</div>
+      </div>
+      <div class="list" style="position:relative">
+        <div class="head"><span class="crumb">All bookmarks ›</span><h1>Work</h1><div class="search">Search bookmarks</div></div>
+        <div class="card">
+          <div class="item">F <span class="t">Design</span><span class="u">5 bookmarks</span><span class="more">⋯</span></div>
+          <div class="item"><span class="fav"></span><span class="t">Sprint board</span><span class="u">tracker.example.com</span><span class="more">⋯</span></div>
+          <div class="item" style="position:relative"><span class="fav"></span><span class="t">Release checklist</span><span class="u">docs.example.com/release</span><span class="more">⋯</span>
+            <div class="menu"><div>Open in new tab</div><div>Edit…</div><div class="on">Move to…</div><hr><div>Delete</div></div></div>
+          <div class="item drag"><span class="fav"></span><span class="t">On-call rota</span><span class="u">rota.example.com</span></div>
+          <div class="item"><span class="fav"></span><span class="t">Expense policy</span><span class="u">hr.example.com/expenses</span><span class="more">⋯</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></div>
+
+<!-- b3: the star asks where -->
+<div class="mock" id="b3"><div class="win">
+  <div class="top"><span class="dots"><i></i><i></i><i></i></span><div class="field">tracker.example.com/board/42<span class="star">★</span>
+    <div class="pop"><b>Bookmarked</b>
+      <label>Name<span class="in2">Sprint board</span></label>
+      <label>Folder<span class="in2 sel">Work <span>▾</span></span></label>
+      <div class="btns"><span class="btn q">Remove</span><span class="btn p">Done</span></div></div></div></div>
+  <div class="body">
+    <div class="side"><div class="tab on">Sprint board</div><div class="tab">Inbox</div></div>
+    <div class="page"></div>
+  </div>
+</div></div>
+
+<script>
+const folder = document.getElementById('folder').innerHTML;
+document.querySelectorAll('.row, .item').forEach((el) => {
+  el.innerHTML = el.innerHTML.replace(/^(\s*)F /, '$1' + folder + ' ').replace(/^(\s*)\+ /, '$1');
+});
+const id = new URLSearchParams(location.search).get('m');
+document.querySelectorAll('.mock').forEach((m) => m.classList.toggle('on', !id || m.id === id));
+</script>
+</body>
+</html>
