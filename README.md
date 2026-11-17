@@ -1,85 +1,165 @@
 # Project B
 
-An experiment in how a browser could be built with a better architecture: a web-based shell
-anyone can customise, over a small, safe Go core that owns every decision, and a performant engine,
-Chromium's content layer (155.0.8059.41, unpatched), behind one engine interface. Apple
-silicon Macs, and arm64 Android phones built on the same Mac.
+**An experiment in better browser architecture. Development is ongoing.** It is not a finished
+product or an enterprise browser: it asks what the browser part of a browser looks like when
+it is built again above Chromium's content layer.
 
-Releases with a DMG and self-update: https://github.com/sudiptadeb/project-b/releases; how one is made: [docs/releasing.md](docs/releasing.md).
-Where the project stands: [docs/status.md](docs/status.md). How it is built:
-[docs/first-app.md](docs/first-app.md). Android: [docs/android.md](docs/android.md). How our UI
-looks, for anyone drawing any of it: [docs/design-system.md](docs/design-system.md). How every
-feature logs and times itself: [docs/logging.md](docs/logging.md).
+- **A web-based shell anyone can customise.** The whole interface (tabs, the address field,
+  menus, settings) is a web page. Restyle it, swap it, or write your own.
+- **A small, safe Go core that owns every decision.** Tabs, windows, profiles, history,
+  bookmarks, downloads, site settings and updates are plain Go. It knows nothing about how
+  pages render.
+- **A performant engine behind one interface.** Chromium's content layer (155.0.8059.41,
+  unpatched) loads and renders pages through a thin C++ adapter. A mock engine sits behind the
+  same interface, so the shell and the core run and are tested without a Chromium build.
 
-## What it looks like
+It runs on Apple silicon Macs and arm64 Android phones, from one tree, and installed copies
+update themselves. Latest release:
+[v0.2.80](https://github.com/sudiptadeb/project-b/releases/latest). More at
+[debkosh.com/project-b](https://debkosh.com/project-b).
 
-The standard shell, the default, tabs down the side, and the address field's suggestions:
+![The Standard shell: tabs down the side, the address field on top, a page beside them](docs/screenshots/standard.png)
 
-<img src="docs/screenshots/standard.png" width="49%"> <img src="docs/screenshots/suggestions.png" width="49%">
+## Why it is built this way
 
-Tabs on top, and the settings page:
+Most browsers are a fork of Chrome's whole browser, with changes carried as patches and
+rebased on every Chromium release. Project B starts one layer lower. The content layer, the
+part that loads and renders pages, comes in as it is, with no patches. Everything above it is
+ours.
 
-<img src="docs/screenshots/horizontal.png" width="49%"> <img src="docs/screenshots/settings.png" width="49%">
+    +-----------------------------------------------------------+
+    |  Shell: a web page                         shell/         |
+    |  draws what the core tells it, sends back what you do     |
+    +-----------------------------------------------------------+
+                  |  messages (state down, actions up)
+    +-----------------------------------------------------------+
+    |  Go core                                   core/          |
+    |  tabs, windows, profiles, history, bookmarks, downloads,  |
+    |  site settings, the ad blocker, updates: every decision   |
+    +-----------------------------------------------------------+
+                  |  one engine interface (core/engine, a plain C ABI)
+    +-----------------------------+   +-------------------------+
+    |  C++ adapter      engine/   |   |  Mock engine            |
+    |  Chromium 155 content       |   |  core/mockengine        |
+    |  layer, unpatched           |   |  for development, tests |
+    +-----------------------------+   +-------------------------+
 
-Glide, a style to choose: Favorites, pinned tabs and folders down the side, and the Command Bar:
+- The engine gives the core page views and nothing more. The window is ours: Go decides what
+  it shows and where. [docs/engine-interface.md](docs/engine-interface.md)
+- A shell is held only to its messages with the core, so it is written and tested on the mock
+  engine in a browser tab. [docs/shells.md](docs/shells.md)
+- The same core, adapter and shell run on Android's content layer.
+  [docs/android.md](docs/android.md)
+
+## Where it stands
+
+Working today:
+
+- The Standard shell on the desktop and the Mobile shell on a phone. These two are the focus;
+  the other shells in the tree (Glide, Terminal, Fox, Minimal) are experiments, parked.
+- Per-site settings from the address field: an ad blocker, blocking links to other sites, and
+  Sparks, your own userscripts for the pages they match.
+- Downloads, printing, find in page, history, and bookmarks in folders.
+- A first-run welcome, and Project B as the system's default browser.
+- Releases that update themselves on both platforms.
+
+Not there yet:
+
+- Sync is planned. Its library, [synckosh](https://github.com/sudiptadeb/synckosh), is
+  separate and not wired in.
+- No saved passwords or autofill, no Safe Browsing warnings, no popup blocker.
+- Chrome extensions are in every build but off behind a flag (Settings, Flags).
+- Apple silicon Macs and arm64 Android (10 or newer) only.
+- The Mac app is signed with the project's own key, not notarized by Apple.
+
+The gaps, row by row: [docs/daily-use.md](docs/daily-use.md). What is decided and not built:
+[docs/todo.md](docs/todo.md).
+
+## Try it
+
+Get the DMG or the APK from the
+[latest release](https://github.com/sudiptadeb/project-b/releases/latest). Install once; from
+then on the app updates itself.
+
+- **Mac (Apple silicon).** Open the DMG and drag Project B to Applications. The app is not
+  notarized, so macOS blocks the first launch: open System Settings, Privacy & Security, and
+  choose Open Anyway. Or clear the download flag yourself:
+
+      xattr -dr com.apple.quarantine "/Applications/Project B.app"
+
+- **Android (arm64, Android 10 or newer).** Install the APK, allowing your browser or file
+  manager to install apps when Android asks.
+
+## Build it from source
+
+How the pieces fit, with measurements: [docs/first-app.md](docs/first-app.md). Or hand
+[requirements.prompt](requirements.prompt) to a coding agent on the machine and let it do
+these steps.
+
+**No Chromium needed to start.** The shell and the Go core run on the mock engine in a minute,
+with Go 1.26 or newer and Node:
+
+    git clone https://github.com/sudiptadeb/project-b
+    cd project-b
+    (cd shell && npm install && npm run build)
+    (cd core && go run ./cmd/dev -shell ../shell/dist)    # then open http://127.0.0.1:8765
+
+The browser tab stands in for the OS window: mock pages, with the real shell and the real
+settings page over them, unchanged.
+
+**The real app:**
+
+1. The machine: an Apple silicon Mac with the full Xcode app (not only the command line
+   tools) and about 150 GB free.
+
+       sudo xcode-select -s /Applications/Xcode.app
+       brew install go node python
+
+2. Chromium, about 60 GB, no patches:
+
+       tools/fetch-chromium.sh
+
+3. Build. The first build is a full Chromium build: about an hour on a 32-core Mac, several
+   hours on a laptop. Later builds take under a minute.
+
+       tools/build.sh
+
+The app is `build/pb/project_b`, a copy of what the build made in `chromium/src/out/pb`, which
+every checkout on the machine shares and the next build replaces. Run the copy directly.
+
+Android is built in a Linux VM on the same Mac: [docs/android.md](docs/android.md).
+
+## Docs
+
+- [docs/status.md](docs/status.md): where the project stands, and an index of every doc.
+- [docs/first-app.md](docs/first-app.md): the pieces, the boundary between Go and C++, the
+  window, measurements, packaging.
+- [docs/engine-interface.md](docs/engine-interface.md): what an engine must implement.
+- [docs/shells.md](docs/shells.md): choosing, building and testing a shell.
+- [docs/android.md](docs/android.md): the same browser on Android.
+- [docs/design-system.md](docs/design-system.md): how our UI looks, for anyone drawing any of it.
+- [docs/logging.md](docs/logging.md): how every feature logs and times itself.
+- [docs/updates.md](docs/updates.md) and [docs/releasing.md](docs/releasing.md): how an
+  installed copy updates itself, and how a release is made.
+
+## More screenshots
+
+The address field's suggestions, and tabs on top:
+
+<img src="docs/screenshots/suggestions.png" width="49%"> <img src="docs/screenshots/horizontal.png" width="49%">
+
+The parked experiments, each a web page on the same core: Glide and its Command Bar, the
+Terminal shell with two panes, Fox, and Minimal.
 
 <img src="docs/screenshots/glide.png" width="49%"> <img src="docs/screenshots/glide-command-bar.png" width="49%">
-
-Each shell is a web page you can swap. The terminal shell with two panes, the fox shell with its
-menu, and Minimal:
 
 <img src="docs/screenshots/terminal.png" width="32%"> <img src="docs/screenshots/fox.png" width="32%"> <img src="docs/screenshots/minimal.png" width="32%">
 
 These come from the last release's test runs: `tools/readme-shots.py` refreshes them.
 
-## Get it working
-
-Or hand [requirements.prompt](requirements.prompt) to a coding agent on the machine and let
-it do these steps.
-
-**1. The machine.** An Apple silicon Mac with the full Xcode app (not only the command line
-tools), about 150 GB free, and:
-
-    sudo xcode-select -s /Applications/Xcode.app
-    brew install go node python
-
-**2. The repo,** anywhere you like:
-
-    git clone https://github.com/sudiptadeb/project-b
-    cd project-b
-    (cd shell && npm install)
-
-**3. Chromium**, about 60 GB, no patches:
-
-    tools/fetch-chromium.sh
-
-**4. Build.** The first build is a full Chromium build: about an hour on a 32-core Mac,
-several hours on a laptop. Later builds take under a minute.
-
-    tools/build.sh
-
-The app is `build/pb/project_b`, a copy of what the build made in `chromium/src/out/pb`, which
-every checkout on the machine shares and the next build replaces. Run the copy directly.
-
-**No Chromium yet?** The shell runs on a mock engine in a minute:
-
-    (cd shell && npm run build)
-    (cd core && go run ./cmd/dev -shell ../shell/dist)    # then open http://127.0.0.1:8765
-
-The browser tab is the OS window (`core/cmd/dev/window.html`): it holds what the real window
-holds in views, a page for each tab the layout shows, where it puts it: a mock page, or for the
-settings tab the settings page; the shell over them in a transparent frame, the frame band
-and window controls, and an extension's popup, a card naming the page. Each press goes
-where the real window sends it, by the layout's regions. The shell and the settings page
-are the real app's, unchanged: the server gives them `chrome.send` as the engine does
-(`core/cmd/dev/webui.js`). The shell also opens alone at http://127.0.0.1:8765/shell/standard/, and
-the settings page, while settings is open, at http://127.0.0.1:8765/settings/?tab=<its tab>. With `npm run dev` in `shell/`, open
-the window at `/mock/window` on Vite's server. Each window Go makes is a page of its own:
-window 1 at `/`, and the one New Window makes at `/?window=2`, in a tab you open.
-
 ## Test it
 
-Test tools go in `.tools/` inside the repo, which git ignores. `npm install` in step 2
+Test tools go in `.tools/` inside the repo, which git ignores. `npm install` in `shell/`
 already brought Playwright; it needs its browser once:
 
     (cd shell && npx playwright install chromium)
@@ -143,3 +223,8 @@ someone has logged in at the desktop since the last boot. Nobody has to stay at 
 
 Packaging a signed DMG and publishing a release need the signing key, which stays on the
 build Mac: [docs/updates.md](docs/updates.md).
+
+## Licence
+
+All rights reserved: the source is published to be read. See [LICENSE](LICENSE).
+Chromium keeps its own licences.
