@@ -105,3 +105,34 @@ func TestDeleteSite(t *testing.T) {
 		t.Fatalf("left = %+v", got)
 	}
 }
+
+// Pages from another browser join the history and outlive a restart; made again, an
+// import counts nothing twice.
+func TestImport(t *testing.T) {
+	dir := t.TempDir()
+	m := New(dir, func(f func()) { f() })
+	m.AddVisit("https://a.test/", "A")
+	pages := []Entry{
+		{URL: "https://a.test/", Title: "A there", Visits: 5, LastVisit: 100},
+		{URL: "https://b.test/", Title: "B", Visits: 2, LastVisit: 200},
+		{URL: "chrome://settings/", Title: "Settings", Visits: 9, LastVisit: 300},
+	}
+	if n := m.Import(pages); n != 1 {
+		t.Fatalf("added %d", n)
+	}
+	if n := m.Import(pages); n != 0 {
+		t.Fatalf("again, added %d", n)
+	}
+	m.Close()
+	again := New(dir, func(f func()) { f() })
+	loaded := make(chan struct{})
+	again.Load(func() { close(loaded) })
+	<-loaded
+	got := again.List("", 0, 10)
+	if len(got) != 2 || got[1].URL != "https://b.test/" || got[1].Visits != 2 || got[1].LastVisit != 200 {
+		t.Fatalf("after a restart: %+v", got)
+	}
+	if got[0].URL != "https://a.test/" || got[0].Visits != 5 || got[0].Title != "A" {
+		t.Fatalf("a page here already: %+v", got[0])
+	}
+}

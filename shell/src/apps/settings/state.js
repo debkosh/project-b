@@ -64,6 +64,12 @@ export const state = reactive({
   // How each site's open pages reached them, by origin: {connection, note}, connection
   // 'secure' or 'insecure', note why in one line.
   siteConnections: {},
+  // Other browsers' profiles on this Mac, each as shell/src/ui/imports.js says, null until
+  // Go has looked; the keys of those bringing things over now; and what each brought over
+  // since the page opened, by key (docs/onboarding.md).
+  browsers: null,
+  importing: [],
+  imported: {},
 });
 
 export function connect() {
@@ -96,6 +102,8 @@ export function connect() {
             sparks: m.sparks || [],
             siteKinds: m.siteKinds,
             siteConnections: m.siteConnections,
+            browsers: m.browsers || null,
+            importing: m.importing || [],
             ready: true,
           });
           mark('settings.snapshot');
@@ -160,6 +168,16 @@ export function connect() {
           break;
         case 'siteSettings':
           state.siteSettings = m.siteSettings;
+          break;
+        case 'browsers':
+          state.browsers = m.browsers || [];
+          break;
+        case 'importing':
+          state.importing = m.importing;
+          break;
+        case 'imported':
+          state.importing = m.importing;
+          state.imported = { ...state.imported, [m.key]: m.imported };
           break;
       }
     },

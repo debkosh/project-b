@@ -159,3 +159,62 @@ func TestPlaces(t *testing.T) {
 		t.Errorf("1000 firsts make a key %d long, 1000 lasts %d", len(first), len(last))
 	}
 }
+
+// An import goes after what a folder holds, in its order, folders and all; made again it
+// adds only what is new, into the folders it made, and leaves out an address bookmarked
+// already, with a folder that would hold nothing else.
+func TestImport(t *testing.T) {
+	dir := t.TempDir()
+	m := New(dir)
+	m.Add("Mine", "https://mine.test/")
+	tree := []Node{{Title: "From Chrome", Children: []Node{
+		{Title: "Bookmarks bar", Children: []Node{
+			{Title: "Docs", URL: "https://docs.test/", Added: 1000},
+			{Title: "Work", Children: []Node{{Title: "Tracker", URL: "https://tracker.test/"}}},
+			{Title: "Mine again", URL: "https://mine.test/"},
+			{Title: "Only mine", Children: []Node{{URL: "https://mine.test/"}}},
+		}},
+	}}}
+	got, err := m.Import(Top, tree)
+	if err != nil || got != (Imported{Bookmarks: 2, Folders: 3, Skipped: 2}) {
+		t.Fatalf("imported %+v, %v", got, err)
+	}
+	if s := in(m, Top); s != "Mine From Chrome" {
+		t.Fatalf("the top holds %q", s)
+	}
+	folder := func(parent, title string) string {
+		for _, e := range m.All() {
+			if e.Parent == parent && e.Title == title && e.Kind == KindFolder {
+				return e.ID
+			}
+		}
+		t.Fatalf("no folder %q", title)
+		return ""
+	}
+	bar := folder(folder(Top, "From Chrome"), "Bookmarks bar")
+	if s := in(m, bar); s != "Docs Work" {
+		t.Fatalf("the bar holds %q", s)
+	}
+	for _, e := range m.All() {
+		if e.Title == "Docs" && e.Added != 1000 {
+			t.Errorf("Docs keeps when it was added: %+v", e)
+		}
+	}
+
+	tree[0].Children[0].Children = append(tree[0].Children[0].Children, Node{Title: "New", URL: "https://new.test/"})
+	got, _ = m.Import(Top, tree)
+	if got != (Imported{Bookmarks: 1, Skipped: 4}) {
+		t.Fatalf("again: %+v", got)
+	}
+	if s := in(m, Top); s != "Mine From Chrome" {
+		t.Fatalf("again, the top holds %q", s)
+	}
+	if s := in(m, bar); s != "Docs Work New" {
+		t.Fatalf("again, the bar holds %q", s)
+	}
+	b, _ := os.ReadFile(filepath.Join(dir, "bookmarks.json"))
+	var f file
+	if json.Unmarshal(b, &f) != nil || len(f.Entries) != 7 {
+		t.Fatalf("saved %s", b)
+	}
+}

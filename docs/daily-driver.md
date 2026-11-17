@@ -22,8 +22,11 @@ new tab page (Standard's box and the Mobile web shell, which reaches History and
 from it). The list with owners is
 [daily-use.md](daily-use.md).
 
-**Planned**, decided and not started ([todo.md](todo.md#daily-driver)): bookmark import, and
-bookmarks in the address bar's suggestions as you type.
+Bringing bookmarks, history and the search engine over from Chrome, Edge, Brave, Arc and
+Firefox, in the welcome and Settings' Import ([onboarding.md](onboarding.md#built)).
+
+**Planned**, decided and not started ([todo.md](todo.md#daily-driver)): bookmarks in the
+address bar's suggestions as you type.
 
 **Needs discussion** ([todo.md](todo.md#daily-driver)), in this order: saved passwords and
 autofill, engine-fetched search suggestions (off by default if built), and where a phone's

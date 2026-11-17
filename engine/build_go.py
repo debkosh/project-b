@@ -32,15 +32,19 @@ def main():
         cwd=os.path.join(repo, "core"), env=env)
 
     deps = [os.path.join(link, "engine/abi/pb_abi.h")]
-    core = os.path.join(repo, "core")
-    for root, _, files in os.walk(core):
-        # Each folder too: a Go file added or removed changes its folder's time, and ninja,
-        # which knows only the files that were there last time, would keep the old library.
-        deps.append(os.path.join(link, "core", os.path.relpath(root, core)))
-        for name in files:
-            if name.endswith((".go", ".mod", ".json")) and not name.endswith("_test.go"):
-                rel = os.path.relpath(os.path.join(root, name), core)
-                deps.append(os.path.join(link, "core", rel))
+    # core, and browserdata, the module of its own that core's go.mod replaces with ../browserdata.
+    for module in ("core", "browserdata"):
+        top = os.path.join(repo, module)
+        for root, _, files in os.walk(top):
+            if "testdata" in os.path.relpath(root, top).split(os.sep):
+                continue
+            # Each folder too: a Go file added or removed changes its folder's time, and ninja,
+            # which knows only the files that were there last time, would keep the old library.
+            deps.append(os.path.join(link, module, os.path.relpath(root, top)))
+            for name in files:
+                if name.endswith((".go", ".mod", ".json")) and not name.endswith("_test.go"):
+                    rel = os.path.relpath(os.path.join(root, name), top)
+                    deps.append(os.path.join(link, module, rel))
     with open(depfile, "w") as f:
         f.write(out + ": " + " ".join(sorted(deps)) + "\n")
 

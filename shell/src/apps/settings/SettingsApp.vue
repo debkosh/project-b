@@ -4,6 +4,7 @@ import { extensionsSection } from '@extensions';
 import { phone } from '@/phone.js';
 import { paintTheme } from '@/theme.js';
 import Flags from './Flags.vue';
+import Import from './Import.vue';
 import General from './General.vue';
 import Keyboard from './Keyboard.vue';
 import Profile from './Profile.vue';
@@ -27,6 +28,7 @@ const sections = computed(() =>
     { id: 'sites', label: 'Site settings', component: SiteSettings },
     { id: 'sparks', label: 'Sparks', component: Sparks },
     { id: 'keyboard', label: 'Keyboard', component: Keyboard },
+    { id: 'import', label: 'Import', component: Import },
     extensionsSection?.shown() && extensionsSection,
     { id: 'flags', label: 'Flags', component: Flags },
     { id: 'webFeatures', label: 'Web features', component: WebFeatures },

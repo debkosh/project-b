@@ -349,3 +349,97 @@ func or(s, otherwise string) string {
 	}
 	return s
 }
+
+// Node is a bookmark, or a folder, which has no URL, with what it holds, as an import from
+// another browser brings it; Added is in Unix milliseconds.
+type Node struct {
+	Title    string
+	URL      string
+	Added    int64
+	Children []Node
+}
+
+// Imported is what an import added: bookmarks, and folders made for them, and the bookmarks
+// left out as their address was bookmarked already.
+type Imported struct {
+	Bookmarks int `json:"bookmarks"`
+	Folders   int `json:"folders"`
+	Skipped   int `json:"skipped"`
+}
+
+// Import adds nodes to folder parent after what it holds, in their order. A folder goes
+// into the folder of its name already there, so an import made again adds only what is
+// new; an address bookmarked already is left out, and a folder left with nothing isn't made.
+func (m *Manager) Import(parent string, nodes []Node) (Imported, error) {
+	if !m.isFolder(parent) {
+		return Imported{}, errors.New("bookmarks: no such folder")
+	}
+	var got Imported
+	m.importInto(parent, nodes, &got)
+	if got.Bookmarks > 0 {
+		m.changed()
+	}
+	return got, nil
+}
+
+func (m *Manager) importInto(parent string, nodes []Node, got *Imported) {
+	// Places come at the end: spread out in a folder that held nothing, else after its last.
+	from := len(m.entries)
+	last := ""
+	for _, e := range m.entries {
+		if e.Parent == parent && e.Place > last {
+			last = e.Place
+		}
+	}
+	t := now()
+	for _, n := range nodes {
+		if n.URL != "" {
+			if m.find(n.URL) >= 0 {
+				got.Skipped++
+				continue
+			}
+			m.entries = append(m.entries, Entry{ID: newID(), Parent: parent, Kind: KindBookmark, Title: or(n.Title, n.URL), URL: n.URL, Added: or64(n.Added, t), Modified: t})
+			got.Bookmarks++
+			continue
+		}
+		title := or(n.Title, "Folder")
+		if i := slices.IndexFunc(m.entries, func(e Entry) bool { return e.Parent == parent && e.Kind == KindFolder && e.Title == title }); i >= 0 {
+			m.importInto(m.entries[i].ID, n.Children, got)
+			continue
+		}
+		mark, before := len(m.entries), *got
+		f := Entry{ID: newID(), Parent: parent, Kind: KindFolder, Title: title, Added: or64(n.Added, t), Modified: t}
+		m.entries = append(m.entries, f)
+		m.importInto(f.ID, n.Children, got)
+		if got.Bookmarks == before.Bookmarks {
+			// Nothing in it was new: what it would have held is gone with it.
+			m.entries, *got = m.entries[:mark], Imported{Bookmarks: before.Bookmarks, Folders: before.Folders, Skipped: got.Skipped}
+			continue
+		}
+		got.Folders++
+	}
+	// What this folder gained, its own entries only, in their order.
+	var added []int
+	for i := from; i < len(m.entries); i++ {
+		if m.entries[i].Parent == parent {
+			added = append(added, i)
+		}
+	}
+	if last == "" {
+		for j, p := range spread(len(added)) {
+			m.entries[added[j]].Place = p
+		}
+		return
+	}
+	for _, i := range added {
+		last = between(last, "")
+		m.entries[i].Place = last
+	}
+}
+
+func or64(n, otherwise int64) int64 {
+	if n == 0 {
+		return otherwise
+	}
+	return n
+}

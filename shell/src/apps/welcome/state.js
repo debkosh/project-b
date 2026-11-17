@@ -29,6 +29,12 @@ export const state = reactive({
   notifications: true,
   // The ways to work the style step offers, each {id, shell, tabLayout, name}.
   layouts: [],
+  // Other browsers' profiles on this Mac, each as shell/src/ui/imports.js says, null until
+  // Go has looked; the keys of those bringing things over now; and what each brought over,
+  // by key (docs/onboarding.md). A phone has none.
+  browsers: null,
+  importing: [],
+  imported: {},
 });
 
 export function setPref(name, value) {
@@ -52,6 +58,8 @@ export function connect() {
             isDefault: m.isDefault,
             notifications: m.notifications,
             layouts: m.layouts || [],
+            browsers: m.browsers || null,
+            importing: m.importing || [],
           });
           break;
         case 'prefs':
@@ -72,8 +80,21 @@ export function connect() {
         case 'notifications':
           state.notifications = m.notifications;
           break;
+        case 'browsers':
+          state.browsers = m.browsers || [];
+          break;
+        case 'importing':
+          state.importing = m.importing;
+          break;
+        case 'imported':
+          state.importing = m.importing;
+          state.imported = { ...state.imported, [m.key]: m.imported };
+          break;
       }
     },
-    () => send({ t: 'ready' }),
+    () => {
+      send({ t: 'ready' });
+      send({ t: 'findBrowsers' });
+    },
   );
 }

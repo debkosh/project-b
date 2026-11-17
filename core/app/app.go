@@ -45,6 +45,9 @@ type Config struct {
 	// SkipWelcome is --skip-welcome: a start that would open the welcome notes it finished
 	// instead, as its Skip setup does, so a test starts past it.
 	SkipWelcome bool
+	// BrowserHome is the home folder whose browsers Import finds: the user's when "", a
+	// test's own folder of browsers in the mock.
+	BrowserHome string
 	// URLs are the addresses the command line names, which the first window opens as its
 	// tabs at the start, in place of the blank one; ChromeDriver starts the app so.
 	URLs         []string
@@ -139,6 +142,7 @@ type App struct {
 	pages *ourPages
 	// welcome is the first start's welcome page (welcome.go).
 	welcome *welcome
+	imports *importer
 	// keyIn is which page had the keyboard at the last key press.
 	keyIn engine.Surface
 	// lastWindow is the id of the window made last; Go numbers them from 1.
@@ -236,6 +240,14 @@ func Start(e engine.Engine, cfg Config) *App {
 			a.quit()
 			return true
 		},
+	})
+	a.imports = newImporter(a, e, cfg.ProfileDir, cfg.BrowserHome, func(v any) {
+		a.welcome.sendAll(v)
+		a.Settings.Send(v)
+	})
+	a.Settings.AddPart(settings.Part{
+		Snapshot: a.imports.snapshot,
+		Handle:   func(_ engine.TabID, t string, msg []byte) bool { return a.imports.handle(t, msg) },
 	})
 	a.registerActions(e)
 

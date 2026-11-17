@@ -1,0 +1,18 @@
+{
+  "roots": {
+    "bookmark_bar": {"name": "Bookmarks bar", "type": "folder", "children": [
+      {"name": "Docs", "type": "url", "url": "https://example.com/docs", "date_added": "13370000000000000"},
+      {"name": "Work", "type": "folder", "date_added": "13370000000000000", "children": [
+        {"name": "Tracker", "type": "url", "url": "https://example.com/tracker", "date_added": "13370000000000000"},
+        {"name": "Deep", "type": "folder", "children": [
+          {"name": "Deep link", "type": "url", "url": "https://example.com/deep", "date_added": "13370000000000000"}
+        ]}
+      ]}
+    ]},
+    "other": {"name": "Other bookmarks", "type": "folder", "children": [
+      {"name": "News", "type": "url", "url": "https://example.org/news", "date_added": "13370000000000000"}
+    ]},
+    "synced": {"name": "Mobile bookmarks", "type": "folder", "children": []}
+  },
+  "version": 1
+}

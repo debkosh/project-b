@@ -43,3 +43,25 @@ func Get(id string) (Engine, bool) {
 func (e Engine) For(words string) string {
 	return strings.Replace(e.URL, "%s", url.QueryEscape(strings.TrimSpace(words)), 1)
 }
+
+// ByAddress is the engine whose searches go to the host of a search address another
+// browser keeps, such as https://duckduckgo.com/?q={searchTerms}, www. or not.
+func ByAddress(address string) (Engine, bool) {
+	host := func(s string) string {
+		u, err := url.Parse(s)
+		if err != nil {
+			return ""
+		}
+		return strings.TrimPrefix(strings.ToLower(u.Hostname()), "www.")
+	}
+	h := host(address)
+	if h == "" {
+		return Engine{}, false
+	}
+	for _, e := range engines {
+		if host(e.URL) == h {
+			return e, true
+		}
+	}
+	return Engine{}, false
+}

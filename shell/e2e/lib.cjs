@@ -26,10 +26,15 @@ fs.mkdirSync(profile);
 const bin = path.join(temp, 'dev');
 execFileSync('go', ['build', '-tags', 'extensions', '-o', bin, './cmd/dev'], { cwd: path.join(root, 'core'), stdio: 'inherit' });
 
+// A home folder with no browsers in it, which Import looks in unless a test names its own,
+// such as lib.browsers, browserdata's: a Chrome of two profiles and a Firefox of one.
+const noBrowsers = path.join(temp, 'no-browsers');
+fs.mkdirSync(noBrowsers);
+
 let server = null;
 // The running server's address, such as http://127.0.0.1:53124, and what it has printed:
 // the timeline, line by line.
-const lib = { root, out, profile, base: '', log: '' };
+const lib = { root, out, profile, base: '', log: '', browsers: path.join(root, 'browserdata/testdata/home') };
 
 // start runs the mock engine with the built pages and the profile, and args, on a port
 // the system gives it, and returns once it answers. The profile keeps what it keeps, but
@@ -39,7 +44,7 @@ lib.start = async (args = [], { keepTabs = false } = {}) => {
   if (!keepTabs) {
     fs.rmSync(path.join(profile, 'session.json'), { force: true });
   }
-  server = spawn(bin, ['-addr=127.0.0.1:0', `-shell=${path.join(root, 'shell/dist')}`, `-profile=${profile}`, ...args], { stdio: ['ignore', 'ignore', 'pipe'] });
+  server = spawn(bin, ['-addr=127.0.0.1:0', `-shell=${path.join(root, 'shell/dist')}`, `-profile=${profile}`, `-browsers=${noBrowsers}`, ...args], { stdio: ['ignore', 'ignore', 'pipe'] });
   lib.log = '';
   lib.base = await new Promise((resolve, reject) => {
     server.stderr.setEncoding('utf8');

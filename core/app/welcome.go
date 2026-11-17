@@ -175,7 +175,9 @@ func (w *welcome) handle(tab engine.TabID, msg []byte) {
 	case "done":
 		w.finish(tab)
 	default:
-		timeline.Warnf("welcome: the page sent %q, which it has no use for", m.T)
+		if !w.a.imports.handle(m.T, msg) {
+			timeline.Warnf("welcome: the page sent %q, which it has no use for", m.T)
+		}
 	}
 }
 
@@ -201,7 +203,7 @@ type welcomeShell struct {
 }
 
 func (w *welcome) snapshot(tab engine.TabID) map[string]any {
-	return map[string]any{
+	s := map[string]any{
 		"t":             "snapshot",
 		"whole":         tab == w.whole,
 		"phone":         shells.OnPhone,
@@ -218,6 +220,8 @@ func (w *welcome) snapshot(tab engine.TabID) map[string]any {
 			{ID: "glide", Shell: "glide", Name: "Glide"},
 		},
 	}
+	w.a.imports.snapshot(s)
+	return s
 }
 
 // skip keeps that the welcome was finished without showing it, as --skip-welcome asks: what

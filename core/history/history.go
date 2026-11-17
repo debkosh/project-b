@@ -40,7 +40,7 @@ type Manager struct {
 	post    func(func())
 	entries map[string]*Entry
 	loaded  bool
-	writes  chan Entry
+	writes  chan []Entry
 	done    chan struct{}
 }
 
@@ -51,7 +51,7 @@ func New(dir string, post func(func())) *Manager {
 		path:    filepath.Join(dir, "history.jsonl"),
 		post:    post,
 		entries: map[string]*Entry{},
-		writes:  make(chan Entry, 1024),
+		writes:  make(chan []Entry, 1024),
 		done:    make(chan struct{}),
 	}
 	go m.writer()
@@ -254,6 +254,39 @@ func (m *Manager) Clear(since int64) {
 	m.Delete(gone...)
 }
 
+// Import adds pages another browser visited, with their titles, visits and last visit in
+// Unix seconds, and returns how many it added. One here already keeps the most visits of
+// the two, so an import made again counts nothing twice, the later visit, and a title.
+func (m *Manager) Import(pages []Entry) int {
+	var changed []Entry
+	added := 0
+	for _, p := range pages {
+		if !strings.HasPrefix(p.URL, "http://") && !strings.HasPrefix(p.URL, "https://") {
+			continue
+		}
+		e, ok := m.entries[p.URL]
+		if !ok {
+			e = &Entry{URL: p.URL}
+			m.entries[p.URL] = e
+			added++
+		}
+		before := *e
+		e.Visits = max(e.Visits, p.Visits, 1)
+		e.LastVisit = max(e.LastVisit, p.LastVisit)
+		if e.Title == "" {
+			e.Title = p.Title
+		}
+		if !ok || *e != before {
+			e.index()
+			changed = append(changed, *e)
+		}
+	}
+	if len(changed) > 0 {
+		m.saveAll(changed)
+	}
+	return added
+}
+
 // Close waits for pending writes.
 func (m *Manager) Close() {
 	close(m.writes)
@@ -283,18 +316,21 @@ func bareURL(u string) string {
 	return strings.TrimPrefix(u, "www.")
 }
 
-func (m *Manager) save(e *Entry) {
+func (m *Manager) save(e *Entry) { m.saveAll([]Entry{*e}) }
+
+// saveAll hands entries to the writer, all as one.
+func (m *Manager) saveAll(es []Entry) {
 	select {
-	case m.writes <- *e:
+	case m.writes <- es:
 	default:
-		timeline.Warnf("history: write queue full, dropped a visit")
+		timeline.Warnf("history: write queue full, dropped %d pages", len(es))
 	}
 }
 
 func (m *Manager) writer() {
 	defer close(m.done)
 	var w *os.File
-	for e := range m.writes {
+	for es := range m.writes {
 		if w == nil {
 			if err := os.MkdirAll(filepath.Dir(m.path), 0o700); err != nil {
 				timeline.Errorf("history: %v", err)
@@ -308,8 +344,12 @@ func (m *Manager) writer() {
 			w = f
 			defer w.Close()
 		}
-		line, _ := json.Marshal(e)
-		if _, err := w.Write(append(line, '\n')); err != nil {
+		var lines []byte
+		for _, e := range es {
+			line, _ := json.Marshal(e)
+			lines = append(append(lines, line...), '\n')
+		}
+		if _, err := w.Write(lines); err != nil {
 			timeline.Errorf("history: %v", err)
 		}
 	}

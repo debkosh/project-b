@@ -37,7 +37,7 @@ python3 - "$REPO" "$TREE" <<'PY' || { echo "RESULT=failed copy"; exit 1; }
 import filecmp, os, shutil, sys
 src, dst = sys.argv[1:3]
 keep = set()
-for top in ("engine", "core", "shell/dist", "VERSION"):
+for top in ("engine", "core", "browserdata", "shell/dist", "VERSION"):
     base = os.path.join(src, top)
     files = [base] if os.path.isfile(base) else [os.path.join(d, f) for d, _, fs in os.walk(base) for f in fs]
     for path in files:
@@ -61,6 +61,7 @@ echo "=== $(date '+%F %T') expose the tree to GN, with no upstream edits"
 mkdir -p "$SRC/project_b"
 ln -sfn "$TREE/engine" "$SRC/project_b/engine"
 ln -sfn "$TREE/core" "$SRC/project_b/core"
+ln -sfn "$TREE/browserdata" "$SRC/project_b/browserdata"
 ln -sfn "$TREE/shell" "$SRC/project_b/shell"
 
 # The APK's versionCode grows with VERSION: 0.2.13 is 2013.

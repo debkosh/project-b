@@ -140,6 +140,7 @@ echo "=== $(date '+%F %T') expose the repo to GN, with no upstream edits"
 mkdir -p "$SRC/project_b"
 ln -sfn "$ROOT/engine" "$SRC/project_b/engine"
 ln -sfn "$ROOT/core" "$SRC/project_b/core"
+ln -sfn "$ROOT/browserdata" "$SRC/project_b/browserdata"
 ln -sfn "$ROOT/shell" "$SRC/project_b/shell"
 
 cd "$SRC" || exit 1
@@ -151,7 +152,7 @@ mkdir -p "$OUT"
 if [ "$(cat "$OUT/.pb-tree" 2>/dev/null)" != "$ROOT" ]; then
   echo "  last built from $(cat "$OUT/.pb-tree" 2>/dev/null || echo nothing recorded); rebuilding project_b from $ROOT"
   # Only files there now: touching one a branch deletes would make it again, empty.
-  (cd "$ROOT" && git ls-files -z engine core shell | xargs -0 touch -c)
+  (cd "$ROOT" && git ls-files -z engine core browserdata shell | xargs -0 touch -c)
 fi
 echo "$ROOT" > "$OUT/.pb-tree"
 cat > "$OUT/args.gn" <<ARGS
