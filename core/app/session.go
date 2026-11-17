@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strconv"
 
 	"projectb/commands"
@@ -11,6 +12,7 @@ import (
 	"projectb/session"
 	"projectb/settings"
 	"projectb/tabs"
+	"projectb/timeline"
 	"projectb/window"
 )
 
@@ -29,8 +31,14 @@ func (a *App) restore(e engine.Engine, first engine.WindowID) bool {
 		a.closed[i].In = 0
 	}
 	if a.Crash.Last() == "" && a.Prefs.Start() != prefs.StartContinue || len(last.Windows) == 0 {
+		timeline.Infof("session: nothing to restore")
 		return false
 	}
+	tabs := 0
+	for _, sw := range last.Windows {
+		tabs += len(sw.Tabs)
+	}
+	timeline.Infof("session: restoring %s and %s from %s", count(len(last.Windows), "window"), count(tabs, "tab"), filepath.Join(a.dir, "session.json"))
 	for i, sw := range last.Windows {
 		w := first
 		if i > 0 {

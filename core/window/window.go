@@ -8,6 +8,7 @@ import (
 	"slices"
 
 	"projectb/engine"
+	"projectb/timeline"
 )
 
 // ShellLayout is what the shell reports about itself: the rectangles that are its own,
@@ -63,12 +64,14 @@ func (m *Manager) Open(id, near engine.WindowID) {
 	m.windows[id] = w
 	w.sent = m.layout(w)
 	m.eng.CreateWindow(id, near, m.page, w.sent)
+	timeline.Infof("window %d: opened, loading %s", id, m.page)
 	m.event(Event{Kind: Opened, Window: id})
 }
 
 // Close forgets a window that closed.
 func (m *Manager) Close(id engine.WindowID) {
 	delete(m.windows, id)
+	timeline.Infof("window %d: closed", id)
 	m.event(Event{Kind: Closed, Window: id})
 }
 
@@ -147,6 +150,7 @@ func (m *Manager) HandleShellCrashed(id engine.WindowID) {
 // one reports.
 func (m *Manager) SetPage(page engine.Page) {
 	m.page = page
+	timeline.Infof("windows: every window loads %s now", page)
 	for _, id := range m.Windows() {
 		m.eng.SetWindowPage(id, page)
 		m.HandleShellCrashed(id)

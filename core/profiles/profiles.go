@@ -152,6 +152,8 @@ type Choice struct {
 	Dir  string
 	ID   string
 	Pick bool
+	// Made says the profile was made for this start: the first start, with no list.
+	Made bool
 }
 
 // Named is the folder --user-data-dir names: it is the profile as it is, and never in the
@@ -184,7 +186,7 @@ func (m *Manager) Choose(id string, pick bool) (Choice, error) {
 		if err := m.makeFirst(); err != nil {
 			return Choice{}, err
 		}
-		return Choice{Dir: m.Dir(First), ID: First}, nil
+		return Choice{Dir: m.Dir(First), ID: First, Made: true}, nil
 	}
 	var last Profile
 	for _, p := range list {

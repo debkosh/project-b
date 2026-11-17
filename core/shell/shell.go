@@ -195,6 +195,7 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 		}
 		m.send(w, snapshot)
 		timeline.Mark("shell.ready")
+		timeline.Infof("window %d: shell %s ready", w, m.prefs.Shell())
 	case "shown":
 		// The shell shows the snapshot, so the app can be used. Tests wait for this line.
 		if !m.ready {

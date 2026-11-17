@@ -112,6 +112,7 @@ func (p *Picker) PickerMessage(w engine.WindowID, msg []byte) {
 			timeline.Errorf("profiles: %v", err)
 			return
 		}
+		timeline.Infof("profile %s: made from the %s template, in %s", made.ID, made.Template, p.list.Dir(made.ID))
 		p.choose(made.ID)
 	}
 }
