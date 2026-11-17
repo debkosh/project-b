@@ -5,7 +5,9 @@ import { send, state } from './state.js';
 
 // Flags, as core/flags/registry.json defines them, each drawn by its type: a switch for a
 // boolean, a select for an enum, a field for the rest. A change waits for the next launch:
-// each changed flag says so, and one Relaunch at the top applies them all.
+// each changed flag says so, and one Relaunch at the top applies them all. Show the welcome
+// again, first, marks the welcome unfinished and closes the app, for the next start to open
+// it as the first did.
 
 function set(flag, text) {
   send({ t: 'setFlag', id: flag.id, text });
@@ -51,6 +53,13 @@ function error(flag, text) {
       <div v-if="pending" class="row">
         <span class="label">Relaunch to apply {{ pending }} {{ pending === 1 ? 'change' : 'changes' }}</span>
         <button type="button" class="text-button" @click="send({ t: 'relaunch' })">Relaunch</button>
+      </div>
+      <div class="row">
+        <span class="label">
+          <span class="name">Show the welcome again</span>
+          <span class="secondary">Closes the app. Open it again for the welcome over the whole window, as on a first start. Your tabs come back under it as On start, open says.</span>
+        </span>
+        <button type="button" class="text-button" @click="send({ t: 'welcomeAgain' })">Close the app</button>
       </div>
       <div v-for="f in state.flags" :key="f.id" class="row">
         <label class="label" :for="f.type === 'boolean' || f.type === 'enum' ? 'flag-' + f.id : undefined">

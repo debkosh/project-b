@@ -5,11 +5,11 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"projectb/app"
 	"projectb/engine"
 	"projectb/profiles"
-	"projectb/tones"
 	"projectb/update"
 )
 
@@ -110,22 +110,30 @@ func TestTheWelcomeOpensAgainUnfinishedOrByTheFlag(t *testing.T) {
 	}
 }
 
-// Settings' Run setup again opens the welcome in a tab, as a page of ours, not over the
-// whole window; it starts from the profile's tones, none picked.
-func TestRunSetupAgainOpensTheWelcomeInATab(t *testing.T) {
-	r := start(t, t.TempDir())
-	defer r.stop()
+// Show the welcome again, in Settings' Flags, marks it unfinished and closes the app; the
+// next start opens it over the whole window.
+func TestShowTheWelcomeAgainClosesTheApp(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "welcome.json"), []byte(`{"done":true}`), 0o600)
+	r := startMade(t, dir, false)
 	settingsTab, _ := r.openPage("app.settings", "settings")
-	r.e.Post(func() { r.a.PageMessage(settingsTab, "settings", []byte(`{"t":"openWelcome"}`)) })
-	m := r.waitFor(func(m map[string]any) bool { return m["t"] == "tabs" && len(m["tabs"].([]any)) == 3 })
-	tab := engine.TabID(m["active"].(float64))
-	got, stop := r.e.PageFeed(tab).Subscribe()
-	defer stop()
-	r.e.Post(func() { r.a.PageMessage(tab, "welcome", []byte(`{"t":"ready"}`)) })
-	page := next(t, got, "snapshot")
-	light := page["tones"].(map[string]any)["light"].(map[string]any)
-	if page["whole"] != false || light["--accent"] != tones.For(tones.None, false)["--accent"] {
-		t.Fatalf("the page's snapshot: whole %v, accent %v", page["whole"], light["--accent"])
+	r.e.Post(func() { r.a.PageMessage(settingsTab, "settings", []byte(`{"t":"welcomeAgain"}`)) })
+	deadline := time.Now().Add(5 * time.Second)
+	for !r.e.Quit() && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if !r.e.Quit() {
+		t.Fatal("the app didn't close")
+	}
+	if _, done := welcomeDone(t, dir); done {
+		t.Fatal("welcome.json still says it was finished")
+	}
+	r.stop()
+
+	again := startMade(t, dir, false)
+	defer again.stop()
+	if snap := again.waitFor(func(m map[string]any) bool { return m["t"] == "snapshot" }); snap["welcome"] == float64(0) {
+		t.Fatal("the next start doesn't open the welcome")
 	}
 }
 

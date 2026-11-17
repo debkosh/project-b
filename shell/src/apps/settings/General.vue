@@ -165,16 +165,6 @@ const busy = computed(() => state.update.check === 'checking' || state.update.ph
         </label>
       </div>
     </section>
-
-    <section aria-labelledby="setup">
-      <h2 id="setup">Setup</h2>
-      <div class="card">
-        <div class="row">
-          <span class="label">The welcome's steps</span>
-          <button type="button" class="text-button" @click="send({ t: 'openWelcome' })">Run setup again</button>
-        </div>
-      </div>
-    </section>
   </div>
 </template>
 

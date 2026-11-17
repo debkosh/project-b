@@ -18,7 +18,9 @@ import (
 
 // The welcome (docs/onboarding.md): a page of ours, chrome://welcome/, that the start which
 // made the profile opens over its whole window, with none of the shell around it, until
-// Start browsing. Settings' Run setup again opens it later in a tab, as any page of ours.
+// Start browsing. Show the welcome again, in Settings' Flags, marks it unfinished and closes
+// the app, so the next start opens it as the first did: over the whole window, with the
+// tabs that start brings back (On start, open) under it.
 // Each choice it offers is a pref, set as it is made, so the page and the window take it
 // at once. welcome.json in the profile says whether it was finished: a welcome left before
 // the end opens again at the next start. The flag Show the welcome at each start opens it
@@ -95,8 +97,12 @@ func (w *welcome) write(f welcomeFile) {
 	}
 }
 
-// openInTab opens the welcome in a tab of window win, as Run setup again does.
-func (w *welcome) openInTab(win engine.WindowID) { w.a.Tabs.OpenPage(win, welcomePage) }
+// again marks the welcome unfinished, for the next start to open it, as Show the welcome
+// again does before it closes the app.
+func (w *welcome) again() {
+	timeline.Infof("welcome: marked unfinished, for the next start")
+	w.write(welcomeFile{})
+}
 
 func (w *welcome) setWhole(tab engine.TabID) {
 	if tab == w.whole {

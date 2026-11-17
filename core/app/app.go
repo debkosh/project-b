@@ -229,10 +229,11 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Settings.AddPart(settings.Part{
 		Snapshot: func(map[string]any) {},
 		Handle: func(tab engine.TabID, t string, _ []byte) bool {
-			if t != "openWelcome" {
+			if t != "welcomeAgain" {
 				return false
 			}
-			a.welcome.openInTab(a.Tabs.WindowOf(tab))
+			a.welcome.again()
+			a.quit()
 			return true
 		},
 	})

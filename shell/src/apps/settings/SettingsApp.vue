@@ -48,7 +48,7 @@ watchEffect(() => {
          a screen reader, and out of sight. -->
     <h1 class="hidden-heading">Settings</h1>
     <div class="body">
-      <!-- A phone has no keyboard shortcuts or extensions, so only General applies there. -->
+      <!-- A phone has no keyboard shortcuts or extensions, so it shows General, then Flags. -->
       <nav v-if="!phone" class="nav" aria-label="Settings sections">
         <button
           v-for="s in sections"
@@ -60,7 +60,13 @@ watchEffect(() => {
         >{{ s.label }}</button>
       </nav>
       <main class="content" :class="{ phone }">
-        <General v-if="phone" />
+        <template v-if="phone">
+          <General />
+          <section class="flags" aria-labelledby="flags-heading">
+            <h2 id="flags-heading">Flags</h2>
+            <Flags />
+          </section>
+        </template>
         <component :is="section.component" v-else />
       </main>
     </div>
@@ -146,6 +152,10 @@ body {
 
 .content.phone > * {
   max-width: none;
+}
+
+.content.phone > .flags {
+  margin-top: 24px;
 }
 
 section + section {

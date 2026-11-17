@@ -90,13 +90,14 @@ No import: Android keeps each app's data from the others.
 
 **Settings** gets an Import section, the same rows with Import… on each, and Run setup again,
 which opens the welcome in a tab ([mock](screenshots/onboarding/mock-d6.png),
-[in a tab](screenshots/onboarding/mock-d7.png)).
+[in a tab](screenshots/onboarding/mock-d7.png)). Run setup again became Show the welcome again, in Flags, which
+closes the app for the next start to open the welcome whole (see Built).
 
 ## What it needs that we don't have
 
 | Feature | Where | Slice |
 |---|---|---|
-| A first-run marker, the Welcome page, Run setup again, and the flag that shows it at the next start | Go (`core/app`, `core/flags`), `shell/src/apps/welcome`, settings | 1 |
+| A first-run marker, the Welcome page, Show the welcome again, and the flag that shows it at the next start | Go (`core/app`, `core/flags`), `shell/src/apps/welcome`, settings | 1 |
 | The welcome over the whole window, the splash, the UI coming in at the end | the window's layout gives the welcome tab all of it, with no shell regions, until Start browsing; on the phone, the Mobile shells hide their bar for it | 1 |
 | No colour until one is picked | a neutral frame in `core/tones` (light grey, ink accent, and its dark twin), the templates' and presets' teal gone | 1 |
 | Make default browser | Mac: the app can't be a browser yet. Its Info.plist (`tools/package.sh`) declares no `CFBundleURLTypes` for http and https nor `CFBundleDocumentTypes` for html, and nothing in the engine takes a link macOS hands over (`application:openURLs:`), as Android's `PBOpenURL` does. Then `NSWorkspace`'s `setDefaultApplicationAtURL:toOpenURLsWithScheme:`, which asks the user itself. Android: the manifest already takes http and https links, so `RoleManager`'s `ROLE_BROWSER` request is all | 1 |
@@ -148,7 +149,10 @@ Each slice goes out through a release of its own.
   Not here yet: a switch for the ad blocker and for Links to other sites across every site
   (today each is a site's own setting, the ad blocker on by default, links allowed), and the
   keys like Chrome's or Project B's (Settings, Keyboard, has it).
-- **Run setup again** in Settings, General, opens the page in a tab.
+- **Show the welcome again,** first in Settings' Flags (on a phone, below General), marks
+  the welcome unfinished in `welcome.json` and closes the app. The next start opens it over the
+  whole window, as a first start does, with the tabs On start, open brings back under it. It
+  doesn't open in a tab: the welcome is the whole-window first run, and a tab showed less of it.
 - **Make default browser,** on the last step. Go asks the engine (`AskDefaultBrowser`), and
   the system asks the person: on the Mac `NSWorkspace`'s `setDefaultApplicationAtURL:`
   for http then https, on Android `RoleManager`'s `ROLE_BROWSER` sheet. The answer comes
