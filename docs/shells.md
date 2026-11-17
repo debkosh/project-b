@@ -807,7 +807,10 @@ address field, and a menu button at the far right, in our tones.
   a new tab, whose page already shows the sites and the bookmarks, it asks for `tab` and
   `closed` alone, so the two never list the same rows and the page stays in view when
   there are none. Every suggest the shell sends takes its id from one count
-  (`queries.js`), so the bar's and the new tab page's answers never mix.
+  (`queries.js`), so the bar's and the new tab page's answers never mix. Until Go's
+  answer for the latest text comes, the list on screen is an earlier text's; it carries
+  the text it answers as `data-answers`, which the shell's tests wait on before they press
+  a row.
 - **A download you can see.** A download that starts while the app is showing raises a
   small bar over the foot of the page, just above the toolbar, for about 4 seconds:
   "Downloading big.zip". When it ends while the bar or the app is showing, the bar says

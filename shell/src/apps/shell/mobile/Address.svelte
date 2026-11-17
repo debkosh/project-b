@@ -25,6 +25,10 @@
   let asked = 0;
   let first = 0;
   let listed = $state(false);
+  // The text the last suggest was for, and the text the list on screen answers, which the
+  // list carries as data-answers: until Go's answer comes, it is an earlier text's.
+  let askedFor = '';
+  let answers = $state('');
 
   const host = $derived.by(() => {
     if (!tab.url) return '';
@@ -93,12 +97,16 @@
   // bookmarks, it is the open and closed tabs alone, so the two don't list the same rows.
   function askFirst() {
     const kinds = tab.url ? ['tab', 'closed', 'history', 'bookmark'] : ['tab', 'closed'];
+    askedFor = '';
     send({ t: 'suggest', id: (asked = first = nextQuery()), text: '', kinds });
   }
 
   function oninput() {
     if (text.trim() === '') askFirst();
-    else send({ t: 'suggest', id: (asked = nextQuery()), text });
+    else {
+      askedFor = text;
+      send({ t: 'suggest', id: (asked = nextQuery()), text });
+    }
   }
 
   function go(value) {
@@ -139,6 +147,7 @@
     if (m.id !== asked || !editing) return;
     items = m.items;
     listed = m.id === first;
+    answers = askedFor;
   }
 </script>
 
@@ -196,7 +205,7 @@
   {/if}
   {#if editing && items.length}
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <ul class="suggestions" class:below={top} bind:this={list} use:shell aria-label="Suggestions" onmousedown={(e) => e.preventDefault()}>
+    <ul class="suggestions" class:below={top} bind:this={list} use:shell aria-label="Suggestions" data-answers={answers} onmousedown={(e) => e.preventDefault()}>
       {#each shown as { key, heading, row: item } (key)}
         {#if heading}
           <li class="heading" role="presentation">{heading}</li>

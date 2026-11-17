@@ -33,6 +33,8 @@ const H = 915;
   const menu = ui.getByRole('dialog', { name: 'Menu' });
   const cards = switcher.getByRole('tab');
   const suggestions = ui.getByRole('list', { name: 'Suggestions' }).getByRole('listitem');
+  // Whether the list on screen is Go's answer for text, rather than an earlier text's.
+  const listAnswers = (text) => until(async () => (await ui.getByRole('list', { name: 'Suggestions' }).getAttribute('data-answers').catch(() => null)) === text);
   const box = (selector) => w.shell().evaluate((s) => document.querySelector(s)?.getBoundingClientRect().toJSON(), selector);
   const active = async () => {
     const r = await regions();
@@ -130,7 +132,7 @@ const H = 915;
   check('a tap on the pill puts the whole address in the field, selected', await until(async () => (await field.inputValue()) === 'https://example.org/release-notes' &&
     await w.shell().evaluate(() => { const f = document.activeElement; return f.selectionStart === 0 && f.selectionEnd === f.value.length; })));
   await page.keyboard.type('example.com/docs');
-  check('typing lists suggestions', await until(async () => (await suggestions.count()) >= 2), String(await suggestions.count()));
+  check('typing lists suggestions', await listAnswers('example.com/docs') && await until(async () => (await suggestions.count()) >= 2), String(await suggestions.count()));
   const list = await box('.suggestions');
   const fieldBox = await field.boundingBox();
   check('they lie over the field, the toolbar under them', list.bottom <= fieldBox.y, JSON.stringify({ list, fieldBox }));
@@ -147,6 +149,7 @@ const H = 915;
   check('Escape puts the address back and gives the page the keyboard', await until(async () => (await field.inputValue()) === 'example.org' && (await regions()).focused === (await regions()).active));
   await field.tap();
   await page.keyboard.type('example.com/docs/re');
+  await listAnswers('example.com/docs/re');
   await until(async () => (await suggestions.count()) >= 1);
   const go = await suggestions.last().locator('.url').innerText();
   await suggestions.last().getByRole('button').first().tap();
@@ -854,6 +857,7 @@ const H = 915;
   await field.tap();
   await until(inField);
   await page.keyboard.type('example.com/docs');
+  await listAnswers('example.com/docs');
   await until(async () => (await suggestions.count()) >= 2);
   const below = await box('.suggestions');
   check('the suggestions grow down from the field', below.y >= topY + 48 - 4 && below.y < topY + 60, JSON.stringify(below));
