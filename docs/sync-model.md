@@ -11,6 +11,11 @@ points are in it too: guids are UUIDv7, so they sort by when they were made, and
 repeat, with a list sorted by order key and then guid. The rest of this page, the files in a
 place, is the earlier option.
 
+**The protocol as built** is synckosh's SPEC.md, not this page. Its words differ from the ones
+below: a bucket is one synced space, a collection is a kind of data in it, a datatype is what an
+item is, and the timestamp is a plain number of milliseconds. Read this page only as the history of
+how the design started.
+
 A draft for the owner, from three asks of his: one item shape, with a guid, a type and a
 timestamp, and the type owning parent and child; a public and a private part, sealed with a
 passphrase as keykosh does; and no server, kept fast, with import and export easy. Nothing here
