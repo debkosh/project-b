@@ -2,7 +2,7 @@ Set up Project B on this Mac so it builds and its tests pass. Work out the comma
 yourself; README.md in this repo has the same steps for a person. Stop and report if a
 step fails in a way these notes don't cover.
 
-What it is: a clean-sheet browser. Go managers in core/, a Vue 3 shell in shell/, a C++
+What it is: a clean-sheet browser. Go managers in core/, web shells in shell/, a C++
 adapter in engine/ on Chromium's content layer, tag 155.0.8059.41, with no patches.
 
 The machine
