@@ -1,9 +1,12 @@
-// The History and Bookmarks pages, tabs of ours, on the mock engine (docs/daily-driver.md):
-// Show All History lists the pages visited and searches and forgets them, the address bar's
-// star bookmarks a page, and Bookmark Manager lists, edits and removes bookmarks. It leaves
-// light screenshots in build/e2e/pages-*.png.
+// The History and Bookmarks pages, tabs of ours, on the mock engine (docs/daily-driver.md,
+// docs/bookmark-folders.md): Show All History lists the pages visited and searches and
+// forgets them; the address bar's star and Cmd+D bookmark a page into the folder last saved
+// in and show the panel to change its name and folder; Bookmark Manager makes folders, moves
+// bookmarks into them by a drag or Move to…, edits them, and deletes a folder with what it
+// holds. It leaves light screenshots in build/e2e/pages-*.png.
 // Run: node shell/e2e/pages.cjs   (from the repo root, after `npm run build` in shell/)
 
+const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright');
 const lib = require('./lib.cjs');
@@ -33,8 +36,27 @@ const { check, fire, regions, settle, until } = lib;
   await at('https://b.test/news');
   const star = ui.getByRole('button', { name: 'Bookmark this page' });
   check('the address bar has a star', await until(() => star.isVisible()));
+  const saved = () => {
+    try {
+      return JSON.parse(fs.readFileSync(path.join(lib.profile, 'bookmarks.json'), 'utf8')).entries;
+    } catch {
+      return [];
+    }
+  };
+  const name = ui.getByRole('textbox', { name: 'Name' });
   await star.click();
-  check('the star bookmarks the page and fills', await until(async () => (await ui.getByRole('button', { name: 'Remove bookmark' }).getAttribute('aria-pressed')) === 'true'));
+  const added = ui.getByRole('dialog', { name: 'Bookmarked' });
+  check('the star bookmarks the page and shows its panel, the name in focus', await until(async () => (await added.isVisible()) && saved().length === 1 && (await name.evaluate((el) => el === document.activeElement))));
+  check('with no folders yet, it shows no folder list', (await ui.getByRole('group', { name: 'Folder' }).count()) === 0);
+  await shoot('star-panel');
+  await page.keyboard.press('Escape');
+  check('Escape closes it with the bookmark kept, the star filled', await until(async () => !(await added.isVisible()) && (await ui.getByRole('button', { name: 'Edit bookmark' }).getAttribute('aria-pressed')) === 'true'));
+  await fire('menu', 'bookmarks.toggle');
+  const edit = ui.getByRole('dialog', { name: 'Edit bookmark' });
+  check('Cmd+D on a bookmarked page shows its panel to edit', await until(() => edit.isVisible()));
+  await name.fill('The news');
+  await page.keyboard.press('Enter');
+  check('Enter saves the name and closes it', await until(async () => !(await edit.isVisible()) && saved()[0]?.title === 'The news'), JSON.stringify(saved()));
 
   // History.
   await fire('menu', 'history.show');
@@ -56,16 +78,67 @@ const { check, fire, regions, settle, until } = lib;
   // Bookmarks.
   await fire('menu', 'bookmarks.show');
   const bookmarks = page.frameLocator('iframe.our-page[data-page="bookmarks"]');
-  const marks = bookmarks.getByRole('listitem');
-  check('Bookmark Manager lists the bookmark', await until(async () => (await marks.count()) === 1));
-  await marks.first().hover();
-  await bookmarks.getByRole('button', { name: /^Edit / }).click();
-  await bookmarks.getByRole('textbox', { name: 'Name' }).fill('The news');
-  await bookmarks.getByRole('button', { name: 'Save' }).click();
-  check('a bookmark can be renamed', await until(async () => (await marks.first().getAttribute('aria-label')) === 'The news'));
+  // The folder's entries, not the path's steps, which are a list too.
+  const marks = bookmarks.locator('.card').getByRole('listitem');
+  const labels = () => marks.evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')));
+  const lists = async (want) => until(async () => JSON.stringify(await labels()) === JSON.stringify(want));
+  check('Bookmark Manager lists the bookmark', await lists(['The news']), JSON.stringify(await labels()));
+  const tree = bookmarks.getByRole('navigation', { name: 'Folders' });
+  const folder = (n) => tree.getByRole('button', { name: new RegExp(`^${n} \\d+$`) });
+  const newFolder = async (n) => {
+    await tree.getByRole('button', { name: 'New folder' }).click();
+    await bookmarks.getByRole('textbox', { name: 'New folder name' }).fill(n);
+    await bookmarks.getByRole('button', { name: 'Make' }).click();
+  };
+  await newFolder('Reading');
+  check('New folder makes one, on the left and first in the list', await until(async () => (await folder('Reading').count()) === 1) && (await lists(['Reading', 'The news'])), JSON.stringify(await labels()));
+  await marks.filter({ hasText: 'The news' }).dragTo(folder('Reading'));
+  check('a bookmark dragged onto a folder on the left moves into it, which counts it', await lists(['Reading']) && (await until(async () => (await folder('Reading').innerText()).includes('1'))), JSON.stringify(await labels()));
+  await folder('Reading').click();
+  check('a folder shows what it holds, under a path back to the top', await lists(['The news']) && (await bookmarks.getByRole('list', { name: 'Path' }).getByRole('button', { name: 'Bookmarks' }).isVisible()));
   await shoot('bookmarks');
-  await bookmarks.getByRole('button', { name: 'Remove bookmark The news' }).click();
-  check('and removed', await until(async () => (await marks.count()) === 0));
+  const act = async (entry, item) => {
+    await marks.filter({ hasText: entry }).first().hover();
+    await bookmarks.getByRole('button', { name: `Actions for ${entry}` }).click();
+    await bookmarks.getByRole('menuitem', { name: item }).click();
+  };
+  await act('The news', 'Move to…');
+  await bookmarks.getByRole('dialog').getByText('Bookmarks', { exact: true }).click();
+  await bookmarks.getByRole('button', { name: 'Move', exact: true }).click();
+  check('Move to… moves it back to the top, leaving the folder empty', await lists([]) && (await bookmarks.getByText('This folder is empty.').isVisible()));
+  await bookmarks.getByRole('list', { name: 'Path' }).getByRole('button', { name: 'Bookmarks' }).click();
+  await act('The news', 'Edit…');
+  await bookmarks.getByRole('textbox', { name: 'Name' }).fill('News');
+  await bookmarks.getByRole('button', { name: 'Save' }).click();
+  check('a bookmark can be renamed', await lists(['Reading', 'News']), JSON.stringify(await labels()));
+  await bookmarks.getByRole('searchbox', { name: 'Search bookmarks' }).fill('b.test');
+  check('a search looks in every folder', await lists(['News']));
+  await bookmarks.getByRole('searchbox', { name: 'Search bookmarks' }).fill('');
+  await marks.filter({ hasText: 'News' }).dragTo(marks.filter({ hasText: 'Reading' }));
+  check('a bookmark dragged onto a folder in the list moves into it', await lists(['Reading']));
+  await act('Reading', 'Delete');
+  const ask = bookmarks.getByRole('dialog', { name: 'Delete “Reading”?' });
+  check('deleting a folder that holds anything asks, saying how much', await until(async () => (await ask.isVisible()) && (await ask.innerText()).includes('1 bookmark')));
+  await ask.getByRole('button', { name: 'Delete' }).click();
+  check('and Delete takes it with what it holds', await lists([]) && saved().length === 0, JSON.stringify(saved()));
+
+  // The panel's folder: the star's next bookmark goes where the last was saved.
+  await newFolder('Later');
+  await until(async () => (await folder('Later').count()) === 1);
+  await send({ t: 'newTab', text: 'https://c.test/' });
+  await at('https://c.test/');
+  await star.click();
+  await until(() => added.isVisible());
+  await added.getByRole('radio', { name: 'Later' }).check();
+  await shoot('star-panel-folders');
+  await page.keyboard.press('Enter');
+  const later = () => saved().find((e) => e.title === 'Later')?.id;
+  check('the panel saves the folder chosen', await until(() => saved().some((e) => e.url === 'https://c.test/' && e.parent === later())), JSON.stringify(saved()));
+  await send({ t: 'newTab', text: 'https://d.test/' });
+  await at('https://d.test/');
+  await star.click();
+  check('and the next bookmark goes there, the panel showing it chosen', await until(async () => (await added.isVisible()) && (await added.getByRole('radio', { name: 'Later' }).isChecked()) && saved().some((e) => e.url === 'https://d.test/' && e.parent === later())));
+  await page.keyboard.press('Escape');
 
   check('no errors', w.errors.length === 0, w.errors.join(' | '));
   await browser.close();

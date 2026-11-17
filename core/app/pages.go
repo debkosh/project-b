@@ -28,7 +28,7 @@ func newOurPages(a *App, e engine.Engine) *ourPages {
 	p := &ourPages{a: a, e: e, shown: map[engine.TabID]engine.Page{}}
 	a.Prefs.OnThemeChanged(func(t string) { p.sendAll("", map[string]any{"t": "theme", "theme": t}) })
 	a.Window.OnColorChanged(func(c string) { p.sendAll("", map[string]any{"t": "tones", "tones": tones.Of(c)}) })
-	a.Bookmarks.OnChanged(func() { p.sendAll("bookmarks", map[string]any{"t": "bookmarks", "bookmarks": a.Bookmarks.List()}) })
+	a.Bookmarks.OnChanged(func() { p.sendAll("bookmarks", map[string]any{"t": "bookmarks", "bookmarks": a.Bookmarks.All()}) })
 	a.Downloads.OnChanged(func() { p.sendAll("downloads", map[string]any{"t": "downloads", "downloads": a.Downloads.List()}) })
 	return p
 }
@@ -57,8 +57,8 @@ func (p *ourPages) sendAll(page engine.Page, v any) {
 }
 
 // pageMessage is what the pages send: t, and what each needs of text, a time, the
-// addresses, a bookmark's or a download's id, a title and address, and what to do to a
-// download.
+// addresses, a download's id, an address, and what to do to a download. What the
+// Bookmarks page sends is a bookmarkMessage.
 type pageMessage struct {
 	T      string   `json:"t"`
 	Text   string   `json:"text"`
@@ -66,12 +66,14 @@ type pageMessage struct {
 	Since  int64    `json:"since"`
 	URLs   []string `json:"urls"`
 	ID     int      `json:"id"`
-	Title  string   `json:"title"`
 	URL    string   `json:"url"`
 	Action string   `json:"action"`
 }
 
 func (p *ourPages) handle(tab engine.TabID, page engine.Page, msg []byte) {
+	if page == "bookmarks" && p.handleBookmarks(tab, msg) {
+		return
+	}
 	var m pageMessage
 	if err := json.Unmarshal(msg, &m); err != nil {
 		timeline.Warnf("pages: bad message from %s: %v", page, err)
@@ -91,7 +93,7 @@ func (p *ourPages) handle(tab engine.TabID, page engine.Page, msg []byte) {
 		case "downloads":
 			snapshot["downloads"] = p.a.Downloads.List()
 		default:
-			snapshot["bookmarks"] = p.a.Bookmarks.List()
+			snapshot["bookmarks"] = p.a.Bookmarks.All()
 		}
 		p.send(tab, snapshot)
 		return
@@ -110,12 +112,6 @@ func (p *ourPages) handle(tab engine.TabID, page engine.Page, msg []byte) {
 	case "clear":
 		p.a.History.Clear(m.Since)
 		p.send(tab, map[string]any{"t": "items", "text": m.Text, "items": p.a.History.List(m.Text, 0, historyPage)})
-	case "editBookmark":
-		if err := p.a.Bookmarks.Edit(m.ID, m.Title, m.URL); err != nil {
-			p.send(tab, map[string]any{"t": "error", "id": m.ID, "error": err.Error()})
-		}
-	case "removeBookmark":
-		p.a.Bookmarks.Remove(m.ID)
 	case "downloadAction":
 		p.a.Downloads.Act(m.ID, m.Action)
 	case "clearDownloads":
@@ -123,4 +119,34 @@ func (p *ourPages) handle(tab engine.TabID, page engine.Page, msg []byte) {
 	default:
 		timeline.Warnf("pages: %s sent %q, which it has no use for", page, m.T)
 	}
+}
+
+// handleBookmarks does what the Bookmarks page asks of the tree (docs/bookmark-folders.md):
+// editBookmark {id, title, url} renames a folder or edits a bookmark, moveBookmark {id,
+// parent} moves an entry first into a folder, newFolder {parent, title} makes one there,
+// and removeBookmark {id} takes an entry away with all it holds. A refusal goes back to
+// the page as error {id, error}. It says whether the message was one of these.
+func (p *ourPages) handleBookmarks(tab engine.TabID, msg []byte) bool {
+	var m bookmarkMessage
+	if err := json.Unmarshal(msg, &m); err != nil {
+		timeline.Warnf("pages: bad message from bookmarks: %v", err)
+		return true
+	}
+	var err error
+	switch m.T {
+	case "editBookmark":
+		err = p.a.Bookmarks.Edit(m.ID, m.Title, m.URL)
+	case "moveBookmark":
+		err = p.a.Bookmarks.Move(m.ID, m.Parent)
+	case "newFolder":
+		_, err = p.a.Bookmarks.NewFolder(m.Parent, m.Title)
+	case "removeBookmark":
+		p.a.Bookmarks.Remove(m.ID)
+	default:
+		return false
+	}
+	if err != nil {
+		p.send(tab, map[string]any{"t": "error", "id": m.ID, "error": err.Error()})
+	}
+	return true
 }

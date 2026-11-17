@@ -45,7 +45,8 @@
   const enabled = (action) => find(go.menu, action)?.enabled ?? true;
   const run = (action) => act({ t: 'run', text: action });
 
-  // The star bookmarks the page shown, or takes its bookmark away, as Standard's does.
+  // The star bookmarks the page shown, into the folder last saved in, or finds its bookmark,
+  // and Go answers with the panel, which takes this sheet's place, as Standard's does.
   const web = $derived(/^https?:/.test(tab.url || '') && !tab.page);
   const starred = $derived(isBookmarked(go, tab.url));
 
@@ -109,7 +110,7 @@
         <button aria-label="Back" onclick={() => act({ t: 'back' })}><Icon name="back" /><span aria-hidden="true">Back</span></button>
       {/if}
       <button aria-label="Forward" disabled={!tab.canGoForward} onclick={() => act({ t: 'forward' })}><Icon name="forward" /><span aria-hidden="true">Forward</span></button>
-      <button class:on={starred} aria-label="Bookmark" aria-pressed={starred} disabled={!web} onclick={() => bookmark(tab.url, tab.title, !starred)}><Icon name="star" filled={starred} /><span aria-hidden="true">{starred ? 'Bookmarked' : 'Bookmark'}</span></button>
+      <button class:on={starred} aria-label={starred ? 'Edit bookmark' : 'Bookmark'} aria-pressed={starred} disabled={!web} onclick={() => bookmark(tab.url, tab.title)}><Icon name="star" filled={starred} /><span aria-hidden="true">{starred ? 'Bookmarked' : 'Bookmark'}</span></button>
       {#if tab.loading}
         <button aria-label="Stop" onclick={() => run('nav.stop')}><Icon name="stop" /><span aria-hidden="true">Stop</span></button>
       {:else}

@@ -30,7 +30,12 @@ func (a *App) registerActions(e engine.Engine) {
 	add("history.show", "Show All History", func() { a.Tabs.OpenPage(a.Tabs.Front(), "history") })
 	add("bookmarks.show", "Bookmark Manager", func() { a.Tabs.OpenPage(a.Tabs.Front(), "bookmarks") })
 	add("downloads.show", "Downloads", func() { a.Tabs.OpenPage(a.Tabs.Front(), "downloads") })
-	bookmark := add("bookmarks.toggle", "Bookmark This Page", a.toggleBookmark)
+	// Cmd+D bookmarks the page into the folder last saved in, and the star's panel shows,
+	// to change its name or folder (docs/bookmark-folders.md).
+	bookmark := add("bookmarks.toggle", "Bookmark This Page…", func() {
+		t := a.Tabs.Active()
+		a.bookmarkPage(e, a.Tabs.Front(), t.Title, t.URL)
+	})
 	bookmark.Enabled = func() bool { return a.Tabs.Active().URL != "" }
 	add("profile.picker", "Profiles…", func() { relaunch.Copy("--root="+a.profiles.Root(), "--picker") })
 

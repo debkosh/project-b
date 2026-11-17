@@ -6,6 +6,7 @@ import { hasSite, openSite, popupsWord, promptFor } from '@/sdk/sites.js';
 import PermissionPrompt from '@/ui/PermissionPrompt.vue';
 import { pushEscape } from '@/ui/escape.js';
 import SitePanel from '@/ui/SitePanel.vue';
+import BookmarkPanel from '@/ui/BookmarkPanel.vue';
 import { addressBar, nextQuery } from './state.js';
 
 const input = ref(null);
@@ -257,8 +258,33 @@ function follow() {
 }
 watch(() => state.active, follow);
 onMounted(follow);
-// The star: the page shown is bookmarked, or not.
+// The star: the page shown is bookmarked, or not. A press asks Go to bookmark it, into the
+// folder last saved in, or to find its bookmark; Go answers with the panel to show, as it
+// does for Cmd+D (docs/bookmark-folders.md).
 const starred = computed(() => isBookmarked(state, activeTab.value.url));
+// The star's panel Go asked for, and a new key for each ask, so each starts afresh. It
+// closes with another tab, and gives the site panel its place.
+const marked = ref(null);
+let asks = 0;
+watch(
+  () => state.bookmarkPanel,
+  (p) => {
+    marked.value = p && { ...p, key: ++asks };
+    if (p) panel.value = false;
+  },
+);
+watch(() => state.active, () => (marked.value = null));
+watch(panel, (on) => on && (marked.value = null));
+const markedBookmark = computed(() => marked.value && state.bookmarks.find((b) => b.id === marked.value.id));
+function star() {
+  if (markedBookmark.value) closeMarked();
+  else bookmark(activeTab.value.url, activeTab.value.title);
+}
+// Closing gives the page the focus back, which Cmd+D took for the panel.
+function closeMarked() {
+  marked.value = null;
+  if (activeTab.value.url) focusPage();
+}
 </script>
 
 <template>
@@ -354,11 +380,13 @@ const starred = computed(() => isBookmarked(state, activeTab.value.url));
       type="button"
       class="star"
       :class="{ on: starred }"
-      :aria-label="starred ? 'Remove bookmark' : 'Bookmark this page'"
+      data-bookmark-star
+      :aria-label="starred ? 'Edit bookmark' : 'Bookmark this page'"
       :aria-pressed="starred"
-      :title="starred ? 'Remove bookmark' : 'Bookmark this page'"
+      :aria-expanded="!!markedBookmark"
+      :title="starred ? 'Edit bookmark' : 'Bookmark this page'"
       @mousedown.prevent
-      @click="bookmark(activeTab.url, activeTab.title, !starred)"
+      @click="star"
     >
       <svg width="15" height="15" viewBox="0 0 16 16" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" :fill="starred ? 'currentColor' : 'none'" aria-hidden="true">
         <path d="M8 1.8l1.9 3.9 4.3.6-3.1 3 .7 4.3L8 11.6l-3.8 2 .7-4.3-3.1-3 4.3-.6z" />
@@ -373,8 +401,18 @@ const starred = computed(() => isBookmarked(state, activeTab.value.url));
       @hover="(i) => (highlight = i)"
       @choose="go"
     />
-    <PermissionPrompt v-if="prompt && !open && !panel" :key="prompt.id" v-shell class="prompt" :prompt="prompt" />
+    <PermissionPrompt v-if="prompt && !open && !panel && !markedBookmark" :key="prompt.id" v-shell class="prompt" :prompt="prompt" />
     <SitePanel v-if="panel && !open && hasSite(activeTab)" v-shell class="prompt" :tab="activeTab" :site="site" @close="panel = false" />
+    <BookmarkPanel
+      v-if="markedBookmark && !open"
+      :key="marked.key"
+      v-shell
+      class="prompt end"
+      :bookmark="markedBookmark"
+      :list="state.bookmarks"
+      :added="marked.new"
+      @close="closeMarked"
+    />
   </form>
 </template>
 
@@ -569,6 +607,12 @@ input::placeholder {
   top: calc(100% + 6px);
   left: 0;
   z-index: 10;
+}
+
+/* The star's panel hangs from the field's end, under the star. */
+.prompt.end {
+  left: auto;
+  right: 0;
 }
 
 </style>

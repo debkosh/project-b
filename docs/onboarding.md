@@ -103,7 +103,7 @@ closes the app for the next start to open the welcome whole (see Built).
 | Make default browser | Mac: the app can't be a browser yet. Its Info.plist (`tools/package.sh`) declares no `CFBundleURLTypes` for http and https nor `CFBundleDocumentTypes` for html, and nothing in the engine takes a link macOS hands over (`application:openURLs:`), as Android's `PBOpenURL` does. Then `NSWorkspace`'s `setDefaultApplicationAtURL:toOpenURLsWithScheme:`, which asks the user itself. Android: the manifest already takes http and https links, so `RoleManager`'s `ROLE_BROWSER` request is all | 1 |
 | Download notifications asked on the phone's step | an engine call that asks for `POST_NOTIFICATIONS` and reports whether it was given. Today `Downloads.java` asks the moment a download starts, so Android's prompt covers the page; that ask goes, or stays only for a user who skipped setup | 1 |
 | A preview of each layout in the chosen colour and theme | drawn by the welcome page from the tones Go sends, so it follows every choice; no pictures to keep up | 1 |
-| Bookmark folders | `core/bookmarks`, the Bookmarks page | 2 |
+| Bookmark folders, built ([bookmark-folders.md](bookmark-folders.md)) | `core/bookmarks`, the Bookmarks page, the star's panel | 2 |
 | Importers: the Chromium family (Chrome, Edge, Brave, Arc), Firefox, with each browser's own icon | `browserdata`, a module of its own (below); Settings' Import | 3 |
 | History import | `core/history` | 3 |
 | Safari, behind Full Disk Access | the same package | 4 |

@@ -90,9 +90,14 @@ export const state = {
   // total, paused}: state is progress, done, cancelled or failed, and total -1 when
   // unknown. downloads.js acts on one (docs/daily-driver.md).
   downloads: [],
-  // The profile's bookmarks, newest first, each {id, title, url, added}: a shell shows a
+  // The profile's bookmarks and folders, the tree as a flat list in its places, each {id,
+  // parent, kind, title, url, added, modified, place} (ui/bookmarks.js): a shell shows a
   // star on an address that is one, and bookmark() sets it.
   bookmarks: [],
+  // The star's panel Go asks this window to show, {id, new}, new when the star or Cmd+D
+  // has just made the bookmark id; null until the first. Each ask is a new object, so a
+  // shell that closed the panel sees the next.
+  bookmarkPanel: null,
   // The search engine typed words go to, {id, name}, for a field's placeholder.
   searchEngine: { id: '', name: '' },
   // The dialogs pages wait on, oldest first, each {id, tab, kind, title, message,
@@ -128,7 +133,7 @@ export const state = {
 
 // The messages that are only state: each sets the fields it carries, whole. The one
 // exception is tabs, whose tabs carry no favicon: each keeps the one it had (below).
-const updates = new Set(['theme', 'windowColor', 'controls', 'keys', 'workspaces', 'update', 'crashLog', 'tabLayout', 'addressBarPosition', 'extensions', 'profileData', 'contextMenu', 'downloads', 'dialogs', 'prefs', 'find', 'pageFullScreen', 'welcome', 'searchEngine', 'permissionPrompts', 'openSites', 'bookmarks', 'pins', 'menu']);
+const updates = new Set(['theme', 'windowColor', 'controls', 'keys', 'workspaces', 'update', 'crashLog', 'tabLayout', 'addressBarPosition', 'extensions', 'profileData', 'contextMenu', 'downloads', 'dialogs', 'prefs', 'find', 'pageFullScreen', 'welcome', 'searchEngine', 'permissionPrompts', 'openSites', 'bookmarks', 'bookmarkPanel', 'pins', 'menu']);
 
 const listeners = [];
 

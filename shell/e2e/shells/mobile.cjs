@@ -174,16 +174,30 @@ const H = 915;
   check('then Settings, and More last', JSON.stringify(await menu.getByRole('menu', { name: 'App' }).getByRole('menuitem').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')))) === JSON.stringify(['Settings', 'More']));
   check('and none of the menu bar\'s menus at its top level', (await menuItem('File').count()) === 0 && (await menuItem('View').count()) === 0);
   await shots('menu');
-  // The star bookmarks the page, filled while it is one; a second tap takes it away.
+  // The star bookmarks the page, and its sheet takes the menu's place, to change the name or
+  // the folder (docs/bookmark-folders.md); the star is filled while it is one, and a second
+  // tap shows the sheet to edit, whose Remove takes it away.
   const star = menu.getByRole('button', { name: 'Bookmark' });
   const bookmarked = () => { try { return JSON.parse(fs.readFileSync(path.join(lib.profile, 'bookmarks.json'), 'utf8')); } catch { return null; } };
   const marked = (url) => JSON.stringify(bookmarked() || '').includes(url);
   const starredUrl = (await active()).url;
   await star.tap();
-  check('Bookmark bookmarks the page, and its star is filled', await until(async () => (await star.getAttribute('aria-pressed')) === 'true' && marked(starredUrl)), JSON.stringify(bookmarked()));
+  const added = ui.getByRole('dialog', { name: 'Bookmarked' });
+  check('Bookmark bookmarks the page, and its sheet takes the menu\'s place', await until(async () => (await added.isVisible()) && !(await menu.isVisible()) && marked(starredUrl)), JSON.stringify(bookmarked()));
+  await shots('bookmark-sheet');
+  await added.getByRole('textbox', { name: 'Name' }).fill('Docs page');
+  await added.getByRole('button', { name: 'Done' }).tap();
+  check('Done saves the name and closes it', await until(async () => !(await added.isVisible()) && JSON.stringify(bookmarked()).includes('Docs page')));
+  await menuButton.tap();
+  await until(() => menu.isVisible());
+  const starOn = menu.getByRole('button', { name: 'Edit bookmark' });
+  check('the menu\'s star is filled', await until(async () => (await starOn.getAttribute('aria-pressed')) === 'true'));
   await shots('menu-bookmarked');
-  await star.tap();
-  check('a second tap takes the bookmark away', await until(async () => (await star.getAttribute('aria-pressed')) === 'false' && !marked(starredUrl)));
+  await starOn.tap();
+  const editing = ui.getByRole('dialog', { name: 'Edit bookmark' });
+  await until(() => editing.isVisible());
+  await editing.getByRole('button', { name: 'Remove' }).tap();
+  check('a second tap shows it to edit, and Remove takes the bookmark away', await until(async () => !(await editing.isVisible()) && !marked(starredUrl)));
   // The tiles run Go's actions: History and Bookmarks open those pages of ours, in tabs.
   for (const [name, kind] of [['History', 'history'], ['Bookmarks', 'bookmarks']]) {
     if (!(await menu.isVisible())) {

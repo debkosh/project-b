@@ -22,8 +22,8 @@ new tab page (Standard's box and the Mobile web shell, which reaches History and
 from it). The list with owners is
 [daily-use.md](daily-use.md).
 
-**Planned**, decided and not started ([todo.md](todo.md#daily-driver)): bookmark folders and
-import, and bookmarks in the address bar's suggestions as you type.
+**Planned**, decided and not started ([todo.md](todo.md#daily-driver)): bookmark import, and
+bookmarks in the address bar's suggestions as you type.
 
 **Needs discussion** ([todo.md](todo.md#daily-driver)), in this order: saved passwords and
 autofill, engine-fetched search suggestions (off by default if built), and where a phone's
@@ -640,9 +640,11 @@ Clear history takes away the last hour, today, or everything. Go keeps one entry
 a removal is written to the history file as a line that takes it out, so it stays gone after a
 restart. Show All History (Cmd+Y) is in the History menu.
 
-**Bookmarks** are flat: a title and an address each, newest first, in the profile's
-`bookmarks.json`. The address bar's star bookmarks the page shown, or takes its bookmark away;
-shells have `state.bookmarks` and `bookmark(url, title, on)` for it. Bookmark This Page (Cmd+D, in
-every shell) and Bookmark Manager (Option+Cmd+B) are in the Bookmarks menu. The page lists them with a
-search, and each can be renamed, re-addressed or removed; an address bookmarked twice is
-refused. Folders, import, and bookmarks in the suggestion list are later steps.
+**Bookmarks** keep folders, a tree in the profile's `bookmarks.json`
+([bookmark-folders.md](bookmark-folders.md)). The address bar's star and Bookmark This Page…
+(Cmd+D, in every shell) bookmark the page shown into the folder last saved in, and Standard and
+the Mobile web shell show a panel to change its name and folder, or remove it. Bookmark
+Manager (Option+Cmd+B) shows the folders on its left and the one chosen on its right, with a
+search in every folder; entries move by a drag or Move to…, and each can be renamed,
+re-addressed or deleted, a folder with what it holds; an address bookmarked twice is
+refused. Import is a later step.

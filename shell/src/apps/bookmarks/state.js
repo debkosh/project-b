@@ -1,5 +1,5 @@
-// The Bookmarks page's copy of what Go keeps (docs/daily-driver.md): the profile's
-// bookmarks, newest first. Only Go changes it; the page starts from a snapshot.
+// The Bookmarks page's copy of what Go keeps (docs/bookmark-folders.md): the profile's
+// bookmarks and folders. Only Go changes it; the page starts from a snapshot.
 
 import { reactive } from 'vue';
 import { bridge } from '@/bridge.js';
@@ -12,7 +12,8 @@ export const state = reactive({
   ready: false,
   theme: 'system',
   tones: null,
-  // Each {id, title, url, added}.
+  // The tree as a flat list in its places, each {id, parent, kind, title, url, added,
+  // modified, place} (ui/bookmarks.js).
   bookmarks: [],
   // Go's refusal of the last edit, {id, error}, or null.
   refused: null,

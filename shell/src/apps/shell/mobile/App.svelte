@@ -1,6 +1,8 @@
 <script>
   import { activeTab, connect, drag, focusPage, page, send, setFrame, shell, state as go } from '@/sdk/svelte.svelte.js';
+  import { untrack } from 'svelte';
   import { extensionsBuilt } from '@extensions';
+  import BookmarkSheet from './BookmarkSheet.svelte';
   import CardMenu from './CardMenu.svelte';
   import CrashBar from './CrashBar.svelte';
   import DownloadBar from './DownloadBar.svelte';
@@ -29,12 +31,25 @@
   // stays at the foot either way, as Chrome's does.
   const top = $derived(go.addressBarPosition === 'top');
   // What is open over the page: '', 'switcher', 'menu', 'extensions', 'group' (the active
-  // tab's, or the one in sheetGroup), 'card' (cardTab's menu) or 'link' (a long press in
-  // the page).
+  // tab's, or the one in sheetGroup), 'card' (cardTab's menu), 'link' (a long press in
+  // the page) or 'bookmark' (the star's panel).
   let sheet = $state('');
   let sheetGroup = $state('');
   let cardTab = $state(0);
   let askClose = $state(false);
+  // The star's panel Go asks for once the menu's Bookmark has bookmarked the page
+  // (docs/bookmark-folders.md), and a new key for each ask, so each starts afresh.
+  let marked = $state(null);
+  let asks = 0;
+  $effect(() => {
+    const p = go.bookmarkPanel;
+    if (!p) return;
+    untrack(() => {
+      marked = { ...p, key: ++asks };
+      sheet = 'bookmark';
+    });
+  });
+  const markedBookmark = $derived(marked && go.bookmarks.find((b) => b.id === marked.id));
   // What a long press in the page was on, for the 'link' sheet.
   let pressed = $state(null);
   // The workspace new tabs open in, and the switcher shows: the active tab's, until the
@@ -313,6 +328,10 @@
     <MenuSheet {tab} {group} {workspace} onclose={() => (sheet = '')} onnewtab={(inGroup) => newTab(inGroup ? go.active : 0)} {onsheet} onworkspace={(id) => (workspace = id)} />
   {:else if sheet === 'site' && /^https?:/.test(tab.url || '')}
     <SiteSheet {tab} onclose={() => (sheet = '')} />
+  {:else if sheet === 'bookmark' && markedBookmark}
+    {#key marked.key}
+      <BookmarkSheet bookmark={markedBookmark} list={go.bookmarks} added={marked.new} onclose={() => (sheet = '')} />
+    {/key}
   {:else if sheet === 'group' && shownGroup}
     {#key shownGroup.id}
       <GroupSheet

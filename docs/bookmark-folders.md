@@ -1,28 +1,43 @@
 # Bookmark folders
 
 Slice 2 of the [onboarding](onboarding.md#what-it-needs-that-we-dont-have): bookmarks brought
-over from another browser keep their folders, so ours need them first. **Proposed, 2026-11-17:
-for the owner's answer, nothing built.** Mocks: [screenshots/bookmarks/mocks.html](screenshots/bookmarks/mocks.html).
+over from another browser keep their folders, so ours need them first. **Built, 2026-11-17.**
+The proposal's mocks: [screenshots/bookmarks/mocks.html](screenshots/bookmarks/mocks.html).
+
+The owner's answer on the star, 2026-11-17: a small popup with the last used folder already
+chosen. Cmd+D (Ctrl+D) saves the bookmark at once, into the last used folder, or the top
+when none was used, then shows the popup to edit it; Enter saves the edits, and Esc closes
+it with the bookmark kept. So Cmd+D then Enter, or Cmd+D then Esc, both keep it. A
+bookmarks bar is not decided yet, so none is built.
 
 ## What the person sees
 
-- **The Bookmarks page** gets the folders on its left: All bookmarks at the top, the folders
-  under it, nested, each with how many it holds; New folder at the foot. The right shows the
-  folder chosen: its folders first, then its bookmarks, a path above it back to All
-  bookmarks. Search looks in every folder ([mock](screenshots/bookmarks/mock-b1.png)).
-- **Moving:** a bookmark or a folder is dragged onto a folder on the left, or moved with the
-  row's menu, Move to…, which lists the folders. The menu also has Open in new tab, Edit…
-  and Delete ([mock](screenshots/bookmarks/mock-b2.png)).
-- **Folders** are renamed in place, and deleted with what they hold; deleting one that
-  holds anything asks first, saying how many.
-- **The star** (Standard's address bar, Cmd+D in every shell) bookmarks the page into the
-  folder last used, and Standard's star then shows a small panel to change the name or the
-  folder, or remove it again; a press elsewhere closes it ([mock](screenshots/bookmarks/mock-b3.png)).
-  The Mobile web shell's Bookmark item does the same with a sheet.
+- **The star** (Standard's address bar) and **Cmd+D** (every shell) bookmark the page into
+  the folder last saved in, or find its bookmark when the page is one, and Standard shows
+  the panel under the star: Bookmarked, or Edit bookmark for one that was already there; its
+  name, chosen and selected; the folders, the bookmark's own chosen, once there is a folder;
+  Remove and Done. Enter, anywhere in it but on a button, saves the name and the folder,
+  and the next bookmark goes into that folder too. Escape or a press outside closes it with
+  the bookmark kept as it was. The panel closes with another tab, and the page gets the
+  focus back. ([mock](screenshots/bookmarks/mock-b3.png))
+- **The Mobile web shell's** Bookmark, in the menu sheet, does the same, and the panel is a
+  sheet in the menu's place: the back key, a tap outside or a swipe down close it.
+- **Shells with no panel** (Glide, Fox, Minimal, Terminal) have Cmd+D save the bookmark all
+  the same, into the folder last saved in.
+- **The Bookmarks page** has the folders on its left: Bookmarks, the top, with the folders
+  under it, nested, each with how many bookmarks it holds, in it and in its folders; New
+  folder at the foot makes one in the folder shown. The right shows the folder chosen, its
+  folders first, then its bookmarks, a path above it back to the top. Search looks in every
+  folder, and says which folder each bookmark is in ([mock](screenshots/bookmarks/mock-b1.png)).
+- **Moving:** an entry dragged onto a folder, on the left, in the list or in the path, moves
+  there, first in it. Each row's menu (⋯, or a right-click) has Open in new tab (Open, for
+  a folder), Edit… (Rename…), Move to…, which asks for a folder in a dialog, and Delete
+  ([mock](screenshots/bookmarks/mock-b2.png)).
+- **Delete:** a folder that holds anything asks first, saying how many bookmarks go with it.
+- **On a phone** the page has no room for the left: the path leads back up, New folder is by
+  the search, and each row's ⋯ shows at once.
 - **Imports** (slice 3) come in as a folder named after the browser, "From Chrome", holding
   that browser's own tree.
-
-No bookmarks bar: no shell has one today, and it would be a shell's to draw.
 
 ## How it is kept
 
@@ -31,22 +46,50 @@ No bookmarks bar: no shell has one today, and it would be a shell's to draw.
 | Field | |
 |---|---|
 | `id` | random, 16 hex digits, made once and never changed, the same on every device a later sync reaches |
-| `parent` | the folder's id, `""` for the top (All bookmarks) |
+| `parent` | the folder's id, `""` for the top |
 | `kind` | `bookmark` or `folder` |
 | `title`, `url` | a folder has no url |
-| `added`, `modified` | Unix milliseconds; `modified` changes with the title, the url, the parent or the place |
-| `place` | its place among its folder's entries, a fractional key that sorts as text, so moving one entry changes only that entry, as a sync needs (project-b-70) |
+| `added`, `modified` | Unix milliseconds; `modified` changes with the title, the url or the folder |
+| `place` | its place among its folder's entries, a key that sorts as text, so moving one entry changes that entry alone, as a sync needs (project-b-70) |
 
-The file is `bookmarks.json`, version 2. The bookmarks people have today are version 1, a flat
-list with numbered ids: the first start of this version reads it, gives each a random id in
-the top folder, newest first as now, and writes version 2. A deleted entry leaves no
-tombstone yet; sync adds what it needs when its design is agreed.
+A place is base-36 digits with no trailing zero (`core/bookmarks/place.go`): there is
+always a key between two, and at either end of a folder a key steps a digit, so a folder
+whose entries keep going first grows its keys by a digit only every 35 or so. A new entry,
+and one moved into a folder, goes first in it.
 
-The manager tells its subscribers which entries changed (`OnChanged(ids)`), so the pages and
-the shells resend only what moved, and a sync can follow.
+An address is bookmarked once: a second Add finds the bookmark, and an edit to an address
+another bookmark has is refused.
 
-## Questions for the owner
+The file is `bookmarks.json`, version 2: `{version, last, entries}`, `last` being the folder
+a bookmark was last saved in from the panel. Version 1, a flat list with numbered ids, is
+what a profile had before: the first start of this version reads it, gives each a random id
+in the top folder, newest first as before, with the times in milliseconds, writes version 2
+and says so in the timeline. A deleted entry leaves no tombstone yet; sync adds what it
+needs when its design is agreed.
 
-1. The star: the small panel to pick the folder (as above, and as Chrome does), or bookmark
-   silently as today and move it on the Bookmarks page?
-2. Is a bookmarks bar wanted at all, in Standard, now or later?
+What a shell has and sends (`shell/src/sdk/bookmarks.js`, the tree's helpers in
+`shell/src/ui/bookmarks.js`):
+
+| | |
+|---|---|
+| `state.bookmarks` | the tree, a flat list in its places |
+| `state.bookmarkPanel` | `{id, new}`, the panel Go asks this window to show; a new object each time |
+| `bookmark(url, title)` | the star: `bookmark {url, title}` |
+| `saveBookmark(id, title, parent)` | the panel's Enter: `saveBookmark {bookmark, title, parent}` |
+| `removeBookmark(id)` | the panel's Remove: `removeBookmark {bookmark}` |
+
+Cmd+D is the action `bookmarks.toggle`, Bookmark This Page…, which does what the star does
+for the active tab of the window in front. Go gives the shell the focus with the panel, so
+Enter and Escape reach it.
+
+The Bookmarks page sends `editBookmark {id, title, url}`, `moveBookmark {id, parent}`,
+`newFolder {parent, title}` and `removeBookmark {id}`; a refusal comes back as
+`error {id, error}`.
+
+## Tests
+
+`core/bookmarks` (the tree, the moves, the folder last saved in, version 1 read, the
+places), `core/app` (`TestBookmarksFromTheShellAndThePage`: Cmd+D, the star, the panel's
+save, and the page's messages), `shell/e2e/pages.cjs` (the panel, Cmd+D, the folders, a drag,
+Move to…, a search, a folder deleted with what it holds, the panel's folder kept for the
+next) and `shell/e2e/shells/mobile.cjs` (the sheet).

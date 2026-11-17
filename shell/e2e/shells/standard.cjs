@@ -300,7 +300,7 @@ const { check, fire, regions, settle, until } = lib;
   };
   await send({ t: 'newTab', text: 'https://www.wikipedia.test/wiki/Web_browser' });
   await until(async () => (await current())?.title.includes('wikipedia.test'));
-  await send({ t: 'bookmark', url: 'https://recipes.test/bread', title: 'Bread recipes', on: true });
+  await send({ t: 'bookmark', url: 'https://recipes.test/bread', title: 'Bread recipes' });
   await send({ t: 'newTab', text: 'https://b.test/' });
   await until(async () => (await current())?.url === 'https://b.test/');
   await field.click();

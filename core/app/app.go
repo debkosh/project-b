@@ -211,7 +211,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.pages = newOurPages(a, e)
 	a.thumbs = newPageThumbs(a, e)
 	a.Shell.AddPart(a.thumbs.shellPart())
-	a.Shell.AddPart(a.bookmarksShellPart())
+	a.Shell.AddPart(a.bookmarksShellPart(e))
 	a.Shell.AddPart(a.menus.shellPart())
 	// Every action a shell can run by name, for a shell that lists them, as Glide's
 	// Command Bar does.

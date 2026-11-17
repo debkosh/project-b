@@ -16,7 +16,7 @@ export { closeFind, findNext, findText } from './find.js';
 export { openPin, pinTab, unpin } from './pins.js';
 export { requestMenu, runMenuItem } from './menu.js';
 export { chooseSuggestion, suggest, suggestionKinds } from './suggest.js';
-export { bookmark, isBookmarked } from './bookmarks.js';
+export { bookmark, folders, isBookmarked, removeBookmark, saveBookmark, topFolder } from './bookmarks.js';
 
 export const state = $state({ ...sdk.state });
 sdk.onChange((fields) => Object.assign(state, fields));

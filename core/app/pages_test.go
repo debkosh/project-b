@@ -69,40 +69,68 @@ func TestTheHistoryPageListsSearchesAndForgets(t *testing.T) {
 	})
 }
 
+// Cmd+D and the star bookmark the page into the folder last saved in and have the window's
+// shell show the panel for it; the panel's Enter saves a name and a folder, which the next
+// bookmark goes into too. The Bookmarks page makes folders, moves entries, edits and
+// removes them, a folder with all it holds (docs/bookmark-folders.md).
 func TestBookmarksFromTheShellAndThePage(t *testing.T) {
 	r := start(t, t.TempDir())
 	defer r.stop()
 	r.visit("https://a.test/")
 	r.e.Fire(1, 0, "menu", "bookmarks.toggle")
-	m := r.waitFor(func(m map[string]any) bool {
-		b, _ := m["bookmarks"].([]any)
-		return m["t"] == "bookmarks" && len(b) == 1
-	})
-	first := m["bookmarks"].([]any)[0].(map[string]any)
-	if first["url"] != "https://a.test/" {
-		t.Fatalf("bookmark = %v", first)
+	shown := func() map[string]any {
+		return r.waitFor(func(m map[string]any) bool { return m["t"] == "bookmarkPanel" })["bookmarkPanel"].(map[string]any)
 	}
-	r.shell(`{"t":"bookmark","url":"https://b.test/","title":"B","on":true}`)
-	r.waitFor(func(m map[string]any) bool {
-		b, _ := m["bookmarks"].([]any)
-		return m["t"] == "bookmarks" && len(b) == 2
-	})
+	p := shown()
+	panel := p["id"].(string)
+	a, _ := r.a.Bookmarks.Get(panel)
+	if a.URL != "https://a.test/" || a.Parent != "" || p["new"] != true {
+		t.Fatalf("Cmd+D bookmarked %+v, panel %v", a, p)
+	}
+	// Again on a bookmarked page, the panel shows for the same bookmark.
+	r.e.Fire(1, 0, "menu", "bookmarks.toggle")
+	if again := shown(); again["id"] != panel || again["new"] != false || len(r.a.Bookmarks.List()) != 1 {
+		t.Fatalf("a second Cmd+D: panel %v, %d bookmarks", again, len(r.a.Bookmarks.List()))
+	}
 
 	tab, got := r.openPage("bookmarks.show", "bookmarks")
-	if b := next(t, got, "snapshot")["bookmarks"].([]any); len(b) != 2 {
+	if b := next(t, got, "snapshot")["bookmarks"].([]any); len(b) != 1 {
 		t.Fatalf("page's bookmarks = %v", b)
 	}
-	r.e.Post(func() {
-		r.a.PageMessage(tab, "bookmarks", []byte(fmt.Sprintf(`{"t":"editBookmark","id":%v,"title":"Home","url":"https://a.test/home"}`, first["id"])))
-	})
-	if b := next(t, got, "bookmarks")["bookmarks"].([]any); b[1].(map[string]any)["title"] != "Home" {
-		t.Fatalf("after the edit: %v", b)
+	say := func(msg string, args ...any) {
+		r.e.Post(func() { r.a.PageMessage(tab, "bookmarks", []byte(fmt.Sprintf(msg, args...))) })
 	}
-	r.e.Post(func() {
-		r.a.PageMessage(tab, "bookmarks", []byte(fmt.Sprintf(`{"t":"removeBookmark","id":%v}`, first["id"])))
-	})
-	if b := next(t, got, "bookmarks")["bookmarks"].([]any); len(b) != 1 {
-		t.Fatalf("after the removal: %v", b)
+	say(`{"t":"newFolder","parent":"","title":"Reading"}`)
+	next(t, got, "bookmarks")
+	var reading string
+	for _, e := range r.a.Bookmarks.All() {
+		if e.Kind == "folder" {
+			reading = e.ID
+		}
+	}
+	r.shell(fmt.Sprintf(`{"t":"saveBookmark","bookmark":%q,"title":"A page","parent":%q}`, a.ID, reading))
+	next(t, got, "bookmarks")
+	r.shell(`{"t":"bookmark","url":"https://b.test/","title":"B"}`)
+	b := shown()["id"].(string)
+	if e, _ := r.a.Bookmarks.Get(b); e.Parent != reading {
+		t.Fatalf("the star after a save into Reading put B in %q", e.Parent)
+	}
+	next(t, got, "bookmarks")
+
+	say(`{"t":"moveBookmark","id":%q,"parent":""}`, b)
+	next(t, got, "bookmarks")
+	say(`{"t":"editBookmark","id":%q,"title":"Home","url":"https://a.test/"}`, b)
+	if m := next(t, got, "error"); m["id"] != b {
+		t.Fatalf("an address bookmarked already: %v", m)
+	}
+	say(`{"t":"editBookmark","id":%q,"title":"Bee","url":"https://b.test/"}`, b)
+	next(t, got, "bookmarks")
+	if e, _ := r.a.Bookmarks.Get(b); e.Parent != "" || e.Title != "Bee" {
+		t.Fatalf("after the move and edit: %+v", e)
+	}
+	say(`{"t":"removeBookmark","id":%q}`, reading)
+	if l := next(t, got, "bookmarks")["bookmarks"].([]any); len(l) != 1 || l[0].(map[string]any)["id"] != b {
+		t.Fatalf("after removing Reading: %v", l)
 	}
 }
 
