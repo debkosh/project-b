@@ -165,14 +165,6 @@ class App:
         app never reads the real list. bin is another binary than BIN to start."""
         if not any(x.startswith("--root=") for x in extra):
             extra = [f"--root={tempfile.mkdtemp(prefix='pb-root-')}", *extra]
-        # A root with no list yet makes its first profile at this start, which opens the
-        # welcome over the window (docs/onboarding.md): these checks start past it, as
-        # finished.
-        root = next(x[len("--root="):] for x in extra if x.startswith("--root="))
-        if profile is None and not os.path.exists(os.path.join(root, "profiles.json")):
-            os.makedirs(os.path.join(root, "default"), exist_ok=True)
-            with open(os.path.join(root, "default", "welcome.json"), "w") as f:
-                f.write('{"done": true}\n')
         self.fifo = os.path.join(tempfile.mkdtemp(prefix="pb-driver-"), "fifo")
         os.mkfifo(self.fifo)
         self.log = open(os.path.join(OUT, "app.log"), "a")
@@ -181,7 +173,10 @@ class App:
         self.next = 0
         self.started = time.time()
         self.proc = subprocess.Popen(
-            [bin or BIN, *([f"--user-data-dir={profile}"] if profile else []), f"--block={BLOCKED},{BLOCKED_LOCAL}", f"--pb-driver={self.fifo}", "--disable-backgrounding-occluded-windows", *extra],
+            [bin or BIN, *([f"--user-data-dir={profile}"] if profile else []), f"--block={BLOCKED},{BLOCKED_LOCAL}", f"--pb-driver={self.fifo}", "--disable-backgrounding-occluded-windows",
+             # A first start would open the welcome over the window (docs/onboarding.md):
+             # these checks start past it, as its Skip setup does.
+             "--skip-welcome", *extra],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace", bufsize=1,
         )
         App.running.append(self)

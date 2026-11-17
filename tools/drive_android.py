@@ -377,17 +377,12 @@ def launch(block=""):
     # Tabs come back at start, and one of our pages (Downloads, Settings) has no address field
     # to type in: each part starts fresh, on a web tab, as it expects.
     adb("shell", "rm", "-f", "/data/data/%s/%s/session.json" % (PACKAGE, PROFILE))
-    args = ["shell", "am", "start", "-W", "-n", PACKAGE + "/" + ACTIVITY]
+    # The first start after the app's data was cleared would open the welcome over the
+    # screen (docs/onboarding.md): each part starts past it, as its Skip setup does.
+    args = ["shell", "am", "start", "-W", "-n", PACKAGE + "/" + ACTIVITY, "--ez", "skip-welcome", "true"]
     if block:
         args += ["--es", "block", block]
     adb(*args)
-    # The first start after the app's data was cleared opens the welcome over the screen,
-    # the shell's bars hidden (docs/onboarding.md): each part starts past it, skipped.
-    said = lambda n, words: words in (n.get("text"), n.get("content-desc"))
-    skip = until(lambda: first(lambda: find("shell", label="Menu"), lambda: find("page", text="Skip setup"),
-                               lambda: find("page", label="Skip setup")), 60)
-    if skip is not None and not said(skip, "Menu"):
-        tap(middle(skip))
     # Content starts in the background, so the window shows before the shell does.
     see("shell", timeout=60, label="Menu")
     # A run that ended in a kill leaves a notice over the top of the page. It is shell, so
