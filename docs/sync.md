@@ -5,7 +5,8 @@ A proposal for discussion with the owner, 2026-11-17. Nothing here is built. The
 users control". The research behind it, with a source for each fact, is in
 [sync-research/](sync-research/): [places.md](sync-research/places.md) (where data can live),
 [prior-art.md](sync-research/prior-art.md) (how browsers and other apps do it) and
-[merge-and-keys.md](sync-research/merge-and-keys.md) (merging and encryption). Mocks:
+[merge-and-keys.md](sync-research/merge-and-keys.md) (merging and encryption), and
+[merging.md](sync-research/merging.md) (how the industry merges edits made at once). Mocks:
 [mocks.html](screenshots/sync/mocks.html), pictures linked below.
 
 ## The idea
