@@ -918,7 +918,15 @@ void Engine::WindowMinimised(int64_t id, bool minimised) {
 }
 
 void Engine::Quit() {
+#if BUILDFLAG(IS_ANDROID)
+  // A phone's app ends with its activity: closing its one window finishes it, and the
+  // activity's onDestroy stops Go and ends the process.
+  if (!windows_.empty()) {
+    windows_.begin()->second->window->Close();
+  }
+#else
   quit_.Run();
+#endif
 }
 
 void Engine::SetWindowPage(int64_t window, const std::string& page) {

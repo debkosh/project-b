@@ -60,7 +60,7 @@ int BrowserMainParts::PreMainMessageLoopRun() {
 
 void BrowserMainParts::StartApp(const std::string& blocked_hosts,
                                 bool skip_welcome) {
-  // Android ends the app itself, with the activity.
+  // Android ends the app with the activity, which Engine::Quit finishes.
   // One context, for our pages and the tabs alike, made with content: opening the profile
   // finds it there.
   engine_ = std::make_unique<Engine>(
