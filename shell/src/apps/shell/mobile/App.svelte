@@ -1,4 +1,5 @@
 <script>
+  import { tick } from 'svelte';
   import { activeTab, connect, drag, focusPage, page, send, setFrame, shell, state as go } from '@/sdk/svelte.svelte.js';
   import { untrack } from 'svelte';
   import { extensionsBuilt } from '@extensions';
@@ -83,50 +84,68 @@
     }
   }
 
-  // The bars while the page scrolls down: away, sliding off the screen, then gone, their
-  // room given to the page in one step, so the page is resized once and not every frame.
-  // Back with the page scrolling up, another tab, the address or a sheet. shown is what
-  // was last asked for, which away and gone follow a frame or a slide later.
+  // The bars hide while the page scrolls down and come back when it scrolls up, for another
+  // tab, the address, a sheet or a page that starts loading (docs/shells.md, Bars that hide
+  // on scroll). The page's room changes only while the bars cover it, so nothing but the page
+  // ever shows where they were, and the page is resized once each way:
+  // - Going, the page takes their room first, under them (over), and once it has drawn
+  //   there they slide off it (away).
+  // - Coming back, they slide in over the page, and once they are in the page gives their
+  //   room back.
+  // A change of mind mid-slide turns the slide round where it is. shown is what was last
+  // asked for, which the window carries as data-bars for a test; over and away follow it.
+  let over = $state(false);
   let away = $state(false);
-  let gone = $state(false);
-  let shown = true;
-  let sliding = 0;
-  // How long the bars take, the design system's --motion: 0 with reduced motion.
-  const slide = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--motion')) || 0;
-  // Whether the bars have just given the page their room or taken it back. Resizing the
-  // page under a finger is a scroll of its own to content: the page moves under the finger,
-  // or its end comes closer, and content says the direction changed. Near the top of a page
-  // that turned the bars back and forth, as each change of room was taken for the person's
-  // scroll. A direction while settling, settle ms from a resize, is the resize's, and is
-  // let go; it also keeps a finger's small wobble from turning the bars at once. The window
-  // carries data-settling meanwhile, for a test to wait on.
+  let shown = $state(true);
+  // Each ask's number, so a slide that ends after another ask leaves the room alone.
+  let asked = 0;
+  // The bars' heights, for the margins that lay them over the page; and --covered, how much
+  // of the page's foot they cover while over it and in place, which what floats at the
+  // foot keeps clear of.
+  let headHeight = $state(0);
+  let stripHeight = $state(0);
+  let footHeight = $state(0);
+  // Whether the page has just taken the bars' room or given it back. Resizing the page
+  // under a finger is a scroll of its own to content: the page moves under the finger, or
+  // its end comes closer, and content says the direction changed. Taken for the person's,
+  // that turned the bars back and forth near the top of a page. A direction while
+  // settling, settle ms from a resize, is the resize's, and is let go; it also keeps a
+  // finger's small wobble from turning the bars at once. The window carries data-settling
+  // meanwhile, for a test to wait on.
   let settling = $state(false);
   let settled = 0;
   const settle = 300;
 
-  function resized() {
+  function room(give) {
+    if (over === give) return;
+    over = give;
     settling = true;
     clearTimeout(settled);
     settled = setTimeout(() => (settling = false), settle);
   }
 
-  function bars(show) {
+  // A few frames: the page's new room goes to Go in the next one, and the page draws into
+  // it in the ones after, still under the bars.
+  function frames(n, then) {
+    requestAnimationFrame(() => (n > 1 ? frames(n - 1, then) : then()));
+  }
+
+  async function bars(show) {
     if (show === shown) return;
     shown = show;
-    clearTimeout(sliding);
+    const ask = ++asked;
     if (show) {
-      if (gone) {
-        gone = false;
-        resized();
-      }
-      // Slide in once the room is back, unless the page has scrolled down again since.
-      requestAnimationFrame(() => requestAnimationFrame(() => shown && (away = false)));
+      // In over the page from wherever they are, and the room back once they're in: when
+      // their slides end, or at once with none, as when they never left, under reduced
+      // motion, or while they aren't drawn.
+      away = false;
+      await tick();
+      const slides = [...document.querySelectorAll('.bars')].flatMap((bar) => bar.getAnimations());
+      await Promise.allSettled(slides.map((slide) => slide.finished));
+      if (ask === asked) room(false);
     } else {
-      away = true;
-      sliding = setTimeout(() => {
-        gone = true;
-        resized();
-      }, slide);
+      room(true);
+      frames(3, () => ask === asked && (away = true));
     }
   }
 
@@ -265,12 +284,12 @@
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && sheet && ((sheet = ''), e.preventDefault())} />
 
-<div class="window" data-settling={settling || undefined}>
+<div class="window" data-settling={settling || undefined} data-bars={shown ? 'shown' : 'hidden'} style:--head="{headHeight}px" style:--strip="{stripHeight}px" style:--foot="{footHeight}px" style:--covered="{over && !away ? stripHeight + footHeight : 0}px">
   {#if clear && !full}
     <div class="clear" use:shell use:drag style:height="{clear}px"></div>
   {/if}
   {#if top}
-    <div class="bars head" class:away class:gone class:full>
+    <div class="bars head" class:away class:over class:full bind:offsetHeight={headHeight}>
       <div class="tool">
         <Toolbar {tab} top count={go.tabs.length} {sheet} {onsheet} onswipe={swipe} onedit={(on) => (editing = on)} bind:address />
         {#if finding}<FindBar bind:this={findBar} />{/if}
@@ -295,7 +314,7 @@
       <DownloadBar hidden={!!sheet || full || tab.page === 'downloads'} />
     </main>
     {#if group}
-      <div class="bars" class:away class:gone class:full>
+      <div class="bars strip" class:away class:over class:full bind:offsetHeight={stripHeight}>
         <Strip {group} tabs={tabsOf(group)} active={go.active} onsheet={() => onsheet('group')} onpick={pick} onclosetab={(id) => closeTabs([id])} onnewtab={() => newTab(go.active)} />
       </div>
     {/if}
@@ -315,7 +334,7 @@
       onclosegroup={(id) => openGroup(id, true)}
     />
   </div>
-  <div class="bars" class:away class:gone class:full>
+  <div class="bars foot" class:away class:over class:full bind:offsetHeight={footHeight}>
     <CrashBar />
     {#if !top}
       <div class="tool">
@@ -456,12 +475,38 @@
     transition: transform var(--motion) var(--ease);
   }
 
-  .bars.away {
-    transform: translateY(100%);
+  /* Over the page, which has their room: each bar's margin takes its own height back, so
+     the page's part runs on under it, the strip staying above the toolbar. Above the
+     page's notices; under the switcher and the sheets. */
+  .bars.over {
+    position: relative;
+    z-index: 3;
   }
 
+  .head.over {
+    margin-bottom: calc(-1 * var(--head));
+  }
+
+  .strip.over {
+    margin-top: calc(-1 * (var(--strip) + var(--foot)));
+    margin-bottom: var(--foot);
+  }
+
+  .foot.over {
+    margin-top: calc(-1 * var(--foot));
+  }
+
+  /* Off the screen: each one by its own height and those of the bars beyond it. */
   .head.away {
     transform: translateY(-100%);
+  }
+
+  .strip.away {
+    transform: translateY(calc(100% + var(--foot)));
+  }
+
+  .foot.away {
+    transform: translateY(100%);
   }
 
   /* Under a page in full screen: not there at all, to the eye or a screen reader. */
@@ -469,10 +514,6 @@
     display: none;
   }
 
-  .bars.gone {
-    height: 0;
-    overflow: hidden;
-  }
 
   :global(button) {
     font-family: inherit;

@@ -553,40 +553,122 @@ const H = 915;
     await until(settled);
     await fire('scroll', direction, { tab: act });
   };
+  // The page's room changes only while the bars cover it. The shell's frame notes each
+  // change of the toolbar's classes as it happens, with where the page's part ends then and
+  // whether the toolbar is still moving.
+  await w.shell().evaluate(() => {
+    const foot = document.querySelector('.bars.foot');
+    const state = () => ({ over: foot.classList.contains('over'), away: foot.classList.contains('away') });
+    let was = state();
+    window.barsSeen = [];
+    new MutationObserver(() => {
+      const now = state();
+      if (now.over === was.over && now.away === was.away) return;
+      was = now;
+      window.barsSeen.push({ ...now, pageFoot: Math.round(document.querySelector('main').getBoundingClientRect().bottom), moving: foot.getAnimations().length > 0, transform: getComputedStyle(foot).transform });
+    }).observe(foot, { attributes: true, attributeFilter: ['class'] });
+    // Waits for the bars to settle where the shell last asked for them (data-bars), the
+    // resize's pause over and nothing moving, and says how they are; in 5 s at most, saying
+    // what holds them.
+    window.barsSettled = () => new Promise((resolve) => {
+      const until = Date.now() + 5000;
+      const look = () => {
+        const win = document.querySelector('.window');
+        const settling = win.hasAttribute('data-settling');
+        const moving = foot.getAnimations().length > 0;
+        const hidden = win.dataset.bars === 'hidden';
+        const there = state().over === hidden && state().away === hidden;
+        if (!settling && !moving && there) resolve(state());
+        else if (Date.now() > until) resolve({ ...state(), stuck: { settling, moving, asked: win.dataset.bars } });
+        else setTimeout(look, 16);
+      };
+      setTimeout(look, 50);
+    });
+  });
+  // The changes seen, once there are two: the room and the slide, one way.
+  const seen = async () => {
+    await until(async () => (await w.shell().evaluate(() => window.barsSeen.length)) >= 2);
+    return w.shell().evaluate(() => window.barsSeen.splice(0));
+  };
   await scroll('down');
   check('scrolling down, the bars go and the page takes the window to its foot', await until(async () => {
     const v = await pageRect();
     return v.y === withBars.y && v.y + v.h === H;
   }), JSON.stringify(await pageRect()));
+  const going = await seen();
+  check('going, the page takes their room under them first, and only then do they slide off it',
+    going.length === 2 && going[0].over && !going[0].away && going[0].pageFoot === H && going[1].over && going[1].away, JSON.stringify(going));
   await shots('scrolled');
   await scroll('up');
   check('scrolling up, they come back', await until(async () => JSON.stringify(await pageRect()) === JSON.stringify(withBars) && (await box('.toolbar')).bottom === H), JSON.stringify({ now: await pageRect(), withBars, bar: await box('.toolbar') }));
-  // Content's report of the resize itself comes at once, as the bars move: the shell's frame
-  // hands it in, as Go would send it, the moment the bars give their room or take it back,
-  // and says how the bars are once it has drawn that.
-  const whenBars = (gone, direction) => w.shell().evaluate(({ gone, direction, tab }) => {
+  const coming = await seen();
+  check('coming back, they slide in over the page, and it gives their room back only once they are in',
+    coming.length === 2 && coming[0].over && !coming[0].away && !coming[1].over && !coming[1].away && !coming[1].moving && coming[1].transform === 'none', JSON.stringify(coming));
+  // In the shell's frame: wait for the bars to settle, the resize's pause over and nothing
+  // moving, and say how they are.
+  // Content's report of the resize itself comes at once: the shell's frame hands it in, as
+  // Go would send it, the moment the page takes the bars' room or gives it back.
+  const echo = (over, direction) => w.shell().evaluate(({ over, direction, tab }) => {
     window.barsAnswer = new Promise((resolve) => {
+      const foot = document.querySelector('.bars.foot');
       const seen = new MutationObserver(() => {
-        if (!!document.querySelector('.bars.gone') !== gone) return;
+        if (foot.classList.contains('over') !== over) return;
         seen.disconnect();
         window.__shellReceive(JSON.stringify({ t: 'scroll', tab, direction }));
-        const frame = (n) => (n ? requestAnimationFrame(() => frame(n - 1)) : resolve({ gone: !!document.querySelector('.bars.gone'), away: !!document.querySelector('.bars.away') }));
-        frame(3);
+        resolve(window.barsSettled());
       });
-      seen.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] });
+      seen.observe(foot, { attributes: true, attributeFilter: ['class'] });
+      setTimeout(() => resolve({ never: over ? 'took the room' : 'gave it back' }), 5000);
     });
-  }, { gone, direction, tab: act });
+  }, { over, direction, tab: act });
   const barsAnswer = () => w.shell().evaluate(() => window.barsAnswer);
   await until(settled);
-  await whenBars(true, 'up');
+  await echo(true, 'up');
   await fire('scroll', 'down', { tab: act });
   const afterUp = await barsAnswer();
-  check('scrolling up just as the page took their room is the resize\'s own, and they stay away', afterUp.gone && afterUp.away, JSON.stringify(afterUp));
+  check('scrolling up just as the page took their room is the resize\'s own, and they stay away', afterUp.over && afterUp.away, JSON.stringify(afterUp));
   await until(settled);
-  await whenBars(false, 'down');
+  await echo(false, 'down');
   await fire('scroll', 'up', { tab: act });
   const afterDown = await barsAnswer();
-  check('and scrolling down just as they took it back leaves them there', !afterDown.gone && !afterDown.away, JSON.stringify(afterDown));
+  check('and scrolling down just as it gave the room back leaves them there', !afterDown.over && !afterDown.away, JSON.stringify(afterDown));
+  // A change of mind mid-slide turns the bars round where they are. The shell's frame asks
+  // for the other way as the slide starts, and notes every change on the way.
+  const turn = (first, then) => w.shell().evaluate(({ first, then }) => new Promise((resolve) => {
+    const foot = document.querySelector('.bars.foot');
+    const changes = [];
+    const away = first.t === 'scroll' && first.direction === 'down';
+    const watch = new MutationObserver(() => {
+      changes.push({ over: foot.classList.contains('over'), away: foot.classList.contains('away') });
+    });
+    watch.observe(foot, { attributes: true, attributeFilter: ['class'] });
+    const started = new MutationObserver(() => {
+      if (foot.classList.contains('away') !== away) return;
+      started.disconnect();
+      window.__shellReceive(JSON.stringify(then));
+      window.barsSettled().then((end) => {
+        watch.disconnect();
+        resolve({ changes, end });
+      });
+    });
+    started.observe(foot, { attributes: true, attributeFilter: ['class'] });
+    setTimeout(() => resolve({ never: 'started', changes }), 5000);
+    window.__shellReceive(JSON.stringify(first));
+  }), { first, then });
+  const barsSettled = () => w.shell().evaluate(() => window.barsSettled());
+  await barsSettled();
+  const outThenIn = await turn({ t: 'scroll', tab: act, direction: 'down' }, { t: 'focusAddressBar' });
+  check('called back as they slide off, they come back from where they are, and the page gives their room back once they are in',
+    outThenIn.end && !outThenIn.end.over && !outThenIn.end.away && outThenIn.changes.at(-1).over === false && outThenIn.changes.at(-2)?.away === false, JSON.stringify(outThenIn));
+  await page.keyboard.press('Escape');
+  await until(async () => !(await inField()) && JSON.stringify(await pageRect()) === JSON.stringify(withBars));
+  await scroll('down');
+  check('with the address left, scrolling down sends them away once more', await until(async () => (await pageRect()).h > withBars.h), JSON.stringify(await pageRect()));
+  await barsSettled();
+  const inThenOut = await turn({ t: 'scroll', tab: act, direction: 'up' }, { t: 'scroll', tab: act, direction: 'down' });
+  check('scrolled down as they slide in, they go again from where they are, and the page keeps their room all along',
+    inThenOut.end?.over && inThenOut.end.away && inThenOut.changes.every((c) => c.over), JSON.stringify(inThenOut));
+  await w.shell().evaluate((tab) => window.__shellReceive(JSON.stringify({ t: 'scroll', tab, direction: 'up' })), act);
   await until(async () => JSON.stringify(await pageRect()) === JSON.stringify(withBars));
   await scroll('down');
   check('scrolling down after that sends them away again', await until(async () => (await pageRect()).h > withBars.h));

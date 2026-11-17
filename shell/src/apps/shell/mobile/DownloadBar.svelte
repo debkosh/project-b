@@ -98,11 +98,12 @@
 </div>
 
 <style>
+  /* Above the bars while they lie over the page (--covered, App.svelte). */
   .slot {
     position: absolute;
     left: 8px;
     right: 8px;
-    bottom: 8px;
+    bottom: calc(8px + var(--covered, 0px));
     z-index: 3;
   }
 

@@ -700,6 +700,102 @@ press there. The shell draws above the pages, so its translucent pixels tint the
 can't blur it, since the page is a view of its own. A layout reaches the window a frame or
 so after the shell's DOM changes, so a real-app check of a region waits for it (up to 2 s).
 
+## Bars that hide on scroll
+
+A phone shell gives the page the whole screen while it is read, as every phone browser
+does: its bars go while the page scrolls down and come back when it scrolls up. This is the
+model to build that on, for any shell. The Mobile web shell follows it
+(`apps/shell/mobile/App.svelte`, `bars()`), and `e2e/shells/mobile.cjs` checks each rule
+below.
+
+**What Go gives.** A `scroll` message, `{tab, direction}`, when a tab's page starts
+scrolling the other way (content's `DidChangeVerticalScrollDirection`). It comes once per
+change, not for every scroll, and doesn't say where the page is. The shell's layout (its
+`page` region) says where the page draws, and any change to it resizes the page.
+
+**One wish and two facts.** Keep `shown`, what was last asked for, and two facts that
+follow it:
+- `over`: the page has the bars' room, running on under them.
+- `away`: the bars are off the screen.
+
+`away` is only ever true while `over` is.
+
+**The rule: the page's room changes only while the bars cover it.** So nothing but the page
+ever shows where the bars were: no strip of the frame colour, and no snap as the page fills
+it. The page is resized once each way.
+- **Going:** set `over`, so the page grows under the bars. Wait a few frames for it to draw
+  there (Mobile waits 3), then set `away`, so the bars slide off and uncover it.
+- **Coming back:** clear `away`, so the bars slide in over the page from wherever they are.
+  When their slides finish, clear `over`, so the page gives the room back under them.
+  Mobile waits for the `finished` of each bar's `getAnimations()`. With no slide running,
+  that's at once: under reduced motion, while the bars aren't drawn (a page in full
+  screen), or when they never left. Don't wait on `transitionend`: no transition starts
+  when `away` comes and goes within one frame, and the room would never come back.
+
+**A change of mind mid-slide.** Set the wish and flip `away`. A CSS transition turns round
+from where it is, so there's nothing to cancel. Number each ask, so that a slide that
+finishes after a newer ask leaves the room alone.
+- Called back while sliding off, the bars slide back in, and the room goes back when that
+  slide ends.
+- Sent away while sliding in, they slide off again, and the page keeps the room all along.
+- Called back in the few frames before the slide starts, the room goes back at once.
+
+**The resize's echo.** Resizing the page under a finger is a scroll of its own to content:
+the page moves under the finger, or its end comes nearer, and content reports a change of
+direction. Taken for the person's, that turned the bars back and forth near the top of a
+page. So ignore any direction for 300 ms after `over` changes. The same pause keeps a
+finger's small wobble from turning the bars at once. Mobile puts `data-settling` on its
+window meanwhile, for tests to wait on. A slide moves the bars, not the page, so a direction
+during a slide-in is the person's, and is taken.
+
+**What else brings them back:** another tab, a page that starts loading in the active tab,
+the address called for, find, and any sheet. Don't hide them while a sheet is open, the
+address is being edited, or find is open.
+
+**The top of a page.** The bars should always show while a page is at its top, as Chrome's
+do. A shell can't do that yet, as `scroll` doesn't say where the page is. Until it does:
+- A new page starts with the bars shown, since its load brought them back.
+- Scrolling back up towards the top brings them back.
+
+See [the proposal below](#proposed-go-and-the-engine-take-part).
+
+**The motion.** Use the design system's `--motion` (100 ms) with `--ease`, and move the bars
+with `transform` only. A height or margin that animates would resize the page every frame.
+Under reduced motion `--motion` is 0 and the bars don't slide.
+
+**Laying the bars over the page,** as Mobile does it in CSS:
+- Each bar stays in the flow, and its height is measured.
+- While `over`, a negative margin of the bar's own height lets the page's part run on under
+  it. The strip at the foot also keeps the toolbar's height under it, so it stays above the
+  toolbar.
+- While `over`, the bars sit above the page's notices and below the switcher and the sheets.
+- What floats at the page's foot, such as the download bar, keeps above the bars while
+  they lie over the page in place. Mobile's `--covered` gives the height to keep clear.
+- `away` moves each bar by its own height, plus the heights of the bars between it and the
+  edge.
+
+**With the bar on top,** the page's top edge moves when the room changes, so its content
+moves by the bar's height once each way: as the bars start to go, and when they're back in.
+A shell can't avoid that; only the engine can (proposal 3 below).
+
+### Proposed: Go and the engine take part
+
+1. **Go drops the resize's echo** (S). Go knows when a tab's page region changes size, from
+   the layout the shell sends. It could drop that tab's `scroll` directions for 300 ms
+   after, so no shell has to carry the rule. It can be tested on the mock.
+2. **`scroll` says when the page is at its top** (S, engine). Add `top: true` to the
+   message, from the frame's root scroll offset (`cc::RenderFrameMetadata`,
+   `root_scroll_offset`), so a shell can keep the bars shown there.
+3. **Chrome's way: the engine's browser controls** (L, engine). The content layer can move
+   the page with the bars under the finger, so the bars follow the finger instead of
+   sliding on a change of direction, and the page is never resized for them.
+   - The engine gives it the bars' heights (`WebContentsDelegate::GetTopControlsHeight`,
+     `GetBottomControlsHeight`, `DoBrowserControlsShrinkRendererSize`).
+   - It hands the shell each frame's `top_controls_shown_ratio`, which the shell moves its
+     bars to.
+   - On Android the shell and the page share one compositor, so the two can move in step.
+   - It's the only fix for the bar on top's moving content.
+
 ## The terminal shell
 
 `terminal`: a minimal shell laid out as a terminal emulator with split panes. Monospace,
@@ -897,17 +993,11 @@ address field, and a menu button at the far right, in our tones.
 - **The address bar on top** is a setting, `addressBarPosition`, in Settings, General on a
   phone: the bar moves under the status bar, the suggestions grow down from it, and the
   group strip stays at the foot, as Chrome's does. Sheets stay at the foot.
-- **The bars hide on scroll.** While the active tab's page scrolls down, the toolbar and
-  the strip slide off the screen in the design system's 100 ms (`--motion`, as the sheets do), and then give their room to the page: one
-  layout, so the page is resized once, not every frame. They come back when it scrolls
-  up, for another tab, the address, or a sheet. With reduced motion they don't slide.
-  Giving the page their room, or taking it back, is a scroll of its own to content: the
-  page moves under the finger, or its end comes closer, and content reports a change of
-  direction. Taken for the person's, that turned the bars back and forth near the top of a
-  page, so a direction that comes within 300 ms of the bars' resize is let go; the same
-  pause keeps a finger's small wobble from turning them at once. The `scroll` message has
-  the direction only, not where the page is, so the shell can't yet keep the bars at the
-  very top of a page.
+- **The bars hide on scroll,** and come back when the page scrolls up, for another tab,
+  a page that starts loading, the address, find or a sheet. The page's room changes only
+  while the bars cover it, so they slide out as smoothly as they slide in. It's the
+  reference for [Bars that hide on scroll](#bars-that-hide-on-scroll), where the whole
+  model is.
 - **The band:** none. A desktop window's buttons, as on the mock, get a strip of their
   own above the page, which a phone has no need of.
 
