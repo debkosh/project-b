@@ -38,6 +38,35 @@ EOF
 cat > "$C/Default/Preferences" <<'EOF'
 {"default_search_provider_data": {"template_url_data": {"short_name": "Bing", "url": "https://www.bing.com/search?q={searchTerms}&form=QBLH"}}}
 EOF
+# Its extensions, in Secure Preferences as Chrome keeps them: two from the Chrome Web Store,
+# one whose manifest is kept there and one whose manifest is in its folder, named through
+# its messages; one of Manifest V2, one from another store, one loaded unpacked from a
+# folder that is gone; and three it didn't install itself: by default, Chrome's own and by
+# policy.
+cat > "$C/Default/Secure Preferences" <<'EOF'
+{"extensions": {"settings": {
+  "oepjjojhhaclfhmopocgmdfbeiffpheh": {"location": 1, "from_webstore": true, "path": "oepjjojhhaclfhmopocgmdfbeiffpheh/1.0_0",
+    "manifest": {"manifest_version": 3, "name": "Project B test extension", "version": "1.0", "update_url": "https://clients2.google.com/service/update2/crx"}},
+  "ddkjiahejlhfcafbddmgiahcphecmpfh": {"location": 1, "from_webstore": true, "path": "ddkjiahejlhfcafbddmgiahcphecmpfh/2025.1_0"},
+  "nngceckbapebfimnlniiiahkandclblb": {"location": 1, "from_webstore": true, "path": "nngceckbapebfimnlniiiahkandclblb/1.9_0",
+    "manifest": {"manifest_version": 2, "name": "Old Notes", "version": "1.9", "update_url": "https://clients2.google.com/service/update2/crx"}},
+  "abcdefghijklmnopabcdefghijklmnop": {"location": 1, "from_webstore": false, "path": "abcdefghijklmnopabcdefghijklmnop/3.0_0",
+    "manifest": {"manifest_version": 3, "name": "Other Store Helper", "version": "3.0", "update_url": "https://edge.microsoft.com/extensionwebstorebase/v1/crx"}},
+  "pponmlkjihgfedcbaponmlkjihgfedcb": {"location": 4, "path": "/nowhere/my-extension"},
+  "ghbmnnjooekpmoecnnnilnnbdlolhkhi": {"location": 1, "from_webstore": true, "was_installed_by_default": true,
+    "manifest": {"manifest_version": 3, "name": "Docs Offline", "version": "1.9"}},
+  "mhjfbmdgcfjbbpaeojofohoefgiehjai": {"location": 5, "manifest": {"manifest_version": 2, "name": "PDF Viewer", "version": "1"}},
+  "aaaabbbbccccddddeeeeffffgggghhhh": {"location": 7, "manifest": {"manifest_version": 3, "name": "Company Policy", "version": "1"}}
+}}}
+EOF
+U="$C/Default/Extensions/ddkjiahejlhfcafbddmgiahcphecmpfh/2025.1_0"
+mkdir -p "$U/_locales/en"
+cat > "$U/manifest.json" <<'EOF'
+{"manifest_version": 3, "name": "__MSG_extName__", "version": "2025.1", "default_locale": "en", "update_url": "https://clients2.google.com/service/update2/crx"}
+EOF
+cat > "$U/_locales/en/messages.json" <<'EOF'
+{"extName": {"message": "uBlock Origin Lite"}}
+EOF
 sqlite3 "$C/Default/History" <<'EOF'
 CREATE TABLE urls(id INTEGER PRIMARY KEY AUTOINCREMENT, url LONGVARCHAR, title LONGVARCHAR, visit_count INTEGER DEFAULT 0 NOT NULL, typed_count INTEGER DEFAULT 0 NOT NULL, last_visit_time INTEGER NOT NULL, hidden INTEGER DEFAULT 0 NOT NULL);
 INSERT INTO urls(url, title, visit_count, last_visit_time, hidden) VALUES

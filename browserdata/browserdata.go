@@ -64,6 +64,8 @@ type Counts struct {
 	Folders   int    `json:"folders"`
 	Pages     int    `json:"pages"`
 	Search    string `json:"search,omitempty"`
+	// Extensions is how many of its extensions can be installed again from the store.
+	Extensions int `json:"extensions,omitempty"`
 }
 
 // ErrNotOnThisSystem is what a read that needs macOS returns elsewhere.
@@ -238,7 +240,13 @@ func (p Profile) Counts() (Counts, error) {
 	c.Pages = n
 	s, serr := p.Search()
 	c.Search = s.Name
-	return c, errors.Join(err, herr, serr)
+	exts, eerr := p.Extensions()
+	for _, e := range exts {
+		if e.Skip == "" {
+			c.Extensions++
+		}
+	}
+	return c, errors.Join(err, herr, serr, eerr)
 }
 
 // web says whether an address is a web page's, as history keeps.

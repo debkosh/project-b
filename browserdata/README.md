@@ -1,7 +1,8 @@
 # browserdata
 
 Reads what other browsers on a Mac keep: which are there and their profiles, and from a
-profile its bookmarks with their folders, its history and its search engine. It only
+profile its bookmarks with their folders, its history, its search engine and the
+extensions its person installed. It only
 reads, each database from a copy, as the browser may have it open. What to do with what
 it finds is the caller's: Project B's welcome and Settings' Import bring it over
 ([docs/onboarding.md](../docs/onboarding.md)).
@@ -13,7 +14,7 @@ its own.
 
 | Browser | Where | Files |
 |---|---|---|
-| Chrome | `~/Library/Application Support/Google/Chrome` | Chromium's: `Local State` names the profiles; each has `Bookmarks` (JSON), `History` (SQLite), `Preferences` (JSON) |
+| Chrome | `~/Library/Application Support/Google/Chrome` | Chromium's: `Local State` names the profiles; each has `Bookmarks` (JSON), `History` (SQLite), `Preferences` and `Secure Preferences` (JSON), `Extensions/` |
 | Edge | `…/Microsoft Edge` | Chromium's |
 | Brave | `…/BraveSoftware/Brave-Browser` | Chromium's |
 | Arc | `…/Arc/User Data` | Chromium's |
@@ -30,6 +31,7 @@ for _, b := range browserdata.Find(home) {        // the browsers with a profile
 		tree, _ := p.Bookmarks()                  // top folders, such as the bookmarks bar, with all they hold
 		pages, _ := p.History()                   // each web page visited: title, visits, last visit
 		s, _ := p.Search()                        // the engine chosen, or the browser's own
+		exts, _ := p.Extensions()                 // what its person installed, and why any can't come
 	}
 	png, _ := browserdata.Icon(b.App, 64)         // the browser's own logo, from the app installed
 }
@@ -39,6 +41,12 @@ for _, b := range browserdata.Find(home) {        // the browsers with a profile
   was: Google for Chrome, Arc, Firefox and Safari, Bing for Edge, Brave Search for Brave.
 - Safari's folder is there to see but not to read until the app has Full Disk Access:
   `Locked` says so. Safari has one profile, with no name.
+- Extensions are a Chromium profile's, those its person installed: what the browser, an
+  administrator or Chrome itself installed is left out. Each says why it can't be installed
+  again by its id from the Chrome Web Store, if it can't: `SkipUnpacked`, `SkipNotInStore`
+  (another store's, or a file's), `SkipManifestV2`. A name its manifest takes from its
+  messages (`__MSG_name__`) is looked up in its default locale. `Counts` counts those that
+  can come.
 - History is web pages alone (http and https), not hidden, visited at least once.
 - Firefox's tags, separators and saved searches (`place:`) aren't bookmarks.
 - SQLite and the icon need macOS; elsewhere they return `ErrNotOnThisSystem`.

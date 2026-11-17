@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -152,9 +153,32 @@ func TestSearchIsTheOneChosenOrTheBrowsers(t *testing.T) {
 
 func TestCounts(t *testing.T) {
 	c, err := found(t)["chrome/Personal"].Counts()
-	want := Counts{Bookmarks: 4, Folders: 2, Pages: 3, Search: "Bing"}
+	want := Counts{Bookmarks: 4, Folders: 2, Pages: 3, Search: "Bing", Extensions: 2}
 	if err != nil || c != want {
 		t.Fatalf("%+v, %v; want %+v", c, err, want)
+	}
+}
+
+func TestExtensionsAreThoseItsPersonInstalled(t *testing.T) {
+	ps := found(t)
+	got, err := ps["chrome/Personal"].Extensions()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []Extension{
+		{ID: "pponmlkjihgfedcbaponmlkjihgfedcb", Name: "my-extension", Skip: SkipUnpacked},
+		{ID: "nngceckbapebfimnlniiiahkandclblb", Name: "Old Notes", Version: "1.9", Skip: SkipManifestV2},
+		{ID: "abcdefghijklmnopabcdefghijklmnop", Name: "Other Store Helper", Version: "3.0", Skip: SkipNotInStore},
+		{ID: "oepjjojhhaclfhmopocgmdfbeiffpheh", Name: "Project B test extension", Version: "1.0"},
+		{ID: "ddkjiahejlhfcafbddmgiahcphecmpfh", Name: "uBlock Origin Lite", Version: "2025.1"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got %+v\nwant %+v", got, want)
+	}
+	for _, key := range []string{"chrome/Work", "firefox/default-release", "safari/"} {
+		if e, err := ps[key].Extensions(); len(e) != 0 || err != nil {
+			t.Errorf("%s has %+v, %v", key, e, err)
+		}
 	}
 }
 

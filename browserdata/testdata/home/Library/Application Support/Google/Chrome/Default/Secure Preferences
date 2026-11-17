@@ -1,0 +1,14 @@
+{"extensions": {"settings": {
+  "oepjjojhhaclfhmopocgmdfbeiffpheh": {"location": 1, "from_webstore": true, "path": "oepjjojhhaclfhmopocgmdfbeiffpheh/1.0_0",
+    "manifest": {"manifest_version": 3, "name": "Project B test extension", "version": "1.0", "update_url": "https://clients2.google.com/service/update2/crx"}},
+  "ddkjiahejlhfcafbddmgiahcphecmpfh": {"location": 1, "from_webstore": true, "path": "ddkjiahejlhfcafbddmgiahcphecmpfh/2025.1_0"},
+  "nngceckbapebfimnlniiiahkandclblb": {"location": 1, "from_webstore": true, "path": "nngceckbapebfimnlniiiahkandclblb/1.9_0",
+    "manifest": {"manifest_version": 2, "name": "Old Notes", "version": "1.9", "update_url": "https://clients2.google.com/service/update2/crx"}},
+  "abcdefghijklmnopabcdefghijklmnop": {"location": 1, "from_webstore": false, "path": "abcdefghijklmnopabcdefghijklmnop/3.0_0",
+    "manifest": {"manifest_version": 3, "name": "Other Store Helper", "version": "3.0", "update_url": "https://edge.microsoft.com/extensionwebstorebase/v1/crx"}},
+  "pponmlkjihgfedcbaponmlkjihgfedcb": {"location": 4, "path": "/nowhere/my-extension"},
+  "ghbmnnjooekpmoecnnnilnnbdlolhkhi": {"location": 1, "from_webstore": true, "was_installed_by_default": true,
+    "manifest": {"manifest_version": 3, "name": "Docs Offline", "version": "1.9"}},
+  "mhjfbmdgcfjbbpaeojofohoefgiehjai": {"location": 5, "manifest": {"manifest_version": 2, "name": "PDF Viewer", "version": "1"}},
+  "aaaabbbbccccddddeeeeffffgggghhhh": {"location": 7, "manifest": {"manifest_version": 3, "name": "Company Policy", "version": "1"}}
+}}}

@@ -50,8 +50,9 @@ func main() {
 				bookmarks, berr := p.Bookmarks()
 				history, herr := p.History()
 				search, serr := p.Search()
-				out := map[string]any{"profile": p, "bookmarks": bookmarks, "history": history, "search": search}
-				for k, err := range map[string]error{"bookmarksError": berr, "historyError": herr, "searchError": serr} {
+				extensions, eerr := p.Extensions()
+				out := map[string]any{"profile": p, "bookmarks": bookmarks, "history": history, "search": search, "extensions": extensions}
+				for k, err := range map[string]error{"bookmarksError": berr, "historyError": herr, "searchError": serr, "extensionsError": eerr} {
 					if err != nil {
 						out[k] = err.Error()
 					}
@@ -68,7 +69,7 @@ func main() {
 			fmt.Printf("%s (%s)\n", b.Name, b.App)
 			for _, p := range b.Profiles {
 				c, err := p.Counts()
-				fmt.Printf("  %s/%s %q: %d bookmarks in %d folders, %d pages, search %s", b.ID, filepath.Base(p.Dir), p.Name, c.Bookmarks, c.Folders, c.Pages, c.Search)
+				fmt.Printf("  %s/%s %q: %d bookmarks in %d folders, %d pages, search %s, %d extensions", b.ID, filepath.Base(p.Dir), p.Name, c.Bookmarks, c.Folders, c.Pages, c.Search, c.Extensions)
 				if err != nil {
 					fmt.Printf(" (%v)", err)
 				}
