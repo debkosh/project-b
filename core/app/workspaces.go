@@ -67,7 +67,10 @@ func (a *App) changeWorkspaces(e engine.Engine, t string, c workspaceChange) boo
 	var err error
 	switch t {
 	case "createWorkspace":
-		_, err = a.Workspaces.Create(c.Text, c.Color)
+		var w workspaces.Workspace
+		if w, err = a.Workspaces.Create(c.Text, c.Color); err == nil {
+			timeline.Infof("workspace %s: made, its sites in %s", w.ID, workspaceStorage(a.dir, w.ID))
+		}
 	case "renameWorkspace":
 		err = a.Workspaces.SetName(c.ID, c.Text)
 	// The name and colour come together. The name goes first, so a name refused changes
@@ -143,6 +146,7 @@ func (a *App) deleteWorkspace(e engine.Engine, id string) error {
 	}
 	a.Pins.RemoveWorkspace(id)
 	e.EraseWorkspace(id)
+	timeline.Infof("workspace %s: deleted, and its sites erased from %s", workspaceName(id), workspaceStorage(a.dir, id))
 	return nil
 }
 

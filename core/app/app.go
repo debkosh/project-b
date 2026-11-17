@@ -109,6 +109,8 @@ type App struct {
 	// app is ending, so what closes now isn't.
 	closed   []session.Closed
 	quitting bool
+	// dir is the profile's folder.
+	dir string
 
 	actions []*commands.Action
 	// menus are the windows' open right-click menus.
@@ -144,7 +146,7 @@ var starters []func(a *App, e engine.Engine, cfg Config)
 // to the engine as its listener.
 func Start(e engine.Engine, cfg Config) *App {
 	e.OpenProfile(cfg.ProfileDir)
-	a := &App{profiles: cfg.Profiles, madeForTab: map[engine.WindowID]bool{}}
+	a := &App{profiles: cfg.Profiles, madeForTab: map[engine.WindowID]bool{}, dir: cfg.ProfileDir}
 	a.Crash = crash.New(cfg.ProfileDir, cfg.CrashReports)
 	a.Crash.System = cfg.System
 	a.Session = session.New(cfg.ProfileDir)
@@ -167,6 +169,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Window = window.New(e, shells.Page(a.Prefs.Shell()), a.Prefs.FrameColor(), themeOf(a.Prefs.Theme()), a.Tabs.Front)
 	a.Tabs.OnFrontChanged(a.Window.HandleFrontChanged)
 	a.Tabs.OnMoved(a.Window.HandleTabMoved)
+	a.sayStart(cfg.ProfileDir)
 	first := a.openWindow()
 	// Quitting keeps the session as it was before: the windows that close as the app ends
 	// aren't closed by the person.
@@ -438,6 +441,7 @@ func (a *App) NewWindowWith(tab engine.TabID) engine.WindowID {
 
 // Stop flushes what's pending and says the run ended cleanly. Call it on the way out.
 func (a *App) Stop() {
+	timeline.Infof("app: stopping; the windows and tabs are kept in %s", filepath.Join(a.dir, "session.json"))
 	a.Update.Stop()
 	a.History.Close()
 	a.Session.Close()

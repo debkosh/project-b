@@ -156,6 +156,33 @@ the root, as it has no profile.
 The shell's first paint and the first tab race the lines around them. Android has no
 `window.shown`: its window is on screen before content starts.
 
+## The lifecycle, as lines of log
+
+The owner, 2026-11-17: "running the app should cleanly print the lifecycle of creating the
+profiles the workspaces creation the shell loading etc in the terminal so that when i run
+from there i get the folder names and also when these events happen". So each of these is an
+`info` line, among the marks, with the folder it concerns:
+
+| Line | When |
+|---|---|
+| `profile default: made for this first start from the Personal template, in <dir>, and listed in <root>/profiles.json` | The first start, with no list (`cmd/lib`) |
+| `profile <id>: in <dir>`; `profile: the folder --user-data-dir names, <dir>`; `profile: none chosen yet; the picker shows the list in <root>/profiles.json` | Any other start |
+| `profile <id>: made from the <template> template, in <dir>` | A profile made in the picker |
+| `profile: the engine's storage in <dir>/chromium` | Each start: the engine's cookies, cache and site data |
+| `prefs: shell standard, tabs vertical, theme system, colour #…, in <dir>/prefs.json` | Each start, as read |
+| `workspaces: 2, listed in <dir>/workspaces.json`, then `workspace <id>: its sites in <folder>` for each | Each start |
+| `session: restoring 1 window and 3 tabs from <dir>/session.json`, or `session: nothing to restore` | Each start |
+| `window 1: opened, loading shell/standard`; `window 1: shell standard ready`; `window 2: closed` | Each window, and its shell once Go has sent it its first state |
+| `windows: every window loads shell/glide now` | The shell changed |
+| `workspace <id>: made, its sites in <folder>`; `workspace <id>: deleted, and its sites erased from <folder>` | A workspace made or deleted, from settings or a shell |
+| `app: stopping; the windows and tabs are kept in <dir>/session.json` | Quitting |
+
+Workspaces and profiles are named by their ids, which name their folders, never by the names
+the person gave them (What never goes in). The first workspace keeps its sites in the
+profile's own storage, `chromium`; every other one in a partition, which content keeps in
+`chromium/Storage/ext/workspace/` under the first 6 bytes of the SHA-256 of the workspace's
+id, in capitals (`app/lifecycle.go`).
+
 ## Interactions, as spans
 
 | Span | Begins | Stages | Ends |

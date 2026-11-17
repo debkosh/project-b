@@ -502,6 +502,7 @@ func PBStart(calls *C.PBEngineCalls, blockedHosts *C.char) {
 		blocked = strings.Split(s, ",")
 	}
 	if profile.Pick {
+		timeline.Infof("profile: none chosen yet; the picker shows the list in %s", filepath.Join(list.Root(), "profiles.json"))
 		picker := app.StartPicker(native, list, func(id string) {
 			relaunch.Copy("--root="+list.Root(), "--profile="+id)
 		})
@@ -516,6 +517,14 @@ func PBStart(calls *C.PBEngineCalls, blockedHosts *C.char) {
 // startProfile makes this copy the profile c's, whose folder it owns: its managers, which
 // open the profile in the engine first.
 func startProfile(c profiles.Choice) {
+	switch {
+	case c.ID == "":
+		timeline.Infof("profile: the folder --user-data-dir names, %s", c.Dir)
+	case c.Made:
+		timeline.Infof("profile %s: made for this first start from the %s template, in %s, and listed in %s", c.ID, profiles.Personal, c.Dir, filepath.Join(list.Root(), "profiles.json"))
+	default:
+		timeline.Infof("profile %s: in %s", c.ID, c.Dir)
+	}
 	if c.ID != "" {
 		if err := list.MarkUsed(c.ID); err != nil {
 			timeline.Errorf("profiles: %v", err)
