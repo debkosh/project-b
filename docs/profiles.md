@@ -54,7 +54,7 @@ Each process also has a context of its own for our pages, apart from the profile
   profile" below. A to-do, not part of this.
 - A template is only values. The profile remembers its template's name to show it, and no
   code ever asks which type a profile is. Everything a type changes is an ordinary pref the
-  template fills in. A new type is then a file of values and no code. Reference does the opposite,
+  template fills in. A new type is then a file of values and no code. The reference browser does the opposite,
   and pays for it with about 64 mode checks in C++ and 37 hard-coded mode numbers in its
   pages (`browser-modes.md`).
 
@@ -84,7 +84,7 @@ How these are built is in [profiles-build.md](profiles-build.md).
 - *For sync, later:* a profile has an identity of its own, apart from the account, so one
   account can hold several profiles that each sync their own data. Chrome and Firefox allow
   one profile per account because their sync has one data set per account
-  (`profiles-other-browsers.md`); Reference and Safari keep several.
+  (`profiles-other-browsers.md`); other browsers and Safari keep several.
 
 ## Workspaces
 

@@ -26,7 +26,7 @@ From the owner:
 
 - **Flat first.** Hairline borders, no gradients, no shadows except on what floats.
 - **A 4px grid** for sizes and spacing. Radii are 4, 6 and 8 only, plus 50% for round things.
-- **Minimal and slim.** The density is real the reference browser's: not zoomed in, not cramped.
+- **Minimal and slim.** The density is a desktop browser's: not zoomed in, not cramped.
 - **No colours of ours on pages.** Web pages keep Chromium's and the system's defaults.
 - **No dummy controls.** Every control on screen works.
 - **No explanatory prose.** No helper sentences where the design has no place for them.
@@ -69,7 +69,7 @@ accent), a dark one, a light one and a mid one such as `#4f9e9e`. `core/tones` m
 
 ## Type
 
-One family, System Sans with the system font behind it, 14px with a line height of 1.4, set on
+One family, the system font, 14px with a line height of 1.4, set on
 the root by `design.css`.
 
 | Size | Weight | Use |

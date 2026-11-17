@@ -46,13 +46,13 @@ checks it by role and name.
 
 ## Sparks
 
-Userscripts, as the reference browser's Site Spark: JavaScript only, no extension APIs, each in a world of
+Userscripts, as other browsers' site scripts: JavaScript only, no extension APIs, each in a world of
 its own on the page.
 
 - **Kept by Go**, the profile's `sparks/` folder, one `.user.js` per spark as the person
   wrote or imported it, and `sparks.json` for each one's id and whether it is on. At most
   25 sparks, each at most 140 KB.
-- **The header**, as the reference browser's: `// ==UserScript==` with `@name` (needed), `@description`,
+- **The header**, the common one: `// ==UserScript==` with `@name` (needed), `@description`,
   `@match` (needed, one or more, Chrome's match patterns), `@exclude-match`, `@run-at`
   (`document-start` or `document-end`, the default) and `@noframes`. Go parses it, and
   refuses a file without a name or a match, saying why.
@@ -168,7 +168,7 @@ one switch away.
 ## Not in the first version
 
 Cosmetic filtering, list updates between app updates, an editor with highlighting, Sparks
-sync, and the reference browser's enterprise policy lists. Each is a later step, if wanted.
+sync, and enterprise policy lists. Each is a later step, if wanted.
 
 ## One release
 

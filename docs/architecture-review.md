@@ -142,7 +142,7 @@ change to the batcher.
 
 Weak spot: `AddressBar.vue` is 285 lines and now holds focus policy (which tab wants the
 address bar) as well as suggestions and selection. The CSP in `shell_page.cc` with
-trusted types held without change. The design's System Sans font is not bundled, so the
+trusted types held without change. The design names no bundled font, so the
 shell renders in the system font.
 
 ## 8. The mock engine: fine

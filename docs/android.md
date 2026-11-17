@@ -215,9 +215,9 @@ extension system if we ever want it; and no `; wv` in the user agent. Google's s
 built first, as a stopgap, and dropped: the holes above are in the platform and we can't close them. GeckoView would close most of them, but puts a second engine
 under every site we support.
 
-## 7. How the existing Reference browser does it
+## 7. How an existing Chromium-based browser does it
 
-Reference is a different animal: it builds Chromium's whole `chrome` layer for Android, `chrome_public_apk` or
+That browser is a different animal: it builds Chromium's whole `chrome` layer for Android, `chrome_public_apk` or
 `chrome_public_bundle`, with its overlay on top (`src/scripts/utils/build_utils.py`), and its Android code is
 Java inside `org.chromium.chrome.browser` (`docs/android/Guide.md`). It runs on Chromium's own Android host rule,
 so the same Linux requirement applies, and `target_devices = arm64 x86` in `src/scripts/config/config.ini` picks the CPU.

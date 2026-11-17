@@ -16,8 +16,8 @@ invent nothing here; where we differ from Chrome it is said below, with the reas
 
 Without either debugging switch nothing listens, in every build, as in Chrome. With
 one, it opens on any profile, the default `~/.project-b/default` included. Chrome 136
-and later refuse the default profile; we add no check of our own (Reference doesn't refuse
-it either, below).
+and later refuse the default profile; we add no check of our own (the reference browser
+doesn't refuse it either, below).
 
 `GetProduct` answers `Chrome/155.0.8059.41`, as Chrome does. `/json/version` and
 `Browser.getVersion` show it and ChromeDriver reads the version from it. It also reaches
@@ -88,8 +88,8 @@ of it can already drive the whole browser and crash it (`Browser.crash`).
   `RemoteDebuggingAllowed`, the `chrome://inspect` approval mode, and tethering. Chrome also ignores `--remote-debugging-address` outside headless,
   and so do we.
 
-## Reference
+## The reference browser
 
-Reference 155's `remote_debugging_server.cc` and `GetProduct` are Chrome's, unchanged. It
-builds with Chromium branding, though, so `GOOGLE_CHROME_BRANDING` is off and Reference does
+In the reference browser, at 155, `remote_debugging_server.cc` and `GetProduct` are Chrome's, unchanged. It
+builds with Chromium branding, though, so `GOOGLE_CHROME_BRANDING` is off and it does
 not refuse the default profile; neither do we.

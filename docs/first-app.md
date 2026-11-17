@@ -174,7 +174,7 @@ the panel sends the user's changes, and Go says when they change.
 The frame colour is a pref, `frameColor`, by default none: `""`, `tones.None`, as the owner
 wants no colour chosen for the user (docs/onboarding.md). None paints a light grey frame, or
 a dark grey in dark, with ink for the accent. The panel offers None first, then the frames of
-the Reference design's modes (teal, Work's blue, Kids' amber, Open Season's red, Incognito's
+the reference design's modes (teal, Work's blue, Kids' amber, Open Season's red, Incognito's
 slate), and a colour input for any other. The window manager paints the window's frame with
 it through the next `SetWindowLayout`, which carries the colour for light and the one for
 dark (they differ only for None, and the window paints whichever its appearance is), and
@@ -384,7 +384,7 @@ Sizes in decimal MB, for arm64:
 | Library, stripped, in the DMG | 270 | | |
 | `project_b`, stripped, in the DMG | 2.3 | | |
 | `project_b_helper`, in the DMG | 0.04 | | |
-| Reference Framework 155, official, a whole browser | 249 | 234 | 2 |
+| A Chromium-based browser's framework 155, official | 249 | 234 | 2 |
 | Chrome for Testing 153 framework | 246 | | |
 
 `out/pb` isn't a debug build, but a non-official build keeps its symbols, has DCHECKs on and
