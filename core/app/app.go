@@ -42,6 +42,9 @@ type Config struct {
 	Profile  string
 	// Made says this start made the profile: its first, which opens the welcome.
 	Made bool
+	// SkipWelcome is --skip-welcome: a start that would open the welcome notes it finished
+	// instead, as its Skip setup does, so a test starts past it.
+	SkipWelcome bool
 	// URLs are the addresses the command line names, which the first window opens as its
 	// tabs at the start, in place of the blank one; ChromeDriver starts the app so.
 	URLs         []string
@@ -349,6 +352,10 @@ func Start(e engine.Engine, cfg Config) *App {
 	// The welcome opens over the window in front, after what the start opens; finishing it
 	// makes the tab a start would have made.
 	welcomed := a.welcome.due(cfg.Made)
+	if welcomed && cfg.SkipWelcome {
+		a.welcome.skip()
+		welcomed = false
+	}
 	switch {
 	case len(cfg.URLs) > 0:
 		for _, u := range cfg.URLs {

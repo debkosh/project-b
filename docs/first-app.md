@@ -407,3 +407,8 @@ for Chrome for Testing.
 Run the real app:
 
     build/pb/project_b --block=blocked.test
+
+`--skip-welcome` does what the welcome's Skip setup does (onboarding.md): a start that
+would open it notes it finished instead, so later starts open none either. The drivers
+start so. On Android it is the intent extra: `am start ... --ez skip-welcome true`. The
+mock takes `-skip-welcome`.

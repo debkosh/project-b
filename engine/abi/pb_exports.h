@@ -16,7 +16,9 @@ char* PBClaimProfile(const char* root,
                      const char* user_data_dir,
                      int picker,
                      const char* urls);
-void PBStart(const PBEngineCalls* calls, const char* blocked_hosts);
+void PBStart(const PBEngineCalls* calls,
+             const char* blocked_hosts,
+             int skip_welcome);
 void PBStop(void);
 void PBRunPosted(void);
 int PBHook(int32_t hook, const PBValue* args, size_t count, PBValue* result);

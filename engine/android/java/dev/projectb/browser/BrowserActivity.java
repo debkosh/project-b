@@ -37,8 +37,9 @@ public final class BrowserActivity extends Activity {
         window = new BrowserWindow(this, windowAndroid);
         setContentView(window);
 
-        // The same list the Mac app takes as --block.
+        // The same list the Mac app takes as --block, and its --skip-welcome.
         String blocked = getIntent().getStringExtra("block");
+        boolean skipWelcome = getIntent().getBooleanExtra("skip-welcome", false);
         pendingLink = linkOf(getIntent());
         openDownload(getIntent());
         long goTable = GoCore.table();
@@ -52,7 +53,7 @@ public final class BrowserActivity extends Activity {
                             @Override
                             public void onSuccess(
                                     BrowserStartupController.StartupMetrics metrics) {
-                                window.start(goTable, blocked == null ? "" : blocked);
+                                window.start(goTable, blocked == null ? "" : blocked, skipWelcome);
                                 started = true;
                                 open(pendingLink);
                             }

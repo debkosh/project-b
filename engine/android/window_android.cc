@@ -248,13 +248,15 @@ static int64_t JNI_BrowserWindow_Start(JNIEnv* env,
                                        const JavaRef<jobject>& jwindow_android,
                                        int64_t go_table,
                                        int64_t process_age_ms,
-                                       const JavaRef<jstring>& jblocked_hosts) {
+                                       const JavaRef<jstring>& jblocked_hosts,
+                                       jboolean skip_welcome) {
   SetGo(reinterpret_cast<const PBGoCalls*>(go_table));
   timeline::Start(ProfileDir(), base::Milliseconds(process_age_ms));
   g_browser_window = new BrowserWindow(
       env, obj, ui::WindowAndroid::FromJavaWindowAndroid(jwindow_android));
   BrowserMainParts::Get()->StartApp(
-      base::android::ConvertJavaStringToUTF8(env, jblocked_hosts));
+      base::android::ConvertJavaStringToUTF8(env, jblocked_hosts),
+      skip_welcome);
   return reinterpret_cast<intptr_t>(g_browser_window);
 }
 

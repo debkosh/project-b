@@ -214,6 +214,13 @@ func (w *welcome) snapshot(tab engine.TabID) map[string]any {
 	}
 }
 
+// skip keeps that the welcome was finished without showing it, as --skip-welcome asks: what
+// its Skip setup does.
+func (w *welcome) skip() {
+	w.write(welcomeFile{Done: true, At: time.Now().UTC()})
+	timeline.Infof("welcome: skipped, as --skip-welcome asks; noted as finished in %s", w.path)
+}
+
 // finish keeps that the welcome was finished and closes its tab. The window it had to
 // itself gets its shell back, with a new tab where the shell opens one.
 func (w *welcome) finish(tab engine.TabID) {

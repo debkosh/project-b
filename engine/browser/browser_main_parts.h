@@ -46,7 +46,7 @@ class BrowserMainParts : public content::BrowserMainParts {
 #if BUILDFLAG(IS_ANDROID)
   static BrowserMainParts* Get();
   // Java calls this once content is up and the window exists.
-  void StartApp(const std::string& blocked_hosts);
+  void StartApp(const std::string& blocked_hosts, bool skip_welcome);
 #endif
 
  private:

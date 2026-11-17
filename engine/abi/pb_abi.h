@@ -501,7 +501,11 @@ typedef struct PBGoCalls {
                          int picker,
                          const char* urls);
 
-  void (*start)(const PBEngineCalls* calls, const char* blocked_hosts);
+  // skip_welcome is --skip-welcome: a start that would open the welcome notes it
+  // finished instead.
+  void (*start)(const PBEngineCalls* calls,
+                const char* blocked_hosts,
+                int skip_welcome);
   void (*stop)(void);
   void (*run_posted)(void);
 

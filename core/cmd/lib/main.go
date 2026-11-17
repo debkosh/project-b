@@ -446,6 +446,8 @@ var (
 	// The addresses the command line named, which this copy opens as it starts when it owns
 	// its profile; otherwise they are handed to the copy that does.
 	startURLs []string
+	// skipWelcome is --skip-welcome: a start that would open the welcome notes it finished.
+	skipWelcome bool
 )
 
 // PBClaimProfile is the first call, before anything is written to the profile. It chooses
@@ -513,9 +515,10 @@ func init() {
 
 // PBStart starts what a copy has before and apart from its profile, the engine and the
 // list, then the profile's managers, or the picker when the copy has no profile yet.
+// skip is the command line's --skip-welcome.
 //
 //export PBStart
-func PBStart(calls *C.PBEngineCalls, blockedHosts *C.char) {
+func PBStart(calls *C.PBEngineCalls, blockedHosts *C.char, skip C.int) {
 	timeline.Mark("go.starting")
 	// The tables are C memory that lives as long as the process.
 	native = &nativeEngine{calls: calls}
@@ -533,6 +536,7 @@ func PBStart(calls *C.PBEngineCalls, blockedHosts *C.char) {
 	if s := C.GoString(blockedHosts); s != "" {
 		blocked = strings.Split(s, ",")
 	}
+	skipWelcome = skip != 0
 	if profile.Pick {
 		timeline.Infof("profile: none chosen yet; the picker shows the list in %s", filepath.Join(list.Root(), "profiles.json"))
 		picker := app.StartPicker(native, list, func(id string) {
@@ -568,6 +572,7 @@ func startProfile(c profiles.Choice) {
 		Profiles:     list,
 		Profile:      c.ID,
 		Made:         c.Made,
+		SkipWelcome:  skipWelcome,
 		URLs:         startURLs,
 		BlockedHosts: blocked,
 		Update:       updateConfig(c),

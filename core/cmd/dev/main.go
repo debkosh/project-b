@@ -61,6 +61,7 @@ func main() {
 	id := flag.String("id", "", "the id -profile has in the list in -root, for a listed profile; none for a folder named outright")
 	pick := flag.Bool("picker", false, "start as a copy that picks its profile from the list in -root, and becomes the one picked")
 	block := flag.String("block", "", "comma-separated blocked hosts")
+	skipWelcome := flag.Bool("skip-welcome", false, "a start that would open the welcome notes it finished instead, as its Skip setup does")
 	// The updater runs for real against a manifest when given a version to be, the bundle
 	// it is "installed" as, and the manifest. Without a version it stays off, as it does
 	// for a binary running from a build directory. The mock has no signing key, so it
@@ -113,6 +114,7 @@ func main() {
 			Profiles:     list,
 			Profile:      id,
 			BlockedHosts: strings.Split(*block, ","),
+			SkipWelcome:  *skipWelcome,
 			System: func() []crash.Section {
 				return []crash.Section{{Title: "Version", Text: "Project B on the mock engine"}}
 			},

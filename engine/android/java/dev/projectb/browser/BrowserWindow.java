@@ -91,12 +91,13 @@ final class BrowserWindow extends FrameLayout {
     }
 
     /** Content is ready: make the surface, then the native side, which starts the app and Go. */
-    void start(long goTable, String blockedHosts) {
+    void start(long goTable, String blockedHosts, boolean skipWelcome) {
         // How old the process is, for the timeline's time zero.
         long processAgeMs = SystemClock.elapsedRealtime() - Process.getStartElapsedRealtime();
         nativeWindow =
                 BrowserWindowJni.get()
-                        .start(this, windowAndroid, goTable, processAgeMs, blockedHosts);
+                        .start(this, windowAndroid, goTable, processAgeMs, blockedHosts,
+                                skipWelcome);
         surface = new SurfaceView(getContext());
         surface.setZOrderMediaOverlay(true);
         // A SurfaceView defaults to 16 bits per pixel.
@@ -600,7 +601,8 @@ final class BrowserWindow extends FrameLayout {
                 WindowAndroid windowAndroid,
                 long goTable,
                 long processAgeMs,
-                String blockedHosts);
+                String blockedHosts,
+                boolean skipWelcome);
 
         void surfaceCreated(long nativeBrowserWindow);
 

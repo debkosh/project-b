@@ -87,7 +87,8 @@ int BrowserMainParts::PreMainMessageLoopRun() {
           &quit_));
 
   Go().start(Engine::Calls(),
-             command_line->GetSwitchValueASCII("block").c_str());
+             command_line->GetSwitchValueASCII("block").c_str(),
+             command_line->HasSwitch("skip-welcome"));
   WatchOSKeyBindings();
   ReceiveLinks();
   child_processes_ = std::make_unique<ChildProcesses>();

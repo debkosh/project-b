@@ -58,7 +58,8 @@ int BrowserMainParts::PreMainMessageLoopRun() {
   return 0;
 }
 
-void BrowserMainParts::StartApp(const std::string& blocked_hosts) {
+void BrowserMainParts::StartApp(const std::string& blocked_hosts,
+                                bool skip_welcome) {
   // Android ends the app itself, with the activity.
   // One context, for our pages and the tabs alike, made with content: opening the profile
   // finds it there.
@@ -77,7 +78,7 @@ void BrowserMainParts::StartApp(const std::string& blocked_hosts) {
                                      ProfileDir().value().c_str(), 0, "");
   CHECK(claimed);
   Go().free(claimed);
-  Go().start(Engine::Calls(), blocked_hosts.c_str());
+  Go().start(Engine::Calls(), blocked_hosts.c_str(), skip_welcome);
   child_processes_ = std::make_unique<ChildProcesses>();
 }
 

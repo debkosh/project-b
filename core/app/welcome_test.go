@@ -128,3 +128,23 @@ func TestRunSetupAgainOpensTheWelcomeInATab(t *testing.T) {
 		t.Fatalf("the page's snapshot: whole %v, accent %v", page["whole"], light["--accent"])
 	}
 }
+
+// --skip-welcome notes the welcome finished at a start that would open it, as Skip setup
+// does, so the next start, without the switch, opens none either.
+func TestSkipWelcomeNotesItFinished(t *testing.T) {
+	dir := t.TempDir()
+	r := startWith(t, app.Config{ProfileDir: dir, Profiles: profiles.New(t.TempDir()), Made: true, SkipWelcome: true, Update: update.Config{StateDir: filepath.Join(dir, "updates")}})
+	snap := r.waitFor(func(m map[string]any) bool { return m["t"] == "snapshot" })
+	if snap["welcome"] != float64(0) || len(snap["tabs"].([]any)) != 1 {
+		t.Fatalf("with --skip-welcome: welcome %v, tabs %v", snap["welcome"], snap["tabs"])
+	}
+	if _, done := welcomeDone(t, dir); !done {
+		t.Fatal("welcome.json doesn't say it was finished")
+	}
+	r.stop()
+	again := startMade(t, dir, false)
+	defer again.stop()
+	if snap := again.waitFor(func(m map[string]any) bool { return m["t"] == "snapshot" }); snap["welcome"] != float64(0) {
+		t.Fatal("the next start opens it")
+	}
+}
