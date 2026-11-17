@@ -287,6 +287,16 @@ def find(part, **want):
     return None
 
 
+def first(*finds):
+    """The node the first of finds gives, each a function giving a node or None, or None. A node
+    with no children is false, so `find(...) or find(...)` passes over the one it found."""
+    for f in finds:
+        node = f()
+        if node is not None:
+            return node
+    return None
+
+
 def see(part, timeout=20, **want):
     """Waits for such a node to show, and returns it."""
     node = until(lambda: find(part, **want), timeout)
@@ -374,7 +384,8 @@ def launch(block=""):
     # The first start after the app's data was cleared opens the welcome over the screen,
     # the shell's bars hidden (docs/onboarding.md): each part starts past it, skipped.
     said = lambda n, words: words in (n.get("text"), n.get("content-desc"))
-    skip = until(lambda: find("shell", label="Menu") or find("page", text=lambda t: t == "Skip setup") or find("page", label="Skip setup"), 60)
+    skip = until(lambda: first(lambda: find("shell", label="Menu"), lambda: find("page", text="Skip setup"),
+                               lambda: find("page", label="Skip setup")), 60)
     if skip is not None and not said(skip, "Menu"):
         tap(middle(skip))
     # Content starts in the background, so the window shows before the shell does.
