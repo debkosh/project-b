@@ -1098,7 +1098,9 @@ def links_to_other_sites():
             return "allow"
 
     def set_links(value):
-        press("Site settings")
+        # The site button is named Site settings, and "Not secure · Site settings" on an
+        # http page such as the test server's.
+        tap(middle(see("shell", label=lambda label: (label or "").endswith("Site settings"))))
         tap(middle(see("shell", text=value.capitalize())))
         if until(lambda: kept() == value, 10) is None:
             raise TimeoutError("Go never kept links=%s for %s" % (value, origin))
