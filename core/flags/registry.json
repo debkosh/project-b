@@ -32,5 +32,12 @@
     "description": "Outline every area the window manager tracks: window buttons, drag, shell, pages and the settings page",
     "switch": "pb-show-regions",
     "type": "boolean"
+  },
+  {
+    "id": "showWelcome",
+    "name": "Show the welcome at each start",
+    "description": "Open the welcome over the whole window at every start, as on a first start",
+    "switch": "pb-show-welcome",
+    "type": "boolean"
   }
 ]

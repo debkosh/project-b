@@ -1,8 +1,8 @@
 # The first-run onboarding
 
 What a new user sees on the first start, and how they bring their things over from another
-browser. Item 13 of the [UX comparison](ux-comparison.md#what-to-do-ranked). **Proposed,
-2026-11-17: mocks for the owner, nothing built yet.**
+browser. Item 13 of the [UX comparison](ux-comparison.md#what-to-do-ranked). Mocks approved
+2026-11-17; **slice 1 is being built** (see [Built](#built)).
 
 The owner, 2026-11-17: "if we are missing features then we add those but the onboarding needs to
 be nice and thats not shell its our internal page". So it is a page of ours in a tab, as Settings
@@ -110,6 +110,46 @@ which opens the welcome in a tab ([mock](screenshots/onboarding/mock-d6.png),
 | Extensions reinstalled by id | the Web Store install path, while their flag is on | 5 |
 
 Each slice goes out through a release of its own.
+
+## Built
+
+**Slice 1, the welcome itself** (branch `onboarding`):
+
+- **None, no colour,** is where every profile starts: `frameColor` `""`, `tones.None`. Its
+  palette is a light grey frame, or a dark grey in dark, with ink for the accent (white text
+  on it) in light and the light text (ink on it) in dark. `WindowLayout` carries `FrameColor`
+  and `FrameDark`, the same for any colour picked, and the window paints the one for its
+  appearance: on the Mac by `effectiveAppearance`, repainting when it changes; on Android by
+  the theme and the phone's night mode. The Dock icon has no dot. Settings' swatches and the
+  welcome's share the presets, `shell/src/ui/colours.js`, None first, struck through.
+- **The page,** `shell/src/apps/welcome`, at `chrome://welcome/`, one of `tabs.Pages`, with
+  Go's side in `core/app/welcome.go`. Desktop: Welcome, Pick your style, Protection, You're
+  set; Bring things over joins in slice 3 with the importers, and Make default browser in
+  the next commit. Every choice is a pref, set as it is made (`setPref`, `setSearchEngine`,
+  `setAutoUpdate`), and comes back as a change: the page repaints from the tones Go sends,
+  the window's frame with it, and the picture of the browser (`Preview.vue`) is drawn in
+  those tones, so nothing is a picture to keep up. Skip setup and Start browsing both
+  finish it.
+- **When it opens:** at the start that made the profile (`app.Config.Made`, the first start
+  with no profile list), again at a start after one that left it unfinished, and at every
+  start while the flag **Show the welcome at each start** is on. `welcome.json` in the
+  profile says `{"done": false}` while it shows and `{"done": true, "at": ...}` once finished.
+  A folder named with `--user-data-dir` was made by no start, so the drivers' profiles show
+  none; their roots made fresh with `--root` do.
+- **Over the whole window:** Go tells every shell which tab is the welcome with the window
+  to itself (`welcome` in the shell's state). While it is the active tab, Standard hides its
+  bars and keeps the frame's band, with a top edge, and a strip across the top to drag the
+  window by; Glide shows the page alone with that strip; the Mobile web shell hides its bars
+  as for a page in full screen, keeping the system's. Finishing closes the tab, the shell
+  comes back, and a shell that opens a tab at the start gets one.
+- **The splash** plays once over the whole window: the mark grows and draws itself, the name
+  fades in, and the welcome comes; less motion skips it. The hello's window rises from the
+  page's foot, its frame turning through the presets as it waits.
+- **Protection** offers the search engine and automatic updates, and shows the ad blocker on.
+  Not here yet: a switch for the ad blocker and for Links to other sites across every site
+  (today each is a site's own setting, the ad blocker on by default, links allowed), and the
+  keys like Chrome's or Project B's (Settings, Keyboard, has it).
+- **Run setup again** in Settings, General, opens the page in a tab.
 
 ## The importer, a module of its own
 

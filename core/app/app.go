@@ -40,6 +40,8 @@ type Config struct {
 	// named outright, which isn't listed.
 	Profiles *profiles.Manager
 	Profile  string
+	// Made says this start made the profile: its first, which opens the welcome.
+	Made bool
 	// URLs are the addresses the command line names, which the first window opens as its
 	// tabs at the start, in place of the blank one; ChromeDriver starts the app so.
 	URLs         []string
@@ -132,6 +134,8 @@ type App struct {
 	startedIn map[engine.DownloadID]engine.WindowID
 	// pages are the History and Bookmarks pages shown in tabs.
 	pages *ourPages
+	// welcome is the first start's welcome page (welcome.go).
+	welcome *welcome
 	// keyIn is which page had the keyboard at the last key press.
 	keyIn engine.Surface
 	// lastWindow is the id of the window made last; Go numbers them from 1.
@@ -217,6 +221,18 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Settings.AddPart(a.workspaceSettingsPart(e))
 	a.startSites(e, cfg.ProfileDir)
 	a.Settings.AddPart(a.startSettingsPart())
+	a.welcome = newWelcome(a, e, cfg.ProfileDir)
+	a.Shell.AddPart(a.welcome.shellPart())
+	a.Settings.AddPart(settings.Part{
+		Snapshot: func(map[string]any) {},
+		Handle: func(tab engine.TabID, t string, _ []byte) bool {
+			if t != "openWelcome" {
+				return false
+			}
+			a.welcome.openInTab(a.Tabs.WindowOf(tab))
+			return true
+		},
+	})
 	a.registerActions(e)
 
 	a.Tabs.AddGate(a.Policy.IsAllowedURL)
@@ -330,13 +346,23 @@ func Start(e engine.Engine, cfg Config) *App {
 	// After a crash the last run's windows come back; addresses given at the start open
 	// beside them.
 	restored := a.restore(e, first)
+	// The welcome opens over the window in front, after what the start opens; finishing it
+	// makes the tab a start would have made.
+	welcomed := a.welcome.due(cfg.Made)
 	switch {
 	case len(cfg.URLs) > 0:
 		for _, u := range cfg.URLs {
 			a.Tabs.OpenIn(u, true)
 		}
-	case !restored && !a.startsEmpty():
+	case !restored && !a.startsEmpty() && !welcomed:
 		a.Tabs.Create(first)
+	}
+	if welcomed {
+		w := a.Tabs.Front()
+		if w == 0 {
+			w = first
+		}
+		a.welcome.openWhole(w)
 	}
 	a.keepSession(e)
 	a.Update.Start()
@@ -573,6 +599,8 @@ func (a *App) PageMessage(tab engine.TabID, page engine.Page, msg []byte) {
 		a.Settings.Handle(tab, msg)
 	case "history", "bookmarks", "downloads":
 		a.pages.handle(tab, page, msg)
+	case welcomePage:
+		a.welcome.handle(tab, msg)
 	default:
 		timeline.Warnf("app: a message from %q, which isn't a page of ours", page)
 	}

@@ -109,6 +109,10 @@ export const state = {
   // 0. While it does, the shell lays that page across the whole window and draws nothing
   // else; Go ends it on Escape (docs/daily-driver.md).
   pageFullScreen: 0,
+  // The welcome tab while it has its window to itself, a first start's (docs/onboarding.md),
+  // or 0: while it is the active tab a shell draws nothing around it but a strip to drag
+  // the window by.
+  welcome: 0,
   // The shell's own data, as it last saved it for this window, or null: what it needs to
   // lay itself out again after a reload. It comes only in the snapshot.
   data: null,
@@ -124,7 +128,7 @@ export const state = {
 
 // The messages that are only state: each sets the fields it carries, whole. The one
 // exception is tabs, whose tabs carry no favicon: each keeps the one it had (below).
-const updates = new Set(['theme', 'windowColor', 'controls', 'keys', 'workspaces', 'update', 'crashLog', 'tabLayout', 'addressBarPosition', 'extensions', 'profileData', 'contextMenu', 'downloads', 'dialogs', 'prefs', 'find', 'pageFullScreen', 'searchEngine', 'permissionPrompts', 'openSites', 'bookmarks', 'pins', 'menu']);
+const updates = new Set(['theme', 'windowColor', 'controls', 'keys', 'workspaces', 'update', 'crashLog', 'tabLayout', 'addressBarPosition', 'extensions', 'profileData', 'contextMenu', 'downloads', 'dialogs', 'prefs', 'find', 'pageFullScreen', 'welcome', 'searchEngine', 'permissionPrompts', 'openSites', 'bookmarks', 'pins', 'menu']);
 
 const listeners = [];
 

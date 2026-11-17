@@ -3,24 +3,14 @@ import { computed } from 'vue';
 import { phone } from '@/phone.js';
 import Segmented from '@/ui/Segmented.vue';
 import Swatches from '@/ui/Swatches.vue';
+import { framePresets } from '@/ui/colours.js';
 import { send, state } from './state.js';
 
 // General settings: what Go owns, shown, and the user's changes sent back. It changes only
 // when Go says so.
 
-// Frame colours to pick from. None is first, and is where a profile starts: a grey frame
-// with ink for the accent (docs/onboarding.md). The rest are the frames of the Reference
-// design's modes: Personal, Work, Kids, Open Season and Incognito, with Work's blue the one
-// the Work profile template sets, so a profile made from it shows a preset. The shell
-// derives its other tones from whichever is picked.
-const presets = [
-  { name: 'None', color: '' },
-  { name: 'Teal', color: '#0faaaa' },
-  { name: 'Blue', color: '#5b7fd6' },
-  { name: 'Amber', color: '#faa804' },
-  { name: 'Red', color: '#d82b1f' },
-  { name: 'Slate', color: '#384562' },
-];
+// Frame colours to pick from, None first (@/ui/colours.js).
+const presets = framePresets;
 
 const themes = [
   { value: 'system', label: 'System' },
@@ -173,6 +163,16 @@ const busy = computed(() => state.update.check === 'checking' || state.update.ph
             @change="send({ t: 'setAutoUpdate', on: $event.target.checked })"
           />
         </label>
+      </div>
+    </section>
+
+    <section aria-labelledby="setup">
+      <h2 id="setup">Setup</h2>
+      <div class="card">
+        <div class="row">
+          <span class="label">The welcome's steps</span>
+          <button type="button" class="text-button" @click="send({ t: 'openWelcome' })">Run setup again</button>
+        </div>
       </div>
     </section>
   </div>

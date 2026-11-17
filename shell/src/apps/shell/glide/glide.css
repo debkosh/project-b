@@ -103,6 +103,15 @@
   inset: 0;
 }
 
+/* Over the welcome's top, which it keeps clear: the window moves from it. */
+.glide .welcome-drag {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+}
+
 /* Glide fades in as it is made, as the splash fades out. */
 .glide {
   transition: opacity var(--motion) var(--ease);

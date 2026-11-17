@@ -20,6 +20,11 @@ import { tabsOnTop } from './state.js';
 // A page in full screen has the whole window: no band, no bars, nothing over it.
 const pageFull = computed(() => state.pageFullScreen !== 0 && state.pageFullScreen === state.active);
 watchEffect(() => setFrame(pageFull.value ? 0 : 4));
+// The welcome of a first start has the window to itself but for the frame's band, which
+// takes its colour as it is picked, and a strip across the top to move the window by,
+// over the page's top, which it keeps clear (docs/onboarding.md).
+const welcome = computed(() => state.welcome !== 0 && state.welcome === state.active);
+const bare = computed(() => pageFull.value || welcome.value);
 watchEffect(() => {
   document.documentElement.style.setProperty('--window-radius', state.cornerRadius + 'px');
 });
@@ -34,13 +39,15 @@ watchEffect(() => {
        When the data comes the UI is made, and the two cross-fade. -->
   <div class="splash" :aria-busy="!state.loaded">Project B</div>
   <div v-if="state.loaded" class="app" :class="{ 'page-full': pageFull }">
-    <!-- Hidden, not taken away, while a page fills the screen: each keeps what it holds,
-         as the address it shows. -->
-    <TabStrip v-if="tabsOnTop" v-show="!pageFull" />
-    <TopBar v-show="!pageFull" />
+    <!-- Hidden, not taken away, while a page fills the screen or the welcome the window:
+         each keeps what it holds, as the address it shows. -->
+    <TabStrip v-if="tabsOnTop" v-show="!bare" />
+    <TopBar v-show="!bare" />
+    <div v-if="welcome" class="edge top"></div>
+    <div v-if="welcome" v-drag class="welcome-drag"></div>
     <div class="body">
       <div v-show="!pageFull" class="edge left"></div>
-      <Sidebar v-if="!tabsOnTop" v-show="!pageFull" />
+      <Sidebar v-if="!tabsOnTop" v-show="!bare" />
       <PageView />
       <div v-show="!pageFull" class="edge right"></div>
     </div>
@@ -110,8 +117,19 @@ watchEffect(() => {
   width: var(--frame-width);
 }
 
-.edge.bottom {
+.edge.bottom,
+.edge.top {
   height: var(--frame-width);
+}
+
+/* Over the welcome's top: nothing painted, so the page shows through, and the window moves
+   from it. */
+.welcome-drag {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
 }
 
 </style>

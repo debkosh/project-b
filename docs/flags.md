@@ -39,6 +39,7 @@ The flags today:
 | Remote debugging port | `number`, 1024 to 65535 | `--remote-debugging-port=<port>` |
 | Chromium features | `strings` | `--enable-features=<list>` |
 | Show window regions | `boolean` | `--pb-show-regions` |
+| Show the welcome at each start | `boolean` | `--pb-show-welcome` |
 
 ## Build flags
 
@@ -101,6 +102,8 @@ The browser passes `--pb-extensions` to every child process it starts, in
   `-flags` adds the ones the registry has no row of): each drawn by its type, saved, refused,
   and Relaunch beside the waiting flag only.
 - `shell/e2e/extensions.cjs`: with the flag off, no toolbar button and no Extensions section.
+- `core/app/welcome_test.go`: Show the welcome at each start opens the welcome over the whole
+  window at a start that otherwise shows none (docs/onboarding.md).
 - `shell/e2e/outlines.cjs`: Show window regions on the mock, read from the profile's flags at
   launch as the real engine reads its switches: the window page outlines what the window
   manager tracks with it on, and nothing with it off.

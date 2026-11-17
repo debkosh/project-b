@@ -138,7 +138,9 @@
   // A page in full screen, the shown tab's: the shell draws nothing over it, its bars and
   // notices gone and their room the page's, and a sheet open or the address being edited
   // ends as it starts. Go ends it on the back key.
-  const full = $derived(go.pageFullScreen !== 0 && go.pageFullScreen === go.active);
+  // A first start's welcome has the screen so too, with the system's bars kept
+  // (docs/onboarding.md).
+  const full = $derived((go.pageFullScreen !== 0 && go.pageFullScreen === go.active) || (go.welcome !== 0 && go.welcome === go.active));
   $effect(() => {
     if (!full) return;
     sheet = '';

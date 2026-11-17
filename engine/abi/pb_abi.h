@@ -157,8 +157,9 @@ typedef enum PBEvent {
                                         // one; capture_thumbnail kept a new picture of
                                         // its page, at chrome://thumb/<tab> for our pages
   PB_EVENT_PAGE_MESSAGE = 23,           // i: tab, s: the page's name ("settings",
-                                        // "history", "bookmarks", "downloads"), s: json, from the page
-                                        // of ours the tab shows
+                                        // "history", "bookmarks", "downloads",
+                                        // "welcome"), s: json, from the page of ours
+                                        // the tab shows
 } PBEvent;
 
 // What becomes of a navigation, PB_EVENT_NAVIGATION_STARTING's answer. Matches

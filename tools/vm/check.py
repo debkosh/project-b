@@ -134,7 +134,9 @@ def guest(*cmd):
 
 def fresh_profile(path=PROFILE, wipe=ROOT):
     updates = f"{ROOT}/update" if wipe == ROOT else f"{path}/updates"
-    guest("/bin/sh", "-c", f"rm -rf '{wipe}' && mkdir -p '{path}' '{updates}' && echo '{UPDATE_OFF}' > '{updates}/settings.json'")
+    # The welcome a first start opens over the window (docs/onboarding.md) is finished.
+    guest("/bin/sh", "-c", f"rm -rf '{wipe}' && mkdir -p '{path}' '{updates}' && echo '{UPDATE_OFF}' > '{updates}/settings.json' && "
+          f"echo '{{\"done\": true}}' > '{path}/welcome.json'")
 
 
 def serve_pages():

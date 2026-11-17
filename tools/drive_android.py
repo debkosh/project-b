@@ -371,6 +371,12 @@ def launch(block=""):
     if block:
         args += ["--es", "block", block]
     adb(*args)
+    # The first start after the app's data was cleared opens the welcome over the screen,
+    # the shell's bars hidden (docs/onboarding.md): each part starts past it, skipped.
+    said = lambda n, words: words in (n.get("text"), n.get("content-desc"))
+    skip = until(lambda: find("shell", label="Menu") or find("page", text=lambda t: t == "Skip setup") or find("page", label="Skip setup"), 60)
+    if skip is not None and not said(skip, "Menu"):
+        tap(middle(skip))
     # Content starts in the background, so the window shows before the shell does.
     see("shell", timeout=60, label="Menu")
     # A run that ended in a kill leaves a notice over the top of the page. It is shell, so

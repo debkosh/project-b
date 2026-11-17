@@ -68,7 +68,7 @@ export default defineConfig(({ command }) => {
       },
     },
     server: {
-      proxy: { '/shell/events': dev, '/shell/send': dev, '/settings/events': dev, '/settings/send': dev, '/history/events': dev, '/history/send': dev, '/bookmarks/events': dev, '/bookmarks/send': dev, '/downloads/events': dev, '/downloads/send': dev, '/picker/events': dev, '/picker/send': dev, '/mock': dev },
+      proxy: { '/shell/events': dev, '/shell/send': dev, '/settings/events': dev, '/settings/send': dev, '/history/events': dev, '/history/send': dev, '/bookmarks/events': dev, '/bookmarks/send': dev, '/downloads/events': dev, '/downloads/send': dev, '/welcome/events': dev, '/welcome/send': dev, '/picker/events': dev, '/picker/send': dev, '/mock': dev },
     },
   };
 });

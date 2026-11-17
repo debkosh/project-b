@@ -459,6 +459,13 @@ func PBClaimProfile(root, id, userDataDir *C.char, picker C.int, urls *C.char) *
 	var err error
 	if dir := C.GoString(userDataDir); dir != "" {
 		profile = profiles.Named(dir)
+		// A phone's profile is the one folder Android gives the app, named outright
+		// (browser_main_parts_android.cc): the start that finds no prefs there made it, and
+		// opens the welcome (docs/onboarding.md).
+		if runtime.GOOS == "android" {
+			_, err := os.Stat(filepath.Join(dir, "prefs.json"))
+			profile.Made = os.IsNotExist(err)
+		}
 	} else if profile, err = list.Choose(C.GoString(id), picker != 0); err != nil {
 		fmt.Fprintf(os.Stderr, "the profile: %v\n", err)
 		os.Exit(1)
@@ -554,6 +561,7 @@ func startProfile(c profiles.Choice) {
 		ProfileDir:   c.Dir,
 		Profiles:     list,
 		Profile:      c.ID,
+		Made:         c.Made,
 		URLs:         startURLs,
 		BlockedHosts: blocked,
 		Update:       updateConfig(c),

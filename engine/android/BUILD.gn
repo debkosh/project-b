@@ -163,7 +163,7 @@ repack("pak") {
 
 android_assets("assets") {
   sources = [ "$root_out_dir/project_b.pak" ]
-  # Our pages (settings, history, bookmarks and downloads) and the phone's shells, the registry's "phone": true, laid out as
+  # Our pages (settings, history, bookmarks, downloads and welcome) and the phone's shells, the registry's "phone": true, laid out as
   # tools/package.sh lays them out for the Mac. A phone loads no other shell.
   renaming_sources = [
     "../../shell/dist/settings/index.html",
@@ -178,6 +178,9 @@ android_assets("assets") {
     "../../shell/dist/bookmarks/index.html",
     "../../shell/dist/bookmarks/bookmarks.css",
     "../../shell/dist/bookmarks/bookmarks.js",
+    "../../shell/dist/welcome/index.html",
+    "../../shell/dist/welcome/welcome.css",
+    "../../shell/dist/welcome/welcome.js",
     "../../shell/dist/shell/mobile/index.html",
     "../../shell/dist/shell/mobile/mobile.css",
     "../../shell/dist/shell/mobile/mobile.js",
@@ -195,6 +198,9 @@ android_assets("assets") {
     "shell/bookmarks/index.html",
     "shell/bookmarks/bookmarks.css",
     "shell/bookmarks/bookmarks.js",
+    "shell/welcome/index.html",
+    "shell/welcome/welcome.css",
+    "shell/welcome/welcome.js",
     "shell/shell/mobile/index.html",
     "shell/shell/mobile/mobile.css",
     "shell/shell/mobile/mobile.js",

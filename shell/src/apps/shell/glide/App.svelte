@@ -1,6 +1,6 @@
 <script>
   import { tick } from 'svelte';
-  import { activeTab, chooseContextItem, closeContextMenu, connect, contextMenuPoint, focusPage, page, send, setFrame, state as go } from '@/sdk/svelte.svelte.js';
+  import { activeTab, chooseContextItem, closeContextMenu, connect, contextMenuPoint, drag, focusPage, page, send, setFrame, state as go } from '@/sdk/svelte.svelte.js';
   import CommandBar from './CommandBar.svelte';
   import Menu from './Menu.svelte';
   import Panes from './Panes.svelte';
@@ -28,8 +28,10 @@
   let started = $state(false);
   let find = $state();
 
-  // A page in full screen has the whole window: nothing of Glide's shows.
-  const pageFull = $derived(go.pageFullScreen !== 0 && go.pageFullScreen === go.active);
+  // A page in full screen has the whole window: nothing of Glide's shows. So has a first
+  // start's welcome (docs/onboarding.md), but for a strip over its top to move the window by.
+  const welcome = $derived(go.welcome !== 0 && go.welcome === go.active);
+  const pageFull = $derived((go.pageFullScreen !== 0 && go.pageFullScreen === go.active) || welcome);
 
   // Go's right-click menu, in Glide's own: its actions in Go's order, a line between
   // groups, a Space for each workspace to open a link in.
@@ -183,6 +185,7 @@
 <div class="glide" style={tokens} class:dark>
   {#if pageFull}
     <main class="page-full" use:page={go.active}></main>
+    {#if welcome}<div class="welcome-drag" use:drag></div>{/if}
   {:else}
   {#if g.win.hidden}
     <TopBar onaddress={() => openBar('address')} oncopy={copyAddress} />
