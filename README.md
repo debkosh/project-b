@@ -1,7 +1,8 @@
 # Project B
 
-An experiment in how a browser could be built with a better architecture: Go managers, a
-Vue shell and Chromium's content layer (155.0.8059.41, unpatched) behind one engine interface. Apple
+An experiment in how a browser could be built with a better architecture: a web-based shell
+anyone can customise, over a small, safe Go core that owns every decision, and a performant engine,
+Chromium's content layer (155.0.8059.41, unpatched), behind one engine interface. Apple
 silicon Macs, and arm64 Android phones built on the same Mac.
 
 Releases with a DMG and self-update: https://github.com/sudiptadeb/project-b/releases; how one is made: [docs/releasing.md](docs/releasing.md).
