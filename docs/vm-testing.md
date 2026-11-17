@@ -277,6 +277,22 @@ To drive it by hand, with coordinates in points, use deskrig on the VM's target:
     deskrig --target pb-test shot out.png | click X Y | dblclick X Y | drag X1 Y1 X2 Y2 | key cmd+t | type "text"
     deskrig --target pb-test run -- <command>   # inside the VM, in its desktop session
 
+### A throwaway clone, and SIP
+
+Work that changes the VM's system (the default browser, System Settings, other apps installed)
+goes on a clone, never on `pb-test`, which the release runs use. With `TART_HOME=~/PW_TOOLS/macos-vm/tart-home`
+and Tart at `~/PW_TOOLS/macos-vm/bin/tart.app/Contents/MacOS/tart`: `tart clone pb-test <name>`, then
+`deskrig vm create <name>` to make it a target; `deskrig vm delete <name>` after. The clone is
+copy-on-write, so it costs little disk.
+
+SIP is off in `pb-test` and so in its clones, and with SIP off macOS doesn't enforce Full Disk
+Access: any app reads `~/Library/Safari`. A check of a Full Disk Access flow (Safari's import)
+needs SIP on, in a clone. `tart run --recovery <name>`, then Options, Utilities, Terminal:
+`csrutil enable`, answer n to full boot security, sign in as admin/admin, and halt. deskrig still
+drives the VM with SIP on (screen recording, accessibility and input stay granted); only its own
+Full Disk Access goes. In recovery's Terminal deskrig's `type` drops spaces: send `key space`
+between words.
+
 ## Pictures
 
 The VM runs in a window on this Mac's desktop, and `deskrig frames` keeps that window's latest
