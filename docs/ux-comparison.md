@@ -67,6 +67,11 @@ Before the comparison, three faults in 0.2.74. They come before anything below.
 Size: **S** is about a day, **M** a few days, **L** a week or more, or engine work. Items
 marked *for the owner* touch something he decided or listed for discussion.
 
+**Done:** items 1 to 10, in 0.2.76 and 0.2.77, and printing (15) in 0.2.76. One part of 9
+is left: asking for the phone's notification permission with a reason first. Items 11 to 20
+wait in [todo.md](todo.md) for the owner, and the first run (13) is being designed as our
+own page.
+
 | # | What | Why | Who does it well | Size |
 |---|---|---|---|---|
 | 1 | Fix the two crashes and the wrong error message above | A crash on Quit is the last thing a user sees. A wrong error sends them to check their Wi-Fi | — | M |
