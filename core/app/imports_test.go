@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"projectb/app"
 	"projectb/bookmarks"
@@ -36,7 +37,7 @@ func TestBringingThingsOverFromAnotherBrowser(t *testing.T) {
 	for _, b := range list {
 		titles = append(titles, b.(map[string]any)["title"].(string))
 	}
-	if len(titles) != 3 || titles[0] != "Chrome · Personal" || titles[2] != "Firefox · default-release" {
+	if len(titles) != 4 || titles[0] != "Chrome · Personal" || titles[2] != "Firefox · default-release" || titles[3] != "Safari" {
 		t.Fatalf("found %q", titles)
 	}
 	counts := list[0].(map[string]any)["counts"].(map[string]any)
@@ -94,5 +95,73 @@ func TestBringingThingsOverFromAnotherBrowser(t *testing.T) {
 	again := next(t, got, "imported")["imported"].(map[string]any)["bookmarks"].(map[string]any)
 	if again["bookmarks"] != 0.0 || again["skipped"] != 4.0 {
 		t.Fatalf("again: %v", again)
+	}
+}
+
+// Safari's files are behind Full Disk Access: until the app has it, Safari's row is locked,
+// with nothing counted, and can't be brought over. Once a page has opened System Settings,
+// Go tries the files each second and, when they can be read, looks again: the row opens,
+// and brings Safari's bookmarks into From Safari and Ecosia as the search engine. A folder
+// with no permissions stands in for macOS's refusal.
+func TestSafariWaitsForFullDiskAccess(t *testing.T) {
+	dir := t.TempDir()
+	home := t.TempDir()
+	if err := os.CopyFS(home, os.DirFS("../../browserdata/testdata/home")); err != nil {
+		t.Fatal(err)
+	}
+	safari := filepath.Join(home, "Library/Safari")
+	if err := os.Chmod(safari, 0); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chmod(safari, 0o755)
+	r := startWith(t, app.Config{ProfileDir: dir, Profiles: profiles.New(t.TempDir()), Made: true, BrowserHome: home, Update: update.Config{StateDir: filepath.Join(dir, "updates")}})
+	snap := r.waitFor(func(m map[string]any) bool { return m["t"] == "snapshot" })
+	tab := engine.TabID(snap["welcome"].(float64))
+	got, stop := r.e.PageFeed(tab).Subscribe()
+	defer stop()
+	say := func(msg string) { r.e.Post(func() { r.a.PageMessage(tab, "welcome", []byte(msg)) }) }
+	say(`{"t":"ready"}`)
+	next(t, got, "snapshot")
+	safariRow := func(list []any) map[string]any {
+		for _, b := range list {
+			if b := b.(map[string]any); b["key"] == "safari/Safari" {
+				return b
+			}
+		}
+		t.Fatalf("no Safari in %v", list)
+		return nil
+	}
+	say(`{"t":"findBrowsers"}`)
+	row := safariRow(next(t, got, "browsers")["browsers"].([]any))
+	if row["locked"] != true || row["counts"].(map[string]any)["bookmarks"] != 0.0 {
+		t.Fatalf("Safari's row, without access: %v", row)
+	}
+	say(`{"t":"import","key":"safari/Safari","what":["bookmarks"]}`)
+	say(`{"t":"openAccess"}`)
+	// The import was refused: nothing is being brought over.
+	select {
+	case b := <-got:
+		t.Fatalf("a locked row was brought over, or the list sent before access: %s", b)
+	case <-time.After(1500 * time.Millisecond):
+	}
+	os.Chmod(safari, 0o755)
+	row = safariRow(next(t, got, "browsers")["browsers"].([]any))
+	if row["locked"] != nil || row["counts"].(map[string]any)["bookmarks"] != 4.0 || row["title"] != "Safari" {
+		t.Fatalf("Safari's row, with access: %v", row)
+	}
+	say(`{"t":"import","key":"safari/Safari","what":["bookmarks","history","search"]}`)
+	next(t, got, "importing")
+	b, _ := json.Marshal(next(t, got, "imported")["imported"])
+	var brought struct {
+		Bookmarks bookmarks.Imported
+		Folder    string
+		Pages     int
+		Search    string
+		Errors    []string
+	}
+	json.Unmarshal(b, &brought)
+	// From Safari, Favorites, Recipes and Reading List.
+	if brought.Bookmarks != (bookmarks.Imported{Bookmarks: 4, Folders: 4}) || brought.Folder != "From Safari" || brought.Pages != 2 || brought.Search != "ecosia" || len(brought.Errors) != 0 {
+		t.Fatalf("brought over %s", b)
 	}
 }

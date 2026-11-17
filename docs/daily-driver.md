@@ -22,8 +22,9 @@ new tab page (Standard's box and the Mobile web shell, which reaches History and
 from it). The list with owners is
 [daily-use.md](daily-use.md).
 
-Bringing bookmarks, history and the search engine over from Chrome, Edge, Brave, Arc and
-Firefox, in the welcome and Settings' Import ([onboarding.md](onboarding.md#built)).
+Bringing bookmarks, history and the search engine over from Chrome, Edge, Brave, Arc,
+Firefox and Safari (once the app has Full Disk Access), in the welcome and Settings' Import
+([onboarding.md](onboarding.md#built)).
 
 **Planned**, decided and not started ([todo.md](todo.md#daily-driver)): bookmarks in the
 address bar's suggestions as you type.

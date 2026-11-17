@@ -1,10 +1,14 @@
 // Bringing things over from another browser on the mock engine (docs/onboarding.md), from
-// browserdata's test home: a Chrome of two profiles and a Firefox of one. The welcome's
-// Bring your things over lists them, a row turned on shows what it brings, and Bring over
-// brings Chrome · Personal's bookmarks into a folder of their own, its history and its
-// search engine, then says what came. Settings' Import lists the same, with what was
-// brought, and its Import… dialog brings Firefox's bookmarks alone. A start whose home has
-// no browser has no such step.
+// a copy of browserdata's test home: a Chrome of two profiles, a Firefox of one and a
+// Safari, whose folder has no permissions, as macOS's Full Disk Access refuses it. The
+// welcome's Bring your things over lists them, a row turned on shows what it brings, and
+// Bring over brings Chrome · Personal's bookmarks into a folder of their own, its history
+// and its search engine, then says what came. Safari's row, turned on, shows how to give
+// the access, and Not now goes back. Settings' Import lists the same, with what was
+// brought; Safari's Allow access… dialog turns into its choices once its folder can be
+// read, and brings its bookmarks; its Import… dialog brings Firefox's bookmarks alone. A
+// welcome waiting on the access comes back with Safari's row on once it is given. A start
+// whose home has no browser has no such step.
 // Run: node shell/e2e/imports.cjs   (from the repo root, after `npm run build` in shell/)
 
 const fs = require('fs');
@@ -23,20 +27,39 @@ const read = (name) => {
 };
 const folders = () => (read('bookmarks.json')?.entries || []).filter((e) => e.kind === 'folder' && e.parent === '').map((e) => e.title);
 
+// The test home, copied, with Safari locked until unlock.
+const home = path.join(lib.profile, '..', 'browsers');
+fs.cpSync(lib.browsers, home, { recursive: true });
+const safari = path.join(home, 'Library/Safari');
+const lock = () => fs.chmodSync(safari, 0);
+const unlock = () => fs.existsSync(safari) && fs.chmodSync(safari, 0o755);
+process.on('exit', unlock);
+
 (async () => {
   const browser = await chromium.launch();
 
   flags({ showWelcome: 'on' });
-  await lib.start(['-use=standard', `-browsers=${lib.browsers}`]);
+  lock();
+  await lib.start(['-use=standard', `-browsers=${home}`]);
   let w = await lib.openWindow(browser, { viewport: { width: 1280, height: 800 } });
   const welcome = w.page.frameLocator('iframe.our-page[data-page="welcome"]');
   await welcome.getByRole('button', { name: 'Get started' }).click();
   check('Get started goes to Bring your things over', await until(() => welcome.getByRole('heading', { name: 'Bring your things over' }).isVisible()));
   const rows = welcome.getByRole('switch', { name: /^Bring over from / });
-  check('a row for each profile found', await until(async () => (await rows.count()) === 3));
+  check('a row for each profile found', await until(async () => (await rows.count()) === 4));
   check('each says what it holds', await welcome.getByText('4 bookmarks · 3 pages · Bing for search').isVisible());
-  // Chrome's and Firefox's logos ship with us: the test home has neither app.
-  check('each row shows its browser\'s logo', await until(async () => (await welcome.locator('img.ui-browser-icon').evaluateAll((imgs) => imgs.filter((i) => i.complete && i.naturalWidth > 0).length)) === 3));
+  check('Safari\'s says it needs Full Disk Access', await welcome.getByText('Needs Full Disk Access, in System Settings').isVisible());
+  // Chrome's and Firefox's logos ship with us: the test home has neither app. Safari's is
+  // the app's own, which every Mac has.
+  check('each row shows its browser\'s logo', await until(async () => (await welcome.locator('img.ui-browser-icon').evaluateAll((imgs) => imgs.filter((i) => i.complete && i.naturalWidth > 0).length)) === 4));
+  await welcome.getByRole('switch', { name: 'Bring over from Safari' }).click();
+  check('Safari\'s row turned on shows how to give the access', await until(() => welcome.getByRole('heading', { name: "Allow Safari's things" }).isVisible()));
+  check('and opens System Settings at Full Disk Access', await until(() => lib.log.includes('imports: opening System Settings at Full Disk Access')));
+  check('it waits for the access', await welcome.getByRole('status').getByText('Waiting for access…').isVisible());
+  await settle(w.page);
+  await w.page.screenshot({ path: path.join(lib.out, 'welcome-allow.png') });
+  await welcome.getByRole('button', { name: 'Not now' }).click();
+  check('Not now goes back, with Safari\'s row off', await until(() => welcome.getByRole('heading', { name: 'Bring your things over' }).isVisible()) && !(await welcome.getByRole('switch', { name: 'Bring over from Safari' }).isChecked()));
   check('with no row on, the way on is Continue', await welcome.getByRole('button', { name: 'Continue' }).isVisible());
   await welcome.getByRole('switch', { name: 'Bring over from Chrome · Personal' }).check();
   const boxes = welcome.getByRole('group', { name: 'What to bring over from Chrome · Personal' }).getByRole('checkbox');
@@ -66,6 +89,21 @@ const folders = () => (read('bookmarks.json')?.entries || []).filter((e) => e.ki
   await w.settings.getByRole('button', { name: 'Import', exact: true }).click();
   check('Import lists the profiles, each with Import…', await until(async () => (await w.settings.getByRole('button', { name: /^Import from / }).count()) === 3));
   check('and says what Chrome · Personal brought', await w.settings.getByText('Brought over today: 4 bookmarks, 3 pages, Bing').isVisible());
+
+  // Safari, locked: Allow access… shows how, and the choices once its folder can be read.
+  await w.settings.getByRole('button', { name: 'Allow access to Safari' }).click();
+  const allow = w.settings.getByRole('dialog', { name: "Allow Safari's things" });
+  check('Allow access… shows how to give it', await until(() => allow.isVisible()));
+  await settle(w.page);
+  await w.page.screenshot({ path: path.join(lib.out, 'settings-allow.png') });
+  unlock();
+  const fromSafari = w.settings.getByRole('dialog', { name: 'Import from Safari' });
+  check('once given, the dialog asks what to bring, all ticked', await until(async () => (await fromSafari.isVisible()) && (await fromSafari.getByRole('checkbox').count()) === 3));
+  await fromSafari.getByRole('checkbox', { name: /History/ }).uncheck();
+  await fromSafari.getByRole('checkbox', { name: /Search engine/ }).uncheck();
+  await fromSafari.getByRole('button', { name: 'Import', exact: true }).click();
+  const sf = w.settings.getByRole('list', { name: 'Brought over from Safari' });
+  check('Safari\'s bookmarks come over, its Reading List too', await until(async () => (await sf.innerText().catch(() => '')).includes('4 bookmarks, in 4 folders, under From Safari')), await sf.innerText().catch(() => ''));
   await w.settings.getByRole('button', { name: 'Import from Firefox · default-release' }).click();
   const dialog = w.settings.getByRole('dialog', { name: 'Import from Firefox · default-release' });
   check('Import… asks what to bring, all ticked', await until(() => dialog.isVisible()) && (await dialog.getByRole('checkbox').count()) === 3);
@@ -76,9 +114,25 @@ const folders = () => (read('bookmarks.json')?.entries || []).filter((e) => e.ki
   await dialog.getByRole('button', { name: 'Import', exact: true }).click();
   const fx = w.settings.getByRole('list', { name: 'Brought over from Firefox · default-release' });
   check('it brings the bookmarks alone', await until(async () => (await fx.innerText().catch(() => '')).includes('2 bookmarks, in 4 folders, under From Firefox')), await fx.innerText().catch(() => ''));
-  check('into From Firefox, after Chrome\'s', JSON.stringify(folders()) === JSON.stringify(['From Chrome · Personal', 'From Firefox']), JSON.stringify(folders()));
+  check('into From Firefox, after the others', JSON.stringify(folders()) === JSON.stringify(['From Chrome · Personal', 'From Safari', 'From Firefox']), JSON.stringify(folders()));
   check('and no history', read('imports.json')?.['firefox/test.default-release']?.pages === 0);
   check('Settings logged no errors', w.errors.length === 0, w.errors.join(' | '));
+  await w.page.close();
+  await lib.stop();
+
+  // A welcome waiting on the access: once it is given, back to the list, Safari's row on.
+  lock();
+  await lib.start(['-use=standard', `-browsers=${home}`]);
+  w = await lib.openWindow(browser, { viewport: { width: 1280, height: 800 } });
+  const waiting = w.page.frameLocator('iframe.our-page[data-page="welcome"]');
+  await waiting.getByRole('button', { name: 'Get started' }).click();
+  await until(() => waiting.getByRole('switch', { name: 'Bring over from Safari' }).isVisible());
+  await waiting.getByRole('switch', { name: 'Bring over from Safari' }).click();
+  await until(() => waiting.getByRole('heading', { name: "Allow Safari's things" }).isVisible());
+  unlock();
+  check('given the access, the welcome comes back to the list', await until(() => waiting.getByRole('heading', { name: 'Bring your things over' }).isVisible()));
+  check('with Safari\'s row on and what it brings', (await waiting.getByRole('switch', { name: 'Bring over from Safari' }).isChecked()) && (await waiting.getByText('4 bookmarks · 2 pages · Ecosia for search').isVisible()) && (await waiting.getByRole('group', { name: 'What to bring over from Safari' }).getByRole('checkbox').count()) === 3);
+  check('the waiting welcome logged no errors', w.errors.length === 0, w.errors.join(' | '));
   await w.page.close();
   await lib.stop();
 

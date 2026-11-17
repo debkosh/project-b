@@ -2,8 +2,8 @@
 
 What a new user sees on the first start, and how they bring their things over from another
 browser. Item 13 of the [UX comparison](ux-comparison.md#what-to-do-ranked). Mocks approved
-2026-11-17. Slice 1 went out in 0.2.78 and slice 2 in 0.2.80; **slice 3, the importers, is
-built** (see [Built](#built)).
+2026-11-17. Slice 1 went out in 0.2.78, slice 2 in 0.2.80 and slice 3 in 0.2.81; **slice 4,
+Safari, is built** (see [Built](#built)).
 
 The owner, 2026-11-17: "if we are missing features then we add those but the onboarding needs to
 be nice and thats not shell its our internal page". So it is a page of ours in a tab, as Settings
@@ -110,7 +110,7 @@ closes the app for the next start to open the welcome whole (see Built).
 | Importers: the Chromium family (Chrome, Edge, Brave, Arc), Firefox, with each browser's own icon: bookmarks, history and the search engine, built | `browserdata`, a module of its own (below); the welcome's Bring your things over; Settings' Import | 3 |
 | History import, built | `core/history` | 3 |
 | Open tabs, as a workspace named after the browser | `browserdata`: Chromium's session files, Arc's sidebar, Firefox's session store | not yet given one |
-| Safari, behind Full Disk Access | the same package | 4 |
+| Safari, behind Full Disk Access: bookmarks, history and the search engine, built | `browserdata` (`safari.go`, `plist.go`); the welcome's and Settings' Allow access | 4 |
 | Passwords | the store is the daily driver session's (`core/passwords`, `Import([]Login)`); the importers hand logins to it. Chromium's are sealed with the Keychain's "<Browser> Safe Storage" key, which macOS asks about once per browser; Firefox's with `key4.db` | 5 |
 | Extensions reinstalled by id | the Web Store install path, while their flag is on | 5 |
 
@@ -227,6 +227,57 @@ Each slice goes out through a release of its own.
   said. No real Chrome or Firefox was on hand, so their own files and logos are untried.
 - **Not yet:** open tabs, passwords (slice 5), extensions (slice 5) and Safari (slice 4).
 
+**Slice 4, Safari** (branch `safari`):
+
+- **Safari's row** is in the list on every Mac whose user has opened Safari, as
+  `~/Library/Safari` is there; macOS keeps what is in it behind Full Disk Access, so until
+  the app has that the row is locked: "Needs Full Disk Access, in System Settings", nothing
+  counted. `Profile.Locked` tries to list the folder; macOS refuses with "operation not
+  permitted".
+- **Turned on in the welcome** ([shot](../build/e2e/welcome-allow.png)), the row opens
+  System Settings at Privacy & Security › Full Disk Access and the step shows how, as the
+  approved mock: a picture of the switch, the steps, and "Waiting for access…" with Open
+  System Settings to open it again. Go tries Safari's folder each second from then, for ten
+  minutes, and looks again once it can be read: the step comes back to the list with
+  Safari's row on and its choices ticked. Back and Not now go back to the list, the row off.
+- **Settings' Import** has Allow access… on Safari's row in place of Import…; its dialog
+  shows the same, and turns into Import from Safari's choices once the access is given
+  ([shot](../build/e2e/settings-allow.png)).
+- **What macOS does,** found in a VM clone with SIP on (pb-safari, 2026-11-17): an app that
+  has tried Safari's files is listed in Full Disk Access by itself, switched off, so "Turn
+  on Project B" is all there is to find. Turning it on asks for the Mac's password, then
+  macOS says the app "will not have full disk access until it is quit", with Quit & Reopen
+  and Later. It has it at once: the running app read Safari's files about eight seconds
+  after the switch, without a restart. So the steps say to choose Later, and the page goes
+  on by itself. A VM with SIP off doesn't enforce Full Disk Access at all.
+- **Bookmarks** come from `Bookmarks.plist`, a binary property list, which `plist.go` reads
+  (Go's standard library has no reader for one): Favorites (`BookmarksBar`), Bookmarks Menu
+  and the Reading List, each a folder under From Safari, as Safari names them; its History
+  proxy isn't a bookmark. Safari's own starting Favorites (Apple, iCloud, Yahoo and the
+  rest) come with them, as they are bookmarks like any other.
+- **History** from `History.db`: each page's visit count, its last visit, and the title of
+  its last visit that had one. Times are seconds since 2001.
+- **The search engine** is macOS's own choice, `NSPreferredWebServices` in the global
+  preferences, which Safari has used since it moved its choice there; Google until one is
+  picked. Its passwords are in iCloud Keychain, which no other app can read.
+- **Messages:** a page sends `openAccess`; Go opens System Settings
+  (`engine.OpenFullDiskAccess`, `open` with the pane's `x-apple.systempreferences` address)
+  and starts trying. A row from Go has `locked` while it is.
+- **Testing it:** the test home has a Safari (`make.sh` writes its files with Python's
+  `plistlib` and Safari's own tables); a folder with no permissions stands in for macOS's
+  refusal. `browserdata` (`TestSafariIsLockedUntilItsFolderCanBeRead`, `TestBplist`),
+  `core/app` (`TestSafariWaitsForFullDiskAccess`) and `shell/e2e/imports.cjs`, which locks
+  and unlocks its copy of the home. The reader was also run on this Mac's own Safari
+  history and on a fresh VM's bookmarks, and over every binary property list in
+  `~/Library/Preferences` (284, all read).
+- **Checked in the real app** in pb-safari with SIP on, on a fresh `--root`: Get started
+  showed Safari's row locked; turning it on opened System Settings at Full Disk Access with
+  Project B listed, off; turning that on (the password, then Later) brought the welcome
+  back to the list by itself, Safari's row on with 13 bookmarks, 1 page and Google; Bring
+  over brought 13 bookmarks in 2 folders under From Safari, the page and Google, as
+  `imports.json` said. Safari in `/Applications` is a link into the system's Cryptexes, so
+  `Icon` draws the app the link points to, without the alias arrow a link's icon has.
+
 ## The importer, a module of its own
 
 Reading another browser's data is the Go module `browserdata/` at the repo's root, with its
@@ -236,8 +287,8 @@ reads; what to do with what it finds is the app's.
 
 - **What it finds:** `Find()` lists the browsers installed and each one's profiles, with the
   folder, the profile's name, the icon's path and counts. Chrome, Edge, Brave and Arc share
-  Chromium's files; Firefox has its own; Safari's need Full Disk Access, and `Find` says so
-  instead of failing.
+  Chromium's files; Firefox has its own; Safari's need Full Disk Access, and a profile's
+  `Locked` says so instead of failing.
 - **What it reads,** in plain types of its own: the bookmark tree with folders, history visits
   with their times, open and pinned tabs (Arc's Spaces as groups), the default search engine,
   extension ids, and saved logins.

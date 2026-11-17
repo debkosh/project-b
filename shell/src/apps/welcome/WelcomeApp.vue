@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch, watchEffect } from 'vue';
 import { paintTheme } from '@/theme.js';
+import AllowAccess from '@/ui/AllowAccess.vue';
 import BrowserIcon from '@/ui/BrowserIcon.vue';
 import ImportChoices from '@/ui/ImportChoices.vue';
 import { broughtLines, choicesOf, holds } from '@/ui/imports.js';
@@ -34,11 +35,26 @@ watch(steps, (s) => {
 
 // Bring your things over: the rows turned on, by key, each with what is ticked in it, all
 // it holds at first. Bring over sends each, and the step then shows what each brought.
+// A locked row, Safari's, turned on asks for Full Disk Access first: the step shows how to
+// give it and opens System Settings, then comes back with the row on once Go can read it.
 const chosen = reactive({});
+const allowing = ref(null);
 function choose(p, on) {
-  if (on) chosen[p.key] = choicesOf(p).map((c) => c.id);
+  if (on && p.locked) {
+    allowing.value = p;
+    send({ t: 'openAccess' });
+  } else if (on) chosen[p.key] = choicesOf(p).map((c) => c.id);
   else delete chosen[p.key];
 }
+watch(
+  () => state.browsers,
+  (list) => {
+    const p = allowing.value && list?.find((b) => b.key === allowing.value.key);
+    if (!p || p.locked) return;
+    allowing.value = null;
+    choose(p, true);
+  },
+);
 const picked = computed(() => Object.keys(chosen).filter((k) => chosen[k].length));
 const brought = ref([]);
 function bringOver() {
@@ -88,7 +104,7 @@ if (!reduced) setInterval(() => (turn.value = (turn.value + 1) % cycle.length), 
 
 // Focus goes to each step's heading, so a screen reader reads where it is.
 const heading = ref(null);
-watch([step, brought], () => setTimeout(() => heading.value?.focus(), 0));
+watch([step, brought, allowing], () => setTimeout(() => heading.value?.focus(), 0));
 onMounted(() => heading.value?.focus());
 </script>
 
@@ -117,7 +133,12 @@ onMounted(() => heading.value?.focus());
       <!-- Bring your things over: each other browser's profile, turned on to choose what
            comes, then what each brought. -->
       <section v-else-if="step === 'bring'" class="bring" aria-labelledby="bring">
-        <template v-if="!brought.length">
+        <template v-if="allowing">
+          <h1 id="bring" ref="heading" tabindex="-1">Allow {{ allowing.title }}'s things</h1>
+          <p class="sub">macOS keeps {{ allowing.title }}'s files behind Full Disk Access.</p>
+          <AllowAccess class="allow" @open="send({ t: 'openAccess' })" />
+        </template>
+        <template v-else-if="!brought.length">
           <h1 id="bring" ref="heading" tabindex="-1">Bring your things over</h1>
           <p class="sub">Found on this Mac. Nothing leaves it.</p>
           <div class="card">
@@ -136,7 +157,7 @@ onMounted(() => heading.value?.focus());
                   :aria-label="`Bring over from ${p.title}`"
                   :checked="!!chosen[p.key]"
                   :aria-checked="String(!!chosen[p.key])"
-                  :disabled="!choicesOf(p).length"
+                  :disabled="!p.locked && !choicesOf(p).length"
                   @change="choose(p, $event.target.checked)"
                 />
               </label>
@@ -267,11 +288,14 @@ onMounted(() => heading.value?.focus());
 
     <!-- The way through: where it is, back, and on. -->
     <footer v-if="state.ready && step !== 'hello' && step !== 'done'" class="nav">
-      <button type="button" class="text-button quiet" @click="go(-1)">Back</button>
+      <button type="button" class="text-button quiet" @click="allowing ? (allowing = null) : go(-1)">Back</button>
       <ol class="dots" aria-label="Steps">
         <li v-for="(s, i) in steps" :key="s" :class="{ on: i === at }" :aria-current="i === at ? 'step' : undefined"></li>
       </ol>
-      <div class="ahead">
+      <div v-if="allowing" class="ahead">
+        <button type="button" class="text-button quiet" @click="allowing = null">Not now</button>
+      </div>
+      <div v-else class="ahead">
         <button type="button" class="text-button quiet" @click="finish">Skip setup</button>
         <button v-if="step === 'bring' && !brought.length && picked.length" type="button" class="text-button primary" @click="bringOver">Bring over</button>
         <button v-else type="button" class="text-button primary" @click="go(1)">Continue</button>
@@ -614,6 +638,10 @@ h1 {
 }
 
 /* Bring your things over: a row for each profile, turned on to open what it brings. */
+.bring .allow {
+  max-width: 640px;
+}
+
 .bring .card {
   max-width: 640px;
   overflow: hidden;

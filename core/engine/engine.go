@@ -252,6 +252,10 @@ type Engine interface {
 	// does nothing.
 	AskNotifications()
 	NotificationsAllowed() bool
+	// OpenFullDiskAccess opens the Mac's System Settings at Privacy & Security's Full Disk
+	// Access, where the person can let the app read what macOS keeps behind it, as Safari's
+	// files. Nothing says when they have: reading again does. A phone has no such thing.
+	OpenFullDiskAccess()
 	ThumbnailURL(tab TabID, revision int64) string
 	// ExitPageFullScreen takes a tab's page out of full screen, as its own
 	// exitFullscreen() would; PageFullScreen follows.

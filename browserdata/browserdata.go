@@ -3,8 +3,9 @@
 // search engine. It only reads, each database from a copy, as the browser may have it open;
 // what to do with what it finds is the caller's.
 //
-// Chrome, Edge, Brave and Arc share Chromium's files; Firefox has its own. SQLite is macOS's
-// own libsqlite3, so nothing is fetched to build it.
+// Chrome, Edge, Brave and Arc share Chromium's files; Firefox and Safari have their own,
+// and Safari's are behind Full Disk Access. SQLite is macOS's own libsqlite3, so nothing is
+// fetched to build it.
 package browserdata
 
 import (
@@ -24,11 +25,12 @@ type Browser struct {
 	Profiles []Profile `json:"profiles"`
 }
 
-// Profile is one profile of a browser: the browser's id, the profile's folder and its name.
+// Profile is one profile of a browser: the browser's id, the profile's folder and its name,
+// none for a browser of one profile, as Safari is.
 type Profile struct {
 	Browser string `json:"browser"`
 	Dir     string `json:"dir"`
-	Name    string `json:"name"`
+	Name    string `json:"name,omitempty"`
 }
 
 // Bookmark is a bookmark, or a folder, which has no URL, with what it holds.
@@ -67,16 +69,17 @@ type Counts struct {
 // ErrNotOnThisSystem is what a read that needs macOS returns elsewhere.
 var ErrNotOnThisSystem = errors.New("browserdata: not on this system")
 
-// family is how a browser keeps its profiles: Chromium's files or Firefox's.
+// family is how a browser keeps its profiles: Chromium's files, Firefox's or Safari's.
 type family int
 
 const (
 	chromium family = iota
 	firefox
+	safari
 )
 
-// kind is a browser this package knows: where its data is under Application Support, its
-// app's name, and the search engine it has until its person picks one.
+// kind is a browser this package knows: where its data is under Application Support (Safari's
+// is in Library), its app's name, and the search engine it has until its person picks one.
 type kind struct {
 	id, name, data, app string
 	family              family
@@ -95,6 +98,7 @@ var kinds = []kind{
 	{id: "brave", name: "Brave", data: "BraveSoftware/Brave-Browser", app: "Brave Browser.app", family: chromium, search: brave},
 	{id: "arc", name: "Arc", data: "Arc/User Data", app: "Arc.app", family: chromium, search: google},
 	{id: "firefox", name: "Firefox", data: "Firefox", app: "Firefox.app", family: firefox, search: google},
+	{id: "safari", name: "Safari", app: "Safari.app", family: safari, search: google},
 }
 
 func kindOf(id string) (kind, bool) {
@@ -119,6 +123,8 @@ func Find(home string) []Browser {
 			profiles = chromiumProfiles(k.id, dir)
 		case firefox:
 			profiles = firefoxProfiles(dir)
+		case safari:
+			profiles = safariProfiles(home)
 		}
 		if len(profiles) == 0 {
 			continue
@@ -144,9 +150,12 @@ func (p Profile) Bookmarks() ([]Bookmark, error) {
 	}
 	var roots []Bookmark
 	var err error
-	if k.family == firefox {
+	switch k.family {
+	case firefox:
 		roots, err = firefoxBookmarks(p.Dir)
-	} else {
+	case safari:
+		roots, err = safariBookmarks(p.Dir)
+	default:
 		roots, err = chromiumBookmarks(p.Dir)
 	}
 	var kept []Bookmark
@@ -164,13 +173,17 @@ func (p Profile) History() ([]Page, error) {
 	if !ok {
 		return nil, errors.New("browserdata: no browser " + p.Browser)
 	}
-	if k.family == firefox {
+	switch k.family {
+	case firefox:
 		return firefoxHistory(p.Dir)
+	case safari:
+		return safariHistory(p.Dir)
 	}
 	return chromiumHistory(p.Dir)
 }
 
 // Search is the profile's search engine: the one chosen, or the browser's own until one is.
+// One this package has no address for has its name alone.
 func (p Profile) Search() (Search, error) {
 	k, ok := kindOf(p.Browser)
 	if !ok {
@@ -178,12 +191,15 @@ func (p Profile) Search() (Search, error) {
 	}
 	var s Search
 	var err error
-	if k.family == firefox {
+	switch k.family {
+	case firefox:
 		s, err = firefoxSearch(p.Dir)
-	} else {
+	case safari:
+		s, err = safariSearch(p.Dir)
+	default:
 		s, err = chromiumSearch(p.Dir)
 	}
-	if s.URL == "" && err == nil {
+	if s.Name == "" && err == nil {
 		s = k.search
 	}
 	return s, err
@@ -211,9 +227,12 @@ func (p Profile) Counts() (Counts, error) {
 	k, _ := kindOf(p.Browser)
 	var n int
 	var herr error
-	if k.family == firefox {
+	switch k.family {
+	case firefox:
 		n, herr = firefoxPages(p.Dir)
-	} else {
+	case safari:
+		n, herr = safariPages(p.Dir)
+	default:
 		n, herr = chromiumPages(p.Dir)
 	}
 	c.Pages = n

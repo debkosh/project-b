@@ -29,12 +29,18 @@ import "C"
 
 import (
 	"errors"
+	"path/filepath"
 	"unsafe"
 )
 
 // Icon is the icon macOS shows for the app at path, px pixels square, as a PNG: the
 // browser's own logo, read from the app installed, so none of it ships with the caller.
 func Icon(path string, px int) ([]byte, error) {
+	// Safari in /Applications is a link into the system's Cryptexes, and a link's icon has
+	// the alias arrow on it: the app's own has none.
+	if real, err := filepath.EvalSymlinks(path); err == nil {
+		path = real
+	}
 	cpath := C.CString(path)
 	defer C.free(unsafe.Pointer(cpath))
 	var n C.int

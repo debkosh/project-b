@@ -253,7 +253,7 @@ How they work is in [site-features.md](site-features.md).
 What a browser needs to be used all day ([daily-driver.md](daily-driver.md)).
 
 - **Bookmarks, next steps.** Bookmarks among the address bar's suggestions. Folders and
-  import from Chrome, Edge, Brave, Arc and Firefox are built
+  import from Chrome, Edge, Brave, Arc, Firefox and Safari are built
   ([bookmark-folders.md](bookmark-folders.md), [onboarding.md](onboarding.md#built)); a
   bookmarks bar waits on the owner.
 - **A star on a phone.** The Mobile shells reach History and Bookmarks from a new tab, but

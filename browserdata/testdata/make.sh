@@ -1,7 +1,7 @@
 #!/bin/bash
-# Makes testdata/home: a home folder with a Chrome of two profiles and a Firefox of one, in
-# the browsers' own formats, for this package's tests and the app's (shell/e2e). Run it again
-# after changing it; the files it makes are kept in git.
+# Makes testdata/home: a home folder with a Chrome of two profiles, a Firefox of one and a
+# Safari, in the browsers' own formats, for this package's tests and the app's (shell/e2e).
+# Run it again after changing it; the files it makes are kept in git.
 set -euo pipefail
 cd "$(dirname "$0")"
 HOME_DIR="$PWD/home"
@@ -112,5 +112,46 @@ else:
         rest -= 255
     length += bytes([rest])
 open(sys.argv[1], "wb").write(b"mozLz40\0" + struct.pack("<I", n) + token + length + data)
+EOF
+# Safari, in Library/Safari: bookmarks in Favorites, a folder and the Reading List, Safari's
+# History proxy that isn't one, an empty Bookmarks Menu; history, with a page not visited
+# and one not on the web; and Ecosia chosen in macOS's preferences. Its History.db has
+# Safari's own tables, as macOS 26 makes them. Times are seconds since 2001.
+S="$HOME_DIR/Library/Safari"
+mkdir -p "$S" "$HOME_DIR/Library/Preferences"
+python3 - "$S/Bookmarks.plist" "$HOME_DIR/Library/Preferences/.GlobalPreferences.plist" <<'EOF'
+import datetime, plistlib, sys
+def leaf(title, url, **more):
+    return {"WebBookmarkType": "WebBookmarkTypeLeaf", "URLString": url, "URIDictionary": {"title": title}, **more}
+def folder(title, children):
+    return {"WebBookmarkType": "WebBookmarkTypeList", "Title": title, "Children": children}
+added = datetime.datetime(2026, 11, 1, 12, 0, 0)
+plistlib.dump({"WebBookmarkFileVersion": 1, "Children": [
+    {"WebBookmarkType": "WebBookmarkTypeProxy", "Title": "History", "WebBookmarkIdentifier": "History"},
+    folder("BookmarksBar", [
+        leaf("Apple", "https://www.apple.com/"),
+        folder("Recipes", [leaf("Soup", "https://example.com/soup", dateAdded=added), leaf("Bread", "https://example.com/bread")]),
+    ]),
+    folder("BookmarksMenu", []),
+    folder("com.apple.ReadingList", [leaf("Article", "https://example.com/article", ReadingList={"DateAdded": added})]),
+]}, open(sys.argv[1], "wb"), fmt=plistlib.FMT_BINARY)
+plistlib.dump({"NSPreferredWebServices": {"NSWebServicesProviderWebSearch": {
+    "NSDefaultDisplayName": "Ecosia", "NSProviderIdentifier": "org.ecosia.www"}}},
+    open(sys.argv[2], "wb"), fmt=plistlib.FMT_BINARY)
+EOF
+sqlite3 "$S/History.db" <<'EOF'
+CREATE TABLE history_items (id INTEGER PRIMARY KEY AUTOINCREMENT,url TEXT NOT NULL UNIQUE,domain_expansion TEXT NULL,visit_count INTEGER NOT NULL,daily_visit_counts BLOB NOT NULL,weekly_visit_counts BLOB NULL,autocomplete_triggers BLOB NULL,should_recompute_derived_visit_counts INTEGER NOT NULL,visit_count_score INTEGER NOT NULL,status_code INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE history_visits (id INTEGER PRIMARY KEY AUTOINCREMENT,history_item INTEGER NOT NULL REFERENCES history_items(id) ON DELETE CASCADE,visit_time REAL NOT NULL,title TEXT NULL,load_successful BOOLEAN NOT NULL DEFAULT 1,http_non_get BOOLEAN NOT NULL DEFAULT 0,synthesized BOOLEAN NOT NULL DEFAULT 0,redirect_source INTEGER NULL UNIQUE REFERENCES history_visits(id) ON DELETE CASCADE,redirect_destination INTEGER NULL UNIQUE REFERENCES history_visits(id) ON DELETE CASCADE,origin INTEGER NOT NULL DEFAULT 0,generation INTEGER NOT NULL DEFAULT 0,attributes INTEGER NOT NULL DEFAULT 0,score INTEGER NOT NULL DEFAULT 0);
+INSERT INTO history_items (id, url, domain_expansion, visit_count, daily_visit_counts, should_recompute_derived_visit_counts, visit_count_score) VALUES
+  (1, 'https://example.com/soup', 'example', 3, x'', 0, 300),
+  (2, 'http://example.org/old', 'example', 1, x'', 0, 100),
+  (3, 'file:///Users/test/page.html', NULL, 2, x'', 0, 200),
+  (4, 'https://example.com/never', 'example', 0, x'', 0, 0);
+INSERT INTO history_visits (history_item, visit_time, title) VALUES
+  (1, 815000000.5, 'Soup, first'),
+  (1, 815100000.25, 'Soup'),
+  (1, 815200000.75, ''),
+  (2, 814000000, NULL),
+  (3, 815000000, 'A file');
 EOF
 echo "made $HOME_DIR"

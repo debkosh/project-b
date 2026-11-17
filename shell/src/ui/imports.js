@@ -1,8 +1,9 @@
 // Bringing things over from another browser (docs/onboarding.md): what the welcome's step
 // and Settings' Import say of each profile Go found, and of what it brought over. A profile
-// is {key, browser, title, icon, counts: {bookmarks, folders, pages, search}, last}, last
-// being what it brought over last: {at, bookmarks: {bookmarks, folders, skipped}, folder,
-// pages, search, errors}.
+// is {key, browser, title, icon, locked, counts: {bookmarks, folders, pages, search}, last},
+// last being what it brought over last: {at, bookmarks: {bookmarks, folders, skipped},
+// folder, pages, search, errors}. A locked one, Safari's until the app has Full Disk Access,
+// has nothing counted.
 
 const number = (n) => n.toLocaleString('en');
 const plural = (n, one, many) => `${number(n)} ${n === 1 ? one : many}`;
@@ -20,6 +21,7 @@ export function choicesOf(p) {
 
 // holds is what a profile holds, in a line.
 export function holds(p) {
+  if (p.locked) return 'Needs Full Disk Access, in System Settings';
   const c = p.counts;
   const parts = [c.bookmarks && plural(c.bookmarks, 'bookmark', 'bookmarks'), c.pages && plural(c.pages, 'page', 'pages'), c.search && `${c.search} for search`].filter(Boolean);
   return parts.length ? parts.join(' · ') : 'Nothing to bring over';

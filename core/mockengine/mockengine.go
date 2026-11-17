@@ -781,6 +781,10 @@ func (e *Engine) AskNotifications() {
 	})
 }
 
+// OpenFullDiskAccess opens nothing: a test gives the access itself, by making the files
+// the app reads readable.
+func (e *Engine) OpenFullDiskAccess() {}
+
 // NotificationsAllowed is whether AskNotifications has been answered with yes.
 func (e *Engine) NotificationsAllowed() bool {
 	e.mu.Lock()

@@ -25,6 +25,11 @@ import (
 // them, on a worker; what it read joins the profile here, on the main thread.
 // imports.json in the profile keeps what each profile last brought over, and when.
 // A phone keeps each app's data from the others, so there is nothing to find there.
+//
+// Safari's files are behind macOS's Full Disk Access: its row is locked until the person
+// gives the app that in System Settings, which a page opens with openAccess. Nothing says
+// when they have, so from then Go tries the locked rows' files each second, for ten
+// minutes, and looks again once they can be read.
 
 type importer struct {
 	a    *App
@@ -36,6 +41,8 @@ type importer struct {
 	looking bool
 	// busy are the profiles, by key, whose things are being read.
 	busy map[string]bool
+	// waiting says Go is trying the locked rows' files until they can be read.
+	waiting bool
 	// last is what each profile last brought over, by key.
 	last map[string]broughtOver
 	// send tells every page that shows the list.
@@ -43,12 +50,14 @@ type importer struct {
 }
 
 // foundProfile is a row: a browser's profile, its icon, what it holds, and what it last
-// brought over.
+// brought over. A locked one's files can't be read until the app has Full Disk Access, so
+// it has no counts.
 type foundProfile struct {
 	Key     string             `json:"key"`
 	Browser string             `json:"browser"`
 	Title   string             `json:"title"`
 	Icon    string             `json:"icon,omitempty"`
+	Locked  bool               `json:"locked,omitempty"`
 	Counts  browserdata.Counts `json:"counts"`
 	Last    *broughtOver       `json:"last,omitempty"`
 	// folder is the bookmarks' folder: From Chrome, or From Chrome · Work for a browser
@@ -131,13 +140,18 @@ func (im *importer) look() {
 				}
 			}
 			for _, p := range b.Profiles {
-				c, err := p.Counts()
-				if err != nil {
-					timeline.Warnf("imports: %s, %s: %v", b.Name, p.Name, err)
+				f := foundProfile{Key: b.ID + "/" + filepath.Base(p.Dir), Browser: b.ID, Title: b.Name, Icon: icon, folder: "From " + b.Name, profile: p}
+				if p.Name != "" {
+					f.Title += " · " + p.Name
 				}
-				f := foundProfile{Key: b.ID + "/" + filepath.Base(p.Dir), Browser: b.ID, Title: b.Name + " · " + p.Name, Icon: icon, Counts: c, folder: "From " + b.Name, profile: p}
 				if len(b.Profiles) > 1 {
 					f.folder += " · " + p.Name
+				}
+				if f.Locked = p.Locked(); !f.Locked {
+					var err error
+					if f.Counts, err = p.Counts(); err != nil {
+						timeline.Warnf("imports: %s: %v", f.Title, err)
+					}
 				}
 				found = append(found, f)
 			}
@@ -164,6 +178,10 @@ func (im *importer) handle(t string, msg []byte) bool {
 	switch t {
 	case "findBrowsers":
 		im.look()
+	case "openAccess":
+		timeline.Infof("imports: opening System Settings at Full Disk Access")
+		im.e.OpenFullDiskAccess()
+		im.wait()
 	case "import":
 		var m importMessage
 		if err := json.Unmarshal(msg, &m); err != nil {
@@ -177,6 +195,39 @@ func (im *importer) handle(t string, msg []byte) bool {
 	return true
 }
 
+// wait tries the locked rows' files each second, on a worker, and looks again once none is
+// locked, or gives up after ten minutes.
+func (im *importer) wait() {
+	var locked []browserdata.Profile
+	for _, f := range im.found {
+		if f.Locked {
+			locked = append(locked, f.profile)
+		}
+	}
+	if im.waiting || len(locked) == 0 {
+		return
+	}
+	im.waiting = true
+	go func() {
+		start := time.Now()
+		for time.Since(start) < 10*time.Minute {
+			time.Sleep(time.Second)
+			if !slices.ContainsFunc(locked, browserdata.Profile.Locked) {
+				im.e.Post(func() {
+					im.waiting = false
+					timeline.Infof("imports: Full Disk Access given after %v; looking again", time.Since(start).Round(time.Second))
+					im.look()
+				})
+				return
+			}
+		}
+		im.e.Post(func() {
+			im.waiting = false
+			timeline.Infof("imports: no Full Disk Access after ten minutes; no longer waiting for it")
+		})
+	}()
+}
+
 // read is what was read from a profile, on the worker.
 type read struct {
 	bookmarks []browserdata.Bookmark
@@ -188,8 +239,8 @@ type read struct {
 // bring reads what was asked for from the profile key on a worker, then adds it here.
 func (im *importer) bring(key string, what []string) {
 	i := slices.IndexFunc(im.found, func(f foundProfile) bool { return f.Key == key })
-	if i < 0 || im.busy[key] {
-		timeline.Warnf("imports: %q is not a profile found, or is being brought over", key)
+	if i < 0 || im.busy[key] || im.found[i].Locked {
+		timeline.Warnf("imports: %q is not a profile found, is locked, or is being brought over", key)
 		return
 	}
 	f := im.found[i]
@@ -239,7 +290,7 @@ func (im *importer) add(f foundProfile, r read) {
 		im.a.History.Import(pages)
 		got.Pages = len(pages)
 	}
-	if r.search.URL != "" {
+	if r.search.Name != "" {
 		if e, ok := search.ByAddress(r.search.URL); ok {
 			im.a.Prefs.SetSearchEngine(e.ID)
 			got.Search = e.ID
