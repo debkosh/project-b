@@ -295,6 +295,12 @@ for Go; Backspace takes the selected part away first, and the next answer then c
 nothing, the completing row moving a place down so Enter is what was typed; the arrow keys
 replace it with the row they choose; the first Escape drops it with the list. The row has
 no heading over it, as it is what the field shows. Bookmark rows carry the star.
+Enter takes the first row, or the completion, only while it belongs to the text in the
+field now: the completion shown is that row's rest after what was typed, or the list
+answers what is typed now. Before Go's answer for the latest text, as after fast typing,
+Enter takes what was typed, never a row of the list for an earlier text; a row the arrow
+keys or a click chose is taken as always. Standard's command box takes the same rule from
+0.2.76, and Mobile's field takes a row only at a tap, so its Enter is always what was typed.
 
 **The messages.** As today, `suggest {id, text}` and `suggestions {id, items}`, with two
 additions. The shell names the kinds it draws, `kinds: ["tab", "history", …]`; without it the

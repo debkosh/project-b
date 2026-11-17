@@ -25,6 +25,10 @@ const inline = ref('');
 let deleting = false;
 
 let latestQuery = 0;
+// The text the latest ask was for, and the text the list on screen answers: until Go's
+// answer comes, the list is an earlier text's.
+let asked = '';
+let shownFor = '';
 
 const open = computed(() => focused.value && items.value.length > 0);
 // A site's question about the active tab hangs from the field's start, as the site's own.
@@ -63,6 +67,7 @@ function close() {
 
 function ask() {
   latestQuery = nextQuery();
+  asked = typed.value;
   suggest(latestQuery, typed.value);
 }
 
@@ -154,11 +159,16 @@ function escape() {
 let dropEscape = null;
 onUnmounted(() => dropEscape?.());
 
-// go takes a row of Go's list, the chosen one or the first, which is what Enter does; with
-// no list yet, what was typed.
+// go takes a row of Go's list: one the arrow keys or a click chose (i), or for Enter the
+// first, but only while it belongs to the text in the field now: the completion shown is
+// that row's rest after what was typed, or the list answers what is typed now. Otherwise,
+// as before any list comes, Enter takes what was typed, so a fast typist's Enter never
+// opens a row of the list for an earlier text.
 function go(i = highlight.value) {
-  const row = items.value[i >= 0 ? i : 0];
-  const value = text.value.trim();
+  const completes = !!inline.value && text.value === typed.value + inline.value;
+  const current = completes || shownFor === typed.value;
+  const row = i >= 0 ? items.value[i] : current ? items.value[0] : undefined;
+  const value = (i >= 0 || completes ? text.value : typed.value).trim();
   if (!row && value === '') return;
   edited.value = false;
   close();
@@ -209,6 +219,7 @@ onMounted(() => {
       list = list.length > 1 ? [list[1], { ...first, inline: '' }, ...list.slice(2)] : [{ ...first, inline: '' }];
     }
     items.value = list;
+    shownFor = asked;
     highlight.value = -1;
     // Completed only while the field holds what was typed with the caret at its end, or
     // with the completion still selected after it.

@@ -327,6 +327,44 @@ const { check, fire, regions, settle, until } = lib;
   await page.keyboard.press('Enter');
   check('Enter goes where the field shows', await until(async () => (await current())?.url === 'https://www.wikipedia.test/'), JSON.stringify(await current()));
 
+  // Enter takes a row only while it belongs to the text in the field. Keys and Enter sent
+  // in one go, before Go can answer the new text, as a fast typist's do: the list on screen
+  // is still the earlier text's.
+  const typeAndEnter = (more) => field.evaluate((el, more) => {
+    document.execCommand('insertText', false, more);
+    el.form.requestSubmit();
+  }, more);
+  await field.click();
+  await page.keyboard.type('wikip');
+  await shows('wikipedia.test', 5, 14);
+  await typeAndEnter('edia.example/typed');
+  check('typed past the completion with Enter before Go answers, Enter goes to what was typed, not the earlier first row', await until(async () => (await current())?.url === 'https://wikipedia.example/typed'), JSON.stringify(await current()));
+  // Both hosts are visited now: the field completes the one Go puts first.
+  await field.click();
+  await page.keyboard.type('wikip');
+  const completed = async () => {
+    const [value, start, end] = await shown();
+    return start === 5 && end === value.length && value.length > 5 ? value : '';
+  };
+  await until(completed);
+  const host = await completed();
+  // The key as the browser first offers it, which the field takes to carry the completion
+  // on (execCommand offers none).
+  await field.evaluate((el) => {
+    el.dispatchEvent(new InputEvent('beforeinput', { inputType: 'insertText', data: 'e', cancelable: true, bubbles: true }));
+    el.form.requestSubmit();
+  });
+  check(`a key that carries the completion on, with Enter before Go answers, goes where the field shows, ${host}`, !!host && await until(async () => new URL((await current())?.url || 'about:blank').host.replace(/^www\./, '') === host), JSON.stringify(await current()));
+  await field.click();
+  await page.keyboard.type('bread');
+  await until(async () => (await ui.locator('#suggestions [data-kind=bookmark]').count()) === 1);
+  await field.evaluate((el) => {
+    el.select();
+    document.execCommand('insertText', false, 'b.test/fast');
+    el.form.requestSubmit();
+  });
+  check('with no completion, a first row for an earlier text never takes Enter either', await until(async () => (await current())?.url === 'https://b.test/fast'), JSON.stringify(await current()));
+
   // Bookmarks whose title or address holds the text are rows, with the star.
   await field.click();
   await page.keyboard.type('bread');
