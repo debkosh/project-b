@@ -276,9 +276,11 @@ def lights(img, win):
 def field_middle(img, win, x):
     """The address field's vertical middle in window points: the first run of white at column x.
 
-    Only the first run, because a white page can start right below the field.
+    Only the first run, because a white page can start right below the field. The field is
+    pure white (--surface), and the bar of no colour picked is within 5 of it (BAR), so
+    only white within 2 counts.
     """
-    ys = np.nonzero(near(crop(img, win[0] + x, win[1], 1, 90), WHITE, 6)[:, 0])[0]
+    ys = np.nonzero(near(crop(img, win[0] + x, win[1], 1, 90), WHITE, 2)[:, 0])[0]
     if len(ys) == 0:
         return None
     last = ys[np.argmax(np.diff(ys, append=ys[-1] + 2) > 1)]
