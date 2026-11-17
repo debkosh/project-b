@@ -59,7 +59,7 @@ watchEffect(() => {
           @click="state.section = s.id"
         >{{ s.label }}</button>
       </nav>
-      <main class="content">
+      <main class="content" :class="{ phone }">
         <General v-if="phone" />
         <component :is="section.component" v-else />
       </main>
@@ -137,6 +137,15 @@ body {
 
 .content > * {
   max-width: 720px;
+}
+
+/* With no list of sections at its left, a phone's cards keep the same gutter each side. */
+.content.phone {
+  padding: 8px 16px 32px;
+}
+
+.content.phone > * {
+  max-width: none;
 }
 
 section + section {
