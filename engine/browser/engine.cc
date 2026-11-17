@@ -242,6 +242,11 @@ void CallRevealFile(const char* path) {
   RevealFile(base::FilePath::FromUTF8Unsafe(path));
 }
 
+void CallSaveFile(const char* path) {
+  CheckMainThread();
+  SaveFile(base::FilePath::FromUTF8Unsafe(path));
+}
+
 void CallAnswerDialog(int64_t dialog, int ok, const char* text) {
   CheckMainThread();
   Dialogs::Get()->Answer(dialog, ok, text);
@@ -607,6 +612,7 @@ const PBEngineCalls* Engine::Calls() {
       .send_to_shell = CallSendToShell,
       .set_shell_back = CallSetShellBack,
       .share_file = CallShareFile,
+      .save_file = CallSaveFile,
       .send_to_page = CallSendToPage,
       .set_menu = CallSetMenu,
       .app_command = CallAppCommand,

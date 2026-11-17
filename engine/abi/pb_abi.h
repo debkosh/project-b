@@ -422,6 +422,9 @@ typedef struct PBEngineCalls {
                      double y,
                      double w,
                      double h);
+  // Puts a copy of the file at path in the user's Downloads, as a share sheet may not
+  // save one: the Mac's ~/Downloads, shown in Finder; a phone's shared Downloads.
+  void (*save_file)(const char* path);
   // Delivers one message to the page of ours a tab shows: settings, history, bookmarks or downloads.
   void (*send_to_page)(int64_t tab, const char* json, size_t length);
   // Replaces the native menu bar: json is Go's engine.Menu.

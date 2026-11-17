@@ -16,10 +16,13 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.SystemClock;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.webkit.MimeTypeMap;
+import android.widget.Toast;
 
 import org.chromium.base.ApplicationStatus;
 import org.chromium.base.ContextUtils;
@@ -62,34 +65,56 @@ final class Downloads {
         return guessed != null ? guessed : "application/octet-stream";
     }
 
+    // Copies the file into the shared Downloads under its own name, and answers where it
+    // went, or null.
+    private static Uri copyToShared(File file, String mime) {
+        ContentResolver resolver = ContextUtils.getApplicationContext().getContentResolver();
+        ContentValues values = new ContentValues();
+        values.put(MediaStore.Downloads.DISPLAY_NAME, file.getName());
+        values.put(MediaStore.Downloads.MIME_TYPE, mimeOf(file.getPath(), mime));
+        values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
+        values.put(MediaStore.Downloads.IS_PENDING, 1);
+        Uri uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+        if (uri == null) {
+            Log.w(TAG, "no room in the shared Downloads for " + file.getName());
+            return null;
+        }
+        try (InputStream in = new FileInputStream(file); OutputStream out = resolver.openOutputStream(uri)) {
+            byte[] buf = new byte[64 * 1024];
+            for (int n; (n = in.read(buf)) > 0; ) out.write(buf, 0, n);
+        } catch (Exception e) {
+            Log.w(TAG, "could not copy " + file.getName() + " into the shared Downloads", e);
+            resolver.delete(uri, null, null);
+            return null;
+        }
+        values.clear();
+        values.put(MediaStore.Downloads.IS_PENDING, 0);
+        resolver.update(uri, values, null, null);
+        return uri;
+    }
+
     @CalledByNative
     static void publish(String path, String mime) {
         sCopier.execute(() -> {
             File file = new File(path);
-            ContentResolver resolver = ContextUtils.getApplicationContext().getContentResolver();
-            ContentValues values = new ContentValues();
-            values.put(MediaStore.Downloads.DISPLAY_NAME, file.getName());
-            values.put(MediaStore.Downloads.MIME_TYPE, mimeOf(path, mime));
-            values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
-            values.put(MediaStore.Downloads.IS_PENDING, 1);
-            Uri uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
-            if (uri == null) {
-                Log.w(TAG, "no room in the shared Downloads for " + file.getName());
-                return;
-            }
-            try (InputStream in = new FileInputStream(file); OutputStream out = resolver.openOutputStream(uri)) {
-                byte[] buf = new byte[64 * 1024];
-                for (int n; (n = in.read(buf)) > 0; ) out.write(buf, 0, n);
-            } catch (Exception e) {
-                Log.w(TAG, "could not copy " + file.getName() + " into the shared Downloads", e);
-                resolver.delete(uri, null, null);
-                return;
-            }
-            values.clear();
-            values.put(MediaStore.Downloads.IS_PENDING, 0);
-            resolver.update(uri, values, null, null);
+            Uri uri = copyToShared(file, mime);
+            if (uri == null) return;
             published().edit().putString(path, uri.toString()).apply();
             file.delete();
+        });
+    }
+
+    // A file of ours, such as a crash report, copied into the shared Downloads for the user
+    // to find in the Files app, as Android's share sheet may offer nowhere to save it. A
+    // short toast says it went to Downloads, or that it could not: a long name would be cut.
+    @CalledByNative
+    static void save(String path) {
+        sCopier.execute(() -> {
+            File file = new File(path);
+            boolean saved = copyToShared(file, "text/plain") != null;
+            Context context = ContextUtils.getApplicationContext();
+            String said = saved ? "Report saved to Downloads" : "Couldn't save the report";
+            new Handler(Looper.getMainLooper()).post(() -> Toast.makeText(context, said, Toast.LENGTH_LONG).show());
         });
     }
 
