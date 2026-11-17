@@ -129,7 +129,7 @@ So the enclave works, and this account's keys have stayed locked since the Mac b
 on, the console is at the login window, and the failure is the same from a tool shell and from
 amarit. Only a real login with the account's password unlocks them, and only for that boot.
 
-**What's needed:** log in as `debmin` at the Mac's desktop once after each boot, and stay logged
+**What's needed:** log in at the Mac's desktop once after each boot, and stay logged
 in. Screen Sharing answers on port 5900 and reaches the login window. Then run `start.sh`. Tested
 on 2026-11-09: after that login the VM started at once. Whether it still starts with the screen
 locked is untested. The Mac is managed and reboots on its own, so this will come up again.

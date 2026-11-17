@@ -281,7 +281,7 @@ dev server and start it again on the same `--profile`.
 Measured on the dev Mac Studio (M3 Ultra, 32 cores), Chromium 155.0.8059.41, build `out/pb`:
 non-official with `dcheck_always_on = true`, so runtime numbers are pessimistic.
 
-The Claude session that ran this has no GUI session (`CGSessionCopyCurrentDictionary`
+The agent session that ran this has no GUI session (`CGSessionCopyCurrentDictionary`
 returns nothing), so the window exists but is never on screen. `tools/drive_first_app.py`
 therefore calls the window's own `hitTest:`, sets first responder and hands events to the
 view directly, because `[window sendEvent:]` delivers nothing there. It also forces the

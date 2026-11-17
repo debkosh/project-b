@@ -56,10 +56,10 @@ The hosts we have, measured:
 |---|---|---|
 | The Mac Studio, as macOS | No | `gn gen` refuses: the assert above |
 | The Mac Studio, an amd64 container in a Colima VM with Rosetta: 24 vCPU, 96 GB RAM, 230 GB disk | **Yes, used here** | Fetch, sync, build dependencies and hooks: 16 minutes. First build of `content_shell_apk`: 2 h 31 min, 47,280 steps. Then our APK: about 2 minutes. 57 GB used in the VM, 66 GB on the Mac's disk |
-| `bigboy`: 4 vCPU (EPYC 7571), 15 GB RAM, 64 GB disk, 59 GB free | **No, by disk.** 15 GB must stay free, which leaves 44 GB against the 57 GB measured | Not tried. A rough estimate is 40 to 50 hours per full build: a single-threaded Python loop ran 3 times slower there than in the Rosetta container, and it has 6 times fewer cores |
+| A small cloud server: 4 vCPU (EPYC 7571), 15 GB RAM, 64 GB disk, 59 GB free | **No, by disk.** 15 GB must stay free, which leaves 44 GB against the 57 GB measured | Not tried. A rough estimate is 40 to 50 hours per full build: a single-threaded Python loop ran 3 times slower there than in the Rosetta container, and it has 6 times fewer cores |
 
 **Recommendation: keep building in the Mac VM.** It's the fastest machine we have, even through Rosetta: the same
-Python loop took 3.1 s in the container against 2.2 s natively on the Mac. Growing `bigboy`'s disk to 128 GB would
+Python loop took 3.1 s in the container against 2.2 s natively on the Mac. Growing the cloud server's disk to 128 GB would
 make the checkout fit, but at about two days per full build it isn't worth it, and it would load a box that serves
 the portal and the RBI fleet. A native Linux x86-64 machine with many cores would beat both, but we don't have one.
 
