@@ -7,7 +7,7 @@ function act(t) {
 }
 </script>
 
-<!-- The glyphs are the Reference design's: one stroke weight across the toolbar. -->
+<!-- The glyphs are the design's: one stroke weight across the toolbar. -->
 <template>
   <div class="nav">
     <button class="icon-button" type="button" aria-label="Back" :disabled="!activeTab.canGoBack" @click="act('back')">

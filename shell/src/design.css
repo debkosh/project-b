@@ -3,7 +3,7 @@
    it; the colours are Go's tones (core/tones), set on the root by theme.js. */
 
 :root {
-  font: 14px/1.4 'System Sans', 'System Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+  font: 14px/1.4 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
   color: var(--text);
   -webkit-font-smoothing: antialiased;
   /* Anything that floats over the rest: a menu, the suggestions, a dialog. */

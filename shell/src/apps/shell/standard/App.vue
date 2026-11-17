@@ -59,7 +59,7 @@ watchEffect(() => {
 </template>
 
 <style>
-/* Colours from the Reference Browser design. The frame's colour and width come from Go with the
+/* Colours from the browser design. The frame's colour and width come from Go with the
    snapshot, the same values the window paints natively, and the frame colour's tones
    (--frame, --accent, --bar, --icon, --accent-soft, --accent-tint), which Go makes from it
    (core/tones), are set on the root by the SDK. Icons and the sidebar's New Tab take a deeper ink, so the frame is the one

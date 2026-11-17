@@ -76,7 +76,7 @@ watchEffect(() => {
 </template>
 
 <style>
-/* Surfaces from the Reference preferences design, at a page's size. Type and the controls are
+/* Surfaces from the preferences design, at a page's size. Type and the controls are
    design.css's; the frame colour's tones come from Go (core/tones). */
 body {
   background: var(--bar);
