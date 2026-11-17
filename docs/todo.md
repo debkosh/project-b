@@ -5,6 +5,9 @@ Take an item off when it lands or is dropped.
 
 ## For discussion with the owner first
 
+- **Sync** ([sync.md](sync.md)): through places the user owns (a folder such as iCloud Drive,
+  Google Drive, Dropbox, WebDAV, S3, git, nearby devices), sealed with keys only their devices
+  and recovery words hold. Proposed 2026-11-17 with mocks; the first four decisions are at its end.
 - **The UX comparison's items 11 to 20** ([ux-comparison.md](ux-comparison.md#what-to-do-ranked)),
   to talk through with the owner one at a time (2026-11-16: "rest goes to todo and lets
   discuss those here one at a time"). The three faults and items 1 to 10 are being built.
