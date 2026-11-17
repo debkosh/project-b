@@ -4,6 +4,8 @@
      tools in the doc. Pictures only: nothing here is code the app runs. -->
 <style>
 :root,.neutral{--frame:#dcdee2;--accent:#23272f;--on-accent:#fff;--accent-soft:#e3e5e9;--accent-tint:#f1f2f4;--bar:#f5f6f7;--surface:#fff;--text:#1d2025;--muted:#6b707a;--icon:#4a4f58;--line:#e0e2e6;--danger:#c63b32}
+.dark{--frame:#3b4566;--accent:#8fa8ec;--on-accent:#111827;--accent-soft:#2c3550;--accent-tint:#232a3f;--bar:#171b26;--surface:#20263a;--text:#e7eaf2;--muted:#9aa3b8;--icon:#b7bfd3;--line:#323a52}
+.dark .pv .pg{background:#2a3147}.dark .pv .pg u{background:#353d56}
 .blue{--frame:#5b7fd6;--accent:#4a6fc9;--on-accent:#fff;--accent-soft:#dbe3f6;--accent-tint:#edf1fa;--bar:#f1f4fb;--line:#dde3f0;--text:#1d2230;--muted:#687087;--icon:#47506a}
 *{box-sizing:border-box}
 body{margin:0;font:14px/1.4 -apple-system,"Helvetica Neue",Arial,sans-serif;color:var(--text);background:#f4f6f6;-webkit-font-smoothing:antialiased}
@@ -11,7 +13,7 @@ body{margin:0;font:14px/1.4 -apple-system,"Helvetica Neue",Arial,sans-serif;colo
 .pair{display:flex;gap:24px;align-items:flex-start}
 
 /* The Standard window, holding the welcome tab */
-.win{width:1280px;height:800px;border:4px solid var(--frame);border-radius:14px;background:var(--bar);position:relative;overflow:hidden;flex:none}
+.win{color:var(--text);width:1280px;height:800px;border:4px solid var(--frame);border-radius:14px;background:var(--bar);position:relative;overflow:hidden;flex:none}
 .top{height:52px;display:flex;align-items:center;gap:6px;padding:0 12px}
 .dots{display:flex;gap:8px;width:76px}.dots i{width:12px;height:12px;border-radius:50%;background:#ec6a5e}.dots i:nth-child(2){background:#f4bf4f}.dots i:nth-child(3){background:#61c554}
 .ib{width:28px;height:28px;border-radius:6px;display:grid;place-items:center;color:var(--icon)}
@@ -25,7 +27,7 @@ body{margin:0;font:14px/1.4 -apple-system,"Helvetica Neue",Arial,sans-serif;colo
 .tab.new{color:var(--accent)}.tab.new span{margin-left:auto;color:var(--muted)}
 .tab.act{background:var(--surface);box-shadow:0 0 0 1px var(--line)}
 .page{position:absolute;left:224px;top:52px;right:0;bottom:0;background:var(--bar);overflow:hidden}
-.win.full .page{left:0;top:0}.win.full{border-color:#c9ccd2;background:var(--bar)}
+.win.full .page{left:0;top:0}.win.full{border-color:var(--frame);background:var(--bar)}
 .fdots{position:absolute;left:18px;top:18px;display:flex;gap:8px;z-index:3}.fdots i{width:12px;height:12px;border-radius:50%;background:#ec6a5e}.fdots i:nth-child(2){background:#f4bf4f}.fdots i:nth-child(3){background:#61c554}
 .splash{position:absolute;inset:0;display:grid;place-items:center;background:var(--bar)}
 .splash .in{text-align:center}
@@ -72,6 +74,7 @@ h2{font-size:13px;font-weight:500;color:var(--muted);margin:20px 0 8px}
 .seg{display:inline-flex;border:1px solid var(--line);background:var(--accent-tint);border-radius:6px;padding:2px;font-size:13px}.seg span{padding:3px 10px;border-radius:4px;color:var(--muted)}.seg span.on{background:var(--surface);color:var(--text);box-shadow:0 0 0 1px var(--line)}
 .sel{height:30px;border:1px solid var(--line);border-radius:6px;background:var(--surface);display:inline-flex;align-items:center;padding:0 10px;gap:8px;font-size:13px}.sel::after{content:"";width:6px;height:6px;border-right:1.4px solid var(--icon);border-bottom:1.4px solid var(--icon);transform:rotate(45deg) translateY(-2px)}
 .swatches{display:flex;gap:8px}.swatches i{width:22px;height:22px;border-radius:50%;display:block}.swatches i.on{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--text)}
+.logo{width:32px;height:32px;flex:none;display:block}.logo svg{display:block}
 .bi{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;color:#fff;font-weight:600;font-size:14px;flex:none}
 .tag{font-size:12px;border:1px solid var(--line);border-radius:4px;padding:0 6px;color:var(--muted);white-space:nowrap}
 .check{width:20px;height:20px;border-radius:50%;background:var(--accent);display:grid;place-items:center;flex:none;position:relative}.check::after{content:"";width:8px;height:4px;border-left:1.6px solid #fff;border-bottom:1.6px solid #fff;transform:rotate(-45deg) translate(1px,-1px)}
@@ -196,7 +199,7 @@ h2{font-size:13px;font-weight:500;color:var(--muted);margin:20px 0 8px}
    <h1>Bring your things over</h1>
    <p class="lead">Found on this Mac. Nothing leaves it.</p>
    <div class="card">
-    <div class="row"><span class="bi" style="background:#1a73e8">C</span><div class="lab"><b>Chrome · Personal</b><span class="sec">412 bookmarks · 8,210 pages · 36 passwords · 9 tabs</span></div><span class="sw on"></span></div>
+    <div class="row"><span class="logo"><svg viewBox="0 0 32 32" width="32" height="32"><circle cx="16" cy="16" r="15" fill="#db4437"/><path d="M16 16 L29 23.5 A15 15 0 0 1 3 23.5Z" fill="#0f9d58"/><path d="M16 16 L16 1 A15 15 0 0 1 29 23.5Z" fill="#f4b400" transform="rotate(0)"/><path d="M16 16 L3 23.5 A15 15 0 0 1 16 1Z" fill="#db4437"/><circle cx="16" cy="16" r="7" fill="#fff"/><circle cx="16" cy="16" r="5.4" fill="#4285f4"/></svg></span><div class="lab"><b>Chrome · Personal</b><span class="sec">412 bookmarks · 8,210 pages · 36 passwords · 9 tabs</span></div><span class="sw on"></span></div>
     <div class="more">
      <div class="picks">
       <span class="pick on"><span class="cb"></span>Bookmarks <em>412</em></span>
@@ -207,10 +210,11 @@ h2{font-size:13px;font-weight:500;color:var(--muted);margin:20px 0 8px}
       <span class="pick"><span class="cb"></span>Extensions <em>5</em></span>
      </div>
     </div>
-    <div class="row"><span class="bi" style="background:#1a73e8">C</span><div class="lab"><b>Chrome · Work</b><span class="sec">88 bookmarks · 2,904 pages · 12 passwords</span></div><span class="sw"></span></div>
-    <div class="row"><span class="bi" style="background:#fc5c7d">A</span><div class="lab"><b>Arc</b><span class="sec">Pinned tabs and Spaces · 1,120 pages · 4 passwords</span></div><span class="sw"></span></div>
-    <div class="row"><span class="bi" style="background:#ff7139">F</span><div class="lab"><b>Firefox · default-release</b><span class="sec">120 bookmarks · 640 pages</span></div><span class="sw"></span></div>
-    <div class="row"><span class="bi" style="background:#1e90ff">S</span><div class="lab"><b>Safari</b><span class="sec">Needs Full Disk Access, once</span></div><span class="btn">Allow…</span></div>
+    <div class="row"><span class="logo"><svg viewBox="0 0 32 32" width="32" height="32"><defs><linearGradient id="eg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#36c2a0"/><stop offset=".55" stop-color="#1e88d8"/><stop offset="1" stop-color="#0b4fa0"/></linearGradient></defs><circle cx="16" cy="16" r="15" fill="url(#eg)"/><path d="M7 19c1-7 8-11 14-8 3 1.5 4 4 3 6-1 2-4 2.5-7 2" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg></span><div class="lab"><b>Edge · Profile 1</b><span class="sec">64 bookmarks · 1,830 pages · 7 passwords</span></div><span class="sw"></span></div>
+    <div class="row"><span class="logo"><svg viewBox="0 0 32 32" width="32" height="32"><path d="M16 2 L26 5 L28 12 L24 25 L16 30 L8 25 L4 12 L6 5Z" fill="#fb542b"/><path d="M12 12 L16 10 L20 12 L19 18 L16 21 L13 18Z" fill="#fff"/></svg></span><div class="lab"><b>Brave · Default</b><span class="sec">37 bookmarks · 905 pages</span></div><span class="sw"></span></div>
+    <div class="row"><span class="logo"><svg viewBox="0 0 32 32" width="32" height="32"><defs><linearGradient id="ag" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5a6e"/><stop offset=".5" stop-color="#d14cf2"/><stop offset="1" stop-color="#3d6bff"/></linearGradient></defs><rect x="1" y="1" width="30" height="30" rx="8" fill="url(#ag)"/><path d="M9 22c1-8 4-12 7-12s6 4 7 12" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/></svg></span><div class="lab"><b>Arc</b><span class="sec">Pinned tabs and Spaces · 1,120 pages · 4 passwords</span></div><span class="sw"></span></div>
+    <div class="row"><span class="logo"><svg viewBox="0 0 32 32" width="32" height="32"><defs><radialGradient id="fg" cx=".7" cy=".2" r="1"><stop offset="0" stop-color="#ffbd4f"/><stop offset=".45" stop-color="#ff6a2b"/><stop offset="1" stop-color="#b833e1"/></radialGradient></defs><circle cx="16" cy="16" r="15" fill="url(#fg)"/><circle cx="17" cy="17" r="7.5" fill="#5b3fd6" opacity=".55"/></svg></span><div class="lab"><b>Firefox · default-release</b><span class="sec">120 bookmarks · 640 pages</span></div><span class="sw"></span></div>
+    <div class="row"><span class="logo"><svg viewBox="0 0 32 32" width="32" height="32"><circle cx="16" cy="16" r="15" fill="#1e90ff"/><circle cx="16" cy="16" r="12" fill="#fff"/><path d="M16 16 L22 9 L18 18Z" fill="#ff3b30"/><path d="M16 16 L10 23 L14 14Z" fill="#9aa4b2"/></svg></span><div class="lab"><b>Safari</b><span class="sec">Needs Full Disk Access, once</span></div><span class="btn">Allow…</span></div>
    </div>
   </div>
   <div class="foot"><span class="btn q">Back</span><span class="sp"></span><span class="btn q">Skip</span><span class="btn p">Bring over</span></div>
@@ -315,6 +319,62 @@ h2{font-size:13px;font-weight:500;color:var(--muted);margin:20px 0 8px}
 </div></div></div>
 
 <!-- 4 Protection -->
+<div class="mock" id="d3c"><div class="win full dark"><div class="page">
+ <div class="ob">
+  <div class="steps"><i class="d"></i><i class="d"></i><i class="c"></i><i></i><i></i></div>
+  <div style="width:1000px;margin-top:40px;flex:1">
+   <h1>Pick your style</h1>
+   <p class="lead">Your browser, as you choose it.</p>
+   <div style="display:flex;gap:32px;align-items:flex-start">
+    <div style="flex:1"><div class="pv"><div class="t"><i></i><i></i><i></i></div><div class="f"></div>
+     <div class="s"><b style="width:60%"></b><b class="a"></b><b></b><b></b><b style="width:80%"></b></div>
+     <div class="pg"><u style="width:40%;height:14px;margin-bottom:16px"></u><u></u><u style="width:92%"></u><u style="width:85%"></u><u style="width:60%"></u><u style="width:0;height:6px"></u><u style="width:90%"></u><u style="width:70%"></u></div></div></div>
+    <div style="width:400px">
+     <h2 style="margin-top:0">Tabs</h2>
+     <div class="lay"><div class="on"><em><span style="position:absolute;left:4px;top:4px;bottom:4px;width:22px;border-radius:3px;background:var(--surface)"></span></em>On the side</div><div class=""><em><span style="position:absolute;left:4px;right:4px;top:4px;height:9px;border-radius:3px;background:var(--surface)"></span></em>On top</div><div class=""><em><span style="position:absolute;left:4px;top:4px;bottom:4px;width:22px;border-radius:3px;background:var(--surface)"></span><span style="position:absolute;left:30px;right:4px;top:4px;bottom:4px;border-radius:5px;border:1px solid var(--line)"></span></em>Glide</div></div>
+     <h2>Colour</h2>
+     <div class="card"><div class="row"><span class="swatches"><i class="none" style="background:#fff"></i><i class="" style="background:#0faaaa"></i><i class="on " style="background:#5b7fd6"></i><i class="" style="background:#faa804"></i><i class="" style="background:#d82b1f"></i><i class="" style="background:#384562"></i></span></div></div>
+     <h2>Theme and keys</h2>
+     <div class="card">
+      <div class="row"><div class="lab">Theme</div><span class="seg"><span>System</span><span>Light</span><span class="on">Dark</span></span></div>
+      <div class="row"><div class="lab">Keys</div><span class="seg"><span class="on">Like Chrome</span><span>Project B</span></span></div>
+     </div>
+    </div>
+   </div>
+  </div>
+  <div class="foot" style="width:1000px"><span class="btn q">Back</span><span class="sp"></span><span class="btn q">Skip</span><span class="btn p">Continue</span></div>
+ </div>
+</div></div></div>
+
+<!-- 4 Protection -->
+<div class="mock" id="d7"><div class="win blue"><div class="page">
+ <div class="ob">
+  <div class="steps"><i class="d"></i><i class="d"></i><i class="c"></i><i></i><i></i></div>
+  <div style="width:960px;margin-top:28px;flex:1">
+   <h1>Pick your style</h1>
+   <p class="lead">Your browser, as you choose it.</p>
+   <div style="display:flex;gap:32px;align-items:flex-start">
+    <div style="flex:1"><div class="pv" style="height:300px"><div class="t"><i></i><i></i><i></i></div><div class="f"></div>
+     <div class="s"><b style="width:60%"></b><b class="a"></b><b></b><b></b><b style="width:80%"></b></div>
+     <div class="pg"><u style="width:40%;height:14px;margin-bottom:16px"></u><u></u><u style="width:92%"></u><u style="width:85%"></u><u style="width:60%"></u><u style="width:0;height:6px"></u><u style="width:90%"></u><u style="width:70%"></u></div></div></div>
+    <div style="width:400px">
+     <h2 style="margin-top:0">Tabs</h2>
+     <div class="lay"><div class="on"><em><span style="position:absolute;left:4px;top:4px;bottom:4px;width:22px;border-radius:3px;background:var(--surface)"></span></em>On the side</div><div class=""><em><span style="position:absolute;left:4px;right:4px;top:4px;height:9px;border-radius:3px;background:var(--surface)"></span></em>On top</div><div class=""><em><span style="position:absolute;left:4px;top:4px;bottom:4px;width:22px;border-radius:3px;background:var(--surface)"></span><span style="position:absolute;left:30px;right:4px;top:4px;bottom:4px;border-radius:5px;border:1px solid var(--line)"></span></em>Glide</div></div>
+     <h2>Colour</h2>
+     <div class="card"><div class="row"><span class="swatches"><i class="none" style="background:#fff"></i><i class="" style="background:#0faaaa"></i><i class="on " style="background:#5b7fd6"></i><i class="" style="background:#faa804"></i><i class="" style="background:#d82b1f"></i><i class="" style="background:#384562"></i></span></div></div>
+     <h2>Theme and keys</h2>
+     <div class="card">
+      <div class="row"><div class="lab">Theme</div><span class="seg"><span class="on">System</span><span>Light</span><span>Dark</span></span></div>
+      <div class="row"><div class="lab">Keys</div><span class="seg"><span class="on">Like Chrome</span><span>Project B</span></span></div>
+     </div>
+    </div>
+   </div>
+  </div>
+  <div class="foot" style="width:960px"><span class="btn q">Back</span><span class="sp"></span><span class="btn q">Skip</span><span class="btn p">Continue</span></div>
+ </div>
+</div></div></div>
+
+<!-- 4 Protection -->
 <div class="mock" id="d4"><div class="win full"><div class="page">
  <div class="ob">
   <div class="steps"><i class="d"></i><i class="d"></i><i class="d"></i><i class="c"></i><i></i></div>
@@ -323,7 +383,6 @@ h2{font-size:13px;font-weight:500;color:var(--muted);margin:20px 0 8px}
    <p class="lead">On by default. Each one is in Settings later.</p>
    <div class="card">
     <div class="row"><div class="lab"><b>Block ads and trackers</b></div><span class="sw on"></span></div>
-    <div class="row"><div class="lab"><b>Warn about dangerous sites</b><span class="sec">Safe Browsing, checked against Google's list on this Mac</span></div><span class="sw on"></span></div>
     <div class="row"><div class="lab"><b>Links to other sites</b><span class="sec">A page sending you to another site</span></div><span class="seg"><span class="on">Allow</span><span>Block</span></span></div>
     <div class="row"><div class="lab"><b>Search engine</b></div><span class="sel">DuckDuckGo</span></div>
     <div class="row"><div class="lab"><b>Automatic updates</b></div><span class="sw on"></span></div>
@@ -362,11 +421,11 @@ h2{font-size:13px;font-weight:500;color:var(--muted);margin:20px 0 8px}
   </div>
   <div style="width:720px">
    <div class="card">
-    <div class="row"><span class="bi" style="background:#1a73e8">C</span><div class="lab"><b>Chrome · Personal</b><span class="sec">Brought over today: 412 bookmarks, 8,210 pages, 36 passwords</span></div><span class="btn">Import…</span></div>
-    <div class="row"><span class="bi" style="background:#1a73e8">C</span><div class="lab"><b>Chrome · Work</b><span class="sec">88 bookmarks · 2,904 pages · 12 passwords</span></div><span class="btn">Import…</span></div>
-    <div class="row"><span class="bi" style="background:#fc5c7d">A</span><div class="lab"><b>Arc</b><span class="sec">1,120 pages · 4 passwords</span></div><span class="btn">Import…</span></div>
-    <div class="row"><span class="bi" style="background:#ff7139">F</span><div class="lab"><b>Firefox · default-release</b><span class="sec">120 bookmarks · 640 pages</span></div><span class="btn">Import…</span></div>
-    <div class="row"><span class="bi" style="background:#1e90ff">S</span><div class="lab"><b>Safari</b><span class="sec">Needs Full Disk Access, once</span></div><span class="btn">Allow…</span></div>
+    <div class="row"><span class="logo"><svg viewBox="0 0 32 32" width="32" height="32"><circle cx="16" cy="16" r="15" fill="#db4437"/><path d="M16 16 L29 23.5 A15 15 0 0 1 3 23.5Z" fill="#0f9d58"/><path d="M16 16 L16 1 A15 15 0 0 1 29 23.5Z" fill="#f4b400" transform="rotate(0)"/><path d="M16 16 L3 23.5 A15 15 0 0 1 16 1Z" fill="#db4437"/><circle cx="16" cy="16" r="7" fill="#fff"/><circle cx="16" cy="16" r="5.4" fill="#4285f4"/></svg></span><div class="lab"><b>Chrome · Personal</b><span class="sec">Brought over today: 412 bookmarks, 8,210 pages, 36 passwords</span></div><span class="btn">Import…</span></div>
+    <div class="row"><span class="logo"><svg viewBox="0 0 32 32" width="32" height="32"><circle cx="16" cy="16" r="15" fill="#db4437"/><path d="M16 16 L29 23.5 A15 15 0 0 1 3 23.5Z" fill="#0f9d58"/><path d="M16 16 L16 1 A15 15 0 0 1 29 23.5Z" fill="#f4b400" transform="rotate(0)"/><path d="M16 16 L3 23.5 A15 15 0 0 1 16 1Z" fill="#db4437"/><circle cx="16" cy="16" r="7" fill="#fff"/><circle cx="16" cy="16" r="5.4" fill="#4285f4"/></svg></span><div class="lab"><b>Chrome · Work</b><span class="sec">88 bookmarks · 2,904 pages · 12 passwords</span></div><span class="btn">Import…</span></div>
+    <div class="row"><span class="logo"><svg viewBox="0 0 32 32" width="32" height="32"><defs><linearGradient id="ag" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5a6e"/><stop offset=".5" stop-color="#d14cf2"/><stop offset="1" stop-color="#3d6bff"/></linearGradient></defs><rect x="1" y="1" width="30" height="30" rx="8" fill="url(#ag)"/><path d="M9 22c1-8 4-12 7-12s6 4 7 12" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/></svg></span><div class="lab"><b>Arc</b><span class="sec">1,120 pages · 4 passwords</span></div><span class="btn">Import…</span></div>
+    <div class="row"><span class="logo"><svg viewBox="0 0 32 32" width="32" height="32"><defs><radialGradient id="fg" cx=".7" cy=".2" r="1"><stop offset="0" stop-color="#ffbd4f"/><stop offset=".45" stop-color="#ff6a2b"/><stop offset="1" stop-color="#b833e1"/></radialGradient></defs><circle cx="16" cy="16" r="15" fill="url(#fg)"/><circle cx="17" cy="17" r="7.5" fill="#5b3fd6" opacity=".55"/></svg></span><div class="lab"><b>Firefox · default-release</b><span class="sec">120 bookmarks · 640 pages</span></div><span class="btn">Import…</span></div>
+    <div class="row"><span class="logo"><svg viewBox="0 0 32 32" width="32" height="32"><circle cx="16" cy="16" r="15" fill="#1e90ff"/><circle cx="16" cy="16" r="12" fill="#fff"/><path d="M16 16 L22 9 L18 18Z" fill="#ff3b30"/><path d="M16 16 L10 23 L14 14Z" fill="#9aa4b2"/></svg></span><div class="lab"><b>Safari</b><span class="sec">Needs Full Disk Access, once</span></div><span class="btn">Allow…</span></div>
    </div>
    <h2>Setup</h2>
    <div class="card"><div class="row"><div class="lab">The first-run pages</div><span class="btn">Run setup again</span></div></div>
@@ -429,7 +488,6 @@ h2{font-size:13px;font-weight:500;color:var(--muted);margin:20px 0 8px}
    </div>
    <div class="card" style="margin-top:16px">
     <div class="row"><div class="lab"><b>Block ads and trackers</b></div><span class="sw on"></span></div>
-    <div class="row"><div class="lab"><b>Warn about dangerous sites</b></div><span class="sw on"></span></div>
    </div>
    <div class="grow"></div>
    <div class="fbtn">Continue</div>
@@ -479,5 +537,55 @@ const w = document.getElementById('window').innerHTML;
 document.querySelectorAll('.win:not(.full)').forEach((el) => el.insertAdjacentHTML('afterbegin', w));
 document.querySelectorAll('.win.full').forEach((el) => el.insertAdjacentHTML('afterbegin', '<div class="fdots"><i></i><i></i><i></i></div>'));
 document.getElementById(m).classList.add('on');
+
+// The style step works: a colour, the theme and the tabs change the page and its window
+// at once, as the real page will through Go's tones.
+const mix = (a, b, t) => '#' + [0, 2, 4].map((i) => Math.round(parseInt(a.substr(1 + i, 2), 16) * (1 - t) + parseInt(b.substr(1 + i, 2), 16) * t).toString(16).padStart(2, '0')).join('');
+function tones(c, dark) {
+  if (!c) c = dark ? '#3a3f4a' : '#dcdee2';
+  const none = c === '#dcdee2' || c === '#3a3f4a';
+  return dark
+    ? { '--frame': mix(c, '#000000', 0.35), '--accent': none ? '#e7eaf2' : mix(c, '#ffffff', 0.3), '--on-accent': '#111318', '--accent-soft': mix(c, '#14171f', 0.75), '--accent-tint': mix(c, '#14171f', 0.85), '--bar': mix(c, '#101318', 0.92), '--surface': mix(c, '#1b1f28', 0.9), '--text': '#e7eaf2', '--muted': '#9aa3b8', '--icon': '#b7bfd3', '--line': mix(c, '#2a2f3b', 0.8) }
+    : { '--frame': c, '--accent': none ? '#23272f' : mix(c, '#000000', 0.12), '--on-accent': '#ffffff', '--accent-soft': mix(c, '#ffffff', 0.8), '--accent-tint': mix(c, '#ffffff', 0.9), '--bar': mix(c, '#ffffff', 0.94), '--surface': '#ffffff', '--text': '#1d2025', '--muted': '#6b707a', '--icon': '#4a4f58', '--line': mix(c, '#ffffff', 0.82) };
+}
+document.querySelectorAll('.win').forEach((win) => {
+  const sw = win.querySelector('.swatches');
+  if (!sw || !win.querySelector('.pv')) return;
+  const state = { color: '', dark: win.classList.contains('dark') };
+  const paint = () => {
+    win.classList.remove('blue', 'dark', 'neutral');
+    for (const [k, v] of Object.entries(tones(state.color, state.dark))) win.style.setProperty(k, v);
+  };
+  sw.querySelectorAll('i').forEach((i) => {
+    i.style.cursor = 'pointer';
+    i.onclick = () => {
+      sw.querySelectorAll('i').forEach((j) => j.classList.toggle('on', j === i));
+      state.color = i.classList.contains('none') ? '' : getComputedStyle(i).backgroundColor.match(/\d+/g).map((n) => (+n).toString(16).padStart(2, '0')).reduce((a, b) => a + b, '#');
+      paint();
+    };
+  });
+  const seg = [...win.querySelectorAll('.seg')].find((s) => s.textContent.includes('Dark'));
+  seg.querySelectorAll('span').forEach((s) => {
+    s.style.cursor = 'pointer';
+    s.onclick = () => {
+      seg.querySelectorAll('span').forEach((t) => t.classList.toggle('on', t === s));
+      state.dark = s.textContent === 'Dark' || (s.textContent === 'System' && matchMedia('(prefers-color-scheme: dark)').matches);
+      paint();
+    };
+  });
+  const pv = win.querySelector('.pv');
+  win.querySelectorAll('.lay > div').forEach((d, n) => {
+    d.style.cursor = 'pointer';
+    d.onclick = () => {
+      win.querySelectorAll('.lay > div').forEach((e) => e.classList.toggle('on', e === d));
+      const side = pv.querySelector('.s'), pg = pv.querySelector('.pg');
+      side.style.cssText = n === 1 ? 'left:8px;right:8px;top:36px;bottom:auto;width:auto;height:20px;display:flex;gap:6px' : '';
+      side.querySelectorAll('b').forEach((b) => (b.style.cssText = n === 1 ? 'flex:0 0 90px;margin:0;height:18px' : b.dataset.w || ''));
+      pg.style.cssText = n === 1 ? 'left:8px;top:62px' : n === 2 ? 'border-radius:10px;top:40px;left:160px;box-shadow:0 0 0 6px color-mix(in srgb,var(--frame) 70%,#fff)' : '';
+    };
+  });
+  pv.querySelectorAll('.s b').forEach((b) => (b.dataset.w = b.getAttribute('style') || ''));
+  if (win.classList.contains('blue')) state.color = '#5b7fd6';
+});
 </script>
 </body></html>

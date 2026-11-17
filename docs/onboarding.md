@@ -22,11 +22,34 @@ screen... with a nice splash screen and stuff". So:
   as it waits. The browser's UI comes in around the page at Start browsing. The phone's welcome
   takes the whole screen in the same way.
 
+And on the second mocks, 2026-11-17:
+
+- **Choosing a colour or the theme changes the page and its window at once,** the frame too.
+  The mock page does it: open `mocks.html?m=d3` and press the swatches, the theme and the tabs.
+- **The same page opens again later in a tab** of ours, inside the browser, from Settings' Run
+  setup again ([mock](screenshots/onboarding/mock-d7.png)).
+- **No Safe Browsing from Google.** "no safebtowsing should not use google... we should have
+  discussed the implementation". It is out of the onboarding; nothing in the app does Safe
+  Browsing today, and how it would work is for a discussion first.
+- **Approved:** no "How you work" step, five steps on the desktop; the style step offers tabs on
+  the side, on top, and Glide.
+- **A flag to show the welcome again:** "we should expose a flag that changes it to false so that
+  we can test the welcome full screen". Go keeps whether the welcome was shown; a flag in
+  Settings, Flags, "Show the welcome at the next start", clears it, and the next start opens the
+  welcome over the whole window as a first start does.
+- **The browsers' own logos** on the import rows, for easy recognition. The app reads each
+  browser's icon from its installed app (`NSWorkspace`'s `iconForFile:`), so the logo is the
+  browser's own and nothing of theirs ships with us. The mock draws stand-ins.
+- **Reading another browser's data is a module of its own,** "so that we can use it as a
+  separate project too if required": see [The importer](#the-importer-a-module-of-its-own).
+- **Sync** is a discussion of its own, in its own session ("[project-b] sync"): many ways to
+  sync, to places the user controls.
+
 ## The pages
 
 The mocks are drawn in [screenshots/onboarding/mocks.html](screenshots/onboarding/mocks.html)
-(`?m=d0` plays the splash into the welcome; `d0s` to `d6`, `p0` to `p2` are the stills); the
-splash as a [video](screenshots/onboarding/splash.webm).
+(`?m=d0` plays the splash into the welcome, `?m=d3` is the style step working; `d0s` to `d7`,
+`p0` to `p2` are the stills); the splash as a [video](screenshots/onboarding/splash.webm).
 
 **Desktop**
 
@@ -42,10 +65,11 @@ splash as a [video](screenshots/onboarding/splash.webm).
    workspace named after the browser.
 3. **Pick your style:** a picture of the browser beside the choices: tabs on the side, on top,
    or Glide; the colour, None first; theme; keys like Chrome's or Project B's. The picture and
-   the page itself take each choice at once ([none](screenshots/onboarding/mock-d3.png),
-   [blue](screenshots/onboarding/mock-d3b.png)).
-4. **Protection:** the ad blocker, Safe Browsing, Links to other sites, the search engine,
-   automatic updates ([mock](screenshots/onboarding/mock-d4.png)).
+   the page itself, with its window's frame, take each choice at once
+   ([none](screenshots/onboarding/mock-d3.png), [blue](screenshots/onboarding/mock-d3b.png),
+   [dark](screenshots/onboarding/mock-d3c.png)).
+4. **Protection:** the ad blocker, Links to other sites, the search engine, automatic updates
+   ([mock](screenshots/onboarding/mock-d4.png)).
 5. **You're set:** three things worth knowing (the command box, the site panel, workspaces),
    Make default browser, which macOS confirms with its own question, and Start browsing, which
    turns the Welcome tab into a new tab ([mock](screenshots/onboarding/mock-d5.png)).
@@ -56,43 +80,55 @@ No import: Android keeps each app's data from the others.
 1. Welcome.
 2. Make it yours: the address bar at the foot or on top (`addressBarPosition`), and the colour,
    None first.
-3. The search engine, the ad blocker and Safe Browsing.
+3. The search engine and the ad blocker.
 4. Default browser, through Android's own sheet (`RoleManager`, `ROLE_BROWSER`).
 5. Download notifications asked here, with a reason, instead of in the middle of the first
    download as today (`Downloads.java`).
 6. Start browsing.
 
 **Settings** gets an Import section, the same rows with Import… on each, and Run setup again,
-which opens the Welcome tab ([mock](screenshots/onboarding/mock-d6.png)).
-
-## For the owner
-
-- **"How you work" left out.** The outline had a step for the profile template, starter
-  workspaces and the keymap. A template only sets the frame colour and layout, which step 3
-  sets already; workspaces come from import (a browser's open tabs); the keymap is one row in
-  step 3. Recommended: leave the step out, five steps on the desktop.
-- **Which shells step 3 offers.** Drawn: Standard with tabs on the side, on top, and Glide.
-  Fox, Minimal and Terminal stay in Settings, as the focus is Standard.
-- **Safe Browsing** is a feature of its own. Google's Update API keeps a list of hash
-  prefixes on the Mac and asks Google only on a prefix match, with an API key of ours. The
-  row is shown only once it is built.
+which opens the welcome in a tab ([mock](screenshots/onboarding/mock-d6.png),
+[in a tab](screenshots/onboarding/mock-d7.png)).
 
 ## What it needs that we don't have
 
 | Feature | Where | Slice |
 |---|---|---|
-| A first-run marker, the Welcome page, Run setup again | Go (`core/app`), `shell/src/apps/welcome`, settings | 1 |
+| A first-run marker, the Welcome page, Run setup again, and the flag that shows it at the next start | Go (`core/app`, `core/flags`), `shell/src/apps/welcome`, settings | 1 |
 | The welcome over the whole window, the splash, the UI coming in at the end | the window's layout gives the welcome tab all of it, with no shell regions, until Start browsing; on the phone, the Mobile shells hide their bar for it | 1 |
 | No colour until one is picked | a neutral frame in `core/tones` (light grey, ink accent, and its dark twin), the templates' and presets' teal gone | 1 |
 | Make default browser | Mac: the app can't be a browser yet. Its Info.plist (`tools/package.sh`) declares no `CFBundleURLTypes` for http and https nor `CFBundleDocumentTypes` for html, and nothing in the engine takes a link macOS hands over (`application:openURLs:`), as Android's `PBOpenURL` does. Then `NSWorkspace`'s `setDefaultApplicationAtURL:toOpenURLsWithScheme:`, which asks the user itself. Android: the manifest already takes http and https links, so `RoleManager`'s `ROLE_BROWSER` request is all | 1 |
 | Download notifications asked on the phone's step | an engine call that asks for `POST_NOTIFICATIONS` and reports whether it was given. Today `Downloads.java` asks the moment a download starts, so Android's prompt covers the page; that ask goes, or stays only for a user who skipped setup | 1 |
-| Preview pictures of each shell | made from the mock engine by a tool, kept in the app | 1 |
+| A preview of each layout in the chosen colour and theme | drawn by the welcome page from the tones Go sends, so it follows every choice; no pictures to keep up | 1 |
 | Bookmark folders | `core/bookmarks`, the Bookmarks page | 2 |
-| Importers: the Chromium family (Chrome, Edge, Brave, Arc), Firefox | Go, a package of its own; Settings' Import | 3 |
+| Importers: the Chromium family (Chrome, Edge, Brave, Arc), Firefox, with each browser's own icon | `browserdata`, a module of its own (below); Settings' Import | 3 |
 | History import | `core/history` | 3 |
 | Safari, behind Full Disk Access | the same package | 4 |
 | Passwords | the store is the daily driver session's (`core/passwords`, `Import([]Login)`); the importers hand logins to it. Chromium's are sealed with the Keychain's "<Browser> Safe Storage" key, which macOS asks about once per browser; Firefox's with `key4.db` | 5 |
 | Extensions reinstalled by id | the Web Store install path, while their flag is on | 5 |
-| Safe Browsing | its own item | later |
 
 Each slice goes out through a release of its own.
+
+## The importer, a module of its own
+
+Reading another browser's data is the Go module `browserdata/` at the repo's root, with its
+own `go.mod`, its own tests and a README, and no import of anything in `core`: it could move to
+a repo of its own as it is. `core` uses it through a `replace` line in its `go.mod`. It only
+reads; what to do with what it finds is the app's.
+
+- **What it finds:** `Find()` lists the browsers installed and each one's profiles, with the
+  folder, the profile's name, the icon's path and counts. Chrome, Edge, Brave and Arc share
+  Chromium's files; Firefox has its own; Safari's need Full Disk Access, and `Find` says so
+  instead of failing.
+- **What it reads,** in plain types of its own: the bookmark tree with folders, history visits
+  with their times, open and pinned tabs (Arc's Spaces as groups), the default search engine,
+  extension ids, and saved logins.
+- **Logins:** Chromium's are sealed with the Keychain's "<Browser> Safe Storage" key, which
+  macOS asks the user about once per browser; Firefox's with `key4.db`, opened with Go's own
+  crypto. Safari keeps its passwords in iCloud Keychain, which no other app can read, so
+  Safari's row brings bookmarks and history only.
+- **SQLite** (Chromium's and Firefox's history, Safari's) through macOS's own `libsqlite3`
+  over cgo: nothing fetched at build time, no third-party code. Each database is copied first,
+  as the browser may have it open.
+- **A command** `cmd/browserdata` prints what `Find` sees and dumps one profile as JSON, for
+  checking an importer against a real browser.
