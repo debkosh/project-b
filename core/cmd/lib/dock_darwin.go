@@ -13,9 +13,14 @@ import (
 	"strings"
 
 	"projectb/timeline"
+	"projectb/tones"
 )
 
 func (e *nativeEngine) SetDockColor(color string) {
+	if color == tones.None {
+		C.call_set_dock_color(e.calls, -1)
+		return
+	}
 	rgb, err := strconv.ParseInt(strings.TrimPrefix(color, "#"), 16, 32)
 	if err != nil {
 		timeline.Errorf("dock colour %q is not #rrggbb", color)

@@ -580,8 +580,9 @@ func TestSnapshotCarriesTheWindowControls(t *testing.T) {
 	if m["cornerRadius"] != mockengine.CornerRadius {
 		t.Fatalf("cornerRadius = %v", m["cornerRadius"])
 	}
-	if m["windowColor"] != "#4f9e9e" || r.e.Layout(1).FrameColor != "#4f9e9e" {
-		t.Fatalf("frame colour: shell %v, engine %v", m["windowColor"], r.e.Layout(1).FrameColor)
+	// No colour is picked at first: the window paints None's greys.
+	if l := r.e.Layout(1); m["windowColor"] != tones.None || l.FrameColor != tones.Frame(tones.None, false) || l.FrameDark != tones.Frame(tones.None, true) {
+		t.Fatalf("frame colour: shell %v, engine %v and %v", m["windowColor"], l.FrameColor, l.FrameDark)
 	}
 
 	r.e.Fire(1, 0, "fullscreen", "")
@@ -1291,7 +1292,7 @@ func TestTheProfilesMenuAndTheProfilesColour(t *testing.T) {
 	go e.Run()
 	<-ready
 	e.Settle()
-	if got := e.DockColor(); got != "#4f9e9e" {
+	if got := e.DockColor(); got != tones.None {
 		t.Fatalf("the Dock shows %q", got)
 	}
 	var items engine.Menu
@@ -2230,7 +2231,7 @@ func TestAShellSetsGoPrefsByName(t *testing.T) {
 	r := start(t, dir)
 	defer r.stop()
 	snap := r.waitFor(func(m map[string]any) bool { return m["t"] == "snapshot" })
-	if p, _ := snap["prefs"].(map[string]any); p == nil || p["frameColor"] != "#4f9e9e" || p["theme"] != "system" {
+	if p, _ := snap["prefs"].(map[string]any); p == nil || p["frameColor"] != tones.None || p["theme"] != "system" {
 		t.Fatalf("the snapshot's prefs are %v", snap["prefs"])
 	}
 	r.shell(`{"t":"setPref","name":"frameColor","value":"#d03434"}`)
@@ -2268,7 +2269,7 @@ func TestTheTonesComeWithTheFrameColour(t *testing.T) {
 	}
 	r.shell(`{"t":"ready"}`)
 	m := r.waitFor(func(m map[string]any) bool { return m["t"] == "snapshot" })
-	if accent(m, "light") != tones.For("#4f9e9e", false)["--accent"] || accent(m, "dark") != tones.For("#4f9e9e", true)["--accent"] {
+	if accent(m, "light") != tones.For(tones.None, false)["--accent"] || accent(m, "dark") != tones.For(tones.None, true)["--accent"] {
 		t.Fatalf("snapshot tones = %v", m["tones"])
 	}
 	ws := m["workspaces"].([]any)[0].(map[string]any)

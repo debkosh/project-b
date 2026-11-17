@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"projectb/tones"
 )
 
 func TestTabLayoutSurvivesARestart(t *testing.T) {
@@ -31,10 +33,10 @@ func TestTabLayoutSurvivesARestart(t *testing.T) {
 	}
 }
 
-func TestFrameColorIsDustyTealByDefaultAndSurvivesARestart(t *testing.T) {
+func TestNoFrameColorIsPickedByDefaultAndOneSurvivesARestart(t *testing.T) {
 	dir := t.TempDir()
 	m := New(dir)
-	if m.FrameColor() != "#4f9e9e" {
+	if m.FrameColor() != tones.None {
 		t.Fatalf("default = %q", m.FrameColor())
 	}
 	var got []string

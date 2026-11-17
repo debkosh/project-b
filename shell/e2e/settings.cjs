@@ -286,7 +286,9 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
       await page.getByRole('button', { name: 'General', exact: true }).click();
       await page.getByRole('radio', { name: theme }).check();
       await page.getByRole('radio', { name: p.name, exact: true }).click();
-      const shown = await until(async () => (await rootOf(page, '--frame')) === toHex(p.rgb) && (await rootOf(page, '--text')) === (theme === 'Dark' ? '#e8eaed' : '#1f1f1f'));
+      // None paints its grey for the theme (core/tones); its swatch is struck through.
+      const frame = p.name === 'None' ? (theme === 'Dark' ? '#3a3f4a' : '#dcdee2') : toHex(p.rgb);
+      const shown = await until(async () => (await rootOf(page, '--frame')) === frame && (await rootOf(page, '--text')) === (theme === 'Dark' ? '#e8eaed' : '#1f1f1f'));
       await page.getByRole('button', { name: 'Workspaces', exact: true }).click();
       await page.getByRole('button', { name: 'New workspace…' }).click();
       const answer = page.getByRole('dialog').getByRole('button', { name: 'Create', exact: true });

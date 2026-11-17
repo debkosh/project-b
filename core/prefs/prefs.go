@@ -11,6 +11,7 @@ import (
 	"projectb/search"
 	"projectb/shells"
 	"projectb/timeline"
+	"projectb/tones"
 	"regexp"
 )
 
@@ -57,13 +58,13 @@ type Prefs struct {
 
 // Defaults are the settings before the user changes any.
 func Defaults() Prefs {
-	return Prefs{TabLayout: TabsVertical, FrameColor: "#4f9e9e", Theme: ThemeSystem, Shell: shells.Default(), AddressBarPosition: AddressBottom, SearchEngine: search.Default, Start: StartContinue}
+	return Prefs{TabLayout: TabsVertical, FrameColor: tones.None, Theme: ThemeSystem, Shell: shells.Default(), AddressBarPosition: AddressBottom, SearchEngine: search.Default, Start: StartContinue}
 }
 
 func isTheme(t string) bool { return t == ThemeSystem || t == ThemeLight || t == ThemeDark }
 
 // A frame colour is "#rrggbb", as a colour input gives it.
-var frameColor = regexp.MustCompile(`^#[0-9a-f]{6}$`)
+var frameColor = regexp.MustCompile(`^(#[0-9a-f]{6})?$`)
 
 // Manager owns the settings.
 type Manager struct {
@@ -140,8 +141,8 @@ func (m *Manager) SetTabLayout(layout string) {
 	m.changed()
 }
 
-// FrameColor is the colour the window's frame is painted, "#rrggbb". The shell's other
-// tones derive from it.
+// FrameColor is the colour the window's frame is painted, "#rrggbb", or tones.None for
+// none picked, which paints it grey. The shell's other tones derive from it.
 func (m *Manager) FrameColor() string { return m.prefs.FrameColor }
 
 // OnFrameColorChanged subscribes to the frame colour changing.
@@ -149,7 +150,7 @@ func (m *Manager) OnFrameColorChanged(f func(string)) {
 	m.onFrameColor = append(m.onFrameColor, f)
 }
 
-// SetFrameColor changes the frame colour. Anything but "#rrggbb" is ignored.
+// SetFrameColor changes the frame colour. Anything but "#rrggbb" or tones.None is ignored.
 func (m *Manager) SetFrameColor(color string) {
 	if !frameColor.MatchString(color) || color == m.prefs.FrameColor {
 		return

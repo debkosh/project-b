@@ -275,8 +275,10 @@ typedef struct PBWindowLayout {
   // The window size the shell measured; the pages are placed only while it still fits.
   double view_w, view_h;
   // The frame: the colour the window paints under the page and the shell, 0xRRGGBB,
+  // the one in its place while the window is dark, the same unless no colour is picked,
   // and the width of the band it draws around its edge, in points.
   int32_t frame_rgb;
+  int32_t frame_rgb_dark;
   double frame_width;
   // How the window's own parts (buttons, title bar) are drawn: 0 as the system is,
   // 1 light, 2 dark.
@@ -431,7 +433,8 @@ typedef struct PBEngineCalls {
   void (*set_menu)(const char* json, size_t length);
   void (*app_command)(int32_t command);  // PBAppCommand
   // Draws the app's Dock icon with a small dot in the profile's colour, 0xRRGGBB, at its
-  // bottom right. Null on Android, where nothing calls it.
+  // bottom right, or with none for -1, no colour picked. Null on Android, where nothing
+  // calls it.
   void (*set_dock_color)(int32_t rgb);
   // The hosts no request of a page may reach, nor any under them, one per line, lower
   // case: the page, its frames, its subresources and its WebSockets. Go sets them once, at

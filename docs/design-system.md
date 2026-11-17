@@ -64,8 +64,8 @@ neither reaches 4.5 (the red preset in dark, a mid blue like Work's in light) it
 away from the label it picked, a little at a time, until it does; so the accent can differ
 slightly from the frame. `shell/e2e/settings.cjs` checks every preset, light and dark.
 
-Check light and dark with three frame colours: the default `#4f9e9e`, a dark one and a light
-one. `core/tones` must keep every pair readable.
+Check light and dark with four frame colours: the default, None (a grey frame with ink for the
+accent), a dark one, a light one and a mid one such as `#4f9e9e`. `core/tones` must keep every pair readable.
 
 ## Type
 

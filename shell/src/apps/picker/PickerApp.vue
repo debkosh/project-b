@@ -36,7 +36,7 @@ function create() {
     <ul class="card" aria-label="Profiles">
       <li v-for="p in state.profiles" :key="p.id">
         <button type="button" class="row" @click="open(p.id)">
-          <span class="dot" :style="{ background: p.color }"></span>
+          <span class="dot" :style="{ background: p.color || 'var(--frame)' }"></span>
           <span class="name">{{ p.name }}</span>
         </button>
       </li>

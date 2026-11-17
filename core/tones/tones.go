@@ -26,17 +26,43 @@ type Both struct {
 	Dark  Palette `json:"dark"`
 }
 
-// Of is both palettes of frame, "#rrggbb". A frame that isn't one gives nil, as no colour
-// gives nothing to paint.
+// None is no colour picked, as a profile starts (docs/onboarding.md): a light grey frame,
+// or a dark grey one in dark, and ink for the accent, the frame being too pale, or too
+// dark, to read as one.
+const None = ""
+
+// The frames of None, light and dark.
+const (
+	noneLight = "#dcdee2"
+	noneDark  = "#3a3f4a"
+)
+
+// Frame is the colour the window paints for frame, light or dark: frame itself, or one of
+// None's greys.
+func Frame(frame string, dark bool) string {
+	switch {
+	case frame != None:
+		return frame
+	case dark:
+		return noneDark
+	}
+	return noneLight
+}
+
+// Of is both palettes of frame, "#rrggbb" or None. A frame that is neither gives nil, as
+// there is nothing to paint.
 func Of(frame string) *Both {
-	if _, ok := parse(frame); !ok {
+	if _, ok := parse(frame); !ok && frame != None {
 		return nil
 	}
 	return &Both{Light: For(frame, false), Dark: For(frame, true)}
 }
 
-// For is one palette of frame, "#rrggbb": dark's, or light's.
+// For is one palette of frame, "#rrggbb" or None: dark's, or light's.
 func For(frame string, dark bool) Palette {
+	if frame == None {
+		return none(dark)
+	}
 	c, _ := parse(frame)
 	toward := func(target [3]float64, t float64) string { return hex(mix(c, target, t)) }
 	faint := func(a string) string {
@@ -83,6 +109,22 @@ func For(frame string, dark bool) Palette {
 		"--danger":      "#d93025",
 		"--on-danger":   "#ffffff",
 	}
+}
+
+// none is None's palette: its grey's, with ink for the accent and its washes in light, and
+// in dark the light text's, as a grey accent would not read.
+func none(dark bool) Palette {
+	p := For(Frame(None, dark), dark)
+	p["--frame"] = Frame(None, dark)
+	if dark {
+		p["--accent"], p["--on-accent"] = "#e7eaf2", "#1f1f1f"
+		p["--accent-soft"], p["--accent-tint"] = "rgba(231, 234, 242, 0.16)", "rgba(231, 234, 242, 0.08)"
+		return p
+	}
+	p["--accent"], p["--on-accent"] = "#23272f", "#ffffff"
+	p["--icon"] = "#4a4f58"
+	p["--accent-soft"], p["--accent-tint"] = "rgba(35, 39, 47, 0.12)", "rgba(35, 39, 47, 0.06)"
+	return p
 }
 
 func parse(frame string) ([3]float64, bool) {

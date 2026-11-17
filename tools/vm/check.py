@@ -30,12 +30,12 @@ SHOTS = os.environ.get("PB_VM_SHOTS") or time.strftime(VM_HOME + "/shots/%Y%m%d-
 BUNDLE_ID = "dev.projectb.browser"
 APP = "/Applications/Project B.app"
 SCREEN = (1440, 900)
-# The default frame colour, #4f9e9e (core/prefs/prefs.go), and the light tones the shell
-# makes from it (shell/src/tones.js). A fresh profile has these.
-FRAME = (79, 158, 158)  # --frame and --accent
-BAR = (232, 242, 242)  # --bar, the frame mixed 0.87 toward white
+# A fresh profile has no frame colour picked (core/tones, None): the light tones of its grey
+# frame, which the guest shows as its appearance is light.
+FRAME = (220, 222, 226)  # --frame, #dcdee2
+BAR = (250, 251, 251)  # --bar, the frame mixed 0.87 toward white
 WHITE = (255, 255, 255)  # --surface
-ICON = (66, 133, 133)  # --icon, the toolbar's buttons: the frame mixed 0.16 toward black
+ICON = (74, 79, 88)  # --icon, the toolbar's buttons: None's ink, #4a4f58
 # Standard's command box fills the page area with the bar's colour mixed 60% into --surface
 # (shell/src/apps/shell/standard/CommandBox.vue). Standard takes New Tab: the app starts and
 # New Window opens with no tab and this box in the page area, and Cmd+T opens it over the
@@ -871,11 +871,10 @@ def profile_checks():
     shot("p3-dock")
     img = desk.image()
     corner = lambda x, y, w, h: crop(img, x + w / 2, y + h / 2, w / 2, h / 2)
-    dots = [(float(np.mean(near(corner(*i), FRAME, 6))), float(np.mean(near(corner(*i), WORK, 6)))) for i in icons]
+    dots = [float(np.mean(near(corner(*i), WORK, 6))) for i in icons]
     check("two profiles run at once, each its own app in the Dock", len(two) == 2 and len(icons) == 2, f"{two} {icons}")
-    check("each Dock icon has a dot in its profile's colour, Personal's and Work's",
-          len(dots) == 2 and sorted(d[0] > 0.02 for d in dots) == [False, True] and sorted(d[1] > 0.02 for d in dots) == [False, True],
-          str(dots))
+    check("Work's Dock icon has a dot in its colour, and Personal's, with none picked, has none",
+          len(dots) == 2 and sorted(d > 0.02 for d in dots) == [False, True], str(dots))
     open_menu("Profiles")
     items, ticked = menu_items("Profiles")
     shot("p3-profiles-menu-work")

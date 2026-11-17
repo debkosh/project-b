@@ -20,7 +20,7 @@ func TestFirstStartMakesTheListHoldingPersonal(t *testing.T) {
 		t.Fatalf("first start chose %+v", c)
 	}
 	list, err := m.List()
-	if err != nil || len(list) != 1 || list[0].ID != First || list[0].Name != "Personal" || list[0].Color != "#4f9e9e" {
+	if err != nil || len(list) != 1 || list[0].ID != First || list[0].Name != "Personal" || list[0].Color != "" {
 		t.Fatalf("list = %+v, %v", list, err)
 	}
 }

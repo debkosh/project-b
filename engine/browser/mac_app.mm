@@ -342,9 +342,14 @@ void RunAppCommand(int32_t command) {
   }
 }
 
-void SetDockColor(uint32_t rgb) {
+void SetDockColor(int32_t rgb) {
   // The bundle's own icon, as it was before the first dot.
   static NSImage* plain = [NSApp.applicationIconImage copy];
+  // No colour picked: no dot.
+  if (rgb < 0) {
+    NSApp.applicationIconImage = plain;
+    return;
+  }
   NSColor* color = [NSColor colorWithSRGBRed:((rgb >> 16) & 0xff) / 255.0
                                        green:((rgb >> 8) & 0xff) / 255.0
                                         blue:(rgb & 0xff) / 255.0

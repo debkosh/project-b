@@ -52,7 +52,7 @@ func TestTheFirstProfileIsMadeFromPersonal(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, First, "prefs.json")); err != nil {
 		t.Fatalf("no prefs written: %v", err)
 	}
-	if p, _, _ := m.Get(First); p.Template != "Personal" || p.Color != "#4f9e9e" {
+	if p, _, _ := m.Get(First); p.Template != "Personal" || p.Color != "" {
 		t.Fatalf("first profile = %+v", p)
 	}
 }

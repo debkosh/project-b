@@ -298,7 +298,8 @@ type Engine interface {
 	SetMenu(m Menu)
 	AppCommand(c AppCommand)
 	// SetDockColor draws the app's Dock icon with a small dot in color, "#rrggbb", the
-	// profile's, so each running profile's copy tells itself apart there.
+	// profile's, so each running profile's copy tells itself apart there; tones.None, no
+	// colour picked, draws no dot.
 	SetDockColor(color string)
 
 	// Post runs fn on the main thread, later.
@@ -713,6 +714,7 @@ type WindowLayout struct {
 	Tabs         []VisibleTab // The tabs whose pages show, and where. Every other tab is hidden.
 	Regions      []Region     // In order. The first that holds a point decides.
 	FrameColor   string       // "#rrggbb", painted under the shell and the page.
+	FrameDark    string       // In its place while the window is dark: the same, unless no colour is picked (tones.None).
 	FrameWidth   float64      // The band drawn around the window's edge, over both.
 	Theme        Theme        // Light or dark for the window's own parts, or the system's.
 }

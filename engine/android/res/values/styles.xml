@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- The default frame colour, until Go gives the window the one in the prefs. -->
-    <color name="frame">#4f9e9e</color>
+    <!-- No colour picked, None's light grey (core/tones), until Go gives the window the one in
+         the prefs. -->
+    <color name="frame">#dcdee2</color>
 
     <style name="Window" parent="@android:style/Theme.Material.Light.NoActionBar">
         <item name="android:statusBarColor">@color/frame</item>

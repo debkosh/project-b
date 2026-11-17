@@ -307,9 +307,10 @@ const stopServer = lib.stop;
   check('the frame\'s left, right and bottom edges never drag', (await regions({ x: 2, y: 300 })).hit !== 'drag' && (await regions({ x: 1098, y: 300 })).hit !== 'drag' && (await regions({ x: 600, y: 698 })).hit !== 'drag');
   check('the control itself is shell, not drag', (await regions({ x: windowLeft + 12, y: 16 })).hit === 'shell');
   await toolbarDrags('tabs on the side');
-  // The frame colour has one owner: Go gave it to the window and to the shell.
+  // The frame colour has one owner: Go gave it to the window and to the shell. None is
+  // picked at first: None's light grey (core/tones).
   const frame = await shellFrame().evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--frame').trim());
-  check('the window and the shell paint the frame colour Go owns', frame === '#4f9e9e' && (await regions()).windowColor === frame, `${frame} ${(await regions()).windowColor}`);
+  check('the window and the shell paint the frame colour Go owns', frame === '#dcdee2' && (await regions()).windowColor === frame, `${frame} ${(await regions()).windowColor}`);
   check('the window already had the frame colour when it went on screen', (await regions()).shownColor === frame, (await regions()).shownColor);
 
   // The shell is not a page: nothing scrolls, and a trackpad swipe must not rubber-band it.
@@ -334,7 +335,7 @@ const stopServer = lib.stop;
   // The window draws its frame band over the shell and the page, and its controls where
   // the engine reports them; full screen has none.
   const band = await page.locator('.band').evaluate((el) => { const s = getComputedStyle(el); return [s.borderTopColor, s.borderLeftWidth, s.borderRadius]; });
-  check('the window draws the frame band in the frame colour, the frame width wide', JSON.stringify(band) === JSON.stringify(['rgb(79, 158, 158)', '4px', '26px']), JSON.stringify(band));
+  check('the window draws the frame band in the frame colour, the frame width wide', JSON.stringify(band) === JSON.stringify(['rgb(220, 222, 226)', '4px', '26px']), JSON.stringify(band));
   const controls = page.locator('.controls');
   const controlsBox = await controls.boundingBox();
   check('and its controls where the engine reports them', JSON.stringify(controlsBox) === JSON.stringify({ x: 19, y: 19, width: 60, height: 14 }), JSON.stringify(controlsBox));

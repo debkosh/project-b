@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"projectb/timeline"
+	"projectb/tones"
 )
 
 // What a start found in the profile, and where each thing keeps its files, as lines of
@@ -17,7 +18,11 @@ import (
 func (a *App) sayStart(dir string) {
 	timeline.Infof("profile: the engine's storage in %s", filepath.Join(dir, "chromium"))
 	p := a.Prefs.All()
-	timeline.Infof("prefs: shell %s, tabs %s, theme %s, colour %s, in %s", p.Shell, p.TabLayout, p.Theme, p.FrameColor, filepath.Join(dir, "prefs.json"))
+	colour := p.FrameColor
+	if colour == tones.None {
+		colour = "none"
+	}
+	timeline.Infof("prefs: shell %s, tabs %s, theme %s, colour %s, in %s", p.Shell, p.TabLayout, p.Theme, colour, filepath.Join(dir, "prefs.json"))
 	list := a.Workspaces.List()
 	timeline.Infof("workspaces: %d, listed in %s", len(list), filepath.Join(dir, "workspaces.json"))
 	for _, w := range list {

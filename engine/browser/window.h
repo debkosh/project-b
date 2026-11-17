@@ -53,6 +53,9 @@ class Window {
     // points of the band it draws over everything around its edge, rounded with its
     // own corner radius, so the page's square corners never show at the curve.
     uint32_t frame_rgb;
+    // The colour in its place while the window is dark: the same but while no colour is
+    // picked, whose grey has a dark twin.
+    uint32_t frame_rgb_dark;
     double frame_width;
     // How the window's own parts are drawn: 0 as the system is, 1 light, 2 dark. Only
     // this window: pages keep following the system.

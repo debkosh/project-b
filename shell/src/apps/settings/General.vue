@@ -8,12 +8,13 @@ import { send, state } from './state.js';
 // General settings: what Go owns, shown, and the user's changes sent back. It changes only
 // when Go says so.
 
-// Frame colours to pick from. The default is a dustier teal; the rest are the frames of the
-// Reference design's modes: Personal, Work, Kids, Open Season and Incognito, with Work's blue
-// the one the Work profile template sets, so a profile made from it shows a preset. The
-// shell derives its other tones from whichever is picked.
+// Frame colours to pick from. None is first, and is where a profile starts: a grey frame
+// with ink for the accent (docs/onboarding.md). The rest are the frames of the Reference
+// design's modes: Personal, Work, Kids, Open Season and Incognito, with Work's blue the one
+// the Work profile template sets, so a profile made from it shows a preset. The shell
+// derives its other tones from whichever is picked.
 const presets = [
-  { name: 'Dusty teal', color: '#4f9e9e' },
+  { name: 'None', color: '' },
   { name: 'Teal', color: '#0faaaa' },
   { name: 'Blue', color: '#5b7fd6' },
   { name: 'Amber', color: '#faa804' },

@@ -155,6 +155,8 @@ NSColor* Hex(uint32_t rgb) {
 // Holds every page view the window has shown; those it shows now are the only ones not
 // hidden.
 @property(nonatomic, strong) NSView* pages;
+// Runs when the window turns light or dark, by its theme or the system's.
+@property(nonatomic, copy) void (^onAppearance)(void);
 - (void)setRegions:(std::vector<project_b::Window::Region>)regions;
 @end
 
@@ -168,6 +170,14 @@ NSColor* Hex(uint32_t rgb) {
 @synthesize popupView = _popupView;
 #endif
 @synthesize pages = _pages;
+@synthesize onAppearance = _onAppearance;
+
+- (void)viewDidChangeEffectiveAppearance {
+  [super viewDidChangeEffectiveAppearance];
+  if (_onAppearance) {
+    _onAppearance();
+  }
+}
 
 - (void)setRegions:(std::vector<project_b::Window::Region>)regions {
   _regions = std::move(regions);
@@ -417,6 +427,7 @@ struct Window::Impl {
   uint32_t shown_rgb = 0;
   // The frame last painted; none yet.
   int64_t frame_rgb = -1;
+  int64_t frame_rgb_dark = -1;
   int theme = -1;
   double frame_width = -1;
   base::RepeatingCallback<void(const State&)> on_state;
@@ -486,6 +497,29 @@ struct Window::Impl {
     return radius;
   }
 
+  // Paints the frame in the colour for the window's appearance now: light's, or dark's,
+  // which differ only while no colour is picked.
+  void PaintFrame() {
+    if (frame_rgb < 0) {
+      return;
+    }
+    const bool dark =
+        [[container.effectiveAppearance bestMatchFromAppearancesWithNames:@[
+          NSAppearanceNameAqua, NSAppearanceNameDarkAqua
+        ]] isEqualToString:NSAppearanceNameDarkAqua];
+    const uint32_t rgb = static_cast<uint32_t>(dark ? frame_rgb_dark : frame_rgb);
+    NSColor* color = [NSColor colorWithSRGBRed:((rgb >> 16) & 0xff) / 255.0
+                                         green:((rgb >> 8) & 0xff) / 255.0
+                                          blue:(rgb & 0xff) / 255.0
+                                         alpha:1];
+    window.backgroundColor = color;
+    // A layer's border is drawn above its sublayers, so this band sits over the page
+    // and the shell alike; its corners take the window's radius in ReportState.
+    container.layer.backgroundColor = color.CGColor;
+    container.layer.borderColor = color.CGColor;
+    container.layer.borderWidth = frame_width;
+  }
+
   void ReportState() {
     const State state = {
         .size = gfx::SizeF(container.bounds.size.width,
@@ -553,6 +587,10 @@ Window::Window(base::OnceClosure on_close,
       initWithFrame:NSMakeRect(0, 0, 1280, 720)];
   impl_->container.wantsLayer = YES;
   impl_->window.contentView = impl_->container;
+  Impl* impl = impl_.get();
+  impl_->container.onAppearance = ^{
+    impl->PaintFrame();
+  };
 
   // The holder covers the window, and each page in it keeps its margins, so a page
   // follows a window resize in the same frame, before the shell has had a chance to say
@@ -574,6 +612,7 @@ Window::Window(base::OnceClosure on_close,
 
 Window::~Window() {
   impl_->window.delegate = nil;
+  impl_->container.onAppearance = nil;
 }
 
 // AppKit's cascade: the top left of the other window, then one step down and right of it.
@@ -750,30 +789,23 @@ bool Window::SetLayout(Layout layout) {
   [impl_->container setRegions:std::move(layout.regions)];
 
   if (layout.frame_rgb != impl_->frame_rgb ||
+      layout.frame_rgb_dark != impl_->frame_rgb_dark ||
       layout.frame_width != impl_->frame_width) {
     impl_->frame_rgb = layout.frame_rgb;
+    impl_->frame_rgb_dark = layout.frame_rgb_dark;
     impl_->frame_width = layout.frame_width;
-    const uint32_t rgb = layout.frame_rgb;
-    NSColor* color = [NSColor colorWithSRGBRed:((rgb >> 16) & 0xff) / 255.0
-                                         green:((rgb >> 8) & 0xff) / 255.0
-                                          blue:(rgb & 0xff) / 255.0
-                                         alpha:1];
-    impl_->window.backgroundColor = color;
-    // A layer's border is drawn above its sublayers, so this band sits over the page
-    // and the shell alike; its corners take the window's radius in ReportState.
-    impl_->container.layer.backgroundColor = color.CGColor;
-    impl_->container.layer.borderColor = color.CGColor;
-    impl_->container.layer.borderWidth = layout.frame_width;
+    impl_->PaintFrame();
   }
 
   // The window's own appearance only: NSApp's would change what pages see as the
-  // system's light or dark too.
+  // system's light or dark too. The frame follows it, as onAppearance repaints it.
   if (layout.theme != impl_->theme) {
     impl_->theme = layout.theme;
     impl_->window.appearance =
         layout.theme == 1   ? [NSAppearance appearanceNamed:NSAppearanceNameAqua]
         : layout.theme == 2 ? [NSAppearance appearanceNamed:NSAppearanceNameDarkAqua]
                             : nil;
+    impl_->PaintFrame();
   }
 
   const NSSize size = impl_->container.bounds.size;

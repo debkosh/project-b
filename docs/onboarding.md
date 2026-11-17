@@ -17,6 +17,8 @@ screen... with a nice splash screen and stuff". So:
 - **No colour is chosen for the user.** The welcome and a new profile are neutral (a light grey
   frame, ink for the accent) until a colour is picked; "None" is the first swatch and the one
   selected. The dusty teal default (`#4f9e9e`) goes from the profile templates and the presets.
+  Built in slice 1: `frameColor` `""` is None (`tones.None`), a grey frame for light and one
+  for dark, which the window paints by its appearance, and no dot on the Dock icon.
 - **The welcome takes the whole window,** with no browser UI around it: a splash (the mark draws
   itself, the name fades in), then the welcome, with a window behind the words that changes colour
   as it waits. The browser's UI comes in around the page at Start browsing. The phone's welcome

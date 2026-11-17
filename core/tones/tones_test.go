@@ -33,11 +33,31 @@ func TestTheSameTonesAsTheJavaScript(t *testing.T) {
 	}
 }
 
-// No colour, or one that isn't #rrggbb, has nothing to paint.
-func TestNoTonesWithoutAColour(t *testing.T) {
-	for _, frame := range []string{"", "#fff", "4f9e9e00", "#4f9e9g"} {
+// A colour that isn't #rrggbb has nothing to paint.
+func TestNoTonesForWhatIsntAColour(t *testing.T) {
+	for _, frame := range []string{"#fff", "4f9e9e00", "#4f9e9g"} {
 		if Of(frame) != nil {
 			t.Errorf("%q has tones", frame)
 		}
+	}
+}
+
+// No colour picked is a grey frame for each theme, with an accent that reads on the page:
+// ink in light, the light text in dark, and what goes on it the other way round.
+func TestNoColourIsGreyWithAnAccentThatReads(t *testing.T) {
+	b := Of(None)
+	if b == nil || b.Light["--frame"] != Frame(None, false) || b.Dark["--frame"] != Frame(None, true) || Frame(None, false) == Frame(None, true) {
+		t.Fatalf("None's frames: %v", b)
+	}
+	for _, p := range []Palette{b.Light, b.Dark} {
+		a, _ := parse(p["--accent"])
+		on, _ := parse(p["--on-accent"])
+		bar, _ := parse(p["--bar"])
+		if contrast(a, on) < 4.5 || contrast(a, bar) < 4.5 {
+			t.Errorf("%s on %s, over %s, doesn't read", p["--on-accent"], p["--accent"], p["--bar"])
+		}
+	}
+	if Frame("#5b7fd6", true) != "#5b7fd6" {
+		t.Error("a colour picked isn't its own frame in dark")
 	}
 }

@@ -69,6 +69,10 @@ final class BrowserWindow extends FrameLayout {
     private ContentView shownView;
     // Go's theme for the window's own parts: 0 as the system is, 1 light, 2 dark.
     private int theme;
+    // The frame colour for light and for dark, 0xRRGGBB.
+    private int frameLight;
+    private int frameDark;
+    private boolean hasFrame;
     private FrameLayout.LayoutParams pageParams = matchParent();
     // Five numbers a region, x, y, w, h and what a press there does, in order: the first that
     // holds a point decides. None holds it: the page.
@@ -373,12 +377,34 @@ final class BrowserWindow extends FrameLayout {
         }
     }
 
-    /** The frame colour, in the status bar and wherever a camera cutout keeps the window away. */
+    /**
+     * The frame colour, light and dark, which differ only while no colour is picked: the one for
+     * the theme shows in the status bar and wherever a camera cutout keeps the window away.
+     */
     @CalledByNative
-    private void setFrameColor(int rgb) {
+    private void setFrameColor(int light, int dark) {
+        frameLight = light;
+        frameDark = dark;
+        hasFrame = true;
+        paintFrame();
+    }
+
+    private void paintFrame() {
+        if (!hasFrame || nativeWindow == 0) return;
+        int rgb = isDark() ? frameDark : frameLight;
         int color = 0xff000000 | rgb;
         activity.getWindow().setBackgroundDrawable(new ColorDrawable(color));
         activity.getWindow().setStatusBarColor(color);
+        BrowserWindowJni.get().frameShown(nativeWindow, rgb);
+    }
+
+    // As Go's theme says, or the phone's own dark mode as the system is.
+    private boolean isDark() {
+        return theme == 2
+                || (theme == 0
+                        && (getResources().getConfiguration().uiMode
+                                        & Configuration.UI_MODE_NIGHT_MASK)
+                                == Configuration.UI_MODE_NIGHT_YES);
     }
 
     /**
@@ -396,12 +422,8 @@ final class BrowserWindow extends FrameLayout {
      * ours and the web's, hear it as their preferred colour scheme.
      */
     void applyTheme() {
-        boolean dark =
-                theme == 2
-                        || (theme == 0
-                                && (getResources().getConfiguration().uiMode
-                                                & Configuration.UI_MODE_NIGHT_MASK)
-                                        == Configuration.UI_MODE_NIGHT_YES);
+        boolean dark = isDark();
+        paintFrame();
         OsSettingsProviderAndroidBridge.setPreferredColorScheme(dark);
         activity.getWindow().setNavigationBarColor(dark ? 0xff1b1c1e : 0xffffffff);
         int flags = getSystemUiVisibility();
@@ -525,6 +547,8 @@ final class BrowserWindow extends FrameLayout {
         void surfaceDestroyed(long nativeBrowserWindow);
 
         void sizeChanged(long nativeBrowserWindow, double width, double height);
+
+        void frameShown(long nativeBrowserWindow, int rgb);
 
         void contentsMoved(
                 long nativeBrowserWindow,

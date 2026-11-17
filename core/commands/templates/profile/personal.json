@@ -2,7 +2,7 @@
   "name": "Personal",
   "prefs": {
     "tabLayout": "vertical",
-    "frameColor": "#4f9e9e",
+    "frameColor": "",
     "theme": "system",
     "shell": "standard"
   }

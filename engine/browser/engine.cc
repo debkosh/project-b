@@ -329,7 +329,7 @@ void CallAppCommand(int32_t command) {
 #if !BUILDFLAG(IS_ANDROID)
 void CallSetDockColor(int32_t rgb) {
   CheckMainThread();
-  SetDockColor(static_cast<uint32_t>(rgb));
+  SetDockColor(rgb);
 }
 #endif
 
@@ -368,6 +368,7 @@ Window::Layout LayoutOf(const PBWindowLayout* l,
   Window::Layout layout = {
       .viewport = gfx::SizeF(l->view_w, l->view_h),
       .frame_rgb = static_cast<uint32_t>(l->frame_rgb),
+      .frame_rgb_dark = static_cast<uint32_t>(l->frame_rgb_dark),
       .frame_width = l->frame_width,
       .theme = l->theme,
   };

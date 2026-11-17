@@ -1044,9 +1044,11 @@ def browsing_checks():
     # The window controls stay put through resizes, so the shell's space for them does too.
     check("the controls' space survives resizing", app.js("document.querySelector('[aria-label$=sidebar]').getBoundingClientRect().x") == window["buttonsEnd"] + 8)
 
-    # The frame colour has one owner: Go gave it to the window and to the shell.
+    # The frame colour has one owner: Go gave it to the window and to the shell. A fresh
+    # profile has none picked, so both paint None's grey for the theme they show
+    # (core/tones).
     frame = app.js("getComputedStyle(document.documentElement).getPropertyValue('--frame').trim()")
-    check("the window and the shell paint the frame colour Go owns", frame == "#4f9e9e" and app.cmd("color") == frame, (frame, app.cmd("color")))
+    check("the window and the shell paint the frame colour Go owns", frame in ("#dcdee2", "#3a3f4a") and app.cmd("color") == frame, (frame, app.cmd("color")))
     check("the window already had the frame colour when it went on screen", app.cmd("showncolor") == frame, app.cmd("showncolor"))
 
     # The shell is not a page: nothing scrolls, and a trackpad swipe must not rubber-band it.
@@ -1059,7 +1061,7 @@ def browsing_checks():
     native = lambda: json.loads(app.cmd("frame"))  # The border the window itself draws.
     windowed = radius()
     print("window corner radius", windowed, "native frame", native(), flush=True)
-    check("the window draws the frame's curve with its own radius and Go's width and colour", windowed > 0 and native() == {"radius": windowed, "width": 4, "color": "#4f9e9e"}, (windowed, native()))
+    check("the window draws the frame's curve with its own radius and Go's width and colour", windowed > 0 and native() == {"radius": windowed, "width": 4, "color": frame}, (windowed, native()))
 
     # The shell asks Go's window manager, the manager tells the engine, and the engine
     # reports the result. Full screen is checked on a real screen: tools/check_full_screen.py.
@@ -1558,7 +1560,7 @@ def profile_checks():
     check("and runs on that folder", os.path.exists(os.path.join(root, "default", "timeline.log")), os.listdir(root))
     made = json.load(open(os.path.join(root, "default", "prefs.json")))
     check("made from the Personal template: its prefs are Personal's, and the list says so",
-          made == {"tabLayout": "vertical", "frameColor": "#4f9e9e", "theme": "system", "shell": "standard"} and first[0]["template"] == "Personal", (made, first))
+          made == {"tabLayout": "vertical", "frameColor": "", "theme": "system", "shell": "standard"} and first[0]["template"] == "Personal", (made, first))
     check("the list records when the profile was used last", first[0].get("lastUsed", "") != "", first)
     started = subprocess.run([BIN, f"--root={root}", "--profile=default", PAGES + "clicks"], timeout=60, capture_output=True)
     check("a start naming the running profile by its id hands over and exits", started.returncode == 0, started.returncode)
@@ -1614,7 +1616,9 @@ def copies_checks():
         check("a click in the address bar of the copy behind gives it the keyboard", True)
     except TimeoutError as e:
         check("a click in the address bar of the copy behind gives it the keyboard", False, e)
-    check("each copy's Dock icon has a dot in its profile's colour", (a.cmd("dockdot"), b.cmd("dockdot")) == ("#4f9e9e", "#5b7fd6"), (a.cmd("dockdot"), b.cmd("dockdot")))
+    # Personal has no colour picked, so its icon has no dot: where it would be shows the
+    # icon's own artwork, as the picker's does.
+    check("each copy's Dock icon has a dot in its profile's colour, and none with no colour", b.cmd("dockdot") == "#5b7fd6" and a.cmd("dockdot") != "#5b7fd6", (a.cmd("dockdot"), b.cmd("dockdot")))
     shown = lambda app: [(i["title"], i["checked"]) for m in json.loads(app.cmd("menu")) if m["title"] == "Profiles" for i in m["items"] if i != "-"]
     check("the Profiles menu lists both, with a tick on this one", shown(a) == [("Personal", True), ("Work", False), ("Profiles…", False)] and shown(b) == [("Personal", False), ("Work", True), ("Profiles…", False)], (shown(a), shown(b)))
     handed = lambda: [e for e in json.loads(b.cmd("timeline"))["result"]["entries"] if "handed over" in e.get("text", "")]
@@ -1677,7 +1681,7 @@ def picker_checks():
     picker.wait(f"{rows}.length===1", 30)
     check("a copy started to pick shows the picker page", picker.js("location.href") == "chrome://picker/" and picker.js(rows) == ["Personal"], picker.js("location.href"))
     plain = picker.cmd("dockdot")
-    check("its Dock icon has no profile's dot", plain not in ("#4f9e9e", "#5b7fd6"), plain)
+    check("its Dock icon has no profile's dot", plain != "#5b7fd6", plain)
     used = listed()[0]["lastUsed"]
     picker.js("document.querySelector('.row').click(), 1")
     check("choosing a profile quits the picker copy", picker.proc.wait(timeout=30) == 0)

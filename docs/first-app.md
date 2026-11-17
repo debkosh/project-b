@@ -171,11 +171,14 @@ reach the page. It shows the tab layout, the frame colour, the running version w
 for updates, and the automatic updates switch. Go owns all of it: the snapshot carries it,
 the panel sends the user's changes, and Go says when they change.
 
-The frame colour is a pref, `frameColor`, by default a dusty teal, `#4f9e9e`. The panel
-offers it and the frames of the Reference design's modes (Personal's teal, Work's blue, Kids'
-amber, Open Season's red, Incognito's slate), and a colour input for any other. The
-window manager paints the window's frame with it through the next `SetWindowLayout` and tells the
-shell, so both change together, and Go derives the shell's other tones from it
+The frame colour is a pref, `frameColor`, by default none: `""`, `tones.None`, as the owner
+wants no colour chosen for the user (docs/onboarding.md). None paints a light grey frame, or
+a dark grey in dark, with ink for the accent. The panel offers None first, then the frames of
+the Reference design's modes (teal, Work's blue, Kids' amber, Open Season's red, Incognito's
+slate), and a colour input for any other. The window manager paints the window's frame with
+it through the next `SetWindowLayout`, which carries the colour for light and the one for
+dark (they differ only for None, and the window paints whichever its appearance is), and
+tells the shell, so both change together. With none picked the Dock icon has no dot. Go derives the shell's other tones from it
 (`core/tones`, sent with the colour): the bar and surfaces toward white, the icons' ink toward black, the accent's soft
 fills the colour itself, faint.
 

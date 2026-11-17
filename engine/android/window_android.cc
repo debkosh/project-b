@@ -124,6 +124,9 @@ class BrowserWindow : public content::CompositorClient,
     root_->SetBounds(size);
   }
 
+  // The frame colour Java painted, for the theme it shows: here too, where nothing draws.
+  void FrameShown(JNIEnv* env, int32_t rgb) { SetColor(rgb); }
+
   void SizeChanged(JNIEnv* env, double width, double height) {
     size_ = gfx::SizeF(width, height);
     ReportState();
@@ -243,6 +246,7 @@ static int64_t JNI_BrowserWindow_Start(JNIEnv* env,
 
 struct Window::Impl {
   uint32_t frame_rgb = 0;
+  uint32_t frame_rgb_dark = 0;
   bool has_frame = false;
   int theme = -1;
   // The last layout, which SetPages hands Java with the page.
@@ -325,12 +329,14 @@ void Window::RemovePageContents(content::WebContents* contents) {
 // Java places the page and ignores a stale one itself, so the pages always follow.
 bool Window::SetLayout(Layout layout) {
   JNIEnv* env = AttachCurrentThread();
-  if (!impl_->has_frame || layout.frame_rgb != impl_->frame_rgb) {
+  if (!impl_->has_frame || layout.frame_rgb != impl_->frame_rgb ||
+      layout.frame_rgb_dark != impl_->frame_rgb_dark) {
     impl_->has_frame = true;
     impl_->frame_rgb = layout.frame_rgb;
-    g_browser_window->SetColor(layout.frame_rgb);
+    impl_->frame_rgb_dark = layout.frame_rgb_dark;
     Java_BrowserWindow_setFrameColor(env, g_browser_window->java(),
-                                     static_cast<int32_t>(layout.frame_rgb));
+                                     static_cast<int32_t>(layout.frame_rgb),
+                                     static_cast<int32_t>(layout.frame_rgb_dark));
   }
   if (layout.theme != impl_->theme) {
     impl_->theme = layout.theme;

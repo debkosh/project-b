@@ -46,7 +46,7 @@ export function spaceId() {
 }
 
 export function space() {
-  return spaces().find((s) => s.id === spaceId()) || { id: spaceId(), name: '', color: go.windowColor || '#4f9e9e' };
+  return spaces().find((s) => s.id === spaceId()) || { id: spaceId(), name: '', color: go.windowColor || go.tones?.light['--frame'] };
 }
 
 // tabsIn is a Space's tabs in Go's order.

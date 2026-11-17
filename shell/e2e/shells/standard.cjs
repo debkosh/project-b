@@ -412,12 +412,13 @@ const { check, fire, regions, settle, until } = lib;
     return { danger, color: getComputedStyle(el).color, h: r.height, w: r.width, left: r.left - field.left, size: getComputedStyle(el.querySelector('.words')).fontSize };
   });
   check('in --danger, 12px words, no taller than the field and at its start', look.color === look.danger && look.size === '12px' && look.h <= 32 && look.left <= 1 && look.w < 120, JSON.stringify(look));
-  for (const [name, colour] of [['default', '#4f9e9e'], ['dark-frame', '#384562'], ['light-frame', '#faa804']]) {
+  // The default is None, which the window paints in its light grey.
+  for (const [name, colour, painted] of [['default', '', '#dcdee2'], ['dark-frame', '#384562', '#384562'], ['light-frame', '#faa804', '#faa804']]) {
     await send({ t: 'setPref', name: 'frameColor', value: colour });
-    await until(async () => (await regions()).windowColor === colour);
+    await until(async () => (await regions()).windowColor === painted);
     await shoot(`not-secure-${name}`);
   }
-  await send({ t: 'setPref', name: 'frameColor', value: '#4f9e9e' });
+  await send({ t: 'setPref', name: 'frameColor', value: '' });
   await warn.click();
   check('a press on it opens the site\'s panel', await until(() => ui.getByRole('dialog', { name: 'Site settings for plain.test' }).isVisible()));
   await page.keyboard.press('Escape');

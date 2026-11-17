@@ -4,7 +4,8 @@ import { computed, nextTick, ref, watch } from 'vue';
 // A colour from a row of presets, and with custom set, any colour from the system's
 // picker behind the last swatch, which keeps a + on it so it reads as a picker. It is one
 // Tab stop; the arrow keys move the choice, as a radio group's do. colors holds '#rrggbb'
-// strings, or { color, name } where a preset has a name to be read out.
+// strings, or { color, name } where a preset has a name to be read out. A preset whose
+// colour is '' is None, no colour: the surface with a stroke across it.
 const props = defineProps({ modelValue: String, colors: Array, label: String, custom: Boolean });
 const emit = defineEmits(['update:modelValue']);
 
@@ -40,6 +41,7 @@ async function onKey(e) {
       type="button"
       role="radio"
       class="ui-swatch"
+      :class="{ none: !c.color }"
       :aria-checked="c.color === current"
       :aria-label="c.name"
       :title="c.name"
@@ -54,7 +56,7 @@ async function onKey(e) {
       title="Custom colour"
       :style="isCustom ? { background: current } : null"
     >
-      <input type="color" :value="current" aria-label="Custom colour" @input="choose($event.target.value)" />
+      <input type="color" :value="current || '#808080'" aria-label="Custom colour" @input="choose($event.target.value)" />
     </label>
   </div>
 </template>
@@ -89,6 +91,11 @@ async function onKey(e) {
 .ui-swatch.custom:focus-within {
   outline: 2px solid var(--accent);
   outline-offset: 4px;
+}
+
+/* None: the surface, struck through. */
+.ui-swatch.none {
+  background: linear-gradient(135deg, transparent 47%, var(--muted) 47%, var(--muted) 53%, transparent 53%), var(--surface);
 }
 
 /* The custom swatch: a + on the surface until a custom colour is chosen. */

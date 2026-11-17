@@ -9,6 +9,7 @@ import (
 
 	"projectb/engine"
 	"projectb/timeline"
+	"projectb/tones"
 )
 
 // ShellLayout is what the shell reports about itself: the rectangles that are its own,
@@ -90,7 +91,8 @@ func (m *Manager) layout(w *window) engine.WindowLayout {
 		ViewW:      w.shell.ViewW,
 		ViewH:      w.shell.ViewH,
 		Tabs:       w.shell.Tabs,
-		FrameColor: m.color,
+		FrameColor: tones.Frame(m.color, false),
+		FrameDark:  tones.Frame(m.color, true),
 		FrameWidth: w.shell.Frame,
 		Theme:      m.theme,
 	}
@@ -113,7 +115,7 @@ func (m *Manager) update(id engine.WindowID) {
 	w := m.windows[id]
 	l := m.layout(w)
 	if l.ViewW == w.sent.ViewW && l.ViewH == w.sent.ViewH && slices.Equal(l.Tabs, w.sent.Tabs) &&
-		l.FrameColor == w.sent.FrameColor && l.FrameWidth == w.sent.FrameWidth && l.Theme == w.sent.Theme &&
+		l.FrameColor == w.sent.FrameColor && l.FrameDark == w.sent.FrameDark && l.FrameWidth == w.sent.FrameWidth && l.Theme == w.sent.Theme &&
 		slices.Equal(l.Regions, w.sent.Regions) {
 		return
 	}
@@ -194,7 +196,7 @@ func (m *Manager) FullScreen(id engine.WindowID) bool {
 func (m *Manager) Request(id engine.WindowID, r engine.WindowRequest) { m.eng.RequestWindow(id, r) }
 
 // Color is the one colour every window paints natively and the shell paints its frame
-// with, "#rrggbb".
+// with, "#rrggbb", or tones.None, which each paints in its grey for light or dark.
 func (m *Manager) Color() string { return m.color }
 
 // OnColorChanged subscribes to the frame colour changing.
