@@ -3,7 +3,8 @@
 <!-- Mocks of the first-run onboarding (docs/onboarding.md). Open with ?m=<id>; render with
      tools in the doc. Pictures only: nothing here is code the app runs. -->
 <style>
-:root{--frame:#4f9e9e;--accent:#3f8f8f;--on-accent:#fff;--accent-soft:#d3e8e8;--accent-tint:#e6f1f1;--bar:#eaf3f3;--surface:#fff;--text:#1f2a2a;--muted:#6b7878;--icon:#4a5a5a;--line:#d6e2e2;--danger:#c63b32}
+:root,.neutral{--frame:#dcdee2;--accent:#23272f;--on-accent:#fff;--accent-soft:#e3e5e9;--accent-tint:#f1f2f4;--bar:#f5f6f7;--surface:#fff;--text:#1d2025;--muted:#6b707a;--icon:#4a4f58;--line:#e0e2e6;--danger:#c63b32}
+.blue{--frame:#5b7fd6;--accent:#4a6fc9;--on-accent:#fff;--accent-soft:#dbe3f6;--accent-tint:#edf1fa;--bar:#f1f4fb;--line:#dde3f0;--text:#1d2230;--muted:#687087;--icon:#47506a}
 *{box-sizing:border-box}
 body{margin:0;font:14px/1.4 -apple-system,"Helvetica Neue",Arial,sans-serif;color:var(--text);background:#f4f6f6;-webkit-font-smoothing:antialiased}
 .mock{display:none;padding:24px}.mock.on{display:block}
@@ -24,6 +25,29 @@ body{margin:0;font:14px/1.4 -apple-system,"Helvetica Neue",Arial,sans-serif;colo
 .tab.new{color:var(--accent)}.tab.new span{margin-left:auto;color:var(--muted)}
 .tab.act{background:var(--surface);box-shadow:0 0 0 1px var(--line)}
 .page{position:absolute;left:224px;top:52px;right:0;bottom:0;background:var(--bar);overflow:hidden}
+.win.full .page{left:0;top:0}.win.full{border-color:#c9ccd2;background:var(--bar)}
+.fdots{position:absolute;left:18px;top:18px;display:flex;gap:8px;z-index:3}.fdots i{width:12px;height:12px;border-radius:50%;background:#ec6a5e}.fdots i:nth-child(2){background:#f4bf4f}.fdots i:nth-child(3){background:#61c554}
+.splash{position:absolute;inset:0;display:grid;place-items:center;background:var(--bar)}
+.splash .in{text-align:center}
+.hero{text-align:center}.hero .pv{box-shadow:0 24px 60px rgba(16,24,40,.14)}
+@property --cf{syntax:'<color>';inherits:true;initial-value:#dcdee2}
+.cycle{--cf:#dcdee2;background:var(--cf);animation:cyc 9s 1.8s infinite cubic-bezier(.2,0,0,1)}
+.cycle .s b{background:color-mix(in srgb,#fff 40%,transparent)}
+@keyframes cyc{0%,14%{--cf:#dcdee2}20%,34%{--cf:#0faaaa}40%,54%{--cf:#5b7fd6}60%,74%{--cf:#faa804}80%,94%{--cf:#384562}100%{--cf:#dcdee2}}
+.anim .mark{animation:pop 520ms cubic-bezier(.2,0,0,1) both}.anim .mark i::before{animation:line 380ms 380ms cubic-bezier(.2,0,0,1) both;transform-origin:top}
+.anim .name{animation:fade 360ms 640ms cubic-bezier(.2,0,0,1) both}
+@keyframes pop{from{opacity:0;transform:scale(.82)}to{opacity:1;transform:none}}@keyframes line{from{transform:scaleY(0)}to{transform:none}}@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.out{animation:out 280ms 1500ms cubic-bezier(.2,0,0,1) both}@keyframes out{to{opacity:0;visibility:hidden}}
+.later{animation:fade 360ms 1650ms cubic-bezier(.2,0,0,1) both}
+.pv{border:1px solid var(--line);border-radius:12px;background:var(--frame);height:330px;position:relative;overflow:hidden;box-shadow:0 12px 32px rgba(16,24,40,.10)}
+.pv .t{position:absolute;left:0;right:0;top:0;height:34px;display:flex;align-items:center;gap:6px;padding:0 10px}.pv .t i{width:8px;height:8px;border-radius:50%;background:rgba(0,0,0,.18)}
+.pv .f{position:absolute;top:7px;left:170px;right:12px;height:20px;border-radius:5px;background:var(--surface);border:1px solid var(--line)}
+.pv .s{position:absolute;left:8px;top:40px;width:146px;bottom:8px}.pv .s b{display:block;height:18px;border-radius:4px;margin-bottom:6px;background:rgba(255,255,255,.35)}.pv .s b.a{background:var(--surface)}
+.pv .pg{position:absolute;left:160px;top:40px;right:8px;bottom:8px;background:#fff;border-radius:6px;padding:18px}.pv .pg u{display:block;height:8px;border-radius:4px;background:#eceef1;margin-bottom:10px;text-decoration:none}
+.lay{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.lay div{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:6px;font-size:12px;text-align:center}.lay div.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.lay em{display:block;height:46px;border-radius:4px;background:var(--accent-tint);margin-bottom:6px;position:relative;font-style:normal}
+.swatches i.none.on{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--text)!important}
+.none{background:repeating-linear-gradient(135deg,#fff 0 4px,#e3e5e9 4px 6px)!important;box-shadow:inset 0 0 0 1px #d4d7dc}
 
 /* The onboarding page */
 .ob{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center}
@@ -69,7 +93,7 @@ h2{font-size:13px;font-weight:500;color:var(--muted);margin:20px 0 8px}
 .sh.small{opacity:1}
 
 /* The welcome page */
-.mark{width:88px;height:88px;border-radius:22px;background:var(--frame);display:grid;place-items:center;margin:0 auto 24px}
+.mark{width:88px;height:88px;border-radius:22px;background:var(--accent);display:grid;place-items:center;margin:0 auto 24px}
 .mark i{width:48px;height:36px;border:3px solid #fff;border-radius:6px;position:relative}.mark i::before{content:"";position:absolute;left:12px;top:0;bottom:0;border-left:3px solid #fff}
 
 /* Tips */
@@ -80,20 +104,20 @@ h2{font-size:13px;font-weight:500;color:var(--muted);margin:20px 0 8px}
 
 /* macOS's own dialog over the page */
 .sys{position:absolute;width:260px;background:rgba(246,246,246,.98);border-radius:12px;box-shadow:0 20px 50px rgba(0,0,0,.3),0 0 0 .5px rgba(0,0,0,.2);padding:18px 16px 14px;text-align:center;font-size:13px;z-index:4}
-.sys .ic{width:48px;height:48px;border-radius:12px;background:var(--frame);margin:0 auto 10px}
+.sys .ic{width:48px;height:48px;border-radius:12px;background:#23272f;margin:0 auto 10px}
 .sys b{display:block;margin-bottom:8px}
 .sys .bt{display:block;height:28px;border-radius:6px;background:#e3e3e3;margin-top:6px;line-height:28px}.sys .bt.p{background:#2f7cf6;color:#fff}
 
 /* Phone */
 .ph{width:412px;height:892px;border-radius:28px;overflow:hidden;position:relative;background:var(--bar);border:1px solid #c8d0d0;flex:none}
-.sb{height:36px;background:var(--frame);color:#fff;font-size:13px;display:flex;align-items:center;padding:0 22px;justify-content:space-between}
+.sb{height:36px;background:var(--bar);color:var(--text);font-size:13px;display:flex;align-items:center;padding:0 22px;justify-content:space-between}
 .tb{position:absolute;left:0;right:0;bottom:22px;height:64px;display:flex;align-items:center;gap:6px;padding:0 10px;background:var(--bar);border-top:1px solid var(--line)}
 .tb.topbar{top:36px;bottom:auto;border-top:0;border-bottom:1px solid var(--line)}
 .pill{flex:1;height:44px;border-radius:22px;border:1px solid var(--line);background:var(--surface);display:flex;align-items:center;padding:0 16px;gap:10px;font-size:15px}
 .tc{width:48px;height:48px;display:grid;place-items:center}.tc b{border:2px solid var(--icon);border-radius:5px;font-size:11px;padding:0 5px;color:var(--icon)}
 .tc.m{font-size:20px;color:var(--icon)}
 .nav{position:absolute;bottom:0;left:0;right:0;height:22px;display:grid;place-items:center;background:var(--bar)}.nav i{width:110px;height:4px;border-radius:2px;background:#555}
-.pob{position:absolute;left:0;right:0;top:36px;bottom:86px;display:flex;flex-direction:column;padding:0 20px}
+.pob{position:absolute;left:0;right:0;top:36px;bottom:30px;display:flex;flex-direction:column;padding:0 20px}
 .pob.tbtop{top:100px;bottom:22px}
 .pob .steps{margin:20px auto 0}
 .pob h1{font-size:24px;margin-top:28px}
@@ -130,21 +154,42 @@ h2{font-size:13px;font-weight:500;color:var(--muted);margin:20px 0 8px}
  </div>
 </template>
 
+<!-- 0 Splash, then the welcome (animated: open ?m=d0) -->
+<div class="mock" id="d0"><div class="win full"><div class="page">
+ <div class="ob later" style="justify-content:flex-start;padding-top:120px"><div class="hero">
+   <div class="mark" style="width:64px;height:64px;border-radius:16px;margin-bottom:20px"><i style="width:34px;height:26px;border-width:2.5px"></i></div>
+   <h1 style="font-size:34px">Welcome to Project B</h1>
+   <p class="lead" style="font-size:16px;margin-bottom:28px">A browser you shape to fit.</p>
+   <span class="btn p big">Get started</span><span class="btn q" style="margin-left:8px">Skip setup</span>
+   <div class="pv cycle" style="width:900px;height:420px;margin:56px auto 0;text-align:left"><div class="t"><i></i><i></i><i></i></div><div class="f"></div>
+     <div class="s"><b style="width:60%"></b><b class="a"></b><b></b><b></b><b style="width:80%"></b><b style="width:50%"></b></div>
+     <div class="pg"><u style="width:40%;height:14px;margin-bottom:16px"></u><u></u><u style="width:92%"></u><u style="width:85%"></u><u style="width:60%"></u><u style="width:0;height:6px"></u><u style="width:90%"></u><u style="width:70%"></u></div></div>
+  </div></div>
+ <div class="splash anim out"><div class="in"><div class="mark" style="width:112px;height:112px;border-radius:28px"><i style="width:60px;height:46px"></i></div><div class="name" style="font-size:22px;font-weight:600;letter-spacing:-.01em">Project B</div></div></div>
+</div></div></div>
+
+<!-- 0s The splash, still -->
+<div class="mock" id="d0s"><div class="win full"><div class="page">
+ <div class="splash"><div class="in"><div class="mark" style="width:112px;height:112px;border-radius:28px"><i style="width:60px;height:46px"></i></div><div style="font-size:22px;font-weight:600;letter-spacing:-.01em">Project B</div></div></div>
+</div></div></div>
+
 <!-- 1 Welcome -->
-<div class="mock" id="d1"><div class="win"><div class="page">
- <div class="ob" style="justify-content:center">
-  <div style="text-align:center;margin-top:-40px">
-   <div class="mark"><i></i></div>
-   <h1 style="font-size:30px">Welcome to Project B</h1>
-   <p class="lead" style="font-size:15px;margin-bottom:32px">A browser you shape to fit.</p>
-   <span class="btn p big">Get started</span>
-   <div style="margin-top:14px"><span class="btn q">Skip setup</span></div>
+<div class="mock" id="d1"><div class="win full"><div class="page">
+ <div class="ob" style="justify-content:flex-start;padding-top:120px">
+  <div class="hero">
+   <div class="mark" style="width:64px;height:64px;border-radius:16px;margin-bottom:20px"><i style="width:34px;height:26px;border-width:2.5px"></i></div>
+   <h1 style="font-size:34px">Welcome to Project B</h1>
+   <p class="lead" style="font-size:16px;margin-bottom:28px">A browser you shape to fit.</p>
+   <span class="btn p big">Get started</span><span class="btn q" style="margin-left:8px">Skip setup</span>
+   <div class="pv cycle" style="width:900px;height:420px;margin:56px auto 0;text-align:left"><div class="t"><i></i><i></i><i></i></div><div class="f"></div>
+     <div class="s"><b style="width:60%"></b><b class="a"></b><b></b><b></b><b style="width:80%"></b><b style="width:50%"></b></div>
+     <div class="pg"><u style="width:40%;height:14px;margin-bottom:16px"></u><u></u><u style="width:92%"></u><u style="width:85%"></u><u style="width:60%"></u><u style="width:0;height:6px"></u><u style="width:90%"></u><u style="width:70%"></u></div></div>
   </div>
  </div>
 </div></div></div>
 
 <!-- 2 Bring your things over: choosing -->
-<div class="mock" id="d2"><div class="win"><div class="page">
+<div class="mock" id="d2"><div class="win full"><div class="page">
  <div class="ob">
   <div class="steps"><i class="d"></i><i class="c"></i><i></i><i></i><i></i></div>
   <div class="col">
@@ -173,7 +218,7 @@ h2{font-size:13px;font-weight:500;color:var(--muted);margin:20px 0 8px}
 </div></div></div>
 
 <!-- 2b Safari: Full Disk Access -->
-<div class="mock" id="d2b"><div class="win"><div class="page">
+<div class="mock" id="d2b"><div class="win full"><div class="page">
  <div class="ob">
   <div class="steps"><i class="d"></i><i class="c"></i><i></i><i></i><i></i></div>
   <div class="col">
@@ -196,7 +241,7 @@ h2{font-size:13px;font-weight:500;color:var(--muted);margin:20px 0 8px}
 </div></div></div>
 
 <!-- 2c Bringing over / done -->
-<div class="mock" id="d2c"><div class="win"><div class="page">
+<div class="mock" id="d2c"><div class="win full"><div class="page">
  <div class="ob">
   <div class="steps"><i class="d"></i><i class="c"></i><i></i><i></i><i></i></div>
   <div class="col">
@@ -215,32 +260,62 @@ h2{font-size:13px;font-weight:500;color:var(--muted);margin:20px 0 8px}
  </div>
 </div></div></div>
 
-<!-- 3 Style -->
-<div class="mock" id="d3"><div class="win"><div class="page">
+<div class="mock" id="d3"><div class="win full neutral"><div class="page">
  <div class="ob">
   <div class="steps"><i class="d"></i><i class="d"></i><i class="c"></i><i></i><i></i></div>
-  <div class="col" style="width:720px">
+  <div style="width:1000px;margin-top:40px;flex:1">
    <h1>Pick your style</h1>
-   <p class="lead">The window changes as you choose.</p>
-   <div class="shells">
-    <div class="sh on"><img src="../standard.png"><div>Tabs on the side<span class="sec">Standard</span></div></div>
-    <div class="sh"><img src="../horizontal.png"><div>Tabs on top<span class="sec">Standard</span></div></div>
-    <div class="sh"><img src="../glide.png"><div>Glide</div></div>
-   </div>
-   <div class="card" style="margin-top:16px">
-    <div class="row"><div class="lab">Theme</div><span class="seg"><span class="on">System</span><span>Light</span><span>Dark</span></span></div>
-    <div class="row"><div class="lab">Colour</div><span class="swatches"><i class="on" style="background:#4f9e9e"></i><i style="background:#0faaaa"></i><i style="background:#5b7fd6"></i><i style="background:#faa804"></i><i style="background:#d82b1f"></i><i style="background:#384562"></i></span></div>
-    <div class="row"><div class="lab">Keys<span class="sec" style="display:block">⌘T, ⌘L, ⌘⇧T and the rest</span></div><span class="seg"><span class="on">Like Chrome</span><span>Project B</span></span></div>
+   <p class="lead">Your browser, as you choose it.</p>
+   <div style="display:flex;gap:32px;align-items:flex-start">
+    <div style="flex:1"><div class="pv"><div class="t"><i></i><i></i><i></i></div><div class="f"></div>
+     <div class="s"><b style="width:60%"></b><b class="a"></b><b></b><b></b><b style="width:80%"></b></div>
+     <div class="pg"><u style="width:40%;height:14px;margin-bottom:16px"></u><u></u><u style="width:92%"></u><u style="width:85%"></u><u style="width:60%"></u><u style="width:0;height:6px"></u><u style="width:90%"></u><u style="width:70%"></u></div></div></div>
+    <div style="width:400px">
+     <h2 style="margin-top:0">Tabs</h2>
+     <div class="lay"><div class="on"><em><span style="position:absolute;left:4px;top:4px;bottom:4px;width:22px;border-radius:3px;background:var(--surface)"></span></em>On the side</div><div class=""><em><span style="position:absolute;left:4px;right:4px;top:4px;height:9px;border-radius:3px;background:var(--surface)"></span></em>On top</div><div class=""><em><span style="position:absolute;left:4px;top:4px;bottom:4px;width:22px;border-radius:3px;background:var(--surface)"></span><span style="position:absolute;left:30px;right:4px;top:4px;bottom:4px;border-radius:5px;border:1px solid var(--line)"></span></em>Glide</div></div>
+     <h2>Colour</h2>
+     <div class="card"><div class="row"><span class="swatches"><i class="on none" style="background:#fff"></i><i class="" style="background:#0faaaa"></i><i class="" style="background:#5b7fd6"></i><i class="" style="background:#faa804"></i><i class="" style="background:#d82b1f"></i><i class="" style="background:#384562"></i></span></div></div>
+     <h2>Theme and keys</h2>
+     <div class="card">
+      <div class="row"><div class="lab">Theme</div><span class="seg"><span class="on">System</span><span>Light</span><span>Dark</span></span></div>
+      <div class="row"><div class="lab">Keys</div><span class="seg"><span class="on">Like Chrome</span><span>Project B</span></span></div>
+     </div>
+    </div>
    </div>
   </div>
-  <div class="foot" style="width:720px"><span class="btn q">Back</span><span class="sp"></span><span class="btn q">Skip</span><span class="btn p">Continue</span></div>
+  <div class="foot" style="width:1000px"><span class="btn q">Back</span><span class="sp"></span><span class="btn q">Skip</span><span class="btn p">Continue</span></div>
  </div>
-</div></div>
- <div class="note" style="left:20px;top:560px">Choosing a card changes this window at once (Go's shell pref), so the choice is seen, not described. Only the shells we keep up: Standard and Glide. Fox, Minimal and Terminal stay in Settings.</div>
-</div>
+</div></div></div>
+
+<div class="mock" id="d3b"><div class="win full blue"><div class="page">
+ <div class="ob">
+  <div class="steps"><i class="d"></i><i class="d"></i><i class="c"></i><i></i><i></i></div>
+  <div style="width:1000px;margin-top:40px;flex:1">
+   <h1>Pick your style</h1>
+   <p class="lead">Your browser, as you choose it.</p>
+   <div style="display:flex;gap:32px;align-items:flex-start">
+    <div style="flex:1"><div class="pv"><div class="t"><i></i><i></i><i></i></div><div class="f"></div>
+     <div class="s"><b style="width:60%"></b><b class="a"></b><b></b><b></b><b style="width:80%"></b></div>
+     <div class="pg"><u style="width:40%;height:14px;margin-bottom:16px"></u><u></u><u style="width:92%"></u><u style="width:85%"></u><u style="width:60%"></u><u style="width:0;height:6px"></u><u style="width:90%"></u><u style="width:70%"></u></div></div></div>
+    <div style="width:400px">
+     <h2 style="margin-top:0">Tabs</h2>
+     <div class="lay"><div class="on"><em><span style="position:absolute;left:4px;top:4px;bottom:4px;width:22px;border-radius:3px;background:var(--surface)"></span></em>On the side</div><div class=""><em><span style="position:absolute;left:4px;right:4px;top:4px;height:9px;border-radius:3px;background:var(--surface)"></span></em>On top</div><div class=""><em><span style="position:absolute;left:4px;top:4px;bottom:4px;width:22px;border-radius:3px;background:var(--surface)"></span><span style="position:absolute;left:30px;right:4px;top:4px;bottom:4px;border-radius:5px;border:1px solid var(--line)"></span></em>Glide</div></div>
+     <h2>Colour</h2>
+     <div class="card"><div class="row"><span class="swatches"><i class="none" style="background:#fff"></i><i class="" style="background:#0faaaa"></i><i class="on " style="background:#5b7fd6"></i><i class="" style="background:#faa804"></i><i class="" style="background:#d82b1f"></i><i class="" style="background:#384562"></i></span></div></div>
+     <h2>Theme and keys</h2>
+     <div class="card">
+      <div class="row"><div class="lab">Theme</div><span class="seg"><span class="on">System</span><span>Light</span><span>Dark</span></span></div>
+      <div class="row"><div class="lab">Keys</div><span class="seg"><span class="on">Like Chrome</span><span>Project B</span></span></div>
+     </div>
+    </div>
+   </div>
+  </div>
+  <div class="foot" style="width:1000px"><span class="btn q">Back</span><span class="sp"></span><span class="btn q">Skip</span><span class="btn p">Continue</span></div>
+ </div>
+</div></div></div>
 
 <!-- 4 Protection -->
-<div class="mock" id="d4"><div class="win"><div class="page">
+<div class="mock" id="d4"><div class="win full"><div class="page">
  <div class="ob">
   <div class="steps"><i class="d"></i><i class="d"></i><i class="d"></i><i class="c"></i><i></i></div>
   <div class="col">
@@ -259,7 +334,7 @@ h2{font-size:13px;font-weight:500;color:var(--muted);margin:20px 0 8px}
 </div></div></div>
 
 <!-- 5 Finish -->
-<div class="mock" id="d5"><div class="win"><div class="page">
+<div class="mock" id="d5"><div class="win full"><div class="page">
  <div class="ob">
   <div class="steps"><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="c"></i></div>
   <div class="col" style="width:720px">
@@ -270,7 +345,7 @@ h2{font-size:13px;font-weight:500;color:var(--muted);margin:20px 0 8px}
     <div class="tip"><div class="pic"><div style="position:absolute;left:14px;top:14px;width:22px;height:22px;background:#fff;border:1px solid var(--line);border-radius:5px"></div><div style="position:absolute;left:14px;top:40px;width:130px;height:40px;background:#fff;border:1px solid var(--line);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.08)"></div></div><b style="font-weight:500">The site panel</b><div class="sec">Ads blocked, links and permissions, per site</div></div>
     <div class="tip"><div class="pic"><span style="position:absolute;left:14px;top:18px;width:10px;height:10px;border-radius:5px;background:#3470d0"></span><span style="position:absolute;left:30px;top:15px;font-size:12px">Work</span><span style="position:absolute;left:14px;top:40px;width:10px;height:10px;border-radius:5px;background:#d82b1f"></span><span style="position:absolute;left:30px;top:37px;font-size:12px">Personal</span></div><b style="font-weight:500">Workspaces</b><div class="sec">Separate sets of tabs, a colour each <span class="kbd">⌃1</span></div></div>
    </div>
-   <div class="card" style="margin-top:20px"><div class="row"><span class="bi" style="background:var(--frame)"></span><div class="lab"><b>Make Project B your default browser</b><span class="sec">Links from Mail, Slack and other apps open here</span></div><span class="btn">Make default</span></div></div>
+   <div class="card" style="margin-top:20px"><div class="row"><span class="bi" style="background:var(--accent)"></span><div class="lab"><b>Make Project B your default browser</b><span class="sec">Links from Mail, Slack and other apps open here</span></div><span class="btn">Make default</span></div></div>
   </div>
   <div class="foot" style="width:720px"><span class="btn q">Back</span><span class="sp"></span><span class="btn p big">Start browsing</span></div>
  </div>
@@ -307,6 +382,12 @@ h2{font-size:13px;font-weight:500;color:var(--muted);margin:20px 0 8px}
  <div class="nav"><i></i></div>
 </template>
 
+<div class="mock" id="p0"><div class="pair">
+ <div class="ph"><div class="sb"><span>9:41</span><span>▾ ▮</span></div>
+  <div class="splash"><div class="in"><div class="mark" style="width:96px;height:96px;border-radius:24px"><i style="width:52px;height:40px"></i></div><div style="font-size:20px;font-weight:600">Project B</div></div></div>
+  <div class="nav"><i></i></div></div>
+</div></div>
+
 <div class="mock" id="p1"><div class="pair">
  <!-- 1 Welcome -->
  <div class="ph"><div class="sb"><span>9:41</span><span>▾ ▮</span></div>
@@ -317,20 +398,23 @@ h2{font-size:13px;font-weight:500;color:var(--muted);margin:20px 0 8px}
    <p class="lead" style="font-size:16px">A browser you shape to fit.</p>
    <div class="grow"></div>
    <div class="fbtn">Get started</div><div class="fq">Skip setup</div>
-  </div><span class="phonebar"></span></div>
+  </div><div class="nav"><i></i></div></div>
  <!-- 2 Address bar -->
  <div class="ph"><div class="sb"><span>9:41</span><span>▾ ▮</span></div>
   <div class="pob">
    <div class="steps"><i class="c"></i><i></i><i></i><i></i></div>
-   <h1>Where's the address bar?</h1>
-   <p class="lead" style="font-size:15px">It moves as you choose.</p>
+   <h1>Make it yours</h1>
+   <p class="lead" style="font-size:15px">It changes as you choose.</p>
+   <h2 style="font-size:14px;margin-top:0">Address bar</h2>
    <div class="pos">
     <div class="on"><div class="mini"><div class="pg" style="top:8px;bottom:40px"></div><div class="pb" style="bottom:9px"></div></div>Bottom</div>
     <div><div class="mini"><div class="pb" style="top:9px"></div><div class="pg" style="top:40px;bottom:8px"></div></div>Top</div>
    </div>
+   <h2 style="font-size:14px;margin-top:24px">Colour</h2>
+   <div class="card"><div class="row" style="justify-content:space-between"><span class="swatches" style="gap:14px"><i class="on none" style="width:30px;height:30px"></i><i style="background:#0faaaa;width:30px;height:30px"></i><i style="background:#5b7fd6;width:30px;height:30px"></i><i style="background:#faa804;width:30px;height:30px"></i><i style="background:#d82b1f;width:30px;height:30px"></i><i style="background:#384562;width:30px;height:30px"></i></span></div></div>
    <div class="grow"></div>
    <div class="fbtn">Continue</div>
-  </div><span class="phonebar"></span></div>
+  </div><div class="nav"><i></i></div></div>
  <!-- 3 Search and ads -->
  <div class="ph"><div class="sb"><span>9:41</span><span>▾ ▮</span></div>
   <div class="pob">
@@ -349,7 +433,7 @@ h2{font-size:13px;font-weight:500;color:var(--muted);margin:20px 0 8px}
    </div>
    <div class="grow"></div>
    <div class="fbtn">Continue</div>
-  </div><span class="phonebar"></span></div>
+  </div><div class="nav"><i></i></div></div>
 </div></div>
 
 <div class="mock" id="p2"><div class="pair">
@@ -361,10 +445,10 @@ h2{font-size:13px;font-weight:500;color:var(--muted);margin:20px 0 8px}
    <p class="lead" style="font-size:15px">Links from other apps open in Project B.</p>
    <div class="grow"></div>
    <div class="fbtn">Make default</div><div class="fq">Not now</div>
-  </div><span class="phonebar"></span>
+  </div><div class="nav"><i></i></div>
   <div class="scrim"></div>
   <div class="sheetsys"><div style="font-size:20px;margin-bottom:6px">Set Project B as your default browser app?</div><div style="color:#555;font-size:14px;margin-bottom:14px">Currently: Chrome</div>
-   <div style="display:flex;align-items:center;gap:14px;padding:10px 0"><span style="width:36px;height:36px;border-radius:10px;background:var(--frame)"></span>Project B<span style="flex:1"></span><span style="width:20px;height:20px;border-radius:50%;border:6px solid #2f6fd6"></span></div>
+   <div style="display:flex;align-items:center;gap:14px;padding:10px 0"><span style="width:36px;height:36px;border-radius:10px;background:var(--accent)"></span>Project B<span style="flex:1"></span><span style="width:20px;height:20px;border-radius:50%;border:6px solid #2f6fd6"></span></div>
    <div style="display:flex;justify-content:flex-end;gap:28px;color:#2f6fd6;font-weight:500;padding-top:10px">Cancel<span>Set as default</span></div></div>
  </div>
  <!-- 5 Notifications -->
@@ -373,10 +457,10 @@ h2{font-size:13px;font-weight:500;color:var(--muted);margin:20px 0 8px}
    <div class="steps"><i class="d"></i><i class="d"></i><i class="d"></i><i class="c"></i></div>
    <h1>Know when downloads finish</h1>
    <p class="lead" style="font-size:15px">A notification with Open, nothing else.</p>
-   <div class="card" style="padding:14px;display:flex;gap:12px;align-items:center;margin-top:12px"><span style="width:28px;height:28px;border-radius:50%;background:var(--frame);flex:none"></span><div class="lab" style="font-size:14px"><b>report-q3.pdf</b><span class="sec">Download complete · Open</span></div></div>
+   <div class="card" style="padding:14px;display:flex;gap:12px;align-items:center;margin-top:12px"><span style="width:28px;height:28px;border-radius:50%;background:var(--accent);flex:none"></span><div class="lab" style="font-size:14px"><b>report-q3.pdf</b><span class="sec">Download complete · Open</span></div></div>
    <div class="grow"></div>
    <div class="fbtn">Allow notifications</div><div class="fq">Not now</div>
-  </div><span class="phonebar"></span></div>
+  </div><div class="nav"><i></i></div></div>
  <!-- 6 Done -->
  <div class="ph"><div class="sb"><span>9:41</span><span>▾ ▮</span></div>
   <div class="pob" style="text-align:center">
@@ -386,15 +470,14 @@ h2{font-size:13px;font-weight:500;color:var(--muted);margin:20px 0 8px}
    <p class="lead" style="font-size:15px">Swipe the bar for your other tabs.</p>
    <div class="grow"></div>
    <div class="fbtn">Start browsing</div>
-  </div><span class="phonebar"></span></div>
+  </div><div class="nav"><i></i></div></div>
 </div></div>
 
 <script>
 const m = new URLSearchParams(location.search).get('m') || 'd1';
 const w = document.getElementById('window').innerHTML;
-document.querySelectorAll('.win').forEach((el) => el.insertAdjacentHTML('afterbegin', w));
-const pb = document.getElementById('phonebar').innerHTML;
-document.querySelectorAll('.phonebar').forEach((el) => (el.outerHTML = pb));
+document.querySelectorAll('.win:not(.full)').forEach((el) => el.insertAdjacentHTML('afterbegin', w));
+document.querySelectorAll('.win.full').forEach((el) => el.insertAdjacentHTML('afterbegin', '<div class="fdots"><i></i><i></i><i></i></div>'));
 document.getElementById(m).classList.add('on');
 </script>
 </body></html>
