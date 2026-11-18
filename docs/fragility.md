@@ -22,9 +22,29 @@ The seams:
 - **A page's own navigations**, which Go rules on, against Chromium's way of starting,
   committing and aborting a load. Two so far: Stay on this site, the back key in full
   screen.
-- **Android's accessibility tree.** What a web shell says in ARIA has to reach the tree
-  TalkBack and the driver read, with its name. One so far: the phone's star
-  and folders with no names.
+- **Android's accessibility tree.** What a page says in ARIA or HTML has to reach the tree
+  TalkBack and the driver read, with its name and its state; Chromium hands it over only as
+  fully as the embedder has set it up to. Two so far: the phone's star and folders with no
+  names, TalkBack hearing every switch as off.
+
+## TalkBack heard every switch as off, 2026-11-19
+
+- **Seen:** on Android 16 with TalkBack on, every switch and checkbox in Project B reached
+  Android named but not checkable and not checked, a page's native checkbox too, so
+  TalkBack would say each one is off and can't be turned. Chrome on the same emulator read
+  them checked. The tester found it; the phone star's check had seen the same of the
+  bookmark sheet's folders.
+- **Cause:** Chromium on Android gives pages the screen reader's mode, the one with checked
+  states in it, only while it knows TalkBack is running. It asks which services run once, at
+  its first question, and again only if the embedder registered its observers of the
+  system's settings at start, as Chrome does. We never registered them, so the app kept what
+  it saw first, and a screen reader turned on later, or still starting then, never counted.
+- **Seam:** Android's accessibility tree: something Chrome sets up at start that an
+  embedder has to set up too.
+- **Fix:** on dd-a11y-checked: the app registers Chromium's accessibility observers as it
+  starts, before anything asks (`BrowserApplication`).
+- **Guard:** the tester's drive_android part, which turns TalkBack on and reads a checked
+  switch and checkbox as checked.
 
 ## The phone's star and folders with no names, 2026-11-19
 
@@ -46,7 +66,8 @@ The seams:
   role, named by its title and checked while it is the folder.
 - **Guard:** drive_android.py bookmark_star finds the star and the folders by their names
   in Android's tree, and every control of the sheet is 48dp or more (the checked folder too,
-  in the native shell; the web shell's checked state isn't in the tree the driver reads); `shell/e2e/shells/mobile.cjs` checks the star on is named Edit
+  in the native shell; the web shell's checked state reaches the tree only with a screen
+  reader on, see "TalkBack heard every switch as off"); `shell/e2e/shells/mobile.cjs` checks the star on is named Edit
   bookmark, with no aria-pressed.
 
 ## The back key in full screen, 2026-11-18

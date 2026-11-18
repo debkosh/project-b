@@ -267,15 +267,6 @@ How they work is in [site-features.md](site-features.md).
 
 What a browser needs to be used all day ([daily-driver.md](daily-driver.md)).
 
-- **TalkBack hears every switch and checkbox as off** (found 2026-11-19, daily driver's).
-  With TalkBack running on Android 16, a checked `role=switch` and a checked native
-  checkbox read in Project B as named but `checkable=false, checked=false`; Chrome on the
-  same emulator reads them `checkable=true, checked=true`. So every toggle, settings
-  included, sounds off and unchangeable to a screen reader. Our markup is not the cause: a
-  native checkbox fails too. It is how the engine hands Chromium's accessibility to Android.
-  Once fixed, the tester adds a drive_android part that turns TalkBack on only to read the
-  tree, with its notification prompt answered first.
-
 - **Bookmarks, next steps.** Bookmarks among the address bar's suggestions. Folders and
   import from Chrome, Edge, Brave, Arc, Firefox and Safari are built
   ([bookmark-folders.md](bookmark-folders.md), [onboarding.md](onboarding.md#built)); a
