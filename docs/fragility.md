@@ -99,6 +99,21 @@ The seams:
   each clash, and reads an export back (21739d34); the Android driver's file_inputs part opens
   the picker from a page and from Settings, and imports a zip (f508ae91).
 
+## The file picker on Android 10, 2026-11-19
+
+- **Seen:** on Android 10, a page's file input and Settings' Import… opened no picker, and
+  the page never heard it was closed. On Android 17 both worked.
+- **Cause:** where the phone has a camera app, Chromium asks for the camera before it opens the
+  picker. Android answered, but the activity passed its answers on only for its own
+  notifications question, never to Chromium's window, which waited for good. From Android 11
+  an app sees only the other apps its manifest names, and ours names no camera, so Chromium
+  finds none there and asks nothing.
+- **Seam:** engine and adapter: an answer Android gives the activity, which the embedder has
+  to hand on to Chromium.
+- **Fix:** 231a57ce: the activity hands every permission answer to the window, as it hands
+  every activity result.
+- **Guard:** the Android driver's file_inputs part, on Android 10 and on 17 (f508ae91).
+
 ## Sparks unstyled on strict sites, 2026-11-18
 
 - **Seen:** on a site that allows only its own styles, as GitHub does, the downloader spark's
