@@ -9,6 +9,6 @@ require (
 	golang.org/x/net v0.62.0
 )
 
-require github.com/sudiptadeb/gulal v0.1.0 // indirect
+require github.com/sudiptadeb/gulal v0.1.0
 
 replace github.com/sudiptadeb/project-b/browserdata => ../browserdata
