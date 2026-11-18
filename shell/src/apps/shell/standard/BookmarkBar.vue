@@ -5,6 +5,8 @@ import { send, state } from '@/sdk/vue.js';
 import { host, openGroup, under } from './bookmarks.js';
 import { closeBox } from './state.js';
 import SiteMark from './SiteMark.vue';
+import { folderMark } from '@/ui/tint.js';
+import { useTints } from '@/ui/useTints.js';
 
 // The bookmarks bar, under the top bar in either layout, while bookmarksBar is on
 // (docs/bookmark-folders.md, "Where bookmarks show"): bookmarksBarFolder's entries in their
@@ -26,6 +28,9 @@ function load(url) {
   closeBox();
 }
 
+// A folder's icon in its own colour (tint.js), made again on a new palette.
+const tints = useTints();
+const folderColour = (id) => (tints.value, folderMark(id, 'bar'));
 const folderIcon = '<path d="M2.5 4.5a1 1 0 0 1 1-1h3l1.5 1.5h4.5a1 1 0 0 1 1 1v5.5a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1z"/>';
 
 // A bookmark as a menu item, and a folder as a submenu of every bookmark it holds: a menu
@@ -90,8 +95,8 @@ const hidden = computed(() => entries.value.slice(fits.value));
         @click="e.kind === 'folder' ? openMenu(folderItems(e), `Folder ${e.title}`, $event) : load(e.url)"
         @auxclick.middle="e.kind === 'bookmark' && send({ t: 'newTab', text: e.url, background: true })"
       >
-        <svg v-if="e.kind === 'folder'" class="icon" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" v-html="folderIcon"></svg>
-        <SiteMark v-else :url="e.url" />
+        <svg v-if="e.kind === 'folder'" class="icon" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" :style="{ stroke: folderColour(e.id) }" v-html="folderIcon"></svg>
+        <SiteMark v-else :url="e.url" on="bar" />
         <span class="title">{{ label(e) }}</span>
         <svg v-if="e.kind === 'folder'" class="drop" width="8" height="8" viewBox="0 0 8 8" aria-hidden="true"><path d="m1.5 3 2.5 2.5L6.5 3" /></svg>
       </button>

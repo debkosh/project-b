@@ -2,6 +2,7 @@
   import { bookmarksUnder, inFolder, path } from '@/ui/bookmarks.js';
   import Icon from './Icon.svelte';
   import Mark from './Mark.svelte';
+  import { folderMark, tints } from '@/ui/tint.js';
 
   // A bookmark folder as a list, root to start with (docs/bookmark-folders.md): the path to
   // it from root, each folder on it a tap away; then its folders, each with how many
@@ -37,7 +38,7 @@
       <li>
         {#if e.kind === 'folder'}
           <button class="row" onclick={() => (at = e.id)}>
-            <span class="icon"><Icon name="folder" /></span>
+            <span class="icon" style:color={($tints, folderMark(e.id))}><Icon name="folder" /></span>
             <span class="title">{e.title}</span>
             <span class="count">{bookmarksUnder(list, e.id)}</span>
             <Icon name="chevron" size={16} />

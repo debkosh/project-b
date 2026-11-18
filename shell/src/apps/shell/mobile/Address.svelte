@@ -3,6 +3,7 @@
   import { inFolder } from '@/ui/bookmarks.js';
   import Icon from './Icon.svelte';
   import Mark from './Mark.svelte';
+  import { folderMark, tints } from '@/ui/tint.js';
   import { popupsWord } from '@/sdk/sites.js';
   import { nextQuery } from './queries.js';
 
@@ -270,7 +271,7 @@
     <div class="chips" role="radiogroup" aria-label="Folder">
       <button class="chip" role="radio" aria-checked={chosen === ''} onclick={() => (chosen = '')}><Icon name="star" size={16} /><span>All</span></button>
       {#each chips as f (f.id)}
-        <button class="chip" role="radio" aria-checked={chosen === f.id} onclick={() => (chosen = f.id)}><Icon name="folder" size={16} /><span>{f.title}</span></button>
+        <button class="chip" role="radio" aria-checked={chosen === f.id} onclick={() => (chosen = f.id)}><span class="tint" style:color={chosen === f.id ? undefined : ($tints, folderMark(f.id))}><Icon name="folder" size={16} /></span><span>{f.title}</span></button>
       {/each}
     </div>
     <ul class="tiles" aria-label="Bookmarks">
@@ -628,5 +629,10 @@
 
   button:focus-visible {
     box-shadow: var(--focus-ring-inset);
+  }
+
+  /* A folder's icon in its folder's colour, laid out as the icon alone. */
+  .tint {
+    display: contents;
   }
 </style>
