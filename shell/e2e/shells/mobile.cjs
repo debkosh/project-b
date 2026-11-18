@@ -1170,6 +1170,87 @@ const H = 915;
   await page.keyboard.press('Escape');
   await setPref('bookmarksCommandBox', true);
 
+  // The bookmarks bar (bookmarksBar, off by default): the chosen folder's entries as chips,
+  // the top's when it is gone, laid with the bars: over the foot's, the group strip too, or
+  // under the address bar on top. It hides and comes back with them, and the page's room
+  // counts it.
+  const marksBar = ui.getByRole('toolbar', { name: 'Bookmarks bar' });
+  const barChips = () => marksBar.locator('.name').allInnerTexts();
+  const pageNow = async () => {
+    const r = await regions();
+    return r.visible.find((v) => v.tab === r.active)?.rect;
+  };
+  const scrollNow = async (direction) => {
+    await until(settled);
+    await fire('scroll', direction, { tab: (await regions()).active });
+  };
+  check('with bookmarksBar off, there is no bookmarks bar', (await marksBar.count()) === 0);
+  await setPref('bookmarksBar', true);
+  check('on, the bar shows the top folder\'s entries, its folders first', await until(async () => JSON.stringify(await barChips()) === JSON.stringify(['Reading', 'Recipes', 'Travel', 'Bank', 'Shop'])), JSON.stringify(await barChips()));
+  const barAt = await box('.marks-bar');
+  check('with the address at the foot, just over the toolbar, 49px with its hairline', Math.round(barAt.bottom) === H - 48 && Math.round(barAt.height) === 49, JSON.stringify(barAt));
+  check('the page ends over it', await until(async () => {
+    const v = await pageNow();
+    return v.y + v.h === H - 48 - 49;
+  }), JSON.stringify(await pageNow()));
+  await shots('bookmarks-bar');
+  await marksBar.getByRole('button', { name: 'Bank' }).tap();
+  check('a tap on a bookmark loads it in the tab', await until(async () => (await active()).url === 'https://bank.example.com/'));
+  await marksBar.getByRole('button', { name: 'Recipes' }).tap();
+  const barFolder = ui.getByRole('dialog', { name: 'Recipes' });
+  check('a tap on a folder opens a sheet of what it holds', await until(async () => (await barFolder.isVisible()) && (await barFolder.getByRole('listitem').count()) === 6));
+  await shots('bookmarks-bar-folder');
+  await barFolder.getByRole('button').filter({ hasText: 'Salads' }).tap();
+  check('and a bookmark in it loads in the tab, the sheet closing', await until(async () => (await active()).url === 'https://salads.example.com/' && (await barFolder.count()) === 0));
+  await setPref('bookmarksBarFolder', recipes);
+  check('bookmarksBarFolder chooses the folder it shows', await until(async () => JSON.stringify(await barChips()) === JSON.stringify(['Baking', ...recipeTitles])), JSON.stringify(await barChips()));
+  await setPref('bookmarksBarFolder', '0123456789abcdef');
+  check('and a folder that is gone shows the top', await until(async () => (await barChips())[0] === 'Reading'), JSON.stringify(await barChips()));
+  // In a group, the group strip under it.
+  const groupTab = Number(await stripTabs.first().getAttribute('data-tab').catch(() => 0)) || (await regions()).tabs.find((t) => t.url === 'https://pasta.example.com/').id;
+  await shellSend({ t: 'activateTab', id: groupTab });
+  await until(async () => (await regions()).active === groupTab && (await strip.isVisible()));
+  await until(async () => !(await active()).loading);
+  check('with the active tab in a group, it lies over the group strip', await until(async () => {
+    const b = await box('.marks-bar');
+    const g = await box('[role=group][aria-label^="Group "]');
+    return Math.round(b.bottom) === Math.round(g.top) && Math.round(g.bottom) === H - 48;
+  }), JSON.stringify({ bar: await box('.marks-bar'), strip: await box('[role=group][aria-label^="Group "]') }));
+  const withMarks = await pageNow();
+  check('and the page ends over both', withMarks.y + withMarks.h === H - 48 - 49 - 49, JSON.stringify(withMarks));
+  await shots('bookmarks-bar-group');
+  await scrollNow('down');
+  check('scrolling down, it goes with the bars, and the page takes the window to its foot', await until(async () => {
+    const v = await pageNow();
+    return v.y + v.h === H && (await box('.marks-bar')).top >= H;
+  }), JSON.stringify({ page: await pageNow(), bar: await box('.marks-bar') }));
+  await w.shell().evaluate(() => window.barsSettled());
+  await scrollNow('up');
+  check('scrolling up, it comes back with them, and the page gives their room back', await until(async () => JSON.stringify(await pageNow()) === JSON.stringify(withMarks) && Math.round((await box('.marks-bar')).bottom) === H - 48 - 49),
+    JSON.stringify({ page: await pageNow(), bar: await box('.marks-bar') }));
+  // On top: under the address bar.
+  await setPref('addressBarPosition', 'top');
+  check('with the address on top, it lies under the toolbar, and the page under it', await until(async () => {
+    const t = await box('.toolbar');
+    const b = await box('.marks-bar');
+    const v = await pageNow();
+    return t && b && Math.round(b.top) === Math.round(t.bottom) && v.y === Math.round(b.bottom) && v.y + v.h === H - 49;
+  }), JSON.stringify({ toolbar: await box('.toolbar'), bar: await box('.marks-bar'), page: await pageNow() }));
+  const topWithMarks = await pageNow();
+  await shots('bookmarks-bar-top');
+  await w.shell().evaluate(() => window.barsSettled());
+  await scrollNow('down');
+  check('scrolling down, it goes up with the toolbar, and the page takes their room to the top', await until(async () => {
+    const v = await pageNow();
+    return v.y === topWithMarks.y - 48 - 49 && (await box('.marks-bar')).bottom <= v.y;
+  }), JSON.stringify({ page: await pageNow(), bar: await box('.marks-bar') }));
+  await w.shell().evaluate(() => window.barsSettled());
+  await scrollNow('up');
+  check('and back with it', await until(async () => JSON.stringify(await pageNow()) === JSON.stringify(topWithMarks) && Math.round((await box('.marks-bar')).top) === Math.round((await box('.toolbar')).bottom)),
+    JSON.stringify({ page: await pageNow(), bar: await box('.marks-bar') }));
+  await setPref('bookmarksBar', false);
+  check('off, it goes and the page has its room', await until(async () => (await marksBar.count()) === 0 && (await pageNow()).y === topWithMarks.y - 49));
+
   // A tab's picture is let go as the tab closes, so one on its way then fails to load, and
   // its card, gone or going, shows the favicon: not an error.
   const errors = [...w.errors];

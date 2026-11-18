@@ -85,6 +85,16 @@ How Standard shows them (`shell/src/apps/shell/standard/`, `bookmarks.js` for wh
   bar on top. A tap on a tile loads it in the tab. Meanwhile the list for nothing typed
   asks for no `bookmark` rows, which would list the same pages; typing replaces the
   bookmarks with the suggestions. With no bookmarks, or off, the address is as before.
+- **The bookmarks bar** (`MarksBar.svelte`) is one more of the bars: a 48px row of chips,
+  what `bookmarksBarFolder` holds, the top's when that folder is gone, its folders first,
+  scrolling sideways. A bookmark is its letter and name, and a tap loads it in the tab; a
+  folder is a folder and its name, and a tap opens a sheet of what it holds
+  (`FolderSheet.svelte`, the same list as the switcher's, from that folder), where a
+  bookmark loads in the tab too. With the address at the foot it lies over the toolbar,
+  and over the group strip while the tab is in a group; with the address on top it lies
+  under it. It hides and comes back with the bars, and the page's room counts it
+  ([shells.md](shells.md#bars-that-hide-on-scroll)). A folder that holds nothing has no
+  bar.
 
 ## What the person sees
 

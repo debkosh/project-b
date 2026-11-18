@@ -8,9 +8,11 @@
   import CrashBar from './CrashBar.svelte';
   import DownloadBar from './DownloadBar.svelte';
   import FindBar from './FindBar.svelte';
+  import FolderSheet from './FolderSheet.svelte';
   import Extensions from './Extensions.svelte';
   import GroupSheet from './GroupSheet.svelte';
   import LinkSheet from './LinkSheet.svelte';
+  import MarksBar from './MarksBar.svelte';
   import MenuSheet from './MenuSheet.svelte';
   import SiteSheet from './SiteSheet.svelte';
   import PageDialog from './PageDialog.svelte';
@@ -22,7 +24,8 @@
   import { groupOf } from './groups.js';
 
   // The phone's shell: the page, and under it one bar, the address, the tab count and ⋯,
-  // with the group strip over the bar while the active tab is in a group. Everything else
+  // with the group strip over the bar while the active tab is in a group, and the bookmarks
+  // bar over those while it is on (under the address bar on top). Everything else
   // is a sheet one of them opens: the switcher over the page, the rest from the bottom. The
   // page reaches the window's edges: no band.
   setFrame(0);
@@ -33,9 +36,11 @@
   const top = $derived(go.addressBarPosition === 'top');
   // What is open over the page: '', 'switcher', 'menu', 'extensions', 'group' (the active
   // tab's, or the one in sheetGroup), 'card' (cardTab's menu), 'link' (a long press in
-  // the page) or 'bookmark' (the star's panel).
+  // the page), 'bookmark' (the star's panel) or 'folder' (a folder of the bookmarks bar,
+  // sheetFolder).
   let sheet = $state('');
   let sheetGroup = $state('');
+  let sheetFolder = $state('');
   let cardTab = $state(0);
   let askClose = $state(false);
   // The star's panel Go asks for once the menu's Bookmark has bookmarked the page
@@ -187,6 +192,21 @@
   const tabsOf = (g) => g.tabs.map((id) => go.tabs.find((t) => t.id === id)).filter(Boolean);
   const shownGroup = $derived(go.groups.find((g) => g.id === sheetGroup) || null);
 
+  // The bookmarks bar, while its pref is on (docs/bookmark-folders.md, Where bookmarks
+  // show): one of the bars, under the address bar on top, else in the strip's part, over
+  // the group strip, so it hides with them and the page's room counts it. A bookmark in it,
+  // or in a folder's sheet, loads in the shown tab.
+  const marksBar = $derived(!!go.prefs.bookmarksBar);
+  function openMark(url) {
+    sheet = '';
+    send({ t: 'navigate', text: url });
+    focusPage();
+  }
+  function openFolder(id) {
+    sheetFolder = id;
+    sheet = 'folder';
+  }
+
   // A tab that becomes active with a page wants the page. One with nothing in it shows the
   // new tab page, with the keyboard down so it covers none of it; a tap on the field types.
   function activated() {
@@ -313,6 +333,7 @@
         <Toolbar {tab} top count={go.tabs.length} {sheet} {onsheet} onswipe={swipe} onedit={(on) => (editing = on)} bind:address />
         {#if finding}<FindBar bind:this={findBar} />{/if}
       </div>
+      {#if marksBar}<MarksBar list={go.bookmarks} folder={go.prefs.bookmarksBarFolder} top onopen={openMark} onfolder={openFolder} />{/if}
     </div>
   {/if}
   <div class="stage">
@@ -332,9 +353,10 @@
            the Downloads page, which shows it already. -->
       <DownloadBar hidden={!!sheet || full || tab.page === 'downloads'} />
     </main>
-    {#if group}
+    {#if group || (marksBar && !top)}
       <div class="bars strip" class:away class:over class:full bind:offsetHeight={stripHeight}>
-        <Strip {group} tabs={tabsOf(group)} active={go.active} onsheet={() => onsheet('group')} onpick={pick} onclosetab={(id) => closeTabs([id])} onnewtab={() => newTab(go.active)} />
+        {#if marksBar && !top}<MarksBar list={go.bookmarks} folder={go.prefs.bookmarksBarFolder} onopen={openMark} onfolder={openFolder} />{/if}
+        {#if group}<Strip {group} tabs={tabsOf(group)} active={go.active} onsheet={() => onsheet('group')} onpick={pick} onclosetab={(id) => closeTabs([id])} onnewtab={() => newTab(go.active)} />{/if}
       </div>
     {/if}
     <Switcher
@@ -394,6 +416,10 @@
           send({ t: 'closeGroup', group: shownGroup.id });
         }}
       />
+    {/key}
+  {:else if sheet === 'folder' && go.bookmarks.some((e) => e.id === sheetFolder)}
+    {#key sheetFolder}
+      <FolderSheet list={go.bookmarks} folder={sheetFolder} onclose={() => (sheet = '')} onopen={openMark} />
     {/key}
   {:else if sheet === 'link' && pressed}
     <LinkSheet

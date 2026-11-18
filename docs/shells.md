@@ -773,6 +773,10 @@ Under reduced motion `--motion` is 0 and the bars don't slide.
   they lie over the page in place. Mobile's `--covered` gives the height to keep clear.
 - `away` moves each bar by its own height, plus the heights of the bars between it and the
   edge.
+- A bar that joins them goes inside one of the parts, so the heights and the margins count
+  it with no more of either: Mobile's bookmarks bar is in the head with the address on
+  top, under the toolbar, and with the address at the foot in the strip's part, over the
+  group strip, which that part then holds while either shows.
 
 **With the bar on top,** the page's top edge moves when the room changes, so its content
 moves by the bar's height once each way: as the bars start to go, and when they're back in.
@@ -909,6 +913,9 @@ address field, and a menu button at the far right, in our tones.
   the text it answers as `data-answers`, which the shell's tests wait on before they press
   a row. While `bookmarksCommandBox` is on and there are bookmarks, they show nearest the
   field instead of the Bookmarks rows, which aren't asked for meanwhile
+  ([bookmark-folders.md](bookmark-folders.md#on-the-mobile-web-shell)).
+- **The bookmarks bar,** while `bookmarksBar` is on, is one of the bars: over the group
+  strip and the toolbar, or under the toolbar on top
   ([bookmark-folders.md](bookmark-folders.md#on-the-mobile-web-shell)).
 - **A download you can see.** A download that starts while the app is showing raises a
   small bar over the foot of the page, just above the toolbar, for about 4 seconds:
