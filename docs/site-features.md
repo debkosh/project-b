@@ -112,15 +112,15 @@ the page's own world, as other userscript managers run a script that asks for no
   the page itself.. since that gives more possibilities right... we can override stuff and
   what not".
 - What gives way: "ok to styling ease only".
+- His block popup spark is not a built-in: "the block popup we do not need since we already
+  built the stay on site feature... so drop that".
+- Import and export: "import and export should work.. and we should be able to import and
+  export zip... import overwrites after user prompt... replace rename ignore".
 
 ### Decisions, 2026-11-19
 
 - Trusted Types give way where a spark runs, so his downloader's HTML works on sites that
   want them: "yes".
-- His block popup spark is not a built-in: "the block popup we do not need since we already
-  built the stay on site feature... so drop that".
-- Import and export: "import and export should work.. and we should be able to import and
-  export zip... import overwrites after user prompt... replace rename ignore".
 
 ## Links to other sites
 
