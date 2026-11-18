@@ -2381,7 +2381,8 @@ def sparks_checks():
     start can replace what the page calls. On a page whose policy allows only its own
     styles, the policy's style rules give way where a spark runs, so its <style> applies,
     and the owner's sparks, as he wrote them (core/sparks/testdata/site-sparks), draw there.
-    On a page that wants Trusted Types, they give way too, so a spark's innerHTML works."""
+    On a page that wants Trusted Types, they give way too, so a spark's innerHTML works. A
+    profile is given the built-in sparks, off, and one switched on runs."""
     profile = tempfile.mkdtemp(prefix="pb-profile-")
     os.makedirs(os.path.join(profile, "sparks"))
     probe = ("// ==UserScript==\n// @name Probe\n// @match <all_urls>\n// ==/UserScript==\n"
@@ -2427,6 +2428,21 @@ def sparks_checks():
     html = app.js("document.documentElement.dataset.html", page=True)
     check("a spark's innerHTML works on a page that wants Trusted Types", html == "set", html)
     app.close()
+    # The profile was given the built-in sparks, off; Page cleanup switched on draws its
+    # button on the strict page too.
+    path = os.path.join(profile, "sparks", "sparks.json")
+    with open(path) as f:
+        kept = json.load(f)
+    builtins = [s for s in kept["sparks"] if s["id"] in kept.get("builtins", [])]
+    check("the profile was given the three built-in sparks, each off", len(builtins) == 3 and not any(s["on"] for s in builtins), kept)
+    if len(builtins) == 3:
+        builtins[2]["on"] = True
+        with open(path, "w") as f:
+            json.dump(kept, f)
+        app = App(profile)
+        visit(app, PAGES + "strict")
+        check("Page cleanup, built in and switched on, draws its button there", holds(app, "!!document.getElementById('pb-page-cleanup')", page=True))
+        app.close()
 
 
 def quit_checks():
