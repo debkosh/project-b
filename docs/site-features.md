@@ -69,13 +69,15 @@ the page's own world, as other userscript managers run a script that asks for no
   its moment comes, or at once when they arrive after it. It knows nothing of headers or
   patterns. Run in the page's world, a spark sees and can change what the page does: it can
   replace one of the page's functions, or the browser's own, such as `window.open`.
-- **The page's policy gives way for styles.** A site's security policy that allows only its
-  own styles would block the styles a spark adds. Where a spark runs, the browser asks Go
-  for the frame's sparks as the response comes (a navigation throttle in
+- **The page's policy gives way for styles and HTML.** A site's security policy that allows
+  only its own styles would block the styles a spark adds, and one that wants Trusted Types,
+  as YouTube's does, would make a spark's `innerHTML` throw. Where a spark runs, the browser
+  asks Go for the frame's sparks as the response comes (a navigation throttle in
   `engine/browser/site_features.cc`), and when there are any, each of the response's
   policies has `style-src`, `style-src-elem` and `style-src-attr` set to allow any style,
-  inline ones too, before the page commits with it. Every other rule stays as the site set
-  it: scripts, frames, connections, and Trusted Types.
+  inline ones too, and loses `require-trusted-types-for` and `trusted-types`, before the
+  page commits with it. Every other rule stays as the site set it: scripts, frames and
+  connections.
 - **Settings** gets a Sparks section: New on its heading line, with a ⋯ menu of Import…
   and Export… beside it, the count of 25 under it, and a row for each spark: its name,
   where it runs ("every site" for `<all_urls>`), its switch, and a menu (⋯, or a
@@ -110,6 +112,11 @@ the page's own world, as other userscript managers run a script that asks for no
   the page itself.. since that gives more possibilities right... we can override stuff and
   what not".
 - What gives way: "ok to styling ease only".
+
+### Decisions, 2026-11-19
+
+- Trusted Types give way where a spark runs, so his downloader's HTML works on sites that
+  want them: "yes".
 - His block popup spark is not a built-in: "the block popup we do not need since we already
   built the stay on site feature... so drop that".
 - Import and export: "import and export should work.. and we should be able to import and

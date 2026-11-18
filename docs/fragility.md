@@ -112,6 +112,19 @@ The seams:
 - **Guard:** drive_first_app's sparks part: a spark's <style> applies on such a page, and the
   owner's Page Cleanup and Limit Screen Time draw there, styled (ea1e28ef).
 
+## Sparks' HTML on sites that want Trusted Types, 2026-11-19
+
+- **Seen:** on a page whose policy wants Trusted Types, as YouTube's does, a spark's
+  `innerHTML` threw a TypeError; the owner's downloader sets it four times.
+- **Cause:** the spark runs in the page's own world, so the page's rule for its HTML holds
+  for the spark too.
+- **Seam:** engine and adapter: the page's rules applied to what we add to the page.
+- **Fix:** 01243964: where a spark runs, the response's policies lose
+  `require-trusted-types-for` and `trusted-types` before the page commits, as their style
+  rules give way.
+- **Guard:** drive_first_app's sparks part: a spark's innerHTML works on such a page
+  (9921b2ed).
+
 ## The emulators' memory, 2026-11-18
 
 - **Seen:** this Mac said it was out of application memory, and Safari and Terminal stopped.
