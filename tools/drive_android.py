@@ -1043,6 +1043,17 @@ def pick(name, several=False):
 
 
 def file_inputs():
+    """The picker checks, then the profile cleared: the sparks they import would otherwise run
+    on every page of the parts after, and one's floating button put a second "to" on
+    find_in_page's page (its 1/2 flake)."""
+    try:
+        file_input_checks()
+    finally:
+        adb("shell", "am", "force-stop", PACKAGE)
+        adb("shell", "pm", "clear", PACKAGE)
+
+
+def file_input_checks():
     """A page's file input opens the phone's own picker, and the file picked reaches the page
     by its own name; Settings' Sparks Import… picks a zip of sparks there and imports them.
     Content said no to every file input on Android until the window asked Go and opened the
