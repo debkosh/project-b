@@ -15,8 +15,8 @@ import { send, state } from './state.js';
 // profile starts with, has the first (core/workspaces).
 const colors = ['#3470d0', '#d03434', '#4f9e9e', '#e8a317', '#8a4fd0', '#2e9d5b', '#34404f'];
 
-// On a page of its own the page's heading names the list.
-const ownPage = inject('settingsListPage', false);
+// Where the page's own heading names the list, its own gives way.
+const titled = inject('settingsTitled', false);
 
 const openTabs = (w) => state.workspaceTabs?.[w.id] || 0;
 
@@ -147,7 +147,7 @@ const title = computed(() => (editing.value ? 'Edit workspace' : 'New workspace'
 <template>
   <section aria-label="Workspaces">
     <div class="heading">
-      <h2 v-if="!ownPage">Workspaces</h2>
+      <h2 v-if="!titled">Workspaces</h2>
       <button type="button" class="text-button" @click="create">New workspace…</button>
     </div>
     <div ref="list" class="card">

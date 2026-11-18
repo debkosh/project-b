@@ -1,12 +1,16 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, inject } from 'vue';
 import Field from '@/ui/Field.vue';
 import Row from './Row.vue';
 import { send, state } from './state.js';
 
 // Flags, as core/flags/registry.json defines them, each drawn by its type: a switch for a
 // boolean, a select for an enum, a field for the rest. A change waits for the next launch:
-// each changed flag says so, and one Relaunch at the top applies them all.
+// each changed flag says so, and one Relaunch at the top applies them all. A live flag's
+// change applies at once, and never waits.
+
+// Where the page's own heading names the section, its own gives way.
+const titled = inject('settingsTitled', false);
 
 function set(flag, text) {
   send({ t: 'setFlag', id: flag.id, text });
@@ -48,7 +52,7 @@ function error(flag, text) {
 
 <template>
   <section aria-label="Flags">
-    <h2>Flags</h2>
+    <h2 v-if="!titled">Flags</h2>
     <div class="card">
       <Row v-if="pending" :label="`Relaunch to apply ${pending} ${pending === 1 ? 'change' : 'changes'}`">
         <button type="button" class="text-button" @click="send({ t: 'relaunch' })">Relaunch</button>

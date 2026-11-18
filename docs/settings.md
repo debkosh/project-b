@@ -4,7 +4,14 @@ The settings page is one of our pages, in a tab of ours (`shell/src/apps/setting
 everything on it (`core/settings` and the parts other managers add); the page shows it and
 sends the person's changes back.
 
-## One page by task
+It has two layouts, the same settings arranged two ways, and the flag Settings layout
+(Advanced, Flags) switches between them while the page is open, with no relaunch: `page`, one
+page by task, the default and what Off means, and `sections`, sections in a list. It is a live
+flag ([flags.md](flags.md)): Go saves it and sends the flags again, and the page takes the other
+layout at once, showing Flags, where the person is. The owner asked for both, to choose
+between by using them (2026-11-18).
+
+## One page by task (`page`)
 
 Every setting is on one scrolling page, in five groups by task:
 
@@ -22,29 +29,57 @@ Sites, Keyboard shortcuts, Sparks, Extensions and Web features, are each a row o
 opens the list as a page of its own, in its place, with a back button to its group. The tab's
 title is Settings, or Settings › and the list's name on a list's page.
 
+## Sections in a list (`sections`)
+
+Like Chrome's settings: a list of sections, one showing at a time.
+
+| Section | What is in it |
+|---|---|
+| Appearance | Theme, Frame colour, Tab layout (desktop), Address bar (phone), Shell |
+| Start and search | On start, Search engine |
+| Workspaces | The workspaces |
+| Bookmarks | Where bookmarks show, and the bar |
+| Privacy and sites | Sites, which opens as a page of its own |
+| Keyboard (desktop) | Keys, and the keyboard shortcuts |
+| Profile and import | Profile name, Template, Import from other browsers, Run setup again |
+| Extensions and sparks | Extensions (with its flag on, desktop), Sparks; Sparks alone without them |
+| About Project B | Version, Automatic updates |
+| Flags, Web features | Under a line at the foot of the list |
+
+On a desktop the list is at the left, with an icon for each section; the tab's title is
+Settings › and the section's name. On a phone the page is the list, each section with a line
+saying what it is set to (System · Teal, Where you left off · DuckDuckGo); a press opens the
+section under its own heading, with a back button to the list.
+
+## On a phone
+
 The phone reaches every setting. What makes no sense there stays off it: Tab layout, Keys and
 Keyboard shortcuts, and Extensions.
 
 ## Parts, and how they are arranged
 
-The page is made of parts (`arrange.js`): a row (`Rows.vue`, `KeysRow.vue`,
+Both layouts are made of the same parts (`arrange.js`): a row (`Rows.vue`, `KeysRow.vue`,
 `ProfileRows.vue`), or a block that brings its own cards (`Bookmarks.vue`, `Import.vue`,
 `Flags.vue`, and the long lists). Every row is drawn by `Row.vue`: its label, a second line
-under it, and its control. The layout is data: groups, each a run of cards, a card being a list
-of parts. A list among a card's parts is drawn as the row that opens it. `arrange.js` also says
-where each part shows (desktop, phone, or only when the page has what it needs, as Profile needs
-a listed profile).
+under it, and its control. A layout is data: its groups or sections, each a run of cards, a card
+being a list of parts; `PageLayout.vue` and `SectionsLayout.vue` only arrange them. A list among
+a card's parts is drawn as the row that opens it. `arrange.js` also says where each part shows
+(desktop, phone, or only when the page has what it needs, as Profile needs a listed profile).
 
 ## Addresses
 
 What the page shows is an address, `state.section`, which Go may name as it opens the page
-(`OpenSection`): a group (`look`, `browsing`, `privacy`, `data`, `advanced`), a part
-(`import`, `flags`), or a list (`workspaces`, `sites`, `sites/<origin>`, `keyboard`, `sparks`,
-`extensions`, `webFeatures`). A list's address opens its page; any other scrolls the page to the
-group that holds it. The site panel's Details opens `sites/<origin>`, and an extension's Manage
-opens `extensions`.
+(`OpenSection`): a group or section (`look`, `browsing`, `privacy`, `data`, `advanced`;
+`appearance`, `start`, `profile`, `about`), a part (`import`, `flags`), or a list (`workspaces`,
+`sites`, `sites/<origin>`, `keyboard`, `sparks`, `extensions`, `webFeatures`). Both layouts take
+every address: the page opens a list's own page, or scrolls to the part or its group; the
+sections show the section that is it or holds it, or Sites' own page. The site panel's Details
+opens `sites/<origin>`, and an extension's Manage opens `extensions`.
 
 ## Tests
 
-`shell/e2e/settings.cjs` drives the page on the mock engine; it goes to each part as a person
-does, by the rail and the rows that open the lists.
+`shell/e2e/settings.cjs` drives the page on the mock engine, once in each layout, each run on a
+profile whose flag names it; it goes to each part as a person does, by the rail, the list of
+sections and the rows that open the lists. Each run also switches the flag to the other
+layout and back, in the same page, and walks a phone-sized page through every group or
+section. `core/flags/flags_test.go` has the live flag.

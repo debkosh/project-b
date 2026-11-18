@@ -6,8 +6,8 @@ import { send, state } from './state.js';
 // matches. Each row has its switch, Edit, Export and Delete; New opens an empty editor,
 // Import takes a .user.js file. A save that Go refuses says why under the editor.
 
-// On a page of its own the page's heading names the list.
-const ownPage = inject('settingsListPage', false);
+// Where the page's own heading names the list, its own gives way.
+const titled = inject('settingsTitled', false);
 
 const template = `// ==UserScript==
 // @name        My spark
@@ -94,7 +94,7 @@ const where = (s) => (s.match || []).join(', ');
 
 <template>
   <section aria-label="Sparks">
-    <h2 v-if="!ownPage">Sparks</h2>
+    <h2 v-if="!titled">Sparks</h2>
     <p class="intro">Your own scripts for the pages they match, each run apart from the page's own. At most 25.</p>
     <div class="card">
       <div v-for="s in state.sparks" :key="s.id" class="row spark" role="group" :aria-label="s.name || 'A spark that has a problem'">

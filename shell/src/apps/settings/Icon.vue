@@ -1,0 +1,25 @@
+<script setup>
+// The sections' icons, 16px line drawings in the icons' ink, as the shell's are.
+defineProps({ name: String });
+
+const paths = {
+  appearance: ['M8 2.25a5.75 5.75 0 1 0 0 11.5a5.75 5.75 0 1 0 0-11.5z', 'M8 2.25v11.5', 'M8 4.5h3.5M8 7h5.5M8 9.5h5.25M8 12h3'],
+  search: ['M7 2.75a4.25 4.25 0 1 0 0 8.5a4.25 4.25 0 1 0 0-8.5z', 'M10.25 10.25 13.5 13.5'],
+  workspaces: ['M5.5 5.5V3.75a1 1 0 0 1 1-1h5.75a1 1 0 0 1 1 1V9.5a1 1 0 0 1-1 1H10.5', 'M3.75 5.5h5.75a1 1 0 0 1 1 1v5.75a1 1 0 0 1-1 1H3.75a1 1 0 0 1-1-1V6.5a1 1 0 0 1 1-1z'],
+  bookmarks: ['M4.5 2.75h7v10.5L8 10.5l-3.5 2.75z'],
+  privacy: ['M8 2 13 4v4c0 3-2.2 5-5 6-2.8-1-5-3-5-6V4z'],
+  download: ['M8 2.75v7.5', 'M4.75 7 8 10.25 11.25 7', 'M3 13.25h10'],
+  keyboard: ['M2.75 4.25h10.5a.75.75 0 0 1 .75.75v6a.75.75 0 0 1-.75.75H2.75A.75.75 0 0 1 2 11V5a.75.75 0 0 1 .75-.75z', 'M4.5 6.75h.01M7 6.75h.01M9.5 6.75h.01M12 6.75h.01M5 9.25h6'],
+  profile: ['M8 2.75a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5z', 'M3.25 13.25c.5-2.5 2.4-3.75 4.75-3.75s4.25 1.25 4.75 3.75'],
+  extensions: ['M6 3.25a1.25 1.25 0 0 1 2.5 0v1h3a.75.75 0 0 1 .75.75v3h-1a1.25 1.25 0 0 0 0 2.5h1v2.75a.75.75 0 0 1-.75.75H3.75a.75.75 0 0 1-.75-.75V5a.75.75 0 0 1 .75-.75H6z'],
+  about: ['M8 2.25a5.75 5.75 0 1 0 0 11.5a5.75 5.75 0 1 0 0-11.5z', 'M8 7.25v3.75', 'M8 5h.01'],
+  flags: ['M6.25 2.75h3.5', 'M6.75 2.75v4L3.5 12.4a.75.75 0 0 0 .65 1.1h7.7a.75.75 0 0 0 .65-1.1L9.25 6.75v-4'],
+  webFeatures: ['M8 2.25a5.75 5.75 0 1 0 0 11.5a5.75 5.75 0 1 0 0-11.5z', 'M2.25 8h11.5', 'M8 2.25c1.6 1.6 2.4 3.5 2.4 5.75S9.6 12.15 8 13.75C6.4 12.15 5.6 10.25 5.6 8S6.4 3.85 8 2.25z'],
+};
+</script>
+
+<template>
+  <svg class="icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path v-for="d in paths[name]" :key="d" :d="d" />
+  </svg>
+</template>

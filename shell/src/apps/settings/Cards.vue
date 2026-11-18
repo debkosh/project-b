@@ -38,7 +38,7 @@ const cards = computed(() => props.section.cards.map((c) => (typeof c === 'strin
 
 <template>
   <template v-for="(card, i) in cards" :key="i">
-    <component :is="blocks[card]" v-if="typeof card === 'string'" class="block" />
+    <component :is="blocks[card]" v-if="typeof card === 'string'" class="block" :data-part="card" />
     <section v-else class="block" :aria-label="card.heading || undefined">
       <h2 v-if="card.heading">{{ card.heading }}</h2>
       <div class="card">

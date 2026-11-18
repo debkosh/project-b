@@ -11,7 +11,7 @@ import (
 func TestTheRegistry(t *testing.T) {
 	ids, switches := map[string]bool{}, map[string]bool{}
 	for _, f := range All {
-		if ids[f.ID] || switches[f.Switch] {
+		if ids[f.ID] || f.Switch != "" && switches[f.Switch] {
 			t.Errorf("%s: id or switch used twice", f.ID)
 		}
 		ids[f.ID], switches[f.Switch] = true, true
@@ -25,6 +25,9 @@ func TestTheRegistry(t *testing.T) {
 		`[{"id":"a","name":"A","description":"d","switch":"a","type":"string","pattern":"("}]`,
 		`[{"id":"a","name":"A","switch":"a","type":"boolean"}]`,
 		`[{"id":"a","name":"A","description":"d","switch":"a","type":"boolean","defualt":"on"}]`,
+		`[{"id":"a","name":"A","description":"d","type":"boolean"}]`,
+		`[{"id":"a","name":"A","description":"d","switch":"a","type":"boolean","live":true}]`,
+		`[{"id":"a","name":"A","description":"d","type":"boolean","live":true,"engine":"chromium"}]`,
 	} {
 		if _, err := Parse([]byte(bad)); err == nil {
 			t.Errorf("accepted %s", bad)
@@ -107,6 +110,26 @@ func TestAChangeWaitsForTheNextLaunch(t *testing.T) {
 	want := []string{"--remote-debugging-port=9333", "--enable-features=Foo,Bar"}
 	if !slices.Equal(next.Switches(), want) || !next.IsOn(RemoteDebugging) || pending(next, RemoteDebugging) {
 		t.Fatalf("next launch: %v", next.Switches())
+	}
+}
+
+// A live flag applies at once: it never waits for a relaunch, and is no switch.
+func TestALiveFlagAppliesAtOnce(t *testing.T) {
+	dir := t.TempDir()
+	m := New(dir)
+	changes := 0
+	m.OnChanged(func() { changes++ })
+	m.Set(SettingsLayout, "sections")
+	if changes != 1 || pending(m, SettingsLayout) || !m.IsOn(SettingsLayout) || len(m.Switches()) != 0 {
+		t.Fatalf("changes %d, view %+v, switches %v", changes, m.View(), m.Switches())
+	}
+	next := New(dir)
+	if !next.IsOn(SettingsLayout) || len(next.Switches()) != 0 {
+		t.Fatalf("next launch: on %v, switches %v", next.IsOn(SettingsLayout), next.Switches())
+	}
+	m.Set(SettingsLayout, "")
+	if pending(m, SettingsLayout) || m.IsOn(SettingsLayout) {
+		t.Fatalf("off: %+v", m.View())
 	}
 }
 

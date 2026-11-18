@@ -105,8 +105,68 @@ function arranged(sections) {
 
 export const pageGroups = computed(() => arranged(page));
 
+// Layout A: sections in a list, like Chrome's, one showing at a time; each has an icon and
+// a line saying what it is set to, which a phone's list of sections shows. Below the line at
+// the foot of the list, what is still being tried. A list is in its section as it is, but
+// Sites, which is in Privacy and sites with rows of its own, opens as its own page.
+const named = (list, value) => list.find((x) => x.value === value)?.label || '';
+const themeNames = [
+  { value: 'system', label: 'System' },
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+];
+const startNames = [
+  { value: 'continue', label: 'Where you left off' },
+  { value: 'fresh', label: 'Start fresh' },
+];
+const sectionList = () => [
+  {
+    id: 'appearance',
+    label: 'Appearance',
+    icon: 'appearance',
+    cards: [['theme', 'frameColour', 'tabLayout', 'addressBar', 'shell']],
+    summary: () => [named(themeNames, state.theme), colourName(state.windowColor)].join(' · '),
+  },
+  {
+    id: 'start',
+    label: 'Start and search',
+    icon: 'search',
+    cards: [['start', 'searchEngine']],
+    summary: () => [named(startNames, state.start), state.searchEngines.find((e) => e.id === state.searchEngine)?.name].filter((x) => x).join(' · '),
+  },
+  { id: 'workspaces', label: 'Workspaces', icon: 'workspaces', cards: ['workspaces'], summary: lists.workspaces.summary },
+  {
+    id: 'bookmarks',
+    label: 'Bookmarks',
+    icon: 'bookmarks',
+    cards: ['bookmarks'],
+    summary: () => {
+      const p = state.prefs;
+      const on = [p.bookmarksNewTab && 'New tab page', p.bookmarksSidebar && (phone ? 'Tab switcher' : 'Sidebar'), p.bookmarksCommandBox && (phone ? 'Address bar' : 'Command box'), p.bookmarksBar && 'Bar'];
+      return on.filter((x) => x).join(', ') || 'Nowhere';
+    },
+  },
+  { id: 'privacy', label: 'Privacy and sites', icon: 'privacy', cards: [['sites']], summary: lists.sites.summary },
+  { id: 'keyboard', label: 'Keyboard', icon: 'keyboard', cards: [['keys'], 'keyboard'], summary: () => '' },
+  { id: 'profile', label: 'Profile and import', icon: 'profile', cards: [['profile'], 'import', ['runSetup']], summary: () => state.profile?.name || '' },
+  {
+    id: 'extensions',
+    label: shown('extensions') ? 'Extensions and sparks' : 'Sparks',
+    icon: 'extensions',
+    cards: ['extensions', 'sparks'],
+    summary: lists.sparks.summary,
+  },
+  { id: 'about', label: 'About Project B', icon: 'about', cards: [['version', 'autoUpdate']], summary: () => state.running || 'Development build' },
+  { id: 'flags', label: 'Flags', icon: 'flags', below: true, cards: ['flags'], summary: () => '' },
+  { id: 'webFeatures', label: 'Web features', icon: 'webFeatures', below: true, cards: ['webFeatures'], summary: () => '' },
+];
+
+export const sections = computed(() => arranged(sectionList()));
+
 // The page's own name for the frame colour, for a summary: a preset's name or Custom.
-export const colourName = (c) => framePresets.find((p) => p.color === c)?.name || 'Custom';
+export function colourName(c) {
+  return framePresets.find((p) => p.color === c)?.name || 'Custom';
+}
 
 // The parts a card holds as rows: none for a block.
 export const rowsOf = (card) => (typeof card === 'string' ? [] : Array.isArray(card) ? card : card.rows);

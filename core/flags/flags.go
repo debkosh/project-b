@@ -35,8 +35,11 @@ type Flag struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
-	// Switch is the command-line switch, without its dashes.
-	Switch string `json:"switch"`
+	// Switch is the command-line switch, without its dashes. A live flag has none.
+	Switch string `json:"switch,omitempty"`
+	// Live says the app reads the flag while it runs, as the settings page reads its
+	// layout: a change applies at once, with no relaunch, and the engine never hears of it.
+	Live bool `json:"live,omitempty"`
 	// Engine names the engine whose own switch it is, "chromium", for a switch we pass
 	// through rather than define; "" for one of ours.
 	Engine string `json:"engine,omitempty"`
@@ -81,8 +84,11 @@ func mustParse(b []byte) []Flag {
 
 // check says what is wrong with a row, and compiles its pattern.
 func (f *Flag) check() error {
-	if f.ID == "" || f.Name == "" || f.Description == "" || f.Switch == "" {
-		return fmt.Errorf("needs an id, a name, a description and a switch")
+	if f.ID == "" || f.Name == "" || f.Description == "" {
+		return fmt.Errorf("needs an id, a name and a description")
+	}
+	if f.Live != (f.Switch == "") {
+		return fmt.Errorf("needs a switch, or is live and has none")
 	}
 	number := f.Type == Number || f.Type == Numbers
 	text := f.Type == String || f.Type == Strings
@@ -97,6 +103,8 @@ func (f *Flag) check() error {
 		return fmt.Errorf("a pattern is for strings")
 	case f.Engine != "" && f.Engine != "chromium":
 		return fmt.Errorf("engine %q", f.Engine)
+	case f.Live && f.Engine != "":
+		return fmt.Errorf("a live flag is the app's, not an engine's")
 	}
 	if f.Pattern != "" {
 		p, err := regexp.Compile(f.Pattern)
@@ -207,7 +215,7 @@ func New(dir string) *Manager {
 func (m *Manager) Switches() []string {
 	var out []string
 	for _, f := range All {
-		if v := m.launched[f.ID]; v != "" {
+		if v := m.launched[f.ID]; v != "" && !f.Live {
 			out = append(out, f.toSwitch(v))
 		}
 	}
@@ -220,8 +228,8 @@ func (m *Manager) IsOn(id string) bool { return m.launched[id] != "" }
 // OnChanged subscribes to a flag being saved with a new value.
 func (m *Manager) OnChanged(f func()) { m.onChange = append(m.onChange, f) }
 
-// Set saves a flag's value for the next launch; "" turns it off. A flag that isn't one or
-// isn't in this build, or a value it can't take, is ignored.
+// Set saves a flag's value for the next launch, or for now when it is live; "" turns it
+// off. A flag that isn't one or isn't in this build, or a value it can't take, is ignored.
 func (m *Manager) Set(id, v string) {
 	f, ok := byID(id)
 	if !ok || !f.built() {
@@ -235,6 +243,9 @@ func (m *Manager) Set(id, v string) {
 		delete(m.saved, id)
 	} else {
 		m.saved[id] = v
+	}
+	if f.Live {
+		m.launched[id] = v
 	}
 	m.save()
 	for _, f := range m.onChange {

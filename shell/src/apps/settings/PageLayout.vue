@@ -35,15 +35,15 @@ function onScroll() {
   current.value = end && jumpedTo ? jumpedTo : at?.dataset.group || '';
 }
 
-// An address, from the rail, a back link or Go, shows its page, or scrolls the page to its
-// group; '' is the page's top.
+// An address, from the rail, a back link or Go, shows its page, or scrolls the page to the
+// block it names or else its group; '' is the page's top.
 watch(
   () => [state.section, jumps.value],
   async () => {
     await nextTick();
     if (!content.value) return;
     const g = shown.value.section;
-    const el = !shown.value.list && g && state.section ? content.value.querySelector(`[data-group="${g.id}"]`) : null;
+    const el = !shown.value.list && g && state.section ? content.value.querySelector(`[data-part="${state.section}"], [data-group="${g.id}"]`) : null;
     jumpedTo = el ? g.id : '';
     if (el) el.scrollIntoView({ block: 'start' });
     else content.value.scrollTop = 0;

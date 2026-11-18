@@ -1,7 +1,8 @@
 # Flags
 
 > A flag is a named command-line switch. It is off until the user gives it a value, and it
-> applies at launch. A flag's code may be left out of a build.
+> applies at launch. A flag's code may be left out of a build. A live flag is no switch: the
+> app reads it while it runs, and a change applies at once.
 
 Every flag is one row of `core/flags/registry.json`, and nothing else defines one. Go embeds the
 file, GN reads it (`engine/flags.gni`) and vite reads it (`shell/vite.config.js`). Settings,
@@ -14,7 +15,7 @@ Flags draws each row by its type, saves its value in the profile's `flags.json`,
   "switch": "remote-debugging-port", "type": "number", "min": 1024, "max": 65535 }
 ```
 
-`id`, `name`, `description`, `switch` and `type` are required. A key Go doesn't know stops the
+`id`, `name`, `description`, `switch` and `type` are required, but a live flag has no `switch`. A key Go doesn't know stops the
 app at its start and fails `TestTheRegistry`. `"engine": "chromium"` marks a switch that is
 Chromium's own, passed through as it is (`remote-debugging-port`, `enable-features`), rather
 than one of ours (`pb-…`), which any engine is told.
@@ -28,6 +29,11 @@ than one of ours (`pb-…`), which any engine is told.
 | `numbers` | `min`, `max`, per item | numbers separated by commas | `--switch=1,2,3` | a field |
 | `strings` | `pattern`, per item | text separated by commas | `--switch=A,B` | a field |
 
+`"live": true` marks a flag the app reads while it runs, as the settings page reads Settings
+layout: it has no switch, the engine never hears of it, and a change is what runs at once, so
+Settings never offers Relaunch for it. The page reads the value from the flags Go sends it,
+again on each change. A live flag can't be an engine's (`engine`).
+
 Empty is off. Spaces around a list's commas are dropped when it is saved. A value the flag
 can't take is refused, and the field goes back to the saved one.
 
@@ -40,6 +46,7 @@ The flags today:
 | Chromium features | `strings` | `--enable-features=<list>` |
 | Show window regions | `boolean` | `--pb-show-regions` |
 | Show the welcome at each start | `boolean` | `--pb-show-welcome` |
+| Settings layout | `enum`, `page` or `sections`, `live` | nothing: the settings page's layout ([settings.md](settings.md)), Off being `page` |
 
 ## Build flags
 
@@ -96,11 +103,12 @@ The browser passes `--pb-extensions` to every child process it starts, in
 ## Tests
 
 - `core/flags/flags_test.go`: the registry's rows, each type's good and bad values, saved,
-  offered for relaunch, used on the next start, and bad values dropped.
+  offered for relaunch, used on the next start, and bad values dropped; a live flag applied
+  at once, never offered for relaunch, and no switch.
 - `core/app/extensions_test.go`: no extension manager with the flag off.
 - `shell/e2e/settings.cjs`: the Flags section with a flag of every type (the dev server's
   `-flags` adds the ones the registry has no row of): each drawn by its type, saved, refused,
-  and Relaunch beside the waiting flag only.
+  and Relaunch beside the waiting flag only; Settings layout switching the page at once.
 - `shell/e2e/extensions.cjs`: with the flag off, no toolbar button and no Extensions section.
 - `core/app/welcome_test.go`: Show the welcome at each start opens the welcome over the whole
   window at a start that otherwise shows none (docs/onboarding.md).

@@ -7,7 +7,7 @@ import { lists } from './arrange.js';
 // section that has its row. The list's own heading gives way to the page's.
 const props = defineProps({ list: String, back: Object });
 const go = inject('settingsGo');
-provide('settingsListPage', true);
+provide('settingsTitled', true);
 </script>
 
 <template>

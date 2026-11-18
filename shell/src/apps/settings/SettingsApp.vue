@@ -1,7 +1,8 @@
 <script setup>
-import { provide, ref, watchEffect } from 'vue';
+import { computed, provide, ref, watch, watchEffect } from 'vue';
 import { paintTheme } from '@/theme.js';
 import PageLayout from './PageLayout.vue';
+import SectionsLayout from './SectionsLayout.vue';
 import { state } from './state.js';
 
 // The settings page: one of our pages, in a tab of ours. Its colours come from the frame
@@ -13,10 +14,22 @@ watchEffect(() => paintTheme(state.tones, state.theme));
 // counts a jump, so asking for the one showing goes to it again.
 const jumps = ref(0);
 provide('settingsJumps', jumps);
-provide('settingsGo', (address) => {
+const go = (address) => {
   state.section = address;
   jumps.value++;
-});
+};
+provide('settingsGo', go);
+
+// The layout is the Settings layout flag's, a live one (docs/flags.md): Go sends the flags
+// again as it changes, and the page takes the other layout at once, at the same address.
+// Off is the page.
+const layout = computed(() => (state.ready && state.flags.find((f) => f.id === 'settingsLayout')?.value === 'sections' ? SectionsLayout : PageLayout));
+// The flag is set in Flags, so the other layout shows Flags, where the person still is. The
+// snapshot's layout is no change.
+watch(
+  () => state.ready && layout.value,
+  (now, was) => was && go('flags'),
+);
 </script>
 
 <template>
@@ -24,7 +37,7 @@ provide('settingsGo', (address) => {
     <!-- The page's name is the tab's title, which the shell shows; the heading is kept for
          a screen reader, and out of sight. -->
     <h1 class="hidden-heading">Settings</h1>
-    <PageLayout />
+    <component :is="layout" />
   </div>
 </template>
 

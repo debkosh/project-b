@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, inject } from 'vue';
 import { phone } from '@/phone.js';
 import { folders } from '@/ui/bookmarks.js';
 import { setPref, state } from './state.js';
@@ -19,6 +19,9 @@ const places = computed(() => [
     : { pref: 'bookmarksCommandBox', label: 'In the command box', hint: 'Type * for bookmarks only' },
 ]);
 
+// Where the page's own heading names the section, its own gives way.
+const titled = inject('settingsTitled', false);
+
 // The folders the bar can show, the top first, each under the one it is in.
 const barFolders = computed(() => folders(state.bookmarks));
 
@@ -27,8 +30,8 @@ const barFolder = computed(() => (barFolders.value.some((f) => f.id === state.pr
 </script>
 
 <template>
-  <section aria-labelledby="bookmarks-heading">
-    <h2 id="bookmarks-heading">Bookmarks</h2>
+  <section aria-label="Bookmarks">
+    <h2 v-if="!titled">Bookmarks</h2>
     <div class="card">
       <label v-for="p in places" :key="p.pref" class="row">
         <span class="label">
