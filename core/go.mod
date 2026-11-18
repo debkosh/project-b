@@ -11,6 +11,9 @@ require (
 
 require github.com/sudiptadeb/gulal v0.1.0
 
-require github.com/mattn/go-sqlite3 v1.14.53
+require (
+	github.com/mattn/go-sqlite3 v1.14.53
+	rsc.io/qr v0.2.0
+)
 
 replace github.com/sudiptadeb/project-b/browserdata => ../browserdata

@@ -29,6 +29,8 @@ type pageDialog struct {
 	Realm    string `json:"realm,omitempty"`
 	Host     string `json:"host,omitempty"`
 	Insecure bool   `json:"insecure,omitempty"`
+	// A passkey request's step (passkeys.go).
+	Passkey *passkeyStep `json:"passkey,omitempty"`
 }
 
 func dialogOf(d engine.Dialog) pageDialog {
@@ -72,6 +74,8 @@ type pageDialogs struct {
 	a    *App
 	e    engine.Engine
 	list []pageDialog
+	// The passkey requests among them, whose cards change in place (passkeys.go).
+	passkeys *passkeys
 }
 
 func (p *pageDialogs) changed() {
@@ -79,6 +83,10 @@ func (p *pageDialogs) changed() {
 }
 
 func (p *pageDialogs) opened(d engine.Dialog) {
+	if d.Kind == "passkey" {
+		p.passkeys.opened(d)
+		return
+	}
 	p.list = append(p.list, dialogOf(d))
 	p.changed()
 }
@@ -94,6 +102,7 @@ func (p *pageDialogs) kindOf(id engine.DialogID) string {
 
 // drop takes dialog id off the list, saying whether it was there.
 func (p *pageDialogs) drop(id engine.DialogID) bool {
+	delete(p.passkeys.waiting, id)
 	for i, d := range p.list {
 		if d.ID == id {
 			p.list = append(p.list[:i:i], p.list[i+1:]...)
@@ -108,6 +117,10 @@ func (p *pageDialogs) shellPart() shell.Part {
 	return shell.Part{
 		Snapshot: func(into map[string]any) { into["dialogs"] = p.list },
 		Handle: func(_ engine.WindowID, t string, msg []byte) bool {
+			if t == "answerPasskey" {
+				p.passkeys.answer(msg)
+				return true
+			}
 			if t != "answerDialog" {
 				return false
 			}
@@ -119,6 +132,14 @@ func (p *pageDialogs) shellPart() shell.Part {
 			}
 			json.Unmarshal(msg, &r)
 			kind := p.kindOf(r.ID)
+			// A shell that doesn't draw a passkey's steps can still say no to one; the
+			// engine then ends it, and the card goes when it says so.
+			if kind == "passkey" {
+				if !r.OK {
+					p.e.AnswerPasskey(r.ID, "cancel", "")
+				}
+				return true
+			}
 			if !p.drop(r.ID) {
 				return true
 			}

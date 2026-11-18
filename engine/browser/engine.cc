@@ -47,6 +47,7 @@
 #include "project_b/engine/buildflags/buildflags.h"
 #if !BUILDFLAG(IS_ANDROID)
 #include "project_b/engine/browser/mac_app.h"
+#include "project_b/engine/browser/passkeys.h"
 #endif
 #include "project_b/engine/browser/shell_page.h"
 #include "project_b/engine/browser/timeline.h"
@@ -341,6 +342,13 @@ void CallStopFinding(int64_t tab) {
 void CallAnswerSignIn(int64_t dialog, int ok, const char* username, const char* password) {
   CheckMainThread();
   Dialogs::Get()->AnswerSignIn(dialog, ok, username, password);
+}
+
+void CallAnswerPasskey(int64_t dialog, const char* action, const char* text) {
+  CheckMainThread();
+#if !BUILDFLAG(IS_ANDROID)  // A phone's passkey requests never reach us (docs/passkeys.md).
+  PasskeyRequest::Answer(dialog, action, text);
+#endif
 }
 
 void CallExitPageFullScreen(int64_t tab) {
@@ -701,6 +709,7 @@ const PBEngineCalls* Engine::Calls() {
       .reveal_file = CallRevealFile,
       .answer_dialog = CallAnswerDialog,
       .answer_sign_in = CallAnswerSignIn,
+      .answer_passkey = CallAnswerPasskey,
       .find = CallFind,
       .stop_finding = CallStopFinding,
       .print = CallPrint,

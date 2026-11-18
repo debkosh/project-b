@@ -51,6 +51,7 @@ static inline void call_ask_default_browser(const PBEngineCalls* c) { c->ask_def
 static inline int call_is_default_browser(const PBEngineCalls* c) { return c->is_default_browser(); }
 static inline void call_exit_page_full_screen(const PBEngineCalls* c, int64_t tab) { c->exit_page_full_screen(tab); }
 static inline void call_answer_sign_in(const PBEngineCalls* c, int64_t dialog, int ok, const char* username, const char* password) { c->answer_sign_in(dialog, ok, username, password); }
+static inline void call_answer_passkey(const PBEngineCalls* c, int64_t dialog, const char* action, const char* text) { c->answer_passkey(dialog, action, text); }
 static inline void call_answer_dialog(const PBEngineCalls* c, int64_t dialog, int ok, const char* text) { c->answer_dialog(dialog, ok, text); }
 static inline void call_answer_permission(const PBEngineCalls* c, uint32_t id, const int32_t* statuses, size_t count) { c->answer_permission(id, statuses, count); }
 static inline void call_send_to_page(const PBEngineCalls* c, int64_t tab, const char* json, size_t length) { c->send_to_page(tab, json, length); }
@@ -299,6 +300,13 @@ func (e *nativeEngine) AnswerSignIn(id engine.DialogID, ok bool, username, passw
 		yes = 1
 	}
 	C.call_answer_sign_in(e.calls, C.int64_t(id), yes, u, p)
+}
+
+func (e *nativeEngine) AnswerPasskey(id engine.DialogID, action, text string) {
+	a, t := C.CString(action), C.CString(text)
+	defer C.free(unsafe.Pointer(a))
+	defer C.free(unsafe.Pointer(t))
+	C.call_answer_passkey(e.calls, C.int64_t(id), a, t)
 }
 
 func (e *nativeEngine) AnswerPermission(id engine.PermissionID, statuses []engine.PermissionStatus) {

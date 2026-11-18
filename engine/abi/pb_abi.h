@@ -84,6 +84,11 @@ typedef enum PBEvent {
                                         // for a reload. The page waits for answer_dialog
   PB_EVENT_DIALOG_CLOSED = 22,          // i: dialog; content gave up on it, as when its
                                         // tab navigated or closed
+  PB_EVENT_PASSKEY_STEP = 25,           // i: dialog, s: the step ("key", "pin", "touch",
+                                        // "account", "phone", "phoneBusy", "error"),
+                                        // s: json, what the step carries: what a passkey
+                                        // request, a dialog of kind PB_DIALOG_PASSKEY,
+                                        // asks of the person now (docs/passkeys.md)
   PB_EVENT_SITE_DATA = 24,              // s: workspace, s: json, [{"host", "cookies",
                                         // "bytes"}]: what list_site_data found, the
                                         // cookies by their domain and the bytes each host
@@ -202,6 +207,9 @@ typedef enum PBDialogKind {
   PB_DIALOG_BEFOREUNLOAD = 3,
   PB_DIALOG_SIGN_IN = 4,  // A site's or a proxy's request for a username and password,
                           // answered with answer_sign_in; its origin is the one asking
+  PB_DIALOG_PASSKEY = 5,  // A page's passkey request (docs/passkeys.md): its message is the
+                          // site's RP ID. Its steps come as PB_EVENT_PASSKEY_STEP, and
+                          // it is answered with answer_passkey, any number of times
 } PBDialogKind;
 
 // Where a download is.
@@ -401,6 +409,10 @@ typedef struct PBEngineCalls {
   void (*answer_dialog)(int64_t dialog, int ok, const char* text);
   // Answers a sign-in dialog: the username and password, or no to cancel.
   void (*answer_sign_in)(int64_t dialog, int ok, const char* username, const char* password);
+  // What the person did at a passkey request's step: the action ("cancel", "pin",
+  // "account", "phone", "key", "bluetoothOn", "bluetoothSettings", "retry") and its text,
+  // a PIN or an account's index (docs/passkeys.md). The Mac only; nothing elsewhere.
+  void (*answer_passkey)(int64_t dialog, const char* action, const char* text);
   // Finds text in a tab's page, a new search or the next match forward or back; the
   // counts come back through the FindReply hook with request.
   void (*find)(int64_t tab, int32_t request, const char* text, int forward, int find_next);

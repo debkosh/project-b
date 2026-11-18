@@ -58,6 +58,12 @@ class ContentBrowserClient : public ContentBrowserClientHooks {
   base::FilePath GetChildProcessPath(int flags) override;
   std::unique_ptr<content::DevToolsManagerDelegate>
   CreateDevToolsManagerDelegate() override;
+  // A page's passkey request goes to Go as a dialog with steps (docs/passkeys.md). A
+  // phone's never reach content's own authenticator, so this is the Mac's.
+  content::WebAuthenticationDelegate* GetWebAuthenticationDelegate() override;
+  std::unique_ptr<content::AuthenticatorRequestClientDelegate>
+  GetWebAuthenticationRequestDelegate(
+      content::RenderFrameHost* render_frame_host) override;
 #endif
   void CreateThrottlesForNavigation(
       content::NavigationThrottleRegistry& registry) override;
