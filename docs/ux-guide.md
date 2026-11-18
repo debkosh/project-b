@@ -15,8 +15,10 @@ guide has the rules every feature follows.
 - The buttons are quiet text buttons beside the progress, in place of what can't be pressed
   while it runs (Settings' Check for updates, for one).
 - **Stalled means 30 seconds with nothing arriving**, the same for the updater, downloads and
-  imports, and it reads "Stopped: nothing arrived for 30 seconds". A paused download never
-  stalls.
+  imports. The updater and an import read "Stopped: nothing arrived for 30 seconds". A
+  download is watched by the engine itself, which tries a new connection first, then fails
+  saying why in plain words ("Failed: the connection stopped"). A paused download never
+  stalls ([daily-driver.md](daily-driver.md)).
 - **Waiting on the person is not stalling:** while we wait for their answer, macOS's keychain
   question during an import, for one, no clock runs, the line says what it waits for, and
   Cancel still works.
