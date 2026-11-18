@@ -62,6 +62,18 @@ And on the second mocks, 2026-11-17:
   engine as wlakthrough"). The welcome's Protection step offers it; nothing reads another
   browser's choice, so the readers of Chromium's Preferences, Firefox's
   `search.json.mozlz4` (and its LZ4 reader) and macOS's global preferences are gone.
+- **Import is a wizard, with nothing kept** (the owner, 2026-11-18: "the import page needs
+  to be like a simple wizrads.. we donot maintain the import state... click chrome when we
+  show the profile list... which would have counts and stuff then import... show importing by
+  checking items one after other as they are imported then finished"). Which browser, then
+  which profile and what to bring, then each kind ticked as it lands, then what came
+  ([mock](screenshots/onboarding/mock-i1.png)). One profile at a time, Import another for the
+  next; the same wizard in the welcome and in Settings (his picks). imports.json is gone.
+- **Forks are a line of data each,** with their own logo, and **another browser is a folder
+  the person chooses** ("we should have chrome forks and firefox forks... which asks the use to
+  select a folder and then try from there"; "if our backend code is not changing and we are
+  just storing name icon and default folder in shell we can have many builtin options"; ship
+  each fork's logo; the folder in the welcome and in Settings).
 - **Sync** is a discussion of its own, in its own session ("[project-b] sync"): many ways to
   sync, to places the user controls.
 
@@ -76,9 +88,11 @@ The mocks are drawn in [screenshots/onboarding/mocks.html](screenshots/onboardin
 1. **Welcome:** the splash ([mock](screenshots/onboarding/mock-d0s.png)), then the mark, the
    name, one line, Get started and Skip setup over a window that cycles through the colours
    ([mock](screenshots/onboarding/mock-d1.png)).
-2. **Bring your things over:** each browser and profile found on the Mac, a row with what it
-   holds. Turned on, the row opens to what to bring: bookmarks (with their folders), history,
-   passwords, open tabs, extensions ([mock](screenshots/onboarding/mock-d2.png)).
+2. **Bring your things over:** the import wizard ([mock](screenshots/onboarding/mock-i1.png)):
+   each browser found on the Mac, forks among them, and another browser's folder to choose;
+   then a browser's profiles, each with what it holds, and what to bring: bookmarks (with
+   their folders), history, extensions; then each ticked as it lands. Earlier, rows with
+   switches ([mock](screenshots/onboarding/mock-d2.png)).
    Safari's row asks for Full Disk Access once ([mock](screenshots/onboarding/mock-d2b.png)): the
    page opens that pane of System Settings and goes on by itself when access is given. Then
    what came over ([mock](screenshots/onboarding/mock-d2c.png)). Open tabs come over as a
@@ -296,6 +310,52 @@ Each slice goes out through a release of its own.
   back to the list by itself, Safari's row on with 13 bookmarks, 1 page and Google; Bring
   over brought 13 bookmarks in 2 folders under From Safari, the page and Google, as
   `imports.json` said.
+
+**Import as a wizard, forks, and a folder chosen** (branch `import-wizard`):
+
+- **The wizard** (`shell/src/ui/ImportWizard.vue`) is the welcome's Bring your things over
+  and Settings' Import. Which browser: each browser Go found, with its logo and its
+  profiles' count, or what its one profile holds, and Another browser, which asks for its
+  profiles folder. A browser shows its profiles, the first picked, each with what it holds,
+  and what to bring, ticked but extensions; Choose a different folder… is there too. Import
+  shows each kind, waiting, coming (a spinner; extensions say how many of how many), then
+  ticked with what came; then Import another. Safari asks for Full Disk Access first, and
+  shows its profile once given. The welcome's step is always there on the desktop, as a
+  folder can be chosen with no browser found; its Continue goes on at any time.
+  ([welcome](../build/e2e/welcome-bring.png), [brought](../build/e2e/welcome-brought.png),
+  [Settings, a folder chosen](../build/e2e/settings-import.png))
+- **Nothing is kept.** No imports.json, no "brought over today": the wizard shows what an
+  import brought while it is on screen. Bookmarks say what is there already, and a second
+  import adds only what is new, as before.
+- **Messages:** a page sends `findBrowsers`, `chooseFolder`, `openAccess` and `import {key,
+  what}`; Go sends `browsers` (each `{id, name, locked, profiles: [{key, name, counts}]}`,
+  a profile's key its folder), `folder` (`{browser}`, `{error}` or `{cancelled}`),
+  `importStep {key, step, state, result, error}` as each kind starts and ends, and
+  `imported {key}` at the end.
+- **Forks** are lines of `browserdata`'s table, each an id, a name and the folder its
+  profiles are in under Application Support, and the family whose files it keeps: Chrome
+  Beta and Canary, Edge Beta and Dev, Chromium, Vivaldi, Opera, Opera GX and Yandex
+  Browser, which keep Chromium's; Zen, LibreWolf, Waterfox and Floorp, which keep Firefox's.
+  The Chromium ones' folders are those Firefox's own importer uses
+  (`ChromeMigrationUtils.sys.mjs`); the Firefox forks' were taken from their own docs and
+  are untried. Opera can keep its one profile in its folder itself, which is read as a
+  profile with no name.
+- **Their logos** ship in `shell/src/ui/logos`, one file named by the browser's id, with a
+  README of where each is from and its licence; a browser with none shows its family's
+  (`chrome-beta`, `chrome`'s), and one no one named, a plain mark.
+- **A folder chosen** goes through a new engine call, `ChooseFolder` (the system's open
+  panel, as sheet on the window, showing Library; `choose_folder` and
+  `PB_EVENT_FOLDER_CHOSEN` in the ABI), whose panel the extensions' Load unpacked also uses
+  now (`engine/browser/choose_path_mac.mm`); the driver's `choose` answers either.
+  `browserdata.Open` reads the folder: a Chromium browser's folder of profiles or one
+  profile, or a Firefox one's (`profiles.ini`) or one profile (`places.sqlite`). A known
+  browser's folder is that browser; another is `other-chromium` or `other-firefox`, named
+  after its folder ("User Data" names the folder above). A folder of neither says so.
+- **Testing it:** the test home has an Opera of one profile, a Zen, and a Thorium outside
+  Application Support. `browserdata` (`TestOpenAFolderChosen`, `TestFind…`), `core/app`
+  (`TestBringingThingsOverFromAnotherBrowser`, `TestAFolderChosenIsABrowser`,
+  `TestSafariWaitsForFullDiskAccess`, and with extensions `TestExtensionsComeOverFromTheStore`),
+  `shell/e2e/imports.cjs`, and `tools/drive_extensions.py import` on the real app.
 
 **How you work, and the shells as they look** (branch `welcome-how-you-work`):
 

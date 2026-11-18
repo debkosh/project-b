@@ -47,6 +47,9 @@ const bars = async (w) => (await w.ui.getByRole('tab').first().isVisible()) || (
   await w.page.screenshot({ path: path.join(lib.out, 'welcome-hello.png') });
 
   await welcome.getByRole('button', { name: 'Get started' }).click();
+  // Bring your things over, the import wizard (shell/e2e/imports.cjs), then the style.
+  await welcome.getByRole('heading', { name: 'Bring your things over' }).waitFor();
+  await welcome.getByRole('button', { name: 'Continue' }).click();
   await welcome.getByRole('radio', { name: 'Blue' }).click();
   const rootOf = (name) => welcome.locator(':root').evaluate((el, n) => getComputedStyle(el).getPropertyValue(n).trim(), name);
   check('a colour picked is the window\'s and the page\'s at once', await until(async () => (await regions()).windowColor === '#5b7fd6' && (await rootOf('--frame')) === '#5b7fd6'));

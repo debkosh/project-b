@@ -79,7 +79,7 @@
 #include "project_b/engine/browser/engine.h"
 #include "project_b/engine/browser/hooks.h"
 #include "project_b/engine/browser/page_tab.h"
-#include "project_b/engine/extensions/browser/choose_path.h"
+#include "project_b/engine/browser/choose_path.h"
 #include "project_b/engine/extensions/browser/extension_system.h"
 #include "project_b/engine/extensions/browser/extensions_browser_client.h"
 #include "project_b/engine/extensions/browser/popup.h"
@@ -705,20 +705,13 @@ void Extensions::ClosePopup() {
   hooks::Fire(PB_EVENT_EXTENSION_POPUP_CLOSED, hooks::Args());
 }
 
-void Extensions::ChooseForDriver(const base::FilePath& path) {
-  driver_choice_ = path;
-}
-
 content::WebContents* Extensions::popup_contents() const {
   return popup_ ? popup_->host_contents() : nullptr;
 }
 
 void Extensions::ChoosePath(int64_t window, int kind) {
-  if (!driver_choice_.empty()) {
-    PathChosen(std::exchange(driver_choice_, base::FilePath()));
-    return;
-  }
-  ShowPathChooser(Engine::Get()->window(window)->window.get(), kind,
+  ShowPathChooser(Engine::Get()->window(window)->window.get(),
+                  static_cast<PathKind>(kind),
                   base::BindOnce(&Extensions::PathChosen,
                                  weak_factory_.GetWeakPtr()));
 }

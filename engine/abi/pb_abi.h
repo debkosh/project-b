@@ -160,6 +160,8 @@ typedef enum PBEvent {
                                         // how ask_default_browser ended
   PB_EVENT_NOTIFICATIONS = 79,          // i: 1 when the app may show its notifications
                                         // now; how ask_notifications ended
+  PB_EVENT_FOLDER_CHOSEN = 80,          // i: window, s: the folder, or "" for none; how
+                                        // choose_folder ended
   PB_EVENT_PAGE_MESSAGE = 23,           // i: tab, s: the page's name ("settings",
                                         // "history", "bookmarks", "downloads",
                                         // "welcome"), s: json, from the page of ours
@@ -495,6 +497,9 @@ typedef struct PBEngineCalls {
                         int64_t received,
                         int64_t total,
                         int paused);
+  // Mac only: asks the user for a folder, in the system's panel on the window, as Import
+  // asks for another browser's. PB_EVENT_FOLDER_CHOSEN says which. Android leaves it null.
+  void (*choose_folder)(int64_t window);
 } PBEngineCalls;
 
 // What the adapter can tell the Go core. The main binary fills it in from Go's exports

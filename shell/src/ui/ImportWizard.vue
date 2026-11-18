@@ -1,0 +1,357 @@
+<script setup>
+import { computed, nextTick, ref, watch } from 'vue';
+import AllowAccess from './AllowAccess.vue';
+import BrowserIcon from './BrowserIcon.vue';
+import ImportChoices from './ImportChoices.vue';
+import { aboutBrowser, choicesOf, holds, imports, startRun, stepLines } from './imports.js';
+
+// Bringing things over, as a wizard (docs/onboarding.md), the welcome's step and Settings'
+// Import alike: which browser, then which of its profiles and what to bring, then each kind
+// ticked as it lands, then what came. A browser this Mac doesn't show, or one kept
+// elsewhere, is a folder the person chooses. Safari asks for Full Disk Access first. send
+// is the page's way to Go; heading is the level of the wizard's headings.
+const props = defineProps({ send: Function, heading: { type: String, default: 'h2' } });
+
+const view = ref('browsers');
+const browser = ref(null);
+const key = ref(null);
+const what = ref([]);
+const asked = ref([]);
+const folderError = ref('');
+const choosing = ref(false);
+const title = ref(null);
+
+const profile = computed(() => browser.value?.profiles.find((p) => p.key === key.value) || null);
+const profileTitle = computed(() => (profile.value?.name ? `${browser.value.name} · ${profile.value.name}` : browser.value?.name || ''));
+const run = computed(() => imports.runs[key.value]);
+
+// Each view's heading takes the keyboard's focus, so a screen reader reads where it is.
+watch(view, () => nextTick(() => title.value?.focus()));
+
+// A profile's choices, ticked but its extensions, which install things.
+function pick(p) {
+  key.value = p.key;
+  what.value = choicesOf(p).map((c) => c.id).filter((id) => id !== 'extensions');
+}
+
+function open(b) {
+  folderError.value = '';
+  browser.value = b;
+  if (b.locked) {
+    view.value = 'allow';
+    props.send({ t: 'openAccess' });
+    return;
+  }
+  pick(b.profiles[0]);
+  view.value = 'profile';
+}
+
+// Safari, given the access: Go looks again, and its profiles have counts.
+watch(
+  () => imports.browsers,
+  (list) => {
+    if (view.value !== 'allow') return;
+    const b = list?.find((x) => x.id === browser.value?.id);
+    if (b && !b.locked) open(b);
+  },
+);
+
+function chooseFolder() {
+  folderError.value = '';
+  imports.folder = null;
+  choosing.value = true;
+  props.send({ t: 'chooseFolder' });
+}
+watch(
+  () => imports.folder,
+  (f) => {
+    if (!choosing.value || !f) return;
+    choosing.value = false;
+    if (f.error) folderError.value = f.error;
+    else if (f.browser) open(f.browser);
+  },
+);
+
+function bring() {
+  asked.value = [...what.value];
+  startRun(key.value);
+  props.send({ t: 'import', key: key.value, what: asked.value });
+  view.value = 'importing';
+}
+
+const lines = computed(() => asked.value.flatMap((k) => stepLines(k, run.value?.steps[k]).map((l) => ({ ...l, kind: k }))));
+
+function again() {
+  browser.value = null;
+  key.value = null;
+  view.value = 'browsers';
+  props.send({ t: 'findBrowsers' });
+}
+</script>
+
+<template>
+  <div class="ui-import-wizard">
+    <!-- Which browser -->
+    <template v-if="view === 'browsers'">
+      <component :is="heading" ref="title" tabindex="-1">Bring your things over</component>
+      <p class="sub">From another browser on this Mac. Nothing leaves it.</p>
+      <div class="list">
+        <div v-if="imports.browsers === null" class="item"><span class="state">Looking for other browsers…</span></div>
+        <button v-for="b in imports.browsers || []" :key="b.id" type="button" class="item" :aria-label="`From ${b.name}`" @click="open(b)">
+          <BrowserIcon :browser="b.id" />
+          <span class="what">
+            <span class="label">{{ b.name }}</span>
+            <span class="state">{{ aboutBrowser(b) }}</span>
+          </span>
+          <span class="go" aria-hidden="true">›</span>
+        </button>
+        <button type="button" class="item" aria-label="From another browser" @click="chooseFolder">
+          <BrowserIcon browser="other" />
+          <span class="what">
+            <span class="label">Another browser</span>
+            <span class="state">Choose its profiles folder</span>
+          </span>
+          <span class="go" aria-hidden="true">›</span>
+        </button>
+      </div>
+      <p v-if="folderError" class="problem" role="alert">{{ folderError }}</p>
+    </template>
+
+    <!-- Safari: Full Disk Access first -->
+    <template v-else-if="view === 'allow'">
+      <component :is="heading" ref="title" tabindex="-1">Allow {{ browser.name }}'s things</component>
+      <p class="sub">macOS keeps {{ browser.name }}'s files behind Full Disk Access.</p>
+      <AllowAccess class="allow" @open="send({ t: 'openAccess' })" />
+      <div class="buttons">
+        <button type="button" class="text-button quiet" @click="view = 'browsers'">Not now</button>
+      </div>
+    </template>
+
+    <!-- Which profile, and what to bring -->
+    <template v-else-if="view === 'profile'">
+      <component :is="heading" ref="title" tabindex="-1" class="named"><BrowserIcon :browser="browser.id" />{{ browser.name }}</component>
+      <p class="sub">
+        {{ browser.profiles.length > 1 ? 'Which profile?' : holds(browser.profiles[0]) }}
+        <button type="button" class="link" @click="chooseFolder">Choose a different folder…</button>
+      </p>
+      <div v-if="browser.profiles.length > 1" class="list" role="radiogroup" aria-label="Profile">
+        <label v-for="p in browser.profiles" :key="p.key" class="item">
+          <input type="radio" name="profile" :checked="key === p.key" @change="pick(p)" />
+          <span class="what">
+            <span class="label">{{ p.name || browser.name }}</span>
+            <span class="state">{{ holds(p) }}</span>
+          </span>
+        </label>
+      </div>
+      <p v-if="folderError" class="problem" role="alert">{{ folderError }}</p>
+      <template v-if="profile && choicesOf(profile).length">
+        <span class="label bring-label">Bring over</span>
+        <ImportChoices v-model="what" :profile="profile" :title="profileTitle" />
+      </template>
+      <div class="buttons">
+        <button type="button" class="text-button quiet" @click="view = 'browsers'">Back</button>
+        <button type="button" class="text-button primary" :disabled="!what.length" @click="bring">Import</button>
+      </div>
+    </template>
+
+    <!-- Importing, then what came -->
+    <template v-else>
+      <component :is="heading" ref="title" tabindex="-1">{{ run?.done ? 'Imported' : 'Importing' }} from {{ profileTitle }}</component>
+      <p class="sub">{{ run?.done ? 'Bookmarks are on the Bookmarks page, in their own folder.' : 'Each is ticked as it lands.' }}</p>
+      <ul class="list steps" :aria-label="`From ${profileTitle}`" :aria-busy="String(!run?.done)">
+        <li v-for="(l, i) in lines" :key="i" class="item" :class="[l.state, { left: l.left }]">
+          <span class="mark" aria-hidden="true">
+            <svg v-if="l.state === 'done' && !l.left" viewBox="0 0 16 16"><path d="M4 8.5l2.5 2.5L12 5.5" /></svg>
+          </span>
+          <span class="what">
+            <span class="label">{{ l.text }}</span>
+            <span v-if="l.note" class="state">{{ l.note }}</span>
+          </span>
+        </li>
+      </ul>
+      <div v-if="run?.done" class="buttons">
+        <button type="button" class="text-button" @click="again">Import another</button>
+      </div>
+    </template>
+  </div>
+</template>
+
+<style>
+.ui-import-wizard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 600px;
+}
+
+.ui-import-wizard h1,
+.ui-import-wizard h2 {
+  margin: 0;
+  outline: none;
+}
+
+/* Settings' own h2 is a small section label; the wizard's is its title. */
+.ui-import-wizard h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.ui-import-wizard .named {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ui-import-wizard .sub {
+  margin: 0 0 8px;
+  color: var(--muted);
+}
+
+.ui-import-wizard .link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.ui-import-wizard .list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.ui-import-wizard .item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 8px 16px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+
+.ui-import-wizard .item + .item {
+  border-top: 1px solid var(--line);
+}
+
+.ui-import-wizard button.item {
+  cursor: pointer;
+}
+
+.ui-import-wizard button.item:hover {
+  background: var(--accent-tint);
+}
+
+.ui-import-wizard .what {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ui-import-wizard .label {
+  font-weight: 500;
+}
+
+.ui-import-wizard .state {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.ui-import-wizard .go {
+  color: var(--muted);
+  font-size: 18px;
+}
+
+.ui-import-wizard .problem {
+  margin: 0;
+  color: var(--danger);
+}
+
+.ui-import-wizard .bring-label {
+  margin-top: 8px;
+}
+
+.ui-import-wizard .buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* Each kind: a ring while it waits, a spinner while it comes, a tick once it has. */
+.ui-import-wizard .steps .mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.ui-import-wizard .steps .waiting .mark,
+.ui-import-wizard .steps .left .mark {
+  border: 1.5px dashed var(--line);
+}
+
+.ui-import-wizard .steps .doing .mark {
+  border: 2px solid var(--accent-soft);
+  border-top-color: var(--accent);
+  animation: ui-import-spin 0.9s linear infinite;
+}
+
+.ui-import-wizard .steps .done:not(.left) .mark {
+  background: var(--accent);
+}
+
+.ui-import-wizard .steps .problem .mark {
+  border: 2px solid var(--danger);
+}
+
+.ui-import-wizard .steps .mark svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: var(--on-accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ui-import-wizard .steps .waiting .label,
+.ui-import-wizard .steps .left .label {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.ui-import-wizard .steps .problem .label {
+  color: var(--danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-import-wizard .steps .doing .mark {
+    animation-duration: 3s;
+  }
+}
+
+@keyframes ui-import-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+</style>

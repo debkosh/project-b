@@ -81,10 +81,6 @@ class Extensions : public extensions::ExtensionRegistryObserver,
                  const gfx::RectF& anchor);
   void ClosePopup();
   void ChoosePath(int64_t window, int kind);
-
-  // Development only, for the driver, which can't press the buttons of the system's
-  // panel: the next ChoosePath answers with this path instead of asking.
-  void ChooseForDriver(const base::FilePath& path);
   // The open popup's page, or null.
   content::WebContents* popup_contents() const;
 
@@ -209,7 +205,6 @@ class Extensions : public extensions::ExtensionRegistryObserver,
   std::unique_ptr<ExtensionPopup> popup_;
   // The store installs fetching their package, by extension id.
   std::map<std::string, std::unique_ptr<network::SimpleURLLoader>> downloads_;
-  base::FilePath driver_choice_;
   base::WeakPtrFactory<Extensions> weak_factory_{this};
 };
 

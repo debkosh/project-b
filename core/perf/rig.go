@@ -95,6 +95,7 @@ func (e *Eng) AppCommand(engine.AppCommand)                         { e.Calls[CO
 func (e *Eng) SetDockColor(string)                                  { e.Calls[COther]++ }
 func (e *Eng) AskDefaultBrowser()                                   { e.Calls[COther]++ }
 func (e *Eng) OpenFullDiskAccess()                                  { e.Calls[COther]++ }
+func (e *Eng) ChooseFolder(engine.WindowID)                         { e.Calls[COther]++ }
 func (e *Eng) IsDefaultBrowser() bool                               { return false }
 func (e *Eng) AskNotifications()                                    { e.Calls[COther]++ }
 func (e *Eng) NotificationsAllowed() bool                           { return true }

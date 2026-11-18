@@ -1,10 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch, watchEffect } from 'vue';
 import { paintTheme } from '@/theme.js';
-import AllowAccess from '@/ui/AllowAccess.vue';
-import BrowserIcon from '@/ui/BrowserIcon.vue';
-import ImportChoices from '@/ui/ImportChoices.vue';
-import { broughtLines, busyLine, choicesOf, holds } from '@/ui/imports.js';
+import ImportWizard from '@/ui/ImportWizard.vue';
 import Segmented from '@/ui/Segmented.vue';
 import Swatches from '@/ui/Swatches.vue';
 import { framePresets } from '@/ui/colours.js';
@@ -19,13 +16,9 @@ import { send, setPref, state } from './state.js';
 watchEffect(() => paintTheme(state.tones, state.theme));
 document.title = 'Welcome';
 
-// Bring your things over is a step while Go looks for other browsers, and stays one when
-// it finds a profile; a phone keeps each app's data from the others, so it has none. How
-// you work, the workspaces and the keys, is the desktop's: a phone has neither.
-const steps = computed(() => {
-  const bring = !state.phone && (state.browsers === null || state.browsers.length > 0);
-  return ['hello', ...(bring ? ['bring'] : []), 'style', ...(state.phone ? [] : ['work']), 'protection', 'done'];
-});
+// Bring your things over, the import wizard, and How you work, the workspaces and the
+// keys, are the desktop's: a phone keeps each app's data from the others, and has neither.
+const steps = computed(() => (state.phone ? ['hello', 'style', 'protection', 'done'] : ['hello', 'bring', 'style', 'work', 'protection', 'done']));
 const step = ref('hello');
 const at = computed(() => steps.value.indexOf(step.value));
 const go = (by) => {
@@ -33,39 +26,6 @@ const go = (by) => {
   step.value = steps.value[Math.min(steps.value.length - 1, Math.max(0, at.value + by))];
 };
 const finish = () => send({ t: 'done' });
-// The list came back empty while the step showed: the next one takes its place.
-watch(steps, (s) => {
-  if (!s.includes(step.value)) step.value = 'style';
-});
-
-// Bring your things over: the rows turned on, by key, each with what is ticked in it, all
-// it holds at first. Bring over sends each, and the step then shows what each brought.
-// A locked row, Safari's, turned on asks for Full Disk Access first: the step shows how to
-// give it and opens System Settings, then comes back with the row on once Go can read it.
-const chosen = reactive({});
-const allowing = ref(null);
-function choose(p, on) {
-  if (on && p.locked) {
-    allowing.value = p;
-    send({ t: 'openAccess' });
-  } else if (on) chosen[p.key] = choicesOf(p).map((c) => c.id);
-  else delete chosen[p.key];
-}
-watch(
-  () => state.browsers,
-  (list) => {
-    const p = allowing.value && list?.find((b) => b.key === allowing.value.key);
-    if (!p || p.locked) return;
-    allowing.value = null;
-    choose(p, true);
-  },
-);
-const picked = computed(() => Object.keys(chosen).filter((k) => chosen[k].length));
-const brought = ref([]);
-function bringOver() {
-  for (const key of picked.value) send({ t: 'import', key, what: chosen[key] });
-  brought.value = (state.browsers || []).filter((p) => picked.value.includes(p.key));
-}
 
 // The splash plays once, when the welcome has its window to itself; less motion skips it.
 const splash = ref(false);
@@ -144,7 +104,7 @@ if (!reduced) setInterval(() => (turn.value = (turn.value + 1) % cycle.length), 
 
 // Focus goes to each step's heading, so a screen reader reads where it is.
 const heading = ref(null);
-watch([step, brought, allowing], () => setTimeout(() => heading.value?.focus(), 0));
+watch(step, () => setTimeout(() => heading.value?.focus(), 0));
 onMounted(() => heading.value?.focus());
 </script>
 
@@ -170,65 +130,9 @@ onMounted(() => heading.value?.focus());
         </div>
       </section>
 
-      <!-- Bring your things over: each other browser's profile, turned on to choose what
-           comes, then what each brought. -->
-      <section v-else-if="step === 'bring'" class="bring" aria-labelledby="bring">
-        <template v-if="allowing">
-          <h1 id="bring" ref="heading" tabindex="-1">Allow {{ allowing.title }}'s things</h1>
-          <p class="sub">macOS keeps {{ allowing.title }}'s files behind Full Disk Access.</p>
-          <AllowAccess class="allow" @open="send({ t: 'openAccess' })" />
-        </template>
-        <template v-else-if="!brought.length">
-          <h1 id="bring" ref="heading" tabindex="-1">Bring your things over</h1>
-          <p class="sub">Found on this Mac. Nothing leaves it.</p>
-          <div class="card">
-            <div v-if="state.browsers === null" class="row"><span class="state">Looking for other browsers…</span></div>
-            <div v-for="p in state.browsers || []" :key="p.key" class="browser">
-              <label class="row">
-                <BrowserIcon :browser="p.browser" />
-                <span class="what">
-                  <span class="label">{{ p.title }}</span>
-                  <span class="state">{{ holds(p) }}</span>
-                </span>
-                <input
-                  type="checkbox"
-                  role="switch"
-                  class="switch"
-                  :aria-label="`Bring over from ${p.title}`"
-                  :checked="!!chosen[p.key]"
-                  :aria-checked="String(!!chosen[p.key])"
-                  :disabled="!p.locked && !choicesOf(p).length"
-                  @change="choose(p, $event.target.checked)"
-                />
-              </label>
-              <div v-if="chosen[p.key]" class="open">
-                <ImportChoices v-model="chosen[p.key]" :profile="p" />
-              </div>
-            </div>
-          </div>
-        </template>
-        <template v-else>
-          <h1 id="bring" ref="heading" tabindex="-1">Brought over</h1>
-          <p class="sub">Bookmarks come in a folder of their own, on the Bookmarks page.</p>
-          <div class="card">
-            <div v-for="p in brought" :key="p.key" class="browser">
-              <div class="row">
-                <BrowserIcon :browser="p.browser" />
-                <span class="what">
-                  <span class="label">{{ p.title }}</span>
-                  <span v-if="!state.imported[p.key]" class="state">{{ busyLine(state.installing[p.key]) }}</span>
-                </span>
-              </div>
-              <ul v-if="state.imported[p.key]" class="lines" :aria-label="`Brought over from ${p.title}`">
-                <li v-for="(l, i) in broughtLines(state.imported[p.key])" :key="i" :class="{ problem: l.problem, left: l.left }">
-                  <svg v-if="!l.problem && !l.left" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8.5l2.5 2.5L12 5.5" /></svg>
-                  <span>{{ l.text }}</span>
-                  <span v-if="l.note" class="state">{{ l.note }}</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </template>
+      <!-- Bring your things over: the import wizard, Settings' Import's too. -->
+      <section v-else-if="step === 'bring'" class="bring">
+        <ImportWizard :send="send" heading="h1" />
       </section>
 
       <!-- Style: the picture beside the choices, each taken at once. -->
@@ -369,17 +273,13 @@ onMounted(() => heading.value?.focus());
 
     <!-- The way through: where it is, back, and on. -->
     <footer v-if="state.ready && step !== 'hello' && step !== 'done'" class="nav">
-      <button type="button" class="text-button quiet" @click="allowing ? (allowing = null) : go(-1)">Back</button>
+      <button type="button" class="text-button quiet" @click="go(-1)">Back</button>
       <ol class="dots" aria-label="Steps">
         <li v-for="(s, i) in steps" :key="s" :class="{ on: i === at }" :aria-current="i === at ? 'step' : undefined"></li>
       </ol>
-      <div v-if="allowing" class="ahead">
-        <button type="button" class="text-button quiet" @click="allowing = null">Not now</button>
-      </div>
-      <div v-else class="ahead">
+      <div class="ahead">
         <button type="button" class="text-button quiet" @click="finish">Skip setup</button>
-        <button v-if="step === 'bring' && !brought.length && picked.length" type="button" class="text-button primary" @click="bringOver">Bring over</button>
-        <button v-else type="button" class="text-button primary" @click="go(1)">Continue</button>
+        <button type="button" class="text-button primary" @click="go(1)">Continue</button>
       </div>
     </footer>
   </div>
@@ -820,31 +720,9 @@ h1 {
   gap: 8px;
 }
 
-/* Bring your things over: a row for each profile, turned on to open what it brings. */
-.bring .allow {
-  max-width: 640px;
-}
-
-.bring .card {
-  max-width: 640px;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  box-shadow: none;
-}
-
 .sub {
   margin: -16px 0 24px;
   color: var(--muted);
-}
-
-.browser + .browser {
-  border-top: 1px solid var(--line);
-}
-
-.browser .row {
-  justify-content: flex-start;
-  gap: 12px;
-  min-height: 56px;
 }
 
 .what {
@@ -856,51 +734,6 @@ h1 {
 
 .what .state {
   font-size: 12px;
-}
-
-.open {
-  padding: 12px 16px 12px 60px;
-  border-top: 1px solid var(--line);
-  background: var(--bar);
-}
-
-.lines {
-  margin: 0;
-  padding: 0 16px 12px 60px;
-  list-style: none;
-}
-
-.lines li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 28px;
-}
-
-.lines svg {
-  flex: none;
-  width: 16px;
-  height: 16px;
-  fill: none;
-  stroke: var(--accent);
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.lines .state {
-  margin-left: auto;
-  font-size: 12px;
-}
-
-.lines .problem {
-  color: var(--danger);
-}
-
-/* Left out, as an extension the store hasn't: no check, and quieter. */
-.lines .left {
-  padding-left: 24px;
-  color: var(--muted);
 }
 
 /* A phone: one column, the way through at the thumb. */

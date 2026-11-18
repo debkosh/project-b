@@ -141,6 +141,8 @@ type Engine struct {
 	defaultBrowser bool
 	// notificationsAllowed: AskNotifications was answered yes.
 	notificationsAllowed bool
+	// folder is what the next ChooseFolder answers, as a test sets it ("choose").
+	folder string
 	// settings are what the settings page in each tab of ours hears.
 	settings map[engine.TabID]*Feed
 
@@ -782,6 +784,18 @@ func (e *Engine) AskNotifications() {
 	})
 }
 
+// ChooseFolder answers with the folder a test set with Fire's "choose", or none, as a
+// person who cancels the panel does.
+func (e *Engine) ChooseFolder(w engine.WindowID) {
+	e.Post(func() {
+		path := e.folder
+		e.folder = ""
+		if e.listener != nil {
+			e.listener.FolderChosen(w, path)
+		}
+	})
+}
+
 // OpenFullDiskAccess opens nothing: a test gives the access itself, by making the files
 // the app reads readable.
 func (e *Engine) OpenFullDiskAccess() {}
@@ -954,6 +968,9 @@ func (e *Engine) Fire(w engine.WindowID, tab engine.TabID, kind, value string) {
 		}
 		t := e.tabs[shown]
 		switch kind {
+		case "choose":
+			// The folder the next ChooseFolder answers with, as a person picks one.
+			e.folder = value
 		case "navigate":
 			e.navigate(shown, value)
 		case "title":

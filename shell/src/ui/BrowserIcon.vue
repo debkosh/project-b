@@ -1,23 +1,25 @@
 <script setup>
 import { computed } from 'vue';
-import arc from './logos/arc.svg?raw';
-import brave from './logos/brave.svg?raw';
-import chrome from './logos/chrome.svg?raw';
-import edge from './logos/edge.svg?raw';
-import firefox from './logos/firefox.svg?raw';
-import safari from './logos/safari.png?inline';
 
-// A browser's logo, for each browser browserdata reads: they ship with us (ui/logos), the
-// same for every profile, whether or not the app is installed. Each page is one file, so
-// they go in it as data: URLs.
+// A browser's logo, by browserdata's id for it: they ship with us (ui/logos, whose README
+// says where each is from), the same for every profile, whether or not the app is
+// installed. A file per browser is all a new one needs. One with none of its own shows its
+// family's (chrome-beta's is chrome's), and one with neither, as a folder chosen of a
+// browser no one named, a plain mark. Each page is one file, so they go in it as data:
+// URLs.
+const svgs = import.meta.glob('./logos/*.svg', { query: '?raw', import: 'default', eager: true });
+const pngs = import.meta.glob('./logos/*.png', { query: '?inline', import: 'default', eager: true });
+const logos = {};
+for (const [file, svg] of Object.entries(svgs)) logos[file.slice(8, -4)] = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+for (const [file, png] of Object.entries(pngs)) logos[file.slice(8, -4)] = png;
+
 const props = defineProps({ browser: String });
-const svg = (s) => `data:image/svg+xml,${encodeURIComponent(s)}`;
-const logos = { arc: svg(arc), brave: svg(brave), chrome: svg(chrome), edge: svg(edge), firefox: svg(firefox), safari };
-const src = computed(() => logos[props.browser]);
+const src = computed(() => logos[props.browser] || logos[props.browser?.split('-')[0]]);
 </script>
 
 <template>
-  <img class="ui-browser-icon" :src="src" alt="" />
+  <img v-if="src" class="ui-browser-icon" :src="src" alt="" />
+  <span v-else class="ui-browser-icon other" aria-hidden="true">…</span>
 </template>
 
 <style>
@@ -26,5 +28,14 @@ const src = computed(() => logos[props.browser]);
   width: 32px;
   height: 32px;
   object-fit: contain;
+}
+
+.ui-browser-icon.other {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent-tint);
+  color: var(--muted);
+  font-weight: 600;
 }
 </style>

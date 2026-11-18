@@ -33,6 +33,7 @@
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_contents_observer.h"
+#include "project_b/engine/browser/choose_path.h"
 #include "project_b/engine/browser/engine.h"
 #include "project_b/engine/browser/go.h"
 #include "project_b/engine/browser/hooks.h"
@@ -634,11 +635,11 @@ void Run(const std::string& line) {
     const gfx::RectF b = Current()->window->popup_bounds();
     Reply(id, base::StringPrintf("%.0f %.0f %.0f %.0f", b.x(), b.y(), b.width(),
                                  b.height()));
+#endif
   } else if (cmd == "choose") {
     // What the next folder or package chooser answers, in place of the system's panel.
-    Extensions::Get()->ChooseForDriver(base::FilePath(rest(2)));
+    ChooseNextForDriver(base::FilePath(rest(2)));
     Reply(id, "ok");
-#endif
   } else if (cmd == "mods") {
     // What the app reports when the modifiers change; "mods 0" lets go of them all.
     ReportModifiers(static_cast<uint64_t>(number(2)));

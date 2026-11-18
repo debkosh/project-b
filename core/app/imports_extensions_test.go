@@ -21,9 +21,9 @@ import (
 // extension and not uBlock Origin Lite, which fails. Brought over again, the test
 // extension is installed already.
 func TestExtensionsComeOverFromTheStore(t *testing.T) {
+	home, _ := filepath.Abs("../../browserdata/testdata/home")
 	dir := t.TempDir()
 	flags.New(dir).Set(flags.Extensions, "on")
-	home, _ := filepath.Abs("../../browserdata/testdata/home")
 	r := startWith(t, app.Config{ProfileDir: dir, Profiles: profiles.New(t.TempDir()), Made: true, BrowserHome: home, Update: update.Config{StateDir: filepath.Join(dir, "updates")}})
 	store := t.TempDir()
 	os.MkdirAll(filepath.Join(store, "crx"), 0o755)
@@ -34,31 +34,22 @@ func TestExtensionsComeOverFromTheStore(t *testing.T) {
 	tab := engine.TabID(snap["welcome"].(float64))
 	got, stop := r.e.PageFeed(tab).Subscribe()
 	defer stop()
-	say := func(msg string) { r.e.Post(func() { r.a.PageMessage(tab, "welcome", []byte(msg)) }) }
-	say(`{"t":"ready"}`)
+	p := &importPage{t: t, dir: dir, r: r, got: got, say: func(msg string) { r.e.Post(func() { r.a.PageMessage(tab, "welcome", []byte(msg)) }) }}
+	p.say(`{"t":"ready"}`)
 	next(t, got, "snapshot")
-	say(`{"t":"findBrowsers"}`)
-	list := next(t, got, "browsers")["browsers"].([]any)
-	if c := list[0].(map[string]any)["counts"].(map[string]any); c["extensions"] != 2.0 {
+	p.say(`{"t":"findBrowsers"}`)
+	personal := profilesOf(browserIn(t, next(t, got, "browsers")["browsers"].([]any), "chrome"))[0]
+	if c := personal["counts"].(map[string]any); c["extensions"] != 2.0 {
 		t.Fatalf("Chrome · Personal counts %v; want 2 extensions", c)
 	}
+	key := personal["key"].(string)
 
 	type note struct{ Name, Why string }
-	var brought struct {
-		Extensions struct {
-			Installed, Already []string
-			Failed, Skipped    []note
-		}
+	var x struct {
+		Installed, Already []string
+		Failed, Skipped    []note
 	}
-	bring := func() {
-		t.Helper()
-		say(`{"t":"import","key":"chrome/Default","what":["extensions"]}`)
-		b, _ := json.Marshal(next(t, got, "imported")["imported"])
-		brought.Extensions.Installed, brought.Extensions.Already = nil, nil
-		json.Unmarshal(b, &brought)
-	}
-	bring()
-	x := brought.Extensions
+	json.Unmarshal(p.bring(key, "extensions")["extensions"], &x)
 	if len(x.Installed) != 1 || x.Installed[0] != "Project B test extension" {
 		t.Errorf("installed %q", x.Installed)
 	}
@@ -75,8 +66,9 @@ func TestExtensionsComeOverFromTheStore(t *testing.T) {
 		t.Error("want the test extension installed, with no prompt left")
 	}
 
-	bring()
-	if a := brought.Extensions.Already; len(a) != 1 || a[0] != "Project B test extension" || len(brought.Extensions.Installed) != 0 {
-		t.Errorf("again: %+v", brought.Extensions)
+	x.Installed, x.Already = nil, nil
+	json.Unmarshal(p.bring(key, "extensions")["extensions"], &x)
+	if len(x.Already) != 1 || x.Already[0] != "Project B test extension" || len(x.Installed) != 0 {
+		t.Errorf("again: %+v", x)
 	}
 }

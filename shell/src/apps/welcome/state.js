@@ -5,6 +5,7 @@
 
 import { reactive } from 'vue';
 import { bridge } from '@/bridge.js';
+import { importMessage } from '@/ui/imports.js';
 
 const channel = bridge('welcome');
 export const send = channel.send;
@@ -29,14 +30,6 @@ export const state = reactive({
   notifications: true,
   // The ways to work the style step offers, each {id, shell, tabLayout, name}.
   layouts: [],
-  // Other browsers' profiles on this Mac, each as shell/src/ui/imports.js says, null until
-  // Go has looked; the keys of those bringing things over now; and what each brought over,
-  // by key (docs/onboarding.md). A phone has none.
-  browsers: null,
-  importing: [],
-  // How far each import's extensions are, by key: {done, total}.
-  installing: {},
-  imported: {},
   // The keys How you work offers, each keymap's first keys by action ("Shift+Cmd+T"), the
   // one in use, and the platform they are written for.
   keymaps: {},
@@ -53,6 +46,7 @@ export function setPref(name, value) {
 export function connect() {
   channel.listen(
     (m) => {
+      if (importMessage(m)) return;
       switch (m.t) {
         case 'snapshot':
           Object.assign(state, {
@@ -67,9 +61,6 @@ export function connect() {
             isDefault: m.isDefault,
             notifications: m.notifications,
             layouts: m.layouts || [],
-            browsers: m.browsers || null,
-            importing: m.importing || [],
-            installing: m.installing || {},
             keymaps: m.keymaps || {},
             keymap: m.keymap,
             platform: m.platform,
@@ -99,18 +90,6 @@ export function connect() {
           break;
         case 'workspaces':
           state.workspaces = m.workspaces || [];
-          break;
-        case 'browsers':
-          state.browsers = m.browsers || [];
-          break;
-        case 'importing':
-          state.importing = m.importing;
-          state.installing = m.installing || {};
-          break;
-        case 'imported':
-          state.importing = m.importing;
-          state.installing = m.installing || {};
-          state.imported = { ...state.imported, [m.key]: m.imported };
           break;
       }
     },

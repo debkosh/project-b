@@ -4,6 +4,7 @@
 import { reactive } from 'vue';
 import { bridge } from '@/bridge.js';
 import { extensionsMessage } from '@extensions';
+import { importMessage } from '@/ui/imports.js';
 
 const channel = bridge('settings');
 export const send = channel.send;
@@ -71,14 +72,6 @@ export const state = reactive({
   // How each site's open pages reached them, by origin: {connection, note}, connection
   // 'secure' or 'insecure', note why in one line.
   siteConnections: {},
-  // Other browsers' profiles on this Mac, each as shell/src/ui/imports.js says, null until
-  // Go has looked; the keys of those bringing things over now; and what each brought over
-  // since the page opened, by key (docs/onboarding.md).
-  browsers: null,
-  importing: [],
-  // How far each import's extensions are, by key: {done, total}.
-  installing: {},
-  imported: {},
   // Go's prefs, all of them, by their names in the file, as a shell has them: what setPref
   // sets. Bookmarks reads where bookmarks show from them.
   prefs: {},
@@ -95,6 +88,7 @@ export function connect() {
   channel.listen(
     (m) => {
       extensionsMessage(m);
+      if (importMessage(m)) return;
       switch (m.t) {
         case 'snapshot':
           Object.assign(state, {
@@ -122,9 +116,6 @@ export function connect() {
             sparks: m.sparks || [],
             siteKinds: m.siteKinds,
             siteConnections: m.siteConnections,
-            browsers: m.browsers || null,
-            importing: m.importing || [],
-            installing: m.installing || {},
             prefs: m.prefs || {},
             bookmarks: m.bookmarks || [],
             ready: true,
@@ -201,23 +192,11 @@ export function connect() {
         case 'siteSettings':
           state.siteSettings = m.siteSettings;
           break;
-        case 'browsers':
-          state.browsers = m.browsers || [];
-          break;
-        case 'importing':
-          state.importing = m.importing;
-          state.installing = m.installing || {};
-          break;
         case 'prefs':
           state.prefs = m.prefs;
           break;
         case 'bookmarks':
           state.bookmarks = m.bookmarks;
-          break;
-        case 'imported':
-          state.importing = m.importing;
-          state.installing = m.installing || {};
-          state.imported = { ...state.imported, [m.key]: m.imported };
           break;
       }
     },

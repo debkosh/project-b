@@ -215,6 +215,7 @@ func (p *Picker) IsPageFullScreen(engine.TabID) bool          { return false }
 func (p *Picker) Thumbnail(engine.TabID, int64)               {}
 func (p *Picker) DefaultBrowserChanged(bool)                  {}
 func (p *Picker) NotificationsAnswered(bool)                  {}
+func (p *Picker) FolderChosen(engine.WindowID, string)        {}
 func (p *Picker) DevToolsCommand(string, []byte) (any, error) { return nil, engine.ErrUnknownCommand }
 
 // The picker's page is our own, in no tab: each kind has its default, with no prompt.

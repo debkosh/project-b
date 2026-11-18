@@ -30,6 +30,7 @@
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/stop_find_action.h"
 #include "third_party/blink/public/mojom/frame/find_in_page.mojom.h"
+#include "project_b/engine/browser/choose_path.h"
 #include "project_b/engine/browser/dialogs.h"
 #include "project_b/engine/browser/downloads.h"
 #include "project_b/engine/browser/go.h"
@@ -347,6 +348,25 @@ void CallAppCommand(int32_t command) {
   RunAppCommand(command);
 #endif
 }
+
+#if !BUILDFLAG(IS_ANDROID)
+void CallChooseFolder(int64_t window) {
+  CheckMainThread();
+  Engine::AppWindow* w = g_engine->window(window);
+  auto chosen = [](int64_t window, const base::FilePath& path) {
+    hooks::Args args;
+    args.Int(window);
+    args.Str(path.value());
+    hooks::Fire(PB_EVENT_FOLDER_CHOSEN, args);
+  };
+  if (!w) {
+    chosen(window, base::FilePath());
+    return;
+  }
+  ShowPathChooser(w->window.get(), PathKind::kFolder,
+                  base::BindOnce(chosen, window));
+}
+#endif
 
 void CallAskDefaultBrowser() {
   CheckMainThread();
@@ -690,6 +710,8 @@ const PBEngineCalls* Engine::Calls() {
 #endif
 #if BUILDFLAG(IS_ANDROID)
       .show_download = CallShowDownload,
+#else
+      .choose_folder = CallChooseFolder,
 #endif
   };
   return &calls;

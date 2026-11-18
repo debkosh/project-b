@@ -69,6 +69,9 @@ func (r *recorder) DefaultBrowserChanged(is bool) { r.note("default browser %v",
 func (r *recorder) NotificationsAnswered(allowed bool) {
 	r.note("notifications %v", allowed)
 }
+func (r *recorder) FolderChosen(w engine.WindowID, path string) {
+	r.note("folder %d %s", w, path)
+}
 
 func listening() (*Events, *recorder) {
 	e, r := New(), &recorder{}
@@ -107,6 +110,7 @@ func TestEachEventReachesTheListener(t *testing.T) {
 		{Thumbnail, []Value{i(2), i(5)}, "thumbnail 2 5"},
 		{DefaultBrowser, []Value{i(1)}, "default browser true"},
 		{Notifications, []Value{i(0)}, "notifications false"},
+		{FolderChosen, []Value{i(1), s("/Users/me/Vivaldi")}, "folder 1 /Users/me/Vivaldi"},
 	} {
 		r.got = nil
 		if _, answered := e.Dispatch(c.id, c.args); answered {

@@ -2,9 +2,8 @@ package app
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"os"
-	"path/filepath"
 	"slices"
 	"time"
 
@@ -17,42 +16,38 @@ import (
 	"projectb/timeline"
 )
 
-// Bringing things over from another browser (docs/onboarding.md, docs/import.md): the
-// welcome's step and Settings' Import list the browsers on this Mac and each profile with
-// what it holds, and bring over what the person ticks: its bookmarks, with their folders,
-// into a folder named after it; its history; and,
-// in Settings while the Extensions flag is on, its extensions, installed again from the
-// Chrome Web Store by their ids, one at a time. browserdata reads them, on a worker; what it
-// read joins the profile here, on the main thread.
-// imports.json in the profile keeps what each profile last brought over, and when.
+// Bringing things over from another browser (docs/onboarding.md, docs/import.md), a wizard
+// in the welcome's step and in Settings' Import alike: the browsers on this Mac, each with
+// its profiles and what each holds, or a folder the person chooses for one this package
+// doesn't find; then one profile's things, one kind after another, each told to the pages
+// as it lands. browserdata reads, on a worker; what it read joins the profile here, on the
+// main thread. Nothing is kept between imports: the pages show what an import brought
+// while it is on screen, and bookmarks and history say for themselves what is there.
 // A phone keeps each app's data from the others, so there is nothing to find there.
 //
-// Safari's files are behind macOS's Full Disk Access: its row is locked until the person
-// gives the app that in System Settings, which a page opens with openAccess. Nothing says
-// when they have, so from then Go tries the locked rows' files each second, for ten
-// minutes, and looks again once they can be read.
+// Safari's files are behind macOS's Full Disk Access: its profile is locked until the
+// person gives the app that in System Settings, which a page opens with openAccess. Nothing
+// says when they have, so from then Go tries the locked profiles' files each second, for
+// ten minutes, and looks again once they can be read.
 
 type importer struct {
 	a    *App
 	e    engine.Engine
 	home string
-	path string
-	// found is what the last look found, nil before one ended; looking says one is on.
-	found   []foundProfile
+	// profiles are the profiles the pages have been shown, by key, their folder: the last
+	// look's and each folder chosen.
+	profiles map[string]shownFrom
+	// looking says a look is on; busy are the profiles being brought over, by key.
 	looking bool
-	// busy are the profiles, by key, whose things are being read.
-	busy map[string]bool
-	// waiting says Go is trying the locked rows' files until they can be read.
+	busy    map[string]bool
+	// waiting says Go is trying the locked profiles' files until they can be read.
 	waiting bool
-	// last is what each profile last brought over, by key.
-	last map[string]broughtOver
-	// send tells every page that shows the list.
+	locked  []browserdata.Profile
+	// send tells every page that shows the wizard.
 	send func(any)
 	// store installs extensions from the store, and says which are installed: set while
 	// the Extensions flag is on, in a build with extensions.
 	store extensionStore
-	// installing is each profile's extensions being installed, by key.
-	installing map[string]*installing
 }
 
 // extensionStore is what bringing extensions over needs of the extension manager: whether
@@ -63,40 +58,31 @@ type extensionStore interface {
 	Install(id string, done func(failed string))
 }
 
-// installing is an import whose extensions are being installed: what it has brought so
-// far, and how many of its extensions have ended.
-type installing struct {
-	got         broughtOver
-	done, total int
+// shownBrowser is a browser as the wizard lists it: its id, which names its logo, its
+// name, and its profiles. Locked says macOS keeps its files from the app until it has Full
+// Disk Access, so its profiles have nothing counted.
+type shownBrowser struct {
+	ID       string         `json:"id"`
+	Name     string         `json:"name"`
+	Locked   bool           `json:"locked,omitempty"`
+	Profiles []shownProfile `json:"profiles"`
 }
 
-// foundProfile is a row: a browser's profile, its icon, what it holds, and what it last
-// brought over. A locked one's files can't be read until the app has Full Disk Access, so
-// it has no counts.
-type foundProfile struct {
-	Key     string             `json:"key"`
-	Browser string             `json:"browser"`
-	Title   string             `json:"title"`
-	Locked  bool               `json:"locked,omitempty"`
-	Counts  browserdata.Counts `json:"counts"`
-	Last    *broughtOver       `json:"last,omitempty"`
-	// folder is the bookmarks' folder: From Chrome, or From Chrome · Work for a browser
-	// with more than one profile.
-	folder  string
-	profile browserdata.Profile
+// shownFrom is a profile shown, with the name of its browser.
+type shownFrom struct {
+	browserdata.Profile
+	browser string
 }
 
-// broughtOver is what one import brought: its bookmarks, the folder they are in and how
-// many of them were Safari's Reading List, the pages of history, and its extensions.
-type broughtOver struct {
-	At          time.Time          `json:"at"`
-	Bookmarks   bookmarks.Imported `json:"bookmarks"`
-	Folder      string             `json:"folder,omitempty"`
-	ReadingList int                `json:"readingList,omitempty"`
-	Pages       int                `json:"pages"`
-	Extensions  *broughtExtensions `json:"extensions,omitempty"`
-	Errors      []string           `json:"errors,omitempty"`
+// shownProfile is a profile: its key, its name ("" for a browser of one), and what it holds.
+type shownProfile struct {
+	Key    string             `json:"key"`
+	Name   string             `json:"name"`
+	Counts browserdata.Counts `json:"counts"`
 }
+
+// The kinds of things an import brings, in the order it brings them.
+var importSteps = []string{"bookmarks", "history", "extensions"}
 
 // broughtExtensions is what became of a profile's extensions, by name: installed from the
 // store, installed here already, failed to install and why, and left out and why.
@@ -119,56 +105,17 @@ var skipWhy = map[browserdata.Skip]string{
 	browserdata.SkipManifestV2: "Manifest V2, which no longer runs",
 }
 
-func newImporter(a *App, e engine.Engine, dir, home string, send func(any)) *importer {
+func newImporter(a *App, e engine.Engine, home string, send func(any)) *importer {
 	if home == "" {
 		home, _ = os.UserHomeDir()
 	}
-	im := &importer{a: a, e: e, home: home, path: filepath.Join(dir, "imports.json"), busy: map[string]bool{}, last: map[string]broughtOver{}, send: send, installing: map[string]*installing{}}
-	if b, err := os.ReadFile(im.path); err == nil {
-		if err := json.Unmarshal(b, &im.last); err != nil {
-			timeline.Errorf("imports: %s: %v", im.path, err)
-		}
-	}
-	return im
+	return &importer{a: a, e: e, home: home, profiles: map[string]shownFrom{}, busy: map[string]bool{}, send: send}
 }
 
-// snapshot is the list as a page starts with it: null until a look has ended.
+// snapshot is what a page starts with: no browsers until a look ends.
 func (im *importer) snapshot(into map[string]any) {
-	into["browsers"] = im.list()
+	into["browsers"] = nil
 	into["importing"] = im.importing()
-	into["installing"] = im.progress()
-}
-
-// progress is each import installing extensions, by key: how many have ended, of how many.
-func (im *importer) progress() map[string]map[string]int {
-	out := map[string]map[string]int{}
-	for k, in := range im.installing {
-		out[k] = map[string]int{"done": in.done, "total": in.total}
-	}
-	return out
-}
-
-// sendImporting tells the pages which profiles are being brought over, and how far their
-// extensions are.
-func (im *importer) sendImporting() {
-	im.send(map[string]any{"t": "importing", "importing": im.importing(), "installing": im.progress()})
-}
-
-func (im *importer) list() []foundProfile {
-	if im.found == nil {
-		return nil
-	}
-	out := slices.Clone(im.found)
-	for i := range out {
-		if l, ok := im.last[out[i].Key]; ok {
-			out[i].Last = &l
-		}
-		// Extensions come over only while they can be installed.
-		if im.store == nil {
-			out[i].Counts.Extensions = 0
-		}
-	}
-	return out
 }
 
 func (im *importer) importing() []string {
@@ -180,60 +127,88 @@ func (im *importer) importing() []string {
 	return out
 }
 
+// shown is a browser as the pages hear of it, its profiles counted, which reads their
+// files: called on a worker. Extensions are counted only while they can be installed.
+func shown(b browserdata.Browser, extensions bool) (shownBrowser, []shownFrom) {
+	s := shownBrowser{ID: b.ID, Name: b.Name, Profiles: []shownProfile{}}
+	for _, p := range b.Profiles {
+		sp := shownProfile{Key: p.Dir, Name: p.Name}
+		if p.Locked() {
+			s.Locked = true
+		} else {
+			var err error
+			if sp.Counts, err = p.Counts(); err != nil {
+				timeline.Warnf("imports: %s %s: %v", b.Name, p.Name, err)
+			}
+			if !extensions {
+				sp.Counts.Extensions = 0
+			}
+		}
+		s.Profiles = append(s.Profiles, sp)
+	}
+	from := make([]shownFrom, len(b.Profiles))
+	for i, p := range b.Profiles {
+		from[i] = shownFrom{p, b.Name}
+	}
+	return s, from
+}
+
 // look finds the browsers again, with what each profile holds now, and tells the pages.
 func (im *importer) look() {
 	if im.looking {
 		return
 	}
 	if shells.OnPhone {
-		im.found = []foundProfile{}
+		im.send(map[string]any{"t": "browsers", "browsers": []shownBrowser{}})
 		return
 	}
 	im.looking = true
-	home := im.home
+	home, extensions := im.home, im.store != nil
 	go func() {
 		start := time.Now()
-		found := []foundProfile{}
+		list := []shownBrowser{}
+		var profiles []shownFrom
+		var locked []browserdata.Profile
 		for _, b := range browserdata.Find(home) {
-			for _, p := range b.Profiles {
-				f := foundProfile{Key: b.ID + "/" + filepath.Base(p.Dir), Browser: b.ID, Title: b.Name, folder: "From " + b.Name, profile: p}
-				if p.Name != "" {
-					f.Title += " · " + p.Name
+			s, ps := shown(b, extensions)
+			list = append(list, s)
+			profiles = append(profiles, ps...)
+			if s.Locked {
+				for _, p := range ps {
+					locked = append(locked, p.Profile)
 				}
-				if len(b.Profiles) > 1 {
-					f.folder += " · " + p.Name
-				}
-				if f.Locked = p.Locked(); !f.Locked {
-					var err error
-					if f.Counts, err = p.Counts(); err != nil {
-						timeline.Warnf("imports: %s: %v", f.Title, err)
-					}
-				}
-				found = append(found, f)
 			}
 		}
 		took := time.Since(start)
 		im.e.Post(func() {
 			im.looking = false
-			im.found = found
-			timeline.Infof("imports: found %d profiles of other browsers in %v", len(found), took.Round(time.Millisecond))
-			im.send(map[string]any{"t": "browsers", "browsers": im.list()})
+			for _, p := range profiles {
+				im.profiles[p.Dir] = p
+			}
+			im.locked = locked
+			timeline.Infof("imports: found %d browsers on this Mac in %v", len(list), took.Round(time.Millisecond))
+			im.send(map[string]any{"t": "browsers", "browsers": list})
 		})
 	}()
 }
 
-// importMessage is what a page sends to bring things over: the profile, by key, and which
-// of its things: bookmarks, history, extensions.
+// importMessage is what a page sends: the profile to bring over, by key, and which of its
+// things, of importSteps.
 type importMessage struct {
 	Key  string   `json:"key"`
 	What []string `json:"what"`
 }
 
-// handle takes a page's message about bringing things over, and says whether it was one.
-func (im *importer) handle(t string, msg []byte) bool {
+// handle takes a page's message about bringing things over, from the tab it is in, and
+// says whether it was one.
+func (im *importer) handle(tab engine.TabID, t string, msg []byte) bool {
 	switch t {
 	case "findBrowsers":
 		im.look()
+	case "chooseFolder":
+		if win := im.a.Tabs.WindowOf(tab); win != 0 {
+			im.e.ChooseFolder(win)
+		}
 	case "openAccess":
 		timeline.Infof("imports: opening System Settings at Full Disk Access")
 		im.e.OpenFullDiskAccess()
@@ -251,15 +226,41 @@ func (im *importer) handle(t string, msg []byte) bool {
 	return true
 }
 
-// wait tries the locked rows' files each second, on a worker, and looks again once none is
-// locked, or gives up after ten minutes.
-func (im *importer) wait() {
-	var locked []browserdata.Profile
-	for _, f := range im.found {
-		if f.Locked {
-			locked = append(locked, f.profile)
-		}
+// FolderChosen reads the folder the person chose as a browser's and tells the pages: the
+// browser with its profiles, or why it isn't one. None chosen tells them so.
+func (a *App) FolderChosen(_ engine.WindowID, path string) {
+	im := a.imports
+	if path == "" {
+		im.send(map[string]any{"t": "folder", "cancelled": true})
+		return
 	}
+	home, extensions := im.home, im.store != nil
+	go func() {
+		b, err := browserdata.Open(home, path)
+		s, ps := shown(b, extensions)
+		im.e.Post(func() {
+			if err != nil {
+				why := "Couldn't read that folder: " + err.Error()
+				if errors.Is(err, browserdata.ErrNoBrowser) {
+					why = "That folder holds no Chrome-based or Firefox-based browser's profiles."
+				}
+				timeline.Infof("imports: %s: %v", path, err)
+				im.send(map[string]any{"t": "folder", "error": why})
+				return
+			}
+			for _, p := range ps {
+				im.profiles[p.Dir] = p
+			}
+			timeline.Infof("imports: %s is %s's, with %d profiles", path, s.Name, len(s.Profiles))
+			im.send(map[string]any{"t": "folder", "browser": s})
+		})
+	}()
+}
+
+// wait tries the locked profiles' files each second, on a worker, and looks again once
+// none is locked, or gives up after ten minutes.
+func (im *importer) wait() {
+	locked := slices.Clone(im.locked)
 	if im.waiting || len(locked) == 0 {
 		return
 	}
@@ -284,84 +285,133 @@ func (im *importer) wait() {
 	}()
 }
 
-// read is what was read from a profile, on the worker.
-type read struct {
-	bookmarks  []browserdata.Bookmark
-	pages      []browserdata.Page
-	extensions []browserdata.Extension
-	errors     []string
+// step tells the pages how one kind of thing is going: "doing", with how far for
+// extensions, or "done" with what it brought, or an error.
+func (im *importer) step(key, step, state string, result any, err error) {
+	m := map[string]any{"t": "importStep", "key": key, "step": step, "state": state}
+	if result != nil {
+		m["result"] = result
+	}
+	if err != nil {
+		m["error"] = err.Error()
+	}
+	im.send(m)
 }
 
-// bring reads what was asked for from the profile key on a worker, then adds it here.
+// bring brings over what was asked from the profile key, one kind after another: each
+// read on a worker, then added here, and told to the pages as it lands.
 func (im *importer) bring(key string, what []string) {
-	i := slices.IndexFunc(im.found, func(f foundProfile) bool { return f.Key == key })
-	if i < 0 || im.busy[key] || im.found[i].Locked {
-		timeline.Warnf("imports: %q is not a profile found, is locked, or is being brought over", key)
+	p, ok := im.profiles[key]
+	if !ok || im.busy[key] || p.Locked() {
+		timeline.Warnf("imports: %q is not a profile shown, is locked, or is being brought over", key)
 		return
 	}
-	f := im.found[i]
+	var steps []string
+	for _, s := range importSteps {
+		if slices.Contains(what, s) && (s != "extensions" || im.store != nil) {
+			steps = append(steps, s)
+		}
+	}
 	im.busy[key] = true
-	im.sendImporting()
-	timeline.Infof("imports: bringing %v over from %s", what, f.Title)
-	extensions := slices.Contains(what, "extensions") && im.store != nil
-	go func() {
-		var r read
-		note := func(err error) {
+	im.send(map[string]any{"t": "importing", "importing": im.importing()})
+	folder := folderFor(p)
+	timeline.Infof("imports: bringing %v over from %s", steps, folder)
+	var next func(i int)
+	next = func(i int) {
+		if i == len(steps) {
+			delete(im.busy, key)
+			timeline.Infof("imports: done with %s", folder)
+			im.send(map[string]any{"t": "imported", "key": key, "importing": im.importing()})
+			return
+		}
+		s := steps[i]
+		im.step(key, s, "doing", nil, nil)
+		done := func(result any, err error) {
 			if err != nil {
-				r.errors = append(r.errors, err.Error())
+				timeline.Warnf("imports: %s from %s: %v", s, folder, err)
 			}
+			im.step(key, s, "done", result, err)
+			next(i + 1)
 		}
-		var err error
-		if slices.Contains(what, "bookmarks") {
-			r.bookmarks, err = f.profile.Bookmarks()
-			note(err)
+		switch s {
+		case "bookmarks":
+			read(p.Bookmarks, func(bs []browserdata.Bookmark, err error) { done(im.addBookmarks(p, folder, bs), err) }, im.e)
+		case "history":
+			read(p.History, func(pages []browserdata.Page, err error) { done(im.addHistory(pages), err) }, im.e)
+		case "extensions":
+			read(p.Extensions, func(xs []browserdata.Extension, err error) {
+				im.installExtensions(key, xs, func(x *broughtExtensions) { done(x, err) })
+			}, im.e)
 		}
-		if slices.Contains(what, "history") {
-			r.pages, err = f.profile.History()
-			note(err)
-		}
-		if extensions {
-			r.extensions, err = f.profile.Extensions()
-			note(err)
-		}
-		im.e.Post(func() { im.add(f, r) })
+	}
+	next(0)
+}
+
+// read runs f on a worker and hands what it returned to then on the main thread.
+func read[T any](f func() (T, error), then func(T, error), e engine.Engine) {
+	go func() {
+		v, err := f()
+		e.Post(func() { then(v, err) })
 	}()
 }
 
-// add joins what was read to the profile, then installs its extensions, if it brought
-// any, before it is done.
-func (im *importer) add(f foundProfile, r read) {
-	got := broughtOver{At: time.Now().UTC(), Errors: r.errors}
-	if len(r.bookmarks) > 0 {
-		imported, err := im.a.Bookmarks.Import(bookmarks.Top, []bookmarks.Node{{Title: f.folder, Children: nodesOf(r.bookmarks)}})
-		if err != nil {
-			got.Errors = append(got.Errors, err.Error())
-		}
-		got.Bookmarks, got.Folder = imported, f.folder
-		for _, top := range r.bookmarks {
-			if f.Browser == "safari" && top.Title == browserdata.ReadingList {
-				got.ReadingList = leaves(top.Children)
-			}
+// folderFor is the folder a profile's bookmarks go in: "From Chrome", or "From Chrome ·
+// Work" for a profile with a name.
+func folderFor(p shownFrom) string {
+	if p.Name != "" {
+		return "From " + p.browser + " · " + p.Name
+	}
+	return "From " + p.browser
+}
+
+// broughtBookmarks is what bookmarks brought: how many, in how many folders, how many were
+// there already, the folder they are under, and how many were Safari's Reading List.
+type broughtBookmarks struct {
+	bookmarks.Imported
+	Folder      string `json:"folder"`
+	ReadingList int    `json:"readingList,omitempty"`
+}
+
+func (im *importer) addBookmarks(p shownFrom, folder string, bs []browserdata.Bookmark) broughtBookmarks {
+	got := broughtBookmarks{Folder: folder}
+	if len(bs) == 0 {
+		return got
+	}
+	imported, err := im.a.Bookmarks.Import(bookmarks.Top, []bookmarks.Node{{Title: folder, Children: nodesOf(bs)}})
+	if err != nil {
+		timeline.Errorf("imports: bookmarks: %v", err)
+	}
+	got.Imported = imported
+	for _, top := range bs {
+		if p.Browser == "safari" && top.Title == browserdata.ReadingList {
+			got.ReadingList = leaves(top.Children)
 		}
 	}
-	if len(r.pages) > 0 {
-		pages := make([]history.Entry, len(r.pages))
-		for i, p := range r.pages {
-			pages[i] = history.Entry{URL: p.URL, Title: p.Title, Visits: p.Visits, LastVisit: p.Last.Unix()}
-		}
-		im.a.History.Import(pages)
-		got.Pages = len(pages)
+	return got
+}
+
+// broughtHistory is how many pages of history came.
+type broughtHistory struct {
+	Pages int `json:"pages"`
+}
+
+func (im *importer) addHistory(pages []browserdata.Page) broughtHistory {
+	entries := make([]history.Entry, len(pages))
+	for i, p := range pages {
+		entries[i] = history.Entry{URL: p.URL, Title: p.Title, Visits: p.Visits, LastVisit: p.Last.Unix()}
 	}
-	if r.extensions == nil {
-		im.done(f, got)
-		return
+	if len(entries) > 0 {
+		im.a.History.Import(entries)
 	}
-	// Each extension the store has and this browser hasn't is installed in turn; the import
-	// is done once the last has ended.
+	return broughtHistory{Pages: len(entries)}
+}
+
+// installExtensions installs each extension the store has and this browser hasn't, in
+// turn, telling the pages how far it is, and calls done once the last has ended.
+func (im *importer) installExtensions(key string, xs []browserdata.Extension, done func(*broughtExtensions)) {
 	x := &broughtExtensions{Installed: []string{}, Already: []string{}, Failed: []extensionNote{}, Skipped: []extensionNote{}}
-	got.Extensions = x
 	var want []browserdata.Extension
-	for _, e := range r.extensions {
+	for _, e := range xs {
 		switch {
 		case e.Skip != "":
 			x.Skipped = append(x.Skipped, extensionNote{e.Name, skipWhy[e.Skip]})
@@ -372,12 +422,11 @@ func (im *importer) add(f foundProfile, r read) {
 		}
 	}
 	if len(want) == 0 {
-		im.done(f, got)
+		done(x)
 		return
 	}
-	in := &installing{got: got, total: len(want)}
-	im.installing[f.Key] = in
-	im.sendImporting()
+	ended := 0
+	im.step(key, "extensions", "doing", map[string]int{"done": 0, "total": len(want)}, nil)
 	for _, e := range want {
 		im.store.Install(e.ID, func(failed string) {
 			if failed == "" {
@@ -385,34 +434,14 @@ func (im *importer) add(f foundProfile, r read) {
 			} else {
 				x.Failed = append(x.Failed, extensionNote{e.Name, failed})
 			}
-			in.done++
-			if in.done < in.total {
-				im.sendImporting()
+			ended++
+			if ended < len(want) {
+				im.step(key, "extensions", "doing", map[string]int{"done": ended, "total": len(want)}, nil)
 				return
 			}
-			delete(im.installing, f.Key)
-			im.done(f, in.got)
+			done(x)
 		})
 	}
-}
-
-// done keeps what an import brought and tells the pages.
-func (im *importer) done(f foundProfile, got broughtOver) {
-	delete(im.busy, f.Key)
-	extensions := ""
-	if x := got.Extensions; x != nil {
-		extensions = fmt.Sprintf(", extensions: %d installed, %d already, %d failed, %d skipped", len(x.Installed), len(x.Already), len(x.Failed), len(x.Skipped))
-	}
-	timeline.Infof("imports: from %s, %d bookmarks in %d folders (%d bookmarked already, %d of the Reading List), %d pages%s, errors %q",
-		f.Title, got.Bookmarks.Bookmarks, got.Bookmarks.Folders, got.Bookmarks.Skipped, got.ReadingList, got.Pages, extensions, got.Errors)
-	im.last[f.Key] = got
-	if b, err := json.MarshalIndent(im.last, "", "  "); err == nil {
-		if err := os.WriteFile(im.path, append(b, '\n'), 0o600); err != nil {
-			timeline.Errorf("imports: %v", err)
-		}
-	}
-	im.send(map[string]any{"t": "imported", "key": f.Key, "imported": got, "importing": im.importing(), "installing": im.progress()})
-	im.send(map[string]any{"t": "browsers", "browsers": im.list()})
 }
 
 // leaves counts the bookmarks in bs and the folders it holds.

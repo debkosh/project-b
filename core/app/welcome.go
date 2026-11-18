@@ -196,7 +196,7 @@ func (w *welcome) handle(tab engine.TabID, msg []byte) {
 	case "done":
 		w.finish(tab)
 	default:
-		if !w.a.imports.handle(m.T, msg) {
+		if !w.a.imports.handle(tab, m.T, msg) {
 			timeline.Warnf("welcome: the page sent %q, which it has no use for", m.T)
 		}
 	}

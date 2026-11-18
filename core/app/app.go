@@ -241,13 +241,13 @@ func Start(e engine.Engine, cfg Config) *App {
 			return true
 		},
 	})
-	a.imports = newImporter(a, e, cfg.ProfileDir, cfg.BrowserHome, func(v any) {
+	a.imports = newImporter(a, e, cfg.BrowserHome, func(v any) {
 		a.welcome.sendAll(v)
 		a.Settings.Send(v)
 	})
 	a.Settings.AddPart(settings.Part{
 		Snapshot: a.imports.snapshot,
-		Handle:   func(_ engine.TabID, t string, msg []byte) bool { return a.imports.handle(t, msg) },
+		Handle:   func(tab engine.TabID, t string, msg []byte) bool { return a.imports.handle(tab, t, msg) },
 	})
 	a.Settings.AddPart(a.bookmarkSettingsPart())
 	a.Settings.AddPart(a.defaultBrowserSettingsPart(e))

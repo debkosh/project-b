@@ -273,6 +273,10 @@ type Engine interface {
 	// does nothing.
 	AskNotifications()
 	NotificationsAllowed() bool
+	// ChooseFolder asks the person for a folder, in the system's panel on the window, as
+	// Import asks for another browser's; FolderChosen follows with it, or "" for none. A
+	// phone has no such panel and answers nothing.
+	ChooseFolder(w WindowID)
 	// OpenFullDiskAccess opens the Mac's System Settings at Privacy & Security's Full Disk
 	// Access, where the person can let the app read what macOS keeps behind it, as Safari's
 	// files. Nothing says when they have: reading again does. A phone has no such thing.
@@ -500,6 +504,8 @@ type Listener interface {
 	DefaultBrowserChanged(is bool)
 	// NotificationsAnswered is how AskNotifications ended: whether the app may show them.
 	NotificationsAnswered(allowed bool)
+	// FolderChosen is how ChooseFolder ended: the folder, or "" for none.
+	FolderChosen(w WindowID, path string)
 
 	// PermissionRequested is a page asking to use what kinds name. Every kind a page can
 	// ask for comes here, those the app answers without asking the person too. The app

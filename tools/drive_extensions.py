@@ -388,7 +388,8 @@ def extension_checks():
 def import_checks():
     """Settings' Import brings Chrome · Personal's extensions over from browserdata's test
     home, which the app finds as its home ($HOME): the two the mock store has install by
-    their ids with no prompt, and those the store can't have are left out, each with why."""
+    their ids with no prompt, and those the store can't have are left out, each with why.
+    Then a folder chosen, Thorium's, is the browser it holds."""
     home = tempfile.mkdtemp(prefix="pb-browsers-")
     shutil.copytree(os.path.join(ROOT, "browserdata/testdata/home"), home, dirs_exist_ok=True)
     real_home = os.environ["HOME"]
@@ -398,22 +399,29 @@ def import_checks():
     finally:
         os.environ["HOME"] = real_home
     open_settings(app)
-    settings_click_found(app, "[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Import')")
-    settings_wait(app, "!!document.querySelector('[aria-label=\"Import from Chrome · Personal\"]')", 30)
-    settings_click(app, '[aria-label="Import from Chrome · Personal"]')
+    settings_click_found(app, "[...document.querySelectorAll('nav button')].find(b=>b.textContent.trim()==='Import')")
+    settings_wait(app, "!!document.querySelector('[aria-label=\"From Chrome\"]')", 30)
+    settings_click(app, '[aria-label="From Chrome"]')
     box = "[...document.querySelectorAll('.ui-import-choice')].find(l=>l.textContent.includes(%s))"
     settings_wait(app, "!!(" + box % "'Extensions'" + ")")
-    check("Import… offers Chrome · Personal's 2 extensions, unticked", settings(app, f"(()=>{{const l={box % repr('Extensions')};return l.textContent.includes('2')&&!l.querySelector('input').checked}})()"))
-    for name in ("Bookmarks", "History", "Search engine", "Extensions"):
+    check("Chrome · Personal offers its 2 extensions, unticked", settings(app, f"(()=>{{const l={box % repr('Extensions')};return l.textContent.includes('2')&&!l.querySelector('input').checked}})()"))
+    for name in ("Bookmarks", "History", "Extensions"):
         settings_click_found(app, box % repr(name))
-    settings_click_found(app, "[...document.querySelectorAll('dialog button')].find(b=>b.textContent.trim()==='Import')")
-    brought = "document.querySelector('[aria-label=\"Brought over from Chrome · Personal\"]')?.innerText||''"
+    settings_click_found(app, "[...document.querySelectorAll('.ui-import-wizard button')].find(b=>b.textContent.trim()==='Import')")
+    brought = "document.querySelector('[aria-label=\"From Chrome · Personal\"]')?.innerText||''"
     settings_wait(app, f"({brought}).includes('installed')", 90)
     text = settings(app, brought)
     check("both install from the store by id", "2 extensions installed" in text and TEST_NAME in text and UBOL_NAME in text, text)
     check("those left out say why", "Old Notes left out" in text and "Manifest V2" in text and "my-extension left out" in text and "Other Store Helper left out" in text, text)
     check("with no prompt over the page", app.js("!document.querySelector('.pbx-prompt')"))
     app.cmd("capture", os.path.join(drive_first_app.OUT, "extensions-import.png"))
+    # Another browser: a folder chosen, as the driver answers the system's panel, is the
+    # browser it holds.
+    settings_click_found(app, "[...document.querySelectorAll('.ui-import-wizard button')].find(b=>b.textContent.trim()==='Import another')")
+    app.cmd("choose", os.path.join(home, "Elsewhere/Thorium/User Data"))
+    settings_click(app, '[aria-label="From another browser"]')
+    settings_wait(app, "[...document.querySelectorAll('.ui-import-wizard h2')].some(h=>h.textContent.includes('Thorium'))", 20)
+    check("a folder chosen through the engine's panel is the browser it holds", True)
     close_settings(app)
     open_extension_settings(app)
     check("the extension manager lists both", sorted(settings(app, INSTALLED)) == sorted([TEST_NAME, UBOL_NAME]), settings(app, INSTALLED))
