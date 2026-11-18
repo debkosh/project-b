@@ -71,6 +71,8 @@ type page struct {
 	// Whether the page has said it's ready. Until then nothing reaches it: its script
 	// isn't there to take a message, and its snapshot has it all.
 	heard bool
+	// then are the messages OpenSection has for the page after its snapshot.
+	then []any
 }
 
 // New returns a manager.
@@ -91,11 +93,20 @@ func (m *Manager) Open(w engine.WindowID) engine.TabID {
 	return m.tabs.OpenPage(w, Page)
 }
 
-// OpenSection shows window w's settings tab at one of its sections, by id.
-func (m *Manager) OpenSection(w engine.WindowID, section string) {
+// OpenSection shows window w's settings tab at one of its sections, by id, and then tells
+// its page the messages then: now, or after its snapshot when the page is still to start.
+func (m *Manager) OpenSection(w engine.WindowID, section string, then ...any) {
 	tab := m.Open(w)
-	m.page(tab).section = section
+	p := m.page(tab)
+	p.section = section
 	m.send(tab, map[string]any{"t": "section", "section": section})
+	if !p.heard {
+		p.then = append(p.then, then...)
+		return
+	}
+	for _, v := range then {
+		m.send(tab, v)
+	}
 }
 
 // page is what the manager keeps for a settings tab, made the first time it is needed.
@@ -147,6 +158,10 @@ func (m *Manager) Handle(tab engine.TabID, msg []byte) {
 			part.Snapshot(snapshot)
 		}
 		m.send(tab, snapshot)
+		for _, v := range p.then {
+			m.send(tab, v)
+		}
+		p.then = nil
 		timeline.Mark("settings.ready")
 	case "timeline":
 		timeline.FromPage("settings", msg)

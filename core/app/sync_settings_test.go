@@ -43,3 +43,36 @@ func TestSettingsSync(t *testing.T) {
 		}
 	}
 }
+
+// A project-b://sync link from another app, as the Mac and Android hand one over, opens
+// Settings at Sync and tells the page the link after its snapshot; Go only reads it. Another
+// project-b: link does nothing, and a web link still opens a tab.
+func TestASyncLinkOpensSettingsAtSync(t *testing.T) {
+	r := start(t, t.TempDir())
+	defer r.stop()
+	tabsBefore := len(r.tabsNow(1))
+	r.e.Post(func() { r.a.Handover([]string{"project-b://elsewhere?address=x"}) })
+	if r.settingsIn(1) != 0 || len(r.tabsNow(1)) != tabsBefore {
+		t.Fatal("another project-b: link opened something")
+	}
+	link := "project-b://sync?address=https%3A%2F%2Fmemd.example%2Fsync%2Ft0k"
+	r.e.Post(func() { r.a.Handover([]string{link}) })
+	got, snapshot := r.openSettings()
+	if snapshot["section"] != "sync" {
+		t.Fatalf("settings opened at %v", snapshot["section"])
+	}
+	if m := r.waitOn(got, func(m map[string]any) bool { return m["t"] == "syncLink" }); m["link"] != link {
+		t.Fatalf("the page was told %v", m)
+	}
+	// With the page open, a second link reaches it at once; an http address is answered with
+	// its error and the address it had.
+	r.e.Post(func() { r.a.Handover([]string{"project-b://sync?address=http%3A%2F%2Fmemd.example%2Fsync"}) })
+	r.waitOn(got, func(m map[string]any) bool { return m["t"] == "syncLink" })
+	r.settings(`{"t":"syncPropose","link":"project-b://sync?address=http%3A%2F%2Fmemd.example%2Fsync"}`)
+	if m := r.waitOn(got, func(m map[string]any) bool { return m["t"] == "syncProposal" }); m["problem"] != "address" || m["address"] != "http://memd.example/sync" {
+		t.Fatalf("an http link's proposal: %v", m)
+	}
+	if s := snapshot["sync"].(map[string]any); s["on"] != false {
+		t.Fatalf("sync turned on: %v", s)
+	}
+}
