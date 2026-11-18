@@ -41,7 +41,7 @@ const rules = {
   22: 'A site\'s sign-in shows as an alertdialog with text boxes named Username and Password, and Go\'s Sign in answers with both',
   30: 'A site asking for its camera, microphone or notifications in the active tab brings a dialog named by its question, with Block and Allow, or Block, Always allow and Allow this time; an Allow grants it, Block denies it, Escape dismisses it',
   31: 'On a web page, a control named Site settings opens settings on that site, at once or from its panel\'s Details',
-  33: 'The Site settings control opens a panel over the page, a dialog named Site settings for the site\'s host, with a switch named Ad blocker and a choice of Links to other sites, Allow or Block, each Go\'s and each changing Go\'s setting; Escape closes it; a popup Links to other sites closed shows in the address field as a button named by its count, which opens the panel',
+  33: 'The Site settings control opens a panel over the page, a dialog named Site settings for the site\'s host, with a switch named Ad blocker, a switch named Sparks with the names of the sparks that run on the page, and a choice of Links to other sites, Allow or Block, each Go\'s and each changing Go\'s setting; Escape closes it; a popup Links to other sites closed shows in the address field as a button named by its count, which opens the panel',
   32: 'A page that failed to load, or has a bad certificate, is covered by an alert with Go\'s sentence and its actions as buttons; Try again loads it again, and Open anyway opens it',
 };
 
@@ -115,6 +115,10 @@ const noNoticeYet = {
   const summary = [];
   // The extensions' buttons show only while their flag is on, as the settings page saves it.
   fs.writeFileSync(path.join(lib.profile, 'flags.json'), JSON.stringify({ extensions: 'on' }));
+  // A spark that runs on the contract's pages, for the panel's Sparks switch (rule 33).
+  fs.mkdirSync(path.join(lib.profile, 'sparks'), { recursive: true });
+  fs.writeFileSync(path.join(lib.profile, 'sparks', '0000c0de.user.js'), '// ==UserScript==\n// @name Contract spark\n// @match https://contract.test/*\n// ==/UserScript==\n');
+  fs.writeFileSync(path.join(lib.profile, 'sparks', 'sparks.json'), JSON.stringify([{ id: '0000c0de', on: true }]));
   for (const id of ids) {
     if (!registry.some((s) => s.id === id)) throw new Error(`no shell ${id} in core/shells/registry.json`);
     console.log(`\n=== the ${id} shell`);
@@ -724,6 +728,12 @@ const noNoticeYet = {
         await ads.click();
         await reopen();
         rule(33, 'switched off, Go keeps it off', await until(async () => !(await ads.isChecked())));
+        const sparks = panel.getByRole('checkbox', { name: /^Sparks/ });
+        rule(33, 'Sparks is on, naming the sparks that run here', (await until(() => sparks.isChecked())) && (await panel.getByText('Contract spark').isVisible()));
+        await sparks.click();
+        await reopen();
+        rule(33, 'switched off, Go keeps sparks off on the site', await until(async () => !(await sparks.isChecked())));
+        await sparks.click();
         const block = panel.getByRole('radiogroup', { name: 'Links to other sites' }).getByRole('radio', { name: 'Block' });
         await block.click();
         await reopen();
