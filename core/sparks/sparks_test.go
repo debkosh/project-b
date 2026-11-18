@@ -2,6 +2,7 @@ package sparks
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -428,5 +429,51 @@ func TestTheFirstListReads(t *testing.T) {
 	k := readKept(t, dir)
 	if k.Sparks[0].Added != 998 || k.Sparks[1].Added != 999 || k.Builtins != nil {
 		t.Fatalf("%+v", k)
+	}
+}
+
+// The built-in sparks are given once, off, after the profile's own, and never again, even
+// once deleted; then they are ordinary sparks.
+func TestBuiltinsAreGivenOnce(t *testing.T) {
+	dir := t.TempDir()
+	m := New(dir)
+	own, _ := m.Add(script("@name Own", "@match <all_urls>"))
+	m.AddBuiltins()
+	var names []string
+	for _, s := range m.List() {
+		names = append(names, s.Name)
+		if s.ID != own.ID && s.On {
+			t.Fatalf("%s is on", s.Name)
+		}
+	}
+	if !slices.Equal(names, []string{"Own", "Video downloader", "Screen time limit", "Page cleanup"}) {
+		t.Fatalf("%v", names)
+	}
+	for _, s := range m.List()[1:] {
+		src, _ := m.Source(s.ID)
+		meta, _ := Parse(src)
+		if meta.Description == "" || meta.Version == "" || meta.Namespace == "" {
+			t.Fatalf("%s's header %+v", s.Name, meta)
+		}
+	}
+	builtins := ids(m.Builtins())
+	m.Remove(builtins[0])
+	m.AddBuiltins()
+	again := New(dir)
+	again.AddBuiltins()
+	if got := ids(again.Builtins()); len(again.List()) != 3 || !slices.Equal(got, builtins[1:]) {
+		t.Fatalf("given again: %v", got)
+	}
+}
+
+// With no room for all three, the profile gets those there is room for.
+func TestBuiltinsTakeTheRoomThereIs(t *testing.T) {
+	m := New(t.TempDir())
+	for i := 0; i < MaxSparks-1; i++ {
+		m.Add(script(fmt.Sprintf("@name S%d", i), "@match <all_urls>"))
+	}
+	m.AddBuiltins()
+	if got := m.Builtins(); len(m.List()) != MaxSparks || len(got) != 1 || got[0].Name != "Video downloader" {
+		t.Fatalf("%+v", got)
 	}
 }

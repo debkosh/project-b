@@ -214,3 +214,39 @@ func TestHowYouWorkMakesTheWorkspacesAndChoosesTheKeys(t *testing.T) {
 		t.Fatalf("a keymap the step doesn't offer was taken: %v", m)
 	}
 }
+
+// A profile's first start gives it the built-in sparks, off. The welcome's page hears them,
+// for the phone's Extras for any page, and a switch there turns one on.
+func TestTheWelcomeOffersTheBuiltInSparks(t *testing.T) {
+	dir := t.TempDir()
+	r := startMade(t, dir, true)
+	defer r.stop()
+	snap := r.waitFor(func(m map[string]any) bool { return m["t"] == "snapshot" })
+	tab := engine.TabID(snap["welcome"].(float64))
+	got, stop := r.e.PageFeed(tab).Subscribe()
+	defer stop()
+	say := func(msg string) { r.e.Post(func() { r.a.PageMessage(tab, "welcome", []byte(msg)) }) }
+	say(`{"t":"ready"}`)
+	sparks := next(t, got, "snapshot")["sparks"].([]any)
+	var names []string
+	for _, s := range sparks {
+		s := s.(map[string]any)
+		if s["on"] != false || s["description"] == "" {
+			t.Fatalf("offered %v", s)
+		}
+		names = append(names, s["name"].(string))
+	}
+	if len(names) != 3 || names[0] != "Video downloader" || names[1] != "Screen time limit" || names[2] != "Page cleanup" {
+		t.Fatalf("offered %v", names)
+	}
+	id := sparks[1].(map[string]any)["id"].(string)
+	say(`{"t":"setSparkOn","id":"` + id + `","on":true}`)
+	if m := next(t, got, "sparks"); !m["sparks"].([]any)[1].(map[string]any)["on"].(bool) {
+		t.Fatalf("after the switch %v", m["sparks"])
+	}
+	var on bool
+	r.main(func() { on = r.a.Sparks.List()[1].On })
+	if !on {
+		t.Fatal("Screen time limit isn't on")
+	}
+}

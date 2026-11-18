@@ -19,7 +19,13 @@ func TestSettingsImportsAndExportsSparks(t *testing.T) {
 	r := start(t, t.TempDir())
 	defer r.stop()
 	got, _ := r.openSettings()
-	r.main(func() { r.a.Sparks.Add(sparkSource("Kept", "https://a.test/*")) })
+	r.main(func() {
+		// A profile with only its own sparks: the built-in ones deleted.
+		for _, s := range r.a.Sparks.Builtins() {
+			r.a.Sparks.Remove(s.ID)
+		}
+		r.a.Sparks.Add(sparkSource("Kept", "https://a.test/*"))
+	})
 
 	var buf bytes.Buffer
 	w := zip.NewWriter(&buf)

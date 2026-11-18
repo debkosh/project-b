@@ -28,6 +28,8 @@ func (u tabURLs) URLOf(tab engine.TabID) (string, bool) {
 func (a *App) startSites(e engine.Engine, dir string) {
 	a.Sites = sites.New(dir, tabURLs{a.Tabs}, e.AnswerPermission)
 	a.Sparks = sparks.New(dir)
+	// A profile's first start on a version with the built-in sparks gives it them, off.
+	a.Sparks.AddBuiltins()
 	a.startSiteFeatures(e)
 	a.Sites.OnPromptsChanged(func() {
 		a.Shell.Send(map[string]any{"t": "permissionPrompts", "permissionPrompts": a.Sites.Prompts()})

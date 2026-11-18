@@ -61,6 +61,7 @@ func newWelcome(a *App, e engine.Engine, dir string) *welcome {
 	a.Prefs.OnThemeChanged(func(t string) { w.sendAll(map[string]any{"t": "theme", "theme": t}) })
 	a.Window.OnColorChanged(func(c string) { w.sendAll(map[string]any{"t": "tones", "tones": tones.Of(c)}) })
 	a.Update.OnAutoChanged(func(on bool) { w.sendAll(map[string]any{"t": "autoUpdate", "autoUpdate": on}) })
+	a.Sparks.OnChanged(func() { w.sendAll(map[string]any{"t": "sparks", "sparks": a.Sparks.Builtins()}) })
 	// The whole window is the welcome's only while its tab is there.
 	a.Tabs.OnListChanged(func() {
 		if _, ok := a.Tabs.Get(w.whole); w.whole != 0 && !ok {
@@ -146,10 +147,11 @@ func (w *welcome) sendAll(v any) {
 	}
 }
 
-// welcomeMessage is what the page sends: t, a pref's name and value, a switch's state, and
-// the workspaces ticked.
+// welcomeMessage is what the page sends: t, a pref's name and value, a switch's state, a
+// spark's id, and the workspaces ticked.
 type welcomeMessage struct {
 	T          string                 `json:"t"`
+	ID         string                 `json:"id"`
 	Name       string                 `json:"name"`
 	Value      string                 `json:"value"`
 	On         bool                   `json:"on"`
@@ -180,6 +182,9 @@ func (w *welcome) handle(tab engine.TabID, msg []byte) {
 		w.a.Prefs.SetSearchEngine(m.Value)
 	case "setAutoUpdate":
 		w.a.Update.SetAuto(m.On)
+	case "setSparkOn":
+		// The phone's Extras for any page switches the built-in sparks.
+		w.a.Sparks.SetOn(m.ID, m.On)
 	case "useKeymap":
 		if slices.Contains(welcomeKeymaps, m.Value) {
 			w.a.Commands.UseTemplate(m.Value)
@@ -252,6 +257,7 @@ func (w *welcome) snapshot(tab engine.TabID) map[string]any {
 	s["keymap"] = w.a.Commands.Template()
 	s["platform"] = w.a.Commands.Platform()
 	s["workspaces"] = w.a.Workspaces.List()
+	s["sparks"] = w.a.Sparks.Builtins()
 	w.a.imports.snapshot(s)
 	return s
 }

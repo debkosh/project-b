@@ -37,6 +37,8 @@ export const state = reactive({
   platform: 'mac',
   // The profile's workspaces, each {id, name, color}.
   workspaces: [],
+  // The built-in sparks the profile still has, each {id, name, description, on}.
+  sparks: [],
 });
 
 export function setPref(name, value) {
@@ -65,6 +67,7 @@ export function connect() {
             keymap: m.keymap,
             platform: m.platform,
             workspaces: m.workspaces || [],
+            sparks: m.sparks || [],
           });
           break;
         case 'prefs':
@@ -90,6 +93,9 @@ export function connect() {
           break;
         case 'workspaces':
           state.workspaces = m.workspaces || [];
+          break;
+        case 'sparks':
+          state.sparks = m.sparks || [];
           break;
       }
     },

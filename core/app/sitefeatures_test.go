@@ -30,6 +30,9 @@ func TestTheShellHearsEachOpenSitesSettingsAndSetsThem(t *testing.T) {
 	r := start(t, t.TempDir())
 	defer r.stop()
 	r.main(func() {
+		for _, s := range r.a.Sparks.Builtins() {
+			r.a.Sparks.Remove(s.ID)
+		}
 		if _, err := r.a.Sparks.Add("// ==UserScript==\n// @name Wide\n// @match https://news.test/*\n// ==/UserScript==\n"); err != nil {
 			t.Error(err)
 		}

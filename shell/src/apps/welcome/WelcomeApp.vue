@@ -18,7 +18,12 @@ document.title = 'Welcome';
 
 // Bring your things over, the import wizard, and How you work, the workspaces and the
 // keys, are the desktop's: a phone keeps each app's data from the others, and has neither.
-const steps = computed(() => (state.phone ? ['hello', 'style', 'protection', 'done'] : ['hello', 'bring', 'style', 'work', 'protection', 'done']));
+// Extras for any page, the built-in sparks the profile still has, is the phone's.
+const steps = computed(() =>
+  state.phone
+    ? ['hello', 'style', ...(state.sparks.length ? ['extras'] : []), 'protection', 'done']
+    : ['hello', 'bring', 'style', 'work', 'protection', 'done'],
+);
 const step = ref('hello');
 const at = computed(() => steps.value.indexOf(step.value));
 const go = (by) => {
@@ -215,6 +220,27 @@ onMounted(() => heading.value?.focus());
               </ul>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section v-else-if="step === 'extras'" class="extras" aria-labelledby="extras">
+        <h1 id="extras" ref="heading" tabindex="-1">Extras for any page</h1>
+        <p class="sub">Small scripts that add to the pages you visit. Turn on any you like, and change or remove them later in Settings › Sparks.</p>
+        <div class="card">
+          <label v-for="s in state.sparks" :key="s.id" class="row">
+            <span class="spark">
+              <span class="label">{{ s.name }}</span>
+              <span class="state">{{ s.description }}</span>
+            </span>
+            <input
+              type="checkbox"
+              role="switch"
+              class="switch"
+              :checked="s.on"
+              :aria-checked="String(s.on)"
+              @change="send({ t: 'setSparkOn', id: s.id, on: $event.target.checked })"
+            />
+          </label>
         </div>
       </section>
 
@@ -555,6 +581,17 @@ h1 {
 
 .state {
   color: var(--muted);
+}
+
+.spark {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 0;
+}
+
+.spark .state {
+  font-size: 13px;
 }
 
 .tips {
