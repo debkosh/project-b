@@ -124,9 +124,8 @@ type Pins interface {
 	Index(id string) int
 }
 
-// BlankURL is what a new tab loads, so its page area holds a real page in the engine's
-// default colours from the start, rather than no page at all. The tab still reads as
-// empty: no address, titled New Tab, nothing in history.
+// BlankURL is the empty page every engine has. A tab showing it reads as empty, as a new
+// tab does: no address, titled New Tab, nothing in history.
 const BlankURL = engine.BlankURL
 
 // Manager owns the tabs.
@@ -291,7 +290,7 @@ func (m *Manager) WindowOf(id engine.TabID) engine.WindowID { return m.windowOf[
 // front is the window in front's tabs.
 func (m *Manager) front() *window { return m.windows[m.Front()] }
 
-// Create is New Tab: it opens a new tab at the end of window w, on the blank page, in the
+// Create is New Tab: it opens a new tab at the end of window w, loading nothing, in the
 // workspace New Tab takes there (NewTabWorkspace), and makes it active.
 func (m *Manager) Create(w engine.WindowID) engine.TabID {
 	return m.CreateIn(w, m.NewTabWorkspace(w))
@@ -349,17 +348,21 @@ func (m *Manager) OpenPage(w engine.WindowID, page string) engine.TabID {
 	return id
 }
 
-// CreateIn opens a new tab at the end of window w, on the blank page, in a workspace, by
+// CreateIn opens a new tab at the end of window w, loading nothing, in a workspace, by
 // its id, and makes it active.
 func (m *Manager) CreateIn(w engine.WindowID, workspace string) engine.TabID {
-	return m.Add(w, workspace, true)
+	return m.Add(w, workspace, "", true)
 }
 
-// Add opens a new tab at the end of window w, on the blank page, in a workspace, and
-// makes it active when foreground, or leaves it behind the active one.
-func (m *Manager) Add(w engine.WindowID, workspace string, foreground bool) engine.TabID {
-	id := m.create(w, workspace)
+// Add opens a new tab at the end of window w, in a workspace, at u, an address or a search,
+// or loading nothing for "", and makes it active when foreground, or leaves it behind the
+// active one.
+func (m *Manager) Add(w engine.WindowID, workspace, u string, foreground bool) engine.TabID {
+	id := m.create(w, workspace, u == "")
 	m.shown(id, foreground)
+	if u != "" {
+		m.eng.LoadURL(id, u)
+	}
 	return id
 }
 
@@ -372,7 +375,7 @@ func (m *Manager) OnClosedAt(f func(t Tab, w engine.WindowID, index int)) {
 // Restore opens a tab the profile had before, at the end of window w, behind the active
 // one, with its address and title. It loads now when load, else once first made active.
 func (m *Manager) Restore(w engine.WindowID, workspace, u, title string, load bool) engine.TabID {
-	id := m.create(w, workspace)
+	id := m.create(w, workspace, !load)
 	t := m.tabs[id]
 	t.URL, t.Title = u, title
 	if load {
@@ -394,11 +397,12 @@ func (m *Manager) shown(id engine.TabID, foreground bool) {
 	}
 }
 
-// create opens a new tab at the end of window w, on the blank page, in a workspace.
-func (m *Manager) create(w engine.WindowID, workspace string) engine.TabID {
-	id := m.eng.CreateTab(workspace)
+// create opens a new tab at the end of window w, in a workspace. It loads nothing; an empty
+// one, which nothing loads into yet, starts no renderer until it does, and the shell draws a
+// new tab where its page goes.
+func (m *Manager) create(w engine.WindowID, workspace string, empty bool) engine.TabID {
+	id := m.eng.CreateTab(workspace, empty)
 	m.add(id, w).Workspace = workspace
-	m.eng.LoadURL(id, BlankURL)
 	return id
 }
 
@@ -725,7 +729,7 @@ func (m *Manager) Navigate(w engine.WindowID, text, workspace string) {
 		return
 	}
 	if id == 0 {
-		id = m.eng.CreateTab(workspace)
+		id = m.eng.CreateTab(workspace, false)
 		t := m.add(id, w)
 		t.URL, t.Workspace = address(u), workspace
 		m.Activate(id)
@@ -813,7 +817,7 @@ func (m *Manager) OpenFrom(opener engine.TabID, u, workspace string, foreground 
 // beside it, in the workspace it was opened from, and shows it.
 func (m *Manager) OpenBeside(ours engine.TabID, u string) engine.TabID {
 	workspace := m.HomeOf(ours)
-	id := m.eng.CreateTab(workspace)
+	id := m.eng.CreateTab(workspace, false)
 	t := m.add(id, m.windowOf[ours])
 	t.URL, t.Workspace = address(u), workspace
 	m.beside(id, ours)
@@ -867,7 +871,7 @@ func (m *Manager) Unbind(pin string) {
 // pin's workspace and at its address, and makes it active. It has the address from the
 // start, as a tab a page opens does.
 func (m *Manager) OpenPin(w engine.WindowID, pin, workspace, u string) engine.TabID {
-	id := m.eng.CreateTab(workspace)
+	id := m.eng.CreateTab(workspace, false)
 	t := m.add(id, w)
 	t.URL, t.Workspace, t.Pin = address(u), workspace, pin
 	m.arrange(w)
@@ -908,7 +912,7 @@ func (m *Manager) open(opener engine.TabID, u, workspace string, foreground bool
 		}
 		return m.OpenPage(w, page)
 	}
-	id := m.eng.CreateTab(workspace)
+	id := m.eng.CreateTab(workspace, false)
 	m.HandleTabOpened(opener, id, u, workspace, foreground)
 	m.eng.LoadURL(id, u)
 	return id
@@ -1027,14 +1031,8 @@ func (m *Manager) HandleNavigationStarting(id engine.TabID, nav int64, u string)
 		m.OpenPage(m.windowOf[id], page)
 		return engine.NavigationElsewhere
 	}
-	// A restored tab keeps its address and title over the blank page under it, until
-	// anything else loads.
-	if _, ok := m.waiting[id]; ok {
-		if u == BlankURL {
-			return engine.NavigationProceed
-		}
-		delete(m.waiting, id)
-	}
+	// A restored tab keeps its address and title until anything loads.
+	delete(m.waiting, id)
 	// A page's navigation its site's Links to other sites refuses goes nowhere, and the tab
 	// stays as it was.
 	if !m.pageMay(t, nav, u) {

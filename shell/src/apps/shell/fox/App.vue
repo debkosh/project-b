@@ -10,7 +10,7 @@ import PageMenu from '@/ui/PageMenu.vue';
 import PageNotice from '@/ui/PageNotice.vue';
 import { keyOf } from './hints.js';
 import { started } from './started.js';
-import { activeTab, send, setFrame, state } from '@/sdk/vue.js';
+import { activeTab, isNewTab, send, setFrame, state } from '@/sdk/vue.js';
 
 // The tabs on top, the navigation bar under them, any notice under that, then the page,
 // inside the window's 4px band. The frame's sides and foot are strips of their own, so
@@ -40,6 +40,8 @@ watchEffect(() => setFrame(pageFull.value ? 0 : 4));
             New Tab<span v-if="keyOf('tab.new')" class="key" aria-hidden="true">{{ keyOf('tab.new') }}</span>
           </button>
         </div>
+        <!-- A new tab loads nothing, so no page shows here: a backdrop in the page's colour. -->
+        <div v-else-if="isNewTab(activeTab)" v-shell class="new-tab-backdrop"></div>
         <PageNotice v-if="activeTab.notice" v-shell :tab="activeTab" />
         <FindBar />
         <PageDialog />
@@ -97,6 +99,13 @@ watchEffect(() => setFrame(pageFull.value ? 0 : 4));
   position: relative;
   flex: 1;
   min-width: 0;
+}
+
+/* Fox's styles are the whole page's, and TabIcon has a .blank of its own. */
+.new-tab-backdrop {
+  position: absolute;
+  inset: 0;
+  background: Canvas;
 }
 
 .empty {

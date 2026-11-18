@@ -229,18 +229,18 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 				m.tabs.OpenPage(w, page)
 				return
 			}
-			var id engine.TabID
+			// With text, the new tab goes there: an address or a search.
+			u := ""
+			if c.Text != "" {
+				u = m.tabs.Normalize(c.Text)
+			}
 			switch {
 			case c.GroupWith != 0:
-				id = m.tabs.CreateWith(c.GroupWith, !c.Background)
+				m.tabs.CreateWith(c.GroupWith, u, !c.Background)
 			case c.Workspace == nil:
-				id = m.tabs.Add(w, m.tabs.NewTabWorkspace(w), !c.Background)
+				m.tabs.Add(w, m.tabs.NewTabWorkspace(w), u, !c.Background)
 			default:
-				id = m.tabs.Add(w, *c.Workspace, !c.Background)
-			}
-			// With text, the new tab goes there: an address or a search.
-			if c.Text != "" {
-				m.tabs.Load(id, m.tabs.Normalize(c.Text))
+				m.tabs.Add(w, *c.Workspace, u, !c.Background)
 			}
 		})
 	// A tab moves within its window, or into another at index; a window it leaves empty

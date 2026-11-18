@@ -339,8 +339,9 @@ typedef struct PBEngineCalls {
   // anything asks for a tab.
   void (*open_profile)(const char* dir);
   // Makes a hidden tab in a workspace, by Go's id for it: "" is the profile's own storage.
-  // A window's layout shows it.
-  int64_t (*create_tab)(const char* workspace);
+  // A window's layout shows it. An empty one loads nothing yet, so it starts no renderer
+  // until it does; one about to load takes content's spare renderer, which is quicker.
+  int64_t (*create_tab)(const char* workspace, int empty);
   // Makes a hidden tab of ours, for one of our own pages, in their context: in no
   // workspace, and of that kind for its life. load_url takes it to its page.
   int64_t (*create_internal_tab)(void);

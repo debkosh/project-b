@@ -21,6 +21,8 @@ type fakeEngine struct {
 	in map[engine.TabID]string
 	// ours are the tabs made in our pages' context.
 	ours []engine.TabID
+	// empty are the tabs made empty, to start no renderer until they load.
+	empty []engine.TabID
 }
 
 func (f *fakeEngine) CreateInternalTab() engine.TabID {
@@ -40,8 +42,11 @@ func (f *fakeEngine) OurPage(raw string) (engine.Page, bool) {
 	return engine.Page(u.Host + strings.TrimSuffix(u.Path, "/")), true
 }
 
-func (f *fakeEngine) CreateTab(workspace string) engine.TabID {
+func (f *fakeEngine) CreateTab(workspace string, empty bool) engine.TabID {
 	f.next++
+	if empty {
+		f.empty = append(f.empty, f.next)
+	}
 	if f.in == nil {
 		f.in = map[engine.TabID]string{}
 	}
@@ -152,7 +157,7 @@ func TestClosingTheLastTabEmptiesTheList(t *testing.T) {
 func TestATabIntoAWindowWithNoTabsIsActive(t *testing.T) {
 	m := oneWindow(&fakeEngine{})
 	m.Close(m.Create(1))
-	a := m.Add(1, work, false)
+	a := m.Add(1, work, "", false)
 	if m.ActiveIn(1) != a {
 		t.Fatalf("added behind into a window with none: active %v", m.ActiveIn(1))
 	}
@@ -161,7 +166,7 @@ func TestATabIntoAWindowWithNoTabsIsActive(t *testing.T) {
 	if m.ActiveIn(1) != 9 {
 		t.Fatalf("opened behind into a window with none: active %v", m.ActiveIn(1))
 	}
-	b := m.Add(1, work, false)
+	b := m.Add(1, work, "", false)
 	if m.ActiveIn(1) != 9 || m.WindowOf(b) != 1 {
 		t.Fatalf("added behind beside a tab: active %v", m.ActiveIn(1))
 	}
@@ -269,12 +274,15 @@ type loads struct {
 
 func (l *loads) LoadURL(_ engine.TabID, u string) { l.urls = append(l.urls, u) }
 
-func TestANewTabHoldsTheBlankPageAndReadsAsEmpty(t *testing.T) {
+func TestANewTabLoadsNothingAndTheBlankPageReadsAsEmpty(t *testing.T) {
 	e := &loads{}
 	m := oneWindow(e)
 	id := m.Create(1)
-	if !slices.Equal(e.urls, []string{BlankURL}) {
-		t.Fatalf("loaded %v", e.urls)
+	if len(e.urls) != 0 {
+		t.Fatalf("a new tab loaded %v", e.urls)
+	}
+	if tab := m.Active(); tab.URL != "" || tab.Title != "" {
+		t.Fatalf("a new tab shows as url %q title %q", tab.URL, tab.Title)
 	}
 	m.HandleNavigationStarting(id, 1, BlankURL)
 	m.HandleNavigationFinished(id, 1, BlankURL)
@@ -290,8 +298,23 @@ func TestANewTabHoldsTheBlankPageAndReadsAsEmpty(t *testing.T) {
 	}
 }
 
-// A new tab's blank page can commit, or fail, after the user's navigation has begun. That
-// late result leaves the address the user is going to, which shows until its own commit.
+// A tab made to load nothing yet starts no renderer until it loads: New Tab, a tab restored
+// for later. One made with an address, or restored to load now, takes the engine's spare.
+func TestOnlyATabThatLoadsNothingYetIsMadeEmpty(t *testing.T) {
+	e := &fakeEngine{}
+	m := oneWindow(e)
+	blank := m.Create(1)
+	typed := m.Add(1, "", "https://example.com/", true)
+	grouped := m.CreateWith(typed, "https://example.org/", true)
+	later := m.Restore(1, "", "https://a.test/", "A", false)
+	now := m.Restore(1, "", "https://b.test/", "B", true)
+	if !slices.Equal(e.empty, []engine.TabID{blank, later}) {
+		t.Fatalf("made empty %v, want the new tab %d and the tab restored for later %d (not %d, %d, %d)", e.empty, blank, later, typed, grouped, now)
+	}
+}
+
+// The blank page can commit, or fail, after the user's navigation has begun. That late
+// result leaves the address the user is going to, which shows until its own commit.
 func TestALateBlankPageLeavesTheNewerAddress(t *testing.T) {
 	m := oneWindow(&fakeEngine{})
 	id := m.Create(1)
@@ -553,7 +576,7 @@ func TestANewTabFromOurTabGoesToTheWorkspaceItWasOpenedFrom(t *testing.T) {
 		t.Fatalf("from our tab, in %q", workspace(fromIt))
 	}
 	m.Activate(s)
-	if beside := m.CreateWith(s, true); workspace(beside) != "" {
+	if beside := m.CreateWith(s, "", true); workspace(beside) != "" {
 		t.Fatalf("beside it, in %q", workspace(beside))
 	}
 	l.remove("")
@@ -577,7 +600,7 @@ func TestOurTabIsInNoGroup(t *testing.T) {
 	if groups := m.GroupsIn(1); len(groups) != 1 || !slices.Equal(groups[0].Tabs, []engine.TabID{a, b}) {
 		t.Fatalf("groups %+v", groups)
 	}
-	if beside := m.CreateWith(s, true); len(m.GroupsIn(1)[0].Tabs) != 2 || m.ActiveID() != beside {
+	if beside := m.CreateWith(s, "", true); len(m.GroupsIn(1)[0].Tabs) != 2 || m.ActiveID() != beside {
 		t.Fatalf("a new tab beside ours joined a group: %+v", m.GroupsIn(1))
 	}
 }

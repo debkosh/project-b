@@ -174,12 +174,13 @@ func init() {
 			WindowID *engine.WindowID `json:"windowId"`
 		}
 		c.arg(0, &p)
-		u := tabs.BlankURL
+		// With no url, a new tab, loading nothing, as Chrome opens its new tab page.
+		u := ""
 		if p.URL != "" {
 			u = resolve(c.Extension, p.URL)
-		}
-		if err := a.ours(u); err != nil {
-			return nil, err
+			if err := a.ours(u); err != nil {
+				return nil, err
+			}
 		}
 		// Into the window named, or the caller's current one, in the first workspace.
 		w := a.current(c)
@@ -190,11 +191,10 @@ func init() {
 			w = *p.WindowID
 		}
 		var id engine.TabID
-		if w == a.tabs.Front() {
+		if u != "" && w == a.tabs.Front() {
 			id = a.tabs.OpenIn(u, p.Active == nil || *p.Active)
 		} else {
-			id = a.tabs.CreateIn(w, a.tabs.FirstWorkspace())
-			a.tabs.Load(id, u)
+			id = a.tabs.Add(w, a.tabs.FirstWorkspace(), u, p.Active == nil || *p.Active)
 		}
 		t, _ := a.tabs.Get(id)
 		return a.tabFor(a.caller(c), t), nil

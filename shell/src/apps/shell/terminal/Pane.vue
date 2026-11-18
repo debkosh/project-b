@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { keyLabel, send, state, tabLabel } from '@/sdk/vue.js';
+import { isNewTab, keyLabel, send, state, tabLabel } from '@/sdk/vue.js';
 import { close, shown, smallest, split, zoom, zoomed } from './panes.js';
 import FindBar from '@/ui/FindBar.vue';
 import PageDialog from '@/ui/PageDialog.vue';
@@ -72,6 +72,9 @@ function hint(name, action) {
     <!-- The active pane's page carries its dialog and its find bar, as Standard's does. -->
     <div class="body">
       <div v-page="id" class="page"></div>
+      <!-- A new tab loads nothing, so no page shows here: a backdrop in the page's colour. A
+           press on it makes its pane active, as a press in a page does. -->
+      <div v-if="isNewTab(tab)" v-shell class="blank" @pointerdown="press"></div>
       <!-- Go's notice over a page with nothing to show, on any pane; it fills the page. -->
       <PageNotice v-if="tab.notice" v-shell :tab="tab" />
       <template v-if="active">
@@ -223,5 +226,11 @@ function hint(name, action) {
 .page {
   flex: 1;
   min-height: 0;
+}
+
+.blank {
+  position: absolute;
+  inset: 0;
+  background: Canvas;
 }
 </style>
