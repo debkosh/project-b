@@ -8,6 +8,7 @@ import (
 	"projectb/settings"
 	"projectb/shell"
 	"projectb/sync"
+	"projectb/words"
 )
 
 // syncSettingsPart is Settings' Sync (docs/sync.md): the status, which every shell has too,
@@ -79,6 +80,8 @@ func (a *App) syncSettingsPart() settings.Part {
 				a.Sync.SyncNow()
 			case "syncCancel":
 				a.Sync.CancelRun()
+			case "syncSuggest":
+				answer("syncSuggested", nil, map[string]any{"passphrase": words.Passphrase(5)})
 			case "syncStartFresh":
 				a.Sync.StartFresh(func(err error) { answer("syncStartedFresh", err, nil) })
 			default:
