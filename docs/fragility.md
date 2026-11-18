@@ -19,7 +19,24 @@ The seams:
 - **Narrow widths.** What sits next to something, or under it, has to be measured against
   a piece that doesn't wrap. One so far: the update line on a phone.
 - **A page's own navigations**, which Go rules on, against Chromium's way of starting,
-  committing and aborting a load. One so far: Stay on this site.
+  committing and aborting a load. Two so far: Stay on this site, the back key in full
+  screen.
+
+## The back key in full screen, 2026-11-18
+
+- **Seen:** on 0.2.95's candidate, on Android, the back key on a page in full screen closed
+  its tab. Release's Android tests caught it before it shipped.
+- **Cause:** the engine sends the back key to Go as "go back" when the tab has a page behind
+  it, and as "close this tab" when it hasn't, and only "go back" left full screen first. A
+  new tab used to load a blank page, so a page opened from it always had one behind it. Once
+  a new tab started empty, the first page in it had none.
+- **Seam:** a page's own navigations: a rule that counted on every tab's history starting
+  with a blank page.
+- **Fix:** 954d9cb1 on newtab-back-key: the back key's close leaves full screen first too.
+  c0cc9fdd: the renderer-crash test waits for the page to show before it kills its renderer,
+  as an empty tab's renderer now starts only as the page loads.
+- **Guard:** core/app's full screen test sends the back key's close in full screen, and
+  drive_android.py page_full_screen presses the back key on a page in a new tab.
 
 ## The update line on a phone, 2026-11-18
 
