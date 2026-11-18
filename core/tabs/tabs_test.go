@@ -696,3 +696,38 @@ func TestATabSaysHowItsPageReachedIt(t *testing.T) {
 		t.Fatalf("secure: %+v after %d changes", tab, changes)
 	}
 }
+
+// A load asked for under Typed makes the navigation it starts typed when it commits, after a
+// redirect too, at whatever address it ends; another load, or a navigation the page starts
+// first, is not typed, and only the one commit is.
+func TestTypedNavigations(t *testing.T) {
+	m := oneWindow(&fakeEngine{})
+	id := m.Create(1)
+	var typed []string
+	m.OnNavigationFinished(func(t Tab) {
+		if t.Typed {
+			typed = append(typed, t.URL)
+		}
+	})
+	nav := int64(0)
+	visit := func(urls ...string) {
+		nav++
+		for _, u := range urls {
+			m.HandleNavigationStarting(id, nav, u)
+		}
+		m.HandleNavigationFinished(id, nav, urls[len(urls)-1])
+	}
+	m.Typed(func() { m.Load(id, "https://git.test") })
+	visit("https://git.test", "https://git.test/")
+	visit("https://git.test/a")
+	m.Load(id, "https://b.test/")
+	visit("https://b.test/")
+	m.Typed(func() { m.Load(id, "https://c.test/") })
+	m.Load(id, "https://d.test/")
+	visit("https://d.test/")
+	m.Typed(func() { m.Navigate(1, "e.test") })
+	visit("https://e.test")
+	if strings.Join(typed, " ") != "https://git.test/ https://e.test" {
+		t.Fatalf("typed = %v", typed)
+	}
+}

@@ -70,12 +70,18 @@ type Tab struct {
 	// has one tab for a pin at most, and its pinned tabs come first in its order, in the
 	// pins' order. A pinned tab is in no group.
 	Pin string `json:"pin,omitempty"`
+	// Typed says the navigation that just committed was of an address the person typed or
+	// chose after typing (Typed). Only OnNavigationFinished's subscribers see it set.
+	Typed bool `json:"-"`
 
 	// committed is the address of the page the tab last committed, which Thumb is of.
 	committed string
 	// started is the engine's id for the latest navigation that started, whose address
 	// the tab shows until it commits or fails.
 	started int64
+	// typed is the engine's id for the navigation a typed load started, -1 until it starts,
+	// 0 for none.
+	typed int64
 	// The title and icon of the page shown as a navigation started, which it gets back when
 	// the navigation ends with nothing shown instead (refused on its way, stopped, a
 	// download).
@@ -165,6 +171,28 @@ type Manager struct {
 	waiting map[engine.TabID]string
 	// onClosedAt hear of a tab the person closed: as it was, its window and its place.
 	onClosedAt []func(t Tab, w engine.WindowID, index int)
+	// typing says the loads asked for now are typed (Typed).
+	typing bool
+}
+
+// Typed runs f, whose loads are of an address the person typed in an address field and
+// entered, or chose from suggestions after typing: the navigation each starts is Typed when
+// it commits, whatever address it ends at.
+func (m *Manager) Typed(f func()) {
+	m.typing = true
+	defer func() { m.typing = false }()
+	f()
+}
+
+// loadURL loads u in tab id, typed while Typed runs.
+func (m *Manager) loadURL(id engine.TabID, u string) {
+	if t := m.tabs[id]; t != nil {
+		t.typed = 0
+		if m.typing {
+			t.typed = -1
+		}
+	}
+	m.eng.LoadURL(id, u)
 }
 
 // window is one window's tabs: their order, the active one, and recent use.
@@ -343,7 +371,7 @@ func (m *Manager) OpenPage(w engine.WindowID, page string) engine.TabID {
 	if active != 0 {
 		m.beside(id, active)
 	}
-	m.eng.LoadURL(id, t.URL)
+	m.loadURL(id, t.URL)
 	m.Activate(id)
 	return id
 }
@@ -361,7 +389,7 @@ func (m *Manager) Add(w engine.WindowID, workspace, u string, foreground bool) e
 	id := m.create(w, workspace, u == "")
 	m.shown(id, foreground)
 	if u != "" {
-		m.eng.LoadURL(id, u)
+		m.loadURL(id, u)
 	}
 	return id
 }
@@ -379,7 +407,7 @@ func (m *Manager) Restore(w engine.WindowID, workspace, u, title string, load bo
 	t := m.tabs[id]
 	t.URL, t.Title = u, title
 	if load {
-		m.eng.LoadURL(id, u)
+		m.loadURL(id, u)
 	} else {
 		m.waiting[id] = u
 	}
@@ -444,7 +472,7 @@ func (m *Manager) Activate(id engine.TabID) {
 	}
 	if u, ok := m.waiting[id]; ok {
 		delete(m.waiting, id)
-		m.eng.LoadURL(id, u)
+		m.loadURL(id, u)
 	}
 	m.listChanged()
 }
@@ -718,7 +746,7 @@ func (m *Manager) Active() Tab {
 func (m *Manager) Navigate(w engine.WindowID, text string) {
 	u := m.Normalize(text)
 	if id := m.ActiveIn(w); u != "" && id != 0 {
-		m.eng.LoadURL(id, u)
+		m.loadURL(id, u)
 	}
 }
 
@@ -807,7 +835,7 @@ func (m *Manager) OpenBeside(ours engine.TabID, u string) engine.TabID {
 	t.URL, t.Workspace = address(u), workspace
 	m.beside(id, ours)
 	m.Activate(id)
-	m.eng.LoadURL(id, u)
+	m.loadURL(id, u)
 	return id
 }
 
@@ -861,7 +889,7 @@ func (m *Manager) OpenPin(w engine.WindowID, pin, workspace, u string) engine.Ta
 	t.URL, t.Workspace, t.Pin = address(u), workspace, pin
 	m.arrange(w)
 	m.Activate(id)
-	m.eng.LoadURL(id, u)
+	m.loadURL(id, u)
 	return id
 }
 
@@ -899,7 +927,7 @@ func (m *Manager) open(opener engine.TabID, u, workspace string, foreground bool
 	}
 	id := m.eng.CreateTab(workspace, false)
 	m.HandleTabOpened(opener, id, u, workspace, foreground)
-	m.eng.LoadURL(id, u)
+	m.loadURL(id, u)
 	return id
 }
 
@@ -926,7 +954,7 @@ func (m *Manager) ReloadTab(id engine.TabID, bypassCache bool) {
 // Load loads a URL in one tab.
 func (m *Manager) Load(id engine.TabID, u string) {
 	if m.tabs[id] != nil {
-		m.eng.LoadURL(id, u)
+		m.loadURL(id, u)
 	}
 }
 
@@ -1008,6 +1036,13 @@ func (m *Manager) HandleNavigationStarting(id engine.TabID, nav int64, u string)
 	if t == nil {
 		return engine.NavigationBlock
 	}
+	// The first to start after a typed load is the one it asked for; a redirect is the same
+	// navigation, and any other ends it.
+	if t.typed == -1 {
+		t.typed = nav
+	} else if t.typed != nav {
+		t.typed = 0
+	}
 	switch page := m.PageOf(u); {
 	case t.Page != "" && page == "":
 		m.OpenBeside(id, u)
@@ -1067,8 +1102,12 @@ func (m *Manager) HandleNavigationFinished(id engine.TabID, nav int64, u string)
 	// The blank page a popup opens on isn't a page of its own: it still goes by its
 	// opener's.
 	t.ownPage = t.ownPage || t.URL != ""
+	t.Typed = t.typed == nav
 	for _, f := range m.onFinished {
 		f(*t)
+	}
+	if t.Typed {
+		t.Typed, t.typed = false, 0
 	}
 	m.changed(t)
 }

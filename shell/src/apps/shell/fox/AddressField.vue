@@ -85,7 +85,7 @@ function go(target) {
   if (value === '') return;
   text.value = value;
   close();
-  send({ t: 'navigate', text: value });
+  send({ t: 'navigate', text: value, typed: true });
   input.value.blur();
   focusPage();
 }

@@ -24,6 +24,9 @@ type command struct {
 	Text string          `json:"text"`
 	ID   int64           `json:"id"`
 	Data json.RawMessage `json:"data"`
+	// Typed says navigate's or newTab's text was typed in an address field and entered:
+	// an address so reached is a typed one (docs/store.md), a search is not.
+	Typed bool `json:"typed"`
 	// Workspace is where newTab opens its tab, by the workspace's id. Without it the tab
 	// opens in the workspace of the window's active tab.
 	Workspace *string `json:"workspace"`
@@ -127,6 +130,15 @@ func (m *Manager) Interaction(w engine.WindowID, name string, do func()) {
 	m.send(w, map[string]any{"t": "paint", "span": name})
 }
 
+// typed runs load, typed when the command's text was typed and reads as an address.
+func (m *Manager) typed(c command, load func()) {
+	if c.Typed && tabs.LooksLikeAddress(c.Text) {
+		m.tabs.Typed(load)
+	} else {
+		load()
+	}
+}
+
 // CloseTab is Close Tab in window w: it closes the active tab, and with the last one the
 // window.
 func (m *Manager) CloseTab(w engine.WindowID) {
@@ -199,7 +211,7 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 	case "timeline":
 		timeline.FromPage("shell", msg)
 	case "navigate":
-		m.tabs.Navigate(w, c.Text)
+		m.typed(c, func() { m.tabs.Navigate(w, c.Text) })
 	case "back":
 		// A phone's back key leaves a page's full screen before it goes back.
 		if m.onBack != nil && m.onBack(w) {
@@ -222,14 +234,16 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 			if c.Text != "" {
 				u = m.tabs.Normalize(c.Text)
 			}
-			switch {
-			case c.GroupWith != 0:
-				m.tabs.CreateWith(c.GroupWith, u, !c.Background)
-			case c.Workspace == nil:
-				m.tabs.Add(w, m.tabs.NewTabWorkspace(w), u, !c.Background)
-			default:
-				m.tabs.Add(w, *c.Workspace, u, !c.Background)
-			}
+			m.typed(c, func() {
+				switch {
+				case c.GroupWith != 0:
+					m.tabs.CreateWith(c.GroupWith, u, !c.Background)
+				case c.Workspace == nil:
+					m.tabs.Add(w, m.tabs.NewTabWorkspace(w), u, !c.Background)
+				default:
+					m.tabs.Add(w, *c.Workspace, u, !c.Background)
+				}
+			})
 		})
 	// A tab moves within its window, or into another at index; a window it leaves empty
 	// closes, as Move does for any tab.

@@ -227,7 +227,7 @@ func (m *Manager) CreateWith(with engine.TabID, u string, foreground bool) engin
 	}
 	m.shown(id, foreground)
 	if u != "" {
-		m.eng.LoadURL(id, u)
+		m.loadURL(id, u)
 	}
 	return id
 }

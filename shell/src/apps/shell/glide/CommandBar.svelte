@@ -70,8 +70,8 @@
       // an address or a search.
       if (!query || query.startsWith('/')) return;
       if (aside && activeTab(go).id) g.openInSplit(query);
-      else if (bar.mode === 'address' && activeTab(go).id) send({ t: 'navigate', text: query });
-      else send({ t: 'newTab', workspace: g.spaceId(), text: query });
+      else if (bar.mode === 'address' && activeTab(go).id) send({ t: 'navigate', text: query, typed: true });
+      else send({ t: 'newTab', workspace: g.spaceId(), text: query, typed: true });
       close();
       return;
     }
@@ -79,7 +79,7 @@
     if (r.kind === 'tab' || r.kind === 'action') chooseSuggestion(r);
     else if (aside && activeTab(go).id) g.openInSplit(r.url);
     else if (bar.mode === 'address' && activeTab(go).id) chooseSuggestion(r);
-    else send({ t: 'newTab', workspace: g.spaceId(), text: r.url });
+    else send({ t: 'newTab', workspace: g.spaceId(), text: r.url, typed: r.typed });
     close();
   }
 

@@ -103,15 +103,23 @@ func (a *App) suggestShellPart(e engine.Engine) shell.Part {
 					}
 				}
 			case suggest.KindAddress, suggest.KindSearch, suggest.KindHistory, suggest.KindBookmark:
-				switch {
-				case c.Row.URL == "":
-				case c.NewTab || active == 0:
-					// Where New Tab opens one: the active tab's workspace, or for a tab of ours
-					// the one it was opened from, or the first when that is gone or the window
-					// has no tab.
-					a.Tabs.OpenFrom(active, c.Row.URL, a.Tabs.NewTabWorkspace(w), true)
-				default:
-					a.Tabs.Load(active, c.Row.URL)
+				load := func() {
+					switch {
+					case c.Row.URL == "":
+					case c.NewTab || active == 0:
+						// Where New Tab opens one: the active tab's workspace, or for a tab of
+						// ours the one it was opened from, or the first when that is gone or the
+						// window has no tab.
+						a.Tabs.OpenFrom(active, c.Row.URL, a.Tabs.NewTabWorkspace(w), true)
+					default:
+						a.Tabs.Load(active, c.Row.URL)
+					}
+				}
+				// An address chosen after typing is a typed one; a search is not.
+				if c.Row.Typed && c.Row.Kind != suggest.KindSearch {
+					a.Tabs.Typed(load)
+				} else {
+					load()
 				}
 			}
 			return true

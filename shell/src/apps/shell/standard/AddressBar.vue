@@ -174,7 +174,7 @@ function go(i = highlight.value) {
   edited.value = false;
   close();
   if (row) chooseSuggestion(row);
-  else send({ t: 'navigate', text: value });
+  else send({ t: 'navigate', text: value, typed: true });
   input.value?.blur();
   focusPage();
 }
