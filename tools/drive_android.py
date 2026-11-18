@@ -1129,9 +1129,16 @@ def find_in_page():
     if until(typed, 5) is None:
         tap(middle(field))
         type_text("to")
+    counted = until(lambda: find("shell", text="1/1")) is not None
     shown = find("shell", kind=FIELD, focused="true")
-    check("a word typed is found in the page and counted", until(lambda: find("shell", text="1/1")) is not None,
-          "the field holds %r" % (shown.get("text") if shown is not None else None))
+    # What count the bar shows instead, if any: the word was typed (0.2.100 held 'to') and
+    # still no 1/1, so the count itself is what to look at next.
+    counts = [n.get("text") for n in (screen_parts().get("shell") or ET.Element("x")).iter("node")
+              if re.fullmatch(r"\d+/\d+|No results|0", n.get("text") or "")]
+    if not counted:
+        shot("31-find-not-counted")
+    check("a word typed is found in the page and counted", counted,
+          "the field holds %r, the bar shows %r" % (shown.get("text") if shown is not None else None, counts))
     shot("31-find")
     key(4)
     if find("shell", text="1/1") is not None:
