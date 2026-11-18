@@ -323,6 +323,23 @@ const taken = [];
   await button('Cancel').click();
   await until(async () => (await dialog().count()) === 0);
 
+  // A link as the app starts: the page is laid out narrow first, then takes the window's
+  // width, and Sync stays near the top of the page.
+  if (!phone) {
+    await page.setViewportSize({ width: 360, height: viewport.height });
+    await page.evaluate(() => (document.querySelector('main.content').scrollTop = 0));
+    await fetch(`${lib.base}/mock/open`, { method: 'POST', body: new URLSearchParams({ url: link(linked) }) });
+    await until(async () => (await dialog().count()) === 1);
+    await settle(page);
+    await page.setViewportSize(viewport);
+    await settle(page);
+    const top = await page.evaluate(() => document.querySelector('[data-part="sync"]').getBoundingClientRect().top - document.querySelector('main.content').getBoundingClientRect().top);
+    // The one page puts Your data's group at its top, and Sections its section, Sync in it.
+    check('opened at Sync while narrow, then widened, Sync stays in the top half of the page', top >= 0 && top < viewport.height / 2, top);
+    await button('Cancel').click();
+    await until(async () => (await dialog().count()) === 0);
+  }
+
   // A page's link: pressed, it opens the Dialog; gone to by the page's own script, nothing.
   await fetch(`${lib.base}/shell/send`, { method: 'POST', body: JSON.stringify({ t: 'newTab', text: 'https://example.com/' }) });
   let web;
