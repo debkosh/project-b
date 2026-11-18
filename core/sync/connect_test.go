@@ -488,3 +488,26 @@ func TestARunCutShort(t *testing.T) {
 		t.Fatalf("the status after the next run: %+v", st)
 	}
 }
+
+// Connect answers once sync is on, before its first run, which the status then shows.
+func TestConnectAnswersBeforeItsFirstRun(t *testing.T) {
+	s := newServer(t)
+	p := newProfile(t)
+	p.startSync(s)
+	// Create's look at the bucket and its sealed copy go through; the run is held.
+	release := s.holdAfter(2)
+	got := make(chan error, 1)
+	p.main(func() { p.sync.Connect(s.single("tok"), "", "pass phrase", func(err error) { got <- err }) })
+	if err := <-got; err != nil {
+		t.Fatal(err)
+	}
+	if st := p.sync.Status(); !st.On || st.LastSynced != 0 {
+		t.Fatalf("the status as Connect answered: %+v", st)
+	}
+	release()
+	p.sync.Idle()
+	p.settle()
+	if st := p.sync.Status(); !st.On || st.Syncing || st.LastSynced == 0 {
+		t.Fatalf("the status after the first run: %+v", st)
+	}
+}
