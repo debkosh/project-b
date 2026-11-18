@@ -723,12 +723,12 @@ const noNoticeYet = {
         await page.waitForTimeout(200);
         fs.mkdirSync(path.join(__dirname, '../../build/e2e'), { recursive: true });
         await page.screenshot({ path: path.join(__dirname, `../../build/e2e/site-panel-${id}.png`) });
-        const ads = panel.getByRole('checkbox', { name: /Ad blocker/ });
+        const ads = panel.getByRole('switch', { name: /Ad blocker/ });
         rule(33, 'the ad blocker is on, as Go has it', await until(() => ads.isChecked()));
         await ads.click();
         await reopen();
         rule(33, 'switched off, Go keeps it off', await until(async () => !(await ads.isChecked())));
-        const sparks = panel.getByRole('checkbox', { name: /^Sparks/ });
+        const sparks = panel.getByRole('switch', { name: /^Sparks/ });
         rule(33, 'Sparks is on, naming the sparks that run here', (await until(() => sparks.isChecked())) && (await panel.getByText('Contract spark').isVisible()));
         await sparks.click();
         const reloadNow = panel.getByRole('button', { name: 'Reload', exact: true });

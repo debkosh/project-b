@@ -1054,7 +1054,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   check('a new profile lists the built-in sparks, each off', await until(async () => {
     for (const name of builtins) {
       const r = sparksRegion.getByRole('group', { name, exact: true });
-      if (!(await r.isVisible()) || (await r.getByRole('checkbox').isChecked())) return false;
+      if (!(await r.isVisible()) || (await r.getByRole('switch').isChecked())) return false;
     }
     return (await sparksRegion.textContent()).includes('3 of 25.');
   }));
@@ -1068,13 +1068,13 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   await source.fill('// ==UserScript==\n// @name Wide pages\n// @match https://news.test/*\n// ==/UserScript==\ndocument.body.style.maxWidth = "none";\n');
   await sparksRegion.getByRole('button', { name: 'Save' }).click();
   const row = sparksRegion.getByRole('group', { name: 'Wide pages' });
-  check('a good one is listed, on, with where it runs', await until(async () => (await row.isVisible()) && (await row.getByRole('checkbox').isChecked()) && (await row.textContent()).includes('https://news.test/*')));
+  check('a good one is listed, on, with where it runs', await until(async () => (await row.isVisible()) && (await row.getByRole('switch').isChecked()) && (await row.textContent()).includes('https://news.test/*')));
   check('and the editor closes', await until(async () => (await source.count()) === 0));
   check('the list says how many of 25', (await sparksRegion.textContent()).includes('1 of 25.'));
   await settle(page);
   await page.screenshot({ path: shot('settings-sparks') });
-  await row.getByRole('checkbox').click();
-  check('its switch turns it off', await until(async () => !(await row.getByRole('checkbox').isChecked())));
+  await row.getByRole('switch').click();
+  check('its switch turns it off', await until(async () => !(await row.getByRole('switch').isChecked())));
   await row.locator('.name').click();
   check('a tap on the row edits it', await until(async () => (await source.inputValue().catch(() => '')).includes('@name Wide pages')));
   await sparksRegion.getByRole('button', { name: 'Cancel' }).click();
@@ -1119,7 +1119,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   check('each is listed, on', await until(async () => {
     for (const name of ['Limit Screen Time', 'Page Cleanup', 'dhd']) {
       const r = sparksRegion.getByRole('group', { name, exact: true });
-      if (!(await r.isVisible()) || !(await r.getByRole('checkbox').isChecked())) return false;
+      if (!(await r.isVisible()) || !(await r.getByRole('switch').isChecked())) return false;
     }
     return true;
   }));
