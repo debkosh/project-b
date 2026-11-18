@@ -112,6 +112,7 @@ mock() {
         [ -e "$test" ] || continue
         run "the $(basename "$test" .cjs) shell's own tests" node "$test"
     done
+    run "the history and bookmarks pages on the mock engine" node shell/e2e/pages.cjs
     run "the settings page on the mock engine" node shell/e2e/settings.cjs
     run "the picker on the mock engine" node shell/e2e/picker.cjs
     run "the crash report on the mock engine" node shell/e2e/crash-report.cjs

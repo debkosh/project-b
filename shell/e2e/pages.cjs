@@ -30,10 +30,12 @@ const { check, fire, regions, settle, until } = lib;
   });
 
   // Two pages visited, the second bookmarked with the star.
+  // The second goes in the tab the first opened, by its id: tab 0 can be the window's own
+  // blank tab, as every window has a tab, and b.test then never reached history.
   await send({ t: 'newTab', text: 'https://a.test/' });
-  await at('https://a.test/');
-  await fire('navigate', 'https://b.test/news');
-  await at('https://b.test/news');
+  check('a.test opens in a new tab', await at('https://a.test/'));
+  await fire('navigate', 'https://b.test/news', { tab: (await regions()).active });
+  check('then b.test in the same tab', await at('https://b.test/news'));
   const star = ui.getByRole('button', { name: 'Bookmark this page' });
   check('the address bar has a star', await until(() => star.isVisible()));
   const saved = () => {
@@ -72,11 +74,23 @@ const { check, fire, regions, settle, until } = lib;
   check('a row can be removed', await until(async () => (await rows.count()) === 0));
   await history.getByRole('searchbox', { name: 'Search history' }).fill('');
   await until(async () => (await rows.count()) === 1);
+  const tabsBefore = (await regions()).tabs.length;
   await history.getByRole('link').first().click();
-  check('a row opens its page in a new tab', await until(async () => (await regions()).tabs.length === 3));
+  // The new tab shown, by its page: counting tabs went wrong once every window had a tab of
+  // its own, and Bookmarks then opened under the row's tab still coming.
+  const shown = async (want) => until(async () => {
+    const r = await regions();
+    const t = r.tabs.find((x) => x.id === r.active);
+    return r.tabs.length === tabsBefore + 1 && t && !t.page && t.url !== '' && want(t);
+  });
+  check('a row opens its page in a new tab', await shown(() => true));
 
   // Bookmarks.
   await fire('menu', 'bookmarks.show');
+  await until(async () => {
+    const r = await regions();
+    return r.tabs.find((x) => x.id === r.active)?.page === 'bookmarks';
+  });
   const bookmarks = page.frameLocator('iframe.our-page[data-page="bookmarks"]');
   // The folder's entries, not the path's steps, which are a list too.
   const marks = bookmarks.locator('.card').getByRole('listitem');
