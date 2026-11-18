@@ -310,7 +310,10 @@ def see(part, timeout=20, **want):
 
 
 def box(node):
-    """A node's place on the screen: left, top, right, bottom."""
+    """A node's place on the screen: left, top, right, bottom. A node that isn't there ends the
+    part as a step whose screen never came, not as the driver's own crash."""
+    if node is None:
+        raise TimeoutError("a node the step needed isn't on the screen")
     return tuple(map(int, re.findall(r"\d+", node.get("bounds"))))
 
 
@@ -939,7 +942,10 @@ def file_inputs():
     asked("/upload")
     page = screen_parts().get("page")
     tap(middle(page))
-    check("a page's file input opens the phone's picker", until(picker_shows) is not None, in_front_now())
+    opened = until(picker_shows) is not None
+    check("a page's file input opens the phone's picker", opened, in_front_now())
+    if not opened:
+        return
     shot("40-file-picker")
     key(4)
     check("and closing it tells the page", asked("/said?cancelled"), str(served))
