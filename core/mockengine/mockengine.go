@@ -1028,6 +1028,9 @@ func (e *Engine) Fire(w engine.WindowID, tab engine.TabID, kind, value string) {
 		case "downloadsFail":
 			// Every running download fails where it got to.
 			e.failDownloads()
+		case "downloadsStall":
+			// Every running download's bytes stop where they are, still running.
+			e.stallDownloads()
 		case "notification":
 			// The page shows a notification, its id in value.
 			e.showNotification(shown, value)

@@ -91,6 +91,11 @@
       </span>
       {#if said.state === 'done'}
         <button onclick={() => act('open')}>Open</button>
+      {:else if said.state === 'progress'}
+        <!-- Every progress has Retry and Cancel (docs/ux-guide.md); Pause is on the
+             Downloads page, which has the room. -->
+        <button onclick={() => act('cancel')}>Cancel</button>
+        <button onclick={() => act('retry')}>Retry</button>
       {:else if said.state === 'failed'}
         <button onclick={() => act('retry')}>Retry</button>
       {/if}

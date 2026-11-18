@@ -107,12 +107,18 @@ path, state, received, total, paused}`, `state` being `progress`, `done`, `cance
 has no `url` and says what it is in `from` instead. Go keeps the finished ones in the profile's `downloads.json`, the last 100, so the
 list is there after a restart; one still running when the app quit comes back `failed`.
 The shell asks for one action at a time, `downloadAction {id, action}`: `open` the file,
-`reveal` it in Finder, `cancel`, `pause`, `resume`, or `remove` it from the list (the file
-stays). `clearDownloads` removes every finished one.
+`reveal` it in Finder, `cancel`, `pause`, `resume`, `retry`, or `remove` it from the list
+(the file stays). `clearDownloads` removes every finished one.
 
 **The shell.** A control named Downloads shows once the list has one, and opens the list:
 each download a `listitem` by its file name, its progress while it runs, Open and Show in
-Finder once done, Cancel while it runs, and Retry once it failed or was cancelled. Standard
+Finder once done, Pause (or Resume), Cancel and Retry while it runs, and Retry once it failed
+or was cancelled. Every progress has Retry and Cancel while it runs (the UX guide,
+`docs/ux-guide.md`); Retry sits a little apart from Pause and Cancel, as it throws away what
+has arrived: Go stops the engine's copy, whose late news it then ignores, and starts the
+address over in the same row, under the same name. A running row has no remove button,
+Cancel being there. Mobile's download bar has Cancel and Retry while one runs, and its
+Downloads page has Pause too. Standard
 puts the control in its toolbar and shows a download's progress on it; Open and Show in
 Finder are icons there, so the name has the row. The contract's rule 17 checks it, by role
 and name.
@@ -138,8 +144,9 @@ press, so no typing is lost. A press on the button makes it the person's list, w
 a list the person opened stays as it is.
 
 **A connection that goes silent.** Across the Mac's sleep a download's connection can die
-without a word, and content waits on it for good. The engine watches every running download:
-one that receives nothing for 30 seconds of waking time is interrupted as a network timeout,
+without a word, and content waits on it for good. The engine watches every running download,
+but a paused one, which never times out: one that receives nothing for 30 seconds of waking
+time, the same 30 as the updater's (updates.md), is interrupted as a network timeout,
 which content resumes at once on a new connection from where the file got to. When resuming
 fails too, the download shows as failed, with Retry and Copy link (`downloadAction` `retry`,
 `copyLink`). Retry resumes one this run still has, or starts it over as a new download of its

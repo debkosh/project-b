@@ -255,6 +255,8 @@ onUnmounted(() => {
               <template v-else-if="d.state === 'progress'">
                 <button type="button" class="text-button quiet" @click="downloadAction(d.id, d.paused ? 'resume' : 'pause')">{{ d.paused ? 'Resume' : 'Pause' }}</button>
                 <button type="button" class="text-button quiet" @click="downloadAction(d.id, 'cancel')">Cancel</button>
+                <!-- Retry throws away what arrived, so it sits apart from the everyday two. -->
+                <button type="button" class="text-button quiet apart" @click="downloadAction(d.id, 'retry')">Retry</button>
               </template>
               <template v-else-if="d.url">
                 <button type="button" class="text-button quiet" @click="downloadAction(d.id, 'retry')">Retry</button>
@@ -270,7 +272,8 @@ onUnmounted(() => {
               >
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 4.5 3 3 3-3" /></svg>
               </button>
-              <button type="button" class="icon-button remove" :aria-label="`Remove ${d.name} from the list`" :title="'Remove from the list'" @click="downloadAction(d.id, 'remove')">
+              <!-- A running one has Cancel; the room goes to its name and its buttons. -->
+              <button v-if="d.state !== 'progress'" type="button" class="icon-button remove" :aria-label="`Remove ${d.name} from the list`" :title="'Remove from the list'" @click="downloadAction(d.id, 'remove')">
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="m2 2 6 6M8 2 2 8" /></svg>
               </button>
             </div>
@@ -472,5 +475,10 @@ li.failed .name {
   margin-left: 4px;
   padding: 0 6px;
   color: var(--accent);
+}
+
+/* Retry, a little apart from Pause and Cancel: it throws away what has arrived. */
+.apart {
+  margin-left: 12px;
 }
 </style>

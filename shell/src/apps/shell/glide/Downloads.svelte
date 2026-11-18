@@ -96,6 +96,8 @@
               {:else if d.state === 'progress'}
                 <button type="button" class="text-button quiet" onclick={() => downloadAction(d.id, d.paused ? 'resume' : 'pause')}>{d.paused ? 'Resume' : 'Pause'}</button>
                 <button type="button" class="text-button quiet" onclick={() => downloadAction(d.id, 'cancel')}>Cancel</button>
+                <!-- Retry throws away what arrived, so it sits apart from the everyday two. -->
+                <button type="button" class="text-button quiet apart" onclick={() => downloadAction(d.id, 'retry')}>Retry</button>
               {:else}
                 <button type="button" class="text-button quiet" onclick={() => downloadAction(d.id, 'retry')}>Retry</button>
                 <button type="button" class="text-button quiet" onclick={() => downloadAction(d.id, 'copyLink')}>Copy link</button>
@@ -222,4 +224,9 @@
     padding: 0 8px;
     font-size: 12px;
   }
+
+/* Retry, a little apart from Pause and Cancel: it throws away what has arrived. */
+.apart {
+  margin-left: 12px;
+}
 </style>

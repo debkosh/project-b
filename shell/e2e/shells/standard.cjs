@@ -153,6 +153,20 @@ const { check, fire, regions, settle, until } = lib;
   check('Open asks Go to open it', await until(async () => (await regions()).openedFiles?.length === 1));
   await page.keyboard.press('Escape');
   check('Escape closes the list', await until(async () => (await list.count()) === 0));
+  // A download whose bytes stop: while it runs, Pause, Cancel and Retry, which starts it
+  // over in the same row.
+  await fire('download', 'https://a.test/files/stalled.pdf');
+  await fire('downloadsStall');
+  await until(() => list.isVisible(), 2000);
+  await list.hover();
+  const stalled = list.getByRole('listitem', { name: 'stalled.pdf' });
+  const has = async (name) => (await stalled.getByRole('button', { name, exact: true }).count()) === 1;
+  check('a running download offers Pause, Cancel and Retry', await until(async () => (await has('Pause')) && (await has('Cancel')) && (await has('Retry'))));
+  await shoot('downloads-running');
+  await stalled.getByRole('button', { name: 'Retry', exact: true }).click();
+  check('Retry gets it, in the same row', await until(() => has('Open'), 5000));
+  await page.keyboard.press('Escape');
+  await until(async () => (await list.count()) === 0);
   // While it peeks, the pointer over it keeps it open; Escape, or a press outside, closes it.
   await fire('download', 'https://a.test/files/second.pdf');
   await until(() => list.isVisible(), 2000);

@@ -19,6 +19,9 @@ type mockDownload struct {
 	d    engine.Download
 	tab  engine.TabID
 	stop bool
+	// stalled stops its bytes where they are, still running, as a connection that died
+	// across a sleep without a word does.
+	stalled bool
 }
 
 // downloads is what the mock keeps of downloads: those running, and the files the app
@@ -71,7 +74,7 @@ func (e *Engine) download(tab engine.TabID, u string, saveAs bool) {
 func (e *Engine) step(m *mockDownload, received int64) {
 	time.AfterFunc(loadDelay, func() {
 		e.Post(func() {
-			if m.stop || m.d.Paused || m.d.State != engine.DownloadProgress {
+			if m.stop || m.stalled || m.d.Paused || m.d.State != engine.DownloadProgress {
 				return
 			}
 			m.d.Received = received
@@ -113,6 +116,18 @@ func (e *Engine) DownloadCommand(id engine.DownloadID, c engine.DownloadCommand)
 		return
 	}
 	e.listener.DownloadUpdated(m.d)
+}
+
+// stallDownloads stops every running download's bytes where they are, still running.
+func (e *Engine) stallDownloads() {
+	d := e.dl()
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	for _, m := range d.running {
+		if m.d.State == engine.DownloadProgress {
+			m.stalled = true
+		}
+	}
 }
 
 // failDownloads fails every running download where it got to, as the engine does to one

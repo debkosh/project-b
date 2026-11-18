@@ -67,11 +67,15 @@ type Manager struct {
 	next      int
 	byEngine  map[engine.DownloadID]*Item
 	onChanged []func()
+
+	// stopped are engine downloads Go has stopped and let go of, by Retry, whose news, a
+	// cancel coming back, is no longer any row's.
+	stopped map[engine.DownloadID]bool
 }
 
 // New returns a manager for the profile folder profile, saving files into dir.
 func New(e engine.Engine, profile, dir string) *Manager {
-	return &Manager{e: e, file: filepath.Join(profile, "downloads.json"), dir: dir, next: 1, byEngine: map[engine.DownloadID]*Item{}}
+	return &Manager{e: e, file: filepath.Join(profile, "downloads.json"), dir: dir, next: 1, byEngine: map[engine.DownloadID]*Item{}, stopped: map[engine.DownloadID]bool{}}
 }
 
 // SetDir is where files are saved from now on.
@@ -158,9 +162,11 @@ func (m *Manager) free(name string) string {
 	}
 }
 
+// running says a download running now has the path: not one being retried, whose new copy
+// takes its name.
 func (m *Manager) running(path string) bool {
 	for _, it := range m.list {
-		if it.State == "progress" && it.Path == path {
+		if it.State == "progress" && it.Path == path && !it.retrying {
 			return true
 		}
 	}
@@ -169,6 +175,12 @@ func (m *Manager) running(path string) bool {
 
 // Updated takes what the engine says a download is now, and returns its id in the list.
 func (m *Manager) Updated(d engine.Download) int {
+	if m.stopped[d.ID] {
+		if d.State != engine.DownloadProgress {
+			delete(m.stopped, d.ID)
+		}
+		return 0
+	}
 	it := m.byEngine[d.ID]
 	if it == nil {
 		it = m.retried(d.URL)
@@ -288,7 +300,13 @@ func (m *Manager) Act(id int, action string) {
 			m.e.DownloadCommand(it.engine, engine.DownloadResume)
 		}
 	case "retry":
-		if it.URL == "" || it.State != "failed" && it.State != "cancelled" {
+		if it.URL == "" {
+			return
+		}
+		// A running one is stopped, what arrived thrown away, and starts over in this row.
+		if live {
+			m.letGo(it)
+		} else if it.State != "failed" && it.State != "cancelled" {
 			return
 		}
 		// One this run still has resumes from where it got to, or starts over when it
@@ -311,6 +329,16 @@ func (m *Manager) Act(id int, action string) {
 		}
 		m.drop(func(x *Item) bool { return x == it })
 	}
+}
+
+// letGo stops a download's engine copy and forgets it: what comes of it is no row's.
+func (m *Manager) letGo(it *Item) {
+	if m.byEngine[it.engine] != it {
+		return
+	}
+	m.stopped[it.engine] = true
+	m.e.DownloadCommand(it.engine, engine.DownloadCancel)
+	delete(m.byEngine, it.engine)
 }
 
 // Clear removes every finished download that joined the list since a time in Unix
