@@ -49,7 +49,8 @@ pictures of the tabs' pages (`CaptureThumbnail`); and the names of our pages' ad
 Events 1 to 59 are windows, pages of ours, menus, crashes, downloads, dialogs and permissions.
 Events 60 to 79 are what a tab's page does: navigation, title, loading, context menu, scroll,
 focus, crash, close and activate requests, keys, find, full screen and a new picture of it
-(`Thumbnail`).
+(`Thumbnail`); 81, `AppLink`, is a press in a tab's page on one of the app's own links,
+`project-b:`.
 
 **Rules an engine must keep:**
 - `NavigationStarting` is asked synchronously, before a tab's top-level navigation starts and
@@ -58,6 +59,10 @@ focus, crash, close and activate requests, keys, find, full screen and a new pic
   or elsewhere, which drops the navigation with nothing shown, because the app has taken the
   address to another tab. Any other answer blocks it.
 - `TabOpened` reaches Go before the new tab's first `NavigationStarting`.
+- A navigation to one of the app's own links, `project-b:`, goes nowhere, wherever it starts,
+  and is never asked of `NavigationStarting`. Only one a user's gesture started at the top of a
+  tab's page, not by a redirect, is told as `AppLink`; a script's, a frame's or a redirect's
+  is dropped unheard, so a page can't open one by itself ([sync.md](sync.md#the-link)).
 - `Key` is asked synchronously, before a page sees the key and again if the page didn't use
   it, as a Windows virtual-key code with our modifier bits.
 - The block rules apply to every request a page makes, not just its navigation: frames,

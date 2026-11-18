@@ -1,8 +1,9 @@
 # Sync
 
 A profile's bookmarks, history and typed addresses, the same on every device a person links,
-through a sync server that holds them sealed. **Built in Go, 2026-11-19;** the Settings screens
-and the deep link's native side come next, on the functions below. The protocol and the library
+through a sync server that holds them sealed. **Built 2026-11-19:** the Go side, then Settings'
+screens and the deep link, as the mocks the ux review approved that day have them ([the
+screens](#the-screens), [the link](#the-link)). The protocol and the library
 are [synckosh](https://github.com/sudiptadeb/synckosh): its SPEC.md is the protocol, and the core
 uses its Go `client` package. The store it works over is [store.md](store.md).
 
@@ -107,7 +108,7 @@ project-b://sync?address=<the https address, percent-encoded>
 
 It only fills in what Settings would connect to: it never connects by itself. Settings shows the
 host and asks for the passphrase (and the token, for an address without one), and only then
-connects.
+connects. How it reaches the app is [the link](#the-link).
 
 ## Turning it on
 
@@ -117,7 +118,9 @@ connects.
 3. `Connect` makes the bucket's sync key with synckosh's `Create` when it is empty, with a sealed
    copy under the passphrase, or opens the sealed copy with `Join` when it holds items. A wrong
    passphrase changes nothing. It keeps the address, the token and the sync key sealed, hands every
-   row of the three collections to synckosh once, and syncs.
+   row of the three collections to synckosh once, and answers: sync is on. Its first run follows,
+   on sync's goroutine, which the status shows, so the set-up closes without waiting for a first
+   run of all the profile's history.
 
 The passphrase is never kept: the device holds the sync key, so changing the passphrase needs no
 old one.
@@ -180,22 +183,110 @@ and `OnStatus` answer at once; the rest run on sync's goroutine, after what was 
 | `ChangePassphrase(passphrase, done func(error))` | puts a sealed copy under the new passphrase and deletes the others |
 | `Disconnect(done func(error))` | stops syncing and forgets the address, token and sync key; every row stays |
 | `SyncNow()` | a run now |
+| `CancelRun()` | cuts the run going on short: it ends with no error and no longer wait, and the next comes when it would have |
+| `Address() string` | the bucket's address while sync is on, for Reconnect |
+| `Problem(err) string` | what went wrong reaching a bucket, by name: `address` (not one Propose takes), `needsToken`, `unreachable` (no answer, or the server's own failure), `notBucket` (not found, or not JSON), `token` (refused), or `""` for anything else. A request's answer is looked at before synckosh reads it, and its error wraps `ErrAddress`, `ErrNeedsToken`, `ErrUnreachable`, `ErrNotBucket` or `ErrToken` |
 | `StartFresh(done func(error))` | for a locked profile key: `keys.StartFresh`, so sync is forgotten and off |
-| `Status() Status`, `OnStatus(func(Status))` | `on`, `syncing`, `host`, `lastSynced` (Unix ms, 0 for never), `error`, `locked` |
+| `Status() Status`, `OnStatus(func(Status))` | `on`, `syncing`, `host`, `lastSynced` (Unix ms, 0 for never), `error`, `problem` (the last run's, by `Problem`'s names: `token` when the server signed this device out), `locked` |
 
 **The settings page's messages** (`core/app/sync_settings.go`). Go sends `{"t": "sync", "sync":
-<Status>}` to every settings page and shell when it changes, and both snapshots carry `sync`. The
-page sends:
+<Status>}` to every settings page and shell when it changes, and both snapshots carry `sync`; the
+settings page's message carries `address` too, and its snapshot `syncAddress`, which Reconnect
+fills in. A `project-b://sync` link reaches the page as `syncLink {link}`, after its snapshot or at
+once ([the link](#the-link)). Every answer with an `error` carries its `problem`, by `Problem`'s
+names. The page sends:
 
 | Message | Go answers |
 |---|---|
-| `syncPropose {address}`, or `{link}` for a deep link's | `syncProposal {address, host, needsToken}` or `{error}` |
+| `syncPropose {address}`, or `{link}` for a deep link's | `syncProposal {address, host, needsToken}` or `{error, problem, address}`, the address as given |
 | `syncInspect {address, token}` | `syncBucket {new}` or `{error}` |
 | `syncConnect {address, token, passphrase}` | `syncConnected {wrongPassphrase}`, with `error` when it failed |
 | `syncChangePassphrase {passphrase}` | `syncPassphraseChanged {}` or `{error}` |
 | `syncDisconnect` | `syncDisconnected {}` or `{error}` |
 | `syncNow` | the status, as it changes |
+| `syncCancel` | the status, the run cut short (`CancelRun`) |
+| `syncSuggest` | `syncSuggested {passphrase}`: five words from `core/words`' list of 662, picked at random |
 | `syncStartFresh` | `syncStartedFresh {}` or `{error}` |
+
+## The screens
+
+Settings' Sync, as the mocks of 2026-11-19 have it, every word theirs (the research repo's
+`daily-driver-2026-11-16/mocks/sync.js`), in `shell/src/apps/settings/Sync.vue`. Every state's
+picture, light and dark, desktop and phone, is made by `shell/e2e/sync.cjs` under
+`build/sync-screens/`.
+
+![Off, desktop](screenshots/sync/desktop-01-off.png)
+![Connected, desktop](screenshots/sync/desktop-09-on.png)
+![Choosing a passphrase, desktop](screenshots/sync/desktop-06-first.png)
+![From a link, desktop](screenshots/sync/desktop-05-link.png)
+![Connected, phone](screenshots/sync/phone-09-on.png)
+![Choosing a passphrase, phone, dark](screenshots/sync/phone-06-first-dark.png)
+
+- **Where:** a card under Your data with the heading Sync, after the profile's card and before
+  Import; in the Sections layout, in Profile and import. Its address is `sync` in both layouts
+  (`arrange.js`), and searching for sync or passphrase finds its rows.
+- **Off:** one row, Set up sync, "Bookmarks, history and typed addresses, through your own sync
+  server", Set up….
+- **On:** the server's row, its letter on its tile as a site's, with "Last synced 2 minutes ago"
+  ("just now" in its first minute, "Not synced yet" before a first run ends) and Sync now; then
+  Change sync passphrase and Turn off sync. It names nothing that syncs.
+  - After a second of syncing, "Syncing…" with quiet Cancel and Retry, Retry a little apart
+    ([ux-guide.md](ux-guide.md#anything-that-takes-time)). Cancel cuts the run short; Retry cuts
+    it and runs again.
+  - After 30 seconds of syncing, or a run that failed, "Couldn't reach the server · Last synced
+    …" in `--danger`, with Try again; the error's own words in the row's tooltip.
+  - A token the server refuses: "The server signed this device out", Reconnect…, which opens the
+    set-up with the address filled in and the focus on Token. Connecting from it lets the old
+    bucket go first and joins again.
+- **Keys that don't open here** (`locked`): "Sync can't run on this device", "This profile's
+  saved sync details can't be opened here", Set up again…, the reason in the tooltip. A state,
+  not an error. Set up again… opens the set-up empty; Turn on sync then starts the profile's keys
+  afresh (`syncStartFresh`) before it connects.
+- **Setting up is one Dialog** whose title follows the step:
+  - **Set up sync:** "Paste the address from your sync server.", Address and Token ("Only if your
+    server gave you one"). An address that can't become https is refused as it is typed: "Sync
+    needs an https address". Connect reads "Connecting…" while Go looks at the bucket, and Cancel
+    still works. Under Address: "Couldn't reach memd.example.com", "That address isn't a sync
+    bucket"; under Token: "The server didn't accept that token". The typed text stays.
+  - **Choose a sync passphrase**, for an empty bucket: twice, Passphrase and Type it again, the
+    strength in words under the first ("Fair: add another word", "Strong"; four words of three
+    letters or more, or 24 characters, are strong), and Suggest one, which fills in five words,
+    shown, and waits on Type it again. Turn on sync refuses one under 12 characters ("Use at least
+    12 characters") and two that differ ("The passphrases don't match").
+  - **Enter your sync passphrase**, for a bucket in use: once. A wrong one: "That's not the sync
+    passphrase", and "Forgot it? Set a new one on a device that's still syncing."
+- **Change sync passphrase:** only the new one, twice, with the same checks and Suggest one.
+- **Turn off sync on this device?** with a plain primary Turn off: nothing is destroyed.
+- **A phone** uses the same Dialog. Sync's buttons there are drawn at the touch size, 40px,
+  inside 48px targets, as the Mobile shell's pill and field are; its fields are 48px.
+
+**Decided here, which the mocks didn't say:** "This address needs its token" under Token, for an
+address ending in `/sync` given none; "Couldn't set up sync with <host>" for an error with no
+name, its words in the field's tooltip; an https address Propose refuses (a query, a user, no
+host) reads "That address isn't a sync bucket"; "Not synced yet" before a first run; the strength
+shows nothing under 12 characters.
+
+## The link
+
+`project-b://sync?address=<the https address, percent-encoded>` reaches the app three ways, and
+each ends in one Go function, `App.OpenAppLink` (`core/app/sync_settings.go`): Settings opens at
+Sync in that window, and the page is told the link (`syncLink`), whose address it asks Go to read
+(`syncPropose {link}`). The Dialog opens as "Sync with **memd.example.com**?", "A link asked to set
+up sync with this server. Connect only if it's yours.", the address filled in and read only, and
+nothing is sent to the server or kept until Connect. An address that isn't https opens the plain
+set-up with the address and its error. Any other `project-b:` link does nothing.
+
+- **From another app on the Mac:** the bundle's Info.plist names the `project-b` scheme among its
+  URL types (`tools/package.sh`), so macOS hands the link to `PBOpenURLs` as it does a web link,
+  and `App.Handover` gives an app link to `OpenAppLink` instead of a tab.
+- **From another app on Android:** the activity has an intent filter for the scheme
+  (`engine/android/AndroidManifest.xml.jinja2`); its `VIEW` intent reaches `PBOpenURL` and
+  `Handover` as a web link's does.
+- **Pressed in a page in Project B:** the engine's navigation gate (`engine/browser/events.cc`)
+  drops every navigation to a `project-b:` address, and only for one a user's gesture started at
+  the top of a tab's page, at its start, raises `PB_EVENT_APP_LINK` (81), which Go hears as the
+  `Listener`'s `AppLink`. A page's script going there, a frame's link and a redirect are dropped
+  unheard, so a page can't open the Dialog by itself.
 
 ## Not built
 
@@ -203,7 +294,6 @@ page sends:
 - Saved logins, and any sealed field but the secrets.
 - A token per device: every device uses the bucket's token.
 - A backup code (synckosh's `BackupCode`).
-- The Settings screens and the deep link's native side.
 
 ## Tests
 
@@ -217,9 +307,28 @@ bookmark deleted on one gone from the other; clearing history reaching the other
 readable title or address on the server; a wrong passphrase; joining; a changed passphrase, which a
 third profile joins with while the old one fails; Disconnect keeping the rows; a server reset
 refilled; a locked profile key turning sync off; sync on at start running with what was kept.
-`core/app`: the settings page's status, a deep link only proposed. `core/cmd/lib`: a folder named
-outright gets no device key.
+`core/sync` also: each problem reaching a bucket named, and a signed-out device's status; a run cut
+short; Connect answering before its first run; the address while on. `core/words`: the list and a
+passphrase of it. `core/abi`: `AppLink`'s values.
+`core/app`: the settings page's status, a deep link only proposed, problems by name, Suggest one;
+a link from another app opening Settings at Sync with `syncLink` after the snapshot, another
+`project-b:` link doing nothing; a link pressed in a page doing the same, and a script's doing
+nothing. `core/cmd/lib`: a folder named outright gets no device key.
 
-**Not tested here:** the Android Keystore piece (`DeviceKey.java`, `go_table.c`) compiles against
+`shell/e2e/sync.cjs` (in `tools/test.sh mock`), in the one-page and Sections layouts and on a
+phone, against synckosh's server, which the dev server runs with `-sync-server` and sync reaches
+as memd.example.com (`/mock/sync` counts its requests, signs a token out, drops connections or
+holds requests; `/mock/open` hands a link over as another app does): where the card is and search
+finding it; a new bucket and one in use; a short passphrase, two that differ, a wrong one, an http
+address, a server out of reach, an address that isn't a bucket, a refused token; Suggest one and
+the strength; Sync now, syncing with Cancel, out of reach with Try again, signed out with
+Reconnect; Change and Turn off; keys that don't open and Set up again; the link from another app
+and pressed in a page with no request reaching the server before Connect, an http link's error,
+and a page's script going there doing nothing; on a phone, the buttons' 48px targets and the
+fields' 48px.
+
+**Not tested here:** the link through macOS's and Android's own handing over, and the engine's
+gate with a real press, a script and a frame, which need the real app; a listed profile's keys in
+the login keychain from Settings; the Android Keystore piece (`DeviceKey.java`, `go_table.c`) compiles against
 the SDK and the NDK but has not run on a phone; the Mac's keychain test skips where the shell's
 keychain list has no login keychain, as an agent's shell over ssh has.

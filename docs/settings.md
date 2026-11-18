@@ -20,7 +20,7 @@ Every setting is on one scrolling page, in five groups by task:
 | Look | Theme, Frame colour, Tab layout (desktop), Address bar (phone), Shell, Settings (this page's layout) |
 | Browsing | On start, Search engine, Keys, Keyboard shortcuts (desktop), Workspaces, Bookmarks, Downloads: Save to and Ask where to save (desktop) |
 | Privacy | Clear browsing data, Sites, Block ads |
-| Your data | Profile name, Template, Import from other browsers, Run setup again |
+| Your data | Profile name, Template, Sync ([sync.md](sync.md#the-screens)), Import from other browsers, Run setup again |
 | Advanced | Automatic updates, Sparks, Extensions (with its flag on), Web features, Flags |
 
 On a desktop a rail at the left names the groups and marks the one at the top; a press scrolls
@@ -42,7 +42,7 @@ Like Chrome's settings: a list of sections, one showing at a time.
 | Downloads (desktop) | Save to, Ask where to save each file |
 | Privacy and sites | Clear browsing data, Block ads, Sites, which opens as a page of its own |
 | Keyboard (desktop) | Keys, and the keyboard shortcuts |
-| Profile and import | Profile name, Template, Import from other browsers, Run setup again |
+| Profile and import | Profile name, Template, Sync, Import from other browsers, Run setup again |
 | Extensions and sparks | Extensions (with its flag on, desktop), Sparks; Sparks alone without them |
 | About Project B | Automatic updates |
 | Flags, Web features | Under a line at the foot of the list |
@@ -152,12 +152,13 @@ a card's parts is drawn as the row that opens it. `arrange.js` also says where e
 
 What the page shows is an address, `state.section`, which Go may name as it opens the page
 (`OpenSection`): a group or section (`look`, `browsing`, `privacy`, `data`, `advanced`;
-`appearance`, `start`, `profile`, `about`), a part (`import`, `flags`), or a list (`workspaces`,
+`appearance`, `start`, `profile`, `about`), a part (`import`, `sync`, `flags`), or a list (`workspaces`,
 `sites`, `sites/<site>`, `sites/<origin>`, `keyboard`, `sparks`, `extensions`, `webFeatures`). Both layouts take
 every address: the page opens a list's own page, or scrolls to the part or its group; the
 sections show the section that is it or holds it, or Sites' own page. The site panel's Details
 opens `sites/<origin>`, the page of that origin's site with that origin's settings whether
-or not it has any, and an extension's Manage opens `extensions`.
+or not it has any, an extension's Manage opens `extensions`, and a `project-b://sync` link opens
+`sync`.
 
 ## Tests
 
