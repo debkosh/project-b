@@ -5,6 +5,18 @@ Take an item off when it lands or is dropped.
 
 ## For discussion with the owner first
 
+- **New tabs made only so a window doesn't close** ([windows.md](windows.md#every-window-has-a-tab-decided-2026-11-18)),
+  to go through one by one (the owner, 2026-11-18: "we need to discuss which are the ways
+  where we create new tabs just so that the window does not close"). Built on branch
+  newtab-always:
+  - *A workspace delete* gives a window that held only that workspace's tabs a new tab in
+    the first workspace, before they close, rather than closing it (and perhaps quitting).
+  - *The welcome, finished,* leaves a new tab where its own tab was, when it was the
+    window's only tab.
+  - *A restored window with no tabs* (a session saved by an older version) gets a new tab.
+  Everywhere else the last tab going closes the window: Close Tab, a tab's close, the
+  phone's back key, a move to another window, an extension's tabs.remove, and closing a
+  settings tab that was the window's last.
 - **The UX comparison's items 11 to 20** ([ux-comparison.md](ux-comparison.md#what-to-do-ranked)),
   to talk through with the owner one at a time (2026-11-16: "rest goes to todo and lets
   discuss those here one at a time"). The three faults and items 1 to 10 are being built.
