@@ -107,16 +107,17 @@ the page's own world, as other userscript managers run a script that asks for no
   which Import here and other userscript managers read back. Both go through our
   downloads.
 
-### The built-in sparks (planned)
+### The built-in sparks
 
 Three of the owner's sparks come with the app, to give a feel of what sparks do: **Video
-Downloader** (his `dhd`), **Limit Screen Time** and **Page Cleanup**. They are samples, not a
+downloader** (his `dhd`), **Screen time limit** and **Page cleanup**. They are samples, not a
 feature of ours:
 
 - **Added once, off.** A profile's first start on the version that has them, a new one or
   one updated to it, adds the three to its sparks, off, after any it has, while there is room
   for 25. A profile notes that it has had them, so they never come back once deleted, and an
-  update never changes them.
+  update never changes them (`AddBuiltins`, `core/sparks/builtin.go`; `sparks.json` keeps
+  the ids they were given as).
 - **Then they are the person's.** Each is an ordinary spark: on or off, Edit…, Export,
   Delete, and its switches for each site, as any other. Nothing marks it as ours.
 - **Their sources** live in `core/sparks/builtin/` as `.user.js` files, embedded in the app,
@@ -124,15 +125,17 @@ feature of ours:
   (`core/sparks/builtin/README.md`). They are the owner's originals cleaned up after a UX
   pass. The runtime still runs his originals unchanged, as the driver's sparks part checks.
 - **Each stands alone:** a floating overlay of plain HTML, drawn in a shadow root of its own,
-  with its own styles, light and dark by `prefers-color-scheme`, in colours like ours. Nothing
+  with its own styles, light and dark by `prefers-color-scheme`, in our None frame's tones and
+  our type, the same block in all three. Nothing
   comes from the shell or the runtime. The UX pass, for all three: sentence-case names, no
   emoji (small line icons drawn inline), no pulse, bounce or shake, what is tapped low on a
   phone and small floating panels on the desktop, Escape closing the innermost.
   - **Video downloader:** nothing until a video is found; then one round button bottom
     right, which opens "Videos on this page": a row per video, its type and size or "Video
-    1", its host, and Download, a link with `download` that our Downloads takes over, with
-    its own Pause, Cancel and Retry. A stream says "Streams can't be saved as one file".
-    "Hide on this page" is in the panel's menu.
+    1", its host, and Download, a plain link with `download`: the page's own download, which
+    our Downloads takes, with its Pause, Cancel and Retry. One from another site opens in a
+    new tab, as its row says. A stream says "Streams can't be saved as one file". "Hide on
+    this page" is in the panel's menu.
   - **Screen time limit:** every site, 30 minutes a day. "Daily limit reached", "Limit
     reached again" and "It's late", one message each; "More time…" leads to the sum, then
     "How much more?". The countdown shows only in the last 5 minutes.
@@ -141,22 +144,27 @@ feature of ours:
     Done ends it. "Show hidden parts (3)" when there are some.
 - **Their storage** is the site's own `localStorage`, as in his originals, so a site can read
   or clear what they keep there.
-- **The phone's welcome** gets a step after Make it yours, "Extras for any page": a switch
-  for each of the three, with its one line, all off. A switch turns that spark on. The desktop
-  shows them in Settings › Sparks only.
+- **The phone's welcome** has a step after Make it yours, "Extras for any page": a switch
+  for each of the three the profile still has, with its name and `@description`, all off
+  ([mock](screenshots/onboarding/mock-p3.png)). The page hears them in its snapshot and as
+  `sparks`, and a switch sends `setSparkOn {id, on}`. The desktop shows them in Settings ›
+  Sparks only.
 
-### Sparks sync (planned)
+### Sparks kept for sync
 
 A spark is an item sync can carry ([synckosh](https://github.com/sudiptadeb/synckosh)'s
 SPEC): collection `sparks`, one item per spark, its guid the spark's id, its data the
-source, whether it is on, and its place in the list. So each spark gets:
+source and whether it is on. So each spark has:
 
 - **an id made once and never changed**: a UUIDv7 for a new spark; one kept since 0.2.70
   keeps its eight hex digits, which are a guid too;
-- **`modified`**, Unix milliseconds, changed by an edit, a switch or a move;
-- **`place`**, a key that sorts as text, as bookmarks have (`core/bookmarks/place.go`), so
-  moving one spark changes that spark alone. `sparks.json` without places reads in its
-  order and gets them on its next save.
+- **`added` and `modified`**, Unix milliseconds: when it was kept, and when an edit or a
+  switch last changed it. The list's order is the order they were added in; a place key
+  comes when sparks can be moved.
+
+`sparks.json` is `{version: 2, sparks: [{id, on, added, modified}], builtins: [id]}`. The
+first version, a list of `{id, on}`, reads in its order, each added a millisecond after the
+one before, and is written as version 2 at the next change.
 
 A delete leaves no tombstone yet, as with bookmarks; sync adds what it needs when it is
 built. A spark's switches for each site stay with the site's settings.
