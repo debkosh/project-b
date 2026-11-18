@@ -2,7 +2,7 @@
 // a bookmark's mark, and the ways one or a folder of them opens. Each place shows only while
 // its pref is on, read from state.prefs where it is drawn.
 
-import { watch } from 'vue';
+import { reactive, watch } from 'vue';
 import { send, state } from '@/sdk/vue.js';
 import { closeBox } from './state.js';
 
@@ -35,6 +35,16 @@ export function openHere(url, overPage) {
   send(overPage || state.active === 0 ? { t: 'newTab', text: url } : { t: 'navigate', text: url });
   closeBox();
 }
+
+// openTab shows url's tab when one has it open, else opens it in a new tab.
+export function openTab(url) {
+  const tab = tabFor(url);
+  send(tab ? { t: 'activateTab', id: tab.id } : { t: 'newTab', text: url });
+}
+
+// What the sidebar's bookmarks show open, for as long as the window's shell runs: the
+// section, and the folders unfolded, every one folded at first.
+export const sidebarTree = reactive({ open: true, folders: new Set() });
 
 // openGroup opens urls as a new tab group named name, the first tab in front. Go has no one
 // message for it: the first opens on its own, and each of the rest joins it once Go has

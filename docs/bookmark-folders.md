@@ -36,6 +36,11 @@ How Standard shows them (`shell/src/apps/shell/standard/`, `bookmarks.js` for wh
   all as a group has no message of its own in Go: the first bookmark opens in a new tab,
   the rest join it with `newTab` and `groupWith`, which makes the group, and `editGroup`
   names it after the folder.
+- **Beside the tabs** (`SidebarBookmarks.vue`): under the tabs, half the sidebar at most and
+  scrolling on its own; a heading that folds it, and the tree, every folder folded at first.
+  What is unfolded lasts while the shell runs. A bookmark shows the tab that has its address
+  open, which marks it with a dot, else opens in a new tab. With the tabs on top there is no
+  sidebar, so none shows. A tab dragged into a folder is not built.
 
 ## What the person sees
 
@@ -121,4 +126,4 @@ save, and the page's messages), `shell/e2e/pages.cjs` (the panel, Cmd+D, the fol
 Move to…, a search, a folder deleted with what it holds, the panel's folder kept for the
 next), `shell/e2e/shells/mobile.cjs` (the sheet) and `shell/e2e/shells/standard-bookmarks.cjs`
 (Standard's places, each on and off with its pref: the new tab's tiles, a folder opened in
-place and opened as a group).
+place and opened as a group; the sidebar's tree, a bookmark showing its tab or opening one).

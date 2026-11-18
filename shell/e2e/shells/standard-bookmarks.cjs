@@ -1,7 +1,8 @@
 // The standard shell's bookmark places, on the mock engine (docs/bookmark-folders.md, "Where
 // bookmarks show"), each shown only while its pref is on: the new tab's tiles, under the
-// command box, with a folder that opens in place and opens all its bookmarks as a group.
-// Shot for the eye.
+// command box, with a folder that opens in place and opens all its bookmarks as a group; the
+// tree under the sidebar's tabs, whose bookmarks show their tabs or open new ones. Shot for
+// the eye.
 // Run: node shell/e2e/shells/standard-bookmarks.cjs   (from the repo root, after `npm run
 // build` in shell/)
 
@@ -9,7 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright');
 const lib = require('../lib.cjs');
-const { check, settle, until } = lib;
+const { check, fire, settle, until } = lib;
 
 const send = (m) => fetch(`${lib.base}/shell/send?window=1`, { method: 'POST', body: JSON.stringify(m) });
 const setPref = (name, on) => send({ t: 'setPref', name, value: String(on) });
@@ -94,6 +95,38 @@ fs.writeFileSync(path.join(lib.profile, 'bookmarks.json'), JSON.stringify({ vers
   check('with its pref off the new tab has no bookmarks', (await ui.locator('.new-tab-bookmarks').count()) === 0);
   await page.keyboard.press('Escape');
   await setPref('bookmarksNewTab', true);
+
+  // 2. The sidebar: a tree under the tabs, its folders folded.
+  const tree = ui.locator('.sidebar .bookmarks');
+  const treeRows = tree.locator('[role=treeitem] .title');
+  check('the sidebar has no bookmarks by default', (await tree.count()) === 0);
+  await setPref('bookmarksSidebar', true);
+  check('with its pref on, the top folder is a tree under the tabs, its folders folded', await until(async () => JSON.stringify(await treeRows.allInnerTexts()) === JSON.stringify(['Reading', 'Recipes', 'Travel', 'Bank', 'Shop'])), JSON.stringify(await treeRows.allInnerTexts()));
+  const row = (name) => tree.getByRole('treeitem', { name, exact: false });
+  check('a bookmark open in a tab has a dot', (await row('Bank').locator('.open').count()) === 1);
+  await row('Recipes').click();
+  check('a press on a folder unfolds it', await until(async () => (await treeRows.allInnerTexts()).join() === 'Reading,Recipes,Weeknight,Pasta with tomatoes,Lentil soup,Curry,Travel,Bank,Shop'), (await treeRows.allInnerTexts()).join());
+  const before = (await goTabs()).length;
+  await row('Pasta with tomatoes').click();
+  check('a bookmark open in a tab shows that tab', await until(async () => (await activeURL()) === 'https://recipes.example.com/pasta' && (await goTabs()).length === before));
+  check('and its row is the active one', await until(async () => (await row('Pasta with tomatoes').getAttribute('class')).includes('active')));
+  await row('Reading').click();
+  await row('News').click();
+  check('one not open opens in a new tab', await until(async () => (await activeURL()) === 'https://news.example.org/' && (await goTabs()).length === before + 1));
+  check('which gets its dot', await until(async () => (await row('News').locator('.open').count()) === 1));
+  await settle(page);
+  await page.screenshot({ path: path.join(lib.out, 'standard-bookmarks-sidebar.png') });
+  await row('Reading').click();
+  check('a second press folds it again', await until(async () => (await row('News').count()) === 0));
+  await tree.getByRole('button', { name: 'Bookmarks' }).click();
+  check('the heading folds the whole tree', await until(async () => (await treeRows.count()) === 0));
+  await tree.getByRole('button', { name: 'Bookmarks' }).click();
+  await fire('menu', 'view.tabsTop');
+  check('with the tabs on top there is no sidebar, nor its bookmarks', await until(async () => (await ui.locator('.strip').count()) === 1 && (await tree.count()) === 0));
+  await fire('menu', 'view.tabsSide');
+  check('back on the side, the tree is as it was', await until(async () => (await treeRows.allInnerTexts()).includes('Weeknight')));
+  await setPref('bookmarksSidebar', false);
+  check('with its pref off the sidebar has none', await until(async () => (await tree.count()) === 0));
 
   check('no errors in the pages', w.errors.length === 0, w.errors.join(' | '));
   await browser.close();

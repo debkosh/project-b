@@ -6,6 +6,7 @@ import { entries, groupLabel } from './groups.js';
 import { dragEnd, dragOver, dragStart, drop, dropClass } from './drag.js';
 import { openMenu } from './menu.js';
 import { openBox, view, waiting, workspaces } from './state.js';
+import SidebarBookmarks from './SidebarBookmarks.vue';
 import WorkspaceButton from './WorkspaceButton.vue';
 
 // The list, flat: the pins and a rule under them, then a group's header and its tabs,
@@ -97,6 +98,7 @@ const rows = computed(() =>
         </template>
       </div>
       <div class="rest"></div>
+      <SidebarBookmarks v-if="state.prefs.bookmarksSidebar" />
       <WorkspaceButton v-if="workspaces.length" class="foot" />
     </div>
   </nav>
