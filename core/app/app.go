@@ -603,12 +603,17 @@ func (a *App) ActivateRequested(tab engine.TabID) {
 	a.Window.Request(a.Tabs.WindowOf(tab), engine.WindowFront)
 }
 
-// Handover is the request of a copy started on this profile while this one runs: the
-// window used last comes to the front, and each URL opens in a new tab there.
+// Handover is the request of a copy started on this profile while this one runs, and the
+// links and files the system hands the app: the window used last comes to the front, and each
+// URL opens in a new tab there, but a project-b: link, which OpenAppLink takes.
 func (a *App) Handover(urls []string) {
 	timeline.Infof("a copy started on this profile handed over %d URLs", len(urls))
 	a.Window.Request(a.Tabs.Front(), engine.WindowFront)
 	for _, u := range urls {
+		if isAppLink(u) {
+			a.OpenAppLink(a.Tabs.Front(), u)
+			continue
+		}
 		a.Tabs.Open(u)
 	}
 }
