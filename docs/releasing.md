@@ -1,7 +1,7 @@
 # Releasing
 
-How a release is put together, tested and published, as the build and release session ran
-0.2.51 to 0.2.74. What `tools/release.sh` itself does is in
+How a release is put together, tested and published, as the release session runs it (role in
+[roles/release.md](../roles/release.md)). What `tools/release.sh` itself does is in
 [updates.md](updates.md#publishing).
 
 ## Putting a release together
@@ -21,7 +21,12 @@ in a worktree of its own (main's checkout stays on main, since the release reads
   `tools/test.sh mock`, `tools/package.sh` into a copy, and `tools/android-release.sh` for the
   APK. Push the branch so the owners can rebase onto it.
 - A release that waits on a fix stays open; new work goes into the next one instead, so the
-  test run isn't started over.
+  test run isn't started over. While the candidate hasn't been tested yet, a branch that
+  applies cleanly and adds no engine or Android risk can still join it.
+- Two handed-over branches that conflict: the first in is the base. Push `next-<version>` with
+  it and have the later owner rebase onto that and settle the conflict.
+- Check the diff and the commit messages for the names in CLAUDE.md's rule before building:
+  `git diff origin/main <tip> | grep -ciE '<names>'`, and the same over `git log --format=%B`.
 
 ## The release run
 
@@ -32,9 +37,16 @@ The cut-back run, Sudipta's standard from 0.2.64, on the packaged app and the AP
   extensions.
 - `PB_DMG=<dmg> tools/test.sh vm`: the VM. Run it after the app group, not beside it, since the
   app's windows can cover the VM's.
-- `PB_APK=<apk> EMULATORS='project-b-emu-37:5606' tools/test.sh android`, adding
-  `project-b-emu-29:5604` when the change is Android's.
-- `tools/test.sh basics` only when a daily-use feature lands.
+- `PB_APK=<apk> EMULATORS='project-b-emu-37:5606 project-b-emu-29:5604' tools/test.sh android`.
+  emu-29 (Android 10) has one known failure, the full-screen gap ((0, 0, 1080, 2274) on a
+  1080x2400 screen).
+- `tools/test.sh basics` (32 of 41 areas; it exits 1 by design) and the tester's
+  `quit_after_download.py` on the packaged app.
+
+The APK step starts only once the candidate build is done: `tools/android-release.sh` runs
+`npm run build`, which writes the same `shell/dist`, and clears `/work/release` before it takes
+its lock. The desktop run and the APK build then go side by side, and the Android run once the
+APK exists.
 
 Run each under amarit. A failure is either a test the change didn't follow (a selector or a
 label it removed) or the app; the test's owner fixes the first with a tools-only commit and only
@@ -48,10 +60,14 @@ the failed parts run again. Android 17's one known flake is the blank-shell star
       "env HOME=$HOME KEYKOSH_ROOT=$KEYKOSH_ROOT PATH=$PATH caffeinate -i \
        tools/release.sh > ~/PW_TOOLS/project-b-release/<v>.log 2>&1"
 
-Before it: fast-forward main to the release branch, bump `VERSION`, commit "Bump the version
+Before it: if main moved since the branch was cut, rebase the branch onto it. When the new
+commits only touch docs or tests, check `git diff <tested tip> HEAD -- . ':!<those paths>'` is
+empty and publish without a new run; when they touch the app, run the release again. Then
+fast-forward main to the release branch, bump `VERSION`, commit "Bump the version
 to <v>" and push. `tools/release.sh` takes `chromium/src/out/.pb-build.lock` for its whole
 run, waiting for any build that holds it, and releases the checkout amarit starts it in. Don't
-merge into main while it runs; it reads that checkout. It takes about four minutes.
+merge into main while it runs; it reads that checkout. It takes about four minutes. Wait for `RESULT=ok v<version>`: `tools/package.sh` prints a
+`RESULT=ok` of its own partway through.
 
 ## Shared machines
 
@@ -63,8 +79,10 @@ merge into main while it runs; it reads that checkout. It takes about four minut
   takes `/work/.android-build.lock`, so a second build waits, and `tools/android-release.sh`
   stops the VM only when no build holds that lock. A checkout older than those scripts doesn't
   take the lock.
-- **The desktop and the emulators** have no lock. One session at a time: the release session
-  hands out slots. Three drivers on one emulator made false failures more than once.
+- **The desktop, the VM, container pb and the emulators** have no lock. One session at a
+  time: the tester hands out slots. Ask once per release for all of them, and give each back
+  as its step ends (force-stop `dev.projectb.browser` on an emulator first), or at once,
+  unused, when the candidate fails. Three drivers on one emulator made false failures more than once.
 
 ## Traps
 
