@@ -2013,7 +2013,8 @@ def delete_workspace(app, workspace, close=True):
     row = json.dumps(f'[data-workspace="{workspace}"]')
     click = "(b=>b&&(b.click(),1))"
     app.cmd("key", "cmd+,")
-    in_settings(app, click + "([...document.querySelectorAll('.nav-item')].find(b=>b.textContent==='Workspaces'))")
+    # Workspaces' row opens its page on the one-page layout, and its section on the other.
+    in_settings(app, click + "(document.querySelector('[data-section=\"workspaces\"]'))")
     in_settings(app, click + f"(document.querySelector({row}+' .ui-row-menu > button'))")
     in_settings(app, click + "([...document.querySelectorAll('[role=menuitem]')].find(b=>b.textContent.trim()==='Delete…'))")
     in_settings(app, click + "([...document.querySelectorAll('dialog[open] button')].find(b=>b.textContent.trim()==='Delete'))")

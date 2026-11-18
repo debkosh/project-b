@@ -996,7 +996,8 @@ def workspace_delete_checks():
     actions = lambda name: f"document.querySelector('[aria-label=\"Actions for {name}\"]')"
     delete_item = "[...document.querySelectorAll('[role=menuitem]')].find(b=>b.textContent.trim()==='Delete…')"
     open_settings(js, win)
-    click("[...document.querySelectorAll('.nav-item')].find(b=>b.textContent==='Workspaces')")
+    # Workspaces' row, scrolled into sight, opens its page on the one-page layout.
+    click("(e=>(e&&e.scrollIntoView({block:'center'}),e))(document.querySelector('[data-section=\"workspaces\"]'))")
     click(actions("Work"))
     items = settings("[...document.querySelectorAll('[role=menuitem]')].map(b=>b.textContent.trim())") or []
     colour = settings(f"(e=>e&&getComputedStyle(e).color)({delete_item})") or ""
