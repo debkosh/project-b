@@ -14,7 +14,7 @@ requests (`Requested` off), with their own values.
 |---|---|---|
 | `ads` | `on`, `off` (the blocker on this site) | `on` |
 | `links` | `allow`, `block` (a page's own navigations to other sites) | `allow` |
-| `spark:<id>` | `on`, `off` (this spark on this site) | `on` |
+| `sparks` | `on`, `off` (the person's sparks, all of them, on this site) | `on` |
 
 A site is its origin, as for permissions. A value that is the kind's default is never kept,
 so `sites.json` holds only what the person changed. The ad blocker's default is one constant
@@ -25,19 +25,19 @@ in Go, `sites.AdsDefault`: on, the owner decided.
 The site-settings icon at the start of the top bar opens a panel there, over the page,
 instead of going to settings. On a phone it is a sheet from the bottom. It is drawn from
 Go's state: `state.openSites`, by origin, each site a web tab is open on, `{settings:
-[{kind, title, value, choices?}], sparks: [{id, name, on}]}`, with the tab's own
+[{kind, title, value, choices?}], sparks: [name]}`, with the tab's own
 `connection`, `connectionNote` and `adsBlocked`; every change is one message back,
 `setSiteSetting {origin, kind, value}`, as Site settings uses. Rows, top to bottom:
 
 - **The site:** its host and its connection (secure, or not secure and why).
 - **Ad blocker** (switch), with how many requests it blocked on this page.
+- **Sparks** (switch): whether sparks run on this site, all of them or none, with the names
+  of those that are on and match the page. Shown only when one does.
 - **Links to other sites:** Allow or Block (`Segmented`).
-- **Sparks on this site:** each spark that matches the page, with a switch for this site.
-  Shown only when one matches.
 - **Permissions:** each the site has set or asked for, Allowed or Blocked.
 - **Details**, which opens settings at the site (`sites/<origin>`), as the icon does today.
 
-A change that needs the page again (the blocker, a spark) says "Changes apply when the
+A change that needs the page again (the blocker, sparks) says "Changes apply when the
 page reloads" in the panel's foot. Escape or a press outside closes it. The panel is the
 shell's drawing, so each shell draws its own; Standard's is the design system's floating
 surface, 360px wide (`@/ui/SitePanel.vue`, which Fox shares); Mobile's is
@@ -60,9 +60,9 @@ the page's own world, as other userscript managers run a script that asks for no
   it: an import of the same pair is that spark again.
 - **Matching is Go's** (`core/sparks`). When a frame of a tab is about to commit a page,
   the engine asks Go which scripts go in it (`PB_EVENT_SPARKS_FOR`, 47: the tab, the
-  frame's address, whether it is the tab's own frame), and Go answers with the sparks that are on, match, aren't excluded, aren't off
-  for the tab's site, and aren't `@noframes` for a subframe: each its id, its source and
-  when it runs.
+  frame's address, whether it is the tab's own frame), and Go answers with the sparks that
+  are on, match, aren't excluded and aren't `@noframes` for a subframe, unless sparks are
+  off for the tab's site: each its id, its source and when it runs.
 - **The adapter runs** each in the page's own world, each in a function of its own so no two
   clash over a name, at document start or document end: the browser hands the frame its
   sparks over `project_b.mojom.Frame` before the commit, and the renderer runs each when
@@ -121,6 +121,9 @@ the page's own world, as other userscript managers run a script that asks for no
 
 - Trusted Types give way where a spark runs, so his downloader's HTML works on sites that
   want them: "yes".
+- One switch for sparks in the site panel, for all of them: "sparks also get quick switch
+  from the site setting popup... not individual sparks... any sparks enabled or disabled to
+  run on this page". Each spark's own switch for a site, which there was before, goes.
 
 ## Links to other sites
 
