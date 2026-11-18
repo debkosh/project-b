@@ -30,6 +30,8 @@ type Entry struct {
 type Manager struct {
 	st   *store.Store
 	post func(func())
+	// clearedAll runs in the transaction that clears all history (OnClearAll).
+	clearedAll func(tx *store.Tx, collections ...string) error
 }
 
 // New returns the history of the profile folder dir, kept in st. post runs a function back on
@@ -184,11 +186,18 @@ func (m *Manager) Count(since int64, answer func(int)) {
 // Clear takes out every page last visited at or after the Unix time since, or every page
 // for 0, as Delete does.
 func (m *Manager) Clear(since int64) {
+	cleared := m.clearedAll
 	m.st.Do(func(tx *store.Tx) error {
-		_, err := tx.Exec(`DELETE FROM history WHERE last_visit >= ?`, since)
-		return err
+		if _, err := tx.Exec(`DELETE FROM history WHERE last_visit >= ?`, since); err != nil || since != 0 || cleared == nil {
+			return err
+		}
+		return cleared(tx, Collection, TypedCollection)
 	})
 }
+
+// OnClearAll has f run in the transaction that clears all history, with the collections it
+// emptied: sync sends one delete of everything for each, not one per page (docs/sync.md).
+func (m *Manager) OnClearAll(f func(tx *store.Tx, collections ...string) error) { m.clearedAll = f }
 
 // Import adds pages another browser visited, with their titles, visits and last visit in
 // Unix seconds. One here already keeps the most visits of the two, so an import made again
