@@ -21,6 +21,7 @@ import (
 	"projectb/engine"
 	"projectb/mockengine"
 	"projectb/profiles"
+	"projectb/suggest"
 	"projectb/timeline"
 	"projectb/update"
 )
@@ -181,11 +182,15 @@ func New(dir string, o Options) *Rig {
 	}
 	r.A = app.Start(e, app.Config{ProfileDir: dir, Profiles: profiles.New(filepath.Join(dir, "root")),
 		BlockedHosts: o.Blocked, Update: update.Config{StateDir: filepath.Join(dir, "updates")}})
-	// History loads on a worker and posts back.
-	deadline := time.Now().Add(10 * time.Second)
-	for o.History > 0 && len(r.A.Suggest.Query(0, "site", nil)) == 0 && time.Now().Before(deadline) {
-		r.Drain()
-		time.Sleep(time.Millisecond)
+	// The first start reads history.jsonl into the store, on its worker, where a search
+	// asked after it waits for it.
+	if o.History > 0 {
+		read := false
+		r.A.Suggest.Query(0, "site", nil, func([]suggest.Row) { read = true })
+		for !read {
+			r.Drain()
+			time.Sleep(time.Millisecond)
+		}
 	}
 	r.Drain()
 	if o.Tabs > 0 {

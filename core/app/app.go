@@ -25,6 +25,7 @@ import (
 	"projectb/shells"
 	"projectb/sites"
 	"projectb/sparks"
+	"projectb/store"
 	"projectb/suggest"
 	"projectb/tabs"
 	"projectb/timeline"
@@ -97,6 +98,7 @@ type App struct {
 	choosingFolder engine.WindowID
 
 	Crash    *crash.Manager
+	Store    *store.Store
 	Tabs     *tabs.Manager
 	History  *history.Manager
 	Suggest  *suggest.Manager
@@ -176,7 +178,13 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Session = session.New(cfg.ProfileDir)
 	a.Policy = policy.New(cfg.BlockedHosts, e.OurPage)
 	e.SetBlockRules(a.Policy.BlockRules())
-	a.History = history.New(cfg.ProfileDir, e.Post)
+	st, err := store.Open(cfg.ProfileDir)
+	if err != nil {
+		// History and bookmarks have nowhere else to be.
+		panic(err)
+	}
+	a.Store = st
+	a.History = history.New(cfg.ProfileDir, st, e.Post)
 	a.Suggest = suggest.New(a.History)
 	a.Workspaces = workspaces.New(cfg.ProfileDir)
 	a.Pins = pins.New(cfg.ProfileDir)
@@ -367,7 +375,6 @@ func Start(e engine.Engine, cfg Config) *App {
 		start(a, e, cfg)
 	}
 
-	a.History.Load(nil)
 	// After a crash the last run's windows come back; addresses given at the start open
 	// beside them.
 	restored := a.restore(e, first)
@@ -501,7 +508,7 @@ func (a *App) NewWindowWith(tab engine.TabID) engine.WindowID {
 func (a *App) Stop() {
 	timeline.Infof("app: stopping; the windows and tabs are kept in %s", filepath.Join(a.dir, "session.json"))
 	a.Update.Stop()
-	a.History.Close()
+	a.Store.Close()
 	a.Session.Close()
 	a.Prefs.Close()
 	a.Crash.Stop()

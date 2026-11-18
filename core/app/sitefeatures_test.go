@@ -15,6 +15,14 @@ func (r *rig) main(f func()) {
 	<-done
 }
 
+// ask runs a question on the app's thread and waits for the answer it posts back, as
+// history's do.
+func ask[T any](r *rig, question func(answer func(T))) T {
+	got := make(chan T, 1)
+	r.main(func() { question(func(v T) { got <- v }) })
+	return <-got
+}
+
 // The shell hears each open site's settings, in the table's order, its own kinds with their
 // choices and defaults, and the sparks that run on its page; and the panel's change comes
 // back.

@@ -44,9 +44,13 @@ func (a *App) clearDataSettingsPart(e engine.Engine) settings.Part {
 				now := time.Now()
 				pages := map[string]int{}
 				for name := range clearRanges {
-					pages[name] = a.History.Count(clearSince(name, now))
+					a.History.Count(clearSince(name, now), func(n int) {
+						pages[name] = n
+						if len(pages) == len(clearRanges) {
+							a.Settings.Send(map[string]any{"t": "clearDataCounts", "pages": pages})
+						}
+					})
 				}
-				a.Settings.Send(map[string]any{"t": "clearDataCounts", "pages": pages})
 				return true
 			case "clearData":
 			default:

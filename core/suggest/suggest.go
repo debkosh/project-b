@@ -45,7 +45,8 @@ const (
 // Row is one suggestion: its kind, a title and a second line, and what choosing it needs:
 // an address, a tab or an action. Inline is set on the first row only, when it completes
 // what was typed: the rest of the address after the typed text, for the field to show
-// selected after the caret.
+// selected after the caret. Typed is set on every row of a list for typed text: choosing an
+// address from it counts the address as typed (docs/store.md).
 type Row struct {
 	Kind   string `json:"kind"`
 	Title  string `json:"title"`
@@ -54,6 +55,7 @@ type Row struct {
 	Tab    int64  `json:"tab,omitempty"`
 	Action string `json:"action,omitempty"`
 	Inline string `json:"inline,omitempty"`
+	Typed  bool   `json:"typed,omitempty"`
 }
 
 // Tab is an open tab as the list shows it: Detail is its second line, its workspace.
@@ -108,12 +110,14 @@ func New(hist *history.Manager) *Manager { return &Manager{hist: hist} }
 // SetSources gives the manager its other sources. Until then it has history alone.
 func (m *Manager) SetSources(s Sources) { m.src = s }
 
-// Query returns the list for what has been typed so far in window w, with rows of the
-// kinds named. With no kinds it is history alone, for a shell that draws nothing else.
-// With nothing typed it is what a new tab offers (first).
-func (m *Manager) Query(w engine.WindowID, text string, kinds []string) []Row {
+// Query answers, on the main thread, with the list for what has been typed so far in window
+// w, with rows of the kinds named. With no kinds it is history alone, for a shell that draws
+// nothing else. With nothing typed it is what a new tab offers (first). History answers on
+// its worker, so the list comes once it has.
+func (m *Manager) Query(w engine.WindowID, text string, kinds []string, answer func([]Row)) {
 	if len(kinds) == 0 {
-		return historyRows(m.hist.Search(text, legacy))
+		m.hist.Search(text, legacy, func(es []history.Entry) { answer(markTyped(historyRows(es))) })
+		return
 	}
 	want := map[string]bool{}
 	for _, k := range kinds {
@@ -121,9 +125,42 @@ func (m *Manager) Query(w engine.WindowID, text string, kinds []string) []Row {
 	}
 	q := strings.ToLower(strings.TrimSpace(text))
 	if q == "" {
-		return m.first(w, want)
+		if !want[KindHistory] {
+			answer(m.first(w, want, nil))
+			return
+		}
+		m.hist.TopSites(maxFirst, func(sites []history.Entry) { answer(m.first(w, want, sites)) })
+		return
 	}
+	if !want[KindHistory] {
+		answer(markTyped(m.rows(w, text, want, nil, nil)))
+		return
+	}
+	// A few more than shown, since a page open in a tab is listed as the tab. The completion
+	// looks for the text without its scheme and www., the list for the text itself: one
+	// search when they are the same.
+	m.hist.Search(text, maxHistory+maxTabs, func(list []history.Entry) {
+		c := completing(text)
+		if c == "" || c == q {
+			answer(markTyped(m.rows(w, text, want, list, list)))
+			return
+		}
+		m.hist.Search(c, maxHistory+maxTabs, func(found []history.Entry) { answer(markTyped(m.rows(w, text, want, list, found))) })
+	})
+}
 
+// markTyped marks the rows as a list for typed text.
+func markTyped(rows []Row) []Row {
+	for i := range rows {
+		rows[i].Typed = true
+	}
+	return rows
+}
+
+// rows is the list for text, typed in window w, from what history found for it, list, and
+// for its completion, found.
+func (m *Manager) rows(w engine.WindowID, text string, want map[string]bool, list, found []history.Entry) []Row {
+	q := strings.ToLower(strings.TrimSpace(text))
 	rows := make([]Row, 0, maxRows)
 	shown := map[string]bool{}
 	// First, what Enter does: a visited or bookmarked address the text completes, then the
@@ -133,7 +170,7 @@ func (m *Manager) Query(w engine.WindowID, text string, kinds []string) []Row {
 		open = m.src.Tabs()
 	}
 	completed := int64(0)
-	if c, ok := m.completion(text, want); ok {
+	if c, ok := m.completion(text, want, found); ok {
 		// A completed page open in a tab is that tab's row: Enter shows the tab rather than
 		// loading the page a second time.
 		for _, t := range open {
@@ -176,8 +213,7 @@ func (m *Manager) Query(w engine.WindowID, text string, kinds []string) []Row {
 	}
 	if want[KindHistory] {
 		n := 0
-		// A few more than shown, since a page open in a tab is listed as the tab.
-		for _, e := range m.hist.Search(text, maxHistory+maxTabs) {
+		for _, e := range list {
 			if n == maxHistory {
 				break
 			}
@@ -238,8 +274,9 @@ func (m *Manager) Query(w engine.WindowID, text string, kinds []string) []Row {
 // the window's other tabs the most recently used first, then the tabs closed lately, the
 // newest first, up to firstTabs of each; then the sites visited most, as history rows, and
 // the newest bookmarks. Asked for both, the sites keep up to firstSites of the rows left,
-// the bookmarks fill the rest, and the sites any rows the bookmarks leave.
-func (m *Manager) first(w engine.WindowID, want map[string]bool) []Row {
+// the bookmarks fill the rest, and the sites any rows the bookmarks leave. top is what
+// history.TopSites answered.
+func (m *Manager) first(w engine.WindowID, want map[string]bool, top []history.Entry) []Row {
 	var rows, sites, marks []Row
 	shown := map[string]bool{}
 	if want[KindTab] && m.src.Recent != nil {
@@ -268,7 +305,7 @@ func (m *Manager) first(w engine.WindowID, want map[string]bool) []Row {
 	}
 	room := maxFirst - len(rows)
 	if want[KindHistory] {
-		for _, e := range m.hist.TopSites(maxFirst) {
+		for _, e := range top {
 			if !shown[e.URL] {
 				sites = append(sites, Row{Kind: KindHistory, Title: orURL(e.Title, e.URL), Detail: host(e.URL), URL: e.URL})
 				shown[e.URL] = true
@@ -301,18 +338,16 @@ func (m *Manager) first(w engine.WindowID, want map[string]bool) []Row {
 // (wikip → wikipedia.org): the row for the host's own page when there is one, else an
 // address row for the host. Past the host, or with no address rows asked for, it completes
 // to the whole address. Query makes it the tab's row when the page is open in one. The text
-// may start with a scheme or www., which the completion keeps.
-func (m *Manager) completion(text string, want map[string]bool) (Row, bool) {
-	if text == "" || strings.ContainsAny(text, " \t") {
-		return Row{}, false
-	}
-	q := strings.ToLower(bare(text))
+// may start with a scheme or www., which the completion keeps. pages are what history
+// found for the text completing reads.
+func (m *Manager) completion(text string, want map[string]bool, pages []history.Entry) (Row, bool) {
+	q := completing(text)
 	if q == "" {
 		return Row{}, false
 	}
 	var found []Row
 	if want[KindHistory] {
-		for _, e := range m.hist.Search(q, maxHistory+maxTabs) {
+		for _, e := range pages {
 			if web(e.URL) && strings.HasPrefix(strings.ToLower(bare(e.URL)), q) {
 				found = append(found, Row{Kind: KindHistory, Title: orURL(e.Title, e.URL), Detail: host(e.URL), URL: e.URL})
 			}
@@ -355,6 +390,15 @@ func (m *Manager) completion(text string, want map[string]bool) (Row, bool) {
 	}
 	row.Inline = full[len(q):]
 	return row, true
+}
+
+// completing is what the completion looks for: the text lowercased, without its scheme and
+// www., or "" for none, as for text with a space.
+func completing(text string) string {
+	if text == "" || strings.ContainsAny(text, " \t") {
+		return ""
+	}
+	return strings.ToLower(bare(text))
 }
 
 // bare is an address without its scheme and www., in its own case.

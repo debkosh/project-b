@@ -226,7 +226,7 @@ func TestHistorySurvivesRestart(t *testing.T) {
 	r.visit("https://example.com/")
 	r.stop()
 
-	if _, err := os.Stat(filepath.Join(dir, "history.jsonl")); err != nil {
+	if _, err := os.Stat(filepath.Join(dir, "store.db")); err != nil {
 		t.Fatal(err)
 	}
 
