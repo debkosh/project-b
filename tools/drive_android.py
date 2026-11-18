@@ -5,7 +5,7 @@ Where to touch comes from the app itself: Android's accessibility tree, which co
 fills with the shell's controls by their labels, the settings page and the shown page,
 each with its place on the screen. Nothing here is a fixed position, so a change to the
 shell's layout needs no new numbers. A small local web server is the oracle for what the
-page received, and the app's own history file for what the managers kept. Results and
+page received, and the app's own store.db for what the managers kept. Results and
 screenshots go to build/android-drive-content.
 
     amarit start project-b-emu          # the emulator; docs/android.md says how it was made
@@ -20,6 +20,7 @@ import http.server
 import json
 import os
 import re
+import sqlite3
 import subprocess
 import sys
 import threading
@@ -421,20 +422,32 @@ def processes():
     return [tuple(line.split()) for line in adb("shell", "ps", "-A", "-o", "PID,NAME").splitlines() if len(line.split()) == 2]
 
 
-def history_file():
-    return adb("shell", "cat", "/data/data/%s/%s/history.jsonl" % (PACKAGE, PROFILE))
+def history():
+    """Go's history, each address with its title, from the app's store.db (docs/store.md): the
+    database and its WAL are copied off the device and read here."""
+    folder = os.path.join(OUT, "store")
+    os.makedirs(folder, exist_ok=True)
+    for suffix in ("", "-wal"):
+        with open(os.path.join(folder, "store.db" + suffix), "wb") as f:
+            subprocess.run(ADB + ["exec-out", "cat", "/data/data/%s/%s/store.db%s" % (PACKAGE, PROFILE, suffix)], stdout=f)
+    # The index of the WAL is made again from the copy.
+    if os.path.exists(os.path.join(folder, "store.db-shm")):
+        os.remove(os.path.join(folder, "store.db-shm"))
+    db = sqlite3.connect(os.path.join(folder, "store.db"))
+    try:
+        return dict(db.execute("SELECT url, title FROM history"))
+    except sqlite3.Error:
+        return {}
+    finally:
+        db.close()
 
 
 def visited(url):
-    return any(json.loads(line)["url"] == url for line in history_file().splitlines() if line.strip())
+    return url in history()
 
 
 def history_title(url):
-    title = None
-    for line in history_file().splitlines():
-        if line.strip() and json.loads(line)["url"] == url:
-            title = json.loads(line)["title"]
-    return title
+    return history().get(url)
 
 
 def children():
@@ -522,7 +535,7 @@ def browsing():
     # Type a URL.
     go(BASE + "/a")
     check("typing a URL loads it", asked("/a"))
-    check("the visit reached Go's history file", until(lambda: visited(url("/a"))))
+    check("the visit reached Go's history", until(lambda: visited(url("/a"))))
     shot("02-page-a")
 
     # A tap on the page belongs to the page.
@@ -1458,7 +1471,7 @@ def links_to_other_sites():
               and (not opens or find("shell", label=links_page.popups_word(blocked)) is not None),
               "alive=%s count=%s tabs=%s reached=%s" % (bool(alive), count is not None, tabs(), reached()))
     shot("41-links-blocked")
-    check("under Block, nothing of the other site went into history", other not in history_file())
+    check("under Block, nothing of the other site went into history", not any(other in u for u in history()))
     go("%s:%d/typed" % (other, PORT))
     check("under Block, an address typed still goes", until(lambda: "%s/typed" % other in seen, 15))
 
