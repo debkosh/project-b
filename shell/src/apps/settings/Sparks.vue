@@ -248,7 +248,7 @@ const where = (s) => (s.match || []).map((m) => (m === '<all_urls>' ? 'every sit
     </div>
     <input ref="picker" type="file" accept=".js,.zip" multiple hidden aria-label="Sparks to import" @change="imported" />
     <p class="intro">
-      Your own scripts for the pages they match, each run apart from the page's own.
+      Your own scripts for the pages they match, run in the page itself.
       {{ state.sparks.length ? `${state.sparks.length} of 25.` : 'No sparks yet.' }}
     </p>
     <div v-if="state.sparks.length" class="card">
