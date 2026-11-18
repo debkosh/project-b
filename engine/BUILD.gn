@@ -54,14 +54,12 @@ action("shell") {
 source_set("go_core_lib") {
   public_deps = [ ":go_core" ]
   # What the archive's cgo needs, which a c-archive leaves to the binary that links it:
-  # browserdata reads other browsers' databases with macOS's own SQLite, and their icons
-  # with AppKit.
+  # browserdata reads other browsers' databases with macOS's own SQLite.
   libs = [
     "$target_gen_dir/libcore.a",
     "sqlite3",
   ]
   frameworks = [
-    "AppKit.framework",
     "CoreFoundation.framework",
     "Security.framework",
   ]
@@ -364,6 +362,7 @@ source_set("browser") {
       "//extensions/browser:crx_installer",
       "//extensions/browser:webstore_installer",
       "//services/data_decoder/public/cpp",
+      "//services/network/public/cpp",
       "//extensions/common",
       "//extensions/common/api",
       "//extensions/common:mojom",

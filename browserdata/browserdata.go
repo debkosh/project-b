@@ -16,12 +16,10 @@ import (
 	"time"
 )
 
-// Browser is a browser whose profiles were found: its id, its name, the app it is, when
-// installed, and its profiles.
+// Browser is a browser whose profiles were found: its id, its name and its profiles.
 type Browser struct {
 	ID       string    `json:"id"`
 	Name     string    `json:"name"`
-	App      string    `json:"app,omitempty"`
 	Profiles []Profile `json:"profiles"`
 }
 
@@ -81,11 +79,11 @@ const (
 )
 
 // kind is a browser this package knows: where its data is under Application Support (Safari's
-// is in Library), its app's name, and the search engine it has until its person picks one.
+// is in Library), and the search engine it has until its person picks one.
 type kind struct {
-	id, name, data, app string
-	family              family
-	search              Search
+	id, name, data string
+	family         family
+	search         Search
 }
 
 var (
@@ -95,12 +93,12 @@ var (
 )
 
 var kinds = []kind{
-	{id: "chrome", name: "Chrome", data: "Google/Chrome", app: "Google Chrome.app", family: chromium, search: google},
-	{id: "edge", name: "Edge", data: "Microsoft Edge", app: "Microsoft Edge.app", family: chromium, search: bing},
-	{id: "brave", name: "Brave", data: "BraveSoftware/Brave-Browser", app: "Brave Browser.app", family: chromium, search: brave},
-	{id: "arc", name: "Arc", data: "Arc/User Data", app: "Arc.app", family: chromium, search: google},
-	{id: "firefox", name: "Firefox", data: "Firefox", app: "Firefox.app", family: firefox, search: google},
-	{id: "safari", name: "Safari", app: "Safari.app", family: safari, search: google},
+	{id: "chrome", name: "Chrome", data: "Google/Chrome", family: chromium, search: google},
+	{id: "edge", name: "Edge", data: "Microsoft Edge", family: chromium, search: bing},
+	{id: "brave", name: "Brave", data: "BraveSoftware/Brave-Browser", family: chromium, search: brave},
+	{id: "arc", name: "Arc", data: "Arc/User Data", family: chromium, search: google},
+	{id: "firefox", name: "Firefox", data: "Firefox", family: firefox, search: google},
+	{id: "safari", name: "Safari", family: safari, search: google},
 }
 
 func kindOf(id string) (kind, bool) {
@@ -113,8 +111,7 @@ func kindOf(id string) (kind, bool) {
 }
 
 // Find lists the browsers with a profile in the home folder home, each with its profiles,
-// in the order this package knows them. A browser's app is looked for in /Applications and
-// in home's Applications.
+// in the order this package knows them.
 func Find(home string) []Browser {
 	var out []Browser
 	for _, k := range kinds {
@@ -131,14 +128,7 @@ func Find(home string) []Browser {
 		if len(profiles) == 0 {
 			continue
 		}
-		b := Browser{ID: k.id, Name: k.name, Profiles: profiles}
-		for _, apps := range []string{"/Applications", filepath.Join(home, "Applications")} {
-			if p := filepath.Join(apps, k.app); exists(p) {
-				b.App = p
-				break
-			}
-		}
-		out = append(out, b)
+		out = append(out, Browser{ID: k.id, Name: k.name, Profiles: profiles})
 	}
 	return out
 }

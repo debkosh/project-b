@@ -8,6 +8,7 @@ package main
 #include "pb_extensions_abi.h"
 
 static inline void ext_install(const PBEngineCalls* c, const char* path) { c->extensions()->install(path); }
+static inline void ext_install_from_store(const PBEngineCalls* c, const char* id) { c->extensions()->install_from_store(id); }
 static inline void ext_answer_install_prompt(const PBEngineCalls* c, int64_t prompt, int accept) { c->extensions()->answer_install_prompt(prompt, accept); }
 static inline void ext_load_unpacked(const PBEngineCalls* c, const char* dir) { c->extensions()->load_unpacked(dir); }
 static inline void ext_uninstall(const PBEngineCalls* c, const char* id) { c->extensions()->uninstall(id); }
@@ -45,6 +46,12 @@ func (e *nativeEngine) InstallExtension(path string) {
 	c, free := cstr(path)
 	defer free()
 	C.ext_install(e.calls, c)
+}
+
+func (e *nativeEngine) InstallExtensionFromStore(id string) {
+	c, free := cstr(id)
+	defer free()
+	C.ext_install_from_store(e.calls, c)
 }
 
 func (e *nativeEngine) AnswerInstallPrompt(prompt int64, accept bool) {

@@ -5,7 +5,8 @@ It starts the mock store on the folder tools/fetch-extensions.sh and
 tools/pack-test-extension.py fill, starts the app with that store as its store, and
 installs our test extension and uBlock Origin Lite from the store's page, as the Chrome
 Web Store's page installs, in a profile whose Extensions flag is on. Then it loads the test extension unpacked, pins and unpins,
-opens the popup, and starts the app again. With the flag off, nothing of extensions
+opens the popup, and starts the app again. Settings' Import brings a test home's Chrome
+extensions over from the same store, by id. With the flag off, nothing of extensions
 runs, and the Flags section's switch and Relaunch turn it on. Last, in an app started as it ships, it
 installs uBlock Origin Lite from the real chromewebstore.google.com. It needs the network,
 for that and for the ad host uBlock Origin Lite is seen blocking. Run it from the repo root:
@@ -18,6 +19,7 @@ Results go to build/real/, as tools/drive_first_app.py's do.
 import http.server
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -383,6 +385,40 @@ def extension_checks():
     app.close()
 
 
+def import_checks():
+    """Settings' Import brings Chrome · Personal's extensions over from browserdata's test
+    home, which the app finds as its home ($HOME): the two the mock store has install by
+    their ids with no prompt, and those the store can't have are left out, each with why."""
+    home = tempfile.mkdtemp(prefix="pb-browsers-")
+    shutil.copytree(os.path.join(ROOT, "browserdata/testdata/home"), home, dirs_exist_ok=True)
+    real_home = os.environ["HOME"]
+    os.environ["HOME"] = home
+    try:
+        app = App(new_profile(), MOCK_STORE)
+    finally:
+        os.environ["HOME"] = real_home
+    open_settings(app)
+    settings_click_found(app, "[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Import')")
+    settings_wait(app, "!!document.querySelector('[aria-label=\"Import from Chrome · Personal\"]')", 30)
+    settings_click(app, '[aria-label="Import from Chrome · Personal"]')
+    box = "[...document.querySelectorAll('.ui-import-choice')].find(l=>l.textContent.includes(%s))"
+    settings_wait(app, "!!(" + box % "'Extensions'" + ")")
+    check("Import… offers Chrome · Personal's 2 extensions, unticked", settings(app, f"(()=>{{const l={box % repr('Extensions')};return l.textContent.includes('2')&&!l.querySelector('input').checked}})()"))
+    for name in ("Bookmarks", "History", "Search engine", "Extensions"):
+        settings_click_found(app, box % repr(name))
+    settings_click_found(app, "[...document.querySelectorAll('dialog button')].find(b=>b.textContent.trim()==='Import')")
+    brought = "document.querySelector('[aria-label=\"Brought over from Chrome · Personal\"]')?.innerText||''"
+    settings_wait(app, f"({brought}).includes('installed')", 90)
+    text = settings(app, brought)
+    check("both install from the store by id", "2 extensions installed" in text and TEST_NAME in text and UBOL_NAME in text, text)
+    check("those left out say why", "Old Notes left out" in text and "Manifest V2" in text and "my-extension left out" in text and "Other Store Helper left out" in text, text)
+    check("with no prompt over the page", app.js("!document.querySelector('.pbx-prompt')"))
+    app.cmd("capture", os.path.join(drive_first_app.OUT, "extensions-import.png"))
+    close_settings(app)
+    open_extension_settings(app)
+    check("the extension manager lists both", sorted(settings(app, INSTALLED)) == sorted([TEST_NAME, UBOL_NAME]), settings(app, INSTALLED))
+
+
 def workspace_checks():
     """Deleting Main, the profile's own storage, erases the sites' data there and leaves an
     extension's own: with it gone, the test extension's content script still runs in a page,
@@ -604,7 +640,7 @@ if __name__ == "__main__":
     MOCK_STORE = [f"--apps-gallery-url={STORE}", f"--apps-gallery-download-url={STORE}/download/%s"]
     try:
         # One part by name, such as "fonts_ninja", or all of them.
-        parts = [extension_checks, workspace_checks, internal_checks, flag_off_checks, fonts_ninja_checks, web_store_checks]
+        parts = [extension_checks, import_checks, workspace_checks, internal_checks, flag_off_checks, fonts_ninja_checks, web_store_checks]
         run_parts([p for p in parts if sys.argv[1:] in ([], [p.__name__.removesuffix("_checks")])])
     finally:
         store.terminate()

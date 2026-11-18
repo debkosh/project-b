@@ -136,6 +136,36 @@ process.on('exit', unlock);
   await w.page.close();
   await lib.stop();
 
+  // The Extensions flag on: Settings' Import offers Chrome · Personal's extensions,
+  // unticked, and installs them from the mock store by id, with no prompt; those the store
+  // can't have are left out, each with why.
+  flags({ extensions: 'on' });
+  await lib.start(['-use=standard', '-skip-welcome', `-browsers=${home}`, `-store=${path.join(lib.root, '.tools/extensions')}`]);
+  w = await lib.openWindow(browser, { viewport: { width: 1280, height: 800 } });
+  await lib.fire('menu', 'app.settings');
+  await w.settings.getByRole('button', { name: 'Import', exact: true }).click();
+  await w.settings.getByRole('button', { name: 'Import from Chrome · Personal' }).click();
+  const fromChrome = w.settings.getByRole('dialog', { name: 'Import from Chrome · Personal' });
+  const extBox = fromChrome.getByRole('checkbox', { name: /Extensions/ });
+  check('Import… offers its 2 extensions, unticked', await until(() => extBox.isVisible()) && (await fromChrome.getByText('Extensions').locator('..').innerText()).includes('2') && !(await extBox.isChecked()));
+  for (const name of [/Bookmarks/, /History/, /Search engine/]) await fromChrome.getByRole('checkbox', { name }).uncheck();
+  await extBox.check();
+  await fromChrome.getByRole('button', { name: 'Import', exact: true }).click();
+  const ext = w.settings.getByRole('list', { name: 'Brought over from Chrome · Personal' });
+  const extText = () => ext.innerText().catch(() => '');
+  check('its extensions install, and those left out say why', await until(async () => {
+    const t = await extText();
+    return t.includes('2 extensions installed') && t.includes('Old Notes left out') && t.includes('Manifest V2') && t.includes('my-extension left out') && t.includes('Other Store Helper left out');
+  }, 10000), await extText());
+  check('no install prompt was left over the page', (await w.settings.getByRole('dialog').count()) === 0);
+  check('imports.json keeps them', read('imports.json')?.['chrome/Default']?.extensions?.installed?.length === 2, JSON.stringify(read('imports.json')?.['chrome/Default']?.extensions));
+  await settle(w.page);
+  await w.page.screenshot({ path: path.join(lib.out, 'settings-extensions.png') });
+  check('the extensions import logged no errors', w.errors.length === 0, w.errors.join(' | '));
+  await w.page.close();
+  await lib.stop();
+  flags({ showWelcome: 'on' });
+
   // No browser in the home folder: no such step.
   await lib.start(['-use=standard']);
   w = await lib.openWindow(browser, { viewport: { width: 1280, height: 800 } });

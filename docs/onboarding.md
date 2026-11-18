@@ -2,8 +2,9 @@
 
 What a new user sees on the first start, and how they bring their things over from another
 browser. Item 13 of the [UX comparison](ux-comparison.md#what-to-do-ranked). Mocks approved
-2026-11-17. Slice 1 went out in 0.2.78, slice 2 in 0.2.80 and slice 3 in 0.2.81; **slice 4,
-Safari, is built** (see [Built](#built)).
+2026-11-17. Slice 1 went out in 0.2.78, slice 2 in 0.2.80, slice 3 in 0.2.81 and slice 4,
+Safari, in 0.2.82; **extensions, the browsers' logos and the counts of what came are built**
+(see [Built](#built)). How import works, to read aloud: [import.md](import.md).
 
 The owner, 2026-11-17: "if we are missing features then we add those but the onboarding needs to
 be nice and thats not shell its our internal page". So it is a page of ours in a tab, as Settings
@@ -42,9 +43,12 @@ And on the second mocks, 2026-11-17:
   welcome over the whole window as a first start does.
 - **The browsers' own logos** on the import rows, for easy recognition. The owner,
   2026-11-17: "jist default chrome firefox logos.. not profile specific", then yes to
-  shipping them: Chrome's and Firefox's logos ship with us (`shell/src/ui/logos`), the same
-  for every profile, whether or not the app is installed. Another browser's is read from
-  its installed app (`NSWorkspace`'s `iconForFile:`), or is its first letter.
+  shipping them; 2026-11-18, "ship all the imports" with Edge's, Brave's and Arc's too, and
+  "remove the machinery for installed app icons... just ship the icons". So all six ship
+  with us (`shell/src/ui/logos`), the same for every profile, and nothing reads an
+  installed app's icon. Edge's (MIT), Brave's (MPL 2) and Arc's (public domain) are the
+  SVGs Wikimedia Commons keeps; Safari's, which Commons doesn't have, is the app's own icon
+  at 128 pixels.
 - **Reading another browser's data is a module of its own,** "so that we can use it as a
   separate project too if required": see [The importer](#the-importer-a-module-of-its-own).
 - **Sync** is a discussion of its own, in its own session ("[project-b] sync"): many ways to
@@ -107,12 +111,12 @@ closes the app for the next start to open the welcome whole (see Built).
 | Download notifications asked on the phone's step | an engine call that asks for `POST_NOTIFICATIONS` and reports whether it was given. Today `Downloads.java` asks the moment a download starts, so Android's prompt covers the page; that ask goes, or stays only for a user who skipped setup | 1 |
 | A preview of each layout in the chosen colour and theme | drawn by the welcome page from the tones Go sends, so it follows every choice; no pictures to keep up | 1 |
 | Bookmark folders, built ([bookmark-folders.md](bookmark-folders.md)) | `core/bookmarks`, the Bookmarks page, the star's panel | 2 |
-| Importers: the Chromium family (Chrome, Edge, Brave, Arc), Firefox, with each browser's own icon: bookmarks, history and the search engine, built | `browserdata`, a module of its own (below); the welcome's Bring your things over; Settings' Import | 3 |
+| Importers: the Chromium family (Chrome, Edge, Brave, Arc), Firefox, with each browser's logo: bookmarks, history and the search engine, built | `browserdata`, a module of its own (below); the welcome's Bring your things over; Settings' Import | 3 |
 | History import, built | `core/history` | 3 |
 | Open tabs, as a workspace named after the browser | `browserdata`: Chromium's session files, Arc's sidebar, Firefox's session store | not yet given one |
 | Safari, behind Full Disk Access: bookmarks, history and the search engine, built | `browserdata` (`safari.go`, `plist.go`); the welcome's and Settings' Allow access | 4 |
 | Passwords | the store is the daily driver session's (`core/passwords`, `Import([]Login)`); the importers hand logins to it. Chromium's are sealed with the Keychain's "<Browser> Safe Storage" key, which macOS asks about once per browser; Firefox's with `key4.db` | 5 |
-| Extensions reinstalled by id | the Web Store install path, while their flag is on | 5 |
+| Extensions installed again by id, in Settings' Import while their flag is on, built | `browserdata` (`extensions.go`); the engine's `InstallExtensionFromStore`; the extension manager's queue | 5 |
 
 Each slice goes out through a release of its own.
 
@@ -225,7 +229,7 @@ Each slice goes out through a release of its own.
   rows, each with the icon macOS gave its stand-in app, and Bring over brought Chrome ·
   Personal's 4 bookmarks in 5 folders, 3 pages and Bing, as `imports.json` and `prefs.json`
   said. No real Chrome or Firefox was on hand, so their own files and logos are untried.
-- **Not yet:** open tabs, passwords (slice 5), extensions (slice 5) and Safari (slice 4).
+- **Not yet:** open tabs and passwords (slice 5). Safari came in slice 4, extensions after.
 
 **Slice 4, Safari** (branch `safari`):
 
@@ -275,8 +279,48 @@ Each slice goes out through a release of its own.
   Project B listed, off; turning that on (the password, then Later) brought the welcome
   back to the list by itself, Safari's row on with 13 bookmarks, 1 page and Google; Bring
   over brought 13 bookmarks in 2 folders under From Safari, the page and Google, as
-  `imports.json` said. Safari in `/Applications` is a link into the system's Cryptexes, so
-  `Icon` draws the app the link points to, without the alias arrow a link's icon has.
+  `imports.json` said.
+
+**Extensions, the logos, and what came** (branch `extensions-import`). The owner, 2026-11-18:
+"ship all the imports... the import should cleanly show how many it imported". Extensions
+come over in Settings' Import alone, while the Extensions flag is on, and with no prompt for
+each (the owner chose both, 2026-11-18).
+
+- **What a profile has:** `browserdata`'s `Profile.Extensions` reads `extensions.settings`
+  from a Chromium profile's Secure Preferences (and Preferences, where an older Chrome kept
+  it), with each one's manifest, kept there or in its folder under `Extensions/`, its name
+  looked up in its messages when the manifest says `__MSG_name__`. Only what its person
+  installed: what the browser installed by default, an administrator's policy or Chrome
+  itself put there is left out. Each says why it can't be installed again from the Chrome
+  Web Store by its id, if it can't: loaded from a folder, from another store (Edge's) or a
+  file, or Manifest V2. `Counts.Extensions` counts those that can. Firefox's and Safari's
+  have none a Chromium browser runs.
+- **Settings' Import** says "· 2 extensions" on a row while the flag is on, and its Import…
+  dialog has Extensions, unticked at first. The welcome doesn't offer them: at a first
+  start the flag is always off.
+- **Installing them:** Go hands each id to the extension manager, which installs one at a
+  time through the engine's `InstallExtensionFromStore` and answers its prompt itself, as
+  ticking Extensions was the yes. The engine fetches the package from the store's download
+  address with the profile's own network (`--apps-gallery-download-url`'s template, or the
+  Chrome Web Store's update address), then installs it as a package file is, held to the
+  id asked for and marked as the store's ([extensions.md](extensions.md#installing-the-store-is-a-website)).
+  An extension installed already isn't installed again. While they install the row says
+  "Installing 2 of 5 extensions…".
+- **What came,** in the welcome and in Settings alike, is a line per kind with its count:
+  bookmarks and folders, "1 Reading List item, in its own folder" for Safari's, pages of
+  history, the search engine, then extensions installed (by name), installed already,
+  each that didn't install and why, and each left out and why, quieter
+  ([shot](../build/e2e/settings-extensions.png)). `imports.json` keeps the same.
+- **The logos** are the six that ship (above); `browserdata.Icon` and its AppKit link are
+  gone, as is the rows' `icon`.
+- **Messages:** `import`'s `what` takes `extensions`; `importing` and `imported` carry
+  `installing`, each import's `{done, total}` by key.
+- **Testing it:** the test home's Chrome · Personal has eight extensions in its Secure
+  Preferences, of which two can come. `browserdata`
+  (`TestExtensionsAreThoseItsPersonInstalled`), `core/app`
+  (`TestExtensionsComeOverFromTheStore`, with the mock engine's store, `-store` on the
+  mock: a folder of `crx/<id>_<version>.crx`) and `shell/e2e/imports.cjs`, which installs
+  the test extension and uBlock Origin Lite from `.tools/extensions`.
 
 ## The importer, a module of its own
 
@@ -286,7 +330,7 @@ a repo of its own as it is. `core` uses it through a `replace` line in its `go.m
 reads; what to do with what it finds is the app's.
 
 - **What it finds:** `Find()` lists the browsers installed and each one's profiles, with the
-  folder, the profile's name, the icon's path and counts. Chrome, Edge, Brave and Arc share
+  folder, the profile's name and counts. Chrome, Edge, Brave and Arc share
   Chromium's files; Firefox has its own; Safari's need Full Disk Access, and a profile's
   `Locked` says so instead of failing.
 - **What it reads,** in plain types of its own: the bookmark tree with folders, history visits
@@ -301,17 +345,16 @@ reads; what to do with what it finds is the app's.
   as the browser may have it open.
 - **A command** `cmd/browserdata` prints what `Find` sees and dumps one profile as JSON, for
   checking an importer against a real browser: `go -C browserdata run ./cmd/browserdata`,
-  `-dump chrome/Default`, `-icon out.png chrome`.
+  `-dump chrome/Default`.
 
-Built in slice 3: `Find(home)`, a profile's `Bookmarks`, `History`, `Search` and `Counts`,
-and `Icon(app, px)`, which draws `NSWorkspace`'s `iconForFile:` as a PNG. Each database is
-read from a copy with its write-ahead log; Firefox's `search.json.mozlz4` is opened by a
-small LZ4 reader of its own. SQLite and the icon need macOS (`*_mac.go`, cgo); elsewhere
-they say `ErrNotOnThisSystem`, so the Android build compiles it and never calls it. Its
+Built in slice 3: `Find(home)`, a profile's `Bookmarks`, `History`, `Search` and `Counts`;
+`Extensions` came later. Each database is read from a copy with its write-ahead log;
+Firefox's `search.json.mozlz4` is opened by a small LZ4 reader of its own. SQLite needs
+macOS (`*_mac.go`, cgo); elsewhere it says `ErrNotOnThisSystem`, so the Android build compiles it and never calls it. Its
 README says the rest.
 
 How it builds into the app: `core/go.mod` replaces the module with `../browserdata`; the
-Mac binary links `sqlite3` and AppKit for it (`engine/BUILD.gn`, `go_core_lib`), as a
+Mac binary links `sqlite3` for it (`engine/BUILD.gn`, `go_core_lib`), as a
 c-archive leaves cgo's libraries to the binary; `engine/build_go.py` and the Android one
 list its files for ninja; the Android build copies it in with `core`
 (`tools/android-release.sh`, `tools/android-content-build.sh`); `tools/test.sh mock` runs

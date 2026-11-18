@@ -69,6 +69,8 @@ export const state = reactive({
   // since the page opened, by key (docs/onboarding.md).
   browsers: null,
   importing: [],
+  // How far each import's extensions are, by key: {done, total}.
+  installing: {},
   imported: {},
 });
 
@@ -104,6 +106,7 @@ export function connect() {
             siteConnections: m.siteConnections,
             browsers: m.browsers || null,
             importing: m.importing || [],
+            installing: m.installing || {},
             ready: true,
           });
           mark('settings.snapshot');
@@ -174,9 +177,11 @@ export function connect() {
           break;
         case 'importing':
           state.importing = m.importing;
+          state.installing = m.installing || {};
           break;
         case 'imported':
           state.importing = m.importing;
+          state.installing = m.installing || {};
           state.imported = { ...state.imported, [m.key]: m.imported };
           break;
       }

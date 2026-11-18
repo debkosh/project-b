@@ -79,6 +79,10 @@ type Extensions interface {
 	// InstallExtension installs a package file. The engine asks with an InstallPrompt
 	// first, and says how it ended with ExtensionInstallDone.
 	InstallExtension(path string)
+	// InstallExtensionFromStore installs an extension of the store by its id: the engine
+	// fetches its package from the store and installs it as InstallExtension does, with
+	// the same prompt. ExtensionInstallDone has the id as its Path.
+	InstallExtensionFromStore(id string)
 	AnswerInstallPrompt(prompt int64, accept bool)
 	// LoadUnpackedExtension loads an extension from its folder, with no prompt.
 	LoadUnpackedExtension(dir string)

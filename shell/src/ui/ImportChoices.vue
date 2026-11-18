@@ -2,8 +2,8 @@
 import { choicesOf } from './imports.js';
 
 // What a profile can bring over, a box each, with how many: the welcome's open row and
-// Settings' Import dialog. The model is the ids ticked.
-const props = defineProps({ profile: Object });
+// Settings' Import dialog, which offers extensions too. The model is the ids ticked.
+const props = defineProps({ profile: Object, extensions: Boolean });
 const model = defineModel({ type: Array, default: () => [] });
 
 function toggle(id, on) {
@@ -13,7 +13,7 @@ function toggle(id, on) {
 
 <template>
   <div class="ui-import-choices" role="group" :aria-label="`What to bring over from ${props.profile.title}`">
-    <label v-for="c in choicesOf(props.profile)" :key="c.id" class="ui-import-choice">
+    <label v-for="c in choicesOf(props.profile, { extensions: props.extensions })" :key="c.id" class="ui-import-choice">
       <input type="checkbox" :checked="model.includes(c.id)" @change="toggle(c.id, $event.target.checked)" />
       <span>{{ c.label }}</span>
       <span class="note">{{ c.note }}</span>

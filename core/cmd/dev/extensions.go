@@ -4,6 +4,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"io"
 	"net/http"
 	"strconv"
@@ -19,8 +20,13 @@ import (
 //	POST /mock/extensions/fire                         kind, extension, value: see
 //	                                                   mockengine.FireExtension
 //	GET  /mock/extensions                              the events fired and the open popup
+//
+// -store names the folder of packages the mock engine installs from by id, as the real one
+// fetches them from the store: .tools/extensions, as tools/pack-test-extension.py fills it.
 func init() {
+	store := flag.String("store", "", "the folder of the store's packages, crx/<id>_<version>.crx, that an install by id takes")
 	routes = append(routes, func(mux *http.ServeMux, fake *mockengine.Engine) {
+		fake.SetExtensionStore(*store)
 		mux.HandleFunc("POST /mock/extensions/call", func(w http.ResponseWriter, r *http.Request) {
 			args, _ := io.ReadAll(r.Body)
 			q := r.URL.Query()

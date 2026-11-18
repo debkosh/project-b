@@ -40,6 +40,10 @@ type extensionRuntime struct {
 	// popupOver is the window the popup is over.
 	popupOver engine.WindowID
 	choose    string
+
+	// store is the folder of the store's packages, crx/<id>_<version>.crx, as
+	// tools/fetch-extensions.sh and tools/pack-test-extension.py fill .tools/extensions.
+	store string
 }
 
 type install struct {
@@ -73,12 +77,31 @@ func (e *Engine) SetExtensionsListener(l engine.ExtensionsListener) {
 }
 
 // InstallExtension reads the package and asks before adding it, as the real engine does.
-func (e *Engine) InstallExtension(path string) {
-	ext, err := readPackage(path)
-	if err != nil {
-		e.extensions.listener.ExtensionInstallDone(engine.InstallResult{Path: path, Error: err.Error()})
+func (e *Engine) InstallExtension(path string) { e.installPackage(path, path) }
+
+// SetExtensionStore names the folder InstallExtensionFromStore takes packages from.
+func (e *Engine) SetExtensionStore(dir string) { e.extensions.store = dir }
+
+// InstallExtensionFromStore takes the store's newest package of the extension, as the real
+// engine fetches it, and installs it as a package file, reporting the id as its path.
+func (e *Engine) InstallExtensionFromStore(id string) {
+	files, _ := filepath.Glob(filepath.Join(e.extensions.store, "crx", id+"_*.crx"))
+	if e.extensions.store == "" || len(files) == 0 {
+		e.extensions.listener.ExtensionInstallDone(engine.InstallResult{Path: id, Error: "the store answered 404"})
 		return
 	}
+	slices.Sort(files)
+	e.installPackage(files[len(files)-1], id)
+}
+
+// installPackage installs the package file, its end reported with asked as its path.
+func (e *Engine) installPackage(file, asked string) {
+	ext, err := readPackage(file)
+	if err != nil {
+		e.extensions.listener.ExtensionInstallDone(engine.InstallResult{Path: asked, Error: err.Error()})
+		return
+	}
+	path := asked
 	e.extensions.nextID++
 	e.extensions.prompts[e.extensions.nextID] = install{path, ext}
 	e.extensions.listener.ExtensionInstallPrompt(engine.InstallPrompt{

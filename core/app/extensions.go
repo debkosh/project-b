@@ -51,6 +51,7 @@ func startExtensions(a *App, e engine.Engine, cfg Config) {
 	a.Shell.AddPart(extensionsShellPart(a, m, buttons))
 
 	m.OnChanged(func() { a.Settings.Send(map[string]any{"t": "extensions", "extensions": m.View()}) })
+	a.imports.store = importStore{m}
 	a.Settings.AddPart(extensionsSettingsPart(a, m))
 }
 
@@ -142,4 +143,22 @@ func extensionsSettingsPart(a *App, m *extensions.Manager) settings.Part {
 			return true
 		},
 	}
+}
+
+// importStore is the extension manager as Import brings extensions over through it.
+type importStore struct{ m *extensions.Manager }
+
+func (s importStore) Installed(id string) bool {
+	_, ok := s.m.Get(id)
+	return ok
+}
+
+func (s importStore) Install(id string, done func(failed string)) {
+	s.m.InstallFromStore(id, func(r engine.InstallResult) {
+		failed := r.Error
+		if r.Cancelled {
+			failed = "cancelled"
+		}
+		done(failed)
+	})
 }

@@ -32,6 +32,10 @@ class InstallVerifier;
 class SharedModuleService;
 }  // namespace extensions
 
+namespace network {
+class SimpleURLLoader;
+}
+
 namespace project_b {
 
 class ExtensionPopup;
@@ -62,6 +66,7 @@ class Extensions : public extensions::ExtensionRegistryObserver,
 
   // What Go asks, as engine.Extensions in core/engine/extensions.go describes.
   void Install(const base::FilePath& path);
+  void InstallFromStore(const std::string& id);
   void AnswerInstallPrompt(int64_t prompt, bool accept);
   void LoadUnpacked(const base::FilePath& dir);
   void Uninstall(const std::string& id);
@@ -127,6 +132,7 @@ class Extensions : public extensions::ExtensionRegistryObserver,
   };
 
   void LoadInstalled();
+  void OnStoreDownloaded(const std::string& id, base::FilePath file);
   void OnPackageInstalled(
       const base::FilePath& path,
       scoped_refptr<extensions::CrxInstaller> installer,
@@ -201,6 +207,8 @@ class Extensions : public extensions::ExtensionRegistryObserver,
   std::map<int64_t, base::OnceCallback<void(bool)>> prompts_;
   int64_t next_prompt_ = 1;
   std::unique_ptr<ExtensionPopup> popup_;
+  // The store installs fetching their package, by extension id.
+  std::map<std::string, std::unique_ptr<network::SimpleURLLoader>> downloads_;
   base::FilePath driver_choice_;
   base::WeakPtrFactory<Extensions> weak_factory_{this};
 };

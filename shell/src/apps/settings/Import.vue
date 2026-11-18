@@ -4,31 +4,33 @@ import AllowAccess from '@/ui/AllowAccess.vue';
 import BrowserIcon from '@/ui/BrowserIcon.vue';
 import Dialog from '@/ui/Dialog.vue';
 import ImportChoices from '@/ui/ImportChoices.vue';
-import { broughtLines, choicesOf, holds, lastLine } from '@/ui/imports.js';
+import { broughtLines, busyLine, choicesOf, holds, lastLine } from '@/ui/imports.js';
 import { send, state } from './state.js';
 
 // Import (docs/onboarding.md): each other browser's profile on this Mac, with its own logo,
 // what it holds or what it last brought over, and Import…, which asks what to bring in a
 // dialog: the welcome's choices, any time. Go looks again each time the section opens.
-// Safari's row is locked until the app has Full Disk Access: its Allow access… opens
+// While the Extensions flag is on, a profile's extensions can come too, unticked at first;
+// a row says how far their installs are. Safari's row is locked until the app has Full
+// Disk Access: its Allow access… opens
 // System Settings, and its dialog shows how to give it, then the choices once Go can read
 // Safari's files.
 onMounted(() => send({ t: 'findBrowsers' }));
 
 // The profile whose dialog is open, as the list has it now, and what is ticked in it: all
-// it holds, at first.
+// it holds but its extensions, at first.
 const askingKey = ref(null);
 const asking = computed(() => state.browsers?.find((b) => b.key === askingKey.value) || null);
 const what = ref([]);
 function ask(p) {
   askingKey.value = p.key;
-  what.value = choicesOf(p).map((c) => c.id);
+  what.value = ticked(p);
   if (p.locked) send({ t: 'openAccess' });
 }
 watch(
   () => asking.value?.locked,
   (locked, was) => {
-    if (was && !locked) what.value = choicesOf(asking.value).map((c) => c.id);
+    if (was && !locked) what.value = ticked(asking.value);
   },
 );
 function bring() {
@@ -36,7 +38,9 @@ function bring() {
   askingKey.value = null;
 }
 
-const line = (p) => (p.last ? lastLine(p.last, state.searchEngines) : holds(p));
+const choices = (p) => choicesOf(p, { extensions: true });
+const ticked = (p) => choices(p).map((c) => c.id).filter((id) => id !== 'extensions');
+const line = (p) => (p.last ? lastLine(p.last, state.searchEngines) : holds(p, { extensions: true }));
 </script>
 
 <template>
@@ -49,12 +53,12 @@ const line = (p) => (p.last ? lastLine(p.last, state.searchEngines) : holds(p));
     </div>
     <div v-else class="card">
       <div v-for="p in state.browsers" :key="p.key" class="row browser">
-        <BrowserIcon :browser="p.browser" :icon="p.icon" :title="p.title" />
+        <BrowserIcon :browser="p.browser" />
         <span class="label">
           <span class="name">{{ p.title }}</span>
-          <span class="secondary">{{ state.importing.includes(p.key) ? 'Bringing over…' : line(p) }}</span>
+          <span class="secondary">{{ state.importing.includes(p.key) ? busyLine(state.installing[p.key]) : line(p) }}</span>
           <ul v-if="state.imported[p.key]" class="brought" :aria-label="`Brought over from ${p.title}`">
-            <li v-for="(l, i) in broughtLines(state.imported[p.key], state.searchEngines)" :key="i" :class="{ problem: l.problem }">
+            <li v-for="(l, i) in broughtLines(state.imported[p.key], state.searchEngines)" :key="i" :class="{ problem: l.problem, left: l.left }">
               {{ l.text }}<span v-if="l.note" class="note"> · {{ l.note }}</span>
             </li>
           </ul>
@@ -64,7 +68,7 @@ const line = (p) => (p.last ? lastLine(p.last, state.searchEngines) : holds(p));
           v-else
           type="button"
           class="text-button"
-          :disabled="!choicesOf(p).length || state.importing.includes(p.key)"
+          :disabled="!choices(p).length || state.importing.includes(p.key)"
           :aria-label="`Import from ${p.title}`"
           @click="ask(p)"
         >Import…</button>
@@ -80,7 +84,7 @@ const line = (p) => (p.last ? lastLine(p.last, state.searchEngines) : holds(p));
     </Dialog>
     <Dialog v-else-if="asking" :title="`Import from ${asking.title}`" @close="askingKey = null">
       <p class="ui-dialog-part">Bookmarks go into a folder of their own. Nothing leaves this Mac.</p>
-      <ImportChoices v-model="what" class="ui-dialog-part" :profile="asking" />
+      <ImportChoices v-model="what" class="ui-dialog-part" :profile="asking" extensions />
       <template #buttons>
         <button type="button" class="text-button quiet" @click="askingKey = null">Cancel</button>
         <button type="button" class="text-button primary" :disabled="!what.length" @click="bring">Import</button>
@@ -114,5 +118,9 @@ const line = (p) => (p.last ? lastLine(p.last, state.searchEngines) : holds(p));
 
 .brought .problem {
   color: var(--danger);
+}
+
+.brought .left {
+  color: var(--muted);
 }
 </style>

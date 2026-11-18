@@ -53,6 +53,7 @@ decision, the buttons' state and the shell UI.
 | Go asks | What it does |
 |---|---|
 | `InstallExtension(path)` | Installs a package file. The engine asks first, with `ExtensionInstallPrompt`, and Go answers with `AnswerInstallPrompt`. `ExtensionInstallDone` says how it ended |
+| `InstallExtensionFromStore(id)` | Fetches the store's package of an extension by its id and installs it as `InstallExtension` does, with the same prompt. `ExtensionInstallDone` has the id as its path. Import uses it (below) |
 | `LoadUnpackedExtension(dir)` | Loads an extension from its folder, with no prompt |
 | `UninstallExtension`, `SetExtensionEnabled`, `Extensions()` | Remove, turn on or off, list |
 | `DispatchExtensionEvent(id, event, args)` | Fires an event such as `tabs.onUpdated` in one extension |
@@ -229,6 +230,19 @@ browser's version in the download address (Google answers nothing without it), a
 verifier that is never started, a shared module service, and the prefs of an enterprise
 banner the page asks about.
 
+**By id, for Import.** Settings' Import brings a Chromium profile's extensions over by
+installing each again from the store ([onboarding.md](onboarding.md#built)). With no
+store page open there is no `webstorePrivate` call to begin it, and `WebstoreInstaller`
+needs a web tab to download through, so `InstallExtensionFromStore` does the two halves
+itself (`extensions.cc`): it fetches the package with the profile's own network, from the
+same address `WebstoreInstaller` builds (the `--apps-gallery-download-url` template, or
+the store's update address with `response=redirect`), into a temporary file, and hands it
+to `CrxInstaller` held to the id asked for and marked as the store's, which deletes the
+file after. The installer asks with the usual prompt; the extension manager answers yes
+itself for an install Import queued, as the person ticked Extensions, and runs them one at
+a time. The mock engine takes the package from a folder instead (`-store`, laid out as
+`.tools/extensions` is).
+
 A local `.crx` (Install package… in the extension manager) goes straight to `CrxInstaller`, which
 asks with the same prompt, shown in the settings page. "Load unpacked" loads a folder, with no
 prompt, as Chrome's does. The extension manager has a link that opens the Chrome Web Store in a
@@ -340,7 +354,9 @@ The extension checks are part of two of the existing groups, unless `WITHOUT=ext
   sees the content script run and an ad host blocked, pins and unpins, opens the popup and
   clicks in it, has its service worker message the tab, restarts, turns one off and removes it. The popup's opening has the worker draw
   its icon on a canvas, and the button shows it; and it takes a picture of the tab.
-  Fonts Ninja, installed the same way, opens its panel on the page when its button is pressed. Then, started as it ships, it opens the
+  Fonts Ninja, installed the same way, opens its panel on the page when its button is pressed.
+  Its import part starts the app with browserdata's test home as its home and brings Chrome ·
+  Personal's extensions over through Settings' Import: both install by id with no prompt. Then, started as it ships, it opens the
   Chrome Web Store from the extension manager, installs uBlock Origin Lite with the real page's
   "Add to Chrome", and sees it block. It needs the network, and Google's page as it is today.
   Its first wait, 30 s for the store's tab, has run out once with the store answering; the

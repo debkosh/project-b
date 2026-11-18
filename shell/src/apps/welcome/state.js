@@ -34,6 +34,8 @@ export const state = reactive({
   // by key (docs/onboarding.md). A phone has none.
   browsers: null,
   importing: [],
+  // How far each import's extensions are, by key: {done, total}.
+  installing: {},
   imported: {},
 });
 
@@ -60,6 +62,7 @@ export function connect() {
             layouts: m.layouts || [],
             browsers: m.browsers || null,
             importing: m.importing || [],
+            installing: m.installing || {},
           });
           break;
         case 'prefs':
@@ -85,9 +88,11 @@ export function connect() {
           break;
         case 'importing':
           state.importing = m.importing;
+          state.installing = m.installing || {};
           break;
         case 'imported':
           state.importing = m.importing;
+          state.installing = m.installing || {};
           state.imported = { ...state.imported, [m.key]: m.imported };
           break;
       }

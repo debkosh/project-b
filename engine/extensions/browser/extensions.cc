@@ -18,11 +18,15 @@
 #include "base/logging.h"
 #include "base/memory/ptr_util.h"
 #include "base/no_destructor.h"
+#include "base/strings/escape.h"
+#include "base/strings/string_number_conversions.h"
 #include "base/strings/strcat.h"
+#include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/thread_pool.h"
 #include "base/version_info/version_info.h"
 #include "components/crx_file/crx_verifier.h"
+#include "components/crx_file/id_util.h"
 #include "components/custom_handlers/protocol_handler_registry.h"
 #include "components/enterprise/browser/promotion/promotion_prefs.h"
 #include "components/keyed_service/content/browser_context_dependency_manager.h"
@@ -61,12 +65,17 @@
 #include "extensions/common/api/extension_action/action_info.h"
 #include "extensions/common/extension.h"
 #include "extensions/common/extension_resource.h"
+#include "extensions/common/extension_urls.h"
 #include "extensions/common/file_util.h"
 #include "extensions/common/manifest.h"
 #include "extensions/common/manifest_handlers/description_info.h"
 #include "extensions/common/manifest_handlers/icons_handler.h"
 #include "extensions/common/manifest_handlers/options_page_info.h"
 #include "extensions/common/permissions/permissions_data.h"
+#include "extensions/common/switches.h"
+#include "net/base/net_errors.h"
+#include "net/http/http_response_headers.h"
+#include "net/traffic_annotation/network_traffic_annotation.h"
 #include "project_b/engine/browser/engine.h"
 #include "project_b/engine/browser/hooks.h"
 #include "project_b/engine/browser/page_tab.h"
@@ -74,6 +83,9 @@
 #include "project_b/engine/extensions/browser/extension_system.h"
 #include "project_b/engine/extensions/browser/extensions_browser_client.h"
 #include "project_b/engine/extensions/browser/popup.h"
+#include "services/network/public/cpp/resource_request.h"
+#include "services/network/public/cpp/simple_url_loader.h"
+#include "services/network/public/mojom/url_response_head.mojom.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "ui/gfx/codec/png_codec.h"
 
@@ -363,6 +375,93 @@ void Extensions::Install(const base::FilePath& path) {
                      weak_factory_.GetWeakPtr(), path, installer));
   installer->InstallCrxFile(
       extensions::CRXFileInfo(path, crx_file::VerifierFormat::CRX3));
+}
+
+// The store's address for an extension's package, as WebstoreInstaller makes it for a
+// store's page: the template --apps-gallery-download-url names, or the Chrome Web Store's
+// update address, which redirects to the package.
+GURL StoreDownloadURL(const std::string& id) {
+  const base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+  if (command_line->HasSwitch(extensions::switches::kAppsGalleryDownloadURL)) {
+    std::string url = command_line->GetSwitchValueASCII(
+        extensions::switches::kAppsGalleryDownloadURL);
+    base::ReplaceFirstSubstringAfterOffset(&url, 0, "%s", id);
+    return GURL(url);
+  }
+  return GURL(base::StrCat(
+      {extension_urls::GetWebstoreUpdateUrl().spec(), "?response=redirect&",
+       update_client::UpdateQueryParams::Get(
+           update_client::UpdateQueryParams::CRX),
+       "&x=",
+       base::EscapeQueryParamValue(
+           base::StrCat({"id=", id, "&installsource=ondemand&uc"}), true)}));
+}
+
+// An extension of the store, by its id, as Settings' Import brings one over from another
+// browser: the package is fetched with the profile's own network, then installed as a
+// package file is, held to the id asked for, and marked as the store's. The installer asks
+// with the same prompt, which Go answers.
+void Extensions::InstallFromStore(const std::string& id) {
+  if (!crx_file::id_util::IdIsValid(id) || downloads_.count(id)) {
+    InstallDone(base::FilePath(id), std::string(),
+                "not an extension id, or already being installed", false);
+    return;
+  }
+  net::NetworkTrafficAnnotationTag annotation =
+      net::DefineNetworkTrafficAnnotation("project_b_store_install", R"(
+        semantics {
+          sender: "Project B extension import"
+          description: "Fetches an extension's package from the store by its id."
+          trigger: "The user brings extensions over from another browser."
+          data: "The extension's id and the browser's version."
+          destination: GOOGLE_OWNED_SERVICE
+        }
+        policy {
+          cookies_allowed: NO
+          setting: "Only when the user brings extensions over."
+        })");
+  auto request = std::make_unique<network::ResourceRequest>();
+  request->url = StoreDownloadURL(id);
+  request->credentials_mode = network::mojom::CredentialsMode::kOmit;
+  auto loader = network::SimpleURLLoader::Create(std::move(request), annotation);
+  network::SimpleURLLoader* raw = loader.get();
+  downloads_[id] = std::move(loader);
+  raw->DownloadToTempFile(
+      browser_context_->GetDefaultStoragePartition()
+          ->GetURLLoaderFactoryForBrowserProcess()
+          .get(),
+      base::BindOnce(&Extensions::OnStoreDownloaded,
+                     weak_factory_.GetWeakPtr(), id));
+}
+
+void Extensions::OnStoreDownloaded(const std::string& id, base::FilePath file) {
+  auto it = downloads_.find(id);
+  std::unique_ptr<network::SimpleURLLoader> loader = std::move(it->second);
+  downloads_.erase(it);
+  if (file.empty()) {
+    int code = loader->ResponseInfo() && loader->ResponseInfo()->headers
+                   ? loader->ResponseInfo()->headers->response_code()
+                   : 0;
+    InstallDone(base::FilePath(id), std::string(),
+                code ? base::StrCat({"the store answered ",
+                                     base::NumberToString(code)})
+                     : base::StrCat({"the store couldn't be reached: ",
+                                     net::ErrorToShortString(loader->NetError())}),
+                false);
+    return;
+  }
+  scoped_refptr<extensions::CrxInstaller> installer =
+      extensions::CrxInstaller::Create(browser_context_,
+                                       std::make_unique<PromptClient>());
+  installer->set_expected_id(id);
+  installer->set_is_gallery_install(true);
+  installer->set_delete_source(true);
+  installer->set_install_immediately(true);
+  installer->AddInstallerCallback(base::BindOnce(
+      &Extensions::OnPackageInstalled, weak_factory_.GetWeakPtr(),
+      base::FilePath(id), installer));
+  installer->InstallCrxFile(
+      extensions::CRXFileInfo(file, crx_file::VerifierFormat::CRX3));
 }
 
 void Extensions::OnPackageInstalled(
@@ -794,6 +893,8 @@ const PBExtensionCalls* Extensions::Calls() {
       .choose_path = [](int64_t window, int32_t kind) {
         Get()->ChoosePath(window, kind);
       },
+      .install_from_store =
+          [](const char* id) { Get()->InstallFromStore(id); },
   };
   return &calls;
 }

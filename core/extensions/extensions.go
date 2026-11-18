@@ -60,6 +60,16 @@ type Manager struct {
 	activeTab func() engine.TabID
 	onChanged []func()
 	onClicked func(id string)
+
+	// queue is the extensions an import installs from the store, one at a time, the
+	// first being installed; each ends with done.
+	queue []storeInstall
+}
+
+// storeInstall is an extension an import asked for, and what to call when it ends.
+type storeInstall struct {
+	id   string
+	done func(engine.InstallResult)
 }
 
 // New returns a manager with what the profile in dir saved. activeTab says which tab
@@ -193,10 +203,25 @@ func (m *Manager) HandlePathChosen(path string) {
 func (m *Manager) Prompt() *engine.InstallPrompt { return m.prompt }
 
 // HandlePrompt shows the engine's question: in the shell, over the page of a store that
-// asked, and in the settings page, where a package or a folder is picked.
+// asked, and in the settings page, where a package or a folder is picked. An install an
+// import asked for was answered when the person ticked Extensions, so it goes on.
 func (m *Manager) HandlePrompt(p engine.InstallPrompt) {
+	if len(m.queue) > 0 && m.queue[0].id == p.Extension {
+		m.eng.AnswerInstallPrompt(p.ID, true)
+		return
+	}
 	m.prompt = &p
 	m.changed()
+}
+
+// InstallFromStore installs the extension id from the store, once those asked for before
+// it have ended, with no prompt: the person asked for it by bringing it over from another
+// browser, which had it. done says how it ended.
+func (m *Manager) InstallFromStore(id string, done func(engine.InstallResult)) {
+	m.queue = append(m.queue, storeInstall{id, done})
+	if len(m.queue) == 1 {
+		m.eng.InstallExtensionFromStore(id)
+	}
 }
 
 // AnswerPrompt gives the engine the user's answer.
@@ -219,8 +244,18 @@ func (m *Manager) DismissError() {
 	m.changed()
 }
 
-// HandleInstallDone keeps the reason when an install or a load failed.
+// HandleInstallDone keeps the reason when an install or a load failed. An import's
+// install tells the import instead, and the next one starts.
 func (m *Manager) HandleInstallDone(r engine.InstallResult) {
+	if len(m.queue) > 0 && m.queue[0].id == r.Path {
+		done := m.queue[0].done
+		m.queue = m.queue[1:]
+		if len(m.queue) > 0 {
+			m.eng.InstallExtensionFromStore(m.queue[0].id)
+		}
+		done(r)
+		return
+	}
 	m.failure = r.Error
 	m.changed()
 }

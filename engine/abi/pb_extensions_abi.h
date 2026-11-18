@@ -55,6 +55,10 @@ typedef struct PBExtensionCalls {
   void (*close_popup)(void);
   // On a window.
   void (*choose_path)(int64_t window, int32_t kind);  // PBPathKind
+  // An extension of the store, by its id: its package is fetched from the store and
+  // installed as install's is, with the same prompt. The install's end is reported with
+  // the id as its path.
+  void (*install_from_store)(const char* id);
 } PBExtensionCalls;
 
 #endif  // PROJECT_B_ENGINE_ABI_PB_EXTENSIONS_ABI_H_

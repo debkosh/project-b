@@ -34,11 +34,14 @@ func (p Profile) Locked() bool {
 	return errors.Is(err, fs.ErrPermission)
 }
 
+// ReadingList is the title of the top folder that holds Safari's Reading List.
+const ReadingList = "Reading List"
+
 // safariLists names the top folders of Safari's bookmarks as Safari shows them.
 var safariLists = map[string]string{
 	"BookmarksBar":          "Favorites",
 	"BookmarksMenu":         "Bookmarks Menu",
-	"com.apple.ReadingList": "Reading List",
+	"com.apple.ReadingList": ReadingList,
 }
 
 func safariBookmarks(dir string) ([]Bookmark, error) {

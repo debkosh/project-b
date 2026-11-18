@@ -4,7 +4,7 @@ import { paintTheme } from '@/theme.js';
 import AllowAccess from '@/ui/AllowAccess.vue';
 import BrowserIcon from '@/ui/BrowserIcon.vue';
 import ImportChoices from '@/ui/ImportChoices.vue';
-import { broughtLines, choicesOf, holds } from '@/ui/imports.js';
+import { broughtLines, busyLine, choicesOf, holds } from '@/ui/imports.js';
 import Segmented from '@/ui/Segmented.vue';
 import Swatches from '@/ui/Swatches.vue';
 import { framePresets } from '@/ui/colours.js';
@@ -145,7 +145,7 @@ onMounted(() => heading.value?.focus());
             <div v-if="state.browsers === null" class="row"><span class="state">Looking for other browsers…</span></div>
             <div v-for="p in state.browsers || []" :key="p.key" class="browser">
               <label class="row">
-                <BrowserIcon :browser="p.browser" :icon="p.icon" :title="p.title" />
+                <BrowserIcon :browser="p.browser" />
                 <span class="what">
                   <span class="label">{{ p.title }}</span>
                   <span class="state">{{ holds(p) }}</span>
@@ -173,15 +173,15 @@ onMounted(() => heading.value?.focus());
           <div class="card">
             <div v-for="p in brought" :key="p.key" class="browser">
               <div class="row">
-                <BrowserIcon :browser="p.browser" :icon="p.icon" :title="p.title" />
+                <BrowserIcon :browser="p.browser" />
                 <span class="what">
                   <span class="label">{{ p.title }}</span>
-                  <span v-if="!state.imported[p.key]" class="state">Bringing over…</span>
+                  <span v-if="!state.imported[p.key]" class="state">{{ busyLine(state.installing[p.key]) }}</span>
                 </span>
               </div>
               <ul v-if="state.imported[p.key]" class="lines" :aria-label="`Brought over from ${p.title}`">
-                <li v-for="(l, i) in broughtLines(state.imported[p.key], state.searchEngines)" :key="i" :class="{ problem: l.problem }">
-                  <svg v-if="!l.problem" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8.5l2.5 2.5L12 5.5" /></svg>
+                <li v-for="(l, i) in broughtLines(state.imported[p.key], state.searchEngines)" :key="i" :class="{ problem: l.problem, left: l.left }">
+                  <svg v-if="!l.problem && !l.left" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8.5l2.5 2.5L12 5.5" /></svg>
                   <span>{{ l.text }}</span>
                   <span v-if="l.note" class="state">{{ l.note }}</span>
                 </li>
@@ -712,6 +712,12 @@ h1 {
 
 .lines .problem {
   color: var(--danger);
+}
+
+/* Left out, as an extension the store hasn't: no check, and quieter. */
+.lines .left {
+  padding-left: 24px;
+  color: var(--muted);
 }
 
 /* A phone: one column, the way through at the thumb. */
