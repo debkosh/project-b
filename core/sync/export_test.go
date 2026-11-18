@@ -68,3 +68,7 @@ func (m *Manager) await(f func() error) error {
 	m.ops <- func() { got <- f() }
 	return <-got
 }
+
+// Idle returns once the sync goroutine has done what was asked of it before: at start, read
+// what sync is on with.
+func (m *Manager) Idle() { m.await(func() error { return nil }) }

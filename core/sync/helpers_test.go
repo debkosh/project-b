@@ -142,6 +142,7 @@ func (p *profile) startSync(s *testServer) *sync.Manager {
 	defer sync.SetHTTPClient(s.ts.Client())()
 	p.history.OnClearAll(sync.ClearedAll)
 	p.sync = sync.New(p.st, p.keys, p.post, p.maps...)
+	p.sync.Idle()
 	p.settle()
 	return p.sync
 }
