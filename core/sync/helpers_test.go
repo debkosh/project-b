@@ -33,6 +33,8 @@ type testServer struct {
 	n    int
 	// refused are the tokens the server signs out.
 	refused map[string]bool
+	// held, while it is open, holds every request.
+	held chan struct{}
 }
 
 func newServer(t *testing.T) *testServer {
@@ -45,8 +47,11 @@ func newServer(t *testing.T) *testServer {
 			r.Header.Set("Authorization", "Bearer "+token)
 		}
 		s.mu.Lock()
-		srv := s.srv
+		srv, held := s.srv, s.held
 		s.mu.Unlock()
+		if held != nil {
+			<-held
+		}
 		srv.ServeHTTP(w, r)
 	})))
 	t.Cleanup(s.ts.Close)
@@ -72,6 +77,25 @@ func (s *testServer) reset() {
 		}
 		return "bucket-" + token, nil
 	}))
+}
+
+// hold holds every request until the release it returns, or the test's end.
+func (s *testServer) hold() (release func()) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	held := make(chan struct{})
+	s.held = held
+	var once gosync.Once
+	release = func() {
+		once.Do(func() {
+			s.mu.Lock()
+			s.held = nil
+			s.mu.Unlock()
+			close(held)
+		})
+	}
+	s.t.Cleanup(release)
+	return release
 }
 
 // refuse signs a token out.
