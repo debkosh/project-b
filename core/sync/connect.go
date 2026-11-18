@@ -97,7 +97,8 @@ func (m *Manager) Inspect(address, token string, answer func(isNew bool, err err
 // Connect turns sync on with the bucket: it makes the bucket's sync key when the bucket is
 // empty, with a copy sealed under the passphrase, or opens the copy with it when the bucket
 // holds items. A wrong passphrase is ErrPassphrase and changes nothing. It keeps the address,
-// the token and the sync key sealed, hands every row to synckosh once, and runs.
+// the token and the sync key sealed, and hands every row to synckosh once; done hears once it
+// is on, and the first run follows, which the status shows.
 func (m *Manager) Connect(address, token, passphrase string, done func(error)) {
 	address, token, err := check(address, token)
 	if err == nil && passphrase == "" {
@@ -107,29 +108,34 @@ func (m *Manager) Connect(address, token, passphrase string, done func(error)) {
 		done(err)
 		return
 	}
-	m.do(done, func() error {
-		if m.conn != nil {
-			return errors.New("sync: on already; disconnect first")
+	m.ops <- func() {
+		err := m.connect(address, token, passphrase)
+		m.post(func() { done(err) })
+		if err == nil {
+			m.run()
 		}
-		if err := m.keys.Check(); err != nil {
-			return lockedError(err)
-		}
-		ctx, cancel := context.WithTimeout(m.ctx, time.Minute)
-		defer cancel()
-		c := &client.Client{URL: address, Token: token, HTTP: m.http}
-		key, err := client.Create(ctx, c, passphrase, passphraseLabel)
-		if errors.Is(err, client.ErrHasKey) {
-			key, err = client.Join(ctx, c, passphrase)
-		}
-		if err != nil {
-			return err
-		}
-		if err := m.begin(address, token, key); err != nil {
-			return err
-		}
-		m.run()
-		return nil
-	})
+	}
+}
+
+// connect is Connect's work, on the sync goroutine, up to its first run.
+func (m *Manager) connect(address, token, passphrase string) error {
+	if m.conn != nil {
+		return errors.New("sync: on already; disconnect first")
+	}
+	if err := m.keys.Check(); err != nil {
+		return lockedError(err)
+	}
+	ctx, cancel := context.WithTimeout(m.ctx, time.Minute)
+	defer cancel()
+	c := &client.Client{URL: address, Token: token, HTTP: m.http}
+	key, err := client.Create(ctx, c, passphrase, passphraseLabel)
+	if errors.Is(err, client.ErrHasKey) {
+		key, err = client.Join(ctx, c, passphrase)
+	}
+	if err != nil {
+		return err
+	}
+	return m.begin(address, token, key)
 }
 
 // ChangePassphrase puts a copy of the sync key sealed under passphrase and deletes the
