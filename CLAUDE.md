@@ -26,9 +26,7 @@ wrong.
 
 ## Every session
 
-- Public repo. Never write his employer's company, product or font names, or a work email (the
-  list is in his global instructions): not in text, pictures, test data or commits. Grep before
-  every push, and look at pictures. No AI attribution. Commit as sudiptadeb.
+- Public repo, MIT. No AI attribution. Commit as sudiptadeb.
 - Work in a worktree of your own; never remove another session's worktree, branch or unit.
 - Write risky commands in guarded form (`rm -f "${L:?}"/*`); a permission dialog stalls you
   while he is away.

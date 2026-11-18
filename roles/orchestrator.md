@@ -69,9 +69,7 @@ his exact reported case failing, hold it.
 
 ## Repo rules
 
-- Public repo, MIT. Never write Sudipta's employer's company, product or font names, or a work
-  email (the exact list is in his global instructions): not in text, pictures, test data or
-  commit messages. Drawn-in names in images need a look, because grep misses them.
+- Public repo, MIT.
 - No AI attribution in commits, PRs or files. Commit as sudiptadeb.
 - Docs live on main (`docs/`, `docs/todo.md` per area). A feature's design lives in its own
   doc before the code.
