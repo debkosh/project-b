@@ -89,7 +89,7 @@ if (sectionsLayout) fs.writeFileSync(path.join(profile, 'prefs.json'), JSON.stri
 fs.writeFileSync(path.join(profilesRoot, 'profiles.json'), JSON.stringify({ profiles: [{ id: profileID, name: 'Personal', color: '#4f9e9e', template: 'Personal' }] }));
 const listed = () => JSON.parse(fs.readFileSync(path.join(profilesRoot, 'profiles.json'), 'utf8')).profiles[0];
 const bin = path.join(out, 'dev');
-execFileSync('go', ['build', '-o', bin, './cmd/dev'], { cwd: path.join(root, 'core'), stdio: 'inherit' });
+execFileSync('go', ['build', '-tags', 'sqlite_fts5', '-o', bin, './cmd/dev'], { cwd: path.join(root, 'core'), stdio: 'inherit' });
 
 // A release server whose stable channel is the version the app runs, so a check finds it
 // up to date, on a port of its own. It counts manifest requests: each is one check. With

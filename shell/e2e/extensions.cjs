@@ -41,7 +41,7 @@ const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'project-b-extensions-'));
 const setFlag = (on) => fs.writeFileSync(path.join(profile, 'flags.json'), JSON.stringify(on ? { extensions: 'on' } : {}));
 setFlag(true);
 const bin = path.join(out, 'dev-extensions');
-execFileSync('go', ['build', '-tags', 'extensions', '-o', bin, './cmd/dev'], { cwd: path.join(root, 'core'), stdio: 'inherit' });
+execFileSync('go', ['build', '-tags', 'sqlite_fts5,extensions', '-o', bin, './cmd/dev'], { cwd: path.join(root, 'core'), stdio: 'inherit' });
 
 let server;
 async function startServers() {

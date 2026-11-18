@@ -26,7 +26,7 @@ fs.writeFileSync(path.join(profiles, 'profiles.json'), JSON.stringify({
 }));
 const listed = () => JSON.parse(fs.readFileSync(path.join(profiles, 'profiles.json'), 'utf8')).profiles;
 const bin = path.join(out, 'dev');
-execFileSync('go', ['build', '-o', bin, './cmd/dev'], { cwd: path.join(root, 'core'), stdio: 'inherit' });
+execFileSync('go', ['build', '-tags', 'sqlite_fts5', '-o', bin, './cmd/dev'], { cwd: path.join(root, 'core'), stdio: 'inherit' });
 
 let server;
 async function startServer() {
