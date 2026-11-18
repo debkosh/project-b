@@ -24,8 +24,6 @@
   const tokens = $derived(styleOf(glideTones(g.space().color, g.space().tones || go.tones, dark)));
 
   let bar = $state();
-  // Whether the snapshot is in: before it the shell knows nothing of the window's tabs.
-  let started = $state(false);
   let find = $state();
 
   // A page in full screen has the whole window: nothing of Glide's shows. So has a first
@@ -139,7 +137,6 @@
 
   connect({
     snapshot: () => {
-      started = true;
       g.load(go.data);
       activated();
     },
@@ -194,7 +191,7 @@
     {#if !g.win.hidden}
       <Sidebar onaddress={() => openBar('address')} oncopy={copyAddress} onnew={() => send({ t: 'newTab', workspace: g.spaceId() })} onclosebar={() => (g.ui.bar = null)} />
     {/if}
-    <Panes hidden={g.win.hidden} empty={started && !go.tabs.length} bind:find />
+    <Panes hidden={g.win.hidden} bind:find />
   </div>
   {/if}
   {#if g.ui.bar}

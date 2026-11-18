@@ -1,6 +1,6 @@
 <script>
   import { untrack } from 'svelte';
-  import { activeTab, connect, focusPage, isNewTab, keyLabel, page, send, setFrame, shell, state as go } from '@/sdk/svelte.svelte.js';
+  import { activeTab, connect, focusPage, isNewTab, page, send, setFrame, shell, state as go } from '@/sdk/svelte.svelte.js';
   import Address from './Address.svelte';
   import CrashBar from './CrashBar.svelte';
   import FindBar from './FindBar.svelte';
@@ -74,16 +74,8 @@
       {#if !horizontal}
         <SideList />
       {/if}
-      <!-- With no tabs the shell draws the page's area itself, as its own. -->
       <main use:page={go.active}>
-        {#if !go.tabs.length}
-          <div class="empty" use:shell>
-            <p>No tabs</p>
-            <button class="words" type="button" onclick={() => send({ t: 'newTab' })}>
-              New Tab{#if keyLabel(go, 'tab.new')}<span class="key" aria-hidden="true">{keyLabel(go, 'tab.new')}</span>{/if}
-            </button>
-          </div>
-        {:else if isNewTab(activeTab(go))}
+        {#if isNewTab(activeTab(go))}
           <!-- A new tab loads nothing, so no page shows here: a backdrop in the page's colour. -->
           <div class="blank" use:shell></div>
         {/if}
@@ -161,25 +153,4 @@
     background: Canvas;
   }
 
-  .empty {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    background: var(--surface);
-  }
-
-  .empty p {
-    margin: 0;
-    color: var(--muted);
-  }
-
-  .key {
-    margin-left: 8px;
-    color: var(--muted);
-    font-weight: 400;
-  }
 </style>

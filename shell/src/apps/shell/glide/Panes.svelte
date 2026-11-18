@@ -1,5 +1,5 @@
 <script>
-  import { drag, isNewTab, keyLabel, page, send, shell, state as go } from '@/sdk/svelte.svelte.js';
+  import { drag, isNewTab, page, send, shell, state as go } from '@/sdk/svelte.svelte.js';
   import * as g from './glide.svelte.js';
   import FindBar from './FindBar.svelte';
   import PageDialog from './PageDialog.svelte';
@@ -11,10 +11,8 @@
   // each card. The band over the cards drags the window. hidden: the sidebar is hidden,
   // so the cards keep the frame's 8px on every side. The cards' corners are concentric
   // with the window's: its radius less the 8px inset (18 on macOS 26), and the design
-  // system's 8 where the window has square corners, as in full screen. empty: the window
-  // has no tabs, and a card of the shell's own stands where the page would, with No tabs
-  // and New Tab, in the Space shown.
-  let { hidden, empty, find = $bindable() } = $props();
+  // system's 8 where the window has square corners, as in full screen.
+  let { hidden, find = $bindable() } = $props();
 
   const radius = $derived(Math.max(go.cornerRadius - 8, 8));
 
@@ -54,16 +52,6 @@
   <div class="band top" use:drag></div>
   <div class="row" bind:this={row}>
     {#if hidden}<div class="band side"></div>{/if}
-    {#if empty}
-      <div class="card empty" use:shell>
-        <p>No tabs</p>
-        <button type="button" class="text-button" onclick={() => send({ t: 'newTab', workspace: g.spaceId() })}>
-          New Tab{#if keyLabel(go, 'tab.new')}<span class="key" aria-hidden="true">{keyLabel(go, 'tab.new')}</span>{/if}
-        </button>
-        <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
-        <span class="ring"></span>
-      </div>
-    {/if}
     {#each ids as id, i (id)}
       {#if i > 0}
         <div class="band gap" use:shell role="separator" aria-orientation="vertical" aria-label="Resize" onpointerdown={(e) => grab(e, i - 1)} onpointermove={move} onpointerup={release} onpointercancel={release}></div>
@@ -133,29 +121,6 @@
     position: absolute;
     inset: 0;
     background: Canvas;
-  }
-
-  /* A card as the page's is, with its corners and ring, in the surface where the page
-     would show. */
-  .empty {
-    flex: 1;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    background: var(--surface);
-    color: var(--text);
-  }
-
-  .empty p {
-    margin: 0;
-    color: var(--muted);
-  }
-
-  .key {
-    margin-left: 8px;
-    color: var(--muted);
-    font-weight: 400;
   }
 
   /* The corners, in the frame's colour, cut round on the page's side. */
