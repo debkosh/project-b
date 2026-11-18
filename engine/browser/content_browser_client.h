@@ -61,6 +61,14 @@ class ContentBrowserClient : public ContentBrowserClientHooks {
 #endif
   void CreateThrottlesForNavigation(
       content::NavigationThrottleRegistry& registry) override;
+  // A navigation whose page a spark runs in has its policy's style rules eased.
+  std::vector<std::unique_ptr<blink::URLLoaderThrottle>> CreateURLLoaderThrottles(
+      const network::ResourceRequest& request,
+      content::BrowserContext* browser_context,
+      const base::RepeatingCallback<content::WebContents*()>& wc_getter,
+      content::NavigationUIData* navigation_ui_data,
+      content::FrameTreeNodeId frame_tree_node_id,
+      std::optional<int64_t> navigation_id) override;
   // A page's WebSocket to a blocked host never opens.
   bool WillInterceptWebSocket(content::RenderFrameHost* frame) override;
   void CreateWebSocket(

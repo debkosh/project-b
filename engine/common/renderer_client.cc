@@ -18,7 +18,6 @@
 #include "project_b/engine/common/ad_rules.h"
 #include "project_b/engine/mojom/project_b.mojom.h"
 #include "third_party/blink/public/common/associated_interfaces/associated_interface_registry.h"
-#include "third_party/blink/public/platform/web_isolated_world_info.h"
 #include "third_party/blink/public/platform/web_security_origin.h"
 #include "third_party/blink/public/platform/web_string.h"
 #include "third_party/blink/public/web/web_document.h"
@@ -158,17 +157,9 @@ class Rules : public content::RenderThreadObserver,
   mojo::AssociatedReceiverSet<mojom::Renderer> receivers_;
 };
 
-// Each spark's world, the same for the life of the renderer: from a range of ours, under
-// Blink's limit for an embedder's worlds and far above the extensions'.
-int32_t WorldOf(const std::string& id) {
-  static base::NoDestructor<base::flat_map<std::string, int32_t>> worlds;
-  constexpr int32_t kFirst = 1 << 28;
-  auto [it, added] = worlds->try_emplace(id, kFirst + static_cast<int32_t>(worlds->size()));
-  return it->second;
-}
-
-// Runs a frame's sparks in its page: those at document start, the rest once its document
-// has loaded, at the moments content runs scripts of the embedder's (RunScriptsAtDocument*
+// Runs a frame's sparks in its page, in the page's own world, as other userscript managers
+// run a script that asks for no extension APIs, so a spark can change what the page itself
+// does: those at document start, the rest once its document has loaded, at the moments content runs scripts of the embedder's (RunScriptsAtDocument*
 // below), as Blink forbids script in its own callbacks. The browser tells the frame before
 // the page commits; told late, a spark whose moment has passed runs at once.
 class Sparks : public content::RenderFrameObserver, public mojom::Frame {
@@ -230,14 +221,10 @@ class Sparks : public content::RenderFrameObserver, public mojom::Frame {
         later.push_back(std::move(spark));
         continue;
       }
-      const int32_t world = WorldOf(spark->id);
-      blink::WebIsolatedWorldInfo info;
-      info.security_origin = frame->GetSecurityOrigin();
-      info.human_readable_name = blink::WebString::FromUtf8("Spark");
-      blink::SetIsolatedWorldInfo(world, info);
-      frame->ExecuteScriptInIsolatedWorld(
-          world, blink::WebScriptSource(blink::WebString::FromUtf8(spark->source)),
-          blink::BackForwardCacheAware::kAllow);
+      // Each in a function of its own, as other managers wrap them, so no two sparks, nor a
+      // spark and the page, clash over a name declared at the top.
+      const std::string code = "(function () {\n" + spark->source + "\n}).call(window);";
+      frame->ExecuteScript(blink::WebScriptSource(blink::WebString::FromUtf8(code)));
     }
     sparks_ = std::move(later);
   }

@@ -15,7 +15,9 @@
 #include "mojo/public/cpp/bindings/binder_map.h"
 #include "net/base/net_errors.h"
 #include "net/http/http_request_headers.h"
+#include "services/network/public/cpp/resource_request.h"
 #include "services/network/public/mojom/websocket.mojom.h"
+#include "third_party/blink/public/common/loader/url_loader_throttle.h"
 #include "project_b/engine/browser/printing.h"
 #include "project_b/engine/browser/site_features.h"
 #include "project_b/engine/common/block_rules.h"
@@ -146,6 +148,23 @@ void ContentBrowserClient::CreateWebSocket(
 
 // Every navigation gets the gate, which asks Go about a tab's top-level ones, and the
 // generated throttle, whose hooks cross to Go only when something subscribed to them.
+std::vector<std::unique_ptr<blink::URLLoaderThrottle>>
+ContentBrowserClient::CreateURLLoaderThrottles(
+    const network::ResourceRequest& request,
+    content::BrowserContext* browser_context,
+    const base::RepeatingCallback<content::WebContents*()>& wc_getter,
+    content::NavigationUIData* navigation_ui_data,
+    content::FrameTreeNodeId frame_tree_node_id,
+    std::optional<int64_t> navigation_id) {
+  std::vector<std::unique_ptr<blink::URLLoaderThrottle>> throttles;
+  if (navigation_id) {
+    if (auto easing = site_features::EaseStylesFor(request, wc_getter)) {
+      throttles.push_back(std::move(easing));
+    }
+  }
+  return throttles;
+}
+
 void ContentBrowserClient::CreateThrottlesForNavigation(
     content::NavigationThrottleRegistry& registry) {
   registry.AddThrottle(std::make_unique<events::Gate>(registry));

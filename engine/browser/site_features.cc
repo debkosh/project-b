@@ -18,6 +18,12 @@
 #include "ipc/ipc_channel_proxy.h"
 #include "mojo/public/cpp/bindings/associated_remote.h"
 #include "net/base/net_errors.h"
+#include "services/network/public/cpp/resource_request.h"
+#include "services/network/public/mojom/content_security_policy.mojom.h"
+#include "services/network/public/mojom/parsed_headers.mojom.h"
+#include "services/network/public/mojom/url_response_head.mojom.h"
+#include "third_party/blink/public/common/loader/url_loader_throttle.h"
+#include "url/url_constants.h"
 #include "project_b/engine/abi/pb_abi.h"
 #include "project_b/engine/browser/hooks.h"
 #include "project_b/engine/mojom/project_b.mojom.h"
@@ -49,6 +55,91 @@ void Send(content::RenderProcessHost* host) {
   renderer->SetAdRules(Rules().hosts, Rules().off);
 }
 
+// The sparks Go says run in a frame of the tab at url, the tab's own frame when main_frame.
+std::vector<mojom::SparkPtr> SparksFor(content::WebContents* contents,
+                                       const GURL& url,
+                                       bool main_frame) {
+  std::vector<mojom::SparkPtr> sparks;
+  if (!url.SchemeIsHTTPOrHTTPS() && !url.SchemeIsFile()) {
+    return sparks;
+  }
+  hooks::Args args;
+  args.Int(hooks::TabOf(contents));
+  args.Str(url.spec());
+  args.Int(main_frame ? 1 : 0);
+  PBValue result;
+  const std::string json = hooks::Ask(PB_EVENT_SPARKS_FOR, args, &result)
+                               ? hooks::TakeString(result)
+                               : std::string();
+  std::optional<base::Value> list =
+      json.empty() ? std::nullopt : base::JSONReader::Read(json, base::JSON_PARSE_RFC);
+  if (!list || !list->is_list()) {
+    return sparks;
+  }
+  for (const base::Value& v : list->GetList()) {
+    if (!v.is_dict()) {
+      continue;
+    }
+    const base::DictValue& d = v.GetDict();
+    const std::string* id = d.FindString("id");
+    const std::string* source = d.FindString("source");
+    const std::string* run_at = d.FindString("runAt");
+    if (id && source) {
+      sparks.push_back(
+          mojom::Spark::New(*id, *source, run_at && *run_at == "document-start"));
+    }
+  }
+  return sparks;
+}
+
+// A policy's style rules give way: styles from anywhere, and inline ones, as other
+// userscript managers ease a page's policy for the scripts they run in it. Its other
+// rules stay as the site set them.
+void EaseStyles(network::mojom::ContentSecurityPolicy& policy) {
+  for (auto name : {network::mojom::CSPDirectiveName::StyleSrc,
+                    network::mojom::CSPDirectiveName::StyleSrcElem,
+                    network::mojom::CSPDirectiveName::StyleSrcAttr}) {
+    auto open = network::mojom::CSPSourceList::New();
+    open->allow_self = true;
+    open->allow_star = true;
+    open->allow_inline = true;
+    for (const char* scheme : {"data", "blob"}) {
+      open->sources.push_back(
+          network::mojom::CSPSource::New(scheme, "", url::PORT_UNSPECIFIED, "", false, false));
+    }
+    policy.directives[name] = std::move(open);
+    policy.raw_directives[name] = "'self' * data: blob: 'unsafe-inline'";
+  }
+}
+
+// Where a spark runs, the page's policy would block the styles it adds, as the spark runs
+// in the page's own world: the response's policies have their style rules eased before
+// the page commits with them.
+class StyleEasing : public blink::URLLoaderThrottle {
+ public:
+  StyleEasing(base::RepeatingCallback<content::WebContents*()> contents, bool main_frame)
+      : contents_(std::move(contents)), main_frame_(main_frame) {}
+
+  void WillProcessResponse(const GURL& response_url,
+                           network::mojom::URLResponseHead* head,
+                           bool* defer) override {
+    if (!head->parsed_headers || head->parsed_headers->content_security_policy.empty()) {
+      return;
+    }
+    content::WebContents* contents = contents_.Run();
+    if (!contents || SparksFor(contents, response_url, main_frame_).empty()) {
+      return;
+    }
+    for (auto& policy : head->parsed_headers->content_security_policy) {
+      EaseStyles(*policy);
+    }
+  }
+
+ private:
+  base::RepeatingCallback<content::WebContents*()> contents_;
+  const bool main_frame_;
+};
+
 // One web tab's: its frames' sparks, and its blocked requests.
 class Follower : public content::WebContentsObserver,
                  public content::WebContentsUserData<Follower> {
@@ -57,37 +148,8 @@ class Follower : public content::WebContentsObserver,
 
   void ReadyToCommitNavigation(content::NavigationHandle* handle) override {
     const GURL& url = handle->GetURL();
-    if (!url.SchemeIsHTTPOrHTTPS() && !url.SchemeIsFile()) {
-      return;
-    }
-    hooks::Args args;
-    args.Int(hooks::TabOf(&GetWebContents()));
-    args.Str(url.spec());
-    args.Int(handle->IsInPrimaryMainFrame() ? 1 : 0);
-    PBValue result;
-    std::vector<mojom::SparkPtr> sparks;
-    const std::string json = hooks::Ask(PB_EVENT_SPARKS_FOR, args, &result)
-                                 ? hooks::TakeString(result)
-                                 : std::string();
-    if (!json.empty()) {
-      std::optional<base::Value> list =
-          base::JSONReader::Read(json, base::JSON_PARSE_RFC);
-      if (list && list->is_list()) {
-        for (const base::Value& v : list->GetList()) {
-          if (!v.is_dict()) {
-            continue;
-          }
-          const base::DictValue& d = v.GetDict();
-          const std::string* id = d.FindString("id");
-          const std::string* source = d.FindString("source");
-          const std::string* run_at = d.FindString("runAt");
-          if (id && source) {
-            sparks.push_back(mojom::Spark::New(
-                *id, *source, run_at && *run_at == "document-start"));
-          }
-        }
-      }
-    }
+    std::vector<mojom::SparkPtr> sparks =
+        SparksFor(&GetWebContents(), url, handle->IsInPrimaryMainFrame());
     if (sparks.empty()) {
       return;
     }
@@ -166,6 +228,16 @@ void ExposeTo(blink::AssociatedInterfaceRegistry* registry,
 
 void Follow(content::WebContents* contents) {
   Follower::CreateForWebContents(contents);
+}
+
+std::unique_ptr<blink::URLLoaderThrottle> EaseStylesFor(
+    const network::ResourceRequest& request,
+    base::RepeatingCallback<content::WebContents*()> contents) {
+  if (request.destination != network::mojom::RequestDestination::kDocument &&
+      request.destination != network::mojom::RequestDestination::kIframe) {
+    return nullptr;
+  }
+  return std::make_unique<StyleEasing>(std::move(contents), request.is_outermost_main_frame);
 }
 
 }  // namespace site_features
