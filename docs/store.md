@@ -3,7 +3,7 @@
 One SQLite database per profile, `store.db` in the profile folder, for what Go keeps that
 grows and is searched as one types: history and bookmarks today, saved logins and the rest
 later, each a feature with its own tables. **Built, 2026-11-19.** A simple clean base first;
-sync, keys and sealing come later, on top of it.
+sync, keys and sealing on top of it, built the same day ([sync.md](sync.md)).
 
 ## His decisions
 
@@ -28,6 +28,8 @@ sync, keys and sealing come later, on top of it.
 |---|---|
 | History, its visits, its sites, the typed addresses | `store.db` |
 | Bookmarks and the folder last saved in | `store.db` |
+| The secrets, sealed with the profile key, and sync's bookkeeping ([sync.md](sync.md)) | `store.db` |
+| The profile key, wrapped; a folder named outright's own key | `profile.key`, `folder.key` |
 | Prefs, flags, workspaces, pins, the session, the downloads list, the welcome, the shells' data | their JSON files, as before |
 | The timeline, crash logs, the profile list, the update state | their files, as before |
 
@@ -47,7 +49,8 @@ connection, never on the main thread, each job one transaction, in the order ask
 sees every write asked before it, and the main thread never waits on a lock. A feature posts
 the answer back to the main thread itself, as `core/history` does with the engine's `post`.
 The main thread waits on the worker once, at start, for the bookmarks, which are few
-(`Wait`).
+(`Wait`). Sync's goroutine waits on it for each of synckosh's reads and writes, its jobs
+in the queue with everyone else's.
 
 **Schema steps.** Each feature gives its schema as numbered steps, in order, the first making
 its tables. The store keeps one number per feature, in its table `schema`, and runs the steps
@@ -55,10 +58,22 @@ a profile has not had, in one transaction, before any other job of that feature:
 is added at the end and never changed once released. A feature's first step also reads its old
 file once (below).
 
-**For sync, later.** Every table that may sync one day has `id`, made once, and `edited`, Unix
-milliseconds of its last change. A new table's id is a UUIDv7 as text (`store.NewID`); the
-bookmarks keep the ids they have had since folders, 16 random hex digits. Nothing else is built for sync: deleting
-deletes the row, with no tombstone. Visits and sites never sync and have neither.
+**Sync.** Every table that syncs has `id`, made once, and `edited`, Unix milliseconds of its
+last change. A new table's id is a UUIDv7 as text (`store.NewID`); the bookmarks keep the ids
+they have had since folders, 16 random hex digits, which are their items' guids; history and
+typed are synced by address. Deleting still deletes the row, with no tombstone: while sync is
+on, triggers on `bookmarks`, `history` and `typed` write a mark in `sync_changes` in the same
+transaction, a delete's included, and synckosh's bookkeeping in `sync_items` remembers the item
+after its row is gone. sync makes those triggers again at each start, from the features'
+mappings, rather than in numbered steps, so they always match them; they mark nothing with sync
+off. Clearing all history leaves one mark each for history and typed, through
+`history.OnClearAll`, not one per page. What sync writes into the rows from other devices goes
+through the same tables and their triggers, with the marking ones quiet. Visits and sites never
+sync and have neither `id` nor `edited`.
+
+**Keys.** The feature `keys` has one table, `secrets`: a name, and its value sealed with the
+profile key (`core/keys`, [sync.md](sync.md#the-keys)). Sync keeps its address, token and key
+there.
 
 **A damaged store.db.** When SQLite says store.db is not a database, or a damaged one, as it
 is opened, the file goes aside with its `-wal` and `-shm` as `store.db.backup-<UTC date and
@@ -172,6 +187,7 @@ triggers. Until it is done, a search waits behind it.
 
 `core/store` (the steps run once each, in order, a failed step leaves nothing, a store.db
 that is no database goes aside byte for byte and a new one is made, and a healthy one stays),
+`core/keys` and `core/sync` (sync.md's tests),
 `core/history` (each tier and a row once, typed first, a non-ASCII title and address, top
 sites, deleting a site, clearing a range from every table, the one-time read of
 history.jsonl, again into a new store), `core/suggest` (typed first and its completion), `core/tabs` (which navigations
