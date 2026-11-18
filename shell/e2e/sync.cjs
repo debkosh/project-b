@@ -406,7 +406,11 @@ const taken = [];
     fs.writeFileSync(sheet, html);
     const p = await browser.newPage({ viewport: { width: cols * (w + 20) + 48, height: 800 } });
     await p.goto(`file://${sheet}`);
-    await p.waitForLoadState('load');
+    // Every picture decoded, and the window the sheet's height, or those below the first
+    // screen can be drawn empty.
+    await p.evaluate(() => Promise.all([...document.images].map((i) => i.decode())));
+    await p.setViewportSize({ width: cols * (w + 20) + 48, height: await p.evaluate(() => document.documentElement.scrollHeight) });
+    await settle(p);
     await p.screenshot({ path: path.join(screens, `overview-${scheme}.png`), fullPage: true });
     await p.close();
     fs.rmSync(sheet);
