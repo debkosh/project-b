@@ -54,11 +54,19 @@ SUMMARY=""
 FAILED=0
 DID_NOT_RUN=0
 
+# Each test's result, its log, and the app's memory and CPU while it ran go to the run's
+# folder (tools/results.py, docs/testing.md), unless PB_RESULTS=off. One run per call to this
+# script, unless PB_RUN names one already, so several calls can share it.
+export PB_RUN=${PB_RUN:-$(date -u +%Y%m%dT%H%M%SZ)-$(echo "$*" | tr ' ' '-')}
 run() {
     local name=$1
     shift
     printf '\n=== %s\n' "$name"
-    "$@"
+    if [ "${PB_RESULTS:-}" = off ]; then
+        "$@"
+    else
+        python3 tools/results.py run --group "$GROUP" --name "$name" -- "$@"
+    fi
     case $? in
         0) SUMMARY="$SUMMARY"$'\n'"passed       $name" ;;
         2) SUMMARY="$SUMMARY"$'\n'"DID NOT RUN  $name"; DID_NOT_RUN=2 ;;
@@ -161,6 +169,7 @@ android() {
 
 [ $# -gt 0 ] || { sed -n '2,/^set -u/p' "$0" | sed '$d' | cut -c3-; exit 2; }
 for group in "$@"; do
+    GROUP=$group
     case $group in
         mock | app | basics | screen | vm | android) $group ;;
         *) echo "no group called $group: mock, app, basics, screen, vm or android" >&2; exit 2 ;;

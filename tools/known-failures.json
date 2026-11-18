@@ -1,0 +1,16 @@
+{
+ "about": "Failures the report counts as known, not new (docs/testing.md#test-results). Each: the group, a regular expression a FAIL line or the test's name matches, and why. A known failure that passes again is reported, so its entry can go.",
+ "known": [
+  {
+   "group": "basics",
+   "match": ".*",
+   "why": "The basics are a map of what isn't built yet; most fail on purpose. Their count of checks passed is compared instead."
+  },
+  {
+   "group": "android",
+   "match": "it covers the whole screen, with nothing of the shell or Android's bars on it",
+   "test": "emu-29",
+   "why": "Android 10 keeps its bars over a page in full screen."
+  }
+ ]
+}

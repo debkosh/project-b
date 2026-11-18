@@ -500,6 +500,8 @@ def run_parts(parts):
     """Runs each part and exits with the result. A part that stops early, because the app
     exited or a wait ran out, is one failure, and the app it left open is stopped."""
     for part in parts:
+        # tools/results.py splits a run's memory, CPU and checks by these lines.
+        print(f"--- part {part.__name__}", flush=True)
         try:
             part()
         except (RuntimeError, TimeoutError, OSError) as e:

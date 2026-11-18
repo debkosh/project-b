@@ -1204,6 +1204,8 @@ def main():
     every = (browsing, mobile_shell, back_key_chain, page_dialogs, downloads, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
              the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web)
     for part in [p for p in every if not sys.argv[1:] or p.__name__ in sys.argv[1:]]:
+        # tools/results.py splits a run's memory, CPU and checks by these lines.
+        print("--- part " + part.__name__, flush=True)
         try:
             part()
         except TimeoutError as e:

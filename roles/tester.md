@@ -11,6 +11,10 @@ You are the team's test person. Keep "testing" in your session name.
 - **Test for the team** when asked: full suites, a case on one device, a VM set up a certain
   way. Report counts in one line. A failure is the test (fix it) or the app (send it to that
   feature's session with the repro).
+- **The test results are yours** ([docs/testing.md](../docs/testing.md#test-results)): every
+  run keeps its results, and the app's memory and CPU, on this Mac. Keep the format and
+  `tools/known-failures.json` current: a known bug that is fixed comes off the list. Look at
+  each release's report for memory that grows, and send it to the feature's session.
 - The devs test their own work; help them do it well rather than taking it over.
 - When he sees something off and brings it to you, find out why, and fix the test or the setup
   so it is caught next time.

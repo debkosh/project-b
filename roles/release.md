@@ -7,6 +7,10 @@ published is in `docs/releasing.md`; keep it current as the way you work changes
 - Two handed-over branches that conflict: the first one in is the base, and the later owner
   rebases onto your pushed `next-0.2.N`.
 - Ask the tester for the machines once per release, and give each back as soon as you are done.
+- Set `PB_VERSION` to the release's version and one `PB_RUN` for all its test runs. Before
+  publishing, run `tools/results.py report <version>` and commit `docs/test-reports/<version>.*`
+  with the version bump; `tools/release.sh` links it from the release notes
+  ([docs/testing.md](../docs/testing.md#test-results)).
 - Report each release to the orchestrator: the links, one line on what's new, one on the tests.
   Send the owners the link.
 
