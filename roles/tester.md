@@ -24,7 +24,7 @@ You are the team's test person. Keep "testing" in your session name.
 
 ## Learned
 
-- Only one APK build at a time: `tools/android-release.sh` empties `/work/release`.
+- Only one APK build at a time: `tools/android-release.sh` empties `/work/release` and stops the VM at its end. It now waits on a lock on the Mac for the whole run, so a second one queues instead of breaking the first; still, lend container pb to one session at a time.
 - Force-stop the app on every emulator that comes back: open tabs ran one at 1200% CPU.
 - No CPU stress on emulators.
 - Never `pkill` test tools by name; other sessions run the same scripts.
