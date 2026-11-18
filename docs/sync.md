@@ -327,8 +327,20 @@ and pressed in a page with no request reaching the server before Connect, an htt
 and a page's script going there doing nothing; on a phone, the buttons' 48px targets and the
 fields' 48px.
 
-**Not tested here:** the link through macOS's and Android's own handing over, and the engine's
-gate with a real press, a script and a frame, which need the real app; a listed profile's keys in
-the login keychain from Settings; the Android Keystore piece (`DeviceKey.java`, `go_table.c`) compiles against
+`tools/drive_first_app.py`, part `applink`, on the real app: a press on a page's sync link opens
+Settings at Sync with the link's Dialog, and a server the link names hears nothing until Connect;
+a script's navigation, a press in a frame, a redirect and another `project-b:` link do nothing.
+
+**Checked by hand on 2026-11-19, in a throwaway clone of the test VM** (docs/vm-testing.md), with
+a sync server in the VM whose own CA the VM's system keychain was told to trust: on a listed
+profile, turning sync on made the login keychain's `Project B` / `device key` item and
+`profile.key`, with no prompt, and sync was still on after a restart; the profile's folder
+copied and opened with `--user-data-dir` showed "Sync can't run on this device"; `open` on a
+sync link, with the app running and with it quit, opened Settings at Sync with the link's Dialog,
+and a port the link named heard nothing until Connect. A new build of the app, signed again, is
+asked about by the keychain once ("Project B wants to access key 'Project B device key'"), as
+`keychainPrompts` expects; until it is answered, Sync shows Set up sync.
+
+**Not tested here:** the link through Android's handing over; the Android Keystore piece (`DeviceKey.java`, `go_table.c`) compiles against
 the SDK and the NDK but has not run on a phone; the Mac's keychain test skips where the shell's
 keychain list has no login keychain, as an agent's shell over ssh has.
