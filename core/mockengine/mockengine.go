@@ -337,14 +337,14 @@ func (e *Engine) SetWindowPage(w engine.WindowID, page engine.Page) {
 	e.Feeds(w).Window.Publish(e.WindowState(w))
 }
 
-func (e *Engine) CreateTab(workspace string) engine.TabID {
+func (e *Engine) CreateTab(workspace string, _ bool) engine.TabID {
 	e.nextTab++
 	e.tabs[e.nextTab] = &tab{pos: -1, state: "empty", workspace: workspace}
 	return e.nextTab
 }
 
 func (e *Engine) CreateInternalTab() engine.TabID {
-	id := e.CreateTab("")
+	id := e.CreateTab("", false)
 	e.tabs[id].internal = true
 	return id
 }
@@ -632,7 +632,7 @@ func (e *Engine) ZoomOf(id engine.TabID) float64 {
 // DuplicateTab copies the tab's history into a new hidden tab, of its kind and in its
 // workspace.
 func (e *Engine) DuplicateTab(id engine.TabID) engine.TabID {
-	n := e.CreateTab(e.Workspace(id))
+	n := e.CreateTab(e.Workspace(id), false)
 	if t := e.tabs[id]; t != nil {
 		c := *t
 		c.history = append([]string(nil), t.history...)
@@ -1083,7 +1083,7 @@ func (e *Engine) Fire(w engine.WindowID, tab engine.TabID, kind, value string) {
 		case "open":
 			// What a page's target=_blank or window.open does: the engine makes the
 			// tab, in the page's workspace, tells the app, then loads it.
-			id := e.CreateTab(e.Workspace(shown))
+			id := e.CreateTab(e.Workspace(shown), false)
 			e.listener.TabOpened(shown, id, value, e.Workspace(shown), true, false)
 			e.navigate(id, value)
 		case "key":

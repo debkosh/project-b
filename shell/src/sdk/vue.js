@@ -8,7 +8,7 @@ import { computed, nextTick, reactive } from 'vue';
 import * as sdk from './shell.js';
 import { drag, page, shell } from './regions.js';
 
-export { focusPage, saveData, saveProfileData, send, setFrame, setPref, tabLabel } from './shell.js';
+export { focusPage, isNewTab, saveData, saveProfileData, send, setFrame, setPref, tabLabel } from './shell.js';
 export { chooseContextItem, closeContextMenu, contextMenuPoint } from './contextmenu.js';
 export { clearDownloads, downloadAction } from './downloads.js';
 export { answerDialog, dialogFor } from './dialogs.js';

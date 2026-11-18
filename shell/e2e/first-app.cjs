@@ -247,7 +247,7 @@ const stopServer = lib.stop;
   await bar.fill('');
   await page.keyboard.type('blank');
   await settle(page);
-  check('the blank page a new tab holds stays out of history', (await history.count()) === 0);
+  check('the blank page stays out of history', (await history.count()) === 0);
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
 

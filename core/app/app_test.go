@@ -251,24 +251,24 @@ func TestBlockedURLNeverLoadsOrEntersHistory(t *testing.T) {
 	}
 }
 
-func TestTheFirstTabHoldsTheBlankPage(t *testing.T) {
+func TestTheFirstTabLoadsNothing(t *testing.T) {
 	r := start(t, t.TempDir())
 	defer r.stop()
 	r.show(1)
 	deadline := time.After(5 * time.Second)
-	for loaded := false; !loaded; {
+	for shown := false; !shown; {
 		select {
 		case b := <-r.pages:
-			loaded = string(b) == `{"slot":0,"state":"loaded","tab":1,"url":"about:blank"}`
+			shown = string(b) == `{"slot":0,"state":"empty","tab":1,"url":""}`
 		case <-deadline:
-			t.Fatal("the first tab never loaded the blank page")
+			t.Fatal("the first tab never showed, empty")
 		}
 	}
 	r.shell(`{"t":"ready"}`)
 	m := r.waitFor(func(m map[string]any) bool { return m["t"] == "snapshot" })
 	tab := m["tabs"].([]any)[0].(map[string]any)
-	if tab["url"] != "" || tab["title"] != "" {
-		t.Fatalf("the blank page shows as url %q title %q", tab["url"], tab["title"])
+	if tab["url"] != "" || tab["title"] != "" || tab["loading"] != false {
+		t.Fatalf("the new tab shows as url %q title %q loading %v", tab["url"], tab["title"], tab["loading"])
 	}
 	if items := r.suggestions("blank"); len(items) != 0 {
 		t.Fatalf("items = %v", items)
@@ -1192,7 +1192,7 @@ func TestADevToolsTargetInANewWindow(t *testing.T) {
 	defer r.stop()
 	var tab engine.TabID
 	r.e.Post(func() {
-		tab = r.e.CreateTab("")
+		tab = r.e.CreateTab("", false)
 		r.a.TabOpened(0, tab, "https://n.test/", "", true, true)
 	})
 	r.e.Settle()
@@ -1219,7 +1219,7 @@ func TestAWindowMadeForATabClosesWithIt(t *testing.T) {
 	defer r.stop()
 	var tab engine.TabID
 	r.e.Post(func() {
-		tab = r.e.CreateTab("")
+		tab = r.e.CreateTab("", false)
 		r.a.TabOpened(0, tab, "https://n.test/", "", true, true)
 	})
 	r.e.Settle()

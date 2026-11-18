@@ -69,7 +69,7 @@ func run(n int, last bool) {
 		r.Events(r.A.Tabs.ActiveIn(id), "https://www.first.example.com/")
 		for i := 1; i < per; i++ {
 			workspace := []string{"", "ws-a", "ws-b"}[i%3]
-			r.Events(r.A.Tabs.Add(id, workspace, true), fmt.Sprintf("https://www.w%d-site%d.example.com/page", id, i))
+			r.Events(r.A.Tabs.Add(id, workspace, "", true), fmt.Sprintf("https://www.w%d-site%d.example.com/page", id, i))
 		}
 	}
 	for _, w := range ws[1:] {

@@ -154,9 +154,12 @@ say.
 - **On a phone,** closing the last tab closes the app, and the next start opens on a new tab.
   The back key works as now down to the last tab: on a tab with no history it closes the
   tab, so on the last one it closes the app.
-- **A new tab loads nothing.** The engine makes every tab with no renderer (content's
-  `kNoRendererProcess`) and Go loads nothing into a new tab, so no process starts until it has
-  an address. Its address is empty and its title New Tab. The shell draws its new tab page
+- **A new tab loads nothing.** Go loads nothing into a new tab and the engine makes it
+  empty, with no renderer (content's `kNoRendererProcess`), so no process starts until it has
+  an address; so is a tab restored for later. A tab opened with an address takes content's
+  spare renderer, as before, so its first page doesn't wait for a process. Its first page
+  from empty is about 50 ms slower on a local page, as its renderer starts then; on a real
+  site that overlaps the request. Its address is empty and its title New Tab. The shell draws its new tab page
   where the page goes, since a tab with nothing loaded shows the shell under it. A shell
   that has none draws a backdrop in the page's colour there.
 - **New Tab is the shell's to decide.** Without a shell of its own, Go's New Tab opens a new

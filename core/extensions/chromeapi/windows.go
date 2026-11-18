@@ -197,7 +197,7 @@ func init() {
 		default:
 			w, _ = a.open.NewWindow(urls[0])
 			for _, u := range urls[1:] {
-				a.tabs.Load(a.tabs.CreateIn(w, a.tabs.FirstWorkspace()), u)
+				a.tabs.Add(w, a.tabs.FirstWorkspace(), u, true)
 			}
 		}
 		if err := a.apply(w, p.place); err != nil {
