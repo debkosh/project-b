@@ -25,6 +25,7 @@ session (tools/check_full_screen.py, tools/check_clipboard.py). This needs no di
     python3 tools/drive_first_app.py quiterase  # only Clear cookies when the app quits, but the sites kept
     python3 tools/drive_first_app.py shells     # only every shell: starting on it, and switching to it live
     python3 tools/drive_first_app.py webapis    # only the web APIs in core/webfeatures/registry.json
+    python3 tools/drive_first_app.py sparks     # only sparks: in the page itself, and styled on strict sites
     python3 tools/drive_first_app.py internal   # only our own pages as tabs: settings, and the navigation rule
     python3 tools/drive_first_app.py links      # only Links to other sites: the ten ways a page leaves
 
@@ -2672,4 +2673,4 @@ def links_checks():
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
     parts = {"driver": [driver_checks], "browsing": [browsing_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks]}
-    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, settings_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, glide_checks, web_api_checks, links_checks, quit_checks]))
+    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, settings_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, glide_checks, web_api_checks, sparks_checks, links_checks, quit_checks]))
