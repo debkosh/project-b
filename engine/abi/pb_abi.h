@@ -307,6 +307,10 @@ typedef struct PBWindowLayout {
   int32_t frame_rgb;
   int32_t frame_rgb_dark;
   double frame_width;
+  // Our own pages' background, light and dark, 0xRRGGBB: where the window shows one of our
+  // pages, it paints this until the page draws.
+  int32_t page_rgb;
+  int32_t page_rgb_dark;
   // How the window's own parts (buttons, title bar) are drawn: 0 as the system is,
   // 1 light, 2 dark.
   int32_t theme;

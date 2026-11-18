@@ -55,6 +55,7 @@ class PageTab : public WebContentsObserverHooks, public WebContentsDelegateHooks
  private:
   // content::WebContentsObserver:
   void DidFinishNavigation(content::NavigationHandle* handle) override;
+  void RenderFrameCreated(content::RenderFrameHost* frame) override;
   void DidFirstVisuallyNonEmptyPaint() override;
   void DidStartLoading() override;
   void DidStopLoading() override;

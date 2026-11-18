@@ -787,6 +787,8 @@ type WindowLayout struct {
 	Regions      []Region     // In order. The first that holds a point decides.
 	FrameColor   string       // "#rrggbb", painted under the shell and the page.
 	FrameDark    string       // In its place while the window is dark: the same, unless no colour is picked (tones.None).
+	PageColor    string       // "#rrggbb", our own pages' background, the tones' --bar: shown where a page of ours has yet to draw.
+	PageDark     string       // In its place while the window is dark.
 	FrameWidth   float64      // The band drawn around the window's edge, over both.
 	Theme        Theme        // Light or dark for the window's own parts, or the system's.
 }

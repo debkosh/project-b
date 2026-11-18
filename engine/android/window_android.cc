@@ -89,7 +89,10 @@ class BrowserWindow : public content::CompositorClient,
     }
   }
 
-  // Where nothing else draws: before the shell's first frame, and under a crashed page.
+  // Where nothing else draws: before the shell's first frame, under a crashed page, and
+  // under one of our pages that has yet to draw, which is transparent until it does
+  // (PageTab::RenderFrameCreated). Our pages' own background, so opening one never
+  // flashes white or the frame colour.
   void SetColor(uint32_t rgb) {
     root_->SetBackgroundColor(SkColor4f::FromColor(SkColorSetRGB(
         (rgb >> 16) & 0xff, (rgb >> 8) & 0xff, rgb & 0xff)));
@@ -138,8 +141,8 @@ class BrowserWindow : public content::CompositorClient,
     hooks::Fire(PB_EVENT_NOTIFICATIONS, args);
   }
 
-  // The frame colour Java painted, for the theme it shows: here too, where nothing draws.
-  void FrameShown(JNIEnv* env, int32_t rgb) { SetColor(rgb); }
+  // Our pages' background for the theme Java shows, where nothing draws.
+  void PageColorShown(JNIEnv* env, int32_t rgb) { SetColor(rgb); }
 
   void SizeChanged(JNIEnv* env, double width, double height) {
     size_ = gfx::SizeF(width, height);
@@ -263,6 +266,8 @@ static int64_t JNI_BrowserWindow_Start(JNIEnv* env,
 struct Window::Impl {
   uint32_t frame_rgb = 0;
   uint32_t frame_rgb_dark = 0;
+  uint32_t page_rgb = 0;
+  uint32_t page_rgb_dark = 0;
   bool has_frame = false;
   int theme = -1;
   // The last layout, which SetPages hands Java with the page.
@@ -346,13 +351,19 @@ void Window::RemovePageContents(content::WebContents* contents) {
 bool Window::SetLayout(Layout layout) {
   JNIEnv* env = AttachCurrentThread();
   if (!impl_->has_frame || layout.frame_rgb != impl_->frame_rgb ||
-      layout.frame_rgb_dark != impl_->frame_rgb_dark) {
+      layout.frame_rgb_dark != impl_->frame_rgb_dark ||
+      layout.page_rgb != impl_->page_rgb ||
+      layout.page_rgb_dark != impl_->page_rgb_dark) {
     impl_->has_frame = true;
     impl_->frame_rgb = layout.frame_rgb;
     impl_->frame_rgb_dark = layout.frame_rgb_dark;
+    impl_->page_rgb = layout.page_rgb;
+    impl_->page_rgb_dark = layout.page_rgb_dark;
     Java_BrowserWindow_setFrameColor(env, g_browser_window->java(),
                                      static_cast<int32_t>(layout.frame_rgb),
-                                     static_cast<int32_t>(layout.frame_rgb_dark));
+                                     static_cast<int32_t>(layout.frame_rgb_dark),
+                                     static_cast<int32_t>(layout.page_rgb),
+                                     static_cast<int32_t>(layout.page_rgb_dark));
   }
   if (layout.theme != impl_->theme) {
     impl_->theme = layout.theme;

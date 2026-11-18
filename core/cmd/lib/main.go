@@ -374,8 +374,10 @@ func (e *nativeEngine) SetWindowLayout(w engine.WindowID, l engine.WindowLayout)
 func (e *nativeEngine) withLayout(l engine.WindowLayout, call func(*C.PBWindowLayout, *C.PBRegion, C.size_t, *C.PBVisibleTab, C.size_t)) {
 	rgb, err := strconv.ParseInt(strings.TrimPrefix(l.FrameColor, "#"), 16, 32)
 	dark, errDark := strconv.ParseInt(strings.TrimPrefix(l.FrameDark, "#"), 16, 32)
-	if err != nil || errDark != nil {
-		timeline.Errorf("window colours %q, %q are not #rrggbb", l.FrameColor, l.FrameDark)
+	page, errPage := strconv.ParseInt(strings.TrimPrefix(l.PageColor, "#"), 16, 32)
+	pageDark, errPageDark := strconv.ParseInt(strings.TrimPrefix(l.PageDark, "#"), 16, 32)
+	if err != nil || errDark != nil || errPage != nil || errPageDark != nil {
+		timeline.Errorf("window colours %q, %q, %q, %q are not #rrggbb", l.FrameColor, l.FrameDark, l.PageColor, l.PageDark)
 		return
 	}
 	regions := make([]C.PBRegion, len(l.Regions))
@@ -397,6 +399,7 @@ func (e *nativeEngine) withLayout(l engine.WindowLayout, call func(*C.PBWindowLa
 	layout := C.PBWindowLayout{
 		view_w: C.double(l.ViewW), view_h: C.double(l.ViewH),
 		frame_rgb: C.int32_t(rgb), frame_rgb_dark: C.int32_t(dark), frame_width: C.double(l.FrameWidth),
+		page_rgb: C.int32_t(page), page_rgb_dark: C.int32_t(pageDark),
 		theme: C.int32_t(l.Theme),
 	}
 	call(&layout, first, C.size_t(len(regions)), firstTab, C.size_t(len(tabs)))

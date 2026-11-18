@@ -19,6 +19,7 @@
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/navigation_handle.h"
+#include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_widget_host.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/ssl_status.h"
@@ -38,6 +39,7 @@
 #endif
 #include "third_party/blink/public/mojom/context_menu/context_menu.mojom.h"
 #include "third_party/blink/public/mojom/favicon/favicon_url.mojom.h"
+#include "third_party/skia/include/core/SkColor.h"
 #include "ui/base/window_open_disposition.h"
 #include "ui/gfx/codec/jpeg_codec.h"
 #include "ui/gfx/codec/png_codec.h"
@@ -147,6 +149,31 @@ PageTab::PageTab(int64_t id,
       contents_(std::move(contents)) {
   hooks::TagTab(contents_.get(), id_);
   contents_->SetDelegate(this);
+#if BUILDFLAG(IS_ANDROID)
+  if (internal_) {
+    contents_->SetPageBaseBackgroundColor(SK_ColorTRANSPARENT);
+    // The first main frame was made inside WebContents::Create, before this observes, and
+    // a page of ours may load into it.
+    if (content::RenderWidgetHostView* view = contents_->GetRenderWidgetHostView()) {
+      view->SetBackgroundColor(SK_ColorTRANSPARENT);
+    }
+  }
+#endif
+}
+
+// On Android one of our pages is transparent until it paints its own background, so the
+// window's colour under it, our pages' background (window_android.cc SetColor), shows
+// rather than white. The view belongs to the main frame, so it is set as each comes alive,
+// as ShellPage does.
+void PageTab::RenderFrameCreated(content::RenderFrameHost* frame) {
+#if BUILDFLAG(IS_ANDROID)
+  if (internal_ && !frame->GetParent()) {
+    if (content::RenderWidgetHostView* view = frame->GetView()) {
+      view->SetBackgroundColor(SK_ColorTRANSPARENT);
+    }
+  }
+#endif
+  WebContentsObserverHooks::RenderFrameCreated(frame);
 }
 
 void PageTab::SendToPage(const std::string& json) {

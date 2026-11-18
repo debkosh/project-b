@@ -471,6 +471,8 @@ Window::Layout LayoutOf(const PBWindowLayout* l,
       .frame_rgb = static_cast<uint32_t>(l->frame_rgb),
       .frame_rgb_dark = static_cast<uint32_t>(l->frame_rgb_dark),
       .frame_width = l->frame_width,
+      .page_rgb = static_cast<uint32_t>(l->page_rgb),
+      .page_rgb_dark = static_cast<uint32_t>(l->page_rgb_dark),
       .theme = l->theme,
   };
   layout.regions.reserve(region_count);

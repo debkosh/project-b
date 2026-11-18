@@ -93,6 +93,8 @@ func (m *Manager) layout(w *window) engine.WindowLayout {
 		Tabs:       w.shell.Tabs,
 		FrameColor: tones.Frame(m.color, false),
 		FrameDark:  tones.Frame(m.color, true),
+		PageColor:  tones.For(m.color, false)["--bar"],
+		PageDark:   tones.For(m.color, true)["--bar"],
 		FrameWidth: w.shell.Frame,
 		Theme:      m.theme,
 	}
@@ -115,7 +117,7 @@ func (m *Manager) update(id engine.WindowID) {
 	w := m.windows[id]
 	l := m.layout(w)
 	if l.ViewW == w.sent.ViewW && l.ViewH == w.sent.ViewH && slices.Equal(l.Tabs, w.sent.Tabs) &&
-		l.FrameColor == w.sent.FrameColor && l.FrameDark == w.sent.FrameDark && l.FrameWidth == w.sent.FrameWidth && l.Theme == w.sent.Theme &&
+		l.FrameColor == w.sent.FrameColor && l.FrameDark == w.sent.FrameDark && l.PageColor == w.sent.PageColor && l.PageDark == w.sent.PageDark && l.FrameWidth == w.sent.FrameWidth && l.Theme == w.sent.Theme &&
 		slices.Equal(l.Regions, w.sent.Regions) {
 		return
 	}

@@ -75,6 +75,8 @@ final class BrowserWindow extends FrameLayout {
     // The frame colour for light and for dark, 0xRRGGBB.
     private int frameLight;
     private int frameDark;
+    private int pageLight;
+    private int pageDark;
     private boolean hasFrame;
     private FrameLayout.LayoutParams pageParams = matchParent();
     // Five numbers a region, x, y, w, h and what a press there does, in order: the first that
@@ -383,12 +385,16 @@ final class BrowserWindow extends FrameLayout {
 
     /**
      * The frame colour, light and dark, which differ only while no colour is picked: the one for
-     * the theme shows in the status bar and wherever a camera cutout keeps the window away.
+     * the theme shows in the status bar and wherever a camera cutout keeps the window away. Our
+     * pages' background, light and dark: the one for the theme shows where nothing draws, so a
+     * page of ours opens on its own colour.
      */
     @CalledByNative
-    private void setFrameColor(int light, int dark) {
+    private void setFrameColor(int light, int dark, int page, int pageDarkRgb) {
         frameLight = light;
         frameDark = dark;
+        pageLight = page;
+        pageDark = pageDarkRgb;
         hasFrame = true;
         paintFrame();
     }
@@ -399,7 +405,7 @@ final class BrowserWindow extends FrameLayout {
         int color = 0xff000000 | rgb;
         activity.getWindow().setBackgroundDrawable(new ColorDrawable(color));
         activity.getWindow().setStatusBarColor(color);
-        BrowserWindowJni.get().frameShown(nativeWindow, rgb);
+        BrowserWindowJni.get().pageColorShown(nativeWindow, isDark() ? pageDark : pageLight);
     }
 
     // As Go's theme says, or the phone's own dark mode as the system is.
@@ -617,7 +623,7 @@ final class BrowserWindow extends FrameLayout {
 
         void sizeChanged(long nativeBrowserWindow, double width, double height);
 
-        void frameShown(long nativeBrowserWindow, int rgb);
+        void pageColorShown(long nativeBrowserWindow, int rgb);
 
         void defaultBrowserAnswered(long nativeBrowserWindow, boolean isDefault);
 

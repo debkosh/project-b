@@ -584,6 +584,10 @@ func TestSnapshotCarriesTheWindowControls(t *testing.T) {
 	if l := r.e.Layout(1); m["windowColor"] != tones.None || l.FrameColor != tones.Frame(tones.None, false) || l.FrameDark != tones.Frame(tones.None, true) {
 		t.Fatalf("frame colour: shell %v, engine %v and %v", m["windowColor"], l.FrameColor, l.FrameDark)
 	}
+	// Our pages' background goes with it, for the engine to show until a page of ours draws.
+	if l := r.e.Layout(1); l.PageColor != tones.For(tones.None, false)["--bar"] || l.PageDark != tones.For(tones.None, true)["--bar"] {
+		t.Fatalf("page colour: engine %v and %v", l.PageColor, l.PageDark)
+	}
 
 	r.e.Fire(1, 0, "fullscreen", "")
 	m = r.waitFor(func(m map[string]any) bool { return m["t"] == "controls" })
