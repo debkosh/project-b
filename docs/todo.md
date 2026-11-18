@@ -66,8 +66,6 @@ Take an item off when it lands or is dropped.
 - **A new tab page and a crash page.** A crashed page shows the frame colour today.
 - **Content's own `chrome://` pages** (such as `chrome://gpu`) pass the gate but don't load,
   because the resource pack lacks their files.
-- **Back after the first page in a new tab** returns to `about:blank`; step 1 of Every
-  window has a tab ends it.
 - **What the first timelines show** ([logging.md](logging.md), baselines in `tools/baseline/`, medians of 10
   starts of the development build, 2026-11-12). Nothing is changed yet; each is for a decision.
   - *Settings is laid over the window before it has drawn anything.* From the click: over the window at 3 ms
@@ -102,26 +100,6 @@ Take an item off when it lands or is dropped.
 
 ## Decided, not started
 
-- **Every window has a tab** ([windows.md](windows.md#every-window-has-a-tab-decided-2026-11-18)),
-  in this order, a commit each:
-  1. A new tab loads nothing and starts no renderer: `Engine::CreateTab` with
-     `kNoRendererProcess`, no `LoadURL(BlankURL)` in `tabs.Manager.create`, and the blank
-     page's workspace workaround gone. Measure first: renderers stay put after New Tab, the
-     first navigation is no slower, a workspace tab still navigates, and on Android the
-     Mobile shell's new tab page shows over a tab with nothing loaded. It also ends back
-     going to `about:blank` after a new tab's first page.
-  2. Go: the start and New Window always open a new tab, the last tab going closes the
-     window, and the zero-tab rules go (`startsEmpty`, `App.madeForTab`, no active tab, the
-     actions off with no tab, `navigate` with no tab, the session's zero-tab fix).
-  3. Standard: New Tab goes to the window's new tab in the workspace shown, opening one
-     when there is none, with the box on it; the box over a page and the empty start go.
-  4. The other shells: No tabs goes from Glide, Fox, Terminal, Minimal, Mobile and
-     Mobile (native); a backdrop in the page's colour over a new tab where a shell has no
-     new tab page; shells rule 18 becomes "a new tab is drawn by the shell".
-  5. Android: the back key's last close closes the app; closing the last tab does too.
-  6. Checks and docs: the real app's empty checks become last-tab checks, the extension,
-     VM and Android back-key checks, the memory bench's note, and shells.md, extensions.md,
-     workspaces.md, android.md, menus-shortcuts.md, first-app.md and vm-testing.md.
 - Move focus decisions into Go (fixes Cmd+W pressed twice quickly).
 - An engine stress test against other engines, once the owner calls the engine solid.
 - **Extensions, later** ([extensions.md](extensions.md#open-for-the-owner)): updates on a
