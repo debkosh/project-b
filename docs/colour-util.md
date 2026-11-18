@@ -81,18 +81,37 @@ Two-tone designs, a primary on a background of its own:
 
 ![Two-tone pairs](screenshots/colour-util/two-tone.png)
 
-## What others do
+## What the research says
 
-- Material Color Utilities makes tonal palettes from one source colour: a palette keeps a
-  hue and chroma and varies only tone. Our strength and recipe are a small form of it.
-- Adobe's Leonardo makes colours to a target contrast against a background, which is why
-  ours takes the background as an input.
-- Radix Colors' 12-step scales, light and dark, put backgrounds low and text high: our soft
-  recipe and its tone.
-- Hashing a name onto HSL's hue clusters colours into greens and purples, as HSL's greens
-  take a third of the wheel; OKLCH spaces them evenly by eye.
+- **Colour harmony studies** (Ou and Luo, two-colour pairs, tested across eight countries):
+  two colours look harmonious when their hue and their chroma are alike, with a moderate
+  lightness difference, neither none nor the most, and more so when both are light. So the
+  util matches saturation to the theme, leans hues toward the primary, and keeps lightness a
+  fixed step off the background.
+- **Material's harmonize** (Material Color Utilities, `Blend.harmonize`): turns a colour's
+  hue toward the source's by half the gap, at most 15°, keeping its chroma and tone. The
+  util's lean is the same rule.
+- **Material's tonal palettes** (HCT, on CAM16 and L*): a palette keeps a hue and chroma and
+  varies only tone, so colours of one tone weigh the same whatever their hue. The util gives
+  every item of a set one lightness for the same reason.
+- **Perceptual spaces:** a hash onto HSL's hue clusters into greens and purples, as HSL's
+  greens take a third of the wheel; OKLCH (or HCT) spaces hues evenly by eye.
+- **Contrast against a background** (Adobe's Leonardo, used in Spectrum): colours made to a
+  target contrast with the background they sit on, which is why the util takes it as input.
+- **APCA levels** (Bronze simple mode): Lc 75 for body text, 60 for other content text, 45
+  for large text, 30 for what isn't read as text. A mark's single letter is other content
+  text: Lc 60. A dot: Lc 30.
+- **Simultaneous contrast:** one colour looks different on different backgrounds, and
+  contrast ratios measure lightness, not hue. So the util never relies on hue for contrast,
+  and the mocks show every colour in place.
+- **Design systems** (Atlassian, Primer, Cognite's Aura, Dovetail): decorative colours for
+  tags and avatars are their own token set, mapped for light and dark, never one-off hex.
+- **Hue templates** (Matsuda, used by Cohen-Or's colour harmonization) restrict hues to
+  sectors around a key hue; the templates were never rigorously tested, so the util doesn't
+  use them.
 
-None of them gives one colour per item, so the util is our own, about a hundred lines.
+None of these gives one colour per item from text, so the util is our own, about a hundred
+lines.
 
 ## Decisions
 
