@@ -962,6 +962,9 @@ address field, and a menu button at the far right, in our tones.
   A search over the shown workspace's tabs, by title and address in any case, is at the
   top: there at once with four tabs or more, behind a search button with three or fewer.
   Its × clears it; Enter shows the first tab found; closing the switcher forgets it.
+  While `bookmarksSidebar` is on, Tabs and Bookmarks above it all choose between the cards
+  and the bookmarks ([bookmark-folders.md](bookmark-folders.md#on-the-mobile-web-shell));
+  it opens on Tabs each time.
 - **Tab groups** are Go's ([groups.md](groups.md)). While the active tab is in one, a strip
   over the bar shows the group: its dot, which opens the group's sheet (name, colour, its
   tabs, New tab, Ungroup, Close group with a confirm), its tabs' favicons, and + for a new

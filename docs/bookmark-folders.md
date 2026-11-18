@@ -70,6 +70,12 @@ How Standard shows them (`shell/src/apps/shell/standard/`, `bookmarks.js` for wh
   loads the first bookmark in the tab and opens the rest behind it, in a group with it
   named after the folder (`newTab` with `groupWith`, then `editGroup` once the group shows);
   a tab already in a group takes them into its own. Off, the page shows no bookmarks.
+- **The switcher** (`Switcher.svelte`) has Tabs, with how many, and Bookmarks at its top.
+  Bookmarks shows a folder as a list (`BookmarkList.svelte`), the top to start with: the
+  path to it, each folder on it a tap away, then its folders with how many bookmarks each
+  holds, a tap going into one, then its bookmarks, each its letter, name and host. A tap on
+  a bookmark opens it in a new tab, in the workspace the switcher shows, and closes the
+  switcher. It opens on Tabs each time. Off, it has its tabs alone, as before.
 
 ## What the person sees
 

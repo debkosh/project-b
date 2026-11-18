@@ -344,6 +344,10 @@
       onpick={pick}
       onclosetab={(id) => closeTabs([id])}
       onnewtab={() => newTab()}
+      onopen={(url) => {
+        sheet = '';
+        send({ t: 'newTab', workspace, text: url });
+      }}
       oncard={(id) => {
         cardTab = id;
         sheet = 'card';

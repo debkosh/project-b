@@ -1088,6 +1088,36 @@ const H = 915;
   await setPref('bookmarksNewTab', true);
   check('and on again, they are back', await until(() => newTabMarks.isVisible()));
 
+  // The switcher (bookmarksSidebar, off by default): Tabs and Bookmarks at its top, the
+  // folders from the top, a bookmark opening in a new tab.
+  const views = switcher.getByRole('radiogroup', { name: 'Show' });
+  const marksView = switcher.getByRole('region', { name: 'Bookmarks' });
+  const marksTrail = () => marksView.getByRole('navigation', { name: 'Path' }).getByRole('button').allInnerTexts();
+  const marksRows = () => marksView.getByRole('listitem').locator('.title').allInnerTexts();
+  await tabsButton.tap();
+  await until(() => switcher.isVisible());
+  check('with bookmarksSidebar off, the switcher has its tabs alone', (await views.count()) === 0);
+  await page.keyboard.press('Escape');
+  await setPref('bookmarksSidebar', true);
+  await tabsButton.tap();
+  await until(() => switcher.isVisible());
+  check('on, Tabs and Bookmarks at its top, Tabs chosen', await until(() => views.isVisible()) && (await views.getByRole('radio', { name: /^Tabs · \d+$/ }).getAttribute('aria-checked')) === 'true');
+  await views.getByRole('radio', { name: 'Bookmarks' }).tap();
+  check('Bookmarks shows the top folder in place of the cards, its folders first', await until(async () => JSON.stringify(await marksRows()) === JSON.stringify(['Reading', 'Recipes', 'Travel', 'Bank', 'Shop'])) && (await cards.filter({ visible: true }).count()) === 0, JSON.stringify(await marksRows()));
+  await marksView.getByRole('button').filter({ hasText: 'Recipes' }).tap();
+  check('a folder opens in the list, under its path', await until(async () => JSON.stringify(await marksTrail()) === JSON.stringify(['Bookmarks', 'Recipes']) && (await marksRows()).length === 6), JSON.stringify(await marksTrail()));
+  await shots('bookmarks-switcher');
+  await marksView.getByRole('navigation', { name: 'Path' }).getByRole('button', { name: 'Bookmarks' }).tap();
+  check('its path leads back up', await until(async () => JSON.stringify(await marksTrail()) === JSON.stringify(['Bookmarks']) && (await marksRows()).length === 5));
+  await marksView.getByRole('button').filter({ hasText: 'Recipes' }).tap();
+  await until(async () => (await marksRows()).length === 6);
+  const tabsBeforeOpen = (await regions()).tabs.length;
+  await marksView.getByRole('button').filter({ hasText: 'Flatbread' }).tap();
+  check('a tap on a bookmark opens it in a new tab and closes the switcher', await until(async () => (await regions()).tabs.length === tabsBeforeOpen + 1 && (await active()).url === 'https://flatbread.example.com/' && !(await switcher.isVisible())), JSON.stringify(await active()));
+  await tabsButton.tap();
+  check('it opens on Tabs again', await until(async () => (await views.getByRole('radio', { name: /^Tabs/ }).getAttribute('aria-checked')) === 'true' && (await cards.filter({ visible: true }).count()) > 0));
+  await page.keyboard.press('Escape');
+
   // A tab's picture is let go as the tab closes, so one on its way then fails to load, and
   // its card, gone or going, shows the favicon: not an error.
   const errors = [...w.errors];

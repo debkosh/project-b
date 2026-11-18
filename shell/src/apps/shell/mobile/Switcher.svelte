@@ -1,6 +1,7 @@
 <script>
   import { shell, state as go, tabLabel } from '@/sdk/svelte.svelte.js';
   import Favicon from './Favicon.svelte';
+  import BookmarkList from './BookmarkList.svelte';
   import Icon from './Icon.svelte';
   import { gesture } from './gesture.js';
   import { groupLabel, groupOf } from './groups.js';
@@ -17,7 +18,12 @@
   // cropped from the top, or its favicon or letter until there is a picture.
   // A search over the workspace's tabs, by title and address, sits at the top: always there
   // with four tabs or more, behind a search button with three or fewer.
-  let { open, groups, workspace = $bindable(), onpick, onclosetab, onnewtab, oncard, ongroup, onclosegroup, ondrop } = $props();
+  // While bookmarksSidebar is on, Tabs and Bookmarks at the very top choose between the cards
+  // and the bookmarks (docs/bookmark-folders.md, Where bookmarks show): the folders from
+  // the top, a tap on a bookmark opening it in a new tab (onopen, with its address).
+  let { open, groups, workspace = $bindable(), onpick, onclosetab, onnewtab, oncard, ongroup, onclosegroup, ondrop, onopen } = $props();
+  let view = $state('tabs');
+  const marks = $derived(!!go.prefs.bookmarksSidebar && view === 'bookmarks');
 
   // The pictures that didn't load, as one of a tab closed meanwhile: its favicon instead. A
   // picture is drawn only while the switcher is open, so a new one is fetched only when it
@@ -36,6 +42,7 @@
     if (open) return;
     query = '';
     searching = false;
+    view = 'tabs';
   });
 
   function search() {
@@ -92,7 +99,18 @@
 </script>
 
 <div class="switcher" hidden={!open} use:shell role="dialog" aria-label="Tabs">
-  <div class="head">
+  {#if go.prefs.bookmarksSidebar}
+    <div class="views" role="radiogroup" aria-label="Show">
+      <button role="radio" aria-checked={!marks} onclick={() => (view = 'tabs')}>Tabs · {go.tabs.filter(inWorkspace).length}</button>
+      <button role="radio" aria-checked={marks} onclick={() => (view = 'bookmarks')}>Bookmarks</button>
+    </div>
+  {/if}
+  {#if marks}
+    <div class="marks" role="region" aria-label="Bookmarks">
+      <BookmarkList list={go.bookmarks} {onopen} />
+    </div>
+  {/if}
+  <div class="head" hidden={marks}>
     {#if workspaces.length > 1}
       <div class="chips" role="radiogroup" aria-label="Workspace">
         {#each workspaces as w (w.id)}
@@ -109,7 +127,7 @@
     {/if}
     <button class="new" aria-label="New Tab" onclick={onnewtab}><Icon name="plus" /></button>
   </div>
-  {#if long || searching}
+  {#if !marks && (long || searching)}
     <div class="search" role="search" aria-label="Search tabs">
       <Icon name="search" size={18} />
       <input
@@ -132,7 +150,7 @@
       {/if}
     </div>
   {/if}
-  <div class="grid">
+  <div class="grid" hidden={marks}>
     {#if none}<p class="none">No tabs found</p>{/if}
     {#each items as item (item.key)}
       {#if item.tab}
@@ -218,6 +236,48 @@
   }
 
   .switcher[hidden] {
+    display: none;
+  }
+
+  /* Tabs and Bookmarks: two halves of a pill, the one shown raised on it. */
+  .views {
+    flex: none;
+    display: flex;
+    margin: 8px 12px 4px;
+    padding: 4px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--accent-tint);
+  }
+
+  .views button {
+    flex: 1;
+    height: 48px;
+    border: 0;
+    border-radius: 12px;
+    background: none;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .views button[aria-checked='true'] {
+    background: var(--surface);
+    color: var(--text);
+    font-weight: 600;
+    box-shadow: 0 0 0 1px var(--line);
+  }
+
+  .marks {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0 12px 12px;
+  }
+
+  .head[hidden],
+  .grid[hidden] {
     display: none;
   }
 
