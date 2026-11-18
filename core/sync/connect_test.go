@@ -3,6 +3,8 @@ package sync_test
 import (
 	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"slices"
@@ -414,5 +416,44 @@ func TestProposeAndLink(t *testing.T) {
 		if _, err := sync.Link(bad); err == nil {
 			t.Errorf("%q was taken", bad)
 		}
+	}
+}
+
+// What goes wrong reaching a bucket is named for the page: an address that isn't one, one
+// that needs its token, a server that can't be reached, an answer that isn't a bucket's, and a
+// token the server refuses, at once and later, when the server signs a device out.
+func TestTheProblemsReachingABucket(t *testing.T) {
+	s := newServer(t)
+	gone := httptest.NewTLSServer(http.NotFoundHandler())
+	gone.Close()
+	p := newProfile(t)
+	p.startSync(s)
+	problem := func(address, token string) string {
+		got := make(chan error, 1)
+		p.main(func() { p.sync.Inspect(address, token, func(_ bool, err error) { got <- err }) })
+		return sync.Problem(<-got)
+	}
+	for _, c := range []struct{ address, token, want string }{
+		{"http://memd.example/sync/tok", "", "address"},
+		{s.bearer(), "", "needsToken"},
+		{gone.URL + "/sync/tok", "", "unreachable"},
+		{s.ts.URL + "/elsewhere/sync/tok", "", "notBucket"},
+		{s.bearer(), "refused", "token"},
+	} {
+		s.refuse("refused")
+		if got := problem(c.address, c.token); got != c.want {
+			t.Errorf("%s with %q: %q, want %q", c.address, c.token, got, c.want)
+		}
+	}
+	if err := p.connect(s.single("tok"), "", "pass phrase"); err != nil {
+		t.Fatal(err)
+	}
+	s.refuse("tok")
+	if err := p.sync.RunNow(); sync.Problem(err) != "token" {
+		t.Fatalf("a run signed out: %v", err)
+	}
+	p.settle()
+	if st := p.sync.Status(); !st.On || st.Problem != "token" || st.Error == "" {
+		t.Fatalf("the status signed out: %+v", st)
 	}
 }
