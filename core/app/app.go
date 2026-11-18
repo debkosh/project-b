@@ -238,6 +238,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.menus = newContextMenus(a, e)
 	a.Shell.AddPart(a.downloadsShellPart())
 	a.dialogs = &pageDialogs{a: a, e: e, list: []pageDialog{}}
+	a.dialogs.passkeys = &passkeys{p: a.dialogs, waiting: map[engine.DialogID]pageDialog{}}
 	a.Shell.AddPart(a.dialogs.shellPart())
 	a.finds = newPageFinds(a, e)
 	a.Shell.AddPart(a.finds.shellPart())

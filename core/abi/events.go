@@ -35,6 +35,7 @@ const (
 	DialogClosed        Event = 22
 	PageMessage         Event = 23
 	SiteData            Event = 24
+	PasskeyStep         Event = 25
 	PermissionRequested Event = 40
 	PermissionStatusOf  Event = 41
 	NotificationShown   Event = 42
@@ -60,14 +61,14 @@ func init() {
 		NotificationShown: "engine.NotificationShown", NotificationClicked: "engine.NotificationClicked",
 		ConnectionChanged: "engine.ConnectionChanged", CertificateError: "engine.CertificateError",
 		SparksFor: "engine.SparksFor", AdBlocked: "engine.AdBlocked", PrintRequested: "engine.PrintRequested",
-		SiteData: "engine.SiteDataListed",
+		SiteData: "engine.SiteDataListed", PasskeyStep: "engine.PasskeyStep",
 	} {
 		names[id] = name
 	}
 }
 
 // dialogKinds name PBDialogKind's values.
-var dialogKinds = []string{"alert", "confirm", "prompt", "beforeunload", "signin"}
+var dialogKinds = []string{"alert", "confirm", "prompt", "beforeunload", "signin", "passkey"}
 
 // adapter decodes the events below 60.
 func (e *Events) adapter(id Event, l engine.Listener, r *reader) (Value, bool) {
@@ -150,6 +151,8 @@ func (e *Events) adapter(id Event, l engine.Listener, r *reader) (Value, bool) {
 		l.DialogOpened(d)
 	case DialogClosed:
 		l.DialogClosed(engine.DialogID(r.int()))
+	case PasskeyStep:
+		l.PasskeyStep(engine.DialogID(r.int()), r.str(), r.str())
 	case PermissionRequested:
 		l.PermissionRequested(engine.PermissionRequest{ID: engine.PermissionID(r.int()), Tab: engine.TabID(r.int()), Origin: r.str(), Kinds: strings.Split(r.str(), ","), Gesture: r.bool()})
 	case PermissionStatusOf:

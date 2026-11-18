@@ -269,6 +269,11 @@ type Engine interface {
 	// AnswerSignIn answers a site's or a proxy's sign-in: the username and password, or
 	// no to cancel it.
 	AnswerSignIn(id DialogID, ok bool, username, password string)
+	// AnswerPasskey says what the person did at a passkey request's step
+	// (docs/passkeys.md): the action, cancel, pin, account, phone, key, bluetoothOn,
+	// bluetoothSettings or retry, and its text, a PIN or an account's index. An engine
+	// with no passkey requests does nothing.
+	AnswerPasskey(id DialogID, action, text string)
 	// Find searches a tab's page for text: a new search, or the next match forward or
 	// back. FindReply answers with request. StopFinding ends it, keeping the match
 	// selected.
@@ -511,6 +516,10 @@ type Listener interface {
 	// DialogClosed says the engine gave up on one, as when its tab navigated or closed.
 	DialogOpened(d Dialog)
 	DialogClosed(id DialogID)
+	// PasskeyStep says what a passkey request, a dialog of kind passkey, asks of the
+	// person now (docs/passkeys.md): the step's name, key, pin, touch, account, phone,
+	// phoneBusy or error, and what it carries, a JSON object.
+	PasskeyStep(id DialogID, step, carries string)
 
 	// FindReply says how a search in a tab's page went: the matches so far, which one is
 	// active, from 1, and whether the count is final.
@@ -633,8 +642,9 @@ const (
 type DialogID int64
 
 // Dialog is what a page asks: its kind, alert, confirm, prompt, beforeunload (leave the
-// page) or signin (a site's or a proxy's request for a username and password), its words
-// (a sign-in's realm), a prompt's text to start from, the origin of the frame asking (or
+// page), signin (a site's or a proxy's request for a username and password) or passkey
+// (a passkey request, whose steps follow as PasskeySteps), its words (a sign-in's realm,
+// a passkey request's site), a prompt's text to start from, the origin of the frame asking (or
 // of the site or proxy), and whether a leave-page question is for a reload, or a sign-in
 // is a proxy's.
 type Dialog struct {

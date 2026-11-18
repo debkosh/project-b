@@ -149,6 +149,9 @@ func (r *adapterRecorder) FilesChosen(tab engine.TabID, count int, folder string
 func (r *adapterRecorder) DialogOpened(d engine.Dialog) {
 	r.note(fmt.Sprintf("dialog %d %s %s", d.ID, d.Kind, d.Message))
 }
+func (r *adapterRecorder) PasskeyStep(id engine.DialogID, step, carries string) {
+	r.note(fmt.Sprintf("passkey %d %s %s", id, step, carries))
+}
 func (r *adapterRecorder) DialogClosed(id engine.DialogID) {
 	r.note(fmt.Sprintf("dialog closed %d", id))
 }

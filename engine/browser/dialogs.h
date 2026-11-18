@@ -31,6 +31,9 @@ class Dialogs : public content::JavaScriptDialogManager {
   // The one for every tab, made when first asked for.
   static Dialogs* Get();
 
+  // The next dialog's id, for what is a dialog to Go and kept elsewhere: a passkey request.
+  int64_t NextId() { return next_id_++; }
+
   // Go's answer to dialog id: OK or not, and a prompt's text.
   void Answer(int64_t id, bool ok, const std::string& text);
 

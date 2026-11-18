@@ -12,6 +12,10 @@ type dialogs struct {
 	next    engine.DialogID
 	waiting map[engine.DialogID]engine.TabID
 	answers []DialogAnswer
+	// The passkey requests among those waiting, and the app's answers to their steps
+	// (passkeys.go).
+	passkeys       map[engine.DialogID]*passkeyRequest
+	passkeyAnswers []PasskeyAnswer
 }
 
 // DialogAnswer is one answer the app gave a page's dialog.
@@ -53,6 +57,7 @@ func (e *Engine) dropDialogs(tab engine.TabID) {
 		if t == tab {
 			gone = append(gone, id)
 			delete(e.dialogs.waiting, id)
+			delete(e.dialogs.passkeys, id)
 		}
 	}
 	e.mu.Unlock()

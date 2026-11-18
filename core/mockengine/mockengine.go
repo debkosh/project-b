@@ -1021,6 +1021,12 @@ func (e *Engine) Fire(w engine.WindowID, tab engine.TabID, kind, value string) {
 		case "alert", "confirm", "prompt", "beforeunload", "signin":
 			// The page asks; value is its words.
 			e.openDialog(shown, kind, value)
+		case "passkey":
+			// The page asks for a passkey: value is "create" or "get" (passkeys.go).
+			e.openPasskey(shown, value)
+		case "passkeyStep":
+			// A key or a phone brings the newest request to a step, or ends it.
+			e.passkeyStep(value)
 		case "chooseFile":
 			// The page asks for a file; the user picks one in folder value, or cancels
 			// with "".

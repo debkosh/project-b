@@ -37,7 +37,9 @@
 #include "content/public/browser/posix_file_descriptor_info.h"
 #include "project_b/engine/android/descriptors.h"
 #else
+#include "base/no_destructor.h"
 #include "project_b/engine/browser/devtools.h"
+#include "project_b/engine/browser/passkeys.h"
 #endif
 #include "content/public/browser/login_delegate.h"
 #include "net/base/auth.h"
@@ -226,6 +228,20 @@ std::unique_ptr<content::LoginDelegate> ContentBrowserClient::CreateLoginDelegat
     content::LoginDelegate::LoginAuthRequiredCallback auth_required_callback) {
   return Dialogs::Get()->SignIn(web_contents, auth_info, std::move(auth_required_callback));
 }
+
+#if !BUILDFLAG(IS_ANDROID)
+content::WebAuthenticationDelegate*
+ContentBrowserClient::GetWebAuthenticationDelegate() {
+  static base::NoDestructor<PasskeyPolicy> policy;
+  return policy.get();
+}
+
+std::unique_ptr<content::AuthenticatorRequestClientDelegate>
+ContentBrowserClient::GetWebAuthenticationRequestDelegate(
+    content::RenderFrameHost* render_frame_host) {
+  return std::make_unique<PasskeyRequest>(render_frame_host);
+}
+#endif
 
 std::string ContentBrowserClient::GetProduct() {
   return std::string(version_info::GetProductNameAndVersionForUserAgent());
