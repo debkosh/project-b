@@ -5,19 +5,25 @@ import { reactive } from 'vue';
 // Each page's state.js hands Go's messages to importMessage.
 //
 // browsers: null until Go has looked, then each {id, name, locked, profiles: [{key, name,
-//   counts: {bookmarks, folders, pages, extensions}}]}; a locked one, Safari's until the
-//   app has Full Disk Access, has nothing counted. Extensions are counted only while they
-//   can be installed (the Extensions flag).
+//   counts: {bookmarks, folders, pages, passwords, extensions}, primaryPassword}]}; a
+//   locked one, Safari's until the app has Full Disk Access, has nothing counted.
+//   Extensions are counted only while they can be installed (the Extensions flag), and
+//   passwords once there is a store for them (passwords says so).
 // folder: what the last folder chosen was, {browser} or {error}, or {cancelled}; null
 //   while none is asked for.
 // runs: each import by its profile's key: {steps: {bookmarks: {state, result, error}}},
 //   state "doing" or "done", and done once the last has ended. Nothing outlives the page.
-export const imports = reactive({ browsers: null, folder: null, runs: {} });
+// file: what the last file brought, {kind, name, result} or {kind, name, error}.
+export const imports = reactive({ browsers: null, passwords: false, folder: null, runs: {}, file: null });
 
 export function importMessage(m) {
   switch (m.t) {
     case 'browsers':
       imports.browsers = m.browsers || [];
+      imports.passwords = !!m.passwords;
+      return true;
+    case 'fileImported':
+      imports.file = m;
       return true;
     case 'folder':
       imports.folder = m;
@@ -48,6 +54,7 @@ export const plural = (n, one, many) => `${number(n)} ${n === 1 ? one : many}`;
 export const kinds = [
   { id: 'bookmarks', label: 'Bookmarks' },
   { id: 'history', label: 'History' },
+  { id: 'passwords', label: 'Passwords' },
   { id: 'extensions', label: 'Extensions' },
 ];
 
@@ -55,7 +62,7 @@ export const kinds = [
 // message names them.
 export function choicesOf(p) {
   const c = p.counts || {};
-  const notes = { bookmarks: c.bookmarks, history: c.pages, extensions: c.extensions };
+  const notes = { bookmarks: c.bookmarks, history: c.pages, passwords: c.passwords, extensions: c.extensions };
   return kinds.filter((k) => notes[k.id]).map((k) => ({ ...k, note: number(notes[k.id]) }));
 }
 
@@ -65,6 +72,7 @@ export function holds(p) {
   const parts = [
     c.bookmarks && plural(c.bookmarks, 'bookmark', 'bookmarks'),
     c.pages && plural(c.pages, 'page', 'pages'),
+    c.passwords && plural(c.passwords, 'password', 'passwords'),
     c.extensions && plural(c.extensions, 'extension', 'extensions'),
   ].filter(Boolean);
   return parts.length ? parts.join(' · ') : 'Nothing to bring over';
@@ -100,6 +108,9 @@ export function stepLines(kind, step) {
     } else {
       lines.push({ text: 'No new bookmarks', note: r?.skipped ? `${number(r.skipped)} bookmarked already` : '', state: 'done' });
     }
+  } else if (kind === 'passwords') {
+    if (step.error) return [{ text: "Passwords didn't come", note: step.error, state: 'problem' }];
+    lines.push(passwordsLine(r));
   } else if (kind === 'history') {
     lines.push({ text: r?.pages ? `${plural(r.pages, 'page', 'pages')} of history` : 'No history', state: 'done' });
   } else if (kind === 'extensions' && r) {
@@ -111,4 +122,11 @@ export function stepLines(kind, step) {
   }
   if (step.error) lines.push({ text: `Some couldn't be read: ${step.error}`, state: 'problem' });
   return lines;
+}
+
+// passwordsLine is what passwords brought, in a line.
+export function passwordsLine(r) {
+  if (!r?.added) return { text: 'No new passwords', note: r?.already ? `${number(r.already)} saved already` : '', state: 'done' };
+  const note = [r.already && `${number(r.already)} saved already`, r.skipped && `${number(r.skipped)} left out`].filter(Boolean).join(' · ');
+  return { text: plural(r.added, 'password', 'passwords'), note, state: 'done' };
 }

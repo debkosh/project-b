@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sudiptadeb/project-b/browserdata"
+
 	"projectb/app"
 	"projectb/bookmarks"
 	"projectb/engine"
@@ -238,5 +240,106 @@ func TestSafariWaitsForFullDiskAccess(t *testing.T) {
 	// From Safari, Favorites, Recipes and Reading List.
 	if bm.Imported != (bookmarks.Imported{Bookmarks: 4, Folders: 4}) || bm.Folder != "From Safari" || bm.ReadingList != 1 || string(got["history"]) != `{"pages":2}` {
 		t.Fatalf("brought %s and %s", got["bookmarks"], got["history"])
+	}
+}
+
+// fakePasswords is a passwords store that keeps which logins it has, by origin and
+// username, as the real one counts them.
+type fakePasswords struct{ saved map[string]string }
+
+func (s *fakePasswords) Import(logins []browserdata.Login) (added, already, skipped int) {
+	for _, l := range logins {
+		key := l.Origin + " " + l.Username
+		if _, ok := s.saved[key]; ok {
+			already++
+			continue
+		}
+		s.saved[key] = l.Password
+		added++
+	}
+	return added, already, skipped
+}
+
+// With a passwords store, passwords come over too: Chrome's, opened with the keychain's
+// key, Firefox's with no primary password, and Zen's only with its primary password,
+// which the page sends with the import. Files a person exported come over as well:
+// bookmarks into a folder named after the file, passwords into the store; one that isn't
+// such a file says so.
+func TestPasswordsComeOver(t *testing.T) {
+	home, _ := filepath.Abs("../../browserdata/testdata/home")
+	dir := t.TempDir()
+	keychain := func(service, account string) ([]byte, error) {
+		if service == "Chrome Safe Storage" {
+			return []byte("test-safe-storage"), nil
+		}
+		return nil, browserdata.ErrNoSecret
+	}
+	r := startWith(t, app.Config{ProfileDir: dir, Profiles: profiles.New(t.TempDir()), Made: true, BrowserHome: home, Keychain: keychain, Update: update.Config{StateDir: filepath.Join(dir, "updates")}})
+	store := &fakePasswords{saved: map[string]string{}}
+	snap := r.waitFor(func(m map[string]any) bool { return m["t"] == "snapshot" })
+	tab := engine.TabID(snap["welcome"].(float64))
+	got, stop := r.e.PageFeed(tab).Subscribe()
+	defer stop()
+	p := &importPage{t: t, dir: dir, r: r, got: got, say: func(msg string) { r.e.Post(func() { r.a.PageMessage(tab, "welcome", []byte(msg)) }) }}
+	r.e.Post(func() { r.a.UsePasswordStore(store) })
+	p.say(`{"t":"ready"}`)
+	next(t, got, "snapshot")
+	p.say(`{"t":"findBrowsers"}`)
+	m := next(t, got, "browsers")
+	list := m["browsers"].([]any)
+	chrome := profilesOf(browserIn(t, list, "chrome"))[0]
+	zen := profilesOf(browserIn(t, list, "zen"))[0]
+	if m["passwords"] != true || chrome["counts"].(map[string]any)["passwords"] != 3.0 || chrome["primaryPassword"] != nil || zen["primaryPassword"] != true {
+		t.Fatalf("passwords %v, Chrome %v, Zen %v", m["passwords"], chrome, zen)
+	}
+
+	passwords := func(key, primary string) (string, string) {
+		t.Helper()
+		b, _ := json.Marshal(map[string]any{"t": "import", "key": key, "what": []string{"passwords"}, "primaryPassword": primary})
+		p.say(string(b))
+		for {
+			s := next(t, got, "importStep")
+			if s["state"] == "done" {
+				r, _ := json.Marshal(s["result"])
+				e, _ := s["error"].(string)
+				next(t, got, "imported")
+				return string(r), e
+			}
+		}
+	}
+	if res, err := passwords(chrome["key"].(string), ""); res != `{"added":3,"already":0,"skipped":0}` || err != "" {
+		t.Fatalf("Chrome's: %s %s", res, err)
+	}
+	firefox := profilesOf(browserIn(t, list, "firefox"))[0]
+	// Firefox's alice at example.com is another origin than Chrome's example.com/login.
+	if res, err := passwords(firefox["key"].(string), ""); res != `{"added":2,"already":0,"skipped":0}` || err != "" {
+		t.Fatalf("Firefox's: %s %s", res, err)
+	}
+	if _, err := passwords(zen["key"].(string), "wrong"); err != "the primary password isn't right" {
+		t.Fatalf("Zen's with a wrong primary password: %q", err)
+	}
+	if res, err := passwords(zen["key"].(string), "letmein"); res != `{"added":1,"already":0,"skipped":0}` || err != "" {
+		t.Fatalf("Zen's: %s %s", res, err)
+	}
+	if store.saved["https://zen.example.com zed"] != "z3n" || store.saved["https://example.org/ bob"] != "hunter2" {
+		t.Fatalf("the store has %v", store.saved)
+	}
+
+	file := func(kind, name, text string) map[string]any {
+		t.Helper()
+		b, _ := json.Marshal(map[string]any{"t": "importFile", "kind": kind, "name": name, "text": text})
+		p.say(string(b))
+		return next(t, got, "fileImported")
+	}
+	f := file("passwords", "Passwords.csv", "Title,URL,Username,Password,Notes,OTPAuth\nnew,https://new.example.com/,nina,n3w,,\nagain,https://example.org/,bob,hunter2,,\n")
+	if r, _ := json.Marshal(f["result"]); string(r) != `{"added":1,"already":1,"skipped":0}` {
+		t.Fatalf("a passwords file: %v", f)
+	}
+	f = file("bookmarks", "bookmarks_11_18.html", "<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<DL><p>\n<DT><A HREF=\"https://example.com/file\">From a file</A>\n</DL><p>\n")
+	if res := f["result"].(map[string]any); res["bookmarks"] != 1.0 || res["folder"] != "From bookmarks_11_18" {
+		t.Fatalf("a bookmarks file: %v", f)
+	}
+	if f = file("bookmarks", "notes.html", "<html>notes</html>"); f["error"] != "That file isn't a bookmarks file a browser exported." {
+		t.Fatalf("not a bookmarks file: %v", f)
 	}
 }

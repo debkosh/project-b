@@ -165,6 +165,40 @@ const said = (frame, from) => frame.getByRole('list', { name: `From ${from}` }).
   await w.page.close();
   await lib.stop();
 
+  // With a passwords store, passwords come over too: Chrome's through the keychain (the
+  // mock's gives the test home's secret), Zen's with its primary password, typed. Files
+  // a person exported come over in Settings too: bookmarks and passwords.
+  await lib.start(['-use=standard', '-skip-welcome', `-browsers=${home}`, '-password-store', '-keychain=test-safe-storage']);
+  w = await lib.openWindow(browser, { viewport: { width: 1280, height: 800 } });
+  await lib.fire('menu', 'app.settings');
+  await w.settings.locator('[data-section="data"]').click();
+  const pw = w.settings.getByRole('region', { name: 'Import' });
+  await pw.getByRole('button', { name: 'From Chrome' }).click();
+  check('a profile offers its passwords, ticked', await until(() => pw.getByRole('checkbox', { name: /Passwords/ }).isChecked()) && (await pw.getByText('4 bookmarks · 3 pages · 3 passwords').isVisible()));
+  for (const name of [/Bookmarks/, /History/]) await pw.getByRole('checkbox', { name }).uncheck();
+  await pw.getByRole('button', { name: 'Import', exact: true }).click();
+  check('Chrome\'s passwords come over', await until(async () => (await said(pw, 'Chrome · Personal')).includes('3 passwords')), await said(pw, 'Chrome · Personal'));
+  await pw.getByRole('button', { name: 'Import another' }).click();
+  await pw.getByRole('button', { name: 'From Zen' }).click();
+  const primary = pw.getByRole('textbox', { name: "Zen's primary password" }).or(pw.getByLabel("Zen's primary password"));
+  check('Zen asks for its primary password', await until(() => primary.isVisible()));
+  await primary.fill('letmein');
+  await pw.getByRole('checkbox', { name: /Bookmarks/ }).uncheck();
+  await pw.getByRole('checkbox', { name: /History/ }).uncheck();
+  await pw.getByRole('button', { name: 'Import', exact: true }).click();
+  check('and with it, its password comes over', await until(async () => (await said(pw, 'Zen · Default (release)')).includes('1 password')), await said(pw, 'Zen · Default (release)'));
+  await settle(w.page);
+  await w.page.screenshot({ path: path.join(lib.out, 'settings-passwords.png') });
+  await pw.getByRole('button', { name: 'Import another' }).click();
+  await pw.getByLabel('Passwords file').setInputFiles({ name: 'Passwords.csv', mimeType: 'text/csv', buffer: Buffer.from('Title,URL,Username,Password,Notes,OTPAuth\nnew,https://new.example.com/,nina,n3w,,\nagain,https://example.org/,bob,hunter2,,\n') });
+  check('a passwords file comes over, and says to delete it', await until(async () => (await said(pw, 'Passwords.csv')).includes('1 password') && (await pw.getByText('Delete Passwords.csv now').isVisible())), await said(pw, 'Passwords.csv'));
+  await pw.getByRole('button', { name: 'Import another' }).click();
+  await pw.getByLabel('Bookmarks file').setInputFiles({ name: 'bookmarks.html', mimeType: 'text/html', buffer: Buffer.from('<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<DL><p>\n<DT><H3>Reading</H3>\n<DL><p>\n<DT><A HREF="https://example.com/file">From a file</A>\n</DL><p>\n</DL><p>\n') });
+  check('a bookmarks file comes over into its own folder', await until(async () => (await said(pw, 'bookmarks.html')).includes('1 bookmark')) && folders().includes('From bookmarks'), JSON.stringify(folders()));
+  check('passwords and files logged no errors', w.errors.length === 0, w.errors.join(' | '));
+  await w.page.close();
+  await lib.stop();
+
   // No browser in the home folder: the step still offers another browser's folder.
   flags({ showWelcome: 'on' });
   await lib.start(['-use=standard']);

@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"path/filepath"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/sudiptadeb/project-b/browserdata"
@@ -48,6 +50,27 @@ type importer struct {
 	// store installs extensions from the store, and says which are installed: set while
 	// the Extensions flag is on, in a build with extensions.
 	store extensionStore
+	// passwords is the passwords store, once there is one (UsePasswordStore); keychain
+	// reads a Chromium browser's key for its passwords.
+	passwords PasswordStore
+	keychain  func(service, account string) ([]byte, error)
+}
+
+// PasswordStore is what bringing passwords over needs of the passwords store
+// (core/passwords): it adds what it hasn't, keeping a saved login for the same origin and
+// username as it is, and says how many it added, had already, and left out.
+type PasswordStore interface {
+	Import(logins []browserdata.Login) (added, already, skipped int)
+}
+
+// UsePasswordStore lets passwords come over into s, from other browsers and from files.
+func (a *App) UsePasswordStore(s PasswordStore) { a.imports.passwords = s }
+
+// broughtPasswords is what passwords brought.
+type broughtPasswords struct {
+	Added   int `json:"added"`
+	Already int `json:"already"`
+	Skipped int `json:"skipped"`
 }
 
 // extensionStore is what bringing extensions over needs of the extension manager: whether
@@ -74,15 +97,17 @@ type shownFrom struct {
 	browser string
 }
 
-// shownProfile is a profile: its key, its name ("" for a browser of one), and what it holds.
+// shownProfile is a profile: its key, its name ("" for a browser of one), what it holds,
+// and whether its passwords are behind a primary password, Firefox's.
 type shownProfile struct {
-	Key    string             `json:"key"`
-	Name   string             `json:"name"`
-	Counts browserdata.Counts `json:"counts"`
+	Key             string             `json:"key"`
+	Name            string             `json:"name"`
+	Counts          browserdata.Counts `json:"counts"`
+	PrimaryPassword bool               `json:"primaryPassword,omitempty"`
 }
 
 // The kinds of things an import brings, in the order it brings them.
-var importSteps = []string{"bookmarks", "history", "extensions"}
+var importSteps = []string{"bookmarks", "history", "passwords", "extensions"}
 
 // broughtExtensions is what became of a profile's extensions, by name: installed from the
 // store, installed here already, failed to install and why, and left out and why.
@@ -105,11 +130,14 @@ var skipWhy = map[browserdata.Skip]string{
 	browserdata.SkipManifestV2: "Manifest V2, which no longer runs",
 }
 
-func newImporter(a *App, e engine.Engine, home string, send func(any)) *importer {
+func newImporter(a *App, e engine.Engine, home string, keychain func(string, string) ([]byte, error), send func(any)) *importer {
 	if home == "" {
 		home, _ = os.UserHomeDir()
 	}
-	return &importer{a: a, e: e, home: home, profiles: map[string]shownFrom{}, busy: map[string]bool{}, send: send}
+	if keychain == nil {
+		keychain = browserdata.KeychainSecret
+	}
+	return &importer{a: a, e: e, home: home, keychain: keychain, profiles: map[string]shownFrom{}, busy: map[string]bool{}, send: send}
 }
 
 // snapshot is what a page starts with: no browsers until a look ends.
@@ -128,8 +156,9 @@ func (im *importer) importing() []string {
 }
 
 // shown is a browser as the pages hear of it, its profiles counted, which reads their
-// files: called on a worker. Extensions are counted only while they can be installed.
-func shown(b browserdata.Browser, extensions bool) (shownBrowser, []shownFrom) {
+// files: called on a worker. Extensions are counted only while they can be installed, and
+// passwords only once there is a store for them.
+func shown(b browserdata.Browser, extensions, passwords bool) (shownBrowser, []shownFrom) {
 	s := shownBrowser{ID: b.ID, Name: b.Name, Profiles: []shownProfile{}}
 	for _, p := range b.Profiles {
 		sp := shownProfile{Key: p.Dir, Name: p.Name}
@@ -142,6 +171,11 @@ func shown(b browserdata.Browser, extensions bool) (shownBrowser, []shownFrom) {
 			}
 			if !extensions {
 				sp.Counts.Extensions = 0
+			}
+			if !passwords {
+				sp.Counts.Passwords = 0
+			} else if sp.Counts.Passwords > 0 {
+				sp.PrimaryPassword = p.HasPrimaryPassword()
 			}
 		}
 		s.Profiles = append(s.Profiles, sp)
@@ -163,14 +197,14 @@ func (im *importer) look() {
 		return
 	}
 	im.looking = true
-	home, extensions := im.home, im.store != nil
+	home, extensions, passwords := im.home, im.store != nil, im.passwords != nil
 	go func() {
 		start := time.Now()
 		list := []shownBrowser{}
 		var profiles []shownFrom
 		var locked []browserdata.Profile
 		for _, b := range browserdata.Find(home) {
-			s, ps := shown(b, extensions)
+			s, ps := shown(b, extensions, passwords)
 			list = append(list, s)
 			profiles = append(profiles, ps...)
 			if s.Locked {
@@ -187,16 +221,21 @@ func (im *importer) look() {
 			}
 			im.locked = locked
 			timeline.Infof("imports: found %d browsers on this Mac in %v", len(list), took.Round(time.Millisecond))
-			im.send(map[string]any{"t": "browsers", "browsers": list})
+			im.send(map[string]any{"t": "browsers", "browsers": list, "passwords": im.passwords != nil})
 		})
 	}()
 }
 
 // importMessage is what a page sends: the profile to bring over, by key, and which of its
-// things, of importSteps.
+// things, of importSteps, with Firefox's primary password for its passwords, used once and
+// kept nowhere. A file's: its kind, bookmarks or passwords, its name and what it holds.
 type importMessage struct {
-	Key  string   `json:"key"`
-	What []string `json:"what"`
+	Key             string   `json:"key"`
+	What            []string `json:"what"`
+	PrimaryPassword string   `json:"primaryPassword"`
+	Kind            string   `json:"kind"`
+	Name            string   `json:"name"`
+	Text            string   `json:"text"`
 }
 
 // handle takes a page's message about bringing things over, from the tab it is in, and
@@ -219,7 +258,14 @@ func (im *importer) handle(tab engine.TabID, t string, msg []byte) bool {
 			timeline.Warnf("imports: bad message: %v", err)
 			return true
 		}
-		im.bring(m.Key, m.What)
+		im.bring(m.Key, m.What, m.PrimaryPassword)
+	case "importFile":
+		var m importMessage
+		if err := json.Unmarshal(msg, &m); err != nil {
+			timeline.Warnf("imports: bad message: %v", err)
+			return true
+		}
+		im.bringFile(m.Kind, m.Name, m.Text)
 	default:
 		return false
 	}
@@ -234,10 +280,10 @@ func (a *App) FolderChosen(_ engine.WindowID, path string) {
 		im.send(map[string]any{"t": "folder", "cancelled": true})
 		return
 	}
-	home, extensions := im.home, im.store != nil
+	home, extensions, passwords := im.home, im.store != nil, im.passwords != nil
 	go func() {
 		b, err := browserdata.Open(home, path)
-		s, ps := shown(b, extensions)
+		s, ps := shown(b, extensions, passwords)
 		im.e.Post(func() {
 			if err != nil {
 				why := "Couldn't read that folder: " + err.Error()
@@ -300,7 +346,7 @@ func (im *importer) step(key, step, state string, result any, err error) {
 
 // bring brings over what was asked from the profile key, one kind after another: each
 // read on a worker, then added here, and told to the pages as it lands.
-func (im *importer) bring(key string, what []string) {
+func (im *importer) bring(key string, what []string, primaryPassword string) {
 	p, ok := im.profiles[key]
 	if !ok || im.busy[key] || p.Locked() {
 		timeline.Warnf("imports: %q is not a profile shown, is locked, or is being brought over", key)
@@ -308,7 +354,7 @@ func (im *importer) bring(key string, what []string) {
 	}
 	var steps []string
 	for _, s := range importSteps {
-		if slices.Contains(what, s) && (s != "extensions" || im.store != nil) {
+		if slices.Contains(what, s) && (s != "extensions" || im.store != nil) && (s != "passwords" || im.passwords != nil) {
 			steps = append(steps, s)
 		}
 	}
@@ -338,6 +384,12 @@ func (im *importer) bring(key string, what []string) {
 			read(p.Bookmarks, func(bs []browserdata.Bookmark, err error) { done(im.addBookmarks(p, folder, bs), err) }, im.e)
 		case "history":
 			read(p.History, func(pages []browserdata.Page, err error) { done(im.addHistory(pages), err) }, im.e)
+		case "passwords":
+			// A Chromium browser's key is in the login keychain, which macOS asks the
+			// person about: the worker waits for the answer.
+			keys := browserdata.Keys{Secret: im.keychain, PrimaryPassword: primaryPassword}
+			logins := func() ([]browserdata.Login, error) { return p.Logins(keys) }
+			read(logins, func(ls []browserdata.Login, err error) { done(im.addPasswords(ls), passwordError(err)) }, im.e)
 		case "extensions":
 			read(p.Extensions, func(xs []browserdata.Extension, err error) {
 				im.installExtensions(key, xs, func(x *broughtExtensions) { done(x, err) })
@@ -388,6 +440,72 @@ func (im *importer) addBookmarks(p shownFrom, folder string, bs []browserdata.Bo
 		}
 	}
 	return got
+}
+
+func (im *importer) addPasswords(ls []browserdata.Login) broughtPasswords {
+	if len(ls) == 0 {
+		return broughtPasswords{}
+	}
+	added, already, skipped := im.passwords.Import(ls)
+	return broughtPasswords{Added: added, Already: already, Skipped: skipped}
+}
+
+// passwordError says why passwords didn't come, in words a page shows.
+func passwordError(err error) error {
+	switch {
+	case errors.Is(err, browserdata.ErrPrimaryPassword):
+		return errors.New("the primary password isn't right")
+	case errors.Is(err, browserdata.ErrNoSecret):
+		return errors.New("the keychain didn't give the browser's key")
+	}
+	return err
+}
+
+// bringFile brings over a file the person exported: bookmarks as an HTML file, into a
+// folder named after it, or passwords as CSV. The page read the file and sent what it
+// holds; a passwords file's text is in memory only, until the store has what it held.
+func (im *importer) bringFile(kind, name, text string) {
+	reply := func(result any, err error) {
+		m := map[string]any{"t": "fileImported", "kind": kind, "name": name}
+		if result != nil {
+			m["result"] = result
+		}
+		if err != nil {
+			m["error"] = err.Error()
+			timeline.Infof("imports: %s file %s: %v", kind, name, err)
+		} else {
+			timeline.Infof("imports: %s from the file %s", kind, name)
+		}
+		im.send(m)
+	}
+	notAFile := func(err error, what string) error {
+		if errors.Is(err, browserdata.ErrNotAFile) {
+			return errors.New("That file isn't " + what + ".")
+		}
+		return err
+	}
+	switch kind {
+	case "bookmarks":
+		read(func() ([]browserdata.Bookmark, error) { return browserdata.ReadBookmarksHTML(strings.NewReader(text)) }, func(bs []browserdata.Bookmark, err error) {
+			if err != nil {
+				reply(nil, notAFile(err, "a bookmarks file a browser exported"))
+				return
+			}
+			title := strings.TrimSuffix(name, filepath.Ext(name))
+			reply(im.addBookmarks(shownFrom{browser: title}, "From "+title, bs), nil)
+		}, im.e)
+	case "passwords":
+		if im.passwords == nil {
+			return
+		}
+		read(func() ([]browserdata.Login, error) { return browserdata.ReadPasswordsCSV(strings.NewReader(text)) }, func(ls []browserdata.Login, err error) {
+			if err != nil {
+				reply(nil, notAFile(err, "a passwords file a browser or the Passwords app exported"))
+				return
+			}
+			reply(im.addPasswords(ls), nil)
+		}, im.e)
+	}
 }
 
 // broughtHistory is how many pages of history came.

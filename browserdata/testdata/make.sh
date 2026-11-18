@@ -138,6 +138,9 @@ mkdir -p "$T/Default"
 cp "$C/Profile 1/Bookmarks" "$T/Default/Bookmarks"
 echo '{"profile": {"info_cache": {"Default": {"name": "Me"}}}}' > "$T/Local State"
 
+# Saved passwords, sealed as each browser seals them: logins.py says which.
+python3 -I logins.py "$C/Default" "$P" "$Z/Profiles/zen.default"
+
 # Safari, in Library/Safari: bookmarks in Favorites, a folder and the Reading List, Safari's
 # History proxy that isn't one, an empty Bookmarks Menu; history, with a page not visited
 # and one not on the web. Its History.db has

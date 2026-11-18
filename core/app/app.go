@@ -48,6 +48,9 @@ type Config struct {
 	// BrowserHome is the home folder whose browsers Import finds: the user's when "", a
 	// test's own folder of browsers in the mock.
 	BrowserHome string
+	// Keychain reads a Chromium browser's passwords' key, its "<name> Safe Storage": the
+	// login keychain's when nil, a test's own in the mock.
+	Keychain func(service, account string) ([]byte, error)
 	// URLs are the addresses the command line names, which the first window opens as its
 	// tabs at the start, in place of the blank one; ChromeDriver starts the app so.
 	URLs         []string
@@ -241,7 +244,7 @@ func Start(e engine.Engine, cfg Config) *App {
 			return true
 		},
 	})
-	a.imports = newImporter(a, e, cfg.BrowserHome, func(v any) {
+	a.imports = newImporter(a, e, cfg.BrowserHome, cfg.Keychain, func(v any) {
 		a.welcome.sendAll(v)
 		a.Settings.Send(v)
 	})

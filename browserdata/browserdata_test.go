@@ -2,6 +2,8 @@ package browserdata
 
 import (
 	"bytes"
+	"crypto/cipher"
+	"crypto/des"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -175,7 +177,7 @@ func TestHistoryIsWebPagesVisited(t *testing.T) {
 
 func TestCounts(t *testing.T) {
 	c, err := found(t)["chrome/Personal"].Counts()
-	want := Counts{Bookmarks: 4, Folders: 2, Pages: 3, Extensions: 2}
+	want := Counts{Bookmarks: 4, Folders: 2, Pages: 3, Extensions: 2, Passwords: 3}
 	if err != nil || c != want {
 		t.Fatalf("%+v, %v; want %+v", c, err, want)
 	}
@@ -248,5 +250,130 @@ func TestBplist(t *testing.T) {
 	self := []byte("bplist00\xa1\x00\x08\x00\x00\x00\x00\x00\x00\x01\x01\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0a")
 	if _, err := bplist(self); err == nil {
 		t.Error("read a list that holds itself")
+	}
+}
+
+// keychain is the login keychain as the test home's Chrome has it.
+func keychain(service, account string) ([]byte, error) {
+	if service == "Chrome Safe Storage" && account == "Chrome" {
+		return []byte("test-safe-storage"), nil
+	}
+	return nil, ErrNoSecret
+}
+
+// Saved passwords: a Chromium profile's, opened with the keychain's key, a site's alone,
+// from Login Data and Login Data For Account; a Firefox profile's with key4.db's key; a
+// Firefox fork's behind a primary password only with it; Safari's none.
+func TestLogins(t *testing.T) {
+	ps := found(t)
+	short := func(ls []Login) []string {
+		var out []string
+		for _, l := range ls {
+			out = append(out, l.Origin+" "+l.Username+" "+l.Password)
+		}
+		slices.Sort(out)
+		return out
+	}
+	got, err := ps["chrome/Personal"].Logins(Keys{Secret: keychain})
+	want := []string{"https://account.example.com/ erin synced!", "https://example.com/login alice s3cret!", "https://example.org/ bob hunter2"}
+	if err != nil || !slices.Equal(short(got), want) {
+		t.Errorf("Chrome: %q, %v; want %q", short(got), err, want)
+	}
+	if got[0].Created.Year() != 2024 || got[0].LastUsed.IsZero() {
+		t.Errorf("Chrome's times %v %v", got[0].Created, got[0].LastUsed)
+	}
+	if _, err := ps["chrome/Personal"].Logins(Keys{}); err != ErrNoSecret {
+		t.Errorf("Chrome with no keychain: %v", err)
+	}
+	wrong := func(string, string) ([]byte, error) { return []byte("not it"), nil }
+	if l, err := ps["chrome/Personal"].Logins(Keys{Secret: wrong}); err == nil {
+		t.Errorf("Chrome with the wrong key: %q", short(l))
+	}
+
+	got, err = ps["firefox/default-release"].Logins(Keys{})
+	want = []string{"https://example.com alice s3cret!", "https://example.net frank correct horse"}
+	if err != nil || !slices.Equal(short(got), want) || got[0].Created.IsZero() {
+		t.Errorf("Firefox: %q, %v; want %q", short(got), err, want)
+	}
+	if ps["firefox/default-release"].HasPrimaryPassword() || !ps["zen/Default (release)"].HasPrimaryPassword() {
+		t.Error("only Zen's profile has a primary password")
+	}
+	if _, err := ps["zen/Default (release)"].Logins(Keys{PrimaryPassword: "nope"}); err != ErrPrimaryPassword {
+		t.Errorf("Zen with the wrong primary password: %v", err)
+	}
+	got, err = ps["zen/Default (release)"].Logins(Keys{PrimaryPassword: "letmein"})
+	if err != nil || !slices.Equal(short(got), []string{"https://zen.example.com zed z3n"}) {
+		t.Errorf("Zen: %q, %v", short(got), err)
+	}
+	if got, err := ps["safari/"].Logins(Keys{}); got != nil || err != nil {
+		t.Errorf("Safari: %v, %v", got, err)
+	}
+	for key, want := range map[string]int{"chrome/Personal": 3, "firefox/default-release": 2, "zen/Default (release)": 1, "chrome/Work": 0} {
+		if c, _ := ps[key].Counts(); c.Passwords != want {
+			t.Errorf("%s counts %d passwords; want %d", key, c.Passwords, want)
+		}
+	}
+}
+
+// NSS's older sealing, SHA1-and-3DES, opens as Firefox's key derivation has it: sealed here
+// with the same derivation, and the derivation checked against a value worked by hand.
+func TestSHA1And3DESKey(t *testing.T) {
+	key := sha1And3DESKey(bytes.Repeat([]byte{1}, 20), []byte("entry-salt"))
+	if len(key) != 40 {
+		t.Fatalf("%d bytes", len(key))
+	}
+	block, _ := des.NewTripleDESCipher(key[:24])
+	plain := []byte("password-check\x02\x02")
+	sealed := make([]byte, len(plain))
+	cipher.NewCBCEncrypter(block, key[32:]).CryptBlocks(sealed, plain)
+	got, err := cbcOpen(des.NewTripleDESCipher, key[:24], key[32:], sealed)
+	if err != nil || string(got) != "password-check" {
+		t.Fatalf("%q, %v", got, err)
+	}
+}
+
+// Files a person exported: passwords as Chrome's, Firefox's and the Passwords app's CSV,
+// and bookmarks as Netscape's bookmark file, folders in folders.
+func TestReadExportedFiles(t *testing.T) {
+	for name, csv := range map[string]string{
+		"Chrome":    "name,url,username,password,note\nExample,https://example.com/,alice,s3cret!,\n",
+		"Firefox":   "\"url\",\"username\",\"password\",\"httpRealm\",\"formActionOrigin\",\"guid\",\"timeCreated\",\"timeLastUsed\",\"timePasswordChanged\"\n\"https://example.com\",\"alice\",\"s3cret!\",,\"https://example.com\",\"{1}\",\"1700000000000\",\"1700000100000\",\"1700000000000\"\n\"https://auth.example.com\",\"gina\",\"basic\",\"Realm\",,\"{2}\",\"1\",\"1\",\"1\"\n",
+		"Passwords": "\ufeffTitle,URL,Username,Password,Notes,OTPAuth\nexample.com (alice),https://example.com/,alice,s3cret!,,\nnothing,https://empty.example.com/,nobody,,,\n",
+	} {
+		got, err := ReadPasswordsCSV(strings.NewReader(csv))
+		if err != nil || len(got) != 1 || got[0].Username != "alice" || got[0].Password != "s3cret!" || !strings.HasPrefix(got[0].Origin, "https://example.com") {
+			t.Errorf("%s: %+v, %v", name, got, err)
+		}
+	}
+	if _, err := ReadPasswordsCSV(strings.NewReader("just,some,columns\n1,2,3\n")); err != ErrNotAFile {
+		t.Errorf("a CSV of no passwords: %v", err)
+	}
+
+	page := `<!DOCTYPE NETSCAPE-Bookmark-file-1>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">
+<TITLE>Bookmarks</TITLE>
+<H1>Bookmarks</H1>
+<DL><p>
+    <DT><H3 ADD_DATE="1700000000" PERSONAL_TOOLBAR_FOLDER="true">Bookmarks bar</H3>
+    <DL><p>
+        <DT><A HREF="https://example.com/docs" ADD_DATE="1700000000">Docs &amp; notes</A>
+        <DT><H3>Recipes</H3>
+        <DL><p>
+            <DT><A HREF="https://example.com/soup">Soup</A>
+        </DL><p>
+        <DT><A HREF="javascript:alert(1)">A bookmarklet</A>
+    </DL><p>
+    <DT><A HREF="https://example.org/news">News</A>
+</DL><p>
+`
+	got, err := ReadBookmarksHTML(strings.NewReader(page))
+	if err != nil || titles(got) != "Bookmarks bar [Docs & notes, Recipes [Soup]], News" {
+		t.Fatalf("%s, %v", titles(got), err)
+	}
+	if got[0].Children[0].Added.Year() != 2023 || got[0].Children[0].URL != "https://example.com/docs" {
+		t.Errorf("Docs is %+v", got[0].Children[0])
+	}
+	if _, err := ReadBookmarksHTML(strings.NewReader("<html>not bookmarks</html>")); err != ErrNotAFile {
+		t.Errorf("a page of no bookmarks: %v", err)
 	}
 }

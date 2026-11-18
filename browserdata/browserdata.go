@@ -57,6 +57,8 @@ type Counts struct {
 	Pages     int `json:"pages"`
 	// Extensions is how many of its extensions can be installed again from the store.
 	Extensions int `json:"extensions,omitempty"`
+	// Passwords is how many saved passwords of a site's it has, counted without unlocking.
+	Passwords int `json:"passwords,omitempty"`
 }
 
 // ErrNotOnThisSystem is what a read that needs macOS returns elsewhere.
@@ -77,22 +79,25 @@ const (
 type kind struct {
 	id, name, data string
 	family         family
+	// keychain is the names a Chromium browser keeps its passwords' key under in the login
+	// keychain, "<name> Safe Storage", the first the keychain has taken.
+	keychain []string
 }
 
 var kinds = []kind{
-	{id: "chrome", name: "Chrome", data: "Google/Chrome", family: chromium},
-	{id: "chrome-beta", name: "Chrome Beta", data: "Google/Chrome Beta", family: chromium},
-	{id: "chrome-canary", name: "Chrome Canary", data: "Google/Chrome Canary", family: chromium},
-	{id: "edge", name: "Edge", data: "Microsoft Edge", family: chromium},
-	{id: "edge-beta", name: "Edge Beta", data: "Microsoft Edge Beta", family: chromium},
-	{id: "edge-dev", name: "Edge Dev", data: "Microsoft Edge Dev", family: chromium},
-	{id: "brave", name: "Brave", data: "BraveSoftware/Brave-Browser", family: chromium},
-	{id: "arc", name: "Arc", data: "Arc/User Data", family: chromium},
-	{id: "chromium", name: "Chromium", data: "Chromium", family: chromium},
-	{id: "vivaldi", name: "Vivaldi", data: "Vivaldi", family: chromium},
-	{id: "opera", name: "Opera", data: "com.operasoftware.Opera", family: chromium},
-	{id: "opera-gx", name: "Opera GX", data: "com.operasoftware.OperaGX", family: chromium},
-	{id: "yandex", name: "Yandex Browser", data: "Yandex/YandexBrowser", family: chromium},
+	{id: "chrome", name: "Chrome", data: "Google/Chrome", family: chromium, keychain: []string{"Chrome"}},
+	{id: "chrome-beta", name: "Chrome Beta", data: "Google/Chrome Beta", family: chromium, keychain: []string{"Chrome", "Chromium"}},
+	{id: "chrome-canary", name: "Chrome Canary", data: "Google/Chrome Canary", family: chromium, keychain: []string{"Chrome", "Chromium"}},
+	{id: "edge", name: "Edge", data: "Microsoft Edge", family: chromium, keychain: []string{"Microsoft Edge"}},
+	{id: "edge-beta", name: "Edge Beta", data: "Microsoft Edge Beta", family: chromium, keychain: []string{"Microsoft Edge"}},
+	{id: "edge-dev", name: "Edge Dev", data: "Microsoft Edge Dev", family: chromium, keychain: []string{"Microsoft Edge"}},
+	{id: "brave", name: "Brave", data: "BraveSoftware/Brave-Browser", family: chromium, keychain: []string{"Brave Browser", "Brave"}},
+	{id: "arc", name: "Arc", data: "Arc/User Data", family: chromium, keychain: []string{"Arc"}},
+	{id: "chromium", name: "Chromium", data: "Chromium", family: chromium, keychain: []string{"Chromium"}},
+	{id: "vivaldi", name: "Vivaldi", data: "Vivaldi", family: chromium, keychain: []string{"Vivaldi"}},
+	{id: "opera", name: "Opera", data: "com.operasoftware.Opera", family: chromium, keychain: []string{"Opera"}},
+	{id: "opera-gx", name: "Opera GX", data: "com.operasoftware.OperaGX", family: chromium, keychain: []string{"Opera"}},
+	{id: "yandex", name: "Yandex Browser", data: "Yandex/YandexBrowser", family: chromium, keychain: []string{"Yandex"}},
 	{id: "firefox", name: "Firefox", data: "Firefox", family: firefox},
 	{id: "zen", name: "Zen", data: "zen", family: firefox},
 	{id: "librewolf", name: "LibreWolf", data: "librewolf", family: firefox},
@@ -224,7 +229,9 @@ func (p Profile) Counts() (Counts, error) {
 			c.Extensions++
 		}
 	}
-	return c, errors.Join(err, herr, eerr)
+	var lerr error
+	c.Passwords, lerr = countLogins(p)
+	return c, errors.Join(err, herr, eerr, lerr)
 }
 
 // web says whether an address is a web page's, as history keeps.

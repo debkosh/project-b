@@ -3,14 +3,17 @@ import { computed, nextTick, ref, watch } from 'vue';
 import AllowAccess from './AllowAccess.vue';
 import BrowserIcon from './BrowserIcon.vue';
 import ImportChoices from './ImportChoices.vue';
-import { aboutBrowser, choicesOf, holds, imports, startRun, stepLines } from './imports.js';
+import { aboutBrowser, choicesOf, holds, imports, passwordsLine, startRun, stepLines } from './imports.js';
 
 // Bringing things over, as a wizard (docs/onboarding.md), the welcome's step and Settings'
 // Import alike: which browser, then which of its profiles and what to bring, then each kind
 // ticked as it lands, then what came. A browser this Mac doesn't show, or one kept
-// elsewhere, is a folder the person chooses. Safari asks for Full Disk Access first. send
-// is the page's way to Go; heading is the level of the wizard's headings.
-const props = defineProps({ send: Function, heading: { type: String, default: 'h2' } });
+// elsewhere, is a folder the person chooses. Safari asks for Full Disk Access first.
+// Passwords come once there is a store for them, a Firefox profile's with its primary
+// password, used once. With files, as Settings has it, a file a browser exported comes
+// too: bookmarks as HTML, passwords as CSV, which the page reads and hands to Go. send is
+// the page's way to Go; heading is the level of the wizard's headings.
+const props = defineProps({ send: Function, heading: { type: String, default: 'h2' }, files: Boolean });
 
 const view = ref('browsers');
 const browser = ref(null);
@@ -20,6 +23,9 @@ const asked = ref([]);
 const folderError = ref('');
 const choosing = ref(false);
 const title = ref(null);
+const primary = ref('');
+const fileName = ref('');
+const fileKind = ref('');
 
 const profile = computed(() => browser.value?.profiles.find((p) => p.key === key.value) || null);
 const profileTitle = computed(() => (profile.value?.name ? `${browser.value.name} · ${profile.value.name}` : browser.value?.name || ''));
@@ -75,9 +81,29 @@ watch(
 function bring() {
   asked.value = [...what.value];
   startRun(key.value);
-  props.send({ t: 'import', key: key.value, what: asked.value });
+  props.send({ t: 'import', key: key.value, what: asked.value, primaryPassword: primary.value });
+  primary.value = '';
   view.value = 'importing';
 }
+
+// A file the person picked, read here and handed to Go whole.
+async function readFile(kind, event) {
+  const file = event.target.files?.[0];
+  event.target.value = '';
+  if (!file) return;
+  imports.file = null;
+  fileKind.value = kind;
+  fileName.value = file.name;
+  view.value = 'file';
+  props.send({ t: 'importFile', kind, name: file.name, text: await file.text() });
+}
+const fileDone = computed(() => imports.file && imports.file.name === fileName.value && imports.file.kind === fileKind.value ? imports.file : null);
+const fileLines = computed(() => {
+  const f = fileDone.value;
+  if (!f) return [{ text: fileKind.value === 'passwords' ? 'Passwords' : 'Bookmarks', state: 'doing' }];
+  if (f.error) return [{ text: f.error, state: 'problem' }];
+  return f.kind === 'passwords' ? [passwordsLine(f.result)] : stepLines('bookmarks', { state: 'done', result: f.result });
+});
 
 const lines = computed(() => asked.value.flatMap((k) => stepLines(k, run.value?.steps[k]).map((l) => ({ ...l, kind: k }))));
 
@@ -115,6 +141,47 @@ function again() {
         </button>
       </div>
       <p v-if="folderError" class="problem" role="alert">{{ folderError }}</p>
+      <template v-if="files">
+        <span class="label from-file">From a file</span>
+        <div class="list">
+          <label class="item">
+            <input type="file" class="file" accept=".html,.htm" aria-label="Bookmarks file" @change="readFile('bookmarks', $event)" />
+            <span class="what">
+              <span class="label">Bookmarks file</span>
+              <span class="state">An HTML file a browser exported</span>
+            </span>
+            <span class="go" aria-hidden="true">›</span>
+          </label>
+          <label v-if="imports.passwords" class="item">
+            <input type="file" class="file" accept=".csv" aria-label="Passwords file" @change="readFile('passwords', $event)" />
+            <span class="what">
+              <span class="label">Passwords file</span>
+              <span class="state">A CSV file a browser or the Passwords app exported</span>
+            </span>
+            <span class="go" aria-hidden="true">›</span>
+          </label>
+        </div>
+      </template>
+    </template>
+
+    <!-- A file: what it brought -->
+    <template v-else-if="view === 'file'">
+      <component :is="heading" ref="title" tabindex="-1">{{ fileDone ? 'Imported' : 'Importing' }} from {{ fileName }}</component>
+      <ul class="list steps" :aria-label="`From ${fileName}`" :aria-busy="String(!fileDone)">
+        <li v-for="(l, i) in fileLines" :key="i" class="item" :class="l.state">
+          <span class="mark" aria-hidden="true">
+            <svg v-if="l.state === 'done'" viewBox="0 0 16 16"><path d="M4 8.5l2.5 2.5L12 5.5" /></svg>
+          </span>
+          <span class="what">
+            <span class="label">{{ l.text }}</span>
+            <span v-if="l.note" class="state">{{ l.note }}</span>
+          </span>
+        </li>
+      </ul>
+      <p v-if="fileDone && fileKind === 'passwords' && !fileDone.error" class="sub">Delete {{ fileName }} now: it holds your passwords in plain text.</p>
+      <div v-if="fileDone" class="buttons">
+        <button type="button" class="text-button" @click="again">Import another</button>
+      </div>
     </template>
 
     <!-- Safari: Full Disk Access first -->
@@ -148,6 +215,11 @@ function again() {
         <span class="label bring-label">Bring over</span>
         <ImportChoices v-model="what" :profile="profile" :title="profileTitle" />
       </template>
+      <label v-if="profile?.primaryPassword && what.includes('passwords')" class="primary">
+        <span class="label">{{ browser.name }}'s primary password</span>
+        <span class="state">Its passwords are behind it. It is used once, and kept nowhere.</span>
+        <input v-model="primary" type="password" autocomplete="off" :aria-label="`${browser.name}'s primary password`" />
+      </label>
       <div class="buttons">
         <button type="button" class="text-button quiet" @click="view = 'browsers'">Back</button>
         <button type="button" class="text-button primary" :disabled="!what.length" @click="bring">Import</button>
@@ -286,8 +358,42 @@ function again() {
   color: var(--danger);
 }
 
-.ui-import-wizard .bring-label {
+.ui-import-wizard .bring-label,
+.ui-import-wizard .from-file {
   margin-top: 8px;
+}
+
+.ui-import-wizard label.item {
+  cursor: pointer;
+}
+
+.ui-import-wizard label.item:hover {
+  background: var(--accent-tint);
+}
+
+/* The file input is the row: hidden, its label the row a person presses. */
+.ui-import-wizard .file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.ui-import-wizard .primary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ui-import-wizard .primary input {
+  max-width: 320px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
 }
 
 .ui-import-wizard .buttons {

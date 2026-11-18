@@ -62,6 +62,8 @@ func main() {
 	pick := flag.Bool("picker", false, "start as a copy that picks its profile from the list in -root, and becomes the one picked")
 	block := flag.String("block", "", "comma-separated blocked hosts")
 	browserHome := flag.String("browsers", "", "the home folder whose browsers Import finds, the user's by default")
+	keychain := flag.String("keychain", "", "the secret the login keychain gives for any browser's passwords, in place of the Mac's keychain")
+	passwordStore := flag.Bool("password-store", false, "let passwords come over, into a store that only counts them, until core/passwords is there")
 	skipWelcome := flag.Bool("skip-welcome", false, "a start that would open the welcome notes it finished instead, as its Skip setup does")
 	// The updater runs for real against a manifest when given a version to be, the bundle
 	// it is "installed" as, and the manifest. Without a version it stays off, as it does
@@ -117,6 +119,7 @@ func main() {
 			BlockedHosts: strings.Split(*block, ","),
 			SkipWelcome:  *skipWelcome,
 			BrowserHome:  *browserHome,
+			Keychain:     keychainOf(*keychain),
 			System: func() []crash.Section {
 				return []crash.Section{{Title: "Version", Text: "Project B on the mock engine"}}
 			},
@@ -143,6 +146,9 @@ func main() {
 			e.SetListener(p)
 		} else {
 			a = start(*profile, *id)
+			if *passwordStore {
+				a.UsePasswordStore(&countingStore{saved: map[string]bool{}})
+			}
 			e.SetListener(a)
 		}
 		close(started)

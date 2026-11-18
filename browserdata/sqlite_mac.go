@@ -30,6 +30,14 @@ func (r row) text(i int) string {
 
 func (r row) int(i int) int64 { return int64(C.sqlite3_column_int64(r.s, C.int(i))) }
 
+func (r row) blob(i int) []byte {
+	p := C.sqlite3_column_blob(r.s, C.int(i))
+	if p == nil {
+		return nil
+	}
+	return C.GoBytes(p, C.sqlite3_column_bytes(r.s, C.int(i)))
+}
+
 // query runs sql on a copy of the database at path, with its write-ahead log, as the
 // browser may have it open, and calls each with every row.
 func query(path, sql string, each func(row)) error {

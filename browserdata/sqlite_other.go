@@ -6,5 +6,6 @@ type row struct{}
 
 func (row) text(int) string { return "" }
 func (row) int(int) int64   { return 0 }
+func (row) blob(int) []byte { return nil }
 
 func query(string, string, func(row)) error { return ErrNotOnThisSystem }

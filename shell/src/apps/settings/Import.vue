@@ -10,6 +10,6 @@ onMounted(() => send({ t: 'findBrowsers' }));
 
 <template>
   <section aria-label="Import">
-    <ImportWizard :send="send" />
+    <ImportWizard :send="send" files />
   </section>
 </template>
