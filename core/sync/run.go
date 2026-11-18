@@ -73,6 +73,9 @@ type Manager struct {
 	mu       gosync.Mutex
 	status   Status
 	onStatus []func(Status) // the main thread's
+	// stopRun cuts the run going on short, nil between runs, and cut says CancelRun did.
+	stopRun func()
+	cut     bool
 
 	// The sync goroutine's own.
 	conn *connection
@@ -169,6 +172,17 @@ func (m *Manager) SyncNow() {
 	select {
 	case m.wake <- struct{}{}:
 	default:
+	}
+}
+
+// CancelRun cuts the run going on short, as a person asks: it ends with no error, and the
+// next comes when it would have.
+func (m *Manager) CancelRun() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.stopRun != nil {
+		m.cut = true
+		m.stopRun()
 	}
 }
 
@@ -352,7 +366,15 @@ func (m *Manager) run() error {
 	c := m.conn
 	m.setStatus(func(s *Status) { s.Syncing = true })
 	ctx, cancel := context.WithTimeout(m.ctx, runFor)
-	defer cancel()
+	m.mu.Lock()
+	m.stopRun, m.cut = cancel, false
+	m.mu.Unlock()
+	defer func() {
+		m.mu.Lock()
+		m.stopRun = nil
+		m.mu.Unlock()
+		cancel()
+	}()
 	err := m.drain(c)
 	if err == nil {
 		err = c.replica.Sync(ctx)
@@ -363,6 +385,13 @@ func (m *Manager) run() error {
 		}
 	}
 	clear(c.local.wrote)
+	m.mu.Lock()
+	cut := m.cut
+	m.mu.Unlock()
+	if cut && err != nil {
+		m.setStatus(func(s *Status) { s.Syncing = false })
+		return err
+	}
 	m.last = time.Now()
 	if err != nil {
 		m.wait = min(max(2*m.wait, firstWait), longestWait)
