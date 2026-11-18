@@ -115,7 +115,7 @@ func (p *ourPages) handle(tab engine.TabID, page engine.Page, msg []byte) {
 	case "downloadAction":
 		p.a.Downloads.Act(m.ID, m.Action)
 	case "clearDownloads":
-		p.a.Downloads.Clear()
+		p.a.Downloads.Clear(0)
 	default:
 		timeline.Warnf("pages: %s sent %q, which it has no use for", page, m.T)
 	}

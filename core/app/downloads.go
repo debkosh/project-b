@@ -24,7 +24,7 @@ func (a *App) downloadsShellPart() shell.Part {
 				json.Unmarshal(msg, &r)
 				a.Downloads.Act(r.ID, r.Action)
 			case "clearDownloads":
-				a.Downloads.Clear()
+				a.Downloads.Clear(0)
 			case "saveReport":
 				// A crash report, written now and kept as a finished download, as a phone's
 				// share sheet may have nowhere to save it: in the list, with the system's

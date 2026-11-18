@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"projectb/engine"
 	"projectb/timeline"
@@ -33,6 +34,9 @@ type Item struct {
 	Received int64  `json:"received"`
 	Total    int64  `json:"total"`
 	Paused   bool   `json:"paused"`
+	// Started is when it joined the list, in Unix seconds; 0 for one listed before the
+	// list kept it, which a clear from a time leaves.
+	Started int64 `json:"started,omitempty"`
 
 	// engine is the engine's number for it while this run has it.
 	engine engine.DownloadID
@@ -164,7 +168,7 @@ func (m *Manager) Updated(d engine.Download) int {
 		it = m.retried(d.URL)
 	}
 	if it == nil {
-		it = &Item{ID: m.next, URL: d.URL}
+		it = &Item{ID: m.next, URL: d.URL, Started: time.Now().Unix()}
 		m.next++
 		m.list = append([]*Item{it}, m.list...)
 	}
@@ -200,7 +204,7 @@ func (m *Manager) Keep(src, from string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	it := &Item{ID: m.next, Name: filepath.Base(path), Path: path, From: from, State: "done", Received: size, Total: size}
+	it := &Item{ID: m.next, Name: filepath.Base(path), Path: path, From: from, State: "done", Received: size, Total: size, Started: time.Now().Unix()}
 	m.next++
 	m.list = append([]*Item{it}, m.list...)
 	m.e.PublishFile(path)
@@ -303,9 +307,10 @@ func (m *Manager) Act(id int, action string) {
 	}
 }
 
-// Clear removes every finished download from the list.
-func (m *Manager) Clear() {
-	m.drop(func(x *Item) bool { return x.State != "progress" })
+// Clear removes every finished download that joined the list since a time in Unix
+// seconds, 0 for all of them, as History.Clear does.
+func (m *Manager) Clear(since int64) {
+	m.drop(func(x *Item) bool { return x.State != "progress" && (since == 0 || x.Started >= since) })
 }
 
 func (m *Manager) drop(gone func(*Item) bool) {

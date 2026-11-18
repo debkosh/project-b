@@ -242,6 +242,18 @@ func (m *Manager) DeleteSite(url string) {
 	m.Delete(urls...)
 }
 
+// Count is how many pages were last visited at or after the Unix time since, the pages
+// Clear would take out.
+func (m *Manager) Count(since int64) int {
+	n := 0
+	for _, e := range m.entries {
+		if e.LastVisit >= since {
+			n++
+		}
+	}
+	return n
+}
+
 // Clear takes out every page last visited at or after the Unix time since, or every page
 // for 0.
 func (m *Manager) Clear(since int64) {

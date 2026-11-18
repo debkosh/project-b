@@ -1649,7 +1649,7 @@ func TestTheSettingsPageDeletesAWorkspace(t *testing.T) {
 	if len(left) != 2 || left[0].Workspace != "" || left[1].ID != r.settingsTab || len(inW2) != 0 || r.e.Closed(w2) || r.e.Closed(1) {
 		t.Fatalf("window 1 has %+v and window 2 %+v; window 2 closed %v, window 1 %v", left, inW2, r.e.Closed(w2), r.e.Closed(1))
 	}
-	if !reflect.DeepEqual(erased, []mockengine.Erase{{Workspace: work}}) || first != "" || len(items) != 1 || items[0].Title != "Main" {
+	if !reflect.DeepEqual(erased, []mockengine.Erase{{Workspace: work, Erasure: engine.Erasure{Kinds: engine.EraseAll}}}) || first != "" || len(items) != 1 || items[0].Title != "Main" {
 		t.Fatalf("the engine erased %+v and has %q first; the Tab menu lists %+v", erased, first, items)
 	}
 	if l := workspaces.New(dir).List(); len(l) != 1 || l[0].ID != "" {
@@ -1682,7 +1682,7 @@ func TestDeletingAWorkspaceLeavesAWindowOfOnlyItsTabsEmpty(t *testing.T) {
 	if r.e.Closed(1) || r.e.Quit() || len(left) != 0 {
 		t.Fatalf("window 1 closed %v, the app quit %v; the window has %+v", r.e.Closed(1), r.e.Quit(), left)
 	}
-	if !reflect.DeepEqual(erased, []mockengine.Erase{{Workspace: "0a1b2c3d"}}) {
+	if !reflect.DeepEqual(erased, []mockengine.Erase{{Workspace: "0a1b2c3d", Erasure: engine.Erasure{Kinds: engine.EraseAll}}}) {
 		t.Fatalf("the engine erased %+v", erased)
 	}
 }
@@ -1725,7 +1725,7 @@ func TestOurTabIsInNoWorkspace(t *testing.T) {
 	if len(left) != 2 || left[1].ID != ours || slices.ContainsFunc(left, func(t tabs.Tab) bool { return t.ID == main }) {
 		t.Fatalf("after deleting Main window 1 has %+v", left)
 	}
-	if !reflect.DeepEqual(erased, []mockengine.Erase{{Workspace: ""}}) || fromOurs.Workspace != "0a1b2c3d" {
+	if !reflect.DeepEqual(erased, []mockengine.Erase{{Workspace: "", Erasure: engine.Erasure{Kinds: engine.EraseAll}}}) || fromOurs.Workspace != "0a1b2c3d" {
 		t.Fatalf("the engine erased %+v; a new tab from ours is in %q", erased, fromOurs.Workspace)
 	}
 	// So does an address the shell's box opens in a new tab, as a shell that takes New Tab does.
@@ -1774,7 +1774,7 @@ func TestAShellChangesTheWorkspaces(t *testing.T) {
 	var open bool
 	r.e.Post(func() { left, erased = r.a.Tabs.All(), r.e.Erased(); _, open = r.a.Tabs.Get(tab) })
 	r.e.Settle()
-	if open || len(left) != 1 || left[0].Workspace != "" || !reflect.DeepEqual(erased, []mockengine.Erase{{Workspace: work}}) {
+	if open || len(left) != 1 || left[0].Workspace != "" || !reflect.DeepEqual(erased, []mockengine.Erase{{Workspace: work, Erasure: engine.Erasure{Kinds: engine.EraseAll}}}) {
 		t.Fatalf("left %+v, the engine erased %+v", left, erased)
 	}
 	if l := workspaces.New(dir).List(); len(l) != 1 || l[0].ID != "" {

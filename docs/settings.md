@@ -68,13 +68,14 @@ sections on a phone.
 
 ## Privacy
 
-- **Clear browsing data…** asks in a dialog what goes, History and Cookies, site data and
-  cached files ticked, The downloads list not, and Go clears it all, from the start
-  (`core/app/clear_data_settings.go`): history and the downloads list are Go's own (the files
-  stay); cookies, site storage and the cache go together, in every workspace and the
-  profile's own storage, by the engine's `EraseWorkspace`, with their tabs left open. The row
-  then says what went. A time range, and cookies apart from the cache, need the engine
-  ([todo.md](todo.md)).
+- **Clear browsing data…** asks in a dialog from when, the last hour, day, week or four
+  weeks, or All time to start, and what goes: History, Cookies and site data, and Cached
+  images and files ticked, The downloads list not, History saying how many pages the range
+  takes. Go clears it (`core/app/clear_data_settings.go`): history and the downloads list
+  are Go's own, the pages last visited and the downloads listed since then (the files stay);
+  cookies with site storage, and apart from them the cache, are erased in every workspace and
+  the profile's own storage by the engine's `EraseWorkspace`, from the same time, with their
+  tabs left open. The row then says what went, and from when.
 - **Block ads** is the ad blocker on every site ([site-features.md](site-features.md#the-ad-blocker)).
 - **Sites** is each site's settings, the list Site settings was.
 
@@ -130,4 +131,4 @@ a phone-sized page through every group or section, and a search.
 In Go, `core/flags/flags_test.go` has the live flag; `core/app/default_browser_settings_test.go`
 the default browser's state in the snapshot, Make default browser and its answer;
 `clear_data_settings_test.go` what each choice clears, site data in every workspace with the
-tabs open; `sitefeatures_test.go` Block ads; `downloads_test.go` Ask where to save.
+tabs open, and a range: the pages each would take, and what the last hour clears and leaves; `sitefeatures_test.go` Block ads; `downloads_test.go` Ask where to save.

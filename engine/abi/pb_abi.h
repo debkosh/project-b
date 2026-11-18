@@ -235,6 +235,18 @@ typedef enum PBMods {
   PB_MOD_CMD = 8,
 } PBMods;
 
+// What an erase takes, as Go's engine.EraseKind has it.
+typedef enum PBEraseKind {
+  PB_ERASE_SITE_DATA = 1,  // cookies, every kind of site storage, service workers
+  PB_ERASE_CACHE = 2,      // the HTTP cache, and prefetched and prerendered pages
+} PBEraseKind;
+
+// What an erase takes of a workspace's storage, as Go's engine.Erasure has it.
+typedef struct PBErasure {
+  int64_t since;  // stored since this Unix time in seconds; 0 for from the start
+  int32_t kinds;  // PBEraseKind bits
+} PBErasure;
+
 typedef enum PBEditCommand {
   PB_EDIT_UNDO = 1,
   PB_EDIT_REDO = 2,
@@ -334,11 +346,11 @@ typedef struct PBEngineCalls {
   // port or an extension asks for: the first in the profile's list. Go says which at start,
   // before anything asks for such a tab, and again whenever the first changes.
   void (*set_first_workspace)(const char* workspace);
-  // Erases a workspace's site data and cache: its cookies, every kind of site storage,
-  // service workers and the HTTP cache. Deleting a workspace asks once Go has closed its
-  // tabs; Settings' Clear browsing data asks with them open, and their pages stay. For "",
-  // the profile's own storage, extensions' own data stays.
-  void (*erase_workspace)(const char* workspace);
+  // Erases what the erasure says of a workspace's storage. Deleting a workspace asks for
+  // all of it once Go has closed its tabs; Settings' Clear browsing data asks with them
+  // open, and their pages stay. For "", the profile's own storage, extensions' own data
+  // stays.
+  void (*erase_workspace)(const char* workspace, const PBErasure* erasure);
   void (*close_tab)(int64_t tab);
   void (*load_url)(int64_t tab, const char* url);
   void (*go_back)(int64_t tab);

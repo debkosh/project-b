@@ -31,9 +31,11 @@ export const state = reactive({
   searchEngines: [],
   autoUpdate: true,
   update: { phase: '' },
-  // What Clear browsing data last cleared, as Go said, {history, siteData, downloads}; null
-  // before it has.
+  // What Clear browsing data last cleared, as Go said, {since, history, siteData, cache,
+  // downloads}; null before it has. clearCounts is how many pages each of its ranges
+  // would take, by the range's name, as Go last said; null before the dialog asks.
   cleared: null,
+  clearCounts: null,
   // Whether the app is the system's default browser, as the page opened or since it asked.
   isDefault: false,
   running: '',
@@ -155,6 +157,9 @@ export function connect() {
           break;
         case 'dataCleared':
           state.cleared = m;
+          break;
+        case 'clearDataCounts':
+          state.clearCounts = m.pages;
           break;
         case 'isDefault':
           state.isDefault = m.isDefault;

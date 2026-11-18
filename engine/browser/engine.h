@@ -11,6 +11,7 @@
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
+#include "base/time/time.h"
 #include "project_b/engine/abi/pb_abi.h"
 #include "project_b/engine/browser/window.h"
 #include "ui/gfx/geometry/rect_f.h"
@@ -167,10 +168,11 @@ class Engine {
   // debugging port or an extension asks for: the first in the profile's list, as Go says.
   void SetFirstWorkspace(const std::string& workspace);
   const std::string& first_workspace() const { return first_workspace_; }
-  // Erases a workspace's site data and cache, once the tabs Go has just closed are gone,
-  // and marks workspace.erased on the timeline when it is done. For "", the profile's own
-  // storage, extensions' own data stays.
-  void EraseWorkspace(const std::string& workspace);
+  // Erases what kinds says (PBEraseKind) of a workspace's storage, stored since a time
+  // (null for from the start), once the tabs Go has just closed are gone, and marks
+  // workspace.erased on the timeline when it is done. For "", the profile's own storage,
+  // extensions' own data stays.
+  void EraseWorkspace(const std::string& workspace, base::Time since, int32_t kinds);
   void CloseTab(int64_t tab);
   void LoadURL(int64_t tab, const char* url);
   void GoBack(int64_t tab);
@@ -201,7 +203,7 @@ class Engine {
   PageTab* Add(std::unique_ptr<content::WebContents> contents,
                const std::string& workspace,
                bool internal = false);
-  void Erase(const std::string& workspace);
+  void Erase(const std::string& workspace, base::Time since, int32_t kinds);
   // Whichever page has the keyboard: a shell or a tab's.
   content::WebContents* FocusedContents() const;
   void UpdateTitle(AppWindow* window);

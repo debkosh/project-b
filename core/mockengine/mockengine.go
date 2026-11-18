@@ -361,21 +361,22 @@ func (e *Engine) SetFirstWorkspace(workspace string) { e.first = workspace }
 // FirstWorkspace is the workspace the app last said is first. Main thread.
 func (e *Engine) FirstWorkspace() string { return e.first }
 
-// Erase is one erase the app asked for: the workspace, and how many of its tabs were still
-// open then, which the app closes first.
+// Erase is one erase the app asked for: the workspace, how many of its tabs were still
+// open then, which the app closes first, and what it asked for.
 type Erase struct {
 	Workspace string
 	Open      int
+	engine.Erasure
 }
 
-func (e *Engine) EraseWorkspace(workspace string) {
+func (e *Engine) EraseWorkspace(workspace string, r engine.Erasure) {
 	open := 0
 	for _, t := range e.tabs {
 		if t.workspace == workspace && !t.internal {
 			open++
 		}
 	}
-	e.erased = append(e.erased, Erase{workspace, open})
+	e.erased = append(e.erased, Erase{workspace, open, r})
 }
 
 // Erased are the erases the app asked for, in order. Main thread.

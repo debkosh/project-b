@@ -93,6 +93,24 @@ constexpr uint64_t kErased =
     ~(content::BrowsingDataRemover::DATA_TYPE_AVOID_CLOSING_CONNECTIONS |
       content::BrowsingDataRemover::DATA_TYPE_LOGICAL_CLEAR);
 
+// PB_ERASE_CACHE: the HTTP cache and the pages kept ready ahead. PB_ERASE_SITE_DATA is the
+// rest of kErased.
+constexpr uint64_t kErasedCache =
+    content::BrowsingDataRemover::DATA_TYPE_CACHE |
+    content::BrowsingDataRemover::DATA_TYPE_PREFETCH_CACHE |
+    content::BrowsingDataRemover::DATA_TYPE_PRERENDER_CACHE;
+
+uint64_t ErasedTypes(int32_t kinds) {
+  uint64_t types = 0;
+  if (kinds & PB_ERASE_SITE_DATA) {
+    types |= kErased & ~kErasedCache;
+  }
+  if (kinds & PB_ERASE_CACHE) {
+    types |= kErasedCache;
+  }
+  return types;
+}
+
 // Web origins, whatever their storage policy. An extension's chrome-extension:// origin
 // isn't one, so an extension keeps what it stored in the profile's own storage.
 constexpr uint64_t kErasedOrigins =
@@ -145,9 +163,12 @@ void CallSetFirstWorkspace(const char* workspace) {
   g_engine->SetFirstWorkspace(workspace);
 }
 
-void CallEraseWorkspace(const char* workspace) {
+void CallEraseWorkspace(const char* workspace, const PBErasure* erasure) {
   CheckMainThread();
-  g_engine->EraseWorkspace(workspace);
+  g_engine->EraseWorkspace(
+      workspace,
+      erasure->since ? base::Time::FromTimeT(erasure->since) : base::Time(),
+      erasure->kinds);
 }
 
 void CallCloseTab(int64_t tab) {
@@ -1025,15 +1046,19 @@ void Engine::SetFirstWorkspace(const std::string& workspace) {
 
 // Each closed tab dies on a later task (CloseTab), so the erase waits for a task after
 // theirs.
-void Engine::EraseWorkspace(const std::string& workspace) {
+void Engine::EraseWorkspace(const std::string& workspace,
+                            base::Time since,
+                            int32_t kinds) {
   content::GetUIThreadTaskRunner({})->PostTask(
-      FROM_HERE,
-      base::BindOnce(&Engine::Erase, base::Unretained(this), workspace));
+      FROM_HERE, base::BindOnce(&Engine::Erase, base::Unretained(this),
+                                workspace, since, kinds));
 }
 
 // The profile's own storage is the context's default partition, which the remover
 // erases when it is given none.
-void Engine::Erase(const std::string& workspace) {
+void Engine::Erase(const std::string& workspace,
+                   base::Time since,
+                   int32_t kinds) {
   auto filter = content::BrowsingDataFilterBuilder::Create(
       content::BrowsingDataFilterBuilder::Mode::kPreserve);
   if (!workspace.empty()) {
@@ -1041,7 +1066,7 @@ void Engine::Erase(const std::string& workspace) {
   }
   content::BrowsingDataRemover* remover =
       browser_context_->GetBrowsingDataRemover();
-  remover->RemoveWithFilterAndReply(base::Time(), base::Time::Max(), kErased,
+  remover->RemoveWithFilterAndReply(since, base::Time::Max(), ErasedTypes(kinds),
                                     kErasedOrigins, std::move(filter),
                                     new Eraser(remover, workspace));
 }

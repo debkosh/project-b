@@ -145,7 +145,7 @@ func (a *App) deleteWorkspace(e engine.Engine, id string) error {
 		}
 	}
 	a.Pins.RemoveWorkspace(id)
-	e.EraseWorkspace(id)
+	e.EraseWorkspace(id, engine.Erasure{Kinds: engine.EraseAll})
 	timeline.Infof("workspace %s: deleted, and its sites erased from %s", workspaceName(id), workspaceStorage(a.dir, id))
 	return nil
 }

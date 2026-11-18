@@ -24,6 +24,7 @@ package engine
 import (
 	"errors"
 	"strings"
+	"time"
 )
 
 // TabID identifies a tab across the boundary. Content's own objects never cross it.
@@ -154,6 +155,25 @@ const (
 	AppQuit // Ends the app, every window at once.
 )
 
+// EraseKind is what EraseWorkspace erases, as bits.
+type EraseKind int
+
+const (
+	// EraseSiteData is the cookies, every kind of site storage and service workers.
+	EraseSiteData EraseKind = 1 << iota
+	// EraseCache is the HTTP cache, and the pages the engine kept ready ahead.
+	EraseCache
+	// EraseAll is everything a workspace keeps.
+	EraseAll = EraseSiteData | EraseCache
+)
+
+// Erasure is what EraseWorkspace erases: the kinds of storage, stored since a time, the
+// zero time for from the start.
+type Erasure struct {
+	Since time.Time
+	Kinds EraseKind
+}
+
 // Engine is what the app can ask a browser engine to do.
 type Engine interface {
 	// OpenProfile makes the profile's own storage, its cookies, site data and cache, in its
@@ -183,11 +203,11 @@ type Engine interface {
 	// a client of the debugging port or an extension asks for: the first in the profile's
 	// list. The app says so at start, before any such tab, and whenever the first changes.
 	SetFirstWorkspace(workspace string)
-	// EraseWorkspace erases a workspace's site data and cache: its cookies, every kind of
-	// site storage, service workers and the HTTP cache. Deleting a workspace asks once the
-	// app has closed its tabs; Settings' Clear browsing data asks with them open, and their
-	// pages stay. For "", the profile's own storage, extensions keep their own.
-	EraseWorkspace(workspace string)
+	// EraseWorkspace erases what the erasure says of a workspace's storage. Deleting a
+	// workspace asks for all of it once the app has closed its tabs; Settings' Clear
+	// browsing data asks with them open, and their pages stay. For "", the profile's own
+	// storage, extensions keep their own.
+	EraseWorkspace(workspace string, r Erasure)
 	CloseTab(tab TabID)
 	LoadURL(tab TabID, url string)
 

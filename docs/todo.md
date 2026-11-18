@@ -27,9 +27,6 @@ Take an item off when it lands or is dropped.
       engine has to finish an erase before the process exits, or keep cookies for the
       session only (Chromium's session-only content setting); the sites kept need the
       per-origin erase above.
-    - *Clear browsing data from a time* (the last hour, day, week): `EraseWorkspace` erases
-      from the start; it needs a begin time. Cookies apart from the cache need a second
-      mask.
   - *13, a first-run walkthrough:* bring bookmarks, history and passwords over from another
     browser on the first start, as Edge does. L. Discussed first.
   - *14, saved passwords and autofill* (daily-use row 12). L.
