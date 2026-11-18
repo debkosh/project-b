@@ -163,7 +163,10 @@ android() {
     command -v amarit >/dev/null || cannot android "amarit is not on PATH: it starts the emulators."
     for emulator in $EMULATORS; do
         local unit=${emulator%%:*} serial=emulator-${emulator##*:} started=
-        if [ "$($ADB -s "$serial" get-state 2>/dev/null)" != device ]; then
+        # Started here, and so stopped after, only when amarit wasn't already running it: adb can
+        # lose a running emulator for a moment (its server restarting), and stopping that one
+        # took it from whoever else was using it.
+        if ! amarit ls 2>/dev/null | grep -q "^$unit  *running"; then
             amarit start "$unit" >/dev/null || { run "the Android app on $unit" false; continue; }
             started=1
         fi
