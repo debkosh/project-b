@@ -9,7 +9,6 @@ import SiteMark from './SiteMark.vue';
 // show"): the top folder as tiles, its folders first, each folder showing up to four of its
 // sites. A folder opens in place, in a panel under its row, with its own folders and
 // bookmarks and Open all as a group; a bookmark loads where the box's rows do.
-defineProps({ overPage: Boolean });
 
 const top = computed(() => inFolder(state.bookmarks, ''));
 // The folder whose tile is open, and the one its panel shows: it or a folder in it.
@@ -78,7 +77,7 @@ const label = (e) => e.title || (e.kind === 'folder' ? 'Folder' : host(e.url));
           :class="{ folder: e.kind === 'folder', open: open === e.id }"
           :title="e.kind === 'folder' ? e.title : `${label(e)}\n${e.url}`"
           :aria-expanded="e.kind === 'folder' ? open === e.id : undefined"
-          @click="e.kind === 'folder' ? toggle(e) : openHere(e.url, overPage)"
+          @click="e.kind === 'folder' ? toggle(e) : openHere(e.url)"
         >
           <span v-if="e.kind === 'folder'" class="mark sites" aria-hidden="true">
             <SiteMark v-for="url in sitesIn(e.id)" :key="url" :url="url" :size="16" />
@@ -106,7 +105,7 @@ const label = (e) => e.title || (e.kind === 'folder' ? 'Folder' : host(e.url));
               class="tile"
               :class="{ folder: f.kind === 'folder' }"
               :title="f.kind === 'folder' ? f.title : `${label(f)}\n${f.url}`"
-              @click="f.kind === 'folder' ? (at = f.id) : openHere(f.url, overPage)"
+              @click="f.kind === 'folder' ? (at = f.id) : openHere(f.url)"
             >
               <span v-if="f.kind === 'folder'" class="mark sites" aria-hidden="true">
                 <SiteMark v-for="url in sitesIn(f.id)" :key="url" :url="url" :size="16" />

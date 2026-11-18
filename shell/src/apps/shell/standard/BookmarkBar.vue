@@ -3,7 +3,6 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import ContextMenu from '@/ui/ContextMenu.vue';
 import { send, state } from '@/sdk/vue.js';
 import { host, openGroup, under } from './bookmarks.js';
-import { closeBox } from './state.js';
 import SiteMark from './SiteMark.vue';
 
 // The bookmarks bar, under the top bar in either layout, while bookmarksBar is on
@@ -23,7 +22,6 @@ const label = (e) => e.title || (e.kind === 'folder' ? 'Folder' : host(e.url));
 
 function load(url) {
   send({ t: 'navigate', text: url });
-  closeBox();
 }
 
 const folderIcon = '<path d="M2.5 4.5a1 1 0 0 1 1-1h3l1.5 1.5h4.5a1 1 0 0 1 1 1v5.5a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1z"/>';

@@ -252,7 +252,7 @@ function follow() {
   close();
   edited.value = false;
   text.value = activeTab.value.url;
-  // A blank tab's, or an empty window's, command box takes the keyboard (CommandBox.vue).
+  // A new tab's command box takes the keyboard (CommandBox.vue).
   input.value?.blur();
   if (activeTab.value.url) focusPage();
 }

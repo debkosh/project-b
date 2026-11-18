@@ -1,11 +1,11 @@
 <script setup>
 import { computed, nextTick, onMounted, ref } from 'vue';
-import { chooseSuggestion, focusPage, send, state, suggest } from '@/sdk/vue.js';
+import { chooseSuggestion, send, state, suggest } from '@/sdk/vue.js';
 import SuggestionList from './SuggestionList.vue';
 import NewTabBookmarks from './NewTabBookmarks.vue';
 import BookmarkFinder from './BookmarkFinder.vue';
 import { finderFolders, finderResults, openGroup, openHere } from './bookmarks.js';
-import { closeBox, newTabBox, nextQuery } from './state.js';
+import { newTabBox, nextQuery } from './state.js';
 import { inFolder } from '@/ui/bookmarks.js';
 
 // Standard's command box, the shell's own view in the page area: the bar's quiet tint and
@@ -20,7 +20,6 @@ import { inFolder } from '@/ui/bookmarks.js';
 // (BookmarkFinder.vue), with no list from Go: the arrows up and down choose a bookmark, left
 // and right a folder, Enter opens the bookmark and Shift+Enter the folder's bookmarks as a
 // group. Escape, or Backspace with nothing typed, leaves it.
-const props = defineProps({ overPage: Boolean });
 const input = ref(null);
 const text = ref('');
 const items = ref([]);
@@ -65,17 +64,14 @@ function onInput() {
 
 // choose takes a row of Go's list, one pressed or the arrow keys' choice. Enter takes the
 // first row only once the list answers what is typed now; before that it takes what was
-// typed, as the address field does: in a new tab over a page or with no tabs, else in this
-// one. So a fast typist's Enter never opens a row of the list for an earlier text.
+// typed, as the address field does, in the new tab the box is on. So a fast typist's Enter
+// never opens a row of the list for an earlier text.
 function choose(i = highlight.value, pressed = false) {
   const current = pressed || picked || shownFor === text.value.trim();
   const row = current ? items.value[i] : undefined;
   const typed = text.value.trim();
-  const fresh = props.overPage || state.active === 0;
-  if (row) chooseSuggestion(row, fresh);
-  else if (typed) send(fresh ? { t: 'newTab', text: typed } : { t: 'navigate', text: typed });
-  else return;
-  closeBox();
+  if (row) chooseSuggestion(row, false);
+  else if (typed) send({ t: 'navigate', text: typed });
 }
 
 function leaveMarks() {
@@ -96,9 +92,8 @@ function onMarksKeydown(e) {
     const urls = inFolder(state.bookmarks, folder.value.id).filter((x) => x.kind === 'bookmark').map((x) => x.url);
     if (!folder.value.id || !urls.length) return;
     openGroup(urls, folder.value.title);
-    closeBox();
   } else if (e.key === 'Enter') {
-    if (n) openHere(results.value[highlight.value].e.url, props.overPage);
+    if (n) openHere(results.value[highlight.value].e.url);
   } else if (e.key === 'Escape' || (e.key === 'Backspace' && text.value === '')) leaveMarks();
   else return;
   e.preventDefault();
@@ -123,9 +118,6 @@ function onKeydown(e) {
     if (text.value) {
       text.value = '';
       onInput();
-    } else if (props.overPage) {
-      closeBox();
-      focusPage();
     }
   }
 }
@@ -151,7 +143,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div v-shell class="command-box" :class="{ 'over-page': overPage }">
+  <div v-shell class="command-box">
     <div class="box">
       <span v-if="marks" class="chip">
         <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m8 2.5 1.7 3.5 3.8.5-2.8 2.6.7 3.8L8 11.1l-3.4 1.8.7-3.8-2.8-2.6 3.8-.5z" /></svg>
@@ -185,10 +177,10 @@ onMounted(() => {
       :typed="text.trim() !== ''"
       @folder="(i) => ((folderAt = i), (highlight = 0))"
       @hover="(i) => (highlight = i)"
-      @choose="(i) => openHere(results[i].e.url, overPage)"
+      @choose="(i) => openHere(results[i].e.url)"
     />
     <SuggestionList v-else-if="items.length" id="new-tab-list" class="list" :items="items" :highlight="highlight" :first="text.trim() === ''" @hover="(i) => (highlight = i)" @choose="(i) => choose(i, true)" />
-    <NewTabBookmarks v-if="!marks && state.prefs.bookmarksNewTab && text.trim() === ''" :over-page="overPage" />
+    <NewTabBookmarks v-if="!marks && state.prefs.bookmarksNewTab && text.trim() === ''" />
   </div>
 </template>
 
@@ -207,17 +199,6 @@ onMounted(() => {
   box-sizing: border-box;
   background: color-mix(in srgb, var(--bar) 60%, var(--surface));
   animation: appear var(--motion) var(--ease);
-}
-
-/* Over a page, New Tab's: the page shows faintly through a scrim in the bar's tint, and the
-   box floats on it. The page is a view of its own under the shell, so the scrim can tint it
-   but not blur it. */
-.command-box.over-page {
-  background: color-mix(in srgb, var(--bar) 80%, transparent);
-}
-
-.over-page .box {
-  box-shadow: 0 0 0 1px var(--line), var(--shadow-float);
 }
 
 @keyframes appear {
