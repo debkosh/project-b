@@ -384,7 +384,7 @@ def markdown(r, prev):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 2 and sys.argv[1] == "run":
+    if len(sys.argv) > 2 and sys.argv[1] == "run" and "--" in sys.argv:
         cmd_run(sys.argv[2:])
     elif len(sys.argv) > 2 and sys.argv[1] == "report":
         cmd_report(sys.argv[2:])
