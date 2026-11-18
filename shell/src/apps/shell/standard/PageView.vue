@@ -6,24 +6,19 @@ import PageDialog from '@/ui/PageDialog.vue';
 import UpdateStatus from './UpdateStatus.vue';
 import PageNotice from '@/ui/PageNotice.vue';
 import CommandBox from './CommandBox.vue';
-import { empty, view } from './state.js';
-import { activeTab, state } from '@/sdk/vue.js';
+import { activeTab, isNewTab, state } from '@/sdk/vue.js';
 
-// The command box shows over the page area: opened by New Tab, on a tab with nothing in it,
-// and in a window with no tabs.
-const blank = computed(() => empty.value || (state.active !== 0 && activeTab.value.url === '' && !activeTab.value.loading));
-const shown = computed(() => !state.pageFullScreen && (view.box || blank.value));
-// Over a page (New Tab), the page stays shown under the box's translucent scrim; the box is
-// the shell's, so a press on it is the shell's. Elsewhere there is no page to show.
-const overPage = computed(() => view.box && !blank.value);
+// The command box shows where the page goes on a new tab, one with nothing loaded, which has
+// no page to show.
+const shown = computed(() => !state.pageFullScreen && isNewTab(activeTab.value));
 </script>
 
 <!-- The page hole shows the active tab. With no tabs no page shows there, and the shell
      draws the area itself, as its own: a press there reaches no page and doesn't drag. -->
 <template>
   <div class="main">
-    <div v-if="!shown || overPage" v-page="state.active" class="page-view"></div>
-    <CommandBox v-if="shown" :key="state.active" :over-page="overPage" />
+    <div v-if="!shown" v-page="state.active" class="page-view"></div>
+    <CommandBox v-if="shown" :key="state.active" />
     <PageNotice v-if="activeTab.notice" v-shell :tab="activeTab" />
     <CrashNotice />
     <FindBar />

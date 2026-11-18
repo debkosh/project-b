@@ -5,7 +5,6 @@
 import { reactive, watch } from 'vue';
 import { send, state } from '@/sdk/vue.js';
 import { folders, inFolder, topFolder } from '@/ui/bookmarks.js';
-import { closeBox } from './state.js';
 
 export function host(url) {
   try {
@@ -27,11 +26,9 @@ export function tabFor(url) {
   return state.tabs.find((t) => t.url === url);
 }
 
-// openHere loads url as the command box takes a row: in a new tab over a page or with no
-// tabs, else in the tab with nothing in it that the box is over.
-export function openHere(url, overPage) {
-  send(overPage || state.active === 0 ? { t: 'newTab', text: url } : { t: 'navigate', text: url });
-  closeBox();
+// openHere loads url as the command box takes a row, in the new tab the box is on.
+export function openHere(url) {
+  send({ t: 'navigate', text: url });
 }
 
 // openTab shows url's tab when one has it open, else opens it in a new tab.

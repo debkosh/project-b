@@ -5,7 +5,7 @@ import { controlSpace as controls, openPin, send, state, tabLabel, unpin, worksp
 import { entries, groupLabel } from './groups.js';
 import { dragEnd, dragOver, dragStart, drop, dropClass } from './drag.js';
 import { openMenu } from './menu.js';
-import { openBox, view, waiting, workspaces } from './state.js';
+import { toNewTab, view, waiting, workspaces } from './state.js';
 import WorkspaceButton from './WorkspaceButton.vue';
 
 // The strip, flat: the pins and a rule after them, then a group's chip and its tabs, which
@@ -88,7 +88,7 @@ const items = computed(() =>
       </button>
     </div>
     </template>
-    <button class="new-tab" type="button" aria-label="New Tab" :title="state.keys['tab.new'] ? `New Tab (${shown(state.keys['tab.new'], state.platform)})` : 'New Tab'" @click="openBox">
+    <button class="new-tab" type="button" aria-label="New Tab" :title="state.keys['tab.new'] ? `New Tab (${shown(state.keys['tab.new'], state.platform)})` : 'New Tab'" @click="toNewTab">
       <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6.44.75v11.39M.75 6.19h11.39"/></svg>
     </button>
     <div class="space end" :style="{ width: controls.right }"></div>

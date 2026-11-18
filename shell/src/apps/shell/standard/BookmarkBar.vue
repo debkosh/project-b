@@ -3,7 +3,6 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import ContextMenu from '@/ui/ContextMenu.vue';
 import { send, state } from '@/sdk/vue.js';
 import { host, openGroup, under } from './bookmarks.js';
-import { closeBox } from './state.js';
 import SiteMark from './SiteMark.vue';
 import { folderMark } from '@/ui/tint.js';
 import { useTints } from '@/ui/useTints.js';
@@ -25,7 +24,6 @@ const label = (e) => e.title || (e.kind === 'folder' ? 'Folder' : host(e.url));
 
 function load(url) {
   send({ t: 'navigate', text: url });
-  closeBox();
 }
 
 // A folder's icon in its own colour (tint.js), made again on a new palette.
