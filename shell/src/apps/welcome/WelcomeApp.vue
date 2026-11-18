@@ -183,11 +183,11 @@ onMounted(() => heading.value?.focus());
         <p class="sub">Workspaces keep sets of tabs apart, each with its own sign-ins. Start with these, or add your own.</p>
         <div class="split">
           <div class="picture switcher" aria-hidden="true">
+            <Preview layout="side" />
             <div class="menu">
               <span class="item"><i class="tick">✓</i>All workspaces</span>
               <span v-for="w in starters.filter((x) => x.on)" :key="w.name" class="item"><i class="dot" :style="{ background: w.color }"></i>{{ w.name }}</span>
             </div>
-            <span class="button"><i v-for="w in starters.filter((x) => x.on).slice(0, 2)" :key="w.name" class="dot" :style="{ background: w.color }"></i>All workspaces</span>
           </div>
           <div class="choices">
             <div class="choice">
@@ -585,19 +585,16 @@ h1 {
 }
 
 /* How you work: the switcher's menu as the standard shell draws it, at the sidebar's foot. */
+/* How you work: the standard shell, as Pick your style draws it, with its workspace menu
+   open above the switcher at the sidebar's foot. */
 .switcher {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  gap: 8px;
-  min-height: 240px;
-  padding: 16px;
-  border-radius: 12px;
-  background: var(--bar);
-  box-shadow: inset 0 0 0 1px var(--line);
+  position: relative;
 }
 
 .switcher .menu {
+  position: absolute;
+  left: 3%;
+  bottom: 9%;
   display: flex;
   flex-direction: column;
   width: 220px;
@@ -607,8 +604,7 @@ h1 {
   box-shadow: 0 8px 24px rgb(0 0 0 / 0.14), 0 0 0 1px var(--line);
 }
 
-.switcher .item,
-.switcher .button {
+.switcher .item {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -622,10 +618,6 @@ h1 {
   font-style: normal;
 }
 
-.switcher .button .dot + .dot {
-  margin-left: -6px;
-}
-
 .dot {
   flex: none;
   width: 10px;
@@ -635,6 +627,10 @@ h1 {
 
 .starter {
   justify-content: flex-start;
+}
+
+.starter input[type='checkbox'] {
+  accent-color: var(--accent);
 }
 
 .starter .what {

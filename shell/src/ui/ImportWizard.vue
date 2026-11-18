@@ -248,6 +248,10 @@ function again() {
   border-top: 1px solid var(--line);
 }
 
+.ui-import-wizard input[type='radio'] {
+  accent-color: var(--accent);
+}
+
 .ui-import-wizard button.item {
   cursor: pointer;
 }
