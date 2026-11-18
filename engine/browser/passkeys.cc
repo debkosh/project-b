@@ -22,6 +22,7 @@
 #include "project_b/engine/abi/pb_abi.h"
 #include "project_b/engine/browser/dialogs.h"
 #include "project_b/engine/browser/hooks.h"
+#include "project_b/engine/browser/timeline.h"
 #include "url/origin.h"
 
 namespace project_b {
@@ -210,6 +211,8 @@ void PasskeyRequest::Step(const std::string& name, base::DictValue carries) {
     args.Bool(false);
     hooks::Fire(PB_EVENT_DIALOG_OPENED, args);
   }
+  // The step's name only: what it carries can hold the phone's link.
+  timeline::Mark("passkey.step", "dialog=" + base::NumberToString(id_) + " step=" + name);
   hooks::Args args;
   args.Int(id_);
   args.Str(name);
@@ -256,6 +259,11 @@ void PasskeyRequest::SetRelyingPartyId(const std::string& rp_id) {
 
 void PasskeyRequest::SetUIPresentation(UIPresentation ui_presentation) {
   shown_ = ui_presentation == UIPresentation::kModal && tab_ > 0;
+  if (!shown_) {
+    timeline::Mark("passkey.quiet",
+                   "presentation=" + base::NumberToString(static_cast<int>(ui_presentation)) +
+                       " tab=" + base::NumberToString(tab_));
+  }
 }
 
 bool PasskeyRequest::DoesBlockRequestOnFailure(InterestingFailureReason reason) {
@@ -344,6 +352,17 @@ void PasskeyRequest::SelectAccount(
   base::DictValue carries;
   carries.Set("accounts", std::move(accounts));
   Step("account", std::move(carries));
+}
+
+void PasskeyRequest::StartObserving(device::FidoRequestHandlerBase* request_handler) {
+  // A request with no card goes as content's own delegate's does, which observes nothing.
+  if (shown_) {
+    handler_.Observe(request_handler);
+  }
+}
+
+void PasskeyRequest::StopObserving(device::FidoRequestHandlerBase* request_handler) {
+  handler_.Reset();
 }
 
 void PasskeyRequest::OnTransportAvailabilityEnumerated(
