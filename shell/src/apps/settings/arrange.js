@@ -102,7 +102,7 @@ const page = [
     cards: [['start', 'searchEngine', 'keys', 'keyboard', 'workspaces'], 'bookmarks', { heading: 'Downloads', rows: ['downloadFolder', 'askWhereToSave'] }],
   },
   { id: 'privacy', label: 'Privacy', hint: 'What sites can do and what they keep', cards: [['clearData', 'sites', 'clearOnQuit', 'blockAds']] },
-  { id: 'data', label: 'Your data', hint: 'This profile and what you bring in', cards: [['profile'], 'import', ['runSetup']] },
+  { id: 'data', label: 'Your data', hint: 'This profile and what you bring in', cards: [['profile'], 'sync', 'import', ['runSetup']] },
   {
     id: 'advanced',
     label: 'Advanced',
@@ -190,7 +190,7 @@ const sectionList = () => [
     },
   },
   { id: 'keyboard', label: 'Keyboard', icon: 'keyboard', cards: [['keys'], 'keyboard'], summary: () => '' },
-  { id: 'profile', label: 'Profile and import', icon: 'profile', cards: [['profile'], 'import', ['runSetup']], summary: () => state.profile?.name || '' },
+  { id: 'profile', label: 'Profile and import', icon: 'profile', cards: [['profile'], 'sync', 'import', ['runSetup']], summary: () => state.profile?.name || '' },
   {
     id: 'extensions',
     label: shown('extensions') ? 'Extensions and sparks' : 'Sparks',
