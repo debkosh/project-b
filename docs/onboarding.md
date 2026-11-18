@@ -98,7 +98,8 @@ No import: Android keeps each app's data from the others.
 **Settings** gets an Import section, the same rows with Import… on each, and Run setup again,
 which opens the welcome in a tab ([mock](screenshots/onboarding/mock-d6.png),
 [in a tab](screenshots/onboarding/mock-d7.png)). Run setup again became Show the welcome again, in Flags, which
-closes the app for the next start to open the welcome whole (see Built).
+closes the app for the next start to open the welcome whole (see Built); since the settings
+page's layouts ([settings.md](settings.md)) it is Run setup again once more, under Your data.
 
 ## What it needs that we don't have
 
@@ -157,7 +158,7 @@ Each slice goes out through a release of its own.
   Not here yet: a switch for the ad blocker and for Links to other sites across every site
   (today each is a site's own setting, the ad blocker on by default, links allowed), and the
   keys like Chrome's or Project B's (Settings, Keyboard, has it).
-- **Show the welcome again,** first in Settings' Flags (on a phone, below General), marks
+- **Run setup again,** in Settings' Your data (Profile and import in the sections layout), marks
   the welcome unfinished in `welcome.json` and closes the app. The next start opens it over the
   whole window, as a first start does, with the tabs On start, open brings back under it. It
   doesn't open in a tab: the welcome is the whole-window first run, and a tab showed less of it.

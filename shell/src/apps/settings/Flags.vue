@@ -1,13 +1,12 @@
 <script setup>
 import { computed } from 'vue';
 import Field from '@/ui/Field.vue';
+import Row from './Row.vue';
 import { send, state } from './state.js';
 
 // Flags, as core/flags/registry.json defines them, each drawn by its type: a switch for a
 // boolean, a select for an enum, a field for the rest. A change waits for the next launch:
-// each changed flag says so, and one Relaunch at the top applies them all. Show the welcome
-// again, first, marks the welcome unfinished and closes the app, for the next start to open
-// it as the first did.
+// each changed flag says so, and one Relaunch at the top applies them all.
 
 function set(flag, text) {
   send({ t: 'setFlag', id: flag.id, text });
@@ -49,27 +48,22 @@ function error(flag, text) {
 
 <template>
   <section aria-label="Flags">
+    <h2>Flags</h2>
     <div class="card">
-      <div v-if="pending" class="row">
-        <span class="label">Relaunch to apply {{ pending }} {{ pending === 1 ? 'change' : 'changes' }}</span>
+      <Row v-if="pending" :label="`Relaunch to apply ${pending} ${pending === 1 ? 'change' : 'changes'}`">
         <button type="button" class="text-button" @click="send({ t: 'relaunch' })">Relaunch</button>
-      </div>
-      <div class="row">
-        <span class="label">
-          <span class="name">Show the welcome again</span>
-          <span class="secondary">Closes the app. Open it again for the welcome over the whole window, as on a first start. Your tabs come back under it as On start, open says.</span>
-        </span>
-        <button type="button" class="text-button" @click="send({ t: 'welcomeAgain' })">Close the app</button>
-      </div>
-      <div v-for="f in state.flags" :key="f.id" class="row">
-        <label class="label" :for="f.type === 'boolean' || f.type === 'enum' ? 'flag-' + f.id : undefined">
-          <span class="name">
-            {{ f.name }}
-            <span v-if="!f.built" class="tag">Not in this build</span>
-            <span v-else-if="f.pending" class="tag">Relaunch to apply</span>
-          </span>
-          <span class="secondary">{{ f.description }}</span>
-        </label>
+      </Row>
+      <Row
+        v-for="f in state.flags"
+        :key="f.id"
+        :label="f.name"
+        :hint="f.description"
+        :for="f.type === 'boolean' || f.type === 'enum' ? 'flag-' + f.id : undefined"
+      >
+        <template #tags>
+          <span v-if="!f.built" class="tag">Not in this build</span>
+          <span v-else-if="f.pending" class="tag">Relaunch to apply</span>
+        </template>
         <input
           v-if="f.type === 'boolean'"
           :id="'flag-' + f.id"
@@ -95,18 +89,12 @@ function error(flag, text) {
           :validate="(text) => error(f, text)"
           @commit="set(f, $event)"
         />
-      </div>
+      </Row>
     </div>
   </section>
 </template>
 
 <style scoped>
-.name {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .value {
   flex: none;
   width: 200px;

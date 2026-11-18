@@ -2,13 +2,13 @@
 import { ref } from 'vue';
 import Dialog from '@/ui/Dialog.vue';
 import Field from '@/ui/Field.vue';
+import Row from './Row.vue';
 import { send, state } from './state.js';
 
-// This profile: its name in the list, the template it was made from or last reset to, and
-// the shell it loads. Reset to template asks which template in a dialog that says what
-// goes, then writes that template's values over the profile's settings; Go owns all of it
-// and answers with the profile as the list now has it. Another shell loads in every window
-// at once.
+// This profile: its name in the list, and the template it was made from or last reset to.
+// Reset to template asks which template in a dialog that says what goes, then writes that
+// template's values over the profile's settings; Go owns all of it and answers with the
+// profile as the list now has it. The shell it loads is a row of its own, with the look.
 
 const nameError = (text) => (text ? '' : 'A profile needs a name');
 
@@ -27,32 +27,17 @@ function reset() {
 </script>
 
 <template>
-  <section aria-label="Profile">
-    <div class="card">
-      <div class="row">
-        <span class="label">Name</span>
-        <Field
-          class="name"
-          label="Name"
-          :value="state.profile.name"
-          :validate="nameError"
-          @commit="send({ t: 'setProfileName', text: $event })"
-        />
-      </div>
-      <div class="row">
-        <span class="label">
-          Template
-          <span class="secondary">{{ state.profile.template }}</span>
-        </span>
-        <button type="button" class="text-button" @click="askReset">Reset to template…</button>
-      </div>
-      <div class="row">
-        <label class="label" for="profile-shell">Shell</label>
-        <select id="profile-shell" :value="state.profile.shell" @change="send({ t: 'setShell', text: $event.target.value })">
-          <option v-for="s in state.profile.shells" :key="s.id" :value="s.id">{{ s.name }}</option>
-        </select>
-      </div>
-    </div>
+  <Row label="Profile name">
+    <Field
+      class="name"
+      label="Profile name"
+      :value="state.profile.name"
+      :validate="nameError"
+      @commit="send({ t: 'setProfileName', text: $event })"
+    />
+  </Row>
+  <Row label="Template" :hint="state.profile.template" class="template-row">
+    <button type="button" class="text-button" @click="askReset">Reset to template…</button>
     <Dialog v-if="resetting" title="Reset this profile's settings?" @close="resetting = false">
       <div class="ui-dialog-part">
         <label for="profile-template">Template</label>
@@ -68,7 +53,7 @@ function reset() {
         <button type="button" class="text-button danger" @click="reset">Reset</button>
       </template>
     </Dialog>
-  </section>
+  </Row>
 </template>
 
 <style scoped>

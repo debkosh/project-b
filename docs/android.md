@@ -362,7 +362,7 @@ bar at the foot, a tab switcher, tab groups in a strip, the long-press link menu
 hiding on scroll. The phone's back key closes the shell's sheet or ends its address editing first
 (`set_shell_back`), then settings', then goes back in the page, then on a tab with no history closes it, the
 tab used before it taking its place (`Window::BackKey` sends `closeTab` with `then: "recent"`), down to a window with
-no tabs; only with no tab shown does it go to Android, which leaves the app. Settings, General has Address bar, Top
+no tabs; only with no tab shown does it go to Android, which leaves the app. Settings, Look has Address bar, Top
 or Bottom.
 
 ### Updates on a phone

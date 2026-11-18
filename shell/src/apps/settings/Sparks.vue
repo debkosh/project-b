@@ -1,10 +1,13 @@
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, inject, ref, watch } from 'vue';
 import { send, state } from './state.js';
 
 // Sparks (docs/site-features.md): the person's scripts for pages, which Go keeps, parses and
 // matches. Each row has its switch, Edit, Export and Delete; New opens an empty editor,
 // Import takes a .user.js file. A save that Go refuses says why under the editor.
+
+// On a page of its own the page's heading names the list.
+const ownPage = inject('settingsListPage', false);
 
 const template = `// ==UserScript==
 // @name        My spark
@@ -90,8 +93,8 @@ const where = (s) => (s.match || []).join(', ');
 </script>
 
 <template>
-  <section aria-labelledby="sparks">
-    <h2 id="sparks">Sparks</h2>
+  <section aria-label="Sparks">
+    <h2 v-if="!ownPage">Sparks</h2>
     <p class="intro">Your own scripts for the pages they match, each run apart from the page's own. At most 25.</p>
     <div class="card">
       <div v-for="s in state.sparks" :key="s.id" class="row spark" role="group" :aria-label="s.name || 'A spark that has a problem'">

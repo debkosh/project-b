@@ -885,9 +885,8 @@ address field, and a menu button at the far right, in our tones.
   and the APK carries only those (owner, 2026-11-14: more phone shells can join it later),
   so it starts on Mobile even where a profile's pref names `standard`, as the templates do;
   a desktop offers none, though it loads one named outright, as the mock does for the
-  shell's tests in a phone-sized window. With more than one phone shell, Settings, General
-  on a phone has Shell to choose between them (a phone has no Profile section or View
-  menu).
+  shell's tests in a phone-sized window. With more than one phone shell, Settings, Look on
+  a phone has Shell to choose between them (a phone has no View menu).
 - **One bar at the foot, 48px:** the address pill, which shows the host and the lock and
   becomes the field when tapped, with the suggestions over it, the closest nearest the
   thumb; the tab count, which opens the switcher; and ⋯, the menu sheet. A swipe along
@@ -1002,7 +1001,7 @@ address field, and a menu button at the far right, in our tones.
   Reload, Stop, New Tab, Find in page, Workspaces, History, Bookmarks, Downloads,
   Extensions, Settings and More; `tools/drive_android.py` and `tools/measure.py` find them
   so.
-- **The address bar on top** is a setting, `addressBarPosition`, in Settings, General on a
+- **The address bar on top** is a setting, `addressBarPosition`, in Settings, Look on a
   phone: the bar moves under the status bar, the suggestions grow down from it, and the
   group strip stays at the foot, as Chrome's does. Sheets stay at the foot.
 - **The bars hide on scroll,** and come back when the page scrolls up, for another tab,

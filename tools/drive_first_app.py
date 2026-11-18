@@ -676,7 +676,7 @@ def settings_checks():
     print(app.cmd("capture", os.path.join(OUT, "settings-general.png")), flush=True)
 
     # A key recorded on the settings page reaches Go, and runs its action.
-    settings("[...document.querySelectorAll('.nav-item')].find(b=>b.textContent==='Keyboard').click()")
+    settings("document.querySelector('[data-section=keyboard]').click()")
     time.sleep(0.3)
     settings("[...document.querySelectorAll('button.action')].find(b=>b.querySelector('.name').textContent.trim()==='New Tab').click()")
     time.sleep(0.3)
@@ -1958,7 +1958,7 @@ def workspace_menu_checks():
         if time.time() > deadline:
             raise TimeoutError("the settings page never opened")
         time.sleep(0.1)
-    settings("[...document.querySelectorAll('.nav-item')].find(b=>b.textContent==='Workspaces').click()")
+    settings("document.querySelector('[data-section=workspaces]').click()")
     # New workspace… opens a dialog with the name and the colour; Create makes it.
     for name in ("Work", "Shopping"):
         settings("[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='New workspace…').click()")

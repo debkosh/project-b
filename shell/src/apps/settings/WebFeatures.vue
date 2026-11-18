@@ -43,7 +43,7 @@ function onFilterEscape(e) {
 </script>
 
 <template>
-  <div>
+  <div class="web-features">
     <p class="intro">How web features behave in Project B, and why. Read-only.</p>
     <section class="filter-section" aria-label="Filter">
       <input

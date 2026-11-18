@@ -482,9 +482,9 @@ def flag_off_checks():
     # profile, with the same arguments.
     open_settings(app)
     settings_wait(app, "!!document.querySelector('.nav')", 30)
-    settings(app, "[...document.querySelectorAll('.nav-item')].find(b=>b.textContent==='Flags').click()")
+    settings(app, "document.querySelector('[data-section=advanced]').click()")
     settings_wait(app, "!!document.querySelector('section[aria-label=Flags]')")
-    settings_click(app, "[role=switch]")
+    settings_click(app, "section[aria-label=Flags] [role=switch]")
     relaunch = "[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Relaunch')"
     settings_wait(app, f"!!{relaunch}")
     with open(os.path.join(profile, "flags.json")) as f:

@@ -1,48 +1,21 @@
 <script setup>
-import { computed, watchEffect } from 'vue';
-import { extensionsSection } from '@extensions';
-import { phone } from '@/phone.js';
+import { provide, ref, watchEffect } from 'vue';
 import { paintTheme } from '@/theme.js';
-import Bookmarks from './Bookmarks.vue';
-import Flags from './Flags.vue';
-import Import from './Import.vue';
-import General from './General.vue';
-import Keyboard from './Keyboard.vue';
-import Profile from './Profile.vue';
-import SiteSettings from './SiteSettings.vue';
-import Sparks from './Sparks.vue';
-import WebFeatures from './WebFeatures.vue';
-import Workspaces from './Workspaces.vue';
+import PageLayout from './PageLayout.vue';
 import { state } from './state.js';
 
 // The settings page: one of our pages, in a tab of ours. Its colours come from the frame
 // colour and the theme, as the shell's do.
 watchEffect(() => paintTheme(state.tones, state.theme));
 
-// The page shows state.section when it is one of these, else the first. Profile is there
-// in a copy on a listed profile; Extensions when the build has them and their flag is on.
-const sections = computed(() =>
-  [
-    { id: 'general', label: 'General', component: General },
-    { id: 'bookmarks', label: 'Bookmarks', component: Bookmarks },
-    state.profile && { id: 'profile', label: 'Profile', component: Profile },
-    { id: 'workspaces', label: 'Workspaces', component: Workspaces },
-    { id: 'sites', label: 'Site settings', component: SiteSettings },
-    { id: 'sparks', label: 'Sparks', component: Sparks },
-    { id: 'keyboard', label: 'Keyboard', component: Keyboard },
-    { id: 'import', label: 'Import', component: Import },
-    extensionsSection?.shown() && extensionsSection,
-    { id: 'flags', label: 'Flags', component: Flags },
-    { id: 'webFeatures', label: 'Web features', component: WebFeatures },
-  ].filter((s) => s),
-);
-// A section's address may name more after a slash, which the section reads: sites/<origin>.
-const section = computed(() => sections.value.find((s) => s.id === state.section.split('/')[0]) || sections.value[0]);
-
-// The tab's title is the page's: Settings and the section showing, which the shell shows in
-// the tab and in place of the address (docs/design-system.md, The address field's slot).
-watchEffect(() => {
-  document.title = phone ? 'Settings' : `Settings › ${section.value.label}`;
+// What the page shows is state.section, an address (docs/settings.md): a section, a part
+// or one of the long lists, which Go may name as it opens the page. go shows one, and
+// counts a jump, so asking for the one showing goes to it again.
+const jumps = ref(0);
+provide('settingsJumps', jumps);
+provide('settingsGo', (address) => {
+  state.section = address;
+  jumps.value++;
 });
 </script>
 
@@ -51,30 +24,7 @@ watchEffect(() => {
     <!-- The page's name is the tab's title, which the shell shows; the heading is kept for
          a screen reader, and out of sight. -->
     <h1 class="hidden-heading">Settings</h1>
-    <div class="body">
-      <!-- A phone has no keyboard shortcuts or extensions, so it shows General, Bookmarks, then Flags. -->
-      <nav v-if="!phone" class="nav" aria-label="Settings sections">
-        <button
-          v-for="s in sections"
-          :key="s.id"
-          type="button"
-          class="nav-item"
-          :aria-current="section === s ? 'page' : undefined"
-          @click="state.section = s.id"
-        >{{ s.label }}</button>
-      </nav>
-      <main class="content" :class="{ phone }">
-        <template v-if="phone">
-          <General />
-          <Bookmarks />
-          <section class="flags" aria-labelledby="flags-heading">
-            <h2 id="flags-heading">Flags</h2>
-            <Flags />
-          </section>
-        </template>
-        <component :is="section.component" v-else />
-      </main>
-    </div>
+    <PageLayout />
   </div>
 </template>
 
@@ -135,7 +85,7 @@ body {
   background: var(--accent-tint);
 }
 
-.nav-item[aria-current='page'] {
+.nav-item[aria-current] {
   background: var(--accent-soft);
 }
 
@@ -146,7 +96,7 @@ body {
   padding: 8px 32px 32px 8px;
 }
 
-.content > * {
+.column {
   max-width: 720px;
 }
 
@@ -155,14 +105,11 @@ body {
   padding: 8px 16px 32px;
 }
 
-.content.phone > * {
+.content.phone .column {
   max-width: none;
 }
 
-.content.phone > .flags {
-  margin-top: 24px;
-}
-
+.block + .block,
 section + section {
   margin-top: 24px;
 }

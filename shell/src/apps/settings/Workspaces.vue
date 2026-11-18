@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, inject, nextTick, ref, watch } from 'vue';
 import Dialog from '@/ui/Dialog.vue';
 import RowMenu from '@/ui/RowMenu.vue';
 import Swatches from '@/ui/Swatches.vue';
@@ -14,6 +14,9 @@ import { send, state } from './state.js';
 // The colours a workspace starts from; any other is a custom one. Main, the workspace a
 // profile starts with, has the first (core/workspaces).
 const colors = ['#3470d0', '#d03434', '#4f9e9e', '#e8a317', '#8a4fd0', '#2e9d5b', '#34404f'];
+
+// On a page of its own the page's heading names the list.
+const ownPage = inject('settingsListPage', false);
 
 const openTabs = (w) => state.workspaceTabs?.[w.id] || 0;
 
@@ -142,9 +145,9 @@ const title = computed(() => (editing.value ? 'Edit workspace' : 'New workspace'
 </script>
 
 <template>
-  <section aria-labelledby="workspaces">
+  <section aria-label="Workspaces">
     <div class="heading">
-      <h2 id="workspaces">Workspaces</h2>
+      <h2 v-if="!ownPage">Workspaces</h2>
       <button type="button" class="text-button" @click="create">New workspace…</button>
     </div>
     <div ref="list" class="card">
@@ -208,6 +211,10 @@ const title = computed(() => (editing.value ? 'Edit workspace' : 'New workspace'
   justify-content: space-between;
   gap: 16px;
   height: 30px;
+}
+
+.heading > .text-button {
+  margin-left: auto;
 }
 
 .dot {

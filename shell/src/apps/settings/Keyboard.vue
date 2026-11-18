@@ -1,7 +1,6 @@
 <script setup>
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue';
 import { comboOf, shown } from '@/keys.js';
-import Dialog from '@/ui/Dialog.vue';
 import { pushEscape } from '@/ui/escape.js';
 import { send, state } from './state.js';
 
@@ -27,36 +26,6 @@ function shared(a) {
   const first = a.keys[0];
   return a.keys.every((k) => k.reserve === first.reserve && k.locked === first.locked) ? first : null;
 }
-
-const templateNames = { 'project-b': 'Project B', chrome: 'Chrome' };
-const templateLabel = (name) => templateNames[name] || name;
-
-// How many actions differ from the template: what a reset or another template loses.
-const changedCount = computed(() => kb.value.groups.reduce((n, g) => n + g.actions.filter((a) => a.changed).length, 0));
-
-// Using a template, or the same one again for Reset all. With changes to lose it asks
-// first, and the select keeps showing the template in use until the answer.
-const asking = ref('');
-const templateSelect = ref(null);
-function useTemplate(name) {
-  if (changedCount.value === 0) {
-    send({ t: 'useTemplate', text: name });
-    return;
-  }
-  if (templateSelect.value) templateSelect.value.value = kb.value.template;
-  asking.value = name;
-}
-// Reset all is disabled once nothing differs, so focus goes to the select, which stays.
-async function confirmTemplate() {
-  send({ t: 'useTemplate', text: asking.value });
-  asking.value = '';
-  await nextTick();
-  templateSelect.value?.focus();
-}
-const askTitle = computed(() => {
-  const n = changedCount.value;
-  return `Discard ${n} changed shortcut${n === 1 ? '' : 's'} and use ${templateLabel(asking.value)}'s?`;
-});
 
 // "Its ⌘N is already in use", or "Its ⌘N, ⌘⇧N are" for more than one.
 const takenText = (keys) =>
@@ -283,15 +252,8 @@ const replaceable = (t) => !t.key.locked && !t.key.fromOS;
 
 <template>
   <div>
-    <section aria-label="Template">
+    <section v-if="kb.problems.length" aria-label="Problems">
       <div class="card">
-        <div class="row">
-          <label class="label" for="template">Template</label>
-          <select id="template" ref="templateSelect" :value="kb.template" @change="useTemplate($event.target.value)">
-            <option v-for="t in kb.templates" :key="t" :value="t">{{ templateLabel(t) }}</option>
-          </select>
-          <button type="button" class="text-button" :disabled="!changedCount" @click="useTemplate(kb.template)">Reset all…</button>
-        </div>
         <div v-for="p in kb.problems" :key="p" class="row">
           <span class="label problem" :title="p">{{ p }}</span>
         </div>
@@ -433,12 +395,6 @@ const replaceable = (t) => !t.key.locked && !t.key.fromOS;
     </section>
     </template>
 
-    <Dialog v-if="asking" :title="askTitle" @close="asking = ''">
-      <template #buttons>
-        <button type="button" class="text-button" @click="asking = ''">Cancel</button>
-        <button type="button" class="text-button danger" @click="confirmTemplate">Discard</button>
-      </template>
-    </Dialog>
   </div>
 </template>
 

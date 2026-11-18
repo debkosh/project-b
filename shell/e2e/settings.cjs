@@ -161,7 +161,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   await openSettings();
   check('the gear opens the settings tab and shows it', await until(settingsShown));
   check('and the dev window shows the page in the tab\'s frame', await until(() => shell.locator('iframe.our-page[data-page="settings"]').isVisible()));
-  check('its title is the page\'s own, with the section showing', await until(async () => (await regions()).tabs.find((t) => t.page === 'settings').title === 'Settings › General'), JSON.stringify((await regions()).tabs.find((t) => t.page === 'settings')?.title));
+  check('its title is the page\'s own', await until(async () => (await regions()).tabs.find((t) => t.page === 'settings').title === 'Settings'), JSON.stringify((await regions()).tabs.find((t) => t.page === 'settings')?.title));
   const titleBox = await ui.locator('form.field').boundingBox();
   check('the title in the address field is the shell\'s, not a drag area', await until(async () => (await regions(`?x=${Math.round(titleBox.x + titleBox.width / 2)}&y=${Math.round(titleBox.y + titleBox.height / 2)}`)).hit === 'shell'));
   // Its title and icon follow the page, as a web page's do.
@@ -208,6 +208,14 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
     return p;
   };
   let page = await open();
+  // show goes to where a part of the page is, as a person does: back from a list's own
+  // page, then the row that opens the list when it is one (docs/settings.md).
+  const lists = ['workspaces', 'sites', 'keyboard', 'sparks', 'extensions', 'webFeatures'];
+  const show = async (part) => {
+    if (await page.locator('.list-page').count()) await page.locator('.list-page .back').click();
+    if (lists.includes(part)) await page.locator(`[data-section="${part}"]`).click();
+    await settle(page);
+  };
   const radio = (label) => page.getByRole('radio', { name: label });
   const autoUpdate = page.getByRole('switch', { name: 'Automatic updates' });
 
@@ -268,7 +276,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   check('an arrow key moves the colour, and focus with it', await until(async () => prefsFile().frameColor === '#faa804' && (await page.getByRole('radio', { name: 'Amber' }).evaluate((e) => e === document.activeElement))));
   await page.getByRole('radio', { name: 'Blue' }).click();
   await page.getByRole('button', { name: 'Check for updates' }).click();
-  const updateStatus = page.getByRole('region', { name: 'Updates' }).getByRole('status');
+  const updateStatus = page.locator('.update-row').getByRole('status');
   check('Check asks the update manager, which says it is up to date', await until(async () => (await updateStatus.textContent()).trim() === 'Up to date'));
   check('one check reached the release server', manifests === counted + 1, `${counted} -> ${manifests}`);
   await autoUpdate.click();
@@ -283,13 +291,13 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   const rootOf = (p, name) => p.evaluate((n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim(), name);
   for (const theme of ['Light', 'Dark']) {
     for (const p of presets) {
-      await page.getByRole('button', { name: 'General', exact: true }).click();
+      await show('theme');
       await page.getByRole('radio', { name: theme }).check();
       await page.getByRole('radio', { name: p.name, exact: true }).click();
       // None paints its grey for the theme (core/tones); its swatch is struck through.
       const frame = p.name === 'None' ? (theme === 'Dark' ? '#3a3f4a' : '#dcdee2') : toHex(p.rgb);
       const shown = await until(async () => (await rootOf(page, '--frame')) === frame && (await rootOf(page, '--text')) === (theme === 'Dark' ? '#e8eaed' : '#1f1f1f'));
-      await page.getByRole('button', { name: 'Workspaces', exact: true }).click();
+      await show('workspaces');
       await page.getByRole('button', { name: 'New workspace…' }).click();
       const answer = page.getByRole('dialog').getByRole('button', { name: 'Create', exact: true });
       const [fg, bg] = await answer.evaluate((b) => [getComputedStyle(b).color, getComputedStyle(b).backgroundColor]);
@@ -298,17 +306,16 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
       await page.keyboard.press('Escape');
     }
   }
-  await page.getByRole('button', { name: 'General', exact: true }).click();
+  await show('theme');
   await page.getByRole('radio', { name: 'System' }).check();
   await page.getByRole('radio', { name: 'Slate' }).click();
   await until(() => prefsFile().theme === 'system' && prefsFile().frameColor === '#384562');
 
   // Profile: the name in the list, and reset to a template, which takes its values and
   // nothing else.
-  await page.getByRole('button', { name: 'Profile', exact: true }).click();
-  const profileSection = page.locator('main');
-  const nameField = page.getByLabel('Name', { exact: true });
-  const templateNow = () => profileSection.locator('.row', { hasText: 'Template' }).locator('.secondary').textContent();
+  await show('profile');
+  const nameField = page.getByLabel('Profile name', { exact: true });
+  const templateNow = () => page.locator('.template-row .secondary').textContent();
   check('Profile shows the name and the template', (await nameField.inputValue()) === 'Personal' && (await templateNow()).trim() === 'Personal');
   await nameField.fill('');
   await nameField.press('Enter');
@@ -357,7 +364,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
     }
   };
   // Bookmarks: where they show, each a switch, and the bar with the folder it shows.
-  await page.getByRole('button', { name: 'Bookmarks', exact: true }).click();
+  await show('bookmarks');
   const bookmarksSection = page.getByRole('region', { name: 'Bookmarks' });
   const place = (name) => bookmarksSection.getByRole('switch', { name });
   check('Bookmarks shows them on the new tab page and in the command box, not beside the tabs nor in a bar, by default',
@@ -372,7 +379,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   for (const name of [/Beside the tabs/, /On the new tab page/, /Bookmarks bar/]) await place(name).click();
   await until(() => prefsFile().bookmarksSidebar === false && prefsFile().bookmarksNewTab === true && prefsFile().bookmarksBar === false);
 
-  await page.getByRole('button', { name: 'Workspaces', exact: true }).click();
+  await show('workspaces');
   const workspacesSection = page.getByRole('region', { name: 'Workspaces' });
   const mainRow = workspacesSection.locator('.row', { hasText: 'Main' });
   check('Workspaces lists Main at first, with the tab open in it',
@@ -419,8 +426,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   check('and the gear shows the settings tab again, the one the window has', await until(async () => (await settingsShown()) && (await regions()).tabs.filter((t) => t.page === 'settings').length === 1));
   await page.close();
   page = await open();
-  await page.getByRole('button', { name: 'Workspaces', exact: true }).click();
-  await settle(page);
+  await show('workspaces');
   await page.screenshot({ path: path.join(out, 'settings-workspaces.png') });
 
   // Delete…, last in a row's menu in the danger colour, asks first: the dialog says how many
@@ -490,11 +496,12 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
       return null;
     }
   };
-  await page.getByRole('button', { name: 'Flags' }).click();
+  await show('flags');
+  const flagsRegion = page.getByRole('region', { name: 'Flags', exact: true });
   const relaunch = page.getByRole('button', { name: 'Relaunch' });
-  check('Flags lists the flags, none waiting', await page.getByRole('region', { name: 'Flags' }).getByText('Chromium features', { exact: true }).isVisible() && (await relaunch.count()) === 0);
-  check('Extensions is off and can\'t be turned on in a build without them', await page.getByRole('switch', { name: /Extensions/ }).isDisabled());
-  check('and says so', (await page.locator('.row', { hasText: 'Extensions' }).textContent()).includes('Not in this build'));
+  check('Flags lists the flags, none waiting', await flagsRegion.getByText('Chromium features', { exact: true }).isVisible() && (await relaunch.count()) === 0);
+  check('Extensions is off and can\'t be turned on in a build without them', await flagsRegion.getByRole('switch', { name: /Extensions/ }).isDisabled());
+  check('and says so', (await flagsRegion.locator('.row', { hasText: 'Extensions' }).textContent()).includes('Not in this build'));
   const port = page.getByLabel('Remote debugging port');
   await port.fill('80');
   await port.press('Enter');
@@ -535,8 +542,8 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
 
   // Web features: the registry, as Go sends it for this platform, only shown, in groups by
   // status, worst first.
-  await page.getByRole('button', { name: 'Web features' }).click();
-  const featureSection = page.locator('.content');
+  await show('webFeatures');
+  const featureSection = page.locator('.web-features');
   const featureRows = featureSection.locator('.card .row');
   const featureHeadings = async () => featureSection.locator('h2').allTextContents();
   const macCount = (s) => webFeatures.filter((f) => f.status.mac === s).length;
@@ -578,8 +585,8 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   await page.screenshot({ path: path.join(out, 'settings-web-features.png') });
 
   // Keyboard.
-  await page.getByRole('button', { name: 'Keyboard' }).click();
-  check('the page\'s title follows the section, under its gear', await until(async () => (await page.title()) === 'Settings › Keyboard') &&
+  await show('keyboard');
+  check('the page\'s title follows the list, under its gear', await until(async () => (await page.title()) === 'Settings › Keyboard shortcuts') &&
     (await page.locator('link[rel=icon]').getAttribute('href')).startsWith('data:image/svg+xml'), await page.title());
   // The list only shows; clicking an action opens its editor.
   const openRow = (title) => page.locator('button.action').filter({ has: page.locator('.name', { hasText: new RegExp('^\\s*' + title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*$') }) }).click();
@@ -618,16 +625,6 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   check('and the list marks it Hidden', await until(async () => (await page.locator('button.action', { hasText: 'Reload This Page' }).filter({ hasText: 'Hidden' }).count()) === 1));
   await page.getByRole('button', { name: 'Reset', exact: true }).click();
   check('reset puts it back', await until(async () => menuHas((await regions()).menu, 'Reload This Page')));
-
-  await page.getByRole('combobox', { name: 'Template' }).selectOption('chrome');
-  const discard = page.getByRole('dialog', { name: /^Discard 1 changed shortcut and use/ });
-  check('picking a template with a changed shortcut asks first, saying how many', await until(async () => (await discard.count()) === 1) && keymapFile()?.follows === undefined);
-  await page.keyboard.press('Escape');
-  check('Escape keeps the shortcuts and the tab', await until(async () => (await discard.count()) === 0) && keymapFile()?.follows === undefined && (await regions()).settings !== 0);
-  await page.getByRole('combobox', { name: 'Template' }).selectOption('chrome');
-  await discard.getByRole('button', { name: 'Discard' }).click();
-  check('Discard resets to following the template', await until(() => keymapFile()?.follows === 'chrome'), JSON.stringify(keymapFile()));
-  check('and the added key is gone', await until(async () => !(await page.getByRole('region', { name: 'File', exact: true }).textContent()).includes('⇧⌘K')));
   await page.screenshot({ path: path.join(out, 'settings-keyboard.png'), fullPage: true });
 
   await page.locator('body').click({ position: { x: 5, y: 300 } });
@@ -636,6 +633,22 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   await page.keyboard.press('Escape');
   await sleep(200);
   check('and Escape again leaves it too: the page closes as a tab does, not by itself', (await regions()).settings !== 0);
+
+  // Keys, the keymap's template, is a row of the page's, out of the shortcuts' list.
+  await show('keys');
+  const keys = page.getByRole('radiogroup', { name: 'Keys' });
+  check('Keys shows the template in use', (await keys.getByRole('radio', { name: 'Project B' }).getAttribute('aria-checked')) === 'true');
+  await keys.getByRole('radio', { name: 'Chrome' }).click();
+  const discard = page.getByRole('dialog', { name: /^Discard 1 changed shortcut and use/ });
+  check('picking a template with a changed shortcut asks first, saying how many', await until(async () => (await discard.count()) === 1) && keymapFile()?.follows === undefined);
+  await page.keyboard.press('Escape');
+  check('Escape keeps the shortcuts and the tab, and the template in use', await until(async () => (await discard.count()) === 0) && keymapFile()?.follows === undefined && (await regions()).settings !== 0 &&
+    (await keys.getByRole('radio', { name: 'Project B' }).getAttribute('aria-checked')) === 'true');
+  await keys.getByRole('radio', { name: 'Chrome' }).click();
+  await discard.getByRole('button', { name: 'Discard' }).click();
+  check('Discard resets to following the template', await until(() => keymapFile()?.follows === 'chrome'), JSON.stringify(keymapFile()));
+  await show('keyboard');
+  check('and the added key is gone', await until(async () => !(await page.getByRole('region', { name: 'File', exact: true }).textContent()).includes('⇧⌘K')));
 
   // It closes as any tab does: Cmd+W while it is active.
   await openSettings();
@@ -649,7 +662,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   await openSettings();
   await until(settingsShown);
   page = await open();
-  await page.getByRole('button', { name: 'Site settings', exact: true }).click();
+  await show('sites');
   const sites = page.getByRole('region', { name: 'Site settings' });
   check('Site settings lists each site with how each of its settings is',
     await until(async () => (await sites.textContent()).includes('meet.test') && (await sites.textContent()).includes('Camera allowed, Microphone blocked') && (await sites.textContent()).includes('Notifications blocked')),
@@ -706,7 +719,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   await openSettings();
   await until(settingsShown);
   page = await open();
-  await page.getByRole('button', { name: 'Sparks', exact: true }).click();
+  await show('sparks');
   const sparksRegion = page.getByRole('region', { name: 'Sparks' });
   check('Sparks says there are none yet', await until(async () => (await sparksRegion.textContent()).includes('No sparks yet')));
   await sparksRegion.getByRole('button', { name: 'New' }).click();
@@ -726,6 +739,41 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   await row.getByRole('button', { name: 'Delete' }).click();
   check('Delete removes it', await until(async () => (await row.count()) === 0));
   await page.close();
+  await fetch(`${base}/mock/fire`, { method: 'POST', body: new URLSearchParams({ kind: 'key', value: 'closeTab' }) });
+  await until(async () => (await regions()).settings === 0);
+
+  // A phone reaches every group and list, a touch screen's page at a phone's size; what makes
+  // no sense there (Tab layout, Keys, the shortcuts) isn't on it.
+  await openSettings();
+  await until(settingsShown);
+  const phoneContext = await browser.newContext({ viewport: { width: 412, height: 860 }, hasTouch: true });
+  page = await phoneContext.newPage();
+  watch(page);
+  await page.goto(`${base}/settings/?tab=${(await regions()).settings}`);
+  await page.getByRole('heading', { name: 'Settings' }).waitFor();
+  const groups = ['Look', 'Browsing', 'Privacy', 'Your data', 'Advanced'];
+  for (const g of groups) {
+    await page.locator('.chip', { hasText: g }).click();
+    check(`on a phone, the ${g} chip goes to its group`, await until(async () => {
+      const box = await page.getByRole('region', { name: g, exact: true }).boundingBox();
+      return box && box.y < 120;
+    }));
+  }
+  await settle(page);
+  await page.screenshot({ path: path.join(out, 'settings-phone.png') });
+  for (const [list, region] of [['workspaces', 'Workspaces'], ['sites', 'Site settings'], ['sparks', 'Sparks'], ['webFeatures', '']]) {
+    await page.locator(`[data-section="${list}"]`).click();
+    const there = region ? page.getByRole('region', { name: region, exact: true }) : page.locator('.web-features');
+    check(`on a phone, ${list}'s row opens its page`, await until(() => there.isVisible()));
+    await page.locator('.list-page .back').click();
+    await until(async () => (await page.locator('.list-page').count()) === 0);
+  }
+  check('on a phone there is no Tab layout, Keys or Keyboard shortcuts', (await page.getByRole('radiogroup', { name: 'Tab layout' }).count()) === 0 &&
+    (await page.getByRole('radiogroup', { name: 'Keys' }).count()) === 0 && (await page.locator('[data-section="keyboard"]').count()) === 0);
+  check('and every other part is there', (await page.getByRole('radiogroup', { name: 'Address bar' }).count()) === 1 && (await page.getByLabel('Profile name').count()) === 1 &&
+    (await page.getByRole('button', { name: 'Close the app' }).count()) === 1 && (await page.getByRole('region', { name: 'Flags', exact: true }).count()) === 1 &&
+    (await page.getByRole('region', { name: 'Bookmarks' }).count()) === 1);
+  await phoneContext.close();
   await fetch(`${base}/mock/fire`, { method: 'POST', body: new URLSearchParams({ kind: 'key', value: 'closeTab' }) });
   await until(async () => (await regions()).settings === 0);
 

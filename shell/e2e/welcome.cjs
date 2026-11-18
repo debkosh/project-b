@@ -2,7 +2,7 @@
 // start on, a start opens it over the whole window, Standard's bars hidden but for a strip at
 // the top to drag the window by. A colour picked there is the profile's at once: the window,
 // the page and the shell take it. Start browsing gives the window back to the shell and keeps
-// that it was finished; Show the welcome again, in Settings' Flags, closes the app and the next
+// that it was finished; Run setup again, in Settings, closes the app and the next
 // start opens it over the whole window.
 // Run: node shell/e2e/welcome.cjs   (from the repo root, after `npm run build` in shell/)
 
@@ -76,9 +76,8 @@ const bars = async (w) => (await w.ui.getByRole('tab').first().isVisible()) || (
   await until(async () => (await regions()).shell === 'standard');
   check('a start after it was finished opens none', !welcomeTab(await regions()));
   await lib.fire('menu', 'app.settings');
-  await w.settings.getByRole('button', { name: 'Flags' }).click();
   await w.settings.getByRole('button', { name: 'Close the app' }).click();
-  check('Show the welcome again, in Flags, closes the app', await until(async () => (await regions()).quit));
+  check('Run setup again, in Settings, closes the app', await until(async () => (await regions()).quit));
   check('and welcome.json says it is unfinished', done() === false, String(done()));
   await w.page.close();
   await lib.stop();

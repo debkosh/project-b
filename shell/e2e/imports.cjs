@@ -106,7 +106,7 @@ process.on('exit', unlock);
 
   // Settings' Import: the same profiles, with what was brought over.
   await lib.fire('menu', 'app.settings');
-  await w.settings.getByRole('button', { name: 'Import', exact: true }).click();
+  await w.settings.locator('[data-section="data"]').click();
   check('Import lists the profiles, each with Import…', await until(async () => (await w.settings.getByRole('button', { name: /^Import from / }).count()) === 3));
   check('and says what Chrome · Personal brought', await w.settings.getByText('Brought over today: 4 bookmarks, 3 pages, Bing').isVisible());
 

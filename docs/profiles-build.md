@@ -68,7 +68,7 @@ built so far, and the order of building at the end says which steps are done.
   template doesn't hold keeps its value; history, cookies, logins and extensions are not
   touched. It is a `settings.Part` that `app.Start` adds only when the copy's profile is
   listed, so a copy on a folder named outright has no Profile section
-  (`core/app/profile.go`, `shell/src/apps/settings/Profile.vue`).
+  (`core/app/profile.go`, `shell/src/apps/settings/ProfileRows.vue`).
 - Updates are app-wide ([updates.md](updates.md)). The update state is the root's `update`
   folder, which every copy on the root shares: the staged release, which every copy reads
   each round, so each offers the relaunch; the automatic-updates setting,
