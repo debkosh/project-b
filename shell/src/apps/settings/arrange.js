@@ -76,7 +76,7 @@ export const blockRows = {
   ...lists,
   import: {
     label: 'Import from other browsers',
-    hint: 'Bookmarks, history and the search engine, from Chrome, Firefox or Safari',
+    hint: 'Bookmarks, history, passwords and extensions, from another browser or a file',
     summary: () => '',
   },
 };
