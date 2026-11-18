@@ -134,6 +134,10 @@ lib.openWindow = async (browser, { window = 1, viewport = { width: 1100, height:
   let ready = null;
   const hold = (route) => (JSON.parse(route.request().postData()).t === 'ready' ? (ready = route) : route.continue());
   if (held) await page.route(sends, hold);
+  // A touch screen in every frame from its first script: our pages read navigator.maxTouchPoints
+  // once as they load (src/phone.js), and under a full run's load a page in an iframe now and
+  // then loaded before hasTouch's emulation reached it, and drew itself as a desktop's.
+  if (hasTouch) await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'maxTouchPoints', { get: () => 5, configurable: true }));
   // What the shell had drawn when the window first showed its pages: the tabs, for the
   // check that the pages wait for the layout's frame.
   await page.addInitScript(() => {
