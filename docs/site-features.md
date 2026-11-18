@@ -122,9 +122,25 @@ feature of ours:
 - **Their sources** live in `core/sparks/builtin/` as `.user.js` files, embedded in the app,
   each with `@name`, `@description`, `@version` and `@namespace`, and a short doc beside it
   (`core/sparks/builtin/README.md`). They are the owner's originals cleaned up after a UX
-  pass: our look in light and dark, on a phone and the desktop, our wording, and Retry and
-  Cancel for a download. The runtime still runs his originals unchanged, as the driver's
-  sparks part checks.
+  pass. The runtime still runs his originals unchanged, as the driver's sparks part checks.
+- **Each stands alone:** a floating overlay of plain HTML, drawn in a shadow root of its own,
+  with its own styles, light and dark by `prefers-color-scheme`, in colours like ours. Nothing
+  comes from the shell or the runtime. The UX pass, for all three: sentence-case names, no
+  emoji (small line icons drawn inline), no pulse, bounce or shake, what is tapped low on a
+  phone and small floating panels on the desktop, Escape closing the innermost.
+  - **Video downloader:** nothing until a video is found; then one round button bottom
+    right, which opens "Videos on this page": a row per video, its type and size or "Video
+    1", its host, and Download, a link with `download` that our Downloads takes over, with
+    its own Pause, Cancel and Retry. A stream says "Streams can't be saved as one file".
+    "Hide on this page" is in the panel's menu.
+  - **Screen time limit:** every site, 30 minutes a day. "Daily limit reached", "Limit
+    reached again" and "It's late", one message each; "More time…" leads to the sum, then
+    "How much more?". The countdown shows only in the last 5 minutes.
+  - **Page cleanup:** a 40px button docked to the edge; "Hide parts of this page" outlines
+    what is under the finger or pointer, a tap hides it at once with "Hidden. Undo", and
+    Done ends it. "Show hidden parts (3)" when there are some.
+- **Their storage** is the site's own `localStorage`, as in his originals, so a site can read
+  or clear what they keep there.
 - **The phone's welcome** gets a step after Make it yours, "Extras for any page": a switch
   for each of the three, with its one line, all off. A switch turns that spark on. The desktop
   shows them in Settings › Sparks only.
@@ -167,6 +183,8 @@ built. A spark's switches for each site stay with the site's settings.
   browser store on welcome or update we do not worry about updating them for now.. make
   sure they are also a syncable entity... editing is allowed the user owns it once
   installed".
+- No help from the shell for them: "sparks should not need view related stuffs from the
+  shell... they stay floating simple html overlays".
 
 ## Links to other sites
 
