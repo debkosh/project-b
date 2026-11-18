@@ -9,7 +9,8 @@
   "app 5e778a81"
  ],
  "newFailures": 0,
- "flaky": [
+ "flaky": [],
+ "changed": [
   {
    "group": "basics",
    "name": "the basics, one check per area",
