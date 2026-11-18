@@ -229,9 +229,9 @@ title, detail, actions}`, absent otherwise
 | `editGroup` | `group`, and any of `name`, `color`, `collapsed` | Changes what is sent |
 | `ungroup`, `closeGroup` | `group` | Ends a group, its tabs staying; or closes its tabs |
 | `moveTab` | `id`, `index`, optional `window` | Moves a tab to `index` in its window's order, the place it has after the move, clamped; the active tab stays. Between two tabs of a group it joins the group, and out of its group's run it leaves it ([groups.md](groups.md)). With `window`, another window's id, it moves into that window at `index`, which it leaves if it was its last tab; an unknown window changes nothing. The standard shell's dragging sends it; a tab let go outside the window goes to a window of its own, by the Move Tab to New Window action. With pins: an unpinned tab stops after the pinned ones, and a pinned tab stays where it is, as pins keep their order; a pinned tab moved into a window that has a tab for its pin shows that tab instead ([windows.md](windows.md#pinned-tabs)) |
-| `closeTab` | `id`, optional `then` | Closes a tab. With no `id`, or 0, it is Close Tab: the active tab, or the window when it has no tabs. With `then: "recent"` it closes the tab given or the active one, and when that was active the tab used just before it takes its place rather than its neighbour (Go keeps each window's tabs in the order they were last used) |
+| `closeTab` | `id`, optional `then` | Closes a tab. With no `id`, or 0, it is Close Tab: the active tab. Closing a window's last tab closes the window. With `then: "recent"` it closes the tab given or the active one, and when that was active the tab used just before it takes its place rather than its neighbour (Go keeps each window's tabs in the order they were last used) |
 | `activateTab` | `id` | Makes a tab the active one |
-| `navigate` | `text`; optional `workspace` | Takes the active tab to an address or a search. In a window with no tabs it opens one there, in the workspace named or the first in the list, and takes it there. One of our pages' addresses shows the window's tab of that page instead, and one of our tabs takes any other address to a new tab beside it |
+| `navigate` | `text` | Takes the active tab to an address or a search. One of our pages' addresses shows the window's tab of that page instead, and one of our tabs takes any other address to a new tab beside it |
 | `back`, `forward`, `reload` | | Act on the active tab |
 | `focusTab` | `id` | Gives the active tab's page the keyboard. One for a tab no longer active, as when the address typed for it went to another tab, does nothing |
 | `focusShell` | | Gives the shell the keyboard |
@@ -374,10 +374,10 @@ ordinary action in the keymap ([menus-shortcuts.md](menus-shortcuts.md#a-shells-
   the user's own key for it still applies. Go begins a span named for the action and asks
   the shell to end it (`paint`), which the SDK does once the shell has drawn. What a
   shell asks of Go by its own messages is unchanged: a shell that takes New Tab still
-  opens a tab with `newTab`. With a shell that takes New Tab, a window opens with no tabs,
-  at the app's start and for New Window, for the shell to show its own way to one. The owner, 2026-11-16: the standard shell opens its box for
-  New Tab and makes a tab only when a row is chosen, while "there stays a new tab page that
-  other shells keep using".
+  opens a tab with `newTab`. A window opens with one new tab whatever the shell, at the
+  app's start and for New Window. Standard's New Tab goes to the window's new tab, one
+  with nothing loaded, in the workspace shown, opening one when there is none, and its box
+  shows on it ([windows.md](windows.md#every-window-has-a-tab-decided-2026-11-18)).
 
 ## What every shell does
 
@@ -394,7 +394,7 @@ the same one (settled 2026-11-14):
 | 15 | JavaScript dialogs. |
 | 16 | The right-click menu. |
 | 17 | Downloads. |
-| 18 | A window with no tabs. |
+| 18 | A new tab, and the last tab closing. |
 | 19 | Our own pages' tabs: a title, not an address field. |
 | 20–29 | The daily-driver features still to come: find in page, video full screen, HTTP sign-in, file upload and what follows them. |
 | 30–39 | Permissions and their prompt, tabs restored after a crash, certificate warnings, error pages. |
@@ -406,7 +406,8 @@ it there; a phone shell may be left out of a rule for a desktop feature.
 1. It says `ready`, draws the snapshot, and says `shown`. The window shows its pages only
    after the shell's frame with the layout that places them, never on the bare window.
 2. **The active tab's page shows,** after every change: a new tab, another made active, a
-   close, a tab a page opened, a resize; with no tabs, no page shows. It asks for a page's
+   close, a tab a page opened, a resize; a new tab, with nothing loaded, has no page, and
+   the shell draws its new tab there (rule 18). It asks for a page's
    keyboard (`focusTab`) only once the layout it sent shows that page: the window can't give
    the keyboard to a page it hides, and no key reaches Go until something takes it. A tab
    with no address holds no page of anyone's yet, so a shell may show its own view there
@@ -462,12 +463,13 @@ it there; a phone shell may be left out of a rule for a desktop feature.
     of the shell's controls opens, and Show in Finder is Show in Downloads, the phone's
     Downloads app. The shells that don't have it yet are listed in the check, with
     who brings each.
-18. **A window with no tabs** ([windows.md](windows.md#a-window-with-no-tabs)): the shell
-    draws an empty state of its own where the page was, as its own, so a press there
-    reaches the shell. New Tab and Address still work, each a way to a tab there, and Close
-    Tab then closes the window. What the empty state is, each shell decides; each so far
-    shows a quiet No tabs and New Tab. The check holds every shell to it but the two
-    hidden shells, which are being removed.
+18. **A new tab has nothing loaded** ([windows.md](windows.md#every-window-has-a-tab-decided-2026-11-18)):
+    no renderer and no page, so the shell draws its new tab where the page goes, as its
+    own, so a press there reaches the shell: its new tab page, its box, or at least a
+    backdrop in the page's colour (`isNewTab`). A control named New Tab shows one, the
+    active tab. What New Tab does is the shell's: Standard goes to the window's new tab.
+    A window always has a tab: closing its last one closes the window, so a shell draws no
+    empty state.
 19. **For one of our tabs, the shell shows the page's title where the address goes, with a
     way to close the tab, and no field to type in.** The title is the tab's, as Go sends
     it, which the page may change, such as "Downloads › In progress". The check holds every
@@ -894,9 +896,9 @@ address field, and a menu button at the far right, in our tones.
   while there is somewhere to go back to. The back key, in order (owner, 2026-11-14): it
   closes an open sheet or ends the address's editing (`backCloses`); else goes back in the
   page; else, on a tab with no history, closes the tab, and the one used before it shows
-  (`closeTab` with `then: "recent"`); down to a window with no tabs, which says No tabs
-  with New tab (rule 18); and only from there does the app go, as Android's back does.
-  Closing the last tab another way leaves No tabs too. For one of our tabs, settings, the
+  (`closeTab` with `then: "recent"`); down to the last tab, whose closing closes the
+  window, and on a phone the app (owner, 2026-11-18). Closing the last tab another way
+  does too. For one of our tabs, settings, the
   pill is the tab's title with a close, and nothing to type (rule 19).
 - **The bar tapped with nothing typed** lists what one more tap reaches, before a letter is
   typed and again once the field is emptied: Go's list for nothing typed (`suggest` with

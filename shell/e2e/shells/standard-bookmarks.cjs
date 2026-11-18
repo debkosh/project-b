@@ -92,11 +92,11 @@ fs.writeFileSync(path.join(lib.profile, 'bookmarks.json'), JSON.stringify({ vers
   await tiles.filter({ hasText: 'Bank' }).click();
   check('a bookmark\'s tile loads it in the tab with nothing in it', await until(async () => (await activeURL()) === 'https://bank.example.com/' && (await goTabs()).length === had + 4), await activeURL());
 
-  // Over a page, New Tab shows them too, and a tile opens a tab of its own.
+  // New Tab goes to a new tab, which shows them too, and a tile loads there.
   await ui.locator('.sidebar .new-tab').click();
   await until(async () => (await tiles.count()) === 5);
   await tiles.filter({ hasText: 'Shop' }).click();
-  check('over a page, a tile opens in a new tab', await until(async () => (await activeURL()) === 'https://shop.example.net/' && (await goTabs()).length === had + 5));
+  check('New Tab\'s new tab shows them, and a tile loads there', await until(async () => (await activeURL()) === 'https://shop.example.net/'));
 
   await setPref('bookmarksNewTab', false);
   await ui.locator('.sidebar .new-tab').click();
@@ -169,7 +169,7 @@ fs.writeFileSync(path.join(lib.profile, 'bookmarks.json'), JSON.stringify({ vers
   await page.screenshot({ path: path.join(lib.out, 'standard-bookmarks-commandbox.png') });
   let had3 = (await goTabs()).length;
   await page.keyboard.press('Enter');
-  check('Enter opens it, over a page in a new tab', await until(async () => (await activeURL()) === 'https://recipes.example.com/curry' && (await goTabs()).length === had3 + 1 && !(await ui.locator('.command-box').isVisible())));
+  check('Enter loads it in the new tab', await until(async () => (await activeURL()) === 'https://recipes.example.com/curry' && (await goTabs()).length === had3 && !(await ui.locator('.command-box').isVisible())));
 
   await openBox();
   await page.keyboard.type('*');
@@ -198,6 +198,9 @@ fs.writeFileSync(path.join(lib.profile, 'bookmarks.json'), JSON.stringify({ vers
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
   await setPref('bookmarksCommandBox', true);
+  // The bar goes over a page: the new tab the box is on takes one.
+  await send({ t: 'navigate', text: 'https://example.com/' });
+  await until(async () => (await activeURL()) === 'https://example.com/' && (await lib.regions()).visible.length === 1);
 
   // 4. The bar: the chosen folder's entries over the page, which moves down for it.
   const bar = ui.locator('.bookmark-bar');

@@ -114,8 +114,8 @@ const same = (a, b) => !!a && !!b && ['x', 'y', 'w', 'h'].every((k) => Math.abs(
     await ui.getByRole('menuitem', { name: /^Settings…/ }).click();
   };
   await shell.goto(base + '/');
-  // Standard starts on its command box with no tab: the checks want a page, so one is opened.
-  await fetch(`${base}/shell/send`, { method: 'POST', body: JSON.stringify({ t: 'newTab', text: 'https://example.com/' }) });
+  // The window starts on a new tab: the checks want a page, so it loads one.
+  await fetch(`${base}/shell/send`, { method: 'POST', body: JSON.stringify({ t: 'navigate', text: 'https://example.com/' }) });
   await shell.frameLocator('iframe.mock-page').getByRole('button', { name: 'Navigate' }).waitFor();
 
   // The dev window shows the settings page in the settings tab's frame once Go opens it, as
@@ -287,7 +287,7 @@ const same = (a, b) => !!a && !!b && ['x', 'y', 'w', 'h'].every((k) => Math.abs(
   setFlag(false);
   await startServers();
   await shell.goto(base + '/');
-  await fetch(`${base}/shell/send`, { method: 'POST', body: JSON.stringify({ t: 'newTab', text: 'https://example.com/' }) });
+  await fetch(`${base}/shell/send`, { method: 'POST', body: JSON.stringify({ t: 'navigate', text: 'https://example.com/' }) });
   await shell.frameLocator('iframe.mock-page').getByRole('button', { name: 'Navigate' }).waitFor();
   errors.splice(before);
   check('with the flag off the shell has no extensions toolbar', (await ui.locator('.pbx-toolbar').count()) === 0);

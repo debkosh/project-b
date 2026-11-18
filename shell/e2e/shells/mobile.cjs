@@ -346,13 +346,14 @@ const H = 915;
   await tabsButton.tap();
   await cards.nth(1).getByRole('button', { name: /^Close / }).tap();
   check('its × closes that tab and keeps the switcher open', await tabCount(1) && await switcher.isVisible());
-  await cards.first().getByRole('button', { name: /^Close / }).tap();
-  const empty = ui.getByText('No tabs');
-  check('closing the last tab leaves the window with none, and says No tabs', await until(async () => (await regions()).tabs.length === 0 && await empty.isVisible()));
-  check('and the switcher shut', !(await switcher.isVisible()));
-  await shots('no-tabs');
-  await ui.locator('.empty').getByRole('button', { name: 'New Tab' }).tap();
-  check('its New tab opens an empty tab with the new tab page', await until(async () => (await regions()).tabs.length === 1 && (await active()).url === '' && await newTabPage()));
+  // A window always has a tab: New Tab opens an empty one, with the new tab page, and
+  // closing the last tab closes the window (the contract's rule 18).
+  const old = (await regions()).tabs[0].id;
+  await switcher.getByRole('button', { name: 'New Tab' }).tap();
+  check('the switcher\'s New Tab opens an empty tab with the new tab page', await until(async () => (await regions()).tabs.length === 2 && (await active()).url === '' && await newTabPage()));
+  check('and shuts the switcher', await until(async () => !(await switcher.isVisible())));
+  await fetch(`${lib.base}/shell/send?window=1`, { method: 'POST', body: JSON.stringify({ t: 'closeTab', id: old }) });
+  await tabCount(1);
 
   // A swipe along the bar goes to the tab after or before.
   await visit('example.com/one', 'https://example.com/one');
@@ -774,7 +775,8 @@ const H = 915;
   check('Reload brings it back', await until(async () => !(await notice.isVisible()) && !(await active()).crashed));
 
   // The back key with nothing open: back in the page, then on a tab with no history the
-  // tab closes and the one used before it shows, down to No tabs, and only then the app goes.
+  // tab closes and the one used before it shows, down to the last tab, whose closing closes
+  // the window, and on a phone the app (tools/drive_android.py checks that).
   await settle(page);
   const hadTabs = (await regions()).tabs.length;
   const used = (await regions()).active;
@@ -789,17 +791,12 @@ const H = 915;
   }
   check('the back key on a tab with no history closes it, and the tab used before it shows', await until(async () =>
     !(await regions()).tabs.some((t) => t.id === fresh) && (await regions()).active === used), JSON.stringify({ used, now: (await regions()).active }));
-  for (let i = 0; i < 40 && (await regions()).tabs.length > 0; i++) {
+  for (let i = 0; i < 40 && (await regions()).tabs.length > 1; i++) {
     const n = (await regions()).tabs.length;
     await backKey();
     await until(async () => (await regions()).tabs.length < n || (await active())?.url !== undefined, 3000);
   }
-  check('back after back closes every tab, down to No tabs', await until(async () => (await regions()).tabs.length === 0 && await ui.getByText('No tabs').isVisible()));
-  check('and the app is still there', !(await regions()).leftApp);
-  await backKey();
-  check('back with no tabs leaves the app', await until(async () => (await regions()).leftApp), JSON.stringify({ visible: (await regions()).visible, focus: await w.shell().evaluate(() => document.activeElement?.outerHTML.slice(0, 60)) }));
-  await ui.locator('.empty').getByRole('button', { name: 'New Tab' }).tap();
-  await until(async () => (await regions()).tabs.length === 1);
+  check('back after back closes every tab but the last', await until(async () => (await regions()).tabs.length === 1 && !(await regions()).closed));
   // A page's dialog: in the middle over the dimmed window, its buttons a finger's size,
   // and the back key answers it no, as Android's dialogs go.
   const ask = ui.getByRole('alertdialog');

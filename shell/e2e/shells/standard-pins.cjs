@@ -19,7 +19,8 @@ const sites = ['docs.example.com', 'mail.example.com', 'news.example.org'];
   const w = await lib.openWindow(browser, { viewport: { width: 1000, height: 600 } });
   const { page, ui } = w;
   page.setDefaultTimeout(5000);
-  for (const s of sites) await send({ t: 'newTab', text: `https://${s}/` });
+  // The window starts on a new tab: the first site loads there, the rest in tabs of their own.
+  for (const [i, s] of sites.entries()) await send(i ? { t: 'newTab', text: `https://${s}/` } : { t: 'navigate', text: `https://${s}/` });
   const tabs = ui.locator('.sidebar [role=tab]');
   await until(async () => (await tabs.count()) === sites.length, 10000);
   const ids = await w.shell().evaluate(() => [...document.querySelectorAll('.sidebar [role=tab]')].map((e) => +e.dataset.tab));

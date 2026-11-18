@@ -18,7 +18,7 @@ const ids = process.argv[2] ? [process.argv[2]] : registry.filter((s) => !s.nati
 
 const rules = {
   1: 'It says ready, draws the snapshot, and says shown; the window shows its pages only after the frame with the layout that places them',
-  2: "The active tab's page shows, after every change, and no page is given the keyboard before it shows; with no tabs, no page shows",
+  2: "The active tab's page shows, after every change, and no page is given the keyboard before it shows",
   3: "The pages it shows lie inside the band it asked for, don't overlap, and are all tabs of this window",
   4: 'Each tab is an element with role=tab and data-tab, the active one aria-selected; a click makes it active, on the shell or in a sheet one of its controls opens',
   5: 'focusAddressBar puts the keyboard in the field named Address, where an address and Enter take the active tab there, while a web tab is active',
@@ -34,7 +34,7 @@ const rules = {
   15: 'A page\'s alert, confirm and prompt show as an alertdialog with Go\'s buttons by name, a prompt with a field; the answer reaches the page; another tab shown hides it, and back shows it',
   16: 'On a desktop, a right click in a page opens a menu of Go\'s actions there; choosing one makes Go do it; Escape, or a press outside, closes it',
   17: 'A control named Downloads shows once there is a download, and opens a list of them by file name, in the shell or in the Downloads page, a finished one with Show in Finder (on a phone, Show in Downloads)',
-  18: 'A window with no tabs: the shell draws its own empty state where the page was, New Tab and Address are each a way to a tab there, and Close Tab then closes the window',
+  18: 'A new tab has nothing loaded: New Tab shows one, active, and the shell draws its new tab where the page goes, as its own; closing the last tab closes the window',
   19: 'For one of our tabs, it shows the page\'s title where the address goes, with a way to close the tab, and no field to type in',
   20: 'The find key (on a phone, the menu) opens a text box named Find in page with the keyboard in it; typing searches and shows the count; Enter shows the next match; Escape (a phone\'s back key) closes it',
   21: 'A page in full screen covers the whole window with nothing of the shell on it, and when it ends (Escape, or a phone\'s back key) the window is as it was',
@@ -74,11 +74,6 @@ const noDownloadsYet = {
 // other shell to it.
 const noSplashYet = {
   mobile: 'r3 brings it',
-};
-
-// The shells that don't draw an empty state yet, and who brings it to each. Rule 18 holds
-// every other shell to it.
-const noEmptyStateYet = {
 };
 
 // The shells that don't draw our tabs' title yet, and who brings it to each: their
@@ -158,11 +153,16 @@ const noNoticeYet = {
     // The window as Go and the mock have it now, and the tabs as the shell draws them.
     const drawn = () => tabEls.evaluateAll((els) => els.map((el) => ({ tab: Number(el.dataset.tab), selected: el.getAttribute('aria-selected') })));
     const shows = (r) => r.visible.some((v) => v.tab === r.active);
+    // A new tab, the active one with nothing loaded, has no page: the shell draws it.
+    const fresh = (r) => {
+      const t = r.tabs.find((t) => t.id === r.active);
+      return !!t && !t.url && !t.loading && !t.page;
+    };
     // The shell is up when it loads this shell, draws a tab for each of Go's, and shows the
-    // active one, if the window has any: a shell that takes New Tab starts with none.
+    // active one: its page, or for a new tab the shell's own view.
     const up = async () => {
       const r = await regions();
-      return r.shell === id && (await tabEls.count()) === r.tabs.length && (r.tabs.length === 0 || shows(r));
+      return r.shell === id && (await tabEls.count()) === r.tabs.length && (shows(r) || fresh(r));
     };
 
     // 14. Before Go's data, a splash with none of the shell's controls; then the UI. The
@@ -195,12 +195,15 @@ const noNoticeYet = {
     rule(1, 'and says shown, so Go marks the app ready', await until(() => /\bapp\.ready\b/.test(lib.log)));
     // The window shows its pages after the shell's next frame once the layout that places
     // them comes, so the shell sends that layout only once it has drawn what it measured.
-    // A window that starts with no tabs, as with a shell that takes New Tab, has no page to
-    // show yet; the rules after this one start from a tab, so the check makes one as such
-    // a shell does, by its newTab, and they hold the shell to the rest as ever.
-    if ((await regions()).tabs.length === 0) {
-      rule(1, 'the window shows its pages only after the shell has drawn the layout that places them: it starts with no tabs, so none to show', true);
+    // The window starts on a new tab, which has no page to show; the rules after this one
+    // start from a page, so the check opens one, as a shell does, by its newTab, and closes
+    // the new tab, and they hold the shell to the rest as ever.
+    if (fresh(await regions())) {
+      rule(1, 'the window shows its pages only after the shell has drawn the layout that places them: it starts on a new tab, with no page to show', true);
+      const first = (await regions()).active;
       await openTab();
+      await until(async () => (await regions()).tabs.length === 2 && (await up()));
+      await fetch(`${lib.base}/shell/send?window=1`, { method: 'POST', body: JSON.stringify({ t: 'closeTab', id: first }) });
       ready = ready && (await until(async () => (await regions()).tabs.length === 1 && (await up())));
     } else {
       await until(() => page.evaluate(() => window.pagesShownWith !== undefined));
@@ -888,64 +891,29 @@ const noNoticeYet = {
       }
     }
 
-    // 18. A window with no tabs: its tabs closed one at a time, as Close Tab does. It ends
-    // with the window closed, so it runs last.
-    if (noEmptyStateYet[id]) {
-      rule(18, `not checked yet: ${noEmptyStateYet[id]}`, true);
-    } else if (!ready) {
+    // 18. New Tab shows a new tab, which has nothing loaded: the shell draws its new tab
+    // where the page goes, as its own. Then its tabs closed one at a time, as Close Tab
+    // does: the last closes the window, so it runs last.
+    if (!ready) {
       rule(18, 'not checked: the shell never came up', false);
     } else {
       try {
-        let r = await regions();
-        // Where the last page showed, which the shell draws itself once it is gone.
-        let where = r.visible[0].rect;
-        for (let n = r.tabs.length; n > 0; n--) {
-          where = (await regions()).visible[0]?.rect || where;
+        // Where the page shows, which the shell draws itself on a new tab.
+        const where = (await regions()).visible[0].rect;
+        const middle = { x: where.x + where.w / 2, y: where.y + where.h / 2 };
+        const newTab = await reach(byName('New Tab'));
+        if (rule(18, 'New Tab: found by its role and name', !!newTab)) {
+          await newTab.click();
+          rule(18, 'New Tab shows a new tab, with nothing loaded, the active one', await until(async () => fresh(await regions())), JSON.stringify(await regions().then((r) => ({ tabs: r.tabs.map((t) => [t.id, t.url]), active: r.active }))));
+          rule(18, 'the shell draws its new tab where the page goes: a press there reaches the shell', await until(async () => (await regions(middle)).hit === 'shell'), JSON.stringify({ where, hit: (await regions(middle)).hit }));
+        }
+        for (let n = (await regions()).tabs.length; n > 1; n--) {
           await fire('menu', 'tab.close');
           await tabCount(n - 1);
         }
-        await settle(page);
-        r = await regions();
-        rule(2, 'with no tabs: no page shows', r.visible.length === 0 && r.active === 0 && !r.closed, JSON.stringify({ visible: r.visible, active: r.active, closed: r.closed }));
-        rule(18, 'with no tabs: the shell draws no tab', (await drawn()).length === 0, JSON.stringify(await drawn()));
-        const middle = { x: where.x + where.w / 2, y: where.y + where.h / 2 };
-        rule(18, 'it draws its own empty state where the page was: a press there reaches the shell', await until(async () => (await regions(middle)).hit === 'shell'), JSON.stringify({ where, hit: (await regions(middle)).hit }));
-        const empty = await shellsControls();
-        rule(18, `every one of the ${empty.controls.length} controls of the empty state is the shell's`, empty.controls.length > 0 && empty.outsideShell.length === 0, empty.outsideShell.join(' | '));
-        // A tab opened from the empty state is active and shown; closing it empties the
-        // window again.
-        const opens = async (what, press, url) => {
-          await press();
-          const ok = await until(async () => {
-            const r = await regions();
-            return r.tabs.length === 1 && shows(r) && (!url || r.tabs[0].url === url) &&
-              (await page.locator(`iframe.mock-page[data-tab="${r.active}"]`).isVisible());
-          });
-          rule(18, `${what} opens a tab there, active and shown`, ok, JSON.stringify(await regions().then((r) => ({ tabs: r.tabs.map((t) => [t.id, t.url]), active: r.active, visible: r.visible }))));
-          await fire('menu', 'tab.close');
-          await tabCount(0);
-        };
-        const newTab = await reach(byName('New Tab'));
-        if (rule(18, 'New Tab: found by its role and name', !!newTab)) {
-          await opens('New Tab', async () => {
-            await newTab.click();
-            await until(async () => (await regions()).tabs.length === 1 || (await inTextField()));
-            if ((await regions()).tabs.length === 1) return;
-            await page.keyboard.type('contract.test/new');
-            await page.keyboard.press('Enter');
-          });
-        }
-        const field = await reach(address);
-        if (rule(18, 'the text field named Address: found by its role and name', !!field)) {
-          await opens('an address and Enter', async () => {
-            await field.click();
-            await page.keyboard.press('ControlOrMeta+A');
-            await page.keyboard.type('contract.test/empty');
-            await page.keyboard.press('Enter');
-          }, 'https://contract.test/empty');
-        }
+        rule(18, 'closing tabs keeps the window while it has one', !(await regions()).closed);
         await fire('menu', 'tab.close');
-        rule(18, 'Close Tab then closes the window', await until(async () => (await regions()).closed === true));
+        rule(18, 'closing the last tab closes the window', await until(async () => (await regions()).closed === true));
       } catch (e) {
         rule(18, 'its checks ran to their end', false, e.message.split('\n')[0]);
       }
