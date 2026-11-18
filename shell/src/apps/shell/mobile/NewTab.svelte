@@ -67,7 +67,7 @@
     {#if entry.kind === 'folder'}
       {@const some = inFolder(go.bookmarks, entry.id).filter((e) => e.kind === 'bookmark').slice(0, 4)}
       {@const t = ($tints, folderTile(entry.id, on))}
-      <span class="folder" style:background={t.background} style:border-color={t.border} aria-hidden="true">
+      <span class="folder" class:one={some.length === 1} style:background={t.background} style:border-color={t.border} aria-hidden="true">
         {#each some as b (b.id)}<Mark url={b.url} title={b.title} size={20} />{:else}<Icon name="folder" />{/each}
       </span>
     {:else}
@@ -191,6 +191,11 @@
     border-radius: 16px;
     background: var(--surface);
     color: var(--icon);
+  }
+
+  /* One bookmark shows in the middle: two by two only from two. */
+  .folder.one {
+    grid-template-columns: 20px;
   }
 
   .folder > :global(svg) {
