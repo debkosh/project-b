@@ -47,6 +47,9 @@ type Status struct {
 	// LastSynced is when a run last ended well, Unix milliseconds, 0 for never.
 	LastSynced int64  `json:"lastSynced"`
 	Error      string `json:"error"`
+	// Problem names the error for the page (Problem): "token" when the server signed this
+	// device out, "unreachable" when it couldn't be reached.
+	Problem string `json:"problem"`
 	// Locked says the profile's key doesn't open with this device's key, so sync is off
 	// until StartFresh.
 	Locked bool `json:"locked"`
@@ -91,7 +94,7 @@ type connection struct {
 // sync is on, a run starts at once.
 func New(st *store.Store, k *keys.Keys, post func(func()), maps ...Mapping) *Manager {
 	ctx, cancel := context.WithCancel(context.Background())
-	m := &Manager{st: st, keys: k, post: post, maps: map[string]*Mapping{}, http: httpClient, ops: make(chan func(), 64), wake: make(chan struct{}, 1),
+	m := &Manager{st: st, keys: k, post: post, maps: map[string]*Mapping{}, http: checked(httpClient), ops: make(chan func(), 64), wake: make(chan struct{}, 1),
 		ctx: ctx, cancel: cancel, done: make(chan struct{})}
 	for i := range maps {
 		m.maps[maps[i].Collection] = &maps[i]
@@ -231,7 +234,7 @@ func (m *Manager) load() {
 		}
 	}
 	if err != nil {
-		m.setStatus(func(s *Status) { *s = Status{Error: err.Error()} })
+		m.setStatus(func(s *Status) { *s = Status{Error: err.Error(), Problem: Problem(err)} })
 		return
 	}
 	if m.conn != nil {
@@ -370,8 +373,8 @@ func (m *Manager) run() error {
 	}
 	m.setStatus(func(s *Status) {
 		s.Syncing = false
-		if s.Error = ""; err != nil {
-			s.Error = err.Error()
+		if s.Error, s.Problem = "", ""; err != nil {
+			s.Error, s.Problem = err.Error(), Problem(err)
 		} else {
 			s.LastSynced = m.last.UnixMilli()
 		}
