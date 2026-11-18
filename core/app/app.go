@@ -184,6 +184,9 @@ func Start(e engine.Engine, cfg Config) *App {
 		panic(err)
 	}
 	a.Store = st
+	// The bookmarks first: the main thread waits for them, not behind history's first read
+	// of history.jsonl.
+	a.Bookmarks = bookmarks.New(cfg.ProfileDir, st)
 	a.History = history.New(cfg.ProfileDir, st, e.Post)
 	a.Suggest = suggest.New(a.History)
 	a.Workspaces = workspaces.New(cfg.ProfileDir)
@@ -194,7 +197,6 @@ func Start(e engine.Engine, cfg Config) *App {
 	}
 	a.Downloads = downloads.New(e, cfg.ProfileDir, cfg.DownloadsDir)
 	a.Downloads.Load()
-	a.Bookmarks = bookmarks.New(cfg.ProfileDir)
 	a.Tabs = tabs.New(e, a.Workspaces, a.Pins)
 	a.Prefs = prefs.New(cfg.ProfileDir)
 	a.Flags = flags.New(cfg.ProfileDir)

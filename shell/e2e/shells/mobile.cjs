@@ -179,8 +179,8 @@ const H = 915;
   // the folder (docs/bookmark-folders.md); the star is filled while it is one, and a second
   // tap shows the sheet to edit, whose Remove takes it away.
   const star = menu.getByRole('button', { name: 'Bookmark' });
-  const bookmarked = () => { try { return JSON.parse(fs.readFileSync(path.join(lib.profile, 'bookmarks.json'), 'utf8')); } catch { return null; } };
-  const marked = (url) => JSON.stringify(bookmarked() || '').includes(url);
+  const bookmarked = lib.bookmarks;
+  const marked = (url) => JSON.stringify(bookmarked()).includes(url);
   const starredUrl = (await active()).url;
   await star.tap();
   const added = ui.getByRole('dialog', { name: 'Bookmarked' });
@@ -1012,7 +1012,7 @@ const H = 915;
     await shellSend({ t: 'setPref', name, value: String(value) });
     await until(() => String(JSON.parse(fs.readFileSync(path.join(lib.profile, 'prefs.json'), 'utf8'))[name]) === String(value));
   };
-  const entries = () => bookmarked()?.entries || [];
+  const entries = lib.bookmarks;
   await fire('menu', 'bookmarks.show');
   await until(async () => (await regions()).tabs.some((t) => t.page === 'bookmarks'));
   const manager = (await regions()).tabs.find((t) => t.page === 'bookmarks').id;

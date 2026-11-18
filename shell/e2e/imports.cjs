@@ -24,7 +24,7 @@ const read = (name) => {
     return null;
   }
 };
-const folders = () => (read('bookmarks.json')?.entries || []).filter((e) => e.kind === 'folder' && e.parent === '').map((e) => e.title);
+const folders = () => lib.bookmarks().filter((e) => e.kind === 'folder' && e.parent === '').map((e) => e.title);
 
 // A store of this run's own for the mock engine (-store): the test extension packed as the
 // mock reads a package, a CRX3 header with its id and its folder zipped, unsigned, as only

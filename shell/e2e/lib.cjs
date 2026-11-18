@@ -67,6 +67,21 @@ lib.stop = async () => {
 
 let failed = 0;
 // check prints one check's result, and what went wrong when it did.
+// The profile's bookmarks as Go keeps them, in its store.db (docs/store.md), each with the
+// fields of a bookmarks entry; none before there is a store.
+lib.bookmarks = () => {
+  const { DatabaseSync } = require('node:sqlite');
+  let db;
+  try {
+    db = new DatabaseSync(path.join(profile, 'store.db'), { readOnly: true });
+    return db.prepare('SELECT id, parent, kind, title, url, added, edited AS modified, place FROM bookmarks ORDER BY place, id').all();
+  } catch {
+    return [];
+  } finally {
+    db?.close();
+  }
+};
+
 lib.check = (name, ok, detail = '') => {
   console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${ok || !detail ? '' : ' -> ' + detail}`);
   if (!ok) failed++;
