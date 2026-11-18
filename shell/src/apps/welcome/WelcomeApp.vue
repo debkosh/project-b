@@ -229,10 +229,12 @@ onMounted(() => heading.value?.focus());
         <div class="card">
           <label v-for="s in state.sparks" :key="s.id" class="row">
             <span class="spark">
-              <span class="label">{{ s.name }}</span>
-              <span class="state">{{ s.description }}</span>
+              <span :id="'spark-' + s.id" class="label">{{ s.name }}</span>
+              <span :id="'spark-' + s.id + '-line'" class="state">{{ s.description }}</span>
             </span>
             <input
+              :aria-labelledby="'spark-' + s.id"
+              :aria-describedby="'spark-' + s.id + '-line'"
               type="checkbox"
               role="switch"
               class="switch"
