@@ -63,6 +63,9 @@ address's item.
 | Profile key | 32 random bytes per profile, made the first time something is sealed | `profile.key` in the profile folder, wrapped by the device key, the profile's id bound in |
 | Sync key | synckosh's data key, one per bucket, the same on every device in it | The profile's `secrets` table, sealed with the profile key. Joining devices get it from the server's sealed copy, opened with the passphrase |
 
+The keychain and the Keystore are asked only once something is sealed in the profile, which today
+is sync turned on: a profile that never syncs never touches them.
+
 **Which key wraps a profile's key.** A profile in the profile list uses the device key. A folder
 opened as it is with `--user-data-dir`, as every test and driver run is, never touches the keychain:
 its profile key is wrapped by `folder.key`, a key in that same folder. So tests need no keychain,
@@ -157,13 +160,16 @@ that often), every five minutes, and on `SyncNow`. On a goroutine of its own, ne
 thread; one run at a time. A failed run waits 30 seconds, then twice as long each time, up to half
 an hour, and its error is in the status. `SyncNow` doesn't wait.
 
+**A damaged store.db**, which the store moves aside and makes again ([store.md](store.md)), takes
+the secrets and the bookkeeping with it: sync is off, and is connected again with the passphrase.
+
 **A server reset** (the server gives the bucket a new store id and forgets its items): synckosh
 pushes back everything this device holds, read from the rows, deletes included.
 
 ## The functions (`core/sync`)
 
-Each answer is posted to the main thread. Only `Propose`, `Link`, `Status` and `OnStatus` are
-plain calls.
+Every answer comes on the main thread, where the calls are made. Only `Propose`, `Link`, `Status`
+and `OnStatus` answer at once; the rest run on sync's goroutine, after what was asked before them.
 
 | Function | What it does |
 |---|---|
@@ -185,7 +191,7 @@ page sends:
 |---|---|
 | `syncPropose {address}`, or `{link}` for a deep link's | `syncProposal {address, host, needsToken}` or `{error}` |
 | `syncInspect {address, token}` | `syncBucket {new}` or `{error}` |
-| `syncConnect {address, token, passphrase}` | `syncConnected {}` or `{error, wrongPassphrase}` |
+| `syncConnect {address, token, passphrase}` | `syncConnected {wrongPassphrase}`, with `error` when it failed |
 | `syncChangePassphrase {passphrase}` | `syncPassphraseChanged {}` or `{error}` |
 | `syncDisconnect` | `syncDisconnected {}` or `{error}` |
 | `syncNow` | the status, as it changes |
@@ -204,10 +210,16 @@ page sends:
 `core/keys`: sealing binds its table, row, column and bound values; a folder named outright uses
 its own key and never a device key; a profile key that doesn't open is locked, overwrites nothing,
 and `StartFresh` makes a new one; the Mac's keychain, under a test-only service, deleted after.
+`core/history`: joining two versions of a page, whichever is the row.
 `core/sync`: two profiles syncing bookmarks, history and typed addresses through synckosh's server
 in-process, in both address forms; one address visited on both, one row with the larger count; a
 bookmark deleted on one gone from the other; clearing history reaching the other; no visit and no
 readable title or address on the server; a wrong passphrase; joining; a changed passphrase, which a
 third profile joins with while the old one fails; Disconnect keeping the rows; a server reset
-refilled; a locked profile key turning sync off. `core/cmd/lib`: a folder named outright gets no
-device key.
+refilled; a locked profile key turning sync off; sync on at start running with what was kept.
+`core/app`: the settings page's status, a deep link only proposed. `core/cmd/lib`: a folder named
+outright gets no device key.
+
+**Not tested here:** the Android Keystore piece (`DeviceKey.java`, `go_table.c`) compiles against
+the SDK and the NDK but has not run on a phone; the Mac's keychain test skips where the shell's
+keychain list has no login keychain, as an agent's shell over ssh has.
