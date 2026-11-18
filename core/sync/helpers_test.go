@@ -2,6 +2,7 @@ package sync_test
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -30,10 +31,12 @@ type testServer struct {
 	srv  *server.Server
 	data *bolt.Store
 	n    int
+	// refused are the tokens the server signs out.
+	refused map[string]bool
 }
 
 func newServer(t *testing.T) *testServer {
-	s := &testServer{t: t}
+	s := &testServer{t: t, refused: map[string]bool{}}
 	s.reset()
 	s.ts = httptest.NewTLSServer(http.StripPrefix("/sync", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if token, rest, ok := strings.Cut(strings.TrimPrefix(r.URL.Path, "/"), "/"); ok && token != "v1" {
@@ -61,7 +64,21 @@ func (s *testServer) reset() {
 	}
 	s.t.Cleanup(func() { data.Close() })
 	s.data = data
-	s.srv = server.New(data, server.Bearer(func(token string) (string, error) { return "bucket-" + token, nil }))
+	s.srv = server.New(data, server.Bearer(func(token string) (string, error) {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		if s.refused[token] {
+			return "", errors.New("signed out")
+		}
+		return "bucket-" + token, nil
+	}))
+}
+
+// refuse signs a token out.
+func (s *testServer) refuse(token string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.refused[token] = true
 }
 
 // bearer is the bucket's address without its token; single the one address with it.

@@ -3,6 +3,7 @@ package sync
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/url"
 	"strings"
 	"time"
@@ -38,30 +39,30 @@ func Link(link string) (string, error) {
 	}
 	address := u.Query().Get("address")
 	if address == "" {
-		return "", errors.New("sync: the link has no address")
+		return "", fmt.Errorf("%w: the link has none", ErrAddress)
 	}
 	return address, nil
 }
 
 // Propose checks an address and says what it would connect to, changing nothing: https, with a
-// host, and no user, query or fragment. One whose path ends in /sync needs its token given;
+// host, and no user, query or fragment, else ErrAddress. One whose path ends in /sync needs its token given;
 // one that goes on past it carries its token, as https://<host>/sync/<token> does.
 func Propose(address string) (Proposal, error) {
 	u, err := url.Parse(strings.TrimSpace(address))
 	switch {
 	case err != nil || u.Scheme != "https":
-		return Proposal{}, errors.New("sync: the address must start with https://")
+		return Proposal{}, fmt.Errorf("%w: it must start with https://", ErrAddress)
 	case u.Host == "":
-		return Proposal{}, errors.New("sync: the address has no host")
+		return Proposal{}, fmt.Errorf("%w: it has no host", ErrAddress)
 	case u.User != nil || u.RawQuery != "" || u.ForceQuery || u.Fragment != "":
-		return Proposal{}, errors.New("sync: the address can't have a user, a query or a fragment")
+		return Proposal{}, fmt.Errorf("%w: it can't have a user, a query or a fragment", ErrAddress)
 	}
 	path := strings.TrimRight(u.EscapedPath(), "/")
 	return Proposal{Address: "https://" + u.Host + path, Host: u.Host, NeedsToken: path == "/sync" || strings.HasSuffix(path, "/sync")}, nil
 }
 
 // check is the address and token a bucket is reached with: a token only for an address that
-// needs one, and then always one.
+// needs one, and then always one, else ErrNeedsToken.
 func check(address, token string) (string, string, error) {
 	p, err := Propose(address)
 	if err != nil {
@@ -70,7 +71,7 @@ func check(address, token string) (string, string, error) {
 	token = strings.TrimSpace(token)
 	switch {
 	case p.NeedsToken && token == "":
-		return "", "", errors.New("sync: the address needs its token")
+		return "", "", ErrNeedsToken
 	case !p.NeedsToken:
 		token = ""
 	}
