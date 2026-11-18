@@ -33,6 +33,10 @@ Three layers, each doing one thing.
      so a vivid background gets vivid marks rather than greyish ones; and a soft tile stands
      off the background by an OKLab distance of 0.05, more on a vivid one, even when its hue
      is the background's own.
+   - **mid backgrounds:** where a coloured letter can't read either way, a soft tile is pale
+     (it can hold a coloured letter) and a solid one at least 0.15 deeper or paler than the
+     background, never at its lightness. Text goes lighter or darker from its own colour,
+     whichever passes sooner.
    - **harmony:** every hue leans toward the primary's, half the gap and at most 15°, as
      Material's harmonize does, so the set looks of one family. A primary with no colour of
      its own (None) leans nothing.
@@ -103,6 +107,8 @@ The owner, 2026-11-18:
   the colors... since we need an deteminitic option to generate random colors".
 - **The background's saturation counts too**, after a deep teal on bright mint looked off
   with greyish marks: "may be becuase we match the intensity of only the primary color".
+- **Mid backgrounds** handled after pine on sage (`#104746` on `#608a82`) showed solid tiles
+  vanishing into it and soft letters turning black.
 - **The recipe is an input too:** "add the recipies as another input option".
 
 ## Open
