@@ -10,7 +10,8 @@
 
 import { env } from '@debkosh/gulal';
 
-// Each painted palette's environments, one per background a colour sits on, by name.
+// Each painted palette's environments, one per background a colour sits on and the contrast
+// its letters reach for, by both.
 let palette = null;
 let dark = false;
 let none = false;
@@ -39,17 +40,23 @@ export const tints = {
   },
 };
 
-// The environment for colours on one of the tones' backgrounds: 'bar' or 'surface'.
-function on(where) {
-  let g = envs.get(where);
+// The environment for colours on one of the tones' backgrounds, 'bar' or 'surface', with
+// text the APCA contrast its letters reach for: gulal's Lc 60 unless given.
+function on(where, text) {
+  const k = where + ' ' + (text ?? '');
+  let g = envs.get(k);
   if (!g) {
     const background = palette?.['--' + where];
     const accent = none ? undefined : palette?.['--frame'];
-    g = env({ scheme: dark ? 'dark' : 'light', background: hex(background), accent: hex(accent) });
-    envs.set(where, g);
+    g = env({ scheme: dark ? 'dark' : 'light', background: hex(background), accent: hex(accent), text });
+    envs.set(k, g);
   }
   return g;
 }
+
+// A tile smaller than this many pixels has a letter under 16px, which APCA holds to Lc 75,
+// as for body text, where a larger one's is held to Lc 60.
+const SMALL = 32;
 
 // hex is a "#rrggbb" colour, or undefined for anything else, as gulal takes only those.
 function hex(c) {
@@ -65,10 +72,10 @@ export function siteHost(url) {
   }
 }
 
-// siteTile is a site's letter tile on where: {background, border, letter}, the letter in the
-// tile's own hue.
-export function siteTile(url, where = 'surface') {
-  const s = on(where).fromText(siteHost(url)).soft;
+// siteTile is a site's letter tile, size pixels square, on where: {background, border,
+// letter}, the letter in the tile's own hue.
+export function siteTile(url, where = 'surface', size = SMALL) {
+  const s = on(where, size < SMALL ? 75 : undefined).fromText(siteHost(url)).soft;
   return { background: s.background, border: s.border, letter: s.tonal };
 }
 

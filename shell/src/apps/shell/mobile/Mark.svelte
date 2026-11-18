@@ -7,7 +7,7 @@
   let { url, title = '', size = 56, on = 'surface' } = $props();
 
   const h = $derived(siteHost(url || ''));
-  const tile = $derived(($tints, siteTile(url || '', on)));
+  const tile = $derived(($tints, siteTile(url || '', on, size)));
 </script>
 
 <!-- A small one's letter is larger for its size, so it still reads. -->

@@ -70,6 +70,8 @@ deep and how strong a colour is, so a site stays "the green one" everywhere.
 
 Every text is checked by APCA, the same function `core/tones` uses for a primary button's
 label (branch `tones-apca`): Lc 60 for text, Lc 30 for a dot. The two must never disagree.
+A tile under 32px, whose letter is under 16px, holds its letter to Lc 75, as APCA holds
+text that small (gulal's `text` option).
 
 WCAG 2 and APCA give nearly the same letters on the soft tiles; they differ on solid fills,
 where WCAG 2 puts the ink on mid blues, teals, pinks and ambers, and APCA white:
@@ -104,7 +106,7 @@ Two-tone designs, a primary on a background of its own:
   target contrast with the background they sit on, which is why the util takes it as input.
 - **APCA levels** (Bronze simple mode): Lc 75 for body text, 60 for other content text, 45
   for large text, 30 for what isn't read as text. A mark's single letter is other content
-  text: Lc 60. A dot: Lc 30.
+  text: Lc 60, and Lc 75 when it is under 16px. A dot: Lc 30.
 - **Simultaneous contrast:** one colour looks different on different backgrounds, and
   contrast ratios measure lightness, not hue. So the util never relies on hue for contrast,
   and the mocks show every colour in place.
@@ -147,6 +149,9 @@ The owner, 2026-11-18:
   vanishing into it and soft letters turning black.
 - **The recipe is an input too:** "add the recipies as another input option".
 
+The owner, 2026-11-19, left the small tiles to us ("you decide"): their letters reach Lc
+75. UX measured the 16px tiles at Lc 66 in light and 60 in dark, faint at that size.
+
 ## Built
 
 Since 2026-11-18, on branch `gulal`. `shell/src/ui/tint.js` keeps one gulal environment
@@ -167,8 +172,10 @@ gulal's Go package, which gives the same output.
 - **Which background:** a mark on the bar, the sidebar, the finder's folders or the new
   tab's top tiles (Standard's command box is mostly the bar; Mobile's new tab is the bar)
   takes `bar`; one in an open folder's card, a list or a sheet takes `surface`.
-- **gulal 0.1.0** is installed from its release tarball, `shell/vendor/gulal-0.1.0.tgz`,
-  until it is on npm.
+- **Small tiles:** a site's tile under 32px (the bar's, the sidebar's and the finder's at
+  16px, Mobile's at 20px and 24px) is made in an environment of its own with `text: 75`.
+- **gulal 0.2.0** (`@debkosh/gulal`) is installed from its release tarball,
+  `shell/vendor/debkosh-gulal-0.2.0.tgz`, until it is on npm.
 
 Standard, every frame colour, light and dark:
 

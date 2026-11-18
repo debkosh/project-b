@@ -9,7 +9,7 @@ import { useTints } from '@/ui/useTints.js';
 const props = defineProps({ url: String, size: { type: Number, default: 16 }, on: { type: String, default: 'surface' } });
 const m = computed(() => mark(props.url));
 const tints = useTints();
-const tile = computed(() => (tints.value, siteTile(props.url, props.on)));
+const tile = computed(() => (tints.value, siteTile(props.url, props.on, props.size)));
 </script>
 
 <template>
