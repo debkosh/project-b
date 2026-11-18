@@ -2625,7 +2625,9 @@ def passkey_checks():
     CARD = "document.querySelector('[role=alertdialog]')"
     TITLE = f"{CARD}?.getAttribute('aria-label')"
     WORDS = f"{CARD}?.querySelector('p')?.textContent.trim()"
-    BUTTONS = f"[...{CARD}.querySelectorAll('.buttons button')].map(b=>b.textContent.trim())"
+    # With no card these are empty, so a check on them fails rather than stopping the part.
+    BUTTONS = f"[...({CARD}?.querySelectorAll('.buttons button')||[])].map(b=>b.textContent.trim())"
+    PRIMARY = f"[...({CARD}?.querySelectorAll('.primary')||[])].map(b=>b.textContent.trim())"
 
     def card(title, timeout=15):
         try:
@@ -2635,8 +2637,10 @@ def passkey_checks():
             return False
 
     def press(find, what):
-        x, y = app.js(f"(()=>{{const r=({find}).getBoundingClientRect();return [r.x+r.width/2,r.y+r.height/2]}})()")
-        click_at(app, x, y, what)
+        at = app.js(f"(()=>{{const r=({find})?.getBoundingClientRect();return r?[r.x+r.width/2,r.y+r.height/2]:null}})()")
+        if not at:
+            raise RuntimeError(f"nothing to press for {what}")
+        click_at(app, *at, what)
 
     def button(name):
         press(f"[...{CARD}.querySelectorAll('button')].find(b=>b.textContent.trim()==={json.dumps(name)})", name)
@@ -2653,7 +2657,7 @@ def passkey_checks():
     app.js("make('ada')", page=True)
     check("a page making a passkey brings the key step's card", card("Create a passkey"), app.js(TITLE))
     check("with Go's words for the site", app.js(WORDS) == "localhost wants to save a passkey on your security key. Plug it in and touch it.", app.js(WORDS))
-    check("and Cancel, with no primary button", app.js(BUTTONS)[-1:] == ["Cancel"] and app.js(f"{CARD}.querySelectorAll('.primary').length") == 0, app.js(BUTTONS))
+    check("and Cancel, with no primary button", app.js(BUTTONS)[-1:] == ["Cancel"] and app.js(PRIMARY) == [], app.js(BUTTONS))
     check("the page waits while it shows", app.js("document.title", page=True) == "asking")
     call("WebAuthn.setAutomaticPresenceSimulation", {"authenticatorId": usb, "enabled": True})
     made = title("t.startsWith('made ')||t.startsWith('refused')")
@@ -2664,7 +2668,7 @@ def passkey_checks():
     # The key already has it: an error to close, and the page hears why after.
     app.js(f"make('ada', {json.dumps(ada)})", page=True)
     check("a key that already has the passkey says so", card("Already saved") and app.js(WORDS) == "This security key already has a passkey for localhost.", (app.js(TITLE), app.js(WORDS)))
-    check("with Close alone, the primary", app.js(BUTTONS) == ["Close"] and app.js(f"{CARD}.querySelector('.primary')?.textContent.trim()") == "Close", app.js(BUTTONS))
+    check("with Close alone, the primary", app.js(BUTTONS) == ["Close"] and app.js(PRIMARY) == ["Close"], app.js(BUTTONS))
     check("the page waits until it is closed", app.js("document.title", page=True) == "asking")
     button("Close")
     refused = title("t.startsWith('refused')||t.startsWith('made')")
@@ -2678,7 +2682,7 @@ def passkey_checks():
     app.wait(f"!{CARD}")
     app.js("use()", page=True)
     check("signing in with two accounts on the key brings the account step", card("Choose an account") and app.js(WORDS) == "Your security key has 2 accounts for localhost.", (app.js(TITLE), app.js(WORDS)))
-    ROWS_ = f"[...{CARD}.querySelectorAll('button.account')]"
+    ROWS_ = f"[...({CARD}?.querySelectorAll('button.account')||[])]"
     rows = app.js(f"{ROWS_}.map(b=>[...b.querySelectorAll('span')].map(e=>e.textContent))")
     check("a row for each, the display name over the name", sorted(map(tuple, rows)) == [("ada", "ada@example.com"), ("grace", "grace@example.com")], rows)
     chosen = rows[1][0] if len(rows) > 1 else ""
