@@ -1,0 +1,36 @@
+#!/bin/bash
+# Restarts test emulators and checks each is usable: it boots, and the app starts with a working
+# GPU. The Android 10 image now and then boots with its GPU broken, and the app then dies at start
+# with "GPU process isn't usable"; that emulator is restarted again, up to three times.
+# Their qemu grows over days of runs, so restart them after each release's Android group and
+# daily (roles/tester.md). The app must be installed.
+#
+#   tools/restart-emulators.sh                          # the two release emulators
+#   tools/restart-emulators.sh project-b-emu-16k:5602   # amarit unit:port, any number
+set -u
+ADB="$HOME/Library/Android/sdk/platform-tools/adb"
+PACKAGE=dev.projectb.browser
+[ $# -gt 0 ] || set -- project-b-emu-37:5606 project-b-emu-29:5604
+status=0
+for emulator in "$@"; do
+    unit=${emulator%%:*} serial=emulator-${emulator##*:} ok=
+    for attempt in 1 2 3; do
+        amarit restart "$unit" >/dev/null || { echo "$unit: amarit can't restart it"; break; }
+        sleep 20
+        for _ in $(seq 1 90); do
+            [ "$("$ADB" -s "$serial" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ] && break
+            sleep 5
+        done
+        sleep 30   # the GPU is ready a while after boot says so
+        "$ADB" -s "$serial" logcat -c
+        "$ADB" -s "$serial" shell am start -n "$PACKAGE/.BrowserActivity" -d about:blank >/dev/null
+        sleep 20
+        pid=$("$ADB" -s "$serial" shell pidof "$PACKAGE" | tr -d '\r')
+        dead=$("$ADB" -s "$serial" logcat -d | grep -c "GPU process isn't usable")
+        "$ADB" -s "$serial" shell am force-stop "$PACKAGE"
+        if [ -n "$pid" ] && [ "$dead" = 0 ]; then ok=1; break; fi
+        echo "$unit: attempt $attempt, the app didn't start (GPU process died $dead times); restarting it again"
+    done
+    if [ -n "$ok" ]; then echo "$unit: up, the app starts"; else echo "$unit: NOT USABLE"; status=1; fi
+done
+exit $status
