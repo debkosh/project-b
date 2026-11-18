@@ -28,6 +28,7 @@ session (tools/check_full_screen.py, tools/check_clipboard.py). This needs no di
     python3 tools/drive_first_app.py sparks     # only sparks: in the page itself, styled and writing HTML on strict sites
     python3 tools/drive_first_app.py internal   # only our own pages as tabs: settings, and the navigation rule
     python3 tools/drive_first_app.py links      # only Links to other sites: the ten ways a page leaves
+    python3 tools/drive_first_app.py applink    # only a page's project-b://sync link: pressed, by script, in a frame, by a redirect
 
 Results go to build/real/. Each screenshot is what content rendered, drawn shell over
 page by the driver. It is not read back from the window.
@@ -46,6 +47,7 @@ import tempfile
 import threading
 import time
 import traceback
+import urllib.parse
 import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
@@ -109,6 +111,29 @@ class Pages(http.server.BaseHTTPRequestHandler):
             self.send_header("Cross-Origin-Opener-Policy", "same-origin")
             self.send_header("Cross-Origin-Embedder-Policy", "require-corp")
             self.send_header("Cross-Origin-Resource-Policy", "same-origin")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        if self.path.startswith("/applink"):
+            # The app's own links on a page (docs/sync.md, The link): the sync link to press, one
+            # to a server that counts connections, another project-b: link, a link the server
+            # redirects to the sync link, a frame holding it, and a page whose script goes there.
+            if self.path == "/applink-redirect":
+                self.send_response(302)
+                self.send_header("Location", APP_LINK)
+                self.end_headers()
+                return
+            a = lambda id, href, words: f'<a id={id} href="{href}" style="display:block;padding:12px">{words}</a>'
+            body = {
+                "/applink": "<!doctype html><title>App links</title>" + a("sync", APP_LINK, "Sync") + a("counted", Pages.counted_link, "Sync, counted")
+                            + a("other", "project-b://elsewhere?address=https%3A%2F%2Fsync.example.test%2Fsync%2Fabc", "Other") + a("redirect", "/applink-redirect", "Redirected"),
+                "/applink-frame": '<!doctype html><title>Frame</title><iframe id=frame src="/applink-inner" style="width:400px;height:200px;border:0"></iframe>',
+                "/applink-inner": f'<!doctype html><a href="{APP_LINK}" onclick="parent.document.title=\'pressed\'" style="display:block;height:200px">Sync</a>',
+                "/applink-script": f'<!doctype html><title>Script</title><script>setTimeout(() => {{ location.href = "{APP_LINK}"; document.title = "went" }}, 300)</script>',
+            }.get(self.path, "").encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
@@ -183,6 +208,25 @@ class Pages(http.server.BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
 
+
+# A sync link as the memd page offers one (docs/sync.md).
+APP_LINK = "project-b://sync?address=https%3A%2F%2Fsync.example.test%2Fsync%2Fabc"
+
+# A server that only counts the connections it gets, for a sync link's address: nothing may
+# reach it before Connect.
+counter = socket.create_server(("127.0.0.1", 0))
+counted = []
+
+
+def count_connections():
+    while True:
+        c, _ = counter.accept()
+        counted.append(1)
+        c.close()
+
+
+threading.Thread(target=count_connections, daemon=True).start()
+Pages.counted_link = "project-b://sync?address=" + urllib.parse.quote(f"https://127.0.0.1:{counter.getsockname()[1]}/sync/abc", safe="")
 
 pages = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Pages)
 threading.Thread(target=pages.serve_forever, daemon=True).start()
@@ -2690,7 +2734,67 @@ def links_checks():
     app.close()
 
 
+def app_link_checks():
+    """A page's link to the app's own project-b://sync (docs/sync.md, The link): pressed, it
+    opens Settings at Sync with the link's Dialog, the host shown and the address filled in,
+    and nothing reaches the address before Connect; a page's script going there, a press in a
+    frame, a redirect there and another project-b: link each do nothing, the page staying."""
+    app = App(tempfile.mkdtemp(prefix="pb-applink-"))
+
+    def settings_tabs():
+        return [t for t in tabs_of(app)["tabs"] if t.get("page") == "settings"]
+
+    def nothing(words, url):
+        time.sleep(2)
+        page = json.loads(app.cmd("committed"))
+        check(f"{words} does nothing: no settings tab, the page where it was", not settings_tabs() and page["url"] == url, (settings_tabs(), page))
+
+    visit(app, PAGES + "applink-script")
+    app.wait("document.title==='went'", page=True)
+    nothing("a page's script going to the link, with no press,", PAGES + "applink-script")
+    visit(app, PAGES + "applink-frame")
+    app.wait("!!document.getElementById('frame').contentDocument?.querySelector('a')", page=True)
+    page_click(app, "#frame")
+    app.wait("document.title==='pressed'", page=True)
+    nothing("a press on the link in a frame", PAGES + "applink-frame")
+    visit(app, PAGES + "applink")
+    Pages.seen.clear()
+    page_click(app, "#redirect")
+    deadline = time.time() + 10
+    while "127.0.0.1/applink-redirect" not in Pages.seen and time.time() < deadline:
+        time.sleep(0.05)
+    nothing("a press on a link the server redirects to it", PAGES + "applink")
+    page_click(app, "#other")
+    nothing("a press on another project-b: link", PAGES + "applink")
+
+    web = tabs_of(app)["active"]
+    page_click(app, "#sync")
+    dialog = "document.querySelector('dialog[open]')"
+    opened = in_settings(app, f"{dialog}?.getAttribute('aria-label')==='Sync with sync.example.test?'", 15)
+    check("a press on the sync link opens Settings at Sync with the link's Dialog, the host shown",
+          opened and len(settings_tabs()) == 1 and in_settings(app, "(()=>{const r=document.querySelector('[data-part=sync]').getBoundingClientRect();return r.top>=0&&r.top<innerHeight})()"))
+    check("with the address filled in", in_settings(app, "document.getElementById('sync-address').value") == "https://sync.example.test/sync/abc")
+    check("and the host in bold in its title", in_settings(app, f"{dialog}.querySelector('.ui-dialog-title').textContent.trim()") == "Sync with sync.example.test?")
+    print(app.cmd("capture", os.path.join(OUT, "applink-dialog.png")), flush=True)
+    app.cmd("evalsettings", f"[...{dialog}.querySelectorAll('button')].find(b=>b.textContent==='Cancel').click()")
+    in_settings(app, f"!{dialog}")
+
+    click(app, f'[role=tab][data-tab="{web}"]')
+    app.wait(f"document.querySelector('[role=tab][data-tab=\"{web}\"]').getAttribute('aria-selected')==='true'")
+    page_click(app, "#counted")
+    host = Pages.counted_link.split("%2F%2F")[1].split("%2F")[0].replace("%3A", ":")
+    in_settings(app, f"{dialog}?.getAttribute('aria-label')==='Sync with {host}?'", 15)
+    time.sleep(2)
+    check("nothing reaches the link's address before Connect", not counted, len(counted))
+    app.cmd("evalsettings", f"[...{dialog}.querySelectorAll('button')].find(b=>b.textContent==='Connect').click()")
+    deadline = time.time() + 10
+    while not counted and time.time() < deadline:
+        time.sleep(0.05)
+    check("and Connect reaches it", bool(counted))
+    app.close()
+
+
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
-    parts = {"driver": [driver_checks], "browsing": [browsing_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks]}
-    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, settings_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, glide_checks, web_api_checks, sparks_checks, links_checks, quit_checks]))
+    parts = {"driver": [driver_checks], "browsing": [browsing_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks], "applink": [app_link_checks]}
+    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, settings_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, glide_checks, web_api_checks, sparks_checks, links_checks, app_link_checks, quit_checks]))
