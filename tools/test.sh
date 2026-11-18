@@ -114,6 +114,7 @@ mock() {
     done
     run "the history and bookmarks pages on the mock engine" node shell/e2e/pages.cjs
     run "the settings page on the mock engine" node shell/e2e/settings.cjs
+    run "Settings' Sync against a sync server, on the mock engine" node shell/e2e/sync.cjs
     run "the picker on the mock engine" node shell/e2e/picker.cjs
     run "the crash report on the mock engine" node shell/e2e/crash-report.cjs
     run "a download's details, on the desktop and a phone" node shell/e2e/download-details.cjs
