@@ -329,8 +329,9 @@ func (w *welcome) finish(tab engine.TabID) {
 	if tab == w.whole {
 		w.setWhole(0)
 	}
-	w.a.Tabs.Close(tab)
-	if win != 0 && len(w.a.Tabs.AllIn(win)) == 0 && !w.a.startsEmpty() {
+	// A window always has a tab: a new one takes the welcome's place before it closes.
+	if win != 0 && len(w.a.Tabs.AllIn(win)) == 1 {
 		w.a.Tabs.Create(win)
 	}
+	w.a.Tabs.Close(tab)
 }

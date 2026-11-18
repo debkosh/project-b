@@ -22,7 +22,7 @@ func (r *rig) tabsNow(w engine.WindowID) []tabs.Tab {
 }
 
 // A shell pins a tab: every shell hears the pin, the tab carries it, and the profile keeps
-// it. Closing the tab keeps the pin, openPin opens a tab for it, or shows the one open, and
+// it. Closing the tab keeps the pin, openPin opens a tab for it, first, or shows the one open, and
 // unpin removes it, its tab staying. A tab with no address, and one of ours, aren't pinned.
 func TestAShellPinsATabAndThePinOutlivesItsTab(t *testing.T) {
 	dir := t.TempDir()
@@ -47,14 +47,15 @@ func TestAShellPinsATabAndThePinOutlivesItsTab(t *testing.T) {
 		t.Fatalf("the profile keeps %+v", l)
 	}
 
+	// Another tab keeps the window open: it closes with its last tab.
+	r.shell(`{"t":"newTab"}`)
+	r.waitFor(isTabs(2))
 	r.shell(`{"t":"closeTab","id":1}`)
-	r.waitFor(isTabs(0))
+	r.waitFor(isTabs(1))
 	r.shell(`{"t":"openPin","pin":"` + pin + `"}`)
 	r.waitForTab(func(t map[string]any) bool {
 		return t["pin"] == pin && t["title"] == "Mock a.test" && t["loading"] == false
 	})
-	r.shell(`{"t":"newTab"}`)
-	r.waitFor(isTabs(2))
 	r.shell(`{"t":"openPin","pin":"` + pin + `"}`)
 	r.e.Settle()
 	open := r.tabsNow(1)

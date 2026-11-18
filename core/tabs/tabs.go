@@ -2,8 +2,8 @@
 // each one's tabs in order and which of them is active, and each tab's state, the
 // workspace it is in among it. Tab state changes only through this manager. A window's active tab is the one the user acts on
 // there: its shell shows it and gives it the keyboard, and says where it put it in its
-// layout, which shows it. A window may have no tabs, and then has no active tab; one with
-// tabs always has one. Commands act on the active tab of the window in front. A tab
+// layout, which shows it. A window always has a tab and an active one, and closes when its
+// last tab goes (OnEmpty). Commands act on the active tab of the window in front. A tab
 // keeps its id for its life.
 //
 // A tab is a web tab or one of ours, an internal tab: one of our own pages, such as
@@ -150,7 +150,7 @@ type Manager struct {
 	onTitle    []func(Tab)
 	onList     []func()
 	onClosed   []func(Tab)
-	onEmpty    []func(w engine.WindowID, moved bool)
+	onEmpty    []func(w engine.WindowID)
 	onFront    []func(engine.WindowID)
 	onMoved    []func(tab engine.TabID, from engine.WindowID, fromIndex int, to engine.WindowID)
 	onLeaving  []func(engine.TabID)
@@ -210,9 +210,9 @@ func (m *Manager) OnListChanged(f func()) { m.onList = append(m.onList, f) }
 // OnClosed subscribes to a tab closing, on its own or with its window.
 func (m *Manager) OnClosed(f func(Tab)) { m.onClosed = append(m.onClosed, f) }
 
-// OnEmpty subscribes to a window's last tab leaving it: closed there, or, with moved,
-// moved to another window.
-func (m *Manager) OnEmpty(f func(w engine.WindowID, moved bool)) { m.onEmpty = append(m.onEmpty, f) }
+// OnEmpty subscribes to a window's last tab leaving it, closed or moved to another window,
+// for the window to close: a window always has a tab.
+func (m *Manager) OnEmpty(f func(w engine.WindowID)) { m.onEmpty = append(m.onEmpty, f) }
 
 // OnLeaving subscribes to a window's active tab just before another becomes active there,
 // while its page still shows. Not for a tab that closed or moved away.
@@ -522,8 +522,7 @@ func (m *Manager) ActivateNext(reverse bool) {
 }
 
 // Close closes a tab. Closing the active one activates its right neighbour, or the
-// left one at the end. Closing a window's last tab leaves it no tabs and no active tab,
-// and fires OnEmpty.
+// left one at the end. Closing a window's last tab fires OnEmpty, for the window to close.
 func (m *Manager) Close(id engine.TabID) { m.close(id, false) }
 
 // CloseToRecent closes a tab as Close does, but when it was the active one, the tab used
@@ -552,7 +551,7 @@ func (m *Manager) close(id engine.TabID, recent bool) {
 	for _, f := range m.onClosedAt {
 		f(was, w, i)
 	}
-	m.left(w, id, i, false, recent)
+	m.left(w, id, i, recent)
 }
 
 func (m *Manager) closed(t Tab) {
@@ -594,7 +593,7 @@ func (m *Manager) Move(id engine.TabID, w engine.WindowID, index int) {
 	for _, f := range m.onMoved {
 		f(id, from, i, w)
 	}
-	m.left(from, id, i, true, false)
+	m.left(from, id, i, false)
 }
 
 // twinIn is window w's tab of the same one of our pages as tab t, or open for the same pin,
@@ -623,15 +622,15 @@ func (m *Manager) detach(id engine.TabID) int {
 }
 
 // left is what window w does once a tab at position i has left it, closed or moved: with
-// no tabs it fires OnEmpty; if the tab was active, its right neighbour, or the left one at
-// the end, is, or with recent the tab used before it.
-func (m *Manager) left(w engine.WindowID, id engine.TabID, i int, moved, recent bool) {
+// no tabs it fires OnEmpty, for the window to close; if the tab was active, its right
+// neighbour, or the left one at the end, is, or with recent the tab used before it.
+func (m *Manager) left(w engine.WindowID, id engine.TabID, i int, recent bool) {
 	win := m.windows[w]
 	if len(win.order) == 0 {
 		win.active = 0
 		m.listChanged()
 		for _, f := range m.onEmpty {
-			f(w, moved)
+			f(w)
 		}
 		return
 	}
@@ -715,26 +714,12 @@ func (m *Manager) Active() Tab {
 	return Tab{}
 }
 
-// Navigate turns what the user typed into a URL and loads it in window w's active tab, or,
-// in a window with no tabs, in a new tab there, in workspace. That tab has the URL from the
-// start, as a tab a page opens does, so it never reads as a new tab.
-func (m *Manager) Navigate(w engine.WindowID, text, workspace string) {
+// Navigate turns what the user typed into a URL and loads it in window w's active tab.
+func (m *Manager) Navigate(w engine.WindowID, text string) {
 	u := m.Normalize(text)
-	if u == "" {
-		return
+	if id := m.ActiveIn(w); u != "" && id != 0 {
+		m.eng.LoadURL(id, u)
 	}
-	id := m.ActiveIn(w)
-	if page := m.PageOf(u); id == 0 && page != "" {
-		m.OpenPage(w, page)
-		return
-	}
-	if id == 0 {
-		id = m.eng.CreateTab(workspace, false)
-		t := m.add(id, w)
-		t.URL, t.Workspace = address(u), workspace
-		m.Activate(id)
-	}
-	m.eng.LoadURL(id, u)
 }
 
 // Back moves the active tab back in its history.
@@ -985,8 +970,8 @@ func (m *Manager) zoomTo(f float64) {
 
 // HandleTabOpened records a tab a page opened, in the opener's window, or in the window
 // in front when no tab opened it, in the workspace the engine made it in, and in its
-// opener's group, and shows it if the page asked for the foreground, or if its window had
-// no tabs.
+// opener's group, and shows it if the page asked for the foreground, or if it is its
+// window's first.
 func (m *Manager) HandleTabOpened(opener, id engine.TabID, u, workspace string, foreground bool) {
 	w := m.windowOf[opener]
 	if w == 0 {

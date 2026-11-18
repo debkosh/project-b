@@ -562,32 +562,21 @@ func TestWindowsAPI(t *testing.T) {
 	}
 }
 
-// An extension sees a window with no tabs as one whose tabs are [], and its last tab closing
-// as no window closing.
-func TestAWindowWithNoTabsToAnExtension(t *testing.T) {
+// An extension that removes a window's last tab sees the window closing, as Chrome has it:
+// a window always has a tab.
+func TestAnExtensionRemovingTheLastTabClosesTheWindow(t *testing.T) {
 	r := startExtensions(t, t.TempDir())
 	r.install()
 	var tab engine.TabID
 	r.on(func() { tab = r.a.Tabs.ActiveID() })
 	r.call("tabs.remove", `[`+itoa(tab)+`]`, 0)
 	r.until("tabs.onRemoved", func() bool { return len(r.events("tabs.onRemoved")) == 1 })
-	if a := r.events("tabs.onRemoved")[0]; string(a.Args) != `[`+itoa(tab)+`,{"isWindowClosing":false,"windowId":1}]` {
+	if a := r.events("tabs.onRemoved")[0]; string(a.Args) != `[`+itoa(tab)+`,{"isWindowClosing":true,"windowId":1}]` {
 		t.Fatalf("tabs.onRemoved: %s", a.Args)
 	}
-	var w map[string]any
-	json.Unmarshal(r.call("windows.getCurrent", `[{"populate":true}]`, 0).Result, &w)
-	if tabs, ok := w["tabs"].([]any); w["id"] != 1.0 || !ok || len(tabs) != 0 {
-		t.Fatalf("windows.getCurrent with its tabs: %v", w)
-	}
-	var bare map[string]any
-	json.Unmarshal(r.call("windows.getCurrent", `[]`, 0).Result, &bare)
-	if _, has := bare["tabs"]; has {
-		t.Fatalf("windows.getCurrent without its tabs: %v", bare)
-	}
-	var active []map[string]any
-	json.Unmarshal(r.call("tabs.query", `[{"active":true,"currentWindow":true}]`, 0).Result, &active)
-	if len(active) != 0 {
-		t.Fatalf("the active tab of a window with none: %v", active)
+	r.e.Settle()
+	if !r.e.Closed(1) {
+		t.Fatal("the window stayed open with no tabs")
 	}
 }
 
