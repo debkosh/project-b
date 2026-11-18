@@ -363,3 +363,15 @@ func TestTiersMatchTheSearchBefore(t *testing.T) {
 		}
 	}
 }
+
+// A store.db that is no database goes aside, and history.jsonl, still in the profile, is read
+// into the new one.
+func TestHistoryJSONLIsReadIntoANewStore(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "history.jsonl"), []byte(`{"url":"https://a.test/","title":"A","visits":1,"lastVisit":100}`+"\n"), 0o600)
+	os.WriteFile(filepath.Join(dir, "store.db"), []byte(strings.Repeat("garbage ", 1000)), 0o600)
+	m := newManager(t, dir)
+	if got := urls(list(m, "", 0, 10)); got != "https://a.test/" {
+		t.Fatalf("read: %s", got)
+	}
+}

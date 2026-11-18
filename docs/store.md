@@ -19,6 +19,8 @@ sync, keys and sealing come later, on top of it.
 - 2026-11-19: "yes store visits but do not sync.... typed as you said". Typed is an address
   typed in the address field and entered, or a suggestion picked after typing; a link
   clicked and a bookmark opened don't count.
+- 2026-11-19, on a store.db that can't be opened: "yes move the old file into backup and
+  create a new one".
 
 ## What moves and what stays
 
@@ -57,6 +59,16 @@ file once (below).
 milliseconds of its last change. A new table's id is a UUIDv7 as text (`store.NewID`); the
 bookmarks keep the ids they have had since folders, 16 random hex digits. Nothing else is built for sync: deleting
 deletes the row, with no tombstone. Visits and sites never sync and have neither.
+
+**A damaged store.db.** When SQLite says store.db is not a database, or a damaged one, as it
+is opened, the file goes aside with its `-wal` and `-shm` as `store.db.backup-<UTC date and
+time>`, such as `store.db.backup-20261119T101500Z`, a new store.db is made, and the start
+carries on; the timeline has one error line naming the backup. Nothing else is mended this
+way: a folder that can't be written, or a new file that can't be opened either, still stops
+the start, and a feature's schema step that fails is a bug in the feature, which rolls back
+and leaves the file as it was. With new, empty tables, each feature's first step runs again,
+so the one-time read of history.jsonl and bookmarks.json (below) brings back what the profile
+had when the store was first made, rather than nothing, while those files are still there.
 
 **Checkpoints.** SQLite's own: when the WAL passes 1000 pages the write that crosses it
 copies them back, 5 to 15 ms on the worker for that one write. Nothing on the main thread
@@ -158,9 +170,10 @@ triggers. Until it is done, a search waits behind it.
 
 ## Tests
 
-`core/store` (the steps run once each, in order, and a failed step leaves nothing),
+`core/store` (the steps run once each, in order, a failed step leaves nothing, a store.db
+that is no database goes aside byte for byte and a new one is made, and a healthy one stays),
 `core/history` (each tier and a row once, typed first, a non-ASCII title and address, top
 sites, deleting a site, clearing a range from every table, the one-time read of
-history.jsonl), `core/suggest` (typed first and its completion), `core/tabs` (which navigations
+history.jsonl, again into a new store), `core/suggest` (typed first and its completion), `core/tabs` (which navigations
 count as typed), `core/bookmarks` (the one-time read of both versions of bookmarks.json, and the
 tree surviving a restart).
