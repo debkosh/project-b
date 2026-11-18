@@ -22,7 +22,7 @@ import android.widget.TextView
 import org.json.JSONObject
 
 // The native Mobile shell's daily-driver parts (docs/daily-driver.md), each the web Mobile
-// shell's: the find bar, a page's dialog, and No tabs. Downloads is a page of ours, in a tab.
+// shell's: the find bar and a page's dialog. Downloads is a page of ours, in a tab.
 
 /** A text button of the design system: 48dp high, its words in the accent, or white on it. */
 fun textButton(context: Context, palette: Palette, words: String, primary: Boolean = false, color: Int? = null, run: () -> Unit) =
@@ -244,28 +244,3 @@ class PageDialog(context: Context, palette: Palette, private val dialog: JSONObj
     }
 }
 
-/** A window with no tabs, as the back key leaves one before the app goes: No tabs, and New tab. */
-@SuppressLint("ViewConstructor")
-class NoTabs(context: Context, private val newTab: () -> Unit) : LinearLayout(context) {
-    private val words = TextView(context)
-    private var button: View? = null
-
-    init {
-        orientation = VERTICAL
-        gravity = Gravity.CENTER
-        isClickable = true
-        words.text = "No tabs"
-        words.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16f)
-        addView(words, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
-    }
-
-    fun show(palette: Palette) {
-        setBackgroundColor(palette.bar)
-        words.setTextColor(palette.text)
-        button?.let { removeView(it) }
-        button = textButton(context, palette, "New tab", primary = true) { newTab() }.also {
-            asButton(it, "New Tab")
-            addView(it, LayoutParams(LayoutParams.WRAP_CONTENT, dp(48)).apply { topMargin = dp(16) })
-        }
-    }
-}

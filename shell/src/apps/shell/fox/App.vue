@@ -8,8 +8,6 @@ import FindBar from '@/ui/FindBar.vue';
 import PageDialog from '@/ui/PageDialog.vue';
 import PageMenu from '@/ui/PageMenu.vue';
 import PageNotice from '@/ui/PageNotice.vue';
-import { keyOf } from './hints.js';
-import { started } from './started.js';
 import { activeTab, isNewTab, send, setFrame, state } from '@/sdk/vue.js';
 
 // The tabs on top, the navigation bar under them, any notice under that, then the page,
@@ -34,14 +32,8 @@ watchEffect(() => setFrame(pageFull.value ? 0 : 4));
     <div class="body">
       <div v-show="!pageFull" class="edge side"></div>
       <div v-page="state.active" class="page">
-        <div v-if="started && !state.tabs.length" v-shell class="empty">
-          <p>No tabs</p>
-          <button class="text-button" type="button" @click="send({ t: 'newTab' })">
-            New Tab<span v-if="keyOf('tab.new')" class="key" aria-hidden="true">{{ keyOf('tab.new') }}</span>
-          </button>
-        </div>
         <!-- A new tab loads nothing, so no page shows here: a backdrop in the page's colour. -->
-        <div v-else-if="isNewTab(activeTab)" v-shell class="new-tab-backdrop"></div>
+        <div v-if="isNewTab(activeTab)" v-shell class="new-tab-backdrop"></div>
         <PageNotice v-if="activeTab.notice" v-shell :tab="activeTab" />
         <FindBar />
         <PageDialog />
@@ -106,30 +98,6 @@ watchEffect(() => setFrame(pageFull.value ? 0 : 4));
   position: absolute;
   inset: 0;
   background: Canvas;
-}
-
-.empty {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  background: var(--surface);
-  color: var(--text);
-}
-
-.empty p {
-  margin: 0;
-  color: var(--muted);
-  font-weight: 500;
-}
-
-.empty .key {
-  margin-left: 8px;
-  color: var(--muted);
-  font-weight: 400;
 }
 
 .edge {
