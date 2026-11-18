@@ -55,7 +55,8 @@ Three layers, each doing one thing.
      pass, so it keeps as much of its colour as it can.
 3. **Configs**: each place that colours something says how, once, and never writes a colour:
    - site marks: hue from the host, strength from the frame, soft, the tone for the letter;
-   - tab groups: hue from the group's name, solid, the label for the name;
+   - tab groups: hue from the group's name, the theme's strength, solid, the label for the
+     name;
    - bookmark folders: hue from the folder's name, strength from the frame, a dot.
 
 The theme never changes a hue: light, dark, the frame and the background change only how
@@ -107,6 +108,9 @@ The owner, 2026-11-18:
   the colors... since we need an deteminitic option to generate random colors".
 - **The background's saturation counts too**, after a deep teal on bright mint looked off
   with greyish marks: "may be becuase we match the intensity of only the primary color".
+- **Saturation is what fits a set to the theme; lightness is only for reading:** "yes its
+  more about saturation than lightness". Every colour takes the theme's saturation, the
+  stronger of the primary's and the background's, tab groups too (no "full" for them).
 - **Mid backgrounds** handled after pine on sage (`#104746` on `#608a82`) showed solid tiles
   vanishing into it and soft letters turning black.
 - **The recipe is an input too:** "add the recipies as another input option".
