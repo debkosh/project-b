@@ -14,7 +14,7 @@ session (tools/check_full_screen.py, tools/check_clipboard.py). This needs no di
     python3 tools/drive_first_app.py cookies    # only cookies kept across a restart
     python3 tools/drive_first_app.py visible    # only the tabs a window shows
     python3 tools/drive_first_app.py windows    # only several windows
-    python3 tools/drive_first_app.py empty      # only a window with no tabs
+    python3 tools/drive_first_app.py empty      # only the new tab a window opens on, and its last tab
     python3 tools/drive_first_app.py move       # only moving a tab between windows
     python3 tools/drive_first_app.py bounds     # only a window's frame, set and read
     python3 tools/drive_first_app.py profiles   # only the start choosing a profile from the list
@@ -368,9 +368,16 @@ def box(app):
 
 
 def focus_bar(app):
-    """Clicks the bar and waits until it really has focus and everything is selected."""
+    """Clicks the bar and waits until it really has focus and everything is selected. At the
+    start, a new tab's command box takes the keyboard once the shell has drawn it, which can
+    come after a click, so the click is tried again."""
+    focused = f"document.hasFocus()&&document.activeElement==={INPUT}&&{INPUT}.selectionStart===0&&{INPUT}.selectionEnd==={VALUE}.length"
+    for _ in range(2):
+        click(app, "input")
+        if holds(app, focused, 3):
+            return
     click(app, "input")
-    app.wait(f"document.hasFocus()&&document.activeElement==={INPUT}&&{INPUT}.selectionStart===0&&{INPUT}.selectionEnd==={VALUE}.length")
+    app.wait(focused)
 
 
 def leave_bar(app):
@@ -413,10 +420,10 @@ def loaded(app, url):
         time.sleep(0.05)
 
 
-# Standard's command box (shell/src/apps/shell/standard/CommandBox.vue). Standard takes New
-# Tab: a window opens with no tabs and the box in the page area, and Cmd+T, File > New Tab
-# and its + buttons open the box over the page and make no tab. A tab is made when a row is
-# chosen there, or an address typed with Enter. Every other shell's New Tab makes a tab.
+# Standard's command box (shell/src/apps/shell/standard/CommandBox.vue), which shows on a new
+# tab. Standard takes New Tab: Cmd+T, File > New Tab and its + buttons go to the window's new
+# tab, opening one when there is none, and a row chosen there, or an address typed with
+# Enter, loads in that tab. A window opens on a new tab (docs/windows.md).
 BOX = "document.querySelector('.command-box input')"
 BOX_FOCUSED = f"!!{BOX}&&document.hasFocus()&&document.activeElement==={BOX}"
 
@@ -436,22 +443,22 @@ def holds(app, expr, timeout=10, page=False):
 
 
 def from_box(app, url):
-    """Types url in the command box, which has the keyboard, and presses Enter, the user's way
-    to a tab on Standard. Returns Go's id for the new tab once the window shows it with url's
-    page, as visit does."""
-    rows = app.js(ROWS)
+    """Types url in the command box, which has the keyboard on a new tab, and presses Enter,
+    the user's way to a page on Standard: the new tab loads it. Returns Go's id for that tab
+    once the window shows it with url's page, as visit does."""
     box_open(app)
+    rows = app.js(ROWS)
     app.cmd("type", url)
     app.wait(f"{BOX}.value==={json.dumps(url)}")
     app.cmd("key", "enter")
-    app.wait(f"{ROWS}==={rows + 1}&&!{BOX}", 30)
+    app.wait(f"{ROWS}==={rows}&&!{BOX}", 30)
     loaded(app, url)
     return tabs_of(app)["active"]
 
 
 def new_tab(app, url):
-    """New Tab, the user's way, on Standard: Cmd+T opens the box, and url typed there with
-    Enter makes the tab. Returns Go's id for it."""
+    """New Tab, the user's way, on Standard: Cmd+T goes to a new tab, with the box on it, and
+    url typed there with Enter loads it. Returns Go's id for the tab."""
     app.cmd("key", "cmd+t")
     return from_box(app, url)
 
@@ -572,8 +579,8 @@ def timeline_checks():
             time.sleep(0.1)
         return False
 
-    # Standard starts with no tab: the first is the one an address typed in its command box
-    # makes, and the window shows pages from then.
+    # Standard starts on a new tab, with its command box: an address typed there loads the
+    # first page, and the window shows pages from then.
     wait_for(lambda es: "shell.on_screen" in timeline.marks(es))
     from_box(app, PAGES)
     wait_for(lambda es: {"shell.on_screen", "window.pages_shown", "tab.committed"} <= set(timeline.marks(es)))
@@ -617,14 +624,13 @@ def timeline_checks():
                             "settings.first_paint", "settings.on_screen"]), opened)
     app.cmd("key", "cmd+w")
     time.sleep(0.5)
-    # Standard takes New Tab: its span ends when the shell has drawn its box, and no tab is made.
+    # Standard takes New Tab: its span ends when the shell has drawn what it does, a new tab
+    # with its command box.
     rows = app.js(ROWS)
-    # Cmd+T runs Go's tab.new; Standard's own + opens the box without it.
+    # Cmd+T runs Go's tab.new; Standard's own + goes to the new tab without it.
     new = span_after(lambda: app.cmd("key", "cmd+t"), "tab.new")
     check("New Tab is a span that ends when the shell has drawn what it does, Standard's command box", in_order(new, ["tab.new.go", "tab.new.done"]), new)
-    check("and it made no tab", holds(app, BOX_FOCUSED) and app.js(ROWS) == rows, (app.js(ROWS), rows))
-    app.cmd("key", "escape")
-    app.wait(f"!{BOX}", 5)
+    check("on a new tab", holds(app, BOX_FOCUSED) and app.js(ROWS) == rows + 1, (app.js(ROWS), rows))
     closed = span_after(lambda: app.cmd("key", "cmd+w"), "tab.close")
     check("closing a tab from the keyboard is a span too, begun in Go", in_order(closed, ["tab.close.go", "tab.close.done"]), closed)
     moved = span_after(lambda: click(app, "button[aria-label^='Tabs on']"), "tabs.layout")
@@ -663,7 +669,7 @@ def settings_checks():
     profile = tempfile.mkdtemp(prefix="pb-profile-")
     app = App(profile)
     time.sleep(0.5)
-    # Standard starts with no tab; the checks below want one under the settings page.
+    # Standard starts on a new tab; the checks below want a page under the settings page.
     from_box(app, PAGES)
 
     def find(items, title):
@@ -722,11 +728,11 @@ def settings_checks():
     app.cmd("key", "cmd+w")
     time.sleep(0.5)
     check("Cmd+W closes the settings tab", app.cmd("evalsettings", "1").startswith("ERR") and app.js(ROWS) == rows)
-    # The key runs New Tab, which Standard takes: it opens the command box and makes no tab.
+    # The key runs New Tab, which Standard takes: it goes to a new tab, with its command box.
     app.cmd("key", "cmd+shift+k")
-    check("the new key runs New Tab: Standard's command box opens, and no tab", holds(app, BOX_FOCUSED, 5) and app.js(ROWS) == rows, app.js(ROWS))
-    app.cmd("key", "escape")
-    app.wait(f"!{BOX}", 5)
+    check("the new key runs New Tab: a new tab, with Standard's command box", holds(app, BOX_FOCUSED, 5) and app.js(ROWS) == rows + 1, app.js(ROWS))
+    app.cmd("key", "cmd+w")
+    app.wait(f"{ROWS}==={rows}", 5)
 
     # Ctrl+Tab goes back through recent tabs while Ctrl is held; letting go settles.
     while app.js(ROWS) < 3:
@@ -756,7 +762,7 @@ def settings_checks():
     from_box(app, PAGES)
     rows = app.js(ROWS)
     app.cmd("key", "cmd+shift+k")
-    check("the added key survives a restart", holds(app, BOX_FOCUSED, 5) and app.js(ROWS) == rows, app.js(ROWS))
+    check("the added key survives a restart: it goes to a new tab", holds(app, BOX_FOCUSED, 5) and app.js(ROWS) == rows + 1, app.js(ROWS))
     app.close()
 
 
@@ -774,21 +780,22 @@ def browsing_checks():
     check("snapshot says the real engine", app.js("document.querySelector('iframe')===null"))
     app.wait("document.querySelector('form').getBoundingClientRect().height>0")
     time.sleep(0.3)
-    # Standard takes New Tab: the window opens with no tab, and its command box in the page area.
-    check("no tab to start with: the page area is Standard's command box", app.js(ROWS) == 0 and app.js(f"!!{BOX}"), app.js(ROWS))
+    # The window opens on a new tab, which loads nothing: the page area is Standard's
+    # command box.
+    check("one new tab to start with: the page area is Standard's command box", app.js(ROWS) == 1 and app.js(f"!!{BOX}"), app.js(ROWS))
     check("opens with the command box focused", holds(app, BOX_FOCUSED, 5))
-    check("with no tab the page area is the shell's, its command box", app.cmd("hit", 600, 300) == "shell", app.cmd("hit", 600, 300))
-    # With no tab the page area is the command box, the shell's own, never the frame colour
-    # showing through a missing page. The frame colour used to take over a few seconds in,
-    # so this looks after ten.
+    check("on the new tab the page area is the shell's, its command box", app.cmd("hit", 600, 300) == "shell", app.cmd("hit", 600, 300))
+    # The page area is the command box, the shell's own, never the frame colour showing
+    # through a missing page. The frame colour used to take over a few seconds in, so this
+    # looks after ten.
     time.sleep(max(0, 10 - (time.time() - app.started)))
-    check("ten seconds on, the page area of a window with no tab is still the command box, the shell's",
+    check("ten seconds on, the page area of the new tab is still the command box, the shell's",
           app.js(f"!!{BOX}") and app.cmd("hit", 600, 300) == "shell", app.cmd("hit", 600, 300))
     print(app.cmd("capture", os.path.join(OUT, "1-empty.png")), flush=True)
 
-    # Real pages through the address bar. In a window with no tab, the address opens one.
+    # Real pages through the address bar: the new tab loads what is typed there.
     visit(app, URL_A)
-    check("an address typed in the address field of a window with no tab opens one", app.js(ROWS) == 1 and not app.js(f"!!{BOX}"), app.js(ROWS))
+    check("an address typed in the address field of the new tab loads it there", app.js(ROWS) == 1 and not app.js(f"!!{BOX}"), app.js(ROWS))
     # The driver's stats and bounds speak of the focused tab's page, so they wait for one.
     stats = json.loads(app.cmd("stats", timeout=60))
     print("stats", json.dumps(stats), flush=True)
@@ -1117,25 +1124,21 @@ def browsing_checks():
     except TimeoutError as e:
         check("the shell's zoom request zooms the window", False, f"no display? {e}")
 
-    # Tabs. Tab 1 is on example.com here. Standard takes New Tab: Cmd+T opens the command
-    # box over the page and makes no tab; Escape goes back to the page, and an address typed
-    # in the box with Enter makes the tab.
+    # Tabs. Tab 1 is on example.com here. Standard takes New Tab: Cmd+T goes to a new tab,
+    # with its command box, which is the shell's; an address typed in the box with Enter
+    # loads it there. Cmd+T again stays on that new tab.
     app.cmd("key", "cmd+t")
-    check("Cmd+T opens the command box over the page, focused, and makes no tab", holds(app, BOX_FOCUSED, 5) and app.js(ROWS) == 1, app.js(ROWS))
+    check("Cmd+T opens a new tab with the command box, focused", holds(app, BOX_FOCUSED, 5) and app.js(ROWS) == 2, app.js(ROWS))
     bx, by = center(app, ".command-box input")
-    # The box has the keyboard before the window has the shell's next layout, which shows no
-    # page under it: the page's view goes a frame or so later.
     deadline = time.time() + 2
     while (app.cmd("hit", bx, by), app.cmd("hit", 600, 300)) != ("shell", "shell") and time.time() < deadline:
         time.sleep(0.05)
-    check("the box over the page is the shell's", app.cmd("hit", bx, by) == "shell" and app.cmd("hit", 600, 300) == "shell", (app.cmd("hit", bx, by), app.cmd("hit", 600, 300)))
-    check("back and reload still follow the tab under the box", not disabled("Back") and not disabled("Reload"))
-    app.cmd("key", "escape")
-    check("Escape closes the box and gives the page the keyboard, with no tab made",
-          holds(app, f"!{BOX}", 5) and holds(app, "document.hasFocus()", 5, page=True) and app.js(ROWS) == 1, app.js(ROWS))
-    check("and the page is the page's again", app.cmd("hit", 600, 300) == "page", app.cmd("hit", 600, 300))
-    new_tab(app, URL_B)
-    check("an address typed in the box with Enter opens it in a new, active tab", app.js(ROWS) == 2 and "iana.org" in app.js(VALUE), (app.js(ROWS), app.js(VALUE)))
+    check("the box and the page area of the new tab are the shell's", app.cmd("hit", bx, by) == "shell" and app.cmd("hit", 600, 300) == "shell", (app.cmd("hit", bx, by), app.cmd("hit", 600, 300)))
+    check("back and reload follow the new, empty tab", disabled("Back") and disabled("Reload"))
+    app.cmd("key", "cmd+t")
+    check("Cmd+T again stays on that new tab, and makes no other", holds(app, BOX_FOCUSED, 5) and app.js(ROWS) == 2, app.js(ROWS))
+    from_box(app, URL_B)
+    check("an address typed in the box with Enter loads it in the new tab", app.js(ROWS) == 2 and "iana.org" in app.js(VALUE), (app.js(ROWS), app.js(VALUE)))
     app.wait(f"{ACTIVE_ROW_TITLE}.includes('Example Domains')", 10)
     titles = app.js(ROW_TITLES)
     check("each tab keeps its own title", titles[0] == "Example Domain" and titles[1] == "Example Domains", titles)
@@ -1234,7 +1237,7 @@ def browsing_checks():
     check("the active tab is a flat row in the selected colour", bool(look) and look[1] == "6px" and look[0] != "rgba(0, 0, 0, 0)", look)
     n = app.js(ROWS)
     app.cmd("key", "cmd+t")
-    check("Cmd+T works with the tabs on top: the command box opens, and no tab yet", holds(app, BOX_FOCUSED, 5) and app.js(ROWS) == n, app.js(ROWS))
+    check("Cmd+T works with the tabs on top: a new tab, with the command box", holds(app, BOX_FOCUSED, 5) and app.js(ROWS) == n + 1, app.js(ROWS))
     from_box(app, PAGES)
     # The shell re-reports its drag rectangles a frame after the strip changed. A click
     # inside that frame would still hit the old empty space.
@@ -1351,10 +1354,10 @@ def visible_tabs_checks():
     view where its rectangle is, each told it is shown, and one that leaves the list told
     it is hidden. The shell lists one tab, so the driver gives the window the layout."""
     app = App(tempfile.mkdtemp(prefix="pb-profile-"))
-    # Standard starts with no tab: the driver opens the two, as a page opens one.
+    # The driver opens the two, as a page opens one, beside the window's new tab.
     first = open_in(app, "", PAGES)
     second = open_in(app, "", PAGES + "?second")
-    app.wait(f"{ROWS}===2")
+    app.wait(f"{ROWS}===3")
     deadline = time.time() + 10
     while [v["tab"] for v in json.loads(app.cmd("visible"))] != [second] and time.time() < deadline:
         time.sleep(0.05)
@@ -1377,15 +1380,14 @@ def visible_tabs_checks():
 
 def window_checks():
     """Several windows: Cmd+N makes a second window with its own shell, a little down and
-    right of the first, with no tab on Standard, which takes New Tab, and its command box; a
-    command acts on the window in front; a second
-    start's URL opens in the window used last; closing a window's last tab leaves it open
-    with no page, Close Window closes it, and closing the last window quits. The driver
+    right of the first, on a new tab with Standard's command box; a command acts on the
+    window in front; a second start's URL opens in the window used last; closing a window's
+    last tab closes it, and closing the last window quits. The driver
     makes a window the key window, as a click on it would on a real desktop."""
     profile = tempfile.mkdtemp(prefix="pb-profile-")
     app = App(profile)
     windows = lambda: json.loads(app.cmd("windows"))
-    # Standard starts with no tab: the first window's is made from its command box.
+    # The first window starts on a new tab, which loads what its command box takes.
     tab = from_box(app, PAGES)
     first = windows()[0]
     app.cmd("key", "cmd+n")
@@ -1405,13 +1407,13 @@ def window_checks():
 
     app.cmd("window", 2)
     app.wait("!!document.querySelector('input')", 30)
-    check("the second window has a shell of its own, with no tab and its command box focused", holds(app, f"{ROWS}===0&&{VALUE}===''&&{BOX_FOCUSED}"))
-    check("each window shows its own tabs, the second none", [w["tabs"] for w in windows()] == [[tab], []], windows())
+    check("the second window has a shell of its own, on a new tab with its command box focused", holds(app, f"{ROWS}===1&&{VALUE}===''&&{BOX_FOCUSED}"))
+    check("each window shows its own tabs, the second no page, on its new tab", [w["tabs"] for w in windows()] == [[tab], []], windows())
 
     # A command acts on the window in front: New Tab there, and an address in its box.
     new_tab(app, PAGES + "second")
     app.cmd("window", 1)
-    check("Cmd+T in the second window added a tab there, not in the first", app.js(f"{ROWS}") == 1)
+    check("Cmd+T in the second window went to its new tab, the first keeping its one", app.js(f"{ROWS}") == 1)
 
     # The first window is the one used last now: a second start's URL opens there.
     started = subprocess.run([BIN, f"--user-data-dir={profile}", PAGES + "clicks"], timeout=60, capture_output=True)
@@ -1421,19 +1423,12 @@ def window_checks():
     app.cmd("window", 2)
     check("and not in the other window", app.js(f"{ROWS}") == 1)
 
-    # Closing the second window's last tab leaves it open, showing no page; Close Window
-    # closes it, and the app goes on.
+    # Closing the second window's last tab closes it, and the app goes on.
     app.cmd("key", "cmd+w")
-    app.wait(f"{ROWS}===0")
-    deadline = time.time() + 10
-    while windows()[1]["tabs"] and time.time() < deadline:
-        time.sleep(0.05)
-    check("closing a window's last tab leaves it open, showing no page", [w["id"] for w in windows()] == [1, 2] and windows()[1]["tabs"] == [], windows())
-    app.cmd("key", "cmd+shift+w")
     deadline = time.time() + 10
     while len(windows()) > 1 and time.time() < deadline:
         time.sleep(0.05)
-    check("Close Window closes it", [w["id"] for w in windows()] == [1], windows())
+    check("closing a window's last tab closes it", [w["id"] for w in windows()] == [1], windows())
     app.cmd("window", 1)
     check("the other window goes on with its tabs", app.js(f"{ROWS}") == 2)
 
@@ -1447,18 +1442,13 @@ def window_checks():
     App.running.remove(app)
 
 
-def empty_checks():
-    """A window may have no tabs: closing its only tab leaves it open, showing no page, with
-    Standard's command box where the page was, which has the keyboard. Close Tab, Cmd+W,
-    then closes the window, which ends the app. Standard starts with no tab, so the one
-    closed here is made from the box first."""
+def last_tab_checks():
+    """A window always has a tab: it opens on a new tab, which loads nothing, with Standard's
+    command box where the page goes; an address typed in the field loads in it. Closing a
+    window's last tab closes it, which for the last window ends the app."""
     app = App(tempfile.mkdtemp(prefix="pb-profile-"))
-    windows = lambda: json.loads(app.cmd("windows"))
-    # New Tab in a window with no tab keeps the box, which is there already; an address
-    # typed in the field instead opens a tab whose page shows, and the box goes.
+    # An address typed in the field loads in the new tab, whose page shows, and the box goes.
     holds(app, BOX_FOCUSED, 10)
-    app.cmd("key", "cmd+t")
-    holds(app, BOX_FOCUSED, 5)
     focus_bar(app)
     app.cmd("type", PAGES)
     app.wait(f"{VALUE}==={json.dumps(PAGES)}")
@@ -1466,38 +1456,15 @@ def empty_checks():
     deadline = time.time() + 10
     while not (json.loads(app.cmd("visible")) and not app.js(f"!!{BOX}")) and time.time() < deadline:
         time.sleep(0.05)
-    check("an address typed in the field of a window with no tab opens it, and the box goes",
-          bool(json.loads(app.cmd("visible"))) and not app.js(f"!!{BOX}"), (app.cmd("visible"), app.js(f"!!{BOX}")))
+    check("an address typed in the field of the new tab loads it there, and the box goes",
+          bool(json.loads(app.cmd("visible"))) and not app.js(f"!!{BOX}") and app.js(ROWS) == 1, (app.cmd("visible"), app.js(f"!!{BOX}"), app.js(ROWS)))
     print(app.cmd("capture", os.path.join(OUT, "empty-field-opens.png")), flush=True)
-    app.cmd("key", "cmd+w")
-    app.wait(f"{ROWS}===0", 10)
-    from_box(app, PAGES)
-    x, y, w, h = json.loads(app.cmd("visible"))[0]["frame"]
-    app.cmd("key", "cmd+w")
-    app.wait(f"{ROWS}===0", 10)
-    deadline = time.time() + 10
-    while windows()[0]["tabs"] and time.time() < deadline:
-        time.sleep(0.05)
-    check("closing the only tab leaves the window open, showing no page",
-          [(v["id"], v["tabs"]) for v in windows()] == [(1, [])] and json.loads(app.cmd("visible")) == [], (windows(), app.cmd("visible")))
-    # The title and the box follow Standard's redraw, a moment after Go's tab list empties.
-    deadline = time.time() + 2
-    while windows()[0]["title"] != "Project B" and time.time() < deadline:
-        time.sleep(0.05)
-    check("it takes the app's own title, as a new window has before its first tab", windows()[0]["title"] == "Project B", windows()[0]["title"])
-    deadline = time.time() + 2
-    while not (app.js(f"!!{BOX}") and app.cmd("hit", x + w / 2, y + h / 2) == "shell") and time.time() < deadline:
-        time.sleep(0.05)
-    check("the shell draws its command box where the page was, as its own",
-          app.js(f"!!{BOX}") and app.cmd("hit", x + w / 2, y + h / 2) == "shell", app.cmd("hit", x + w / 2, y + h / 2))
-    check("the command box has the keyboard", holds(app, BOX_FOCUSED))
-    print(app.cmd("capture", os.path.join(OUT, "empty-window.png")), flush=True)
     app.cmd("key", "cmd+w")
     try:
         code = app.proc.wait(timeout=20)
     except subprocess.TimeoutExpired:
         code = None
-    check("Cmd+W in it closes the window, which ends the app, cleanly", code == 0, code)
+    check("Cmd+W on the last tab closes the window, which ends the app, cleanly", code == 0, code)
     if code is None:
         app.close()
     else:
@@ -1512,9 +1479,9 @@ def move_checks():
     app = App(tempfile.mkdtemp(prefix="pb-profile-"))
     windows = lambda: json.loads(app.cmd("windows"))
     move = lambda tab, window: json.loads(app.cmd("projectb", "moveTab", json.dumps({"tab": tab, "window": window, "index": 0})))
-    # Standard starts with no tab and New Window makes none: the tabs here are typed in the
-    # address field of the empty window, opened by the driver, and made from the second
-    # window's command box.
+    # A window opens on a new tab: the first window's loads what is typed in its address
+    # field, the driver opens another, and the second window's new tab loads what its
+    # command box takes.
     visit(app, "data:text/html,<title>Kept</title><input id=f><script>n=0;setInterval(()=>n++,20)</script>")
     moved = tabs_of(app)["active"]
     app.js("document.getElementById('f').value='typed';window.kept=42", page=True)
@@ -1603,8 +1570,8 @@ def profile_checks():
     check("the list records when the profile was used last", first[0].get("lastUsed", "") != "", first)
     started = subprocess.run([BIN, f"--root={root}", "--profile=default", PAGES + "clicks"], timeout=60, capture_output=True)
     check("a start naming the running profile by its id hands over and exits", started.returncode == 0, started.returncode)
-    # Standard starts with no tab, so the URL's is the only one.
-    app.wait(f"{ROWS}===1&&{VALUE}==={json.dumps(PAGES + 'clicks')}", 20)
+    # The URL's tab opens beside the new tab the window started on.
+    app.wait(f"{ROWS}===2&&{VALUE}==={json.dumps(PAGES + 'clicks')}", 20)
     check("and its URL opens in the running copy", True)
     app.close()
     started = subprocess.run([BIN, f"--root={root}", "--profile=nobody"], timeout=60, capture_output=True, text=True)
@@ -1914,7 +1881,7 @@ def workspace_checks():
     check("a second tab of a workspace sees its cookie and local storage", stored(app, second) == ["w=a", "a"], stored(app, second))
     b = open_in(app, "b", STORE)
     check("a tab of another workspace sees neither", stored(app, b) == ["", None], stored(app, b))
-    # Standard starts with no tab, so Main's is opened here, in the profile's own storage.
+    # Main's is opened here, in the profile's own storage.
     main = open_in(app, "", STORE)
     check("nor does a tab of Main", stored(app, main) == ["", None], stored(app, main))
     check("an IndexedDB database made in a workspace is seen there, and not in another or Main",
@@ -2015,12 +1982,12 @@ def workspace_menu_checks():
     app.cmd("key", "cmd+w")
     ids = {w["name"]: w["id"] for w in json.load(open(os.path.join(profile, "workspaces.json")))["workspaces"]}
 
-    # Standard starts with no tab; New Tab in Workspace, which no shell takes, makes one.
+    # New Tab in Workspace, which no shell takes, opens one beside the window's new tab.
     check("choosing one works", app.cmd("choosemenu", "Tab", "New Tab in Workspace > Shopping") == "ok")
-    app.wait(f"{ROWS}===1")
+    app.wait(f"{ROWS}===2")
     tabs = tabs_of(app)
     shopping = next(t for t in tabs["tabs"] if t["id"] == tabs["active"])
-    check("it opens a new tab, the active one, which Go has in that workspace", len(tabs["tabs"]) == 1 and shopping.get("workspace") == ids["Shopping"], tabs)
+    check("it opens a new tab, the active one, which Go has in that workspace", len(tabs["tabs"]) == 2 and shopping.get("workspace") == ids["Shopping"], tabs)
     # The new tab loads nothing, so there is no page to script: the address goes in as a
     # person's does, typed in the box Standard shows on it, and the tab, in its workspace,
     # takes its first page.
@@ -2029,7 +1996,7 @@ def workspace_menu_checks():
     app.wait(f"{BOX}.value==={json.dumps(STORE)}")
     app.cmd("key", "enter")
     deadline = time.time() + 30
-    while not (tab := tabs_of(app)["tabs"][0])["url"].startswith(STORE) or tab["loading"]:
+    while not (tab := next(t for t in tabs_of(app)["tabs"] if t["id"] == shopping["id"]))["url"].startswith(STORE) or tab["loading"]:
         if time.time() > deadline:
             raise TimeoutError(f"the workspace's new tab never loaded {STORE}: {tab}")
         time.sleep(0.05)
@@ -2091,7 +2058,7 @@ def workspace_delete_checks():
     opened in its partition again finds no cookie and no local storage, and the other
     workspaces keep theirs. Deleting Main erases the profile's own site data. With Main
     deleted, a tab made over DevTools is in the first workspace. A window whose tabs were
-    all in the workspace deleted stays open with none. That an extension still works with
+    all in the workspace deleted gets a new tab and stays open. That an extension still works with
     Main deleted is checked in tools/drive_extensions.py."""
     work, shop, spare = "0a1b2c3d", "4e5f6a7b", "8c9d0e1f"
     profile = tempfile.mkdtemp(prefix="pb-profile-")
@@ -2103,8 +2070,8 @@ def workspace_delete_checks():
     def keep(tab, value):
         app.js(f"document.cookie='w={value}; max-age=3600';localStorage.setItem('w','{value}')", tab=tab)
 
-    # Standard starts with no tab, so Main's is opened here.
-    main = open_in(app, "", STORE)
+    # Main's loads in the new tab the window starts on.
+    main = from_box(app, STORE)
     keep(main, "main")
     in_work = [open_in(app, work, STORE), open_in(app, work, STORE)]
     keep(in_work[0], "work")
@@ -2138,13 +2105,15 @@ def workspace_delete_checks():
     deadline = time.time() + 10
     while len(windows()) < 2 and time.time() < deadline:
         time.sleep(0.05)
+    # Deleted from the first window's settings, so the settings tab isn't the second's.
+    app.cmd("window", 1)
+    delete_workspace(app, shop, close=False)
     app.cmd("window", 2)
-    delete_workspace(app, shop)
     deadline = time.time() + 10
-    while windows()[1]["tabs"] and time.time() < deadline:
+    while in_shop in [t["id"] for t in tabs_of(app)["tabs"]] and time.time() < deadline:
         time.sleep(0.05)
-    check("a window whose tabs were all in the workspace deleted stays open, with none",
-          [w["id"] for w in windows()] == [1, 2] and windows()[1]["tabs"] == [] and app.js(ROWS) == 0, windows())
+    check("a window whose tabs were all in the workspace deleted gets a new tab, and stays open",
+          2 in [w["id"] for w in windows()] and app.js(ROWS) == 1 and holds(app, f"!!{BOX}", 5), (windows(), app.js(ROWS)))
     # Both windows go at once, as Cmd+Q does.
     app.cmd("key", "cmd+q")
     check("Cmd+Q ends the app with both windows, cleanly", app.proc.wait(timeout=20) == 0)
@@ -2234,17 +2203,16 @@ def shell_checks():
         return App(profile)
 
     send = lambda app, msg: app.js(f"(chrome.send('shell',[{json.dumps(json.dumps(msg))}]),1)")
-    # A shell that takes New Tab, as Standard does, starts with no tab; every other with one.
-    takes_new_tab = {s["id"]: "tab.new" in s.get("takes", []) for s in registry}
+    # Every shell starts on a new tab.
     for shell in (s["id"] for s in registry):
         # App waits for app.ready, which the shell's shown marks.
         app = on(shell)
         check(f"{shell}: a profile whose shell it is starts on it and marks app.ready",
-              app.js("location.href") == f"chrome://shell/{shell}/" and app.js(ROWS) == (0 if takes_new_tab[shell] else 1), (app.js("location.href"), app.js(ROWS)))
+              app.js("location.href") == f"chrome://shell/{shell}/" and app.js(ROWS) == 1, (app.js("location.href"), app.js(ROWS)))
         app.close()
 
-        # navigate opens a tab in a window with no tabs, and newTab, the shell's own message,
-        # makes one whichever shell is on.
+        # navigate loads in the window's new tab, and newTab, the shell's own message, makes a
+        # tab whichever shell is on.
         app = on(next(s["id"] for s in registry if s["id"] != shell))
         send(app, {"t": "navigate", "text": PAGES + "first"})
         app.wait(f"{ROWS}===1", 30)
@@ -2436,8 +2404,8 @@ def internal_checks():
             time.sleep(0.1)
 
     # 1. A tab of ours, beside the active tab, opened from it, one a window. The window
-    # starts with no tabs, as the standard shell takes New Tab.
-    first = open_in(app, "", PAGES + "links")
+    # starts on a new tab, which the first page loads in.
+    first = from_box(app, PAGES + "links")
     in_work = open_in(app, work, PAGES + "store")
     click(app, f'[role=tab][data-tab="{first}"]')
     app.wait(f"document.querySelector('[role=tab][data-tab=\"{first}\"]').getAttribute('aria-selected')==='true'")
@@ -2479,7 +2447,7 @@ def internal_checks():
     t = ours()
     check("a title and an icon its page sets are the tab's", bool(t) and t[0]["title"] == "Settings › Test" and t[0].get("favicon", "").startswith("data:image/png"), t)
     app.cmd("evalsettings", "(document.title='Settings',document.getElementById('test-icon').remove(),1)")
-    # New Tab opens Standard's command box over it, and an address there makes the tab.
+    # New Tab goes to a new tab, with Standard's command box, and an address there loads in it.
     new_tab(app, PAGES + "links")
     made = tabs_of(app)
     check("New Tab from it opens in the workspace it was opened from", next(t for t in made["tabs"] if t["id"] == made["active"]).get("workspace") == work, made)
@@ -2631,5 +2599,5 @@ def links_checks():
 
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
-    parts = {"driver": [driver_checks], "browsing": [browsing_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [empty_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks]}
-    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, settings_checks, internal_checks, visible_tabs_checks, window_checks, empty_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, glide_checks, web_api_checks, links_checks, quit_checks]))
+    parts = {"driver": [driver_checks], "browsing": [browsing_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks]}
+    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, settings_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, glide_checks, web_api_checks, links_checks, quit_checks]))

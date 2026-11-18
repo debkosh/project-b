@@ -37,9 +37,9 @@ BAR = (250, 251, 251)  # --bar, the frame mixed 0.87 toward white
 WHITE = (255, 255, 255)  # --surface
 ICON = (74, 79, 88)  # --icon, the toolbar's buttons: None's ink, #4a4f58
 # Standard's command box fills the page area with the bar's colour mixed 60% into --surface
-# (shell/src/apps/shell/standard/CommandBox.vue). Standard takes New Tab: the app starts and
-# New Window opens with no tab and this box in the page area, and Cmd+T opens it over the
-# page and makes no tab; an address typed in it with Enter makes the tab.
+# (shell/src/apps/shell/standard/CommandBox.vue), on a new tab. A window opens on a new tab,
+# with this box in the page area; Standard takes New Tab: Cmd+T goes to the window's new tab,
+# opening one when there is none, and an address typed in the box with Enter loads there.
 PAGE_LOAD = 3.0
 ANIMATION = 2.0
 MOVE = (60, 40)
@@ -368,12 +368,11 @@ def layout():
         found["bounds"] = json.loads(bounds)
         return found
 
-    # Standard starts with no tab and its New Tab makes none: the driver opens the two, as a
-    # page opens one.
-    # Real pages: Standard shows no page for a blank tab, and the bounds speak of the shown page.
+    # The driver opens the two beside the window's new tab, as a page opens one.
+    # Real pages: Standard shows no page for a new tab, and the bounds speak of the shown page.
     ask("opentab", "", ALPHA)
     ask("opentab", "", BRAVO)
-    until("document.querySelectorAll('[role=tab]').length===2")
+    until("document.querySelectorAll('[role=tab]').length===3")
     side = measure()
     js("document.querySelector('button.layout').click()")
     until("!!document.querySelector('.strip')")
@@ -626,8 +625,8 @@ def window_menu():
 
 
 def go_to(url):
-    """Cmd+L in the window in front, then the address. In a window with no tabs, as Standard's
-    are at the start, the address opens one."""
+    """Cmd+L in the window in front, then the address, which a new tab, as a window starts on,
+    loads in place."""
     desk.key("cmd+l")
     time.sleep(0.4)
     desk.type(url)
@@ -635,8 +634,8 @@ def go_to(url):
 
 
 def new_tab(url):
-    """New Tab the user's way on Standard: Cmd+T opens the command box, focused, and url typed
-    there with Enter opens in a new tab."""
+    """New Tab the user's way on Standard: Cmd+T goes to a new tab with the command box,
+    focused, and url typed there with Enter loads in it."""
     desk.key("cmd+t")
     time.sleep(0.4)
     desk.type(url)
@@ -646,7 +645,7 @@ def new_tab(url):
 def window_checks():
     """Several windows, with the real keyboard and mouse: Cmd+N, keys and commands going to the
     window clicked, a second start's URL in the window used last, the Window menu's list and
-    Cmd+`, Cmd+W twice on a window's last tab closing it, and the app quitting with its last window. Which window shows what is read from
+    Cmd+`, Cmd+W on a window's last tab closing it, and the app quitting with its last window. Which window shows what is read from
     the windows' titles, each its shown tab's."""
     guest("/usr/bin/killall", "project_b")
     fresh_profile()
@@ -695,14 +694,12 @@ def window_checks():
     now = until(titles, lambda t: t[:1] == ["Bravo"])
     check("Cmd+` brings the other window to the front", now[:1] == ["Bravo"], str(now))
 
-    # The first Cmd+W closes the window's last tab and leaves it with none; the second, Close
-    # Tab in a window with no tabs, closes the window.
+    # Cmd+W on a window's last tab closes the window.
     desk.click(*in_second)
     until(titles, lambda t: t[:1] == ["Bravo"])
     desk.key("cmd+w")
-    desk.key("cmd+w")
     now = until(windows, lambda w: len(w) == 1)
-    check("Cmd+W twice on a window's last tab closes the window", len(now) == 1 and until(titles, lambda t: t == ["Charlie"]) == ["Charlie"],
+    check("Cmd+W on a window's last tab closes the window", len(now) == 1 and until(titles, lambda t: t == ["Charlie"]) == ["Charlie"],
           f"{now} {titles()}")
     desk.key("cmd+shift+w")
     gone = until(lambda: guest("/usr/bin/pgrep", "-x", "project_b"), lambda p: p == "", 10) == ""
@@ -748,9 +745,9 @@ ALPHA_RGB = (43, 108, 176)  # alpha.html's colour.
 
 def move_checks():
     """A tab moved to the other window arrives there still showing its page. The move is
-    Go's, asked for through the driver's own DevTools command, ProjectB.moveTab. On Standard
-    the app starts with no tab and New Window makes none: Alpha's is typed in the empty
-    window's address field, and Bravo's in the command box Cmd+T opens."""
+    Go's, asked for through the driver's own DevTools command, ProjectB.moveTab. Alpha's is
+    typed in the address field of the new tab the app starts on, and Bravo's in the command
+    box of the new tab Cmd+T opens."""
     guest("/usr/bin/killall", "project_b")
     ask = driven(MOVED, f"{MOVED}/profile")
     window_or_stop("the app starts with one window")
@@ -783,7 +780,7 @@ def state_checks():
     guest("/usr/bin/killall", "project_b")
     ask = driven(STATE, f"{STATE}/profile")
     window_or_stop("the app starts with one window")
-    # Standard starts with no tab: the driver opens the one Cmd+M hides.
+    # The driver opens the one Cmd+M hides, beside the window's new tab.
     tab = ask("opentab", "", ALPHA)
     windows_of_go = lambda: json.loads(ask("projectb", "getWindows", "{}"))["result"]["windows"]
     ask("projectb", "setWindowBounds", json.dumps({"window": 1, "bounds": {"x": 200, "y": 150, "w": 900, "h": 600}}))
@@ -918,7 +915,7 @@ def workspace_checks():
     launch()
     time.sleep(1.5)
     win = window_or_stop("the app starts on its first profile")
-    # Standard starts with no tab: the one the checks look at is typed in the address field.
+    # The app starts on a new tab: the page the checks look at is typed in its address field.
     go_to(ALPHA)
     until(titles, lambda t: t == ["Alpha"])
     blue = near(crop(desk.image(), win[0], win[1] + 40, 220, 200), MAIN_DOT, 24).sum()
@@ -974,8 +971,9 @@ def workspace_delete_checks():
 
     win = window_or_stop("the app starts with its driver")
     tabs = lambda: js("document.querySelectorAll('[role=tab]').length")
-    # Standard starts with no tab: the driver opens Main's.
-    ask("opentab", "", ALPHA)
+    # Main's loads in the new tab the window starts on.
+    go_to(ALPHA)
+    until(titles, lambda t: t == ["Alpha"])
     until(tabs, lambda n: n == 1)
     new_tab_in("Work")
     new_tab_in("Work")
@@ -1237,7 +1235,7 @@ def region_checks():
     PX, PY, W, H = home
     TOP = middle(V["field"])[1]
     NEUTRAL = (PX + W / 2, PY + H / 2)
-    # Standard starts with no tab, so no page: the address typed opens one.
+    # The app starts on a new tab, with no page: the address typed loads one there.
     go_to(ALPHA)
     until(titles, lambda t: t == ["Alpha"])
     time.sleep(1)
@@ -1607,15 +1605,14 @@ def page_area():
     return crop(desk.image(), PX + PAGE_V[0], PY + PAGE_V[1], PAGE_V[2], PAGE_V[3])
 
 
-# Standard takes New Tab: Cmd+T opens the command box over the page and makes no tab, Escape
-# goes back to the page, and an address typed in the box with Enter makes the tab. The box
-# lays a scrim over the whole page area, so how much of it differs from the page before is
-# how much of it the box covers.
+# Standard takes New Tab: Cmd+T goes to a new tab, with the command box in the page area,
+# and an address typed in the box with Enter loads there. The box fills the page area, so
+# how much of it differs from the page before is how much of it the box covers.
 under = page_area()
 
 
 def boxed():
-    """How much of the page area the command box's scrim has changed."""
+    """How much of the page area the command box has changed."""
     return changed(under, page_area())
 
 
@@ -1629,16 +1626,13 @@ opened = boxed() > 0.5
 shot("command-box")
 check("Cmd+T opens the command box within 0.5 s", opened and took <= 0.5,
       f"the box showed after {took:.2f} s" if opened else "no box after 5 s")
-check("and makes no tab", changed(one, side()) <= 0.005, f"the sidebar changed {changed(one, side()):.3f}")
-desk.key("escape")
-gone = until(boxed, lambda b: b < 0.2, 5) < 0.2
-check("Escape closes the box, back to the page, with no tab made", gone and changed(one, side()) <= 0.005,
-      f"box colour in the page area {boxed():.2f}, the sidebar changed {changed(one, side()):.3f}")
-if not gone:
-    desk.key("escape")
-new_tab(CHARLIE)
 two = until(side, lambda n: changed(one, n) > 0.005, 5)
-check("an address typed in the box with Enter adds a tab", changed(one, two) > 0.005, f"the sidebar changed {changed(one, two):.3f}")
+check("on a new tab, which the sidebar lists", changed(one, two) > 0.005, f"the sidebar changed {changed(one, two):.3f}")
+time.sleep(0.4)
+desk.type(CHARLIE)
+desk.key("return")
+now = until(titles, lambda t: t[:1] == ["Charlie"], 10)
+check("an address typed in the box with Enter loads in the new tab", now[:1] == ["Charlie"], str(now))
 time.sleep(0.5)
 two = side()
 shot("two-tabs")
