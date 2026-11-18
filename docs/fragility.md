@@ -131,7 +131,7 @@ The seams:
   finds none there and asks nothing.
 - **Seam:** engine and adapter: an answer Android gives the activity, which the embedder has
   to hand on to Chromium.
-- **Fix:** 231a57ce: the activity hands every permission answer to the window, as it hands
+- **Fix:** 27ebb318: the activity hands every permission answer to the window, as it hands
   every activity result.
 - **Guard:** the Android driver's file_inputs part, on Android 10 and on 17 (f508ae91).
 
@@ -155,11 +155,11 @@ The seams:
 - **Cause:** the spark runs in the page's own world, so the page's rule for its HTML holds
   for the spark too.
 - **Seam:** engine and adapter: the page's rules applied to what we add to the page.
-- **Fix:** 01243964: where a spark runs, the response's policies lose
+- **Fix:** 52562760: where a spark runs, the response's policies lose
   `require-trusted-types-for` and `trusted-types` before the page commits, as their style
   rules give way.
 - **Guard:** drive_first_app's sparks part: a spark's innerHTML works on such a page
-  (9921b2ed).
+  (12f8bc42).
 
 ## The emulators' memory, 2026-11-18
 
