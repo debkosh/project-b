@@ -362,6 +362,25 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
     await updateStatus.textContent());
   await settle(page);
   await page.screenshot({ path: shot('settings-update-stuck') });
+  // At a phone's width the line wraps between the version and the download, never inside the
+  // download: Retry and Cancel stay on the line of what they act on, and the progress line
+  // stays under those words. On a phone Cancel fell to a line of its own, with the progress
+  // line under it.
+  // The line as wide as a 360-point phone's page leaves it.
+  await status.evaluate((s) => { s.style.width = '328px'; });
+  const narrow = await status.evaluate((s) => {
+    const box = (e) => e.getBoundingClientRect();
+    const words = box(s.querySelector('[role="status"]'));
+    const bar = box(s.querySelector('[role="progressbar"]'));
+    const tops = [...s.querySelectorAll('button')].filter((b) => /^(Retry|Cancel)$/.test(b.textContent.trim())).map((b) => Math.round(box(b).top + box(b).height / 2));
+    const mid = Math.round(words.top + words.height / 2);
+    return { mid, tops, inside: bar.left >= words.left - 1 && bar.right <= words.right + 1 && bar.top >= words.bottom - 1 && bar.top <= words.bottom + 6 };
+  });
+  check('at a phone\'s width, Retry and Cancel stay on the download\'s line, and its progress line under its words',
+    narrow.tops.length === 2 && narrow.tops.every((t) => Math.abs(t - narrow.mid) <= 3) && narrow.inside, JSON.stringify(narrow));
+  await settle(page);
+  await status.screenshot({ path: shot('settings-update-narrow') });
+  await status.evaluate((s) => { s.style.width = ''; });
   await status.getByRole('button', { name: 'Retry' }).click();
   check('Retry fetches it again', await until(() => assets === 2), String(assets));
   await until(async () => /Downloading 0\.3\.0/.test(await updateStatus.textContent()));

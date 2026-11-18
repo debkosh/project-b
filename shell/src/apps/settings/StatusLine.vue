@@ -43,31 +43,34 @@ const busy = computed(() => state.update.check === 'checking');
         <button type="button" class="text-button" @click="send({ t: 'makeDefault' })">Make default browser</button>
       </template>
     </span>
+    <!-- The version, then what the update manager is doing with its buttons: two pieces that
+         wrap apart on a narrow page, so the buttons stay on the line of what they act on. -->
     <span class="part version-part">
-      Version <span class="version">{{ state.running || 'Development build' }}</span>
-      <span class="update" :class="{ failed: update.failed }" role="status" :title="update.detail">{{ update.text }}</span>
-      <!-- A ready release is applied from here: a relaunch on a desktop, Android's installer
-           on a phone. Both start with the same message to Go. -->
-      <button v-if="state.update.phase === 'ready'" type="button" class="text-button" @click="send({ t: 'relaunch' })">
-        {{ phone ? 'Install update' : 'Relaunch' }}
-      </button>
-      <template v-else-if="state.update.phase === 'downloading'">
-        <button type="button" class="text-button quiet" @click="send({ t: 'retryUpdate' })">Retry</button>
-        <button type="button" class="text-button quiet" @click="send({ t: 'cancelUpdate' })">Cancel</button>
-      </template>
-      <button v-else type="button" class="text-button quiet" :disabled="busy" @click="send({ t: 'checkUpdate' })">
-        {{ update.failed ? 'Try again' : 'Check for updates' }}
-      </button>
-      <span
-        v-if="state.update.phase === 'downloading'"
-        class="progress"
-        role="progressbar"
-        aria-label="Update download"
-        :aria-valuenow="percent"
-        aria-valuemin="0"
-        aria-valuemax="100"
-        :style="{ width: percent + '%' }"
-      ></span>
+      <span>Version <span class="version">{{ state.running || 'Development build' }}</span></span>
+      <span class="update-part">
+        <span class="update" :class="{ failed: update.failed }" role="status" :title="update.detail">{{ update.text }}<span
+            v-if="state.update.phase === 'downloading'"
+            class="progress"
+            role="progressbar"
+            aria-label="Update download"
+            :aria-valuenow="percent"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            :style="{ width: percent + '%' }"
+          ></span></span>
+        <!-- A ready release is applied from here: a relaunch on a desktop, Android's installer
+             on a phone. Both start with the same message to Go. -->
+        <button v-if="state.update.phase === 'ready'" type="button" class="text-button" @click="send({ t: 'relaunch' })">
+          {{ phone ? 'Install update' : 'Relaunch' }}
+        </button>
+        <template v-else-if="state.update.phase === 'downloading'">
+          <button type="button" class="text-button quiet" @click="send({ t: 'retryUpdate' })">Retry</button>
+          <button type="button" class="text-button quiet" @click="send({ t: 'cancelUpdate' })">Cancel</button>
+        </template>
+        <button v-else type="button" class="text-button quiet" :disabled="busy" @click="send({ t: 'checkUpdate' })">
+          {{ update.failed ? 'Try again' : 'Check for updates' }}
+        </button>
+      </span>
     </span>
   </section>
 </template>
@@ -95,12 +98,20 @@ const busy = computed(() => state.update.check === 'checking');
   font-weight: 500;
 }
 
-.version-part {
-  position: relative;
+.update-part {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
 }
 
 .version {
   color: var(--text);
+}
+
+.update {
+  position: relative;
+  white-space: nowrap;
 }
 
 .update:empty {
@@ -111,8 +122,9 @@ const busy = computed(() => state.update.check === 'checking');
   color: var(--danger);
 }
 
-/* The download's progress: a line under the version, in the accent, as the shell's bubble
-   has. */
+/* The download's progress: a line under what the update manager says, in the accent, as the
+   shell's bubble has. It is measured against those words alone, which never wrap, so it stays
+   under them however the line wraps. */
 .progress {
   position: absolute;
   left: 0;

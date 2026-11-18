@@ -16,8 +16,26 @@ The seams:
   far: the menu under the crash page.
 - **Tooling and test machines.** Shared folders and long-lived emulators. Two so far: the
   mixed package, the emulators' memory.
+- **Narrow widths.** What sits next to something, or under it, has to be measured against
+  a piece that doesn't wrap. One so far: the update line on a phone.
 - **A page's own navigations**, which Go rules on, against Chromium's way of starting,
   committing and aborting a load. One so far: Stay on this site.
+
+## The update line on a phone, 2026-11-18
+
+- **Seen:** on a phone, while an update downloaded, Settings' version line put Cancel on a
+  line of its own, with a short stray underline under it.
+- **Cause:** the version, the update's words, Retry and Cancel were one box that wrapped
+  anywhere, so Cancel fell to the next line alone. The underline was the download's progress
+  line: it was pinned to the bottom left of that whole box, so once the box took two lines it
+  sat under Cancel instead of under the words.
+- **Seam:** narrow widths.
+- **Fix:** on dd-update-line-narrow: the line breaks only between the version and the
+  update, the update's words never wrap, and the progress line is measured against those
+  words alone.
+- **Guard:** the settings page's test narrows the line to a phone's width while an update
+  downloads, and checks Retry and Cancel sit on the words' line with the progress line under
+  the words (`shell/e2e/settings.cjs`, both layouts).
 
 ## The emulators' memory, 2026-11-18
 

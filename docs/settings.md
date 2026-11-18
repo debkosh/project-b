@@ -61,7 +61,10 @@ sheet); the answer comes back as `DefaultBrowserChanged`, which Go sends to the 
 and the settings page alike, `isDefault`. The snapshot reads `IsDefaultBrowser` as the page
 opens (`core/app/default_browser_settings.go`). The version has what the update manager is
 doing beside it, Up to date, Downloading or Relaunch to update, with Check for updates, or
-Relaunch (Install update on a phone) once a release is ready. Automatic updates is a row of
+Relaunch (Install update on a phone) once a release is ready; while a release downloads,
+Retry and Cancel, with its progress as a line under the words. On a narrow page the line
+breaks between the version and the update, never inside the update, so its buttons stay
+beside what they act on and the progress line stays under its words. Automatic updates is a row of
 its own, under Advanced, or About Project B in the sections layout. The page shows the line
 over every group; the sections layout over every section on a desktop, and over the list of
 sections on a phone.
@@ -163,8 +166,9 @@ profile whose flag names it; it goes to each part as a person does, by the rail,
 sections and the rows that open the lists. Each run also switches the flag to the other layout
 and back, in the same page; checks the status line (not the default browser, Make default
 browser, then the default; the version, and Check for updates reaching the release server
-once), Block ads, Ask where to save, Save to with a folder chosen and Use Downloads, Clear
-browsing data's dialog, Sites with what two
+once, and a download's Retry and Cancel on its own line at a phone's width), Block ads, Ask
+where to save, Save to with a folder chosen and Use Downloads, Clear browsing data's dialog,
+Sites with what two
 sites keep, a site's Clear data and a site's page with its Clear, and Clear cookies when
 the app quits with a site kept from its page; searches (rows found
 working in place, the counts, a section's name, nothing found, Escape, a list found); and walks
