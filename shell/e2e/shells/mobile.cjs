@@ -1118,6 +1118,58 @@ const H = 915;
   check('it opens on Tabs again', await until(async () => (await views.getByRole('radio', { name: /^Tabs/ }).getAttribute('aria-checked')) === 'true' && (await cards.filter({ visible: true }).count()) > 0));
   await page.keyboard.press('Escape');
 
+  // The address (bookmarksCommandBox, on by default): with nothing typed, the top folder's
+  // folders as chips, All first, and the chosen one's bookmarks as tiles, nearest the field:
+  // under it with the bar on top, over it with the bar at the foot. Typing replaces them.
+  const addressMarks = ui.getByRole('region', { name: 'Bookmarks' }).filter({ has: ui.getByRole('radiogroup', { name: 'Folder' }) });
+  const folderChips = addressMarks.getByRole('radio');
+  const addressTiles = () => addressMarks.locator('.tile .name').allInnerTexts();
+  const recipeTitles = recipeMarks.map(([title]) => title).reverse();
+  await fire('menu', 'tab.new');
+  await until(newTabPage);
+  await field.tap();
+  check('the address tapped shows the folders as chips, All first and chosen', await until(() => addressMarks.isVisible()) &&
+    JSON.stringify(await folderChips.allInnerTexts()) === JSON.stringify(['All', 'Reading', 'Recipes', 'Travel']) && (await folderChips.first().getAttribute('aria-checked')) === 'true', JSON.stringify(await folderChips.allInnerTexts()));
+  check('All: every bookmark, as the folders hold them', JSON.stringify(await addressTiles()) === JSON.stringify(['News', 'Science', 'Bread', ...recipeTitles, 'Maps', 'Hotels', 'Bank', 'Shop']), JSON.stringify(await addressTiles()));
+  const topField = await field.boundingBox();
+  check('with the bar on top, they lie under the field', (await addressMarks.boundingBox()).y >= topField.y + topField.height, JSON.stringify(await addressMarks.boundingBox()));
+  await folderChips.filter({ hasText: 'Recipes' }).tap();
+  check('a folder\'s chip shows its bookmarks, in it and in its folders', await until(async () => JSON.stringify(await addressTiles()) === JSON.stringify(['Bread', ...recipeTitles])) && await inField(), JSON.stringify(await addressTiles()));
+  await shots('bookmarks-address-top');
+  await page.keyboard.type('example');
+  check('typing replaces them with the suggestions', await until(async () => (await addressMarks.count()) === 0 && (await suggestions.count()) >= 1));
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.press('Backspace');
+  check('emptying the field brings them back', await until(() => addressMarks.isVisible()));
+  const fromAddress = (await regions()).active;
+  await addressMarks.locator('.tile').filter({ hasText: 'Curry' }).tap();
+  check('a tap on one loads it in this tab, and the field lets go', await until(async () => (await regions()).active === fromAddress && (await active()).url === 'https://curry.example.com/' && !(await inField())));
+  await until(async () => !(await active()).loading);
+  // The shell was loaded again since the suggests were first watched.
+  await w.shell().evaluate(() => {
+    const send = window.chrome.send;
+    window.lastSuggest = null;
+    window.chrome.send = (channel, args) => {
+      const m = JSON.parse(args[0]);
+      if (m.t === 'suggest') window.lastSuggest = m;
+      return send.call(window.chrome, channel, args);
+    };
+  });
+  await setPref('addressBarPosition', 'bottom');
+  await until(async () => (await box('.toolbar')).bottom === H);
+  await field.tap();
+  check('on a page, the list for nothing typed asks for no bookmark rows, the bookmarks showing', await until(async () => JSON.stringify((await lastSuggest())?.kinds) === JSON.stringify(['tab', 'closed', 'history'])) && await until(() => addressMarks.isVisible()), JSON.stringify(await lastSuggest()));
+  const footField = await field.boundingBox();
+  const marksBox = await addressMarks.boundingBox();
+  check('with the bar at the foot, they lie over the field, the list over them', marksBox.y + marksBox.height <= footField.y && (await box('.suggestions').then((b) => !b || b.bottom <= marksBox.y + 1)), JSON.stringify({ marksBox, footField, list: await box('.suggestions') }));
+  await shots('bookmarks-address');
+  await page.keyboard.press('Escape');
+  await setPref('bookmarksCommandBox', false);
+  await field.tap();
+  check('with bookmarksCommandBox off, the address has none, and asks for bookmark rows again', await until(async () => JSON.stringify((await lastSuggest())?.kinds) === JSON.stringify(['tab', 'closed', 'history', 'bookmark'])) && (await addressMarks.count()) === 0);
+  await page.keyboard.press('Escape');
+  await setPref('bookmarksCommandBox', true);
+
   // A tab's picture is let go as the tab closes, so one on its way then fails to load, and
   // its card, gone or going, shows the favicon: not an error.
   const errors = [...w.errors];

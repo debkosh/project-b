@@ -907,7 +907,9 @@ address field, and a menu button at the far right, in our tones.
   (`queries.js`), so the bar's and the new tab page's answers never mix. Until Go's
   answer for the latest text comes, the list on screen is an earlier text's; it carries
   the text it answers as `data-answers`, which the shell's tests wait on before they press
-  a row.
+  a row. While `bookmarksCommandBox` is on and there are bookmarks, they show nearest the
+  field instead of the Bookmarks rows, which aren't asked for meanwhile
+  ([bookmark-folders.md](bookmark-folders.md#on-the-mobile-web-shell)).
 - **A download you can see.** A download that starts while the app is showing raises a
   small bar over the foot of the page, just above the toolbar, for about 4 seconds:
   "Downloading big.zip". When it ends while the bar or the app is showing, the bar says

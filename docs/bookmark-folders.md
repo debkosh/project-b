@@ -76,6 +76,15 @@ How Standard shows them (`shell/src/apps/shell/standard/`, `bookmarks.js` for wh
   holds, a tap going into one, then its bookmarks, each its letter, name and host. A tap on
   a bookmark opens it in a new tab, in the workspace the switcher shows, and closes the
   switcher. It opens on Tabs each time. Off, it has its tabs alone, as before.
+- **The address** (`Address.svelte`), tapped, shows the bookmarks while nothing is typed,
+  as the list for nothing typed shows: before a letter is typed and once the field is
+  emptied. The top folder's folders are chips, All first and chosen each time, and the
+  chosen one's bookmarks, in it and in its folders, are a row of tiles that scrolls
+  sideways; All is the top folder's, so every bookmark. They lie nearest the thumb: just
+  over the field with the bar at the foot, the list over them, and just under it with the
+  bar on top. A tap on a tile loads it in the tab. Meanwhile the list for nothing typed
+  asks for no `bookmark` rows, which would list the same pages; typing replaces the
+  bookmarks with the suggestions. With no bookmarks, or off, the address is as before.
 
 ## What the person sees
 

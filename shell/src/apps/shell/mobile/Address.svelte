@@ -1,6 +1,8 @@
 <script>
-  import { chooseSuggestion, focusPage, send, shell } from '@/sdk/svelte.svelte.js';
+  import { chooseSuggestion, focusPage, send, shell, state as app } from '@/sdk/svelte.svelte.js';
+  import { inFolder } from '@/ui/bookmarks.js';
   import Icon from './Icon.svelte';
+  import Mark from './Mark.svelte';
   import { popupsWord } from '@/sdk/sites.js';
   import { nextQuery } from './queries.js';
 
@@ -29,6 +31,20 @@
   // list carries as data-answers: until Go's answer comes, it is an earlier text's.
   let askedFor = '';
   let answers = $state('');
+  // Whether nothing is typed, as when the list for nothing typed shows.
+  let blank = $state(true);
+
+  // While bookmarksCommandBox is on, with nothing typed the bookmarks show nearest the field
+  // (docs/bookmark-folders.md, Where bookmarks show): the top folder's folders as chips, All
+  // first, and the chosen one's bookmarks as tiles, in it and in its folders. All is the top
+  // folder's, so every bookmark. They stand for the list's own bookmark rows, which aren't
+  // asked for meanwhile; typing replaces them with the suggestions.
+  const marksOn = $derived(!!app.prefs.bookmarksCommandBox && app.bookmarks.some((e) => e.kind === 'bookmark'));
+  let chosen = $state('');
+  const chips = $derived(inFolder(app.bookmarks, '').filter((e) => e.kind === 'folder'));
+  const under = (id) => inFolder(app.bookmarks, id).flatMap((e) => (e.kind === 'folder' ? under(e.id) : [e]));
+  const marks = $derived(marksOn ? under(chosen) : []);
+  const showMarks = $derived(editing && blank && marksOn);
 
   const host = $derived.by(() => {
     if (!tab.url) return '';
@@ -81,6 +97,7 @@
   function begin() {
     if (editing) return;
     editing = true;
+    chosen = '';
     text = tab.url;
     // After the value is in, so the whole of it is selected.
     queueMicrotask(() => input.select());
@@ -96,8 +113,9 @@
   // Go's list for nothing typed. Over a new tab, whose page already shows the sites and the
   // bookmarks, it is the open and closed tabs alone, so the two don't list the same rows.
   function askFirst() {
-    const kinds = tab.url ? ['tab', 'closed', 'history', 'bookmark'] : ['tab', 'closed'];
+    const kinds = tab.url ? ['tab', 'closed', 'history', ...(marksOn ? [] : ['bookmark'])] : ['tab', 'closed'];
     askedFor = '';
+    blank = true;
     send({ t: 'suggest', id: (asked = first = nextQuery()), text: '', kinds });
   }
 
@@ -105,6 +123,7 @@
     if (text.trim() === '') askFirst();
     else {
       askedFor = text;
+      blank = false;
       send({ t: 'suggest', id: (asked = nextQuery()), text });
     }
   }
@@ -203,9 +222,12 @@
   {#if !editing && tab.loading}
     <span class="progress" style:width="{Math.max(tab.progress, 0.05) * 100}%"></span>
   {/if}
-  {#if editing && items.length}
-    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <ul class="suggestions" class:below={top} bind:this={list} use:shell aria-label="Suggestions" data-answers={answers} onmousedown={(e) => e.preventDefault()}>
+  {#if editing && (items.length || showMarks)}
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="drop" class:below={top} use:shell onmousedown={(e) => e.preventDefault()}>
+    {#if top && showMarks}{@render bookmarks()}{/if}
+    {#if items.length}
+    <ul class="suggestions" class:below={top} bind:this={list} aria-label="Suggestions" data-answers={answers}>
       {#each shown as { key, heading, row: item } (key)}
         {#if heading}
           <li class="heading" role="presentation">{heading}</li>
@@ -236,8 +258,28 @@
         {/if}
       {/each}
     </ul>
+    {/if}
+    {#if !top && showMarks}{@render bookmarks()}{/if}
+    </div>
   {/if}
 </div>
+
+{#snippet bookmarks()}
+  <div class="marks" role="region" aria-label="Bookmarks">
+    <p class="label" aria-hidden="true">Bookmarks</p>
+    <div class="chips" role="radiogroup" aria-label="Folder">
+      <button class="chip" role="radio" aria-checked={chosen === ''} onclick={() => (chosen = '')}><Icon name="star" size={16} /><span>All</span></button>
+      {#each chips as f (f.id)}
+        <button class="chip" role="radio" aria-checked={chosen === f.id} onclick={() => (chosen = f.id)}><Icon name="folder" size={16} /><span>{f.title}</span></button>
+      {/each}
+    </div>
+    <ul class="tiles" aria-label="Bookmarks">
+      {#each marks as b (b.id)}
+        <li><button class="tile" onclick={() => go(b.url)}><Mark url={b.url} title={b.title} size={48} /><span class="name">{b.title || b.url}</span></button></li>
+      {/each}
+    </ul>
+  </div>
+{/snippet}
 
 <style>
   .address {
@@ -372,7 +414,9 @@
     transition: width var(--motion) var(--ease);
   }
 
-  .suggestions {
+  /* What lies away from the field towards the page: the suggestions, and the bookmarks
+     nearest the field. */
+  .drop {
     position: absolute;
     /* The toolbar's width: the 8px before the pill, and the count and ⋯ after it, 48px each
        with a 4px gap before each. */
@@ -380,22 +424,125 @@
     right: -104px;
     bottom: calc(100% + 4px);
     z-index: 5;
-    margin: 0;
-    padding: 0;
-    list-style: none;
+    display: flex;
+    flex-direction: column;
     background: var(--surface);
     border-top: 1px solid var(--line);
     /* The window's height less the bar's and a little: a long list scrolls. */
     max-height: calc(100vh - 64px);
-    overflow-y: auto;
-    overscroll-behavior: contain;
   }
 
-  .suggestions.below {
+  .drop.below {
     top: calc(100% + 4px);
     bottom: auto;
     border-top: 0;
     border-bottom: 1px solid var(--line);
+  }
+
+  .suggestions {
+    flex: 0 1 auto;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  /* The bookmarks: the folders as chips, a 32px pill in a 48px target each, and under them
+     the chosen one's bookmarks as tiles, one row of them scrolling sideways. */
+  .marks {
+    flex: none;
+    padding: 4px 0 8px;
+  }
+
+  .label {
+    display: flex;
+    align-items: center;
+    height: 28px;
+    margin: 0;
+    padding: 0 16px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .suggestions + .marks,
+  .marks + .suggestions {
+    border-top: 1px solid var(--line);
+  }
+
+  .chips,
+  .tiles {
+    display: flex;
+    margin: 0;
+    padding: 0 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    list-style: none;
+  }
+
+  .chip {
+    position: relative;
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 48px;
+    padding: 0 14px;
+    border: 0;
+    background: none;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .chip::before {
+    content: '';
+    position: absolute;
+    inset: 8px 2px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--surface);
+  }
+
+  .chip[aria-checked='true'] {
+    color: var(--surface);
+  }
+
+  .chip[aria-checked='true']::before {
+    border-color: transparent;
+    background: var(--text);
+  }
+
+  .chip > :global(*) {
+    position: relative;
+  }
+
+  .marks .tiles li {
+    flex: none;
+    height: auto;
+    border: 0;
+  }
+
+  .tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    width: 76px;
+    padding: 4px 0 0;
+    border: 0;
+    background: none;
+    color: var(--text);
+    font-size: 12px;
+  }
+
+  .tile .name {
+    max-width: 72px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 
   li {
