@@ -7,6 +7,7 @@
 
 #include "base/functional/callback.h"
 #include "base/memory/weak_ptr.h"
+#include "base/scoped_observation.h"
 #include "base/values.h"
 #include "content/public/browser/authenticator_request_client_delegate.h"
 #include "content/public/browser/global_routing_id.h"
@@ -66,6 +67,8 @@ class PasskeyRequest : public content::AuthenticatorRequestClientDelegate {
       std::vector<device::AuthenticatorGetAssertionResponse> responses,
       base::OnceCallback<void(device::AuthenticatorGetAssertionResponse)>
           callback) override;
+  void StartObserving(device::FidoRequestHandlerBase* request_handler) override;
+  void StopObserving(device::FidoRequestHandlerBase* request_handler) override;
   void OnTransportAvailabilityEnumerated(
       device::FidoRequestHandlerBase::TransportAvailabilityInfo data) override;
   void BluetoothAdapterStatusChanged(
@@ -105,6 +108,13 @@ class PasskeyRequest : public content::AuthenticatorRequestClientDelegate {
   bool at_phone_ = false;
   bool phone_busy_ = false;
   bool phone_ready_ = false;
+
+  // Content's handler of the request tells its observer what there is to use, of a PIN
+  // wanted and of a touch: us, while the request has a card. Content makes a new handler
+  // when the request starts over.
+  base::ScopedObservation<device::FidoRequestHandlerBase,
+                          device::FidoRequestHandlerBase::Observer>
+      handler_{this};
 
   base::OnceClosure cancel_;
   base::RepeatingClosure start_over_;
