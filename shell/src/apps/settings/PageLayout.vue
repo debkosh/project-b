@@ -5,6 +5,7 @@ import Cards from './Cards.vue';
 import ListPage from './ListPage.vue';
 import Results from './Results.vue';
 import SearchBox from './SearchBox.vue';
+import StatusLine from './StatusLine.vue';
 import { lists, pageGroups, resolve } from './arrange.js';
 import { hits, searching } from './search.js';
 import { state } from './state.js';
@@ -84,7 +85,7 @@ watch(
         <ListPage v-if="shown.list" :list="shown.list" :back="shown.section" />
         <template v-else>
           <Results v-if="searching" />
-          <nav v-else-if="phone" class="chips" aria-label="Settings groups">
+          <nav v-if="phone && !searching" class="chips" aria-label="Settings groups">
             <button
               v-for="g in pageGroups"
               :key="g.id"
@@ -95,6 +96,7 @@ watch(
               @click="go(g.id)"
             >{{ g.label }}</button>
           </nav>
+          <StatusLine v-if="!searching" />
           <section v-for="g in pageGroups" v-show="!searching || hits.by[g.id]" :key="g.id" class="group" :data-group="g.id" :aria-labelledby="'group-' + g.id">
             <div class="group-head">
               <h2 :id="'group-' + g.id" class="group-title">{{ g.label }}</h2>

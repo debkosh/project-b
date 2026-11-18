@@ -93,7 +93,7 @@ const page = [
     id: 'advanced',
     label: 'Advanced',
     hint: 'Updates, your scripts, and what is still being tried',
-    cards: [['version', 'autoUpdate', 'sparks', 'extensions', 'webFeatures'], 'flags'],
+    cards: [['autoUpdate', 'sparks', 'extensions', 'webFeatures'], 'flags'],
   },
 ];
 
@@ -167,7 +167,7 @@ const sectionList = () => [
     cards: ['extensions', 'sparks'],
     summary: lists.sparks.summary,
   },
-  { id: 'about', label: 'About Project B', icon: 'about', cards: [['version', 'autoUpdate']], summary: () => state.running || 'Development build' },
+  { id: 'about', label: 'About Project B', icon: 'about', cards: [['autoUpdate']], summary: () => state.running || 'Development build' },
   { id: 'flags', label: 'Flags', icon: 'flags', below: true, cards: ['flags'], summary: () => '' },
   { id: 'webFeatures', label: 'Web features', icon: 'webFeatures', below: true, cards: ['webFeatures'], summary: () => '' },
 ];

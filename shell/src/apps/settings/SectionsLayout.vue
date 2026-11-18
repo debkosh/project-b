@@ -6,6 +6,7 @@ import Icon from './Icon.vue';
 import ListPage from './ListPage.vue';
 import Results from './Results.vue';
 import SearchBox from './SearchBox.vue';
+import StatusLine from './StatusLine.vue';
 import { lists, resolve, sections } from './arrange.js';
 import { hits, searching } from './search.js';
 import { state } from './state.js';
@@ -77,6 +78,8 @@ watch(
         <!-- Search's results: every section's rows that match, under the section's name. -->
         <!-- A phone searches from its list of sections; the field stays as the results come. -->
         <SearchBox v-if="phone && (searching || !shown.section)" class="phone-search" />
+        <!-- The status line tops a desktop's every section, and a phone's list. -->
+        <StatusLine v-if="!searching && (phone ? !shown.section : !shown.list)" />
         <template v-if="searching">
           <Results />
           <section v-for="s in sections" v-show="hits.by[s.id]" :key="s.id" class="found" :aria-label="s.label">

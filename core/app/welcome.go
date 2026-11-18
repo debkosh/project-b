@@ -181,10 +181,13 @@ func (w *welcome) handle(tab engine.TabID, msg []byte) {
 	}
 }
 
-// DefaultBrowserChanged tells the welcome pages how asking to be the default browser ended.
+// DefaultBrowserChanged tells the welcome pages and the settings page how asking to be the
+// default browser ended.
 func (a *App) DefaultBrowserChanged(is bool) {
 	timeline.Infof("welcome: the default browser is this one: %v", is)
-	a.welcome.sendAll(map[string]any{"t": "isDefault", "isDefault": is})
+	m := map[string]any{"t": "isDefault", "isDefault": is}
+	a.welcome.sendAll(m)
+	a.Settings.Send(m)
 }
 
 // NotificationsAnswered tells the welcome pages whether the app may show its notifications.

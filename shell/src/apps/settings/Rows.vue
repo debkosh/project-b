@@ -1,5 +1,4 @@
 <script setup>
-import { computed } from 'vue';
 import { phone } from '@/phone.js';
 import Segmented from '@/ui/Segmented.vue';
 import Swatches from '@/ui/Swatches.vue';
@@ -35,26 +34,6 @@ const layouts = [
   { value: 'horizontal', label: 'Horizontal' },
 ];
 
-// What the update manager is doing, or what the check the user asked for found, in one
-// plain line. A failure's own words go in the line's tooltip.
-const update = computed(() => {
-  const s = state.update;
-  if (s.check === 'checking') return { text: 'Checking…' };
-  if (s.phase === 'downloading') return { text: `Downloading ${s.version}… ${percent.value}%` };
-  if (s.phase === 'ready') return { text: phone ? `Install to update to ${s.version}` : `Relaunch to update to ${s.version}` };
-  if (s.phase === 'failed') return { text: s.version ? `Couldn't update to ${s.version}.` : "Couldn't update.", detail: s.error, failed: true };
-  if (s.check === 'current') return { text: 'Up to date' };
-  if (s.check === 'failed') return { text: "Couldn't check for updates.", detail: s.checkError, failed: true };
-  return { text: '' };
-});
-
-// How much of the release has arrived, as a whole percentage, while it downloads.
-const percent = computed(() => {
-  const u = state.update;
-  return u.total ? Math.floor((100 * (u.done || 0)) / u.total) : 0;
-});
-
-const busy = computed(() => state.update.check === 'checking' || state.update.phase === 'downloading');
 </script>
 
 <template>
@@ -106,31 +85,6 @@ const busy = computed(() => state.update.check === 'checking' || state.update.ph
     </select>
   </Row>
 
-  <Row v-else-if="part === 'version'" label="Version" class="update-row">
-    <template #tags>
-      <span class="version">{{ state.running || 'Development build' }}</span>
-    </template>
-    <span class="secondary status" :class="{ failed: update.failed }" role="status" :title="update.detail">{{ update.text }}</span>
-    <!-- A ready release is applied from here: a relaunch on a desktop, Android's
-         installer on a phone. Both start with the same message to Go. -->
-    <button v-if="state.update.phase === 'ready'" type="button" class="text-button" @click="send({ t: 'relaunch' })">
-      {{ phone ? 'Install update' : 'Relaunch' }}
-    </button>
-    <button v-else type="button" class="text-button" :disabled="busy" @click="send({ t: 'checkUpdate' })">
-      {{ update.failed ? 'Try again' : 'Check for updates' }}
-    </button>
-    <span
-      v-if="state.update.phase === 'downloading'"
-      class="progress"
-      role="progressbar"
-      aria-label="Update download"
-      :aria-valuenow="percent"
-      aria-valuemin="0"
-      aria-valuemax="100"
-      :style="{ width: percent + '%' }"
-    ></span>
-  </Row>
-
   <Row v-else-if="part === 'autoUpdate'" tag="label" label="Automatic updates" hint="Updates download by themselves, and apply at the next start">
     <input
       type="checkbox"
@@ -154,33 +108,6 @@ const busy = computed(() => state.update.check === 'checking' || state.update.ph
 </template>
 
 <style scoped>
-.version {
-  color: var(--muted);
-  font-weight: 400;
-}
-
-.status:empty {
-  display: none;
-}
-
-.status.failed {
-  color: var(--danger);
-}
-
-/* The download's progress: a line along the row's foot, in the accent, as the shell's
-   bubble has. */
-.update-row {
-  position: relative;
-}
-
-.progress {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  height: 2px;
-  background: var(--accent);
-}
-
 /* On a phone the colours take a line of their own. */
 .touch .colours :deep(.ui-swatches) {
   flex-basis: 100%;

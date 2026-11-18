@@ -250,6 +250,7 @@ func Start(e engine.Engine, cfg Config) *App {
 		Handle:   func(_ engine.TabID, t string, msg []byte) bool { return a.imports.handle(t, msg) },
 	})
 	a.Settings.AddPart(a.bookmarkSettingsPart())
+	a.Settings.AddPart(a.defaultBrowserSettingsPart(e))
 	a.registerActions(e)
 
 	a.Tabs.AddGate(a.Policy.IsAllowedURL)

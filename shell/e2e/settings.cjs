@@ -258,6 +258,13 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   await show('version');
   check('it shows the running version', (await page.locator('.version').textContent()) === '0.2.0');
   check('it shows automatic updates on, the default', await autoUpdate.isChecked());
+  // The status line, over every layout's page: the default browser, and the version.
+  const status = page.getByRole('region', { name: 'Status' });
+  check('the status line says the app isn\'t the default browser, with a way to make it so', (await status.textContent()).includes('Not your default browser') &&
+    (await status.locator('.version').textContent()) === '0.2.0');
+  await status.getByRole('button', { name: 'Make default browser' }).click();
+  check('Make default browser asks the system, and the line says it is now', await until(async () => (await status.textContent()).includes('Your default browser') &&
+    (await status.getByRole('button', { name: 'Make default browser' }).count()) === 0));
   await page.screenshot({ path: shot('settings-general') });
 
   // The search engine: chosen here, saved, and named in the shell's address field.
@@ -318,7 +325,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   await page.getByRole('radio', { name: 'Blue' }).click();
   await show('version');
   await page.getByRole('button', { name: 'Check for updates' }).click();
-  const updateStatus = page.locator('.update-row').getByRole('status');
+  const updateStatus = page.getByRole('region', { name: 'Status' }).getByRole('status');
   check('Check asks the update manager, which says it is up to date', await until(async () => (await updateStatus.textContent()).trim() === 'Up to date'));
   check('one check reached the release server', manifests === counted + 1, `${counted} -> ${manifests}`);
   await autoUpdate.click();

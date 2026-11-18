@@ -87,7 +87,8 @@ again at the next start; a half-finished download is cleared when the next one b
 ## Settings
 
 The settings page, which the toolbar's gear opens in a tab, shows the running
-version, a Check for updates button and the automatic updates switch.
+version with a Check for updates button in its status line, at its top, and the automatic
+updates switch (Advanced; About Project B in its sections layout; [settings.md](settings.md)).
 
 - **Check for updates** runs one check at once, whatever the switch says (`CheckNow`). The
   page shows what the manager says: checking, up to date, downloading a version, ready to

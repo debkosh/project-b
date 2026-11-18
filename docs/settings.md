@@ -21,7 +21,7 @@ Every setting is on one scrolling page, in five groups by task:
 | Browsing | On start, Search engine, Keys, Keyboard shortcuts (desktop), Workspaces, Bookmarks |
 | Privacy | Sites |
 | Your data | Profile name, Template, Import from other browsers, Run setup again |
-| Advanced | Version, Automatic updates, Sparks, Extensions (with its flag on), Web features, Flags |
+| Advanced | Automatic updates, Sparks, Extensions (with its flag on), Web features, Flags |
 
 On a desktop a rail at the left names the groups and marks the one at the top; a press scrolls
 the page to it. On a phone the same names are chips over the page. The long lists, Workspaces,
@@ -43,13 +43,27 @@ Like Chrome's settings: a list of sections, one showing at a time.
 | Keyboard (desktop) | Keys, and the keyboard shortcuts |
 | Profile and import | Profile name, Template, Import from other browsers, Run setup again |
 | Extensions and sparks | Extensions (with its flag on, desktop), Sparks; Sparks alone without them |
-| About Project B | Version, Automatic updates |
+| About Project B | Automatic updates |
 | Flags, Web features | Under a line at the foot of the list |
 
 On a desktop the list is at the left, with an icon for each section; the tab's title is
 Settings › and the section's name. On a phone the page is the list, each section with a line
 saying what it is set to (System · Teal, Where you left off · DuckDuckGo); a press opens the
 section under its own heading, with a back button to the list.
+
+## The status line
+
+Under the search, in both layouts, one line says whether the app is the default browser and
+which version runs. Not the default, it says so with **Make default browser**, which asks the
+system as the welcome's last step does (`AskDefaultBrowser`: macOS's question, Android's
+sheet); the answer comes back as `DefaultBrowserChanged`, which Go sends to the welcome pages
+and the settings page alike, `isDefault`. The snapshot reads `IsDefaultBrowser` as the page
+opens (`core/app/default_browser_settings.go`). The version has what the update manager is
+doing beside it, Up to date, Downloading or Relaunch to update, with Check for updates, or
+Relaunch (Install update on a phone) once a release is ready. Automatic updates is a row of
+its own, under Advanced, or About Project B in the sections layout. The page shows the line
+over every group; the sections layout over every section on a desktop, and over the list of
+sections on a phone.
 
 ## Search
 

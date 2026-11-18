@@ -31,6 +31,8 @@ export const state = reactive({
   searchEngines: [],
   autoUpdate: true,
   update: { phase: '' },
+  // Whether the app is the system's default browser, as the page opened or since it asked.
+  isDefault: false,
   running: '',
   // The section showing: the one Go asks for when it opens the page at one, or the one the
   // user picked. '' is the first.
@@ -101,6 +103,7 @@ export function connect() {
             searchEngine: m.searchEngine,
             searchEngines: m.searchEngines || [],
             autoUpdate: m.autoUpdate,
+            isDefault: !!m.isDefault,
             update: m.update,
             running: m.running,
             keyboard: m.keyboard,
@@ -146,6 +149,9 @@ export function connect() {
           break;
         case 'update':
           state.update = m.update;
+          break;
+        case 'isDefault':
+          state.isDefault = m.isDefault;
           break;
         case 'windowColor':
           state.windowColor = m.windowColor;
