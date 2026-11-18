@@ -91,13 +91,13 @@ The seams:
   nothing that knew a spark it already had.
 - **Seam:** engine and adapter: a browser duty Chromium leaves to the embedder, done on one
   platform only.
-- **Fix:** d8f71c3e: Android opens the phone's own picker, through Go as the Mac does. 39b3d2e6
-  and d746d5ab: Import… takes any number of .user.js files and zips, asks Replace, Rename or
+- **Fix:** e87f84bb: Android opens the phone's own picker, through Go as the Mac does. 20a96452
+  and 21739d34: Import… takes any number of .user.js files and zips, asks Replace, Rename or
   Ignore for a spark already there, by @name and @namespace, and says what it did; Export…
   makes a zip.
 - **Guard:** the settings e2e imports the owner's own sparks from a zip a Mac made, settles
-  each clash, and reads an export back (d746d5ab); the Android driver's file_inputs part opens
-  the picker from a page and from Settings, and imports a zip (b916ac84).
+  each clash, and reads an export back (21739d34); the Android driver's file_inputs part opens
+  the picker from a page and from Settings, and imports a zip (f508ae91).
 
 ## Sparks unstyled on strict sites, 2026-11-18
 
@@ -106,11 +106,11 @@ The seams:
 - **Cause:** the page's security policy blocked the <style> the spark added, as it would
   the page's own.
 - **Seam:** engine and adapter: the page's rules applied to what we add to the page.
-- **Fix:** e7ce4b52: sparks run in the page's own world, as the owner chose, and where one
+- **Fix:** bf72288d: sparks run in the page's own world, as the owner chose, and where one
   runs, the page's policy has its style rules eased before the page commits; every other
   rule stays.
 - **Guard:** drive_first_app's sparks part: a spark's <style> applies on such a page, and the
-  owner's Page Cleanup and Limit Screen Time draw there, styled (ea1e28ef).
+  owner's Page Cleanup and Limit Screen Time draw there, styled (ea330554).
 
 ## Sparks' HTML on sites that want Trusted Types, 2026-11-19
 
