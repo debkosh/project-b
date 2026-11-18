@@ -10,9 +10,9 @@ behind it is `project-b-research/windows-survey.md`.
   one's tabs, its settings tab among them while it has one, and active tab, and the window in front, which the engine
   reports (`WindowFocused`). Commands and the menu follow the window in front. File, New
   Window (Cmd+N) opens one. A window's close button closes it (`WindowClosed`), and so does
-  Close Tab in a window with no tabs: closing its last tab leaves it open
-  ([below](#a-window-with-no-tabs)). Closing the last one quits, and Quit (`AppQuit`) ends
-  every window at once. A second start's URLs open in the window used last. The Window menu
+  Close Tab in a window with no tabs: closing its last tab leaves it open, until a window
+  always has a tab ([below](#every-window-has-a-tab-decided-2026-11-18)). Closing the last
+  one quits, and Quit (`AppQuit`) ends every window at once. A second start's URLs open in the window used last. The Window menu
   lists the windows by title and Cmd+` cycles them: AppKit does both by itself, and the
   window it brings forward reports itself to Go as any key window does.
 - The window's layout lists the tabs it shows, each with a rectangle; the shell lists one,
@@ -71,13 +71,10 @@ front.
 
 ## Behaviour, as decided
 
-- A new window (Cmd+N) starts with one new tab, and opens a little down and right of the
-  window in front. With a shell that takes New Tab (`"takes"` in the registry, as the
-  standard shell does for its box), it starts with no tabs, and so does the app's first
-  window: the shell shows its own way to a tab there (the owner, 2026-11-16: "yes on open
-  no tab page created").
-- A window may have no tabs (2026-11-14, [below](#a-window-with-no-tabs)): closing its last
-  tab leaves it open, and Close Tab then closes it.
+- A new window (Cmd+N) starts with one new tab, whatever the shell, and opens a little down
+  and right of the window in front.
+- Every window has a tab (2026-11-18, [below](#every-window-has-a-tab-decided-2026-11-18)):
+  its last tab closing closes it.
 - Closing a profile's last window quits its process.
 - Addresses on the app's command line open as tabs of its first window at the start, in
   place of the blank one, whatever the shell; ChromeDriver starts the app with one and looks
@@ -137,51 +134,51 @@ Known gaps, as built:
 - An extension's button pressed while a settings tab is active tells the extension
   nothing, as it doesn't see that tab.
 
-## A window with no tabs
+## Every window has a tab (decided 2026-11-18)
 
-2026-11-14, the owner: "closing the window on last tab closure seems like something we
-copied from chrome without actual need for it right.. the shell might decide what to do
-when no tabs aare there and then another close actiually closes". He decided the rest the
-same day: a window whose last tab moves out still closes, New Window and the app's start
-keep their one new tab, and a workspace delete leaves a window with none.
+This replaces the window with no tabs, decided on 14 and 16 November. The owner, 2026-11-18:
+"closing last tab can kill the browser since the user clearly sees the single tab there", and
+of New Tab, "this should be shells decision... for our standard lets go with non renderer new
+tab and cmd t new tab action shows box on top". Windows went without tabs to save the
+renderer every new tab started, 16 to 18 MiB each, measured on 0.2.85
+(`project-b-research/newtab-model/measurement.md`). A new tab that loads nothing starts none,
+so an empty window has no job left. Until this is built the app behaves as the other docs
+say.
 
-- **A window may have no tabs.** Closing its last tab leaves it open, with no tabs and no
-  active tab: its shell hears `tabs: []` and `active: 0`, and shows no page. Only closing
-  the window closes it. A window with tabs always has an active one, so a tab that comes
-  into a window with none is its active tab, even one opened behind.
-- **Two kinds of window still close with their last tab** (`Tabs.OnEmpty` in `App.Start`):
-  - one made for a tab opened in a window of its own, `TabOpened` with `newWindow`, which Go
-    remembers per window (`App.madeForTab`). Only a client of the debugging port asks for
-    one (`Target.createTarget` with `newWindow`): a page's `window.open` and `target=_blank`
-    open a tab in the page's own window;
-  - one whose last tab moved to another window: dragged out, `ProjectB.moveTab`, an
-    extension's move. What it held went elsewhere.
-- **Close Tab,** Cmd+W, the menu, or a shell's `closeTab` naming no tab, closes the active
-  tab, and in a window with no tabs the window. So two Cmd+W on a window's only tab close
-  the window. It stays enabled in a window with no tabs.
-- **The actions that need a tab are disabled with none:** Back, Forward, Reload, Force
-  Reload, Stop, the zooms, View Source, Focus Next and Previous Pane, Duplicate, Move Tab to
-  New Window, and choosing a tab (next, previous, recent, Tab 1 to 8, Last Tab). New Tab,
-  Open Location, New Window, Close Window, Settings and the shells' own actions stay as
-  they are.
-- **The address still works:** `navigate` in a window with no tabs opens a tab there, in the
-  workspace the message names or the first in the list, at the address.
-- **New Window and the app's start open with one new tab,** as before.
-- **Its title** is the app's own, Project B, as a new window's is before its first tab: the
-  engine titles a window after its focused tab, and with none shown, after the app
-  (`Engine::UpdateTitle`). The Window menu and Cmd+` list it so.
-- **Each shell draws an empty state of its own** ([shells.md](shells.md#what-every-shell-does),
-  rule 18): a quiet "No tabs" and New Tab with its key where the page goes, as its own, in
-  the shell's own type and colours; Glide's is a card where the page's card goes. Most give
-  the address the keyboard. Mobile doesn't draw one yet: on a phone the back key is to go
-  back in the page, else close the tab and show the one used before it, down to no tabs,
-  and only then close the app.
-- **Extensions** see a window with no tabs as one whose `tabs` are `[]`, with no active tab,
-  and its last tab closing as `tabs.onRemoved` with `isWindowClosing` false
-  ([extensions.md](extensions.md)). Chrome never has a normal window without a tab, so an
-  extension may assume one has.
-- **Deleting a workspace** closes its tabs, and a window that held only them stays open
-  with none ([workspaces.md](workspaces.md)).
+- **A window always has a tab, and an active one.** The app's start and New Window open one
+  new tab, whatever the shell; the addresses on the command line, or a restored session,
+  take its place, as before.
+- **A window closes when its last tab goes,** however it goes: Close Tab, a tab's close, a
+  move to another window, a workspace delete, an extension. So Cmd+W on a window's only tab
+  closes the window, and closing a profile's last window quits it, as before.
+- **On a phone,** closing the last tab closes the app, and the next start opens on a new tab.
+  The back key works as now down to the last tab: on a tab with no history it closes the
+  tab, so on the last one it closes the app.
+- **A new tab loads nothing.** The engine makes every tab with no renderer (content's
+  `kNoRendererProcess`) and Go loads nothing into a new tab, so no process starts until it has
+  an address. Its address is empty and its title New Tab. The shell draws its new tab page
+  where the page goes, since a tab with nothing loaded shows the shell under it. A shell
+  that has none draws a backdrop in the page's colour there.
+- **New Tab is the shell's to decide.** Without a shell of its own, Go's New Tab opens a new
+  tab. A shell that takes it (`"takes": ["tab.new"]`) does what suits it. What a shell does
+  on its new tab page, such as Enter with nothing typed, is the shell's too.
+- **Standard:** New Tab (Cmd+T, the menu, the shell's buttons) switches to the window's new
+  tab in the workspace shown, opening one when there is none, and shows the box on it. On
+  the new tab already, it shows the box there. One rule: go to the new tab, then show the
+  box. The box no longer opens over the page that was showing.
+- **A new tab may later hold an address:** the shell's own (a search page), the user's
+  choice, or an extension's new tab page, asking the user first as Chrome does. None of
+  these is built; drawn by the shell is the only kind for now. A page of the shell as the
+  new tab doesn't fit, since one of our tabs stays ours for life
+  ([above](#our-own-pages-are-tabs-decided-2026-11-14)).
+- **Extensions** see Chrome's model: a window always has a tab, and its last tab closing
+  closes it, with `tabs.onRemoved` saying `isWindowClosing`.
+- **What goes once it's built:** Go's rule for a window with no active tab, and the
+  exceptions in `Tabs.OnEmpty` (`App.madeForTab`); the actions switched off with no tab;
+  `navigate` opening a tab in a window with none; the empty start of a shell that takes New
+  Tab; the blank page a new tab loads, with its workspace workaround in `Engine::LoadURL`;
+  each shell's No tabs (shells rule 18); the back key's stop at No tabs; and the caveat in
+  [extensions.md](extensions.md).
 
 ## Pinned tabs
 
