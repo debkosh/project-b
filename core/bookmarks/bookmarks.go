@@ -68,6 +68,8 @@ type Manager struct {
 	entries   []Entry
 	last      string
 	onChanged []func()
+	// edits counts the changes, for a sync's reload to tell one made while it read.
+	edits int
 }
 
 // New returns the bookmarks of the profile folder dir, kept in st and read here, as they are
@@ -76,20 +78,8 @@ type Manager struct {
 func New(dir string, st *store.Store) *Manager {
 	m := &Manager{st: st}
 	st.Schema("bookmarks", func(tx *store.Tx) error { return made(tx, filepath.Join(dir, "bookmarks.json")) })
-	st.Wait(func(tx *store.Tx) error {
-		r, err := tx.Query(`SELECT id, parent, kind, title, url, added, edited, place FROM bookmarks ORDER BY place, id`)
-		if err != nil {
-			return err
-		}
-		defer r.Close()
-		for r.Next() {
-			var e Entry
-			if err := r.Scan(&e.ID, &e.Parent, &e.Kind, &e.Title, &e.URL, &e.Added, &e.Modified, &e.Place); err != nil {
-				return err
-			}
-			m.entries = append(m.entries, e)
-		}
-		if err := r.Err(); err != nil {
+	st.Wait(func(tx *store.Tx) (err error) {
+		if m.entries, err = entries(tx); err != nil {
 			return err
 		}
 		if err := tx.QueryRow(`SELECT folder FROM bookmarks_last`).Scan(&m.last); err != sql.ErrNoRows {
@@ -98,6 +88,24 @@ func New(dir string, st *store.Store) *Manager {
 		return nil
 	})
 	return m
+}
+
+// entries reads the tree.
+func entries(tx *store.Tx) ([]Entry, error) {
+	r, err := tx.Query(`SELECT id, parent, kind, title, url, added, edited, place FROM bookmarks ORDER BY place, id`)
+	if err != nil {
+		return nil, err
+	}
+	defer r.Close()
+	var out []Entry
+	for r.Next() {
+		var e Entry
+		if err := r.Scan(&e.ID, &e.Parent, &e.Kind, &e.Title, &e.URL, &e.Added, &e.Modified, &e.Place); err != nil {
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	return out, r.Err()
 }
 
 // made is the first step of the schema: the tables, and what bookmarks.json held, in either
@@ -413,6 +421,7 @@ func (m *Manager) find(url string) int {
 
 // changed tells the subscribers.
 func (m *Manager) changed() {
+	m.edits++
 	for _, f := range m.onChanged {
 		f()
 	}
