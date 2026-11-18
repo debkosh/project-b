@@ -149,7 +149,6 @@ PageTab::PageTab(int64_t id,
       contents_(std::move(contents)) {
   hooks::TagTab(contents_.get(), id_);
   contents_->SetDelegate(this);
-#if BUILDFLAG(IS_ANDROID)
   if (internal_) {
     contents_->SetPageBaseBackgroundColor(SK_ColorTRANSPARENT);
     // The first main frame was made inside WebContents::Create, before this observes, and
@@ -158,21 +157,18 @@ PageTab::PageTab(int64_t id,
       view->SetBackgroundColor(SK_ColorTRANSPARENT);
     }
   }
-#endif
 }
 
-// On Android one of our pages is transparent until it paints its own background, so the
-// window's colour under it, our pages' background (window_android.cc SetColor), shows
-// rather than white. The view belongs to the main frame, so it is set as each comes alive,
-// as ShellPage does.
+// One of our pages is transparent until it paints its own background, so the window's
+// colour under it, our pages' background (window_android.cc SetColor, window_mac.mm
+// PaintUnder), shows rather than white. The view belongs to the main frame, so it is set
+// as each comes alive, as ShellPage does.
 void PageTab::RenderFrameCreated(content::RenderFrameHost* frame) {
-#if BUILDFLAG(IS_ANDROID)
   if (internal_ && !frame->GetParent()) {
     if (content::RenderWidgetHostView* view = frame->GetView()) {
       view->SetBackgroundColor(SK_ColorTRANSPARENT);
     }
   }
-#endif
   WebContentsObserverHooks::RenderFrameCreated(frame);
 }
 

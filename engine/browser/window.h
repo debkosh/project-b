@@ -57,8 +57,8 @@ class Window {
     // picked, whose grey has a dark twin.
     uint32_t frame_rgb_dark;
     double frame_width;
-    // Our own pages' background, light and dark: on Android the window paints it under the
-    // pages, so one of ours that has yet to draw shows it, not white or the frame.
+    // Our own pages' background, light and dark: the window paints it under the pages, so
+    // one of ours that has yet to draw shows it, not white or the frame.
     uint32_t page_rgb;
     uint32_t page_rgb_dark;
     // How the window's own parts are drawn: 0 as the system is, 1 light, 2 dark. Only

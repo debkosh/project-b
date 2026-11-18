@@ -428,6 +428,10 @@ struct Window::Impl {
   // The frame last painted; none yet.
   int64_t frame_rgb = -1;
   int64_t frame_rgb_dark = -1;
+  // Our pages' background, light and dark, and the one painted under the pages now.
+  int64_t page_rgb = -1;
+  int64_t page_rgb_dark = -1;
+  NSColor* __strong page_color;
   int theme = -1;
   double frame_width = -1;
   base::RepeatingCallback<void(const State&)> on_state;
@@ -518,6 +522,31 @@ struct Window::Impl {
     container.layer.backgroundColor = color.CGColor;
     container.layer.borderColor = color.CGColor;
     container.layer.borderWidth = frame_width;
+
+    if (page_rgb >= 0) {
+      const uint32_t page = static_cast<uint32_t>(dark ? page_rgb_dark : page_rgb);
+      page_color = [NSColor colorWithSRGBRed:((page >> 16) & 0xff) / 255.0
+                                       green:((page >> 8) & 0xff) / 255.0
+                                        blue:(page & 0xff) / 255.0
+                                       alpha:1];
+      for (NSView* view in container.pages.subviews) {
+        PaintUnder(view);
+      }
+    }
+  }
+
+  // Under a page, our pages' background: one of ours is transparent until it paints its
+  // own (PageTab), so it opens on its colour, not white or the frame.
+  void PaintUnder(NSView* page) {
+    if (!page_color) {
+      return;
+    }
+    page.wantsLayer = YES;
+    // At once: a layer's colour otherwise fades in, showing the frame colour as it does.
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    page.layer.backgroundColor = page_color.CGColor;
+    [CATransaction commit];
   }
 
   void ReportState() {
@@ -679,6 +708,7 @@ void Window::SetPages(const std::vector<Page>& pages) {
     if (page.superview != holder) {
       page.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
       [holder addSubview:page];
+      impl_->PaintUnder(page);
     }
     page.frame = NSMakeRect(std::round(p.rect.x()),
                             std::round(height - p.rect.y() - p.rect.height()),
@@ -790,10 +820,14 @@ bool Window::SetLayout(Layout layout) {
 
   if (layout.frame_rgb != impl_->frame_rgb ||
       layout.frame_rgb_dark != impl_->frame_rgb_dark ||
-      layout.frame_width != impl_->frame_width) {
+      layout.frame_width != impl_->frame_width ||
+      layout.page_rgb != impl_->page_rgb ||
+      layout.page_rgb_dark != impl_->page_rgb_dark) {
     impl_->frame_rgb = layout.frame_rgb;
     impl_->frame_rgb_dark = layout.frame_rgb_dark;
     impl_->frame_width = layout.frame_width;
+    impl_->page_rgb = layout.page_rgb;
+    impl_->page_rgb_dark = layout.page_rgb_dark;
     impl_->PaintFrame();
   }
 
