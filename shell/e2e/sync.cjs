@@ -167,6 +167,7 @@ const taken = [];
   await refusal(`${address}/sync/7kq2mx9pab4c`, '', 'Address', `Couldn't reach ${HOST}`, 16, 'address-unreachable');
   await server({ down: '0' });
   await refusal(`${address}/notes/sync/7kq2mx9pab4c`, '', 'Address', "That address isn't a sync bucket", 17, 'not-bucket');
+  await refusal(`${address}/sync`, '', 'Token', 'This address needs a token');
   await server({ refuse: 'TOKEN-k3v9x2m7q8rd' });
   await refusal(`${address}/sync`, 'TOKEN-k3v9x2m7q8rd', 'Token', "The server didn't accept that token", 18, 'token-refused');
 
