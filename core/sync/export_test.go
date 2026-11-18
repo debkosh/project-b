@@ -1,6 +1,9 @@
 package sync
 
 import (
+	"errors"
+	"net/http"
+
 	"github.com/sudiptadeb/synckosh"
 	"github.com/sudiptadeb/synckosh/client"
 
@@ -30,4 +33,38 @@ func (l *local) GUID(m *Mapping, key string) string { return l.guid(m, key) }
 // ReplicaConfig is replicaConfig.
 func ReplicaConfig(c *client.Client, l *Local, key *synckosh.DataKey, maps map[string]*Mapping) client.Config {
 	return replicaConfig(c, l, key, maps)
+}
+
+// SetHTTPClient has every request go through c, and returns what puts it back.
+func SetHTTPClient(c *http.Client) func() {
+	was := httpClient
+	httpClient = c
+	return func() { httpClient = was }
+}
+
+// Begin turns sync on with a bucket and its key, and runs.
+func (m *Manager) Begin(address, token string, key *synckosh.DataKey) error {
+	return m.await(func() error {
+		if err := m.begin(address, token, key); err != nil {
+			return err
+		}
+		return m.run()
+	})
+}
+
+// RunNow runs, and returns its error.
+func (m *Manager) RunNow() error {
+	return m.await(func() error {
+		if m.conn == nil {
+			return errors.New("sync is off")
+		}
+		return m.run()
+	})
+}
+
+// await runs f on the sync goroutine and returns its error.
+func (m *Manager) await(f func() error) error {
+	got := make(chan error, 1)
+	m.ops <- func() { got <- f() }
+	return <-got
 }
