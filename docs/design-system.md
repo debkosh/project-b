@@ -158,6 +158,7 @@ Use these; never leave a `<button>`, `<select>`, `<input>` or radio to the brows
 | The one answer a dialog wants | `.text-button.primary` | a primary button on a row |
 | A destructive answer (Delete, Discard, Remove) | `.text-button.danger`, in a dialog | |
 | On or off | `.switch` | a checkbox |
+| Picking some items of a list (which sparks to export) | a checkbox per row, its `accent-color` `--accent`, with an All box above them, mixed while only some are ticked | a switch, which says a setting is on |
 | Two to four short choices | `Segmented` (Theme: System, Light, Dark) | radio buttons |
 | Five or more choices, or long ones | `select` | |
 | A colour | `Swatches`: presets, and with `custom` the system's picker behind a + | a bare colour input |
