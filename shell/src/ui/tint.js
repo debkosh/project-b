@@ -8,7 +8,7 @@
 // then, and tints tells every mark to draw again. It has no framework in it: tints is a
 // store as Svelte's are, and useTints (useTints.js) makes it a Vue ref.
 
-import { env } from 'gulal';
+import { env } from '@debkosh/gulal';
 
 // Each painted palette's environments, one per background a colour sits on, by name.
 let palette = null;
