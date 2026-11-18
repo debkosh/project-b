@@ -1077,7 +1077,14 @@ def file_inputs():
     see("settings", text="Theme")
     tap(middle(see("settings", kind=FIELD)))
     type_text("Sparks")
-    tap(middle(see("settings", label="Sparks", kind="android.widget.Button")))
+    # On Android 10 a tap after typing can only close the keyboard: the result is tapped
+    # again, where it is then, until Sparks opens.
+    for _ in range(3):
+        result = find("settings", label="Sparks", kind="android.widget.Button")
+        if result is not None:
+            tap(middle(result))
+        if until(lambda: find("settings", text="New", kind="android.widget.Button"), 5):
+            break
     # The menu beside New: Android reads no name for it (it is NAF), so it is the button
     # after New on the heading line.
     new = see("settings", text="New", kind="android.widget.Button")
