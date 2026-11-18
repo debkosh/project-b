@@ -1045,7 +1045,21 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   page = await open();
   await show('sparks');
   const sparksRegion = page.getByRole('region', { name: 'Sparks' });
-  check('Sparks says there are none yet', await until(async () => (await sparksRegion.textContent()).includes('No sparks yet')));
+  const menuOf = async (name, item) => {
+    await sparksRegion.getByRole('group', { name, exact: true }).getByRole('button', { name: `Actions for ${name}` }).click();
+    await page.getByRole('menuitem', { name: item, exact: true }).click();
+  };
+  // A new profile has the three built-in sparks, off, as its own: Delete takes them away.
+  const builtins = ['Video downloader', 'Screen time limit', 'Page cleanup'];
+  check('a new profile lists the built-in sparks, each off', await until(async () => {
+    for (const name of builtins) {
+      const r = sparksRegion.getByRole('group', { name, exact: true });
+      if (!(await r.isVisible()) || (await r.getByRole('checkbox').isChecked())) return false;
+    }
+    return (await sparksRegion.textContent()).includes('3 of 25.');
+  }));
+  for (const name of builtins) await menuOf(name, 'Delete');
+  check('Sparks says there are none once they are deleted', await until(async () => (await sparksRegion.textContent()).includes('No sparks yet')));
   await page.getByRole('button', { name: 'New', exact: true }).click();
   const source = sparksRegion.getByRole('textbox', { name: 'Spark source' });
   await source.fill('// ==UserScript==\n// @name Nameless match\n// ==/UserScript==\n');
@@ -1064,10 +1078,6 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   await row.locator('.name').click();
   check('a tap on the row edits it', await until(async () => (await source.inputValue().catch(() => '')).includes('@name Wide pages')));
   await sparksRegion.getByRole('button', { name: 'Cancel' }).click();
-  const menuOf = async (name, item) => {
-    await sparksRegion.getByRole('group', { name, exact: true }).getByRole('button', { name: `Actions for ${name}` }).click();
-    await page.getByRole('menuitem', { name: item, exact: true }).click();
-  };
   await row.click({ button: 'right' });
   check('a right-click opens its menu: Edit…, Export, and Delete apart', await until(async () => (await page.getByRole('menuitem').allTextContents()).map((t) => t.trim()).join('|') === 'Edit…|Export|Delete'));
   await page.keyboard.press('Escape');
