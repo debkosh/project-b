@@ -77,6 +77,8 @@ func (a *App) syncSettingsPart() settings.Part {
 				a.Sync.Disconnect(func(err error) { answer("syncDisconnected", err, nil) })
 			case "syncNow":
 				a.Sync.SyncNow()
+			case "syncCancel":
+				a.Sync.CancelRun()
 			case "syncStartFresh":
 				a.Sync.StartFresh(func(err error) { answer("syncStartedFresh", err, nil) })
 			default:

@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/sudiptadeb/synckosh"
 
@@ -455,5 +456,35 @@ func TestTheProblemsReachingABucket(t *testing.T) {
 	p.settle()
 	if st := p.sync.Status(); !st.On || st.Problem != "token" || st.Error == "" {
 		t.Fatalf("the status signed out: %+v", st)
+	}
+}
+
+// A run cut short ends with no error, and the next goes on as before.
+func TestARunCutShort(t *testing.T) {
+	s := newServer(t)
+	p := newProfile(t)
+	p.startSync(s)
+	if err := p.connect(s.single("tok"), "", "pass phrase"); err != nil {
+		t.Fatal(err)
+	}
+	before := p.sync.Status().LastSynced
+	release := s.hold()
+	ran := make(chan error, 1)
+	go func() { ran <- p.sync.RunNow() }()
+	for !p.sync.Status().Syncing {
+		time.Sleep(5 * time.Millisecond)
+	}
+	p.sync.CancelRun()
+	if err := <-ran; err == nil {
+		t.Fatal("a run cut short ended well")
+	}
+	release()
+	p.settle()
+	if st := p.sync.Status(); st.Syncing || st.Error != "" || st.LastSynced != before {
+		t.Fatalf("the status after a run cut short: %+v", st)
+	}
+	run(t, p)
+	if st := p.sync.Status(); st.Error != "" || st.LastSynced == before {
+		t.Fatalf("the status after the next run: %+v", st)
 	}
 }
