@@ -64,6 +64,14 @@ neither reaches 4.5 (the red preset in dark, a mid blue like Work's in light) it
 away from the label it picked, a little at a time, until it does; so the accent can differ
 slightly from the frame. `shell/e2e/settings.cjs` checks every preset, light and dark.
 
+**A colour made up for an item** (a site's letter tile, a bookmark folder's mark, anything
+coloured from a seed or its text) comes from [gulal](https://github.com/sudiptadeb/gulal),
+never a literal or a list of our own. Give gulal the place it sits in, from the tones: the
+scheme, the surface as its background, and `--accent`. The same text then gets the same colour
+in that place every time, in Go and in the shells, as strong as the theme, and its inks are held
+to APCA Lc 60. Decided 2026-11-18, after the letter tiles' random colours sat badly with the
+theme.
+
 Check light and dark with four frame colours: the default, None (a grey frame with ink for the
 accent), a dark one, a light one and a mid one such as `#4f9e9e`. `core/tones` must keep every pair readable.
 
