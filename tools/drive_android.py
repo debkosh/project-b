@@ -1507,6 +1507,32 @@ def the_real_web():
     shot("19-real-web-example")
 
 
+def welcome_extras():
+    """A new profile's welcome on a phone: after Pick your style, Extras for any page offers
+    the built-in sparks, each off, by name and line; a switch turns one on in Go."""
+    adb("shell", "pm", "clear", PACKAGE)
+    until(lambda: PACKAGE + "_zygote" not in adb("shell", "ps", "-A", "-o", "NAME"))
+    adb("shell", "am", "start", "-W", "-n", PACKAGE + "/" + ACTIVITY)
+    tap(middle(see("page", timeout=60, text="Get started")))
+    see("page", text="Pick your style")
+    tap(middle(see("page", text="Continue")))
+    see("page", text="Extras for any page")
+    names = ["Video downloader", "Screen time limit", "Page cleanup"]
+    # Android reads a page's switch as a Switch, but not as checkable: whether it is on is
+    # Go's, in sparks.json.
+    switches = lambda: [n for n in screen_parts()["page"].iter("node") if n.get("class") == "android.widget.Switch"]
+    kept = lambda: json.loads(adb("shell", "cat", "/data/data/%s/%s/sparks/sparks.json" % (PACKAGE, PROFILE)))
+    ons = lambda: [s["on"] for s in kept()["sparks"] if s["id"] in kept()["builtins"]]
+    shown = all(find("page", text=n) is not None for n in names)
+    check("after Pick your style, Extras for any page offers the three built-in sparks, each off",
+          shown and len(switches()) == 3 and ons() == [False, False, False], ons())
+    shot("45-welcome-extras")
+    tap(middle(switches()[1]))
+    check("its switch turns Screen time limit on, in Go", until(lambda: ons() == [False, True, False], 5) is not None, ons())
+    shot("46-welcome-extras-on")
+    tap(middle(see("page", text="Skip setup")))
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     adb("root")
@@ -1523,7 +1549,7 @@ def main():
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
     every = (browsing, mobile_shell, talkback_states, bookmark_star, back_key_chain, page_dialogs, downloads, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
-             the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web)
+             the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web, welcome_extras)
     for part in [p for p in every if not sys.argv[1:] or p.__name__ in sys.argv[1:]]:
         # tools/results.py splits a run's memory, CPU and checks by these lines.
         print("--- part " + part.__name__, flush=True)
