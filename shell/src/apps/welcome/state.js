@@ -37,6 +37,13 @@ export const state = reactive({
   // How far each import's extensions are, by key: {done, total}.
   installing: {},
   imported: {},
+  // The keys How you work offers, each keymap's first keys by action ("Shift+Cmd+T"), the
+  // one in use, and the platform they are written for.
+  keymaps: {},
+  keymap: 'project-b',
+  platform: 'mac',
+  // The profile's workspaces, each {id, name, color}.
+  workspaces: [],
 });
 
 export function setPref(name, value) {
@@ -63,6 +70,10 @@ export function connect() {
             browsers: m.browsers || null,
             importing: m.importing || [],
             installing: m.installing || {},
+            keymaps: m.keymaps || {},
+            keymap: m.keymap,
+            platform: m.platform,
+            workspaces: m.workspaces || [],
           });
           break;
         case 'prefs':
@@ -82,6 +93,12 @@ export function connect() {
           break;
         case 'notifications':
           state.notifications = m.notifications;
+          break;
+        case 'keymap':
+          state.keymap = m.keymap;
+          break;
+        case 'workspaces':
+          state.workspaces = m.workspaces || [];
           break;
         case 'browsers':
           state.browsers = m.browsers || [];

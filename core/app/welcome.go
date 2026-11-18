@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
+	"projectb/commands"
 	"projectb/engine"
 	"projectb/flags"
 	"projectb/prefs"
@@ -14,6 +16,7 @@ import (
 	"projectb/shells"
 	"projectb/timeline"
 	"projectb/tones"
+	"projectb/workspaces"
 )
 
 // The welcome (docs/onboarding.md): a page of ours, chrome://welcome/, that the start which
@@ -39,6 +42,10 @@ type welcome struct {
 	whole engine.TabID
 	// shown are the welcome tabs whose page has said it is ready, to send them changes.
 	shown map[engine.TabID]bool
+	// made are the workspaces How you work made, by name, and renamed says it gave Main
+	// the first one's name, so a step taken again can undo either.
+	made    map[string]string
+	renamed bool
 }
 
 // welcomeFile is what welcome.json holds: whether the welcome was finished, and when.
@@ -48,7 +55,7 @@ type welcomeFile struct {
 }
 
 func newWelcome(a *App, e engine.Engine, dir string) *welcome {
-	w := &welcome{a: a, e: e, path: filepath.Join(dir, "welcome.json"), shown: map[engine.TabID]bool{}}
+	w := &welcome{a: a, e: e, path: filepath.Join(dir, "welcome.json"), shown: map[engine.TabID]bool{}, made: map[string]string{}}
 	a.Prefs.OnChanged(func(p prefs.Prefs) { w.sendAll(map[string]any{"t": "prefs", "prefs": p}) })
 	a.Prefs.OnSearchEngineChanged(func(string) { w.sendAll(map[string]any{"t": "prefs", "prefs": a.Prefs.All()}) })
 	a.Prefs.OnThemeChanged(func(t string) { w.sendAll(map[string]any{"t": "theme", "theme": t}) })
@@ -139,13 +146,19 @@ func (w *welcome) sendAll(v any) {
 	}
 }
 
-// welcomeMessage is what the page sends: t, a pref's name and value, and a switch's state.
+// welcomeMessage is what the page sends: t, a pref's name and value, a switch's state, and
+// the workspaces ticked.
 type welcomeMessage struct {
-	T     string `json:"t"`
-	Name  string `json:"name"`
-	Value string `json:"value"`
-	On    bool   `json:"on"`
+	T          string                 `json:"t"`
+	Name       string                 `json:"name"`
+	Value      string                 `json:"value"`
+	On         bool                   `json:"on"`
+	Workspaces []workspaces.Workspace `json:"workspaces"`
 }
+
+// welcomeKeymaps are the keymaps How you work offers: Project B's own, which are Chrome's,
+// and Firefox's.
+var welcomeKeymaps = []string{commands.DefaultTemplate, "firefox"}
 
 func (w *welcome) handle(tab engine.TabID, msg []byte) {
 	var m welcomeMessage
@@ -167,6 +180,14 @@ func (w *welcome) handle(tab engine.TabID, msg []byte) {
 		w.a.Prefs.SetSearchEngine(m.Value)
 	case "setAutoUpdate":
 		w.a.Update.SetAuto(m.On)
+	case "useKeymap":
+		if slices.Contains(welcomeKeymaps, m.Value) {
+			w.a.Commands.UseTemplate(m.Value)
+			w.sendAll(map[string]any{"t": "keymap", "keymap": m.Value})
+		}
+	case "setWorkspaces":
+		w.starters(m.Workspaces)
+		w.sendAll(map[string]any{"t": "workspaces", "workspaces": w.a.Workspaces.List()})
 	case "makeDefault":
 		timeline.Infof("welcome: asking the system to make this the default browser")
 		w.e.AskDefaultBrowser()
@@ -223,8 +244,73 @@ func (w *welcome) snapshot(tab engine.TabID) map[string]any {
 			{ID: "glide", Shell: "glide", Name: "Glide"},
 		},
 	}
+	keymaps := map[string]map[string]string{}
+	for _, k := range welcomeKeymaps {
+		keymaps[k] = commands.TemplateKeys(k, w.a.Commands.Platform())
+	}
+	s["keymaps"] = keymaps
+	s["keymap"] = w.a.Commands.Template()
+	s["platform"] = w.a.Commands.Platform()
+	s["workspaces"] = w.a.Workspaces.List()
 	w.a.imports.snapshot(s)
 	return s
+}
+
+// starters makes the workspaces How you work has ticked, in its order. The first takes
+// Main's place, renamed and recoloured, while Main is as a new profile has it; the rest
+// are made. Taken again, the step undoes what it did that is no longer ticked: a workspace
+// it made goes, with nothing in it yet, and Main gets its name back when none is ticked.
+func (w *welcome) starters(ticked []workspaces.Workspace) {
+	ws := w.a.Workspaces
+	list := ws.List()
+	fresh := len(list) == 1 && list[0].ID == "" && list[0].Name == "Main"
+	rest := ticked
+	takesMain := len(ticked) > 0 && (fresh || w.renamed)
+	if takesMain {
+		rest = ticked[1:]
+	}
+	for name, id := range w.made {
+		if !slices.ContainsFunc(rest, func(t workspaces.Workspace) bool { return t.Name == name }) {
+			if err := w.a.deleteWorkspace(w.e, id); err != nil {
+				timeline.Warnf("welcome: %v", err)
+			}
+			delete(w.made, name)
+		}
+	}
+	switch {
+	case takesMain:
+		w.name("", ticked[0])
+		w.renamed = true
+	case w.renamed:
+		w.name("", workspaces.Workspace{Name: "Main", Color: "#3470d0"})
+		w.renamed = false
+	}
+	for _, t := range rest {
+		if _, ok := w.made[t.Name]; ok || slices.ContainsFunc(ws.List(), func(x workspaces.Workspace) bool { return x.Name == t.Name }) {
+			continue
+		}
+		made, err := ws.Create(t.Name, t.Color)
+		if err != nil {
+			timeline.Warnf("welcome: workspace %q: %v", t.Name, err)
+			continue
+		}
+		w.made[t.Name] = made.ID
+	}
+	var names []string
+	for _, x := range ws.List() {
+		names = append(names, x.Name)
+	}
+	timeline.Infof("welcome: the workspaces are %q", names)
+}
+
+// name gives the workspace id t's name and colour.
+func (w *welcome) name(id string, t workspaces.Workspace) {
+	if err := w.a.Workspaces.SetName(id, t.Name); err != nil {
+		timeline.Warnf("welcome: workspace %q: %v", t.Name, err)
+	}
+	if err := w.a.Workspaces.SetColor(id, t.Color); err != nil {
+		timeline.Warnf("welcome: workspace %q: %v", t.Name, err)
+	}
 }
 
 // skip keeps that the welcome was finished without showing it, as --skip-welcome asks: what

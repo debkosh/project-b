@@ -1,46 +1,77 @@
 <script setup>
 // A picture of the browser as the style step's choices make it: tabs on the side, on top,
-// or Glide, or a phone with its address bar on top or at the foot. It is drawn, not a
-// picture, in the page's own tones, so it takes the colour and the theme as the page does.
+// or Glide, or a phone with its address bar on top or at the foot. The desktop's three are
+// drawn as those shells draw themselves (shell/src/apps/shell/standard and glide): the
+// address bar and its buttons, New Tab, tabs with their titles, the workspace switcher or
+// Glide's Space and its dots, and a page. It is drawn, not a picture, in the page's own
+// tones, so it takes the colour and the theme as the page does; sized by its own width, so
+// a choice's small one is the same picture as the large one.
 defineProps({ layout: String, top: Boolean });
+const tabs = ['Morning news', 'Project notes', 'Lentil soup', 'Inbox'];
+const rows = [
+  ['Team update', 'Here is what moved this week…'],
+  ['Your order shipped', 'It arrives on Thursday.'],
+  ['Weekend plans', 'Are we still on for Saturday?'],
+  ['Invoice 2041', 'Due at the end of the month.'],
+];
 </script>
 
 <template>
   <div v-if="layout === 'phone'" class="phone" aria-hidden="true">
     <div class="screen">
       <div v-if="top" class="address"><i></i></div>
-      <div class="page"><u></u><u></u><u class="short"></u></div>
+      <div class="page plain"><u></u><u></u><u class="short"></u></div>
       <div v-if="!top" class="address"><i></i></div>
     </div>
   </div>
   <div v-else class="window" :class="layout" aria-hidden="true">
-    <div v-if="layout === 'top'" class="strip">
-      <span class="dots"><i></i><i></i><i></i></span>
-      <span class="tab on"></span><span class="tab"></span><span class="tab"></span>
-    </div>
-    <div v-if="layout !== 'glide'" class="bar">
-      <span v-if="layout === 'side'" class="dots"><i></i><i></i><i></i></span>
-      <span class="field"></span>
-    </div>
-    <div class="body">
-      <div v-if="layout === 'side'" class="rail">
-        <span class="tab on"></span><span class="tab"></span><span class="tab"></span><span class="tab"></span>
+    <div class="w">
+      <template v-if="layout === 'top'">
+        <div class="strip">
+          <span class="lights"><i></i><i></i><i></i></span>
+          <span class="ws"><b class="d1"></b><b class="d2"></b>All workspaces</span>
+          <span v-for="(t, i) in tabs" :key="t" class="htab" :class="{ on: i === 3 }">{{ t }}</span>
+          <span class="plus">+</span>
+        </div>
+        <div class="bar">
+          <span class="icon">‹</span><span class="icon">›</span><span class="icon">↻</span>
+          <span class="field"><span class="slot"></span>mail.example.com</span>
+        </div>
+      </template>
+      <div v-else-if="layout === 'side'" class="bar">
+        <span class="lights"><i></i><i></i><i></i></span>
+        <span class="icon">▯</span><span class="icon">‹</span><span class="icon">›</span><span class="icon">↻</span>
+        <span class="field"><span class="slot"></span>mail.example.com</span>
       </div>
-      <div v-if="layout === 'glide'" class="rail glide-rail">
-        <span class="dots"><i></i><i></i><i></i></span>
-        <span class="field"></span>
-        <span class="tab on"></span><span class="tab"></span><span class="tab"></span>
-        <span class="spaces"><b class="on"></b><b></b><b></b></span>
+      <div class="body">
+        <div v-if="layout === 'side'" class="rail">
+          <span class="vtab new">+ New Tab<em>⌘T</em></span>
+          <span v-for="(t, i) in tabs" :key="t" class="vtab" :class="{ on: i === 3 }">{{ t }}</span>
+          <span class="ws foot"><b class="d1"></b><b class="d2"></b>All workspaces</span>
+        </div>
+        <div v-if="layout === 'glide'" class="rail glide-rail">
+          <span class="lights"><i></i><i></i><i></i></span>
+          <span class="pill">mail.example.com</span>
+          <span class="space"><b class="d2"></b>Work</span>
+          <span class="vtab new">+ New Tab</span>
+          <span class="vtab on"><b class="fav">M</b>Inbox</span>
+          <span class="dots"><b class="d1"></b><b class="d2 on"></b></span>
+        </div>
+        <div class="page">
+          <small>INBOX</small>
+          <strong>Good morning</strong>
+          <span v-for="r in rows" :key="r[0]" class="row"><i></i><span><b>{{ r[0] }}</b>{{ r[1] }}</span></span>
+        </div>
       </div>
-      <div class="page"><u></u><u></u><u></u><u class="short"></u></div>
     </div>
   </div>
 </template>
 
 <style scoped>
+/* The desktop's picture, drawn on a 640 by 400 grid: --u is one unit of it at the
+   picture's width. */
 .window {
-  display: flex;
-  flex-direction: column;
+  container-type: inline-size;
   width: 100%;
   aspect-ratio: 16 / 10;
   border: 4px solid var(--frame);
@@ -50,135 +81,269 @@ defineProps({ layout: String, top: Boolean });
   transition: border-color var(--motion) var(--ease), background var(--motion) var(--ease);
 }
 
-.dots {
+.w {
+  --u: calc(100cqw / 640);
   display: flex;
-  gap: 4px;
-  flex: none;
+  flex-direction: column;
+  height: 100%;
+  font-size: calc(var(--u) * 6.5);
+  line-height: 1.3;
+  color: var(--text);
+  white-space: nowrap;
 }
 
-.dots i {
-  width: 8px;
-  height: 8px;
+.lights {
+  display: flex;
+  gap: calc(var(--u) * 4);
+  flex: none;
+  margin-right: calc(var(--u) * 8);
+}
+
+.lights i {
+  width: calc(var(--u) * 6);
+  height: calc(var(--u) * 6);
   border-radius: 50%;
-  background: var(--line);
+  background: #ec6a5e;
+}
+
+.lights i:nth-child(2) {
+  background: #f4bf4f;
+}
+
+.lights i:nth-child(3) {
+  background: #61c554;
 }
 
 .strip,
 .bar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  height: 28px;
-  padding: 0 12px;
+  gap: calc(var(--u) * 6);
+  height: calc(var(--u) * 24);
+  padding: 0 calc(var(--u) * 8);
   flex: none;
 }
 
-.strip {
-  gap: 4px;
-}
-
-.strip .dots {
-  margin-right: 8px;
-}
-
-.strip .tab {
-  width: 64px;
-  height: 18px;
-  border-radius: 6px 6px 0 0;
-  align-self: flex-end;
+.icon {
+  width: calc(var(--u) * 10);
+  text-align: center;
+  color: var(--muted);
+  font-size: calc(var(--u) * 9);
 }
 
 .field {
   flex: 1;
-  height: 16px;
-  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 6);
+  height: calc(var(--u) * 16);
+  border-radius: calc(var(--u) * 4);
   background: var(--surface);
   border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.slot {
+  width: calc(var(--u) * 16);
+  height: 100%;
+  background: var(--accent-tint);
+  border-right: 1px solid var(--line);
+}
+
+.ws {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 3);
+  color: var(--text);
+}
+
+.d1,
+.d2 {
+  width: calc(var(--u) * 5);
+  height: calc(var(--u) * 5);
+  border-radius: 50%;
+  background: #2e9d5b;
+  flex: none;
+}
+
+.d2 {
+  background: #3470d0;
+}
+
+.ws .d2 {
+  margin-left: calc(var(--u) * -2);
+  margin-right: calc(var(--u) * 2);
+}
+
+.htab {
+  width: calc(var(--u) * 72);
+  padding: calc(var(--u) * 3) calc(var(--u) * 6);
+  border-radius: calc(var(--u) * 4);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.htab.on,
+.vtab.on {
+  background: var(--accent-soft);
+}
+
+.plus {
+  color: var(--muted);
 }
 
 .body {
   flex: 1;
   display: flex;
-  gap: 4px;
   min-height: 0;
-  padding: 0 4px 4px;
 }
 
 .rail {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  width: 24%;
-  padding: 4px;
+  gap: calc(var(--u) * 2);
+  width: calc(var(--u) * 112);
+  padding: calc(var(--u) * 6);
+  flex: none;
 }
 
-.tab {
-  height: 16px;
-  border-radius: 6px;
-  background: var(--accent-tint);
+.vtab {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 4);
+  padding: calc(var(--u) * 3) calc(var(--u) * 6);
+  border-radius: calc(var(--u) * 4);
+  overflow: hidden;
 }
 
-.tab.on {
-  background: var(--surface);
-  box-shadow: inset 0 0 0 1px var(--line);
+.vtab.new em {
+  margin-left: auto;
+  font-style: normal;
+  color: var(--muted);
+}
+
+.foot {
+  margin-top: auto;
+  padding: calc(var(--u) * 3) calc(var(--u) * 4);
 }
 
 .glide-rail {
-  padding-top: 8px;
+  padding-top: calc(var(--u) * 8);
 }
 
-.glide-rail .field {
-  flex: none;
-  margin-bottom: 4px;
+.glide-rail .lights {
+  margin-bottom: calc(var(--u) * 6);
 }
 
-.spaces {
+.pill {
+  padding: calc(var(--u) * 5) calc(var(--u) * 6);
+  border-radius: calc(var(--u) * 5);
+  background: color-mix(in srgb, var(--surface) 45%, transparent);
+  margin-bottom: calc(var(--u) * 6);
+}
+
+.space {
   display: flex;
-  gap: 4px;
-  margin-top: auto;
+  align-items: center;
+  gap: calc(var(--u) * 4);
+  font-weight: 600;
+  padding: calc(var(--u) * 3) calc(var(--u) * 4);
+}
+
+.glide-rail .vtab.on {
+  background: var(--surface);
+}
+
+.fav {
+  display: grid;
+  place-items: center;
+  width: calc(var(--u) * 8);
+  height: calc(var(--u) * 8);
+  border-radius: calc(var(--u) * 2);
+  background: #3470d0;
+  color: #fff;
+  font-size: calc(var(--u) * 5);
+}
+
+.dots {
+  display: flex;
   justify-content: center;
+  gap: calc(var(--u) * 8);
+  margin-top: auto;
 }
 
-.spaces b {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--line);
-}
-
-.spaces b.on {
-  background: var(--accent);
+.dots b.on {
+  outline: calc(var(--u) * 3) solid var(--surface);
 }
 
 .page {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 16px;
-  border-radius: 8px;
+  padding: calc(var(--u) * 18) calc(var(--u) * 48);
   background: var(--surface);
-  box-shadow: inset 0 0 0 1px var(--line);
+  overflow: hidden;
 }
 
 .glide .page {
-  margin: 8px 4px 4px 0;
+  margin: calc(var(--u) * 4) calc(var(--u) * 4) calc(var(--u) * 4) 0;
+  border-radius: calc(var(--u) * 8);
+  box-shadow: 0 0 0 1px var(--line);
 }
 
-.page u {
+.page small {
+  font-size: calc(var(--u) * 5);
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+.page strong {
+  font-size: calc(var(--u) * 13);
+  margin: calc(var(--u) * 2) 0 calc(var(--u) * 8);
+}
+
+.page .row {
+  display: flex;
+  gap: calc(var(--u) * 6);
+  padding: calc(var(--u) * 5) 0;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.page .row i {
+  width: calc(var(--u) * 14);
+  height: calc(var(--u) * 14);
+  border-radius: 50%;
+  background: var(--accent-tint);
+  flex: none;
+}
+
+.page .row b {
+  display: block;
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* The phone's picture keeps lines for a page. */
+.page.plain {
+  gap: 8px;
+  padding: 16px;
+}
+
+.page.plain u {
   display: block;
   height: 8px;
   border-radius: 4px;
   background: var(--accent-tint);
 }
 
-.page u:first-child {
+.page.plain u:first-child {
   width: 40%;
   height: 12px;
   background: var(--accent-soft);
 }
 
-.page u.short {
+.page.plain u.short {
   width: 60%;
 }
 

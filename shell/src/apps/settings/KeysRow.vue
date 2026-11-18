@@ -10,7 +10,7 @@ import { send, state } from './state.js';
 // until the answer. Each shortcut is edited in Keyboard shortcuts.
 const kb = computed(() => state.keyboard);
 
-const templateNames = { 'project-b': 'Project B', chrome: 'Chrome', glide: 'Glide' };
+const templateNames = { 'project-b': 'Project B', chrome: 'Chrome', firefox: 'Firefox', glide: 'Glide' };
 const options = computed(() => kb.value.templates.map((t) => ({ value: t, label: templateNames[t] || t })));
 const labelOf = (name) => templateNames[name] || name;
 

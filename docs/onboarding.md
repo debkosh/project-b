@@ -36,7 +36,13 @@ And on the second mocks, 2026-11-17:
   discussed the implementation". It is out of the onboarding; nothing in the app does Safe
   Browsing today, and how it would work is for a discussion first.
 - **Approved:** no "How you work" step, five steps on the desktop; the style step offers tabs on
-  the side, on top, and Glide.
+  the side, on top, and Glide. Changed 2026-11-18, the owner: "it should show the stuff we have
+  built so shell and keyboard stays". So the style step shows the shells as they look, and How
+  you work is back as the fourth of six: starter workspaces, Personal and Work ticked, which
+  the welcome makes, and the keys, "since we sonot differe from chrome.. make the other keymap
+  firefox... but keep project b as one": Project B's (which are Chrome's) or Like Firefox,
+  with the chosen keymap's keys shown under the choice
+  ([style](screenshots/onboarding/mock-d3s.png), [how you work](screenshots/onboarding/mock-d4w.png)).
 - **A flag to show the welcome again:** "we should expose a flag that changes it to false so that
   we can test the welcome full screen". Go keeps whether the welcome was shown; a flag in
   Settings, Flags, "Show the welcome at the next start", clears it, and the next start opens the
@@ -73,13 +79,17 @@ The mocks are drawn in [screenshots/onboarding/mocks.html](screenshots/onboardin
    what came over ([mock](screenshots/onboarding/mock-d2c.png)). Open tabs come over as a
    workspace named after the browser.
 3. **Pick your style:** a picture of the browser beside the choices: tabs on the side, on top,
-   or Glide; the colour, None first; theme; keys like Chrome's or Project B's. The picture and
+   or Glide, each drawn as that shell draws itself; the colour, None first; theme. The picture and
    the page itself, with its window's frame, take each choice at once
    ([none](screenshots/onboarding/mock-d3.png), [blue](screenshots/onboarding/mock-d3b.png),
    [dark](screenshots/onboarding/mock-d3c.png)).
-4. **Protection:** the ad blocker, Links to other sites, the search engine, automatic updates
+4. **How you work:** the workspaces to start with, as the workspace switcher shows them:
+   Personal and Work ticked, Reading not, and Add one…; Continue makes those ticked. Then the
+   keys, Project B or Like Firefox, with a few of the chosen keymap's under the choice
+   ([mock](screenshots/onboarding/mock-d4w.png)). The phone has no such step.
+5. **Protection:** the ad blocker, Links to other sites, the search engine, automatic updates
    ([mock](screenshots/onboarding/mock-d4.png)).
-5. **You're set:** three things worth knowing (the command box, the site panel, workspaces),
+6. **You're set:** three things worth knowing (the command box, the site panel, workspaces),
    Make default browser, which macOS confirms with its own question, and Start browsing, which
    turns the Welcome tab into a new tab ([mock](screenshots/onboarding/mock-d5.png)).
 
@@ -281,6 +291,33 @@ Each slice goes out through a release of its own.
   back to the list by itself, Safari's row on with 13 bookmarks, 1 page and Google; Bring
   over brought 13 bookmarks in 2 folders under From Safari, the page and Google, as
   `imports.json` said.
+
+**How you work, and the shells as they look** (branch `welcome-how-you-work`):
+
+- **Pick your style** draws each shell as it draws itself (`Preview.vue`): Standard's address
+  bar and buttons, New Tab with ⌘T, tabs with their titles and the workspace switcher, on the
+  side or along the top; Glide's address, its Space with its dot, its tabs and its dots at the
+  foot; a page. On a 640 by 400 grid scaled by the picture's width, so a choice's card is the
+  same picture as the large one, in the page's tones as before.
+- **How you work** ([shot](../build/e2e/welcome-work.png)) lists Personal ("Everyday
+  browsing"), Work and Reading, each with its colour, Personal and Work ticked, and Add one…
+  for a name of the person's own. Beside them, the standard shell's workspace menu with the
+  ticked ones. Continue sends `setWorkspaces`: the first ticked takes Main's place, renamed
+  and recoloured, while Main is as a new profile has it, and the rest are made. Back and
+  Continue again undo what is no longer ticked: one the step made goes, and Main gets its
+  name back when none is ticked. Skip setup makes none.
+- **The keys:** Project B or Like Firefox, `useKeymap`, which makes `keymap.json` follow
+  that template, as Settings' Keyboard does. Under it, eight of the chosen keymap's keys:
+  New tab, Address, Reopen tab, Next tab, History, Downloads, Bookmarks, Page source. Go
+  sends both keymaps' keys in the snapshot (`commands.TemplateKeys`).
+- **Firefox's keymap** (`templates/keymap/firefox.json`) is Project B's with Firefox's Mac
+  keys where they differ, from Firefox's own `browser-sets.inc.xhtml`: Downloads ⌘J (ours
+  ⇧⌘J); Bookmarks ⇧⌘O, its Library, and ⌘B, its sidebar (ours ⌥⌘B); Page source ⌘U as
+  well as ⌥⌘U; History ⌘Y and ⇧⌘H, its sidebar; and Ctrl+Tab goes to the next tab in order,
+  as Firefox's does, not to the one used last (`tab.next`, and `tab.recentNext` has none).
+  Windows and Linux keep Project B's.
+- **Testing it:** `core/app` (`TestHowYouWorkMakesTheWorkspacesAndChoosesTheKeys`) and
+  `shell/e2e/welcome.cjs`.
 
 **Extensions, the logos, and what came** (branch `extensions-import`). The owner, 2026-11-18:
 "ship all the imports... the import should cleanly show how many it imported". Extensions

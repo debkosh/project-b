@@ -66,6 +66,10 @@ template folder in the app:
 | Menu tree | `menu.json` | `templates/menu/`: `project-b.json` |
 
 - **The default template for both is `project-b`.**
+- **`firefox`** is `project-b` with Firefox's Mac keys where they differ: Downloads ⌘J,
+  Bookmarks ⇧⌘O and ⌘B, Page source ⌘U, History also ⇧⌘H, and Ctrl+Tab to the next tab in
+  order rather than the one used last. The welcome's How you work offers it beside
+  `project-b` ([onboarding.md](onboarding.md#built)).
 - **The current file and the templates have the same shape.** Nothing is a diff and
   nothing is laid over anything else, so copying `chrome.json` over `keymap.json` by hand
   is the same as picking Chrome in the panel.

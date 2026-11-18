@@ -55,6 +55,33 @@ const bars = async (w) => (await w.ui.getByRole('tab').first().isVisible()) || (
   await settle(w.page);
   await w.page.screenshot({ path: path.join(lib.out, 'welcome-style.png') });
   await welcome.getByRole('button', { name: 'Continue' }).click();
+
+  // How you work: Personal and Work ticked, one added; the keys, Firefox's, with a few
+  // shown. Continue makes the workspaces: Main becomes Personal.
+  check('Continue goes on to How you work', await until(() => welcome.getByRole('heading', { name: 'How you work' }).isVisible()));
+  const ticked = async (name) => welcome.getByRole('checkbox', { name, exact: true }).isChecked();
+  check('Personal and Work are ticked, Reading isn\'t', (await ticked('Personal')) && (await ticked('Work')) && !(await ticked('Reading')));
+  await welcome.getByRole('textbox', { name: 'Add a workspace' }).fill('Travel');
+  await welcome.getByRole('textbox', { name: 'Add a workspace' }).press('Enter');
+  check('one added is ticked', await until(() => ticked('Travel')));
+  const keys = welcome.getByRole('list', { name: 'Keys' });
+  check('Project B\'s keys are shown, Downloads on ⇧⌘J', await until(async () => (await keys.innerText()).includes('⇧⌘J')));
+  await welcome.getByRole('radio', { name: 'Like Firefox' }).click();
+  const keymap = () => { try { return JSON.parse(fs.readFileSync(path.join(lib.profile, 'keymap.json'), 'utf8')); } catch { return {}; } };
+  check('Like Firefox makes the keymap Firefox\'s', await until(() => keymap().follows === 'firefox'), JSON.stringify(keymap()));
+  check('and shows its keys: Downloads on ⌘J, page source on ⌘U', await until(async () => {
+    const t = await keys.innerText();
+    return t.includes('⌘J') && !t.includes('⇧⌘J') && t.includes('⌘U');
+  }), await keys.innerText());
+  await settle(w.page);
+  await w.page.screenshot({ path: path.join(lib.out, 'welcome-work.png') });
+  await welcome.getByRole('button', { name: 'Continue' }).click();
+  const spaces = () => { try { return JSON.parse(fs.readFileSync(path.join(lib.profile, 'workspaces.json'), 'utf8')).workspaces; } catch { return []; } };
+  check('Continue makes the workspaces ticked, Main as Personal', await until(() => JSON.stringify(spaces().map((x) => x.name)) === JSON.stringify(['Personal', 'Work', 'Travel'])) && spaces()[0].id === '', JSON.stringify(spaces()));
+  await welcome.getByRole('button', { name: 'Back' }).click();
+  await welcome.getByRole('checkbox', { name: 'Travel', exact: true }).uncheck();
+  await welcome.getByRole('button', { name: 'Continue' }).click();
+  check('taken again, one no longer ticked goes', await until(() => JSON.stringify(spaces().map((x) => x.name)) === JSON.stringify(['Personal', 'Work'])), JSON.stringify(spaces()));
   await welcome.getByRole('button', { name: 'Continue' }).click();
   // Make default browser asks the system, which the mock answers yes for.
   await welcome.getByRole('button', { name: 'Make default browser' }).click();

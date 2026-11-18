@@ -156,3 +156,61 @@ func TestSkipWelcomeNotesItFinished(t *testing.T) {
 		t.Fatal("the next start opens it")
 	}
 }
+
+// How you work: the workspaces ticked are made, the first in Main's place, and taken again
+// the step undoes what is no longer ticked; the keys it offers are Project B's and
+// Firefox's, each with its own, and choosing one is the keymap's template.
+func TestHowYouWorkMakesTheWorkspacesAndChoosesTheKeys(t *testing.T) {
+	dir := t.TempDir()
+	r := startMade(t, dir, true)
+	snap := r.waitFor(func(m map[string]any) bool { return m["t"] == "snapshot" })
+	tab := engine.TabID(snap["welcome"].(float64))
+	got, stop := r.e.PageFeed(tab).Subscribe()
+	defer stop()
+	say := func(msg string) { r.e.Post(func() { r.a.PageMessage(tab, "welcome", []byte(msg)) }) }
+	say(`{"t":"ready"}`)
+	page := next(t, got, "snapshot")
+	keymaps := page["keymaps"].(map[string]any)
+	if page["keymap"] != "project-b" || keymaps["project-b"].(map[string]any)["downloads.show"] != "Shift+Cmd+J" || keymaps["firefox"].(map[string]any)["downloads.show"] != "Cmd+J" {
+		t.Fatalf("keymap %v, keymaps' downloads %v / %v", page["keymap"], keymaps["project-b"].(map[string]any)["downloads.show"], keymaps["firefox"].(map[string]any)["downloads.show"])
+	}
+
+	names := func(m map[string]any) []string {
+		var out []string
+		for _, w := range m["workspaces"].([]any) {
+			out = append(out, w.(map[string]any)["name"].(string))
+		}
+		return out
+	}
+	say(`{"t":"setWorkspaces","workspaces":[{"name":"Personal","color":"#2e9d5b"},{"name":"Work","color":"#3470d0"},{"name":"Travel","color":"#8a4fd0"}]}`)
+	if n := names(next(t, got, "workspaces")); len(n) != 3 || n[0] != "Personal" || n[1] != "Work" || n[2] != "Travel" {
+		t.Fatalf("workspaces %q", n)
+	}
+	if first := r.a.Workspaces.List()[0]; first.ID != "" || first.Color != "#2e9d5b" {
+		t.Fatalf("Main is %+v; want it named Personal, green", first)
+	}
+	say(`{"t":"setWorkspaces","workspaces":[{"name":"Work","color":"#3470d0"}]}`)
+	if n := names(next(t, got, "workspaces")); len(n) != 1 || n[0] != "Work" {
+		t.Fatalf("taken again with Work alone: %q", n)
+	}
+	say(`{"t":"setWorkspaces","workspaces":[]}`)
+	if n := names(next(t, got, "workspaces")); len(n) != 1 || n[0] != "Main" {
+		t.Fatalf("with none ticked: %q", n)
+	}
+
+	say(`{"t":"useKeymap","value":"firefox"}`)
+	if m := next(t, got, "keymap"); m["keymap"] != "firefox" {
+		t.Fatalf("keymap %v", m)
+	}
+	b, _ := os.ReadFile(filepath.Join(dir, "keymap.json"))
+	var k struct{ Follows string }
+	json.Unmarshal(b, &k)
+	if k.Follows != "firefox" {
+		t.Fatalf("keymap.json follows %q", k.Follows)
+	}
+	say(`{"t":"useKeymap","value":"glide"}`)
+	say(`{"t":"useKeymap","value":"project-b"}`)
+	if m := next(t, got, "keymap"); m["keymap"] != "project-b" {
+		t.Fatalf("a keymap the step doesn't offer was taken: %v", m)
+	}
+}

@@ -191,6 +191,22 @@ func mustDecode(name string, v any) {
 	}
 }
 
+// TemplateKeys is a keymap template's keys on platform: each action's first, as the
+// template writes it ("Shift+Cmd+T"). An action with none there is left out.
+func TemplateKeys(name, platform string) map[string]string {
+	out := map[string]string{}
+	t, ok := keymapTemplates()[name]
+	if !ok {
+		return out
+	}
+	for id, a := range t.Actions {
+		if b := a.On(platform); len(b) > 0 {
+			out[id] = b[0].Keys
+		}
+	}
+	return out
+}
+
 // TemplateNames lists the keymap templates, the default first.
 func TemplateNames() []string {
 	var names []string

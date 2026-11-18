@@ -138,6 +138,23 @@ h2{font-size:13px;font-weight:500;color:var(--muted);margin:20px 0 8px}
 .sheetsys{position:absolute;left:12px;right:12px;bottom:30px;background:#f2f4f4;border-radius:24px;padding:22px 20px 14px;box-shadow:0 -4px 30px rgba(0,0,0,.25);z-index:4;font-size:15px}
 .scrim{position:absolute;inset:0;background:rgba(0,0,0,.35);z-index:3}
 .label{font:600 15px -apple-system,Arial;margin:0 0 8px;color:#445}
+
+/* Import, a wizard */
+.wzs{display:grid;grid-template-columns:repeat(2,560px);gap:24px}
+.cap{font-size:12px;color:var(--muted);margin:0 0 6px 4px;font-weight:600}
+.wz{width:560px;height:470px;background:var(--bar);border:1px solid var(--line);border-radius:12px;padding:20px 24px;position:relative}
+.wz h1{font-size:20px;display:flex;align-items:center;gap:10px}
+.wz .lead{margin:0 0 14px}
+.lg{width:28px;height:28px;flex:none;object-fit:contain}
+.lg.ph{display:grid;place-items:center;border-radius:50%;background:#ef3939;color:#fff;font-weight:600;font-size:13px}
+.lg.ph.oth{background:var(--accent-tint);color:var(--muted)}
+.wz .row{min-height:46px;padding:6px 14px}
+.rad{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--line);flex:none}.rad.on{border:5px solid var(--accent)}
+.lnk{color:var(--accent);text-decoration:underline}
+.wf{position:absolute;left:24px;right:24px;bottom:18px;display:flex;gap:8px}.wf .sp{flex:1}
+.spin{width:18px;height:18px;border-radius:50%;border:2px solid var(--accent-soft);border-top-color:var(--accent);flex:none}
+.wait{width:18px;height:18px;border-radius:50%;border:1.5px dashed var(--line);flex:none}
+.row.st-wait .lab b,.row.left .lab b{color:var(--muted);font-weight:500}
 </style></head><body>
 
 <!-- ============ DESKTOP ============ -->
@@ -444,6 +461,45 @@ h2{font-size:13px;font-weight:500;color:var(--muted);margin:20px 0 8px}
 </div></div>
  <div class="note" style="left:40px;top:690px">Open: starter workspaces are new (today a profile starts with one). The keys row needs a decision: on the Mac, Chrome's keymap and Project B's are the same today.</div>
 </div>
+
+<!-- Import as a wizard (2026-11-18): the browser, its profile with what it holds, then
+     each thing checked as it lands, then what came. Nothing kept between imports. -->
+<div class="mock" id="i1"><div class="wzs">
+<div><div class="cap">1 · Which browser</div><div class="wz"><div class="wh"><h1>Import</h1><p class="lead">Which browser? Nothing leaves this Mac.</p></div>
+<div class="card">
+<div class="row "><img class="lg" src="../../../shell/src/ui/logos/chrome.svg" alt=""><div class="lab"><b>Chrome</b><span class="sec">2 profiles</span></div><span class="sec" style="font-size:16px">›</span></div>
+<div class="row "><img class="lg" src="../../../shell/src/ui/logos/firefox.svg" alt=""><div class="lab"><b>Firefox</b><span class="sec">1 profile</span></div><span class="sec" style="font-size:16px">›</span></div>
+<div class="row "><img class="lg" src="../../../shell/src/ui/logos/safari.png" alt=""><div class="lab"><b>Safari</b><span class="sec">Needs Full Disk Access, once</span></div><span class="sec" style="font-size:16px">›</span></div>
+<div class="row "><img class="lg" src="../../../shell/src/ui/logos/edge.svg" alt=""><div class="lab"><b>Edge</b><span class="sec">1 profile</span></div><span class="sec" style="font-size:16px">›</span></div>
+<div class="row "><span class="lg ph">V</span><div class="lab"><b>Vivaldi</b><span class="sec">1 profile</span></div><span class="sec" style="font-size:16px">›</span></div>
+<div class="row "><span class="lg ph" style="background:#6b5bd6">Z</span><div class="lab"><b>Zen</b><span class="sec">1 profile</span></div><span class="sec" style="font-size:16px">›</span></div>
+<div class="row "><span class="lg ph oth">…</span><div class="lab"><b>Another browser</b><span class="sec">Choose its profiles folder</span></div><span class="sec" style="font-size:16px">›</span></div>
+</div></div></div>
+<div><div class="cap">2 · Which profile, what to bring</div><div class="wz"><div class="wh"><h1><img class="lg" src="../../../shell/src/ui/logos/chrome.svg" alt="">Chrome</h1><p class="lead">Which profile? <span class="lnk">Choose a different folder…</span></p></div>
+<div class="card">
+<div class="row"><span class="rad on"></span><div class="lab"><b>Personal</b><span class="sec">412 bookmarks · 8,210 pages · Google · 5 extensions</span></div></div>
+<div class="row"><span class="rad"></span><div class="lab"><b>Work</b><span class="sec">64 bookmarks · 1,830 pages · Bing</span></div></div>
+</div>
+<h2>Bring over</h2>
+<div class="picks"><span class="pick on"><span class="cb"></span>Bookmarks <em>412</em></span><span class="pick on"><span class="cb"></span>History <em>8,210</em></span><span class="pick on"><span class="cb"></span>Search engine <em>Google</em></span><span class="pick"><span class="cb"></span>Extensions <em>5</em></span></div>
+<div class="wf"><span class="btn q">Back</span><span class="sp"></span><span class="btn p">Import</span></div></div></div>
+<div><div class="cap">3 · Importing</div><div class="wz"><div class="wh"><h1>Importing from Chrome · Personal</h1><p class="lead">Each one is checked as it lands.</p></div>
+<div class="card">
+<div class="row st-done"><span class="check"></span><div class="lab"><b>412 bookmarks, in 18 folders</b><span class="sec">under From Chrome · Personal</span></div></div>
+<div class="row st-done"><span class="check"></span><div class="lab"><b>8,210 pages of history</b><span class="sec"></span></div></div>
+<div class="row st-now"><span class="spin"></span><div class="lab"><b>Search engine</b><span class="sec"></span></div></div>
+<div class="row st-wait"><span class="wait"></span><div class="lab"><b>Extensions</b><span class="sec">5</span></div></div>
+</div></div></div>
+<div><div class="cap">4 · Done</div><div class="wz"><div class="wh"><h1>Imported from Chrome · Personal</h1><p class="lead">Bookmarks are on the Bookmarks page, under From Chrome · Personal.</p></div>
+<div class="card">
+<div class="row st-done"><span class="check"></span><div class="lab"><b>412 bookmarks, in 18 folders</b><span class="sec">6 bookmarked already</span></div></div>
+<div class="row st-done"><span class="check"></span><div class="lab"><b>8,210 pages of history</b><span class="sec"></span></div></div>
+<div class="row st-done"><span class="check"></span><div class="lab"><b>Google as the search engine</b><span class="sec"></span></div></div>
+<div class="row st-done"><span class="check"></span><div class="lab"><b>3 extensions installed</b><span class="sec">uBlock Origin Lite, Bitwarden, Grammarly</span></div></div>
+<div class="row left"><span class="wait"></span><div class="lab"><b>2 left out</b><span class="sec">Old Notes: Manifest V2 · my-extension: loaded from a folder</span></div></div>
+</div>
+<div class="wf"><span class="btn q">Import another</span><span class="sp"></span><span class="btn p">Done</span></div></div></div>
+</div></div>
 
 <div class="mock" id="d4"><div class="win full"><div class="page">
  <div class="ob">

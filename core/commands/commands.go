@@ -131,6 +131,9 @@ func platformOf(goos string) string {
 	return Linux
 }
 
+// Template is the template the keymap follows, or the one it was made from.
+func (m *Manager) Template() string { return m.keys.Template }
+
 // Platform is the keymap's name for this platform.
 func (m *Manager) Platform() string { return m.platform }
 

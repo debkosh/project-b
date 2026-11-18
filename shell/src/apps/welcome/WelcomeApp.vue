@@ -8,6 +8,7 @@ import { broughtLines, busyLine, choicesOf, holds } from '@/ui/imports.js';
 import Segmented from '@/ui/Segmented.vue';
 import Swatches from '@/ui/Swatches.vue';
 import { framePresets } from '@/ui/colours.js';
+import { shown } from '@/keys.js';
 import Preview from './Preview.vue';
 import { send, setPref, state } from './state.js';
 
@@ -19,14 +20,18 @@ watchEffect(() => paintTheme(state.tones, state.theme));
 document.title = 'Welcome';
 
 // Bring your things over is a step while Go looks for other browsers, and stays one when
-// it finds a profile; a phone keeps each app's data from the others, so it has none.
+// it finds a profile; a phone keeps each app's data from the others, so it has none. How
+// you work, the workspaces and the keys, is the desktop's: a phone has neither.
 const steps = computed(() => {
   const bring = !state.phone && (state.browsers === null || state.browsers.length > 0);
-  return ['hello', ...(bring ? ['bring'] : []), 'style', 'protection', 'done'];
+  return ['hello', ...(bring ? ['bring'] : []), 'style', ...(state.phone ? [] : ['work']), 'protection', 'done'];
 });
 const step = ref('hello');
 const at = computed(() => steps.value.indexOf(step.value));
-const go = (by) => (step.value = steps.value[Math.min(steps.value.length - 1, Math.max(0, at.value + by))]);
+const go = (by) => {
+  if (step.value === 'work' && by > 0) send({ t: 'setWorkspaces', workspaces: starters.filter((w) => w.on).map(({ name, color }) => ({ name, color })) });
+  step.value = steps.value[Math.min(steps.value.length - 1, Math.max(0, at.value + by))];
+};
 const finish = () => send({ t: 'done' });
 // The list came back empty while the step showed: the next one takes its place.
 watch(steps, (s) => {
@@ -86,6 +91,41 @@ function chooseLayout(id) {
   if (l.tabLayout) setPref('tabLayout', l.tabLayout);
   setPref('shell', l.shell);
 }
+
+// How you work: the workspaces to start with, Personal and Work ticked, and any the person
+// adds; Continue makes those ticked (Go's setWorkspaces). Then the keys: Project B's,
+// which are Chrome's, or Firefox's, each shown by a few of its keys.
+const starterColors = ['#2e9d5b', '#3470d0', '#e8a317', '#8a4fd0', '#d03434', '#4f9e9e', '#34404f'];
+const starters = reactive([
+  { name: 'Personal', note: 'Everyday browsing', color: '#2e9d5b', on: true },
+  { name: 'Work', note: 'Mail, docs and tickets, apart', color: '#3470d0', on: true },
+  { name: 'Reading', note: 'Articles for later', color: '#e8a317', on: false },
+]);
+const adding = ref('');
+function addStarter() {
+  const name = adding.value.trim();
+  if (!name || starters.some((w) => w.name.toLowerCase() === name.toLowerCase())) return;
+  starters.push({ name, note: '', color: starterColors[starters.length % starterColors.length], on: true });
+  adding.value = '';
+}
+const keymaps = [
+  { value: 'project-b', label: 'Project B' },
+  { value: 'firefox', label: 'Like Firefox' },
+];
+const cheats = [
+  ['tab.new', 'New tab'],
+  ['address.focus', 'Address'],
+  ['tab.reopenClosed', 'Reopen tab'],
+  ['tab.next', 'Next tab'],
+  ['history.show', 'History'],
+  ['downloads.show', 'Downloads'],
+  ['bookmarks.show', 'Bookmarks'],
+  ['dev.viewSource', 'Page source'],
+];
+const cheatSheet = computed(() => {
+  const keys = state.keymaps[state.keymap] || {};
+  return cheats.filter(([id]) => keys[id]).map(([id, label]) => ({ id, label, keys: shown(keys[id], state.platform) }));
+});
 
 const themes = [
   { value: 'system', label: 'System' },
@@ -233,6 +273,47 @@ onMounted(() => heading.value?.focus());
       </section>
 
       <!-- Protection: what keeps the web in check, and the search engine. -->
+      <!-- How you work: the workspaces to start with, as the switcher shows them, and the keys. -->
+      <section v-else-if="step === 'work'" class="work" aria-labelledby="work">
+        <h1 id="work" ref="heading" tabindex="-1">How you work</h1>
+        <p class="sub">Workspaces keep sets of tabs apart, each with its own sign-ins. Start with these, or add your own.</p>
+        <div class="split">
+          <div class="picture switcher" aria-hidden="true">
+            <div class="menu">
+              <span class="item"><i class="tick">✓</i>All workspaces</span>
+              <span v-for="w in starters.filter((x) => x.on)" :key="w.name" class="item"><i class="dot" :style="{ background: w.color }"></i>{{ w.name }}</span>
+            </div>
+            <span class="button"><i v-for="w in starters.filter((x) => x.on).slice(0, 2)" :key="w.name" class="dot" :style="{ background: w.color }"></i>All workspaces</span>
+          </div>
+          <div class="choices">
+            <div class="choice">
+              <span class="label" id="workspaces-label">Workspaces</span>
+              <div class="card" role="group" aria-labelledby="workspaces-label">
+                <label v-for="w in starters" :key="w.name" class="row starter">
+                  <i class="dot" :style="{ background: w.color }"></i>
+                  <span class="what">
+                    <span class="label">{{ w.name }}</span>
+                    <span v-if="w.note" class="state">{{ w.note }}</span>
+                  </span>
+                  <input v-model="w.on" type="checkbox" :aria-label="w.name" />
+                </label>
+                <form class="row starter" @submit.prevent="addStarter">
+                  <i class="dot add">+</i>
+                  <input v-model="adding" class="add-name" type="text" placeholder="Add one…" aria-label="Add a workspace" maxlength="40" />
+                </form>
+              </div>
+            </div>
+            <div class="choice">
+              <span class="label">Keys</span>
+              <Segmented label="Keys" :options="keymaps" :model-value="state.keymap" @update:model-value="send({ t: 'useKeymap', value: $event })" />
+              <ul class="card cheats" aria-label="Keys">
+                <li v-for="c in cheatSheet" :key="c.id" class="row"><span>{{ c.label }}</span><kbd>{{ c.keys }}</kbd></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section v-else-if="step === 'protection'" class="protection" aria-labelledby="protection">
         <h1 id="protection" ref="heading" tabindex="-1">Protection</h1>
         <div class="card">
@@ -601,6 +682,108 @@ h1 {
 
 .card.default {
   margin-bottom: 32px;
+}
+
+/* How you work: the switcher's menu as the standard shell draws it, at the sidebar's foot. */
+.switcher {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 8px;
+  min-height: 240px;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--bar);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.switcher .menu {
+  display: flex;
+  flex-direction: column;
+  width: 220px;
+  padding: 4px;
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.14), 0 0 0 1px var(--line);
+}
+
+.switcher .item,
+.switcher .button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 6px;
+}
+
+.switcher .tick {
+  width: 10px;
+  font-style: normal;
+}
+
+.switcher .button .dot + .dot {
+  margin-left: -6px;
+}
+
+.dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.starter {
+  justify-content: flex-start;
+}
+
+.starter .what {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 6px 0;
+}
+
+.dot.add {
+  display: grid;
+  place-items: center;
+  font-style: normal;
+  color: var(--muted);
+}
+
+.add-name {
+  flex: 1;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--text);
+}
+
+.add-name:focus {
+  outline: none;
+}
+
+/* The keys, two columns of them. */
+.cheats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+}
+
+.cheats .row {
+  min-height: 32px;
+  padding: 0 16px;
+}
+
+.cheats .row + .row {
+  border-top: 0;
+}
+
+.cheats kbd {
+  font: inherit;
+  color: var(--muted);
 }
 
 .nav {

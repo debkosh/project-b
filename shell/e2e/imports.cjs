@@ -194,7 +194,7 @@ process.on('exit', unlock);
   const again = w.page.frameLocator('iframe.our-page[data-page="welcome"]');
   await again.getByRole('button', { name: 'Get started' }).click();
   check('with no other browser, Get started goes to the style', await until(() => again.getByRole('heading', { name: 'Pick your style' }).isVisible()));
-  check('and the steps are four', (await again.getByRole('list', { name: 'Steps' }).getByRole('listitem').count()) === 4);
+  check('and the steps are five', (await again.getByRole('list', { name: 'Steps' }).getByRole('listitem').count()) === 5);
   await w.page.close();
   await browser.close();
   await lib.done();
