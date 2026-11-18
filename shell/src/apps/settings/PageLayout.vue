@@ -1,5 +1,5 @@
 <script setup>
-import { computed, inject, nextTick, ref, watch, watchEffect } from 'vue';
+import { computed, inject, nextTick, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue';
 import { phone } from '@/phone.js';
 import Cards from './Cards.vue';
 import ListPage from './ListPage.vue';
@@ -56,12 +56,27 @@ watch(
     const g = shown.value.section;
     const el = !shown.value.list && g && state.section ? content.value.querySelector(`[data-part="${state.section}"], [data-group="${g.id}"]`) : null;
     jumpedTo = el ? g.id : '';
+    pinned = el;
     if (el) el.scrollIntoView({ block: 'start' });
     else content.value.scrollTop = 0;
     onScroll();
   },
   { flush: 'post', immediate: true },
 );
+
+// What was gone to stays at the top while the page changes size, until the person scrolls:
+// a page opened at an address as the app starts is laid out narrow first, and its scroll was
+// left at the foot once it took the window's width.
+let pinned = null;
+const unpin = () => (pinned = null);
+let sized = null;
+onMounted(() => {
+  sized = new ResizeObserver(() => pinned?.isConnected && pinned.scrollIntoView({ block: 'start' }));
+  sized.observe(content.value);
+  sized.observe(content.value.firstElementChild);
+  for (const e of ['wheel', 'touchstart', 'keydown', 'mousedown']) content.value.addEventListener(e, unpin, { passive: true });
+});
+onUnmounted(() => sized?.disconnect());
 </script>
 
 <template>
