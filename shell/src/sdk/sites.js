@@ -70,9 +70,21 @@ export function setSiteSetting(origin, kind, value) {
   send({ t: 'setSiteSetting', origin, kind, value });
 }
 
+// reloadPage reloads the active tab, for a change that applies when the page loads again.
+export function reloadPage() {
+  send({ t: 'reload' });
+}
+
 // siteSetting is the setting of kind in a site's list, or null.
 export function siteSetting(site, kind) {
   return site?.settings.find((s) => s.kind === kind) || null;
+}
+
+// sparkNames is the sparks that run on a page, as the site panel says them: "A", "A and B",
+// or "A, B and 2 more".
+export function sparkNames(names) {
+  if (names.length <= 2) return names.join(' and ');
+  return `${names[0]}, ${names[1]} and ${names.length - 2} more`;
 }
 
 // The words for our own kinds' values, and a permission's.

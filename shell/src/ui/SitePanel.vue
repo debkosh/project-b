@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { linkChoices, openSiteSettings, permissionWord, setSiteSetting, siteOrigin, siteSetting } from '@/sdk/sites.js';
+import { linkChoices, openSiteSettings, permissionWord, reloadPage, setSiteSetting, siteOrigin, siteSetting, sparkNames } from '@/sdk/sites.js';
 import Segmented from './Segmented.vue';
 import { pushEscape } from './escape.js';
 
@@ -40,6 +40,10 @@ function setSparks(on) {
   setSiteSetting(origin.value, 'sparks', on ? 'on' : 'off');
   reload.value = true;
 }
+function reloadNow() {
+  reloadPage();
+  reload.value = false;
+}
 function details() {
   emit('close');
   openSiteSettings();
@@ -77,7 +81,7 @@ onUnmounted(() => pop());
       <label v-if="sparksOn && sparks.length" class="ui-site-row">
         <span class="ui-site-text">
           <span>Sparks</span>
-          <small>{{ sparks.join(', ') }}</small>
+          <small>{{ sparkNames(sparks) }}</small>
         </span>
         <input type="checkbox" class="switch" :checked="sparksOn.value === 'on'" @change="setSparks($event.target.checked)" />
       </label>
@@ -99,6 +103,7 @@ onUnmounted(() => pop());
 
     <div class="ui-site-foot">
       <span>{{ reload ? 'Changes apply when the page reloads' : '' }}</span>
+      <button v-if="reload" type="button" class="text-button" @click="reloadNow">Reload</button>
       <button type="button" class="text-button" @click="details">Details</button>
     </div>
   </div>
@@ -210,5 +215,9 @@ onUnmounted(() => pop());
   padding: 8px 8px 8px 16px;
   font-size: 12px;
   color: var(--muted);
+}
+
+.ui-site-foot > span {
+  flex: 1;
 }
 </style>

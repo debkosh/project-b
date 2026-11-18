@@ -1,6 +1,6 @@
 <script>
   import { state as go } from '@/sdk/svelte.svelte.js';
-  import { linkChoices, openSite, openSiteSettings, permissionWord, setSiteSetting, siteOrigin, siteSetting } from '@/sdk/sites.js';
+  import { linkChoices, openSite, openSiteSettings, permissionWord, reloadPage, setSiteSetting, siteOrigin, siteSetting, sparkNames } from '@/sdk/sites.js';
   import Sheet from './Sheet.svelte';
 
   // The site panel as a sheet (docs/site-features.md): the active tab's site and its
@@ -30,6 +30,10 @@
     setSiteSetting(origin, 'sparks', on ? 'on' : 'off');
     reload = true;
   }
+  function reloadNow() {
+    reloadPage();
+    reload = false;
+  }
   function details() {
     onclose();
     openSiteSettings();
@@ -49,7 +53,7 @@
   {/if}
   {#if sparksOn && sparks.length}
     <label class="row">
-      <span class="text">Sparks<small>{sparks.join(', ')}</small></span>
+      <span class="text">Sparks<small>{sparkNames(sparks)}</small></span>
       <input type="checkbox" class="switch" checked={sparksOn.value === 'on'} onchange={(e) => setSparks(e.currentTarget.checked)} />
     </label>
   {/if}
@@ -73,6 +77,7 @@
   {/if}
   <div class="foot">
     <span>{reload ? 'Changes apply when the page reloads' : ''}</span>
+    {#if reload}<button type="button" class="details" onclick={reloadNow}>Reload</button>{/if}
     <button type="button" class="details" onclick={details}>Details</button>
   </div>
 </Sheet>
@@ -169,6 +174,10 @@
     border-top: 1px solid var(--line);
     font-size: 13px;
     color: var(--muted);
+  }
+
+  .foot > span {
+    flex: 1;
   }
   .details {
     min-height: 48px;
