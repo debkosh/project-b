@@ -421,7 +421,7 @@
     "api": "navigator.credentials.create({publicKey}), navigator.credentials.get({publicKey})",
     "delegate": "ContentBrowserClient::GetWebAuthenticationRequestDelegate",
     "status": {"mac": "partly", "android": "quiet"},
-    "why": "On Mac a USB security key and a phone's passkey by QR code work, Touch ID and iCloud Keychain passkeys don't; Android rejects at once",
+    "why": "On Mac a USB security key and a phone's passkey by QR code work, Touch ID and iCloud Keychain passkeys don't; Android rejects at once, as its passkey providers answer only browsers on their approved lists",
     "needs": ["delegate", "prompt"],
     "owner": "engine/browser/passkeys.cc:PasskeyRequest",
     "probe": [{"name": "webauthn",
