@@ -49,6 +49,17 @@ in Settings while the Extensions flag is on, are installed again from the Chrome
 by their ids, one at a time, with no prompt, as ticking them is the yes; one that isn't
 from that store, was loaded from a folder, or is Manifest V2 is left out, and says why.
 
+**Passwords.** A Chrome-family browser seals each password with AES, its key made from a
+secret it keeps in the Mac's login keychain; we ask the keychain for that secret, and macOS
+asks you first, once per browser. Firefox seals them with a key kept in key4.db, itself
+locked by your primary password if you set one, so the wizard asks for it. Safari's are in
+iCloud Keychain, which no app can read, so they come as the file the Passwords app
+exports. Passwords stay in memory and go straight into the passwords store; only their
+count is shown.
+
+**From a file.** Settings also takes a bookmarks file, the HTML every browser exports, and
+a passwords file, the CSV a browser or the Passwords app exports.
+
 **Importing twice.** An address already bookmarked isn't added again, and a second import
 reuses the folders the first made. History keeps the larger visit count and the later
 visit, so nothing is counted twice. An extension already installed is said to be, not

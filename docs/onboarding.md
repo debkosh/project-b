@@ -74,6 +74,12 @@ And on the second mocks, 2026-11-17:
   select a folder and then try from there"; "if our backend code is not changing and we are
   just storing name icon and default folder in shell we can have many builtin options"; ship
   each fork's logo; the folder in the welcome and in Settings).
+- **Passwords come over** (the owner, 2026-11-18): read directly from Chrome's family and
+  Firefox's, "and password import as a second option under imports settings... so we have
+  improt from browsers and imports from file.. like exported bookmarks password etc"; a
+  Firefox primary password is asked for. The store is the passwords session's: the API was
+  agreed with it (`Store.Import([]Login)` with Origin, Username, Password, Created and
+  LastUsed, and Added, AlreadySaved and Skipped back); the importer makes no store of its own.
 - **Sync** is a discussion of its own, in its own session ("[project-b] sync"): many ways to
   sync, to places the user controls.
 
@@ -145,7 +151,8 @@ page's layouts ([settings.md](settings.md)) it is Run setup again once more, und
 | History import, built | `core/history` | 3 |
 | Open tabs, as a workspace named after the browser | `browserdata`: Chromium's session files, Arc's sidebar, Firefox's session store | not yet given one |
 | Safari, behind Full Disk Access: bookmarks and history, built | `browserdata` (`safari.go`, `plist.go`); the welcome's and Settings' Allow access | 4 |
-| Passwords | the store is the daily driver session's (`core/passwords`, `Import([]Login)`); the importers hand logins to it. Chromium's are sealed with the Keychain's "<Browser> Safe Storage" key, which macOS asks about once per browser; Firefox's with `key4.db` | 5 |
+| Passwords, read, built; they come over once the passwords store is there | `browserdata` (`chromium_logins.go`, `firefox_logins.go`, `keychain_mac.go`); the store is the passwords session's (`core/passwords`, `Store.Import`) | 5 |
+| Files a person exported, built: bookmarks (HTML) now, passwords (CSV) with the store | `browserdata` (`files.go`); Settings' Import | 5 |
 | Extensions installed again by id, in Settings' Import while their flag is on, built | `browserdata` (`extensions.go`); the engine's `InstallExtensionFromStore`; the extension manager's queue | 5 |
 
 Each slice goes out through a release of its own.
@@ -310,6 +317,46 @@ Each slice goes out through a release of its own.
   back to the list by itself, Safari's row on with 13 bookmarks, 1 page and Google; Bring
   over brought 13 bookmarks in 2 folders under From Safari, the page and Google, as
   `imports.json` said.
+
+**Passwords, and files a person exported** (branch `password-import`):
+
+- **A Chromium browser's passwords** are in its profile's Login Data and Login Data For
+  Account (those saved to the person's account), SQLite: "v10" then AES-128-CBC, the key
+  PBKDF2-SHA1 of a random secret in the login keychain, "<name> Safe Storage", with the salt
+  "saltysalt" and 1003 rounds, the IV sixteen spaces, as Firefox's own importer has it
+  (`ChromeMacOSLoginCrypto.sys.mjs`). Each known browser's keychain names are a line of the
+  table: "Chrome", "Microsoft Edge", "Brave Browser", "Opera" (Opera GX's too), "Vivaldi",
+  and so on. The importer reads the secret through Apple's Security framework from the
+  app itself (`KeychainSecret`), so macOS's question names Project B: Allow, Always Allow
+  or Deny, and the Mac's password. "Never save" entries, federated ones and HTTP auth ones
+  aren't brought.
+- **A Firefox profile's** are in logins.json, each value sealed by NSS with the key in
+  key4.db, which is sealed under the primary password, "" when none is set: PBES2 (PBKDF2
+  with HMAC-SHA256 of SHA1(global salt + password), then AES-256-CBC), or the older
+  SHA1-and-3DES; the logins are 3DES-CBC, or AES-256-CBC in newer ones. Go's own crypto,
+  no NSS. A profile with a primary password says so, and the wizard asks for it under the
+  choices; it goes with the import, is used once, and is kept nowhere. Wrong, the line
+  says so.
+- **Safari's** are in iCloud Keychain, which no other app can read: they come as a file.
+- **Counts:** a profile's passwords are counted without unlocking anything, from the rows
+  and logins.json; the row says "· 36 passwords" and Passwords is a choice, ticked.
+- **Into the store:** the importer hands what it read, in memory only, to the passwords
+  store through `PasswordStore` (`App.UsePasswordStore`), which says how many it added, had
+  already (a login for the same origin and username is kept as it is) and left out. Until
+  the store is there, nothing names passwords. The mock's `-password-store` gives a store
+  that only counts, and `-keychain` a test secret, for the tests.
+- **From a file,** in Settings' Import, under the browsers: Bookmarks file, the HTML every
+  browser exports (Netscape's bookmark file), into a folder named after the file; and,
+  with the store, Passwords file, the CSV of Chrome, Edge, Brave, Firefox or the Passwords
+  app (Safari's), its columns found by name. The page reads the file the person picks and
+  hands Go what it holds; nothing else sees it. After a passwords file the wizard says to
+  delete it, as it holds them in plain text.
+- **Testing it:** `browserdata/testdata/logins.py` seals the test home's passwords as each
+  browser does (Python's hashlib and openssl): Chrome · Personal's under "test-safe-storage",
+  Firefox's with no primary password, Zen's under "letmein". `browserdata`
+  (`TestLogins`, `TestSHA1And3DESKey`, `TestReadExportedFiles`), `core/app`
+  (`TestPasswordsComeOver`) and `shell/e2e/imports.cjs`. The keychain itself is untried:
+  this Mac has no Chrome with saved passwords.
 
 **Import as a wizard, forks, and a folder chosen** (branch `import-wizard`):
 
