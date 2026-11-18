@@ -110,6 +110,15 @@ Two-tone designs, a primary on a background of its own:
   sectors around a key hue; the templates were never rigorously tested, so the util doesn't
   use them.
 
+- **Our own console's avatars** (another project of ours): the same hash, FNV-1a with an
+  avalanche, onto a continuous OKLCH hue, kept as a list of bands so a hue can be left out
+  later. Seeded from the item's immutable id, not its name, so a rename keeps the colour, and
+  salted per use (`id + "#colour"`) so the colour and the pattern hash apart. Two fixed
+  tones per item, a dark (L 0.40, C 0.13) and a light (L 0.86, C 0.11) at least a quarter
+  turn apart in hue, so each avatar has an edge that shows on light and on dark: identity
+  colours that ignore the theme, where ours follow it. Out-of-gamut colours are clipped per
+  channel, as Chromium draws an `oklch()` fill; ours keep the hue and trim chroma instead.
+
 None of these gives one colour per item from text, so the util is our own, about a hundred
 lines.
 
@@ -135,6 +144,10 @@ The owner, 2026-11-18:
 - **The recipe is an input too:** "add the recipies as another input option".
 
 ## Open
+
+- Seed from a stable id where an item has one (a tab group, a folder), so a rename keeps
+  its colour; a site's host is its own id. A purpose salt, as the console's avatars have.
+- Hue bands to leave out, such as the danger red, so a mark never reads as an error.
 
 - Recipe for site marks: soft is the UX session's pick and ours.
 - Where it lives: one JS module, `shell/src/ui/tint.js`, its constants in it, reading the
