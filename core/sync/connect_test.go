@@ -265,7 +265,7 @@ func TestChangingThePassphrase(t *testing.T) {
 	}
 }
 
-// Disconnect stops syncing and forgets the bucket; every row stays.
+// Disconnect stops syncing and forgets the bucket, its address too; every row stays.
 func TestDisconnectKeepsTheRows(t *testing.T) {
 	s := newServer(t)
 	a, b := newProfile(t), newProfile(t)
@@ -276,6 +276,9 @@ func TestDisconnectKeepsTheRows(t *testing.T) {
 	a.settle()
 	a.connect(s.bearer(), "tok", "pass phrase")
 	b.connect(s.bearer(), "tok", "pass phrase")
+	if got := b.sync.Address(); got != s.bearer() {
+		t.Fatalf("b's address while on: %q", got)
+	}
 	if err := b.call(b.sync.Disconnect); err != nil {
 		t.Fatal(err)
 	}
@@ -286,8 +289,8 @@ func TestDisconnectKeepsTheRows(t *testing.T) {
 	if title, _ := b.page("https://example.com/"); title != "Kept" {
 		t.Fatalf("b's history: %q", title)
 	}
-	if st := b.sync.Status(); st.On || st.Host != "" {
-		t.Fatalf("b's status: %+v", st)
+	if st := b.sync.Status(); st.On || st.Host != "" || b.sync.Address() != "" {
+		t.Fatalf("b's status: %+v, address %q", st, b.sync.Address())
 	}
 	for _, table := range []string{"secrets", "sync_items", "sync_meta", "sync_changes"} {
 		if n := b.count(`SELECT count(*) FROM ` + table); n != 0 {

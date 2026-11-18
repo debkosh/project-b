@@ -15,10 +15,10 @@ import (
 // and what the page asks of sync, each answered with a message of its own. A deep link's
 // address comes as the page's syncPropose, and connects nothing.
 func (a *App) syncSettingsPart() settings.Part {
+	// The page has the address too, which Reconnect fills in; the shells don't.
 	a.Sync.OnStatus(func(s sync.Status) {
-		m := map[string]any{"t": "sync", "sync": s}
-		a.Settings.Send(m)
-		a.Shell.Send(m)
+		a.Settings.Send(map[string]any{"t": "sync", "sync": s, "address": a.Sync.Address()})
+		a.Shell.Send(map[string]any{"t": "sync", "sync": s})
 	})
 	a.Shell.AddPart(shell.Part{
 		Snapshot: func(into map[string]any) { into["sync"] = a.Sync.Status() },
@@ -36,7 +36,7 @@ func (a *App) syncSettingsPart() settings.Part {
 		a.Settings.Send(m)
 	}
 	return settings.Part{
-		Snapshot: func(into map[string]any) { into["sync"] = a.Sync.Status() },
+		Snapshot: func(into map[string]any) { into["sync"], into["syncAddress"] = a.Sync.Status(), a.Sync.Address() },
 		Handle: func(_ engine.TabID, t string, msg []byte) bool {
 			var c struct {
 				Address    string `json:"address"`
