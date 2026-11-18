@@ -63,12 +63,17 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>NSHighResolutionCapable</key><true/>
   <key>NSSupportsAutomaticGraphicsSwitching</key><true/>
   <!-- A browser to macOS, which offers it as the default one and opens web links and web
-       pages with it (docs/onboarding.md, Make default browser). -->
+       pages with it (docs/onboarding.md, Make default browser); and the app's own links,
+       project-b:, such as a sync server's set-up link (docs/sync.md). -->
   <key>CFBundleURLTypes</key>
   <array>
     <dict>
       <key>CFBundleURLName</key><string>Web site URL</string>
       <key>CFBundleURLSchemes</key><array><string>http</string><string>https</string></array>
+    </dict>
+    <dict>
+      <key>CFBundleURLName</key><string>Project B link</string>
+      <key>CFBundleURLSchemes</key><array><string>project-b</string></array>
     </dict>
   </array>
   <key>CFBundleDocumentTypes</key>

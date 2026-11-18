@@ -38,6 +38,13 @@
                 <data android:scheme="http" />
                 <data android:scheme="https" />
             </intent-filter>
+            <!-- The app's own links, such as a sync server's set-up link (docs/sync.md). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="project-b" />
+            </intent-filter>
         </activity>
 
         <!-- Lets Android's package installer read a downloaded update. -->
