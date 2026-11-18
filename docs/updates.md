@@ -95,7 +95,7 @@ manager's, whatever the download is doing.
 |---|---|---|
 | Idle | the version alone | a check finding a newer release (Downloading), or one asked for (Checking) |
 | Checking (asked for) | Checking… | Up to date, Downloading, or Couldn't check, with Try again; it waits at most 15 s (`lockWait`) for the folder's lock, held by another copy or a download still stopping, then says so |
-| Downloading | Downloading X… N%, with Retry and Cancel | the release checked and staged (Ready); no bytes for 30 s (`stalledAfter`), which is Failed with Try again; Retry, which stops it and checks again at once; Cancel, which stops it and shows Idle |
+| Downloading | Downloading X… N%, with Cancel and Retry | the release checked and staged (Ready); no bytes for 30 s (`stalledAfter`), which is Failed with Try again; Retry, which stops it and checks again at once; Cancel, which stops it and shows Idle |
 | Ready | Relaunch to update to X, with Relaunch | Relaunch |
 | Failed | Couldn't update to X, with Try again | Try again (Retry); the channel moving off X |
 

@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { send, state } from '@/sdk/vue.js';
 
 // What the updater is doing, in a bar under the navigation bar while something is
-// happening: a download and how far it is, with Retry and Cancel, a release ready to
+// happening: a download and how far it is, with Cancel and Retry, a release ready to
 // relaunch into, or why one failed, with Try again (docs/ux-guide.md).
 const percent = computed(() => {
   const u = state.update;
@@ -25,8 +25,9 @@ const percent = computed(() => {
           aria-valuemax="100"
           :style="{ width: percent + '%' }"
         ></span>
-        <button class="text-button" type="button" @click="send({ t: 'retryUpdate' })">Retry</button>
+        <!-- Retry last and a little apart, as it throws away what has arrived (docs/ux-guide.md). -->
         <button class="text-button" type="button" @click="send({ t: 'cancelUpdate' })">Cancel</button>
+        <button class="text-button apart" type="button" @click="send({ t: 'retryUpdate' })">Retry</button>
       </template>
       <template v-else-if="state.update.phase === 'ready'">
         <span class="text" role="status">Project B {{ state.update.version }} is ready.</span>
@@ -66,6 +67,10 @@ const percent = computed(() => {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+.apart {
+  margin-left: 8px;
 }
 
 .bar.failed {

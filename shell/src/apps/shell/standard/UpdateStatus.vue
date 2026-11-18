@@ -4,7 +4,7 @@ import { send, state } from '@/sdk/vue.js';
 
 // The update manager's state, shown the way a browser shows a link's address: a small
 // bubble in the page's bottom-left corner, there only while something is happening. While a
-// release downloads it has Retry and Cancel, as every progress does (docs/ux-guide.md).
+// release downloads it has Cancel and Retry, as every progress does (docs/ux-guide.md).
 function relaunch() {
   send({ t: 'relaunch' });
 }
@@ -29,8 +29,8 @@ const percent = computed(() => {
         aria-valuemax="100"
         :style="{ width: percent + '%' }"
       ></span>
-      <button type="button" class="act" @click="send({ t: 'retryUpdate' })">Retry</button>
       <button type="button" class="act" @click="send({ t: 'cancelUpdate' })">Cancel</button>
+      <button type="button" class="act apart" @click="send({ t: 'retryUpdate' })">Retry</button>
     </template>
     <button v-else-if="state.update.phase === 'ready'" type="button" @click="relaunch">
       Project B {{ state.update.version }} is ready. <b>Relaunch to update</b>
@@ -103,12 +103,17 @@ button:hover b {
   text-decoration: underline;
 }
 
-/* Retry and Cancel, after the percentage: quiet words in the link colour, never cut. */
+/* Cancel and Retry, after the percentage: quiet words in the link colour, never cut. Retry
+   last and a little apart, as it throws away what has arrived (docs/ux-guide.md). */
 .update > .act {
   flex: none;
   margin-left: 10px;
   color: var(--icon);
   font-weight: 500;
+}
+
+.update > .act.apart {
+  margin-left: 18px;
 }
 
 .act:hover {

@@ -62,7 +62,7 @@ and the settings page alike, `isDefault`. The snapshot reads `IsDefaultBrowser` 
 opens (`core/app/default_browser_settings.go`). The version has what the update manager is
 doing beside it, Up to date, Downloading or Relaunch to update, with Check for updates, or
 Relaunch (Install update on a phone) once a release is ready; while a release downloads,
-Retry and Cancel, with its progress as a line under the words. On a narrow page the line
+Cancel and Retry, Retry last and a little apart, with its progress as a line under the words. On a narrow page the line
 breaks between the version and the update, never inside the update, so its buttons stay
 beside what they act on and the progress line stays under its words. Automatic updates is a row of
 its own, under Advanced, or About Project B in the sections layout. The page shows the line

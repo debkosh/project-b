@@ -356,7 +356,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   // Check for updates; Retry fetches it again, and Cancel stops it and leaves the version.
   stuck = true;
   await status.getByRole('button', { name: 'Check for updates' }).click();
-  check('a download shows Retry and Cancel while it runs, in place of Check for updates',
+  check('a download shows Cancel and Retry while it runs, in place of Check for updates',
     await until(async () => /Downloading 0\.3\.0… \d+%/.test(await updateStatus.textContent()) && (await status.getByRole('button', { name: 'Retry' }).isVisible()) &&
       (await status.getByRole('button', { name: 'Cancel' }).isVisible()) && (await status.getByRole('button', { name: 'Check for updates' }).count()) === 0),
     await updateStatus.textContent());
@@ -372,12 +372,13 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
     const box = (e) => e.getBoundingClientRect();
     const words = box(s.querySelector('[role="status"]'));
     const bar = box(s.querySelector('[role="progressbar"]'));
-    const tops = [...s.querySelectorAll('button')].filter((b) => /^(Retry|Cancel)$/.test(b.textContent.trim())).map((b) => Math.round(box(b).top + box(b).height / 2));
+    const buttons = [...s.querySelectorAll('button')].filter((b) => /^(Retry|Cancel)$/.test(b.textContent.trim()));
+    const tops = buttons.map((b) => Math.round(box(b).top + box(b).height / 2));
     const mid = Math.round(words.top + words.height / 2);
-    return { mid, tops, inside: bar.left >= words.left - 1 && bar.right <= words.right + 1 && bar.top >= words.bottom - 1 && bar.top <= words.bottom + 6 };
+    return { mid, tops, order: buttons.map((b) => b.textContent.trim()).join(' '), inside: bar.left >= words.left - 1 && bar.right <= words.right + 1 && bar.top >= words.bottom - 1 && bar.top <= words.bottom + 6 };
   });
-  check('at a phone\'s width, Retry and Cancel stay on the download\'s line, and its progress line under its words',
-    narrow.tops.length === 2 && narrow.tops.every((t) => Math.abs(t - narrow.mid) <= 3) && narrow.inside, JSON.stringify(narrow));
+  check('at a phone\'s width, Cancel then Retry stay on the download\'s line, and its progress line under its words',
+    narrow.tops.length === 2 && narrow.tops.every((t) => Math.abs(t - narrow.mid) <= 3) && narrow.inside && narrow.order === 'Cancel Retry', JSON.stringify(narrow));
   await settle(page);
   await status.screenshot({ path: shot('settings-update-narrow') });
   await status.evaluate((s) => { s.style.width = ''; });

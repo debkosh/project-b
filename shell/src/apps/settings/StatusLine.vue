@@ -5,7 +5,7 @@ import { send, state } from './state.js';
 
 // The status line at the top of Settings, in both layouts (docs/settings.md): whether the
 // app is the default browser, with Make default browser when it isn't, and the version with
-// what the update manager is doing and Check for updates, Retry and Cancel while a release
+// what the update manager is doing and Check for updates, Cancel and Retry while a release
 // downloads (docs/ux-guide.md: every progress has both), or Relaunch once one is ready. Go
 // owns both; the page shows them.
 
@@ -64,8 +64,9 @@ const busy = computed(() => state.update.check === 'checking');
           {{ phone ? 'Install update' : 'Relaunch' }}
         </button>
         <template v-else-if="state.update.phase === 'downloading'">
-          <button type="button" class="text-button quiet" @click="send({ t: 'retryUpdate' })">Retry</button>
+          <!-- Retry last and a little apart, as it throws away what has arrived (docs/ux-guide.md). -->
           <button type="button" class="text-button quiet" @click="send({ t: 'cancelUpdate' })">Cancel</button>
+          <button type="button" class="text-button quiet apart" @click="send({ t: 'retryUpdate' })">Retry</button>
         </template>
         <button v-else type="button" class="text-button quiet" :disabled="busy" @click="send({ t: 'checkUpdate' })">
           {{ update.failed ? 'Try again' : 'Check for updates' }}
@@ -103,6 +104,10 @@ const busy = computed(() => state.update.check === 'checking');
   flex-wrap: wrap;
   align-items: center;
   gap: 6px 8px;
+}
+
+.apart {
+  margin-left: 8px;
 }
 
 .version {
