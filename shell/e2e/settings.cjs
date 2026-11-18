@@ -143,17 +143,21 @@ const keymapFile = () => {
     return null;
   }
 };
-// WCAG 2's contrast ratio of two computed colours, rgb(r, g, b).
-function contrast(a, b) {
-  const luminance = (c) => {
-    const [r, g, bl] = c.match(/\d+/g).slice(0, 3).map((v) => {
-      const s = v / 255;
-      return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-    });
-    return 0.2126 * r + 0.7152 * g + 0.0722 * bl;
+// APCA's lightness contrast, Lc, of text on bg, two computed colours rgb(r, g, b), as a
+// magnitude (APCA 0.0.98G), as core/tones picks a label by it.
+function lightness(text, bg) {
+  const y = (c) => {
+    const [r, g, b] = c.match(/\d+/g).slice(0, 3).map((v) => (v / 255) ** 2.4);
+    const v = 0.2126729 * r + 0.7151522 * g + 0.072175 * b;
+    return v < 0.022 ? v + (0.022 - v) ** 1.414 : v;
   };
-  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
-  return (hi + 0.05) / (lo + 0.05);
+  const [t, b] = [y(text), y(bg)];
+  if (b > t) {
+    const s = (b ** 0.56 - t ** 0.57) * 1.14;
+    return s < 0.1 ? 0 : (s - 0.027) * 100;
+  }
+  const s = (b ** 0.65 - t ** 0.62) * 1.14;
+  return s > -0.1 ? 0 : -(s + 0.027) * 100;
 }
 const menuHas = (menu, title) => JSON.stringify(menu).includes(`"title":"${title}"`);
 
@@ -366,7 +370,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   stuck = false;
 
   // A dialog's answer reads on its fill in every preset colour, light and dark: its words
-  // reach WCAG's 4.5 for text, by the colours the page computes. New workspace's dialog
+  // reach APCA's Lc 60, by the colours the page computes. New workspace's dialog
   // has one.
   await show('frameColour');
   const presets = await page.getByRole('radiogroup', { name: 'Frame colour' }).getByRole('radio')
@@ -385,8 +389,8 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
       await page.getByRole('button', { name: 'New workspace…' }).click();
       const answer = page.getByRole('dialog').getByRole('button', { name: 'Create', exact: true });
       const [fg, bg] = await answer.evaluate((b) => [getComputedStyle(b).color, getComputedStyle(b).backgroundColor]);
-      const ratio = contrast(fg, bg);
-      check(`a primary button reads in ${p.name}, ${theme.toLowerCase()}: ${ratio.toFixed(2)}`, shown && ratio >= 4.5, `${fg} on ${bg}`);
+      const lc = lightness(fg, bg);
+      check(`a primary button reads in ${p.name}, ${theme.toLowerCase()}: Lc ${lc.toFixed(0)}`, shown && lc >= 60, `${fg} on ${bg}`);
       await page.keyboard.press('Escape');
     }
   }

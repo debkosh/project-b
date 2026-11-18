@@ -15,6 +15,8 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+
+	"github.com/sudiptadeb/gulal"
 )
 
 // Palette is one theme's tokens, by name: "--accent" and so on.
@@ -167,12 +169,14 @@ var (
 )
 
 // labelled is the accent and what goes on it, a primary button's words or a badge's count:
-// white or the ink, whichever reads better. It must reach WCAG's 4.5 for text. A few
-// colours sit where neither does, a mid blue or a red lifted for dark: those move away from
-// the better label, in small steps, until it reads. The rest keep the accent they had.
+// white or the ink, whichever gulal picks for the accent by APCA (docs/design-system.md).
+// WCAG 2's ratio picks the ink on mid tones such as a teal or a mid blue, where white reads
+// better to the eye. The label must reach readable, Lc 60. A few colours sit where neither
+// does: those move away from the label, in small steps, until it reads. The rest keep the
+// accent they had.
 func labelled(base [3]float64) (accent, onAccent [3]float64) {
 	onAccent = ink
-	if contrast(base, white) >= contrast(base, ink) {
+	if inks.Swatch(hex(base), gulal.SwatchOptions{Inks: []string{hex(white), hex(ink)}}).Ink == hex(white) {
 		onAccent = white
 	}
 	away := all(255)
@@ -180,11 +184,21 @@ func labelled(base [3]float64) (accent, onAccent [3]float64) {
 		away = all(0)
 	}
 	accent = base
-	for t := 0.02; contrast(accent, onAccent) < 4.5; t += 0.02 {
+	for t := 0.02; lightness(onAccent, accent) < readable; t += 0.02 {
 		accent = mix(base, away, t)
 	}
 	return accent, onAccent
 }
+
+// readable is the APCA lightness contrast a label must reach: Lc 60, the level we hold
+// every label to (docs/design-system.md).
+const readable = 60
+
+// inks is gulal with its defaults, APCA, used only to pick and measure a label.
+var inks = gulal.New(gulal.Options{})
+
+// lightness is APCA's lightness contrast, Lc, of text on bg, as gulal measures it.
+func lightness(text, bg [3]float64) float64 { return inks.Contrast(hex(text), hex(bg)) }
 
 // contrast is WCAG 2's contrast ratio of two colours, from their relative luminance.
 func contrast(a, b [3]float64) float64 {
