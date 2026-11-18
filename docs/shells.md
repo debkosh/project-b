@@ -153,6 +153,7 @@ gives the page the same two.
 | `profileData` | `profileData`: what this shell saved for the profile | A shell in any window of the profile saved it |
 | `prefs` | `prefs`: every one of Go's prefs by its name in the file (`frameColor`, `theme`, `tabLayout`, `shell`, `addressBarPosition`); the snapshot carries it too | Any pref changed, after the message of its own (`windowColor`, `theme`, ...) |
 | `permissionPrompts` | `permissionPrompts`: every prompt open in the profile, `{id, tab, origin, kinds, once}` | A site asked to use its camera, microphone or notifications, or a prompt was answered or dropped |
+| `sync` | `sync`: sync's status, `{on, syncing, host, lastSynced, error, problem, locked}`; the snapshot carries it too ([sync.md](sync.md#the-functions-coresync)) | It changed: sync turned on or off, a run began or ended, or the profile's keys don't open |
 
 The snapshot's `profileData` is what this shell last saved for the profile, `null` when
 nothing. Its `actions` is every action in the menus that can run then, `{id, title}`, in
