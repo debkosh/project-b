@@ -1323,6 +1323,83 @@ def links_from_other_apps():
     shot("15b-link-from-another-app")
 
 
+# A sync link as the memd page offers one (docs/sync.md, The link).
+SYNC_LINK = "project-b://sync?address=https%3A%2F%2Fsync.example.test%2Fsync%2Fabc"
+DEVICE_KEY = "/data/data/%s/files/device.key" % PACKAGE
+
+
+def view_link(link):
+    """Sends a link as another app does, quoted for the device's shell."""
+    adb("shell", "am", "start", "-W", "-a", "android.intent.action.VIEW", "-d", "'%s'" % link, PACKAGE)
+
+
+def settings_text(want):
+    """A node of the settings page whose text is want, or a function of it."""
+    return find("settings", text=want)
+
+
+def sync_on_the_phone():
+    """Sync on a phone (docs/sync.md). A project-b://sync link from another app opens Settings
+    at Sync with the link's Dialog, its address filled in, whether the app runs or not. Turning
+    sync on against a sync server on this Mac (core/cmd/syncserver, reached through adb reverse,
+    its own CA put in the device's user CA folder, which Go reads, as sync takes only https)
+    makes the device key, wrapped by the Android Keystore, and the profile's key; after a
+    restart sync runs again with what was kept, so the Keystore opened the key; and DeviceKey
+    logs no exception."""
+    stopped = lambda: (adb("shell", "am", "force-stop", PACKAGE), until(lambda: PACKAGE + "_zygote" not in adb("shell", "ps", "-A", "-o", "NAME")))
+    linked = lambda: until(lambda: settings_text("https://sync.example.test/sync/abc"), 30)
+    adb("logcat", "-c")
+    launch()
+    view_link(SYNC_LINK)
+    check("a sync link from another app opens Settings at Sync with the link's Dialog, while the app runs",
+          linked() is not None and settings_text(lambda t: (t or "").startswith("A link asked to set up sync")) is not None)
+    shot("sync-link-running")
+    stopped()
+    view_link(SYNC_LINK)
+    check("and when the app wasn't running", linked() is not None)
+    shot("sync-link-stopped")
+
+    folder = os.path.abspath(os.path.join(OUT, "syncserver"))
+    binary = os.path.abspath(os.path.join(OUT, "syncserver-bin"))
+    subprocess.run(["go", "build", "-o", binary, "./cmd/syncserver"], cwd=os.path.join(ROOT, "core"), check=True)
+    srv = subprocess.Popen([binary, "-addr", "127.0.0.1:0", "-dir", folder], stdout=subprocess.PIPE, text=True)
+    port = int(srv.stdout.readline().strip().rsplit(":", 1)[1])
+    requests = []
+    threading.Thread(target=lambda: [requests.append(line.strip()) for line in srv.stdout], daemon=True).start()
+    try:
+        adb("reverse", "tcp:%d" % port, "tcp:%d" % port)
+        adb("shell", "mkdir", "-p", "/data/misc/keychain/certs-added")
+        adb("push", os.path.join(folder, "ca.pem"), "/data/misc/keychain/certs-added/project-b-sync-test.0")
+        stopped()
+        view_link("project-b://sync?address=" + urllib.parse.quote("https://127.0.0.1:%d/sync/phone" % port, safe=""))
+        tap(middle(see("settings", text="Connect", timeout=30)))
+        passphrase = "river meadow lantern copper"
+        see("settings", text="Choose a sync passphrase", timeout=30)
+        fields = lambda: [n for n in screen_parts()["settings"].iter("node") if n.get("class") == FIELD]
+        for i in (0, 1):
+            tap(middle(fields()[i]))
+            type_text(passphrase)
+        tap(middle(see("settings", text="Turn on sync")))
+        pushed = until(lambda: any("/push" in r for r in requests), 60)
+        shot("sync-on")
+        key = adb("shell", "stat", "-c", "%s", DEVICE_KEY).strip()
+        profile_key = adb("shell", "stat", "-c", "%s", "/data/data/%s/%s/profile.key" % (PACKAGE, PROFILE)).strip()
+        check("turning sync on syncs, and makes the device key, wrapped by the Keystore, and the profile's key",
+              pushed and key.isdigit() and int(key) > 32 and profile_key.isdigit(), (requests[-3:], key, profile_key))
+        stopped()
+        before = len(requests)
+        launch()
+        check("after a restart sync runs again with what was kept: the Keystore opened the device key",
+              until(lambda: len(requests) > before, 60) is not None, requests[before:])
+        logcat = adb("logcat", "-d")
+        trouble = [l for l in logcat.splitlines() if "DeviceKey" in l and ("Exception" in l or "Error" in l)]
+        check("DeviceKey logs no exception", not trouble, trouble[:5])
+    finally:
+        srv.terminate()
+        adb("reverse", "--remove", "tcp:%d" % port) if "port" in locals() else None
+        adb("shell", "rm", "-f", "/data/misc/keychain/certs-added/project-b-sync-test.0")
+
+
 def the_page_renderer_dies():
     launch()
     go(BASE + "/a")
@@ -1579,7 +1656,7 @@ def main():
     adb("shell", "pm", "clear", PACKAGE)
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
-    every = (browsing, mobile_shell, talkback_states, bookmark_star, back_key_chain, page_dialogs, downloads, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
+    every = (browsing, mobile_shell, talkback_states, bookmark_star, back_key_chain, page_dialogs, downloads, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
              the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web, welcome_extras)
     for part in [p for p in every if not sys.argv[1:] or p.__name__ in sys.argv[1:]]:
         # tools/results.py splits a run's memory, CPU and checks by these lines.
