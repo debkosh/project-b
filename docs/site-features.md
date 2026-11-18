@@ -32,13 +32,14 @@ Go's state: `state.openSites`, by origin, each site a web tab is open on, `{sett
 - **The site:** its host and its connection (secure, or not secure and why).
 - **Ad blocker** (switch), with how many requests it blocked on this page.
 - **Sparks** (switch): whether sparks run on this site, all of them or none, with the names
-  of those that are on and match the page. Shown only when one does.
+  of those that are on and match the page ("A and B", "A, B and 2 more"). Shown only when
+  one does.
 - **Links to other sites:** Allow or Block (`Segmented`).
 - **Permissions:** each the site has set or asked for, Allowed or Blocked.
 - **Details**, which opens settings at the site (`sites/<origin>`), as the icon does today.
 
 A change that needs the page again (the blocker, sparks) says "Changes apply when the
-page reloads" in the panel's foot. Escape or a press outside closes it. The panel is the
+page reloads" in the panel's foot, with Reload beside it, which reloads the page. Escape or a press outside closes it. The panel is the
 shell's drawing, so each shell draws its own; Standard's is the design system's floating
 surface, 360px wide (`@/ui/SitePanel.vue`, which Fox shares); Mobile's is
 `SiteSheet.svelte`, opened from the site's mark in the pill, a 48px target. Contract rule 33
