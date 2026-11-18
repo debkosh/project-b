@@ -59,6 +59,18 @@ How Standard shows them (`shell/src/apps/shell/standard/`, `bookmarks.js` for wh
   all as a group. What doesn't fit goes in a » menu at its end. The mock's folder per
   workspace is not built: the bar's folder is the one pref.
 
+### On the Mobile web shell
+
+- **The new tab page** (`NewTab.svelte`) shows the top folder under Bookmarks, after the
+  sites, as tiles four to a row, its folders first. A folder's tile shows the first four of
+  its bookmarks two by two, each the first letter of its name on a colour its host gives it.
+  A tap on a folder opens it in place, in a card under its row: how many bookmarks it
+  holds, Open all, and what it holds as tiles; a folder in it opens in the card, with Back,
+  and a second tap on the folder closes the card. A bookmark loads in the tab. Open all
+  loads the first bookmark in the tab and opens the rest behind it, in a group with it
+  named after the folder (`newTab` with `groupWith`, then `editGroup` once the group shows);
+  a tab already in a group takes them into its own. Off, the page shows no bookmarks.
+
 ## What the person sees
 
 - **The star** (Standard's address bar) and **Cmd+D** (every shell) bookmark the page into

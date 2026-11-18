@@ -2,7 +2,7 @@
 // screen: the one bar at the foot, the address pill and its editing with the suggestions
 // over the field, a new tab in edit mode, the switcher (open, switch, close a card, the
 // last tab), the menu sheet and Escape, a swipe along the bar, the workspaces, light and
-// dark. The check covers what every shell does.
+// dark, and where bookmarks show. The check covers what every shell does.
 // Run: node shell/e2e/shells/mobile.cjs   (from the repo root, after `npm run build` in shell/)
 
 const fs = require('fs');
@@ -993,6 +993,100 @@ const H = 915;
   }), JSON.stringify(await box('[role=group][aria-label^="Group "]')));
   await page.keyboard.press('Escape');
   await shots('top-strip');
+
+  // Where bookmarks show (docs/bookmark-folders.md), each while its pref is on. A tree to
+  // show: folders made as the Bookmarks page makes them, and bookmarks as the star makes
+  // them, then put in their folders as its panel does; each new one goes first, so they are
+  // made last first.
+  const shellSend = (m) => fetch(`${lib.base}/shell/send?window=1`, { method: 'POST', body: JSON.stringify(m) });
+  // A pref set as a shell sets one, once Go has kept it.
+  const setPref = async (name, value) => {
+    await shellSend({ t: 'setPref', name, value: String(value) });
+    await until(() => String(JSON.parse(fs.readFileSync(path.join(lib.profile, 'prefs.json'), 'utf8'))[name]) === String(value));
+  };
+  const entries = () => bookmarked()?.entries || [];
+  await fire('menu', 'bookmarks.show');
+  await until(async () => (await regions()).tabs.some((t) => t.page === 'bookmarks'));
+  const manager = (await regions()).tabs.find((t) => t.page === 'bookmarks').id;
+  const newFolder = async (title, parent = '') => {
+    await fetch(`${lib.base}/bookmarks/send?tab=${manager}`, { method: 'POST', body: JSON.stringify({ t: 'newFolder', parent, title }) });
+    await until(() => entries().some((e) => e.kind === 'folder' && e.title === title));
+    return entries().find((e) => e.kind === 'folder' && e.title === title).id;
+  };
+  const newBookmark = async (title, url, parent = '') => {
+    await shellSend({ t: 'bookmark', url, title });
+    await until(() => entries().some((e) => e.url === url));
+    const id = entries().find((e) => e.url === url).id;
+    await shellSend({ t: 'saveBookmark', bookmark: id, title, parent });
+    await until(() => entries().find((e) => e.id === id).parent === parent);
+  };
+  const travel = await newFolder('Travel');
+  const recipes = await newFolder('Recipes');
+  const reading = await newFolder('Reading');
+  const baking = await newFolder('Baking', recipes);
+  await newBookmark('Shop', 'https://shop.example.com/');
+  await newBookmark('Bank', 'https://bank.example.com/');
+  await newBookmark('Hotels', 'https://hotels.example.com/', travel);
+  await newBookmark('Maps', 'https://maps.example.com/', travel);
+  await newBookmark('Science', 'https://science.example.com/', reading);
+  await newBookmark('News', 'https://news.example.com/', reading);
+  await newBookmark('Bread', 'https://bread.example.com/', baking);
+  const recipeMarks = [['Salads', 'salads'], ['Curry', 'curry'], ['Flatbread', 'flatbread'], ['Lentil soup', 'soup'], ['Pasta', 'pasta']];
+  for (const [title, host] of recipeMarks) await newBookmark(title, `https://${host}.example.com/`, recipes);
+  await page.keyboard.press('Escape');
+  await lib.closeTab(manager);
+  await until(async () => !(await regions()).tabs.some((t) => t.page === 'bookmarks'));
+
+  // The new tab page (bookmarksNewTab, on by default): the top folder as tiles, folders
+  // first; a folder's tile shows its first bookmarks two by two, and opens in place.
+  await fire('menu', 'tab.new');
+  await until(newTabPage);
+  const newTabMarks = ui.getByRole('region', { name: 'New tab' }).getByRole('list', { name: 'Bookmarks' });
+  const markTiles = newTabMarks.locator(':scope > li > .tile');
+  check('the new tab shows the top folder as tiles, its folders first', await until(async () => JSON.stringify(await markTiles.locator('.name').allInnerTexts()) === JSON.stringify(['Reading', 'Recipes', 'Travel', 'Bank', 'Shop'])), JSON.stringify(await markTiles.locator('.name').allInnerTexts()));
+  const recipesTile = markTiles.filter({ hasText: 'Recipes' });
+  check('a folder\'s tile shows its first four bookmarks, two by two', (await recipesTile.locator('.folder > .mark').allInnerTexts()).join('') === 'PLFC');
+  await recipesTile.tap();
+  const folderCard = newTabMarks.getByRole('group', { name: 'Recipes' });
+  check('a tap on a folder opens it in place, under its row, with how many it holds', await until(() => folderCard.isVisible()) && (await folderCard.locator('.count').innerText()) === '· 5' &&
+    (await folderCard.boundingBox()).y > (await recipesTile.boundingBox()).y + (await recipesTile.boundingBox()).height && (await recipesTile.getAttribute('aria-expanded')) === 'true');
+  check('its folders first, then its bookmarks', JSON.stringify(await folderCard.locator('.tile .name').allInnerTexts()) === JSON.stringify(['Baking', 'Pasta', 'Lentil soup', 'Flatbread', 'Curry', 'Salads']), JSON.stringify(await folderCard.locator('.tile .name').allInnerTexts()));
+  await shots('bookmarks-new-tab');
+  await folderCard.locator('.tile').filter({ hasText: 'Baking' }).tap();
+  const bakingCard = newTabMarks.getByRole('group', { name: 'Baking' });
+  check('a folder in it opens in the card, with a way back', await until(() => bakingCard.isVisible()) && JSON.stringify(await bakingCard.locator('.tile .name').allInnerTexts()) === '["Bread"]');
+  await bakingCard.getByRole('button', { name: 'Back' }).tap();
+  await until(() => folderCard.isVisible());
+  await recipesTile.tap();
+  check('a second tap on the folder closes it', await until(async () => (await folderCard.count()) === 0));
+  const newTabId = (await regions()).active;
+  await markTiles.filter({ hasText: 'Bank' }).tap();
+  check('a tap on a bookmark loads it in this tab', await until(async () => (await regions()).active === newTabId && (await active()).url === 'https://bank.example.com/' && !(await ui.getByRole('region', { name: 'New tab' }).isVisible())));
+  // Open all: the first in this tab, the rest behind it, in a group named after the folder.
+  await fire('menu', 'tab.new');
+  await until(newTabPage);
+  const openAllTab = (await regions()).active;
+  const tabsBefore = (await regions()).tabs.length;
+  await recipesTile.tap();
+  await until(() => folderCard.isVisible());
+  await folderCard.getByRole('button', { name: 'Open all' }).tap();
+  const grouped = async () => {
+    const r = await regions();
+    const ids = await stripTabs.evaluateAll((els) => els.map((e) => Number(e.dataset.tab)));
+    return ids.map((id) => r.tabs.find((t) => t.id === id)?.url).join();
+  };
+  const recipeUrls = recipeMarks.map(([, host]) => `https://${host}.example.com/`).reverse().join();
+  check('Open all loads the first in this tab and the rest behind it, in a group with it named after the folder', await until(async () => {
+    const r = await regions();
+    return r.active === openAllTab && r.tabs.length === tabsBefore + 4 && (await strip.getAttribute('aria-label').catch(() => '')) === 'Group Recipes' && (await grouped()) === recipeUrls;
+  }), JSON.stringify({ urls: await grouped(), label: await strip.getAttribute('aria-label').catch(() => '') }));
+  // Off, the new tab has no bookmarks.
+  await setPref('bookmarksNewTab', false);
+  await fire('menu', 'tab.new');
+  await until(newTabPage);
+  check('with bookmarksNewTab off, the new tab has no bookmarks', await until(async () => (await newTabMarks.count()) === 0) && (await ui.getByRole('region', { name: 'New tab' }).getByRole('heading', { name: 'Bookmarks' }).count()) === 0);
+  await setPref('bookmarksNewTab', true);
+  check('and on again, they are back', await until(() => newTabMarks.isVisible()));
 
   // A tab's picture is let go as the tab closes, so one on its way then fails to load, and
   // its card, gone or going, shows the favicon: not an error.

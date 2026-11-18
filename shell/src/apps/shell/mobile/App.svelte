@@ -207,6 +207,25 @@
     send(groupWith ? { t: 'newTab', groupWith } : { t: 'newTab', workspace });
   }
 
+  // Open all, on a bookmark folder of the new tab page: the first bookmark in this tab, the
+  // rest behind it, in a group with it named after the folder, as Chrome's Open all in a
+  // new tab group. Go starts the group with the second tab and says nothing of its id, so
+  // the name follows once the group shows; a tab already in a group adds them to it as
+  // they are.
+  let naming = $state(null);
+  function openAll(name, urls) {
+    const [first, ...rest] = urls;
+    naming = rest.length && !group ? { tab: go.active, name } : null;
+    send({ t: 'navigate', text: first });
+    for (const url of rest) send({ t: 'newTab', groupWith: go.active, text: url, background: true });
+  }
+  $effect(() => {
+    const made = naming && groupOf(go.groups, naming.tab);
+    if (!made) return;
+    send({ t: 'editGroup', group: made.id, name: naming.name });
+    naming = null;
+  });
+
   function pick(id) {
     sheet = '';
     if (id !== go.active) send({ t: 'activateTab', id });
@@ -307,7 +326,7 @@
       {:else if !full && tab.notice}
         <PageNotice {tab} />
       {:else if !full && !tab.url && !tab.loading}
-        {#key tab.id}<NewTab bind:this={newTabPage} />{/key}
+        {#key tab.id}<NewTab bind:this={newTabPage} onopenall={openAll} />{/key}
       {/if}
       <!-- A download as it happens, over the foot of the page; never over a sheet, nor over
            the Downloads page, which shows it already. -->

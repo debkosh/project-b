@@ -581,9 +581,10 @@ emptying the box brings it back.
 
 **The Mobile web shell.** A tab with no page yet, a new tab, shows the new tab page over it
 instead of a blank page: the sites as tiles, four to a row, each a letter on a colour taken
-from its host, with the page's title under it; the newest three bookmarks as rows; then All
-bookmarks and History, which open those pages of ours (`bookmarks.show`, `history.show`).
-It asks Go twice, once per kind. The keyboard stays down, so nothing covers the tiles; a tap
+from its host, with the page's title under it; the top bookmark folder as tiles while
+`bookmarksNewTab` is on ([bookmark-folders.md](bookmark-folders.md#where-bookmarks-show));
+then All bookmarks and History, which open those pages of ours (`bookmarks.show`,
+`history.show`). It asks Go for the sites alone. The keyboard stays down, so nothing covers the tiles; a tap
 on the address field starts typing. A long press on a tile shows a × on each, which takes
 that site out of history, every page of it (`forgetSite {url}`); a tap elsewhere ends that.
 The page goes as soon as the tab starts loading anything.
