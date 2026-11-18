@@ -401,7 +401,8 @@ def a18(app):
 
 
 def a19(app):
-    # Standard takes New Tab: Cmd+T reaching the shell opens its command box, and no tab.
+    # Cmd+T reaching the shell makes a new tab, with Standard's command box on it: two tabs,
+    # the page's and the new one (every window has a tab, docs/todo.md, 2026-11-18).
     go(app, P + "/keys")
     d.page_click(app, "body")
     time.sleep(0.3)
@@ -410,7 +411,7 @@ def a19(app):
         app.wait(d.BOX_FOCUSED, 3)
     except TimeoutError:
         return False, "a page that swallows keys kept Cmd+T from opening the command box"
-    return app.js(ROWS) == 1, f"Cmd+T opened the command box and {app.js(ROWS)} tabs, not 1"
+    return app.js(ROWS) == 2, f"Cmd+T opened the command box and {app.js(ROWS)} tabs, not 2"
 
 
 def a20(app):
@@ -646,7 +647,7 @@ AREAS = [
     (16, "permissions: a notification request asks the user", a16, ()),
     (17, "camera: getUserMedia asks the user", a17, ("--use-fake-device-for-media-stream",)),
     (18, "page fullscreen: requestFullscreen after a click works", a18, ()),
-    (19, "keyboard: Cmd+T reaches the shell when a page swallows keys, and opens Standard's command box", a19, ()),
+    (19, "keyboard: Cmd+T reaches the shell when a page swallows keys, and opens a new tab with Standard's command box", a19, ()),
     (20, "focus: a page can't take focus from the address bar while typing", a20, ()),
     (21, "hit-testing: the page and the top row's empty space", a21, ()),
     (22, "context menu: right-click on a link shows a menu", a22, ("--remote-debugging-port=0",)),
