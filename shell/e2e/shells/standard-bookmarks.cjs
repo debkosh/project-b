@@ -1,0 +1,101 @@
+// The standard shell's bookmark places, on the mock engine (docs/bookmark-folders.md, "Where
+// bookmarks show"), each shown only while its pref is on: the new tab's tiles, under the
+// command box, with a folder that opens in place and opens all its bookmarks as a group.
+// Shot for the eye.
+// Run: node shell/e2e/shells/standard-bookmarks.cjs   (from the repo root, after `npm run
+// build` in shell/)
+
+const fs = require('fs');
+const path = require('path');
+const { chromium } = require('playwright');
+const lib = require('../lib.cjs');
+const { check, settle, until } = lib;
+
+const send = (m) => fetch(`${lib.base}/shell/send?window=1`, { method: 'POST', body: JSON.stringify(m) });
+const setPref = (name, on) => send({ t: 'setPref', name, value: String(on) });
+
+// The profile's bookmarks, as bookmarks.json keeps them: three folders, one with a folder in
+// it, and two bookmarks at the top.
+const id = (n) => n.toString(16).padStart(16, '0');
+const folder = (n, parent, title, place) => ({ id: id(n), parent, kind: 'folder', title, added: 1, modified: 1, place });
+const mark = (n, parent, title, url, place) => ({ id: id(n), parent, kind: 'bookmark', title, url, added: 1, modified: 1, place });
+const reading = id(1);
+const recipes = id(2);
+const travel = id(3);
+const weeknight = id(4);
+const entries = [
+  folder(1, '', 'Reading', 'a'),
+  folder(2, '', 'Recipes', 'b'),
+  folder(3, '', 'Travel', 'c'),
+  mark(10, '', 'Bank', 'https://bank.example.com/', 'd'),
+  mark(11, '', 'Shop', 'https://shop.example.net/', 'e'),
+  mark(20, reading, 'News', 'https://news.example.org/', 'a'),
+  mark(21, reading, 'Essays', 'https://essays.example.org/', 'b'),
+  mark(30, recipes, 'Pasta with tomatoes', 'https://recipes.example.com/pasta', 'b'),
+  mark(31, recipes, 'Lentil soup', 'https://soup.example.com/lentil', 'c'),
+  mark(32, recipes, 'Curry', 'https://recipes.example.com/curry', 'd'),
+  folder(4, recipes, 'Weeknight', 'a'),
+  mark(33, weeknight, 'Flatbread', 'https://bread.example.com/', 'a'),
+  mark(40, travel, 'Recommended trains', 'https://trains.example.com/', 'a'),
+];
+fs.writeFileSync(path.join(lib.profile, 'bookmarks.json'), JSON.stringify({ version: 2, last: '', entries }));
+
+(async () => {
+  await lib.start(['-use=standard']);
+  const browser = await chromium.launch();
+  const w = await lib.openWindow(browser, { viewport: { width: 1100, height: 760 } });
+  const { page, ui } = w;
+  page.setDefaultTimeout(5000);
+  await until(() => ui.locator('.command-box').isVisible(), 10000);
+  const goTabs = async () => (await lib.regions()).tabs;
+  const activeURL = async () => {
+    const r = await lib.regions();
+    return r.tabs.find((t) => t.id === r.active)?.url || '';
+  };
+
+  // 1. The new tab: the top folder as tiles, folders first.
+  const tiles = ui.locator('.new-tab-bookmarks > .tiles > .tile');
+  const names = (l) => l.locator('.name').allInnerTexts();
+  const had = (await goTabs()).length;
+  check('the new tab shows the top folder as tiles, folders first', await until(async () => JSON.stringify(await names(tiles)) === JSON.stringify(['Reading', 'Recipes', 'Travel', 'Bank', 'Shop'])), JSON.stringify(await names(tiles)));
+  check('a folder\'s tile shows its sites, four at most', (await tiles.nth(1).locator('.site-mark').count()) === 4 && (await tiles.nth(0).locator('.site-mark').count()) === 2);
+  await tiles.nth(1).click();
+  const panel = ui.getByRole('group', { name: 'Folder Recipes' });
+  check('a folder opens in place, its folders first, then its bookmarks', await until(async () => JSON.stringify(await names(panel)) === JSON.stringify(['Weeknight', 'Pasta with tomatoes', 'Lentil soup', 'Curry'])), JSON.stringify(await names(panel)));
+  check('under the row of its tile, across the grid', await ui.locator('.new-tab-bookmarks > .tiles > .panel').evaluate((p) => p.previousElementSibling.textContent.includes('Shop')));
+  await settle(page);
+  await page.screenshot({ path: path.join(lib.out, 'standard-bookmarks-newtab.png') });
+  await panel.locator('.tile', { hasText: 'Weeknight' }).click();
+  check('a folder in it opens in the panel, with a path back', await until(async () => (await names(ui.getByRole('group', { name: 'Folder Weeknight' }))).join() === 'Flatbread'));
+  await ui.getByRole('navigation', { name: 'Path' }).getByRole('button', { name: 'Recipes' }).click();
+  check('and the path goes back up', await until(() => panel.isVisible()));
+
+  // Open all as a group: a tab for each of its bookmarks, in a group named for the folder.
+  await panel.getByRole('button', { name: 'Open all as a group' }).click();
+  check('Open all as a group opens a tab for each bookmark, the first in front', await until(async () => (await goTabs()).length === had + 3 && (await activeURL()) === 'https://recipes.example.com/pasta'), JSON.stringify(await goTabs()));
+  check('in a group named for the folder', await until(async () => (await ui.locator('.sidebar .group').innerText().catch(() => '')).includes('Recipes') && (await ui.locator('.sidebar [role=tab].grouped').count()) === 3));
+
+  // A bookmark tile loads in a tab with nothing in it.
+  await send({ t: 'newTab' });
+  await until(async () => (await goTabs()).length === had + 4 && (await tiles.count()) === 5);
+  await tiles.filter({ hasText: 'Bank' }).click();
+  check('a bookmark\'s tile loads it in the tab with nothing in it', await until(async () => (await activeURL()) === 'https://bank.example.com/' && (await goTabs()).length === had + 4), await activeURL());
+
+  // Over a page, New Tab shows them too, and a tile opens a tab of its own.
+  await ui.locator('.sidebar .new-tab').click();
+  await until(async () => (await tiles.count()) === 5);
+  await tiles.filter({ hasText: 'Shop' }).click();
+  check('over a page, a tile opens in a new tab', await until(async () => (await activeURL()) === 'https://shop.example.net/' && (await goTabs()).length === had + 5));
+
+  await setPref('bookmarksNewTab', false);
+  await ui.locator('.sidebar .new-tab').click();
+  await until(() => ui.locator('.command-box').isVisible());
+  await settle(page);
+  check('with its pref off the new tab has no bookmarks', (await ui.locator('.new-tab-bookmarks').count()) === 0);
+  await page.keyboard.press('Escape');
+  await setPref('bookmarksNewTab', true);
+
+  check('no errors in the pages', w.errors.length === 0, w.errors.join(' | '));
+  await browser.close();
+  await lib.done();
+})();

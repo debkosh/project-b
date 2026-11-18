@@ -2,12 +2,14 @@
 import { nextTick, onMounted, ref } from 'vue';
 import { chooseSuggestion, focusPage, send, state, suggest } from '@/sdk/vue.js';
 import SuggestionList from './SuggestionList.vue';
+import NewTabBookmarks from './NewTabBookmarks.vue';
 import { closeBox, newTabBox, nextQuery } from './state.js';
 
 // Standard's command box, the shell's own view in the page area: the bar's quiet tint and
 // one box in the middle. Typing there asks Go for the same list the address field gets, and
 // draws it under the box; with nothing typed, Go's list for a new tab: the sites visited
-// most and the newest bookmarks. Enter takes the first row, or the one the arrow keys chose. Over
+// most and the newest bookmarks, and under it the bookmarks themselves while their pref says
+// (NewTabBookmarks.vue). Enter takes the first row, or the one the arrow keys chose. Over
 // a page (New Tab), a chosen row opens in a new tab and Escape goes back to the page; on a
 // tab with nothing in it, the row loads there.
 const props = defineProps({ overPage: Boolean });
@@ -24,12 +26,13 @@ let shownFor = '';
 let picked = false;
 
 // With nothing typed the box lists the sites visited most and the newest bookmarks, so it
-// asks for those two kinds alone, not the open and closed tabs a phone's field lists.
+// asks for those two kinds alone, not the open and closed tabs a phone's field lists; the
+// sites alone while the bookmarks show as tiles under it.
 function onInput() {
   latest = nextQuery();
   asked = text.value.trim();
   picked = false;
-  if (asked === '') suggest(latest, '', ['history', 'bookmark']);
+  if (asked === '') suggest(latest, '', state.prefs.bookmarksNewTab ? ['history'] : ['history', 'bookmark']);
   else suggest(latest, text.value);
 }
 
@@ -114,6 +117,7 @@ onMounted(() => {
       />
     </div>
     <SuggestionList v-if="items.length" id="new-tab-list" class="list" :items="items" :highlight="highlight" :first="text.trim() === ''" @hover="(i) => (highlight = i)" @choose="(i) => choose(i, true)" />
+    <NewTabBookmarks v-if="state.prefs.bookmarksNewTab && text.trim() === ''" :over-page="overPage" />
   </div>
 </template>
 
@@ -127,6 +131,9 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   padding-top: max(48px, 22vh);
+  overflow-y: auto;
+  scrollbar-width: none;
+  box-sizing: border-box;
   background: color-mix(in srgb, var(--bar) 60%, var(--surface));
   animation: appear var(--motion) var(--ease);
 }
@@ -149,6 +156,7 @@ onMounted(() => {
 }
 
 .box {
+  flex: none;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -193,6 +201,7 @@ input::placeholder {
 }
 
 .list {
+  flex: none;
   width: min(520px, 86%);
   margin-top: 8px;
   box-sizing: border-box;

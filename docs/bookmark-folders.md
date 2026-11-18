@@ -26,6 +26,17 @@ settings page sets them by name with `setPref`, as a shell does.
 The bar's folder is a folder's id, `""` for the top; a shell shows the top when the folder
 is gone.
 
+How Standard shows them (`shell/src/apps/shell/standard/`, `bookmarks.js` for what they share):
+
+- **The new tab** (`NewTabBookmarks.vue`): under the command box, which then lists only the
+  sites visited most with nothing typed, as the tiles hold the bookmarks. A bookmark has no
+  favicon of its own: a tile shows an open tab's, else its site's letter on its site's
+  colour. A folder's tile shows four of its sites; it opens under its row, its folders and
+  bookmarks as tiles with a path back up. A bookmark loads where the box's rows do. Open
+  all as a group has no message of its own in Go: the first bookmark opens in a new tab,
+  the rest join it with `newTab` and `groupWith`, which makes the group, and `editGroup`
+  names it after the folder.
+
 ## What the person sees
 
 - **The star** (Standard's address bar) and **Cmd+D** (every shell) bookmark the page into
@@ -108,4 +119,6 @@ The Bookmarks page sends `editBookmark {id, title, url}`, `moveBookmark {id, par
 places), `core/app` (`TestBookmarksFromTheShellAndThePage`: Cmd+D, the star, the panel's
 save, and the page's messages), `shell/e2e/pages.cjs` (the panel, Cmd+D, the folders, a drag,
 Move to…, a search, a folder deleted with what it holds, the panel's folder kept for the
-next) and `shell/e2e/shells/mobile.cjs` (the sheet).
+next), `shell/e2e/shells/mobile.cjs` (the sheet) and `shell/e2e/shells/standard-bookmarks.cjs`
+(Standard's places, each on and off with its pref: the new tab's tiles, a folder opened in
+place and opened as a group).
