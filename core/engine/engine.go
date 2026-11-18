@@ -409,6 +409,10 @@ type Listener interface {
 	// larger for one started later; its finish or failure carries the same.
 	NavigationStarting(tab TabID, nav int64, url string) Navigation
 	NavigationFinished(tab TabID, nav int64, url string)
+	// AppLink says a press in a tab's own page went to one of the app's own links,
+	// project-b:, which no page loads. The engine drops every navigation to one, and tells
+	// of none started without a user gesture, in a frame or by a redirect.
+	AppLink(tab TabID, url string)
 	// NavigationFailed says why, as one of the Failure words, and code is the engine's
 	// own name for it, only to show.
 	NavigationFailed(tab TabID, nav int64, url string, why Failure, code string)

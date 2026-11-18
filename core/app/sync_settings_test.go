@@ -76,3 +76,30 @@ func TestASyncLinkOpensSettingsAtSync(t *testing.T) {
 		t.Fatalf("sync turned on: %v", s)
 	}
 }
+
+// A page's link to project-b://sync, pressed, opens Settings at Sync as one from another app
+// does; the page's own script going there, as a press-less navigation, opens nothing, and the
+// page stays where it was.
+func TestAPressedSyncLinkInAPage(t *testing.T) {
+	r := start(t, t.TempDir())
+	defer r.stop()
+	r.visit("https://memd.example/")
+	link := "project-b://sync?address=https%3A%2F%2Fmemd.example%2Fsync%2Ft0k"
+	tab := r.activeID()
+	r.e.Fire(1, tab, "navigate", link)
+	r.e.Settle()
+	if r.settingsIn(1) != 0 {
+		t.Fatal("a script's navigation opened settings")
+	}
+	if u := r.urls(); len(u) != 1 || u[0] != "https://memd.example/" {
+		t.Fatalf("the tabs went to %v", u)
+	}
+	r.e.Fire(1, tab, "link", link)
+	got, snapshot := r.openSettings()
+	if snapshot["section"] != "sync" {
+		t.Fatalf("settings opened at %v", snapshot["section"])
+	}
+	if m := r.waitOn(got, func(m map[string]any) bool { return m["t"] == "syncLink" }); m["link"] != link {
+		t.Fatalf("the page was told %v", m)
+	}
+}

@@ -541,6 +541,14 @@ func (a *App) NavigationStarting(tab engine.TabID, nav int64, url string) engine
 	return a.Tabs.HandleNavigationStarting(tab, nav, url)
 }
 
+// AppLink is a page's link to one of the app's own, pressed: OpenAppLink takes it, in the
+// tab's window. A tab no window holds is gone.
+func (a *App) AppLink(tab engine.TabID, url string) {
+	if w := a.Tabs.WindowOf(tab); w != 0 {
+		a.OpenAppLink(w, url)
+	}
+}
+
 func (a *App) NavigationFinished(tab engine.TabID, nav int64, url string) {
 	a.Tabs.HandleNavigationFinished(tab, nav, url)
 }

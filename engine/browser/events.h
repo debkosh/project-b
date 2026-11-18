@@ -29,7 +29,9 @@ bool Key(content::WebContents* source,
 // The gate: every top-level navigation in a tab, ours too, asks Go before it starts and
 // on each redirect. One Go takes to another tab is dropped with nothing shown, the tab
 // staying as it was. A frame inside a tab's page is refused on a blocked host
-// (block_rules.h). The shell's and the picker's navigations go on unasked.
+// (block_rules.h). The shell's and the picker's navigations go on unasked. A navigation to
+// one of the app's own links, project-b:, is dropped wherever it is, and Go hears of it
+// only when a press started it in a tab's own page (PB_EVENT_APP_LINK).
 class Gate : public content::NavigationThrottle {
  public:
   explicit Gate(content::NavigationThrottleRegistry& registry);
@@ -40,7 +42,7 @@ class Gate : public content::NavigationThrottle {
   const char* GetNameForLogging() override;
 
  private:
-  ThrottleCheckResult Ask();
+  ThrottleCheckResult Ask(bool redirect);
 };
 
 }  // namespace events
