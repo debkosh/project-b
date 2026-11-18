@@ -150,7 +150,11 @@ popups; a popup let open hidden and closed after a second, for sites that wait o
 
 On by default (one constant in Go, while the owner decides), switchable per site from the
 panel: it's what a person expects of a browser they choose today, and a site that breaks is
-one switch away.
+one switch away. **Block ads** in Settings (Privacy; Privacy and sites in the sections layout)
+turns it off or on for every site: a pref, `blockAds`, on by default. Off, Go hands the engine
+rules with no hosts, so nothing is kept from any page, and leaves the `ads` setting out of
+each open site's settings, so the panel has no switch, nor a site's view in Settings; each
+site's own setting is kept, and counts again once it is on.
 
 - **The rules are Go's** (`core/adblock`): a list of ad network, ad server and tracker
   hosts, kept by hand and bundled in the app, a few hundred hosts that serve only ads or

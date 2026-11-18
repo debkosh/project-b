@@ -6,6 +6,7 @@ import (
 
 	"projectb/adblock"
 	"projectb/engine"
+	"projectb/prefs"
 	"projectb/settings"
 	"projectb/sites"
 )
@@ -14,20 +15,25 @@ import (
 // decides what each page gets; the engine carries it out.
 
 // startSiteFeatures hands the engine the ad blocker's rules, again whenever a site switches
-// it, and gives settings the Sparks section.
+// it or the blocker is switched on every site, and gives settings the Sparks section. Off on
+// every site, the rules have no hosts, so nothing is kept from any page.
 func (a *App) startSiteFeatures(e engine.Engine) {
 	hosts := adblock.Hosts()
-	var off []string
+	var last *engine.AdRules
 	setRules := func() {
-		now := a.adsOff()
-		if off != nil && slices.Equal(now, off) {
+		now := engine.AdRules{Hosts: []string{}, Off: a.adsOff()}
+		if a.Prefs.All().BlockAds {
+			now.Hosts = hosts
+		}
+		if last != nil && slices.Equal(now.Hosts, last.Hosts) && slices.Equal(now.Off, last.Off) {
 			return
 		}
-		off = now
-		e.SetAdRules(engine.AdRules{Hosts: hosts, Off: now})
+		last = &now
+		e.SetAdRules(now)
 	}
 	setRules()
 	a.Sites.OnSitesChanged(setRules)
+	a.Prefs.OnChanged(func(prefs.Prefs) { setRules() })
 
 	a.Sparks.OnChanged(func() {
 		a.Settings.Send(map[string]any{"t": "sparks", "sparks": a.Sparks.List()})

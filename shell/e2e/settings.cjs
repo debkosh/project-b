@@ -22,7 +22,8 @@ if (!layout) {
   let code = 0;
   for (const l of ['page', 'sections']) {
     console.log(`=== the ${l} layout`);
-    code ||= require('child_process').spawnSync(process.execPath, [__filename, l], { stdio: 'inherit' }).status;
+    const status = require('child_process').spawnSync(process.execPath, [__filename, l], { stdio: 'inherit' }).status;
+    code = code || status;
   }
   process.exit(code);
 }
@@ -238,14 +239,14 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   const sectionOf = {
     theme: 'appearance', frameColour: 'appearance', tabLayout: 'appearance', shell: 'appearance', start: 'start', searchEngine: 'start',
     workspaces: 'workspaces', bookmarks: 'bookmarks', sites: 'privacy', keys: 'keyboard', keyboard: 'keyboard', profile: 'profile',
-    sparks: 'extensions', version: 'about', autoUpdate: 'about', flags: 'flags', webFeatures: 'webFeatures',
+    sparks: 'extensions', blockAds: 'privacy', version: 'about', autoUpdate: 'about', flags: 'flags', webFeatures: 'webFeatures',
   };
   const show = async (part) => {
     if (sectionsLayout) {
       await page.locator(`.nav [data-section="${sectionOf[part]}"]`).click();
       if (part === 'sites') await page.locator('[data-section="sites"]').click();
     } else {
-      if (await page.locator('.list-page').count()) await page.locator('.list-page .back').click();
+      if (await page.locator('.list-page').count()) await page.locator('.list-page .list-head .back').click();
       if (lists.includes(part)) await page.locator(`[data-section="${part}"]`).click();
     }
     await settle(page);
@@ -790,6 +791,21 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   check('Block there sets it for the site', await until(() => sitesFile()['https://meet.test']?.links === 'block'), JSON.stringify(sitesFile()));
   await siteRadio('Links to other sites', 'Allow').click();
   check('and Allow, the default, forgets it', await until(() => !('links' in (sitesFile()['https://meet.test'] || {}))), JSON.stringify(sitesFile()));
+  // Block ads, off on every site: a site's view has no switch of its own for it.
+  await show('blockAds');
+  const blockAds = page.getByRole('switch', { name: /Block ads/ });
+  check('Block ads is on every site by default', await blockAds.isChecked());
+  await blockAds.click();
+  check('off, it is saved, and says so', await until(async () => prefsFile().blockAds === false && (await page.locator('.row', { has: blockAds }).textContent()).includes('Off on every site')));
+  await show('sites');
+  await sites.getByRole('button', { name: 'meet.test', exact: true }).click();
+  check('and a site\'s view has no ad blocker of its own', await until(() => siteRadio('Camera', 'Ask').isVisible()) && (await site.getByRole('radiogroup', { name: 'Ad blocker' }).count()) === 0);
+  await show('blockAds');
+  await blockAds.click();
+  await until(() => prefsFile().blockAds === true);
+  await show('sites');
+  await sites.getByRole('button', { name: 'meet.test', exact: true }).click();
+  await until(() => siteRadio('Camera', 'Ask').isVisible());
   await siteRadio('Camera', 'Allow').click();
   check('Allow there sets it for the site', await until(() => sitesFile()['https://meet.test']?.camera === 'allow'), JSON.stringify(sitesFile()));
   await siteRadio('Camera', 'Ask').click();
@@ -884,7 +900,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
       if (id === 'privacy') {
         await page.locator('[data-section="sites"]').click();
         check('on a phone, Sites opens its page, and back goes to its section', await until(() => page.getByRole('region', { name: 'Site settings', exact: true }).isVisible()));
-        await page.locator('.list-page .back').click();
+        await page.locator('.list-page .list-head .back').click();
         await until(() => there().isVisible());
       }
       await page.getByRole('button', { name: 'Back to Settings' }).click();
@@ -906,7 +922,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
       await page.locator(`[data-section="${list}"]`).click();
       const there = region ? page.getByRole('region', { name: region, exact: true }) : page.locator('.web-features');
       check(`on a phone, ${list}'s row opens its page`, await until(() => there.isVisible()));
-      await page.locator('.list-page .back').click();
+      await page.locator('.list-page .list-head .back').click();
       await until(async () => (await page.locator('.list-page').count()) === 0);
     }
     check('on a phone there is no Tab layout, Keys or Keyboard shortcuts', (await page.getByRole('radiogroup', { name: 'Tab layout' }).count()) === 0 &&

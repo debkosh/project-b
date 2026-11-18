@@ -55,6 +55,9 @@ const ourWords = { on: 'On', off: 'Off', allow: 'Allow', block: 'Block' };
 const choicesOf = (k) => (k.choices ? k.choices.map((v) => ({ value: v, label: ourWords[v] || v })) : choices);
 const set = (kind, value) => send({ t: 'setSiteSetting', origin: origin.value, kind, value });
 
+// The ad blocker off on every site leaves a site nothing to turn off.
+const kinds = computed(() => state.siteKinds.filter((k) => k.kind !== 'ads' || state.prefs.blockAds));
+
 // How the site's open pages reached it, first in its view; nothing when none is open.
 const connection = computed(() => state.siteConnections[origin.value] || null);
 
@@ -93,7 +96,7 @@ function removeAll() {
           <span v-if="connection.note" class="secondary">{{ connection.note }}</span>
         </span>
       </div>
-      <div v-for="k in state.siteKinds" :key="k.kind" class="row">
+      <div v-for="k in kinds" :key="k.kind" class="row">
         <span class="label">{{ k.title }}</span>
         <Segmented :label="k.title" :options="choicesOf(k)" :model-value="valueOf(k)" @update:model-value="set(k.kind, $event)" />
       </div>

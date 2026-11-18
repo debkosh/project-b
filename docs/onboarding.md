@@ -156,8 +156,8 @@ Each slice goes out through a release of its own.
   page's foot, its frame turning through the presets as it waits.
 - **Protection** offers the search engine and automatic updates, and shows the ad blocker on.
   Not here yet: a switch for the ad blocker and for Links to other sites across every site
-  (today each is a site's own setting, the ad blocker on by default, links allowed), and the
-  keys like Chrome's or Project B's (Settings, Keyboard, has it).
+  (Settings has Block ads for every site since 2026-11-18; links are each a site's own
+  setting, allowed), and the keys like Chrome's or Project B's (Settings' Keys has it).
 - **Run setup again,** in Settings' Your data (Profile and import in the sections layout), marks
   the welcome unfinished in `welcome.json` and closes the app. The next start opens it over the
   whole window, as a first start does, with the tabs On start, open brings back under it. It

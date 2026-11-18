@@ -64,12 +64,16 @@ type Prefs struct {
 	// folder's id, "" for the top. A shell shows the top when the folder is gone.
 	BookmarksBar       bool   `json:"bookmarksBar"`
 	BookmarksBarFolder string `json:"bookmarksBarFolder"`
+	// BlockAds is the ad blocker on every site: off, it keeps no page's requests from
+	// anything, whatever a site's own switch says, and the site panel has no switch.
+	// docs/site-features.md.
+	BlockAds bool `json:"blockAds"`
 }
 
 // Defaults are the settings before the user changes any.
 func Defaults() Prefs {
 	return Prefs{TabLayout: TabsVertical, FrameColor: tones.None, Theme: ThemeSystem, Shell: shells.Default(), AddressBarPosition: AddressBottom, SearchEngine: search.Default, Start: StartContinue,
-		BookmarksNewTab: true, BookmarksCommandBox: true}
+		BookmarksNewTab: true, BookmarksCommandBox: true, BlockAds: true}
 }
 
 func isTheme(t string) bool { return t == ThemeSystem || t == ThemeLight || t == ThemeDark }
@@ -308,6 +312,16 @@ func (m *Manager) SetBookmarksBarFolder(id string) {
 	m.changed()
 }
 
+// SetBlockAds turns the ad blocker on or off on every site.
+func (m *Manager) SetBlockAds(on bool) {
+	if on == m.prefs.BlockAds {
+		return
+	}
+	m.prefs.BlockAds = on
+	m.save()
+	m.changed()
+}
+
 // OnChanged subscribes to any setting changing, with them all as they are now.
 func (m *Manager) OnChanged(f func(Prefs)) { m.onChanged = append(m.onChanged, f) }
 
@@ -339,6 +353,10 @@ func (m *Manager) Set(name, value string) bool {
 		m.SetBookmarks(bookmarkPlaces[name], value == "true")
 	case "bookmarksBarFolder":
 		m.SetBookmarksBarFolder(value)
+	case "blockAds":
+		if value == "true" || value == "false" {
+			m.SetBlockAds(value == "true")
+		}
 	default:
 		return false
 	}
@@ -368,6 +386,7 @@ func (m *Manager) Apply(values json.RawMessage) error {
 	m.SetBookmarks("commandBox", p.BookmarksCommandBox)
 	m.SetBookmarks("bar", p.BookmarksBar)
 	m.SetBookmarksBarFolder(p.BookmarksBarFolder)
+	m.SetBlockAds(p.BlockAds)
 	return nil
 }
 

@@ -70,7 +70,7 @@ func TestApplySetsWhatTheValuesHoldThroughTheSetters(t *testing.T) {
 		t.Fatalf("heard %v", heard)
 	}
 	m.Close()
-	if got := New(dir).All(); got != (Prefs{TabLayout: TabsHorizontal, FrameColor: "#5b7fd6", Theme: ThemeDark, Shell: "standard", AddressBarPosition: AddressBottom, SearchEngine: "duckduckgo", Start: StartContinue, BookmarksNewTab: true, BookmarksCommandBox: true}) {
+	if got := New(dir).All(); got != (Prefs{TabLayout: TabsHorizontal, FrameColor: "#5b7fd6", Theme: ThemeDark, Shell: "standard", AddressBarPosition: AddressBottom, SearchEngine: "duckduckgo", Start: StartContinue, BookmarksNewTab: true, BookmarksCommandBox: true, BlockAds: true}) {
 		t.Fatalf("saved %+v", got)
 	}
 }
@@ -153,6 +153,30 @@ func TestWhereBookmarksShow(t *testing.T) {
 	}
 	if p := New(dir).All(); p.BookmarksBarFolder != "" || !p.BookmarksNewTab {
 		t.Fatalf("a folder that isn't an id loads as %+v", p)
+	}
+}
+
+// The ad blocker is on every site by default; off is kept, and a file from before it was a
+// pref has it on.
+func TestBlockAds(t *testing.T) {
+	dir := t.TempDir()
+	m := New(dir)
+	if !m.All().BlockAds {
+		t.Fatal("the ad blocker is off by default")
+	}
+	if !m.Set("blockAds", "false") || m.All().BlockAds {
+		t.Fatalf("blockAds false: %+v", m.All())
+	}
+	m.Set("blockAds", "no")
+	m.Close()
+	if New(dir).All().BlockAds {
+		t.Fatal("off wasn't kept")
+	}
+	if err := os.WriteFile(filepath.Join(dir, "prefs.json"), []byte(`{"theme":"dark"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if !New(dir).All().BlockAds {
+		t.Fatal("a file without it turns it off")
 	}
 }
 

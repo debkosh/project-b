@@ -1,10 +1,11 @@
 <script setup>
+import { computed } from 'vue';
 import { phone } from '@/phone.js';
 import Segmented from '@/ui/Segmented.vue';
 import Swatches from '@/ui/Swatches.vue';
 import { framePresets } from '@/ui/colours.js';
 import Row from './Row.vue';
-import { send, state } from './state.js';
+import { send, setPref, state } from './state.js';
 
 // The settings that are one row each, by part: what Go owns, shown, and the user's changes
 // sent back. A row changes only when Go says so.
@@ -28,6 +29,13 @@ const starts = [
   { value: 'continue', label: 'Where you left off' },
   { value: 'fresh', label: 'Start fresh' },
 ];
+
+// Block ads says which sites have it off, which the switch leaves be.
+const adsHint = computed(() => {
+  if (!state.prefs.blockAds) return 'Off on every site';
+  const n = state.siteSettings.filter((s) => s.settings.some((x) => x.kind === 'ads' && x.value === 'off')).length;
+  return n ? `On every site, but ${n === 1 ? 'the one' : `the ${n}`} you turned it off for` : 'On every site';
+});
 
 const layouts = [
   { value: 'vertical', label: 'Vertical' },
@@ -93,6 +101,18 @@ const layouts = [
       :checked="state.autoUpdate"
       :aria-checked="String(state.autoUpdate)"
       @change="send({ t: 'setAutoUpdate', on: $event.target.checked })"
+    />
+  </Row>
+
+  <!-- The ad blocker on every site; each site can still turn it off for itself. -->
+  <Row v-else-if="part === 'blockAds'" tag="label" label="Block ads" :hint="adsHint">
+    <input
+      type="checkbox"
+      role="switch"
+      class="switch"
+      :checked="!!state.prefs.blockAds"
+      :aria-checked="String(!!state.prefs.blockAds)"
+      @change="setPref('blockAds', $event.target.checked)"
     />
   </Row>
 

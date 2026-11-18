@@ -19,7 +19,7 @@ Every setting is on one scrolling page, in five groups by task:
 |---|---|
 | Look | Theme, Frame colour, Tab layout (desktop), Address bar (phone), Shell |
 | Browsing | On start, Search engine, Keys, Keyboard shortcuts (desktop), Workspaces, Bookmarks |
-| Privacy | Sites |
+| Privacy | Sites, Block ads |
 | Your data | Profile name, Template, Import from other browsers, Run setup again |
 | Advanced | Automatic updates, Sparks, Extensions (with its flag on), Web features, Flags |
 
@@ -39,7 +39,7 @@ Like Chrome's settings: a list of sections, one showing at a time.
 | Start and search | On start, Search engine |
 | Workspaces | The workspaces |
 | Bookmarks | Where bookmarks show, and the bar |
-| Privacy and sites | Sites, which opens as a page of its own |
+| Privacy and sites | Block ads, Sites, which opens as a page of its own |
 | Keyboard (desktop) | Keys, and the keyboard shortcuts |
 | Profile and import | Profile name, Template, Import from other browsers, Run setup again |
 | Extensions and sparks | Extensions (with its flag on, desktop), Sparks; Sparks alone without them |

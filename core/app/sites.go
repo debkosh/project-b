@@ -2,8 +2,10 @@ package app
 
 import (
 	"encoding/json"
+	"slices"
 
 	"projectb/engine"
+	"projectb/prefs"
 	"projectb/settings"
 	"projectb/shell"
 	"projectb/sites"
@@ -43,6 +45,8 @@ func (a *App) startSites(e engine.Engine, dir string) {
 		a.Settings.Send(map[string]any{"t": "siteSettings", "siteSettings": a.Sites.Sites()})
 		sendOpen()
 	})
+	// The ad blocker off on every site takes its switch out of the panel.
+	a.Prefs.OnChanged(func(prefs.Prefs) { sendOpen() })
 	a.Sparks.OnChanged(sendOpen)
 	a.Tabs.OnChanged(func(tabs.Tab) { sendOpen() })
 	a.Tabs.OnListChanged(sendOpen)
@@ -144,7 +148,8 @@ type siteSpark struct {
 	On   bool   `json:"on"`
 }
 
-// openSites is, by origin, each site a web tab is open on.
+// openSites is, by origin, each site a web tab is open on. With the ad blocker off on every
+// site, a site's own switch for it means nothing, and isn't there.
 func (a *App) openSites() map[string]openSite {
 	out := map[string]openSite{}
 	for _, t := range a.Tabs.All() {
@@ -154,7 +159,11 @@ func (a *App) openSites() map[string]openSite {
 		}
 		site, ok := out[o]
 		if !ok {
-			site = openSite{Settings: a.Sites.SettingsOf(o), Sparks: []siteSpark{}}
+			list := a.Sites.SettingsOf(o)
+			if !a.Prefs.All().BlockAds {
+				list = slices.DeleteFunc(list, func(s sites.Setting) bool { return s.Kind == sites.Ads })
+			}
+			site = openSite{Settings: list, Sparks: []siteSpark{}}
 		}
 		site.Sparks = a.sparksOn(o, t.URL, site.Sparks)
 		out[o] = site

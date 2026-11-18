@@ -116,7 +116,8 @@ func TestLinksToOtherSitesHoldThePagesOwnNavigations(t *testing.T) {
 }
 
 // The engine has the ad blocker's hosts from the start, and the sites it is off for as each
-// switches; a blocked request counts on the tab until its next page.
+// switches; a blocked request counts on the tab until its next page. Off on every site, the
+// engine has no hosts and the site panel no switch.
 func TestTheAdBlockersRulesReachTheEngineAndItsCountTheTab(t *testing.T) {
 	r := start(t, t.TempDir())
 	defer r.stop()
@@ -137,4 +138,32 @@ func TestTheAdBlockersRulesReachTheEngineAndItsCountTheTab(t *testing.T) {
 	r.waitForTab(func(tab map[string]any) bool {
 		return tab["url"] == "https://news.test/next" && tab["adsBlocked"] == nil
 	})
+
+	// Off on every site, Settings' Block ads: the rules have no hosts, and the panel no
+	// switch; on again, the hosts and each site's own come back.
+	got, _ := r.openSettings()
+	r.settings(`{"t":"setPref","name":"blockAds","value":"false"}`)
+	r.waitOn(got, func(m map[string]any) bool {
+		return m["t"] == "prefs" && m["prefs"].(map[string]any)["blockAds"] == false
+	})
+	r.main(func() { rules = r.e.AdRules() })
+	if len(rules.Hosts) != 0 {
+		t.Fatalf("off on every site, %d hosts", len(rules.Hosts))
+	}
+	hasAds := func(m map[string]any) bool {
+		site, _ := m["openSites"].(map[string]any)["https://news.test"].(map[string]any)
+		for _, s := range site["settings"].([]any) {
+			if s.(map[string]any)["kind"] == "ads" {
+				return true
+			}
+		}
+		return false
+	}
+	r.waitFor(func(m map[string]any) bool { return m["t"] == "openSites" && !hasAds(m) })
+	r.settings(`{"t":"setPref","name":"blockAds","value":"true"}`)
+	r.waitFor(func(m map[string]any) bool { return m["t"] == "openSites" && hasAds(m) })
+	r.main(func() { rules = r.e.AdRules() })
+	if !slices.Contains(rules.Hosts, "doubleclick.net") || !slices.Equal(rules.Off, []string{"https://news.test"}) {
+		t.Fatalf("on again: %d hosts, off %v", len(rules.Hosts), rules.Off)
+	}
 }
