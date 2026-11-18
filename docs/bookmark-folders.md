@@ -50,6 +50,14 @@ How Standard shows them (`shell/src/apps/shell/standard/`, `bookmarks.js` for wh
   rows open, and Shift+Enter the chosen folder's own bookmarks as a group, as the new tab's
   Open all does. Escape, or Backspace with nothing typed, leaves bookmarks with the box open.
   Tab in an empty box, ⌘1 to ⌘9 and ⌘D, in the mock, are not built.
+- **The bar** (`BookmarkBar.vue`): a 32px strip under the top bar, in both layouts, at the
+  top of the page's column (beside the sidebar when the tabs are on the side), so the page is
+  laid out under it and its region starts below it. It shows the chosen folder's entries in
+  their places: a bookmark as its mark and title, which loads in the active tab, or in a new
+  one behind it on a middle press; a folder as a chip that drops down what it holds, its
+  folders as submenus of every bookmark in them (a menu goes one submenu deep), then Open
+  all as a group. What doesn't fit goes in a » menu at its end. The mock's folder per
+  workspace is not built: the bar's folder is the one pref.
 
 ## What the person sees
 
@@ -136,4 +144,5 @@ Move to…, a search, a folder deleted with what it holds, the panel's folder ke
 next), `shell/e2e/shells/mobile.cjs` (the sheet) and `shell/e2e/shells/standard-bookmarks.cjs`
 (Standard's places, each on and off with its pref: the new tab's tiles, a folder opened in
 place and opened as a group; the sidebar's tree, a bookmark showing its tab or opening one; the command box narrowed by
-`*`, its folders, its search and its keys).
+`*`, its folders, its search and its keys; the bar, its folder, its menus, its » and the page
+laid out under it in both layouts).

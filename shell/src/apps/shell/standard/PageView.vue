@@ -40,6 +40,7 @@ const overPage = computed(() => view.box && !blank.value);
   position: relative;
   flex: 1;
   min-width: 0;
+  min-height: 0;
 }
 
 .page-view {

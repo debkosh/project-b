@@ -2,7 +2,8 @@
 // bookmarks show"), each shown only while its pref is on: the new tab's tiles, under the
 // command box, with a folder that opens in place and opens all its bookmarks as a group; the
 // tree under the sidebar's tabs, whose bookmarks show their tabs or open new ones; the
-// command box narrowed to bookmarks by a *, and its keys. Shot for the eye.
+// command box narrowed to bookmarks by a *, and its keys; the bar over pages, its folder, its
+// menus and its overflow, with the page laid out under it. Shot for the eye.
 // Run: node shell/e2e/shells/standard-bookmarks.cjs   (from the repo root, after `npm run
 // build` in shell/)
 
@@ -195,6 +196,58 @@ fs.writeFileSync(path.join(lib.profile, 'bookmarks.json'), JSON.stringify({ vers
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
   await setPref('bookmarksCommandBox', true);
+
+  // 4. The bar: the chosen folder's entries over the page, which moves down for it.
+  const bar = ui.locator('.bookmark-bar');
+  const chips = bar.locator('.chip:not(.over) .title');
+  const pageTop = async () => {
+    const r = await lib.regions();
+    return r.visible.find((t) => t.tab === r.active)?.rect.y;
+  };
+  check('there is no bar by default', (await bar.count()) === 0);
+  const top = await pageTop();
+  await setPref('bookmarksBar', true);
+  check('with its pref on, the bar shows the top folder\'s entries in their places', await until(async () => JSON.stringify(await chips.allInnerTexts()) === JSON.stringify(['Reading', 'Recipes', 'Travel', 'Bank', 'Shop'])), JSON.stringify(await chips.allInnerTexts()));
+  const barBox = await bar.boundingBox();
+  check('and the page is laid out under it', await until(async () => (await pageTop()) === top + barBox.height && Math.round(barBox.y + barBox.height) === (await pageTop())), JSON.stringify([top, await pageTop(), barBox]));
+  had3 = (await goTabs()).length;
+  await bar.locator('.chip', { hasText: 'Bank' }).click();
+  check('a bookmark loads in the active tab', await until(async () => (await activeURL()) === 'https://bank.example.com/' && (await goTabs()).length === had3));
+  await bar.locator('.chip', { hasText: 'Recipes' }).click();
+  const barMenu = ui.getByRole('menu', { name: 'Folder Recipes' });
+  check('a folder drops down what it holds, then Open all as a group', await until(async () => JSON.stringify(await barMenu.getByRole('menuitem').allInnerTexts()) === JSON.stringify(['Weeknight', 'Pasta with tomatoes', 'Lentil soup', 'Curry', 'Open all as a group'])), JSON.stringify(await barMenu.getByRole('menuitem').allInnerTexts()));
+  await barMenu.getByRole('menuitem', { name: 'Weeknight' }).hover();
+  check('its folder a submenu of its bookmarks', await until(() => ui.getByRole('menu', { name: 'Weeknight' }).getByRole('menuitem', { name: 'Flatbread' }).isVisible()));
+  await settle(page);
+  await page.screenshot({ path: path.join(lib.out, 'standard-bookmarks-bar.png') });
+  await barMenu.getByRole('menuitem', { name: 'Lentil soup' }).click();
+  check('a bookmark in it loads in the active tab', await until(async () => (await activeURL()) === 'https://soup.example.com/lentil' && (await barMenu.count()) === 0));
+  await send({ t: 'setPref', name: 'bookmarksBarFolder', value: recipes });
+  check('it shows the folder chosen for it', await until(async () => JSON.stringify(await chips.allInnerTexts()) === JSON.stringify(['Weeknight', 'Pasta with tomatoes', 'Lentil soup', 'Curry'])), JSON.stringify(await chips.allInnerTexts()));
+  await send({ t: 'setPref', name: 'bookmarksBarFolder', value: 'ffffffffffffffff' });
+  check('and the top when that folder is gone', await until(async () => (await chips.allInnerTexts()).join() === 'Reading,Recipes,Travel,Bank,Shop'));
+  await page.setViewportSize({ width: 560, height: 760 });
+  const more = bar.getByRole('button', { name: 'More bookmarks' });
+  check('what doesn\'t fit goes in a » menu', await until(async () => (await more.isVisible()) && (await chips.count()) < 5), String(await chips.count()));
+  const shownChips = await chips.allInnerTexts();
+  await more.click();
+  const moreMenu = ui.getByRole('menu', { name: 'More bookmarks' });
+  check('which holds the rest, in their places', await until(async () => JSON.stringify([...shownChips, ...(await moreMenu.getByRole('menuitem').allInnerTexts())]) === JSON.stringify(['Reading', 'Recipes', 'Travel', 'Bank', 'Shop'])), JSON.stringify(await moreMenu.getByRole('menuitem').allInnerTexts()));
+  await settle(page);
+  await page.screenshot({ path: path.join(lib.out, 'standard-bookmarks-bar-more.png') });
+  await page.keyboard.press('Escape');
+  await page.setViewportSize({ width: 1100, height: 760 });
+  await fire('menu', 'view.tabsTop');
+  await until(async () => (await ui.locator('.strip').count()) === 1);
+  await settle(page);
+  const barOnTop = await bar.boundingBox();
+  check('with the tabs on top it shows under the toolbar, the page under it', await until(async () => (await bar.isVisible()) && Math.round(barOnTop.y + barOnTop.height) === (await pageTop()) && barOnTop.x < 10), JSON.stringify([await pageTop(), barOnTop]));
+  const topOnTop = await pageTop();
+  await settle(page);
+  await page.screenshot({ path: path.join(lib.out, 'standard-bookmarks-bar-top.png') });
+  await setPref('bookmarksBar', false);
+  check('with its pref off the bar goes, and the page takes its room', await until(async () => (await bar.count()) === 0 && (await pageTop()) === topOnTop - barOnTop.height));
+  await fire('menu', 'view.tabsSide');
 
   check('no errors in the pages', w.errors.length === 0, w.errors.join(' | '));
   await browser.close();

@@ -1,5 +1,6 @@
 <script setup>
 import { computed, watchEffect } from 'vue';
+import BookmarkBar from './BookmarkBar.vue';
 import FloatMenu from './FloatMenu.vue';
 import PageMenu from '@/ui/PageMenu.vue';
 import TabMenu from './TabMenu.vue';
@@ -48,7 +49,12 @@ watchEffect(() => {
     <div class="body">
       <div v-show="!pageFull" class="edge left"></div>
       <Sidebar v-if="!tabsOnTop" v-show="!bare" />
-      <PageView />
+      <!-- The bookmarks bar, when on, takes the top of the page's column, so the page is
+           laid out under it and its region measured there. -->
+      <div class="pages">
+        <BookmarkBar v-if="state.prefs.bookmarksBar" v-show="!bare" />
+        <PageView />
+      </div>
       <div v-show="!pageFull" class="edge right"></div>
     </div>
     <div v-show="!pageFull" class="edge bottom"></div>
@@ -105,6 +111,13 @@ watchEffect(() => {
   display: flex;
   flex: 1;
   min-height: 0;
+}
+
+.pages {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
 }
 
 .edge {

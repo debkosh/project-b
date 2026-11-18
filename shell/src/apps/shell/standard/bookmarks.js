@@ -83,7 +83,7 @@ export function finderFolders(list) {
 }
 
 // under is every bookmark in folder id and in its folders, in the tree's order.
-function under(list, id) {
+export function under(list, id) {
   return inFolder(list, id).flatMap((e) => (e.kind === 'folder' ? under(list, e.id) : [e]));
 }
 
