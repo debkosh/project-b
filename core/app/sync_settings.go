@@ -3,17 +3,38 @@ package app
 import (
 	"encoding/json"
 	"errors"
+	"net/url"
+	"strings"
 
 	"projectb/engine"
 	"projectb/settings"
 	"projectb/shell"
 	"projectb/sync"
+	"projectb/timeline"
 	"projectb/words"
 )
 
+// isAppLink says whether u is one of the app's own links, project-b:.
+func isAppLink(u string) bool {
+	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(u)), "project-b:")
+}
+
+// OpenAppLink takes one of the app's own links, however it came: from another app, as the Mac
+// and Android hand it over, or a page's link clicked. project-b://sync?address=<address> opens
+// window w's Settings at Sync, with the set-up Dialog filled in from it, and sends nothing to
+// the server nor keeps anything until the person connects. Any other does nothing.
+func (a *App) OpenAppLink(w engine.WindowID, link string) {
+	if u, err := url.Parse(strings.TrimSpace(link)); err != nil || !strings.EqualFold(u.Scheme, "project-b") || u.Host != "sync" {
+		timeline.Infof("a project-b: link that isn't sync's, ignored")
+		return
+	}
+	a.Settings.OpenSection(w, "sync", map[string]any{"t": "syncLink", "link": link})
+}
+
 // syncSettingsPart is Settings' Sync (docs/sync.md): the status, which every shell has too,
-// and what the page asks of sync, each answered with a message of its own. A deep link's
-// address comes as the page's syncPropose, and connects nothing.
+// and what the page asks of sync, each answered with a message of its own. A deep link
+// reaches the page as syncLink (OpenAppLink), and its address comes back as the page's
+// syncPropose, which connects nothing.
 func (a *App) syncSettingsPart() settings.Part {
 	// The page has the address too, which Reconnect fills in; the shells don't.
 	a.Sync.OnStatus(func(s sync.Status) {
@@ -56,7 +77,8 @@ func (a *App) syncSettingsPart() settings.Part {
 					p, err = sync.Propose(address)
 				}
 				if err != nil {
-					answer("syncProposal", err, nil)
+					// With the address it was given, which a link's set-up shows under its error.
+					answer("syncProposal", err, map[string]any{"address": address})
 				} else {
 					answer("syncProposal", nil, map[string]any{"address": p.Address, "host": p.Host, "needsToken": p.NeedsToken})
 				}
