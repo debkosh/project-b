@@ -255,20 +255,22 @@ const same = (a, b) => !!a && !!b && ['x', 'y', 'w', 'h'].every((k) => Math.abs(
   await ui.locator('form.field').click();
   check('a click elsewhere in the shell closes the menu', await until(async () => (await menu.count()) === 0));
 
-  // Manage extensions opens the settings tab at its Extensions section, from closed and
-  // from another section.
+  // Manage extensions opens the settings tab at its Extensions page, from closed and from
+  // elsewhere in settings. On the one-page layout, the default, it is one of the long
+  // lists, a page of its own with a link back to Advanced (docs/settings.md).
   await page.close();
   await closeSettings();
   await puzzle.click();
   await menu.getByRole('button', { name: 'Manage extensions' }).click();
   check('Manage extensions opens the settings tab', await until(async () => (await settingsTab()) !== 0 && (await regions()).active === (await settingsTab())));
   page = await open();
-  const nav = (label) => page.getByRole('navigation').getByRole('button', { name: label });
-  check('at its Extensions section', (await nav('Extensions').getAttribute('aria-current')) === 'page' && await page.getByRole('region', { name: 'Installed' }).isVisible());
-  await nav('General').click();
+  installed = page.getByRole('region', { name: 'Installed' });
+  check('at its Extensions page', await until(() => installed.isVisible()) && await page.getByRole('heading', { name: 'Extensions', exact: true }).isVisible());
+  await page.getByRole('button', { name: 'Back to Advanced' }).click();
+  await until(async () => (await installed.count()) === 0);
   await puzzle.click();
   await menu.getByRole('button', { name: 'Manage extensions' }).click();
-  check('and goes back there when it is already open', await until(async () => (await nav('Extensions').getAttribute('aria-current')) === 'page'));
+  check('and goes back there when it is already open', await until(() => installed.isVisible()));
 
   await page.getByRole('region', { name: 'Installed' }).getByRole('button', { name: `Actions for ${name}` }).click();
   await page.getByRole('menuitem', { name: 'Remove…' }).click();
@@ -292,8 +294,8 @@ const same = (a, b) => !!a && !!b && ['x', 'y', 'w', 'h'].every((k) => Math.abs(
   await openSettings();
   await until(async () => (await settingsTab()) !== 0);
   page = await open();
-  check('and settings no Extensions section', (await page.getByRole('navigation').getByRole('button', { name: 'Extensions' }).count()) === 0);
-  await page.getByRole('button', { name: 'Flags' }).click();
+  // Flags are on the page itself, under Advanced.
+  check('and settings no Extensions row', await until(() => page.getByRole('switch', { name: /Extensions/ }).isVisible()) && (await page.locator('[data-section="extensions"]').count()) === 0);
   check('but the flag is there to turn on', await page.getByRole('switch', { name: /Extensions/ }).isEnabled());
 
   check('no errors in the pages', errors.length === 0, errors.join(' | '));
