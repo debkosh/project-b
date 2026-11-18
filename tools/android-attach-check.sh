@@ -10,7 +10,7 @@ S=${S:-emulator-5600}; P=dev.projectb.browser; N=${N:-6}
 OUT=$(cd "$(dirname "$0")/.." && pwd)/build/android-attach; mkdir -p $OUT
 adb() { ~/Library/Android/sdk/platform-tools/adb -s $S "$@"; }
 adb root >/dev/null; sleep 2
-[ -n "$APK" ] && adb install -r $APK | tail -1
+[ -n "$APK" ] && adb install -r --no-incremental $APK | tail -1
 hit=0; failed=0
 for run in $(seq 1 $N); do
   adb shell am force-stop $P

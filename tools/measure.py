@@ -197,7 +197,7 @@ class Android:
         import drive_android
         self.d = drive_android
         os.makedirs(self.d.OUT, exist_ok=True)
-        self.d.adb("install", "-r", self.d.APK)
+        self.d.adb("install", "-r", "--no-incremental", self.d.APK)
 
     def start(self):
         self.d.adb("shell", "pm", "clear", self.d.PACKAGE)
