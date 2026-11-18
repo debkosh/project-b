@@ -48,6 +48,9 @@ export const state = reactive({
   // The section showing: the one Go asks for when it opens the page at one, or the one the
   // user picked. '' is the first.
   section: '',
+  // How many times Go has asked for a section since the page started, so asking again for
+  // the one showing goes to it again.
+  sectionAsked: 0,
   keyboard: { platform: 'mac', templates: [], template: '', following: true, groups: [], missing: [], gone: [], problems: [] },
   // Every flag with its saved value, whether its build has it, and whether it waits for a
   // relaunch.
@@ -195,6 +198,7 @@ export function connect() {
           break;
         case 'section':
           state.section = m.section;
+          state.sectionAsked++;
           break;
         case 'keyboard':
           state.keyboard = m.keyboard;
