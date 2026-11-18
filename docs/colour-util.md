@@ -147,18 +147,41 @@ The owner, 2026-11-18:
   vanishing into it and soft letters turning black.
 - **The recipe is an input too:** "add the recipies as another input option".
 
+## Built
+
+Since 2026-11-18, on branch `gulal`. `shell/src/ui/tint.js` keeps one gulal environment
+for each background a colour sits on: the tones' `--bar` or `--surface`, the scheme as
+painted, and the frame colour as the accent, left out for None. `paintTheme` (`theme.js`)
+hands it each palette it paints, and `tints`, a store, tells every mark to draw again;
+`useTints` is that store as a Vue ref. A native shell that ever needs these colours takes
+gulal's Go package, which gives the same output.
+
+- **Site letter tiles:** `env.fromText(host).soft`, the host in lower case without `www.`:
+  the tile its `background`, a hairline of its `border`, the letter in its `tonal`.
+  Standard's `SiteMark.vue` and Mobile's `Mark.svelte`, in place of `hsl(hue 45% 42%)`
+  with white letters.
+- **Bookmark folders:** `env.fromText('folder:' + id)`, seeded from the id so a rename
+  keeps the colour. `.mark` for a folder's icon (Standard's bar, sidebar and finder;
+  Mobile's bar, list, address chips and bookmark sheet), `.soft` for a folder's tile on the
+  new tab. The top folder keeps its plain icon.
+- **Which background:** a mark on the bar, the sidebar, the finder's folders or the new
+  tab's top tiles (Standard's command box is mostly the bar; Mobile's new tab is the bar)
+  takes `bar`; one in an open folder's card, a list or a sheet takes `surface`.
+- **gulal 0.1.0** is installed from its release tarball, `shell/vendor/gulal-0.1.0.tgz`,
+  until it is on npm.
+
+Standard, every frame colour, light and dark:
+
+![Site tiles and folders in Standard](screenshots/colour-util/marks-standard.png)
+
+Mobile's new tab, light and dark:
+
+![Site tiles and folders in Mobile](screenshots/colour-util/marks-mobile.png)
+
 ## Open
 
-- Seed from a stable id where an item has one (a tab group, a folder), so a rename keeps
-  its colour; a site's host is its own id. A purpose salt, as the console's avatars have.
 - Hue bands to leave out, such as the danger red, so a mark never reads as an error.
-
-- Recipe for site marks: soft is the UX session's pick and ours.
-- Where it lives: one JS module, `shell/src/ui/tint.js`, its constants in it, reading the
-  frame, light or dark and the background from the tones Go sends. A native shell that ever
-  needs marks ports it and checks a shared file of test vectors (the UX session's view, and
-  ours).
-- The design-system rule: "A colour made up for an item comes from tint(), never a literal",
-  with what seeds it.
+- The design-system rule: "A colour made up for an item comes from tint.js, never a
+  literal", with what seeds it.
 - Tab groups and workspaces store a colour code today; moving them to a colour from their
   name is its own change, after site marks.
