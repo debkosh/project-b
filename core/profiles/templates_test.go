@@ -3,6 +3,7 @@ package profiles
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"projectb/prefs"
@@ -32,7 +33,7 @@ func prefsFrom(t *testing.T, name string) prefs.Prefs {
 }
 
 func TestPersonalIsTodaysDefaults(t *testing.T) {
-	if got, want := prefsFrom(t, "Personal"), prefs.New(t.TempDir()).All(); got != want {
+	if got, want := prefsFrom(t, "Personal"), prefs.New(t.TempDir()).All(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("Personal = %+v, the defaults are %+v", got, want)
 	}
 }

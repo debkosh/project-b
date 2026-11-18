@@ -29,11 +29,6 @@ Take an item off when it lands or is dropped.
       and only in a build with them); it has to be the engine's own. On Android a folder
       comes from the Storage Access Framework as a content URI, not a path, so the engine
       has to write the download there itself.
-    - *Clear cookies when the app quits*, but for the sites kept: `EraseWorkspace` posts a
-      task and its end is only a timeline mark, so nothing makes a quit wait for it. The
-      engine has to finish an erase before the process exits, or keep cookies for the
-      session only (Chromium's session-only content setting); the sites kept are an
-      erasure's sites, kept rather than erased.
   - *13, a first-run walkthrough:* bring bookmarks, history and passwords over from another
     browser on the first start, as Edge does. L. Discussed first.
   - *14, saved passwords and autofill* (daily-use row 12). L.

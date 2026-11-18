@@ -94,11 +94,14 @@ type Engine struct {
 	// the profile folders the app opened.
 	first  string
 	erased []Erase
-	// siteData is what each workspace's storage holds, by host (sitedata.go).
-	siteData map[string][]engine.SiteData
-	profiles []string
-	rules    []engine.BlockRules
-	adRules  engine.AdRules
+	// siteData is what each workspace's storage holds, by host, and what a quit would
+	// erase (sitedata.go).
+	siteData       map[string][]engine.SiteData
+	quitWorkspaces []string
+	quitErasure    engine.Erasure
+	profiles       []string
+	rules          []engine.BlockRules
+	adRules        engine.AdRules
 	// badCerts is the hosts a test gave a bad certificate. Main thread.
 	badCerts map[string]bool
 	// printed is the tabs whose pages the app printed, in order. Under mu.

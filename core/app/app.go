@@ -259,6 +259,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Settings.AddPart(a.defaultBrowserSettingsPart(e))
 	a.Settings.AddPart(a.clearDataSettingsPart(e))
 	a.Settings.AddPart(a.siteDataSettingsPart(e))
+	a.Settings.AddPart(a.keepCookiesSettingsPart())
 	a.registerActions(e)
 
 	a.Tabs.AddGate(a.Policy.IsAllowedURL)
@@ -316,6 +317,7 @@ func Start(e engine.Engine, cfg Config) *App {
 			e.SetFirstWorkspace(now)
 		}
 	})
+	a.startQuitErasure(e)
 	// A change to the pins reaches every shell at once.
 	a.Pins.OnChanged(func() { a.Shell.Send(map[string]any{"t": "pins", "pins": a.Pins.List()}) })
 	a.Prefs.OnThemeChanged(func(t string) { a.Window.SetTheme(themeOf(t)) })

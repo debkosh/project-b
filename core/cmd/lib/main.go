@@ -15,6 +15,7 @@ static inline int64_t call_create_internal_tab(const PBEngineCalls* c) { return 
 static inline void call_set_first_workspace(const PBEngineCalls* c, const char* workspace) { c->set_first_workspace(workspace); }
 static inline void call_erase_workspace(const PBEngineCalls* c, const char* workspace, const PBErasure* erasure) { c->erase_workspace(workspace, erasure); }
 static inline void call_list_site_data(const PBEngineCalls* c, const char* workspace) { c->list_site_data(workspace); }
+static inline void call_set_quit_erasure(const PBEngineCalls* c, const char* workspaces, const PBErasure* erasure) { c->set_quit_erasure(workspaces, erasure); }
 static inline void call_close_tab(const PBEngineCalls* c, int64_t tab) { c->close_tab(tab); }
 static inline void call_open_profile(const PBEngineCalls* c, const char* dir) { c->open_profile(dir); }
 static inline void call_set_block_rules(const PBEngineCalls* c, const char* hosts) { c->set_block_rules(hosts); }
@@ -129,13 +130,30 @@ func (e *nativeEngine) SetFirstWorkspace(workspace string) {
 func (e *nativeEngine) EraseWorkspace(workspace string, r engine.Erasure) {
 	c := C.CString(workspace)
 	defer C.free(unsafe.Pointer(c))
-	sites := C.CString(strings.Join(r.Sites, ","))
-	defer C.free(unsafe.Pointer(sites))
-	er := C.PBErasure{kinds: C.int32_t(r.Kinds), sites: sites}
+	er, free := erasure(r)
+	defer free()
+	C.call_erase_workspace(e.calls, c, &er)
+}
+
+func (e *nativeEngine) SetQuitErasure(workspaces []string, r engine.Erasure) {
+	c := C.CString(strings.Join(workspaces, ","))
+	defer C.free(unsafe.Pointer(c))
+	er, free := erasure(r)
+	defer free()
+	C.call_set_quit_erasure(e.calls, c, &er)
+}
+
+// erasure is an erasure as the engine takes it, with what frees its strings.
+func erasure(r engine.Erasure) (C.PBErasure, func()) {
+	sites, keep := C.CString(strings.Join(r.Sites, ",")), C.CString(strings.Join(r.Keep, ","))
+	er := C.PBErasure{kinds: C.int32_t(r.Kinds), sites: sites, keep: keep}
 	if !r.Since.IsZero() {
 		er.since = C.int64_t(r.Since.Unix())
 	}
-	C.call_erase_workspace(e.calls, c, &er)
+	return er, func() {
+		C.free(unsafe.Pointer(sites))
+		C.free(unsafe.Pointer(keep))
+	}
 }
 
 func (e *nativeEngine) ListSiteData(workspace string) {

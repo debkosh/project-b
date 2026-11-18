@@ -52,6 +52,16 @@ func (e *Engine) eraseSiteData(workspace string, r engine.Erasure) {
 	})
 }
 
+// SetQuitErasure keeps what a quit would erase, for QuitErasure.
+func (e *Engine) SetQuitErasure(workspaces []string, r engine.Erasure) {
+	e.quitWorkspaces, e.quitErasure = slices.Clone(workspaces), r
+}
+
+// QuitErasure is what the app last said a quit erases, in which workspaces. Main thread.
+func (e *Engine) QuitErasure() ([]string, engine.Erasure) {
+	return slices.Clone(e.quitWorkspaces), e.quitErasure
+}
+
 // fireSiteData is a mock page's siteData button: value is "host cookies bytes", stored in
 // the workspace of the tab it is in.
 func (e *Engine) fireSiteData(workspace, value string) {

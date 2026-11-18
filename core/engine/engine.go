@@ -169,11 +169,12 @@ const (
 
 // Erasure is what EraseWorkspace erases: the kinds of storage, stored since a time, the
 // zero time for from the start, of the sites named, registrable domains, or of every site
-// for none.
+// for none but those kept.
 type Erasure struct {
 	Since time.Time
 	Kinds EraseKind
 	Sites []string
+	Keep  []string
 }
 
 // SiteData is what a workspace's storage holds for one host: the cookies set for it as
@@ -221,6 +222,10 @@ type Engine interface {
 	// ListSiteData counts what a workspace's storage holds, by host; SiteDataListed
 	// follows with it.
 	ListSiteData(workspace string)
+	// SetQuitErasure says what to erase as the app quits, in each workspace named: a quit
+	// runs it and waits for it, at most a few seconds, before the app ends. An erasure of
+	// no kinds erases nothing. A desktop engine's: a phone's app has no quit of its own.
+	SetQuitErasure(workspaces []string, r Erasure)
 	CloseTab(tab TabID)
 	LoadURL(tab TabID, url string)
 

@@ -37,6 +37,12 @@ const adsHint = computed(() => {
   return n ? `On every site, but ${n === 1 ? 'the one' : `the ${n}`} you turned it off for` : 'On every site';
 });
 
+// Clear cookies when the app quits says how many sites are kept.
+const quitHint = computed(() => {
+  const n = state.prefs.keepCookies?.length || 0;
+  return n ? `Except the ${n === 1 ? 'site' : `${n} sites`} you keep` : 'Every site\'s, as the app quits';
+});
+
 const layouts = [
   { value: 'vertical', label: 'Vertical' },
   { value: 'horizontal', label: 'Horizontal' },
@@ -113,6 +119,19 @@ const layouts = [
       :checked="!!state.prefs.blockAds"
       :aria-checked="String(!!state.prefs.blockAds)"
       @change="setPref('blockAds', $event.target.checked)"
+    />
+  </Row>
+
+  <!-- Cookies and site storage erased as the app quits, but the sites kept, each kept from
+       its page in Sites. -->
+  <Row v-else-if="part === 'clearOnQuit'" tag="label" label="Clear cookies when the app quits" :hint="quitHint">
+    <input
+      type="checkbox"
+      role="switch"
+      class="switch"
+      :checked="!!state.prefs.clearCookiesOnQuit"
+      :aria-checked="String(!!state.prefs.clearCookiesOnQuit)"
+      @change="setPref('clearCookiesOnQuit', $event.target.checked)"
     />
   </Row>
 

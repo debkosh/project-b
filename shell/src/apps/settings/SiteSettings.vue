@@ -25,12 +25,17 @@ const keeps = (r) => r.cookies > 0 || r.bytes > 0;
 // What a site keeps: its size, or its cookies when nothing else.
 const kept = (r) => (r.bytes ? size(r.bytes) : words(r.cookies, 'cookie', 'cookies'));
 
+// Whether a site's cookies stay as the app quits, while the app clears the others'.
+const isKept = (site) => !!state.prefs.clearCookiesOnQuit && (state.prefs.keepCookies || []).includes(site);
+const keep = (site, on) => send({ t: 'keepCookies', site, keep: on });
+
 // A row's second line: its settings, one host's alone or each host's by name, then how many
-// hosts keep something and what.
+// hosts keep something and what, and whether it is kept as the app quits.
 function summary(r) {
   const parts = r.origins.length === 1 ? [summaryOf(r.origins[0])] : r.origins.map((o) => `${host(o)}: ${summaryOf(o)}`);
   if (r.hosts.length > 1) parts.push(words(r.hosts.length, 'host', 'hosts'));
   if (keeps(r)) parts.push(kept(r));
+  if (isKept(r.site)) parts.push('Kept');
   return parts.filter((x) => x).join(' · ');
 }
 
@@ -119,14 +124,30 @@ function removeAll() {
 <template>
   <section v-if="address" :aria-label="title">
     <h2 class="site" :title="title">{{ title }}</h2>
-    <div v-if="row && keeps(row)" class="card">
-      <div class="row">
+    <!-- What the site keeps, and while the app clears cookies as it quits, whether it is
+         kept: together, in one card. -->
+    <div v-if="row && (keeps(row) || state.prefs.clearCookiesOnQuit)" class="card">
+      <div v-if="keeps(row)" class="row">
         <span class="label">
           Cookies and site data
           <span class="secondary">{{ [words(row.cookies, 'cookie', 'cookies'), row.bytes ? size(row.bytes) : ''].filter((x) => x).join(' · ') }} on {{ row.hosts.join(', ') }}</span>
         </span>
         <button type="button" class="text-button" @click="clearing = row.site">Clear…</button>
       </div>
+      <label v-if="state.prefs.clearCookiesOnQuit" class="row">
+        <span class="label">
+          Keep cookies when the app quits
+          <span class="secondary">Stay signed in here when the others are cleared</span>
+        </span>
+        <input
+          type="checkbox"
+          role="switch"
+          class="switch"
+          :checked="isKept(row.site)"
+          :aria-checked="String(isKept(row.site))"
+          @change="keep(row.site, $event.target.checked)"
+        />
+      </label>
     </div>
     <template v-for="o in origins" :key="o">
       <h3 v-if="origins.length > 1" class="host" :title="o">{{ host(o) }}</h3>

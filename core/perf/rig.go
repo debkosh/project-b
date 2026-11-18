@@ -59,8 +59,9 @@ type Eng struct {
 	Keep func(w engine.WindowID, msg []byte)
 }
 
-func (e *Eng) EraseWorkspace(string, engine.Erasure) { e.Calls[COther]++ }
-func (e *Eng) ListSiteData(string)                   { e.Calls[COther]++ }
+func (e *Eng) EraseWorkspace(string, engine.Erasure)   { e.Calls[COther]++ }
+func (e *Eng) ListSiteData(string)                     { e.Calls[COther]++ }
+func (e *Eng) SetQuitErasure([]string, engine.Erasure) { e.Calls[COther]++ }
 
 func (e *Eng) CreateTab(string) engine.TabID     { e.Calls[CCreateTab]++; e.next++; return e.next }
 func (e *Eng) CreateInternalTab() engine.TabID   { e.Calls[CCreateTab]++; e.next++; return e.next }

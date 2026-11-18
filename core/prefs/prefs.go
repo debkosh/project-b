@@ -13,6 +13,7 @@ import (
 	"projectb/timeline"
 	"projectb/tones"
 	"regexp"
+	"slices"
 )
 
 // Tab layouts.
@@ -71,12 +72,17 @@ type Prefs struct {
 	// AskWhereToSave sends every download through the Save panel, as Save Link As does,
 	// rather than straight to the downloads folder. docs/daily-driver.md.
 	AskWhereToSave bool `json:"askWhereToSave"`
+	// ClearCookiesOnQuit erases every workspace's cookies and site storage as the app
+	// quits, but the sites' in KeepCookies, registrable domains, sorted. A desktop's: a
+	// phone's app has no quit of its own. docs/settings.md.
+	ClearCookiesOnQuit bool     `json:"clearCookiesOnQuit"`
+	KeepCookies        []string `json:"keepCookies"`
 }
 
 // Defaults are the settings before the user changes any.
 func Defaults() Prefs {
 	return Prefs{TabLayout: TabsVertical, FrameColor: tones.None, Theme: ThemeSystem, Shell: shells.Default(), AddressBarPosition: AddressBottom, SearchEngine: search.Default, Start: StartContinue,
-		BookmarksNewTab: true, BookmarksCommandBox: true, BlockAds: true}
+		BookmarksNewTab: true, BookmarksCommandBox: true, BlockAds: true, KeepCookies: []string{}}
 }
 
 func isTheme(t string) bool { return t == ThemeSystem || t == ThemeLight || t == ThemeDark }
@@ -137,6 +143,7 @@ func New(dir string) *Manager {
 			if !folderID.MatchString(s.BookmarksBarFolder) {
 				s.BookmarksBarFolder = ""
 			}
+			s.KeepCookies = keptSites(s.KeepCookies)
 			m.prefs = s
 		}
 	}
@@ -321,6 +328,38 @@ func (m *Manager) SetBlockAds(on bool) { m.setSwitch(&m.prefs.BlockAds, on) }
 // SetAskWhereToSave turns on or off asking where each download goes.
 func (m *Manager) SetAskWhereToSave(on bool) { m.setSwitch(&m.prefs.AskWhereToSave, on) }
 
+// SetClearCookiesOnQuit turns on or off erasing cookies and site storage as the app quits.
+func (m *Manager) SetClearCookiesOnQuit(on bool) { m.setSwitch(&m.prefs.ClearCookiesOnQuit, on) }
+
+// KeepCookies keeps a site's cookies and storage as the app quits, or stops keeping them.
+func (m *Manager) KeepCookies(site string, keep bool) {
+	list := slices.DeleteFunc(slices.Clone(m.prefs.KeepCookies), func(s string) bool { return s == site })
+	if keep && site != "" {
+		list = append(list, site)
+	}
+	m.setKeepCookies(list)
+}
+
+func (m *Manager) setKeepCookies(list []string) {
+	list = keptSites(list)
+	if slices.Equal(list, m.prefs.KeepCookies) {
+		return
+	}
+	m.prefs.KeepCookies = list
+	m.save()
+	m.changed()
+}
+
+// keptSites is a list of kept sites as the file keeps it: each once, sorted, none empty.
+func keptSites(list []string) []string {
+	out := slices.DeleteFunc(slices.Clone(list), func(s string) bool { return s == "" })
+	slices.Sort(out)
+	if out == nil {
+		return []string{}
+	}
+	return slices.Compact(out)
+}
+
 // setSwitch sets a setting that is on or off, and says so when it changed.
 func (m *Manager) setSwitch(p *bool, on bool) {
 	if on == *p {
@@ -370,6 +409,10 @@ func (m *Manager) Set(name, value string) bool {
 		if value == "true" || value == "false" {
 			m.SetAskWhereToSave(value == "true")
 		}
+	case "clearCookiesOnQuit":
+		if value == "true" || value == "false" {
+			m.SetClearCookiesOnQuit(value == "true")
+		}
 	default:
 		return false
 	}
@@ -401,6 +444,8 @@ func (m *Manager) Apply(values json.RawMessage) error {
 	m.SetBookmarksBarFolder(p.BookmarksBarFolder)
 	m.SetBlockAds(p.BlockAds)
 	m.SetAskWhereToSave(p.AskWhereToSave)
+	m.SetClearCookiesOnQuit(p.ClearCookiesOnQuit)
+	m.setKeepCookies(p.KeepCookies)
 	return nil
 }
 

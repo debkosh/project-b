@@ -76,6 +76,15 @@ sections on a phone.
   cookies with site storage, and apart from them the cache, are erased in every workspace and
   the profile's own storage by the engine's `EraseWorkspace`, from the same time, with their
   tabs left open. The row then says what went, and from when.
+- **Clear cookies when the app quits**, a desktop's (a phone's app has no quit of its own),
+  erases every workspace's cookies and site storage as the app quits, but the sites kept;
+  the cache stays. A site is kept from its page in Sites, by a switch there while this is
+  on, and its row then says Kept; the prefs `clearCookiesOnQuit` and `keepCookies`, the kept
+  sites by registrable domain. Go tells the engine what a quit erases at start and whenever
+  the switch, the kept sites or the workspaces change (`SetQuitErasure`,
+  `core/app/quit_erasure.go`); the engine's quit, from Cmd+Q, the Dock, a logout or Go,
+  runs it and ends the run loop once every workspace's erase is done, or after five
+  seconds. A crash erases nothing: the next quit does.
 - **Block ads** is the ad blocker on every site ([site-features.md](site-features.md#the-ad-blocker)).
 - **Sites** is a row per site, its registrable domain, as Safari's Website Data and
   Chrome's All sites have it (`core/app/site_data_settings.go`): the settings of each of its
@@ -135,8 +144,9 @@ profile whose flag names it; it goes to each part as a person does, by the rail,
 sections and the rows that open the lists. Each run also switches the flag to the other layout
 and back, in the same page; checks the status line (not the default browser, Make default
 browser, then the default; the version, and Check for updates reaching the release server
-once), Block ads, Ask where to save, Clear browsing data's dialog and Sites with what two
-sites keep, a site's Clear data and a site's page with its Clear; searches (rows found
+once), Block ads, Ask where to save, Clear browsing data's dialog, Sites with what two
+sites keep, a site's Clear data and a site's page with its Clear, and Clear cookies when
+the app quits with a site kept from its page; searches (rows found
 working in place, the counts, a section's name, nothing found, Escape, a list found); and walks
 a phone-sized page through every group or section, and a search.
 
@@ -145,7 +155,9 @@ the default browser's state in the snapshot, Make default browser and its answer
 `clear_data_settings_test.go` what each choice clears, site data in every workspace with the
 tabs open, and a range: the pages each would take, and what the last hour clears and leaves;
 `site_data_settings_test.go` Sites by site, in every workspace, without an extension's
-storage, and a site's Clear and Clear all; `sitefeatures_test.go` Block ads;
+storage, and a site's Clear and Clear all; `quit_erasure_test.go` what a quit erases as
+the switch, the kept sites and the workspaces change; `sitefeatures_test.go` Block ads;
 `downloads_test.go` Ask where to save. On the real engine, `tools/drive_first_app.py
 sitedata` counts what pages in two workspaces kept, clears the site in both, and clears
-from the last hour.
+from the last hour; `quiterase` quits with a site kept and finds, after a restart, the
+other site's cookies and storage gone in both workspaces and the kept site's there.

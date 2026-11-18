@@ -6,6 +6,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/barrier_closure.h"
 #include "base/check.h"
 #include "base/functional/bind.h"
 #include "base/location.h"
@@ -119,21 +120,27 @@ constexpr uint64_t kErasedOrigins =
     content::BrowsingDataRemover::ORIGIN_TYPE_UNPROTECTED_WEB |
     content::BrowsingDataRemover::ORIGIN_TYPE_PROTECTED_WEB;
 
-// Waits for one erase, marks it on the timeline, and goes.
+// Waits for one erase, marks it on the timeline, says it is done, and goes.
 class Eraser : public content::BrowsingDataRemover::Observer {
  public:
-  Eraser(content::BrowsingDataRemover* remover, const std::string& workspace)
-      : workspace_(workspace) {
+  Eraser(content::BrowsingDataRemover* remover,
+         const std::string& workspace,
+         base::OnceClosure done)
+      : workspace_(workspace), done_(std::move(done)) {
     observation_.Observe(remover);
   }
 
  private:
   void OnBrowsingDataRemoverDone(uint64_t failed_data_types) override {
     timeline::Mark("workspace.erased", "workspace=" + workspace_);
+    if (done_) {
+      std::move(done_).Run();
+    }
     delete this;
   }
 
   const std::string workspace_;
+  base::OnceClosure done_;
   base::ScopedObservation<content::BrowsingDataRemover,
                           content::BrowsingDataRemover::Observer>
       observation_{this};
@@ -165,19 +172,33 @@ void CallSetFirstWorkspace(const char* workspace) {
   g_engine->SetFirstWorkspace(workspace);
 }
 
+Engine::Erasure ErasureOf(const PBErasure* e) {
+  auto sites = [](const char* list) {
+    return base::SplitString(list, ",", base::TRIM_WHITESPACE,
+                             base::SPLIT_WANT_NONEMPTY);
+  };
+  return {.since = e->since ? base::Time::FromTimeT(e->since) : base::Time(),
+          .kinds = e->kinds,
+          .sites = sites(e->sites),
+          .keep = sites(e->keep)};
+}
+
 void CallEraseWorkspace(const char* workspace, const PBErasure* erasure) {
   CheckMainThread();
-  g_engine->EraseWorkspace(
-      workspace,
-      erasure->since ? base::Time::FromTimeT(erasure->since) : base::Time(),
-      erasure->kinds,
-      base::SplitString(erasure->sites, ",", base::TRIM_WHITESPACE,
-                        base::SPLIT_WANT_NONEMPTY));
+  g_engine->EraseWorkspace(workspace, ErasureOf(erasure));
 }
 
 void CallListSiteData(const char* workspace) {
   CheckMainThread();
   g_engine->ListSiteData(workspace);
+}
+
+void CallSetQuitErasure(const char* workspaces, const PBErasure* erasure) {
+  CheckMainThread();
+  // "" is a workspace too, the profile's own storage.
+  g_engine->SetQuitErasure(base::SplitString(workspaces, ",", base::TRIM_WHITESPACE,
+                                             base::SPLIT_WANT_ALL),
+                           ErasureOf(erasure));
 }
 
 void CallCloseTab(int64_t tab) {
@@ -659,6 +680,7 @@ const PBEngineCalls* Engine::Calls() {
       .set_first_workspace = CallSetFirstWorkspace,
       .erase_workspace = CallEraseWorkspace,
       .list_site_data = CallListSiteData,
+      .set_quit_erasure = CallSetQuitErasure,
       .close_tab = CallCloseTab,
       .load_url = CallLoadURL,
       .go_back = CallGoBack,
@@ -978,8 +1000,36 @@ void Engine::Quit() {
     windows_.begin()->second->window->Close();
   }
 #else
-  quit_.Run();
+  // What Go asked to be erased as the app quits goes first: the run loop ends once every
+  // workspace's erase is done, or after kQuitEraseWait whatever is left. A second quit
+  // meanwhile waits with the first.
+  if (quitting_) {
+    return;
+  }
+  quitting_ = true;
+  if (!quit_erasure_.kinds || quit_workspaces_.empty()) {
+    QuitNow();
+    return;
+  }
+  base::RepeatingClosure erased = base::BarrierClosure(
+      quit_workspaces_.size(),
+      base::BindOnce(&Engine::QuitNow, base::Unretained(this)));
+  for (const std::string& workspace : quit_workspaces_) {
+    Erase(workspace, quit_erasure_, erased);
+  }
+  content::GetUIThreadTaskRunner({})->PostDelayedTask(
+      FROM_HERE, base::BindOnce(&Engine::QuitNow, base::Unretained(this)),
+      kQuitEraseWait);
 #endif
+}
+
+void Engine::QuitNow() {
+  if (quit_done_) {
+    return;
+  }
+  quit_done_ = true;
+  timeline::Mark("app.quit", "");
+  quit_.Run();
 }
 
 void Engine::SetWindowPage(int64_t window, const std::string& page) {
@@ -1077,14 +1127,15 @@ void Engine::SetFirstWorkspace(const std::string& workspace) {
 
 // Each closed tab dies on a later task (CloseTab), so the erase waits for a task after
 // theirs.
-void Engine::EraseWorkspace(const std::string& workspace,
-                            base::Time since,
-                            int32_t kinds,
-                            std::vector<std::string> sites) {
+void Engine::EraseWorkspace(const std::string& workspace, Erasure erasure) {
   content::GetUIThreadTaskRunner({})->PostTask(
-      FROM_HERE,
-      base::BindOnce(&Engine::Erase, base::Unretained(this), workspace, since,
-                     kinds, std::move(sites)));
+      FROM_HERE, base::BindOnce(&Engine::Erase, base::Unretained(this), workspace,
+                                std::move(erasure), base::OnceClosure()));
+}
+
+void Engine::SetQuitErasure(std::vector<std::string> workspaces, Erasure erasure) {
+  quit_workspaces_ = std::move(workspaces);
+  quit_erasure_ = std::move(erasure);
 }
 
 void Engine::ListSiteData(const std::string& workspace) {
@@ -1098,14 +1149,14 @@ void Engine::ListSiteData(const std::string& workspace) {
 // The profile's own storage is the context's default partition, which the remover
 // erases when it is given none.
 void Engine::Erase(const std::string& workspace,
-                   base::Time since,
-                   int32_t kinds,
-                   const std::vector<std::string>& sites) {
-  // With sites named, it deletes theirs; with none, it preserves nothing.
+                   const Erasure& erasure,
+                   base::OnceClosure done) {
+  // With sites named, it deletes theirs; else it preserves the sites kept, or nothing.
   auto filter = content::BrowsingDataFilterBuilder::Create(
-      sites.empty() ? content::BrowsingDataFilterBuilder::Mode::kPreserve
-                    : content::BrowsingDataFilterBuilder::Mode::kDelete);
-  for (const std::string& site : sites) {
+      erasure.sites.empty() ? content::BrowsingDataFilterBuilder::Mode::kPreserve
+                            : content::BrowsingDataFilterBuilder::Mode::kDelete);
+  for (const std::string& site :
+       erasure.sites.empty() ? erasure.keep : erasure.sites) {
     filter->AddRegisterableDomain(site);
   }
   if (!workspace.empty()) {
@@ -1113,9 +1164,9 @@ void Engine::Erase(const std::string& workspace,
   }
   content::BrowsingDataRemover* remover =
       browser_context_->GetBrowsingDataRemover();
-  remover->RemoveWithFilterAndReply(since, base::Time::Max(), ErasedTypes(kinds),
-                                    kErasedOrigins, std::move(filter),
-                                    new Eraser(remover, workspace));
+  remover->RemoveWithFilterAndReply(
+      erasure.since, base::Time::Max(), ErasedTypes(erasure.kinds), kErasedOrigins,
+      std::move(filter), new Eraser(remover, workspace, std::move(done)));
 }
 
 // A new tab starts hidden, whoever made it. A window's layout is the only way to the

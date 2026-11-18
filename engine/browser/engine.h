@@ -168,14 +168,21 @@ class Engine {
   // debugging port or an extension asks for: the first in the profile's list, as Go says.
   void SetFirstWorkspace(const std::string& workspace);
   const std::string& first_workspace() const { return first_workspace_; }
-  // Erases what kinds says (PBEraseKind) of a workspace's storage, stored since a time
-  // (null for from the start), of the sites named or of every site with none, once the
-  // tabs Go has just closed are gone, and marks workspace.erased on the timeline when it
-  // is done. For "", the profile's own storage, extensions' own data stays.
-  void EraseWorkspace(const std::string& workspace,
-                      base::Time since,
-                      int32_t kinds,
-                      std::vector<std::string> sites);
+  // What an erase takes, PBErasure: the kinds (PBEraseKind) of storage stored since a
+  // time (null for from the start), of the sites named, of every site but those kept, or
+  // of every site; sites are registrable domains.
+  struct Erasure {
+    base::Time since;
+    int32_t kinds = 0;
+    std::vector<std::string> sites;
+    std::vector<std::string> keep;
+  };
+  // Erases what the erasure says of a workspace's storage, once the tabs Go has just
+  // closed are gone, and marks workspace.erased on the timeline when it is done. For "",
+  // the profile's own storage, extensions' own data stays.
+  void EraseWorkspace(const std::string& workspace, Erasure erasure);
+  // What Quit erases first, in each of the workspaces, as Go last said.
+  void SetQuitErasure(std::vector<std::string> workspaces, Erasure erasure);
   // Counts what a workspace's storage holds, by host, for PB_EVENT_SITE_DATA.
   void ListSiteData(const std::string& workspace);
   void CloseTab(int64_t tab);
@@ -208,10 +215,12 @@ class Engine {
   PageTab* Add(std::unique_ptr<content::WebContents> contents,
                const std::string& workspace,
                bool internal = false);
+  // done, when it has one, runs once the erase is done.
   void Erase(const std::string& workspace,
-             base::Time since,
-             int32_t kinds,
-             const std::vector<std::string>& sites);
+             const Erasure& erasure,
+             base::OnceClosure done);
+  // Ends the run loop, once.
+  void QuitNow();
   // Whichever page has the keyboard: a shell or a tab's.
   content::WebContents* FocusedContents() const;
   void UpdateTitle(AppWindow* window);
@@ -232,6 +241,14 @@ class Engine {
   const OpenProfileCallback open_profile_;
   raw_ptr<content::BrowserContext> browser_context_ = nullptr;
   const base::RepeatingClosure quit_;
+  // The erase a quit runs first, and how long it waits for it at most.
+  static constexpr base::TimeDelta kQuitEraseWait = base::Seconds(5);
+  std::vector<std::string> quit_workspaces_;
+  Erasure quit_erasure_;
+#if !BUILDFLAG(IS_ANDROID)
+  bool quitting_ = false;
+#endif
+  bool quit_done_ = false;
   std::map<int64_t, std::unique_ptr<AppWindow>> windows_;
   int theme_ = 0;
 

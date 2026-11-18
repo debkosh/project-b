@@ -253,6 +253,7 @@ typedef struct PBErasure {
   int32_t kinds;      // PBEraseKind bits
   const char* sites;  // only these sites' storage, registrable domains, comma-separated;
                       // "" for every site's
+  const char* keep;   // or every site's but these, as sites; "" for none kept
 } PBErasure;
 
 typedef enum PBEditCommand {
@@ -361,6 +362,11 @@ typedef struct PBEngineCalls {
   void (*erase_workspace)(const char* workspace, const PBErasure* erasure);
   // Counts what a workspace's storage holds by host, and says in PB_EVENT_SITE_DATA.
   void (*list_site_data)(const char* workspace);
+  // What to erase as the app quits, in each workspace named, comma-separated, "" being the
+  // profile's own storage: a quit runs it and waits for it before the app ends, at most a
+  // few seconds. An erasure of no kinds erases nothing. A desktop's: a phone's app has no
+  // quit of its own.
+  void (*set_quit_erasure)(const char* workspaces, const PBErasure* erasure);
   void (*close_tab)(int64_t tab);
   void (*load_url)(int64_t tab, const char* url);
   void (*go_back)(int64_t tab);

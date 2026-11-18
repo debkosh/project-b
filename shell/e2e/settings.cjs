@@ -255,7 +255,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   const sectionOf = {
     theme: 'appearance', frameColour: 'appearance', tabLayout: 'appearance', shell: 'appearance', start: 'start', searchEngine: 'start',
     workspaces: 'workspaces', bookmarks: 'bookmarks', sites: 'privacy', keys: 'keyboard', keyboard: 'keyboard', profile: 'profile',
-    sparks: 'extensions', blockAds: 'privacy', clearData: 'privacy', askWhereToSave: 'downloads', version: 'about', autoUpdate: 'about', flags: 'flags', webFeatures: 'webFeatures',
+    sparks: 'extensions', blockAds: 'privacy', clearData: 'privacy', clearOnQuit: 'privacy', askWhereToSave: 'downloads', version: 'about', autoUpdate: 'about', flags: 'flags', webFeatures: 'webFeatures',
   };
   const show = async (part) => {
     if (sectionsLayout) {
@@ -835,6 +835,34 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
     (await meet.getByRole('radiogroup', { name: 'Microphone' }).getByRole('radio', { name: 'Block' }).getAttribute('aria-checked')) === 'true');
   await settle(page);
   await page.screenshot({ path: shot('settings-site-data') });
+  // Clear cookies when the app quits, but the sites kept, each kept from its page, in the
+  // card with what it keeps.
+  await show('clearOnQuit');
+  const quitSwitch = page.getByRole('switch', { name: /Clear cookies when the app quits/ });
+  const quitRow = page.locator('.row', { has: quitSwitch });
+  check('Clear cookies when the app quits is off to start', !(await quitSwitch.isChecked()));
+  await quitSwitch.click();
+  check('on, it is saved, and says every site\'s go', await until(async () => prefsFile().clearCookiesOnQuit === true && (await quitRow.textContent()).includes('Every site\'s, as the app quits')));
+  await show('sites');
+  await sites.getByRole('button', { name: 'meet.test', exact: true }).click();
+  const keepSwitch = meet.getByRole('switch', { name: /Keep cookies when the app quits/ });
+  check('a site\'s page asks whether to keep it, in the card with what it keeps',
+    await until(async () => (await meet.locator('.card', { has: page.getByRole('switch', { name: /Keep cookies when the app quits/ }) }).textContent()).includes('Cookies and site data')));
+  await keepSwitch.click();
+  check('and keeps its cookies as the app quits', await until(() => JSON.stringify(prefsFile().keepCookies) === '["meet.test"]'), JSON.stringify(prefsFile()));
+  await settle(page);
+  await page.screenshot({ path: shot('settings-site-kept') });
+  await page.getByRole('button', { name: 'Back to Sites' }).click();
+  check('and its row says it is kept', await until(async () => (await siteRow('meet.test').textContent()).includes('Kept')));
+  await show('clearOnQuit');
+  check('and the switch says how many sites are kept', await until(async () => (await quitRow.textContent()).includes('Except the site you keep')));
+  await quitRow.scrollIntoViewIfNeeded();
+  await settle(page);
+  await page.screenshot({ path: shot('settings-privacy-quit') });
+  await quitSwitch.click();
+  check('off, it is saved', await until(() => prefsFile().clearCookiesOnQuit === false));
+  await show('sites');
+  await sites.getByRole('button', { name: 'meet.test', exact: true }).click();
   await meet.getByRole('button', { name: 'Clear…' }).click();
   await page.getByRole('dialog', { name: 'Clear data for meet.test?' }).getByRole('button', { name: 'Clear', exact: true }).click();
   check('its Clear takes what it keeps and leaves its settings', await until(async () => !(await meet.textContent()).includes('Cookies and site data')) &&
@@ -1045,8 +1073,8 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
       await page.locator('.list-page .list-head .back').click();
       await until(async () => (await page.locator('.list-page').count()) === 0);
     }
-    check('on a phone there is no Tab layout, Keys, Keyboard shortcuts or Ask where to save', (await page.getByRole('radiogroup', { name: 'Tab layout' }).count()) === 0 &&
-      (await page.getByRole('switch', { name: /Ask where to save/ }).count()) === 0 &&
+    check('on a phone there is no Tab layout, Keys, Keyboard shortcuts, Ask where to save or Clear cookies when the app quits', (await page.getByRole('radiogroup', { name: 'Tab layout' }).count()) === 0 &&
+      (await page.getByRole('switch', { name: /Ask where to save/ }).count()) === 0 && (await page.getByRole('switch', { name: /Clear cookies when the app quits/ }).count()) === 0 &&
       (await page.getByRole('radiogroup', { name: 'Keys' }).count()) === 0 && (await page.locator('[data-section="keyboard"]').count()) === 0);
     check('and every other part is there', (await page.getByRole('radiogroup', { name: 'Address bar' }).count()) === 1 && (await page.getByLabel('Profile name').count()) === 1 &&
       (await page.getByRole('button', { name: 'Close the app' }).count()) === 1 && (await page.getByRole('region', { name: 'Flags', exact: true }).count()) === 1 &&
