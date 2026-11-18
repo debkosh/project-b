@@ -72,6 +72,7 @@ func (r *recorder) NotificationsAnswered(allowed bool) {
 func (r *recorder) FolderChosen(w engine.WindowID, path string) {
 	r.note("folder %d %s", w, path)
 }
+func (r *recorder) AppLink(tab engine.TabID, url string) { r.note("app link %d %s", tab, url) }
 
 func listening() (*Events, *recorder) {
 	e, r := New(), &recorder{}
@@ -111,6 +112,7 @@ func TestEachEventReachesTheListener(t *testing.T) {
 		{DefaultBrowser, []Value{i(1)}, "default browser true"},
 		{Notifications, []Value{i(0)}, "notifications false"},
 		{FolderChosen, []Value{i(1), s("/Users/me/Vivaldi")}, "folder 1 /Users/me/Vivaldi"},
+		{AppLink, []Value{i(2), s("project-b://sync?address=x")}, "app link 2 project-b://sync?address=x"},
 	} {
 		r.got = nil
 		if _, answered := e.Dispatch(c.id, c.args); answered {
