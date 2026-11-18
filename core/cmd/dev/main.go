@@ -75,7 +75,13 @@ func main() {
 	// A test can add flags of its own, in registry.json's form, to see every type drawn.
 	moreFlags := flag.String("flags", "", "a file of flags to add to the registry's")
 	use := flag.String("use", "", "the shell the profile has chosen, by its id, as if the settings page had chosen it before this start")
+	// A sync server of its own, for the tests of Settings' Sync, which sync trusts.
+	withSyncServer := flag.Bool("sync-server", false, "run a sync server over https, which sync trusts, its store beside the profile; /mock/sync says its address")
 	flag.Parse()
+	var syncSrv *syncServer
+	if *withSyncServer {
+		syncSrv = startSyncServer(filepath.Join(filepath.Dir(*profile), "sync-server.db"))
+	}
 	if *use != "" && !shells.Has(*use) {
 		log.Fatalf("-use: no shell %q in core/shells/registry.json", *use)
 	}
@@ -317,6 +323,18 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(out)
 	})
+	// A link another app sends, url, as the Mac and Android hand one over.
+	mux.HandleFunc("POST /mock/open", func(w http.ResponseWriter, r *http.Request) {
+		u := r.FormValue("url")
+		e.Post(func() {
+			if a != nil {
+				a.Handover([]string{u})
+			}
+		})
+	})
+	if syncSrv != nil {
+		mux.HandleFunc("/mock/sync", syncSrv.control)
+	}
 	for _, add := range routes {
 		add(mux, e)
 	}
