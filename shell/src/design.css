@@ -171,6 +171,12 @@ select:disabled {
   cursor: default;
 }
 
+/* A checkbox picks items from a list, in the frame's colour. A setting that is on or off
+   is a .switch. */
+input[type='checkbox'] {
+  accent-color: var(--accent);
+}
+
 /* A switch drawn on the checkbox, which keeps its keys and its meaning. */
 .switch {
   appearance: none;
