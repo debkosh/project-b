@@ -70,7 +70,10 @@ marked *for the owner* touch something he decided or listed for discussion.
 **Done:** items 1 to 10, in 0.2.76 and 0.2.77, and printing (15) in 0.2.76. One part of 9
 is left: asking for the phone's notification permission with a reason first. Items 11 to 20
 wait in [todo.md](todo.md) for the owner, and the first run (13) is being designed as our
-own page.
+own page. Settings (12) is built but for what needs the engine: search, a Privacy group with
+Clear browsing data and Block ads, Ask where to save, Import and the default browser, in two
+layouts to choose between ([settings.md](settings.md)); cookies by site, the download folder
+and clearing cookies at quit wait on the engine ([todo.md](todo.md)).
 
 | # | What | Why | Who does it well | Size |
 |---|---|---|---|---|
@@ -146,7 +149,8 @@ Links-to-other-sites-style per-site setting later.
 
 ![Settings](screenshots/ux-comparison/desktop-settings.jpg)
 
-Ours is the cleanest of the six and the shortest (item 12).
+Ours is the cleanest of the six and the shortest (item 12). Since 2026-11-18 it has search
+and a Privacy group, in two layouts ([settings.md](settings.md)).
 
 ### Site info
 
