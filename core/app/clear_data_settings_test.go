@@ -23,9 +23,8 @@ func TestSettingsClearsBrowsingData(t *testing.T) {
 	r.main(func() { work, _ = r.a.Workspaces.Create("Work", "#5b7fd6") })
 	r.visit("https://a.test/")
 	r.visit("https://b.test/")
-	visited := func() (n int) {
-		r.main(func() { n = len(r.a.History.Search("test", 10)) })
-		return n
+	visited := func() int {
+		return len(ask(r, func(f func([]history.Entry)) { r.a.History.Search("test", 10, f) }))
 	}
 	if visited() != 2 {
 		t.Fatalf("visited %d", visited())
@@ -102,10 +101,9 @@ func TestSettingsClearsFromATime(t *testing.T) {
 
 	r.settings(`{"t":"clearData","since":"hour","history":true,"cache":true,"downloads":true}`)
 	r.waitOn(got, func(m map[string]any) bool { return m["t"] == "dataCleared" })
-	var left int
+	left := ask(r, func(f func(int)) { r.a.History.Count(0, f) })
 	var names []string
 	r.main(func() {
-		left = r.a.History.Count(0)
 		for _, d := range r.a.Downloads.List() {
 			names = append(names, d.Name)
 		}

@@ -7,11 +7,29 @@ import (
 
 	"projectb/engine"
 	"projectb/history"
+	"projectb/store"
 )
 
+// hist is a history in a store of its own; its answers come on the store's worker.
+func hist(t testing.TB) *history.Manager {
+	dir := t.TempDir()
+	st, err := store.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(st.Close)
+	return history.New(dir, st, func(f func()) { f() })
+}
+
+// query is Query, waiting for its answer.
+func query(m *Manager, w engine.WindowID, text string, kinds []string) []Row {
+	got := make(chan []Row, 1)
+	m.Query(w, text, kinds, func(rows []Row) { got <- rows })
+	return <-got
+}
+
 func manager(t testing.TB, visits ...string) *Manager {
-	h := history.New(t.TempDir(), func(f func()) { f() })
-	t.Cleanup(h.Close)
+	h := hist(t)
 	for _, v := range visits {
 		u, title, _ := strings.Cut(v, " ")
 		h.AddVisit(u, title)
@@ -61,11 +79,11 @@ func kinds(rows []Row) string {
 func TestWordsSearchFirstThenTabsHistoryAndActions(t *testing.T) {
 	marks = nil
 	m := manager(t, "https://mail.test/ Mail", "https://news.test/mail-digest Digest")
-	rows := m.Query(0, "news", all)
+	rows := query(m, 0, "news", all)
 	if kinds(rows) != "address search history" || rows[0].URL != "https://news.test/" || rows[0].Inline != ".test" {
 		t.Fatalf("a visited host the text starts is completed first: %+v", rows)
 	}
-	rows = m.Query(0, "inbox", all)
+	rows = query(m, 0, "inbox", all)
 	if kinds(rows) != "search tab" {
 		t.Fatalf("kinds = %q: %+v", kinds(rows), rows)
 	}
@@ -76,19 +94,19 @@ func TestWordsSearchFirstThenTabsHistoryAndActions(t *testing.T) {
 		t.Fatalf("tab row = %+v", rows[1])
 	}
 	// The page open in a tab is listed once, as the tab.
-	rows = m.Query(0, "mail-", all)
+	rows = query(m, 0, "mail-", all)
 	if kinds(rows) != "search history" || rows[1].URL != "https://news.test/mail-digest" || rows[1].Detail != "news.test" {
 		t.Fatalf("history row = %+v", rows)
 	}
-	rows = m.Query(0, "Mail", []string{KindSearch, KindTab, KindHistory})
+	rows = query(m, 0, "Mail", []string{KindSearch, KindTab, KindHistory})
 	if kinds(rows) != "tab search history" || rows[0].Tab != 7 || rows[0].Inline != ".test" || rows[2].URL != "https://news.test/mail-digest" {
 		t.Fatalf("a completed page open in a tab is the tab's row, listed once: %+v", rows)
 	}
-	if rows := m.Query(0, "Mail", []string{KindSearch, KindHistory}); kinds(rows) != "history search history" || rows[0].URL != "https://mail.test/" {
+	if rows := query(m, 0, "Mail", []string{KindSearch, KindHistory}); kinds(rows) != "history search history" || rows[0].URL != "https://mail.test/" {
 		t.Fatalf("with no tab rows, the page's own: %+v", rows)
 	}
 
-	rows = m.Query(0, "tab", all)
+	rows = query(m, 0, "tab", all)
 	if kinds(rows) != "search action action" || rows[1].Action != "view.tabsTop" || rows[2].Action != "tab.new" || rows[2].Detail != "⌘T" {
 		t.Fatalf("actions: a title that starts with the text first: %+v", rows)
 	}
@@ -96,14 +114,14 @@ func TestWordsSearchFirstThenTabsHistoryAndActions(t *testing.T) {
 
 func TestActionsAskedForAloneFillTheList(t *testing.T) {
 	m := manager(t)
-	if rows := m.Query(0, "t", []string{KindAction}); kinds(rows) != "action action action" {
+	if rows := query(m, 0, "t", []string{KindAction}); kinds(rows) != "action action action" {
 		t.Fatalf("rows = %+v", rows)
 	}
 }
 
 func TestAnAddressGoesFirstAndTheSearchLast(t *testing.T) {
 	m := manager(t, "https://mail.test/ Mail")
-	rows := m.Query(0, "mail.test", all)
+	rows := query(m, 0, "mail.test", all)
 	if kinds(rows) != "address tab search" || rows[0].URL != "https://mail.test" {
 		t.Fatalf("rows = %+v", rows)
 	}
@@ -122,16 +140,16 @@ func TestTypedBookmarks(t *testing.T) {
 	}
 	defer func() { marks = nil }()
 	m := manager(t, "https://seen.test/recipes Seen")
-	rows := m.Query(0, "recipe", all)
+	rows := query(m, 0, "recipe", all)
 	if kinds(rows) != "search history bookmark bookmark bookmark" || rows[2].URL != "https://food.test/recipes" || rows[3].Title != "Old recipes" || rows[4].Detail != "cook.test" {
 		t.Fatalf("rows = %+v", rows)
 	}
 	// The bookmark open in a tab is listed once, as the tab.
-	if rows := m.Query(0, "inbox", all); kinds(rows) != "search tab" {
+	if rows := query(m, 0, "inbox", all); kinds(rows) != "search tab" {
 		t.Fatalf("rows = %+v", rows)
 	}
 	// Not asked for, none.
-	if rows := m.Query(0, "recipe", []string{KindSearch, KindHistory}); kinds(rows) != "search history" {
+	if rows := query(m, 0, "recipe", []string{KindSearch, KindHistory}); kinds(rows) != "search history" {
 		t.Fatalf("rows = %+v", rows)
 	}
 }
@@ -151,7 +169,7 @@ func TestInlineCompletion(t *testing.T) {
 	)
 	first := func(text string, kinds []string) Row {
 		t.Helper()
-		rows := m.Query(0, text, kinds)
+		rows := query(m, 0, text, kinds)
 		if len(rows) == 0 {
 			t.Fatalf("%q: no rows", text)
 		}
@@ -187,14 +205,14 @@ func TestInlineCompletion(t *testing.T) {
 	}
 	// Nothing to add, a space, or a text inside an address but not at its start: none.
 	for _, text := range []string{"wikipedia.org", "wiki pedia", "wikip ", "pedia", "https://"} {
-		for _, r := range m.Query(0, text, all) {
+		for _, r := range query(m, 0, text, all) {
 			if r.Inline != "" {
 				t.Fatalf("%q completes: %+v", text, r)
 			}
 		}
 	}
 	// The completed page isn't listed again from history.
-	rows := m.Query(0, "wikip", all)
+	rows := query(m, 0, "wikip", all)
 	for _, r := range rows[1:] {
 		if r.URL == "https://www.wikipedia.org/" {
 			t.Fatalf("listed twice: %+v", rows)
@@ -202,14 +220,14 @@ func TestInlineCompletion(t *testing.T) {
 	}
 	// A bookmark completes too, when history has nothing; Enter's row comes second.
 	marks = []Bookmark{{Title: "Notes", URL: "https://notes.test/today"}, {Title: "Not web", URL: "javascript:void(0)"}}
-	if rows := m.Query(0, "notes.test/t", all); kinds(rows) != "bookmark address search" || rows[0].Inline != "oday" {
+	if rows := query(m, 0, "notes.test/t", all); kinds(rows) != "bookmark address search" || rows[0].Inline != "oday" {
 		t.Fatalf("notes.test/t = %+v", rows)
 	}
 	if r := first("java", all); r.Inline != "" {
 		t.Fatalf("only web addresses complete: %+v", r)
 	}
 	// History asked for alone, as a shell that names no kinds is, never completes.
-	for _, r := range m.Query(0, "wikip", nil) {
+	for _, r := range query(m, 0, "wikip", nil) {
 		if r.Inline != "" {
 			t.Fatalf("no kinds: %+v", r)
 		}
@@ -219,7 +237,7 @@ func TestInlineCompletion(t *testing.T) {
 func TestNothingTypedListsTheSitesVisitedMost(t *testing.T) {
 	marks = nil
 	m := manager(t, "https://a.test/ A", "https://a.test/ A", "https://b.test/x B", "https://b.test/y B", "https://b.test/y B")
-	rows := m.Query(0, "", all)
+	rows := query(m, 0, "", all)
 	if len(rows) != 2 || rows[0].URL != "https://b.test/y" || rows[0].Kind != KindHistory || rows[0].Detail != "b.test" {
 		t.Fatalf("rows = %+v", rows)
 	}
@@ -235,19 +253,19 @@ func TestNothingTypedAddsTheNewestBookmarks(t *testing.T) {
 	}
 	marks = []Bookmark{{Title: "Site 0", URL: "https://site0.test/"}, {Title: "Docs", URL: "https://docs.test/"}, {Title: "Spec", URL: "https://spec.test/"}, {Title: "Go", URL: "https://go.test/"}, {Title: "Blog", URL: "https://blog.test/"}}
 	m := manager(t, visits...)
-	if rows := m.Query(0, "", all); kinds(rows) != "history history history history history bookmark bookmark bookmark" || rows[5].URL != "https://docs.test/" {
+	if rows := query(m, 0, "", all); kinds(rows) != "history history history history history bookmark bookmark bookmark" || rows[5].URL != "https://docs.test/" {
 		t.Fatalf("rows = %+v", rows)
 	}
-	if rows := m.Query(0, "", []string{KindBookmark}); len(rows) != 5 || rows[0].Title != "Site 0" {
+	if rows := query(m, 0, "", []string{KindBookmark}); len(rows) != 5 || rows[0].Title != "Site 0" {
 		t.Fatalf("bookmarks alone = %+v", rows)
 	}
 	marks = marks[:2]
-	if rows := m.Query(0, "", all); kinds(rows) != "history history history history history history history bookmark" {
+	if rows := query(m, 0, "", all); kinds(rows) != "history history history history history history history bookmark" {
 		t.Fatalf("one bookmark to show = %+v", rows)
 	}
 	marks = nil
 	m = manager(t)
-	if rows := m.Query(0, "", all); rows == nil || len(rows) != 0 {
+	if rows := query(m, 0, "", all); rows == nil || len(rows) != 0 {
 		t.Fatalf("nothing at all = %#v", rows)
 	}
 }
@@ -266,7 +284,7 @@ func TestNothingTypedOffersTabsAndClosedTabs(t *testing.T) {
 	defer func() { marks, recent, closed = nil, nil, nil }()
 	m := manager(t, visits...)
 
-	rows := m.Query(1, "", []string{KindTab, KindClosed, KindHistory, KindBookmark})
+	rows := query(m, 1, "", []string{KindTab, KindClosed, KindHistory, KindBookmark})
 	if kinds(rows) != "tab tab tab closed closed closed history history" {
 		t.Fatalf("rows = %+v", rows)
 	}
@@ -282,15 +300,15 @@ func TestNothingTypedOffersTabsAndClosedTabs(t *testing.T) {
 		t.Fatalf("sites = %+v", rows[6:])
 	}
 	// Another window has no other tabs here; closed tabs are the profile's.
-	if rows := m.Query(2, "", []string{KindTab, KindClosed}); kinds(rows) != "closed closed closed" {
+	if rows := query(m, 2, "", []string{KindTab, KindClosed}); kinds(rows) != "closed closed closed" {
 		t.Fatalf("window 2 = %+v", rows)
 	}
 	// A shell that asks for neither sees what it saw before.
-	if rows := m.Query(1, "", []string{KindHistory, KindBookmark}); kinds(rows) != "history history history history history history history bookmark" {
+	if rows := query(m, 1, "", []string{KindHistory, KindBookmark}); kinds(rows) != "history history history history history history history bookmark" {
 		t.Fatalf("sites and bookmarks alone = %+v", rows)
 	}
 	// Typed, closed tabs are never rows, and tab rows are matched as ever.
-	if rows := m.Query(1, "gone", []string{KindSearch, KindTab, KindClosed}); kinds(rows) != "search" {
+	if rows := query(m, 1, "gone", []string{KindSearch, KindTab, KindClosed}); kinds(rows) != "search" {
 		t.Fatalf("typed = %+v", rows)
 	}
 }
@@ -298,26 +316,51 @@ func TestNothingTypedOffersTabsAndClosedTabs(t *testing.T) {
 // A shell that names no kinds gets history alone, as before there were any.
 func TestNoKindsIsHistoryAlone(t *testing.T) {
 	m := manager(t, "https://mail.test/ Mail")
-	rows := m.Query(0, "mail", nil)
+	rows := query(m, 0, "mail", nil)
 	if len(rows) != 1 || rows[0].Kind != KindHistory || rows[0].URL != "https://mail.test/" || rows[0].Title != "Mail" {
 		t.Fatalf("rows = %+v", rows)
 	}
-	if rows := m.Query(0, "", nil); len(rows) != 0 {
+	if rows := query(m, 0, "", nil); len(rows) != 0 {
 		t.Fatalf("nothing typed: %+v", rows)
 	}
 }
 
-// A key in the field over a long history: one pass, nothing lowercased again.
+// A key in the field over a long history, 100,000 addresses: each tier one query with a
+// LIMIT, through an index.
 func BenchmarkAKeyOver100000Visits(b *testing.B) {
-	h := history.New(b.TempDir(), func(f func()) { f() })
-	b.Cleanup(h.Close)
-	for i := 0; i < 100000; i++ {
-		h.AddVisit(fmt.Sprintf("https://site%d.example.test/Path/%d", i%5000, i), fmt.Sprintf("Page %d of Site %d", i, i%5000))
+	h := hist(b)
+	pages := make([]history.Entry, 100000)
+	for i := range pages {
+		pages[i] = history.Entry{URL: fmt.Sprintf("https://site%d.example.test/Path/%d", i%5000, i), Title: fmt.Sprintf("Page %d of Site %d", i, i%5000), Visits: 1 + i%13, LastVisit: int64(1700000000 + i)}
 	}
+	h.Import(pages)
 	m := New(h)
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		m.Query(0, "site42", []string{KindHistory})
+		query(m, 0, "site42", []string{KindHistory})
+	}
+}
+
+// An address reached from the address field comes first for the text it starts, ahead of
+// pages visited more, and completes; every row of a list for typed text is marked typed, so
+// choosing one counts as typing it, and none of the list for nothing typed is.
+func TestTypedAddressesComeFirstAndComplete(t *testing.T) {
+	marks = nil
+	m := manager(t, "https://gist.test/ Gist", "https://gist.test/ Gist", "https://gist.test/ Gist")
+	m.hist.AddTypedVisit("https://www.github.test/", "GitHub")
+	rows := query(m, 0, "g", all)
+	if rows[0].URL != "https://www.github.test/" || rows[0].Inline != "ithub.test" || kinds(rows) != "history search history" || rows[2].URL != "https://gist.test/" {
+		t.Fatalf("g = %+v", rows)
+	}
+	for _, r := range rows {
+		if !r.Typed {
+			t.Fatalf("not marked typed: %+v", r)
+		}
+	}
+	for _, r := range query(m, 0, "", all) {
+		if r.Typed {
+			t.Fatalf("nothing typed, marked typed: %+v", r)
+		}
 	}
 }

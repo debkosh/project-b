@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"projectb/engine"
+	"projectb/history"
 	"projectb/timeline"
 	"projectb/tones"
 )
@@ -44,6 +45,13 @@ func (p *ourPages) send(tab engine.TabID, v any) {
 
 // sendAll sends to every tab showing page, or every one of these pages for "", forgetting
 // the tabs gone.
+// items sends the history page its first page of items for text, after a change.
+func (p *ourPages) items(tab engine.TabID, text string) {
+	p.a.History.List(text, 0, historyPage, func(items []history.Entry) {
+		p.send(tab, map[string]any{"t": "items", "text": text, "items": items})
+	})
+}
+
 func (p *ourPages) sendAll(page engine.Page, v any) {
 	for tab, shown := range p.shown {
 		if _, ok := p.a.Tabs.Get(tab); !ok {
@@ -88,8 +96,12 @@ func (p *ourPages) handle(tab engine.TabID, page engine.Page, msg []byte) {
 		snapshot := map[string]any{"t": "snapshot", "theme": p.a.Prefs.Theme(), "tones": tones.Of(p.a.Window.Color())}
 		switch page {
 		case "history":
-			snapshot["items"] = p.a.History.List("", 0, historyPage)
-			snapshot["now"] = time.Now().Unix()
+			p.a.History.List("", 0, historyPage, func(items []history.Entry) {
+				snapshot["items"] = items
+				snapshot["now"] = time.Now().Unix()
+				p.send(tab, snapshot)
+			})
+			return
 		case "downloads":
 			snapshot["downloads"] = p.a.Downloads.List()
 		default:
@@ -105,13 +117,16 @@ func (p *ourPages) handle(tab engine.TabID, page engine.Page, msg []byte) {
 			p.a.Tabs.OpenFrom(tab, m.URL, t.Workspace, true)
 		}
 	case "search", "more":
-		p.send(tab, map[string]any{"t": "items", "text": m.Text, "before": m.Before, "items": p.a.History.List(m.Text, m.Before, historyPage)})
+		p.a.History.List(m.Text, m.Before, historyPage, func(items []history.Entry) {
+			p.send(tab, map[string]any{"t": "items", "text": m.Text, "before": m.Before, "items": items})
+		})
 	case "delete":
+		// The list comes after the delete: history's jobs run in the order asked.
 		p.a.History.Delete(m.URLs...)
-		p.send(tab, map[string]any{"t": "items", "text": m.Text, "items": p.a.History.List(m.Text, 0, historyPage)})
+		p.items(tab, m.Text)
 	case "clear":
 		p.a.History.Clear(m.Since)
-		p.send(tab, map[string]any{"t": "items", "text": m.Text, "items": p.a.History.List(m.Text, 0, historyPage)})
+		p.items(tab, m.Text)
 	case "downloadAction":
 		p.a.Downloads.Act(m.ID, m.Action)
 	case "clearDownloads":

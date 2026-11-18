@@ -13,6 +13,7 @@ import (
 	"projectb/app"
 	"projectb/bookmarks"
 	"projectb/engine"
+	"projectb/history"
 	"projectb/profiles"
 	"projectb/update"
 )
@@ -142,10 +143,12 @@ func TestBringingThingsOverFromAnotherBrowser(t *testing.T) {
 		for _, e := range p.r.a.Bookmarks.All() {
 			titles = append(titles, e.Title)
 		}
-		if len(p.r.a.History.Search("example.org/old", 1)) == 1 {
-			titles = append(titles, "visited")
-		}
-		look <- titles
+		p.r.a.History.Search("example.org/old", 1, func(es []history.Entry) {
+			if len(es) == 1 {
+				titles = append(titles, "visited")
+			}
+			look <- titles
+		})
 	})
 	// The top's folder, its folders, then theirs, and the history.
 	if titles := <-look; len(titles) != 10 || titles[9] != "visited" {
