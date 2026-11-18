@@ -3,7 +3,7 @@
 // Safari, whose folder has no permissions, as macOS's Full Disk Access refuses it. The
 // welcome's Bring your things over lists them, a row turned on shows what it brings, and
 // Bring over brings Chrome · Personal's bookmarks into a folder of their own, its history
-// and its search engine, then says what came. Safari's row, turned on, shows how to give
+// then says what came. Safari's row, turned on, shows how to give
 // the access, and Not now goes back. Settings' Import lists the same, with what was
 // brought; Safari's Allow access… dialog turns into its choices once its folder can be
 // read, and brings its bookmarks; its Import… dialog brings Firefox's bookmarks alone. A
@@ -67,7 +67,7 @@ process.on('exit', unlock);
   check('Get started goes to Bring your things over', await until(() => welcome.getByRole('heading', { name: 'Bring your things over' }).isVisible()));
   const rows = welcome.getByRole('switch', { name: /^Bring over from / });
   check('a row for each profile found', await until(async () => (await rows.count()) === 4));
-  check('each says what it holds', await welcome.getByText('4 bookmarks · 3 pages · Bing for search').isVisible());
+  check('each says what it holds', await welcome.getByText('4 bookmarks · 3 pages').isVisible());
   check('Safari\'s says it needs Full Disk Access', await welcome.getByText('Needs Full Disk Access, in System Settings').isVisible());
   // Chrome's and Firefox's logos ship with us: the test home has neither app. Safari's is
   // the app's own, which every Mac has.
@@ -83,19 +83,18 @@ process.on('exit', unlock);
   check('with no row on, the way on is Continue', await welcome.getByRole('button', { name: 'Continue' }).isVisible());
   await welcome.getByRole('switch', { name: 'Bring over from Chrome · Personal' }).check();
   const boxes = welcome.getByRole('group', { name: 'What to bring over from Chrome · Personal' }).getByRole('checkbox');
-  check('a row turned on shows what it brings, all ticked', (await boxes.count()) === 3 && (await boxes.evaluateAll((b) => b.every((x) => x.checked))));
+  check('a row turned on shows what it brings, all ticked', (await boxes.count()) === 2 && (await boxes.evaluateAll((b) => b.every((x) => x.checked))));
   await settle(w.page);
   await w.page.screenshot({ path: path.join(lib.out, 'welcome-bring.png') });
 
   await welcome.getByRole('button', { name: 'Bring over' }).click();
   check('Bring over says what came', await until(() => welcome.getByRole('heading', { name: 'Brought over' }).isVisible()));
   const lines = welcome.getByRole('list', { name: 'Brought over from Chrome · Personal' });
-  check('its bookmarks in their folder, its history and its search engine', await until(async () => {
+  check('its bookmarks in their folder, and its history', await until(async () => {
     const t = await lines.innerText().catch(() => '');
-    return t.includes('4 bookmarks, in 5 folders, under From Chrome · Personal') && t.includes('3 pages of history') && t.includes('Bing as the search engine');
+    return t.includes('4 bookmarks, in 5 folders, under From Chrome · Personal') && t.includes('3 pages of history');
   }), await lines.innerText().catch(() => ''));
   check('the bookmarks are in From Chrome · Personal', folders().includes('From Chrome · Personal'), JSON.stringify(folders()));
-  check('Bing is the search engine', read('prefs.json')?.searchEngine === 'bing', JSON.stringify(read('prefs.json')));
   check('imports.json keeps what came', read('imports.json')?.['chrome/Default']?.pages === 3);
   await settle(w.page);
   await w.page.screenshot({ path: path.join(lib.out, 'welcome-brought.png') });
@@ -108,7 +107,7 @@ process.on('exit', unlock);
   await lib.fire('menu', 'app.settings');
   await w.settings.locator('[data-section="data"]').click();
   check('Import lists the profiles, each with Import…', await until(async () => (await w.settings.getByRole('button', { name: /^Import from / }).count()) === 3));
-  check('and says what Chrome · Personal brought', await w.settings.getByText('Brought over today: 4 bookmarks, 3 pages, Bing').isVisible());
+  check('and says what Chrome · Personal brought', await w.settings.getByText('Brought over today: 4 bookmarks, 3 pages').isVisible());
 
   // Safari, locked: Allow access… shows how, and the choices once its folder can be read.
   await w.settings.getByRole('button', { name: 'Allow access to Safari' }).click();
@@ -118,17 +117,15 @@ process.on('exit', unlock);
   await w.page.screenshot({ path: path.join(lib.out, 'settings-allow.png') });
   unlock();
   const fromSafari = w.settings.getByRole('dialog', { name: 'Import from Safari' });
-  check('once given, the dialog asks what to bring, all ticked', await until(async () => (await fromSafari.isVisible()) && (await fromSafari.getByRole('checkbox').count()) === 3));
+  check('once given, the dialog asks what to bring, all ticked', await until(async () => (await fromSafari.isVisible()) && (await fromSafari.getByRole('checkbox').count()) === 2));
   await fromSafari.getByRole('checkbox', { name: /History/ }).uncheck();
-  await fromSafari.getByRole('checkbox', { name: /Search engine/ }).uncheck();
   await fromSafari.getByRole('button', { name: 'Import', exact: true }).click();
   const sf = w.settings.getByRole('list', { name: 'Brought over from Safari' });
   check('Safari\'s bookmarks come over, its Reading List too', await until(async () => (await sf.innerText().catch(() => '')).includes('4 bookmarks, in 4 folders, under From Safari')), await sf.innerText().catch(() => ''));
   await w.settings.getByRole('button', { name: 'Import from Firefox · default-release' }).click();
   const dialog = w.settings.getByRole('dialog', { name: 'Import from Firefox · default-release' });
-  check('Import… asks what to bring, all ticked', await until(() => dialog.isVisible()) && (await dialog.getByRole('checkbox').count()) === 3);
+  check('Import… asks what to bring, all ticked', await until(() => dialog.isVisible()) && (await dialog.getByRole('checkbox').count()) === 2);
   await dialog.getByRole('checkbox', { name: /History/ }).uncheck();
-  await dialog.getByRole('checkbox', { name: /Search engine/ }).uncheck();
   await settle(w.page);
   await w.page.screenshot({ path: path.join(lib.out, 'settings-import.png') });
   await dialog.getByRole('button', { name: 'Import', exact: true }).click();
@@ -151,7 +148,7 @@ process.on('exit', unlock);
   await until(() => waiting.getByRole('heading', { name: "Allow Safari's things" }).isVisible());
   unlock();
   check('given the access, the welcome comes back to the list', await until(() => waiting.getByRole('heading', { name: 'Bring your things over' }).isVisible()));
-  check('with Safari\'s row on and what it brings', (await waiting.getByRole('switch', { name: 'Bring over from Safari' }).isChecked()) && (await waiting.getByText('4 bookmarks · 2 pages · Ecosia for search').isVisible()) && (await waiting.getByRole('group', { name: 'What to bring over from Safari' }).getByRole('checkbox').count()) === 3);
+  check('with Safari\'s row on and what it brings', (await waiting.getByRole('switch', { name: 'Bring over from Safari' }).isChecked()) && (await waiting.getByText('4 bookmarks · 2 pages').isVisible()) && (await waiting.getByRole('group', { name: 'What to bring over from Safari' }).getByRole('checkbox').count()) === 2);
   check('the waiting welcome logged no errors', w.errors.length === 0, w.errors.join(' | '));
   await w.page.close();
   await lib.stop();
@@ -169,7 +166,7 @@ process.on('exit', unlock);
   const fromChrome = w.settings.getByRole('dialog', { name: 'Import from Chrome · Personal' });
   const extBox = fromChrome.getByRole('checkbox', { name: /Extensions/ });
   check('Import… offers its 2 extensions, unticked', await until(() => extBox.isVisible()) && (await fromChrome.getByText('Extensions').locator('..').innerText()).includes('2') && !(await extBox.isChecked()));
-  for (const name of [/Bookmarks/, /History/, /Search engine/]) await fromChrome.getByRole('checkbox', { name }).uncheck();
+  for (const name of [/Bookmarks/, /History/]) await fromChrome.getByRole('checkbox', { name }).uncheck();
   await extBox.check();
   await fromChrome.getByRole('button', { name: 'Import', exact: true }).click();
   const ext = w.settings.getByRole('list', { name: 'Brought over from Chrome · Personal' });

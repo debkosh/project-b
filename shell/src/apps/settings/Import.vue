@@ -40,7 +40,7 @@ function bring() {
 
 const choices = (p) => choicesOf(p, { extensions: true });
 const ticked = (p) => choices(p).map((c) => c.id).filter((id) => id !== 'extensions');
-const line = (p) => (p.last ? lastLine(p.last, state.searchEngines) : holds(p, { extensions: true }));
+const line = (p) => (p.last ? lastLine(p.last) : holds(p, { extensions: true }));
 </script>
 
 <template>
@@ -58,7 +58,7 @@ const line = (p) => (p.last ? lastLine(p.last, state.searchEngines) : holds(p, {
           <span class="name">{{ p.title }}</span>
           <span class="secondary">{{ state.importing.includes(p.key) ? busyLine(state.installing[p.key]) : line(p) }}</span>
           <ul v-if="state.imported[p.key]" class="brought" :aria-label="`Brought over from ${p.title}`">
-            <li v-for="(l, i) in broughtLines(state.imported[p.key], state.searchEngines)" :key="i" :class="{ problem: l.problem, left: l.left }">
+            <li v-for="(l, i) in broughtLines(state.imported[p.key])" :key="i" :class="{ problem: l.problem, left: l.left }">
               {{ l.text }}<span v-if="l.note" class="note"> · {{ l.note }}</span>
             </li>
           </ul>

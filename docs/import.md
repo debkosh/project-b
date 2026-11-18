@@ -1,6 +1,6 @@
 # How import works
 
-This is how Project B brings bookmarks, history, the search engine and extensions over from another
+This is how Project B brings bookmarks, history and extensions over from another
 browser on the Mac. Written to be read aloud; the detail is in
 [onboarding.md](onboarding.md#built) and [browserdata's README](../browserdata/README.md).
 
@@ -9,8 +9,8 @@ browser on the Mac. Written to be read aloud; the detail is in
   ─────────────────────        ────────────            ───────────────────        ──────────
   Chrome, Edge, Brave, Arc ─┐  Find(home)              look: list the rows   ─┐
   Firefox                  ─┼─ Bookmarks, History, ──▶ bring: read on a      ─┼─▶ bookmarks, in "From Chrome"
-  Safari (Full Disk Access)─┘  Search, Extensions      worker, add on the     │   history, merged
-                               (reads only)            main thread           ─┘   search engine pref
+  Safari (Full Disk Access)─┘  Extensions              worker, add on the     │   history, merged
+                               (reads only)            main thread           ─┘
                                                                                   extensions, by id from the store
 ```
 
@@ -25,12 +25,11 @@ State names the profiles, and each profile is a folder. Firefox lists its profil
 profiles.ini. Safari has one, in Library/Safari. Each profile becomes a row, with what it
 holds counted, and the browser's logo, which ships with us.
 
-**Reading each format.** Chromium keeps bookmarks as JSON, history in SQLite, the search
-engine in Preferences, and extensions in Secure Preferences with each one's manifest.
-Firefox keeps bookmarks and history together in places.sqlite, and its search engine in a
-compressed JSON file, which a small LZ4 reader opens. Safari keeps bookmarks in a binary
-property list, which a small reader of our own opens, with the Reading List as one of its
-folders, and history in SQLite; its search engine is macOS's own setting.
+**Reading each format.** Chromium keeps bookmarks as JSON, history in SQLite, and
+extensions in Secure Preferences with each one's manifest. Firefox keeps bookmarks and
+history together in places.sqlite. Safari keeps bookmarks in a binary property list, which
+a small reader of our own opens, with the Reading List as one of its folders, and history
+in SQLite. The search engine doesn't come over: the welcome asks for it instead.
 
 **Safari's lock.** macOS keeps Safari's folder behind Full Disk Access. Until the app has it,
 the row says so; turning it on opens System Settings at the right switch, and Go tries the
@@ -42,8 +41,7 @@ write to another browser's files. SQLite is macOS's own library, so nothing extr
 
 **Mapping in.** Bookmarks go into a folder of their own at the end of the bookmarks, named
 after the source, "From Chrome", or "From Chrome · Work" when a browser has several
-profiles, keeping the browser's own folders inside. History joins as pages. The search
-engine is taken when it is one we have, matched by its address. Extensions, offered only
+profiles, keeping the browser's own folders inside. History joins as pages. Extensions, offered only
 in Settings while the Extensions flag is on, are installed again from the Chrome Web Store
 by their ids, one at a time, with no prompt, as ticking them is the yes; one that isn't
 from that store, was loaded from a folder, or is Manifest V2 is left out, and says why.
@@ -54,8 +52,7 @@ visit, so nothing is counted twice. An extension already installed is said to be
 installed again.
 
 **What came.** Each import's result is kept in imports.json in the profile, and both pages
-show it per browser: bookmarks and folders, Reading List items, pages of history, the
-search engine, and each extension installed, installed already, failed, or left out.
+show it per browser: bookmarks and folders, Reading List items, pages of history, and each extension installed, installed already, failed, or left out.
 
 **Android.** A phone keeps each app's data from the others, so there is nothing to read.
 The package still builds there: its macOS-only parts answer "not on this system", and the

@@ -8,7 +8,7 @@ HOME_DIR="$PWD/home"
 rm -rf "${HOME_DIR:?}"
 AS="$HOME_DIR/Library/Application Support"
 
-# Chrome: Personal (Default) with bookmarks in folders, history and Bing chosen; Work
+# Chrome: Personal (Default) with bookmarks in folders and history; Work
 # (Profile 1) with one bookmark and no history. Times are microseconds since 1601.
 C="$AS/Google/Chrome"
 mkdir -p "$C/Default" "$C/Profile 1" "$C/System Profile"
@@ -34,9 +34,6 @@ cat > "$C/Default/Bookmarks" <<'EOF'
   },
   "version": 1
 }
-EOF
-cat > "$C/Default/Preferences" <<'EOF'
-{"default_search_provider_data": {"template_url_data": {"short_name": "Bing", "url": "https://www.bing.com/search?q={searchTerms}&form=QBLH"}}}
 EOF
 # Its extensions, in Secure Preferences as Chrome keeps them: two from the Chrome Web Store,
 # one whose manifest is kept there and one whose manifest is in its folder, named through
@@ -84,7 +81,7 @@ EOF
 echo '{}' > "$C/System Profile/Bookmarks"
 
 # Firefox: default-release with bookmarks in its toolbar and menu, a tag and a separator
-# that aren't bookmarks, history, and DuckDuckGo chosen. Times are microseconds since 1970.
+# that aren't bookmarks, and history. Times are microseconds since 1970.
 F="$AS/Firefox"
 P="$F/Profiles/test.default-release"
 mkdir -p "$P"
@@ -126,29 +123,13 @@ INSERT INTO moz_bookmarks VALUES
   (12, 2, NULL, 4, 0, 'a tag', 1700000000000000, 0, 'ffffffffffff'),
   (13, 1, 4, 12, 0, '', 1700000000000000, 0, 'gggggggggggg');
 EOF
-# search.json.mozlz4: the JSON as one LZ4 block of literals alone.
-python3 - "$P/search.json.mozlz4" <<'EOF'
-import json, struct, sys
-data = json.dumps({"version": 10, "metaData": {"defaultEngineId": "ddg"},
-                   "engines": [{"id": "google", "_name": "Google"}, {"id": "ddg", "_name": "DuckDuckGo"}]}).encode()
-n, token, length = len(data), b"", b""
-if n < 15:
-    token = bytes([n << 4])
-else:
-    token, rest = bytes([0xF0]), n - 15
-    while rest >= 255:
-        length += b"\xff"
-        rest -= 255
-    length += bytes([rest])
-open(sys.argv[1], "wb").write(b"mozLz40\0" + struct.pack("<I", n) + token + length + data)
-EOF
 # Safari, in Library/Safari: bookmarks in Favorites, a folder and the Reading List, Safari's
 # History proxy that isn't one, an empty Bookmarks Menu; history, with a page not visited
-# and one not on the web; and Ecosia chosen in macOS's preferences. Its History.db has
+# and one not on the web. Its History.db has
 # Safari's own tables, as macOS 26 makes them. Times are seconds since 2001.
 S="$HOME_DIR/Library/Safari"
-mkdir -p "$S" "$HOME_DIR/Library/Preferences"
-python3 - "$S/Bookmarks.plist" "$HOME_DIR/Library/Preferences/.GlobalPreferences.plist" <<'EOF'
+mkdir -p "$S"
+python3 - "$S/Bookmarks.plist" <<'EOF'
 import datetime, plistlib, sys
 def leaf(title, url, **more):
     return {"WebBookmarkType": "WebBookmarkTypeLeaf", "URLString": url, "URIDictionary": {"title": title}, **more}
@@ -164,9 +145,6 @@ plistlib.dump({"WebBookmarkFileVersion": 1, "Children": [
     folder("BookmarksMenu", []),
     folder("com.apple.ReadingList", [leaf("Article", "https://example.com/article", ReadingList={"DateAdded": added})]),
 ]}, open(sys.argv[1], "wb"), fmt=plistlib.FMT_BINARY)
-plistlib.dump({"NSPreferredWebServices": {"NSWebServicesProviderWebSearch": {
-    "NSDefaultDisplayName": "Ecosia", "NSProviderIdentifier": "org.ecosia.www"}}},
-    open(sys.argv[2], "wb"), fmt=plistlib.FMT_BINARY)
 EOF
 sqlite3 "$S/History.db" <<'EOF'
 CREATE TABLE history_items (id INTEGER PRIMARY KEY AUTOINCREMENT,url TEXT NOT NULL UNIQUE,domain_expansion TEXT NULL,visit_count INTEGER NOT NULL,daily_visit_counts BLOB NOT NULL,weekly_visit_counts BLOB NULL,autocomplete_triggers BLOB NULL,should_recompute_derived_visit_counts INTEGER NOT NULL,visit_count_score INTEGER NOT NULL,status_code INTEGER NOT NULL DEFAULT 0);

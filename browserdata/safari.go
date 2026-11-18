@@ -10,9 +10,8 @@ import (
 
 // Safari's files, in ~/Library/Safari, which macOS keeps behind Full Disk Access:
 // Bookmarks.plist, a binary property list of folders (WebBookmarkTypeList) and bookmarks
-// (WebBookmarkTypeLeaf), and History.db, SQLite. Its search engine is macOS's own choice,
-// NSPreferredWebServices in the global preferences, which need no access. Its passwords are
-// in iCloud Keychain, which no other app can read.
+// (WebBookmarkTypeLeaf), and History.db, SQLite. Its passwords are in iCloud Keychain,
+// which no other app can read.
 
 // safariProfiles is Safari's one profile, when its folder is there: whether its files can
 // be read is Locked's to say.
@@ -136,40 +135,4 @@ func safariPages(dir string) (int, error) {
 		return 0, nil
 	}
 	return n, err
-}
-
-// The engines Safari offers, by the ids macOS keeps.
-var safariEngines = map[string]Search{
-	"com.google.www": google,
-	"com.bing.www":   bing,
-	"com.yahoo.www":  {Name: "Yahoo", URL: "https://search.yahoo.com/search?p={searchTerms}"},
-	"com.duckduckgo": {Name: "DuckDuckGo", URL: "https://duckduckgo.com/?q={searchTerms}"},
-	"org.ecosia.www": {Name: "Ecosia", URL: "https://www.ecosia.org/search?q={searchTerms}"},
-}
-
-// safariSearch is the search engine chosen in macOS's preferences, or none when Safari's
-// own is kept. dir is Safari's folder, in home/Library.
-func safariSearch(dir string) (Search, error) {
-	b, err := os.ReadFile(filepath.Join(dir, "../Preferences/.GlobalPreferences.plist"))
-	if os.IsNotExist(err) {
-		return Search{}, nil
-	}
-	if err != nil {
-		return Search{}, err
-	}
-	v, err := bplist(b)
-	if err != nil {
-		return Search{}, err
-	}
-	prefs, _ := v.(map[string]any)
-	services, _ := prefs["NSPreferredWebServices"].(map[string]any)
-	web, _ := services["NSWebServicesProviderWebSearch"].(map[string]any)
-	id, _ := web["NSProviderIdentifier"].(string)
-	if s, ok := safariEngines[id]; ok {
-		return s, nil
-	}
-	if name, _ := web["NSDefaultDisplayName"].(string); name != "" {
-		return Search{Name: name}, nil
-	}
-	return Search{}, nil
 }

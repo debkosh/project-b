@@ -57,6 +57,11 @@ And on the second mocks, 2026-11-17:
   at 128 pixels.
 - **Reading another browser's data is a module of its own,** "so that we can use it as a
   separate project too if required": see [The importer](#the-importer-a-module-of-its-own).
+- **The search engine doesn't come over** (the owner, 2026-11-18: "remove the search engine
+  machinery altogether we donot thinga that mich of an inport... anywasy we show the search
+  engine as wlakthrough"). The welcome's Protection step offers it; nothing reads another
+  browser's choice, so the readers of Chromium's Preferences, Firefox's
+  `search.json.mozlz4` (and its LZ4 reader) and macOS's global preferences are gone.
 - **Sync** is a discussion of its own, in its own session ("[project-b] sync"): many ways to
   sync, to places the user controls.
 
@@ -73,7 +78,7 @@ The mocks are drawn in [screenshots/onboarding/mocks.html](screenshots/onboardin
    ([mock](screenshots/onboarding/mock-d1.png)).
 2. **Bring your things over:** each browser and profile found on the Mac, a row with what it
    holds. Turned on, the row opens to what to bring: bookmarks (with their folders), history,
-   passwords, open tabs, the search engine, extensions ([mock](screenshots/onboarding/mock-d2.png)).
+   passwords, open tabs, extensions ([mock](screenshots/onboarding/mock-d2.png)).
    Safari's row asks for Full Disk Access once ([mock](screenshots/onboarding/mock-d2b.png)): the
    page opens that pane of System Settings and goes on by itself when access is given. Then
    what came over ([mock](screenshots/onboarding/mock-d2c.png)). Open tabs come over as a
@@ -122,10 +127,10 @@ page's layouts ([settings.md](settings.md)) it is Run setup again once more, und
 | Download notifications asked on the phone's step | an engine call that asks for `POST_NOTIFICATIONS` and reports whether it was given. Today `Downloads.java` asks the moment a download starts, so Android's prompt covers the page; that ask goes, or stays only for a user who skipped setup | 1 |
 | A preview of each layout in the chosen colour and theme | drawn by the welcome page from the tones Go sends, so it follows every choice; no pictures to keep up | 1 |
 | Bookmark folders, built ([bookmark-folders.md](bookmark-folders.md)) | `core/bookmarks`, the Bookmarks page, the star's panel | 2 |
-| Importers: the Chromium family (Chrome, Edge, Brave, Arc), Firefox, with each browser's logo: bookmarks, history and the search engine, built | `browserdata`, a module of its own (below); the welcome's Bring your things over; Settings' Import | 3 |
+| Importers: the Chromium family (Chrome, Edge, Brave, Arc), Firefox, with each browser's logo: bookmarks and history, built | `browserdata`, a module of its own (below); the welcome's Bring your things over; Settings' Import | 3 |
 | History import, built | `core/history` | 3 |
 | Open tabs, as a workspace named after the browser | `browserdata`: Chromium's session files, Arc's sidebar, Firefox's session store | not yet given one |
-| Safari, behind Full Disk Access: bookmarks, history and the search engine, built | `browserdata` (`safari.go`, `plist.go`); the welcome's and Settings' Allow access | 4 |
+| Safari, behind Full Disk Access: bookmarks and history, built | `browserdata` (`safari.go`, `plist.go`); the welcome's and Settings' Allow access | 4 |
 | Passwords | the store is the daily driver session's (`core/passwords`, `Import([]Login)`); the importers hand logins to it. Chromium's are sealed with the Keychain's "<Browser> Safe Storage" key, which macOS asks about once per browser; Firefox's with `key4.db` | 5 |
 | Extensions installed again by id, in Settings' Import while their flag is on, built | `browserdata` (`extensions.go`); the engine's `InstallExtensionFromStore`; the extension manager's queue | 5 |
 
@@ -220,7 +225,7 @@ Each slice goes out through a release of its own.
 - **History** joins as pages: an address here already keeps the most visits of the two and
   the later visit, so an import made again counts nothing twice (`history.Manager.Import`).
   Only web pages, as history keeps.
-- **The search engine** is taken when it is one of ours, matched by the host of its
+- **The search engine** (removed 2026-11-18, above) was taken when it was one of ours, matched by the host of its
   address (`search.ByAddress`); a browser that never chose one has its own: Google for
   Chrome, Arc and Firefox, Bing for Edge, Brave Search for Brave. One we don't have says
   so on its line.
@@ -272,7 +277,7 @@ Each slice goes out through a release of its own.
   rest) come with them, as they are bookmarks like any other.
 - **History** from `History.db`: each page's visit count, its last visit, and the title of
   its last visit that had one. Times are seconds since 2001.
-- **The search engine** is macOS's own choice, `NSPreferredWebServices` in the global
+- **The search engine** (removed 2026-11-18, above) was macOS's own choice, `NSPreferredWebServices` in the global
   preferences, which Safari has used since it moved its choice there; Google until one is
   picked. Its passwords are in iCloud Keychain, which no other app can read.
 - **Messages:** a page sends `openAccess`; Go opens System Settings
@@ -372,7 +377,7 @@ reads; what to do with what it finds is the app's.
   Chromium's files; Firefox has its own; Safari's need Full Disk Access, and a profile's
   `Locked` says so instead of failing.
 - **What it reads,** in plain types of its own: the bookmark tree with folders, history visits
-  with their times, open and pinned tabs (Arc's Spaces as groups), the default search engine,
+  with their times, open and pinned tabs (Arc's Spaces as groups),
   extension ids, and saved logins.
 - **Logins:** Chromium's are sealed with the Keychain's "<Browser> Safe Storage" key, which
   macOS asks the user about once per browser; Firefox's with `key4.db`, opened with Go's own
@@ -387,7 +392,7 @@ reads; what to do with what it finds is the app's.
 
 Built in slice 3: `Find(home)`, a profile's `Bookmarks`, `History`, `Search` and `Counts`;
 `Extensions` came later. Each database is read from a copy with its write-ahead log;
-Firefox's `search.json.mozlz4` is opened by a small LZ4 reader of its own. SQLite needs
+SQLite needs
 macOS (`*_mac.go`, cgo); elsewhere it says `ErrNotOnThisSystem`, so the Android build compiles it and never calls it. Its
 README says the rest.
 

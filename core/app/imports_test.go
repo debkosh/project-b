@@ -16,8 +16,7 @@ import (
 
 // The welcome finds the browsers in a home folder (browserdata's testdata, made by its
 // make.sh), each profile with what it holds, and brings over what is asked: Chrome's
-// bookmarks into From Chrome · Personal with their folders, its history, and its search
-// engine, Bing, as the profile's. imports.json keeps what was brought, and the list says so.
+// bookmarks into From Chrome · Personal with their folders, and its history. imports.json keeps what was brought, and the list says so.
 func TestBringingThingsOverFromAnotherBrowser(t *testing.T) {
 	dir := t.TempDir()
 	home, _ := filepath.Abs("../../browserdata/testdata/home")
@@ -41,11 +40,11 @@ func TestBringingThingsOverFromAnotherBrowser(t *testing.T) {
 		t.Fatalf("found %q", titles)
 	}
 	counts := list[0].(map[string]any)["counts"].(map[string]any)
-	if counts["bookmarks"] != 4.0 || counts["folders"] != 2.0 || counts["pages"] != 3.0 || counts["search"] != "Bing" {
+	if counts["bookmarks"] != 4.0 || counts["folders"] != 2.0 || counts["pages"] != 3.0 {
 		t.Fatalf("Chrome · Personal holds %v", counts)
 	}
 
-	say(`{"t":"import","key":"chrome/Default","what":["bookmarks","history","search"]}`)
+	say(`{"t":"import","key":"chrome/Default","what":["bookmarks","history"]}`)
 	if m := next(t, got, "importing"); len(m["importing"].([]any)) != 1 {
 		t.Fatalf("importing %v", m)
 	}
@@ -55,11 +54,10 @@ func TestBringingThingsOverFromAnotherBrowser(t *testing.T) {
 		Bookmarks bookmarks.Imported
 		Folder    string
 		Pages     int
-		Search    string
 		Errors    []string
 	}
 	json.Unmarshal(b, &brought)
-	if brought.Bookmarks != (bookmarks.Imported{Bookmarks: 4, Folders: 5}) || brought.Folder != "From Chrome · Personal" || brought.Pages != 3 || brought.Search != "bing" || len(brought.Errors) != 0 {
+	if brought.Bookmarks != (bookmarks.Imported{Bookmarks: 4, Folders: 5}) || brought.Folder != "From Chrome · Personal" || brought.Pages != 3 || len(brought.Errors) != 0 {
 		t.Fatalf("brought over %s", b)
 	}
 	if l := next(t, got, "browsers")["browsers"].([]any)[0].(map[string]any)["last"]; l == nil {
@@ -69,7 +67,6 @@ func TestBringingThingsOverFromAnotherBrowser(t *testing.T) {
 	type seen struct {
 		titles  []string
 		visited bool
-		search  string
 	}
 	look := make(chan seen)
 	r.e.Post(func() {
@@ -78,13 +75,12 @@ func TestBringingThingsOverFromAnotherBrowser(t *testing.T) {
 			s.titles = append(s.titles, e.Title)
 		}
 		s.visited = len(r.a.History.Search("example.org/old", 1)) == 1
-		s.search = r.a.Prefs.SearchEngine().ID
 		look <- s
 	})
 	s := <-look
 	// The top's folder, its folders, then theirs.
-	if len(s.titles) != 9 || !s.visited || s.search != "bing" {
-		t.Fatalf("bookmarks %q, visited %v, search %q", s.titles, s.visited, s.search)
+	if len(s.titles) != 9 || !s.visited {
+		t.Fatalf("bookmarks %q, visited %v", s.titles, s.visited)
 	}
 	if b, err := os.ReadFile(filepath.Join(dir, "imports.json")); err != nil || len(b) < 10 {
 		t.Fatalf("imports.json: %s, %v", b, err)
@@ -101,7 +97,7 @@ func TestBringingThingsOverFromAnotherBrowser(t *testing.T) {
 // Safari's files are behind Full Disk Access: until the app has it, Safari's row is locked,
 // with nothing counted, and can't be brought over. Once a page has opened System Settings,
 // Go tries the files each second and, when they can be read, looks again: the row opens,
-// and brings Safari's bookmarks into From Safari and Ecosia as the search engine. A folder
+// and brings Safari's bookmarks into From Safari. A folder
 // with no permissions stands in for macOS's refusal.
 func TestSafariWaitsForFullDiskAccess(t *testing.T) {
 	dir := t.TempDir()
@@ -149,19 +145,18 @@ func TestSafariWaitsForFullDiskAccess(t *testing.T) {
 	if row["locked"] != nil || row["counts"].(map[string]any)["bookmarks"] != 4.0 || row["title"] != "Safari" {
 		t.Fatalf("Safari's row, with access: %v", row)
 	}
-	say(`{"t":"import","key":"safari/Safari","what":["bookmarks","history","search"]}`)
+	say(`{"t":"import","key":"safari/Safari","what":["bookmarks","history"]}`)
 	next(t, got, "importing")
 	b, _ := json.Marshal(next(t, got, "imported")["imported"])
 	var brought struct {
 		Bookmarks bookmarks.Imported
 		Folder    string
 		Pages     int
-		Search    string
 		Errors    []string
 	}
 	json.Unmarshal(b, &brought)
 	// From Safari, Favorites, Recipes and Reading List.
-	if brought.Bookmarks != (bookmarks.Imported{Bookmarks: 4, Folders: 4}) || brought.Folder != "From Safari" || brought.Pages != 2 || brought.Search != "ecosia" || len(brought.Errors) != 0 {
+	if brought.Bookmarks != (bookmarks.Imported{Bookmarks: 4, Folders: 4}) || brought.Folder != "From Safari" || brought.Pages != 2 || len(brought.Errors) != 0 {
 		t.Fatalf("brought over %s", b)
 	}
 }

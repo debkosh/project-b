@@ -135,25 +135,9 @@ func TestHistoryIsWebPagesVisited(t *testing.T) {
 	}
 }
 
-func TestSearchIsTheOneChosenOrTheBrowsers(t *testing.T) {
-	ps := found(t)
-	for key, want := range map[string]string{
-		"chrome/Personal":         "Bing https://www.bing.com/search?q={searchTerms}&form=QBLH",
-		"chrome/Work":             "Google https://www.google.com/search?q={searchTerms}",
-		"firefox/default-release": "DuckDuckGo https://duckduckgo.com/?q={searchTerms}",
-		// Safari's is macOS's, in the global preferences.
-		"safari/": "Ecosia https://www.ecosia.org/search?q={searchTerms}",
-	} {
-		s, err := ps[key].Search()
-		if got := s.Name + " " + s.URL; err != nil || got != want {
-			t.Errorf("%s: %s, %v; want %s", key, got, err, want)
-		}
-	}
-}
-
 func TestCounts(t *testing.T) {
 	c, err := found(t)["chrome/Personal"].Counts()
-	want := Counts{Bookmarks: 4, Folders: 2, Pages: 3, Search: "Bing", Extensions: 2}
+	want := Counts{Bookmarks: 4, Folders: 2, Pages: 3, Extensions: 2}
 	if err != nil || c != want {
 		t.Fatalf("%+v, %v; want %+v", c, err, want)
 	}
@@ -179,24 +163,6 @@ func TestExtensionsAreThoseItsPersonInstalled(t *testing.T) {
 		if e, err := ps[key].Extensions(); len(e) != 0 || err != nil {
 			t.Errorf("%s has %+v, %v", key, e, err)
 		}
-	}
-}
-
-func TestMozLZ4(t *testing.T) {
-	// "abcabcabcabc!": three literals, a match of 9 one offset 3 back, then "!".
-	block := []byte{0x35, 'a', 'b', 'c', 3, 0, 0x10, '!'}
-	src := append([]byte("mozLz40\x00\x0d\x00\x00\x00"), block...)
-	got, err := mozlz4(src)
-	if err != nil || string(got) != "abcabcabcabc!" {
-		t.Fatalf("%q, %v", got, err)
-	}
-	if _, err := mozlz4(src[:len(src)-1]); err == nil {
-		t.Error("a short file opened")
-	}
-	// The fixture's, written as literals alone.
-	b, err := firefoxSearch(filepath.Join(home, "Library/Application Support/Firefox/Profiles/test.default-release"))
-	if err != nil || b.Name != "DuckDuckGo" {
-		t.Errorf("%+v, %v", b, err)
 	}
 }
 

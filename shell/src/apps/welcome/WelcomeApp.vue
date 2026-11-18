@@ -220,7 +220,7 @@ onMounted(() => heading.value?.focus());
                 </span>
               </div>
               <ul v-if="state.imported[p.key]" class="lines" :aria-label="`Brought over from ${p.title}`">
-                <li v-for="(l, i) in broughtLines(state.imported[p.key], state.searchEngines)" :key="i" :class="{ problem: l.problem, left: l.left }">
+                <li v-for="(l, i) in broughtLines(state.imported[p.key])" :key="i" :class="{ problem: l.problem, left: l.left }">
                   <svg v-if="!l.problem && !l.left" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8.5l2.5 2.5L12 5.5" /></svg>
                   <span>{{ l.text }}</span>
                   <span v-if="l.note" class="state">{{ l.note }}</span>

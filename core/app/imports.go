@@ -13,7 +13,6 @@ import (
 	"projectb/bookmarks"
 	"projectb/engine"
 	"projectb/history"
-	"projectb/search"
 	"projectb/shells"
 	"projectb/timeline"
 )
@@ -21,7 +20,7 @@ import (
 // Bringing things over from another browser (docs/onboarding.md, docs/import.md): the
 // welcome's step and Settings' Import list the browsers on this Mac and each profile with
 // what it holds, and bring over what the person ticks: its bookmarks, with their folders,
-// into a folder named after it; its history; its search engine, when it is one of ours; and,
+// into a folder named after it; its history; and,
 // in Settings while the Extensions flag is on, its extensions, installed again from the
 // Chrome Web Store by their ids, one at a time. browserdata reads them, on a worker; what it
 // read joins the profile here, on the main thread.
@@ -88,15 +87,13 @@ type foundProfile struct {
 }
 
 // broughtOver is what one import brought: its bookmarks, the folder they are in and how
-// many of them were Safari's Reading List, the pages of history, the search engine taken,
-// by id, and its extensions.
+// many of them were Safari's Reading List, the pages of history, and its extensions.
 type broughtOver struct {
 	At          time.Time          `json:"at"`
 	Bookmarks   bookmarks.Imported `json:"bookmarks"`
 	Folder      string             `json:"folder,omitempty"`
 	ReadingList int                `json:"readingList,omitempty"`
 	Pages       int                `json:"pages"`
-	Search      string             `json:"search,omitempty"`
 	Extensions  *broughtExtensions `json:"extensions,omitempty"`
 	Errors      []string           `json:"errors,omitempty"`
 }
@@ -226,7 +223,7 @@ func (im *importer) look() {
 }
 
 // importMessage is what a page sends to bring things over: the profile, by key, and which
-// of its things: bookmarks, history, search, extensions.
+// of its things: bookmarks, history, extensions.
 type importMessage struct {
 	Key  string   `json:"key"`
 	What []string `json:"what"`
@@ -291,7 +288,6 @@ func (im *importer) wait() {
 type read struct {
 	bookmarks  []browserdata.Bookmark
 	pages      []browserdata.Page
-	search     browserdata.Search
 	extensions []browserdata.Extension
 	errors     []string
 }
@@ -322,10 +318,6 @@ func (im *importer) bring(key string, what []string) {
 		}
 		if slices.Contains(what, "history") {
 			r.pages, err = f.profile.History()
-			note(err)
-		}
-		if slices.Contains(what, "search") {
-			r.search, err = f.profile.Search()
 			note(err)
 		}
 		if extensions {
@@ -359,14 +351,6 @@ func (im *importer) add(f foundProfile, r read) {
 		}
 		im.a.History.Import(pages)
 		got.Pages = len(pages)
-	}
-	if r.search.Name != "" {
-		if e, ok := search.ByAddress(r.search.URL); ok {
-			im.a.Prefs.SetSearchEngine(e.ID)
-			got.Search = e.ID
-		} else {
-			got.Errors = append(got.Errors, r.search.Name+" isn't a search engine this browser has")
-		}
 	}
 	if r.extensions == nil {
 		im.done(f, got)
@@ -419,8 +403,8 @@ func (im *importer) done(f foundProfile, got broughtOver) {
 	if x := got.Extensions; x != nil {
 		extensions = fmt.Sprintf(", extensions: %d installed, %d already, %d failed, %d skipped", len(x.Installed), len(x.Already), len(x.Failed), len(x.Skipped))
 	}
-	timeline.Infof("imports: from %s, %d bookmarks in %d folders (%d bookmarked already, %d of the Reading List), %d pages, search %q%s, errors %q",
-		f.Title, got.Bookmarks.Bookmarks, got.Bookmarks.Folders, got.Bookmarks.Skipped, got.ReadingList, got.Pages, got.Search, extensions, got.Errors)
+	timeline.Infof("imports: from %s, %d bookmarks in %d folders (%d bookmarked already, %d of the Reading List), %d pages%s, errors %q",
+		f.Title, got.Bookmarks.Bookmarks, got.Bookmarks.Folders, got.Bookmarks.Skipped, got.ReadingList, got.Pages, extensions, got.Errors)
 	im.last[f.Key] = got
 	if b, err := json.MarshalIndent(im.last, "", "  "); err == nil {
 		if err := os.WriteFile(im.path, append(b, '\n'), 0o600); err != nil {

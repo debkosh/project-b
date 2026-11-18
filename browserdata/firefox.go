@@ -3,7 +3,6 @@ package browserdata
 import (
 	"bufio"
 	"cmp"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,7 +10,7 @@ import (
 )
 
 // Firefox's files: profiles.ini in its folder names its profiles; each keeps bookmarks and
-// history in places.sqlite, and its search engines in search.json.mozlz4.
+// history in places.sqlite.
 
 // firefoxProfiles lists the profiles profiles.ini names, in its order, that have places.
 func firefoxProfiles(dir string) []Profile {
@@ -135,60 +134,4 @@ func firefoxPages(dir string) (int, error) {
 	n := 0
 	err := query(filepath.Join(dir, "places.sqlite"), `SELECT COUNT(*) `+firefoxPagesWhere, func(r row) { n = int(r.int(0)) })
 	return n, err
-}
-
-// The engines Firefox ships, by their ids, whose addresses search.json leaves out.
-var firefoxEngines = map[string]Search{
-	"google":    google,
-	"bing":      bing,
-	"ddg":       {Name: "DuckDuckGo", URL: "https://duckduckgo.com/?q={searchTerms}"},
-	"ecosia":    {Name: "Ecosia", URL: "https://www.ecosia.org/search?q={searchTerms}"},
-	"wikipedia": {Name: "Wikipedia", URL: "https://en.wikipedia.org/wiki/Special:Search?search={searchTerms}"},
-}
-
-// firefoxSearch is the search engine chosen in search.json.mozlz4, or none when Firefox's
-// own is kept.
-func firefoxSearch(dir string) (Search, error) {
-	b, err := os.ReadFile(filepath.Join(dir, "search.json.mozlz4"))
-	if os.IsNotExist(err) {
-		return Search{}, nil
-	}
-	if err != nil {
-		return Search{}, err
-	}
-	if b, err = mozlz4(b); err != nil {
-		return Search{}, err
-	}
-	var f struct {
-		Meta struct {
-			Default string `json:"defaultEngineId"`
-		} `json:"metaData"`
-		Engines []struct {
-			ID   string `json:"id"`
-			Name string `json:"_name"`
-			URLs []struct {
-				Template string `json:"template"`
-				Type     string `json:"type"`
-			} `json:"_urls"`
-		} `json:"engines"`
-	}
-	if err := json.Unmarshal(b, &f); err != nil {
-		return Search{}, err
-	}
-	if f.Meta.Default == "" {
-		return Search{}, nil
-	}
-	for _, e := range f.Engines {
-		if e.ID != f.Meta.Default {
-			continue
-		}
-		for _, u := range e.URLs {
-			if u.Type == "" || u.Type == "text/html" {
-				return Search{Name: e.Name, URL: u.Template}, nil
-			}
-		}
-	}
-	// Engines Firefox ships have ids like google or ddg, sometimes with an @suffix.
-	id, _, _ := strings.Cut(f.Meta.Default, "@")
-	return firefoxEngines[id], nil
 }

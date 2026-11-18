@@ -150,30 +150,6 @@ func chromiumPages(dir string) (int, error) {
 	return n, err
 }
 
-// chromiumSearch is the search engine chosen in Preferences, or none when the browser's own
-// is kept.
-func chromiumSearch(dir string) (Search, error) {
-	b, err := os.ReadFile(filepath.Join(dir, "Preferences"))
-	if os.IsNotExist(err) {
-		return Search{}, nil
-	}
-	if err != nil {
-		return Search{}, err
-	}
-	var p struct {
-		Provider struct {
-			Data struct {
-				Name string `json:"short_name"`
-				URL  string `json:"url"`
-			} `json:"template_url_data"`
-		} `json:"default_search_provider_data"`
-	}
-	if err := json.Unmarshal(b, &p); err != nil {
-		return Search{}, err
-	}
-	return Search{Name: p.Provider.Data.Name, URL: p.Provider.Data.URL}, nil
-}
-
 // webkitTime is a time Chromium keeps: microseconds since 1601, as text or a number.
 func webkitTime(s string) time.Time {
 	us, err := strconv.ParseInt(s, 10, 64)

@@ -1,7 +1,7 @@
 # browserdata
 
 Reads what other browsers on a Mac keep: which are there and their profiles, and from a
-profile its bookmarks with their folders, its history, its search engine and the
+profile its bookmarks with their folders, its history and the
 extensions its person installed. It only
 reads, each database from a copy, as the browser may have it open. What to do with what
 it finds is the caller's: Project B's welcome and Settings' Import bring it over
@@ -18,8 +18,8 @@ its own.
 | Edge | `…/Microsoft Edge` | Chromium's |
 | Brave | `…/BraveSoftware/Brave-Browser` | Chromium's |
 | Arc | `…/Arc/User Data` | Chromium's |
-| Firefox | `…/Firefox` | `profiles.ini` names the profiles; each has `places.sqlite` and `search.json.mozlz4` |
-| Safari | `~/Library/Safari`, behind Full Disk Access | one profile: `Bookmarks.plist` (a binary property list), `History.db` (SQLite); the search engine is macOS's, `NSPreferredWebServices` in `~/Library/Preferences/.GlobalPreferences.plist` |
+| Firefox | `…/Firefox` | `profiles.ini` names the profiles; each has `places.sqlite` |
+| Safari | `~/Library/Safari`, behind Full Disk Access | one profile: `Bookmarks.plist` (a binary property list), `History.db` (SQLite) |
 
 ```go
 for _, b := range browserdata.Find(home) {        // the browsers with a profile
@@ -27,17 +27,14 @@ for _, b := range browserdata.Find(home) {        // the browsers with a profile
 		if p.Locked() {                           // Safari's, until the app has Full Disk Access
 			continue
 		}
-		c, _ := p.Counts()                        // bookmarks, folders, pages, search engine's name
+		c, _ := p.Counts()                        // bookmarks, folders, pages, extensions
 		tree, _ := p.Bookmarks()                  // top folders, such as the bookmarks bar, with all they hold
 		pages, _ := p.History()                   // each web page visited: title, visits, last visit
-		s, _ := p.Search()                        // the engine chosen, or the browser's own
 		exts, _ := p.Extensions()                 // what its person installed, and why any can't come
 	}
 }
 ```
 
-- A profile's search engine is the one its person chose, or the browser's own when none
-  was: Google for Chrome, Arc, Firefox and Safari, Bing for Edge, Brave Search for Brave.
 - Safari's folder is there to see but not to read until the app has Full Disk Access:
   `Locked` says so. Safari has one profile, with no name.
 - Extensions are a Chromium profile's, those its person installed: what the browser, an

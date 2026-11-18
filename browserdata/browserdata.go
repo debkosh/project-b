@@ -1,6 +1,6 @@
 // Package browserdata reads what other browsers on this Mac keep: which are installed and
-// their profiles, and from a profile its bookmarks with their folders, its history and its
-// search engine. It only reads, each database from a copy, as the browser may have it open;
+// their profiles, and from a profile its bookmarks with their folders, its history and the
+// extensions its person installed. It only reads, each database from a copy, as the browser may have it open;
 // what to do with what it finds is the caller's.
 //
 // Chrome, Edge, Brave and Arc share Chromium's files; Firefox and Safari have their own,
@@ -50,18 +50,11 @@ type Page struct {
 	Last   time.Time `json:"last"`
 }
 
-// Search is a search engine: its name, and its address with {searchTerms} where the words go.
-type Search struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
-}
-
 // Counts is what a profile holds, for a row that says so.
 type Counts struct {
-	Bookmarks int    `json:"bookmarks"`
-	Folders   int    `json:"folders"`
-	Pages     int    `json:"pages"`
-	Search    string `json:"search,omitempty"`
+	Bookmarks int `json:"bookmarks"`
+	Folders   int `json:"folders"`
+	Pages     int `json:"pages"`
 	// Extensions is how many of its extensions can be installed again from the store.
 	Extensions int `json:"extensions,omitempty"`
 }
@@ -79,26 +72,19 @@ const (
 )
 
 // kind is a browser this package knows: where its data is under Application Support (Safari's
-// is in Library), and the search engine it has until its person picks one.
+// is in Library).
 type kind struct {
 	id, name, data string
 	family         family
-	search         Search
 }
 
-var (
-	google = Search{Name: "Google", URL: "https://www.google.com/search?q={searchTerms}"}
-	bing   = Search{Name: "Bing", URL: "https://www.bing.com/search?q={searchTerms}"}
-	brave  = Search{Name: "Brave Search", URL: "https://search.brave.com/search?q={searchTerms}"}
-)
-
 var kinds = []kind{
-	{id: "chrome", name: "Chrome", data: "Google/Chrome", family: chromium, search: google},
-	{id: "edge", name: "Edge", data: "Microsoft Edge", family: chromium, search: bing},
-	{id: "brave", name: "Brave", data: "BraveSoftware/Brave-Browser", family: chromium, search: brave},
-	{id: "arc", name: "Arc", data: "Arc/User Data", family: chromium, search: google},
-	{id: "firefox", name: "Firefox", data: "Firefox", family: firefox, search: google},
-	{id: "safari", name: "Safari", family: safari, search: google},
+	{id: "chrome", name: "Chrome", data: "Google/Chrome", family: chromium},
+	{id: "edge", name: "Edge", data: "Microsoft Edge", family: chromium},
+	{id: "brave", name: "Brave", data: "BraveSoftware/Brave-Browser", family: chromium},
+	{id: "arc", name: "Arc", data: "Arc/User Data", family: chromium},
+	{id: "firefox", name: "Firefox", data: "Firefox", family: firefox},
+	{id: "safari", name: "Safari", family: safari},
 }
 
 func kindOf(id string) (kind, bool) {
@@ -174,29 +160,6 @@ func (p Profile) History() ([]Page, error) {
 	return chromiumHistory(p.Dir)
 }
 
-// Search is the profile's search engine: the one chosen, or the browser's own until one is.
-// One this package has no address for has its name alone.
-func (p Profile) Search() (Search, error) {
-	k, ok := kindOf(p.Browser)
-	if !ok {
-		return Search{}, errors.New("browserdata: no browser " + p.Browser)
-	}
-	var s Search
-	var err error
-	switch k.family {
-	case firefox:
-		s, err = firefoxSearch(p.Dir)
-	case safari:
-		s, err = safariSearch(p.Dir)
-	default:
-		s, err = chromiumSearch(p.Dir)
-	}
-	if s.Name == "" && err == nil {
-		s = k.search
-	}
-	return s, err
-}
-
 // Counts says what the profile holds. A part it can't read counts none, and the first
 // error is returned with what was counted.
 func (p Profile) Counts() (Counts, error) {
@@ -228,15 +191,13 @@ func (p Profile) Counts() (Counts, error) {
 		n, herr = chromiumPages(p.Dir)
 	}
 	c.Pages = n
-	s, serr := p.Search()
-	c.Search = s.Name
 	exts, eerr := p.Extensions()
 	for _, e := range exts {
 		if e.Skip == "" {
 			c.Extensions++
 		}
 	}
-	return c, errors.Join(err, herr, serr, eerr)
+	return c, errors.Join(err, herr, eerr)
 }
 
 // web says whether an address is a web page's, as history keeps.
