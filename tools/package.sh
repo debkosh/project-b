@@ -41,6 +41,7 @@ mkdir -p "$MACOS" "$RESOURCES/shell" "$LIBRARIES" "$FRAMEWORKS" "$HELPER_APP/Con
 cp "$FROM/project_b" "$MACOS/"
 cp "$FROM/project_b_helper" "$HELPER"
 cp "$FROM/libproject_b_content.dylib" "$FRAMEWORKS/"
+cp "$FROM/commit" "$RESOURCES/commit"   # what tools/results.py says was tested
 cp "$FROM/project_b.pak" "$FROM/icudtl.dat" "$FROM/snapshot_blob.bin" "$FROM"/v8_context_snapshot.*.bin "$RESOURCES/"
 cp -R "$FROM"/shell/* "$RESOURCES/shell/"
 cp "$FROM/libEGL.dylib" "$FROM/libGLESv2.dylib" "$FROM/libvk_swiftshader.dylib" "$FROM/libvulkan.dylib" \
