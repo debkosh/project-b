@@ -9,6 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright');
 const lib = require('../lib.cjs');
+const centred = (inner, outer) => Promise.all([inner.boundingBox(), outer.boundingBox()]).then(([i, o]) => Math.abs(i.x + i.width / 2 - (o.x + o.width / 2)) < 1);
 const { check, fire, regions, settle, until } = lib;
 
 const id = 'mobile';
@@ -1051,6 +1052,8 @@ const H = 915;
   check('a tap on a folder opens it in place, under its row, with how many it holds', await until(() => folderCard.isVisible()) && (await folderCard.locator('.count').innerText()) === '· 5' &&
     (await folderCard.boundingBox()).y > (await recipesTile.boundingBox()).y + (await recipesTile.boundingBox()).height && (await recipesTile.getAttribute('aria-expanded')) === 'true');
   check('its folders first, then its bookmarks', JSON.stringify(await folderCard.locator('.tile .name').allInnerTexts()) === JSON.stringify(['Baking', 'Pasta', 'Lentil soup', 'Flatbread', 'Curry', 'Salads']), JSON.stringify(await folderCard.locator('.tile .name').allInnerTexts()));
+  const bakingFolder = folderCard.locator('.tile').filter({ hasText: 'Baking' }).locator('.folder');
+  check('a folder with one bookmark shows it in the middle of its tile', await centred(bakingFolder.locator('.mark'), bakingFolder));
   await shots('bookmarks-new-tab');
   await folderCard.locator('.tile').filter({ hasText: 'Baking' }).tap();
   const bakingCard = newTabMarks.getByRole('group', { name: 'Baking' });
