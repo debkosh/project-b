@@ -142,8 +142,12 @@
     min-height: 0;
   }
 
+  /* The page's area is a layer of its own: what lies over the page (a notice, the find bar, a
+     page's dialog) stays under the shell's bars and the menus and panels they open
+     (design-system.md, Layers). */
   main {
     position: relative;
+    isolation: isolate;
     flex: 1;
     min-width: 0;
   }

@@ -121,6 +121,24 @@ The owner, 2026-11-14: animations are very quick, about 100 ms, and smooth.
 - **Focus:** `var(--focus-ring)` on `:focus-visible`, never the browser's outline. On a menu
   item or a row it is `var(--focus-ring-inset)`.
 
+## Layers
+
+What lies over what, in every shell:
+
+1. **The page's area is a layer of its own** (`isolation: isolate` on its box: Standard's
+   `.main`, Fox's `.page`, Terminal's pane `.body`, Mobile's and Minimal's `main`). What lies
+   over the page, its notice (crashed, failed, blocked), the find bar, a page's dialog, the
+   command box's scrim, stays inside it and never rises over the shell.
+2. **The shell's bars** lie over the page's area.
+3. **The shell's menus, panels and bubbles** (the ☰ menu, the site panel, the bookmark and
+   password panels, the downloads bubble, right-click menus) lie over everything, wherever
+   in the shell they are drawn.
+
+Inside the page's area, the corner bubbles (the update bubble, the last run's crash) lie over
+the page's notice. A z-index only orders things within its own layer, so a new overlay of the
+page goes in the page's box, and a new popup anywhere in the shell. 2026-11-18, after the ☰
+menu opened under a crashed tab's notice.
+
 ## Controls
 
 Use these; never leave a `<button>`, `<select>`, `<input>` or radio to the browser's look.

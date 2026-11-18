@@ -242,6 +242,24 @@ const { check, fire, out, regions, settle, until } = lib;
   check('the menu lists its commands, each an action Go has', JSON.stringify(actions) === JSON.stringify(known) && actions.every((a) => real.has(a)), JSON.stringify(actions));
   check('a press on the menu reaches the shell, not the page', await pressReachesShell(rows.last()));
   await shots('menu');
+  await page.keyboard.press('Escape');
+  await until(async () => (await rows.count()) === 0);
+  // Over a crashed tab the menu lies over its notice, as every menu of the shell lies over
+  // whatever lies over the page (design-system.md, Layers). A blank tab has no notice, so
+  // the tab goes to a page first.
+  await fire('navigate', 'https://a.test/');
+  // Go shows no notice while a page loads, so the crash waits for the load to end.
+  await until(async () => { const g = await go(); const t = g.tabs.find((t) => t.id === g.active); return t?.url.includes('a.test') && !t.loading; });
+  await fire('crash');
+  const crashed = ui.locator('.ui-notice[data-kind="crashed"]');
+  check('a crashed tab shows its notice', await until(() => crashed.isVisible()));
+  await menuButton.click();
+  const menuBox = ui.getByRole('menu').first();
+  check('the menu lies over the crashed tab\'s notice', await until(async () => (await crashed.isVisible()) && (await rows.count()) > 0 && (await menuBox.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return [[0.5, 0.5], [0.2, 0.8], [0.8, 0.8]].every(([fx, fy]) => el.contains(document.elementFromPoint(r.left + r.width * fx, r.top + r.height * fy)));
+  }))));
+  await shots('menu-over-crash');
   await rows.filter({ hasText: 'New Tab' }).click();
   check('New Tab in the menu opens a tab', await tabCount(24));
   await menuButton.click();

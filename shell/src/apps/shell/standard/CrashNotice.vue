@@ -32,7 +32,8 @@ function share(e) {
   position: absolute;
   left: 0;
   top: 0;
-  z-index: 1;
+  /* Over the page's notice, as a crashed tab's own notice must not hide it. */
+  z-index: 3;
   display: flex;
   align-items: center;
   gap: 6px;

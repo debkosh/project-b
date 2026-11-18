@@ -287,6 +287,35 @@ const { check, fire, regions, settle, until } = lib;
   await top.getByRole('menuitem', { name: /^Downloads/ }).click();
   check('choosing Downloads runs it: the Downloads page opens, and the menu closes', await until(async () => (await regions()).tabs.some((t) => t.page === 'downloads') && (await top.count()) === 0));
 
+  // Over a crashed tab the ☰ menu lies over its notice, as every menu and panel of the shell
+  // lies over whatever lies over the page (design-system.md, Layers), with the tabs on the
+  // side and on top. Sudipta found it under the notice, with the tabs on top.
+  const post = (msg) => fetch(`${lib.base}/shell/send?window=1`, { method: 'POST', body: JSON.stringify(msg) });
+  await post({ t: 'activateTab', id: first });
+  await until(async () => (await regions()).active === first);
+  await fire('navigate', 'https://a.test/crash');
+  // Go shows no notice while a page loads, so the crash waits for the load to end.
+  await until(async () => { const g = await regions(); const t = g.tabs.find((t) => t.id === g.active); return t?.url.includes('/crash') && !t.loading; });
+  await fire('crash');
+  const notice = ui.locator('.ui-notice[data-kind="crashed"]');
+  check('a crashed tab shows its notice', await until(() => notice.isVisible()));
+  const onTop = (m) => m.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return [[0.5, 0.5], [0.2, 0.8], [0.8, 0.8]].every(([fx, fy]) => el.contains(document.elementFromPoint(r.left + r.width * fx, r.top + r.height * fy)));
+  });
+  for (const layout of ['vertical', 'horizontal']) {
+    await post({ t: 'setPref', name: 'tabLayout', value: layout });
+    await settle(page);
+    await ui.getByRole('button', { name: 'Menu', exact: true }).click();
+    check(`with the tabs ${layout === 'vertical' ? 'on the side' : 'on top'}, the ☰ menu lies over the crashed tab's notice`, await until(async () => (await notice.isVisible()) && (await top.isVisible()) && (await onTop(top))));
+    await page.screenshot({ path: path.join(lib.out, `standard-menu-over-crash-${layout}.png`) });
+    await page.keyboard.press('Escape');
+    await until(async () => (await top.count()) === 0);
+  }
+  await post({ t: 'setPref', name: 'tabLayout', value: 'vertical' });
+  await notice.getByRole('button', { name: /Reload/ }).click();
+  await until(async () => (await notice.count()) === 0);
+
   // The address field completes a visited address in place, the rest selected after the
   // caret, from Go's first row (docs/daily-driver.md, Inline completion).
   const send = (msg) => fetch(`${lib.base}/shell/send?window=1`, { method: 'POST', body: JSON.stringify(msg) });

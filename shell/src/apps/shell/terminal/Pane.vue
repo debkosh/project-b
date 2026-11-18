@@ -212,8 +212,12 @@ function hint(name, action) {
   z-index: 6;
 }
 
+/* The page's area is a layer of its own: what lies over the page (a notice, the find bar, a
+   page's dialog) stays under the shell's bars and the menus and panels they open
+   (design-system.md, Layers). */
 .body {
   position: relative;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   flex: 1;

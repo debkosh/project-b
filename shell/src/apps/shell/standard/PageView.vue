@@ -35,9 +35,12 @@ const overPage = computed(() => view.box && !blank.value);
 <style scoped>
 /* The page is a plain rectangle: a hole in the shell with nothing painted on it. The
    crash notice and the update bubble are placed against this box, so
-   each sits in the page's corner in either layout. */
+   each sits in the page's corner in either layout. It is a layer of its own: what lies over
+   the page (a notice, the find bar, a page's dialog) stays under the shell's bars and the
+   menus and panels they open (design-system.md, Layers). */
 .main {
   position: relative;
+  isolation: isolate;
   flex: 1;
   min-width: 0;
   min-height: 0;

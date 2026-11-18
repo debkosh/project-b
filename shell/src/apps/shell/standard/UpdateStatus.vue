@@ -49,7 +49,8 @@ const percent = computed(() => {
   position: absolute;
   left: 0;
   bottom: 0;
-  z-index: 1;
+  /* Over the page's notice, as a crashed tab's own notice must not hide it. */
+  z-index: 3;
   display: flex;
   align-items: center;
   height: 22px;
