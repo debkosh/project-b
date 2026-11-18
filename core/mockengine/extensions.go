@@ -44,6 +44,10 @@ type extensionRuntime struct {
 	// store is the folder of the store's packages, crx/<id>_<version>.crx, as
 	// tools/fetch-extensions.sh and tools/pack-test-extension.py fill .tools/extensions.
 	store string
+	// hold keeps an install from the store from ending until a test lets it go, as one
+	// waiting on a store that doesn't answer; held are those it keeps.
+	hold bool
+	held []string
 }
 
 type install struct {
@@ -82,9 +86,26 @@ func (e *Engine) InstallExtension(path string) { e.installPackage(path, path) }
 // SetExtensionStore names the folder InstallExtensionFromStore takes packages from.
 func (e *Engine) SetExtensionStore(dir string) { e.extensions.store = dir }
 
+// HoldStoreInstalls keeps installs from the store from ending, while on, as a store that
+// doesn't answer; turned off, those held go on.
+func (e *Engine) HoldStoreInstalls(on bool) {
+	e.extensions.hold = on
+	if !on {
+		held := e.extensions.held
+		e.extensions.held = nil
+		for _, id := range held {
+			e.InstallExtensionFromStore(id)
+		}
+	}
+}
+
 // InstallExtensionFromStore takes the store's newest package of the extension, as the real
 // engine fetches it, and installs it as a package file, reporting the id as its path.
 func (e *Engine) InstallExtensionFromStore(id string) {
+	if e.extensions.hold {
+		e.extensions.held = append(e.extensions.held, id)
+		return
+	}
 	files, _ := filepath.Glob(filepath.Join(e.extensions.store, "crx", id+"_*.crx"))
 	if e.extensions.store == "" || len(files) == 0 {
 		e.extensions.listener.ExtensionInstallDone(engine.InstallResult{Path: id, Error: "the store answered 404"})

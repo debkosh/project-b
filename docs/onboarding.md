@@ -318,6 +318,33 @@ Each slice goes out through a release of its own.
   over brought 13 bookmarks in 2 folders under From Safari, the page and Google, as
   `imports.json` said.
 
+**Retry and Cancel while an import runs** (branch `import-retry`), as every progress has them
+(docs/ux-guide.md; the owner, 2026-11-18: "just have retry or cancel button whenever we show a
+progress, seems like a good starting rule to evolve from"):
+
+- **While it runs,** Retry and Cancel are quiet text buttons under the importing list
+  ([shot](../build/e2e/settings-import-running.png)). Retry sends the same import again, and
+  Go ends the one going on and starts over at once; bookmarks and history skip what came
+  already, so nothing is counted twice. Cancel ends it: what came keeps its tick, the rest says
+  "Not brought over", and the heading "Cancelled importing from …", with Try again and Import
+  another. A Firefox primary password is kept by the page for Retry and Try again until the
+  person moves on, and nowhere else.
+- **A step with nothing new for 30 s** ends the import as failed: the step says "Stopped:
+  nothing arrived for 30 seconds", the heading "Couldn't finish importing from …", with Try again.
+  Each finished extension install is something new. Go's timers count awake time, so a Mac's
+  sleep doesn't count, as the updater's 30 s doesn't.
+- **Waiting on the person isn't stalling:** while a Chromium browser's passwords step waits
+  for macOS's keychain question, it says "Waiting for your answer to macOS's question" and
+  has no clock; Cancel still works.
+- **Go:** each import is a run (`importRun`): its step, its clock (`stallAfter`), and the
+  extension installs it asked for, which Cancel and Retry drop from the extension manager's
+  queue if they haven't started (`DropFromStore`); a step's late answer finds its run gone and
+  is dropped. A page sends `cancelImport {key}`; `imported` says `how`: done, cancelled or
+  failed.
+- **Testing it:** `core/app` (`TestAnImportCanBeCancelledRetriedAndStalls`, with the mock
+  store holding its installs, and `TestAKeychainQuestionDoesNotStall`) and
+  `shell/e2e/imports.cjs`, through the mock's `POST /mock/extensions/hold`.
+
 **Passwords, and files a person exported** (branch `password-import`):
 
 - **A Chromium browser's passwords** are in its profile's Login Data and Login Data For

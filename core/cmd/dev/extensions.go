@@ -20,6 +20,8 @@ import (
 //	POST /mock/extensions/fire                         kind, extension, value: see
 //	                                                   mockengine.FireExtension
 //	GET  /mock/extensions                              the events fired and the open popup
+//	POST /mock/extensions/hold                         on: 1 holds installs from the store,
+//	                                                   0 lets them go on
 //
 // -store names the folder of packages the mock engine installs from by id, as the real one
 // fetches them from the store: .tools/extensions, as tools/pack-test-extension.py fills it.
@@ -36,6 +38,12 @@ func init() {
 		})
 		mux.HandleFunc("POST /mock/extensions/fire", func(w http.ResponseWriter, r *http.Request) {
 			fake.FireExtension(r.FormValue("kind"), r.FormValue("extension"), r.FormValue("value"))
+		})
+		// on=1 keeps installs from the store from ending, as a store that doesn't answer;
+		// on=0 lets those held go on.
+		mux.HandleFunc("POST /mock/extensions/hold", func(w http.ResponseWriter, r *http.Request) {
+			on := r.FormValue("on") == "1"
+			fake.Post(func() { fake.HoldStoreInstalls(on) })
 		})
 		mux.HandleFunc("GET /mock/extensions", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")

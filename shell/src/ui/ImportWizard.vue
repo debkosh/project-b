@@ -78,13 +78,22 @@ watch(
   },
 );
 
+// An import, and its Retry and Cancel while it runs (docs/ux-guide.md): Retry starts the
+// same import over, Go ending the one going on; a Firefox primary password is kept here for
+// it until the person moves on, and kept nowhere else.
+let lastPrimary = '';
 function bring() {
   asked.value = [...what.value];
-  startRun(key.value);
-  props.send({ t: 'import', key: key.value, what: asked.value, primaryPassword: primary.value });
+  lastPrimary = primary.value;
   primary.value = '';
+  retry();
   view.value = 'importing';
 }
+function retry() {
+  startRun(key.value);
+  props.send({ t: 'import', key: key.value, what: asked.value, primaryPassword: lastPrimary });
+}
+const cancel = () => props.send({ t: 'cancelImport', key: key.value });
 
 // A file the person picked, read here and handed to Go whole.
 async function readFile(kind, event) {
@@ -105,9 +114,15 @@ const fileLines = computed(() => {
   return f.kind === 'passwords' ? [passwordsLine(f.result)] : stepLines('bookmarks', { state: 'done', result: f.result });
 });
 
-const lines = computed(() => asked.value.flatMap((k) => stepLines(k, run.value?.steps[k]).map((l) => ({ ...l, kind: k }))));
+const ended = computed(() => !!run.value?.done && run.value.how !== 'done');
+const lines = computed(() => asked.value.flatMap((k) => stepLines(k, run.value?.steps[k], ended.value).map((l) => ({ ...l, kind: k }))));
+const importingTitle = computed(() => {
+  if (!run.value?.done) return `Importing from ${profileTitle.value}`;
+  return { cancelled: `Cancelled importing from ${profileTitle.value}`, failed: `Couldn't finish importing from ${profileTitle.value}` }[run.value.how] || `Imported from ${profileTitle.value}`;
+});
 
 function again() {
+  lastPrimary = '';
   browser.value = null;
   key.value = null;
   view.value = 'browsers';
@@ -228,7 +243,7 @@ function again() {
 
     <!-- Importing, then what came -->
     <template v-else>
-      <component :is="heading" ref="title" tabindex="-1">{{ run?.done ? 'Imported' : 'Importing' }} from {{ profileTitle }}</component>
+      <component :is="heading" ref="title" tabindex="-1">{{ importingTitle }}</component>
       <p class="sub">{{ run?.done ? 'Bookmarks are on the Bookmarks page, in their own folder.' : 'Each is ticked as it lands.' }}</p>
       <ul class="list steps" :aria-label="`From ${profileTitle}`" :aria-busy="String(!run?.done)">
         <li v-for="(l, i) in lines" :key="i" class="item" :class="[l.state, { left: l.left }]">
@@ -241,7 +256,12 @@ function again() {
           </span>
         </li>
       </ul>
-      <div v-if="run?.done" class="buttons">
+      <div v-if="!run?.done" class="buttons">
+        <button type="button" class="text-button quiet" @click="retry">Retry</button>
+        <button type="button" class="text-button quiet" @click="cancel">Cancel</button>
+      </div>
+      <div v-else class="buttons">
+        <button v-if="ended" type="button" class="text-button" @click="retry">Try again</button>
         <button type="button" class="text-button" @click="again">Import another</button>
       </div>
     </template>

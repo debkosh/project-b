@@ -343,3 +343,42 @@ func TestPasswordsComeOver(t *testing.T) {
 		t.Fatalf("not a bookmarks file: %v", f)
 	}
 }
+
+// While macOS's keychain question waits on the person, a Chromium browser's passwords step
+// says it is asking and its clock doesn't run: it doesn't end as stalled however long the
+// person takes, and goes on once they answer.
+func TestAKeychainQuestionDoesNotStall(t *testing.T) {
+	restore := app.SetStallAfter(100 * time.Millisecond)
+	defer restore()
+	home, _ := filepath.Abs("../../browserdata/testdata/home")
+	dir := t.TempDir()
+	answer := make(chan struct{})
+	keychain := func(service, account string) ([]byte, error) {
+		<-answer
+		return []byte("test-safe-storage"), nil
+	}
+	r := startWith(t, app.Config{ProfileDir: dir, Profiles: profiles.New(t.TempDir()), Made: true, BrowserHome: home, Keychain: keychain, Update: update.Config{StateDir: filepath.Join(dir, "updates")}})
+	snap := r.waitFor(func(m map[string]any) bool { return m["t"] == "snapshot" })
+	tab := engine.TabID(snap["welcome"].(float64))
+	got, stop := r.e.PageFeed(tab).Subscribe()
+	defer stop()
+	say := func(msg string) { r.e.Post(func() { r.a.PageMessage(tab, "welcome", []byte(msg)) }) }
+	r.e.Post(func() { r.a.UsePasswordStore(&fakePasswords{saved: map[string]string{}}) })
+	say(`{"t":"ready"}`)
+	next(t, got, "snapshot")
+	say(`{"t":"findBrowsers"}`)
+	key := profilesOf(browserIn(t, next(t, got, "browsers")["browsers"].([]any), "chrome"))[0]["key"].(string)
+	say(`{"t":"import","key":"` + key + `","what":["passwords"]}`)
+	for s := next(t, got, "importStep"); s["state"] != "asking"; s = next(t, got, "importStep") {
+	}
+	select {
+	case b := <-got:
+		t.Fatalf("while the keychain asked: %s", b)
+	case <-time.After(400 * time.Millisecond):
+	}
+	close(answer)
+	m := next(t, got, "imported")
+	if m["how"] != "done" {
+		t.Fatalf("after the answer: %v", m)
+	}
+}

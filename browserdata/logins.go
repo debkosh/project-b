@@ -63,6 +63,13 @@ func (p Profile) HasPrimaryPassword() bool {
 	return errors.Is(err, ErrPrimaryPassword)
 }
 
+// UsesKeychain says whether reading the profile's passwords asks the login keychain for
+// their key, which macOS asks the person about: a Chromium browser's.
+func (p Profile) UsesKeychain() bool {
+	k, ok := kindOf(p.Browser)
+	return ok && k.family == chromium
+}
+
 // countLogins is how many saved passwords the profile has, without unlocking any.
 func countLogins(p Profile) (int, error) {
 	k, _ := kindOf(p.Browser)

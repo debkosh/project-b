@@ -153,6 +153,8 @@ func (s importStore) Installed(id string) bool {
 	return ok
 }
 
+func (s importStore) Drop(ids []string) { s.m.DropFromStore(ids) }
+
 func (s importStore) Install(id string, done func(failed string)) {
 	s.m.InstallFromStore(id, func(r engine.InstallResult) {
 		failed := r.Error

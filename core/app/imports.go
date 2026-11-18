@@ -39,9 +39,9 @@ type importer struct {
 	// profiles are the profiles the pages have been shown, by key, their folder: the last
 	// look's and each folder chosen.
 	profiles map[string]shownFrom
-	// looking says a look is on; busy are the profiles being brought over, by key.
+	// looking says a look is on; runs are the imports going on, by the profile's key.
 	looking bool
-	busy    map[string]bool
+	runs    map[string]*importRun
 	// waiting says Go is trying the locked profiles' files until they can be read.
 	waiting bool
 	locked  []browserdata.Profile
@@ -74,11 +74,28 @@ type broughtPasswords struct {
 }
 
 // extensionStore is what bringing extensions over needs of the extension manager: whether
-// one is installed, and an install from the store by id, which calls done with why it
-// failed, or "".
+// one is installed, an install from the store by id, which calls done with why it failed,
+// or "", and dropping installs asked for that haven't started.
 type extensionStore interface {
 	Installed(id string) bool
 	Install(id string, done func(failed string))
+	Drop(ids []string)
+}
+
+// stallAfter is how long an import's step may go with nothing new before it ends as
+// failed, as every progress does (docs/ux-guide.md): Go's timers count awake time, so a
+// Mac's sleep doesn't count. Waiting on the person, for macOS's keychain question, doesn't
+// either.
+var stallAfter = 30 * time.Second
+
+// importRun is an import going on: the step it is at, whether that step waits on the
+// person, the extensions it asked the store for that haven't ended, and the clock that
+// ends it when nothing new comes. A late answer for a run that has ended is dropped.
+type importRun struct {
+	step    string
+	asking  bool
+	pending []string
+	stall   *time.Timer
 }
 
 // shownBrowser is a browser as the wizard lists it: its id, which names its logo, its
@@ -137,7 +154,7 @@ func newImporter(a *App, e engine.Engine, home string, keychain func(string, str
 	if keychain == nil {
 		keychain = browserdata.KeychainSecret
 	}
-	return &importer{a: a, e: e, home: home, keychain: keychain, profiles: map[string]shownFrom{}, busy: map[string]bool{}, send: send}
+	return &importer{a: a, e: e, home: home, keychain: keychain, profiles: map[string]shownFrom{}, runs: map[string]*importRun{}, send: send}
 }
 
 // snapshot is what a page starts with: no browsers until a look ends.
@@ -148,7 +165,7 @@ func (im *importer) snapshot(into map[string]any) {
 
 func (im *importer) importing() []string {
 	out := []string{}
-	for k := range im.busy {
+	for k := range im.runs {
 		out = append(out, k)
 	}
 	slices.Sort(out)
@@ -259,6 +276,11 @@ func (im *importer) handle(tab engine.TabID, t string, msg []byte) bool {
 			return true
 		}
 		im.bring(m.Key, m.What, m.PrimaryPassword)
+	case "cancelImport":
+		var m importMessage
+		if json.Unmarshal(msg, &m) == nil {
+			im.end(m.Key, "cancelled")
+		}
 	case "importFile":
 		var m importMessage
 		if err := json.Unmarshal(msg, &m); err != nil {
@@ -345,12 +367,17 @@ func (im *importer) step(key, step, state string, result any, err error) {
 }
 
 // bring brings over what was asked from the profile key, one kind after another: each
-// read on a worker, then added here, and told to the pages as it lands.
+// read on a worker, then added here, and told to the pages as it lands. Asked again while
+// it runs, as Retry does, the run going on ends and a new one starts at once; what came
+// already isn't brought twice.
 func (im *importer) bring(key string, what []string, primaryPassword string) {
 	p, ok := im.profiles[key]
-	if !ok || im.busy[key] || p.Locked() {
-		timeline.Warnf("imports: %q is not a profile shown, is locked, or is being brought over", key)
+	if !ok || p.Locked() {
+		timeline.Warnf("imports: %q is not a profile shown, or is locked", key)
 		return
+	}
+	if im.runs[key] != nil {
+		im.end(key, "retried")
 	}
 	var steps []string
 	for _, s := range importSteps {
@@ -358,45 +385,109 @@ func (im *importer) bring(key string, what []string, primaryPassword string) {
 			steps = append(steps, s)
 		}
 	}
-	im.busy[key] = true
+	r := &importRun{}
+	im.runs[key] = r
+	r.stall = time.AfterFunc(stallAfter, func() { im.e.Post(func() { im.stalled(key, r) }) })
 	im.send(map[string]any{"t": "importing", "importing": im.importing()})
 	folder := folderFor(p)
 	timeline.Infof("imports: bringing %v over from %s", steps, folder)
+	alive := func() bool { return im.runs[key] == r }
 	var next func(i int)
 	next = func(i int) {
 		if i == len(steps) {
-			delete(im.busy, key)
-			timeline.Infof("imports: done with %s", folder)
-			im.send(map[string]any{"t": "imported", "key": key, "importing": im.importing()})
+			im.end(key, "done")
 			return
 		}
 		s := steps[i]
-		im.step(key, s, "doing", nil, nil)
+		r.step = s
+		im.progress(key, r, s, "doing", nil, nil)
 		done := func(result any, err error) {
+			if !alive() {
+				return
+			}
 			if err != nil {
 				timeline.Warnf("imports: %s from %s: %v", s, folder, err)
 			}
-			im.step(key, s, "done", result, err)
+			im.progress(key, r, s, "done", result, err)
 			next(i + 1)
 		}
 		switch s {
 		case "bookmarks":
-			read(p.Bookmarks, func(bs []browserdata.Bookmark, err error) { done(im.addBookmarks(p, folder, bs), err) }, im.e)
+			read(p.Bookmarks, func(bs []browserdata.Bookmark, err error) {
+				if alive() {
+					done(im.addBookmarks(p, folder, bs), err)
+				}
+			}, im.e)
 		case "history":
-			read(p.History, func(pages []browserdata.Page, err error) { done(im.addHistory(pages), err) }, im.e)
+			read(p.History, func(pages []browserdata.Page, err error) {
+				if alive() {
+					done(im.addHistory(pages), err)
+				}
+			}, im.e)
 		case "passwords":
 			// A Chromium browser's key is in the login keychain, which macOS asks the
-			// person about: the worker waits for the answer.
+			// person about: the worker waits for the answer, and the step's clock with it.
+			if p.UsesKeychain() {
+				r.asking = true
+				im.progress(key, r, s, "asking", nil, nil)
+			}
 			keys := browserdata.Keys{Secret: im.keychain, PrimaryPassword: primaryPassword}
 			logins := func() ([]browserdata.Login, error) { return p.Logins(keys) }
-			read(logins, func(ls []browserdata.Login, err error) { done(im.addPasswords(ls), passwordError(err)) }, im.e)
+			read(logins, func(ls []browserdata.Login, err error) {
+				if alive() {
+					r.asking = false
+					done(im.addPasswords(ls), passwordError(err))
+				}
+			}, im.e)
 		case "extensions":
 			read(p.Extensions, func(xs []browserdata.Extension, err error) {
-				im.installExtensions(key, xs, func(x *broughtExtensions) { done(x, err) })
+				if alive() {
+					im.installExtensions(key, r, xs, func(x *broughtExtensions) { done(x, err) })
+				}
 			}, im.e)
 		}
 	}
 	next(0)
+}
+
+// progress tells the pages how a step is going, and starts its clock again: something new
+// came. A step waiting on the person has no clock.
+func (im *importer) progress(key string, r *importRun, step, state string, result any, err error) {
+	if r.asking {
+		r.stall.Stop()
+	} else {
+		r.stall.Reset(stallAfter)
+	}
+	im.step(key, step, state, result, err)
+}
+
+// stalled ends a run whose step went stallAfter with nothing new, as failed.
+func (im *importer) stalled(key string, r *importRun) {
+	if im.runs[key] != r || r.asking {
+		return
+	}
+	timeline.Warnf("imports: %s from %s: nothing for %v; giving up", r.step, key, stallAfter)
+	im.step(key, r.step, "done", nil, errors.New("Stopped: nothing arrived for 30 seconds"))
+	im.end(key, "failed")
+}
+
+// end ends the run of key, if one is going: done, cancelled, failed, or retried, which a
+// new run follows at once. Extension installs it asked for and that haven't started are
+// dropped; a step's late answer finds the run gone and is dropped too.
+func (im *importer) end(key, how string) {
+	r := im.runs[key]
+	if r == nil {
+		return
+	}
+	delete(im.runs, key)
+	r.stall.Stop()
+	if len(r.pending) > 0 && im.store != nil {
+		im.store.Drop(r.pending)
+	}
+	timeline.Infof("imports: %s from %s", how, key)
+	if how != "retried" {
+		im.send(map[string]any{"t": "imported", "key": key, "how": how, "importing": im.importing()})
+	}
 }
 
 // read runs f on a worker and hands what it returned to then on the main thread.
@@ -526,7 +617,7 @@ func (im *importer) addHistory(pages []browserdata.Page) broughtHistory {
 
 // installExtensions installs each extension the store has and this browser hasn't, in
 // turn, telling the pages how far it is, and calls done once the last has ended.
-func (im *importer) installExtensions(key string, xs []browserdata.Extension, done func(*broughtExtensions)) {
+func (im *importer) installExtensions(key string, r *importRun, xs []browserdata.Extension, done func(*broughtExtensions)) {
 	x := &broughtExtensions{Installed: []string{}, Already: []string{}, Failed: []extensionNote{}, Skipped: []extensionNote{}}
 	var want []browserdata.Extension
 	for _, e := range xs {
@@ -544,9 +635,16 @@ func (im *importer) installExtensions(key string, xs []browserdata.Extension, do
 		return
 	}
 	ended := 0
-	im.step(key, "extensions", "doing", map[string]int{"done": 0, "total": len(want)}, nil)
+	for _, e := range want {
+		r.pending = append(r.pending, e.ID)
+	}
+	im.progress(key, r, "extensions", "doing", map[string]int{"done": 0, "total": len(want)}, nil)
 	for _, e := range want {
 		im.store.Install(e.ID, func(failed string) {
+			if im.runs[key] != r {
+				return
+			}
+			r.pending = slices.DeleteFunc(r.pending, func(id string) bool { return id == e.ID })
 			if failed == "" {
 				x.Installed = append(x.Installed, e.Name)
 			} else {
@@ -554,7 +652,7 @@ func (im *importer) installExtensions(key string, xs []browserdata.Extension, do
 			}
 			ended++
 			if ended < len(want) {
-				im.step(key, "extensions", "doing", map[string]int{"done": ended, "total": len(want)}, nil)
+				im.progress(key, r, "extensions", "doing", map[string]int{"done": ended, "total": len(want)}, nil)
 				return
 			}
 			done(x)

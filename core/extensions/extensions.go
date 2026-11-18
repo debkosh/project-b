@@ -224,6 +224,16 @@ func (m *Manager) InstallFromStore(id string, done func(engine.InstallResult)) {
 	}
 }
 
+// DropFromStore drops installs of ids an import asked for that haven't started; one
+// installing ends as it would, and its done is still called.
+func (m *Manager) DropFromStore(ids []string) {
+	if len(m.queue) < 2 {
+		return
+	}
+	rest := slices.DeleteFunc(m.queue[1:], func(s storeInstall) bool { return slices.Contains(ids, s.id) })
+	m.queue = append(m.queue[:1], rest...)
+}
+
 // AnswerPrompt gives the engine the user's answer.
 func (m *Manager) AnswerPrompt(accept bool) {
 	if m.prompt == nil {

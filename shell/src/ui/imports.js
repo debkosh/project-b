@@ -12,7 +12,9 @@ import { reactive } from 'vue';
 // folder: what the last folder chosen was, {browser} or {error}, or {cancelled}; null
 //   while none is asked for.
 // runs: each import by its profile's key: {steps: {bookmarks: {state, result, error}}},
-//   state "doing" or "done", and done once the last has ended. Nothing outlives the page.
+//   state "doing", "asking" (waiting on macOS's keychain question) or "done"; done once it
+//   has ended, and how: "done", "cancelled", or "failed" when a step went 30 s with nothing
+//   new (docs/ux-guide.md). Nothing outlives the page.
 // file: what the last file brought, {kind, name, result} or {kind, name, error}.
 export const imports = reactive({ browsers: null, passwords: false, folder: null, runs: {}, file: null });
 
@@ -34,7 +36,7 @@ export function importMessage(m) {
       return true;
     }
     case 'imported':
-      if (imports.runs[m.key]) imports.runs[m.key].done = true;
+      if (imports.runs[m.key]) Object.assign(imports.runs[m.key], { done: true, how: m.how });
       return true;
     case 'importing':
       return true;
@@ -88,14 +90,18 @@ export function aboutBrowser(b) {
 // stepLines is one kind's lines while it comes and once it has: {text, note, state, left},
 // state "doing", "done", "waiting" or "problem"; left is a line of something left out,
 // which isn't a problem and didn't come.
-export function stepLines(kind, step) {
+export function stepLines(kind, step, ended = false) {
   const label = kinds.find((k) => k.id === kind)?.label || kind;
+  if (ended && (!step || step.state !== 'done')) return [{ text: label, note: 'Not brought over', state: 'done', left: true }];
   if (!step) return [{ text: label, state: 'waiting' }];
   const r = step.result;
+  if (step.state === 'asking') return [{ text: label, note: "Waiting for your answer to macOS's question", state: 'doing' }];
   if (step.state === 'doing') {
     const far = kind === 'extensions' && r?.total ? `${number(r.done)} of ${number(r.total)}` : '';
     return [{ text: label, note: far, state: 'doing' }];
   }
+  // A step that ended with nothing to show, as one that stalled: why, alone.
+  if (step.error && !r) return [{ text: kind === 'passwords' ? "Passwords didn't come" : `${label} didn't come`, note: step.error, state: 'problem' }];
   const lines = [];
   if (kind === 'bookmarks') {
     if (r?.bookmarks) {

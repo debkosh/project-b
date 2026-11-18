@@ -152,7 +152,18 @@ const said = (frame, from) => frame.getByRole('list', { name: `From ${from}` }).
   check('a profile offers its 2 extensions, unticked', await until(() => ext.isVisible()) && (await ex.getByText('4 bookmarks · 3 pages · 2 extensions').isVisible()) && !(await ext.isChecked()));
   for (const name of [/Bookmarks/, /History/]) await ex.getByRole('checkbox', { name }).uncheck();
   await ext.check();
+  // While it runs, Retry and Cancel; cancelled, what didn't come says so, with Try again.
+  // The mock store holds its installs here, as a store that doesn't answer.
+  const hold = (on) => fetch(`${lib.base}/mock/extensions/hold`, { method: 'POST', body: new URLSearchParams({ on: on ? '1' : '0' }) });
+  await hold(true);
   await ex.getByRole('button', { name: 'Import', exact: true }).click();
+  check('a running import has Retry and Cancel', await until(() => ex.getByRole('button', { name: 'Cancel' }).isVisible()) && (await ex.getByRole('button', { name: 'Retry' }).isVisible()));
+  await settle(w.page);
+  await w.page.screenshot({ path: path.join(lib.out, 'settings-import-running.png') });
+  await ex.getByRole('button', { name: 'Cancel' }).click();
+  check('Cancel stops it, and says what didn\'t come', await until(() => ex.getByRole('heading', { name: 'Cancelled importing from Chrome · Personal' }).isVisible()) && (await said(ex, 'Chrome · Personal')).includes('Not brought over'));
+  await hold(false);
+  await ex.getByRole('button', { name: 'Try again' }).click();
   check('the store\'s installs, one the store hasn\'t fails, and those left out say why', await until(async () => {
     const t = await said(ex, 'Chrome · Personal');
     return t.includes('1 extension installed') && t.includes('Project B test extension') && t.includes("uBlock Origin Lite didn't install") &&
