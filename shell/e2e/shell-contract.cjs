@@ -41,7 +41,7 @@ const rules = {
   22: 'A site\'s sign-in shows as an alertdialog with text boxes named Username and Password, and Go\'s Sign in answers with both',
   30: 'A site asking for its camera, microphone or notifications in the active tab brings a dialog named by its question, with Block and Allow, or Block, Always allow and Allow this time; an Allow grants it, Block denies it, Escape dismisses it',
   31: 'On a web page, a control named Site settings opens settings on that site, at once or from its panel\'s Details',
-  33: 'The Site settings control opens a panel over the page, a dialog named Site settings for the site\'s host, with a switch named Ad blocker, a switch named Sparks with the names of the sparks that run on the page, and a choice of Links to other sites, Allow or Block, each Go\'s and each changing Go\'s setting; Escape closes it; a popup Links to other sites closed shows in the address field as a button named by its count, which opens the panel',
+  33: 'The Site settings control opens a panel over the page, a dialog named Site settings for the site\'s host, with a switch named Ad blocker, a switch named Sparks with the names of the sparks that run on the page, and a choice of Links to other sites, Allow or Block, each Go\'s and each changing Go\'s setting; a change that applies when the page loads again says so, with a Reload button; Escape closes it; a popup Links to other sites closed shows in the address field as a button named by its count, which opens the panel',
   32: 'A page that failed to load, or has a bad certificate, is covered by an alert with Go\'s sentence and its actions as buttons; Try again loads it again, and Open anyway opens it',
 };
 
@@ -731,6 +731,10 @@ const noNoticeYet = {
         const sparks = panel.getByRole('checkbox', { name: /^Sparks/ });
         rule(33, 'Sparks is on, naming the sparks that run here', (await until(() => sparks.isChecked())) && (await panel.getByText('Contract spark').isVisible()));
         await sparks.click();
+        const reloadNow = panel.getByRole('button', { name: 'Reload', exact: true });
+        rule(33, 'a change the page needs again says so, with Reload', await until(() => reloadNow.isVisible()));
+        await reloadNow.click();
+        rule(33, 'Reload reloads the page, and the line goes', await until(async () => (await reloadNow.count()) === 0));
         await reopen();
         rule(33, 'switched off, Go keeps sparks off on the site', await until(async () => !(await sparks.isChecked())));
         await sparks.click();
