@@ -27,6 +27,26 @@ const read = (name) => {
 };
 const folders = () => (read('bookmarks.json')?.entries || []).filter((e) => e.kind === 'folder' && e.parent === '').map((e) => e.title);
 
+// A store of this run's own for the mock engine (-store): the test extension packed as the
+// mock reads a package, a CRX3 header with its id and its folder zipped, unsigned, as only
+// the real engine checks a signature. So the test needs nothing fetched.
+const packStore = () => {
+  const store = path.join(lib.profile, '..', 'store');
+  require('child_process').execFileSync('python3', ['-I', '-c', `
+import io, os, struct, sys, zipfile
+src, out, ext = sys.argv[1:4]
+buf = io.BytesIO()
+with zipfile.ZipFile(buf, 'w') as z:
+    for n in sorted(os.listdir(src)):
+        z.write(os.path.join(src, n), n)
+key = bytes((ord(ext[2*i]) - 97) << 4 | (ord(ext[2*i+1]) - 97) for i in range(16))
+header = bytes([0x82, 0xf1, 0x04, 18, 0x0a, 16]) + key
+os.makedirs(os.path.join(out, 'crx'), exist_ok=True)
+open(os.path.join(out, 'crx', ext + '_1.0.crx'), 'wb').write(b'Cr24' + struct.pack('<II', 3, len(header)) + header + buf.getvalue())
+`, path.join(lib.root, 'tools/test-extension'), store, 'oepjjojhhaclfhmopocgmdfbeiffpheh']);
+  return store;
+};
+
 // The test home, copied, with Safari locked until unlock.
 const home = path.join(lib.profile, '..', 'browsers');
 fs.cpSync(lib.browsers, home, { recursive: true });
@@ -137,10 +157,11 @@ process.on('exit', unlock);
   await lib.stop();
 
   // The Extensions flag on: Settings' Import offers Chrome · Personal's extensions,
-  // unticked, and installs them from the mock store by id, with no prompt; those the store
-  // can't have are left out, each with why.
+  // unticked, and installs them by id, with no prompt, from a store of this run's own that
+  // has the test extension and not uBlock Origin Lite, which fails; those no store can have
+  // are left out, each with why.
   flags({ extensions: 'on' });
-  await lib.start(['-use=standard', '-skip-welcome', `-browsers=${home}`, `-store=${path.join(lib.root, '.tools/extensions')}`]);
+  await lib.start(['-use=standard', '-skip-welcome', `-browsers=${home}`, `-store=${packStore()}`]);
   w = await lib.openWindow(browser, { viewport: { width: 1280, height: 800 } });
   await lib.fire('menu', 'app.settings');
   await w.settings.getByRole('button', { name: 'Import', exact: true }).click();
@@ -153,12 +174,13 @@ process.on('exit', unlock);
   await fromChrome.getByRole('button', { name: 'Import', exact: true }).click();
   const ext = w.settings.getByRole('list', { name: 'Brought over from Chrome · Personal' });
   const extText = () => ext.innerText().catch(() => '');
-  check('its extensions install, and those left out say why', await until(async () => {
+  check('the store\'s installs, one the store hasn\'t fails, and those left out say why', await until(async () => {
     const t = await extText();
-    return t.includes('2 extensions installed') && t.includes('Old Notes left out') && t.includes('Manifest V2') && t.includes('my-extension left out') && t.includes('Other Store Helper left out');
+    return t.includes('1 extension installed') && t.includes('Project B test extension') && t.includes("uBlock Origin Lite didn't install") &&
+      t.includes('Old Notes left out') && t.includes('Manifest V2') && t.includes('my-extension left out') && t.includes('Other Store Helper left out');
   }, 10000), await extText());
   check('no install prompt was left over the page', (await w.settings.getByRole('dialog').count()) === 0);
-  check('imports.json keeps them', read('imports.json')?.['chrome/Default']?.extensions?.installed?.length === 2, JSON.stringify(read('imports.json')?.['chrome/Default']?.extensions));
+  check('imports.json keeps them', read('imports.json')?.['chrome/Default']?.extensions?.installed?.length === 1, JSON.stringify(read('imports.json')?.['chrome/Default']?.extensions));
   await settle(w.page);
   await w.page.screenshot({ path: path.join(lib.out, 'settings-extensions.png') });
   check('the extensions import logged no errors', w.errors.length === 0, w.errors.join(' | '));
