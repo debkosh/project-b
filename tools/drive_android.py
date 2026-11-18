@@ -339,6 +339,16 @@ def menu(label):
         press("Menu")
         if until(lambda: find("shell", label=label), 5) is not None:
             break
+    # The sheet slides up: an item found while it moves is tapped where it was, which can be
+    # another item by then (Find in page opened Bookmarks). Its place twice the same first.
+    where = lambda: (lambda n: n.get("bounds") if n is not None else None)(find("shell", label=label))
+    last = None
+    for _ in range(20):
+        now = where()
+        if now is not None and now == last:
+            break
+        last = now
+        time.sleep(0.15)
     press(label)
 
 
@@ -1007,8 +1017,16 @@ def find_in_page():
     menu("Find in page")
     field = until(lambda: find("shell", kind=FIELD, focused="true", label=lambda l: l != "Address"))
     check("Find in page in the menu opens the find bar with the keyboard in it", field is not None)
+    # The word in the field before its count: input text can be lost while the keyboard is
+    # still coming up (a flake on emu-37 in 0.2.99), so it types once more if it didn't land.
+    typed = lambda: find("shell", kind=FIELD, text=lambda t: (t or "").lower() == "to")
     type_text("to")
-    check("a word typed is found in the page and counted", until(lambda: find("shell", text="1/1")) is not None)
+    if until(typed, 5) is None:
+        tap(middle(field))
+        type_text("to")
+    shown = find("shell", kind=FIELD, focused="true")
+    check("a word typed is found in the page and counted", until(lambda: find("shell", text="1/1")) is not None,
+          "the field holds %r" % (shown.get("text") if shown is not None else None))
     shot("31-find")
     key(4)
     if find("shell", text="1/1") is not None:
