@@ -46,28 +46,74 @@ checks it by role and name.
 
 ## Sparks
 
-Userscripts, as other browsers' site scripts: JavaScript only, no extension APIs, each in a world of
-its own on the page.
+Userscripts, as other browsers' site scripts: JavaScript only, no extension APIs, each run in
+the page's own world, as other userscript managers run a script that asks for no extension APIs.
 
 - **Kept by Go**, the profile's `sparks/` folder, one `.user.js` per spark as the person
   wrote or imported it, and `sparks.json` for each one's id and whether it is on. At most
   25 sparks, each at most 140 KB.
-- **The header**, the common one: `// ==UserScript==` with `@name` (needed), `@description`,
-  `@match` (needed, one or more, Chrome's match patterns), `@exclude-match`, `@run-at`
-  (`document-start` or `document-end`, the default) and `@noframes`. Go parses it, and
-  refuses a file without a name or a match, saying why.
+- **The header**, the common one: `// ==UserScript==` with `@name` (needed), `@namespace`,
+  `@version`, `@description`, `@match` (needed, one or more, Chrome's match patterns),
+  `@exclude-match`, `@run-at` (`document-start` or `document-end`, the default) and
+  `@noframes`. Go parses it, and refuses a file without a name or a match, saying why.
+  `@name` with `@namespace` says which spark a file is, as other userscript managers have
+  it: an import of the same pair is that spark again.
 - **Matching is Go's** (`core/sparks`). When a frame of a tab is about to commit a page,
   the engine asks Go which scripts go in it (`PB_EVENT_SPARKS_FOR`, 47: the tab, the
   frame's address, whether it is the tab's own frame), and Go answers with the sparks that are on, match, aren't excluded, aren't off
   for the tab's site, and aren't `@noframes` for a subframe: each its id, its source and
   when it runs.
-- **The adapter injects** each into an isolated world of its own, numbered from 2^28 up, at
-  document start or document end: the browser hands the frame its sparks over
-  `project_b.mojom.Frame` before the commit, and the renderer runs each when its moment
-  comes, or at once when they arrive after it. It knows nothing of headers or patterns.
-- **Settings** gets a Sparks section: the list with a switch each, New (an editor: a plain
-  text area for the first version), Import (the file chooser) and Export (the Save panel),
-  and Delete.
+- **The adapter runs** each in the page's own world, each in a function of its own so no two
+  clash over a name, at document start or document end: the browser hands the frame its
+  sparks over `project_b.mojom.Frame` before the commit, and the renderer runs each when
+  its moment comes, or at once when they arrive after it. It knows nothing of headers or
+  patterns. Run in the page's world, a spark sees and can change what the page does: it can
+  replace one of the page's functions, or the browser's own, such as `window.open`.
+- **The page's policy gives way for styles.** A site's security policy that allows only its
+  own styles would block the styles a spark adds. Where a spark runs, the browser asks Go
+  for the frame's sparks as the response comes (a navigation throttle in
+  `engine/browser/site_features.cc`), and when there are any, each of the response's
+  policies has `style-src`, `style-src-elem` and `style-src-attr` set to allow any style,
+  inline ones too, before the page commits with it. Every other rule stays as the site set
+  it: scripts, frames, connections, and Trusted Types.
+- **Settings** gets a Sparks section: New on its heading line, with a ⋯ menu of Import…
+  and Export… beside it, the count of 25 under it, and a row for each spark: its name,
+  where it runs ("every site" for `<all_urls>`), its switch, and a menu (⋯, or a
+  right-click) of Edit…, Export and Delete. A tap on the row edits it. New and Edit open
+  the editor, a plain text area for the first version, under the list.
+- **Import…** takes any number of files at once, from the system's picker on the Mac and on
+  a phone: each `.user.js`, and each `.zip` of them. A zip gives every `.user.js` in it, at
+  any depth, and leaves out the rest, such as a Mac's `__MACOSX` folder, hidden files and
+  READMEs. The page sends Go each file as base64 (`sparkImport`); Go reads the sparks out
+  of them (`core/sparks/archive.go`) and sorts them (`import.go`):
+  - one the profile already has, with the same source, is already here;
+  - one the same import holds twice is used the first time;
+  - one the profile has with another source is a clash. Go sends the clashes
+    (`sparkClashes`), and one dialog asks about each: **Replace** (the source goes in place
+    of the one kept, which keeps its id, its switch and its switches for each site),
+    **Rename** (both are kept, the new one as "Name 2", its header's `@name` rewritten) or
+    **Ignore**. Replace is chosen to start with. Import (`sparkImportKeep`) keeps them;
+    Cancel or Escape (`sparkImportCancel`) leaves everything as it was;
+  - the rest are added, on, while there is room for 25.
+  Go then says what it did (`sparkImported`), and the same dialog shows it: the title says
+  it once ("Added dhd 2 · 3 already here"), and a row for each spark gives its name and
+  what became of it, or why it was not imported.
+- **Export**: a row's Export downloads that spark's `.user.js`. Export… is a dialog listing
+  every spark that reads, ticked, under All; Export N sparks downloads `Sparks.zip` of
+  those ticked (`sparkExport`, `sparkZip`): each kept file as it is, named by its spark,
+  which Import here and other userscript managers read back. Both go through our
+  downloads.
+
+### Decisions, 2026-11-18
+
+- Where sparks run: in the page's own world. The owner: "yes we would like to be running on
+  the page itself.. since that gives more possibilities right... we can override stuff and
+  what not".
+- What gives way: "ok to styling ease only".
+- His block popup spark is not a built-in: "the block popup we do not need since we already
+  built the stay on site feature... so drop that".
+- Import and export: "import and export should work.. and we should be able to import and
+  export zip... import overwrites after user prompt... replace rename ignore".
 
 ## Links to other sites
 

@@ -8,8 +8,9 @@ this page (roles/tester.md).
 The seams:
 
 - **Engine and adapter**, our C++ between Chromium and Go. Chromium has rules it doesn't
-  check until run time, and breaking one kills a process. Three so far: StackBlitz, the quit
-  crash, the Android blank shell.
+  check until run time, and breaking one kills a process, and duties it leaves to us. Five
+  so far: StackBlitz, the quit crash, the Android blank shell, file uploads on Android,
+  sparks on strict sites.
 - **The network across sleep.** A download that stops receiving waits for ever unless
   something gives up on it. Two so far: downloads after sleep, the stuck updater.
 - **Shell layers.** What lies over the page has to stay under the shell's own menus. One so
@@ -53,6 +54,37 @@ The seams:
 - **Guard:** the settings page's test narrows the line to a phone's width while an update
   downloads, and checks Retry and Cancel sit on the words' line with the progress line under
   the words (`shell/e2e/settings.cjs`, both layouts).
+
+## Sparks import, and file uploads on Android, 2026-11-18
+
+- **Seen:** Settings' Sparks Import did nothing on a phone. On the Mac it took one file only,
+  no zip, and a spark imported again was added as a second copy.
+- **Cause:** on Android no web page could open a file picker at all, our own pages and every
+  site's upload button alike: only the Mac's window asked Go and opened one, and without
+  that Chromium says no. Import itself had been built for one file into the editor, with
+  nothing that knew a spark it already had.
+- **Seam:** engine and adapter: a browser duty Chromium leaves to the embedder, done on one
+  platform only.
+- **Fix:** d8f71c3e: Android opens the phone's own picker, through Go as the Mac does. 39b3d2e6
+  and d746d5ab: Import… takes any number of .user.js files and zips, asks Replace, Rename or
+  Ignore for a spark already there, by @name and @namespace, and says what it did; Export…
+  makes a zip.
+- **Guard:** the settings e2e imports the owner's own sparks from a zip a Mac made, settles
+  each clash, and reads an export back (d746d5ab); the Android driver's file_inputs part opens
+  the picker from a page and from Settings, and imports a zip (b916ac84).
+
+## Sparks unstyled on strict sites, 2026-11-18
+
+- **Seen:** on a site that allows only its own styles, as GitHub does, the downloader spark's
+  button drew without its styles.
+- **Cause:** the page's security policy blocked the <style> the spark added, as it would
+  the page's own.
+- **Seam:** engine and adapter: the page's rules applied to what we add to the page.
+- **Fix:** e7ce4b52: sparks run in the page's own world, as the owner chose, and where one
+  runs, the page's policy has its style rules eased before the page commits; every other
+  rule stays.
+- **Guard:** drive_first_app's sparks part: a spark's <style> applies on such a page, and the
+  owner's Page Cleanup and Limit Screen Time draw there, styled (ea1e28ef).
 
 ## The emulators' memory, 2026-11-18
 
