@@ -245,6 +245,21 @@ fs.writeFileSync(path.join(lib.profile, 'bookmarks.json'), JSON.stringify({ vers
   const topOnTop = await pageTop();
   await settle(page);
   await page.screenshot({ path: path.join(lib.out, 'standard-bookmarks-bar-top.png') });
+
+  // The colours made up for items (tint.js): a site's tile from its host and a folder's icon
+  // from its id, each the same every time, made again for the theme.
+  const tile = bar.locator('.site-mark.letter').first();
+  const tileColours = () => tile.evaluate((e) => getComputedStyle(e).backgroundColor + ' ' + getComputedStyle(e).color);
+  const strokes = () => bar.locator('svg.icon').evaluateAll((l) => l.map((e) => getComputedStyle(e).stroke));
+  const light = await tileColours();
+  const folderStrokes = await strokes();
+  check('folders\' icons each take a colour of their own', new Set(folderStrokes).size === folderStrokes.length && folderStrokes.length > 1, folderStrokes.join());
+  await setPref('theme', 'dark');
+  check('a site\'s tile is made again for dark', await until(async () => (await tileColours()) !== light), light);
+  await setPref('theme', 'light');
+  check('and is the same again in light', await until(async () => (await tileColours()) === light), await tileColours());
+  check('as are the folders\' icons', JSON.stringify(await strokes()) === JSON.stringify(folderStrokes));
+  await setPref('theme', 'system');
   await setPref('bookmarksBar', false);
   check('with its pref off the bar goes, and the page takes its room', await until(async () => (await bar.count()) === 0 && (await pageTop()) === topOnTop - barOnTop.height));
   await fire('menu', 'view.tabsSide');
