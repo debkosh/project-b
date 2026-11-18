@@ -37,6 +37,11 @@ export const state = reactive({
   // would take, by the range's name, as Go last said; null before the dialog asks.
   cleared: null,
   clearCounts: null,
+  // The Downloads folder, the whole path, where downloads go while the pref downloadFolder
+  // is "".
+  downloadsFolder: '',
+  // The person's home folder, which Save to shows as ~.
+  homeFolder: '',
   // Whether the app is the system's default browser, as the page opened or since it asked.
   isDefault: false,
   running: '',
@@ -118,6 +123,8 @@ export function connect() {
             workspaceTabs: m.workspaceTabs,
             siteSettings: m.siteSettings,
             sites: m.sites || [],
+            downloadsFolder: m.downloadsFolder || '',
+            homeFolder: m.homeFolder || '',
             sparks: m.sparks || [],
             siteKinds: m.siteKinds,
             siteConnections: m.siteConnections,

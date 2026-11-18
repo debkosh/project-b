@@ -18,7 +18,7 @@ Every setting is on one scrolling page, in five groups by task:
 | Group | What is in it |
 |---|---|
 | Look | Theme, Frame colour, Tab layout (desktop), Address bar (phone), Shell |
-| Browsing | On start, Search engine, Keys, Keyboard shortcuts (desktop), Workspaces, Bookmarks, Downloads: Ask where to save (desktop) |
+| Browsing | On start, Search engine, Keys, Keyboard shortcuts (desktop), Workspaces, Bookmarks, Downloads: Save to and Ask where to save (desktop) |
 | Privacy | Clear browsing data, Sites, Block ads |
 | Your data | Profile name, Template, Import from other browsers, Run setup again |
 | Advanced | Automatic updates, Sparks, Extensions (with its flag on), Web features, Flags |
@@ -39,7 +39,7 @@ Like Chrome's settings: a list of sections, one showing at a time.
 | Start and search | On start, Search engine |
 | Workspaces | The workspaces |
 | Bookmarks | Where bookmarks show, and the bar |
-| Downloads (desktop) | Ask where to save each file |
+| Downloads (desktop) | Save to, Ask where to save each file |
 | Privacy and sites | Clear browsing data, Block ads, Sites, which opens as a page of its own |
 | Keyboard (desktop) | Keys, and the keyboard shortcuts |
 | Profile and import | Profile name, Template, Import from other browsers, Run setup again |
@@ -98,6 +98,23 @@ sections on a phone.
   workspace: the engine's `EraseWorkspace` with the site named, a filter by registrable
   domain, since cookies are kept by domain and no host's can go alone. The settings stay.
 
+## Downloads
+
+- **Save to**, a desktop's, is the folder downloads are saved in, by its name on a button
+  with the whole path under it, the home folder as ~ and a long one cut in the middle: the
+  Downloads folder, or the pref `downloadFolder`, a whole path. The button asks for another in
+  the system's folder panel on the settings tab's window, through the engine's `ChooseFolder`,
+  the one Import's "Choose a folder" uses (`choose_folder`, `PB_EVENT_FOLDER_CHOSEN`): the
+  panel's answer is Save to's when Save to opened it on that window, else the importer's
+  (`App.FolderChosen`, `core/app/folders.go`). The folder chosen becomes the pref, and Go's
+  downloads manager saves there from then on (`core/app/download_folder_settings.go`). Use
+  Downloads, there while another folder is chosen, goes back. A phone saves to its shared
+  Downloads and has no Save to. The owner, 2026-11-18: "in phones no save to... less code to
+  maintain" (a folder of its own would come from Android's Storage Access Framework as a
+  content URI, which the engine would have to write each download through).
+- **Ask where to save each file** opens the Save panel for every download, at the file Go
+  would have saved.
+
 ## Search
 
 Both layouts search every setting from one field: at the top of the page, at the top of the
@@ -114,7 +131,9 @@ is as it was; going anywhere, from the rail, the list or a row found, ends the s
 ## On a phone
 
 The phone reaches every setting. What makes no sense there stays off it: Tab layout, Keys and
-Keyboard shortcuts, Extensions, and Ask where to save (a phone has no Save panel).
+Keyboard shortcuts, Extensions, Ask where to save (a phone has no Save panel), Save to (a phone
+saves to its shared Downloads) and Clear cookies when the app quits (a phone's app has no quit
+of its own).
 
 ## Parts, and how they are arranged
 
@@ -144,7 +163,8 @@ profile whose flag names it; it goes to each part as a person does, by the rail,
 sections and the rows that open the lists. Each run also switches the flag to the other layout
 and back, in the same page; checks the status line (not the default browser, Make default
 browser, then the default; the version, and Check for updates reaching the release server
-once), Block ads, Ask where to save, Clear browsing data's dialog, Sites with what two
+once), Block ads, Ask where to save, Save to with a folder chosen and Use Downloads, Clear
+browsing data's dialog, Sites with what two
 sites keep, a site's Clear data and a site's page with its Clear, and Clear cookies when
 the app quits with a site kept from its page; searches (rows found
 working in place, the counts, a section's name, nothing found, Escape, a list found); and walks
@@ -157,7 +177,8 @@ tabs open, and a range: the pages each would take, and what the last hour clears
 `site_data_settings_test.go` Sites by site, in every workspace, without an extension's
 storage, and a site's Clear and Clear all; `quit_erasure_test.go` what a quit erases as
 the switch, the kept sites and the workspaces change; `sitefeatures_test.go` Block ads;
-`downloads_test.go` Ask where to save. On the real engine, `tools/drive_first_app.py
+`downloads_test.go` Ask where to save; `download_folder_settings_test.go` Save to's Change…, a
+panel closed with none or a path that is no folder, and back to Downloads. On the real engine, `tools/drive_first_app.py
 sitedata` counts what pages in two workspaces kept, clears the site in both, and clears
 from the last hour; `quiterase` quits with a site kept and finds, after a restart, the
 other site's cookies and storage gone in both workspaces and the kept site's there.

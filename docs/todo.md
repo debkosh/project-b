@@ -24,11 +24,9 @@ Take an item off when it lands or is dropped.
   - *12, settings for a daily browser:* built 2026-11-18 in two layouts the Settings layout
     flag switches ([settings.md](settings.md)): search, the status line with the default
     browser, Clear browsing data, Block ads on every site, Ask where to save, Import and Run
-    setup again. What the owner kept that needs the engine first, so has no row yet:
-    - *Download location:* a folder chooser for Go. `ChoosePath` is the extensions' (Mac,
-      and only in a build with them); it has to be the engine's own. On Android a folder
-      comes from the Storage Access Framework as a content URI, not a path, so the engine
-      has to write the download there itself.
+    setup again; then Clear browsing data from a time, Sites with each site's data, Clear
+    cookies when the app quits and Save to, a desktop's (the owner, 2026-11-18: "in phones
+    no save to... less code to maintain").
   - *13, a first-run walkthrough:* bring bookmarks, history and passwords over from another
     browser on the first start, as Edge does. L. Discussed first.
   - *14, saved passwords and autofill* (daily-use row 12). L.

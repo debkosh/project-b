@@ -77,6 +77,9 @@ type Prefs struct {
 	// phone's app has no quit of its own. docs/settings.md.
 	ClearCookiesOnQuit bool     `json:"clearCookiesOnQuit"`
 	KeepCookies        []string `json:"keepCookies"`
+	// DownloadFolder is the folder downloads are saved in, a whole path, "" for the
+	// Downloads folder. A desktop's. docs/settings.md.
+	DownloadFolder string `json:"downloadFolder"`
 }
 
 // Defaults are the settings before the user changes any.
@@ -144,6 +147,9 @@ func New(dir string) *Manager {
 				s.BookmarksBarFolder = ""
 			}
 			s.KeepCookies = keptSites(s.KeepCookies)
+			if !isFolder(s.DownloadFolder) {
+				s.DownloadFolder = ""
+			}
 			m.prefs = s
 		}
 	}
@@ -328,6 +334,20 @@ func (m *Manager) SetBlockAds(on bool) { m.setSwitch(&m.prefs.BlockAds, on) }
 // SetAskWhereToSave turns on or off asking where each download goes.
 func (m *Manager) SetAskWhereToSave(on bool) { m.setSwitch(&m.prefs.AskWhereToSave, on) }
 
+// SetDownloadFolder saves downloads in a folder, a whole path, from now on, or in the
+// Downloads folder for "".
+func (m *Manager) SetDownloadFolder(dir string) {
+	if !isFolder(dir) || dir == m.prefs.DownloadFolder {
+		return
+	}
+	m.prefs.DownloadFolder = dir
+	m.save()
+	m.changed()
+}
+
+// isFolder reports whether a download folder is one: "" or a whole path.
+func isFolder(dir string) bool { return dir == "" || filepath.IsAbs(dir) }
+
 // SetClearCookiesOnQuit turns on or off erasing cookies and site storage as the app quits.
 func (m *Manager) SetClearCookiesOnQuit(on bool) { m.setSwitch(&m.prefs.ClearCookiesOnQuit, on) }
 
@@ -409,6 +429,8 @@ func (m *Manager) Set(name, value string) bool {
 		if value == "true" || value == "false" {
 			m.SetAskWhereToSave(value == "true")
 		}
+	case "downloadFolder":
+		m.SetDownloadFolder(value)
 	case "clearCookiesOnQuit":
 		if value == "true" || value == "false" {
 			m.SetClearCookiesOnQuit(value == "true")
@@ -446,6 +468,7 @@ func (m *Manager) Apply(values json.RawMessage) error {
 	m.SetAskWhereToSave(p.AskWhereToSave)
 	m.SetClearCookiesOnQuit(p.ClearCookiesOnQuit)
 	m.setKeepCookies(p.KeepCookies)
+	m.SetDownloadFolder(p.DownloadFolder)
 	return nil
 }
 

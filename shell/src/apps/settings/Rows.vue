@@ -37,6 +37,18 @@ const adsHint = computed(() => {
   return n ? `On every site, but ${n === 1 ? 'the one' : `the ${n}`} you turned it off for` : 'On every site';
 });
 
+// Save to: the folder downloads go to, the pref's or the Downloads folder Go named, by its
+// own name, the whole path under it with the home folder as ~, and a long one cut in the
+// middle, which keeps both ends.
+const folder = computed(() => state.prefs.downloadFolder || state.downloadsFolder);
+const folderName = computed(() => folder.value.split('/').filter((x) => x).pop() || folder.value);
+const folderPath = computed(() => {
+  const home = state.homeFolder;
+  const p = home && (folder.value === home || folder.value.startsWith(`${home}/`)) ? `~${folder.value.slice(home.length)}` : folder.value;
+  const most = 56;
+  return p.length > most ? `${p.slice(0, 24)}…${p.slice(p.length - (most - 25))}` : p;
+});
+
 // Clear cookies when the app quits says how many sites are kept.
 const quitHint = computed(() => {
   const n = state.prefs.keepCookies?.length || 0;
@@ -135,7 +147,16 @@ const layouts = [
     />
   </Row>
 
-  <Row v-else-if="part === 'askWhereToSave'" tag="label" label="Ask where to save each file" hint="Each download opens the Save panel, as Save Link As does; off, files go straight to Downloads">
+  <!-- Where downloads go: Change… asks in the system's panel, through Go and the engine. -->
+  <Row v-else-if="part === 'downloadFolder'" label="Save to" :hint="folderPath">
+    <button v-if="state.prefs.downloadFolder" type="button" class="text-button quiet" @click="setPref('downloadFolder', '')">Use Downloads</button>
+    <button type="button" class="text-button folder" :aria-label="`Save to ${folderName}, Change…`" @click="send({ t: 'chooseDownloadFolder' })">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M2 4.25c0-.69.56-1.25 1.25-1.25h3.1l1.5 1.75h4.9c.69 0 1.25.56 1.25 1.25v6.25c0 .69-.56 1.25-1.25 1.25h-9.5C2.56 13.5 2 12.94 2 12.25z" /></svg>
+      {{ folderName }}
+    </button>
+  </Row>
+
+  <Row v-else-if="part === 'askWhereToSave'" tag="label" label="Ask where to save each file" hint="Each download opens the Save panel, as Save Link As does; off, files go straight to the Save to folder">
     <input
       type="checkbox"
       role="switch"
@@ -162,5 +183,12 @@ const layouts = [
 .touch .colours :deep(.ui-swatches) {
   flex-basis: 100%;
   flex-wrap: wrap;
+}
+
+/* Save to's folder: its icon before its name. */
+.folder {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 </style>

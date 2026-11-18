@@ -23,6 +23,8 @@ const where = {
   keyboard: () => !phone,
   // A phone has no Save panel: a download goes to its Downloads.
   askWhereToSave: () => !phone,
+  // A phone saves to its shared Downloads.
+  downloadFolder: () => !phone,
   // A phone's app has no quit of its own: Android ends it when it likes.
   clearOnQuit: () => !phone,
   // Android keeps each app's data from the others, so a phone has no browser to bring
@@ -97,7 +99,7 @@ const page = [
     id: 'browsing',
     label: 'Browsing',
     hint: 'Starting, searching, keys, workspaces and bookmarks',
-    cards: [['start', 'searchEngine', 'keys', 'keyboard', 'workspaces'], 'bookmarks', { heading: 'Downloads', rows: ['askWhereToSave'] }],
+    cards: [['start', 'searchEngine', 'keys', 'keyboard', 'workspaces'], 'bookmarks', { heading: 'Downloads', rows: ['downloadFolder', 'askWhereToSave'] }],
   },
   { id: 'privacy', label: 'Privacy', hint: 'What sites can do and what they keep', cards: [['clearData', 'sites', 'clearOnQuit', 'blockAds']] },
   { id: 'data', label: 'Your data', hint: 'This profile and what you bring in', cards: [['profile'], 'import', ['runSetup']] },
@@ -180,8 +182,12 @@ const sectionList = () => [
     id: 'downloads',
     label: 'Downloads',
     icon: 'download',
-    cards: [['askWhereToSave']],
-    summary: () => (state.prefs.askWhereToSave ? 'Ask where to save each file' : 'To the Downloads folder'),
+    cards: [['downloadFolder', 'askWhereToSave']],
+    summary: () => {
+      if (state.prefs.askWhereToSave) return 'Ask where to save each file';
+      const f = state.prefs.downloadFolder;
+      return f ? `To ${f.split('/').filter((x) => x).pop() || f}` : 'To the Downloads folder';
+    },
   },
   { id: 'keyboard', label: 'Keyboard', icon: 'keyboard', cards: [['keys'], 'keyboard'], summary: () => '' },
   { id: 'profile', label: 'Profile and import', icon: 'profile', cards: [['profile'], 'import', ['runSetup']], summary: () => state.profile?.name || '' },

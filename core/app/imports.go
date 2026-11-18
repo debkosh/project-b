@@ -294,10 +294,9 @@ func (im *importer) handle(tab engine.TabID, t string, msg []byte) bool {
 	return true
 }
 
-// FolderChosen reads the folder the person chose as a browser's and tells the pages: the
+// folderChosen reads the folder the person chose as a browser's and tells the pages: the
 // browser with its profiles, or why it isn't one. None chosen tells them so.
-func (a *App) FolderChosen(_ engine.WindowID, path string) {
-	im := a.imports
+func (im *importer) folderChosen(path string) {
 	if path == "" {
 		im.send(map[string]any{"t": "folder", "cancelled": true})
 		return

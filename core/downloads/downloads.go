@@ -74,6 +74,12 @@ func New(e engine.Engine, profile, dir string) *Manager {
 	return &Manager{e: e, file: filepath.Join(profile, "downloads.json"), dir: dir, next: 1, byEngine: map[engine.DownloadID]*Item{}}
 }
 
+// SetDir is where files are saved from now on.
+func (m *Manager) SetDir(dir string) { m.dir = dir }
+
+// Dir is where files are saved.
+func (m *Manager) Dir() string { return m.dir }
+
 // Load reads the list kept from the last run.
 func (m *Manager) Load() {
 	b, err := os.ReadFile(m.file)

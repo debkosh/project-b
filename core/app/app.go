@@ -91,6 +91,11 @@ type App struct {
 	// siteData is what each workspace's storage held when the engine last counted it, by
 	// its id (site_data_settings.go). Main thread.
 	siteData map[string][]engine.SiteData
+
+	// choosingFolder is the window whose folder panel Save to's Change… opened, 0 for
+	// none (download_folder_settings.go). Main thread.
+	choosingFolder engine.WindowID
+
 	Crash    *crash.Manager
 	Tabs     *tabs.Manager
 	History  *history.Manager
@@ -260,6 +265,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Settings.AddPart(a.clearDataSettingsPart(e))
 	a.Settings.AddPart(a.siteDataSettingsPart(e))
 	a.Settings.AddPart(a.keepCookiesSettingsPart())
+	a.Settings.AddPart(a.downloadFolderSettingsPart(e, cfg.DownloadsDir))
 	a.registerActions(e)
 
 	a.Tabs.AddGate(a.Policy.IsAllowedURL)

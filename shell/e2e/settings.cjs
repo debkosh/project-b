@@ -255,7 +255,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   const sectionOf = {
     theme: 'appearance', frameColour: 'appearance', tabLayout: 'appearance', shell: 'appearance', start: 'start', searchEngine: 'start',
     workspaces: 'workspaces', bookmarks: 'bookmarks', sites: 'privacy', keys: 'keyboard', keyboard: 'keyboard', profile: 'profile',
-    sparks: 'extensions', blockAds: 'privacy', clearData: 'privacy', clearOnQuit: 'privacy', askWhereToSave: 'downloads', version: 'about', autoUpdate: 'about', flags: 'flags', webFeatures: 'webFeatures',
+    sparks: 'extensions', blockAds: 'privacy', clearData: 'privacy', clearOnQuit: 'privacy', askWhereToSave: 'downloads', downloadFolder: 'downloads', version: 'about', autoUpdate: 'about', flags: 'flags', webFeatures: 'webFeatures',
   };
   const show = async (part) => {
     if (sectionsLayout) {
@@ -475,6 +475,21 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   check('on, it is saved', await until(() => prefsFile().askWhereToSave === true));
   await askWhere.click();
   await until(() => prefsFile().askWhereToSave === false);
+
+  // Save to: the Downloads folder to start; Change… takes the folder the system's panel
+  // chose, here the mock's, and Use Downloads goes back.
+  await show('downloadFolder');
+  const saveTo = page.locator('.row', { has: page.getByText('Save to', { exact: true }) });
+  check('Save to is the Downloads folder to start', await until(async () => (await saveTo.textContent()).includes('Downloads') && (await saveTo.getByRole('button', { name: 'Use Downloads' }).count()) === 0));
+  const chosenFolder = fs.mkdtempSync(path.join(os.tmpdir(), 'pb-saved-'));
+  await fetch(`${base}/mock/fire`, { method: 'POST', body: new URLSearchParams({ kind: 'choose', value: chosenFolder }) });
+  await saveTo.getByRole('button', { name: /Change…/ }).click();
+  check('Change… takes the folder chosen, and says so', await until(async () => prefsFile().downloadFolder === chosenFolder && (await saveTo.textContent()).includes(path.basename(chosenFolder))),
+    JSON.stringify(prefsFile()));
+  await settle(page);
+  await page.screenshot({ path: shot('settings-downloads') });
+  await saveTo.getByRole('button', { name: 'Use Downloads' }).click();
+  check('Use Downloads goes back to the Downloads folder', await until(() => prefsFile().downloadFolder === ''));
 
   // Search: the rows whose label, second line or section's name has the words, each in
   // its section, working in place, and the sections counted; Escape puts the page back.
@@ -1073,8 +1088,9 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
       await page.locator('.list-page .list-head .back').click();
       await until(async () => (await page.locator('.list-page').count()) === 0);
     }
-    check('on a phone there is no Tab layout, Keys, Keyboard shortcuts, Ask where to save or Clear cookies when the app quits', (await page.getByRole('radiogroup', { name: 'Tab layout' }).count()) === 0 &&
+    check('on a phone there is no Tab layout, Keys, Keyboard shortcuts, Ask where to save, Save to or Clear cookies when the app quits', (await page.getByRole('radiogroup', { name: 'Tab layout' }).count()) === 0 &&
       (await page.getByRole('switch', { name: /Ask where to save/ }).count()) === 0 && (await page.getByRole('switch', { name: /Clear cookies when the app quits/ }).count()) === 0 &&
+      (await page.locator('.row', { has: page.getByText('Save to', { exact: true }) }).count()) === 0 &&
       (await page.getByRole('radiogroup', { name: 'Keys' }).count()) === 0 && (await page.locator('[data-section="keyboard"]').count()) === 0);
     check('and every other part is there', (await page.getByRole('radiogroup', { name: 'Address bar' }).count()) === 1 && (await page.getByLabel('Profile name').count()) === 1 &&
       (await page.getByRole('button', { name: 'Close the app' }).count()) === 1 && (await page.getByRole('region', { name: 'Flags', exact: true }).count()) === 1 &&
