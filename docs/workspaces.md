@@ -287,9 +287,9 @@ Each commit builds, leaves a working app, and carries its tests.
   refusal of the last one is in one place, the list's (`workspaces.Manager.Delete`), and
   nothing closes for a delete refused. Both happen in one call, so the erase still comes
   after the tabs are gone.
-- A delete closes the workspace's tabs and nothing more: a window that held only them stays
-  open with none, as a window does when its last tab closes
-  ([windows.md](windows.md#a-window-with-no-tabs)).
+- A delete closes the workspace's tabs, and a window that held only them gets a new tab in
+  the first workspace before they close, so it stays open: a window always has a tab
+  ([windows.md](windows.md#every-window-has-a-tab-decided-2026-11-18)).
 
 ## Not in this step
 

@@ -348,10 +348,9 @@ keeps them off.
 **The new tab.** A tab with nothing in it shows the shell's own command box where the page
 would be, drawing this list; the look is the standard shell session's mock. Glide's Command
 Bar moves onto this list, in place of its own search of tabs and actions. In Standard, New Tab
-over a page opens the box over it: the page shows faintly through a scrim of the bar's tint
-at 80%, the owner's choice on 2026-11-15 ("a partial opacity backdrop will do", raised "so as
-to not clutter the interface"), with no blur,
-since the page is a view under the shell. A window with no tabs keeps the plain tint.
+goes to the window's new tab, opening one when there is none, and the box shows on it
+(the owner, 2026-11-18, [windows.md](windows.md#every-window-has-a-tab-decided-2026-11-18)); the box over a page, with
+its scrim, went then.
 
 ## Permissions
 

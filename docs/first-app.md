@@ -137,8 +137,7 @@ the last one the engine reported as the key window (`WindowFocused`), or the one
 last. Keys, menu items and commands act on the active tab of the window in front, and
 the menu shows its state. File, New Window (Cmd+N) opens a window with one new tab, a
 little down and right of the window in front, the same size. Closing a window's last tab
-leaves it open with no tabs, and Close Tab then closes it
-([windows.md](windows.md#a-window-with-no-tabs)); its own close button closes it and its
+closes the window ([windows.md](windows.md#every-window-has-a-tab-decided-2026-11-18)); its own close button closes it and its
 tabs; closing the last window quits, and Quit ends the app with every window at once. A
 tab a page opens goes in its opener's window, and one nothing opened, from DevTools or an
 extension, in the window in front. A minimised window's tabs are told they are hidden. On
