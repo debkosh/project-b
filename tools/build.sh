@@ -229,5 +229,7 @@ cp -c "$OUT/project_b" "$OUT/project_b_helper" "$OUT/libproject_b_content.dylib"
       "$OUT/libEGL.dylib" "$OUT/libGLESv2.dylib" "$OUT/libvk_swiftshader.dylib" "$OUT/libvulkan.dylib" \
       "$OUT/vk_swiftshader_icd.json" "$APP_COPY/" || { echo "RESULT=failed copy to $APP_COPY"; exit 1; }
 cp -cR "$OUT/shell" "$APP_COPY/shell" || { echo "RESULT=failed copy to $APP_COPY"; exit 1; }
+# The commit it was built from, which tools/package.sh checks against the checkout's.
+git -C "$ROOT" rev-parse HEAD > "$APP_COPY/commit"
 echo "=== the app is $APP_COPY/project_b"
 echo "RESULT=ok $(date '+%F %T')"

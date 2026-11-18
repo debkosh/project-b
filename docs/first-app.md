@@ -365,7 +365,10 @@ the DMG passes the same 84.
 
 ## Packaging
 
-`tools/package.sh` makes `build/project-b.dmg`: `Project B.app` with the two binaries in
+`tools/package.sh` makes `build/project-b.dmg` from the checkout's own copy of its last
+build, `build/pb/` (`build/rel/` for `OUT=out/rel`), never the shared `chromium/src/out/*`,
+which another checkout's build may have replaced since; it refuses a copy built from another
+commit than the checkout's HEAD. The package is `Project B.app` with the two binaries in
 `Contents/MacOS`, the library in `Contents/Frameworks`, its data files inside, and a link to
 Applications. Inside an app, Chromium looks under the "framework bundle". We have no
 framework, so `MainDelegate` points it at `Contents`, which gives `Contents/Resources` and

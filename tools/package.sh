@@ -1,11 +1,24 @@
 #!/bin/bash
 # Packs a built app into "Project B.app" inside build/project-b.dmg. Flat on purpose.
 # OUT=out/rel tools/package.sh packs the release build instead.
+#
+# It packs this checkout's own copy of its last build, build/<out dir's name>/, which
+# tools/build.sh makes under its lock, never chromium/src/$OUT itself: every checkout shares
+# that, and another's build between this one's build and its package would mix the two.
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 OUT=${OUT:-out/pb}
-FROM=$ROOT/chromium/src/$OUT
+FROM=$ROOT/build/$(basename "$OUT")
+if [ ! -x "$FROM/project_b" ]; then
+    echo "RESULT=failed no build in $FROM: run OUT=$OUT tools/build.sh in this checkout first"
+    exit 1
+fi
+HEAD=$(git -C "$ROOT" rev-parse HEAD)
+if [ "$(cat "$FROM/commit" 2>/dev/null)" != "$HEAD" ]; then
+    echo "RESULT=failed $FROM was built from $(cat "$FROM/commit" 2>/dev/null || echo 'an unknown commit'), not HEAD $HEAD: build again"
+    exit 1
+fi
 STAGE=$ROOT/build/package
 DMG=$ROOT/build/project-b.dmg
 APP="$STAGE/Project B.app"
