@@ -55,5 +55,6 @@ echo "=== $(date '+%F %T') publish $TAG"
 git tag -a "$TAG" -m "Project B $VERSION"
 git push origin "$TAG"
 gh release create "$TAG" "$DIST"/* --repo "$REPO" --title "Project B $VERSION" \
-    --notes "Project B $VERSION for Apple silicon Macs and arm64 Android phones. Install once from the DMG or the APK; an installed copy updates itself from here."
+    --notes "Project B $VERSION for Apple silicon Macs and arm64 Android phones. Install once from the DMG or the APK; an installed copy updates itself from here.$(
+        [ -f "docs/test-reports/$VERSION.md" ] && printf '\n\nTests: https://github.com/%s/blob/%s/docs/test-reports/%s.md' "$REPO" "$TAG" "$VERSION")"
 echo "RESULT=ok $TAG"
