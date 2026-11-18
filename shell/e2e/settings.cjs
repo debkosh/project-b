@@ -892,6 +892,22 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   await fetch(`${base}/mock/fire`, { method: 'POST', body: new URLSearchParams({ kind: 'key', value: 'closeTab' }) });
   await until(async () => (await regions()).settings === 0);
 
+  // Room between the page's parts: each heading clear of the card above it, and no two cards
+  // touching. Sudipta found Bookmarks' heading right under the card above it on a phone.
+  const crowded = (p) => p.evaluate(() => {
+    const parts = [...document.querySelectorAll('main h2, main .card')].filter((e) => e.offsetParent && !e.closest('[role="dialog"]'))
+      .map((e) => ({ e, r: e.getBoundingClientRect() })).filter(({ r }) => r.height > 0).sort((a, b) => a.r.top - b.r.top);
+    const out = [];
+    for (let i = 1; i < parts.length; i++) {
+      const above = parts.slice(0, i).filter(({ e }) => !e.contains(parts[i].e) && !parts[i].e.contains(e));
+      if (!above.length) continue;
+      const bottom = Math.max(...above.map(({ r }) => r.bottom));
+      const need = parts[i].e.tagName === 'H2' ? 16 : 8;
+      if (parts[i].r.top - bottom < need) out.push(`${(parts[i].e.textContent || '').trim().slice(0, 30)}: ${Math.round(parts[i].r.top - bottom)}px`);
+    }
+    return out;
+  });
+
   // A phone reaches every group and list, a touch screen's page at a phone's size; what makes
   // no sense there (Tab layout, Keys, the shortcuts) isn't on it.
   await openSettings();
@@ -928,6 +944,8 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
     for (const [id, there] of Object.entries(want)) {
       await page.locator(`.section-row[data-section="${id}"]`).click();
       check(`on a phone, ${id} opens, under its own heading`, await until(() => there().isVisible()) && (await page.locator('.list-head .list-title').textContent()) !== '');
+      const tight = await crowded(page);
+      check(`and ${id}'s headings and cards have room above them`, tight.length === 0, tight.join(' | '));
       if (id === 'appearance') {
         await settle(page);
         await page.screenshot({ path: shot('settings-phone-section') });
@@ -954,6 +972,8 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
     await page.locator('.chip').first().click();
     await settle(page);
     await page.screenshot({ path: shot('settings-phone') });
+    const tight = await crowded(page);
+    check('on a phone, every heading and card has room above it', tight.length === 0, tight.join(' | '));
     for (const [list, region] of [['workspaces', 'Workspaces'], ['sites', 'Site settings'], ['sparks', 'Sparks'], ['webFeatures', '']]) {
       await page.locator(`[data-section="${list}"]`).click();
       const there = region ? page.getByRole('region', { name: region, exact: true }) : page.locator('.web-features');
