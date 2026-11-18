@@ -43,7 +43,7 @@ the test G, N, and the report takes those parts' results in place of the earlier
 | `group`, `name` | as `tools/test.sh` names it (`direct` and the command, run on its own) |
 | `status`, `exit` | `passed` (0), `did_not_run` (2) or `failed` (anything else) |
 | `rerun` | true when it reruns parts of an earlier result |
-| `tested`, `app` | as in run.json, for this test: a run's groups can test different builds |
+| `commit`, `tested`, `app` | as in run.json, for this test: a run's groups can test different builds, and the report's header lists the commits of the results it took |
 | `start`, `seconds` | |
 | `ok`, `fail`, `failures` | the lines that start `ok ` and `FAIL`, every driver's way of saying a check passed or failed |
 | `parts` | split at each `--- part <name>` line, which the drivers print before each part (`run_parts`, `drive_android.py`); one part, `all`, for a test without them. Each part has `seconds`, `ok`, `fail`, `failures` and `processes` |

@@ -243,7 +243,7 @@ def cmd_run(args):
                       "failures": [l for l in mine if l.startswith("FAIL")][:50],
                       "processes": summarise(sampler.samples, t, until)})
     result = {"schema": SCHEMA, "group": opts["--group"], "name": opts["--name"], "rerun": opts.get("--rerun") == "yes",
-              "tested": tested(), "app": {k: os.environ[k] for k in ("PB_BIN", "PB_DMG", "PB_APK") if os.environ.get(k)},
+              "commit": sh("git", "-C", ROOT, "rev-parse", "HEAD").strip(), "tested": tested(), "app": {k: os.environ[k] for k in ("PB_BIN", "PB_DMG", "PB_APK") if os.environ.get(k)},
               "status": "passed" if code == 0 else "did_not_run" if code == 2 else "failed", "exit": code,
               "start": utc(start), "seconds": round(end - start, 1),
               "ok": sum(p["ok"] for p in parts), "fail": sum(p["fail"] for p in parts),
@@ -275,7 +275,6 @@ def cmd_report(args):
     latest, reruns, commits, machines = {}, [], set(), []
     for run in sorted(os.listdir(vdir)):
         meta = json.load(open(os.path.join(vdir, run, "run.json")))
-        commits.add(meta["commit"][:8] + ("+" if meta.get("dirty") else ""))
         machines.append(meta["machine"])
         tdir = os.path.join(vdir, run, "tests")
         for f in sorted(os.listdir(tdir)):
@@ -285,8 +284,7 @@ def cmd_report(args):
                 if t.get("rerun"):
                     reruns.append(t)
                     continue
-                for kind, c in t.get("tested", {}).items():
-                    commits.add(f"{kind} {c[:8]}")
+                t.setdefault("commit", meta["commit"])
                 if key not in latest or t["start"] > latest[key]["start"]:
                     latest[key] = t
     # A rerun of some parts replaces those parts' results only.
@@ -309,6 +307,13 @@ def cmd_report(args):
                 return k["why"]
         return None
 
+    # The builds the report's results came from: each test's checkout, and the build it
+    # tested when that is known and differs.
+    for t in latest.values():
+        commits.add(t["commit"][:8])
+        for kind, c in t.get("tested", {}).items():
+            if c[:8] != t["commit"][:8]:
+                commits.add(f"{kind} {c[:8]}")
     tests = []
     for (group, name), t in sorted(latest.items()):
         fails = [{"line": scrub(f), "known": why(t, f)} for f in t["failures"][:40]]
