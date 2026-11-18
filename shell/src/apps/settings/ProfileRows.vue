@@ -62,6 +62,12 @@ function reset() {
   flex: 0 1 320px;
 }
 
+/* On a phone the field goes under its label, the row's width, as a flag's value does: beside
+   it, the label was squeezed to a few letters. */
+.touch .name {
+  flex-basis: 100%;
+}
+
 .template {
   width: 100%;
 }
