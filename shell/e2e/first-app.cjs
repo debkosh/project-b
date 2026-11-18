@@ -185,9 +185,12 @@ const stopServer = lib.stop;
   // Clicking a suggestion.
   await bar.fill('');
   await page.keyboard.type('go.d');
-  await history.first().click();
-  await shellFrame().waitForFunction(() => document.querySelector('input').value === 'https://go.dev/learn');
-  check('clicking a suggestion navigates', (await list.count()) === 0);
+  // The go.dev row itself: under load the click could land on the list still showing the
+  // last query's rows, before go.d's came (2 of 16 runs on 0.2.98).
+  await history.filter({ hasText: 'go.dev' }).first().click();
+  const went = await shellFrame().waitForFunction(() => document.querySelector('input').value === 'https://go.dev/learn').then(() => true, () => false);
+  if (!went) await page.screenshot({ path: path.join(out, 'first-app-suggestion-click.png') });
+  check('clicking a suggestion navigates', went && (await list.count()) === 0, went ? '' : `the address is ${await bar.inputValue()}; build/e2e/first-app-suggestion-click.png`);
 
   // Clicking the page closes the box, and keeps what was typed until Escape.
   await bar.click();
