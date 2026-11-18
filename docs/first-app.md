@@ -402,9 +402,9 @@ for Chrome for Testing.
     python3 tools/drive_first_app.py       # real app, results in build/real (7 screenshots); PB_BIN picks another binary
     python3 tools/measure_first_app.py     # memory, boundary cost and overlay cost above
     python3 tools/measure.py               # start-up and responsiveness, from the app's timeline (logging.md)
-    (cd core && go test ./...)             # managers, no C++
+    (cd core && go test -tags sqlite_fts5 ./...)    # managers, no C++
     node shell/e2e/first-app.cjs           # shell on the mock engine, in a browser
-    (cd core && go run ./cmd/dev)          # try it on the mock: http://127.0.0.1:8765
+    (cd core && go run -tags sqlite_fts5 ./cmd/dev) # try it on the mock: http://127.0.0.1:8765
 
 Run the real app:
 

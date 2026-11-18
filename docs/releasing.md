@@ -17,7 +17,7 @@ in a worktree of its own (main's checkout stays on main, since the release reads
   name added to the SDK's update list, an export, a docs row, a test function. A Go test file
   where both sides appended a test often loses a closing brace at the join; `gofmt -l` finds it.
   A conflict that changes behaviour on both sides goes back to the branch's owner to rebase.
-- Then, once per release candidate: `go vet` and `go test ./...` in `core`, `tools/build.sh`,
+- Then, once per release candidate: `go vet` and `go test ./...` in `core`, with `-tags sqlite_fts5` as every Go build has it ([store.md](store.md#how-it-works)),, `tools/build.sh`,
   `tools/test.sh mock`, `tools/package.sh` into a copy, and `tools/android-release.sh` for the
   APK. Push the branch so the owners can rebase onto it.
 - A release that waits on a fix stays open; new work goes into the next one instead, so the

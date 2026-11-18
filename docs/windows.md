@@ -268,6 +268,6 @@ window state the mock engine sends it, the flag among it: the drag areas dashed 
 the frame band 2 and 2, each shown tab's id in 10px at its page's top left. As in the real
 app the flag takes effect at launch: the dev server hands the mock engine the switches of
 the profile's saved flags as it starts, so after turning it on in settings, start
-`go run ./cmd/dev` again.
+`go run -tags sqlite_fts5 ./cmd/dev` again.
 `shell/e2e/outlines.cjs` checks an outline of the right kind on each tracked rectangle,
 with one tab and with the settings tab shown, and none with the flag off.

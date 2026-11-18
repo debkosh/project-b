@@ -149,12 +149,14 @@ and one moved into a folder, goes first in it.
 An address is bookmarked once: a second Add finds the bookmark, and an edit to an address
 another bookmark has is refused.
 
-The file is `bookmarks.json`, version 2: `{version, last, entries}`, `last` being the folder
-a bookmark was last saved in from the panel. Version 1, a flat list with numbered ids, is
-what a profile had before: the first start of this version reads it, gives each a random id
-in the top folder, newest first as before, with the times in milliseconds, writes version 2
-and says so in the timeline. A deleted entry leaves no tombstone yet; sync adds what it
-needs when its design is agreed.
+The tree is the `bookmarks` table of the profile's store, `modified` its `edited` column, and
+the folder a bookmark was last saved in from the panel is `bookmarks_last`
+([store.md](store.md#bookmarks)). Go reads it whole at start and writes each entry that
+changes. Before the store it was `bookmarks.json`, version 2: `{version, last, entries}`; and
+before that version 1, a flat list with numbered ids. The first start with the store reads
+either once: version 1's bookmarks get a random id each in the top folder, newest first as
+before, with the times in milliseconds. A deleted entry leaves no tombstone yet; sync adds
+what it needs when its design is agreed.
 
 What a shell has and sends (`shell/src/sdk/bookmarks.js`, the tree's helpers in
 `shell/src/ui/bookmarks.js`):

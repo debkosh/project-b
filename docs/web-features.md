@@ -59,7 +59,7 @@ The inventory is a reading of Chromium 155 and Project B 0.2.61; the registry is
 | `test` | | The checks that prove the status: `probe:<name>`, `basics:<number>` (`tools/check_basics.py`), or `check:<a check's name>` |
 
 A key Go doesn't know, a status that isn't one of the list, a probe name used twice, or a
-`test` that names a probe the row doesn't have fails `TestTheRegistry` (`go test ./...` in
+`test` that names a probe the row doesn't have fails `TestTheRegistry` (`go test -tags sqlite_fts5 ./...` in
 `core`), and stops the app at its start.
 
 ## In settings
