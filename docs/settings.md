@@ -18,7 +18,7 @@ Every setting is on one scrolling page, in five groups by task:
 | Group | What is in it |
 |---|---|
 | Look | Theme, Frame colour, Tab layout (desktop), Address bar (phone), Shell |
-| Browsing | On start, Search engine, Keys, Keyboard shortcuts (desktop), Workspaces, Bookmarks |
+| Browsing | On start, Search engine, Keys, Keyboard shortcuts (desktop), Workspaces, Bookmarks, Downloads: Ask where to save (desktop) |
 | Privacy | Sites, Block ads |
 | Your data | Profile name, Template, Import from other browsers, Run setup again |
 | Advanced | Automatic updates, Sparks, Extensions (with its flag on), Web features, Flags |
@@ -39,6 +39,7 @@ Like Chrome's settings: a list of sections, one showing at a time.
 | Start and search | On start, Search engine |
 | Workspaces | The workspaces |
 | Bookmarks | Where bookmarks show, and the bar |
+| Downloads (desktop) | Ask where to save each file |
 | Privacy and sites | Block ads, Sites, which opens as a page of its own |
 | Keyboard (desktop) | Keys, and the keyboard shortcuts |
 | Profile and import | Profile name, Template, Import from other browsers, Run setup again |
@@ -81,7 +82,7 @@ is as it was; going anywhere, from the rail, the list or a row found, ends the s
 ## On a phone
 
 The phone reaches every setting. What makes no sense there stays off it: Tab layout, Keys and
-Keyboard shortcuts, and Extensions.
+Keyboard shortcuts, Extensions, and Ask where to save (a phone has no Save panel).
 
 ## Parts, and how they are arranged
 

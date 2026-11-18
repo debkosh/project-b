@@ -127,6 +127,31 @@ func TestSaveLinkAsDownloadsThroughThePanel(t *testing.T) {
 	}
 }
 
+// Ask where to save, Settings' switch: every download asks for the Save panel, starting at
+// the folder's, not only Save Link As's.
+func TestAskWhereToSaveSendsEveryDownloadThroughThePanel(t *testing.T) {
+	dir := t.TempDir()
+	r := startDownloading(t, t.TempDir(), dir)
+	defer r.stop()
+	target := func() (got engine.DownloadTarget) {
+		r.main(func() {
+			got = r.a.DownloadTarget(engine.DownloadRequest{ID: 1, URL: "https://a.test/x.txt", Name: "x.txt"})
+		})
+		return got
+	}
+	if got := target(); got.Prompt {
+		t.Fatalf("with it off: %+v", got)
+	}
+	got, _ := r.openSettings()
+	r.settings(`{"t":"setPref","name":"askWhereToSave","value":"true"}`)
+	r.waitOn(got, func(m map[string]any) bool {
+		return m["t"] == "prefs" && m["prefs"].(map[string]any)["askWhereToSave"] == true
+	})
+	if got := target(); !got.Prompt || got.Path != filepath.Join(dir, "x.txt") {
+		t.Fatalf("with it on: %+v", got)
+	}
+}
+
 func TestEachDownloadChangeIsShownBySystem(t *testing.T) {
 	profile, dir := t.TempDir(), t.TempDir()
 	r := startDownloading(t, profile, dir)

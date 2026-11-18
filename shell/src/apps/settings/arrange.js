@@ -20,6 +20,8 @@ const where = {
   profile: () => !!state.profile,
   keys: () => !phone,
   keyboard: () => !phone,
+  // A phone has no Save panel: a download goes to its Downloads.
+  askWhereToSave: () => !phone,
   extensions: () => !phone && !!extensionsSection?.shown(),
 };
 
@@ -85,7 +87,7 @@ const page = [
     id: 'browsing',
     label: 'Browsing',
     hint: 'Starting, searching, keys, workspaces and bookmarks',
-    cards: [['start', 'searchEngine', 'keys', 'keyboard', 'workspaces'], 'bookmarks'],
+    cards: [['start', 'searchEngine', 'keys', 'keyboard', 'workspaces'], 'bookmarks', { heading: 'Downloads', rows: ['askWhereToSave'] }],
   },
   { id: 'privacy', label: 'Privacy', hint: 'What sites can do and what they keep', cards: [['sites', 'blockAds']] },
   { id: 'data', label: 'Your data', hint: 'This profile and what you bring in', cards: [['profile'], 'import', ['runSetup']] },
@@ -163,6 +165,13 @@ const sectionList = () => [
     icon: 'privacy',
     cards: [['blockAds', 'sites']],
     summary: () => [state.prefs.blockAds ? 'Ads blocked' : 'Ads shown', lists.sites.summary()].filter((x) => x).join(' · '),
+  },
+  {
+    id: 'downloads',
+    label: 'Downloads',
+    icon: 'download',
+    cards: [['askWhereToSave']],
+    summary: () => (state.prefs.askWhereToSave ? 'Ask where to save each file' : 'To the Downloads folder'),
   },
   { id: 'keyboard', label: 'Keyboard', icon: 'keyboard', cards: [['keys'], 'keyboard'], summary: () => '' },
   { id: 'profile', label: 'Profile and import', icon: 'profile', cards: [['profile'], 'import', ['runSetup']], summary: () => state.profile?.name || '' },

@@ -68,6 +68,9 @@ type Prefs struct {
 	// anything, whatever a site's own switch says, and the site panel has no switch.
 	// docs/site-features.md.
 	BlockAds bool `json:"blockAds"`
+	// AskWhereToSave sends every download through the Save panel, as Save Link As does,
+	// rather than straight to the downloads folder. docs/daily-driver.md.
+	AskWhereToSave bool `json:"askWhereToSave"`
 }
 
 // Defaults are the settings before the user changes any.
@@ -313,11 +316,17 @@ func (m *Manager) SetBookmarksBarFolder(id string) {
 }
 
 // SetBlockAds turns the ad blocker on or off on every site.
-func (m *Manager) SetBlockAds(on bool) {
-	if on == m.prefs.BlockAds {
+func (m *Manager) SetBlockAds(on bool) { m.setSwitch(&m.prefs.BlockAds, on) }
+
+// SetAskWhereToSave turns on or off asking where each download goes.
+func (m *Manager) SetAskWhereToSave(on bool) { m.setSwitch(&m.prefs.AskWhereToSave, on) }
+
+// setSwitch sets a setting that is on or off, and says so when it changed.
+func (m *Manager) setSwitch(p *bool, on bool) {
+	if on == *p {
 		return
 	}
-	m.prefs.BlockAds = on
+	*p = on
 	m.save()
 	m.changed()
 }
@@ -357,6 +366,10 @@ func (m *Manager) Set(name, value string) bool {
 		if value == "true" || value == "false" {
 			m.SetBlockAds(value == "true")
 		}
+	case "askWhereToSave":
+		if value == "true" || value == "false" {
+			m.SetAskWhereToSave(value == "true")
+		}
 	default:
 		return false
 	}
@@ -387,6 +400,7 @@ func (m *Manager) Apply(values json.RawMessage) error {
 	m.SetBookmarks("bar", p.BookmarksBar)
 	m.SetBookmarksBarFolder(p.BookmarksBarFolder)
 	m.SetBlockAds(p.BlockAds)
+	m.SetAskWhereToSave(p.AskWhereToSave)
 	return nil
 }
 

@@ -95,7 +95,9 @@ where it goes (`PB_EVENT_DOWNLOAD_TARGET`: the download's id, its tab, address, 
 name and type). Go answers with a path, with whether to show the Save panel at it first, or
 with nothing to refuse it, as policy says. By default a file goes to `~/Downloads` under its
 own name, with ` (1)`, ` (2)` added when that name is taken, and no panel; Save Link As and
-Save Image As show the panel. The engine then reports each change
+Save Image As show the panel, and so does every download with Settings' Ask where to save
+each file on (a pref, `askWhereToSave`, off by default; not on a phone, whose engine has no
+panel). The engine then reports each change
 (`PB_EVENT_DOWNLOAD_UPDATED`: progress, done, cancelled, failed, paused), and Go keeps the
 list.
 

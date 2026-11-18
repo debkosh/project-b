@@ -239,7 +239,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   const sectionOf = {
     theme: 'appearance', frameColour: 'appearance', tabLayout: 'appearance', shell: 'appearance', start: 'start', searchEngine: 'start',
     workspaces: 'workspaces', bookmarks: 'bookmarks', sites: 'privacy', keys: 'keyboard', keyboard: 'keyboard', profile: 'profile',
-    sparks: 'extensions', blockAds: 'privacy', version: 'about', autoUpdate: 'about', flags: 'flags', webFeatures: 'webFeatures',
+    sparks: 'extensions', blockAds: 'privacy', askWhereToSave: 'downloads', version: 'about', autoUpdate: 'about', flags: 'flags', webFeatures: 'webFeatures',
   };
   const show = async (part) => {
     if (sectionsLayout) {
@@ -432,6 +432,15 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   await page.screenshot({ path: shot('settings-bookmarks') });
   for (const name of [/Beside the tabs/, /On the new tab page/, /Bookmarks bar/]) await place(name).click();
   await until(() => prefsFile().bookmarksSidebar === false && prefsFile().bookmarksNewTab === true && prefsFile().bookmarksBar === false);
+
+  // Ask where to save: every download through the Save panel; not on a phone, which has none.
+  await show('askWhereToSave');
+  const askWhere = page.getByRole('switch', { name: /Ask where to save each file/ });
+  check('Ask where to save is off by default', !(await askWhere.isChecked()));
+  await askWhere.click();
+  check('on, it is saved', await until(() => prefsFile().askWhereToSave === true));
+  await askWhere.click();
+  await until(() => prefsFile().askWhereToSave === false);
 
   // Search: the rows whose label, second line or section's name has the words, each in
   // its section, working in place, and the sections counted; Escape puts the page back.
@@ -925,7 +934,8 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
       await page.locator('.list-page .list-head .back').click();
       await until(async () => (await page.locator('.list-page').count()) === 0);
     }
-    check('on a phone there is no Tab layout, Keys or Keyboard shortcuts', (await page.getByRole('radiogroup', { name: 'Tab layout' }).count()) === 0 &&
+    check('on a phone there is no Tab layout, Keys, Keyboard shortcuts or Ask where to save', (await page.getByRole('radiogroup', { name: 'Tab layout' }).count()) === 0 &&
+      (await page.getByRole('switch', { name: /Ask where to save/ }).count()) === 0 &&
       (await page.getByRole('radiogroup', { name: 'Keys' }).count()) === 0 && (await page.locator('[data-section="keyboard"]').count()) === 0);
     check('and every other part is there', (await page.getByRole('radiogroup', { name: 'Address bar' }).count()) === 1 && (await page.getByLabel('Profile name').count()) === 1 &&
       (await page.getByRole('button', { name: 'Close the app' }).count()) === 1 && (await page.getByRole('region', { name: 'Flags', exact: true }).count()) === 1 &&

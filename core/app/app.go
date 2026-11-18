@@ -664,13 +664,14 @@ func (a *App) WindowFocused(w engine.WindowID) {
 func (a *App) ProcessCrashed(p engine.ProcessCrash) { a.Crash.ProcessCrashed(p) }
 
 // DownloadTarget refuses a download from an address policy blocks; the list says where
-// the rest go. One a tab of the window in front began is noted, so that window's shell
-// hears it start.
+// the rest go, through the Save panel when Settings' Ask where to save is on. One a tab of
+// the window in front began is noted, so that window's shell hears it start.
 func (a *App) DownloadTarget(r engine.DownloadRequest) engine.DownloadTarget {
 	if !a.Policy.IsAllowedURL(r.URL) {
 		return engine.DownloadTarget{}
 	}
 	t := a.Downloads.Target(r)
+	t.Prompt = t.Prompt || t.Path != "" && a.Prefs.All().AskWhereToSave
 	if w := a.Tabs.WindowOf(r.Tab); t.Path != "" && w != 0 && w == a.Tabs.Front() {
 		a.startedIn[r.ID] = w
 	}

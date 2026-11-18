@@ -157,12 +157,15 @@ func TestWhereBookmarksShow(t *testing.T) {
 }
 
 // The ad blocker is on every site by default; off is kept, and a file from before it was a
-// pref has it on.
-func TestBlockAds(t *testing.T) {
+// pref has it on. Ask where to save is off by default, and set by name.
+func TestBlockAdsAndAskWhereToSave(t *testing.T) {
 	dir := t.TempDir()
 	m := New(dir)
 	if !m.All().BlockAds {
 		t.Fatal("the ad blocker is off by default")
+	}
+	if m.All().AskWhereToSave || !m.Set("askWhereToSave", "true") || !m.All().AskWhereToSave {
+		t.Fatalf("askWhereToSave: %+v", m.All())
 	}
 	if !m.Set("blockAds", "false") || m.All().BlockAds {
 		t.Fatalf("blockAds false: %+v", m.All())

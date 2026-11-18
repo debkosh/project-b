@@ -116,6 +116,17 @@ const layouts = [
     />
   </Row>
 
+  <Row v-else-if="part === 'askWhereToSave'" tag="label" label="Ask where to save each file" hint="Each download opens the Save panel, as Save Link As does; off, files go straight to Downloads">
+    <input
+      type="checkbox"
+      role="switch"
+      class="switch"
+      :checked="!!state.prefs.askWhereToSave"
+      :aria-checked="String(!!state.prefs.askWhereToSave)"
+      @change="setPref('askWhereToSave', $event.target.checked)"
+    />
+  </Row>
+
   <!-- The welcome again: marked unfinished, and the app closes, for the next start to open
        it as the first did. -->
   <Row
