@@ -231,3 +231,41 @@ func TestADownloadBegunInTheWindowInFrontIsAnnounced(t *testing.T) {
 		break
 	}
 }
+
+// Save report keeps a crash report as a finished download: copied into the folder, listed
+// as the app's own with no address, shown by the system as a finished download, handed on
+// to be published, and told to the window as a download that began there.
+func TestASavedReportIsAFinishedDownload(t *testing.T) {
+	profile, dir := t.TempDir(), t.TempDir()
+	r := startDownloading(t, profile, dir)
+	defer r.stop()
+	r.visit("https://a.test/")
+	r.show(1)
+
+	r.shell(`{"t":"saveReport"}`)
+	list := r.downloads(func(l []any) bool { return len(l) == 1 })
+	d := first(list)
+	name, _ := d["name"].(string)
+	if !strings.HasPrefix(name, "project-b-report-") || d["path"] != filepath.Join(dir, name) || d["state"] != "done" ||
+		d["url"] != "" || d["from"] != "Crash report" {
+		t.Fatalf("download = %v", d)
+	}
+	if b, err := os.ReadFile(filepath.Join(dir, name)); err != nil || !strings.Contains(string(b), "Project B crash report") {
+		t.Fatalf("the report should be in the folder: %v", err)
+	}
+	r.waitFor(func(m map[string]any) bool { return m["t"] == "downloadStarted" && m["id"] == d["id"] })
+	r.e.Settle()
+	if r.e.Published() != d["path"] {
+		t.Fatalf("published %q, want %v", r.e.Published(), d["path"])
+	}
+	if n := r.e.Notices(); len(n) != 1 || n[0].State != engine.DownloadDone || n[0].Path != d["path"] {
+		t.Fatalf("the system was shown %+v", n)
+	}
+
+	// It has no address to copy or retry.
+	r.shell(fmt.Sprintf(`{"t":"downloadAction","id":%v,"action":"copyLink"}`, d["id"]))
+	r.e.Settle()
+	if got := r.e.Clipboard(); got != "" {
+		t.Fatalf("clipboard = %q", got)
+	}
+}

@@ -761,10 +761,14 @@ const H = 915;
   check('Share report hands the system one text report, written in the profile', /reports\/project-b-report-.*Z\.txt$/.test((await regions()).shared) &&
     report.includes('Project B on the mock engine') && report.includes("This run's timeline"), (await regions()).shared);
   await notice.getByRole('button', { name: 'Save report' }).tap();
-  await until(async () => (await regions()).saved);
-  const saved = (await regions()).saved;
-  check('Save report hands the engine the same kind of report, to copy into the phone\'s Downloads',
-    /reports\/project-b-report-.*Z\.txt$/.test(saved || '') && fs.readFileSync(saved, 'utf8').includes("This run's timeline"), saved);
+  await until(async () => (await regions()).published);
+  const saved = (await regions()).published;
+  check('Save report keeps the same kind of report as a finished download, for the engine to put in the phone\'s Downloads',
+    /Downloads\/project-b-report-.*Z\.txt$/.test(saved || '') && fs.readFileSync(saved, 'utf8').includes("This run's timeline"), saved);
+  const savedBar = ui.getByRole('group', { name: 'Download' });
+  check('and the download bar says the crash report is saved to Downloads, with Open', await until(async () =>
+    (await savedBar.innerText().catch(() => '')).includes('Crash report saved to Downloads') && (await savedBar.getByRole('button', { name: 'Open' }).isVisible())),
+    await savedBar.innerText().catch(() => ''));
   await notice.getByRole('button', { name: 'Reload' }).tap();
   check('Reload brings it back', await until(async () => !(await notice.isVisible()) && !(await active()).crashed));
 

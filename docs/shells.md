@@ -258,7 +258,7 @@ title, detail, actions}`, absent otherwise
 | `downloadAction` | `id`, `action`: `open`, `reveal`, `cancel`, `pause`, `resume` or `remove` | Acts on one download; `remove` takes it off the list and leaves the file |
 | `clearDownloads` | | Takes every finished download off the list |
 | `shareReport` | `rect`: where the control that asked is | Writes a crash report in the profile (core/crash/report.go) and hands it to the system's share sheet, anchored there. Nothing leaves the device unless the user sends it |
-| `saveReport` | | Writes the same report and copies it into the user's Downloads (engine `SaveFile`): the Mac's ~/Downloads, shown in Finder, or the phone's shared Downloads, with a toast. Android's share sheet may have nowhere to save a file |
+| `saveReport` | | Writes the same report and keeps it as a finished download (`downloads.Keep`): copied into the downloads folder, listed with `from` "Crash report" and no `url`, shown by the system as a finished download (on a phone its notification, whose tap opens it), published (engine `PublishFile`: on a phone, into the shared Downloads), and told to the window as `downloadStarted`, so a shell shows it as it shows a download begin. Android's share sheet may have nowhere to save a file |
 | `backCloses` | `on` | While on, the phone's back key comes to the shell as `backKey`, before the page's history: the shell has a sheet open, or the address in edit |
 | `extensionClick` | `extension`, `rect` | A press on an extension's button at `rect`: Go opens its popup under it, closes it when it is the one open, or tells the extension it was clicked |
 | `extensionPin` | `extension`, `on` | Puts the extension's button on the toolbar, or takes it off |

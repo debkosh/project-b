@@ -101,7 +101,8 @@ list.
 
 **The list.** `state.downloads` is this profile's, newest first, each `{id, name, url,
 path, state, received, total, paused}`, `state` being `progress`, `done`, `cancelled` or
-`failed`. Go keeps the finished ones in the profile's `downloads.json`, the last 100, so the
+`failed`. A file the app made itself and kept as a finished download, a saved crash report,
+has no `url` and says what it is in `from` instead. Go keeps the finished ones in the profile's `downloads.json`, the last 100, so the
 list is there after a restart; one still running when the app quit comes back `failed`.
 The shell asks for one action at a time, `downloadAction {id, action}`: `open` the file,
 `reveal` it in Finder, `cancel`, `pause`, `resume`, or `remove` it from the list (the file

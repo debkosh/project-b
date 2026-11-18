@@ -16,13 +16,10 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
-import android.os.Handler;
-import android.os.Looper;
 import android.os.SystemClock;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.webkit.MimeTypeMap;
-import android.widget.Toast;
 
 import org.chromium.base.ApplicationStatus;
 import org.chromium.base.ContextUtils;
@@ -101,20 +98,6 @@ final class Downloads {
             if (uri == null) return;
             published().edit().putString(path, uri.toString()).apply();
             file.delete();
-        });
-    }
-
-    // A file of ours, such as a crash report, copied into the shared Downloads for the user
-    // to find in the Files app, as Android's share sheet may offer nowhere to save it. A
-    // short toast says it went to Downloads, or that it could not: a long name would be cut.
-    @CalledByNative
-    static void save(String path) {
-        sCopier.execute(() -> {
-            File file = new File(path);
-            boolean saved = copyToShared(file, "text/plain") != null;
-            Context context = ContextUtils.getApplicationContext();
-            String said = saved ? "Report saved to Downloads" : "Couldn't save the report";
-            new Handler(Looper.getMainLooper()).post(() -> Toast.makeText(context, said, Toast.LENGTH_LONG).show());
         });
     }
 

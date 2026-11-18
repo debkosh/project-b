@@ -129,9 +129,9 @@ type Engine struct {
 	focused engine.TabID
 	// unshownFocus are the tabs FocusTab was asked for while no window showed them.
 	unshownFocus []engine.TabID
-	// shared is the file ShareFile last offered, as a share sheet would; saved, the one
-	// SaveFile last copied to Downloads.
-	shared, saved string
+	// shared is the file ShareFile last offered, as a share sheet would; published, the
+	// one PublishFile was last given.
+	shared, published string
 	// left is whether the back key left the app, as Android does with no tab to go back
 	// in or close.
 	left bool
@@ -862,17 +862,17 @@ func (e *Engine) ShareFile(w engine.WindowID, path string, anchor engine.Rect) {
 	e.shared = path
 }
 
-func (e *Engine) SaveFile(path string) {
+func (e *Engine) PublishFile(path string) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	e.saved = path
+	e.published = path
 }
 
-// Saved is the file SaveFile last copied, or "".
-func (e *Engine) Saved() string {
+// Published is the file PublishFile was last given, or "".
+func (e *Engine) Published() string {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	return e.saved
+	return e.published
 }
 
 // Shared is the file ShareFile last offered, or "".

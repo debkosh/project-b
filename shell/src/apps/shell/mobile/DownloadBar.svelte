@@ -7,11 +7,12 @@
   // over the foot of the page, above the toolbar. "Downloading big.zip" for a few seconds
   // when one starts while the app is showing; "big.zip downloaded" with Open when it ends
   // while the bar or the app is showing, Open doing what the Downloads page's does; and
-  // "Couldn't download big.zip" with Retry when it fails. A tap anywhere else or a swipe
-  // down on it puts it away. hidden is while a sheet is open, which it must not cover, or
-  // the Downloads page shows, which says it all already: it goes then, and says nothing
-  // until that ends, so it never comes back over what the person went on to. The find bar
-  // is in the toolbar's place, under it.
+  // "Couldn't download big.zip" with Retry when it fails. A file the app kept itself, a
+  // saved crash report, says what it is instead: "Crash report saved to Downloads", with
+  // Open. A tap anywhere else or a swipe down on it puts it away. hidden is while a sheet
+  // is open, which it must not cover, or the Downloads page shows, which says it all
+  // already: it goes then, and says nothing until that ends, so it never comes back over
+  // what the person went on to. The find bar is in the toolbar's place, under it.
   let { hidden } = $props();
 
   // What the bar says: the download's id, name and state as they were, or null.
@@ -28,7 +29,7 @@
 
   function say(d) {
     clearTimeout(timer);
-    said = { id: d.id, name: d.name, state: d.state };
+    said = { id: d.id, name: d.name, state: d.state, from: d.from };
     timer = setTimeout(() => (said = null), lasts[d.state]);
   }
 
@@ -86,7 +87,7 @@
     <div class="bar" bind:this={bar} use:shell role="group" aria-label="Download" onpointerdown={down} onpointerup={up} onpointercancel={() => (start = null)}>
       <span class="mark" class:failed={said.state === 'failed'}><Icon name={said.state === 'failed' ? 'warn' : 'download'} /></span>
       <span class="words">
-        {#if said.state === 'progress'}Downloading {said.name}{:else if said.state === 'done'}{said.name} downloaded{:else}Couldn't download {said.name}{/if}
+        {#if said.state === 'progress'}Downloading {said.name}{:else if said.state === 'done' && said.from}{said.from} saved to Downloads{:else if said.state === 'done'}{said.name} downloaded{:else}Couldn't download {said.name}{/if}
       </span>
       {#if said.state === 'done'}
         <button onclick={() => act('open')}>Open</button>

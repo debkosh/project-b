@@ -59,7 +59,7 @@ static inline void call_focus_tab(const PBEngineCalls* c, int64_t tab) { c->focu
 static inline void call_focus_shell(const PBEngineCalls* c, int64_t window) { c->focus_shell(window); }
 static inline void call_send_to_shell(const PBEngineCalls* c, int64_t window, const char* json, size_t length) { c->send_to_shell(window, json, length); }
 static inline void call_set_shell_back(const PBEngineCalls* c, int64_t window, int on) { c->set_shell_back(window, on); }
-static inline void call_save_file(const PBEngineCalls* c, const char* path) { c->save_file(path); }
+static inline void call_publish_file(const PBEngineCalls* c, const char* path) { c->publish_file(path); }
 static inline void call_share_file(const PBEngineCalls* c, int64_t window, const char* path, double x, double y, double w, double h) { c->share_file(window, path, x, y, w, h); }
 static inline const PBContentHooks* call_content_hooks(const PBEngineCalls* c) { return c->content_hooks ? c->content_hooks() : NULL; }
 static inline void call_set_subscribed(const PBContentHooks* h, int32_t hook, int on) { h->set_subscribed(hook, on); }
@@ -389,10 +389,10 @@ func (e *nativeEngine) ShareFile(w engine.WindowID, path string, r engine.Rect) 
 	C.call_share_file(e.calls, C.int64_t(w), p, C.double(r.X), C.double(r.Y), C.double(r.W), C.double(r.H))
 }
 
-func (e *nativeEngine) SaveFile(path string) {
+func (e *nativeEngine) PublishFile(path string) {
 	p := C.CString(path)
 	defer C.free(unsafe.Pointer(p))
-	C.call_save_file(e.calls, p)
+	C.call_publish_file(e.calls, p)
 }
 
 func (e *nativeEngine) SendToShell(w engine.WindowID, msg []byte) {

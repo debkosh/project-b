@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,9 +22,12 @@ const kept = 100
 
 // Item is one download as the shells see it. ID is Go's, the same across restarts.
 type Item struct {
-	ID       int    `json:"id"`
-	Name     string `json:"name"`
-	URL      string `json:"url"`
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+	URL  string `json:"url"`
+	// From says what a file the app made itself is, such as a crash report, which has no
+	// address: URL is "" then.
+	From     string `json:"from,omitempty"`
 	Path     string `json:"path"`
 	State    string `json:"state"` // progress, done, cancelled or failed
 	Received int64  `json:"received"`
@@ -184,6 +188,48 @@ func (m *Manager) Updated(d engine.Download) int {
 	return it.ID
 }
 
+// Keep copies a file the app made into the folder, under its own name, numbered when that
+// is taken, and lists it as a finished download that from says what it is, with the
+// system's notice of a finished download. It returns its id in the list.
+func (m *Manager) Keep(src, from string) (int, error) {
+	if err := os.MkdirAll(m.dir, 0o755); err != nil {
+		return 0, err
+	}
+	path := m.free(cleanName(src))
+	size, err := copyFile(src, path)
+	if err != nil {
+		return 0, err
+	}
+	it := &Item{ID: m.next, Name: filepath.Base(path), Path: path, From: from, State: "done", Received: size, Total: size}
+	m.next++
+	m.list = append([]*Item{it}, m.list...)
+	m.e.PublishFile(path)
+	m.e.ShowDownload(it.ID, engine.Download{Path: path, State: engine.DownloadDone, Received: size, Total: size})
+	m.save()
+	m.changed()
+	return it.ID, nil
+}
+
+func copyFile(src, dst string) (int64, error) {
+	in, err := os.Open(src)
+	if err != nil {
+		return 0, err
+	}
+	defer in.Close()
+	out, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if err != nil {
+		return 0, err
+	}
+	n, err := io.Copy(out, in)
+	if cerr := out.Close(); err == nil {
+		err = cerr
+	}
+	if err != nil {
+		os.Remove(dst)
+	}
+	return n, err
+}
+
 // retried is the item Retry started again as a new download of url, moved to the top.
 func (m *Manager) retried(url string) *Item {
 	for i, x := range m.list {
@@ -197,7 +243,8 @@ func (m *Manager) retried(url string) *Item {
 
 // Act does what a shell asks to one download: open or reveal its file, cancel, pause or
 // resume it, retry one that failed or was cancelled, copy its address, or remove it from
-// the list, which leaves the file where it is.
+// the list, which leaves the file where it is. A file the app made has no address to
+// retry or copy.
 func (m *Manager) Act(id int, action string) {
 	var it *Item
 	for _, x := range m.list {
@@ -231,7 +278,7 @@ func (m *Manager) Act(id int, action string) {
 			m.e.DownloadCommand(it.engine, engine.DownloadResume)
 		}
 	case "retry":
-		if it.State != "failed" && it.State != "cancelled" {
+		if it.URL == "" || it.State != "failed" && it.State != "cancelled" {
 			return
 		}
 		// One this run still has resumes from where it got to, or starts over when it
@@ -243,7 +290,9 @@ func (m *Manager) Act(id int, action string) {
 			m.e.DownloadURL(0, it.URL, false)
 		}
 	case "copyLink":
-		m.e.WriteClipboard(it.URL)
+		if it.URL != "" {
+			m.e.WriteClipboard(it.URL)
+		}
 	case "remove":
 		if live || m.byEngine[it.engine] == it {
 			m.e.DownloadCommand(it.engine, engine.DownloadCancel)

@@ -5,11 +5,8 @@
 #include <utility>
 
 #include "base/apple/foundation_util.h"
-#include "base/files/file_util.h"
-#include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "base/strings/sys_string_conversions.h"
-#include "base/task/thread_pool.h"
 #include "content/public/browser/web_contents.h"
 #include "project_b/engine/browser/downloads.h"
 #include "ui/gfx/native_ui_types.h"
@@ -48,27 +45,6 @@ void PublishFile(const base::FilePath& path, const std::string& mime_type) {}
 
 void RevealFile(const base::FilePath& path) {
   [NSWorkspace.sharedWorkspace activateFileViewerSelectingURLs:@[ base::apple::FilePathToNSURL(path) ]];
-}
-
-void SaveFile(const base::FilePath& path) {
-  base::FilePath downloads;
-  if (!base::apple::GetUserDirectory(NSDownloadsDirectory, &downloads)) {
-    return;
-  }
-  // The copy off the main thread, which may not block; Finder once it is there.
-  base::ThreadPool::PostTaskAndReplyWithResult(
-      FROM_HERE, {base::MayBlock()},
-      base::BindOnce(
-          [](const base::FilePath& from, const base::FilePath& dir) {
-            base::FilePath to = base::GetUniquePath(dir.Append(from.BaseName()));
-            return !to.empty() && base::CopyFile(from, to) ? to : base::FilePath();
-          },
-          path, downloads),
-      base::BindOnce([](const base::FilePath& to) {
-        if (!to.empty()) {
-          RevealFile(to);
-        }
-      }));
 }
 
 }  // namespace project_b

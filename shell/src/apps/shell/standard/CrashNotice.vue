@@ -3,7 +3,7 @@ import { send, state } from '@/sdk/vue.js';
 
 // Says the last run crashed, where its log is and where macOS's report is, until the user
 // closes it. Go decides whether there is one. Share report hands one file with all of it
-// to the system's share sheet, beside the button; Save report puts it in ~/Downloads.
+// to the system's share sheet, beside the button; Save report keeps it as a finished download, which the Downloads panel opens to show.
 function close() {
   send({ t: 'dismissCrash' });
 }

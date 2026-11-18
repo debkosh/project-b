@@ -301,10 +301,11 @@ type Engine interface {
 	// ShareFile offers the file at path to the system's share sheet, anchored on a
 	// rectangle in the window's shell coordinates.
 	ShareFile(w WindowID, path string, anchor Rect)
-	// SaveFile puts a copy of the file at path in the user's Downloads, for a share sheet
-	// that has no way to save one: on the Mac, ~/Downloads, shown in Finder; on a phone,
-	// the shared Downloads, with a note that says so.
-	SaveFile(path string)
+	// PublishFile takes a file Go put in the downloads folder itself, finished, such as a
+	// saved crash report, as a finished download of the engine's is taken: on a phone it
+	// is copied into the shared Downloads, and opened from there; on the Mac, where the
+	// folder is the user's own Downloads, nothing is to be done.
+	PublishFile(path string)
 
 	// SendToPage delivers one message to the page of ours a tab shows.
 	SendToPage(tab TabID, msg []byte)

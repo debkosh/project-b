@@ -90,14 +90,10 @@ void ChooseSavePath(content::WebContents* contents,
                     base::OnceCallback<void(const base::FilePath&)> chosen);
 void OpenFile(const base::FilePath& path);
 void RevealFile(const base::FilePath& path);
-// Hands a finished download to the system where other apps find it: on a phone, a copy in
-// the shared Downloads, through which it is then opened. Nothing on the Mac, where it already
-// is in the user's Downloads folder.
+// Hands a finished download, or a file Go kept as one, to the system where other apps find
+// it: on a phone, a copy in the shared Downloads, through which it is then opened. Nothing on
+// the Mac, where it already is in the user's Downloads folder.
 void PublishFile(const base::FilePath& path, const std::string& mime_type);
-// Puts a copy of a file of ours in the user's Downloads and shows it there: on the Mac in
-// ~/Downloads under a name not yet taken, selected in Finder; on a phone in the shared
-// Downloads, with a toast.
-void SaveFile(const base::FilePath& path);
 #if BUILDFLAG(IS_ANDROID)
 // Shows how a download stands in the phone's notification for it (pb_abi.h show_download).
 void ShowDownload(int64_t id,

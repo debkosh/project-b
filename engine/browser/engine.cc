@@ -242,9 +242,10 @@ void CallRevealFile(const char* path) {
   RevealFile(base::FilePath::FromUTF8Unsafe(path));
 }
 
-void CallSaveFile(const char* path) {
+void CallPublishFile(const char* path) {
   CheckMainThread();
-  SaveFile(base::FilePath::FromUTF8Unsafe(path));
+  // No type: the phone tells it from the file's extension.
+  PublishFile(base::FilePath::FromUTF8Unsafe(path), std::string());
 }
 
 void CallAnswerDialog(int64_t dialog, int ok, const char* text) {
@@ -643,7 +644,7 @@ const PBEngineCalls* Engine::Calls() {
       .send_to_shell = CallSendToShell,
       .set_shell_back = CallSetShellBack,
       .share_file = CallShareFile,
-      .save_file = CallSaveFile,
+      .publish_file = CallPublishFile,
       .send_to_page = CallSendToPage,
       .set_menu = CallSetMenu,
       .app_command = CallAppCommand,

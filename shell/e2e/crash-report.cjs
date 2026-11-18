@@ -1,7 +1,8 @@
 // The crash report on the desktop's shell, Standard: the last run's crash notice offers
 // Share report, which writes one text report in the profile, holding the last run's crash
 // log, and hands it to the system's share sheet (on the mock, it says what it was given);
-// and Save report, which hands the same report to the engine to copy into ~/Downloads.
+// and Save report, which keeps the same report as a finished download, in Downloads and the
+// Downloads list, whose panel opens by itself to show it.
 // Run: node shell/e2e/crash-report.cjs   (from the repo root, after `npm run build` in shell/)
 
 const fs = require('fs');
@@ -23,10 +24,14 @@ const { check, regions, until } = lib;
   check('it hands the system one text report in the profile, with the last run\'s crash log in it',
     /reports\/project-b-report-.*Z\.txt$/.test((await regions()).shared) && report.includes('panic: the last run'), (await regions()).shared);
   await w.ui.getByRole('button', { name: 'Save report' }).click();
-  await until(async () => (await regions()).saved);
-  const saved = (await regions()).saved;
-  check('Save report hands the engine a report to copy into Downloads, with the crash log in it',
-    /reports\/project-b-report-.*Z\.txt$/.test(saved || '') && fs.readFileSync(saved, 'utf8').includes('panic: the last run'), saved);
+  await until(async () => (await regions()).published);
+  const saved = (await regions()).published;
+  check('Save report keeps a report in Downloads as a finished download, with the crash log in it',
+    /Downloads\/project-b-report-.*Z\.txt$/.test(saved || '') && fs.readFileSync(saved, 'utf8').includes('panic: the last run'), saved);
+  const panel = w.ui.getByRole('dialog', { name: 'Downloads' });
+  check('the Downloads panel opens by itself with the report in it, as the app\'s own',
+    await until(async () => (await panel.getByRole('listitem').first().textContent().catch(() => '')).includes(path.basename(saved))),
+    await panel.textContent().catch(() => ''));
   check('no errors in the page', w.errors.length === 0, w.errors.join(' | '));
   await browser.close();
   await lib.done();
