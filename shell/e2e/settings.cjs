@@ -239,7 +239,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   const sectionOf = {
     theme: 'appearance', frameColour: 'appearance', tabLayout: 'appearance', shell: 'appearance', start: 'start', searchEngine: 'start',
     workspaces: 'workspaces', bookmarks: 'bookmarks', sites: 'privacy', keys: 'keyboard', keyboard: 'keyboard', profile: 'profile',
-    sparks: 'extensions', blockAds: 'privacy', askWhereToSave: 'downloads', version: 'about', autoUpdate: 'about', flags: 'flags', webFeatures: 'webFeatures',
+    sparks: 'extensions', blockAds: 'privacy', clearData: 'privacy', askWhereToSave: 'downloads', version: 'about', autoUpdate: 'about', flags: 'flags', webFeatures: 'webFeatures',
   };
   const show = async (part) => {
     if (sectionsLayout) {
@@ -833,6 +833,23 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   await removeItem.click();
   check('Remove forgets the site', await until(async () => !('https://news.test' in sitesFile()) && !(await sites.textContent()).includes('news.test')));
   check('with none left, the list says so', await until(async () => (await sites.textContent()).includes('No site has asked for a permission yet')));
+
+  // Clear browsing data asks what goes, History and site data ticked; Cancel clears nothing.
+  await show('clearData');
+  const clearRow = page.locator('.row', { has: page.getByRole('button', { name: 'Clear…' }) });
+  await page.getByRole('button', { name: 'Clear…' }).click();
+  const clearDialog = page.getByRole('dialog', { name: 'Clear browsing data' });
+  check('Clear browsing data asks what goes, history and site data ticked', await until(() => clearDialog.isVisible()) &&
+    (await clearDialog.getByRole('checkbox', { name: /History/ }).isChecked()) && (await clearDialog.getByRole('checkbox', { name: /Cookies, site data/ }).isChecked()) &&
+    !(await clearDialog.getByRole('checkbox', { name: /downloads list/ }).isChecked()));
+  await settle(page);
+  await page.screenshot({ path: shot('settings-clear-data') });
+  await page.keyboard.press('Escape');
+  check('Escape clears nothing', await until(async () => (await clearDialog.count()) === 0) && !(await clearRow.textContent()).includes('Cleared'));
+  await page.getByRole('button', { name: 'Clear…' }).click();
+  await clearDialog.getByRole('checkbox', { name: /Cookies, site data/ }).uncheck();
+  await clearDialog.getByRole('button', { name: 'Clear', exact: true }).click();
+  check('Clear clears what is ticked, and the row says what went', await until(async () => (await clearRow.textContent()).includes('Cleared history') && !(await clearRow.textContent()).includes('cookies, site data')));
   await page.close();
   await fetch(`${base}/mock/fire`, { method: 'POST', body: new URLSearchParams({ kind: 'key', value: 'closeTab' }) });
   await until(async () => (await regions()).settings === 0);

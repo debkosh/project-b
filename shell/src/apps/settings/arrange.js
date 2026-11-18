@@ -89,7 +89,7 @@ const page = [
     hint: 'Starting, searching, keys, workspaces and bookmarks',
     cards: [['start', 'searchEngine', 'keys', 'keyboard', 'workspaces'], 'bookmarks', { heading: 'Downloads', rows: ['askWhereToSave'] }],
   },
-  { id: 'privacy', label: 'Privacy', hint: 'What sites can do and what they keep', cards: [['sites', 'blockAds']] },
+  { id: 'privacy', label: 'Privacy', hint: 'What sites can do and what they keep', cards: [['clearData', 'sites', 'blockAds']] },
   { id: 'data', label: 'Your data', hint: 'This profile and what you bring in', cards: [['profile'], 'import', ['runSetup']] },
   {
     id: 'advanced',
@@ -163,7 +163,7 @@ const sectionList = () => [
     id: 'privacy',
     label: 'Privacy and sites',
     icon: 'privacy',
-    cards: [['blockAds', 'sites']],
+    cards: [['clearData', 'blockAds', 'sites']],
     summary: () => [state.prefs.blockAds ? 'Ads blocked' : 'Ads shown', lists.sites.summary()].filter((x) => x).join(' · '),
   },
   {

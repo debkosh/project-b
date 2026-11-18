@@ -335,8 +335,9 @@ typedef struct PBEngineCalls {
   // before anything asks for such a tab, and again whenever the first changes.
   void (*set_first_workspace)(const char* workspace);
   // Erases a workspace's site data and cache: its cookies, every kind of site storage,
-  // service workers and the HTTP cache. Go asks once it has closed the workspace's tabs.
-  // For "", the profile's own storage, extensions' own data stays.
+  // service workers and the HTTP cache. Deleting a workspace asks once Go has closed its
+  // tabs; Settings' Clear browsing data asks with them open, and their pages stay. For "",
+  // the profile's own storage, extensions' own data stays.
   void (*erase_workspace)(const char* workspace);
   void (*close_tab)(int64_t tab);
   void (*load_url)(int64_t tab, const char* url);

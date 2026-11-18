@@ -31,6 +31,9 @@ export const state = reactive({
   searchEngines: [],
   autoUpdate: true,
   update: { phase: '' },
+  // What Clear browsing data last cleared, as Go said, {history, siteData, downloads}; null
+  // before it has.
+  cleared: null,
   // Whether the app is the system's default browser, as the page opened or since it asked.
   isDefault: false,
   running: '',
@@ -149,6 +152,9 @@ export function connect() {
           break;
         case 'update':
           state.update = m.update;
+          break;
+        case 'dataCleared':
+          state.cleared = m;
           break;
         case 'isDefault':
           state.isDefault = m.isDefault;

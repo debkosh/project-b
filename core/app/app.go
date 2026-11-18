@@ -251,6 +251,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	})
 	a.Settings.AddPart(a.bookmarkSettingsPart())
 	a.Settings.AddPart(a.defaultBrowserSettingsPart(e))
+	a.Settings.AddPart(a.clearDataSettingsPart(e))
 	a.registerActions(e)
 
 	a.Tabs.AddGate(a.Policy.IsAllowedURL)

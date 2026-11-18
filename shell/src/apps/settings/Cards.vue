@@ -2,6 +2,7 @@
 import { computed, inject, provide } from 'vue';
 import { extensionsSection } from '@extensions';
 import Bookmarks from './Bookmarks.vue';
+import ClearData from './ClearData.vue';
 import Flags from './Flags.vue';
 import Import from './Import.vue';
 import Keyboard from './Keyboard.vue';
@@ -56,6 +57,7 @@ const cards = computed(() => props.section.cards.map((c) => (typeof c === 'strin
           <Row v-if="lists[p]" :label="lists[p].label" :hint="lists[p].hint" :summary="lists[p].summary()" :opens="p" />
           <KeysRow v-else-if="p === 'keys'" />
           <ProfileRows v-else-if="p === 'profile'" />
+          <ClearData v-else-if="p === 'clearData'" />
           <Rows v-else :part="p" />
         </template>
       </div>

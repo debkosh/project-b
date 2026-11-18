@@ -19,7 +19,7 @@ Every setting is on one scrolling page, in five groups by task:
 |---|---|
 | Look | Theme, Frame colour, Tab layout (desktop), Address bar (phone), Shell |
 | Browsing | On start, Search engine, Keys, Keyboard shortcuts (desktop), Workspaces, Bookmarks, Downloads: Ask where to save (desktop) |
-| Privacy | Sites, Block ads |
+| Privacy | Clear browsing data, Sites, Block ads |
 | Your data | Profile name, Template, Import from other browsers, Run setup again |
 | Advanced | Automatic updates, Sparks, Extensions (with its flag on), Web features, Flags |
 
@@ -40,7 +40,7 @@ Like Chrome's settings: a list of sections, one showing at a time.
 | Workspaces | The workspaces |
 | Bookmarks | Where bookmarks show, and the bar |
 | Downloads (desktop) | Ask where to save each file |
-| Privacy and sites | Block ads, Sites, which opens as a page of its own |
+| Privacy and sites | Clear browsing data, Block ads, Sites, which opens as a page of its own |
 | Keyboard (desktop) | Keys, and the keyboard shortcuts |
 | Profile and import | Profile name, Template, Import from other browsers, Run setup again |
 | Extensions and sparks | Extensions (with its flag on, desktop), Sparks; Sparks alone without them |
@@ -65,6 +65,18 @@ Relaunch (Install update on a phone) once a release is ready. Automatic updates 
 its own, under Advanced, or About Project B in the sections layout. The page shows the line
 over every group; the sections layout over every section on a desktop, and over the list of
 sections on a phone.
+
+## Privacy
+
+- **Clear browsing data…** asks in a dialog what goes, History and Cookies, site data and
+  cached files ticked, The downloads list not, and Go clears it all, from the start
+  (`core/app/clear_data_settings.go`): history and the downloads list are Go's own (the files
+  stay); cookies, site storage and the cache go together, in every workspace and the
+  profile's own storage, by the engine's `EraseWorkspace`, with their tabs left open. The row
+  then says what went. A time range, and cookies apart from the cache, need the engine
+  ([todo.md](todo.md)).
+- **Block ads** is the ad blocker on every site ([site-features.md](site-features.md#the-ad-blocker)).
+- **Sites** is each site's settings, the list Site settings was.
 
 ## Search
 
@@ -108,7 +120,14 @@ opens `sites/<origin>`, and an extension's Manage opens `extensions`.
 
 `shell/e2e/settings.cjs` drives the page on the mock engine, once in each layout, each run on a
 profile whose flag names it; it goes to each part as a person does, by the rail, the list of
-sections and the rows that open the lists. Each run also switches the flag to the other
-layout and back, in the same page, searches (rows found working in place, the counts, a
-section's name, nothing found, Escape, a list found), and walks a phone-sized page through
-every group or section and a search. `core/flags/flags_test.go` has the live flag.
+sections and the rows that open the lists. Each run also switches the flag to the other layout
+and back, in the same page; checks the status line (not the default browser, Make default
+browser, then the default; the version, and Check for updates reaching the release server
+once), Block ads, Ask where to save and Clear browsing data's dialog; searches (rows found
+working in place, the counts, a section's name, nothing found, Escape, a list found); and walks
+a phone-sized page through every group or section, and a search.
+
+In Go, `core/flags/flags_test.go` has the live flag; `core/app/default_browser_settings_test.go`
+the default browser's state in the snapshot, Make default browser and its answer;
+`clear_data_settings_test.go` what each choice clears, site data in every workspace with the
+tabs open; `sitefeatures_test.go` Block ads; `downloads_test.go` Ask where to save.

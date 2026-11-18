@@ -184,8 +184,9 @@ type Engine interface {
 	// list. The app says so at start, before any such tab, and whenever the first changes.
 	SetFirstWorkspace(workspace string)
 	// EraseWorkspace erases a workspace's site data and cache: its cookies, every kind of
-	// site storage, service workers and the HTTP cache. The app asks once it has closed
-	// the workspace's tabs. For "", the profile's own storage, extensions keep their own.
+	// site storage, service workers and the HTTP cache. Deleting a workspace asks once the
+	// app has closed its tabs; Settings' Clear browsing data asks with them open, and their
+	// pages stay. For "", the profile's own storage, extensions keep their own.
 	EraseWorkspace(workspace string)
 	CloseTab(tab TabID)
 	LoadURL(tab TabID, url string)
