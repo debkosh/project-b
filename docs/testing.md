@@ -41,7 +41,8 @@ the test G, N, and the report takes those parts' results in place of the earlier
 | Field | |
 |---|---|
 | `group`, `name` | as `tools/test.sh` names it (`direct` and the command, run on its own) |
-| `status`, `exit` | `passed` (0), `did_not_run` (2) or `failed` (anything else) |
+| `status`, `exit` | `passed` (0), `did_not_run` (2), `failed` (anything else), or `killed` when a signal from outside stopped it |
+| `killed` | which signal and when, for a killed test: it passes the signal on to the test and still writes its result |
 | `rerun` | true when it reruns parts of an earlier result |
 | `commit`, `tested`, `app` | as in run.json, for this test: a run's groups can test different builds, and the report's header lists the commits of the results it took |
 | `start`, `seconds` | |

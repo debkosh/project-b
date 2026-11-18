@@ -23,6 +23,7 @@ import json
 import os
 import platform
 import re
+import signal
 import socket
 import subprocess
 import sys
@@ -218,6 +219,16 @@ def cmd_run(args):
     start, lines = time.time(), []
     with open(base + ".log", "w") as log:
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace")
+        # Killed from outside, it passes the signal on, and still writes its result, as killed,
+        # with when and by which signal, so a run something else stopped leaves its evidence.
+        killed = {}
+
+        def on_signal(signum, _frame):
+            killed.update(signal=signal.Signals(signum).name, at=utc())
+            p.send_signal(signum)
+
+        for s in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT):
+            signal.signal(s, on_signal)
         sampler = Sampler(p.pid)
         sampler.start()
         for line in p.stdout:
@@ -244,14 +255,16 @@ def cmd_run(args):
                       "processes": summarise(sampler.samples, t, until)})
     result = {"schema": SCHEMA, "group": opts["--group"], "name": opts["--name"], "rerun": opts.get("--rerun") == "yes",
               "commit": sh("git", "-C", ROOT, "rev-parse", "HEAD").strip(), "tested": tested(), "app": {k: os.environ[k] for k in ("PB_BIN", "PB_DMG", "PB_APK") if os.environ.get(k)},
-              "status": "passed" if code == 0 else "did_not_run" if code == 2 else "failed", "exit": code,
+              "status": "killed" if killed else "passed" if code == 0 else "did_not_run" if code == 2 else "failed",
+              "exit": code, "killed": killed,
               "start": utc(start), "seconds": round(end - start, 1),
               "ok": sum(p["ok"] for p in parts), "fail": sum(p["fail"] for p in parts),
               "failures": [f for p in parts for f in p["failures"]][:100], "log": os.path.basename(base) + ".log",
               "parts": parts, "processes": summarise(sampler.samples, start, end + 1), "hogs": sampler.hogs[:200]}
     with open(base + ".json", "w") as f:
         json.dump(result, f, indent=1)
-    sys.exit(code)
+    # A child a signal ended has a negative code; exit as a shell would, 128 and the signal.
+    sys.exit(128 - code if code < 0 else code)
 
 
 # The repo copy carries nothing of this machine but its model and OS.
@@ -333,7 +346,7 @@ def cmd_report(args):
     groups = {}
     for t in tests:
         g = groups.setdefault(t["group"], {"passed": 0, "failed": 0, "known": 0, "did_not_run": 0, "ok": 0, "fail": 0})
-        g[t["status"]] += 1
+        g["did_not_run" if t["status"] == "killed" else t["status"]] += 1
         g["ok"] += t["ok"]
         g["fail"] += t["fail"]
     m = machines[-1] if machines else {}
@@ -374,7 +387,7 @@ def markdown(r, prev):
          f"Format: [docs/testing.md](../testing.md#test-results).", "",
          (f"**{r['newFailures']} new failures.**" if r["newFailures"] else "**0 new failures**: every failure is a known one.")
          + (f" **{len(r['flaky'])} flaky checks**, failed in one run and passed in another." if r.get("flaky") else ""), "", "## Groups", "",
-         "| Group | Tests passed | Failed | Known | Did not run | Checks ok | Checks failed |", "|---|---|---|---|---|---|---|"]
+         "| Group | Tests passed | Failed | Known | Did not run or killed | Checks ok | Checks failed |", "|---|---|---|---|---|---|---|"]
     pg = (prev or {}).get("groups", {})
     for g, v in sorted(r["groups"].items()):
         was = pg.get(g)
