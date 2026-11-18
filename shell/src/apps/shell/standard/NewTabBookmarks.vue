@@ -89,7 +89,7 @@ const label = (e) => e.title || (e.kind === 'folder' ? 'Folder' : host(e.url));
           :aria-expanded="e.kind === 'folder' ? open === e.id : undefined"
           @click="e.kind === 'folder' ? toggle(e) : openHere(e.url, overPage)"
         >
-          <span v-if="e.kind === 'folder'" class="mark sites" :style="tileOf(e.id, 'bar')" aria-hidden="true">
+          <span v-if="e.kind === 'folder'" class="mark sites" :class="{ one: sitesIn(e.id).length === 1 }" :style="tileOf(e.id, 'bar')" aria-hidden="true">
             <SiteMark v-for="url in sitesIn(e.id)" :key="url" :url="url" :size="16" on="bar" />
           </span>
           <SiteMark v-else class="mark" :url="e.url" :size="56" on="bar" />
@@ -117,7 +117,7 @@ const label = (e) => e.title || (e.kind === 'folder' ? 'Folder' : host(e.url));
               :title="f.kind === 'folder' ? f.title : `${label(f)}\n${f.url}`"
               @click="f.kind === 'folder' ? (at = f.id) : openHere(f.url, overPage)"
             >
-              <span v-if="f.kind === 'folder'" class="mark sites" :style="tileOf(f.id, 'surface')" aria-hidden="true">
+              <span v-if="f.kind === 'folder'" class="mark sites" :class="{ one: sitesIn(f.id).length === 1 }" :style="tileOf(f.id, 'surface')" aria-hidden="true">
                 <SiteMark v-for="url in sitesIn(f.id)" :key="url" :url="url" :size="16" />
               </span>
               <SiteMark v-else class="mark" :url="f.url" :size="56" />
@@ -224,6 +224,11 @@ h2 {
   border: 1px solid var(--line);
   background: var(--surface);
   box-sizing: border-box;
+}
+
+/* A folder with one site shows it in the middle: two by two only from two. */
+.sites.one {
+  grid-template-columns: 16px;
 }
 
 .name {
