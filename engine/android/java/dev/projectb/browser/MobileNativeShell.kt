@@ -128,7 +128,6 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
     private val oursTitle = TextView(context)
     private val oursClose = IconButton(context, "close", "Close")
     private val findBar = FindBar(context, { send(it) }) { focusPage() }
-    private val noTabs = NoTabs(context) { newTab(0) }
     // Where a page's dialog goes, over everything, sheets and bars too: the page waits on it.
     private val dialogLayer = FrameLayout(context)
     private val notice = PageNotice(context, again = {
@@ -233,8 +232,6 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
         addView(sheets, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         addView(dialogLayer, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         findBar.visibility = GONE
-        noTabs.visibility = GONE
-        addView(noTabs, 0, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     }
 
     override fun onAttachedToWindow() {
@@ -302,8 +299,8 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
 
     // The engine's focus_shell: the shell takes the window's keyboard from the page. Which of
     // its fields has it is the shell's to say (the address, the find bar, a dialog's field), so
-    // with none of them asking it is the shell itself, and no keyboard comes up: a window with
-    // No tabs or a page's confirm must leave the back key to the shell.
+    // with none of them asking it is the shell itself, and no keyboard comes up: a page's
+    // confirm must leave the back key to the shell.
     override fun focus() {
         if (findFocus() != null) return
         isFocusableInTouchMode = true
@@ -424,8 +421,6 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
             findFocus = false
             findBar.focus()
         }
-        noTabs.visibility = if (tabs.isEmpty() && snapshotted) VISIBLE else GONE
-        if (tabs.isEmpty()) noTabs.show(palette)
         showDialog()
         val failed = !full() && tab != null && url.isNotEmpty() && !tab.optBoolean("loading") &&
             (tab.optBoolean("crashed") || tab.optString("error").isNotEmpty() || tab.optBoolean("blocked"))
@@ -545,11 +540,6 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
     private fun activated() {
         if (!snapshotted || active == lastActive) return
         lastActive = active
-        // With no tabs there is nothing to edit: No tabs shows, and the back key leaves.
-        if (active == 0L) {
-            address.clearFocus()
-            return
-        }
         bars(true)
         workspace = activeTab()?.optString("workspace") ?: ""
         if (activeTab()?.optString("url").isNullOrEmpty()) {
@@ -787,12 +777,11 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
         if (id != active) send(JSONObject().put("t", "activateTab").put("id", id)) else focusPage()
     }
 
-    // The window never has no tabs: closing the last ones leaves a new one. Closing the active
-    // tab of a group goes to its neighbour in the group.
+    // Closing the last tabs closes the window, and so the app. Closing the active tab of a
+    // group goes to its neighbour in the group.
     private fun closeTabs(ids: List<Long>) {
         val group = groups.firstOrNull { Switcher.inGroup(it, active) }
         if (ids.size >= tabs.size) {
-            // Closing the last tabs leaves the window with none, and its No tabs.
             open("")
         } else if (active in ids && group != null) {
             val members = Switcher.memberTabs(group, tabs).map { it.getLong("id") }
@@ -922,11 +911,10 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
         val shell = JSONArray()
         // A sheet covers the window, the switcher all but the bars; the bars are always the
         // shell's, and the suggestions and a page's notice while they show.
-        // A page's dialog covers the whole window too, and No tabs the page's room.
+        // A page's dialog covers the whole window too.
         if (sheet.isNotEmpty() || dialogShown != null) {
             shell.put(rect(0.0, 0.0, w, h))
         } else {
-            if (noTabs.visibility == VISIBLE) shell.put(rect(0.0, topH, w, h - topH - bottomH))
             if (topH > 0) shell.put(rect(0.0, 0.0, w, topH))
             if (bottomH > 0) shell.put(rect(0.0, h - bottomH, w, bottomH))
             if (suggestions.visibility == VISIBLE && suggestions.height > 0) {

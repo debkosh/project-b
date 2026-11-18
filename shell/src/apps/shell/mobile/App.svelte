@@ -215,8 +215,6 @@
     bars(true);
     workspace = tab.workspace || '';
     address.blur();
-    // With no tabs there is nothing to edit: No tabs shows, and the back key leaves.
-    if (go.active === 0) return;
     if (tab.url !== '') focusPage();
   }
 
@@ -253,7 +251,7 @@
   }
 
   // Closing the active tab of a group goes to its neighbour in the group, as the strip
-  // shows it. Closing the last tabs leaves the window with none, and its No tabs.
+  // shows it. Closing the last tabs closes the window, and on a phone the app.
   function closeTabs(ids) {
     if (ids.length >= go.tabs.length) {
       sheet = '';
@@ -338,13 +336,7 @@
   {/if}
   <div class="stage">
     <main use:page={go.active}>
-      {#if go.tabs.length === 0}
-        <!-- A window with no tabs, as the back key leaves one before the app goes. -->
-        <div class="empty" use:shell>
-          <p>No tabs</p>
-          <button class="text-button primary" aria-label="New Tab" onclick={() => newTab()}>New tab</button>
-        </div>
-      {:else if !full && tab.notice}
+      {#if !full && tab.notice}
         <PageNotice {tab} />
       {:else if !full && !tab.url && !tab.loading}
         {#key tab.id}<NewTab bind:this={newTabPage} onopenall={openAll} />{/key}
@@ -482,29 +474,6 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
-  }
-
-  .empty {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    background: var(--bar);
-    color: var(--muted);
-  }
-
-  .empty p {
-    margin: 0;
-    font-size: 15px;
-  }
-
-  .empty button {
-    height: 48px;
-    padding: 0 24px;
-    border-radius: 24px;
   }
 
   /* The page's area is a layer of its own: what lies over the page (a notice, the find bar, a

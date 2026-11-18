@@ -164,8 +164,8 @@ class BrowserWindow : public content::CompositorClient,
 
   // The phone's back key goes to the shell while it has something open the key closes;
   // then goes back in the tab's history; and on a tab with none, as a tab of ours, closes
-  // it, the tab used before it taking its place. With no tabs left it is Android's: the
-  // app goes. Android has one window, 1.
+  // it, the tab used before it taking its place. Closing the last tab closes the window,
+  // and so the app. Android has one window, 1.
   bool BackKey(JNIEnv* env) {
     if (Engine::Get()->window(1)->shell_back) {
       hooks::Args args;
