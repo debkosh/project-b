@@ -6,8 +6,7 @@ import { send, state } from './state.js';
 
 // Flags, as core/flags/registry.json defines them, each drawn by its type: a switch for a
 // boolean, a select for an enum, a field for the rest. A change waits for the next launch:
-// each changed flag says so, and one Relaunch at the top applies them all. A live flag's
-// change applies at once, and never waits.
+// each changed flag says so, and one Relaunch at the top applies them all.
 
 // Where the page's own heading names the section, its own gives way.
 const titled = inject('settingsTitled', false);

@@ -4,8 +4,8 @@
 // does (core/cmd/dev/window.html); the test drives a page of its own, the same tab's at
 // /settings/?tab=<id>, which talks to Go the same way.
 // It runs once for each of the page's two layouts (docs/settings.md), each on a profile of its
-// own whose Settings layout flag names it; a run of one checks that the flag switches the
-// layout at once.
+// own whose settingsLayout pref names it; a run of one checks that Look's Settings row
+// switches the layout at once.
 // Run: node shell/e2e/settings.cjs [page|sections]   (from the repo root, after `npm run
 // build` in shell/); with no layout, both.
 
@@ -47,9 +47,8 @@ const profilesRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'project-b-settings-'
 const profileID = 'a1b2c3d4';
 const profile = path.join(profilesRoot, profileID);
 fs.mkdirSync(profile);
-// The flags as the profile starts with them: the layout's, the page's being Off.
-const startFlags = sectionsLayout ? { settingsLayout: 'sections' } : {};
-if (sectionsLayout) fs.writeFileSync(path.join(profile, 'flags.json'), JSON.stringify(startFlags));
+// The layout the profile starts with, one page being the default.
+if (sectionsLayout) fs.writeFileSync(path.join(profile, 'prefs.json'), JSON.stringify({ settingsLayout: 'sections' }));
 fs.writeFileSync(path.join(profilesRoot, 'profiles.json'), JSON.stringify({ profiles: [{ id: profileID, name: 'Personal', color: '#4f9e9e', template: 'Personal' }] }));
 const listed = () => JSON.parse(fs.readFileSync(path.join(profilesRoot, 'profiles.json'), 'utf8')).profiles[0];
 const bin = path.join(out, 'dev');
@@ -257,7 +256,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   // The sections layout has each part in a section of its own, which its list goes to;
   // Sites is a row there that opens it.
   const sectionOf = {
-    theme: 'appearance', frameColour: 'appearance', tabLayout: 'appearance', shell: 'appearance', start: 'start', searchEngine: 'start',
+    theme: 'appearance', frameColour: 'appearance', tabLayout: 'appearance', shell: 'appearance', settingsLayout: 'appearance', start: 'start', searchEngine: 'start',
     workspaces: 'workspaces', bookmarks: 'bookmarks', sites: 'privacy', keys: 'keyboard', keyboard: 'keyboard', profile: 'profile',
     sparks: 'extensions', blockAds: 'privacy', clearData: 'privacy', clearOnQuit: 'privacy', askWhereToSave: 'downloads', downloadFolder: 'downloads', version: 'about', autoUpdate: 'about', flags: 'flags', webFeatures: 'webFeatures',
   };
@@ -661,7 +660,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
       return null;
     }
   };
-  const flagsAsStarted = () => JSON.stringify(flagsFile() || {}) === JSON.stringify(startFlags);
+  const flagsAsStarted = () => JSON.stringify(flagsFile() || {}) === '{}';
   await show('flags');
   const flagsRegion = page.getByRole('region', { name: 'Flags', exact: true });
   const relaunch = page.getByRole('button', { name: 'Relaunch' });
@@ -706,19 +705,26 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   await sizes.press('Enter');
   await until(flagsAsStarted);
 
-  // The layout is a live flag: choosing the other switches the page at once, with no
-  // relaunch and no new page, and choosing this one switches it back.
-  const layoutFlag = () => page.getByLabel('Settings layout');
+  check('the layout is no flag', (await flagsRegion.getByText('Settings layout').count()) === 0);
+
+  // The layout is Look's Settings row, Go's settingsLayout pref: choosing the other switches
+  // the page at once, with no relaunch and no new page, and choosing this one switches it back.
+  await show('settingsLayout');
+  const layoutRow = page.getByRole('radiogroup', { name: 'Settings', exact: true });
+  const thisLayout = sectionsLayout ? 'Sections' : 'One page';
+  const otherLayout = sectionsLayout ? 'One page' : 'Sections';
+  check('Look\'s Settings row shows this layout', (await layoutRow.getByRole('radio', { name: thisLayout }).getAttribute('aria-checked')) === 'true');
   await page.evaluate(() => (window.samePage = true));
-  await layoutFlag().selectOption(sectionsLayout ? '' : 'sections');
+  await layoutRow.getByRole('radio', { name: otherLayout }).click();
   const otherShows = () => (sectionsLayout ? page.locator('.nav [data-section="look"]') : page.locator('.nav [data-section="appearance"]')).isVisible();
-  check('choosing the other layout switches the page at once, in the same page, with no relaunch', await until(otherShows) &&
-    (await page.evaluate(() => window.samePage)) && (await relaunch.count()) === 0 && (flagsFile()?.settingsLayout || '') === (sectionsLayout ? '' : 'sections'));
-  check('and the Flags it was chosen in still show', await layoutFlag().isVisible());
+  check('choosing the other layout switches the page at once, in the same page, with no relaunch, and is saved', await until(otherShows) &&
+    (await page.evaluate(() => window.samePage)) && (await relaunch.count()) === 0 && prefsFile().settingsLayout === (sectionsLayout ? 'page' : 'sections'));
+  check('and opens where the row it was chosen in is', await until(() => layoutRow.isVisible()));
   await settle(page);
   await page.screenshot({ path: shot('settings-switched') });
-  await layoutFlag().selectOption(sectionsLayout ? 'sections' : '');
-  check('choosing this one switches it back', await until(async () => !(await otherShows())) && (await page.evaluate(() => window.samePage)) && flagsAsStarted());
+  await layoutRow.getByRole('radio', { name: thisLayout }).click();
+  check('choosing this one switches it back', await until(async () => !(await otherShows())) && (await page.evaluate(() => window.samePage)) &&
+    prefsFile().settingsLayout === (sectionsLayout ? 'sections' : 'page'));
 
   // Web features: the registry, as Go sends it for this platform, only shown, in groups by
   // status, worst first.

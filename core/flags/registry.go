@@ -17,7 +17,6 @@ const (
 	RemoteDebugging = "remoteDebugging"
 	Features        = "features"
 	ShowWelcome     = "showWelcome"
-	SettingsLayout  = "settingsLayout"
 )
 
 // All is every flag, in the order the settings page lists them.

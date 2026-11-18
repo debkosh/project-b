@@ -4,12 +4,12 @@ The settings page is one of our pages, in a tab of ours (`shell/src/apps/setting
 everything on it (`core/settings` and the parts other managers add); the page shows it and
 sends the person's changes back.
 
-It has two layouts, the same settings arranged two ways, and the flag Settings layout
-(Advanced, Flags) switches between them while the page is open, with no relaunch: `page`, one
-page by task, the default and what Off means, and `sections`, sections in a list. It is a live
-flag ([flags.md](flags.md)): Go saves it and sends the flags again, and the page takes the other
-layout at once, showing Flags, where the person is. The owner asked for both, to choose
-between by using them (2026-11-18).
+It has two layouts, the same settings arranged two ways, and Look's Settings row switches
+between them while the page is open, with no relaunch: One page, by task, the default, and
+Sections, in a list. It is Go's `settingsLayout` pref, `page` or `sections`: Go saves it and
+sends the prefs again, and the page takes the other layout at once, showing Look, where the
+person is. The owner asked for both, to choose between by using them (2026-11-18), and to have
+the choice under Look rather than in Flags.
 
 ## One page by task (`page`)
 
@@ -17,7 +17,7 @@ Every setting is on one scrolling page, in five groups by task:
 
 | Group | What is in it |
 |---|---|
-| Look | Theme, Frame colour, Tab layout (desktop), Address bar (phone), Shell |
+| Look | Theme, Frame colour, Tab layout (desktop), Address bar (phone), Shell, Settings (this page's layout) |
 | Browsing | On start, Search engine, Keys, Keyboard shortcuts (desktop), Workspaces, Bookmarks, Downloads: Save to and Ask where to save (desktop) |
 | Privacy | Clear browsing data, Sites, Block ads |
 | Your data | Profile name, Template, Import from other browsers, Run setup again |
@@ -35,7 +35,7 @@ Like Chrome's settings: a list of sections, one showing at a time.
 
 | Section | What is in it |
 |---|---|
-| Appearance | Theme, Frame colour, Tab layout (desktop), Address bar (phone), Shell |
+| Appearance | Theme, Frame colour, Tab layout (desktop), Address bar (phone), Shell, Settings (this page's layout) |
 | Start and search | On start, Search engine |
 | Workspaces | The workspaces |
 | Bookmarks | Where bookmarks show, and the bar |
@@ -162,9 +162,9 @@ or not it has any, and an extension's Manage opens `extensions`.
 ## Tests
 
 `shell/e2e/settings.cjs` drives the page on the mock engine, once in each layout, each run on a
-profile whose flag names it; it goes to each part as a person does, by the rail, the list of
-sections and the rows that open the lists. Each run also switches the flag to the other layout
-and back, in the same page; checks the status line (not the default browser, Make default
+profile whose `settingsLayout` pref names it; it goes to each part as a person does, by the
+rail, the list of sections and the rows that open the lists. Each run also switches Look's
+Settings row to the other layout and back, in the same page; checks the status line (not the default browser, Make default
 browser, then the default; the version, and Check for updates reaching the release server
 once, and a download's Retry and Cancel on its own line at a phone's width), Block ads, Ask
 where to save, Save to with a folder chosen and Use Downloads, Clear browsing data's dialog,
@@ -174,7 +174,7 @@ the app quits with a site kept from its page; searches (rows found
 working in place, the counts, a section's name, nothing found, Escape, a list found); and walks
 a phone-sized page through every group or section, and a search.
 
-In Go, `core/flags/flags_test.go` has the live flag; `core/app/default_browser_settings_test.go`
+In Go, `core/prefs/prefs_test.go` has the layout pref; `core/app/default_browser_settings_test.go`
 the default browser's state in the snapshot, Make default browser and its answer;
 `clear_data_settings_test.go` what each choice clears, site data in every workspace with the
 tabs open, and a range: the pages each would take, and what the last hour clears and leaves;

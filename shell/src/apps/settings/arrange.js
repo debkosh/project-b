@@ -94,7 +94,7 @@ export const blockRows = {
 // (a list among them is its row, which opens it), a name is a block, and {heading, rows}
 // a card under a heading of its own.
 const page = [
-  { id: 'look', label: 'Look', hint: 'How Project B looks', cards: [['theme', 'frameColour', 'tabLayout', 'addressBar', 'shell']] },
+  { id: 'look', label: 'Look', hint: 'How Project B looks', cards: [['theme', 'frameColour', 'tabLayout', 'addressBar', 'shell', 'settingsLayout']] },
   {
     id: 'browsing',
     label: 'Browsing',
@@ -149,7 +149,7 @@ const sectionList = () => [
     id: 'appearance',
     label: 'Appearance',
     icon: 'appearance',
-    cards: [['theme', 'frameColour', 'tabLayout', 'addressBar', 'shell']],
+    cards: [['theme', 'frameColour', 'tabLayout', 'addressBar', 'shell', 'settingsLayout']],
     summary: () => [named(themeNames, state.theme), colourName(state.windowColor)].join(' · '),
   },
   {

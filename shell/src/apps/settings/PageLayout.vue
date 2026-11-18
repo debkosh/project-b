@@ -37,6 +37,8 @@ const current = ref('');
 let jumpedTo = '';
 function onScroll() {
   const c = content.value;
+  // A scroll can land as the other layout takes the page's place.
+  if (!c) return;
   const top = c.getBoundingClientRect().top;
   const groups = [...c.querySelectorAll('.group')];
   const at = groups.filter((g) => g.getBoundingClientRect().top - top <= 48).pop() || groups[0];

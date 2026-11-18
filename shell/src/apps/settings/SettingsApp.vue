@@ -23,15 +23,14 @@ const go = (address) => {
 };
 provide('settingsGo', go);
 
-// The layout is the Settings layout flag's, a live one (docs/flags.md): Go sends the flags
-// again as it changes, and the page takes the other layout at once, at the same address.
-// Off is the page.
-const layout = computed(() => (state.ready && state.flags.find((f) => f.id === 'settingsLayout')?.value === 'sections' ? SectionsLayout : PageLayout));
-// The flag is set in Flags, so the other layout shows Flags, where the person still is. The
-// snapshot's layout is no change.
+// The layout is Look's Settings row, Go's settingsLayout pref: Go sends the prefs again as
+// it changes, and the page takes the other layout at once, at the same address.
+const layout = computed(() => (state.ready && state.prefs.settingsLayout === 'sections' ? SectionsLayout : PageLayout));
+// The layout is chosen in Look, so the other layout shows its row, where the person still
+// is. The snapshot's layout is no change.
 watch(
   () => state.ready && layout.value,
-  (now, was) => was && go('flags'),
+  (now, was) => was && go('settingsLayout'),
 );
 </script>
 

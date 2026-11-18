@@ -60,6 +60,11 @@ const layouts = [
   { value: 'horizontal', label: 'Horizontal' },
 ];
 
+const settingsLayouts = [
+  { value: 'page', label: 'One page' },
+  { value: 'sections', label: 'Sections' },
+];
+
 </script>
 
 <template>
@@ -79,6 +84,10 @@ const layouts = [
 
   <Row v-else-if="part === 'tabLayout'" label="Tab layout">
     <Segmented label="Tab layout" :options="layouts" :model-value="state.tabLayout" @update:model-value="send({ t: 'setTabLayout', text: $event })" />
+  </Row>
+
+  <Row v-else-if="part === 'settingsLayout'" label="Settings">
+    <Segmented label="Settings" :options="settingsLayouts" :model-value="state.prefs.settingsLayout" @update:model-value="setPref('settingsLayout', $event)" />
   </Row>
 
   <Row v-else-if="part === 'addressBar'" label="Address bar">

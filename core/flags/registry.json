@@ -39,13 +39,5 @@
     "description": "Open the welcome over the whole window at every start, as on a first start",
     "switch": "pb-show-welcome",
     "type": "boolean"
-  },
-  {
-    "id": "settingsLayout",
-    "name": "Settings layout",
-    "description": "How this page is laid out: page, every setting on one page by task (the default), or sections, one section at a time from a list. Applies at once",
-    "type": "enum",
-    "choices": ["page", "sections"],
-    "live": true
   }
 ]
