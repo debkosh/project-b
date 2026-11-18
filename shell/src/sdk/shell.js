@@ -104,7 +104,10 @@ export const state = {
   // defaultText, ok, cancel, realm}: kind is alert, confirm, prompt, beforeunload or
   // signin, a site's request for a username and password, realm being its own words; ok and cancel
   // are the buttons' words, cancel "" for an alert. A shell shows its active tab's and
-  // answers with answerDialog (dialogs.js).
+  // answers with answerDialog (dialogs.js). Kind passkey is a passkey request, whose
+  // card changes in place: passkey is its step, {step, seq, primary, other, pin, accounts,
+  // code, bluetooth} (docs/passkeys.md), host the site, ok its primary button or "", and
+  // it is answered with answerPasskey; answerDialog with no cancels it.
   dialogs: [],
   // The active tab's search while its find bar is open, or null: {tab, text, matches,
   // active}, active counting from 1 and 0 for none. find.js acts on it; focusFind asks the

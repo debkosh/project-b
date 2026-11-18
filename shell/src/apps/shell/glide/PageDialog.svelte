@@ -1,6 +1,7 @@
 <script>
   import { answerDialog, dialogFor, focusPage, send, shell, state as go } from '@/sdk/svelte.svelte.js';
   import { pushEscape } from '@/ui/escape.js';
+  import PasskeyCard from '@/ui/PasskeyCard.svelte';
 
   // A page's alert, confirm, prompt, leave-page question or sign-in (docs/daily-driver.md),
   // over the card of the tab that asks, so the sidebar and other cards still work. Go words
@@ -27,6 +28,8 @@
     const pop = pushEscape(() => answer(false));
     send({ t: 'focusShell' });
     queueMicrotask(() => {
+      // A passkey's card takes the keyboard itself, at each step.
+      if (d.kind === 'passkey') return;
       if (field) {
         field.focus();
         field.select();
@@ -61,6 +64,10 @@
 
 {#if dialog}
   <div class="scrim" use:shell>
+    {#if dialog.kind === 'passkey'}
+      <!-- A passkey request: a new card for each step. -->
+      {#key dialog.passkey.seq}<PasskeyCard {dialog} active={tab === go.active} />{/key}
+    {:else}
     {#key dialog.id}
       <div bind:this={card} class="card" role="alertdialog" aria-modal="true" aria-label={dialog.title} tabindex="-1" onkeydown={trap}>
         <h2>{dialog.title}</h2>
@@ -90,6 +97,7 @@
         </div>
       </div>
     {/key}
+    {/if}
   </div>
 {/if}
 

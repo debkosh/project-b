@@ -3,12 +3,14 @@ import { computed, nextTick, onUnmounted, ref, watch } from 'vue';
 import { pushEscape } from '@/ui/escape.js';
 // The design system's dialog styles: .ui-dialog, its title and its buttons.
 import '@/ui/Dialog.vue';
+import PasskeyCard from '@/ui/PasskeyCard.vue';
 import { answerDialog, dialogFor, focusPage, send, state } from '@/sdk/vue.js';
 
 // The active tab's page asks something (docs/daily-driver.md): the design system's dialog
 // over that page only, so the tabs and the toolbar still work, with Go's title, words and
 // buttons, and a field for a prompt. The page waits until it is answered; another tab
-// shown hides it, and showing the tab again brings it back, as Go keeps it.
+// shown hides it, and showing the tab again brings it back, as Go keeps it. A passkey
+// request is one dialog whose card changes at each step (PasskeyCard.vue).
 const dialog = computed(() => dialogFor(state, state.active));
 // Where the host asking sits in a sign-in's words, set in bold so it reads first; -1 for none.
 const hostAt = computed(() => (dialog.value?.host ? dialog.value.message.indexOf(dialog.value.host) : -1));
@@ -30,6 +32,8 @@ watch(
     pop = pushEscape(() => answer(false));
     send({ t: 'focusShell' });
     await nextTick();
+    // A passkey's card takes the keyboard itself, at each step.
+    if (dialog.value?.kind === 'passkey') return;
     if (field.value) {
       field.value.focus();
       field.value.select();
@@ -61,7 +65,9 @@ function answer(yes) {
 
 <template>
   <div v-if="dialog" v-shell class="page-dialog">
-    <div :key="dialog.id" ref="card" class="ui-dialog card" role="alertdialog" aria-modal="true" :aria-label="dialog.title" @keydown.tab="trap">
+    <!-- A new card for each step, so each starts empty with the keyboard on its first control. -->
+    <PasskeyCard v-if="dialog.kind === 'passkey'" :key="`${dialog.id}:${dialog.passkey.seq}`" :dialog="dialog" />
+    <div v-else :key="dialog.id" ref="card" class="ui-dialog card" role="alertdialog" aria-modal="true" :aria-label="dialog.title" @keydown.tab="trap">
       <h2 class="ui-dialog-title">{{ dialog.title }}</h2>
       <p v-if="dialog.message" class="words">
         <template v-if="hostAt >= 0">{{ dialog.message.slice(0, hostAt) }}<b>{{ dialog.host }}</b>{{ dialog.message.slice(hostAt + dialog.host.length) }}</template>

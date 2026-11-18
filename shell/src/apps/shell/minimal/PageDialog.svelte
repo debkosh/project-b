@@ -4,6 +4,7 @@
   import { pushEscape } from '@/ui/escape.js';
   // The design system's dialog styles: .ui-dialog, its title and its buttons.
   import '@/ui/Dialog.vue';
+  import PasskeyCard from '@/ui/PasskeyCard.svelte';
 
   // The active tab's page asks something (docs/daily-driver.md): the design system's dialog
   // over that page only, so the tabs and the toolbar still work, with Go's title, words and
@@ -27,6 +28,8 @@
     password = '';
     send({ t: 'focusShell' });
     tick().then(() => {
+      // A passkey's card takes the keyboard itself, at each step.
+      if (untrack(() => dialog.kind) === 'passkey') return;
       if (field) {
         field.focus();
         field.select();
@@ -60,6 +63,10 @@
 
 {#if dialog}
   <div class="page-dialog" use:shell>
+    {#if dialog.kind === 'passkey'}
+      <!-- A passkey request: a new card for each step, square and flat, as everything here is. -->
+      {#key dialog.passkey.seq}<PasskeyCard {dialog} flat />{/key}
+    {:else}
     {#key dialog.id}
       <div bind:this={card} class="ui-dialog card" role="alertdialog" aria-modal="true" aria-label={dialog.title} tabindex="-1" onkeydown={trap}>
         <h2 class="ui-dialog-title">{dialog.title}</h2>
@@ -90,6 +97,7 @@
         </div>
       </div>
     {/key}
+    {/if}
   </div>
 {/if}
 
