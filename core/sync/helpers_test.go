@@ -125,6 +125,17 @@ func openProfile(t *testing.T, dir string) *profile {
 
 func (p *profile) post(f func()) { p.posted <- f }
 
+// startSync starts the profile's sync, with requests going to the test server, and the
+// subscriptions history and bookmarks have in the app.
+func (p *profile) startSync(s *testServer) *sync.Manager {
+	defer sync.SetHTTPClient(s.ts.Client())()
+	p.history.OnClearAll(sync.ClearedAll)
+	m := sync.New(p.st, p.keys, p.post, p.maps...)
+	p.t.Cleanup(m.Stop)
+	p.settle()
+	return m
+}
+
 // main runs f on the profile's main thread and waits for it, and for what it posted.
 func (p *profile) main(f func()) {
 	ran := make(chan struct{})
