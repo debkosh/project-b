@@ -1,12 +1,15 @@
-// Package bookmarks keeps a profile's bookmarks and their folders, one tree in bookmarks.json
-// in the profile folder (docs/bookmark-folders.md). Each entry keeps an id made once, the
+// Package bookmarks keeps a profile's bookmarks and their folders, one tree in the profile's
+// store (docs/bookmark-folders.md, docs/store.md). Each entry keeps an id made once, the
 // folder it is in, when it was added and last changed, and its place in that folder, so an
 // import and a later sync can tell one entry from another and a move changes that one alone.
+// The tree is read whole at start and kept in memory; each change writes the rows it changed,
+// on the store's worker.
 package bookmarks
 
 import (
 	"cmp"
 	"crypto/rand"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -15,6 +18,7 @@ import (
 	"slices"
 	"time"
 
+	"projectb/store"
 	"projectb/timeline"
 )
 
@@ -41,7 +45,8 @@ type Entry struct {
 	Place    string `json:"place"`
 }
 
-// file is bookmarks.json: the tree, and the folder a bookmark was last saved in.
+// file is the bookmarks.json of a version before the store: the tree, and the folder a
+// bookmark was last saved in.
 type file struct {
 	Version int     `json:"version"`
 	Last    string  `json:"last"`
@@ -59,42 +64,121 @@ type v1 struct {
 
 // Manager keeps one profile's bookmarks.
 type Manager struct {
-	path      string
+	st        *store.Store
 	entries   []Entry
 	last      string
 	onChanged []func()
 }
 
-// New returns the bookmarks saved in the profile folder dir, read here: the file is small.
-// A file from before folders becomes the top folder's bookmarks, newest first, saved so.
-func New(dir string) *Manager {
-	m := &Manager{path: filepath.Join(dir, "bookmarks.json")}
-	b, err := os.ReadFile(m.path)
-	if err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			timeline.Errorf("bookmarks: %v", err)
+// New returns the bookmarks of the profile folder dir, kept in st and read here, as they are
+// few: the main thread waits for the store's worker. The first start with the store reads
+// the bookmarks.json an earlier version kept, once.
+func New(dir string, st *store.Store) *Manager {
+	m := &Manager{st: st}
+	st.Schema("bookmarks", func(tx *store.Tx) error { return made(tx, filepath.Join(dir, "bookmarks.json")) })
+	st.Wait(func(tx *store.Tx) error {
+		r, err := tx.Query(`SELECT id, parent, kind, title, url, added, edited, place FROM bookmarks ORDER BY place, id`)
+		if err != nil {
+			return err
 		}
-		return m
+		defer r.Close()
+		for r.Next() {
+			var e Entry
+			if err := r.Scan(&e.ID, &e.Parent, &e.Kind, &e.Title, &e.URL, &e.Added, &e.Modified, &e.Place); err != nil {
+				return err
+			}
+			m.entries = append(m.entries, e)
+		}
+		if err := r.Err(); err != nil {
+			return err
+		}
+		if err := tx.QueryRow(`SELECT folder FROM bookmarks_last`).Scan(&m.last); err != sql.ErrNoRows {
+			return err
+		}
+		return nil
+	})
+	return m
+}
+
+// made is the first step of the schema: the tables, and what bookmarks.json held, in either
+// of its versions. One from before folders becomes the top folder's bookmarks, newest first.
+func made(tx *store.Tx, old string) error {
+	if _, err := tx.Exec(`
+CREATE TABLE bookmarks (
+  id TEXT PRIMARY KEY,
+  parent TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  title TEXT NOT NULL,
+  url TEXT NOT NULL,
+  added INTEGER NOT NULL,
+  edited INTEGER NOT NULL,
+  place TEXT NOT NULL
+) WITHOUT ROWID;
+-- One row: the folder a bookmark was last saved in.
+CREATE TABLE bookmarks_last (folder TEXT NOT NULL);`); err != nil {
+		return err
+	}
+	b, err := os.ReadFile(old)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		return err
 	}
 	var f file
 	if err := json.Unmarshal(b, &f); err != nil {
-		timeline.Errorf("bookmarks: %s: %v", m.path, err)
-		return m
+		timeline.Errorf("bookmarks: %s: %v", old, err)
+		return nil
 	}
-	if f.Version >= 2 {
-		m.entries, m.last = f.Entries, f.Last
-		return m
+	if f.Version < 2 {
+		var v v1
+		json.Unmarshal(b, &v)
+		places := spread(len(v.Bookmarks))
+		for i, o := range v.Bookmarks {
+			added := o.Added * 1000
+			f.Entries = append(f.Entries, Entry{ID: newID(), Parent: Top, Kind: KindBookmark, Title: o.Title, URL: o.URL, Added: added, Modified: added, Place: places[i]})
+		}
 	}
-	var old v1
-	json.Unmarshal(b, &old)
-	places := spread(len(old.Bookmarks))
-	for i, o := range old.Bookmarks {
-		added := o.Added * 1000
-		m.entries = append(m.entries, Entry{ID: newID(), Parent: Top, Kind: KindBookmark, Title: o.Title, URL: o.URL, Added: added, Modified: added, Place: places[i]})
+	if err := put(tx, f.Entries...); err != nil {
+		return err
 	}
-	timeline.Infof("bookmarks: %d moved into the top folder from the list before folders, in %s", len(m.entries), m.path)
-	m.save()
-	return m
+	if err := last(tx, f.Last); err != nil {
+		return err
+	}
+	timeline.Infof("bookmarks: %d read once from %s, version %d", len(f.Entries), old, max(f.Version, 1))
+	return nil
+}
+
+// put writes entries, new or changed.
+func put(tx *store.Tx, es ...Entry) error {
+	for _, e := range es {
+		if _, err := tx.Exec(`INSERT INTO bookmarks (id, parent, kind, title, url, added, edited, place) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+			ON CONFLICT (id) DO UPDATE SET parent = excluded.parent, title = excluded.title, url = excluded.url, edited = excluded.edited, place = excluded.place`,
+			e.ID, e.Parent, e.Kind, e.Title, e.URL, e.Added, e.Modified, e.Place); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func last(tx *store.Tx, folder string) error {
+	if _, err := tx.Exec(`DELETE FROM bookmarks_last`); err != nil {
+		return err
+	}
+	_, err := tx.Exec(`INSERT INTO bookmarks_last VALUES (?)`, folder)
+	return err
+}
+
+// write saves entries ids, as they are now, and tells the subscribers.
+func (m *Manager) write(ids ...string) {
+	var es []Entry
+	for _, id := range ids {
+		if i := m.index(id); i >= 0 {
+			es = append(es, m.entries[i])
+		}
+	}
+	m.st.Do(func(tx *store.Tx) error { return put(tx, es...) })
+	m.changed()
 }
 
 // OnChanged subscribes to any change.
@@ -149,7 +233,7 @@ func (m *Manager) Add(title, url string) (Entry, error) {
 		return m.entries[i], nil
 	}
 	e := m.put(Entry{Kind: KindBookmark, Title: or(title, url), URL: url}, m.Last())
-	m.changed()
+	m.write(e.ID)
 	return e, nil
 }
 
@@ -162,7 +246,7 @@ func (m *Manager) NewFolder(parent, title string) (Entry, error) {
 		return Entry{}, errors.New("bookmarks: a folder needs a name")
 	}
 	e := m.put(Entry{Kind: KindFolder, Title: title}, parent)
-	m.changed()
+	m.write(e.ID)
 	return e, nil
 }
 
@@ -189,7 +273,7 @@ func (m *Manager) Edit(id, title, url string) error {
 		e.Title, e.URL = or(title, url), url
 	}
 	e.Modified = now()
-	m.changed()
+	m.write(id)
 	return nil
 }
 
@@ -199,7 +283,7 @@ func (m *Manager) Move(id, parent string) error {
 	if err := m.move(id, parent); err != nil {
 		return err
 	}
-	m.changed()
+	m.write(id)
 	return nil
 }
 
@@ -218,6 +302,13 @@ func (m *Manager) Save(id, title, parent string) error {
 		e.Title, e.Modified = t, now()
 	}
 	m.last = parent
+	saved := *e
+	m.st.Do(func(tx *store.Tx) error {
+		if err := put(tx, saved); err != nil {
+			return err
+		}
+		return last(tx, parent)
+	})
 	m.changed()
 	return nil
 }
@@ -237,6 +328,14 @@ func (m *Manager) Remove(id string) {
 		}
 	}
 	m.entries = slices.DeleteFunc(m.entries, func(e Entry) bool { return gone[e.ID] })
+	m.st.Do(func(tx *store.Tx) error {
+		for id := range gone {
+			if _, err := tx.Exec(`DELETE FROM bookmarks WHERE id = ?`, id); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 	m.changed()
 }
 
@@ -312,29 +411,14 @@ func (m *Manager) find(url string) int {
 	return slices.IndexFunc(m.entries, func(e Entry) bool { return e.Kind == KindBookmark && e.URL == url })
 }
 
-// changed saves the tree and tells the subscribers.
+// changed tells the subscribers.
 func (m *Manager) changed() {
-	m.save()
 	for _, f := range m.onChanged {
 		f()
 	}
 }
 
-// save writes the tree, a new file renamed over the old.
-func (m *Manager) save() {
-	b, err := json.MarshalIndent(file{Version: 2, Last: m.last, Entries: m.All()}, "", "  ")
-	if err == nil {
-		tmp := m.path + ".tmp"
-		if err = os.WriteFile(tmp, append(b, '\n'), 0o600); err == nil {
-			err = os.Rename(tmp, m.path)
-		}
-	}
-	if err != nil {
-		timeline.Errorf("bookmarks: %v", err)
-	}
-}
-
-// newID is 16 random hex digits.
+// newID is 16 random hex digits, made once: the id a later sync knows the entry by.
 func newID() string {
 	b := make([]byte, 8)
 	rand.Read(b)
@@ -375,8 +459,12 @@ func (m *Manager) Import(parent string, nodes []Node) (Imported, error) {
 		return Imported{}, errors.New("bookmarks: no such folder")
 	}
 	var got Imported
+	from := len(m.entries)
 	m.importInto(parent, nodes, &got)
 	if got.Bookmarks > 0 {
+		// An import only adds entries, after those there were.
+		added := append([]Entry{}, m.entries[from:]...)
+		m.st.Do(func(tx *store.Tx) error { return put(tx, added...) })
 		m.changed()
 	}
 	return got, nil

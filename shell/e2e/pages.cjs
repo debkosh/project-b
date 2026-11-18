@@ -38,13 +38,7 @@ const { check, fire, regions, settle, until } = lib;
   check('then b.test in the same tab', await at('https://b.test/news'));
   const star = ui.getByRole('button', { name: 'Bookmark this page' });
   check('the address bar has a star', await until(() => star.isVisible()));
-  const saved = () => {
-    try {
-      return JSON.parse(fs.readFileSync(path.join(lib.profile, 'bookmarks.json'), 'utf8')).entries;
-    } catch {
-      return [];
-    }
-  };
+  const saved = lib.bookmarks;
   const name = ui.getByRole('textbox', { name: 'Name' });
   await star.click();
   const added = ui.getByRole('dialog', { name: 'Bookmarked' });

@@ -1,13 +1,31 @@
 package bookmarks
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
+
+	"projectb/store"
 )
+
+// open is the bookmarks of a store of their own in dir, closed with the test.
+func open(t *testing.T, dir string) *Manager {
+	m := openIn(t, dir)
+	t.Cleanup(m.st.Close)
+	return m
+}
+
+// openIn is open whose store the test closes, to start again on the same folder.
+func openIn(t *testing.T, dir string) *Manager {
+	t.Helper()
+	st, err := store.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return New(dir, st)
+}
 
 // in is the titles in folder parent, in their places.
 func in(m *Manager, parent string) string {
@@ -24,7 +42,7 @@ func in(m *Manager, parent string) string {
 // edit keeps the id; and it all comes back after a restart.
 func TestBookmarksAreKeptEditedAndRemoved(t *testing.T) {
 	dir := t.TempDir()
-	m := New(dir)
+	m := openIn(t, dir)
 	heard := 0
 	m.OnChanged(func() { heard++ })
 	a, _ := m.Add("A", "https://a.test/")
@@ -45,7 +63,8 @@ func TestBookmarksAreKeptEditedAndRemoved(t *testing.T) {
 		t.Fatalf("after the edit: %+v", e)
 	}
 	m.RemoveURL("https://b.test/")
-	again := New(dir)
+	m.st.Close()
+	again := open(t, dir)
 	if l := again.List(); len(l) != 1 || l[0].ID != a.ID || !again.Has("https://a.test/home") {
 		t.Fatalf("after a restart: %+v", l)
 	}
@@ -58,7 +77,7 @@ func TestBookmarksAreKeptEditedAndRemoved(t *testing.T) {
 // changes that entry alone; a folder doesn't go into itself; removing a folder takes all
 // it holds.
 func TestFolders(t *testing.T) {
-	m := New(t.TempDir())
+	m := open(t, t.TempDir())
 	work, _ := m.NewFolder(Top, "Work")
 	design, _ := m.NewFolder(work.ID, "Design")
 	a, _ := m.Add("A", "https://a.test/")
@@ -92,14 +111,21 @@ func TestFolders(t *testing.T) {
 	}
 }
 
-// The star's panel saves a title and a folder, and the next bookmark goes into that folder;
-// once the folder is gone, the next goes to the top.
+// The star's panel saves a title and a folder, and the next bookmark goes into that folder,
+// after a restart too; once the folder is gone, the next goes to the top.
 func TestTheFolderLastSavedInTakesTheNext(t *testing.T) {
-	m := New(t.TempDir())
+	dir := t.TempDir()
+	m := openIn(t, dir)
 	read, _ := m.NewFolder(Top, "Reading")
 	a, _ := m.Add("A", "https://a.test/")
 	if err := m.Save(a.ID, "Article", read.ID); err != nil {
 		t.Fatal(err)
+	}
+	// It is kept, with the bookmark's title and folder.
+	m.st.Close()
+	m = open(t, dir)
+	if e, _ := m.Get(a.ID); e.Title != "Article" || e.Parent != read.ID || m.Last() != read.ID {
+		t.Fatalf("after a restart: %+v, last %q", e, m.Last())
 	}
 	b, _ := m.Add("B", "https://b.test/")
 	if b.Parent != read.ID || in(m, read.ID) != "B Article" {
@@ -111,25 +137,50 @@ func TestTheFolderLastSavedInTakesTheNext(t *testing.T) {
 	}
 }
 
-// The list from before folders becomes the top folder's, newest first, with new ids, the
-// times in milliseconds, and the file written as version 2.
+// The list from before folders becomes the top folder's, newest first, with new ids and the
+// times in milliseconds; the file is read once and left as it was.
 func TestTheListBeforeFoldersMovesToTheTop(t *testing.T) {
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, "bookmarks.json"), []byte(`{"version":1,"next":3,"bookmarks":[
+	path := filepath.Join(dir, "bookmarks.json")
+	old := `{"version":1,"next":3,"bookmarks":[
 		{"id":2,"title":"New","url":"https://new.test/","added":1700000200},
-		{"id":1,"title":"Old","url":"https://old.test/","added":1700000100}]}`), 0o600)
-	m := New(dir)
+		{"id":1,"title":"Old","url":"https://old.test/","added":1700000100}]}`
+	os.WriteFile(path, []byte(old), 0o600)
+	m := openIn(t, dir)
 	if got := in(m, Top); got != "New Old" {
 		t.Fatalf("the top holds %q", got)
 	}
 	if l := m.List(); l[0].Added != 1700000200000 || l[0].ID == l[1].ID || len(l[0].ID) != 16 {
 		t.Fatalf("list %+v", l)
 	}
-	b, _ := os.ReadFile(filepath.Join(dir, "bookmarks.json"))
-	var f file
-	json.Unmarshal(b, &f)
-	if f.Version != 2 || len(f.Entries) != 2 {
-		t.Fatalf("written: %s", b)
+	m.st.Close()
+	if b, _ := os.ReadFile(path); string(b) != old {
+		t.Fatalf("bookmarks.json changed: %s", b)
+	}
+	os.WriteFile(path, []byte(`{"version":1,"bookmarks":[{"title":"Later","url":"https://later.test/","added":1}]}`), 0o600)
+	if got := in(open(t, dir), Top); got != "New Old" {
+		t.Fatalf("read again: %q", got)
+	}
+}
+
+// The tree of version 2 is read once as it was: its ids, folders, places, times and the
+// folder last saved in.
+func TestTheTreeIsReadOnce(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "bookmarks.json"), []byte(`{"version":2,"last":"f1","entries":[
+		{"id":"f1","parent":"","kind":"folder","title":"Work","added":5,"modified":6,"place":"i"},
+		{"id":"b2","parent":"f1","kind":"bookmark","title":"Two","url":"https://two.test/","added":7,"modified":8,"place":"k"},
+		{"id":"b1","parent":"f1","kind":"bookmark","title":"One","url":"https://one.test/","added":9,"modified":10,"place":"j"},
+		{"id":"b3","parent":"","kind":"bookmark","title":"Top","url":"https://top.test/","added":1,"modified":2,"place":"a"}]}`), 0o600)
+	m := open(t, dir)
+	if got := in(m, Top) + " / " + in(m, "f1"); got != "Top Work / One Two" {
+		t.Fatalf("read %q", got)
+	}
+	if e, _ := m.Get("b2"); e != (Entry{ID: "b2", Parent: "f1", Kind: KindBookmark, Title: "Two", URL: "https://two.test/", Added: 7, Modified: 8, Place: "k"}) {
+		t.Fatalf("b2 = %+v", e)
+	}
+	if m.Last() != "f1" {
+		t.Fatalf("last = %q", m.Last())
 	}
 }
 
@@ -165,7 +216,7 @@ func TestPlaces(t *testing.T) {
 // already, with a folder that would hold nothing else.
 func TestImport(t *testing.T) {
 	dir := t.TempDir()
-	m := New(dir)
+	m := openIn(t, dir)
 	m.Add("Mine", "https://mine.test/")
 	tree := []Node{{Title: "From Chrome", Children: []Node{
 		{Title: "Bookmarks bar", Children: []Node{
@@ -212,9 +263,10 @@ func TestImport(t *testing.T) {
 	if s := in(m, bar); s != "Docs Work New" {
 		t.Fatalf("again, the bar holds %q", s)
 	}
-	b, _ := os.ReadFile(filepath.Join(dir, "bookmarks.json"))
-	var f file
-	if json.Unmarshal(b, &f) != nil || len(f.Entries) != 7 {
-		t.Fatalf("saved %s", b)
+	byID := func(a, b Entry) int { return strings.Compare(a.ID, b.ID) }
+	all := slices.SortedFunc(slices.Values(m.All()), byID)
+	m.st.Close()
+	if again := slices.SortedFunc(slices.Values(open(t, dir).All()), byID); !slices.Equal(again, all) || len(again) != 7 {
+		t.Fatalf("after a restart %+v, before %+v", again, all)
 	}
 }

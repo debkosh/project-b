@@ -24,8 +24,9 @@ const prefsFile = () => {
   }
 };
 
-// The profile's bookmarks, as bookmarks.json keeps them: three folders, one with a folder in
-// it, and two bookmarks at the top.
+// The profile's bookmarks, in the bookmarks.json of a version before the store, which the
+// first start reads (docs/store.md): three folders, one with a folder in it, and two
+// bookmarks at the top.
 const id = (n) => n.toString(16).padStart(16, '0');
 const folder = (n, parent, title, place) => ({ id: id(n), parent, kind: 'folder', title, added: 1, modified: 1, place });
 const mark = (n, parent, title, url, place) => ({ id: id(n), parent, kind: 'bookmark', title, url, added: 1, modified: 1, place });
