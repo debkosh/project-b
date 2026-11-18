@@ -124,11 +124,13 @@ No import: Android keeps each app's data from the others.
 1. Welcome.
 2. Make it yours: the address bar at the foot or on top (`addressBarPosition`), and the colour,
    None first.
-3. The search engine and the ad blocker.
-4. Default browser, through Android's own sheet (`RoleManager`, `ROLE_BROWSER`).
-5. Download notifications asked here, with a reason, instead of in the middle of the first
+3. Extras for any page: a switch for each of the three built-in sparks, all off
+   ([mock](screenshots/onboarding/mock-p3.png); planned, docs/site-features.md).
+4. The search engine and the ad blocker.
+5. Default browser, through Android's own sheet (`RoleManager`, `ROLE_BROWSER`).
+6. Download notifications asked here, with a reason, instead of in the middle of the first
    download as today (`Downloads.java`).
-6. Start browsing.
+7. Start browsing.
 
 **Settings** gets an Import section, the same rows with Import… on each, and Run setup again,
 which opens the welcome in a tab ([mock](screenshots/onboarding/mock-d6.png),

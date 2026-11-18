@@ -107,6 +107,44 @@ the page's own world, as other userscript managers run a script that asks for no
   which Import here and other userscript managers read back. Both go through our
   downloads.
 
+### The built-in sparks (planned)
+
+Three of the owner's sparks come with the app, to give a feel of what sparks do: **Video
+Downloader** (his `dhd`), **Limit Screen Time** and **Page Cleanup**. They are samples, not a
+feature of ours:
+
+- **Added once, off.** A profile's first start on the version that has them, a new one or
+  one updated to it, adds the three to its sparks, off, after any it has, while there is room
+  for 25. A profile notes that it has had them, so they never come back once deleted, and an
+  update never changes them.
+- **Then they are the person's.** Each is an ordinary spark: on or off, Edit…, Export,
+  Delete, and its switches for each site, as any other. Nothing marks it as ours.
+- **Their sources** live in `core/sparks/builtin/` as `.user.js` files, embedded in the app,
+  each with `@name`, `@description`, `@version` and `@namespace`, and a short doc beside it
+  (`core/sparks/builtin/README.md`). They are the owner's originals cleaned up after a UX
+  pass: our look in light and dark, on a phone and the desktop, our wording, and Retry and
+  Cancel for a download. The runtime still runs his originals unchanged, as the driver's
+  sparks part checks.
+- **The phone's welcome** gets a step after Make it yours, "Extras for any page": a switch
+  for each of the three, with its one line, all off. A switch turns that spark on. The desktop
+  shows them in Settings › Sparks only.
+
+### Sparks sync (planned)
+
+A spark is an item sync can carry ([synckosh](https://github.com/sudiptadeb/synckosh)'s
+SPEC): collection `sparks`, one item per spark, its guid the spark's id, its data the
+source, whether it is on, and its place in the list. So each spark gets:
+
+- **an id made once and never changed**: a UUIDv7 for a new spark; one kept since 0.2.70
+  keeps its eight hex digits, which are a guid too;
+- **`modified`**, Unix milliseconds, changed by an edit, a switch or a move;
+- **`place`**, a key that sorts as text, as bookmarks have (`core/bookmarks/place.go`), so
+  moving one spark changes that spark alone. `sparks.json` without places reads in its
+  order and gets them on its next save.
+
+A delete leaves no tombstone yet, as with bookmarks; sync adds what it needs when it is
+built. A spark's switches for each site stay with the site's settings.
+
 ### Decisions, 2026-11-18
 
 - Where sparks run: in the page's own world. The owner: "yes we would like to be running on
@@ -125,6 +163,10 @@ the page's own world, as other userscript managers run a script that asks for no
 - One switch for sparks in the site panel, for all of them: "sparks also get quick switch
   from the site setting popup... not individual sparks... any sparks enabled or disabled to
   run on this page". Each spark's own switch for a site, which there was before, goes.
+- The built-ins: "builtin are just for giving some feel of stuff... only added to the
+  browser store on welcome or update we do not worry about updating them for now.. make
+  sure they are also a syncable entity... editing is allowed the user owns it once
+  installed".
 
 ## Links to other sites
 
