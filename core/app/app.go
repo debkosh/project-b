@@ -13,6 +13,7 @@ import (
 	"projectb/engine"
 	"projectb/flags"
 	"projectb/history"
+	"projectb/keys"
 	"projectb/pins"
 	"projectb/policy"
 	"projectb/prefs"
@@ -27,6 +28,7 @@ import (
 	"projectb/sparks"
 	"projectb/store"
 	"projectb/suggest"
+	"projectb/sync"
 	"projectb/tabs"
 	"projectb/timeline"
 	"projectb/update"
@@ -65,6 +67,9 @@ type Config struct {
 	// System is what this platform says of itself in a crash report: the version, the
 	// OS and the device, and on Android the app's own log.
 	System func() []crash.Section
+	// DeviceKey is the device key that wraps the profile's key (docs/sync.md): the keychain's
+	// for a listed profile, nil for a folder named outright, which keeps a key of its own.
+	DeviceKey keys.Device
 }
 
 // menuRead is what the menu reads of the front window's active tab: which tab, whether it
@@ -126,6 +131,10 @@ type App struct {
 	Session *session.Manager
 	// Bookmarks is the profile's bookmarks.
 	Bookmarks *bookmarks.Manager
+	// Keys is the profile's key, and the secrets it seals.
+	Keys *keys.Keys
+	// Sync syncs the bookmarks and history (docs/sync.md).
+	Sync *sync.Manager
 	// closed is the tabs and windows the person closed, newest first; quitting says the
 	// app is ending, so what closes now isn't.
 	closed   []session.Closed
@@ -188,6 +197,10 @@ func Start(e engine.Engine, cfg Config) *App {
 	// of history.jsonl.
 	a.Bookmarks = bookmarks.New(cfg.ProfileDir, st)
 	a.History = history.New(cfg.ProfileDir, st, e.Post)
+	// Sync, after the tables it syncs: off the main thread, and at once when it is on.
+	a.Keys = keys.New(cfg.ProfileDir, cfg.Profile, st, cfg.DeviceKey)
+	a.History.OnClearAll(sync.ClearedAll)
+	a.Sync = sync.New(st, a.Keys, e.Post, append(history.Synced(), a.Bookmarks.Synced(e.Post))...)
 	a.Suggest = suggest.New(a.History)
 	a.Workspaces = workspaces.New(cfg.ProfileDir)
 	a.Pins = pins.New(cfg.ProfileDir)
@@ -273,6 +286,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Settings.AddPart(a.siteDataSettingsPart(e))
 	a.Settings.AddPart(a.keepCookiesSettingsPart())
 	a.Settings.AddPart(a.downloadFolderSettingsPart(e, cfg.DownloadsDir))
+	a.Settings.AddPart(a.syncSettingsPart())
 	a.registerActions(e)
 
 	a.Tabs.AddGate(a.Policy.IsAllowedURL)
@@ -514,6 +528,7 @@ func (a *App) NewWindowWith(tab engine.TabID) engine.WindowID {
 func (a *App) Stop() {
 	timeline.Infof("app: stopping; the windows and tabs are kept in %s", filepath.Join(a.dir, "session.json"))
 	a.Update.Stop()
+	a.Sync.Stop()
 	a.Store.Close()
 	a.Session.Close()
 	a.Prefs.Close()

@@ -617,6 +617,7 @@ func startProfile(c profiles.Choice) {
 		CrashReports: filepath.Join(home, "Library/Logs/DiagnosticReports"),
 		DownloadsDir: downloadsDir(home),
 		System:       systemReport,
+		DeviceKey:    deviceKeyFor(c),
 	})
 	events.Listen(theApp)
 	owner.Serve(func(urls []string) { native.Post(func() { theApp.Handover(urls) }) }, quit)
