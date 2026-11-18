@@ -72,10 +72,16 @@ export const state = reactive({
   sites: [],
   // The person's sparks (docs/site-features.md): {id, name, description, match, runAt, on,
   // error}; the one whose source Go last sent, {id, source, fileName}; and Go's word on the
-  // last save, '' when it took, null before one.
+  // last save, '' when it took, null before one. An import's sparks the profile already
+  // has, [{index, file, name, version, keptVersion, renameTo}], and then what it did,
+  // {added, replaced, renamed, skipped: [{file, name, reason}]}; and the last export's zip,
+  // {data (base64), count, fileName}.
   sparks: [],
   sparkSource: null,
   sparkProblem: null,
+  sparkClashes: null,
+  sparkImported: null,
+  sparkZip: null,
   // The kinds of setting settings can set for a site, in order, each {kind, title}.
   siteKinds: [],
   // How each site's open pages reached them, by origin: {connection, note}, connection
@@ -200,6 +206,15 @@ export function connect() {
           break;
         case 'sparkSaved':
           state.sparkProblem = m.problem;
+          break;
+        case 'sparkClashes':
+          state.sparkClashes = m.clashes;
+          break;
+        case 'sparkImported':
+          state.sparkImported = m.imported;
+          break;
+        case 'sparkZip':
+          state.sparkZip = { data: m.data, count: m.count, fileName: m.fileName };
           break;
         case 'siteSettings':
           state.siteSettings = m.siteSettings;

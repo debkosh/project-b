@@ -42,6 +42,43 @@ let base = '';
 fs.mkdirSync(out, { recursive: true });
 // The pictures, the sections layout's with its name after theirs.
 const shot = (name) => path.join(out, `${name}${sectionsLayout ? '-sections' : ''}.png`);
+// zipOf is a zip of [name, Buffer] pairs, stored as they are.
+const zipOf = (files) => {
+  const { crc32 } = require('zlib');
+  const parts = [];
+  const central = [];
+  let at = 0;
+  for (const [name, data] of files) {
+    const n = Buffer.from(name);
+    const head = Buffer.alloc(30);
+    head.writeUInt32LE(0x04034b50, 0);
+    head.writeUInt16LE(20, 4);
+    head.writeUInt32LE(crc32(data), 14);
+    head.writeUInt32LE(data.length, 18);
+    head.writeUInt32LE(data.length, 22);
+    head.writeUInt16LE(n.length, 26);
+    const dir = Buffer.alloc(46);
+    dir.writeUInt32LE(0x02014b50, 0);
+    dir.writeUInt16LE(20, 4);
+    dir.writeUInt16LE(20, 6);
+    dir.writeUInt32LE(crc32(data), 16);
+    dir.writeUInt32LE(data.length, 20);
+    dir.writeUInt32LE(data.length, 24);
+    dir.writeUInt16LE(n.length, 28);
+    dir.writeUInt32LE(at, 42);
+    parts.push(head, n, data);
+    central.push(dir, n);
+    at += 30 + n.length + data.length;
+  }
+  const size = central.reduce((s, b) => s + b.length, 0);
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0);
+  end.writeUInt16LE(files.length, 8);
+  end.writeUInt16LE(files.length, 10);
+  end.writeUInt32LE(size, 12);
+  end.writeUInt32LE(at, 16);
+  return Buffer.concat([...parts, ...central, end]);
+};
 // A listed profile, as a copy started on one has: its folder in a root beside the list.
 const profilesRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'project-b-settings-'));
 const profileID = 'a1b2c3d4';
@@ -1002,14 +1039,14 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   await until(async () => (await regions()).settings === 0);
 
   // Sparks: New opens an editor; a save Go refuses says why; one it takes is listed, with
-  // its switch, and Delete removes it.
+  // its switch and a menu, a tap on the row edits it, and the menu's Delete removes it.
   await openSettings();
   await until(settingsShown);
   page = await open();
   await show('sparks');
   const sparksRegion = page.getByRole('region', { name: 'Sparks' });
   check('Sparks says there are none yet', await until(async () => (await sparksRegion.textContent()).includes('No sparks yet')));
-  await sparksRegion.getByRole('button', { name: 'New' }).click();
+  await page.getByRole('button', { name: 'New', exact: true }).click();
   const source = sparksRegion.getByRole('textbox', { name: 'Spark source' });
   await source.fill('// ==UserScript==\n// @name Nameless match\n// ==/UserScript==\n');
   await sparksRegion.getByRole('button', { name: 'Save' }).click();
@@ -1019,12 +1056,129 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   const row = sparksRegion.getByRole('group', { name: 'Wide pages' });
   check('a good one is listed, on, with where it runs', await until(async () => (await row.isVisible()) && (await row.getByRole('checkbox').isChecked()) && (await row.textContent()).includes('https://news.test/*')));
   check('and the editor closes', await until(async () => (await source.count()) === 0));
+  check('the list says how many of 25', (await sparksRegion.textContent()).includes('1 of 25.'));
   await settle(page);
   await page.screenshot({ path: shot('settings-sparks') });
   await row.getByRole('checkbox').click();
   check('its switch turns it off', await until(async () => !(await row.getByRole('checkbox').isChecked())));
-  await row.getByRole('button', { name: 'Delete' }).click();
+  await row.locator('.name').click();
+  check('a tap on the row edits it', await until(async () => (await source.inputValue().catch(() => '')).includes('@name Wide pages')));
+  await sparksRegion.getByRole('button', { name: 'Cancel' }).click();
+  const menuOf = async (name, item) => {
+    await sparksRegion.getByRole('group', { name, exact: true }).getByRole('button', { name: `Actions for ${name}` }).click();
+    await page.getByRole('menuitem', { name: item, exact: true }).click();
+  };
+  await row.click({ button: 'right' });
+  check('a right-click opens its menu: Edit…, Export, and Delete apart', await until(async () => (await page.getByRole('menuitem').allTextContents()).map((t) => t.trim()).join('|') === 'Edit…|Export|Delete'));
+  await page.keyboard.press('Escape');
+  await menuOf('Wide pages', 'Delete');
   check('Delete removes it', await until(async () => (await row.count()) === 0));
+
+  // Import…: the owner's own sparks, in a zip a Mac made (its __MACOSX folder and a README
+  // beside them) with a file that is no spark, are added and the rest not imported, saying
+  // why; one he already has comes back in the same dialog as a clash, settled by Replace,
+  // Rename or Ignore; and Export… makes a zip of the ones ticked that Import reads back.
+  const sparksDir = path.resolve(__dirname, '../../core/sparks/testdata/site-sparks');
+  const his = fs.readdirSync(sparksDir).filter((f) => f.endsWith('.user.js')).sort();
+  const hisZip = zipOf([
+    ...his.map((f) => [`SiteSparks/${f}`, fs.readFileSync(path.join(sparksDir, f))]),
+    ...his.map((f) => [`__MACOSX/SiteSparks/._${f}`, Buffer.from('\x00\x05\x16\x07junk')]),
+    ['SiteSparks/README.md', Buffer.from('# Sparks')],
+  ]);
+  const picker = sparksRegion.locator('input[type=file]');
+  const dialog = page.getByRole('dialog');
+  const said = async () => ((await dialog.innerText().catch(() => '')) || '').replace(/\s+/g, ' ');
+  const more = page.getByRole('button', { name: 'More for sparks' });
+  await more.click();
+  check('New sits on the heading line, and Import… and Export… in the menu beside it', await until(async () => {
+    const head = await ((await page.locator('.list-head').count()) ? page.locator('.list-head') : sparksRegion.locator('.heading')).boundingBox();
+    const n = await sparksRegion.page().getByRole('button', { name: 'New', exact: true }).boundingBox();
+    return (await page.getByRole('menuitem').allTextContents()).map((t) => t.trim()).join('|') === 'Import…|Export…' &&
+      n && head && Math.abs(n.y + n.height / 2 - (head.y + head.height / 2)) < 4;
+  }));
+  await page.keyboard.press('Escape');
+  await picker.setInputFiles([
+    { name: 'SiteSparks.zip', mimeType: 'application/zip', buffer: hisZip },
+    { name: 'notes.js', mimeType: 'text/javascript', buffer: Buffer.from('console.log(1);') },
+  ]);
+  check('a zip and a file import: his three added, the file that is no spark not imported, with why', await until(async () => {
+    const t = await said();
+    return (await dialog.getAttribute('aria-label').catch(() => '')) === 'Added 3 sparks · 1 not imported' &&
+      t.includes('Limit Screen Time added') && t.includes('dhd added') && t.includes('notes.js') && t.includes('no ==UserScript== header');
+  }));
+  check('each is listed, on', await until(async () => {
+    for (const name of ['Limit Screen Time', 'Page Cleanup', 'dhd']) {
+      const r = sparksRegion.getByRole('group', { name, exact: true });
+      if (!(await r.isVisible()) || !(await r.getByRole('checkbox').isChecked())) return false;
+    }
+    return true;
+  }));
+  check('a match of <all_urls> reads as every site, a real pattern as it is', (await sparksRegion.getByRole('group', { name: 'Page Cleanup' }).textContent()).includes('every site') &&
+    (await sparksRegion.getByRole('group', { name: 'dhd', exact: true }).textContent()).includes('https://*/*'));
+  await dialog.getByRole('button', { name: 'Done' }).click();
+  check('Done closes it', await until(async () => (await dialog.count()) === 0));
+
+  const dhd = fs.readFileSync(path.join(sparksDir, 'dhd.user.js'), 'utf8');
+  const changed = (version) => ({ name: 'dhd.user.js', mimeType: 'text/javascript', buffer: Buffer.from(dhd.replace('// @name ', `// @version      ${version}\n// @name `)) });
+  await picker.setInputFiles([changed('2'), { name: 'Again.zip', mimeType: 'application/zip', buffer: hisZip }]);
+  const clashes = page.getByRole('dialog', { name: 'You already have this spark' });
+  check('one he has, changed, asks in a dialog: Replace, Rename or Ignore, Replace chosen', await until(async () => {
+    const t = (await clashes.textContent().catch(() => '')) || '';
+    return t.includes('dhd') && (await clashes.getByRole('radio', { name: 'Replace' }).getAttribute('aria-checked')) === 'true' &&
+      (await clashes.getByRole('radio', { name: 'Rename' }).count()) === 1 && (await clashes.getByRole('radio', { name: 'Ignore' }).count()) === 1;
+  }));
+  await page.keyboard.press('Escape');
+  check('Escape leaves everything as it was', await until(async () => (await dialog.count()) === 0) &&
+    (await sparksRegion.getByRole('group', { name: 'dhd 2', exact: true }).count()) === 0);
+  await picker.setInputFiles([changed('2'), { name: 'Again.zip', mimeType: 'application/zip', buffer: hisZip }]);
+  await until(() => clashes.isVisible());
+  await clashes.getByRole('radio', { name: 'Rename' }).click();
+  check('Rename says the name it gives', await until(async () => (await clashes.textContent()).includes('Adds it as “dhd 2”')));
+  await settle(page);
+  await page.screenshot({ path: shot('settings-sparks-clash') });
+  await clashes.getByRole('button', { name: 'Import' }).click();
+  check('it is added as dhd 2, said once, and the rest are already here', await until(async () => {
+    const t = await said();
+    return (await dialog.getAttribute('aria-label').catch(() => '')) === 'Added dhd 2 · 2 already here · 1 not imported' &&
+      t.includes('dhd 2 added beside your dhd') && t.includes('Page Cleanup already here, unchanged') && t.includes('in the import twice, the first one used');
+  }));
+  await settle(page);
+  await page.screenshot({ path: shot('settings-sparks-imported') });
+  await dialog.getByRole('button', { name: 'Done' }).click();
+  const renamedRow = sparksRegion.getByRole('group', { name: 'dhd 2', exact: true });
+  check('and listed beside the one he had', await until(async () => (await renamedRow.isVisible()) && (await sparksRegion.getByRole('group', { name: 'dhd', exact: true }).isVisible())));
+
+  await picker.setInputFiles([changed('3')]);
+  check('a clash again', await until(async () => (await clashes.count()) === 1));
+  await clashes.getByRole('radio', { name: 'Ignore' }).click();
+  await clashes.getByRole('button', { name: 'Import' }).click();
+  check('Ignore keeps his', await until(async () => (await dialog.getAttribute('aria-label').catch(() => '')) === 'Ignored dhd'));
+  await dialog.getByRole('button', { name: 'Done' }).click();
+  await picker.setInputFiles([changed('3')]);
+  await until(() => clashes.isVisible());
+  await clashes.getByRole('button', { name: 'Import' }).click();
+  check('Replace puts it in place of his', await until(async () => (await dialog.getAttribute('aria-label').catch(() => '')) === 'Replaced dhd'));
+  await dialog.getByRole('button', { name: 'Done' }).click();
+
+  await more.click();
+  await page.getByRole('menuitem', { name: 'Export…' }).click();
+  const exporting = page.getByRole('dialog', { name: 'Export sparks' });
+  const allBox = exporting.getByRole('checkbox', { name: 'All' });
+  check('Export… lists every spark, ticked, under All', await until(async () => (await exporting.getByRole('checkbox').count()) === 5 && (await allBox.isChecked()) && (await exporting.getByRole('button', { name: 'Export 4 sparks' }).isVisible())));
+  await exporting.getByRole('checkbox', { name: 'Page Cleanup' }).uncheck();
+  check('All is mixed when some are ticked', await allBox.evaluate((b) => b.indeterminate && !b.checked));
+  await settle(page);
+  await page.screenshot({ path: shot('settings-sparks-export') });
+  const [download] = await Promise.all([page.waitForEvent('download'), exporting.getByRole('button', { name: 'Export 3 sparks' }).click()]);
+  const zipped = fs.readFileSync(await download.path());
+  const zipNames = [...zipped.toString('latin1').matchAll(/PK\x01\x02[\s\S]{42}([^\x00]*?\.user\.js)/g)].map((m) => m[1]);
+  check('it downloads Sparks.zip of the ticked ones', download.suggestedFilename() === 'Sparks.zip' && zipNames.join('|') === 'Limit Screen Time.user.js|dhd.user.js|dhd 2.user.js');
+  for (const name of ['Limit Screen Time', 'Page Cleanup', 'dhd', 'dhd 2']) await menuOf(name, 'Delete');
+  await picker.setInputFiles([{ name: 'Sparks.zip', mimeType: 'application/zip', buffer: zipped }]);
+  check('and Import… reads that zip back', await until(async () => (await dialog.getAttribute('aria-label').catch(() => '')) === 'Added 3 sparks'));
+  await dialog.getByRole('button', { name: 'Done' }).click();
+  for (const name of ['Limit Screen Time', 'dhd', 'dhd 2']) await menuOf(name, 'Delete');
+  check('and they delete', await until(async () => (await sparksRegion.textContent()).includes('No sparks yet')));
   await page.close();
   await fetch(`${base}/mock/fire`, { method: 'POST', body: new URLSearchParams({ kind: 'key', value: 'closeTab' }) });
   await until(async () => (await regions()).settings === 0);
@@ -1115,6 +1269,38 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
       await page.locator(`[data-section="${list}"]`).click();
       const there = region ? page.getByRole('region', { name: region, exact: true }) : page.locator('.web-features');
       check(`on a phone, ${list}'s row opens its page`, await until(() => there.isVisible()));
+      if (list === 'sparks') {
+        // How the list, an import's clash, its outcome and Export… look on a phone, in dark.
+        await page.emulateMedia({ colorScheme: 'dark' });
+        const picker = there.locator('input[type=file]');
+        const dialog = page.getByRole('dialog');
+        await picker.setInputFiles([{ name: 'SiteSparks.zip', mimeType: 'application/zip', buffer: hisZip }]);
+        await until(() => dialog.getByRole('button', { name: 'Done' }).isVisible());
+        await dialog.getByRole('button', { name: 'Done' }).click();
+        await picker.setInputFiles([changed('2')]);
+        await until(() => dialog.getByRole('radio', { name: 'Rename' }).isVisible());
+        await dialog.getByRole('radio', { name: 'Rename' }).click();
+        await settle(page);
+        await page.screenshot({ path: shot('settings-sparks-clash-phone-dark'), fullPage: true });
+        await dialog.getByRole('button', { name: 'Import' }).click();
+        await until(() => dialog.getByRole('button', { name: 'Done' }).isVisible());
+        await settle(page);
+        await page.screenshot({ path: shot('settings-sparks-imported-phone-dark'), fullPage: true });
+        await dialog.getByRole('button', { name: 'Done' }).click();
+        await settle(page);
+        await page.screenshot({ path: shot('settings-sparks-phone-dark'), fullPage: true });
+        await page.getByRole('button', { name: 'More for sparks' }).click();
+        await page.getByRole('menuitem', { name: 'Export…' }).click();
+        await settle(page);
+        await page.screenshot({ path: shot('settings-sparks-export-phone-dark'), fullPage: true });
+        await dialog.getByRole('button', { name: 'Cancel' }).click();
+        for (const name of ['Limit Screen Time', 'Page Cleanup', 'dhd', 'dhd 2']) {
+          await there.getByRole('group', { name, exact: true }).getByRole('button', { name: `Actions for ${name}` }).click();
+          await page.getByRole('menuitem', { name: 'Delete', exact: true }).click();
+        }
+        await until(async () => (await there.textContent()).includes('No sparks yet'));
+        await page.emulateMedia({ colorScheme: 'light' });
+      }
       await page.locator('.list-page .list-head .back').click();
       await until(async () => (await page.locator('.list-page').count()) === 0);
     }
