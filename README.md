@@ -226,5 +226,5 @@ build Mac: [docs/updates.md](docs/updates.md).
 
 ## Licence
 
-All rights reserved: the source is published to be read. See [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
 Chromium keeps its own licences.
