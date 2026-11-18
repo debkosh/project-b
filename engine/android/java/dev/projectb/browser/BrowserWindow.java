@@ -100,6 +100,10 @@ final class BrowserWindow extends FrameLayout {
                 BrowserWindowJni.get()
                         .start(this, windowAndroid, goTable, processAgeMs, blockedHosts,
                                 skipWelcome);
+        // Go's first layout and theme arrive inside start, before there is a window to tell,
+        // so the frame and our pages' colour are painted now; else they waited for the next
+        // change, and a phone started in dark kept the light frame.
+        paintFrame();
         surface = new SurfaceView(getContext());
         surface.setZOrderMediaOverlay(true);
         // A SurfaceView defaults to 16 bits per pixel.
