@@ -13,7 +13,7 @@
         this machine go in.
 
 Where: $PB_RESULTS (default ~/PW_TOOLS/project-b-results)/<version>/<run>/. The version is
-$PB_VERSION, else the bundle PB_BIN runs from, else VERSION. The run is $PB_RUN, which
+$PB_VERSION, which release runs set, else dev-<branch>. The run is $PB_RUN, which
 tools/test.sh sets once per call unless it is set already, so a release's groups can share one.
 """
 
@@ -49,15 +49,14 @@ def sh(*cmd, timeout=10):
 
 
 def version():
+    """PB_VERSION, which a release run sets; any other run is a development one, filed by its
+    branch, so it never mixes into a release's results."""
     if os.environ.get("PB_VERSION"):
         return os.environ["PB_VERSION"]
-    b = os.environ.get("PB_BIN", "")
-    if "/Contents/MacOS/" in b:
-        v = sh("/usr/libexec/PlistBuddy", "-c", "Print CFBundleShortVersionString", b.split("/Contents/MacOS/")[0] + "/Contents/Info.plist").strip()
-        if v:
-            return v
-    with open(os.path.join(ROOT, "VERSION")) as f:
-        return f.read().strip()
+    branch = sh("git", "-C", ROOT, "rev-parse", "--abbrev-ref", "HEAD").strip()
+    if branch in ("", "HEAD"):
+        branch = sh("git", "-C", ROOT, "rev-parse", "--short", "HEAD").strip()
+    return "dev-" + re.sub(r"[^A-Za-z0-9._-]+", "-", branch)
 
 
 # What a process is: the Mac app's own, an Android emulator, or an app process on one.

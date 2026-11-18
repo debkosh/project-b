@@ -16,9 +16,9 @@ runs it. `PB_RESULTS=off` turns it off.
 - `run.json`: the run.
 - `tests/NN-<name>.json` and `tests/NN-<name>.log`: each test, its result and its whole output.
 
-The version is `PB_VERSION`, else the bundle `PB_BIN` runs from, else `VERSION`. A release
-candidate still carries the last version until it is published, so release runs set
-`PB_VERSION`. The run is `PB_RUN`: `tools/test.sh` makes one per call (the UTC time and the
+The version is `PB_VERSION`, which release runs set (a candidate still carries the last
+version until it is published); any other run is `dev-<branch>`, so a development run never
+mixes into a release's results. The run is `PB_RUN`: `tools/test.sh` makes one per call (the UTC time and the
 groups) unless it is set, so a release sets it once and its groups share one folder.
 
 `tools/results.py run [--group G] [--name N] [--rerun yes] -- <command>` wraps any driver on
