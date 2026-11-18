@@ -749,6 +749,111 @@ def mobile_shell():
           until(lambda: find("shell", label=lambda l: (l or "").startswith("Group ")) is None) is not None)
 
 
+def profile_file(name, data):
+    """Writes one of the profile's files, while the app is stopped, as the app's own: the next
+    start reads it."""
+    adb("shell", "am", "force-stop", PACKAGE)
+    folder = "/data/data/%s/%s" % (PACKAGE, PROFILE)
+    local = os.path.join(OUT, name)
+    with open(local, "w") as f:
+        json.dump(data, f)
+    adb("shell", "mkdir", "-p", folder)
+    adb("push", local, folder + "/" + name)
+    owner = adb("shell", "stat", "-c", "%u:%g", "/data/data/" + PACKAGE).strip()
+    adb("shell", "chown", "-R", owner, "/data/data/%s/app_project_b" % PACKAGE)
+
+
+def profile_json(name):
+    """One of the profile's JSON files, or {} while there is none."""
+    out = adb("shell", "cat", "/data/data/%s/%s/%s" % (PACKAGE, PROFILE, name))
+    try:
+        return json.loads(out)
+    except ValueError:
+        return {}
+
+
+def use_shell(shell):
+    """Makes shell the profile's at the next start, '' for the phone's own, by its pref."""
+    prefs = profile_json("prefs.json")
+    prefs.pop("shell", None)
+    if shell:
+        prefs["shell"] = shell
+    profile_file("prefs.json", prefs)
+
+
+def named(part, name, **want):
+    """The first node in a part whose label or text is name, as a web shell's button can be
+    named by its words alone and a native one by its label."""
+    return first(lambda: find(part, label=name, **want), lambda: find(part, text=name, **want))
+
+
+def see_named(part, name, timeout=20):
+    """Waits for a node named name to show, by its label or its text, and returns it."""
+    node = until(lambda: named(part, name), timeout)
+    if node is None:
+        raise TimeoutError("never showed in the %s: %s" % (part, name))
+    return node
+
+
+def bookmark_star():
+    """The phone's star, in both Mobile shells, the web one and the native one
+    (docs/bookmark-folders.md): the menu's Bookmark bookmarks the page into the folder last
+    saved in and shows its sheet; Enter in the name saves it with the folder chosen; the back
+    key closes it as it was; on a bookmarked page the star is on, and Remove takes it away."""
+    for shell in ("mobile", "mobile-native"):
+        # Two folders, the second in the first, and the first the one last saved in.
+        profile_file("bookmarks.json", {"version": 2, "last": "f1", "entries": [
+            {"id": "f1", "parent": "", "kind": "folder", "title": "Reading", "added": 1, "modified": 1, "place": "a"},
+            {"id": "f2", "parent": "f1", "kind": "folder", "title": "Recipes", "added": 1, "modified": 1, "place": "a"}]})
+        use_shell(shell)
+        try:
+            launch()
+            go(BASE + "/a")
+            see("page", label="to b")
+            menu("Bookmark")
+            see("shell", text="Bookmarked")
+            saved = lambda: [e for e in profile_json("bookmarks.json").get("entries", []) if e.get("url") == "http://" + BASE + "/a"]
+            # The folder chosen, by its name; checked only in the native shell's tree, as the
+            # tree a web page gives Android without a screen reader on carries no checked state.
+            chosen = {"checked": "true"} if shell == "mobile-native" else {"kind": "android.widget.RadioButton"}
+            check(shell + ": the menu's Bookmark bookmarks the page into the folder last saved in, and shows its sheet",
+                  until(lambda: [e["parent"] for e in saved()] == ["f1"]) is not None
+                  and until(lambda: named("shell", "Reading", **chosen)) is not None, saved())
+            shot("40-bookmark-" + shell)
+            small = small_targets()
+            check(shell + ": every control of the bookmark sheet is 48dp or more each way", not small, ", ".join(small))
+            key(4)
+            check(shell + ": the back key closes it, the bookmark kept",
+                  until(lambda: find("shell", text="Bookmarked") is None) is not None and len(saved()) == 1)
+
+            menu("Edit bookmark")
+            see("shell", text="Edit bookmark")
+            tap(middle(see_named("shell", "Bookmarks")))
+            name = see("shell", kind=FIELD, text="Page A")
+            tap(middle(name))
+            see("shell", kind=FIELD, text="Page A", focused="true")
+            key(123)  # The end of the name.
+            type_text(" kept")
+            see("shell", kind=FIELD, text="Page A kept")
+            key(66)
+            check(shell + ": on a bookmarked page the star is on, and Enter in the name saves the name and the folder chosen",
+                  until(lambda: [(e["title"], e["parent"]) for e in saved()] == [("Page A kept", "")]) is not None
+                  and until(lambda: find("shell", text="Edit bookmark") is None) is not None, saved())
+
+            menu("Edit bookmark")
+            tap(middle(see_named("shell", "Remove")))
+            check(shell + ": Remove takes the bookmark away", until(lambda: not saved()) is not None, saved())
+            press("Menu")
+            check(shell + ": and the star is off again", see("shell", label="Bookmark") is not None)
+            key(4)
+        except TimeoutError:
+            # The screen as it stopped, before the shell is put back, which stops the app.
+            shot("stopped-bookmark_star-" + shell)
+            raise
+        finally:
+            use_shell("")
+
+
 def in_front():
     """Whether the app's window is the one Android shows."""
     return PACKAGE in adb("shell", "dumpsys", "window", "displays").split("mCurrentFocus", 1)[-1].split("\n", 1)[0]
@@ -1322,7 +1427,7 @@ def main():
     adb("shell", "pm", "clear", PACKAGE)
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
-    every = (browsing, mobile_shell, back_key_chain, page_dialogs, downloads, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
+    every = (browsing, mobile_shell, bookmark_star, back_key_chain, page_dialogs, downloads, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
              the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web)
     for part in [p for p in every if not sys.argv[1:] or p.__name__ in sys.argv[1:]]:
         # tools/results.py splits a run's memory, CPU and checks by these lines.
