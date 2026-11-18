@@ -24,7 +24,7 @@ const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'project-b-e2e-'));
 const profile = path.join(temp, 'profile');
 fs.mkdirSync(profile);
 const bin = path.join(temp, 'dev');
-execFileSync('go', ['build', '-tags', 'extensions', '-o', bin, './cmd/dev'], { cwd: path.join(root, 'core'), stdio: 'inherit' });
+execFileSync('go', ['build', '-tags', 'sqlite_fts5,extensions', '-o', bin, './cmd/dev'], { cwd: path.join(root, 'core'), stdio: 'inherit' });
 
 // A home folder with no browsers in it, which Import looks in unless a test names its own,
 // such as lib.browsers, browserdata's: a Chrome of two profiles and a Firefox of one.

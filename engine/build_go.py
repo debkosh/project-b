@@ -8,7 +8,8 @@ import sys
 
 def main():
     go, out, depfile, deployment_target = sys.argv[1:5]
-    tags = ",".join(sys.argv[5:])
+    # sqlite_fts5 always: the store's search needs SQLite's FTS5 (docs/store.md).
+    tags = ",".join(["sqlite_fts5"] + sys.argv[5:])
     repo = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
     build_dir = os.getcwd()
     # Inside the source tree the repo is reached through src/project_b.

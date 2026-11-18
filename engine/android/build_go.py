@@ -27,10 +27,11 @@ def main():
         "HOME": build_dir,
         "PATH": os.path.dirname(go) + ":/usr/bin:/bin",
     })
-    # Phones with 16 KB memory pages refuse libraries aligned for 4 KB. The soname is how the library
+    # sqlite_fts5: the store's search needs SQLite's FTS5 (docs/store.md). Phones with 16 KB
+    # memory pages refuse libraries aligned for 4 KB. The soname is how the library
     # that links this one finds it at runtime: without it, it would record the build-time path.
     subprocess.check_call(
-        [go, "build", "-buildmode=c-shared", "-trimpath",
+        [go, "build", "-buildmode=c-shared", "-trimpath", "-tags", "sqlite_fts5",
          "-ldflags", "-s -w -X main.version=" + version +
          " -extldflags '-fuse-ld=lld --unwindlib=none -Wl,-z,max-page-size=16384 -Wl,-soname,libcore.so'",
          "-o", os.path.join(build_dir, out), "./cmd/lib"],
