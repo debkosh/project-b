@@ -94,6 +94,23 @@ merge into main while it runs; it reads that checkout. It takes about four minut
   check the id against it, before building.
 - GitHub sometimes refuses a push ("missing necessary objects", "failed"); pushing again works.
 - Never a bare `git stash`: the stash is shared with every worktree.
+- The main checkout is the release's: never check out, reset or build there. `tools/release.sh`
+  refuses unless it is on main and is origin/main. Before the bump, check `git branch
+  --show-current` says main and `git status --porcelain` is empty.
+- A release that adds a shell dependency (`shell/package.json`) needs `npm install` in the main
+  checkout's `shell/` before `tools/release.sh`, and in any release worktree with its own
+  `node_modules`; worktrees that link `shell/node_modules` to the main checkout's share it. Use
+  `npm install`, not `npm ci`, there: other checkouts link to it.
+- A Go module marked `// indirect` that core imports directly is rewritten by every build
+  (`-mod=mod`), leaving the checkout dirty; `go mod tidy` in `core` is the fix, in its own commit.
+- A test killed from outside (SIGTERM) is not a failure of the app: rerun it alone through
+  `tools/results.py run --rerun yes`, so the report takes the rerun.
+- Android: never `adb kill-server`; the adb server is the amarit unit `android-adb` (`amarit
+  restart android-adb`). If `tools/android-release.sh` prints "already running, ignoring" and
+  then a docker.sock error, `colima stop -p pb-android && colima start -p pb-android
+  --activate=false`.
+- To tell a flaky Android check from a regression, run the same parts on the previous release's
+  APK on the same emulator (`ADB_SERIAL=... PB_APK=... python3 tools/drive_android.py <parts>`).
 - A new worktree has no `chromium` or `depot_tools`: link both to the main checkout's
   (`ln -s ../project-b/chromium chromium`, the same for `depot_tools`) before
   `tools/build.sh`, which otherwise reports them missing; a `chromium/` folder the build's
