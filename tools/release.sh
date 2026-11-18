@@ -29,6 +29,11 @@ PATH=$PATH:$HOME/go/bin
 
 cd "$ROOT"
 [ -z "$(git status --porcelain)" ] || { echo "uncommitted changes; a release is what is committed"; exit 1; }
+# A release is main as pushed: other sessions' checkouts or resets here would publish whatever
+# they left, so refuse anything else.
+[ "$(git branch --show-current)" = main ] || { echo "the checkout is not on main ($(git rev-parse --short HEAD)); a release is main"; exit 1; }
+git fetch -q origin main
+[ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || { echo "main is not origin/main; push the bump first, or fast-forward to origin/main"; exit 1; }
 if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then echo "$TAG is already released; bump VERSION"; exit 1; fi
 
 echo "=== $(date '+%F %T') release build"
