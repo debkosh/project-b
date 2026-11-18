@@ -17,6 +17,7 @@ public final class BrowserActivity extends Activity {
     private BrowserWindow window;
     // Hands the window the answers of what it asked other apps for, such as a file picked.
     private IntentRequestTracker intentRequests;
+    private ActivityWindowAndroid windowAndroid;
     // Go has started: until then a link from another app waits here.
     private boolean started;
     private String pendingLink;
@@ -30,7 +31,7 @@ public final class BrowserActivity extends Activity {
         LibraryLoader.getInstance().ensureInitialized();
 
         intentRequests = IntentRequestTracker.createFromActivity(this);
-        ActivityWindowAndroid windowAndroid =
+        windowAndroid =
                 new ActivityWindowAndroid(
                         this,
                         /* listenToActivityState= */ true,
@@ -123,10 +124,12 @@ public final class BrowserActivity extends Activity {
         }
     }
 
-    // Android's question about notifications has been answered.
+    // Android's question about notifications has been answered, or one the window asked, such
+    // as the camera a page's file input asks for before the picker opens.
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
         super.onRequestPermissionsResult(requestCode, permissions, results);
+        windowAndroid.handlePermissionResult(requestCode, permissions, results);
         if (requestCode == BrowserWindow.NOTIFICATIONS_REQUEST) {
             window.notificationsAnswered();
         }
