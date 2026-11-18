@@ -14,6 +14,14 @@ guide has the rules every feature follows.
   whenever we show a progress, seems like a good starting rule to evolve from".
 - The buttons are quiet text buttons beside the progress, in place of what can't be pressed
   while it runs (Settings' Check for updates, for one).
+- **Stalled means 30 seconds with nothing arriving**, the same for the updater, downloads and
+  imports, and it reads "Stopped: nothing arrived for 30 seconds". A paused download never
+  stalls.
+- **Waiting on the person is not stalling:** while we wait for their answer, macOS's keychain
+  question during an import, for one, no clock runs, the line says what it waits for, and
+  Cancel still works.
+- Retry throws away what has arrived, so it sits last and a little apart from Pause and
+  Cancel, where a slip doesn't land on it.
 
 ## Settings
 
