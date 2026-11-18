@@ -41,12 +41,14 @@ The engine owns the process and its run loop, and calls Go in this order:
 navigation; workspaces (`CreateTab(workspace)`, `SetFirstWorkspace`, `EraseWorkspace`);
 windows and their layout (`CreateWindow`, `SetWindowLayout`, `RequestWindow`,
 `SetWindowBounds`, `SetWindowMode`, `FocusTab`, `FocusShell`); the shell's, the picker's and our
-pages' channels (`PageMessage`, `SendToPage`); menu and app commands; downloads, dialogs, find and page full screen;
+pages' channels (`PageMessage`, `SendToPage`); menu and app commands; downloads, dialogs, a passkey request's steps
+(`AnswerPasskey`, [passkeys.md](passkeys.md)), find and page full screen;
 pictures of the tabs' pages (`CaptureThumbnail`); and the names of our pages' addresses (`PageURL`, `OurPage`,
 `ViewSourceURL`, `ThumbnailURL`).
 
 **Events** (`Listener`): the adapter fires each one itself, from what the engine reports.
-Events 1 to 59 are windows, pages of ours, menus, crashes, downloads, dialogs and permissions.
+Events 1 to 59 are windows, pages of ours, menus, crashes, downloads, dialogs, a passkey
+request's steps (`PasskeyStep`) and permissions.
 Events 60 to 79 are what a tab's page does: navigation, title, loading, context menu, scroll,
 focus, crash, close and activate requests, keys, find, full screen and a new picture of it
 (`Thumbnail`).

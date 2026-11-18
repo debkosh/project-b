@@ -217,6 +217,9 @@ another tab shown hides it and the page keeps waiting. It answers with `answerDi
 text}`; Escape answers no. In Standard it is the design system's dialog over the page. The
 contract's rule 15 holds every shell to it.
 
+A page's passkey request is a dialog too, of kind `passkey`, whose card changes at each step:
+[passkeys.md](passkeys.md).
+
 **Android.** The same on a phone: the engine gives every dialog and sign-in to Go, and the
 Mobile shell draws them, its back key answering Cancel.
 
