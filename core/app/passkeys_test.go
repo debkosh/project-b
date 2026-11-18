@@ -82,7 +82,7 @@ func TestAPasskeyRequestIsOneDialogThatChangesAtEachStep(t *testing.T) {
 	pinError(`{"reason":"enter","error":"wrong","attempts":1,"minLength":4}`, "Wrong PIN. 1 try left before the key locks.")
 	pinError(`{"reason":"enter","error":"uv-locked","attempts":8,"minLength":4}`, "Too many fingerprint tries. Enter your PIN instead.")
 	pinError(`{"reason":"set","error":"short","minLength":6}`, "At least 6 characters")
-	pinError(`{"reason":"change","error":"same","minLength":4}`, "The new PIN has to differ from the current one.")
+	pinError(`{"reason":"change","error":"same","minLength":4}`, "The new PIN must be different from your current one.")
 	r.e.Fire(1, 0, "passkeyStep", `pin {"reason":"set","error":"","minLength":6}`)
 	d, p = r.passkey("pin")
 	for d["ok"] != "Set PIN" {
@@ -110,12 +110,16 @@ func TestAPasskeyRequestIsOneDialogThatChangesAtEachStep(t *testing.T) {
 	r.dialogs(func(l []any) bool {
 		return l[0].(map[string]any)["message"] == "That fingerprint didn't match. Touch your security key again. 2 tries left."
 	})
+	r.e.Fire(1, 0, "passkeyStep", `touch {"attempts":1}`)
+	r.dialogs(func(l []any) bool {
+		return l[0].(map[string]any)["message"] == "That fingerprint didn't match. Touch your security key again. 1 try left."
+	})
 
 	// The accounts: the display name first, the name alone when there is no other.
-	r.e.Fire(1, 0, "passkeyStep", `account {"accounts":[{"name":"ada@example.com","displayName":"Ada Lovelace"},{"name":"grace","displayName":""},{"name":"same","displayName":"same"}]}`)
+	r.e.Fire(1, 0, "passkeyStep", `account {"accounts":[{"name":"ada@example.com","displayName":"Ada Lovelace"},{"name":"grace","displayName":""},{"name":"same","displayName":"same"},{"name":"","displayName":""}]}`)
 	d, p = r.passkey("account")
-	words(t, d, "Choose an account", "Your security key has 3 accounts for example.com.", "", "Cancel")
-	if fmt.Sprint(p["accounts"]) != "[map[secondary:ada@example.com title:Ada Lovelace] map[title:grace] map[title:same]]" {
+	words(t, d, "Choose an account", "Your security key has 4 accounts for example.com.", "", "Cancel")
+	if fmt.Sprint(p["accounts"]) != "[map[secondary:ada@example.com title:Ada Lovelace] map[title:grace] map[title:same] map[title:No name unnamed:true]]" {
 		t.Fatalf("accounts = %v", p["accounts"])
 	}
 	r.passkeyAnswer(id, "account", "1")

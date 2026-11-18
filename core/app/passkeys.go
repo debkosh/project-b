@@ -58,6 +58,8 @@ type passkeyPin struct {
 type passkeyAccount struct {
 	Title     string `json:"title"`
 	Secondary string `json:"secondary,omitempty"`
+	// The key has no name for it: the title is ours, for a shell to set apart.
+	Unnamed bool `json:"unnamed,omitempty"`
 }
 
 type passkeyBluetooth struct {
@@ -187,7 +189,7 @@ func passkeyDialog(d pageDialog, step, carries string) pageDialog {
 		case "invalid":
 			pin.Error = "A PIN can't have those characters."
 		case "same":
-			pin.Error = "The new PIN has to differ from the current one."
+			pin.Error = "The new PIN must be different from your current one."
 		}
 	case "touch":
 		p.Title, p.Message = "Touch your security key", "Touch your security key again to finish."
@@ -203,7 +205,7 @@ func passkeyDialog(d pageDialog, step, carries string) pageDialog {
 				row = passkeyAccount{Title: a.Name}
 			}
 			if row.Title == "" {
-				row.Title = "No name"
+				row.Title, row.Unnamed = "No name", true
 			}
 			s.Accounts = append(s.Accounts, row)
 		}

@@ -82,7 +82,7 @@
     <div class="accounts">
       {#each step.accounts as account, i (i)}
         <button type="button" class="account" title={account.secondary ? `${account.title}\n${account.secondary}` : account.title} onclick={() => act('account', String(i))}>
-          <span class="name">{account.title}</span>
+          <span class="name" class:unnamed={account.unnamed}>{account.title}</span>
           {#if account.secondary}<span class="secondary name">{account.secondary}</span>{/if}
         </button>
       {/each}
@@ -97,7 +97,7 @@
     {#if step.bluetooth}
       <div class="bluetooth">
         <span>{step.bluetooth.words}</span>
-        {#if step.bluetooth.button}<button type="button" class="text-button quiet" onclick={() => act(step.bluetooth.button.action)}>{step.bluetooth.button.label}</button>{/if}
+        {#if step.bluetooth.button}<button type="button" class="text-button" onclick={() => act(step.bluetooth.button.action)}>{step.bluetooth.button.label}</button>{/if}
       </div>
     {/if}
   {/if}
@@ -154,11 +154,14 @@
     color: var(--danger);
   }
 
-  /* A key's accounts: a row each, the card's full width, about five before the list
-     scrolls inside the card, so Cancel stays in view. */
+  /* A key's accounts, in a card of their own 16px under the words: a hairline round it and
+     between its rows, each row a button of the card's full width. About five show before
+     the list scrolls inside the card, so Cancel stays in view. */
   .accounts {
-    max-height: 248px;
-    margin: 12px -8px 0;
+    max-height: 244px;
+    margin-top: 16px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
     overflow-y: auto;
   }
 
@@ -167,11 +170,10 @@
     flex-direction: column;
     justify-content: center;
     width: 100%;
-    min-height: 48px;
-    padding: 6px 8px;
+    height: 48px;
+    padding: 8px 12px;
     box-sizing: border-box;
     border: 0;
-    border-radius: 6px;
     background: none;
     color: var(--text);
     font: inherit;
@@ -179,7 +181,16 @@
     cursor: default;
   }
 
-  .flat .account {
+  .account + .account {
+    border-top: 1px solid var(--line);
+  }
+
+  /* An account the key has no name for. */
+  .unnamed {
+    color: var(--muted);
+  }
+
+  .flat .accounts {
     border-radius: 0;
   }
 
@@ -221,16 +232,17 @@
     align-items: center;
     gap: 8px;
     margin-top: 12px;
-    color: var(--muted);
-    font-size: 12px;
   }
 
   .bluetooth span {
     flex: 1;
+    color: var(--muted);
+    font-size: 12px;
   }
 
   .bluetooth .text-button {
     flex: none;
+    font-size: 13px;
   }
 
   /* The way to another kind of key sits apart, on the left. */

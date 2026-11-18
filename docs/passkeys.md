@@ -41,6 +41,11 @@ what the person did, and Go tells the engine.
   `answer_passkey(id, action, text)`. `PasskeyPolicy`, our `WebAuthenticationDelegate`,
   allows keys that remember their accounts (`SupportsResidentKeys`), which content refuses
   by default.
+- **Observing.** Content tells a delegate nothing of what there is to use, of a PIN or of a
+  touch unless the delegate makes itself the request handler's observer in `StartObserving`
+  (`FidoRequestHandlerBase::SetObserver`). Ours does, for a request with a card. Each step
+  sent is on the timeline as `passkey.step` with its name, and a request with no card as
+  `passkey.quiet`.
 - **Which requests get a card.** Only one content asks a modal UI for
   (`UIPresentation::kModal`), from a tab. A sign-in field's passkey list (conditional
   mediation), an immediate request, and a test's virtual key with its UI off tell Go
@@ -132,19 +137,22 @@ the field takes it away:
 | The key's fingerprint reader locked (`uv-locked`) | PIN | Too many fingerprint tries. Enter your PIN instead. |
 | Next or Enter with fewer than `minLength` characters | The first | At least 4 characters (the key's own minimum) |
 | The two differ | The confirmation | The PINs don't match |
-| The key's rules refuse a new PIN (`invalid`, `same`) | The first | A PIN can't have those characters. The new PIN has to differ from the current one. |
+| The key's rules refuse a new PIN (`invalid`, `same`) | The first | A PIN can't have those characters. The new PIN must be different from your current one. |
 
 The primary button is always on; Enter presses it. With something wrong nothing is sent,
 and the keyboard goes to the field it is under.
 
-**An account's row** is a button, the card's full width and at least 48px high: the display
-name, with the name under it as `.secondary`, or the name alone when there is no display
-name. Each is one line, cut with an ellipsis, the whole in the tooltip. Hover is
+**The accounts** sit in a card of their own, 16px under the words: a `--line` hairline round
+it, radius 6, and a hairline between rows. Each row is a button, the card's full width and
+48px high, with padding 8px 12px: the display name, with the name under it as `.secondary`,
+or the name alone when there is no display name, or "No name" in `--muted` when the key has
+neither. Each is one line, cut with an ellipsis, the whole in the tooltip. Hover is
 `--accent-tint`, focus `--focus-ring-inset`. Past about five rows the list scrolls inside
 the card, Cancel still in view.
 
 **Bluetooth**, 12px under the code, its button on the same row; nothing when it is on. Off
-and `canTurnOn`: "Bluetooth is off." with Turn on Bluetooth. Off otherwise: "Turn on
+and `canTurnOn`: "Bluetooth is off." with Turn on Bluetooth, a normal text button at 13px,
+centred on the row. Off otherwise: "Turn on
 Bluetooth on this Mac." `denied`: "Project B can't use Bluetooth. Allow it in System
 Settings › Privacy & Security › Bluetooth." with Open System Settings, which the engine
 opens.
@@ -177,7 +185,7 @@ A passkey request is one entry of `state.dialogs`, kind `passkey`: `title`, `mes
 | `primary` | What the primary button sends: `pin`, `retry` or `cancel` |
 | `other` | The quiet button on the left: `{label, action}` |
 | `pin` | `{labels, error, minLength, short, mismatch}`: the fields' labels, the words under the first as the step starts, and the shell's own two errors |
-| `accounts` | `[{title, secondary}]`; a row sends `account` with its index |
+| `accounts` | `[{title, secondary, unnamed}]`; a row sends `account` with its index |
 | `code` | The QR code, a string of `0` and `1` for each row of modules |
 | `bluetooth` | `{words, button: {label, action}}`, the line under the code |
 
