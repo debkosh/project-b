@@ -39,8 +39,10 @@ Three layers, each doing one thing.
    - **strength** is the chroma. "Follow the frame": 80% of the frame's own, from 0.03 to
      0.13 (the primary's), so Amber's colours are strong and Slate's quiet. None has no saturation of its own
      and takes a fixed quiet 0.06. "Muted" is half; "full" is 0.13.
-   - **recipe** is the lightness: *soft*, a tint a step off the background (pale in light,
-     deep in dark); *solid*, a mid fill; *dot*, a mark with no text.
+   - **recipe** is the look, an input like the colours: *soft*, a tint a step off the
+     background (pale in light, deep in dark) with text in its own hue; *solid*, a mid fill
+     with the label; *outline*, no fill, text in its colour inside a hairline; *text*, the
+     colour as text on the background; *dot*, a mark with no text.
    - In our shells the primary is the frame colour and the background is the tones'
      `--bar` or `--surface` that the mark sits on, both of which Go already sends.
    - It returns three colours: **fill**, the box; **label**, the best of `labels` on the
@@ -96,6 +98,7 @@ The owner, 2026-11-18:
 - **None** takes a fixed quiet strength rather than grey: same answer.
 - **Two inputs, a primary and a background**, "since there might be a two tone design where
   this lib should be able to generate good sets of colors".
+- **The recipe is an input too:** "add the recipies as another input option".
 
 ## Open
 
