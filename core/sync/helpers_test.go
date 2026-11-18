@@ -1,0 +1,176 @@
+package sync_test
+
+import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"path/filepath"
+	"strings"
+	gosync "sync"
+	"testing"
+
+	"github.com/sudiptadeb/synckosh"
+	"github.com/sudiptadeb/synckosh/bolt"
+	"github.com/sudiptadeb/synckosh/server"
+
+	"projectb/bookmarks"
+	"projectb/history"
+	"projectb/keys"
+	"projectb/store"
+	"projectb/sync"
+)
+
+// testServer is synckosh's server in-process, over https, as the memd server serves a bucket:
+// at /sync with the token as a bearer, or at /sync/<token> alone. A token's bucket is named
+// after it.
+type testServer struct {
+	t    *testing.T
+	ts   *httptest.Server
+	mu   gosync.Mutex
+	srv  *server.Server
+	data *bolt.Store
+	n    int
+}
+
+func newServer(t *testing.T) *testServer {
+	s := &testServer{t: t}
+	s.reset()
+	s.ts = httptest.NewTLSServer(http.StripPrefix("/sync", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if token, rest, ok := strings.Cut(strings.TrimPrefix(r.URL.Path, "/"), "/"); ok && token != "v1" {
+			r = r.Clone(r.Context())
+			r.URL.Path = "/" + rest
+			r.Header.Set("Authorization", "Bearer "+token)
+		}
+		s.mu.Lock()
+		srv := s.srv
+		s.mu.Unlock()
+		srv.ServeHTTP(w, r)
+	})))
+	t.Cleanup(s.ts.Close)
+	return s
+}
+
+// reset gives the server an empty store, with new store ids: it has lost every item.
+func (s *testServer) reset() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.n++
+	data, err := bolt.OpenStore(filepath.Join(s.t.TempDir(), "server.db"))
+	if err != nil {
+		s.t.Fatal(err)
+	}
+	s.t.Cleanup(func() { data.Close() })
+	s.data = data
+	s.srv = server.New(data, server.Bearer(func(token string) (string, error) { return "bucket-" + token, nil }))
+}
+
+// bearer is the bucket's address without its token; single the one address with it.
+func (s *testServer) bearer() string             { return s.ts.URL + "/sync" }
+func (s *testServer) single(token string) string { return s.ts.URL + "/sync/" + token }
+
+// items is every item the server holds for the token's bucket, as it holds them.
+func (s *testServer) items(token string) []synckosh.Item {
+	s.mu.Lock()
+	data := s.data
+	s.mu.Unlock()
+	var out []synckosh.Item
+	if err := data.Since("bucket-"+token, "", 0, func(it synckosh.Item) bool { out = append(out, it); return true }); err != nil {
+		s.t.Fatal(err)
+	}
+	return out
+}
+
+// profile is a profile folder named outright, with its store, keys, history and bookmarks, and
+// a main thread of its own.
+type profile struct {
+	t         *testing.T
+	dir       string
+	st        *store.Store
+	keys      *keys.Keys
+	history   *history.Manager
+	bookmarks *bookmarks.Manager
+	posted    chan func()
+	maps      []sync.Mapping
+}
+
+func newProfile(t *testing.T) *profile {
+	return openProfile(t, t.TempDir())
+}
+
+func openProfile(t *testing.T, dir string) *profile {
+	st, err := store.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := &profile{t: t, dir: dir, st: st, posted: make(chan func(), 1024)}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for f := range p.posted {
+			f()
+		}
+	}()
+	p.keys = keys.New(dir, "", st, nil)
+	p.bookmarks = bookmarks.New(dir, st)
+	p.history = history.New(dir, st, p.post)
+	p.maps = append(history.Synced(), p.bookmarks.Synced(p.post))
+	sync.Setup(st)
+	t.Cleanup(func() {
+		st.Close()
+		close(p.posted)
+		<-done
+	})
+	return p
+}
+
+func (p *profile) post(f func()) { p.posted <- f }
+
+// main runs f on the profile's main thread and waits for it, and for what it posted.
+func (p *profile) main(f func()) {
+	ran := make(chan struct{})
+	p.post(func() { f(); close(ran) })
+	<-ran
+}
+
+// settle waits for the store's worker and the main thread to run what was asked of them.
+func (p *profile) settle() {
+	for range 3 {
+		p.st.Wait(func(*store.Tx) error { return nil })
+		p.main(func() {})
+	}
+}
+
+// count is the rows a query counts.
+func (p *profile) count(query string, args ...any) int {
+	n := -1
+	if err := p.st.Wait(func(tx *store.Tx) error { return tx.QueryRow(query, args...).Scan(&n) }); err != nil {
+		p.t.Fatal(err)
+	}
+	return n
+}
+
+// page is the history row of url: its title and visits, or "" and -1 for none.
+func (p *profile) page(url string) (string, int) {
+	title, visits := "", -1
+	p.st.Wait(func(tx *store.Tx) error {
+		tx.QueryRow(`SELECT title, visits FROM history WHERE url = ?`, url).Scan(&title, &visits)
+		return nil
+	})
+	return title, visits
+}
+
+// bookmarked is the titles of the bookmarks the main thread's tree has.
+func (p *profile) bookmarked() []string {
+	var out []string
+	p.main(func() {
+		for _, e := range p.bookmarks.List() {
+			out = append(out, e.Title)
+		}
+	})
+	return out
+}
+
+func rawOf(v any) json.RawMessage {
+	b, _ := json.Marshal(v)
+	return b
+}
