@@ -3,11 +3,13 @@ package app_test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
 // Settings' Sync: the page has the status, a deep link's address is only proposed, and a
-// connect with a wrong address is answered with why, and the problem's name. A folder named outright keeps its own
+// connect with a wrong address is answered with why, and the problem's name; Suggest one gets
+// five words. A folder named outright keeps its own
 // key, and nothing is sealed until something is.
 func TestSettingsSync(t *testing.T) {
 	dir := t.TempDir()
@@ -30,6 +32,10 @@ func TestSettingsSync(t *testing.T) {
 	r.settings(`{"t":"syncConnect","address":"https://memd.example/sync","passphrase":"p"}`)
 	if m := r.waitOn(got, func(m map[string]any) bool { return m["t"] == "syncConnected" }); m["error"] == nil || m["problem"] != "needsToken" {
 		t.Fatalf("connected with no token: %v", m)
+	}
+	r.settings(`{"t":"syncSuggest"}`)
+	if m := r.waitOn(got, func(m map[string]any) bool { return m["t"] == "syncSuggested" }); len(strings.Fields(m["passphrase"].(string))) != 5 {
+		t.Fatalf("suggested %v", m)
 	}
 	for _, f := range []string{"profile.key", "folder.key", "secrets"} {
 		if _, err := os.Stat(filepath.Join(dir, f)); !os.IsNotExist(err) {
