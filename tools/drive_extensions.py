@@ -594,9 +594,21 @@ def fonts_ninja_checks():
     panel = "document.querySelector('fn-ninja-root')?.getBoundingClientRect().height>0"
     time.sleep(2)  # its content script runs at document_idle
     check("Fonts Ninja's panel is closed at first", not app.js(panel, page=True))
-    click(app, f"[aria-label={json.dumps(FN_NAME)}]")
-    app.wait(panel, 10, page=True)
-    check("its button opens its panel on the page, by tabs.sendMessage", True)
+    # Clicked again when the panel doesn't come: under a full run's load the content script
+    # can still be on its way after 2 s, and a message sent before it is there reaches nothing
+    # (a flake in 0.2.99's run). It says how many clicks it took.
+    clicks = 0
+    for clicks in (1, 2, 3):
+        click(app, f"[aria-label={json.dumps(FN_NAME)}]")
+        try:
+            app.wait(panel, 5, page=True)
+            break
+        except TimeoutError:
+            continue
+    opened = bool(app.js(panel, page=True))
+    if opened and clicks > 1:
+        print(f"note: Fonts Ninja's panel opened at click {clicks}", flush=True)
+    check("its button opens its panel on the page, by tabs.sendMessage", opened, f"after {clicks} clicks")
     app.close()
 
 
