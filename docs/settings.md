@@ -166,7 +166,7 @@ profile whose `settingsLayout` pref names it; it goes to each part as a person d
 rail, the list of sections and the rows that open the lists. Each run also switches Look's
 Settings row to the other layout and back, in the same page; checks the status line (not the default browser, Make default
 browser, then the default; the version, and Check for updates reaching the release server
-once, and a download's Retry and Cancel on its own line at a phone's width), Block ads, Ask
+once, and a download's Cancel and Retry on its own line at a phone's width), Block ads, Ask
 where to save, Save to with a folder chosen and Use Downloads, Clear browsing data's dialog,
 Sites with what two
 sites keep, a site's Clear data and a site's page with its Clear, and Clear cookies when
