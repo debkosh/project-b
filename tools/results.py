@@ -244,6 +244,7 @@ def cmd_run(args):
                       "failures": [l for l in mine if l.startswith("FAIL")][:50],
                       "processes": summarise(sampler.samples, t, until)})
     result = {"schema": SCHEMA, "group": opts["--group"], "name": opts["--name"], "rerun": opts.get("--rerun") == "yes",
+              "tested": tested(), "app": {k: os.environ[k] for k in ("PB_BIN", "PB_DMG", "PB_APK") if os.environ.get(k)},
               "status": "passed" if code == 0 else "did_not_run" if code == 2 else "failed", "exit": code,
               "start": utc(start), "seconds": round(end - start, 1),
               "ok": sum(p["ok"] for p in parts), "fail": sum(p["fail"] for p in parts),
@@ -285,6 +286,8 @@ def cmd_report(args):
                 if t.get("rerun"):
                     reruns.append(t)
                     continue
+                for kind, c in t.get("tested", {}).items():
+                    commits.add(f"{kind} {c[:8]}")
                 if key not in latest or t["start"] > latest[key]["start"]:
                     latest[key] = t
     # A rerun of some parts replaces those parts' results only.
