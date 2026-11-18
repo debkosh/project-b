@@ -58,8 +58,9 @@ guide has the rules every feature follows.
 - **Within the thumb's reach:** what a person taps most sits in the screen's lower two thirds;
   the top third holds what is read, not pressed.
 - **The bars hide on scroll** and the page never shows the frame colour where they were
-  ([shells.md](shells.md#bars-that-hide-on-scroll)). Whether the bars should instead stay fixed,
-  or float over the page, is with the owner.
+  ([shells.md](shells.md#bars-that-hide-on-scroll)): they slide away as the page scrolls down
+  and come back on a scroll up, as phone browsers do. 2026-11-19, over always shown and hiding
+  once the page loads: "ok with you".
 - **Our pages are tabs**, decided 2026-11-14 ([windows.md](windows.md#our-own-pages-are-tabs-decided-2026-11-14)).
 
 ## The first start
