@@ -5,7 +5,7 @@ import { shown } from '@/keys.js';
 import { entries, groupLabel } from './groups.js';
 import { dragEnd, dragOver, dragStart, drop, dropClass } from './drag.js';
 import { openMenu } from './menu.js';
-import { openBox, view, waiting, workspaces } from './state.js';
+import { toNewTab, view, waiting, workspaces } from './state.js';
 import SidebarBookmarks from './SidebarBookmarks.vue';
 import WorkspaceButton from './WorkspaceButton.vue';
 
@@ -20,7 +20,7 @@ const rows = computed(() =>
 <template>
   <nav v-shell class="sidebar" :class="{ closed: !view.sidebar }" aria-label="Tabs">
     <div class="inner">
-      <button class="row new-tab" type="button" @click="openBox">
+      <button class="row new-tab" type="button" @click="toNewTab">
         <span class="icon">
           <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6.44.75v11.39M.75 6.19h11.39"/></svg>
         </span>

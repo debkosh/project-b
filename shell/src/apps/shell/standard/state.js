@@ -2,12 +2,10 @@
 // which workspace the window shows. Everything else is Go's, in the SDK's state.
 
 import { computed, reactive, watch } from 'vue';
-import { saveData, send, state } from '@/sdk/vue.js';
+import { isNewTab, saveData, send, state } from '@/sdk/vue.js';
 export const view = reactive({
   // Whether the sidebar is open.
   sidebar: true,
-  // Whether the command box is open over the page: New Tab opens it (CommandBox.vue).
-  box: false,
   // The workspace whose tabs the window lists, by id, or null for all of them. Kept as
   // this window's shell data, so a reload or a crash keeps it.
   workspace: null,
@@ -66,20 +64,13 @@ export const addressBar = {
   focus() {},
 };
 
-// empty says the window has no tabs, once Go's data is in.
-export const empty = computed(() => state.loaded && state.tabs.length === 0);
-
-// openBox opens the command box over the page, as New Tab does in Standard; closeBox shuts it.
-export function openBox() {
-  view.box = true;
-  newTabBox.focus?.();
+// toNewTab is Standard's New Tab (docs/windows.md, the owner 2026-11-18): it goes to the
+// window's new tab, one with nothing loaded, in the workspace shown, opening one when there
+// is none. The command box shows on a new tab, so on the new tab already it only takes the
+// keyboard back.
+export function toNewTab() {
+  const fresh = state.tabs.find((t) => isNewTab(t) && (view.workspace === null || t.workspace === view.workspace));
+  if (!fresh) newTab();
+  else if (fresh.id !== state.active) send({ t: 'activateTab', id: fresh.id });
+  else newTabBox.focus?.();
 }
-
-export function closeBox() {
-  view.box = false;
-}
-
-// The box is over the tab it opened on. Another tab made active, from the box or from
-// anywhere else (the address field, a link from another app, a page's popup), closes it, so
-// that tab's page shows.
-watch(() => state.active, closeBox);
