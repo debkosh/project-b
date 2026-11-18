@@ -25,7 +25,7 @@ session (tools/check_full_screen.py, tools/check_clipboard.py). This needs no di
     python3 tools/drive_first_app.py quiterase  # only Clear cookies when the app quits, but the sites kept
     python3 tools/drive_first_app.py shells     # only every shell: starting on it, and switching to it live
     python3 tools/drive_first_app.py webapis    # only the web APIs in core/webfeatures/registry.json
-    python3 tools/drive_first_app.py sparks     # only sparks: in the page itself, and styled on strict sites
+    python3 tools/drive_first_app.py sparks     # only sparks: in the page itself, styled and writing HTML on strict sites
     python3 tools/drive_first_app.py internal   # only our own pages as tabs: settings, and the navigation rule
     python3 tools/drive_first_app.py links      # only Links to other sites: the ten ways a page leaves
 
@@ -2380,7 +2380,8 @@ def sparks_checks():
     asks for no extension APIs: the page sees what a spark sets, and a spark at document
     start can replace what the page calls. On a page whose policy allows only its own
     styles, the policy's style rules give way where a spark runs, so its <style> applies,
-    and the owner's sparks, as he wrote them (core/sparks/testdata/site-sparks), draw there."""
+    and the owner's sparks, as he wrote them (core/sparks/testdata/site-sparks), draw there.
+    On a page that wants Trusted Types, they give way too, so a spark's innerHTML works."""
     profile = tempfile.mkdtemp(prefix="pb-profile-")
     os.makedirs(os.path.join(profile, "sparks"))
     probe = ("// ==UserScript==\n// @name Probe\n// @match <all_urls>\n// ==/UserScript==\n"
@@ -2420,10 +2421,11 @@ def sparks_checks():
     blocked = holds(app, "!!document.getElementById('screentime-blocker') && "
                          "getComputedStyle(document.getElementById('screentime-blocker')).position === 'fixed'", page=True)
     check("Limit Screen Time, as he wrote it, covers the page once the day's limit is spent, styled", blocked)
-    # Trusted Types are the page's own rule, which a spark in its world meets too.
+    # On a page that wants Trusted Types, as YouTube does, they give way where a spark runs.
     visit(app, PAGES + "trusted")
     holds(app, "!!document.documentElement.dataset.html", page=True)
-    print("  on a page that wants Trusted Types, a spark's innerHTML: " + str(app.js("document.documentElement.dataset.html", page=True)), flush=True)
+    html = app.js("document.documentElement.dataset.html", page=True)
+    check("a spark's innerHTML works on a page that wants Trusted Types", html == "set", html)
     app.close()
 
 
