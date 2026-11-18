@@ -92,7 +92,17 @@ export const state = reactive({
   prefs: {},
   // The bookmark tree (docs/bookmark-folders.md), for the bookmarks bar's folder list.
   bookmarks: [],
+  // Sync (docs/sync.md): its status as Go sends it, {on, syncing, host, lastSynced, error,
+  // problem, locked}; the bucket's address while it is on, which Reconnect fills in; and a
+  // project-b://sync link Go was handed, which opens the set-up, '' once it has.
+  sync: { on: false, syncing: false, host: '', lastSynced: 0, error: '', problem: '', locked: false },
+  syncAddress: '',
+  syncLink: '',
 });
+
+// Go's answers to what Sync asked, each heard by every function here.
+export const syncAnswers = new Set();
+const syncAnswerTypes = new Set(['syncProposal', 'syncBucket', 'syncConnected', 'syncPassphraseChanged', 'syncDisconnected', 'syncStartedFresh', 'syncSuggested']);
 
 // setPref sets one of Go's prefs by its name in prefs, as a shell's does.
 export function setPref(name, value) {
@@ -104,6 +114,10 @@ export function connect() {
     (m) => {
       extensionsMessage(m);
       if (importMessage(m)) return;
+      if (syncAnswerTypes.has(m.t)) {
+        for (const f of syncAnswers) f(m);
+        return;
+      }
       switch (m.t) {
         case 'snapshot':
           Object.assign(state, {
@@ -136,6 +150,8 @@ export function connect() {
             siteConnections: m.siteConnections,
             prefs: m.prefs || {},
             bookmarks: m.bookmarks || [],
+            sync: m.sync || state.sync,
+            syncAddress: m.syncAddress || '',
             ready: true,
           });
           mark('settings.snapshot');
@@ -227,6 +243,13 @@ export function connect() {
           break;
         case 'bookmarks':
           state.bookmarks = m.bookmarks;
+          break;
+        case 'sync':
+          state.sync = m.sync;
+          state.syncAddress = m.address || '';
+          break;
+        case 'syncLink':
+          state.syncLink = m.link;
           break;
       }
     },

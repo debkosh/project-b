@@ -8,6 +8,8 @@ import { addRow, matches } from './search.js';
 // long lists has opens, the list's address: the whole label is then a button, with what
 // the list holds on its right and a chevron. tag is 'label' for a row that is one switch,
 // so a press anywhere on it flips it; for names the control a plain row's label is for.
+// A plain row may lead with a mark (the lead slot), and draw its second line itself (the
+// hint slot), hint still being its words for search; words are more that search finds it by.
 const props = defineProps({
   label: String,
   hint: String,
@@ -15,6 +17,7 @@ const props = defineProps({
   for: String,
   opens: String,
   summary: String,
+  words: String,
 });
 
 const go = inject('settingsGo');
@@ -22,7 +25,7 @@ const go = inject('settingsGo');
 // While search has words, the row shows only when its label, its second line or its
 // section's name has them.
 const section = inject('settingsSection', null);
-const hit = computed(() => matches(props.label, props.hint, section?.label));
+const hit = computed(() => matches(props.label, props.hint, section?.label, props.words));
 onUnmounted(addRow({ section: section?.id, hit: () => hit.value }));
 </script>
 
@@ -37,10 +40,11 @@ onUnmounted(addRow({ section: section?.id, hit: () => hit.value }));
       <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5" /></svg>
     </button>
     <template v-else>
+      <slot name="lead" />
       <!-- A control's name is its label alone; the line under it says more. -->
       <span class="label">
         <component :is="props.for ? 'label' : 'span'" class="name" :for="props.for"><span><Marked :text="label" /></span><slot name="tags" /></component>
-        <span v-if="hint" class="secondary"><Marked :text="hint" /></span>
+        <span v-if="hint || $slots.hint" class="secondary"><slot name="hint"><Marked :text="hint" /></slot></span>
       </span>
       <slot />
     </template>
