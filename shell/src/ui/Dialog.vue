@@ -55,6 +55,7 @@ onUnmounted(() => {
   color: var(--text);
   font-size: 15px;
   font-weight: 600;
+  line-height: 1.35;
 }
 
 .ui-dialog p {
@@ -62,13 +63,22 @@ onUnmounted(() => {
   color: var(--muted);
 }
 
-/* A field in a dialog: its label above it, 12px and muted. A swatch, or a choice to
-   bring over, that is a label keeps its own box. */
-.ui-dialog label:not(.ui-swatch, .ui-import-choice) {
+/* A field in a dialog: its label above it, 12px and muted. A swatch, a choice to bring
+   over, or an item picked with a checkbox, that is a label keeps its own box. */
+.ui-dialog label:not(.ui-swatch, .ui-import-choice, .ui-dialog-pick) {
   display: block;
   margin: 0 0 4px;
   color: var(--muted);
   font-size: 12px;
+}
+
+/* An item picked from a list: its checkbox, then its name. */
+.ui-dialog-pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 0;
 }
 
 .ui-dialog .ui-dialog-part + .ui-dialog-part {
