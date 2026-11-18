@@ -6,6 +6,8 @@
 #                           Needs Go and `npm install`. No Chromium build, runs anywhere.
 #   tools/test.sh app       The real app through its driver and through ChromeDriver.
 #                           Needs the build, or PB_BIN, and ChromeDriver. No display.
+#   tools/test.sh quit      The real app downloads a file and quits, and must end cleanly.
+#                           Needs what the app group needs.
 #   tools/test.sh basics    One check per area of the whole-browser checklist, on the real
 #                           app. Most fail today, on purpose: the result is a map of what
 #                           isn't built. Needs what the app group needs. Not part of a release.
@@ -131,6 +133,11 @@ app() {
     fi
 }
 
+quit() {
+    need_app quit
+    run "quitting after a download" env PB_BIN="$BIN" python3 tools/check_quit_after_download.py
+}
+
 basics() {
     need_app basics
     run "the basics, one check per area" python3 tools/check_basics.py
@@ -171,8 +178,8 @@ android() {
 for group in "$@"; do
     GROUP=$group
     case $group in
-        mock | app | basics | screen | vm | android) $group ;;
-        *) echo "no group called $group: mock, app, basics, screen, vm or android" >&2; exit 2 ;;
+        mock | app | quit | basics | screen | vm | android) $group ;;
+        *) echo "no group called $group: mock, app, quit, basics, screen, vm or android" >&2; exit 2 ;;
     esac
 done
 echo "$SUMMARY"

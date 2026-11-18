@@ -50,7 +50,7 @@ The seams:
 - **Cause:** the notice lay over the page in a layer above the top bar's, so anything the top
   bar opened sat under it.
 - **Seam:** shell layers.
-- **Fix:** b3d0db95 on popups-over-crash, in 0.2.88: the page's area is a layer of its own,
+- **Fix:** b3d0db95 on popups-over-crash, in 0.2.89: the page's area is a layer of its own,
   under the shell's bars and everything they open, in every shell.
 - **Guard:** the Standard and Fox shell tests open the menu over a crashed tab.
 
@@ -96,8 +96,8 @@ The seams:
   it was gone.
 - **Seam:** engine and adapter: the order Chromium tears things down.
 - **Fix:** 4a3252d9: the profile takes its part back from the manager before it goes.
-- **Guard:** the quit check in each release run: download a file, quit, and look for a crash.
-  It lives outside the repo for now, to be moved in.
+- **Guard:** `tools/test.sh quit`, in each release run: download a file, quit, and look for a
+  crash.
 
 ## Stay on this site let pages through, and blanked them, 2026-11-16
 
