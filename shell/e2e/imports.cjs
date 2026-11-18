@@ -164,7 +164,7 @@ process.on('exit', unlock);
   await lib.start(['-use=standard', '-skip-welcome', `-browsers=${home}`, `-store=${packStore()}`]);
   w = await lib.openWindow(browser, { viewport: { width: 1280, height: 800 } });
   await lib.fire('menu', 'app.settings');
-  await w.settings.getByRole('button', { name: 'Import', exact: true }).click();
+  await w.settings.locator('[data-section="data"]').click();
   await w.settings.getByRole('button', { name: 'Import from Chrome · Personal' }).click();
   const fromChrome = w.settings.getByRole('dialog', { name: 'Import from Chrome · Personal' });
   const extBox = fromChrome.getByRole('checkbox', { name: /Extensions/ });
