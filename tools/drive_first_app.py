@@ -131,6 +131,26 @@ class Pages(http.server.BaseHTTPRequestHandler):
             self.send_header("Location", "chrome://shell/standard/")
             self.end_headers()
             return
+        if self.path in ("/strict", "/strict.js", "/trusted"):
+            # A page whose policy allows only its own styles and scripts, as GitHub's does,
+            # which blocks a style a spark adds unless the policy's style rules give way; its
+            # script says whether window.open is still the browser's own. And one that wants
+            # Trusted Types for its HTML, as YouTube's does.
+            body = {
+                "/strict": b'<!doctype html><title>Strict</title><p>strict</p><script src="/strict.js"></script>',
+                "/strict.js": b'document.title = "open " + (/native code/.test(String(window.open)) ? "native" : "replaced")',
+                "/trusted": b'<!doctype html><title>Trusted</title><p>trusted</p>',
+            }[self.path]
+            self.send_response(200)
+            self.send_header("Content-Type", "text/javascript" if self.path.endswith(".js") else "text/html")
+            if self.path == "/strict":
+                self.send_header("Content-Security-Policy", "default-src 'self'; style-src 'self'")
+            if self.path == "/trusted":
+                self.send_header("Content-Security-Policy", "require-trusted-types-for 'script'")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
         if self.path == "/cookie":
             # Sets a cookie that lasts an hour, and shows in its title the cookies it got.
             body = f"<!doctype html><title>{self.headers.get('Cookie', 'none')}</title>".encode()
@@ -2352,6 +2372,58 @@ def web_api_checks():
     app.close()
 
 
+def sparks_checks():
+    """Sparks run in the page's own world, as other userscript managers run a script that
+    asks for no extension APIs: the page sees what a spark sets, and a spark at document
+    start can replace what the page calls. On a page whose policy allows only its own
+    styles, the policy's style rules give way where a spark runs, so its <style> applies,
+    and the owner's sparks, as he wrote them (core/sparks/testdata/site-sparks), draw there."""
+    profile = tempfile.mkdtemp(prefix="pb-profile-")
+    os.makedirs(os.path.join(profile, "sparks"))
+    probe = ("// ==UserScript==\n// @name Probe\n// @match <all_urls>\n// ==/UserScript==\n"
+             "window.sparkProbe = 1;\n"
+             "const s = document.createElement('style');\n"
+             "s.textContent = 'html { --spark: on; }';\n"
+             "document.head.append(s);\n"
+             "try { const d = document.createElement('div'); d.innerHTML = '<b>x</b>'; document.documentElement.dataset.html = 'set'; }\n"
+             "catch (e) { document.documentElement.dataset.html = e.name; }\n")
+    early = ("// ==UserScript==\n// @name Early\n// @match <all_urls>\n// @run-at document-start\n// ==/UserScript==\n"
+             "window.open = function () { return null; };\n")
+    sources = {"0000000a": probe, "0000000d": early}
+    his = os.path.join(ROOT, "core/sparks/testdata/site-sparks")
+    for i, name in enumerate(["Limit Screen Time.user.js", "Page Cleanup.user.js"]):
+        with open(os.path.join(his, name)) as f:
+            sources[f"0000000{'bc'[i]}"] = f.read()
+    for sid, source in sources.items():
+        with open(os.path.join(profile, "sparks", sid + ".user.js"), "w") as f:
+            f.write(source)
+    with open(os.path.join(profile, "sparks", "sparks.json"), "w") as f:
+        json.dump([{"id": sid, "on": True} for sid in sources], f)
+    app = App(profile)
+    visit(app, PAGES + "strict")
+    ran = holds(app, "getComputedStyle(document.documentElement).getPropertyValue('--spark').trim() === 'on'", page=True)
+    check("a spark's <style> applies on a page whose policy allows only its own styles", ran)
+    check("the page sees what a spark sets, as it runs in the page's own world", app.js("typeof window.sparkProbe", page=True) == "number")
+    check("a spark at document start replaces what the page then calls", holds(app, "document.title === 'open replaced'", page=True),
+          app.js("document.title", page=True))
+    styled = holds(app, "!!document.getElementById('pc-styles') && !!document.getElementById('pc-fab') && "
+                        "getComputedStyle(document.getElementById('pc-fab-container')).position === 'fixed'", page=True)
+    check("Page Cleanup, as he wrote it, draws its button there, styled", styled)
+    # Limit Screen Time keeps each site's time in the site's own storage; with the day's
+    # limit already spent, it covers the page as it loads.
+    app.js("localStorage.setItem('screentime_date_' + location.hostname, new Date().toDateString()), "
+           "localStorage.setItem('screentime_seconds_' + location.hostname, '100000'), 1", page=True)
+    visit(app, PAGES + "strict")
+    blocked = holds(app, "!!document.getElementById('screentime-blocker') && "
+                         "getComputedStyle(document.getElementById('screentime-blocker')).position === 'fixed'", page=True)
+    check("Limit Screen Time, as he wrote it, covers the page once the day's limit is spent, styled", blocked)
+    # Trusted Types are the page's own rule, which a spark in its world meets too.
+    visit(app, PAGES + "trusted")
+    holds(app, "!!document.documentElement.dataset.html", page=True)
+    print("  on a page that wants Trusted Types, a spark's innerHTML: " + str(app.js("document.documentElement.dataset.html", page=True)), flush=True)
+    app.close()
+
+
 def quit_checks():
     """Quitting from the Dock is a clean stop: crash.log, which says the app is running, is
     gone, and the next start has no crash to report."""
@@ -2599,5 +2671,5 @@ def links_checks():
 
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
-    parts = {"driver": [driver_checks], "browsing": [browsing_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks]}
+    parts = {"driver": [driver_checks], "browsing": [browsing_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks]}
     run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, settings_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, glide_checks, web_api_checks, links_checks, quit_checks]))
