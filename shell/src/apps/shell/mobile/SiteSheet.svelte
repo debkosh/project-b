@@ -4,8 +4,8 @@
   import Sheet from './Sheet.svelte';
 
   // The site panel as a sheet (docs/site-features.md): the active tab's site and its
-  // connection; the ad blocker, with what it kept from this page; links to other sites; the
-  // sparks the page matches; the permissions the site has set; and Details, to settings.
+  // connection; the ad blocker, with what it kept from this page; whether sparks run on the
+  // site; links to other sites; the permissions the site has set; and Details, to settings.
   // Every change goes to Go, which answers with the site's settings.
   let { tab, onclose } = $props();
 
@@ -15,6 +15,8 @@
   const ads = $derived(siteSetting(site, 'ads'));
   const links = $derived(siteSetting(site, 'links'));
   const permissions = $derived((site?.settings || []).filter((s) => !s.choices && s.value));
+  const sparksOn = $derived(siteSetting(site, 'sparks'));
+  // The sparks that run here while the site's sparks are on, by name.
   const sparks = $derived(site?.sparks || []);
   const secure = $derived(tab.connection === 'secure');
   // The blocker and a spark change what a page gets as it loads.
@@ -24,8 +26,8 @@
     setSiteSetting(origin, 'ads', on ? 'on' : 'off');
     reload = true;
   }
-  function setSpark(s, on) {
-    setSiteSetting(origin, 'spark:' + s.id, on ? 'on' : 'off');
+  function setSparks(on) {
+    setSiteSetting(origin, 'sparks', on ? 'on' : 'off');
     reload = true;
   }
   function details() {
@@ -45,6 +47,12 @@
       <input type="checkbox" class="switch" checked={ads.value === 'on'} onchange={(e) => setAds(e.currentTarget.checked)} />
     </label>
   {/if}
+  {#if sparksOn && sparks.length}
+    <label class="row">
+      <span class="text">Sparks<small>{sparks.join(', ')}</small></span>
+      <input type="checkbox" class="switch" checked={sparksOn.value === 'on'} onchange={(e) => setSparks(e.currentTarget.checked)} />
+    </label>
+  {/if}
   {#if links}
     <div class="row stacked">
       <span class="text">Links to other sites</span>
@@ -53,17 +61,6 @@
           <button type="button" role="radio" aria-checked={links.value === c.value} onclick={() => setSiteSetting(origin, 'links', c.value)}>{c.label}</button>
         {/each}
       </div>
-    </div>
-  {/if}
-  {#if sparks.length}
-    <div role="group" aria-label="Sparks on this site">
-      <p class="label">Sparks on this site</p>
-      {#each sparks as s (s.id)}
-        <label class="row">
-          <span class="text">{s.name}</span>
-          <input type="checkbox" class="switch" checked={s.on} onchange={(e) => setSpark(s, e.currentTarget.checked)} />
-        </label>
-      {/each}
     </div>
   {/if}
   {#if permissions.length}

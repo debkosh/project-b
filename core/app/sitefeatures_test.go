@@ -16,7 +16,8 @@ func (r *rig) main(f func()) {
 }
 
 // The shell hears each open site's settings, in the table's order, its own kinds with their
-// choices and defaults, and the sparks its page matches; and the panel's change comes back.
+// choices and defaults, and the sparks that run on its page; and the panel's change comes
+// back.
 func TestTheShellHearsEachOpenSitesSettingsAndSetsThem(t *testing.T) {
 	r := start(t, t.TempDir())
 	defer r.stop()
@@ -41,23 +42,26 @@ func TestTheShellHearsEachOpenSitesSettingsAndSetsThem(t *testing.T) {
 	if byKind["ads"] != "on" || byKind["links"] != "allow" || byKind["camera"] != "" {
 		t.Fatalf("settings %v", settings)
 	}
-	sp := site(m)["sparks"].([]any)
-	if len(sp) != 1 || sp[0].(map[string]any)["name"] != "Wide" || sp[0].(map[string]any)["on"] != true {
-		t.Fatalf("sparks %v", sp)
+	if sp := site(m)["sparks"].([]any); len(sp) != 1 || sp[0] != "Wide" || byKind["sparks"] != "on" {
+		t.Fatalf("sparks %v, %q", sp, byKind["sparks"])
 	}
-	id := sp[0].(map[string]any)["id"].(string)
-	r.shell(`{"t":"setSiteSetting","origin":"https://news.test","kind":"spark:` + id + `","value":"off"}`)
+	r.shell(`{"t":"setSiteSetting","origin":"https://news.test","kind":"sparks","value":"off"}`)
 	r.waitFor(func(m map[string]any) bool {
 		s := site(m)
-		if m["t"] != "openSites" || s == nil || len(s["sparks"].([]any)) == 0 {
+		if m["t"] != "openSites" || s == nil {
 			return false
 		}
-		return s["sparks"].([]any)[0].(map[string]any)["on"] == false
+		for _, x := range s["settings"].([]any) {
+			if x := x.(map[string]any); x["kind"] == "sparks" {
+				return x["value"] == "off"
+			}
+		}
+		return false
 	})
 	var scripts []engine.Script
 	r.main(func() { scripts = r.a.SparksFor(1, "https://news.test/today", true) })
 	if len(scripts) != 0 {
-		t.Fatalf("a spark off for the site still runs: %v", scripts)
+		t.Fatalf("a spark runs where sparks are off: %v", scripts)
 	}
 }
 

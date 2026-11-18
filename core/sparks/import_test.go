@@ -249,7 +249,7 @@ func TestHisSparksImportFromAMacZip(t *testing.T) {
 	}
 	run := func(url string) []string {
 		var out []string
-		for _, s := range m.Scripts(url, true, nil) {
+		for _, s := range m.Scripts(url, true) {
 			out = append(out, m.find(s.ID).meta.Name)
 		}
 		return out

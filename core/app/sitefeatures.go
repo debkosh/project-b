@@ -128,32 +128,30 @@ func (a *App) adsOff() []string {
 	return off
 }
 
-// sparksOn adds to list each spark that matches url, on or off, and isn't in it yet: on
-// is whether it runs on origin.
-func (a *App) sparksOn(origin, url string, list []siteSpark) []siteSpark {
+// sparksAt adds to list the name of each spark that is on and matches url, and isn't in it
+// yet.
+func (a *App) sparksAt(url string, list []string) []string {
 	for _, s := range a.Sparks.Matching(url, true) {
-		if slices.ContainsFunc(list, func(x siteSpark) bool { return x.ID == s.ID }) {
-			continue
+		if s.On && !slices.Contains(list, s.Name) {
+			list = append(list, s.Name)
 		}
-		on := s.On && a.Sites.Value(origin, sites.Spark+s.ID) != sites.Off
-		list = append(list, siteSpark{ID: s.ID, Name: s.Name, On: on})
 	}
 	return list
 }
 
-// SparksFor is the scripts a frame of the tab runs at url: the sparks that are on, match,
-// and aren't switched off for the tab's site. A frame inside the page goes by the tab's
-// site, as the panel shows it.
+// SparksFor is the scripts a frame of the tab runs at url: the sparks that are on and
+// match, unless sparks are switched off for the tab's site. A frame inside the page goes by
+// the tab's site, as the panel shows it.
 func (a *App) SparksFor(tab engine.TabID, url string, mainFrame bool) []engine.Script {
 	site := url
 	if t, ok := a.Tabs.Get(tab); ok && !mainFrame {
 		site = t.URL
 	}
-	origin := sites.Origin(site)
+	if a.Sites.Value(sites.Origin(site), sites.Sparks) == sites.Off {
+		return nil
+	}
 	var out []engine.Script
-	for _, s := range a.Sparks.Scripts(url, mainFrame, func(id string) bool {
-		return a.Sites.Value(origin, sites.Spark+id) == sites.Off
-	}) {
+	for _, s := range a.Sparks.Scripts(url, mainFrame) {
 		out = append(out, engine.Script{ID: s.ID, Source: s.Source, RunAt: s.RunAt})
 	}
 	return out

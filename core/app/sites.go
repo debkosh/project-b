@@ -138,14 +138,9 @@ func (a *App) startSites(e engine.Engine, dir string) {
 // site's value ("" for a permission it hasn't set), and the sparks its open pages match.
 type openSite struct {
 	Settings []sites.Setting `json:"settings"`
-	Sparks   []siteSpark     `json:"sparks"`
-}
-
-// siteSpark is a spark on a site's page: on is whether it runs on the site.
-type siteSpark struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	On   bool   `json:"on"`
+	// Sparks is the names of the sparks that are on and match a page of the site's open,
+	// which its one switch for sparks runs or not.
+	Sparks []string `json:"sparks"`
 }
 
 // openSites is, by origin, each site a web tab is open on. With the ad blocker off on every
@@ -163,9 +158,9 @@ func (a *App) openSites() map[string]openSite {
 			if !a.Prefs.All().BlockAds {
 				list = slices.DeleteFunc(list, func(s sites.Setting) bool { return s.Kind == sites.Ads })
 			}
-			site = openSite{Settings: list, Sparks: []siteSpark{}}
+			site = openSite{Settings: list, Sparks: []string{}}
 		}
-		site.Sparks = a.sparksOn(o, t.URL, site.Sparks)
+		site.Sparks = a.sparksAt(t.URL, site.Sparks)
 		out[o] = site
 	}
 	return out

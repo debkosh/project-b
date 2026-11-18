@@ -345,7 +345,7 @@ func TestMatchingAndScripts(t *testing.T) {
 		}
 	}
 
-	scripts := m.Scripts("https://example.com/", true, nil)
+	scripts := m.Scripts("https://example.com/", true)
 	if len(scripts) != 2 || scripts[0].ID != all.ID || scripts[1].ID != top.ID {
 		t.Fatalf("%+v", scripts)
 	}
@@ -356,18 +356,7 @@ func TestMatchingAndScripts(t *testing.T) {
 		t.Fatal("source")
 	}
 
-	asked := []string{}
-	scripts = m.Scripts("https://example.com/", true, func(id string) bool {
-		asked = append(asked, id)
-		return id == all.ID
-	})
-	if len(scripts) != 1 || scripts[0].ID != top.ID {
-		t.Fatalf("%+v", scripts)
-	}
-	if slices.Contains(asked, off.ID) {
-		t.Fatal("asked about a spark that is off")
-	}
-	if got := m.Scripts("https://example.com/", false, func(string) bool { return false }); len(got) != 1 || got[0].ID != all.ID {
+	if got := m.Scripts("https://example.com/", false); len(got) != 1 || got[0].ID != all.ID {
 		t.Fatalf("%+v", got)
 	}
 }

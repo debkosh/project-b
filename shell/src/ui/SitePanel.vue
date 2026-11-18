@@ -6,7 +6,7 @@ import { pushEscape } from './escape.js';
 
 // The site panel (docs/site-features.md): what the address field's site icon opens over the
 // page, for the active tab's site. Its host and connection; the ad blocker, with what it
-// kept from this page; links to other sites; the sparks the page matches; the permissions;
+// kept from this page; whether sparks run on the site; links to other sites; the permissions;
 // and Details, to settings. Every change goes to Go, which answers with the site's new
 // settings. The root floats over the page: the caller marks it the shell's, places it, and
 // closes it on close (Escape, Details).
@@ -25,6 +25,8 @@ const ads = computed(() => siteSetting(props.site, 'ads'));
 const links = computed(() => siteSetting(props.site, 'links'));
 // The permissions the site has set.
 const permissions = computed(() => (props.site?.settings || []).filter((s) => !s.choices && s.value));
+const sparksOn = computed(() => siteSetting(props.site, 'sparks'));
+// The sparks that run here while the site's sparks are on, by name.
 const sparks = computed(() => props.site?.sparks || []);
 
 // The blocker and a spark change what a page gets as it loads.
@@ -34,8 +36,8 @@ function setAds(on) {
   setSiteSetting(origin.value, 'ads', on ? 'on' : 'off');
   reload.value = true;
 }
-function setSpark(s, on) {
-  setSiteSetting(origin.value, 'spark:' + s.id, on ? 'on' : 'off');
+function setSparks(on) {
+  setSiteSetting(origin.value, 'sparks', on ? 'on' : 'off');
   reload.value = true;
 }
 function details() {
@@ -72,20 +74,19 @@ onUnmounted(() => pop());
         </span>
         <input type="checkbox" class="switch" :checked="ads.value === 'on'" @change="setAds($event.target.checked)" />
       </label>
+      <label v-if="sparksOn && sparks.length" class="ui-site-row">
+        <span class="ui-site-text">
+          <span>Sparks</span>
+          <small>{{ sparks.join(', ') }}</small>
+        </span>
+        <input type="checkbox" class="switch" :checked="sparksOn.value === 'on'" @change="setSparks($event.target.checked)" />
+      </label>
       <div v-if="links" class="ui-site-row stacked">
         <span class="ui-site-text">
           <span id="ui-site-links">Links to other sites</span>
         </span>
         <Segmented :model-value="links.value" :options="linkChoices" label="Links to other sites" @update:model-value="(v) => setSiteSetting(origin, 'links', v)" />
       </div>
-    </div>
-
-    <div v-if="sparks.length" class="ui-site-group" role="group" aria-label="Sparks on this site">
-      <p class="ui-site-label">Sparks on this site</p>
-      <label v-for="s in sparks" :key="s.id" class="ui-site-row">
-        <span class="ui-site-text"><span>{{ s.name }}</span></span>
-        <input type="checkbox" class="switch" :checked="s.on" @change="setSpark(s, $event.target.checked)" />
-      </label>
     </div>
 
     <div v-if="permissions.length" class="ui-site-group" role="group" aria-label="Permissions">

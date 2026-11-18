@@ -202,12 +202,11 @@ func (m *Manager) Matching(url string, mainFrame bool) []Spark {
 	return out
 }
 
-// Scripts is the sparks to put in a frame: those of Matching that are on, but for those
-// offHere names.
-func (m *Manager) Scripts(url string, mainFrame bool, offHere func(id string) bool) []Script {
+// Scripts is the sparks to put in a frame: those of Matching that are on.
+func (m *Manager) Scripts(url string, mainFrame bool) []Script {
 	var out []Script
 	for _, e := range m.matching(url, mainFrame) {
-		if e.on && (offHere == nil || !offHere(e.id)) {
+		if e.on {
 			out = append(out, Script{ID: e.id, Source: e.source, RunAt: e.meta.RunAt})
 		}
 	}

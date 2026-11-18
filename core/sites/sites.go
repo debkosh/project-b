@@ -33,8 +33,8 @@ const (
 	// Our own, which no page asks for (docs/site-features.md).
 	Ads   = "ads"
 	Links = "links"
-	// Spark is the prefix of one spark's kind on a site, spark:<id>.
-	Spark = "spark:"
+	// Sparks is whether the person's sparks run on the site's pages, all of them or none.
+	Sparks = "sparks"
 )
 
 // Kind is one kind of per-site setting, in our terms.
@@ -54,14 +54,12 @@ type Kind struct {
 	Once bool
 	// Choices are the values one of our own kinds takes, its default first.
 	Choices []string
-	// Prefix: the kind is every name that starts with Name.
-	Prefix bool
 }
 
 // The values of our own kinds.
 const (
-	On     = "on"
-	Off    = "off"
+	On  = "on"
+	Off = "off"
 )
 
 // AdsDefault is whether the ad blocker is on where a site has no setting: on, the owner
@@ -79,8 +77,7 @@ var Kinds = []Kind{
 	{Name: ClipboardWrite, Title: "Clipboard", Requested: true, Default: engine.PermissionGranted},
 	{Name: Ads, Title: "Ad blocker", Choices: adsChoices()},
 	{Name: Links, Title: "Links to other sites", Choices: []string{Allow, Block}},
-	// A spark the person switched off for the site.
-	{Name: Spark, Title: "Spark", Choices: []string{On, Off}, Prefix: true},
+	{Name: Sparks, Title: "Sparks", Choices: []string{On, Off}},
 }
 
 func adsChoices() []string {
@@ -92,12 +89,7 @@ func adsChoices() []string {
 
 // kindOf is the kind named name, and whether the manager knows it.
 func kindOf(name string) (Kind, bool) {
-	i := slices.IndexFunc(Kinds, func(k Kind) bool {
-		if k.Prefix {
-			return len(name) > len(k.Name) && strings.HasPrefix(name, k.Name)
-		}
-		return k.Name == name
-	})
+	i := slices.IndexFunc(Kinds, func(k Kind) bool { return k.Name == name })
 	if i < 0 {
 		return Kind{}, false
 	}
@@ -202,6 +194,18 @@ func New(dir string, t Tabs, answer func(engine.PermissionID, []engine.Permissio
 		if err := json.Unmarshal(b, &m.sites); err != nil {
 			timeline.Errorf("permissions: %s: %v", m.path, err)
 			m.sites = map[string]map[string]string{}
+		}
+		// A kind no longer known goes, as each spark's own switch did when one switch for
+		// all of them took its place.
+		for origin, kinds := range m.sites {
+			for k := range kinds {
+				if _, ok := kindOf(k); !ok {
+					delete(kinds, k)
+				}
+			}
+			if len(kinds) == 0 {
+				delete(m.sites, origin)
+			}
 		}
 	}
 	return m
@@ -392,7 +396,7 @@ func (m *Manager) SettingsOf(origin string) []Setting {
 func Settable() []Setting {
 	list := []Setting{}
 	for _, k := range Kinds {
-		if k.Askable || len(k.Choices) > 0 && !k.Prefix {
+		if k.Askable || len(k.Choices) > 0 {
 			list = append(list, Setting{Kind: k.Name, Title: k.Title, Choices: k.Choices})
 		}
 	}

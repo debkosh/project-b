@@ -221,7 +221,7 @@ func TestSettingsSetsAnAskableKindForASite(t *testing.T) {
 	if m.Status(0, "https://meet.test", Camera) != A || len(m.Sites()) != 0 {
 		t.Fatalf("reset kept %+v", m.Sites())
 	}
-	if s := Settable(); len(s) != 5 || s[3].Kind != Ads || s[4].Kind != Links || s[0].Kind != Camera || s[0].Title != "Camera" {
+	if s := Settable(); len(s) != 6 || s[3].Kind != Ads || s[4].Kind != Links || s[5].Kind != Sparks || s[0].Kind != Camera || s[0].Title != "Camera" {
 		t.Fatalf("settable %+v", s)
 	}
 }
@@ -229,15 +229,15 @@ func TestSettingsSetsAnAskableKindForASite(t *testing.T) {
 func TestOurOwnKindsKeepOnlyWhatIsntTheirDefault(t *testing.T) {
 	m, _, _ := setup(t, t.TempDir())
 	o := "https://news.test"
-	if m.Value(o, Ads) != On || m.Value(o, Links) != Allow || m.Value(o, Spark+"ab12cd34") != On {
+	if m.Value(o, Ads) != On || m.Value(o, Links) != Allow || m.Value(o, Sparks) != On {
 		t.Fatalf("defaults %q %q", m.Value(o, Ads), m.Value(o, Links))
 	}
 	m.Set(o, Ads, Off)
 	m.Set(o, Links, Block)
-	m.Set(o, Spark+"ab12cd34", Off)
-	m.Set(o, Links, "sideways") // not a choice: ignored
-	m.Set(o, Spark, Off)        // no spark named: ignored
-	if m.Value(o, Ads) != Off || m.Value(o, Links) != Block || m.Value(o, Spark+"ab12cd34") != Off {
+	m.Set(o, Sparks, Off)
+	m.Set(o, Links, "sideways")    // not a choice: ignored
+	m.Set(o, "spark:ab12cd34", On) // no such kind: ignored
+	if m.Value(o, Ads) != Off || m.Value(o, Links) != Block || m.Value(o, Sparks) != Off {
 		t.Fatalf("set %+v", m.Sites())
 	}
 	got := m.SettingsOf(o)
@@ -246,7 +246,7 @@ func TestOurOwnKindsKeepOnlyWhatIsntTheirDefault(t *testing.T) {
 	}
 	m.Set(o, Ads, On)
 	m.Set(o, Links, Allow)
-	m.Set(o, Spark+"ab12cd34", On)
+	m.Set(o, Sparks, On)
 	if len(m.Sites()) != 0 {
 		t.Fatalf("the defaults are kept: %+v", m.Sites())
 	}
@@ -286,5 +286,16 @@ func TestLinksIsAllowOrBlock(t *testing.T) {
 	m.Set("https://shop.test", Links, "newtab")
 	if v := m.Value("https://shop.test", Links); v != Allow {
 		t.Fatalf("New tab set reads %q", v)
+	}
+}
+
+// Each spark's own switch for a site, which one switch for all of them replaced, goes when
+// the settings are read, and a site with nothing else goes with it.
+func TestEachSparksOwnSwitchGoes(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "sites.json"), []byte(`{"https://a.test":{"spark:ab12cd34":"off"},"https://b.test":{"spark:ab12cd34":"off","ads":"off"}}`), 0o600)
+	m, _, _ := setup(t, dir)
+	if s := m.Sites(); len(s) != 1 || s[0].Origin != "https://b.test" || len(s[0].Settings) != 1 || m.Value("https://b.test", Sparks) != On {
+		t.Fatalf("%+v", s)
 	}
 }
