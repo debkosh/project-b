@@ -1,0 +1,88 @@
+package app
+
+import (
+	"encoding/json"
+	"errors"
+
+	"projectb/engine"
+	"projectb/settings"
+	"projectb/shell"
+	"projectb/sync"
+)
+
+// syncSettingsPart is Settings' Sync (docs/sync.md): the status, which every shell has too,
+// and what the page asks of sync, each answered with a message of its own. A deep link's
+// address comes as the page's syncPropose, and connects nothing.
+func (a *App) syncSettingsPart() settings.Part {
+	a.Sync.OnStatus(func(s sync.Status) {
+		m := map[string]any{"t": "sync", "sync": s}
+		a.Settings.Send(m)
+		a.Shell.Send(m)
+	})
+	a.Shell.AddPart(shell.Part{
+		Snapshot: func(into map[string]any) { into["sync"] = a.Sync.Status() },
+		Handle:   func(engine.WindowID, string, []byte) bool { return false },
+	})
+	// answer sends t, with err's text when there is one.
+	answer := func(t string, err error, more map[string]any) {
+		m := map[string]any{"t": t}
+		for k, v := range more {
+			m[k] = v
+		}
+		if err != nil {
+			m["error"] = err.Error()
+		}
+		a.Settings.Send(m)
+	}
+	return settings.Part{
+		Snapshot: func(into map[string]any) { into["sync"] = a.Sync.Status() },
+		Handle: func(_ engine.TabID, t string, msg []byte) bool {
+			var c struct {
+				Address    string `json:"address"`
+				Token      string `json:"token"`
+				Passphrase string `json:"passphrase"`
+				Link       string `json:"link"`
+			}
+			json.Unmarshal(msg, &c)
+			switch t {
+			case "syncPropose":
+				address, err := c.Address, error(nil)
+				if c.Link != "" {
+					address, err = sync.Link(c.Link)
+				}
+				var p sync.Proposal
+				if err == nil {
+					p, err = sync.Propose(address)
+				}
+				if err != nil {
+					answer("syncProposal", err, nil)
+				} else {
+					answer("syncProposal", nil, map[string]any{"address": p.Address, "host": p.Host, "needsToken": p.NeedsToken})
+				}
+			case "syncInspect":
+				a.Sync.Inspect(c.Address, c.Token, func(isNew bool, err error) {
+					if err != nil {
+						answer("syncBucket", err, nil)
+					} else {
+						answer("syncBucket", nil, map[string]any{"new": isNew})
+					}
+				})
+			case "syncConnect":
+				a.Sync.Connect(c.Address, c.Token, c.Passphrase, func(err error) {
+					answer("syncConnected", err, map[string]any{"wrongPassphrase": errors.Is(err, sync.ErrPassphrase)})
+				})
+			case "syncChangePassphrase":
+				a.Sync.ChangePassphrase(c.Passphrase, func(err error) { answer("syncPassphraseChanged", err, nil) })
+			case "syncDisconnect":
+				a.Sync.Disconnect(func(err error) { answer("syncDisconnected", err, nil) })
+			case "syncNow":
+				a.Sync.SyncNow()
+			case "syncStartFresh":
+				a.Sync.StartFresh(func(err error) { answer("syncStartedFresh", err, nil) })
+			default:
+				return false
+			}
+			return true
+		},
+	}
+}
