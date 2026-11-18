@@ -213,7 +213,7 @@ h1 { font-size: 20px; font-weight: 600; line-height: 1.3; }
     display: flex; flex-direction: column; gap: 8px;
     width: min(320px, calc(100vw - 32px)); max-height: calc(100vh - 32px);
     overflow: auto; overscroll-behavior: contain; padding: 20px;
-    border-radius: 12px; background: var(--surface); box-shadow: var(--shadow);
+    border-radius: 8px; background: var(--surface); box-shadow: var(--shadow);
 }
 .panel h2 { margin-bottom: 4px; font-size: 16px; font-weight: 600; }
 .panel .btn { width: 100%; }
@@ -230,7 +230,7 @@ form, .opts, .extra { display: flex; flex-direction: column; gap: 8px; }
 .pill {
     position: fixed; top: 12px; right: 12px; z-index: 2147483647;
     display: flex; align-items: center; height: 24px; padding: 0 10px;
-    border: 1px solid var(--line); border-radius: 12px; background: var(--surface);
+    border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
     box-shadow: var(--shadow); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums;
 }
 .pill.soon { color: var(--danger); }
@@ -249,7 +249,7 @@ form, .opts, .extra { display: flex; flex-direction: column; gap: 8px; }
     .panel {
         top: auto; right: 0; bottom: 0; left: 0; transform: none; width: auto; max-height: 85vh;
         padding: 20px 16px max(16px, env(safe-area-inset-bottom));
-        border-radius: 12px 12px 0 0; animation: up 180ms ease-out;
+        border-radius: 16px 16px 0 0; animation: up 180ms ease-out;
     }
 }
 @keyframes up { from { transform: translateY(100%); } to { transform: none; } }

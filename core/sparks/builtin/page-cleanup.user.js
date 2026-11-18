@@ -270,6 +270,7 @@
             cursor: pointer; -webkit-tap-highlight-color: transparent;
         }
         button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+        .panel:focus { outline: none; }
         svg {
             width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor;
             stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
@@ -293,7 +294,7 @@
         .panel {
             position: fixed; width: 248px; padding: 6px;
             background: var(--surface); color: var(--text);
-            border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow);
+            border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow);
         }
         .title { font-size: 12px; color: var(--muted); padding: 6px 10px 4px; }
         .row {
@@ -320,7 +321,7 @@
             max-width: calc(100vw - 32px); min-height: 40px; padding: 0 16px;
             display: flex; align-items: center; gap: 8px;
             background: var(--accent); color: var(--on-accent);
-            border-radius: 12px; box-shadow: var(--shadow);
+            border-radius: 8px; box-shadow: var(--shadow);
         }
         .toast.has-undo { padding-right: 6px; }
         .undo {
@@ -334,7 +335,7 @@
             .panel {
                 left: 0; right: 0; bottom: 0; width: auto;
                 padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
-                border-bottom: 0; border-radius: 12px 12px 0 0;
+                border-bottom: 0; border-radius: 16px 16px 0 0;
                 transform: translateY(100%); transition: transform 180ms ease-out;
             }
             .panel.in { transform: none; }
@@ -369,7 +370,7 @@
         <div class="outline" hidden></div>
         <button class="fab" type="button" aria-label="Page cleanup" aria-haspopup="dialog" aria-expanded="false">${ICON_EYE_OFF}</button>
         <div class="scrim" hidden></div>
-        <div class="panel" role="dialog" aria-label="Page cleanup" hidden>
+        <div class="panel" role="dialog" aria-label="Page cleanup" tabindex="-1" hidden>
             <div class="title" aria-hidden="true">Page cleanup</div>
             <button class="row" type="button" data-act="hide">${ICON_EYE_OFF}<span>Hide parts of this page</span></button>
             <button class="row" type="button" data-act="show">${ICON_EYE}<span class="show-label"></span></button>
@@ -458,7 +459,7 @@
     fab.addEventListener('pointercancel', () => {
         drag = null;
     });
-    fab.addEventListener('click', () => {
+    fab.addEventListener('click', e => {
         if (dragged) {
             dragged = false;
             return;
@@ -466,7 +467,8 @@
         if (panelOpen) {
             closePanel(true);
         } else {
-            openPanel();
+            // A click has a detail of 1 or more; Enter or Space, none.
+            openPanel(e.detail === 0);
         }
     });
 
@@ -474,7 +476,9 @@
 
     let panelOpen = false;
 
-    function openPanel() {
+    // openPanel opens the menu. Opened from the keyboard its first item has focus; opened
+    // by a click the panel itself has, so nothing shows a ring until a key is pressed.
+    function openPanel(byKey) {
         const count = getHiddenSelectors().length;
         showRow.hidden = count === 0;
         showLabel.textContent = 'Show hidden parts (' + count + ')';
@@ -498,7 +502,7 @@
             }
         }
         panel.classList.add('in');
-        hideRow.focus();
+        (byKey ? hideRow : panel).focus();
     }
 
     function closePanel(restoreFocus) {

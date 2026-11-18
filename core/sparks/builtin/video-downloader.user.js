@@ -409,7 +409,7 @@
       flex-direction: column;
       background: var(--surface);
       border: 1px solid var(--line);
-      border-radius: 12px;
+      border-radius: 8px;
       box-shadow: var(--shadow);
       overflow: hidden;
     }
@@ -501,7 +501,7 @@
         width: auto;
         max-height: 75vh;
         border-width: 1px 0 0;
-        border-radius: 12px 12px 0 0;
+        border-radius: 16px 16px 0 0;
         padding-bottom: env(safe-area-inset-bottom, 0px);
         animation: vd-sheet-in 180ms ease-out;
       }
@@ -585,7 +585,7 @@
         elsewhere = new URL(row.url).origin !== location.origin;
       } catch {}
       if (elsewhere) text.append(el('div', 'note', 'Opens in a new tab, where you can save it'));
-      const link = el('a', 'btn');
+      const link = el('a', 'btn quiet');
       link.href = row.url;
       link.download = guessFilename(row.url);
       // The browser may ignore `download` for another site's file; then it opens in a tab.
