@@ -13,7 +13,7 @@ import (
 // history in places.sqlite.
 
 // firefoxProfiles lists the profiles profiles.ini names, in its order, that have places.
-func firefoxProfiles(dir string) []Profile {
+func firefoxProfiles(browser, dir string) []Profile {
 	f, err := os.Open(filepath.Join(dir, "profiles.ini"))
 	if err != nil {
 		return nil
@@ -28,7 +28,7 @@ func firefoxProfiles(dir string) []Profile {
 				path = filepath.Join(dir, filepath.FromSlash(path))
 			}
 			if exists(filepath.Join(path, "places.sqlite")) {
-				out = append(out, Profile{Browser: "firefox", Dir: path, Name: cmp.Or(name, filepath.Base(path))})
+				out = append(out, Profile{Browser: browser, Dir: path, Name: cmp.Or(name, filepath.Base(path))})
 			}
 		}
 		name, path, relative = "", "", true

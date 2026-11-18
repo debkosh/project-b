@@ -22,7 +22,7 @@ its own.
 | Safari | `~/Library/Safari`, behind Full Disk Access | one profile: `Bookmarks.plist` (a binary property list), `History.db` (SQLite) |
 
 ```go
-for _, b := range browserdata.Find(home) {        // the browsers with a profile
+for _, b := range browserdata.Find(home) {        // the browsers with a profile, forks among them
 	for _, p := range b.Profiles {
 		if p.Locked() {                           // Safari's, until the app has Full Disk Access
 			continue
@@ -37,6 +37,15 @@ for _, b := range browserdata.Find(home) {        // the browsers with a profile
 
 - Safari's folder is there to see but not to read until the app has Full Disk Access:
   `Locked` says so. Safari has one profile, with no name.
+- **Forks** are a line each in the table of browsers (`kinds` in `browserdata.go`): an id,
+  a name, the folder under Application Support, and whose files it keeps. Chrome Beta and
+  Canary, Edge Beta and Dev, Chromium, Vivaldi, Opera, Opera GX and Yandex Browser keep
+  Chromium's; Zen, LibreWolf, Waterfox and Floorp keep Firefox's. Opera can keep its one
+  profile in its folder itself.
+- **`Open(home, dir)`** reads a folder the person chose: a Chromium browser's folder of
+  profiles or one profile, or a Firefox one's folder or one profile. A known browser's is
+  that browser; another is `OtherChromium` or `OtherFirefox`, named after its folder;
+  neither is `ErrNoBrowser`.
 - Extensions are a Chromium profile's, those its person installed: what the browser, an
   administrator or Chrome itself installed is left out. Each says why it can't be installed
   again by its id from the Chrome Web Store, if it can't: `SkipUnpacked`, `SkipNotInStore`

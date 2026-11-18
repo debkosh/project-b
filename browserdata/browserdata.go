@@ -71,8 +71,9 @@ const (
 	safari
 )
 
-// kind is a browser this package knows: where its data is under Application Support (Safari's
-// is in Library).
+// kind is a browser this package knows: its id and name, the folder under Application
+// Support its profiles are in (Safari's are in Library), and whose files it keeps. A fork
+// keeps its parent's, so another one is a line here and nothing else.
 type kind struct {
 	id, name, data string
 	family         family
@@ -80,12 +81,35 @@ type kind struct {
 
 var kinds = []kind{
 	{id: "chrome", name: "Chrome", data: "Google/Chrome", family: chromium},
+	{id: "chrome-beta", name: "Chrome Beta", data: "Google/Chrome Beta", family: chromium},
+	{id: "chrome-canary", name: "Chrome Canary", data: "Google/Chrome Canary", family: chromium},
 	{id: "edge", name: "Edge", data: "Microsoft Edge", family: chromium},
+	{id: "edge-beta", name: "Edge Beta", data: "Microsoft Edge Beta", family: chromium},
+	{id: "edge-dev", name: "Edge Dev", data: "Microsoft Edge Dev", family: chromium},
 	{id: "brave", name: "Brave", data: "BraveSoftware/Brave-Browser", family: chromium},
 	{id: "arc", name: "Arc", data: "Arc/User Data", family: chromium},
+	{id: "chromium", name: "Chromium", data: "Chromium", family: chromium},
+	{id: "vivaldi", name: "Vivaldi", data: "Vivaldi", family: chromium},
+	{id: "opera", name: "Opera", data: "com.operasoftware.Opera", family: chromium},
+	{id: "opera-gx", name: "Opera GX", data: "com.operasoftware.OperaGX", family: chromium},
+	{id: "yandex", name: "Yandex Browser", data: "Yandex/YandexBrowser", family: chromium},
 	{id: "firefox", name: "Firefox", data: "Firefox", family: firefox},
+	{id: "zen", name: "Zen", data: "zen", family: firefox},
+	{id: "librewolf", name: "LibreWolf", data: "librewolf", family: firefox},
+	{id: "waterfox", name: "Waterfox", data: "Waterfox", family: firefox},
+	{id: "floorp", name: "Floorp", data: "Floorp", family: firefox},
 	{id: "safari", name: "Safari", family: safari},
+	// A folder the person chose of a browser this package doesn't know by name: the
+	// Chromium kind or the Firefox kind, named after the folder.
+	{id: OtherChromium, family: chromium},
+	{id: OtherFirefox, family: firefox},
 }
+
+// The ids of a browser known only by the folder the person chose.
+const (
+	OtherChromium = "other-chromium"
+	OtherFirefox  = "other-firefox"
+)
 
 func kindOf(id string) (kind, bool) {
 	for _, k := range kinds {
@@ -101,13 +125,16 @@ func kindOf(id string) (kind, bool) {
 func Find(home string) []Browser {
 	var out []Browser
 	for _, k := range kinds {
+		if k.data == "" && k.family != safari {
+			continue
+		}
 		dir := filepath.Join(home, "Library/Application Support", k.data)
 		var profiles []Profile
 		switch k.family {
 		case chromium:
 			profiles = chromiumProfiles(k.id, dir)
 		case firefox:
-			profiles = firefoxProfiles(dir)
+			profiles = firefoxProfiles(k.id, dir)
 		case safari:
 			profiles = safariProfiles(home)
 		}

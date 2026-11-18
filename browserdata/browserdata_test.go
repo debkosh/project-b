@@ -34,10 +34,48 @@ func TestFindListsEachBrowsersProfiles(t *testing.T) {
 		}
 	}
 	// The System Profile and a Firefox profile whose folder is gone aren't listed; Safari
-	// has one profile, with no name.
-	want := []string{"Chrome · Personal", "Chrome · Work", "Firefox · default-release", "Safari"}
+	// has one profile, with no name, as has Opera, whose profile is its folder. Forks are
+	// found as their parents are.
+	want := []string{"Chrome · Personal", "Chrome · Work", "Opera", "Firefox · default-release", "Zen · Default (release)", "Safari"}
 	if !slices.Equal(got, want) {
 		t.Fatalf("found %q, want %q", got, want)
+	}
+}
+
+// A folder the person chooses is read as its browser's: a known one's folder or profile
+// is that browser, another is named after its folder, and a folder of neither family's
+// files is no browser.
+func TestOpenAFolderChosen(t *testing.T) {
+	abs, _ := filepath.Abs(home)
+	support := filepath.Join(abs, "Library/Application Support")
+	for _, c := range []struct {
+		dir, id, name string
+		profiles      []string
+	}{
+		{filepath.Join(support, "Google/Chrome"), "chrome", "Chrome", []string{"Personal", "Work"}},
+		{filepath.Join(support, "Google/Chrome/Profile 1"), "chrome", "Chrome", []string{"Work"}},
+		{filepath.Join(support, "com.operasoftware.Opera"), "opera", "Opera", []string{""}},
+		{filepath.Join(support, "zen"), "zen", "Zen", []string{"Default (release)"}},
+		{filepath.Join(support, "Firefox/Profiles/test.default-release"), "firefox", "Firefox", []string{"test.default-release"}},
+		{filepath.Join(abs, "Elsewhere/Thorium/User Data"), OtherChromium, "Thorium", []string{"Me"}},
+		{filepath.Join(abs, "Elsewhere/Thorium/User Data/Default"), OtherChromium, "Thorium", []string{"Me"}},
+	} {
+		b, err := Open(abs, c.dir)
+		var names []string
+		for _, p := range b.Profiles {
+			names = append(names, p.Name)
+		}
+		if err != nil || b.ID != c.id || b.Name != c.name || !slices.Equal(names, c.profiles) {
+			t.Errorf("%s: %s %q %q, %v; want %s %q %q", c.dir, b.ID, b.Name, names, err, c.id, c.name, c.profiles)
+		}
+	}
+	// What was opened reads as any profile does.
+	b, _ := Open(abs, filepath.Join(abs, "Elsewhere/Thorium/User Data"))
+	if c, err := b.Profiles[0].Counts(); err != nil || c.Bookmarks != 1 {
+		t.Errorf("Thorium's counts %+v, %v", c, err)
+	}
+	if _, err := Open(abs, filepath.Join(abs, "Library")); err != ErrNoBrowser {
+		t.Errorf("Library opened: %v", err)
 	}
 }
 

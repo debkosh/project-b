@@ -123,6 +123,21 @@ INSERT INTO moz_bookmarks VALUES
   (12, 2, NULL, 4, 0, 'a tag', 1700000000000000, 0, 'ffffffffffff'),
   (13, 1, 4, 12, 0, '', 1700000000000000, 0, 'gggggggggggg');
 EOF
+# Forks, which keep their parent's files: an Opera with its one profile in its own folder,
+# as Opera can; a Zen, Firefox's, with one profile; and, outside Application Support, a
+# Chromium browser this package doesn't know, Thorium, whose folder a person would choose.
+O="$AS/com.operasoftware.Opera"
+mkdir -p "$O"
+cp "$C/Profile 1/Bookmarks" "$O/Bookmarks"
+Z="$AS/zen"
+mkdir -p "$Z/Profiles/zen.default"
+cp "$P/places.sqlite" "$Z/Profiles/zen.default/places.sqlite"
+printf '[Profile0]\nName=Default (release)\nIsRelative=1\nPath=Profiles/zen.default\n' > "$Z/profiles.ini"
+T="$HOME_DIR/Elsewhere/Thorium/User Data"
+mkdir -p "$T/Default"
+cp "$C/Profile 1/Bookmarks" "$T/Default/Bookmarks"
+echo '{"profile": {"info_cache": {"Default": {"name": "Me"}}}}' > "$T/Local State"
+
 # Safari, in Library/Safari: bookmarks in Favorites, a folder and the Reading List, Safari's
 # History proxy that isn't one, an empty Bookmarks Menu; history, with a page not visited
 # and one not on the web. Its History.db has

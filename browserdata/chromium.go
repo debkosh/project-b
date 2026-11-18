@@ -15,7 +15,8 @@ import (
 // with Bookmarks (JSON), History (SQLite) and Preferences (JSON).
 
 // chromiumProfiles lists the profiles in dir: those Local State names, in its order of
-// folders, that hold bookmarks or history; with no Local State, the folders that do.
+// folders, that hold bookmarks or history; with no Local State, the folders that do. A
+// browser that keeps one profile in dir itself, as Opera can, has that one, with no name.
 func chromiumProfiles(browser, dir string) []Profile {
 	var state struct {
 		Profile struct {
@@ -51,7 +52,15 @@ func chromiumProfiles(browser, dir string) []Profile {
 	}
 	// Default first, then Profile 1, Profile 2, … by number.
 	slices.SortFunc(out, func(a, b Profile) int { return profileOrder(filepath.Base(a.Dir)) - profileOrder(filepath.Base(b.Dir)) })
+	if len(out) == 0 && chromiumProfile(dir) {
+		out = []Profile{{Browser: browser, Dir: dir}}
+	}
 	return out
+}
+
+// chromiumProfile says whether dir is a Chromium profile's folder.
+func chromiumProfile(dir string) bool {
+	return exists(filepath.Join(dir, "Bookmarks")) || exists(filepath.Join(dir, "History"))
 }
 
 func profileOrder(dir string) int {

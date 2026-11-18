@@ -1,0 +1,3 @@
+{"roots": {"bookmark_bar": {"name": "Bookmarks bar", "type": "folder", "children": [
+  {"name": "Wiki", "type": "url", "url": "https://example.com/wiki", "date_added": "13370000000000000"}
+]}, "other": {"name": "Other bookmarks", "type": "folder", "children": []}}}
