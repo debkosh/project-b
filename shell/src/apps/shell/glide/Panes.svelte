@@ -1,5 +1,5 @@
 <script>
-  import { drag, keyLabel, page, send, shell, state as go } from '@/sdk/svelte.svelte.js';
+  import { drag, isNewTab, keyLabel, page, send, shell, state as go } from '@/sdk/svelte.svelte.js';
   import * as g from './glide.svelte.js';
   import FindBar from './FindBar.svelte';
   import PageDialog from './PageDialog.svelte';
@@ -70,6 +70,11 @@
       {/if}
       <div class="card" style:flex="{sizes[i] ?? 1} 1 0" class:focused={ids.length > 1 && id === go.active}>
         <main use:page={id}></main>
+        <!-- A new tab loads nothing, so no page shows here: a backdrop in the page's colour. A
+             press on it makes its card active, as a press in a page does. -->
+        {#if isNewTab(go.tabs.find((t) => t.id === id))}
+          <div class="blank" use:shell role="presentation" onpointerdown={() => id !== go.active && send({ t: 'activateTab', id })}></div>
+        {/if}
         <PageDialog tab={id} />
         {#if id === go.active}<FindBar bind:this={find} />{/if}
         <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
@@ -122,6 +127,12 @@
 
   main {
     flex: 1;
+  }
+
+  .blank {
+    position: absolute;
+    inset: 0;
+    background: Canvas;
   }
 
   /* A card as the page's is, with its corners and ring, in the surface where the page

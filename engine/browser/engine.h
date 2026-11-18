@@ -154,7 +154,7 @@ class Engine {
   // Makes a hidden tab in a workspace, by Go's id for it: "" is the profile's own storage.
   // Any other workspace is a storage partition of the profile's context, which the tab
   // keeps for its life, across every site it visits and every tab it opens.
-  PageTab* CreateTab(const std::string& workspace);
+  PageTab* CreateTab(const std::string& workspace, bool empty = false);
   // Makes a hidden tab of ours, in our pages' context: in no workspace, and one of ours for
   // its life.
   PageTab* CreateInternalTab();

@@ -204,8 +204,10 @@ type Engine interface {
 	// CreateTab makes a hidden tab in a workspace, by the app's id for it: "" is the
 	// profile's own storage, which a profile's first workspace, Main, has. A window's layout
 	// shows it. A workspace keeps its own cookies and site storage, and a tab stays in its
-	// workspace for its life, as does every tab it opens.
-	CreateTab(workspace string) TabID
+	// workspace for its life, as does every tab it opens. An empty tab, one that loads
+	// nothing yet, starts no renderer until it loads; one about to load takes the engine's
+	// spare renderer, so its first page is quicker.
+	CreateTab(workspace string, empty bool) TabID
 	// CreateInternalTab makes a hidden tab of ours: one for our own pages, in their own
 	// context, where the shells load, in no workspace, and that context's for its life. A
 	// window's layout shows it, and LoadURL takes it to its page, chrome://<page>/.
@@ -394,8 +396,7 @@ type Script struct {
 	RunAt  string `json:"runAt"`
 }
 
-// BlankURL is the empty page every engine has, which a new tab loads so its page area
-// holds a page from the start.
+// BlankURL is the empty page every engine has.
 const BlankURL = "about:blank"
 
 // Listener is what an engine tells the app. There is exactly one.

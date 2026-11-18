@@ -8,7 +8,7 @@ import { tick } from 'svelte';
 import * as sdk from './shell.js';
 import * as regions from './regions.js';
 
-export { activeTab, controlSpace, focusPage, keyLabel, saveData, saveProfileData, send, setFrame, setPref, tabLabel, workspaceOf } from './shell.js';
+export { activeTab, controlSpace, focusPage, isNewTab, keyLabel, saveData, saveProfileData, send, setFrame, setPref, tabLabel, workspaceOf } from './shell.js';
 export { chooseContextItem, closeContextMenu, contextMenuPoint } from './contextmenu.js';
 export { clearDownloads, downloadAction } from './downloads.js';
 export { answerDialog, dialogFor } from './dialogs.js';

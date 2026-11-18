@@ -63,7 +63,7 @@ func (e *Eng) EraseWorkspace(string, engine.Erasure)   { e.Calls[COther]++ }
 func (e *Eng) ListSiteData(string)                     { e.Calls[COther]++ }
 func (e *Eng) SetQuitErasure([]string, engine.Erasure) { e.Calls[COther]++ }
 
-func (e *Eng) CreateTab(string) engine.TabID     { e.Calls[CCreateTab]++; e.next++; return e.next }
+func (e *Eng) CreateTab(string, bool) engine.TabID { e.Calls[CCreateTab]++; e.next++; return e.next }
 func (e *Eng) CreateInternalTab() engine.TabID   { e.Calls[CCreateTab]++; e.next++; return e.next }
 func (e *Eng) SetFirstWorkspace(string)          { e.Calls[COther]++ }
 func (e *Eng) CloseTab(engine.TabID)             { e.Calls[CCloseTab]++ }
@@ -191,7 +191,7 @@ func New(dir string, o Options) *Rig {
 	if o.Tabs > 0 {
 		r.Events(r.A.Tabs.ActiveIn(1), "https://www.start.example.com/")
 		for i := 1; i < o.Tabs; i++ {
-			r.Events(r.A.Tabs.Add(1, "", true), fmt.Sprintf("https://www.site%d.example.com/page", i))
+			r.Events(r.A.Tabs.Add(1, "", "", true), fmt.Sprintf("https://www.site%d.example.com/page", i))
 		}
 	}
 	r.WindowUp(1)

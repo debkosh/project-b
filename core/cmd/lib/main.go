@@ -10,7 +10,7 @@ package main
 #include "pb_abi.h"
 #include "pb_content_abi.h"
 
-static inline int64_t call_create_tab(const PBEngineCalls* c, const char* workspace) { return c->create_tab(workspace); }
+static inline int64_t call_create_tab(const PBEngineCalls* c, const char* workspace, int empty) { return c->create_tab(workspace, empty); }
 static inline int64_t call_create_internal_tab(const PBEngineCalls* c) { return c->create_internal_tab(); }
 static inline void call_set_first_workspace(const PBEngineCalls* c, const char* workspace) { c->set_first_workspace(workspace); }
 static inline void call_erase_workspace(const PBEngineCalls* c, const char* workspace, const PBErasure* erasure) { c->erase_workspace(workspace, erasure); }
@@ -111,10 +111,14 @@ type nativeEngine struct {
 	posted []func()
 }
 
-func (e *nativeEngine) CreateTab(workspace string) engine.TabID {
+func (e *nativeEngine) CreateTab(workspace string, empty bool) engine.TabID {
 	c := C.CString(workspace)
 	defer C.free(unsafe.Pointer(c))
-	return engine.TabID(C.call_create_tab(e.calls, c))
+	flag := C.int(0)
+	if empty {
+		flag = 1
+	}
+	return engine.TabID(C.call_create_tab(e.calls, c, flag))
 }
 
 func (e *nativeEngine) CreateInternalTab() engine.TabID {

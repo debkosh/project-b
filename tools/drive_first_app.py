@@ -954,7 +954,7 @@ def browsing_checks():
     app.cmd("type", "blank")
     app.wait(f"{VALUE}==='blank'")
     time.sleep(0.4)
-    check("the blank page a new tab holds stays out of history", app.js(FOUND) == 0, app.js(FOUND))
+    check("the blank page stays out of history", app.js(FOUND) == 0, app.js(FOUND))
     leave_bar(app)
 
     # A page restored from the back-forward cache never reports a start, so its commit
@@ -2021,7 +2021,18 @@ def workspace_menu_checks():
     tabs = tabs_of(app)
     shopping = next(t for t in tabs["tabs"] if t["id"] == tabs["active"])
     check("it opens a new tab, the active one, which Go has in that workspace", len(tabs["tabs"]) == 1 and shopping.get("workspace") == ids["Shopping"], tabs)
-    app.js(f"location.href={json.dumps(STORE)}", tab=shopping["id"])
+    # The new tab loads nothing, so there is no page to script: the address goes in as a
+    # person's does, typed in the box Standard shows on it, and the tab, in its workspace,
+    # takes its first page.
+    box_open(app)
+    app.cmd("type", STORE)
+    app.wait(f"{BOX}.value==={json.dumps(STORE)}")
+    app.cmd("key", "enter")
+    deadline = time.time() + 30
+    while not (tab := tabs_of(app)["tabs"][0])["url"].startswith(STORE) or tab["loading"]:
+        if time.time() > deadline:
+            raise TimeoutError(f"the workspace's new tab never loaded {STORE}: {tab}")
+        time.sleep(0.05)
     app.wait("document.readyState==='complete'&&location.pathname==='/store'", tab=shopping["id"])
     app.js("document.cookie='w=shopping; max-age=3600'", tab=shopping["id"])
     check("and the engine has it there: its cookie is that workspace's and not another's",

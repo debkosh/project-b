@@ -209,16 +209,16 @@ func (m *Manager) CloseGroup(group string) {
 // tab is. Beside one of our tabs, which is in no group, it is a new tab in its home
 // workspace, and beside a pinned tab, a new tab in its workspace. Returns 0 when with is no
 // tab.
-func (m *Manager) CreateWith(with engine.TabID, foreground bool) engine.TabID {
+func (m *Manager) CreateWith(with engine.TabID, u string, foreground bool) engine.TabID {
 	t := m.tabs[with]
 	if t == nil {
 		return 0
 	}
 	w := m.windowOf[with]
 	if t.Page != "" {
-		return m.Add(w, m.HomeOf(with), foreground)
+		return m.Add(w, m.HomeOf(with), u, foreground)
 	}
-	id := m.create(w, t.Workspace)
+	id := m.create(w, t.Workspace, u == "")
 	if t.Group == "" {
 		m.newGroup([]engine.TabID{with, id}, "", "")
 	} else {
@@ -226,6 +226,9 @@ func (m *Manager) CreateWith(with engine.TabID, foreground bool) engine.TabID {
 		m.join(id, t.Group, g.Tabs[len(g.Tabs)-1])
 	}
 	m.shown(id, foreground)
+	if u != "" {
+		m.eng.LoadURL(id, u)
+	}
 	return id
 }
 

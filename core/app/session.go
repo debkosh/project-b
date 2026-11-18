@@ -93,7 +93,7 @@ func (a *App) restoreTab(w engine.WindowID, st session.Tab, load bool) engine.Ta
 		ws = a.Workspaces.First()
 	}
 	if st.URL == "" {
-		return a.Tabs.Add(w, ws, false)
+		return a.Tabs.Add(w, ws, "", false)
 	}
 	return a.Tabs.Restore(w, ws, st.URL, st.Title, load)
 }

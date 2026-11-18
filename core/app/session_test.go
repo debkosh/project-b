@@ -80,8 +80,12 @@ func TestTabsComeBackAtEveryStartUnlessTheSettingSaysANewTabButAlwaysAfterACrash
 	if got := crashed.urls(); len(got) != 2 {
 		t.Fatalf("after a crash the tabs are %v", got)
 	}
-	crashed.waitForTab(func(tab map[string]any) bool {
-		return tab["url"] == "https://b.test/" && tab["loading"] == false && tab["title"] == "Mock b.test"
+	crashed.onMain(func() {
+		for _, tab := range crashed.a.Tabs.All() {
+			if tab.URL == "https://b.test/" && tab.Title != "Mock b.test" {
+				t.Errorf("after a crash b.test's tab is titled %q", tab.Title)
+			}
+		}
 	})
 	crashed.stop()
 

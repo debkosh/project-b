@@ -219,6 +219,13 @@ export function workspaceOf(s, tab) {
   return s.workspaces.find((w) => w.id === tab.workspace);
 }
 
+// isNewTab says a tab has nothing loaded: a new tab, which starts no renderer until it has
+// an address, so no page shows under the shell there. The shell draws its new tab there,
+// or at least a backdrop in the page's colour (docs/windows.md#every-window-has-a-tab-decided-2026-11-18).
+export function isNewTab(tab) {
+  return !!tab && tab.id !== 0 && !tab.url && !tab.loading && !tab.page && !tab.notice;
+}
+
 // tabLabel is what a tab's entry says: the title, else the host while the page is on its
 // way, else New Tab.
 export function tabLabel(tab) {

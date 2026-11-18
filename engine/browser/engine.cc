@@ -157,9 +157,9 @@ void CheckMainThread() {
   CHECK(content::BrowserThread::CurrentlyOn(content::BrowserThread::UI));
 }
 
-int64_t CallCreateTab(const char* workspace) {
+int64_t CallCreateTab(const char* workspace, int empty) {
   CheckMainThread();
-  return g_engine->CreateTab(workspace)->id();
+  return g_engine->CreateTab(workspace, empty)->id();
 }
 
 int64_t CallCreateInternalTab() {
@@ -1091,9 +1091,16 @@ void Engine::FocusPageForTraversal(int64_t window, bool reverse) {
 }
 
 // The profile's own storage is the context's default partition, which content refuses as
-// a fixed one, so its tabs get no SiteInstance and take the default as any page does.
-PageTab* Engine::CreateTab(const std::string& workspace) {
+// a fixed one, so its tabs get no SiteInstance and take the default as any page does. An
+// empty tab, a new tab or one restored for later, starts no renderer until it navigates:
+// by default content hands a tab the spare one, which an empty tab would hold idle. A tab
+// about to load keeps that default, so its first page doesn't wait for a process to start.
+PageTab* Engine::CreateTab(const std::string& workspace, bool empty) {
   content::WebContents::CreateParams params(browser_context_);
+  if (empty) {
+    params.desired_renderer_state =
+        content::WebContents::CreateParams::kNoRendererProcess;
+  }
   if (!workspace.empty()) {
     params.site_instance = content::SiteInstance::CreateForFixedStoragePartition(
         browser_context_, GURL(), PartitionOf(browser_context_, workspace));
