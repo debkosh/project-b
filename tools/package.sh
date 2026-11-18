@@ -62,6 +62,9 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>LSMinimumSystemVersion</key><string>13.0</string>
   <key>NSHighResolutionCapable</key><true/>
   <key>NSSupportsAutomaticGraphicsSwitching</key><true/>
+  <!-- Phone as key (docs/passkeys.md): macOS asks the person the first time, with these
+       words, and content uses no Bluetooth without them. -->
+  <key>NSBluetoothAlwaysUsageDescription</key><string>Project B uses Bluetooth to check your phone is near when you sign in with a passkey on it.</string>
   <!-- A browser to macOS, which offers it as the default one and opens web links and web
        pages with it (docs/onboarding.md, Make default browser); and the app's own links,
        project-b:, such as a sync server's set-up link (docs/sync.md). -->
