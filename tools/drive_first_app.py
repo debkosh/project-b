@@ -87,6 +87,29 @@ class Pages(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
+        if self.path in ("/sync-loads", "/sync-worker.js", "/sync-import.js", "/sync-data"):
+            # A page that loads synchronously, as WebContainer-style pages do: a synchronous
+            # XMLHttpRequest, and a worker's importScripts. Content moves a synchronous load's
+            # throttles to another thread first, which killed the page when one of ours said
+            # it couldn't move. Cross-origin isolated, as such pages are.
+            body = {
+                "/sync-loads": b'<!doctype html><title>Sync</title><script>'
+                               b'const x=new XMLHttpRequest();x.open("GET","/sync-data",false);x.send();'
+                               b'const w=new Worker("/sync-worker.js");'
+                               b'w.onmessage=e=>document.title=x.responseText+" "+e.data+" "+crossOriginIsolated</script>',
+                "/sync-worker.js": b'importScripts("/sync-import.js");postMessage(imported)',
+                "/sync-import.js": b'var imported="imported"',
+                "/sync-data": b"xhr",
+            }[self.path]
+            self.send_response(200)
+            self.send_header("Content-Type", "text/javascript" if self.path.endswith(".js") else "text/html" if self.path == "/sync-loads" else "text/plain")
+            self.send_header("Cross-Origin-Opener-Policy", "same-origin")
+            self.send_header("Cross-Origin-Embedder-Policy", "require-corp")
+            self.send_header("Cross-Origin-Resource-Policy", "same-origin")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
         if self.path == "/leave-redirect":
             # Links to other sites' ninth way: a same-site link the server sends elsewhere.
             self.send_response(302)
@@ -950,6 +973,15 @@ def browsing_checks():
         check("its image, fetch and frame on a blocked host never arrive", reached == [], reached)
     except TimeoutError as e:
         check("the page with subresources on a blocked host loads", False, e)
+
+    # Synchronous loads go through the same throttle, which content moves to another
+    # thread for them; the page must live through it, as on StackBlitz's WebContainers.
+    visit(app, PAGES + "sync-loads")
+    try:
+        app.wait("document.title==='xhr imported true'", 20, page=True)
+        check("a cross-origin isolated page's synchronous XMLHttpRequest and worker importScripts load, and the page lives", True)
+    except TimeoutError as e:
+        check("a cross-origin isolated page's synchronous XMLHttpRequest and worker importScripts load, and the page lives", False, e)
 
     # The shell's own page never loads in a tab, however it's asked for: a copy there
     # would talk to Go as the shell. Content's other internal pages are let through.
@@ -2516,5 +2548,5 @@ def links_checks():
 
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
-    parts = {"driver": [driver_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [empty_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks]}
+    parts = {"driver": [driver_checks], "browsing": [browsing_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [empty_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks]}
     run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, settings_checks, internal_checks, visible_tabs_checks, window_checks, empty_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, shell_checks, glide_checks, web_api_checks, links_checks, quit_checks]))

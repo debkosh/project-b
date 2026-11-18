@@ -79,6 +79,11 @@ class BlockThrottle : public blink::URLLoaderThrottle {
   explicit BlockThrottle(std::optional<blink::LocalFrameToken> frame)
       : frame_(frame) {}
 
+  // A synchronous load, as a synchronous XMLHttpRequest or a worker's importScripts, runs
+  // its throttles on another thread. This one keeps nothing tied to a thread (Reporter
+  // posts to the main one), so it may go; the default refuses, which kills the page.
+  void DetachFromCurrentSequence() override {}
+
   void WillStartRequest(network::ResourceRequest* request,
                         bool* defer) override {
     if (block_rules::Blocks(request->url)) {
