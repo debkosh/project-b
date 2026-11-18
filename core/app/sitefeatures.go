@@ -9,6 +9,7 @@ import (
 	"projectb/prefs"
 	"projectb/settings"
 	"projectb/sites"
+	"projectb/sparks"
 )
 
 // The ad blocker and Sparks (docs/site-features.md): Go keeps the rules and the scripts and
@@ -38,6 +39,9 @@ func (a *App) startSiteFeatures(e engine.Engine) {
 	a.Sparks.OnChanged(func() {
 		a.Settings.Send(map[string]any{"t": "sparks", "sparks": a.Sparks.List()})
 	})
+	// An import waiting on the person to settle its clashes: one at a time, as settings
+	// is one page.
+	var importing *sparks.Import
 	a.Settings.AddPart(settings.Part{
 		Snapshot: func(into map[string]any) { into["sparks"] = a.Sparks.List() },
 		Handle: func(tab engine.TabID, t string, msg []byte) bool {
@@ -45,6 +49,16 @@ func (a *App) startSiteFeatures(e engine.Engine) {
 				ID     string `json:"id"`
 				Source string `json:"source"`
 				On     bool   `json:"on"`
+				// For an import: the files picked, each as base64, or only its size when
+				// it is too large to send; then a choice for each clash, by its index.
+				Files []struct {
+					Name string `json:"name"`
+					Data []byte `json:"data"`
+					Size int64  `json:"size"`
+				} `json:"files"`
+				Choices map[int]sparks.Choice `json:"choices"`
+				// For an export: the sparks to put in the zip, all when none.
+				IDs []string `json:"ids"`
 			}
 			json.Unmarshal(msg, &c)
 			// What a change says back to the page: "" when it took, else why not.
@@ -59,6 +73,31 @@ func (a *App) startSiteFeatures(e engine.Engine) {
 				return true
 			case "sparkSetOn":
 				a.Sparks.SetOn(c.ID, c.On)
+				return true
+			case "sparkImport":
+				var picked []sparks.Picked
+				for _, f := range c.Files {
+					picked = append(picked, sparks.Picked{Name: f.Name, Data: f.Data, Size: f.Size})
+				}
+				importing = a.Sparks.Prepare(sparks.Unpack(picked))
+				if clashes := importing.Clashes(); len(clashes) > 0 {
+					a.Settings.Send(map[string]any{"t": "sparkClashes", "clashes": clashes})
+					return true
+				}
+				fallthrough
+			case "sparkImportKeep":
+				if importing != nil {
+					done := a.Sparks.Keep(importing, c.Choices)
+					importing = nil
+					a.Settings.Send(map[string]any{"t": "sparkImported", "imported": done})
+				}
+				return true
+			case "sparkImportCancel":
+				importing = nil
+				return true
+			case "sparkExport":
+				data, n := a.Sparks.Zip(c.IDs)
+				a.Settings.Send(map[string]any{"t": "sparkZip", "data": data, "count": n, "fileName": "Sparks.zip"})
 				return true
 			case "sparkSource":
 				// For the editor and for export: the file as the person wrote it.

@@ -37,6 +37,8 @@ document.body.remove();
 	want := Meta{
 		Name:         "My Script",
 		Description:  "Does   something",
+		Namespace:    "https://example.com",
+		Version:      "1.0",
 		Match:        []string{"https://example.com/*", "*://*.example.org/*"},
 		ExcludeMatch: []string{"https://example.com/admin/*"},
 		RunAt:        DocumentStart,
@@ -103,7 +105,8 @@ func TestParseTakesTheLimitsExactly(t *testing.T) {
 
 func equalMeta(a, b Meta) bool {
 	return a.Name == b.Name && a.Description == b.Description && slices.Equal(a.Match, b.Match) &&
-		slices.Equal(a.ExcludeMatch, b.ExcludeMatch) && a.RunAt == b.RunAt && a.NoFrames == b.NoFrames
+		slices.Equal(a.ExcludeMatch, b.ExcludeMatch) && a.RunAt == b.RunAt && a.NoFrames == b.NoFrames &&
+		a.Namespace == b.Namespace && a.Version == b.Version
 }
 
 func ids(list []Spark) []string {

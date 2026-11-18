@@ -114,21 +114,10 @@ func (m *Manager) OnChanged(f func()) { m.onChanged = append(m.onChanged, f) }
 
 // Add keeps a new spark from its source, on, after the others.
 func (m *Manager) Add(source string) (Spark, error) {
-	if len(m.list) >= MaxSparks {
-		return Spark{}, errors.New("You can keep up to 25 sparks.")
-	}
-	e := &entry{id: m.newID(), on: true}
-	if err := e.set(source); err != nil {
+	e, err := m.add(source)
+	if err != nil {
 		return Spark{}, err
 	}
-	if err := os.MkdirAll(m.dir, 0o700); err != nil {
-		timeline.Errorf("sparks: %v", err)
-		return Spark{}, errors.New("The spark could not be saved.")
-	}
-	if err := writeFile(m.sourcePath(e.id), []byte(source)); err != nil {
-		return Spark{}, errors.New("The spark could not be saved.")
-	}
-	m.list = append(m.list, e)
 	m.changed()
 	return e.spark(), nil
 }
@@ -139,13 +128,9 @@ func (m *Manager) Update(id, source string) error {
 	if e == nil {
 		return errors.New("There is no such spark.")
 	}
-	if _, err := Parse(source); err != nil {
+	if err := m.put(e, source); err != nil {
 		return err
 	}
-	if err := writeFile(m.sourcePath(id), []byte(source)); err != nil {
-		return errors.New("The spark could not be saved.")
-	}
-	e.set(source)
 	m.changed()
 	return nil
 }

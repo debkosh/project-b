@@ -25,6 +25,10 @@ const (
 type Meta struct {
 	Name        string
 	Description string
+	// Namespace, with Name, says which spark a source is: an import of the same pair is
+	// that spark again, as other browsers' userscript managers have it.
+	Namespace string
+	Version   string
 	// Match and ExcludeMatch are match patterns: the spark runs on an address any Match
 	// takes and no ExcludeMatch does.
 	Match        []string
@@ -54,6 +58,10 @@ func Parse(source string) (Meta, error) {
 			}
 		case "@description":
 			m.Description = value
+		case "@namespace":
+			m.Namespace = value
+		case "@version":
+			m.Version = value
 		case "@match", "@exclude-match":
 			if _, err := compile(value); err != nil {
 				return Meta{}, fmt.Errorf("The %s pattern %q is not a valid match pattern.", key, value)
