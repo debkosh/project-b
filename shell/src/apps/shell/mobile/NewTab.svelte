@@ -4,6 +4,7 @@
   import { inFolder, path } from '@/ui/bookmarks.js';
   import Icon from './Icon.svelte';
   import Mark from './Mark.svelte';
+  import { folderTile, tints } from '@/ui/tint.js';
   import { nextQuery } from './queries.js';
 
   // Over a new tab, which has no page yet (docs/daily-driver.md, A new tab): the sites
@@ -60,15 +61,17 @@
   }
 </script>
 
-{#snippet tile(entry, onclick)}
+<!-- A bookmark's tile or a folder's, on where it sits: the page's bar, or a card's surface. -->
+{#snippet tile(entry, onclick, on)}
   <button class="tile" class:open={entry.id === open} aria-expanded={entry.kind === 'folder' ? entry.id === open : undefined} {onclick}>
     {#if entry.kind === 'folder'}
       {@const some = inFolder(go.bookmarks, entry.id).filter((e) => e.kind === 'bookmark').slice(0, 4)}
-      <span class="folder" aria-hidden="true">
+      {@const t = ($tints, folderTile(entry.id, on))}
+      <span class="folder" style:background={t.background} style:border-color={t.border} aria-hidden="true">
         {#each some as b (b.id)}<Mark url={b.url} title={b.title} size={20} />{:else}<Icon name="folder" />{/each}
       </span>
     {:else}
-      <Mark url={entry.url} title={entry.title} />
+      <Mark url={entry.url} title={entry.title} {on} />
     {/if}
     <span class="name">{entry.title || entry.url}</span>
   </button>
@@ -81,7 +84,7 @@
       {#each sites.items as row (row.url)}
         <li>
           <button class="tile" oncontextmenu={(e) => { e.preventDefault(); editing = true; }} onclick={() => (editing ? (editing = false) : chooseSuggestion(row))}>
-            <Mark url={row.url} title={row.detail} />
+            <Mark url={row.url} title={row.detail} on="bar" />
             <span class="name">{row.detail}</span>
           </button>
           {#if editing}
@@ -95,7 +98,7 @@
     <h2>Bookmarks</h2>
     <ul class="tiles" aria-label="Bookmarks">
       {#each marks as entry, i (entry.id)}
-        <li>{@render tile(entry, () => (entry.kind === 'folder' ? toggle(entry.id) : choose(entry)))}</li>
+        <li>{@render tile(entry, () => (entry.kind === 'folder' ? toggle(entry.id) : choose(entry)), 'bar')}</li>
         {#if i === cardAfter}
           <li class="card" role="group" aria-label={cardTitle} style:--col={at % perRow}>
             <div class="head">
@@ -111,7 +114,7 @@
             {#if card.length}
               <ul class="tiles">
                 {#each card as entry (entry.id)}
-                  <li>{@render tile(entry, () => choose(entry))}</li>
+                  <li>{@render tile(entry, () => choose(entry), 'surface')}</li>
                 {/each}
               </ul>
             {:else}

@@ -1,6 +1,7 @@
 <script>
   import { folders, removeBookmark, saveBookmark } from '@/sdk/svelte.svelte.js';
   import Icon from './Icon.svelte';
+  import { folderMark, tints } from '@/ui/tint.js';
   import Sheet from './Sheet.svelte';
 
   // The star's panel as a sheet (docs/bookmark-folders.md): what the menu's Bookmark shows
@@ -39,7 +40,7 @@
         {#each places as f (f.id)}
           <label class="folder" class:on={parent === f.id} style:padding-left="{20 + f.depth * 20}px">
             <input type="radio" name="bookmark-folder" value={f.id} bind:group={parent} />
-            <Icon name="folder" />
+            <span class="tint" style:color={f.id ? ($tints, folderMark(f.id)) : undefined}><Icon name="folder" /></span>
             <span>{f.title}</span>
           </label>
         {/each}
@@ -144,5 +145,10 @@
     background: var(--accent);
     color: var(--on-accent);
     font-weight: 600;
+  }
+
+  /* A folder's icon in its folder's colour, laid out as the icon alone. */
+  .tint {
+    display: contents;
   }
 </style>

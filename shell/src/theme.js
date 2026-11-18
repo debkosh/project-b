@@ -5,6 +5,8 @@
 // scrollbars match. The shell's SDK paints them as Go's state changes; the settings page
 // and the picker with a watchEffect on theirs.
 
+import { retint } from '@/ui/tint.js';
+
 const media = window.matchMedia('(prefers-color-scheme: dark)');
 // What was last painted, so the page follows the system when it changes.
 let painted = { tones: null, theme: 'system' };
@@ -20,6 +22,9 @@ export function paintTheme(tones, theme) {
     root.style.setProperty(name, value);
   }
   root.style.colorScheme = dark ? 'dark' : 'light';
+  // The colours made up for items follow. None's frame is a grey of each scheme's own, so
+  // its two palettes' frames differ, where a picked frame is the same in both.
+  retint(dark ? tones.dark : tones.light, dark, tones.light['--frame'] !== tones.dark['--frame']);
 }
 
 media.addEventListener('change', () => paintTheme(painted.tones, painted.theme));

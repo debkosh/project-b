@@ -3,6 +3,7 @@
   import { inFolder } from '@/ui/bookmarks.js';
   import Icon from './Icon.svelte';
   import Mark from './Mark.svelte';
+  import { folderMark, tints } from '@/ui/tint.js';
 
   // The bookmarks bar, while bookmarksBar is on (docs/bookmark-folders.md, Where bookmarks
   // show): what bookmarksBarFolder holds, the top when that folder is gone, as chips in one
@@ -19,9 +20,9 @@
   <div class="marks-bar" class:top use:shell role="toolbar" aria-label="Bookmarks bar">
     {#each entries as e (e.id)}
       {#if e.kind === 'folder'}
-        <button class="chip" aria-haspopup="dialog" onclick={() => onfolder(e.id)}><Icon name="folder" size={18} /><span class="name">{e.title}</span></button>
+        <button class="chip" aria-haspopup="dialog" onclick={() => onfolder(e.id)}><span class="tint" style:color={($tints, folderMark(e.id, 'bar'))}><Icon name="folder" size={18} /></span><span class="name">{e.title}</span></button>
       {:else}
-        <button class="chip" onclick={() => onopen(e.url)}><Mark url={e.url} title={e.title} size={20} /><span class="name">{e.title || e.url}</span></button>
+        <button class="chip" onclick={() => onopen(e.url)}><Mark url={e.url} title={e.title} size={20} on="bar" /><span class="name">{e.title || e.url}</span></button>
       {/if}
     {/each}
   </div>
@@ -77,5 +78,10 @@
   .chip:focus-visible {
     outline: none;
     box-shadow: var(--focus-ring);
+  }
+
+  /* A folder's icon in its folder's colour, laid out as the icon alone. */
+  .tint {
+    display: contents;
   }
 </style>

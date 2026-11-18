@@ -1,11 +1,15 @@
 <script setup>
 import { computed } from 'vue';
 import { mark } from './bookmarks.js';
+import { siteTile } from '@/ui/tint.js';
+import { useTints } from '@/ui/useTints.js';
 
 // A bookmark's mark, size pixels square: its open tab's favicon, else its site's letter on
-// the site's own colour (bookmarks.js).
-const props = defineProps({ url: String, size: { type: Number, default: 16 } });
+// its site's tile (tint.js), made for the background it sits on, on: 'surface' or 'bar'.
+const props = defineProps({ url: String, size: { type: Number, default: 16 }, on: { type: String, default: 'surface' } });
 const m = computed(() => mark(props.url));
+const tints = useTints();
+const tile = computed(() => (tints.value, siteTile(props.url, props.on)));
 </script>
 
 <template>
@@ -14,7 +18,15 @@ const m = computed(() => mark(props.url));
     v-else
     class="site-mark letter"
     aria-hidden="true"
-    :style="{ '--hue': m.hue, width: size + 'px', height: size + 'px', fontSize: Math.round(size * 0.55) + 'px', borderRadius: (size >= 32 ? 8 : 4) + 'px' }"
+    :style="{
+      background: tile.background,
+      boxShadow: `inset 0 0 0 1px ${tile.border}`,
+      color: tile.letter,
+      width: size + 'px',
+      height: size + 'px',
+      fontSize: Math.round(size * 0.55) + 'px',
+      borderRadius: (size >= 32 ? 8 : 4) + 'px',
+    }"
     >{{ m.letter }}</span
   >
 </template>
@@ -26,13 +38,9 @@ const m = computed(() => mark(props.url));
   object-fit: contain;
 }
 
-/* The site's colour, as the Mobile shell's tiles have it: one hue per host, deep enough
-   for white letters in light and dark. */
 .letter {
   display: grid;
   place-items: center;
-  background: hsl(var(--hue) 45% 42%);
-  color: #fff;
   font-weight: 600;
   line-height: 1;
 }

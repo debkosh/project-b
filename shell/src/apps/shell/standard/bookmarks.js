@@ -16,13 +16,10 @@ export function host(url) {
 }
 
 // mark is what stands for a bookmark: the favicon of a tab that has its address open, else
-// its site's first letter on a colour from its host, the same each time, as the Mobile
-// shell's tiles have.
+// its site's first letter, on its site's tile (tint.js).
 export function mark(url) {
   const h = host(url);
-  let hue = 0;
-  for (const c of h) hue = (hue * 31 + c.charCodeAt(0)) % 360;
-  return { favicon: tabFor(url)?.favicon || '', letter: (h[0] || '?').toUpperCase(), hue };
+  return { favicon: tabFor(url)?.favicon || '', letter: (h[0] || '?').toUpperCase() };
 }
 
 // tabFor is this window's tab that has url open, if one does.

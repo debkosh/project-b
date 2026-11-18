@@ -2,6 +2,8 @@
 import { nextTick, ref, watch } from 'vue';
 import { host } from './bookmarks.js';
 import SiteMark from './SiteMark.vue';
+import { folderMark } from '@/ui/tint.js';
+import { useTints } from '@/ui/useTints.js';
 
 // The command box narrowed to bookmarks (CommandBox.vue): the folders on the left, the one
 // chosen marked, and on the right its bookmarks that hold what is typed, then those
@@ -12,6 +14,8 @@ const emit = defineEmits(['folder', 'hover', 'choose']);
 
 // What the keys choose stays in sight.
 const root = ref(null);
+const tints = useTints();
+const folderColour = (id) => (tints.value, folderMark(id, 'bar'));
 watch(
   () => [props.at, props.highlight],
   () => nextTick(() => root.value?.querySelectorAll('.chosen, .active').forEach((el) => el.scrollIntoView({ block: 'nearest' }))),
@@ -32,7 +36,7 @@ watch(
           @click="emit('folder', i)"
         >
           <svg v-if="i === 0" class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="m8 2.5 1.7 3.5 3.8.5-2.8 2.6.7 3.8L8 11.1l-3.4 1.8.7-3.8-2.8-2.6 3.8-.5z" /></svg>
-          <svg v-else class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 4.5a1 1 0 0 1 1-1h3l1.5 1.5h4.5a1 1 0 0 1 1 1v5.5a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1z" /></svg>
+          <svg v-else class="icon" viewBox="0 0 16 16" aria-hidden="true" :style="{ stroke: folderColour(f.id) }"><path d="M2.5 4.5a1 1 0 0 1 1-1h3l1.5 1.5h4.5a1 1 0 0 1 1 1v5.5a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1z" /></svg>
           <span class="title">{{ f.title }}</span>
         </li>
       </ul>

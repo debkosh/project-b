@@ -4,6 +4,8 @@ import { send, state } from '@/sdk/vue.js';
 import { bookmarksUnder, inFolder, path, topFolder } from '@/ui/bookmarks.js';
 import { host, openGroup, openHere } from './bookmarks.js';
 import SiteMark from './SiteMark.vue';
+import { folderTile } from '@/ui/tint.js';
+import { useTints } from '@/ui/useTints.js';
 
 // The new tab's bookmarks, under the command box (docs/bookmark-folders.md, "Where bookmarks
 // show"): the top folder as tiles, its folders first, each folder showing up to four of its
@@ -61,6 +63,13 @@ const panelAfter = computed(() => {
 });
 watch(top, () => nextTick(measure));
 
+// A folder's tile in its own colour (tint.js), made again on a new palette. The top
+// folder's tiles sit on the command box, much the bar; an open folder's on its surface.
+const tints = useTints();
+const tileOf = (id, on) => {
+  const t = (tints.value, folderTile(id, on));
+  return { background: t.background, borderColor: t.border };
+};
 const label = (e) => e.title || (e.kind === 'folder' ? 'Folder' : host(e.url));
 </script>
 
@@ -80,10 +89,10 @@ const label = (e) => e.title || (e.kind === 'folder' ? 'Folder' : host(e.url));
           :aria-expanded="e.kind === 'folder' ? open === e.id : undefined"
           @click="e.kind === 'folder' ? toggle(e) : openHere(e.url, overPage)"
         >
-          <span v-if="e.kind === 'folder'" class="mark sites" aria-hidden="true">
-            <SiteMark v-for="url in sitesIn(e.id)" :key="url" :url="url" :size="16" />
+          <span v-if="e.kind === 'folder'" class="mark sites" :style="tileOf(e.id, 'bar')" aria-hidden="true">
+            <SiteMark v-for="url in sitesIn(e.id)" :key="url" :url="url" :size="16" on="bar" />
           </span>
-          <SiteMark v-else class="mark" :url="e.url" :size="56" />
+          <SiteMark v-else class="mark" :url="e.url" :size="56" on="bar" />
           <span class="name">{{ label(e) }}</span>
         </button>
         <div v-if="i === panelAfter" class="panel" role="group" :aria-label="`Folder ${trail[trail.length - 1].title}`" @keydown.esc="open = at = ''">
@@ -108,7 +117,7 @@ const label = (e) => e.title || (e.kind === 'folder' ? 'Folder' : host(e.url));
               :title="f.kind === 'folder' ? f.title : `${label(f)}\n${f.url}`"
               @click="f.kind === 'folder' ? (at = f.id) : openHere(f.url, overPage)"
             >
-              <span v-if="f.kind === 'folder'" class="mark sites" aria-hidden="true">
+              <span v-if="f.kind === 'folder'" class="mark sites" :style="tileOf(f.id, 'surface')" aria-hidden="true">
                 <SiteMark v-for="url in sitesIn(f.id)" :key="url" :url="url" :size="16" />
               </span>
               <SiteMark v-else class="mark" :url="f.url" :size="56" />

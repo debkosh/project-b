@@ -4,6 +4,11 @@ import { state } from '@/sdk/vue.js';
 import { bookmarksUnder, inFolder, topFolder } from '@/ui/bookmarks.js';
 import { host, openTab, sidebarTree, tabFor } from './bookmarks.js';
 import SiteMark from './SiteMark.vue';
+import { folderMark } from '@/ui/tint.js';
+import { useTints } from '@/ui/useTints.js';
+
+const tints = useTints();
+const folderColour = (id) => (tints.value, folderMark(id, 'bar'));
 
 // The bookmarks under the tabs, while bookmarksSidebar is on (docs/bookmark-folders.md,
 // "Where bookmarks show"): the top folder as a tree, each folder folded until it is pressed.
@@ -47,7 +52,7 @@ function fold(id) {
           @click="fold(r.e.id)"
         >
           <span class="chevron" :class="{ collapsed: !sidebarTree.folders.has(r.e.id) }" aria-hidden="true"></span>
-          <svg class="icon" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 4.5a1 1 0 0 1 1-1h3l1.5 1.5h4.5a1 1 0 0 1 1 1v5.5a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1z" /></svg>
+          <svg class="icon" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" :style="{ stroke: folderColour(r.e.id) }"><path d="M2.5 4.5a1 1 0 0 1 1-1h3l1.5 1.5h4.5a1 1 0 0 1 1 1v5.5a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1z" /></svg>
           <span class="title">{{ r.e.title }}</span>
           <span class="count">{{ bookmarksUnder(state.bookmarks, r.e.id) }}</span>
         </button>
@@ -61,7 +66,7 @@ function fold(id) {
           :title="`${r.e.title || host(r.e.url)}\n${r.e.url}`"
           @click="openTab(r.e.url)"
         >
-          <SiteMark :url="r.e.url" />
+          <SiteMark :url="r.e.url" on="bar" />
           <span class="title">{{ r.e.title || host(r.e.url) }}</span>
           <span v-if="tabFor(r.e.url)" class="open" role="img" aria-label="Open in a tab"></span>
         </button>
