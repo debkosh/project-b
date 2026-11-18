@@ -181,6 +181,10 @@ PAGES["/dialogs"] = ("<title>Dialogs</title><style>button{display:block;width:10
 
 
 # A page that fills the screen at a tap, as a video's full screen does, and says when it has.
+# A file input over the whole page, which says which file it got, or that the picker closed.
+PAGES["/upload"] = ("<title>Upload</title><input type=file id=f style='position:fixed;inset:0;width:100%;height:100%;opacity:0'><script>"
+                    "f.onchange = () => fetch('/said?file=' + encodeURIComponent([...f.files].map(x => x.name + ':' + x.size).join(',')));"
+                    "f.oncancel = () => fetch('/said?cancelled');</script>")
 PAGES["/full"] = ("<title>Full</title><button id=f style='position:fixed;inset:0;width:100%;height:100%;font-size:40px'>full</button><script>"
                   "f.onclick = () => document.documentElement.requestFullscreen().then(() => fetch('/full-on'));"
                   "document.onfullscreenchange = () => document.fullscreenElement || fetch('/full-off');</script>")
@@ -879,6 +883,91 @@ def screen_size():
     return int(w), int(h)
 
 
+def system_node(**want):
+    """The first node on the whole screen whose attributes are as wanted, for another app's
+    window, such as the system's file picker. label is content-desc."""
+    out = adb("exec-out", "uiautomator", "dump", "/dev/tty")
+    if "</hierarchy>" not in out:
+        return None
+    root = ET.fromstring(out[:out.rindex("</hierarchy>") + len("</hierarchy>")])
+    names = {"label": "content-desc"}
+    for node in root.iter("node"):
+        if all(v(node.get(names.get(k, k)) or "") if callable(v) else node.get(names.get(k, k)) == v for k, v in want.items()):
+            return node
+    return None
+
+
+def box_of(bounds):
+    """A bounds attribute as left, top, right, bottom."""
+    return tuple(map(int, re.findall(r"\d+", bounds)))
+
+
+def picker_shows():
+    return "documentsui" in in_front_now().lower()
+
+
+def pick(name, several=False):
+    """Picks the file name in the system's picker, from Downloads: a tap for one file, or a
+    long press and Select where the page takes several."""
+    if until(lambda: system_node(text=name), 5) is None:
+        tap(middle(until(lambda: system_node(label="Show roots"))))
+        tap(middle(until(lambda: system_node(text="Downloads"))))
+    node = until(lambda: system_node(text=name))
+    if several:
+        long_press(middle(node))
+        tap(middle(until(lambda: system_node(text=lambda t: t.lower() == "select"))))
+    else:
+        tap(middle(node))
+
+
+def file_inputs():
+    """A page's file input opens the phone's own picker, and the file picked reaches the page
+    by its own name; Settings' Sparks Import… picks a zip of sparks there and imports them.
+    Content said no to every file input on Android until the window asked Go and opened the
+    picker, as the Mac's does."""
+    sparks = os.path.join(ROOT, "core/sparks/testdata/site-sparks")
+    local = os.path.join(OUT, "SiteSparks.zip")
+    with zipfile.ZipFile(local, "w") as z:
+        for name in sorted(os.listdir(sparks)):
+            z.write(os.path.join(sparks, name), "SiteSparks/" + name)
+            z.writestr("__MACOSX/SiteSparks/._" + name, b"\x00\x05\x16\x07junk")
+    size = os.path.getsize(local)
+    adb("push", local, "/sdcard/Download/SiteSparks.zip")
+    adb("shell", "content", "call", "--uri", "content://media/", "--method", "scan_volume", "--arg", "external_primary")
+    launch()
+    go(BASE + "/upload")
+    asked("/upload")
+    page = screen_parts().get("page")
+    tap(middle(page))
+    check("a page's file input opens the phone's picker", until(picker_shows) is not None, in_front_now())
+    shot("40-file-picker")
+    key(4)
+    check("and closing it tells the page", asked("/said?cancelled"), str(served))
+    tap(middle(screen_parts().get("page")))
+    until(picker_shows)
+    pick("SiteSparks.zip")
+    check("a file picked reaches the page by its own name", asked("/said?file=" + urllib.parse.quote("SiteSparks.zip:%d" % size)), str(served))
+
+    menu("Settings")
+    see("settings", text="Theme")
+    tap(middle(see("settings", kind=FIELD)))
+    type_text("Sparks")
+    tap(middle(see("settings", label="Sparks", kind="android.widget.Button")))
+    # The menu beside New: Android reads no name for it (it is NAF), so it is the button
+    # after New on the heading line.
+    new = see("settings", text="New", kind="android.widget.Button")
+    tap(middle(see("settings", kind="android.widget.Button", bounds=lambda b: b is not None and
+                   box_of(b)[0] >= box(new)[2] and box_of(b)[1] == box(new)[1])))
+    tap(middle(see("settings", text="Import…")))
+    check("Settings' Sparks Import… opens the phone's picker", until(picker_shows) is not None, in_front_now())
+    pick("SiteSparks.zip", several=True)
+    check("and a zip of sparks picked there imports them", see("settings", text="Added 3 sparks") is not None)
+    shot("41-sparks-imported")
+    tap(middle(see("settings", text="Done")))
+    close_settings()
+    adb("shell", "rm", "-f", "/sdcard/Download/SiteSparks.zip")
+
+
 def page_full_screen():
     """A page in full screen has the whole screen: Android's bars hide and the shell draws
     nothing; the back key ends it, and the page and the shell are as they were."""
@@ -1209,7 +1298,7 @@ def main():
     adb("shell", "pm", "clear", PACKAGE)
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
-    every = (browsing, mobile_shell, back_key_chain, page_dialogs, downloads, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
+    every = (browsing, mobile_shell, back_key_chain, page_dialogs, downloads, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
              the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web)
     for part in [p for p in every if not sys.argv[1:] or p.__name__ in sys.argv[1:]]:
         # tools/results.py splits a run's memory, CPU and checks by these lines.
