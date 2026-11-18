@@ -11,7 +11,7 @@ import { drag, page, shell } from './regions.js';
 export { focusPage, isNewTab, saveData, saveProfileData, send, setFrame, setPref, tabLabel } from './shell.js';
 export { chooseContextItem, closeContextMenu, contextMenuPoint } from './contextmenu.js';
 export { clearDownloads, downloadAction } from './downloads.js';
-export { answerDialog, dialogFor } from './dialogs.js';
+export { answerDialog, answerPasskey, dialogFor } from './dialogs.js';
 export { closeFind, findNext, findText } from './find.js';
 export { openPin, pinTab, unpin } from './pins.js';
 export { requestMenu, runMenuItem } from './menu.js';
