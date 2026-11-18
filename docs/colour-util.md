@@ -29,14 +29,20 @@ Three layers, each doing one thing.
      same teal a site hashed to teal gets;
    - **near the frame**: within 40° of the frame's hue;
    - **random**, for what needs no memory.
-2. **The colour.** `colour({ hue, strength, recipe, on, labels })`:
+2. **The colour.** `colour({ hue, primary, background, strength, recipe, labels })`. Two
+   colours go in, so a two-tone design gets a set that sits with both: the **primary** (our
+   frame colour, or a design's accent) and the **background** the colours sit on. Light or
+   dark comes from the background.
+   - **harmony:** every hue leans toward the primary's, half the gap and at most 15°, as
+     Material's harmonize does, so the set looks of one family. A primary with no colour of
+     its own (None) leans nothing.
    - **strength** is the chroma. "Follow the frame": 80% of the frame's own, from 0.03 to
-     0.13, so Amber's colours are strong and Slate's quiet. None has no saturation of its own
+     0.13 (the primary's), so Amber's colours are strong and Slate's quiet. None has no saturation of its own
      and takes a fixed quiet 0.06. "Muted" is half; "full" is 0.13.
    - **recipe** is the lightness: *soft*, a tint a step off the background (pale in light,
      deep in dark); *solid*, a mid fill; *dot*, a mark with no text.
-   - **on** is what it sits on, from the tones Go already sends: the frame, light or dark,
-     and the background (the bar, the surface, a card).
+   - In our shells the primary is the frame colour and the background is the tones'
+     `--bar` or `--surface` that the mark sits on, both of which Go already sends.
    - It returns three colours: **fill**, the box; **label**, the best of `labels` on the
      fill (white or the ink unless the caller gives its own list); and **tone**, text in the
      fill's own hue that reads on it. Text moves in lightness only as far as it must to
@@ -64,6 +70,10 @@ Every preset, light and dark:
 
 ![Every frame colour](screenshots/colour-util/every-frame.png)
 
+Two-tone designs, a primary on a background of its own:
+
+![Two-tone pairs](screenshots/colour-util/two-tone.png)
+
 ## What others do
 
 - Material Color Utilities makes tonal palettes from one source colour: a palette keeps a
@@ -84,6 +94,8 @@ The owner, 2026-11-18:
 - **APCA** for the util's check, at Lc 60 for text and Lc 30 for a dot: "lets say yes to both
   for now".
 - **None** takes a fixed quiet strength rather than grey: same answer.
+- **Two inputs, a primary and a background**, "since there might be a two tone design where
+  this lib should be able to generate good sets of colors".
 
 ## Open
 
