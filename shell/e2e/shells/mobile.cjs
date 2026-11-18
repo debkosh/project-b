@@ -192,7 +192,9 @@ const H = 915;
   await menuButton.tap();
   await until(() => menu.isVisible());
   const starOn = menu.getByRole('button', { name: 'Edit bookmark' });
-  check('the menu\'s star is filled', await until(async () => (await starOn.getAttribute('aria-pressed')) === 'true'));
+  // Its name says it is on: aria-pressed would make it a ToggleButton on Android, which
+  // carries no name there (docs/fragility.md, "The phone's star and folders with no names").
+  check('the menu\'s star is filled, and named Edit bookmark', await until(async () => (await starOn.isVisible()) && (await starOn.getAttribute('aria-pressed')) === null));
   await shots('menu-bookmarked');
   await starOn.tap();
   const editing = ui.getByRole('dialog', { name: 'Edit bookmark' });

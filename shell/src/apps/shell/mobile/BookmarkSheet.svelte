@@ -36,13 +36,15 @@
     </label>
     {#if places.length > 1}
       <p class="label" id="bookmark-folder">Folder</p>
+      <!-- Each folder is its whole 48px row, a radio by its role, named by its title: a
+           hidden radio input reached Android's accessibility tree as a 1px radio with no name
+           and no state (docs/fragility.md, "The phone's star and folders with no names"). -->
       <div class="folders" role="radiogroup" aria-labelledby="bookmark-folder">
         {#each places as f (f.id)}
-          <label class="folder" class:on={parent === f.id} style:padding-left="{20 + f.depth * 20}px">
-            <input type="radio" name="bookmark-folder" value={f.id} bind:group={parent} />
+          <button type="button" class="folder" class:on={parent === f.id} role="radio" aria-checked={parent === f.id} style:padding-left="{20 + f.depth * 20}px" onclick={() => (parent = f.id)}>
             <span class="tint" style:color={f.id ? ($tints, folderMark(f.id)) : undefined}><Icon name="folder" /></span>
             <span>{f.title}</span>
-          </label>
+          </button>
         {/each}
       </div>
     {/if}
@@ -93,13 +95,17 @@
     border-bottom: 1px solid var(--line);
   }
   .folder {
-    position: relative;
     display: flex;
     align-items: center;
     gap: 12px;
+    width: 100%;
     min-height: 48px;
     padding-right: 20px;
+    border: 0;
+    background: none;
+    font: inherit;
     font-size: 15px;
+    text-align: left;
     color: var(--text);
   }
   .folder :global(svg) {
@@ -114,13 +120,6 @@
   .folder.on {
     background: var(--accent-soft);
     font-weight: 600;
-  }
-  .folder input {
-    position: absolute;
-    opacity: 0;
-    width: 1px;
-    height: 1px;
-    margin: 0;
   }
   .buttons {
     display: flex;

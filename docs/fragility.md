@@ -22,6 +22,32 @@ The seams:
 - **A page's own navigations**, which Go rules on, against Chromium's way of starting,
   committing and aborting a load. Two so far: Stay on this site, the back key in full
   screen.
+- **Android's accessibility tree.** What a web shell says in ARIA has to reach the tree
+  TalkBack and the driver read, with its name. One so far: the phone's star
+  and folders with no names.
+
+## The phone's star and folders with no names, 2026-11-19
+
+- **Seen:** the new phone check for the star, drive_android.py bookmark_star, couldn't find
+  the Mobile shell's Bookmark in its menu on either emulator, though it was on screen. Past
+  it, the bookmark sheet's folders showed as radio buttons one pixel across, with no name
+  and never checked.
+- **Cause:** the star was a button marked pressed or not, aria-pressed, as Standard's is.
+  Chrome on Android gives such a button to Android as a toggle button, and in the tree the
+  driver reads that toggle button carried no name at all: not Bookmark, not Edit bookmark.
+  The extensions sheet's Pin was built the same way. Each folder was a real radio input,
+  hidden at one pixel inside its row's label: the tree got the hidden input, a target one
+  pixel across, without the label's words. TalkBack itself wasn't tried; it asks Chrome for
+  a fuller tree, which may have named them.
+- **Seam:** Android's accessibility tree.
+- **Fix:** on dd-native-star: the Mobile shell's star and Pin drop aria-pressed. Their
+  names already say which they are, Bookmark or Edit bookmark, Pin or Unpin, and Pin draws
+  its pressed look from a class. Each folder is its whole row, a button with the radio
+  role, named by its title and checked while it is the folder.
+- **Guard:** drive_android.py bookmark_star finds the star and the folders by their names
+  in Android's tree, and every control of the sheet is 48dp or more (the checked folder too,
+  in the native shell; the web shell's checked state isn't in the tree the driver reads); `shell/e2e/shells/mobile.cjs` checks the star on is named Edit
+  bookmark, with no aria-pressed.
 
 ## The back key in full screen, 2026-11-18
 

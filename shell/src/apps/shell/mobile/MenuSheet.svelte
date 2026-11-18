@@ -110,7 +110,7 @@
         <button aria-label="Back" onclick={() => act({ t: 'back' })}><Icon name="back" /><span aria-hidden="true">Back</span></button>
       {/if}
       <button aria-label="Forward" disabled={!tab.canGoForward} onclick={() => act({ t: 'forward' })}><Icon name="forward" /><span aria-hidden="true">Forward</span></button>
-      <button class:on={starred} aria-label={starred ? 'Edit bookmark' : 'Bookmark'} aria-pressed={starred} disabled={!web} onclick={() => bookmark(tab.url, tab.title)}><Icon name="star" filled={starred} /><span aria-hidden="true">{starred ? 'Bookmarked' : 'Bookmark'}</span></button>
+      <button class:on={starred} aria-label={starred ? 'Edit bookmark' : 'Bookmark'} disabled={!web} onclick={() => bookmark(tab.url, tab.title)}><Icon name="star" filled={starred} /><span aria-hidden="true">{starred ? 'Bookmarked' : 'Bookmark'}</span></button>
       {#if tab.loading}
         <button aria-label="Stop" onclick={() => run('nav.stop')}><Icon name="stop" /><span aria-hidden="true">Stop</span></button>
       {:else}
