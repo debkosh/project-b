@@ -18,6 +18,12 @@ echo "=== $(date '+%F %T') build the shell"
 
 echo "=== $(date '+%F %T') start the VM"
 colima start -p pb-android --activate=false
+# Colima can keep a stopped VM's state as running: start says "already running" and there is no
+# docker socket. A VM with no socket is no use to anyone, so stop it and start it again.
+if [ ! -S "$HOME/.colima/pb-android/docker.sock" ]; then
+    colima stop -p pb-android
+    colima start -p pb-android --activate=false
+fi
 # Stopped after, unless another session's build holds the VM (tools/android-content-build.sh's
 # lock), which stopping would kill.
 trap 'docker exec pb flock -n /work/.android-build.lock true && colima stop -p pb-android' EXIT
