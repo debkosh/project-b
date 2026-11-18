@@ -172,6 +172,10 @@ class Server(http.server.BaseHTTPRequestHandler):
 
 
 # A page that asks each of its dialogs from a tap, and says what it got back.
+# A checked switch and a checked checkbox, for what a screen reader hears of them.
+PAGES["/switches"] = ("<title>Switches</title><h1>Switches</h1>"
+                      "<button role=switch aria-checked=true aria-label='Ad blocker'>x</button> "
+                      "<input type=checkbox aria-label='Box' checked>")
 PAGES["/dialogs"] = ("<title>Dialogs</title><style>button{display:block;width:100%;height:30vh;font-size:40px}</style>"
                      "<button id=c>confirm</button><button id=p>prompt</button><button id=al>alert</button><script>"
                      "const say = (what, v) => fetch('/said?' + what + '=' + encodeURIComponent(String(v)));"
@@ -1113,6 +1117,48 @@ def page_full_screen():
           "%s, was %s" % (box(see("page", text="full")), before))
 
 
+TALKBACK = "com.google.android.marvin.talkback/com.google.android.marvin.talkback.TalkBackService"
+
+
+def talkback(on):
+    """TalkBack on or off. On only to read the screen: with it on, a tap is TalkBack's to
+    explore, not the app's. Its notification prompt is answered first, for good, so it never
+    covers what is read."""
+    if on:
+        adb("shell", "pm", "revoke", "com.google.android.marvin.talkback", "android.permission.POST_NOTIFICATIONS")
+        adb("shell", "pm", "set-permission-flags", "com.google.android.marvin.talkback",
+            "android.permission.POST_NOTIFICATIONS", "user-fixed")
+        adb("shell", "settings", "put", "secure", "enabled_accessibility_services", TALKBACK)
+        adb("shell", "settings", "put", "secure", "accessibility_enabled", "1")
+    else:
+        adb("shell", "settings", "delete", "secure", "enabled_accessibility_services")
+        adb("shell", "settings", "put", "secure", "accessibility_enabled", "0")
+
+
+def talkback_states():
+    """With TalkBack on, a page's switch and checkbox read named, checkable and as they are:
+    Chromium gives a page the screen reader's tree only once it hears TalkBack runs, and the
+    app once kept the answer it got first, so every switch read off (docs/fragility.md)."""
+    if "talkback" not in adb("shell", "pm", "list", "packages", "com.google.android.marvin.talkback"):
+        check("TalkBack is on this emulator, to read the page as it hears it", False, "no TalkBack")
+        return
+    launch()
+    go(BASE + "/switches")
+    asked("/switches")
+    see("page", text="Switches")
+    try:
+        talkback(True)
+        time.sleep(8)
+        page = until(lambda: find("page", label="Ad blocker"), 15)
+        box = find("page", label="Box")
+        said = lambda n: None if n is None else (n.get("class", "").rsplit(".", 1)[-1], n.get("checkable"), n.get("checked"))
+        check("TalkBack hears the page's switch as named, checkable and on",
+              page is not None and page.get("checkable") == "true" and page.get("checked") == "true", said(page))
+        check("and its checkbox the same", box is not None and box.get("checkable") == "true" and box.get("checked") == "true", said(box))
+    finally:
+        talkback(False)
+
+
 def find_in_page():
     """Find in page from the menu: the bar takes the keyboard, a word typed is found and
     counted, and the back key closes the bar."""
@@ -1434,7 +1480,7 @@ def main():
     adb("shell", "pm", "clear", PACKAGE)
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
-    every = (browsing, mobile_shell, bookmark_star, back_key_chain, page_dialogs, downloads, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
+    every = (browsing, mobile_shell, talkback_states, bookmark_star, back_key_chain, page_dialogs, downloads, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
              the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web)
     for part in [p for p in every if not sys.argv[1:] or p.__name__ in sys.argv[1:]]:
         # tools/results.py splits a run's memory, CPU and checks by these lines.
@@ -1451,6 +1497,8 @@ def main():
                 f.write(adb("logcat", "-b", "all", "-d"))
             check("%s ran to its end" % part.__name__.replace("_", " "), False, "%s; the app is %s" % (e, "running" if running else "gone"))
     adb("shell", "am", "force-stop", PACKAGE)
+    # Its own port forward goes with it, as a run leaves nothing behind on the emulator.
+    adb("reverse", "--remove", "tcp:%d" % PORT)
 
     failed = [r for r in results if not r[1]]
     print("\n%d checks, %d failed" % (len(results), len(failed)))
