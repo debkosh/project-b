@@ -268,7 +268,12 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 			id = m.tabs.ActiveIn(w)
 		}
 		if c.Then == "recent" {
-			// The tab used before it takes its place, as a phone's back key wants.
+			// The tab used before it takes its place, as a phone's back key wants, once
+			// the back key has left a page's full screen: a tab with no history, as one
+			// that started empty is, closes with this rather than going back.
+			if m.onBack != nil && m.onBack(w) {
+				return
+			}
 			m.Interaction(w, "tab.close", func() { m.tabs.CloseToRecent(id) })
 			return
 		}

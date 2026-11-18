@@ -55,6 +55,21 @@ func TestAPageFillsTheScreenAndEscapeEndsIt(t *testing.T) {
 	full(1)
 	r.shell(`{"t":"back"}`)
 	full(0)
+	// A tab with no history, as one that started empty is, has the back key close it: it
+	// leaves full screen first, and the tab stays.
+	r.e.Fire(1, 0, "pageFullscreen", "")
+	full(1)
+	count := func() int {
+		n := make(chan int)
+		r.e.Post(func() { n <- len(r.a.Tabs.AllIn(1)) })
+		return <-n
+	}
+	tabs := count()
+	r.shell(`{"t":"closeTab","then":"recent"}`)
+	full(0)
+	if n := count(); n != tabs {
+		t.Fatalf("the back key closed the tab in full screen: %d tabs, was %d", n, tabs)
+	}
 
 	// Already in full screen, the window stays so after.
 	r.e.Fire(1, 0, "fullscreen", "")
