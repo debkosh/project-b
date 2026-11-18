@@ -22,6 +22,12 @@ const go = (address) => {
   jumps.value++;
 };
 provide('settingsGo', go);
+// Go asking for a section, as a link to Sync does, goes there as go does, even to the one
+// showing, scrolled away from.
+watch(
+  () => state.sectionAsked,
+  () => go(state.section),
+);
 
 // The layout is Look's Settings row, Go's settingsLayout pref: Go sends the prefs again as
 // it changes, and the page takes the other layout at once, at the same address.
