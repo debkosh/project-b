@@ -184,8 +184,8 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   };
   const shellFrame = () => shell.frame({ url: /\/shell\/standard\/\?window=1$/ });
   await shell.goto(base + '/');
-  // Standard starts with no tab: the checks want a page, so one is opened.
-  await fetch(`${base}/shell/send`, { method: 'POST', body: JSON.stringify({ t: 'newTab', text: 'https://example.com/' }) });
+  // The window starts on a new tab: the checks want a page, so it loads one.
+  await fetch(`${base}/shell/send`, { method: 'POST', body: JSON.stringify({ t: 'navigate', text: 'https://example.com/' }) });
   await shell.frameLocator('iframe.mock-page').getByRole('button', { name: 'Navigate' }).waitFor();
   await settle(shell);
   const root = (name) => shellFrame().evaluate((n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim(), name);

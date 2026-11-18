@@ -434,22 +434,15 @@ const names = ['Example Domain', 'Mail · Work', 'Project B on GitHub', 'Weather
   await page.emulateMedia({ colorScheme: 'light' });
   check('the bars are dark in dark and light in light', dark && await until(async () => (await tone()) > 192));
 
-  // With no tabs the shell draws the page's area itself, as its own: No tabs, and New Tab
-  // with its key, which opens a tab there.
-  for (let n = (await regions()).tabs.length; n > 0; n--) {
-    await fire('menu', 'tab.close');
-    await tabCount(n - 1);
-  }
-  const empty = ui.locator('.empty');
-  check('with no tabs the page area says No tabs, with New Tab and its key',
-    (await empty.getByText('No tabs', { exact: true }).isVisible()) && (await empty.locator('.key').textContent()) === '⌘T');
-  check('and is the shell\'s: a press there reaches the shell', await becomes('shell', () => hitOf(empty)));
+  // A new tab loads nothing, so no page shows there: the shell draws a backdrop in the
+  // page's colour, as its own.
+  await fire('menu', 'tab.new');
+  const blank = ui.locator('.blank');
+  check('New Tab opens a new tab, and the page area is a backdrop of the shell\'s', await until(() => blank.isVisible()) && await becomes('shell', () => hitOf(blank)));
   check('the address field has the keyboard', await until(() => field.evaluate((el) => el === document.activeElement)));
   await page.mouse.move(1099, 699);
   await settle(page);
   await page.screenshot({ path: path.join(lib.out, `${id}-empty-light.png`) });
-  await empty.getByRole('button', { name: 'New Tab' }).click();
-  check('New Tab there opens a tab, and the empty state goes', await tabCount(1) && (await empty.count()) === 0);
   check('no errors logged', w.errors.length === 0, w.errors.join(' | '));
   await page.close();
 

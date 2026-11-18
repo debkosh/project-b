@@ -354,8 +354,8 @@ const stopServer = lib.stop;
   await page.setViewportSize({ width: 1100, height: 700 });
   check('and back', await until(() => sized(1100, 700)), JSON.stringify(await regions()));
 
-  // Tabs. Standard's New Tab opens its command box; a tab is made by Go's newTab, as any
-  // shell's row choice makes one.
+  // Tabs. Standard's New Tab goes to a new tab; a tab is also made by Go's newTab, as a
+  // shell asks for one.
   const makeTab = () => fetch(`${base}/shell/send`, { method: 'POST', body: JSON.stringify({ t: 'newTab' }) });
   const rows = ui.getByRole('tab');
   const activeRow = ui.locator('.row.tab.active');
@@ -363,24 +363,14 @@ const stopServer = lib.stop;
   check('one tab to start with, active', (await rows.count()) === 1 && (await activeRow.count()) === 1);
   await visit('https://example.org/', 'https://example.org/');
   const commandBox = ui.locator('.command-box');
+  // Standard's New Tab goes to the window's new tab, one with nothing loaded, opening one
+  // when there is none, and its command box shows on it (docs/windows.md).
   await ui.getByRole('button', { name: 'New Tab', exact: true }).click();
-  check('Standard\'s New Tab opens its command box over the page, focused, and makes no tab', await until(async () => (await commandBox.count()) === 1) &&
-    (await newTabBox.evaluate((el) => el === document.activeElement)) && (await rows.count()) === 1, JSON.stringify(await rowTitles()));
-  // The page shows through the box's scrim, which is the shell's, so a press there is too.
-  check('the page stays shown under the box\'s translucent scrim', await until(async () => (await regions()).visible.length === 1) &&
-    (await commandBox.evaluate((el) => getComputedStyle(el).backgroundColor)).startsWith('color(srgb') || /rgba\(.*, 0\.\d+\)/.test(await commandBox.evaluate((el) => getComputedStyle(el).backgroundColor)), await commandBox.evaluate((el) => getComputedStyle(el).backgroundColor));
-  check('and the box and the scrim are the shell\'s', await until(async () => (await regions({ x: 600, y: 400 })).hit === 'shell' && (await regions({ x: 600, y: 650 })).hit === 'shell'), JSON.stringify([(await regions({ x: 600, y: 400 })).hit, (await regions({ x: 600, y: 650 })).hit, (await regions()).regions.filter((g) => g.w > 300)]));
+  check('Standard\'s New Tab opens a new tab with its command box on it, focused', await until(async () => (await rows.count()) === 2 && (await commandBox.count()) === 1) &&
+    (await newTabBox.evaluate((el) => el === document.activeElement)), JSON.stringify(await rowTitles()));
+  await ui.getByRole('button', { name: 'New Tab', exact: true }).click();
   await settle(page);
-  for (const scheme of ['light', 'dark']) {
-    await page.emulateMedia({ colorScheme: scheme });
-    await settle(page);
-    await page.screenshot({ path: path.join(out, `box-over-page-${scheme}.png`) });
-  }
-  await page.emulateMedia({ colorScheme: 'light' });
-  await page.keyboard.press('Escape');
-  check('Escape closes it and the page is back', await until(async () => (await commandBox.count()) === 0) && (await regions({ x: 600, y: 400 })).hit === 'page');
-  await makeTab();
-  await shellFrame().waitForFunction(() => document.querySelectorAll('[role=tab]').length === 2);
+  check('New Tab again stays on that new tab, and makes no other', (await rows.count()) === 2, JSON.stringify(await rowTitles()));
   check('a new tab is made and made active', (await activeRow.innerText()).startsWith('New Tab'), await activeRow.innerText());
   check('a new tab shows the command box, focused, over an empty address bar', (await bar.inputValue()) === '' && (await newTabBox.evaluate((el) => el === document.activeElement)));
   // A new tab with nothing in it shows Standard's command box in the page area, and no
@@ -460,10 +450,7 @@ const stopServer = lib.stop;
   await shellFrame().waitForFunction(() => document.querySelectorAll('[role=tab]').length === 2);
   check('Cmd+W closes the active tab and its right neighbour takes over', (await activeRow.innerText()).includes('opened.test'), await activeRow.innerText());
   await shortcut('newTab');
-  check('Cmd+T opens the command box, and no tab', await until(async () => (await ui.locator('.command-box').count()) === 1) && (await rows.count()) === 2);
-  await page.keyboard.press('Escape');
-  await makeTab();
-  await shellFrame().waitForFunction(() => document.querySelectorAll('[role=tab]').length === 3);
+  check('Cmd+T opens a new tab with the command box on it', await until(async () => (await ui.locator('.command-box').count()) === 1 && (await rows.count()) === 3));
   check('a new tab has an empty address field', (await bar.inputValue()) === '');
 
   // Close with the button on the row.
@@ -551,17 +538,11 @@ const stopServer = lib.stop;
   await ui.getByRole('button', { name: 'Tabs on top' }).click();
   await strip.waitFor();
 
-  // Closing the last tab leaves the window open, with no tabs and no page.
-  await shortcut('closeTab');
-  await shortcut('closeTab');
-  await shellFrame().waitForFunction(() => document.querySelectorAll('[role=tab]').length === 0);
-  check('closing the last tab leaves the window open, with no tabs and no page shown',
-    await until(async () => { const r = await regions(); return r.tabs.length === 0 && r.active === 0 && r.visible.length === 0; }) && !(await regions()).closed,
-    JSON.stringify(await regions().then((r) => ({ tabs: r.tabs, active: r.active, visible: r.visible, closed: r.closed }))));
-
-  // Standard draws the page area itself, as its own: the command box, with the keyboard.
-  // Light and dark, from the system's setting, which the shell follows by default, with the
-  // tabs on top and on the side.
+  // A new tab shows Standard's command box where the page goes, as its own, with the
+  // keyboard. Light and dark, from the system's setting, which the shell follows by
+  // default, with the tabs on top and on the side.
+  await shortcut('newTab');
+  const tabsThen = await until(async () => (await rows.count()) === 3) && 3;
   const empty = ui.locator('.command-box');
   const emptyShots = async (name) => {
     for (const scheme of ['light', 'dark']) {
@@ -571,7 +552,7 @@ const stopServer = lib.stop;
     }
     await page.emulateMedia({ colorScheme: 'light' });
   };
-  // area is where the page was, in each layout; name is the screenshots'.
+  // area is where the page goes, in each layout; name is the screenshots'.
   const emptyState = async (layout, name, area) => {
     await empty.waitFor();
     check(`${layout}: the page area shows the command box`, await newTabBox.isVisible());
@@ -579,12 +560,12 @@ const stopServer = lib.stop;
     check(`${layout}: it fills the page area, as the shell's: a press there reaches the shell`,
       b.x === area.x && b.y === area.y && b.width === area.w && b.height === area.h && await until(async () => (await regions({ x: b.x + b.width / 2, y: b.y + 40 })).hit === 'shell'),
       JSON.stringify({ empty: b, area }));
-    check(`${layout}: there are no tabs`, (await rows.count()) === 0);
+    check(`${layout}: no page shows`, (await regions()).visible.length === 0, JSON.stringify((await regions()).visible));
     check(`${layout}: the address is empty, and back, forward and reload are off`,
       (await bar.inputValue()) === '' && (await back.isDisabled()) && (await forward.isDisabled()) && (await reload.isDisabled()));
     await emptyShots(name);
   };
-  check('the command box has the keyboard once the window has no tabs', await until(() => newTabBox.evaluate((el) => el === document.activeElement)));
+  check('the command box has the keyboard on the new tab', !!tabsThen && await until(() => newTabBox.evaluate((el) => el === document.activeElement)));
   await emptyState('tabs on top', 'top', { x: 4, y: 92, w: 1100 - 8, h: 700 - 92 - 4 });
   await ui.getByRole('button', { name: 'Tabs on the side' }).click();
   await ui.locator('nav').waitFor();
@@ -593,33 +574,28 @@ const stopServer = lib.stop;
   await ui.getByRole('button', { name: 'Tabs on top' }).click();
   await strip.waitFor();
 
-  // An address and Enter in the command box open a tab there, at it.
+  // An address and Enter in the command box load it in the new tab.
   await newTabBox.fill('empty.test/box');
   await newTabBox.press('Enter');
   await loaded('https://empty.test/box');
-  check('an address and Enter in the command box open a tab, and the box goes',
-    (await rows.count()) === 1 && (await regions()).visible.length === 1 && (await empty.count()) === 0);
-  await lib.fire('key', 'closeTab');
-  await empty.waitFor();
-  // The address opens a tab there, at the address, and gives its page the keyboard.
-  await bar.fill('empty.test/typed');
-  await bar.press('Enter');
-  await loaded('https://empty.test/typed');
-  check('an address and Enter in the window with no tabs open a tab there, at it', (await rows.count()) === 1 && (await empty.count()) === 0 && (await rows.first().innerText()).includes('empty.test'), await rows.first().innerText());
-  check('and its page has the keyboard', await until(async () => (await regions()).focused === (await regions()).active && !(await bar.evaluate((el) => el === document.activeElement))));
-  await lib.fire('key', 'closeTab');
-  await empty.waitFor();
+  check('an address and Enter in the command box load it in the new tab, and the box goes',
+    (await rows.count()) === 3 && (await regions()).visible.length === 1 && (await empty.count()) === 0);
 
-  // Close Tab in it closes the window.
-  await lib.fire('key', 'closeTab');
-  check('Cmd+W in the window with no tabs closes it', await until(async () => (await regions()).closed === true));
+  // A window always has a tab: Cmd+W on its last tab closes it.
+  for (let n = 3; n > 1; n--) {
+    await shortcut('closeTab');
+    await shellFrame().waitForFunction((n) => document.querySelectorAll('[role=tab]').length === n - 1, n);
+  }
+  check('closing tabs keeps the window while it has one', !(await regions()).closed);
+  await shortcut('closeTab');
+  check('Cmd+W on the last tab closes the window', await until(async () => (await regions()).closed === true));
 
   // History survives a restart.
   await stopServer();
   await startServer();
   await page.goto(base + '/');
   errors.length = 0; // Stopping the server breaks the event stream, as it should.
-  // Standard starts on the command box, with no tab.
+  // Standard starts on a new tab, with its command box.
   await newTabBox.waitFor();
   await bar.click();
   await page.keyboard.type('exam');

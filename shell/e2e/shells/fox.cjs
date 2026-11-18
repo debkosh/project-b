@@ -248,24 +248,16 @@ const { check, fire, out, regions, settle, until } = lib;
   await rows.filter({ hasText: 'Settings' }).click();
   check('Settings opens the settings tab', await until(async () => (await go()).settings !== 0));
 
-  // With no tabs the shell draws the page area itself, as its own: No tabs, and New Tab
-  // with its key, which opens a tab there. Close Tab closes the settings tab, the active
-  // one, first.
+  // A new tab loads nothing, so no page shows there: the shell draws a backdrop in the
+  // page's colour, as its own. Close Tab closes the settings tab, the active one, first.
   await fire('menu', 'tab.close');
   await until(async () => (await go()).settings === 0);
-  for (let n = (await go()).tabs.length; n > 0; n--) {
-    await fire('menu', 'tab.close');
-    await tabCount(n - 1);
-  }
-  const empty = ui.locator('.empty');
-  check('with no tabs the page area says No tabs, with New Tab and its key',
-    (await empty.getByText('No tabs', { exact: true }).isVisible()) && (await empty.locator('.key').textContent()) === '⌘T');
-  check('and is the shell\'s: a press there reaches the shell', await pressReachesShell(empty));
+  await fire('menu', 'tab.new');
+  const blank = ui.locator('.new-tab-backdrop');
+  check('New Tab opens a new tab, and the page area is a backdrop of the shell\'s', await until(() => blank.isVisible()) && await pressReachesShell(blank));
   check('the address field has the keyboard', await until(() => field.evaluate((el) => el === document.activeElement)));
   await settle(page);
   await page.screenshot({ path: path.join(out, 'fox-empty-light.png') });
-  await empty.getByRole('button', { name: 'New Tab' }).click();
-  check('New Tab there opens a tab, and the empty state goes', await tabCount(1) && (await empty.count()) === 0);
 
   check('no errors logged', w.errors.length === 0, w.errors.join(' | '));
   await browser.close();

@@ -237,7 +237,7 @@ that wants the default look follows it.
   UX comparison). The slot grows to fit them, 10px either side, and keeps the field's
   height. It stays one button, named "Not secure · Site settings": the site's view says why,
   on its first row, above the site's settings.
-- **With no site** (a new tab, a window with no tabs) and **while the field is typed in**,
+- **With no site** (a new tab) and **while the field is typed in**,
   it is a search icon in `--muted`, and no button: it says what Enter will do.
 - **On one of our own pages** it is that page's own icon, and the white area shows the
   page's title with a close control, with nothing to type.

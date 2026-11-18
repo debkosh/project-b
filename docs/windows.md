@@ -10,9 +10,9 @@ behind it is `project-b-research/windows-survey.md`.
   one's tabs, its settings tab among them while it has one, and active tab, and the window in front, which the engine
   reports (`WindowFocused`). Commands and the menu follow the window in front. File, New
   Window (Cmd+N) opens one. A window's close button closes it (`WindowClosed`), and so does
-  Close Tab in a window with no tabs: closing its last tab leaves it open, until a window
-  always has a tab ([below](#every-window-has-a-tab-decided-2026-11-18)). Closing the last
-  one quits, and Quit (`AppQuit`) ends every window at once. A second start's URLs open in the window used last. The Window menu
+  closing its last tab: a window always has a tab
+  ([below](#every-window-has-a-tab-decided-2026-11-18)). Closing the last window quits, and
+  Quit (`AppQuit`) ends every window at once. A second start's URLs open in the window used last. The Window menu
   lists the windows by title and Cmd+` cycles them: AppKit does both by itself, and the
   window it brings forward reports itself to Go as any key window does.
 - The window's layout lists the tabs it shows, each with a rectangle; the shell lists one,
@@ -142,15 +142,17 @@ of New Tab, "this should be shells decision... for our standard lets go with non
 tab and cmd t new tab action shows box on top". Windows went without tabs to save the
 renderer every new tab started, 16 to 18 MiB each, measured on 0.2.85
 (`project-b-research/newtab-model/measurement.md`). A new tab that loads nothing starts none,
-so an empty window has no job left. Until this is built the app behaves as the other docs
-say.
+so an empty window has no job left.
 
 - **A window always has a tab, and an active one.** The app's start and New Window open one
   new tab, whatever the shell; the addresses on the command line, or a restored session,
   take its place, as before.
 - **A window closes when its last tab goes,** however it goes: Close Tab, a tab's close, a
-  move to another window, a workspace delete, an extension. So Cmd+W on a window's only tab
-  closes the window, and closing a profile's last window quits it, as before.
+  move to another window, an extension. So Cmd+W on a window's only tab closes the window,
+  and closing a profile's last window quits it, as before (`Tabs.OnEmpty` in `App.Start`).
+- **Deleting a workspace** closes its tabs, and a window that held only them gets a new tab
+  in the first workspace before they close: the person closed no tab, and the window, the
+  app's last perhaps, stays ([workspaces.md](workspaces.md)).
 - **On a phone,** closing the last tab closes the app, and the next start opens on a new tab.
   The back key works as now down to the last tab: on a tab with no history it closes the
   tab, so on the last one it closes the app.
@@ -176,12 +178,11 @@ say.
   ([above](#our-own-pages-are-tabs-decided-2026-11-14)).
 - **Extensions** see Chrome's model: a window always has a tab, and its last tab closing
   closes it, with `tabs.onRemoved` saying `isWindowClosing`.
-- **What goes once it's built:** Go's rule for a window with no active tab, and the
+- **What went with it** (2026-11-18): Go's rule for a window with no active tab and the
   exceptions in `Tabs.OnEmpty` (`App.madeForTab`); the actions switched off with no tab;
   `navigate` opening a tab in a window with none; the empty start of a shell that takes New
-  Tab; the blank page a new tab loads, with its workspace workaround in `Engine::LoadURL`;
-  each shell's No tabs (shells rule 18); the back key's stop at No tabs; and the caveat in
-  [extensions.md](extensions.md).
+  Tab; the blank page a new tab loaded; each shell's No tabs; the back key's stop at No
+  tabs; and the caveat in [extensions.md](extensions.md).
 
 ## Pinned tabs
 
