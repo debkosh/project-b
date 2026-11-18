@@ -21,3 +21,4 @@ You are the team's test person. Keep "testing" in your session name.
 - Force-stop the app on every emulator that comes back: open tabs ran one at 1200% CPU.
 - No CPU stress on emulators.
 - Never `pkill` test tools by name; other sessions run the same scripts.
+- A VM run and a desktop run must not overlap: the VM's frame checks need its window uncovered, and a desktop driver's windows cover it, which stops the VM run early.
