@@ -26,6 +26,7 @@ session (tools/check_full_screen.py, tools/check_clipboard.py). This needs no di
     python3 tools/drive_first_app.py shells     # only every shell: starting on it, and switching to it live
     python3 tools/drive_first_app.py webapis    # only the web APIs in core/webfeatures/registry.json
     python3 tools/drive_first_app.py sparks     # only sparks: in the page itself, styled and writing HTML on strict sites
+    python3 tools/drive_first_app.py passkeys   # only a page's passkey request, with a virtual security key
     python3 tools/drive_first_app.py internal   # only our own pages as tabs: settings, and the navigation rule
     python3 tools/drive_first_app.py links      # only Links to other sites: the ten ways a page leaves
     python3 tools/drive_first_app.py applink    # only a page's project-b://sync link: pressed, by script, in a frame, by a redirect
@@ -195,6 +196,25 @@ class Pages(http.server.BaseHTTPRequestHandler):
             "/store": b'<!doctype html><title>Store</title><a id=link href=/store>Here</a> <a id=blank target=_blank href=/store>Blank</a> <a id=noopener target=_blank rel=noopener href=/store>No opener</a>',
             # A copy button, as sites make them: a click writes to the clipboard.
             "/copy": b'<!doctype html><title>Copy</title><button id=copy style="width:300px;height:100px" onclick="navigator.clipboard.writeText(\'copied\').then(()=>document.title=\'copied\',e=>document.title=\'refused \'+e.name)">Copy</button>',
+            # Passkeys (docs/passkeys.md): make(name, exclude) saves one for a user, on a key
+            # that remembers it, and use() signs in with whichever the person chooses; the
+            # title says how each ended, with the passkey's id or the account's name.
+            "/passkey": b"""<!doctype html><title>Passkey</title><script>
+const b64 = (b) => btoa(String.fromCharCode(...new Uint8Array(b)));
+const bytes = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+const say = (p) => p.then((s) => document.title = s, (e) => document.title = 'refused ' + e.name);
+function make(name, exclude) {
+  document.title = 'asking';
+  say(navigator.credentials.create({publicKey: {challenge: new Uint8Array(16), rp: {name: 'Passkeys'},
+    user: {id: new TextEncoder().encode(name), name: name + '@example.com', displayName: name},
+    pubKeyCredParams: [{type: 'public-key', alg: -7}], authenticatorSelection: {residentKey: 'required'},
+    excludeCredentials: exclude ? [{type: 'public-key', id: bytes(exclude)}] : []}}).then((c) => 'made ' + b64(c.rawId)));
+}
+function use() {
+  document.title = 'asking';
+  say(navigator.credentials.get({publicKey: {challenge: new Uint8Array(16)}}).then((c) => 'used ' + new TextDecoder().decode(c.response.userHandle)));
+}
+</script>""",
             # A service worker that sets the app's badge as it starts, as push handlers do.
             "/badge-worker": b'<!doctype html><title>Worker</title><script>navigator.serviceWorker.register("/badge-sw.js")</script>',
             "/badge-sw.js": b'self.oninstall = () => navigator.setAppBadge(1)',
@@ -2571,6 +2591,134 @@ def glide_checks():
     app.close()
 
 
+def passkey_checks():
+    """A page's passkey request on the real engine (docs/passkeys.md), with the DevTools
+    protocol's virtual security key in place of a real one: making a passkey waits at the
+    key step until the key is touched; a key that already has one says so, and the page
+    hears why once the card is closed; two accounts on the key bring the account step, and
+    the one chosen signs in; Cancel refuses the page; and with the virtual key's UI off, as
+    automated tests run it, no card shows. A virtual key has no PIN, so the PIN step is
+    checked by hand with a real key, as phone as key is with a real phone."""
+    profile = tempfile.mkdtemp(prefix="pb-profile-")
+    app = App(profile, ["--remote-debugging-port=0"])
+    # localhost, as a passkey's site can't be an IP address.
+    url = OTHER + "/passkey"
+    visit(app, url)
+    s = attach(profile, url)
+    ids = iter(range(1, 1000))
+
+    def call(method, params=None):
+        r = cdp(s, next(ids), method, params)
+        if "error" in r:
+            raise RuntimeError(f"{method}: {r['error']}")
+        return r["result"]
+
+    def key(ui, present):
+        """A new virtual key in place of any other: CTAP2 over USB, remembering its
+        accounts, its owner verified, touched at once or only when told."""
+        call("WebAuthn.disable")
+        call("WebAuthn.enable", {"enableUI": ui})
+        return call("WebAuthn.addVirtualAuthenticator", {"options": {
+            "protocol": "ctap2", "transport": "usb", "hasResidentKey": True, "hasUserVerification": True,
+            "isUserVerified": True, "automaticPresenceSimulation": present}})["authenticatorId"]
+
+    CARD = "document.querySelector('[role=alertdialog]')"
+    TITLE = f"{CARD}?.getAttribute('aria-label')"
+    WORDS = f"{CARD}?.querySelector('p')?.textContent.trim()"
+    BUTTONS = f"[...{CARD}.querySelectorAll('.buttons button')].map(b=>b.textContent.trim())"
+
+    def card(title, timeout=15):
+        try:
+            app.wait(f"{TITLE}==={json.dumps(title)}", timeout)
+            return True
+        except TimeoutError:
+            return False
+
+    def press(find, what):
+        x, y = app.js(f"(()=>{{const r=({find}).getBoundingClientRect();return [r.x+r.width/2,r.y+r.height/2]}})()")
+        click_at(app, x, y, what)
+
+    def button(name):
+        press(f"[...{CARD}.querySelectorAll('button')].find(b=>b.textContent.trim()==={json.dumps(name)})", name)
+
+    def title(test, timeout=15):
+        """The page's title once test, a JavaScript test of t, holds; or what it was."""
+        try:
+            return app.wait(f"(t=>({test})&&t)(document.title)", timeout, page=True)
+        except TimeoutError:
+            return app.js("document.title", page=True)
+
+    # Making a passkey: the key step, which waits for the touch.
+    usb = key(True, False)
+    app.js("make('ada')", page=True)
+    check("a page making a passkey brings the key step's card", card("Create a passkey"), app.js(TITLE))
+    check("with Go's words for the site", app.js(WORDS) == "localhost wants to save a passkey on your security key. Plug it in and touch it.", app.js(WORDS))
+    check("and Cancel, with no primary button", app.js(BUTTONS)[-1:] == ["Cancel"] and app.js(f"{CARD}.querySelectorAll('.primary').length") == 0, app.js(BUTTONS))
+    check("the page waits while it shows", app.js("document.title", page=True) == "asking")
+    call("WebAuthn.setAutomaticPresenceSimulation", {"authenticatorId": usb, "enabled": True})
+    made = title("t.startsWith('made ')||t.startsWith('refused')")
+    check("a touch of the key makes the passkey", made.startswith("made "), made)
+    check("and the card goes", app.wait(f"!{CARD}"))
+    ada = made.split(" ", 1)[-1]
+
+    # The key already has it: an error to close, and the page hears why after.
+    app.js(f"make('ada', {json.dumps(ada)})", page=True)
+    check("a key that already has the passkey says so", card("Already saved") and app.js(WORDS) == "This security key already has a passkey for localhost.", (app.js(TITLE), app.js(WORDS)))
+    check("with Close alone, the primary", app.js(BUTTONS) == ["Close"] and app.js(f"{CARD}.querySelector('.primary')?.textContent.trim()") == "Close", app.js(BUTTONS))
+    check("the page waits until it is closed", app.js("document.title", page=True) == "asking")
+    button("Close")
+    refused = title("t.startsWith('refused')||t.startsWith('made')")
+    check("Close tells the page the key had it already", refused == "refused InvalidStateError", refused)
+    check("and the card goes", app.wait(f"!{CARD}"))
+
+    # Two accounts on the key: the account step, and the chosen one signs in.
+    app.js("make('grace')", page=True)
+    made = title("t.startsWith('made ')||t.startsWith('refused')")
+    check("a second account's passkey goes on the same key", made.startswith("made "), made)
+    app.wait(f"!{CARD}")
+    app.js("use()", page=True)
+    check("signing in with two accounts on the key brings the account step", card("Choose an account") and app.js(WORDS) == "Your security key has 2 accounts for localhost.", (app.js(TITLE), app.js(WORDS)))
+    ROWS_ = f"[...{CARD}.querySelectorAll('button.account')]"
+    rows = app.js(f"{ROWS_}.map(b=>[...b.querySelectorAll('span')].map(e=>e.textContent))")
+    check("a row for each, the display name over the name", sorted(map(tuple, rows)) == [("ada", "ada@example.com"), ("grace", "grace@example.com")], rows)
+    chosen = rows[1][0] if len(rows) > 1 else ""
+    press(f"{ROWS_}[1]", "the second account")
+    used = title("t.startsWith('used ')||t.startsWith('refused')")
+    check("the account chosen is the one that signs in", used == f"used {chosen}", (used, chosen))
+    check("and the card goes", app.wait(f"!{CARD}"))
+
+    # Cancel at the key step.
+    usb = key(True, False)
+    app.js("use()", page=True)
+    check("signing in brings the key step's card", card("Sign in with a passkey") and app.js(WORDS) == "localhost wants you to sign in with your security key. Plug it in and touch it.", (app.js(TITLE), app.js(WORDS)))
+    button("Cancel")
+    refused = title("t.startsWith('refused')||t.startsWith('used')")
+    check("Cancel refuses the page", refused == "refused NotAllowedError", refused)
+    check("and the card goes", app.wait(f"!{CARD}"))
+    app.js("use()", page=True)
+    card("Sign in with a passkey")
+    app.cmd("key", "escape")
+    refused = title("t.startsWith('refused')||t.startsWith('used')")
+    check("Escape does too", refused == "refused NotAllowedError", refused)
+
+    # The page going takes its request, and the card, with it.
+    app.js("use()", page=True)
+    card("Sign in with a passkey")
+    visit(app, PAGES + "store")
+    check("a page that navigates away takes its card with it", app.wait(f"!{CARD}"))
+
+    # A virtual key with its UI off, as automated tests use one: no card.
+    visit(app, url)
+    s.close()
+    s = attach(profile, url)
+    key(False, True)
+    app.js("make('quiet')", page=True)
+    made = title("t.startsWith('made ')||t.startsWith('refused')")
+    check("with the virtual key's UI off, a passkey is made with no card", made.startswith("made ") and not app.js(f"!!{CARD}"), made)
+    s.close()
+    app.close()
+
+
 # Web APIs whose browser side is Chrome's, each call from the web-features registry
 # (core/webfeatures/registry.json). Content kills a renderer that asks for an interface the
 # browser has no binder for, so a page calling one of those crashes.
@@ -3065,5 +3213,5 @@ def app_link_checks():
 
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
-    parts = {"driver": [driver_checks], "browsing": [browsing_checks], "actions": [action_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks], "viewsource": [view_source_checks], "duplicate": [duplicate_checks], "applink": [app_link_checks]}
-    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, action_checks, settings_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, glide_checks, web_api_checks, sparks_checks, links_checks, view_source_checks, duplicate_checks, app_link_checks, quit_checks]))
+    parts = {"driver": [driver_checks], "browsing": [browsing_checks], "actions": [action_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "passkeys": [passkey_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks], "viewsource": [view_source_checks], "duplicate": [duplicate_checks], "applink": [app_link_checks]}
+    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, action_checks, settings_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, glide_checks, web_api_checks, passkey_checks, sparks_checks, links_checks, view_source_checks, duplicate_checks, app_link_checks, quit_checks]))
