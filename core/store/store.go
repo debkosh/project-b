@@ -8,13 +8,14 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/mattn/go-sqlite3"
 
 	"projectb/timeline"
 )
@@ -29,12 +30,36 @@ type Store struct {
 // Tx is a job's transaction.
 type Tx = sql.Tx
 
-// Open opens dir/store.db, making it when it isn't there, and starts its worker.
+// Open opens dir/store.db, making it when it isn't there, and starts its worker. A store.db
+// SQLite can't open as a database, damaged or not one at all, goes aside with its WAL as
+// store.db.backup-<when>, and a new one is made in its place: the features' first steps then
+// read their old files again, when the profile still has them.
 func Open(dir string) (*Store, error) {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, err
 	}
 	path := filepath.Join(dir, "store.db")
+	db, err := openDB(path)
+	if damaged(err) {
+		backup := path + ".backup-" + time.Now().UTC().Format("20060102T150405Z")
+		for _, suffix := range []string{"", "-wal", "-shm"} {
+			if err := os.Rename(path+suffix, backup+suffix); err != nil && !errors.Is(err, os.ErrNotExist) {
+				return nil, err
+			}
+		}
+		timeline.Errorf("store: %s is not a database SQLite can open (%v): moved to %s, and a new one made", path, err, backup)
+		db, err = openDB(path)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("store: %s: %w", path, err)
+	}
+	s := &Store{db: db, jobs: make(chan func(), 4096), done: make(chan struct{})}
+	go s.work()
+	return s, nil
+}
+
+// openDB opens the database at path, with the store's own table.
+func openDB(path string) (*sql.DB, error) {
 	// The driver keeps each statement prepared once, so a query asked again isn't parsed again.
 	db, err := sql.Open("sqlite3", "file:"+(&url.URL{Path: path}).EscapedPath()+"?_journal_mode=WAL&_synchronous=NORMAL&_stmt_cache_size=64")
 	if err != nil {
@@ -46,11 +71,16 @@ func Open(dir string) (*Store, error) {
 	db.SetConnMaxIdleTime(0)
 	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS schema (feature TEXT PRIMARY KEY, step INTEGER NOT NULL) WITHOUT ROWID`); err != nil {
 		db.Close()
-		return nil, fmt.Errorf("store: %s: %w", path, err)
+		return nil, err
 	}
-	s := &Store{db: db, jobs: make(chan func(), 4096), done: make(chan struct{})}
-	go s.work()
-	return s, nil
+	return db, nil
+}
+
+// damaged says SQLite found the file isn't a database, or is a damaged one: what a new file
+// mends, and nothing else does.
+func damaged(err error) bool {
+	var e sqlite3.Error
+	return errors.As(err, &e) && (e.Code == sqlite3.ErrNotADB || e.Code == sqlite3.ErrCorrupt)
 }
 
 // Do runs job on the worker, in a transaction that commits when it returns nil and rolls back

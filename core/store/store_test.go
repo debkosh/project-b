@@ -1,7 +1,10 @@
 package store
 
 import (
+	"bytes"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -127,5 +130,51 @@ func TestNewID(t *testing.T) {
 	a, b := NewID(), NewID()
 	if len(a) != 36 || a[14] != '7' || a == b || !strings.ContainsAny(a[19:20], "89ab") {
 		t.Fatalf("ids %s %s", a, b)
+	}
+}
+
+// A store.db that isn't a database goes aside, bytes and all, and a new one is made; the
+// feature's first step runs again in it.
+func TestADamagedStoreGoesAside(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "store.db")
+	garbage := bytes.Repeat([]byte("not a database at all "), 400)
+	os.WriteFile(path, garbage, 0o600)
+	s := open(t, dir)
+	defer s.Close()
+	ran := 0
+	s.Schema("notes", func(tx *Tx) error {
+		ran++
+		_, err := tx.Exec(`CREATE TABLE notes (text TEXT)`)
+		return err
+	})
+	if n := count(t, s, "notes"); n != 0 || ran != 1 {
+		t.Fatalf("notes = %d, the step ran %d times", n, ran)
+	}
+	backups, _ := filepath.Glob(path + ".backup-*")
+	if len(backups) != 1 {
+		t.Fatalf("backups %v", backups)
+	}
+	if b, _ := os.ReadFile(backups[0]); !bytes.Equal(b, garbage) {
+		t.Fatal("the backup is not the file that was there")
+	}
+}
+
+// A store.db that opens is never moved.
+func TestAHealthyStoreStays(t *testing.T) {
+	dir := t.TempDir()
+	s := open(t, dir)
+	s.Schema("notes", func(tx *Tx) error {
+		_, err := tx.Exec(`CREATE TABLE notes (text TEXT)`)
+		return err
+	})
+	s.Close()
+	s = open(t, dir)
+	defer s.Close()
+	if n := count(t, s, "notes"); n != 0 {
+		t.Fatalf("notes = %d", n)
+	}
+	if backups, _ := filepath.Glob(filepath.Join(dir, "store.db.backup-*")); len(backups) != 0 {
+		t.Fatalf("moved: %v", backups)
 	}
 }
