@@ -1,12 +1,14 @@
 <script setup>
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { pushEscape } from '@/ui/escape.js';
 import { downloadsPanel } from '@/ui/downloads.js';
 import { clearDownloads, downloadAction, focusPage, send, state } from '@/sdk/vue.js';
 
 // The toolbar's Downloads control, there once the profile has a download, with the running
 // ones' progress round it, and the list it opens: each download by its file name, its
-// progress or how it ended, and what can be done to it (docs/daily-driver.md).
+// progress or how it ended, and what can be done to it (docs/daily-driver.md). Each opens
+// out at its Details control: where it came from, the whole address with Copy link, or what
+// the app made it as, and the folder it is saved in.
 //
 // With peek, the list also opens by itself when Go says a download began in this window
 // (downloadStarted), so the person sees it start. It closes after peekFor unless the pointer
@@ -54,13 +56,28 @@ function status(d) {
     case 'progress':
       return (d.paused ? 'Paused, ' : '') + (d.total > 0 ? `${size(d.received)} of ${size(d.total)}` : size(d.received));
     case 'done':
-      return d.total > 0 ? size(d.total) : 'Done';
+      return [d.total > 0 ? size(d.total) : 'Done', d.from].filter(Boolean).join(' · ');
     case 'cancelled':
       return 'Cancelled';
     default:
       return 'Failed';
   }
 }
+
+// The rows opened out, by id, and the one whose link was just copied.
+const opened = reactive(new Set());
+const copied = ref(0);
+let copiedTimer = 0;
+const toggle = (id) => (opened.has(id) ? opened.delete(id) : opened.add(id));
+
+function copyLink(d) {
+  downloadAction(d.id, 'copyLink');
+  copied.value = d.id;
+  clearTimeout(copiedTimer);
+  copiedTimer = setTimeout(() => (copied.value = 0), 1500);
+}
+
+const folder = (path) => path.slice(0, path.lastIndexOf('/')) || '/';
 
 async function show() {
   const r = button.value.getBoundingClientRect();
@@ -235,21 +252,48 @@ onUnmounted(() => {
             <div class="status">{{ status(d) }}</div>
             <div class="actions">
               <template v-if="d.state === 'done'">
-                <button type="button" class="text-button quiet" @click="downloadAction(d.id, 'open')">Open</button>
-                <button type="button" class="text-button quiet" @click="downloadAction(d.id, 'reveal')">Show in Finder</button>
+                <!-- Icons, so the name has the row: Open, an arrow out; Show in Finder, a folder. -->
+                <button type="button" class="icon-button act" aria-label="Open" title="Open" @click="downloadAction(d.id, 'open')">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 2.5h4v4M13.5 2.5 8 8M12 9.5v4H2.5V4h4" /></svg>
+                </button>
+                <button type="button" class="icon-button act" aria-label="Show in Finder" title="Show in Finder" @click="downloadAction(d.id, 'reveal')">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M1.75 3.75h4.5l1.5 1.5h6.5v7.5H1.75z" /></svg>
+                </button>
               </template>
               <template v-else-if="d.state === 'progress'">
                 <button type="button" class="text-button quiet" @click="downloadAction(d.id, d.paused ? 'resume' : 'pause')">{{ d.paused ? 'Resume' : 'Pause' }}</button>
                 <button type="button" class="text-button quiet" @click="downloadAction(d.id, 'cancel')">Cancel</button>
               </template>
-              <template v-else>
+              <template v-else-if="d.url">
                 <button type="button" class="text-button quiet" @click="downloadAction(d.id, 'retry')">Retry</button>
-                <button type="button" class="text-button quiet" @click="downloadAction(d.id, 'copyLink')">Copy link</button>
               </template>
+              <button
+                type="button"
+                class="icon-button more"
+                :aria-expanded="opened.has(d.id)"
+                :aria-controls="`download-details-${d.id}`"
+                :aria-label="`Details of ${d.name}`"
+                title="Details"
+                @click="toggle(d.id)"
+              >
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 4.5 3 3 3-3" /></svg>
+              </button>
               <button type="button" class="icon-button remove" :aria-label="`Remove ${d.name} from the list`" :title="'Remove from the list'" @click="downloadAction(d.id, 'remove')">
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="m2 2 6 6M8 2 2 8" /></svg>
               </button>
             </div>
+            <dl v-if="opened.has(d.id)" :id="`download-details-${d.id}`" class="details">
+              <dt>From</dt>
+              <dd v-if="d.url">
+                <span class="value">{{ d.url }}</span>
+                <button type="button" class="text-button quiet copy" @click="copyLink(d)">{{ copied === d.id ? 'Copied' : 'Copy link' }}</button>
+              </dd>
+              <dd v-else><span class="value">{{ d.from || 'This app' }}</span></dd>
+              <template v-if="d.path">
+                <dt>{{ d.state === 'done' ? 'Saved in' : 'Saving to' }}</dt>
+                <dd><span class="value">{{ folder(d.path) }}</span></dd>
+              </template>
+            </dl>
           </li>
         </ul>
       </div>
@@ -380,7 +424,7 @@ li.failed .name {
   grid-column: 3;
   grid-row: 1 / span 3;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
 }
 
 /* The design system's quiet text button, at the list's size. */
@@ -390,8 +434,51 @@ li.failed .name {
   font-size: 12px;
 }
 
-.remove {
+.remove,
+.more,
+.act {
   width: 24px;
   height: 24px;
+}
+
+.more svg {
+  transition: transform 0.15s;
+}
+
+.more[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+
+/* Opened out, under the row: a label column and its values, each address or folder whole,
+   broken wherever it must be. */
+.details {
+  grid-column: 2 / span 2;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 6px 0 2px;
+  font-size: 12px;
+}
+
+.details dt {
+  color: var(--muted);
+}
+
+.details dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.details .value {
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.details .copy {
+  height: 22px;
+  margin-left: 4px;
+  padding: 0 6px;
+  color: var(--accent);
 }
 </style>

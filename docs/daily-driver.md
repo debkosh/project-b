@@ -110,9 +110,16 @@ stays). `clearDownloads` removes every finished one.
 
 **The shell.** A control named Downloads shows once the list has one, and opens the list:
 each download a `listitem` by its file name, its progress while it runs, Open and Show in
-Finder once done, Cancel while it runs, and Retry and Copy link once it failed or was
-cancelled. Standard puts the control in its toolbar and shows a download's progress on it.
-The contract's rule 17 checks it, by role and name.
+Finder once done, Cancel while it runs, and Retry once it failed or was cancelled. Standard
+puts the control in its toolbar and shows a download's progress on it; Open and Show in
+Finder are icons there, so the name has the row. The contract's rule 17 checks it, by role
+and name.
+
+**Details** (owner, 2026-11-18). Each row of Standard's list and of the Downloads page opens
+out at its Details control (`aria-expanded`): From, the whole address with Copy link
+(`copyLink`), or for a file the app kept itself what it is (`from`, as Crash report); and
+Saved in, the folder on the Mac or Downloads on a phone, where the file is. A closed row is
+as it was, so the list stays short.
 
 **A download you see start** (owner approved, item 9 of the UX comparison). When a tab of
 the window in front begins a download, Go tells that window's shell, `downloadStarted {id}`,
@@ -141,9 +148,8 @@ and the next check downloads it again.
 **The Downloads page.** A page of ours, in a tab of ours as History and Bookmarks are
 (`downloads.show`, "Downloads", Shift+Cmd+J, in the Window menu): the same list, newest
 first, with Pause or Resume and Cancel while one runs, Open (a tap on its name too) and Show
-in Finder, or Show in Downloads on a phone, once done, Retry and Copy link once it failed or
-was cancelled, a × to take one off the list, and
-Clear all. Go sends it the list in its snapshot and on each change, and takes
+in Finder, or Show in Downloads on a phone, once done, Retry once it failed or was
+cancelled, Details, a × to take one off the list, and Clear all. Go sends it the list in its snapshot and on each change, and takes
 `downloadAction` and `clearDownloads` from it as from a shell. A phone's shells reach it from
 their menu, always there, with how many are running beside it (owner, 2026-11-15).
 

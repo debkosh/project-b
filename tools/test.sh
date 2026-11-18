@@ -105,6 +105,7 @@ mock() {
     run "the settings page on the mock engine" node shell/e2e/settings.cjs
     run "the picker on the mock engine" node shell/e2e/picker.cjs
     run "the crash report on the mock engine" node shell/e2e/crash-report.cjs
+    run "a download's details, on the desktop and a phone" node shell/e2e/download-details.cjs
     built extensions || return
     need_store mock
     run "extensions on the mock engine" node shell/e2e/extensions.cjs

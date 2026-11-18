@@ -1,5 +1,5 @@
 <script setup>
-import { computed, watchEffect } from 'vue';
+import { computed, reactive, watchEffect } from 'vue';
 import { paintTheme } from '@/theme.js';
 import { phone } from '@/phone.js';
 import { act, clear, state } from './state.js';
@@ -8,6 +8,8 @@ import { act, clear, state } from './state.js';
 // running one shows how far it has got, with Pause or Resume and Cancel; a finished one
 // opens at a tap on its name and shows in the phone's Downloads, or Finder; any can be
 // taken off the list, and Clear takes off every finished one. The files stay where they are.
+// Each row opens out, at its Details control, to say where it came from, its whole address
+// with Copy link, or what the app made it as, and where it is saved.
 watchEffect(() => paintTheme(state.tones, state.theme));
 
 const reveal = phone ? 'Show in Downloads' : 'Show in Finder';
@@ -27,7 +29,7 @@ function status(d) {
     case 'progress':
       return (d.paused ? 'Paused · ' : '') + (d.total > 0 ? `${size(d.received)} of ${size(d.total)}` : size(d.received));
     case 'done':
-      return `${d.total > 0 ? size(d.total) : 'Done'} · ${hostOf(d.url)}`;
+      return [d.total > 0 ? size(d.total) : 'Done', d.url ? hostOf(d.url) : d.from].filter(Boolean).join(' · ');
     case 'cancelled':
       return 'Cancelled';
     default:
@@ -42,6 +44,22 @@ const hostOf = (u) => {
     return '';
   }
 };
+// The rows opened out, by id, and the one whose link was just copied.
+const opened = reactive(new Set());
+const copied = reactive({ id: 0 });
+let copiedTimer = 0;
+const toggle = (id) => (opened.has(id) ? opened.delete(id) : opened.add(id));
+
+function copyLink(d) {
+  act(d.id, 'copyLink');
+  copied.id = d.id;
+  clearTimeout(copiedTimer);
+  copiedTimer = setTimeout(() => (copied.id = 0), 1500);
+}
+
+// Where a download is saved: a phone's shared Downloads, or the Mac's folder it is in.
+const savedIn = (d) => (phone ? 'Downloads' : d.path.slice(0, d.path.lastIndexOf('/')) || '/');
+
 const share = (d) => (d.total > 0 ? Math.min(1, d.received / d.total) : 0);
 </script>
 
@@ -74,13 +92,36 @@ const share = (d) => (d.total > 0 ? Math.min(1, d.received / d.total) : 0);
             <button type="button" class="text-button quiet open" @click="act(d.id, 'open')">Open</button>
             <button type="button" class="text-button quiet" @click="act(d.id, 'reveal')">{{ reveal }}</button>
           </template>
-          <template v-else>
+          <template v-else-if="d.url">
             <button type="button" class="text-button quiet" @click="act(d.id, 'retry')">Retry</button>
-            <button type="button" class="text-button quiet" @click="act(d.id, 'copyLink')">Copy link</button>
           </template>
+          <button
+            type="button"
+            class="icon-button more"
+            :aria-expanded="opened.has(d.id)"
+            :aria-controls="`details-${d.id}`"
+            :aria-label="`Details of ${d.name}`"
+            title="Details"
+            @click="toggle(d.id)"
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 4.5 3 3 3-3" /></svg>
+          </button>
           <button v-if="d.state !== 'progress'" type="button" class="icon-button remove" :aria-label="`Remove ${d.name} from the list`" title="Remove from the list" @click="act(d.id, 'remove')">
             <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="m2 2 6 6M8 2 2 8" /></svg>
           </button>
+          <dl v-if="opened.has(d.id)" :id="`details-${d.id}`" class="details">
+            <div>
+              <dt>From</dt>
+              <dd v-if="d.url"><span class="value">{{ d.url }}</span>
+                <button type="button" class="text-button quiet" @click="copyLink(d)">{{ copied.id === d.id ? 'Copied' : 'Copy link' }}</button>
+              </dd>
+              <dd v-else><span class="value">{{ d.from || 'This app' }}</span></dd>
+            </div>
+            <div v-if="d.path">
+              <dt>{{ d.state === 'done' ? 'Saved in' : 'Saving to' }}</dt>
+              <dd><span class="value">{{ savedIn(d) }}</span></dd>
+            </div>
+          </dl>
         </li>
       </ul>
     </div></main>
@@ -131,6 +172,7 @@ body {
 
 .row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   min-height: 56px;
@@ -219,6 +261,58 @@ body {
   .bar.unknown i { animation: none; }
 }
 
+.more svg {
+  transition: transform 0.15s;
+}
+
+.more[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+
+/* Opened out: under the name, a label column and its values, each address or folder whole,
+   broken wherever it must be. */
+.details {
+  flex-basis: 100%;
+  margin: 0 0 8px;
+  padding: 8px 0 0 32px;
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.details > div {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.details dt {
+  color: var(--muted);
+}
+
+.details dd {
+  margin: 0;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+}
+
+.details .value {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.details .text-button {
+  height: 24px;
+  padding: 0 6px;
+  font-size: 12px;
+  color: var(--accent);
+}
+
 .open,
 .clear {
   color: var(--accent);
@@ -282,8 +376,24 @@ body {
   margin-left: 32px;
 }
 
-.touch .row .remove {
+.touch .row .more {
   margin-left: auto;
+}
+
+.touch .details {
+  padding-left: 32px;
+  font-size: 13px;
+}
+
+.touch .details > div {
+  grid-template-columns: 1fr;
+  gap: 2px;
+}
+
+.touch .row .details .text-button {
+  height: 40px;
+  min-width: 0;
+  margin-left: 0;
 }
 
 .touch .clear {
