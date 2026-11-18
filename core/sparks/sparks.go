@@ -4,10 +4,12 @@
 // package keeps them, reads their headers and says which run on a frame's address; the
 // engine puts them in the page. They live in the profile folder's sparks folder: each
 // spark's source as <id>.user.js, and sparks.json for the list, in order, with whether
-// each is on.
+// each is on and when it was added and last changed, and the built-in sparks it was given,
+// so that sync can carry each as an item (docs/site-features.md).
 package sparks
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -16,6 +18,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 
 	"projectb/timeline"
 )
@@ -46,27 +49,46 @@ type Script struct {
 
 // entry is one spark as the manager holds it.
 type entry struct {
-	id      string
-	on      bool
-	source  string
-	meta    Meta
-	match   []matcher
-	exclude []matcher
+	id string
+	on bool
+	// added and modified are Unix milliseconds: when it was kept, and when its source or
+	// its switch last changed.
+	added    int64
+	modified int64
+	source   string
+	meta     Meta
+	match    []matcher
+	exclude  []matcher
 	// err is why the source doesn't read, "" when it does.
 	err string
 }
 
 // listed is one spark in sparks.json.
 type listed struct {
-	ID string `json:"id"`
-	On bool   `json:"on"`
+	ID       string `json:"id"`
+	On       bool   `json:"on"`
+	Added    int64  `json:"added"`
+	Modified int64  `json:"modified"`
 }
+
+// kept is sparks.json: version 2. Version 1, what a profile had before, is the list alone,
+// with only each one's id and switch.
+type kept struct {
+	Version int      `json:"version"`
+	Sparks  []listed `json:"sparks"`
+	// Builtins is the ids the built-in sparks were added as, once; nil until they were.
+	Builtins []string `json:"builtins,omitempty"`
+}
+
+// now is the time in Unix milliseconds, a variable for the tests.
+var now = func() int64 { return time.Now().UnixMilli() }
 
 // Manager keeps one profile's sparks. It is not safe for concurrent use: every call comes
 // from one thread.
 type Manager struct {
 	dir       string
 	list      []*entry
+	builtins  []string
 	onChanged []func()
 }
 
@@ -80,16 +102,27 @@ func New(dir string) *Manager {
 		}
 		return m
 	}
-	var list []listed
-	if err := json.Unmarshal(b, &list); err != nil {
+	var k kept
+	if b = bytes.TrimSpace(b); len(b) > 0 && b[0] == '[' {
+		// Version 1: each takes a time it was added, a millisecond apart in list order.
+		err = json.Unmarshal(b, &k.Sparks)
+		t := now() - int64(len(k.Sparks))
+		for i := range k.Sparks {
+			k.Sparks[i].Added, k.Sparks[i].Modified = t+int64(i), t+int64(i)
+		}
+	} else {
+		err = json.Unmarshal(b, &k)
+	}
+	if err != nil {
 		timeline.Errorf("sparks: %s: %v", m.listPath(), err)
 		return m
 	}
-	for _, l := range list {
+	m.builtins = k.Builtins
+	for _, l := range k.Sparks {
 		if !validID(l.ID) || m.find(l.ID) != nil {
 			continue
 		}
-		e := &entry{id: l.ID, on: l.On}
+		e := &entry{id: l.ID, on: l.On, added: l.Added, modified: l.Modified}
 		if b, err := os.ReadFile(m.sourcePath(l.ID)); err != nil {
 			e.err = "The script's file can't be read."
 		} else {
@@ -155,6 +188,7 @@ func (m *Manager) SetOn(id string, on bool) {
 		return
 	}
 	e.on = on
+	e.modified = now()
 	m.changed()
 }
 
@@ -293,25 +327,46 @@ func (m *Manager) find(id string) *entry {
 	return nil
 }
 
-// newID is eight lowercase hex digits no spark has and no file in the folder uses.
+// newID is a UUIDv7 (RFC 9562), so ids sort by when they were made, as sync's guids do,
+// that no spark has and no file in the folder uses.
 func (m *Manager) newID() string {
 	for {
-		b := make([]byte, 4)
-		rand.Read(b)
-		id := hex.EncodeToString(b)
+		var b [16]byte
+		rand.Read(b[:])
+		ms := uint64(now())
+		for i := 0; i < 6; i++ {
+			b[i] = byte(ms >> (40 - 8*i))
+		}
+		b[6] = b[6]&0x0f | 0x70
+		b[8] = b[8]&0x3f | 0x80
+		h := hex.EncodeToString(b[:])
+		id := h[:8] + "-" + h[8:12] + "-" + h[12:16] + "-" + h[16:20] + "-" + h[20:]
 		if _, err := os.Stat(m.sourcePath(id)); m.find(id) == nil && errors.Is(err, os.ErrNotExist) {
 			return id
 		}
 	}
 }
 
-// validID says whether id is eight lowercase hex digits, so it is safe in a file name.
+// validID says whether id is a lowercase UUID, or the eight lowercase hex digits a spark
+// kept before sparks had UUIDs has, so it is safe in a file name.
 func validID(id string) bool {
-	if len(id) != 8 {
+	hexOnly := func(s string) bool {
+		for _, c := range s {
+			if !('0' <= c && c <= '9' || 'a' <= c && c <= 'f') {
+				return false
+			}
+		}
+		return true
+	}
+	if len(id) == 8 {
+		return hexOnly(id)
+	}
+	parts := strings.Split(id, "-")
+	if len(id) != 36 || len(parts) != 5 {
 		return false
 	}
-	for _, c := range id {
-		if !('0' <= c && c <= '9' || 'a' <= c && c <= 'f') {
+	for i, n := range []int{8, 4, 4, 4, 12} {
+		if len(parts[i]) != n || !hexOnly(parts[i]) {
 			return false
 		}
 	}
@@ -323,11 +378,11 @@ func (m *Manager) listPath() string { return filepath.Join(m.dir, "sparks.json")
 func (m *Manager) sourcePath(id string) string { return filepath.Join(m.dir, id+".user.js") }
 
 func (m *Manager) changed() {
-	list := make([]listed, len(m.list))
+	k := kept{Version: 2, Sparks: make([]listed, len(m.list)), Builtins: m.builtins}
 	for i, e := range m.list {
-		list[i] = listed{ID: e.id, On: e.on}
+		k.Sparks[i] = listed{ID: e.id, On: e.on, Added: e.added, Modified: e.modified}
 	}
-	b, _ := json.MarshalIndent(list, "", "  ")
+	b, _ := json.MarshalIndent(k, "", "  ")
 	if err := os.MkdirAll(m.dir, 0o700); err != nil {
 		timeline.Errorf("sparks: %v", err)
 	} else {

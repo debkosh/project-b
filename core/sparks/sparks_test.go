@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 )
 
 // script is a spark's source with a header of the given lines.
@@ -117,17 +118,27 @@ func ids(list []Spark) []string {
 	return out
 }
 
+// readList is sparks.json's list, each spark's id and switch.
 func readList(t *testing.T, dir string) []listed {
+	t.Helper()
+	k := readKept(t, dir)
+	for i := range k.Sparks {
+		k.Sparks[i].Added, k.Sparks[i].Modified = 0, 0
+	}
+	return k.Sparks
+}
+
+func readKept(t *testing.T, dir string) kept {
 	t.Helper()
 	b, err := os.ReadFile(filepath.Join(dir, "sparks", "sparks.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	var l []listed
-	if err := json.Unmarshal(b, &l); err != nil {
-		t.Fatal(err)
+	var k kept
+	if err := json.Unmarshal(b, &k); err != nil || k.Version != 2 {
+		t.Fatal(k.Version, err)
 	}
-	return l
+	return k
 }
 
 func TestAMissingFolderIsNoSparks(t *testing.T) {
@@ -152,7 +163,7 @@ func TestSparksLastAcrossRuns(t *testing.T) {
 	}
 	b, _ := m.Add(script("@name Beta", "@description Second", "@match https://b.com/*", "@run-at document-start"))
 	c, _ := m.Add(script("@name Gamma", "@match https://c.com/*"))
-	if !regexp.MustCompile(`^[0-9a-f]{8}$`).MatchString(a.ID) || a.ID == b.ID || b.ID == c.ID || a.ID == c.ID {
+	if len(a.ID) != 36 || !validID(a.ID) || a.ID == b.ID || b.ID == c.ID || a.ID == c.ID {
 		t.Fatalf("ids %q %q %q", a.ID, b.ID, c.ID)
 	}
 	if !a.On || a.Name != "Alpha" || a.RunAt != DocumentEnd || a.Error != "" {
@@ -188,7 +199,7 @@ func TestSparksLastAcrossRuns(t *testing.T) {
 	if _, ok := m.Source(c.ID); ok {
 		t.Fatal("removed spark has a source")
 	}
-	if l := readList(t, dir); !slices.Equal(l, []listed{{a.ID, false}, {b.ID, true}}) {
+	if l := readList(t, dir); !slices.Equal(l, []listed{{ID: a.ID}, {ID: b.ID, On: true}}) {
 		t.Fatalf("sparks.json %+v", l)
 	}
 
@@ -288,8 +299,8 @@ func TestOddIdsInTheListAreLeftOut(t *testing.T) {
 	dir := t.TempDir()
 	m := New(dir)
 	a, _ := m.Add(script("@name Alpha", "@match <all_urls>"))
-	l := []listed{{"../../x", true}, {a.ID, true}, {a.ID, false}, {"ABCDEF12", true}}
-	b, _ := json.Marshal(l)
+	l := []listed{{ID: "../../x", On: true}, {ID: a.ID, On: true}, {ID: a.ID}, {ID: "ABCDEF12", On: true}}
+	b, _ := json.Marshal(kept{Version: 2, Sparks: l})
 	os.WriteFile(filepath.Join(dir, "sparks", "sparks.json"), b, 0o600)
 	got := New(dir).List()
 	if len(got) != 1 || got[0].ID != a.ID || !got[0].On {
@@ -358,5 +369,64 @@ func TestMatchingAndScripts(t *testing.T) {
 
 	if got := m.Scripts("https://example.com/", false); len(got) != 1 || got[0].ID != all.ID {
 		t.Fatalf("%+v", got)
+	}
+}
+
+// A spark is kept as sync can carry it: an id made once, a UUIDv7, and when it was added
+// and last changed, in milliseconds.
+func TestSparksKeepTheirIdAndTimes(t *testing.T) {
+	clock := int64(1763500000000)
+	now = func() int64 { return clock }
+	defer func() { now = func() int64 { return time.Now().UnixMilli() } }()
+	dir := t.TempDir()
+	m := New(dir)
+	a, _ := m.Add(script("@name Alpha", "@match <all_urls>"))
+	uuid7 := regexp.MustCompile(`^019a[0-9a-f]{4}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
+	if !uuid7.MatchString(a.ID) || !validID(a.ID) {
+		t.Fatalf("id %q", a.ID)
+	}
+	times := func() (int64, int64) {
+		l := readKept(t, dir).Sparks[0]
+		return l.Added, l.Modified
+	}
+	if added, modified := times(); added != clock || modified != clock {
+		t.Fatal(added, modified)
+	}
+	clock += 5
+	m.SetOn(a.ID, false)
+	if added, modified := times(); added != clock-5 || modified != clock {
+		t.Fatal("a switch", added, modified)
+	}
+	clock += 5
+	m.Update(a.ID, script("@name Alpha", "@match https://a.example/*"))
+	if _, modified := times(); modified != clock {
+		t.Fatal("an edit", modified)
+	}
+	again := New(dir)
+	again.SetOn(a.ID, true)
+	if added, _ := times(); added != clock-10 || again.List()[0].ID != a.ID {
+		t.Fatal("read back", added)
+	}
+}
+
+// sparks.json as a profile kept it before, a list of ids and switches, reads in its order,
+// each added a millisecond after the one before it, and is written as version 2.
+func TestTheFirstListReads(t *testing.T) {
+	now = func() int64 { return 1000 }
+	defer func() { now = func() int64 { return time.Now().UnixMilli() } }()
+	dir := t.TempDir()
+	os.MkdirAll(filepath.Join(dir, "sparks"), 0o700)
+	for _, id := range []string{"0000000a", "0000000b"} {
+		os.WriteFile(filepath.Join(dir, "sparks", id+".user.js"), []byte(script("@name "+id, "@match <all_urls>")), 0o600)
+	}
+	os.WriteFile(filepath.Join(dir, "sparks", "sparks.json"), []byte(`[{"id":"0000000b","on":true},{"id":"0000000a","on":false}]`), 0o600)
+	m := New(dir)
+	if got := m.List(); len(got) != 2 || got[0].ID != "0000000b" || !got[0].On || got[1].On {
+		t.Fatalf("%+v", got)
+	}
+	m.SetOn("0000000a", true)
+	k := readKept(t, dir)
+	if k.Sparks[0].Added != 998 || k.Sparks[1].Added != 999 || k.Builtins != nil {
+		t.Fatalf("%+v", k)
 	}
 }

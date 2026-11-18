@@ -227,7 +227,8 @@ func (m *Manager) add(source string) (*entry, error) {
 	if len(m.list) >= MaxSparks {
 		return nil, errors.New("You can keep up to 25 sparks.")
 	}
-	e := &entry{id: m.newID(), on: true}
+	t := now()
+	e := &entry{id: m.newID(), on: true, added: t, modified: t}
 	if err := e.set(source); err != nil {
 		return nil, err
 	}
@@ -251,5 +252,6 @@ func (m *Manager) put(e *entry, source string) error {
 		return errors.New("The spark could not be saved.")
 	}
 	e.set(source)
+	e.modified = now()
 	return nil
 }
