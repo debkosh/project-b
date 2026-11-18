@@ -2340,11 +2340,16 @@ def glide_checks():
 def passkey_checks():
     """A page's passkey request on the real engine (docs/passkeys.md), with the DevTools
     protocol's virtual security key in place of a real one: making a passkey waits at the
-    key step until the key is touched; a key that already has one says so, and the page
-    hears why once the card is closed; two accounts on the key bring the account step, and
-    the one chosen signs in; Cancel refuses the page; and with the virtual key's UI off, as
-    automated tests run it, no card shows. A virtual key has no PIN, so the PIN step is
-    checked by hand with a real key, as phone as key is with a real phone."""
+    key step with no key there, and a key plugged in and touched makes it; a key that
+    already has one says so, and the page hears why once the card is closed; two accounts
+    on the key bring the account step, and the one chosen signs in; Cancel and Escape
+    refuse the page; and with the virtual key's UI off, as automated tests run it, no card
+    shows. A virtual key has no PIN, so the PIN step is checked by hand with a real key,
+    as phone as key is with a real phone.
+
+    The touch is a key added while the request waits, as one plugged in is: a virtual key
+    answers a request the moment it gets it, or, with its presence off, never, and turning
+    presence on later doesn't reach a request it already has."""
     profile = tempfile.mkdtemp(prefix="pb-profile-")
     app = App(profile, ["--remote-debugging-port=0"])
     # localhost, as a passkey's site can't be an IP address.
@@ -2359,14 +2364,17 @@ def passkey_checks():
             raise RuntimeError(f"{method}: {r['error']}")
         return r["result"]
 
-    def key(ui, present):
-        """A new virtual key in place of any other: CTAP2 over USB, remembering its
-        accounts, its owner verified, touched at once or only when told."""
+    def keys(ui):
+        """Virtual keys in place of real ones, none yet, with our card or without."""
         call("WebAuthn.disable")
         call("WebAuthn.enable", {"enableUI": ui})
+
+    def plug():
+        """Plugs in a virtual key that answers at once: CTAP2 over USB, remembering its
+        accounts, its owner verified and present."""
         return call("WebAuthn.addVirtualAuthenticator", {"options": {
             "protocol": "ctap2", "transport": "usb", "hasResidentKey": True, "hasUserVerification": True,
-            "isUserVerified": True, "automaticPresenceSimulation": present}})["authenticatorId"]
+            "isUserVerified": True, "automaticPresenceSimulation": True}})["authenticatorId"]
 
     CARD = "document.querySelector('[role=alertdialog]')"
     TITLE = f"{CARD}?.getAttribute('aria-label')"
@@ -2374,7 +2382,9 @@ def passkey_checks():
     # With no card these are empty, so a check on them fails rather than stopping the part.
     BUTTONS = f"[...({CARD}?.querySelectorAll('.buttons button')||[])].map(b=>b.textContent.trim())"
     PRIMARY = f"[...({CARD}?.querySelectorAll('.primary')||[])].map(b=>b.textContent.trim())"
+    ROWS_ = f"[...({CARD}?.querySelectorAll('button.account')||[])]"
 
+    # Each of these says how it went, so a check that fails leaves the rest to run.
     def card(title, timeout=15):
         try:
             app.wait(f"{TITLE}==={json.dumps(title)}", timeout)
@@ -2382,14 +2392,23 @@ def passkey_checks():
         except TimeoutError:
             return False
 
+    def gone(timeout=15):
+        try:
+            app.wait(f"!{CARD}", timeout)
+            return True
+        except TimeoutError:
+            return False
+
     def press(find, what):
         at = app.js(f"(()=>{{const r=({find})?.getBoundingClientRect();return r?[r.x+r.width/2,r.y+r.height/2]:null}})()")
         if not at:
-            raise RuntimeError(f"nothing to press for {what}")
+            print(f"note nothing to press for {what}", flush=True)
+            return False
         click_at(app, *at, what)
+        return True
 
     def button(name):
-        press(f"[...{CARD}.querySelectorAll('button')].find(b=>b.textContent.trim()==={json.dumps(name)})", name)
+        return press(f"[...({CARD}?.querySelectorAll('button')||[])].find(b=>b.textContent.trim()==={json.dumps(name)})", name)
 
     def title(test, timeout=15):
         """The page's title once test, a JavaScript test of t, holds; or what it was."""
@@ -2398,70 +2417,83 @@ def passkey_checks():
         except TimeoutError:
             return app.js("document.title", page=True)
 
-    # Making a passkey: the key step, which waits for the touch.
-    usb = key(True, False)
+    def settle():
+        """Ends whatever request an earlier check left waiting, and its card."""
+        if app.js(f"!!{CARD}"):
+            app.cmd("key", "escape")
+            gone(5)
+
+    # Making a passkey: the key step, which waits for a key.
+    keys(True)
     app.js("make('ada')", page=True)
     check("a page making a passkey brings the key step's card", card("Create a passkey"), app.js(TITLE))
     check("with Go's words for the site", app.js(WORDS) == "localhost wants to save a passkey on your security key. Plug it in and touch it.", app.js(WORDS))
     check("and Cancel, with no primary button", app.js(BUTTONS)[-1:] == ["Cancel"] and app.js(PRIMARY) == [], app.js(BUTTONS))
-    check("the page waits while it shows", app.js("document.title", page=True) == "asking")
-    call("WebAuthn.setAutomaticPresenceSimulation", {"authenticatorId": usb, "enabled": True})
+    time.sleep(1)
+    check("the page waits while it shows, with no key there", app.js("document.title", page=True) == "asking" and app.js(TITLE) == "Create a passkey", (app.js("document.title", page=True), app.js(TITLE)))
+    plug()
     made = title("t.startsWith('made ')||t.startsWith('refused')")
-    check("a touch of the key makes the passkey", made.startswith("made "), made)
-    check("and the card goes", app.wait(f"!{CARD}"))
-    ada = made.split(" ", 1)[-1]
+    check("a key plugged in and touched makes the passkey", made.startswith("made "), made)
+    check("and the card goes", gone())
+    ada = made.split(" ", 1)[-1] if made.startswith("made ") else ""
+    settle()
 
     # The key already has it: an error to close, and the page hears why after.
     app.js(f"make('ada', {json.dumps(ada)})", page=True)
     check("a key that already has the passkey says so", card("Already saved") and app.js(WORDS) == "This security key already has a passkey for localhost.", (app.js(TITLE), app.js(WORDS)))
     check("with Close alone, the primary", app.js(BUTTONS) == ["Close"] and app.js(PRIMARY) == ["Close"], app.js(BUTTONS))
     check("the page waits until it is closed", app.js("document.title", page=True) == "asking")
-    button("Close")
+    pressed = button("Close")
     refused = title("t.startsWith('refused')||t.startsWith('made')")
-    check("Close tells the page the key had it already", refused == "refused InvalidStateError", refused)
-    check("and the card goes", app.wait(f"!{CARD}"))
+    check("Close tells the page the key had it already", pressed and refused == "refused InvalidStateError", refused)
+    check("and the card goes", gone())
+    settle()
 
     # Two accounts on the key: the account step, and the chosen one signs in.
     app.js("make('grace')", page=True)
     made = title("t.startsWith('made ')||t.startsWith('refused')")
     check("a second account's passkey goes on the same key", made.startswith("made "), made)
-    app.wait(f"!{CARD}")
+    gone()
+    settle()
     app.js("use()", page=True)
     check("signing in with two accounts on the key brings the account step", card("Choose an account") and app.js(WORDS) == "Your security key has 2 accounts for localhost.", (app.js(TITLE), app.js(WORDS)))
-    ROWS_ = f"[...({CARD}?.querySelectorAll('button.account')||[])]"
     rows = app.js(f"{ROWS_}.map(b=>[...b.querySelectorAll('span')].map(e=>e.textContent))")
     check("a row for each, the display name over the name", sorted(map(tuple, rows)) == [("ada", "ada@example.com"), ("grace", "grace@example.com")], rows)
-    chosen = rows[1][0] if len(rows) > 1 else ""
-    press(f"{ROWS_}[1]", "the second account")
+    chosen = rows[1][0] if len(rows) > 1 else "no second row"
+    pressed = press(f"{ROWS_}[1]", "the second account")
     used = title("t.startsWith('used ')||t.startsWith('refused')")
-    check("the account chosen is the one that signs in", used == f"used {chosen}", (used, chosen))
-    check("and the card goes", app.wait(f"!{CARD}"))
+    check("the account chosen is the one that signs in", pressed and used == f"used {chosen}", (used, chosen))
+    check("and the card goes", gone())
+    settle()
 
-    # Cancel at the key step.
-    usb = key(True, False)
+    # Cancel and Escape at the key step, with no key there to answer.
+    keys(True)
     app.js("use()", page=True)
     check("signing in brings the key step's card", card("Sign in with a passkey") and app.js(WORDS) == "localhost wants you to sign in with your security key. Plug it in and touch it.", (app.js(TITLE), app.js(WORDS)))
-    button("Cancel")
+    pressed = button("Cancel")
     refused = title("t.startsWith('refused')||t.startsWith('used')")
-    check("Cancel refuses the page", refused == "refused NotAllowedError", refused)
-    check("and the card goes", app.wait(f"!{CARD}"))
+    check("Cancel refuses the page", pressed and refused == "refused NotAllowedError", refused)
+    check("and the card goes", gone())
+    settle()
     app.js("use()", page=True)
-    card("Sign in with a passkey")
+    shown = card("Sign in with a passkey")
     app.cmd("key", "escape")
     refused = title("t.startsWith('refused')||t.startsWith('used')")
-    check("Escape does too", refused == "refused NotAllowedError", refused)
+    check("Escape does too", shown and refused == "refused NotAllowedError", (shown, refused))
+    gone()
 
     # The page going takes its request, and the card, with it.
     app.js("use()", page=True)
-    card("Sign in with a passkey")
+    shown = card("Sign in with a passkey")
     visit(app, PAGES + "store")
-    check("a page that navigates away takes its card with it", app.wait(f"!{CARD}"))
+    check("a page that navigates away takes its card with it", shown and gone(), shown)
 
     # A virtual key with its UI off, as automated tests use one: no card.
     visit(app, url)
     s.close()
     s = attach(profile, url)
-    key(False, True)
+    keys(False)
+    plug()
     app.js("make('quiet')", page=True)
     made = title("t.startsWith('made ')||t.startsWith('refused')")
     check("with the virtual key's UI off, a passkey is made with no card", made.startswith("made ") and not app.js(f"!!{CARD}"), made)
