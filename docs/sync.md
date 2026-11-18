@@ -341,6 +341,11 @@ and a port the link named heard nothing until Connect. A new build of the app, s
 asked about by the keychain once ("Project B wants to access key 'Project B device key'"), as
 `keychainPrompts` expects; until it is answered, Sync shows Set up sync.
 
-**Not tested here:** the link through Android's handing over; the Android Keystore piece (`DeviceKey.java`, `go_table.c`) compiles against
-the SDK and the NDK but has not run on a phone; the Mac's keychain test skips where the shell's
+`tools/drive_android.py`, part `sync_on_the_phone`, on the emulator: a sync link from another app
+opens Settings at Sync with the link's Dialog, the app running or stopped; turning sync on against
+`core/cmd/syncserver`, a test server over https whose own CA is put in the emulator's user CA folder
+(which Go reads), makes `files/device.key`, wrapped by the Keystore, and `profile.key`; a restart
+syncs again with what was kept; DeviceKey logs no exception.
+
+**Not tested here:** the Mac's keychain test skips where the shell's
 keychain list has no login keychain, as an agent's shell over ssh has.
