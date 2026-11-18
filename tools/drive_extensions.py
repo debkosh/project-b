@@ -399,7 +399,7 @@ def import_checks():
     finally:
         os.environ["HOME"] = real_home
     open_settings(app)
-    settings_click_found(app, "[...document.querySelectorAll('nav button')].find(b=>b.textContent.trim()==='Import')")
+    settings_click(app, '[data-section="data"]')
     settings_wait(app, "!!document.querySelector('[aria-label=\"From Chrome\"]')", 30)
     settings_click(app, '[aria-label="From Chrome"]')
     box = "[...document.querySelectorAll('.ui-import-choice')].find(l=>l.textContent.includes(%s))"
