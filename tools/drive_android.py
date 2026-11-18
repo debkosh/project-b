@@ -401,9 +401,9 @@ def processes():
     return [tuple(line.split()) for line in adb("shell", "ps", "-A", "-o", "PID,NAME").splitlines() if len(line.split()) == 2]
 
 
-def history():
-    """Go's history, each address with its title, from the app's store.db (docs/store.md): the
-    database and its WAL are copied off the device and read here."""
+def store_rows(query, *args):
+    """The rows a query gives on the app's store.db (docs/store.md), none while there is no
+    store: the database and its WAL are copied off the device and read here."""
     folder = os.path.join(OUT, "store")
     os.makedirs(folder, exist_ok=True)
     for suffix in ("", "-wal"):
@@ -414,11 +414,16 @@ def history():
         os.remove(os.path.join(folder, "store.db-shm"))
     db = sqlite3.connect(os.path.join(folder, "store.db"))
     try:
-        return dict(db.execute("SELECT url, title FROM history"))
+        return db.execute(query, args).fetchall()
     except sqlite3.Error:
-        return {}
+        return []
     finally:
         db.close()
+
+
+def history():
+    """Go's history, each address with its title."""
+    return dict(store_rows("SELECT url, title FROM history"))
 
 
 def visited(url):
@@ -750,6 +755,10 @@ def profile_file(name, data):
     start reads it."""
     adb("shell", "am", "force-stop", PACKAGE)
     folder = "/data/data/%s/%s" % (PACKAGE, PROFILE)
+    if name == "bookmarks.json":
+        # The store reads bookmarks.json only as it makes its tables, at the first start
+        # without a store.db (docs/store.md): the store goes, history with it, so it does.
+        adb("shell", "rm", "-f", folder + "/store.db", folder + "/store.db-wal", folder + "/store.db-shm")
     local = os.path.join(OUT, name)
     with open(local, "w") as f:
         json.dump(data, f)
@@ -808,7 +817,8 @@ def bookmark_star():
             see("page", label="to b")
             menu("Bookmark")
             see("shell", text="Bookmarked")
-            saved = lambda: [e for e in profile_json("bookmarks.json").get("entries", []) if e.get("url") == "http://" + BASE + "/a"]
+            saved = lambda: [{"parent": parent, "title": title} for parent, title in
+                             store_rows("SELECT parent, title FROM bookmarks WHERE url = ?", "http://" + BASE + "/a")]
             # The folder chosen, by its name; checked only in the native shell's tree, as the
             # tree a web page gives Android without a screen reader on carries no checked state.
             chosen = {"checked": "true"} if shell == "mobile-native" else {"kind": "android.widget.RadioButton"}
