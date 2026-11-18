@@ -60,10 +60,14 @@ Never write a colour literal in a component. Use these variables, which Go's ton
 
 Text on `--accent` is `--on-accent`, never a fixed colour: the accent's lightness follows the
 frame, so white reads on slate and not on amber, and the near-black ink the other way round.
-`core/tones` picks whichever of the two contrasts more, and holds it to WCAG's 4.5 for text. Where
-neither reaches 4.5 (the red preset in dark, a mid blue like Work's in light) it moves the accent
-away from the label it picked, a little at a time, until it does; so the accent can differ
-slightly from the frame. `shell/e2e/settings.cjs` checks every preset, light and dark.
+`core/tones` asks [gulal](https://github.com/sudiptadeb/gulal) for the accent's ink, the one of
+the two that contrasts more **by APCA**, the perceptual contrast of WCAG 3's draft, and holds it
+to **Lc 60**, the level we hold every label to (decided 2026-11-18): colour decisions are gulal's.
+WCAG 2's ratio, used before, gave the ink on mid tones such as the Teal and Blue presets, where
+white reads better to the eye (the owner, 2026-11-18: the Save button's label was wrong on
+teal). Where neither reaches Lc 60 (the teal preset in dark) it moves the accent away from the
+label it picked, a little at a time, until it does; so the accent can differ slightly from the
+frame. `core/tones`'s tests and `shell/e2e/settings.cjs` check every preset, light and dark.
 
 **A colour made up for an item** (a site's letter tile, a bookmark folder's mark, anything
 coloured from a seed or its text) comes from [gulal](https://github.com/sudiptadeb/gulal), through `shell/src/ui/tint.js`,

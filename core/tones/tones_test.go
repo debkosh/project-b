@@ -7,9 +7,9 @@ import (
 	"testing"
 )
 
-// Every palette is what shell/src/tones.js made, light and dark, for the presets, the
-// workspace colours and a spread of custom colours: testdata/tones.json, written from that
-// JavaScript by testdata/gen.mjs before Go took it over.
+// Every palette, light and dark, for the presets, the workspace colours and a spread of
+// custom colours: testdata/tones.json, first written from the JavaScript Go took this over
+// from (testdata/gen.mjs), its labels since picked by APCA.
 func TestTheSameTonesAsTheJavaScript(t *testing.T) {
 	b, err := os.ReadFile("testdata/tones.json")
 	if err != nil {
@@ -59,5 +59,26 @@ func TestNoColourIsGreyWithAnAccentThatReads(t *testing.T) {
 	}
 	if Frame("#5b7fd6", true) != "#5b7fd6" {
 		t.Error("a colour picked isn't its own frame in dark")
+	}
+}
+
+// Every preset's primary button reads, light and dark: its label is white or the ink,
+// whichever APCA says contrasts more with the frame, and reaches Lc 60 on the accent.
+func TestEveryPresetsLabelReadsByAPCA(t *testing.T) {
+	for _, frame := range []string{None, "#0faaaa", "#5b7fd6", "#faa804", "#d82b1f", "#384562"} {
+		for _, dark := range []bool{false, true} {
+			p := For(frame, dark)
+			a, _ := parse(p["--accent"])
+			on, _ := parse(p["--on-accent"])
+			if lc := lightness(on, a); lc < readable {
+				t.Errorf("%q dark=%v: %s on %s is Lc %.0f", frame, dark, p["--on-accent"], p["--accent"], lc)
+			}
+		}
+	}
+	// The mid tones WCAG 2's ratio gave the ink: white reads better on them.
+	for _, frame := range []string{"#0faaaa", "#5b7fd6"} {
+		if on := For(frame, false)["--on-accent"]; on != "#ffffff" {
+			t.Errorf("%s light: label %s, want white", frame, on)
+		}
 	}
 }
