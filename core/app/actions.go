@@ -18,9 +18,6 @@ func (a *App) registerActions(e engine.Engine) {
 		a.actions = append(a.actions, act)
 		return act
 	}
-	// An action that needs a tab is off in a window with none.
-	active := func() bool { return a.Tabs.Active().ID != 0 }
-
 	a.actions = append(a.actions, copyActions(e, a.quit, func(r engine.WindowRequest) { a.Window.Request(a.Tabs.Front(), r) })...)
 	add("app.settings", "Settings…", func() { a.Settings.Open(a.Tabs.Front()) })
 	add("app.checkUpdate", "Check for Updates…", func() {
@@ -43,21 +40,11 @@ func (a *App) registerActions(e engine.Engine) {
 	add("address.focus", "Open Location…", func() { a.Shell.FocusAddressBar(a.Tabs.Front()) })
 	printing := add("page.print", "Print…", func() { e.Print(a.Tabs.ActiveID()) })
 	printing.Enabled = func() bool { return a.Tabs.Active().URL != "" }
-	find := add("find.open", "Find…", func() { a.finds.open(a.Tabs.Front()) })
-	find.Enabled = active
-	next := add("find.next", "Find Next", func() { a.finds.step(a.Tabs.Front(), true) })
-	next.Enabled = active
-	previous := add("find.previous", "Find Previous", func() { a.finds.step(a.Tabs.Front(), false) })
-	previous.Enabled = active
-	add("window.new", "New Window", func() {
-		if a.startsEmpty() {
-			a.openWindow()
-			return
-		}
-		a.NewWindow("")
-	})
+	add("find.open", "Find…", func() { a.finds.open(a.Tabs.Front()) })
+	add("find.next", "Find Next", func() { a.finds.step(a.Tabs.Front(), true) })
+	add("find.previous", "Find Previous", func() { a.finds.step(a.Tabs.Front(), false) })
+	add("window.new", "New Window", func() { a.NewWindow("") })
 	add("window.close", "Close Window", func() { a.Window.Request(a.Tabs.Front(), engine.WindowClose) })
-	// In a window with no tabs it closes the window, so it stays enabled.
 	add("tab.close", "Close Tab", func() { a.Shell.CloseTab(a.Tabs.Front()) })
 
 	side := add("view.tabsSide", "Tabs on Side", func() { a.Shell.SwitchTabLayout(prefs.TabsVertical) })
@@ -77,13 +64,13 @@ func (a *App) registerActions(e engine.Engine) {
 
 	stop := add("nav.stop", "Stop", a.Tabs.Stop)
 	stop.Enabled = func() bool { return a.Tabs.Active().Loading }
-	add("nav.reload", "Reload This Page", a.Tabs.Reload).Enabled = active
-	add("nav.reloadHard", "Force Reload This Page", a.Tabs.ReloadBypassingCache).Enabled = active
+	add("nav.reload", "Reload This Page", a.Tabs.Reload)
+	add("nav.reloadHard", "Force Reload This Page", a.Tabs.ReloadBypassingCache)
 	full := add("view.fullScreen", "Full Screen", func() { a.Window.Request(a.Tabs.Front(), engine.WindowFullScreen) })
 	full.Checked = func() bool { return a.Window.FullScreen(a.Tabs.Front()) }
-	add("view.zoomReset", "Actual Size", a.Tabs.ZoomReset).Enabled = active
-	add("view.zoomIn", "Zoom In", a.Tabs.ZoomIn).Enabled = active
-	add("view.zoomOut", "Zoom Out", a.Tabs.ZoomOut).Enabled = active
+	add("view.zoomReset", "Actual Size", a.Tabs.ZoomReset)
+	add("view.zoomIn", "Zoom In", a.Tabs.ZoomIn)
+	add("view.zoomOut", "Zoom Out", a.Tabs.ZoomOut)
 	// The source is the page fetched again, with the cookies of the tab's workspace.
 	source := add("dev.viewSource", "View Source", func() { a.Tabs.OpenFor(a.Tabs.ActiveID(), e.ViewSourceURL(a.Tabs.Active().URL)) })
 	source.Enabled = func() bool { return a.Tabs.Active().URL != "" }
@@ -96,26 +83,26 @@ func (a *App) registerActions(e engine.Engine) {
 			a.Shell.FocusAddressBar(a.Tabs.Front())
 		}
 	}
-	add("focus.nextPane", "Focus Next Pane", nextPane).Enabled = active
-	add("focus.previousPane", "Focus Previous Pane", nextPane).Enabled = active
+	add("focus.nextPane", "Focus Next Pane", nextPane)
+	add("focus.previousPane", "Focus Previous Pane", nextPane)
 
 	back := add("nav.back", "Back", a.Tabs.Back)
 	back.Enabled = func() bool { return a.Tabs.Active().CanGoBack }
 	forward := add("nav.forward", "Forward", a.Tabs.Forward)
 	forward.Enabled = func() bool { return a.Tabs.Active().CanGoForward }
 
-	add("tab.next", "Select Next Tab", func() { a.Tabs.ActivateNext(false) }).Enabled = active
-	add("tab.previous", "Select Previous Tab", func() { a.Tabs.ActivateNext(true) }).Enabled = active
+	add("tab.next", "Select Next Tab", func() { a.Tabs.ActivateNext(false) })
+	add("tab.previous", "Select Previous Tab", func() { a.Tabs.ActivateNext(true) })
 	// Held like the OS's app switcher: each press goes one tab further back in recent
 	// order, and letting go of the modifier settles on the tab it reached.
 	recent := add("tab.recentNext", "Select Recent Tab", func() { a.Tabs.CycleRecent(false) })
-	recent.Release, recent.Enabled = a.Tabs.EndCycle, active
+	recent.Release = a.Tabs.EndCycle
 	recentBack := add("tab.recentPrevious", "Select Recent Tab Backward", func() { a.Tabs.CycleRecent(true) })
-	recentBack.Release, recentBack.Enabled = a.Tabs.EndCycle, active
+	recentBack.Release = a.Tabs.EndCycle
 	// A tab of ours has no copy: a window has one of each.
 	reopen := add("tab.reopenClosed", "Reopen Closed Tab", func() { a.reopen(e, 0) })
 	reopen.Enabled = func() bool { return len(a.closed) > 0 }
-	add("tab.duplicate", "Duplicate Tab", a.Tabs.Duplicate).Enabled = func() bool { return active() && a.Tabs.Active().Page == "" }
+	add("tab.duplicate", "Duplicate Tab", a.Tabs.Duplicate).Enabled = func() bool { return a.Tabs.Active().Page == "" }
 	// Pin Tab, which reads Unpin Tab on a pinned tab.
 	pin := add("tab.pin", "Pin Tab", a.togglePin)
 	pin.Enabled = func() bool { t := a.Tabs.Active(); return t.Pin != "" || pinnable(t) }
@@ -125,11 +112,11 @@ func (a *App) registerActions(e engine.Engine) {
 		}
 		return "Pin Tab"
 	}
-	add("tab.moveToNewWindow", "Move Tab to New Window", func() { a.NewWindowWith(a.Tabs.ActiveID()) }).Enabled = active
+	add("tab.moveToNewWindow", "Move Tab to New Window", func() { a.NewWindowWith(a.Tabs.ActiveID()) })
 	for i := range 8 {
-		add(fmt.Sprintf("tab.select%d", i+1), fmt.Sprintf("Tab %d", i+1), func() { a.Tabs.ActivateAt(i) }).Enabled = active
+		add(fmt.Sprintf("tab.select%d", i+1), fmt.Sprintf("Tab %d", i+1), func() { a.Tabs.ActivateAt(i) })
 	}
-	add("tab.selectLast", "Last Tab", a.Tabs.ActivateLast).Enabled = active
+	add("tab.selectLast", "Last Tab", a.Tabs.ActivateLast)
 
 	// An action a shell takes is the shell's to run while that shell is the profile's:
 	// Go tells the shell in front, and the action's span ends when the shell has drawn

@@ -403,152 +403,26 @@ func TestTabsThroughTheShellAndKeys(t *testing.T) {
 		t.Fatalf("closed tab still active: %v", m)
 	}
 
-	// Closing the rest leaves the window open, with no tabs and no active tab.
+	// Closing the last tab closes the window, the last, which quits.
 	r.e.Fire(1, 0, "key", "closeTab")
-	r.e.Fire(1, 0, "key", "closeTab")
-	m = r.waitFor(func(m map[string]any) bool { return m["t"] == "tabs" && len(m["tabs"].([]any)) == 0 })
-	r.e.Settle()
-	if m["active"] != float64(0) || r.e.Closed(1) || r.e.Quit() {
-		t.Fatalf("after the last tab: active %v, closed %v, quit %v", m["active"], r.e.Closed(1), r.e.Quit())
-	}
-	// Close Tab in a window with no tabs closes it, the last, which quits.
 	r.e.Fire(1, 0, "key", "closeTab")
 	r.e.Settle()
 	if !r.e.Closed(1) || !r.e.Quit() {
-		t.Fatalf("Close Tab in the empty window: closed %v, quit %v", r.e.Closed(1), r.e.Quit())
+		t.Fatalf("after the last tab: closed %v, quit %v", r.e.Closed(1), r.e.Quit())
 	}
 }
 
-// The shell's Close Tab names the active tab, which in a window with no tabs is none: it
-// closes the window. A tab the shell names that is gone closes nothing.
-func TestTheShellsCloseTabInAWindowWithNoTabs(t *testing.T) {
+// The shell's Close Tab of a window's last tab closes the window, as a window always has
+// a tab.
+func TestTheShellsCloseTabOfTheLastTabClosesItsWindow(t *testing.T) {
 	r := start(t, t.TempDir())
 	defer r.stop()
 	second := r.openSecondWindow()
 	snap := r.waitOn(second, func(m map[string]any) bool { return m["t"] == "snapshot" })
-	only := snap["active"].(float64)
-	closeTab := func(id float64) {
-		r.e.Post(func() { r.a.ShellMessage(2, fmt.Appendf(nil, `{"t":"closeTab","id":%v}`, id)) })
-		r.e.Settle()
-	}
-	closeTab(only)
-	r.waitOn(second, isTabs(0))
-	closeTab(only)
-	if r.e.Closed(2) {
-		t.Fatal("closing a tab that is gone closed its window")
-	}
-	closeTab(0)
+	r.e.Post(func() { r.a.ShellMessage(2, fmt.Appendf(nil, `{"t":"closeTab","id":%v}`, snap["active"])) })
+	r.e.Settle()
 	if !r.e.Closed(2) || !slices.Equal(r.e.Windows(), []engine.WindowID{1}) {
-		t.Fatalf("Close Tab in the empty window: closed %v, windows %v", r.e.Closed(2), r.e.Windows())
-	}
-}
-
-// The address in a window with no tabs opens a tab there and takes it to what was typed:
-// in the first workspace, or in the one the shell names. Nothing typed opens nothing.
-func TestTheAddressInAWindowWithNoTabsOpensOne(t *testing.T) {
-	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, "workspaces.json"), []byte(`{"version":2,"workspaces":[{"id":"0a1b2c3d","name":"Work","color":"#5b7fd6"},{"id":"","name":"Main","color":"#3470d0"}]}`), 0o600)
-	r := start(t, dir)
-	defer r.stop()
-	empty := func() {
-		r.t.Helper()
-		r.e.Fire(1, 0, "key", "closeTab")
-		r.waitFor(isTabs(0))
-	}
-	// opened says what one tab the window has: its id, its workspace in Go and in the
-	// engine, and the active tab.
-	opened := func(m map[string]any) (any, string, any) {
-		tab := m["tabs"].([]any)[0].(map[string]any)
-		var in string
-		r.e.Post(func() { in = r.e.Workspace(engine.TabID(tab["id"].(float64))) })
-		r.e.Settle()
-		return tab["id"], tab["workspace"].(string) + "/" + in, m["active"]
-	}
-	empty()
-	r.shell(`{"t":"navigate","text":"  "}`)
-	r.e.Settle()
-	var n int
-	r.e.Post(func() { n = len(r.a.Tabs.AllIn(1)) })
-	r.e.Settle()
-	if n != 0 {
-		t.Fatalf("nothing typed opened %d tabs", n)
-	}
-
-	// The tab is the window's, in the first workspace, and has the address from the first
-	// the shell hears of it.
-	r.shell(`{"t":"navigate","text":"n.test/"}`)
-	m := r.waitFor(isTabs(1))
-	if id, in, active := opened(m); active != id || in != "0a1b2c3d/0a1b2c3d" || m["tabs"].([]any)[0].(map[string]any)["url"] != "https://n.test/" {
-		t.Fatalf("the tab the address opened: %v in %q, active %v; %v", id, in, active, m["tabs"])
-	}
-	r.waitForTab(func(t map[string]any) bool { return t["url"] == "https://n.test/" && t["title"] == "Mock n.test" })
-
-	empty()
-	r.shell(`{"t":"navigate","text":"m.test/","workspace":""}`)
-	if id, in, active := opened(r.waitFor(isTabs(1))); active != id || in != "/" {
-		t.Fatalf("the tab the address opened in Main: %v in %q, active %v", id, in, active)
-	}
-	r.waitForTab(func(t map[string]any) bool { return t["url"] == "https://m.test/" && t["title"] == "Mock m.test" })
-}
-
-// In a window with no tabs every action that needs one is off, in the menu and for a
-// shell that lists them; New Tab, the address, the windows' own and Settings stay on, and
-// so does Close Tab, which closes the window.
-func TestActionsThatNeedATabAreOffWithNone(t *testing.T) {
-	r := start(t, t.TempDir())
-	defer r.stop()
-	r.visit("https://a.test/")
-	r.visit("https://b.test/")
-	need := []string{"nav.back", "nav.reload", "nav.reloadHard", "view.zoomIn", "view.zoomOut", "view.zoomReset", "dev.viewSource",
-		"tab.duplicate", "tab.pin", "tab.moveToNewWindow", "tab.next", "tab.previous", "tab.recentNext", "tab.recentPrevious",
-		"tab.select1", "tab.select8", "tab.selectLast", "focus.nextPane", "focus.previousPane"}
-	stay := []string{"tab.new", "tab.close", "address.focus", "window.new", "window.close", "app.settings", "view.fullScreen", "view.tabsTop"}
-	// What can run now, as a shell that lists the actions hears it, and what the menu bar
-	// shows enabled.
-	state := func() (runs, menu map[string]bool) {
-		runs, menu = map[string]bool{}, map[string]bool{}
-		var walk func([]engine.MenuItem)
-		walk = func(items []engine.MenuItem) {
-			for _, it := range items {
-				if it.Action != "" {
-					menu[it.Action] = it.Enabled
-				}
-				walk(it.Items)
-			}
-		}
-		done := make(chan struct{})
-		r.e.Post(func() {
-			for _, a := range r.a.Commands.Titles() {
-				runs[a.ID] = true
-			}
-			walk(r.e.Menu())
-			close(done)
-		})
-		<-done
-		return runs, menu
-	}
-	runs, menu := state()
-	for _, id := range append(slices.Clone(need), stay...) {
-		if !runs[id] {
-			t.Errorf("with a tab, %s can't run", id)
-		}
-	}
-	r.e.Fire(1, 0, "key", "closeTab")
-	r.waitFor(isTabs(0))
-	r.e.Settle()
-	runs, menu = state()
-	for _, id := range need {
-		if runs[id] || menu[id] {
-			t.Errorf("with no tab, %s can run %v, or is on in the menu %v", id, runs[id], menu[id])
-		}
-	}
-	for _, id := range stay {
-		if !runs[id] {
-			t.Errorf("with no tab, %s can't run", id)
-		}
-	}
-	if menu["nav.reload"] || !menu["tab.close"] || !menu["tab.new"] {
-		t.Errorf("the menu: reload %v, close tab %v, new tab %v", menu["nav.reload"], menu["tab.close"], menu["tab.new"])
+		t.Fatalf("closing the last tab: closed %v, windows %v", r.e.Closed(2), r.e.Windows())
 	}
 }
 
@@ -966,20 +840,14 @@ func TestASecondWindow(t *testing.T) {
 		t.Fatalf("settings tabs: window 1 %v, window 2 %v", r.settingsIn(1), r.settingsIn(2))
 	}
 
-	// Closing window 2's tabs leaves it open with none, a tab at a time, the settings tab
-	// among them. Close Tab again closes it, and the app goes on with window 1.
+	// Closing window 2's tabs a tab at a time, the settings tab among them, closes it with
+	// the last, and the app goes on with window 1.
 	for range 3 {
 		r.e.Fire(2, 0, "key", "closeTab")
 	}
-	m := r.waitOn(second, isTabs(0))
-	r.e.Settle()
-	if m["active"] != float64(0) || r.e.Closed(2) || !slices.Equal(r.e.Windows(), []engine.WindowID{1, 2}) {
-		t.Fatalf("after window 2's last tab: active %v, closed %v, windows %v", m["active"], r.e.Closed(2), r.e.Windows())
-	}
-	r.e.Fire(2, 0, "key", "closeTab")
 	r.e.Settle()
 	if !r.e.Closed(2) || !slices.Equal(r.e.Windows(), []engine.WindowID{1}) || r.e.Quit() {
-		t.Fatalf("after Close Tab in empty window 2: closed %v, windows %v, quit %v", r.e.Closed(2), r.e.Windows(), r.e.Quit())
+		t.Fatalf("after window 2's last tab: closed %v, windows %v, quit %v", r.e.Closed(2), r.e.Windows(), r.e.Quit())
 	}
 
 	// Window 1's own close button closes it, the last window, which quits.
@@ -1208,8 +1076,8 @@ func TestADevToolsTargetInANewWindow(t *testing.T) {
 }
 
 // A window made for a tab opened in a window of its own, as a DevTools client's new target
-// with newWindow is, closes with its last tab: here its page closes itself, as
-// window.close() does. A window the user opened stays.
+// with newWindow is, closes with its last tab, as every window does: here its page closes
+// itself, as window.close() does.
 func TestAWindowMadeForATabClosesWithIt(t *testing.T) {
 	r := start(t, t.TempDir())
 	defer r.stop()
@@ -1223,11 +1091,6 @@ func TestAWindowMadeForATabClosesWithIt(t *testing.T) {
 	r.e.Settle()
 	if !r.e.Closed(2) || !slices.Equal(r.e.Windows(), []engine.WindowID{1}) || r.e.Quit() {
 		t.Fatalf("after its tab closed: closed %v, windows %v, quit %v", r.e.Closed(2), r.e.Windows(), r.e.Quit())
-	}
-	r.e.Post(func() { r.a.CloseRequested(1) })
-	r.e.Settle()
-	if r.e.Closed(1) || r.e.Quit() {
-		t.Fatalf("window 1 after its tab closed: closed %v, quit %v", r.e.Closed(1), r.e.Quit())
 	}
 }
 
@@ -1603,7 +1466,7 @@ func TestTheSettingsPageOpensATabInAWorkspace(t *testing.T) {
 
 // Deleting a workspace from the settings page takes it out of the list everyone has, the Tab
 // menu's too, and tells the engine the new first; closes its tabs in every window, a window
-// that held only those staying open with none; and only then has the engine erase its
+// that held only those getting a new tab; and only then has the engine erase its
 // storage. The last one can't be deleted, nor can one the list doesn't hold.
 func TestTheSettingsPageDeletesAWorkspace(t *testing.T) {
 	dir := t.TempDir()
@@ -1635,7 +1498,7 @@ func TestTheSettingsPageDeletesAWorkspace(t *testing.T) {
 	}
 	r.waitOn(got, func(m map[string]any) bool {
 		c, ok := m["workspaceTabs"].(map[string]any)
-		return m["t"] == "workspaceTabs" && ok && len(c) == 1 && c[""] == float64(1)
+		return m["t"] == "workspaceTabs" && ok && len(c) == 1 && c[""] == float64(2)
 	})
 	r.e.Settle()
 	var left, inW2 []tabs.Tab
@@ -1645,8 +1508,9 @@ func TestTheSettingsPageDeletesAWorkspace(t *testing.T) {
 		left, inW2, erased, first, items = r.a.Tabs.AllIn(1), r.a.Tabs.AllIn(w2), r.e.Erased(), r.e.FirstWorkspace(), r.a.MenuList("workspaces")
 	})
 	r.e.Settle()
-	// Window 1 keeps its tab in Main, and the settings tab, which is in no workspace.
-	if len(left) != 2 || left[0].Workspace != "" || left[1].ID != r.settingsTab || len(inW2) != 0 || r.e.Closed(w2) || r.e.Closed(1) {
+	// Window 1 keeps its tab in Main, and the settings tab, which is in no workspace; window 2,
+	// which held only a tab in Work, has a new tab in Main.
+	if len(left) != 2 || left[0].Workspace != "" || left[1].ID != r.settingsTab || len(inW2) != 1 || inW2[0].Workspace != "" || r.e.Closed(w2) || r.e.Closed(1) {
 		t.Fatalf("window 1 has %+v and window 2 %+v; window 2 closed %v, window 1 %v", left, inW2, r.e.Closed(w2), r.e.Closed(1))
 	}
 	if !reflect.DeepEqual(erased, []mockengine.Erase{{Workspace: work, Erasure: engine.Erasure{Kinds: engine.EraseAll}}}) || first != "" || len(items) != 1 || items[0].Title != "Main" {
@@ -1659,27 +1523,26 @@ func TestTheSettingsPageDeletesAWorkspace(t *testing.T) {
 	r.e.Settle()
 	r.e.Post(func() { left, erased = r.a.Tabs.All(), r.e.Erased() })
 	r.e.Settle()
-	if len(left) != 2 || len(erased) != 1 || len(workspaces.New(dir).List()) != 1 {
+	if len(left) != 3 || len(erased) != 1 || len(workspaces.New(dir).List()) != 1 {
 		t.Fatalf("deleting the last left %+v and erased %+v", left, erased)
 	}
 }
 
-// A window whose every tab is in the workspace deleted stays open with no tabs, and the
-// engine is asked to erase the workspace.
-func TestDeletingAWorkspaceLeavesAWindowOfOnlyItsTabsEmpty(t *testing.T) {
+// A window whose every tab is in the workspace deleted gets a new tab in the first, as a
+// window always has a tab, and the engine is asked to erase the workspace.
+func TestDeletingAWorkspaceGivesAWindowOfOnlyItsTabsANewTab(t *testing.T) {
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "workspaces.json"), []byte(`{"version":2,"workspaces":[{"id":"0a1b2c3d","name":"Work","color":"#5b7fd6"},{"id":"","name":"Main","color":"#3470d0"}]}`), 0o600)
 	r := start(t, dir)
 	defer r.stop()
 	r.e.Post(func() { r.a.Tabs.Create(1) })
 	r.shell(`{"t":"deleteWorkspace","workspace":"0a1b2c3d"}`)
-	r.waitFor(isTabs(0))
 	r.e.Settle()
 	var left []tabs.Tab
 	var erased []mockengine.Erase
 	r.e.Post(func() { left, erased = r.a.Tabs.AllIn(1), r.e.Erased() })
 	r.e.Settle()
-	if r.e.Closed(1) || r.e.Quit() || len(left) != 0 {
+	if r.e.Closed(1) || r.e.Quit() || len(left) != 1 || left[0].Workspace != "" || left[0].URL != "" {
 		t.Fatalf("window 1 closed %v, the app quit %v; the window has %+v", r.e.Closed(1), r.e.Quit(), left)
 	}
 	if !reflect.DeepEqual(erased, []mockengine.Erase{{Workspace: "0a1b2c3d", Erasure: engine.Erasure{Kinds: engine.EraseAll}}}) {
@@ -1950,11 +1813,11 @@ func TestTheCommandLinesAddressesOpenAtTheStart(t *testing.T) {
 	}
 }
 
-// A shell that takes New Tab runs it itself. With it the profile's shell, the app starts
-// with a window of no tabs, and New Window opens another; New Tab from the menu or its key
-// sends the shell the action, and its span to end once the shell has drawn what it does,
-// and makes no tab, while the shell's own newTab still makes one. With another shell on,
-// New Tab makes a tab and New Window opens with one, as ever. It runs on the first shell
+// A shell that takes New Tab runs it itself: New Tab from the menu or its key sends the
+// shell the action, and its span to end once the shell has drawn what it does, and makes no
+// tab, while the shell's own newTab still makes one. The start and New Window open with a
+// tab whatever the shell, as a window always has one. With another shell on, New Tab makes
+// a tab. It runs on the first shell
 // the registry lists that takes tab.new, and is skipped while none does.
 func TestAShellTakesNewTab(t *testing.T) {
 	var taker, other string
@@ -1994,7 +1857,7 @@ func TestAShellTakesNewTab(t *testing.T) {
 			t.Fatalf("%s the windows' tabs are %v, want %v", when, got, counts)
 		}
 	}
-	want("at the start", 0)
+	want("at the start", 1)
 	told := func(how string) {
 		t.Helper()
 		if m := r.waitFor(func(m map[string]any) bool { return m["t"] == "action" }); m["id"] != "tab.new" {
@@ -2003,7 +1866,7 @@ func TestAShellTakesNewTab(t *testing.T) {
 		if m := r.waitFor(func(m map[string]any) bool { return m["t"] == "paint" }); m["span"] != "tab.new" {
 			t.Fatalf("New Tab from %s asked for the end of %v", how, m)
 		}
-		want("after New Tab from "+how, 0)
+		want("after New Tab from "+how, 1)
 	}
 	r.e.Post(func() { r.a.MenuChosen("tab.new") })
 	told("the menu")
@@ -2012,18 +1875,18 @@ func TestAShellTakesNewTab(t *testing.T) {
 
 	r.shell(`{"t":"newTab"}`)
 	r.waitFor(func(m map[string]any) bool { return m["t"] == "tabs" })
-	want("after the shell's newTab", 1)
+	want("after the shell's newTab", 2)
 
 	r.e.Post(func() { r.a.MenuChosen("window.new") })
-	want("after New Window", 1, 0)
+	want("after New Window", 2, 1)
 
 	r.e.Post(func() { r.a.MenuChosen("shells:" + other) })
 	r.shell(`{"t":"ready"}`)
 	r.waitFor(snapshot)
 	r.e.Post(func() { r.a.MenuChosen("window.new") })
-	want("with "+other+" on, after New Window", 1, 0, 1)
+	want("with "+other+" on, after New Window", 2, 1, 1)
 	r.e.Post(func() { r.a.MenuChosen("tab.new") })
-	want("with "+other+" on, after New Tab in it", 1, 0, 2)
+	want("with "+other+" on, after New Tab in it", 2, 1, 2)
 }
 
 // The tab groups through the shell's messages: a new tab beside one starts a group of the

@@ -25,9 +25,7 @@ type command struct {
 	ID   int64           `json:"id"`
 	Data json.RawMessage `json:"data"`
 	// Workspace is where newTab opens its tab, by the workspace's id. Without it the tab
-	// opens in the workspace of the window's active tab, or the first in a window with none.
-	// For navigate in a window with no tabs, it is where the tab it opens goes, the first
-	// without it.
+	// opens in the workspace of the window's active tab.
 	Workspace *string `json:"workspace"`
 	// The tab groups' (tabs/groups.go): GroupWith is the tab newTab opens beside in its
 	// group; Group a group's id; IDs the tabs createGroup groups; and what editGroup
@@ -129,13 +127,9 @@ func (m *Manager) Interaction(w engine.WindowID, name string, do func()) {
 	m.send(w, map[string]any{"t": "paint", "span": name})
 }
 
-// CloseTab is Close Tab in window w: it closes the active tab, or, in a window with no
-// tabs, the window.
+// CloseTab is Close Tab in window w: it closes the active tab, and with the last one the
+// window.
 func (m *Manager) CloseTab(w engine.WindowID) {
-	if len(m.tabs.AllIn(w)) == 0 {
-		m.window.Request(w, engine.WindowClose)
-		return
-	}
 	m.Interaction(w, "tab.close", func() { m.tabs.Close(m.tabs.ActiveIn(w)) })
 }
 
@@ -205,13 +199,7 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 	case "timeline":
 		timeline.FromPage("shell", msg)
 	case "navigate":
-		// In a window with no tabs the address opens one, in the workspace named or the
-		// first.
-		workspace := m.tabs.FirstWorkspace()
-		if c.Workspace != nil {
-			workspace = *c.Workspace
-		}
-		m.tabs.Navigate(w, c.Text, workspace)
+		m.tabs.Navigate(w, c.Text)
 	case "back":
 		// A phone's back key leaves a page's full screen before it goes back.
 		if m.onBack != nil && m.onBack(w) {
@@ -259,10 +247,6 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 		// What the person chose on a tab's notice: the tab by id, the action by text.
 		m.tabs.NoticeAction(engine.TabID(c.ID), c.Action)
 	case "closeTab":
-		if c.ID == 0 && c.Then != "recent" {
-			m.CloseTab(w)
-			return
-		}
 		id := engine.TabID(c.ID)
 		if id == 0 {
 			id = m.tabs.ActiveIn(w)

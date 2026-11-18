@@ -23,7 +23,7 @@ type windowView struct {
 	Top         int             `json:"top"`
 	Width       int             `json:"width"`
 	Height      int             `json:"height"`
-	// Tabs are the window's tabs when the caller asked for them, [] for a window with none.
+	// Tabs are the window's tabs when the caller asked for them.
 	Tabs *[]tab `json:"tabs,omitempty"`
 }
 
