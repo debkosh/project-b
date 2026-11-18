@@ -91,6 +91,8 @@ type profile struct {
 	bookmarks *bookmarks.Manager
 	posted    chan func()
 	maps      []sync.Mapping
+	sync      *sync.Manager
+	close     func()
 }
 
 func newProfile(t *testing.T) *profile {
@@ -115,11 +117,20 @@ func openProfile(t *testing.T, dir string) *profile {
 	p.history = history.New(dir, st, p.post)
 	p.maps = append(history.Synced(), p.bookmarks.Synced(p.post))
 	sync.Setup(st)
-	t.Cleanup(func() {
+	closed := false
+	p.close = func() {
+		if closed {
+			return
+		}
+		closed = true
+		if p.sync != nil {
+			p.sync.Stop()
+		}
 		st.Close()
 		close(p.posted)
 		<-done
-	})
+	}
+	t.Cleanup(p.close)
 	return p
 }
 
@@ -130,10 +141,27 @@ func (p *profile) post(f func()) { p.posted <- f }
 func (p *profile) startSync(s *testServer) *sync.Manager {
 	defer sync.SetHTTPClient(s.ts.Client())()
 	p.history.OnClearAll(sync.ClearedAll)
-	m := sync.New(p.st, p.keys, p.post, p.maps...)
-	p.t.Cleanup(m.Stop)
+	p.sync = sync.New(p.st, p.keys, p.post, p.maps...)
 	p.settle()
-	return m
+	return p.sync
+}
+
+// connect connects the profile's sync, and waits for its answer.
+func (p *profile) connect(address, token, passphrase string) error {
+	got := make(chan error, 1)
+	p.main(func() { p.sync.Connect(address, token, passphrase, func(err error) { got <- err }) })
+	err := <-got
+	p.settle()
+	return err
+}
+
+// call runs one of sync's calls that answer with an error, and waits for it.
+func (p *profile) call(f func(done func(error))) error {
+	got := make(chan error, 1)
+	p.main(func() { f(func(err error) { got <- err }) })
+	err := <-got
+	p.settle()
+	return err
 }
 
 // main runs f on the profile's main thread and waits for it, and for what it posted.

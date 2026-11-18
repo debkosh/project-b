@@ -1,0 +1,418 @@
+package sync_test
+
+import (
+	"encoding/json"
+	"errors"
+	"os"
+	"path/filepath"
+	"slices"
+	"strings"
+	"testing"
+
+	"github.com/sudiptadeb/synckosh"
+
+	"projectb/sync"
+)
+
+// inspect is whether the bucket is new, as the page asks before the passphrase.
+func inspect(t *testing.T, p *profile, address, token string) bool {
+	t.Helper()
+	type answer struct {
+		isNew bool
+		err   error
+	}
+	got := make(chan answer, 1)
+	p.main(func() { p.sync.Inspect(address, token, func(isNew bool, err error) { got <- answer{isNew, err} }) })
+	a := <-got
+	if a.err != nil {
+		t.Fatal(a.err)
+	}
+	return a.isNew
+}
+
+func run(t *testing.T, ps ...*profile) {
+	t.Helper()
+	for _, p := range ps {
+		if err := p.sync.RunNow(); err != nil {
+			t.Fatal(err)
+		}
+		p.settle()
+	}
+}
+
+// Two profiles sync bookmarks, history and typed addresses, through a bucket at either of its
+// addresses: one starts it, the other joins it with its passphrase.
+func TestTwoProfilesSync(t *testing.T) {
+	for _, form := range []string{"bearer", "single"} {
+		t.Run(form, func(t *testing.T) {
+			s := newServer(t)
+			address, token := s.bearer(), "tok"
+			if form == "single" {
+				address, token = s.single("tok"), ""
+			}
+			a, b := newProfile(t), newProfile(t)
+			a.startSync(s)
+			b.startSync(s)
+			a.main(func() { a.bookmarks.Add("The Go site", "https://go.dev/") })
+			a.history.AddTypedVisit("https://example.com/", "Example Domain")
+			b.history.AddVisit("https://example.org/", "From b")
+			a.settle()
+			b.settle()
+
+			if !inspect(t, a, address, token) {
+				t.Fatal("an empty bucket isn't new")
+			}
+			if err := a.connect(address, token, "correct horse"); err != nil {
+				t.Fatal(err)
+			}
+			if inspect(t, b, address, token) {
+				t.Fatal("a bucket with items is new")
+			}
+			if err := b.connect(address, token, "correct horse"); err != nil {
+				t.Fatal(err)
+			}
+			run(t, a)
+			if got := b.bookmarked(); !slices.Equal(got, []string{"The Go site"}) {
+				t.Fatalf("b's bookmarks: %v", got)
+			}
+			if title, visits := b.page("https://example.com/"); title != "Example Domain" || visits != 1 {
+				t.Fatalf("b's history: %q, %d", title, visits)
+			}
+			if n := b.count(`SELECT count(*) FROM typed`); n != 1 {
+				t.Fatalf("b's typed: %d", n)
+			}
+			if title, _ := a.page("https://example.org/"); title != "From b" {
+				t.Fatalf("a's history from b: %q", title)
+			}
+			if st := b.sync.Status(); !st.On || st.Error != "" || !strings.HasPrefix(s.ts.URL, "https://"+st.Host) {
+				t.Fatalf("b's status: %+v", st)
+			}
+		})
+	}
+}
+
+// One address visited on both devices is one item, and one row on each with the larger count.
+func TestOneAddressOnBothIsOneRowWithTheLargerCount(t *testing.T) {
+	s := newServer(t)
+	a, b := newProfile(t), newProfile(t)
+	a.startSync(s)
+	b.startSync(s)
+	for range 3 {
+		a.history.AddTypedVisit("https://example.com/", "On a")
+	}
+	for range 5 {
+		b.history.AddTypedVisit("https://example.com/", "On b")
+	}
+	a.settle()
+	b.settle()
+	a.connect(s.bearer(), "tok", "pass phrase")
+	if err := b.connect(s.bearer(), "tok", "pass phrase"); err != nil {
+		t.Fatal(err)
+	}
+	run(t, a, b, a)
+	titleA, _ := a.page("https://example.com/")
+	for name, p := range map[string]*profile{"a": a, "b": b} {
+		if title, visits := p.page("https://example.com/"); visits != 5 || title != titleA {
+			t.Fatalf("%s: %q, %d visits; a has %q", name, title, visits, titleA)
+		}
+		if n := p.count(`SELECT count FROM typed WHERE url = 'https://example.com/'`); n != 5 {
+			t.Fatalf("%s: typed %d times", name, n)
+		}
+		if n := p.count(`SELECT count(*) FROM visits`); n != map[string]int{"a": 3, "b": 5}[name] {
+			t.Fatalf("%s has %d visits: visits don't sync", name, n)
+		}
+	}
+	pages := 0
+	for _, it := range s.items("tok") {
+		if it.Collection == "history" {
+			pages++
+		}
+	}
+	if pages != 1 {
+		t.Fatalf("the server has %d history items for one address", pages)
+	}
+}
+
+// A bookmark deleted on one device goes from the other.
+func TestABookmarkDeletedOnOneGoesFromTheOther(t *testing.T) {
+	s := newServer(t)
+	a, b := newProfile(t), newProfile(t)
+	a.startSync(s)
+	b.startSync(s)
+	var keep, gone string
+	a.main(func() {
+		e, _ := a.bookmarks.Add("Kept", "https://example.com/kept")
+		keep = e.ID
+		f, _ := a.bookmarks.NewFolder("", "Folder")
+		e, _ = a.bookmarks.Add("Gone", "https://example.com/gone")
+		a.bookmarks.Move(e.ID, f.ID)
+		gone = f.ID
+	})
+	a.settle()
+	a.connect(s.bearer(), "tok", "pass phrase")
+	b.connect(s.bearer(), "tok", "pass phrase")
+	if got := b.bookmarked(); len(got) != 2 {
+		t.Fatalf("b's bookmarks: %v", got)
+	}
+	b.main(func() { b.bookmarks.Remove(gone) })
+	b.settle()
+	run(t, b, a)
+	if got := a.bookmarked(); !slices.Equal(got, []string{"Kept"}) {
+		t.Fatalf("a's bookmarks: %v", got)
+	}
+	if n := a.count(`SELECT count(*) FROM bookmarks`); n != 1 {
+		t.Fatalf("a has %d rows", n)
+	}
+	var e struct{ ok bool }
+	a.main(func() { _, e.ok = a.bookmarks.Get(keep) })
+	if !e.ok {
+		t.Fatal("the kept bookmark went")
+	}
+}
+
+// The server holds no visit, nor anything readable of a page or a bookmark: their items are
+// sealed, with nothing in their public part.
+func TestTheServerHoldsNothingReadable(t *testing.T) {
+	s := newServer(t)
+	a := newProfile(t)
+	a.startSync(s)
+	for range 4 {
+		a.history.AddVisit("https://secret.example/path", "A secret title")
+	}
+	a.history.AddTypedVisit("https://typed.example/", "Typed")
+	a.main(func() { a.bookmarks.Add("A secret bookmark", "https://bookmarked.example/") })
+	a.settle()
+	if err := a.connect(s.bearer(), "tok", "pass phrase"); err != nil {
+		t.Fatal(err)
+	}
+	counts := map[string]int{}
+	for _, it := range s.items("tok") {
+		counts[it.Collection]++
+		raw, _ := json.Marshal(it)
+		for _, secret := range []string{"secret", "Typed", "typed.example", "bookmarked"} {
+			if strings.Contains(string(raw), secret) {
+				t.Fatalf("the server can read %q: %s", secret, raw)
+			}
+		}
+		if it.Collection != synckosh.KeysCollection && len(it.Public) != 0 {
+			t.Fatalf("a public part: %s", raw)
+		}
+	}
+	if counts["history"] != 2 || counts["typed"] != 1 || counts["bookmarks"] != 1 || len(counts) != 4 {
+		t.Fatalf("the server holds %v", counts)
+	}
+}
+
+// A wrong passphrase changes nothing; the right one joins.
+func TestAWrongPassphrase(t *testing.T) {
+	s := newServer(t)
+	a, b := newProfile(t), newProfile(t)
+	a.startSync(s)
+	b.startSync(s)
+	a.connect(s.bearer(), "tok", "the right one")
+	b.history.AddVisit("https://example.com/", "")
+	b.settle()
+	if err := b.connect(s.bearer(), "tok", "a wrong one"); !errors.Is(err, sync.ErrPassphrase) {
+		t.Fatalf("connect: %v", err)
+	}
+	if st := b.sync.Status(); st.On {
+		t.Fatalf("b's status: %+v", st)
+	}
+	if n := b.count(`SELECT count(*) FROM secrets`) + b.count(`SELECT count(*) FROM sync_changes`) + b.count(`SELECT marking FROM sync_state`); n != 0 {
+		t.Fatalf("a wrong passphrase left %d secrets, marks or marking", n)
+	}
+	if err := b.connect(s.bearer(), "tok", "the right one"); err != nil {
+		t.Fatal(err)
+	}
+	run(t, a)
+	if _, visits := a.page("https://example.com/"); visits != 1 {
+		t.Fatal("b didn't join")
+	}
+}
+
+// A changed passphrase needs no old one; a third device joins with it, and not with the old.
+func TestChangingThePassphrase(t *testing.T) {
+	s := newServer(t)
+	a, b, c := newProfile(t), newProfile(t), newProfile(t)
+	for _, p := range []*profile{a, b, c} {
+		p.startSync(s)
+	}
+	a.main(func() { a.bookmarks.Add("Shared", "https://example.com/") })
+	a.settle()
+	a.connect(s.bearer(), "tok", "old passphrase")
+	b.connect(s.bearer(), "tok", "old passphrase")
+	if err := b.call(func(done func(error)) { b.sync.ChangePassphrase("new passphrase", done) }); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.connect(s.bearer(), "tok", "old passphrase"); !errors.Is(err, sync.ErrPassphrase) {
+		t.Fatalf("the old passphrase: %v", err)
+	}
+	if err := c.connect(s.bearer(), "tok", "new passphrase"); err != nil {
+		t.Fatalf("the new passphrase: %v", err)
+	}
+	if got := c.bookmarked(); !slices.Equal(got, []string{"Shared"}) {
+		t.Fatalf("c's bookmarks: %v", got)
+	}
+	// a, which holds the key, syncs on.
+	a.history.AddVisit("https://example.com/later", "Later")
+	a.settle()
+	run(t, a, c)
+	if title, _ := c.page("https://example.com/later"); title != "Later" {
+		t.Fatalf("c from a: %q", title)
+	}
+}
+
+// Disconnect stops syncing and forgets the bucket; every row stays.
+func TestDisconnectKeepsTheRows(t *testing.T) {
+	s := newServer(t)
+	a, b := newProfile(t), newProfile(t)
+	a.startSync(s)
+	b.startSync(s)
+	a.history.AddVisit("https://example.com/", "Kept")
+	a.main(func() { a.bookmarks.Add("Kept", "https://example.com/") })
+	a.settle()
+	a.connect(s.bearer(), "tok", "pass phrase")
+	b.connect(s.bearer(), "tok", "pass phrase")
+	if err := b.call(b.sync.Disconnect); err != nil {
+		t.Fatal(err)
+	}
+	b.settle()
+	if got := b.bookmarked(); !slices.Equal(got, []string{"Kept"}) {
+		t.Fatalf("b's bookmarks: %v", got)
+	}
+	if title, _ := b.page("https://example.com/"); title != "Kept" {
+		t.Fatalf("b's history: %q", title)
+	}
+	if st := b.sync.Status(); st.On || st.Host != "" {
+		t.Fatalf("b's status: %+v", st)
+	}
+	for _, table := range []string{"secrets", "sync_items", "sync_meta", "sync_changes"} {
+		if n := b.count(`SELECT count(*) FROM ` + table); n != 0 {
+			t.Fatalf("b's %s has %d rows", table, n)
+		}
+	}
+	b.history.AddVisit("https://example.com/b", "")
+	b.settle()
+	if n := b.count(`SELECT count(*) FROM sync_changes`); n != 0 {
+		t.Fatal("a change was marked after Disconnect")
+	}
+}
+
+// A server that lost everything is filled again by the device, which a new one then joins.
+func TestAServerResetIsRefilled(t *testing.T) {
+	s := newServer(t)
+	a, c := newProfile(t), newProfile(t)
+	a.startSync(s)
+	c.startSync(s)
+	a.history.AddVisit("https://example.com/", "Kept")
+	a.main(func() { a.bookmarks.Add("Kept", "https://example.com/") })
+	a.settle()
+	a.connect(s.bearer(), "tok", "pass phrase")
+	s.reset()
+	run(t, a)
+	if err := c.connect(s.bearer(), "tok", "pass phrase"); err != nil {
+		t.Fatal(err)
+	}
+	if got := c.bookmarked(); !slices.Equal(got, []string{"Kept"}) {
+		t.Fatalf("c's bookmarks: %v", got)
+	}
+	if title, _ := c.page("https://example.com/"); title != "Kept" {
+		t.Fatalf("c's history: %q", title)
+	}
+}
+
+// A profile whose key doesn't open has sync off, saying why, and its rows as they were, until
+// StartFresh; then it connects again.
+func TestALockedProfileKeyAndStartingFresh(t *testing.T) {
+	s := newServer(t)
+	dir := t.TempDir()
+	a := openProfile(t, dir)
+	a.startSync(s)
+	a.history.AddVisit("https://example.com/", "Kept")
+	a.settle()
+	if err := a.connect(s.bearer(), "tok", "pass phrase"); err != nil {
+		t.Fatal(err)
+	}
+	a.close()
+	// The folder's key is another now, as a folder copied from another device's would be.
+	key := filepath.Join(dir, "folder.key")
+	os.Remove(key)
+	os.WriteFile(key, []byte(strings.Repeat("k", 32)), 0o600)
+
+	a = openProfile(t, dir)
+	a.startSync(s)
+	if st := a.sync.Status(); st.On || !st.Locked || st.Error == "" {
+		t.Fatalf("status: %+v", st)
+	}
+	if err := a.connect(s.bearer(), "tok", "pass phrase"); err == nil {
+		t.Fatal("connected with its keys locked")
+	}
+	if title, _ := a.page("https://example.com/"); title != "Kept" {
+		t.Fatalf("the history: %q", title)
+	}
+	if err := a.call(a.sync.StartFresh); err != nil {
+		t.Fatal(err)
+	}
+	if st := a.sync.Status(); st.On || st.Locked {
+		t.Fatalf("status after starting fresh: %+v", st)
+	}
+	if n := a.count(`SELECT count(*) FROM secrets`); n != 0 {
+		t.Fatalf("%d secrets after starting fresh", n)
+	}
+	if err := a.connect(s.bearer(), "tok", "pass phrase"); err != nil {
+		t.Fatal(err)
+	}
+	if st := a.sync.Status(); !st.On || st.Error != "" {
+		t.Fatalf("status after connecting again: %+v", st)
+	}
+}
+
+// Sync on at start runs at once, with what was kept.
+func TestSyncOnAtStartRuns(t *testing.T) {
+	s := newServer(t)
+	dir := t.TempDir()
+	a, b := openProfile(t, dir), newProfile(t)
+	a.startSync(s)
+	b.startSync(s)
+	a.connect(s.bearer(), "tok", "pass phrase")
+	b.connect(s.bearer(), "tok", "pass phrase")
+	a.close()
+	b.history.AddVisit("https://example.com/while", "While a was away")
+	b.settle()
+	run(t, b)
+
+	a = openProfile(t, dir)
+	a.startSync(s)
+	if err := a.sync.RunNow(); err != nil {
+		t.Fatal(err)
+	}
+	if title, _ := a.page("https://example.com/while"); title != "While a was away" {
+		t.Fatalf("a: %q", title)
+	}
+}
+
+func TestProposeAndLink(t *testing.T) {
+	for address, want := range map[string]sync.Proposal{
+		"https://memd.example/sync":          {Address: "https://memd.example/sync", Host: "memd.example", NeedsToken: true},
+		" https://memd.example/sync/ ":       {Address: "https://memd.example/sync", Host: "memd.example", NeedsToken: true},
+		"https://memd.example:8443/sync/t0k": {Address: "https://memd.example:8443/sync/t0k", Host: "memd.example:8443"},
+	} {
+		if got, err := sync.Propose(address); err != nil || got != want {
+			t.Errorf("%q: %+v, %v", address, got, err)
+		}
+	}
+	for _, bad := range []string{"http://memd.example/sync", "https:///sync", "https://u:p@memd.example/sync", "https://memd.example/sync?t=1", "https://memd.example/sync#t", "memd.example/sync"} {
+		if _, err := sync.Propose(bad); err == nil {
+			t.Errorf("%q was taken", bad)
+		}
+	}
+	got, err := sync.Link("project-b://sync?address=" + "https%3A%2F%2Fmemd.example%2Fsync%2Ft0k")
+	if err != nil || got != "https://memd.example/sync/t0k" {
+		t.Fatalf("link: %q, %v", got, err)
+	}
+	for _, bad := range []string{"project-b://other?address=x", "https://sync?address=x", "project-b://sync"} {
+		if _, err := sync.Link(bad); err == nil {
+			t.Errorf("%q was taken", bad)
+		}
+	}
+}
