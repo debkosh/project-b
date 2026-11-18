@@ -106,8 +106,11 @@ How Standard shows them (`shell/src/apps/shell/standard/`, `bookmarks.js` for wh
   and the next bookmark goes into that folder too. Escape or a press outside closes it with
   the bookmark kept as it was. The panel closes with another tab, and the page gets the
   focus back. ([mock](screenshots/bookmarks/mock-b3.png))
-- **The Mobile web shell's** Bookmark, in the menu sheet, does the same, and the panel is a
-  sheet in the menu's place: the back key, a tap outside or a swipe down close it.
+- **The Mobile shells'** Bookmark, in the menu sheet's row of actions after Forward, does the
+  same, its star filled on a bookmarked page, and the panel is a sheet in the menu's place:
+  Enter in the name, or Done, saves; the back key, a tap outside or a swipe down close it.
+  The native Mobile shell draws the same sheet in Kotlin (`bookmarkSheet` in `Sheets.kt`),
+  its folders in the icon colour, as it has no gulal for their tints.
 - **Shells with no panel** (Glide, Fox, Minimal, Terminal) have Cmd+D save the bookmark all
   the same, into the folder last saved in.
 - **The Bookmarks page** has the folders on its left: Bookmarks, the top, with the folders
@@ -178,7 +181,9 @@ The Bookmarks page sends `editBookmark {id, title, url}`, `moveBookmark {id, par
 places), `core/app` (`TestBookmarksFromTheShellAndThePage`: Cmd+D, the star, the panel's
 save, and the page's messages), `shell/e2e/pages.cjs` (the panel, Cmd+D, the folders, a drag,
 Move to…, a search, a folder deleted with what it holds, the panel's folder kept for the
-next), `shell/e2e/shells/mobile.cjs` (the sheet) and `shell/e2e/shells/standard-bookmarks.cjs`
+next), `shell/e2e/shells/mobile.cjs` (the sheet), `tools/drive_android.py bookmark_star`
+(the star and its sheet on a phone, in both Mobile shells: the folder last saved in, Enter,
+the back key, Remove) and `shell/e2e/shells/standard-bookmarks.cjs`
 (Standard's places, each on and off with its pref: the new tab's tiles, a folder opened in
 place and opened as a group; the sidebar's tree, a bookmark showing its tab or opening one; the command box narrowed by
 `*`, its folders, its search and its keys; the bar, its folder, its menus, its » and the page

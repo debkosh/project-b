@@ -78,6 +78,10 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
     // active tab's search while its find bar is open; the tab whose page fills the screen.
     private var dialogs = listOf<JSONObject>()
     private var downloads = listOf<JSONObject>()
+    // The profile's bookmarks and folders, Go's flat list; the bookmark whose sheet Go asked
+    // for once the menu's Bookmark bookmarked the page, {id, new}.
+    private var bookmarks = listOf<JSONObject>()
+    private var marked: JSONObject? = null
     private var find: JSONObject? = null
     private var pageFullScreen = 0L
     // The page dialog shown, by its id, so a dialog is drawn once and answered once.
@@ -250,7 +254,7 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
                 draw()
             }
             "tabs", "theme", "windowColor", "addressBarPosition", "workspaces", "update", "crashLog",
-            "dialogs", "downloads", "find", "pageFullScreen" -> {
+            "dialogs", "downloads", "bookmarks", "find", "pageFullScreen" -> {
                 take(m)
                 draw()
             }
@@ -283,6 +287,12 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
                     pressed = menu
                     open("link")
                 }
+            }
+            // The star's panel, once the menu's Bookmark has bookmarked the page: it takes the
+            // menu's place, as on the web shell.
+            "bookmarkPanel" -> m.optJSONObject("bookmarkPanel")?.let {
+                marked = it
+                open("bookmark")
             }
             "suggestions" -> if (m.optInt("id") == asked && editing) suggest(m.optJSONArray("items") ?: JSONArray())
             // The phone's back key, while the shell said it closes something: the sheet open,
@@ -346,6 +356,7 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
         if (m.has("crashLog")) crashLog = m.optString("crashLog")
         list("dialogs")?.let { dialogs = it }
         list("downloads")?.let { downloads = it }
+        list("bookmarks")?.let { bookmarks = it }
         if (m.has("find")) find = m.optJSONObject("find")
         if (m.has("pageFullScreen")) pageFullScreen = m.optLong("pageFullScreen")
     }
@@ -591,6 +602,7 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
             "group" -> groupSheetView()
             "card" -> cardSheet()
             "link" -> linkSheetView()
+            "bookmark" -> bookmarkSheetView()
             else -> null
         }
         if (made != null) sheets.addView(made, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
@@ -607,9 +619,11 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
     }
 
     // The ⋯ sheet: a row of the page's actions, Back while there is somewhere to go back to
-    // (the phone's back key does it too), Forward, Reload or Stop, New tab, and New tab in
-    // group while the tab is in one; then Workspaces, where new tabs open, while there are two
-    // or more, the update while one is ready, and Settings. Each acts and closes the sheet.
+    // (the phone's back key does it too), Forward, Bookmark, Reload or Stop, New tab, and New
+    // tab in group while the tab is in one; then Workspaces, where new tabs open, while there
+    // are two or more, the update while one is ready, and Settings. Each acts and closes the
+    // sheet, but Bookmark, which shows its star filled on a bookmarked page: Go answers it
+    // with the star's panel, which takes the sheet's place.
     private fun menuSheet(): View {
         val s = Sheet(context, "Menu", palette) { open("") }
         val tab = activeTab()
@@ -618,25 +632,35 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
             orientation = LinearLayout.HORIZONTAL
             setPadding(dp(8), dp(4), dp(8), dp(8))
         }
-        fun action(icon: String, name: String, words: String, enabled: Boolean = true, run: () -> Unit) {
+        fun action(icon: String, name: String, words: String, enabled: Boolean = true, filled: Boolean = false,
+                   closes: Boolean = true, run: () -> Unit) {
             val b = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER_HORIZONTAL
                 isClickable = enabled
                 isEnabled = enabled
-                setOnClickListener { run(); if (sheet == "menu") open("") }
+                setOnClickListener { run(); if (closes && sheet == "menu") open("") }
                 background = android.graphics.drawable.StateListDrawable().apply {
                     addState(intArrayOf(android.R.attr.state_pressed), rounded(palette.press, dpf(12)))
                 }
             }
             asButton(b, name)
             val ink = if (enabled) palette.icon else Palette.alpha(palette.icon, 0.38f)
-            b.addView(IconView(context, icon, ink), LinearLayout.LayoutParams(dp(48), dp(40)))
-            b.addView(label(context, 12f, if (enabled) palette.muted else Palette.alpha(palette.muted, 0.5f)).apply { text = words; gravity = Gravity.CENTER })
+            b.addView(IconView(context, icon, if (filled) palette.accent else ink, filled = filled), LinearLayout.LayoutParams(dp(48), dp(40)))
+            val wordsInk = when { filled -> palette.accent; enabled -> palette.muted; else -> Palette.alpha(palette.muted, 0.5f) }
+            b.addView(label(context, 12f, wordsInk).apply { text = words; gravity = Gravity.CENTER })
             actions.addView(b, LinearLayout.LayoutParams(0, dp(64), 1f))
         }
         if (tab?.optBoolean("canGoBack") == true) action("back", "Back", "Back") { send(JSONObject().put("t", "back")) }
         action("forward", "Forward", "Forward", tab?.optBoolean("canGoForward") == true) { send(JSONObject().put("t", "forward")) }
+        // The star bookmarks the page shown, into the folder last saved in, or finds its
+        // bookmark: a web page's, not one of ours.
+        val url = tab?.optString("url") ?: ""
+        val web = Regex("^https?:").containsMatchIn(url) && tab?.optString("page").isNullOrEmpty()
+        val starred = url.isNotEmpty() && bookmarks.any { it.optString("kind") == "bookmark" && it.optString("url") == url }
+        action("star", if (starred) "Edit bookmark" else "Bookmark", if (starred) "Bookmarked" else "Bookmark", web, filled = starred, closes = false) {
+            send(JSONObject().put("t", "bookmark").put("url", url).put("title", tab?.optString("title") ?: ""))
+        }
         if (tab?.optBoolean("loading") == true) {
             action("stop", "Stop", "Stop") { send(JSONObject().put("t", "run").put("text", "nav.stop")) }
         } else {
@@ -760,6 +784,22 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
             fields.put("t", "newTab")
             send(fields)
         }, done = { open("") })
+        return s
+    }
+
+    // The star's panel for the bookmark Go named, while it is still one.
+    private fun bookmarkSheetView(): View? {
+        val p = marked ?: return null
+        val b = bookmarks.firstOrNull { it.optString("id") == p.optString("id") } ?: return null
+        val added = p.optBoolean("new")
+        val s = Sheet(context, if (added) "Bookmarked" else "Edit bookmark", palette) { open("") }
+        bookmarkSheet(s, palette, b, added, bookmarks, save = { title, parent ->
+            send(JSONObject().put("t", "saveBookmark").put("bookmark", b.getString("id")).put("title", title).put("parent", parent))
+            open("")
+        }, remove = {
+            send(JSONObject().put("t", "removeBookmark").put("bookmark", b.getString("id")))
+            open("")
+        })
         return s
     }
 

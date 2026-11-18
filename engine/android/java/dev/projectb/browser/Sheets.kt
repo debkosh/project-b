@@ -284,3 +284,149 @@ class PageNotice(context: Context, private val again: () -> Unit, private val sh
         button.visibility = if (blocked) GONE else VISIBLE
     }
 }
+
+/** The web's weight 600, for the sheet's title and the folder chosen. */
+private val semiBold: android.graphics.Typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, 600, false)
+
+/** A folder a bookmark can go in, as the web shells' folders() gives it: its id, '' for the top. */
+data class Folder(val id: String, val title: String, val depth: Int)
+
+/**
+ * Every folder as a place a bookmark can go, from Go's flat list of bookmarks and folders:
+ * the top first, Bookmarks, then each folder under the one it is in, in their places.
+ */
+fun folders(list: List<JSONObject>): List<Folder> {
+    val under = list.filter { it.optString("kind") == "folder" }.groupBy { it.optString("parent") }
+    val out = mutableListOf(Folder("", "Bookmarks", 0))
+    fun walk(parent: String, depth: Int) {
+        for (f in under[parent].orEmpty()) {
+            out.add(Folder(f.getString("id"), f.optString("title"), depth))
+            walk(f.getString("id"), depth + 1)
+        }
+    }
+    walk("", 1)
+    return out
+}
+
+/**
+ * The star's panel as a sheet (docs/bookmark-folders.md), the web Mobile shell's BookmarkSheet:
+ * what the menu's Bookmark shows once Go has bookmarked the page into the folder last saved in.
+ * Its name and its folder can change: Done, or Enter in the name, saves them, and the next
+ * bookmark goes into that folder too. The back key, a tap outside or a swipe down closes it
+ * with the bookmark kept as it was; Remove takes it away.
+ */
+fun bookmarkSheet(s: Sheet, palette: Palette, bookmark: JSONObject, added: Boolean, list: List<JSONObject>,
+                  save: (String, String) -> Unit, remove: () -> Unit) {
+    val context = s.context
+    val c = s.content
+    var parent = bookmark.optString("parent")
+    val said = if (added) "Bookmarked" else "Edit bookmark"
+    c.addView(label(context, 16f, palette.text).apply {
+        text = said
+        typeface = semiBold
+        setPadding(dp(20), dp(4), dp(20), dp(12))
+    })
+    c.addView(label(context, 13f, palette.muted).apply {
+        text = "Name"
+        setPadding(dp(20), 0, dp(20), dp(6))
+    })
+    val name = EditText(context).apply {
+        setText(bookmark.optString("title"))
+        contentDescription = "Name"
+        setSingleLine(true)
+        setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15f)
+        setTextColor(palette.text)
+        inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+        imeOptions = EditorInfo.IME_ACTION_DONE
+        background = rounded(palette.surface, dpf(10), palette.line, dp(1))
+        setPadding(dp(12), 0, dp(12), 0)
+    }
+    fun done() = save(name.text.toString().trim(), parent)
+    // Done on the keyboard, or Enter on one plugged in.
+    name.setOnEditorActionListener { _, _, _ -> done(); true }
+    c.addView(name, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, name.dp(48)).apply {
+        marginStart = name.dp(20); marginEnd = name.dp(20); bottomMargin = name.dp(12)
+    })
+
+    // The folders, the bookmark's own chosen, once there is a folder.
+    val places = folders(list)
+    if (places.size > 1) {
+        c.addView(label(context, 13f, palette.muted).apply {
+            text = "Folder"
+            setPadding(dp(20), dp(4), dp(20), dp(6))
+        })
+        val rows = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+        val views = mutableListOf<Pair<Folder, LinearLayout>>()
+        fun mark() {
+            for ((f, row) in views) {
+                val on = f.id == parent
+                row.isSelected = on
+                row.background = android.graphics.drawable.StateListDrawable().apply {
+                    addState(intArrayOf(android.R.attr.state_pressed), android.graphics.drawable.ColorDrawable(palette.press))
+                    addState(intArrayOf(), android.graphics.drawable.ColorDrawable(if (on) palette.accentSoft else android.graphics.Color.TRANSPARENT))
+                }
+                (row.getChildAt(1) as TextView).typeface = if (on) semiBold else android.graphics.Typeface.DEFAULT
+            }
+        }
+        for (f in places) {
+            val row = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                minimumHeight = dp(48)
+                setPadding(dp(20 + f.depth * 20), 0, dp(20), 0)
+                isClickable = true
+            }
+            // The web row's numbers: the 20dp icon at 20 + depth × 20 from the left, then 12 to the title.
+            row.addView(IconView(context, "folder", palette.icon), LinearLayout.LayoutParams(row.dp(20), row.dp(24)).apply { marginEnd = row.dp(12) })
+            row.addView(label(context, 15f, palette.text).apply { text = f.title },
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            row.contentDescription = f.title
+            // A choice of one, to a screen reader and the driver, checked while it is the folder.
+            row.accessibilityDelegate = object : View.AccessibilityDelegate() {
+                override fun onInitializeAccessibilityNodeInfo(host: View, info: android.view.accessibility.AccessibilityNodeInfo) {
+                    super.onInitializeAccessibilityNodeInfo(host, info)
+                    info.className = "android.widget.RadioButton"
+                    info.isCheckable = true
+                    info.isChecked = f.id == parent
+                }
+            }
+            row.setOnClickListener { parent = f.id; mark() }
+            views.add(f to row)
+            rows.addView(row)
+        }
+        mark()
+        val scroll = object : android.widget.ScrollView(context) {
+            // At most 40% of the screen, as the web sheet's 40vh, scrolling past that.
+            override fun onMeasure(w: Int, h: Int) {
+                val most = (resources.displayMetrics.heightPixels * 0.4f).toInt()
+                super.onMeasure(w, MeasureSpec.makeMeasureSpec(most, MeasureSpec.AT_MOST))
+            }
+        }
+        scroll.addView(rows)
+        c.addView(View(context).apply { setBackgroundColor(palette.line) }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1))
+        c.addView(scroll)
+        c.addView(View(context).apply { setBackgroundColor(palette.line) }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1))
+    }
+
+    val buttons = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.END }
+    buttons.setPadding(buttons.dp(20), buttons.dp(12), buttons.dp(20), buttons.dp(4))
+    fun button(text: String, primary: Boolean, run: () -> Unit) {
+        val b = label(context, 15f, if (primary) palette.onAccent else palette.muted, bold = primary).apply {
+            this.text = text
+            gravity = Gravity.CENTER
+            minWidth = dp(48)
+            setPadding(dp(18), 0, dp(18), 0)
+            isClickable = true
+            setOnClickListener { run() }
+            background = android.graphics.drawable.StateListDrawable().apply {
+                addState(intArrayOf(android.R.attr.state_pressed), rounded(if (primary) Palette.alpha(palette.accent, 0.85f) else palette.press, dpf(10)))
+                addState(intArrayOf(), rounded(if (primary) palette.accent else android.graphics.Color.TRANSPARENT, dpf(10)))
+            }
+        }
+        asButton(b, text)
+        buttons.addView(b, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, buttons.dp(48)).apply { marginStart = buttons.dp(8) })
+    }
+    button("Remove", false, remove)
+    button("Done", true) { done() }
+    c.addView(buttons)
+}
