@@ -33,8 +33,9 @@ type testServer struct {
 	n    int
 	// refused are the tokens the server signs out.
 	refused map[string]bool
-	// held, while it is open, holds every request.
+	// held, while it is open, holds every request after the next pass.
 	held chan struct{}
+	pass int
 }
 
 func newServer(t *testing.T) *testServer {
@@ -48,6 +49,9 @@ func newServer(t *testing.T) *testServer {
 		}
 		s.mu.Lock()
 		srv, held := s.srv, s.held
+		if held != nil && s.pass > 0 {
+			held, s.pass = nil, s.pass-1
+		}
 		s.mu.Unlock()
 		if held != nil {
 			<-held
@@ -80,11 +84,14 @@ func (s *testServer) reset() {
 }
 
 // hold holds every request until the release it returns, or the test's end.
-func (s *testServer) hold() (release func()) {
+func (s *testServer) hold() (release func()) { return s.holdAfter(0) }
+
+// holdAfter lets the next n requests through, and holds the rest as hold does.
+func (s *testServer) holdAfter(n int) (release func()) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	held := make(chan struct{})
-	s.held = held
+	s.held, s.pass = held, n
 	var once gosync.Once
 	release = func() {
 		once.Do(func() {
@@ -188,11 +195,12 @@ func (p *profile) startSync(s *testServer) *sync.Manager {
 	return p.sync
 }
 
-// connect connects the profile's sync, and waits for its answer.
+// connect connects the profile's sync, and waits for its answer and its first run.
 func (p *profile) connect(address, token, passphrase string) error {
 	got := make(chan error, 1)
 	p.main(func() { p.sync.Connect(address, token, passphrase, func(err error) { got <- err }) })
 	err := <-got
+	p.sync.Idle()
 	p.settle()
 	return err
 }
