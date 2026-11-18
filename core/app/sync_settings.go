@@ -23,14 +23,14 @@ func (a *App) syncSettingsPart() settings.Part {
 		Snapshot: func(into map[string]any) { into["sync"] = a.Sync.Status() },
 		Handle:   func(engine.WindowID, string, []byte) bool { return false },
 	})
-	// answer sends t, with err's text when there is one.
+	// answer sends t, with err's text when there is one, and its problem's name.
 	answer := func(t string, err error, more map[string]any) {
 		m := map[string]any{"t": t}
 		for k, v := range more {
 			m[k] = v
 		}
 		if err != nil {
-			m["error"] = err.Error()
+			m["error"], m["problem"] = err.Error(), sync.Problem(err)
 		}
 		a.Settings.Send(m)
 	}
