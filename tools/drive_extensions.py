@@ -105,8 +105,9 @@ def settings_point(x, y, app):
 
 def settings_click(app, selector):
     """Clicks the middle of what selector finds in the settings page, after checking that
-    a press there lands on it: when something else is on top, it says what."""
-    x, y, on = settings(app, f"""(()=>{{const e=document.querySelector({json.dumps(selector)}),r=e.getBoundingClientRect(),x=r.x+r.width/2,y=r.y+r.height/2,
+    a press there lands on it: when something else is on top, it says what. Scrolled to
+    first, as one page of Settings holds more than the window shows."""
+    x, y, on = settings(app, f"""(()=>{{const e=document.querySelector({json.dumps(selector)});e.scrollIntoView({{block:'nearest',behavior:'instant'}});const r=e.getBoundingClientRect(),x=r.x+r.width/2,y=r.y+r.height/2,
         t=document.elementFromPoint(x,y);return [x,y,e===t||e.contains(t)?'':(t?t.outerHTML.slice(0,160):'nothing')+' at '+[Math.round(x),Math.round(y)]+' of '+[innerWidth,innerHeight]]}})()""")
     if on:
         raise RuntimeError(f"{selector} is under {on}")
@@ -116,7 +117,7 @@ def settings_click(app, selector):
 def settings_click_found(app, find):
     """Clicks the element the JavaScript expression find returns, once it is there: a menu
     item or a dialog's button, which the page draws a frame after it is asked for."""
-    expr = f"(()=>{{const e=({find});if(!e)return null;const r=e.getBoundingClientRect();return [r.x+r.width/2,r.y+r.height/2]}})()"
+    expr = f"(()=>{{const e=({find});if(!e)return null;e.scrollIntoView({{block:'nearest',behavior:'instant'}});const r=e.getBoundingClientRect();return [r.x+r.width/2,r.y+r.height/2]}})()"
     deadline = time.time() + 5
     while (at := settings(app, expr)) is None:
         if time.time() > deadline:
@@ -399,6 +400,10 @@ def import_checks():
     finally:
         os.environ["HOME"] = real_home
     open_settings(app)
+    # Import is in Your data, which either layout's nav names (data-section): on the one
+    # page, the default, it scrolls there; in the sections layout it shows the section. The
+    # page draws its nav a moment after it opens, so it waits for it.
+    settings_wait(app, "!!document.querySelector('[data-section=\"data\"]')", 30)
     settings_click(app, '[data-section="data"]')
     settings_wait(app, "!!document.querySelector('[aria-label=\"From Chrome\"]')", 30)
     settings_click(app, '[aria-label="From Chrome"]')
