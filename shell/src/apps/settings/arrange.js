@@ -22,6 +22,9 @@ const where = {
   keyboard: () => !phone,
   // A phone has no Save panel: a download goes to its Downloads.
   askWhereToSave: () => !phone,
+  // Android keeps each app's data from the others, so a phone has no browser to bring
+  // things over from.
+  import: () => !phone,
   extensions: () => !phone && !!extensionsSection?.shown(),
 };
 
