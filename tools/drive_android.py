@@ -739,7 +739,7 @@ def in_front():
 
 def back_key_chain():
     """The phone's back key goes back in the page, then closes a tab with no history, the tab
-    used before it showing, down to No tabs, and only then leaves the app."""
+    used before it showing, down to the last tab, whose closing closes the app."""
     launch()
     go(BASE + "/a")
     asked("/a")
@@ -761,16 +761,8 @@ def back_key_chain():
     served.clear()
     key(4)
     check("back in that tab goes back in its page", asked("/a"), str(served))
-    for _ in range(4):
-        if find("shell", text="No tabs") is not None:
-            break
-        key(4)
-        time.sleep(1)
-    check("back down the last tab leaves the window with No tabs, the app still there",
-          until(lambda: find("shell", text="No tabs")) is not None and in_front())
-    shot("22-no-tabs")
     key(4)
-    check("back with no tabs leaves the app", until(lambda: not in_front()) is not None)
+    check("back on the last tab, with no history, closes it, and so the app", until(lambda: not in_front()) is not None)
 
 
 def page_dialogs():
