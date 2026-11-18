@@ -68,6 +68,8 @@ each test, with reruns replacing only their parts, into `docs/test-reports/<vers
 it had matches `tools/known-failures.json` (the basics, which fail on purpose, and bugs we
 know of), so the headline is the count of new failures. It compares each group's checks, each
 test's status and each kind's peak memory with the previous version's JSON in that folder.
+`flaky` lists every check that failed in some run of the version, a rerun or a run the report
+didn't take, and not in the result it took, with how many of that test's runs it failed in.
 
 The repo copy keeps nothing of this machine but its model, OS and memory: home folders, temp
 folders, the host and user names and local addresses are replaced. `tools/release.sh` links the

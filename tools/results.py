@@ -272,7 +272,7 @@ def cmd_report(args):
     ver = args[0]
     out = args[args.index("--out") + 1] if "--out" in args else os.path.join(ROOT, "docs", "test-reports")
     vdir = os.path.join(RESULTS, ver)
-    latest, reruns, commits, machines = {}, [], set(), []
+    latest, reruns, commits, machines, every = {}, [], set(), [], {}
     for run in sorted(os.listdir(vdir)):
         meta = json.load(open(os.path.join(vdir, run, "run.json")))
         machines.append(meta["machine"])
@@ -281,6 +281,8 @@ def cmd_report(args):
             if f.endswith(".json"):
                 t = json.load(open(os.path.join(tdir, f)))
                 key = (t["group"], t["name"])
+                # Each run's failures as they were, before a rerun's parts are merged in.
+                every.setdefault(key, []).append(list(t["failures"]))
                 if t.get("rerun"):
                     reruns.append(t)
                     continue
@@ -335,8 +337,23 @@ def cmd_report(args):
         g["ok"] += t["ok"]
         g["fail"] += t["fail"]
     m = machines[-1] if machines else {}
+    # Flaky: a check that failed in some run of this version and not in the result the report
+    # took, with how many of that test's runs it failed in.
+    def check_name(line):
+        return re.sub(r"^FAIL\s+", "", line).split(" -> ")[0].strip()
+
+    final = {(t["group"], t["name"]): {check_name(f["line"]) for f in t["failures"]} for t in tests}
+    flaky = []
+    for key, results in sorted(every.items()):
+        seen = {}
+        for res in results:
+            for c in {check_name(f) for f in res}:
+                seen[c] = seen.get(c, 0) + 1
+        for c, n in sorted(seen.items()):
+            if c not in final.get(key, set()):
+                flaky.append({"group": key[0], "name": key[1], "check": scrub(c), "failed": n, "runs": len(results)})
     new = sum(1 for t in tests for f in t["failures"] if not f["known"])
-    report = {"schema": SCHEMA, "version": ver, "date": utc()[:10], "commits": sorted(commits), "newFailures": new,
+    report = {"schema": SCHEMA, "version": ver, "date": utc()[:10], "commits": sorted(commits), "newFailures": new, "flaky": flaky,
               "machine": {"model": m.get("model"), "os": m.get("os"), "memGB": m.get("memGB")}, "groups": groups, "tests": tests}
 
     os.makedirs(out, exist_ok=True)
@@ -355,7 +372,8 @@ def markdown(r, prev):
     L = [f"# Test report, Project B {r['version']}", "",
          f"{r['date']}, from {', '.join(r['commits'])}, on {r['machine']['model']} with {r['machine']['os']} and {r['machine']['memGB']} GB.",
          f"Format: [docs/testing.md](../testing.md#test-results).", "",
-         f"**{r['newFailures']} new failures.**" if r["newFailures"] else "**0 new failures**: every failure is a known one.", "", "## Groups", "",
+         (f"**{r['newFailures']} new failures.**" if r["newFailures"] else "**0 new failures**: every failure is a known one.")
+         + (f" **{len(r['flaky'])} flaky checks**, failed in one run and passed in another." if r.get("flaky") else ""), "", "## Groups", "",
          "| Group | Tests passed | Failed | Known | Did not run | Checks ok | Checks failed |", "|---|---|---|---|---|---|---|"]
     pg = (prev or {}).get("groups", {})
     for g, v in sorted(r["groups"].items()):
@@ -381,6 +399,8 @@ def markdown(r, prev):
         for k, p in sorted(t["processes"].items()):
             b = before.get(k, {}).get("peakMB", "")
             L.append(f"| {t['group']} | {t['name']} | {k} | {p['peakMB']} | {p['avgMB']} | {p['peakCPU']} | {p['avgCPU']} | {b} |")
+    L += ["", "## Flaky", "", "Checks that failed in some run of this version and passed in the result above."]
+    L += [f"- {f['group']}, {f['name']}: {f['check']}, failed in {f['failed']} of {f['runs']} runs" for f in r.get("flaky", [])] or ["- None."]
     grow = [(t, g) for t in r["tests"] for g in t["grows"]]
     L += ["", "## Memory that grew and stayed", ""]
     L += [f"- {t['group']}, {t['name']}, part {g}" for t, g in grow] or ["- None."]
