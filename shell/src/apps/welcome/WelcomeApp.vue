@@ -225,7 +225,7 @@ onMounted(() => heading.value?.focus());
 
       <section v-else-if="step === 'extras'" class="extras" aria-labelledby="extras">
         <h1 id="extras" ref="heading" tabindex="-1">Extras for any page</h1>
-        <p class="sub">Small scripts that add to the pages you visit. Turn on any you like, and change or remove them later in Settings › Sparks.</p>
+        <p class="sub">Small scripts that add to the pages you visit. Turn on any you like, and change or remove them later in Settings&nbsp;›&nbsp;Sparks.</p>
         <div class="card">
           <label v-for="s in state.sparks" :key="s.id" class="row">
             <span class="spark">
