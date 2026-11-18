@@ -108,7 +108,7 @@ No monospace in the UI. Code-like strings (a permission name, a host) are body t
 | Settings row | at least 48px high, padding 8px 16px |
 | Gaps | 4px between toolbar buttons, 8px between buttons in a group, 12px between an icon and its text in a header |
 | Touch | buttons grow to 40px; hover does nothing |
-| A phone | every control a finger presses is at least 48px each way, Android's least (48dp; a CSS pixel is a dp on a phone). What it draws may be smaller inside its target, as a 32px chip in a 48px row. The Mobile shell's tests check every control on each screen (`shell/e2e/shells/mobile.cjs`) |
+| A phone | every control a finger presses is at least 48px each way, Android's least (48dp; a CSS pixel is a dp on a phone). What it draws may be smaller inside its target, as a 32px chip in a 48px row, or a 40px button in a 48px target. The Mobile shell's tests check every control on each screen (`shell/e2e/shells/mobile.cjs`) |
 
 ## Motion
 
@@ -174,6 +174,8 @@ Use these; never leave a `<button>`, `<select>`, `<input>` or radio to the brows
 | A link in a line of text that opens something on the page | `.link` | |
 | A second line under a label | `.secondary` | a section's own class |
 | A question | `Dialog` | `confirm()`, or a section's own `<dialog>` |
+| A password or passphrase | a password `.text-field` with Show, a quiet text button inside its right end that turns to Hide | an eye icon outside the field |
+| A line under a field that has an action (a strength, Suggest one) | `.secondary` on the left, one `.link` on its right | a button under the field |
 
 ## Patterns
 
@@ -315,6 +317,10 @@ that wants the default look follows it.
 - **An ellipsis** when the button asks for more before it acts ("New workspace…", "Load
   unpacked…"), none when it acts at once.
 - **Plain words for errors.**
+- **A site or a server is named by its host, in bold,** in a dialog's title or words, so it
+  reads first: "Sync with **example.com**?", as a sign-in and a passkey name theirs.
+- **An address that isn't being edited shows its host first:** the host in `--text`, the
+  scheme and the path in `--muted`. Editing it shows it whole, in one colour.
 
 ### The look ahead
 
