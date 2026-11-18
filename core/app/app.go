@@ -276,7 +276,11 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Tabs.AddGate(a.Policy.IsAllowedURL)
 	// History is the web's: our own tabs record nothing.
 	a.Tabs.OnNavigationFinished(func(t tabs.Tab) {
-		if t.Page == "" {
+		switch {
+		case t.Page != "":
+		case t.Typed:
+			a.History.AddTypedVisit(t.URL, t.Title)
+		default:
 			a.History.AddVisit(t.URL, t.Title)
 		}
 	})

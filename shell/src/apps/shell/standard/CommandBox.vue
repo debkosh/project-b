@@ -71,7 +71,7 @@ function choose(i = highlight.value, pressed = false) {
   const row = current ? items.value[i] : undefined;
   const typed = text.value.trim();
   if (row) chooseSuggestion(row, false);
-  else if (typed) send({ t: 'navigate', text: typed });
+  else if (typed) send({ t: 'navigate', text: typed, typed: true });
 }
 
 function leaveMarks() {

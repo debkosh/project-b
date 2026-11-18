@@ -2,7 +2,10 @@ package app_test
 
 import (
 	"fmt"
+	"strings"
 	"testing"
+
+	"projectb/store"
 )
 
 func TestTheSuggestionListAndChoosingFromIt(t *testing.T) {
@@ -91,4 +94,45 @@ func TestNothingTypedOffersTabsAndReopensAClosedOne(t *testing.T) {
 			t.Error("Recently Closed still lists what came back")
 		}
 	})
+}
+
+// An address typed and entered, or chosen from a list for typed text, is a typed one once it
+// loads; typed words, a link and a row of the list for nothing typed are not.
+func TestTypedAddressesAreRecorded(t *testing.T) {
+	r := start(t, t.TempDir())
+	defer r.stop()
+	loaded := func(u string) {
+		r.t.Helper()
+		r.waitForTab(func(tab map[string]any) bool {
+			return tab["url"] == u && tab["loading"] == false && strings.HasPrefix(tab["title"].(string), "Mock")
+		})
+	}
+	r.shell(`{"t":"navigate","text":"typed.test","typed":true}`)
+	loaded("https://typed.test")
+	r.shell(`{"t":"navigate","text":"two words","typed":true}`)
+	loaded("https://duckduckgo.com/?q=two+words")
+	r.visit("https://clicked.test/")
+	r.shell(`{"t":"chooseSuggestion","row":{"kind":"history","url":"https://chosen.test/","typed":true}}`)
+	loaded("https://chosen.test/")
+	r.shell(`{"t":"chooseSuggestion","row":{"kind":"history","url":"https://top.test/"}}`)
+	loaded("https://top.test/")
+	r.shell(`{"t":"newTab","text":"new.test","typed":true}`)
+	loaded("https://new.test")
+	var got []string
+	r.a.Store.Wait(func(tx *store.Tx) error {
+		rows, err := tx.Query(`SELECT url FROM typed ORDER BY url`)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var u string
+			rows.Scan(&u)
+			got = append(got, u)
+		}
+		return nil
+	})
+	if strings.Join(got, " ") != "https://chosen.test/ https://new.test https://typed.test" {
+		t.Fatalf("typed = %v", got)
+	}
 }

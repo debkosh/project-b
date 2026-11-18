@@ -60,7 +60,7 @@
 
   function go(value) {
     if (value.trim() === '') return;
-    send({ t: 'navigate', text: value.trim() });
+    send({ t: 'navigate', text: value.trim(), typed: true });
     leave();
   }
 
