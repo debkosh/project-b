@@ -11,6 +11,7 @@ const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright');
 const lib = require('../lib.cjs');
+const centred = (inner, outer) => Promise.all([inner.boundingBox(), outer.boundingBox()]).then(([i, o]) => Math.abs(i.x + i.width / 2 - (o.x + o.width / 2)) < 1);
 const { check, fire, settle, until } = lib;
 
 const send = (m) => fetch(`${lib.base}/shell/send?window=1`, { method: 'POST', body: JSON.stringify(m) });
@@ -68,6 +69,7 @@ fs.writeFileSync(path.join(lib.profile, 'bookmarks.json'), JSON.stringify({ vers
   const had = (await goTabs()).length;
   check('the new tab shows the top folder as tiles, folders first', await until(async () => JSON.stringify(await names(tiles)) === JSON.stringify(['Reading', 'Recipes', 'Travel', 'Bank', 'Shop'])), JSON.stringify(await names(tiles)));
   check('a folder\'s tile shows its sites, four at most', (await tiles.nth(1).locator('.site-mark').count()) === 4 && (await tiles.nth(0).locator('.site-mark').count()) === 2);
+  check('one with one site shows it in the middle', await centred(tiles.nth(2).locator('.site-mark'), tiles.nth(2).locator('.sites')));
   await tiles.nth(1).click();
   const panel = ui.getByRole('group', { name: 'Folder Recipes' });
   check('a folder opens in place, its folders first, then its bookmarks', await until(async () => JSON.stringify(await names(panel)) === JSON.stringify(['Weeknight', 'Pasta with tomatoes', 'Lentil soup', 'Curry'])), JSON.stringify(await names(panel)));
