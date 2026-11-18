@@ -37,9 +37,9 @@ func ReplicaConfig(c *client.Client, l *Local, key *synckosh.DataKey, maps map[s
 
 // SetHTTPClient has every request go through c, and returns what puts it back.
 func SetHTTPClient(c *http.Client) func() {
-	was := httpClient
-	httpClient = c
-	return func() { httpClient = was }
+	was := HTTPClient
+	HTTPClient = c
+	return func() { HTTPClient = was }
 }
 
 // Begin turns sync on with a bucket and its key, and runs.

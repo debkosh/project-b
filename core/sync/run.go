@@ -29,8 +29,9 @@ var (
 	runFor      = 5 * time.Minute
 )
 
-// httpClient carries the requests of a Manager made from now on.
-var httpClient = &http.Client{Timeout: 2 * time.Minute}
+// HTTPClient carries the requests of a Manager made from now on: the mock engine's dev server
+// points it at a sync server of its own.
+var HTTPClient = &http.Client{Timeout: 2 * time.Minute}
 
 // The secrets sync keeps, sealed (core/keys).
 const (
@@ -98,7 +99,7 @@ type connection struct {
 // sync is on, a run starts at once.
 func New(st *store.Store, k *keys.Keys, post func(func()), maps ...Mapping) *Manager {
 	ctx, cancel := context.WithCancel(context.Background())
-	m := &Manager{st: st, keys: k, post: post, maps: map[string]*Mapping{}, http: checked(httpClient), ops: make(chan func(), 64), wake: make(chan struct{}, 1),
+	m := &Manager{st: st, keys: k, post: post, maps: map[string]*Mapping{}, http: checked(HTTPClient), ops: make(chan func(), 64), wake: make(chan struct{}, 1),
 		ctx: ctx, cancel: cancel, done: make(chan struct{})}
 	for i := range maps {
 		m.maps[maps[i].Collection] = &maps[i]
