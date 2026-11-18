@@ -4,12 +4,17 @@ import { phone } from '@/phone.js';
 import Cards from './Cards.vue';
 import Icon from './Icon.vue';
 import ListPage from './ListPage.vue';
+import Results from './Results.vue';
+import SearchBox from './SearchBox.vue';
 import { lists, resolve, sections } from './arrange.js';
+import { hits, searching } from './search.js';
 import { state } from './state.js';
 
 // Layout A, sections in a list (docs/settings.md), as Chrome's: on a desktop the list at the
 // left, with icons, and one section beside it; on a phone the list alone, each section with
-// a line saying what it is set to, a press going in and the back button out again.
+// a line saying what it is set to, a press going in and the back button out again. Search,
+// at the top of the list, shows the rows that match from every section, under each
+// section's name, and the list counts them; emptying it goes back to the section.
 
 const go = inject('settingsGo');
 // A phone's section has a heading of its own, over the section, which names it.
@@ -48,6 +53,7 @@ watch(
 <template>
   <div class="body">
     <nav v-if="!phone" class="nav sections-nav" aria-label="Settings sections">
+      <SearchBox class="nav-search" />
       <template v-for="(group, i) in [above, below]" :key="i">
         <div v-if="i === 1" class="nav-line" role="separator"></div>
         <button
@@ -55,19 +61,30 @@ watch(
           :key="s.id"
           type="button"
           class="nav-item"
-          :class="{ below: s.below }"
+          :class="{ below: s.below, dim: searching && !hits.by[s.id] }"
           :data-section="s.id"
-          :aria-current="shown.section?.id === s.id ? 'page' : undefined"
+          :aria-current="!searching && shown.section?.id === s.id ? 'page' : undefined"
           @click="go(s.id)"
         >
           <Icon :name="s.icon" />
           {{ s.label }}
+          <span v-if="searching && hits.by[s.id]" class="count">{{ hits.by[s.id] }}</span>
         </button>
       </template>
     </nav>
-    <main ref="content" class="content" :class="{ phone }">
+    <main ref="content" class="content" :class="{ phone, searching }">
       <div class="column">
-        <ListPage v-if="shown.list" :list="shown.list" :back="shown.section" />
+        <!-- Search's results: every section's rows that match, under the section's name. -->
+        <!-- A phone searches from its list of sections; the field stays as the results come. -->
+        <SearchBox v-if="phone && (searching || !shown.section)" class="phone-search" />
+        <template v-if="searching">
+          <Results />
+          <section v-for="s in sections" v-show="hits.by[s.id]" :key="s.id" class="found" :aria-label="s.label">
+            <h2 class="crumb"><Icon :name="s.icon" />{{ s.label }}</h2>
+            <Cards :section="s" titled />
+          </section>
+        </template>
+        <ListPage v-else-if="shown.list" :list="shown.list" :back="shown.section" />
         <template v-else-if="shown.section">
           <div v-if="phone" class="list-head">
             <button type="button" class="icon-button back" aria-label="Back to Settings" @click="go('')">
@@ -100,10 +117,30 @@ watch(
   width: 220px;
 }
 
-.nav-item {
+.nav-search {
+  margin-bottom: 12px;
+}
+
+.phone-search {
+  margin-bottom: 16px;
+}
+
+.searching .phone-search {
+  margin-bottom: 0;
+}
+
+.found {
+  margin-top: 20px;
+}
+
+.crumb {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
+}
+
+.crumb .icon {
+  color: var(--icon);
 }
 
 .nav-item .icon {

@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, inject, provide } from 'vue';
 import { extensionsSection } from '@extensions';
 import Bookmarks from './Bookmarks.vue';
 import Flags from './Flags.vue';
@@ -13,12 +13,18 @@ import SiteSettings from './SiteSettings.vue';
 import Sparks from './Sparks.vue';
 import WebFeatures from './WebFeatures.vue';
 import Workspaces from './Workspaces.vue';
-import { lists, rowsOf } from './arrange.js';
+import { blockRows, lists, rowsOf } from './arrange.js';
+import { searching } from './search.js';
 
 // A section's cards, as its layout arranges them (arrange.js): a card of rows, one of them
 // maybe a list's, which opens it; a block, which brings its own cards; or a card under a
 // heading of its own.
-const props = defineProps({ section: Object });
+// titled says a heading over the cards names the section, so a block's own gives way.
+const props = defineProps({ section: Object, titled: Boolean });
+provide('settingsTitled', props.titled || inject('settingsTitled', false));
+
+// Search matches a row by its section's name too, and counts it in its section.
+provide('settingsSection', props.section);
 
 const blocks = {
   bookmarks: Bookmarks,
@@ -38,7 +44,11 @@ const cards = computed(() => props.section.cards.map((c) => (typeof c === 'strin
 
 <template>
   <template v-for="(card, i) in cards" :key="i">
-    <component :is="blocks[card]" v-if="typeof card === 'string'" class="block" :data-part="card" />
+    <!-- While search has words, a block that isn't made of rows is a row that goes to it. -->
+    <div v-if="typeof card === 'string' && searching && blockRows[card]" class="card block">
+      <Row :label="blockRows[card].label" :hint="blockRows[card].hint" :summary="blockRows[card].summary()" :opens="card" />
+    </div>
+    <component :is="blocks[card]" v-else-if="typeof card === 'string'" class="block" :data-part="card" />
     <section v-else class="block" :aria-label="card.heading || undefined">
       <h2 v-if="card.heading">{{ card.heading }}</h2>
       <div class="card">

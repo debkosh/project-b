@@ -3,6 +3,7 @@ import { computed, provide, ref, watch, watchEffect } from 'vue';
 import { paintTheme } from '@/theme.js';
 import PageLayout from './PageLayout.vue';
 import SectionsLayout from './SectionsLayout.vue';
+import { query } from './search.js';
 import { state } from './state.js';
 
 // The settings page: one of our pages, in a tab of ours. Its colours come from the frame
@@ -11,10 +12,12 @@ watchEffect(() => paintTheme(state.tones, state.theme));
 
 // What the page shows is state.section, an address (docs/settings.md): a section, a part
 // or one of the long lists, which Go may name as it opens the page. go shows one, and
-// counts a jump, so asking for the one showing goes to it again.
+// counts a jump, so asking for the one showing goes to it again. Going somewhere ends a
+// search.
 const jumps = ref(0);
 provide('settingsJumps', jumps);
 const go = (address) => {
+  query.value = '';
   state.section = address;
   jumps.value++;
 };
@@ -80,7 +83,9 @@ body {
 }
 
 .nav-item {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   width: 100%;
   height: 34px;
   padding: 0 12px;
@@ -92,6 +97,17 @@ body {
   font-weight: 500;
   text-align: left;
   cursor: pointer;
+}
+
+.nav-item.dim {
+  opacity: 0.5;
+}
+
+.count {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
 }
 
 .nav-item:hover {
@@ -165,6 +181,18 @@ h2 {
 .nav-item:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
+}
+
+/* Search's results: what was found, marked; a card or a block with no row found goes. */
+mark.hit {
+  border-radius: 2px;
+  background: var(--accent-soft);
+  color: inherit;
+}
+
+.searching .card:not(:has(.row)),
+.searching .block:not(:has(.row)) {
+  display: none;
 }
 
 /* Fingers need bigger targets than a mouse does, and a touch screen has no hover. */

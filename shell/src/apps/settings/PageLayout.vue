@@ -3,18 +3,26 @@ import { computed, inject, nextTick, ref, watch, watchEffect } from 'vue';
 import { phone } from '@/phone.js';
 import Cards from './Cards.vue';
 import ListPage from './ListPage.vue';
+import Results from './Results.vue';
+import SearchBox from './SearchBox.vue';
 import { lists, pageGroups, resolve } from './arrange.js';
+import { hits, searching } from './search.js';
 import { state } from './state.js';
 
 // Layout B, one page by task (docs/settings.md): every group on one scrolling page, a rail
 // at its left on a desktop and chips over it on a phone, each jumping down to its group.
 // The long lists open as pages of their own, in place of the page, with a link back.
+// Search, over it all, filters the page to the rows that match, in their groups, and the
+// rail counts them; emptying it puts the page back as it was.
 
 const go = inject('settingsGo');
 const jumps = inject('settingsJumps');
 const content = ref(null);
 
-const shown = computed(() => resolve(state.section, pageGroups.value));
+const shown = computed(() => {
+  const r = resolve(state.section, pageGroups.value);
+  return searching.value ? { ...r, list: '' } : r;
+});
 
 watchEffect(() => {
   const list = shown.value.list;
@@ -62,15 +70,21 @@ watch(
         type="button"
         class="nav-item"
         :data-section="g.id"
-        :aria-current="(shown.list ? shown.section.id : current) === g.id ? 'true' : undefined"
+        :class="{ dim: searching && !hits.by[g.id] }"
+        :aria-current="!searching && (shown.list ? shown.section.id : current) === g.id ? 'true' : undefined"
         @click="go(g.id)"
-      >{{ g.label }}</button>
+      >
+        {{ g.label }}
+        <span v-if="searching && hits.by[g.id]" class="count">{{ hits.by[g.id] }}</span>
+      </button>
     </nav>
-    <main ref="content" class="content" :class="{ phone }" @scroll.passive="onScroll">
+    <main ref="content" class="content" :class="{ phone, searching }" @scroll.passive="onScroll">
       <div class="column">
+        <SearchBox class="top-search" />
         <ListPage v-if="shown.list" :list="shown.list" :back="shown.section" />
         <template v-else>
-          <nav v-if="phone" class="chips" aria-label="Settings groups">
+          <Results v-if="searching" />
+          <nav v-else-if="phone" class="chips" aria-label="Settings groups">
             <button
               v-for="g in pageGroups"
               :key="g.id"
@@ -81,7 +95,7 @@ watch(
               @click="go(g.id)"
             >{{ g.label }}</button>
           </nav>
-          <section v-for="g in pageGroups" :key="g.id" class="group" :data-group="g.id" :aria-labelledby="'group-' + g.id">
+          <section v-for="g in pageGroups" v-show="!searching || hits.by[g.id]" :key="g.id" class="group" :data-group="g.id" :aria-labelledby="'group-' + g.id">
             <div class="group-head">
               <h2 :id="'group-' + g.id" class="group-title">{{ g.label }}</h2>
               <span v-if="!phone" class="group-hint">{{ g.hint }}</span>
@@ -95,11 +109,15 @@ watch(
 </template>
 
 <style scoped>
+.top-search {
+  margin-bottom: 16px;
+}
+
 .chips {
   display: flex;
   gap: 8px;
-  margin: 0 -16px;
-  padding: 4px 16px 8px;
+  margin: -4px -16px 8px;
+  padding: 0 16px 8px;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -124,6 +142,10 @@ watch(
 .chip:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
+}
+
+.searching .group {
+  margin-top: 20px;
 }
 
 .group + .group {

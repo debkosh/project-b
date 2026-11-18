@@ -1,5 +1,7 @@
 <script setup>
-import { inject } from 'vue';
+import { computed, inject, onUnmounted } from 'vue';
+import Marked from './Marked.vue';
+import { addRow, matches } from './search.js';
 
 // One row of a card: its label, a second line under it, and its control on the right, in
 // the default slot. Every layout draws its rows with this. A row that opens one of the
@@ -16,14 +18,20 @@ const props = defineProps({
 });
 
 const go = inject('settingsGo');
+
+// While search has words, the row shows only when its label, its second line or its
+// section's name has them.
+const section = inject('settingsSection', null);
+const hit = computed(() => matches(props.label, props.hint, section?.label));
+onUnmounted(addRow({ section: section?.id, hit: () => hit.value }));
 </script>
 
 <template>
-  <component :is="tag" class="row">
+  <component :is="tag" v-if="hit" class="row">
     <button v-if="opens" type="button" class="label open" :aria-label="label" :data-section="opens" @click="go(opens)">
       <span class="text">
-        {{ label }}
-        <span v-if="hint" class="secondary">{{ hint }}</span>
+        <Marked :text="label" />
+        <span v-if="hint" class="secondary"><Marked :text="hint" /></span>
       </span>
       <span v-if="summary" class="summary">{{ summary }}</span>
       <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5" /></svg>
@@ -31,8 +39,8 @@ const go = inject('settingsGo');
     <template v-else>
       <!-- A control's name is its label alone; the line under it says more. -->
       <span class="label">
-        <component :is="props.for ? 'label' : 'span'" class="name" :for="props.for">{{ label }}<slot name="tags" /></component>
-        <span v-if="hint" class="secondary">{{ hint }}</span>
+        <component :is="props.for ? 'label' : 'span'" class="name" :for="props.for"><span><Marked :text="label" /></span><slot name="tags" /></component>
+        <span v-if="hint" class="secondary"><Marked :text="hint" /></span>
       </span>
       <slot />
     </template>

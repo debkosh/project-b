@@ -425,6 +425,35 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   for (const name of [/Beside the tabs/, /On the new tab page/, /Bookmarks bar/]) await place(name).click();
   await until(() => prefsFile().bookmarksSidebar === false && prefsFile().bookmarksNewTab === true && prefsFile().bookmarksBar === false);
 
+  // Search: the rows whose label, second line or section's name has the words, each in
+  // its section, working in place, and the sections counted; Escape puts the page back.
+  const search = page.getByLabel('Search settings');
+  await show('theme');
+  await search.fill('bar');
+  const bookmarksBar = page.getByRole('switch', { name: /Bookmarks bar/ });
+  check('search shows the rows that match, and says how many', await until(async () => (await bookmarksBar.isVisible()) &&
+    (await page.getByRole('radiogroup', { name: 'Theme' }).count()) === 0 && /^\d+ settings? match “bar”$/.test(await page.locator('.results').textContent())), await page.locator('.results').textContent());
+  check('marking what it found', (await page.locator('mark.hit', { hasText: /^bar$/i }).count()) >= 2);
+  const bookmarksHome = sectionsLayout ? 'bookmarks' : 'browsing';
+  check('and the list of sections counts them in each, and dims those with none', (await page.locator(`.nav [data-section="${bookmarksHome}"] .count`).textContent()).trim() === String(await bookmarksSection.locator('.row').count()) &&
+    (await page.locator(`.nav [data-section="${sectionsLayout ? 'appearance' : 'look'}"]`).evaluate((b) => b.classList.contains('dim'))));
+  await settle(page);
+  await page.screenshot({ path: shot('settings-search') });
+  await bookmarksBar.click();
+  check('a row found works in place', await until(() => prefsFile().bookmarksBar === true) && (await search.inputValue()) === 'bar');
+  await bookmarksBar.click();
+  await until(() => prefsFile().bookmarksBar === false);
+  // A section's name finds its rows.
+  await search.fill(sectionsLayout ? 'about' : 'advanced');
+  check('a section\'s name finds every row in it', await until(() => page.getByRole('switch', { name: /Automatic updates/ }).isVisible()));
+  await search.fill('zzzz');
+  check('words nothing has say so', await until(async () => (await page.locator('.results').textContent()) === 'No settings match “zzzz”' && (await page.locator('.content .row').count()) === 0));
+  await search.press('Escape');
+  check('Escape empties it, and the page is back as it was', await until(async () => (await search.inputValue()) === '' && (await page.getByRole('radiogroup', { name: 'Theme' }).isVisible())) && (await regions()).settings !== 0);
+  await search.fill('workspace');
+  await page.locator('.content [data-section="workspaces"]').click();
+  check('a long list found opens it, and the search ends', await until(async () => (await search.inputValue()) === '' && (await page.getByRole('button', { name: 'New workspace…' }).isVisible())));
+
   await show('workspaces');
   const workspacesSection = page.getByRole('region', { name: 'Workspaces' });
   const mainRow = workspacesSection.locator('.row', { hasText: 'Main' });
@@ -813,6 +842,12 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   watch(page);
   await page.goto(`${base}/settings/?tab=${(await regions()).settings}`);
   await page.getByRole('heading', { name: 'Settings' }).waitFor();
+  const phoneSearch = page.getByLabel('Search settings');
+  await phoneSearch.fill('address bar');
+  check('on a phone, search finds what is there', await until(() => page.getByRole('radiogroup', { name: 'Address bar' }).isVisible()) && (await page.getByRole('radiogroup', { name: 'Theme' }).count()) === 0);
+  await settle(page);
+  await page.screenshot({ path: shot('settings-phone-search') });
+  await phoneSearch.fill('');
   if (sectionsLayout) {
     // The sections layout's phone page is the list of sections; each opens, with a way back.
     const sectionRows = page.locator('.section-row');

@@ -51,6 +51,19 @@ Settings › and the section's name. On a phone the page is the list, each secti
 saying what it is set to (System · Teal, Where you left off · DuckDuckGo); a press opens the
 section under its own heading, with a back button to the list.
 
+## Search
+
+Both layouts search every setting from one field: at the top of the page, at the top of the
+list of sections on a desktop, and over the list of sections on a phone. A row is found by its
+label, its second line, or the name of its group or section; what was found is marked. The
+page shows only the rows found, each working in place, under the group or section they are in
+(in the sections layout every section is shown, one after the other, under its name), with
+how many were found over them, or that none was. The rail or the list of sections counts the
+rows found in each, and dims those with none. A long list, and Import, which aren't rows,
+show as the row that goes to them while there are words. Escape empties the field and the page
+is as it was; going anywhere, from the rail, the list or a row found, ends the search. Every
+`Row.vue` says whether it matches and counts itself in its section (`search.js`).
+
 ## On a phone
 
 The phone reaches every setting. What makes no sense there stays off it: Tab layout, Keys and
@@ -81,5 +94,6 @@ opens `sites/<origin>`, and an extension's Manage opens `extensions`.
 `shell/e2e/settings.cjs` drives the page on the mock engine, once in each layout, each run on a
 profile whose flag names it; it goes to each part as a person does, by the rail, the list of
 sections and the rows that open the lists. Each run also switches the flag to the other
-layout and back, in the same page, and walks a phone-sized page through every group or
-section. `core/flags/flags_test.go` has the live flag.
+layout and back, in the same page, searches (rows found working in place, the counts, a
+section's name, nothing found, Escape, a list found), and walks a phone-sized page through
+every group or section and a search. `core/flags/flags_test.go` has the live flag.

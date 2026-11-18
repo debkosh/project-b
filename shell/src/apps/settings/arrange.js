@@ -65,6 +65,17 @@ export const lists = {
   },
 };
 
+// While search has words, a block that isn't made of rows shows as a row of its own, which
+// goes to it: each list, and these.
+export const blockRows = {
+  ...lists,
+  import: {
+    label: 'Import from other browsers',
+    hint: 'Bookmarks, history and the search engine, from Chrome, Firefox or Safari',
+    summary: () => '',
+  },
+};
+
 // Layout B: one page by task. Each group is a run of cards: an array is one card of rows
 // (a list among them is its row, which opens it), a name is a block, and {heading, rows}
 // a card under a heading of its own.

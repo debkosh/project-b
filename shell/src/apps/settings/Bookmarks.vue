@@ -2,6 +2,7 @@
 import { computed, inject } from 'vue';
 import { phone } from '@/phone.js';
 import { folders } from '@/ui/bookmarks.js';
+import Row from './Row.vue';
 import { setPref, state } from './state.js';
 
 // Where bookmarks show, each on or off, and the bookmarks bar over every page with the
@@ -33,11 +34,7 @@ const barFolder = computed(() => (barFolders.value.some((f) => f.id === state.pr
   <section aria-label="Bookmarks">
     <h2 v-if="!titled">Bookmarks</h2>
     <div class="card">
-      <label v-for="p in places" :key="p.pref" class="row">
-        <span class="label">
-          {{ p.label }}
-          <span class="secondary">{{ p.hint }}</span>
-        </span>
+      <Row v-for="p in places" :key="p.pref" tag="label" :label="p.label" :hint="p.hint">
         <input
           type="checkbox"
           role="switch"
@@ -46,14 +43,10 @@ const barFolder = computed(() => (barFolders.value.some((f) => f.id === state.pr
           :aria-checked="String(!!state.prefs[p.pref])"
           @change="setPref(p.pref, $event.target.checked)"
         />
-      </label>
+      </Row>
     </div>
     <div class="card bar-card">
-      <label class="row">
-        <span class="label">
-          Bookmarks bar
-          <span class="secondary">{{ phone ? 'A strip of one folder above the bars' : 'A bar of one folder over every page' }}</span>
-        </span>
+      <Row tag="label" label="Bookmarks bar" :hint="phone ? 'A strip of one folder above the bars' : 'A bar of one folder over every page'">
         <input
           type="checkbox"
           role="switch"
@@ -62,13 +55,12 @@ const barFolder = computed(() => (barFolders.value.some((f) => f.id === state.pr
           :aria-checked="String(!!state.prefs.bookmarksBar)"
           @change="setPref('bookmarksBar', $event.target.checked)"
         />
-      </label>
-      <div v-if="state.prefs.bookmarksBar" class="row">
-        <label class="label" for="bar-folder">Folder it shows</label>
+      </Row>
+      <Row v-if="state.prefs.bookmarksBar" label="Folder it shows" for="bar-folder">
         <select id="bar-folder" :value="barFolder" @change="setPref('bookmarksBarFolder', $event.target.value)">
-          <option v-for="f in barFolders" :key="f.id" :value="f.id">{{ ' '.repeat(f.depth) + f.title }}</option>
+          <option v-for="f in barFolders" :key="f.id" :value="f.id">{{ ' '.repeat(f.depth) + f.title }}</option>
         </select>
-      </div>
+      </Row>
     </div>
   </section>
 </template>
