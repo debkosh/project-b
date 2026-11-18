@@ -10,6 +10,7 @@ How every piece of our own UI looks: the shell, the settings page, and any app a
 | `core/tones` | Every colour, made from the one frame colour Go owns, light and dark. Go sends both palettes with the colour (`tones`, beside `windowColor`), and each workspace's with it, so web and native shells paint the same tones |
 | `shell/src/theme.js` | Puts the light or dark palette on the root as CSS variables, as the theme pref and the system say |
 | `shell/src/design.css` | Type, the floating shadow, the focus ring, and the shared controls: `.icon-button`, `.text-button` with `.primary`, `.quiet` and `.danger`, `.text-field`, `select`, `.switch`, `.tag`, `.secondary`, `.text-field-error`, and their touch sizes |
+| `shell/src/ui/tint.js` | The colours made up for an item, from gulal: one environment per background, `--bar` or `--surface`, made again each time the theme is painted |
 | `shell/src/ui/` | The shared parts that need behaviour: `Dialog`, `RowMenu`, `Field`, `Segmented`, `Swatches`, and `escape.js`, which gives Escape to the innermost thing open |
 | `shell/src/apps/settings/SettingsApp.vue` | The settings page's own layout: `.nav-item`, `.card`, `.row`, `.label`, `h2` |
 | `shell/src/extensions/ExtensionsToolbar.vue` | The toolbar's floating menu (`.pbx-menu`) |
@@ -65,9 +66,10 @@ away from the label it picked, a little at a time, until it does; so the accent 
 slightly from the frame. `shell/e2e/settings.cjs` checks every preset, light and dark.
 
 **A colour made up for an item** (a site's letter tile, a bookmark folder's mark, anything
-coloured from a seed or its text) comes from [gulal](https://github.com/sudiptadeb/gulal),
+coloured from a seed or its text) comes from [gulal](https://github.com/sudiptadeb/gulal), through `shell/src/ui/tint.js`,
 never a literal or a list of our own. Give gulal the place it sits in, from the tones: the
-scheme, the surface as its background, and `--accent`. The same text then gets the same colour
+scheme, the `--bar` or `--surface` it sits on as its background, and the frame colour as its
+accent, none for None. The same text then gets the same colour
 in that place every time, in Go and in the shells, as strong as the theme, and its inks are held
 to APCA Lc 60. Decided 2026-11-18, after the letter tiles' random colours sat badly with the
 theme.
