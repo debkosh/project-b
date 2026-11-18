@@ -257,10 +257,21 @@ fs.writeFileSync(path.join(lib.profile, 'bookmarks.json'), JSON.stringify({ vers
   const tileColours = () => tile.evaluate((e) => getComputedStyle(e).backgroundColor + ' ' + getComputedStyle(e).color);
   const strokes = () => bar.locator('svg.icon').evaluateAll((l) => l.map((e) => getComputedStyle(e).stroke));
   const light = await tileColours();
+  // A bar's tile is 16px, its letter 9px: held to Lc 75, as APCA holds text that small.
+  const { env } = await import('@debkosh/gulal');
+  const hexOf = (rgb) => '#' + rgb.match(/\d+/g).slice(0, 3).map((n) => (+n).toString(16).padStart(2, '0')).join('');
+  const letterLc = async () => {
+    const [bg, ink] = (await tileColours()).split(/ (?=rgb)/).map(hexOf);
+    return Math.abs(env().contrast(ink, bg));
+  };
+  const lightLc = await letterLc();
+  check('a small tile\'s letter reads at Lc 75 or more', lightLc >= 75, lightLc.toFixed(1));
   const folderStrokes = await strokes();
   check('folders\' icons each take a colour of their own', new Set(folderStrokes).size === folderStrokes.length && folderStrokes.length > 1, folderStrokes.join());
   await setPref('theme', 'dark');
   check('a site\'s tile is made again for dark', await until(async () => (await tileColours()) !== light), light);
+  const darkLc = await letterLc();
+  check('as it does in dark', darkLc >= 75, darkLc.toFixed(1));
   await setPref('theme', 'light');
   check('and is the same again in light', await until(async () => (await tileColours()) === light), await tileColours());
   check('as are the folders\' icons', JSON.stringify(await strokes()) === JSON.stringify(folderStrokes));
