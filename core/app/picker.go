@@ -183,6 +183,7 @@ func (p *Picker) NavigationStarting(engine.TabID, int64, string) engine.Navigati
 	return engine.NavigationBlock
 }
 func (p *Picker) NavigationFinished(engine.TabID, int64, string)                       {}
+func (p *Picker) AppLink(engine.TabID, string)                                         {}
 func (p *Picker) NavigationFailed(engine.TabID, int64, string, engine.Failure, string) {}
 func (p *Picker) HistoryChanged(engine.TabID, bool, bool)                              {}
 func (p *Picker) TitleChanged(engine.TabID, string)                                    {}

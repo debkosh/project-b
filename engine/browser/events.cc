@@ -12,6 +12,9 @@ namespace events {
 
 namespace {
 
+// The scheme of the app's own links, as core/app's OpenAppLink takes them.
+constexpr char kAppScheme[] = "project-b";
+
 // The shell's id is 0, and a tab's is positive.
 PBSurface SurfaceOf(content::WebContents* source) {
   return hooks::TabOf(source) == 0 ? PB_SURFACE_SHELL : PB_SURFACE_PAGE;
@@ -58,20 +61,32 @@ Gate::Gate(content::NavigationThrottleRegistry& registry)
     : content::NavigationThrottle(registry) {}
 
 content::NavigationThrottle::ThrottleCheckResult Gate::WillStartRequest() {
-  return Ask();
+  return Ask(/*redirect=*/false);
 }
 
 content::NavigationThrottle::ThrottleCheckResult Gate::WillRedirectRequest() {
-  return Ask();
+  return Ask(/*redirect=*/true);
 }
 
 const char* Gate::GetNameForLogging() {
   return "project_b::events::Gate";
 }
 
-content::NavigationThrottle::ThrottleCheckResult Gate::Ask() {
+content::NavigationThrottle::ThrottleCheckResult Gate::Ask(bool redirect) {
   content::NavigationHandle* handle = navigation_handle();
   const int64_t tab = hooks::TabOf(handle->GetWebContents());
+  // The app's own links, which no page loads: Go hears only of one a press started in a
+  // tab's own page, so a page can't open one by script, in a frame or by a redirect.
+  if (handle->GetURL().SchemeIs(kAppScheme)) {
+    if (tab > 0 && handle->IsInPrimaryMainFrame() && !redirect &&
+        handle->HasUserGesture()) {
+      hooks::Args args;
+      args.Int(tab);
+      args.Str(handle->GetURL().spec());
+      hooks::Fire(PB_EVENT_APP_LINK, args);
+    }
+    return CANCEL_AND_IGNORE;
+  }
   if (tab <= 0) {
     return PROCEED;
   }
