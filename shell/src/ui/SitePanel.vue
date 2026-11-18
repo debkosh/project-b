@@ -73,17 +73,35 @@ onUnmounted(() => pop());
     <div class="ui-site-group">
       <label v-if="ads" class="ui-site-row">
         <span class="ui-site-text">
-          <span>Ad blocker</span>
-          <small v-if="ads.value === 'on'">{{ tab.adsBlocked || 0 }} blocked on this page</small>
+          <span id="ui-site-ads">Ad blocker</span>
+          <small v-if="ads.value === 'on'" id="ui-site-ads-note">{{ tab.adsBlocked || 0 }} blocked on this page</small>
         </span>
-        <input type="checkbox" class="switch" :checked="ads.value === 'on'" @change="setAds($event.target.checked)" />
+        <input
+          type="checkbox"
+          role="switch"
+          class="switch"
+          aria-labelledby="ui-site-ads"
+          :aria-describedby="ads.value === 'on' ? 'ui-site-ads-note' : undefined"
+          :checked="ads.value === 'on'"
+          :aria-checked="String(ads.value === 'on')"
+          @change="setAds($event.target.checked)"
+        />
       </label>
       <label v-if="sparksOn && sparks.length" class="ui-site-row">
         <span class="ui-site-text">
-          <span>Sparks</span>
-          <small>{{ sparkNames(sparks) }}</small>
+          <span id="ui-site-sparks">Sparks</span>
+          <small id="ui-site-sparks-note">{{ sparkNames(sparks) }}</small>
         </span>
-        <input type="checkbox" class="switch" :checked="sparksOn.value === 'on'" @change="setSparks($event.target.checked)" />
+        <input
+          type="checkbox"
+          role="switch"
+          class="switch"
+          aria-labelledby="ui-site-sparks"
+          aria-describedby="ui-site-sparks-note"
+          :checked="sparksOn.value === 'on'"
+          :aria-checked="String(sparksOn.value === 'on')"
+          @change="setSparks($event.target.checked)"
+        />
       </label>
       <div v-if="links" class="ui-site-row stacked">
         <span class="ui-site-text">

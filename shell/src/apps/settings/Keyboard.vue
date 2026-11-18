@@ -384,6 +384,7 @@ const replaceable = (t) => !t.key.locked && !t.key.fromOS;
                   class="switch"
                   :aria-label="`${a.title} in the menu`"
                   :checked="!a.hidden"
+                  :aria-checked="String(!a.hidden)"
                   @change="send({ t: 'setHidden', id: a.id, on: !$event.target.checked })"
                 />
               </label>

@@ -120,8 +120,9 @@ const settingsLayouts = [
     </select>
   </Row>
 
-  <Row v-else-if="part === 'autoUpdate'" tag="label" label="Automatic updates" hint="Updates download by themselves, and apply at the next start">
+  <Row v-else-if="part === 'autoUpdate'" v-slot="{ named }" tag="label" label="Automatic updates" hint="Updates download by themselves, and apply at the next start">
     <input
+      v-bind="named"
       type="checkbox"
       role="switch"
       class="switch"
@@ -132,8 +133,9 @@ const settingsLayouts = [
   </Row>
 
   <!-- The ad blocker on every site; each site can still turn it off for itself. -->
-  <Row v-else-if="part === 'blockAds'" tag="label" label="Block ads" :hint="adsHint">
+  <Row v-else-if="part === 'blockAds'" v-slot="{ named }" tag="label" label="Block ads" :hint="adsHint">
     <input
+      v-bind="named"
       type="checkbox"
       role="switch"
       class="switch"
@@ -145,8 +147,9 @@ const settingsLayouts = [
 
   <!-- Cookies and site storage erased as the app quits, but the sites kept, each kept from
        its page in Sites. -->
-  <Row v-else-if="part === 'clearOnQuit'" tag="label" label="Clear cookies when the app quits" :hint="quitHint">
+  <Row v-else-if="part === 'clearOnQuit'" v-slot="{ named }" tag="label" label="Clear cookies when the app quits" :hint="quitHint">
     <input
+      v-bind="named"
       type="checkbox"
       role="switch"
       class="switch"
@@ -165,8 +168,9 @@ const settingsLayouts = [
     </button>
   </Row>
 
-  <Row v-else-if="part === 'askWhereToSave'" tag="label" label="Ask where to save each file" hint="Each download opens the Save panel, as Save Link As does; off, files go straight to the Save to folder">
+  <Row v-else-if="part === 'askWhereToSave'" v-slot="{ named }" tag="label" label="Ask where to save each file" hint="Each download opens the Save panel, as Save Link As does; off, files go straight to the Save to folder">
     <input
+      v-bind="named"
       type="checkbox"
       role="switch"
       class="switch"

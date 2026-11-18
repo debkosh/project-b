@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, useId } from 'vue';
 import Dialog from '@/ui/Dialog.vue';
 import RowMenu from '@/ui/RowMenu.vue';
 import Segmented from '@/ui/Segmented.vue';
@@ -119,6 +119,9 @@ function removeAll() {
   origins.value.forEach((o) => forget(o, ''));
   open('');
 }
+
+// Names for the switches, by the words beside them.
+const uid = useId();
 </script>
 
 <template>
@@ -136,10 +139,12 @@ function removeAll() {
       </div>
       <label v-if="state.prefs.clearCookiesOnQuit" class="row">
         <span class="label">
-          Keep cookies when the app quits
-          <span class="secondary">Stay signed in here when the others are cleared</span>
+          <span :id="uid + '-keep'">Keep cookies when the app quits</span>
+          <span :id="uid + '-keep-hint'" class="secondary">Stay signed in here when the others are cleared</span>
         </span>
         <input
+          :aria-labelledby="uid + '-keep'"
+          :aria-describedby="uid + '-keep-hint'"
           type="checkbox"
           role="switch"
           class="switch"

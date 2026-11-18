@@ -265,7 +265,15 @@ const where = (s) => (s.match || []).map((m) => (m === '<all_urls>' ? 'every sit
           <span class="name" :title="s.name">{{ s.name || 'A spark that has a problem' }}</span>
           <span class="secondary" :class="{ failed: s.error }">{{ s.error || where(s) }}</span>
         </span>
-        <input type="checkbox" class="switch" :aria-label="`${s.name} on`" :checked="s.on" @change="send({ t: 'sparkSetOn', id: s.id, on: $event.target.checked })" />
+        <input
+          type="checkbox"
+          role="switch"
+          class="switch"
+          :aria-label="`${s.name} on`"
+          :checked="s.on"
+          :aria-checked="String(s.on)"
+          @change="send({ t: 'sparkSetOn', id: s.id, on: $event.target.checked })"
+        />
         <RowMenu :ref="(m) => (menus[s.id] = m)" :items="items(s)" :label="`Actions for ${s.name || 'the spark'}`" />
       </div>
     </div>

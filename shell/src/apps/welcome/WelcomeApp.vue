@@ -260,8 +260,9 @@ onMounted(() => heading.value?.focus());
             </select>
           </label>
           <label class="row">
-            <span class="label">Automatic updates</span>
+            <span id="auto-update-name" class="label">Automatic updates</span>
             <input
+              aria-labelledby="auto-update-name"
               type="checkbox"
               role="switch"
               class="switch"

@@ -67,31 +67,34 @@ function error(flag, text) {
           <span v-if="!f.built" class="tag">Not in this build</span>
           <span v-else-if="f.pending" class="tag">Relaunch to apply</span>
         </template>
-        <input
-          v-if="f.type === 'boolean'"
-          :id="'flag-' + f.id"
-          type="checkbox"
-          role="switch"
-          class="switch"
-          :disabled="!f.built"
-          :checked="f.value === 'on'"
-          :aria-checked="String(f.value === 'on')"
-          @change="set(f, $event.target.checked ? 'on' : '')"
-        />
-        <select v-else-if="f.type === 'enum'" :id="'flag-' + f.id" class="value" :disabled="!f.built" :value="f.value" @change="set(f, $event.target.value)">
-          <option value="">Off</option>
-          <option v-for="c in f.choices" :key="c" :value="c">{{ c }}</option>
-        </select>
-        <Field
-          v-else
-          class="value"
-          :disabled="!f.built"
-          :label="f.name"
-          placeholder="Off"
-          :value="f.value"
-          :validate="(text) => error(f, text)"
-          @commit="set(f, $event)"
-        />
+        <template #default="{ named }">
+          <input
+            v-if="f.type === 'boolean'"
+            :id="'flag-' + f.id"
+            v-bind="named"
+            type="checkbox"
+            role="switch"
+            class="switch"
+            :disabled="!f.built"
+            :checked="f.value === 'on'"
+            :aria-checked="String(f.value === 'on')"
+            @change="set(f, $event.target.checked ? 'on' : '')"
+          />
+          <select v-else-if="f.type === 'enum'" :id="'flag-' + f.id" class="value" :disabled="!f.built" :value="f.value" @change="set(f, $event.target.value)">
+            <option value="">Off</option>
+            <option v-for="c in f.choices" :key="c" :value="c">{{ c }}</option>
+          </select>
+          <Field
+            v-else
+            class="value"
+            :disabled="!f.built"
+            :label="f.name"
+            placeholder="Off"
+            :value="f.value"
+            :validate="(text) => error(f, text)"
+            @commit="set(f, $event)"
+          />
+        </template>
       </Row>
     </div>
   </section>

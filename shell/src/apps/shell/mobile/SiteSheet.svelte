@@ -47,14 +47,32 @@
   </div>
   {#if ads}
     <label class="row">
-      <span class="text">Ad blocker{#if ads.value === 'on'}<small>{tab.adsBlocked || 0} blocked on this page</small>{/if}</span>
-      <input type="checkbox" class="switch" checked={ads.value === 'on'} onchange={(e) => setAds(e.currentTarget.checked)} />
+      <span class="text"><span id="site-ads">Ad blocker</span>{#if ads.value === 'on'}<small id="site-ads-note">{tab.adsBlocked || 0} blocked on this page</small>{/if}</span>
+      <input
+        type="checkbox"
+        role="switch"
+        class="switch"
+        aria-labelledby="site-ads"
+        aria-describedby={ads.value === 'on' ? 'site-ads-note' : undefined}
+        checked={ads.value === 'on'}
+        aria-checked={String(ads.value === 'on')}
+        onchange={(e) => setAds(e.currentTarget.checked)}
+      />
     </label>
   {/if}
   {#if sparksOn && sparks.length}
     <label class="row">
-      <span class="text">Sparks<small>{sparkNames(sparks)}</small></span>
-      <input type="checkbox" class="switch" checked={sparksOn.value === 'on'} onchange={(e) => setSparks(e.currentTarget.checked)} />
+      <span class="text"><span id="site-sparks">Sparks</span><small id="site-sparks-note">{sparkNames(sparks)}</small></span>
+      <input
+        type="checkbox"
+        role="switch"
+        class="switch"
+        aria-labelledby="site-sparks"
+        aria-describedby="site-sparks-note"
+        checked={sparksOn.value === 'on'}
+        aria-checked={String(sparksOn.value === 'on')}
+        onchange={(e) => setSparks(e.currentTarget.checked)}
+      />
     </label>
   {/if}
   {#if links}

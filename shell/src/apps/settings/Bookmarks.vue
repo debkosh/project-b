@@ -34,8 +34,9 @@ const barFolder = computed(() => (barFolders.value.some((f) => f.id === state.pr
   <section aria-label="Bookmarks">
     <h2 v-if="!titled">Bookmarks</h2>
     <div class="card">
-      <Row v-for="p in places" :key="p.pref" tag="label" :label="p.label" :hint="p.hint">
+      <Row v-for="p in places" :key="p.pref" v-slot="{ named }" tag="label" :label="p.label" :hint="p.hint">
         <input
+          v-bind="named"
           type="checkbox"
           role="switch"
           class="switch"
@@ -46,8 +47,9 @@ const barFolder = computed(() => (barFolders.value.some((f) => f.id === state.pr
       </Row>
     </div>
     <div class="card bar-card">
-      <Row tag="label" label="Bookmarks bar" :hint="phone ? 'A strip of one folder above the bars' : 'A bar of one folder over every page'">
+      <Row v-slot="{ named }" tag="label" label="Bookmarks bar" :hint="phone ? 'A strip of one folder above the bars' : 'A bar of one folder over every page'">
         <input
+          v-bind="named"
           type="checkbox"
           role="switch"
           class="switch"
