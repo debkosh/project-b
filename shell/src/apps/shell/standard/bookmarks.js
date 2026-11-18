@@ -4,6 +4,7 @@
 
 import { reactive, watch } from 'vue';
 import { send, state } from '@/sdk/vue.js';
+import { folders, inFolder, topFolder } from '@/ui/bookmarks.js';
 import { closeBox } from './state.js';
 
 export function host(url) {
@@ -73,4 +74,32 @@ export function openGroup(urls, name) {
       );
     },
   );
+}
+
+// What the command box's bookmarks list on their left: All bookmarks, then every folder under
+// the one it is in, each {id, title, depth}. All bookmarks is the top folder, searched whole.
+export function finderFolders(list) {
+  return [{ id: '', title: 'All bookmarks', depth: 0 }, ...folders(list).slice(1)];
+}
+
+// under is every bookmark in folder id and in its folders, in the tree's order.
+function under(list, id) {
+  return inFolder(list, id).flatMap((e) => (e.kind === 'folder' ? under(list, e.id) : [e]));
+}
+
+// finderResults is what the command box's bookmarks list on their right for folder at and
+// the text typed: the folder's bookmarks, its folders' too, whose title or address holds the
+// text; then, with something typed, those elsewhere, after a rule. Each is {e, folder,
+// elsewhere}: folder names the folder it is in when that isn't at, else ''.
+export function finderResults(list, at, text) {
+  const q = text.trim().toLowerCase();
+  const match = (e) => !q || e.title.toLowerCase().includes(q) || e.url.toLowerCase().includes(q);
+  const name = (id) => (id ? list.find((e) => e.id === id)?.title || '' : topFolder);
+  const here = under(list, at).filter(match);
+  const out = here.map((e) => ({ e, folder: e.parent === at ? '' : name(e.parent), elsewhere: false }));
+  if (q && at) {
+    const seen = new Set(here);
+    for (const e of under(list, '')) if (!seen.has(e) && match(e)) out.push({ e, folder: name(e.parent), elsewhere: true });
+  }
+  return out;
 }

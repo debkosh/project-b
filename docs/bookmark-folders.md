@@ -41,6 +41,15 @@ How Standard shows them (`shell/src/apps/shell/standard/`, `bookmarks.js` for wh
   What is unfolded lasts while the shell runs. A bookmark shows the tab that has its address
   open, which marks it with a dot, else opens in a new tab. With the tabs on top there is no
   sidebar, so none shows. A tab dragged into a folder is not built.
+- **In the command box** (`BookmarkFinder.vue`, the keys in `CommandBox.vue`): a `*` typed
+  first narrows the box to bookmarks, a ★ Bookmarks chip before the text, and Go is asked
+  nothing. The left lists All bookmarks, then the folders; the right, the chosen folder's
+  bookmarks, its folders' too, whose title or address holds the text, then, once something is
+  typed, those in other folders after a rule; one not in the chosen folder says which it is
+  in. ↑ and ↓ choose a bookmark, ← and → a folder; Enter opens the bookmark where the box's
+  rows open, and Shift+Enter the chosen folder's own bookmarks as a group, as the new tab's
+  Open all does. Escape, or Backspace with nothing typed, leaves bookmarks with the box open.
+  Tab in an empty box, ⌘1 to ⌘9 and ⌘D, in the mock, are not built.
 
 ## What the person sees
 
@@ -126,4 +135,5 @@ save, and the page's messages), `shell/e2e/pages.cjs` (the panel, Cmd+D, the fol
 Move to…, a search, a folder deleted with what it holds, the panel's folder kept for the
 next), `shell/e2e/shells/mobile.cjs` (the sheet) and `shell/e2e/shells/standard-bookmarks.cjs`
 (Standard's places, each on and off with its pref: the new tab's tiles, a folder opened in
-place and opened as a group; the sidebar's tree, a bookmark showing its tab or opening one).
+place and opened as a group; the sidebar's tree, a bookmark showing its tab or opening one; the command box narrowed by
+`*`, its folders, its search and its keys).

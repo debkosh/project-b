@@ -1,8 +1,8 @@
 // The standard shell's bookmark places, on the mock engine (docs/bookmark-folders.md, "Where
 // bookmarks show"), each shown only while its pref is on: the new tab's tiles, under the
 // command box, with a folder that opens in place and opens all its bookmarks as a group; the
-// tree under the sidebar's tabs, whose bookmarks show their tabs or open new ones. Shot for
-// the eye.
+// tree under the sidebar's tabs, whose bookmarks show their tabs or open new ones; the
+// command box narrowed to bookmarks by a *, and its keys. Shot for the eye.
 // Run: node shell/e2e/shells/standard-bookmarks.cjs   (from the repo root, after `npm run
 // build` in shell/)
 
@@ -14,6 +14,13 @@ const { check, fire, settle, until } = lib;
 
 const send = (m) => fetch(`${lib.base}/shell/send?window=1`, { method: 'POST', body: JSON.stringify(m) });
 const setPref = (name, on) => send({ t: 'setPref', name, value: String(on) });
+const prefsFile = () => {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(lib.profile, 'prefs.json'), 'utf8'));
+  } catch {
+    return {};
+  }
+};
 
 // The profile's bookmarks, as bookmarks.json keeps them: three folders, one with a folder in
 // it, and two bookmarks at the top.
@@ -127,6 +134,67 @@ fs.writeFileSync(path.join(lib.profile, 'bookmarks.json'), JSON.stringify({ vers
   check('back on the side, the tree is as it was', await until(async () => (await treeRows.allInnerTexts()).includes('Weeknight')));
   await setPref('bookmarksSidebar', false);
   check('with its pref off the sidebar has none', await until(async () => (await tree.count()) === 0));
+
+  // 3. The command box: * narrows it to bookmarks.
+  const box = ui.locator('.command-box input');
+  const chip = ui.locator('.command-box .chip');
+  const finder = ui.locator('.finder');
+  const finderFolders = finder.getByRole('listbox', { name: 'Folders' }).getByRole('option');
+  const results = finder.getByRole('listbox', { name: 'Bookmarks' }).getByRole('option');
+  const resultTitles = () => results.locator('.title').allInnerTexts();
+  const openBox = async () => {
+    await ui.locator('.sidebar .new-tab').click();
+    await until(async () => (await box.evaluate((el) => el === document.activeElement).catch(() => false)));
+  };
+  await openBox();
+  await page.keyboard.type('*');
+  check('a * typed first narrows the box to bookmarks, shown as a chip', await until(async () => (await chip.isVisible()) && (await box.inputValue()) === '' && (await finder.isVisible())));
+  check('the folders on the left, All bookmarks first and chosen', JSON.stringify(await finderFolders.locator('.title').allInnerTexts()) === JSON.stringify(['All bookmarks', 'Reading', 'Recipes', 'Weeknight', 'Travel']) && (await finderFolders.first().getAttribute('aria-selected')) === 'true', JSON.stringify(await finderFolders.locator('.title').allInnerTexts()));
+  check('All bookmarks lists every bookmark', (await results.count()) === 9);
+  await page.keyboard.type('rec');
+  check('typing searches every folder, each saying its folder', await until(async () => JSON.stringify(await resultTitles()) === JSON.stringify(['Pasta with tomatoes', 'Curry', 'Recommended trains'])) && JSON.stringify(await results.locator('.where').allInnerTexts()) === JSON.stringify(['in Recipes', 'in Recipes', 'in Travel']), JSON.stringify(await resultTitles()));
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  check('→ chooses the next folder: its bookmarks first, the rest after a rule, saying where', await until(async () => (await finderFolders.nth(2).getAttribute('aria-selected')) === 'true' && JSON.stringify(await resultTitles()) === JSON.stringify(['Pasta with tomatoes', 'Curry', 'Recommended trains'])) &&
+    JSON.stringify(await results.locator('.where').allInnerTexts()) === JSON.stringify(['in Travel']) && (await finder.locator('.rule').count()) === 1);
+  await page.keyboard.press('ArrowLeft');
+  check('← the one before', await until(async () => (await finderFolders.nth(1).getAttribute('aria-selected')) === 'true' && (await results.locator('.title').first().innerText()) === 'Pasta with tomatoes'));
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowDown');
+  check('↓ chooses the next bookmark', await until(async () => (await results.nth(1).getAttribute('aria-selected')) === 'true'));
+  await settle(page);
+  await page.screenshot({ path: path.join(lib.out, 'standard-bookmarks-commandbox.png') });
+  let had3 = (await goTabs()).length;
+  await page.keyboard.press('Enter');
+  check('Enter opens it, over a page in a new tab', await until(async () => (await activeURL()) === 'https://recipes.example.com/curry' && (await goTabs()).length === had3 + 1 && !(await ui.locator('.command-box').isVisible())));
+
+  await openBox();
+  await page.keyboard.type('*');
+  await page.keyboard.press('ArrowRight');
+  had3 = (await goTabs()).length;
+  const groups = (await ui.locator('.sidebar .group').count());
+  await page.keyboard.press('Shift+Enter');
+  check('Shift+Enter opens the folder\'s bookmarks as a group', await until(async () => (await goTabs()).length === had3 + 2 && (await ui.locator('.sidebar .group').count()) === groups + 1 &&
+    (await ui.locator('.sidebar .group').allInnerTexts()).some((t) => t.includes('Reading')) && (await activeURL()) === 'https://news.example.org/'));
+
+  await openBox();
+  await page.keyboard.type('*');
+  await until(() => chip.isVisible());
+  await page.keyboard.press('Backspace');
+  check('Backspace with nothing typed leaves bookmarks', await until(async () => !(await chip.isVisible()) && !(await finder.isVisible()) && (await box.getAttribute('placeholder')).startsWith('Search tabs')));
+  await page.keyboard.type('*news');
+  await until(async () => (await resultTitles()).join() === 'News');
+  await page.keyboard.press('Escape');
+  check('Escape leaves them too, and what was typed, the box still open', await until(async () => !(await chip.isVisible()) && (await box.inputValue()) === '' && (await ui.locator('.command-box').isVisible())));
+  await setPref('bookmarksCommandBox', false);
+  await until(() => prefsFile().bookmarksCommandBox === false);
+  await settle(page);
+  await page.keyboard.type('*');
+  await settle(page);
+  check('with its pref off, a * is only typed', (await box.inputValue()) === '*' && !(await chip.isVisible()));
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await setPref('bookmarksCommandBox', true);
 
   check('no errors in the pages', w.errors.length === 0, w.errors.join(' | '));
   await browser.close();
