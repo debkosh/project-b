@@ -23,4 +23,4 @@ You are the team's test person. Keep "testing" in your session name.
 - Never `pkill` test tools by name; other sessions run the same scripts.
 - A VM run and a desktop run must not overlap: the VM's frame checks need its window uncovered, and a desktop driver's windows cover it, which stops the VM run early.
 - `chromium/src/out/pb` is shared by every checkout; test and package only a checkout's own `build/pb` (`tools/package.sh` does). A build from another checkout while a release candidate builds and packages once gave a mixed DMG.
-- Restart the emulators (`amarit restart project-b-emu-*`) after each release's Android group: their qemu grows over days of runs, to 266 GB across four on 2026-11-18, which ran this Mac out of memory.
+- Restart the emulators (`amarit restart project-b-emu-*`) after each release's Android group, and once a day: their qemu grows over days of runs, to 266 GB across four on 2026-11-18, which ran this Mac out of memory.
