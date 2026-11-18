@@ -244,6 +244,13 @@ How they work is in [site-features.md](site-features.md).
 
 ## Build, release and test tooling
 
+- **Android: check switches and RowMenu with TalkBack on; uiautomator alone sees Chromium's
+  reduced tree.** With no accessibility service on, Chromium sends Android its lighter tree:
+  a switch reads as nameless (NAF), not checkable, and off even when on, whatever its
+  markup (seen 2026-11-19 on Android 16, after every switch was named by aria-labelledby).
+  The tester checks them, and the star, Pin and RowMenu findings, on one emulator with
+  TalkBack already granted, so its first prompt doesn't take the screen.
+
 - The mock holds six connections per host, so four mock pages on screen hang a test
   ([shells.md](shells.md#testing-one)): serve the mock pages from a second host
   (`localhost` beside `127.0.0.1`).
