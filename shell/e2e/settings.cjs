@@ -262,7 +262,8 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
       await page.locator(`.nav [data-section="${sectionOf[part]}"]`).click();
       if (part === 'sites') await page.locator('[data-section="sites"]').click();
     } else {
-      if (await page.locator('.list-page').count()) await page.locator('.list-page .list-head .back').click();
+      // Back from a site's page goes to Sites, and from there to its section.
+      while (await page.locator('.list-page').count()) await page.locator('.list-page .list-head .back').click();
       if (lists.includes(part)) await page.locator(`[data-section="${part}"]`).click();
     }
     await settle(page);
@@ -802,14 +803,44 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   // one, or Remove, last, for all of them.
   await openSettings();
   await until(settingsShown);
+  // What two sites keep, as pages would have stored it: a host of meet.test, and shop.test,
+  // which has no setting. The page counts it as it opens.
+  for (const value of ['mail.meet.test 2 3000000', 'shop.test 1 120000']) {
+    await fetch(`${base}/mock/fire`, { method: 'POST', body: new URLSearchParams({ kind: 'siteData', value }) });
+  }
   page = await open();
   await show('sites');
   const sites = page.getByRole('region', { name: 'Site settings' });
-  check('Site settings lists each site with how each of its settings is',
-    await until(async () => (await sites.textContent()).includes('meet.test') && (await sites.textContent()).includes('Camera allowed, Microphone blocked') && (await sites.textContent()).includes('Notifications blocked')),
+  const siteRow = (name) => sites.locator('.site-row', { has: page.getByRole('button', { name, exact: true }) });
+  check('Sites lists each site with how each of its settings is, and what it keeps',
+    await until(async () => (await siteRow('meet.test').textContent()).includes('Camera allowed, Microphone blocked · 3 MB') && (await siteRow('news.test').textContent()).includes('Notifications blocked') &&
+      (await siteRow('shop.test').textContent()).includes('120 KB')),
     await sites.textContent());
+  check('and under the list, how much every site keeps', (await sites.textContent()).includes('3 sites · 3.1 MB'));
   await settle(page);
   await page.screenshot({ path: shot('settings-sites') });
+  // A site's Clear data asks first, and takes the site's row when it has no setting.
+  await page.getByRole('button', { name: 'Actions for shop.test' }).click();
+  await page.getByRole('menuitem', { name: 'Clear data…' }).click();
+  const clearSite = page.getByRole('dialog', { name: 'Clear data for shop.test?' });
+  check('Clear data asks first', await until(() => clearSite.isVisible()));
+  await clearSite.getByRole('button', { name: 'Clear', exact: true }).click();
+  check('and clears the site, which leaves the list', await until(async () => (await siteRow('shop.test').count()) === 0 && (await sites.textContent()).includes('2 sites · 3 MB')));
+  // The site's own view says what it keeps on which hosts, and its Clear keeps the settings.
+  await sites.getByRole('button', { name: 'meet.test', exact: true }).click();
+  const meet = page.getByRole('region', { name: 'meet.test' });
+  check('a site\'s view says what it keeps, and on which hosts',
+    await until(async () => (await meet.textContent()).replace(/\s+/g, ' ').includes('Cookies and site data 2 cookies · 3 MB on mail.meet.test')), await meet.textContent());
+  check('and its settings, as its row says them', (await meet.getByRole('radiogroup', { name: 'Camera' }).getByRole('radio', { name: 'Allow' }).getAttribute('aria-checked')) === 'true' &&
+    (await meet.getByRole('radiogroup', { name: 'Microphone' }).getByRole('radio', { name: 'Block' }).getAttribute('aria-checked')) === 'true');
+  await settle(page);
+  await page.screenshot({ path: shot('settings-site-data') });
+  await meet.getByRole('button', { name: 'Clear…' }).click();
+  await page.getByRole('dialog', { name: 'Clear data for meet.test?' }).getByRole('button', { name: 'Clear', exact: true }).click();
+  check('its Clear takes what it keeps and leaves its settings', await until(async () => !(await meet.textContent()).includes('Cookies and site data')) &&
+    (await meet.getByRole('radiogroup', { name: 'Camera' }).getByRole('radio', { name: 'Allow' }).getAttribute('aria-checked')) === 'true');
+  await page.getByRole('button', { name: 'Back to Sites' }).click();
+  await until(() => sites.isVisible());
   await page.getByRole('button', { name: 'Actions for meet.test' }).click();
   await page.getByRole('menuitem', { name: 'Reset camera' }).click();
   check('Reset camera forgets only that', await until(() => JSON.stringify(sitesFile()['https://meet.test']) === '{"microphone":"block"}'), JSON.stringify(sitesFile()));
@@ -852,8 +883,8 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   check('Allow there sets it for the site', await until(() => sitesFile()['https://meet.test']?.camera === 'allow'), JSON.stringify(sitesFile()));
   await siteRadio('Camera', 'Ask').click();
   check('and Ask resets it', await until(() => !('camera' in (sitesFile()['https://meet.test'] || {}))), JSON.stringify(sitesFile()));
-  await site.getByRole('button', { name: 'All sites' }).click();
-  check('All sites goes back to every site', await until(() => sites.isVisible()));
+  await page.getByRole('button', { name: 'Back to Sites' }).click();
+  check('Back goes from a site\'s page to every site', await until(() => sites.isVisible()));
   await sites.getByRole('button', { name: 'meet.test', exact: true }).click();
   await site.getByRole('button', { name: 'Remove all for this site…' }).click();
   const removeAll = page.getByRole('dialog', { name: 'Remove all for meet.test?' });
@@ -865,7 +896,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   check('a site\'s menu ends with Remove, in the danger colour', await removeItem.evaluate((e) => e.classList.contains('danger') && !e.nextElementSibling));
   await removeItem.click();
   check('Remove forgets the site', await until(async () => !('https://news.test' in sitesFile()) && !(await sites.textContent()).includes('news.test')));
-  check('with none left, the list says so', await until(async () => (await sites.textContent()).includes('No site has asked for a permission yet')));
+  check('with none left, the list says so', await until(async () => (await sites.textContent()).includes('No site keeps anything or has asked for a permission yet')));
 
   // Clear browsing data asks from when, all time to start, and what goes: history, cookies
   // and site data, and the cache ticked, History saying how many pages; Escape clears nothing.

@@ -37,6 +37,7 @@
 #include "base/strings/string_split.h"
 #include "project_b/engine/abi/pb_content_abi.h"
 #include "project_b/engine/browser/printing.h"
+#include "project_b/engine/browser/site_data.h"
 #include "project_b/engine/browser/site_features.h"
 #include "project_b/engine/common/block_rules.h"
 #include "project_b/engine/browser/hooks.h"
@@ -169,7 +170,14 @@ void CallEraseWorkspace(const char* workspace, const PBErasure* erasure) {
   g_engine->EraseWorkspace(
       workspace,
       erasure->since ? base::Time::FromTimeT(erasure->since) : base::Time(),
-      erasure->kinds);
+      erasure->kinds,
+      base::SplitString(erasure->sites, ",", base::TRIM_WHITESPACE,
+                        base::SPLIT_WANT_NONEMPTY));
+}
+
+void CallListSiteData(const char* workspace) {
+  CheckMainThread();
+  g_engine->ListSiteData(workspace);
 }
 
 void CallCloseTab(int64_t tab) {
@@ -650,6 +658,7 @@ const PBEngineCalls* Engine::Calls() {
       .create_internal_tab = CallCreateInternalTab,
       .set_first_workspace = CallSetFirstWorkspace,
       .erase_workspace = CallEraseWorkspace,
+      .list_site_data = CallListSiteData,
       .close_tab = CallCloseTab,
       .load_url = CallLoadURL,
       .go_back = CallGoBack,
@@ -1070,19 +1079,35 @@ void Engine::SetFirstWorkspace(const std::string& workspace) {
 // theirs.
 void Engine::EraseWorkspace(const std::string& workspace,
                             base::Time since,
-                            int32_t kinds) {
+                            int32_t kinds,
+                            std::vector<std::string> sites) {
   content::GetUIThreadTaskRunner({})->PostTask(
-      FROM_HERE, base::BindOnce(&Engine::Erase, base::Unretained(this),
-                                workspace, since, kinds));
+      FROM_HERE,
+      base::BindOnce(&Engine::Erase, base::Unretained(this), workspace, since,
+                     kinds, std::move(sites)));
+}
+
+void Engine::ListSiteData(const std::string& workspace) {
+  site_data::List(
+      workspace.empty() ? browser_context_->GetDefaultStoragePartition()
+                        : browser_context_->GetStoragePartition(
+                              PartitionOf(browser_context_, workspace)),
+      workspace);
 }
 
 // The profile's own storage is the context's default partition, which the remover
 // erases when it is given none.
 void Engine::Erase(const std::string& workspace,
                    base::Time since,
-                   int32_t kinds) {
+                   int32_t kinds,
+                   const std::vector<std::string>& sites) {
+  // With sites named, it deletes theirs; with none, it preserves nothing.
   auto filter = content::BrowsingDataFilterBuilder::Create(
-      content::BrowsingDataFilterBuilder::Mode::kPreserve);
+      sites.empty() ? content::BrowsingDataFilterBuilder::Mode::kPreserve
+                    : content::BrowsingDataFilterBuilder::Mode::kDelete);
+  for (const std::string& site : sites) {
+    filter->AddRegisterableDomain(site);
+  }
   if (!workspace.empty()) {
     filter->SetStoragePartitionConfig(PartitionOf(browser_context_, workspace));
   }

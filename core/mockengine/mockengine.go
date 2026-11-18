@@ -92,8 +92,10 @@ type Engine struct {
 	// first is the workspace the app last said is first; erased are the erases it asked
 	// for, in order. The mock makes no tab on its own, so only tests read them, as they do
 	// the profile folders the app opened.
-	first    string
-	erased   []Erase
+	first  string
+	erased []Erase
+	// siteData is what each workspace's storage holds, by host (sitedata.go).
+	siteData map[string][]engine.SiteData
 	profiles []string
 	rules    []engine.BlockRules
 	adRules  engine.AdRules
@@ -379,6 +381,7 @@ func (e *Engine) EraseWorkspace(workspace string, r engine.Erasure) {
 		}
 	}
 	e.erased = append(e.erased, Erase{workspace, open, r})
+	e.eraseSiteData(workspace, r)
 }
 
 // Erased are the erases the app asked for, in order. Main thread.
@@ -1082,6 +1085,9 @@ func (e *Engine) Fire(w engine.WindowID, tab engine.TabID, kind, value string) {
 			if k, ok := Keys[value]; ok && !e.listener.Key(k, engine.KeyBeforePage, engine.SurfacePage) {
 				e.listener.Key(k, engine.KeyUnhandled, engine.SurfacePage)
 			}
+		case "siteData":
+			// The page stored something: "host cookies bytes".
+			e.fireSiteData(e.Workspace(shown), value)
 		case "release":
 			// Every modifier let go.
 			e.listener.ModsChanged(0)

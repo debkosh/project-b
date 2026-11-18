@@ -558,10 +558,11 @@ func SameSite(a, b string) bool {
 	if errA != nil || errB != nil || ua.Hostname() == "" || ub.Hostname() == "" {
 		return false
 	}
-	return siteOf(ua.Hostname()) == siteOf(ub.Hostname())
+	return SiteOf(ua.Hostname()) == SiteOf(ub.Hostname())
 }
 
-func siteOf(host string) string {
+// SiteOf is a host's site, its registrable domain, as the Public Suffix List has it.
+func SiteOf(host string) string {
 	host = strings.ToLower(host)
 	if d, err := publicsuffix.EffectiveTLDPlusOne(host); err == nil {
 		return d

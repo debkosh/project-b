@@ -77,7 +77,17 @@ sections on a phone.
   the profile's own storage by the engine's `EraseWorkspace`, from the same time, with their
   tabs left open. The row then says what went, and from when.
 - **Block ads** is the ad blocker on every site ([site-features.md](site-features.md#the-ad-blocker)).
-- **Sites** is each site's settings, the list Site settings was.
+- **Sites** is a row per site, its registrable domain, as Safari's Website Data and
+  Chrome's All sites have it (`core/app/site_data_settings.go`): the settings of each of its
+  hosts, and what every workspace's storage keeps for them, its cookies and bytes, which the
+  engine counts by host as the page opens (`ListSiteData`: cookies by domain, the quota
+  manager's usage by host and local storage's). The row's line says the settings, how many
+  hosts keep something and how much; the list's foot, how much every site keeps, with Clear
+  all site data. A site's own page says what it keeps on which hosts, with Clear, and then
+  each host with a setting has its settings under its name. Clear, a row's Clear data, and
+  Clear all ask first and erase the site's storage and cache, or every site's, in every
+  workspace: the engine's `EraseWorkspace` with the site named, a filter by registrable
+  domain, since cookies are kept by domain and no host's can go alone. The settings stay.
 
 ## Search
 
@@ -112,10 +122,11 @@ a card's parts is drawn as the row that opens it. `arrange.js` also says where e
 What the page shows is an address, `state.section`, which Go may name as it opens the page
 (`OpenSection`): a group or section (`look`, `browsing`, `privacy`, `data`, `advanced`;
 `appearance`, `start`, `profile`, `about`), a part (`import`, `flags`), or a list (`workspaces`,
-`sites`, `sites/<origin>`, `keyboard`, `sparks`, `extensions`, `webFeatures`). Both layouts take
+`sites`, `sites/<site>`, `sites/<origin>`, `keyboard`, `sparks`, `extensions`, `webFeatures`). Both layouts take
 every address: the page opens a list's own page, or scrolls to the part or its group; the
 sections show the section that is it or holds it, or Sites' own page. The site panel's Details
-opens `sites/<origin>`, and an extension's Manage opens `extensions`.
+opens `sites/<origin>`, the page of that origin's site with that origin's settings whether
+or not it has any, and an extension's Manage opens `extensions`.
 
 ## Tests
 
@@ -124,11 +135,17 @@ profile whose flag names it; it goes to each part as a person does, by the rail,
 sections and the rows that open the lists. Each run also switches the flag to the other layout
 and back, in the same page; checks the status line (not the default browser, Make default
 browser, then the default; the version, and Check for updates reaching the release server
-once), Block ads, Ask where to save and Clear browsing data's dialog; searches (rows found
+once), Block ads, Ask where to save, Clear browsing data's dialog and Sites with what two
+sites keep, a site's Clear data and a site's page with its Clear; searches (rows found
 working in place, the counts, a section's name, nothing found, Escape, a list found); and walks
 a phone-sized page through every group or section, and a search.
 
 In Go, `core/flags/flags_test.go` has the live flag; `core/app/default_browser_settings_test.go`
 the default browser's state in the snapshot, Make default browser and its answer;
 `clear_data_settings_test.go` what each choice clears, site data in every workspace with the
-tabs open, and a range: the pages each would take, and what the last hour clears and leaves; `sitefeatures_test.go` Block ads; `downloads_test.go` Ask where to save.
+tabs open, and a range: the pages each would take, and what the last hour clears and leaves;
+`site_data_settings_test.go` Sites by site, in every workspace, without an extension's
+storage, and a site's Clear and Clear all; `sitefeatures_test.go` Block ads;
+`downloads_test.go` Ask where to save. On the real engine, `tools/drive_first_app.py
+sitedata` counts what pages in two workspaces kept, clears the site in both, and clears
+from the last hour.

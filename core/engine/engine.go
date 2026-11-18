@@ -168,10 +168,20 @@ const (
 )
 
 // Erasure is what EraseWorkspace erases: the kinds of storage, stored since a time, the
-// zero time for from the start.
+// zero time for from the start, of the sites named, registrable domains, or of every site
+// for none.
 type Erasure struct {
 	Since time.Time
 	Kinds EraseKind
+	Sites []string
+}
+
+// SiteData is what a workspace's storage holds for one host: the cookies set for it as
+// their domain, and the bytes it keeps in every kind of site storage.
+type SiteData struct {
+	Host    string `json:"host"`
+	Cookies int    `json:"cookies"`
+	Bytes   int64  `json:"bytes"`
 }
 
 // Engine is what the app can ask a browser engine to do.
@@ -208,6 +218,9 @@ type Engine interface {
 	// browsing data asks with them open, and their pages stay. For "", the profile's own
 	// storage, extensions keep their own.
 	EraseWorkspace(workspace string, r Erasure)
+	// ListSiteData counts what a workspace's storage holds, by host; SiteDataListed
+	// follows with it.
+	ListSiteData(workspace string)
 	CloseTab(tab TabID)
 	LoadURL(tab TabID, url string)
 
@@ -506,6 +519,8 @@ type Listener interface {
 	NotificationsAnswered(allowed bool)
 	// FolderChosen is how ChooseFolder ended: the folder, or "" for none.
 	FolderChosen(w WindowID, path string)
+	// SiteDataListed is what ListSiteData found in a workspace's storage, by host.
+	SiteDataListed(workspace string, hosts []SiteData)
 
 	// PermissionRequested is a page asking to use what kinds name. Every kind a page can
 	// ask for comes here, those the app answers without asking the person too. The app

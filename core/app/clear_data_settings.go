@@ -2,7 +2,6 @@ package app
 
 import (
 	"encoding/json"
-	"slices"
 	"time"
 
 	"projectb/engine"
@@ -82,16 +81,13 @@ func (a *App) clearDataSettingsPart(e engine.Engine) settings.Part {
 				if since != 0 {
 					r.Since = time.Unix(since, 0)
 				}
-				// The profile's own storage, "", whether or not Main is still listed: the
-				// engine's own tabs, an extension's, open there.
-				ids := []string{""}
-				for _, w := range a.Workspaces.List() {
-					if !slices.Contains(ids, w.ID) {
-						ids = append(ids, w.ID)
-					}
-				}
-				for _, id := range ids {
+				for _, id := range a.storageIDs() {
 					e.EraseWorkspace(id, r)
+				}
+				// From the start, every site's goes; from a time, Sites counts again the
+				// next time it opens.
+				if since == 0 && c.SiteData {
+					a.forgetSiteData()
 				}
 			}
 			timeline.Infof("settings: cleared since %q: history %v, site data %v, cache %v, the downloads list %v", c.Since, c.History, c.SiteData, c.Cache, c.Downloads)

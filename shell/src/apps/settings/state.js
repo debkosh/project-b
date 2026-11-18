@@ -61,6 +61,10 @@ export const state = reactive({
   // Each site's settings, by origin: each {origin, settings}, a setting being {kind, title,
   // value}, value 'allow' or 'block'.
   siteSettings: [],
+  // Sites, one row per site, its registrable domain: {site, origins, hosts, cookies,
+  // bytes}, its origins with a setting and its hosts whose storage keeps something, in
+  // every workspace, as the engine last counted.
+  sites: [],
   // The person's sparks (docs/site-features.md): {id, name, description, match, runAt, on,
   // error}; the one whose source Go last sent, {id, source, fileName}; and Go's word on the
   // last save, '' when it took, null before one.
@@ -113,6 +117,7 @@ export function connect() {
             workspaces: m.workspaces,
             workspaceTabs: m.workspaceTabs,
             siteSettings: m.siteSettings,
+            sites: m.sites || [],
             sparks: m.sparks || [],
             siteKinds: m.siteKinds,
             siteConnections: m.siteConnections,
@@ -191,6 +196,9 @@ export function connect() {
           break;
         case 'siteSettings':
           state.siteSettings = m.siteSettings;
+          break;
+        case 'sites':
+          state.sites = m.sites;
           break;
         case 'prefs':
           state.prefs = m.prefs;

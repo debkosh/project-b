@@ -13,11 +13,6 @@ Take an item off when it lands or is dropped.
     flag switches ([settings.md](settings.md)): search, the status line with the default
     browser, Clear browsing data, Block ads on every site, Ask where to save, Import and Run
     setup again. What the owner kept that needs the engine first, so has no row yet:
-    - *Cookies and site data:* one Sites list with each site's cookies and storage beside
-      its permissions. The engine has to list the origins that keep data in each workspace,
-      with how much (content's storage usage, cookies by domain), and erase one origin's
-      (the remover with an origin filter): two calls in `engine.go` and `pb_abi.h`, and the
-      mock's.
     - *Download location:* a folder chooser for Go. `ChoosePath` is the extensions' (Mac,
       and only in a build with them); it has to be the engine's own. On Android a folder
       comes from the Storage Access Framework as a content URI, not a path, so the engine
@@ -25,8 +20,8 @@ Take an item off when it lands or is dropped.
     - *Clear cookies when the app quits*, but for the sites kept: `EraseWorkspace` posts a
       task and its end is only a timeline mark, so nothing makes a quit wait for it. The
       engine has to finish an erase before the process exits, or keep cookies for the
-      session only (Chromium's session-only content setting); the sites kept need the
-      per-origin erase above.
+      session only (Chromium's session-only content setting); the sites kept are an
+      erasure's sites, kept rather than erased.
   - *13, a first-run walkthrough:* bring bookmarks, history and passwords over from another
     browser on the first start, as Edge does. L. Discussed first.
   - *14, saved passwords and autofill* (daily-use row 12). L.

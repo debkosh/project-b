@@ -21,6 +21,7 @@ session (tools/check_full_screen.py, tools/check_clipboard.py). This needs no di
     python3 tools/drive_first_app.py copies     # only two profiles' copies, the Profiles menu and the Dock
     python3 tools/drive_first_app.py picker     # only the picker
     python3 tools/drive_first_app.py workspaces # only workspaces: their storage, New Tab in Workspace, and deleting one
+    python3 tools/drive_first_app.py sitedata   # only Settings' Sites and Clear browsing data on the engine's storage
     python3 tools/drive_first_app.py shells     # only every shell: starting on it, and switching to it live
     python3 tools/drive_first_app.py webapis    # only the web APIs in core/webfeatures/registry.json
     python3 tools/drive_first_app.py internal   # only our own pages as tabs: settings, and the navigation rule
@@ -2063,11 +2064,11 @@ def delete_workspace(app, workspace, close=True):
         time.sleep(0.1)
 
 
-def erased(app, workspace):
+def erased(app, workspace, times=1):
     """Waits for the engine to have erased a workspace's storage, as it marks on the
-    timeline."""
+    timeline, times times in all."""
     deadline = time.time() + 30
-    while not any(e.get("name") == "workspace.erased" and e.get("text") == f"workspace={workspace}" for e in json.loads(app.cmd("timeline"))["result"]["entries"]):
+    while sum(e.get("name") == "workspace.erased" and e.get("text") == f"workspace={workspace}" for e in json.loads(app.cmd("timeline"))["result"]["entries"]) < times:
         if time.time() > deadline:
             raise TimeoutError(f"workspace {workspace!r} was never erased")
         time.sleep(0.1)
@@ -2136,6 +2137,47 @@ def workspace_delete_checks():
     app.cmd("key", "cmd+q")
     check("Cmd+Q ends the app with both windows, cleanly", app.proc.wait(timeout=20) == 0)
     App.running.remove(app)
+
+
+def site_data_checks():
+    """Settings' Sites and Clear browsing data on the real engine (docs/settings.md): what
+    pages in two workspaces kept is counted by site, in both; a site's Clear erases it in
+    both; and Clear browsing data from the last hour erases a cookie set since."""
+    work = "0a1b2c3d"
+    profile = tempfile.mkdtemp(prefix="pb-profile-")
+    with open(os.path.join(profile, "workspaces.json"), "w") as f:
+        json.dump({"version": 2, "workspaces": [{"id": "", "name": "Main", "color": "#3470d0"}, {"id": work, "name": "Work", "color": "#d03434"}]}, f)
+    app = App(profile, ["--remote-debugging-port=0"])
+
+    def keep(tab, value):
+        app.js(f"document.cookie='w={value}; max-age=3600';localStorage.setItem('w','{value}')", tab=tab)
+
+    keep(open_in(app, "", STORE), "main")
+    keep(open_in(app, work, STORE), "work")
+    click = "(b=>b&&(b.click(),1))"
+    button = lambda words: click + f"([...document.querySelectorAll('button')].find(b=>b.textContent.trim()==={json.dumps(words)}))"
+    app.cmd("key", "cmd+,")
+    in_settings(app, click + "(document.querySelector('[data-section=\"sites\"]'))")
+    # The pages are on 127.0.0.1, a site of its own: a cookie in each workspace.
+    in_settings(app, click + "(document.querySelector('.site-row[data-site=\"127.0.0.1\"] button.open'))")
+    view = in_settings(app, "(t=>/2 cookies/.test(t)&&t)(document.querySelector('section[aria-label=\"127.0.0.1\"]')?.textContent||'')", timeout=20)
+    check("Sites counts what pages kept, by site, in every workspace", "Cookies and site data" in view, view)
+    in_settings(app, button("Clear…"))
+    in_settings(app, click + "([...document.querySelectorAll('dialog[open] button')].find(b=>b.textContent.trim()==='Clear'))")
+    erased(app, "")
+    erased(app, work)
+    check("a site's Clear erases it in every workspace", [stored(app, open_in(app, w, STORE)) for w in ("", work)] == [["", None], ["", None]])
+
+    # Clear browsing data, from the last hour, with its other choices as they start.
+    keep(open_in(app, "", STORE), "again")
+    in_settings(app, click + "(document.querySelector('[aria-label=\"Back to Sites\"]'))")
+    in_settings(app, click + "(document.querySelector('.list-page .list-head .back'))")
+    in_settings(app, click + "([...document.querySelectorAll('.row')].find(r=>r.textContent.includes('Clear browsing data'))?.querySelector('button'))")
+    in_settings(app, "(s=>s&&(s.value='hour',s.dispatchEvent(new Event('change')),1))(document.querySelector('#clear-since'))")
+    in_settings(app, click + "([...document.querySelectorAll('dialog[open] button')].find(b=>b.textContent.trim()==='Clear'))")
+    erased(app, "", 2)
+    check("Clear browsing data from the last hour erases a cookie set since", stored(app, open_in(app, "", STORE)) == ["", None])
+    app.close()
 
 
 def shell_checks():
@@ -2550,5 +2592,5 @@ def links_checks():
 
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
-    parts = {"driver": [driver_checks], "browsing": [browsing_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [empty_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks]}
-    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, settings_checks, internal_checks, visible_tabs_checks, window_checks, empty_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, shell_checks, glide_checks, web_api_checks, links_checks, quit_checks]))
+    parts = {"driver": [driver_checks], "browsing": [browsing_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [empty_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks]}
+    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, settings_checks, internal_checks, visible_tabs_checks, window_checks, empty_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, shell_checks, glide_checks, web_api_checks, links_checks, quit_checks]))

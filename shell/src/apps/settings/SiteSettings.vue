@@ -3,31 +3,51 @@ import { computed, ref } from 'vue';
 import Dialog from '@/ui/Dialog.vue';
 import RowMenu from '@/ui/RowMenu.vue';
 import Segmented from '@/ui/Segmented.vue';
+import { size } from '@/ui/size.js';
 import { send, state } from './state.js';
 
-// Each site's settings (docs/daily-driver.md), in two views of one section. At "sites",
-// every site with a setting: a row each, saying how each setting is by Go's title for it,
-// which opens the site's own view, and a menu to reset one or Remove them all; a filter
-// once the list is long. At "sites/<origin>", that site alone: every setting Go lets
-// settings set, each Ask, Allow or Block, and Remove all for this site. The section's
-// address is all it needs, so it shows the same wherever settings is hosted. Go owns the
-// list and names the kinds.
+// Sites (docs/settings.md), in two views of one section. At "sites", a row per site, its
+// registrable domain, as Go joins them: the settings of each of its hosts and what every
+// workspace's storage keeps for them, each row opening the site's own view, with a menu to
+// reset a setting, clear its data or Remove its settings, and Clear all site data at the
+// foot; a filter once the list is long. At "sites/<site>", that site alone: what it keeps,
+// with Clear, and for each of its hosts with a setting every setting Go lets settings set,
+// each Ask, Allow or Block; and Remove all for this site. "sites/<origin>", as a site panel
+// opens it, is the site of that origin, with that origin's settings whether or not it has
+// any. The section's address is all it needs. Go owns the list and names the kinds.
 
 const host = (origin) => origin.replace(/^https:\/\//, '');
 const word = { allow: 'allowed', block: 'blocked', on: 'on', off: 'off' };
-const summary = (s) => s.settings.map((x) => `${x.title} ${word[x.value]}`).join(', ');
+const settingsOf = (o) => state.siteSettings.find((s) => s.origin === o)?.settings || [];
+const summaryOf = (o) => settingsOf(o).map((x) => `${x.title} ${word[x.value]}`).join(', ');
+const words = (n, one, many) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
+const keeps = (r) => r.cookies > 0 || r.bytes > 0;
+// What a site keeps: its size, or its cookies when nothing else.
+const kept = (r) => (r.bytes ? size(r.bytes) : words(r.cookies, 'cookie', 'cookies'));
+
+// A row's second line: its settings, one host's alone or each host's by name, then how many
+// hosts keep something and what.
+function summary(r) {
+  const parts = r.origins.length === 1 ? [summaryOf(r.origins[0])] : r.origins.map((o) => `${host(o)}: ${summaryOf(o)}`);
+  if (r.hosts.length > 1) parts.push(words(r.hosts.length, 'host', 'hosts'));
+  if (keeps(r)) parts.push(kept(r));
+  return parts.filter((x) => x).join(' · ');
+}
 
 const forget = (origin, kind) => send({ t: 'forgetSiteSetting', origin, kind });
 
-function items(s) {
-  return [
-    ...s.settings.map((x) => ({ label: `Reset ${x.title.toLowerCase()}`, run: () => forget(s.origin, x.kind) })),
-    { separator: true },
-    { label: 'Remove', danger: true, run: () => forget(s.origin, '') },
-  ];
+function items(r) {
+  const one = r.origins.length === 1;
+  const resets = r.origins.flatMap((o) =>
+    settingsOf(o).map((x) => ({ label: `Reset ${x.title.toLowerCase()}${one ? '' : ` on ${host(o)}`}`, run: () => forget(o, x.kind) })),
+  );
+  const list = [...resets];
+  if (keeps(r)) list.push({ label: 'Clear data…', run: () => (clearing.value = r.site) });
+  if (r.origins.length) list.push({ separator: true }, { label: 'Remove', danger: true, run: () => r.origins.forEach((o) => forget(o, '')) });
+  return list;
 }
 
-// The row menus by origin, so a right-click on a row opens its menu.
+// The row menus by site, so a right-click on a row opens its menu.
 const menus = {};
 
 // A filter, once there are more sites than fit at a glance.
@@ -35,76 +55,108 @@ const filterAfter = 8;
 const filter = ref('');
 const shown = computed(() => {
   const f = filter.value.trim().toLowerCase();
-  return f ? state.siteSettings.filter((s) => s.origin.toLowerCase().includes(f)) : state.siteSettings;
+  return f ? state.sites.filter((r) => [r.site, ...r.hosts, ...r.origins].some((x) => x.toLowerCase().includes(f))) : state.sites;
 });
 
-// The one site shown, from the section's address, or '' for every site.
-const origin = computed(() => (state.section.startsWith('sites/') ? state.section.slice('sites/'.length) : ''));
-const open = (o) => (state.section = o ? `sites/${o}` : 'sites');
+// The one site shown, from the section's address: a site, or an origin of one. '' is every
+// site.
+const address = computed(() => (state.section.startsWith('sites/') ? state.section.slice('sites/'.length) : ''));
+const asked = computed(() => (address.value.includes('://') ? address.value : ''));
+const row = computed(() => {
+  const a = address.value;
+  if (!a) return null;
+  if (!asked.value) return state.sites.find((r) => r.site === a) || null;
+  const h = new URL(a).hostname;
+  return state.sites.find((r) => r.origins.includes(a) || r.hosts.includes(h)) || null;
+});
+const title = computed(() => row.value?.site || host(asked.value || address.value));
+// The origins whose settings the view shows: the site's own, and the one asked for. A site
+// that only keeps data shows its own name's.
+const origins = computed(() => {
+  const list = [...(row.value?.origins || [])];
+  if (asked.value && !list.includes(asked.value)) list.unshift(asked.value);
+  if (!list.length && address.value) list.push(`https://${address.value}`);
+  return list;
+});
+const open = (x) => (state.section = x ? `sites/${x}` : 'sites');
 
 const choices = [
   { value: '', label: 'Ask' },
   { value: 'allow', label: 'Allow' },
   { value: 'block', label: 'Block' },
 ];
-const settingsOf = (o) => state.siteSettings.find((s) => s.origin === o)?.settings || [];
 // One of our own kinds has no Ask: a site without a setting has its default, the first
 // choice.
-const valueOf = (k) => settingsOf(origin.value).find((x) => x.kind === k.kind)?.value || (k.choices ? k.choices[0] : '');
+const valueOf = (o, k) => settingsOf(o).find((x) => x.kind === k.kind)?.value || (k.choices ? k.choices[0] : '');
 const ourWords = { on: 'On', off: 'Off', allow: 'Allow', block: 'Block' };
 const choicesOf = (k) => (k.choices ? k.choices.map((v) => ({ value: v, label: ourWords[v] || v })) : choices);
-const set = (kind, value) => send({ t: 'setSiteSetting', origin: origin.value, kind, value });
+const set = (origin, kind, value) => send({ t: 'setSiteSetting', origin, kind, value });
 
 // The ad blocker off on every site leaves a site nothing to turn off.
 const kinds = computed(() => state.siteKinds.filter((k) => k.kind !== 'ads' || state.prefs.blockAds));
 
-// How the site's open pages reached it, first in its view; nothing when none is open.
-const connection = computed(() => state.siteConnections[origin.value] || null);
+// How an origin's open pages reached it; nothing when none is open.
+const connectionOf = (o) => state.siteConnections[o] || null;
+
+// Clearing a site's data, or every site's, asks first: the site by name, or '*' for all.
+const clearing = ref('');
+const total = computed(() => state.sites.reduce((n, r) => n + r.bytes, 0));
+function clear() {
+  if (clearing.value === '*') send({ t: 'clearAllSiteData' });
+  else send({ t: 'clearSiteData', site: clearing.value });
+  clearing.value = '';
+}
 
 // Remove all for this site asks first, then goes back to every site.
 const removing = ref(false);
 function removeAll() {
   removing.value = false;
-  forget(origin.value, '');
+  origins.value.forEach((o) => forget(o, ''));
   open('');
 }
 </script>
 
 <template>
-  <section v-if="origin" :aria-label="host(origin)">
-    <div class="heading">
-      <button type="button" class="text-button quiet back" @click="open('')">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5 5.5 8l4.5 4.5" /></svg>
-        All sites
-      </button>
-    </div>
-    <h2 class="site" :title="origin">{{ host(origin) }}</h2>
-    <div class="card">
-      <div v-if="connection" class="row connection" :class="connection.connection">
-        <svg class="glyph" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <template v-if="connection.connection === 'secure'">
-            <rect x="3.25" y="7" width="9.5" height="6.5" rx="1.5" />
-            <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" />
-          </template>
-          <template v-else>
-            <path d="M8 2.25 14.25 13.25H1.75z" />
-            <path d="M8 6.5v3M8 11.5v.01" />
-          </template>
-        </svg>
+  <section v-if="address" :aria-label="title">
+    <h2 class="site" :title="title">{{ title }}</h2>
+    <div v-if="row && keeps(row)" class="card">
+      <div class="row">
         <span class="label">
-          {{ connection.connection === 'secure' ? 'Connection is secure' : 'Not secure' }}
-          <span v-if="connection.note" class="secondary">{{ connection.note }}</span>
+          Cookies and site data
+          <span class="secondary">{{ [words(row.cookies, 'cookie', 'cookies'), row.bytes ? size(row.bytes) : ''].filter((x) => x).join(' · ') }} on {{ row.hosts.join(', ') }}</span>
         </span>
-      </div>
-      <div v-for="k in kinds" :key="k.kind" class="row">
-        <span class="label">{{ k.title }}</span>
-        <Segmented :label="k.title" :options="choicesOf(k)" :model-value="valueOf(k)" @update:model-value="set(k.kind, $event)" />
+        <button type="button" class="text-button" @click="clearing = row.site">Clear…</button>
       </div>
     </div>
+    <template v-for="o in origins" :key="o">
+      <h3 v-if="origins.length > 1" class="host" :title="o">{{ host(o) }}</h3>
+      <div class="card" :aria-label="origins.length > 1 ? host(o) : undefined" :role="origins.length > 1 ? 'group' : undefined">
+        <div v-if="connectionOf(o)" class="row connection" :class="connectionOf(o).connection">
+          <svg class="glyph" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <template v-if="connectionOf(o).connection === 'secure'">
+              <rect x="3.25" y="7" width="9.5" height="6.5" rx="1.5" />
+              <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" />
+            </template>
+            <template v-else>
+              <path d="M8 2.25 14.25 13.25H1.75z" />
+              <path d="M8 6.5v3M8 11.5v.01" />
+            </template>
+          </svg>
+          <span class="label">
+            {{ connectionOf(o).connection === 'secure' ? 'Connection is secure' : 'Not secure' }}
+            <span v-if="connectionOf(o).note" class="secondary">{{ connectionOf(o).note }}</span>
+          </span>
+        </div>
+        <div v-for="k in kinds" :key="k.kind" class="row">
+          <span class="label">{{ k.title }}</span>
+          <Segmented :label="k.title" :options="choicesOf(k)" :model-value="valueOf(o, k)" @update:model-value="set(o, k.kind, $event)" />
+        </div>
+      </div>
+    </template>
     <div class="after">
-      <button type="button" class="text-button" :disabled="settingsOf(origin).length === 0" @click="removing = true">Remove all for this site…</button>
+      <button type="button" class="text-button" :disabled="origins.every((o) => settingsOf(o).length === 0)" @click="removing = true">Remove all for this site…</button>
     </div>
-    <Dialog v-if="removing" :title="`Remove all for ${host(origin)}?`" @close="removing = false">
+    <Dialog v-if="removing" :title="`Remove all for ${title}?`" @close="removing = false">
       <p>It asks again the next time it wants to use any of them.</p>
       <template #buttons>
         <button type="button" class="text-button" @click="removing = false">Cancel</button>
@@ -113,9 +165,9 @@ function removeAll() {
     </Dialog>
   </section>
   <section v-else aria-label="Site settings">
-    <p class="intro">Sites that asked to use your camera, microphone or notifications, and what you chose.</p>
+    <p class="intro">Sites that keep cookies or data, or asked to use your camera, microphone or notifications, and what you chose.</p>
     <input
-      v-if="state.siteSettings.length > filterAfter"
+      v-if="state.sites.length > filterAfter"
       v-model="filter"
       class="text-field filter"
       type="search"
@@ -124,42 +176,40 @@ function removeAll() {
       spellcheck="false"
     />
     <div class="card">
-      <div v-if="state.siteSettings.length === 0" class="row empty">No site has asked for a permission yet</div>
+      <div v-if="state.sites.length === 0" class="row empty">No site keeps anything or has asked for a permission yet</div>
       <div v-else-if="shown.length === 0" class="row empty">No site matches</div>
       <div
-        v-for="s in shown"
-        :key="s.origin"
+        v-for="r in shown"
+        :key="r.site"
         class="row site-row"
-        :data-origin="s.origin"
-        @contextmenu.prevent="menus[s.origin]?.open()"
+        :data-site="r.site"
+        @contextmenu.prevent="menus[r.site]?.open()"
       >
-        <button type="button" class="label open" :aria-label="host(s.origin)" @click="open(s.origin)">
+        <button type="button" class="label open" :aria-label="r.site" @click="open(r.site)">
           <span class="text">
-            <span class="name" :title="s.origin">{{ host(s.origin) }}</span>
-            <span class="secondary">{{ summary(s) }}</span>
+            <span class="name" :title="r.site">{{ r.site }}</span>
+            <span class="secondary">{{ summary(r) }}</span>
           </span>
           <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5" /></svg>
         </button>
-        <RowMenu :ref="(m) => (menus[s.origin] = m)" :items="items(s)" :label="`Actions for ${host(s.origin)}`" />
+        <RowMenu :ref="(m) => (menus[r.site] = m)" :items="items(r)" :label="`Actions for ${r.site}`" />
       </div>
     </div>
+    <div v-if="state.sites.some(keeps)" class="after foot">
+      <span class="secondary">{{ words(state.sites.length, 'site', 'sites') }}{{ total ? ` · ${size(total)}` : '' }}</span>
+      <button type="button" class="text-button" @click="clearing = '*'">Clear all site data…</button>
+    </div>
   </section>
+  <Dialog v-if="clearing" :title="clearing === '*' ? 'Clear all site data?' : `Clear data for ${clearing}?`" @close="clearing = ''">
+    <p>{{ clearing === '*' ? 'Signs you out of every site, in every workspace.' : `Signs you out of ${clearing} and every host of it, in every workspace.` }} The settings stay.</p>
+    <template #buttons>
+      <button type="button" class="text-button" @click="clearing = ''">Cancel</button>
+      <button type="button" class="text-button danger" @click="clear">Clear</button>
+    </template>
+  </Dialog>
 </template>
 
 <style scoped>
-.heading {
-  display: flex;
-  align-items: center;
-  height: 30px;
-}
-
-.back {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: -8px;
-}
-
 /* The site is the view's subject. */
 .site {
   margin: 4px 0 0;
@@ -187,6 +237,25 @@ function removeAll() {
 
 .after {
   margin-top: 16px;
+}
+
+/* Under the list, how much every site keeps and Clear all at the end. */
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* A host's own settings, under its name, when the site has more than one. */
+.host {
+  margin: 16px 0 6px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .intro {

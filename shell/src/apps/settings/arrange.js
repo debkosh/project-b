@@ -7,6 +7,7 @@ import { computed } from 'vue';
 import { extensionsSection } from '@extensions';
 import { phone } from '@/phone.js';
 import { framePresets } from '@/ui/colours.js';
+import { size } from '@/ui/size.js';
 import { state } from './state.js';
 
 // Where a part shows: desktop only, phone only, or both; and whether the page has what it
@@ -42,8 +43,12 @@ export const lists = {
   },
   sites: {
     label: 'Sites',
-    hint: 'Camera, microphone, notifications, each site\'s ad blocker and links',
-    summary: () => (state.siteSettings.length ? words(state.siteSettings.length, 'site', 'sites') : ''),
+    hint: 'Cookies and site data, camera, microphone, notifications, each site\'s ad blocker and links',
+    summary: () => {
+      if (!state.sites.length) return '';
+      const bytes = state.sites.reduce((n, s) => n + s.bytes, 0);
+      return [words(state.sites.length, 'site', 'sites'), bytes ? size(bytes) : ''].filter((x) => x).join(' · ');
+    },
   },
   keyboard: {
     label: 'Keyboard shortcuts',
@@ -201,8 +206,9 @@ export function colourName(c) {
 export const rowsOf = (card) => (typeof card === 'string' ? [] : Array.isArray(card) ? card : card.rows);
 
 // What the page shows for an address, state.section: a list's own page when a section has
-// the list as a row (sites/<origin> is the sites list's page, at that site), else the
-// section that is the address, or that holds the part it names. sections is the layout's.
+// the list as a row (sites/<site> or sites/<origin> is the sites list's page, at that
+// site), else the section that is the address, or that holds the part it names. sections
+// is the layout's.
 export function resolve(address, sections) {
   const id = address.split('/')[0];
   const row = sections.find((s) => s.cards.some((c) => rowsOf(c).includes(id)));

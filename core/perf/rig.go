@@ -60,6 +60,7 @@ type Eng struct {
 }
 
 func (e *Eng) EraseWorkspace(string, engine.Erasure) { e.Calls[COther]++ }
+func (e *Eng) ListSiteData(string)                   { e.Calls[COther]++ }
 
 func (e *Eng) CreateTab(string) engine.TabID     { e.Calls[CCreateTab]++; e.next++; return e.next }
 func (e *Eng) CreateInternalTab() engine.TabID   { e.Calls[CCreateTab]++; e.next++; return e.next }

@@ -34,6 +34,7 @@ const (
 	DialogOpened        Event = 21
 	DialogClosed        Event = 22
 	PageMessage         Event = 23
+	SiteData            Event = 24
 	PermissionRequested Event = 40
 	PermissionStatusOf  Event = 41
 	NotificationShown   Event = 42
@@ -59,6 +60,7 @@ func init() {
 		NotificationShown: "engine.NotificationShown", NotificationClicked: "engine.NotificationClicked",
 		ConnectionChanged: "engine.ConnectionChanged", CertificateError: "engine.CertificateError",
 		SparksFor: "engine.SparksFor", AdBlocked: "engine.AdBlocked", PrintRequested: "engine.PrintRequested",
+		SiteData: "engine.SiteDataListed",
 	} {
 		names[id] = name
 	}
@@ -173,6 +175,14 @@ func (e *Events) adapter(id Event, l engine.Listener, r *reader) (Value, bool) {
 		l.AdBlocked(engine.TabID(r.int()))
 	case PrintRequested:
 		return yes(l.PrintRequested(engine.TabID(r.int()))), true
+	case SiteData:
+		workspace := r.str()
+		var hosts []engine.SiteData
+		if err := json.Unmarshal([]byte(r.str()), &hosts); err != nil {
+			timeline.Warnf("abi: bad site data: %v", err)
+			return Value{}, false
+		}
+		l.SiteDataListed(workspace, hosts)
 	}
 	return Value{}, false
 }

@@ -83,6 +83,10 @@ typedef enum PBEvent {
                                         // for a reload. The page waits for answer_dialog
   PB_EVENT_DIALOG_CLOSED = 22,          // i: dialog; content gave up on it, as when its
                                         // tab navigated or closed
+  PB_EVENT_SITE_DATA = 24,              // s: workspace, s: json, [{"host", "cookies",
+                                        // "bytes"}]: what list_site_data found, the
+                                        // cookies by their domain and the bytes each host
+                                        // keeps
 
   // A page's requests for what it may use, 40 to 49 (docs/daily-driver.md).
   PB_EVENT_PERMISSION_REQUEST = 40,     // i: request, i: its tab or 0, s: the origin
@@ -245,8 +249,10 @@ typedef enum PBEraseKind {
 
 // What an erase takes of a workspace's storage, as Go's engine.Erasure has it.
 typedef struct PBErasure {
-  int64_t since;  // stored since this Unix time in seconds; 0 for from the start
-  int32_t kinds;  // PBEraseKind bits
+  int64_t since;      // stored since this Unix time in seconds; 0 for from the start
+  int32_t kinds;      // PBEraseKind bits
+  const char* sites;  // only these sites' storage, registrable domains, comma-separated;
+                      // "" for every site's
 } PBErasure;
 
 typedef enum PBEditCommand {
@@ -353,6 +359,8 @@ typedef struct PBEngineCalls {
   // open, and their pages stay. For "", the profile's own storage, extensions' own data
   // stays.
   void (*erase_workspace)(const char* workspace, const PBErasure* erasure);
+  // Counts what a workspace's storage holds by host, and says in PB_EVENT_SITE_DATA.
+  void (*list_site_data)(const char* workspace);
   void (*close_tab)(int64_t tab);
   void (*load_url)(int64_t tab, const char* url);
   void (*go_back)(int64_t tab);

@@ -88,6 +88,9 @@ func (a *App) refreshMenu() {
 type App struct {
 	// menuRead is what the menu last read of the front window's active tab.
 	menuRead menuRead
+	// siteData is what each workspace's storage held when the engine last counted it, by
+	// its id (site_data_settings.go). Main thread.
+	siteData map[string][]engine.SiteData
 	Crash    *crash.Manager
 	Tabs     *tabs.Manager
 	History  *history.Manager
@@ -255,6 +258,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Settings.AddPart(a.bookmarkSettingsPart())
 	a.Settings.AddPart(a.defaultBrowserSettingsPart(e))
 	a.Settings.AddPart(a.clearDataSettingsPart(e))
+	a.Settings.AddPart(a.siteDataSettingsPart(e))
 	a.registerActions(e)
 
 	a.Tabs.AddGate(a.Policy.IsAllowedURL)

@@ -169,10 +169,15 @@ class Engine {
   void SetFirstWorkspace(const std::string& workspace);
   const std::string& first_workspace() const { return first_workspace_; }
   // Erases what kinds says (PBEraseKind) of a workspace's storage, stored since a time
-  // (null for from the start), once the tabs Go has just closed are gone, and marks
-  // workspace.erased on the timeline when it is done. For "", the profile's own storage,
-  // extensions' own data stays.
-  void EraseWorkspace(const std::string& workspace, base::Time since, int32_t kinds);
+  // (null for from the start), of the sites named or of every site with none, once the
+  // tabs Go has just closed are gone, and marks workspace.erased on the timeline when it
+  // is done. For "", the profile's own storage, extensions' own data stays.
+  void EraseWorkspace(const std::string& workspace,
+                      base::Time since,
+                      int32_t kinds,
+                      std::vector<std::string> sites);
+  // Counts what a workspace's storage holds, by host, for PB_EVENT_SITE_DATA.
+  void ListSiteData(const std::string& workspace);
   void CloseTab(int64_t tab);
   void LoadURL(int64_t tab, const char* url);
   void GoBack(int64_t tab);
@@ -203,7 +208,10 @@ class Engine {
   PageTab* Add(std::unique_ptr<content::WebContents> contents,
                const std::string& workspace,
                bool internal = false);
-  void Erase(const std::string& workspace, base::Time since, int32_t kinds);
+  void Erase(const std::string& workspace,
+             base::Time since,
+             int32_t kinds,
+             const std::vector<std::string>& sites);
   // Whichever page has the keyboard: a shell or a tab's.
   content::WebContents* FocusedContents() const;
   void UpdateTitle(AppWindow* window);
