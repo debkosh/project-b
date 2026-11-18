@@ -72,6 +72,7 @@ type Manager struct {
 
 	mu       gosync.Mutex
 	status   Status
+	address  string // the bucket's, while sync is on
 	onStatus []func(Status) // the main thread's
 	// stopRun cuts the run going on short, nil between runs, and cut says CancelRun did.
 	stopRun func()
@@ -149,6 +150,14 @@ func (m *Manager) Status() Status {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.status
+}
+
+// Address is the bucket's address while sync is on, as it was connected to, for the settings
+// page's Reconnect; "" while it is off.
+func (m *Manager) Address() string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.address
 }
 
 // OnStatus subscribes to the status, on the main thread.
@@ -273,6 +282,9 @@ func (m *Manager) open(address, token string, key *synckosh.DataKey) error {
 	}
 	m.conn = &connection{address: address, token: token, key: key, local: l, replica: r}
 	m.wait, m.next = 0, time.Time{}
+	m.mu.Lock()
+	m.address = address
+	m.mu.Unlock()
 	m.setStatus(func(s *Status) { *s = Status{On: true, Host: hostOf(address)} })
 	return nil
 }
@@ -314,6 +326,9 @@ func (m *Manager) begin(address, token string, key *synckosh.DataKey) error {
 // row stays.
 func (m *Manager) end() error {
 	m.conn = nil
+	m.mu.Lock()
+	m.address = ""
+	m.mu.Unlock()
 	err := m.st.Wait(func(tx *store.Tx) error {
 		if err := m.keys.DeleteSecrets(tx, secretAddress, secretToken, secretKey); err != nil {
 			return err
