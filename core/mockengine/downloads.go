@@ -106,7 +106,7 @@ func (e *Engine) DownloadCommand(id engine.DownloadID, c engine.DownloadCommand)
 		m.d.Paused = true
 	case engine.DownloadResume:
 		// A failed one picks up where it got to, as content resumes one.
-		m.d.Paused, m.d.State = false, engine.DownloadProgress
+		m.d.Paused, m.d.State, m.d.Reason = false, engine.DownloadProgress, ""
 		e.step(m, downloadSize)
 	case engine.DownloadRemove:
 		m.stop = true
@@ -138,7 +138,7 @@ func (e *Engine) failDownloads() {
 	var failing []*mockDownload
 	for _, m := range d.running {
 		if m.d.State == engine.DownloadProgress {
-			m.d.State = engine.DownloadFailed
+			m.d.State, m.d.Reason = engine.DownloadFailed, "connection"
 			failing = append(failing, m)
 		}
 	}

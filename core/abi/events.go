@@ -130,7 +130,7 @@ func (e *Events) adapter(id Event, l engine.Listener, r *reader) (Value, bool) {
 		return Value{S: string(b)}, true
 	case DownloadUpdated:
 		l.DownloadUpdated(engine.Download{ID: engine.DownloadID(r.int()), Path: r.str(), URL: r.str(), Mime: r.str(),
-			State: engine.DownloadState(r.int()), Received: r.int(), Total: r.int(), Paused: r.bool()})
+			State: engine.DownloadState(r.int()), Received: r.int(), Total: r.int(), Paused: r.bool(), Reason: r.str()})
 	case FileChooser:
 		// The answer is whether the panel opens, and where, as JSON; none refuses it.
 		req := engine.FileChooserRequest{Tab: engine.TabID(r.int()), Mode: engine.FileChooserMode(r.int())}

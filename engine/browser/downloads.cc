@@ -57,6 +57,38 @@ int32_t StateOf(const download::DownloadItem* item) {
   }
 }
 
+// Why a download failed, in Go's words (engine.Download.Reason): "connection" when its
+// connection failed or dropped, "server" when the server refused it, "disk" when there was
+// no room for it, or "" for any other reason and for one that hasn't failed.
+const char* ReasonOf(const download::DownloadItem* item) {
+  if (item->GetState() != download::DownloadItem::INTERRUPTED) {
+    return "";
+  }
+  switch (item->GetLastReason()) {
+    case download::DOWNLOAD_INTERRUPT_REASON_NETWORK_FAILED:
+    case download::DOWNLOAD_INTERRUPT_REASON_NETWORK_TIMEOUT:
+    case download::DOWNLOAD_INTERRUPT_REASON_NETWORK_DISCONNECTED:
+    case download::DOWNLOAD_INTERRUPT_REASON_NETWORK_SERVER_DOWN:
+    case download::DOWNLOAD_INTERRUPT_REASON_SERVER_UNREACHABLE:
+    case download::DOWNLOAD_INTERRUPT_REASON_SERVER_CONTENT_LENGTH_MISMATCH:
+      return "connection";
+    case download::DOWNLOAD_INTERRUPT_REASON_NETWORK_INVALID_REQUEST:
+    case download::DOWNLOAD_INTERRUPT_REASON_SERVER_FAILED:
+    case download::DOWNLOAD_INTERRUPT_REASON_SERVER_NO_RANGE:
+    case download::DOWNLOAD_INTERRUPT_REASON_SERVER_BAD_CONTENT:
+    case download::DOWNLOAD_INTERRUPT_REASON_SERVER_UNAUTHORIZED:
+    case download::DOWNLOAD_INTERRUPT_REASON_SERVER_CERT_PROBLEM:
+    case download::DOWNLOAD_INTERRUPT_REASON_SERVER_FORBIDDEN:
+    case download::DOWNLOAD_INTERRUPT_REASON_SERVER_CROSS_ORIGIN_REDIRECT:
+      return "server";
+    case download::DOWNLOAD_INTERRUPT_REASON_FILE_NO_SPACE:
+    case download::DOWNLOAD_INTERRUPT_REASON_FILE_TOO_LARGE:
+      return "disk";
+    default:
+      return "";
+  }
+}
+
 }  // namespace
 
 Downloads::Downloads() {
@@ -181,6 +213,7 @@ void Downloads::Report(download::DownloadItem* item) {
   args.Int(item->GetReceivedBytes());
   args.Int(item->GetTotalBytes());
   args.Bool(item->IsPaused());
+  args.Str(ReasonOf(item));
   hooks::Fire(PB_EVENT_DOWNLOAD_UPDATED, args);
 }
 

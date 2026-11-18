@@ -43,6 +43,9 @@ const progress = computed(() => {
   return r.reduce((n, d) => n + d.received, 0) / r.reduce((n, d) => n + d.total, 0);
 });
 
+// Why one failed, in plain words, from the engine's reason (docs/daily-driver.md).
+const failedWords = { connection: 'Failed: the connection stopped', server: 'Failed: the server refused it', disk: 'Failed: not enough disk space' };
+
 function status(d) {
   switch (d.state) {
     case 'progress':
@@ -52,7 +55,7 @@ function status(d) {
     case 'cancelled':
       return 'Cancelled';
     default:
-      return 'Failed';
+      return failedWords[d.reason] || 'Failed';
   }
 }
 

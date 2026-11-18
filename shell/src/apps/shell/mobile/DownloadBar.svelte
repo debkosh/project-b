@@ -27,9 +27,12 @@
   // How long it stays: a start is a moment's news, an end with something to do longer.
   const lasts = { progress: 4000, done: 6000, failed: 6000 };
 
+  // Why one failed, in the words the desktop's lists use (docs/daily-driver.md).
+  const why = { connection: 'the connection stopped', server: 'the server refused it', disk: 'not enough disk space' };
+
   function say(d) {
     clearTimeout(timer);
-    said = { id: d.id, name: d.name, state: d.state, from: d.from };
+    said = { id: d.id, name: d.name, state: d.state, from: d.from, reason: d.reason };
     timer = setTimeout(() => (said = null), lasts[d.state]);
   }
 
@@ -87,7 +90,7 @@
     <div class="bar" bind:this={bar} use:shell role="group" aria-label="Download" onpointerdown={down} onpointerup={up} onpointercancel={() => (start = null)}>
       <span class="mark" class:failed={said.state === 'failed'}><Icon name={said.state === 'failed' ? 'warn' : 'download'} /></span>
       <span class="words">
-        {#if said.state === 'progress'}Downloading {said.name}{:else if said.state === 'done' && said.from}{said.from} saved to Downloads{:else if said.state === 'done'}{said.name} downloaded{:else}Couldn't download {said.name}{/if}
+        {#if said.state === 'progress'}Downloading {said.name}{:else if said.state === 'done' && said.from}{said.from} saved to Downloads{:else if said.state === 'done'}{said.name} downloaded{:else}Couldn't download {said.name}{why[said.reason] ? `: ${why[said.reason]}` : ''}{/if}
       </span>
       {#if said.state === 'done'}
         <button onclick={() => act('open')}>Open</button>
@@ -140,13 +143,18 @@
     color: var(--danger);
   }
 
+  /* Two lines at most, so a failure's reason isn't cut off; a long name still ends in an
+     ellipsis. */
   .words {
     flex: 1;
     min-width: 0;
+    display: -webkit-box;
     overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    padding: 6px 0;
     font-size: 14px;
+    line-height: 18px;
   }
 
   button {

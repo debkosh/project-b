@@ -34,6 +34,8 @@ type Item struct {
 	Received int64  `json:"received"`
 	Total    int64  `json:"total"`
 	Paused   bool   `json:"paused"`
+	// Reason is why a failed one failed, as engine.Download has it, or "".
+	Reason string `json:"reason,omitempty"`
 	// Started is when it joined the list, in Unix seconds; 0 for one listed before the
 	// list kept it, which a clear from a time leaves.
 	Started int64 `json:"started,omitempty"`
@@ -197,7 +199,7 @@ func (m *Manager) Updated(d engine.Download) int {
 	}
 	it.retrying = false
 	it.Path, it.Name = d.Path, filepath.Base(d.Path)
-	it.State, it.Received, it.Total, it.Paused = states[d.State], d.Received, d.Total, d.Paused
+	it.State, it.Received, it.Total, it.Paused, it.Reason = states[d.State], d.Received, d.Total, d.Paused, d.Reason
 	m.e.ShowDownload(it.ID, d)
 	// A failed download stays the engine's: it may resume, by itself or by Retry.
 	if it.State == "done" || it.State == "cancelled" {

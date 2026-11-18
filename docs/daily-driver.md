@@ -102,8 +102,13 @@ panel). The engine then reports each change
 list.
 
 **The list.** `state.downloads` is this profile's, newest first, each `{id, name, url,
-path, state, received, total, paused}`, `state` being `progress`, `done`, `cancelled` or
-`failed`. A file the app made itself and kept as a finished download, a saved crash report,
+path, state, received, total, paused, reason}`, `state` being `progress`, `done`, `cancelled`
+or `failed`, and `reason` why a failed one failed, from content's interrupt reason
+(`PB_EVENT_DOWNLOAD_UPDATED`'s last value): `connection` (its connection failed or dropped,
+a timeout among them), `server` (the server refused it) or `disk` (no room), or none. The
+shell says it in plain words: "Failed: the connection stopped", "Failed: the server
+refused it", "Failed: not enough disk space", or "Failed" for any other reason; Mobile's
+download bar, "Couldn't download x.zip: the connection stopped" and so on. A file the app made itself and kept as a finished download, a saved crash report,
 has no `url` and says what it is in `from` instead. Go keeps the finished ones in the profile's `downloads.json`, the last 100, so the
 list is there after a restart; one still running when the app quit comes back `failed`.
 The shell asks for one action at a time, `downloadAction {id, action}`: `open` the file,

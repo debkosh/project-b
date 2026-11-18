@@ -135,7 +135,7 @@ func (r *adapterRecorder) DownloadTarget(d engine.DownloadRequest) engine.Downlo
 	return engine.DownloadTarget{Path: "/d/" + d.Name}
 }
 func (r *adapterRecorder) DownloadUpdated(d engine.Download) {
-	r.note(fmt.Sprintf("downloaded %d %s %d/%d", d.ID, d.Path, d.Received, d.Total))
+	r.note(fmt.Sprintf("downloaded %d %s %d/%d %q", d.ID, d.Path, d.Received, d.Total, d.Reason))
 }
 
 func (r *adapterRecorder) FileChooser(q engine.FileChooserRequest) engine.FileChooserAnswer {
@@ -230,6 +230,15 @@ func TestAdapterEventsReachTheListener(t *testing.T) {
 	}
 	if h.Counts()["engine.TabOpened"] != 1 {
 		t.Fatalf("counts %v", h.Counts())
+	}
+}
+
+// A download's news carries why a failed one failed, last.
+func TestADownloadsFailureSaysWhy(t *testing.T) {
+	h, r := wired(t)
+	h.Dispatch(DownloadUpdated, pack(4, "/d/f.zip", "https://a.test/f.zip", "application/zip", 3, 500, 1000, false, "connection"))
+	if want := []string{`downloaded 4 /d/f.zip 500/1000 "connection"`}; !reflect.DeepEqual(r.got, want) {
+		t.Fatalf("got %v", r.got)
 	}
 }
 

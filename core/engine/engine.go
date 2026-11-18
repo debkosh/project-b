@@ -708,6 +708,10 @@ type Download struct {
 	Received int64
 	Total    int64
 	Paused   bool
+	// Reason is why a failed one failed: "connection" when its connection failed or
+	// dropped, "server" when the server refused it, "disk" when there was no room for
+	// it, or "" for any other reason.
+	Reason string
 }
 
 // DownloadCommand is what can be done to a running download.

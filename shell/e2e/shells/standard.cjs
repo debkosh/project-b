@@ -165,6 +165,13 @@ const { check, fire, regions, settle, until } = lib;
   await shoot('downloads-running');
   await stalled.getByRole('button', { name: 'Retry', exact: true }).click();
   check('Retry gets it, in the same row', await until(() => has('Open'), 5000));
+  // One that fails says why, in plain words, from the engine's reason.
+  await fire('download', 'https://a.test/files/failing.pdf');
+  await fire('downloadsFail');
+  const failing = list.getByRole('listitem', { name: 'failing.pdf' });
+  check('a failed download says why, with Retry', await until(async () => (await failing.textContent()).includes('Failed: the connection stopped') &&
+    (await failing.getByRole('button', { name: 'Retry', exact: true }).count()) === 1), await failing.textContent());
+  await shoot('downloads-failed');
   await page.keyboard.press('Escape');
   await until(async () => (await list.count()) === 0);
   // While it peeks, the pointer over it keeps it open; Escape, or a press outside, closes it.

@@ -27,10 +27,13 @@
     }
   }
 
+  // Why one failed, in plain words, from the engine's reason (docs/daily-driver.md).
+  const failedWords = { connection: 'Failed: the connection stopped', server: 'Failed: the server refused it', disk: 'Failed: not enough disk space' };
+
   function status(d) {
     if (d.state === 'progress') return (d.paused ? 'Paused, ' : '') + (d.total > 0 ? `${size(d.received)} of ${size(d.total)}` : size(d.received));
     if (d.state === 'done') return d.total > 0 ? size(d.total) : 'Done';
-    return d.state === 'cancelled' ? 'Cancelled' : 'Failed';
+    return d.state === 'cancelled' ? 'Cancelled' : failedWords[d.reason] || 'Failed';
   }
 
   function show() {
