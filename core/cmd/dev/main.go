@@ -93,7 +93,7 @@ func main() {
 	}
 
 	// The shell is the profile's choice before the app starts, so the app starts as it does
-	// for a profile that chose it: with no tabs when that shell takes New Tab.
+	// for a profile that chose it.
 	if *use != "" && !*pick {
 		p := prefs.New(*profile)
 		p.SetShell(*use)

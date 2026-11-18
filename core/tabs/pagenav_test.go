@@ -36,7 +36,7 @@ func TestOnlyThePagesOwnNavigationsMeetTheGuard(t *testing.T) {
 	var asked []PageNavigation
 	m.SetPageGuard(blockOthers(&asked))
 	id := m.Create(1)
-	m.Navigate(1, "https://shop.test/", "")
+	m.Navigate(1, "https://shop.test/")
 	if m.HandleNavigationStarting(id, 1, "https://shop.test/") != engine.NavigationProceed || len(asked) != 0 {
 		t.Fatalf("the person's navigation met the guard: %v", asked)
 	}
@@ -132,7 +132,7 @@ func TestAStartGoNeverHeardLeavesNoExemption(t *testing.T) {
 	var asked []PageNavigation
 	m.SetPageGuard(blockOthers(&asked))
 	id := m.Create(1)
-	m.Navigate(1, "https://shop.test", "")
+	m.Navigate(1, "https://shop.test")
 	m.HandleNavigationFinished(id, 2, "https://shop.test/")
 	if m.HandleNavigationStarting(id, 3, "https://ads.test/") != engine.NavigationElsewhere {
 		t.Fatal("the page's link went on the person's left-over mark")
@@ -142,7 +142,7 @@ func TestAStartGoNeverHeardLeavesNoExemption(t *testing.T) {
 		t.Fatal("Back to another site was put to the guard")
 	}
 	// A load's own start, its root without the slash it was asked with.
-	m.Navigate(1, "https://login.test", "")
+	m.Navigate(1, "https://login.test")
 	if m.HandleNavigationStarting(id, 5, "https://login.test/") != engine.NavigationProceed {
 		t.Fatal("the person's load was put to the guard")
 	}

@@ -139,21 +139,19 @@ func TestCreateCloseAndActivate(t *testing.T) {
 	}
 }
 
-// Closing a window's last tab leaves the window with no tabs and no active tab, and says
-// the tab closed there rather than moved.
-func TestClosingTheLastTabEmptiesTheList(t *testing.T) {
+// Closing a window's last tab says so, for the window to close, as a window always has a tab.
+func TestClosingTheLastTabEmptiesTheWindowForItToClose(t *testing.T) {
 	e := &fakeEngine{}
 	m := oneWindow(e)
-	empty, moved := false, true
-	m.OnEmpty(func(w engine.WindowID, wasMoved bool) { empty, moved = w == 1, wasMoved })
+	empty := false
+	m.OnEmpty(func(w engine.WindowID) { empty = w == 1 })
 	m.Close(m.Create(1))
-	if !empty || moved || len(m.All()) != 0 || m.ActiveID() != 0 || !slices.Equal(m.Windows(), []engine.WindowID{1}) {
-		t.Fatalf("empty %v moved %v all %v active %v windows %v", empty, moved, m.All(), m.ActiveID(), m.Windows())
+	if !empty || len(m.All()) != 0 {
+		t.Fatalf("empty %v all %v", empty, m.All())
 	}
 }
 
-// A window with tabs always has an active one: a tab that comes into a window with none is
-// its active tab, though it was opened behind.
+// A window's first tab is its active one, though it was opened behind, as a new window's is.
 func TestATabIntoAWindowWithNoTabsIsActive(t *testing.T) {
 	m := oneWindow(&fakeEngine{})
 	m.Close(m.Create(1))
@@ -394,7 +392,7 @@ func TestWindowsKeepTheirOwnTabs(t *testing.T) {
 
 	// Closing window 2's last tab empties window 2 only.
 	var emptied []engine.WindowID
-	m.OnEmpty(func(w engine.WindowID, _ bool) { emptied = append(emptied, w) })
+	m.OnEmpty(func(w engine.WindowID) { emptied = append(emptied, w) })
 	m.Close(9)
 	m.Close(c)
 	if !slices.Equal(emptied, []engine.WindowID{2}) || len(m.AllIn(1)) != 3 {
@@ -428,11 +426,7 @@ func TestMovingATabBetweenWindows(t *testing.T) {
 	m.AddWindow(2)
 	c := m.Create(2)
 	var emptied []engine.WindowID
-	m.OnEmpty(func(w engine.WindowID, moved bool) {
-		if moved {
-			emptied = append(emptied, w)
-		}
-	})
+	m.OnEmpty(func(w engine.WindowID) { emptied = append(emptied, w) })
 
 	m.Move(b, 2, 0)
 	if m.WindowOf(b) != 2 || !slices.Equal(ids(m.AllIn(2)), []engine.TabID{b, c}) || m.ActiveIn(2) != b {
@@ -675,8 +669,8 @@ func TestOurPagesNavigateInPlaceAndAnythingElseOpensBeside(t *testing.T) {
 	}
 }
 
-// An address of one of our pages asked for in a new tab, or typed in a window with no
-// tabs, shows the window's tab of it, and opens no web tab for it.
+// An address of one of our pages asked for in a new tab shows the window's tab of it, and
+// opens no web tab for it.
 func TestOpeningOurAddressShowsOurTab(t *testing.T) {
 	e := &fakeEngine{}
 	m := oneWindow(e)
@@ -684,11 +678,6 @@ func TestOpeningOurAddressShowsOurTab(t *testing.T) {
 	id := m.OpenIn("chrome://settings/", true)
 	if tab, _ := m.Get(id); tab.Page != "settings" || len(m.AllIn(1)) != 2 || len(e.in) != 1 {
 		t.Fatalf("opened %+v; tabs %v", tab, ids(m.AllIn(1)))
-	}
-	m.AddWindow(2)
-	m.Navigate(2, "chrome://settings", work)
-	if in := m.AllIn(2); len(in) != 1 || in[0].Page != "settings" || len(e.in) != 1 {
-		t.Fatalf("typed in a window with no tabs: %+v", in)
 	}
 }
 
