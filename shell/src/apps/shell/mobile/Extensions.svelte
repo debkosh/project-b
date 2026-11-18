@@ -34,7 +34,7 @@
             <span class="name">{b.name}</span>
             {#if b.badge}<span class="pbx-badge">{b.badge.slice(0, 4)}</span>{/if}
           </button>
-          <button class="pin" aria-label="{b.pinned ? 'Unpin' : 'Pin'} {b.name}" aria-pressed={b.pinned} onclick={() => pinExtension(b.id, !b.pinned)}>{b.pinned ? 'Pinned' : 'Pin'}</button>
+          <button class="pin" class:on={b.pinned} aria-label="{b.pinned ? 'Unpin' : 'Pin'} {b.name}" onclick={() => pinExtension(b.id, !b.pinned)}>{b.pinned ? 'Pinned' : 'Pin'}</button>
         </div>
       {/each}
       <button class="item pbx-manage" onclick={() => { onclose(); manageExtensions(); }}>Manage extensions</button>
@@ -122,7 +122,7 @@
     font-size: 13px;
   }
 
-  .pin[aria-pressed='true'] {
+  .pin.on {
     border-color: transparent;
     background: var(--accent-soft);
   }
