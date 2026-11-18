@@ -344,6 +344,7 @@ android_library("java") {
     "java/dev/projectb/browser/BrowserActivity.java",
     "java/dev/projectb/browser/BrowserApplication.java",
     "java/dev/projectb/browser/BrowserWindow.java",
+    "java/dev/projectb/browser/DeviceKey.java",
     "java/dev/projectb/browser/Downloads.java",
     "java/dev/projectb/browser/GoCore.java",
     "java/dev/projectb/browser/Printing.java",
