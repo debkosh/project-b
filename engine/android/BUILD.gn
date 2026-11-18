@@ -52,6 +52,8 @@ source_set("browser") {
     "../browser/go.h",
     "../browser/events.cc",
     "../browser/events.h",
+    "../browser/file_chooser.cc",
+    "../browser/file_chooser.h",
     "../browser/hooks.cc",
     "../browser/hooks.h",
     "../browser/hooks_gen.cc",
@@ -90,6 +92,7 @@ source_set("browser") {
     "window_android.cc",
   ]
   deps = [
+    "//ui/shell_dialogs",
     "//components/download/public/common:public",
     "//components/printing/browser",
     "//components/printing/browser/headless",

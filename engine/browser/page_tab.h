@@ -139,11 +139,9 @@ class PageTab : public WebContentsObserverHooks, public WebContentsDelegateHooks
   void ExitFullscreenModeForTab(content::WebContents* web_contents) override;
   content::JavaScriptDialogManager* GetJavaScriptDialogManager(
       content::WebContents* source) override;
-#if BUILDFLAG(IS_MAC)
   void RunFileChooser(content::RenderFrameHost* render_frame_host,
                       scoped_refptr<content::FileSelectListener> listener,
                       const blink::mojom::FileChooserParams& params) override;
-#endif
 #if BUILDFLAG(IS_ANDROID)
   // Android has no colour picker inside the page, so a colour input asks for one.
   std::unique_ptr<content::ColorChooser> OpenColorChooser(

@@ -15,6 +15,8 @@ import org.chromium.ui.base.IntentRequestTracker;
 /** The main process's one window. Go's managers live exactly as long as it does. */
 public final class BrowserActivity extends Activity {
     private BrowserWindow window;
+    // Hands the window the answers of what it asked other apps for, such as a file picked.
+    private IntentRequestTracker intentRequests;
     // Go has started: until then a link from another app waits here.
     private boolean started;
     private String pendingLink;
@@ -27,11 +29,12 @@ public final class BrowserActivity extends Activity {
         }
         LibraryLoader.getInstance().ensureInitialized();
 
+        intentRequests = IntentRequestTracker.createFromActivity(this);
         ActivityWindowAndroid windowAndroid =
                 new ActivityWindowAndroid(
                         this,
                         /* listenToActivityState= */ true,
-                        IntentRequestTracker.createFromActivity(this),
+                        intentRequests,
                         /* insetObserver= */ null,
                         /* occlusionTrackingAllowed= */ true);
         window = new BrowserWindow(this, windowAndroid);
@@ -109,10 +112,12 @@ public final class BrowserActivity extends Activity {
         window.setActivityVisible(false);
     }
 
-    // Android's sheet asking to be the default browser has been answered.
+    // Android's sheet asking to be the default browser has been answered, or another app
+    // the window asked, such as the file picker for a page's file input.
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        intentRequests.onActivityResult(requestCode, resultCode, data);
         if (requestCode == BrowserWindow.DEFAULT_BROWSER_REQUEST) {
             window.defaultBrowserAnswered();
         }

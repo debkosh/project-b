@@ -11,6 +11,7 @@
 #include "net/base/directory_lister.h"
 #include "third_party/blink/public/mojom/choosers/file_chooser.mojom.h"
 #include "ui/shell_dialogs/select_file_dialog.h"
+#include "ui/shell_dialogs/selected_file_info.h"
 
 namespace content {
 class RenderFrameHost;
@@ -45,7 +46,7 @@ class FileChooser : public base::RefCounted<FileChooser>,
             const blink::mojom::FileChooserParams& params,
             const base::FilePath& folder);
   // Answers the page with files, or with nothing when files is empty, and lets go.
-  void Answer(std::vector<base::FilePath> files, const base::FilePath& base_dir);
+  void Answer(std::vector<ui::SelectedFileInfo> files, const base::FilePath& base_dir);
 
   // ui::SelectFileDialog::Listener:
   void FileSelected(const ui::SelectedFileInfo& file, int index) override;

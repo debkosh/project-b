@@ -34,9 +34,7 @@
 #include "project_b/engine/browser/timeline.h"
 #include "project_b/engine/browser/window.h"
 #include "project_b/engine/browser/dialogs.h"
-#if BUILDFLAG(IS_MAC)
 #include "project_b/engine/browser/file_chooser.h"
-#endif
 #include "third_party/blink/public/mojom/context_menu/context_menu.mojom.h"
 #include "third_party/blink/public/mojom/favicon/favicon_url.mojom.h"
 #include "third_party/skia/include/core/SkColor.h"
@@ -620,14 +618,13 @@ content::JavaScriptDialogManager* PageTab::GetJavaScriptDialogManager(
   return Dialogs::Get();
 }
 
-#if BUILDFLAG(IS_MAC)
-// The phone's own picker already opens; the Mac's goes through Go first.
+// A page's file input goes through Go first, then opens the system's picker: the Mac's
+// panel, or the phone's own. Without it content says no and the input never opens.
 void PageTab::RunFileChooser(content::RenderFrameHost* render_frame_host,
                              scoped_refptr<content::FileSelectListener> listener,
                              const blink::mojom::FileChooserParams& params) {
   FileChooser::Run(id_, render_frame_host, std::move(listener), params);
 }
-#endif
 
 void PageTab::EnterFullscreenModeForTab(content::RenderFrameHost* requesting_frame,
                                         const blink::mojom::FullscreenOptions& options) {

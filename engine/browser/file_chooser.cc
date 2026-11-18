@@ -148,15 +148,11 @@ void FileChooser::FileSelected(const ui::SelectedFileInfo& file, int index) {
     lister_->Start();
     return;
   }
-  Answer({file.local_path}, base::FilePath());
+  Answer({file}, base::FilePath());
 }
 
 void FileChooser::MultiFilesSelected(const std::vector<ui::SelectedFileInfo>& files) {
-  std::vector<base::FilePath> paths;
-  for (const ui::SelectedFileInfo& file : files) {
-    paths.push_back(file.local_path);
-  }
-  Answer(std::move(paths), base::FilePath());
+  Answer(files, base::FilePath());
 }
 
 void FileChooser::FileSelectionCanceled() {
@@ -171,10 +167,17 @@ void FileChooser::OnListFile(const net::DirectoryLister::DirectoryListerData& da
 
 void FileChooser::OnListDone(int error) {
   lister_.reset();
-  Answer(error ? std::vector<base::FilePath>() : std::move(listed_), folder_);
+  std::vector<ui::SelectedFileInfo> files;
+  if (!error) {
+    for (const base::FilePath& path : listed_) {
+      files.emplace_back(path);
+    }
+  }
+  Answer(std::move(files), folder_);
 }
 
-void FileChooser::Answer(std::vector<base::FilePath> files, const base::FilePath& base_dir) {
+void FileChooser::Answer(std::vector<ui::SelectedFileInfo> files,
+                         const base::FilePath& base_dir) {
   if (files.empty()) {
     listener_->FileSelectionCanceled();
   } else {
@@ -182,12 +185,18 @@ void FileChooser::Answer(std::vector<base::FilePath> files, const base::FilePath
     hooks::Args args;
     args.Int(tab_);
     args.Int(static_cast<int64_t>(files.size()));
-    args.Str((mode_ == Mode::kUploadFolder ? base_dir : files[0].DirName()).AsUTF8Unsafe());
+    args.Str((mode_ == Mode::kUploadFolder ? base_dir : files[0].local_path.DirName())
+                 .AsUTF8Unsafe());
     hooks::Fire(PB_EVENT_FILES_CHOSEN, args);
     std::vector<blink::mojom::FileChooserFileInfoPtr> chosen;
-    for (const base::FilePath& path : files) {
+    for (const ui::SelectedFileInfo& file : files) {
+      // A phone's picker hands a content address, whose last part is no name: the file's
+      // own name comes with it.
+      std::u16string name = file.display_name.empty()
+                                ? file.local_path.BaseName().AsUTF16Unsafe()
+                                : base::FilePath(file.display_name).AsUTF16Unsafe();
       chosen.push_back(blink::mojom::FileChooserFileInfo::NewNativeFile(
-          blink::mojom::NativeFileInfo::New(path, path.BaseName().AsUTF16Unsafe(),
+          blink::mojom::NativeFileInfo::New(file.local_path, name,
                                             std::vector<std::u16string>())));
     }
     listener_->FileSelected(std::move(chosen), base_dir, mode_);
