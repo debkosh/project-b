@@ -977,7 +977,16 @@ func (e *Engine) Fire(w engine.WindowID, tab engine.TabID, kind, value string) {
 		case "choose":
 			// The folder the next ChooseFolder answers with, as a person picks one.
 			e.folder = value
-		case "navigate":
+		case "navigate", "link":
+			// The page goes to value: by its own script, navigate, or by a press on a link,
+			// link. A navigation to one of the app's own links goes no further, and the app
+			// hears only of a press's, as the engine's gate has it.
+			if u, err := url.Parse(value); err == nil && u.Scheme == "project-b" {
+				if kind == "link" {
+					e.listener.AppLink(shown, value)
+				}
+				return
+			}
 			e.navigate(shown, value)
 		case "title":
 			e.listener.TitleChanged(shown, value)

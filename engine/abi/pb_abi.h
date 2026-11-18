@@ -167,6 +167,11 @@ typedef enum PBEvent {
                                         // now; how ask_notifications ended
   PB_EVENT_FOLDER_CHOSEN = 80,          // i: window, s: the folder, or "" for none; how
                                         // choose_folder ended
+  PB_EVENT_APP_LINK = 81,               // i: tab, s: url; a press in a tab's own page
+                                        // started a navigation to one of the app's own
+                                        // links, project-b:, which goes no further. One
+                                        // with no user gesture, in a frame or by a
+                                        // redirect goes nowhere, unheard
   PB_EVENT_PAGE_MESSAGE = 23,           // i: tab, s: the page's name ("settings",
                                         // "history", "bookmarks", "downloads",
                                         // "welcome"), s: json, from the page of ours
