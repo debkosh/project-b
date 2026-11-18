@@ -316,6 +316,10 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 		m.run(c.Text)
 	case "relaunch":
 		m.update.Relaunch()
+	case "retryUpdate":
+		m.update.Retry()
+	case "cancelUpdate":
+		m.update.Cancel()
 	case "dismissCrash":
 		m.crash.Dismiss()
 		m.sendAll(map[string]any{"t": "crashLog", "crashLog": "", "crashReport": ""})

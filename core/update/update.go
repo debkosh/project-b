@@ -114,6 +114,11 @@ type Manager struct {
 	mu     sync.Mutex
 	state  State
 	staged string // the checked bundle waiting for Relaunch
+	// fetching is the download running now, for Retry and Cancel to stop, whatever it is
+	// doing; nil when none runs. declined is a release the person cancelled, which
+	// automatic checks leave alone in this run, until a check the person asks for.
+	fetching *attempt
+	declined string
 
 	// Main thread only.
 	started bool          // Start has run
@@ -228,6 +233,40 @@ func (m *Manager) SetAuto(on bool) {
 	}
 }
 
+// attempt is one release download: its version, and how to stop it.
+type attempt struct {
+	version string
+	stop    context.CancelCauseFunc
+}
+
+// Why a download was stopped: by the person's Cancel or Retry, which set the state
+// themselves, or by no bytes arriving.
+var (
+	errCancelled = errors.New("cancelled")
+	errRetried   = errors.New("retried")
+)
+
+// lockWait is how long a check the person asks for waits for the folder's lock, held by
+// another copy's check or a download that is still stopping, before it says so.
+var lockWait = 15 * time.Second
+
+var errBusy = errors.New("another download is still stopping; try again in a moment")
+
+// lockWithin takes the folder's lock, waiting at most d for a copy holding it.
+func (m *Manager) lockWithin(d time.Duration) (*os.File, error) {
+	deadline := time.Now().Add(d)
+	for {
+		f, ok, err := m.lock(false)
+		if err != nil || ok {
+			return f, err
+		}
+		if time.Now().After(deadline) {
+			return nil, errBusy
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
 // lock takes the folder's lock, which one copy at a time holds while it checks and
 // downloads. wait says to wait for a copy holding it; else ok is false when one does.
 func (m *Manager) lock(wait bool) (f *os.File, ok bool, err error) {
@@ -295,7 +334,7 @@ func (m *Manager) round() {
 		return
 	}
 	defer lock.Close()
-	m.check(context.Background())
+	m.check(context.Background(), false)
 }
 
 // readStage offers the release staged in the folder, whichever copy staged it: a bundle is
@@ -335,7 +374,7 @@ func (m *Manager) CheckNow() {
 	}
 	m.setCheck(Checking, "")
 	go func() {
-		lock, _, err := m.lock(true)
+		lock, err := m.lockWithin(lockWait)
 		if err != nil {
 			m.setCheck(CheckFailed, err.Error())
 			return
@@ -347,7 +386,7 @@ func (m *Manager) CheckNow() {
 			timeline.Errorf("update: %v", err)
 		}
 		m.readStage()
-		current, err := m.check(context.Background())
+		current, err := m.check(context.Background(), true)
 		switch {
 		case err != nil:
 			m.setCheck(CheckFailed, err.Error())
@@ -359,11 +398,46 @@ func (m *Manager) CheckNow() {
 	}()
 }
 
+// Retry stops the download running now, whatever it is doing, and checks and downloads
+// again at once, as Check for updates does.
+func (m *Manager) Retry() {
+	m.stopFetch(errRetried)
+	timeline.Infof("update: retrying")
+	m.set(State{})
+	m.CheckNow()
+}
+
+// Cancel stops the download running now, whatever it is doing, and shows nothing again.
+// Automatic checks leave that release alone in this run; Check for updates fetches it.
+func (m *Manager) Cancel() {
+	s := m.State()
+	if s.Phase != Downloading {
+		return
+	}
+	m.mu.Lock()
+	m.declined = s.Version
+	m.mu.Unlock()
+	m.stopFetch(errCancelled)
+	timeline.Infof("update: %s: cancelled", s.Version)
+	m.set(State{})
+}
+
+func (m *Manager) stopFetch(why error) {
+	m.mu.Lock()
+	a := m.fetching
+	m.mu.Unlock()
+	if a != nil {
+		a.stop(why)
+	}
+}
+
 // check is one look at the manifest, and the download, unpack and checks when it names a
 // newer release. current says nothing newer was found and nothing is on show; err says the
 // manifest couldn't be read. An automatic check only logs that error: the next minute
-// tries again. A download that fails is shown. The caller holds the folder's lock.
-func (m *Manager) check(ctx context.Context) (current bool, err error) {
+// tries again, but leaves a release the person cancelled alone; one the person asks for,
+// asked, fetches it. A download that fails is shown; one the person stopped shows what
+// Retry or Cancel set. The caller holds the folder's lock.
+func (m *Manager) check(ctx context.Context, asked bool) (current bool, err error) {
 	if m.cfg.Install == nil {
 		if err := writable(filepath.Dir(m.cfg.App)); err != nil {
 			m.set(State{Phase: Failed, Error: err.Error()})
@@ -390,8 +464,22 @@ func (m *Manager) check(ctx context.Context) (current bool, err error) {
 	if s.Phase == Ready && s.Version == d.Version {
 		return false, nil
 	}
+	m.mu.Lock()
+	if asked {
+		m.declined = ""
+	}
+	declined := m.declined == d.Version
+	m.mu.Unlock()
+	if declined {
+		timeline.Infof("update: %s was cancelled; waiting for Check for updates", d.Version)
+		return false, nil
+	}
 	m.set(State{Phase: Downloading, Version: d.Version, Total: d.Asset.Size})
 	app, err := m.fetch(ctx, d)
+	if errors.Is(err, errCancelled) || errors.Is(err, errRetried) {
+		timeline.Infof("update: %s: stopped, %v", d.Version, err)
+		return false, nil
+	}
 	if err != nil {
 		timeline.Errorf("update: %s: %v", d.Version, err)
 		m.set(State{Phase: Failed, Version: d.Version, Error: err.Error()})
@@ -413,6 +501,17 @@ func (m *Manager) check(ctx context.Context) (current bool, err error) {
 func (m *Manager) fetch(ctx context.Context, d *amarit.Decision) (string, error) {
 	ctx, cancel := context.WithCancelCause(ctx)
 	defer cancel(nil)
+	a := &attempt{version: d.Version, stop: cancel}
+	m.mu.Lock()
+	m.fetching = a
+	m.mu.Unlock()
+	defer func() {
+		m.mu.Lock()
+		if m.fetching == a {
+			m.fetching = nil
+		}
+		m.mu.Unlock()
+	}()
 	stage, downloads := m.stageDir(), m.downloadDir()
 	os.RemoveAll(stage)
 	os.RemoveAll(downloads)
@@ -429,8 +528,8 @@ func (m *Manager) fetch(ctx context.Context, d *amarit.Decision) (string, error)
 	archive, err := m.client.Download(ctx, d, downloads)
 	close(stop)
 	<-watched
-	if errors.Is(context.Cause(ctx), errStalled) {
-		return "", errStalled
+	if why := context.Cause(ctx); errors.Is(why, errStalled) || errors.Is(why, errCancelled) || errors.Is(why, errRetried) {
+		return "", why
 	}
 	if err != nil {
 		return "", err

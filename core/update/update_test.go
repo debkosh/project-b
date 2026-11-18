@@ -135,7 +135,7 @@ func start(t *testing.T, running, releases string, verify func(string) error) *r
 	return r
 }
 
-func (r *rig) check() { r.m.check(context.Background()) }
+func (r *rig) check() { r.m.check(context.Background(), false) }
 
 // phases lists the phases the shell was shown, once each in a row: a download's progress
 // is more news in the same phase.
@@ -396,7 +396,7 @@ func TestInstallTakesTheDownloadAsItIs(t *testing.T) {
 		Install: func(file string) { installed = append(installed, file) }}
 	quit := false
 	m := New(cfg, func(f func()) { f() }, func() { quit = true })
-	m.check(context.Background())
+	m.check(context.Background(), false)
 	if s := m.State(); s.Phase != Ready || s.Version != "0.2.0" {
 		t.Fatalf("state %+v", s)
 	}
@@ -610,5 +610,110 @@ func TestAStalledDownloadFailsAndTheNextCheckGetsIt(t *testing.T) {
 	r.check()
 	if s := r.m.State(); s.Phase != Ready {
 		t.Fatalf("the next check should stage it: %+v", s)
+	}
+}
+
+// stuck serves half the release and then nothing, as a connection that died across the
+// Mac's sleep does, with the stall cutoff too far off to help, until the test ends; once
+// healed, it serves the whole release.
+func stuck(t *testing.T) (*releaseServer, *atomic.Bool) {
+	t.Helper()
+	old := stalledAfter
+	stalledAfter = time.Hour
+	t.Cleanup(func() { stalledAfter = old })
+	good := archive(t, fakeApp(t, t.TempDir(), "0.2.0"))
+	rs := release(t, "0.2.0", good, good)
+	hold := make(chan struct{})
+	t.Cleanup(func() { close(hold) })
+	healed := &atomic.Bool{}
+	rs.serve = func(w http.ResponseWriter) {
+		if healed.Load() {
+			w.Write(good)
+			return
+		}
+		w.Header().Set("Content-Length", fmt.Sprint(len(good)))
+		w.Write(good[:len(good)/2])
+		w.(http.Flusher).Flush()
+		<-hold
+	}
+	return rs, healed
+}
+
+// until waits for the manager's state to match.
+func (r *rig) until(t *testing.T, what string, match func(State) bool) State {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		s := r.m.State()
+		if match(s) {
+			return s
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("never %s: %+v", what, s)
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+}
+
+// Cancel stops a download stuck mid-way at once and shows nothing; automatic checks leave
+// that release alone, and Check for updates fetches it.
+func TestCancelStopsAStuckDownloadAtOnce(t *testing.T) {
+	rs, healed := stuck(t)
+	r := start(t, "0.1.0", rs.url, nil)
+	done := make(chan struct{})
+	go func() { r.check(); close(done) }()
+	r.until(t, "half downloaded", func(s State) bool { return s.Phase == Downloading && s.Done > 0 })
+	r.m.Cancel()
+	if s := r.m.State(); s.Phase != Idle {
+		t.Fatalf("Cancel left %+v", s)
+	}
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the stopped download never ended")
+	}
+	if s := r.m.State(); s.Phase != Idle {
+		t.Fatalf("the stopped download's end showed %+v", s)
+	}
+	n := rs.downloads.Load()
+	healed.Store(true)
+	r.check()
+	if s := r.m.State(); s.Phase != Idle || rs.downloads.Load() != n {
+		t.Fatalf("an automatic check after Cancel: %+v, downloads %d then %d", s, n, rs.downloads.Load())
+	}
+	r.m.CheckNow()
+	r.until(t, "ready after Check for updates", func(s State) bool { return s.Phase == Ready })
+}
+
+// Retry stops a download stuck mid-way and fetches the release again at once.
+func TestRetryStartsAStuckDownloadAgain(t *testing.T) {
+	rs, healed := stuck(t)
+	r := start(t, "0.1.0", rs.url, nil)
+	go r.check()
+	r.until(t, "half downloaded", func(s State) bool { return s.Phase == Downloading && s.Done > 0 })
+	healed.Store(true)
+	r.m.Retry()
+	r.until(t, "ready after Retry", func(s State) bool { return s.Phase == Ready })
+	if n := rs.downloads.Load(); n != 2 {
+		t.Fatalf("downloads %d", n)
+	}
+}
+
+// A check the person asks for waits only so long for the lock another copy, or a download
+// still stopping, holds, and then says so.
+func TestCheckNowWaitsForTheLockOnlySoLong(t *testing.T) {
+	defer func(d time.Duration) { lockWait = d }(lockWait)
+	lockWait = 300 * time.Millisecond
+	rs := release(t, "0.1.0", nil, nil)
+	r := start(t, "0.1.0", rs.url, nil)
+	held, ok, err := r.m.lock(false)
+	if err != nil || !ok {
+		t.Fatalf("lock: %v %v", ok, err)
+	}
+	defer held.Close()
+	r.m.CheckNow()
+	s := r.until(t, "a failed check", func(s State) bool { return s.Check == CheckFailed })
+	if s.CheckError != errBusy.Error() {
+		t.Fatalf("the check said %q", s.CheckError)
 	}
 }

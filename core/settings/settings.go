@@ -164,6 +164,10 @@ func (m *Manager) Handle(tab engine.TabID, msg []byte) {
 		m.prefs.SetFrameColor(c.Text)
 	case "checkUpdate":
 		m.update.CheckNow()
+	case "retryUpdate":
+		m.update.Retry()
+	case "cancelUpdate":
+		m.update.Cancel()
 	case "useTemplate":
 		m.commands.UseTemplate(c.Text)
 	case "addKey":

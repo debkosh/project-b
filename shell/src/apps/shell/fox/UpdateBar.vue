@@ -3,8 +3,8 @@ import { computed } from 'vue';
 import { send, state } from '@/sdk/vue.js';
 
 // What the updater is doing, in a bar under the navigation bar while something is
-// happening: a download and how far it is, a release ready to relaunch into, or why one
-// failed.
+// happening: a download and how far it is, with Retry and Cancel, a release ready to
+// relaunch into, or why one failed, with Try again (docs/ux-guide.md).
 const percent = computed(() => {
   const u = state.update;
   return u.total ? Math.floor((100 * (u.done || 0)) / u.total) : 0;
@@ -25,12 +25,17 @@ const percent = computed(() => {
           aria-valuemax="100"
           :style="{ width: percent + '%' }"
         ></span>
+        <button class="text-button" type="button" @click="send({ t: 'retryUpdate' })">Retry</button>
+        <button class="text-button" type="button" @click="send({ t: 'cancelUpdate' })">Cancel</button>
       </template>
       <template v-else-if="state.update.phase === 'ready'">
         <span class="text" role="status">Project B {{ state.update.version }} is ready.</span>
         <button class="text-button" type="button" @click="send({ t: 'relaunch' })">Relaunch to update</button>
       </template>
-      <span v-else class="text" role="status" :title="state.update.error">Update{{ state.update.version ? ' to ' + state.update.version : '' }} failed: {{ state.update.error }}</span>
+      <template v-else>
+        <span class="text" role="status" :title="state.update.error">Update{{ state.update.version ? ' to ' + state.update.version : '' }} failed: {{ state.update.error }}</span>
+        <button class="text-button" type="button" @click="send({ t: 'retryUpdate' })">Try again</button>
+      </template>
     </div>
   </div>
 </template>

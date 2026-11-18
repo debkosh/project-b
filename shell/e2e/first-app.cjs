@@ -670,8 +670,11 @@ const stopServer = lib.stop;
   execFileSync('ditto', ['-c', '-k', '--keepParent', fakeApp(path.join(releases, 'new'), '0.2.0'), zip]);
   const good = fs.readFileSync(zip);
   let served = good;
-  // On a port of its own, read once it listens.
+  // On a port of its own, read once it listens. The first download stops half-way and stays
+  // so, as one does across the Mac's sleep, until the test ends.
   let releasePort = 0;
+  let assets = 0;
+  const held = [];
   const releaseServer = http.createServer((req, res) => {
     if (req.url === '/releases.json') {
       res.end(JSON.stringify({ spec: 1, project: 'project-b', published: '2026-11-09T00:00:00Z', channels: { stable: '0.2.0' },
@@ -681,7 +684,8 @@ const stopServer = lib.stop;
       const body = served;
       res.writeHead(200, { 'Content-Length': body.length });
       res.write(body.subarray(0, body.length >> 1));
-      setTimeout(() => res.end(body.subarray(body.length >> 1)), 1500);
+      if (assets++ === 0) held.push(res);
+      else setTimeout(() => res.end(body.subarray(body.length >> 1)), 1500);
     }
   });
   await new Promise((r) => releaseServer.listen(0, '127.0.0.1', r));
@@ -696,6 +700,14 @@ const stopServer = lib.stop;
   await page.goto(base + '/');
   errors.length = 0;
   await openFromBox('example.com/update', 'https://example.com/update');
+  // Stuck half-way: Retry and Cancel are there while it runs, and Retry fetches it again.
+  await ui.getByText(/Downloading Project B 0\.2\.0… [1-9]\d?%/).waitFor({ timeout: 10000 });
+  check('a download shows Retry and Cancel while it runs',
+    (await bubble.getByRole('button', { name: 'Retry' }).isVisible()) && (await bubble.getByRole('button', { name: 'Cancel' }).isVisible()));
+  await settle(page);
+  await page.screenshot({ path: path.join(out, '7-update-stuck.png') });
+  await bubble.getByRole('button', { name: 'Retry' }).click();
+  check('Retry fetches the release again', await until(() => assets === 2), String(assets));
   await ui.getByText(/Downloading Project B 0\.2\.0… [1-9]\d?%/).waitFor({ timeout: 10000 });
   await settle(page);
   const progress = Number(await ui.getByRole('progressbar', { name: 'Update download' }).getAttribute('aria-valuenow'));
@@ -752,6 +764,7 @@ const stopServer = lib.stop;
   await bar.press('Enter');
   await loaded('https://example.org/');
   check('the running release keeps working', (await bar.inputValue()) === 'https://example.org/');
+  held.forEach((res) => res.destroy());
   releaseServer.close();
 
   // With one workspace, Main, every tab is in it, and none shows a dot.

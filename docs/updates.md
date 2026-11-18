@@ -84,13 +84,42 @@ happening for the user to see. A build running from a build directory, or with n
 bundle, never checks. A release staged and not relaunched into stays staged, and is offered
 again at the next start; a half-finished download is cleared when the next one begins.
 
+## States, and how each ends
+
+What a person sees is `update.State`: its phase, and beside it how a check they asked for
+went. No state lasts unless the person leaves it there: every progress has Retry and Cancel
+while it runs, as the UX guide (`docs/ux-guide.md`) asks of every progress, and stopping is the
+manager's, whatever the download is doing.
+
+| State | Shown | Ends by |
+|---|---|---|
+| Idle | the version alone | a check finding a newer release (Downloading), or one asked for (Checking) |
+| Checking (asked for) | Checking… | Up to date, Downloading, or Couldn't check, with Try again; it waits at most 15 s (`lockWait`) for the folder's lock, held by another copy or a download still stopping, then says so |
+| Downloading | Downloading X… N%, with Retry and Cancel | the release checked and staged (Ready); no bytes for 30 s (`stalledAfter`), which is Failed with Try again; Retry, which stops it and checks again at once; Cancel, which stops it and shows Idle |
+| Ready | Relaunch to update to X, with Relaunch | Relaunch |
+| Failed | Couldn't update to X, with Try again | Try again (Retry); the channel moving off X |
+
+Retry and Cancel stop the download by its context's cause, so the download's own late
+answer is never shown: the state is the one Retry or Cancel set. A release the person
+cancelled is left alone by the automatic checks for the rest of the run, so it doesn't
+start again a minute later; Check for updates fetches it. The 30 s is awake time: the
+Mac's sleep doesn't count, so a download that slept through the night is given up 30 s after
+the wake, unless bytes arrive. Every other progress the app shows (downloads, imports) ends
+on the same 30 s. Nothing watches the system's wake or network: Retry is the person's.
+
+Sudipta, 2026-11-18, after 0.2.76 stuck at "Downloading 0.2.85… 38%" overnight with nothing to
+press: "just have retry or cancel button whenever we show a progress, seems like a good
+starting rule to evolve from".
+
 ## Settings
 
 The settings page, which the toolbar's gear opens in a tab, shows the running
 version with a Check for updates button in its status line, at its top, and the automatic
 updates switch (Advanced; About Project B in its sections layout; [settings.md](settings.md)).
 
-- **Check for updates** runs one check at once, whatever the switch says (`CheckNow`). The
+- **Check for updates** runs one check at once, whatever the switch says (`CheckNow`).
+  While a release downloads, Retry and Cancel stand in its place, as they do after the
+  percentage in Standard's bubble and Fox's update bar; a failure there has Try again. The
   page shows what the manager says: checking, up to date, downloading a version, ready to
   relaunch, or the error it hit, including a manifest it couldn't read. A release it finds
   goes the way an automatic one does, and the bubble stays the one place to relaunch.

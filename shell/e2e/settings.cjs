@@ -56,11 +56,27 @@ const bin = path.join(out, 'dev');
 execFileSync('go', ['build', '-o', bin, './cmd/dev'], { cwd: path.join(root, 'core'), stdio: 'inherit' });
 
 // A release server whose stable channel is the version the app runs, so a check finds it
-// up to date, on a port of its own. It counts manifest requests: each is one check.
+// up to date, on a port of its own. It counts manifest requests: each is one check. With
+// stuck, it offers 0.3.0, whose download stops half-way and stays so, as one does across
+// the Mac's sleep, until the test ends.
 let manifests = 0;
+let stuck = false;
+let assets = 0;
+const held = [];
+const stuckAsset = Buffer.alloc(100000);
 const releaseServer = http.createServer((req, res) => {
+  if (req.url === '/asset.zip') {
+    assets++;
+    res.writeHead(200, { 'Content-Length': stuckAsset.length });
+    res.write(stuckAsset.subarray(0, stuckAsset.length >> 1));
+    held.push(res);
+    return;
+  }
   manifests++;
-  res.end(JSON.stringify({ spec: 1, project: 'project-b', published: '2026-11-09T00:00:00Z', channels: { stable: '0.2.0' }, releases: { '0.2.0': { assets: {} } } }));
+  const asset = { url: `http://127.0.0.1:${releaseServer.address().port}/asset.zip`, sha256: require('crypto').createHash('sha256').update(stuckAsset).digest('hex'), size: stuckAsset.length };
+  res.end(JSON.stringify(stuck
+    ? { spec: 1, project: 'project-b', published: '2026-11-09T00:00:00Z', channels: { stable: '0.3.0' }, releases: { '0.3.0': { assets: { [`${process.platform}/${process.arch}`]: asset } } } }
+    : { spec: 1, project: 'project-b', published: '2026-11-09T00:00:00Z', channels: { stable: '0.2.0' }, releases: { '0.2.0': { assets: {} } } }));
 });
 const installed = fs.mkdtempSync(path.join(os.tmpdir(), 'project-b-installed-'));
 fs.mkdirSync(path.join(installed, 'Project B.app/Contents/MacOS'), { recursive: true });
@@ -331,6 +347,23 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   check('one check reached the release server', manifests === counted + 1, `${counted} -> ${manifests}`);
   await autoUpdate.click();
   check('the switch turns automatic updates off and saves it in the root\'s update folder, for every copy', await until(() => updateSettings()?.autoUpdate === false));
+  // A release stuck half-way: Retry and Cancel are there while it downloads, in place of
+  // Check for updates; Retry fetches it again, and Cancel stops it and leaves the version.
+  stuck = true;
+  await status.getByRole('button', { name: 'Check for updates' }).click();
+  check('a download shows Retry and Cancel while it runs, in place of Check for updates',
+    await until(async () => /Downloading 0\.3\.0… \d+%/.test(await updateStatus.textContent()) && (await status.getByRole('button', { name: 'Retry' }).isVisible()) &&
+      (await status.getByRole('button', { name: 'Cancel' }).isVisible()) && (await status.getByRole('button', { name: 'Check for updates' }).count()) === 0),
+    await updateStatus.textContent());
+  await settle(page);
+  await page.screenshot({ path: shot('settings-update-stuck') });
+  await status.getByRole('button', { name: 'Retry' }).click();
+  check('Retry fetches it again', await until(() => assets === 2), String(assets));
+  await until(async () => /Downloading 0\.3\.0/.test(await updateStatus.textContent()));
+  await status.getByRole('button', { name: 'Cancel' }).click();
+  check('Cancel stops it, and Check for updates is back', await until(async () => !/Downloading/.test(await status.textContent()) &&
+    (await status.getByRole('button', { name: 'Check for updates' }).isEnabled())), await status.textContent());
+  stuck = false;
 
   // A dialog's answer reads on its fill in every preset colour, light and dark: its words
   // reach WCAG's 4.5 for text, by the colours the page computes. New workspace's dialog
@@ -995,6 +1028,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   check('no errors in the pages', errors.length === 0, errors.join(' | '));
   await browser.close();
   await stopServer();
+  held.forEach((res) => res.destroy());
   releaseServer.close();
   console.log(failed ? `${failed} FAILED` : 'all passed');
   process.exit(failed ? 1 : 0);

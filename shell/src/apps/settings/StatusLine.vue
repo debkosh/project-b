@@ -5,8 +5,9 @@ import { send, state } from './state.js';
 
 // The status line at the top of Settings, in both layouts (docs/settings.md): whether the
 // app is the default browser, with Make default browser when it isn't, and the version with
-// what the update manager is doing and Check for updates, or Relaunch once a release is
-// ready. Go owns both; the page shows them.
+// what the update manager is doing and Check for updates, Retry and Cancel while a release
+// downloads (docs/ux-guide.md: every progress has both), or Relaunch once one is ready. Go
+// owns both; the page shows them.
 
 // What the update manager is doing, or what the check the person asked for found, in one
 // plain line. A failure's own words go in the line's tooltip.
@@ -27,7 +28,7 @@ const percent = computed(() => {
   return u.total ? Math.floor((100 * (u.done || 0)) / u.total) : 0;
 });
 
-const busy = computed(() => state.update.check === 'checking' || state.update.phase === 'downloading');
+const busy = computed(() => state.update.check === 'checking');
 </script>
 
 <template>
@@ -50,6 +51,10 @@ const busy = computed(() => state.update.check === 'checking' || state.update.ph
       <button v-if="state.update.phase === 'ready'" type="button" class="text-button" @click="send({ t: 'relaunch' })">
         {{ phone ? 'Install update' : 'Relaunch' }}
       </button>
+      <template v-else-if="state.update.phase === 'downloading'">
+        <button type="button" class="text-button quiet" @click="send({ t: 'retryUpdate' })">Retry</button>
+        <button type="button" class="text-button quiet" @click="send({ t: 'cancelUpdate' })">Cancel</button>
+      </template>
       <button v-else type="button" class="text-button quiet" :disabled="busy" @click="send({ t: 'checkUpdate' })">
         {{ update.failed ? 'Try again' : 'Check for updates' }}
       </button>
