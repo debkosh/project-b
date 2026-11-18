@@ -1202,9 +1202,10 @@ def main():
     if not until(lambda: adb("shell", "id", "-u").strip() == "0", 30):
         sys.exit("no rooted device answers as %s: start the emulator with `amarit start project-b-emu`" % ADB[-1])
     adb("reverse", "tcp:%d" % PORT, "tcp:%d" % PORT)
+    # -d: an older APK goes over a newer one, as comparing releases needs.
     # Never incremental: adb picks it on some emulators, and the app then dies of SIGBUS in
     # libproject_b_content.so at every start, as its library pages arrive late.
-    if "Success" not in adb("install", "-r", "--no-incremental", APK):
+    if "Success" not in adb("install", "-r", "-d", "--no-incremental", APK):
         sys.exit("can't install %s" % APK)
     adb("shell", "pm", "clear", PACKAGE)
 
