@@ -158,7 +158,7 @@ ContentBrowserClient::CreateURLLoaderThrottles(
     std::optional<int64_t> navigation_id) {
   std::vector<std::unique_ptr<blink::URLLoaderThrottle>> throttles;
   if (navigation_id) {
-    if (auto easing = site_features::EaseStylesFor(request, wc_getter)) {
+    if (auto easing = site_features::EasePoliciesFor(request, wc_getter)) {
       throttles.push_back(std::move(easing));
     }
   }

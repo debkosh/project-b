@@ -93,8 +93,7 @@ std::vector<mojom::SparkPtr> SparksFor(content::WebContents* contents,
 }
 
 // A policy's style rules give way: styles from anywhere, and inline ones, as other
-// userscript managers ease a page's policy for the scripts they run in it. Its other
-// rules stay as the site set them.
+// userscript managers ease a page's policy for the scripts they run in it.
 void EaseStyles(network::mojom::ContentSecurityPolicy& policy) {
   for (auto name : {network::mojom::CSPDirectiveName::StyleSrc,
                     network::mojom::CSPDirectiveName::StyleSrcElem,
@@ -112,12 +111,22 @@ void EaseStyles(network::mojom::ContentSecurityPolicy& policy) {
   }
 }
 
-// Where a spark runs, the page's policy would block the styles it adds, as the spark runs
-// in the page's own world: the response's policies have their style rules eased before
-// the page commits with them.
-class StyleEasing : public blink::URLLoaderThrottle {
+// A policy's Trusted Types give way: the page's HTML takes plain strings, as a spark's
+// innerHTML gives it, and any script may make a policy of its own.
+void EaseTrustedTypes(network::mojom::ContentSecurityPolicy& policy) {
+  policy.require_trusted_types_for = network::mojom::CSPRequireTrustedTypesFor::None;
+  policy.trusted_types = nullptr;
+  policy.raw_directives.erase(network::mojom::CSPDirectiveName::RequireTrustedTypesFor);
+  policy.raw_directives.erase(network::mojom::CSPDirectiveName::TrustedTypes);
+}
+
+// Where a spark runs, the page's policy would block the styles it adds and its HTML, as
+// the spark runs in the page's own world: the response's policies have their style rules
+// and their Trusted Types eased before the page commits with them. Their other rules stay
+// as the site set them.
+class PolicyEasing : public blink::URLLoaderThrottle {
  public:
-  StyleEasing(base::RepeatingCallback<content::WebContents*()> contents, bool main_frame)
+  PolicyEasing(base::RepeatingCallback<content::WebContents*()> contents, bool main_frame)
       : contents_(std::move(contents)), main_frame_(main_frame) {}
 
   void WillProcessResponse(const GURL& response_url,
@@ -132,6 +141,7 @@ class StyleEasing : public blink::URLLoaderThrottle {
     }
     for (auto& policy : head->parsed_headers->content_security_policy) {
       EaseStyles(*policy);
+      EaseTrustedTypes(*policy);
     }
   }
 
@@ -230,14 +240,14 @@ void Follow(content::WebContents* contents) {
   Follower::CreateForWebContents(contents);
 }
 
-std::unique_ptr<blink::URLLoaderThrottle> EaseStylesFor(
+std::unique_ptr<blink::URLLoaderThrottle> EasePoliciesFor(
     const network::ResourceRequest& request,
     base::RepeatingCallback<content::WebContents*()> contents) {
   if (request.destination != network::mojom::RequestDestination::kDocument &&
       request.destination != network::mojom::RequestDestination::kIframe) {
     return nullptr;
   }
-  return std::make_unique<StyleEasing>(std::move(contents), request.is_outermost_main_frame);
+  return std::make_unique<PolicyEasing>(std::move(contents), request.is_outermost_main_frame);
 }
 
 }  // namespace site_features

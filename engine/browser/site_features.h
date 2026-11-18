@@ -39,9 +39,9 @@ void ExposeTo(blink::AssociatedInterfaceRegistry* registry,
               content::RenderProcessHost* host);
 // Follows a web tab for its sparks and its blocked requests, for its life.
 void Follow(content::WebContents* contents);
-// For a page's or a frame's navigation: eases the style rules of the response's policy
-// where a spark runs. Null for any other request.
-std::unique_ptr<blink::URLLoaderThrottle> EaseStylesFor(
+// For a page's or a frame's navigation: eases the style rules and Trusted Types of the
+// response's policy where a spark runs. Null for any other request.
+std::unique_ptr<blink::URLLoaderThrottle> EasePoliciesFor(
     const network::ResourceRequest& request,
     base::RepeatingCallback<content::WebContents*()> contents);
 
