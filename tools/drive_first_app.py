@@ -534,7 +534,7 @@ def run_parts(parts):
         print(f"--- part {part.__name__}", flush=True)
         try:
             part()
-        except (RuntimeError, TimeoutError, OSError) as e:
+        except (RuntimeError, TimeoutError, OSError, subprocess.TimeoutExpired) as e:
             traceback.print_exc()
             check(f"{part.__name__} ran to its end", False, e)
         for app in App.running[:]:
@@ -547,7 +547,9 @@ def run_parts(parts):
 def version_checks():
     """--version prints the release, or that it's a development build, and exits without
     starting the app."""
-    r = subprocess.run([BIN, "--version"], capture_output=True, text=True, timeout=10)
+    # 30 s: a package's first launch is checked by macOS first, which took over 10 s once
+    # while an APK build loaded the Mac (0.2.100).
+    r = subprocess.run([BIN, "--version"], capture_output=True, text=True, timeout=30)
     want = bundle_version() or "development build"
     check("--version prints the version and exits", r.returncode == 0 and re.fullmatch(rf"Project B {re.escape(want)}, Chromium [0-9.]+\n", r.stdout) is not None, (r.returncode, r.stdout))
 
