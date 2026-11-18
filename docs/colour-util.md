@@ -20,19 +20,19 @@ time.
 
 Three layers, each doing one thing.
 
-1. **The hue.** A number on the wheel, from:
-   - **text**, such as a host (lower case, without `www.`) or a folder's name: FNV-1a, then
-     murmur3's finaliser so that hosts of one domain still spread, onto one of **12 named
-     hues** spaced evenly by eye in OKLCH (red, orange, amber, lime, green, mint, teal, sky,
-     blue, indigo, purple, pink). The same text gets the same hue in every shell;
-   - **a slot** the user picked by name, such as a tab group's "teal", which is then the
-     same teal a site hashed to teal gets;
-   - **near the frame**: within 40° of the frame's hue;
-   - **random**, for what needs no memory.
+1. **The hue.** Any text in, hashed to a hue anywhere on the wheel: FNV-1a, then murmur3's
+   finaliser so that similar texts (hosts of one domain) still spread. Random-looking, and
+   deterministic: the same text gets the same hue in every shell, light or dark. A site's
+   host (lower case, without `www.`), a tab group's or a folder's name. No named hues. With
+   no text, a random hue, for what needs no memory.
 2. **The colour.** `colour({ hue, primary, background, strength, recipe, labels })`. Two
    colours go in, so a two-tone design gets a set that sits with both: the **primary** (our
    frame colour, or a design's accent) and the **background** the colours sit on. Light or
    dark comes from the background.
+   - **background floor:** the strength is never weaker than the background's own chroma,
+     so a vivid background gets vivid marks rather than greyish ones; and a soft tile stands
+     off the background by an OKLab distance of 0.05, more on a vivid one, even when its hue
+     is the background's own.
    - **harmony:** every hue leans toward the primary's, half the gap and at most 15°, as
      Material's harmonize does, so the set looks of one family. A primary with no colour of
      its own (None) leans nothing.
@@ -51,7 +51,7 @@ Three layers, each doing one thing.
      pass, so it keeps as much of its colour as it can.
 3. **Configs**: each place that colours something says how, once, and never writes a colour:
    - site marks: hue from the host, strength from the frame, soft, the tone for the letter;
-   - tab groups: the slot the user picked, full strength, solid, the label for the name;
+   - tab groups: hue from the group's name, solid, the label for the name;
    - bookmark folders: hue from the folder's name, strength from the frame, a dot.
 
 The theme never changes a hue: light, dark, the frame and the background change only how
@@ -98,18 +98,21 @@ The owner, 2026-11-18:
 - **None** takes a fixed quiet strength rather than grey: same answer.
 - **Two inputs, a primary and a background**, "since there might be a two tone design where
   this lib should be able to generate good sets of colors".
+- **No named hues; the hue is hashed from text:** "the hues should not be names because we
+  need to have a feaure with takes a text inout and hases it and that is used to generate
+  the colors... since we need an deteminitic option to generate random colors".
+- **The background's saturation counts too**, after a deep teal on bright mint looked off
+  with greyish marks: "may be becuase we match the intensity of only the primary color".
 - **The recipe is an input too:** "add the recipies as another input option".
 
 ## Open
 
 - Recipe for site marks: soft is the UX session's pick and ours.
-- 12 named slots, or any hue: slots tie marks to tab groups and keep out muddy in-between
-  hues; any hue shares less.
 - Where it lives: one JS module, `shell/src/ui/tint.js`, its constants in it, reading the
   frame, light or dark and the background from the tones Go sends. A native shell that ever
   needs marks ports it and checks a shared file of test vectors (the UX session's view, and
   ours).
 - The design-system rule: "A colour made up for an item comes from tint(), never a literal",
   with what seeds it.
-- Tab groups and workspaces store a colour code today; moving them to a slot name is its own
-  change, after site marks.
+- Tab groups and workspaces store a colour code today; moving them to a colour from their
+  name is its own change, after site marks.
