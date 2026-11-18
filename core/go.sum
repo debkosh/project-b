@@ -1,3 +1,5 @@
+github.com/mattn/go-sqlite3 v1.14.53 h1:mnTM0owzUMrKuLo+0w51NUiB0ir2Fo7kFXlPt/l3BGs=
+github.com/mattn/go-sqlite3 v1.14.53/go.mod h1:6JTjA44L93a0QCyJef5YvlPoKXntQPjzWv5gtm9sB6w=
 github.com/sudiptadeb/amarit v0.7.1 h1:0fNyOeDAmzm8ckCvX3wEmePk/k1ZDHEKNnCrM7DlTHs=
 github.com/sudiptadeb/amarit v0.7.1/go.mod h1:Be7M5MMgjZCAoAEYqUOCLdnfu5mvcZDguey4qX3Nb2A=
 github.com/sudiptadeb/gulal v0.1.0 h1:lH6QHWsi/S++Z7jK2rMyDteM7OUiFaaLXo2moYhbr1A=
