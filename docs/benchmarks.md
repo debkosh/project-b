@@ -12,8 +12,8 @@ against a baseline; these are the deeper looks, run by hand when a question need
 | `python3 tools/bench/first_paint.py` | The start-up marks for a reused profile (every day) and a new one (first start), side by side |
 | `python3 tools/bench/memory.py <shell>...` | Footprint per process kind, the shell's JS heap and element count |
 | `python3 tools/bench/native.py` | The same marks and footprint for a bare AppKit app, plain and with a WKWebView |
-| `go test ./perf -run xxx -bench .` (in `core/`) | Go's own cost per user action (open and close, switch, navigate, type, policy, prefs, the menu) at 1 to 5,000 tabs, on a counting engine that does nothing: ns, allocations, engine calls and shell bytes per action |
-| `go run ./perf/cmd/stress` (in `core/`) | A mixed workload at several tab counts: per-action latency, GC pauses and CPU, threads |
+| `go test -tags sqlite_fts5 ./perf -run xxx -bench .` (in `core/`) | Go's own cost per user action (open and close, switch, navigate, type, policy, prefs, the menu) at 1 to 5,000 tabs, on a counting engine that does nothing: ns, allocations, engine calls and shell bytes per action |
+| `go run -tags sqlite_fts5 ./perf/cmd/stress` (in `core/`) | A mixed workload at several tab counts: per-action latency, GC pauses and CPU, threads |
 
 Point `PB_BIN` at the package (`build/package/Project B.app/Contents/MacOS/project_b`)
 for what a user gets. The CPU view needs symbols, so it runs `chromium/src/out/pb/project_b`.

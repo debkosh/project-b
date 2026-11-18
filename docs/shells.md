@@ -578,7 +578,7 @@ active tab into view.
 
 The shell to read first is Minimal, `shell/src/apps/shell/minimal/`, the smallest, in
 Svelte; Standard, `shell/src/apps/shell/standard/`, in Vue, is the reference that shows
-every feature Go offers. `go run ./cmd/dev -use minimal` loads one. The SDK needs no
+every feature Go offers. `go run -tags sqlite_fts5 ./cmd/dev -use minimal` loads one. The SDK needs no
 framework: a shell may draw with the DOM itself and `onChange` ([The adapters](#the-adapters)).
 The owner, 2026-11-14: no hidden example shells, so none is kept for that path. In Vue,
 a shell can be as small as this `App.vue`, beside an `index.html` and a `main.js` of a few
@@ -631,14 +631,14 @@ main { flex: 1; margin: 0 var(--frame-width) var(--frame-width); }
 
 ## Testing one
 
-**While writing it.** `go run ./cmd/dev -use <id>` in `core/` and `npm run dev` in
+**While writing it.** `go run -tags sqlite_fts5 ./cmd/dev -use <id>` in `core/` and `npm run dev` in
 `shell/`, then open `/mock/window` on vite's address. The page is the OS window: the shell
 in a frame, and under it a mock page for each tab the layout shows, where the layout puts
 it. A mock page has buttons that do what a real page can: navigate, change its title, open
 a tab, crash. Edits to the shell reload in place.
 
 **Seeing its regions.** Turn on Show window regions in settings, Flags, and start
-`go run ./cmd/dev` again: the mock window then outlines every rectangle the window manager
+`go run -tags sqlite_fts5 ./cmd/dev` again: the mock window then outlines every rectangle the window manager
 tracks, as the real window does ([windows.md](windows.md#seeing-the-regions)): the shell's
 areas red, the controls in a drag bar among them, the drag areas blue and dashed, each
 shown tab's page green with its id, the window buttons purple. A gap that should drag and
@@ -684,7 +684,7 @@ frame of its own, `iframe.our-page[data-page=settings]`, the settings page at
 
 `/mock/fire` does what a page or the user can: `kind=menu` with an action's id runs it,
 `kind=focusTab` is a press in a tab's page, and each button of the mock page is a kind,
-acting on the tab `tab` names. `go run ./cmd/dev -addr=127.0.0.1:0` takes a free port and
+acting on the tab `tab` names. `go run -tags sqlite_fts5 ./cmd/dev -addr=127.0.0.1:0` takes a free port and
 prints the address it got.
 
 ## What the real app adds

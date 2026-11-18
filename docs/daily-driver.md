@@ -336,10 +336,12 @@ tab, or a new one, shows the tab, in whichever window it is, or runs the action.
 its own may still act on a row's `url` itself.
 
 **Speed.** A key must not scan and lowercase everything again: at 100,000 visits that took
-30 to 38 ms a key. History keeps each entry's lowercased address and title from when it is
-stored, and the search picks its best few without sorting every hit: about 8.5 ms a key at
-100,000 visits. The actions are few, so they are matched as they are. A benchmark in
-`core/suggest` measures it.
+30 to 38 ms a key. History is in the profile's store, with each address and title lowercased
+as it is stored, and its search is one query per tier with a `LIMIT`, through an index, on the
+store's worker: well under a millisecond a key at the median at 50,000 addresses
+([store.md](store.md#suggestions)). Addresses typed in the field come first for the text they
+start. The actions are few, so they are matched as they are. A benchmark in `core/suggest`
+measures it.
 
 **Not in this step.** Suggestions fetched from the search engine as one types: they send every
 keystroke to the engine, so they are a setting to decide, off by default if added; the owner
@@ -661,11 +663,11 @@ page's manager.
 
 **History** shows the pages visited, the latest first and grouped by day, a hundred at a time
 with Show more, and a search. A row opens its page in a new tab beside, can be removed, and
-Clear history takes away the last hour, today, or everything. Go keeps one entry per address;
-a removal is written to the history file as a line that takes it out, so it stays gone after a
-restart. Show All History (Cmd+Y) is in the History menu.
+Clear history takes away the last hour, today, or everything. Go keeps one row per address,
+and one per visit, in the profile's store ([store.md](store.md#history)); a removal deletes them,
+so it stays gone after a restart. Show All History (Cmd+Y) is in the History menu.
 
-**Bookmarks** keep folders, a tree in the profile's `bookmarks.json`
+**Bookmarks** keep folders, a tree in the profile's store
 ([bookmark-folders.md](bookmark-folders.md)). The address bar's star and Bookmark This Page…
 (Cmd+D, in every shell) bookmark the page shown into the folder last saved in, and Standard and
 the Mobile web shell show a panel to change its name and folder, or remove it. Bookmark

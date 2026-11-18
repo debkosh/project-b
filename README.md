@@ -102,7 +102,7 @@ with Go 1.26 or newer and Node:
     git clone https://github.com/sudiptadeb/project-b
     cd project-b
     (cd shell && npm install && npm run build)
-    (cd core && go run ./cmd/dev -shell ../shell/dist)    # then open http://127.0.0.1:8765
+    (cd core && go run -tags sqlite_fts5 ./cmd/dev -shell ../shell/dist)    # then open http://127.0.0.1:8765
 
 The browser tab stands in for the OS window: mock pages, with the real shell and the real
 settings page over them, unchanged.
