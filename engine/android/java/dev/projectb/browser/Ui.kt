@@ -229,15 +229,17 @@ fun sheetRow(context: Context, palette: Palette, icon: String?, name: String, en
     return row
 }
 
-/** An icon alone, drawn at 20dp in its box, or the size given. */
-class IconView(context: Context, icon: String, color: Int, private val size: Float = 20f) : View(context) {
+/** An icon alone, drawn at 20dp in its box, or the size given, filled for a star that is on. */
+class IconView(context: Context, icon: String, color: Int, private val size: Float = 20f, filled: Boolean = false) : View(context) {
     var icon = icon
         set(v) { field = v; invalidate() }
     var color = color
         set(v) { field = v; invalidate() }
+    var filled = filled
+        set(v) { field = v; invalidate() }
 
     override fun onDraw(canvas: Canvas) {
-        if (icon.isNotEmpty()) Icons.draw(canvas, icon, color, dpf(size), width / 2f, height / 2f)
+        if (icon.isNotEmpty()) Icons.draw(canvas, icon, color, dpf(size), width / 2f, height / 2f, filled)
     }
 }
 

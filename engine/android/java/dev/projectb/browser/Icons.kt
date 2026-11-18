@@ -44,6 +44,8 @@ object Icons {
         "down" to "M6 9l6 6 6-6",
         "find" to "M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13zM15.5 15.5L20 20",
         "play" to "M8 6l10 6-10 6z",
+        "star" to "M12 4l2.4 5 5.4.6-4 3.7 1.1 5.3L12 16l-4.9 2.6 1.1-5.3-4-3.7 5.4-.6z",
+        "folder" to "M3.5 7a1.5 1.5 0 0 1 1.5-1.5h4.5l2 2H19a1.5 1.5 0 0 1 1.5 1.5v8.5A1.5 1.5 0 0 1 19 19H5a1.5 1.5 0 0 1-1.5-1.5z",
     )
 
     private val parsed = HashMap<String, Path>()
@@ -55,8 +57,11 @@ object Icons {
     }
     private val dots = Paint(Paint.ANTI_ALIAS_FLAG)
 
-    /** Draws icon name in color, size px square, centred on cx, cy. "more" is ⋮, as on the web. */
-    fun draw(canvas: Canvas, name: String, color: Int, size: Float, cx: Float, cy: Float) {
+    /**
+     * Draws icon name in color, size px square, centred on cx, cy. "more" is ⋮, as on the web.
+     * Filled, the shape is filled with the colour too, as a star that is on.
+     */
+    fun draw(canvas: Canvas, name: String, color: Int, size: Float, cx: Float, cy: Float, filled: Boolean = false) {
         val scale = size / 24f
         canvas.save()
         canvas.translate(cx - size / 2, cy - size / 2)
@@ -65,9 +70,14 @@ object Icons {
             dots.color = color
             for (y in listOf(6f, 12f, 18f)) canvas.drawCircle(12f, y, 1.6f, dots)
         } else {
+            val path = parsed.getOrPut(name) { parse(paths.getValue(name)) }
+            if (filled) {
+                dots.color = color
+                canvas.drawPath(path, dots)
+            }
             stroke.color = color
             stroke.strokeWidth = 1.5f
-            canvas.drawPath(parsed.getOrPut(name) { parse(paths.getValue(name)) }, stroke)
+            canvas.drawPath(path, stroke)
         }
         canvas.restore()
     }

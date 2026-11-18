@@ -271,8 +271,9 @@ What a browser needs to be used all day ([daily-driver.md](daily-driver.md)).
   import from Chrome, Edge, Brave, Arc, Firefox and Safari are built
   ([bookmark-folders.md](bookmark-folders.md), [onboarding.md](onboarding.md#built)); a
   bookmarks bar waits on the owner.
-- **A star on a phone.** The Mobile shells reach History and Bookmarks from a new tab, but
-  draw no star to bookmark the page.
+- **Folder tints from Go.** The native Mobile shell draws every bookmark folder in the icon
+  colour, as the web shells' tints come from gulal in JS. Go could send each folder's tint
+  with the bookmarks, so a native shell needs no gulal of its own (ux, 2026-11-19).
 - **Retry keeps the name.** A download that starts over can take the next free name
   ("big (1).bin") when an earlier attempt's file is still there; it should reuse its own.
 - **For the owner:** where a phone's downloads go. Built: the shared Downloads folder, so
