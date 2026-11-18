@@ -140,7 +140,8 @@
     background: none;
     color: var(--muted);
   }
-  .primary {
+  /* After .buttons button's font: inherit, which would take its weight back to 400. */
+  .buttons .primary {
     background: var(--accent);
     color: var(--on-accent);
     font-weight: 600;
