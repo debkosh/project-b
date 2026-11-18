@@ -1003,6 +1003,10 @@ def the_page_renderer_dies():
     launch()
     go(BASE + "/a")
     asked("/a")
+    # The page shown, not only asked for: a new tab starts its renderer only as it loads, so
+    # a kill between the request and the commit left a crashed tab with no address, which
+    # Reload can't bring back (Android 10, 0.2.95's candidate).
+    see("page", label="to b")
     # Every renderer but the shell's, the first: content may keep a spare one, and killing
     # only the newest then killed the spare, and the page never crashed (a flake on emu-37).
     before = renderers()
