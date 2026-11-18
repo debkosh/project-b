@@ -7,8 +7,24 @@ The proposal's mocks: [screenshots/bookmarks/mocks.html](screenshots/bookmarks/m
 The owner's answer on the star, 2026-11-17: a small popup with the last used folder already
 chosen. Cmd+D (Ctrl+D) saves the bookmark at once, into the last used folder, or the top
 when none was used, then shows the popup to edit it; Enter saves the edits, and Esc closes
-it with the bookmark kept. So Cmd+D then Enter, or Cmd+D then Esc, both keep it. A
-bookmarks bar is not decided yet, so none is built.
+it with the bookmark kept. So Cmd+D then Enter, or Cmd+D then Esc, both keep it.
+
+## Where bookmarks show
+
+The owner's answer on the four places mocked (2026-11-18, mocks in the UX work folder):
+build them all, each a choice in Settings › Bookmarks, and the bar over pages a choice of
+its own. Each is a pref Go keeps (`core/prefs`) and a shell reads from `prefs`; the
+settings page sets them by name with `setPref`, as a shell does.
+
+| Pref | Default | Standard | Mobile |
+|---|---|---|---|
+| `bookmarksNewTab` | on | the new tab shows the top folder as tiles, folders first; a folder opens in place, with Open all as a group | the same, on its new tab page |
+| `bookmarksSidebar` | off | the folders as a tree under the tabs | the switcher has Tabs and Bookmarks |
+| `bookmarksCommandBox` | on | `*` in the command box narrows it to bookmarks, the folders on its left | the empty address shows the folders as chips and their bookmarks as tiles |
+| `bookmarksBar`, `bookmarksBarFolder` | off, the top | a bar of the folder's bookmarks under the address bar; a folder in it drops down | a strip of them above the bars, which hides with them |
+
+The bar's folder is a folder's id, `""` for the top; a shell shows the top when the folder
+is gone.
 
 ## What the person sees
 

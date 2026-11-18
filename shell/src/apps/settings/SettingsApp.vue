@@ -3,6 +3,7 @@ import { computed, watchEffect } from 'vue';
 import { extensionsSection } from '@extensions';
 import { phone } from '@/phone.js';
 import { paintTheme } from '@/theme.js';
+import Bookmarks from './Bookmarks.vue';
 import Flags from './Flags.vue';
 import Import from './Import.vue';
 import General from './General.vue';
@@ -23,6 +24,7 @@ watchEffect(() => paintTheme(state.tones, state.theme));
 const sections = computed(() =>
   [
     { id: 'general', label: 'General', component: General },
+    { id: 'bookmarks', label: 'Bookmarks', component: Bookmarks },
     state.profile && { id: 'profile', label: 'Profile', component: Profile },
     { id: 'workspaces', label: 'Workspaces', component: Workspaces },
     { id: 'sites', label: 'Site settings', component: SiteSettings },
@@ -50,7 +52,7 @@ watchEffect(() => {
          a screen reader, and out of sight. -->
     <h1 class="hidden-heading">Settings</h1>
     <div class="body">
-      <!-- A phone has no keyboard shortcuts or extensions, so it shows General, then Flags. -->
+      <!-- A phone has no keyboard shortcuts or extensions, so it shows General, Bookmarks, then Flags. -->
       <nav v-if="!phone" class="nav" aria-label="Settings sections">
         <button
           v-for="s in sections"
@@ -64,6 +66,7 @@ watchEffect(() => {
       <main class="content" :class="{ phone }">
         <template v-if="phone">
           <General />
+          <Bookmarks />
           <section class="flags" aria-labelledby="flags-heading">
             <h2 id="flags-heading">Flags</h2>
             <Flags />

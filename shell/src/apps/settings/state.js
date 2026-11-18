@@ -72,7 +72,17 @@ export const state = reactive({
   // How far each import's extensions are, by key: {done, total}.
   installing: {},
   imported: {},
+  // Go's prefs, all of them, by their names in the file, as a shell has them: what setPref
+  // sets. Bookmarks reads where bookmarks show from them.
+  prefs: {},
+  // The bookmark tree (docs/bookmark-folders.md), for the bookmarks bar's folder list.
+  bookmarks: [],
 });
+
+// setPref sets one of Go's prefs by its name in prefs, as a shell's does.
+export function setPref(name, value) {
+  send({ t: 'setPref', name, value: String(value) });
+}
 
 export function connect() {
   channel.listen(
@@ -107,6 +117,8 @@ export function connect() {
             browsers: m.browsers || null,
             importing: m.importing || [],
             installing: m.installing || {},
+            prefs: m.prefs || {},
+            bookmarks: m.bookmarks || [],
             ready: true,
           });
           mark('settings.snapshot');
@@ -178,6 +190,12 @@ export function connect() {
         case 'importing':
           state.importing = m.importing;
           state.installing = m.installing || {};
+          break;
+        case 'prefs':
+          state.prefs = m.prefs;
+          break;
+        case 'bookmarks':
+          state.bookmarks = m.bookmarks;
           break;
         case 'imported':
           state.importing = m.importing;

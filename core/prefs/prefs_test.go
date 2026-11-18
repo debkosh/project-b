@@ -70,7 +70,7 @@ func TestApplySetsWhatTheValuesHoldThroughTheSetters(t *testing.T) {
 		t.Fatalf("heard %v", heard)
 	}
 	m.Close()
-	if got := New(dir).All(); got != (Prefs{TabLayout: TabsHorizontal, FrameColor: "#5b7fd6", Theme: ThemeDark, Shell: "standard", AddressBarPosition: AddressBottom, SearchEngine: "duckduckgo", Start: StartContinue}) {
+	if got := New(dir).All(); got != (Prefs{TabLayout: TabsHorizontal, FrameColor: "#5b7fd6", Theme: ThemeDark, Shell: "standard", AddressBarPosition: AddressBottom, SearchEngine: "duckduckgo", Start: StartContinue, BookmarksNewTab: true, BookmarksCommandBox: true}) {
 		t.Fatalf("saved %+v", got)
 	}
 }
@@ -123,6 +123,36 @@ func TestTheAddressBarPosition(t *testing.T) {
 	}
 	if New(dir).AddressBarPosition() != AddressBottom {
 		t.Fatalf("a position that isn't one loads as %q", New(dir).AddressBarPosition())
+	}
+}
+
+// Bookmarks show on the new tab page and in the command box by default, not beside the tabs
+// nor in a bar. Each turns on and off by name, as a shell's setPref does, the bar's folder
+// is a folder's id or the top, and they survive a restart.
+func TestWhereBookmarksShow(t *testing.T) {
+	dir := t.TempDir()
+	m := New(dir)
+	if p := m.All(); !p.BookmarksNewTab || p.BookmarksSidebar || !p.BookmarksCommandBox || p.BookmarksBar || p.BookmarksBarFolder != "" {
+		t.Fatalf("defaults %+v", p)
+	}
+	changes := 0
+	m.OnChanged(func(Prefs) { changes++ })
+	for _, set := range [][2]string{{"bookmarksSidebar", "true"}, {"bookmarksNewTab", "false"}, {"bookmarksBar", "true"},
+		{"bookmarksBar", "yes"}, {"bookmarksBarFolder", "0123456789abcdef"}, {"bookmarksBarFolder", "../x"}} {
+		if !m.Set(set[0], set[1]) {
+			t.Fatalf("%s is no pref", set[0])
+		}
+	}
+	m.Close()
+	p := New(dir).All()
+	if changes != 4 || p.BookmarksNewTab || !p.BookmarksSidebar || !p.BookmarksCommandBox || !p.BookmarksBar || p.BookmarksBarFolder != "0123456789abcdef" {
+		t.Fatalf("%d changes, saved %+v", changes, p)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "prefs.json"), []byte(`{"bookmarksBarFolder":"nope"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if p := New(dir).All(); p.BookmarksBarFolder != "" || !p.BookmarksNewTab {
+		t.Fatalf("a folder that isn't an id loads as %+v", p)
 	}
 }
 

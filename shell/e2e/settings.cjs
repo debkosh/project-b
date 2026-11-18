@@ -356,6 +356,22 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
       return [];
     }
   };
+  // Bookmarks: where they show, each a switch, and the bar with the folder it shows.
+  await page.getByRole('button', { name: 'Bookmarks', exact: true }).click();
+  const bookmarksSection = page.getByRole('region', { name: 'Bookmarks' });
+  const place = (name) => bookmarksSection.getByRole('switch', { name });
+  check('Bookmarks shows them on the new tab page and in the command box, not beside the tabs nor in a bar, by default',
+    (await place(/On the new tab page/).isChecked()) && (await place(/In the command box/).isChecked()) && !(await place(/Beside the tabs/).isChecked()) && !(await place(/Bookmarks bar/).isChecked()));
+  await place(/Beside the tabs/).click();
+  await place(/On the new tab page/).click();
+  check('turning them on and off is saved', await until(() => prefsFile().bookmarksSidebar === true && prefsFile().bookmarksNewTab === false), JSON.stringify(prefsFile()));
+  await place(/Bookmarks bar/).click();
+  const barFolder = bookmarksSection.getByRole('combobox', { name: 'Folder it shows' });
+  check('the bar, turned on, is saved and asks which folder, the top until one is chosen', await until(async () => prefsFile().bookmarksBar === true && (await barFolder.isVisible()) && (await barFolder.inputValue()) === ''));
+  await page.screenshot({ path: path.join(out, 'settings-bookmarks.png') });
+  for (const name of [/Beside the tabs/, /On the new tab page/, /Bookmarks bar/]) await place(name).click();
+  await until(() => prefsFile().bookmarksSidebar === false && prefsFile().bookmarksNewTab === true && prefsFile().bookmarksBar === false);
+
   await page.getByRole('button', { name: 'Workspaces', exact: true }).click();
   const workspacesSection = page.getByRole('region', { name: 'Workspaces' });
   const mainRow = workspacesSection.locator('.row', { hasText: 'Main' });

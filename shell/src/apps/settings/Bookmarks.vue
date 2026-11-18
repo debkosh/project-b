@@ -1,0 +1,77 @@
+<script setup>
+import { computed } from 'vue';
+import { phone } from '@/phone.js';
+import { folders } from '@/ui/bookmarks.js';
+import { setPref, state } from './state.js';
+
+// Where bookmarks show, each on or off, and the bookmarks bar over every page with the
+// folder it shows (docs/bookmark-folders.md). Go's prefs, set by name.
+
+// Each place, with its pref and its words: a phone's shell has a switcher for the sidebar,
+// and its address for the command box.
+const places = computed(() => [
+  { pref: 'bookmarksNewTab', label: 'On the new tab page', hint: 'Your folders as tiles; one opens in place' },
+  phone
+    ? { pref: 'bookmarksSidebar', label: 'In the tab switcher', hint: 'Tabs and Bookmarks, side by side' }
+    : { pref: 'bookmarksSidebar', label: 'Beside the tabs', hint: 'The folders under the tabs, in the sidebar' },
+  phone
+    ? { pref: 'bookmarksCommandBox', label: 'In the address bar', hint: 'Folders and bookmarks while it is empty' }
+    : { pref: 'bookmarksCommandBox', label: 'In the command box', hint: 'Type * for bookmarks only' },
+]);
+
+// The folders the bar can show, the top first, each under the one it is in.
+const barFolders = computed(() => folders(state.bookmarks));
+
+// The bar's folder, or the top when the one chosen is gone, as the shells show it.
+const barFolder = computed(() => (barFolders.value.some((f) => f.id === state.prefs.bookmarksBarFolder) ? state.prefs.bookmarksBarFolder : ''));
+</script>
+
+<template>
+  <section aria-labelledby="bookmarks-heading">
+    <h2 id="bookmarks-heading">Bookmarks</h2>
+    <div class="card">
+      <label v-for="p in places" :key="p.pref" class="row">
+        <span class="label">
+          {{ p.label }}
+          <span class="secondary">{{ p.hint }}</span>
+        </span>
+        <input
+          type="checkbox"
+          role="switch"
+          class="switch"
+          :checked="!!state.prefs[p.pref]"
+          :aria-checked="String(!!state.prefs[p.pref])"
+          @change="setPref(p.pref, $event.target.checked)"
+        />
+      </label>
+    </div>
+    <div class="card bar-card">
+      <label class="row">
+        <span class="label">
+          Bookmarks bar
+          <span class="secondary">{{ phone ? 'A strip of one folder above the bars' : 'A bar of one folder over every page' }}</span>
+        </span>
+        <input
+          type="checkbox"
+          role="switch"
+          class="switch"
+          :checked="!!state.prefs.bookmarksBar"
+          :aria-checked="String(!!state.prefs.bookmarksBar)"
+          @change="setPref('bookmarksBar', $event.target.checked)"
+        />
+      </label>
+      <div v-if="state.prefs.bookmarksBar" class="row">
+        <label class="label" for="bar-folder">Folder it shows</label>
+        <select id="bar-folder" :value="barFolder" @change="setPref('bookmarksBarFolder', $event.target.value)">
+          <option v-for="f in barFolders" :key="f.id" :value="f.id">{{ ' '.repeat(f.depth) + f.title }}</option>
+        </select>
+      </div>
+    </div>
+  </section>
+</template>
+
+<style scoped>
+.bar-card {
+  margin-top: 12px;
+}
+</style>

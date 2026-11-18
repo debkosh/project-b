@@ -54,17 +54,31 @@ type Prefs struct {
 	SearchEngine string `json:"searchEngine"`
 	// Start is what a start opens: StartContinue or StartFresh.
 	Start string `json:"start"`
+	// Where bookmarks show, each on or off: on the new tab page, beside the tabs (the
+	// sidebar, or the Mobile shell's switcher) and in the command box (the Mobile shell's
+	// address, while it is empty). docs/bookmark-folders.md.
+	BookmarksNewTab     bool `json:"bookmarksNewTab"`
+	BookmarksSidebar    bool `json:"bookmarksSidebar"`
+	BookmarksCommandBox bool `json:"bookmarksCommandBox"`
+	// BookmarksBar puts a bar of bookmarks over every page, BookmarksBarFolder's: a
+	// folder's id, "" for the top. A shell shows the top when the folder is gone.
+	BookmarksBar       bool   `json:"bookmarksBar"`
+	BookmarksBarFolder string `json:"bookmarksBarFolder"`
 }
 
 // Defaults are the settings before the user changes any.
 func Defaults() Prefs {
-	return Prefs{TabLayout: TabsVertical, FrameColor: tones.None, Theme: ThemeSystem, Shell: shells.Default(), AddressBarPosition: AddressBottom, SearchEngine: search.Default, Start: StartContinue}
+	return Prefs{TabLayout: TabsVertical, FrameColor: tones.None, Theme: ThemeSystem, Shell: shells.Default(), AddressBarPosition: AddressBottom, SearchEngine: search.Default, Start: StartContinue,
+		BookmarksNewTab: true, BookmarksCommandBox: true}
 }
 
 func isTheme(t string) bool { return t == ThemeSystem || t == ThemeLight || t == ThemeDark }
 
 // A frame colour is "#rrggbb", as a colour input gives it.
 var frameColor = regexp.MustCompile(`^(#[0-9a-f]{6})?$`)
+
+// A bookmark folder's id is 16 hex digits (core/bookmarks), "" being the top.
+var folderID = regexp.MustCompile(`^([0-9a-f]{16})?$`)
 
 // Manager owns the settings.
 type Manager struct {
@@ -112,6 +126,9 @@ func New(dir string) *Manager {
 			}
 			if !shells.Fits(s.Shell) {
 				s.Shell = Defaults().Shell
+			}
+			if !folderID.MatchString(s.BookmarksBarFolder) {
+				s.BookmarksBarFolder = ""
 			}
 			m.prefs = s
 		}
@@ -258,6 +275,39 @@ func (m *Manager) SetStart(start string) {
 	m.changed()
 }
 
+// SetBookmarks turns where bookmarks show on or off: at is "newTab", "sidebar",
+// "commandBox" or "bar". Anything else is ignored.
+func (m *Manager) SetBookmarks(at string, on bool) {
+	var p *bool
+	switch at {
+	case "newTab":
+		p = &m.prefs.BookmarksNewTab
+	case "sidebar":
+		p = &m.prefs.BookmarksSidebar
+	case "commandBox":
+		p = &m.prefs.BookmarksCommandBox
+	case "bar":
+		p = &m.prefs.BookmarksBar
+	}
+	if p == nil || *p == on {
+		return
+	}
+	*p = on
+	m.save()
+	m.changed()
+}
+
+// SetBookmarksBarFolder sets the folder the bookmarks bar shows: its id, "" for the top.
+// Anything that isn't a folder's id is ignored.
+func (m *Manager) SetBookmarksBarFolder(id string) {
+	if !folderID.MatchString(id) || id == m.prefs.BookmarksBarFolder {
+		return
+	}
+	m.prefs.BookmarksBarFolder = id
+	m.save()
+	m.changed()
+}
+
 // OnChanged subscribes to any setting changing, with them all as they are now.
 func (m *Manager) OnChanged(f func(Prefs)) { m.onChanged = append(m.onChanged, f) }
 
@@ -282,11 +332,21 @@ func (m *Manager) Set(name, value string) bool {
 		m.SetShell(value)
 	case "addressBarPosition":
 		m.SetAddressBarPosition(value)
+	case "bookmarksNewTab", "bookmarksSidebar", "bookmarksCommandBox", "bookmarksBar":
+		if value != "true" && value != "false" {
+			return true
+		}
+		m.SetBookmarks(bookmarkPlaces[name], value == "true")
+	case "bookmarksBarFolder":
+		m.SetBookmarksBarFolder(value)
 	default:
 		return false
 	}
 	return true
 }
+
+// bookmarkPlaces is SetBookmarks' name for each pref.
+var bookmarkPlaces = map[string]string{"bookmarksNewTab": "newTab", "bookmarksSidebar": "sidebar", "bookmarksCommandBox": "commandBox", "bookmarksBar": "bar"}
 
 // Apply sets each setting values holds, in the form the file has them, through its own
 // setter, so every listener hears of it as of a change by hand. A setting values doesn't
@@ -303,6 +363,11 @@ func (m *Manager) Apply(values json.RawMessage) error {
 	m.SetAddressBarPosition(p.AddressBarPosition)
 	m.SetSearchEngine(p.SearchEngine)
 	m.SetStart(p.Start)
+	m.SetBookmarks("newTab", p.BookmarksNewTab)
+	m.SetBookmarks("sidebar", p.BookmarksSidebar)
+	m.SetBookmarks("commandBox", p.BookmarksCommandBox)
+	m.SetBookmarks("bar", p.BookmarksBar)
+	m.SetBookmarksBarFolder(p.BookmarksBarFolder)
 	return nil
 }
 
