@@ -136,7 +136,8 @@ feature of ours:
     our Downloads takes, with its Pause, Cancel and Retry. One from another site opens in a
     new tab, as its row says. A stream says "Streams can't be saved as one file". "Hide on
     this page" is in the panel's menu.
-  - **Screen time limit:** every site, 30 minutes a day. "Daily limit reached", "Limit
+  - **Screen time limit:** 30 minutes a day on each site its `@match` takes: every site, as
+    it comes, and fewer once the person edits its patterns in Settings › Sparks. "Daily limit reached", "Limit
     reached again" and "It's late", one message each; "More time…" leads to the sum, then
     "How much more?". The countdown shows only in the last 5 minutes.
   - **Page cleanup:** a 40px button docked to the edge; "Hide parts of this page" outlines
@@ -193,6 +194,8 @@ built. A spark's switches for each site stay with the site's settings.
   installed".
 - No help from the shell for them: "sparks should not need view related stuffs from the
   shell... they stay floating simple html overlays".
+- Which sites Screen time limit covers: its own `@match`, as every spark's, with no list or
+  setting of its own (the owner, through UX).
 
 ## Links to other sites
 
