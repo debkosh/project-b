@@ -462,7 +462,7 @@ def internal_checks():
     run in the settings page, and its chrome.tabs.query, which its popup shows, lists the
     web tab and not the settings tab."""
     app = App(new_profile(), MOCK_STORE)
-    # The window starts with no tabs, as the standard shell takes New Tab: a web tab first.
+    # The window starts on a new tab: a web tab first.
     drive_first_app.open_in(app, "", PAGE)
     install_from_store(app, TEST_ID)
     pin(app, TEST_NAME, True)
