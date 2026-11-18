@@ -260,7 +260,7 @@ picture, light and dark, desktop and phone, is made by `shell/e2e/sync.cjs` unde
 - **A phone** uses the same Dialog. Sync's buttons there are drawn at the touch size, 40px,
   inside 48px targets, as the Mobile shell's pill and field are; its fields are 48px.
 
-**Decided here, which the mocks didn't say:** "This address needs its token" under Token, for an
+**Decided here, which the mocks didn't say:** "This address needs a token" under Token, for an
 address ending in `/sync` given none; "Couldn't set up sync with <host>" for an error with no
 name, its words in the field's tooltip; an https address Propose refuses (a query, a user, no
 host) reads "That address isn't a sync bucket"; "Not synced yet" before a first run; the strength

@@ -206,7 +206,7 @@ function problem(m) {
     case 'token':
       return { field: 'token', text: "The server didn't accept that token" };
     case 'needsToken':
-      return { field: 'token', text: 'This address needs its token' };
+      return { field: 'token', text: 'This address needs a token' };
     case 'unreachable':
       return { field: 'address', text: `Couldn't reach ${host}` };
     case 'notBucket':
