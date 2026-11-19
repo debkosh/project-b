@@ -175,7 +175,7 @@ gulal's Go package, which gives the same output.
 - **Small tiles:** a site's tile under 32px (the bar's, the sidebar's and the finder's at
   16px, Mobile's at 20px and 24px) is made in an environment of its own with `text: 75`.
 - **gulal 0.2.0** (`@debkosh/gulal`) is installed from its release tarball,
-  `shell/vendor/debkosh-gulal-0.2.0.tgz`, until it is on npm.
+  `shell/vendor/debkosh-gulal-0.3.0.tgz`, until it is on npm.
 
 Standard, every frame colour, light and dark:
 

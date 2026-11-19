@@ -8,8 +8,8 @@ github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
 github.com/sudiptadeb/amarit v0.7.1 h1:0fNyOeDAmzm8ckCvX3wEmePk/k1ZDHEKNnCrM7DlTHs=
 github.com/sudiptadeb/amarit v0.7.1/go.mod h1:Be7M5MMgjZCAoAEYqUOCLdnfu5mvcZDguey4qX3Nb2A=
-github.com/sudiptadeb/gulal v0.1.0 h1:lH6QHWsi/S++Z7jK2rMyDteM7OUiFaaLXo2moYhbr1A=
-github.com/sudiptadeb/gulal v0.1.0/go.mod h1:pjAFRJpO+wtGCzGHKe56Od2sdGiPpyfmiWZ6wjV1Hx8=
+github.com/sudiptadeb/gulal v0.3.0 h1:A2m8ehZ2121thfkq1e+9X3NRW8RnwvI1tAJQr0AbNto=
+github.com/sudiptadeb/gulal v0.3.0/go.mod h1:pjAFRJpO+wtGCzGHKe56Od2sdGiPpyfmiWZ6wjV1Hx8=
 github.com/sudiptadeb/synckosh v0.0.0-20261118165407-d1fd96f66997 h1:KunimPSZS41WyMG1b2CTZRaXAy2tdS6o5gm8mMbyoZU=
 github.com/sudiptadeb/synckosh v0.0.0-20261118165407-d1fd96f66997/go.mod h1:VSoq59Xs+xwxt7RJwIQYSvg3pIfI1Mo3uzAbIBlqdTA=
 go.etcd.io/bbolt v1.5.0 h1:S7GAl7Fxv12yohbwFfIbQCGDWbQbtDGPET4P/bD4lxU=

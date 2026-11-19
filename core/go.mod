@@ -9,7 +9,7 @@ require (
 	golang.org/x/net v0.62.0
 )
 
-require github.com/sudiptadeb/gulal v0.1.0
+require github.com/sudiptadeb/gulal v0.3.0
 
 require (
 	github.com/mattn/go-sqlite3 v1.14.53
