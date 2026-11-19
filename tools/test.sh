@@ -165,19 +165,38 @@ vm() {
 android() {
     [ -f "$APK" ] || cannot android "no APK at $APK. Build it (docs/android.md), or point PB_APK at one."
     command -v amarit >/dev/null || cannot android "amarit is not on PATH: it starts the emulators."
+    # Every emulator at once, side by side: each run has its own serial, output folder and
+    # ports, and one after another took the release run 70 minutes, where the longest alone
+    # takes 42. Each one's output goes to its own log and is printed whole once all are done.
+    local logs=build/android-drive-content emulator
+    mkdir -p "$logs"
     for emulator in $EMULATORS; do
-        local unit=${emulator%%:*} serial=emulator-${emulator##*:} started=
-        # Started here, and so stopped after, only when amarit wasn't already running it: adb can
-        # lose a running emulator for a moment (its server restarting), and stopping that one
-        # took it from whoever else was using it.
-        if ! amarit ls 2>/dev/null | grep -q "^$unit  *running"; then
-            amarit start "$unit" >/dev/null || { run "the Android app on $unit" false; continue; }
-            started=1
-        fi
-        until [ "$($ADB -s "$serial" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ]; do /bin/sleep 2; done
-        run "the Android app on $unit ($($ADB -s "$serial" shell getprop ro.build.version.release | tr -d '\r'))" \
-            env PB_APK="$APK" ADB_SERIAL="$serial" OUT="build/android-drive-content/$unit" python3 tools/drive_android.py
-        [ -z "$started" ] || amarit stop "$unit" >/dev/null
+        (
+            unit=${emulator%%:*} serial=emulator-${emulator##*:} started=
+            SUMMARY="" FAILED=0 DID_NOT_RUN=0
+            # Started here, and so stopped after, only when amarit wasn't already running it:
+            # adb can lose a running emulator for a moment (its server restarting), and
+            # stopping that one took it from whoever else was using it.
+            if ! amarit ls 2>/dev/null | grep -q "^$unit  *running"; then
+                amarit start "$unit" >/dev/null || { run "the Android app on $unit" false; printf '%s' "$SUMMARY" > "$logs/$unit.summary"; exit; }
+                started=1
+            fi
+            until [ "$($ADB -s "$serial" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ]; do /bin/sleep 2; done
+            run "the Android app on $unit ($($ADB -s "$serial" shell getprop ro.build.version.release | tr -d '\r'))" \
+                env PB_APK="$APK" ADB_SERIAL="$serial" OUT="$logs/$unit" python3 tools/drive_android.py
+            [ -z "$started" ] || amarit stop "$unit" >/dev/null
+            printf '%s' "$SUMMARY" > "$logs/$unit.summary"
+        ) > "$logs/${emulator%%:*}.log" 2>&1 &
+    done
+    wait
+    for emulator in $EMULATORS; do
+        local unit=${emulator%%:*} said
+        cat "$logs/$unit.log"
+        said=$(cat "$logs/$unit.summary" 2>/dev/null) || said=$'\n'"FAILED       the Android app on $unit (no result)"
+        SUMMARY="$SUMMARY$said"
+        case $said in *FAILED*) FAILED=1 ;; esac
+        case $said in *"DID NOT RUN"*) DID_NOT_RUN=2 ;; esac
+        rm -f "$logs/$unit.summary"
     done
 }
 
