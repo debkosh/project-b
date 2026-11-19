@@ -1,8 +1,9 @@
 # Passkeys and security keys (WebAuthn): research
 
 Research for a discussion, 2026-11-19. Since agreed: A and B are built (docs/passkeys.md), and E
-is the direction, as part of the password manager: stored locally and synced. Its design is
-still to come. A reading of
+is the direction, as part of the password manager: stored locally and synced, and unlocked
+per use by whatever the device has (Touch ID or the Mac password; a fingerprint, face or the
+screen lock on Android). Its design is still to come. A reading of
 Chromium 155.0.8059.41 and Project B 0.2.96.
 
 ## What WebAuthn is
