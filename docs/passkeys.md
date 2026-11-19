@@ -333,6 +333,17 @@ hold them byte for byte.
 - **Settings' list** shows the account, which is sealed, so opening it is a person's call that
   raises the unlock Dialog when the profile is locked, and Delete sits behind the same unlock.
 
+- **A profile key that doesn't open on this device** (a folder that came from another): List,
+  All, Make and Sign answer `ErrNotHere` before the person is asked anything, and Count still
+  counts. Save then says "Can't save a passkey here": "This profile's saved data was sealed on
+  another device and doesn't open on this one. To start fresh, set up sync again in Settings."
+  Settings' list says "These passkeys were sealed on another device and can't be opened on this
+  one." Starting fresh deletes the passkeys with the old key (`keys.OnStartFresh`).
+- **Sign asks nothing for a passkey that isn't here**: it looks the id up on the plain columns
+  first, and answers `ErrNone`.
+- **A row that doesn't open fails sync's run**, each time, and that is meant: reporting it gone
+  would delete the passkey on every other device. Only a damaged row gets that far.
+
 All use of the profile key is in one function of `core/passkeys`,
 `sealed(ctx, asked, job)`. Today it is the store's `Wait` with `keys.Seal` and `keys.Open`. When
 Profile Lock is built, the passwords session swaps its inside for the store's sealed job, which

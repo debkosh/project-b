@@ -77,6 +77,8 @@ export const state = reactive({
   // asked for them, each as {id, site, title, secondary, unnamed, created}; null before.
   passkeyCount: 0,
   passkeys: null,
+  // The profile's key doesn't open on this device, so its passkeys can't be shown.
+  passkeysNotHere: false,
   // The person's sparks (docs/site-features.md): {id, name, description, match, runAt, on,
   // error}; the one whose source Go last sent, {id, source, fileName}; and Go's word on the
   // last save, '' when it took, null before one. An import's sparks the profile already
@@ -256,6 +258,7 @@ export function connect() {
           break;
         case 'passkeys':
           state.passkeys = m.passkeys;
+          state.passkeysNotHere = !!m.notHere;
           break;
         case 'prefs':
           state.prefs = m.prefs;
