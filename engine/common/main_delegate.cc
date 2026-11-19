@@ -36,6 +36,7 @@
 #include "base/files/file.h"
 #include "base/posix/global_descriptors.h"
 #include "content/public/browser/android/compositor.h"
+#include "content/public/common/content_features.h"
 #include "content/public/browser/browser_main_runner.h"
 #include "project_b/engine/android/descriptors.h"
 #endif
@@ -89,6 +90,20 @@ void RasterWithoutMultisampling() {
   }
   command_line->AppendSwitchASCII(blink::switches::kGpuRasterizationMSAASampleCount, "0");
 }
+
+// A name a control takes from another element, a label around it or aria-labelledby, goes
+// to Android's text, as it did in Chrome until Chromium put it in Android 16's supplemental
+// description instead. TalkBack 16 doesn't speak a control's supplemental description, so
+// it said "On, Switch" with no name (docs/fragility.md, "Switches named by other words
+// heard with no name").
+void NamesFromOtherElementsAsText() {
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+  if (command_line->HasSwitch(switches::kProcessType)) {
+    return;
+  }
+  AppendToList(command_line, switches::kDisableFeatures,
+               features::kAccessibilityPopulateSupplementalDescriptionApi.name);
+}
 #endif
 
 }  // namespace
@@ -100,6 +115,7 @@ std::optional<int> MainDelegate::BasicStartupComplete() {
   DisableChromeOnlyBlinkFeatures();
 #if BUILDFLAG(IS_ANDROID)
   RasterWithoutMultisampling();
+  NamesFromOtherElementsAsText();
 #endif
 #if BUILDFLAG(IS_MAC)
   // Inside an app, content looks for its files under the "framework bundle". We have
