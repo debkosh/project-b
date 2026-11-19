@@ -18,7 +18,7 @@ var ErrNoBrowser = errors.New("browserdata: no browser's profiles in that folder
 // its folder. home is the home folder Find looks in.
 func Open(home, dir string) (Browser, error) {
 	dir = filepath.Clean(dir)
-	support := filepath.Join(home, "Library/Application Support")
+	support := Support(home)
 	known := func(d string) (kind, bool) {
 		for _, k := range kinds {
 			if k.data != "" && strings.EqualFold(filepath.Join(support, k.data), d) {

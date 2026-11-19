@@ -125,6 +125,10 @@ func kindOf(id string) (kind, bool) {
 	return kind{}, false
 }
 
+// Support is where the browsers keep their folders under the home folder home: the Mac's
+// Application Support.
+func Support(home string) string { return filepath.Join(home, "Library/Application Support") }
+
 // Find lists the browsers with a profile in the home folder home, each with its profiles,
 // in the order this package knows them.
 func Find(home string) []Browser {
@@ -133,7 +137,7 @@ func Find(home string) []Browser {
 		if k.data == "" && k.family != safari {
 			continue
 		}
-		dir := filepath.Join(home, "Library/Application Support", k.data)
+		dir := filepath.Join(Support(home), k.data)
 		var profiles []Profile
 		switch k.family {
 		case chromium:

@@ -289,10 +289,10 @@ type Engine interface {
 	// or one of Android's own reasons, such as "low memory" or "user requested"; "" when
 	// the system doesn't say, as a desktop's doesn't.
 	ExitReason(pid int) string
-	// ChooseFolder asks the person for a folder, in the system's panel on the window, as
-	// Import asks for another browser's; FolderChosen follows with it, or "" for none. A
-	// phone has no such panel and answers nothing.
-	ChooseFolder(w WindowID)
+	// ChooseFolder asks the person for a folder, in a dialog on the window opening at start,
+	// or where it last was for "", as Import asks for another browser's; FolderChosen
+	// follows with it, or "" for none. A phone has no such dialog and answers nothing.
+	ChooseFolder(w WindowID, start string)
 	ThumbnailURL(tab TabID, revision int64) string
 	// ExitPageFullScreen takes a tab's page out of full screen, as its own
 	// exitFullscreen() would; PageFullScreen follows.

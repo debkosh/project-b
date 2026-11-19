@@ -83,14 +83,14 @@ class Downloads : public content::DownloadManagerDelegate,
   base::WeakPtrFactory<Downloads> weak_factory_{this};
 };
 
-// What the platform does: the Save panel over the page's window, which answers with the
-// path chosen or an empty one.
+// What the platform does: the Save dialog over the page's window, which answers with the
+// path chosen or an empty one: Chromium's own on a desktop, none on a phone.
 void ChooseSavePath(content::WebContents* contents,
                     const base::FilePath& suggested,
                     base::OnceCallback<void(const base::FilePath&)> chosen);
 // Hands a finished download, or a file Go kept as one, to the system where other apps find
 // it: on a phone, a copy in the shared Downloads, through which it is then opened. Nothing on
-// the Mac, where it already is in the user's Downloads folder.
+// a desktop, where it already is in the user's Downloads folder.
 void PublishFile(const base::FilePath& path, const std::string& mime_type);
 #if BUILDFLAG(IS_ANDROID)
 // Deletes a finished download's copy in a phone's shared Downloads, by the app's path for

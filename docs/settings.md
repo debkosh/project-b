@@ -106,7 +106,7 @@ sections on a phone.
 - **Save to**, a desktop's, is the folder downloads are saved in, by its name on a button
   with the whole path under it, the home folder as ~ and a long one cut in the middle: the
   Downloads folder, or the pref `downloadFolder`, a whole path. The button asks for another in
-  the system's folder panel on the settings tab's window, through the engine's `ChooseFolder`,
+  a folder dialog on the settings tab's window, opening at the folder now, through the engine's `ChooseFolder`,
   the one Import's "Choose a folder" uses (`choose_folder`, `PB_EVENT_FOLDER_CHOSEN`): the
   panel's answer is Save to's when Save to opened it on that window, else the importer's
   (`App.FolderChosen`, `core/app/folders.go`). The folder chosen becomes the pref, and Go's

@@ -263,7 +263,9 @@ func (im *importer) handle(tab engine.TabID, t string, msg []byte) bool {
 		im.look()
 	case "chooseFolder":
 		if win := im.a.Tabs.WindowOf(tab); win != 0 {
-			im.e.ChooseFolder(win)
+			// Where the browsers keep their folders, which shows them at once: the dialog
+			// can't show hidden files, as ~/Library is (docs/layers.md, 2b).
+			im.e.ChooseFolder(win, browserdata.Support(im.home))
 		}
 	case "openAccess":
 		timeline.Infof("imports: opening System Settings at Full Disk Access")

@@ -38,7 +38,8 @@ func (a *App) downloadFolderSettingsPart(e engine.Engine, standard string) setti
 			}
 			w := a.Tabs.WindowOf(tab)
 			a.choosingFolder = w
-			e.ChooseFolder(w)
+			// The dialog opens at the folder downloads go to now.
+			e.ChooseFolder(w, a.Downloads.Dir())
 			return true
 		},
 	}

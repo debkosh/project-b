@@ -58,7 +58,7 @@ decision, the buttons' state and the shell UI.
 | `UninstallExtension`, `SetExtensionEnabled`, `Extensions()` | Remove, turn on or off, list |
 | `DispatchExtensionEvent(id, event, args)` | Fires an event such as `tabs.onUpdated` in one extension |
 | `OpenExtensionPopup(window, id, url, anchor)`, `CloseExtensionPopup()` | Shows a page of the extension in a view of its own under a rectangle of the window whose button was pressed |
-| `ChoosePath(window, kind)` | Asks the user for a folder or a package file, in the system's panel on the window that asked |
+| `ChoosePath(window, kind)` | Asks the user for a folder or a package file, in Chromium's own file dialog on the window that asked |
 
 | The engine tells Go | When |
 |---|---|
@@ -329,7 +329,7 @@ flag in one folder rebuilds our own files and links again, under a minute, becau
   whether the press was on the popup's own button: that press goes to Go, which closes the
   popup it finds open, and any other press in the shell asks Go to close it.
 - **Settings, Extensions.** Installed: enable, pin, remove, and details (id, version, source,
-  permissions, site access). "Load unpacked" and "Install package…" open the system's panel.
+  permissions, site access). "Load unpacked" and "Install package…" open Chromium's own file dialog.
   Store: a link that opens the Chrome Web Store in a tab.
 - **The install prompt** is one dialog, shown by the shell over the page for an install a
   store's page began, and by the settings page for a package picked there. A store page's

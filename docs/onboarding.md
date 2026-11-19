@@ -420,10 +420,11 @@ progress, seems like a good starting rule to evolve from"):
 - **Their logos** ship in `shell/src/ui/logos`, one file named by the browser's id, with a
   README of where each is from and its licence; a browser with none shows its family's
   (`chrome-beta`, `chrome`'s), and one no one named, a plain mark.
-- **A folder chosen** goes through a new engine call, `ChooseFolder` (the system's open
-  panel, as sheet on the window, showing Library; `choose_folder` and
-  `PB_EVENT_FOLDER_CHOSEN` in the ABI), whose panel the extensions' Load unpacked also uses
-  now (`engine/browser/choose_path_mac.mm`); the driver's `choose` answers either.
+- **A folder chosen** goes through a new engine call, `ChooseFolder` (Chromium's own file
+  dialog, as a sheet on the window, opening in `~/Library/Application Support` where the
+  browsers keep their folders, as the dialog can't show hidden files; `choose_folder` and
+  `PB_EVENT_FOLDER_CHOSEN` in the ABI), whose dialog the extensions' Load unpacked also uses
+  (`engine/browser/choose_path.cc`); the driver's `choose` answers either.
   `browserdata.Open` reads the folder: a Chromium browser's folder of profiles or one
   profile, or a Firefox one's (`profiles.ini`) or one profile (`places.sqlite`). A known
   browser's folder is that browser; another is `other-chromium` or `other-firefox`, named
