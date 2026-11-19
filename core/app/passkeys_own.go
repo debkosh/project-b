@@ -205,6 +205,8 @@ func (k *passkeyCards) fail(id engine.DialogID, o *ownPasskey, err error) {
 		return
 	case errors.Is(err, passkeys.ErrExcluded):
 		reason = "excluded"
+	case errors.Is(err, passkeys.ErrNotHere):
+		reason = "not-here"
 	case errors.Is(err, passkeys.ErrNoScreenLock):
 		reason = "no-screen-lock"
 	default:
@@ -361,6 +363,8 @@ func ownDialog(d pageDialog, step string, o *ownPasskey) pageDialog {
 		switch o.failed {
 		case "excluded":
 			p.Title, p.Message = "Already saved", "Project B already has a passkey for "+site+" for this account."
+		case "not-here":
+			p.Title, p.Message = "Can't save a passkey here", "This profile's saved data was sealed on another device and doesn't open on this one. To start fresh, set up sync again in Settings."
 		case "no-screen-lock":
 			p.Title, p.Message = "Set a password first", "Project B checks it's you with your Mac's password before using a passkey. Set one in System Settings, then try again."
 			if o.only {

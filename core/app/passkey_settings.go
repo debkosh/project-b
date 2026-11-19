@@ -3,8 +3,10 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	"projectb/engine"
+	"projectb/passkeys"
 	"projectb/settings"
 	"projectb/timeline"
 )
@@ -53,7 +55,9 @@ func (a *App) passkeySettingsPart(e engine.Engine) settings.Part {
 	list := func() {
 		go func() {
 			all, err := a.Passkeys.All(context.Background(), true)
-			if err != nil {
+			// A profile whose key doesn't open here has passkeys it can't show.
+			notHere := errors.Is(err, passkeys.ErrNotHere)
+			if err != nil && !notHere {
 				timeline.Errorf("passkeys: %v", err)
 			}
 			rows := []passkeyRow{}
@@ -61,7 +65,7 @@ func (a *App) passkeySettingsPart(e engine.Engine) settings.Part {
 				account := accountRow(p.UserName, p.DisplayName)
 				rows = append(rows, passkeyRow{ID: b64(p.ID), Site: p.RPID, Title: account.Title, Secondary: account.Secondary, Unnamed: account.Unnamed, Created: p.Created})
 			}
-			e.Post(func() { a.Settings.Send(map[string]any{"t": "passkeys", "passkeys": rows}) })
+			e.Post(func() { a.Settings.Send(map[string]any{"t": "passkeys", "passkeys": rows, "notHere": notHere}) })
 		}()
 	}
 	return settings.Part{
