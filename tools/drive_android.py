@@ -1466,6 +1466,13 @@ def file_input_checks():
     see("settings", text="Theme")
     tap(middle(see("settings", kind=FIELD)))
     type_text("Sparks")
+    # Android 10's keyboard holds the word it is composing, and the search reads only what is
+    # put in: until then the whole list shows, its Sparks row under the keyboard, and a tap
+    # there took a suggestion ("Spark's"). Putting the keyboard away puts the word in.
+    matched = lambda shown: shown is not None and shown.startswith("1 setting matches")
+    if until(lambda: find("settings", text=matched), 5) is None:
+        key(4)
+        see("settings", text=matched)
     # On Android 10 a tap after typing can only close the keyboard: the result is tapped
     # again, where it is then, until Sparks opens.
     for _ in range(3):
