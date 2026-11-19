@@ -55,7 +55,7 @@
 <div bind:this={card} class="ui-dialog card" class:flat class:wide={step.wide} role="alertdialog" aria-modal="true" aria-label={dialog.title} tabindex="-1" onkeydown={(e) => trapTab(card, e)}>
   <h2 class="ui-dialog-title">{dialog.title}</h2>
   {#if dialog.message}
-    <p class="words">
+    <p class="says">
       {#if hostAt >= 0}{dialog.message.slice(0, hostAt)}<b>{dialog.host}</b>{dialog.message.slice(hostAt + dialog.host.length)}{:else}{dialog.message}{/if}
     </p>
   {/if}
@@ -126,7 +126,7 @@
     width: 440px;
   }
 
-  .words {
+  .says {
     margin: 0;
     overflow-wrap: anywhere;
   }
