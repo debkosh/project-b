@@ -23,5 +23,8 @@ void pb_system_show_notification(const char* id,
                                  const char* subtitle,
                                  const char* body);
 void pb_system_remove_notification(const char* id);
+// Takes the links and files macOS opens with the app, from now on, as NSApp's delegate: they
+// reach Go as PBSystemOpenURLs, on the main thread.
+void pb_system_receive_links(void);
 
 #endif  // PROJECT_B_CORE_SYSTEM_PLATFORM_PLATFORM_DARWIN_H_

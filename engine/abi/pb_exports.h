@@ -29,7 +29,6 @@ void PBForceGC(void);
 int PBRecoverNilDeref(void);
 void PBCrash(int32_t kind);
 char* PBGoStats(void);
-void PBOpenURLs(const char* urls);
 void PBTimelineStart(const char* profile_dir, int64_t process_age);
 int64_t PBTimelineNow(void);
 void PBTimelineRecord(int32_t kind,

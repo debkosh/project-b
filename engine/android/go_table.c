@@ -219,12 +219,13 @@ JNIEXPORT void JNICALL Java_dev_projectb_browser_GoCore_answered(JNIEnv* env, jc
   PBSystemAnswered(question, yes ? 1 : 0);
 }
 
-// Android's own: the link another app sent, from BrowserActivity, after Go started.
-void PBOpenURL(char* url);
+// The link another app sent, from BrowserActivity on the main thread, after Go started: the
+// links the OS hands the app, core/system's (PBSystemOpenURLs, one per line).
+void PBSystemOpenURLs(char* urls);
 
 JNIEXPORT void JNICALL Java_dev_projectb_browser_GoCore_openUrl(JNIEnv* env, jclass cls,
                                                                  jstring url) {
   const char* s = (*env)->GetStringUTFChars(env, url, NULL);
-  PBOpenURL((char*)s);
+  PBSystemOpenURLs((char*)s);
   (*env)->ReleaseStringUTFChars(env, url, s);
 }

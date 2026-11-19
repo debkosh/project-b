@@ -73,6 +73,11 @@ func (s *System) RemoveNotification(id string) {
 	withPath(id, func(c *C.char) { C.pb_system_remove_notification(c) })
 }
 
+func (s *System) OnOpenURLs(opened func(urls []string)) {
+	s.opened = opened
+	C.pb_system_receive_links()
+}
+
 // fullDiskAccess is System Settings' Privacy & Security, at Full Disk Access.
 const fullDiskAccess = "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"
 

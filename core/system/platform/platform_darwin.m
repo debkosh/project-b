@@ -201,3 +201,29 @@ void pb_system_remove_notification(const char* id) {
     [Center() removePendingNotificationRequestsWithIdentifiers:ids];
   });
 }
+
+// The links and files macOS opens with the app, as its default browser or from a file opened
+// with it (Info.plist's URL and document types).
+@interface PBLinkReceiver : NSObject <NSApplicationDelegate>
+@end
+
+@implementation PBLinkReceiver
+- (void)application:(NSApplication*)application openURLs:(NSArray<NSURL*>*)urls {
+  NSMutableArray<NSString*>* lines = [NSMutableArray array];
+  for (NSURL* url in urls) {
+    [lines addObject:url.absoluteString];
+  }
+  PBSystemOpenURLs((char*)[lines componentsJoinedByString:@"\n"].UTF8String);
+}
+@end
+
+void pb_system_receive_links(void) {
+  OnMain(^{
+    // NSApp's delegate is weak, so the receiver lives as long as the app.
+    static PBLinkReceiver* receiver;
+    if (!receiver) {
+      receiver = [[PBLinkReceiver alloc] init];
+    }
+    NSApp.delegate = receiver;
+  });
+}

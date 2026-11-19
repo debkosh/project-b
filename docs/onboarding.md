@@ -206,7 +206,7 @@ Each slice goes out through a release of its own.
   `RoleManager`'s `ROLE_BROWSER` sheet. The answer comes back to the callback Go passed, a
   sheet closed unanswered too, and the row says so. The Mac app declares itself a
   browser in its Info.plist (`tools/package.sh`: http and https, html and xhtml), and a
-  delegate takes the links and pages macOS hands it to Go (`PBGoCalls.open_urls`), which
+  delegate in Go's `core/system` takes the links and pages macOS hands it (`OnOpenURLs`), which
   opens them as a second copy's are. Checked on the mock; on a real Mac only in the VM, as
   pressing it changes the Mac's own default browser.
 - **Download notifications,** on a phone's last step: `system.System.AskNotifications` asks

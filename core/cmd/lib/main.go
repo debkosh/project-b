@@ -640,6 +640,8 @@ func PBStart(calls *C.PBEngineCalls, blockedHosts *C.char, skip C.int) {
 		})
 		events.Listen(picker)
 		owner.Serve(func([]string) { native.Post(picker.Handover) }, quit)
+		// A picker copy has no window to open the links the OS hands it in.
+		platform.New().OnOpenURLs(func([]string) {})
 	} else {
 		startProfile(profile)
 	}

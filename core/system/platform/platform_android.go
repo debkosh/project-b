@@ -64,6 +64,10 @@ func (s *System) AskNotifications(answered func(bool)) {
 func (s *System) ShowNotification(system.Notification) {}
 func (s *System) RemoveNotification(string)            {}
 
+// OnOpenURLs takes the links other apps send, which Java's BrowserActivity hands go_table.c,
+// once Go has started.
+func (s *System) OnOpenURLs(opened func(urls []string)) { s.opened = opened }
+
 // SetDockColor does nothing: a phone has no Dock.
 func (s *System) SetDockColor(string) {}
 

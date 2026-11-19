@@ -895,6 +895,21 @@ func TestAHandoverOpensInTheWindowUsedLast(t *testing.T) {
 	}
 }
 
+// The links and files the OS hands the app, as its default browser, open as a second
+// start's do: a new tab in the window used last.
+func TestLinksTheSystemHandsOpenInTabs(t *testing.T) {
+	r := start(t, t.TempDir())
+	defer r.stop()
+	r.e.Post(func() { r.a.LoadingChanged(1, false) })
+	r.e.Settle()
+	r.sys.Open("https://h.test/", "https://i.test/")
+	m := r.waitFor(isTabs(3))
+	tabs := m["tabs"].([]any)
+	if a, b := tabs[1].(map[string]any)["url"], tabs[2].(map[string]any)["url"]; a != "https://h.test/" || b != "https://i.test/" {
+		t.Fatalf("the new tabs are at %v and %v", a, b)
+	}
+}
+
 // A crashed shell waits to say it's ready again, and only its own window's does: the other
 // window's shell goes on hearing.
 func TestAShellCrashResetsOnlyItsWindow(t *testing.T) {

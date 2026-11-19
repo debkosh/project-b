@@ -21,9 +21,6 @@ void RunAppCommand(int32_t command);
 // Tells Go the keys macOS App Shortcuts gives our menu items, now and on every change.
 void WatchOSKeyBindings();
 
-// Hands Go the links and files macOS opens with the app. Called once Go has started.
-void ReceiveLinks();
-
 }  // namespace project_b
 
 #endif  // PROJECT_B_ENGINE_BROWSER_MAC_APP_H_
