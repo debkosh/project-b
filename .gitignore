@@ -14,3 +14,4 @@ __pycache__/
 # Editor settings, per person.
 /.idea/
 /.claude/
+/core/dev
