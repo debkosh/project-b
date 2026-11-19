@@ -45,6 +45,7 @@ const (
 	Notifications          Event = 79
 	FolderChosen           Event = 80
 	AppLink                Event = 81
+	ImageSaved             Event = 82
 )
 
 var names = map[Event]string{
@@ -70,6 +71,7 @@ var names = map[Event]string{
 	Notifications:          "engine.NotificationsAnswered",
 	FolderChosen:           "engine.FolderChosen",
 	AppLink:                "engine.AppLink",
+	ImageSaved:             "engine.ImageSaved",
 }
 
 // linksAndImagesOnly is a phone's way: only a long press on a link or an image is the
@@ -162,6 +164,8 @@ func (e *Events) Dispatch(id Event, args []Value) (Value, bool) {
 		l.FolderChosen(engine.WindowID(r.int()), r.str())
 	case AppLink:
 		l.AppLink(engine.TabID(r.int()), r.str())
+	case ImageSaved:
+		l.ImageSaved(r.str(), r.bool())
 	default:
 		return e.adapter(id, l, r)
 	}

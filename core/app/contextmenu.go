@@ -1,12 +1,18 @@
 package app
 
 import (
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/url"
+	"os"
+	"path/filepath"
+	"slices"
 	"strings"
 
 	"projectb/engine"
 	"projectb/shell"
+	"projectb/shells"
 	"projectb/tabs"
 )
 
@@ -21,6 +27,9 @@ type contextMenu struct {
 	Tab engine.TabID `json:"tab"`
 	engine.ContextMenu
 	Actions []menuAction `json:"actions"`
+	// Thumb is a phone's picture of the image pressed, a PNG data URL, once the engine
+	// has fetched it: Go sends the menu again with it.
+	Thumb string `json:"thumb,omitempty"`
 	// url is the page's address when the menu opened, to drop it once the tab navigates.
 	url string
 }
@@ -38,16 +47,31 @@ type menuAction struct {
 // quoteLimit is how much of a selection a title quotes.
 const quoteLimit = 24
 
+// thumbSize is the longer side of a phone menu's picture of its image, in pixels: the head
+// shows it at 40 points on a screen of density up to 3.
+const thumbSize = 120
+
 // contextMenus keeps each window's open menu.
 type contextMenus struct {
 	a    *App
 	e    engine.Engine
 	last int
 	open map[engine.WindowID]*contextMenu
+	// saves are the images asked of the engine and not yet saved, by path, with what to
+	// do once they are; saved counts them, for the next path.
+	saves map[string]func(ok bool)
+	saved int
 }
 
+// sharedDir is where a phone's menu puts the images it shares, copies and shows: emptied at
+// each start, as what took one has read it by then.
+func (c *contextMenus) sharedDir() string { return filepath.Join(c.a.dir, "shared") }
+
 func newContextMenus(a *App, e engine.Engine) *contextMenus {
-	c := &contextMenus{a: a, e: e, open: map[engine.WindowID]*contextMenu{}}
+	c := &contextMenus{a: a, e: e, open: map[engine.WindowID]*contextMenu{}, saves: map[string]func(bool){}}
+	if a.dir != "" {
+		os.RemoveAll(c.sharedDir())
+	}
 	a.Tabs.OnChanged(func(t tabs.Tab) {
 		if m := c.open[a.Tabs.WindowOf(t.ID)]; m != nil && m.Tab == t.ID && t.URL != m.url {
 			c.drop(a.Tabs.WindowOf(t.ID))
@@ -103,6 +127,43 @@ func (c *contextMenus) show(tab engine.TabID, cm engine.ContextMenu) {
 	m := &contextMenu{ID: c.last, Tab: tab, ContextMenu: cm, Actions: c.actions(t, cm), url: t.URL}
 	c.open[w] = m
 	c.a.Shell.SendTo(w, map[string]any{"t": "contextMenu", "contextMenu": m})
+	// A phone's sheet shows the image beside its address, once the engine has it.
+	if c.phone() && cm.Media == "image" && opens(cm.Src) {
+		c.saveImage(m, thumbSize, func(path string, ok bool) {
+			b, err := os.ReadFile(path)
+			os.Remove(path)
+			if !ok || err != nil || c.open[w] != m {
+				return
+			}
+			m.Thumb = "data:image/png;base64," + base64.StdEncoding.EncodeToString(b)
+			c.a.Shell.SendTo(w, map[string]any{"t": "contextMenu", "contextMenu": m})
+		})
+	}
+}
+
+// phone says whether the shell chosen is a phone's, whose long-press sheet downloads,
+// shares and copies images too.
+func (c *contextMenus) phone() bool {
+	id := c.a.Prefs.Shell()
+	return slices.ContainsFunc(shells.All(), func(s shells.Shell) bool { return s.ID == id && s.Phone })
+}
+
+// saveImage asks the engine for m's image as a PNG in the shared folder, at most maxSize
+// pixels on its longer side (0 keeps its size), and runs done with its path once it is
+// there, or not.
+func (c *contextMenus) saveImage(m *contextMenu, maxSize int, done func(path string, ok bool)) {
+	c.saved++
+	path := filepath.Join(c.sharedDir(), fmt.Sprintf("image-%d.png", c.saved))
+	c.saves[path] = func(ok bool) { done(path, ok) }
+	c.e.SaveImage(m.Tab, m.Src, path, maxSize)
+}
+
+// imageSaved runs what waited on the image at path.
+func (c *contextMenus) imageSaved(path string, ok bool) {
+	if done := c.saves[path]; done != nil {
+		delete(c.saves, path)
+		done(ok)
+	}
 }
 
 func (c *contextMenus) drop(w engine.WindowID) {
@@ -116,6 +177,7 @@ func (c *contextMenus) drop(w engine.WindowID) {
 // actions is what can run for a press on cm in tab t's page, by group.
 func (c *contextMenus) actions(t tabs.Tab, cm engine.ContextMenu) []menuAction {
 	var list []menuAction
+	phone := c.phone()
 	add := func(group, id, title string, enabled bool) {
 		list = append(list, menuAction{ID: id, Title: title, Group: group, Enabled: enabled})
 	}
@@ -134,14 +196,30 @@ func (c *contextMenus) actions(t tabs.Tab, cm engine.ContextMenu) []menuAction {
 			add("link", "link.newWindow", "Open Link in New Window", true)
 		}
 		add("link", "link.copy", "Copy Link", true)
-		if opens(cm.Link) {
+		// A phone has no Save panel: its sheet downloads at once, and shares.
+		switch {
+		case !phone && opens(cm.Link):
 			add("link", "link.saveAs", "Save Link As…", true)
+		case phone:
+			if strings.TrimSpace(cm.LinkText) != "" {
+				add("link", "link.copyText", "Copy Link Text", true)
+			}
+			if opens(cm.Link) {
+				add("link", "link.download", "Download Link", true)
+			}
+			add("link", "link.share", "Share Link", true)
 		}
 	}
 	if cm.Src != "" && cm.Media == "image" {
 		if opens(cm.Src) {
 			add("image", "image.newTab", "Open Image in New Tab", true)
-			add("image", "image.saveAs", "Save Image As…", true)
+			if phone {
+				add("image", "image.download", "Download Image", true)
+				add("image", "image.copy", "Copy Image", true)
+				add("image", "image.share", "Share Image", true)
+			} else {
+				add("image", "image.saveAs", "Save Image As…", true)
+			}
 		}
 		add("image", "image.copyAddress", "Copy Image Address", true)
 	}
@@ -189,6 +267,27 @@ func (c *contextMenus) run(m *contextMenu, id string) {
 		c.a.Tabs.OpenFrom(0, m.Link, strings.TrimPrefix(id, "link.workspace."), false)
 	case id == "link.copy":
 		c.e.WriteClipboard(m.Link)
+	case id == "link.copyText":
+		c.e.WriteClipboard(strings.TrimSpace(m.LinkText))
+	case id == "link.download":
+		c.e.DownloadURL(m.Tab, m.Link, false)
+	case id == "link.share":
+		c.e.ShareText(c.a.Tabs.WindowOf(m.Tab), m.Link)
+	case id == "image.download":
+		c.e.DownloadURL(m.Tab, m.Src, false)
+	case id == "image.copy":
+		c.saveImage(m, 0, func(path string, ok bool) {
+			if ok {
+				c.e.CopyImage(path)
+			}
+		})
+	case id == "image.share":
+		w := c.a.Tabs.WindowOf(m.Tab)
+		c.saveImage(m, 0, func(path string, ok bool) {
+			if ok {
+				c.e.ShareFile(w, path, engine.Rect{})
+			}
+		})
 	case id == "link.saveAs":
 		c.e.DownloadURL(m.Tab, m.Link, true)
 	case id == "image.saveAs":

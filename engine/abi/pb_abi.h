@@ -177,6 +177,8 @@ typedef enum PBEvent {
                                         // links, project-b:, which goes no further. One
                                         // with no user gesture, in a frame or by a
                                         // redirect goes nowhere, unheard
+  PB_EVENT_IMAGE_SAVED = 82,            // s: path, i: 1 when save_image wrote the image
+                                        // there, 0 when it couldn't
   PB_EVENT_PAGE_MESSAGE = 23,           // i: tab, s: the page's name ("settings",
                                         // "history", "bookmarks", "downloads",
                                         // "welcome"), s: json, from the page of ours
@@ -481,6 +483,16 @@ typedef struct PBEngineCalls {
                      double y,
                      double w,
                      double h);
+  // Offers text, such as a link, to the system's share sheet: Android's chooser; nothing on
+  // the Mac, whose menus don't offer it.
+  void (*share_text)(int64_t window, const char* text);
+  // Fetches the image at url as tab's page would, from its cache when it has it, scales it
+  // down to at most max_size pixels on its longer side (0 keeps its size), and writes it at
+  // path as a PNG; PB_EVENT_IMAGE_SAVED follows with path.
+  void (*save_image)(int64_t tab, const char* url, const char* path, int32_t max_size);
+  // Puts the image file at path on the system's clipboard, as a page's Copy image would:
+  // Android's; nothing on the Mac, whose menus don't offer it.
+  void (*copy_image)(const char* path);
   // Takes a file Go put in the downloads folder itself, finished, such as a saved crash
   // report, as a finished download is taken: on a phone, copied into the shared Downloads
   // and opened from there; nothing on the Mac.

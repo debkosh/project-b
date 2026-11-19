@@ -572,6 +572,8 @@ func (a *App) ContextMenu(tab engine.TabID, m engine.ContextMenu) {
 	a.menus.show(tab, m)
 }
 
+func (a *App) ImageSaved(path string, ok bool) { a.menus.imageSaved(path, ok) }
+
 func (a *App) ScrollDirectionChanged(tab engine.TabID, down bool) {
 	a.Shell.ScrollDirectionChanged(tab, down)
 }

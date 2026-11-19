@@ -57,6 +57,11 @@ class PageTab : public WebContentsObserverHooks, public WebContentsDelegateHooks
   void CaptureThumbnail(int max_width);
   // The latest picture of the page, or null before the first. It goes with the tab.
   scoped_refptr<base::RefCountedMemory> thumbnail() const { return thumbnail_; }
+  // Fetches the image at url as the page would, from its cache when it has it, scaled down
+  // to at most max_size pixels on its longer side (0 keeps its size), and writes it at path
+  // as a PNG, telling Go with PB_EVENT_IMAGE_SAVED. The phone's long-press menu shares and
+  // copies an image this way, and shows its thumbnail.
+  void SaveImage(const GURL& url, const std::string& path, int max_size);
 
  private:
   // content::WebContentsObserver:

@@ -10,6 +10,7 @@ import android.content.res.Configuration;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
+import android.net.Uri;
 import android.os.Process;
 import android.os.SystemClock;
 import android.view.ActionMode;
@@ -25,6 +26,7 @@ import android.widget.FrameLayout;
 import androidx.core.content.FileProvider;
 
 import java.io.File;
+import java.net.URLConnection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -39,6 +41,7 @@ import org.chromium.content_public.browser.SelectionMenuItem;
 import org.chromium.content_public.browser.SelectionPopupController;
 import org.chromium.content_public.browser.Visibility;
 import org.chromium.content_public.browser.WebContents;
+import org.chromium.ui.base.Clipboard;
 import org.chromium.ui.base.ViewAndroidDelegate;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.native_theme.OsSettingsProviderAndroidBridge;
@@ -82,18 +85,22 @@ final class BrowserWindow extends FrameLayout {
     // Five numbers a region, x, y, w, h and what a press there does, in order: the first that
     // holds a point decides. None holds it: the page.
     private double[] regions = new double[0];
+    // Where Chromium's clipboard keeps the images it copies.
+    private final ClipboardImages images;
 
     BrowserWindow(Activity activity, WindowAndroid windowAndroid) {
         super(activity);
         this.activity = activity;
         this.windowAndroid = windowAndroid;
         density = activity.getResources().getDisplayMetrics().density;
+        images = new ClipboardImages(activity);
         // A second finger on the bar during a pinch on the page must stay with the page.
         setMotionEventSplittingEnabled(false);
     }
 
     /** Content is ready: make the surface, then the native side, which starts the app and Go. */
     void start(long goTable, String blockedHosts, boolean skipWelcome) {
+        Clipboard.getInstance().setImageFileProvider(images);
         // How old the process is, for the timeline's time zero.
         long processAgeMs = SystemClock.elapsedRealtime() - Process.getStartElapsedRealtime();
         nativeWindow =
@@ -574,21 +581,45 @@ final class BrowserWindow extends FrameLayout {
         }
     }
 
-    /** Hands a file to Android's chooser, to send or save where the user picks. */
+    /** A file of ours as other apps read it, through the one FileProvider. */
+    private Uri shared(String path) {
+        return images.uriOf(new File(path));
+    }
+
+    /**
+     * Hands a file to Android's chooser, to send or save where the user picks, typed by its
+     * name: an image as one, so the apps for images are offered, and a report as text.
+     */
     @CalledByNative
     private void shareFile(String path) {
+        String type = URLConnection.guessContentTypeFromName(path);
         Intent send =
                 new Intent(Intent.ACTION_SEND)
-                        .setType("text/plain")
-                        .putExtra(
-                                Intent.EXTRA_STREAM,
-                                FileProvider.getUriForFile(
-                                        activity,
-                                        activity.getPackageName() + ".updates",
-                                        new File(path)))
+                        .setType(type != null ? type : "text/plain")
+                        .putExtra(Intent.EXTRA_STREAM, shared(path))
                         .putExtra(Intent.EXTRA_SUBJECT, new File(path).getName())
                         .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         activity.startActivity(Intent.createChooser(send, null));
+    }
+
+    /** Hands text, such as a link, to Android's chooser. */
+    @CalledByNative
+    private void shareText(String text) {
+        Intent send =
+                new Intent(Intent.ACTION_SEND)
+                        .setType("text/plain")
+                        .putExtra(Intent.EXTRA_TEXT, text);
+        activity.startActivity(Intent.createChooser(send, null));
+    }
+
+    /**
+     * Puts an image file of ours on the clipboard, as a content URI, through Chromium's
+     * clipboard, which records it as its own copy: our pages paste it then, and other apps
+     * read it through the FileProvider while the clip is there.
+     */
+    @CalledByNative
+    private void copyImage(String path) {
+        Clipboard.getInstance().setImageUri(shared(path));
     }
 
     private int px(double css) {

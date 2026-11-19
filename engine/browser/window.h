@@ -101,6 +101,9 @@ class Window {
   // Offers the file at path to the system's share sheet, anchored on anchor, in shell
   // coordinates: Android's chooser, or the Mac's sharing picker beside it.
   void ShareFile(const std::string& path, const gfx::RectF& anchor);
+  // Offers text, such as a link, to Android's chooser; nothing on the Mac, whose menus
+  // don't offer it.
+  void ShareText(const std::string& text);
 #if BUILDFLAG(IS_ANDROID)
   // Android's views need the Java WebContents, which a native view can't lead back to.
   void SetShellContents(content::WebContents* contents);
@@ -215,6 +218,10 @@ class Window {
   struct Impl;
   std::unique_ptr<Impl> impl_;
 };
+
+// Puts the image file at path on the system's clipboard: Android's, as a content URI;
+// nothing on the Mac, whose menus don't offer it.
+void CopyImageFile(const std::string& path);
 
 }  // namespace project_b
 

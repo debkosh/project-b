@@ -137,6 +137,10 @@ type Engine struct {
 	// shared is the file ShareFile last offered, as a share sheet would; published, the
 	// one PublishFile was last given.
 	shared, published string
+	// sharedText is the text ShareText last offered; copiedImage, the file CopyImage last
+	// put on the clipboard; savedImages, every SaveImage asked, in order.
+	sharedText, copiedImage string
+	savedImages             []SavedImage
 	// left is whether the back key left the app, as Android does with no tab to go back
 	// in or close.
 	left bool

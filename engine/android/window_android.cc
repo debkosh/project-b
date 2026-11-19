@@ -435,6 +435,18 @@ void Window::ShareFile(const std::string& path, const gfx::RectF& anchor) {
                                base::android::ConvertUTF8ToJavaString(env, path));
 }
 
+void Window::ShareText(const std::string& text) {
+  JNIEnv* env = AttachCurrentThread();
+  Java_BrowserWindow_shareText(env, g_browser_window->java(),
+                               base::android::ConvertUTF8ToJavaString(env, text));
+}
+
+void CopyImageFile(const std::string& path) {
+  JNIEnv* env = AttachCurrentThread();
+  Java_BrowserWindow_copyImage(env, g_browser_window->java(),
+                               base::android::ConvertUTF8ToJavaString(env, path));
+}
+
 void Window::Minimize() {
   Java_BrowserWindow_minimize(AttachCurrentThread(), g_browser_window->java());
 }

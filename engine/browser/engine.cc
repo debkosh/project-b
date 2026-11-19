@@ -582,6 +582,31 @@ void CallShareFile(int64_t window,
   }
 }
 
+void CallShareText(int64_t window, const char* text) {
+  CheckMainThread();
+  if (auto* app_window = g_engine->window(window)) {
+    app_window->window->ShareText(text);
+  }
+}
+
+// A save for a tab already gone is still told, as Go waits on every save it asked for.
+void CallSaveImage(int64_t tab, const char* url, const char* path, int32_t max_size) {
+  CheckMainThread();
+  if (PageTab* page = g_engine->tab(tab)) {
+    page->SaveImage(GURL(url), path, max_size);
+    return;
+  }
+  hooks::Args args;
+  args.Str(path);
+  args.Int(0);
+  hooks::Fire(PB_EVENT_IMAGE_SAVED, args);
+}
+
+void CallCopyImage(const char* path) {
+  CheckMainThread();
+  CopyImageFile(path);
+}
+
 void CallSendToShell(int64_t window, const char* json, size_t length) {
   CheckMainThread();
   g_engine->SendToShell(window, json, length);
@@ -727,6 +752,9 @@ const PBEngineCalls* Engine::Calls() {
       .send_to_shell = CallSendToShell,
       .set_shell_back = CallSetShellBack,
       .share_file = CallShareFile,
+      .share_text = CallShareText,
+      .save_image = CallSaveImage,
+      .copy_image = CallCopyImage,
       .publish_file = CallPublishFile,
       .send_to_page = CallSendToPage,
       .set_menu = CallSetMenu,

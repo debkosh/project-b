@@ -64,6 +64,9 @@ static inline void call_send_to_shell(const PBEngineCalls* c, int64_t window, co
 static inline void call_set_shell_back(const PBEngineCalls* c, int64_t window, int on) { c->set_shell_back(window, on); }
 static inline void call_publish_file(const PBEngineCalls* c, const char* path) { c->publish_file(path); }
 static inline void call_share_file(const PBEngineCalls* c, int64_t window, const char* path, double x, double y, double w, double h) { c->share_file(window, path, x, y, w, h); }
+static inline void call_share_text(const PBEngineCalls* c, int64_t window, const char* text) { c->share_text(window, text); }
+static inline void call_save_image(const PBEngineCalls* c, int64_t tab, const char* url, const char* path, int32_t max_size) { c->save_image(tab, url, path, max_size); }
+static inline void call_copy_image(const PBEngineCalls* c, const char* path) { c->copy_image(path); }
 static inline const PBContentHooks* call_content_hooks(const PBEngineCalls* c) { return c->content_hooks ? c->content_hooks() : NULL; }
 static inline void call_set_subscribed(const PBContentHooks* h, int32_t hook, int on) { h->set_subscribed(hook, on); }
 static inline void call_post_wakeup(const PBEngineCalls* c) { c->post_wakeup(); }
@@ -433,6 +436,25 @@ func (e *nativeEngine) ShareFile(w engine.WindowID, path string, r engine.Rect) 
 	p := C.CString(path)
 	defer C.free(unsafe.Pointer(p))
 	C.call_share_file(e.calls, C.int64_t(w), p, C.double(r.X), C.double(r.Y), C.double(r.W), C.double(r.H))
+}
+
+func (e *nativeEngine) ShareText(w engine.WindowID, text string) {
+	t := C.CString(text)
+	defer C.free(unsafe.Pointer(t))
+	C.call_share_text(e.calls, C.int64_t(w), t)
+}
+
+func (e *nativeEngine) SaveImage(tab engine.TabID, url, path string, maxSize int) {
+	u, p := C.CString(url), C.CString(path)
+	defer C.free(unsafe.Pointer(u))
+	defer C.free(unsafe.Pointer(p))
+	C.call_save_image(e.calls, C.int64_t(tab), u, p, C.int32_t(maxSize))
+}
+
+func (e *nativeEngine) CopyImage(path string) {
+	p := C.CString(path)
+	defer C.free(unsafe.Pointer(p))
+	C.call_copy_image(e.calls, p)
 }
 
 func (e *nativeEngine) PublishFile(path string) {

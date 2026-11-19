@@ -2,7 +2,10 @@ package app_test
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"projectb/engine"
@@ -147,5 +150,76 @@ func TestAMenuGoesWithoutRunningAnything(t *testing.T) {
 	r.e.Settle()
 	if got := r.e.Clipboard(); got != "" {
 		t.Fatalf("nothing should have been copied: %q", got)
+	}
+}
+
+// A phone's sheet has no Save panel: it downloads at once and shares, copies a link's words
+// and the image itself, and shows the image pressed once the engine has fetched it.
+func TestAPhoneMenuDownloadsSharesAndCopies(t *testing.T) {
+	r := startOn(t, "mobile")
+	defer r.stop()
+	r.visit("https://a.test/")
+	r.show(1)
+
+	link := r.rightClick(`{"link":"https://b.test/f.zip","linkText":" The file "}`)
+	if got := ids(link); !slices.Equal(got, []string{"link.newTab", "link.newWindow", "link.copy", "link.copyText", "link.download", "link.share"}) {
+		t.Fatalf("phone link menu = %v", got)
+	}
+	if got := ids(r.rightClick(`{"link":"mailto:a@b.test"}`)); !slices.Equal(got, []string{"link.copy", "link.share"}) {
+		t.Fatalf("a mail link has no words to copy and no download: %v", got)
+	}
+
+	// A linked image has both sets, and its picture follows.
+	both := r.rightClick(`{"link":"https://b.test/","src":"https://a.test/i.png","media":"image"}`)
+	if got := ids(both); !slices.Equal(got, []string{"link.newTab", "link.newWindow", "link.copy", "link.download", "link.share",
+		"image.newTab", "image.download", "image.copy", "image.share", "image.copyAddress"}) {
+		t.Fatalf("linked image menu = %v", got)
+	}
+	thumb := r.waitFor(func(m map[string]any) bool {
+		c, _ := m["contextMenu"].(map[string]any)
+		return m["t"] == "contextMenu" && c != nil && c["id"] == both["id"] && c["thumb"] != nil
+	})["contextMenu"].(map[string]any)
+	if !strings.HasPrefix(thumb["thumb"].(string), "data:image/png;base64,") {
+		t.Fatalf("thumb = %.40v", thumb["thumb"])
+	}
+	if saved := r.e.SavedImages(); len(saved) != 1 || saved[0].URL != "https://a.test/i.png" || saved[0].MaxSize != 120 {
+		t.Fatalf("the picture is asked for once, small: %v", saved)
+	}
+
+	r.choose(r.rightClick(`{"link":"https://b.test/f.zip","linkText":" The file "}`), "link.copyText")
+	r.e.Settle()
+	if got := r.e.Clipboard(); got != "The file" {
+		t.Fatalf("clipboard = %q", got)
+	}
+	r.choose(r.rightClick(`{"link":"https://b.test/f.zip"}`), "link.share")
+	r.e.Settle()
+	if got := r.e.SharedText(); got != "https://b.test/f.zip" {
+		t.Fatalf("shared = %q", got)
+	}
+	r.choose(r.rightClick(`{"link":"https://b.test/f.zip"}`), "link.download")
+	r.waitFor(func(m map[string]any) bool {
+		list, _ := m["downloads"].([]any)
+		return m["t"] == "downloads" && len(list) == 1 && list[0].(map[string]any)["url"] == "https://b.test/f.zip"
+	})
+
+	image := `{"src":"https://a.test/i.png","media":"image"}`
+	r.choose(r.rightClick(image), "image.copy")
+	r.e.Settle()
+	r.e.Settle()
+	copied := r.e.CopiedImage()
+	if filepath.Base(filepath.Dir(copied)) != "shared" {
+		t.Fatalf("copied = %q", copied)
+	}
+	if _, err := os.Stat(copied); err != nil {
+		t.Fatalf("the image to copy should be there: %v", err)
+	}
+	r.choose(r.rightClick(image), "image.share")
+	r.e.Settle()
+	r.e.Settle()
+	if shared := r.e.Shared(); filepath.Base(filepath.Dir(shared)) != "shared" || shared == copied {
+		t.Fatalf("shared = %q", shared)
+	}
+	if saved := r.e.SavedImages(); saved[len(saved)-1].MaxSize != 0 {
+		t.Fatalf("a shared image keeps its size: %v", saved)
 	}
 }

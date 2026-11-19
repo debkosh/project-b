@@ -73,6 +73,9 @@ func (r *recorder) FolderChosen(w engine.WindowID, path string) {
 	r.note("folder %d %s", w, path)
 }
 func (r *recorder) AppLink(tab engine.TabID, url string) { r.note("app link %d %s", tab, url) }
+func (r *recorder) ImageSaved(path string, ok bool) {
+	r.note("image saved %s %v", path, ok)
+}
 
 func listening() (*Events, *recorder) {
 	e, r := New(), &recorder{}

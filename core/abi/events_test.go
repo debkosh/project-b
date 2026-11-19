@@ -168,6 +168,7 @@ func (r *adapterRecorder) DefaultBrowserChanged(bool)               {}
 func (r *adapterRecorder) NotificationsAnswered(bool)               {}
 func (r *adapterRecorder) FolderChosen(engine.WindowID, string)     {}
 func (r *adapterRecorder) AppLink(engine.TabID, string)             {}
+func (r *adapterRecorder) ImageSaved(string, bool)                  {}
 func (r *adapterRecorder) SiteDataListed(string, []engine.SiteData) {}
 func (r *adapterRecorder) IsPageFullScreen(engine.TabID) bool       { return false }
 

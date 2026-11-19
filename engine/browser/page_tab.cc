@@ -5,6 +5,8 @@
 #include <string>
 
 #include "base/base64.h"
+#include "base/files/file_path.h"
+#include "base/files/file_util.h"
 #include "base/functional/bind.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/stringprintf.h"
@@ -483,6 +485,56 @@ void PageTab::CaptureThumbnail(int max_width) {
       gfx::Rect(), size, kThumbnailTimeout,
       base::BindOnce(&PageTab::OnThumbnailCopied, weak_factory_.GetWeakPtr(),
                      ++thumbnail_request_, base::TimeTicks::Now()));
+}
+
+namespace {
+
+// Writes the largest of bitmaps at path as a PNG, off the main thread, making its folder.
+bool WriteImage(const base::FilePath& path, const std::vector<SkBitmap>& bitmaps) {
+  const SkBitmap* best = nullptr;
+  for (const SkBitmap& bitmap : bitmaps) {
+    if (!bitmap.drawsNothing() && (!best || bitmap.width() > best->width())) {
+      best = &bitmap;
+    }
+  }
+  if (!best) {
+    return false;
+  }
+  std::optional<std::vector<uint8_t>> png =
+      gfx::PNGCodec::EncodeBGRASkBitmap(*best, /*discard_transparency=*/false);
+  return png && base::CreateDirectory(path.DirName()) && base::WriteFile(path, *png);
+}
+
+void FireImageSaved(const std::string& path, bool ok) {
+  hooks::Args args;
+  args.Str(path);
+  args.Int(ok ? 1 : 0);
+  hooks::Fire(PB_EVENT_IMAGE_SAVED, args);
+}
+
+}  // namespace
+
+// Not bound to the tab: an image fetched just before its tab closed is still written and
+// told, as Go waits on every save it asked for.
+void PageTab::SaveImage(const GURL& url, const std::string& path, int max_size) {
+  contents_->DownloadImage(
+      url, /*is_favicon=*/false, /*preferred_size=*/gfx::Size(),
+      /*max_bitmap_size=*/std::max(0, max_size), /*bypass_cache=*/false,
+      base::BindOnce(
+          [](const std::string& path, int id, int http_status_code, const GURL& image_url,
+             const std::vector<SkBitmap>& bitmaps, const std::vector<gfx::Size>& sizes) {
+            if (bitmaps.empty()) {
+              LOG(WARNING) << "save image: " << image_url.possibly_invalid_spec()
+                           << " gave no image, status " << http_status_code;
+              FireImageSaved(path, false);
+              return;
+            }
+            base::ThreadPool::PostTaskAndReplyWithResult(
+                FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
+                base::BindOnce(&WriteImage, base::FilePath::FromUTF8Unsafe(path), bitmaps),
+                base::BindOnce(&FireImageSaved, path));
+          },
+          path));
 }
 
 // The JPEG is made off the main thread: a phone's screenful takes some milliseconds.

@@ -352,6 +352,16 @@ type Engine interface {
 	// ShareFile offers the file at path to the system's share sheet, anchored on a
 	// rectangle in the window's shell coordinates.
 	ShareFile(w WindowID, path string, anchor Rect)
+	// ShareText offers text, such as a link, to the system's share sheet: Android's chooser.
+	// Nothing on the Mac, whose menus don't offer it.
+	ShareText(w WindowID, text string)
+	// SaveImage fetches the image at url as tab's page would, from its cache when it has
+	// it, scaled down to at most maxSize pixels on its longer side (0 keeps its size), and
+	// writes it at path as a PNG; ImageSaved follows with path.
+	SaveImage(tab TabID, url, path string, maxSize int)
+	// CopyImage puts the image file at path on the system's clipboard: Android's. Nothing
+	// on the Mac, whose menus don't offer it.
+	CopyImage(path string)
 	// PublishFile takes a file Go put in the downloads folder itself, finished, such as a
 	// saved crash report, as a finished download of the engine's is taken: on a phone it
 	// is copied into the shared Downloads, and opened from there; on the Mac, where the
@@ -539,6 +549,8 @@ type Listener interface {
 	NotificationsAnswered(allowed bool)
 	// FolderChosen is how ChooseFolder ended: the folder, or "" for none.
 	FolderChosen(w WindowID, path string)
+	// ImageSaved is how SaveImage ended: whether the image is now a PNG at path.
+	ImageSaved(path string, ok bool)
 	// SiteDataListed is what ListSiteData found in a workspace's storage, by host.
 	SiteDataListed(workspace string, hosts []SiteData)
 

@@ -685,6 +685,10 @@ void Window::ShareFile(const std::string& path, const gfx::RectF& anchor) {
                             preferredEdge:NSRectEdgeMinY];
 }
 
+void Window::ShareText(const std::string& text) {}
+
+void CopyImageFile(const std::string& path) {}
+
 void Window::SetShellView(gfx::NativeView view) {
   NSView* shell = view.GetNativeNSView();
   shell.frame = impl_->container.bounds;
