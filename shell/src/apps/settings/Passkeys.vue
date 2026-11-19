@@ -103,6 +103,11 @@ function remove() {
   font-style: normal;
 }
 
+/* An empty list is one muted row. */
+.empty {
+  color: var(--muted);
+}
+
 .when {
   flex: none;
   white-space: nowrap;
