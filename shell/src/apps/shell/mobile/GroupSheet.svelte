@@ -5,6 +5,7 @@
   import Sheet from './Sheet.svelte';
   import { openCustomColour } from '@/ui/customColour.js';
   import { paint, swatches } from '@/ui/hues.js';
+  import { inkOn } from '@/ui/tint.js';
   import { groupLabel } from './groups.js';
 
   // A group's sheet: its name, saved on Enter or on leaving the field; its colour, one of
@@ -59,7 +60,7 @@
     {#each swatches() as c (c.color)}
       <button role="radio" aria-label={c.name} aria-checked={group.color === c.color} style:--swatch={c.paint} onclick={() => onchange({ color: c.color })}></button>
     {/each}
-    <button class="custom" class:on={custom} aria-label="Custom colour" style:--swatch={custom ? group.color : null} style:--ring={ring} onclick={pickCustom}><i>+</i></button>
+    <button class="custom" class:on={custom} aria-label="Custom colour" style:--swatch={custom ? group.color : null} style:--ink={custom ? inkOn(group.color) : null} style:--ring={ring} onclick={pickCustom}><i>+</i></button>
   </div>
   <div class="tabs">
     {#each tabs as tab (tab.id)}
@@ -143,7 +144,8 @@
     box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--swatch);
   }
 
-  /* The +: a ring of every hue around a +, or the colour picked with it, ringed. */
+  /* The +: a ring of every hue around a +, or the colour picked with it, ringed, the +
+     still on it. */
   .swatches .custom::after {
     background: radial-gradient(circle, var(--surface) 0 9px, transparent 9.5px), var(--ring);
   }
@@ -162,8 +164,9 @@
     line-height: 1;
   }
 
+  /* A colour picked keeps the + on it, in the ink that reads on it. */
   .swatches .custom.on i {
-    color: transparent;
+    color: var(--ink);
   }
 
   .tabs {

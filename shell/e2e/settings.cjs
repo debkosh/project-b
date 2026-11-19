@@ -431,7 +431,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   // has one.
   await show('frameColour');
   const presets = await page.getByRole('radiogroup', { name: 'Frame colour' }).getByRole('radio')
-    .evaluateAll((els) => els.map((e) => ({ name: e.getAttribute('aria-label'), rgb: getComputedStyle(e).backgroundColor })));
+    .evaluateAll((els) => els.map((e) => ({ name: e.getAttribute('aria-label'), rgb: getComputedStyle(e.querySelector('.ui-swatch-dot')).backgroundColor })));
   const toHex = (rgb) => '#' + rgb.match(/\d+/g).map((v) => Number(v).toString(16).padStart(2, '0')).join('');
   const rootOf = (p, name) => p.evaluate((n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim(), name);
   for (const theme of ['Light', 'Dark']) {
@@ -1244,6 +1244,8 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
     const dialog = page.getByRole('dialog', { name: 'New workspace' });
     const sheet = page.getByRole('dialog', { name: 'Custom colour' });
     await dialog.getByLabel('Name', { exact: true }).fill('Garden');
+    const targets = await dialog.getByRole('radiogroup', { name: 'Colour' }).locator('.ui-swatch').evaluateAll((els) => els.map((e) => `${e.getBoundingClientRect().width}x${e.getBoundingClientRect().height}`));
+    check('on a phone, each swatch is a 48px target', targets.length === 8 && targets.every((t) => t === '48x48'), targets.join());
     await dialog.getByRole('button', { name: 'Custom colour' }).tap();
     check('on a phone, a workspace\'s + opens the Custom colour sheet', await until(() => sheet.isVisible()) && (await sheet.locator('.ui-colour-chip').innerText()) === 'Garden');
     await sheet.getByRole('radio', { name: 'Light', exact: true }).tap();
@@ -1257,7 +1259,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
     await sheet.getByRole('button', { name: 'Done' }).tap();
     const plus = dialog.getByRole('button', { name: 'Custom colour' });
     check('Done keeps it: the + wears the colour, and the dialog is still open', await until(async () => !(await sheet.isVisible())) && await dialog.isVisible() &&
-      (await plus.evaluate((e) => getComputedStyle(e).backgroundColor)) === `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`, hex);
+      (await plus.locator('.ui-swatch-dot').evaluate((e) => getComputedStyle(e).backgroundColor)) === `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`, hex);
     await dialog.getByRole('button', { name: 'Cancel' }).click();
     await until(async () => !(await dialog.isVisible()));
   }

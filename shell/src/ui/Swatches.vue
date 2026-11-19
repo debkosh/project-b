@@ -2,6 +2,8 @@
 import { computed, nextTick, ref, watch } from 'vue';
 import { phone } from '@/phone.js';
 import { openCustomColour } from './customColour.js';
+import { inkOn } from './tint.js';
+import { useTints } from './useTints.js';
 
 // A colour from a row of presets, and with custom set, any colour behind the last swatch,
 // which keeps a + on it so it reads as a picker: the system's picker, or on a phone our
@@ -25,6 +27,11 @@ function choose(c) {
   current.value = c;
   emit('update:modelValue', c);
 }
+
+// A colour picked with + keeps the + on it, in the ink that reads on it, so it still reads
+// as the picker.
+const tints = useTints();
+const customStyle = computed(() => (tints.value, isCustom.value && current.value ? { background: current.value, '--ui-swatch-ink': inkOn(current.value) } : null));
 
 function openSheet() {
   openCustomColour({ color: current.value, name: props.item, onchange: choose });
@@ -54,25 +61,15 @@ async function onKey(e) {
       :aria-label="c.name"
       :title="c.name"
       :tabindex="c.color === current || (isCustom && c === list[0]) ? 0 : -1"
-      :style="{ background: c.paint || c.color }"
       @click="choose(c.color)"
-    ></button>
-    <button
-      v-if="custom && phone"
-      type="button"
-      class="ui-swatch custom"
-      :class="{ on: isCustom }"
-      aria-label="Custom colour"
-      :style="isCustom ? { background: current } : null"
-      @click="openSheet"
-    ></button>
-    <label
-      v-else-if="custom"
-      class="ui-swatch custom"
-      :class="{ on: isCustom }"
-      title="Custom colour"
-      :style="isCustom ? { background: current } : null"
     >
+      <span class="ui-swatch-dot" :style="{ background: c.paint || c.color }"></span>
+    </button>
+    <button v-if="custom && phone" type="button" class="ui-swatch custom" :class="{ on: isCustom }" aria-label="Custom colour" @click="openSheet">
+      <span class="ui-swatch-dot" :style="customStyle"></span>
+    </button>
+    <label v-else-if="custom" class="ui-swatch custom" :class="{ on: isCustom }" title="Custom colour">
+      <span class="ui-swatch-dot" :style="customStyle"></span>
       <input type="color" :value="current || '#808080'" aria-label="Custom colour" @input="choose($event.target.value)" />
     </label>
   </div>
@@ -86,21 +83,35 @@ async function onKey(e) {
   gap: 8px;
 }
 
+/* A swatch is its target, holding its dot: the same 24px with a mouse, a 48px target round
+   a 32px dot for a finger. */
 .ui-swatch {
   position: relative;
   flex: none;
+  display: grid;
+  place-items: center;
   width: 24px;
   height: 24px;
   padding: 0;
   border: 0;
   border-radius: 50%;
-  box-shadow: inset 0 0 0 1px var(--line);
+  background: none;
   cursor: pointer;
 }
 
+.ui-swatch-dot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
 /* The chosen one: a ring in the text colour, apart from the swatch by the surface. */
-.ui-swatch[aria-checked='true'],
-.ui-swatch.custom.on {
+.ui-swatch[aria-checked='true'] .ui-swatch-dot,
+.ui-swatch.custom.on .ui-swatch-dot {
   box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--text);
 }
 
@@ -111,34 +122,28 @@ async function onKey(e) {
 }
 
 /* None: the surface, struck through. */
-.ui-swatch.none {
+.ui-swatch.none .ui-swatch-dot {
   background: linear-gradient(135deg, transparent 47%, var(--muted) 47%, var(--muted) 53%, transparent 53%), var(--surface);
 }
 
-/* The custom swatch: a + on the surface until a custom colour is chosen. */
-.ui-swatch.custom {
-  display: grid;
-  place-items: center;
+/* The custom swatch: a + on the surface, and once a colour is picked with it, that colour
+   with the + on it in its ink. */
+.ui-swatch.custom .ui-swatch-dot {
   background: var(--surface);
 }
 
-.ui-swatch.custom::before,
-.ui-swatch.custom::after {
+.ui-swatch.custom .ui-swatch-dot::before,
+.ui-swatch.custom .ui-swatch-dot::after {
   content: '';
   position: absolute;
   width: 10px;
   height: 1.5px;
   border-radius: 1px;
-  background: var(--icon);
+  background: var(--ui-swatch-ink, var(--icon));
 }
 
-.ui-swatch.custom::after {
+.ui-swatch.custom .ui-swatch-dot::after {
   transform: rotate(90deg);
-}
-
-.ui-swatch.custom.on::before,
-.ui-swatch.custom.on::after {
-  background: var(--surface);
 }
 
 .ui-swatch.custom input {
@@ -154,6 +159,23 @@ async function onKey(e) {
 }
 
 .touch .ui-swatches {
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 0;
+}
+
+.touch .ui-swatch {
+  width: 48px;
+  height: 48px;
+}
+
+.touch .ui-swatch-dot {
+  width: 32px;
+  height: 32px;
+}
+
+.touch .ui-swatch.custom .ui-swatch-dot::before,
+.touch .ui-swatch.custom .ui-swatch-dot::after {
+  width: 12px;
+  height: 2px;
 }
 </style>

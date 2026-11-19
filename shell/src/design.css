@@ -326,6 +326,8 @@ input[type='checkbox'] {
   height: 48px;
   padding: 0 16px;
   border-radius: 8px;
+  color: var(--text);
+  font-weight: 600;
 }
 
 .ui-colour-head h2 {

@@ -479,6 +479,7 @@ const H = 915;
   await fire('backKey');
   check('the back key closes it, keeping the colour, and the group\'s sheet stays', await until(async () => !(await custom.isVisible())) && await groupSheet.isVisible() &&
     (await groupDot()) === 'rgb(194, 65, 12)' && (await groupSheet.getByRole('radio', { checked: true }).count()) === 0);
+  check('the + stays on the colour picked', (await plus.locator('i').evaluate((e) => getComputedStyle(e).color)) !== 'rgba(0, 0, 0, 0)' && (await plus.innerText()) === '+');
   await shots('group-custom');
   await plus.tap();
   check('opened again, it starts on the colour picked', await until(() => custom.isVisible()) && (await hexField.inputValue()) === '#c2410c');
