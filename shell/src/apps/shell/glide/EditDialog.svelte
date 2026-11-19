@@ -1,9 +1,10 @@
 <script>
   import { send, shell } from '@/sdk/svelte.svelte.js';
-  import { colors } from './menus.js';
+  import { paint, swatches } from '@/ui/hues.js';
   import * as g from './glide.svelte.js';
 
-  // A name and a colour, for a Space or a folder: {title, name, color, create, save}.
+  // A name and a colour, for a Space or a folder: {title, name, color, create, save}. The
+  // colour is one of gulal's seven hues, or any from the system's picker behind the +.
   let { dialog } = $props();
   // A dialog is made for one thing and goes when it is answered.
   // svelte-ignore state_referenced_locally
@@ -36,9 +37,12 @@
     <h2>{dialog.title}</h2>
     <input bind:this={field} bind:value={name} aria-label="Name" placeholder="Name" autocomplete="off" spellcheck="false" />
     <div class="swatches" role="radiogroup" aria-label="Colour">
-      {#each colors as c (c)}
-        <button type="button" class="swatch" role="radio" aria-checked={c === color} aria-label={c} style:background={c} onclick={() => (color = c)}></button>
+      {#each swatches() as c (c.color)}
+        <button type="button" class="swatch" role="radio" aria-checked={c.color === color} aria-label={c.name} style:background={c.paint} onclick={() => (color = c.color)}></button>
       {/each}
+      <label class="swatch custom" class:on={color?.startsWith('#')} style:background={color?.startsWith('#') ? color : null} title="Custom colour">
+        <input type="color" value={color?.startsWith('#') ? color : '#808080'} aria-label="Custom colour" oninput={(e) => (color = e.currentTarget.value)} />
+      </label>
     </div>
     <div class="answers">
       <button type="button" class="text-button" onclick={() => done(false)}>Cancel</button>
@@ -105,8 +109,50 @@
     border-radius: 50%;
   }
 
-  .swatch[aria-checked='true'] {
+  .swatch[aria-checked='true'],
+  .swatch.custom.on {
     box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--text);
+  }
+
+  /* The custom swatch: a + on the surface until a colour is picked with it. */
+  .swatch.custom {
+    position: relative;
+    display: grid;
+    place-items: center;
+    box-shadow: inset 0 0 0 1px var(--line);
+    background: var(--surface);
+    cursor: pointer;
+  }
+
+  .swatch.custom::before,
+  .swatch.custom::after {
+    content: '';
+    position: absolute;
+    width: 10px;
+    height: 1.5px;
+    border-radius: 1px;
+    background: var(--icon);
+  }
+
+  .swatch.custom::after {
+    transform: rotate(90deg);
+  }
+
+  .swatch.custom.on::before,
+  .swatch.custom.on::after {
+    background: var(--surface);
+  }
+
+  .swatch.custom input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    opacity: 0;
+    cursor: pointer;
   }
 
   .answers {

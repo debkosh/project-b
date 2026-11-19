@@ -1,4 +1,5 @@
 <script>
+  import { closeInnermost } from '@/ui/escape.js';
   import { tick } from 'svelte';
   import { activeTab, connect, drag, focusPage, page, send, setFrame, shell, state as go } from '@/sdk/svelte.svelte.js';
   import { untrack } from 'svelte';
@@ -77,9 +78,11 @@
   const finding = $derived(!!go.find && go.find.tab === go.active);
   $effect(() => send({ t: 'backCloses', on: !!sheet || editing || asking || finding }));
 
-  // The phone's back key: the page's dialog is answered no, the sheet open closes, or the
-  // editing ends.
+  // The phone's back key: what is open over a sheet closes, as the Custom colour sheet
+  // (escape.js), the page's dialog is answered no, the sheet open closes, or the editing
+  // ends.
   function backKey() {
+    if (closeInnermost()) return;
     if (asking) pageDialog.cancel();
     else if (sheet) sheet = '';
     else if (finding) findBar.close();

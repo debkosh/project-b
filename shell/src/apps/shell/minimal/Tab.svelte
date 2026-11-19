@@ -1,4 +1,5 @@
 <script>
+  import { paint } from '@/ui/hues.js';
   import { send, state, tabLabel, workspaceOf } from '@/sdk/svelte.svelte.js';
 
   // One tab: its workspace's colour when it has one, its label, a mark while it loads, and
@@ -27,7 +28,7 @@
   onkeydown={(e) => e.key === 'Enter' && activate()}
 >
   {#if workspace}
-    <span class="dot" style:background={workspace.color} role="img" aria-label="In {workspace.name}"></span>
+    <span class="dot" style:background={paint(workspace.color)} role="img" aria-label="In {workspace.name}"></span>
   {/if}
   <span class="t">{label}</span>
   {#if tab.loading}

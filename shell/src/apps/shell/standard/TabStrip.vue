@@ -1,4 +1,5 @@
 <script setup>
+import { paint } from '@/ui/hues.js';
 import { shown } from '@/keys.js';
 import { computed } from 'vue';
 import { controlSpace as controls, openPin, send, state, tabLabel, unpin, workspaceOf } from '@/sdk/vue.js';
@@ -49,7 +50,7 @@ const items = computed(() =>
       type="button"
       class="chip"
       :data-group="it.chip.id"
-      :style="{ '--group': it.chip.color }"
+      :style="{ '--group': paint(it.chip.color) }"
       :aria-expanded="!it.chip.collapsed"
       :title="groupLabel(it.chip)"
       @click="send({ t: 'editGroup', group: it.chip.id, collapsed: !it.chip.collapsed })"
@@ -63,7 +64,7 @@ const items = computed(() =>
       v-else
       class="tab"
       :class="[{ active: it.tab.id === state.active, grouped: it.group, pinned: it.pin }, dropClass(it.tab.id)]"
-      :style="it.group ? { '--group': it.group.color } : null"
+      :style="it.group ? { '--group': paint(it.group.color) } : null"
       role="tab"
       :data-tab="it.tab.id"
       tabindex="0"
@@ -82,7 +83,7 @@ const items = computed(() =>
       <img v-if="it.tab.favicon" class="icon" :src="it.tab.favicon" alt="" width="16" height="16" />
       <span class="title">{{ tabLabel(it.tab) }}</span>
       <span v-if="waiting(it.tab)" class="waiting" role="img" aria-label="Waiting for an answer" title="Waiting for an answer"></span>
-      <span v-else-if="workspaceOf(it.tab)" class="workspace" role="img" :aria-label="`In ${workspaceOf(it.tab).name}`" :title="workspaceOf(it.tab).name" :style="{ background: workspaceOf(it.tab).color }"></span>
+      <span v-else-if="workspaceOf(it.tab)" class="workspace" role="img" :aria-label="`In ${workspaceOf(it.tab).name}`" :title="workspaceOf(it.tab).name" :style="{ background: paint(workspaceOf(it.tab).color) }"></span>
       <button class="close" type="button" :aria-label="`Close ${tabLabel(it.tab)}`" @click.stop="send({ t: 'closeTab', id: it.tab.id })">
         <svg width="9" height="9" viewBox="0 0 9 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M7.43.9.75 7.58M.9.75l6.68 6.68"/></svg>
       </button>

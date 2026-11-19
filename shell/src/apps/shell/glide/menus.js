@@ -2,10 +2,8 @@
 // the id whose key the item shows, or {separator: true}. Glide's Menu draws them.
 
 import { activeTab, openPin, pinTab, send, state, unpin } from '@/sdk/svelte.svelte.js';
+import { next } from '@/ui/hues.js';
 import * as g from './glide.svelte.js';
-
-// The colours a Space or a folder can take: the workspace colours Go picks from.
-export const colors = ['#3470d0', '#d03434', '#4f9e9e', '#e8a317', '#8a4fd0', '#2e9d5b', '#34404f'];
 
 const sep = { separator: true };
 
@@ -84,11 +82,10 @@ export function spaceMenu(space) {
 }
 
 export function newSpace() {
-  const used = new Set(g.spaces().map((s) => s.color));
   g.ui.dialog = {
     title: 'New Space',
     name: '',
-    color: colors.find((c) => !used.has(c)) || colors[0],
+    color: next(g.spaces().map((s) => s.color)),
     create: true,
     // Go lists the new workspace last; the shell shows it once it hears of it.
     save: (name, color) => {

@@ -21,7 +21,7 @@
   media.addEventListener('change', () => (systemDark = media.matches));
   const dark = $derived(go.theme === 'dark' || (go.theme !== 'light' && systemDark));
   // The Space's tones, or the frame's for a Space Go hasn't listed yet.
-  const tokens = $derived(styleOf(glideTones(g.space().color, g.space().tones || go.tones, dark)));
+  const tokens = $derived(styleOf(glideTones(g.space().tones?.light['--frame'] || g.space().color, g.space().tones || go.tones, dark)));
 
   let bar = $state();
   let find = $state();

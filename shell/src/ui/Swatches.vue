@@ -1,12 +1,16 @@
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue';
+import { phone } from '@/phone.js';
+import { openCustomColour } from './customColour.js';
 
-// A colour from a row of presets, and with custom set, any colour from the system's
-// picker behind the last swatch, which keeps a + on it so it reads as a picker. It is one
-// Tab stop; the arrow keys move the choice, as a radio group's do. colors holds '#rrggbb'
-// strings, or { color, name } where a preset has a name to be read out. A preset whose
-// colour is '' is None, no colour: the surface with a stroke across it.
-const props = defineProps({ modelValue: String, colors: Array, label: String, custom: Boolean });
+// A colour from a row of presets, and with custom set, any colour behind the last swatch,
+// which keeps a + on it so it reads as a picker: the system's picker, or on a phone our
+// Custom colour sheet (customColour.js), its preview named item. It is one Tab stop; the
+// arrow keys move the choice, as a radio group's do. colors holds '#rrggbb' strings, or
+// { color, name, paint } where a preset has a name to be read out, and paint where its
+// colour is drawn other than as itself, as a kept hue is (hues.js). A preset whose colour
+// is '' is None, no colour: the surface with a stroke across it.
+const props = defineProps({ modelValue: String, colors: Array, label: String, custom: Boolean, item: String });
 const emit = defineEmits(['update:modelValue']);
 
 const group = ref(null);
@@ -20,6 +24,10 @@ const isCustom = computed(() => !list.value.some((c) => c.color === current.valu
 function choose(c) {
   current.value = c;
   emit('update:modelValue', c);
+}
+
+function openSheet() {
+  openCustomColour({ color: current.value, name: props.item, onchange: choose });
 }
 
 async function onKey(e) {
@@ -46,11 +54,20 @@ async function onKey(e) {
       :aria-label="c.name"
       :title="c.name"
       :tabindex="c.color === current || (isCustom && c === list[0]) ? 0 : -1"
-      :style="{ background: c.color }"
+      :style="{ background: c.paint || c.color }"
       @click="choose(c.color)"
     ></button>
+    <button
+      v-if="custom && phone"
+      type="button"
+      class="ui-swatch custom"
+      :class="{ on: isCustom }"
+      aria-label="Custom colour"
+      :style="isCustom ? { background: current } : null"
+      @click="openSheet"
+    ></button>
     <label
-      v-if="custom"
+      v-else-if="custom"
       class="ui-swatch custom"
       :class="{ on: isCustom }"
       title="Custom colour"

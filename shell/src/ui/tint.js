@@ -94,3 +94,14 @@ export function folderTile(id, where = 'surface') {
   const s = on(where).fromText(folderText(id)).soft;
   return { background: s.background, border: s.border };
 }
+
+// hueColour is one of the hues a workspace or group keeps (hues.js) as gulal draws it on
+// where, for the Custom colour sheet, which starts its shades from it.
+export function hueColour(h, where = 'surface') {
+  return on(where).hue(Number(h));
+}
+
+// inkOn is the ink that reads on a colour as its background, as a chip's words.
+export function inkOn(background, where = 'surface') {
+  return on(where).swatch(background).ink;
+}

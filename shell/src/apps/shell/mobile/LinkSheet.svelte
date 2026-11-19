@@ -1,4 +1,5 @@
 <script>
+  import { paint } from '@/ui/hues.js';
   import { chooseContextItem, closeContextMenu, state as go } from '@/sdk/svelte.svelte.js';
   import Icon from './Icon.svelte';
   import Sheet from './Sheet.svelte';
@@ -100,7 +101,7 @@
       <div class="rows">
         {#each workspaces as w (w.id)}
           <button class="row" role="menuitem" onclick={() => run({ open: { text: link, workspace: w.id, background: true } })}>
-            <span class="dot" style:background={w.color || 'var(--muted)'}></span>
+            <span class="dot" style:background={paint(w.color) || 'var(--muted)'}></span>
             <span class="label">{w.name}</span>
           </button>
         {/each}

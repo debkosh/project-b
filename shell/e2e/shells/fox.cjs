@@ -184,7 +184,7 @@ const { check, fire, out, regions, settle, until } = lib;
   const inWork = (await go()).active;
   const line = ui.locator(`[role=tab][data-tab="${inWork}"] .workspace`);
   check('a tab in a workspace has a line in its colour', (await line.count()) === 1 && (await line.evaluate((e) => getComputedStyle(e).backgroundColor)) === 'rgb(91, 127, 214)');
-  check('a tab in Main has Main\'s', (await tabs.first().locator('.workspace').evaluate((e) => getComputedStyle(e).backgroundColor)) === 'rgb(52, 112, 208)');
+  check('a tab in Main has Main\'s', (await tabs.first().locator('.workspace').evaluate((e) => getComputedStyle(e).backgroundColor)) === (await ui.locator('body').evaluate(() => { const p = document.body.appendChild(document.createElement('i')); p.style.background = 'var(--hue-0)'; const c = getComputedStyle(p).backgroundColor; p.remove(); return c; })));
   check('the field shows the workspace\'s name', (await ui.locator('.field .workspace').innerText()).trim() === 'Work');
   await tabs.first().click();
   check('and Main\'s for a tab in Main', await until(async () => (await ui.locator('.field .workspace').innerText()).trim() === 'Main'));

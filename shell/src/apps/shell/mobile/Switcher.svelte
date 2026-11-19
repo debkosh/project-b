@@ -1,4 +1,5 @@
 <script>
+  import { paint } from '@/ui/hues.js';
   import { shell, state as go, tabLabel } from '@/sdk/svelte.svelte.js';
   import Favicon from './Favicon.svelte';
   import BookmarkList from './BookmarkList.svelte';
@@ -115,7 +116,7 @@
       <div class="chips" role="radiogroup" aria-label="Workspace">
         {#each workspaces as w (w.id)}
           <button class="chip" role="radio" aria-checked={workspace === w.id} onclick={() => (workspace = w.id)}>
-            {#if w.color}<span class="dot" style:background={w.color}></span>{/if}<span>{w.name}</span>
+            {#if w.color}<span class="dot" style:background={paint(w.color)}></span>{/if}<span>{w.name}</span>
           </button>
         {/each}
       </div>
@@ -189,7 +190,7 @@
           class="card group"
           class:active={g.tabs.includes(go.active)}
           hidden={!shows(item)}
-          style:--group={g.color}
+          style:--group={paint(g.color)}
           role="button"
           tabindex="0"
           aria-label="Group {groupLabel(g)}"

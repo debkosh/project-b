@@ -1,4 +1,5 @@
 <script setup>
+import { paint } from '@/ui/hues.js';
 import { computed } from 'vue';
 import { openMenu } from './menu.js';
 import { view, workspaces } from './state.js';
@@ -19,9 +20,9 @@ const current = computed(() => workspaces.value.find((w) => w.id === view.worksp
     @click="openMenu('workspaces', null, $event, true)"
     @keydown.shift.f10="openMenu('workspaces', null, $event, true)"
   >
-    <span v-if="current" class="dot" :style="{ background: current.color }"></span>
+    <span v-if="current" class="dot" :style="{ background: paint(current.color) }"></span>
     <span v-else class="dots" aria-hidden="true">
-      <span v-for="w in workspaces.slice(0, 3)" :key="w.id" class="dot" :style="{ background: w.color }"></span>
+      <span v-for="w in workspaces.slice(0, 3)" :key="w.id" class="dot" :style="{ background: paint(w.color) }"></span>
     </span>
     <span class="name">{{ current ? current.name : 'All workspaces' }}</span>
     <span class="chevron" aria-hidden="true"></span>

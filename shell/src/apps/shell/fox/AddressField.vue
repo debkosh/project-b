@@ -1,4 +1,5 @@
 <script setup>
+import { paint } from '@/ui/hues.js';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { addressField } from './address.js';
 import { activeTab, focusPage, send, state, workspaceOf } from '@/sdk/vue.js';
@@ -222,7 +223,7 @@ const site = computed(() => openSite(state, activeTab.value));
       <span>{{ activeTab.popupsBlocked }}</span>
     </button>
     <span v-if="workspace" class="workspace">
-      <span class="dot" :style="{ background: workspace.color }"></span>
+      <span class="dot" :style="{ background: paint(workspace.color) }"></span>
       {{ workspace.name }}
     </span>
     <ul v-if="open" id="suggestions" v-shell class="list" role="listbox" @mousedown.prevent>

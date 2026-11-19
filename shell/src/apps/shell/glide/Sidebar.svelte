@@ -8,6 +8,7 @@
   import Nav from './Nav.svelte';
   import TabRow from './TabRow.svelte';
   import { favoriteMenu, folderMenu, newSpace, pinMenu, spaceMenu, tabMenu } from './menus.js';
+  import { paint } from '@/ui/hues.js';
   import * as g from './glide.svelte.js';
   import { hint } from './hint.js';
 
@@ -87,7 +88,7 @@
       oncontextmenu={(ev) => openMenu(ev, group.name || 'Folder', folderMenu(group))}
     >
       <span class="chevron"><Icon name={group.collapsed ? 'chevronRight' : 'chevronDown'} size={14} /></span>
-      <span class="folder-icon" style:color={group.color}><Icon name="folder" /></span>
+      <span class="folder-icon" style:color={paint(group.color)}><Icon name="folder" /></span>
       <span class="label">{group.name || 'Folder'}</span>
     </button>
     {#each e.children as child (child.key)}
@@ -135,7 +136,7 @@
   {/if}
 
   <div class="space-head">
-    <span class="space-dot" style:background={space.color}></span>
+    <span class="space-dot" style:background={paint(space.color)}></span>
     <span class="label">{space.name}</span>
     <button
       bind:this={menuButton}

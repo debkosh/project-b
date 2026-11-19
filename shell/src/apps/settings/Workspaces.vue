@@ -3,6 +3,8 @@ import { computed, inject, nextTick, ref, watch } from 'vue';
 import Dialog from '@/ui/Dialog.vue';
 import RowMenu from '@/ui/RowMenu.vue';
 import Swatches from '@/ui/Swatches.vue';
+import { next, paint, swatches } from '@/ui/hues.js';
+import { useTints } from '@/ui/useTints.js';
 import { send, state } from './state.js';
 
 // The profile's workspaces, one at least: a list of rows, each with its colour, its name and
@@ -11,9 +13,11 @@ import { send, state } from './state.js';
 // Go owns the list and answers with it as it is now; it refuses a duplicate name and
 // deleting the last one too, but the page says so first.
 
-// The colours a workspace starts from; any other is a custom one. Main, the workspace a
-// profile starts with, has the first (core/workspaces).
-const colors = ['#3470d0', '#d03434', '#4f9e9e', '#e8a317', '#8a4fd0', '#2e9d5b', '#34404f'];
+// The colours a workspace is offered: gulal's seven hues, then any with + (hues.js). A new
+// one starts on the hue farthest from those in use, as Go's Main has the first.
+// They are read again on a new palette, which brings them.
+const tints = useTints();
+const colors = computed(() => (tints.value, swatches()));
 
 // Where the page's own heading names the list, its own gives way.
 const titled = inject('settingsTitled', false);
@@ -92,14 +96,14 @@ watch(
 const open = ref(false);
 const editing = ref(null);
 const name = ref('');
-const color = ref(colors[0]);
+const color = ref('');
 const error = ref('');
 const nameInput = ref(null);
 
 function create() {
   editing.value = null;
   name.value = '';
-  color.value = colors.find((c) => !state.workspaces.some((w) => w.color === c)) || colors[state.workspaces.length % colors.length];
+  color.value = next(state.workspaces.map((w) => w.color));
   show();
 }
 
@@ -158,7 +162,7 @@ const title = computed(() => (editing.value ? 'Edit workspace' : 'New workspace'
         :data-workspace="w.id"
         @contextmenu.prevent="menus[w.id]?.open()"
       >
-        <span class="dot" :style="{ background: w.color }" aria-hidden="true"></span>
+        <span class="dot" :style="{ background: paint(w.color) }" aria-hidden="true"></span>
         <span class="label">
           <span class="name" :title="w.name">{{ w.name }}</span>
           <span class="secondary">{{ tabs(w) }}</span>
@@ -185,7 +189,7 @@ const title = computed(() => (editing.value ? 'Edit workspace' : 'New workspace'
         </div>
         <div class="ui-dialog-part">
           <label>Colour</label>
-          <Swatches v-model="color" :colors="colors" label="Colour" custom />
+          <Swatches v-model="color" :colors="colors" label="Colour" custom :item="name.trim() || 'Workspace'" />
         </div>
       </form>
       <template #buttons>

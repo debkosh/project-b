@@ -1,4 +1,5 @@
 <script setup>
+import { paint } from '@/ui/hues.js';
 import { shown as keyShown } from '@/keys.js';
 import { controlSpace, send, state, tabLabel, workspaceOf } from '@/sdk/vue.js';
 import { ExtensionsToolbar } from '@extensions';
@@ -17,7 +18,7 @@ import { chips, shown } from './panes.js';
     <div class="chips" role="tablist" aria-label="Windows">
       <div v-for="(chip, n) in chips" :key="chip.tabs[0].id" class="chip" :class="{ shown: chip.root === shown }">
         <button class="name" type="button" :title="chip.name" @click="send({ t: 'activateTab', id: chip.current.id })">
-          <span v-if="workspaceOf(chip.current)" class="workspace" role="img" :aria-label="`In ${workspaceOf(chip.current).name}`" :style="{ background: workspaceOf(chip.current).color }"></span>
+          <span v-if="workspaceOf(chip.current)" class="workspace" role="img" :aria-label="`In ${workspaceOf(chip.current).name}`" :style="{ background: paint(workspaceOf(chip.current).color) }"></span>
           <span class="number">{{ n + 1 }}</span>
           <span class="label">{{ chip.name }}</span>
         </button>

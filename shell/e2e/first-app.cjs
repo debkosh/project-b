@@ -776,14 +776,14 @@ const stopServer = lib.stop;
   check('a tab in a workspace shows a dot in its colour, with the tabs on the side',
     (await sideRows.nth(1).locator('.workspace').count()) === 1 && (await dotColor(sideRows.nth(1))) === 'rgb(91, 127, 214)' &&
       (await sideRows.nth(1).locator('.workspace').getAttribute('aria-label')) === 'In Work');
-  check('and a tab in Main shows Main\'s', (await dotColor(sideRows.first())) === 'rgb(52, 112, 208)' && (await sideRows.first().locator('.workspace').getAttribute('aria-label')) === 'In Main');
+  check('and a tab in Main shows Main\'s', (await dotColor(sideRows.first())) === (await ui.locator('body').evaluate(() => { const p = document.body.appendChild(document.createElement('i')); p.style.background = 'var(--hue-0)'; const c = getComputedStyle(p).backgroundColor; p.remove(); return c; })) && (await sideRows.first().locator('.workspace').getAttribute('aria-label')) === 'In Main');
   await settle(page);
   await page.screenshot({ path: path.join(out, '11-workspace-dot-side.png') });
   await ui.getByRole('button', { name: 'Tabs on top' }).click();
   await ui.locator('.strip').waitFor();
   const topRows = ui.locator('.strip [role=tab]');
   check('and with the tabs on top', (await topRows.nth(1).locator('.workspace').count()) === 1 && (await dotColor(topRows.nth(1))) === 'rgb(91, 127, 214)');
-  check('where Main\'s tab shows Main\'s', (await dotColor(topRows.first())) === 'rgb(52, 112, 208)');
+  check('where Main\'s tab shows Main\'s', (await dotColor(topRows.first())) === (await ui.locator('body').evaluate(() => { const p = document.body.appendChild(document.createElement('i')); p.style.background = 'var(--hue-0)'; const c = getComputedStyle(p).backgroundColor; p.remove(); return c; })));
   await settle(page);
   await page.screenshot({ path: path.join(out, '12-workspace-dot-top.png') });
   await ui.getByRole('button', { name: 'Tabs on the side' }).click();

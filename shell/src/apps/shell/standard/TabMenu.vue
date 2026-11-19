@@ -1,4 +1,5 @@
 <script setup>
+import { paint } from '@/ui/hues.js';
 import { computed } from 'vue';
 import ContextMenu from '@/ui/ContextMenu.vue';
 import { keyLabel, pinTab, send, state, unpin } from '@/sdk/vue.js';
@@ -49,7 +50,7 @@ const items = computed(() => {
       icon: icons.group,
       items: [
         { label: 'New Group', run: () => send({ t: 'createGroup', ids: [t.id] }) },
-        ...groups.map((g) => ({ label: groupLabel(g), dot: g.color, run: () => send({ t: 'addToGroup', id: t.id, group: g.id }) })),
+        ...groups.map((g) => ({ label: groupLabel(g), dot: paint(g.color), run: () => send({ t: 'addToGroup', id: t.id, group: g.id }) })),
       ],
     },
   );
@@ -60,7 +61,7 @@ const items = computed(() => {
     out.push({
       label: 'Open in Workspace',
       icon: icons.workspace,
-      items: elsewhere.map((w) => ({ label: w.name, dot: w.color, run: () => send({ t: 'newTab', workspace: w.id, text: t.url }) })),
+      items: elsewhere.map((w) => ({ label: w.name, dot: paint(w.color), run: () => send({ t: 'newTab', workspace: w.id, text: t.url }) })),
     });
   }
   out.push(

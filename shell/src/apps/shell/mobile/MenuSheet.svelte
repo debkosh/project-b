@@ -1,4 +1,5 @@
 <script>
+  import { paint } from '@/ui/hues.js';
   import { bookmark, isBookmarked, requestMenu, send, state as go } from '@/sdk/svelte.svelte.js';
   import { extensionsBuilt } from '@extensions';
   import Icon from './Icon.svelte';
@@ -78,7 +79,7 @@
     <div class="rows" role="menu" aria-label="Workspaces">
       {#each workspaces as w (w.id)}
         <button class="row" role="menuitemradio" aria-checked={workspace === w.id} onclick={() => { onworkspace(w.id); onclose(); }}>
-          <span class="dot" style:background={w.color || 'var(--muted)'}></span>
+          <span class="dot" style:background={paint(w.color) || 'var(--muted)'}></span>
           <span class="name">{w.name}</span>
           {#if workspace === w.id}<span class="tick">✓</span>{/if}
         </button>

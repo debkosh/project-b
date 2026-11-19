@@ -1,4 +1,5 @@
 <script>
+  import { paint } from '@/ui/hues.js';
   import { tabLabel } from '@/sdk/svelte.svelte.js';
   import Icon from './Icon.svelte';
   import Sheet from './Sheet.svelte';
@@ -16,7 +17,7 @@
     {#if adding}
       {#each groups as g (g.id)}
         <button class="row" role="menuitem" onclick={() => onadd(g.id)}>
-          <span class="dot" style:background={g.color}></span>
+          <span class="dot" style:background={paint(g.color)}></span>
           <span class="name">{groupLabel(g)}</span>
         </button>
       {/each}

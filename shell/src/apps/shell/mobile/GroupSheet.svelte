@@ -3,11 +3,14 @@
   import Favicon from './Favicon.svelte';
   import Icon from './Icon.svelte';
   import Sheet from './Sheet.svelte';
-  import { colors } from './groups.js';
+  import { openCustomColour } from '@/ui/customColour.js';
+  import { paint, swatches } from '@/ui/hues.js';
+  import { groupLabel } from './groups.js';
 
-  // A group's sheet: its name, saved on Enter or on leaving the field; its colour; its tabs,
-  // a tap on one going there, its × closing it; then New tab in it, Ungroup, and Close
-  // group, which asks first.
+  // A group's sheet: its name, saved on Enter or on leaving the field; its colour, one of
+  // gulal's seven hues or any from the Custom colour sheet behind the +; its tabs, a tap on
+  // one going there, its × closing it; then New tab in it, Ungroup, and Close group, which
+  // asks first.
   let { group, tabs, ask = false, onclose, onchange, onpick, onclosetab, onnewtab, onungroup, onclosegroup } = $props();
   // What the sheet opens with: it is made again for another group.
   // svelte-ignore state_referenced_locally
@@ -19,6 +22,15 @@
     if (name.trim() !== group.name) onchange({ name: name.trim() });
   }
 
+  const custom = $derived(group.color?.startsWith('#'));
+  // The +'s ring: the seven round the wheel, each at its own hue.
+  const wheel = swatches().sort((a, b) => a.color - b.color);
+  const ring = wheel.length ? `conic-gradient(${[...wheel, wheel[0]].map((c, i) => `${c.paint} ${i < wheel.length ? c.color : 360}deg`).join(', ')})` : 'none';
+
+  function pickCustom() {
+    openCustomColour({ color: group.color, name: groupLabel(group), onchange: (color) => onchange({ color }) });
+  }
+
   function modal(dialog) {
     dialog.showModal();
   }
@@ -26,7 +38,7 @@
 
 <Sheet label="Group" {onclose}>
   <div class="head">
-    <span class="dot" style:background={group.color}></span>
+    <span class="dot" style:background={paint(group.color)}></span>
     <input
       class="text-field"
       aria-label="Group name"
@@ -44,9 +56,10 @@
     />
   </div>
   <div class="swatches" role="radiogroup" aria-label="Colour">
-    {#each colors as c (c)}
-      <button role="radio" aria-label={c} aria-checked={group.color === c} style:--swatch={c} onclick={() => onchange({ color: c })}></button>
+    {#each swatches() as c (c.color)}
+      <button role="radio" aria-label={c.name} aria-checked={group.color === c.color} style:--swatch={c.paint} onclick={() => onchange({ color: c.color })}></button>
     {/each}
+    <button class="custom" class:on={custom} aria-label="Custom colour" style:--swatch={custom ? group.color : null} style:--ring={ring} onclick={pickCustom}><i>+</i></button>
   </div>
   <div class="tabs">
     {#each tabs as tab (tab.id)}
@@ -100,8 +113,8 @@
 
   .swatches {
     display: flex;
-    gap: 4px;
-    padding: 0 12px 8px;
+    justify-content: space-between;
+    padding: 4px 12px 12px;
     border-bottom: 1px solid var(--line);
   }
 
@@ -118,14 +131,39 @@
 
   .swatches button::after {
     content: '';
-    width: 24px;
-    height: 24px;
+    grid-area: 1 / 1;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     background: var(--swatch);
   }
 
-  .swatches button[aria-checked='true']::after {
+  .swatches button[aria-checked='true']::after,
+  .swatches .custom.on::after {
     box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--swatch);
+  }
+
+  /* The +: a ring of every hue around a +, or the colour picked with it, ringed. */
+  .swatches .custom::after {
+    background: radial-gradient(circle, var(--surface) 0 9px, transparent 9.5px), var(--ring);
+  }
+
+  .swatches .custom.on::after {
+    background: var(--swatch);
+  }
+
+  .swatches .custom i {
+    grid-area: 1 / 1;
+    z-index: 1;
+    color: var(--text);
+    font-size: 18px;
+    font-style: normal;
+    font-weight: 500;
+    line-height: 1;
+  }
+
+  .swatches .custom.on i {
+    color: transparent;
   }
 
   .tabs {

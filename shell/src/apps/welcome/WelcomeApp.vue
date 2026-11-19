@@ -5,6 +5,8 @@ import ImportWizard from '@/ui/ImportWizard.vue';
 import Segmented from '@/ui/Segmented.vue';
 import Swatches from '@/ui/Swatches.vue';
 import { framePresets } from '@/ui/colours.js';
+import { paint, swatches } from '@/ui/hues.js';
+import { useTints } from '@/ui/useTints.js';
 import { shown } from '@/keys.js';
 import Preview from './Preview.vue';
 import { send, setPref, state } from './state.js';
@@ -27,7 +29,7 @@ const steps = computed(() =>
 const step = ref('hello');
 const at = computed(() => steps.value.indexOf(step.value));
 const go = (by) => {
-  if (step.value === 'work' && by > 0) send({ t: 'setWorkspaces', workspaces: starters.filter((w) => w.on).map(({ name, color }) => ({ name, color })) });
+  if (step.value === 'work' && by > 0) send({ t: 'setWorkspaces', workspaces: starters.filter((w) => w.on).map((w) => ({ name: w.name, color: starterColor(w) })) });
   step.value = steps.value[Math.min(steps.value.length - 1, Math.max(0, at.value + by))];
 };
 const finish = () => send({ t: 'done' });
@@ -58,19 +60,21 @@ function chooseLayout(id) {
 }
 
 // How you work: the workspaces to start with, Personal and Work ticked, and any the person
-// adds; Continue makes those ticked (Go's setWorkspaces). Then the keys: Project B's,
-// which are Chrome's, or Firefox's, each shown by a few of its keys.
-const starterColors = ['#2e9d5b', '#3470d0', '#e8a317', '#8a4fd0', '#d03434', '#4f9e9e', '#34404f'];
+// adds; Continue makes those ticked (Go's setWorkspaces). Each takes the next of gulal's
+// seven hues (hues.js), by its place in the list. Then the keys: Project B's, which are
+// Chrome's, or Firefox's, each shown by a few of its keys.
 const starters = reactive([
-  { name: 'Personal', note: 'Everyday browsing', color: '#2e9d5b', on: true },
-  { name: 'Work', note: 'Mail, docs and tickets, apart', color: '#3470d0', on: true },
-  { name: 'Reading', note: 'Articles for later', color: '#e8a317', on: false },
+  { name: 'Personal', note: 'Everyday browsing', on: true },
+  { name: 'Work', note: 'Mail, docs and tickets, apart', on: true },
+  { name: 'Reading', note: 'Articles for later', on: false },
 ]);
+const tints = useTints();
+const starterColor = (w) => (tints.value, swatches()[starters.indexOf(w) % 7]?.color || '');
 const adding = ref('');
 function addStarter() {
   const name = adding.value.trim();
   if (!name || starters.some((w) => w.name.toLowerCase() === name.toLowerCase())) return;
-  starters.push({ name, note: '', color: starterColors[starters.length % starterColors.length], on: true });
+  starters.push({ name, note: '', on: true });
   adding.value = '';
 }
 const keymaps = [
@@ -191,7 +195,7 @@ onMounted(() => heading.value?.focus());
             <Preview layout="side" />
             <div class="menu">
               <span class="item"><i class="tick">✓</i>All workspaces</span>
-              <span v-for="w in starters.filter((x) => x.on)" :key="w.name" class="item"><i class="dot" :style="{ background: w.color }"></i>{{ w.name }}</span>
+              <span v-for="w in starters.filter((x) => x.on)" :key="w.name" class="item"><i class="dot" :style="{ background: paint(starterColor(w)) }"></i>{{ w.name }}</span>
             </div>
           </div>
           <div class="choices">
@@ -199,7 +203,7 @@ onMounted(() => heading.value?.focus());
               <span class="label" id="workspaces-label">Workspaces</span>
               <div class="card" role="group" aria-labelledby="workspaces-label">
                 <label v-for="w in starters" :key="w.name" class="row starter">
-                  <i class="dot" :style="{ background: w.color }"></i>
+                  <i class="dot" :style="{ background: paint(starterColor(w)) }"></i>
                   <span class="what">
                     <span class="label">{{ w.name }}</span>
                     <span v-if="w.note" class="state">{{ w.note }}</span>

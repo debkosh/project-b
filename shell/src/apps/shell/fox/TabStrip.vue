@@ -1,4 +1,5 @@
 <script setup>
+import { paint } from '@/ui/hues.js';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import AllTabs from './AllTabs.vue';
 import TabIcon from './TabIcon.vue';
@@ -82,7 +83,7 @@ watch(() => [state.active, state.tabs.length], update, { flush: 'post' });
         @mousedown.middle.prevent
         @auxclick.middle="send({ t: 'closeTab', id: tab.id })"
       >
-        <span v-if="workspaceOf(tab)" class="workspace" role="img" :aria-label="`In ${workspaceOf(tab).name}`" :style="{ background: workspaceOf(tab).color }"></span>
+        <span v-if="workspaceOf(tab)" class="workspace" role="img" :aria-label="`In ${workspaceOf(tab).name}`" :style="{ background: paint(workspaceOf(tab).color) }"></span>
         <TabIcon :tab="tab" />
         <span class="title">{{ tabLabel(tab) }}</span>
         <button class="close" type="button" :aria-label="`Close ${tabLabel(tab)}`" @click.stop="send({ t: 'closeTab', id: tab.id })">

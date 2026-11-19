@@ -58,12 +58,24 @@ const sites = ['docs.example.com', 'mail.example.com', 'news.example.org', 'shop
   // The group's menu names and colours it.
   await header().click({ button: 'right' });
   check('a right-click on the header opens the group\'s menu', await menu.isVisible());
+  const hues = menu.getByRole('radiogroup', { name: 'Group colour' });
+  check('it offers gulal\'s seven hues by name, then a + for any colour', JSON.stringify(await hues.getByRole('radio').evaluateAll((rs) => rs.map((r) => r.getAttribute('aria-label')))) === JSON.stringify(['Rose', 'Teal', 'Olive', 'Indigo', 'Green', 'Blue', 'Purple']) &&
+    (await hues.getByLabel('Custom colour').getAttribute('type')) === 'color');
+  check('a new group starts on the first, none being in use', (await hues.getByRole('radio', { name: 'Rose' }).getAttribute('aria-checked')) === 'true');
   await menu.getByLabel('Group name').fill('Research');
-  await menu.getByRole('radio', { name: '#d03434' }).click();
+  await menu.getByRole('radio', { name: 'Teal' }).click();
   await page.keyboard.press('Escape');
   check('Escape closes it', await until(async () => (await menu.count()) === 0));
-  check('the name and the colour are kept, and the header shows them', await until(async () => (await header().innerText()).includes('Research') &&
-    (await header().locator('.swatch').evaluate((e) => getComputedStyle(e).backgroundColor)) === 'rgb(208, 52, 52)'));
+  // A hue is drawn as Go drew it for the theme: --hue-181.
+  const teal = () => ui.locator('body').evaluate(() => {
+    const probe = document.body.appendChild(document.createElement('i'));
+    probe.style.background = 'var(--hue-181)';
+    const c = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return c;
+  });
+  check('the name and the colour are kept, and the header shows them in the theme\'s teal', await until(async () => (await header().innerText()).includes('Research') &&
+    (await header().locator('.swatch').evaluate((e) => getComputedStyle(e).backgroundColor)) === (await teal())));
 
   // A press on the header folds the group; the active tab stays when it's in it.
   await ui.locator(`.sidebar [role=tab][data-tab="${ids[0]}"]`).click();

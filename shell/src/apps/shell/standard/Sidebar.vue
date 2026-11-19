@@ -1,4 +1,5 @@
 <script setup>
+import { paint } from '@/ui/hues.js';
 import { computed } from 'vue';
 import { openPin, send, state, tabLabel, unpin, workspaceOf } from '@/sdk/vue.js';
 import { shown } from '@/keys.js';
@@ -61,7 +62,7 @@ const rows = computed(() =>
           @contextmenu="openMenu('group', r.header.id, $event)"
           @keydown.shift.f10="openMenu('group', r.header.id, $event)"
         >
-          <span class="icon"><span class="swatch" :style="{ background: r.header.color }"></span></span>
+          <span class="icon"><span class="swatch" :style="{ background: paint(r.header.color) }"></span></span>
           <span class="title" :class="{ muted: !r.header.name }">{{ groupLabel(r.header) }}</span>
           <span class="chevron" :class="{ collapsed: r.header.collapsed }" aria-hidden="true"></span>
         </button>
@@ -69,7 +70,7 @@ const rows = computed(() =>
           v-else
           class="row tab"
           :class="[{ active: r.tab.id === state.active, grouped: r.group, pinned: r.pin }, dropClass(r.tab.id)]"
-          :style="r.group ? { '--group': r.group.color } : null"
+          :style="r.group ? { '--group': paint(r.group.color) } : null"
           role="tab"
           :data-tab="r.tab.id"
           tabindex="0"
@@ -90,7 +91,7 @@ const rows = computed(() =>
           </span>
           <span class="title" :class="{ muted: !r.tab.title }">{{ tabLabel(r.tab) }}</span>
           <span v-if="waiting(r.tab)" class="waiting" role="img" aria-label="Waiting for an answer" title="Waiting for an answer"></span>
-          <span v-else-if="workspaceOf(r.tab)" class="workspace" role="img" :aria-label="`In ${workspaceOf(r.tab).name}`" :title="workspaceOf(r.tab).name" :style="{ background: workspaceOf(r.tab).color }"></span>
+          <span v-else-if="workspaceOf(r.tab)" class="workspace" role="img" :aria-label="`In ${workspaceOf(r.tab).name}`" :title="workspaceOf(r.tab).name" :style="{ background: paint(workspaceOf(r.tab).color) }"></span>
           <button class="close" type="button" :aria-label="`Close ${tabLabel(r.tab)}`" @click.stop="send({ t: 'closeTab', id: r.tab.id })">
             <svg width="9" height="9" viewBox="0 0 9 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M7.43.9.75 7.58M.9.75l6.68 6.68"/></svg>
           </button>

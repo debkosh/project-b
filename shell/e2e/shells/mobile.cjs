@@ -445,9 +445,51 @@ const H = 915;
   await page.keyboard.type('Release');
   await page.keyboard.press('Enter');
   check('a name and Enter rename the group', await until(async () => (await strip.getAttribute('aria-label')) === 'Group Release'));
-  await groupSheet.getByRole('radio', { name: '#8a4fd0' }).tap();
-  check('a swatch gives it that colour', await until(async () => (await groupSheet.getByRole('radio', { name: '#8a4fd0' }).getAttribute('aria-checked')) === 'true'));
+  check('the sheet offers gulal\'s seven hues, then a +', (await groupSheet.getByRole('radio').count()) === 7 && await groupSheet.getByRole('button', { name: 'Custom colour' }).isVisible());
+  await groupSheet.getByRole('radio', { name: 'Indigo' }).tap();
+  check('a swatch gives it that colour', await until(async () => (await groupSheet.getByRole('radio', { name: 'Indigo' }).getAttribute('aria-checked')) === 'true'));
   await shots('group');
+
+  // + opens our Custom colour sheet, not the system's picker (docs/design-system.md, On a
+  // phone). Each change shows at once; Done, the back key or a tap outside keep it.
+  const custom = ui.getByRole('dialog', { name: 'Custom colour' });
+  const hueSlider = custom.getByRole('slider', { name: 'Hue' });
+  const hexField = custom.getByRole('textbox', { name: 'Hex' });
+  const groupDot = () => groupSheet.locator('.head .dot').evaluate((e) => getComputedStyle(e).backgroundColor);
+  const rgbOf = (hex) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`;
+  const plus = groupSheet.getByRole('button', { name: 'Custom colour' });
+  await plus.tap();
+  check('+ opens the Custom colour sheet over the group\'s', await until(() => custom.isVisible()) && await groupSheet.isVisible());
+  check('it starts on the group\'s hue at its middle shade, of five', (await hueSlider.inputValue()) === '270' &&
+    (await custom.getByRole('radio').count()) === 5 && (await custom.getByRole('radio', { name: 'Middle' }).getAttribute('aria-checked')) === 'true');
+  check('its preview is the group, its dot and its chip', (await custom.locator('.ui-colour-name').innerText()) === 'Release' && (await custom.locator('.ui-colour-chip').innerText()) === 'Release');
+  const hueBox = await hueSlider.boundingBox();
+  check('Hue is a full-width slider in a 48px target', hueBox.height === 48 && hueBox.width >= W - 32 - 1, JSON.stringify(hueBox));
+  check('Shade\'s swatches are 40px in 48px targets', (await custom.getByRole('radio', { name: 'Deep', exact: true }).evaluate((b) => [b.getBoundingClientRect().width, getComputedStyle(b, '::after').width].join())) === '48,40px');
+  await shots('custom-colour');
+  await custom.getByRole('radio', { name: 'Deep', exact: true }).tap();
+  const deep = await hexField.inputValue();
+  check('a shade shows at once: the group takes it as it is', /^#[0-9a-f]{6}$/.test(deep) && await until(async () => (await groupDot()) === rgbOf(deep)), deep);
+  await hueSlider.fill('120');
+  check('moving the hue shows at once too', await until(async () => (await hexField.inputValue()) !== deep && (await groupDot()) === rgbOf(await hexField.inputValue())));
+  await hexField.fill('#c2410c');
+  check('a hex typed is taken as it is, and no shade is chosen', await until(async () => (await groupDot()) === 'rgb(194, 65, 12)') &&
+    (await custom.locator('[aria-checked=true]').count()) === 0);
+  await settle(page);
+  await fire('backKey');
+  check('the back key closes it, keeping the colour, and the group\'s sheet stays', await until(async () => !(await custom.isVisible())) && await groupSheet.isVisible() &&
+    (await groupDot()) === 'rgb(194, 65, 12)' && (await groupSheet.getByRole('radio', { checked: true }).count()) === 0);
+  await shots('group-custom');
+  await plus.tap();
+  check('opened again, it starts on the colour picked', await until(() => custom.isVisible()) && (await hexField.inputValue()) === '#c2410c');
+  await page.touchscreen.tap(W / 2, 40);
+  check('a tap outside closes it', await until(async () => !(await custom.isVisible())) && await groupSheet.isVisible());
+  await plus.tap();
+  await until(() => custom.isVisible());
+  await custom.getByRole('button', { name: 'Done' }).tap();
+  check('and so does Done', await until(async () => !(await custom.isVisible())) && await groupSheet.isVisible());
+  await groupSheet.getByRole('radio', { name: 'Indigo' }).tap();
+  check('a swatch again takes the hue back', await until(async () => (await groupSheet.getByRole('radio', { name: 'Indigo' }).getAttribute('aria-checked')) === 'true'));
   await page.keyboard.press('Escape');
 
   // The switcher shows the group as one card.

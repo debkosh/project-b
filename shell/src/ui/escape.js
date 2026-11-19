@@ -90,3 +90,11 @@ export function pageHistory(current, show) {
     if (!backs) catchUp();
   };
 }
+
+// closeInnermost closes the innermost layer, as Escape would, for a phone's back key that
+// a shell hears from Go. It says whether there was one.
+export function closeInnermost() {
+  if (!layers.length) return false;
+  layers[layers.length - 1]();
+  return true;
+}

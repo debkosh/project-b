@@ -589,6 +589,8 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   const wsDialog = page.getByRole('dialog', { name: 'New workspace' });
   const wsName = wsDialog.getByLabel('Name', { exact: true });
   check('New workspace… opens a dialog with the name ready to type', await until(async () => await wsName.evaluate((e) => e === document.activeElement)));
+  check('its colours are gulal\'s seven hues and a +, and it starts on the one farthest from Main\'s', (await wsDialog.getByRole('radio').count()) === 7 &&
+    (await wsDialog.getByRole('radio', { name: 'Teal' }).getAttribute('aria-checked')) === 'true' && (await wsDialog.getByLabel('Custom colour').getAttribute('type')) === 'color');
   await wsDialog.getByLabel('Custom colour').fill('#c2410c');
   await wsName.fill('Work');
   await wsName.press('Enter');
@@ -1235,6 +1237,31 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
     return out;
   });
 
+  // On a phone a workspace's + opens our Custom colour sheet over the dialog, in place of the
+  // system's picker; its changes show in the dialog at once, and Done keeps them there.
+  async function phoneCustomColour() {
+    await page.getByRole('button', { name: 'New workspace…' }).click();
+    const dialog = page.getByRole('dialog', { name: 'New workspace' });
+    const sheet = page.getByRole('dialog', { name: 'Custom colour' });
+    await dialog.getByLabel('Name', { exact: true }).fill('Garden');
+    await dialog.getByRole('button', { name: 'Custom colour' }).tap();
+    check('on a phone, a workspace\'s + opens the Custom colour sheet', await until(() => sheet.isVisible()) && (await sheet.locator('.ui-colour-chip').innerText()) === 'Garden');
+    await sheet.getByRole('radio', { name: 'Light', exact: true }).tap();
+    const hex = await sheet.getByRole('textbox', { name: 'Hex' }).inputValue();
+    for (const scheme of ['light', 'dark']) {
+      await page.emulateMedia({ colorScheme: scheme });
+      await settle(page);
+      await page.screenshot({ path: shot(`settings-phone-custom-colour-${scheme}`) });
+    }
+    await page.emulateMedia({ colorScheme: 'light' });
+    await sheet.getByRole('button', { name: 'Done' }).tap();
+    const plus = dialog.getByRole('button', { name: 'Custom colour' });
+    check('Done keeps it: the + wears the colour, and the dialog is still open', await until(async () => !(await sheet.isVisible())) && await dialog.isVisible() &&
+      (await plus.evaluate((e) => getComputedStyle(e).backgroundColor)) === `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`, hex);
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await until(async () => !(await dialog.isVisible()));
+  }
+
   // A phone reaches every group and list, a touch screen's page at a phone's size; what makes
   // no sense there (Tab layout, Keys, the shortcuts) isn't on it.
   await openSettings();
@@ -1278,6 +1305,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
         await page.screenshot({ path: shot('settings-phone-section') });
         check('and there is no Tab layout on a phone', (await page.getByRole('radiogroup', { name: 'Tab layout' }).count()) === 0);
       }
+      if (id === 'workspaces') await phoneCustomColour();
       if (id === 'privacy') {
         await page.locator('[data-section="sites"]').click();
         check('on a phone, Sites opens its page, and back goes to its section', await until(() => page.getByRole('region', { name: 'Site settings', exact: true }).isVisible()));
@@ -1305,6 +1333,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
       await page.locator(`[data-section="${list}"]`).click();
       const there = region ? page.getByRole('region', { name: region, exact: true }) : page.locator('.web-features');
       check(`on a phone, ${list}'s row opens its page`, await until(() => there.isVisible()));
+      if (list === 'workspaces') await phoneCustomColour();
       if (list === 'sparks') {
         // How the list, an import's clash, its outcome and Export… look on a phone, in dark.
         await page.emulateMedia({ colorScheme: 'dark' });

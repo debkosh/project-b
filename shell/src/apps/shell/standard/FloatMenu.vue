@@ -1,9 +1,10 @@
 <script setup>
+import { paint, swatches } from '@/ui/hues.js';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { send, state } from '@/sdk/vue.js';
 import { pushEscape } from '@/ui/escape.js';
 import Swatches from '@/ui/Swatches.vue';
-import { colors, groupLabel } from './groups.js';
+import { groupLabel } from './groups.js';
 import { closeMenu, menu } from './menu.js';
 import { chooseWorkspace, newTab, view, workspaces } from './state.js';
 
@@ -116,8 +117,10 @@ function onKey(e) {
         />
         <Swatches
           :model-value="group.color"
-          :colors="colors"
+          :colors="swatches()"
           label="Group colour"
+          custom
+          :item="groupLabel(group)"
           @update:model-value="(c) => send({ t: 'editGroup', group: group.id, color: c })"
         />
       </div>
@@ -147,7 +150,7 @@ function onKey(e) {
         :aria-checked="view.workspace === w.id"
         @click="run(() => chooseWorkspace(w.id))"
       >
-        <span class="dot" :style="{ background: w.color }"></span>{{ w.name }}<svg v-if="view.workspace === w.id" class="tick" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.5l2.5 2.5 4.5-5" /></svg>
+        <span class="dot" :style="{ background: paint(w.color) }"></span>{{ w.name }}<svg v-if="view.workspace === w.id" class="tick" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.5l2.5 2.5 4.5-5" /></svg>
       </button>
       <div class="ui-menu-separator" role="separator"></div>
       <button v-if="view.workspace !== null" type="button" role="menuitem" class="ui-menu-item" @click="run(newTab)">New tab in {{ workspaces.find((w) => w.id === view.workspace)?.name }}</button>

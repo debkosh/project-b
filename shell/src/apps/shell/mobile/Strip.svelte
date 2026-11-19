@@ -1,4 +1,5 @@
 <script>
+  import { paint } from '@/ui/hues.js';
   import { shell, tabLabel } from '@/sdk/svelte.svelte.js';
   import Favicon from './Favicon.svelte';
   import Icon from './Icon.svelte';
@@ -20,7 +21,7 @@
 
 <div class="strip" use:shell role="group" aria-label="Group {groupLabel(group)}">
   <button class="dot" aria-label="Group {groupLabel(group)}" aria-haspopup="dialog" onclick={onsheet}>
-    <i style:background={group.color}></i>
+    <i style:background={paint(group.color)}></i>
   </button>
   <div class="tabs" bind:this={strip}>
     {#each tabs as tab (tab.id)}

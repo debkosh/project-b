@@ -286,3 +286,181 @@ input[type='checkbox'] {
   outline: none;
   box-shadow: var(--focus-ring);
 }
+
+/* The Custom colour sheet (ui/customColour.js), a phone's picker for any colour: a sheet at
+   the bottom, over a dimmed page, as a choice is. */
+.ui-colour-sheet {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  margin: auto 0 0;
+  padding: 8px 0 16px;
+  border: 0;
+  border-radius: 16px 16px 0 0;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-float);
+}
+
+.ui-colour-sheet::backdrop {
+  background: color-mix(in srgb, var(--bar) 70%, transparent);
+}
+
+.ui-colour-head {
+  display: flex;
+  align-items: center;
+  padding: 0 8px 0 16px;
+}
+
+.ui-colour-head .text-button {
+  height: 48px;
+  padding: 0 16px;
+  border-radius: 8px;
+}
+
+.ui-colour-head h2 {
+  flex: 1;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.ui-colour-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 16px 16px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--bar);
+}
+
+.ui-colour-dot {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--ui-colour);
+}
+
+.ui-colour-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+
+.ui-colour-chip {
+  flex: none;
+  max-width: 50%;
+  height: 28px;
+  padding: 0 12px;
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--ui-colour);
+  color: var(--ui-colour-ink);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 28px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ui-colour-label,
+.ui-colour-sheet .ui-colour-label {
+  display: block;
+  margin: 0;
+  padding: 0 16px 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* Hue: a 28px track in a 48px target, with a 36px thumb in the hue's middle shade. */
+.ui-colour-hue {
+  display: block;
+  box-sizing: border-box;
+  width: calc(100% - 32px);
+  height: 48px;
+  margin: 0 16px 12px;
+  background: none;
+  appearance: none;
+}
+
+.ui-colour-hue::-webkit-slider-runnable-track {
+  height: 28px;
+  border-radius: 14px;
+  background: var(--ui-colour-track);
+}
+
+.ui-colour-hue::-webkit-slider-thumb {
+  width: 36px;
+  height: 36px;
+  margin-top: -4px;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  background: var(--ui-colour-thumb);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  appearance: none;
+}
+
+.ui-colour-hue:focus-visible {
+  outline: none;
+}
+
+.ui-colour-hue:focus-visible::-webkit-slider-thumb {
+  box-shadow: var(--focus-ring);
+}
+
+/* Shade: five 40px swatches, each in a 48px target. */
+.ui-colour-shades {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 12px 12px;
+}
+
+.ui-colour-shades button {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+}
+
+.ui-colour-shades button::after {
+  content: '';
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--ui-shade);
+}
+
+.ui-colour-shades button[aria-checked='true']::after {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ui-shade);
+}
+
+.ui-colour-shades button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.ui-colour-hex {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 16px 0;
+}
+
+.ui-colour-hex label {
+  color: var(--muted);
+}
+
+.ui-colour-hex .text-field {
+  width: 140px;
+  height: 48px;
+  font-family: ui-monospace, Menlo, monospace;
+}
