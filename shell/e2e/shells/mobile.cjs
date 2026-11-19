@@ -933,8 +933,14 @@ const H = 915;
     return b;
   };
   // Its bytes held, so the offer stays up through its pictures; failed after, to be done.
+  // It starts with the keyboard up, as one from the address does: the bar keeps its news out
+  // of sight until the keyboard goes.
+  await fire('keyboard', 'up');
   await fire('download', 'https://example.com/files/offered.zip');
   await fire('downloadsStall');
+  await page.waitForTimeout(500);
+  check('a download starting with the keyboard up keeps its bar out of sight', (await barSaid()).at(-1) === 'Downloading offered.zip' && !(await dlBar.isVisible()), JSON.stringify(await barSaid()));
+  await fire('keyboard', 'down');
   check('the first download offers notifications on its bar, on a line of its own, with Allow only', await until(async () => (await barSaid()).at(-1) === 'Downloading offered.zip' &&
     (await dlBar.locator('.ask').textContent()) === 'Show progress in notifications?' &&
     (await dlBar.getByRole('button').count()) === 1 && (await dlBar.getByRole('button', { name: 'Allow' }).isVisible())), JSON.stringify(await barSaid()));

@@ -16,8 +16,8 @@ The seams:
 - **The network across sleep.** A download that stops receiving waits for ever unless
   something gives up on it. Two so far: downloads after sleep, the stuck updater.
 - **Shell layers.** What lies over the page has to stay under the shell's own menus, and
-  back has to close what is open before it leaves. Two so far: the menu under the crash
-  page, the back key out of Settings.
+  back has to close what is open before it leaves. Three so far: the menu under the crash
+  page, the back key out of Settings, a download bar lost under the keyboard.
 - **Tooling and test machines.** Shared folders and long-lived emulators. Two so far: the
   mixed package, the emulators' memory.
 - **Narrow widths.** What sits next to something, or under it, has to be measured against
@@ -119,6 +119,26 @@ The seams:
   its own.
 - **Guard:** `TestTheSameNameAfterItsFileMovedGetsItsOwnPath` in Go; drive_android's
   downloads part deletes the older one and checks the newer copy stays.
+
+## A download bar lost under the keyboard, 2026-11-19
+
+- **Seen:** in the batch for 0.2.109, on a phone in the Mobile shell, a download started
+  from the address bar showed no bar at all, and so never offered notifications. The phone
+  check of the offer found it.
+- **Cause:** two features met on the bar. The keyboard work hides the bars under the page
+  while the soft keyboard is up, and the download bar drops the news that comes while it
+  is hidden, so it never comes back over what the person went on to. Enter in the address
+  ends editing a moment before the keyboard goes, and the download's first news came in
+  that moment.
+- **Seam:** shell layers: hidden because the person moved on, against out of the way for
+  a moment.
+- **Fix:** on dd-batch-0.2.109: the keyboard puts the bar away rather than hiding it
+  (`away`, shell/src/apps/shell/mobile/DownloadBar.svelte): it keeps its news out of
+  sight and shows it once the keyboard goes, its time and the offer's one showing starting
+  then.
+- **Guard:** shell/e2e/shells/mobile.cjs: a download starting with the keyboard up keeps
+  its bar out of sight, then offers notifications; drive_android's
+  download_notifications on a phone.
 
 ## Glide's Copy Address that couldn't copy, 2026-11-19
 

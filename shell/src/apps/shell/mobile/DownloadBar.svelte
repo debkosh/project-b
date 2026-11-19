@@ -1,4 +1,5 @@
 <script>
+  import { untrack } from 'svelte';
   import { downloadAction, send, shell } from '@/sdk/svelte.svelte.js';
   import Icon from './Icon.svelte';
 
@@ -9,11 +10,14 @@
   // or the bar is, and nothing while hidden, while a sheet is open, which it must not
   // cover, or the Downloads page shows, which says it all already. Hidden, it goes, and
   // says nothing until that ends, so it never comes back over what the person went on to.
+  // Away, while the soft keyboard is up, it keeps out of sight but keeps its news, and shows
+  // it once the keyboard goes: a download started from the address or a form says so then,
+  // its time, and the offer's one showing, starting only as it shows.
   // The first start may offer to show downloads in the system's notifications, with Allow
   // only; shown once, it never comes again. News goes after Go's time for it, 2 seconds, a
   // question 8; a press keeps it while held. A tap anywhere else, or a swipe down or
   // sideways on it, puts it away. The find bar is in the toolbar's place, under it.
-  let { hidden } = $props();
+  let { hidden, away } = $props();
 
   // The news shown: Go's message, or null.
   let said = $state(null);
@@ -35,6 +39,7 @@
       return;
     }
     said = m;
+    if (away) return;
     // Held, it waits for the finger to lift.
     if (start === null) wait();
     else clearTimeout(timer);
@@ -48,6 +53,19 @@
 
   $effect(() => {
     if (hidden) dismiss();
+  });
+
+  // The keyboard coming stops the news' time; going, it shows the news and starts it.
+  $effect(() => {
+    const out = away;
+    untrack(() => {
+      if (!said) return;
+      if (out) clearTimeout(timer);
+      else {
+        wait();
+        if (said.offer) send({ t: 'notificationsOffered' });
+      }
+    });
   });
 
   function act(action) {
@@ -73,7 +91,7 @@
 
 <svelte:window onpointerdowncapture={(e) => said && !bar?.contains(e.target) && dismiss()} />
 
-<div class="slot" aria-live="polite">
+<div class="slot" class:away aria-live="polite">
   {#if said}
     <div class="bar" bind:this={bar} use:shell role="group" aria-label="Download" onpointerdown={down} onpointerup={up} onpointercancel={() => ((start = null), said && wait())}>
       <span class="mark" class:failed={said.mark === 'warn'}><Icon name={said.mark} /></span>
@@ -96,6 +114,10 @@
     right: 8px;
     bottom: calc(8px + var(--covered, 0px));
     z-index: 3;
+  }
+
+  .slot.away {
+    display: none;
   }
 
   /* Floating: the surface, a hairline, radius 8 and the floating shadow. */
