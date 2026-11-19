@@ -41,7 +41,7 @@ types, so they stay.
 `core/store` opens `store.db` with WAL and `synchronous=NORMAL`, through
 `github.com/mattn/go-sqlite3`, which builds SQLite into the core with cgo. Its FTS5, which the
 search needs, is built only with the `sqlite_fts5` tag: every build and test script passes it
-(`engine/build_go.py`, `engine/android/build_go.py`, `tools/test.sh`, the e2e tests'
+(`engine/build_go.py`, `tools/test.sh`, the e2e tests'
 `go build`), and `core/store` does not compile without it, saying so.
 
 **One worker.** Every read and write runs on one goroutine with the database's one

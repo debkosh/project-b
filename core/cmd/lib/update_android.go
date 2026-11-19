@@ -17,7 +17,7 @@ import (
 )
 
 // version is the release this APK is, from VERSION, set at build time by
-// engine/android/build_go.py. The APK's own versionName is the same.
+// engine/build_go.py. The APK's own versionName is the same.
 var version string
 
 // appVersion is the release this APK is.

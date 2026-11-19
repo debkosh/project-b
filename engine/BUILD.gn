@@ -20,7 +20,7 @@ declare_args() {
 # The Go core as a static archive. Only the main binary links it, so child processes
 # never start a Go runtime. It holds the shell's pages (core/shellfiles), so it comes after
 # them, and a change to the shell rebuilds it.
-action("go_core") {
+action("core") {
   script = "build_go.py"
   outputs = [ "$target_gen_dir/libcore.a" ]
   depfile = "$target_gen_dir/core.d"
@@ -30,6 +30,8 @@ action("go_core") {
     project_b_go,
     rebase_path("$target_gen_dir/libcore.a", root_build_dir),
     rebase_path(depfile, root_build_dir),
+    target_os,
+    target_cpu,
     mac_deployment_target,
   ]
 
@@ -54,8 +56,8 @@ action("shell") {
   args += filter_exclude(string_split(project_b_without, ","), [ "" ])
 }
 
-source_set("go_core_lib") {
-  public_deps = [ ":go_core" ]
+source_set("core_lib") {
+  public_deps = [ ":core" ]
   # What the archive's cgo needs, which a c-archive leaves to the binary that links it:
   # browserdata reads other browsers' databases with macOS's own SQLite, and core/system
   # asks AppKit for the Dock, Finder and the default browser, and the notification centre
@@ -427,6 +429,8 @@ repack("pak") {
   output = "$root_out_dir/project_b.pak"
 }
 
+# The app is three pieces (docs/layers.md): the wrapper, project_b, which starts the other
+# two; the Go core, :core; and the engine, project_b_content.
 group("engine") {
   deps = [
     ":project_b",
@@ -434,7 +438,7 @@ group("engine") {
   ]
 }
 
-# Content and the C++ adapter. Both binaries link this at load time and call its one
+# The engine: content and the C++ adapter. Both binaries link this at load time and call its one
 # export, ProjectBMain. Everything else in it stays hidden.
 shared_library("project_b_content") {
   sources = [
@@ -466,7 +470,7 @@ config("finds_content_library") {
   ]
 }
 
-# Main process: Go, and the library for everything else.
+# The wrapper, the main process: it starts the Go core, then the engine.
 executable("project_b") {
   sources = [
     "abi/pb_exports.h",
@@ -474,7 +478,7 @@ executable("project_b") {
   ]
   configs += [ ":finds_content_library" ]
   deps = [
-    ":go_core_lib",
+    ":core_lib",
     ":project_b_content",
   ]
   data_deps = [ ":project_b_helper" ]

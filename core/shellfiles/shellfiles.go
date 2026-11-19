@@ -2,7 +2,7 @@
 // them from Go and the app carries no folder of them (docs/layers.md, 5).
 //
 // dist is filled by the build, before Go is compiled: engine/build_go.py copies the Mac's
-// from $OUT/shell, and engine/android/build_go.py a phone's from shell/dist. It is
+// from $OUT/shell, and a phone's from shell/dist. It is
 // gitignored but for .keep, so a checkout that never built the shell still compiles,
 // holding no pages.
 package shellfiles

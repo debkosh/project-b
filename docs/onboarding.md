@@ -535,8 +535,8 @@ macOS (`*_mac.go`, cgo); elsewhere it says `ErrNotOnThisSystem`, so the Android 
 README says the rest.
 
 How it builds into the app: `core/go.mod` replaces the module with `../browserdata`; the
-Mac binary links `sqlite3` for it (`engine/BUILD.gn`, `go_core_lib`), as a
-c-archive leaves cgo's libraries to the binary; `engine/build_go.py` and the Android one
-list its files for ninja; the Android build copies it in with `core`
+Mac binary links `sqlite3` for it (`engine/BUILD.gn`, `core_lib`), as a
+c-archive leaves cgo's libraries to the binary; `engine/build_go.py`
+lists its files for ninja; the Android build copies it in with `core`
 (`tools/android-release.sh`, `tools/android-content-build.sh`); `tools/test.sh mock` runs
 its tests.

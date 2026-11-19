@@ -120,7 +120,7 @@ How it's laid out (`engine/android/BUILD.gn`):
 | Library | What's in it | Who loads it |
 |---|---|---|
 | `libproject_b_content.so` | Content, Blink, V8, the network stack and the C++ adapter | Every process, through `LibraryLoader`: it's the APK's `shared_libraries` |
-| `libcore.so` | The Go core, built by `engine/android/build_go.py` with Chromium's own clang | Nobody directly |
+| `libcore.so` | The Go core, built by `engine/build_go.py` with Chromium's own clang | Nobody directly |
 | `libproject_b_go.so` | One C function, `GoCore.table()`, that returns Go's `PBGoCalls`. Links `libcore.so` | `GoCore`, from `BrowserActivity` |
 
 `libcore.so` and `libproject_b_go.so` are `loadable_modules`, so they're in the APK but on nobody's list. Java hands
@@ -235,7 +235,7 @@ pinned version builds.
 | `engine/android/java/.../BrowserApplication.java` | Runs first in every process, as content needs |
 | `engine/android/java/.../GoCore.java`, `go_table.c` | The one load of Go, and its table |
 | `engine/android/library_loader.cc` | `JNI_OnLoad` for every process |
-| `engine/android/build_go.py` | `core/` as `libcore.so`, with Chromium's clang and the NDK's sysroot, holding the phone's part of `shell/dist` (`core/shellfiles`) |
+| `engine/build_go.py` | `core/` as `libcore.so` (the Mac's `libcore.a` too), with Chromium's clang and the NDK's sysroot, holding the phone's part of `shell/dist` (`core/shellfiles`) |
 | `tools/android-content-fetch.sh` | Chromium 155 for Android and its Linux build dependencies, once |
 | `tools/android-content-build.sh` | `gn gen` and the build, inside the container |
 | `tools/android-content-package.sh` | Copies the APK out, compresses its libraries, signs it on the Mac |
