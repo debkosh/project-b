@@ -28,6 +28,8 @@ The seams:
 - **The phone's shared storage.** What the app puts in Android's shared folders meets
   other apps' files there, which it can't see. One so far: a download named as a file
   already in Downloads.
+- **Android's process lifecycle.** Android ends an app's process when it likes, and
+  says why only if asked. One so far: a crash notice after runs that never crashed.
 - **Android's accessibility tree.** What a page says in ARIA or HTML has to reach the tree
   TalkBack and the driver read, with its name and its state; Chromium hands it over only as
   fully as the embedder has set it up to. Three so far: the phone's star and folders with no
@@ -73,6 +75,27 @@ The seams:
   through Chromium's clipboard, which records it.
 - **Guard:** drive_android.py long_press_menu pastes the copied picture into a page, which must
   get a PNG with bytes.
+
+## A crash notice after runs that never crashed, 2026-11-19
+
+- **Seen:** on a real phone, Android 17 with 0.2.99, "Project B crashed last time"
+  showed after a run that hadn't crashed. Its report's last run
+  restored its two tabs and painted; a minute later its update check found no network,
+  the phone asleep; then nothing more. Its crash.log held only its first line, no panic,
+  and Android kept no native crash of it.
+- **Cause:** a crash.log left behind was the one sign of a crash: a clean stop deletes it,
+  and only a crash was thought to skip that. On a phone Android ends an app in the
+  background whenever it wants the memory, and when it's swiped away, with no clean stop,
+  so those runs left crash.log too.
+- **Seam:** Android's process lifecycle: an end that isn't a crash, which only Android
+  can tell from one.
+- **Fix:** on dd-exit-reason: at the next start Go asks Android why the process crash.log
+  names ended (ApplicationExitInfo, Android 11 and later, `ExitReason`). Only a crash, a
+  native crash or not responding bring the notice; other reasons go in the timeline, and
+  crash.log with them. Before 11 it stays as it was.
+- **Guard:** drive_android's crash_notice: Android ending the app in the background and a
+  swipe-away bring no notice, a native crash of the app's process does; and
+  `TestAProcessTheSystemEndedIsNoCrash` in core/crash.
 
 ## The back key out of Settings, 2026-11-19
 

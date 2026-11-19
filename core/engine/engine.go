@@ -299,6 +299,11 @@ type Engine interface {
 	// does nothing.
 	AskNotifications()
 	NotificationsAllowed() bool
+	// ExitReason is why the app's process with this id, one from an earlier run, ended, as
+	// a phone's system keeps it: "crash", "native crash" or "not responding" for a crash,
+	// or one of Android's own reasons, such as "low memory" or "user requested"; "" when
+	// the system doesn't say, as a desktop's doesn't.
+	ExitReason(pid int) string
 	// ChooseFolder asks the person for a folder, in the system's panel on the window, as
 	// Import asks for another browser's; FolderChosen follows with it, or "" for none. A
 	// phone has no such panel and answers nothing.

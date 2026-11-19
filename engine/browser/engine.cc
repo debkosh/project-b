@@ -34,6 +34,7 @@
 #include "project_b/engine/browser/choose_path.h"
 #include "project_b/engine/browser/dialogs.h"
 #include "project_b/engine/browser/downloads.h"
+#include "project_b/engine/browser/exit_reason.h"
 #include "project_b/engine/browser/go.h"
 #include "base/strings/string_split.h"
 #include "project_b/engine/abi/pb_content_abi.h"
@@ -782,6 +783,9 @@ const PBEngineCalls* Engine::Calls() {
       .show_download = CallShowDownload,
 #else
       .choose_folder = CallChooseFolder,
+#endif
+#if BUILDFLAG(IS_ANDROID)
+      .exit_reason = ExitReason,
 #endif
   };
   return &calls;

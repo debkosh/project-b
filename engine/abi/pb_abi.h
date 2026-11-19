@@ -552,6 +552,10 @@ typedef struct PBEngineCalls {
   // Mac only: asks the user for a folder, in the system's panel on the window, as Import
   // asks for another browser's. PB_EVENT_FOLDER_CHOSEN says which. Android leaves it null.
   void (*choose_folder)(int64_t window);
+  // Android only: why the app's process with this id, one from an earlier run, ended, as
+  // Android 11 and later keep it: ApplicationExitInfo's REASON_ number, or -1 when Android
+  // doesn't say, as before 11 or with no record of it. The Mac leaves it null.
+  int32_t (*exit_reason)(int64_t pid);
 } PBEngineCalls;
 
 // What the adapter can tell the Go core. The main binary fills it in from Go's exports

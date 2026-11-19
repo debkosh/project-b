@@ -182,7 +182,7 @@ var starters []func(a *App, e engine.Engine, cfg Config)
 func Start(e engine.Engine, cfg Config) *App {
 	e.OpenProfile(cfg.ProfileDir)
 	a := &App{profiles: cfg.Profiles, startedIn: map[engine.DownloadID]engine.WindowID{}, dir: cfg.ProfileDir}
-	a.Crash = crash.New(cfg.ProfileDir, cfg.CrashReports)
+	a.Crash = crash.New(cfg.ProfileDir, cfg.CrashReports, e.ExitReason)
 	a.Crash.System = cfg.System
 	a.Session = session.New(cfg.ProfileDir)
 	a.Policy = policy.New(cfg.BlockedHosts, e.OurPage)

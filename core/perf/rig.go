@@ -334,3 +334,6 @@ func (r *Rig) Type(w engine.WindowID, text string) {
 		r.A.ShellMessage(w, fmt.Appendf(nil, `{"t":"suggest","id":%d,"text":%q}`, i, text[:i]))
 	}
 }
+
+// ExitReason says nothing, as a desktop's system doesn't.
+func (e *Eng) ExitReason(int) string { return "" }

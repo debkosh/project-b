@@ -782,6 +782,9 @@ func (e *Engine) AskDefaultBrowser() {
 	})
 }
 
+// ExitReason says nothing, as a desktop's system doesn't.
+func (e *Engine) ExitReason(int) string { return "" }
+
 // AskNotifications answers as a person who allows them does.
 func (e *Engine) AskNotifications() {
 	e.Post(func() {

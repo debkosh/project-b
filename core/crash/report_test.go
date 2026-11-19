@@ -15,7 +15,7 @@ func TestAReportHoldsTheLogs(t *testing.T) {
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "crash.log"), []byte("pid 1\npanic: boom\n"), 0o600)
 	os.WriteFile(filepath.Join(dir, "timeline.log"), []byte("mark app.ready\n"), 0o600)
-	m := New(dir, t.TempDir())
+	m := New(dir, t.TempDir(), noReason)
 	m.System = func() []Section { return []Section{{"Version", "Project B 0.2.61"}} }
 	m.ProcessCrashed(engine.ProcessCrash{Type: "renderer", Status: "killed", PID: 7, URL: "https://duckduckgo.com/"})
 	path, err := m.WriteReport()

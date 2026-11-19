@@ -4,7 +4,11 @@
 // to stderr, whichever goroutine crashed. A clean stop deletes it. So a crash.log found
 // at the next start means the last run crashed, from Go or not: it is renamed after the
 // time it was last written, so no crash overwrites another, and the shell is told where
-// it is and where macOS put its own report of that process.
+// it is and where macOS put its own report of that process. Unless the system says that
+// process ended for its own reasons: Android ends an app in the background when it wants
+// the memory, or when it's swiped away, and leaves crash.log as a crash would. Only a
+// crash, a native crash or not responding are crashes then; any other reason goes in the
+// timeline, and crash.log with it.
 //
 // A child process that crashes is one line in crashes.log, which is kept.
 package crash
@@ -33,10 +37,24 @@ type Manager struct {
 	System func() []Section
 }
 
+// crashed are the system's reasons a process ended that are crashes (engine.ExitReason).
+var crashed = map[string]bool{"crash": true, "native crash": true, "not responding": true}
+
 // New starts this run's crash.log in dir, after keeping the last run's, if there is one,
-// as crash-<time>.log. reports is the folder macOS writes its crash reports to.
-func New(dir, reports string) *Manager {
+// as crash-<time>.log, unless exitReason, why the process it names ended as the system
+// keeps it, says that was no crash. reports is the folder macOS writes its crash reports to.
+func New(dir, reports string, exitReason func(pid int) string) *Manager {
 	m := &Manager{current: filepath.Join(dir, "crash.log"), children: filepath.Join(dir, "crashes.log")}
+	if pid := loggedPID(m.current); pid != 0 {
+		if why := exitReason(pid); why != "" && !crashed[why] {
+			timeline.Infof("crash: the last run, pid %d, ended without crashing: %s", pid, why)
+			if err := os.Remove(m.current); err != nil {
+				timeline.Errorf("crash: %v", err)
+			}
+		} else if why != "" {
+			timeline.Infof("crash: the last run, pid %d, ended: %s", pid, why)
+		}
+	}
 	if info, err := os.Stat(m.current); err == nil {
 		last := filepath.Join(dir, "crash-"+info.ModTime().Format("2006-01-02-150405")+".log")
 		if err := os.Rename(m.current, last); err != nil {
@@ -64,6 +82,20 @@ func New(dir, reports string) *Manager {
 		timeline.Errorf("crash: %v", err)
 	}
 	return m
+}
+
+// loggedPID is the process id a crash.log starts with, or 0 when there is none.
+func loggedPID(path string) int {
+	f, err := os.Open(path)
+	if err != nil {
+		return 0
+	}
+	defer f.Close()
+	var pid int
+	if _, err := fmt.Fscanf(f, "pid %d,", &pid); err != nil {
+		return 0
+	}
+	return pid
 }
 
 // osReport is macOS's report of the process that wrote the crash log at path, or the

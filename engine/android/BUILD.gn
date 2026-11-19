@@ -26,6 +26,7 @@ generate_jni("jni_headers") {
   sources = [
     "java/dev/projectb/browser/BrowserWindow.java",
     "java/dev/projectb/browser/Downloads.java",
+    "java/dev/projectb/browser/ExitReasons.java",
     "java/dev/projectb/browser/Printing.java",
   ]
 }
@@ -88,6 +89,7 @@ source_set("browser") {
     "browser_main_parts_android.cc",
     "downloads_android.cc",
     "descriptors.h",
+    "exit_reason_android.cc",
     "printing_android.cc",
     "window_android.cc",
   ]
@@ -347,6 +349,7 @@ android_library("java") {
     "java/dev/projectb/browser/ClipboardImages.java",
     "java/dev/projectb/browser/DeviceKey.java",
     "java/dev/projectb/browser/Downloads.java",
+    "java/dev/projectb/browser/ExitReasons.java",
     "java/dev/projectb/browser/GoCore.java",
     "java/dev/projectb/browser/Printing.java",
   ]
