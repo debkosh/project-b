@@ -48,8 +48,6 @@
   "sparkRemove": "TODO: the Sparks settings on the mock: a spark removed",
   "sparkSetOn": "TODO: the Sparks settings on the mock: a spark turned on",
   "sparkSource": "TODO: the Sparks settings on the mock: a spark's source shown",
-  "sparkUpdate": "TODO: the Sparks settings on the mock: a spark updated",
-  "focus.nextPane": "TODO: F6 between the shell and the page, in drive_first_app's keyboard checks",
-  "focus.previousPane": "TODO: Shift+F6, beside focus.nextPane"
+  "sparkUpdate": "TODO: the Sparks settings on the mock: a spark updated"
  }
 }

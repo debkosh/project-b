@@ -4,7 +4,7 @@ Every action a person can take, where the app offers it, and the tests that do i
 `tools/action_coverage.py` from the code; `tools/test.sh mock` fails while an action has no
 test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 
-**202 actions and messages, 152 with a test, 50 exempt with a reason, 0 with none; 20 of Go's actions done by no test of the real app.**
+**202 actions and messages, 154 with a test, 48 exempt with a reason, 0 with none; 20 of Go's actions done by no test of the real app.**
 
 ## Go's actions: the menu bar, keys and the shells' own menus
 
@@ -33,8 +33,8 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `find.next` Find Next | menu bar, keys (chrome, firefox, glide, project-b), glide, minimal, ui | yes | `find_test.go`, `shellmenu_test.go`, `drive_first_app.py` |
 | `find.open` Find… | menu bar, keys (chrome, firefox, glide, project-b), mobile, mobile-native | yes | `find_test.go`, `shellmenu_test.go`, `shell-contract.cjs`, `standard.cjs` and 1 more |
 | `find.previous` Find Previous | menu bar, keys (chrome, firefox, glide, project-b), glide, minimal, ui | yes | `drive_first_app.py` |
-| `focus.nextPane` Focus Next Pane | menu bar, keys (chrome, firefox, glide, project-b) | **no** | **TODO: F6 between the shell and the page, in drive_first_app's keyboard checks** |
-| `focus.previousPane` Focus Previous Pane | menu bar, keys (chrome, firefox, glide, project-b) | **no** | **TODO: Shift+F6, beside focus.nextPane** |
+| `focus.nextPane` Focus Next Pane | menu bar, keys (chrome, firefox, glide, project-b) | yes | `drive_first_app.py` |
+| `focus.previousPane` Focus Previous Pane | menu bar, keys (chrome, firefox, glide, project-b) | yes | `drive_first_app.py` |
 | `glide.commandBar` Open Command Bar | menu bar, keys (glide), glide | yes | `app_test.go`, `settings.cjs`, `glide.cjs`, `drive_first_app.py` |
 | `glide.copyAddress` Copy Address | menu bar, keys (chrome, firefox, glide, project-b), glide | **no** | **TODO: glide_checks: Copy Address puts the page's address on the clipboard** |
 | `glide.favorite` Add to Favorites | menu bar, glide | yes | `glide.cjs`, `drive_first_app.py` |
