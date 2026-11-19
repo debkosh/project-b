@@ -25,10 +25,12 @@ import sqlite3
 import subprocess
 import sys
 import threading
+import struct
 import time
 import urllib.parse
 import xml.etree.ElementTree as ET
 import zipfile
+import zlib
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 import links_page  # noqa: E402
@@ -153,6 +155,14 @@ class Server(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(data)
             return
+        if path.startswith("/pic/"):
+            data = PICTURE
+            self.send_response(200)
+            self.send_header("Content-Type", "image/png")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+            return
         if path == "/to-blocked":
             self.send_response(302)
             self.send_header("Location", "http://blocked.test/")
@@ -172,6 +182,28 @@ class Server(http.server.BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
 
+
+def png(width, height):
+    """A PNG of a colour ramp, width by height, for a page's picture."""
+    rows = b"".join(b"\x00" + bytes(c for x in range(width) for c in (255 * x // width, 120, 255 * y // height))
+                   for y in range(height))
+    chunk = lambda kind, data: struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b""))
+
+
+PICTURE = png(96, 64)
+
+# A long press's targets: a link, a picture and a linked picture, each a third of the screen,
+# and a field that says what is pasted in it.
+PAGES["/press"] = ("<title>Press</title><style>body{margin:0;font-size:32px}a,img{display:block;height:25vh;width:100%}"
+                   "a{line-height:25vh}img{object-fit:cover}#p{height:15vh;border:2px solid #888}</style>"
+                   "<a href=/dl/pb-press-link.txt>The press file</a>"
+                   "<img src=/pic/pb-press-pic.png alt='A picture'>"
+                   "<a href=/b><img src=/pic/pb-press-linked.png alt='A linked picture'></a>"
+                   "<div id=p contenteditable>paste here</div><script>"
+                   "p.onpaste=e=>{const f=[...e.clipboardData.items].find(i=>i.kind=='file')?.getAsFile();"
+                   "fetch('/pasted?type='+(f?f.type:'none')+'&size='+(f?f.size:0))}</script>")
 
 # A page that asks each of its dialogs from a tap, and says what it got back.
 # A checked switch and a checked checkbox, for what a screen reader hears of them.
@@ -1652,6 +1684,80 @@ def the_real_web():
     shot("19-real-web-example")
 
 
+def long_press_menu():
+    """A long press on a link, a picture and a linked picture, in both Mobile shells, the web
+    one and the native one: the dense sheet's tiles, Download putting the file in the phone's
+    Downloads at once, Share opening Android's chooser, Copy image putting the picture itself on
+    the clipboard for a page to paste, and a linked picture offering the link's tiles and the
+    picture's."""
+    held = lambda name: long_press(middle(see_named("page", name)))
+    tiles = lambda *names: all(named("shell", n) is not None for n in names)
+    # Android's own question at the first download would cover the sheet.
+    adb("shell", "pm", "grant", PACKAGE, "android.permission.POST_NOTIFICATIONS")
+    for shell in ("mobile", "mobile-native"):
+        use_shell(shell)
+        # Through the media index, as a plain rm leaves its rows, and a download of the same name
+        # then can't be published.
+        adb("shell", "content delete --uri content://media/external/downloads --where \"_display_name LIKE 'pb-press-%'\"")
+        try:
+            launch()
+            go(BASE + "/press")
+            see("page", text="The press file")
+
+            held("The press file")
+            check(shell + ": a long press on a link shows New tab, In group, Copy link, Download and Share as tiles, and Copy link text",
+                  until(lambda: tiles("New tab", "In group", "Copy link", "Download", "Share", "Copy link text")) is not None)
+            shot("47-long-press-link-" + shell)
+            tap(middle(see_named("shell", "Download")))
+            check(shell + ": Download puts the file in the phone's Downloads at once",
+                  until(lambda: "pb-press-link.txt" in adb("shell", "ls", "/sdcard/Download/"), 20) is not None)
+            held("The press file")
+            tap(middle(see_named("shell", "Share")))
+            check(shell + ": Share opens Android's chooser",
+                  until(lambda: "Window{" in in_front_now() and "BrowserActivity" not in in_front_now(), 10) is not None, in_front_now())
+            key(4)
+            until(lambda: "BrowserActivity" in in_front_now(), 10)
+
+            held("A picture")
+            check(shell + ": a long press on a picture shows New tab, Copy image, Download and Share, and Copy image address",
+                  until(lambda: tiles("New tab", "Copy image", "Download", "Share", "Copy image address")) is not None
+                  and named("shell", "In group") is None)
+            time.sleep(1)  # Its picture, once the engine has fetched it.
+            shot("48-long-press-picture-" + shell)
+            tap(middle(see_named("shell", "Copy image")))
+            until(lambda: named("shell", "Copy image") is None, 5)
+            tap(middle(see("page", text="paste here")))
+            time.sleep(1)
+            before = len(served)
+            key(279)  # Paste.
+            check(shell + ": Copy image puts the picture itself on the clipboard, which a page pastes as a PNG",
+                  until(lambda: any(re.match(r"/pasted\?type=image/png&size=[1-9]", x) for x in served[before:]), 10) is not None,
+                  str([x for x in served[before:] if x.startswith("/pasted")]))
+            key(4)  # The keyboard.
+            held("A picture")
+            tap(middle(see_named("shell", "Download")))
+            check(shell + ": the picture's Download puts it in the phone's Downloads",
+                  until(lambda: "pb-press-pic.png" in adb("shell", "ls", "/sdcard/Download/"), 20) is not None)
+            held("A picture")
+            tap(middle(see_named("shell", "Share")))
+            check(shell + ": the picture's Share opens Android's chooser",
+                  until(lambda: "Window{" in in_front_now() and "BrowserActivity" not in in_front_now(), 10) is not None, in_front_now())
+            key(4)
+            until(lambda: "BrowserActivity" in in_front_now(), 10)
+
+            held("A linked picture")
+            check(shell + ": a long press on a linked picture offers the link's tiles and the picture's",
+                  until(lambda: tiles("In group", "Copy link", "Copy image", "Copy image address")) is not None)
+            time.sleep(1)
+            shot("49-long-press-linked-" + shell)
+            small = small_targets()
+            check(shell + ": every control of the sheet is 48dp or more each way", not small, ", ".join(small))
+            key(4)
+            check(shell + ": the back key closes it", until(lambda: named("shell", "Copy image") is None, 5) is not None)
+        finally:
+            use_shell("")
+
+
 def welcome_extras():
     """A new profile's welcome on a phone: after Pick your style, Extras for any page offers
     the built-in sparks, each off, by name and line; a switch turns one on in Go."""
@@ -1706,7 +1812,7 @@ def main():
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
     every = (browsing, mobile_shell, settings_back, talkback_states, bookmark_star, back_key_chain, page_dialogs, downloads, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
-             the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web, welcome_extras)
+             the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web, long_press_menu, welcome_extras)
     for part in [p for p in every if not sys.argv[1:] or p.__name__ in sys.argv[1:]]:
         # tools/results.py splits a run's memory, CPU and checks by these lines.
         print("--- part " + part.__name__, flush=True)
