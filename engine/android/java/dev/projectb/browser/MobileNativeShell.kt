@@ -680,6 +680,9 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
     private fun open(name: String) {
         sheet = name
         if (name.isNotEmpty() && editing) leave()
+        // A sheet's field with the keyboard, as the bookmark's name after its Enter: taking the
+        // field away leaves the keyboard up, over nothing, with the bars aside for it.
+        if (sheets.findFocus() != null) imm().hideSoftInputFromWindow(windowToken, 0)
         sheets.removeAllViews()
         switcher.visibility = if (name == "switcher") VISIBLE else GONE
         if (name == "switcher") workspace = activeTab()?.optString("workspace") ?: ""
