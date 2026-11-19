@@ -1206,7 +1206,11 @@ def download_notifications():
     itself as a download starts; the first download's bar offers them, once, "Show progress
     in notifications?" with Allow, which asks Android. Then a running download's notification
     says how much of how much and the time left, with Pause and Cancel; Pause pauses it, with
-    Resume; Resume runs it again; and Cancel takes it and its notification away."""
+    Resume; Resume runs it again; and Cancel takes it and its notification away. Before
+    Android 13 an app needs no leave to show notifications, so there is nothing to offer:
+    the bar shows the download with no offer, and the notification shows all the same."""
+    # Android 13 (API 33) brought POST_NOTIFICATIONS, the leave the offer asks for.
+    asks = int(adb("shell", "getprop", "ro.build.version.sdk").strip() or 0) >= 33
     for shell in ("mobile", "mobile-native"):
         forget_notifications()
         use_shell(shell)
@@ -1215,6 +1219,13 @@ def download_notifications():
         asked("/a")
         name = "pb-slow-%s-%d.bin" % (shell, int(time.time()))
         go(BASE + "/slow/" + name)
+        if not asks:
+            said = until(lambda: find("shell", text=lambda t: (t or "").startswith("Downloading " + name)), 10)
+            check("%s: before Android 13 the first download's bar shows it with no offer, as notifications need no leave" % shell,
+                  said is not None and find("shell", text="Show progress in notifications?") is None,
+                  said.get("text") if said is not None else None)
+            adb("shell", "am", "force-stop", PACKAGE)
+            continue
         # The question, the words and Allow from one reading of the screen, and Allow at
         # once: each reading takes a second or two, and the offer lasts 8.
         def offered():
