@@ -723,8 +723,9 @@ const H = 915;
   await backKey();
   check('with nothing open, it goes back in the page', await until(async () => (await active()).url === 'https://example.com/back/one'));
 
-  // Slice 5: a long press on a link in the page. The shell draws the menu; Open in new tab
-  // in group opens the link behind, in the tab's group, starting one when it has none.
+  // Slice 5: a long press on a link in the page. The shell draws the menu, a dense sheet: a
+  // row of tiles, New tab first, then In group, which opens the link behind, in the tab's
+  // group, starting one when it has none.
   const linkSheet = ui.getByRole('dialog', { name: 'Link' });
   await fire('menu', 'tab.new');
   await until(inField);
@@ -733,23 +734,26 @@ const H = 915;
   const before5 = (await regions()).tabs.length;
   await fire('contextMenu', 'https://example.com/linked/one', { tab: reader });
   check('a long press on a link opens the shell\'s menu for it', await until(() => linkSheet.isVisible()));
-  check('Open in new tab in group comes first', (await linkSheet.getByRole('menuitem').first().innerText()).trim() === 'Open in new tab in group');
+  const tileNames = async (group) => (await linkSheet.getByRole('group', { name: group }).getByRole('menuitem').allInnerTexts()).map((t) => t.trim());
+  check('its tiles are New tab, In group, Copy link, Download and Share', JSON.stringify(await tileNames('Link')) === JSON.stringify(['New tab', 'In group', 'Copy link', 'Download', 'Share']), JSON.stringify(await tileNames('Link')));
+  check('and Copy link text is a row under them', await linkSheet.getByRole('menuitem', { name: 'Copy link text' }).isVisible());
+  check('a plain link\'s one row of tiles has no heading', (await linkSheet.locator('.heading').count()) === 0);
   await shots('link');
-  await linkSheet.getByRole('menuitem', { name: 'Open in new tab in group' }).tap();
+  await linkSheet.getByRole('menuitem', { name: 'In group' }).tap();
   check('it opens the link behind, in a group with this tab', await until(async () => {
     const r = await regions();
     const opened = r.tabs.find((t) => t.url === 'https://example.com/linked/one');
     return r.tabs.length === before5 + 1 && r.active === reader && opened && (await stripTabs.count()) === 2;
   }), JSON.stringify((await regions()).tabs.map((t) => [t.id, t.url])));
   await fire('contextMenu', 'https://example.com/linked/two', { tab: reader });
-  await linkSheet.getByRole('menuitem', { name: 'Open in new tab in group' }).tap();
+  await linkSheet.getByRole('menuitem', { name: 'In group' }).tap();
   check('a second joins the same group, still behind', await until(async () => (await stripTabs.count()) === 3 && (await regions()).active === reader));
   await shots('link-group');
   await stripTabs.nth(2).tap();
   check('and the strip goes to it', await until(async () => (await active()).url === 'https://example.com/linked/two'));
   await fire('contextMenu', 'https://example.com/linked/three', { tab: (await regions()).active });
-  await linkSheet.getByRole('menuitem', { name: 'Open in new tab', exact: true }).tap();
-  check('Open in new tab opens it behind too', await until(async () => (await regions()).tabs.some((t) => t.url === 'https://example.com/linked/three')) &&
+  await linkSheet.getByRole('menuitem', { name: 'New tab', exact: true }).tap();
+  check('New tab opens it behind too', await until(async () => (await regions()).tabs.some((t) => t.url === 'https://example.com/linked/three')) &&
     (await active()).url === 'https://example.com/linked/two');
   await fire('contextMenu', 'https://example.com/linked/four', { tab: (await regions()).active });
   await until(() => linkSheet.isVisible());
@@ -899,6 +903,46 @@ const H = 915;
   await shots('download-failed');
   await page.mouse.click(4, H - 24);
   await until(async () => !(await dlBar.isVisible()));
+
+  // The long-press sheet's other actions are Go's: Copy link, Share and Download for a link,
+  // and for an image Copy image, Download, Share and Copy image address, its picture in the
+  // head. A linked image has both rows of tiles.
+  const press = async (what, item, group) => {
+    await fire('contextMenu', JSON.stringify({ x: 40, y: 60, ...what }), { tab: (await regions()).active });
+    await until(() => linkSheet.isVisible());
+    const scope = group ? linkSheet.getByRole('group', { name: group }) : linkSheet;
+    await scope.getByRole('menuitem', { name: item, exact: true }).tap();
+    return until(async () => (await linkSheet.count()) === 0);
+  };
+  const aLink = { link: 'https://example.com/files/press.zip', linkText: 'The press file' };
+  check('Copy link copies it, through Go, and the sheet goes', (await press(aLink, 'Copy link')) &&
+    await until(async () => (await regions()).clipboard === aLink.link), (await regions()).clipboard);
+  await press(aLink, 'Copy link text');
+  check('Copy link text copies its words', await until(async () => (await regions()).clipboard === 'The press file'), (await regions()).clipboard);
+  await press(aLink, 'Share');
+  check('Share hands the link to the share sheet', await until(async () => (await regions()).sharedText === aLink.link), (await regions()).sharedText);
+  await press(aLink, 'Download');
+  check('Download starts it at once, with no Save As', await until(async () => (await barSaid()).includes('Downloading press.zip')), JSON.stringify(await barSaid()));
+  await page.mouse.click(4, H - 24);
+  await until(async () => !(await dlBar.isVisible()));
+
+  const linked = { ...aLink, src: 'https://example.com/photo.png', media: 'image' };
+  await fire('contextMenu', JSON.stringify({ x: 40, y: 60, ...linked }), { tab: (await regions()).active });
+  const imageSheet = ui.getByRole('dialog', { name: 'Link' });
+  await until(() => imageSheet.isVisible());
+  check('a linked image has the link\'s tiles and the image\'s: New tab, Copy image, Download, Share', JSON.stringify(await tileNames('Image')) === JSON.stringify(['New tab', 'Copy image', 'Download', 'Share']) &&
+    (await tileNames('Link')).length === 5, JSON.stringify([await tileNames('Link'), await tileNames('Image')]));
+  check('and each row says whose it is, Link then Image', JSON.stringify(await imageSheet.locator('.heading').allInnerTexts()) === '["Link","Image"]',
+    JSON.stringify(await imageSheet.locator('.heading').allInnerTexts()));
+  check('and its picture shows in the head once Go has it', await until(async () => ((await imageSheet.locator('.thumb img').getAttribute('src').catch(() => '')) || '').startsWith('data:image/png;base64,')));
+  check('Copy image address is a row', await imageSheet.getByRole('menuitem', { name: 'Copy image address' }).isVisible());
+  await shots('linked-image');
+  await imageSheet.getByRole('menuitem', { name: 'Copy image', exact: true }).tap();
+  check('Copy image puts the image itself on the clipboard', await until(async () => /shared\/image-\d+\.png$/.test((await regions()).copiedImage || '')), (await regions()).copiedImage);
+  await press(linked, 'Share', 'Image');
+  check('the image\'s Share hands the image file to the share sheet', await until(async () => /shared\/image-\d+\.png$/.test((await regions()).shared || '')), (await regions()).shared);
+  await press(linked, 'Copy image address');
+  check('Copy image address copies its address', await until(async () => (await regions()).clipboard === linked.src), (await regions()).clipboard);
 
   // Downloads: always in the menu, with how many are running, and it opens the Downloads
   // page, a tab of ours, its title where the address goes.
