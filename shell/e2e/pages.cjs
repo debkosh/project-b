@@ -104,6 +104,12 @@ const { check, fire, regions, settle, until } = lib;
   check('a bookmark dragged onto a folder on the left moves into it, which counts it', await lists(['Reading']) && (await until(async () => (await folder('Reading').innerText()).includes('1'))), JSON.stringify(await labels()));
   await folder('Reading').click();
   check('a folder shows what it holds, under a path back to the top', await lists(['The news']) && (await bookmarks.getByRole('list', { name: 'Path' }).getByRole('button', { name: 'Bookmarks' }).isVisible()));
+  // Back, the phone's key or the toolbar's, goes to the folder before, not out of the page
+  // (docs/shells.md, "Back on our pages"); Forward comes back.
+  await bookmarks.locator('body').evaluate(() => history.back());
+  check('Back goes to the folder before, the top, and the page stays', await until(() => lists(['Reading'])), JSON.stringify(await labels()));
+  await bookmarks.locator('body').evaluate(() => history.forward());
+  check('and Forward to the folder again', await until(() => lists(['The news'])), JSON.stringify(await labels()));
   await shoot('bookmarks');
   const act = async (entry, item) => {
     await marks.filter({ hasText: entry }).first().hover();

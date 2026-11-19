@@ -1,6 +1,7 @@
 <script setup>
 import { computed, inject, provide } from 'vue';
 import Cards from './Cards.vue';
+import { upTo } from '@/ui/escape.js';
 import { lists } from './arrange.js';
 import { state } from './state.js';
 
@@ -18,7 +19,7 @@ const to = computed(() => (state.section.startsWith(`${props.list}/`) ? { id: pr
 <template>
   <div class="list-page">
     <div class="list-head">
-      <button type="button" class="icon-button back" :aria-label="`Back to ${to.label}`" @click="go(to.id)">
+      <button type="button" class="icon-button back" :aria-label="`Back to ${to.label}`" @click="upTo(to.id, go)">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5 5.5 8l4.5 4.5" /></svg>
       </button>
       <h2 class="list-title">{{ lists[list].label }}</h2>

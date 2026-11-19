@@ -1,5 +1,6 @@
 <script setup>
 import { computed, inject, nextTick, provide, ref, watch, watchEffect } from 'vue';
+import { upTo } from '@/ui/escape.js';
 import { phone } from '@/phone.js';
 import Cards from './Cards.vue';
 import Icon from './Icon.vue';
@@ -90,7 +91,7 @@ watch(
         <ListPage v-else-if="shown.list" :list="shown.list" :back="shown.section" />
         <template v-else-if="shown.section">
           <div v-if="phone" class="list-head">
-            <button type="button" class="icon-button back" aria-label="Back to Settings" @click="go('')">
+            <button type="button" class="icon-button back" aria-label="Back to Settings" @click="upTo('', go)">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5 5.5 8l4.5 4.5" /></svg>
             </button>
             <h2 class="list-title">{{ shown.section.label }}</h2>

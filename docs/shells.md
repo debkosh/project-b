@@ -547,6 +547,25 @@ own. What a shell draws carries the hooks the real app's extensions tests
 A shell that draws them itself draws them only when `extensionsBuilt` from `@extensions`
 says the build has them, so a build without extensions has none of it.
 
+### Back on our pages
+
+Our pages, Settings, Bookmarks, History and Downloads, keep their tab's history for what
+they open inside themselves, so the phone's back key and Back go to where the person was,
+not out of the page. Each place a page goes to inside itself, as a list of Settings or a
+bookmarks folder, is an entry in its tab's history, by `history.pushState`; and each layer
+open over it, a dialog or a row's menu, is one while it is open. Back closes the innermost
+layer, as Escape does, then goes back through the places. It is one module,
+`pageHistory` and `pushEscape` in `shell/src/ui/escape.js`: a page calls `pageHistory` with
+where it is and how to show a place, and calls what it returns with each place it goes to;
+every layer that already pushes its Escape gets its entry with nothing more. A layer that
+closes itself, by a button or Escape, takes its entry with it. An arrow up to the place
+that holds this one, as a list's "Back to Privacy" or a bookmarks path, calls `upTo`, which
+works as Android's Up: back, when the entry before is that place, or in this entry's stead,
+so it never adds one, and back never returns to where it left. A shell never calls
+`pageHistory`: the phone's back key reaches a shell only while it said something of its
+own is open (`backCloses`), and goes back in the page otherwise, where these entries are.
+A page of a shell's own, made the same way, gets the same back by calling it.
+
 ### The splash
 
 Until Go's snapshot is in, a shell knows nothing of the window: not its tabs, its layout,

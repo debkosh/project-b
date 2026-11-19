@@ -812,6 +812,26 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   const keyboardTitle = sectionsLayout ? 'Settings › Keyboard' : 'Settings › Keyboard shortcuts';
   check('the page\'s title follows what shows, under its gear', await until(async () => (await page.title()) === keyboardTitle) &&
     (await page.locator('link[rel=icon]').getAttribute('href')).startsWith('data:image/svg+xml'), await page.title());
+  // Back, the phone's key or the toolbar's, goes to where the page was, not out of it, and
+  // Forward comes back (docs/shells.md, "Back on our pages").
+  await page.goBack();
+  check('Back goes to where the page was before the list, still in Settings', await until(async () => (await page.title()) !== keyboardTitle &&
+    (await page.title()).startsWith('Settings') && page.url().includes('/settings/')), [await page.title(), page.url()]);
+  await page.goForward();
+  check('and Forward to the list again', await until(async () => (await page.title()) === keyboardTitle), await page.title());
+  // A list's own arrow goes up to the place that holds it, as Android's Up does: never an
+  // entry of its own, so Back after it never returns to the list.
+  const arrow = page.locator('.list-page .list-head .back');
+  if (await arrow.count()) {
+    await arrow.click();
+    await until(async () => (await page.title()) !== keyboardTitle);
+    await page.goBack();
+    check('the list\'s arrow then Back never returns to the list', !(await until(async () => (await page.title()) === keyboardTitle, 2000)), [await page.title(), page.url()]);
+    if (!page.url().includes('/settings/')) await page.goForward();
+    await until(async () => page.url().includes('/settings/') && (await page.title()).startsWith('Settings'));
+    await show('keyboard');
+    await until(async () => (await page.title()) === keyboardTitle);
+  }
   // The list only shows; clicking an action opens its editor.
   const openRow = (title) => page.locator('button.action').filter({ has: page.locator('.name', { hasText: new RegExp('^\\s*' + title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*$') }) }).click();
   check('a key the browser wins carries a tag, and a page-first key none', await until(async () => (await page.locator('button.action', { hasText: 'Close Tab' }).textContent()).includes('Browser first, not in full screen') && !(await page.locator('button.action', { hasText: 'Open Location' }).textContent()).includes('Browser first')));
@@ -1012,8 +1032,14 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   // and site data, and the cache ticked, History saying how many pages; Escape clears nothing.
   await show('clearData');
   const clearRow = page.locator('.row', { has: page.getByRole('button', { name: 'Clear…' }) });
-  await page.getByRole('button', { name: 'Clear…' }).click();
   const clearDialog = page.getByRole('dialog', { name: 'Clear browsing data' });
+  // Back closes a dialog, as Escape does, and the page stays.
+  await page.getByRole('button', { name: 'Clear…' }).click();
+  await until(() => clearDialog.isVisible());
+  await page.goBack();
+  check('Back closes a dialog, and the page stays where it was', await until(async () => !(await clearDialog.isVisible())) && page.url().includes('/settings/') &&
+    (await page.getByRole('button', { name: 'Clear…' }).isVisible()));
+  await page.getByRole('button', { name: 'Clear…' }).click();
   const from = clearDialog.getByLabel('From');
   check('Clear browsing data asks from when, all time to start, and what goes, the downloads list not ticked', await until(() => clearDialog.isVisible()) &&
     (await from.inputValue()) === 'all' &&

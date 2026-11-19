@@ -158,7 +158,9 @@ every address: the page opens a list's own page, or scrolls to the part or its g
 sections show the section that is it or holds it, or Sites' own page. The site panel's Details
 opens `sites/<origin>`, the page of that origin's site with that origin's settings whether
 or not it has any, an extension's Manage opens `extensions`, and a `project-b://sync` link opens
-`sync`.
+`sync`. Each address the page goes to is an entry in its tab's history, and each dialog or row
+menu while it is open, so the phone's back key and Back go to the one before, not out of
+Settings ([shells.md](shells.md#back-on-our-pages)).
 
 ## Tests
 

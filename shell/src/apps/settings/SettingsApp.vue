@@ -1,6 +1,7 @@
 <script setup>
 import { computed, provide, ref, watch, watchEffect } from 'vue';
 import { paintTheme } from '@/theme.js';
+import { pageHistory } from '@/ui/escape.js';
 import PageLayout from './PageLayout.vue';
 import SectionsLayout from './SectionsLayout.vue';
 import { query } from './search.js';
@@ -27,6 +28,20 @@ provide('settingsGo', go);
 watch(
   () => state.sectionAsked,
   () => go(state.section),
+);
+
+// Each address the page goes to, by the person or as Go opens it at one, is an entry in
+// the tab's history, so the phone's back key and Back go to the one before, not out of
+// Settings (docs/shells.md, "Back on our pages"). It starts once the snapshot has said
+// where the page opens.
+watch(
+  () => state.ready,
+  (ready) => {
+    if (!ready) return;
+    const went = pageHistory(() => state.section, go);
+    watch(() => state.section, went);
+  },
+  { immediate: true },
 );
 
 // The layout is Look's Settings row, Go's settingsLayout pref: Go sends the prefs again as

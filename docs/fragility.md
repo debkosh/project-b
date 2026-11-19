@@ -14,8 +14,9 @@ The seams:
   tab that failed to load, a View Source tab named as its page.
 - **The network across sleep.** A download that stops receiving waits for ever unless
   something gives up on it. Two so far: downloads after sleep, the stuck updater.
-- **Shell layers.** What lies over the page has to stay under the shell's own menus. One so
-  far: the menu under the crash page.
+- **Shell layers.** What lies over the page has to stay under the shell's own menus, and
+  back has to close what is open before it leaves. Two so far: the menu under the crash
+  page, the back key out of Settings.
 - **Tooling and test machines.** Shared folders and long-lived emulators. Two so far: the
   mixed package, the emulators' memory.
 - **Narrow widths.** What sits next to something, or under it, has to be measured against
@@ -32,6 +33,25 @@ The seams:
   names, TalkBack hearing every switch as off, switches named by other words heard with no
   name.
 
+## The back key out of Settings, 2026-11-19
+
+- **Seen:** on a phone, in Settings at Flags, a list inside it, the back key closed
+  Settings itself instead of going back to where Flags was opened from. A dialog open over
+  Settings went the same way.
+- **Cause:** our pages go to their lists and open their dialogs inside the page, with no
+  entry in the tab's history. The back key goes back in the tab's history, and on a tab with
+  none closes it, so from anywhere inside one of our pages it left the page. The desktop's
+  Back did the same.
+- **Seam:** shell layers: what a page opens inside itself, against the tab's history that
+  back walks.
+- **Fix:** on dd-page-back: each place one of our pages goes to inside itself, and each
+  dialog or menu while open, is an entry in its tab's history, so back closes the dialog,
+  then goes to the place before, and leaves the page last. One module for every page and
+  layer: `pageHistory` and `pushEscape` (shell/src/ui/escape.js, docs/shells.md, "Back on
+  our pages").
+- **Guard:** `shell/e2e/settings.cjs`, both layouts: Back from a list to where it was,
+  Forward to it again, and Back closing a dialog; `shell/e2e/pages.cjs`: Back and Forward
+  through a bookmarks folder; and drive_android's settings_back on a phone.
 ## A View Source tab named as its page, 2026-11-19
 
 - **Seen:** View Source opened the page's source in a new tab, but the tab's address was
@@ -66,6 +86,7 @@ The seams:
   returned, so Go knows the copy by then (`Engine::DuplicateTab`).
 - **Guard:** drive_first_app.py duplicate: three duplicates of a loaded tab each load
   their page, with no error.
+
 
 ## A download named as a file already in Downloads, 2026-11-19
 

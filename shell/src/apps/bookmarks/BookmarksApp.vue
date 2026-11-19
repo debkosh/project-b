@@ -2,6 +2,7 @@
 import { computed, nextTick, ref, watch, watchEffect } from 'vue';
 import { paintTheme } from '@/theme.js';
 import Dialog from '@/ui/Dialog.vue';
+import { pageHistory, upTo } from '@/ui/escape.js';
 import RowMenu from '@/ui/RowMenu.vue';
 import { bookmarksUnder, folders, inFolder, path, topFolder } from '@/ui/bookmarks.js';
 import { send, state } from './state.js';
@@ -42,6 +43,11 @@ function openFolder(id) {
   at.value = id;
   text.value = '';
 }
+
+// Each folder opened is an entry in the tab's history, so the phone's back key and Back go
+// to the folder before it, not out of the page (docs/shells.md, "Back on our pages").
+const went = pageHistory(() => at.value, openFolder);
+watch(at, went);
 
 function open(e, ev) {
   ev?.preventDefault();
@@ -210,7 +216,7 @@ const hostOf = (u) => {
                 type="button"
                 class="crumb"
                 :class="{ drop: over === f.id }"
-                @click="openFolder(f.id)"
+                @click="upTo(f.id, openFolder)"
                 @dragover="dragOver(f.id, $event)"
                 @dragleave="over === f.id && (over = null)"
                 @drop="drop(f.id, $event)"
