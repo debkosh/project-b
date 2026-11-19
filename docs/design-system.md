@@ -163,7 +163,7 @@ Use these; never leave a `<button>`, `<select>`, `<input>` or radio to the brows
 | Words | `.text-button`; `.quiet` inside a row | |
 | The one answer a dialog wants | `.text-button.primary` | a primary button on a row |
 | A destructive answer (Delete, Discard, Remove) | `.text-button.danger`, in a dialog | |
-| On or off | `.switch`, named by an `aria-label` bound to the words its label shows, with the line under it as `aria-describedby` | a checkbox; a name through `aria-labelledby` or a wrapping label, which TalkBack on Android reads as nameless (2026-11-19) |
+| On or off | `.switch`, named by an `aria-label` bound to the words its label shows, with the line under it as `aria-describedby` | a checkbox; a name through `aria-labelledby` or a wrapping label. One way to name a switch, which the mobile walk checks; it also reads on an engine whose Android names from a label TalkBack doesn't speak, as 155's didn't (2026-11-19) |
 | Picking some items of a list (which sparks to export) | a checkbox per row, its `accent-color` `--accent`, with an All box above them, mixed while only some are ticked | a switch, which says a setting is on |
 | Two to four short choices | `Segmented` (Theme: System, Light, Dark) | radio buttons |
 | Five or more choices, or long ones | `select` | |
