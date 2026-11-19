@@ -63,8 +63,12 @@
   cursor: pointer;
 }
 
-.text-button:hover:not(:disabled) {
-  background: var(--accent-tint);
+/* Hover only where there is one: a tap on a touch screen leaves :hover on, greying the
+   button it pressed. */
+@media (hover: hover) {
+  .text-button:hover:not(:disabled) {
+    background: var(--accent-tint);
+  }
 }
 
 .text-button:disabled {
@@ -89,10 +93,16 @@
   color: var(--muted);
 }
 
-.text-button.quiet:hover:not(:disabled),
 .text-button.quiet[aria-expanded='true'] {
   background: var(--accent-tint);
   color: inherit;
+}
+
+@media (hover: hover) {
+  .text-button.quiet:hover:not(:disabled) {
+    background: var(--accent-tint);
+    color: inherit;
+  }
 }
 
 .icon-button:focus-visible,
