@@ -275,7 +275,7 @@ const taken = [];
     /Last synced Today, \d\d:\d\d · /.test(await text()) && /Next sync About \d\d:\d\d, or sooner after a change here/.test(await text()) && (await text()).includes('Server changes read') &&
     (await text()).includes('What the server holds Sealed items only. The key stays on your devices'), await text());
   const kinds = await details().locator('[data-kind]').evaluateAll((rows) => rows.map((r) => r.getAttribute('data-kind')));
-  check('What syncs has bookmarks, history and typed addresses, each with its counts', kinds.join() === 'bookmarks,history,typed' && (await text()).includes('Bookmarks') && (await text()).includes('Typed addresses') &&
+  check('What syncs has bookmarks, history, passkeys and typed addresses, each with its counts', kinds.join() === 'bookmarks,history,passkeys,typed' && (await text()).includes('Bookmarks') && (await text()).includes('Typed addresses') && (await text()).includes('Passkeys') &&
     (phone ? (await text()).includes('Nothing waiting to send') : (await text()).includes('Items Deletions Waiting to send')), `${kinds} ${await text()}`);
   check('Waiting to send says nothing is waiting', (await text()).includes('Waiting to send Nothing is waiting') || (phone && (await text()).includes('Nothing is waiting')));
   check('the runs since the app started are listed, newest first, each saying why and what it did', (await text()).includes('Runs since the app started') && (await runRows().count()) >= 2 &&
