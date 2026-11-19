@@ -10,8 +10,6 @@
   "edit.pasteAndMatchStyle": "macOS's own: AppKit's editing command, sent to the focused field",
   "askNotifications": "the phone's own permission question, which the welcome asks; drive_android's download_notifications answers it",
   "app.checkUpdate": "TODO: the real app's Check for Updates against a local manifest, in drive_first_app",
-  "focus.nextPane": "TODO: F6 between the shell and the page, in drive_first_app's keyboard checks",
-  "focus.previousPane": "TODO: Shift+F6, beside focus.nextPane",
   "glide.copyAddress": "TODO: glide_checks: Copy Address puts the page's address on the clipboard",
   "glide.newSpace": "TODO: glide_checks: New Space makes a space",
   "glide.space2": "TODO: glide_checks: Space 2 to 9 show their spaces",
@@ -34,13 +32,10 @@
   "cancelUpdate": "TODO: settings.cjs on the mock: the update's Cancel while it downloads",
   "retryUpdate": "TODO: settings.cjs on the mock: the update's Retry",
   "checkUpdate": "TODO: settings.cjs on the mock: Check for updates",
-  "dismissCrash": "TODO: crash-report.cjs: Dismiss takes the crash notice away",
-  "shareReport": "TODO: named by its button in crash-report.cjs, which the check doesn't see yet",
   "dismissMissing": "TODO: settings.cjs: Keyboard's missing-key notice dismissed",
   "resetAction": "TODO: settings.cjs: Keyboard's reset of one action's keys",
   "removeKey": "TODO: settings.cjs: Keyboard's removing a key",
   "useTemplate": "TODO: settings.cjs: Keyboard's choosing a keymap template",
-  "forgetSite": "TODO: history or the address box on the mock: forgetting a site",
   "forgetSiteSetting": "TODO: settings.cjs: a site's setting forgotten",
   "setAddressBarPosition": "TODO: settings.cjs: Address bar Top or Bottom",
   "setFlag": "TODO: settings.cjs: a flag switched",
@@ -53,6 +48,8 @@
   "sparkRemove": "TODO: the Sparks settings on the mock: a spark removed",
   "sparkSetOn": "TODO: the Sparks settings on the mock: a spark turned on",
   "sparkSource": "TODO: the Sparks settings on the mock: a spark's source shown",
-  "sparkUpdate": "TODO: the Sparks settings on the mock: a spark updated"
+  "sparkUpdate": "TODO: the Sparks settings on the mock: a spark updated",
+  "focus.nextPane": "TODO: F6 between the shell and the page, in drive_first_app's keyboard checks",
+  "focus.previousPane": "TODO: Shift+F6, beside focus.nextPane"
  }
 }

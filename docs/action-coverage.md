@@ -4,7 +4,7 @@ Every action a person can take, where the app offers it, and the tests that do i
 `tools/action_coverage.py` from the code; `tools/test.sh mock` fails while an action has no
 test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 
-**202 actions and messages, 149 with a test, 53 exempt with a reason, 0 with none; 20 of Go's actions done by no test of the real app.**
+**202 actions and messages, 152 with a test, 50 exempt with a reason, 0 with none; 20 of Go's actions done by no test of the real app.**
 
 ## Go's actions: the menu bar, keys and the shells' own menus
 
@@ -134,7 +134,7 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `createWorkspace` | glide, page:settings | **no** | `app_test.go`, `lifecycle_test.go`, `pins_test.go` |
 | `delete` | page:history | **no** | `pages_test.go` |
 | `deleteWorkspace` | page:settings | **no** | `app_test.go`, `pins_test.go`, `standard-workspaces.cjs` |
-| `dismissCrash` | fox, glide, minimal, mobile, mobile-native, standard | **no** | **TODO: crash-report.cjs: Dismiss takes the crash notice away** |
+| `dismissCrash` | fox, glide, minimal, mobile, mobile-native, standard | **no** | `crash-report.cjs` |
 | `dismissMissing` | page:settings | **no** | **TODO: settings.cjs: Keyboard's missing-key notice dismissed** |
 | `done` | page:welcome | **no** | `welcome_test.go` |
 | `downloadAction` | page:downloads | **no** | `downloads_test.go`, `pages_test.go` |
@@ -147,7 +147,7 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `findText` | mobile-native | **no** | `find_test.go` |
 | `focusShell` | fox, glide, minimal, mobile, mobile-native, standard, terminal, ui | **no** | exempt: not a person's action: a shell asks for the keyboard back when its bar or panel opens |
 | `focusTab` | mobile-native | **no** | `app_test.go`, `first-app.cjs`, `shell-contract.cjs`, `fox.cjs` and 2 more |
-| `forgetSite` | mobile | **no** | **TODO: history or the address box on the mock: forgetting a site** |
+| `forgetSite` | mobile | **no** | `suggest_test.go` |
 | `forgetSiteSetting` | page:settings | **no** | **TODO: settings.cjs: a site's setting forgotten** |
 | `forward` | glide, mobile-native | yes | `drive_first_app.py` |
 | `import` | ui | **no** | `imports_extensions_test.go`, `imports_test.go` |
@@ -195,7 +195,7 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `setTabLayout` | page:settings, standard | **no** | `app_test.go` |
 | `setTheme` | page:settings | **no** | `app_test.go` |
 | `setWorkspaces` | page:welcome | **no** | `welcome_test.go` |
-| `shareReport` | mobile, mobile-native, standard | **no** | **TODO: named by its button in crash-report.cjs, which the check doesn't see yet** |
+| `shareReport` | mobile, mobile-native, standard | **no** | `crash-report.cjs` |
 | `shown` | mobile-native, page:picker | **no** | `app_test.go`, `picker_test.go` |
 | `sparkAdd` | page:settings | **no** | **TODO: the Sparks settings on the mock: a spark added** |
 | `sparkExport` | page:settings | **no** | `sparks_import_test.go` |
