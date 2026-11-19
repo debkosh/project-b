@@ -2,8 +2,12 @@ package passkeys
 
 import (
 	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/binary"
+	"errors"
+	"math/big"
 )
 
 // AAGUID names Project B as the maker of a passkey to the sites that ask:
@@ -43,6 +47,30 @@ func data(rpID string, flags byte, synced bool) []byte {
 		flags |= flagSynced
 	}
 	return append(append(hash[:], flags), 0, 0, 0, 0)
+}
+
+// AttestationObject is a new passkey's attestation object, which a page reads its
+// authenticator data from: CBOR with the format none, an empty statement, and the data.
+func AttestationObject(authData []byte) []byte {
+	out := []byte{0xa3, 0x63, 'f', 'm', 't', 0x64, 'n', 'o', 'n', 'e', 0x67, 'a', 't', 't', 'S', 't', 'm', 't', 0xa0, 0x68, 'a', 'u', 't', 'h', 'D', 'a', 't', 'a'}
+	switch n := len(authData); {
+	case n < 24:
+		out = append(out, 0x40|byte(n))
+	case n < 256:
+		out = append(out, 0x58, byte(n))
+	default:
+		out = append(out, 0x59, byte(n>>8), byte(n))
+	}
+	return append(out, authData...)
+}
+
+// PublicKeyDER is the public key of a COSE key Make gave, as a page's getPublicKey reads
+// it: a SubjectPublicKeyInfo in DER.
+func PublicKeyDER(cose []byte) ([]byte, error) {
+	if len(cose) != 77 {
+		return nil, errors.New("passkeys: not an ES256 COSE key")
+	}
+	return x509.MarshalPKIXPublicKey(&ecdsa.PublicKey{Curve: elliptic.P256(), X: new(big.Int).SetBytes(cose[10:42]), Y: new(big.Int).SetBytes(cose[45:])})
 }
 
 // AssertionData is the authenticator data of a sign-in at the site rpID, which Sign signs

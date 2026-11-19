@@ -364,6 +364,25 @@ func (k *passkeyCards) answer(msg []byte) {
 	}
 }
 
+// answered is a shell answering request id's card as a plain dialog: yes is the step's
+// primary button, and no is Cancel.
+func (k *passkeyCards) answered(id engine.DialogID, yes bool) {
+	action := "cancel"
+	if yes {
+		for _, d := range k.p.list {
+			if d.ID == id && d.Passkey != nil {
+				action = d.Passkey.Primary
+			}
+		}
+		// A PIN needs the card's own field, and a step with no primary has nothing to press.
+		if action == "" || action == "pin" {
+			return
+		}
+	}
+	msg, _ := json.Marshal(map[string]any{"id": id, "action": action})
+	k.answer(msg)
+}
+
 func (a *App) PasskeyStep(id engine.DialogID, step, carries string) {
 	a.dialogs.passkeys.step(id, step, carries)
 }

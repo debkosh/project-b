@@ -237,7 +237,12 @@ func (k *passkeyCards) make(id engine.DialogID, o *ownPasskey, carries string) {
 				k.fail(id, o, err)
 				return
 			}
-			answer, _ := json.Marshal(map[string]string{"credentialId": b64(made), "authData": b64(passkeys.AttestedData(site, made, cose, synced))})
+			// The attestation object and the public key are for a phone's side, which
+			// answers the page itself; the Mac's content makes its own from the data.
+			data := passkeys.AttestedData(site, made, cose, synced)
+			public, _ := passkeys.PublicKeyDER(cose)
+			answer, _ := json.Marshal(map[string]string{"credentialId": b64(made), "authData": b64(data),
+				"attestationObject": b64(passkeys.AttestationObject(data)), "publicKey": b64(public)})
 			k.p.e.AnswerPasskey(id, "made", string(answer))
 		}
 	})

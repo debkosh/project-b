@@ -133,12 +133,10 @@ func (p *pageDialogs) shellPart() shell.Part {
 			}
 			json.Unmarshal(msg, &r)
 			kind := p.kindOf(r.ID)
-			// A shell that doesn't draw a passkey's steps can still say no to one; the
-			// engine then ends it, and the card goes when it says so.
+			// A shell that draws a passkey's step as any dialog, as a phone's does, answers
+			// it as one: its primary button is the step's own, and no cancels the request.
 			if kind == "passkey" {
-				if !r.OK {
-					p.e.AnswerPasskey(r.ID, "cancel", "")
-				}
+				p.passkeys.answered(r.ID, r.OK)
 				return true
 			}
 			if !p.drop(r.ID) {

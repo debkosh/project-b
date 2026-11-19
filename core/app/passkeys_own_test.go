@@ -284,7 +284,21 @@ func TestOnAPhoneOursIsTheOnlyWay(t *testing.T) {
 		t.Fatalf("cancel with %q", a.Text)
 	}
 	r.e.Settle()
-	r.save("asha")
+	// A phone's shell draws the card as a plain dialog, and answers it as one: yes is the
+	// step's own primary button, here Save.
+	r.e.Fire(1, 0, "passkey", "create only")
+	d, _ := r.passkey("save")
+	r.shell(fmt.Sprintf(`{"t":"answerDialog","id":%v,"ok":true}`, d["id"]))
+	r.answerTo("made")
+	r.dialogs(func(l []any) bool { return len(l) == 0 })
+	r.e.Fire(1, 0, "passkey", "create only user=work")
+	d, _ = r.passkey("save")
+	before := len(r.e.PasskeyAnswers())
+	r.shell(fmt.Sprintf(`{"t":"answerDialog","id":%v,"ok":false}`, d["id"]))
+	r.dialogs(func(l []any) bool { return len(l) == 0 })
+	if all := r.e.PasskeyAnswers(); len(all) != before+1 || all[before].Action != "cancel" {
+		t.Fatalf("no to the card told the engine %v", all[before:])
+	}
 	r.e.Fire(1, 0, "passkey", "get only")
 	_, p := r.passkey("own")
 	if p["other"] != nil || len(p["accounts"].([]any)) != 1 {
