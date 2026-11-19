@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"mime"
 	"net/http"
+	"net/url"
+	"strings"
 )
 
 // What can go wrong reaching a bucket, each of which the settings page words its own way
@@ -35,6 +37,20 @@ func Problem(err error) string {
 		}
 	}
 	return ""
+}
+
+// Words is err in words, for the page and the timeline, with a request's address cut down to
+// its host: an address may carry its token (https://<host>/sync/<token>), and Go names the
+// whole address in a request's error.
+func Words(err error) string {
+	text := err.Error()
+	var request *url.Error
+	if errors.As(err, &request) {
+		if u, e := url.Parse(request.URL); e == nil && u.Host != "" {
+			text = strings.ReplaceAll(text, request.URL, u.Scheme+"://"+u.Host)
+		}
+	}
+	return text
 }
 
 // checked is c with every answer looked at first: what the server's answer says of the bucket

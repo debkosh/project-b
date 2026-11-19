@@ -52,7 +52,7 @@ func (a *App) syncSettingsPart() settings.Part {
 			m[k] = v
 		}
 		if err != nil {
-			m["error"], m["problem"] = err.Error(), sync.Problem(err)
+			m["error"], m["problem"] = sync.Words(err), sync.Problem(err)
 		}
 		a.Settings.Send(m)
 	}

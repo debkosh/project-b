@@ -15,6 +15,7 @@ import (
 	"github.com/sudiptadeb/synckosh"
 
 	"projectb/sync"
+	"projectb/timeline"
 )
 
 // inspect is whether the bucket is new, as the page asks before the passphrase.
@@ -459,6 +460,39 @@ func TestTheProblemsReachingABucket(t *testing.T) {
 	p.settle()
 	if st := p.sync.Status(); !st.On || st.Problem != "token" || st.Error == "" {
 		t.Fatalf("the status signed out: %+v", st)
+	}
+}
+
+// A failed run's words, in the status and in the timeline, name the server by its host alone:
+// the address may carry the bucket's token, and Go's own error names the whole address.
+func TestAFailedRunsWordsLeaveTheTokenOut(t *testing.T) {
+	const token = "k3v9x2m7q8rd"
+	s := newServer(t)
+	p := newProfile(t)
+	p.startSync(s)
+	if err := p.connect(s.single(token), "", "pass phrase"); err != nil {
+		t.Fatal(err)
+	}
+	_, seen := timeline.Since(0)
+	s.refuse(token)
+	err := p.sync.RunNow()
+	if err == nil || !strings.Contains(err.Error(), token) {
+		t.Fatalf("Go's error of a refused run should name the whole address: %v", err)
+	}
+	p.settle()
+	if st := p.sync.Status(); st.Error == "" || strings.Contains(st.Error, token) || !strings.Contains(st.Error, st.Host) {
+		t.Fatalf("the status's error: %q", st.Error)
+	}
+	logged, _ := timeline.Since(seen)
+	said := false
+	for _, e := range logged {
+		if strings.Contains(e.Text, token) {
+			t.Fatalf("the timeline has the token: %q", e.Text)
+		}
+		said = said || strings.HasPrefix(e.Text, "sync: ")
+	}
+	if !said {
+		t.Fatal("the timeline says nothing of the failed run")
 	}
 }
 
