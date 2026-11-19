@@ -27,10 +27,10 @@ export function checkPin(pin, values) {
   return null;
 }
 
-// firstControl is where a step's card puts the keyboard: its first field, else its
-// primary button, else Cancel, the last button.
+// firstControl is where a step's card puts the keyboard: its first field, else its first
+// account, which Enter then chooses, else its primary button, else Cancel, the last button.
 export function firstControl(card) {
-  return card.querySelector('input') || card.querySelector('.text-button.primary') || [...card.querySelectorAll('.buttons button')].at(-1);
+  return card.querySelector('input') || card.querySelector('.account') || card.querySelector('.text-button.primary') || [...card.querySelectorAll('.buttons button')].at(-1);
 }
 
 // trapTab keeps Tab and Shift+Tab among the card's own controls while the page waits.

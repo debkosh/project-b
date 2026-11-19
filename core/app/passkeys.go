@@ -29,6 +29,8 @@ type passkeyStep struct {
 	Primary string `json:"primary,omitempty"`
 	// A quiet button on the left that goes to another way: its label and what it sends.
 	Other *passkeyButton `json:"other,omitempty"`
+	// The card is the wider one, 440px, for a long quiet button beside two others.
+	Wide bool `json:"wide,omitempty"`
 	// A PIN step's fields.
 	Pin *passkeyPin `json:"pin,omitempty"`
 	// An account step's rows, in the key's order; a row sends account with its index.

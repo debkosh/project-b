@@ -342,6 +342,7 @@ func ownDialog(d pageDialog, step string, o *ownPasskey) pageDialog {
 	if o.only {
 		other = nil
 	}
+	s.Wide = other != nil && step != "ownError"
 	switch step {
 	case "save":
 		p.Title, p.Message, p.OK = "Create a passkey", "Save a passkey for "+site+" in Project B?", "Save"

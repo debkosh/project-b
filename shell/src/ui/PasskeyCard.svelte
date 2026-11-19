@@ -52,7 +52,7 @@
   }
 </script>
 
-<div bind:this={card} class="ui-dialog card" class:flat role="alertdialog" aria-modal="true" aria-label={dialog.title} tabindex="-1" onkeydown={(e) => trapTab(card, e)}>
+<div bind:this={card} class="ui-dialog card" class:flat class:wide={step.wide} role="alertdialog" aria-modal="true" aria-label={dialog.title} tabindex="-1" onkeydown={(e) => trapTab(card, e)}>
   <h2 class="ui-dialog-title">{dialog.title}</h2>
   {#if dialog.message}
     <p class="words">
@@ -118,6 +118,12 @@
   .flat {
     border-radius: 0;
     box-shadow: none;
+  }
+
+  /* A card of ours with the way to a security key on its left: wide enough for that,
+     Cancel and the primary button on one row. */
+  .card.wide {
+    width: 440px;
   }
 
   .words {

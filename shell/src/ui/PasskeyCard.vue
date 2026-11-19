@@ -43,7 +43,7 @@ function primary() {
 </script>
 
 <template>
-  <div ref="card" class="ui-dialog card" role="alertdialog" aria-modal="true" :aria-label="dialog.title" @keydown="trapTab(card, $event)">
+  <div ref="card" class="ui-dialog card" :class="{ wide: step.wide }" role="alertdialog" aria-modal="true" :aria-label="dialog.title" @keydown="trapTab(card, $event)">
     <h2 class="ui-dialog-title">{{ dialog.title }}</h2>
     <p v-if="dialog.message" class="words">
       <template v-if="hostAt >= 0">{{ dialog.message.slice(0, hostAt) }}<b>{{ dialog.host }}</b>{{ dialog.message.slice(hostAt + dialog.host.length) }}</template>
@@ -94,6 +94,12 @@ function primary() {
 <style scoped>
 .card {
   display: block;
+}
+
+/* A card of ours with the way to a security key on its left: wide enough for that, Cancel
+   and the primary button on one row. */
+.card.wide {
+  width: 440px;
 }
 
 .words {
