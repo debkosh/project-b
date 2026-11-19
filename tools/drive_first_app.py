@@ -2699,6 +2699,30 @@ def sparks_checks():
         app.close()
 
 
+def duplicate_checks():
+    """Duplicate Tab gives a copy that loads its page, as the tab has it, not one failed
+    ERR_BLOCKED_BY_CLIENT: its first navigation once asked Go about it before Go had it
+    (docs/fragility.md, "A duplicated tab that failed to load")."""
+    app = App(tempfile.mkdtemp(prefix="pb-profile-"))
+    send = lambda msg: app.js(f"(chrome.send('shell',[{json.dumps(json.dumps(msg))}]),1)")
+    send({"t": "navigate", "text": PAGES + "first"})
+    app.wait(f"{ROWS}===1", 30)
+    first = tabs_of(app)["active"]
+    app.wait("location.pathname==='/first'&&document.readyState==='complete'", 30, tab=first)
+    for n in range(3):
+        send({"t": "run", "text": "tab.duplicate"})
+        app.wait(f"{ROWS}==={n + 2}", 30)
+        copy = tabs_of(app)["active"]
+        deadline = time.time() + 30
+        while (t := next(x for x in tabs_of(app)["tabs"] if x["id"] == copy)).get("loading") or not t.get("title"):
+            if time.time() > deadline or t.get("error"):
+                break
+            time.sleep(0.1)
+        check(f"a duplicated tab loads its page ({n + 1})", copy != first and not t.get("error") and t.get("url", "").startswith(PAGES + "first") and t.get("title") not in ("", "127.0.0.1"),
+              {k: t.get(k) for k in ("url", "title", "error", "errorCode", "loading")})
+    app.close()
+
+
 def quit_checks():
     """Quitting from the Dock is a clean stop: crash.log, which says the app is running, is
     gone, and the next start has no crash to report."""
@@ -3006,5 +3030,5 @@ def app_link_checks():
 
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
-    parts = {"driver": [driver_checks], "browsing": [browsing_checks], "actions": [action_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks], "applink": [app_link_checks]}
-    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, action_checks, settings_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, glide_checks, web_api_checks, sparks_checks, links_checks, app_link_checks, quit_checks]))
+    parts = {"driver": [driver_checks], "browsing": [browsing_checks], "actions": [action_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks], "duplicate": [duplicate_checks], "applink": [app_link_checks]}
+    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, action_checks, settings_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, glide_checks, web_api_checks, sparks_checks, links_checks, duplicate_checks, app_link_checks, quit_checks]))
