@@ -2,7 +2,7 @@ package platform
 
 /*
 #cgo CFLAGS: -fobjc-arc
-#cgo LDFLAGS: -framework AppKit -framework UserNotifications
+#cgo LDFLAGS: -framework AppKit -framework UserNotifications -framework LocalAuthentication
 #include <stdlib.h>
 #include "platform_darwin.h"
 */
@@ -46,6 +46,13 @@ func (s *System) NotificationsAllowed() bool { return true }
 func (s *System) AskNotifications(answered func(bool)) {
 	s.notifications.Ask(answered, func() { C.pb_system_answer_notifications() })
 }
+
+// verifyPerson asks macOS's own sheet: Touch ID, else the Mac's password.
+func (s *System) verifyPerson(id int32, check system.PersonCheck) {
+	withPath(check.Reason, func(c *C.char) { C.pb_system_verify_person(C.int32_t(id), c) })
+}
+
+func (s *System) cancelPerson(id int32) { C.pb_system_cancel_person(C.int32_t(id)) }
 
 func (s *System) SetDockColor(color string) {
 	if color == tones.None {

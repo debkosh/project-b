@@ -28,6 +28,13 @@ type System struct {
 	posted, removed []string
 	clicked         func(id string)
 	links           func(urls []string)
+	// The checks of the person: what each was for, the verdict they get, whether they wait
+	// for AnswerCheck, those waiting, and how many were taken back.
+	checks       []system.PersonCheck
+	verdict      system.Verdict
+	holdChecks   bool
+	waitingCheck []func(system.Verdict)
+	cancelled    int
 }
 
 var _ system.System = (*System)(nil)
@@ -167,6 +174,85 @@ func (s *System) Removed() []string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return append([]string{}, s.removed...)
+}
+
+// VerifyPerson answers as the person SetVerdict set does, verified to begin with, or once
+// HoldChecks is on waits for AnswerCheck, as a person looking at the sheet.
+func (s *System) VerifyPerson(check system.PersonCheck, answered func(system.Verdict)) (cancel func()) {
+	// live is whether the check still waits: its answer and its cancel each end it once.
+	live := true
+	end := func() bool {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		was := live
+		live = false
+		return was
+	}
+	answer := func(v system.Verdict) {
+		if end() {
+			answered(v)
+		}
+	}
+	s.mu.Lock()
+	s.checks = append(s.checks, check)
+	hold, v := s.holdChecks, s.verdict
+	if hold {
+		s.waitingCheck = append(s.waitingCheck, answer)
+	}
+	s.mu.Unlock()
+	if !hold {
+		s.post(func() { answer(v) })
+	}
+	return func() {
+		if end() {
+			s.mu.Lock()
+			s.cancelled++
+			s.mu.Unlock()
+		}
+	}
+}
+
+// SetVerdict is how every check of the person ends from now on.
+func (s *System) SetVerdict(v system.Verdict) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.verdict = v
+}
+
+// HoldChecks makes a check of the person wait for AnswerCheck, as the OS's sheet waits for
+// the person.
+func (s *System) HoldChecks(on bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.holdChecks = on
+}
+
+// AnswerCheck ends the oldest check waiting with v, on the main thread; one taken back
+// hears nothing.
+func (s *System) AnswerCheck(v system.Verdict) {
+	s.mu.Lock()
+	var answer func(system.Verdict)
+	if len(s.waitingCheck) > 0 {
+		answer, s.waitingCheck = s.waitingCheck[0], s.waitingCheck[1:]
+	}
+	s.mu.Unlock()
+	if answer != nil {
+		s.post(func() { answer(v) })
+	}
+}
+
+// Checks are the checks of the person the app asked for, in order, and CancelledChecks how
+// many of them it took back.
+func (s *System) Checks() []system.PersonCheck {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]system.PersonCheck{}, s.checks...)
+}
+
+func (s *System) CancelledChecks() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.cancelled
 }
 
 func (s *System) Report(string) []crash.Section {

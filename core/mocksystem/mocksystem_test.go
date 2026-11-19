@@ -1,6 +1,10 @@
 package mocksystem
 
-import "testing"
+import (
+	"testing"
+
+	"projectb/system"
+)
 
 // queue is a main thread: posted functions run when the test says.
 type queue []func()
@@ -46,5 +50,44 @@ func TestDismissedAnswersOnceWithWhatIsSo(t *testing.T) {
 	q.run()
 	if heard != 2 || s.Asked("notifications") != 1 || s.NotificationsAllowed() {
 		t.Fatalf("heard %d, asked %d, allowed %v", heard, s.Asked("notifications"), s.NotificationsAllowed())
+	}
+}
+
+// A check of the person: its answer comes after the asking call, once, with the verdict
+// set; one held waits for AnswerCheck; and one taken back never answers.
+func TestVerifyPerson(t *testing.T) {
+	var q queue
+	s := New(q.post)
+	var heard []system.Verdict
+	hear := func(v system.Verdict) { heard = append(heard, v) }
+	s.VerifyPerson(system.PersonCheck{Reason: "use a passkey for example.com"}, hear)
+	if len(heard) != 0 {
+		t.Fatal("answered inside the call that asked")
+	}
+	q.run()
+	s.SetVerdict(system.NoScreenLock)
+	s.VerifyPerson(system.PersonCheck{}, hear)
+	q.run()
+	if len(heard) != 2 || heard[0] != system.Verified || heard[1] != system.NoScreenLock {
+		t.Fatalf("heard %v", heard)
+	}
+
+	s.HoldChecks(true)
+	cancel := s.VerifyPerson(system.PersonCheck{}, hear)
+	s.VerifyPerson(system.PersonCheck{}, hear)
+	q.run()
+	if len(heard) != 2 {
+		t.Fatalf("a held check answered: %v", heard)
+	}
+	cancel()
+	cancel()
+	s.AnswerCheck(system.Verified)
+	s.AnswerCheck(system.Denied)
+	q.run()
+	if len(heard) != 3 || heard[2] != system.Denied || s.CancelledChecks() != 1 {
+		t.Fatalf("heard %v, %d taken back", heard, s.CancelledChecks())
+	}
+	if got := s.Checks(); len(got) != 4 || got[0].Reason != "use a passkey for example.com" {
+		t.Fatalf("checks %v", got)
 	}
 }

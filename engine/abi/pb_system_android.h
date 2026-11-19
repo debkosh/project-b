@@ -23,6 +23,12 @@ typedef struct PBSystemCalls {
   // answered as question 2.
   int (*notifications_allowed)(void);
   void (*ask_notifications)(void);
+  // Checks the person is the phone's owner, in Android's own sheet (BiometricPrompt): a
+  // fingerprint, a face or the screen lock, under title and subtitle. How it ended reaches
+  // Go as PBSystemPersonVerified(id, 0 verified, 1 not, 2 no screen lock), on the main
+  // thread. Cancel takes the sheet of check id away.
+  void (*verify_person)(int32_t id, const char* title, const char* subtitle);
+  void (*cancel_person)(int32_t id);
 } PBSystemCalls;
 
 #endif  // PROJECT_B_ENGINE_ABI_PB_SYSTEM_ANDROID_H_

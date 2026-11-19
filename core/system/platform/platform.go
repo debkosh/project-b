@@ -28,6 +28,10 @@ type System struct {
 	// thread.
 	clicked func(id string)
 	opened  func(urls []string)
+	// checks are the checks of the person the OS has not answered, by the number that
+	// crosses with its answer, and lastCheck the last number given. Main thread.
+	checks    map[int32]func(system.Verdict)
+	lastCheck int32
 }
 
 var the = &System{}
@@ -56,6 +60,34 @@ func PBSystemNotificationClicked(id *C.char) {
 func PBSystemOpenURLs(urls *C.char) {
 	if the.opened != nil {
 		the.opened(strings.Split(C.GoString(urls), "\n"))
+	}
+}
+
+// VerifyPerson asks the OS to check the person, as verifyPerson does it on this OS.
+func (s *System) VerifyPerson(check system.PersonCheck, answered func(system.Verdict)) (cancel func()) {
+	if s.checks == nil {
+		s.checks = map[int32]func(system.Verdict){}
+	}
+	s.lastCheck++
+	id := s.lastCheck
+	s.checks[id] = answered
+	s.verifyPerson(id, check)
+	return func() {
+		if _, waiting := s.checks[id]; waiting {
+			delete(s.checks, id)
+			s.cancelPerson(id)
+		}
+	}
+}
+
+// PBSystemPersonVerified is the OS saying how check id of the person ended, on the main
+// thread: 0 verified, 1 not, 2 no screen lock. One taken back meanwhile says nothing.
+//
+//export PBSystemPersonVerified
+func PBSystemPersonVerified(id C.int32_t, verdict C.int) {
+	if answered := the.checks[int32(id)]; answered != nil {
+		delete(the.checks, int32(id))
+		answered(system.Verdict(verdict))
 	}
 }
 

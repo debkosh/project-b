@@ -2,10 +2,16 @@ package dev.projectb.browser;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.KeyguardManager;
 import android.app.role.RoleManager;
 import android.content.pm.PackageManager;
+import android.hardware.biometrics.BiometricManager;
+import android.hardware.biometrics.BiometricPrompt;
+import android.os.Build;
+import android.os.CancellationSignal;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.SparseArray;
 
 import org.chromium.build.annotations.UsedByReflection;
 
@@ -111,6 +117,80 @@ final class GoSystem {
     /** Tells Go how asking to show notifications ended. */
     static void notificationsAnswered() {
         answer(QUESTION_NOTIFICATIONS, notificationsAllowed());
+    }
+
+    // How a check of the person ended, as Go knows it (core/system's Verdict).
+    private static final int VERIFIED = 0;
+    private static final int DENIED = 1;
+    private static final int NO_SCREEN_LOCK = 2;
+
+    // The checks of the person Android has not answered, by Go's number. Main thread.
+    private static final SparseArray<CancellationSignal> sChecks = new SparseArray<>();
+
+    /**
+     * Checks the person is the phone's owner, in Android's own sheet: a fingerprint, a face or
+     * the screen lock. A phone with no screen lock has nothing to check with, and says so.
+     */
+    @UsedByReflection("go_table.c")
+    @SuppressWarnings("deprecation") // setDeviceCredentialAllowed is Android 10's way.
+    static void verifyPerson(int id, String title, String subtitle) {
+        sMain.post(
+                () -> {
+                    if (!sActivity.getSystemService(KeyguardManager.class).isDeviceSecure()) {
+                        personVerified(id, NO_SCREEN_LOCK);
+                        return;
+                    }
+                    BiometricPrompt.Builder prompt =
+                            new BiometricPrompt.Builder(sActivity)
+                                    .setTitle(title)
+                                    .setSubtitle(subtitle);
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        prompt.setAllowedAuthenticators(
+                                BiometricManager.Authenticators.BIOMETRIC_STRONG
+                                        | BiometricManager.Authenticators.DEVICE_CREDENTIAL);
+                    } else {
+                        prompt.setDeviceCredentialAllowed(true);
+                    }
+                    CancellationSignal cancel = new CancellationSignal();
+                    sChecks.put(id, cancel);
+                    prompt.build()
+                            .authenticate(
+                                    cancel,
+                                    sActivity.getMainExecutor(),
+                                    new BiometricPrompt.AuthenticationCallback() {
+                                        @Override
+                                        public void onAuthenticationSucceeded(
+                                                BiometricPrompt.AuthenticationResult result) {
+                                            sChecks.remove(id);
+                                            personVerified(id, VERIFIED);
+                                        }
+
+                                        // A failed try keeps the sheet up; an error ends it.
+                                        @Override
+                                        public void onAuthenticationError(
+                                                int code, CharSequence words) {
+                                            sChecks.remove(id);
+                                            personVerified(id, DENIED);
+                                        }
+                                    });
+                });
+    }
+
+    /** Takes the sheet of check id away. Go no longer waits for it. */
+    @UsedByReflection("go_table.c")
+    static void cancelPerson(int id) {
+        sMain.post(
+                () -> {
+                    CancellationSignal cancel = sChecks.get(id);
+                    if (cancel != null) {
+                        sChecks.remove(id);
+                        cancel.cancel();
+                    }
+                });
+    }
+
+    private static void personVerified(int id, int verdict) {
+        sMain.post(() -> GoCore.personVerified(id, verdict));
     }
 
     private static void answer(int question, boolean yes) {
