@@ -295,9 +295,11 @@ def asked(path, timeout=15):
 # A node's attributes are Android's: class, text, content-desc (an aria-label), focused,
 # selected, and bounds in device pixels.
 PARTS = {
-    # The shell, or, while a page's dialog shows, the dialog alone, as aria-modal hides the
-    # rest of the shell from the tree: its title, Go's words, ends in " says" or is Sign in.
-    "shell": lambda labels: "Menu" in labels or any(l.endswith(" says") or l == "Sign in" for l in labels),
+    # The shell, or, while a page's dialog or the Custom colour sheet shows, it alone, as a
+    # modal dialog hides the rest of the shell from the tree: a page dialog's title, Go's
+    # words, ends in " says" or is Sign in. A modal sheet of the shell's own names itself
+    # here the same way, by its aria-label, as "Custom colour" does.
+    "shell": lambda labels: "Menu" in labels or "Custom colour" in labels or any(l.endswith(" says") or l == "Sign in" for l in labels),
     "page": lambda labels: "Menu" not in labels,
 }
 
@@ -826,6 +828,39 @@ def mobile_shell():
     tap(middle(see("shell", label=lambda l: (l or "").startswith("Close Page"), kind="android.widget.Button")))
     check("a tap on the active favicon in the strip closes its tab, and the group of one left ends",
           until(lambda: find("shell", label=lambda l: (l or "").startswith("Group ")) is None) is not None)
+
+
+def custom_colour():
+    """The Mobile shell's group sheet on a phone: gulal's seven hues by name, then a +, which
+    opens our Custom colour sheet, not Android's picker; a shade shows at once, and the back
+    key closes the sheet keeping it, the group's sheet still open (docs/design-system.md, On
+    a phone)."""
+    launch()
+    go(BASE + "/a")
+    asked("/a")
+    long_press(middle(see("page", label="to b")))
+    tap(middle(see("shell", text="Open in new tab in group")))
+    tap(middle(see("shell", kind="android.widget.Button", label=lambda l: (l or "").startswith("Group "))))
+    see("shell", text="Ungroup")
+    names = ("Rose", "Teal", "Olive", "Indigo", "Green", "Blue", "Purple")
+    check("the group's sheet offers the seven hues by name", all(find("shell", label=n) is not None for n in names),
+          ", ".join(n for n in names if find("shell", label=n) is None))
+    shot("40-group-sheet")
+    tap(middle(see("shell", label="Custom colour")))
+    check("its + opens the Custom colour sheet, with Hue, five shades and Hex",
+          until(lambda: named("shell", "Hue")) is not None and named("shell", "Deepest") is not None and named("shell", "Hex") is not None,
+          ", ".join(n for n in ("Hue", "Deepest", "Hex") if named("shell", n) is None))
+    small = small_targets()
+    check("every control of the Custom colour sheet is 48dp or more each way", not small, ", ".join(small))
+    shot("41-custom-colour")
+    tap(middle(see("shell", label="Deep")))
+    time.sleep(0.5)
+    key(4)
+    check("the back key closes it, and the group's sheet stays",
+          until(lambda: find("shell", label="Hue") is None) is not None and find("shell", text="Ungroup") is not None)
+    shot("42-group-custom")
+    key(4)
+    check("and then closes the group's sheet", until(lambda: find("shell", text="Ungroup") is None) is not None)
 
 
 def profile_file(name, data):
@@ -2001,7 +2036,7 @@ def main():
     adb("shell", "pm", "clear", PACKAGE)
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
-    every = (browsing, mobile_shell, settings_back, talkback_states, bookmark_star, back_key_chain, page_dialogs, downloads, crash_notice, download_notifications, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
+    every = (browsing, mobile_shell, custom_colour, settings_back, talkback_states, bookmark_star, back_key_chain, page_dialogs, downloads, crash_notice, download_notifications, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
              the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web, long_press_menu, welcome_extras)
     for part in [p for p in every if not sys.argv[1:] or p.__name__ in sys.argv[1:]]:
         # tools/results.py splits a run's memory, CPU and checks by these lines.
