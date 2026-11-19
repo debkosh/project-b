@@ -14,6 +14,8 @@ back to the platforms session before it changes here.
   only talks to go core"
 - main.cc "should just be start gocore start content and thats it"
 - "ok no rust for now"
+- On the release, 2026-11-19: "when we release layers lets call it 0.3". Steps 1 to 4 ship
+  together as 0.3.0.
 
 ## The model
 
