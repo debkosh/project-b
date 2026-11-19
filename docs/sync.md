@@ -15,6 +15,8 @@ uses its Go `client` package. The store it works over is [store.md](store.md).
 - 2026-11-18: "lets not go the app only level for now... since we cannot give the same level in
   windows and linux": the device key is an ordinary keychain item, not one only this app's
   signature can read.
+- 2026-11-19: "keychain prompt every update is fine": the key stays in the keychain, though macOS
+  asks about it after each update (below).
 - 2026-11-18: "profiles should be as isolated as possible... we would have to keep the dek in
   profile and kek in keyring"
 - 2026-11-18: "moving profiles should work, just the passwords would not"
@@ -83,6 +85,16 @@ lost or replaced keychain item), sealing and opening fail with a plain error, no
 overwritten, sync is off and its status says why. One call, `StartFresh`, deletes what was sealed
 and makes a new profile key. History and bookmarks are untouched. A device key is made only when
 a new profile key needs one, never in place of one that is there.
+
+**macOS asks after every update.** The app is signed with the project's own certificate and has
+no Apple team id, so macOS files the keychain item under the code hash of the build that made it.
+Measured in a VM on 2026-11-19 with two builds signed with the project's identity: every new
+build is asked "Project B wants to access key 'Project B device key'" and needs the person's Mac
+password; Always Allow covers that one build only; an access rule of any application doesn't
+avoid it, as the partition list still holds only the creator's code hash; and the
+data-protection keychain refuses a binary with no team id (`errSecMissingEntitlement`, -34018).
+So a profile with sync on asks once after each update, and until it is answered Sync shows Set up
+sync. Signing with an Apple Developer ID, whose team id lets every build read the item, ends it.
 
 **Sealing on disk** (`core/keys`): XChaCha20-Poly1305, with the table, the row's id, the column
 and any other values the row binds in as additional data, so a sealed value can't be moved to
