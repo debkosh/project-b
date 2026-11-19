@@ -319,6 +319,10 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 		// The phone's back key, which the engine reports on this channel while the shell
 		// said it closes something: the shell hears it.
 		m.send(w, map[string]any{"t": "backKey"})
+	case "keyboard":
+		// The phone's soft keyboard coming up or going, which the window reports on this
+		// channel: the shell hears it, and its bars under the page step aside while it is up.
+		m.send(w, map[string]any{"t": "keyboard", "on": c.On})
 	case "run":
 		m.run(c.Text)
 	case "relaunch":

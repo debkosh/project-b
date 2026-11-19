@@ -64,6 +64,9 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
     private var sheet = ""
     private var workspace = ""
     private var editing = false
+    // Whether the phone's soft keyboard is up, as the window said: the bars under the page step
+    // aside meanwhile, but for the shell's own field that has it (docs/design-system.md).
+    private var keyboardUp = false
     // The tab last made active, so each change of it is seen once.
     private var lastActive = 0L
     private var lastLayout = ""
@@ -318,6 +321,11 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
             "suggestions" -> if (m.optInt("id") == asked && editing) suggest(m.optJSONArray("items") ?: JSONArray())
             // The phone's back key, while the shell said it closes something: the sheet open,
             // or the editing.
+            "keyboard" -> {
+                keyboardUp = m.optBoolean("on")
+                draw()
+                report()
+            }
             "backKey" -> when {
                 dialogShown != null -> dialogShown!!.answer(false)
                 sheet.isNotEmpty() -> open("")
@@ -441,7 +449,8 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
             if (sheet.isNotEmpty()) { sheet = ""; sheets.removeAllViews(); switcher.visibility = GONE }
             if (editing) { address.clearFocus(); end() }
         }
-        for (s in listOf(topStack, bottomStack)) s.visibility = if (full() || gone) INVISIBLE else VISIBLE
+        topStack.visibility = if (full() || gone) INVISIBLE else VISIBLE
+        bottomStack.visibility = if (full() || gone || aside()) INVISIBLE else VISIBLE
         // The find bar in the toolbar's place while the shown tab's search is open.
         val finding = finding()
         if (finding) findBar.show(palette, find!!)
@@ -476,6 +485,9 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
 
     private fun finding() = find != null && find!!.optLong("tab") == active && active != 0L
 
+    // The bars under the page give their room to the keyboard's: to a dialog, or a page's field.
+    private fun aside() = keyboardUp && !editing && !finding()
+
     private fun full() = pageFullScreen != 0L && pageFullScreen == active
 
     // The shown tab's page dialog, the oldest it waits on: another tab's waits until it shows.
@@ -506,7 +518,10 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
         if (show) {
             away = false
             gone = false
-            if (!full()) for (s in stacks) s.visibility = VISIBLE
+            if (!full()) {
+                topStack.visibility = VISIBLE
+                if (!aside()) bottomStack.visibility = VISIBLE
+            }
             report()
             for (s in stacks) s.animate().translationY(0f).setDuration(slide).setInterpolator(Motion.ease).start()
         } else {
@@ -566,6 +581,7 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
         val top = addressBarPosition == "top"
         val strip = if (activeGroup() != null) bar else 0
         val crash = if (crashLog.isNotEmpty()) bar else 0
+        if (aside()) return Heights(if (top) bar else 0, 0, 0)
         return Heights(if (top) bar else 0, (if (top) 0 else bar) + strip + crash, strip)
     }
 

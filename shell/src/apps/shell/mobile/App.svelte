@@ -76,6 +76,11 @@
   // The new tab page, while the shown tab has no page yet.
   let newTabPage = $state();
   const finding = $derived(!!go.find && go.find.tab === go.active);
+  // While the phone's soft keyboard is up the bars under the page step aside, so a dialog
+  // or a field in the page has the room down to the keyboard; they stay while the shell's
+  // own field has it, the address or find (docs/design-system.md, On a phone).
+  let keyboard = $state(false);
+  const aside = $derived(keyboard && !editing && !finding);
   $effect(() => send({ t: 'backCloses', on: !!sheet || editing || asking || finding }));
 
   // The phone's back key: what is open over a sheet closes, as the Custom colour sheet
@@ -321,6 +326,7 @@
     },
     backKey,
     downloadNews: (m) => downloadBar?.news(m),
+    keyboard: ({ on }) => (keyboard = on),
     suggestions: (m) => {
       address.suggestions(m);
       newTabPage?.suggestions(m);
@@ -352,7 +358,7 @@
       {/if}
       <!-- A download as it happens, over the foot of the page; never over a sheet, nor over
            the Downloads page, which shows it already. -->
-      <DownloadBar bind:this={downloadBar} hidden={!!sheet || full || tab.page === 'downloads'} />
+      <DownloadBar bind:this={downloadBar} hidden={!!sheet || full || aside || tab.page === 'downloads'} />
     </main>
     {#if group || (marksBar && !top)}
       <div class="bars strip" class:away class:over class:full bind:offsetHeight={stripHeight}>
@@ -380,7 +386,7 @@
       onclosegroup={(id) => openGroup(id, true)}
     />
   </div>
-  <div class="bars foot" class:away class:over class:full bind:offsetHeight={footHeight}>
+  <div class="bars foot" class:away class:over class:full class:aside bind:offsetHeight={footHeight}>
     <CrashBar />
     {#if !top}
       <div class="tool">
@@ -534,6 +540,10 @@
 
   .strip.away {
     transform: translateY(calc(100% + var(--foot)));
+  }
+
+  .foot.aside {
+    display: none;
   }
 
   .foot.away {
