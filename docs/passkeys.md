@@ -371,7 +371,8 @@ one site, and must not answer for another.
 - **Android** (`GoSystem.java`, with the activity it holds): BiometricPrompt titled "Use your
   passkey" or "Save your passkey" with the site under it, `setDeviceCredentialAllowed(true)` on
   Android 10 (our minimum), the `BIOMETRIC_STRONG | DEVICE_CREDENTIAL` authenticators from 11.
-  No screen lock answers `ErrNoScreenLock`.
+  No screen lock answers `ErrNoScreenLock`. The manifest asks for `USE_BIOMETRIC`: without it
+  Android ends the app at the check.
 - **Mock** (`core/mocksystem`): answers as the test says.
 
 ### The authenticator: the engine
@@ -492,8 +493,10 @@ public key until the person removes it there, which the Delete Dialog says.
   here, go to the key step; Save takes the card away and the page going elsewhere takes the
   request back. Saving and signing in need the person at macOS's sheet: in the VM, where
   deskrig types the password.
-- **Android**: the same on emu-29 and emu-37 with a PIN set, the driver typing the PIN into
-  BiometricPrompt; a phone with no screen lock gets `no-screen-lock`.
+- **Android** (`tools/drive_android.py passkeys_on_the_phone`): the same on emu-29 and emu-37
+  with a PIN the part sets and clears, the driver typing it into Android's check; a phone
+  with no screen lock gets `no-screen-lock`, and the back key at the check refuses the page
+  (Android 10's first back only puts the keyboard away).
 - **Sync**: made on the Mac, signs in on the phone, by hand once.
 
 ### Later
