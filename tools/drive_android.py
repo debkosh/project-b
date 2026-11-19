@@ -1716,6 +1716,12 @@ def sync_on_the_phone():
         profile_key = adb("shell", "stat", "-c", "%s", "/data/data/%s/%s/profile.key" % (PACKAGE, PROFILE)).strip()
         check("turning sync on syncs, and makes the device key, wrapped by the Keystore, and the profile's key",
               pushed and key.isdigit() and int(key) > 32 and profile_key.isdigit(), (requests[-3:], key, profile_key))
+        # Sync now, pressed, asks the server again: nothing else does within these seconds, as
+        # sync's own runs come five minutes apart with nothing changed here.
+        time.sleep(3)
+        before = len(requests)
+        tap(middle(see("settings", text="Sync now", timeout=30)))  # does: syncNow
+        check("Sync now asks the server again", until(lambda: len(requests) > before, 15) is not None, requests[before:])
         stopped()
         before = len(requests)
         launch()
