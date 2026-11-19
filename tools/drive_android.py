@@ -240,6 +240,19 @@ PAGES["/dialogs"] = ("<title>Dialogs</title><style>button{display:block;width:10
                      "al.onclick = () => { alert('Hello'); say('alert', 'closed'); };</script>")
 
 
+# Passkeys (docs/passkeys.md): make saves one for ada, use signs in with whichever the person
+# chooses, and each tells the server how it ended.
+PAGES["/passkey"] = ("<title>Passkey</title><style>button{display:block;width:100%;height:30vh;font-size:40px}</style>"
+                     "<button id=m>make</button><button id=u>use</button><script>"
+                     "const say = (what, p) => p.then((v) => v, (e) => 'refused ' + e.name).then((v) => fetch('/said?' + what + '=' + encodeURIComponent(v)));"
+                     "m.onclick = () => say('make', navigator.credentials.create({publicKey: {challenge: new Uint8Array(16), rp: {name: 'Passkeys'},"
+                     "user: {id: new TextEncoder().encode('ada'), name: 'ada@example.com', displayName: 'Ada'},"
+                     "pubKeyCredParams: [{type: 'public-key', alg: -7}], authenticatorSelection: {residentKey: 'required'}}})"
+                     ".then((c) => 'made ' + c.response.getTransports().join() + ' ' + c.response.getPublicKeyAlgorithm() + ' ' + (c.response.getPublicKey() ? 'key' : 'nokey')));"
+                     "u.onclick = () => say('use', navigator.credentials.get({publicKey: {challenge: new Uint8Array(16)}})"
+                     ".then((c) => 'used ' + new TextDecoder().decode(c.response.userHandle)));</script>")
+
+
 # A page that fills the screen at a tap, as a video's full screen does, and says when it has.
 # A file input over the whole page, which says which file it got, or that the picker closed.
 PAGES["/upload"] = ("<title>Upload</title><input type=file id=f style='position:fixed;inset:0;width:100%;height:100%;opacity:0'><script>"
@@ -294,13 +307,16 @@ def asked(path, timeout=15):
 # while it is the shown tab its page is "settings" too, as the shell then offers Close Settings.
 # A node's attributes are Android's: class, text, content-desc (an aria-label), focused,
 # selected, and bounds in device pixels.
+PASSKEY_TITLES = ("Create a passkey", "Set a screen lock first", "Already saved")
+
 PARTS = {
     # The shell, or, while a page's dialog or the Custom colour sheet shows, it alone, as a
     # modal dialog hides the rest of the shell from the tree: a page dialog's title, Go's
     # words, ends in " says" or is Sign in. A modal sheet of the shell's own is known by a
     # label only it has: the Custom colour sheet by its Deepest shade, as Settings' frame
     # colours also have a "Custom colour" swatch.
-    "shell": lambda labels: "Menu" in labels or "Deepest" in labels or any(l.endswith(" says") or l == "Sign in" for l in labels),
+    # A passkey request's card is a page dialog too, titled by its step.
+    "shell": lambda labels: "Menu" in labels or "Deepest" in labels or any(l.endswith(" says") or l == "Sign in" or l in PASSKEY_TITLES or l.startswith("Sign in to ") for l in labels),
     "page": lambda labels: "Menu" not in labels,
 }
 # A WebView's own text is its document's title. Every shell's is "Project B"
@@ -1798,6 +1814,84 @@ def sync_on_the_phone():
         adb("shell", "rm", "-f", "/data/misc/keychain/certs-added/project-b-sync-test.0")
 
 
+def passkeys_on_the_phone():
+    """Our own passkeys on a phone (docs/passkeys.md, Our own passkeys), the only way there.
+    With no screen lock, Save says to set one and the page is refused. With a PIN set, Save
+    brings Android's own check, the PIN typed into it makes the passkey, and the page reads
+    its transport, algorithm and key; signing in shows the passkey as a row, a tap and the
+    PIN again sign in, and the page gets its user handle; a no to the check refuses the
+    page. The PIN is cleared at the end, whatever happened: a lock left on stalls every
+    other run."""
+    pin = "1357"
+
+    def locked():
+        # With a PIN set, Android answers only to one who knows it.
+        return "false" in adb("shell", "locksettings", "get-disabled", "--old", pin).lower()
+
+    def check_person(title):
+        """Android's own sheet for a check, titled title, and the PIN typed into it."""
+        sheet = until(lambda: system_node(text=title), 20)
+        if sheet is not None:
+            # Android 10's check is a secure screen, whose picture comes back empty: its
+            # words are kept beside it, as Android's tree has them.
+            out = adb("exec-out", "uiautomator", "dump", "/dev/tty")
+            words = [w for n in ET.fromstring(out[:out.rindex("</hierarchy>") + len("</hierarchy>")]).iter("node") for w in (n.get("text"), n.get("content-desc")) if w]
+            with open("%s/passkey-check-%s.txt" % (OUT, title.split()[0].lower()), "w") as f:
+                f.write("\n".join(words) + "\n")
+            adb("shell", "input", "text", pin)
+            key(66)
+        return sheet is not None
+
+    adb("shell", "locksettings", "clear", "--old", pin)
+    launch()
+    go(BASE + "/passkey")
+    asked("/passkey")
+    served.clear()
+    try:
+        tap(middle(see("page", text="make")))
+        check("a page making a passkey is asked to save it in Project B", see("shell", text="Save a passkey for localhost in Project B?") is not None)
+        shot("passkey-save")
+        tap(middle(see("shell", text="Save")))
+        check("with no screen lock, Save says to set one", see("shell", text="Set a screen lock first") is not None)
+        shot("passkey-no-screen-lock")
+        tap(middle(see("shell", text="Close")))
+        check("and the page is refused", asked("/said?make=" + urllib.parse.quote("refused NotAllowedError")), str(served))
+
+        adb("shell", "locksettings", "set-pin", pin)
+        check("a PIN is set for the run", until(locked) is not None, adb("shell", "locksettings", "get-disabled", "--old", pin))
+        served.clear()
+        tap(middle(see("page", text="make")))
+        tap(middle(see("shell", text="Save")))
+        check("Save brings Android's own check, named for saving", check_person("Save your passkey"))
+        check("the PIN makes the passkey, and the page reads its transport, algorithm and key", asked("/said?make=" + urllib.parse.quote("made internal -7 key")), str(served))
+
+        served.clear()
+        tap(middle(see("page", text="use")))
+        row = until(lambda: first(lambda: find("shell", text=lambda t: t.startswith("Ada")), lambda: find("shell", label=lambda l: l.startswith("Ada"))), 20)
+        check("signing in shows the passkey here as a row, under the site", row is not None and first(lambda: find("shell", text="Sign in to localhost"), lambda: find("shell", label="Sign in to localhost")) is not None)
+        shot("passkey-own")
+        tap(middle(row))
+        check("a tap on it brings the check, named for using", check_person("Use your passkey"))
+        check("and the PIN signs in: the page gets its user handle", asked("/said?use=" + urllib.parse.quote("used ada")), str(served))
+
+        served.clear()
+        tap(middle(see("page", text="use")))
+        tap(middle(until(lambda: first(lambda: find("shell", text=lambda t: t.startswith("Ada")), lambda: find("shell", label=lambda l: l.startswith("Ada"))), 20)))
+        until(lambda: system_node(text="Use your passkey"), 20)
+        # Android 10 asks for the PIN on a screen with the keyboard up, and the first back
+        # only puts the keyboard away.
+        for _ in range(2):
+            key(4)
+            if until(lambda: system_node(text="Use your passkey") is None, 3):
+                break
+        check("the back key at the check refuses the page", asked("/said?use=" + urllib.parse.quote("refused NotAllowedError")), str(served))
+    finally:
+        adb("shell", "locksettings", "clear", "--old", pin)
+        check("the PIN is cleared after the run", until(lambda: "true" in adb("shell", "locksettings", "get-disabled").lower()) is not None, adb("shell", "locksettings", "get-disabled"))
+    go(BASE + "/a")
+    asked("/a")
+
+
 def the_page_renderer_dies():
     launch()
     go(BASE + "/a")
@@ -2256,7 +2350,7 @@ def main():
     adb("shell", "pm", "clear", PACKAGE)
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
-    every = (browsing, mobile_shell, custom_colour, settings_back, talkback_states, bookmark_star, settings_ahead, back_key_chain, page_dialogs, downloads, crash_notice, download_notifications, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
+    every = (browsing, mobile_shell, custom_colour, settings_back, talkback_states, bookmark_star, settings_ahead, back_key_chain, page_dialogs, downloads, crash_notice, download_notifications, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, passkeys_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
              the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web, long_press_menu, keyboard_bars, welcome_extras, welcome_last_step)
     for part in [p for p in every if not sys.argv[1:] or p.__name__ in sys.argv[1:]]:
         # tools/results.py splits a run's memory, CPU and checks by these lines.
