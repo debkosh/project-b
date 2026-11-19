@@ -48,17 +48,20 @@ func (m *Manager) Begin(address, token string, key *synckosh.DataKey) error {
 		if err := m.begin(address, token, key); err != nil {
 			return err
 		}
-		return m.run()
+		return m.run(WhyOn)
 	})
 }
 
-// RunNow runs, and returns its error.
-func (m *Manager) RunNow() error {
+// RunNow runs, as a person asking for it, and returns its error.
+func (m *Manager) RunNow() error { return m.RunAs(WhyAsked) }
+
+// RunAs runs, started for why, and returns its error.
+func (m *Manager) RunAs(why string) error {
 	return m.await(func() error {
 		if m.conn == nil {
 			return errors.New("sync is off")
 		}
-		return m.run()
+		return m.run(why)
 	})
 }
 

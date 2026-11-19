@@ -100,6 +100,9 @@ func (a *App) syncSettingsPart() settings.Part {
 				a.Sync.Disconnect(func(err error) { answer("syncDisconnected", err, nil) })
 			case "syncNow":
 				a.Sync.SyncNow()
+			case "syncDetails":
+				// For the Sync details page (docs/sync-details.md), which asks again after each run.
+				a.Sync.Details(func(d sync.Details) { a.Settings.Send(map[string]any{"t": "syncDetails", "details": d}) })
 			case "syncCancel":
 				a.Sync.CancelRun()
 			case "syncSuggest":

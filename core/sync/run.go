@@ -78,6 +78,11 @@ type Manager struct {
 	// stopRun cuts the run going on short, nil between runs, and cut says CancelRun did.
 	stopRun func()
 	cut     bool
+	// For Sync details (details.go): the run going on, the rows of those ended since the app
+	// started, newest first, and when the next comes if nothing changes.
+	cur     *Run
+	runs    []Run
+	nextRun time.Time
 
 	// The sync goroutine's own.
 	conn *connection
@@ -99,8 +104,9 @@ type connection struct {
 // sync is on, a run starts at once.
 func New(st *store.Store, k *keys.Keys, post func(func()), maps ...Mapping) *Manager {
 	ctx, cancel := context.WithCancel(context.Background())
-	m := &Manager{st: st, keys: k, post: post, maps: map[string]*Mapping{}, http: checked(HTTPClient), ops: make(chan func(), 64), wake: make(chan struct{}, 1),
+	m := &Manager{st: st, keys: k, post: post, maps: map[string]*Mapping{}, ops: make(chan func(), 64), wake: make(chan struct{}, 1),
 		ctx: ctx, cancel: cancel, done: make(chan struct{})}
+	m.http = checked(HTTPClient, m.noteRequest)
 	for i := range maps {
 		m.maps[maps[i].Collection] = &maps[i]
 	}
@@ -214,11 +220,16 @@ func (m *Manager) loop() {
 			op()
 		case <-m.wake:
 			if m.conn != nil {
-				m.run()
+				m.run(WhyAsked)
 			}
 		case <-tick.C:
-			if m.conn != nil && !time.Now().Before(m.next) && (time.Since(m.last) >= every || m.marked()) {
-				m.run()
+			if m.conn == nil || time.Now().Before(m.next) {
+				break
+			}
+			if m.marked() {
+				m.run(WhyChange)
+			} else if time.Since(m.last) >= every {
+				m.run(WhyTimer)
 			}
 		}
 	}
@@ -262,7 +273,7 @@ func (m *Manager) load() {
 		return
 	}
 	if m.conn != nil {
-		m.run()
+		m.run(WhyStart)
 	}
 }
 
@@ -329,6 +340,7 @@ func (m *Manager) end() error {
 	m.conn = nil
 	m.mu.Lock()
 	m.address = ""
+	m.cur, m.runs, m.nextRun = nil, nil, time.Time{}
 	m.mu.Unlock()
 	err := m.st.Wait(func(tx *store.Tx) error {
 		if err := m.keys.DeleteSecrets(tx, secretAddress, secretToken, secretKey); err != nil {
@@ -377,9 +389,11 @@ func (m *Manager) marked() bool {
 }
 
 // run drains the marks into synckosh, then syncs, and tells the features whose rows changed.
-// A failure waits longer each time before the next run that isn't asked for.
-func (m *Manager) run() error {
+// A failure waits longer each time before the next run that isn't asked for. why is what
+// started it, for Sync details.
+func (m *Manager) run(why string) error {
 	c := m.conn
+	m.started(why)
 	m.setStatus(func(s *Status) { s.Syncing = true })
 	ctx, cancel := context.WithTimeout(m.ctx, runFor)
 	m.mu.Lock()
@@ -401,10 +415,13 @@ func (m *Manager) run() error {
 		}
 	}
 	clear(c.local.wrote)
+	moved := c.local.moved
+	c.local.moved = tally{}
 	m.mu.Lock()
 	cut := m.cut
 	m.mu.Unlock()
 	if cut && err != nil {
+		m.ended(moved, nil, true)
 		m.setStatus(func(s *Status) { s.Syncing = false })
 		return err
 	}
@@ -416,6 +433,12 @@ func (m *Manager) run() error {
 	} else {
 		m.wait, m.next = 0, time.Time{}
 	}
+	m.ended(moved, err, false)
+	m.mu.Lock()
+	if m.nextRun = m.next; err == nil {
+		m.nextRun = m.last.Add(every)
+	}
+	m.mu.Unlock()
 	m.setStatus(func(s *Status) {
 		s.Syncing = false
 		if s.Error, s.Problem = "", ""; err != nil {

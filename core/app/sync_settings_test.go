@@ -37,6 +37,13 @@ func TestSettingsSync(t *testing.T) {
 	if m := r.waitOn(got, func(m map[string]any) bool { return m["t"] == "syncSuggested" }); len(strings.Fields(m["passphrase"].(string))) != 5 {
 		t.Fatalf("suggested %v", m)
 	}
+	// Sync details answers with sync off too: nothing to show, and never null where the page
+	// expects a list.
+	r.settings(`{"t":"syncDetails"}`)
+	m = r.waitOn(got, func(m map[string]any) bool { return m["t"] == "syncDetails" })
+	if d, ok := m["details"].(map[string]any); !ok || d["host"] != "" || d["running"] != nil || len(d["runs"].([]any)) != 0 || len(d["kinds"].([]any)) != 0 || len(d["waiting"].([]any)) != 0 {
+		t.Fatalf("the details with sync off: %v", m)
+	}
 	for _, f := range []string{"profile.key", "folder.key", "secrets"} {
 		if _, err := os.Stat(filepath.Join(dir, f)); !os.IsNotExist(err) {
 			t.Fatalf("%s before anything was sealed", f)
