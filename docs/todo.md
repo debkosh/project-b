@@ -250,11 +250,11 @@ How they work is in [site-features.md](site-features.md).
   markup (seen 2026-11-19 on Android 16, after every switch was named by aria-labelledby).
   The tester checks them, and the star, Pin and RowMenu findings, on one emulator with
   TalkBack already granted, so its first prompt doesn't take the screen.
-- **Android: names read from other elements reach TalkBack empty.** In our app a control
-  named by aria-labelledby, or by a label around it, has no name for TalkBack; Chrome names
-  it (seen 2026-11-19 on Android 17, docs/fragility.md "Switches named by other words heard
-  with no name"). Switches now use aria-label; selects and fields named by a label wait on
-  the engine passing these names, as Chrome does.
+- **Android: names read from other elements reach TalkBack empty until dd-a11y-names
+  ships.** Our Chromium puts them in Android 16's supplemental description, which TalkBack
+  doesn't speak on a control (docs/fragility.md "Switches named by other words heard with no
+  name"). Switches keep aria-label after it ships, as UX decided on 2026-11-19
+  (docs/design-system.md).
 
 - The mock holds six connections per host, so four mock pages on screen hang a test
   ([shells.md](shells.md#testing-one)): serve the mock pages from a second host

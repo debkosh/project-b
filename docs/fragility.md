@@ -35,18 +35,21 @@ The seams:
   no name. A bare page showed which markup: a switch named by aria-label was named, but one
   named by aria-labelledby, or by a label wrapped around it, or both, had no name at all.
   Chrome on the same emulator named all four.
-- **Cause:** Chrome puts a name it reads from other elements into the text Android gets for
-  the control, and an aria-label into its description. Our app passes the description but
-  leaves that text empty, so only aria-label survives. Why our engine leaves it empty is not
-  yet found.
-- **Seam:** Android's accessibility tree.
+- **Cause:** our Chromium, 155, puts a name it takes from other elements into the field
+  Android 16 added for a supplemental description, not into the control's text, and
+  TalkBack doesn't speak that field on a control. An aria-label still goes to the control's
+  description, which TalkBack speaks. The Chrome on the emulator, 133, predates that change,
+  so it named all four. The daily driver found it from TalkBack's own log, which said "On,
+  Switch" for Bravo.
+- **Seam:** Android's accessibility tree: where an engine newer than the Android Chrome we
+  compare with puts a name.
 - **Fix:** on switch-labels: every switch is named by aria-label, from the same words its
   visible label shows: the settings rows, the welcome's, Sites' keep-cookies switch, and
   the site panel's and site sheet's. The line under a switch still reaches Android, by
-  aria-describedby.
+  aria-describedby. On dd-a11y-names: the engine puts such names in the control's text
+  again, as Chrome does, so selects and fields named by a label are named too.
 - **Guard:** `shell/e2e/shells/mobile.cjs` counts a switch or checkbox without aria-label as
-  nameless. Selects and fields named only by a label stay nameless on Android until the
-  engine passes these names, which is with the daily driver.
+  nameless.
 
 ## TalkBack heard every switch as off, 2026-11-19
 
