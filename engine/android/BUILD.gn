@@ -27,6 +27,7 @@ generate_jni("jni_headers") {
     "java/dev/projectb/browser/BrowserWindow.java",
     "java/dev/projectb/browser/Downloads.java",
     "java/dev/projectb/browser/ExitReasons.java",
+    "java/dev/projectb/browser/Passkeys.java",
     "java/dev/projectb/browser/Printing.java",
   ]
 }
@@ -90,6 +91,8 @@ source_set("browser") {
     "downloads_android.cc",
     "descriptors.h",
     "exit_reason_android.cc",
+    "passkeys_android.cc",
+    "passkeys_android.h",
     "printing_android.cc",
     "window_android.cc",
   ]
@@ -290,11 +293,16 @@ android_library("java") {
     "//components/viz/service:service_java",
     "//content/public/android:content_java",
     "//media/capture/video/android:capture_java",
+    "//mojo/public/java:bindings_java",
+    "//mojo/public/java:system_java",
     "//net/android:net_java",
     "//third_party/androidx:androidx_annotation_annotation_java",
     "//third_party/androidx:androidx_core_core_java",
+    "//services/service_manager/public/java:service_manager_java",
+    "//third_party/blink/public/mojom:authenticator_mojo_bindings_java",
     "//third_party/jni_zero:jni_zero_java",
     "//ui/accessibility:ax_base_java",
+    "//url:url_java",
     "//ui/android:ui_java",
     "//ui/native_theme:os_settings_provider_android_bridge_java",
     ":native_shells_java",
@@ -310,6 +318,7 @@ android_library("java") {
     "java/dev/projectb/browser/ExitReasons.java",
     "java/dev/projectb/browser/GoCore.java",
     "java/dev/projectb/browser/GoSystem.java",
+    "java/dev/projectb/browser/Passkeys.java",
     "java/dev/projectb/browser/Printing.java",
   ]
 }

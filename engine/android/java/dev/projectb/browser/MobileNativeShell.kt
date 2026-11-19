@@ -493,10 +493,12 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
     // The shown tab's page dialog, the oldest it waits on: another tab's waits until it shows.
     private fun showDialog() {
         val d = dialogs.firstOrNull { it.optLong("tab") == active }
-        if (d?.opt("id") == dialogShownId && (d == null) == (dialogShown == null)) return
+        // A passkey request is one dialog whose step changes: each step is drawn anew.
+        val shownId = d?.let { "${it.opt("id")}:${it.optJSONObject("passkey")?.optInt("seq") ?: 0}" }
+        if (shownId == dialogShownId && (d == null) == (dialogShown == null)) return
         dialogLayer.removeAllViews()
         dialogShown = null
-        dialogShownId = d?.opt("id")
+        dialogShownId = shownId
         if (d != null) {
             if (editing) leave()
             val v = PageDialog(context, palette, d, { send(it) }) { focusPage() }

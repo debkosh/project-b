@@ -46,7 +46,9 @@
 #include "project_b/engine/browser/page_tab.h"
 #include "project_b/engine/browser/permissions.h"
 #include "project_b/engine/buildflags/buildflags.h"
-#if !BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID)
+#include "project_b/engine/android/passkeys_android.h"
+#else
 #include "project_b/engine/browser/mac_app.h"
 #include "project_b/engine/browser/notifications.h"
 #include "project_b/engine/browser/passkeys.h"
@@ -338,7 +340,9 @@ void CallAnswerSignIn(int64_t dialog, int ok, const char* username, const char* 
 
 void CallAnswerPasskey(int64_t dialog, const char* action, const char* text) {
   CheckMainThread();
-#if !BUILDFLAG(IS_ANDROID)  // A phone's passkey requests never reach us (docs/passkeys.md).
+#if BUILDFLAG(IS_ANDROID)
+  AnswerPasskey(dialog, action, text);
+#else
   PasskeyRequest::Answer(dialog, action, text);
 #endif
 }
