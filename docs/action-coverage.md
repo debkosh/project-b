@@ -4,7 +4,7 @@ Every action a person can take, where the app offers it, and the tests that do i
 `tools/action_coverage.py` from the code; `tools/test.sh mock` fails while an action has no
 test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 
-**209 actions and messages, 200 with a test, 9 exempt with a reason, 0 with none; 28 of Go's actions done by no test of the real app.**
+**209 actions and messages, 201 with a test, 8 exempt with a reason, 0 with none; 28 of Go's actions done by no test of the real app.**
 
 ## Go's actions: the menu bar, keys and the shells' own menus
 
@@ -112,7 +112,7 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `addToGroup` | glide, mobile, mobile-native, standard | yes | `drive_first_app.py` |
 | `allowNotifications` | mobile, mobile-native | **no** | `download_offer_test.go` |
 | `answerDialog` | mobile-native | **no** | `dialogs_test.go`, `passkeys_test.go` |
-| `askNotifications` | page:welcome | **no** | exempt: the phone's own permission question, which the welcome asks; drive_android's download_notifications answers it |
+| `askNotifications` | page:welcome | yes | `drive_android.py` |
 | `back` | glide, mobile-native | **no** | `fullscreen_test.go` |
 | `backCloses` | mobile, mobile-native | **no** | exempt: not a person's action: the Mobile shell tells the engine whether the back key closes something of its own |
 | `bookmark` | mobile-native | **no** | `pages_test.go`, `mobile.cjs`, `standard.cjs` |
@@ -160,7 +160,7 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `importFile` | ui | **no** | `imports_test.go` |
 | `keepCookies` | page:settings | **no** | `quit_erasure_test.go` |
 | `layout` | mobile-native, page:picker | **no** | `app_test.go`, `first-app.cjs` |
-| `makeDefault` | page:settings, page:welcome | **no** | `default_browser_settings_test.go` |
+| `makeDefault` | page:settings, page:welcome | yes | `default_browser_settings_test.go`, `drive_android.py` |
 | `more` | page:history | **no** | exempt: not a person's action: the History page asks for its next rows as it scrolls |
 | `moveBookmark` | page:bookmarks | **no** | `pages_test.go` |
 | `moveTab` | standard, terminal | **no** | `app_test.go` |

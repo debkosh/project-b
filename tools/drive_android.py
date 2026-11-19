@@ -2010,9 +2010,9 @@ def long_press_menu():
             use_shell("")
 
 
-def welcome_extras():
-    """A new profile's welcome on a phone: after Pick your style, Extras for any page offers
-    the built-in sparks, each off, by name and line; a switch turns one on in Go."""
+def open_welcome():
+    """A new profile's welcome, past Get started at Pick your style. False when it never got
+    there, which it says as a check."""
     adb("shell", "pm", "clear", PACKAGE)
     until(lambda: PACKAGE + "_zygote" not in adb("shell", "ps", "-A", "-o", "NAME"))
     adb("shell", "am", "start", "-W", "-n", PACKAGE + "/" + ACTIVITY)
@@ -2028,7 +2028,13 @@ def welcome_extras():
             time.sleep(2)
     opened = until(started, 30) is not None
     check("Get started opens Pick your style", opened)
-    if not opened:
+    return opened
+
+
+def welcome_extras():
+    """A new profile's welcome on a phone: after Pick your style, Extras for any page offers
+    the built-in sparks, each off, by name and line; a switch turns one on in Go."""
+    if not open_welcome():
         return
     tap(middle(see("page", text="Continue")))
     see("page", text="Extras for any page")
@@ -2048,6 +2054,79 @@ def welcome_extras():
     tap(middle(see("page", text="Skip setup")))
 
 
+def system_button(text, timeout=10):
+    """A button of Android's own on screen, outside our pages, by its words, as a sheet or a
+    question the system shows has, any case, ’ read as '; None when none shows in time."""
+    def look():
+        out = adb("exec-out", "uiautomator", "dump", "/dev/tty")
+        if "</hierarchy>" not in out:
+            return None
+        root = ET.fromstring(out[:out.rindex("</hierarchy>") + len("</hierarchy>")])
+        said = lambda n: (n.get("text") or "").replace("\u2019", "'").lower()
+        return next((n for n in root.iter("node") if said(n) == text.lower()), None)
+    return until(look, timeout)
+
+
+def browser_role_holders():
+    """The packages Android holds as the default browser, one per line."""
+    return adb("shell", "cmd", "role", "get-role-holders", "android.app.role.BROWSER").strip()
+
+
+def welcome_last_step():
+    """The welcome's last step on a phone asks Android through Go's core/system, not the engine
+    (docs/layers.md): Make default browser (makeDefault) shows Android's sheet, and Allow
+    (askNotifications) its question about notifications. Cancelled or refused, each row stays as it was,
+    Go having heard no; asked once Android has said yes, Go hears yes at once and the row says
+    so."""
+    # does: makeDefault
+    # does: askNotifications
+    before = browser_role_holders()
+    adb("shell", "cmd", "role", "remove-role-holder", "android.app.role.BROWSER", PACKAGE)
+    try:
+        if not open_welcome():
+            return
+        # Extras for any page when the profile has built-in sparks, then Protection, then the
+        # last step.
+        for _ in range(4):
+            if find("page", text="You're set") is not None:
+                break
+            tap(middle(see("page", text="Continue")))
+            time.sleep(1)
+        see("page", text="You're set")
+        shot("47-welcome-last-step")
+
+        tap(middle(see("page", text="Make default browser")))
+        sheet = until(lambda: "RequestRole" in in_front_now(), 10)
+        check("Make default browser shows Android's sheet", sheet, in_front_now())
+        tap(middle(system_button("Cancel")))
+        check("cancelled, the row still offers it, Go having heard no",
+              until(lambda: in_front() and find("page", text="Make default browser") is not None, 10)
+              and PACKAGE not in browser_role_holders(), browser_role_holders())
+        adb("shell", "cmd", "role", "add-role-holder", "android.app.role.BROWSER", PACKAGE)
+        tap(middle(see("page", text="Make default browser")))
+        check("the app already the default, it says so at once",
+              until(lambda: find("page", text="This is your default browser"), 10) is not None)
+
+        if int(adb("shell", "getprop", "ro.build.version.sdk").strip()) < 33:
+            check("before Android 13 notifications are on, with nothing to ask",
+                  find("page", text="On") is not None)
+            return
+        tap(middle(see("page", text="Allow")))
+        asked_ = until(lambda: "GrantPermissions" in in_front_now(), 10)
+        check("Allow shows Android's question about notifications", asked_, in_front_now())
+        tap(middle(system_button("Don't allow")))
+        check("refused, the row still offers it, Go having heard no",
+              until(lambda: in_front() and find("page", text="Allow") is not None, 10) is not None)
+        adb("shell", "pm", "grant", PACKAGE, "android.permission.POST_NOTIFICATIONS")
+        tap(middle(see("page", text="Allow")))
+        check("allowed already, it says On at once", until(lambda: find("page", text="On"), 10) is not None)
+        shot("48-welcome-last-step-answered")
+    finally:
+        adb("shell", "cmd", "role", "remove-role-holder", "android.app.role.BROWSER", PACKAGE)
+        for holder in before.split():
+            adb("shell", "cmd", "role", "add-role-holder", "android.app.role.BROWSER", holder)
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     adb("root")
@@ -2064,7 +2143,7 @@ def main():
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
     every = (browsing, mobile_shell, custom_colour, settings_back, talkback_states, bookmark_star, back_key_chain, page_dialogs, downloads, crash_notice, download_notifications, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
-             the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web, long_press_menu, welcome_extras)
+             the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web, long_press_menu, welcome_extras, welcome_last_step)
     for part in [p for p in every if not sys.argv[1:] or p.__name__ in sys.argv[1:]]:
         # tools/results.py splits a run's memory, CPU and checks by these lines.
         print("--- part " + part.__name__, flush=True)
