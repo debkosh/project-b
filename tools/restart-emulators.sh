@@ -22,6 +22,11 @@ for emulator in "$@"; do
             sleep 5
         done
         sleep 30   # the GPU is ready a while after boot says so
+        # The keyboard's autocorrect off: it once turned a driver's typed "Sparks" into
+        # "Spark's", and a search found nothing. Gboard keeps it in its preferences, as root.
+        "$ADB" -s "$serial" root >/dev/null 2>&1; sleep 2
+        prefs=/data/data/com.google.android.inputmethod.latin/shared_prefs/com.google.android.inputmethod.latin_preferences.xml
+        "$ADB" -s "$serial" shell "[ -f $prefs ] && { grep -q auto_correction $prefs || sed -i 's|</map>|    <boolean name=\"auto_correction\" value=\"false\" />\n</map>|' $prefs; sed -i 's|name=\"auto_correction\" value=\"true\"|name=\"auto_correction\" value=\"false\"|' $prefs; am force-stop com.google.android.inputmethod.latin; }" >/dev/null 2>&1
         "$ADB" -s "$serial" logcat -c
         "$ADB" -s "$serial" shell am start -n "$PACKAGE/.BrowserActivity" -d about:blank >/dev/null
         sleep 20
