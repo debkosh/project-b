@@ -1513,8 +1513,20 @@ def welcome_extras():
     adb("shell", "pm", "clear", PACKAGE)
     until(lambda: PACKAGE + "_zygote" not in adb("shell", "ps", "-A", "-o", "NAME"))
     adb("shell", "am", "start", "-W", "-n", PACKAGE + "/" + ACTIVITY)
-    tap(middle(see("page", timeout=60, text="Get started")))
-    see("page", text="Pick your style")
+    see("page", timeout=60, text="Get started")
+    # On Android 10 the welcome can show in the page before it takes a tap, and the first
+    # tap is lost: tap again while Get started is still there.
+    def started():
+        if find("page", text="Pick your style") is not None:
+            return True
+        button = find("page", text="Get started")
+        if button is not None:
+            tap(middle(button))
+            time.sleep(2)
+    opened = until(started, 30) is not None
+    check("Get started opens Pick your style", opened)
+    if not opened:
+        return
     tap(middle(see("page", text="Continue")))
     see("page", text="Extras for any page")
     names = ["Video downloader", "Screen time limit", "Page cleanup"]
