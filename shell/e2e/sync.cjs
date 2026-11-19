@@ -184,6 +184,17 @@ const taken = [];
   check('an empty bucket asks for a new passphrase, twice', await until(async () => (await dialog().getAttribute('aria-label')) === 'Choose a sync passphrase') &&
     (await dialog().innerText()).includes(`Nothing is synced on ${HOST} yet. Every device you add asks for this passphrase.`) && (await field('Type it again').count()) === 1);
   check('the passphrase field has the focus', await focused('Passphrase'));
+  // The room a phone's keyboard leaves: the dialog's title and buttons stay in sight, and
+  // only its body scrolls between them.
+  await page.setViewportSize({ width: viewport.width, height: 380 });
+  const room = await dialog().evaluate((el) => {
+    const inSight = (n) => { const r = n.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; };
+    const body = el.querySelector('.ui-dialog-body');
+    return { title: inSight(el.querySelector('.ui-dialog-title')), buttons: inSight(el.querySelector('.ui-dialog-buttons')), scrolls: body.scrollHeight > body.clientHeight, whole: el.scrollHeight <= el.clientHeight };
+  });
+  check('with little room, as over a keyboard, the dialog keeps its title and buttons in sight and only its body scrolls', room.title && room.buttons && room.scrolls && room.whole, JSON.stringify(room));
+  if (phone) await page.screenshot({ path: path.join(screens, 'keyboard-room.png') });
+  await page.setViewportSize(viewport);
   await field('Passphrase').fill('short one');
   await field('Type it again').fill('short one');
   await button('Turn on sync').click();
