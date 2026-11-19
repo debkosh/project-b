@@ -4,7 +4,9 @@
   // A page's alert, confirm, prompt, leave-page question or sign-in (docs/daily-driver.md),
   // in the middle of the screen over the dimmed window, as a phone's dialogs are. Only the
   // shown tab's: another tab's waits until its tab shows. Go words it; the page waits until
-  // it is answered. The phone's back key answers no (App's backKey calls cancel).
+  // it is answered. The phone's back key answers no (App's backKey calls cancel). Its title
+  // and its buttons stay put, and what is between them scrolls when the card has little
+  // room, as over the keyboard.
   const dialog = $derived(dialogFor(go, go.active));
   let text = $state('');
   let password = $state('');
@@ -47,6 +49,7 @@
     {#key dialog.id}
       <div class="card" role="alertdialog" aria-modal="true" aria-label={dialog.title}>
         <h2>{dialog.title}</h2>
+        <div class="body">
         {#if dialog.message}
           <p class="words">
             {#if hostAt >= 0}{dialog.message.slice(0, hostAt)}<b>{dialog.host}</b>{dialog.message.slice(hostAt + dialog.host.length)}{:else}{dialog.message}{/if}
@@ -63,6 +66,7 @@
           <input id="m-sign-in-password" bind:value={password} class="text-field" type="password" autocomplete="current-password" enterkeyhint="done" onkeydown={enter} />
           {#if dialog.insecure}<p class="insecure">This connection isn't secure: your password will be sent as plain text.</p>{/if}
         {/if}
+        </div>
         <div class="buttons">
           {#if dialog.cancel}<button type="button" class="text-button" onclick={() => answer(false)}>{dialog.cancel}</button>{/if}
           <button type="button" class="text-button primary" onclick={() => answer(true)}>{dialog.ok}</button>
@@ -88,8 +92,9 @@
     width: 100%;
     max-width: 400px;
     max-height: 100%;
-    overflow-y: auto;
-    overscroll-behavior: contain;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     padding: 24px 24px 12px;
     box-sizing: border-box;
     border-radius: 16px;
@@ -99,7 +104,17 @@
     animation: grow var(--motion) var(--ease);
   }
 
+  /* Only this scrolls; wider and taller than what it holds, so a field's focus ring isn't cut. */
+  .body {
+    min-height: 0;
+    margin: -4px -24px;
+    padding: 4px 24px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
   h2 {
+    flex: none;
     margin: 0 0 12px;
     font-size: 17px;
     font-weight: 600;
@@ -146,6 +161,7 @@
   }
 
   .buttons {
+    flex: none;
     display: flex;
     justify-content: flex-end;
     gap: 8px;
