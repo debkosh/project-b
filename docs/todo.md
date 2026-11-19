@@ -250,11 +250,6 @@ How they work is in [site-features.md](site-features.md).
   markup (seen 2026-11-19 on Android 16, after every switch was named by aria-labelledby).
   The tester checks them, and the star, Pin and RowMenu findings, on one emulator with
   TalkBack already granted, so its first prompt doesn't take the screen.
-- **Recheck switch names with TalkBack once 0.2.102 is out**: a bare page with two switches,
-  one named by `aria-label` and one by `aria-labelledby`, and the welcome's Protection step.
-  If `aria-labelledby` fails there and `aria-label` passes, name every switch by
-  `aria-label`, bound to the same value its visible words render from (seen 2026-11-19: the
-  welcome's switch, named by `aria-labelledby`, read with no name).
 
 - The mock holds six connections per host, so four mock pages on screen hang a test
   ([shells.md](shells.md#testing-one)): serve the mock pages from a second host
