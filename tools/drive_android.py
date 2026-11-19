@@ -979,6 +979,43 @@ def bookmark_star():
             use_shell("")
 
 
+def settings_ahead():
+    """Settings made ahead as the menu opens, in both Mobile shells, the web one and the native
+    one (docs/windows.md): the menu opening starts the settings page out of sight, no tab to
+    the person, neither counted, nor a card in the switcher, nor on screen; the menu's
+    Settings then shows that page, already started."""
+    for shell in ("mobile", "mobile-native"):
+        use_shell(shell)
+        try:
+            launch()
+            go(BASE + "/a")
+            see("page", label="to b")
+            timeline_marks = lambda: adb("logcat", "-d", "-s", "ProjectB")
+            adb("logcat", "-c")
+            press("Menu")
+            see("shell", label="Settings")
+            check(shell + ": the menu opening starts the settings page out of sight, none on screen",
+                  until(lambda: "settings.prepare" in timeline_marks() and "settings.ready" in timeline_marks()) is not None
+                  and "settings" not in screen_parts())
+            key(4)
+            until(lambda: find("shell", label="Settings") is None)
+            press("Tabs")
+            check(shell + ": the switcher has a card for the page's tab and none for settings",
+                  until(lambda: find("shell", label="Close Page A")) is not None and find("shell", label="Close Settings") is None)
+            key(4)
+            until(lambda: find("shell", label="Close Page A") is None)
+            menu("Settings")
+            check(shell + ": the menu's Settings shows that page, its tab the one made ahead",
+                  until(lambda: find("settings", text="Theme")) is not None and "settings.open.prepared_ready" in timeline_marks())
+            close_settings()
+            check(shell + ": and its close closes it", "settings" not in screen_parts())
+        except TimeoutError:
+            shot("stopped-settings_ahead-" + shell)
+            raise
+        finally:
+            use_shell("")
+
+
 def in_front():
     """Whether the app's window is the one Android shows."""
     return PACKAGE in adb("shell", "dumpsys", "window", "displays").split("mCurrentFocus", 1)[-1].split("\n", 1)[0]
@@ -2212,7 +2249,7 @@ def main():
     adb("shell", "pm", "clear", PACKAGE)
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
-    every = (browsing, mobile_shell, custom_colour, settings_back, talkback_states, bookmark_star, back_key_chain, page_dialogs, downloads, crash_notice, download_notifications, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
+    every = (browsing, mobile_shell, custom_colour, settings_back, talkback_states, bookmark_star, settings_ahead, back_key_chain, page_dialogs, downloads, crash_notice, download_notifications, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
              the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web, long_press_menu, keyboard_bars, welcome_extras, welcome_last_step)
     for part in [p for p in every if not sys.argv[1:] or p.__name__ in sys.argv[1:]]:
         # tools/results.py splits a run's memory, CPU and checks by these lines.
