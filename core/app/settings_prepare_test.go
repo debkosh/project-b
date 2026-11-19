@@ -49,3 +49,27 @@ func TestTheMenuOpeningStartsSettingsOutOfSight(t *testing.T) {
 		t.Fatalf("a menu opened over Settings made another: %v", ahead)
 	}
 }
+
+// The settings tab made ahead is never kept with the session: after a quit the tabs come
+// back as they were, with no settings tab, shown or made ahead.
+func TestTheSettingsMadeAheadDoesNotComeBack(t *testing.T) {
+	dir := t.TempDir()
+	r := start(t, dir)
+	r.visit("https://a.test/")
+	r.shell(`{"t":"menuOpened"}`)
+	var ahead engine.TabID
+	r.main(func() { ahead = r.a.Tabs.Prepared(1, "settings") })
+	if ahead == 0 {
+		t.Fatal("the menu opening made no settings tab ahead")
+	}
+	r.stop()
+
+	again := start(t, dir)
+	defer again.stop()
+	var prepared engine.TabID
+	var all []tabs.Tab
+	again.onMain(func() { all, prepared = again.a.Tabs.All(), again.a.Tabs.Prepared(1, "settings") })
+	if got := again.urls(); len(got) != 1 || got[0] != "https://a.test/" || prepared != 0 || again.settingsIn(1) != 0 || len(all) != 1 {
+		t.Fatalf("after a quit the tabs are %v (%d in all), settings made ahead %v, shown %v", got, len(all), prepared, again.settingsIn(1))
+	}
+}
