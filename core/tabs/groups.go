@@ -1,23 +1,17 @@
 package tabs
 
 import (
-	"regexp"
 	"slices"
 	"strconv"
 
 	"projectb/engine"
+	"projectb/tones"
 )
 
 // A tab group: tabs of one window and one workspace kept together under a name and a
 // colour, which every shell draws its own way (docs/groups.md). A tab is in one group at
 // most. A group that drops below two tabs ends; one made with a single tab stays until a
 // tab leaves it. Groups live in memory with their tabs.
-
-// GroupColors are the colours a group takes, the workspaces' seven: a new group takes the
-// first its window's other groups haven't.
-var GroupColors = []string{"#3470d0", "#d03434", "#4f9e9e", "#e8a317", "#8a4fd0", "#2e9d5b", "#34404f"}
-
-var groupColor = regexp.MustCompile(`^#[0-9a-f]{6}$`)
 
 // Group is a copy of one group. Tabs are its tabs' ids in the group's own order.
 type Group struct {
@@ -67,7 +61,8 @@ func groupable(t *Tab) bool { return t.Page == "" && t.Pin == "" }
 
 // CreateGroup makes a group of the tabs ids: the first's window and workspace, and those
 // of the rest that share them, each leaving any group it was in. An empty color takes
-// the next free one. Returns the group's id, or "" when the first can be in no group.
+// the one tones.Next picks from the window's other groups'. Returns the group's id, or ""
+// when the first can be in no group.
 func (m *Manager) CreateGroup(ids []engine.TabID, name, color string) string {
 	id := m.newGroup(ids, name, color)
 	if id != "" {
@@ -83,14 +78,12 @@ func (m *Manager) newGroup(ids []engine.TabID, name, color string) string {
 	w := m.windowOf[ids[0]]
 	workspace := m.tabs[ids[0]].Workspace
 	win := m.windows[w]
-	if !groupColor.MatchString(color) {
-		color = GroupColors[len(win.groups)%len(GroupColors)]
-		for _, c := range GroupColors {
-			if !slices.ContainsFunc(win.groups, func(g *Group) bool { return g.Color == c }) {
-				color = c
-				break
-			}
+	if !tones.Kept(color) {
+		var inUse []string
+		for _, g := range win.groups {
+			inUse = append(inUse, g.Color)
 		}
+		color = tones.Next(inUse)
 	}
 	m.groupSeq++
 	g := &Group{ID: "g" + strconv.Itoa(m.groupSeq), Name: name, Color: color}
@@ -168,7 +161,7 @@ func (m *Manager) endGroup(g *Group, win *window) {
 }
 
 // EditGroup changes what of a group's name, colour and whether it is collapsed is given:
-// nil leaves it. A colour that isn't "#rrggbb" is ignored.
+// nil leaves it. A colour a group can't keep (tones.Kept) is ignored.
 func (m *Manager) EditGroup(group string, name, color *string, collapsed *bool) {
 	g, _ := m.group(group)
 	if g == nil {
@@ -177,7 +170,7 @@ func (m *Manager) EditGroup(group string, name, color *string, collapsed *bool) 
 	if name != nil {
 		g.Name = *name
 	}
-	if color != nil && groupColor.MatchString(*color) {
+	if color != nil && tones.Kept(*color) {
 		g.Color = *color
 	}
 	if collapsed != nil {

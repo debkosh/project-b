@@ -12,7 +12,7 @@ import (
 // A new profile has one workspace, Main, the profile's own storage, which is first.
 func TestANewProfileHasMain(t *testing.T) {
 	m := New(t.TempDir())
-	if l := m.List(); !slices.Equal(l, []Workspace{{ID: "", Name: "Main", Color: "#3470d0"}}) || m.First() != "" {
+	if l := m.List(); !slices.Equal(l, []Workspace{{ID: "", Name: "Main", Color: "0"}}) || m.First() != "" {
 		t.Fatalf("list %+v, first %q", l, m.First())
 	}
 }
@@ -22,7 +22,7 @@ func TestANewProfileHasMain(t *testing.T) {
 func TestAnOldListGetsMainOnce(t *testing.T) {
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "workspaces.json"), []byte(`{"workspaces":[{"id":"0a1b2c3d","name":"Work","color":"#5b7fd6"}]}`), 0o600)
-	main, work := Workspace{ID: "", Name: "Main", Color: "#3470d0"}, Workspace{ID: "0a1b2c3d", Name: "Work", Color: "#5b7fd6"}
+	main, work := Workspace{ID: "", Name: "Main", Color: "0"}, Workspace{ID: "0a1b2c3d", Name: "Work", Color: "#5b7fd6"}
 	m := New(dir)
 	if l := m.List(); !slices.Equal(l, []Workspace{main, work}) || m.First() != "" {
 		t.Fatalf("list %+v", l)
@@ -62,7 +62,7 @@ func TestTheListIsKeptInTheProfile(t *testing.T) {
 	if err := m.SetName(work.ID, "Office"); err != nil {
 		t.Fatal(err)
 	}
-	want := []Workspace{{ID: "", Name: "Main", Color: "#3470d0"}, {ID: work.ID, Name: "Office", Color: "#5b7fd6"}, {ID: shop.ID, Name: "Shopping", Color: "#c2410c"}}
+	want := []Workspace{{ID: "", Name: "Main", Color: "0"}, {ID: work.ID, Name: "Office", Color: "#5b7fd6"}, {ID: shop.ID, Name: "Shopping", Color: "#c2410c"}}
 	if got := New(dir).List(); !slices.Equal(got, want) || changes != 3 {
 		t.Fatalf("read back %+v after %d changes", got, changes)
 	}
@@ -112,7 +112,8 @@ func TestANameIsUniqueInTheList(t *testing.T) {
 	}
 }
 
-// A colour is changed in place and kept; one that isn't #rrggbb, or for no workspace, isn't.
+// A colour is changed in place and kept; one that isn't #rrggbb or one of the hues, or for no
+// workspace, isn't.
 func TestAWorkspaceCanBeRecoloured(t *testing.T) {
 	dir := t.TempDir()
 	m := New(dir)
@@ -122,13 +123,17 @@ func TestAWorkspaceCanBeRecoloured(t *testing.T) {
 	if err := m.SetColor(w.ID, "#c2410c"); err != nil {
 		t.Fatal(err)
 	}
-	if m.SetColor(w.ID, "red") == nil || m.SetColor("nope", "#2f9e44") == nil {
+	if m.SetColor(w.ID, "red") == nil || m.SetColor(w.ID, "180") == nil || m.SetColor("nope", "#2f9e44") == nil {
 		t.Fatal("took a bad colour or an unknown id")
 	}
 	// The same colour again is no change.
 	m.SetColor(w.ID, "#c2410c")
 	if l := New(dir).List(); len(l) != 2 || l[1].Color != "#c2410c" || l[1].ID != w.ID || changes != 2 {
 		t.Fatalf("read back %+v after %d changes", l, changes)
+	}
+	// One of the hues is kept as it is.
+	if err := m.SetColor(w.ID, "181"); err != nil || m.List()[1].Color != "181" {
+		t.Fatalf("one of the hues: %v", err)
 	}
 }
 

@@ -16,18 +16,18 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"strings"
 
 	"projectb/timeline"
+	"projectb/tones"
 )
 
 // Workspace is one workspace, as the file holds it.
 type Workspace struct {
 	ID    string `json:"id"`
 	Name  string `json:"name"`
-	Color string `json:"color"` // "#rrggbb", the dot on its tabs.
+	Color string `json:"color"` // the dot on its tabs: "#rrggbb" or a hue (tones.Kept).
 }
 
 // file is workspaces.json.
@@ -40,11 +40,8 @@ type file struct {
 const version = 2
 
 // mainWorkspace is the workspace a new profile starts with, in the first of the colours
-// the settings page offers.
-var mainWorkspace = Workspace{ID: "", Name: "Main", Color: "#3470d0"}
-
-// A colour is "#rrggbb", as a colour input gives it.
-var color = regexp.MustCompile(`^#[0-9a-f]{6}$`)
+// the pickers offer.
+var mainWorkspace = Workspace{ID: "", Name: "Main", Color: tones.Next(nil)}
 
 // Manager owns the list.
 type Manager struct {
@@ -99,8 +96,8 @@ func (m *Manager) Create(name, c string) (Workspace, error) {
 	if err := m.checkName(-1, name); err != nil {
 		return Workspace{}, err
 	}
-	if !color.MatchString(c) {
-		return Workspace{}, errors.New("a workspace's colour is #rrggbb")
+	if !tones.Kept(c) {
+		return Workspace{}, errors.New("a workspace's colour is #rrggbb or one of the hues")
 	}
 	w := Workspace{ID: m.newID(), Name: name, Color: c}
 	m.list = append(m.list, w)
@@ -133,8 +130,8 @@ func (m *Manager) SetColor(id, c string) error {
 	if err != nil {
 		return err
 	}
-	if !color.MatchString(c) {
-		return errors.New("a workspace's colour is #rrggbb")
+	if !tones.Kept(c) {
+		return errors.New("a workspace's colour is #rrggbb or one of the hues")
 	}
 	if m.list[i].Color == c {
 		return nil

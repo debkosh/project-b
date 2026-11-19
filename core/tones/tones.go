@@ -22,10 +22,12 @@ import (
 // Palette is one theme's tokens, by name: "--accent" and so on.
 type Palette map[string]string
 
-// Both is the light and the dark palette of one frame colour.
+// Both is the light and the dark palette of one frame colour, and the seven hues a
+// workspace or group is offered, drawn for each (hues.go).
 type Both struct {
 	Light Palette `json:"light"`
 	Dark  Palette `json:"dark"`
+	Hues  []Hue   `json:"hues"`
 }
 
 // None is no colour picked, as a profile starts (docs/onboarding.md): a light grey frame,
@@ -57,7 +59,8 @@ func Of(frame string) *Both {
 	if _, ok := parse(frame); !ok && frame != None {
 		return nil
 	}
-	return &Both{Light: For(frame, false), Dark: For(frame, true)}
+	light, dark := For(frame, false), For(frame, true)
+	return &Both{Light: light, Dark: dark, Hues: hues(light, dark, frame)}
 }
 
 // For is one palette of frame, "#rrggbb" or None: dark's, or light's.
@@ -90,7 +93,7 @@ func For(frame string, dark bool) Palette {
 			"--line":        "rgba(255, 255, 255, 0.12)",
 			"--hover":       "rgba(255, 255, 255, 0.08)",
 			"--press":       "rgba(255, 255, 255, 0.14)",
-			"--danger":      "#f28b82",
+			"--danger":      danger[true],
 			"--on-danger":   "#1f1f1f",
 		}
 	}
@@ -108,7 +111,7 @@ func For(frame string, dark bool) Palette {
 		"--line":        "rgba(15, 20, 25, 0.1)",
 		"--hover":       "rgba(255, 255, 255, 0.6)",
 		"--press":       "rgba(0, 0, 0, 0.08)",
-		"--danger":      "#d93025",
+		"--danger":      danger[false],
 		"--on-danger":   "#ffffff",
 	}
 }

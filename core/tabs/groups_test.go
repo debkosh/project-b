@@ -22,15 +22,15 @@ func TestAGroupKeepsItsTabsAndEndsBelowTwo(t *testing.T) {
 	m.OnListChanged(func() { lists++ })
 	g := m.CreateGroup([]engine.TabID{a, b}, "", "")
 	gs := m.GroupsIn(1)
-	if g == "" || len(gs) != 1 || gs[0].Color != GroupColors[0] || !slices.Equal(gs[0].Tabs, []engine.TabID{a, b}) || lists != 1 {
+	if g == "" || len(gs) != 1 || gs[0].Color != "0" || !slices.Equal(gs[0].Tabs, []engine.TabID{a, b}) || lists != 1 {
 		t.Fatalf("groups %+v, lists %d", gs, lists)
 	}
 	if x, _ := m.Get(a); x.Group != g {
 		t.Fatalf("tab a is in %q", x.Group)
 	}
-	// The next group takes the next colour.
+	// The next group takes the next colour, the swatch farthest from the first's.
 	m.CreateGroup([]engine.TabID{c}, "Solo", "")
-	if gs := m.GroupsIn(1); gs[1].Color != GroupColors[1] || gs[1].Name != "Solo" {
+	if gs := m.GroupsIn(1); gs[1].Color != "181" || gs[1].Name != "Solo" {
 		t.Fatalf("second group %+v", gs[1])
 	}
 	// c joins the first group, which ends its own, a group of one left with none.

@@ -160,7 +160,8 @@ func (a *App) deleteWorkspace(e engine.Engine, id string) error {
 
 // shownWorkspace is a workspace as the shells and settings hear of it: with the tones of
 // its colour, light and dark, for a shell that paints with a workspace's colour, as Glide
-// paints a Space. The tones are made as it is sent, never saved.
+// paints a Space; a hue is filled as a frame first (tones.Fill). The tones are made as it
+// is sent, never saved.
 type shownWorkspace struct {
 	workspaces.Workspace
 	Tones *tones.Both `json:"tones"`
@@ -169,7 +170,7 @@ type shownWorkspace struct {
 func (a *App) workspacesShown() []shownWorkspace {
 	var out []shownWorkspace
 	for _, w := range a.Workspaces.List() {
-		out = append(out, shownWorkspace{w, tones.Of(w.Color)})
+		out = append(out, shownWorkspace{w, tones.Of(tones.Fill(w.Color))})
 	}
 	return out
 }

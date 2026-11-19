@@ -1921,7 +1921,7 @@ func TestGroupsThroughTheShell(t *testing.T) {
 	r.shell(`{"t":"newTab","groupWith":1}`)
 	m := r.waitFor(func(m map[string]any) bool { return m["t"] == "tabs" && len(groups(m)) == 1 })
 	g := groups(m)[0].(map[string]any)
-	if ids := g["tabs"].([]any); len(ids) != 2 || ids[0].(float64) != 1 || g["color"] != tabs.GroupColors[0] {
+	if ids := g["tabs"].([]any); len(ids) != 2 || ids[0].(float64) != 1 || g["color"] != "0" {
 		t.Fatalf("group %v", g)
 	}
 	r.e.Fire(1, 1, "open", "https://c.test/")
@@ -2156,7 +2156,7 @@ func TestTheTonesComeWithTheFrameColour(t *testing.T) {
 		t.Fatalf("snapshot tones = %v", m["tones"])
 	}
 	ws := m["workspaces"].([]any)[0].(map[string]any)
-	if accent(ws, "dark") != tones.For(ws["color"].(string), true)["--accent"] {
+	if accent(ws, "dark") != tones.For(tones.Fill(ws["color"].(string)), true)["--accent"] {
 		t.Fatalf("workspace tones = %v", ws)
 	}
 
