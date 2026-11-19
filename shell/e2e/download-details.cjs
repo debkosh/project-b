@@ -57,7 +57,7 @@ async function phonePage(page, w) {
   check('its ⋮ opens a sheet whose head has its whole address, without its scheme', await until(async () => (await sheet.isVisible()) &&
     (await sheet.innerText()).includes(url.replace('https://', '')) && !(await sheet.innerText()).includes('https://')), await sheet.innerText());
   const said = await sheet.getByRole('button').allInnerTexts();
-  check('with Share, Show in Downloads and Copy link, then Remove from list', JSON.stringify(said) === JSON.stringify(['Share', 'Show in Downloads', 'Copy link', 'Remove from list']), JSON.stringify(said));
+  check('with Share, Show in Downloads and Copy link, then Remove from list and Delete', JSON.stringify(said) === JSON.stringify(['Share', 'Show in Downloads', 'Copy link', 'Remove from list', 'Delete']), JSON.stringify(said));
   await shots(w.page, 'page-sheet');
   await sheet.getByRole('button', { name: 'Copy link' }).click();
   check('Copy link copies the address, and the sheet goes', await until(async () => (await regions()).clipboard === url && !(await sheet.isVisible())), (await regions()).clipboard);
@@ -83,6 +83,15 @@ async function phonePage(page, w) {
   await shots(w.page, 'page-search');
   await page.getByRole('button', { name: 'Back' }).click();
   check('and Back closes the search, the list whole again', await until(async () => (await report.isVisible()) && (await page.getByRole('heading', { name: 'Downloads' }).isVisible())), JSON.stringify(await names()));
+
+  // Delete, asked first.
+  await row.getByRole('button', { name: 'Actions for quarterly-report.pdf' }).click();
+  await sheet.getByRole('button', { name: 'Delete' }).click();
+  const confirm = page.getByRole('dialog', { name: 'Delete quarterly-report.pdf?' });
+  check('Delete asks first', await until(() => confirm.isVisible()));
+  await shots(w.page, 'page-delete');
+  await confirm.getByRole('button', { name: 'Delete' }).click();
+  check('and deletes it, gone from the list', await until(async () => (await row.count()) === 0 && ((await regions()).deleted || []).some((f) => f.endsWith('quarterly-report.pdf'))), JSON.stringify((await regions()).deleted));
 }
 
 (async () => {

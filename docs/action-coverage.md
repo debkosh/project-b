@@ -4,7 +4,7 @@ Every action a person can take, where the app offers it, and the tests that do i
 `tools/action_coverage.py` from the code; `tools/test.sh mock` fails while an action has no
 test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 
-**205 actions and messages, 196 with a test, 9 exempt with a reason, 0 with none; 28 of Go's actions done by no test of the real app.**
+**209 actions and messages, 200 with a test, 9 exempt with a reason, 0 with none; 28 of Go's actions done by no test of the real app.**
 
 ## Go's actions: the menu bar, keys and the shells' own menus
 
@@ -24,7 +24,7 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `downloads.show` Downloads | menu bar, keys (chrome, firefox, glide, project-b), mobile, page:welcome, mobile-native | yes | `download_folder_settings_test.go`, `menu_test.go`, `pages_test.go`, `welcome_test.go` and 8 more |
 | `edit.copy` Copy | menu bar, keys (chrome, firefox, glide, project-b), minimal, ui | yes | `contextmenu_test.go`, `menu_test.go`, `shellmenu_test.go`, `standard.cjs` and 1 more |
 | `edit.cut` Cut | menu bar, keys (chrome, firefox, glide, project-b) | **no** | `contextmenu_test.go`, `standard.cjs` |
-| `edit.delete` Delete | menu bar, keys (chrome, firefox, glide, project-b) | yes | `pages.cjs`, `settings.cjs`, `drive_first_app.py`, `check.py` |
+| `edit.delete` Delete | menu bar, keys (chrome, firefox, glide, project-b) | yes | `download-details.cjs`, `pages.cjs`, `settings.cjs`, `drive_android.py` and 2 more |
 | `edit.paste` Paste | menu bar, keys (chrome, firefox, glide, project-b) | **no** | `contextmenu_test.go`, `menu_test.go`, `standard.cjs` |
 | `edit.pasteAndMatchStyle` Paste and Match Style | menu bar, keys (chrome, firefox, glide, project-b) | **no** | exempt: macOS's own: AppKit's editing command, sent to the focused field |
 | `edit.redo` Redo | menu bar, keys (chrome, firefox, glide, project-b), glide, minimal, ui | yes | `app_test.go`, `contextmenu_test.go`, `drive_first_app.py` |
@@ -54,7 +54,7 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `glide.splitAdd` Add to Split View | menu bar, keys (chrome, firefox, glide, project-b), glide | **no** | `settings.cjs`, `glide.cjs` |
 | `glide.splitRemove` Separate Split View | menu bar, keys (chrome, firefox, glide, project-b), glide | **no** | `glide.cjs` |
 | `history.show` Show All History | menu bar, keys (chrome, firefox, glide, project-b), mobile, page:welcome | yes | `pages_test.go`, `pages.cjs`, `drive_first_app.py` |
-| `nav.back` Back | menu bar, keys (chrome, firefox, glide, project-b), fox, glide, minimal, ui | yes | `first-app.cjs`, `imports.cjs`, `shell-contract.cjs`, `minimal.cjs` and 5 more |
+| `nav.back` Back | menu bar, keys (chrome, firefox, glide, project-b), fox, glide, minimal, ui | yes | `download-details.cjs`, `first-app.cjs`, `imports.cjs`, `shell-contract.cjs` and 6 more |
 | `nav.forward` Forward | menu bar, keys (chrome, firefox, glide, project-b), fox, glide, minimal, ui | yes | `first-app.cjs`, `shell-contract.cjs`, `mobile.cjs`, `standard.cjs` and 2 more |
 | `nav.reload` Reload This Page | menu bar, keys (chrome, firefox, glide, project-b), fox, glide, minimal, ui | yes | `menu_test.go`, `commands_test.go`, `settings.cjs`, `mobile.cjs` and 1 more |
 | `nav.reloadHard` Force Reload This Page | menu bar, keys (chrome, firefox, glide, project-b) | yes | `drive_first_app.py` |
@@ -110,6 +110,7 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `activateTab` | fox, glide, minimal, mobile, mobile-native, standard, terminal | yes | `thumbs_test.go`, `settings.cjs`, `shell-contract.cjs`, `mobile.cjs` and 2 more |
 | `addKey` | page:settings | **no** | `app_test.go`, `settings_messages_test.go` |
 | `addToGroup` | glide, mobile, mobile-native, standard | yes | `drive_first_app.py` |
+| `allowNotifications` | mobile, mobile-native | **no** | `download_offer_test.go` |
 | `answerDialog` | mobile-native | **no** | `dialogs_test.go`, `passkeys_test.go` |
 | `askNotifications` | page:welcome | **no** | exempt: the phone's own permission question, which the welcome asks; drive_android's download_notifications answers it |
 | `back` | glide, mobile-native | **no** | `fullscreen_test.go` |
@@ -127,6 +128,7 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `clearDataCounts` | page:settings | **no** | `clear_data_settings_test.go` |
 | `clearDownloads` | page:downloads | **no** | `downloads_test.go`, `pages_test.go` |
 | `clearSiteData` | page:settings | **no** | `site_data_settings_test.go` |
+| `close` | page:downloads | **no** | `pages_test.go` |
 | `closeGroup` | glide, mobile, mobile-native | **no** | `app_test.go` |
 | `closeTab` | fox, glide, minimal, mobile, mobile-native, standard, terminal | **no** | `app_test.go`, `fullscreen_test.go`, `pins_test.go`, `session_test.go` and 5 more |
 | `contextMenuChoose` | mobile-native | **no** | `contextmenu_test.go` |
@@ -136,11 +138,12 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `createGroup` | glide, standard | yes | `shell-contract.cjs`, `standard-drag.cjs`, `terminal.cjs`, `drive_first_app.py` |
 | `createWorkspace` | glide, page:settings | yes | `app_test.go`, `lifecycle_test.go`, `pins_test.go`, `drive_first_app.py` |
 | `delete` | page:history | **no** | `pages_test.go` |
+| `deleteDownload` | page:downloads | **no** | `pages_test.go` |
 | `deleteWorkspace` | page:settings | **no** | `app_test.go`, `pins_test.go`, `standard-workspaces.cjs` |
 | `dismissCrash` | fox, glide, minimal, mobile, mobile-native, standard | **no** | `crash-report.cjs` |
 | `dismissMissing` | page:settings | **no** | `settings_messages_test.go` |
 | `done` | page:welcome | **no** | `welcome_test.go` |
-| `downloadAction` | page:downloads | **no** | `downloads_test.go`, `pages_test.go` |
+| `downloadAction` | mobile-native, page:downloads | **no** | `downloads_test.go`, `pages_test.go` |
 | `editBookmark` | page:bookmarks | **no** | `pages_test.go` |
 | `editGroup` | glide, mobile, mobile-native, standard | **no** | `app_test.go`, `terminal.cjs` |
 | `editWorkspace` | glide, page:settings | **no** | `app_test.go` |
@@ -165,6 +168,7 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `navigate` | fox, glide, minimal, mobile, mobile-native, standard, terminal | yes | `app_test.go`, `contextmenu_test.go`, `dialogs_test.go`, `files_test.go` and 13 more |
 | `newFolder` | page:bookmarks | **no** | `pages_test.go`, `mobile.cjs` |
 | `newTab` | fox, glide, minimal, mobile, mobile-native, standard, terminal | yes | `app_test.go`, `fullscreen_test.go`, `pins_test.go`, `session_test.go` and 17 more |
+| `notificationsOffered` | mobile, mobile-native | **no** | `download_offer_test.go` |
 | `open` | page:bookmarks, page:history, page:picker | **no** | `events_test.go`, `pages_test.go`, `picker_test.go` |
 | `openAccess` | ui | **no** | `imports_test.go` |
 | `openInWorkspace` | page:settings | **no** | `app_test.go` |

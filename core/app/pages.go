@@ -134,6 +134,8 @@ func (p *ourPages) handle(tab engine.TabID, page engine.Page, msg []byte) {
 		} else {
 			p.a.Downloads.Act(m.ID, m.Action)
 		}
+	case "deleteDownload":
+		p.a.Downloads.Delete(m.ID)
 	case "close":
 		// A page's own ← on a phone: as the back key does on a tab with no history, the
 		// tab used before takes its place.

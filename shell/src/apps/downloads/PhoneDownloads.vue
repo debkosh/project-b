@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue';
 import ActionSheet from '@/ui/ActionSheet.vue';
+import Dialog from '@/ui/Dialog.vue';
 import LineIcon from '@/ui/LineIcon.vue';
 import { pageHistory, pushEscape } from '@/ui/escape.js';
 import { act, clear, send, state } from './state.js';
@@ -79,6 +80,8 @@ const sheet = ref(null);
 function actions(d) {
   const link = d.url ? [{ icon: 'link', label: 'Copy link', run: () => act(d.id, 'copyLink') }] : [];
   const remove = d.state !== 'progress' ? [{ icon: 'remove', label: 'Remove from list', run: () => act(d.id, 'remove') }] : [];
+  // A finished one can be deleted, last, in --danger.
+  const rows = d.state === 'done' ? [...remove, { icon: 'trash', label: 'Delete', danger: true, run: () => (deleting.value = d) }] : remove;
   let tiles;
   if (d.state === 'done') {
     tiles = [
@@ -96,7 +99,7 @@ function actions(d) {
   } else {
     tiles = [...(d.url ? [{ icon: 'retry', label: 'Retry', run: () => act(d.id, 'retry') }] : []), ...link];
   }
-  sheet.value = { id: d.id, name: d.name, detail: d.url ? withoutScheme(d.url) : d.from || '', tiles, rows: remove };
+  sheet.value = { id: d.id, name: d.name, detail: d.url ? withoutScheme(d.url) : d.from || '', tiles, rows };
 }
 function pageActions() {
   sheet.value = {
@@ -106,6 +109,13 @@ function pageActions() {
     rows: state.downloads.some((d) => d.state !== 'progress') ? [{ icon: 'remove', label: 'Clear all', run: clear }] : [],
   };
 }
+// Delete: asked first, as it can't be undone.
+const deleting = ref(null);
+function deleteFile() {
+  send({ t: 'deleteDownload', id: deleting.value.id });
+  deleting.value = null;
+}
+
 // A download gone from the list takes its sheet with it.
 watch(
   () => state.downloads,
@@ -148,6 +158,13 @@ watch(
       </section>
     </main>
     <ActionSheet v-if="sheet" :name="sheet.name" :detail="sheet.detail" :tiles="sheet.tiles" :rows="sheet.rows" @close="sheet = null" />
+    <Dialog v-if="deleting" :title="`Delete ${deleting.name}?`" @close="deleting = null">
+      <p class="words">It goes from your phone's Downloads, and from this list.</p>
+      <template #buttons>
+        <button type="button" class="text-button" @click="deleting = null">Cancel</button>
+        <button type="button" class="text-button danger" @click="deleteFile">Delete</button>
+      </template>
+    </Dialog>
   </div>
 </template>
 
@@ -341,6 +358,12 @@ ul {
 .retry:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring-inset);
+}
+
+.words {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 14px;
 }
 
 .hidden-heading {

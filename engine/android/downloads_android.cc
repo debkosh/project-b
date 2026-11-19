@@ -38,6 +38,11 @@ void RevealFile(const base::FilePath& path) {
   Java_Downloads_reveal(AttachCurrentThread());
 }
 
+bool DeleteDownload(const base::FilePath& path) {
+  JNIEnv* env = AttachCurrentThread();
+  return Java_Downloads_delete(env, ConvertUTF8ToJavaString(env, path.AsUTF8Unsafe()));
+}
+
 void ShowDownload(int64_t id,
                   const std::string& name,
                   const base::FilePath& path,

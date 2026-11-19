@@ -176,3 +176,24 @@ func TestTheDownloadsPageListsAndActs(t *testing.T) {
 		t.Fatal("← left the Downloads page's tab open")
 	}
 }
+
+// A phone's Delete, from a download's ⋮: it deletes the download's copy and takes it off the
+// list.
+func TestTheDownloadsPageDeletes(t *testing.T) {
+	profile, dir := t.TempDir(), t.TempDir()
+	r := startDownloading(t, profile, dir)
+	defer r.stop()
+	r.visit("https://a.test/")
+	r.show(1)
+	r.e.Fire(1, 0, "download", "https://a.test/files/report.pdf")
+	r.downloads(func(l []any) bool { return len(l) == 1 && first(l)["state"] == "done" })
+	tab, got := r.openPage("downloads.show", "downloads")
+	id := next(t, got, "snapshot")["downloads"].([]any)[0].(map[string]any)["id"]
+	r.e.Post(func() { r.a.PageMessage(tab, "downloads", []byte(fmt.Sprintf(`{"t":"deleteDownload","id":%v}`, id))) })
+	if list := next(t, got, "downloads")["downloads"].([]any); len(list) != 0 {
+		t.Fatalf("after Delete: %v", list)
+	}
+	if deleted := r.e.Deleted(); len(deleted) != 1 || !strings.HasSuffix(deleted[0], "report.pdf") {
+		t.Fatalf("the engine deleted %v", deleted)
+	}
+}

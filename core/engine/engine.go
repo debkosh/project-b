@@ -372,6 +372,10 @@ type Engine interface {
 	// is copied into the shared Downloads, and opened from there; on the Mac, where the
 	// folder is the user's own Downloads, nothing is to be done.
 	PublishFile(path string)
+	// DeleteDownload deletes a finished download's copy in a phone's shared Downloads, by
+	// the downloads folder's path for it: false when there is none. A desktop's downloads
+	// are the user's own files, and it answers false.
+	DeleteDownload(path string) bool
 
 	// SendToPage delivers one message to the page of ours a tab shows.
 	SendToPage(tab TabID, msg []byte)

@@ -20,6 +20,7 @@ const paths = {
   play: 'M8 5.5l10 6.5-10 6.5z',
   stop: 'M7 7h10v10H7z',
   retry: 'M19 12a7 7 0 1 1-2.05-4.95M19 4.5V8h-3.5',
+  trash: 'M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12',
 };
 </script>
 

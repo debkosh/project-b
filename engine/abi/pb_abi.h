@@ -556,6 +556,9 @@ typedef struct PBEngineCalls {
   // Android 11 and later keep it: ApplicationExitInfo's REASON_ number, or -1 when Android
   // doesn't say, as before 11 or with no record of it. The Mac leaves it null.
   int32_t (*exit_reason)(int64_t pid);
+  // Android only: deletes a finished download's copy in the phone's shared Downloads, by
+  // the app's own path for it; 1 when it did, 0 when there is none. The Mac leaves it null.
+  int (*delete_download)(const char* path);
 } PBEngineCalls;
 
 // What the adapter can tell the Go core. The main binary fills it in from Go's exports

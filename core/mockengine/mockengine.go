@@ -141,6 +141,8 @@ type Engine struct {
 	// put on the clipboard; savedImages, every SaveImage asked, in order.
 	sharedText, copiedImage string
 	savedImages             []SavedImage
+	// deleted is what DeleteDownload was given.
+	deleted []string
 	// left is whether the back key left the app, as Android does with no tab to go back
 	// in or close.
 	left bool
@@ -888,6 +890,21 @@ func (e *Engine) ShareFile(w engine.WindowID, path string, anchor engine.Rect) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.shared = path
+}
+
+// DeleteDownload deletes, as far as a test can tell.
+func (e *Engine) DeleteDownload(path string) bool {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.deleted = append(e.deleted, path)
+	return true
+}
+
+// Deleted is what DeleteDownload was given.
+func (e *Engine) Deleted() []string {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return append([]string(nil), e.deleted...)
 }
 
 func (e *Engine) PublishFile(path string) {

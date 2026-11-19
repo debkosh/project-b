@@ -125,6 +125,21 @@ final class Downloads {
         return shared == null ? null : Uri.parse(shared);
     }
 
+    // Deletes a download's shared copy, and forgets what the path became.
+    @CalledByNative
+    static boolean delete(String path) {
+        Uri uri = sharedCopy(path);
+        if (uri == null) return false;
+        try {
+            ContextUtils.getApplicationContext().getContentResolver().delete(uri, null, null);
+        } catch (RuntimeException e) {
+            Log.w(TAG, "could not delete " + path, e);
+            return false;
+        }
+        published().edit().remove(path).apply();
+        return true;
+    }
+
     // Opens the shared copy, once the copy publish started is made: Open right after a
     // download ends would otherwise find nothing yet and do nothing.
     @CalledByNative

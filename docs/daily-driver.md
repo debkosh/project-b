@@ -185,8 +185,11 @@ under the day each started, Today, Yesterday, then the date; one 56px row each, 
 icon, the name and one line, how far it has got, its size and host, or why it failed. A tap
 opens a finished one; a failed one carries Retry in its row; everything else is in its ⋮,
 a sheet of actions (`ui/ActionSheet.vue`) whose head is the name and the address: Share,
-Show in Downloads and Copy link, then Remove from list; Pause or Resume, Cancel and Retry
-while it runs. Share (`downloadAction` `share`) hands the copy in the phone's Downloads to
+Show in Downloads and Copy link, then Remove from list and Delete, last, in `--danger`;
+Pause or Resume, Cancel and Retry while it runs. Delete asks first, then deletes the copy in
+the phone's Downloads and takes the download off the list (`deleteDownload`, the engine's
+`delete_download`). The Mac's downloads are the user's own files, and its page doesn't
+offer it. Share (`downloadAction` `share`) hands the copy in the phone's Downloads to
 the system's share sheet. The back key closes the search or the sheet first.
 
 **Android.** There is no Save panel: a download goes where Go says, the profile's own

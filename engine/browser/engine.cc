@@ -648,6 +648,11 @@ void CallInstallUpdate(const char* path) {
   g_engine->windows().begin()->second->window->InstallPackage(path);
 }
 
+int CallDeleteDownload(const char* path) {
+  CheckMainThread();
+  return DeleteDownload(base::FilePath::FromUTF8Unsafe(path)) ? 1 : 0;
+}
+
 void CallShowDownload(int64_t id,
                       const char* name,
                       const char* path,
@@ -786,6 +791,7 @@ const PBEngineCalls* Engine::Calls() {
 #endif
 #if BUILDFLAG(IS_ANDROID)
       .exit_reason = ExitReason,
+      .delete_download = CallDeleteDownload,
 #endif
   };
   return &calls;

@@ -292,6 +292,27 @@ func (m *Manager) Share(id int, w engine.WindowID) {
 	}
 }
 
+// Delete deletes a finished download's file, its copy in a phone's shared Downloads, and
+// takes it off the list.
+func (m *Manager) Delete(id int) bool {
+	it := m.find(id)
+	if it == nil || it.State != "done" || !m.e.DeleteDownload(it.Path) {
+		return false
+	}
+	m.drop(func(x *Item) bool { return x == it })
+	return true
+}
+
+// find is the download with Go's id, or nil.
+func (m *Manager) find(id int) *Item {
+	for _, x := range m.list {
+		if x.ID == id {
+			return x
+		}
+	}
+	return nil
+}
+
 // Act does what a shell asks to one download: open or reveal its file, cancel, pause or
 // resume it, retry one that failed or was cancelled, copy its address, or remove it from
 // the list, which leaves the file where it is. A file the app made has no address to

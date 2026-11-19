@@ -95,6 +95,9 @@ void RevealFile(const base::FilePath& path);
 // the Mac, where it already is in the user's Downloads folder.
 void PublishFile(const base::FilePath& path, const std::string& mime_type);
 #if BUILDFLAG(IS_ANDROID)
+// Deletes a finished download's copy in a phone's shared Downloads, by the app's path for
+// it; false when there is none. Android only.
+bool DeleteDownload(const base::FilePath& path);
 // Shows how a download stands in the phone's notification for it (pb_abi.h show_download).
 void ShowDownload(int64_t id,
                   const std::string& name,
