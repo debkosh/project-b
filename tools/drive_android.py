@@ -1722,6 +1722,19 @@ def sync_on_the_phone():
         before = len(requests)
         tap(middle(see("settings", text="Sync now", timeout=30)))  # does: syncNow
         check("Sync now asks the server again", until(lambda: len(requests) > before, 15) is not None, requests[before:])
+        # Sync details, from the card's second row: a page of its own, with the runs since the
+        # app started, the one that turned sync on and the one just pressed, and never the token,
+        # which this address carries as its last part.
+        tap(middle(see_named("settings", "Sync details")))
+        opened = until(lambda: find("settings", text="Runs since the app started"), 30)
+        said = [n.get("text") or "" for n in screen_parts()["settings"].iter("node")] if opened is not None else []
+        check("Sync details opens from the card: the state, the runs since the app started, the pressed one among them, and no token",
+              opened is not None and "Sync is on" in said and any("Turning sync on" in t for t in said)
+              and any("Sync now" in t and t != "Sync now" for t in said) and not any("/sync/phone" in t for t in said), said[:80])
+        shot("sync-details")
+        adb("shell", "input", "keyevent", "4")  # the back key: key is the device key's size here
+        check("the back key goes back to Sync's card",
+              until(lambda: find("settings", text="Turn off sync") is not None and find("settings", text="Runs since the app started") is None) is not None)
         stopped()
         before = len(requests)
         launch()
