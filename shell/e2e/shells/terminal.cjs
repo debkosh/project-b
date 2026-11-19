@@ -253,29 +253,29 @@ const { check, fire, regions, settle, until } = lib;
   // with Shift too it moves a divider that way, and Shift+Cmd+Enter zooms. Here t1 is on
   // the left, full height, and t6 over t7 on the right; t7 is active.
   const active = async () => (await regions()).active;
-  await fire('key', 'paneUp');
+  await fire('key', 'paneUp'); // does: terminal.focusUp
   check('Ctrl+Cmd+Up moves to the pane above', await until(async () => (await active()) === t6 && await marked(t6)));
-  await fire('key', 'paneLeft');
+  await fire('key', 'paneLeft'); // does: terminal.focusLeft
   check('Ctrl+Cmd+Left to the pane on the left', await until(async () => (await active()) === t1));
-  await fire('key', 'paneRight');
+  await fire('key', 'paneRight'); // does: terminal.focusRight
   check('Ctrl+Cmd+Right to the right, the pane sharing most of its height, the first of a tie', await until(async () => (await active()) === t6));
-  await fire('key', 'paneDown');
+  await fire('key', 'paneDown'); // does: terminal.focusDown
   check('Ctrl+Cmd+Down to the pane below', await until(async () => (await active()) === t7));
   await fire('key', 'paneDown');
   await settle(page);
   check('with no pane that way, it stays', (await active()) === t7);
 
   const at = await shown();
-  await fire('key', 'dividerRight');
+  await fire('key', 'dividerRight'); // does: terminal.resizeRight
   check('Ctrl+Shift+Cmd+Right at the right edge moves the divider on its left: the left pane widens', await until(async () => near((await shown())[t1].w, at[t1].w + 32)), JSON.stringify({ at, now: await shown() }));
   check('and the right ones narrow as much', near((await shown())[t7].w, at[t7].w - 32) && await insideAndApart());
-  await fire('key', 'dividerUp');
+  await fire('key', 'dividerUp'); // does: terminal.resizeUp
   check('Ctrl+Shift+Cmd+Up moves the divider above it up: it grows taller', await until(async () => near((await shown())[t7].h, at[t7].h + 32) && near((await shown())[t6].h, at[t6].h - 32)), JSON.stringify(await shown()));
-  await fire('key', 'dividerLeft');
-  await fire('key', 'dividerDown');
+  await fire('key', 'dividerLeft'); // does: terminal.resizeLeft
+  await fire('key', 'dividerDown'); // does: terminal.resizeDown
   check('and back the other way, the sizes are as they were', await until(async () => JSON.stringify(await shown()) === JSON.stringify(at)), JSON.stringify({ at, now: await shown() }));
 
-  await fire('key', 'zoomPane');
+  await fire('key', 'zoomPane'); // does: terminal.zoom
   check('Shift+Cmd+Enter zooms the active pane to fill the body', await until(async () => (await showsOnly([t7])) && JSON.stringify((await shown())[t7]) === JSON.stringify(one)), JSON.stringify({ one, now: await shown() }));
   check('its Zoom button is pressed', (await title(t7).getByRole('button', { name: 'Zoom' }).getAttribute('aria-pressed')) === 'true');
   check('and the strip still lists all three', (await ui.locator('.chip.shown [role=tab]').count()) === 3);

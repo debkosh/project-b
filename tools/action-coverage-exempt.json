@@ -19,15 +19,6 @@
   "glide.space6": "TODO: glide_checks, with glide.space2",
   "glide.space7": "TODO: glide_checks, with glide.space2",
   "glide.space8": "TODO: glide_checks, with glide.space2",
-  "glide.space9": "TODO: glide_checks, with glide.space2",
-  "terminal.focusDown": "TODO: the terminal shell's own test (shell/e2e/shells/terminal.cjs): focus and resize between panes",
-  "terminal.focusLeft": "TODO: with terminal.focusDown",
-  "terminal.focusRight": "TODO: with terminal.focusDown",
-  "terminal.focusUp": "TODO: with terminal.focusDown",
-  "terminal.resizeDown": "TODO: with terminal.focusDown",
-  "terminal.resizeLeft": "TODO: with terminal.focusDown",
-  "terminal.resizeRight": "TODO: with terminal.focusDown",
-  "terminal.resizeUp": "TODO: with terminal.focusDown",
-  "terminal.zoom": "TODO: with terminal.focusDown"
+  "glide.space9": "TODO: glide_checks, with glide.space2"
  }
 }

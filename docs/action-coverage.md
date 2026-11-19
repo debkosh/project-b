@@ -4,7 +4,7 @@ Every action a person can take, where the app offers it, and the tests that do i
 `tools/action_coverage.py` from the code; `tools/test.sh mock` fails while an action has no
 test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 
-**205 actions and messages, 178 with a test, 27 exempt with a reason, 0 with none; 20 of Go's actions done by no test of the real app.**
+**205 actions and messages, 187 with a test, 18 exempt with a reason, 0 with none; 29 of Go's actions done by no test of the real app.**
 
 ## Go's actions: the menu bar, keys and the shells' own menus
 
@@ -80,17 +80,17 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `tab.select7` Tab 7 | menu bar, keys (chrome, firefox, glide, project-b) | yes | `drive_first_app.py` |
 | `tab.select8` Tab 8 | menu bar, keys (chrome, firefox, glide, project-b) | yes | `drive_first_app.py` |
 | `tab.selectLast` Last Tab | menu bar, keys (chrome, firefox, glide, project-b) | yes | `minimal.cjs`, `drive_first_app.py` |
-| `terminal.focusDown` Focus pane below | menu bar, keys (chrome, firefox, glide, project-b), terminal | **no** | **TODO: the terminal shell's own test (shell/e2e/shells/terminal.cjs): focus and resize between panes** |
-| `terminal.focusLeft` Focus pane left | menu bar, keys (chrome, firefox, glide, project-b), terminal | **no** | **TODO: with terminal.focusDown** |
-| `terminal.focusRight` Focus pane right | menu bar, keys (chrome, firefox, glide, project-b), terminal | **no** | **TODO: with terminal.focusDown** |
-| `terminal.focusUp` Focus pane above | menu bar, keys (chrome, firefox, glide, project-b), terminal | **no** | **TODO: with terminal.focusDown** |
-| `terminal.resizeDown` Move divider down | menu bar, keys (chrome, firefox, glide, project-b), terminal | **no** | **TODO: with terminal.focusDown** |
-| `terminal.resizeLeft` Move divider left | menu bar, keys (chrome, firefox, glide, project-b), terminal | **no** | **TODO: with terminal.focusDown** |
-| `terminal.resizeRight` Move divider right | menu bar, keys (chrome, firefox, glide, project-b), terminal | **no** | **TODO: with terminal.focusDown** |
-| `terminal.resizeUp` Move divider up | menu bar, keys (chrome, firefox, glide, project-b), terminal | **no** | **TODO: with terminal.focusDown** |
+| `terminal.focusDown` Focus pane below | menu bar, keys (chrome, firefox, glide, project-b), terminal | **no** | `terminal.cjs` |
+| `terminal.focusLeft` Focus pane left | menu bar, keys (chrome, firefox, glide, project-b), terminal | **no** | `terminal.cjs` |
+| `terminal.focusRight` Focus pane right | menu bar, keys (chrome, firefox, glide, project-b), terminal | **no** | `terminal.cjs` |
+| `terminal.focusUp` Focus pane above | menu bar, keys (chrome, firefox, glide, project-b), terminal | **no** | `terminal.cjs` |
+| `terminal.resizeDown` Move divider down | menu bar, keys (chrome, firefox, glide, project-b), terminal | **no** | `terminal.cjs` |
+| `terminal.resizeLeft` Move divider left | menu bar, keys (chrome, firefox, glide, project-b), terminal | **no** | `terminal.cjs` |
+| `terminal.resizeRight` Move divider right | menu bar, keys (chrome, firefox, glide, project-b), terminal | **no** | `terminal.cjs` |
+| `terminal.resizeUp` Move divider up | menu bar, keys (chrome, firefox, glide, project-b), terminal | **no** | `terminal.cjs` |
 | `terminal.splitDown` Split down | menu bar, keys (chrome, firefox, glide, project-b), terminal | **no** | `app_test.go`, `terminal.cjs` |
 | `terminal.splitRight` Split right | menu bar, keys (chrome, firefox, glide, project-b), terminal | **no** | `app_test.go`, `settings.cjs`, `terminal.cjs` |
-| `terminal.zoom` Zoom pane | menu bar, keys (chrome, firefox, glide, project-b), terminal | **no** | **TODO: with terminal.focusDown** |
+| `terminal.zoom` Zoom pane | menu bar, keys (chrome, firefox, glide, project-b), terminal | **no** | `terminal.cjs` |
 | `view.fullScreen` Full Screen | menu bar, keys (chrome, firefox, glide, project-b), fox | yes | `app_test.go`, `commands_test.go`, `fox.cjs`, `mobile.cjs` and 1 more |
 | `view.tabsSide` Tabs on Side | menu bar, keys (chrome, firefox, glide, project-b) | **no** | `shellmenu_test.go`, `minimal.cjs`, `standard-bookmarks.cjs`, `standard-groups.cjs` and 2 more |
 | `view.tabsTop` Tabs on Top | menu bar, keys (chrome, firefox, glide, project-b) | yes | `suggest_test.go`, `minimal.cjs`, `standard-bookmarks.cjs`, `standard-drag.cjs` and 4 more |
