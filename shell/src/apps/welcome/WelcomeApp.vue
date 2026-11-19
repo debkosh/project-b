@@ -229,11 +229,11 @@ onMounted(() => heading.value?.focus());
         <div class="card">
           <label v-for="s in state.sparks" :key="s.id" class="row">
             <span class="spark">
-              <span :id="'spark-' + s.id" class="label">{{ s.name }}</span>
+              <span class="label">{{ s.name }}</span>
               <span :id="'spark-' + s.id + '-line'" class="state">{{ s.description }}</span>
             </span>
             <input
-              :aria-labelledby="'spark-' + s.id"
+              :aria-label="s.name"
               :aria-describedby="'spark-' + s.id + '-line'"
               type="checkbox"
               role="switch"
@@ -260,9 +260,9 @@ onMounted(() => heading.value?.focus());
             </select>
           </label>
           <label class="row">
-            <span id="auto-update-name" class="label">Automatic updates</span>
+            <span class="label">Automatic updates</span>
             <input
-              aria-labelledby="auto-update-name"
+              aria-label="Automatic updates"
               type="checkbox"
               role="switch"
               class="switch"

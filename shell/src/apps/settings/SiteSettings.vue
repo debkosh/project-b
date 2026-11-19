@@ -139,11 +139,11 @@ const uid = useId();
       </div>
       <label v-if="state.prefs.clearCookiesOnQuit" class="row">
         <span class="label">
-          <span :id="uid + '-keep'">Keep cookies when the app quits</span>
+          <span>Keep cookies when the app quits</span>
           <span :id="uid + '-keep-hint'" class="secondary">Stay signed in here when the others are cleared</span>
         </span>
         <input
-          :aria-labelledby="uid + '-keep'"
+          aria-label="Keep cookies when the app quits"
           :aria-describedby="uid + '-keep-hint'"
           type="checkbox"
           role="switch"

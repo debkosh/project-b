@@ -47,12 +47,12 @@
   </div>
   {#if ads}
     <label class="row">
-      <span class="text"><span id="site-ads">Ad blocker</span>{#if ads.value === 'on'}<small id="site-ads-note">{tab.adsBlocked || 0} blocked on this page</small>{/if}</span>
+      <span class="text"><span>Ad blocker</span>{#if ads.value === 'on'}<small id="site-ads-note">{tab.adsBlocked || 0} blocked on this page</small>{/if}</span>
       <input
         type="checkbox"
         role="switch"
         class="switch"
-        aria-labelledby="site-ads"
+        aria-label="Ad blocker"
         aria-describedby={ads.value === 'on' ? 'site-ads-note' : undefined}
         checked={ads.value === 'on'}
         aria-checked={String(ads.value === 'on')}
@@ -62,12 +62,12 @@
   {/if}
   {#if sparksOn && sparks.length}
     <label class="row">
-      <span class="text"><span id="site-sparks">Sparks</span><small id="site-sparks-note">{sparkNames(sparks)}</small></span>
+      <span class="text"><span>Sparks</span><small id="site-sparks-note">{sparkNames(sparks)}</small></span>
       <input
         type="checkbox"
         role="switch"
         class="switch"
-        aria-labelledby="site-sparks"
+        aria-label="Sparks"
         aria-describedby="site-sparks-note"
         checked={sparksOn.value === 'on'}
         aria-checked={String(sparksOn.value === 'on')}

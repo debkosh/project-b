@@ -8,8 +8,9 @@ import { addRow, matches } from './search.js';
 // long lists has opens, the list's address: the whole label is then a button, with what
 // the list holds on its right and a chevron. tag is 'label' for a row that is one switch,
 // so a press anywhere on it flips it; for names the control a plain row's label is for.
-// The slot gets named, the attributes that name its control by the row's own words, its
-// label and the line under it, as Android reads no name from a label around a switch.
+// The slot gets named, the attributes that name its control by the row's own words: its
+// label as aria-label, and the line under it. Android reads no name from a label around a
+// switch, nor from aria-labelledby: it reads aria-label.
 const props = defineProps({
   label: String,
   hint: String,
@@ -22,7 +23,7 @@ const props = defineProps({
 const go = inject('settingsGo');
 
 const id = useId();
-const named = computed(() => ({ 'aria-labelledby': id + '-name', 'aria-describedby': props.hint ? id + '-hint' : undefined }));
+const named = computed(() => ({ 'aria-label': props.label, 'aria-describedby': props.hint ? id + '-hint' : undefined }));
 
 // While search has words, the row shows only when its label, its second line or its
 // section's name has them.
@@ -44,7 +45,7 @@ onUnmounted(addRow({ section: section?.id, hit: () => hit.value }));
     <template v-else>
       <!-- A control's name is its label alone; the line under it says more. -->
       <span class="label">
-        <component :is="props.for ? 'label' : 'span'" class="name" :for="props.for"><span :id="id + '-name'"><Marked :text="label" /></span><slot name="tags" /></component>
+        <component :is="props.for ? 'label' : 'span'" class="name" :for="props.for"><Marked :text="label" /><slot name="tags" /></component>
         <span v-if="hint" :id="id + '-hint'" class="secondary"><Marked :text="hint" /></span>
       </span>
       <slot :named="named" />
