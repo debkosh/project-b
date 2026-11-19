@@ -239,7 +239,7 @@ pinned version builds.
 | `tools/android-content-fetch.sh` | Chromium 155 for Android and its Linux build dependencies, once |
 | `tools/android-content-build.sh` | `gn gen` and the build, inside the container |
 | `tools/android-content-package.sh` | Copies the APK out, compresses its libraries, signs it on the Mac |
-| `tools/android-release.sh` | For `tools/release.sh`: copies a checkout's tracked files into the container, builds, signs, and stops the VM |
+| `tools/android-release.sh` | For `tools/release.sh`: copies a checkout's tracked files into the container, builds, signs, and stops the VM. One run at a time on the Mac (a lock on the Mac for the whole run); it leaves the VM up while the container's build lock or `/work/.vm-in-use.lock` is held, the latter by any other long job in the container, such as a Linux build |
 
 The rest of the adapter is shared with the Mac: `engine/browser/` and `engine/common/`, with `BUILDFLAG` guards. The
 ones that change behaviour on Android: the pak comes from the APK and goes to each child as an open file, the shell's
