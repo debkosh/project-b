@@ -5,7 +5,8 @@ import { pushEscape } from './escape.js';
 // A modal dialog, the one pattern for every question: 360px, a 15px title, the body, and
 // the buttons at the bottom right, which the caller puts in the buttons slot. A title with
 // a word set apart, a host in bold, is drawn in the title slot, title still naming the
-// dialog. Mount it with v-if to open it. Escape and the backdrop's own cancel emit close; when it goes,
+// dialog. The title and the buttons stay put, and the body scrolls between them when the
+// dialog is taller than its room, as over a phone's keyboard. Mount it with v-if to open it. Escape and the backdrop's own cancel emit close; when it goes,
 // focus goes back to what had it before it opened.
 defineProps({ title: String });
 const emit = defineEmits(['close']);
@@ -28,7 +29,7 @@ onUnmounted(() => {
 <template>
   <dialog ref="dialog" class="ui-dialog" :aria-label="title" @cancel.prevent="emit('close')">
     <h2 class="ui-dialog-title"><slot name="title">{{ title }}</slot></h2>
-    <slot />
+    <div class="ui-dialog-body"><slot /></div>
     <div class="ui-dialog-buttons"><slot name="buttons" /></div>
   </dialog>
 </template>
@@ -51,6 +52,26 @@ onUnmounted(() => {
   background: color-mix(in srgb, var(--bar) 70%, transparent);
 }
 
+/* Only the body scrolls: the title above it and the buttons under it stay in sight. */
+dialog.ui-dialog[open] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ui-dialog-title,
+.ui-dialog-buttons {
+  flex: none;
+}
+
+/* Wider and taller than what it holds, so a field's focus ring isn't cut. */
+.ui-dialog-body {
+  min-height: 0;
+  margin: -4px -20px;
+  padding: 4px 20px;
+  overflow-y: auto;
+}
+
 .ui-dialog-title {
   margin: 0 0 16px;
   color: var(--text);
@@ -62,6 +83,12 @@ onUnmounted(() => {
 .ui-dialog p {
   margin: 0;
   color: var(--muted);
+}
+
+/* A site or a server in a dialog's words: its host, read first. */
+.ui-dialog-body p b {
+  color: var(--text);
+  font-weight: 600;
 }
 
 /* A field in a dialog: its label above it, 12px and muted. A swatch, a choice to bring

@@ -482,8 +482,8 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
 
       <template v-else-if="d.step === 'choose' || d.step === 'change' || d.step === 'enter'">
         <div class="ui-dialog-part">
-          <p v-if="d.step === 'choose'">Nothing is synced on {{ d.host }} yet. Every device you add asks for this passphrase.</p>
-          <p v-else-if="d.step === 'enter'">{{ d.host }} already has synced data. Type the passphrase you chose for it.</p>
+          <p v-if="d.step === 'choose'">Nothing is synced on <b>{{ d.host }}</b> yet. Every device you add asks for this passphrase.</p>
+          <p v-else-if="d.step === 'enter'"><b>{{ d.host }}</b> already has synced data. Type the passphrase you chose for it.</p>
           <p v-else>Devices that sync now keep syncing. A device you add asks for the new one.</p>
         </div>
         <div class="ui-dialog-part">
@@ -538,7 +538,7 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
       </template>
 
       <div v-else-if="d.step === 'turnOff'" class="ui-dialog-part">
-        <p>Bookmarks, history and typed addresses stay here and on {{ s.host }}. To sync again, you'll need the sync passphrase.</p>
+        <p>Bookmarks, history and typed addresses stay here and on <b>{{ s.host }}</b>. To sync again, you'll need the sync passphrase.</p>
       </div>
 
       <template #buttons>
