@@ -1967,6 +1967,197 @@ def tabs_of(app):
     return json.loads(app.cmd("projectb", "getTabs", "{}"))["result"]
 
 
+def action_checks():
+    """Each everyday action, run by its id or message as a menu, key or tab menu runs it, lands
+    on a page with no error: Duplicate Tab once ended in ERR_BLOCKED_BY_CLIENT on the real
+    engine while the mock engine passed it (docs/action-coverage.md). A tab landed is Go's
+    tab, done loading, on the address wanted, not blocked, crashed or failed."""
+    profile = tempfile.mkdtemp(prefix="pb-profile-")
+    with open(os.path.join(profile, "workspaces.json"), "w") as f:
+        json.dump({"workspaces": [{"id": "0a1b2c3d", "name": "Work", "color": "#3470d0"}]}, f)
+    app = App(profile)
+    send = lambda msg: app.js(f"chrome.send('shell', [{json.dumps(json.dumps(msg))}]), 1")
+    run = lambda action: send({"t": "run", "text": action})
+
+    def tab(tid):
+        return next((t for t in tabs_of(app)["tabs"] if t["id"] == tid), None)
+
+    def landed(want_url, new_tab=None, before=None):
+        """The active tab, or a new one, once on want_url and done, and what is wrong with it."""
+        deadline = time.time() + 20
+        while time.time() < deadline:
+            r = tabs_of(app)
+            t = tab(r["active"])
+            if new_tab and before is not None and r["active"] in before:
+                t = None
+            if t and t["url"] == want_url and not t["loading"]:
+                # Settled: Go sets a copy's address from the original before its own load, so a
+                # blocked load shows only as its error, or a title that never comes
+                # (Duplicate Tab's ERR_BLOCKED_BY_CLIENT, with an empty title).
+                settle = time.time() + 10
+                while time.time() < settle and not t.get("title") and not t.get("error") and not t.get("blocked"):
+                    time.sleep(0.2)
+                    t = tab(t["id"]) or t
+                time.sleep(0.5)
+                t = tab(t["id"]) or t
+                bad = [k for k in ("blocked", "crashed") if t.get(k)] + ([t["error"] + " " + t.get("errorCode", "")] if t.get("error") else []) \
+                    + ([] if t.get("title") else ["no title"])
+                return t, bad
+            time.sleep(0.1)
+        return tab(tabs_of(app)["active"]), ["never landed on " + want_url]
+
+    first = from_box(app, STORE)
+    ids = lambda: {t["id"] for t in tabs_of(app)["tabs"]}
+
+    before = ids()
+    run("tab.duplicate")
+    t, bad = landed(STORE, True, before)
+    check("Duplicate Tab opens the page again in a new tab, with no error", t is not None and t["id"] not in before and not bad, (t and t["url"], bad))
+
+    dup = tabs_of(app)["active"]
+    run("tab.close")
+    app.wait(f"{ROWS}==={len(before)}", 10)
+    run("tab.reopenClosed")
+    t, bad = landed(STORE)
+    check("Reopen Closed Tab brings the closed tab back on its page, with no error", t is not None and not bad, (t and t["url"], bad))
+
+    run("tab.pin")
+    pinned = lambda: bool((tab(tabs_of(app)["active"]) or {}).get("pin"))
+    deadline = time.time() + 10
+    while not pinned() and time.time() < deadline:
+        time.sleep(0.1)
+    t, bad = landed(STORE)
+    check("Pin Tab pins the tab and keeps its page, with no error", pinned() and not bad, (pinned(), bad))
+    run("tab.pin")
+
+    before = ids()
+    send({"t": "newTab", "workspace": "0a1b2c3d", "text": STORE})
+    t, bad = landed(STORE, True, before)
+    check("a tab moved to another workspace opens there on its page, with no error",
+          t is not None and t["workspace"] == "0a1b2c3d" and not bad, (t and t["workspace"], bad))
+
+    click(app, f'[role=tab][data-tab="{first}"]')
+    app.wait(f"document.querySelector('[role=tab][data-tab=\"{first}\"]').getAttribute('aria-selected')==='true'")
+    before = ids()
+    page_click(app, "#blank")
+    deadline = time.time() + 20
+    opened = None
+    while time.time() < deadline and opened is None:
+        opened = next((t for t in tabs_of(app)["tabs"] if t["id"] not in before and t["url"] == STORE and not t["loading"]), None)
+        time.sleep(0.1)
+    bad = [] if opened is None else [k for k in ("blocked", "crashed") if opened.get(k)] + ([opened["error"]] if opened.get("error") else [])
+    check("a link opened in a new tab loads there, with no error", opened is not None and not bad, bad or "no new tab")
+
+    # The rest of the everyday actions, on a page: each lands on a page with no error.
+    click(app, f'[role=tab][data-tab="{first}"]')
+    app.wait(f"document.querySelector('[role=tab][data-tab=\"{first}\"]').getAttribute('aria-selected')==='true'")
+    for action, want in (("nav.reload", STORE), ("nav.reloadHard", STORE), ("view.zoomIn", STORE), ("view.zoomOut", STORE),
+                         ("view.zoomReset", STORE), ("tab.next", None), ("tab.previous", None), ("tab.select1", None),
+                         ("tab.selectLast", None), ("tab.recentNext", None)):
+        run(action)
+        time.sleep(0.5)
+        t = tab(tabs_of(app)["active"])
+        if want is not None:
+            t, bad = landed(want)
+        else:
+            deadline = time.time() + 10
+            while t and t["loading"] and time.time() < deadline:
+                time.sleep(0.1)
+                t = tab(tabs_of(app)["active"])
+            bad = [] if t is None else [k for k in ("blocked", "crashed") if t.get(k)] + ([t["error"]] if t.get("error") else [])
+        check(f"{action} lands on a page with no error", t is not None and not bad, (t and t["url"], bad))
+    before = ids()
+    run("dev.viewSource")
+    deadline = time.time() + 20
+    src = None
+    while time.time() < deadline and src is None:
+        # Go has the tab at the page's own address; the page is its source, in view-source's table.
+        src = next((t for t in tabs_of(app)["tabs"] if t["id"] not in before and not t["loading"]), None)
+        time.sleep(0.1)
+    bad = [] if src is None else [k for k in ("blocked", "crashed") if src.get(k)] + ([src["error"]] if src.get("error") else [])
+    shows = src is not None and bool(app.js("!!document.querySelector('td.line-content')", tab=src["id"]))
+    check("View Source opens the page's source in a new tab, with no error", shows and not bad, bad or ("no source tab" if src is None else "not its source"))
+
+    # Every Tab N and the rest of the tab-switching keys land on a tab of the window.
+    order = [t["id"] for t in tabs_of(app)["tabs"]]
+    # Named outright, so tools/action_coverage.py sees each is done.
+    for n, action in enumerate(("tab.select1", "tab.select2", "tab.select3", "tab.select4",
+                                "tab.select5", "tab.select6", "tab.select7", "tab.select8"), 1):
+        run(action)
+        want = order[min(n, len(order)) - 1]
+        deadline = time.time() + 5
+        while tabs_of(app)["active"] != want and time.time() < deadline:
+            time.sleep(0.1)
+        check(f"{action} shows tab {min(n, len(order))}", tabs_of(app)["active"] == want, tabs_of(app)["active"])
+    run("tab.recentPrevious")
+    time.sleep(0.5)
+    t = tab(tabs_of(app)["active"])
+    check("tab.recentPrevious lands on a page with no error", t is not None and not t.get("error") and not t.get("crashed"), t and t["url"])
+
+    # Find and its steps, the address bar, and the shells' own Reload and Forward.
+    click(app, f'[role=tab][data-tab="{first}"]')
+    app.wait(f"document.querySelector('[role=tab][data-tab=\"{first}\"]').getAttribute('aria-selected')==='true'")
+    run("find.open")
+    found = app.wait("!!document.querySelector('[role=search] input, .find-bar input')", 10)
+    check("find.open opens the find bar", bool(found))
+    for action in ("find.next", "find.previous"):
+        run(action)
+        check(f"{action} keeps the find bar and the page", bool(app.js("!!document.querySelector('[role=search] input, .find-bar input')")) and landed(STORE)[1] == [])
+    app.cmd("key", "escape")
+    run("address.focus")
+    check("address.focus gives the address bar the keyboard", bool(app.wait("document.activeElement&&document.activeElement.matches('input')", 5)))
+    app.cmd("key", "escape")
+    for msg in ({"t": "reload"}, {"t": "forward"}):
+        send(msg)
+        time.sleep(0.5)
+        check(f"the shells' {msg['t']} lands on a page with no error", landed(STORE)[1] == [], landed(STORE)[1])
+
+    # Tab groups from the tab menu: a group made, a tab added, a tab taken out.
+    send({"t": "createGroup", "ids": [first]})
+    deadline = time.time() + 5
+    while not (tab(first) or {}).get("group") and time.time() < deadline:
+        time.sleep(0.1)
+    group = (tab(first) or {}).get("group")
+    other = next(i for i in order if i != first)
+    send({"t": "addToGroup", "id": other, "group": group})
+    deadline = time.time() + 5
+    while (tab(other) or {}).get("group") != group and time.time() < deadline:
+        time.sleep(0.1)
+    check("addToGroup puts a tab in a group", bool(group) and (tab(other) or {}).get("group") == group, tab(other))
+    send({"t": "removeFromGroup", "id": other})
+    deadline = time.time() + 5
+    while (tab(other) or {}).get("group") and time.time() < deadline:
+        time.sleep(0.1)
+    check("removeFromGroup takes it out", not (tab(other) or {}).get("group"), tab(other))
+
+    # Our pages from the menus, Stop, and a tab moved to a window of its own.
+    for action, page in (("history.show", "history"), ("bookmarks.show", "bookmarks"), ("downloads.show", "downloads")):
+        run(action)
+        deadline = time.time() + 10
+        while (tab(tabs_of(app)["active"]) or {}).get("page") != page and time.time() < deadline:
+            time.sleep(0.1)
+        check(f"{action} shows the {page} page", (tab(tabs_of(app)["active"]) or {}).get("page") == page)
+    click(app, f'[role=tab][data-tab="{first}"]')
+    app.wait(f"document.querySelector('[role=tab][data-tab=\"{first}\"]').getAttribute('aria-selected')==='true'")
+    run("nav.stop")
+    check("nav.stop leaves the page as it was, with no error", landed(STORE)[1] == [])
+    windows_before = len(json.loads(app.cmd("windows")))
+    run("tab.moveToNewWindow")
+    deadline = time.time() + 10
+    while len(json.loads(app.cmd("windows"))) == windows_before and time.time() < deadline:
+        time.sleep(0.1)
+    check("tab.moveToNewWindow opens a window with the tab, on its page", len(json.loads(app.cmd("windows"))) == windows_before + 1 and landed(STORE)[1] == [])
+
+    # Close Window, last: the window goes, with the app still running.
+    windows = len(json.loads(app.cmd("windows")))
+    run("window.close")
+    deadline = time.time() + 10
+    while len(json.loads(app.cmd("windows"))) == windows and time.time() < deadline:
+        time.sleep(0.1)
+    check("window.close closes the window, the app still running", app.proc.poll() is None and len(json.loads(app.cmd("windows"))) == windows - 1)
+    app.close()
+
+
 def workspace_menu_checks():
     """Tab, New Tab in Workspace lists the profile's workspaces, read as the menu opens, and
     choosing one opens a new tab in that workspace in the window in front. A new profile's
@@ -2692,5 +2883,5 @@ def links_checks():
 
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
-    parts = {"driver": [driver_checks], "browsing": [browsing_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks]}
-    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, settings_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, glide_checks, web_api_checks, sparks_checks, links_checks, quit_checks]))
+    parts = {"driver": [driver_checks], "browsing": [browsing_checks], "actions": [action_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks]}
+    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, action_checks, settings_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, glide_checks, web_api_checks, sparks_checks, links_checks, quit_checks]))
