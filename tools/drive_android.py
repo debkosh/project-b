@@ -176,7 +176,12 @@ class Server(http.server.BaseHTTPRequestHandler):
 # A checked switch and a checked checkbox, for what a screen reader hears of them.
 PAGES["/switches"] = ("<title>Switches</title><h1>Switches</h1>"
                       "<button role=switch aria-checked=true aria-label='Ad blocker'>x</button> "
-                      "<input type=checkbox aria-label='Box' checked>")
+                      "<input type=checkbox aria-label='Box' checked>"
+                      # Named three more ways a page names a control, each of which Android 16
+                      # once got only as a supplemental description, which TalkBack never says.
+                      "<p><label><input type=checkbox role=switch checked> Wrapped</label></p>"
+                      "<p><span id=lb>By id</span> <button role=switch aria-checked=false aria-labelledby=lb>y</button></p>"
+                      "<p><label for=f>Field</label> <input id=f></p>")
 PAGES["/dialogs"] = ("<title>Dialogs</title><style>button{display:block;width:100%;height:30vh;font-size:40px}</style>"
                      "<button id=c>confirm</button><button id=p>prompt</button><button id=al>alert</button><script>"
                      "const say = (what, v) => fetch('/said?' + what + '=' + encodeURIComponent(String(v)));"
@@ -1197,6 +1202,18 @@ def talkback_states():
         check("TalkBack hears the page's switch as named, checkable and on",
               page is not None and page.get("checkable") == "true" and page.get("checked") == "true", said(page))
         check("and its checkbox the same", box is not None and box.get("checkable") == "true" and box.get("checked") == "true", said(box))
+        # The name where TalkBack reads it: the label, text, or a field's hint.
+        # A node with no children is false to Python, so each find is tested against None.
+        def named(name):
+            for want in ({"label": name}, {"text": name, "checkable": "true"}, {"hint": name}):
+                n = find("page", **want)
+                if n is not None:
+                    return n
+            return None
+        for name, how in (("Wrapped", "by a label around it"), ("By id", "by aria-labelledby"), ("Field", "by <label for>")):
+            n = named(name)
+            check("and a control named %s says its name" % how, n is not None,
+                  None if n is None else (n.get("class", "").rsplit(".", 1)[-1], n.get("text"), n.get("content-desc"), n.get("hint")))
     finally:
         talkback(False)
 
