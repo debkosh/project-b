@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright');
 const lib = require('./lib.cjs');
-const { check, regions, until } = lib;
+const { check, regions, settle, until } = lib;
 
 (async () => {
   fs.writeFileSync(path.join(lib.profile, 'crash.log'), 'pid 1, started 2026-11-14 09:00:00\npanic: the last run\n');
@@ -18,7 +18,7 @@ const { check, regions, until } = lib;
   const w = await lib.openWindow(browser);
   const share = w.ui.getByRole('button', { name: 'Share report' });
   check('the last run\'s crash notice offers Share report', await until(() => share.isVisible(), 10000));
-  await share.click();
+  await share.click(); // does: shareReport
   const shared = await until(async () => (await regions()).shared);
   const report = shared ? fs.readFileSync((await regions()).shared, 'utf8') : '';
   check('it hands the system one text report in the profile, with the last run\'s crash log in it',
@@ -32,6 +32,15 @@ const { check, regions, until } = lib;
   check('the Downloads panel opens by itself with the report in it, as the app\'s own',
     await until(async () => (await panel.getByRole('listitem').first().textContent().catch(() => '')).includes(path.basename(saved))),
     await panel.textContent().catch(() => ''));
+  // Its Close takes the notice away, and Go forgets the crash: a reload of the shell brings no notice.
+  await w.page.keyboard.press('Escape');
+  const notice = w.ui.getByRole('status').filter({ hasText: 'crashed last time' });
+  await notice.getByRole('button', { name: 'Close' }).click(); // does: dismissCrash
+  check('its Close takes the crash notice away', await until(async () => !(await share.isVisible())));
+  await w.page.reload();
+  await settle(w.page);
+  check('and it stays away when the shell loads again, as Go has forgotten the crash',
+    await until(async () => (await notice.count()) === 0) && !(await share.isVisible()));
   check('no errors in the page', w.errors.length === 0, w.errors.join(' | '));
   await browser.close();
   await lib.done();
