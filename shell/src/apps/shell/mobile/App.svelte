@@ -308,6 +308,8 @@
     // the tab changes, and says so with null.
     contextMenu: ({ contextMenu: m }) => {
       if (!m || m.tab !== go.active) return;
+      // The same menu again brings its image's picture: the sheet takes it where it is.
+      if (m.id === pressed?.id && sheet !== 'link') return;
       pressed = m;
       sheet = 'link';
     },
