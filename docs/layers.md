@@ -72,7 +72,44 @@ int main(int argc, const char** argv) {
 
 ## 2. `core/system`
 
-To fill in at step 2, from the brief's table.
+The calls on `engine.Engine` that are really the OS's move to `system.System`, built per OS
+in `core/system`, and their C++ leaves the adapter:
+
+| Off `engine.Engine` | C++ that goes | `core/system` on the Mac | on Android |
+|---|---|---|---|
+| `OpenFile`, `RevealFile` | `downloads_mac.mm`, `downloads_android.cc` | NSWorkspace, in a `.m` beside the Go | Java, through JNI |
+| `IsDefaultBrowser`, `AskDefaultBrowser` | `mac_app.mm`, `BrowserWindow.java`'s | NSWorkspace | Java's RoleManager sheet |
+| `AskNotifications`, `NotificationsAllowed` | `BrowserWindow.java`'s | allowed, nothing to ask | Java's permission question |
+| `SetDockColor` | `mac_app.mm` | NSApp's icon | nothing: no Dock |
+| `OpenFullDiskAccess` | none, already Go | `open` System Settings | nothing |
+
+- An answer comes back as a callback the caller passes, run on the main thread:
+  `AskDefaultBrowser(func(isDefault bool))`, `AskNotifications(func(allowed bool))`. The
+  `PB_EVENT_DEFAULT_BROWSER` and `PB_EVENT_NOTIFICATIONS` events, and the Listener calls
+  `DefaultBrowserChanged` and `NotificationsAnswered`, go.
+- On Android the OS's door is Java, so `core/system` reaches it through JNI in the Go
+  library's own C (`go_table.c`, which already calls Java for the device key), not through
+  the engine. The answers come back from the activity to Go the same way.
+- On the Mac some of it is Objective-C, in `.m` files beside the Go, built by cgo. macOS
+  allows its UI only on the main thread: `core/system` hops there itself, so no caller can
+  get it wrong.
+- `core/system/fake` is the tests' and the mock engine's: it answers as a person who says
+  yes, as the mock engine does today.
+
+Agreed with the platforms session, 2026-11-19 (Linux will be the same shape, pure Go over
+D-Bus, and Windows Win32 from Go):
+
+1. Each callback runs on the main thread exactly once. An answer that never comes (a sheet
+   dismissed, the activity recreated or destroyed while asking) calls it once with no answer.
+2. JNI only from a thread attached to the JavaVM: `core/system` hops to the main thread
+   before calling Java, so callers never think about it.
+3. The drivers and tests that watched the old events (`drive_android.py`, the Mac driver,
+   the e2e) move to the new path in the same commit, or a test-fix commit just before it.
+4. The fake keeps the same callback behaviour, so Go's tests cover a dismissed or
+   never-answered request.
+- Then, in later commits, what is per OS in Go today moves behind it too: `core/instance`,
+  `core/relaunch`, `core/update/bundle.go`, and `core/cmd/lib`'s `*_darwin.go` and
+  `*_android.go`, so a reader finds every OS call in one place.
 
 ## The exceptions: where the engine still touches the OS
 
