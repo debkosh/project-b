@@ -310,6 +310,15 @@ Cancel on Profile Lock's unlock Dialog), `ErrNoScreenLock` (the device has nothi
 person with) or an error. Make and Sign check the person themselves, right before they make or
 sign, through `system.System`; there is no way to sign without it.
 
+- **Replace on Make** compares sealed user handles, so Make opens every row of the site first
+  (it holds the key anyway); it can't be done in SQL.
+- **Two devices offline** can each make one for the same site and account; after sync there are
+  two rows with one user handle, and both work at the site, which kept both public keys. List
+  shows the newer by `created`; the older stays in the store and in Settings, where the person
+  can delete it. Nothing deletes it for them, as a delete syncs.
+- **Settings' list** shows the account, which is sealed, so opening it is a person's call that
+  raises the unlock Dialog when the profile is locked, and Delete sits behind the same unlock.
+
 All use of the profile key is in one function of `core/passkeys`,
 `sealed(ctx, asked, job)`. Today it is the store's `Wait` with `keys.Seal` and `keys.Open`. When
 Profile Lock is built, the passwords session swaps its inside for the store's sealed job, which
@@ -320,7 +329,8 @@ profile is never locked, and `ErrLocked` is never answered.
 private part every column in the clear, inside synckosh's sealing under the sync key. Read opens
 the row and Write seals it, which is fine as sync stops while a profile is locked. A passkey
 never changes once made, so Join takes the other when it is newer by `created`, and a delete
-beats an older version, as sync's merger does already. Name is the `rp_id`, for Sync details.
+beats an older version, as sync's merger does already. Name is the `rp_id`, for Sync details, and the collection gets its words in Sync details'
+maps (`SyncDetails.vue`: Passkeys, Passkey, passkeys), so a run reads "Passkey · example.com".
 
 ### The device check: core/system
 
