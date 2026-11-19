@@ -1,7 +1,8 @@
 // A page's passkey request on the mock engine (docs/passkeys.md), on every desktop shell:
 // each step's card with Go's words and buttons, each answer reaching the engine, the PIN
-// field's own errors, the phone's code, the keyboard's place at each step, and Escape. The
-// mock plays the steps a key or a phone would bring (core/mockengine/passkeys.go).
+// field's own errors, the phone's code, the keyboard's place at each step, and Escape; and
+// our own passkeys' steps: Save, the passkeys here, the OS's check and our errors. The mock
+// plays the steps a key, a phone or our own would bring (core/mockengine/passkeys.go).
 // It leaves light and dark screenshots in build/e2e/passkey-<shell>-<step>-*.png, and in
 // PASSKEY_SHOTS too when that names a folder.
 // Run: node shell/e2e/passkeys.cjs [shell ...]   (from the repo root, after `npm run build` in shell/)
@@ -207,6 +208,76 @@ if (shots) fs.mkdirSync(shots, { recursive: true });
     const n = (await answers()).length;
     await step('end');
     check('the request ending takes the card away, unanswered', (await until(async () => (await card.count()) === 0)) && (await answers()).length === n);
+
+    // Our own passkeys (docs/passkeys.md, Our own passkeys): Save first, with the way to a
+    // security key or a phone; the card away while the OS checks the person; the site's
+    // passkeys as rows, the keyboard on the first; and our own errors.
+    const checks = async () => (await regions()).personChecks || [];
+    const heard = async (action) => (await answers()).filter((a) => a.action === action);
+    await fire('passkey', 'create own');
+    check('a make offers Project B first', (await named('Create a passkey')) && (await card.locator('p').first().innerText()) === 'Save a passkey for example.com in Project B?' && (await card.locator('p b').innerText()) === 'example.com');
+    check('with Use a security key or phone, Cancel and Save, the primary', JSON.stringify(await buttons()) === '["Use a security key or phone","Cancel","Save"]' && (await card.locator('.text-button.primary').innerText()) === 'Save', JSON.stringify(await buttons()));
+    check('the keyboard is on Save', await until(async () => (await focused()) === 'Save'), await focused());
+    const row = await card.locator('.buttons button').evaluateAll((all) => all.map((b) => { const r = b.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.right), Math.round(r.top)]; }));
+    const wide = await card.boundingBox();
+    check('the card is 440px wide, its three buttons on one row inside it', wide.width === 440 && row.every((b) => b[2] === row[0][2] && b[0] >= wide.x && b[1] <= wide.x + wide.width) && row[0][1] <= row[1][0], JSON.stringify({ wide, row }));
+    await shoot('save');
+    await button('Use a security key or phone').click();
+    check('Use a security key or phone goes to the key step, and the engine hears nothing of it', (await until(async () => (await card.locator('p').first().innerText().catch(() => '')) === 'example.com wants to save a passkey on your security key. Plug it in and touch it.')) && (await heard('other')).length === 0 && (await heard('own')).length === 0);
+    await button('Cancel').click();
+    await until(async () => (await card.count()) === 0);
+
+    // Save: the OS checks the person, and the card is away meanwhile.
+    await fire('personCheck', 'hold');
+    await fire('passkey', 'create own');
+    await named('Create a passkey');
+    const asked = (await checks()).length;
+    await page.keyboard.press('Enter');
+    check('Enter saves: the card goes while the OS checks the person', (await until(async () => (await card.count()) === 0 && (await checks()).length === asked + 1)) && (await heard('own')).length === 1, JSON.stringify(await checks()));
+    check('the OS is asked for this site, by name', JSON.stringify((await checks()).at(-1)) === '{"Reason":"save a passkey for example.com","Title":"Save your passkey","Subtitle":"example.com"}', JSON.stringify((await checks()).at(-1)));
+    check('nothing is made until the person is checked', (await heard('made')).length === 0);
+    await fire('personCheck', 'answer verified');
+    check('checked, the passkey is made and the engine has it', await until(async () => (await heard('made')).length === 1 && /"credentialId":"[\w-]{22}"/.test((await heard('made'))[0].text)), JSON.stringify(await last()));
+    await fire('passkey', 'create own user=work');
+    await named('Create a passkey');
+    await button('Save').click();
+    await until(async () => (await heard('made')).length === 2);
+
+    // A sign-in: the site's passkeys here, the keyboard on the first.
+    await fire('passkey', 'get own');
+    check('a sign-in shows the passkeys here, under the site', (await named('Sign in to example.com')) && (await card.locator('button.account').count()) === 2, await card.innerText().catch(() => ''));
+    const mine = card.locator('button.account');
+    check('each a row, the display name over the name', (await mine.allInnerTexts()).map((t) => t.replace(/\s+/g, ' ')).sort().join('|') === 'Asha Rao asha@example.com|Work Rao work@example.com', JSON.stringify(await mine.allInnerTexts()));
+    check('its buttons are Use a security key or phone and Cancel, with no primary', JSON.stringify(await buttons()) === '["Use a security key or phone","Cancel"]' && (await card.locator('.text-button.primary').count()) === 0, JSON.stringify(await buttons()));
+    const first = (await mine.nth(0).innerText()).replace(/\s+/g, ' ');
+    check('the keyboard is on the first passkey', await until(async () => (await focused()).replace(/\s+/g, '') === first.replace(/\s+/g, '')), await focused());
+    await shoot('own');
+    const uses = (await checks()).length;
+    await page.keyboard.press('Enter');
+    check('Enter chooses it: the OS checks, and the engine has the signature', await until(async () => (await heard('signed')).length === 1 && (await checks()).length === uses + 1 && (await card.count()) === 0), JSON.stringify(await last()));
+    check('the OS is asked to use it', (await checks()).at(-1).Reason === 'use a passkey for example.com');
+    const made = JSON.parse((await heard('made'))[0].text).credentialId;
+    check('it signed with the first row\'s passkey', (JSON.parse((await heard('signed'))[0].text).credentialId === made) === first.startsWith('Asha'), JSON.stringify(await last()));
+
+    // The person saying no to the check ends the request, with no card.
+    await fire('personCheck', 'denied');
+    await fire('passkey', 'get own');
+    await named('Sign in to example.com');
+    await mine.nth(1).click();
+    check('no to the check ends the request as Cancel does', await until(async () => (await card.count()) === 0 && (await last()).action === 'ownFailed' && (await last()).text === 'denied'), JSON.stringify(await last()));
+    await fire('personCheck', 'verified');
+
+    // The site already has the passkey.
+    await fire('passkey', `create own exclude=${made}`);
+    await named('Create a passkey');
+    await button('Save').click();
+    check('a passkey the site already has says Already saved, with Close alone, the primary', (await named('Already saved')) && (await card.locator('p').first().innerText()) === 'Project B already has a passkey for example.com for this account.' && JSON.stringify(await buttons()) === '["Close"]' && (await until(async () => (await focused()) === 'Close')), JSON.stringify(await buttons()));
+    check('that card is the usual width', (await card.boundingBox()).width === 360);
+    await shoot('already-saved');
+    const failures = (await heard('ownFailed')).length;
+    await button('Close').click();
+    check('Close ends it, and the engine hears why', await until(async () => (await card.count()) === 0 && (await heard('ownFailed')).length === failures + 1 && (await last()).text === 'excluded'), JSON.stringify(await last()));
+
     check('no errors in the console', errors.length === 0, errors.join(' | '));
     await page.close();
     await lib.stop();
