@@ -13,6 +13,12 @@ int pb_system_is_default_browser(void);
 void pb_system_ask_default_browser(void);
 // Answers the notifications question yes: a Mac's are the app's own to show.
 void pb_system_answer_notifications(void);
+// Checks the person is this Mac's owner, in macOS's own sheet: Touch ID, else the Mac's
+// password. The sheet reads "Project B is trying to" and then reason. How it ended reaches
+// Go as PBSystemPersonVerified(id, 0 verified, 1 not, 2 no password set), on the main
+// thread. Cancel takes the sheet of check id away.
+void pb_system_verify_person(int32_t id, const char* reason);
+void pb_system_cancel_person(int32_t id);
 // rgb is 0xRRGGBB, or -1 for no dot.
 void pb_system_set_dock_color(int32_t rgb);
 // Posts a page's notification to the notification centre; a click on it reaches Go as

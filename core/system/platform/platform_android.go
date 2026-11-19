@@ -11,6 +11,8 @@ static inline int call_is_default_browser(const PBSystemCalls* c) { return c->is
 static inline void call_ask_default_browser(const PBSystemCalls* c) { c->ask_default_browser(); }
 static inline int call_notifications_allowed(const PBSystemCalls* c) { return c->notifications_allowed(); }
 static inline void call_ask_notifications(const PBSystemCalls* c) { c->ask_notifications(); }
+static inline void call_verify_person(const PBSystemCalls* c, int32_t id, const char* title, const char* subtitle) { c->verify_person(id, title, subtitle); }
+static inline void call_cancel_person(const PBSystemCalls* c, int32_t id) { c->cancel_person(id); }
 */
 import "C"
 
@@ -58,6 +60,17 @@ func (s *System) NotificationsAllowed() bool {
 func (s *System) AskNotifications(answered func(bool)) {
 	s.notifications.Ask(answered, func() { C.call_ask_notifications(calls.Load()) })
 }
+
+// verifyPerson asks Android's own sheet, BiometricPrompt: a fingerprint, a face or the
+// screen lock.
+func (s *System) verifyPerson(id int32, check system.PersonCheck) {
+	title, subtitle := C.CString(check.Title), C.CString(check.Subtitle)
+	defer C.free(unsafe.Pointer(title))
+	defer C.free(unsafe.Pointer(subtitle))
+	C.call_verify_person(calls.Load(), C.int32_t(id), title, subtitle)
+}
+
+func (s *System) cancelPerson(id int32) { C.call_cancel_person(calls.Load(), C.int32_t(id)) }
 
 // ShowNotification and RemoveNotification do nothing: a phone shows no page's notification
 // yet (docs/daily-driver.md).

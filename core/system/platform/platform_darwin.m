@@ -2,6 +2,7 @@
 // into the Go core (docs/layers.md).
 
 #import <AppKit/AppKit.h>
+#import <LocalAuthentication/LocalAuthentication.h>
 #import <UserNotifications/UserNotifications.h>
 
 #include "platform_darwin.h"
@@ -77,6 +78,49 @@ void pb_system_ask_default_browser(void) {
 
 void pb_system_answer_notifications(void) {
   Answer(2, 1);
+}
+
+// The checks of the person macOS has not answered, by Go's number. Main thread only.
+static NSMutableDictionary<NSNumber*, LAContext*>* PersonChecks(void) {
+  static NSMutableDictionary<NSNumber*, LAContext*>* checks;
+  if (!checks) {
+    checks = [NSMutableDictionary dictionary];
+  }
+  return checks;
+}
+
+void pb_system_verify_person(int32_t id, const char* reason) {
+  NSString* why = [NSString stringWithUTF8String:reason];
+  OnMain(^{
+    LAContext* context = [[LAContext alloc] init];
+    NSError* error = nil;
+    if (![context canEvaluatePolicy:LAPolicyDeviceOwnerAuthentication error:&error]) {
+      // A Mac with no password has nothing to check with.
+      int verdict = error.code == LAErrorPasscodeNotSet ? 2 : 1;
+      NSLog(@"verify person: %@", error.localizedDescription);
+      dispatch_async(dispatch_get_main_queue(), ^{
+        PBSystemPersonVerified(id, verdict);
+      });
+      return;
+    }
+    PersonChecks()[@(id)] = context;
+    // The reply comes on a queue of LocalAuthentication's own.
+    [context evaluatePolicy:LAPolicyDeviceOwnerAuthentication
+            localizedReason:why
+                      reply:^(BOOL success, NSError* e) {
+                        dispatch_async(dispatch_get_main_queue(), ^{
+                          [PersonChecks() removeObjectForKey:@(id)];
+                          PBSystemPersonVerified(id, success ? 0 : 1);
+                        });
+                      }];
+  });
+}
+
+void pb_system_cancel_person(int32_t id) {
+  OnMain(^{
+    // The sheet goes, and its reply, a failure, finds Go no longer waiting.
+    [PersonChecks()[@(id)] invalidate];
+  });
 }
 
 void pb_system_set_dock_color(int32_t rgb) {

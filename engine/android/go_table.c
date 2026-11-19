@@ -15,6 +15,7 @@
 void PBSetDeviceKeyReader(int (*read)(int create, uint8_t* out));
 void PBSetSystemCalls(const PBSystemCalls* calls);
 void PBSystemAnswered(int32_t question, int yes);
+void PBSystemPersonVerified(int32_t id, int verdict);
 
 static JavaVM* vm;
 static jclass device_key;
@@ -26,6 +27,8 @@ static jmethodID go_system_is_default_browser;
 static jmethodID go_system_ask_default_browser;
 static jmethodID go_system_notifications_allowed;
 static jmethodID go_system_ask_notifications;
+static jmethodID go_system_verify_person;
+static jmethodID go_system_cancel_person;
 
 // The calling thread's JNIEnv, attaching a thread of Go's that has none; *attached says to
 // detach it after, with detach.
@@ -95,6 +98,30 @@ static void system_ask_default_browser(void) { system_void(go_system_ask_default
 static int system_notifications_allowed(void) { return system_bool(go_system_notifications_allowed); }
 static void system_ask_notifications(void) { system_void(go_system_ask_notifications); }
 
+static void system_verify_person(int32_t id, const char* title, const char* subtitle) {
+  int attached;
+  JNIEnv* env = attach(&attached);
+  if (env == NULL) {
+    return;
+  }
+  jstring t = (*env)->NewStringUTF(env, title);
+  jstring s = (*env)->NewStringUTF(env, subtitle);
+  (*env)->CallStaticVoidMethod(env, go_system, go_system_verify_person, (jint)id, t, s);
+  (*env)->DeleteLocalRef(env, t);
+  (*env)->DeleteLocalRef(env, s);
+  detach(env, attached);
+}
+
+static void system_cancel_person(int32_t id) {
+  int attached;
+  JNIEnv* env = attach(&attached);
+  if (env == NULL) {
+    return;
+  }
+  (*env)->CallStaticVoidMethod(env, go_system, go_system_cancel_person, (jint)id);
+  detach(env, attached);
+}
+
 static const PBSystemCalls system_calls = {
     .open_file = system_open_file,
     .reveal_file = system_reveal_file,
@@ -102,6 +129,8 @@ static const PBSystemCalls system_calls = {
     .ask_default_browser = system_ask_default_browser,
     .notifications_allowed = system_notifications_allowed,
     .ask_notifications = system_ask_notifications,
+    .verify_person = system_verify_person,
+    .cancel_person = system_cancel_person,
 };
 
 // read_device_key is DeviceKey.get, on whichever of Go's threads asks: 1 with the 32 bytes in
@@ -168,6 +197,8 @@ JNIEXPORT jlong JNICALL Java_dev_projectb_browser_GoCore_table(JNIEnv* env, jcla
     go_system_ask_default_browser = (*env)->GetStaticMethodID(env, go_system, "askDefaultBrowser", "()V");
     go_system_notifications_allowed = (*env)->GetStaticMethodID(env, go_system, "notificationsAllowed", "()Z");
     go_system_ask_notifications = (*env)->GetStaticMethodID(env, go_system, "askNotifications", "()V");
+    go_system_verify_person = (*env)->GetStaticMethodID(env, go_system, "verifyPerson", "(ILjava/lang/String;Ljava/lang/String;)V");
+    go_system_cancel_person = (*env)->GetStaticMethodID(env, go_system, "cancelPerson", "(I)V");
     PBSetSystemCalls(&system_calls);
   }
   return (jlong)(intptr_t)&go;
@@ -218,6 +249,12 @@ JNIEXPORT jobjectArray JNICALL Java_dev_projectb_browser_GoCore_init(JNIEnv* env
 JNIEXPORT void JNICALL Java_dev_projectb_browser_GoCore_answered(JNIEnv* env, jclass cls,
                                                                   jint question, jboolean yes) {
   PBSystemAnswered(question, yes ? 1 : 0);
+}
+
+// How a check of the person ended, from GoSystem on the main thread.
+JNIEXPORT void JNICALL Java_dev_projectb_browser_GoCore_personVerified(JNIEnv* env, jclass cls,
+                                                                        jint id, jint verdict) {
+  PBSystemPersonVerified(id, verdict);
 }
 
 // The link another app sent, from BrowserActivity on the main thread, after Go started: the
