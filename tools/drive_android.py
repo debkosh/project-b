@@ -2029,6 +2029,52 @@ def long_press_menu():
             use_shell("")
 
 
+def keyboard_shown():
+    """Whether the soft keyboard is up, as the input method service says."""
+    return "mInputShown=true" in adb("shell", "dumpsys", "input_method")
+
+
+def keyboard_bars():
+    """While the soft keyboard is up the bars under the page step aside, in both Mobile shells
+    (docs/design-system.md, On a phone): a tap in a page's field brings it up, the toolbar goes
+    and the page takes its room; the keyboard going brings the toolbar back and the page gives
+    the room back; and the address field in edit keeps the toolbar with the keyboard up."""
+    for shell in ("mobile", "mobile-native"):
+        use_shell(shell)
+        try:
+            launch()
+            go(BASE + "/input")
+            asked("/input")
+            # The keyboard the address had, if it is still up: with it down, the back key
+            # would go back in the tab, or leave the app.
+            if until(lambda: not keyboard_shown(), 3) is None:
+                key(4)
+                until(lambda: not keyboard_shown(), 5)
+            bottom = box(see("page"))[3]
+            check(shell + ": with the keyboard down, the toolbar is under the page", named("shell", "Menu") is not None)
+            tap(middle(see("page", kind=FIELD)))
+            up = until(lambda: keyboard_shown() and named("shell", "Menu") is None, 10)
+            check(shell + ": a tap in a page's field brings the keyboard up, and the toolbar steps aside", up is not None,
+                  "keyboard %s, Menu %s" % (keyboard_shown(), named("shell", "Menu") is not None))
+            time.sleep(1)
+            shot("50-keyboard-bars-" + shell)
+            page_bottom = box(see("page"))[3]
+            view = screen_parts().get("shell")
+            under = [n.get("content-desc") or n.get("text") or n.get("class") for n in (view.iter("node") if view is not None else ())
+                     if n.get("clickable") == "true" and box(n)[1] >= page_bottom - 1]
+            check(shell + ": nothing of the shell's lies between the page and the keyboard", not under, ", ".join(under))
+            key(4)  # The keyboard goes.
+            check(shell + ": the keyboard going brings the toolbar back, and the page gives the room back",
+                  until(lambda: not keyboard_shown() and named("shell", "Menu") is not None and box(see("page"))[3] == bottom, 10) is not None,
+                  "page ends at %d, %d before" % (box(see("page"))[3], bottom))
+            tap(middle(see("shell", kind=FIELD)))
+            see("shell", kind=FIELD, focused="true")
+            check(shell + ": the address field in edit keeps the toolbar with the keyboard up",
+                  until(lambda: keyboard_shown(), 10) is not None and find("shell", kind=FIELD, focused="true") is not None)
+        finally:
+            use_shell("")
+
+
 def open_welcome():
     """A new profile's welcome, past Get started at Pick your style. False when it never got
     there, which it says as a check."""
@@ -2162,7 +2208,7 @@ def main():
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
     every = (browsing, mobile_shell, custom_colour, settings_back, talkback_states, bookmark_star, back_key_chain, page_dialogs, downloads, crash_notice, download_notifications, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
-             the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web, long_press_menu, welcome_extras, welcome_last_step)
+             the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web, long_press_menu, keyboard_bars, welcome_extras, welcome_last_step)
     for part in [p for p in every if not sys.argv[1:] or p.__name__ in sys.argv[1:]]:
         # tools/results.py splits a run's memory, CPU and checks by these lines.
         print("--- part " + part.__name__, flush=True)
