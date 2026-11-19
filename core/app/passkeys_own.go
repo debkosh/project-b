@@ -364,7 +364,7 @@ func ownDialog(d pageDialog, step string, o *ownPasskey) pageDialog {
 		case "excluded":
 			p.Title, p.Message = "Already saved", "Project B already has a passkey for "+site+" for this account."
 		case "not-here":
-			p.Title, p.Message = "Can't save a passkey here", "This profile's saved data was sealed on another device and doesn't open on this one. To start fresh, set up sync again in Settings."
+			p.Title, p.Message = "Can't save a passkey here", "This profile was copied from another device, and its saved data only opens there. To start fresh here, set up sync again in Settings."
 		case "no-screen-lock":
 			p.Title, p.Message = "Set a password first", "Project B checks it's you with your Mac's password before using a passkey. Set one in System Settings, then try again."
 			if o.only {

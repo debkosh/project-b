@@ -335,10 +335,10 @@ hold them byte for byte.
 
 - **A profile key that doesn't open on this device** (a folder that came from another): List,
   All, Make and Sign answer `ErrNotHere` before the person is asked anything, and Count still
-  counts. Save then says "Can't save a passkey here": "This profile's saved data was sealed on
-  another device and doesn't open on this one. To start fresh, set up sync again in Settings."
-  Settings' list says "These passkeys were sealed on another device and can't be opened on this
-  one." Starting fresh deletes the passkeys with the old key (`keys.OnStartFresh`).
+  counts. Save then says "Can't save a passkey here": "This profile was copied from another
+  device, and its saved data only opens there. To start fresh here, set up sync again in
+  Settings." Settings' list says "These passkeys were made on another device and only open
+  there." Starting fresh deletes the passkeys with the old key (`keys.OnStartFresh`).
 - **Sign asks nothing for a passkey that isn't here**: it looks the id up on the plain columns
   first, and answers `ErrNone`.
 - **A row that doesn't open fails sync's run**, each time, and that is meant: reporting it gone

@@ -83,8 +83,9 @@ is then *locked*.
 
 **Never rekeyed silently.** When the device key doesn't open the profile key (a moved folder, a
 lost or replaced keychain item), sealing and opening fail with a plain error, nothing is
-overwritten, sync is off and its status says why. One call, `StartFresh`, deletes what was sealed
-and makes a new profile key. History and bookmarks are untouched. A device key is made only when
+overwritten, sync is off and its status says why. One call, `StartFresh`, deletes what was sealed:
+the secrets, and each feature's own sealed rows, which the feature deletes in the same job
+(`keys.OnStartFresh`; the passkeys do), and makes a new profile key. History and bookmarks are untouched. A device key is made only when
 a new profile key needs one, never in place of one that is there.
 
 **macOS asks after every update.** The app is signed with the project's own certificate and has
