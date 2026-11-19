@@ -28,6 +28,11 @@ type item struct {
 // hand, and stops altogether while a profile is locked. A passkey never changes once made,
 // so of two versions the one made later stays. changed runs on the main thread after a run
 // wrote rows.
+//
+// A row that doesn't open makes Read fail, and with it the whole sync run, each time. That
+// is meant: saying the row is gone would delete the passkey on every other device. A
+// profile key that doesn't open here ends sync before any Read, and starting fresh deletes
+// these rows, so only a damaged row gets that far.
 func (m *Manager) Synced(changed func()) sync.Mapping {
 	return sync.Mapping{
 		Collection: Collection, Datatype: "passkey", Table: "passkeys", Key: "id",

@@ -8,6 +8,8 @@ import (
 	"crypto/sha256"
 	"errors"
 	"math/big"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"projectb/keys"
@@ -38,14 +40,20 @@ func (c *checks) verify(ctx context.Context, why Why, rpID string) error {
 // outright, so no keychain is asked.
 func profile(t *testing.T) (*Manager, *checks, *store.Store) {
 	t.Helper()
-	dir := t.TempDir()
+	m, c, st, _ := profileIn(t, t.TempDir())
+	return m, c, st
+}
+
+func profileIn(t *testing.T, dir string) (*Manager, *checks, *store.Store, *keys.Keys) {
+	t.Helper()
 	st, err := store.Open(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(st.Close)
 	c := &checks{}
-	return New(st, keys.New(dir, "", st, nil), c.verify), c, st
+	k := keys.New(dir, "", st, nil)
+	return New(st, k, c.verify), c, st, k
 }
 
 var ctx = context.Background()
@@ -131,13 +139,17 @@ func TestCancelDuringTheCheck(t *testing.T) {
 
 // A passkey signs only for its own site.
 func TestSignOnlyForItsSite(t *testing.T) {
-	m, _, _ := profile(t)
+	m, c, _ := profile(t)
 	id, _, _ := m.Make(ctx, true, "example.com", User{Handle: []byte("u1")}, nil)
 	if _, _, err := m.Sign(ctx, true, "other.example", id, []byte("x")); !errors.Is(err, ErrNone) {
 		t.Fatalf("Sign for another site: %v", err)
 	}
+	c.asked = nil
 	if _, _, err := m.Sign(ctx, true, "example.com", []byte("no such id"), []byte("x")); !errors.Is(err, ErrNone) {
 		t.Fatalf("Sign with an id nothing has: %v", err)
+	}
+	if len(c.asked) != 0 {
+		t.Fatalf("the device checked %v for a passkey that isn't here", c.asked)
 	}
 }
 
@@ -316,5 +328,55 @@ func TestTwoForOneAccount(t *testing.T) {
 	}
 	if all, _ := m.All(ctx, true); len(all) != 2 {
 		t.Fatalf("All has %d, want both", len(all))
+	}
+}
+
+// A profile whose key doesn't open on this device, as a folder from another: every call
+// that needs the key says so, with the person asked nothing, while Count still counts.
+// Starting fresh deletes the passkeys with the key, and the profile makes new ones.
+func TestAKeyThatDoesntOpenHere(t *testing.T) {
+	dir := t.TempDir()
+	m, c, st, k := profileIn(t, dir)
+	id, _, err := m.Make(ctx, true, "example.com", User{Handle: []byte("u1")}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The folder's own key is another's now.
+	if err := os.WriteFile(filepath.Join(dir, "folder.key"), bytes.Repeat([]byte{1}, 32), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// Keys made anew, as a start makes them, with nothing opened yet.
+	k = keys.New(dir, "", st, nil)
+	m = New(st, k, c.verify)
+	c.asked = nil
+	if _, err := m.List(ctx, true, "example.com", nil); !errors.Is(err, ErrNotHere) {
+		t.Fatalf("List: %v", err)
+	}
+	if _, err := m.All(ctx, true); !errors.Is(err, ErrNotHere) {
+		t.Fatalf("All: %v", err)
+	}
+	if _, _, err := m.Make(ctx, true, "example.com", User{Handle: []byte("u2")}, nil); !errors.Is(err, ErrNotHere) {
+		t.Fatalf("Make: %v", err)
+	}
+	if _, _, err := m.Sign(ctx, true, "example.com", id, []byte("x")); !errors.Is(err, ErrNotHere) {
+		t.Fatalf("Sign: %v", err)
+	}
+	if len(c.asked) != 0 {
+		t.Fatalf("the device checked %v with a key that doesn't open", c.asked)
+	}
+	if n, _ := m.Count("example.com", nil); n != 1 {
+		t.Fatalf("Count %d, want the row that is still there", n)
+	}
+	if err := k.StartFresh(); err != nil {
+		t.Fatal(err)
+	}
+	if n, _ := m.Total(); n != 0 {
+		t.Fatalf("%d passkeys after starting fresh", n)
+	}
+	if _, _, err := m.Make(ctx, true, "example.com", User{Handle: []byte("u1")}, nil); err != nil {
+		t.Fatalf("Make after starting fresh: %v", err)
+	}
+	if list, err := m.List(ctx, true, "example.com", nil); err != nil || len(list) != 1 {
+		t.Fatalf("List after starting fresh: %v, %v", list, err)
 	}
 }

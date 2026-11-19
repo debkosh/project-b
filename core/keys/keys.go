@@ -43,6 +43,17 @@ type Keys struct {
 
 	mu  sync.Mutex
 	key []byte // the profile key, once opened
+	// fresh are what StartFresh deletes besides the secrets: each feature's own sealed rows.
+	fresh []func(tx *store.Tx) error
+}
+
+// OnStartFresh has job run in StartFresh's own job, beside the secrets' delete: a feature
+// that keeps rows sealed with the profile key deletes them there, as they never open
+// again once the key is new. Set as the feature starts.
+func (k *Keys) OnStartFresh(job func(tx *store.Tx) error) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	k.fresh = append(k.fresh, job)
 }
 
 // New returns the keys of the profile folder dir, whose id in the profile list is profile, ""
@@ -188,13 +199,24 @@ func (k *Keys) DeleteSecrets(tx *store.Tx, names ...string) error {
 	return nil
 }
 
-// StartFresh is for a profile whose key is locked: it deletes every secret and the profile
-// key, and makes a new key, which the device key wraps. History and bookmarks are untouched.
-// Not on the main thread: it waits for the store's worker.
+// StartFresh is for a profile whose key is locked: it deletes every secret, the features'
+// sealed rows (OnStartFresh) and the profile key, and makes a new key, which the device key
+// wraps. History and bookmarks are untouched. Not on the main thread: it waits for the
+// store's worker.
 func (k *Keys) StartFresh() error {
+	k.mu.Lock()
+	fresh := append([]func(tx *store.Tx) error(nil), k.fresh...)
+	k.mu.Unlock()
 	if err := k.st.Wait(func(tx *store.Tx) error {
-		_, err := tx.Exec(`DELETE FROM secrets`)
-		return err
+		if _, err := tx.Exec(`DELETE FROM secrets`); err != nil {
+			return err
+		}
+		for _, job := range fresh {
+			if err := job(tx); err != nil {
+				return err
+			}
+		}
+		return nil
 	}); err != nil {
 		return err
 	}

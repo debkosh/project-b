@@ -38,6 +38,9 @@ var (
 	ErrNoScreenLock = errors.New("passkeys: this device has no screen lock")
 	// ErrExcluded: the site named a passkey kept here as one it already has.
 	ErrExcluded = errors.New("passkeys: the site already has a passkey kept here")
+	// ErrNotHere: the profile's key doesn't open on this device, as for a folder that came
+	// from another: nothing sealed opens until the profile starts fresh.
+	ErrNotHere = errors.New("passkeys: this profile's passkeys don't open on this device")
 	// ErrNone: no passkey has that id for that site.
 	ErrNone = errors.New("passkeys: no such passkey")
 )
@@ -92,7 +95,23 @@ CREATE TABLE passkeys (
 CREATE INDEX passkeys_rp ON passkeys (rp_id)`)
 		return err
 	})
+	// Starting fresh makes a new profile key, which opens none of these rows.
+	k.OnStartFresh(func(tx *store.Tx) error {
+		_, err := tx.Exec(`DELETE FROM passkeys`)
+		return err
+	})
 	return &Manager{st: st, keys: k, verify: verify, changed: func() {}}
+}
+
+// here says the profile's key opens on this device, or nothing was sealed yet: nil, or
+// ErrNotHere. It may ask the keychain, once.
+func (m *Manager) here() error {
+	if err := m.keys.Check(); errors.Is(err, keys.ErrLocked) {
+		return ErrNotHere
+	} else if err != nil {
+		return err
+	}
+	return nil
 }
 
 // OnChanged has changed run after a passkey is made or deleted here, on whatever thread
@@ -236,6 +255,9 @@ func (m *Manager) query(tx *store.Tx, where string, args ...any) ([]Passkey, err
 // Two for one account, as two devices can each make while offline, show as the newer: the
 // older stays in the store, and in All.
 func (m *Manager) List(ctx context.Context, asked bool, rpID string, allow [][]byte) ([]Passkey, error) {
+	if err := m.here(); err != nil {
+		return nil, err
+	}
 	var all []Passkey
 	in, args := among(allow)
 	err := m.sealed(ctx, asked, func(tx *store.Tx) error {
@@ -259,6 +281,9 @@ func (m *Manager) List(ctx context.Context, asked bool, rpID string, allow [][]b
 
 // All is every passkey of the profile, by site and then the newest first, for Settings.
 func (m *Manager) All(ctx context.Context, asked bool) ([]Passkey, error) {
+	if err := m.here(); err != nil {
+		return nil, err
+	}
 	var all []Passkey
 	err := m.sealed(ctx, asked, func(tx *store.Tx) error {
 		var err error
@@ -277,8 +302,16 @@ type User struct {
 // Make checks the person, then makes a passkey for user at the site rpID and keeps it, in
 // place of any the site already had here for that user. It answers its credential ID and
 // its public key, as a COSE key. A passkey kept here that exclude names answers
-// ErrExcluded, before the person is asked anything.
+// ErrExcluded, and a profile whose key doesn't open here ErrNotHere, before the person is
+// asked anything.
+//
+// The person is checked before sealed is entered. With Profile Lock that would be the
+// device's check and then the unlock Dialog; the unlock belongs first, and is ordered when
+// sealed's inside is swapped.
 func (m *Manager) Make(ctx context.Context, asked bool, rpID string, user User, exclude [][]byte) (id, cose []byte, err error) {
+	if err := m.here(); err != nil {
+		return nil, nil, err
+	}
 	if len(exclude) > 0 {
 		n, err := m.Count(rpID, exclude)
 		if err != nil {
@@ -327,8 +360,17 @@ func (m *Manager) Make(ctx context.Context, asked bool, rpID string, user User, 
 
 // Sign checks the person, then signs data with the passkey id of the site rpID: an ES256
 // signature in DER, with the passkey's user handle. data is what the site verifies, the
-// authenticator data and then the hash of the client data.
+// authenticator data and then the hash of the client data. The person is asked nothing for
+// a passkey that isn't here, or a profile whose key doesn't open here.
 func (m *Manager) Sign(ctx context.Context, asked bool, rpID string, id, data []byte) (signature, userHandle []byte, err error) {
+	if err := m.here(); err != nil {
+		return nil, nil, err
+	}
+	if n, err := m.Count(rpID, [][]byte{id}); err != nil {
+		return nil, nil, err
+	} else if n == 0 {
+		return nil, nil, ErrNone
+	}
 	if err := m.verify(ctx, ToUse, rpID); err != nil {
 		return nil, nil, err
 	}
