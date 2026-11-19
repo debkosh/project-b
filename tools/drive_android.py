@@ -1138,7 +1138,10 @@ def file_input_checks():
     shot("41-sparks-imported")
     tap(middle(see("settings", text="Done")))
     close_settings()
-    adb("shell", "rm", "-f", "/sdcard/Download/SiteSparks.zip")
+    # Through the media index, not rm: rm leaves its row, and the app's next download of that
+    # name then died copying into Downloads on the stale row (Downloads.copyToShared).
+    adb("shell", "content", "delete", "--uri", "content://media/external/downloads",
+        "--where", "\"_display_name='SiteSparks.zip'\"")
 
 
 def page_full_screen():
