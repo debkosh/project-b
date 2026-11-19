@@ -93,6 +93,7 @@ import (
 	"projectb/instance"
 	"projectb/profiles"
 	"projectb/relaunch"
+	"projectb/shellfiles"
 	"projectb/system/platform"
 	"projectb/timeline"
 )
@@ -592,6 +593,20 @@ func claim(root, id, userDataDir string, picker bool, urls []string) bool {
 //
 //export PBCopyDir
 func PBCopyDir() *C.char { return C.CString(copyDir) }
+
+// PBShellFile is one of the shell's built files, by its name under the shell's folder
+// ("settings/index.html"), as the engine serves our pages (core/shellfiles): malloc'd, with
+// its length in length, for the caller to free; NULL when there is no such file.
+//
+//export PBShellFile
+func PBShellFile(name *C.char, length *C.size_t) *C.char {
+	b, ok := shellfiles.Read(C.GoString(name))
+	if !ok {
+		return nil
+	}
+	*length = C.size_t(len(b))
+	return (*C.char)(C.CBytes(b))
+}
 
 // rootOf is the folder that holds the profiles: the one --root names, else ~/.project-b.
 func rootOf(root string) string {

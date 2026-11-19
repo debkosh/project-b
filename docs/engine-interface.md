@@ -32,6 +32,8 @@ the process's run loop from there, and calls Go in this order:
    `"engine": "chromium"` in `core/flags/registry.json` is Chromium's own switch; any other
    engine ignores it.
 1. `copy_dir` gives back the folder this copy keeps its files in.
+   `shell_file` gives back any of the shell's built files, which Go holds, whenever the
+   engine serves one of our pages.
 2. `timeline_start`, then `start(calls, blocked_hosts)`. Go opens the profile
    (`OpenProfile`), hands over the block rules (`SetBlockRules`), and opens its windows.
 3. `run_posted` on the main thread, each time `post_wakeup` asks.

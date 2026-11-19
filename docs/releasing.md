@@ -101,6 +101,8 @@ merge into main while it runs; it reads that checkout. It takes about four minut
   checkout's `shell/` before `tools/release.sh`, and in any release worktree with its own
   `node_modules`; worktrees that link `shell/node_modules` to the main checkout's share it. Use
   `npm install`, not `npm ci`, there: other checkouts link to it.
+- Go holds the shell's built pages (`core/shellfiles`, [layers.md](layers.md#5-the-shell-inside-go)),
+  so a shell change rebuilds Go, and the app and the APK carry no `shell/` folder.
 - A Go module marked `// indirect` that core imports directly is rewritten by every build
   (`-mod=mod`), leaving the checkout dirty; `go mod tidy` in `core` is the fix, in its own commit.
 - A test killed from outside (SIGTERM) is not a failure of the app: rerun it alone through

@@ -37,7 +37,7 @@ Each step leaves Mac and Android working and the release run green.
 | 2b | Save as and the folder chooser through Chromium's own file dialog | tested: Mac suites, sheets by hand, Android 16; branch `layers-links`, to release |
 | 3 | Notifications through Go | tested: Mac suites and Go's tests; a real notification waits on macOS's question to Sudipta; branch `layers-links`, to release |
 | 4 | The Mac's open-link events into `core/system`, or a fourth exception | tested: Mac suites, Android 16, and a new VM check; no exception; branch `layers-links`, to release |
-| 5 | The shell embedded in the Go core | |
+| 5 | The shell embedded in the Go core | written on branch `layers-shell`, after 0.3.0 |
 | 6 | The three-piece build, with the build-flow restructure below | |
 
 Linux and Windows are not in this work: they come later, from the platforms session.
@@ -185,6 +185,22 @@ agreed with the platforms session, 2026-11-19: `~/Library/Application Support` o
 (nothing inside `~/Library` is hidden, only `~/Library` itself; Cmd+Shift+. still shows the
 hidden ones). On Linux, later: `~/.config`, where Chrome's, Chromium's and the forks' folders
 are; Firefox's is `~/.mozilla`.
+
+## 5. The shell inside Go
+
+The shell's built pages are Go's, as the shell is: `core/shellfiles` embeds them, and the
+engine asks Go for each file it serves (`PBGoCalls.shell_file`) instead of reading the app's
+`Resources/shell` or the APK's `assets/shell`. So the app is the three pieces and the engine's
+own resources, and no folder of pages travels beside them.
+
+- `engine/build_go.py` copies `$OUT/shell`, which ninja builds first, into the gitignored
+  `core/shellfiles/dist` before it compiles Go; `engine/android/build_go.py` copies the
+  phone's part of `shell/dist` (our pages and the Mobile shell), which
+  `tools/android-release.sh` built. A shell change rebuilds Go.
+- `tools/build.sh` no longer copies `shell/` into `build/pb`, `tools/package.sh` no longer
+  into the app, and the APK's assets lose `shell/`.
+- A checkout that never built the shell still compiles Go, with no pages: `dist` holds only
+  `.keep` there. The mock server (`core/cmd/dev`) serves `shell/dist` from disk, as before.
 
 ## The build-flow restructure
 

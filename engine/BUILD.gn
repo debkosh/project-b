@@ -18,11 +18,14 @@ declare_args() {
 }
 
 # The Go core as a static archive. Only the main binary links it, so child processes
-# never start a Go runtime.
+# never start a Go runtime. It holds the shell's pages (core/shellfiles), so it comes after
+# them, and a change to the shell rebuilds it.
 action("go_core") {
   script = "build_go.py"
   outputs = [ "$target_gen_dir/libcore.a" ]
   depfile = "$target_gen_dir/core.d"
+  inputs = [ "$root_out_dir/shell/.stamp" ]
+  deps = [ ":shell" ]
   args = [
     project_b_go,
     rebase_path("$target_gen_dir/libcore.a", root_build_dir),
@@ -35,8 +38,8 @@ action("go_core") {
 }
 
 # The shell's pages, one folder per app: shell/settings/, shell/picker/, and a folder per
-# shell in shell/shell/. The engine serves each from there as chrome://<app>/, a shell as
-# chrome://shell/<id>/, and tools/package.sh copies them into the app.
+# shell in shell/shell/. build_go.py puts them inside Go (core/shellfiles), and the engine
+# serves each from there as chrome://<app>/, a shell as chrome://shell/<id>/.
 action("shell") {
   script = "build_shell.py"
   outputs = [ "$root_out_dir/shell/.stamp" ]
@@ -473,10 +476,7 @@ executable("project_b") {
     ":go_core_lib",
     ":project_b_content",
   ]
-  data_deps = [
-    ":project_b_helper",
-    ":shell",
-  ]
+  data_deps = [ ":project_b_helper" ]
 }
 
 # The helper, packed in an app of its own inside the app's Frameworks

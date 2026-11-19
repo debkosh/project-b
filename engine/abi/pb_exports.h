@@ -29,6 +29,7 @@ void PBForceGC(void);
 int PBRecoverNilDeref(void);
 void PBCrash(int32_t kind);
 char* PBGoStats(void);
+char* PBShellFile(const char* name, size_t* length);
 void PBTimelineStart(const char* profile_dir, int64_t process_age);
 int64_t PBTimelineNow(void);
 void PBTimelineRecord(int32_t kind,

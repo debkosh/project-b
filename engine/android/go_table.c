@@ -147,6 +147,7 @@ JNIEXPORT jlong JNICALL Java_dev_projectb_browser_GoCore_table(JNIEnv* env, jcla
       .recover_nil_deref = PBRecoverNilDeref,
       .crash = PBCrash,
       .go_stats = PBGoStats,
+      .shell_file = PBShellFile,
       .timeline_start = PBTimelineStart,
       .timeline_now = PBTimelineNow,
       .timeline_record = PBTimelineRecord,

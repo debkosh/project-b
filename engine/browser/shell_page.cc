@@ -7,18 +7,14 @@
 
 #include "base/check.h"
 #include "base/containers/to_vector.h"
-#include "base/files/file_path.h"
-#include "base/files/file_util.h"
 #include "base/functional/bind.h"
 #include "base/location.h"
 #include "base/memory/ref_counted_memory.h"
 #include "base/memory/weak_ptr.h"
 #include "base/no_destructor.h"
-#include "base/path_service.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
-#include "base/task/thread_pool.h"
 #include "base/values.h"
 #include "build/build_config.h"
 #include "content/public/browser/keyboard_event_processing_result.h"
@@ -39,6 +35,7 @@
 #include "content/public/common/bindings_policy.h"
 #include "project_b/engine/browser/engine.h"
 #include "project_b/engine/browser/events.h"
+#include "project_b/engine/browser/go.h"
 #include "project_b/engine/browser/hooks.h"
 #include "project_b/engine/browser/page_tab.h"
 #include "project_b/engine/browser/timeline.h"
@@ -46,13 +43,6 @@
 #include "services/network/public/mojom/content_security_policy.mojom.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "url/gurl.h"
-
-#if BUILDFLAG(IS_ANDROID)
-#include "base/android/apk_assets.h"
-#include "base/files/file.h"
-#include "base/files/memory_mapped_file.h"
-#include "base/strings/string_view_util.h"
-#endif
 
 namespace project_b {
 
@@ -225,7 +215,7 @@ class AppControllerFactory : public content::WebUIControllerFactory {
   const base::WeakPtr<content::BrowserContext> pages_context_;
 };
 
-// Serves one app's built files from disk. No remote content ever reaches its page.
+// Serves one app's built files, from Go. No remote content ever reaches its page.
 class AppDataSource : public content::URLDataSource {
  public:
   explicit AppDataSource(const char* host) : host_(host) {}
@@ -240,38 +230,19 @@ class AppDataSource : public content::URLDataSource {
       std::move(callback).Run(nullptr);
       return;
     }
-#if BUILDFLAG(IS_ANDROID)
-    // On Android the apps are in the APK, not in a folder.
-    base::MemoryMappedFile::Region region;
-    base::File asset(
-        base::android::OpenApkAsset("assets/shell/" + name, &region));
-    base::MemoryMappedFile mapped;
-    // A file the APK doesn't hold is a page's 404, as a missing one is on the Mac.
-    if (!asset.IsValid() || !mapped.Initialize(std::move(asset), region)) {
+    // Go holds the built files (core/shellfiles), on every platform: the app carries no
+    // folder of them.
+    size_t length = 0;
+    char* bytes = Go().shell_file(name.c_str(), &length);
+    // A file Go doesn't hold is a page's 404.
+    if (!bytes) {
       std::move(callback).Run(nullptr);
       return;
     }
-    std::string data(base::as_string_view(mapped.bytes()));
+    std::string data(bytes, length);
+    Go().free(bytes);
     std::move(callback).Run(
         base::MakeRefCounted<base::RefCountedString>(std::move(data)));
-    return;
-#else
-    base::FilePath dir;
-    CHECK(base::PathService::Get(base::DIR_ASSETS, &dir));
-    base::FilePath file = dir.Append("shell").AppendASCII(name);
-    base::ThreadPool::PostTaskAndReplyWithResult(
-        FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_BLOCKING},
-        base::BindOnce(
-            [](const base::FilePath& file) -> scoped_refptr<base::RefCountedMemory> {
-              std::string data;
-              if (!base::ReadFileToString(file, &data)) {
-                return nullptr;
-              }
-              return base::MakeRefCounted<base::RefCountedString>(std::move(data));
-            },
-            file),
-        std::move(callback));
-#endif
   }
 
   std::string GetMimeType(const GURL& url) override {

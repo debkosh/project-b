@@ -3,8 +3,14 @@
 the NDK's sysroot. Chromium's copy of the NDK has no compilers of its own."""
 
 import os
+import shutil
 import subprocess
 import sys
+
+
+# What a phone serves of the shell's built pages, under shell/dist: our pages and the
+# phone's shells, the registry's "phone": true. A phone loads no other shell.
+PHONE_SHELL = ("settings", "downloads", "history", "bookmarks", "welcome", "shell/mobile")
 
 
 def main():
@@ -15,6 +21,18 @@ def main():
     sysroot = os.path.join(os.path.abspath(ndk), "toolchains/llvm/prebuilt/linux-x86_64/sysroot")
     cc = " ".join([os.path.abspath(clang), "--target=aarch64-linux-android" + min_sdk,
                    "--sysroot=" + sysroot])
+
+    # The shell's pages go inside Go (core/shellfiles), from shell/dist, which
+    # tools/android-release.sh built: the APK carries no folder of them.
+    built = os.path.join(repo, "shell", "dist")
+    dist = os.path.join(repo, "core", "shellfiles", "dist")
+    shutil.rmtree(dist)
+    shell = []
+    for folder in PHONE_SHELL:
+        shutil.copytree(os.path.join(built, folder), os.path.join(dist, folder))
+        for root, _, files in os.walk(os.path.join(built, folder)):
+            shell += [os.path.relpath(os.path.join(root, name), repo) for name in files]
+    open(os.path.join(dist, ".keep"), "w").close()
 
     env = dict(os.environ)
     env.update({
@@ -37,7 +55,7 @@ def main():
          "-o", os.path.join(build_dir, out), "./cmd/lib"],
         cwd=os.path.join(repo, "core"), env=env)
 
-    deps = [os.path.join(link, "engine/abi/pb_abi.h")]
+    deps = [os.path.join(link, "engine/abi/pb_abi.h")] + [os.path.join(link, f) for f in shell]
     # core, and browserdata, the module of its own that core's go.mod replaces with ../browserdata.
     for module in ("core", "browserdata"):
         top = os.path.join(repo, module)

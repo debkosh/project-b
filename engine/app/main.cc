@@ -16,6 +16,7 @@ int main(int argc, const char** argv) {
       .recover_nil_deref = PBRecoverNilDeref,
       .crash = PBCrash,
       .go_stats = PBGoStats,
+      .shell_file = PBShellFile,
       .timeline_start = PBTimelineStart,
       .timeline_now = PBTimelineNow,
       .timeline_record = PBTimelineRecord,

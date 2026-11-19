@@ -6,8 +6,8 @@
 # WITHOUT=extensions tools/build.sh. GN, Go's build tags and the shell all read it from
 # there (docs/flags.md). Keep such a build in a folder of its own (OUT=out/noext), so
 # switching doesn't rebuild either.
-# Ninja builds the shell's pages into $OUT/shell, as it builds Go (engine/build_shell.py),
-# so any build of project_b has a current shell.
+# Ninja builds the shell's pages into $OUT/shell (engine/build_shell.py) before Go, which
+# holds them (core/shellfiles), so any build of project_b has a current shell.
 # Compiles go to a remote build server when one answers at PB_REMOTE (default
 # localhost:8980), and the build is local otherwise; PB_REMOTE=off keeps it local. The
 # commands are the same either way. Setting a server up: docs/remote-build.md.
@@ -228,7 +228,6 @@ cp -c "$OUT/project_b" "$OUT/project_b_helper" "$OUT/libproject_b_content.dylib"
       "$OUT/project_b.pak" "$OUT/icudtl.dat" "$OUT/snapshot_blob.bin" "$OUT"/v8_context_snapshot.*.bin \
       "$OUT/libEGL.dylib" "$OUT/libGLESv2.dylib" "$OUT/libvk_swiftshader.dylib" "$OUT/libvulkan.dylib" \
       "$OUT/vk_swiftshader_icd.json" "$APP_COPY/" || { echo "RESULT=failed copy to $APP_COPY"; exit 1; }
-cp -cR "$OUT/shell" "$APP_COPY/shell" || { echo "RESULT=failed copy to $APP_COPY"; exit 1; }
 # The commit it was built from, which tools/package.sh checks against the checkout's.
 git -C "$ROOT" rev-parse HEAD > "$APP_COPY/commit"
 echo "=== the app is $APP_COPY/project_b"

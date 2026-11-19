@@ -2,6 +2,7 @@
 """Builds core/ into a c-archive for the main binary, and writes a depfile."""
 
 import os
+import shutil
 import subprocess
 import sys
 
@@ -18,6 +19,13 @@ def main():
     version_file = os.path.join(build_dir, "../../chrome/VERSION")
     parts = dict(line.strip().split("=", 1) for line in open(version_file) if "=" in line)
     chromium = ".".join(parts[k] for k in ("MAJOR", "MINOR", "BUILD", "PATCH"))
+
+    # The shell's pages, which ninja built into shell/ first, go inside Go (core/shellfiles):
+    # the app carries no folder of them.
+    dist = os.path.join(repo, "core", "shellfiles", "dist")
+    shutil.rmtree(dist)
+    shutil.copytree(os.path.join(build_dir, "shell"), dist, ignore=shutil.ignore_patterns(".*"))
+    open(os.path.join(dist, ".keep"), "w").close()
 
     env = dict(os.environ)
     env.update({
@@ -38,7 +46,8 @@ def main():
         cwd=os.path.join(repo, "core"), env=env)
 
     deps = [os.path.join(link, "engine/abi/pb_abi.h"),
-            os.path.relpath(version_file, build_dir)]
+            os.path.relpath(version_file, build_dir),
+            os.path.join("shell", ".stamp")]
     # core, and browserdata, the module of its own that core's go.mod replaces with ../browserdata.
     for module in ("core", "browserdata"):
         top = os.path.join(repo, module)

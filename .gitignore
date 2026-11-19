@@ -5,6 +5,9 @@
 /build/
 /shell/node_modules/
 /shell/dist/
+# The shell's pages as the build copies them into Go (core/shellfiles).
+/core/shellfiles/dist/*
+!/core/shellfiles/dist/.keep
 .DS_Store
 __pycache__/
 # Tools fetched or built for this machine: ChromeDriver.

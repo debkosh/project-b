@@ -582,6 +582,10 @@ typedef struct PBGoCalls {
   void (*crash)(int32_t kind);
   // Returns a string the caller frees with free().
   char* (*go_stats)(void);
+  // One of the shell's built files, which Go holds (core/shellfiles), by its name under the
+  // shell's folder, as "settings/index.html" or "shell/standard/standard.js": its bytes,
+  // length long, which the caller frees with free below; NULL when there is no such file.
+  char* (*shell_file)(const char* name, size_t* length);
 
 
   // The timeline, Go's record of what happened and when (core/timeline). The adapter

@@ -228,14 +228,14 @@ pinned version builds.
 
 | Folder or file | What it is |
 |---|---|
-| `engine/android/BUILD.gn` | The APK: the content library, the Go libraries, the shell and the pak as assets |
+| `engine/android/BUILD.gn` | The APK: the content library, the Go libraries (`libcore.so` holds the shell's pages) and the pak as an asset |
 | `engine/android/window_android.cc` | `Window` on Android: one compositor, the shell's layer over the shown page's |
 | `engine/android/java/.../BrowserWindow.java` | The views: the surface, a `ContentView` per tab and the shell's, the touch rule, the frame colour |
 | `engine/android/java/.../BrowserActivity.java` | Starts content, then the window, then Go |
 | `engine/android/java/.../BrowserApplication.java` | Runs first in every process, as content needs |
 | `engine/android/java/.../GoCore.java`, `go_table.c` | The one load of Go, and its table |
 | `engine/android/library_loader.cc` | `JNI_OnLoad` for every process |
-| `engine/android/build_go.py` | `core/` as `libcore.so`, with Chromium's clang and the NDK's sysroot |
+| `engine/android/build_go.py` | `core/` as `libcore.so`, with Chromium's clang and the NDK's sysroot, holding the phone's part of `shell/dist` (`core/shellfiles`) |
 | `tools/android-content-fetch.sh` | Chromium 155 for Android and its Linux build dependencies, once |
 | `tools/android-content-build.sh` | `gn gen` and the build, inside the container |
 | `tools/android-content-package.sh` | Copies the APK out, compresses its libraries, signs it on the Mac |
@@ -243,11 +243,11 @@ pinned version builds.
 
 The rest of the adapter is shared with the Mac: `engine/browser/` and `engine/common/`, with `BUILDFLAG` guards. The
 ones that change behaviour on Android: the pak comes from the APK and goes to each child as an open file, the shell's
-files come from the APK's assets, pages are handed over as `WebContents` rather than native views, `RunProcess`
+files come from Go, as on the Mac, pages are handed over as `WebContents` rather than native views, `RunProcess`
 starts the browser and returns, because Android's looper is the message loop, and the shell's delegate opens
 Android's colour picker.
 
-To build, with the shell built first on the Mac (`(cd shell && npm run build)`), because the APK takes `shell/dist`:
+To build, with the shell built first on the Mac (`(cd shell && npm run build)`), because Go takes `shell/dist`:
 
     colima start -p pb-android                    # the VM, if it's stopped
     DOCKER_HOST=unix://$HOME/.colima/pb-android/docker.sock docker start pb
@@ -355,7 +355,7 @@ adapter here, with `Window` as the one Android file (`engine/android/window_andr
 | Pictures of the pages | The Mobile shell's switcher shows each tab's page as it last looked (`thumb`). Go asks the engine to copy the page as a tab is left and as the switcher opens (`captureTab`); the engine copies it from the compositor, 720 pixels wide at most, keeps a JPEG per tab and serves it to the shell at `chrome://thumb/<tab>`. The copy completes though the tab is hidden just after: the window's one compositor keeps the page's surface until it is done. The Mac makes them only for a phone shell named outright |
 | Updates | The same manager and the same `amarit.Client`, every minute, on the `android/arm64` asset. The APK is downloaded into the profile, size and sha256 checked by amarit, and the bubble and the settings panel offer to install it: see [Updates on a phone](#updates-on-a-phone) |
 
-**The Mobile shell.** A phone loads only the shells the registry marks `phone`, and the APK carries only those
+**The Mobile shell.** A phone loads only the shells the registry marks `phone`, and its Go holds only those
 and the settings page, so it starts on `mobile`
 ([shells.md](shells.md#the-mobile-shell)), even where a profile's prefs name `standard`, as the templates do: one
 bar at the foot, a tab switcher, tab groups in a strip, the long-press link menu the shell draws, and the bars
