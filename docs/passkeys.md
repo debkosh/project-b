@@ -257,3 +257,37 @@ theme, never dimmed: 200px, centred, radius 4, its quiet zone of four modules in
   QR code, on webauthn.io.
 - The `webauthn` row of `core/webfeatures/registry.json` moves from `unknown` to what the Mac
   now gives, with its `why`.
+
+## Our own passkeys: where to start
+
+Agreed with the password manager's design (docs/profile-lock.md and the logins store), not
+built. It starts once that store is specced and its three calls' exact form is written.
+
+- **Core holds the keys and signs.** A passkey is an item in the password manager's store,
+  sealed on disk by the profile key and synced sealed. What it holds: the site's RP ID, a
+  random credential ID, the site's user handle, user name and display name, a P-256 private
+  key (ES256) and when it was made. The signature count is always 0.
+- **Core gives the engine three calls:** list the passkeys for an RP ID (credential ID, user
+  handle, user name, display name, never the key); make one (returns the credential ID and the
+  public key); sign (credential ID and the bytes, returns a DER ES256 signature). Each can wait
+  on Profile Lock's unlock Dialog, can be cancelled by the engine, and answers success,
+  cancelled, locked (the person pressed Cancel in the Dialog) or an error.
+- **The engine is the authenticator.** It checks the origin and RP ID, builds the
+  authenticator data with our AAGUID (`81dc8063-9ac3-4b1f-ab00-9e8795c47c60`, no attestation),
+  and verifies the person, in one place, right before each make and sign. When the page's
+  request ends (timeout, Cancel, navigation), it cancels any call still waiting.
+- **The order of a sign-in:** list (which brings up the unlock Dialog if the profile is
+  locked), the person chooses an account, the device check, then sign.
+- **The device check, per use and never cached:** on the Mac, LocalAuthentication's
+  `LAPolicyDeviceOwnerAuthentication` (Touch ID, else the Mac password; no team needed). On
+  Android, BiometricPrompt: `setDeviceCredentialAllowed(true)` on Android 10 (our minimum,
+  API 29), the `BIOMETRIC_STRONG | DEVICE_CREDENTIAL` authenticators from 11. A phone with no
+  screen lock gets a step saying to set one, and the request fails. Try it on emu-29.
+- **Where it plugs in.** Mac: the request delegate's `CreatePlatformDiscoveries`, beside the
+  security key and phone; the card offers Save in Project B. Android: content sends WebAuthn
+  only to Java (`RenderFrameHostImpl::GetWebAuthenticationService`), so we register our own
+  Java `blink.mojom.Authenticator` that does the checks and calls the engine through JNI.
+- **About 2 weeks** for the engine and the card on both platforms, on top of the store.
+- **Later:** add our AAGUID to the passkey provider list sites read, so they show the name
+  Project B. Bringing passkeys in from other managers (FIDO's credential exchange format) is his
+  to decide.
