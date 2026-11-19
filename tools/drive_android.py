@@ -756,8 +756,8 @@ def small_targets():
 
 def mobile_shell():
     """The Mobile shell's own: the back key closes each of its sheets; a long press on a link
-    opens its menu, whose Open in new tab in group gathers the tabs in the strip behind the
-    page being read; and each screen in light and dark, for the owner."""
+    opens its sheet, whose In group gathers the tabs in the strip behind the page being
+    read; and each screen in light and dark, for the owner."""
     launch()
     go(BASE + "/a")
     asked("/a")
@@ -780,15 +780,15 @@ def mobile_shell():
     check("the back key ends editing the address", bool(until(lambda: find("shell", kind=FIELD, focused="true") is None)))
 
     long_press(middle(see("page", label="to b")))
-    item = see("shell", text="Open in new tab in group")
-    check("a long press on a link opens the shell's menu, Open in new tab in group first", item is not None)
+    item = see_named("shell", "In group")
+    check("a long press on a link opens the shell's sheet, with In group", item is not None)
     shot("20-link-menu")
     key(4)
-    check("the back key closes it", bool(until(lambda: find("shell", text="Open in new tab in group") is None)))
+    check("the back key closes it", bool(until(lambda: named("shell", "In group") is None)))
     served.clear()
     long_press(middle(see("page", label="to b")))
-    tap(middle(see("shell", text="Open in new tab in group")))
-    check("Open in new tab in group opens the link behind the page, and the strip shows the group",
+    tap(middle(see_named("shell", "In group")))
+    check("In group opens the link behind the page, and the strip shows the group",
           asked("/b") and until(lambda: find("shell", label=lambda l: (l or "").startswith("Group "))) is not None
           and find("page", label="to b") is not None)
     shot("21-strip")
