@@ -1132,11 +1132,15 @@ def downloads():
     # On the Downloads page again: Delete, from its ⋮, last, as it takes the file away.
     menu("Downloads")
     see("page", text=lambda t: (t or "").startswith(name))
-    # Delete, asked first, deletes it.
+    # Delete, asked first, deletes it, and only it: the same name's later copy, name (1),
+    # stays (docs/fragility.md, "Delete on the older of two same-named downloads").
     tap(middle(sheet_item("Delete")))
     tap(middle(see("page", text="Delete", kind="android.widget.Button")))
-    check("Delete deletes it from the phone's Downloads, and the list", until(lambda: name not in adb("shell", "ls", "/sdcard/Download/").split() and find("page", text=name) is None, 10) is not None,
-          adb("shell", "ls", "/sdcard/Download/")[-200:])
+    files = lambda: adb("shell", "ls", "-1", "/sdcard/Download/").splitlines()
+    check("Delete deletes it from the phone's Downloads, and the list", until(lambda: name not in files() and find("page", label="Actions for " + name) is None, 10) is not None,
+          [f for f in files() if f.startswith(name[:-len(".txt")])])
+    check("and leaves the same name's later copy", again in files() and find("page", label="Actions for " + again) is not None,
+          [f for f in files() if f.startswith(name[:-len(".txt")])])
 
 
 def settings_back():
