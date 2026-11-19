@@ -12,6 +12,8 @@ You are a dev on the team, building one feature or area. Keep the area in your s
   when every layout's log ends saying so.
 - **Hand over to release:** the branch, its tip, what changed in the engine or the ABI, and what
   you tested and didn't. Rebase when release asks.
+- **A new action brings its test**: a menu item, key, tab-menu item or sheet row, done by a
+  test, or `tools/test.sh mock` fails ([docs/action-coverage.md](../docs/action-coverage.md)).
 - **A bug fix brings its fragility entry** in [docs/fragility.md](../docs/fragility.md), in the
   same branch: what he saw, the real cause in plain words, the seam that gave way, the fix
   commit, and the check that now catches it.

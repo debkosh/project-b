@@ -3,6 +3,13 @@
 How to run the tests is in `tools/test.sh` (its header lists the groups) and in
 [vm-testing.md](vm-testing.md) for the macOS VM. This page is what every run leaves behind.
 
+## Every action has a test
+
+[action-coverage.md](action-coverage.md) lists every action a person can take, read from the
+code (Go's actions and what the shells send on a gesture), where the app offers it, and the
+tests that do it, the real app's apart. `tools/test.sh mock` fails while one has no test and
+no reason in `tools/action-coverage-exempt.json`.
+
 ## Test results
 
 Every test that `tools/test.sh` runs goes through `tools/results.py run`, which passes its

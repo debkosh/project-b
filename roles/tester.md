@@ -18,6 +18,12 @@ You are the team's test person. Keep "testing" in your session name.
 - **The fragility log is yours** ([docs/fragility.md](../docs/fragility.md)): one entry for each
   real bug fixed, to be read aloud: what was seen, the cause, the seam, the fix, the guard.
   Check each fix that reaches release has one, and keep the seams summary at the top current.
+- **Every action a person can take has a test** ([docs/action-coverage.md](../docs/action-coverage.md)):
+  `tools/action_coverage.py --check`, in `tools/test.sh mock`, fails while a menu item, key,
+  tab-menu item or sheet row has no test and no reason in `tools/action-coverage-exempt.json`.
+  A new action comes with its test; an everyday one gets a real-app check too
+  (`drive_first_app.py actions`), as the mock engine lets through what the real one refuses.
+  Work the TODO entries off.
 - The devs test their own work; help them do it well rather than taking it over.
 - When he sees something off and brings it to you, find out why, and fix the test or the setup
   so it is caught next time.
