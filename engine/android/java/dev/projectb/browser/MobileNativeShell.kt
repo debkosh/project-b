@@ -114,6 +114,16 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
     private val switcher = Switcher(context, SwitcherActions())
     private val strip = Strip(context, StripActions())
     private val crashBar = CrashBar(context, { send(JSONObject().put("t", "dismissCrash")) }) { shareReport(it) }
+    // Go's download news, said over the foot of the page; it puts itself away after the
+    // time the news gives.
+    private val downloadBar: DownloadBar = DownloadBar(context, { m, action -> downloadAct(m, action) }, { hideNews() }) { holding ->
+        newsHeld = holding
+        removeCallbacks(newsTimer)
+        if (!holding) downloadBar.news?.let { postDelayed(newsTimer, it.optLong("lasts", 2000)) }
+    }
+    // A finger is on the bar: it stays until it lifts.
+    private var newsHeld = false
+    private val newsTimer = Runnable { hideNews() }
 
     // Share report hands one file with all of it to the phone's share sheet, from the button.
     private fun shareReport(button: View) {
@@ -233,6 +243,10 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
         addView(bottomStack, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT, Gravity.BOTTOM))
         addView(switcher, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         addView(suggestions, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+        addView(downloadBar, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT, Gravity.BOTTOM).apply {
+            leftMargin = dp(8)
+            rightMargin = dp(8)
+        })
         addView(sheets, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         addView(dialogLayer, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         findBar.visibility = GONE
@@ -296,6 +310,7 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
                 marked = it
                 open("bookmark")
             }
+            "downloadNews" -> news(m)
             "suggestions" -> if (m.optInt("id") == asked && editing) suggest(m.optJSONArray("items") ?: JSONArray())
             // The phone's back key, while the shell said it closes something: the sheet open,
             // or the editing.
@@ -439,6 +454,7 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
             (tab.optBoolean("crashed") || tab.optString("error").isNotEmpty() || tab.optBoolean("blocked"))
         notice.visibility = if (failed) VISIBLE else GONE
         if (failed) notice.show(palette, tab!!)
+        if (newsHidden()) hideNews()
         placeBar()
         if (sheet == "switcher") {
             switcher.show(palette, tabs, active, groups, workspaces, workspace)
@@ -533,6 +549,7 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
             topMargin = h.top
             bottomMargin = h.bottom
         }
+        (downloadBar.layoutParams as LayoutParams).bottomMargin = h.bottom + dp(8)
         requestLayout()
     }
 
@@ -587,6 +604,54 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
     override fun onConfigurationChanged(config: Configuration) {
         super.onConfigurationChanged(config)
         draw()
+    }
+
+    // MARK: Download news
+
+    // Go's news of a download (core/app/downloads.go), said by the bar for the time it gives,
+    // held while pressed, with a phone's rules, as the web shell's: a start only while the
+    // app is showing, an end while the app or the bar showing that download is, and nothing while a sheet is open, a page has the whole
+    // screen, or the Downloads page shows. Its offer of notifications is told once shown.
+    private fun news(m: JSONObject) {
+        val shown = downloadBar.news?.optLong("id") == m.optLong("id")
+        if (newsHidden()) return
+        val showing = windowVisibility == VISIBLE
+        val state = m.optString("state")
+        if (state == "gone" || (state == "progress" && !showing) || (state != "progress" && !shown && !showing)) {
+            if (shown) hideNews()
+            return
+        }
+        removeCallbacks(newsTimer)
+        downloadBar.show(palette, m)
+        if (!newsHeld) postDelayed(newsTimer, m.optLong("lasts", 2000))
+        if (m.optBoolean("offer")) send(JSONObject().put("t", "notificationsOffered"))
+    }
+
+    private fun newsHidden() = sheet.isNotEmpty() || full() || activeTab()?.optString("page") == "downloads"
+
+    private fun hideNews() {
+        newsHeld = false
+        removeCallbacks(newsTimer)
+        if (downloadBar.visibility == VISIBLE) {
+            downloadBar.hide()
+            report()
+        }
+    }
+
+    private fun downloadAct(m: JSONObject, action: String) {
+        if (action == "allowNotifications") send(JSONObject().put("t", "allowNotifications"))
+        else send(JSONObject().put("t", "downloadAction").put("id", m.optLong("id")).put("action", action))
+        hideNews()
+    }
+
+    // A press anywhere in the shell but on the bar puts it away, as on the web shell.
+    override fun dispatchTouchEvent(e: MotionEvent): Boolean {
+        if (e.actionMasked == MotionEvent.ACTION_DOWN && downloadBar.visibility == VISIBLE) {
+            val r = android.graphics.Rect()
+            downloadBar.getHitRect(r)
+            if (!r.contains(e.x.toInt(), e.y.toInt())) hideNews()
+        }
+        return super.dispatchTouchEvent(e)
     }
 
     // MARK: Sheets
@@ -970,6 +1035,10 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
                 shell.put(rect(0.0, if (top) topH else h - bottomH - sh, w, sh))
             }
             if (notice.visibility == VISIBLE) shell.put(rect(0.0, topH, w, h - topH - bottomH))
+            if (downloadBar.visibility == VISIBLE && downloadBar.height > 0) {
+                shell.put(rect(downloadBar.left / density.toDouble(), downloadBar.top / density.toDouble(),
+                    downloadBar.width / density.toDouble(), downloadBar.height / density.toDouble()))
+            }
         }
         val tabsShown = JSONArray()
         if (active != 0L) {

@@ -12,6 +12,7 @@ import android.text.style.StyleSpan
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
@@ -244,3 +245,108 @@ class PageDialog(context: Context, palette: Palette, private val dialog: JSONObj
     }
 }
 
+
+/**
+ * The download bar, as the web Mobile shell's DownloadBar.svelte: floating over the foot of
+ * the page, above the bars, saying Go's download news (core/app/downloads.go) as it comes,
+ * its mark, its words in two lines at most, and its buttons. This only draws; the shell says
+ * when it shows. A press keeps it while held; a swipe down or sideways puts it away.
+ */
+@SuppressLint("ViewConstructor")
+class DownloadBar(
+    context: Context,
+    private val act: (JSONObject, String) -> Unit,
+    private val swiped: () -> Unit,
+    private val held: (Boolean) -> Unit,
+) : LinearLayout(context) {
+    private val mark = IconView(context, "download", 0)
+    private val words = label(context, 14f, 0)
+    // The question an offer asks, on its own line, so a long name never hides it.
+    private val ask = label(context, 14f, 0)
+    private val text = LinearLayout(context)
+    private var x0 = 0f
+    private var y0 = -1f
+    var news: JSONObject? = null
+        private set
+
+    init {
+        orientation = HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        minimumHeight = dp(48)
+        setPadding(dp(16), 0, dp(4), 0)
+        elevation = dpf(6)
+        text.orientation = VERTICAL
+        text.setPadding(0, dp(6), 0, dp(6))
+        text.addView(words)
+        text.addView(ask)
+        contentDescription = "Download"
+        visibility = GONE
+    }
+
+    fun show(palette: Palette, m: JSONObject) {
+        news = m
+        background = rounded(palette.surface, dpf(8), palette.line, dp(1))
+        removeAllViews()
+        mark.icon = m.optString("mark", "download")
+        mark.color = if (mark.icon == "warn") palette.danger else palette.icon
+        words.setTextColor(palette.text)
+        words.text = m.optString("words")
+        // Two lines at most, so a failure's reason isn't cut off; over a question, one.
+        val question = m.optString("ask")
+        words.isSingleLine = question.isNotEmpty()
+        if (question.isEmpty()) words.maxLines = 2
+        words.ellipsize = android.text.TextUtils.TruncateAt.END
+        ask.setTextColor(palette.text)
+        ask.text = question
+        ask.visibility = if (question.isEmpty()) GONE else VISIBLE
+        addView(mark, LayoutParams(dp(20), dp(20)).apply { marginEnd = dp(12) })
+        addView(text, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        val actions = m.optJSONArray("actions")
+        for (i in 0 until (actions?.length() ?: 0)) {
+            val a = actions!!.getJSONObject(i)
+            addView(textButton(context, palette, a.optString("label"), color = palette.icon) { act(m, a.optString("action")) },
+                LayoutParams(LayoutParams.WRAP_CONTENT, dp(48)))
+        }
+        visibility = VISIBLE
+        if (!reducedMotion(context)) {
+            translationY = dpf(16)
+            alpha = 0f
+            animate().translationY(0f).alpha(1f).setDuration(Motion.ms(context)).setInterpolator(Motion.ease).start()
+        }
+    }
+
+    fun hide() {
+        news = null
+        visibility = GONE
+    }
+
+    // The bar takes a press on itself, so it never reaches the page under it.
+    override fun onTouchEvent(e: MotionEvent): Boolean = true
+
+    override fun dispatchTouchEvent(e: MotionEvent): Boolean {
+        when (e.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                x0 = e.rawX
+                y0 = e.rawY
+                held(true)
+            }
+            MotionEvent.ACTION_UP -> {
+                // A swipe down or sideways, even one that starts on a button, puts it away.
+                if (y0 >= 0 && (e.rawY - y0 > dpf(24) || Math.abs(e.rawX - x0) > dpf(24))) {
+                    y0 = -1f
+                    swiped()
+                    return true
+                }
+                y0 = -1f
+                held(false)
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                y0 = -1f
+                held(false)
+            }
+        }
+        return super.dispatchTouchEvent(e)
+    }
+
+    override fun getAccessibilityClassName(): CharSequence = "android.view.ViewGroup"
+}

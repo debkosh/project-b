@@ -58,6 +58,9 @@ type file struct {
 	Version   int    `json:"version"`
 	Next      int    `json:"next"`
 	Downloads []Item `json:"downloads"`
+	// NotificationsOffered: a phone's download bar has offered, once, to show downloads in
+	// the system's notifications.
+	NotificationsOffered bool `json:"notificationsOffered,omitempty"`
 }
 
 // Manager keeps one profile's downloads, newest first.
@@ -73,6 +76,7 @@ type Manager struct {
 	// stopped are engine downloads Go has stopped and let go of, by Retry, whose news, a
 	// cancel coming back, is no longer any row's.
 	stopped map[engine.DownloadID]bool
+	offered bool
 }
 
 // New returns a manager for the profile folder profile, saving files into dir.
@@ -104,6 +108,19 @@ func (m *Manager) Load() {
 		m.list = append(m.list, &f.Downloads[i])
 	}
 	m.next = max(f.Next, 1)
+	m.offered = f.NotificationsOffered
+}
+
+// Offered is whether a phone's download bar has offered, once, to show downloads in the
+// system's notifications. It offers only the once, taken up or not.
+func (m *Manager) Offered() bool { return m.offered }
+
+// SetOffered keeps that it has.
+func (m *Manager) SetOffered() {
+	if !m.offered {
+		m.offered = true
+		m.save()
+	}
 }
 
 // OnChanged subscribes to any change to the list.
@@ -365,7 +382,7 @@ func (m *Manager) drop(gone func(*Item) bool) {
 
 // save keeps the finished downloads, the newest kept, in a new file renamed over the old.
 func (m *Manager) save() {
-	f := file{Version: 1, Next: m.next, Downloads: []Item{}}
+	f := file{Version: 1, Next: m.next, Downloads: []Item{}, NotificationsOffered: m.offered}
 	for _, it := range m.list {
 		if it.State != "progress" && len(f.Downloads) < kept {
 			f.Downloads = append(f.Downloads, *it)

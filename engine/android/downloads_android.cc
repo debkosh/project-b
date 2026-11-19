@@ -7,8 +7,10 @@
 #include "base/android/jni_android.h"
 #include "base/android/jni_string.h"
 #include "base/functional/callback.h"
+#include "project_b/engine/abi/pb_abi.h"
 #include "project_b/engine/android/jni_headers/Downloads_jni.h"
 #include "project_b/engine/browser/downloads.h"
+#include "project_b/engine/browser/hooks.h"
 
 namespace project_b {
 
@@ -49,4 +51,15 @@ void ShowDownload(int64_t id,
                       paused);
 }
 
+// A notification's Pause, Resume or Cancel, by Go's id for the download, to Go as the
+// bar's and the Downloads page's buttons go.
+static void JNI_Downloads_Command(JNIEnv* env, int64_t id, int32_t command) {
+  hooks::Args args;
+  args.Int(id);
+  args.Int(command);
+  hooks::Fire(PB_EVENT_DOWNLOAD_ACTION, args);
+}
+
 }  // namespace project_b
+
+DEFINE_JNI(Downloads)

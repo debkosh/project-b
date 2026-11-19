@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/json"
 
+	"projectb/downloads"
 	"projectb/engine"
 	"projectb/shell"
 	"projectb/timeline"
@@ -10,8 +11,14 @@ import (
 
 // downloadsShellPart gives every shell the profile's downloads, in its snapshot and on
 // each change, and takes what a shell asks of one (docs/daily-driver.md).
-func (a *App) downloadsShellPart() shell.Part {
+func (a *App) downloadsShellPart(e engine.Engine) shell.Part {
 	a.Downloads.OnChanged(func() { a.Shell.Send(map[string]any{"t": "downloads", "downloads": a.Downloads.List()}) })
+	news := newDownloadNews(a.Downloads.List())
+	a.Downloads.OnChanged(func() {
+		for _, n := range news.changed(a.Downloads.List(), !e.NotificationsAllowed() && !a.Downloads.Offered()) {
+			a.Shell.Send(n)
+		}
+	})
 	return shell.Part{
 		Snapshot: func(into map[string]any) { into["downloads"] = a.Downloads.List() },
 		Handle: func(w engine.WindowID, t string, msg []byte) bool {
@@ -23,6 +30,12 @@ func (a *App) downloadsShellPart() shell.Part {
 				}
 				json.Unmarshal(msg, &r)
 				a.Downloads.Act(r.ID, r.Action)
+			case "notificationsOffered":
+				// The bar showed its offer: it never comes again, taken up or not.
+				a.Downloads.SetOffered()
+			case "allowNotifications":
+				a.Downloads.SetOffered()
+				e.AskNotifications()
 			case "clearDownloads":
 				a.Downloads.Clear(0)
 			case "saveReport":
@@ -44,5 +57,104 @@ func (a *App) downloadsShellPart() shell.Part {
 			}
 			return true
 		},
+	}
+}
+
+// downloadNews is what a phone's download bar says (docs/shells.md, "A download you can
+// see"), worked out here so that every phone shell says the same and only draws it: each
+// download's start, end or failure, once, as it happens. A shell shows a start only while
+// the app is showing, an end while it shows or the bar does, and nothing while a sheet or
+// the Downloads page is open.
+type downloadNews struct {
+	// seen is each download's state as last told; the ones there at start are not told.
+	seen map[int]string
+}
+
+func newDownloadNews(list []downloads.Item) *downloadNews {
+	n := &downloadNews{seen: map[int]string{}}
+	for _, d := range list {
+		n.seen[d.ID] = d.State
+	}
+	return n
+}
+
+// whyFailed is why one failed, in the words the desktop's lists use (docs/daily-driver.md).
+var whyFailed = map[string]string{
+	"connection": "the connection stopped",
+	"server":     "the server refused it",
+	"disk":       "not enough disk space",
+}
+
+// changed is the news in a new list, oldest first, so the newest is said last. offer is
+// whether a start offers to show downloads in the system's notifications, as the first
+// download does while they aren't allowed: its bar has only Allow, and stays longer. News is
+// short, 2 seconds, a question 8 (design-system.md, "On a phone").
+func (n *downloadNews) changed(list []downloads.Item, offer bool) []map[string]any {
+	var out []map[string]any
+	for i := len(list) - 1; i >= 0; i-- {
+		d := list[i]
+		was, known := n.seen[d.ID]
+		n.seen[d.ID] = d.State
+		if known && was == d.State {
+			continue
+		}
+		m := map[string]any{"t": "downloadNews", "id": d.ID, "state": d.State, "mark": "download"}
+		type act struct {
+			Action string `json:"action"`
+			Label  string `json:"label"`
+		}
+		switch d.State {
+		case "progress":
+			if offer {
+				// The question on a line of its own, so a long name never hides it.
+				m["words"] = "Downloading " + d.Name
+				m["ask"] = "Show progress in notifications?"
+				m["actions"] = []act{{"allowNotifications", "Allow"}}
+				m["offer"] = true
+				m["lasts"] = 8000
+				offer = false
+			} else {
+				m["words"] = "Downloading " + d.Name
+				// Every progress has Retry and Cancel (docs/ux-guide.md); Pause is on the
+				// Downloads page, which has the room.
+				m["actions"] = []act{{"cancel", "Cancel"}, {"retry", "Retry"}}
+				m["lasts"] = 2000
+			}
+		case "done":
+			// A file the app kept itself says what it is: "Crash report saved to Downloads".
+			if d.From != "" {
+				m["words"] = d.From + " saved to Downloads"
+			} else {
+				m["words"] = d.Name + " downloaded"
+			}
+			m["actions"] = []act{{"open", "Open"}}
+			m["lasts"] = 2000
+		case "failed":
+			m["words"] = "Couldn't download " + d.Name
+			if why := whyFailed[d.Reason]; why != "" {
+				m["words"] = "Couldn't download " + d.Name + ": " + why
+			}
+			m["mark"] = "warn"
+			m["actions"] = []act{{"retry", "Retry"}}
+			m["lasts"] = 2000
+		default:
+			// Cancelled: a bar saying it puts itself away.
+			m["state"] = "gone"
+		}
+		out = append(out, m)
+	}
+	return out
+}
+
+// DownloadNotificationCommand does what a download's notification on a phone asks, as the
+// bar's and the Downloads page's buttons do.
+func (a *App) DownloadNotificationCommand(id int, c engine.DownloadCommand) {
+	switch c {
+	case engine.DownloadCancel:
+		a.Downloads.Act(id, "cancel")
+	case engine.DownloadPause:
+		a.Downloads.Act(id, "pause")
+	case engine.DownloadResume:
+		a.Downloads.Act(id, "resume")
 	}
 }

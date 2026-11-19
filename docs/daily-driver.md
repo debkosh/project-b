@@ -187,10 +187,21 @@ Open waits for that copy, so it works the moment a download ends.
 
 **A phone's notification.** Go shows each download where the system shows such things
 (`ShowDownload`, the engine's `show_download`; nothing on the Mac): on Android, a
-notification per download, quiet, its progress while it runs (a few updates a second at
-most), "Downloaded" with the size once done, which opens the file at a tap as Open does,
-and "Download failed"; a cancelled one goes. Android 13 and later ask the person to allow
-notifications at the first download.
+notification per download, its progress while it runs (once a second at most) as
+"16 MB of 42 MB · 1 min left", the time left at the speed so far in Chrome's words, with
+Pause and Cancel, or "Paused · 16 MB of 42 MB" with Resume and Cancel; "Downloaded" with
+the size once done, which opens the file at a tap as Open does; and "Download failed"; a
+cancelled one goes. Pause, Resume and Cancel come back to Go as `PB_EVENT_DOWNLOAD_ACTION`,
+by Go's id, and do what the Downloads page's buttons do. Two quiet channels, as Chrome's:
+"Downloads in progress" and "Completed downloads".
+
+**Asking for notifications.** Android 13 and later show them only once the person allows
+them. The app never asks in the middle of a download: the welcome's last step asks, and
+otherwise the first download's bar offers, once, "Downloading big.bin" with "Show progress
+in notifications?" on a line of its own and Allow, which opens Android's question
+(`AskNotifications`). Shown, the offer never comes again, taken up or not
+(`notificationsOffered` in downloads.json); after that the bar is the only sign, and the
+phone's Settings can still turn them on.
 
 **A navigation that becomes a download** shows nothing instead, so the tab stays at the page
 it shows: the engine ends it as a failure with no failure named, at that page's address, and

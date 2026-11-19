@@ -837,7 +837,8 @@ const H = 915;
 
   // A download seen as it happens: a bar over the foot of the page, above the toolbar,
   // "Downloading big.zip", then "big.zip downloaded" with Open; a failed one says so with
-  // Retry. What it says is kept as it changes, as a mock download takes a moment.
+  // Retry. What it says is kept as it changes, as a mock download takes a moment. The
+  // first, while notifications aren't allowed, offers them, once, with Allow only.
   const dlBar = ui.getByRole('group', { name: 'Download' });
   await w.shell().evaluate(() => {
     window.barSaid = [];
@@ -847,8 +848,19 @@ const H = 915;
     }).observe(document.body, { subtree: true, childList: true, characterData: true });
   });
   const barSaid = () => w.shell().evaluate(() => window.barSaid);
+  // Its bytes held, so the offer stays up through its pictures; failed after, to be done.
+  await fire('download', 'https://example.com/files/offered.zip');
+  await fire('downloadsStall');
+  check('the first download offers notifications on its bar, on a line of its own, with Allow only', await until(async () => (await barSaid()).at(-1) === 'Downloading offered.zip' &&
+    (await dlBar.locator('.ask').textContent()) === 'Show progress in notifications?' &&
+    (await dlBar.getByRole('button').count()) === 1 && (await dlBar.getByRole('button', { name: 'Allow' }).isVisible())), JSON.stringify(await barSaid()));
+  await shots('download-offer');
+  await dlBar.getByRole('button', { name: 'Allow' }).tap();
+  check('Allow asks the system, and the bar goes', await until(async () => (await regions()).notificationsAllowed === true && !(await dlBar.isVisible())), JSON.stringify((await regions()).notificationsAllowed));
+  await fire('downloadsFail');
+  await until(async () => (await barSaid()).at(-1) === "Couldn't download offered.zip: the connection stopped");
   await fire('download', 'https://example.com/files/big.zip');
-  check('a download starting says Downloading big.zip in a bar', await until(async () => (await barSaid()).includes('Downloading big.zip')), JSON.stringify(await barSaid()));
+  check('a download starting says Downloading big.zip in a bar, with no offer again', await until(async () => (await barSaid()).includes('Downloading big.zip')), JSON.stringify(await barSaid()));
   check('and once done, big.zip downloaded, with Open', await until(async () => (await barSaid()).at(-1) === 'big.zip downloaded' && (await dlBar.getByRole('button', { name: 'Open' }).isVisible())), JSON.stringify(await barSaid()));
   // Where it ends once it has risen.
   const barBox = await dlBar.evaluate(async (el) => {
@@ -880,6 +892,25 @@ const H = 915;
   await page.mouse.move(b.x + 40, b.y + 50);
   await page.mouse.up();
   check('a swipe down puts the bar away', await until(async () => !(await dlBar.isVisible())));
+  await fire('download', 'https://example.com/files/sideways.zip');
+  await until(() => dlBar.isVisible());
+  const sb = await dlBar.boundingBox();
+  await page.mouse.move(sb.x + 40, sb.y + 10);
+  await page.mouse.down();
+  await page.mouse.move(sb.x + 70, sb.y + 10);
+  await page.mouse.move(sb.x + 100, sb.y + 10);
+  await page.mouse.up();
+  check('and so does a swipe sideways', await until(async () => !(await dlBar.isVisible())));
+  // News goes after 2 seconds, but not while a finger holds it.
+  await fire('download', 'https://example.com/files/held.zip');
+  await until(() => dlBar.isVisible());
+  const hb = await dlBar.boundingBox();
+  await page.mouse.move(hb.x + 40, hb.y + 10);
+  await page.mouse.down();
+  await page.waitForTimeout(3500);
+  check('a press keeps the bar while held, past its 2 seconds', await dlBar.isVisible());
+  await page.mouse.up();
+  check('and once let go it goes after its time', await until(async () => !(await dlBar.isVisible()), 5000));
   await fire('download', 'https://example.com/files/third.zip');
   check('another download brings it back', await until(() => dlBar.isVisible()));
   await page.mouse.click(4, H - 24);

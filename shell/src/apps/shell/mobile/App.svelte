@@ -283,6 +283,9 @@
     sheet = name;
   }
 
+  // The download bar, which draws Go's download news.
+  let downloadBar = $state();
+
   function openGroup(id, ask = false) {
     sheetGroup = id;
     askClose = ask;
@@ -314,6 +317,7 @@
       sheet = 'link';
     },
     backKey,
+    downloadNews: (m) => downloadBar?.news(m),
     suggestions: (m) => {
       address.suggestions(m);
       newTabPage?.suggestions(m);
@@ -345,7 +349,7 @@
       {/if}
       <!-- A download as it happens, over the foot of the page; never over a sheet, nor over
            the Downloads page, which shows it already. -->
-      <DownloadBar hidden={!!sheet || full || tab.page === 'downloads'} />
+      <DownloadBar bind:this={downloadBar} hidden={!!sheet || full || tab.page === 'downloads'} />
     </main>
     {#if group || (marksBar && !top)}
       <div class="bars strip" class:away class:over class:full bind:offsetHeight={stripHeight}>

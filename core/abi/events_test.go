@@ -163,14 +163,15 @@ func (r *adapterRecorder) FindReply(tab engine.TabID, request, matches, active i
 func (r *adapterRecorder) PageFullScreen(tab engine.TabID, on bool) {
 	r.note(fmt.Sprintf("full screen %d %v", tab, on))
 }
-func (r *adapterRecorder) Thumbnail(engine.TabID, int64)            {}
-func (r *adapterRecorder) DefaultBrowserChanged(bool)               {}
-func (r *adapterRecorder) NotificationsAnswered(bool)               {}
-func (r *adapterRecorder) FolderChosen(engine.WindowID, string)     {}
-func (r *adapterRecorder) AppLink(engine.TabID, string)             {}
-func (r *adapterRecorder) ImageSaved(string, bool)                  {}
-func (r *adapterRecorder) SiteDataListed(string, []engine.SiteData) {}
-func (r *adapterRecorder) IsPageFullScreen(engine.TabID) bool       { return false }
+func (r *adapterRecorder) Thumbnail(engine.TabID, int64)                           {}
+func (r *adapterRecorder) DefaultBrowserChanged(bool)                              {}
+func (r *adapterRecorder) NotificationsAnswered(bool)                              {}
+func (r *adapterRecorder) FolderChosen(engine.WindowID, string)                    {}
+func (r *adapterRecorder) AppLink(engine.TabID, string)                            {}
+func (r *adapterRecorder) ImageSaved(string, bool)                                 {}
+func (r *adapterRecorder) SiteDataListed(string, []engine.SiteData)                {}
+func (r *adapterRecorder) IsPageFullScreen(engine.TabID) bool                      { return false }
+func (r *adapterRecorder) DownloadNotificationCommand(int, engine.DownloadCommand) {}
 
 func (r *adapterRecorder) PermissionRequested(p engine.PermissionRequest) {
 	r.note(fmt.Sprintf("permission %d tab %d %s %v gesture=%v", p.ID, p.Tab, p.Origin, p.Kinds, p.Gesture))

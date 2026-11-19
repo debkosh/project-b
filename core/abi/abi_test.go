@@ -77,6 +77,10 @@ func (r *recorder) ImageSaved(path string, ok bool) {
 	r.note("image saved %s %v", path, ok)
 }
 
+func (r *recorder) DownloadNotificationCommand(id int, c engine.DownloadCommand) {
+	r.note("download notification %d %d", id, c)
+}
+
 func listening() (*Events, *recorder) {
 	e, r := New(), &recorder{}
 	e.Listen(r)
@@ -116,6 +120,7 @@ func TestEachEventReachesTheListener(t *testing.T) {
 		{Notifications, []Value{i(0)}, "notifications false"},
 		{FolderChosen, []Value{i(1), s("/Users/me/Vivaldi")}, "folder 1 /Users/me/Vivaldi"},
 		{AppLink, []Value{i(2), s("project-b://sync?address=x")}, "app link 2 project-b://sync?address=x"},
+		{DownloadAction, []Value{i(3), i(2)}, "download notification 3 2"},
 	} {
 		r.got = nil
 		if _, answered := e.Dispatch(c.id, c.args); answered {

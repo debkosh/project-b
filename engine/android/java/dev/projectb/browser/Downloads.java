@@ -1,18 +1,18 @@
 package dev.projectb.browser;
 
-import android.Manifest;
-import android.app.Activity;
 import android.app.DownloadManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.ContentResolver;
+import android.content.BroadcastReceiver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
+import android.graphics.drawable.Icon;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
@@ -21,10 +21,10 @@ import android.provider.MediaStore;
 import android.util.Log;
 import android.webkit.MimeTypeMap;
 
-import org.chromium.base.ApplicationStatus;
 import org.chromium.base.ContextUtils;
 import org.jni_zero.CalledByNative;
 import org.jni_zero.JNINamespace;
+import org.jni_zero.NativeMethods;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -155,48 +155,85 @@ final class Downloads {
     }
 
     // The notification of each download (pb_abi.h show_download), by Go's id for it: its
-    // progress while it runs, at most a few times a second as Android drops faster updates;
-    // once done, a tap opens the shared copy, posted once that copy is made; cancelled, it
-    // goes; failed, it says so. PBDownloadState: 0 progress, 1 done, 2 cancelled, 3 failed.
-    private static final String CHANNEL = "downloads";
+    // progress while it runs, once a second at most, as faster kept the shade from ever
+    // settling for anything that reads it,
+    // with the time left and Pause and Cancel, or Resume and Cancel while paused; once done,
+    // a tap opens the shared copy, posted once that copy is made; cancelled, it goes;
+    // failed, it says so. PBDownloadState: 0 progress, 1 done, 2 cancelled, 3 failed. Both
+    // channels are quiet, as Chrome's are. The app never asks for notifications here: the
+    // download bar offers to, once, and the welcome's last step asks (docs/daily-driver.md).
+    private static final String RUNNING = "downloads_running";
+    private static final String DONE = "downloads_done";
+    // Every download's notification has this tag, so its end replaces its progress.
+    private static final String TAG_NOTIFICATION = "downloads";
     // The action, and its extra, the path, of a tap on a finished download's notification.
     static final String OPEN = "dev.projectb.browser.OPEN_DOWNLOAD";
+    // The action of a notification's Pause, Resume or Cancel, with Go's id and the
+    // PBDownloadCommand.
+    private static final String COMMAND = "dev.projectb.browser.DOWNLOAD_COMMAND";
+    private static final int CANCEL = 1, PAUSE = 2, RESUME = 3;
     private static final Map<Long, Long> sShownAt = new HashMap<>();
-    private static boolean sAsked;
+    // Each running download's speed, for its time left: when and how much it had at the
+    // last notification, and the bytes a second, smoothed.
+    private static final Map<Long, long[]> sLast = new HashMap<>();
+    private static final Map<Long, Double> sRate = new HashMap<>();
+    private static boolean sListening;
+
+    private static NotificationManager notifications(Context context) {
+        NotificationManager manager = context.getSystemService(NotificationManager.class);
+        if (manager.getNotificationChannel(RUNNING) == null) {
+            manager.createNotificationChannel(
+                    new NotificationChannel(RUNNING, "Downloads in progress", NotificationManager.IMPORTANCE_LOW));
+            manager.createNotificationChannel(
+                    new NotificationChannel(DONE, "Completed downloads", NotificationManager.IMPORTANCE_LOW));
+            // The one channel all downloads had until they were two.
+            manager.deleteNotificationChannel("downloads");
+        }
+        if (!sListening) {
+            sListening = true;
+            ContextUtils.registerNonExportedBroadcastReceiver(context, new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context c, Intent intent) {
+                    DownloadsJni.get().command(intent.getLongExtra("id", 0), intent.getIntExtra("command", 0));
+                }
+            }, new IntentFilter(COMMAND));
+        }
+        return manager;
+    }
 
     @CalledByNative
     static void show(long id, String name, String path, int state, long received, long total, boolean paused) {
         Context context = ContextUtils.getApplicationContext();
-        NotificationManager manager = context.getSystemService(NotificationManager.class);
-        if (manager.getNotificationChannel(CHANNEL) == null) {
-            manager.createNotificationChannel(new NotificationChannel(CHANNEL, "Downloads", NotificationManager.IMPORTANCE_LOW));
-        }
-        askToNotify(context);
+        NotificationManager manager = notifications(context);
         int tag = (int) id;
         if (state == 2) {
-            sShownAt.remove(id);
-            manager.cancel(CHANNEL, tag);
+            forget(id);
+            manager.cancel(TAG_NOTIFICATION, tag);
             return;
         }
         if (state == 0) {
             long now = SystemClock.elapsedRealtime();
             Long at = sShownAt.get(id);
-            if (at != null && now - at < 500 && !paused) return;
+            if (at != null && now - at < 1000 && !paused) return;
             sShownAt.put(id, now);
-            Notification.Builder b = new Notification.Builder(context, CHANNEL)
+            String sizes = total > 0 ? sizeOf(received) + " of " + sizeOf(total) : sizeOf(received);
+            String left = paused ? null : timeLeft(id, now, received, total);
+            Notification.Builder b = new Notification.Builder(context, RUNNING)
                     .setSmallIcon(android.R.drawable.stat_sys_download)
                     .setContentTitle(name)
-                    .setContentText(paused ? "Paused" : total > 0 ? sizeOf(received) + " of " + sizeOf(total) : sizeOf(received))
+                    .setContentText(paused ? "Paused · " + sizes : left != null ? sizes + " · " + left : sizes)
                     .setProgress(total > 0 ? 100 : 0, total > 0 ? (int) (received * 100 / total) : 0, total <= 0)
                     .setOngoing(!paused)
                     .setOnlyAlertOnce(true)
-                    .setContentIntent(app(context));
-            manager.notify(CHANNEL, tag, b.build());
+                    .setContentIntent(app(context))
+                    .addAction(action(context, id, paused ? RESUME : PAUSE, paused ? "Resume" : "Pause"))
+                    .addAction(action(context, id, CANCEL, "Cancel"));
+            manager.notify(TAG_NOTIFICATION, tag, b.build());
             return;
         }
-        sShownAt.remove(id);
+        forget(id);
         if (state == 3) {
-            manager.notify(CHANNEL, tag, new Notification.Builder(context, CHANNEL)
+            manager.notify(TAG_NOTIFICATION, tag, new Notification.Builder(context, DONE)
                     .setSmallIcon(android.R.drawable.stat_notify_error)
                     .setContentTitle(name)
                     .setContentText("Download failed")
@@ -212,7 +249,7 @@ final class Downloads {
                         .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         sCopier.execute(() -> {
-            manager.notify(CHANNEL, tag, new Notification.Builder(context, CHANNEL)
+            manager.notify(TAG_NOTIFICATION, tag, new Notification.Builder(context, DONE)
                     .setSmallIcon(android.R.drawable.stat_sys_download_done)
                     .setContentTitle(name)
                     .setContentText(total > 0 ? "Downloaded · " + sizeOf(total) : "Downloaded")
@@ -222,21 +259,55 @@ final class Downloads {
         });
     }
 
+    private static void forget(long id) {
+        sShownAt.remove(id);
+        sLast.remove(id);
+        sRate.remove(id);
+    }
+
+    // A notification's button, which tells Go through PB_EVENT_DOWNLOAD_ACTION, as the
+    // bar's and the Downloads page's do; nothing comes to the front.
+    private static Notification.Action action(Context context, long id, int command, String label) {
+        Intent intent = new Intent(COMMAND).setPackage(context.getPackageName())
+                .putExtra("id", id).putExtra("command", command);
+        PendingIntent pending = PendingIntent.getBroadcast(context, (int) id * 4 + command, intent,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        int icon = command == CANCEL ? android.R.drawable.ic_menu_close_clear_cancel
+                : command == PAUSE ? android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play;
+        return new Notification.Action.Builder(Icon.createWithResource(context, icon), label, pending).build();
+    }
+
+    // The time left at the speed so far, in Chrome's words ("5 secs left", "1 min left",
+    // "2 hours left"), once there is a speed to go by, or null. The speed is smoothed over
+    // the notifications, a second or more apart, so one slow moment doesn't swing it.
+    private static String timeLeft(long id, long now, long received, long total) {
+        long[] last = sLast.put(id, new long[] {now, received});
+        if (total <= 0 || last == null || now <= last[0]) return null;
+        double rate = (received - last[1]) * 1000.0 / (now - last[0]);
+        Double was = sRate.get(id);
+        if (was != null) rate = 0.7 * was + 0.3 * rate;
+        sRate.put(id, rate);
+        if (was == null || rate <= 0) return null;
+        long secs = Math.max(1, Math.round((total - received) / rate));
+        if (secs < 60) return secs + (secs == 1 ? " sec left" : " secs left");
+        long mins = Math.round(secs / 60.0);
+        if (mins < 60) return mins + (mins == 1 ? " min left" : " mins left");
+        long hours = Math.round(secs / 3600.0);
+        if (hours < 24) return hours + (hours == 1 ? " hour left" : " hours left");
+        long days = Math.round(secs / 86400.0);
+        return days + (days == 1 ? " day left" : " days left");
+    }
+
     // A tap that brings the app forward.
     private static PendingIntent app(Context context) {
         Intent intent = new Intent(context, BrowserActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
         return PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_IMMUTABLE);
     }
 
-    // Android 13 and later show an app's notifications only once the person allows them:
-    // asked for at the first download, once a run.
-    private static void askToNotify(Context context) {
-        if (sAsked || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return;
-        if (context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return;
-        Activity activity = ApplicationStatus.getLastTrackedFocusedActivity();
-        if (activity == null) return;
-        sAsked = true;
-        activity.requestPermissions(new String[] {Manifest.permission.POST_NOTIFICATIONS}, 7);
+    @NativeMethods
+    interface Natives {
+        // A notification's Pause, Resume or Cancel, to Go (PB_EVENT_DOWNLOAD_ACTION).
+        void command(long id, int command);
     }
 
     // A size as the phone gives it: 1000 to a kilobyte, one decimal place under ten.

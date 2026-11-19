@@ -551,6 +551,9 @@ type Listener interface {
 	FolderChosen(w WindowID, path string)
 	// ImageSaved is how SaveImage ended: whether the image is now a PNG at path.
 	ImageSaved(path string, ok bool)
+	// DownloadNotificationCommand is a phone's notification of a download, by the id
+	// ShowDownload gave it, asking to cancel, pause or resume it.
+	DownloadNotificationCommand(id int, c DownloadCommand)
 	// SiteDataListed is what ListSiteData found in a workspace's storage, by host.
 	SiteDataListed(workspace string, hosts []SiteData)
 

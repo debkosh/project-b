@@ -942,16 +942,24 @@ address field, and a menu button at the far right, in our tones.
   strip and the toolbar, or under the toolbar on top
   ([bookmark-folders.md](bookmark-folders.md#on-the-mobile-web-shell)).
 - **A download you can see.** A download that starts while the app is showing raises a
-  small bar over the foot of the page, just above the toolbar, for about 4 seconds:
-  "Downloading big.zip". When it ends while the bar or the app is showing, the bar says
-  "big.zip downloaded" with Open, which does what the Downloads page's Open does
-  (`downloadAction` `open`), or "Couldn't download big.zip" with Retry (`retry`); those
-  stay about 6 seconds. A tap anywhere else in the shell or a swipe down on it puts it
-  away, and so does a sheet opening or the Downloads page showing, which says it all
-  already; it says nothing while either is there, so it never comes back over what the
-  person went on to. The find bar, in the toolbar's place, is never under it.
-  It follows `state.downloads`, telling each change of a download's state once; what the
-  snapshot already had is not told. Android's notifications are the engine's and Go's.
+  small bar over the foot of the page, just above the toolbar: "Downloading big.zip". When
+  it ends while the bar or the app is showing, the bar says "big.zip downloaded" with Open,
+  which does what the Downloads page's Open does (`downloadAction` `open`), or "Couldn't
+  download big.zip" with Retry (`retry`). Each goes after 2 seconds (design-system.md, "On
+  a phone"); a press keeps it while held. A tap anywhere else in the shell, or a swipe down
+  or sideways on it, puts it away, and so does a sheet opening or the Downloads page
+  showing, which says it all already; it says nothing while either is there, so it never
+  comes back over what the person went on to. The find bar, in the toolbar's place, is
+  never under it.
+  What it says is Go's download news (`downloadNews`, core/app/downloads.go), each change
+  of a download's state told once, the same words and times for the web and the native
+  phone shell, which only draw it and keep the rules above for when. The first download's
+  start, while Android's notifications aren't allowed, offers them instead: "Downloading
+  big.zip" with "Show progress in notifications?" on a line of its own, so a long name
+  never hides it, and Allow only, for 8 seconds or until
+  answered; the shell tells Go once it showed it (`notificationsOffered`), and it never
+  comes again. Android's notifications are the engine's and Go's
+  ([daily-driver.md](daily-driver.md)).
 - **Find in page**, from the ⋯ menu, puts a find bar in the toolbar's place with the
   keyboard in it: the field with the count at its end, the match before and after, and
   ×, as the back key, closes it. The bars stay while it is open (rule 20).

@@ -179,6 +179,9 @@ typedef enum PBEvent {
                                         // redirect goes nowhere, unheard
   PB_EVENT_IMAGE_SAVED = 82,            // s: path, i: 1 when save_image wrote the image
                                         // there, 0 when it couldn't
+  PB_EVENT_DOWNLOAD_ACTION = 83,        // i: download, Go's id as show_download had it,
+                                        // i: PBDownloadCommand; Android only, its
+                                        // notification's Pause, Resume or Cancel
   PB_EVENT_PAGE_MESSAGE = 23,           // i: tab, s: the page's name ("settings",
                                         // "history", "bookmarks", "downloads",
                                         // "welcome"), s: json, from the page of ours

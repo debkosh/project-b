@@ -207,20 +207,21 @@ func (p *Picker) DownloadUpdated(engine.Download) {}
 func (p *Picker) FileChooser(engine.FileChooserRequest) engine.FileChooserAnswer {
 	return engine.FileChooserAnswer{}
 }
-func (p *Picker) FilesChosen(engine.TabID, int, string)       {}
-func (p *Picker) DialogOpened(engine.Dialog)                  {}
-func (p *Picker) DialogClosed(engine.DialogID)                {}
-func (p *Picker) PasskeyStep(engine.DialogID, string, string) {}
-func (p *Picker) FindReply(engine.TabID, int, int, int, bool) {}
-func (p *Picker) PageFullScreen(engine.TabID, bool)           {}
-func (p *Picker) IsPageFullScreen(engine.TabID) bool          { return false }
-func (p *Picker) Thumbnail(engine.TabID, int64)               {}
-func (p *Picker) DefaultBrowserChanged(bool)                  {}
-func (p *Picker) NotificationsAnswered(bool)                  {}
-func (p *Picker) FolderChosen(engine.WindowID, string)        {}
-func (p *Picker) ImageSaved(string, bool)                     {}
-func (p *Picker) SiteDataListed(string, []engine.SiteData)    {}
-func (p *Picker) DevToolsCommand(string, []byte) (any, error) { return nil, engine.ErrUnknownCommand }
+func (p *Picker) FilesChosen(engine.TabID, int, string)                   {}
+func (p *Picker) DialogOpened(engine.Dialog)                              {}
+func (p *Picker) DialogClosed(engine.DialogID)                            {}
+func (p *Picker) PasskeyStep(engine.DialogID, string, string)             {}
+func (p *Picker) FindReply(engine.TabID, int, int, int, bool)             {}
+func (p *Picker) PageFullScreen(engine.TabID, bool)                       {}
+func (p *Picker) IsPageFullScreen(engine.TabID) bool                      { return false }
+func (p *Picker) Thumbnail(engine.TabID, int64)                           {}
+func (p *Picker) DefaultBrowserChanged(bool)                              {}
+func (p *Picker) NotificationsAnswered(bool)                              {}
+func (p *Picker) FolderChosen(engine.WindowID, string)                    {}
+func (p *Picker) ImageSaved(string, bool)                                 {}
+func (p *Picker) SiteDataListed(string, []engine.SiteData)                {}
+func (p *Picker) DevToolsCommand(string, []byte) (any, error)             { return nil, engine.ErrUnknownCommand }
+func (p *Picker) DownloadNotificationCommand(int, engine.DownloadCommand) {}
 
 // The picker's page is our own, in no tab: each kind has its default, with no prompt.
 func (p *Picker) PermissionRequested(r engine.PermissionRequest) {
