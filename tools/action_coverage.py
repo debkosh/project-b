@@ -3,7 +3,8 @@
 
     tools/action_coverage.py           writes docs/action-coverage.md
     tools/action_coverage.py --check   exits 1 if an action has no test and no reason in
-                                       tools/action-coverage-exempt.json (tools/test.sh mock runs it)
+                                       tools/action-coverage-exempt.json (tools/test.sh mock runs it);
+                                       it writes nothing, so a checkout stays clean for packaging
 
 The actions, read from the code so a new one can't be missed:
 - Go's actions (core/app/actions.go, and each shell's in core/shells/registry.json): what the
@@ -134,8 +135,10 @@ def exempt():
         return {}
 
 
-def write(rows, ex):
+def write(rows, ex, out=True):
     bare = [r for r in rows if not r["tests"] and r["id"] not in ex]
+    if not out:
+        return bare
     L = ["# Action coverage", "",
          "Every action a person can take, where the app offers it, and the tests that do it. Written by",
          "`tools/action_coverage.py` from the code; `tools/test.sh mock` fails while an action has no",
@@ -167,7 +170,7 @@ def write(rows, ex):
 if __name__ == "__main__":
     rows = inventory()
     ex = exempt()
-    bare = write(rows, ex)
+    bare = write(rows, ex, out="--check" not in sys.argv[1:])
     noreal = [r for r in rows if r["kind"] == "action" and not real(r["tests"]) and r["id"] not in ex]
     todo = [r for r in rows if not r["tests"] and ex.get(r["id"], "").startswith("TODO")]
     print("%d actions and messages, %d with no test and no reason, %d tests owed (TODO); %d of Go's actions with no real-app test" % (
