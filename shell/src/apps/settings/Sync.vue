@@ -42,7 +42,31 @@ watch(
   { immediate: true },
 );
 const syncingFor = computed(() => (since.value ? now.value - since.value : 0));
-const syncingShown = computed(() => syncingFor.value >= 1000 && syncingFor.value < 30000);
+// A run a person asked for says so at once, and for a second at least, so one too quick to
+// see still answers the press; it then reads Last synced just now, or what went wrong. For
+// that second Sync now stays under the finger, disabled, so a second tap lands on nothing;
+// Cancel and Retry come only if the run is still going after it.
+const asked = ref(false);
+const holding = ref(false);
+let held = 0;
+function syncNow() {
+  asked.value = holding.value = true;
+  clearTimeout(held);
+  held = setTimeout(() => {
+    holding.value = false;
+    if (!s.value.syncing) asked.value = false;
+    now.value = Date.now();
+  }, 1000);
+  send({ t: 'syncNow' });
+}
+watch(
+  () => s.value.syncing,
+  (on) => {
+    if (!on && !holding.value) asked.value = false;
+  },
+);
+onUnmounted(() => clearTimeout(held));
+const syncingShown = computed(() => (asked.value || syncingFor.value >= 1000) && syncingFor.value < 30000);
 const stalled = computed(() => syncingFor.value >= 30000);
 
 // "2 minutes ago", for Last synced.
@@ -71,7 +95,7 @@ const tile = computed(() => (tints.value, siteTile(`https://${s.value.host}`)));
 // Retry, and Try again after a run with nothing back, start the run again.
 function again() {
   send({ t: 'syncCancel' });
-  send({ t: 'syncNow' });
+  syncNow();
 }
 
 // The Dialog. step is '' while it is shut, 'address', 'choose', 'enter', 'change' or
@@ -404,13 +428,13 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
             >
             <template v-else>{{ lastSynced }}</template>
           </template>
-          <span v-if="serverRow === 'syncing'" class="ctl">
+          <span v-if="serverRow === 'syncing' && !holding" class="ctl">
             <button type="button" class="text-button quiet" @click="send({ t: 'syncCancel' })">Cancel</button>
             <button type="button" class="text-button quiet apart" @click="again">Retry</button>
           </span>
           <button v-else-if="serverRow === 'signedOut'" type="button" class="text-button" @click="reconnect">Reconnect…</button>
           <button v-else-if="serverRow === 'unreachable'" type="button" class="text-button" @click="again">Try again</button>
-          <button v-else type="button" class="text-button" @click="send({ t: 'syncNow' })">Sync now</button>
+          <button v-else type="button" class="text-button" :disabled="holding" @click="syncNow">Sync now</button>
         </Row>
         <Row label="Change sync passphrase" hint="A device you add then asks for the new one" :words="words">
           <button type="button" class="text-button" @click="change">Change…</button>

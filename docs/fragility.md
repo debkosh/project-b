@@ -41,6 +41,25 @@ The seams:
 - **The phone's keyboard.** It takes half the screen or more, by an amount that differs
   between Android versions, and what a person needs next has to stay in sight above it. One
   so far: a Dialog's buttons under the keyboard.
+- **Work that takes time.** A rule made for work nobody asked for, such as waiting before
+  saying it is busy, doesn't fit a press, which needs its answer at once. One so far: Sync
+  now that showed nothing.
+
+## Sync now that showed nothing, 2026-11-19
+
+- **Seen:** on a phone with sync on against a real server, pressing Sync now changed nothing
+  on screen. He couldn't tell whether it had synced.
+- **Cause:** the row said "Syncing…" only once a run had gone on for a second, so that sync's
+  own runs every few seconds wouldn't flicker. A run a person asked for took the same rule, and
+  against a quick server it was over before the second passed. The row already read "Last
+  synced just now" from the run before, so it stayed word for word the same.
+- **Seam:** work that takes time: a rule made for work nobody asked for, applied to a press.
+- **Fix:** on sync-now-feedback: a run a person asked for, with Sync now, Retry or Try again,
+  says "Syncing…" at once and for a second at least, with Sync now still under the finger but
+  disabled, then when it last synced or what went wrong (`Sync.vue`).
+- **Guard:** `shell/e2e/sync.cjs` presses Sync now against a quick server and checks the row
+  says "Syncing…" at once with the button disabled, then "Last synced just now" with Sync now
+  back. On a phone, drive_android's sync part presses Sync now and sees the server asked.
 
 ## A Dialog's buttons under the keyboard, 2026-11-19
 

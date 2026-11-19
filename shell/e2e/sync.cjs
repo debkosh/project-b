@@ -231,13 +231,17 @@ const taken = [];
   let n = await requests();
   let told = sends({ t: 'syncNow' });
   await button('Sync now', card()).click();
+  // A run too quick to see still answers the press: Syncing… at once and for a second, then
+  // when it last synced.
+  check('Sync now says Syncing… at once, and stays under the finger, disabled', (await until(async () => (await serverRow().innerText()).includes('Syncing…'), 500)) && (await button('Sync now', card()).isDisabled()) && (await button('Cancel', card()).count()) === 0);
   check('Sync now sends syncNow', await told);
   check('Sync now syncs', await until(async () => (await requests()) > n));
+  check('and then says when it last synced, with Sync now again', await until(async () => (await serverRow().innerText()).includes('Last synced just now') && (await button('Sync now', card()).isVisible()), 3000));
 
   // A run that takes a while: after a second it says so, with Cancel and Retry.
   await server({ slow: '1' });
   await button('Sync now', card()).click();
-  check('a run says Syncing… only after about a second', (await serverRow().innerText()).includes('Last synced') && await until(async () => (await serverRow().innerText()).includes('Syncing…'), 3000));
+  check('a run that takes a while goes on saying Syncing…', (await until(async () => (await serverRow().innerText()).includes('Syncing…'), 500)) && (await page.waitForTimeout(2000), (await serverRow().innerText()).includes('Syncing…')));
   check('with Cancel and Retry', (await button('Cancel', card()).isVisible()) && (await button('Retry', card()).isVisible()));
   await shot(10, 'syncing');
   told = sends({ t: 'syncCancel' });

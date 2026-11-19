@@ -242,9 +242,13 @@ picture, light and dark, desktop and phone, is made by `shell/e2e/sync.cjs` unde
 - **On:** the server's row, its letter on its tile as a site's, with "Last synced 2 minutes ago"
   ("just now" in its first minute, "Not synced yet" before a first run ends) and Sync now; then
   Change sync passphrase and Turn off sync. It names nothing that syncs.
-  - After a second of syncing, "Syncing…" with quiet Cancel and Retry, Retry a little apart
+  - "Syncing…" with quiet Cancel and Retry, Retry a little apart
     ([ux-guide.md](ux-guide.md#anything-that-takes-time)). Cancel cuts the run short; Retry cuts
-    it and runs again.
+    it and runs again. A run sync starts by itself says so only after a second. One a person
+    asked for, with Sync now, Retry or Try again, says so at once and for a second at least,
+    so a run too quick to see still answers the press, and then reads "Last synced just now".
+    For that second Sync now stays where it is, disabled, so a second tap lands on nothing;
+    Cancel and Retry come only if the run is still going after it.
   - After 30 seconds of syncing, or a run that failed, "Couldn't reach the server · Last synced
     …" in `--danger`, with Try again; the error's own words in the row's tooltip.
   - A token the server refuses: "The server signed this device out", Reconnect…, which opens the
