@@ -49,7 +49,9 @@ The seams:
   aria-describedby. On dd-a11y-names: the engine puts such names in the control's text
   again, as Chrome does, so selects and fields named by a label are named too.
 - **Guard:** `shell/e2e/shells/mobile.cjs` counts a switch or checkbox without aria-label as
-  nameless.
+  nameless. For the engine, the tester's drive_android talkback_states turns TalkBack on and
+  reads a page's switch named by a wrapping label, one by aria-labelledby and a field named
+  by `<label for>`, each with its name; all three failed on 0.2.103 and pass since 0.2.105.
 
 ## TalkBack heard every switch as off, 2026-11-19
 
