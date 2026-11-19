@@ -382,6 +382,23 @@ stroke; colour carrying identity, a workspace or a tab group as a coloured pill 
 profile as a pill on the toolbar; room to breathe, sidebar rows 36px; the address field a
 rounded surface with the page's own actions inside its right end.
 
+### The window's own buttons and menus
+
+The owner, 2026-11-19. On the Mac the window keeps its own buttons and the system's menu
+bar. On Linux and Windows the frame is ours, so the shell draws them:
+
+- **Minimise, maximise and close at the right end of the top row:** 28px icon buttons, 32px
+  wide, in `--icon`; close turns `--danger` with white on hover. Each platform's habit; the
+  Mac's circles there would read as a copy.
+- **Every empty part of the top row drags the window,** a double-click maximises it, and a
+  few pixels at each edge resize it. Nothing depends on knowing where the window is, as
+  Wayland never says.
+- **A menu strip, off by default:** Settings' "Show menu bar" puts Go's menus (File, Edit,
+  View, History, Bookmarks, Tab, Window, Help) in a 30px strip on `--bar` above the top row,
+  with the window's buttons moved into it. While it is off, Alt shows it until a menu
+  closes and F10 opens the first menu. The menus are the context menus' surface, with
+  shortcuts written as the platform does (Ctrl+R, F11).
+
 ## Shells with a character of their own
 
 A shell may keep a look of its own where it is the point of the shell. What is listed here
