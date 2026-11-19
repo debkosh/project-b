@@ -22,11 +22,34 @@ The seams:
 - **A page's own navigations**, which Go rules on, against Chromium's way of starting,
   committing and aborting a load. Two so far: Stay on this site, the back key in full
   screen.
+- **The phone's shared storage.** What the app puts in Android's shared folders meets
+  other apps' files there, which it can't see. One so far: a download named as a file
+  already in Downloads.
 - **Android's accessibility tree.** What a page says in ARIA or HTML has to reach the tree
   TalkBack and the driver read, with its name and its state; Chromium hands it over only as
   fully as the embedder has set it up to. Three so far: the phone's star and folders with no
   names, TalkBack hearing every switch as off, switches named by other words heard with no
   name.
+
+## A download named as a file already in Downloads, 2026-11-19
+
+- **Seen:** on Android 16, a 60 MB big.bin downloaded to its end, and the app closed at
+  once: Android's log said the copy into the phone's Downloads broke a rule of its own,
+  "UNIQUE constraint failed: files._data". The phone's Downloads already had a big.bin,
+  from an earlier test's run. Found while testing download notifications.
+- **Cause:** a finished download is copied into the phone's shared Downloads under its own
+  name, first as a pending file Android names itself, and made public as the copy ends. Only
+  then does Android check the name, and it already had that file, which this app can't see,
+  as another app's files are hidden from it. Android 14 refused it the same way for a file
+  deleted behind its back, by a file manager that skips its index, as the sparks session
+  found: the index still held the name. The refusal came back as an exception on the
+  copying thread that nothing caught, which ends the app.
+- **Seam:** the phone's shared storage: a name the app can't check before Android does.
+- **Fix:** on dd-dl-samename: a name Android refuses is tried again as big (1).bin, big
+  (2).bin and so on, as the phone names its own copies, up to 99; past that the copy goes
+  and the file stays in the app's list (`Downloads.copyToShared`).
+- **Guard:** drive_android's downloads part downloads the same name twice: the second
+  reaches the phone's Downloads as name (1) and the app keeps running.
 
 ## Switches named by other words heard with no name, 2026-11-19
 

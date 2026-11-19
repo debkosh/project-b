@@ -84,10 +84,27 @@ final class Downloads {
             resolver.delete(uri, null, null);
             return null;
         }
-        values.clear();
-        values.put(MediaStore.Downloads.IS_PENDING, 0);
-        resolver.update(uri, values, null, null);
-        return uri;
+        // Made public under its own name, or, when the shared Downloads has that name
+        // already, perhaps from another app, which this app can't see, under the next free
+        // one: big (1).bin, big (2).bin, as the phone names its own copies. Android says so
+        // only now, as the copy stops being pending.
+        String name = file.getName();
+        int dot = name.lastIndexOf('.');
+        String stem = dot > 0 ? name.substring(0, dot) : name;
+        String ext = dot > 0 ? name.substring(dot) : "";
+        for (int n = 0; n < 100; n++) {
+            values.clear();
+            values.put(MediaStore.Downloads.IS_PENDING, 0);
+            if (n > 0) values.put(MediaStore.Downloads.DISPLAY_NAME, stem + " (" + n + ")" + ext);
+            try {
+                resolver.update(uri, values, null, null);
+                return uri;
+            } catch (RuntimeException e) {
+                Log.w(TAG, "the shared Downloads has " + name + (n > 0 ? " (" + n + ")" : "") + " already");
+            }
+        }
+        resolver.delete(uri, null, null);
+        return null;
     }
 
     @CalledByNative
