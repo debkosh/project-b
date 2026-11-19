@@ -16,15 +16,17 @@ import (
 type System struct {
 	post func(func())
 
-	mu             sync.Mutex
-	dismiss        bool
-	isDefault      bool
-	allowed        bool
-	dock           string
-	opened, shown  []string
-	defaultBrowser system.Question
-	notifications  system.Question
-	asked          map[string]int
+	mu              sync.Mutex
+	dismiss         bool
+	isDefault       bool
+	allowed         bool
+	dock            string
+	opened, shown   []string
+	defaultBrowser  system.Question
+	notifications   system.Question
+	asked           map[string]int
+	posted, removed []string
+	clicked         func(id string)
 }
 
 var _ system.System = (*System)(nil)
@@ -105,6 +107,49 @@ func (s *System) SetDockColor(color string) {
 // OpenFullDiskAccess opens nothing: a test gives the access itself, by making the files the
 // app reads readable.
 func (s *System) OpenFullDiskAccess() {}
+
+func (s *System) ShowNotification(n system.Notification) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.posted = append(s.posted, n.ID)
+}
+
+func (s *System) RemoveNotification(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.removed = append(s.removed, id)
+}
+
+func (s *System) OnNotificationClicked(clicked func(id string)) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.clicked = clicked
+}
+
+// Click is the person clicking the notification id on the system, as a test does it: the
+// app hears it on the main thread.
+func (s *System) Click(id string) {
+	s.mu.Lock()
+	clicked := s.clicked
+	s.mu.Unlock()
+	if clicked != nil {
+		s.post(func() { clicked(id) })
+	}
+}
+
+// Notifications are the ids of the notifications the app showed, in order, and Removed those
+// it took away.
+func (s *System) Notifications() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]string{}, s.posted...)
+}
+
+func (s *System) Removed() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]string{}, s.removed...)
+}
 
 func (s *System) Report(string) []crash.Section {
 	return []crash.Section{{Title: "Version", Text: "Project B on the mock engine"}}

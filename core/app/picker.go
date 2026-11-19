@@ -240,7 +240,7 @@ func (p *Picker) PrintRequested(engine.TabID) bool                            { 
 
 // The picker shows no notifications.
 func (p *Picker) NotificationShown(engine.Notification) bool { return false }
-func (p *Picker) NotificationClicked(string)                 {}
+func (p *Picker) NotificationClosed(string)                  {}
 
 func (p *Picker) PermissionStatusOf(_ engine.TabID, _, kind string) engine.PermissionStatus {
 	return sites.Default(kind)

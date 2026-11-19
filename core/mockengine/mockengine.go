@@ -1013,9 +1013,9 @@ func (e *Engine) Fire(w engine.WindowID, tab engine.TabID, kind, value string) {
 		case "notification":
 			// The page shows a notification, its id in value.
 			e.showNotification(shown, value)
-		case "notificationClick":
-			// The person clicks the notification value on the system.
-			e.listener.NotificationClicked(value)
+		case "notificationClose":
+			// The page closes the notification value it showed.
+			e.listener.NotificationClosed(value)
 		case "permission", "permissionQuiet":
 			// The page asks for the kinds in value, from a press, or on its own.
 			e.requestPermission(shown, value, kind == "permission")

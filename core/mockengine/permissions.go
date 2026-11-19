@@ -20,8 +20,8 @@ type PermissionAnswer struct {
 
 type permissionLog struct {
 	mu sync.Mutex
-	// shown is the notifications the app let the system show, by id.
-	shown   []string
+	// clicked is the notifications whose click the app fired in their page, by id.
+	clicked []string
 	last    engine.PermissionID
 	kinds   map[engine.PermissionID][]string
 	answers []PermissionAnswer
@@ -63,8 +63,8 @@ func (e *Engine) PermissionAnswers() []PermissionAnswer {
 	return append([]PermissionAnswer{}, e.perms.answers...)
 }
 
-// showNotification is the page in tab showing a notification, id; the app says whether
-// the system shows it. Main thread.
+// showNotification is the page in tab showing a notification, id; the app says whether it
+// may, and shows it on the system itself. Main thread.
 func (e *Engine) showNotification(tab engine.TabID, id string) {
 	t := e.tabs[tab]
 	if t == nil {
@@ -74,16 +74,20 @@ func (e *Engine) showNotification(tab engine.TabID, id string) {
 	if u, err := url.Parse(t.current); err == nil && u.Host != "" {
 		origin = u.Scheme + "://" + u.Host
 	}
-	if e.listener.NotificationShown(engine.Notification{ID: id, Origin: origin, Page: t.current, Title: id}) {
-		e.perms.mu.Lock()
-		e.perms.shown = append(e.perms.shown, id)
-		e.perms.mu.Unlock()
-	}
+	e.listener.NotificationShown(engine.Notification{ID: id, Origin: origin, Page: t.current, Title: id})
 }
 
-// NotificationsShown is every notification the system showed, in order. Any goroutine.
-func (e *Engine) NotificationsShown() []string {
+// ClickNotification records the page's click event, fired as the app asked.
+func (e *Engine) ClickNotification(id string) {
 	e.perms.mu.Lock()
 	defer e.perms.mu.Unlock()
-	return append([]string{}, e.perms.shown...)
+	e.perms.clicked = append(e.perms.clicked, id)
+}
+
+// NotificationsClicked is every notification whose click the app fired, in order. Any
+// goroutine.
+func (e *Engine) NotificationsClicked() []string {
+	e.perms.mu.Lock()
+	defer e.perms.mu.Unlock()
+	return append([]string{}, e.perms.clicked...)
 }

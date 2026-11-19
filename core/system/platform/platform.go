@@ -20,6 +20,8 @@ const (
 type System struct {
 	defaultBrowser system.Question
 	notifications  system.Question
+	// clicked is OnNotificationClicked's, set once at start. Main thread.
+	clicked func(id string)
 }
 
 var the = &System{}
@@ -28,6 +30,18 @@ var _ system.System = the
 
 // New is this OS's system.System.
 func New() *System { return the }
+
+func (s *System) OnNotificationClicked(clicked func(id string)) { s.clicked = clicked }
+
+// PBSystemNotificationClicked is a click on a notification ShowNotification showed, on the
+// main thread.
+//
+//export PBSystemNotificationClicked
+func PBSystemNotificationClicked(id *C.char) {
+	if the.clicked != nil {
+		the.clicked(C.GoString(id))
+	}
+}
 
 // PBSystemAnswered is the OS answering a question the core asked, on the main thread:
 // whether the app is the default browser now, or may show its notifications.

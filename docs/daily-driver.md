@@ -481,10 +481,11 @@ rule 31 checks it.
 
 **Notifications** a page shows are the system's: the engine sends each to Go
 (`PB_EVENT_NOTIFICATION_SHOW`, with its title, body, origin and tab), Go checks the origin
-is allowed and asks the engine to post it to macOS's notification centre.
-A click on it comes back to Go (`PB_EVENT_NOTIFICATION_CLICKED`), which brings the tab's
-window to the front, makes the tab active and fires the page's `click` event. A packaged app
-only: a bare binary can't post to the notification centre.
+is allowed and posts it to macOS's notification centre itself (`core/system`). A click on it
+comes to Go from the system, which fires the page's `click` event through the engine
+(`click_notification`), then brings the tab's window to the front and makes the tab active.
+One the page closes, the engine says (`PB_EVENT_NOTIFICATION_CLOSED`), and Go takes it off the
+system. A packaged app only: a bare binary can't post to the notification centre.
 
 **The shell.** In Standard the prompt is the design system's floating surface, from the
 address field's start: a glyph of what is asked, then "*site* wants to use your camera and
@@ -506,8 +507,9 @@ connection of the site's open pages (`siteConnections`, by origin, insecure when
 them is). The certificate warnings extend it: a page whose certificate the person went past
 is `insecure` for `certificate`.
 
-**The numbers.** Events 40 to 44: `PB_EVENT_PERMISSION_REQUEST`, `PB_EVENT_PERMISSION_STATUS`,
-`PB_EVENT_NOTIFICATION_SHOW`, `PB_EVENT_NOTIFICATION_CLICKED`, `PB_EVENT_CONNECTION_CHANGED`.
+**The numbers.** Events 40 to 44 and 49: `PB_EVENT_PERMISSION_REQUEST`,
+`PB_EVENT_PERMISSION_STATUS`, `PB_EVENT_NOTIFICATION_SHOW`, `PB_EVENT_CONNECTION_CHANGED`,
+`PB_EVENT_NOTIFICATION_CLOSED`; 43 was the click.
 Rules 30 and 31.
 
 **Not yet expressed,** none needed now, each one engine call or one field when it is:

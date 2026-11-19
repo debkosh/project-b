@@ -90,12 +90,44 @@ func TestANotificationShowsOnceItsSiteMayAndItsClickBringsItsTabForward(t *testi
 	r.answers(1)
 	r.e.Fire(1, 1, "notification", "after")
 	r.e.Settle()
-	if got := r.e.NotificationsShown(); !reflect.DeepEqual(got, []string{"after"}) {
+	if got := r.sys.Notifications(); !reflect.DeepEqual(got, []string{"after"}) {
 		t.Fatalf("shown %v, want only the one after Allow", got)
 	}
-	// Another tab is active when the person clicks it.
+	// Another tab is active when the person clicks it: the page gets its click, and its tab
+	// comes forward.
 	r.shell(`{"t":"newTab"}`)
 	r.waitFor(func(m map[string]any) bool { return m["t"] == "tabs" && m["active"] != float64(1) })
-	r.e.Fire(1, 0, "notificationClick", "after")
+	r.sys.Click("after")
 	r.waitFor(func(m map[string]any) bool { return m["t"] == "tabs" && m["active"] == float64(1) })
+	if got := r.e.NotificationsClicked(); !reflect.DeepEqual(got, []string{"after"}) {
+		t.Fatalf("the page heard clicks on %v", got)
+	}
+	// A second click on it, from the system, is no one's: the first took it.
+	r.sys.Click("after")
+	r.e.Settle()
+	if got := r.e.NotificationsClicked(); len(got) != 1 {
+		t.Fatalf("the page heard clicks on %v", got)
+	}
+}
+
+// A notification its page closes leaves the system, and a click that comes late does nothing.
+func TestANotificationThePageClosesLeavesTheSystem(t *testing.T) {
+	r := start(t, t.TempDir())
+	defer r.stop()
+	r.visit("https://chat.test/room")
+	r.e.Fire(1, 1, "permission", "notifications")
+	p := r.prompts(1)[0].(map[string]any)
+	r.shell(`{"t":"permissionAnswer","id":` + jsonNumber(p["id"]) + `,"choice":"allow"}`)
+	r.answers(1)
+	r.e.Fire(1, 1, "notification", "n1")
+	r.e.Fire(1, 1, "notificationClose", "n1")
+	r.e.Settle()
+	if got := r.sys.Removed(); !reflect.DeepEqual(got, []string{"n1"}) {
+		t.Fatalf("removed %v", got)
+	}
+	r.sys.Click("n1")
+	r.e.Settle()
+	if got := r.e.NotificationsClicked(); len(got) != 0 {
+		t.Fatalf("the page heard clicks on %v", got)
+	}
 }

@@ -15,5 +15,13 @@ void pb_system_ask_default_browser(void);
 void pb_system_answer_notifications(void);
 // rgb is 0xRRGGBB, or -1 for no dot.
 void pb_system_set_dock_color(int32_t rgb);
+// Posts a page's notification to the notification centre; a click on it reaches Go as
+// PBSystemNotificationClicked, on the main thread. Remove takes one away. A bare binary,
+// as the tests run, has no bundle, and posts nothing.
+void pb_system_show_notification(const char* id,
+                                 const char* title,
+                                 const char* subtitle,
+                                 const char* body);
+void pb_system_remove_notification(const char* id);
 
 #endif  // PROJECT_B_CORE_SYSTEM_PLATFORM_PLATFORM_DARWIN_H_

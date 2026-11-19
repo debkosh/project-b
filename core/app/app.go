@@ -322,6 +322,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	// The profile's colour is its frame colour: on its Dock icon, and in the list.
 	a.System.SetDockColor(a.Prefs.FrameColor())
 	a.Prefs.OnFrameColorChanged(a.System.SetDockColor)
+	a.System.OnNotificationClicked(func(id string) { a.notificationClicked(e, id) })
 	if cfg.Profile != "" {
 		a.Prefs.OnFrameColorChanged(func(c string) {
 			if err := cfg.Profiles.SetColor(cfg.Profile, c); err != nil {
