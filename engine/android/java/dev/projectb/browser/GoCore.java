@@ -23,6 +23,9 @@ final class GoCore {
     /** The address of the table of Go's functions, for the content library. */
     static native long table();
 
+    /** An answer to a question Go asked of Android (GoSystem), on the main thread. */
+    static native void answered(int question, boolean yes);
+
     /** Opens a link another app sent, as a new tab. Only after Go started. */
     static native void openUrl(String url);
 }

@@ -141,8 +141,7 @@ final class Downloads {
     }
 
     // Opens the shared copy, once the copy publish started is made: Open right after a
-    // download ends would otherwise find nothing yet and do nothing.
-    @CalledByNative
+    // download ends would otherwise find nothing yet and do nothing. GoSystem's.
     static void open(String path) {
         sCopier.execute(() -> openNow(path));
     }
@@ -165,8 +164,7 @@ final class Downloads {
         }
     }
 
-    // Shows the phone's own list of downloads, where the shared copies are.
-    @CalledByNative
+    // Shows the phone's own list of downloads, where the shared copies are. GoSystem's.
     static void reveal() {
         Context context = ContextUtils.getApplicationContext();
         try {

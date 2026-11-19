@@ -166,10 +166,8 @@ typedef enum PBEvent {
   PB_EVENT_THUMBNAIL = 77,              // i: tab, i: revision, greater for each newer
                                         // one; capture_thumbnail kept a new picture of
                                         // its page, at chrome://thumb/<tab> for our pages
-  PB_EVENT_DEFAULT_BROWSER = 78,        // i: 1 when the app is the default browser now;
-                                        // how ask_default_browser ended
-  PB_EVENT_NOTIFICATIONS = 79,          // i: 1 when the app may show its notifications
-                                        // now; how ask_notifications ended
+  // 78 and 79 were the default browser's and notifications' answers, which the Go core
+  // has from the OS itself now (core/system, docs/layers.md).
   PB_EVENT_FOLDER_CHOSEN = 80,          // i: window, s: the folder, or "" for none; how
                                         // choose_folder ended
   PB_EVENT_APP_LINK = 81,               // i: tab, s: url; a press in a tab's own page
@@ -412,9 +410,6 @@ typedef struct PBEngineCalls {
   void (*download_url)(int64_t tab, const char* url, int save_as);
   // Runs a PBDownloadCommand on a running download.
   void (*download_command)(uint32_t download, int32_t command);
-  // Opens a file as the OS would, or shows it in the file manager.
-  void (*open_file)(const char* path);
-  void (*reveal_file)(const char* path);
   // Answers a page's dialog: OK or not, and a prompt's text.
   void (*answer_dialog)(int64_t dialog, int ok, const char* text);
   // Answers a sign-in dialog: the username and password, or no to cancel.
@@ -505,10 +500,6 @@ typedef struct PBEngineCalls {
   // Replaces the native menu bar: json is Go's engine.Menu.
   void (*set_menu)(const char* json, size_t length);
   void (*app_command)(int32_t command);  // PBAppCommand
-  // Draws the app's Dock icon with a small dot in the profile's colour, 0xRRGGBB, at its
-  // bottom right, or with none for -1, no colour picked. Null on Android, where nothing
-  // calls it.
-  void (*set_dock_color)(int32_t rgb);
   // The hosts no request of a page may reach, nor any under them, one per line, lower
   // case: the page, its frames, its subresources and its WebSockets. Go sets them once, at
   // start, before any tab.
@@ -522,16 +513,6 @@ typedef struct PBEngineCalls {
   const struct PBContentHooks* (*content_hooks)(void);
   // Asks the main thread to call run_posted soon.
   void (*post_wakeup)(void);
-  // Asks the system to make the app the default browser, which asks the person itself:
-  // macOS's question, Android's sheet. PB_EVENT_DEFAULT_BROWSER says how it ended.
-  void (*ask_default_browser)(void);
-  // 1 when the app is the default browser now.
-  int (*is_default_browser)(void);
-  // Android only: asks to show the app's notifications, a download's, which Android asks
-  // the person; PB_EVENT_NOTIFICATIONS says how it ended. notifications_allowed is 1 when
-  // it may now. The Mac's are its own to show, and it leaves both null.
-  void (*ask_notifications)(void);
-  int (*notifications_allowed)(void);
   // Android only: opens the system's package installer for the APK at path, where the user
   // confirms. The Mac swaps its own bundle, and leaves this null.
   void (*install_update)(const char* path);

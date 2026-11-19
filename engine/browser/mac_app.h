@@ -18,22 +18,11 @@ void ReportModifiers(uint64_t flags);
 // Runs a PBAppCommand.
 void RunAppCommand(int32_t command);
 
-// Draws the Dock icon as the app's own with a small dot in rgb, 0xRRGGBB, at its bottom
-// right; -1 draws it with none.
-void SetDockColor(int32_t rgb);
-
 // Tells Go the keys macOS App Shortcuts gives our menu items, now and on every change.
 void WatchOSKeyBindings();
 
 // Hands Go the links and files macOS opens with the app. Called once Go has started.
 void ReceiveLinks();
-
-// Asks macOS to make the app the default browser, which asks the person; Go hears how it
-// ended (PB_EVENT_DEFAULT_BROWSER).
-void AskDefaultBrowser();
-
-// Whether macOS opens web links with this app.
-bool IsDefaultBrowser();
 
 }  // namespace project_b
 

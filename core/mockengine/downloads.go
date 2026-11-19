@@ -24,15 +24,13 @@ type mockDownload struct {
 	stalled bool
 }
 
-// downloads is what the mock keeps of downloads: those running, and the files the app
-// asked to open or show.
+// downloads is what the mock keeps of downloads: those running, and the notices it showed.
+// The files the app opens or shows are mocksystem's.
 type downloads struct {
 	mu      sync.Mutex
 	next    engine.DownloadID
 	running map[engine.DownloadID]*mockDownload
 	notices []engine.Download // What ShowDownload was asked to show, in order.
-	opened  []string
-	shown   []string
 }
 
 func (e *Engine) dl() *downloads {
@@ -148,20 +146,6 @@ func (e *Engine) failDownloads() {
 	}
 }
 
-func (e *Engine) OpenFile(p string) {
-	d := e.dl()
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	d.opened = append(d.opened, p)
-}
-
-func (e *Engine) RevealFile(p string) {
-	d := e.dl()
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	d.shown = append(d.shown, p)
-}
-
 func (e *Engine) ShowDownload(id int, n engine.Download) {
 	d := e.dl()
 	d.mu.Lock()
@@ -175,19 +159,4 @@ func (e *Engine) Notices() []engine.Download {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	return append([]engine.Download(nil), d.notices...)
-}
-
-// Opened and Shown are the files the app asked to open, and to show in the file manager.
-func (e *Engine) Opened() []string {
-	d := e.dl()
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	return append([]string(nil), d.opened...)
-}
-
-func (e *Engine) Shown() []string {
-	d := e.dl()
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	return append([]string(nil), d.shown...)
 }

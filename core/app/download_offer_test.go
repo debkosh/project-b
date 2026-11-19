@@ -17,7 +17,7 @@ func TestTheDownloadBarsOffer(t *testing.T) {
 	}
 	r.shell(`{"t":"allowNotifications"}`)
 	r.e.Settle()
-	r.main(func() { allowed = r.e.NotificationsAllowed() })
+	r.main(func() { allowed = r.sys.NotificationsAllowed() })
 	if !allowed {
 		t.Fatal("allowNotifications didn't ask the system")
 	}

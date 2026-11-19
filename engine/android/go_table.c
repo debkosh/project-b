@@ -8,13 +8,101 @@
 #include <string.h>
 
 #include "project_b/engine/abi/pb_exports.h"
+#include "project_b/engine/abi/pb_system_android.h"
 
-// Go's own: where it asks for the device key (core/cmd/lib/keys_android.go).
+// Go's own: where it asks for the device key (core/cmd/lib/keys_android.go), and the OS's
+// calls and their answers (core/system/platform).
 void PBSetDeviceKeyReader(int (*read)(int create, uint8_t* out));
+void PBSetSystemCalls(const PBSystemCalls* calls);
+void PBSystemAnswered(int32_t question, int yes);
 
 static JavaVM* vm;
 static jclass device_key;
 static jmethodID device_key_get;
+static jclass go_system;
+static jmethodID go_system_open_file;
+static jmethodID go_system_reveal_file;
+static jmethodID go_system_is_default_browser;
+static jmethodID go_system_ask_default_browser;
+static jmethodID go_system_notifications_allowed;
+static jmethodID go_system_ask_notifications;
+
+// The calling thread's JNIEnv, attaching a thread of Go's that has none; *attached says to
+// detach it after, with detach.
+static JNIEnv* attach(int* attached) {
+  JNIEnv* env;
+  *attached = 0;
+  if ((*vm)->GetEnv(vm, (void**)&env, JNI_VERSION_1_6) == JNI_EDETACHED) {
+    if ((*vm)->AttachCurrentThread(vm, &env, NULL) != JNI_OK) {
+      return NULL;
+    }
+    *attached = 1;
+  }
+  return env;
+}
+
+// Ends a call into Java: an exception it threw goes to the log, not up into Go.
+static void detach(JNIEnv* env, int attached) {
+  if ((*env)->ExceptionCheck(env)) {
+    (*env)->ExceptionDescribe(env);
+    (*env)->ExceptionClear(env);
+  }
+  if (attached) {
+    (*vm)->DetachCurrentThread(vm);
+  }
+}
+
+// GoSystem's static methods, as PBSystemCalls has them.
+static void system_void(jmethodID method) {
+  int attached;
+  JNIEnv* env = attach(&attached);
+  if (env == NULL) {
+    return;
+  }
+  (*env)->CallStaticVoidMethod(env, go_system, method);
+  detach(env, attached);
+}
+
+static int system_bool(jmethodID method) {
+  int attached;
+  JNIEnv* env = attach(&attached);
+  if (env == NULL) {
+    return 0;
+  }
+  jboolean yes = (*env)->CallStaticBooleanMethod(env, go_system, method);
+  if ((*env)->ExceptionCheck(env)) {
+    yes = JNI_FALSE;
+  }
+  detach(env, attached);
+  return yes ? 1 : 0;
+}
+
+static void system_open_file(const char* path) {
+  int attached;
+  JNIEnv* env = attach(&attached);
+  if (env == NULL) {
+    return;
+  }
+  jstring p = (*env)->NewStringUTF(env, path);
+  (*env)->CallStaticVoidMethod(env, go_system, go_system_open_file, p);
+  (*env)->DeleteLocalRef(env, p);
+  detach(env, attached);
+}
+
+static void system_reveal_file(void) { system_void(go_system_reveal_file); }
+static int system_is_default_browser(void) { return system_bool(go_system_is_default_browser); }
+static void system_ask_default_browser(void) { system_void(go_system_ask_default_browser); }
+static int system_notifications_allowed(void) { return system_bool(go_system_notifications_allowed); }
+static void system_ask_notifications(void) { system_void(go_system_ask_notifications); }
+
+static const PBSystemCalls system_calls = {
+    .open_file = system_open_file,
+    .reveal_file = system_reveal_file,
+    .is_default_browser = system_is_default_browser,
+    .ask_default_browser = system_ask_default_browser,
+    .notifications_allowed = system_notifications_allowed,
+    .ask_notifications = system_ask_notifications,
+};
 
 // read_device_key is DeviceKey.get, on whichever of Go's threads asks: 1 with the 32 bytes in
 // out, 0 for none, -1 when Java threw, which goes to the log.
@@ -65,13 +153,21 @@ JNIEXPORT jlong JNICALL Java_dev_projectb_browser_GoCore_table(JNIEnv* env, jcla
       .timeline_page_origin = PBTimelinePageOrigin,
       .free = PBFree,
   };
-  // DeviceKey is found here, on Java's thread, by this class's loader: a thread of Go's that
-  // attaches later finds only the system's classes.
+  // DeviceKey and GoSystem are found here, on Java's thread, by this class's loader: a thread
+  // of Go's that attaches later finds only the system's classes.
   if (vm == NULL) {
     (*env)->GetJavaVM(env, &vm);
     device_key = (*env)->NewGlobalRef(env, (*env)->FindClass(env, "dev/projectb/browser/DeviceKey"));
     device_key_get = (*env)->GetStaticMethodID(env, device_key, "get", "(Z)[B");
     PBSetDeviceKeyReader(read_device_key);
+    go_system = (*env)->NewGlobalRef(env, (*env)->FindClass(env, "dev/projectb/browser/GoSystem"));
+    go_system_open_file = (*env)->GetStaticMethodID(env, go_system, "openFile", "(Ljava/lang/String;)V");
+    go_system_reveal_file = (*env)->GetStaticMethodID(env, go_system, "revealFile", "()V");
+    go_system_is_default_browser = (*env)->GetStaticMethodID(env, go_system, "isDefaultBrowser", "()Z");
+    go_system_ask_default_browser = (*env)->GetStaticMethodID(env, go_system, "askDefaultBrowser", "()V");
+    go_system_notifications_allowed = (*env)->GetStaticMethodID(env, go_system, "notificationsAllowed", "()Z");
+    go_system_ask_notifications = (*env)->GetStaticMethodID(env, go_system, "askNotifications", "()V");
+    PBSetSystemCalls(&system_calls);
   }
   return (jlong)(intptr_t)&go;
 }
@@ -116,6 +212,12 @@ JNIEXPORT jobjectArray JNICALL Java_dev_projectb_browser_GoCore_init(JNIEnv* env
   return out;
 }
 #pragma clang unsafe_buffer_usage end
+
+// An answer to a question Go asked of Android, from GoSystem on the main thread.
+JNIEXPORT void JNICALL Java_dev_projectb_browser_GoCore_answered(JNIEnv* env, jclass cls,
+                                                                  jint question, jboolean yes) {
+  PBSystemAnswered(question, yes ? 1 : 0);
+}
 
 // Android's own: the link another app sent, from BrowserActivity, after Go started.
 void PBOpenURL(char* url);

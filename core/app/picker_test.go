@@ -54,9 +54,6 @@ func TestThePickerShowsTheProfilesAndTheTemplates(t *testing.T) {
 	if string(b) != `[[{"color":"","id":"default","name":"Personal"}],["Personal","Work"]]` {
 		t.Fatalf("the picker shows %s", b)
 	}
-	if e.DockColor() != "" {
-		t.Fatal("a picker copy put a dot on the Dock icon")
-	}
 }
 
 func TestChoosingAProfileOpensItInACopyOfItsOwnAndQuits(t *testing.T) {

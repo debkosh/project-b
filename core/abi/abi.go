@@ -41,12 +41,12 @@ const (
 	PageFullScreen         Event = 75
 	IsPageFullScreen       Event = 76
 	Thumbnail              Event = 77
-	DefaultBrowser         Event = 78
-	Notifications          Event = 79
-	FolderChosen           Event = 80
-	AppLink                Event = 81
-	ImageSaved             Event = 82
-	DownloadAction         Event = 83
+	// 78 and 79 were the default browser's and notifications' answers, which core/system
+	// has now.
+	FolderChosen   Event = 80
+	AppLink        Event = 81
+	ImageSaved     Event = 82
+	DownloadAction Event = 83
 )
 
 var names = map[Event]string{
@@ -68,8 +68,6 @@ var names = map[Event]string{
 	PageFullScreen:         "engine.PageFullScreen",
 	IsPageFullScreen:       "engine.IsPageFullScreen",
 	Thumbnail:              "engine.Thumbnail",
-	DefaultBrowser:         "engine.DefaultBrowserChanged",
-	Notifications:          "engine.NotificationsAnswered",
 	FolderChosen:           "engine.FolderChosen",
 	AppLink:                "engine.AppLink",
 	ImageSaved:             "engine.ImageSaved",
@@ -158,10 +156,6 @@ func (e *Events) Dispatch(id Event, args []Value) (Value, bool) {
 		return yes(l.IsPageFullScreen(engine.TabID(r.int()))), true
 	case Thumbnail:
 		l.Thumbnail(engine.TabID(r.int()), r.int())
-	case DefaultBrowser:
-		l.DefaultBrowserChanged(r.bool())
-	case Notifications:
-		l.NotificationsAnswered(r.bool())
 	case FolderChosen:
 		l.FolderChosen(engine.WindowID(r.int()), r.str())
 	case AppLink:

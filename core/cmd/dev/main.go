@@ -25,10 +25,10 @@ import (
 	"time"
 
 	"projectb/app"
-	"projectb/crash"
 	"projectb/engine"
 	"projectb/flags"
 	"projectb/mockengine"
+	"projectb/mocksystem"
 	"projectb/prefs"
 	"projectb/profiles"
 	"projectb/shells"
@@ -107,6 +107,7 @@ func main() {
 		p.Close()
 	}
 	e := mockengine.New()
+	sys := mocksystem.New(e.Post)
 	// The flags saved in the profile reach the engine at launch, as the real engine's
 	// command line, so one turned on in settings takes effect on Relaunch, as it does there.
 	e.SetSwitches(flags.New(*profile).Switches())
@@ -126,9 +127,7 @@ func main() {
 			SkipWelcome:  *skipWelcome,
 			BrowserHome:  *browserHome,
 			Keychain:     keychainOf(*keychain),
-			System: func() []crash.Section {
-				return []crash.Section{{Title: "Version", Text: "Project B on the mock engine"}}
-			},
+			System:       sys,
 			Update: update.Config{
 				Project:  "project-b",
 				Version:  *version,
@@ -314,7 +313,7 @@ func main() {
 			close(done)
 		})
 		<-done
-		out := map[string]any{"tabs": goTabs, "active": active, "settings": settings, "regions": shell, "drag": drag, "bounds": mockengine.Page(l), "visible": append([]engine.VisibleTab{}, l.Tabs...), "closed": e.Closed(win), "quit": e.Quit(), "windows": e.Windows(), "hidden": e.Hidden(win), "windowColor": l.FrameColor, "shownColor": e.ShownColor(), "frameWidth": l.FrameWidth, "page": e.PageOf(win), "shell": e.PageOf(win).Shell(), "focused": e.Focused(), "unshownFocus": e.UnshownFocus(), "leftApp": e.Left(), "dock": e.DockColor(), "opened": opened.Load(), "menu": e.Menu(), "edits": e.Edits(), "permissions": e.PermissionAnswers(), "notifications": e.NotificationsShown(), "notificationsAllowed": e.NotificationsAllowed(), "clipboard": e.Clipboard(), "openedFiles": e.Opened(), "shown": e.Shown(), "dialogAnswers": e.DialogAnswers(), "passkeyAnswers": e.PasskeyAnswers(), "window": e.Reported(win), "shared": e.Shared(), "deleted": e.Deleted(), "sharedText": e.SharedText(), "copiedImage": e.CopiedImage(), "savedImages": e.SavedImages(), "published": e.Published(), "findsStopped": e.FindsStopped()}
+		out := map[string]any{"tabs": goTabs, "active": active, "settings": settings, "regions": shell, "drag": drag, "bounds": mockengine.Page(l), "visible": append([]engine.VisibleTab{}, l.Tabs...), "closed": e.Closed(win), "quit": e.Quit(), "windows": e.Windows(), "hidden": e.Hidden(win), "windowColor": l.FrameColor, "shownColor": e.ShownColor(), "frameWidth": l.FrameWidth, "page": e.PageOf(win), "shell": e.PageOf(win).Shell(), "focused": e.Focused(), "unshownFocus": e.UnshownFocus(), "leftApp": e.Left(), "dock": sys.DockColor(), "opened": opened.Load(), "menu": e.Menu(), "edits": e.Edits(), "permissions": e.PermissionAnswers(), "notifications": e.NotificationsShown(), "clipboard": e.Clipboard(), "openedFiles": sys.Opened(), "shown": sys.Shown(), "dialogAnswers": e.DialogAnswers(), "passkeyAnswers": e.PasskeyAnswers(), "window": e.Reported(win), "shared": e.Shared(), "deleted": e.Deleted(), "sharedText": e.SharedText(), "copiedImage": e.CopiedImage(), "savedImages": e.SavedImages(), "published": e.Published(), "findsStopped": e.FindsStopped()}
 		if q := r.URL.Query(); q.Has("x") {
 			x, _ := strconv.ParseFloat(q.Get("x"), 64)
 			y, _ := strconv.ParseFloat(q.Get("y"), 64)

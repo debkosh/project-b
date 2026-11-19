@@ -20,6 +20,7 @@ import (
 	"projectb/commands"
 	"projectb/engine"
 	"projectb/mockengine"
+	"projectb/mocksystem"
 	"projectb/prefs"
 	"projectb/profiles"
 	"projectb/shells"
@@ -35,6 +36,7 @@ import (
 type rig struct {
 	t     *testing.T
 	e     *mockengine.Engine
+	sys   *mocksystem.System // The OS, as the app asked it: cfg's, or one of the rig's own.
 	a     *app.App
 	got   <-chan []byte
 	pages <-chan []byte // What the mock page is told to show.
@@ -71,11 +73,16 @@ func startWith(t *testing.T, cfg app.Config) *rig {
 		}
 	}
 	e := mockengine.New()
+	sys, _ := cfg.System.(*mocksystem.System)
+	if sys == nil {
+		sys = mocksystem.New(e.Post)
+		cfg.System = sys
+	}
 	got, stop := e.Feeds(1).Shell.Subscribe()
 	t.Cleanup(stop)
 	pages, stopPages := e.Feeds(1).Page.Subscribe()
 	t.Cleanup(stopPages)
-	r := &rig{t: t, e: e, got: got, pages: pages}
+	r := &rig{t: t, e: e, sys: sys, got: got, pages: pages}
 	ready := make(chan struct{})
 	e.Post(func() {
 		r.a = app.Start(e, cfg)
@@ -1149,17 +1156,18 @@ func TestTheProfilesMenuAndTheProfilesColour(t *testing.T) {
 		t.Fatal(err)
 	}
 	e := mockengine.New()
+	sys := mocksystem.New(e.Post)
 	var a *app.App
 	ready := make(chan struct{})
 	e.Post(func() {
-		a = app.Start(e, app.Config{ProfileDir: c.Dir, Profiles: list, Profile: c.ID})
+		a = app.Start(e, app.Config{ProfileDir: c.Dir, Profiles: list, Profile: c.ID, System: sys})
 		e.SetListener(a)
 		close(ready)
 	})
 	go e.Run()
 	<-ready
 	e.Settle()
-	if got := e.DockColor(); got != tones.None {
+	if got := sys.DockColor(); got != tones.None {
 		t.Fatalf("the Dock shows %q", got)
 	}
 	var items engine.Menu
@@ -1170,8 +1178,8 @@ func TestTheProfilesMenuAndTheProfilesColour(t *testing.T) {
 	}
 	e.Post(func() { a.Prefs.SetFrameColor("#3470d0") })
 	e.Settle()
-	if p, _, _ := list.Get(c.ID); e.DockColor() != "#3470d0" || p.Color != "#3470d0" {
-		t.Fatalf("the Dock shows %q and the list %q", e.DockColor(), p.Color)
+	if p, _, _ := list.Get(c.ID); sys.DockColor() != "#3470d0" || p.Color != "#3470d0" {
+		t.Fatalf("the Dock shows %q and the list %q", sys.DockColor(), p.Color)
 	}
 }
 

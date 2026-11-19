@@ -320,42 +320,6 @@ void ReceiveLinks() {
   NSApp.delegate = receiver;
 }
 
-bool IsDefaultBrowser() {
-  NSURL* app = [NSWorkspace.sharedWorkspace
-      URLForApplicationToOpenURL:[NSURL URLWithString:@"https://example.com/"]];
-  return app && [[NSBundle bundleWithURL:app].bundleIdentifier
-                    isEqualToString:NSBundle.mainBundle.bundleIdentifier];
-}
-
-void AskDefaultBrowser() {
-  // macOS asks the person once, for http, and changes https with it; https is set too in
-  // case it didn't. Go hears how it ended, on the main thread.
-  NSURL* app = NSBundle.mainBundle.bundleURL;
-  auto report = ^{
-    dispatch_async(dispatch_get_main_queue(), ^{
-      hooks::Args args;
-      args.Int(IsDefaultBrowser() ? 1 : 0);
-      hooks::Fire(PB_EVENT_DEFAULT_BROWSER, args);
-    });
-  };
-  [NSWorkspace.sharedWorkspace setDefaultApplicationAtURL:app
-                                     toOpenURLsWithScheme:@"http"
-                      completionHandler:^(NSError* error) {
-                        if (error) {
-                          LOG(WARNING) << "default browser: "
-                                       << base::SysNSStringToUTF8(
-                                              error.localizedDescription);
-                          report();
-                          return;
-                        }
-                        [NSWorkspace.sharedWorkspace setDefaultApplicationAtURL:app
-                                         toOpenURLsWithScheme:@"https"
-                                            completionHandler:^(NSError*) {
-                                              report();
-                                            }];
-                      }];
-}
-
 void SetMainMenu(const std::string& json) {
   std::optional<base::Value> menu = base::JSONReader::Read(json, 0);
   if (!menu || !menu->is_list()) {
@@ -399,37 +363,6 @@ void RunAppCommand(int32_t command) {
       [NSApp arrangeInFront:nil];
       break;
   }
-}
-
-void SetDockColor(int32_t rgb) {
-  // The bundle's own icon, as it was before the first dot.
-  static NSImage* plain = [NSApp.applicationIconImage copy];
-  // No colour picked: no dot.
-  if (rgb < 0) {
-    NSApp.applicationIconImage = plain;
-    return;
-  }
-  NSColor* color = [NSColor colorWithSRGBRed:((rgb >> 16) & 0xff) / 255.0
-                                       green:((rgb >> 8) & 0xff) / 255.0
-                                        blue:(rgb & 0xff) / 255.0
-                                       alpha:1];
-  NSApp.applicationIconImage = [NSImage
-       imageWithSize:plain.size
-             flipped:NO
-      drawingHandler:^BOOL(NSRect rect) {
-        [plain drawInRect:rect];
-        // A dot a quarter of the icon across, inside the artwork's corner, ringed in
-        // white so it shows on any colour.
-        const CGFloat d = rect.size.width * 0.25;
-        const CGFloat inset = rect.size.width * 0.1;
-        NSRect dot = NSMakeRect(NSMaxX(rect) - inset - d, NSMinY(rect) + inset, d, d);
-        [NSColor.whiteColor setFill];
-        [[NSBezierPath bezierPathWithOvalInRect:dot] fill];
-        [color setFill];
-        [[NSBezierPath bezierPathWithOvalInRect:NSInsetRect(dot, d * 0.1, d * 0.1)]
-            fill];
-        return YES;
-      }];
 }
 
 void ReportOSKeyBindings() {

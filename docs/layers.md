@@ -31,7 +31,7 @@ Each step leaves Mac and Android working and the release run green.
 | | Step | State |
 |---|---|---|
 | 1 | The thin wrapper, `PBInit`, Mac then Android | built and tested, not merged |
-| 2 | `core/system`, the OS managers' door, with its fake | |
+| 2 | `core/system`, the OS managers' door, with its fake | building |
 | 2b | Save as and the folder chooser through Chromium's own file dialog | |
 | 3 | Notifications through Go | |
 | 4 | The Mac's open-link events into `core/system`, or a fourth exception | |
@@ -94,8 +94,16 @@ in `core/system`, and their C++ leaves the adapter:
 - On the Mac some of it is Objective-C, in `.m` files beside the Go, built by cgo. macOS
   allows its UI only on the main thread: `core/system` hops there itself, so no caller can
   get it wrong.
-- `core/system/fake` is the tests' and the mock engine's: it answers as a person who says
-  yes, as the mock engine does today.
+- `core/system` is the interface alone, so the managers build and test with no cgo; each OS's
+  is `core/system/platform`, which only `core/cmd/lib` links; `core/mocksystem`, beside
+  `core/mockengine`, is the tests' and the dev server's. It answers as a person who says yes,
+  or, with `Dismiss`, as one who closes the question.
+- The crash report's device section (`Report`) and the downloads folder come along from
+  `core/cmd/lib`'s `system_*.go`, with the Full Disk Access and Dock files there.
+- The drivers and tests watch through the app, not the events, so they stay as they are: the
+  e2e reads the dev server's `dock`, `openedFiles` and `shown`, now the mock system's; the
+  Mac driver's `dockdot` reads the real Dock icon; `drive_android.py` answers Android's own
+  notifications question.
 
 Agreed with the platforms session, 2026-11-19 (Linux will be the same shape, pure Go over
 D-Bus, and Windows Win32 from Go):

@@ -15,7 +15,7 @@ func (a *App) downloadsShellPart(e engine.Engine) shell.Part {
 	a.Downloads.OnChanged(func() { a.Shell.Send(map[string]any{"t": "downloads", "downloads": a.Downloads.List()}) })
 	news := newDownloadNews(a.Downloads.List())
 	a.Downloads.OnChanged(func() {
-		for _, n := range news.changed(a.Downloads.List(), !e.NotificationsAllowed() && !a.Downloads.Offered()) {
+		for _, n := range news.changed(a.Downloads.List(), !a.System.NotificationsAllowed() && !a.Downloads.Offered()) {
 			a.Shell.Send(n)
 		}
 	})
@@ -35,7 +35,7 @@ func (a *App) downloadsShellPart(e engine.Engine) shell.Part {
 				a.Downloads.SetOffered()
 			case "allowNotifications":
 				a.Downloads.SetOffered()
-				e.AskNotifications()
+				a.System.AskNotifications(a.notificationsAnswered)
 			case "clearDownloads":
 				a.Downloads.Clear(0)
 			case "saveReport":

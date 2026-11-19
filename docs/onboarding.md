@@ -200,16 +200,17 @@ Each slice goes out through a release of its own.
   the welcome unfinished in `welcome.json` and closes the app. The next start opens it over the
   whole window, as a first start does, with the tabs On start, open brings back under it. It
   doesn't open in a tab: the welcome is the whole-window first run, and a tab showed less of it.
-- **Make default browser,** on the last step. Go asks the engine (`AskDefaultBrowser`), and
-  the system asks the person: on the Mac `NSWorkspace`'s `setDefaultApplicationAtURL:`
-  for http then https, on Android `RoleManager`'s `ROLE_BROWSER` sheet. The answer comes
-  back as `PB_EVENT_DEFAULT_BROWSER`, and the row says so. The Mac app declares itself a
+- **Make default browser,** on the last step. Go asks the OS itself
+  (`system.System.AskDefaultBrowser`, `core/system`), and the system asks the person: on the
+  Mac `NSWorkspace`'s `setDefaultApplicationAtURL:` for http then https, on Android
+  `RoleManager`'s `ROLE_BROWSER` sheet. The answer comes back to the callback Go passed, a
+  sheet closed unanswered too, and the row says so. The Mac app declares itself a
   browser in its Info.plist (`tools/package.sh`: http and https, html and xhtml), and a
   delegate takes the links and pages macOS hands it to Go (`PBGoCalls.open_urls`), which
   opens them as a second copy's are. Checked on the mock; on a real Mac only in the VM, as
   pressing it changes the Mac's own default browser.
-- **Download notifications,** on a phone's last step: `AskNotifications` asks Android for
-  `POST_NOTIFICATIONS`, and `PB_EVENT_NOTIFICATIONS` brings the answer back. The ask at the
+- **Download notifications,** on a phone's last step: `system.System.AskNotifications` asks
+  Android for `POST_NOTIFICATIONS`, and the answer comes back to its callback. The ask at the
   first download stays, for a person who skipped setup; once allowed here it never comes.
 - **Checked on the real Mac app,** 2026-11-17, on a fresh `--root`: the welcome over the whole
   window, the grey frame, Blue and Dark repainting the page and the window's own border at
@@ -304,7 +305,7 @@ Each slice goes out through a release of its own.
   preferences, which Safari has used since it moved its choice there; Google until one is
   picked. Its passwords are in iCloud Keychain, which no other app can read.
 - **Messages:** a page sends `openAccess`; Go opens System Settings
-  (`engine.OpenFullDiskAccess`, `open` with the pane's `x-apple.systempreferences` address)
+  (`system.System.OpenFullDiskAccess`, `open` with the pane's `x-apple.systempreferences` address)
   and starts trying. A row from Go has `locked` while it is.
 - **Testing it:** the test home has a Safari (`make.sh` writes its files with Python's
   `plistlib` and Safari's own tables); a folder with no permissions stands in for macOS's
