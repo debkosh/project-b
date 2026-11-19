@@ -6,6 +6,7 @@ import android.content.res.Configuration;
 import android.os.Bundle;
 
 import org.chromium.base.CommandLine;
+import org.chromium.base.PathUtils;
 import org.chromium.base.library_loader.LibraryLoader;
 import org.chromium.base.library_loader.LibraryProcessType;
 import org.chromium.content_public.browser.BrowserStartupController;
@@ -29,6 +30,17 @@ public final class BrowserActivity extends Activity {
             CommandLine.init(null);
         }
         LibraryLoader.getInstance().ensureInitialized();
+        // The Go core starts, then content, as main does on the Mac. Go's profile is the one
+        // folder Android gives the app, named outright as the desktop's --user-data-dir does.
+        // One process holds it, so the claim is always this copy's and Go never says quit:
+        // added is never null here.
+        String data = PathUtils.getDataDirectory();
+        String[] added =
+                GoCore.init(
+                        new String[] {
+                            "project_b", "--root=" + data, "--user-data-dir=" + data + "/profile"
+                        });
+        CommandLine.getInstance().appendSwitchesAndArguments(added);
 
         intentRequests = IntentRequestTracker.createFromActivity(this);
         windowAndroid =

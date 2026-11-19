@@ -561,23 +561,14 @@ typedef struct PBEngineCalls {
   int (*delete_download)(const char* path);
 } PBEngineCalls;
 
-// What the adapter can tell the Go core. The main binary fills it in from Go's exports
-// (pb_exports.h) and hands it to ProjectBMain. Helpers have no Go and no table.
+// What the adapter can tell the Go core, once PBInit (pb_exports.h) has said this copy runs.
+// The main binary fills it in from Go's exports and hands it to ProjectBMain. Helpers have no
+// Go and no table.
 typedef struct PBGoCalls {
-  // The first call, before anything is written to the profile. Go chooses the profile
-  // from the command line's switches, each "" when not given: root, the folder that holds
-  // the profiles and their list (--root); profile, a listed profile's id (--profile);
-  // user_data_dir, a folder that is the profile as it is (--user-data-dir); picker, 1 for
-  // a copy started to pick its profile (--picker). It returns the folder this copy keeps
-  // its own files in, malloc'd: the profile's, once this copy owns it, or the root for a
-  // copy that picks its profile later, through open_profile. It returns NULL when another
-  // copy owns the profile and has been handed urls, one per line, possibly none: this
-  // copy then quits.
-  char* (*claim_profile)(const char* root,
-                         const char* profile,
-                         const char* user_data_dir,
-                         int picker,
-                         const char* urls);
+  // The folder this copy keeps its own files in, which PBInit claimed (pb_exports.h): the
+  // profile's, or the root for a copy that picks its profile later, through open_profile.
+  // malloc'd; the caller frees it with free below.
+  char* (*copy_dir)(void);
 
   // skip_welcome is --skip-welcome: a start that would open the welcome notes it
   // finished instead.
@@ -602,14 +593,6 @@ typedef struct PBGoCalls {
   // Returns a string the caller frees with free().
   char* (*go_stats)(void);
 
-  // What --version prints first, such as "Project B 0.2.17". The caller frees it.
-  char* (*version)(void);
-
-  // The switches the flags saved in dir ask for, one per line, such as "--pb-extensions".
-  // Called once, before content starts, with the folder claim_profile returned. The caller
-  // frees it.
-  char* (*launch_switches)(const char* profile_dir);
-
   // The links and files the system opens with the app, one per line, as its default
   // browser: they open as a second copy's do. The Mac's; Android hands its own to
   // PBOpenURL.
@@ -617,7 +600,7 @@ typedef struct PBGoCalls {
 
   // The timeline, Go's record of what happened and when (core/timeline). The adapter
   // uses these through engine/browser/timeline.h. Times are nanoseconds since process
-  // start. timeline_start comes first: the file goes in the folder claim_profile returned,
+  // start. timeline_start comes first: the file goes in the folder copy_dir names,
   // and the process is already process_age old.
   void (*timeline_start)(const char* profile_dir, int64_t process_age);
   int64_t (*timeline_now)(void);

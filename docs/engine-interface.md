@@ -23,17 +23,19 @@ that would own the window itself doesn't fit.
 
 ## Start-up
 
-The engine owns the process and its run loop, and calls Go in this order:
+The wrapper starts the Go core, then the engine ([layers.md](layers.md)). The engine owns
+the process's run loop from there, and calls Go in this order:
 
-1. `claim_profile(root, profile, user_data_dir, picker, urls)` gives back the folder this copy
-   keeps its files in, or NULL when another copy has the profile, in which case quit.
-2. `launch_switches(dir)` gives back the switches the profile's flags ask for. A flag marked
+0. Before the engine, the wrapper calls `PBInit(argc, argv)`: Go reads the command line,
+   chooses and claims the profile, and gives back the command line for the engine, with the
+   switches the profile's flags ask for, or NULL when this copy quits. A flag marked
    `"engine": "chromium"` in `core/flags/registry.json` is Chromium's own switch; any other
    engine ignores it.
-3. `timeline_start`, then `start(calls, blocked_hosts)`. Go opens the profile
+1. `copy_dir` gives back the folder this copy keeps its files in.
+2. `timeline_start`, then `start(calls, blocked_hosts)`. Go opens the profile
    (`OpenProfile`), hands over the block rules (`SetBlockRules`), and opens its windows.
-4. `run_posted` on the main thread, each time `post_wakeup` asks.
-5. `stop` as the app ends.
+3. `run_posted` on the main thread, each time `post_wakeup` asks.
+4. `stop` as the app ends.
 
 ## What an engine must implement
 

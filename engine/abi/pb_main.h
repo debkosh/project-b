@@ -9,10 +9,11 @@
 extern "C" {
 #endif
 
-// Runs content and returns when it's done. The main binary passes its table of Go
-// functions. The helper passes NULL and runs whichever child process --type names.
+// Runs content and returns when it's done. argv is NULL-terminated. The main binary passes
+// the command line PBInit finished and its table of Go functions. The helper passes its own
+// and NULL, and runs whichever child process --type names.
 __attribute__((visibility("default")))
-int ProjectBMain(int argc, const char** argv, const PBGoCalls* go);
+int ProjectBMain(const char** argv, const PBGoCalls* go);
 
 #ifdef __cplusplus
 }

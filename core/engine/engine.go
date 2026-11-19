@@ -6,19 +6,18 @@
 // Threading: every Engine call and every Listener call happens on the main thread.
 // A worker goroutine that finishes something uses Post to get back onto it.
 //
-// Start-up. An engine owns the process and its run loop, and calls the app's core in this
-// order (core/cmd/lib, PBGoCalls in engine/abi/pb_abi.h):
+// Start-up. The platform's wrapper starts the app's core, then the engine (docs/layers.md):
+// PBInit reads the command line's --root, --profile, --user-data-dir and --picker, chooses the
+// profile and claims its folder, and hands the engine its command line with the switches the
+// profile's flags ask for; or this copy quits, when another copy has the profile and has been
+// handed the addresses. The engine then owns the process's run loop, and calls the core in
+// this order (core/cmd/lib, PBGoCalls in engine/abi/pb_abi.h):
 //
-//  1. claim_profile, with the command line's --root, --profile, --user-data-dir and
-//     --picker: the core chooses the profile and answers with the folder this copy keeps
-//     its files in, or none, when another copy has it and has been handed the addresses,
-//     and this copy then quits.
-//  2. launch_switches, with that folder: the switches the profile's flags ask for, which
-//     the engine applies as it starts.
-//  3. timeline_start, then start, handing over the engine's calls: the core opens the
+//  1. copy_dir: the folder this copy keeps its files in.
+//  2. timeline_start, then start, handing over the engine's calls: the core opens the
 //     profile (Engine.OpenProfile) and its first windows, or the picker's window.
-//  4. run_posted, on the main thread, each time Engine.Post asks for a wakeup.
-//  5. stop, as the app ends.
+//  3. run_posted, on the main thread, each time Engine.Post asks for a wakeup.
+//  4. stop, as the app ends.
 package engine
 
 import (
