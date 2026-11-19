@@ -270,10 +270,12 @@ def screen_parts():
             name = next(name for name, test in PARTS.items() if test(labels))
             # The shell under a page in full screen draws nothing, so it reads as a page too:
             # the page is the one with words in it, or failing that more in it, as a page with
-            # only a field.
+            # only a field. Words under the view, not its own: its own text is its document's
+            # title, which the shell has too.
             def weight(v):
-                said = {n.get("content-desc") for n in v.iter("node")} | {n.get("text") for n in v.iter("node")}
-                return (not said <= {None, ""}, len(list(v.iter("node"))))
+                inside = list(v.iter("node"))[1:]
+                said = {n.get("content-desc") for n in inside} | {n.get("text") for n in inside}
+                return (not said <= {None, ""}, len(inside))
             if name in parts and weight(parts[name]) >= weight(view):
                 continue
             parts[name] = view
