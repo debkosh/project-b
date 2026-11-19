@@ -1929,6 +1929,9 @@ def long_press_menu():
         # Through the media index, as a plain rm leaves its rows, and a download of the same name
         # then can't be published.
         adb("shell", "content delete --uri content://media/external/downloads --where \"_display_name LIKE 'pb-press-%'\"")
+        # The app's own list still has the first shell's downloads, so the second shell's of
+        # the same name is "pb-press-link (1).txt" (core/downloads, free): either name will do.
+        landed = lambda stem, ext: re.search(r"%s( \(\d+\))?\.%s" % (stem, ext), adb("shell", "ls", "/sdcard/Download/"))
         try:
             launch()
             go(BASE + "/press")
@@ -1940,7 +1943,7 @@ def long_press_menu():
             shot("47-long-press-link-" + shell)
             tap(middle(see_named("shell", "Download")))
             check(shell + ": Download puts the file in the phone's Downloads at once",
-                  until(lambda: "pb-press-link.txt" in adb("shell", "ls", "/sdcard/Download/"), 20) is not None)
+                  until(lambda: landed("pb-press-link", "txt"), 20) is not None)
             held("The press file")
             tap(middle(see_named("shell", "Share")))
             check(shell + ": Share opens Android's chooser",
@@ -1967,7 +1970,7 @@ def long_press_menu():
             held("A picture")
             tap(middle(see_named("shell", "Download")))
             check(shell + ": the picture's Download puts it in the phone's Downloads",
-                  until(lambda: "pb-press-pic.png" in adb("shell", "ls", "/sdcard/Download/"), 20) is not None)
+                  until(lambda: landed("pb-press-pic", "png"), 20) is not None)
             held("A picture")
             tap(middle(see_named("shell", "Share")))
             check(shell + ": the picture's Share opens Android's chooser",
