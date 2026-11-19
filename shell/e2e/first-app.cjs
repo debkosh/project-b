@@ -187,6 +187,16 @@ const stopServer = lib.stop;
   await page.keyboard.type('go.d');
   // The go.dev row itself: under load the click could land on the list still showing the
   // last query's rows, before go.d's came (2 of 16 runs on 0.2.98).
+  // And only once the list has settled: rows still arriving can move the go.dev row between
+  // finding it and clicking where it was, which then hit the search row (a flake on a busy Mac).
+  await history.filter({ hasText: 'go.dev' }).first().waitFor();
+  const rowsNow = () => ui.locator('#suggestions').innerText().catch(() => '');
+  for (let last = '', i = 0; i < 20; i++) {
+    const now = await rowsNow();
+    if (now === last) break;
+    last = now;
+    await settle(page);
+  }
   await history.filter({ hasText: 'go.dev' }).first().click();
   const went = await shellFrame().waitForFunction(() => document.querySelector('input').value === 'https://go.dev/learn').then(() => true, () => false);
   if (!went) await page.screenshot({ path: path.join(out, 'first-app-suggestion-click.png') });
