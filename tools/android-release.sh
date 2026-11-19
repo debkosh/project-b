@@ -36,7 +36,9 @@ if [ ! -S "$HOME/.colima/pb-android/docker.sock" ]; then
 fi
 # Stopped after, unless another session's build holds the VM (tools/android-content-build.sh's
 # lock), which stopping would kill.
-trap 'docker exec pb flock -n /work/.android-build.lock true && colima stop -p pb-android' EXIT
+# Another long job in the container that needs the VM up, such as a Linux build, holds
+# /work/.vm-in-use.lock for as long as it runs (docs/android.md), and the VM stays up for it too.
+trap 'docker exec pb flock -n /work/.android-build.lock true && docker exec pb flock -n /work/.vm-in-use.lock true && colima stop -p pb-android' EXIT
 docker start pb >/dev/null
 
 echo "=== $(date '+%F %T') copy the tree in"
