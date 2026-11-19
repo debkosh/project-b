@@ -101,6 +101,10 @@ export const state = reactive({
   sync: { on: false, syncing: false, host: '', lastSynced: 0, error: '', problem: '', locked: false },
   syncAddress: '',
   syncLink: '',
+  // Sync details (docs/sync-details.md): what Go last answered syncDetails with, null before;
+  // and whether its Reconnect… asked the Sync card to open its set-up.
+  syncDetails: null,
+  syncReconnect: false,
 });
 
 // Go's answers to what Sync asked, each heard by every function here.
@@ -251,6 +255,9 @@ export function connect() {
         case 'sync':
           state.sync = m.sync;
           state.syncAddress = m.address || '';
+          break;
+        case 'syncDetails':
+          state.syncDetails = m.details;
           break;
         case 'syncLink':
           state.syncLink = m.link;

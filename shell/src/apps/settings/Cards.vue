@@ -13,6 +13,7 @@ import Rows from './Rows.vue';
 import SiteSettings from './SiteSettings.vue';
 import Sparks from './Sparks.vue';
 import Sync from './Sync.vue';
+import SyncDetails from './SyncDetails.vue';
 import WebFeatures from './WebFeatures.vue';
 import Workspaces from './Workspaces.vue';
 import { blockRows, lists, rowsOf } from './arrange.js';
@@ -36,6 +37,7 @@ const blocks = {
   sites: SiteSettings,
   sparks: Sparks,
   sync: Sync,
+  syncDetails: SyncDetails,
   webFeatures: WebFeatures,
   workspaces: Workspaces,
   extensions: extensionsSection?.component,

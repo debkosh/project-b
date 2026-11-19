@@ -5,6 +5,7 @@ import { siteTile } from '@/ui/tint.js';
 import { useTints } from '@/ui/useTints.js';
 import Row from './Row.vue';
 import { send, state, syncAnswers } from './state.js';
+import { useSyncRun } from './syncRun.js';
 
 // Sync (docs/sync.md): a card under Your data. Off, one row sets it up; on, the server's row
 // says when it last synced, with the passphrase's and Turn off's rows under it. A profile
@@ -23,80 +24,12 @@ const NO_KEY_DETAIL = "The key that seals this profile's secrets isn't on this d
 const TOKEN_PLACEHOLDER = 'Only if your server gave you one';
 const MIN = 12;
 
-const s = computed(() => state.sync);
-
-// The time, each second while the card shows: the syncing row waits a second before it
-// shows, a run with nothing back for 30 seconds reads as the server out of reach, and "Last
-// synced" moves on.
-const now = ref(Date.now());
-let ticker = 0;
-onMounted(() => (ticker = setInterval(() => (now.value = Date.now()), 1000)));
-onUnmounted(() => clearInterval(ticker));
-const since = ref(0);
-watch(
-  () => s.value.syncing,
-  (on) => {
-    since.value = on ? Date.now() : 0;
-    now.value = Date.now();
-  },
-  { immediate: true },
-);
-const syncingFor = computed(() => (since.value ? now.value - since.value : 0));
-// A run a person asked for says so at once, and for a second at least, so one too quick to
-// see still answers the press; it then reads Last synced just now, or what went wrong. For
-// that second Sync now stays under the finger, disabled, so a second tap lands on nothing;
-// Cancel and Retry come only if the run is still going after it.
-const asked = ref(false);
-const holding = ref(false);
-let held = 0;
-function syncNow() {
-  asked.value = holding.value = true;
-  clearTimeout(held);
-  held = setTimeout(() => {
-    holding.value = false;
-    if (!s.value.syncing) asked.value = false;
-    now.value = Date.now();
-  }, 1000);
-  send({ t: 'syncNow' });
-}
-watch(
-  () => s.value.syncing,
-  (on) => {
-    if (!on && !holding.value) asked.value = false;
-  },
-);
-onUnmounted(() => clearTimeout(held));
-const syncingShown = computed(() => (asked.value || syncingFor.value >= 1000) && syncingFor.value < 30000);
-const stalled = computed(() => syncingFor.value >= 30000);
-
-// "2 minutes ago", for Last synced.
-function ago(ms) {
-  const min = Math.floor((now.value - ms) / 60000);
-  const n = (k, one) => `${k} ${one}${k === 1 ? '' : 's'} ago`;
-  if (min < 1) return 'just now';
-  if (min < 60) return n(min, 'minute');
-  if (min < 60 * 24) return n(Math.floor(min / 60), 'hour');
-  return n(Math.floor(min / (60 * 24)), 'day');
-}
-const lastSynced = computed(() => (s.value.lastSynced ? `Last synced ${ago(s.value.lastSynced)}` : 'Not synced yet'));
-
-// The server's row: what it says and what it offers.
-const serverRow = computed(() => {
-  if (syncingShown.value) return 'syncing';
-  if (s.value.problem === 'token') return 'signedOut';
-  if (s.value.error || stalled.value) return 'unreachable';
-  return 'synced';
-});
+// The server's row says of a run what Sync details' state row says, and offers the same.
+const { s, holding, lastSynced, serverRow, syncNow, again } = useSyncRun();
 
 // The server's mark: its letter on its tile, as a site's.
 const tints = useTints();
 const tile = computed(() => (tints.value, siteTile(`https://${s.value.host}`)));
-
-// Retry, and Try again after a run with nothing back, start the run again.
-function again() {
-  send({ t: 'syncCancel' });
-  syncNow();
-}
 
 // The Dialog. step is '' while it is shut, 'address', 'choose', 'enter', 'change' or
 // 'turnOff'; fromLink is the address step as a link opened it. Each opening counts, so an
@@ -189,6 +122,17 @@ watch(
     if (!link) return;
     state.syncLink = '';
     fromLink(link);
+  },
+  { immediate: true },
+);
+
+// Sync details' Reconnect… comes back here for the set-up.
+watch(
+  () => state.syncReconnect,
+  (asked) => {
+    if (!asked) return;
+    state.syncReconnect = false;
+    reconnect();
   },
   { immediate: true },
 );
@@ -436,6 +380,7 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
           <button v-else-if="serverRow === 'unreachable'" type="button" class="text-button" @click="again">Try again</button>
           <button v-else type="button" class="text-button" :disabled="holding" @click="syncNow">Sync now</button>
         </Row>
+        <Row label="Sync details" hint="What synced, and when" opens="syncDetails" :words="words" />
         <Row label="Change sync passphrase" hint="A device you add then asks for the new one" :words="words">
           <button type="button" class="text-button" @click="change">Change…</button>
         </Row>

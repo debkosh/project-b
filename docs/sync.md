@@ -153,7 +153,9 @@ old one.
 Each synced feature gives a mapping (`sync.Mapping`): its collection and datatype, its table and
 the column that names a row, the row as an item's private part, and the private part back as the
 row; deleting a row; and `Join`, the row after taking in another version, which never loses what
-the row holds that is newer. History's and typed's `Join` is their merger too.
+the row holds that is newer. History's and typed's `Join` is their merger too. `Name` is what a
+person calls a row, for [Sync details](sync-details.md): a bookmark's title; without it, the key,
+as an address is.
 
 **Writing first, then telling sync.** Features write their rows as before. While sync is on,
 triggers on their tables write a mark in `sync_changes`, in the same transaction; with it off,
@@ -201,6 +203,7 @@ and `OnStatus` answer at once; the rest run on sync's goroutine, after what was 
 | `Address() string` | the bucket's address while sync is on, for Reconnect |
 | `Problem(err) string` | what went wrong reaching a bucket, by name: `address` (not one Propose takes), `needsToken`, `unreachable` (no answer, or the server's own failure), `notBucket` (not found, or not JSON), `token` (refused), or `""` for anything else. A request's answer is looked at before synckosh reads it, and its error wraps `ErrAddress`, `ErrNeedsToken`, `ErrUnreachable`, `ErrNotBucket` or `ErrToken` |
 | `Words(err) string` | an error's text with a request's address cut down to its host, as an address may carry its token. What the status, the page's answers and the timeline say of an error |
+| `Details(answer func(Details))` | what the Sync details page shows ([sync-details.md](sync-details.md)): the address with no token, the counts, the queue, and the runs since the app started, kept in memory only |
 | `StartFresh(done func(error))` | for a locked profile key: `keys.StartFresh`, so sync is forgotten and off |
 | `Status() Status`, `OnStatus(func(Status))` | `on`, `syncing`, `host`, `lastSynced` (Unix ms, 0 for never), `error`, `problem` (the last run's, by `Problem`'s names: `token` when the server signed this device out), `locked` |
 
@@ -219,6 +222,7 @@ names. The page sends:
 | `syncChangePassphrase {passphrase}` | `syncPassphraseChanged {}` or `{error}` |
 | `syncDisconnect` | `syncDisconnected {}` or `{error}` |
 | `syncNow` | the status, as it changes |
+| `syncDetails` | `syncDetails {details}`, for [the Sync details page](sync-details.md) |
 | `syncCancel` | the status, the run cut short (`CancelRun`) |
 | `syncSuggest` | `syncSuggested {passphrase}`: five words from `core/words`' list of 662, picked at random |
 | `syncStartFresh` | `syncStartedFresh {}` or `{error}` |
@@ -244,7 +248,8 @@ picture, light and dark, desktop and phone, is made by `shell/e2e/sync.cjs` unde
   server", Set up….
 - **On:** the server's row, its letter on its tile as a site's, with "Last synced 2 minutes ago"
   ("just now" in its first minute, "Not synced yet" before a first run ends) and Sync now; then
-  Change sync passphrase and Turn off sync. It names nothing that syncs.
+  Sync details, which opens [a page of its own](sync-details.md); then Change sync passphrase
+  and Turn off sync. It names nothing that syncs.
   - "Syncing…" with quiet Cancel and Retry, Retry a little apart
     ([ux-guide.md](ux-guide.md#anything-that-takes-time)). Cancel cuts the run short; Retry cuts
     it and runs again. A run sync starts by itself says so only after a second. One a person

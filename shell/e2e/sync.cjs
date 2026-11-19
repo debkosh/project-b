@@ -224,7 +224,7 @@ const taken = [];
   check('Turn on sync connects and closes the Dialog', await until(async () => (await dialog().count()) === 0, 10000));
   check('the card shows the server and when it last synced, with Sync now', await until(async () => (await serverRow().innerText()).includes(HOST) && (await serverRow().innerText()).includes('Last synced just now'), 10000) &&
     (await button('Sync now', card()).isVisible()), await card().innerText());
-  check('and the passphrase\'s and Turn off\'s rows, naming nothing synced', (await card().locator('.row').count()) === 3 && !(await serverRow().innerText()).includes('Bookmarks'));
+  check('and the passphrase\'s and Turn off\'s rows, naming nothing synced', (await card().locator('.row').count()) === 4 && !(await serverRow().innerText()).includes('Bookmarks'));
   await shot(9, 'on');
 
   // Sync now asks the server again.
@@ -258,6 +258,80 @@ const taken = [];
   await server({ down: '0' });
   await button('Try again', card()).click();
   check('Try again syncs', await until(async () => (await button('Sync now', card()).isVisible()) && !(await serverRow().innerText()).includes("Couldn't")));
+
+  // Sync details (docs/sync-details.md): a page of its own from the card's second row, which
+  // shows what sync holds now. Nothing is stored for it, so it asks Go as it opens.
+  const details = () => page.getByRole('region', { name: 'Sync details', exact: true });
+  const stateRow = () => details().locator('.row').first();
+  const runRows = () => details().locator('.runs .run');
+  check('the card\'s second row is Sync details, with its line', (await card().locator('.row').nth(1).innerText()).includes('Sync details') && (await card().locator('.row').nth(1).innerText()).includes('What synced, and when'));
+  told = sends({ t: 'syncDetails' });
+  await card().getByRole('button', { name: 'Sync details' }).click();
+  check('it opens the page, which asks Go with syncDetails', (await told) && await shown(details()) && await shown(page.getByRole('heading', { name: 'Sync details' })));
+  check('its first row is the state, with the card\'s Sync now', await until(async () => (await stateRow().innerText()).includes('Sync is on')) && (await stateRow().innerText()).includes('After a change here, and every 5 minutes') &&
+    (await button('Sync now', details()).isVisible()));
+  const text = async () => (await details().innerText()).replace(/\s+/g, ' ');
+  check('then the server with no token, when it last synced and when it syncs next', await until(async () => (await text()).includes(`https://${HOST}/sync`)) && !(await text()).includes(token) &&
+    /Last synced Today, \d\d:\d\d · /.test(await text()) && /Next sync About \d\d:\d\d, or sooner after a change here/.test(await text()) && (await text()).includes('Server changes read') &&
+    (await text()).includes('What the server holds Sealed items only. The key stays on your devices'), await text());
+  const kinds = await details().locator('[data-kind]').evaluateAll((rows) => rows.map((r) => r.getAttribute('data-kind')));
+  check('What syncs has bookmarks, history and typed addresses, each with its counts', kinds.join() === 'bookmarks,history,typed' && (await text()).includes('Bookmarks') && (await text()).includes('Typed addresses') &&
+    (phone ? (await text()).includes('Nothing waiting to send') : (await text()).includes('Items Deletions Waiting to send')), `${kinds} ${await text()}`);
+  check('Waiting to send says nothing is waiting', (await text()).includes('Waiting to send Nothing is waiting') || (phone && (await text()).includes('Nothing is waiting')));
+  check('the runs since the app started are listed, newest first, each saying why and what it did', (await text()).includes('Runs since the app started') && (await runRows().count()) >= 2 &&
+    (await runRows().first().innerText()).includes('Sync now') && (await runRows().last().innerText()).includes('Turning sync on'), await details().locator('.runs').innerText());
+  check('the server out of reach was one row, in --danger', await until(async () => (await details().locator('.runs .err').count()) >= 1) &&
+    (await details().locator('.runs .err').first().evaluate((e) => getComputedStyle(e).color === getComputedStyle(document.documentElement).getPropertyValue('--danger').trim() || getComputedStyle(e).color !== getComputedStyle(e.closest('.run')).color)));
+  await shot(24, 'details');
+  // A run opens in place, under its row.
+  const first = runRows().first();
+  await first.click();
+  const panel = () => details().locator('.panel');
+  check('a run opens under its row, with its requests', (await first.getAttribute('aria-expanded')) === 'true' && await shown(panel()) && /\d+ requests? · [\d.]+ (B|KB) sent · [\d.]+ (B|KB) received/.test(await panel().innerText()) &&
+    / (GET|POST) +(pull|push) +200 /.test(await panel().innerText()), await panel().innerText());
+  check('its lines never hold the token', !(await panel().innerText()).includes(token));
+  await shot(25, 'details-run');
+  await first.click();
+  check('and closes again', (await first.getAttribute('aria-expanded')) === 'false' && (await panel().count()) === 0);
+  // The run Cancel cut short, earlier, reads Cancelled, muted as a run with nothing new is:
+  // only an error is coloured.
+  const cancelled = details().locator('.runs .run', { hasText: /cancelled/i }).first();
+  check('a run a person cut short reads Cancelled, in --muted', (await cancelled.count()) === 1 &&
+    (await cancelled.evaluate((r) => { const d = [...r.querySelectorAll('.did, .on-phone span')].find((e) => e.offsetParent && /cancelled/i.test(e.textContent)); const hint = r.querySelector('.secondary'); return !!d && getComputedStyle(d).color === getComputedStyle(hint).color; })));
+  // The failed run's own words, on this page alone.
+  const failed = details().locator('.runs .run', { has: page.locator('.err') }).first();
+  await failed.click();
+  check('a failed run opens to the error\'s own words, the host alone in them', await shown(panel().locator('.detail')) && !(await panel().innerText()).includes(token) && (await panel().locator('.detail').innerText()).length > 10, await panel().innerText());
+  await failed.click();
+  // The queue: a page visited while the server is out of reach waits to go out, named by its
+  // address, and goes with the next run, which names it too.
+  await server({ down: '1' });
+  const visited = 'https://example.org/waiting';
+  await fetch(`${lib.base}/shell/send`, { method: 'POST', body: JSON.stringify({ t: 'newTab', text: visited }) });
+  const queue = () => details().locator('.queue');
+  check('a page visited while the server is out of reach waits in the queue, by its address', await until(async () => (await queue().innerText()).includes('example.org/waiting') && !(await queue().innerText()).includes('https://'), 30000) && (await queue().innerText()).includes('History'), await queue().innerText());
+  check('and History counts it as waiting', await until(async () => /(^|\D)1( waiting to send)?$/.test((await details().locator('[data-kind="history"]').innerText()).trim())), await details().locator('[data-kind="history"]').innerText());
+  check('the state says the server couldn\'t be reached, in --danger, with Try again and when it tries next', await until(async () => (await stateRow().innerText()).includes("Couldn't reach the server"), 15000) &&
+    (await button('Try again', details()).isVisible()) && /Trying again in \d+ minutes?/.test(await stateRow().innerText()) && /Next sync About \d\d:\d\d/.test(await text()), await stateRow().innerText());
+  await shot(26, 'details-waiting');
+  await server({ down: '0' });
+  await button('Try again', details()).click();
+  check('Try again sends it: nothing waits, and the run says Sent 1', await until(async () => (await queue().innerText()).includes('Nothing is waiting') && /sent 1/i.test(await runRows().first().innerText()), 15000), await details().locator('.runs').innerText());
+  await runRows().first().click();
+  check('and names what it sent', (await panel().innerText()).includes('example.org/waiting') && (await panel().innerText()).includes('Sent 1'), await panel().innerText());
+  await runRows().first().click();
+
+  // Sync now from here is the card's: at once, disabled, then a new run on the list.
+  const runsBefore = await runRows().count();
+  n = await requests();
+  told = sends({ t: 'syncNow' });
+  await button('Sync now', details()).click();
+  check('Sync now here says Syncing… at once, the button disabled', (await until(async () => (await stateRow().innerText()).includes('Syncing…'), 500)) && (await button('Sync now', details()).isDisabled()));
+  check('and sends syncNow, and syncs', (await told) && await until(async () => (await requests()) > n));
+  check('and the page asks again, so the run shows', await until(async () => (await stateRow().innerText()).includes('After a change here') && (await runRows().count()) === runsBefore + 1 && (await runRows().first().innerText()).includes('Sync now'), 5000), await details().locator('.runs').innerText());
+  // Back goes to the section that holds Sync.
+  await page.getByRole('button', { name: /^Back to / }).click();
+  check('Back goes to Sync\'s card', await shown(card()) && (await details().count()) === 0);
 
   // Change sync passphrase: only the new one, twice.
   await button('Change…', card()).click();
@@ -436,7 +510,7 @@ const taken = [];
   check('no errors in the pages', errors.length === 0, errors.join(' | '));
 
   // An overview of every state, light and dark, in the mocks' order.
-  const flow = [1, 2, 3, 4, 15, 16, 17, 18, 5, 6, 20, 21, 19, 7, 8, 9, 10, 11, 12, 23, 13, 22, 14];
+  const flow = [1, 2, 3, 4, 15, 16, 17, 18, 5, 6, 20, 21, 19, 7, 8, 9, 10, 11, 24, 25, 26, 12, 23, 13, 22, 14];
   const names = flow.map((k) => taken.find((t) => t.startsWith(String(k).padStart(2, '0') + '-'))).filter((x) => x);
   for (const scheme of ['light', 'dark']) {
     const w = phone ? 412 : 1000;
