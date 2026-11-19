@@ -1225,6 +1225,48 @@ def download_notifications():
     use_shell("")
 
 
+def start_as_it_is():
+    """Starts the app as a person does, after its process has gone, leaving whatever notice
+    it shows (launch dismisses the crash notice)."""
+    until(lambda: not adb("shell", "pidof", PACKAGE).strip())
+    adb("shell", "rm", "-f", "/data/data/%s/%s/session.json" % (PACKAGE, PROFILE))
+    adb("shell", "am", "start", "-W", "-n", PACKAGE + "/" + ACTIVITY, "--ez", "skip-welcome", "true")
+    see("shell", timeout=60, label="Menu")
+
+
+def crash_notice():
+    """The "crashed last time" notice comes only after a crash (docs/fragility.md, "A
+    crash notice after runs that never crashed"): not after Android ends the app in the
+    background, nor after it's swiped away, both of which leave its crash.log behind as a
+    crash would; a native crash of the app's process still brings it. Before Android 11,
+    which keeps no reasons, only the crash is checked: any crash.log left is told."""
+    said = lambda: find("shell", text=lambda t: (t or "").startswith("Project B crashed last time"))
+    launch()
+    go(BASE + "/a")
+    asked("/a")
+    reasons = int(adb("shell", "getprop", "ro.build.version.sdk").strip() or 0) >= 30
+    if reasons:
+        # In the background, ended as Android ends one it wants the memory of.
+        key(3)
+        time.sleep(1)
+        adb("shell", "am", "kill", PACKAGE)
+        start_as_it_is()
+        check("no crash notice after Android ended the app in the background", until(said, 5) is None)
+    # Swiped away from the recent apps: Android 14 and later stop it so from the shell.
+    if reasons and "stop-app" in adb("shell", "am", "help"):
+        adb("shell", "am", "stop-app", PACKAGE)
+        start_as_it_is()
+        check("nor after it was swiped away", until(said, 5) is None)
+    # A crash of the app's own process.
+    adb("shell", "kill", "-SEGV", adb("shell", "pidof", PACKAGE).strip().split()[0])
+    start_as_it_is()
+    check("a native crash still brings the notice", until(said, 10) is not None)
+    shot("36-crash-notice")
+    dismiss = named("shell", "Dismiss")
+    if dismiss is not None:
+        tap(middle(dismiss))
+
+
 def screen_size():
     """The phone's screen in device pixels: width, height."""
     w, h = re.search(r"(\d+)x(\d+)", adb("shell", "wm", "size").split("Physical size:", 1)[1]).groups()
@@ -1942,7 +1984,7 @@ def main():
     adb("shell", "pm", "clear", PACKAGE)
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
-    every = (browsing, mobile_shell, settings_back, talkback_states, bookmark_star, back_key_chain, page_dialogs, downloads, download_notifications, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
+    every = (browsing, mobile_shell, settings_back, talkback_states, bookmark_star, back_key_chain, page_dialogs, downloads, crash_notice, download_notifications, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
              the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web, long_press_menu, welcome_extras)
     for part in [p for p in every if not sys.argv[1:] or p.__name__ in sys.argv[1:]]:
         # tools/results.py splits a run's memory, CPU and checks by these lines.
