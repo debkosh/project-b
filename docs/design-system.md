@@ -285,6 +285,27 @@ that wants the default look follows it.
   action (Delete, Discard, Remove), never OK.
 - **A small edit that is easily redone** (one key, one switch) needs no confirm.
 
+### On a phone
+
+The owner, 2026-11-19: phone overlays were big and bulky, and felt bolted on over a page that
+has little room. A phone shows as much page as it can.
+
+- **News is a one-line bar above the toolbar,** 48px: a download started, finished or failed,
+  in words and at most one action (Open, Retry). It hides itself after 2 s; a swipe down or
+  sideways puts it away sooner, and a press keeps it while held. A question (Allow
+  notifications) stays until it is answered, or 8 s. News never goes in the address field.
+- **A sheet of actions has a one-line head** (the name, the address under it in `--muted`),
+  then the most used actions, five at most, as a row of tiles 64px high (a 20px icon over an
+  11.5px label), then the rest as 48px rows. It is as tall as what it holds.
+- **A list is one 56px row per item:** an icon or thumbnail, the name, one `--muted` line;
+  a tap does the main thing (Open), and everything else is in its ⋮. No row of buttons under
+  an item. A failed one carries Retry in its row. Long lists group by day under a 12px
+  `--muted` heading.
+- **An action that repeats on every row is a 40px icon button** with an `aria-label`
+  (Download, ⋯), not a text button.
+- **The page is dimmed only behind what must be answered or picked:** a dialog, a sheet of
+  actions. A panel used beside the page, as a spark's, leaves it as it is.
+
 ### Errors and status
 
 - **Check a value where the rule is known** (required, unique, min, max, pattern, a key in
