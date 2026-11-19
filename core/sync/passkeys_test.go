@@ -50,6 +50,17 @@ func TestAPasskeySyncs(t *testing.T) {
 		t.Fatalf("the server holds %d passkeys, want 1", n)
 	}
 
+	// Sync details names it by its site, the one thing of it that isn't sealed.
+	named := false
+	for _, r := range b.details().Runs {
+		for _, it := range r.ReceivedItems {
+			named = named || it.Collection == passkeys.Collection && it.Name == "secret.example"
+		}
+	}
+	if !named {
+		t.Fatalf("b's runs don't name the passkey received by its site: %+v", b.details().Runs)
+	}
+
 	list, err := b.passkeys.List(ctx, true, "secret.example", nil)
 	if err != nil || len(list) != 1 || !bytes.Equal(list[0].ID, id) || list[0].UserName != "asha@secret.example" || list[0].DisplayName != "Asha Rao" || string(list[0].UserHandle) != "handle-1" {
 		t.Fatalf("b's passkeys: %+v, %v", list, err)

@@ -40,13 +40,13 @@ state, what syncs with its counts, what waits to go out, and the runs since the 
   after a change here"), Server changes read ("9,214", synckosh's cursor), and What
   the server holds: "Sealed items only. The key stays on your devices". On a phone the value goes
   under its label.
-- **What syncs:** Bookmarks, History and Typed addresses, each with Items, Deletions (its
+- **What syncs:** Bookmarks, History, Passkeys and Typed addresses, each with Items, Deletions (its
   tooltip: "Kept so your other devices remove them too") and Waiting to send. A table on a
   desktop. On a phone one row each: the name with its count at the right, and one muted line,
   "2 waiting to send" or "Nothing waiting to send", with "· 3 deletions" when there are some.
 - **Waiting to send,** the queue: what changed here and hasn't gone out, with its kind, its
   name, a bookmark's title, a history or typed address's address without its "https://" (any other
-  scheme stays), read from its row, and since when (nothing, in the seconds before sync has looked at it). A delete has no row left to name it: "One deleted here"; history cleared is "Everything
+  scheme stays), a passkey's site, read from its row, and since when (nothing, in the seconds before sync has looked at it). A delete has no row left to name it: "One deleted here"; history cleared is "Everything
   cleared here". Three columns on a desktop;
   on a phone the name, and under it "History · since 14:33", or "Bookmark · deleted · since
   14:35". Twenty at most, then "and 180 more". Empty: "Nothing is waiting".

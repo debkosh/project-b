@@ -37,6 +37,12 @@ func (m *Manager) Synced(changed func()) sync.Mapping {
 	return sync.Mapping{
 		Collection: Collection, Datatype: "passkey", Table: "passkeys", Key: "id",
 		KeyOf: func(guid string, _ json.RawMessage) (string, error) { return guid, nil },
+		// Its site: the account's name is sealed, and Sync details opens nothing.
+		Name: func(tx *store.Tx, id string) string {
+			var site string
+			tx.QueryRow(`SELECT rp_id FROM passkeys WHERE id = ?`, id).Scan(&site)
+			return site
+		},
 		Read: func(tx *store.Tx, id string) (json.RawMessage, bool, error) {
 			r, err := m.scan(tx.QueryRow(`SELECT `+columns+` FROM passkeys WHERE id = ?`, id), true)
 			if err == sql.ErrNoRows {
