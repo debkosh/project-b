@@ -32,9 +32,9 @@ Each step leaves Mac and Android working and the release run green.
 |---|---|---|
 | 1 | The thin wrapper, `PBInit`, Mac then Android | tested: Mac suites, Android 16 and 17; to release |
 | 2 | `core/system`, the OS managers' door, with its fake | tested: Mac suites, Android 16; to release |
-| 2b | Save as and the folder chooser through Chromium's own file dialog | built, branch `layers-links` |
-| 3 | Notifications through Go | built on the Mac, branch `layers-links` |
-| 4 | The Mac's open-link events into `core/system`, or a fourth exception | built, branch `layers-links`: no exception |
+| 2b | Save as and the folder chooser through Chromium's own file dialog | tested: Mac suites, sheets by hand, Android 16; branch `layers-links`, to release |
+| 3 | Notifications through Go | tested: Mac suites and Go's tests; a real notification waits on macOS's question to Sudipta; branch `layers-links`, to release |
+| 4 | The Mac's open-link events into `core/system`, or a fourth exception | tested: Mac suites, Android 16, and a new VM check; no exception; branch `layers-links`, to release |
 | 5 | The shell embedded in the Go core | |
 | 6 | The three-piece build, with the build-flow restructure below | |
 
