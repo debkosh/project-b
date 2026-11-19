@@ -1521,7 +1521,15 @@ def talkback_states():
                 if n is not None:
                     return n
             return None
-        for name, how in (("Wrapped", "by a label around it"), ("By id", "by aria-labelledby"), ("Field", "by <label for>")):
+        # A field's <label for> reaches TalkBack as its hint from Android 16 on; below, it goes as
+        # the field's labeledBy, which uiautomator doesn't show, so it can't be read here there.
+        sdk = int(adb("shell", "getprop", "ro.build.version.sdk").strip() or 0)
+        ways = [("Wrapped", "by a label around it"), ("By id", "by aria-labelledby")]
+        if sdk >= 36:
+            ways.append(("Field", "by <label for>"))
+        else:
+            print("note: the <label for> field's name isn't checked below Android 16 (API %d)" % sdk, flush=True)
+        for name, how in ways:
             # Each name waited for: the screen reader's tree fills in a moment after TalkBack
             # starts, a field's hint last (a flake on 5602).
             n = until(lambda: named(name), 10)
