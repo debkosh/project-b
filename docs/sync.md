@@ -289,10 +289,10 @@ nothing is sent to the server or kept until Connect. An address that isn't https
 set-up with the address and its error. Any other `project-b:` link does nothing.
 
 - **From another app on the Mac:** the bundle's Info.plist names the `project-b` scheme among its
-  URL types (`tools/package.sh`), so macOS hands the link to `PBOpenURLs` as it does a web link,
+  URL types (`tools/package.sh`), so macOS hands the link to Go's `core/system` as it does a web link,
   and `App.Handover` gives an app link to `OpenAppLink` instead of a tab.
 - **From another app on Android:** the activity has an intent filter for the scheme
-  (`engine/android/AndroidManifest.xml.jinja2`); its `VIEW` intent reaches `PBOpenURL` and
+  (`engine/android/AndroidManifest.xml.jinja2`); its `VIEW` intent reaches `core/system` and
   `Handover` as a web link's does.
 - **Pressed in a page in Project B:** the engine's navigation gate (`engine/browser/events.cc`)
   drops every navigation to a `project-b:` address, and only for one a user's gesture started at

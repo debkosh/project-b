@@ -581,10 +581,6 @@ typedef struct PBGoCalls {
   // Returns a string the caller frees with free().
   char* (*go_stats)(void);
 
-  // The links and files the system opens with the app, one per line, as its default
-  // browser: they open as a second copy's do. The Mac's; Android hands its own to
-  // PBOpenURL.
-  void (*open_urls)(const char* urls);
 
   // The timeline, Go's record of what happened and when (core/timeline). The adapter
   // uses these through engine/browser/timeline.h. Times are nanoseconds since process

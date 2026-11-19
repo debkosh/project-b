@@ -8,7 +8,11 @@ package platform
 */
 import "C"
 
-import "projectb/system"
+import (
+	"strings"
+
+	"projectb/system"
+)
 
 // The questions the OS answers later, by the numbers that cross with the answer.
 const (
@@ -20,8 +24,10 @@ const (
 type System struct {
 	defaultBrowser system.Question
 	notifications  system.Question
-	// clicked is OnNotificationClicked's, set once at start. Main thread.
+	// clicked is OnNotificationClicked's, and opened OnOpenURLs', set once at start. Main
+	// thread.
 	clicked func(id string)
+	opened  func(urls []string)
 }
 
 var the = &System{}
@@ -40,6 +46,16 @@ func (s *System) OnNotificationClicked(clicked func(id string)) { s.clicked = cl
 func PBSystemNotificationClicked(id *C.char) {
 	if the.clicked != nil {
 		the.clicked(C.GoString(id))
+	}
+}
+
+// PBSystemOpenURLs is the links and files the OS hands the app, one per line, on the main
+// thread.
+//
+//export PBSystemOpenURLs
+func PBSystemOpenURLs(urls *C.char) {
+	if the.opened != nil {
+		the.opened(strings.Split(C.GoString(urls), "\n"))
 	}
 }
 

@@ -52,6 +52,12 @@ type System interface {
 	// Go: clicked runs on the main thread with its id. Set once, as the app starts.
 	OnNotificationClicked(clicked func(id string))
 
+	// OnOpenURLs is how the links and files the OS hands the app reach Go: on the Mac what
+	// it opens with the app as the default browser or a file's app, on Android a link
+	// another app sends. opened runs on the main thread with them. Set once, as the app or
+	// the picker starts.
+	OnOpenURLs(opened func(urls []string))
+
 	// Report is what a crash report says of this device, for the app at version: the
 	// release, the OS and the device, and on Android the app's own log.
 	Report(version string) []crash.Section

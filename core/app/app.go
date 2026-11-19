@@ -323,6 +323,9 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.System.SetDockColor(a.Prefs.FrameColor())
 	a.Prefs.OnFrameColorChanged(a.System.SetDockColor)
 	a.System.OnNotificationClicked(func(id string) { a.notificationClicked(e, id) })
+	// The links and files the OS hands the app open as a second copy's do, beside the window
+	// used last.
+	a.System.OnOpenURLs(a.Handover)
 	if cfg.Profile != "" {
 		a.Prefs.OnFrameColorChanged(func(c string) {
 			if err := cfg.Profiles.SetColor(cfg.Profile, c); err != nil {

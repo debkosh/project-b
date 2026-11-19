@@ -27,6 +27,7 @@ type System struct {
 	asked           map[string]int
 	posted, removed []string
 	clicked         func(id string)
+	links           func(urls []string)
 }
 
 var _ system.System = (*System)(nil)
@@ -134,6 +135,23 @@ func (s *System) Click(id string) {
 	s.mu.Unlock()
 	if clicked != nil {
 		s.post(func() { clicked(id) })
+	}
+}
+
+func (s *System) OnOpenURLs(opened func(urls []string)) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.links = opened
+}
+
+// Open is the OS handing the app urls, as a test does it: the app hears them on the main
+// thread.
+func (s *System) Open(urls ...string) {
+	s.mu.Lock()
+	links := s.links
+	s.mu.Unlock()
+	if links != nil {
+		s.post(func() { links(urls) })
 	}
 }
 

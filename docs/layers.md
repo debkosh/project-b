@@ -34,7 +34,7 @@ Each step leaves Mac and Android working and the release run green.
 | 2 | `core/system`, the OS managers' door, with its fake | tested: Mac suites, Android 16; to release |
 | 2b | Save as and the folder chooser through Chromium's own file dialog | |
 | 3 | Notifications through Go | built on the Mac, branch `layers-notify` |
-| 4 | The Mac's open-link events into `core/system`, or a fourth exception | |
+| 4 | The Mac's open-link events into `core/system`, or a fourth exception | built, branch `layers-links`: no exception |
 | 5 | The shell embedded in the Go core | |
 | 6 | The three-piece build, with the build-flow restructure below | |
 
@@ -140,6 +140,16 @@ After:
   `notifications_mac.mm` into `core/system/platform`; the file goes. A phone shows no page's
   notification yet, so Android's `ShowNotification` does nothing, as today.
 
+## 4. The links and files the OS hands the app
+
+They can be Go's: macOS hands them to the app's delegate (`application:openURLs:`), which
+the adapter only set because it was the one with Objective-C. Now `core/system` sets it
+(`OnOpenURLs`, the Mac's in `platform_darwin.m`), and Android's link from another app comes
+the same way, from `BrowserActivity` through `go_table.c`, so both reach `App.Handover` alike.
+`PBGoCalls.open_urls`, `PBOpenURL` and `ReceiveLinks` go. A picker copy takes them and opens
+nothing, as before. The VM check now opens a link with `open -a` while the app runs, which
+nothing tested before; a desktop check can't, as `open` could reach the person's own copy.
+
 ## The exceptions: where the engine still touches the OS
 
 Only these, so OS code doesn't creep back into the adapter:
@@ -149,7 +159,7 @@ Only these, so OS code doesn't creep back into the adapter:
 2. Print and Share, attached to a window.
 3. The Mac menu bar, and quitting from the Dock or at logout.
 
-Plus the links and files the OS hands the app, if step 4 can't move them into Go.
+The links and files the OS hands the app are not one: step 4 moved them into Go.
 
 The clipboard stays in the engine: Chromium has it for every platform.
 
