@@ -297,9 +297,10 @@ def asked(path, timeout=15):
 PARTS = {
     # The shell, or, while a page's dialog or the Custom colour sheet shows, it alone, as a
     # modal dialog hides the rest of the shell from the tree: a page dialog's title, Go's
-    # words, ends in " says" or is Sign in. A modal sheet of the shell's own names itself
-    # here the same way, by its aria-label, as "Custom colour" does.
-    "shell": lambda labels: "Menu" in labels or "Custom colour" in labels or any(l.endswith(" says") or l == "Sign in" for l in labels),
+    # words, ends in " says" or is Sign in. A modal sheet of the shell's own is known by a
+    # label only it has: the Custom colour sheet by its Deepest shade, as Settings' frame
+    # colours also have a "Custom colour" swatch.
+    "shell": lambda labels: "Menu" in labels or "Deepest" in labels or any(l.endswith(" says") or l == "Sign in" for l in labels),
     "page": lambda labels: "Menu" not in labels,
 }
 
