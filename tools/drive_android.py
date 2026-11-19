@@ -1022,6 +1022,14 @@ def downloads():
     check("a tap on the notification opens the file", at is not None and opened is not None, in_front_now())
     key(4)
     adb("shell", "cmd", "statusbar", "collapse")
+    # The same name again, which the phone's Downloads has now: Android takes it only under
+    # the next free name, and once refused it outright, which closed the app.
+    until(lambda: "BrowserActivity" in in_front_now(), 10)
+    go(BASE + "/dl/" + name)
+    again = name.replace(".txt", " (1).txt")
+    stored = until(lambda: again in adb("shell", "ls", "/sdcard/Download/"), 20)
+    check("the same name again reaches the phone's Downloads as name (1), and the app keeps running",
+          stored is not None and alive(), adb("shell", "ls", "/sdcard/Download/")[-200:])
     # The tab is still at the page it showed, so a restart loads that, not the download.
     served.clear()
     launch()
