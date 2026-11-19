@@ -101,6 +101,19 @@ func passkeyError(reason, site string) (title, words string, again bool) {
 	return "Something went wrong", "The request didn't finish.", true
 }
 
+// accountRow is an account's row: its display name with its name under it, the name alone
+// when there is no other, and words of ours when it has neither.
+func accountRow(name, displayName string) passkeyAccount {
+	row := passkeyAccount{Title: displayName, Secondary: name}
+	if row.Title == "" || row.Title == row.Secondary {
+		row = passkeyAccount{Title: name}
+	}
+	if row.Title == "" {
+		row.Title, row.Unnamed = "No name", true
+	}
+	return row
+}
+
 // qrRows are the modules of text's QR code, a row of 0 and 1 each, or none when it can't
 // be made.
 func qrRows(text string) []string {
@@ -200,14 +213,7 @@ func passkeyDialog(d pageDialog, step, carries string) pageDialog {
 		p.Title = "Choose an account"
 		p.Message = fmt.Sprintf("Your security key has %d accounts for %s.", len(c.Accounts), site)
 		for _, a := range c.Accounts {
-			row := passkeyAccount{Title: a.DisplayName, Secondary: a.Name}
-			if row.Title == "" || row.Title == row.Secondary {
-				row = passkeyAccount{Title: a.Name}
-			}
-			if row.Title == "" {
-				row.Title, row.Unnamed = "No name", true
-			}
-			s.Accounts = append(s.Accounts, row)
+			s.Accounts = append(s.Accounts, accountRow(a.Name, a.DisplayName))
 		}
 	case "phone":
 		p.Title, p.Message = "Use your phone", "Scan this code with your phone's camera."
@@ -239,25 +245,28 @@ func passkeyDialog(d pageDialog, step, carries string) pageDialog {
 	return p
 }
 
-// passkeys keeps the passkey requests among the pages' dialogs: each from the engine's
+// passkeyCards keeps the passkey requests among the pages' dialogs: each from the engine's
 // word of it to its first step, when the shells first see it.
-type passkeys struct {
+type passkeyCards struct {
 	p *pageDialogs
-	// The requests with no step yet, which no shell has.
+	// The requests with no card showing, which no shell has: one with no step yet, and
+	// one of ours while the OS checks the person.
 	waiting map[engine.DialogID]pageDialog
 	seq     int
+	// The requests our own passkeys can answer (passkeys_own.go).
+	own map[engine.DialogID]*ownPasskey
 }
 
 // opened keeps a request until its first step: d's message is the site.
-func (k *passkeys) opened(d engine.Dialog) {
+func (k *passkeyCards) opened(d engine.Dialog) {
 	k.waiting[d.ID] = pageDialog{ID: d.ID, Tab: d.Tab, Kind: d.Kind, Host: d.Message}
 }
 
-// step puts the request's card at a step, in the place it had.
-func (k *passkeys) step(id engine.DialogID, step, carries string) {
+// put words the request's card anew, in the place it had, or last when it had none.
+func (k *passkeyCards) put(id engine.DialogID, word func(d pageDialog) pageDialog) {
 	worded := func(d pageDialog) pageDialog {
 		k.seq++
-		p := passkeyDialog(d, step, carries)
+		p := word(d)
 		p.Passkey.Seq = k.seq
 		return p
 	}
@@ -276,9 +285,65 @@ func (k *passkeys) step(id engine.DialogID, step, carries string) {
 	}
 }
 
-// answer passes what the person did at request id's step to the engine. The card stays
-// as it is: the engine's next step, or the request's end, changes it.
-func (k *passkeys) answer(msg []byte) {
+// hide takes the request's card off the shells' list until its next step.
+func (k *passkeyCards) hide(id engine.DialogID) {
+	for i, d := range k.p.list {
+		if d.ID == id && d.Kind == "passkey" {
+			k.waiting[id] = pageDialog{ID: d.ID, Tab: d.Tab, Kind: d.Kind, Host: d.Host}
+			k.p.list = append(k.p.list[:i:i], k.p.list[i+1:]...)
+			k.p.changed()
+			return
+		}
+	}
+}
+
+// siteOf is the site of request id, its RP ID.
+func (k *passkeyCards) siteOf(id engine.DialogID) string {
+	if d, ok := k.waiting[id]; ok {
+		return d.Host
+	}
+	for _, d := range k.p.list {
+		if d.ID == id {
+			return d.Host
+		}
+	}
+	return ""
+}
+
+// stepOf is the step request id's card shows, "" when it shows none.
+func (k *passkeyCards) stepOf(id engine.DialogID) string {
+	for _, d := range k.p.list {
+		if d.ID == id && d.Passkey != nil {
+			return d.Passkey.Step
+		}
+	}
+	return ""
+}
+
+// show puts the request's card at a step Go chose: one of ours, or the engine's last key
+// step.
+func (k *passkeyCards) show(id engine.DialogID, step string, o *ownPasskey) {
+	k.put(id, func(d pageDialog) pageDialog {
+		if step == "key" {
+			return passkeyDialog(d, "key", o.key)
+		}
+		return ownDialog(d, step, o)
+	})
+}
+
+// step puts the request's card at a step of the engine's, unless the step is for our own
+// passkeys.
+func (k *passkeyCards) step(id engine.DialogID, step, carries string) {
+	if k.ownStep(id, step, carries) {
+		return
+	}
+	k.put(id, func(d pageDialog) pageDialog { return passkeyDialog(d, step, carries) })
+}
+
+// answer passes what the person did at request id's step to the engine, unless the card
+// is one of ours. The card stays as it is: the engine's next step, or the request's end,
+// changes it.
+func (k *passkeyCards) answer(msg []byte) {
 	var r struct {
 		ID     engine.DialogID `json:"id"`
 		Action string          `json:"action"`
@@ -286,6 +351,9 @@ func (k *passkeys) answer(msg []byte) {
 	}
 	json.Unmarshal(msg, &r)
 	if k.p.kindOf(r.ID) != "passkey" {
+		return
+	}
+	if k.ownAnswer(r.ID, k.stepOf(r.ID), r.Action, r.Text) {
 		return
 	}
 	switch r.Action {

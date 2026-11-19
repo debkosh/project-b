@@ -1,6 +1,8 @@
 package mockengine
 
 import (
+	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"strings"
 
@@ -23,16 +25,44 @@ type PasskeyAnswer struct {
 type passkeyRequest struct {
 	request string
 	phone   bool
+	// Our own passkeys can answer it; they are the only way, as on a phone; the
+	// credential IDs a sign-in allows and a new passkey's site already has, base64url; and
+	// who a new passkey is for.
+	own, only      bool
+	allow, exclude []string
+	user           string
 }
+
+// MockClientDataHash is the hash of the client data the mock asks our own passkeys to sign.
+var MockClientDataHash = bytes.Repeat([]byte{7}, 32)
 
 // mockLink is the text a phone's QR code carries, as the engine words one.
 const mockLink = "FIDO:/0123456789012345678901234567890123456789012345678901234567890123456789"
 
-// openPasskey is a page in tab asking for a passkey: value is "create" or "get", with
-// " nophone" after it when phone as key isn't there.
+// openPasskey is a page in tab asking for a passkey: value is "create" or "get", and after
+// it, each after a space: nophone when phone as key isn't there; own when our own passkeys
+// can answer, only when they are the only way; allow= and exclude= with credential IDs
+// between commas; user= with the name a new passkey is for.
 func (e *Engine) openPasskey(tab engine.TabID, value string) {
-	request, rest, _ := strings.Cut(value, " ")
-	r := &passkeyRequest{request: request, phone: rest != "nophone"}
+	words := strings.Fields(value)
+	r := &passkeyRequest{request: words[0], phone: true, user: "asha"}
+	for _, w := range words[1:] {
+		k, v, _ := strings.Cut(w, "=")
+		switch k {
+		case "nophone":
+			r.phone = false
+		case "own":
+			r.own = true
+		case "only":
+			r.own, r.only, r.phone = true, true, false
+		case "allow":
+			r.allow = strings.Split(v, ",")
+		case "exclude":
+			r.exclude = strings.Split(v, ",")
+		case "user":
+			r.user = v
+		}
+	}
 	e.mu.Lock()
 	if e.dialogs.waiting == nil {
 		e.dialogs.waiting = map[engine.DialogID]engine.TabID{}
@@ -50,7 +80,14 @@ func (e *Engine) openPasskey(tab engine.TabID, value string) {
 }
 
 func (e *Engine) keyStep(id engine.DialogID, r *passkeyRequest) {
-	b, _ := json.Marshal(map[string]any{"request": r.request, "site": "example.com", "phone": r.phone})
+	carries := map[string]any{"request": r.request, "site": "example.com", "phone": r.phone}
+	if r.own {
+		carries["own"], carries["only"] = true, r.only
+		if r.request == "get" {
+			carries["allow"] = r.allow
+		}
+	}
+	b, _ := json.Marshal(carries)
 	e.listener.PasskeyStep(id, "key", string(b))
 }
 
@@ -114,6 +151,23 @@ func (e *Engine) AnswerPasskey(id engine.DialogID, action, text string) {
 		e.listener.PasskeyStep(id, "phone", string(b))
 	case "key", "retry":
 		e.keyStep(id, r)
+	case "own":
+		// The request goes to our own passkeys, which ask Go to make or to sign.
+		if !r.own {
+			return
+		}
+		carries := map[string]any{"clientDataHash": base64.RawURLEncoding.EncodeToString(MockClientDataHash)}
+		step := "ownSign"
+		if r.request == "create" {
+			step = "ownMake"
+			carries = map[string]any{"exclude": r.exclude, "user": map[string]string{
+				"id": base64.RawURLEncoding.EncodeToString([]byte("handle-" + r.user)), "name": r.user + "@example.com", "displayName": strings.ToUpper(r.user[:1]) + r.user[1:] + " Rao"}}
+		}
+		b, _ := json.Marshal(carries)
+		e.listener.PasskeyStep(id, step, string(b))
+	case "made", "signed", "ownFailed":
+		// The page has its answer, and the request ends.
+		e.endPasskey(id)
 	}
 }
 

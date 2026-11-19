@@ -75,7 +75,7 @@ type pageDialogs struct {
 	e    engine.Engine
 	list []pageDialog
 	// The passkey requests among them, whose cards change in place (passkeys.go).
-	passkeys *passkeys
+	passkeys *passkeyCards
 }
 
 func (p *pageDialogs) changed() {
@@ -103,6 +103,7 @@ func (p *pageDialogs) kindOf(id engine.DialogID) string {
 // drop takes dialog id off the list, saying whether it was there.
 func (p *pageDialogs) drop(id engine.DialogID) bool {
 	delete(p.passkeys.waiting, id)
+	p.passkeys.closed(id)
 	for i, d := range p.list {
 		if d.ID == id {
 			p.list = append(p.list[:i:i], p.list[i+1:]...)
