@@ -48,7 +48,9 @@ function on(where, text) {
   if (!g) {
     const background = palette?.['--' + where];
     const accent = none ? undefined : palette?.['--frame'];
-    g = env({ scheme: dark ? 'dark' : 'light', background: hex(background), accent: hex(accent), text });
+    // Away from --danger, so nothing made up reads as an error (docs/design-system.md).
+    const avoid = hex(palette?.['--danger']) ? [palette['--danger']] : undefined;
+    g = env({ scheme: dark ? 'dark' : 'light', background: hex(background), accent: hex(accent), text, avoid });
     envs.set(k, g);
   }
   return g;
