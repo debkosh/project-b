@@ -14,6 +14,7 @@ import (
 	"projectb/flags"
 	"projectb/history"
 	"projectb/keys"
+	"projectb/passkeys"
 	"projectb/pins"
 	"projectb/policy"
 	"projectb/prefs"
@@ -137,6 +138,8 @@ type App struct {
 	Bookmarks *bookmarks.Manager
 	// Keys is the profile's key, and the secrets it seals.
 	Keys *keys.Keys
+	// Passkeys are the profile's own passkeys (docs/passkeys.md).
+	Passkeys *passkeys.Manager
 	// Sync syncs the bookmarks and history (docs/sync.md).
 	Sync *sync.Manager
 	// closed is the tabs and windows the person closed, newest first; quitting says the
@@ -204,7 +207,9 @@ func Start(e engine.Engine, cfg Config) *App {
 	// Sync, after the tables it syncs: off the main thread, and at once when it is on.
 	a.Keys = keys.New(cfg.ProfileDir, cfg.Profile, st, cfg.DeviceKey)
 	a.History.OnClearAll(sync.ClearedAll)
-	a.Sync = sync.New(st, a.Keys, e.Post, append(history.Synced(), a.Bookmarks.Synced(e.Post))...)
+	// The passkeys before sync, which marks their table's rows as it does the others'.
+	a.Passkeys = passkeys.New(st, a.Keys, verifyPerson(cfg.System, e.Post))
+	a.Sync = sync.New(st, a.Keys, e.Post, append(history.Synced(), a.Bookmarks.Synced(e.Post), a.Passkeys.Synced(func() {}))...)
 	a.Suggest = suggest.New(a.History)
 	a.Workspaces = workspaces.New(cfg.ProfileDir)
 	a.Pins = pins.New(cfg.ProfileDir)
@@ -242,7 +247,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.menus = newContextMenus(a, e)
 	a.Shell.AddPart(a.downloadsShellPart(e))
 	a.dialogs = &pageDialogs{a: a, e: e, list: []pageDialog{}}
-	a.dialogs.passkeys = &passkeys{p: a.dialogs, waiting: map[engine.DialogID]pageDialog{}}
+	a.dialogs.passkeys = &passkeyCards{p: a.dialogs, waiting: map[engine.DialogID]pageDialog{}, own: map[engine.DialogID]*ownPasskey{}}
 	a.Shell.AddPart(a.dialogs.shellPart())
 	a.finds = newPageFinds(a, e)
 	a.Shell.AddPart(a.finds.shellPart())

@@ -32,6 +32,7 @@ import (
 	"projectb/prefs"
 	"projectb/profiles"
 	"projectb/shells"
+	"projectb/system"
 	"projectb/tabs"
 	"projectb/timeline"
 	"projectb/update"
@@ -289,6 +290,22 @@ func main() {
 	// none for the first one the window shows.
 	mux.HandleFunc("POST /mock/fire", func(w http.ResponseWriter, r *http.Request) {
 		tab, _ := strconv.ParseInt(r.FormValue("tab"), 10, 64)
+		// The OS's check of the person, which the mock system plays: how every check ends
+		// from now on (verified, denied or noScreenLock), hold to make checks wait as the
+		// OS's sheet does, and answer with a verdict after it to end the oldest waiting.
+		if r.FormValue("kind") == "personCheck" {
+			verdicts := map[string]system.Verdict{"verified": system.Verified, "denied": system.Denied, "noScreenLock": system.NoScreenLock}
+			switch what, verdict, _ := strings.Cut(r.FormValue("value"), " "); what {
+			case "hold":
+				sys.HoldChecks(true)
+			case "answer":
+				sys.HoldChecks(false)
+				sys.AnswerCheck(verdicts[verdict])
+			default:
+				sys.SetVerdict(verdicts[what])
+			}
+			return
+		}
 		e.Fire(windowOf(r), engine.TabID(tab), r.FormValue("kind"), r.FormValue("value"))
 	})
 	mux.HandleFunc("GET /mock/regions", func(w http.ResponseWriter, r *http.Request) {
@@ -314,7 +331,7 @@ func main() {
 			close(done)
 		})
 		<-done
-		out := map[string]any{"tabs": goTabs, "active": active, "settings": settings, "prepared": prepared, "regions": shell, "drag": drag, "bounds": mockengine.Page(l), "visible": append([]engine.VisibleTab{}, l.Tabs...), "closed": e.Closed(win), "quit": e.Quit(), "windows": e.Windows(), "hidden": e.Hidden(win), "windowColor": l.FrameColor, "shownColor": e.ShownColor(), "frameWidth": l.FrameWidth, "page": e.PageOf(win), "shell": e.PageOf(win).Shell(), "focused": e.Focused(), "unshownFocus": e.UnshownFocus(), "leftApp": e.Left(), "dock": sys.DockColor(), "opened": opened.Load(), "menu": e.Menu(), "edits": e.Edits(), "permissions": e.PermissionAnswers(), "notifications": sys.Notifications(), "notificationsAllowed": sys.NotificationsAllowed(), "clipboard": e.Clipboard(), "openedFiles": sys.Opened(), "shown": sys.Shown(), "dialogAnswers": e.DialogAnswers(), "passkeyAnswers": e.PasskeyAnswers(), "window": e.Reported(win), "shared": e.Shared(), "deleted": e.Deleted(), "sharedText": e.SharedText(), "copiedImage": e.CopiedImage(), "savedImages": e.SavedImages(), "published": e.Published(), "findsStopped": e.FindsStopped()}
+		out := map[string]any{"tabs": goTabs, "active": active, "settings": settings, "prepared": prepared, "regions": shell, "drag": drag, "bounds": mockengine.Page(l), "visible": append([]engine.VisibleTab{}, l.Tabs...), "closed": e.Closed(win), "quit": e.Quit(), "windows": e.Windows(), "hidden": e.Hidden(win), "windowColor": l.FrameColor, "shownColor": e.ShownColor(), "frameWidth": l.FrameWidth, "page": e.PageOf(win), "shell": e.PageOf(win).Shell(), "focused": e.Focused(), "unshownFocus": e.UnshownFocus(), "leftApp": e.Left(), "dock": sys.DockColor(), "opened": opened.Load(), "menu": e.Menu(), "edits": e.Edits(), "permissions": e.PermissionAnswers(), "notifications": sys.Notifications(), "notificationsAllowed": sys.NotificationsAllowed(), "clipboard": e.Clipboard(), "openedFiles": sys.Opened(), "shown": sys.Shown(), "dialogAnswers": e.DialogAnswers(), "passkeyAnswers": e.PasskeyAnswers(), "personChecks": sys.Checks(), "personChecksCancelled": sys.CancelledChecks(), "window": e.Reported(win), "shared": e.Shared(), "deleted": e.Deleted(), "sharedText": e.SharedText(), "copiedImage": e.CopiedImage(), "savedImages": e.SavedImages(), "published": e.Published(), "findsStopped": e.FindsStopped()}
 		if q := r.URL.Query(); q.Has("x") {
 			x, _ := strconv.ParseFloat(q.Get("x"), 64)
 			y, _ := strconv.ParseFloat(q.Get("y"), 64)
