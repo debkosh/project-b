@@ -1249,7 +1249,9 @@ def talkback_states():
                     return n
             return None
         for name, how in (("Wrapped", "by a label around it"), ("By id", "by aria-labelledby"), ("Field", "by <label for>")):
-            n = named(name)
+            # Each name waited for: the screen reader's tree fills in a moment after TalkBack
+            # starts, a field's hint last (a flake on 5602).
+            n = until(lambda: named(name), 10)
             check("and a control named %s says its name" % how, n is not None,
                   None if n is None else (n.get("class", "").rsplit(".", 1)[-1], n.get("text"), n.get("content-desc"), n.get("hint")))
     finally:
