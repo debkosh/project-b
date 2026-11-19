@@ -243,6 +243,7 @@ title, detail, actions}`, absent otherwise
 | `chooseSuggestion` | `row`, `newTab` | Runs a row: Go loads its address or search in the active tab, or a new one, shows its tab, reopens a `closed` tab, or runs its action. A row of a list for typed text carries `typed`, and its address is a typed one once it loads |
 | `run` | `text`: an action's id | Runs an action, as its menu item would |
 | `copyText` | `text` | Puts the text on the clipboard, as a context menu's Copy Link does. A shell page's own write needs a click, which an action from the menu bar or a key hasn't |
+| `menuOpened` | | A phone shell's menu sheet opened: Go starts the window's settings page out of sight, as Settings is a tap away, so the tap shows it drawn ([windows.md](windows.md#settings-loads-as-the-phones-menu-opens-decided-2026-11-19)). A desktop shell doesn't send it |
 | `menu` | | Asks for the menu bar's menus for this window, as the shell opens its own menu; Go answers with `menu` ([menus-shortcuts.md](menus-shortcuts.md#the-shells-menu)) |
 | `window` | `text`: `close`, `minimise`, `zoom` or `fullScreen` | Asks the window |
 | `data` | `data`: any JSON | Replaces this window's copy of the shell's own data |

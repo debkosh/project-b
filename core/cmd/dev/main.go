@@ -304,17 +304,18 @@ func main() {
 			}
 		}
 		// Go's own state of the window: its tabs in order, the active one, and its settings
-		// tab, 0 for none.
-		goTabs, active, settings := []tabs.Tab{}, engine.TabID(0), engine.TabID(0)
+		// tab, 0 for none, and the settings tab made ahead, out of sight, as a phone's menu opens.
+		goTabs, active, settings, prepared := []tabs.Tab{}, engine.TabID(0), engine.TabID(0), engine.TabID(0)
 		done := make(chan struct{})
 		e.Post(func() {
 			if a != nil && e.Open(win) {
 				goTabs, active, settings = a.Tabs.AllIn(win), a.Tabs.ActiveIn(win), a.Tabs.PageIn(win, "settings")
+				prepared = a.Tabs.Prepared(win, "settings")
 			}
 			close(done)
 		})
 		<-done
-		out := map[string]any{"tabs": goTabs, "active": active, "settings": settings, "regions": shell, "drag": drag, "bounds": mockengine.Page(l), "visible": append([]engine.VisibleTab{}, l.Tabs...), "closed": e.Closed(win), "quit": e.Quit(), "windows": e.Windows(), "hidden": e.Hidden(win), "windowColor": l.FrameColor, "shownColor": e.ShownColor(), "frameWidth": l.FrameWidth, "page": e.PageOf(win), "shell": e.PageOf(win).Shell(), "focused": e.Focused(), "unshownFocus": e.UnshownFocus(), "leftApp": e.Left(), "dock": e.DockColor(), "opened": opened.Load(), "menu": e.Menu(), "edits": e.Edits(), "permissions": e.PermissionAnswers(), "notifications": e.NotificationsShown(), "notificationsAllowed": e.NotificationsAllowed(), "clipboard": e.Clipboard(), "openedFiles": e.Opened(), "shown": e.Shown(), "dialogAnswers": e.DialogAnswers(), "passkeyAnswers": e.PasskeyAnswers(), "window": e.Reported(win), "shared": e.Shared(), "deleted": e.Deleted(), "sharedText": e.SharedText(), "copiedImage": e.CopiedImage(), "savedImages": e.SavedImages(), "published": e.Published(), "findsStopped": e.FindsStopped()}
+		out := map[string]any{"tabs": goTabs, "active": active, "settings": settings, "prepared": prepared, "regions": shell, "drag": drag, "bounds": mockengine.Page(l), "visible": append([]engine.VisibleTab{}, l.Tabs...), "closed": e.Closed(win), "quit": e.Quit(), "windows": e.Windows(), "hidden": e.Hidden(win), "windowColor": l.FrameColor, "shownColor": e.ShownColor(), "frameWidth": l.FrameWidth, "page": e.PageOf(win), "shell": e.PageOf(win).Shell(), "focused": e.Focused(), "unshownFocus": e.UnshownFocus(), "leftApp": e.Left(), "dock": e.DockColor(), "opened": opened.Load(), "menu": e.Menu(), "edits": e.Edits(), "permissions": e.PermissionAnswers(), "notifications": e.NotificationsShown(), "notificationsAllowed": e.NotificationsAllowed(), "clipboard": e.Clipboard(), "openedFiles": e.Opened(), "shown": e.Shown(), "dialogAnswers": e.DialogAnswers(), "passkeyAnswers": e.PasskeyAnswers(), "window": e.Reported(win), "shared": e.Shared(), "deleted": e.Deleted(), "sharedText": e.SharedText(), "copiedImage": e.CopiedImage(), "savedImages": e.SavedImages(), "published": e.Published(), "findsStopped": e.FindsStopped()}
 		if q := r.URL.Query(); q.Has("x") {
 			x, _ := strconv.ParseFloat(q.Get("x"), 64)
 			y, _ := strconv.ParseFloat(q.Get("y"), 64)

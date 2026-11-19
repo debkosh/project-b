@@ -4,7 +4,7 @@ Every action a person can take, where the app offers it, and the tests that do i
 `tools/action_coverage.py` from the code; `tools/test.sh mock` fails while an action has no
 test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 
-**209 actions and messages, 200 with a test, 9 exempt with a reason, 0 with none; 28 of Go's actions done by no test of the real app.**
+**210 actions and messages, 201 with a test, 9 exempt with a reason, 0 with none; 28 of Go's actions done by no test of the real app.**
 
 ## Go's actions: the menu bar, keys and the shells' own menus
 
@@ -16,7 +16,7 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `app.hide` Hide Project B | menu bar, keys (chrome, firefox, glide, project-b) | **no** | `commands_test.go` |
 | `app.hideOthers` Hide Others | menu bar, keys (chrome, firefox, glide, project-b) | **no** | exempt: macOS's own: AppKit hides the other apps |
 | `app.quit` Quit Project B | menu bar | **no** | `menu_test.go`, `commands_test.go`, `shellmenu_test.go`, `settings.cjs` and 1 more |
-| `app.settings` Settings… | menu bar, fox, glide, minimal, mobile, standard, terminal, mobile-native | yes | `app_test.go`, `menu_test.go`, `welcome_test.go`, `commands_test.go` and 12 more |
+| `app.settings` Settings… | menu bar, fox, glide, minimal, mobile, standard, terminal, mobile-native | yes | `app_test.go`, `menu_test.go`, `settings_prepare_test.go`, `welcome_test.go` and 13 more |
 | `app.showAll` Show All | menu bar, keys (chrome, firefox, glide, project-b) | **no** | exempt: macOS's own: AppKit shows the hidden apps |
 | `bookmarks.show` Bookmark Manager | menu bar, keys (chrome, firefox, glide, project-b), mobile, standard, page:welcome | yes | `pages_test.go`, `pages.cjs`, `mobile.cjs`, `drive_first_app.py` |
 | `bookmarks.toggle` Bookmark This Page… | menu bar, keys (chrome, firefox, glide, project-b) | **no** | `pages_test.go`, `pages.cjs` |
@@ -161,6 +161,7 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `keepCookies` | page:settings | **no** | `quit_erasure_test.go` |
 | `layout` | mobile-native, page:picker | **no** | `app_test.go`, `first-app.cjs` |
 | `makeDefault` | page:settings, page:welcome | **no** | `default_browser_settings_test.go` |
+| `menuOpened` | mobile, mobile-native | **no** | `settings_prepare_test.go` |
 | `more` | page:history | **no** | exempt: not a person's action: the History page asks for its next rows as it scrolls |
 | `moveBookmark` | page:bookmarks | **no** | `pages_test.go` |
 | `moveTab` | standard, terminal | **no** | `app_test.go` |
@@ -172,7 +173,7 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `open` | page:bookmarks, page:history, page:picker | **no** | `events_test.go`, `pages_test.go`, `picker_test.go` |
 | `openAccess` | ui | **no** | `imports_test.go` |
 | `openInWorkspace` | page:settings | **no** | `app_test.go` |
-| `ready` | mobile-native, page:bookmarks, page:downloads, page:history, page:picker, page:settings, page:welcome | **no** | `events_test.go`, `app_test.go`, `default_browser_settings_test.go`, `extensions_test.go` and 7 more |
+| `ready` | mobile-native, page:bookmarks, page:downloads, page:history, page:picker, page:settings, page:welcome | **no** | `events_test.go`, `app_test.go`, `default_browser_settings_test.go`, `extensions_test.go` and 8 more |
 | `recording` | page:settings | **no** | `app_test.go` |
 | `relaunch` | fox, glide, minimal, mobile-native, page:settings, standard, terminal | **no** | `app_test.go` |
 | `reload` | glide, mobile-native | yes | `drive_first_app.py` |
@@ -182,7 +183,7 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `resetAction` | page:settings | **no** | `settings_messages_test.go` |
 | `resetProfile` | page:settings | **no** | `profile_test.go` |
 | `retryUpdate` | fox, page:settings, standard | **no** | `settings_messages_test.go` |
-| `run` | fox, glide, minimal, mobile, mobile-native, standard, terminal | yes | `app_test.go`, `check_clipboard.py`, `drive_first_app.py` |
+| `run` | fox, glide, minimal, mobile, mobile-native, standard, terminal | yes | `app_test.go`, `settings_prepare_test.go`, `check_clipboard.py`, `drive_first_app.py` |
 | `saveBookmark` | mobile-native | **no** | `pages_test.go`, `mobile.cjs` |
 | `saveReport` | mobile, standard | **no** | `downloads_test.go` |
 | `search` | page:history | **no** | `pages_test.go` |

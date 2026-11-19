@@ -95,6 +95,9 @@ type Tab struct {
 	ownPage   bool
 	// refused: Links to other sites closes the tab, which nothing may load meanwhile.
 	refused bool
+	// held: a tab of one of our pages made ahead, out of sight (PreparePage). It is in no
+	// window's order and nobody hears of it until OpenPage shows it.
+	held bool
 }
 
 // Gate runs before a navigation. Returning false blocks it, and later gates don't run.
@@ -206,6 +209,8 @@ type window struct {
 	at     int
 	// groups are its tab groups, in the order they were made.
 	groups []*Group
+	// held is its tab of each of our pages made ahead (PreparePage), by page.
+	held map[string]engine.TabID
 }
 
 // New returns a manager with no windows, on the profile's workspaces and pins.
@@ -278,6 +283,7 @@ func (m *Manager) frontMaybeChanged(was engine.WindowID) {
 // RemoveWindow closes a window's tabs and forgets it. The window used before it is in
 // front now.
 func (m *Manager) RemoveWindow(w engine.WindowID) {
+	m.dropHeld(w)
 	for _, id := range m.windows[w].order {
 		t := *m.tabs[id]
 		delete(m.tabs, id)
@@ -358,22 +364,100 @@ func (m *Manager) PageIn(w engine.WindowID, page string) engine.TabID {
 }
 
 // OpenPage shows one of our pages in window w, which has one tab for each: its tab, or a
-// new one beside the active tab, opened from it. Either is made active.
+// new one beside the active tab, opened from it. Either is made active. A new one is the
+// tab PreparePage made, when there is one, its page already loaded.
 func (m *Manager) OpenPage(w engine.WindowID, page string) engine.TabID {
 	if id := m.PageIn(w, page); id != 0 {
 		m.Activate(id)
 		return id
 	}
 	workspace, active := m.NewTabWorkspace(w), m.ActiveIn(w)
-	id := m.eng.CreateInternalTab()
-	t := m.add(id, w)
+	id := m.unhold(w, page)
+	ahead := id != 0
+	if ahead {
+		win := m.windows[w]
+		win.order = append(win.order, id)
+		win.recent = append(win.recent, id)
+		m.windowOf[id] = w
+	} else {
+		id = m.eng.CreateInternalTab()
+		m.add(id, w)
+	}
+	t := m.tabs[id]
 	t.Page, t.Workspace, t.URL = page, workspace, m.PageURL(page)
 	if active != 0 {
 		m.beside(id, active)
 	}
-	m.loadURL(id, t.URL)
+	if !ahead {
+		m.loadURL(id, t.URL)
+	}
+	t.Notice = m.noticeOf(t)
 	m.Activate(id)
 	return id
+}
+
+// PreparePage makes window w's tab of one of our pages ahead, out of sight, and loads its
+// page, when w has none, shown or made ahead: OpenPage then shows it, drawn at once if
+// its page is ready. Until then it is no tab to anyone: in no window's order, so not
+// counted, listed, saved or restored, never shown, focused or given the keyboard, and
+// nobody hears of its changes. It stays until OpenPage takes it or its window closes. A
+// phone's menu sheet asks for the settings page as it opens, as Settings is a tap away.
+func (m *Manager) PreparePage(w engine.WindowID, page string) {
+	win := m.windows[w]
+	if win == nil || m.PageIn(w, page) != 0 || win.held[page] != 0 {
+		return
+	}
+	id := m.eng.CreateInternalTab()
+	t := &Tab{ID: id, Page: page, URL: m.PageURL(page), held: true}
+	m.tabs[id] = t
+	if win.held == nil {
+		win.held = map[string]engine.TabID{}
+	}
+	win.held[page] = id
+	m.loadURL(id, t.URL)
+}
+
+// Prepared is window w's tab of one of our pages made ahead (PreparePage) and not shown
+// yet, or 0.
+func (m *Manager) Prepared(w engine.WindowID, page string) engine.TabID {
+	if win := m.windows[w]; win != nil {
+		return win.held[page]
+	}
+	return 0
+}
+
+// unhold takes window w's tab of a page made ahead out of hiding and returns it, or 0 when
+// there is none. One whose page crashed meanwhile is closed instead, for a new one.
+func (m *Manager) unhold(w engine.WindowID, page string) engine.TabID {
+	id := m.windows[w].held[page]
+	if id == 0 {
+		return 0
+	}
+	delete(m.windows[w].held, page)
+	t := m.tabs[id]
+	t.held = false
+	if t.Crashed {
+		m.drop(id)
+		return 0
+	}
+	return id
+}
+
+// drop closes a tab made ahead that nobody saw, as if it never was: its page's own
+// subscribers hear it closed (OnClosed), but no window and no list of closed tabs does.
+func (m *Manager) drop(id engine.TabID) {
+	t := *m.tabs[id]
+	delete(m.tabs, id)
+	m.eng.CloseTab(id)
+	m.closed(t)
+}
+
+// dropHeld drops window w's tabs made ahead.
+func (m *Manager) dropHeld(w engine.WindowID) {
+	for page, id := range m.windows[w].held {
+		delete(m.windows[w].held, page)
+		m.drop(id)
+	}
 }
 
 // CreateIn opens a new tab at the end of window w, loading nothing, in a workspace, by
@@ -454,7 +538,7 @@ func (m *Manager) add(id engine.TabID, w engine.WindowID) *Tab {
 
 // Activate makes a tab the active one in its window.
 func (m *Manager) Activate(id engine.TabID) {
-	if m.tabs[id] == nil {
+	if m.tabs[id] == nil || m.tabs[id].held {
 		return
 	}
 	win := m.windows[m.windowOf[id]]
@@ -559,7 +643,7 @@ func (m *Manager) Close(id engine.TabID) { m.close(id, false) }
 func (m *Manager) CloseToRecent(id engine.TabID) { m.close(id, true) }
 
 func (m *Manager) close(id engine.TabID, recent bool) {
-	if m.tabs[id] == nil {
+	if m.tabs[id] == nil || m.tabs[id].held {
 		return
 	}
 	w := m.windowOf[id]
@@ -594,7 +678,7 @@ func (m *Manager) closed(t Tab) {
 // as if the tab had closed there.
 func (m *Manager) Move(id engine.TabID, w engine.WindowID, index int) {
 	t := m.tabs[id]
-	if t == nil {
+	if t == nil || t.held {
 		return
 	}
 	from := m.windowOf[id]
@@ -609,6 +693,10 @@ func (m *Manager) Move(id engine.TabID, w engine.WindowID, index int) {
 	}
 	if from != w {
 		m.leaveGroup(id)
+		if held := m.windows[w].held[t.Page]; t.Page != "" && held != 0 {
+			delete(m.windows[w].held, t.Page)
+			m.drop(held)
+		}
 	}
 	i := m.detach(id)
 	m.windowOf[id] = w
@@ -1104,7 +1192,9 @@ func (m *Manager) HandleNavigationFinished(id engine.TabID, nav int64, u string)
 	t.ownPage = t.ownPage || t.URL != ""
 	t.Typed = t.typed == nav
 	for _, f := range m.onFinished {
-		f(*t)
+		if !t.held {
+			f(*t)
+		}
 	}
 	if t.Typed {
 		t.Typed, t.typed = false, 0
@@ -1156,7 +1246,9 @@ func (m *Manager) HandleTitleChanged(id engine.TabID, title string) {
 	}
 	t.Title = title
 	for _, f := range m.onTitle {
-		f(*t)
+		if !t.held {
+			f(*t)
+		}
 	}
 	m.changed(t)
 }
@@ -1245,6 +1337,9 @@ func (m *Manager) HandlePageCrashed(id engine.TabID) {
 }
 
 func (m *Manager) changed(t *Tab) {
+	if t.held {
+		return
+	}
 	t.Notice = m.noticeOf(t)
 	for _, f := range m.onChanged {
 		f(*t)

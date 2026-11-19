@@ -76,6 +76,8 @@ type Manager struct {
 	suggest *suggest.Manager
 	// onBack takes the back key first, when set.
 	onBack func(w engine.WindowID) bool
+	// onMenuOpened hears that a shell's menu opened in window w, when set.
+	onMenuOpened func(w engine.WindowID)
 	window *window.Manager
 	prefs  *prefs.Manager
 	update *update.Manager
@@ -321,6 +323,10 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 		m.send(w, map[string]any{"t": "backKey"})
 	case "run":
 		m.run(c.Text)
+	case "menuOpened":
+		if m.onMenuOpened != nil {
+			m.onMenuOpened(w)
+		}
 	case "relaunch":
 		m.update.Relaunch()
 	case "retryUpdate":
@@ -420,6 +426,10 @@ func (m *Manager) TabLayoutChanged(layout string) {
 
 // OnBack gives f the shell's back first, the phone's back key: f says whether it used it.
 func (m *Manager) OnBack(f func(w engine.WindowID) bool) { m.onBack = f }
+
+// OnMenuOpened names what hears that a shell's menu opened in a window: a phone's menu
+// sheet says so as it opens, as its Settings is a tap away.
+func (m *Manager) OnMenuOpened(f func(w engine.WindowID)) { m.onMenuOpened = f }
 
 // SendTo sends one window's shell a message.
 func (m *Manager) SendTo(w engine.WindowID, v any) { m.send(w, v) }

@@ -83,14 +83,32 @@ func New(eng engine.Engine, t *tabs.Manager, w *window.Manager, p *prefs.Manager
 // OnRelaunch names what the Flags section's Relaunch does.
 func (m *Manager) OnRelaunch(f func()) { m.relaunch = f }
 
-// Open shows window w's settings tab, opening one when it has none, and returns it.
+// Open shows window w's settings tab, opening one when it has none, and returns it: the one
+// Prepare made, when there is one.
 func (m *Manager) Open(w engine.WindowID) engine.TabID {
 	if m.tabs.PageIn(w, Page) == 0 {
 		timeline.Begin("settings.open")
 		timeline.Mark("settings.open.go")
+		if ahead := m.tabs.Prepared(w, Page); ahead != 0 {
+			if p := m.pages[ahead]; p != nil && p.heard {
+				timeline.Mark("settings.open.prepared_ready")
+			} else {
+				timeline.Mark("settings.open.prepared")
+			}
+		}
 		defer timeline.Mark("settings.open.done")
 	}
 	return m.tabs.OpenPage(w, Page)
+}
+
+// Prepare starts window w's settings page out of sight, when it has none, so that Open
+// shows it drawn: a phone's menu sheet asks as it opens. The page stays loaded for next
+// time if the menu closes without Settings (tabs.Manager.PreparePage).
+func (m *Manager) Prepare(w engine.WindowID) {
+	if m.tabs.PageIn(w, Page) == 0 && m.tabs.Prepared(w, Page) == 0 {
+		timeline.Mark("settings.prepare")
+		m.tabs.PreparePage(w, Page)
+	}
 }
 
 // OpenSection shows window w's settings tab at one of its sections, by id, and then tells

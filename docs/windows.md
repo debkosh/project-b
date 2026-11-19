@@ -134,6 +134,38 @@ Known gaps, as built:
 - An extension's button pressed while a settings tab is active tells the extension
   nothing, as it doesn't see that tab.
 
+### Settings loads as the phone's menu opens (decided 2026-11-19)
+
+The owner's words: "load the settings when user clicks the menu icon... meaning load setting
+when there is a setting button on screen that the user might click... for desktop lets not
+preload". On a phone, Settings is a row of the menu sheet; opening the sheet puts it a tap
+away, so the page starts then and the tap only shows it.
+
+- **The menu sheet opening says so.** Both phone shells, the Mobile shell's sheet and the
+  native one's, send `menuOpened` as their sheet opens ([shells.md](shells.md)). Go makes the
+  window's settings tab ahead (`settings.Manager.Prepare`, `tabs.Manager.PreparePage`),
+  when the window has none, and loads its page. A desktop shell sends nothing, so a desktop
+  makes the tab on the click, as before.
+- **Made ahead, it is no tab to the person.** It is in no window's order, so not counted on
+  the toolbar, not in the switcher, not saved with the session or restored; our tabs record
+  no history and it can't be closed, so not in recently closed either. It is never laid
+  out, so never shown, focused or given the keyboard, and nobody hears of its changes.
+- **Settings shows it.** `app.settings` (and any other way to open settings, such as a
+  section asked for) takes the tab made ahead, puts it beside the active tab as a new one
+  goes, and shows it, without loading it again. A page that has said `ready` has had its
+  snapshot, and draws at once.
+- **It stays until used.** A menu closed without Settings leaves it loaded for next time; a
+  menu opened while settings shows, or while one is made ahead, makes no other. It goes
+  with its window, as a window's tabs go, hearing nothing; one whose page crashed meanwhile
+  is closed when Settings opens, and a new one opens. Closing the shown settings tab closes
+  it as today; the next menu makes another.
+- **The timeline says which.** `settings.prepare` marks the tab made ahead; `settings.open`
+  then carries `settings.open.prepared_ready` (its page had said ready) or
+  `settings.open.prepared` (still starting). A page started out of sight first paints when
+  it is shown, so `settings.open` ends as before, when its first frame is on screen. On the
+  Android 17 emulator, medians of 10 starts from the tap: drawn at 12 ms against 162 to
+  170 ms for a page made on the tap, and on screen at 117 ms against 331 to 354 ms.
+
 ## Every window has a tab (decided 2026-11-18)
 
 This replaces the window with no tabs, decided on 14 and 16 November. The owner, 2026-11-18:

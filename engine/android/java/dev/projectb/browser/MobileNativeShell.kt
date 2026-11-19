@@ -696,6 +696,8 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
     // sheet, but Bookmark, which shows its star filled on a bookmarked page: Go answers it
     // with the star's panel, which takes the sheet's place.
     private fun menuSheet(): View {
+        // Settings is a tap away: Go starts its page out of sight now, so the tap shows it drawn.
+        send(JSONObject().put("t", "menuOpened"))
         val s = Sheet(context, "Menu", palette) { open("") }
         val tab = activeTab()
         val group = groups.firstOrNull { Switcher.inGroup(it, active) }

@@ -31,6 +31,8 @@
   // level what the tree has there that the sheet has no place of its own for: the entries
   // marked "shell": "top", Print… the first.
   requestMenu();
+  // Settings is a tap away: Go starts its page out of sight now, so the tap shows it drawn.
+  send({ t: 'menuOpened' });
   const placed = new Set(['app.settings', 'find.open', 'history.show', 'bookmarks.show', 'downloads.show']);
   const lifted = $derived((go.menu || []).filter((item) => item.action && !item.items && !placed.has(item.action)));
   const liftedIcons = { 'page.print': 'print' };
