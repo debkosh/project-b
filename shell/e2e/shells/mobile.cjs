@@ -803,6 +803,28 @@ const H = 915;
   await backKey();
   check('the back key closes the link menu', await until(async () => !(await linkSheet.isVisible())));
 
+  // While the phone's soft keyboard is up the bars under the page step aside, so a dialog or
+  // a field in the page has the room down to it; the toolbar stays while its own address
+  // field has the keyboard.
+  const toolbar = ui.getByRole('group', { name: 'Toolbar' });
+  const pageBottom = async () => {
+    const v = (await regions()).visible[0].rect;
+    return v.y + v.h;
+  };
+  const barsOn = await pageBottom();
+  await fire('keyboard', 'up');
+  check('the keyboard up puts the toolbar aside, and the page takes its room', await until(async () => !(await toolbar.isVisible()) && (await pageBottom()) > barsOn),
+    JSON.stringify({ barsOn, now: await pageBottom() }));
+  await fire('keyboard', 'down');
+  check('the keyboard down brings it back, and the page gives the room back', await until(async () => (await toolbar.isVisible()) && (await pageBottom()) === barsOn));
+  await field.tap();
+  await until(inField);
+  await fire('keyboard', 'up');
+  check('the address field in edit keeps the toolbar with the keyboard up', (await until(inField)) && (await toolbar.isVisible()));
+  await backKey();
+  await fire('keyboard', 'down');
+  await until(async () => !(await inField()));
+
   // A page that fails, crashes or is blocked gets a plain notice over it, not a blank.
   const notice = ui.getByRole('alert');
   const nowTab = (await regions()).active;
