@@ -4,7 +4,7 @@ Every action a person can take, where the app offers it, and the tests that do i
 `tools/action_coverage.py` from the code; `tools/test.sh mock` fails while an action has no
 test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 
-**202 actions and messages, 154 with a test, 48 exempt with a reason, 0 with none; 20 of Go's actions done by no test of the real app.**
+**202 actions and messages, 174 with a test, 28 exempt with a reason, 0 with none; 20 of Go's actions done by no test of the real app.**
 
 ## Go's actions: the menu bar, keys and the shells' own menus
 
@@ -62,7 +62,7 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `page.print` Print… | menu bar, keys (chrome, firefox, glide, project-b), mobile | **no** | `contextmenu_test.go`, `print_test.go`, `shellmenu_test.go`, `mobile.cjs` |
 | `profile.picker` Profiles… | menu bar | yes | `drive_first_app.py`, `check.py` |
 | `tab.close` Close Tab | menu bar, keys (chrome, firefox, glide, project-b), glide, standard | yes | `commands_test.go`, `shellmenu_test.go`, `settings.cjs`, `shell-contract.cjs` and 3 more |
-| `tab.duplicate` Duplicate Tab | menu bar, keys (chrome, firefox, glide, project-b), standard | yes | `app_test.go`, `suggest_test.go`, `standard-groups.cjs`, `drive_first_app.py` |
+| `tab.duplicate` Duplicate Tab | menu bar, keys (chrome, firefox, glide, project-b), standard | yes | `app_test.go`, `settings_messages_test.go`, `suggest_test.go`, `standard-groups.cjs` and 1 more |
 | `tab.moveToNewWindow` Move Tab to New Window | menu bar, keys (chrome, firefox, glide, project-b), standard | yes | `app_test.go`, `drive_first_app.py` |
 | `tab.new` New Tab | menu bar, keys (chrome, firefox, glide, project-b), fox, glide, minimal, standard, terminal, page:welcome | yes | `app_test.go`, `menu_test.go`, `commands_test.go`, `shellmenu_test.go` and 14 more |
 | `tab.next` Select Next Tab | menu bar, keys (chrome, firefox, glide, project-b), page:welcome | yes | `menu_test.go`, `drive_first_app.py` |
@@ -108,7 +108,7 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | Action | Offered in | Real app | Tests |
 |---|---|---|---|
 | `activateTab` | fox, glide, minimal, mobile, mobile-native, standard, terminal | yes | `thumbs_test.go`, `settings.cjs`, `shell-contract.cjs`, `mobile.cjs` and 2 more |
-| `addKey` | page:settings | **no** | `app_test.go` |
+| `addKey` | page:settings | **no** | `app_test.go`, `settings_messages_test.go` |
 | `addToGroup` | glide, mobile, mobile-native, standard | yes | `drive_first_app.py` |
 | `answerDialog` | mobile-native | **no** | `dialogs_test.go` |
 | `askNotifications` | page:welcome | **no** | exempt: the phone's own permission question, which the welcome asks; drive_android's download_notifications answers it |
@@ -116,9 +116,9 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `backCloses` | mobile, mobile-native | **no** | exempt: not a person's action: the Mobile shell tells the engine whether the back key closes something of its own |
 | `bookmark` | mobile-native | **no** | `pages_test.go`, `mobile.cjs`, `standard.cjs` |
 | `cancelImport` | ui | **no** | `imports_extensions_test.go` |
-| `cancelUpdate` | fox, page:settings, standard | **no** | **TODO: settings.cjs on the mock: the update's Cancel while it downloads** |
+| `cancelUpdate` | fox, page:settings, standard | **no** | `settings_messages_test.go` |
 | `captureTab` | mobile | **no** | `thumbs_test.go` |
-| `checkUpdate` | page:settings | **no** | **TODO: settings.cjs on the mock: Check for updates** |
+| `checkUpdate` | page:settings | **no** | `settings_messages_test.go` |
 | `chooseDownloadFolder` | page:settings | **no** | `download_folder_settings_test.go` |
 | `chooseFolder` | ui | **no** | `imports_test.go` |
 | `clear` | page:history | **no** | `pages_test.go` |
@@ -135,7 +135,7 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `delete` | page:history | **no** | `pages_test.go` |
 | `deleteWorkspace` | page:settings | **no** | `app_test.go`, `pins_test.go`, `standard-workspaces.cjs` |
 | `dismissCrash` | fox, glide, minimal, mobile, mobile-native, standard | **no** | `crash-report.cjs` |
-| `dismissMissing` | page:settings | **no** | **TODO: settings.cjs: Keyboard's missing-key notice dismissed** |
+| `dismissMissing` | page:settings | **no** | `settings_messages_test.go` |
 | `done` | page:welcome | **no** | `welcome_test.go` |
 | `downloadAction` | page:downloads | **no** | `downloads_test.go`, `pages_test.go` |
 | `editBookmark` | page:bookmarks | **no** | `pages_test.go` |
@@ -148,7 +148,7 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `focusShell` | fox, glide, minimal, mobile, mobile-native, standard, terminal, ui | **no** | exempt: not a person's action: a shell asks for the keyboard back when its bar or panel opens |
 | `focusTab` | mobile-native | **no** | `app_test.go`, `first-app.cjs`, `shell-contract.cjs`, `fox.cjs` and 2 more |
 | `forgetSite` | mobile | **no** | `suggest_test.go` |
-| `forgetSiteSetting` | page:settings | **no** | **TODO: settings.cjs: a site's setting forgotten** |
+| `forgetSiteSetting` | page:settings | **no** | `settings_messages_test.go` |
 | `forward` | glide, mobile-native | yes | `drive_first_app.py` |
 | `import` | ui | **no** | `imports_extensions_test.go`, `imports_test.go` |
 | `importFile` | ui | **no** | `imports_test.go` |
@@ -171,41 +171,41 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `reload` | glide, mobile-native | yes | `drive_first_app.py` |
 | `removeBookmark` | mobile-native, page:bookmarks | **no** | `pages_test.go` |
 | `removeFromGroup` | glide, mobile, mobile-native, standard | yes | `drive_first_app.py` |
-| `removeKey` | page:settings | **no** | **TODO: settings.cjs: Keyboard's removing a key** |
-| `resetAction` | page:settings | **no** | **TODO: settings.cjs: Keyboard's reset of one action's keys** |
+| `removeKey` | page:settings | **no** | `settings_messages_test.go` |
+| `resetAction` | page:settings | **no** | `settings_messages_test.go` |
 | `resetProfile` | page:settings | **no** | `profile_test.go` |
-| `retryUpdate` | fox, page:settings, standard | **no** | **TODO: settings.cjs on the mock: the update's Retry** |
+| `retryUpdate` | fox, page:settings, standard | **no** | `settings_messages_test.go` |
 | `run` | fox, glide, minimal, mobile, mobile-native, standard, terminal | yes | `app_test.go`, `drive_first_app.py` |
 | `saveBookmark` | mobile-native | **no** | `pages_test.go`, `mobile.cjs` |
 | `saveReport` | mobile, standard | **no** | `downloads_test.go` |
 | `search` | page:history | **no** | `pages_test.go` |
-| `setAddressBarPosition` | page:settings | **no** | **TODO: settings.cjs: Address bar Top or Bottom** |
+| `setAddressBarPosition` | page:settings | **no** | `settings_messages_test.go` |
 | `setAutoUpdate` | page:settings, page:welcome | **no** | `app_test.go` |
-| `setFlag` | page:settings | **no** | **TODO: settings.cjs: a flag switched** |
+| `setFlag` | page:settings | **no** | `settings_messages_test.go` |
 | `setFrameColor` | page:settings | **no** | `app_test.go` |
-| `setHidden` | page:settings | **no** | **TODO: settings.cjs: a hidden setting** |
+| `setHidden` | page:settings | **no** | `settings_messages_test.go` |
 | `setPref` | page:settings, page:welcome | **no** | `app_test.go`, `bookmark_settings_test.go`, `download_folder_settings_test.go`, `downloads_test.go` and 6 more |
 | `setProfileName` | page:settings | **no** | `profile_test.go` |
-| `setReserve` | page:settings | **no** | **TODO: settings.cjs: the reserve setting** |
-| `setSearchEngine` | page:settings, page:welcome | **no** | **TODO: settings.cjs: the search engine chosen** |
+| `setReserve` | page:settings | **no** | `settings_messages_test.go` |
+| `setSearchEngine` | page:settings, page:welcome | **no** | `settings_messages_test.go` |
 | `setShell` | page:settings | **no** | `app_test.go`, `settings.cjs` |
-| `setSiteSetting` | page:settings | yes | `sitefeatures_test.go`, `drive_first_app.py` |
+| `setSiteSetting` | page:settings | yes | `settings_messages_test.go`, `sitefeatures_test.go`, `drive_first_app.py` |
 | `setSparkOn` | page:welcome | **no** | `welcome_test.go` |
-| `setStart` | page:settings | **no** | **TODO: settings.cjs: On start, open** |
+| `setStart` | page:settings | **no** | `settings_messages_test.go` |
 | `setTabLayout` | page:settings, standard | **no** | `app_test.go` |
 | `setTheme` | page:settings | **no** | `app_test.go` |
 | `setWorkspaces` | page:welcome | **no** | `welcome_test.go` |
 | `shareReport` | mobile, mobile-native, standard | **no** | `crash-report.cjs` |
 | `shown` | mobile-native, page:picker | **no** | `app_test.go`, `picker_test.go` |
-| `sparkAdd` | page:settings | **no** | **TODO: the Sparks settings on the mock: a spark added** |
+| `sparkAdd` | page:settings | **no** | `sparks_messages_test.go` |
 | `sparkExport` | page:settings | **no** | `sparks_import_test.go` |
-| `sparkImport` | page:settings | **no** | `sparks_import_test.go` |
-| `sparkImportCancel` | page:settings | **no** | **TODO: the Sparks settings on the mock: an import cancelled** |
+| `sparkImport` | page:settings | **no** | `sparks_import_test.go`, `sparks_messages_test.go` |
+| `sparkImportCancel` | page:settings | **no** | `sparks_messages_test.go` |
 | `sparkImportKeep` | page:settings | **no** | `sparks_import_test.go` |
-| `sparkRemove` | page:settings | **no** | **TODO: the Sparks settings on the mock: a spark removed** |
-| `sparkSetOn` | page:settings | **no** | **TODO: the Sparks settings on the mock: a spark turned on** |
-| `sparkSource` | page:settings | **no** | **TODO: the Sparks settings on the mock: a spark's source shown** |
-| `sparkUpdate` | page:settings | **no** | **TODO: the Sparks settings on the mock: a spark updated** |
+| `sparkRemove` | page:settings | **no** | `sparks_messages_test.go` |
+| `sparkSetOn` | page:settings | **no** | `sparks_messages_test.go` |
+| `sparkSource` | page:settings | **no** | `sparks_messages_test.go` |
+| `sparkUpdate` | page:settings | **no** | `sparks_messages_test.go` |
 | `suggest` | fox, minimal, mobile, mobile-native, terminal | **no** | `app_test.go`, `suggest_test.go` |
 | `syncCancel` | page:settings | **no** | `sync.cjs` |
 | `syncDisconnect` | page:settings | **no** | `sync.cjs` |
@@ -215,5 +215,5 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `timeline` | mobile-native | **no** | `timeline_test.go` |
 | `ungroup` | glide, mobile, mobile-native | **no** | `terminal.cjs` |
 | `useKeymap` | page:welcome | **no** | `welcome_test.go` |
-| `useTemplate` | page:settings | **no** | **TODO: settings.cjs: Keyboard's choosing a keymap template** |
+| `useTemplate` | page:settings | **no** | `settings_messages_test.go` |
 | `welcomeAgain` | page:settings | **no** | `welcome_test.go` |

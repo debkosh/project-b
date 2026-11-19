@@ -28,26 +28,6 @@
   "terminal.resizeLeft": "TODO: with terminal.focusDown",
   "terminal.resizeRight": "TODO: with terminal.focusDown",
   "terminal.resizeUp": "TODO: with terminal.focusDown",
-  "terminal.zoom": "TODO: with terminal.focusDown",
-  "cancelUpdate": "TODO: settings.cjs on the mock: the update's Cancel while it downloads",
-  "retryUpdate": "TODO: settings.cjs on the mock: the update's Retry",
-  "checkUpdate": "TODO: settings.cjs on the mock: Check for updates",
-  "dismissMissing": "TODO: settings.cjs: Keyboard's missing-key notice dismissed",
-  "resetAction": "TODO: settings.cjs: Keyboard's reset of one action's keys",
-  "removeKey": "TODO: settings.cjs: Keyboard's removing a key",
-  "useTemplate": "TODO: settings.cjs: Keyboard's choosing a keymap template",
-  "forgetSiteSetting": "TODO: settings.cjs: a site's setting forgotten",
-  "setAddressBarPosition": "TODO: settings.cjs: Address bar Top or Bottom",
-  "setFlag": "TODO: settings.cjs: a flag switched",
-  "setHidden": "TODO: settings.cjs: a hidden setting",
-  "setReserve": "TODO: settings.cjs: the reserve setting",
-  "setSearchEngine": "TODO: settings.cjs: the search engine chosen",
-  "setStart": "TODO: settings.cjs: On start, open",
-  "sparkAdd": "TODO: the Sparks settings on the mock: a spark added",
-  "sparkImportCancel": "TODO: the Sparks settings on the mock: an import cancelled",
-  "sparkRemove": "TODO: the Sparks settings on the mock: a spark removed",
-  "sparkSetOn": "TODO: the Sparks settings on the mock: a spark turned on",
-  "sparkSource": "TODO: the Sparks settings on the mock: a spark's source shown",
-  "sparkUpdate": "TODO: the Sparks settings on the mock: a spark updated"
+  "terminal.zoom": "TODO: with terminal.focusDown"
  }
 }
