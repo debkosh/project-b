@@ -31,7 +31,7 @@ Each step leaves Mac and Android working and the release run green.
 | | Step | State |
 |---|---|---|
 | 1 | The thin wrapper, `PBInit`, Mac then Android | built and tested, not merged |
-| 2 | `core/system`, the OS managers' door, with its fake | building |
+| 2 | `core/system`, the OS managers' door, with its fake | built and tested on the Mac; APK built |
 | 2b | Save as and the folder chooser through Chromium's own file dialog | |
 | 3 | Notifications through Go | |
 | 4 | The Mac's open-link events into `core/system`, or a fourth exception | |
@@ -119,6 +119,26 @@ D-Bus, and Windows Win32 from Go):
 - Then, in later commits, what is per OS in Go today moves behind it too: `core/instance`,
   `core/relaunch`, `core/update/bundle.go`, and `core/cmd/lib`'s `*_darwin.go` and
   `*_android.go`, so a reader finds every OS call in one place.
+
+## 3. Notifications through Go
+
+Today the adapter asks Go whether a page's notification shows (`PB_EVENT_NOTIFICATION_SHOW`),
+then posts it to macOS itself (`notifications_mac.mm`), and a click goes from macOS to the
+adapter, which fires the page's click event and tells Go (`PB_EVENT_NOTIFICATION_CLICKED`).
+After:
+
+- The engine still asks Go (`NotificationShown`): content's notification service is the
+  engine's, and it needs the answer to fire the page's show event.
+- Go posts a shown one itself, through `core/system` (`ShowNotification`: its id, title, the
+  site's host under it, body), and takes it away there (`RemoveNotification`) when the page
+  closes it, which the engine now says (`NotificationClosed`, a new event).
+- A click comes from the OS to Go (`OnNotificationClicked`, set once at start). Go tells the
+  engine (`ClickNotification`, a new call), which fires the page's click event, then brings
+  its tab forward, as today. `PB_EVENT_NOTIFICATION_CLICKED` and the Listener's
+  `NotificationClicked` go.
+- The Mac's notification centre code, its delegate and the no-bundle check move from
+  `notifications_mac.mm` into `core/system/platform`; the file goes. A phone shows no page's
+  notification yet, so Android's `ShowNotification` does nothing, as today.
 
 ## The exceptions: where the engine still touches the OS
 
