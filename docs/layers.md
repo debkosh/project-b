@@ -140,6 +140,12 @@ and, for Import's folder, showing hidden files so a browser's folders under `~/L
 four: a sheet on its owning window, a default folder, file types, and the driver's answer stays
 in front of it. It has no way to show hidden files.
 
+So Import's chooser starts where the browsers keep their folders, which shows them at once,
+agreed with the platforms session, 2026-11-19: `~/Library/Application Support` on the Mac
+(nothing inside `~/Library` is hidden, only `~/Library` itself; Cmd+Shift+. still shows the
+hidden ones). On Linux, later: `~/.config`, where Chrome's, Chromium's and the forks' folders
+are; Firefox's is `~/.mozilla`.
+
 ## The build-flow restructure
 
 Given to this work by the orchestrator on 2026-11-19, after step 1, as the platforms session
