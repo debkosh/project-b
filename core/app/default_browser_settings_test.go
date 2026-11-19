@@ -19,3 +19,20 @@ func TestSettingsMakesTheAppTheDefaultBrowser(t *testing.T) {
 		t.Fatalf("a snapshot after: isDefault is %v", m["isDefault"])
 	}
 }
+
+// Make default browser pressed twice, and the system's question closed unanswered: the system
+// is asked once, and the page hears no, the app still not the default browser, for each press.
+func TestSettingsDefaultBrowserQuestionDismissed(t *testing.T) {
+	r := start(t, t.TempDir())
+	defer r.stop()
+	r.sys.Dismiss(true)
+	got, _ := r.openSettings()
+	r.settings(`{"t":"makeDefault"}`)
+	r.settings(`{"t":"makeDefault"}`)
+	for range 2 {
+		r.waitOn(got, func(m map[string]any) bool { return m["t"] == "isDefault" && m["isDefault"] == false })
+	}
+	if n := r.sys.Asked("defaultBrowser"); n != 1 || r.sys.IsDefaultBrowser() {
+		t.Fatalf("the system was asked %d times, and the app is the default: %v", n, r.sys.IsDefaultBrowser())
+	}
+}

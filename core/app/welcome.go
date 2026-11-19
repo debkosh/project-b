@@ -195,9 +195,9 @@ func (w *welcome) handle(tab engine.TabID, msg []byte) {
 		w.sendAll(map[string]any{"t": "workspaces", "workspaces": w.a.Workspaces.List()})
 	case "makeDefault":
 		timeline.Infof("welcome: asking the system to make this the default browser")
-		w.e.AskDefaultBrowser()
+		w.a.System.AskDefaultBrowser(w.a.defaultBrowserAnswered)
 	case "askNotifications":
-		w.e.AskNotifications()
+		w.a.System.AskNotifications(w.a.notificationsAnswered)
 	case "done":
 		w.finish(tab)
 	default:
@@ -207,17 +207,17 @@ func (w *welcome) handle(tab engine.TabID, msg []byte) {
 	}
 }
 
-// DefaultBrowserChanged tells the welcome pages and the settings page how asking to be the
+// defaultBrowserAnswered tells the welcome pages and the settings page how asking to be the
 // default browser ended.
-func (a *App) DefaultBrowserChanged(is bool) {
+func (a *App) defaultBrowserAnswered(is bool) {
 	timeline.Infof("welcome: the default browser is this one: %v", is)
 	m := map[string]any{"t": "isDefault", "isDefault": is}
 	a.welcome.sendAll(m)
 	a.Settings.Send(m)
 }
 
-// NotificationsAnswered tells the welcome pages whether the app may show its notifications.
-func (a *App) NotificationsAnswered(allowed bool) {
+// notificationsAnswered tells the welcome pages whether the app may show its notifications.
+func (a *App) notificationsAnswered(allowed bool) {
 	timeline.Infof("welcome: notifications allowed: %v", allowed)
 	a.welcome.sendAll(map[string]any{"t": "notifications", "notifications": allowed})
 }
@@ -241,8 +241,8 @@ func (w *welcome) snapshot(tab engine.TabID) map[string]any {
 		"prefs":         w.a.Prefs.All(),
 		"searchEngines": search.All(),
 		"autoUpdate":    w.a.Update.Auto(),
-		"isDefault":     w.e.IsDefaultBrowser(),
-		"notifications": w.e.NotificationsAllowed(),
+		"isDefault":     w.a.System.IsDefaultBrowser(),
+		"notifications": w.a.System.NotificationsAllowed(),
 		"layouts": []welcomeShell{
 			{ID: "side", Shell: "standard", TabLayout: "vertical", Name: "Tabs on the side"},
 			{ID: "top", Shell: "standard", TabLayout: "horizontal", Name: "Tabs on top"},

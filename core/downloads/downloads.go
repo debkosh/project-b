@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"projectb/engine"
+	"projectb/system"
 	"projectb/timeline"
 )
 
@@ -66,6 +67,7 @@ type file struct {
 // Manager keeps one profile's downloads, newest first.
 type Manager struct {
 	e         engine.Engine
+	sys       system.System
 	file      string
 	dir       string
 	list      []*Item
@@ -80,8 +82,8 @@ type Manager struct {
 }
 
 // New returns a manager for the profile folder profile, saving files into dir.
-func New(e engine.Engine, profile, dir string) *Manager {
-	return &Manager{e: e, file: filepath.Join(profile, "downloads.json"), dir: dir, next: 1, byEngine: map[engine.DownloadID]*Item{}, stopped: map[engine.DownloadID]bool{}}
+func New(e engine.Engine, sys system.System, profile, dir string) *Manager {
+	return &Manager{e: e, sys: sys, file: filepath.Join(profile, "downloads.json"), dir: dir, next: 1, byEngine: map[engine.DownloadID]*Item{}, stopped: map[engine.DownloadID]bool{}}
 }
 
 // SetDir is where files are saved from now on.
@@ -333,11 +335,11 @@ func (m *Manager) Act(id int, action string) {
 	switch action {
 	case "open":
 		if it.State == "done" {
-			m.e.OpenFile(it.Path)
+			m.sys.OpenFile(it.Path)
 		}
 	case "reveal":
 		if it.State == "done" {
-			m.e.RevealFile(it.Path)
+			m.sys.RevealFile(it.Path)
 		}
 	case "cancel":
 		if live {

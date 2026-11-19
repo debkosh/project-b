@@ -38,8 +38,6 @@ static inline void call_edit(const PBEngineCalls* c, int32_t command) { c->edit(
 static inline void call_write_clipboard(const PBEngineCalls* c, const char* text, size_t length) { c->write_clipboard(text, length); }
 static inline void call_download_url(const PBEngineCalls* c, int64_t tab, const char* url, int save_as) { c->download_url(tab, url, save_as); }
 static inline void call_download_command(const PBEngineCalls* c, uint32_t download, int32_t command) { c->download_command(download, command); }
-static inline void call_open_file(const PBEngineCalls* c, const char* path) { c->open_file(path); }
-static inline void call_reveal_file(const PBEngineCalls* c, const char* path) { c->reveal_file(path); }
 static inline void call_show_download(const PBEngineCalls* c, int64_t id, const char* name, const char* path, int32_t state, int64_t received, int64_t total, int paused) {
   if (c->show_download) c->show_download(id, name, path, state, received, total, paused);
 }
@@ -47,8 +45,6 @@ static inline void call_find(const PBEngineCalls* c, int64_t tab, int32_t reques
 static inline void call_stop_finding(const PBEngineCalls* c, int64_t tab) { c->stop_finding(tab); }
 static inline void call_print(const PBEngineCalls* c, int64_t tab) { c->print(tab); }
 static inline void call_capture_thumbnail(const PBEngineCalls* c, int64_t tab, int32_t max_width) { c->capture_thumbnail(tab, max_width); }
-static inline void call_ask_default_browser(const PBEngineCalls* c) { c->ask_default_browser(); }
-static inline int call_is_default_browser(const PBEngineCalls* c) { return c->is_default_browser(); }
 static inline void call_exit_page_full_screen(const PBEngineCalls* c, int64_t tab) { c->exit_page_full_screen(tab); }
 static inline void call_answer_sign_in(const PBEngineCalls* c, int64_t dialog, int ok, const char* username, const char* password) { c->answer_sign_in(dialog, ok, username, password); }
 static inline void call_answer_passkey(const PBEngineCalls* c, int64_t dialog, const char* action, const char* text) { c->answer_passkey(dialog, action, text); }
@@ -96,6 +92,7 @@ import (
 	"projectb/instance"
 	"projectb/profiles"
 	"projectb/relaunch"
+	"projectb/system/platform"
 	"projectb/timeline"
 )
 
@@ -232,12 +229,6 @@ func (e *nativeEngine) DownloadCommand(id engine.DownloadID, c engine.DownloadCo
 	C.call_download_command(e.calls, C.uint32_t(id), C.int32_t(c))
 }
 
-func (e *nativeEngine) OpenFile(path string) {
-	cs := C.CString(path)
-	defer C.free(unsafe.Pointer(cs))
-	C.call_open_file(e.calls, cs)
-}
-
 func (e *nativeEngine) ShowDownload(id int, d engine.Download) {
 	name, path := C.CString(filepath.Base(d.Path)), C.CString(d.Path)
 	defer C.free(unsafe.Pointer(name))
@@ -247,12 +238,6 @@ func (e *nativeEngine) ShowDownload(id int, d engine.Download) {
 		paused = 1
 	}
 	C.call_show_download(e.calls, C.int64_t(id), name, path, C.int32_t(d.State), C.int64_t(d.Received), C.int64_t(d.Total), C.int(paused))
-}
-
-func (e *nativeEngine) RevealFile(path string) {
-	cs := C.CString(path)
-	defer C.free(unsafe.Pointer(cs))
-	C.call_reveal_file(e.calls, cs)
 }
 
 func (e *nativeEngine) AnswerDialog(id engine.DialogID, ok bool, text string) {
@@ -283,10 +268,6 @@ func (e *nativeEngine) Print(tab engine.TabID)       { C.call_print(e.calls, C.i
 func (e *nativeEngine) CaptureThumbnail(tab engine.TabID, maxWidth int) {
 	C.call_capture_thumbnail(e.calls, C.int64_t(tab), C.int32_t(maxWidth))
 }
-
-func (e *nativeEngine) AskDefaultBrowser() { C.call_ask_default_browser(e.calls) }
-
-func (e *nativeEngine) IsDefaultBrowser() bool { return C.call_is_default_browser(e.calls) != 0 }
 
 // ThumbnailURL is where the engine serves a tab's picture to our pages; the revision only
 // makes each picture's address its own.
@@ -685,8 +666,8 @@ func startProfile(c profiles.Choice) {
 		BlockedHosts: blocked,
 		Update:       updateConfig(c),
 		CrashReports: filepath.Join(home, "Library/Logs/DiagnosticReports"),
-		DownloadsDir: downloadsDir(home),
-		System:       systemReport,
+		DownloadsDir: platform.DownloadsDir(home),
+		System:       platform.New(),
 		DeviceKey:    deviceKeyFor(c),
 	})
 	events.Listen(theApp)

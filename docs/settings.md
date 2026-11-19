@@ -56,8 +56,8 @@ section under its own heading, with a back button to the list.
 
 Under the search, in both layouts, one line says whether the app is the default browser and
 which version runs. Not the default, it says so with **Make default browser**, which asks the
-system as the welcome's last step does (`AskDefaultBrowser`: macOS's question, Android's
-sheet); the answer comes back as `DefaultBrowserChanged`, which Go sends to the welcome pages
+system as the welcome's last step does (`system.System.AskDefaultBrowser`: macOS's question,
+Android's sheet); the answer comes back to its callback, which Go sends to the welcome pages
 and the settings page alike, `isDefault`. The snapshot reads `IsDefaultBrowser` as the page
 opens (`core/app/default_browser_settings.go`). The version has what the update manager is
 doing beside it, Up to date, Downloading or Relaunch to update, with Check for updates, or

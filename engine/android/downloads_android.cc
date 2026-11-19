@@ -29,15 +29,6 @@ void PublishFile(const base::FilePath& path, const std::string& mime_type) {
                          ConvertUTF8ToJavaString(env, mime_type));
 }
 
-void OpenFile(const base::FilePath& path) {
-  JNIEnv* env = AttachCurrentThread();
-  Java_Downloads_open(env, ConvertUTF8ToJavaString(env, path.AsUTF8Unsafe()));
-}
-
-void RevealFile(const base::FilePath& path) {
-  Java_Downloads_reveal(AttachCurrentThread());
-}
-
 bool DeleteDownload(const base::FilePath& path) {
   JNIEnv* env = AttachCurrentThread();
   return Java_Downloads_delete(env, ConvertUTF8ToJavaString(env, path.AsUTF8Unsafe()));

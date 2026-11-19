@@ -34,6 +34,7 @@ public final class BrowserActivity extends Activity {
         // folder Android gives the app, named outright as the desktop's --user-data-dir does.
         // One process holds it, so the claim is always this copy's and Go never says quit:
         // added is never null here.
+        GoSystem.attach(this);
         String data = PathUtils.getDataDirectory();
         String[] added =
                 GoCore.init(
@@ -131,8 +132,8 @@ public final class BrowserActivity extends Activity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         intentRequests.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == BrowserWindow.DEFAULT_BROWSER_REQUEST) {
-            window.defaultBrowserAnswered();
+        if (requestCode == GoSystem.DEFAULT_BROWSER_REQUEST) {
+            GoSystem.defaultBrowserAnswered();
         }
     }
 
@@ -142,8 +143,8 @@ public final class BrowserActivity extends Activity {
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
         super.onRequestPermissionsResult(requestCode, permissions, results);
         windowAndroid.handlePermissionResult(requestCode, permissions, results);
-        if (requestCode == BrowserWindow.NOTIFICATIONS_REQUEST) {
-            window.notificationsAnswered();
+        if (requestCode == GoSystem.NOTIFICATIONS_REQUEST) {
+            GoSystem.notificationsAnswered();
         }
     }
 

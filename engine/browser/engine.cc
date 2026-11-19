@@ -285,16 +285,6 @@ void CallDownloadCommand(uint32_t download, int32_t command) {
   }
 }
 
-void CallOpenFile(const char* path) {
-  CheckMainThread();
-  OpenFile(base::FilePath::FromUTF8Unsafe(path));
-}
-
-void CallRevealFile(const char* path) {
-  CheckMainThread();
-  RevealFile(base::FilePath::FromUTF8Unsafe(path));
-}
-
 void CallPublishFile(const char* path) {
   CheckMainThread();
   // No type: the phone tells it from the file's extension.
@@ -406,42 +396,6 @@ void CallChooseFolder(int64_t window) {
 }
 #endif
 
-void CallAskDefaultBrowser() {
-  CheckMainThread();
-#if BUILDFLAG(IS_ANDROID)
-  g_engine->windows().begin()->second->window->AskDefaultBrowser();
-#else
-  AskDefaultBrowser();
-#endif
-}
-
-int CallIsDefaultBrowser() {
-  CheckMainThread();
-#if BUILDFLAG(IS_ANDROID)
-  return g_engine->windows().begin()->second->window->IsDefaultBrowser();
-#else
-  return IsDefaultBrowser();
-#endif
-}
-
-#if BUILDFLAG(IS_ANDROID)
-void CallAskNotifications() {
-  CheckMainThread();
-  g_engine->windows().begin()->second->window->AskNotifications();
-}
-
-int CallNotificationsAllowed() {
-  CheckMainThread();
-  return g_engine->windows().begin()->second->window->NotificationsAllowed();
-}
-#endif
-
-#if !BUILDFLAG(IS_ANDROID)
-void CallSetDockColor(int32_t rgb) {
-  CheckMainThread();
-  SetDockColor(rgb);
-}
-#endif
 
 // Go only names windows it opened and the engine hasn't closed.
 Window* NativeWindow(int64_t window) {
@@ -736,8 +690,6 @@ const PBEngineCalls* Engine::Calls() {
       .write_clipboard = CallWriteClipboard,
       .download_url = CallDownloadURL,
       .download_command = CallDownloadCommand,
-      .open_file = CallOpenFile,
-      .reveal_file = CallRevealFile,
       .answer_dialog = CallAnswerDialog,
       .answer_sign_in = CallAnswerSignIn,
       .answer_passkey = CallAnswerPasskey,
@@ -765,19 +717,10 @@ const PBEngineCalls* Engine::Calls() {
       .send_to_page = CallSendToPage,
       .set_menu = CallSetMenu,
       .app_command = CallAppCommand,
-#if !BUILDFLAG(IS_ANDROID)
-      .set_dock_color = CallSetDockColor,
-#endif
       .set_block_rules = CallSetBlockRules,
       .set_ad_rules = CallSetAdRules,
       .content_hooks = CallContentHooks,
       .post_wakeup = CallPostWakeup,
-      .ask_default_browser = CallAskDefaultBrowser,
-      .is_default_browser = CallIsDefaultBrowser,
-#if BUILDFLAG(IS_ANDROID)
-      .ask_notifications = CallAskNotifications,
-      .notifications_allowed = CallNotificationsAllowed,
-#endif
 #if BUILDFLAG(IS_ANDROID)
       .install_update = CallInstallUpdate,
 #endif

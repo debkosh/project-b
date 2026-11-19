@@ -65,10 +65,6 @@ func (r *recorder) IsPageFullScreen(engine.TabID) bool { return r.fullScreen }
 func (r *recorder) Thumbnail(tab engine.TabID, revision int64) {
 	r.note("thumbnail %d %d", tab, revision)
 }
-func (r *recorder) DefaultBrowserChanged(is bool) { r.note("default browser %v", is) }
-func (r *recorder) NotificationsAnswered(allowed bool) {
-	r.note("notifications %v", allowed)
-}
 func (r *recorder) FolderChosen(w engine.WindowID, path string) {
 	r.note("folder %d %s", w, path)
 }
@@ -116,8 +112,6 @@ func TestEachEventReachesTheListener(t *testing.T) {
 		{FindReply, []Value{i(2), i(7), i(12), i(3), i(1)}, "find 2 7 3/12 true"},
 		{PageFullScreen, []Value{i(2), i(1)}, "full screen 2 true"},
 		{Thumbnail, []Value{i(2), i(5)}, "thumbnail 2 5"},
-		{DefaultBrowser, []Value{i(1)}, "default browser true"},
-		{Notifications, []Value{i(0)}, "notifications false"},
 		{FolderChosen, []Value{i(1), s("/Users/me/Vivaldi")}, "folder 1 /Users/me/Vivaldi"},
 		{AppLink, []Value{i(2), s("project-b://sync?address=x")}, "app link 2 project-b://sync?address=x"},
 		{DownloadAction, []Value{i(3), i(2)}, "download notification 3 2"},

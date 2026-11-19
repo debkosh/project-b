@@ -267,7 +267,7 @@ func (im *importer) handle(tab engine.TabID, t string, msg []byte) bool {
 		}
 	case "openAccess":
 		timeline.Infof("imports: opening System Settings at Full Disk Access")
-		im.e.OpenFullDiskAccess()
+		im.a.System.OpenFullDiskAccess()
 		im.wait()
 	case "import":
 		var m importMessage

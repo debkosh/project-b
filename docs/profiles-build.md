@@ -56,7 +56,7 @@ built so far, and the order of building at the end says which steps are done.
   its timeline and `DevToolsActivePort`, in its profile's folder, and a picker copy in the
   root (`CopyDir` in the engine).
 - Each copy draws its Dock icon as the app's with a small dot in its profile's colour,
-  bottom right (`set_dock_color`, `engine.Engine.SetDockColor`). Go says the colour at
+  bottom right (`system.System.SetDockColor`, `core/system`). Go says the colour at
   start and when the frame colour changes, and keeps the list's copy of it the same.
 - Settings has a Profile section in a copy on a listed profile, after General: its name,
   which changes the list (`profiles.Manager.SetName`), so the Profiles menu and the picker

@@ -123,7 +123,6 @@ type Engine struct {
 	quit       bool
 	shownColor string
 	menu       engine.Menu
-	dockColor  string
 	edits      []engine.EditCommand
 	clipboard  string
 	downloads  downloads
@@ -148,10 +147,6 @@ type Engine struct {
 	left bool
 	// showRegions is the Show window regions flag, as the app launched with it.
 	showRegions bool
-	// defaultBrowser: AskDefaultBrowser made the app the default browser.
-	defaultBrowser bool
-	// notificationsAllowed: AskNotifications was answered yes.
-	notificationsAllowed bool
 	// folder is what the next ChooseFolder answers, as a test sets it ("choose").
 	folder string
 	// settings are what the settings page in each tab of ours hears.
@@ -765,39 +760,8 @@ func (e *Engine) Menu() engine.Menu {
 	return e.menu
 }
 
-// AppCommand records a quit; the rest are the OS's.
-func (e *Engine) SetDockColor(color string) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	e.dockColor = color
-}
-
-// AskDefaultBrowser answers as a person who says yes does: the app is the default browser.
-func (e *Engine) AskDefaultBrowser() {
-	e.Post(func() {
-		e.mu.Lock()
-		e.defaultBrowser = true
-		e.mu.Unlock()
-		if e.listener != nil {
-			e.listener.DefaultBrowserChanged(true)
-		}
-	})
-}
-
 // ExitReason says nothing, as a desktop's system doesn't.
 func (e *Engine) ExitReason(int) string { return "" }
-
-// AskNotifications answers as a person who allows them does.
-func (e *Engine) AskNotifications() {
-	e.Post(func() {
-		e.mu.Lock()
-		e.notificationsAllowed = true
-		e.mu.Unlock()
-		if e.listener != nil {
-			e.listener.NotificationsAnswered(true)
-		}
-	})
-}
 
 // ChooseFolder answers with the folder a test set with Fire's "choose", or none, as a
 // person who cancels the panel does.
@@ -811,31 +775,7 @@ func (e *Engine) ChooseFolder(w engine.WindowID) {
 	})
 }
 
-// OpenFullDiskAccess opens nothing: a test gives the access itself, by making the files
-// the app reads readable.
-func (e *Engine) OpenFullDiskAccess() {}
-
-// NotificationsAllowed is whether AskNotifications has been answered with yes.
-func (e *Engine) NotificationsAllowed() bool {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	return e.notificationsAllowed
-}
-
-// IsDefaultBrowser is whether AskDefaultBrowser has made the app the default browser.
-func (e *Engine) IsDefaultBrowser() bool {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	return e.defaultBrowser
-}
-
-// DockColor is the colour the app last put on its Dock icon, or "".
-func (e *Engine) DockColor() string {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	return e.dockColor
-}
-
+// AppCommand records a quit; the rest are the OS's.
 func (e *Engine) AppCommand(c engine.AppCommand) {
 	if c == engine.AppQuit {
 		e.mu.Lock()

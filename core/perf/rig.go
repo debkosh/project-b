@@ -20,6 +20,7 @@ import (
 	"projectb/app"
 	"projectb/engine"
 	"projectb/mockengine"
+	"projectb/mocksystem"
 	"projectb/profiles"
 	"projectb/suggest"
 	"projectb/timeline"
@@ -181,7 +182,8 @@ func New(dir string, o Options) *Rig {
 		r.Favicon = "data:image/png;base64," + strings.Repeat("iVBORw0KGgo", o.FaviconBytes/11+1)[:o.FaviconBytes]
 	}
 	r.A = app.Start(e, app.Config{ProfileDir: dir, Profiles: profiles.New(filepath.Join(dir, "root")),
-		BlockedHosts: o.Blocked, Update: update.Config{StateDir: filepath.Join(dir, "updates")}})
+		BlockedHosts: o.Blocked, Update: update.Config{StateDir: filepath.Join(dir, "updates")},
+		System: mocksystem.New(e.Post)})
 	// The first start reads history.jsonl into the store, on its worker, where a search
 	// asked after it waits for it.
 	if o.History > 0 {

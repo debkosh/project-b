@@ -68,8 +68,8 @@ func TestResetToATemplateTakesItsValuesAndKeepsTheRest(t *testing.T) {
 	// The shell hears the colour as Apply sets it; the tabs stay on the side, as both
 	// templates have them.
 	r.waitFor(func(m map[string]any) bool { return m["t"] == "windowColor" && m["windowColor"] == "#5b7fd6" })
-	if r.e.Layout(1).FrameColor != "#5b7fd6" || r.e.DockColor() != "#5b7fd6" {
-		t.Fatalf("the window is %s and the Dock %s", r.e.Layout(1).FrameColor, r.e.DockColor())
+	if r.e.Layout(1).FrameColor != "#5b7fd6" || r.sys.DockColor() != "#5b7fd6" {
+		t.Fatalf("the window is %s and the Dock %s", r.e.Layout(1).FrameColor, r.sys.DockColor())
 	}
 	if listed, _, _ := list.Get(c.ID); listed.Color != "#5b7fd6" || listed.Template != "Work" || listed.Name != "Personal" {
 		t.Fatalf("listed %+v", listed)

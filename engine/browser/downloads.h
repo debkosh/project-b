@@ -84,12 +84,10 @@ class Downloads : public content::DownloadManagerDelegate,
 };
 
 // What the platform does: the Save panel over the page's window, which answers with the
-// path chosen or an empty one; and opening a file, or showing it in the file manager.
+// path chosen or an empty one.
 void ChooseSavePath(content::WebContents* contents,
                     const base::FilePath& suggested,
                     base::OnceCallback<void(const base::FilePath&)> chosen);
-void OpenFile(const base::FilePath& path);
-void RevealFile(const base::FilePath& path);
 // Hands a finished download, or a file Go kept as one, to the system where other apps find
 // it: on a phone, a copy in the shared Downloads, through which it is then opened. Nothing on
 // the Mac, where it already is in the user's Downloads folder.

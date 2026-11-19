@@ -152,7 +152,7 @@ func TestTheDownloadsPageListsAndActs(t *testing.T) {
 	say := func(msg string) { r.e.Post(func() { r.a.PageMessage(tab, "downloads", []byte(msg)) }) }
 	say(fmt.Sprintf(`{"t":"downloadAction","id":%v,"action":"open"}`, list[0].(map[string]any)["id"]))
 	r.e.Settle()
-	if opened := r.e.Opened(); len(opened) != 1 {
+	if opened := r.sys.Opened(); len(opened) != 1 {
 		t.Fatalf("Open from the page opened %v", opened)
 	}
 	// Share, from a phone's ⋮, hands the file to the system's share sheet.

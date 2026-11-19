@@ -351,6 +351,7 @@ android_library("java") {
     "java/dev/projectb/browser/Downloads.java",
     "java/dev/projectb/browser/ExitReasons.java",
     "java/dev/projectb/browser/GoCore.java",
+    "java/dev/projectb/browser/GoSystem.java",
     "java/dev/projectb/browser/Printing.java",
   ]
 }

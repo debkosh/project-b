@@ -255,9 +255,6 @@ type Engine interface {
 	DownloadURL(tab TabID, url string, saveAs bool)
 	// DownloadCommand acts on a running download.
 	DownloadCommand(id DownloadID, c DownloadCommand)
-	// OpenFile opens a file as the OS would; RevealFile shows it in the file manager.
-	OpenFile(path string)
-	RevealFile(path string)
 	// ShowDownload shows how a download stands where the system shows such things: on a
 	// phone, its notification, with its progress while it runs and, once done, a tap that
 	// opens the file. id is Go's, the same for the download's whole life. An engine with
@@ -287,17 +284,6 @@ type Engine interface {
 	// fails says nothing. ThumbnailURL is the address our pages load that picture at,
 	// changing with each revision; it only names it.
 	CaptureThumbnail(tab TabID, maxWidth int)
-	// AskDefaultBrowser asks the system to make the app the default browser, which asks
-	// the person itself: macOS's question, Android's sheet. DefaultBrowserChanged follows
-	// with how it ended. IsDefaultBrowser says whether the app is it now.
-	AskDefaultBrowser()
-	IsDefaultBrowser() bool
-	// AskNotifications asks a phone's system to let the app show its notifications, as a
-	// download's, which asks the person; NotificationsAnswered follows. NotificationsAllowed
-	// says whether it may now. A desktop's are the app's own to show: allowed, and asking
-	// does nothing.
-	AskNotifications()
-	NotificationsAllowed() bool
 	// ExitReason is why the app's process with this id, one from an earlier run, ended, as
 	// a phone's system keeps it: "crash", "native crash" or "not responding" for a crash,
 	// or one of Android's own reasons, such as "low memory" or "user requested"; "" when
@@ -307,10 +293,6 @@ type Engine interface {
 	// Import asks for another browser's; FolderChosen follows with it, or "" for none. A
 	// phone has no such panel and answers nothing.
 	ChooseFolder(w WindowID)
-	// OpenFullDiskAccess opens the Mac's System Settings at Privacy & Security's Full Disk
-	// Access, where the person can let the app read what macOS keeps behind it, as Safari's
-	// files. Nothing says when they have: reading again does. A phone has no such thing.
-	OpenFullDiskAccess()
 	ThumbnailURL(tab TabID, revision int64) string
 	// ExitPageFullScreen takes a tab's page out of full screen, as its own
 	// exitFullscreen() would; PageFullScreen follows.
@@ -382,10 +364,6 @@ type Engine interface {
 	// SetMenu replaces the native menu bar, where the platform has one.
 	SetMenu(m Menu)
 	AppCommand(c AppCommand)
-	// SetDockColor draws the app's Dock icon with a small dot in color, "#rrggbb", the
-	// profile's, so each running profile's copy tells itself apart there; tones.None, no
-	// colour picked, draws no dot.
-	SetDockColor(color string)
 
 	// Post runs fn on the main thread, later.
 	Post(fn func())
@@ -550,11 +528,6 @@ type Listener interface {
 	// Thumbnail says the engine kept a new picture of a tab's page, as CaptureThumbnail
 	// asked: revision is greater for each newer one, for ThumbnailURL.
 	Thumbnail(tab TabID, revision int64)
-	// DefaultBrowserChanged is how AskDefaultBrowser ended: whether the app is the default
-	// browser now.
-	DefaultBrowserChanged(is bool)
-	// NotificationsAnswered is how AskNotifications ended: whether the app may show them.
-	NotificationsAnswered(allowed bool)
 	// FolderChosen is how ChooseFolder ended: the folder, or "" for none.
 	FolderChosen(w WindowID, path string)
 	// ImageSaved is how SaveImage ended: whether the image is now a PNG at path.

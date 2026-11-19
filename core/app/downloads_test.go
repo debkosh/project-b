@@ -59,8 +59,8 @@ func TestADownloadGoesToTheFolderAndIsListed(t *testing.T) {
 	r.shell(fmt.Sprintf(`{"t":"downloadAction","id":%v,"action":"open"}`, first(list)["id"]))
 	r.shell(fmt.Sprintf(`{"t":"downloadAction","id":%v,"action":"reveal"}`, first(list)["id"]))
 	r.e.Settle()
-	if want := []string{filepath.Join(dir, "report (1).pdf")}; !slices.Equal(r.e.Opened(), want) || !slices.Equal(r.e.Shown(), want) {
-		t.Fatalf("opened %v, shown %v", r.e.Opened(), r.e.Shown())
+	if want := []string{filepath.Join(dir, "report (1).pdf")}; !slices.Equal(r.sys.Opened(), want) || !slices.Equal(r.sys.Shown(), want) {
+		t.Fatalf("opened %v, shown %v", r.sys.Opened(), r.sys.Shown())
 	}
 	r.shell(fmt.Sprintf(`{"t":"downloadAction","id":%v,"action":"remove"}`, first(list)["id"]))
 	r.downloads(func(l []any) bool { return len(l) == 1 })

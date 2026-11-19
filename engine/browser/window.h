@@ -120,15 +120,6 @@ class Window {
   // Opens Android's package installer for the APK at path, where the user confirms.
   void InstallPackage(const std::string& path);
 
-  // Asks Android to make the app the default browser, through its own sheet; Go hears how
-  // it ended (PB_EVENT_DEFAULT_BROWSER). IsDefaultBrowser says whether it is now.
-  void AskDefaultBrowser();
-  bool IsDefaultBrowser();
-
-  // Asks Android to let the app show its notifications; Go hears how it ended
-  // (PB_EVENT_NOTIFICATIONS). NotificationsAllowed says whether it may now.
-  void AskNotifications();
-  bool NotificationsAllowed();
 #else
   void SetShellView(gfx::NativeView view);
 

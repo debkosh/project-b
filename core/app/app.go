@@ -29,6 +29,7 @@ import (
 	"projectb/store"
 	"projectb/suggest"
 	"projectb/sync"
+	"projectb/system"
 	"projectb/tabs"
 	"projectb/timeline"
 	"projectb/update"
@@ -64,9 +65,10 @@ type Config struct {
 	// DownloadsDir is where downloads go: the user's Downloads folder in the real app, and
 	// a Downloads folder in the profile when it is "".
 	DownloadsDir string
-	// System is what this platform says of itself in a crash report: the version, the
-	// OS and the device, and on Android the app's own log.
-	System func() []crash.Section
+	// System is the OS's door (core/system): files opened, the default browser, the Dock,
+	// and what a crash report says of the device. The real one in the app, mocksystem's in
+	// the mock.
+	System system.System
 	// DeviceKey is the device key that wraps the profile's key (docs/sync.md): the keychain's
 	// for a listed profile, nil for a folder named outright, which keeps a key of its own.
 	DeviceKey keys.Device
@@ -102,6 +104,8 @@ type App struct {
 	// none (download_folder_settings.go). Main thread.
 	choosingFolder engine.WindowID
 
+	// System is the OS's door, Config's.
+	System   system.System
 	Crash    *crash.Manager
 	Store    *store.Store
 	Tabs     *tabs.Manager
@@ -181,9 +185,9 @@ var starters []func(a *App, e engine.Engine, cfg Config)
 // to the engine as its listener.
 func Start(e engine.Engine, cfg Config) *App {
 	e.OpenProfile(cfg.ProfileDir)
-	a := &App{profiles: cfg.Profiles, startedIn: map[engine.DownloadID]engine.WindowID{}, dir: cfg.ProfileDir}
+	a := &App{System: cfg.System, profiles: cfg.Profiles, startedIn: map[engine.DownloadID]engine.WindowID{}, dir: cfg.ProfileDir}
 	a.Crash = crash.New(cfg.ProfileDir, cfg.CrashReports, e.ExitReason)
-	a.Crash.System = cfg.System
+	a.Crash.System = func() []crash.Section { return cfg.System.Report(cfg.Update.Version) }
 	a.Session = session.New(cfg.ProfileDir)
 	a.Policy = policy.New(cfg.BlockedHosts, e.OurPage)
 	e.SetBlockRules(a.Policy.BlockRules())
@@ -208,7 +212,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	if cfg.DownloadsDir == "" {
 		cfg.DownloadsDir = filepath.Join(cfg.ProfileDir, "Downloads")
 	}
-	a.Downloads = downloads.New(e, cfg.ProfileDir, cfg.DownloadsDir)
+	a.Downloads = downloads.New(e, cfg.System, cfg.ProfileDir, cfg.DownloadsDir)
 	a.Downloads.Load()
 	a.Tabs = tabs.New(e, a.Workspaces, a.Pins)
 	a.Prefs = prefs.New(cfg.ProfileDir)
@@ -282,7 +286,7 @@ func Start(e engine.Engine, cfg Config) *App {
 		Handle:   func(tab engine.TabID, t string, msg []byte) bool { return a.imports.handle(tab, t, msg) },
 	})
 	a.Settings.AddPart(a.bookmarkSettingsPart())
-	a.Settings.AddPart(a.defaultBrowserSettingsPart(e))
+	a.Settings.AddPart(a.defaultBrowserSettingsPart())
 	a.Settings.AddPart(a.clearDataSettingsPart(e))
 	a.Settings.AddPart(a.siteDataSettingsPart(e))
 	a.Settings.AddPart(a.keepCookiesSettingsPart())
@@ -316,8 +320,8 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Window.OnColorChanged(a.Settings.WindowColorChanged)
 	a.Prefs.OnFrameColorChanged(a.Window.SetColor)
 	// The profile's colour is its frame colour: on its Dock icon, and in the list.
-	e.SetDockColor(a.Prefs.FrameColor())
-	a.Prefs.OnFrameColorChanged(e.SetDockColor)
+	a.System.SetDockColor(a.Prefs.FrameColor())
+	a.Prefs.OnFrameColorChanged(a.System.SetDockColor)
 	if cfg.Profile != "" {
 		a.Prefs.OnFrameColorChanged(func(c string) {
 			if err := cfg.Profiles.SetColor(cfg.Profile, c); err != nil {

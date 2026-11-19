@@ -164,8 +164,6 @@ func (r *adapterRecorder) PageFullScreen(tab engine.TabID, on bool) {
 	r.note(fmt.Sprintf("full screen %d %v", tab, on))
 }
 func (r *adapterRecorder) Thumbnail(engine.TabID, int64)                           {}
-func (r *adapterRecorder) DefaultBrowserChanged(bool)                              {}
-func (r *adapterRecorder) NotificationsAnswered(bool)                              {}
 func (r *adapterRecorder) FolderChosen(engine.WindowID, string)                    {}
 func (r *adapterRecorder) AppLink(engine.TabID, string)                            {}
 func (r *adapterRecorder) ImageSaved(string, bool)                                 {}
