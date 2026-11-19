@@ -303,6 +303,11 @@ PARTS = {
     "shell": lambda labels: "Menu" in labels or "Deepest" in labels or any(l.endswith(" says") or l == "Sign in" for l in labels),
     "page": lambda labels: "Menu" not in labels,
 }
+# A WebView's own text is its document's title. Every shell's is "Project B"
+# (shell/src/apps/shell/*/index.html) and no page of ours has it, so it tells the shell even
+# while the soft keyboard has put the toolbar, and Menu with it, aside; and Settings on a phone
+# is titled Settings, its Close Settings being in that toolbar.
+SHELL_TITLE = "Project B"
 
 
 def screen_parts():
@@ -320,7 +325,7 @@ def screen_parts():
             parts["shell"] = view
         elif view.get("class") == "android.webkit.WebView":
             labels = {n.get("content-desc") for n in view.iter("node")} | {n.get("text") for n in view.iter("node")}
-            name = next(name for name, test in PARTS.items() if test(labels))
+            name = "shell" if view.get("text") == SHELL_TITLE else next(name for name, test in PARTS.items() if test(labels))
             # The shell under a page in full screen draws nothing, so it reads as a page too:
             # the page is the one with words in it, or failing that more in it, as a page with
             # only a field. Words under the view, not its own: its own text is its document's
@@ -333,7 +338,7 @@ def screen_parts():
                 continue
             parts[name] = view
     shell = parts.get("shell")
-    if "page" in parts and shell is not None and any(n.get("content-desc") == "Close Settings" for n in shell.iter("node")):
+    if "page" in parts and shell is not None and (parts["page"].get("text") == "Settings" or any(n.get("content-desc") == "Close Settings" for n in shell.iter("node"))):
         parts["settings"] = parts["page"]
     return parts
 
