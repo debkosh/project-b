@@ -14,6 +14,10 @@ def main():
     build_dir = os.getcwd()
     # Inside the source tree the repo is reached through src/project_b.
     link = os.path.relpath(os.path.join(build_dir, "../../project_b"), build_dir)
+    # Chromium's version, for --version, which Go prints (core/cmd/lib PBInit).
+    version_file = os.path.join(build_dir, "../../chrome/VERSION")
+    parts = dict(line.strip().split("=", 1) for line in open(version_file) if "=" in line)
+    chromium = ".".join(parts[k] for k in ("MAJOR", "MINOR", "BUILD", "PATCH"))
 
     env = dict(os.environ)
     env.update({
@@ -28,11 +32,13 @@ def main():
         "PATH": os.path.dirname(go) + ":/usr/bin:/bin",
     })
     subprocess.check_call(
-        [go, "build", "-buildmode=c-archive", "-trimpath", "-tags", tags, "-o",
+        [go, "build", "-buildmode=c-archive", "-trimpath", "-tags", tags,
+         "-ldflags", "-X main.chromiumVersion=" + chromium, "-o",
          os.path.join(build_dir, out), "./cmd/lib"],
         cwd=os.path.join(repo, "core"), env=env)
 
-    deps = [os.path.join(link, "engine/abi/pb_abi.h")]
+    deps = [os.path.join(link, "engine/abi/pb_abi.h"),
+            os.path.relpath(version_file, build_dir)]
     # core, and browserdata, the module of its own that core's go.mod replaces with ../browserdata.
     for module in ("core", "browserdata"):
         top = os.path.join(repo, module)

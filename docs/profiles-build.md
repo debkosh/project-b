@@ -6,7 +6,7 @@ built so far, and the order of building at the end says which steps are done.
 
 ## Today
 
-- Go chooses the profile, in `PBClaimProfile` before content starts (`core/profiles`,
+- Go chooses the profile, in `PBInit` before content starts (`core/profiles`,
   `core/cmd/lib/main.go`): the folder `--user-data-dir` names, as it is and never listed;
   else the listed profile `--profile=<id>` names, refusing an id that isn't listed; else
   the picker, when the copy was started with `--picker`; else the profile used last; else,

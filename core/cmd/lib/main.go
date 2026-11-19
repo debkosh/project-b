@@ -90,9 +90,9 @@ import (
 
 	"projectb/abi"
 	"projectb/app"
+	"projectb/cmdline"
 	"projectb/content"
 	"projectb/engine"
-	"projectb/flags"
 	"projectb/instance"
 	"projectb/profiles"
 	"projectb/relaunch"
@@ -106,6 +106,10 @@ const (
 	releaseProject  = "project-b"
 	releaseManifest = "https://github.com/sudiptadeb/project-b/releases/latest/download/releases.json"
 )
+
+// chromiumVersion is the version of Chromium this build is on, from chrome/VERSION, which
+// engine/build_go.py stamps in.
+var chromiumVersion string
 
 // nativeEngine is the real engine: every method calls the C++ adapter.
 type nativeEngine struct {
@@ -514,35 +518,64 @@ var (
 	// The addresses the command line named, which this copy opens as it starts when it owns
 	// its profile; otherwise they are handed to the copy that does.
 	startURLs []string
+	// The folder this copy keeps its own files in, which it owns: PBCopyDir.
+	copyDir string
 	// skipWelcome is --skip-welcome: a start that would open the welcome notes it finished.
 	skipWelcome bool
 )
 
-// PBClaimProfile is the first call, before anything is written to the profile. It chooses
-// the profile from the command line's --root, --profile and --user-data-dir, each "" when
-// not given, and --picker, and returns the folder this copy keeps its files in, once this
-// copy owns it: the profile's, or the root when the copy picks its profile later. It
-// returns nil when another copy owns that folder and has been handed urls, one per line,
-// so this copy quits.
+// PBInit is the wrapper's first call, before content starts and before anything is written
+// to the profile. It reads the command line, argc words of argv, as content will: a
+// --version prints this build's and Chromium's, and the copy quits. Otherwise it chooses the
+// profile from --root, --profile, --user-data-dir and --picker, and claims its folder: when
+// another copy owns that folder it is handed the addresses on the command line and this copy
+// quits, having written nothing there. NULL means quit. Else it returns the command line
+// for content, NULL-terminated, with the switches this OS adds (contentSwitches); it lives
+// as long as the process, as main's argv does.
 //
-//export PBClaimProfile
-func PBClaimProfile(root, id, userDataDir *C.char, picker C.int, urls *C.char) *C.char {
-	var handed []string
-	if s := C.GoString(urls); s != "" {
-		handed = strings.Split(s, "\n")
+//export PBInit
+func PBInit(argc C.int, argv **C.char) **C.char {
+	words := make([]string, int(argc))
+	for i, w := range unsafe.Slice(argv, int(argc)) {
+		words[i] = C.GoString(w)
 	}
-	list = profiles.New(rootOf(C.GoString(root)))
+	line := cmdline.Parse(words)
+	if line.Has("version") {
+		v := appVersion()
+		if v == "" {
+			v = "development build"
+		}
+		fmt.Printf("Project B %s, Chromium %s\n", v, chromiumVersion)
+		return nil
+	}
+	if !claim(line.Value("root"), line.Value("profile"), line.Value("user-data-dir"), line.Has("picker"), line.Args()) {
+		return nil
+	}
+	out := line.With(contentSwitches(copyDir)...)
+	list := (**C.char)(C.malloc(C.size_t(len(out)+1) * C.size_t(unsafe.Sizeof((*C.char)(nil)))))
+	slots := unsafe.Slice(list, len(out)+1)
+	for i, w := range out {
+		slots[i] = C.CString(w)
+	}
+	slots[len(out)] = nil
+	return list
+}
+
+// claim chooses the profile, as PBInit says, and claims its folder. It is false when another
+// copy owns the folder and has been handed urls, so this copy quits.
+func claim(root, id, userDataDir string, picker bool, urls []string) bool {
+	list = profiles.New(rootOf(root))
 	var err error
-	if dir := C.GoString(userDataDir); dir != "" {
-		profile = profiles.Named(dir)
+	if userDataDir != "" {
+		profile = profiles.Named(userDataDir)
 		// A phone's profile is the one folder Android gives the app, named outright
-		// (browser_main_parts_android.cc): the start that finds no prefs there made it, and
-		// opens the welcome (docs/onboarding.md).
+		// (BrowserActivity): the start that finds no prefs there made it, and opens the
+		// welcome (docs/onboarding.md).
 		if runtime.GOOS == "android" {
-			_, err := os.Stat(filepath.Join(dir, "prefs.json"))
+			_, err := os.Stat(filepath.Join(userDataDir, "prefs.json"))
 			profile.Made = os.IsNotExist(err)
 		}
-	} else if profile, err = list.Choose(C.GoString(id), picker != 0); err != nil {
+	} else if profile, err = list.Choose(id, picker); err != nil {
 		fmt.Fprintf(os.Stderr, "the profile: %v\n", err)
 		os.Exit(1)
 	}
@@ -552,18 +585,25 @@ func PBClaimProfile(root, id, userDataDir *C.char, picker C.int, urls *C.char) *
 	if profile.Pick {
 		dir = list.Root()
 	}
-	o, err := instance.Claim(dir, handed)
+	o, err := instance.Claim(dir, urls)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "the profile folder: %v\n", err)
 		os.Exit(1)
 	}
 	if o == nil {
-		return nil
+		return false
 	}
 	owner = o
-	startURLs = handed
-	return C.CString(dir)
+	startURLs = urls
+	copyDir = dir
+	return true
 }
+
+// PBCopyDir is the folder this copy keeps its own files in, once PBInit has claimed it: the
+// profile's, or the root for a copy that picks its profile later. The caller frees it.
+//
+//export PBCopyDir
+func PBCopyDir() *C.char { return C.CString(copyDir) }
 
 // rootOf is the folder that holds the profiles: the one --root names, else ~/.project-b.
 func rootOf(root string) string {
@@ -820,25 +860,5 @@ func crossings() map[string]int {
 //
 //export PBFree
 func PBFree(p unsafe.Pointer) { C.free(p) }
-
-// PBVersion is what --version prints first: the release this build is, or "development
-// build" for one that isn't a release. The caller frees the string.
-//
-//export PBVersion
-func PBVersion() *C.char {
-	v := appVersion()
-	if v == "" {
-		v = "development build"
-	}
-	return C.CString("Project B " + v)
-}
-
-// PBLaunchSwitches is the switches the flags saved in the profile ask for, one per line,
-// for the adapter to add to the command line before content starts. The caller frees it.
-//
-//export PBLaunchSwitches
-func PBLaunchSwitches(profileDir *C.char) *C.char {
-	return C.CString(strings.Join(flags.New(C.GoString(profileDir)).Switches(), "\n"))
-}
 
 func main() {}

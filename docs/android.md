@@ -100,7 +100,7 @@ So the same idea survives in a different shape:
 | Content and the adapter | `libproject_b_content.dylib`, linked at load time by both binaries | `libproject_b_content.so`, on `LibraryLoader`'s list, in every process |
 | Go | Static in `project_b`, the main binary | `libcore.so`, not on the list |
 | What keeps Go out of children | They run a different binary | They never load that library |
-| How the two meet | `main` hands the table to `ProjectBMain` | Java passes the table's address across, as a `long` |
+| How the two meet | `main` calls `PBInit`, then hands the table to `ProjectBMain` | Java calls `GoCore.init` before content starts, then passes the table's address across, as a `long` |
 
 **Library loading.** The owner dislikes `dlopen`, and on Android it can't be avoided: `System.loadLibrary` is the
 only way native code gets into a process that started in Java, and Chromium's own `LibraryLoader` does the same

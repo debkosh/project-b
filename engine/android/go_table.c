@@ -4,6 +4,8 @@
 
 #include <jni.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "project_b/engine/abi/pb_exports.h"
 
@@ -48,7 +50,7 @@ static int read_device_key(int create, uint8_t* out) {
 
 JNIEXPORT jlong JNICALL Java_dev_projectb_browser_GoCore_table(JNIEnv* env, jclass cls) {
   static const PBGoCalls go = {
-      .claim_profile = PBClaimProfile,
+      .copy_dir = PBCopyDir,
       .start = PBStart,
       .stop = PBStop,
       .run_posted = PBRunPosted,
@@ -57,8 +59,6 @@ JNIEXPORT jlong JNICALL Java_dev_projectb_browser_GoCore_table(JNIEnv* env, jcla
       .recover_nil_deref = PBRecoverNilDeref,
       .crash = PBCrash,
       .go_stats = PBGoStats,
-      .version = PBVersion,
-      .launch_switches = PBLaunchSwitches,
       .timeline_start = PBTimelineStart,
       .timeline_now = PBTimelineNow,
       .timeline_record = PBTimelineRecord,
@@ -75,6 +75,47 @@ JNIEXPORT jlong JNICALL Java_dev_projectb_browser_GoCore_table(JNIEnv* env, jcla
   }
   return (jlong)(intptr_t)&go;
 }
+
+// PBInit, the Go core's start, for BrowserActivity before content starts: given is the
+// command line, the program first. NULL when this copy quits; else the switches Go added,
+// for content's command line. Go puts those just after the program, so they are the words
+// before the given ones. Both lists are walked by index, within the counts JNI and Go's
+// closing NULL give: what UNSAFE_BUFFERS marks in C++.
+#pragma clang unsafe_buffer_usage begin
+JNIEXPORT jobjectArray JNICALL Java_dev_projectb_browser_GoCore_init(JNIEnv* env, jclass cls,
+                                                                     jobjectArray given) {
+  jsize argc = (*env)->GetArrayLength(env, given);
+  const char** argv = calloc(argc + 1, sizeof(char*));
+  for (jsize i = 0; i < argc; i++) {
+    jstring word = (jstring)(*env)->GetObjectArrayElement(env, given, i);
+    const char* s = (*env)->GetStringUTFChars(env, word, NULL);
+    argv[i] = strdup(s);
+    (*env)->ReleaseStringUTFChars(env, word, s);
+    (*env)->DeleteLocalRef(env, word);
+  }
+  const char** finished = PBInit(argc, argv);
+  for (jsize i = 0; i < argc; i++) {
+    free((void*)argv[i]);
+  }
+  free(argv);
+  if (finished == NULL) {
+    return NULL;
+  }
+  jsize count = 0;
+  while (finished[count] != NULL) {
+    count++;
+  }
+  jsize added = count - argc;
+  jobjectArray out =
+      (*env)->NewObjectArray(env, added, (*env)->FindClass(env, "java/lang/String"), NULL);
+  for (jsize i = 0; i < added; i++) {
+    jstring word = (*env)->NewStringUTF(env, finished[1 + i]);
+    (*env)->SetObjectArrayElement(env, out, i, word);
+    (*env)->DeleteLocalRef(env, word);
+  }
+  return out;
+}
+#pragma clang unsafe_buffer_usage end
 
 // Android's own: the link another app sent, from BrowserActivity, after Go started.
 void PBOpenURL(char* url);

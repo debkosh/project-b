@@ -4,5 +4,5 @@
 #include "project_b/engine/abi/pb_main.h"
 
 int main(int argc, const char** argv) {
-  return ProjectBMain(argc, argv, nullptr);
+  return ProjectBMain(argv, nullptr);
 }

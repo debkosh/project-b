@@ -127,7 +127,7 @@ In the order they happen on a Mac:
 | Mark | From | What has happened |
 |---|---|---|
 | `process.start` | | Time zero |
-| `main.entered` | C++ | `ProjectBMain` runs: the binary and the library are loaded, Go's runtime is up |
+| `main.entered` | C++ | `ProjectBMain` runs: the binary and the library are loaded, Go has started and claimed the profile (`PBInit`) |
 | `content.ready` | C++ | Content is initialised and calls our `PreMainMessageLoopRun` |
 | `go.starting` | Go | Go's managers are being built |
 | `window.created` | C++ | Go asked for its first window, and the native window exists |

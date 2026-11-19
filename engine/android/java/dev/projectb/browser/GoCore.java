@@ -13,6 +13,13 @@ final class GoCore {
 
     private GoCore() {}
 
+    /**
+     * The Go core's start, before content's: it reads the command line, the program first, and
+     * claims the profile it names. Null when this copy quits; else the switches Go added, for
+     * content's command line.
+     */
+    static native String[] init(String[] commandLine);
+
     /** The address of the table of Go's functions, for the content library. */
     static native long table();
 

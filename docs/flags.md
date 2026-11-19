@@ -61,9 +61,10 @@ Android builds with `project_b_without = "extensions"`.
 ## How a flag reaches the engine
 
 1. `core/flags` owns them: the registry, `flags.json` in the profile, and the values the app launched with.
-2. Before content starts, `ProjectBMain` (`engine/project_b_main.cc`) asks Go for the switches
-   (`launch_switches` in `pb_abi.h`, `PBLaunchSwitches` in `core/cmd/lib`) and adds each to the
-   browser's command line. A switch already given on the command line wins, so the test tools keep theirs.
+2. Before content starts, Go's `PBInit` (`core/cmd/lib`, which the Mac's `main` calls) adds the
+   switches to the command line it hands content. A switch already given on the command line
+   wins, so the test tools keep theirs. Android adds none: saved flags don't reach content on a
+   phone.
 3. From then on the engine reads only its command line. Go reads the same file when it starts,
    so both sides agree.
 4. Relaunch (`core/relaunch`) starts the program again, with its arguments, once this process

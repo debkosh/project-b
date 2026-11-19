@@ -19,8 +19,8 @@ below them. The address bar's suggestion box, fed by real history, extends over 
 
 - `libproject_b_content.dylib` holds content, Blink, V8, the network stack and the C++
   adapter. It exports one function, `ProjectBMain`.
-- `project_b` is the main process: Go, and a `main` that hands Go's functions to
-  `ProjectBMain`.
+- `project_b` is the main process: Go, and a `main` that starts Go (`PBInit`), then hands
+  Go's functions to `ProjectBMain` ([layers.md](layers.md)).
 - `project_b_helper` runs every child: a `main` that calls `ProjectBMain` with no Go.
 
 Both binaries link the library when they load, through `@rpath`, so our code never calls
@@ -183,7 +183,7 @@ fills the colour itself, faint.
 
 ## One copy per profile
 
-Go chooses the profile before content starts (`core/profiles`, through `PBClaimProfile`):
+Go chooses the profile before content starts (`core/profiles`, through `PBInit`):
 the listed profile `--profile=<id>` names, else the one used last. The list is
 `profiles.json` in the root, `~/.project-b` unless `--root=<dir>` names another, beside the
 profile folders; a first start makes it holding `default`, named Personal, and leaves a
