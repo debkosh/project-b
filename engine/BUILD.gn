@@ -67,6 +67,7 @@ source_set("go_core_lib") {
   frameworks = [
     "AppKit.framework",
     "CoreFoundation.framework",
+    "LocalAuthentication.framework",
     "Security.framework",
     "UserNotifications.framework",
   ]

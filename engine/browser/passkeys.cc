@@ -4,7 +4,9 @@
 #include <map>
 #include <utility>
 
+#include "base/base64url.h"
 #include "base/functional/bind.h"
+#include "base/json/json_reader.h"
 #include "base/json/json_writer.h"
 #include "base/mac/mac_util.h"
 #include "base/no_destructor.h"
@@ -15,9 +17,19 @@
 #include "content/public/browser/storage_partition.h"
 #include "content/public/browser/web_contents.h"
 #include "crypto/random.h"
+#include "device/fido/attestation_object.h"
+#include "device/fido/attestation_statement.h"
+#include "device/fido/authenticator_data.h"
+#include "device/fido/authenticator_supported_options.h"
 #include "device/fido/cable/v2_handshake.h"
+#include "device/fido/ctap_get_assertion_request.h"
+#include "device/fido/ctap_make_credential_request.h"
+#include "device/fido/fido_discovery_base.h"
 #include "device/fido/fido_discovery_factory.h"
 #include "device/fido/pin.h"
+#include "device/fido/public/fido_constants.h"
+#include "device/fido/public/public_key_credential_descriptor.h"
+#include "device/fido/public/public_key_credential_user_entity.h"
 #include "device/fido/public/fido_transport_protocol.h"
 #include "project_b/engine/abi/pb_abi.h"
 #include "project_b/engine/browser/dialogs.h"
@@ -119,6 +131,122 @@ const char* NameOf(BleStatus status) {
   return "off";
 }
 
+// Bytes as Go and a page's JSON carry them: base64url with no padding.
+std::string Encode(base::span<const uint8_t> bytes) {
+  std::string out;
+  base::Base64UrlEncode(bytes, base::Base64UrlEncodePolicy::OMIT_PADDING, &out);
+  return out;
+}
+
+std::optional<std::vector<uint8_t>> Decode(const base::DictValue& dict, const char* key) {
+  const std::string* text = dict.FindString(key);
+  if (!text) {
+    return std::nullopt;
+  }
+  return base::Base64UrlDecode(*text, base::Base64UrlDecodePolicy::IGNORE_PADDING);
+}
+
+// Our own authenticator's id among a request's.
+const char kOwnId[] = "project-b";
+
+// Our own passkeys as an authenticator of one request (docs/passkeys.md). It keeps
+// nothing: the request's PasskeyRequest asks Go, and answers content.
+class OwnAuthenticator : public device::FidoAuthenticator {
+ public:
+  explicit OwnAuthenticator(base::WeakPtr<PasskeyRequest> request)
+      : request_(std::move(request)) {}
+
+  void InitializeAuthenticator(base::OnceClosure callback) override {
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE, std::move(callback));
+  }
+  void MakeCredential(device::CtapMakeCredentialRequest request,
+                      device::MakeCredentialOptions options,
+                      MakeCredentialCallback callback) override {
+    if (request_) {
+      request_->OwnMake(request, std::move(callback));
+    }
+  }
+  void GetAssertion(device::CtapGetAssertionRequest request,
+                    device::CtapGetAssertionOptions options,
+                    GetAssertionCallback callback) override {
+    if (request_) {
+      request_->OwnSign(request, std::move(callback));
+    }
+  }
+  // Whether the site has a passkey here is Go's to say, at the key step: content hears
+  // that it isn't known, with the credential IDs the page allows kept for Go.
+  void GetPlatformCredentialInfoForRequest(
+      const device::CtapGetAssertionRequest& request,
+      const device::CtapGetAssertionOptions& options,
+      GetPlatformCredentialInfoForRequestCallback callback) override {
+    if (request_) {
+      request_->OwnAllows(request.allow_list);
+    }
+    std::move(callback).Run({}, device::FidoRequestHandlerBase::RecognizedCredential::kUnknown);
+  }
+  // The person's press on our card was the touch.
+  void GetTouch(base::OnceCallback<void()> callback) override { std::move(callback).Run(); }
+  void Cancel() override {
+    if (request_) {
+      request_->OwnCancelled();
+    }
+  }
+  std::string GetId() const override { return kOwnId; }
+  const device::AuthenticatorSupportedOptions& Options() const override {
+    static const base::NoDestructor<device::AuthenticatorSupportedOptions> options([] {
+      device::AuthenticatorSupportedOptions o;
+      o.is_platform_device = device::AuthenticatorSupportedOptions::PlatformDevice::kYes;
+      o.supports_resident_key = true;
+      o.user_verification_availability = device::AuthenticatorSupportedOptions::
+          UserVerificationAvailability::kSupportedAndConfigured;
+      o.supports_user_presence = true;
+      return o;
+    }());
+    return *options;
+  }
+  std::optional<device::FidoTransportProtocol> AuthenticatorTransport() const override {
+    return device::FidoTransportProtocol::kInternal;
+  }
+  // ES256 alone, the key Go makes.
+  std::optional<base::span<const int32_t>> GetAlgorithms() override {
+    static const int32_t algorithms[] = {
+        static_cast<int32_t>(device::CoseAlgorithmIdentifier::kEs256)};
+    return algorithms;
+  }
+  base::WeakPtr<device::FidoAuthenticator> GetWeakPtr() override {
+    return weak_factory_.GetWeakPtr();
+  }
+
+ private:
+  base::WeakPtr<PasskeyRequest> request_;
+  base::WeakPtrFactory<OwnAuthenticator> weak_factory_{this};
+};
+
+// Brings our authenticator to a request's handler, as a platform authenticator's
+// discovery does. It answers in a task of its own, once the request's delegate observes
+// the handler: found before that, ours would be sent the request at once.
+class OwnDiscovery : public device::FidoDiscoveryBase {
+ public:
+  explicit OwnDiscovery(base::WeakPtr<PasskeyRequest> request)
+      : device::FidoDiscoveryBase(device::FidoTransportProtocol::kInternal),
+        authenticator_(std::move(request)) {}
+
+  void Start() override {
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, base::BindOnce(&OwnDiscovery::Started, weak_factory_.GetWeakPtr()));
+  }
+
+ private:
+  void Started() {
+    if (observer()) {
+      observer()->DiscoveryStarted(this, /*success=*/true, {&authenticator_});
+    }
+  }
+
+  OwnAuthenticator authenticator_;
+  base::WeakPtrFactory<OwnDiscovery> weak_factory_{this};
+};
+
 }  // namespace
 
 PasskeyRequest::PasskeyRequest(content::RenderFrameHost* frame)
@@ -181,11 +309,26 @@ void PasskeyRequest::Answered(const std::string& action, const std::string& text
   } else if (action == "bluetoothSettings") {
     base::mac::OpenSystemSettingsPane(
         base::mac::SystemSettingsPane::kPrivacySecurity_Bluetooth);
+  } else if (action == "own") {
+    // The person chose our own passkeys: content sends ours the request.
+    if (own_ && send_) {
+      send_.Run(kOwnId);
+    }
+  } else if (action == "made") {
+    OwnMade(text);
+  } else if (action == "signed") {
+    OwnSigned(text);
+  } else if (action == "ownFailed") {
+    OwnFailed(text);
   } else if (action == "retry") {
     // Content starts the request again from its discoveries; the key step follows.
     pin_.Reset();
     account_.Reset();
     accounts_.clear();
+    make_.Reset();
+    sign_.Reset();
+    own_ = own_failed_ = false;
+    allow_.clear();
     at_phone_ = phone_busy_ = phone_ready_ = false;
     if (start_over_) {
       start_over_.Run();
@@ -225,7 +368,136 @@ void PasskeyRequest::KeyStep() {
   carries.Set("request", type_ == device::FidoRequestType::kMakeCredential ? "create" : "get");
   carries.Set("site", rp_id_);
   carries.Set("phone", phone_);
+  if (own_) {
+    carries.Set("own", true);
+    carries.Set("only", only_);
+    if (type_ == device::FidoRequestType::kGetAssertion) {
+      carries.Set("allow", allow_.Clone());
+    }
+  }
   Step("key", std::move(carries));
+}
+
+std::vector<std::unique_ptr<device::FidoDiscoveryBase>>
+PasskeyRequest::CreatePlatformDiscoveries() {
+  std::vector<std::unique_ptr<device::FidoDiscoveryBase>> discoveries;
+  // Only a request with a card: the person chooses ours there.
+  if (shown_) {
+    discoveries.push_back(std::make_unique<OwnDiscovery>(weak_factory_.GetWeakPtr()));
+  }
+  return discoveries;
+}
+
+bool PasskeyRequest::EmbedderControlsAuthenticatorDispatch(
+    const device::FidoAuthenticator& authenticator) {
+  return authenticator.GetId() == kOwnId;
+}
+
+void PasskeyRequest::FidoAuthenticatorAdded(const device::FidoAuthenticator& authenticator) {
+  if (authenticator.GetId() == kOwnId) {
+    own_ = true;
+  }
+}
+
+void PasskeyRequest::OwnAllows(const std::vector<device::PublicKeyCredentialDescriptor>& allow) {
+  allow_.clear();
+  for (const auto& credential : allow) {
+    allow_.Append(Encode(credential.id));
+  }
+}
+
+void PasskeyRequest::OwnMake(const device::CtapMakeCredentialRequest& request,
+                             device::FidoAuthenticator::MakeCredentialCallback callback) {
+  make_ = std::move(callback);
+  base::DictValue user;
+  user.Set("id", Encode(request.user.id));
+  user.Set("name", request.user.name.value_or(std::string()));
+  user.Set("displayName", request.user.display_name.value_or(std::string()));
+  base::ListValue exclude;
+  for (const auto& credential : request.exclude_list) {
+    exclude.Append(Encode(credential.id));
+  }
+  base::DictValue carries;
+  carries.Set("user", std::move(user));
+  carries.Set("exclude", std::move(exclude));
+  Step("ownMake", std::move(carries));
+}
+
+void PasskeyRequest::OwnSign(const device::CtapGetAssertionRequest& request,
+                             device::FidoAuthenticator::GetAssertionCallback callback) {
+  sign_ = std::move(callback);
+  base::DictValue carries;
+  carries.Set("clientDataHash", Encode(request.client_data_hash));
+  Step("ownSign", std::move(carries));
+}
+
+void PasskeyRequest::OwnCancelled() {
+  make_.Reset();
+  sign_.Reset();
+}
+
+void PasskeyRequest::OwnMade(const std::string& text) {
+  if (!make_) {
+    return;
+  }
+  std::optional<base::DictValue> made = base::JSONReader::ReadDict(text, base::JSON_PARSE_RFC);
+  std::optional<std::vector<uint8_t>> bytes;
+  std::optional<device::AuthenticatorData> data;
+  if (made && (bytes = Decode(*made, "authData"))) {
+    data = device::AuthenticatorData::DecodeAuthenticatorData(*bytes);
+  }
+  if (!data) {
+    OwnFailed("bad answer");
+    return;
+  }
+  device::AuthenticatorMakeCredentialResponse response(
+      device::FidoTransportProtocol::kInternal,
+      device::AttestationObject(std::move(*data),
+                                std::make_unique<device::NoneAttestationStatement>()));
+  response.is_resident_key = true;
+  response.transports.emplace();
+  response.transports->insert(device::FidoTransportProtocol::kInternal);
+  std::move(make_).Run(device::MakeCredentialStatus::kSuccess, std::move(response));
+}
+
+void PasskeyRequest::OwnSigned(const std::string& text) {
+  if (!sign_) {
+    return;
+  }
+  std::optional<base::DictValue> got = base::JSONReader::ReadDict(text, base::JSON_PARSE_RFC);
+  std::optional<std::vector<uint8_t>> id, bytes, signature, user;
+  std::optional<device::AuthenticatorData> data;
+  if (got && (id = Decode(*got, "credentialId")) && (bytes = Decode(*got, "authData")) &&
+      (signature = Decode(*got, "signature")) && (user = Decode(*got, "userHandle"))) {
+    data = device::AuthenticatorData::DecodeAuthenticatorData(*bytes);
+  }
+  if (!data) {
+    OwnFailed("bad answer");
+    return;
+  }
+  device::AuthenticatorGetAssertionResponse response(
+      std::move(*data), std::move(*signature), device::FidoTransportProtocol::kInternal);
+  response.credential = device::PublicKeyCredentialDescriptor(
+      device::CredentialType::kPublicKey, std::move(*id));
+  response.user_entity = device::PublicKeyCredentialUserEntity(std::move(*user));
+  // The person chose the passkey on our card: content asks for no account.
+  response.user_selected = true;
+  std::vector<device::AuthenticatorGetAssertionResponse> responses;
+  responses.push_back(std::move(response));
+  std::move(sign_).Run(device::GetAssertionStatus::kSuccess, std::move(responses));
+}
+
+void PasskeyRequest::OwnFailed(const std::string& reason) {
+  // Go has shown the person whatever there was to show: the page hears now.
+  own_failed_ = true;
+  if (make_) {
+    std::move(make_).Run(reason == "excluded"
+                             ? device::MakeCredentialStatus::kUserConsentButCredentialExcluded
+                             : device::MakeCredentialStatus::kUserConsentDenied,
+                         std::nullopt);
+  } else if (sign_) {
+    std::move(sign_).Run(device::GetAssertionStatus::kUserConsentDenied, {});
+  }
 }
 
 void PasskeyRequest::PhoneStep() {
@@ -268,8 +540,8 @@ void PasskeyRequest::SetUIPresentation(UIPresentation ui_presentation) {
 
 bool PasskeyRequest::DoesBlockRequestOnFailure(InterestingFailureReason reason) {
   // Once a phone has the request, its end is the phone's to show: the person most likely
-  // said no there.
-  if (!shown_ || !id_ || phone_ready_) {
+  // said no there. So is the end of one our own passkeys failed: Go showed why.
+  if (!shown_ || !id_ || phone_ready_ || own_failed_) {
     return false;
   }
   const char* name = NameOf(reason);
@@ -295,6 +567,7 @@ void PasskeyRequest::RegisterActionCallbacks(
         void(device::FidoRequestHandlerBase::BlePermissionCallback)>
         request_ble_permission_callback) {
   cancel_ = std::move(cancel_callback);
+  send_ = std::move(request_callback);
   start_over_ = std::move(start_over_callback);
   bluetooth_on_ = std::move(bluetooth_adapter_power_on_callback);
   ask_bluetooth_ = std::move(request_ble_permission_callback);
@@ -372,6 +645,10 @@ void PasskeyRequest::OnTransportAvailabilityEnumerated(
            data.available_transports.contains(device::FidoTransportProtocol::kHybrid);
   bluetooth_ = data.ble_status;
   can_turn_on_ = data.can_power_on_ble_adapter;
+  // Ours is the only way when the page left no other: a request for this device alone.
+  only_ = !data.available_transports.contains(
+              device::FidoTransportProtocol::kUsbHumanInterfaceDevice) &&
+          !data.available_transports.contains(device::FidoTransportProtocol::kHybrid);
   KeyStep();
 }
 
@@ -415,6 +692,12 @@ void PasskeyRequest::OnRetryUserVerification(int attempts) {
 
 bool PasskeyPolicy::SupportsResidentKeys(content::RenderFrameHost* render_frame_host) {
   return true;
+}
+
+void PasskeyPolicy::IsUserVerifyingPlatformAuthenticatorAvailableOverride(
+    content::RenderFrameHost* render_frame_host,
+    base::OnceCallback<void(std::optional<bool>)> callback) {
+  std::move(callback).Run(true);
 }
 
 }  // namespace project_b
