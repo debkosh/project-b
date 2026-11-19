@@ -24,8 +24,29 @@ The seams:
   screen.
 - **Android's accessibility tree.** What a page says in ARIA or HTML has to reach the tree
   TalkBack and the driver read, with its name and its state; Chromium hands it over only as
-  fully as the embedder has set it up to. Two so far: the phone's star and folders with no
-  names, TalkBack hearing every switch as off.
+  fully as the embedder has set it up to. Three so far: the phone's star and folders with no
+  names, TalkBack hearing every switch as off, switches named by other words heard with no
+  name.
+
+## Switches named by other words heard with no name, 2026-11-19
+
+- **Seen:** on Android 17 with TalkBack on, after the fix for switches heard as off, the
+  welcome's switches for the built-in sparks and for automatic updates reached Android with
+  no name. A bare page showed which markup: a switch named by aria-label was named, but one
+  named by aria-labelledby, or by a label wrapped around it, or both, had no name at all.
+  Chrome on the same emulator named all four.
+- **Cause:** Chrome puts a name it reads from other elements into the text Android gets for
+  the control, and an aria-label into its description. Our app passes the description but
+  leaves that text empty, so only aria-label survives. Why our engine leaves it empty is not
+  yet found.
+- **Seam:** Android's accessibility tree.
+- **Fix:** on switch-labels: every switch is named by aria-label, from the same words its
+  visible label shows: the settings rows, the welcome's, Sites' keep-cookies switch, and
+  the site panel's and site sheet's. The line under a switch still reaches Android, by
+  aria-describedby.
+- **Guard:** `shell/e2e/shells/mobile.cjs` counts a switch or checkbox without aria-label as
+  nameless. Selects and fields named only by a label stay nameless on Android until the
+  engine passes these names, which is with the daily driver.
 
 ## TalkBack heard every switch as off, 2026-11-19
 
