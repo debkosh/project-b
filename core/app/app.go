@@ -313,6 +313,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Tabs.OnChanged(a.Shell.TabChanged)
 	a.Tabs.OnListChanged(a.Shell.TabsChanged)
 	a.Tabs.OnClosed(a.Settings.TabClosed)
+	a.Shell.OnMenuOpened(a.Settings.Prepare)
 	// A window always has a tab: it closes with its last one (docs/windows.md).
 	a.Tabs.OnEmpty(func(w engine.WindowID) { a.Window.Request(w, engine.WindowClose) })
 	a.Window.OnControlsChanged(a.Shell.WindowControlsChanged)

@@ -1138,9 +1138,26 @@ const H = 915;
   await menu.getByRole('menuitem', { name: 'Back to the menu' }).tap();
   check('and from there, the sheet\'s own rows', await until(() => item('Settings').isVisible()) && (await item('File').count()) === 0);
 
-  // Settings, from the menu.
+  // Settings, from the menu. The menu opening made its tab ahead, out of sight, as Settings
+  // is a tap away (docs/windows.md): no tab to the person, so not counted, not a card in
+  // the switcher, not shown; the tap shows that tab.
+  const ahead = await regions();
+  check('the menu opening makes the settings tab ahead, out of sight', ahead.prepared !== 0 && ahead.settings === 0
+    && !ahead.tabs.some((t) => t.id === ahead.prepared) && !ahead.visible.some((v) => v.tab === ahead.prepared), JSON.stringify({ prepared: ahead.prepared, tabs: ahead.tabs.map((t) => t.id), visible: ahead.visible }));
+  check('the toolbar counts the tabs as before', (await tabsButton.innerText()).trim() === String(ahead.tabs.length));
+  await page.keyboard.press('Escape');
+  await until(async () => !(await menu.isVisible()));
+  await tabsButton.tap();
+  await until(() => switcher.isVisible());
+  check('the switcher has no card for it', await until(async () => (await cards.count()) === ahead.tabs.length)
+    && (await switcher.locator(`[data-tab="${ahead.prepared}"]`).count()) === 0);
+  await tabsButton.tap();
+  await until(async () => !(await switcher.isVisible()));
+  await menuButton.tap();
+  await until(() => menu.isVisible());
+  check('a menu opened again makes no other', (await regions()).prepared === ahead.prepared);
   await item('Settings').tap();
-  check('Settings in the menu opens the settings tab', await until(async () => (await regions()).settings !== 0 && (await regions()).active === (await regions()).settings));
+  check('Settings in the menu opens the settings tab, the one made ahead', await until(async () => (await regions()).settings === ahead.prepared && (await regions()).active === ahead.prepared));
 
   // The address bar on top, from settings on a phone: the toolbar moves under the status
   // bar, the strip stays at the foot, the suggestions grow down.
