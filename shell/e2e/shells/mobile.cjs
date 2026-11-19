@@ -828,6 +828,16 @@ const H = 915;
   await until(() => ask.isVisible());
   check('a sign-in starts with the keyboard in Username', await until(async () => (await w.shell().evaluate(() => document.activeElement?.id)) === 'm-sign-in-user'));
   await shots('sign-in');
+  // The room the keyboard leaves: the card's title and buttons stay in sight, and only
+  // what is between them scrolls.
+  await w.page.setViewportSize({ width: W, height: 300 });
+  const room = await ask.evaluate((el) => {
+    const inSight = (n) => { const r = n.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; };
+    const body = el.querySelector('.body');
+    return { title: inSight(el.querySelector('h2')), buttons: inSight(el.querySelector('.buttons')), scrolls: body.scrollHeight > body.clientHeight, whole: el.scrollHeight <= el.clientHeight };
+  });
+  check('with little room, as over the keyboard, its title and buttons stay in sight and only its body scrolls', room.title && room.buttons && room.scrolls && room.whole, JSON.stringify(room));
+  await w.page.setViewportSize({ width: W, height: H });
   await backKey();
   check('and the back key answers it no too', await until(async () => (await answers()).at(-1).ok === false && (await ask.count()) === 0));
 
