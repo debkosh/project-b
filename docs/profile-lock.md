@@ -74,8 +74,10 @@ profile locked" with Unlock.
 
 ## The modes
 
-The modes only choose when Lock happens by itself. Lock in the app menu and in Settings works in
-all three.
+The modes only choose when Lock happens by itself. Lock works in all three: Lock now in
+Settings, and in the app menu, on the Mac and the phone, Lock profile while unlocked and Unlock
+profile… while locked, beside the profile's items and only when Profile Lock is on. No mark in a
+shell says the profile is locked: it is the profile at rest, and the Dialog comes when needed.
 
 | Mode | Locks | Kept on disk while unlocked |
 |---|---|---|
@@ -94,7 +96,8 @@ all three.
   with Suggest one (four words). Shorter than sync's 12 because it is typed often and the device
   key stands in front of it; sync's passphrase is all that guards the server's copy.
 - **Changing the passphrase or the mode, or turning it off,** asks for the current passphrase
-  even while unlocked, so a person at an unlocked browser can't take the lock away.
+  even while unlocked, so a person at an unlocked browser can't take the lock away. Cancelling
+  that puts the mode's select back as it was.
 - **Forgotten:** there is no way back in. Start fresh deletes what was sealed and the lock;
   history and bookmarks stay. With sync on, saved logins return from the server once sync is
   set up again with sync's passphrase.
@@ -136,14 +139,29 @@ Two names change. Today's code calls a profile whose key the device key doesn't 
 
 ## The screens
 
-To mock, and to ux before him:
+Mocked 2026-11-19 and reviewed by ux that day, every state for the desktop and the phone
+(`lock-desktop.html`, `lock-phone.html` in the research mocks). Nothing is built.
 
-1. Settings, Profile Lock: off; the turn-on Dialog; on, with its mode, Lock now, Change
-   passphrase and Turn off.
-2. The unlock Dialog in a shell, on the Mac and on a phone with the keyboard up, and its wrong
-   passphrase.
-3. Settings' Sync while locked: "Paused: profile locked", Unlock.
-4. Forgotten: Start fresh, from the unlock Dialog.
+1. **Settings, Privacy, a card of its own, Profile Lock.** Off: one row, Turn on…. On: its
+   state with Lock now or Unlock…; When it locks, a select of six (Only when I lock it, When the
+   browser closes, After 5, 15 or 30 minutes or 1 hour without use); Change passphrase; Turn
+   off Profile Lock.
+2. **Turning on:** one Dialog, the passphrase twice with its strength and Suggest one, and a
+   line saying it locks when the browser closes and that Settings changes that.
+3. **Before a change:** the mode and Turn off each ask for the passphrase in one Dialog whose
+   button names the job, Change or Turn off. Change passphrase is one Dialog of three fields:
+   the current one, the new one, and again.
+4. **The unlock Dialog,** the shell's, over the page of the tab that asked. Its line says what
+   for, a site's host in bold. Its title is Unlock this profile, or Unlock and the profile's
+   name when there is more than one. Enter unlocks. A wrong passphrase shows on the line under
+   the field, with Forgot it? at that line's end. On a phone its title and buttons stay in sight
+   over the keyboard.
+5. **Forgot it:** a Dialog titled by what is lost, "Delete saved logins and start fresh?", with
+   what stays and how logins return, and Start fresh as its danger button. Cancel goes back to
+   the unlock Dialog.
+6. **Settings' Sync while locked:** "Paused: profile locked" with Unlock…. Change sync
+   passphrase and Turn off sync need the sealed key, so each asks the unlock Dialog first and
+   then shows its own.
 
 ## Not in it
 
