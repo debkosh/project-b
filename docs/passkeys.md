@@ -308,12 +308,21 @@ The calls, each with a context the caller cancels, and `asked` saying a person a
 | `Count(rpID, allow)` | How many passkeys the site has, of the credential IDs `allow` names when it names any. Plain columns only: never asks for the key |
 | `List(ctx, asked, rpID, allow)` | `[{id, userName, displayName}]` |
 | `Make(ctx, asked, rpID, user, exclude)` | The credential ID and the public key (COSE). A passkey with the same site and user handle is replaced; one of the `exclude` IDs answers `ErrExcluded` |
-| `Sign(ctx, asked, id, data)` | A DER ES256 signature of `data` and the user handle |
+| `Sign(ctx, asked, rpID, id, data)` | A DER ES256 signature of `data` and the user handle. A passkey signs only for its own site: another's answers `ErrNone` |
+| `All(ctx, asked)`, `Delete(ctx, asked, id)`, `Total()` | Settings' list, its Delete, and its count, the count from the plain columns |
 
 Each answers success, `ErrCancelled` (the context ended), `ErrLocked` (the person pressed
-Cancel on Profile Lock's unlock Dialog), `ErrNoScreenLock` (the device has nothing to check the
-person with) or an error. Make and Sign check the person themselves, right before they make or
-sign, through `system.System`; there is no way to sign without it.
+Cancel on Profile Lock's unlock Dialog), `ErrDenied` (the person said no to the device's check,
+or didn't pass it), `ErrNoScreenLock` (the device has nothing to check the person with) or an
+error. Make and Sign check the person themselves, right before they make or sign, through the
+check they were made with, which the app gives them from `system.System`; there is no way to
+sign without it.
+
+**The authenticator data is Go's too** (`AssertionData`, `AttestedData`): the hash of the RP
+ID, the flags (the person present and verified, the passkey able to sync, and synced when sync
+is on now), a count of 0, and for a new passkey our AAGUID, its id and its COSE key. So the
+Mac's C++ and Android's Java carry the same bytes and build none of their own, and Go's tests
+hold them byte for byte.
 
 - **Replace on Make** compares sealed user handles, so Make opens every row of the site first
   (it holds the key anyway); it can't be done in SQL.
@@ -339,13 +348,15 @@ maps (`SyncDetails.vue`: Passkeys, Passkey, passkeys), so a run reads "Passkey Â
 
 ### The device check: core/system
 
-A method on `system.System`, answering yes, no or no screen lock, async and cancellable as
-`system.Question` is, through `PBSystemAnswered`:
+`system.System`'s `VerifyPerson(check, answered) (cancel)`, answering verified, denied or no
+screen lock, once, on the main thread, through `PBSystemPersonVerified(id, verdict)`. Each check
+has a number of its own, not a `system.Question` that several callers share: one sheet names
+one site, and must not answer for another.
 
 - **Mac** (`platform_darwin.m`): LocalAuthentication's `LAPolicyDeviceOwnerAuthentication`,
   Touch ID, else the Mac's password, in macOS's own sheet. Its reason line reads "use a passkey
-  for example.com" or "save a passkey for example.com" (macOS puts "Project B wants to" before
-  it). No team needed.
+  for example.com" or "save a passkey for example.com" (macOS puts "Project B is trying to"
+  before it). No team needed. A Mac with no password answers no screen lock.
 - **Android** (`GoSystem.java`, with the activity it holds): BiometricPrompt titled "Use your
   passkey" or "Save your passkey" with the site under it, `setDeviceCredentialAllowed(true)` on
   Android 10 (our minimum), the `BIOMETRIC_STRONG | DEVICE_CREDENTIAL` authenticators from 11.
@@ -355,26 +366,46 @@ A method on `system.System`, answering yes, no or no screen lock, async and canc
 ### The authenticator: the engine
 
 The engine is the request's side, as layers has it: it hands the request to Go and Go's answer
-back, and keeps no keys.
+back, and keeps no keys. It adds nothing to the ABI: a request of ours speaks through the
+passkey request's own step and answer (`PB_EVENT_PASSKEY_STEP`, `answer_passkey`).
 
-- **Mac** (`engine/browser/passkeys.{h,cc}`): an authenticator of ours among the request's
-  discoveries, beside the security key and the phone. It builds the authenticator data
-  (`rpIdHash`, the flags UP and UV, BE and BS, count 0, and for a make the attested credential
-  data with our AAGUID `81dc8063-9ac3-4b1f-ab00-9e8795c47c60` and the COSE key), with attestation
-  `none`. Content checks the origin against the RP ID before any authenticator sees the request.
-  The hook is content's own (Chromium 155): our request delegate's `CreatePlatformDiscoveries`
-  returns a discovery of transport `kInternal` holding our authenticator, and `PasskeyPolicy`'s
-  `IsUserVerifyingPlatformAuthenticatorAvailableOverride` says yes, so content asks for that
-  transport and pages see a platform authenticator. `EmbedderControlsAuthenticatorDispatch`
-  holds the request back from ours until the person presses Save or a row.
+| Engine to Go, a step | Carries |
+|---|---|
+| `key`, as before, and with ours there | `own`: true; `only`: ours is the only way, as for a request that wants this device alone, and on a phone; `allow`: the credential IDs a sign-in allows |
+| `ownMake`: the request reached ours, to make | `user`: `{id, name, displayName}`; `exclude`: the credential IDs the site already has |
+| `ownSign`: the request reached ours, to sign | `clientDataHash` |
+
+| Go to engine, an answer | Text |
+|---|---|
+| `own` | The person pressed Save or a passkey of theirs: content sends ours the request |
+| `made` | `{credentialId, authData}` |
+| `signed` | `{credentialId, authData, signature, userHandle}` |
+| `ownFailed` | `excluded`, which the page hears as `InvalidStateError`; anything else as `NotAllowedError` |
+
+Bytes are base64url with no padding.
+
+- **Mac** (`engine/browser/passkeys.{h,cc}`): `OwnAuthenticator`, of the internal transport, in
+  a discovery the request delegate's `CreatePlatformDiscoveries` returns, for a request with a
+  card. `EmbedderControlsAuthenticatorDispatch` holds the request back from it until Go answers
+  `own`. It makes content's response from Go's bytes, with attestation `none`, the passkey
+  marked as one the person chose, so content asks for no account. `PasskeyPolicy`'s
+  `IsUserVerifyingPlatformAuthenticatorAvailableOverride` says yes, so a page hears this device
+  can keep a passkey. Content checks the origin against the RP ID before any authenticator sees
+  the request, and a test's virtual keys take the place of every discovery, ours too.
+- **Go** (`core/app/passkeys_own.go`): at a `key` step with `own`, Save for a make; for a
+  sign-in `Count`, then `List` as nobody's call, and the rows, or the `key` step when the site
+  has none here. Use a security key or phone shows the engine's `key` step, which waited all
+  along, and tells the engine nothing. At `ownMake` and `ownSign` it takes the card off the
+  shells' list, runs Make or Sign off the main thread, and answers. A failure the person should
+  read (already saved, no screen lock) is a card of Go's own first, and the engine hears
+  `ownFailed` when it is closed.
 - **Android**: content hands WebAuthn only to Java
   (`RenderFrameHostImpl::GetWebAuthenticationService`), so we register a Java
   `blink.mojom.Authenticator` of our own. It checks the RP ID against the origin as Chromium's
-  `components/webauthn/android` does, builds the same authenticator data, and passes the request
-  to Go through the engine.
-- When the page's request ends (timeout, Cancel, navigation, the tab closing) the engine tells
-  Go, which cancels any call still waiting, the device check among them.
-- New events from 84, and Go's answers through `PBEngineCalls`, numbered in `core/abi`.
+  `components/webauthn/android` does, and speaks the same steps and answers with Go, with
+  `only` true.
+- When the page's request ends (timeout, Cancel, navigation, the tab closing) the dialog
+  closes, and Go ends whatever of ours waited for it, the device's check among them.
 
 ### The card
 
@@ -399,15 +430,22 @@ what they have.
 - A card with the quiet button on the left is wide enough (440px) for it, Cancel and the primary
   on one row.
 - **While macOS or Android checks the person, the card steps aside**: their own sheet says what
-  is asked, and two Cancels at once would be one too many. Go keeps a `check` step, which the
-  shells draw as nothing; the system's Cancel or a failure ends the request as Cancel does.
+  is asked, and two Cancels at once would be one too many. Go takes the request's card off the
+  shells' list from the press to the request's end or its next card, so no shell draws
+  anything; the system's Cancel or a failure ends the request as Cancel does.
+- **The keyboard** is on a card's first field, else its first account row, else its primary
+  button, else Cancel; so on the `own` step, and on a security key's `account` step, Enter
+  chooses the first.
 - **On a phone a locked profile goes straight to Profile Lock's unlock Dialog** ("To use your
   passkey for **example.com**"), then `own`: the press on the site's button was the person
   asking, and there is nothing else to offer beside it.
 - New errors: `no-screen-lock` "Set a screen lock first": "Project B checks it's you with your
   screen lock before using a passkey. Set one in your phone's Settings, then try again." (Close
   alone). `already-saved` "Already saved": "Project B already has a passkey for **example.com**
-  for this account." (Close alone).
+  for this account." (Close alone). A Mac with no password: `no-screen-lock` reads "Set a password
+  first": "Project B checks it's you with your Mac's password before using a passkey. Set one in
+  System Settings, then try again." Anything else of ours that fails: "Something went wrong",
+  "The request didn't finish." (Close alone).
 - The person saying no to Touch ID or the screen lock ends the request with `NotAllowedError`,
   as Cancel does.
 - A sign-in field's passkey list (conditional mediation) stays quiet, as today.
@@ -424,32 +462,28 @@ public key until the person removes it there, which the Delete Dialog says.
 
 ### Tests
 
-- **Go**: make, list, sign and replace on a store; a signature that verifies against the public
-  key; the authenticator data against the WebAuthn spec's examples; every seal's bound values; a
-  cancel during the device check and during an unlock; `ErrNoScreenLock`; sync between two
-  profiles through synckosh's server in process, and a delete.
-- **The mock engine and the shells** (`shell/e2e/passkeys.cjs`): every new step's words and
-  buttons, each answer reaching Go, the keyboard's place at each step, on every desktop shell
-  and the Mobile shell. Every new action by name ([action-coverage.md](action-coverage.md)).
-- **The real app on the Mac**: webauthn.io's flow and a local test page, create then sign in,
-  in the VM, where deskrig types the Mac's password into macOS's sheet.
+- **Go** (`core/passkeys`, `core/sync/passkeys_test.go`, `core/app/passkeys_own_test.go`): make,
+  list, sign and replace on a store; a signature that verifies against the public key; the
+  authenticator data byte for byte; what the disk holds, and every seal's bound values; a cancel
+  during the device's check; no screen lock; a passkey signing only for its site; sync between
+  two profiles through synckosh's server in process, the server reading nothing, a delete, and
+  two made apart for one account; and the whole of a request on the mock engine.
+- **The mock engine and the shells** (`shell/e2e/passkeys.cjs`, every desktop shell): Save and
+  the way to a security key, the card away while the OS checks, the rows, a no to the check,
+  Already saved, the 440px card and the keyboard's place. `/mock/fire` kind `passkey` takes
+  `own`, `only`, `allow=`, `exclude=` and `user=` after the request, and kind `personCheck` sets
+  how the OS's check ends (`verified`, `denied`, `noScreenLock`, `hold`, `answer <verdict>`).
+- **Settings** (`shell/e2e/passkey-settings.cjs`, both layouts and a phone): the row and its
+  count, the list, Delete asking first, and the page with none.
+- **The real app on the Mac** (`tools/drive_first_app.py passkeys`): what comes before macOS's
+  sheet. A page hears this device can keep a passkey; a make is offered Project B first; a
+  request for this device alone has no other way; one for a key apart, and a sign-in with none
+  here, go to the key step; Save takes the card away and the page going elsewhere takes the
+  request back. Saving and signing in need the person at macOS's sheet: in the VM, where
+  deskrig types the password.
 - **Android**: the same on emu-29 and emu-37 with a PIN set, the driver typing the PIN into
   BiometricPrompt; a phone with no screen lock gets `no-screen-lock`.
 - **Sync**: made on the Mac, signs in on the phone, by hand once.
-
-### The order of work
-
-Small pieces, each to release when tested:
-
-1. `core/passkeys`: the table, the three calls, `sealed`, Go tests.
-2. Sync's Mapping.
-3. The device check in `core/system`, Mac and mock.
-4. The card's steps, the ABI and the mock engine, with the e2e checks.
-5. The Mac engine's authenticator and the real-app test.
-6. Android: the Java authenticator and BiometricPrompt, on the emulators.
-7. Settings' Passkeys page.
-
-About two weeks.
 
 ### Later
 
