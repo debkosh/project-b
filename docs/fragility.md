@@ -8,9 +8,10 @@ this page (roles/tester.md).
 The seams:
 
 - **Engine and adapter**, our C++ between Chromium and Go. Chromium has rules it doesn't
-  check until run time, and breaking one kills a process, and duties it leaves to us. Five
-  so far: StackBlitz, the quit crash, the Android blank shell, file uploads on Android,
-  sparks on strict sites.
+  check until run time, and breaking one kills a process, and duties it leaves to us; and
+  the order in which each side hears of a thing. Six so far: StackBlitz, the quit crash,
+  the Android blank shell, file uploads on Android, sparks on strict sites, a duplicated
+  tab that failed to load.
 - **The network across sleep.** A download that stops receiving waits for ever unless
   something gives up on it. Two so far: downloads after sleep, the stuck updater.
 - **Shell layers.** What lies over the page has to stay under the shell's own menus. One so
@@ -30,6 +31,23 @@ The seams:
   fully as the embedder has set it up to. Three so far: the phone's star and folders with no
   names, TalkBack hearing every switch as off, switches named by other words heard with no
   name.
+
+## A duplicated tab that failed to load, 2026-11-19
+
+- **Seen:** on the Mac, Duplicate Tab on a google.com tab opened the copy on our error
+  page, "Can't reach google.com", ERR_BLOCKED_BY_CLIENT, with Failed in the address bar and
+  the bare host for a title. Reload or Try again loaded it.
+- **Cause:** Go asks the engine for the copy and only then adds it to its tabs. The engine
+  started the copy's first load inside that call, and when that navigation asked Go
+  whether it may go ahead, Go didn't know the tab yet and said no, as it does for any tab
+  it doesn't know. The engine's word for that refusal is the one an ad blocker uses. A new
+  tab never raced so: Go makes it, adds it, and then asks it to load.
+- **Seam:** engine and adapter: an engine call whose own events come back before the call
+  has returned to Go.
+- **Fix:** on dd-dup-tab: the engine starts the copy's load once DuplicateTab has
+  returned, so Go knows the copy by then (`Engine::DuplicateTab`).
+- **Guard:** drive_first_app.py duplicate: three duplicates of a loaded tab each load
+  their page, with no error.
 
 ## A download named as a file already in Downloads, 2026-11-19
 

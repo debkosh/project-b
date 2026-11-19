@@ -1310,7 +1310,10 @@ double Engine::GetZoom(int64_t tab) {
                   : 1;
 }
 
-// A clone has its history but no page until it is told to load.
+// A clone has its history but no page until it is told to load. It loads once this has
+// returned, as a new tab loads only once Go asks: Go hears of the copy only then, and a
+// navigation in a tab Go doesn't know yet is blocked, which showed the copy failed,
+// ERR_BLOCKED_BY_CLIENT (docs/fragility.md, "A duplicated tab that failed to load").
 int64_t Engine::DuplicateTab(int64_t tab) {
   content::WebContents* contents = Contents(tab);
   if (!contents) {
@@ -1319,7 +1322,14 @@ int64_t Engine::DuplicateTab(int64_t tab) {
   // The copy has the tab's SiteInstance, so it is in the same workspace.
   PageTab* copy = Add(contents->Clone(), this->tab(tab)->workspace(),
                       this->tab(tab)->internal());
-  copy->contents()->GetController().LoadIfNecessary();
+  content::GetUIThreadTaskRunner({})->PostTask(
+      FROM_HERE, base::BindOnce(
+                     [](base::WeakPtr<Engine> engine, int64_t id) {
+                       if (PageTab* copy = engine ? engine->tab(id) : nullptr) {
+                         copy->contents()->GetController().LoadIfNecessary();
+                       }
+                     },
+                     weak_factory_.GetWeakPtr(), copy->id()));
   return copy->id();
 }
 

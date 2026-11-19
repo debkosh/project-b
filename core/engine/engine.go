@@ -244,7 +244,8 @@ type Engine interface {
 	Zoom(tab TabID, factor float64)
 	ZoomOf(tab TabID) float64
 	// DuplicateTab makes a hidden copy of the tab, its history included, of its kind: in its
-	// workspace, or in our pages' context for one of ours.
+	// workspace, or in our pages' context for one of ours. The copy loads only once this has
+	// returned, so its first navigation finds it known.
 	DuplicateTab(tab TabID) TabID
 	// Edit runs a text-editing command in whichever page has the keyboard.
 	Edit(c EditCommand)
