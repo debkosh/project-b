@@ -20,6 +20,7 @@ import http.server
 import json
 import os
 import re
+import shutil
 import sqlite3
 import subprocess
 import sys
@@ -1372,6 +1373,9 @@ def sync_on_the_phone():
 
     folder = os.path.abspath(os.path.join(OUT, "syncserver"))
     binary = os.path.abspath(os.path.join(OUT, "syncserver-bin"))
+    # The server starts with nothing synced: what a run before left in its folder would have
+    # the phone asked for that run's passphrase, where this one chooses a new one.
+    shutil.rmtree(folder, ignore_errors=True)
     subprocess.run(["go", "build", "-o", binary, "./cmd/syncserver"], cwd=os.path.join(ROOT, "core"), check=True)
     srv = subprocess.Popen([binary, "-addr", "127.0.0.1:0", "-dir", folder], stdout=subprocess.PIPE, text=True)
     port = int(srv.stdout.readline().strip().rsplit(":", 1)[1])
