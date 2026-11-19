@@ -178,6 +178,17 @@ cancelled, Details, a × to take one off the list, and Clear all. Go sends it th
 `downloadAction` and `clearDownloads` from it as from a shell. A phone's shells reach it from
 their menu, always there, with how many are running beside it (owner, 2026-11-15).
 
+**On a phone** the page is the dense one (design-system.md, "On a phone", owner 2026-11-19;
+`PhoneDownloads.vue`): a 52px bar with ← (`close`: the tab used before takes its place, as
+the back key does), the title, Search, by name or host, and ⋮ with Clear all; the downloads
+under the day each started, Today, Yesterday, then the date; one 56px row each, its kind's
+icon, the name and one line, how far it has got, its size and host, or why it failed. A tap
+opens a finished one; a failed one carries Retry in its row; everything else is in its ⋮,
+a sheet of actions (`ui/ActionSheet.vue`) whose head is the name and the address: Share,
+Show in Downloads and Copy link, then Remove from list; Pause or Resume, Cancel and Retry
+while it runs. Share (`downloadAction` `share`) hands the copy in the phone's Downloads to
+the system's share sheet. The back key closes the search or the sheet first.
+
 **Android.** There is no Save panel: a download goes where Go says, the profile's own
 Downloads folder. Once done, the engine copies it into the phone's shared Downloads through
 MediaStore, where the Files app and other apps find it, and removes the app's own copy. Open

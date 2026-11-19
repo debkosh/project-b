@@ -1,6 +1,6 @@
-// A download's details, opened out of its row: on the desktop in Standard's Downloads panel,
-// on a phone on the Downloads page. Each says where the download came from, its whole
-// address with Copy link, and the folder it is saved in; a crash report kept by Save report
+// A download's details: on the desktop opened out of its row in Standard's Downloads panel,
+// saying where it came from, its whole address with Copy link, and the folder it is saved
+// in; on a phone in the sheet of the Downloads page's ⋮. A crash report kept by Save report
 // says it is a crash report instead, with no address. Screenshots, light and dark, go to
 // build/e2e/download-details-*.png.
 // Run: node shell/e2e/download-details.cjs   (from the repo root, after `npm run build` in shell/)
@@ -45,6 +45,46 @@ async function details(list, { savedIn }) {
     (await report.locator('dl').getByRole('button', { name: 'Copy link' }).count()) === 0, said);
 }
 
+// A phone's Downloads page (docs/design-system.md, "On a phone"): one row each under its
+// day, the name and one line, a tap to open it, everything else in its ⋮, a sheet whose head
+// says where it came from; and a search.
+async function phonePage(page, w) {
+  const row = page.getByRole('listitem', { name: 'quarterly-report.pdf' });
+  check('a row says its size and its host on one line, under Today', (await row.innerText()).includes('example.com') &&
+    (await page.getByRole('region', { name: 'Today' }).isVisible()), await row.innerText());
+  await row.getByRole('button', { name: 'Actions for quarterly-report.pdf' }).click();
+  const sheet = page.getByRole('dialog', { name: 'quarterly-report.pdf' });
+  check('its ⋮ opens a sheet whose head has its whole address, without its scheme', await until(async () => (await sheet.isVisible()) &&
+    (await sheet.innerText()).includes(url.replace('https://', '')) && !(await sheet.innerText()).includes('https://')), await sheet.innerText());
+  const said = await sheet.getByRole('button').allInnerTexts();
+  check('with Share, Show in Downloads and Copy link, then Remove from list', JSON.stringify(said) === JSON.stringify(['Share', 'Show in Downloads', 'Copy link', 'Remove from list']), JSON.stringify(said));
+  await shots(w.page, 'page-sheet');
+  await sheet.getByRole('button', { name: 'Copy link' }).click();
+  check('Copy link copies the address, and the sheet goes', await until(async () => (await regions()).clipboard === url && !(await sheet.isVisible())), (await regions()).clipboard);
+  await row.getByRole('button', { name: 'Actions for quarterly-report.pdf' }).click();
+  await sheet.getByRole('button', { name: 'Share' }).click();
+  check('Share hands the file to the system\'s share sheet', await until(async () => ((await regions()).shared || '').endsWith('quarterly-report.pdf')), (await regions()).shared);
+  await row.getByRole('button', { name: /^quarterly-report\.pdf/ }).click();
+  check('a tap on the row opens the file', await until(async () => ((await regions()).openedFiles || []).some((f) => f.endsWith('quarterly-report.pdf'))), JSON.stringify((await regions()).openedFiles));
+
+  const report = page.getByRole('listitem').filter({ hasText: 'project-b-report-' }).first();
+  await report.getByRole('button', { name: /^Actions for project-b-report-/ }).click();
+  const reportSheet = page.getByRole('dialog', { name: /^project-b-report-/ });
+  check('the crash report\'s sheet says it is one, with no address to copy', await until(async () => (await reportSheet.innerText()).includes('Crash report')) &&
+    (await reportSheet.getByRole('button', { name: 'Copy link' }).count()) === 0, await reportSheet.innerText());
+  await page.locator('.ui-sheet-backdrop').click({ position: { x: 20, y: 20 } });
+  check('a tap on the page behind closes it', await until(async () => !(await reportSheet.isVisible())));
+
+  await page.getByRole('button', { name: 'Search' }).click();
+  await page.getByRole('searchbox', { name: 'Search downloads' }).fill('quarterly');
+  const names = async () => (await page.getByRole('listitem').evaluateAll((items) => items.map((i) => i.getAttribute('aria-label'))));
+  check('Search finds by name, and leaves the rest out', await until(async () => (await names()).length > 0 && (await names()).every((n) => n.includes('quarterly'))), JSON.stringify(await names()));
+  check('with our own × to clear it', await page.getByRole('button', { name: 'Clear search' }).isVisible());
+  await shots(w.page, 'page-search');
+  await page.getByRole('button', { name: 'Back' }).click();
+  check('and Back closes the search, the list whole again', await until(async () => (await report.isVisible()) && (await page.getByRole('heading', { name: 'Downloads' }).isVisible())), JSON.stringify(await names()));
+}
+
 (async () => {
   const browser = await chromium.launch();
 
@@ -81,8 +121,8 @@ async function details(list, { savedIn }) {
   await w.ui.getByRole('menuitem', { name: 'Downloads' }).click();
   const page = w.page.frameLocator('iframe.our-page[data-page="downloads"]');
   await until(() => page.getByRole('listitem', { name: 'quarterly-report.pdf' }).isVisible());
-  await details(page, { savedIn: 'Downloads' });
   await shots(w.page, 'page');
+  await phonePage(page, w);
   check('no errors in the page', w.errors.length === 0, w.errors.join(' | '));
 
   await browser.close();

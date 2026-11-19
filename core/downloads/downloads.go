@@ -282,6 +282,16 @@ func (m *Manager) retried(url string) *Item {
 	return nil
 }
 
+// Share offers a finished download's file to the system's share sheet, on window w: on a
+// phone, its copy in the shared Downloads.
+func (m *Manager) Share(id int, w engine.WindowID) {
+	for _, it := range m.list {
+		if it.ID == id && it.State == "done" {
+			m.e.ShareFile(w, it.Path, engine.Rect{})
+		}
+	}
+}
+
 // Act does what a shell asks to one download: open or reveal its file, cancel, pause or
 // resume it, retry one that failed or was cancelled, copy its address, or remove it from
 // the list, which leaves the file where it is. A file the app made has no address to

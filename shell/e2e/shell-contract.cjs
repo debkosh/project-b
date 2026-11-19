@@ -33,7 +33,7 @@ const rules = {
   14: 'Before Go\'s data comes it draws a splash of its own, marked aria-busy="true", with none of its controls; when the data comes the splash goes and the UI shows',
   15: 'A page\'s alert, confirm and prompt show as an alertdialog with Go\'s buttons by name, a prompt with a field; the answer reaches the page; another tab shown hides it, and back shows it',
   16: 'On a desktop, a right click in a page opens a menu of Go\'s actions there; choosing one makes Go do it; Escape, or a press outside, closes it',
-  17: 'A control named Downloads shows once there is a download, and opens a list of them by file name, in the shell or in the Downloads page, a finished one with Show in Finder (on a phone, Show in Downloads)',
+  17: 'A control named Downloads shows once there is a download, and opens a list of them by file name, in the shell or in the Downloads page, a finished one with Show in Finder (on a phone, Show in Downloads, which may be in its ⋮)',
   18: 'A new tab has nothing loaded: New Tab shows one, active, and the shell draws its new tab where the page goes, as its own; closing the last tab closes the window',
   19: 'For one of our tabs, it shows the page\'s title where the address goes, with a way to close the tab, and no field to type in',
   20: 'The find key (on a phone, the menu) opens a text box named Find in page with the keyboard in it; typing searches and shows the count; Enter shows the next match; Escape (a phone\'s back key) closes it',
@@ -815,8 +815,15 @@ const noNoticeYet = {
           entry = (await inShell.isVisible()) ? inShell : (await inPage.isVisible()) ? inPage : null;
           return entry !== null;
         }));
-        rule(17, `finished, it has ${reveal}`, await until(async () => (await entry.getByRole('button', { name: reveal }).count()) === 1));
-        await entry.getByRole('button', { name: reveal }).click();
+        // A phone's dense page keeps it in the row's ⋮, a sheet of actions.
+        let holder = entry;
+        const actions = entry.getByRole('button', { name: 'Actions for contract.pdf' });
+        if (await actions.count()) {
+          await actions.click();
+          holder = page.frameLocator('iframe.our-page[data-page="downloads"]').getByRole('dialog', { name: 'contract.pdf' });
+        }
+        rule(17, `finished, it has ${reveal}`, await until(async () => (await holder.getByRole('button', { name: reveal }).count()) === 1));
+        await holder.getByRole('button', { name: reveal }).click();
         rule(17, `${reveal} makes Go show the file`, await until(async () => (await regions()).shown?.length > 0));
         // The page closes as any tab; the shell's list with Escape.
         const downloadsTab = (await regions()).tabs.find((t) => t.page === 'downloads');

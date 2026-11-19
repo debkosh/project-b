@@ -128,7 +128,16 @@ func (p *ourPages) handle(tab engine.TabID, page engine.Page, msg []byte) {
 		p.a.History.Clear(m.Since)
 		p.items(tab, m.Text)
 	case "downloadAction":
-		p.a.Downloads.Act(m.ID, m.Action)
+		if m.Action == "share" {
+			// The system's share sheet, on the page's window.
+			p.a.Downloads.Share(m.ID, p.a.Tabs.WindowOf(tab))
+		} else {
+			p.a.Downloads.Act(m.ID, m.Action)
+		}
+	case "close":
+		// A page's own ← on a phone: as the back key does on a tab with no history, the
+		// tab used before takes its place.
+		p.a.Tabs.CloseToRecent(tab)
 	case "clearDownloads":
 		p.a.Downloads.Clear(0)
 	default:

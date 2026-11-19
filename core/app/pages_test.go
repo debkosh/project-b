@@ -3,6 +3,7 @@ package app_test
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -154,9 +155,24 @@ func TestTheDownloadsPageListsAndActs(t *testing.T) {
 	if opened := r.e.Opened(); len(opened) != 1 {
 		t.Fatalf("Open from the page opened %v", opened)
 	}
+	// Share, from a phone's ⋮, hands the file to the system's share sheet.
+	say(fmt.Sprintf(`{"t":"downloadAction","id":%v,"action":"share"}`, list[0].(map[string]any)["id"]))
+	r.e.Settle()
+	if shared := r.e.Shared(); !strings.HasSuffix(shared, "report.pdf") {
+		t.Fatalf("Share from the page shared %q", shared)
+	}
 	// Clear empties the list, and the page hears of it as of any change.
 	say(`{"t":"clearDownloads"}`)
 	if list := next(t, got, "downloads")["downloads"].([]any); len(list) != 0 {
 		t.Fatalf("after Clear: %v", list)
+	}
+	// A phone's ← closes the page's tab, the tab used before taking its place.
+	say(`{"t":"close"}`)
+	r.e.Settle()
+	var still bool
+	r.e.Post(func() { _, still = r.a.Tabs.Get(tab) })
+	r.e.Settle()
+	if still {
+		t.Fatal("← left the Downloads page's tab open")
 	}
 }

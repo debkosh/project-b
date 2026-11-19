@@ -592,11 +592,16 @@ final class BrowserWindow extends FrameLayout {
      */
     @CalledByNative
     private void shareFile(String path) {
-        String type = URLConnection.guessContentTypeFromName(path);
+        // A finished download is its copy in the shared Downloads, typed as Android keeps it;
+        // anything else of the app's, as a crash report, its own file, typed by its name.
+        Uri copy = Downloads.sharedCopy(path);
+        String type = copy != null
+                ? activity.getContentResolver().getType(copy)
+                : URLConnection.guessContentTypeFromName(path);
         Intent send =
                 new Intent(Intent.ACTION_SEND)
                         .setType(type != null ? type : "text/plain")
-                        .putExtra(Intent.EXTRA_STREAM, shared(path))
+                        .putExtra(Intent.EXTRA_STREAM, copy != null ? copy : shared(path))
                         .putExtra(Intent.EXTRA_SUBJECT, new File(path).getName())
                         .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         activity.startActivity(Intent.createChooser(send, null));

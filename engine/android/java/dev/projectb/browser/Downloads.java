@@ -118,6 +118,13 @@ final class Downloads {
         });
     }
 
+    // The shared copy a download's file became, or null: Share sends that, as the app's own
+    // copy is gone once it is made.
+    static Uri sharedCopy(String path) {
+        String shared = published().getString(path, null);
+        return shared == null ? null : Uri.parse(shared);
+    }
+
     // Opens the shared copy, once the copy publish started is made: Open right after a
     // download ends would otherwise find nothing yet and do nothing.
     @CalledByNative

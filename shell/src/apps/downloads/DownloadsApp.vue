@@ -3,6 +3,8 @@ import { computed, reactive, watchEffect } from 'vue';
 import { paintTheme } from '@/theme.js';
 import { phone } from '@/phone.js';
 import { act, clear, state } from './state.js';
+import { status } from './words.js';
+import PhoneDownloads from './PhoneDownloads.vue';
 
 // The Downloads page (docs/daily-driver.md): the profile's downloads, newest first. A
 // running one shows how far it has got, with Pause or Resume and Cancel; a finished one
@@ -15,38 +17,6 @@ watchEffect(() => paintTheme(state.tones, state.theme));
 const reveal = phone ? 'Show in Downloads' : 'Show in Finder';
 const finished = computed(() => state.downloads.some((d) => d.state !== 'progress'));
 
-// A size as a phone or Finder gives it: 1000 to a kilobyte, one decimal place under ten.
-function size(n) {
-  if (n < 1000) return `${n} B`;
-  for (const [unit, by] of [['KB', 1e3], ['MB', 1e6], ['GB', 1e9], ['TB', 1e12]]) {
-    const v = n / by;
-    if (v < 1000 || unit === 'TB') return `${v < 10 ? +v.toFixed(1) : Math.round(v)} ${unit}`;
-  }
-}
-
-// Why one failed, in plain words, from the engine's reason (docs/daily-driver.md).
-const failedWords = { connection: 'Failed: the connection stopped', server: 'Failed: the server refused it', disk: 'Failed: not enough disk space' };
-
-function status(d) {
-  switch (d.state) {
-    case 'progress':
-      return (d.paused ? 'Paused · ' : '') + (d.total > 0 ? `${size(d.received)} of ${size(d.total)}` : size(d.received));
-    case 'done':
-      return [d.total > 0 ? size(d.total) : 'Done', d.url ? hostOf(d.url) : d.from].filter(Boolean).join(' · ');
-    case 'cancelled':
-      return 'Cancelled';
-    default:
-      return failedWords[d.reason] || 'Failed';
-  }
-}
-
-const hostOf = (u) => {
-  try {
-    return new URL(u).host.replace(/^www\./, '');
-  } catch {
-    return '';
-  }
-};
 // The rows opened out, by id, and the one whose link was just copied.
 const opened = reactive(new Set());
 const copied = reactive({ id: 0 });
@@ -67,7 +37,9 @@ const share = (d) => (d.total > 0 ? Math.min(1, d.received / d.total) : 0);
 </script>
 
 <template>
-  <div v-if="state.ready" class="page">
+  <!-- A phone has its own, denser page (docs/design-system.md, "On a phone"). -->
+  <PhoneDownloads v-if="state.ready && phone" />
+  <div v-else-if="state.ready" class="page">
     <h1 class="hidden-heading">Downloads</h1>
     <header class="header column">
       <span class="count">{{ state.downloads.length ? `${state.downloads.length} ${state.downloads.length === 1 ? 'file' : 'files'}` : '' }}</span>

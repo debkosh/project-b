@@ -986,7 +986,7 @@ const H = 915;
   const downloadsTab = async () => (await regions()).tabs.find((t) => t.page === 'downloads');
   check('which opens the Downloads page in a tab of ours, shown', await until(async () => (await downloadsTab())?.id === (await regions()).active));
   const dlFrame = page.frameLocator('iframe.our-page[data-page="downloads"]');
-  check('the page lists the download by its name, with Open', await until(async () => (await dlFrame.getByRole('listitem', { name: 'report.pdf' }).getByRole('button', { name: 'Open' }).count()) > 0));
+  check('the page lists the download by its name, with its actions', await until(async () => (await dlFrame.getByRole('listitem', { name: 'report.pdf' }).getByRole('button', { name: 'Actions for report.pdf' }).count()) > 0));
   check('and the bar says nothing over it, as the page says it all', !(await dlBar.isVisible()));
   check('and the pill says Downloads, with a close', await ui.getByRole('button', { name: 'Close Downloads' }).isVisible());
   await shots('downloads');

@@ -464,7 +464,8 @@ it there; a phone shell may be left out of a rule for a desktop feature.
     list may be the shell's own, or the Downloads page, one of our tabs, which the control
     opens by running `downloads.show`. On a phone the control may be an item of the menu one
     of the shell's controls opens, and Show in Finder is Show in Downloads, the phone's
-    Downloads app. The shells that don't have it yet are listed in the check, with
+    Downloads app, which the phone's Downloads page keeps in the row's ⋮, a sheet named by
+    the file. The shells that don't have it yet are listed in the check, with
     who brings each.
 18. **A new tab has nothing loaded** ([windows.md](windows.md#every-window-has-a-tab-decided-2026-11-18)):
     no renderer and no page, so the shell draws its new tab where the page goes, as its
