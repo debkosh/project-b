@@ -30,8 +30,9 @@ Each step leaves Mac and Android working and the release run green.
 
 | | Step | State |
 |---|---|---|
-| 1 | The thin wrapper, `PBInit`, Mac then Android | building |
+| 1 | The thin wrapper, `PBInit`, Mac then Android | built and tested, not merged |
 | 2 | `core/system`, the OS managers' door, with its fake | |
+| 2b | Save as and the folder chooser through Chromium's own file dialog | |
 | 3 | Notifications through Go | |
 | 4 | The Mac's open-link events into `core/system`, or a fourth exception | |
 | 5 | The shell embedded in the Go core | |
@@ -117,11 +118,27 @@ Only these, so OS code doesn't creep back into the adapter:
 
 1. The window (`window_mac.mm`), which holds Chromium's page views and shares input with
    them.
-2. Panels attached to a window: print, Save as, Share, the page's file chooser, the folder
-   chooser.
+2. Print and Share, attached to a window.
 3. The Mac menu bar, and quitting from the Dock or at logout.
 
+Plus the links and files the OS hands the app, if step 4 can't move them into Go.
+
 The clipboard stays in the engine: Chromium has it for every platform.
+
+## 2b. Chromium's own file dialog
+
+His decision, 2026-11-19, through the platforms session: "yes lets do that". Downloads' Save
+panel (`downloads_mac.mm`) and Go's `ChooseFolder` (`choose_path_mac.mm`, which Load unpacked
+shares) go through `ui::SelectFileDialog`, as `file_chooser.cc` already does for a page's file
+input (`SELECT_SAVEAS_FILE`, `SELECT_FOLDER`). Both Mac files go, and Linux and Windows get
+both choosers for free. The drivers that answer them move with it.
+
+Why we wrote our own, from their history and docs: a sheet on the window, a folder to start
+in, the `.crx` type for Load unpacked, the driver's `choose` answering in place of the panel,
+and, for Import's folder, showing hidden files so a browser's folders under `~/Library` show
+(docs/onboarding.md). Chromium's Mac dialog (`select_file_dialog_bridge.mm`) does the first
+four: a sheet on its owning window, a default folder, file types, and the driver's answer stays
+in front of it. It has no way to show hidden files.
 
 ## The build-flow restructure
 
