@@ -78,6 +78,20 @@ in that place every time, in Go and in the shells, as strong as the theme, and i
 to APCA Lc 60. Decided 2026-11-18, after the letter tiles' random colours sat badly with the
 theme.
 
+**gulal keeps away from `--danger`,** the theme's own, at gulal's 25° either side, so no
+site, group or folder reads as an error: about hues 4° to 54° in OKLCH, the reds and
+red-oranges. Nothing else is avoided: the accent is leaned toward, and `--danger` is our only
+status colour. Every environment `tint.js` and Go make passes it as `avoid`. Decided by ux
+2026-11-19, as the owner asked ux to.
+
+**Made up, or picked.** The owner, 2026-11-19: what the user didn't make (a site, its letter
+tile) is coloured from its text, as above. What the user makes and names (a workspace, a tab
+group) takes the colour they pick: the picker offers gulal's `distinct(7)` for its place as
+swatches, then a + for any colour, and a new one starts on `next(existing)`, the suggestion
+farthest from those in use. A suggestion is kept as its hue and drawn by gulal for the theme,
+so it is the same hue in light and dark; a colour the user chose with + is kept as they chose
+it, never moved.
+
 Check light and dark with four frame colours: the default, None (a grey frame with ink for the
 accent), a dark one, a light one and a mid one such as `#4f9e9e`. `core/tones` must keep every pair readable.
 
