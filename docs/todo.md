@@ -240,6 +240,9 @@ How they work is in [site-features.md](site-features.md).
 - Links to other sites, later if wanted: separate settings for a page's navigations in place
   and for its popups; a popup let open hidden and closed after about a second, for sites that
   wait on `window.opener`; a general popup blocker counting in the same `popupsBlocked`.
+- A phone's Copy Image and Share Image send a PNG made from the image as decoded, not the page's
+  own file: a GIF loses its animation and a JPEG grows. Chrome sends the original bytes, which needs
+  the renderer to hand them over (Chrome's `RequestImageForContextNode`), which content lacks.
 - Sparks' editor is a plain text area, without highlighting; no sync, no enterprise lists.
 
 ## Build, release and test tooling

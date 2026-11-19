@@ -51,14 +51,15 @@ action chosen. Go runs it.
 | `selection` | The text selected |
 | `editable` | The press was in a field, for cut, copy, paste and select all |
 | `actions` | What can run here: `{id, title, group, enabled}`, and `actions` of its own for a submenu |
+| `thumb` | A phone's picture of the image pressed, a PNG data URL; Go sends the menu again with it once the engine has fetched it |
 
 **The actions.** Go lists only what it can run here and now. Ids never change once released, so a
 shell may give an id an icon, or leave it out.
 
 | Group | Actions |
 |---|---|
-| `link` | `link.newTab` Open Link in New Tab, `link.workspace` Open Link in Workspace (a submenu, `link.workspace.<id>` per other workspace), `link.newWindow` Open Link in New Window, `link.copy` Copy Link |
-| `image` | `image.newTab` Open Image in New Tab, `image.copyAddress` Copy Image Address |
+| `link` | `link.newTab` Open Link in New Tab, `link.workspace` Open Link in Workspace (a submenu, `link.workspace.<id>` per other workspace), `link.newWindow` Open Link in New Window, `link.copy` Copy Link, `link.saveAs` Save Link As…; on a phone, in place of Save Link As, `link.copyText` Copy Link Text, `link.download` Download Link and `link.share` Share Link |
+| `image` | `image.newTab` Open Image in New Tab, `image.saveAs` Save Image As…, `image.copyAddress` Copy Image Address; on a phone, in place of Save Image As, `image.download` Download Image, `image.copy` Copy Image and `image.share` Share Image |
 | `selection` | `selection.copy` Copy, `selection.search` Search for "…" |
 | `edit` | `edit.undo`, `edit.redo`, `edit.cut`, `edit.copy`, `edit.paste`, `edit.selectAll` |
 | `page` | `page.back` Back, `page.forward` Forward, `page.reload` Reload, `page.print` Print… |
@@ -81,8 +82,18 @@ window.
 rule 16 ([shells.md](shells.md#what-every-shell-does)) is what catches it.
 
 **Android.** Go sends only presses on a link or an image. A long press on text or in a field keeps
-Android's own selection bar, which already copies, pastes and selects. The Mobile shell's link
-sheet opens on the same message, and still builds its own items from the press.
+Android's own selection bar, which already copies, pastes and selects. The phone shells' sheet
+opens on the same message, and builds its Open items from the press itself.
+
+**A phone's actions** come when the chosen shell is a phone's, so the mock tests see them too.
+A phone has no Save panel, so its menu downloads at once, into Downloads as a page's own download
+does (`DownloadURL` without the panel), and shares. Share Link hands the address to Android's
+chooser as text. Copy Image and Share Image need the image itself: the engine fetches it as its
+page would, from the cache when it has it (`save_image`, content's `DownloadImage`), and writes it
+as a PNG in the profile's `shared` folder, which the FileProvider serves. Copy Image puts that file
+on the clipboard as a content URI; Share Image offers it to the chooser as an image. For the sheet's
+head, Go fetches the image the same way at 120 pixels and sends the menu again with it as `thumb`,
+since a shell page loads no image from the web. The `shared` folder is emptied at each start.
 
 ## Downloads
 
