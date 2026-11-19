@@ -11,7 +11,7 @@ uses its Go `client` package. The store it works over is [store.md](store.md).
 
 - 2026-11-18: "sync should always be with a passphrase"
 - 2026-11-18: "yes keychain default, passphrase lock over it... and enterprises can later force
-  passphrases via policy". The keychain is built; the passphrase lock over it is not.
+  passphrases via policy". The passphrase lock over it is not built.
 - 2026-11-18: "lets not go the app only level for now... since we cannot give the same level in
   windows and linux": the device key is an ordinary keychain item, not one only this app's
   signature can read.
@@ -23,6 +23,10 @@ uses its Go `client` package. The store it works over is [store.md](store.md).
   bucket url and token... then sync start asks for passphrase"
 - 2026-11-19: "we should build some deep link which we can click from the memd page to set the
   sync server details on the app in mac and android"
+- 2026-11-19, a note, not his decision: the branch `sync-app-devicefile` departs from "keychain
+  default" on the Mac, and keeps the device key in a file until the app is signed with an Apple
+  Developer ID, for the reason in [the device key on the Mac](#the-device-key-on-the-mac). It
+  waits on his decision; Android keeps the Keystore.
 - Agreed in the discussion of 2026-11-19: local storage is ours, and synckosh is given its storage
   interface over it; sealing on disk is ours, field by field; history and bookmarks stay plain on
   disk, sealed only for the wire, by synckosh; the sync key is apart from the profile key.
@@ -60,35 +64,62 @@ address's item.
 
 | Key | What it is | Where it lives |
 |---|---|---|
-| Device key | 32 random bytes, one for the app on this device | The Mac's login keychain, a generic password: service `Project B`, account `device key`. On Android, `files/device.key` in the app's folder, wrapped by an AES key of the Android Keystore, `project_b_device_key` |
+| Device key | 32 random bytes, one for the app on this device | On the Mac, `device.key` in the root beside `profiles.json` (`~/.project-b/device.key`), the 32 bytes as they are, readable by this user alone (mode 0600), one for every listed profile. On Android, `files/device.key` in the app's folder, wrapped by an AES key of the Android Keystore, `project_b_device_key` |
 | Profile key | 32 random bytes per profile, made the first time something is sealed | `profile.key` in the profile folder, wrapped by the device key, the profile's id bound in |
 | Sync key | synckosh's data key, one per bucket, the same on every device in it | The profile's `secrets` table, sealed with the profile key. Joining devices get it from the server's sealed copy, opened with the passphrase |
 
-The keychain and the Keystore are asked only once something is sealed in the profile, which today
-is sync turned on: a profile that never syncs never touches them.
+The device key is made, and the Keystore asked, only once something is sealed in the profile,
+which today is sync turned on: a profile that never syncs never touches them.
 
 **Which key wraps a profile's key.** A profile in the profile list uses the device key. A folder
-opened as it is with `--user-data-dir`, as every test and driver run is, never touches the keychain:
-its profile key is wrapped by `folder.key`, a key in that same folder. So tests need no keychain,
-and a listed profile's folder copied and opened with `--user-data-dir` gets nothing from the
-keychain. Android's profile is the one folder Android gives the app, its only profile, and uses
-the device key.
+opened as it is with `--user-data-dir`, as every test and driver run is, never reads the app's
+`device.key`: its profile key is wrapped by `folder.key`, a key in that same folder, kept the same
+way. So tests never make or read the app's device key, and a listed profile's folder copied and
+opened with `--user-data-dir` gets nothing from it. Android's profile is the one folder Android
+gives the app, its only profile, and uses the device key.
 
 **Moving a profile.** History, bookmarks and the rest move with the folder. What was sealed does
 not open on another device, whose device key differs, nor under another id: the profile key
-is then *locked*.
+is then *locked*. On the Mac `device.key` is in the root, not in a profile's folder, so it doesn't
+move with one.
 
 **Never rekeyed silently.** When the device key doesn't open the profile key (a moved folder, a
-lost or replaced keychain item), sealing and opening fail with a plain error, nothing is
+lost or replaced `device.key`), sealing and opening fail with a plain error, nothing is
 overwritten, sync is off and its status says why. One call, `StartFresh`, deletes what was sealed
 and makes a new profile key. History and bookmarks are untouched. A device key is made only when
-a new profile key needs one, never in place of one that is there.
+a new profile key needs one, never in place of one that is there. With `device.key` gone, every
+profile that holds a wrapped key is locked, as a lost keychain item left them.
 
 **Sealing on disk** (`core/keys`): XChaCha20-Poly1305, with the table, the row's id, the column
 and any other values the row binds in as additional data, so a sealed value can't be moved to
 another row or column. A fresh random nonce each time; the stored value is the nonce, then the
 sealed bytes. The `secrets` table holds named sealed values; sync keeps its address, token and
 sync key there.
+
+### The device key on the Mac
+
+**Where:** `device.key` in the root, beside `profiles.json`, made the first time a listed profile
+seals something (`keys.File`, `core/cmd/lib/keys_darwin.go`). It is written once, never over
+one that is there.
+
+**What a file protects against:** another user of the Mac, who can't read it (mode 0600); and a
+profile's folder moved or copied to another device, which doesn't open there, since the key
+stays in the root. **What it doesn't:** a program running as the person, which reads it without
+asking; and a copy of the home folder or of the root, which takes the key with the profiles, so
+they open wherever the copy goes.
+
+**Why not the keychain, for now.** The device key was an ordinary generic-password item in the
+login keychain. The app is signed with the project's own certificate and has no Apple team id,
+so macOS files the item under the creating build's code hash. Measured in a VM on 2026-11-19
+with two builds signed with the project's identity: every new build is asked "Project B wants
+to access key 'Project B device key'" and needs the person's Mac password; Always Allow covers
+that one build only; an access rule of any application doesn't avoid it, as the partition list
+still holds only the creator's code hash; and the data-protection keychain refuses a binary with
+no team id (`errSecMissingEntitlement`, -34018). The browser updates often, so the keychain
+would ask after every update, and until it is answered Sync looks off.
+
+**The keychain comes back** when the app is signed with an Apple Developer ID, whose team id
+lets every build read the item without asking.
 
 ## The address
 
@@ -290,7 +321,7 @@ set-up with the address and its error. Any other `project-b:` link does nothing.
 
 ## Not built
 
-- The passphrase lock over the keychain, and a policy forcing it.
+- The passphrase lock over the device key, and a policy forcing it.
 - Saved logins, and any sealed field but the secrets.
 - A token per device: every device uses the bucket's token.
 - A backup code (synckosh's `BackupCode`).
@@ -299,21 +330,26 @@ set-up with the address and its error. Any other `project-b:` link does nothing.
 
 `core/keys`: sealing binds its table, row, column and bound values; a folder named outright uses
 its own key and never a device key; a profile key that doesn't open is locked, overwrites nothing,
-and `StartFresh` makes a new one; the Mac's keychain, under a test-only service, deleted after.
+and `StartFresh` makes a new one; the device key file, made once for every listed profile, mode
+0600, a profile key copied to another device's root locked, every profile locked once the file is
+gone with nothing overwritten, and `StartFresh` making a new one.
 `core/history`: joining two versions of a page, whichever is the row.
 `core/sync`: two profiles syncing bookmarks, history and typed addresses through synckosh's server
 in-process, in both address forms; one address visited on both, one row with the larger count; a
 bookmark deleted on one gone from the other; clearing history reaching the other; no visit and no
 readable title or address on the server; a wrong passphrase; joining; a changed passphrase, which a
 third profile joins with while the old one fails; Disconnect keeping the rows; a server reset
-refilled; a locked profile key turning sync off; sync on at start running with what was kept.
+refilled; a locked profile key turning sync off, in a folder copied from another device and in a
+listed profile whose device key file is gone, until `StartFresh`; sync on at start running with
+what was kept.
 `core/sync` also: each problem reaching a bucket named, and a signed-out device's status; a run cut
 short; Connect answering before its first run; the address while on. `core/words`: the list and a
 passphrase of it. `core/abi`: `AppLink`'s values.
 `core/app`: the settings page's status, a deep link only proposed, problems by name, Suggest one;
 a link from another app opening Settings at Sync with `syncLink` after the snapshot, another
 `project-b:` link doing nothing; a link pressed in a page doing the same, and a script's doing
-nothing. `core/cmd/lib`: a folder named outright gets no device key.
+nothing. `core/cmd/lib`: a folder named outright gets no device key, so never reads the app's
+`device.key`; a listed profile's is `device.key` in the root, mode 0600, the same for every profile.
 
 `shell/e2e/sync.cjs` (in `tools/test.sh mock`), in the one-page and Sections layouts and on a
 phone, against synckosh's server, which the dev server runs with `-sync-server` and sync reaches
@@ -332,20 +368,24 @@ Settings at Sync with the link's Dialog, and a server the link names hears nothi
 a script's navigation, a press in a frame, a redirect and another `project-b:` link do nothing.
 
 **Checked by hand on 2026-11-19, in a throwaway clone of the test VM** (docs/vm-testing.md), with
-a sync server in the VM whose own CA the VM's system keychain was told to trust: on a listed
-profile, turning sync on made the login keychain's `Project B` / `device key` item and
-`profile.key`, with no prompt, and sync was still on after a restart; the profile's folder
-copied and opened with `--user-data-dir` showed "Sync can't run on this device"; `open` on a
-sync link, with the app running and with it quit, opened Settings at Sync with the link's Dialog,
-and a port the link named heard nothing until Connect. A new build of the app, signed again, is
-asked about by the keychain once ("Project B wants to access key 'Project B device key'"), as
-`keychainPrompts` expects; until it is answered, Sync shows Set up sync.
+a sync server in the VM whose own CA the VM's system keychain was told to trust, while the device
+key was in the keychain: on a listed profile, turning sync on made the login keychain's
+`Project B` / `device key` item and `profile.key`, with no prompt, and sync was still on after a
+restart; the profile's folder copied and opened with `--user-data-dir` showed "Sync can't run
+on this device"; `open` on a sync link, with the app running and with it quit, opened Settings at
+Sync with the link's Dialog, and a port the link named heard nothing until Connect. A new build
+of the app, signed again, was asked about by the keychain, which is why the device key is now a
+file ([the device key on the Mac](#the-device-key-on-the-mac)).
+
+**To check again on the real app, with `device.key`:** in a throwaway clone of the test VM, a
+listed profile turning sync on makes `~/.project-b/device.key`, mode 0600, and `profile.key`, with
+no prompt, and sync is still on after a restart; a second build, signed again, syncs with no
+prompt; the profile's folder copied and opened with `--user-data-dir` shows "Sync can't run on
+this device", and no `device.key` is read or made for it; with `device.key` deleted, the listed
+profile shows "Sync can't run on this device" and Set up again… makes a new one.
 
 `tools/drive_android.py`, part `sync_on_the_phone`, on the emulator: a sync link from another app
 opens Settings at Sync with the link's Dialog, the app running or stopped; turning sync on against
 `core/cmd/syncserver`, a test server over https whose own CA is put in the emulator's user CA folder
 (which Go reads), makes `files/device.key`, wrapped by the Keystore, and `profile.key`; a restart
 syncs again with what was kept; DeviceKey logs no exception.
-
-**Not tested here:** the Mac's keychain test skips where the shell's
-keychain list has no login keychain, as an agent's shell over ssh has.

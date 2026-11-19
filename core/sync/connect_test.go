@@ -14,6 +14,7 @@ import (
 
 	"github.com/sudiptadeb/synckosh"
 
+	"projectb/keys"
 	"projectb/sync"
 )
 
@@ -328,48 +329,68 @@ func TestAServerResetIsRefilled(t *testing.T) {
 }
 
 // A profile whose key doesn't open has sync off, saying why, and its rows as they were, until
-// StartFresh; then it connects again.
+// StartFresh; then it connects again. Its key doesn't open in a folder copied from another
+// device, nor in a listed profile once the device key file is gone.
 func TestALockedProfileKeyAndStartingFresh(t *testing.T) {
-	s := newServer(t)
-	dir := t.TempDir()
-	a := openProfile(t, dir)
-	a.startSync(s)
-	a.history.AddVisit("https://example.com/", "Kept")
-	a.settle()
-	if err := a.connect(s.bearer(), "tok", "pass phrase"); err != nil {
-		t.Fatal(err)
-	}
-	a.close()
-	// The folder's key is another now, as a folder copied from another device's would be.
-	key := filepath.Join(dir, "folder.key")
-	os.Remove(key)
-	os.WriteFile(key, []byte(strings.Repeat("k", 32)), 0o600)
+	for _, c := range []struct {
+		name string
+		open func(t *testing.T, dir string) *profile
+		lose func(t *testing.T, dir string)
+	}{
+		{"copied from another device", openProfile, func(t *testing.T, dir string) {
+			// The folder's key is another now, as a folder copied from another device's would be.
+			key := filepath.Join(dir, "folder.key")
+			os.Remove(key)
+			os.WriteFile(key, []byte(strings.Repeat("k", 32)), 0o600)
+		}},
+		{"no device key file", func(t *testing.T, dir string) *profile {
+			return openListed(t, dir, "p1", keys.File(filepath.Join(filepath.Dir(dir), "device.key")))
+		}, func(t *testing.T, dir string) {
+			if err := os.Remove(filepath.Join(filepath.Dir(dir), "device.key")); err != nil {
+				t.Fatal(err)
+			}
+		}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			s := newServer(t)
+			dir := filepath.Join(t.TempDir(), "p1")
+			a := c.open(t, dir)
+			a.startSync(s)
+			a.history.AddVisit("https://example.com/", "Kept")
+			a.settle()
+			if err := a.connect(s.bearer(), "tok", "pass phrase"); err != nil {
+				t.Fatal(err)
+			}
+			a.close()
+			c.lose(t, dir)
 
-	a = openProfile(t, dir)
-	a.startSync(s)
-	if st := a.sync.Status(); st.On || !st.Locked || st.Error == "" {
-		t.Fatalf("status: %+v", st)
-	}
-	if err := a.connect(s.bearer(), "tok", "pass phrase"); err == nil {
-		t.Fatal("connected with its keys locked")
-	}
-	if title, _ := a.page("https://example.com/"); title != "Kept" {
-		t.Fatalf("the history: %q", title)
-	}
-	if err := a.call(a.sync.StartFresh); err != nil {
-		t.Fatal(err)
-	}
-	if st := a.sync.Status(); st.On || st.Locked {
-		t.Fatalf("status after starting fresh: %+v", st)
-	}
-	if n := a.count(`SELECT count(*) FROM secrets`); n != 0 {
-		t.Fatalf("%d secrets after starting fresh", n)
-	}
-	if err := a.connect(s.bearer(), "tok", "pass phrase"); err != nil {
-		t.Fatal(err)
-	}
-	if st := a.sync.Status(); !st.On || st.Error != "" {
-		t.Fatalf("status after connecting again: %+v", st)
+			a = c.open(t, dir)
+			a.startSync(s)
+			if st := a.sync.Status(); st.On || !st.Locked || st.Error == "" {
+				t.Fatalf("status: %+v", st)
+			}
+			if err := a.connect(s.bearer(), "tok", "pass phrase"); err == nil {
+				t.Fatal("connected with its keys locked")
+			}
+			if title, _ := a.page("https://example.com/"); title != "Kept" {
+				t.Fatalf("the history: %q", title)
+			}
+			if err := a.call(a.sync.StartFresh); err != nil {
+				t.Fatal(err)
+			}
+			if st := a.sync.Status(); st.On || st.Locked {
+				t.Fatalf("status after starting fresh: %+v", st)
+			}
+			if n := a.count(`SELECT count(*) FROM secrets`); n != 0 {
+				t.Fatalf("%d secrets after starting fresh", n)
+			}
+			if err := a.connect(s.bearer(), "tok", "pass phrase"); err != nil {
+				t.Fatal(err)
+			}
+			if st := a.sync.Status(); !st.On || st.Error != "" {
+				t.Fatalf("status after connecting again: %+v", st)
+			}
+		})
 	}
 }
 

@@ -31,7 +31,7 @@ func PBSetDeviceKeyReader(read C.device_key_reader) {
 
 // deviceKeyFor is the device key of the phone's one profile, the folder Android gives the app
 // (docs/sync.md): Java keeps it in the app's files, wrapped by the Android Keystore.
-func deviceKeyFor(profiles.Choice) keys.Device {
+func deviceKeyFor(profiles.Choice, string) keys.Device {
 	return func(create bool) ([]byte, error) {
 		read := C.device_key_reader(unsafe.Pointer(deviceKeyReader.Load()))
 		if read == nil {

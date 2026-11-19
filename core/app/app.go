@@ -67,8 +67,8 @@ type Config struct {
 	// System is what this platform says of itself in a crash report: the version, the
 	// OS and the device, and on Android the app's own log.
 	System func() []crash.Section
-	// DeviceKey is the device key that wraps the profile's key (docs/sync.md): the keychain's
-	// for a listed profile, nil for a folder named outright, which keeps a key of its own.
+	// DeviceKey is the device key that wraps the profile's key (docs/sync.md): the app's, for a
+	// listed profile, nil for a folder named outright, which keeps a key of its own.
 	DeviceKey keys.Device
 }
 

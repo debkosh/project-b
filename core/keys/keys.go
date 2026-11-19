@@ -28,8 +28,8 @@ type Device func(create bool) ([]byte, error)
 var ErrNoDeviceKey = errors.New("keys: no device key")
 
 // ErrLocked is what sealing and opening fail with when the device key doesn't open the
-// profile's key: the folder came from another device, or the keychain's item was lost or
-// replaced. Nothing is overwritten; StartFresh makes a new key.
+// profile's key: the folder came from another device, or the device key was lost or replaced.
+// Nothing is overwritten; StartFresh makes a new key.
 var ErrLocked = errors.New("keys: this profile's key doesn't open with this device's key")
 
 // errNone is the profile having no key yet: nothing was sealed in it.
@@ -50,7 +50,7 @@ type Keys struct {
 // folder named outright, whose profile key is wrapped by its folder.key.
 func New(dir, profile string, st *store.Store, device Device) *Keys {
 	if device == nil {
-		device = folderKey(dir)
+		device = File(filepath.Join(dir, "folder.key"))
 	}
 	st.Schema("keys", func(tx *store.Tx) error {
 		_, err := tx.Exec(`CREATE TABLE secrets (name TEXT PRIMARY KEY, value BLOB NOT NULL) WITHOUT ROWID`)
@@ -61,7 +61,7 @@ func New(dir, profile string, st *store.Store, device Device) *Keys {
 
 // Check opens the profile key: nil when it opens or nothing was sealed yet, ErrLocked when
 // the device key doesn't open it, or why the device key couldn't be read. Call it off the main
-// thread: it may ask the keychain.
+// thread: it may ask Android's Keystore.
 func (k *Keys) Check() error {
 	k.mu.Lock()
 	defer k.mu.Unlock()
@@ -209,10 +209,11 @@ func (k *Keys) StartFresh() error {
 	return err
 }
 
-// folderKey is a folder's own key, folder.key in it, for a folder named outright.
-func folderKey(dir string) Device {
+// File is a key kept as it is in the file at path, 32 bytes readable by this user alone: the
+// Mac's device key, device.key beside the profile list, or a folder named outright's own,
+// folder.key in it. One is made only when create is true and there is none.
+func File(path string) Device {
 	return func(create bool) ([]byte, error) {
-		path := filepath.Join(dir, "folder.key")
 		b, err := os.ReadFile(path)
 		switch {
 		case err == nil && len(b) == chacha20poly1305.KeySize:

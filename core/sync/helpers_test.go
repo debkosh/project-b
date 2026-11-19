@@ -128,8 +128,8 @@ func (s *testServer) items(token string) []synckosh.Item {
 	return out
 }
 
-// profile is a profile folder named outright, with its store, keys, history and bookmarks, and
-// a main thread of its own.
+// profile is a profile folder, named outright unless openListed opened it, with its store, keys,
+// history and bookmarks, and a main thread of its own.
 type profile struct {
 	t         *testing.T
 	dir       string
@@ -148,6 +148,11 @@ func newProfile(t *testing.T) *profile {
 }
 
 func openProfile(t *testing.T, dir string) *profile {
+	return openListed(t, dir, "", nil)
+}
+
+// openListed opens dir as the listed profile id, whose key device wraps.
+func openListed(t *testing.T, dir, id string, device keys.Device) *profile {
 	st, err := store.Open(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -160,7 +165,7 @@ func openProfile(t *testing.T, dir string) *profile {
 			f()
 		}
 	}()
-	p.keys = keys.New(dir, "", st, nil)
+	p.keys = keys.New(dir, id, st, device)
 	p.bookmarks = bookmarks.New(dir, st)
 	p.history = history.New(dir, st, p.post)
 	p.maps = append(history.Synced(), p.bookmarks.Synced(p.post))
