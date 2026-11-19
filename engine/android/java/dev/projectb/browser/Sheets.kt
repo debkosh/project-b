@@ -1,8 +1,6 @@
 package dev.projectb.browser
 
 import android.app.AlertDialog
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
 import android.graphics.drawable.GradientDrawable
 import android.text.InputType
@@ -171,48 +169,132 @@ fun cardMenu(s: Sheet, palette: Palette, tab: JSONObject, inGroup: Boolean, grou
 }
 
 /**
- * What a long press on a link or an image in the page offers, drawn by the shell since a phone
- * has no menu of its own: for a link, Open in new tab in group first, as Chrome has it, then
- * Open in new tab, Open in workspace, and Copy link; for an image, Open image in new tab and Copy
- * image address. A tab opened here opens behind, so the group strip gathers them.
+ * What a long press on a link or an image in the page offers, the web shell's LinkSheet in the
+ * dense phone sheet (docs/design-system.md, On a phone): a one-line head, the image's picture
+ * beside it once Go has it, the most used actions as a row of tiles, the rest as rows. A link
+ * gets New tab, In group, Copy link, Download and Share; an image New tab, Copy image, Download
+ * and Share; a linked image both, under a hairline. Opening is the shell's own, behind; the rest
+ * are Go's actions, shown when Go offers them, which choose runs.
  */
 fun linkSheet(s: Sheet, palette: Palette, menu: JSONObject, workspaces: List<JSONObject>,
-              open: (JSONObject) -> Unit, done: () -> Unit) {
+              open: (JSONObject) -> Unit, choose: (String) -> Unit) {
     val context = s.context
     val c = s.content
     val link = menu.optString("link")
-    val url = link.ifEmpty { menu.optString("src") }
-    val shown = url.replace(Regex("^https?://(www\\.)?"), "")
-    c.addView(head(context, palette, if (link.isNotEmpty()) menu.optString("linkText") else "", shown))
-    fun copy() {
-        val clip = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        clip.setPrimaryClip(ClipData.newPlainText("Link", url))
-        done()
+    val src = if (menu.optString("media") == "image") menu.optString("src") else ""
+    val offered = HashSet<String>()
+    menu.optJSONArray("actions")?.let { for (i in 0 until it.length()) offered.add(it.getJSONObject(i).optString("id")) }
+    val bare = { u: String -> u.replace(Regex("^https?://(www\\.)?"), "") }
+    val address = bare(link.ifEmpty { src })
+    val name = when {
+        link.isNotEmpty() -> menu.optString("linkText").trim()
+        else -> android.net.Uri.decode(src.substringBefore('?').substringBefore('#').substringAfterLast('/'))
     }
-    if (link.isNotEmpty()) {
-        c.addView(sheetRow(context, palette, "group", "Open in new tab in group") {
-            open(JSONObject().put("text", url).put("groupWith", menu.optLong("tab")).put("background", true))
+    c.addView(linkHead(context, palette, if (src.isNotEmpty()) menu.optString("thumb") else null, name, address))
+
+    class Item(val icon: String, val label: String, val run: () -> Unit)
+    // A linked picture's two rows have the same words, so each says whose it is.
+    fun tiles(items: List<Item>, divided: Boolean, heading: String?) {
+        if (items.isEmpty()) return
+        if (divided) c.addView(hairline(context, palette))
+        if (heading != null) c.addView(label(context, 12f, palette.muted).apply {
+            text = heading
+            gravity = Gravity.BOTTOM
+            setPadding(dp(16), 0, dp(16), 0)
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, c.dp(24)))
+        val row = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
+        row.setPadding(row.dp(4), row.dp(6), row.dp(4), row.dp(6))
+        for (item in items) row.addView(tile(context, palette, item.icon, item.label, item.run),
+            LinearLayout.LayoutParams(row.dp(76), row.dp(64)).apply { marginStart = row.dp(1); marginEnd = row.dp(1) })
+        c.addView(row)
+    }
+    val linkTiles = listOfNotNull(
+        if ("link.newTab" in offered) Item("tab", "New tab") { open(JSONObject().put("text", link).put("background", true)) } else null,
+        if ("link.newTab" in offered) Item("group", "In group") {
+            open(JSONObject().put("text", link).put("groupWith", menu.optLong("tab")).put("background", true))
+        } else null,
+        if ("link.copy" in offered) Item("copy", "Copy link") { choose("link.copy") } else null,
+        if ("link.download" in offered) Item("download", "Download") { choose("link.download") } else null,
+        if ("link.share" in offered) Item("share", "Share") { choose("link.share") } else null,
+    )
+    val imageTiles = listOfNotNull(
+        if ("image.newTab" in offered) Item("tab", "New tab") { open(JSONObject().put("text", src).put("background", true)) } else null,
+        if ("image.copy" in offered) Item("copy", "Copy image") { choose("image.copy") } else null,
+        if ("image.download" in offered) Item("download", "Download") { choose("image.download") } else null,
+        if ("image.share" in offered) Item("share", "Share") { choose("image.share") } else null,
+    )
+    val both = linkTiles.isNotEmpty() && imageTiles.isNotEmpty()
+    tiles(linkTiles, false, if (both) "Link" else null)
+    tiles(imageTiles, linkTiles.isNotEmpty(), if (both) "Image" else null)
+    val rows = ArrayList<View>()
+    if ("link.newTab" in offered && workspaces.size > 1) {
+        rows.add(sheetRow(context, palette, "workspace", "Open in workspace", "chevron") {
+            c.removeAllViews()
+            c.addView(linkHead(context, palette, null, name, address))
+            for (w in workspaces) {
+                c.addView(sheetRow(context, palette, null, w.optString("name")) {
+                    open(JSONObject().put("text", link).put("workspace", w.optString("id")).put("background", true))
+                }.also { row ->
+                    (row as LinearLayout).addView(dot(context, w.optString("color", "#9aa0a6"), row.dp(10)), 0,
+                        LinearLayout.LayoutParams(row.dp(10), row.dp(10)).apply { marginEnd = row.dp(16) })
+                })
+            }
         })
-        c.addView(sheetRow(context, palette, "tab", "Open in new tab") { open(JSONObject().put("text", url).put("background", true)) })
-        if (workspaces.size > 1) {
-            c.addView(sheetRow(context, palette, "workspace", "Open in workspace", "chevron") {
-                c.removeAllViews()
-                c.addView(head(context, palette, "", shown))
-                for (w in workspaces) {
-                    c.addView(sheetRow(context, palette, null, w.optString("name")) {
-                        open(JSONObject().put("text", url).put("workspace", w.optString("id")).put("background", true))
-                    }.also { row ->
-                        (row as LinearLayout).addView(dot(context, w.optString("color", "#9aa0a6"), row.dp(10)), 0,
-                            LinearLayout.LayoutParams(row.dp(10), row.dp(10)).apply { marginEnd = row.dp(16) })
-                    })
-                }
-            })
-        }
-        c.addView(sheetRow(context, palette, "copy", "Copy link") { copy() })
-    } else {
-        c.addView(sheetRow(context, palette, "image", "Open image in new tab") { open(JSONObject().put("text", url).put("background", true)) })
-        c.addView(sheetRow(context, palette, "copy", "Copy image address") { copy() })
     }
+    if ("link.copyText" in offered) rows.add(sheetRow(context, palette, "text", "Copy link text") { choose("link.copyText") })
+    if ("image.copyAddress" in offered) rows.add(sheetRow(context, palette, "link", "Copy image address") { choose("image.copyAddress") })
+    if (rows.isNotEmpty()) c.addView(hairline(context, palette))
+    rows.forEach { c.addView(it) }
+}
+
+/** The link sheet's one-line head: the picture of an image when there is one, then the name over the address. */
+private fun linkHead(context: Context, palette: Palette, thumb: String?, name: String, address: String): View {
+    val box = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+    box.setPadding(box.dp(16), 0, box.dp(16), box.dp(10))
+    if (thumb != null) {
+        val frame = android.widget.FrameLayout(context).apply {
+            background = GradientDrawable().apply { cornerRadius = dpf(6); setColor(palette.bar) }
+            clipToOutline = true
+        }
+        val picture = Favicons.of(thumb)
+        if (picture != null) {
+            frame.addView(android.widget.ImageView(context).apply {
+                setImageBitmap(picture)
+                scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+            }, android.widget.FrameLayout.LayoutParams(-1, -1))
+        } else {
+            frame.addView(IconView(context, "image", palette.muted), android.widget.FrameLayout.LayoutParams(box.dp(24), box.dp(24), Gravity.CENTER))
+        }
+        box.addView(frame, LinearLayout.LayoutParams(box.dp(40), box.dp(40)).apply { marginEnd = box.dp(10) })
+    }
+    val words = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+    if (name.isNotEmpty()) words.addView(label(context, 14f, palette.text, bold = true).apply { text = name })
+    words.addView(if (name.isNotEmpty()) label(context, 12f, palette.muted).apply { text = address }
+                  else label(context, 14f, palette.text).apply { text = address })
+    box.addView(words, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+    return box
+}
+
+/** One of a sheet's tiles: a 20dp icon over its 11.5dp label, 64dp high. */
+private fun tile(context: Context, palette: Palette, icon: String, name: String, onClick: () -> Unit): View {
+    val t = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
+    t.background = android.graphics.drawable.StateListDrawable().apply {
+        addState(intArrayOf(android.R.attr.state_pressed), GradientDrawable().apply { cornerRadius = t.dpf(8); setColor(palette.press) })
+    }
+    t.isClickable = true
+    t.setOnClickListener { onClick() }
+    asButton(t, name)
+    t.addView(IconView(context, icon, palette.icon), LinearLayout.LayoutParams(t.dp(24), t.dp(24)))
+    t.addView(label(context, 11.5f, palette.text).apply { text = name },
+        LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = t.dp(4) })
+    return t
+}
+
+/** A hairline across a sheet, in --line. */
+private fun hairline(context: Context, palette: Palette) = View(context).apply {
+    setBackgroundColor(palette.line)
+    layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1)
 }
 
 /**

@@ -280,10 +280,12 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
                 findFocus = true
                 draw()
             }
-            // Go's menu for a long press on a link or an image, or null once it has gone; the
-            // sheet builds its own items from what was pressed, as the web shell's does.
+            // Go's menu for a long press on a link or an image, or null once it has gone. The
+            // same menu again brings its image's picture: the sheet takes it where it is, and a
+            // sheet closed stays closed.
             "contextMenu" -> m.optJSONObject("contextMenu")?.let { menu ->
-                if (menu.optLong("tab") == active) {
+                val again = menu.optInt("id") == pressed?.optInt("id")
+                if (menu.optLong("tab") == active && (!again || sheet == "link")) {
                     pressed = menu
                     open("link")
                 }
@@ -778,12 +780,18 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
     // What a long press on a link or an image offers.
     private fun linkSheetView(): View? {
         val m = pressed ?: return null
-        val s = Sheet(context, "Link", palette) { open("") }
+        // Go keeps the menu until it hears how it went.
+        val closed = { send(JSONObject().put("t", "contextMenuClose").put("id", m.optInt("id"))) }
+        val s = Sheet(context, "Link", palette) { closed(); open("") }
         linkSheet(s, palette, m, workspaces, open = { fields ->
+            closed()
             open("")
             fields.put("t", "newTab")
             send(fields)
-        }, done = { open("") })
+        }, choose = { item ->
+            send(JSONObject().put("t", "contextMenuChoose").put("id", m.optInt("id")).put("item", item))
+            open("")
+        })
         return s
     }
 
