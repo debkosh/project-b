@@ -72,6 +72,13 @@ export const lists = {
     hint: 'From the Chrome Web Store, or loaded from a folder',
     summary: () => '',
   },
+  // Reached from a row of the Sync card, a block, which within names.
+  syncDetails: {
+    label: 'Sync details',
+    hint: 'What synced, and when',
+    summary: () => '',
+    within: 'sync',
+  },
   webFeatures: {
     label: 'Web features',
     hint: 'How web features behave in Project B, and why',
@@ -219,7 +226,7 @@ export const rowsOf = (card) => (typeof card === 'string' ? [] : Array.isArray(c
 // is the layout's.
 export function resolve(address, sections) {
   const id = address.split('/')[0];
-  const row = sections.find((s) => s.cards.some((c) => rowsOf(c).includes(id)));
+  const row = sections.find((s) => s.cards.some((c) => rowsOf(c).includes(id) || (lists[id]?.within && c === lists[id].within)));
   if (row && lists[id]) return { list: id, section: row };
   const section = sections.find((s) => s.id === id || s.cards.includes(id)) || row || null;
   return { list: '', section };

@@ -4,7 +4,7 @@ Every action a person can take, where the app offers it, and the tests that do i
 `tools/action_coverage.py` from the code; `tools/test.sh mock` fails while an action has no
 test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 
-**209 actions and messages, 201 with a test, 8 exempt with a reason, 0 with none; 28 of Go's actions done by no test of the real app.**
+**210 actions and messages, 202 with a test, 8 exempt with a reason, 0 with none; 28 of Go's actions done by no test of the real app.**
 
 ## Go's actions: the menu bar, keys and the shells' own menus
 
@@ -215,8 +215,9 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `sparkUpdate` | page:settings | **no** | `sparks_messages_test.go` |
 | `suggest` | fox, minimal, mobile, mobile-native, terminal | **no** | `app_test.go`, `suggest_test.go` |
 | `syncCancel` | page:settings | **no** | `sync.cjs` |
+| `syncDetails` | page:settings | **no** | `sync_settings_test.go`, `sync.cjs` |
 | `syncDisconnect` | page:settings | **no** | `sync.cjs` |
-| `syncNow` | page:settings | **no** | `sync.cjs` |
+| `syncNow` | page:settings | yes | `sync.cjs`, `drive_android.py` |
 | `syncPropose` | page:settings | **no** | `sync_settings_test.go` |
 | `syncStartFresh` | page:settings | **no** | `sync.cjs` |
 | `timeline` | mobile-native | **no** | `timeline_test.go` |
