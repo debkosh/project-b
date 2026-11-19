@@ -38,6 +38,31 @@ The seams:
 - **A shell is a page.** Our shells are web pages, and Chromium holds them to a page's
   limits: what a page may do only after a click, a shell can't do for an action that comes
   from the menu bar or a key. One so far: Glide's Copy Address.
+- **The phone's keyboard.** It takes half the screen or more, by an amount that differs
+  between Android versions, and what a person needs next has to stay in sight above it. One
+  so far: a Dialog's buttons under the keyboard.
+
+## A Dialog's buttons under the keyboard, 2026-11-19
+
+- **Seen:** on Android 17, in Settings' Sync, with the passphrase typed twice and the
+  keyboard up, the Dialog's Cancel and Turn on sync were out of sight. A person had to put
+  the keyboard away, or scroll inside the Dialog, to find them. The release run for 0.2.107
+  found it: the Android driver's tap landed beside the button and only put the keyboard
+  away, so sync was never turned on. On Android 10, whose keyboard is shorter, they stayed
+  in sight.
+- **Cause:** a Dialog was one box that scrolled as a whole when it had less height than it
+  needed. With the lower field focused, the page scrolled that field into view and the
+  buttons under it went below the edge. Android 17's keyboard leaves that little room.
+- **Seam:** the phone's keyboard: how much height is left over it is known only on the
+  device.
+- **Fix:** on dialog-phone-keyboard: a Dialog keeps its title and its buttons in place and
+  only what is between them scrolls (`ui/Dialog.vue`), and the Mobile shell's dialog for a
+  page's prompt or sign-in does the same (`PageDialog.svelte`), as the design system's "On
+  a phone" says.
+- **Guard:** `shell/e2e/sync.cjs` gives the passphrase Dialog 380px of height, and
+  `shell/e2e/shells/mobile.cjs` a page's sign-in 300px; each checks the title and the
+  buttons are in sight and only the body scrolls. On the device, drive_android's
+  sync_on_the_phone taps Turn on sync with the keyboard up.
 
 ## Glide's Copy Address that couldn't copy, 2026-11-19
 
