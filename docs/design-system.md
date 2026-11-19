@@ -326,7 +326,8 @@ has little room. A phone shows as much page as it can.
 - **A Dialog with a field keeps its buttons in sight over the keyboard.** Its title and its
   buttons stay put and only its body scrolls between them, and while the keyboard is up the
   bars under the page (the toolbar, the crash and download bars) step aside, so the Dialog
-  has the room down to the keyboard. 2026-11-19, after a tall keyboard on Android 17 hid the
+  has the room down to the keyboard; so they do for a field in the page. The toolbar stays
+  only while its own address field has the keyboard. 2026-11-19, after a tall keyboard on Android 17 hid the
   sync passphrase's Turn on sync under the toolbar and a crash bar.
 - **The page is dimmed only behind what must be answered or picked:** a dialog, a sheet of
   actions. A panel used beside the page, as a spark's, leaves it as it is.
