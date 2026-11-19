@@ -901,6 +901,15 @@ const H = 915;
     }).observe(document.body, { subtree: true, childList: true, characterData: true });
   });
   const barSaid = () => w.shell().evaluate(() => window.barSaid);
+  // A press on the bar reaches it once the bar has risen into place and the window routes
+  // that point to the shell: its region goes to Go, and back to the window, a moment after
+  // it draws. Pressed before, it goes to the page, and the bar never feels it.
+  const barPressable = async (dx, dy) => {
+    await until(async () => (await dlBar.evaluate((el) => el.getAnimations().length === 0).catch(() => false)));
+    const b = await dlBar.boundingBox();
+    await until(async () => (await regions({ x: Math.round(b.x + dx), y: Math.round(b.y + dy) })).hit === 'shell');
+    return b;
+  };
   // Its bytes held, so the offer stays up through its pictures; failed after, to be done.
   await fire('download', 'https://example.com/files/offered.zip');
   await fire('downloadsStall');
@@ -938,7 +947,7 @@ const H = 915;
   check('a download that fails says so, with Retry', await until(async () => (await barSaid()).at(-1) === "Couldn't download broken.zip: the connection stopped" && (await dlBar.getByRole('button', { name: 'Retry' }).isVisible())), JSON.stringify(await barSaid()));
   await dlBar.getByRole('button', { name: 'Retry' }).tap();
   check('Retry runs it again, and the bar says so as it ends', await until(async () => (await barSaid()).at(-1) === 'broken.zip downloaded' && (await dlBar.isVisible())), JSON.stringify(await barSaid()));
-  const b = await dlBar.boundingBox();
+  const b = await barPressable(40, 10);
   await page.mouse.move(b.x + 40, b.y + 10);
   await page.mouse.down();
   await page.mouse.move(b.x + 40, b.y + 30);
@@ -947,7 +956,7 @@ const H = 915;
   check('a swipe down puts the bar away', await until(async () => !(await dlBar.isVisible())));
   await fire('download', 'https://example.com/files/sideways.zip');
   await until(() => dlBar.isVisible());
-  const sb = await dlBar.boundingBox();
+  const sb = await barPressable(40, 10);
   await page.mouse.move(sb.x + 40, sb.y + 10);
   await page.mouse.down();
   await page.mouse.move(sb.x + 70, sb.y + 10);
@@ -955,9 +964,11 @@ const H = 915;
   await page.mouse.up();
   check('and so does a swipe sideways', await until(async () => !(await dlBar.isVisible())));
   // News goes after 2 seconds, but not while a finger holds it.
+  // Pressed only once the bar is held.zip's: sideways.zip's end, put away while it ran, can
+  // still come after, on a bar of its own that goes after its time.
   await fire('download', 'https://example.com/files/held.zip');
-  await until(() => dlBar.isVisible());
-  const hb = await dlBar.boundingBox();
+  await until(async () => (await barSaid()).at(-1)?.includes('held.zip') && (await dlBar.isVisible()));
+  const hb = await barPressable(40, 10);
   await page.mouse.move(hb.x + 40, hb.y + 10);
   await page.mouse.down();
   await page.waitForTimeout(3500);
