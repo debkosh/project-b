@@ -191,7 +191,9 @@ class Android:
     app prints it, from logcat. Starts are warm for Android: its zygote is already up."""
 
     name = "android"
-    started = STARTED
+    # A fresh profile's first tab is a new tab, which loads nothing (core/tabs, Create), so
+    # its start is over without tab.committed.
+    started = STARTED_EMPTY
 
     def __init__(self):
         import drive_android
@@ -213,8 +215,8 @@ class Android:
         ended(self, "settings.open")
         d.close_settings()
 
-        d.press("Show sidebar")
-        d.tap(d.middle(d.see("shell", text="New Tab", kind="android.widget.Button")))
+        # The Mobile shell's New Tab is in its menu sheet.
+        d.menu("New Tab")
         ended(self, "tab.new")
 
     def stop(self):
