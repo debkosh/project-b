@@ -7,7 +7,8 @@
   import { folderTile, tints } from '@/ui/tint.js';
   import { nextQuery } from './queries.js';
 
-  // Over a new tab, which has no page yet (docs/daily-driver.md, A new tab): the sites
+  // Over a new tab, which has no page yet (docs/daily-driver.md, A new tab): up to three
+  // tabs closed lately, a tap reopening one in this tab's place (onreopen); then the sites
   // visited most as tiles, named by their host, then while bookmarksNewTab is on the top
   // bookmark folder as tiles, its folders first (docs/bookmark-folders.md, Where bookmarks
   // show), then All bookmarks and History. The sites are Go's list for nothing typed. A tap
@@ -16,8 +17,9 @@
   // bookmarks, and a tap opens it in place, in a card under its row: what it holds, as
   // tiles, and Open all (onopenall). The keyboard stays down: a tap on the address field
   // starts typing.
-  let { onopenall } = $props();
+  let { onopenall, onreopen } = $props();
   const sites = $state({ id: 0, items: [] });
+  const closed = $state({ id: 0, items: [] });
   let editing = $state(false);
 
   function ask() {
@@ -25,10 +27,13 @@
     send({ t: 'suggest', id: sites.id, text: '', kinds: ['history'] });
   }
   ask();
+  closed.id = nextQuery();
+  send({ t: 'suggest', id: closed.id, text: '', kinds: ['closed'] });
 
-  // Go's answer to its ask.
+  // Go's answers to its asks.
   export function suggestions(m) {
     if (m.id === sites.id) sites.items = m.items;
+    if (m.id === closed.id) closed.items = m.items;
   }
 
   function forget(row) {
@@ -78,6 +83,17 @@
 {/snippet}
 
 <div class="new-tab" use:shell role="region" aria-label="New tab" onclick={(e) => e.target === e.currentTarget && (editing = false)}>
+  {#if closed.items.length}
+    <h2 class="small">Recently closed</h2>
+    <div class="rows" role="group" aria-label="Recently closed">
+      {#each closed.items as row (row.url)}
+        <button class="row closed" onclick={() => onreopen(row)}>
+          <Mark url={row.url} title={row.title} size={32} />
+          <span class="lines"><span class="name">{row.title}</span><span class="host">{row.detail}</span></span>
+        </button>
+      {/each}
+    </div>
+  {/if}
   {#if sites.items.length}
     <h2>Frequently visited</h2>
     <ul class="tiles">
@@ -338,6 +354,30 @@
 
   .row:first-child {
     border-top: 0;
+  }
+
+  /* A closed tab: its site's mark, its title, and its host under it. */
+  .row.closed {
+    height: 56px;
+  }
+
+  .lines {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .host {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  h2.small {
+    font-size: 12px;
   }
 
   .row .name {

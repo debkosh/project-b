@@ -1,7 +1,7 @@
 // The mobile shell's own tests, on the mock engine in a phone-sized window with a touch
 // screen: the one bar at the foot, the address pill and its editing with the suggestions
 // over the field, a new tab in edit mode, the switcher (open, switch, close a card, the
-// last tab), the menu sheet and Escape, a swipe along the bar, the workspaces, light and
+// last tab, which leaves a new tab, and its Recently closed), the menu sheet and Escape, a swipe along the bar, the workspaces, light and
 // dark, and where bookmarks show. The check covers what every shell does.
 // Run: node shell/e2e/shells/mobile.cjs   (from the repo root, after `npm run build` in shell/)
 
@@ -360,8 +360,25 @@ const H = 915;
   await tabsButton.tap();
   await cards.nth(1).getByRole('button', { name: /^Close / }).tap();
   check('its × closes that tab and keeps the switcher open', await tabCount(1) && await switcher.isVisible());
+  // No tabs is a new tab: the last card's × leaves one, with the new tab page, and the tab
+  // just closed under Recently closed, whose row reopens it in the new tab's place.
+  const lastOne = (await regions()).tabs[0];
+  await cards.first().getByRole('button', { name: /^Close / }).tap();
+  check('closing the last tab leaves one new tab, with the new tab page, and shuts the switcher', await until(async () =>
+    (await regions()).tabs.length === 1 && (await regions()).active !== lastOne.id && (await active()).url === '' && await newTabPage() && !(await switcher.isVisible())), JSON.stringify((await regions()).tabs));
+  const closedRows = ui.getByRole('group', { name: 'Recently closed' }).getByRole('button');
+  check('its page lists that tab first under Recently closed, by its title and host', await until(async () =>
+    (await closedRows.count()) >= 1 && (await closedRows.count()) <= 3 && (await closedRows.first().innerText()).includes(new URL(lastOne.url).host)), await ui.getByRole('region', { name: 'New tab' }).innerText().catch(() => ''));
+  const row = await closedRows.first().boundingBox();
+  check('each row 56px high', Math.round(row.height) === 56, JSON.stringify(row));
+  await shots('new-tab-closed');
+  await closedRows.first().tap();
+  check('a tap on the row reopens the tab, and the new tab it was chosen on goes', await until(async () =>
+    (await regions()).tabs.length === 1 && (await active()).url === lastOne.url), JSON.stringify((await regions()).tabs));
   // A window always has a tab: New Tab opens an empty one, with the new tab page, and
-  // closing the last tab closes the window (the contract's rule 18).
+  // closing the last tab from Go closes the window (the contract's rule 18).
+  await tabsButton.tap();
+  await until(() => switcher.isVisible());
   const old = (await regions()).tabs[0].id;
   await switcher.getByRole('button', { name: 'New Tab' }).tap();
   check('the switcher\'s New Tab opens an empty tab with the new tab page', await until(async () => (await regions()).tabs.length === 2 && (await active()).url === '' && await newTabPage()));
