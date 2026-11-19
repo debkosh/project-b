@@ -1377,7 +1377,15 @@ def sync_on_the_phone():
         for i in (0, 1):
             tap(middle(fields()[i]))
             type_text(passphrase)
-        tap(middle(see("settings", text="Turn on sync")))
+        # The keyboard is up, and on Android 17 it is tall enough that the Dialog scrolls its
+        # buttons out of sight: the tap then lands beside them and only puts the keyboard away.
+        # Turn on sync is tapped again, where it is then, until its Dialog goes.
+        for _ in range(3):
+            button = find("settings", text="Turn on sync")
+            if button is not None:
+                tap(middle(button))
+            if until(lambda: find("settings", text="Choose a sync passphrase") is None, 5):
+                break
         pushed = until(lambda: any("/push" in r for r in requests), 60)
         shot("sync-on")
         key = adb("shell", "stat", "-c", "%s", DEVICE_KEY).strip()
