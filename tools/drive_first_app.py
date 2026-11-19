@@ -196,19 +196,24 @@ class Pages(http.server.BaseHTTPRequestHandler):
             "/store": b'<!doctype html><title>Store</title><a id=link href=/store>Here</a> <a id=blank target=_blank href=/store>Blank</a> <a id=noopener target=_blank rel=noopener href=/store>No opener</a>',
             # A copy button, as sites make them: a click writes to the clipboard.
             "/copy": b'<!doctype html><title>Copy</title><button id=copy style="width:300px;height:100px" onclick="navigator.clipboard.writeText(\'copied\').then(()=>document.title=\'copied\',e=>document.title=\'refused \'+e.name)">Copy</button>',
-            # Passkeys (docs/passkeys.md): make(name, exclude) saves one for a user, on a key
-            # that remembers it, and use() signs in with whichever the person chooses; the
-            # title says how each ended, with the passkey's id or the account's name.
+            # Passkeys (docs/passkeys.md): make(name, exclude, attachment) saves one for a
+            # user, on a key that remembers it, or only on the kind of key attachment names;
+            # use() signs in with whichever the person chooses; canKeep() asks whether this
+            # device can keep one. The title says how each ended, with the passkey's id or
+            # the account's name.
             "/passkey": b"""<!doctype html><title>Passkey</title><script>
 const b64 = (b) => btoa(String.fromCharCode(...new Uint8Array(b)));
 const bytes = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 const say = (p) => p.then((s) => document.title = s, (e) => document.title = 'refused ' + e.name);
-function make(name, exclude) {
+function make(name, exclude, attachment) {
   document.title = 'asking';
   say(navigator.credentials.create({publicKey: {challenge: new Uint8Array(16), rp: {name: 'Passkeys'},
     user: {id: new TextEncoder().encode(name), name: name + '@example.com', displayName: name},
-    pubKeyCredParams: [{type: 'public-key', alg: -7}], authenticatorSelection: {residentKey: 'required'},
+    pubKeyCredParams: [{type: 'public-key', alg: -7}], authenticatorSelection: {residentKey: 'required', authenticatorAttachment: attachment || undefined},
     excludeCredentials: exclude ? [{type: 'public-key', id: bytes(exclude)}] : []}}).then((c) => 'made ' + b64(c.rawId)));
+}
+function canKeep() {
+  say(PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().then((yes) => 'keeps ' + yes));
 }
 function use() {
   document.title = 'asking';
@@ -2713,6 +2718,53 @@ def passkey_checks():
         if app.js(f"!!{CARD}"):
             app.cmd("key", "escape")
             gone(5)
+
+    # Our own passkeys (docs/passkeys.md, Our own passkeys), with content's own discoveries
+    # and ours among them, before any virtual key takes their place. Saving and signing in
+    # need the person at macOS's own sheet, so they are checked in the VM, where its
+    # password can be typed (tools/vm/check.py); here, what comes before the sheet.
+    SAVE = "Save a passkey for localhost in Project B?"
+    KEY = "localhost wants to save a passkey on your security key. Plug it in and touch it."
+    app.js("canKeep()", page=True)
+    check("a page asking whether this device can keep a passkey hears yes", title("t.startsWith('keeps')") == "keeps true", app.js("document.title", page=True))
+    app.js("make('ada')", page=True)
+    check("a page making a passkey is offered Project B first", card("Create a passkey") and app.js(WORDS) == SAVE, (app.js(TITLE), app.js(WORDS)))
+    check("with the way to a security key or a phone, Cancel and Save, the primary", app.js(BUTTONS) == ["Use a security key or phone", "Cancel", "Save"] and app.js(PRIMARY) == ["Save"], app.js(BUTTONS))
+    button("Use a security key or phone")
+    try:
+        app.wait(f"{WORDS}==={json.dumps(KEY)}", 10)
+    except TimeoutError:
+        pass
+    check("Use a security key or phone goes to the key step", app.js(WORDS) == KEY and app.js(PRIMARY) == [], (app.js(WORDS), app.js(BUTTONS)))
+    time.sleep(1)
+    check("where the page still waits", app.js("document.title", page=True) == "asking", app.js("document.title", page=True))
+    settle()
+    check("Escape there refuses the page", title("t.startsWith('refused')") == "refused NotAllowedError", app.js("document.title", page=True))
+    app.js("make('ada', '', 'platform')", page=True)
+    check("a page that wants this device alone gets Save with no other way", card("Create a passkey") and app.js(WORDS) == SAVE and app.js(BUTTONS) == ["Cancel", "Save"], (app.js(WORDS), app.js(BUTTONS)))
+    settle()
+    title("t.startsWith('refused')")
+    app.js("make('ada', '', 'cross-platform')", page=True)
+    check("and one that wants a key apart from the device gets the key step", card("Create a passkey") and app.js(WORDS) == KEY, (app.js(TITLE), app.js(WORDS)))
+    settle()
+    title("t.startsWith('refused')")
+    app.js("use()", page=True)
+    check("signing in with no passkey here goes to the key step", card("Sign in with a passkey") and app.js(WORDS) == "localhost wants you to sign in with your security key. Plug it in and touch it.", (app.js(TITLE), app.js(WORDS)))
+    settle()
+    title("t.startsWith('refused')")
+    # Save: the card goes while macOS asks the person, and the page going elsewhere takes
+    # the request, and macOS's sheet with it, back.
+    app.js("make('ada')", page=True)
+    card("Create a passkey")
+    button("Save")
+    check("Save takes the card away while macOS checks the person", gone(), app.js(TITLE))
+    time.sleep(1)
+    check("and the page waits for the person", app.js("document.title", page=True) == "asking", app.js("document.title", page=True))
+    visit(app, url)
+    app.js("use()", page=True)
+    check("a request taken back made no passkey", card("Sign in with a passkey"), app.js(TITLE))
+    settle()
+    title("t.startsWith('refused')")
 
     # Making a passkey: the key step, which waits for a key.
     keys(True)
