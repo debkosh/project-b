@@ -35,6 +35,8 @@ public final class BrowserActivity extends Activity {
         // One process holds it, so the claim is always this copy's and Go never says quit:
         // added is never null here.
         GoSystem.attach(this);
+        // A page's passkey requests are ours to answer (docs/passkeys.md).
+        Passkeys.register();
         String data = PathUtils.getDataDirectory();
         String[] added =
                 GoCore.init(

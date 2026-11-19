@@ -2,6 +2,7 @@ package dev.projectb.browser
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.Color
 import android.graphics.Typeface
 import android.text.Editable
 import android.text.InputType
@@ -205,11 +206,40 @@ class PageDialog(context: Context, palette: Palette, private val dialog: JSONObj
                 }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) })
             }
         }
+        // A passkey request's sign-in (docs/passkeys.md): the site's passkeys here, a row
+        // each, a tap choosing one.
+        dialog.optJSONObject("passkey")?.optJSONArray("accounts")?.let { accounts ->
+            val rows = LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                background = rounded(Color.TRANSPARENT, dpf(8), palette.line, dp(1))
+            }
+            for (i in 0 until accounts.length()) {
+                val account = accounts.getJSONObject(i)
+                val secondary = account.optString("secondary")
+                val row = LinearLayout(context).apply {
+                    orientation = LinearLayout.VERTICAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(dp(12), dp(8), dp(12), dp(8))
+                    minimumHeight = dp(56)
+                    isClickable = true
+                    isFocusable = true
+                    contentDescription = if (secondary.isEmpty()) account.optString("title") else account.optString("title") + ", " + secondary
+                    setOnClickListener {
+                        send(JSONObject().put("t", "answerPasskey").put("id", dialog.opt("id")).put("action", "account").put("text", i.toString()))
+                    }
+                }
+                row.addView(label(context, 15f, if (account.optBoolean("unnamed")) palette.muted else palette.text).apply { this.text = account.optString("title") })
+                if (secondary.isNotEmpty()) row.addView(label(context, 13f, palette.muted).apply { this.text = secondary })
+                rows.addView(row, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+            }
+            card.addView(rows, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(12); marginEnd = dp(8) })
+        }
         val buttons = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.END }
         val cancel = dialog.optString("cancel")
         if (cancel.isNotEmpty()) buttons.addView(textButton(context, palette, cancel) { answer(false) },
             LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, dp(48)).apply { marginEnd = dp(8) })
-        buttons.addView(textButton(context, palette, dialog.optString("ok", "OK"), primary = true) { answer(true) },
+        // A step with nothing to confirm, as a list to choose from, has no primary button.
+        if (dialog.optString("ok", "OK").isNotEmpty()) buttons.addView(textButton(context, palette, dialog.optString("ok", "OK"), primary = true) { answer(true) },
             LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, dp(48)))
         card.addView(buttons, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(20) })
         addView(card, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT, Gravity.CENTER).apply { marginStart = dp(24); marginEnd = dp(24) })
