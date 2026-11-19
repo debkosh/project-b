@@ -840,7 +840,7 @@ def custom_colour():
     go(BASE + "/a")
     asked("/a")
     long_press(middle(see("page", label="to b")))
-    tap(middle(see("shell", text="Open in new tab in group")))
+    tap(middle(see_named("shell", "In group")))
     tap(middle(see("shell", kind="android.widget.Button", label=lambda l: (l or "").startswith("Group "))))
     see("shell", text="Ungroup")
     names = ("Rose", "Teal", "Olive", "Indigo", "Green", "Blue", "Purple")
