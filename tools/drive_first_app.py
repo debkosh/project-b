@@ -2722,6 +2722,41 @@ def duplicate_checks():
               {k: t.get(k) for k in ("url", "title", "error", "errorCode", "loading")})
     app.close()
 
+def view_source_checks():
+    """View Source's tab has the page's source and says so: its address is view-source: and
+    the page's, in the address bar, its duplicate and its history; and a blocked host's
+    source is blocked as the host is."""
+    app = App(tempfile.mkdtemp(prefix="pb-profile-"))
+    send = lambda msg: app.js(f"(chrome.send('shell',[{json.dumps(json.dumps(msg))}]),1)")
+    send({"t": "navigate", "text": PAGES + "first"})
+    app.wait(f"{ROWS}===1", 30)
+    app.wait("location.pathname==='/first'&&document.readyState==='complete'", 30, tab=tabs_of(app)["active"])
+
+    def settled(tab):
+        deadline = time.time() + 30
+        while (t := next(x for x in tabs_of(app)["tabs"] if x["id"] == tab)).get("loading") or not (t.get("title") or t.get("error") or t.get("blocked")):
+            if time.time() > deadline:
+                break
+            time.sleep(0.1)
+        return t
+
+    send({"t": "run", "text": "dev.viewSource"})
+    app.wait(f"{ROWS}===2", 30)
+    source = settled(tabs_of(app)["active"])
+    check("View Source's tab has the page's address with view-source: before it", source.get("url") == "view-source:" + PAGES + "first" and not source.get("error"),
+          {k: source.get(k) for k in ("url", "title", "error")})
+    send({"t": "run", "text": "tab.duplicate"})
+    app.wait(f"{ROWS}===3", 30)
+    copy = settled(tabs_of(app)["active"])
+    check("and its duplicate is the source too", copy.get("url") == "view-source:" + PAGES + "first" and not copy.get("error"),
+          {k: copy.get(k) for k in ("url", "title", "error")})
+    seen = len(Pages.seen)
+    send({"t": "navigate", "text": f"view-source:http://{BLOCKED_LOCAL}:{pages.server_port}/first"})
+    blocked = settled(tabs_of(app)["active"])
+    check("a blocked host's source is blocked as the host is", blocked.get("blocked") and not [x for x in Pages.seen[seen:] if x.startswith(BLOCKED_LOCAL)],
+          {k: blocked.get(k) for k in ("url", "blocked", "error")})
+    app.close()
+
 
 def quit_checks():
     """Quitting from the Dock is a clean stop: crash.log, which says the app is running, is
@@ -3030,5 +3065,5 @@ def app_link_checks():
 
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
-    parts = {"driver": [driver_checks], "browsing": [browsing_checks], "actions": [action_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks], "duplicate": [duplicate_checks], "applink": [app_link_checks]}
-    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, action_checks, settings_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, glide_checks, web_api_checks, sparks_checks, links_checks, duplicate_checks, app_link_checks, quit_checks]))
+    parts = {"driver": [driver_checks], "browsing": [browsing_checks], "actions": [action_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks], "viewsource": [view_source_checks], "duplicate": [duplicate_checks], "applink": [app_link_checks]}
+    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, action_checks, settings_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, glide_checks, web_api_checks, sparks_checks, links_checks, view_source_checks, duplicate_checks, app_link_checks, quit_checks]))
