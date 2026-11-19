@@ -644,7 +644,8 @@ def new_tab(url):
 
 def window_checks():
     """Several windows, with the real keyboard and mouse: Cmd+N, keys and commands going to the
-    window clicked, a second start's URL in the window used last, the Window menu's list and
+    window clicked, a second start's URL and a link macOS opens with the app in the window used
+    last, the Window menu's list and
     Cmd+`, Cmd+W on a window's last tab closing it, and the app quitting with its last window. Which window shows what is read from
     the windows' titles, each its shown tab's."""
     guest("/usr/bin/killall", "project_b")
@@ -686,6 +687,15 @@ def window_checks():
     check("a second start's URL opens in a new tab in the window used last, in front", now[:1] == ["Charlie"] and
           sorted(now) == ["Bravo", "Charlie"], str(now))
     shot("handed-over")
+
+    # A link macOS opens with the app, as its default browser does: macOS hands it to the
+    # running copy, not a second start (Info.plist's URL types), which opens it the same way.
+    # Its tab closes again, so what follows finds the windows as they were.
+    guest("/usr/bin/open", "-a", APP, ALPHA)
+    now = until(titles, lambda t: t[:1] == ["Alpha"], 15)
+    check("a link macOS opens with the app opens in a new tab in the window used last", now[:1] == ["Alpha"], str(now))
+    desk.key("cmd+w")
+    until(titles, lambda t: t[:1] == ["Charlie"])
 
     # What macOS gives an app with several windows: the Window menu's list, and Cmd+`.
     menu = window_menu()
