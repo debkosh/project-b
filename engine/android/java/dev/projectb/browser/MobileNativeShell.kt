@@ -387,7 +387,7 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
     // MARK: Drawing
 
     private fun draw() {
-        palette = Palette(tones?.optJSONObject(if (dark()) "dark" else "light"))
+        palette = Palette(tones?.optJSONObject(if (dark()) "dark" else "light"), tones?.optJSONArray("hues"), dark())
         val tab = activeTab()
         val url = tab?.optString("url") ?: ""
         if (!editing && address.text.toString() != host(url)) address.setText(host(url))
@@ -776,7 +776,7 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
                 workspace = id
                 open("")
             }.also { row ->
-                val dot = View(context).apply { background = android.graphics.drawable.GradientDrawable().apply { shape = android.graphics.drawable.GradientDrawable.OVAL; setColor(Palette.parseCss(w.optString("color", "#9aa0a6"))) } }
+                val dot = View(context).apply { background = android.graphics.drawable.GradientDrawable().apply { shape = android.graphics.drawable.GradientDrawable.OVAL; setColor(palette.item(w.optString("color", "#9aa0a6"))) } }
                 (row as LinearLayout).addView(dot, 0, LinearLayout.LayoutParams(dp(10), dp(10)).apply { marginEnd = dp(16) })
                 if (id == workspace) row.addView(label(context, 14f, palette.accent).apply { text = "✓" })
                 row.isSelected = id == workspace

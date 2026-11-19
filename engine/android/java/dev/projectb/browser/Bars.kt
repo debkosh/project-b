@@ -78,7 +78,7 @@ class Strip(context: Context, private val on: Actions) : Bar(context) {
         setBackgroundColor(palette.bar)
         line = palette.line
         val name = Switcher.groupLabel(group)
-        dot.color = Palette.parseCss(group.optString("color", "#34404f"))
+        dot.color = palette.item(group.optString("color", "#34404f"))
         dot.press = palette.press
         dot.contentDescription = "Group $name"
         dot.invalidate()

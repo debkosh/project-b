@@ -91,7 +91,7 @@ class Switcher(context: Context, private val on: Actions) : FrameLayout(context)
                 }
                 val color = w.optString("color")
                 if (color.isNotEmpty()) {
-                    chip.addView(View(context).apply { background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Palette.parseCss(color)) } },
+                    chip.addView(View(context).apply { background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(palette.item(color)) } },
                         LinearLayout.LayoutParams(dp(10), dp(10)).apply { marginEnd = dp(6) })
                 }
                 chip.addView(label(context, 13f, palette.text, bold = true).apply { text = w.optString("name") })
@@ -206,7 +206,7 @@ class Switcher(context: Context, private val on: Actions) : FrameLayout(context)
     private fun groupCard(palette: Palette, g: JSONObject, members: List<JSONObject>, active: Long): View {
         val id = g.getString("id")
         val name = groupLabel(g)
-        val c = card(palette, members.any { it.getLong("id") == active }, Palette.parseCss(g.optString("color", "#34404f")))
+        val c = card(palette, members.any { it.getLong("id") == active }, palette.item(g.optString("color", "#34404f")))
         c.addView(topRow(palette, name, "Close group $name") { on.closeGroup(id) }, LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, dp(48)).apply { topMargin = dp(4) })
         val b = body(palette)
         // Up to four of its tabs' favicons, two by two; a tap on one goes to that tab.

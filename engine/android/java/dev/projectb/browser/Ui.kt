@@ -28,14 +28,28 @@ import org.json.JSONObject
 // (docs/shells.md, "The mobile shell"; the spec's section 7).
 
 /** The design system's tokens, from one of Go's palettes (core/tones), by name. */
-class Palette(json: JSONObject?) {
+class Palette(json: JSONObject?, hueList: org.json.JSONArray? = null, dark: Boolean = false) {
     private val tokens = HashMap<String, Int>()
+
+    /** The seven hues a workspace or group keeps, most distinct first: Go's tones.hues. */
+    val hues = ArrayList<Hue>()
+
+    class Hue(val color: String, val name: String)
 
     init {
         json?.keys()?.forEach { tokens[it] = parseCss(json.getString(it)) }
+        for (i in 0 until (hueList?.length() ?: 0)) {
+            val h = hueList!!.getJSONObject(i)
+            val color = h.getInt("hue").toString()
+            tokens["--hue-$color"] = parseCss(h.getString(if (dark) "dark" else "light"))
+            hues.add(Hue(color, h.optString("name")))
+        }
     }
 
     operator fun get(name: String): Int = tokens[name] ?: Color.TRANSPARENT
+
+    /** A workspace's or group's colour: one of the hues, as Go drew it for this theme, or a picked #rrggbb as it is. */
+    fun item(color: String): Int = if (color.isNotEmpty() && color.all { it.isDigit() }) this["--hue-$color"] else parseCss(color)
 
     val bar get() = this["--bar"]
     val surface get() = this["--surface"]

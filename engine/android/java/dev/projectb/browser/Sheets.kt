@@ -16,11 +16,8 @@ import org.json.JSONObject
 // The native Mobile shell's sheets, each the web Mobile shell's (GroupSheet, CardMenu,
 // LinkSheet), drawn into a Sheet's content.
 
-/** The colours a group can take, Go's GroupColors: the workspaces' seven. */
-val groupColors = listOf("#3470d0", "#d03434", "#4f9e9e", "#e8a317", "#8a4fd0", "#2e9d5b", "#34404f")
-
-private fun dot(context: Context, color: String, size: Int) = View(context).apply {
-    background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Palette.parseCss(color)) }
+private fun dot(context: Context, palette: Palette, color: String, size: Int) = View(context).apply {
+    background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(palette.item(color)) }
     minimumWidth = size
 }
 
@@ -44,7 +41,7 @@ fun groupSheet(s: Sheet, palette: Palette, group: JSONObject, members: List<JSON
     val c = s.content
     val row = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
     row.setPadding(row.dp(20), row.dp(4), row.dp(16), row.dp(8))
-    row.addView(dot(context, group.optString("color"), row.dp(10)), LinearLayout.LayoutParams(row.dp(10), row.dp(10)).apply { marginEnd = row.dp(14) })
+    row.addView(dot(context, palette, group.optString("color"), row.dp(10)), LinearLayout.LayoutParams(row.dp(10), row.dp(10)).apply { marginEnd = row.dp(14) })
     val name = EditText(context).apply {
         setText(group.optString("name"))
         hint = "Name"
@@ -69,13 +66,14 @@ fun groupSheet(s: Sheet, palette: Palette, group: JSONObject, members: List<JSON
 
     val swatches = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
     swatches.setPadding(swatches.dp(12), 0, swatches.dp(12), swatches.dp(8))
-    for (color in groupColors) {
+    for (hue in palette.hues) {
+        val color = hue.color
         val chosen = group.optString("color") == color
         val sw = object : View(context) {
             private val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
             override fun onDraw(canvas: android.graphics.Canvas) {
                 paint.style = android.graphics.Paint.Style.FILL
-                paint.color = Palette.parseCss(color)
+                paint.color = palette.item(color)
                 canvas.drawCircle(width / 2f, height / 2f, dpf(13), paint)
                 if (chosen) {
                     paint.style = android.graphics.Paint.Style.STROKE
@@ -87,7 +85,7 @@ fun groupSheet(s: Sheet, palette: Palette, group: JSONObject, members: List<JSON
         }
         sw.isClickable = true
         sw.isSelected = chosen
-        sw.contentDescription = color
+        sw.contentDescription = hue.name
         sw.setOnClickListener { change(JSONObject().put("color", color)) }
         swatches.addView(sw, LinearLayout.LayoutParams(0, swatches.dp(48), 1f))
     }
@@ -158,7 +156,7 @@ fun cardMenu(s: Sheet, palette: Palette, tab: JSONObject, inGroup: Boolean, grou
         c.addView(head(context, palette, tabLabel(tab)))
         for (g in groups) {
             c.addView(sheetRow(context, palette, null, Switcher.groupLabel(g)) { add(g.getString("id")) }.also { row ->
-                (row as LinearLayout).addView(dot(context, g.optString("color"), row.dp(10)), 0,
+                (row as LinearLayout).addView(dot(context, palette, g.optString("color"), row.dp(10)), 0,
                     LinearLayout.LayoutParams(row.dp(10), row.dp(10)).apply { marginEnd = row.dp(16) })
             })
         }
@@ -236,7 +234,7 @@ fun linkSheet(s: Sheet, palette: Palette, menu: JSONObject, workspaces: List<JSO
                 c.addView(sheetRow(context, palette, null, w.optString("name")) {
                     open(JSONObject().put("text", link).put("workspace", w.optString("id")).put("background", true))
                 }.also { row ->
-                    (row as LinearLayout).addView(dot(context, w.optString("color", "#9aa0a6"), row.dp(10)), 0,
+                    (row as LinearLayout).addView(dot(context, palette, w.optString("color", "#9aa0a6"), row.dp(10)), 0,
                         LinearLayout.LayoutParams(row.dp(10), row.dp(10)).apply { marginEnd = row.dp(16) })
                 })
             }
