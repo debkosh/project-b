@@ -47,7 +47,8 @@ cp build/project-b.dmg "$DIST/Project-B-$VERSION.dmg"
 ditto -c -k --keepParent "build/package/Project B.app" "$DIST/Project-B-$VERSION-darwin-arm64.zip"
 
 echo "=== $(date '+%F %T') Android"
-tools/android-release.sh
+tools/build.sh android arm64
+tools/package.sh android
 # The APK people install from, and the same file under the name amarit.json's one asset
 # pattern gives every target, for the updater. An APK is a zip.
 cp build/android/project-b-content.apk "$DIST/Project-B-$VERSION.apk"

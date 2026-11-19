@@ -238,8 +238,8 @@ pinned version builds.
 | `engine/build_go.py` | `core/` as `libcore.so` (the Mac's `libcore.a` too), with Chromium's clang and the NDK's sysroot, holding the phone's part of `shell/dist` (`core/shellfiles`) |
 | `tools/android-content-fetch.sh` | Chromium 155 for Android and its Linux build dependencies, once |
 | `tools/android-content-build.sh` | `gn gen` and the build, inside the container |
-| `tools/android-content-package.sh` | Copies the APK out, compresses its libraries, signs it on the Mac |
-| `tools/android-release.sh` | For `tools/release.sh`: copies a checkout's tracked files into the container, builds, signs, and stops the VM. One run at a time on the Mac (a lock on the Mac for the whole run); it leaves the VM up while the container's build lock or `/work/.vm-in-use.lock` is held, the latter by any other long job in the container, such as a Linux build |
+| `tools/build.sh android arm64` | Builds the shell, copies a checkout's tracked files and the built shell into the container, builds there, and copies the APK out to `build/android/content-unsigned.apk` with the commit it was built from; stops the VM. One run at a time on the Mac (a lock on the Mac for the whole run); it leaves the VM up while the container's build lock or `/work/.vm-in-use.lock` is held, the latter by any other long job in the container, such as a Linux build |
+| `tools/package.sh android` | Compresses that APK's libraries and signs it on the Mac, into `build/android/project-b-content.apk`, once it has checked the APK was built from HEAD |
 
 The rest of the adapter is shared with the Mac: `engine/browser/` and `engine/common/`, with `BUILDFLAG` guards. The
 ones that change behaviour on Android: the pak comes from the APK and goes to each child as an open file, the shell's
@@ -247,12 +247,10 @@ files come from Go, as on the Mac, pages are handed over as `WebContents` rather
 starts the browser and returns, because Android's looper is the message loop, and the shell's delegate opens
 Android's colour picker.
 
-To build, with the shell built first on the Mac (`(cd shell && npm run build)`), because Go takes `shell/dist`:
+To build, in your own checkout, with container pb from the tester:
 
-    colima start -p pb-android                    # the VM, if it's stopped
-    DOCKER_HOST=unix://$HOME/.colima/pb-android/docker.sock docker start pb
-    amarit restart pb-android-build               # tools/android-content-build.sh in the container
-    tools/android-content-package.sh              # build/android/project-b-content.apk, signed
+    tools/build.sh android arm64                  # build/android/content-unsigned.apk
+    tools/package.sh android                      # build/android/project-b-content.apk, signed
 
 The build copies the tree it's given (`REPO`, `/repo` by default) into `/work/tree` in the container, rewriting a
 file only when its content changes, and GN builds that copy. A release builds another checkout than the one the

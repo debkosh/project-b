@@ -9,7 +9,7 @@ OUT=${OUT:-out/android}
 TARGETS=${TARGETS:-project_b_apk}
 GO_VERSION=1.26.5
 # The tree to build: this worktree, mounted into the container, or a release's, which
-# tools/android-release.sh copies in.
+# tools/build.sh android copies in.
 REPO=${REPO:-/repo}
 TREE=$WORK/tree
 

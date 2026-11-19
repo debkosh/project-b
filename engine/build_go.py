@@ -62,7 +62,7 @@ def main():
         ldflags = "-X main.chromiumVersion=" + chromium
     else:
         clang, ndk, min_sdk, version = rest
-        # The phone's part of shell/dist, which tools/android-release.sh built: the APK
+        # The phone's part of shell/dist, which tools/build.sh android built: the APK
         # carries no folder of them.
         built = os.path.join(repo, "shell", "dist")
         shutil.rmtree(dist)

@@ -1,5 +1,12 @@
 #!/bin/bash
-# Builds the first app's library and two binaries. Flat on purpose; safe to re-run.
+# Builds the app for a platform and cpu. Flat on purpose; safe to re-run.
+#
+#   tools/build.sh                   # the Mac, arm64: build/pb/project_b
+#   tools/build.sh android arm64     # the APK, in container pb: build/android/content-unsigned.apk
+#
+# tools/package.sh <platform> then packs and signs what it built.
+#
+# The Mac build makes the library and two binaries.
 # RELEASE=1 OUT=out/rel tools/build.sh makes an official-style build: no DCHECKs, link-time
 # optimisation, no symbols. It takes hours and can't be rebuilt quickly.
 # Every build flag (core/flags/registry.json) is built in unless WITHOUT names it:
@@ -15,6 +22,75 @@ set -uo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 SRC=$ROOT/chromium/src
+PLATFORM=${1:-mac}
+CPU=${2:-arm64}
+case "$PLATFORM $CPU" in
+  "mac arm64" | "android arm64") ;;
+  *) echo "RESULT=failed there is no $PLATFORM $CPU build yet: tools/build.sh [mac|android] [arm64]"; exit 1 ;;
+esac
+
+if [ "$PLATFORM" = android ]; then
+  # The APK of this checkout: the files git tracks in the trees the APK takes, and the built
+  # shell, copied into the Linux VM's container and built there incrementally
+  # (tools/android-content-build.sh), whichever worktree the container mounts. Starts the VM,
+  # and stops it after.
+  set -e
+  # One run at a time on this Mac, from any checkout, waiting its turn: every run empties the
+  # container's /work/release and stops the VM at its end, so a second run beside a first wiped
+  # its tree or stopped the VM under it (0.2.101's APK, 2026-11-19). The lock is the Mac's, held
+  # for the whole run, as the build's own lock inside the container is taken too late for that.
+  # Its name is the one tools/android-release.sh took, which older checkouts still run.
+  if [ -z "${PB_APK_LOCKED:-}" ]; then
+    mkdir -p "$HOME/.cache"
+    echo "=== $(date '+%F %T') waiting for any other APK build on this Mac to end"
+    exec env PB_APK_LOCKED=1 /usr/bin/lockf -t 7200 "$HOME/.cache/project-b-android-release.lock" "$0" "$@"
+  fi
+  export PATH=$HOME/.local/bin:/opt/homebrew/bin:$PATH
+  export DOCKER_HOST=unix://$HOME/.colima/pb-android/docker.sock
+  cd "$ROOT"
+  # The APK carries the shell built from this checkout, not whatever shell/dist last held.
+  echo "=== $(date '+%F %T') build the shell"
+  (cd shell && npm run build --silent)
+
+  echo "=== $(date '+%F %T') start the VM"
+  colima start -p pb-android --activate=false
+  # Colima can keep a stopped VM's state as running: start says "already running" and there is
+  # no docker socket. A VM with no socket is no use to anyone, so stop it and start it again.
+  if [ ! -S "$HOME/.colima/pb-android/docker.sock" ]; then
+    colima stop -p pb-android
+    colima start -p pb-android --activate=false
+  fi
+  # Stopped after, unless another session's build holds the VM (tools/android-content-build.sh's
+  # lock), which stopping would kill. Another long job in the container that needs the VM up,
+  # such as a Linux build, holds /work/.vm-in-use.lock for as long as it runs (docs/android.md),
+  # and the VM stays up for it too.
+  trap 'docker exec pb flock -n /work/.android-build.lock true && docker exec pb flock -n /work/.vm-in-use.lock true && colima stop -p pb-android' EXIT
+  docker start pb >/dev/null
+
+  echo "=== $(date '+%F %T') copy the tree in"
+  docker exec pb sh -c 'rm -rf /work/release && mkdir /work/release'
+  { git ls-files -z core browserdata engine tools/android-content-build.sh VERSION; find shell/dist -type f -print0; } |
+    COPYFILE_DISABLE=1 tar -c --no-xattrs --no-mac-metadata --null -T - |
+    docker exec -i pb tar -x -C /work/release
+
+  echo "=== $(date '+%F %T') build"
+  if ! docker exec -e REPO=/work/release pb nice -n 10 bash /work/release/tools/android-content-build.sh | tail -5; then
+    # Why it failed is in the container, which the exit stops: its end goes in this log.
+    echo "=== the build failed; the end of siso's output:"
+    docker exec pb sh -c 'tail -c 6000 "${WORK:-/work}/chromium/src/out/android/siso_output" 2>/dev/null || echo "(no siso_output)"'
+    echo "RESULT=failed build"
+    exit 1
+  fi
+
+  # The container's out dir is the next build's, from any checkout, so the APK comes out now,
+  # still under the lock, with the commit it was built from, which tools/package.sh checks.
+  mkdir -p "$ROOT/build/android"
+  docker cp pb:/work/chromium/src/out/android/apks/ProjectB.apk "$ROOT/build/android/content-unsigned.apk"
+  git -C "$ROOT" rev-parse HEAD > "$ROOT/build/android/commit"
+  echo "=== the APK is $ROOT/build/android/content-unsigned.apk; tools/package.sh android signs it"
+  echo "RESULT=ok $(date '+%F %T')"
+  exit 0
+fi
 # One build at a time: every build re-points chromium/src/project_b at its own checkout and
 # shares out/, so build.sh holds out/.pb-build.lock for its whole run. A caller that already
 # holds it around several builds (the release) says so with PB_BUILD_LOCKED=1.

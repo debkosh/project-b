@@ -263,7 +263,7 @@ How they work is in [site-features.md](site-features.md).
   ([shells.md](shells.md#testing-one)): serve the mock pages from a second host
   (`localhost` beside `127.0.0.1`).
 
-- `tools/android-release.sh` empties `/work/release` in the container before it takes
+- `tools/build.sh android` empties `/work/release` in the container before it takes
   `/work/.android-build.lock`, so a second session's APK build wipes the tree of one already
   building. Take the lock before the copy.
 - A release keeps no symbols: the APK's library is stripped, and the unstripped one in the

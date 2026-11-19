@@ -18,8 +18,8 @@ in a worktree of its own (main's checkout stays on main, since the release reads
   where both sides appended a test often loses a closing brace at the join; `gofmt -l` finds it.
   A conflict that changes behaviour on both sides goes back to the branch's owner to rebase.
 - Then, once per release candidate: `go vet` and `go test ./...` in `core`, with `-tags sqlite_fts5` as every Go build has it ([store.md](store.md#how-it-works)),, `tools/build.sh`,
-  `tools/test.sh mock`, `tools/package.sh` into a copy, and `tools/android-release.sh` for the
-  APK. Push the branch so the owners can rebase onto it.
+  `tools/test.sh mock`, `tools/package.sh` into a copy, and `tools/build.sh android arm64` then
+  `tools/package.sh android` for the APK. Push the branch so the owners can rebase onto it.
 - A release that waits on a fix stays open; new work goes into the next one instead, so the
   test run isn't started over. While the candidate hasn't been tested yet, a branch that
   applies cleanly and adds no engine or Android risk can still join it.
@@ -43,7 +43,7 @@ The cut-back run, Sudipta's standard from 0.2.64, on the packaged app and the AP
 - `tools/test.sh basics` (32 of 41 areas; it exits 1 by design) and the tester's
   `quit_after_download.py` on the packaged app.
 
-The APK step starts only once the candidate build is done: `tools/android-release.sh` runs
+The APK step starts only once the candidate build is done: `tools/build.sh android` runs
 `npm run build`, which writes the same `shell/dist`, and clears `/work/release` before it takes
 its lock. The desktop run and the APK build then go side by side, and the Android run once the
 APK exists.
@@ -76,7 +76,7 @@ merge into main while it runs; it reads that checkout. It takes about four minut
   a package, never `out/pb` directly. A copy stops sharing blocks with `out/pb` once `out/pb` is
   rebuilt, so each checkout's copy costs its full size (about 455 MB).
 - **The Android VM** (colima `pb-android`, container `pb`): `tools/android-content-build.sh`
-  takes `/work/.android-build.lock`, so a second build waits, and `tools/android-release.sh`
+  takes `/work/.android-build.lock`, so a second build waits, and `tools/build.sh android`
   stops the VM only when no build holds that lock. A checkout older than those scripts doesn't
   take the lock.
 - **The desktop, the VM, container pb and the emulators** have no lock. One session at a
@@ -108,7 +108,7 @@ merge into main while it runs; it reads that checkout. It takes about four minut
 - A test killed from outside (SIGTERM) is not a failure of the app: rerun it alone through
   `tools/results.py run --rerun yes`, so the report takes the rerun.
 - Android: never `adb kill-server`; the adb server is the amarit unit `android-adb` (`amarit
-  restart android-adb`). If `tools/android-release.sh` prints "already running, ignoring" and
+  restart android-adb`). If `tools/build.sh android` prints "already running, ignoring" and
   then a docker.sock error, `colima stop -p pb-android && colima start -p pb-android
   --activate=false`.
 - To tell a flaky Android check from a regression, run the same parts on the previous release's

@@ -37,8 +37,8 @@ Each step leaves Mac and Android working and the release run green.
 | 2b | Save as and the folder chooser through Chromium's own file dialog | tested: Mac suites, sheets by hand, Android 16; branch `layers-links`, to release |
 | 3 | Notifications through Go | tested: Mac suites and Go's tests, and a real one in a VM on 0.3.0's candidate: macOS asks once, then it shows, and its click fires the page's click and brings its tab forward; in 0.3.0 |
 | 4 | The Mac's open-link events into `core/system`, or a fourth exception | tested: Mac suites, Android 16, and a new VM check; no exception; branch `layers-links`, to release |
-| 5 | The shell embedded in the Go core | tested: Mac app suite, all of Android 16 and 17; branch `layers-shell`, to release |
-| 6 | The three-piece build, with the build-flow restructure below | being written on branch `layers-build`; script changes agreed with release |
+| 5 | The shell embedded in the Go core | tested: Mac app suite, all of Android 16 and 17; in 0.3.3 |
+| 6 | The three-piece build, with the build-flow restructure below | tested: Mac candidate and app suite, an APK from the new commands driven on Android 10; branch `layers-build`, to release after 0.3.4 |
 
 Linux and Windows are not in this work: they come later, from the platforms session.
 
@@ -196,7 +196,7 @@ own resources, and no folder of pages travels beside them.
 - `engine/build_go.py` copies `$OUT/shell`, which ninja builds first, into the gitignored
   `core/shellfiles/dist` before it compiles Go; on Android it copies the
   phone's part of `shell/dist` (our pages and the Mobile shell), which
-  `tools/android-release.sh` built. A shell change rebuilds Go.
+  `tools/build.sh android` built. A shell change rebuilds Go.
 - `tools/build.sh` no longer copies `shell/` into `build/pb`, `tools/package.sh` no longer
   into the app, and the APK's assets lose `shell/`.
 - A checkout that never built the shell still compiles Go, with no pages: `dist` holds only
@@ -210,6 +210,15 @@ own resources, and no folder of pages travels beside them.
 - One `engine/build_go.py` builds the Go core for both platforms. GN hands it `target_os` and
   `target_cpu`, which it maps to `GOOS` and `GOARCH`; the Mac gets a c-archive, Android a
   c-shared library with Chromium's clang. `engine/android/build_go.py` is gone.
+- `tools/build.sh [mac|android] [arm64]`: with no arguments the Mac arm64 build, as before.
+  `android arm64` is what `tools/android-release.sh` did up to the built APK, which it now
+  copies out to `build/android/content-unsigned.apk` with the commit it was built from, as
+  the Mac build leaves `build/pb`. It takes the same lock on the Mac, never `out/`'s. Any
+  other platform or cpu says there is no such build yet.
+- `tools/package.sh [mac|android]`: `android` is what `tools/android-content-package.sh` did,
+  from that copy, once it has checked it was built from HEAD, into the same
+  `build/android/project-b-content.apk`. Both old scripts are gone; `tools/release.sh` runs
+  the two commands.
 
 ## The build-flow restructure
 
@@ -217,12 +226,17 @@ Given to this work by the orchestrator on 2026-11-19, after step 1, as the platf
 planned it:
 
 1. One entry point, `tools/build.sh <platform> <cpu>`, mac arm64 by default; `out/pb` and
-   `build/pb` stay as they are.
+   `build/pb` stay as they are. (Step 6, below.)
 2. The three pieces named in the build: the wrapper, `libcore`, the engine library.
    `build_go.py` takes GOOS and GOARCH from the target. (Step 6, below.)
 3. `tools/package.sh <platform>`: the Mac as today, Android folding in
-   `android-content-package.sh`.
+   `android-content-package.sh`. (Step 6, below.)
 4. Later: Linux in container pb, with a slot from the tester.
 5. `out/<platform>-<cpu>`, switched in one commit together with release's scripts.
+   Agreed with release on 2026-11-20: a release of its own, after step 6's. `out/pb` and
+   `out/rel` are moved (`out/mac-arm64`, `out/mac-arm64-rel`), then `gn gen`, never built
+   fresh, and no links keep the old names. Before the move the orchestrator tells every
+   session and the tester checks nothing runs against `out/` or `build/`; release cuts the
+   release from the commit at once, so main and the folders agree within the hour.
 
 Release and the orchestrator hear before any change to the `out/` or `build/` paths.

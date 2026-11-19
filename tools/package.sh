@@ -1,13 +1,68 @@
 #!/bin/bash
-# Packs a built app into "Project B.app" inside build/project-b.dmg. Flat on purpose.
-# OUT=out/rel tools/package.sh packs the release build instead.
+# Packs and signs what tools/build.sh built, for a platform. Flat on purpose.
 #
-# It packs this checkout's own copy of its last build, build/<out dir's name>/, which
-# tools/build.sh makes under its lock, never chromium/src/$OUT itself: every checkout shares
-# that, and another's build between this one's build and its package would mix the two.
+#   tools/package.sh             # the Mac: "Project B.app" inside build/project-b.dmg
+#   tools/package.sh android     # build/android/project-b-content.apk
+#
+# OUT=out/rel tools/package.sh packs the Mac's release build instead.
+#
+# It packs this checkout's own copy of its last build, build/<out dir's name>/ or
+# build/android/, which tools/build.sh makes under its lock, never the shared out dir itself:
+# every checkout shares that, and another's build between this one's build and its package
+# would mix the two.
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
+PLATFORM=${1:-mac}
+case "$PLATFORM" in
+  mac | android) ;;
+  *) echo "RESULT=failed there is no $PLATFORM package: tools/package.sh [mac|android]"; exit 1 ;;
+esac
+
+if [ "$PLATFORM" = android ]; then
+  # Shrinks the APK and signs it with our stable key, on this Mac, where the key lives.
+  SDK=$HOME/Library/Android/sdk
+  BUILD_TOOLS=$SDK/build-tools/35.0.0
+  OUT=$ROOT/build/android
+  APK=$OUT/project-b-content.apk
+  if [ ! -f "$OUT/content-unsigned.apk" ]; then
+    echo "RESULT=failed no APK in $OUT: run tools/build.sh android arm64 in this checkout first"
+    exit 1
+  fi
+  HEAD=$(git -C "$ROOT" rev-parse HEAD)
+  if [ "$(cat "$OUT/commit" 2>/dev/null)" != "$HEAD" ]; then
+    echo "RESULT=failed $OUT was built from $(cat "$OUT/commit" 2>/dev/null || echo 'an unknown commit'), not HEAD $HEAD: build again"
+    exit 1
+  fi
+  SECRETS=$HOME/PW_TOOLS/lab-secrets.env
+  . "$ROOT/tools/keys.sh"
+  need_key android.keystore
+  KEYSTORE=$KEYS/android.keystore
+  KEY_ALIAS=project-b
+
+  # The build's own APK stays as it is, so packing again needs no build.
+  cp "$OUT/content-unsigned.apk" "$OUT/content-work.apk"
+  # Chromium stores libraries uncompressed. Compressing them halves the download, for a
+  # phone to fetch over a link, and Android unpacks them at install (extractNativeLibs in the manifest).
+  rm -rf "$OUT/content-libs"
+  mkdir -p "$OUT/content-libs"
+  (cd "$OUT/content-libs" && unzip -q "$OUT/content-work.apk" 'lib/*' &&
+    zip -q -d "$OUT/content-work.apk" 'lib/*' && zip -q -9 -r "$OUT/content-work.apk" lib)
+  rm -rf "$OUT/content-libs"
+  "$BUILD_TOOLS/zipalign" -f -P 16 4 "$OUT/content-work.apk" "$OUT/content-aligned.apk"
+
+  PROJECT_B_ANDROID_KEYSTORE_PASSWORD=$(grep '^PROJECT_B_ANDROID_KEYSTORE_PASSWORD=' "$SECRETS" | cut -d= -f2-)
+  export PROJECT_B_ANDROID_KEYSTORE_PASSWORD
+  "$BUILD_TOOLS/apksigner" sign --ks "$KEYSTORE" --ks-key-alias "$KEY_ALIAS" \
+    --ks-pass env:PROJECT_B_ANDROID_KEYSTORE_PASSWORD --out "$APK" "$OUT/content-aligned.apk"
+  "$BUILD_TOOLS/apksigner" verify "$APK"
+  rm "$OUT/content-work.apk" "$OUT/content-aligned.apk"
+
+  ls -la "$APK"
+  echo "RESULT=ok $APK"
+  exit 0
+fi
+
 OUT=${OUT:-out/pb}
 FROM=$ROOT/build/$(basename "$OUT")
 if [ ! -x "$FROM/project_b" ]; then

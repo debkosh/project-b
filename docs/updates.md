@@ -140,9 +140,9 @@ release's `releases.json` so earlier releases stay listed, has `amarit release` 
 one, tags `v<v>` and creates the GitHub release with all of it. The first updater-enabled
 version has to be installed by hand from its DMG, once; from then on the app updates itself.
 
-The same release carries the Android app. `tools/android-release.sh` starts the Linux VM,
+The same release carries the Android app. `tools/build.sh android arm64` starts the Linux VM,
 copies the files git tracks in `core`, `engine` and the build script, and the built shell, into
-its container, builds the APK there incrementally, signs it on the Mac, and stops the VM. The
+its container, builds the APK there incrementally and stops the VM; `tools/package.sh android` signs it on the Mac. The
 container mounts the Android worktree, so the release's own files are copied in, and the build
 rewrites a file in the tree it builds only when its content changes, so moving between
 checkouts never leaves ninja trusting an older file. The APK goes into `build/dist` twice:

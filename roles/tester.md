@@ -30,7 +30,7 @@ You are the team's test person. Keep "testing" in your session name.
 
 ## Learned
 
-- Only one APK build at a time: `tools/android-release.sh` empties `/work/release` and stops the VM at its end. It now waits on a lock on the Mac for the whole run, so a second one queues instead of breaking the first; still, lend container pb to one session at a time.
+- Only one APK build at a time: `tools/build.sh android` empties `/work/release` and stops the VM at its end. It now waits on a lock on the Mac for the whole run, so a second one queues instead of breaking the first; still, lend container pb to one session at a time.
 - Force-stop the app on every emulator that comes back: open tabs ran one at 1200% CPU.
 - No CPU stress on emulators.
 - Never `pkill` test tools by name; other sessions run the same scripts.
@@ -38,7 +38,7 @@ You are the team's test person. Keep "testing" in your session name.
 - `chromium/src/out/pb` is shared by every checkout; test and package only a checkout's own `build/pb` (`tools/package.sh` does). A build from another checkout while a release candidate builds and packages once gave a mixed DMG.
 - Restart the emulators with `tools/restart-emulators.sh` after each release's Android group, and once a day: their qemu grows over days of runs, to 266 GB across four on 2026-11-18, which ran this Mac out of memory. It checks the app starts on each, and restarts again an emulator that booted with its GPU broken, as the Android 10 one does now and then. emu-29's unit always boots cold (-no-snapshot-load).
 - Never check out, reset or build in the main checkout, which release publishes from: work in your own worktree. A stray `git checkout origin/main --` there once left it detached.
-- Colima now and then keeps a stopped VM as running, with no docker socket; `tools/android-release.sh` stops and starts it again then.
+- Colima now and then keeps a stopped VM as running, with no docker socket; `tools/build.sh android` stops and starts it again then.
 - The adb server runs as an amarit unit of its own, `android-adb` (`adb -L tcp:5037 server nodaemon`), never inside a test run; never `adb kill-server`, `amarit restart android-adb` instead: an adb call with no server starts one inside whatever runs it, and stopping that run then killed the server and every session's emulator connection.
 - On the Android 10 emulator a tap is now and then lost: the first on a fresh screen, or the first after typing, which only closes the keyboard. A driver step taps again until the screen it expects shows, not once.
 - Delete files in an emulator's Downloads through the media index (`content delete --uri content://media/external/downloads --where ...`), never a plain `rm`: rm leaves the row, and a later download of that name crashed the app.
