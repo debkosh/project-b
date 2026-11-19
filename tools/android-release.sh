@@ -46,7 +46,12 @@ docker exec pb sh -c 'rm -rf /work/release && mkdir /work/release'
   docker exec -i pb tar -x -C /work/release
 
 echo "=== $(date '+%F %T') build"
-docker exec -e REPO=/work/release pb nice -n 10 bash /work/release/tools/android-content-build.sh | tail -5
+if ! docker exec -e REPO=/work/release pb nice -n 10 bash /work/release/tools/android-content-build.sh | tail -5; then
+    # Why it failed is in the container, which the exit stops: its end goes in this log.
+    echo "=== the build failed; the end of siso's output:"
+    docker exec pb sh -c 'tail -c 6000 "${WORK:-/work}/chromium/src/out/android/siso_output" 2>/dev/null || echo "(no siso_output)"'
+    exit 1
+fi
 
 echo "=== $(date '+%F %T') sign"
 tools/android-content-package.sh
