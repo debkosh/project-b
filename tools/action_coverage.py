@@ -16,7 +16,8 @@ source runs or sends it.
 
 A test covers an action when it names it: the id (fire('menu', 'tab.duplicate'), a "run"
 message, Go's own tests) or the message ("t":"closeTab", t: 'closeTab'), or, for Go's actions,
-the words the menu shows (a driver clicking "Duplicate Tab"). That is a test doing the action;
+the words the menu shows (a driver clicking "Duplicate Tab"), or a `does: <id>` comment beside
+the step that does it through its control, ending its line. That is a test doing the action;
 whether it checks the result is the test's, and a reviewer's, business. Where the action is
 plumbing, not a person's, or can't be done in a test, the exempt file says why.
 """
@@ -116,14 +117,14 @@ def inventory():
         if keys:
             where.append("keys (%s)" % ", ".join(sorted(keys)))
         where += [s for s, t in src.items() if "'%s'" % aid in t or '"%s"' % aid in t]
-        needles = ["'%s'" % aid, '"%s"' % aid, '\\"%s\\"' % aid, "'%s'" % title, '"%s"' % title]
+        needles = ["'%s'" % aid, '"%s"' % aid, '\\"%s\\"' % aid, "'%s'" % title, '"%s"' % title, "does: %s\n" % aid]
         rows.append({"kind": "action", "id": aid, "title": title, "where": where, "tests": covering(tt, needles)})
     sent = {}
     for s, t in src.items():
         for m in messages(t):
             sent.setdefault(m, []).append(s)
     for m, where in sorted(sent.items()):
-        needles = ["t: '%s'" % m, 't: "%s"' % m, '"t":"%s"' % m, '"t": "%s"' % m, '\\"t\\":\\"%s\\"' % m, "'t': '%s'" % m]
+        needles = ["t: '%s'" % m, 't: "%s"' % m, '"t":"%s"' % m, '"t": "%s"' % m, '\\"t\\":\\"%s\\"' % m, "'t': '%s'" % m, "does: %s\n" % m]
         rows.append({"kind": "message", "id": m, "title": "", "where": sorted(where), "tests": covering(tt, needles)})
     return rows
 
