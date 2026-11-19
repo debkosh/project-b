@@ -181,7 +181,7 @@ Use these; never leave a `<button>`, `<select>`, `<input>` or radio to the brows
 | Picking some items of a list (which sparks to export) | a checkbox per row, its `accent-color` `--accent`, with an All box above them, mixed while only some are ticked | a switch, which says a setting is on |
 | Two to four short choices | `Segmented` (Theme: System, Light, Dark) | radio buttons |
 | Five or more choices, or long ones | `select` | |
-| A colour | `Swatches`: presets, and with `custom` the system's picker behind a + | a bare colour input |
+| A colour | `Swatches`: gulal's suggestions, and with `custom` a + for any colour: the system's picker on a desktop, our Custom colour sheet on a phone ([On a phone](#on-a-phone)) | a bare colour input; Android's own picker |
 | A name, a number, a value | `Field` (`.text-field`); empty means Off where Off makes sense | a section's own input style |
 | A row's actions | `RowMenu`: a ⋯ button and its menu | a row of quiet buttons |
 | A label on an item (Hidden, Locked, Not in this build) | `.tag`, a hairline outline | a filled pill |
@@ -317,6 +317,12 @@ has little room. A phone shows as much page as it can.
   `--muted` heading.
 - **An action that repeats on every row is a 40px icon button** with an `aria-label`
   (Download, ⋯), not a text button.
+- **A colour's + opens the Custom colour sheet,** not Android's picker (the owner,
+  2026-11-19: "on android the custom color picker is baaad"). A one-line head with Done;
+  a preview of the item as it will look, its dot and its chip; Hue, a full-width slider, a
+  28px track in a 48px target with a 36px thumb; Shade, five 40px swatches of that hue from
+  light to deep at the theme's strength; and Hex, a field for an exact colour. Each change
+  shows at once; Done, Back or a tap outside keep it.
 - **The page is dimmed only behind what must be answered or picked:** a dialog, a sheet of
   actions. A panel used beside the page, as a spark's, leaves it as it is.
 
