@@ -13,6 +13,7 @@
 #include "content/public/browser/global_routing_id.h"
 #include "content/public/browser/web_authentication_delegate.h"
 #include "device/fido/cable/v2_constants.h"
+#include "device/fido/fido_authenticator.h"
 
 namespace content {
 class RenderFrameHost;
@@ -28,6 +29,13 @@ namespace project_b {
 //
 // A request with no card of its own (a sign-in field's passkey list, a test's virtual key
 // with its UI off) tells Go nothing and goes as content's own delegate would.
+//
+// Our own passkeys (docs/passkeys.md, Our own passkeys) are one more authenticator of a
+// request with a card, of the internal transport, beside a security key and a phone. The
+// keys are Go's: this side only carries. The key step says ours is there (own), and
+// content sends it the request only once Go answers own, as the person pressed Save or a
+// passkey of theirs. It then asks Go to make or to sign with a step of its own, ownMake or
+// ownSign, and Go answers made or signed, with the bytes for the page, or ownFailed.
 class PasskeyRequest : public content::AuthenticatorRequestClientDelegate {
  public:
   explicit PasskeyRequest(content::RenderFrameHost* frame);
@@ -79,6 +87,21 @@ class PasskeyRequest : public content::AuthenticatorRequestClientDelegate {
   void StartBioEnrollment(base::OnceClosure next_callback) override;
   void FinishCollectToken() override;
   void OnRetryUserVerification(int attempts) override;
+  std::vector<std::unique_ptr<device::FidoDiscoveryBase>> CreatePlatformDiscoveries()
+      override;
+  bool EmbedderControlsAuthenticatorDispatch(
+      const device::FidoAuthenticator& authenticator) override;
+  void FidoAuthenticatorAdded(const device::FidoAuthenticator& authenticator) override;
+
+  // Our own authenticator's side: the credential IDs a sign-in allows, which the key step
+  // carries; the request reaching it, which asks Go to make or to sign; and content
+  // taking the request back from it.
+  void OwnAllows(const std::vector<device::PublicKeyCredentialDescriptor>& allow);
+  void OwnMake(const device::CtapMakeCredentialRequest& request,
+               device::FidoAuthenticator::MakeCredentialCallback callback);
+  void OwnSign(const device::CtapGetAssertionRequest& request,
+               device::FidoAuthenticator::GetAssertionCallback callback);
+  void OwnCancelled();
 
  private:
   void Answered(const std::string& action, const std::string& text);
@@ -88,6 +111,10 @@ class PasskeyRequest : public content::AuthenticatorRequestClientDelegate {
   void PhoneStep();
   void OnBluetoothPermission(device::FidoRequestHandlerBase::BleStatus status);
   void OnPhoneEvent(device::cablev2::Event event);
+  // Go's made, signed and ownFailed.
+  void OwnMade(const std::string& text);
+  void OwnSigned(const std::string& text);
+  void OwnFailed(const std::string& reason);
 
   const content::GlobalRenderFrameHostId frame_;
   // Go's id for the request, 0 until Go is told of it.
@@ -125,6 +152,18 @@ class PasskeyRequest : public content::AuthenticatorRequestClientDelegate {
   std::vector<device::AuthenticatorGetAssertionResponse> accounts_;
   base::OnceCallback<void(device::AuthenticatorGetAssertionResponse)> account_;
 
+  // Our own passkeys: whether ours is among the request's authenticators, and whether it
+  // is the only way; the credential IDs a sign-in allows; how content is told to send it
+  // the request; what it waits on from Go; and whether ours ended the request, whose
+  // failure Go has then shown already.
+  bool own_ = false;
+  bool only_ = false;
+  base::ListValue allow_;
+  device::FidoRequestHandlerBase::RequestCallback send_;
+  device::FidoAuthenticator::MakeCredentialCallback make_;
+  device::FidoAuthenticator::GetAssertionCallback sign_;
+  bool own_failed_ = false;
+
   base::WeakPtrFactory<PasskeyRequest> weak_factory_{this};
 };
 
@@ -133,6 +172,11 @@ class PasskeyRequest : public content::AuthenticatorRequestClientDelegate {
 class PasskeyPolicy : public content::WebAuthenticationDelegate {
  public:
   bool SupportsResidentKeys(content::RenderFrameHost* render_frame_host) override;
+  // Yes: our own passkeys check the person with the Mac's own lock, so a page that asks
+  // whether this device can keep a passkey hears that it can.
+  void IsUserVerifyingPlatformAuthenticatorAvailableOverride(
+      content::RenderFrameHost* render_frame_host,
+      base::OnceCallback<void(std::optional<bool>)> callback) override;
 };
 
 }  // namespace project_b
