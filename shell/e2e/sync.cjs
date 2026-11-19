@@ -117,7 +117,7 @@ const taken = [];
   });
   check('Sync is a card of its own after the profile\'s', order.before === true, JSON.stringify(order));
   check(phone ? 'and on a phone Run setup again follows it' : 'and Import follows it', phone ? order.after.includes('Run setup') : order.after === 'Import', JSON.stringify(order));
-  check('off, it has one row, Set up sync, and its line', (await card().locator('.row').count()) === 1 && (await card().innerText()).includes('Bookmarks, history and typed addresses, through your own sync server'));
+  check('off, it has one row, Set up sync, and its line', (await card().locator('.row').count()) === 1 && (await card().innerText()).includes('Bookmarks, history, typed addresses and passkeys, through your own sync server'));
   if (!(phone || sectionsLayout)) check('the card is under the heading Sync', (await card().locator('h2').innerText()) === 'Sync');
   await shot(1, 'off');
 
