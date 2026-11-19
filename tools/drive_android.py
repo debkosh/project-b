@@ -1094,6 +1094,14 @@ def downloads():
     launch()
     time.sleep(3)
     check("a restart doesn't download it again", not any(s.startswith("/dl/") for s in served), str(served))
+    # On the Downloads page again: Delete, from its ⋮, last, as it takes the file away.
+    menu("Downloads")
+    see("page", text=lambda t: (t or "").startswith(name))
+    # Delete, asked first, deletes it.
+    tap(middle(sheet_item("Delete")))
+    tap(middle(see("page", text="Delete", kind="android.widget.Button")))
+    check("Delete deletes it from the phone's Downloads, and the list", until(lambda: name not in adb("shell", "ls", "/sdcard/Download/").split() and find("page", text=name) is None, 10) is not None,
+          adb("shell", "ls", "/sdcard/Download/")[-200:])
 
 
 def settings_back():
