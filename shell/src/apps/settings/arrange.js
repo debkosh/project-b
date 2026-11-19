@@ -54,6 +54,11 @@ export const lists = {
       return [words(state.sites.length, 'site', 'sites'), bytes ? size(bytes) : ''].filter((x) => x).join(' · ');
     },
   },
+  passkeys: {
+    label: 'Passkeys',
+    hint: 'The passkeys Project B keeps for your sites',
+    summary: () => (state.passkeyCount ? words(state.passkeyCount, 'passkey', 'passkeys') : ''),
+  },
   keyboard: {
     label: 'Keyboard shortcuts',
     hint: 'Every action\'s keys, and whether it is in the menu',
@@ -108,7 +113,7 @@ const page = [
     hint: 'Starting, searching, keys, workspaces and bookmarks',
     cards: [['start', 'searchEngine', 'keys', 'keyboard', 'workspaces'], 'bookmarks', { heading: 'Downloads', rows: ['downloadFolder', 'askWhereToSave'] }],
   },
-  { id: 'privacy', label: 'Privacy', hint: 'What sites can do and what they keep', cards: [['clearData', 'sites', 'clearOnQuit', 'blockAds']] },
+  { id: 'privacy', label: 'Privacy', hint: 'What sites can do and what they keep', cards: [['clearData', 'sites', 'passkeys', 'clearOnQuit', 'blockAds']] },
   { id: 'data', label: 'Your data', hint: 'This profile and what you bring in', cards: [['profile'], 'sync', 'import', ['runSetup']] },
   {
     id: 'advanced',
@@ -182,7 +187,7 @@ const sectionList = () => [
     id: 'privacy',
     label: 'Privacy and sites',
     icon: 'privacy',
-    cards: [['clearData', 'blockAds', 'clearOnQuit', 'sites']],
+    cards: [['clearData', 'blockAds', 'clearOnQuit', 'sites', 'passkeys']],
     summary: () => [state.prefs.blockAds ? 'Ads blocked' : 'Ads shown', lists.sites.summary()].filter((x) => x).join(' · '),
   },
   {

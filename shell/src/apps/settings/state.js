@@ -73,6 +73,10 @@ export const state = reactive({
   // bytes}, its origins with a setting and its hosts whose storage keeps something, in
   // every workspace, as the engine last counted.
   sites: [],
+  // The profile's own passkeys (docs/passkeys.md): how many, and, once the Passkeys page
+  // asked for them, each as {id, site, title, secondary, unnamed, created}; null before.
+  passkeyCount: 0,
+  passkeys: null,
   // The person's sparks (docs/site-features.md): {id, name, description, match, runAt, on,
   // error}; the one whose source Go last sent, {id, source, fileName}; and Go's word on the
   // last save, '' when it took, null before one. An import's sparks the profile already
@@ -150,6 +154,7 @@ export function connect() {
             workspaceTabs: m.workspaceTabs,
             siteSettings: m.siteSettings,
             sites: m.sites || [],
+            passkeyCount: m.passkeyCount || 0,
             downloadsFolder: m.downloadsFolder || '',
             homeFolder: m.homeFolder || '',
             sparks: m.sparks || [],
@@ -245,6 +250,12 @@ export function connect() {
           break;
         case 'sites':
           state.sites = m.sites;
+          break;
+        case 'passkeyCount':
+          state.passkeyCount = m.passkeyCount;
+          break;
+        case 'passkeys':
+          state.passkeys = m.passkeys;
           break;
         case 'prefs':
           state.prefs = m.prefs;
