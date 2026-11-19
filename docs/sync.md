@@ -110,7 +110,9 @@ A bucket on the memd server is reached two ways, and both are taken as they are:
 - `https://<host>/sync/<token>`, the one address, with no token apart.
 
 Only `https`, with a host, no user, query or fragment. An address whose path ends in `/sync` needs
-its token given; one that goes on past it carries its token. Status shows the host alone.
+its token given; one that goes on past it carries its token. Status shows the host alone, and
+so does an error's text, in the status, on the page and in the timeline (`Words`): Go's own error
+for a request names the whole address.
 
 **The deep link** the memd page offers is
 
@@ -198,6 +200,7 @@ and `OnStatus` answer at once; the rest run on sync's goroutine, after what was 
 | `CancelRun()` | cuts the run going on short: it ends with no error and no longer wait, and the next comes when it would have |
 | `Address() string` | the bucket's address while sync is on, for Reconnect |
 | `Problem(err) string` | what went wrong reaching a bucket, by name: `address` (not one Propose takes), `needsToken`, `unreachable` (no answer, or the server's own failure), `notBucket` (not found, or not JSON), `token` (refused), or `""` for anything else. A request's answer is looked at before synckosh reads it, and its error wraps `ErrAddress`, `ErrNeedsToken`, `ErrUnreachable`, `ErrNotBucket` or `ErrToken` |
+| `Words(err) string` | an error's text with a request's address cut down to its host, as an address may carry its token. What the status, the page's answers and the timeline say of an error |
 | `StartFresh(done func(error))` | for a locked profile key: `keys.StartFresh`, so sync is forgotten and off |
 | `Status() Status`, `OnStatus(func(Status))` | `on`, `syncing`, `host`, `lastSynced` (Unix ms, 0 for never), `error`, `problem` (the last run's, by `Problem`'s names: `token` when the server signed this device out), `locked` |
 

@@ -258,7 +258,7 @@ func (m *Manager) load() {
 		}
 	}
 	if err != nil {
-		m.setStatus(func(s *Status) { *s = Status{Error: err.Error(), Problem: Problem(err)} })
+		m.setStatus(func(s *Status) { *s = Status{Error: Words(err), Problem: Problem(err)} })
 		return
 	}
 	if m.conn != nil {
@@ -412,14 +412,14 @@ func (m *Manager) run() error {
 	if err != nil {
 		m.wait = min(max(2*m.wait, firstWait), longestWait)
 		m.next = m.last.Add(m.wait)
-		timeline.Warnf("sync: %v; the next run in %s", err, m.wait)
+		timeline.Warnf("sync: %s; the next run in %s", Words(err), m.wait)
 	} else {
 		m.wait, m.next = 0, time.Time{}
 	}
 	m.setStatus(func(s *Status) {
 		s.Syncing = false
 		if s.Error, s.Problem = "", ""; err != nil {
-			s.Error, s.Problem = err.Error(), Problem(err)
+			s.Error, s.Problem = Words(err), Problem(err)
 		} else {
 			s.LastSynced = m.last.UnixMilli()
 		}
