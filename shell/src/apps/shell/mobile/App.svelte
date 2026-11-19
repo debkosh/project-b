@@ -358,7 +358,7 @@
       {/if}
       <!-- A download as it happens, over the foot of the page; never over a sheet, nor over
            the Downloads page, which shows it already. -->
-      <DownloadBar bind:this={downloadBar} hidden={!!sheet || full || aside || tab.page === 'downloads'} />
+      <DownloadBar bind:this={downloadBar} hidden={!!sheet || full || tab.page === 'downloads'} away={aside} />
     </main>
     {#if group || (marksBar && !top)}
       <div class="bars strip" class:away class:over class:full bind:offsetHeight={stripHeight}>
