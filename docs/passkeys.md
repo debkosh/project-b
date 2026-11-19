@@ -14,6 +14,16 @@ reaches the person. The research behind it, with the options not taken yet, is i
   first field, else its primary button, else Cancel); a PIN's errors sit under its field;
   one primary button, on the right, and none on the steps that only wait; the words, the
   account rows and the QR code's tile as they now read here; `example.com` in examples.
+- 2026-11-19, Sudipta: our own passkeys, as part of the password manager, "stored locally and
+  synced", unlocked per use by whatever the device has (Touch ID or the Mac password; a
+  fingerprint, face or the screen lock on Android). The key stays in core, which signs; the
+  engine checks the person was just verified, in one place, right before asking. The design
+  is still to come, after the password manager's logins store.
+- 2026-11-19, Sudipta: no Apple developer team for now. So option C is off, and our own
+  passkeys use neither Apple's platform authenticator nor a keychain access group.
+- 2026-11-19, Sudipta, yes to an AAGUID of our own. Project B's passkeys carry
+  `81dc8063-9ac3-4b1f-ab00-9e8795c47c60`, fixed for good (sites name the provider by it),
+  with no attestation.
 
 ## What it covers
 
@@ -37,8 +47,9 @@ reaches the person. The research behind it, with the options not taken yet, is i
   (research, option D, 3 to 5 days); or passkeys of our own, which would still not reach the
   ones in the phone's password manager (option E).
 - **No Touch ID, Mac keychain or iCloud Keychain passkeys on the Mac.** They need a signing
-  team and Apple's browser entitlement; Project B signs with its own certificate (option C).
-  A Mac signs in with a security key or a phone instead.
+  team and Apple's browser entitlement; Project B signs with its own certificate and has no
+  team, nor plans one (option C is off). A Mac signs in with a security key or a phone, and
+  later with our own passkeys.
 - **Phone as key needs the app opened from Finder** (or `open`): started from a terminal,
   the terminal is the responsible app, content keeps Bluetooth off, and Use a phone isn't
   offered.
