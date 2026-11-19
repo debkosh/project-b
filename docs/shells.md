@@ -148,6 +148,7 @@ gives the page the same two.
 | `downloadStarted` | `id`: the download's id in `downloads` | A tab of this window began a download while the window was in front; after the `downloads` that lists it. Standard opens its Downloads list by itself on it |
 | `contextMenu` | `contextMenu`: the open right-click menu, or `null` | A right click in a tab's page, or a long press on a link or an image on a phone: what it was on and the actions that can run there ([daily-driver.md](daily-driver.md#right-click)); `null` once it is answered, or its tab closes, navigates or is no longer shown |
 | `backKey` | | The phone's back key, while the shell said it closes something (`backCloses`) |
+| `keyboard` | `on` | The phone's soft keyboard came up or went: while it is up, the bars under the page step aside, but for the shell's own field that has it (docs/design-system.md, On a phone) |
 | `scroll` | `tab`, `direction`: `down` or `up` | A tab's page began to scroll down, or back up (content's `DidChangeVerticalScrollDirection`) |
 | `extensions` | `extensions`: the buttons, the open popup and the prompt | While the Extensions flag is on: an extension changed, or the active tab did |
 | `profileData` | `profileData`: what this shell saved for the profile | A shell in any window of the profile saved it |

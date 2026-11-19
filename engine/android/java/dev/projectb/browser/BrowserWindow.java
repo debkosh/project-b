@@ -24,6 +24,8 @@ import android.view.View;
 import android.widget.FrameLayout;
 
 import androidx.core.content.FileProvider;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import java.io.File;
 import java.net.URLConnection;
@@ -61,6 +63,8 @@ final class BrowserWindow extends FrameLayout {
     private final float density;
 
     private long nativeWindow;
+    // Whether the soft keyboard is up, as the shell last heard.
+    private boolean keyboardUp;
     // Where the native compositor draws.
     private SurfaceView surface;
     // The view the shell is in, which refuses a touch the layout says is the page's.
@@ -96,6 +100,29 @@ final class BrowserWindow extends FrameLayout {
         images = new ClipboardImages(activity);
         // A second finger on the bar during a pinch on the page must stay with the page.
         setMotionEventSplittingEnabled(false);
+    }
+
+    /**
+     * The soft keyboard coming up or going, told to the shell as {"t":"keyboard","on":...}, as
+     * though it said so itself, and Go hands it back to the shell: while it is up, the bars under
+     * the page step aside (docs/design-system.md, On a phone). Read from the root's insets each
+     * time the window lays out, as it does when the keyboard comes or goes: the insets the
+     * window itself is handed have had the keyboard taken out by then on Android 17, and on
+     * Android 10 androidx works it out from the root's.
+     */
+    private void keyboardChanged() {
+        WindowInsetsCompat root = ViewCompat.getRootWindowInsets(this);
+        boolean up = root != null && root.isVisible(WindowInsetsCompat.Type.ime());
+        if (up != keyboardUp && nativeWindow != 0) {
+            keyboardUp = up;
+            BrowserWindowJni.get().shellMessage(nativeWindow, "{\"t\":\"keyboard\",\"on\":" + up + "}");
+        }
+    }
+
+    @Override
+    protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+        super.onLayout(changed, left, top, right, bottom);
+        keyboardChanged();
     }
 
     /** Content is ready: make the surface, then the native side, which starts the app and Go. */

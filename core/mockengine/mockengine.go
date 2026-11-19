@@ -9,6 +9,7 @@ import (
 	"maps"
 	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -1014,6 +1015,9 @@ func (e *Engine) Fire(w engine.WindowID, tab engine.TabID, kind, value string) {
 			e.navigate(shown, value)
 		case "title":
 			e.listener.TitleChanged(shown, value)
+		case "keyboard":
+			// The phone's soft keyboard, up or down, as Android's window reports it.
+			e.listener.ShellMessage(w, []byte(`{"t":"keyboard","on":`+strconv.FormatBool(value == "up")+`}`))
 		case "backKey":
 			// The phone's back key, as Android's window takes it: the shell's own, then the
 			// page's history, then the tab itself, the one used before it taking its place.
