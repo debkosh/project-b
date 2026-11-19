@@ -9,9 +9,10 @@ The seams:
 
 - **Engine and adapter**, our C++ between Chromium and Go. Chromium has rules it doesn't
   check until run time, and breaking one kills a process, and duties it leaves to us; and
-  the order in which each side hears of a thing. Seven so far: StackBlitz, the quit crash,
+  the order in which each side hears of a thing. Eight so far: StackBlitz, the quit crash,
   the Android blank shell, file uploads on Android, sparks on strict sites, a duplicated
-  tab that failed to load, a View Source tab named as its page.
+  tab that failed to load, a View Source tab named as its page, a copied image pasting
+  empty.
 - **The network across sleep.** A download that stops receiving waits for ever unless
   something gives up on it. Two so far: downloads after sleep, the stuck updater.
 - **Shell layers.** What lies over the page has to stay under the shell's own menus, and
@@ -32,6 +33,26 @@ The seams:
   fully as the embedder has set it up to. Three so far: the phone's star and folders with no
   names, TalkBack hearing every switch as off, switches named by other words heard with no
   name.
+
+## A copied image pasting empty, 2026-11-19
+
+- **Seen:** on the long-press menu's branch, on Android 14, Copy image put the picture on the
+  clipboard, and Android's own preview and the keyboard showed it, but pasted into one of our
+  pages it arrived as a PNG of no bytes. The driver's new check found it; the mock can't, as it
+  has no clipboard.
+- **Cause:** Chromium on Android reads an image from the clipboard through its content URI, and
+  refuses a URI of its own app unless it is the copy it recorded making, a defence against a
+  page reading the app's files through the clipboard. It records its copies only through an
+  image file provider the embedder sets, as Chrome does. We set none, and our menu put the image
+  there with Android's clipboard directly, so Chromium had no record of it. By the same gap,
+  from Chromium's code and not tried, a page's own copy of an image was dropped.
+- **Seam:** Engine and adapter: a duty Chromium leaves to the embedder, at its seam with
+  Android's clipboard.
+- **Fix:** on long-press-menu: the app gives Chromium's clipboard an image file provider
+  (`ClipboardImages`), which keeps its copies in the profile's shared folder, and Copy image goes
+  through Chromium's clipboard, which records it.
+- **Guard:** drive_android.py long_press_menu pastes the copied picture into a page, which must
+  get a PNG with bytes.
 
 ## The back key out of Settings, 2026-11-19
 
