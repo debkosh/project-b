@@ -4,7 +4,7 @@ Every action a person can take, where the app offers it, and the tests that do i
 `tools/action_coverage.py` from the code; `tools/test.sh mock` fails while an action has no
 test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 
-**205 actions and messages, 187 with a test, 18 exempt with a reason, 0 with none; 29 of Go's actions done by no test of the real app.**
+**205 actions and messages, 196 with a test, 9 exempt with a reason, 0 with none; 28 of Go's actions done by no test of the real app.**
 
 ## Go's actions: the menu bar, keys and the shells' own menus
 
@@ -36,19 +36,19 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `focus.nextPane` Focus Next Pane | menu bar, keys (chrome, firefox, glide, project-b) | yes | `drive_first_app.py` |
 | `focus.previousPane` Focus Previous Pane | menu bar, keys (chrome, firefox, glide, project-b) | yes | `drive_first_app.py` |
 | `glide.commandBar` Open Command Bar | menu bar, keys (glide), glide | yes | `app_test.go`, `settings.cjs`, `glide.cjs`, `drive_first_app.py` |
-| `glide.copyAddress` Copy Address | menu bar, keys (chrome, firefox, glide, project-b), glide | **no** | `glide.cjs` |
+| `glide.copyAddress` Copy Address | menu bar, keys (chrome, firefox, glide, project-b), glide | yes | `glide.cjs`, `check_clipboard.py`, `drive_first_app.py` |
 | `glide.favorite` Add to Favorites | menu bar, glide | yes | `glide.cjs`, `drive_first_app.py` |
-| `glide.newSpace` New Space… | menu bar, glide | **no** | **TODO: glide_checks: New Space makes a space** |
+| `glide.newSpace` New Space… | menu bar, glide | yes | `drive_first_app.py` |
 | `glide.sidebar` Show or Hide Sidebar | menu bar, keys (chrome, firefox, glide, project-b), glide | **no** | `commands_test.go`, `glide.cjs` |
-| `glide.space1` Space 1 | menu bar, keys (chrome, firefox, glide, project-b) | **no** | `app_test.go`, `glide.cjs` |
-| `glide.space2` Space 2 | menu bar, keys (chrome, firefox, glide, project-b) | **no** | **TODO: glide_checks: Space 2 to 9 show their spaces** |
-| `glide.space3` Space 3 | menu bar, keys (chrome, firefox, glide, project-b) | **no** | **TODO: glide_checks, with glide.space2** |
-| `glide.space4` Space 4 | menu bar, keys (chrome, firefox, glide, project-b) | **no** | **TODO: glide_checks, with glide.space2** |
-| `glide.space5` Space 5 | menu bar, keys (chrome, firefox, glide, project-b) | **no** | **TODO: glide_checks, with glide.space2** |
-| `glide.space6` Space 6 | menu bar, keys (chrome, firefox, glide, project-b) | **no** | **TODO: glide_checks, with glide.space2** |
-| `glide.space7` Space 7 | menu bar, keys (chrome, firefox, glide, project-b) | **no** | **TODO: glide_checks, with glide.space2** |
-| `glide.space8` Space 8 | menu bar, keys (chrome, firefox, glide, project-b) | **no** | **TODO: glide_checks, with glide.space2** |
-| `glide.space9` Space 9 | menu bar, keys (chrome, firefox, glide, project-b) | **no** | **TODO: glide_checks, with glide.space2** |
+| `glide.space1` Space 1 | menu bar, keys (chrome, firefox, glide, project-b) | yes | `app_test.go`, `glide.cjs`, `drive_first_app.py` |
+| `glide.space2` Space 2 | menu bar, keys (chrome, firefox, glide, project-b) | yes | `drive_first_app.py` |
+| `glide.space3` Space 3 | menu bar, keys (chrome, firefox, glide, project-b) | yes | `drive_first_app.py` |
+| `glide.space4` Space 4 | menu bar, keys (chrome, firefox, glide, project-b) | yes | `drive_first_app.py` |
+| `glide.space5` Space 5 | menu bar, keys (chrome, firefox, glide, project-b) | yes | `drive_first_app.py` |
+| `glide.space6` Space 6 | menu bar, keys (chrome, firefox, glide, project-b) | yes | `drive_first_app.py` |
+| `glide.space7` Space 7 | menu bar, keys (chrome, firefox, glide, project-b) | yes | `drive_first_app.py` |
+| `glide.space8` Space 8 | menu bar, keys (chrome, firefox, glide, project-b) | yes | `drive_first_app.py` |
+| `glide.space9` Space 9 | menu bar, keys (chrome, firefox, glide, project-b) | yes | `drive_first_app.py` |
 | `glide.spaceNext` Next Space | menu bar, keys (glide), glide | **no** | `app_test.go`, `glide.cjs` |
 | `glide.spacePrevious` Previous Space | menu bar, keys (glide), glide | **no** | `glide.cjs` |
 | `glide.splitAdd` Add to Split View | menu bar, keys (chrome, firefox, glide, project-b), glide | **no** | `settings.cjs`, `glide.cjs` |
@@ -64,7 +64,7 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `tab.close` Close Tab | menu bar, keys (chrome, firefox, glide, project-b), glide, standard | yes | `commands_test.go`, `shellmenu_test.go`, `settings.cjs`, `shell-contract.cjs` and 3 more |
 | `tab.duplicate` Duplicate Tab | menu bar, keys (chrome, firefox, glide, project-b), standard | yes | `app_test.go`, `settings_messages_test.go`, `suggest_test.go`, `standard-groups.cjs` and 1 more |
 | `tab.moveToNewWindow` Move Tab to New Window | menu bar, keys (chrome, firefox, glide, project-b), standard | yes | `app_test.go`, `drive_first_app.py` |
-| `tab.new` New Tab | menu bar, keys (chrome, firefox, glide, project-b), fox, glide, minimal, standard, terminal, page:welcome | yes | `app_test.go`, `menu_test.go`, `commands_test.go`, `shellmenu_test.go` and 14 more |
+| `tab.new` New Tab | menu bar, keys (chrome, firefox, glide, project-b), fox, glide, minimal, standard, terminal, page:welcome | yes | `app_test.go`, `menu_test.go`, `commands_test.go`, `shellmenu_test.go` and 15 more |
 | `tab.next` Select Next Tab | menu bar, keys (chrome, firefox, glide, project-b), page:welcome | yes | `menu_test.go`, `drive_first_app.py` |
 | `tab.pin` Pin Tab | menu bar, keys (chrome, firefox, glide, project-b), glide, standard | yes | `pins_test.go`, `glide.cjs`, `standard-pins.cjs`, `drive_first_app.py` |
 | `tab.previous` Select Previous Tab | menu bar, keys (chrome, firefox, glide, project-b) | yes | `drive_first_app.py` |
@@ -134,7 +134,7 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `copyText` | glide | **no** | `glide.cjs` |
 | `create` | page:picker | **no** | `picker_test.go` |
 | `createGroup` | glide, standard | yes | `shell-contract.cjs`, `standard-drag.cjs`, `terminal.cjs`, `drive_first_app.py` |
-| `createWorkspace` | glide, page:settings | **no** | `app_test.go`, `lifecycle_test.go`, `pins_test.go` |
+| `createWorkspace` | glide, page:settings | yes | `app_test.go`, `lifecycle_test.go`, `pins_test.go`, `drive_first_app.py` |
 | `delete` | page:history | **no** | `pages_test.go` |
 | `deleteWorkspace` | page:settings | **no** | `app_test.go`, `pins_test.go`, `standard-workspaces.cjs` |
 | `dismissCrash` | fox, glide, minimal, mobile, mobile-native, standard | **no** | `crash-report.cjs` |
@@ -162,7 +162,7 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `moveBookmark` | page:bookmarks | **no** | `pages_test.go` |
 | `moveTab` | standard, terminal | **no** | `app_test.go` |
 | `moveWorkspace` | page:settings | **no** | `app_test.go` |
-| `navigate` | fox, glide, minimal, mobile, mobile-native, standard, terminal | yes | `app_test.go`, `contextmenu_test.go`, `dialogs_test.go`, `files_test.go` and 12 more |
+| `navigate` | fox, glide, minimal, mobile, mobile-native, standard, terminal | yes | `app_test.go`, `contextmenu_test.go`, `dialogs_test.go`, `files_test.go` and 13 more |
 | `newFolder` | page:bookmarks | **no** | `pages_test.go`, `mobile.cjs` |
 | `newTab` | fox, glide, minimal, mobile, mobile-native, standard, terminal | yes | `app_test.go`, `fullscreen_test.go`, `pins_test.go`, `session_test.go` and 17 more |
 | `open` | page:bookmarks, page:history, page:picker | **no** | `events_test.go`, `pages_test.go`, `picker_test.go` |
@@ -178,7 +178,7 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `resetAction` | page:settings | **no** | `settings_messages_test.go` |
 | `resetProfile` | page:settings | **no** | `profile_test.go` |
 | `retryUpdate` | fox, page:settings, standard | **no** | `settings_messages_test.go` |
-| `run` | fox, glide, minimal, mobile, mobile-native, standard, terminal | yes | `app_test.go`, `drive_first_app.py` |
+| `run` | fox, glide, minimal, mobile, mobile-native, standard, terminal | yes | `app_test.go`, `check_clipboard.py`, `drive_first_app.py` |
 | `saveBookmark` | mobile-native | **no** | `pages_test.go`, `mobile.cjs` |
 | `saveReport` | mobile, standard | **no** | `downloads_test.go` |
 | `search` | page:history | **no** | `pages_test.go` |

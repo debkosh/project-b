@@ -9,16 +9,6 @@
   "window.bringAllToFront": "macOS's own: AppKit orders the app's windows",
   "edit.pasteAndMatchStyle": "macOS's own: AppKit's editing command, sent to the focused field",
   "askNotifications": "the phone's own permission question, which the welcome asks; drive_android's download_notifications answers it",
-  "app.checkUpdate": "TODO: the real app's Check for Updates against a local manifest, in drive_first_app",
-  "glide.copyAddress": "TODO: glide_checks: Copy Address puts the page's address on the clipboard",
-  "glide.newSpace": "TODO: glide_checks: New Space makes a space",
-  "glide.space2": "TODO: glide_checks: Space 2 to 9 show their spaces",
-  "glide.space3": "TODO: glide_checks, with glide.space2",
-  "glide.space4": "TODO: glide_checks, with glide.space2",
-  "glide.space5": "TODO: glide_checks, with glide.space2",
-  "glide.space6": "TODO: glide_checks, with glide.space2",
-  "glide.space7": "TODO: glide_checks, with glide.space2",
-  "glide.space8": "TODO: glide_checks, with glide.space2",
-  "glide.space9": "TODO: glide_checks, with glide.space2"
+  "app.checkUpdate": "TODO: the real app's Check for Updates against a local manifest, in drive_first_app"
  }
 }

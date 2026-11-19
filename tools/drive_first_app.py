@@ -2555,7 +2555,8 @@ TERMINATE = 'ObjC.import("AppKit"); $.NSRunningApplication.runningApplicationWit
 def glide_checks():
     """Glide, chosen on a profile a first start makes: it comes up, keeps a
     Favorite and a pinned tab, draws a folder for a tab group, and its Command Bar finds the
-    open tabs. Leaves glide.png and glide-command-bar.png, which the README shows."""
+    open tabs; Copy Address says it copied (check_clipboard.py reads the clipboard), New Space
+    makes a Space, and Space 1 to 9 show theirs. Leaves glide.png and glide-command-bar.png, which the README shows."""
     root = tempfile.mkdtemp(prefix="pb-root-")
     app = App(None, [f"--root={root}"])
     send = lambda msg: app.js(f"chrome.send('shell', [{json.dumps(json.dumps(msg))}]), 1")
@@ -2588,6 +2589,42 @@ def glide_checks():
     check("the Command Bar finds the open tabs", bool(app.wait("[...document.querySelectorAll('[role=option]')].some(o => o.textContent.includes('Example'))", 10)))
     time.sleep(0.5)
     print(app.cmd("capture", os.path.join(OUT, "glide-command-bar.png")), flush=True)
+    app.cmd("key", "escape")
+    app.wait("!document.querySelector('[aria-label=Address]')", 10)
+
+    # Copy Address, as the menu bar and its keys run it, with no click in the shell. Only the
+    # desktop's own session reaches the Mac's clipboard, so check_clipboard.py reads it back.
+    app.js("window.toastSeen = ''; new MutationObserver(() => { const t = document.querySelector('.toast'); if (t) window.toastSeen = t.textContent; }).observe(document.body, {subtree: true, childList: true, characterData: true}), 1")
+    send({"t": "run", "text": "glide.copyAddress"})
+    told = app.wait("window.toastSeen", 10)
+    check("Copy Address says it copied", told == "Copied", told)
+
+    # New Space opens its dialog, which makes the Space and shows it.
+    head = "document.querySelector('.space-head .label')?.textContent.trim()"
+    first = app.js(head)
+    send({"t": "run", "text": "glide.newSpace"})
+    check("New Space asks for the Space's name", bool(app.wait("!!document.querySelector('[role=dialog][aria-label=\"New Space\"] input[aria-label=Name]')", 10)))
+    app.js("(i => { i.value = 'Two'; i.dispatchEvent(new Event('input', {bubbles: true})); })(document.querySelector('[role=dialog] input[aria-label=Name]')), 1")
+    app.wait("!document.querySelector('[role=dialog] [type=submit]').disabled", 5)
+    app.js("document.querySelector('[role=dialog] [type=submit]').click(), 1")
+    check("and Create makes it and shows it", bool(app.wait(f"{head} === 'Two'", 15)), app.js(head))
+    app.cmd("key", "escape")
+
+    # Seven more, so Space 2 to 9 each have one to show, and each shows its own. The first
+    # Space is the one the window started on.
+    colors = ["#3470d0", "#d0343a", "#2e9d5b", "#9b59b6", "#e67e22", "#16a085", "#7f8c8d"]
+    for n, c in zip(range(3, 10), colors):
+        send({"t": "createWorkspace", "text": f"S{n}", "color": c})
+    app.wait("document.querySelectorAll('.foot .space').length === 9", 15)
+    names = ["Two"] + [f"S{n}" for n in range(3, 10)]
+    shown = []
+    for name, action in zip(names, ("glide.space2", "glide.space3", "glide.space4", "glide.space5", "glide.space6", "glide.space7", "glide.space8", "glide.space9")):
+        send({"t": "run", "text": action})
+        shown.append(name if app.wait(f"{head} === {json.dumps(name)}", 10) else f"{action}: {app.js(head)}")
+        app.cmd("key", "escape")
+    check("Space 2 to 9 each show their Space", shown == names, ", ".join(shown))
+    send({"t": "run", "text": "glide.space1"})
+    check("and Space 1 the first again", bool(app.wait(f"{head} === {json.dumps(first)}", 10)), app.js(head))
     app.close()
 
 

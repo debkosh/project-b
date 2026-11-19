@@ -51,7 +51,8 @@ The seams:
   clipboard, as it does a context menu's Copy Link. Every Copy Address of Glide's goes that
   way: the menu bar's, the sidebar's, and its menus' (`menus.js` `copy`).
 - **Guard:** glide.cjs runs Copy Address from the menu and finds the address on Go's
-  clipboard; drive_first_app's glide part runs it in the real app.
+  clipboard; in the real app, drive_first_app's glide part runs it and check_clipboard.py
+  finds the address on the Mac's clipboard.
 
 ## A copied image pasting empty, 2026-11-19
 

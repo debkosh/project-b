@@ -2,8 +2,8 @@
 """Copy and paste in the real app, through Go's keys and the Mac's clipboard.
 
 NEEDS A PERSON LOGGED IN at this Mac's screen: the clipboard belongs to their desktop
-session, and an app started from a background job can't reach it. It replaces what they
-had copied with the words "copied text". Start it through on_screen.py:
+session, and an app started from a background job can't reach it. What they had copied
+goes back on it after. Start it through on_screen.py:
 
     tools/test.sh screen                                   # with the other real-screen checks
     tools/on_screen.py python3 tools/check_clipboard.py    # alone
@@ -11,9 +11,12 @@ had copied with the words "copied text". Start it through on_screen.py:
 PB_BIN picks another binary.
 """
 
+import json
 import os
+import subprocess
 import sys
 import tempfile
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 import drive_first_app as drive  # noqa: E402
@@ -38,6 +41,35 @@ def clipboard_checks():
     app.close()
 
 
+
+def glide_copy_checks():
+    """Glide's Copy Address from the menu bar, an action with no click in the shell, puts the
+    page's address on the Mac's clipboard: Go writes it, as the shell's own write would be
+    refused (docs/fragility.md)."""
+    app = drive.App(None, [f"--root={tempfile.mkdtemp(prefix='pb-root-')}"])
+    send = lambda msg: app.js(f"chrome.send('shell', [{json.dumps(json.dumps(msg))}]), 1")
+    try:
+        app.wait("location.href==='chrome://shell/standard/'", 30)
+        send({"t": "run", "text": "shells:glide"})
+        app.wait("location.href==='chrome://shell/glide/'&&!!document.querySelector('.glide')", 30)
+        send({"t": "navigate", "text": drive.URL_A})
+        app.wait("document.querySelector('[role=tab][aria-selected=true]')?.title !== 'New Tab'", 30)
+        send({"t": "run", "text": "glide.copyAddress"})
+        for _ in range(40):
+            pasted = subprocess.run(["pbpaste"], capture_output=True, text=True).stdout
+            if pasted == drive.URL_A:
+                break
+            time.sleep(0.25)
+        check("Glide's Copy Address from the menu bar puts the page's address on the clipboard", pasted == drive.URL_A, repr(pasted))
+    finally:
+        app.close()
+
+
 if __name__ == "__main__":
     os.makedirs(drive.OUT, exist_ok=True)
-    drive.run_parts([clipboard_checks])
+    # The clipboard is the person's at this Mac: what they had copied goes back after.
+    theirs = subprocess.run(["pbpaste"], capture_output=True).stdout
+    try:
+        drive.run_parts([clipboard_checks, glide_copy_checks])
+    finally:
+        subprocess.run(["pbcopy"], input=theirs)
