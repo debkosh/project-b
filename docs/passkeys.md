@@ -25,6 +25,11 @@ reaches the person. The research behind it, with the options not taken yet, is i
   `81dc8063-9ac3-4b1f-ab00-9e8795c47c60`, fixed for good (sites name the provider by it),
   with no attestation.
 
+- 2026-11-19, Sudipta, on the design of our own passkeys below: "yes build it and lets build it
+  together". So: the whole design; on the Mac a site's "create a passkey" saves in Project B,
+  with a security key or a phone one press away; a Passkeys row under Privacy in Settings; and
+  passkeys in a sign-in field's list come later, with saved logins' fill.
+
 ## What it covers
 
 | | Mac | Android |
@@ -260,7 +265,7 @@ theme, never dimmed: 200px, centred, radius 4, its quiet zone of four modules in
 
 ## Our own passkeys
 
-**A design to agree, not built.** Passkeys that Project B makes and keeps itself, in the
+Passkeys that Project B makes and keeps itself, in the
 password manager, on the Mac and on Android. The interface with the store, sync and Profile
 Lock was agreed with the passwords session on 2026-11-19. The decisions above (stored locally
 and synced, unlocked per use, no Apple team, our AAGUID) hold. One change from where it
