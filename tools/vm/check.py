@@ -886,7 +886,7 @@ def profile_checks():
 
 
 WORK_DOT = (194, 65, 12)  # The colour workspace_checks gives Work.
-MAIN_DOT = (52, 112, 208)  # Main's, #3470d0.
+MAIN_DOT = (198, 95, 131)  # Main's, hue "0" (Rose) as Go draws it on a new profile's frame in light, #c65f83.
 WORK_ID, SHOPPING_ID = "0a1b2c3d", "4e5f6a7b"  # The workspaces the workspace checks list.
 
 
@@ -909,7 +909,7 @@ def workspace_checks():
     """Workspaces on a real screen. A fresh profile has only Main and its tabs show no dot.
     A list in the old format, without Main, gets Main at the top, and Tab, New Tab in
     Workspace lists all three, read as the menu opens. With three, the first tab shows Main's
-    blue dot, and a tab opened in Work shows Work's, with the tabs on the side and on top."""
+    dot, and a tab opened in Work shows Work's, with the tabs on the side and on top."""
     guest("/usr/bin/killall", "project_b")
     fresh_profile()
     launch()
@@ -918,8 +918,8 @@ def workspace_checks():
     # The app starts on a new tab: the page the checks look at is typed in its address field.
     go_to(ALPHA)
     until(titles, lambda t: t == ["Alpha"])
-    blue = near(crop(desk.image(), win[0], win[1] + 40, 220, 200), MAIN_DOT, 24).sum()
-    check("a fresh profile's tab shows no workspace dot", blue <= 4, f"{blue} pixels of Main's blue")
+    dot = near(crop(desk.image(), win[0], win[1] + 40, 220, 200), MAIN_DOT, 24).sum()
+    check("a fresh profile's tab shows no workspace dot", dot <= 4, f"{dot} pixels of Main's colour")
     guest("/usr/bin/killall", "project_b")
     until(lambda: guest("/usr/bin/pgrep", "-x", "project_b"), lambda p: p == "", 10)
     listed = {"workspaces": [{"id": WORK_ID, "name": "Work", "color": "#c2410c"}, {"id": SHOPPING_ID, "name": "Shopping", "color": "#7c3aed"}]}
@@ -930,7 +930,7 @@ def workspace_checks():
     go_to(ALPHA)
     until(titles, lambda t: t == ["Alpha"])
     sidebar = crop(desk.image(), win[0], win[1] + 40, 220, 200)
-    check("with three workspaces, the first tab shows Main's blue dot", near(sidebar, MAIN_DOT, 24).sum() > 4)
+    check("with three workspaces, the first tab shows Main's dot", near(sidebar, MAIN_DOT, 24).sum() > 4)
     names = new_tab_in("Work")
     shot("p4-dots-side")
     check("Tab, New Tab in Workspace lists Main and the profile's workspaces", names == ["Main", "Work", "Shopping"], str(names))
