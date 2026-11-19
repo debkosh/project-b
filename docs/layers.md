@@ -30,10 +30,10 @@ Each step leaves Mac and Android working and the release run green.
 
 | | Step | State |
 |---|---|---|
-| 1 | The thin wrapper, `PBInit`, Mac then Android | built and tested, not merged |
-| 2 | `core/system`, the OS managers' door, with its fake | built and tested on the Mac; APK built |
+| 1 | The thin wrapper, `PBInit`, Mac then Android | tested: Mac suites, Android 16 and 17; to release |
+| 2 | `core/system`, the OS managers' door, with its fake | tested: Mac suites, Android 16; to release |
 | 2b | Save as and the folder chooser through Chromium's own file dialog | |
-| 3 | Notifications through Go | |
+| 3 | Notifications through Go | built, branch `layers-notify` |
 | 4 | The Mac's open-link events into `core/system`, or a fourth exception | |
 | 5 | The shell embedded in the Go core | |
 | 6 | The three-piece build, with the build-flow restructure below | |
