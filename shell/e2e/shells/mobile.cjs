@@ -64,14 +64,14 @@ const H = 915;
     .map((el) => ({ what: el.getAttribute('aria-label') || el.textContent.trim().slice(0, 20) || el.tagName, r: el.getBoundingClientRect() }))
     .filter(({ r }) => r.width < 47.5 || r.height < 47.5)
     .map(({ what, r }) => `${what} ${Math.round(r.width)}x${Math.round(r.height)}`), controlSelector);
-  // Every button and switch has a name of its own: its words, aria-label, or aria-labelledby.
-  // Android reads none from a <label> around a switch, and then names it nothing.
+  // Every button and switch has a name of its own: a button its words or aria-label, a switch
+  // or checkbox its aria-label. Android reads none from a <label> around a switch, nor from
+  // aria-labelledby, and then names it nothing.
   const nameless = () => w.shell().evaluate(() => [...document.querySelectorAll('button, [role=switch], input[type=checkbox]')]
     .filter((el) => el.checkVisibility({ visibilityProperty: true }) && el.getBoundingClientRect().width > 0)
     .filter((el) => {
-      const by = (el.getAttribute('aria-labelledby') || '').split(/\s+/).map((id) => document.getElementById(id)?.textContent || '').join('');
       const own = el.tagName === 'BUTTON' ? el.textContent : '';
-      return !`${el.getAttribute('aria-label') || ''}${by}${own}`.trim();
+      return !`${el.getAttribute('aria-label') || ''}${own}`.trim();
     })
     .map((el) => el.outerHTML.slice(0, 80)));
   const shots = async (what) => {
