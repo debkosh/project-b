@@ -12,8 +12,11 @@ browser. His originals, which the runtime still runs unchanged, are in
 
 Finds the videos on a page so you can save one. It runs on every https site and shows nothing
 until it finds a video. Then a small round button sits at the bottom right (on a phone, a
-little higher, clear of a site's own bottom bar). The button opens "Videos on this page": a
-bottom sheet on a phone, a small panel above the button on the desktop.
+little higher, clear of a site's own bottom bar). The button opens "Videos on this page",
+headed with how many it found ("2 videos on this page"): a small panel above the button on
+the desktop; on a phone, a sheet along the bottom that leaves the page undimmed, as a panel
+used beside the page does (docs/design-system.md, On a phone), with a 56px row per video, its
+one muted line the host or what the row says, and its Download a round icon button.
 
 - **What it finds**, as the owner's original does: the page's `<video>` and `<source>`
   elements (first the players it knows, such as Fluid Player), links and media attributes

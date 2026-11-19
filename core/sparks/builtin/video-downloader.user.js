@@ -344,7 +344,6 @@
       --on-accent: #ffffff;
       --danger: #d93025;
       --shadow: 0 8px 28px rgba(16, 24, 40, 0.14), 0 1px 3px rgba(16, 24, 40, 0.08);
-      --scrim: rgba(0, 0, 0, .32);
       font: 14px/1.4 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
       color: var(--text);
       text-align: left;
@@ -359,7 +358,6 @@
         --accent: #e7eaf2;
         --on-accent: #1f1f1f;
         --danger: #f28b82;
-        --scrim: rgba(0, 0, 0, .56);
       }
     }
     *, *::before, *::after { box-sizing: border-box; }
@@ -397,8 +395,6 @@
       cursor: pointer;
     }
 
-    .scrim { display: none; position: fixed; inset: 0; background: var(--scrim); }
-
     .panel {
       position: fixed;
       right: 20px;
@@ -435,7 +431,13 @@
       flex: none;
       cursor: pointer;
     }
-    .icon-btn:hover, .icon-btn[aria-expanded="true"] { background: var(--hover); color: var(--text); }
+    .icon-btn[aria-expanded="true"] { background: var(--hover); color: var(--text); }
+    /* Only where a pointer hovers: a finger's tap leaves :hover on what it touched. */
+    @media (hover: hover) {
+      .icon-btn:hover { background: var(--hover); color: var(--text); }
+      .btn.quiet:hover { background: var(--hover); }
+      .menu button:hover { background: var(--hover); }
+    }
 
     .list { margin: 0; padding: 0; list-style: none; overflow: auto; }
     .row { display: flex; align-items: center; gap: 6px; padding: 10px 6px 10px 16px; }
@@ -461,7 +463,6 @@
       cursor: pointer;
     }
     .btn.quiet { background: transparent; color: var(--text); border: 1px solid var(--line); }
-    .btn.quiet:hover { background: var(--hover); }
     .empty { padding: 16px; }
     .empty p { margin: 0 0 12px; color: var(--muted); }
 
@@ -489,11 +490,13 @@
       cursor: pointer;
     }
     .menu button svg { color: var(--muted); }
-    .menu button:hover, .menu button:focus-visible { background: var(--hover); outline: none; }
+    .menu button:focus-visible { background: var(--hover); outline: none; }
 
+    /* A phone (docs/design-system.md, On a phone): a sheet beside the page, which it leaves
+       undimmed; a one-line head; a 56px row per video with one muted line, its Download a
+       round icon button, and its other actions under its menu. */
     @media (pointer: coarse), (max-width: 599px) {
       .fab { right: 16px; bottom: calc(96px + env(safe-area-inset-bottom, 0px)); width: 48px; height: 48px; }
-      .scrim { display: block; }
       .panel {
         left: 0;
         right: 0;
@@ -506,9 +509,24 @@
         animation: vd-sheet-in 180ms ease-out;
       }
       .head { padding: 4px 4px 4px 16px; }
-      .icon-btn { width: 44px; height: 44px; }
+      .icon-btn { width: 48px; height: 48px; border-radius: 50%; }
+      .icon-btn svg, .row .btn svg { width: 20px; height: 20px; }
       .btn { height: 44px; padding: 0 16px; }
-      .row { padding: 8px 4px 8px 16px; }
+      .row { min-height: 56px; padding: 4px 4px 4px 16px; gap: 0; }
+      .row + .row { border-top: 0; }
+      .text:has(.note) .sub { display: none; }
+      .row .btn {
+        width: 48px;
+        height: 48px;
+        padding: 0;
+        border: 0;
+        border-radius: 50%;
+        background: transparent;
+        color: var(--text);
+        justify-content: center;
+      }
+      .row .btn:active, .icon-btn:active { background: var(--hover); }
+      .row .btn .btn-text { display: none; }
       .menu button { height: 44px; padding: 0 12px; }
     }
     @media (prefers-reduced-motion: reduce) {
@@ -528,7 +546,6 @@
     <div class="ui">
       <button class="fab" type="button" aria-label="Videos on this page" title="Videos on this page"
         aria-haspopup="dialog" aria-expanded="false" hidden>${icon('download')}</button>
-      <div class="scrim" hidden></div>
       <div class="panel" role="dialog" aria-label="Videos on this page" tabindex="-1" hidden>
         <div class="head">
           <h2 class="title">Videos on this page</h2>
@@ -543,7 +560,7 @@
   `;
 
   const fab = shadow.querySelector('.fab');
-  const scrim = shadow.querySelector('.scrim');
+  const title = shadow.querySelector('.title');
   const panel = shadow.querySelector('.panel');
   const list = shadow.querySelector('.list');
   const menu = shadow.querySelector('.menu');
@@ -593,7 +610,8 @@
       link.rel = 'noopener';
       link.setAttribute('aria-label', `Download ${row.label}`);
       link.innerHTML = icon('download');
-      link.append('Download');
+      // A phone shows the icon alone, its name the link's label.
+      link.append(el('span', 'btn-text', 'Download'));
       link.addEventListener('click', () => {
         if (elsewhere) return;
         state.downloading.add(row.url);
@@ -653,6 +671,7 @@
     fab.hidden = !state.sources.length && !state.open;
 
     const rows = describe(state.sources);
+    title.textContent = rows.length === 1 ? '1 video on this page' : rows.length ? `${rows.length} videos on this page` : 'Videos on this page';
     const key = JSON.stringify(rows.map((row) => [row.url, row.label]));
     if (key === state.shownKey) return;
     state.shownKey = key;
@@ -671,7 +690,6 @@
   function openPanel() {
     state.open = true;
     panel.hidden = false;
-    scrim.hidden = false;
     fab.setAttribute('aria-expanded', 'true');
     firstControl().focus();
   }
@@ -681,7 +699,6 @@
     closeMenu(false);
     state.open = false;
     panel.hidden = true;
-    scrim.hidden = true;
     fab.setAttribute('aria-expanded', 'false');
     fab.hidden = !state.sources.length;
     if (returnFocus && !fab.hidden) fab.focus();
@@ -740,7 +757,6 @@
     if (state.open) closePanel(true);
     else openPanel();
   });
-  scrim.addEventListener('click', () => closePanel(true));
   shadow.querySelector('.panel-close').addEventListener('click', () => closePanel(true));
   panelMore.addEventListener('click', () => {
     toggleMenu(panelMore, [
