@@ -4,7 +4,7 @@ Every action a person can take, where the app offers it, and the tests that do i
 `tools/action_coverage.py` from the code; `tools/test.sh mock` fails while an action has no
 test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 
-**197 actions and messages, 144 with a test, 53 exempt with a reason, 0 with none; 20 of Go's actions done by no test of the real app.**
+**202 actions and messages, 149 with a test, 53 exempt with a reason, 0 with none; 20 of Go's actions done by no test of the real app.**
 
 ## Go's actions: the menu bar, keys and the shells' own menus
 
@@ -16,7 +16,7 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `app.hide` Hide Project B | menu bar, keys (chrome, firefox, glide, project-b) | **no** | `commands_test.go` |
 | `app.hideOthers` Hide Others | menu bar, keys (chrome, firefox, glide, project-b) | **no** | exempt: macOS's own: AppKit hides the other apps |
 | `app.quit` Quit Project B | menu bar | **no** | `menu_test.go`, `commands_test.go`, `shellmenu_test.go`, `settings.cjs` and 1 more |
-| `app.settings` Settings… | menu bar, fox, glide, minimal, mobile, standard, terminal, mobile-native | yes | `app_test.go`, `menu_test.go`, `welcome_test.go`, `commands_test.go` and 11 more |
+| `app.settings` Settings… | menu bar, fox, glide, minimal, mobile, standard, terminal, mobile-native | yes | `app_test.go`, `menu_test.go`, `welcome_test.go`, `commands_test.go` and 12 more |
 | `app.showAll` Show All | menu bar, keys (chrome, firefox, glide, project-b) | **no** | exempt: macOS's own: AppKit shows the hidden apps |
 | `bookmarks.show` Bookmark Manager | menu bar, keys (chrome, firefox, glide, project-b), mobile, standard, page:welcome | yes | `pages_test.go`, `pages.cjs`, `mobile.cjs`, `drive_first_app.py` |
 | `bookmarks.toggle` Bookmark This Page… | menu bar, keys (chrome, firefox, glide, project-b) | **no** | `pages_test.go`, `pages.cjs` |
@@ -161,7 +161,7 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `moveWorkspace` | page:settings | **no** | `app_test.go` |
 | `navigate` | fox, glide, minimal, mobile, mobile-native, standard, terminal | yes | `app_test.go`, `contextmenu_test.go`, `dialogs_test.go`, `files_test.go` and 11 more |
 | `newFolder` | page:bookmarks | **no** | `pages_test.go`, `mobile.cjs` |
-| `newTab` | fox, glide, minimal, mobile, mobile-native, standard, terminal | yes | `app_test.go`, `fullscreen_test.go`, `pins_test.go`, `session_test.go` and 15 more |
+| `newTab` | fox, glide, minimal, mobile, mobile-native, standard, terminal | yes | `app_test.go`, `fullscreen_test.go`, `pins_test.go`, `session_test.go` and 16 more |
 | `open` | page:bookmarks, page:history, page:picker | **no** | `events_test.go`, `pages_test.go`, `picker_test.go` |
 | `openAccess` | ui | **no** | `imports_test.go` |
 | `openInWorkspace` | page:settings | **no** | `app_test.go` |
@@ -207,6 +207,11 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `sparkSource` | page:settings | **no** | **TODO: the Sparks settings on the mock: a spark's source shown** |
 | `sparkUpdate` | page:settings | **no** | **TODO: the Sparks settings on the mock: a spark updated** |
 | `suggest` | fox, minimal, mobile, mobile-native, terminal | **no** | `app_test.go`, `suggest_test.go` |
+| `syncCancel` | page:settings | **no** | `sync.cjs` |
+| `syncDisconnect` | page:settings | **no** | `sync.cjs` |
+| `syncNow` | page:settings | **no** | `sync.cjs` |
+| `syncPropose` | page:settings | **no** | `sync_settings_test.go` |
+| `syncStartFresh` | page:settings | **no** | `sync.cjs` |
 | `timeline` | mobile-native | **no** | `timeline_test.go` |
 | `ungroup` | glide, mobile, mobile-native | **no** | `terminal.cjs` |
 | `useKeymap` | page:welcome | **no** | `welcome_test.go` |

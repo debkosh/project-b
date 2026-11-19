@@ -76,6 +76,9 @@ const taken = [];
   const serverRow = () => card().locator('.row').first();
   const focused = (label) => field(label).evaluate((el) => document.activeElement === el);
   const shown = (locator) => until(() => locator.isVisible());
+  // Whether the page sends Go this message next, as a press should: the mock engine's
+  // chrome.send posts each one to /settings/send.
+  const sends = (msg) => page.waitForRequest((r) => r.url().includes('/settings/send') && JSON.parse(r.postData() || '{}').t === msg.t, { timeout: 5000 }).then(() => true, () => false);
 
   // Sync's card, as a person goes to it: Your data's group, or the section that holds it.
   const showSync = async () => {
@@ -215,7 +218,9 @@ const taken = [];
 
   // Sync now asks the server again.
   let n = await requests();
+  let told = sends({ t: 'syncNow' });
   await button('Sync now', card()).click();
+  check('Sync now sends syncNow', await told);
   check('Sync now syncs', await until(async () => (await requests()) > n));
 
   // A run that takes a while: after a second it says so, with Cancel and Retry.
@@ -224,7 +229,9 @@ const taken = [];
   check('a run says Syncing… only after about a second', (await serverRow().innerText()).includes('Last synced') && await until(async () => (await serverRow().innerText()).includes('Syncing…'), 3000));
   check('with Cancel and Retry', (await button('Cancel', card()).isVisible()) && (await button('Retry', card()).isVisible()));
   await shot(10, 'syncing');
+  told = sends({ t: 'syncCancel' });
   await button('Cancel', card()).click();
+  check('Cancel sends syncCancel', await told);
   check('Cancel stops it, and the row is as it was', await until(async () => (await serverRow().innerText()).includes('Last synced') && !(await serverRow().innerText()).includes("Couldn't")));
   await server({ slow: '0' });
 
@@ -258,7 +265,9 @@ const taken = [];
   check('Turn off… asks, with a plain primary Turn off', await shown(dialog()) && (await dialog().getAttribute('aria-label')) === 'Turn off sync on this device?' &&
     (await button('Turn off').getAttribute('class')).includes('primary') && !(await button('Turn off').getAttribute('class')).includes('danger'));
   await shot(14, 'turn-off');
+  told = sends({ t: 'syncDisconnect' });
   await button('Turn off').click();
+  check('Turn off sends syncDisconnect', await told);
   check('Turn off turns it off', await shown(button('Set up…', card())));
 
   // A bucket in use: its passphrase, once; the old one is wrong now.
@@ -383,7 +392,9 @@ const taken = [];
   await button('Connect').click();
   await until(async () => (await dialog().getAttribute('aria-label')) === 'Enter your sync passphrase');
   await field('Passphrase').fill(changed);
+  told = sends({ t: 'syncStartFresh' });
   await button('Turn on sync').click();
+  check('Turn on sync sends syncStartFresh first, as the keys here don\'t open', await told);
   check('and syncs again with the passphrase, starting the profile\'s keys afresh', await until(async () => (await dialog().count()) === 0 && (await button('Sync now', card()).isVisible()), 10000));
 
   // A phone's buttons: drawn at 40px, each in a 48px target; its fields 48px.
