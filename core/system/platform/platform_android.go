@@ -24,6 +24,7 @@ import (
 	"unsafe"
 
 	"projectb/crash"
+	"projectb/system"
 )
 
 // calls is go_table.c's table of Java's calls, set before Go starts and never after.
@@ -57,6 +58,11 @@ func (s *System) NotificationsAllowed() bool {
 func (s *System) AskNotifications(answered func(bool)) {
 	s.notifications.Ask(answered, func() { C.call_ask_notifications(calls.Load()) })
 }
+
+// ShowNotification and RemoveNotification do nothing: a phone shows no page's notification
+// yet (docs/daily-driver.md).
+func (s *System) ShowNotification(system.Notification) {}
+func (s *System) RemoveNotification(string)            {}
 
 // SetDockColor does nothing: a phone has no Dock.
 func (s *System) SetDockColor(string) {}

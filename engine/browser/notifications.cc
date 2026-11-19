@@ -4,6 +4,7 @@
 #include <utility>
 
 #include "base/functional/callback_helpers.h"
+#include "base/no_destructor.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
 #include "content/public/browser/notification_event_dispatcher.h"
@@ -14,13 +15,27 @@
 
 namespace project_b {
 
+namespace {
+
+// Every profile's, to find the one that showed the notification a click is for.
+std::set<Notifications*>& Live() {
+  static base::NoDestructor<std::set<Notifications*>> live;
+  return *live;
+}
+
+}  // namespace
+
 // Content keeps a service worker's notifications in its database by these ids, across
 // runs: starting from the time keeps a new run's clear of an earlier one's.
 Notifications::Notifications(content::BrowserContext* context)
     : context_(context),
-      next_persistent_id_(base::Time::Now().InMillisecondsSinceUnixEpoch()) {}
+      next_persistent_id_(base::Time::Now().InMillisecondsSinceUnixEpoch()) {
+  Live().insert(this);
+}
 
-Notifications::~Notifications() = default;
+Notifications::~Notifications() {
+  Live().erase(this);
+}
 
 void Notifications::Show(const std::string& id,
                          const GURL& origin,
@@ -41,32 +56,31 @@ void Notifications::Show(const std::string& id,
     return;
   }
   shown_[id] = {origin, persistent};
-  std::string host = url::Origin::Create(origin).host();
-  PostSystemNotification(this, id, title, host, body);
   if (!persistent) {
     content::NotificationEventDispatcher::GetInstance()
         ->DispatchNonPersistentShowEvent(id);
   }
 }
 
-void Notifications::Clicked(const std::string& id) {
-  auto it = shown_.find(id);
-  if (it == shown_.end()) {
+// static
+void Notifications::Click(const std::string& id) {
+  for (Notifications* owner : Live()) {
+    auto it = owner->shown_.find(id);
+    if (it == owner->shown_.end()) {
+      continue;
+    }
+    Shown shown = it->second;
+    owner->shown_.erase(it);
+    auto* dispatcher = content::NotificationEventDispatcher::GetInstance();
+    if (shown.persistent) {
+      dispatcher->DispatchNotificationClickEvent(owner->context_, id, shown.origin,
+                                                 std::nullopt, std::nullopt,
+                                                 base::DoNothing());
+    } else {
+      dispatcher->DispatchNonPersistentClickEvent(id, base::DoNothing());
+    }
     return;
   }
-  Shown shown = it->second;
-  shown_.erase(it);
-  auto* dispatcher = content::NotificationEventDispatcher::GetInstance();
-  if (shown.persistent) {
-    dispatcher->DispatchNotificationClickEvent(context_, id, shown.origin,
-                                               std::nullopt, std::nullopt,
-                                               base::DoNothing());
-  } else {
-    dispatcher->DispatchNonPersistentClickEvent(id, base::DoNothing());
-  }
-  hooks::Args args;
-  args.Str(id);
-  hooks::Fire(PB_EVENT_NOTIFICATION_CLICKED, args);
 }
 
 void Notifications::DisplayNotification(
@@ -89,7 +103,9 @@ void Notifications::DisplayPersistentNotification(
 
 void Notifications::CloseNotification(const std::string& notification_id) {
   if (shown_.erase(notification_id)) {
-    RemoveSystemNotification(notification_id);
+    hooks::Args args;
+    args.Str(notification_id);
+    hooks::Fire(PB_EVENT_NOTIFICATION_CLOSED, args);
   }
 }
 

@@ -2,7 +2,7 @@ package platform
 
 /*
 #cgo CFLAGS: -fobjc-arc
-#cgo LDFLAGS: -framework AppKit
+#cgo LDFLAGS: -framework AppKit -framework UserNotifications
 #include <stdlib.h>
 #include "platform_darwin.h"
 */
@@ -18,6 +18,7 @@ import (
 	"unsafe"
 
 	"projectb/crash"
+	"projectb/system"
 	"projectb/timeline"
 	"projectb/tones"
 )
@@ -57,6 +58,19 @@ func (s *System) SetDockColor(color string) {
 		return
 	}
 	C.pb_system_set_dock_color(C.int32_t(rgb))
+}
+
+func (s *System) ShowNotification(n system.Notification) {
+	id, title, subtitle, body := C.CString(n.ID), C.CString(n.Title), C.CString(n.Subtitle), C.CString(n.Body)
+	defer C.free(unsafe.Pointer(id))
+	defer C.free(unsafe.Pointer(title))
+	defer C.free(unsafe.Pointer(subtitle))
+	defer C.free(unsafe.Pointer(body))
+	C.pb_system_show_notification(id, title, subtitle, body)
+}
+
+func (s *System) RemoveNotification(id string) {
+	withPath(id, func(c *C.char) { C.pb_system_remove_notification(c) })
 }
 
 // fullDiskAccess is System Settings' Privacy & Security, at Full Disk Access.

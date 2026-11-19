@@ -15,10 +15,10 @@ class BrowserContext;
 
 namespace project_b {
 
-// The notifications a profile's pages show (docs/daily-driver.md): the adapter between
-// content's and the system's. Each one goes to Go first, which says whether it shows; a
-// shown one is the system's (macOS's notification centre), and a click on it fires the
-// page's click event and tells Go.
+// The notifications a profile's pages show (docs/daily-driver.md): content's side of them.
+// Each one goes to Go first, which says whether it shows and puts it on the system itself
+// (core/system); a click on it there reaches Go, which fires the page's click event through
+// Click. One the page closes, Go hears of, to take it off the system.
 class Notifications : public content::PlatformNotificationService {
  public:
   explicit Notifications(content::BrowserContext* context);
@@ -26,8 +26,9 @@ class Notifications : public content::PlatformNotificationService {
   Notifications& operator=(const Notifications&) = delete;
   ~Notifications() override;
 
-  // A click on a notification the system shows, by its id.
-  void Clicked(const std::string& id);
+  // A click on a notification a page showed, by its id, in whichever profile showed it:
+  // fires the page's click event. One clicked, closed or gone is ignored.
+  static void Click(const std::string& id);
 
   void DisplayNotification(
       const std::string& notification_id,
@@ -61,7 +62,7 @@ class Notifications : public content::PlatformNotificationService {
     bool persistent;
   };
 
-  // Asks Go, then posts it to the system.
+  // Asks Go, which shows it on the system, then fires the page's show event.
   void Show(const std::string& id,
             const GURL& origin,
             const GURL& page,
@@ -72,15 +73,6 @@ class Notifications : public content::PlatformNotificationService {
   std::map<std::string, Shown> shown_;
   int64_t next_persistent_id_;
 };
-
-// The system's side, per platform: notifications_mac.mm. Post shows one, Remove takes one
-// away. A click comes back through Notifications::Clicked on the main thread.
-void PostSystemNotification(Notifications* owner,
-                            const std::string& id,
-                            const std::string& title,
-                            const std::string& subtitle,
-                            const std::string& body);
-void RemoveSystemNotification(const std::string& id);
 
 }  // namespace project_b
 

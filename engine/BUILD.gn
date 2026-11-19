@@ -55,7 +55,8 @@ source_set("go_core_lib") {
   public_deps = [ ":go_core" ]
   # What the archive's cgo needs, which a c-archive leaves to the binary that links it:
   # browserdata reads other browsers' databases with macOS's own SQLite, and core/system
-  # asks AppKit for the Dock, Finder and the default browser.
+  # asks AppKit for the Dock, Finder and the default browser, and the notification centre
+  # for a page's notifications.
   libs = [
     "$target_gen_dir/libcore.a",
     "sqlite3",
@@ -64,6 +65,7 @@ source_set("go_core_lib") {
     "AppKit.framework",
     "CoreFoundation.framework",
     "Security.framework",
+    "UserNotifications.framework",
   ]
 }
 
@@ -226,7 +228,6 @@ source_set("browser") {
     "browser/choose_path_mac.mm",
     "browser/notifications.cc",
     "browser/notifications.h",
-    "browser/notifications_mac.mm",
     "browser/permissions.cc",
     "browser/printing.cc",
     "browser/printing.h",
@@ -328,7 +329,6 @@ source_set("browser") {
     "Cocoa.framework",
     "PDFKit.framework",
     "QuartzCore.framework",
-    "UserNotifications.framework",
   ]
 
   # The extension runtime: Chromium's //extensions, and our embedder for it.

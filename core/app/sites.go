@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"net/url"
 	"slices"
 
 	"projectb/engine"
@@ -10,6 +11,7 @@ import (
 	"projectb/shell"
 	"projectb/sites"
 	"projectb/sparks"
+	"projectb/system"
 	"projectb/tabs"
 )
 
@@ -175,7 +177,7 @@ func (a *App) PermissionStatusOf(tab engine.TabID, origin, kind string) engine.P
 }
 
 // NotificationShown shows a page's notification on the system when its site may notify,
-// and keeps the page it came from, for its click.
+// under the site's host, and keeps the page it came from, for its click.
 func (a *App) NotificationShown(n engine.Notification) bool {
 	if a.Sites.Status(0, n.Origin, sites.Notifications) != engine.PermissionGranted {
 		return false
@@ -184,16 +186,35 @@ func (a *App) NotificationShown(n engine.Notification) bool {
 		a.notified = map[string]string{}
 	}
 	a.notified[n.ID] = n.Page
+	host := n.Origin
+	if u, err := url.Parse(n.Origin); err == nil && u.Hostname() != "" {
+		host = u.Hostname()
+	}
+	a.System.ShowNotification(system.Notification{ID: n.ID, Title: n.Title, Subtitle: host, Body: n.Body})
 	return true
 }
 
-// NotificationClicked brings the tab that showed the notification to the front: the one
-// at its page's address, or else the first on its site. A service worker's has no page; its
-// own click handler opens one, as the web does it.
-func (a *App) NotificationClicked(id string) {
-	page, ok := a.notified[id]
+// NotificationClosed takes a notification its page closed off the system.
+func (a *App) NotificationClosed(id string) {
+	if _, ok := a.notified[id]; !ok {
+		return
+	}
 	delete(a.notified, id)
-	if !ok || page == "" {
+	a.System.RemoveNotification(id)
+}
+
+// notificationClicked is a click on a notification the system showed: e fires the page's
+// click event, then the tab that showed it comes to the front, the one at its page's address,
+// or else the first on its site. A service worker's has no page; its own click handler opens
+// one, as the web does it.
+func (a *App) notificationClicked(e engine.Engine, id string) {
+	page, ok := a.notified[id]
+	if !ok {
+		return
+	}
+	e.ClickNotification(id)
+	delete(a.notified, id)
+	if page == "" {
 		return
 	}
 	var found engine.TabID

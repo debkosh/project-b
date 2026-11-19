@@ -43,9 +43,24 @@ type System interface {
 	// is each app's own, and it does nothing.
 	OpenFullDiskAccess()
 
+	// ShowNotification shows a page's notification on the system, once Go has let it. A
+	// click on it comes back through OnNotificationClicked; RemoveNotification takes it away,
+	// as when its page closes it. A phone shows no page's notification yet, and does nothing.
+	ShowNotification(n Notification)
+	RemoveNotification(id string)
+	// OnNotificationClicked is how a click on a notification ShowNotification showed reaches
+	// Go: clicked runs on the main thread with its id. Set once, as the app starts.
+	OnNotificationClicked(clicked func(id string))
+
 	// Report is what a crash report says of this device, for the app at version: the
 	// release, the OS and the device, and on Android the app's own log.
 	Report(version string) []crash.Section
+}
+
+// Notification is a page's notification as the system shows it: its title, the site's host
+// under it, and its body. ID is the engine's, for its click.
+type Notification struct {
+	ID, Title, Subtitle, Body string
 }
 
 // Question is one question the OS asks the person, which several callers may wait on at

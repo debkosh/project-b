@@ -297,6 +297,9 @@ type Engine interface {
 	// ExitPageFullScreen takes a tab's page out of full screen, as its own
 	// exitFullscreen() would; PageFullScreen follows.
 	ExitPageFullScreen(tab TabID)
+	// ClickNotification fires the page's click event for a notification it showed, as the
+	// person's click on it on the system does, which reaches the app first (core/system).
+	ClickNotification(id string)
 	// AnswerPermission answers a page's PermissionRequested, one status for each of its
 	// kinds, in their order.
 	AnswerPermission(id PermissionID, statuses []PermissionStatus)
@@ -563,11 +566,11 @@ type Listener interface {
 	// window.print() asks. True prints it, as Print does.
 	PrintRequested(tab TabID) bool
 
-	// NotificationShown is a page showing a notification. True shows it on the system.
+	// NotificationShown is a page showing a notification. True lets it: the engine fires the
+	// page's show event, and the app puts it on the system itself (core/system).
 	NotificationShown(n Notification) bool
-	// NotificationClicked says the person clicked a notification the system showed; the
-	// page has had its click.
-	NotificationClicked(id string)
+	// NotificationClosed says the page, or its service worker, closed a notification it showed.
+	NotificationClosed(id string)
 }
 
 // Connection is how a tab's page reached it. Reason says why an insecure one is:

@@ -39,12 +39,13 @@ const (
 	PermissionRequested Event = 40
 	PermissionStatusOf  Event = 41
 	NotificationShown   Event = 42
-	NotificationClicked Event = 43
-	ConnectionChanged   Event = 44
-	CertificateError    Event = 45
-	PrintRequested      Event = 46
-	SparksFor           Event = 47
-	AdBlocked           Event = 48
+	// 43 was a notification's click, which reaches Go from the system now (core/system).
+	ConnectionChanged  Event = 44
+	CertificateError   Event = 45
+	PrintRequested     Event = 46
+	SparksFor          Event = 47
+	AdBlocked          Event = 48
+	NotificationClosed Event = 49
 )
 
 func init() {
@@ -58,7 +59,7 @@ func init() {
 		DownloadUpdated: "engine.DownloadUpdated", FileChooser: "engine.FileChooser", FilesChosen: "engine.FilesChosen",
 		DialogOpened: "engine.DialogOpened", DialogClosed: "engine.DialogClosed", PageMessage: "engine.PageMessage",
 		PermissionRequested: "engine.PermissionRequested", PermissionStatusOf: "engine.PermissionStatusOf",
-		NotificationShown: "engine.NotificationShown", NotificationClicked: "engine.NotificationClicked",
+		NotificationShown: "engine.NotificationShown", NotificationClosed: "engine.NotificationClosed",
 		ConnectionChanged: "engine.ConnectionChanged", CertificateError: "engine.CertificateError",
 		SparksFor: "engine.SparksFor", AdBlocked: "engine.AdBlocked", PrintRequested: "engine.PrintRequested",
 		SiteData: "engine.SiteDataListed", PasskeyStep: "engine.PasskeyStep",
@@ -160,8 +161,8 @@ func (e *Events) adapter(id Event, l engine.Listener, r *reader) (Value, bool) {
 	case NotificationShown:
 		n := engine.Notification{ID: r.str(), Origin: r.str(), Page: r.str(), Title: r.str(), Body: r.str()}
 		return yes(l.NotificationShown(n)), true
-	case NotificationClicked:
-		l.NotificationClicked(r.str())
+	case NotificationClosed:
+		l.NotificationClosed(r.str())
 	case ConnectionChanged:
 		l.ConnectionChanged(engine.TabID(r.int()), engine.Connection{State: engine.ConnectionState(r.int()), Reason: r.str()})
 	case CertificateError:

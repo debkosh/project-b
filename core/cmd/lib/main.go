@@ -46,6 +46,7 @@ static inline void call_stop_finding(const PBEngineCalls* c, int64_t tab) { c->s
 static inline void call_print(const PBEngineCalls* c, int64_t tab) { c->print(tab); }
 static inline void call_capture_thumbnail(const PBEngineCalls* c, int64_t tab, int32_t max_width) { c->capture_thumbnail(tab, max_width); }
 static inline void call_exit_page_full_screen(const PBEngineCalls* c, int64_t tab) { c->exit_page_full_screen(tab); }
+static inline void call_click_notification(const PBEngineCalls* c, const char* id) { c->click_notification(id); }
 static inline void call_answer_sign_in(const PBEngineCalls* c, int64_t dialog, int ok, const char* username, const char* password) { c->answer_sign_in(dialog, ok, username, password); }
 static inline void call_answer_passkey(const PBEngineCalls* c, int64_t dialog, const char* action, const char* text) { c->answer_passkey(dialog, action, text); }
 static inline void call_answer_dialog(const PBEngineCalls* c, int64_t dialog, int ok, const char* text) { c->answer_dialog(dialog, ok, text); }
@@ -277,6 +278,12 @@ func (e *nativeEngine) ThumbnailURL(tab engine.TabID, revision int64) string {
 
 func (e *nativeEngine) ExitPageFullScreen(tab engine.TabID) {
 	C.call_exit_page_full_screen(e.calls, C.int64_t(tab))
+}
+
+func (e *nativeEngine) ClickNotification(id string) {
+	cs := C.CString(id)
+	defer C.free(unsafe.Pointer(cs))
+	C.call_click_notification(e.calls, cs)
 }
 
 func (e *nativeEngine) AnswerSignIn(id engine.DialogID, ok bool, username, password string) {

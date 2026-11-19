@@ -48,6 +48,7 @@
 #include "project_b/engine/buildflags/buildflags.h"
 #if !BUILDFLAG(IS_ANDROID)
 #include "project_b/engine/browser/mac_app.h"
+#include "project_b/engine/browser/notifications.h"
 #include "project_b/engine/browser/passkeys.h"
 #endif
 #include "project_b/engine/browser/shell_page.h"
@@ -347,6 +348,13 @@ void CallExitPageFullScreen(int64_t tab) {
   if (PageTab* page = g_engine->tab(tab)) {
     page->contents()->ExitFullscreen(/*will_cause_resize=*/true);
   }
+}
+
+void CallClickNotification(const char* id) {
+  CheckMainThread();
+#if !BUILDFLAG(IS_ANDROID)  // A phone shows no page's notification yet.
+  Notifications::Click(id);
+#endif
 }
 
 void CallAnswerPermission(uint32_t request, const int32_t* statuses, size_t count) {
@@ -698,6 +706,7 @@ const PBEngineCalls* Engine::Calls() {
       .print = CallPrint,
       .capture_thumbnail = CallCaptureThumbnail,
       .exit_page_full_screen = CallExitPageFullScreen,
+      .click_notification = CallClickNotification,
       .answer_permission = CallAnswerPermission,
       .create_window = CallCreateWindow,
       .set_window_page = CallSetWindowPage,

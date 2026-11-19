@@ -104,8 +104,9 @@ typedef enum PBEvent {
                                         // PBPermissionStatus
   PB_EVENT_NOTIFICATION_SHOW = 42,      // s: notification, s: origin, s: the page showing
                                         // it or "" for a service worker, s: title, s:
-                                        // body; answers i: 1 to show it on the system
-  PB_EVENT_NOTIFICATION_CLICKED = 43,   // s: notification; the page has its click event
+                                        // body; answers i: 1 to let it, which fires the
+                                        // page's show event; Go puts it on the system
+  // 43 was a notification's click, which reaches Go from the system now (core/system).
   PB_EVENT_CONNECTION_CHANGED = 44,     // i: tab, i: PBConnection, s: why it is insecure:
                                         // "not-encrypted", "certificate" or
                                         // "mixed-content", "" when it isn't
@@ -123,6 +124,8 @@ typedef enum PBEvent {
                                         // about to show, each in a world of its own
   PB_EVENT_AD_BLOCKED = 48,             // i: tab; the ad blocker kept one request of its
                                         // page from its host
+  PB_EVENT_NOTIFICATION_CLOSED = 49,    // s: notification; the page, or its service worker,
+                                        // closed one it showed
 
   // What a tab's page does, 60 to 79, as any engine can say it: Go's core/abi turns each
   // into the engine.Listener call of its name. A tab here is never a page of ours.
@@ -435,6 +438,10 @@ typedef struct PBEngineCalls {
   void (*capture_thumbnail)(int64_t tab, int32_t max_width);
   // Takes a tab's page out of full screen, as its own exitFullscreen() would.
   void (*exit_page_full_screen)(int64_t tab);
+  // Fires the page's click event for a notification it showed, as the person's click on it
+  // does, which reaches Go from the system first. One clicked, closed or gone is ignored, as
+  // is any on a phone, which shows none of a page's.
+  void (*click_notification)(const char* id);
   // Answers PB_EVENT_PERMISSION_REQUEST: a PBPermissionStatus for each of its kinds, in
   // their order. A request answered already, or whose page has gone, is ignored.
   void (*answer_permission)(uint32_t request, const int32_t* statuses, size_t count);

@@ -182,7 +182,7 @@ func (r *adapterRecorder) NotificationShown(n engine.Notification) bool {
 	r.note(fmt.Sprintf("notification %s %s %s %q %q", n.ID, n.Origin, n.Page, n.Title, n.Body))
 	return true
 }
-func (r *adapterRecorder) NotificationClicked(id string) { r.note("clicked " + id) }
+func (r *adapterRecorder) NotificationClosed(id string) { r.note("closed " + id) }
 func (r *adapterRecorder) CertificateError(tab engine.TabID, e engine.CertificateError) bool {
 	r.note(fmt.Sprintf("certificate %d %s %s main=%v passable=%v", tab, e.URL, e.Reason, e.MainFrame, e.Passable))
 	return false
@@ -281,8 +281,8 @@ func TestNotificationsReachTheListener(t *testing.T) {
 	if !ok || v.I != 1 {
 		t.Fatalf("show answered %v %v", ok, v)
 	}
-	h.Dispatch(NotificationClicked, pack("n1"))
-	want := []string{`notification n1 https://chat.test https://chat.test/room "Ana" "hello"`, "clicked n1"}
+	h.Dispatch(NotificationClosed, pack("n1"))
+	want := []string{`notification n1 https://chat.test https://chat.test/room "Ana" "hello"`, "closed n1"}
 	if !reflect.DeepEqual(r.got, want) {
 		t.Fatalf("got %v", r.got)
 	}
