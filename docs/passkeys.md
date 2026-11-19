@@ -373,6 +373,10 @@ back, and keeps no keys.
 
 ### The card
 
+Mocked 2026-11-19 and reviewed by ux that day (`pk-desktop.html`, `pk-phone.html` and
+`pk-shots/` in the research mocks), its five changes applied.
+
+
 The same card as a security key's, with new steps. Go words them; the shells draw them with
 what they have.
 
@@ -380,13 +384,21 @@ what they have.
 |---|---|---|---|---|
 | `save` | A make | Create a passkey | Save a passkey for **example.com** in Project B? | Save, the primary; Use a security key or phone (the Mac only), quiet on the left; Cancel |
 | `own` | A get, the site has passkeys here | Sign in to **example.com** | | One row per passkey, as the security key's accounts; Use a security key or phone (the Mac); Cancel |
-| `ownLocked` | A get, the site has passkeys here, the profile locked | Sign in to **example.com** | Your passkeys are locked. | Unlock…, the primary, which brings Profile Lock's Dialog and then `own`; Cancel |
-| `check` | While macOS or Android checks the person | Check it's you | Use Touch ID or your Mac's password. (On Android: Use your fingerprint, face or screen lock.) | Cancel |
+| `ownLocked` | The Mac: a get, the site has passkeys here, the profile locked | Sign in to **example.com** | Your passkeys are locked. | Unlock…, the primary, which brings Profile Lock's Dialog and then `own`; Use a security key or phone; Cancel |
 
 - A get for a site with no passkeys here goes as today, to the `key` step, on the Mac. On
   Android it is refused at once with `NotAllowedError`, as now.
 - The `own` step always shows its rows, one row too: the press on the row is the person
-  choosing, before the device check.
+  choosing, before the device check. The first row has the keyboard focus on open, so Enter
+  picks it.
+- A card with the quiet button on the left is wide enough (440px) for it, Cancel and the primary
+  on one row.
+- **While macOS or Android checks the person, the card steps aside**: their own sheet says what
+  is asked, and two Cancels at once would be one too many. Go keeps a `check` step, which the
+  shells draw as nothing; the system's Cancel or a failure ends the request as Cancel does.
+- **On a phone a locked profile goes straight to Profile Lock's unlock Dialog** ("To use your
+  passkey for **example.com**"), then `own`: the press on the site's button was the person
+  asking, and there is nothing else to offer beside it.
 - New errors: `no-screen-lock` "Set a screen lock first": "Project B checks it's you with your
   screen lock before using a passkey. Set one in your phone's Settings, then try again." (Close
   alone). `already-saved` "Already saved": "Project B already has a passkey for **example.com**
@@ -397,9 +409,11 @@ what they have.
 
 ### Seeing and deleting them
 
-To agree: a Passkeys row under Privacy in Settings, with how many there are, opens a list page
-with a back link, as Sites does: a row per passkey, the site's mark, the site and the account,
-when it was made, and Delete, which asks first. It becomes a section of Passwords when the
+To agree: a Passkeys row under Privacy in Settings, beside Profile Lock which guards it, with
+"4 passkeys" on its right, opens a list page with a back link, as Sites does: a row per passkey,
+the site's mark, the site and the account, when it was made, and Delete…, which asks first. On a
+phone Delete is a 40px trash button named for its passkey ("Delete passkey for github.com,
+asha-rao"), and the date is left out. It becomes a section of Passwords when the
 saved logins page is built. Deleting one deletes it on every synced device; the site keeps its
 public key until the person removes it there, which the Delete Dialog says.
 
