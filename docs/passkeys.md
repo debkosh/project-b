@@ -258,36 +258,171 @@ theme, never dimmed: 200px, centred, radius 4, its quiet zone of four modules in
 - The `webauthn` row of `core/webfeatures/registry.json` moves from `unknown` to what the Mac
   now gives, with its `why`.
 
-## Our own passkeys: where to start
+## Our own passkeys
 
-Agreed with the password manager's design (docs/profile-lock.md and the logins store), not
-built. It starts once that store is specced and its three calls' exact form is written.
+**A design to agree, not built.** Passkeys that Project B makes and keeps itself, in the
+password manager, on the Mac and on Android. The interface with the store, sync and Profile
+Lock was agreed with the passwords session on 2026-11-19. The decisions above (stored locally
+and synced, unlocked per use, no Apple team, our AAGUID) hold. One change from where it
+started: the device check is the OS's work, so with 0.3.0's layers ([layers.md](layers.md)) it is
+core's, through `core/system`, not the engine's; it is still in one place, right before each
+make and sign.
 
-- **Core holds the keys and signs.** A passkey is an item in the password manager's store,
-  sealed on disk by the profile key and synced sealed. What it holds: the site's RP ID, a
-  random credential ID, the site's user handle, user name and display name, a P-256 private
-  key (ES256) and when it was made. The signature count is always 0.
-- **Core gives the engine three calls:** list the passkeys for an RP ID (credential ID, user
-  handle, user name, display name, never the key); make one (returns the credential ID and the
-  public key); sign (credential ID and the bytes, returns a DER ES256 signature). Each can wait
-  on Profile Lock's unlock Dialog, can be cancelled by the engine, and answers success,
-  cancelled, locked (the person pressed Cancel in the Dialog) or an error.
-- **The engine is the authenticator.** It checks the origin and RP ID, builds the
-  authenticator data with our AAGUID (`81dc8063-9ac3-4b1f-ab00-9e8795c47c60`, no attestation),
-  and verifies the person, in one place, right before each make and sign. When the page's
-  request ends (timeout, Cancel, navigation), it cancels any call still waiting.
-- **The order of a sign-in:** list (which brings up the unlock Dialog if the profile is
-  locked), the person chooses an account, the device check, then sign.
-- **The device check, per use and never cached:** on the Mac, LocalAuthentication's
-  `LAPolicyDeviceOwnerAuthentication` (Touch ID, else the Mac password; no team needed). On
-  Android, BiometricPrompt: `setDeviceCredentialAllowed(true)` on Android 10 (our minimum,
-  API 29), the `BIOMETRIC_STRONG | DEVICE_CREDENTIAL` authenticators from 11. A phone with no
-  screen lock gets a step saying to set one, and the request fails. Try it on emu-29.
-- **Where it plugs in.** Mac: the request delegate's `CreatePlatformDiscoveries`, beside the
-  security key and phone; the card offers Save in Project B. Android: content sends WebAuthn
-  only to Java (`RenderFrameHostImpl::GetWebAuthenticationService`), so we register our own
-  Java `blink.mojom.Authenticator` that does the checks and calls the engine through JNI.
-- **About 2 weeks** for the engine and the card on both platforms, on top of the store.
-- **Later:** add our AAGUID to the passkey provider list sites read, so they show the name
-  Project B. Bringing passkeys in from other managers (FIDO's credential exchange format) is his
-  to decide.
+### What the person gets
+
+- A site's "create a passkey" saves it in Project B. On the Mac, a security key or a phone is
+  one press away on the same card. On Android ours is the only way, as the system's passkey
+  providers don't answer us ([Limitations](#limitations)).
+- Signing in shows the site's passkeys in Project B as account rows. Choosing one asks for
+  Touch ID or the Mac's password, or the phone's fingerprint, face or screen lock, and signs in.
+- Each use asks again. Nothing is remembered between uses.
+- With sync on, a passkey made on the Mac signs in on the phone, and back.
+
+### The item: core/passkeys
+
+A passkey is a row in the profile's store, table `passkeys`:
+
+| Column | On disk | |
+|---|---|---|
+| `id` | plain | The credential ID, 16 random bytes |
+| `rp_id` | plain | The site's RP ID, as the page asked |
+| `created` | plain | When it was made |
+| `user_handle` | sealed | The site's user handle |
+| `user_name`, `display_name` | sealed | As the site gave them |
+| `key` | sealed | The P-256 private key (ES256) |
+
+The site stays plain and who you are on it is sealed, as for a saved login
+([password-autofill.md](password-autofill.md)). Every seal binds the row's `id` and `rp_id`. The
+signature count is always 0, as for any synced passkey. Our AAGUID is put in by the engine;
+core keeps nothing for it.
+
+The calls, each with a context the caller cancels, and `asked` saying a person asked for it:
+
+| Call | Returns |
+|---|---|
+| `Count(rpID, allow)` | How many passkeys the site has, of the credential IDs `allow` names when it names any. Plain columns only: never asks for the key |
+| `List(ctx, asked, rpID, allow)` | `[{id, userName, displayName}]` |
+| `Make(ctx, asked, rpID, user, exclude)` | The credential ID and the public key (COSE). A passkey with the same site and user handle is replaced; one of the `exclude` IDs answers `ErrExcluded` |
+| `Sign(ctx, asked, id, data)` | A DER ES256 signature of `data` and the user handle |
+
+Each answers success, `ErrCancelled` (the context ended), `ErrLocked` (the person pressed
+Cancel on Profile Lock's unlock Dialog), `ErrNoScreenLock` (the device has nothing to check the
+person with) or an error. Make and Sign check the person themselves, right before they make or
+sign, through `system.System`; there is no way to sign without it.
+
+All use of the profile key is in one function of `core/passkeys`,
+`sealed(ctx, asked, job)`. Today it is the store's `Wait` with `keys.Seal` and `keys.Open`. When
+Profile Lock is built, the passwords session swaps its inside for the store's sealed job, which
+waits on the unlock Dialog for a person's call and answers "locked" for any other. Until then a
+profile is never locked, and `ErrLocked` is never answered.
+
+**Sync.** A Mapping with Collection `passkeys`, the credential ID its key (not derived), the
+private part every column in the clear, inside synckosh's sealing under the sync key. Read opens
+the row and Write seals it, which is fine as sync stops while a profile is locked. A passkey
+never changes once made, so Join takes the other when it is newer by `created`, and a delete
+beats an older version, as sync's merger does already. Name is the `rp_id`, for Sync details.
+
+### The device check: core/system
+
+A method on `system.System`, answering yes, no or no screen lock, async and cancellable as
+`system.Question` is, through `PBSystemAnswered`:
+
+- **Mac** (`platform_darwin.m`): LocalAuthentication's `LAPolicyDeviceOwnerAuthentication`,
+  Touch ID, else the Mac's password, in macOS's own sheet. Its reason line reads "use a passkey
+  for example.com" or "save a passkey for example.com" (macOS puts "Project B wants to" before
+  it). No team needed.
+- **Android** (`GoSystem.java`, with the activity it holds): BiometricPrompt titled "Use your
+  passkey" or "Save your passkey" with the site under it, `setDeviceCredentialAllowed(true)` on
+  Android 10 (our minimum), the `BIOMETRIC_STRONG | DEVICE_CREDENTIAL` authenticators from 11.
+  No screen lock answers `ErrNoScreenLock`.
+- **Mock** (`core/mocksystem`): answers as the test says.
+
+### The authenticator: the engine
+
+The engine is the request's side, as layers has it: it hands the request to Go and Go's answer
+back, and keeps no keys.
+
+- **Mac** (`engine/browser/passkeys.{h,cc}`): an authenticator of ours among the request's
+  discoveries, beside the security key and the phone. It builds the authenticator data
+  (`rpIdHash`, the flags UP and UV, BE and BS, count 0, and for a make the attested credential
+  data with our AAGUID `81dc8063-9ac3-4b1f-ab00-9e8795c47c60` and the COSE key), with attestation
+  `none`. Content checks the origin against the RP ID before any authenticator sees the request.
+  **The exact hook is the first thing to try**: content builds its platform discovery inside
+  `FidoDiscoveryFactory`, and adding ours may take a factory of our own; a spike settles it
+  before anything else.
+- **Android**: content hands WebAuthn only to Java
+  (`RenderFrameHostImpl::GetWebAuthenticationService`), so we register a Java
+  `blink.mojom.Authenticator` of our own. It checks the RP ID against the origin as Chromium's
+  `components/webauthn/android` does, builds the same authenticator data, and passes the request
+  to Go through the engine.
+- When the page's request ends (timeout, Cancel, navigation, the tab closing) the engine tells
+  Go, which cancels any call still waiting, the device check among them.
+- New events from 84, and Go's answers through `PBEngineCalls`, numbered in `core/abi`.
+
+### The card
+
+The same card as a security key's, with new steps. Go words them; the shells draw them with
+what they have.
+
+| Step | When | Title | Words | Controls |
+|---|---|---|---|---|
+| `save` | A make | Create a passkey | Save a passkey for **example.com** in Project B? | Save, the primary; Use a security key or phone (the Mac only), quiet on the left; Cancel |
+| `own` | A get, the site has passkeys here | Sign in to **example.com** | | One row per passkey, as the security key's accounts; Use a security key or phone (the Mac); Cancel |
+| `ownLocked` | A get, the site has passkeys here, the profile locked | Sign in to **example.com** | Your passkeys are locked. | Unlock…, the primary, which brings Profile Lock's Dialog and then `own`; Cancel |
+| `check` | While macOS or Android checks the person | Check it's you | Use Touch ID or your Mac's password. (On Android: Use your fingerprint, face or screen lock.) | Cancel |
+
+- A get for a site with no passkeys here goes as today, to the `key` step, on the Mac. On
+  Android it is refused at once with `NotAllowedError`, as now.
+- The `own` step always shows its rows, one row too: the press on the row is the person
+  choosing, before the device check.
+- New errors: `no-screen-lock` "Set a screen lock first": "Project B checks it's you with your
+  screen lock before using a passkey. Set one in your phone's Settings, then try again." (Close
+  alone). `already-saved` "Already saved": "Project B already has a passkey for **example.com**
+  for this account." (Close alone).
+- The person saying no to Touch ID or the screen lock ends the request with `NotAllowedError`,
+  as Cancel does.
+- A sign-in field's passkey list (conditional mediation) stays quiet, as today.
+
+### Seeing and deleting them
+
+To agree: a Passkeys row under Privacy in Settings, with how many there are, opens a list page
+with a back link, as Sites does: a row per passkey, the site's mark, the site and the account,
+when it was made, and Delete, which asks first. It becomes a section of Passwords when the
+saved logins page is built. Deleting one deletes it on every synced device; the site keeps its
+public key until the person removes it there, which the Delete Dialog says.
+
+### Tests
+
+- **Go**: make, list, sign and replace on a store; a signature that verifies against the public
+  key; the authenticator data against the WebAuthn spec's examples; every seal's bound values; a
+  cancel during the device check and during an unlock; `ErrNoScreenLock`; sync between two
+  profiles through synckosh's server in process, and a delete.
+- **The mock engine and the shells** (`shell/e2e/passkeys.cjs`): every new step's words and
+  buttons, each answer reaching Go, the keyboard's place at each step, on every desktop shell
+  and the Mobile shell. Every new action by name ([action-coverage.md](action-coverage.md)).
+- **The real app on the Mac**: webauthn.io's flow and a local test page, create then sign in,
+  in the VM, where deskrig types the Mac's password into macOS's sheet.
+- **Android**: the same on emu-29 and emu-37 with a PIN set, the driver typing the PIN into
+  BiometricPrompt; a phone with no screen lock gets `no-screen-lock`.
+- **Sync**: made on the Mac, signs in on the phone, by hand once.
+
+### The order of work
+
+Small pieces, each to release when tested:
+
+1. The spike: our authenticator on the Mac answering a make with a fixed key.
+2. `core/passkeys`: the table, the three calls, `sealed`, Go tests.
+3. Sync's Mapping.
+4. The device check in `core/system`, Mac and mock.
+5. The card's steps, the ABI and the mock engine, with the e2e checks.
+6. The Mac engine's authenticator and the real-app test.
+7. Android: the Java authenticator and BiometricPrompt, on the emulators.
+8. Settings' Passkeys page.
+
+About two weeks.
+
+### Later
+
+- Our AAGUID in the passkey provider list sites read, so they show the name Project B.
+- Passkeys in a sign-in field's list, with saved logins' fill.
+- Bringing passkeys in from other managers (FIDO's credential exchange format), his to decide.
