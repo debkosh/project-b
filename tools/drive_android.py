@@ -1038,6 +1038,30 @@ def downloads():
     check("a restart doesn't download it again", not any(s.startswith("/dl/") for s in served), str(served))
 
 
+def settings_back():
+    """The back key inside Settings goes back to where it was, not out of Settings
+    (docs/fragility.md, "The back key out of Settings"): from the Sites list to the page it
+    was opened from, and only from there out."""
+    launch()
+    menu("Settings")
+    see("settings", text="Theme")
+    # Down the page to Sites, which opens as a list of its own.
+    # A row that opens a list is named by its label.
+    for _ in range(12):
+        row = named("settings", "Sites")
+        if row is not None and 300 < middle(row)[1] < screen_size()[1] - 400:
+            break
+        adb("shell", "input", "swipe", "540", "1600", "540", "900", "300")
+        time.sleep(0.6)
+    tap(middle(see_named("settings", "Sites")))
+    check("Sites opens as a list of its own", until(lambda: find("settings", label=lambda l: (l or "").startswith("Back to"))) is not None)
+    key(4)
+    check("the back key goes back to the page it was opened from, still in Settings",
+          until(lambda: "settings" in screen_parts() and find("settings", label=lambda l: (l or "").startswith("Back to")) is None and named("settings", "Sites") is not None) is not None)
+    key(4)
+    check("and only then out of Settings", until(lambda: "settings" not in screen_parts()) is not None)
+
+
 def screen_size():
     """The phone's screen in device pixels: width, height."""
     w, h = re.search(r"(\d+)x(\d+)", adb("shell", "wm", "size").split("Physical size:", 1)[1]).groups()
@@ -1679,7 +1703,7 @@ def main():
     adb("shell", "pm", "clear", PACKAGE)
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
-    every = (browsing, mobile_shell, talkback_states, bookmark_star, back_key_chain, page_dialogs, downloads, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
+    every = (browsing, mobile_shell, settings_back, talkback_states, bookmark_star, back_key_chain, page_dialogs, downloads, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
              the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web, welcome_extras)
     for part in [p for p in every if not sys.argv[1:] or p.__name__ in sys.argv[1:]]:
         # tools/results.py splits a run's memory, CPU and checks by these lines.
