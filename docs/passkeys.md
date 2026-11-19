@@ -347,9 +347,11 @@ back, and keeps no keys.
   (`rpIdHash`, the flags UP and UV, BE and BS, count 0, and for a make the attested credential
   data with our AAGUID `81dc8063-9ac3-4b1f-ab00-9e8795c47c60` and the COSE key), with attestation
   `none`. Content checks the origin against the RP ID before any authenticator sees the request.
-  **The exact hook is the first thing to try**: content builds its platform discovery inside
-  `FidoDiscoveryFactory`, and adding ours may take a factory of our own; a spike settles it
-  before anything else.
+  The hook is content's own (Chromium 155): our request delegate's `CreatePlatformDiscoveries`
+  returns a discovery of transport `kInternal` holding our authenticator, and `PasskeyPolicy`'s
+  `IsUserVerifyingPlatformAuthenticatorAvailableOverride` says yes, so content asks for that
+  transport and pages see a platform authenticator. `EmbedderControlsAuthenticatorDispatch`
+  holds the request back from ours until the person presses Save or a row.
 - **Android**: content hands WebAuthn only to Java
   (`RenderFrameHostImpl::GetWebAuthenticationService`), so we register a Java
   `blink.mojom.Authenticator` of our own. It checks the RP ID against the origin as Chromium's
@@ -410,14 +412,13 @@ public key until the person removes it there, which the Delete Dialog says.
 
 Small pieces, each to release when tested:
 
-1. The spike: our authenticator on the Mac answering a make with a fixed key.
-2. `core/passkeys`: the table, the three calls, `sealed`, Go tests.
-3. Sync's Mapping.
-4. The device check in `core/system`, Mac and mock.
-5. The card's steps, the ABI and the mock engine, with the e2e checks.
-6. The Mac engine's authenticator and the real-app test.
-7. Android: the Java authenticator and BiometricPrompt, on the emulators.
-8. Settings' Passkeys page.
+1. `core/passkeys`: the table, the three calls, `sealed`, Go tests.
+2. Sync's Mapping.
+3. The device check in `core/system`, Mac and mock.
+4. The card's steps, the ABI and the mock engine, with the e2e checks.
+5. The Mac engine's authenticator and the real-app test.
+6. Android: the Java authenticator and BiometricPrompt, on the emulators.
+7. Settings' Passkeys page.
 
 About two weeks.
 
