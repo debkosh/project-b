@@ -213,7 +213,7 @@ by Go's id, and do what the Downloads page's buttons do. Two quiet channels, as 
 them. The app never asks in the middle of a download: the welcome's last step asks, and
 otherwise the first download's bar offers, once, "Downloading big.bin" with "Show progress
 in notifications?" on a line of its own and Allow, which opens Android's question
-(`AskNotifications`). Shown, the offer never comes again, taken up or not
+(`system.System.AskNotifications`). Shown, the offer never comes again, taken up or not
 (`notificationsOffered` in downloads.json); after that the bar is the only sign, and the
 phone's Settings can still turn them on.
 
