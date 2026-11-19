@@ -72,6 +72,17 @@ PAGE_HTML = {
     "drag-image.html": "<title>Drag</title><body style='margin:0'><div id=d draggable=true "
                        "style='width:400px;height:300px;background:#e53e3e'></div>"
                        "<script>d.ondragstart=e=>e.dataTransfer.setDragImage(new Image(),0,0)</script>",
+    # Passkeys (docs/passkeys.md): make() saves one for ada and use() signs in, and the title
+    # says how each ended. Written with no double quotes, as serve_pages puts it in a pair.
+    "passkey.html": "<title>Passkey</title><script>"
+                    "const say = (p) => p.then((s) => document.title = s, (e) => document.title = 'refused ' + e.name);"
+                    "function make() { document.title = 'asking'; say(navigator.credentials.create({publicKey: {challenge: new Uint8Array(16), rp: {name: 'Passkeys'},"
+                    "user: {id: new TextEncoder().encode('ada'), name: 'ada@example.com', displayName: 'Ada'},"
+                    "pubKeyCredParams: [{type: 'public-key', alg: -7}], authenticatorSelection: {residentKey: 'required'}}})"
+                    ".then((c) => 'made ' + c.response.getTransports().join() + ' ' + c.authenticatorAttachment)); }"
+                    "function use() { document.title = 'asking'; say(navigator.credentials.get({publicKey: {challenge: new Uint8Array(16)}})"
+                    ".then((c) => 'used ' + new TextDecoder().decode(c.response.userHandle))); }"
+                    "</script>",
 }
 ROOT = "/Users/admin/.project-b"
 PROFILE = f"{ROOT}/default"
@@ -1039,6 +1050,78 @@ def workspace_delete_checks():
     guest("/usr/bin/killall", "project_b")
 
 
+PASSKEYS = "/tmp/pb-passkeys"  # In the guest: the driver's pipe and output, for passkey_checks.
+
+
+def passkey_checks():
+    """Our own passkeys from end to end on the real engine (docs/passkeys.md, Our own
+    passkeys), where the person can be played: the VM has no Touch ID, so macOS's own sheet
+    asks for the account's password, which is typed into it. A page's make is offered
+    Project B; Enter on Save brings macOS's sheet, and the password makes the passkey, which
+    the page reads as a platform one; a sign-in shows it as a row with the keyboard on it,
+    Enter and the password sign in, and the page gets its user handle; Escape at macOS's
+    sheet refuses the page. Run it on a VM of its own: it
+    writes to the VM's keychain."""
+    # The account's password: the base image's own, which is public, unless the VM has another.
+    password = os.environ.get("PB_VM_PASSWORD", "admin")
+    guest("/usr/bin/killall", "project_b")
+    profile = f"{PASSKEYS}-profile"
+    ask = driven(PASSKEYS, profile)
+    js = lambda expr: json.loads(ask("eval", expr) or "null")
+    page = lambda expr: json.loads(ask("evalpage", expr) or "null")
+    window_or_stop("the app starts with its driver")
+    card = "document.querySelector('[role=alertdialog]')"
+    named = lambda title: until(lambda: js(f"{card}?.getAttribute('aria-label')"), lambda t: t == title, 15) == title
+    words = lambda: js(f"{card}?.querySelector('p')?.textContent.trim()")
+    gone = lambda: until(lambda: js(f"!{card}"), bool, 15)
+    ended = lambda: until(lambda: page("document.title"), lambda t: (t or "").startswith(("made", "used", "refused")), 30)
+
+    def person(says_yes=True):
+        """macOS's sheet for the check, once it is up: the password and Return, or Escape."""
+        time.sleep(3)
+        if says_yes:
+            desk.type(password)
+            desk.key("return")
+        else:
+            desk.key("escape")
+
+    go_to(f"http://localhost:{PORT}/passkey.html")
+    until(titles, lambda t: t == ["Passkey"])
+    page("make()")
+    check("a page making a passkey is offered Project B first", named("Create a passkey") and words() == "Save a passkey for localhost in Project B?", f"{words()}")
+    shot("passkey-save")
+    desk.key("return")
+    check("Enter saves: the card goes while macOS checks the person", bool(gone()))
+    time.sleep(3)
+    shot("passkey-macos-sheet")
+    check("and the page waits for the person", page("document.title") == "asking", str(page("document.title")))
+    person()
+    made = ended()
+    check("the Mac's password makes the passkey, which the page reads as this device's", made == "made internal platform", str(made))
+
+    page("use()")
+    check("signing in shows the passkey here, under the site", named("Sign in to localhost"), str(js(f"{card}?.textContent")))
+    rows = js(f"[...({card}?.querySelectorAll('button.account')||[])].map(b=>b.textContent.replace(/\\s+/g,' ').trim())")
+    focused = js("document.activeElement?.className")
+    shot("passkey-own")
+    check("as one row, with the keyboard on it", len(rows or []) == 1 and "Ada" in rows[0] and "account" in (focused or ""), f"{rows} {focused}")
+    desk.key("return")
+    gone()
+    person()
+    used = ended()
+    check("Enter and the password sign in: the page gets the passkey's user handle", used == "used ada", str(used))
+
+    page("use()")
+    named("Sign in to localhost")
+    desk.key("return")
+    gone()
+    person(says_yes=False)
+    refused = ended()
+    check("Escape at macOS's sheet refuses the page", refused == "refused NotAllowedError", str(refused))
+
+    guest("/usr/bin/killall", "project_b")
+
+
 PICK = "/tmp/pb-pick"  # In the guest: the picker's driver pipe and output, for picker_checks.
 
 
@@ -1439,6 +1522,12 @@ if sys.argv[1:] in (["update"], ["update-retry"]):
         update_checks(retry=sys.argv[1:] == ["update-retry"])
     finally:
         save_update_logs()
+    finished = True
+    sys.exit(1 if counts()["FAIL"] else 0)
+
+# "check.py passkeys" runs only our own passkeys, on a VM of its own.
+if sys.argv[1:] == ["passkeys"]:
+    passkey_checks()
     finished = True
     sys.exit(1 if counts()["FAIL"] else 0)
 
