@@ -33,6 +33,25 @@ The seams:
   fully as the embedder has set it up to. Three so far: the phone's star and folders with no
   names, TalkBack hearing every switch as off, switches named by other words heard with no
   name.
+- **A shell is a page.** Our shells are web pages, and Chromium holds them to a page's
+  limits: what a page may do only after a click, a shell can't do for an action that comes
+  from the menu bar or a key. One so far: Glide's Copy Address.
+
+## Glide's Copy Address that couldn't copy, 2026-11-19
+
+- **Seen:** in the real app, Glide's Copy Address from the menu bar said "Could not copy",
+  and the clipboard kept what it had. The new real-app check found it while the action
+  coverage's owed tests were worked off; no test had run it from the menu before.
+- **Cause:** Glide wrote the address with the page's own clipboard call. Chromium lets a
+  page write the clipboard only just after a click or a key press in that page, and the menu
+  bar's action reaches the shell as a message from Go, with neither, as Shift+Cmd+C's does.
+  The sidebar's copy button worked, as it is a click.
+- **Seam:** a shell is a page: a page's limit, met by an action that isn't the page's.
+- **Fix:** on glide-copy-address: the shell sends Go `copyText`, and Go puts the text on the
+  clipboard, as it does a context menu's Copy Link. Every Copy Address of Glide's goes that
+  way: the menu bar's, the sidebar's, and its menus' (`menus.js` `copy`).
+- **Guard:** glide.cjs runs Copy Address from the menu and finds the address on Go's
+  clipboard; drive_first_app's glide part runs it in the real app.
 
 ## A copied image pasting empty, 2026-11-19
 

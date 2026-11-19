@@ -116,9 +116,9 @@ export function pinMenu(entry) {
   ];
 }
 
-function copy(url) {
-  navigator.clipboard.writeText(url).then(
-    () => g.toast('Copied'),
-    () => g.toast('Could not copy'),
-  );
+// Go puts it on the clipboard, as it does a context menu's Copy Link: the shell's own write
+// is refused without a click, and Copy Address from the menu bar or its keys has none.
+export function copy(url) {
+  send({ t: 'copyText', text: url });
+  g.toast('Copied');
 }

@@ -4,7 +4,7 @@ Every action a person can take, where the app offers it, and the tests that do i
 `tools/action_coverage.py` from the code; `tools/test.sh mock` fails while an action has no
 test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 
-**202 actions and messages, 174 with a test, 28 exempt with a reason, 0 with none; 20 of Go's actions done by no test of the real app.**
+**205 actions and messages, 178 with a test, 27 exempt with a reason, 0 with none; 20 of Go's actions done by no test of the real app.**
 
 ## Go's actions: the menu bar, keys and the shells' own menus
 
@@ -36,7 +36,7 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `focus.nextPane` Focus Next Pane | menu bar, keys (chrome, firefox, glide, project-b) | yes | `drive_first_app.py` |
 | `focus.previousPane` Focus Previous Pane | menu bar, keys (chrome, firefox, glide, project-b) | yes | `drive_first_app.py` |
 | `glide.commandBar` Open Command Bar | menu bar, keys (glide), glide | yes | `app_test.go`, `settings.cjs`, `glide.cjs`, `drive_first_app.py` |
-| `glide.copyAddress` Copy Address | menu bar, keys (chrome, firefox, glide, project-b), glide | **no** | **TODO: glide_checks: Copy Address puts the page's address on the clipboard** |
+| `glide.copyAddress` Copy Address | menu bar, keys (chrome, firefox, glide, project-b), glide | **no** | `glide.cjs` |
 | `glide.favorite` Add to Favorites | menu bar, glide | yes | `glide.cjs`, `drive_first_app.py` |
 | `glide.newSpace` New Space… | menu bar, glide | **no** | **TODO: glide_checks: New Space makes a space** |
 | `glide.sidebar` Show or Hide Sidebar | menu bar, keys (chrome, firefox, glide, project-b), glide | **no** | `commands_test.go`, `glide.cjs` |
@@ -110,7 +110,7 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `activateTab` | fox, glide, minimal, mobile, mobile-native, standard, terminal | yes | `thumbs_test.go`, `settings.cjs`, `shell-contract.cjs`, `mobile.cjs` and 2 more |
 | `addKey` | page:settings | **no** | `app_test.go`, `settings_messages_test.go` |
 | `addToGroup` | glide, mobile, mobile-native, standard | yes | `drive_first_app.py` |
-| `answerDialog` | mobile-native | **no** | `dialogs_test.go` |
+| `answerDialog` | mobile-native | **no** | `dialogs_test.go`, `passkeys_test.go` |
 | `askNotifications` | page:welcome | **no** | exempt: the phone's own permission question, which the welcome asks; drive_android's download_notifications answers it |
 | `back` | glide, mobile-native | **no** | `fullscreen_test.go` |
 | `backCloses` | mobile, mobile-native | **no** | exempt: not a person's action: the Mobile shell tells the engine whether the back key closes something of its own |
@@ -129,6 +129,9 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `clearSiteData` | page:settings | **no** | `site_data_settings_test.go` |
 | `closeGroup` | glide, mobile, mobile-native | **no** | `app_test.go` |
 | `closeTab` | fox, glide, minimal, mobile, mobile-native, standard, terminal | **no** | `app_test.go`, `fullscreen_test.go`, `pins_test.go`, `session_test.go` and 5 more |
+| `contextMenuChoose` | mobile-native | **no** | `contextmenu_test.go` |
+| `contextMenuClose` | mobile-native | **no** | `contextmenu_test.go` |
+| `copyText` | glide | **no** | `glide.cjs` |
 | `create` | page:picker | **no** | `picker_test.go` |
 | `createGroup` | glide, standard | yes | `shell-contract.cjs`, `standard-drag.cjs`, `terminal.cjs`, `drive_first_app.py` |
 | `createWorkspace` | glide, page:settings | **no** | `app_test.go`, `lifecycle_test.go`, `pins_test.go` |
@@ -159,9 +162,9 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `moveBookmark` | page:bookmarks | **no** | `pages_test.go` |
 | `moveTab` | standard, terminal | **no** | `app_test.go` |
 | `moveWorkspace` | page:settings | **no** | `app_test.go` |
-| `navigate` | fox, glide, minimal, mobile, mobile-native, standard, terminal | yes | `app_test.go`, `contextmenu_test.go`, `dialogs_test.go`, `files_test.go` and 11 more |
+| `navigate` | fox, glide, minimal, mobile, mobile-native, standard, terminal | yes | `app_test.go`, `contextmenu_test.go`, `dialogs_test.go`, `files_test.go` and 12 more |
 | `newFolder` | page:bookmarks | **no** | `pages_test.go`, `mobile.cjs` |
-| `newTab` | fox, glide, minimal, mobile, mobile-native, standard, terminal | yes | `app_test.go`, `fullscreen_test.go`, `pins_test.go`, `session_test.go` and 16 more |
+| `newTab` | fox, glide, minimal, mobile, mobile-native, standard, terminal | yes | `app_test.go`, `fullscreen_test.go`, `pins_test.go`, `session_test.go` and 17 more |
 | `open` | page:bookmarks, page:history, page:picker | **no** | `events_test.go`, `pages_test.go`, `picker_test.go` |
 | `openAccess` | ui | **no** | `imports_test.go` |
 | `openInWorkspace` | page:settings | **no** | `app_test.go` |

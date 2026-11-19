@@ -137,6 +137,12 @@ const { check, fire, regions, settle, until } = lib;
   await page.frameLocator(`iframe.mock-page[data-tab="${t1}"]`).getByRole('button', { name: 'Navigate' }).waitFor();
   await shoot('home');
 
+  // Copy Address from the menu bar or its keys, which bring no click: Go puts the address
+  // on the clipboard, as the real app refuses the shell's own write.
+  await fire('menu', 'glide.copyAddress'); // does: copyText
+  check('Copy Address from the menu bar puts the page\'s address on the clipboard', await until(async () => (await regions()).clipboard === (await active()).url), (await regions()).clipboard);
+  check('and says it copied', await until(async () => (await ui.locator('.toast').textContent().catch(() => '')) === 'Copied'));
+
   // Spaces.
   const home = await frame();
   await ui.getByRole('button', { name: 'Space Work' }).click();

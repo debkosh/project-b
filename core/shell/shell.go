@@ -278,6 +278,10 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 		m.Interaction(w, "tab.close", func() { m.tabs.Close(id) })
 	case "activateTab":
 		m.Interaction(w, "tab.activate", func() { m.tabs.Activate(engine.TabID(c.ID)) })
+	// The clipboard, written for a shell: a shell page's own write is refused without a
+	// click, and an action it runs from the menu bar or a key has none.
+	case "copyText":
+		m.eng.WriteClipboard(c.Text)
 	case "createGroup":
 		m.tabs.CreateGroup(c.IDs, derefOr(c.Name), derefOr(c.Color))
 	case "addToGroup":

@@ -8,7 +8,7 @@
   import EditDialog from './EditDialog.svelte';
   import TopBar from './TopBar.svelte';
   import * as g from './glide.svelte.js';
-  import { newSpace } from './menus.js';
+  import { copy, newSpace } from './menus.js';
   import { glideTones, styleOf } from './tokens.js';
 
   // Glide: the sidebar on the left, the page as a card inset in the frame, which is the
@@ -128,11 +128,7 @@
 
   export function copyAddress() {
     const url = activeTab(go).url;
-    if (!url) return;
-    navigator.clipboard.writeText(url).then(
-      () => g.toast('Copied'),
-      () => g.toast('Could not copy'),
-    );
+    if (url) copy(url);
   }
 
   connect({
