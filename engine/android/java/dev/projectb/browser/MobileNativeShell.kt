@@ -210,7 +210,7 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
         oursTitle.setSingleLine(true)
         oursTitle.ellipsize = android.text.TextUtils.TruncateAt.END
         oursClose.iconSize = 18f
-        oursClose.setOnClickListener { activeTab()?.let { send(JSONObject().put("t", "closeTab").put("id", it.getLong("id"))) } }
+        oursClose.setOnClickListener { activeTab()?.let { closeTabs(listOf(it.getLong("id"))) } }
         ours.addView(oursTitle, LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
         ours.addView(oursClose, LinearLayout.LayoutParams(dp(48), dp(48)))
         pill.addView(ours, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
@@ -913,12 +913,15 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
         if (id != active) send(JSONObject().put("t", "activateTab").put("id", id)) else focusPage()
     }
 
-    // Closing the last tabs closes the window, and so the app. Closing the active tab of a
-    // group goes to its neighbour in the group.
+    // No tabs is a new tab: closing the last ones leaves one, in the workspace new tabs open
+    // in, opened first so the window is never without a tab; Back on it closes it, and with
+    // it the app (docs/daily-driver.md, A new tab). Closing the active tab of a group goes
+    // to its neighbour in the group.
     private fun closeTabs(ids: List<Long>) {
         val group = groups.firstOrNull { Switcher.inGroup(it, active) }
         if (ids.size >= tabs.size) {
             open("")
+            send(JSONObject().put("t", "newTab").put("workspace", workspace))
         } else if (active in ids && group != null) {
             val members = Switcher.memberTabs(group, tabs).map { it.getLong("id") }
             val left = members.filter { it !in ids }

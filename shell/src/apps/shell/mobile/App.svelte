@@ -3,6 +3,7 @@
   import { tick } from 'svelte';
   import { activeTab, connect, drag, focusPage, page, send, setFrame, shell, state as go } from '@/sdk/svelte.svelte.js';
   import { untrack } from 'svelte';
+  import { chooseSuggestion } from '@/sdk/suggest.js';
   import { extensionsBuilt } from '@extensions';
   import BookmarkSheet from './BookmarkSheet.svelte';
   import CardMenu from './CardMenu.svelte';
@@ -252,6 +253,19 @@
     naming = null;
   });
 
+  // A closed tab, from the new tab page: Go reopens it and shows it, and the new tab it was
+  // chosen on then goes, unless it has started a page of its own.
+  let leaving = $state(0);
+  function reopen(row) {
+    leaving = go.active;
+    chooseSuggestion(row);
+  }
+  $effect(() => {
+    if (!leaving || go.active === leaving) return;
+    if (go.tabs.some((t) => t.id === leaving && !t.url && !t.loading)) send({ t: 'closeTab', id: leaving });
+    leaving = 0;
+  });
+
   function pick(id) {
     sheet = '';
     if (id !== go.active) send({ t: 'activateTab', id });
@@ -259,10 +273,13 @@
   }
 
   // Closing the active tab of a group goes to its neighbour in the group, as the strip
-  // shows it. Closing the last tabs closes the window, and on a phone the app.
+  // shows it. No tabs is a new tab: closing the last ones leaves one, in the workspace new
+  // tabs open in, opened first so the window is never without a tab (docs/daily-driver.md,
+  // A new tab). Back on it closes it, and with it the app.
   function closeTabs(ids) {
     if (ids.length >= go.tabs.length) {
       sheet = '';
+      send({ t: 'newTab', workspace });
     } else if (ids.includes(go.active) && group) {
       const left = group.tabs.filter((id) => !ids.includes(id));
       const at = group.tabs.indexOf(go.active);
@@ -343,7 +360,7 @@
   {#if top}
     <div class="bars head" class:away class:over class:full bind:offsetHeight={headHeight}>
       <div class="tool">
-        <Toolbar {tab} top count={go.tabs.length} {sheet} {onsheet} onswipe={swipe} onedit={(on) => (editing = on)} bind:address />
+        <Toolbar {tab} top count={go.tabs.length} {sheet} {onsheet} onswipe={swipe} onedit={(on) => (editing = on)} onclose={(id) => closeTabs([id])} bind:address />
         {#if finding}<FindBar bind:this={findBar} />{/if}
       </div>
       {#if marksBar}<MarksBar list={go.bookmarks} folder={go.prefs.bookmarksBarFolder} top onopen={openMark} onfolder={openFolder} />{/if}
@@ -354,7 +371,7 @@
       {#if !full && tab.notice}
         <PageNotice {tab} />
       {:else if !full && !tab.url && !tab.loading}
-        {#key tab.id}<NewTab bind:this={newTabPage} onopenall={openAll} />{/key}
+        {#key tab.id}<NewTab bind:this={newTabPage} onopenall={openAll} onreopen={reopen} />{/key}
       {/if}
       <!-- A download as it happens, over the foot of the page; never over a sheet, nor over
            the Downloads page, which shows it already. -->
@@ -390,7 +407,7 @@
     <CrashBar />
     {#if !top}
       <div class="tool">
-        <Toolbar {tab} count={go.tabs.length} {sheet} {onsheet} onswipe={swipe} onedit={(on) => (editing = on)} bind:address />
+        <Toolbar {tab} count={go.tabs.length} {sheet} {onsheet} onswipe={swipe} onedit={(on) => (editing = on)} onclose={(id) => closeTabs([id])} bind:address />
         {#if finding}<FindBar bind:this={findBar} />{/if}
       </div>
     {/if}
@@ -420,6 +437,7 @@
         }}
         onclosegroup={() => {
           sheet = '';
+          if (shownGroup.tabs.length >= go.tabs.length) send({ t: 'newTab', workspace });
           send({ t: 'closeGroup', group: shownGroup.id });
         }}
       />

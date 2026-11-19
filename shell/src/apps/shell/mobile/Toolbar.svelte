@@ -1,5 +1,5 @@
 <script>
-  import { drag, send, shell } from '@/sdk/svelte.svelte.js';
+  import { drag, shell } from '@/sdk/svelte.svelte.js';
   import Address from './Address.svelte';
   import Icon from './Icon.svelte';
 
@@ -8,8 +8,9 @@
   // away from an empty new tab too. A swipe
   // sideways along it goes to the tab before or after (onswipe, -1 or 1). For one of our
   // tabs, settings, the pill is its title and a close instead, with nothing to type (rule
-  // 19); the field stays, hidden, for the next web tab.
-  let { tab, count, top, sheet, onsheet, onswipe, onedit, address = $bindable() } = $props();
+  // 19); the field stays, hidden, for the next web tab. The close is onclose's, as the
+  // last tab's close leaves a new tab.
+  let { tab, count, top, sheet, onsheet, onswipe, onedit, onclose, address = $bindable() } = $props();
   let editing = $state(false);
   let start = null;
 
@@ -35,7 +36,7 @@
   {#if tab.page}
     <div class="ours">
       <span class="title">{tab.title}</span>
-      <button class="close" aria-label="Close {tab.title}" onclick={() => send({ t: 'closeTab', id: tab.id })}><Icon name="close" size={18} /></button>
+      <button class="close" aria-label="Close {tab.title}" onclick={() => onclose(tab.id)}><Icon name="close" size={18} /></button>
     </div>
   {/if}
   <div class="field" class:hidden={tab.page}>

@@ -633,22 +633,34 @@ which now shows the list before anything is typed, under Frequently visited and 
 so Cmd+T and Enter goes to the top site. Typing replaces it with the usual list, and
 emptying the box brings it back.
 
-**The Mobile web shell.** A tab with no page yet, a new tab, shows the new tab page over it
-instead of a blank page: the sites as tiles, four to a row, each a letter on a colour taken
+**The Mobile web shell.** The owner, 2026-11-19: "keep things minimal for now... new tab and
+no tab look the same... rest you decide.. we will revisit later after some use". No tabs is a
+new tab: closing the last tab, by its card, the strip, its group or the close on one of our
+pages, leaves one new tab in the workspace new tabs open in, opened before the close so the
+window always has a tab. Back on it closes it, and with it the app, as Back on any last tab
+does. The native Kotlin shell does the same; it has no new tab page.
+
+A tab with no page yet, a new tab, shows the new tab page over it
+instead of a blank page: first up to three tabs closed lately, under Recently closed, each a
+56px row of its site's mark, its title and its host (Go's `closed` rows, asked for alone); a
+tap reopens it, and the new tab it was chosen on goes, so the tab comes back in its place.
+Then the sites as tiles, four to a row, each a letter on a colour taken
 from its host, with the page's title under it; the top bookmark folder as tiles while
 `bookmarksNewTab` is on ([bookmark-folders.md](bookmark-folders.md#where-bookmarks-show));
 then All bookmarks and History, which open those pages of ours (`bookmarks.show`,
 `history.show`). It asks Go for the sites alone. The keyboard stays down, so nothing covers the tiles; a tap
 on the address field starts typing. A long press on a tile shows a × on each, which takes
 that site out of history, every page of it (`forgetSite {url}`); a tap elsewhere ends that.
-The page goes as soon as the tab starts loading anything.
+The page goes as soon as the tab starts loading anything. A section with nothing in it isn't
+drawn.
 
 **Checked** on the mock by the mobile and Standard suites and the contract, and on an
 Android 16 emulator, 2026-11-17: a new tab shows the tiles by host and the newest bookmark
 with the keyboard down, a long press shows each tile's ×, and All bookmarks and History open
 those pages, which the APK now carries as it carries Settings and Downloads.
 
-**Not built:** pinned or edited tiles, and a background picture. Glide and the other shells
+**Not built:** pinned or edited tiles, a background picture, and on a phone a greeting, the
+workspace or Reopen all. Glide and the other shells
 keep what they had.
 
 ## Tabs come back, and closed ones reopen
