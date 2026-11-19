@@ -39,8 +39,26 @@ The seams:
   limits: what a page may do only after a click, a shell can't do for an action that comes
   from the menu bar or a key. One so far: Glide's Copy Address.
 - **The phone's keyboard.** It takes half the screen or more, by an amount that differs
-  between Android versions, and what a person needs next has to stay in sight above it. One
-  so far: a Dialog's buttons under the keyboard.
+  between Android versions, and what a person needs next has to stay in sight above it. Two
+  so far: a Dialog's buttons under the keyboard, the keyboard left up by the native star's
+  sheet.
+
+## The keyboard left up by the native star's sheet, 2026-11-19
+
+- **Seen:** in the native Mobile shell, Enter in the bookmark sheet's name saved the bookmark
+  and closed the sheet, but the keyboard stayed up over the page with nothing to type into.
+  With the bars stepping aside for the keyboard, the toolbar went too, so Menu was out of
+  reach until the back key put the keyboard away. Found by drive_android's bookmark_star on
+  Android 14, once the driver could find the shell with the toolbar aside.
+- **Cause:** the native shell closes a sheet by taking its views away. Android doesn't put
+  the keyboard away when the view that has it goes, so it stayed up for a field no longer
+  there. The web shell's sheets are a page's, and Chromium does put it away.
+- **Seam:** the phone's keyboard: it follows the focused view, and a view taken away with the
+  focus leaves it behind.
+- **Fix:** on keyboard-bars-again: a sheet closing with its field focused puts the keyboard
+  away (`MobileNativeShell.kt`, open).
+- **Guard:** bookmark_star in the native shell opens the menu after Enter in the name, which
+  needs the toolbar back.
 
 ## A Dialog's buttons under the keyboard, 2026-11-19
 
