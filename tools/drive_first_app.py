@@ -2759,7 +2759,13 @@ def passkey_checks():
     button("Save")
     check("Save takes the card away while macOS checks the person", gone(), app.js(TITLE))
     time.sleep(1)
-    check("and the page waits for the person", app.js("document.title", page=True) == "asking", app.js("document.title", page=True))
+    # macOS shows its sheet only to an app in a person's session. A run started by a system
+    # daemon, as a release's is, has none: the check fails at once, and the page is refused.
+    if subprocess.run(["launchctl", "managername"], capture_output=True, text=True).stdout.strip() == "System":
+        print("note macOS can't ask the person in a system session: the check ends at once", flush=True)
+        check("and with no session for macOS to ask in, the page is refused", app.js("document.title", page=True) == "refused NotAllowedError", app.js("document.title", page=True))
+    else:
+        check("and the page waits for the person", app.js("document.title", page=True) == "asking", app.js("document.title", page=True))
     visit(app, url)
     app.js("use()", page=True)
     check("a request taken back made no passkey", card("Sign in with a passkey"), app.js(TITLE))

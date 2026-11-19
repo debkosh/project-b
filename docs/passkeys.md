@@ -492,7 +492,9 @@ public key until the person removes it there, which the Delete Dialog says.
   request for this device alone has no other way; one for a key apart, and a sign-in with none
   here, go to the key step; Save takes the card away and the page going elsewhere takes the
   request back. Saving and signing in need the person at macOS's sheet: in the VM, where
-  deskrig types the password.
+  deskrig types the password. macOS shows its sheet only in a person's session: a run started
+  by a system daemon (`launchctl managername` says System) has the check end at once, and
+  the driver then checks the page is refused.
 - **Android** (`tools/drive_android.py passkeys_on_the_phone`): the same on emu-29 and emu-37
   with a PIN the part sets and clears, the driver typing it into Android's check; a phone
   with no screen lock gets `no-screen-lock`, and the back key at the check refuses the page
