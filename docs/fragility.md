@@ -26,8 +26,8 @@ The seams:
   committing and aborting a load. Two so far: Stay on this site, the back key in full
   screen.
 - **The phone's shared storage.** What the app puts in Android's shared folders meets
-  other apps' files there, which it can't see. One so far: a download named as a file
-  already in Downloads.
+  other apps' files there, which it can't see. Two so far: a download named as a file
+  already in Downloads, Delete on the older of two same-named downloads.
 - **Android's process lifecycle.** Android ends an app's process when it likes, and
   says why only if asked. One so far: a crash notice after runs that never crashed.
 - **Android's accessibility tree.** What a page says in ARIA or HTML has to reach the tree
@@ -63,6 +63,24 @@ The seams:
   `shell/e2e/shells/mobile.cjs` a page's sign-in 300px; each checks the title and the
   buttons are in sight and only the body scrolls. On the device, drive_android's
   sync_on_the_phone taps Turn on sync with the keyboard up.
+
+## Delete on the older of two same-named downloads, 2026-11-19
+
+- **Seen:** on a phone, with two downloads of one name in the list, the second shown as
+  name (1) in the phone's Downloads, Delete on the older one deleted the newer one's copy
+  and left its own. Open and Share on the older one had opened and shared the newer one
+  since 0.2.106. The phone check of Delete found it.
+- **Cause:** a phone moves a finished download's file to the shared Downloads, so its
+  place in the app's own folder is empty again. Go gave the next download of that name
+  the same place, and the app finds each download's copy in the shared Downloads by that
+  place, so the second copy took over the first's.
+- **Seam:** the phone's shared storage: a name the app's own folder no longer holds is
+  still a download's.
+- **Fix:** on dd-batch-0.2.109: a new download's place skips every one a download in the
+  list has, not only running ones (`free`, core/downloads/downloads.go), so each keeps
+  its own.
+- **Guard:** `TestTheSameNameAfterItsFileMovedGetsItsOwnPath` in Go; drive_android's
+  downloads part deletes the older one and checks the newer copy stays.
 
 ## Glide's Copy Address that couldn't copy, 2026-11-19
 

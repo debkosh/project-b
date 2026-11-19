@@ -160,8 +160,10 @@ func cleanName(name string) string {
 	return name
 }
 
-// free is a path in the folder for name that no file and no running download has:
-// name, then name (1), name (2) and so on, before its extension.
+// free is a path in the folder for name that no file and no download in the list has:
+// name, then name (1), name (2) and so on, before its extension. A phone moves a finished
+// download's file to the shared Downloads, so its path is empty again, but each download
+// keeps its own: its copy there is found by it.
 func (m *Manager) free(name string) string {
 	ext := filepath.Ext(name)
 	stem := strings.TrimSuffix(name, ext)
@@ -174,18 +176,18 @@ func (m *Manager) free(name string) string {
 		if _, err := os.Stat(p); err == nil {
 			continue
 		}
-		if m.running(p) {
+		if m.taken(p) {
 			continue
 		}
 		return p
 	}
 }
 
-// running says a download running now has the path: not one being retried, whose new copy
+// taken says a download in the list has the path: not one being retried, whose new copy
 // takes its name.
-func (m *Manager) running(path string) bool {
+func (m *Manager) taken(path string) bool {
 	for _, it := range m.list {
-		if it.State == "progress" && it.Path == path && !it.retrying {
+		if it.Path == path && !it.retrying {
 			return true
 		}
 	}

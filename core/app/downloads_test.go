@@ -69,6 +69,27 @@ func TestADownloadGoesToTheFolderAndIsListed(t *testing.T) {
 	}
 }
 
+// On a phone a finished download's file goes to the shared Downloads, leaving its path
+// empty: the same name again still gets a path of its own, as each download's copy there is
+// found by its path (docs/fragility.md, "Delete on the older of two same-named downloads").
+func TestTheSameNameAfterItsFileMovedGetsItsOwnPath(t *testing.T) {
+	profile, dir := t.TempDir(), t.TempDir()
+	r := startDownloading(t, profile, dir)
+	defer r.stop()
+	r.visit("https://a.test/")
+	r.show(1)
+	r.e.Fire(1, 0, "download", "https://a.test/files/report.pdf")
+	r.downloads(func(l []any) bool { return len(l) == 1 && first(l)["state"] == "done" })
+	if err := os.Remove(filepath.Join(dir, "report.pdf")); err != nil {
+		t.Fatal(err)
+	}
+	r.e.Fire(1, 0, "download", "https://a.test/files/report.pdf")
+	list := r.downloads(func(l []any) bool { return len(l) == 2 && first(l)["state"] == "done" })
+	if first(list)["path"] != filepath.Join(dir, "report (1).pdf") {
+		t.Fatalf("the second has %v, not a path of its own", first(list)["path"])
+	}
+}
+
 func TestTheListOutlivesARestart(t *testing.T) {
 	profile, dir := t.TempDir(), t.TempDir()
 	r := startDownloading(t, profile, dir)
