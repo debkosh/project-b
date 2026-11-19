@@ -140,6 +140,8 @@ type App struct {
 	Keys *keys.Keys
 	// Passkeys are the profile's own passkeys (docs/passkeys.md).
 	Passkeys *passkeys.Manager
+	// passkeysChanged counts the passkeys again for Settings, after sync wrote some.
+	passkeysChanged func()
 	// Sync syncs the bookmarks and history (docs/sync.md).
 	Sync *sync.Manager
 	// closed is the tabs and windows the person closed, newest first; quitting says the
@@ -188,7 +190,7 @@ var starters []func(a *App, e engine.Engine, cfg Config)
 // to the engine as its listener.
 func Start(e engine.Engine, cfg Config) *App {
 	e.OpenProfile(cfg.ProfileDir)
-	a := &App{System: cfg.System, profiles: cfg.Profiles, startedIn: map[engine.DownloadID]engine.WindowID{}, dir: cfg.ProfileDir}
+	a := &App{passkeysChanged: func() {}, System: cfg.System, profiles: cfg.Profiles, startedIn: map[engine.DownloadID]engine.WindowID{}, dir: cfg.ProfileDir}
 	a.Crash = crash.New(cfg.ProfileDir, cfg.CrashReports, e.ExitReason)
 	a.Crash.System = func() []crash.Section { return cfg.System.Report(cfg.Update.Version) }
 	a.Session = session.New(cfg.ProfileDir)
@@ -209,7 +211,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.History.OnClearAll(sync.ClearedAll)
 	// The passkeys before sync, which marks their table's rows as it does the others'.
 	a.Passkeys = passkeys.New(st, a.Keys, verifyPerson(cfg.System, e.Post))
-	a.Sync = sync.New(st, a.Keys, e.Post, append(history.Synced(), a.Bookmarks.Synced(e.Post), a.Passkeys.Synced(func() {}))...)
+	a.Sync = sync.New(st, a.Keys, e.Post, append(history.Synced(), a.Bookmarks.Synced(e.Post), a.Passkeys.Synced(func() { a.passkeysChanged() }))...)
 	a.Suggest = suggest.New(a.History)
 	a.Workspaces = workspaces.New(cfg.ProfileDir)
 	a.Pins = pins.New(cfg.ProfileDir)
@@ -294,6 +296,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Settings.AddPart(a.defaultBrowserSettingsPart())
 	a.Settings.AddPart(a.clearDataSettingsPart(e))
 	a.Settings.AddPart(a.siteDataSettingsPart(e))
+	a.Settings.AddPart(a.passkeySettingsPart(e))
 	a.Settings.AddPart(a.keepCookiesSettingsPart())
 	a.Settings.AddPart(a.downloadFolderSettingsPart(e, cfg.DownloadsDir))
 	a.Settings.AddPart(a.syncSettingsPart())

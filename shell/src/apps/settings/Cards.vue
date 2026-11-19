@@ -10,6 +10,7 @@ import KeysRow from './KeysRow.vue';
 import ProfileRows from './ProfileRows.vue';
 import Row from './Row.vue';
 import Rows from './Rows.vue';
+import Passkeys from './Passkeys.vue';
 import SiteSettings from './SiteSettings.vue';
 import Sparks from './Sparks.vue';
 import Sync from './Sync.vue';
@@ -34,6 +35,7 @@ const blocks = {
   flags: Flags,
   import: Import,
   keyboard: Keyboard,
+  passkeys: Passkeys,
   sites: SiteSettings,
   sparks: Sparks,
   sync: Sync,
