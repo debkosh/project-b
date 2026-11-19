@@ -34,3 +34,4 @@ You are the team's test person. Keep "testing" in your session name.
 - Never check out, reset or build in the main checkout, which release publishes from: work in your own worktree. A stray `git checkout origin/main --` there once left it detached.
 - Colima now and then keeps a stopped VM as running, with no docker socket; `tools/android-release.sh` stops and starts it again then.
 - The adb server runs as an amarit unit of its own, `android-adb` (`adb -L tcp:5037 server nodaemon`), never inside a test run; never `adb kill-server`, `amarit restart android-adb` instead: an adb call with no server starts one inside whatever runs it, and stopping that run then killed the server and every session's emulator connection.
+- On the Android 10 emulator a tap is now and then lost: the first on a fresh screen, or the first after typing, which only closes the keyboard. A driver step taps again until the screen it expects shows, not once.
