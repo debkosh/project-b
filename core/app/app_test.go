@@ -1326,6 +1326,22 @@ func TestViewSourceOpensInItsTabsWorkspace(t *testing.T) {
 	if source["workspace"] != work.ID || in != work.ID || m["active"] != source["id"] {
 		t.Fatalf("the source's tab %v, active %v, is in %q in the engine", source, m["active"], in)
 	}
+	// A page's source has no source of its own to view.
+	on := true
+	var walk func([]engine.MenuItem)
+	walk = func(items []engine.MenuItem) {
+		for _, it := range items {
+			if it.Action == "dev.viewSource" {
+				on = it.Enabled
+			}
+			walk(it.Items)
+		}
+	}
+	r.e.Post(func() { walk(r.e.Menu()) })
+	r.e.Settle()
+	if on {
+		t.Fatal("View Source is on for a page's source")
+	}
 }
 
 // Every shell has the workspaces from its snapshot on, and hears of one made or renamed at

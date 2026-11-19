@@ -11,6 +11,7 @@
 #include "base/memory/weak_ptr.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
+#include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "project_b/engine/browser/hooks_gen.h"
 #include "third_party/skia/include/core/SkBitmap.h"
@@ -21,6 +22,11 @@ namespace project_b {
 // One tab's connection to content. What is overridden here tells Go what its page does,
 // as the events in pb_abi.h, or needs content's objects first. Each still calls its
 // generated base after, which carries the raw hook to Go when something subscribed.
+// The address a top-level navigation shows, as the person reads it: for a page's source,
+// view-source: and the page's own, as Chromium keeps the page's own and marks its entry.
+// Go records and shows the tab's address from it.
+std::string ShownURL(content::NavigationHandle* handle);
+
 class PageTab : public WebContentsObserverHooks, public WebContentsDelegateHooks {
  public:
   PageTab(int64_t id,

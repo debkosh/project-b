@@ -20,15 +20,18 @@ func ourPage(raw string) (engine.Page, bool) {
 func TestIsAllowedURL(t *testing.T) {
 	m := New([]string{"blocked.test"}, ourPage)
 	for raw, want := range map[string]bool{
-		"https://example.com/":        true,
-		"https://blocked.test/":       false,
-		"https://www.blocked.test/x":  false,
-		"chrome://shell/":             false,
-		"chrome://shell/standard/":    false,
-		"CHROME://SHELL/index.html":   false,
-		"chrome://gpu/":               true,
-		"chrome://process-internals/": true,
-		"https://shell/":              true,
+		"https://example.com/":              true,
+		"https://blocked.test/":             false,
+		"https://www.blocked.test/x":        false,
+		"chrome://shell/":                   false,
+		"chrome://shell/standard/":          false,
+		"CHROME://SHELL/index.html":         false,
+		"chrome://gpu/":                     true,
+		"chrome://process-internals/":       true,
+		"https://shell/":                    true,
+		"view-source:https://example.com/":  true,
+		"view-source:https://blocked.test/": false,
+		"view-source:chrome://shell/":       false,
 	} {
 		if got := m.IsAllowedURL(raw); got != want {
 			t.Errorf("IsAllowedURL(%q) = %v, want %v", raw, got, want)

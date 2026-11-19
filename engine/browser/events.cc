@@ -4,6 +4,7 @@
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/web_contents.h"
 #include "project_b/engine/browser/hooks.h"
+#include "project_b/engine/browser/page_tab.h"
 #include "project_b/engine/common/block_rules.h"
 #include "third_party/blink/public/common/input/web_input_event.h"
 
@@ -96,7 +97,7 @@ content::NavigationThrottle::ThrottleCheckResult Gate::Ask(bool redirect) {
   hooks::Args args;
   args.Int(tab);
   args.Int(handle->GetNavigationId());
-  args.Str(handle->GetURL().spec());
+  args.Str(ShownURL(handle));
   PBValue result;
   if (!hooks::Ask(PB_EVENT_NAVIGATION_STARTING, args, &result)) {
     return PROCEED;

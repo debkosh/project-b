@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"strings"
 
 	"projectb/commands"
 	"projectb/engine"
@@ -73,7 +74,11 @@ func (a *App) registerActions(e engine.Engine) {
 	add("view.zoomOut", "Zoom Out", a.Tabs.ZoomOut)
 	// The source is the page fetched again, with the cookies of the tab's workspace.
 	source := add("dev.viewSource", "View Source", func() { a.Tabs.OpenFor(a.Tabs.ActiveID(), e.ViewSourceURL(a.Tabs.Active().URL)) })
-	source.Enabled = func() bool { return a.Tabs.Active().URL != "" }
+	// A page's source is already its own: there is no source of it to view.
+	source.Enabled = func() bool {
+		u := a.Tabs.Active().URL
+		return u != "" && !strings.HasPrefix(u, "view-source:")
+	}
 
 	// F6 moves between the shell and the active tab's page, whichever had the keyboard.
 	nextPane := func() {

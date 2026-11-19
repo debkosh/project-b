@@ -18,6 +18,7 @@
 #include "content/public/browser/keyboard_event_processing_result.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
+#include "content/public/common/url_constants.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_widget_host.h"
@@ -253,6 +254,16 @@ void PageTab::ReportConnection() {
   hooks::Fire(PB_EVENT_CONNECTION_CHANGED, args);
 }
 
+std::string ShownURL(content::NavigationHandle* handle) {
+  content::NavigationController& controller = handle->GetWebContents()->GetController();
+  content::NavigationEntry* entry = handle->HasCommitted() ? controller.GetLastCommittedEntry()
+                                                           : controller.GetPendingEntry();
+  if (entry && entry->IsViewSourceMode()) {
+    return std::string(content::kViewSourceScheme) + ":" + handle->GetURL().spec();
+  }
+  return handle->GetURL().spec();
+}
+
 // What a top-level navigation came to: where the tab's history stands, then the page it
 // finished on, or why it failed. One a newer navigation replaced did neither.
 void PageTab::ReportNavigation(content::NavigationHandle* handle) {
@@ -267,7 +278,7 @@ void PageTab::ReportNavigation(content::NavigationHandle* handle) {
     hooks::Args args;
     args.Int(id_);
     args.Int(handle->GetNavigationId());
-    args.Str(handle->GetURL().spec());
+    args.Str(ShownURL(handle));
     hooks::Fire(PB_EVENT_NAVIGATION_FINISHED, args);
     if (!Title().empty()) {
       ReportTitle();
@@ -284,9 +295,10 @@ void PageTab::ReportNavigation(content::NavigationHandle* handle) {
     hooks::Args args;
     args.Int(id_);
     args.Int(handle->GetNavigationId());
-    args.Str(contents_->GetController().GetLastCommittedEntry()
-                 ? contents_->GetLastCommittedURL().spec()
-                 : std::string());
+    content::NavigationEntry* shown = contents_->GetController().GetLastCommittedEntry();
+    args.Str(!shown                        ? std::string()
+             : shown->IsViewSourceMode() ? std::string(content::kViewSourceScheme) + ":" + shown->GetURL().spec()
+                                         : contents_->GetLastCommittedURL().spec());
     args.Str(std::string());
     args.Str(std::string());
     hooks::Fire(PB_EVENT_NAVIGATION_FAILED, args);
@@ -296,7 +308,7 @@ void PageTab::ReportNavigation(content::NavigationHandle* handle) {
     hooks::Args args;
     args.Int(id_);
     args.Int(handle->GetNavigationId());
-    args.Str(handle->GetURL().spec());
+    args.Str(ShownURL(handle));
     args.Str(FailureOf(error));
     args.Str(net::ErrorToShortString(error));
     hooks::Fire(PB_EVENT_NAVIGATION_FAILED, args);

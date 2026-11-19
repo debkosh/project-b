@@ -38,8 +38,9 @@ func (m *Manager) BlockRules() engine.BlockRules {
 }
 
 // IsAllowedURL is the one function every URL decision goes through. It's in memory
-// and never waits.
+// and never waits. A page's source, view-source: and the page's address, is the page's.
 func (m *Manager) IsAllowedURL(raw string) bool {
+	raw = strings.TrimPrefix(raw, "view-source:")
 	u, err := url.Parse(raw)
 	if err != nil {
 		return false

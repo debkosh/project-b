@@ -9,9 +9,9 @@ The seams:
 
 - **Engine and adapter**, our C++ between Chromium and Go. Chromium has rules it doesn't
   check until run time, and breaking one kills a process, and duties it leaves to us; and
-  the order in which each side hears of a thing. Six so far: StackBlitz, the quit crash,
+  the order in which each side hears of a thing. Seven so far: StackBlitz, the quit crash,
   the Android blank shell, file uploads on Android, sparks on strict sites, a duplicated
-  tab that failed to load.
+  tab that failed to load, a View Source tab named as its page.
 - **The network across sleep.** A download that stops receiving waits for ever unless
   something gives up on it. Two so far: downloads after sleep, the stuck updater.
 - **Shell layers.** What lies over the page has to stay under the shell's own menus. One so
@@ -31,6 +31,24 @@ The seams:
   fully as the embedder has set it up to. Three so far: the phone's star and folders with no
   names, TalkBack hearing every switch as off, switches named by other words heard with no
   name.
+
+## A View Source tab named as its page, 2026-11-19
+
+- **Seen:** View Source opened the page's source in a new tab, but the tab's address was
+  the page's own, without view-source:, in the address bar and so in History, a duplicate
+  and a restore, each of which then had the page and not its source. The tester's new check
+  of the app's actions found it.
+- **Cause:** Chromium keeps a source page's address as the page's own and marks its entry
+  as showing the source. The engine reported each navigation's address as Chromium has it,
+  so Go never heard of the view-source: at all.
+- **Seam:** engine and adapter: what Chromium keeps apart, an address and how it shows,
+  the engine has to put back together for Go.
+- **Fix:** on dd-view-source: the engine reports a navigation in view-source mode as
+  view-source: and the page's address (`ShownURL`, engine/browser/page_tab.cc), starting,
+  finished and failed alike. Go's policy judges a page's source as the page, so a blocked
+  host's source stays blocked, and View Source is off on a source page.
+- **Guard:** drive_first_app.py viewsource, on the real app; `TestIsAllowedURL` and
+  `TestViewSourceOpensInItsTabsWorkspace` in Go.
 
 ## A duplicated tab that failed to load, 2026-11-19
 
