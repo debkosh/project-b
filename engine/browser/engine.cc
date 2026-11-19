@@ -386,7 +386,7 @@ void CallAppCommand(int32_t command) {
 }
 
 #if !BUILDFLAG(IS_ANDROID)
-void CallChooseFolder(int64_t window) {
+void CallChooseFolder(int64_t window, const char* start) {
   CheckMainThread();
   Engine::AppWindow* w = g_engine->window(window);
   auto chosen = [](int64_t window, const base::FilePath& path) {
@@ -399,8 +399,8 @@ void CallChooseFolder(int64_t window) {
     chosen(window, base::FilePath());
     return;
   }
-  ShowPathChooser(w->window.get(), PathKind::kFolder,
-                  base::BindOnce(chosen, window));
+  ShowPathChooser(w->window->native_window(), PathKind::kFolder,
+                  base::FilePath::FromUTF8Unsafe(start), base::BindOnce(chosen, window));
 }
 #endif
 

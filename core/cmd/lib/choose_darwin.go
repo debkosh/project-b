@@ -2,14 +2,23 @@ package main
 
 /*
 #cgo CFLAGS: -I${SRCDIR}/../../../engine/abi
+#include <stdlib.h>
 #include "pb_abi.h"
 
-static inline void call_choose_folder(const PBEngineCalls* c, int64_t window) { c->choose_folder(window); }
+static inline void call_choose_folder(const PBEngineCalls* c, int64_t window, const char* start) { c->choose_folder(window, start); }
 */
 import "C"
 
-import "projectb/engine"
+import (
+	"unsafe"
 
-// ChooseFolder asks for a folder in the system's panel on the window; PB_EVENT_FOLDER_CHOSEN
-// says which.
-func (e *nativeEngine) ChooseFolder(w engine.WindowID) { C.call_choose_folder(e.calls, C.int64_t(w)) }
+	"projectb/engine"
+)
+
+// ChooseFolder asks for a folder in a dialog on the window, opening at start;
+// PB_EVENT_FOLDER_CHOSEN says which.
+func (e *nativeEngine) ChooseFolder(w engine.WindowID, start string) {
+	cs := C.CString(start)
+	defer C.free(unsafe.Pointer(cs))
+	C.call_choose_folder(e.calls, C.int64_t(w), cs)
+}

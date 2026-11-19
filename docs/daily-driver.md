@@ -99,7 +99,7 @@ since a shell page loads no image from the web. The `shared` folder is emptied a
 
 Today the engine has no `DownloadManagerDelegate`, so content refuses every download. The
 engine gets one; Go decides where each file goes and keeps the list; the shell draws the list;
-the Save panel is the system's own.
+the Save dialog is Chromium's own (`engine/browser/choose_path.cc`).
 
 **The flow.** A page starts a download, or a menu's Save Link As does. The engine asks Go
 where it goes (`PB_EVENT_DOWNLOAD_TARGET`: the download's id, its tab, address, suggested

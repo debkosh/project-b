@@ -37,6 +37,10 @@ func TestSettingsChoosesTheDownloadFolder(t *testing.T) {
 	if target() != chosen {
 		t.Fatalf("after Change…, a download goes to %s", target())
 	}
+	// The dialog opened at the folder downloads went to then.
+	if starts := r.e.FolderStarts(); len(starts) != 1 || starts[0] != standard {
+		t.Fatalf("the dialog opened at %q", starts)
+	}
 	var pref string
 	r.main(func() { pref = r.a.Prefs.All().DownloadFolder })
 	if pref != chosen {

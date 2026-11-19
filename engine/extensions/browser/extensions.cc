@@ -710,8 +710,8 @@ content::WebContents* Extensions::popup_contents() const {
 }
 
 void Extensions::ChoosePath(int64_t window, int kind) {
-  ShowPathChooser(Engine::Get()->window(window)->window.get(),
-                  static_cast<PathKind>(kind),
+  ShowPathChooser(Engine::Get()->window(window)->window->native_window(),
+                  static_cast<PathKind>(kind), base::FilePath(),
                   base::BindOnce(&Extensions::PathChosen,
                                  weak_factory_.GetWeakPtr()));
 }

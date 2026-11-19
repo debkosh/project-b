@@ -178,6 +178,10 @@ func TestAFolderChosenIsABrowser(t *testing.T) {
 		return next(t, p.got, "folder")
 	}
 	f := choose(filepath.Join(home, "Elsewhere/Thorium/User Data"))
+	// The dialog opens where the browsers keep their folders, as it can't show ~/Library.
+	if starts := p.r.e.FolderStarts(); len(starts) != 1 || starts[0] != filepath.Join(home, "Library/Application Support") {
+		t.Fatalf("the dialog opened at %q", starts)
+	}
 	b, _ := f["browser"].(map[string]any)
 	if b == nil || b["id"] != "other-chromium" || b["name"] != "Thorium" || len(profilesOf(b)) != 1 || profilesOf(b)[0]["name"] != "Me" {
 		t.Fatalf("Thorium's folder: %v", f)

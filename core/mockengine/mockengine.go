@@ -147,8 +147,10 @@ type Engine struct {
 	left bool
 	// showRegions is the Show window regions flag, as the app launched with it.
 	showRegions bool
-	// folder is what the next ChooseFolder answers, as a test sets it ("choose").
-	folder string
+	// folder is what the next ChooseFolder answers, as a test sets it ("choose"), and
+	// folderStarts where each one asked opened.
+	folder       string
+	folderStarts []string
 	// settings are what the settings page in each tab of ours hears.
 	settings map[engine.TabID]*Feed
 
@@ -764,8 +766,11 @@ func (e *Engine) Menu() engine.Menu {
 func (e *Engine) ExitReason(int) string { return "" }
 
 // ChooseFolder answers with the folder a test set with Fire's "choose", or none, as a
-// person who cancels the panel does.
-func (e *Engine) ChooseFolder(w engine.WindowID) {
+// person who cancels the dialog does, and keeps where the dialog was to open.
+func (e *Engine) ChooseFolder(w engine.WindowID, start string) {
+	e.mu.Lock()
+	e.folderStarts = append(e.folderStarts, start)
+	e.mu.Unlock()
 	e.Post(func() {
 		path := e.folder
 		e.folder = ""
@@ -773,6 +778,13 @@ func (e *Engine) ChooseFolder(w engine.WindowID) {
 			e.listener.FolderChosen(w, path)
 		}
 	})
+}
+
+// FolderStarts is where each ChooseFolder's dialog was to open, in order. Any goroutine.
+func (e *Engine) FolderStarts() []string {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return append([]string{}, e.folderStarts...)
 }
 
 // AppCommand records a quit; the rest are the OS's.

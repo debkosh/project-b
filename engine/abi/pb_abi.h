@@ -537,9 +537,11 @@ typedef struct PBEngineCalls {
                         int64_t received,
                         int64_t total,
                         int paused);
-  // Mac only: asks the user for a folder, in the system's panel on the window, as Import
-  // asks for another browser's. PB_EVENT_FOLDER_CHOSEN says which. Android leaves it null.
-  void (*choose_folder)(int64_t window);
+  // A desktop's: asks the user for a folder, in Chromium's own file dialog as a sheet on the
+  // window, opening at start, or where it last was for "": as Import asks for another
+  // browser's, starting where the browsers keep theirs. PB_EVENT_FOLDER_CHOSEN says which.
+  // Android leaves it null.
+  void (*choose_folder)(int64_t window, const char* start);
   // Android only: why the app's process with this id, one from an earlier run, ended, as
   // Android 11 and later keep it: ApplicationExitInfo's REASON_ number, or -1 when Android
   // doesn't say, as before 11 or with no record of it. The Mac leaves it null.
