@@ -44,6 +44,25 @@ The seams:
 - **Work that takes time.** A rule made for work nobody asked for, such as waiting before
   saying it is busy, doesn't fit a press, which needs its answer at once. One so far: Sync
   now that showed nothing.
+- **An error as text.** A library's words for what went wrong hold more than we would say
+  ourselves: Go names the whole address a request went to, and an address can be a secret.
+  What goes to a log, a tooltip or a report has to be looked at as text a stranger may read.
+  One so far: the sync token in the log.
+
+## The sync token in the log, 2026-11-19
+
+- **Seen:** nobody saw it. Reading the code for Sync details showed that a sync run that
+  failed wrote the bucket's whole address into the profile's timeline, and showed it in the
+  Sync row's tooltip. An address from the memd page carries the bucket's token in its path,
+  and the timeline's last lines go into a crash report, which a person may post in public.
+- **Cause:** sync logged and showed a failed run's error as Go worded it, and Go's error for a
+  request names the whole address it went to. Status showed only the host everywhere else.
+- **Seam:** an error as text: a library's words for what went wrong hold more than we would
+  say ourselves.
+- **Fix:** on sync-token-out-of-log: `sync.Words` gives an error's text with a request's
+  address cut down to its host, and the status, the page's answers and the timeline use it.
+- **Guard:** `TestAFailedRunsWordsLeaveTheTokenOut` in `core/sync` signs a device out and
+  finds no token in the status or the timeline, having first seen that Go's own error has it.
 
 ## Sync now that showed nothing, 2026-11-19
 
