@@ -1,6 +1,7 @@
 package sync_test
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -17,6 +18,7 @@ import (
 	"projectb/bookmarks"
 	"projectb/history"
 	"projectb/keys"
+	"projectb/passkeys"
 	"projectb/store"
 	"projectb/sync"
 )
@@ -137,6 +139,7 @@ type profile struct {
 	keys      *keys.Keys
 	history   *history.Manager
 	bookmarks *bookmarks.Manager
+	passkeys  *passkeys.Manager
 	posted    chan func()
 	maps      []sync.Mapping
 	sync      *sync.Manager
@@ -163,7 +166,9 @@ func openProfile(t *testing.T, dir string) *profile {
 	p.keys = keys.New(dir, "", st, nil)
 	p.bookmarks = bookmarks.New(dir, st)
 	p.history = history.New(dir, st, p.post)
-	p.maps = append(history.Synced(), p.bookmarks.Synced(p.post))
+	// The device's check always passes here: core/passkeys' own tests hold it.
+	p.passkeys = passkeys.New(st, p.keys, func(context.Context, passkeys.Why, string) error { return nil })
+	p.maps = append(history.Synced(), p.bookmarks.Synced(p.post), p.passkeys.Synced(func() {}))
 	sync.Setup(st)
 	closed := false
 	p.close = func() {
