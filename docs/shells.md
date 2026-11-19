@@ -971,10 +971,12 @@ address field, and a menu button at the far right, in our tones.
   the notices go, and any sheet closes; Android hides its status and navigation bars, and
   the back key ends it (rule 21).
 - **A long press on a link** in the page opens the shell's sheet for it, since a phone
-  has no menu of its own: Open in new tab in group first, as Chrome has it, then Open in
-  new tab, Open in workspace, and Copy link; on an image, Open image in new tab and Copy
-  image address. Tabs opened from it open behind, so the group's strip gathers them while
-  the user reads on. A long press on text keeps Android's own selection.
+  has no menu of its own: the dense sheet, with New tab, In group, Copy link, Download and
+  Share as tiles, then Open in workspace and Copy link text as rows; on an image, New tab,
+  Copy image, Download and Share, then Copy image address; a linked image has both
+  ([daily-driver.md](daily-driver.md)). Tabs opened from it open behind, so the group's
+  strip gathers them while the user reads on. A long press on text keeps Android's own
+  selection.
 - **A page's dialog** (alert, confirm, prompt, leave-page question or a site's sign-in,
   rules 15 and 22) is a card in the middle of the screen over the dimmed window, sheets and
   bars too, as Android's dialogs are, with Go's words and buttons 48px tall. Only the shown

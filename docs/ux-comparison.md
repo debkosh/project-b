@@ -59,8 +59,8 @@ Before the comparison, three faults in 0.2.74. They come before anything below.
 - **Mobile's bar at the foot,** with the menu and the sheets at the thumb. Safari on iOS
   has the same shape. Chrome and Brave keep the address on top, and Firefox now starts on
   top too.
-- **Mobile's long-press link sheet** offers "Open in new tab in group" first, as Chrome
-  does.
+- **Mobile's long-press link sheet** offers In group among its first tiles, as Chrome
+  offers "Open in new tab in group" first.
 
 ## What to do, ranked
 
