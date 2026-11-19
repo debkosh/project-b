@@ -60,6 +60,9 @@ settings. Only sealed data waits for the passphrase.
 - **Something nobody asked for** (sync's own timer): never raises a Dialog. It is answered
   "locked" and runs again when the profile is unlocked.
 - One Dialog at a time for a profile. Calls that arrive while it shows wait on the same one.
+- A call that waits can be taken back by whoever made it: the page's request timed out, the
+  person cancelled it there, or the tab closed or went elsewhere. It is answered "cancelled",
+  and the Dialog closes when no call waits on it any more.
 - A wrong passphrase leaves the Dialog up with "That passphrase isn't right". Each try costs
   the half second argon2id takes, which is the only brake: a count-out would stop nobody who has
   the files.
