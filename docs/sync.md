@@ -36,6 +36,7 @@ uses its Go `client` package. The store it works over is [store.md](store.md).
 | `bookmarks` | bookmark or folder, by its id | the folder it is in, its kind, title, address, when it was added and last changed, its place |
 | `history` | address | the address, its title, how many visits, the last visit |
 | `typed` | address typed | the address, how many times, the last time |
+| `passkeys` | passkey, by its credential ID | its site, user handle, names, when it was made and its key ([passkeys.md](passkeys.md)) |
 
 **Not synced:** each visit (the `visits` table), the sites (`sites`, made from history on each
 device), the folder a bookmark was last saved in, and everything kept in JSON files (prefs,
@@ -244,7 +245,7 @@ picture, light and dark, desktop and phone, is made by `shell/e2e/sync.cjs` unde
 - **Where:** a card under Your data with the heading Sync, after the profile's card and before
   Import; in the Sections layout, in Profile and import. Its address is `sync` in both layouts
   (`arrange.js`), and searching for sync or passphrase finds its rows.
-- **Off:** one row, Set up sync, "Bookmarks, history and typed addresses, through your own sync
+- **Off:** one row, Set up sync, "Bookmarks, history, typed addresses and passkeys, through your own sync
   server", Set up….
 - **On:** the server's row, its letter on its tile as a site's, with "Last synced 2 minutes ago"
   ("just now" in its first minute, "Not synced yet" before a first run ends) and Sync now; then
