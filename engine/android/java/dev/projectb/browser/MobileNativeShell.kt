@@ -268,10 +268,14 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
                 draw()
             }
             "tabs", "theme", "windowColor", "addressBarPosition", "workspaces", "update", "crashLog",
-            "dialogs", "downloads", "bookmarks", "find", "pageFullScreen" -> {
+            "dialogs", "bookmarks", "find", "pageFullScreen" -> {
                 take(m)
                 draw()
             }
+            // Only the menu's Downloads tile reads the list, as the menu opens: a running
+            // download's every step drawing the shell again kept Android's tree from ever
+            // settling, so uiautomator, and a screen reader, read nothing while one ran.
+            "downloads" -> take(m)
             "tab" -> {
                 val tab = m.getJSONObject("tab")
                 val id = tab.getLong("id")
@@ -386,7 +390,7 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
         palette = Palette(tones?.optJSONObject(if (dark()) "dark" else "light"))
         val tab = activeTab()
         val url = tab?.optString("url") ?: ""
-        if (!editing) address.setText(host(url))
+        if (!editing && address.text.toString() != host(url)) address.setText(host(url))
         val page = tab?.optString("page") ?: ""
         if (page.isNotEmpty() && editing) leave()
         ours.visibility = if (page.isNotEmpty()) VISIBLE else GONE
