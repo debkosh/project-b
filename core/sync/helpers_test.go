@@ -263,3 +263,10 @@ func rawOf(v any) json.RawMessage {
 	b, _ := json.Marshal(v)
 	return b
 }
+
+// details is what Sync details would show now.
+func (p *profile) details() sync.Details {
+	got := make(chan sync.Details, 1)
+	p.sync.Details(func(d sync.Details) { got <- d })
+	return <-got
+}

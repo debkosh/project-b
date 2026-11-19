@@ -3,10 +3,12 @@ package sync
 import (
 	"errors"
 	"fmt"
+	"io"
 	"mime"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // What can go wrong reaching a bucket, each of which the settings page words its own way
@@ -54,20 +56,76 @@ func Words(err error) string {
 }
 
 // checked is c with every answer looked at first: what the server's answer says of the bucket
-// becomes one of the errors above, so a call's error says which.
-func checked(c *http.Client) *http.Client {
+// becomes one of the errors above, so a call's error says which. Each request is told to note
+// once it is over, for Sync details.
+func checked(c *http.Client, note func(Request)) *http.Client {
 	out := *c
 	base := c.Transport
 	if base == nil {
 		base = http.DefaultTransport
 	}
-	out.Transport = checking{base}
+	out.Transport = checking{base, note}
 	return &out
 }
 
-type checking struct{ base http.RoundTripper }
+type checking struct {
+	base http.RoundTripper
+	note func(Request)
+}
 
+// RoundTrip measures the request round its answer: a request with no answer, or one refused,
+// is over at once, and one answered when its body has been read and closed.
 func (t checking) RoundTrip(r *http.Request) (*http.Response, error) {
+	began := time.Now()
+	q := Request{At: began.UnixMilli(), Method: r.Method, Path: r.URL.Path[strings.LastIndex(r.URL.Path, "/")+1:], Out: max(r.ContentLength, 0)}
+	over := func() {
+		q.Took = time.Since(began).Milliseconds()
+		t.note(q)
+	}
+	resp, err := t.answer(r)
+	if resp == nil {
+		var refused *statusError
+		if errors.As(err, &refused) {
+			q.Status = refused.status
+		}
+		over()
+		return nil, err
+	}
+	q.Status = resp.StatusCode
+	resp.Body = &counted{ReadCloser: resp.Body, over: func(n int64) { q.In = n; over() }}
+	return resp, nil
+}
+
+// statusError is a problem the server's answer named, with the answer's status.
+type statusError struct {
+	error
+	status int
+}
+
+func (e *statusError) Unwrap() error { return e.error }
+
+// counted counts an answer's bytes, and tells over once, when it is closed.
+type counted struct {
+	io.ReadCloser
+	n    int64
+	over func(int64)
+}
+
+func (c *counted) Read(p []byte) (int, error) {
+	n, err := c.ReadCloser.Read(p)
+	c.n += int64(n)
+	return n, err
+}
+
+func (c *counted) Close() error {
+	if c.over != nil {
+		c.over(c.n)
+		c.over = nil
+	}
+	return c.ReadCloser.Close()
+}
+
+func (t checking) answer(r *http.Request) (*http.Response, error) {
 	resp, err := t.base.RoundTrip(r)
 	if err != nil {
 		// A run cut short is no problem of the server's.
@@ -88,5 +146,5 @@ func (t checking) RoundTrip(r *http.Request) (*http.Response, error) {
 		return resp, nil
 	}
 	resp.Body.Close()
-	return nil, problem
+	return nil, &statusError{problem, resp.StatusCode}
 }

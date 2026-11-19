@@ -112,7 +112,7 @@ func (m *Manager) Connect(address, token, passphrase string, done func(error)) {
 		err := m.connect(address, token, passphrase)
 		m.post(func() { done(err) })
 		if err == nil {
-			m.run()
+			m.run(WhyOn)
 		}
 	}
 }
@@ -151,7 +151,7 @@ func (m *Manager) ChangePassphrase(passphrase string, done func(error)) {
 			return errors.New("sync: off")
 		}
 		// Every copy there is, first.
-		if err := m.run(); err != nil {
+		if err := m.run(WhyPassphrase); err != nil {
 			return err
 		}
 		copy, err := c.key.SealedCopy(passphrase, passphraseLabel)
@@ -173,7 +173,7 @@ func (m *Manager) ChangePassphrase(passphrase string, done func(error)) {
 				}
 			}
 		}
-		return m.run()
+		return m.run(WhyPassphrase)
 	})
 }
 

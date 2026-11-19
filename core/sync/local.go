@@ -41,6 +41,9 @@ type Mapping struct {
 	Merges bool
 	// Changed runs on the main thread after a run wrote the feature's rows.
 	Changed func()
+	// Name is what a person calls the row of key, for Sync details: a bookmark's title. Without
+	// it the key is the name, as an address is.
+	Name func(tx *store.Tx, key string) string
 }
 
 // The tables (docs/sync.md). sync_items is synckosh's bookkeeping, an item's JSON with its
@@ -77,6 +80,8 @@ type local struct {
 	// wrote is the collections whose rows a version from the server changed, since the run
 	// began. Only the sync goroutine reads it, after the jobs that set it.
 	wrote map[string]bool
+	// moved is what was received and sent since the run began, for Sync details. As wrote.
+	moved tally
 }
 
 var _ client.Local = (*local)(nil)
@@ -243,6 +248,10 @@ func (l *local) put(tx *store.Tx, e client.Entry) error {
 		if err := l.cut(tx, m, it); err != nil {
 			return err
 		}
+		// One this device wrote itself is pending: its rows were cleared here already.
+		if !e.Pending {
+			l.moved.add(false, Moved{Collection: m.Collection, Deleted: true, All: true})
+		}
 	case it.Deleted:
 		k, err := l.keyOf(tx, m, it)
 		if err != nil {
@@ -250,8 +259,12 @@ func (l *local) put(tx *store.Tx, e client.Entry) error {
 		}
 		key = sql.NullString{String: k, Valid: k != ""}
 		if key.Valid {
-			if err := l.deleteRow(tx, m, k); err != nil {
+			gone, err := l.deleteRow(tx, m, k)
+			if err != nil {
 				return err
+			}
+			if gone {
+				l.moved.add(false, Moved{Collection: m.Collection, Deleted: true})
 			}
 		}
 	default:
@@ -264,6 +277,24 @@ func (l *local) put(tx *store.Tx, e client.Entry) error {
 		key = sql.NullString{String: k, Valid: true}
 		if err := l.join(tx, m, k, it.Private); err != nil {
 			return err
+		}
+	}
+	// An item the server has now taken was pending and sent, and comes back neither.
+	if mapped := l.maps[it.Collection]; mapped != nil && !e.Pending && !e.Locked {
+		var pending bool
+		var sent int64
+		err := tx.QueryRow(`SELECT pending, sent FROM sync_items WHERE collection = ? AND guid = ?`, it.Collection, it.GUID).Scan(&pending, &sent)
+		if err != nil && err != sql.ErrNoRows {
+			return err
+		}
+		if pending && sent != 0 {
+			went := Moved{Collection: it.Collection, Deleted: it.Deleted, All: it.GUID == synckosh.DeleteBeforeItem}
+			if went.All {
+				went.Deleted = true
+			} else if !it.Deleted && key.Valid {
+				went.Name = name(tx, mapped, key.String)
+			}
+			l.moved.add(true, went)
 		}
 	}
 	// What a mapped item holds is its row's; a deleted one keeps nothing of it.
@@ -322,6 +353,10 @@ func (l *local) join(tx *store.Tx, m *Mapping, key string, private json.RawMessa
 		if row, has, err = m.Read(tx, key); err != nil {
 			return err
 		}
+		// A version the feature couldn't keep wrote no row, and so is none received.
+		if has {
+			l.moved.add(false, Moved{Collection: m.Collection, Name: name(tx, m, key)})
+		}
 	}
 	if has && !sameJSON(row, private) {
 		_, err := tx.Exec(`INSERT OR IGNORE INTO sync_changes (collection, key, deleted) VALUES (?, ?, 0)`, m.Collection, key)
@@ -331,18 +366,18 @@ func (l *local) join(tx *store.Tx, m *Mapping, key string, private json.RawMessa
 }
 
 // deleteRow deletes the row of key for a delete from the server, unless it was changed here
-// since: then it goes out again.
-func (l *local) deleteRow(tx *store.Tx, m *Mapping, key string) error {
+// since: then it goes out again. It says whether it deleted one.
+func (l *local) deleteRow(tx *store.Tx, m *Mapping, key string) (bool, error) {
 	marked, _, err := mark(tx, m.Collection, key)
 	if err != nil || marked {
-		return err
+		return false, err
 	}
 	_, has, err := m.Read(tx, key)
 	if err != nil || !has {
-		return err
+		return false, err
 	}
 	l.wrote[m.Collection] = true
-	return m.Delete(tx, key)
+	return true, m.Delete(tx, key)
 }
 
 // cut follows a delete-before: the rows of its items at or before its cutoff go, but those
@@ -376,7 +411,7 @@ func (l *local) cut(tx *store.Tx, m *Mapping, it synckosh.Item) error {
 	}
 	for _, g := range all {
 		if g.key.Valid {
-			if err := l.deleteRow(tx, m, g.key.String); err != nil {
+			if _, err := l.deleteRow(tx, m, g.key.String); err != nil {
 				return err
 			}
 		}

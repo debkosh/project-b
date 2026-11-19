@@ -29,6 +29,14 @@ func (m *Manager) Synced(post func(func())) sync.Mapping {
 	return sync.Mapping{
 		Collection: Collection, Datatype: "bookmark", Table: "bookmarks", Key: "id",
 		KeyOf: func(guid string, _ json.RawMessage) (string, error) { return guid, nil },
+		Name: func(tx *store.Tx, id string) string {
+			var title, url string
+			tx.QueryRow(`SELECT title, url FROM bookmarks WHERE id = ?`, id).Scan(&title, &url)
+			if title == "" {
+				return url
+			}
+			return title
+		},
 		Read: func(tx *store.Tx, id string) (json.RawMessage, bool, error) {
 			var it item
 			err := tx.QueryRow(`SELECT parent, kind, title, url, added, edited, place FROM bookmarks WHERE id = ?`, id).
