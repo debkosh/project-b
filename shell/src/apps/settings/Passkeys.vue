@@ -41,7 +41,7 @@ function remove() {
 <template>
   <section aria-label="Passkeys">
     <div class="card">
-      <div v-if="state.passkeysNotHere" class="row empty">These passkeys were sealed on another device and can't be opened on this one.</div>
+      <div v-if="state.passkeysNotHere" class="row empty">These passkeys were made on another device and only open there.</div>
       <div v-else-if="state.passkeys && rows.length === 0" class="row empty">No passkeys yet. When a site offers to create one, Project B can save it here.</div>
       <div v-for="p in rows" :key="p.id" class="row passkey" :data-site="p.site">
         <span class="mark" aria-hidden="true" :style="{ background: tile(p.site).background, boxShadow: `inset 0 0 0 1px ${tile(p.site).border}`, color: tile(p.site).letter }">{{ letter(p.site) }}</span>
