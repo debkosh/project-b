@@ -251,6 +251,8 @@ if (shots) fs.mkdirSync(shots, { recursive: true });
     check('its buttons are Use a security key or phone and Cancel, with no primary', JSON.stringify(await buttons()) === '["Use a security key or phone","Cancel"]' && (await card.locator('.text-button.primary').count()) === 0, JSON.stringify(await buttons()));
     const first = (await mine.nth(0).innerText()).replace(/\s+/g, ' ');
     check('the keyboard is on the first passkey', await until(async () => (await focused()).replace(/\s+/g, '') === first.replace(/\s+/g, '')), await focused());
+    // The pointer aside, so no row shows as hovered.
+    await page.mouse.move(1, 1);
     await shoot('own');
     const uses = (await checks()).length;
     await page.keyboard.press('Enter');
