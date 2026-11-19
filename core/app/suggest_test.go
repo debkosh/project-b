@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"projectb/store"
 )
@@ -134,5 +135,29 @@ func TestTypedAddressesAreRecorded(t *testing.T) {
 	})
 	if strings.Join(got, " ") != "https://chosen.test/ https://new.test https://typed.test" {
 		t.Fatalf("typed = %v", got)
+	}
+}
+
+// The phone's new tab can take a site out of history, every page of it: its suggestions
+// then offer nothing of that site, and still offer the others.
+func TestForgetSiteTakesASiteOutOfHistory(t *testing.T) {
+	r := start(t, t.TempDir())
+	defer r.stop()
+	r.visit("https://example.com/docs")
+	r.visit("https://example.com/blog")
+	r.visit("https://other.test/")
+	if len(r.suggestions("exam")) == 0 {
+		t.Fatal("example.com should be suggested before it is forgotten")
+	}
+	r.shell(`{"t":"forgetSite","url":"https://example.com/docs"}`)
+	deadline := time.Now().Add(5 * time.Second)
+	for len(r.suggestions("exam")) != 0 {
+		if time.Now().After(deadline) {
+			t.Fatalf("example.com still suggested: %v", r.suggestions("exam"))
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	if len(r.suggestions("other")) == 0 {
+		t.Fatal("other.test should still be suggested")
 	}
 }
