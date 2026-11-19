@@ -163,6 +163,23 @@ class Server(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(data)
             return
+        # A big file that comes slowly, a quarter of a megabyte each half second, for a
+        # download that runs long enough to be paused, resumed and cancelled.
+        if path.startswith("/slow/"):
+            chunk = b"x" * 250000
+            self.send_response(200)
+            self.send_header("Content-Type", "application/octet-stream")
+            self.send_header("Content-Disposition", 'attachment; filename="%s"' % path[6:])
+            self.send_header("Content-Length", str(len(chunk) * 240))
+            self.end_headers()
+            try:
+                for _ in range(240):
+                    self.wfile.write(chunk)
+                    self.wfile.flush()
+                    time.sleep(0.5)
+            except OSError:
+                pass  # Cancelled, or the app stopped.
+            return
         if path == "/to-blocked":
             self.send_response(302)
             self.send_header("Location", "http://blocked.test/")
@@ -1094,6 +1111,120 @@ def settings_back():
     check("and only then out of Settings", until(lambda: "settings" not in screen_parts()) is not None)
 
 
+def notifications_allowed():
+    return "android.permission.POST_NOTIFICATIONS: granted=true" in adb("shell", "dumpsys", "package", PACKAGE)
+
+
+def forget_notifications():
+    """Notifications not allowed and never asked about: Android's question asks again, and
+    the download bar's offer, shown once, comes again (downloads.json's notificationsOffered)."""
+    adb("shell", "am", "force-stop", PACKAGE)
+    adb("shell", "pm", "revoke", PACKAGE, "android.permission.POST_NOTIFICATIONS")
+    adb("shell", "pm", "clear-permission-flags", PACKAGE, "android.permission.POST_NOTIFICATIONS", "user-set", "user-fixed")
+    kept = profile_json("downloads.json")
+    if kept.pop("notificationsOffered", None) is not None:
+        profile_file("downloads.json", kept)
+
+
+def notification_buttons(name):
+    """The download notification for the file name: Android's id for it and its buttons'
+    words, as Android keeps them, or (None, [])."""
+    text = adb("shell", "dumpsys", "notification", "--noredact")
+    for record in text.split("NotificationRecord(")[1:]:
+        if "pkg=" + PACKAGE in record and "android.title=String (%s)" % name in record:
+            return re.search(r" id=(\d+)", record).group(1), re.findall(r'\[\d+\] "([^"]+)" -> PendingIntent', record)
+    return None, []
+
+
+def press_notification_button(id, command):
+    """Sends what a download notification's button sends, PBDownloadCommand command (1
+    cancel, 2 pause, 3 resume): the shade can't be read while the notification moves, as
+    uiautomator waits for a stillness it never has, so its buttons can't be found to tap."""
+    adb("shell", "am", "broadcast", "-a", "dev.projectb.browser.DOWNLOAD_COMMAND", "-p", PACKAGE,
+        "--el", "id", id, "--ei", "command", str(command))
+
+
+def download_notifications():
+    """In both Mobile shells: while notifications aren't allowed, Android doesn't ask by
+    itself as a download starts; the first download's bar offers them, once, "Show progress
+    in notifications?" with Allow, which asks Android. Then a running download's notification
+    says how much of how much and the time left, with Pause and Cancel; Pause pauses it, with
+    Resume; Resume runs it again; and Cancel takes it and its notification away."""
+    for shell in ("mobile", "mobile-native"):
+        forget_notifications()
+        use_shell(shell)
+        launch()
+        go(BASE + "/a")
+        asked("/a")
+        name = "pb-slow-%s-%d.bin" % (shell, int(time.time()))
+        go(BASE + "/slow/" + name)
+        # The question, the words and Allow from one reading of the screen, and Allow at
+        # once: each reading takes a second or two, and the offer lasts 8.
+        def offered():
+            shell_part = screen_parts().get("shell")
+            nodes = list(shell_part.iter("node")) if shell_part is not None else []
+            ask = next((n for n in nodes if n.get("text") == "Show progress in notifications?"), None)
+            allow = next((n for n in nodes if "Allow" in (n.get("text"), n.get("content-desc"))), None)
+            words = next((n for n in nodes if (n.get("text") or "").startswith("Downloading pb-slow")), None)
+            return (words, allow, in_front_now()) if ask is not None else None
+        offer = until(offered, 10)
+        words, allow, front = offer if offer is not None else (None, None, "")
+        check("%s: the first download's bar offers notifications" % shell, offer is not None and words is not None,
+              words.get("text") if words is not None else None)
+        if allow is None:
+            check("%s: the offer has Allow" % shell, False)
+            continue
+        tap(middle(allow))
+        check("%s: and Android doesn't ask by itself" % shell, "permissioncontroller" not in front.lower(), front)
+        question = until(lambda: system_node(**{"resource-id": "com.android.permissioncontroller:id/permission_allow_button"}), 10)
+        check("%s: Allow asks Android" % shell, question is not None, in_front_now())
+        shot("33-download-asked-" + shell)
+        if question is not None:
+            tap(middle(question))
+        check("%s: and once allowed, the app may show them" % shell, until(notifications_allowed, 10) is not None)
+        # Cancelled from the app, so the next shell starts with nothing running.
+        adb("shell", "am", "force-stop", PACKAGE)
+        shot("34-download-allowed-" + shell)
+    # Shown once, the offer never comes again, taken up or not.
+    adb("shell", "pm", "revoke", PACKAGE, "android.permission.POST_NOTIFICATIONS")
+    launch()
+    go(BASE + "/a")
+    asked("/a")
+    name = "pb-again-%d.bin" % int(time.time())
+    go(BASE + "/slow/" + name)
+    said = until(lambda: find("shell", text=lambda t: (t or "").startswith("Downloading " + name)), 10)
+    check("once shown, the offer never comes again", said is not None and "notifications" not in said.get("text", ""),
+          said.get("text") if said is not None else None)
+    # The notification: sizes and time left, with Pause and Cancel.
+    adb("shell", "pm", "grant", PACKAGE, "android.permission.POST_NOTIFICATIONS")
+    launch()
+    go(BASE + "/a")
+    asked("/a")
+    name = "pb-notify-%d.bin" % int(time.time())
+    go(BASE + "/slow/" + name)
+    running = until(lambda: re.search(r" of 60 MB · \d+ (sec|secs|min|mins) left$", notification_of(name) or ""), 15)
+    check("a running download's notification says how much of how much, and the time left", running is not None, str(notification_of(name)))
+    id, buttons = notification_buttons(name)
+    check("with Pause and Cancel", buttons == ["Pause", "Cancel"], str(buttons))
+    adb("shell", "cmd", "statusbar", "expand-notifications")
+    time.sleep(2)
+    shot("35-download-notification")
+    adb("shell", "cmd", "statusbar", "collapse")
+    if id is not None:
+        press_notification_button(id, 2)
+        paused = until(lambda: (notification_of(name) or "").startswith("Paused · "), 10)
+        check("Pause pauses it, and the notification says so", paused is not None, str(notification_of(name)))
+        check("with Resume and Cancel", until(lambda: notification_buttons(name)[1] == ["Resume", "Cancel"], 5) is not None,
+              str(notification_buttons(name)[1]))
+        press_notification_button(id, 3)
+        again = until(lambda: " of 60 MB" in (notification_of(name) or "") and not (notification_of(name) or "").startswith("Paused"), 10)
+        check("Resume runs it again", again is not None, str(notification_of(name)))
+        press_notification_button(id, 1)
+        gone = until(lambda: notification_of(name) is None, 10)
+        check("Cancel takes it and its notification away", gone is not None, str(notification_of(name)))
+    use_shell("")
+
+
 def screen_size():
     """The phone's screen in device pixels: width, height."""
     w, h = re.search(r"(\d+)x(\d+)", adb("shell", "wm", "size").split("Physical size:", 1)[1]).groups()
@@ -1811,7 +1942,7 @@ def main():
     adb("shell", "pm", "clear", PACKAGE)
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
-    every = (browsing, mobile_shell, settings_back, talkback_states, bookmark_star, back_key_chain, page_dialogs, downloads, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
+    every = (browsing, mobile_shell, settings_back, talkback_states, bookmark_star, back_key_chain, page_dialogs, downloads, download_notifications, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
              the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web, long_press_menu, welcome_extras)
     for part in [p for p in every if not sys.argv[1:] or p.__name__ in sys.argv[1:]]:
         # tools/results.py splits a run's memory, CPU and checks by these lines.
