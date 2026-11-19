@@ -1,5 +1,5 @@
 <script>
-  import { answerDialog, dialogFor, focusPage, send, shell, state as go } from '@/sdk/svelte.svelte.js';
+  import { answerDialog, answerPasskey, dialogFor, focusPage, send, shell, state as go } from '@/sdk/svelte.svelte.js';
 
   // A page's alert, confirm, prompt, leave-page question or sign-in (docs/daily-driver.md),
   // in the middle of the screen over the dimmed window, as a phone's dialogs are. Only the
@@ -7,6 +7,10 @@
   // it is answered. The phone's back key answers no (App's backKey calls cancel). Its title
   // and its buttons stay put, and what is between them scrolls when the card has little
   // room, as over the keyboard.
+  //
+  // A passkey request of ours (docs/passkeys.md) is drawn as any dialog: its step's words and
+  // its primary button, which Go takes as the step's own; and for a sign-in the site's
+  // passkeys here, a row each, a tap choosing one. Go sends a new step as the same dialog.
   const dialog = $derived(dialogFor(go, go.active));
   let text = $state('');
   let password = $state('');
@@ -58,6 +62,16 @@
         {#if dialog.kind === 'prompt'}
           <input bind:this={field} bind:value={text} class="text-field" type="text" aria-label={dialog.message || 'Answer'} enterkeyhint="done" onkeydown={enter} />
         {/if}
+        {#if dialog.passkey?.accounts}
+          <div class="accounts">
+            {#each dialog.passkey.accounts as account, i (i)}
+              <button type="button" class="account" onclick={() => answerPasskey(dialog.id, 'account', String(i))}>
+                <span class="name" class:unnamed={account.unnamed}>{account.title}</span>
+                {#if account.secondary}<span class="name secondary">{account.secondary}</span>{/if}
+              </button>
+            {/each}
+          </div>
+        {/if}
         {#if dialog.kind === 'signin'}
           {#if dialog.realm}<p class="realm">The site says: “{dialog.realm}”</p>{/if}
           <label for="m-sign-in-user">Username</label>
@@ -69,7 +83,7 @@
         </div>
         <div class="buttons">
           {#if dialog.cancel}<button type="button" class="text-button" onclick={() => answer(false)}>{dialog.cancel}</button>{/if}
-          <button type="button" class="text-button primary" onclick={() => answer(true)}>{dialog.ok}</button>
+          {#if dialog.ok}<button type="button" class="text-button primary" onclick={() => answer(true)}>{dialog.ok}</button>{/if}
         </div>
       </div>
     {/key}
@@ -127,6 +141,49 @@
     font-size: 15px;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
+  }
+
+  /* A site's passkeys here: a hairline round them and between them, each a 56px row. */
+  .accounts {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .account {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    width: 100%;
+    min-height: 56px;
+    padding: 8px 12px;
+    box-sizing: border-box;
+    border: 0;
+    background: none;
+    color: var(--text);
+    font: inherit;
+    font-size: 15px;
+    text-align: left;
+  }
+
+  .account + .account {
+    border-top: 1px solid var(--line);
+  }
+
+  .account .name {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .account .secondary,
+  .account .unnamed {
+    color: var(--muted);
+  }
+
+  .account .secondary {
+    font-size: 13px;
   }
 
   .realm {

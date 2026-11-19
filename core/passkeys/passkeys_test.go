@@ -6,6 +6,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/sha256"
+	"crypto/x509"
 	"errors"
 	"math/big"
 	"os"
@@ -378,5 +379,29 @@ func TestAKeyThatDoesntOpenHere(t *testing.T) {
 	}
 	if list, err := m.List(ctx, true, "example.com", nil); err != nil || len(list) != 1 {
 		t.Fatalf("List after starting fresh: %v, %v", list, err)
+	}
+}
+
+// What a phone's page reads of a new passkey: the attestation object, CBOR of format none
+// around the data, and the public key as a SubjectPublicKeyInfo that parses to the same key.
+func TestAttestationObjectAndPublicKey(t *testing.T) {
+	m, _, _ := profile(t)
+	id, cose, _ := m.Make(ctx, true, "example.com", User{Handle: []byte("u1")}, nil)
+	data := AttestedData("example.com", id, cose, false)
+	object := AttestationObject(data)
+	head := "\xa3\x63fmt\x64none\x67attStmt\xa0\x68authData\x58"
+	if string(object[:len(head)]) != head || int(object[len(head)]) != len(data) || !bytes.Equal(object[len(head)+1:], data) {
+		t.Fatalf("attestation object %x", object)
+	}
+	if long := AttestationObject(make([]byte, 300)); long[28] != 0x59 || long[29] != 1 || long[30] != 44 || len(long) != 331 {
+		t.Fatalf("a long one's head %x", long[:31])
+	}
+	der, err := PublicKeyDER(cose)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := x509.ParsePKIXPublicKey(der)
+	if key, ok := parsed.(*ecdsa.PublicKey); err != nil || !ok || !key.Equal(public(t, cose)) {
+		t.Fatalf("the public key parses as %v, %v", parsed, err)
 	}
 }
