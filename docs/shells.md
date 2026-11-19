@@ -124,7 +124,7 @@ gives the page the same two.
 | `tabs` | `tabs`, `active`, `groups`: this window's tabs in order, with no `favicon`, the active one's id (0 when it has none), and its tab groups | Tabs open, close, move, another becomes active, or a group changes |
 | `tab` | `tab`: one tab's new state, its favicon with it | Its title, address, loading, favicon or history changed; or it is new to this window's list, as a tab moved in from another window is, with a favicon: then after the `tabs` that lists it |
 | `theme` | `theme`: `system`, `light` or `dark` | The pref changed |
-| `windowColor` | `windowColor`: `#rrggbb`, and `tones`: `{light, dark}`, every colour made from it, each palette the design system's tokens by name (`core/tones`) | The frame colour changed |
+| `windowColor` | `windowColor`: `#rrggbb`, and `tones`: `{light, dark, hues}`, every colour made from it, each palette the design system's tokens by name (`core/tones`), and the seven hues a workspace or group keeps, `{hue, name, light, dark}`, drawn for this frame | The frame colour changed |
 | `controls` | `controls`, `cornerRadius` | The native window buttons moved, or full screen |
 | `keys` | `keys`: the key each action shows, by action id | The keymap changed |
 | `workspaces` | `workspaces`: id, name and colour of each | The list changed |
@@ -188,7 +188,7 @@ title, detail, actions}`, absent otherwise
   `ready` or `failed`.
 - `keys` is the key each action shows, by action id, written as the keymap writes it
   (`Cmd+T`); `@/keys.js` and `keyLabel` show it as the menus do.
-- `workspaces` is each workspace's `{id, name, color, tones}`, `tones` its colour's as `windowColor` carries the frame's, in the user's order, one at least.
+- `workspaces` is each workspace's `{id, name, color, tones}`, in the user's order, one at least. `color`, as a group's, is one of the seven hues in whole degrees (`"181"`), drawn as `tones.hues` says, or a picked `#rrggbb` ([design-system.md](design-system.md#colour)); `tones` is its colour's, as `windowColor` carries the frame's, a hue filled at gulal's middle.
   Main, the profile's own storage, has the id `""`. A tab's `workspace` is its workspace's
   id. Every shell and the settings page hear the list again whenever it changes, whoever
   changed it. The workspace messages are the settings page's, and keep its rules: a name

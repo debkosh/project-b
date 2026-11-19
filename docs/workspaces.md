@@ -56,11 +56,12 @@ as built so far, and the order of building at the end says which steps are done.
   said, and each erase Go asks for, with how many of the workspace's tabs were still open
   (`FirstWorkspace`, `Erased`).
 - Go keeps the list, in `workspaces.json` in the profile folder beside `prefs.json`:
-  `{"version": 2, "workspaces": [{"id": "", "name": "Main", "color": "#3470d0"}, {"id":
+  `{"version": 2, "workspaces": [{"id": "", "name": "Main", "color": "0"}, {"id":
   "0a1b2c3d", "name": "Work", "color": "#5b7fd6"}]}`, in the user's order, which starts as
-  Main and then the order they were made. Main's colour is the first the settings page
-  offers. Every other id is eight hex digits Go makes, and never changes; a workspace needs
-  a name no other has, whatever its case, and a `#rrggbb` colour (`core/workspaces`,
+  Main and then the order they were made. Main's colour is the first of the seven hues
+  ([design-system.md](design-system.md#colour)); a profile from before keeps the
+  `#rrggbb` it had, drawn as it is. Every other id is eight hex digits Go makes, and never changes; a workspace needs
+  a name no other has, whatever its case, and a colour, one of the hues or `#rrggbb` (`core/workspaces`,
   `workspaces.Manager`: `List`, `First`, `Create`, `SetName`, `SetColor`, `Move`, `Delete`,
   `OnChanged`). A profile from before Main, a list without `version` or no file, gets Main
   at the top of its list once, when the list is read: the one upgrade step

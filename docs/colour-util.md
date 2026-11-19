@@ -187,8 +187,5 @@ Mobile's new tab, light and dark:
 
 ## Open
 
-- Hue bands to leave out, such as the danger red, so a mark never reads as an error.
 - The design-system rule: "A colour made up for an item comes from tint.js, never a
   literal", with what seeds it.
-- Tab groups and workspaces store a colour code today; moving them to a colour from their
-  name is its own change, after site marks.

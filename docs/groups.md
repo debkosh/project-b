@@ -12,7 +12,8 @@ decision, 2026-11-14: a group is Go's, since every shell is expected to have it
 `core/tabs/groups.go`, in the tabs manager, beside the tabs.
 
 - **A group** is `{id, name, color, collapsed, tabs}`: an id Go makes (`g1`, `g2`, ...),
-  a name that may be empty, a colour `#rrggbb`, whether a shell that folds groups shows it
+  a name that may be empty, a colour (one of gulal's seven hues, `"181"`, or a picked
+  `#rrggbb`: [design-system.md](design-system.md#colour)), whether a shell that folds groups shows it
   folded, and its tabs' ids in the group's own order, which needn't be the window's.
 - **A tab** carries `group`, its group's id, or none.
 - **One window, one workspace.** A group's tabs are all in its window and in the workspace
@@ -20,8 +21,8 @@ decision, 2026-11-14: a group is Go's, since every shell is expected to have it
 - **A tab is in one group at most:** joining one takes it out of the other.
 - **A group ends** when it drops below two tabs: one closed, moved to another window,
   taken out. A group made of one tab stays until a tab leaves it.
-- **Colour:** given, or the first of the seven workspace colours no other group of the
-  window has (`GroupColors`, the same list as settings' Workspaces).
+- **Colour:** given, or the hue `tones.Next` picks from the window's other groups': the
+  swatch used least, farthest from theirs.
 - **A tab a page opens** (`target=_blank`, `window.open`) from a tab in a group joins that
   group, right after its opener.
 - **A new tab in a group:** `newTab` with `groupWith`, a tab's id. The new tab goes in that

@@ -11,6 +11,8 @@ How every piece of our own UI looks: the shell, the settings page, and any app a
 | `shell/src/theme.js` | Puts the light or dark palette on the root as CSS variables, as the theme pref and the system say |
 | `shell/src/design.css` | Type, the floating shadow, the focus ring, and the shared controls: `.icon-button`, `.text-button` with `.primary`, `.quiet` and `.danger`, `.text-field`, `select`, `.switch`, `.tag`, `.secondary`, `.text-field-error`, and their touch sizes |
 | `shell/src/ui/tint.js` | The colours made up for an item, from gulal: one environment per background, `--bar` or `--surface`, made again each time the theme is painted |
+| `shell/src/ui/hues.js` | The colours of what the user makes, a workspace or a group: the seven hues Go sends, `paint` for a kept colour, `next` for a new one |
+| `shell/src/ui/customColour.js` | The Custom colour sheet a + opens on a phone, with no framework in it, so Vue and Svelte pages open the same one |
 | `shell/src/ui/` | The shared parts that need behaviour: `Dialog`, `RowMenu`, `Field`, `Segmented`, `Swatches`, and `escape.js`, which gives Escape to the innermost thing open |
 | `shell/src/apps/settings/SettingsApp.vue` | The settings page's own layout: `.nav-item`, `.card`, `.row`, `.label`, `h2` |
 | `shell/src/extensions/ExtensionsToolbar.vue` | The toolbar's floating menu (`.pbx-menu`) |
@@ -91,6 +93,22 @@ swatches, then a + for any colour, and a new one starts on `next(existing)`, the
 farthest from those in use. A suggestion is kept as its hue and drawn by gulal for the theme,
 so it is the same hue in light and dark; a colour the user chose with + is kept as they chose
 it, never moved.
+
+How it is built (`core/tones/hues.go`, `shell/src/ui/hues.js`):
+
+- **The seven** are gulal's `distinct(7)` started from hue 0, not from the frame's hue as
+  gulal's own start would be, away from both schemes' `--danger`: 0, 181, 90, 270, 135, 225,
+  315, named Rose, Teal, Olive, Indigo, Green, Blue and Purple. Starting from 0 keeps them
+  the same seven whatever the frame, so a kept hue is always one of the swatches.
+- **Kept** as the hue in whole degrees, `"181"`, or a picked `"#rrggbb"`. Go refuses
+  anything else for a group or a workspace.
+- **Drawn by Go:** the tones carry `hues`, each `{hue, name, light, dark}`, gulal's
+  `hue(h)` as a mark on `--bar` with the frame as its accent. `paintTheme` puts each on the
+  root as `--hue-181`, and a shell paints a kept colour with `paint(c)`; the native shell
+  reads the same list. The frame strengthens or quietens them; their hues never move.
+- **Next:** the swatch used least, then the one whose hue is farthest from those in use,
+  picked colours counting by their hue (`tones.Next`, and `next` in `hues.js` for a dialog
+  that shows it before Go makes the item).
 
 Check light and dark with four frame colours: the default, None (a grey frame with ink for the
 accent), a dark one, a light one and a mid one such as `#4f9e9e`. `core/tones` must keep every pair readable.
