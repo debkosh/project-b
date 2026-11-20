@@ -62,17 +62,22 @@ async function until(fn, ms = 5000) {
   }
   return false;
 }
-// WCAG 2's contrast ratio of two computed colours, rgb(r, g, b).
-function contrast(a, b) {
-  const luminance = (c) => {
-    const [r, g, bl] = c.match(/\d+/g).slice(0, 3).map((v) => {
-      const s = v / 255;
-      return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-    });
-    return 0.2126 * r + 0.7152 * g + 0.0722 * bl;
+// APCA's lightness contrast, Lc, of text on bg, two computed colours rgb(r, g, b), as a
+// magnitude (APCA 0.0.98G): core/tones holds a label on the accent to Lc 60
+// (docs/design-system.md), as shell/e2e/settings.cjs checks it.
+function lightness(text, bg) {
+  const y = (c) => {
+    const [r, g, b] = c.match(/\d+/g).slice(0, 3).map((v) => (v / 255) ** 2.4);
+    const v = 0.2126729 * r + 0.7151522 * g + 0.072175 * b;
+    return v < 0.022 ? v + (0.022 - v) ** 1.414 : v;
   };
-  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
-  return (hi + 0.05) / (lo + 0.05);
+  const [t, b] = [y(text), y(bg)];
+  if (b > t) {
+    const s = (b ** 0.56 - t ** 0.57) * 1.14;
+    return s < 0.1 ? 0 : (s - 0.027) * 100;
+  }
+  const s = (b ** 0.65 - t ** 0.62) * 1.14;
+  return s > -0.1 ? 0 : -(s + 0.027) * 100;
 }
 const regions = async () => (await fetch(`${base}/mock/regions`)).json();
 
@@ -106,8 +111,8 @@ const regions = async () => (await fetch(`${base}/mock/regions`)).json();
     await page.emulateMedia({ colorScheme: scheme });
     await until(async () => (await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme)) === scheme);
     const [fg, bg] = await page.getByRole('button', { name: 'Create' }).evaluate((b) => [getComputedStyle(b).color, getComputedStyle(b).backgroundColor]);
-    const ratio = contrast(fg, bg);
-    check(`Create reads in ${scheme}: ${ratio.toFixed(2)}`, ratio >= 4.5, `${fg} on ${bg}`);
+    const lc = lightness(fg, bg);
+    check(`Create reads in ${scheme}: Lc ${lc.toFixed(0)}`, lc >= 60, `${fg} on ${bg}`);
   }
   await page.getByRole('button', { name: 'Create' }).click();
   check('Create adds the profile to the list, in its template\'s colour', await until(() => listed().some((p) => p.name === 'Office' && p.color === '#5b7fd6' && p.template === 'Work')), JSON.stringify(listed()));

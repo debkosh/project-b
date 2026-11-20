@@ -1193,10 +1193,10 @@ def browsing_checks():
     check("the controls' space survives resizing", app.js("document.querySelector('[aria-label$=sidebar]').getBoundingClientRect().x") == window["buttonsEnd"] + 8)
 
     # The frame colour has one owner: Go gave it to the window and to the shell. A fresh
-    # profile has none picked, so both paint None's grey for the theme they show
+    # profile starts in the logo's teal (tones.Brand), the same frame in light and dark
     # (core/tones).
     frame = app.js("getComputedStyle(document.documentElement).getPropertyValue('--frame').trim()")
-    check("the window and the shell paint the frame colour Go owns", frame in ("#dcdee2", "#3a3f4a") and app.cmd("color") == frame, (frame, app.cmd("color")))
+    check("the window and the shell paint the frame colour Go owns", frame == "#0d7d86" and app.cmd("color") == frame, (frame, app.cmd("color")))
     check("the window already had the frame colour when it went on screen", app.cmd("showncolor") == frame, app.cmd("showncolor"))
 
     # The shell is not a page: nothing scrolls, and a trackpad swipe must not rubber-band it.
