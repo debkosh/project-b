@@ -240,7 +240,8 @@ func (m *Manager) OnChannelChanged(f func(string)) {
 	m.onChannelChanged = append(m.onChannelChanged, f)
 }
 
-// Start begins the checks; Stop ends them.
+// Start begins the checks; Stop ends them. Close ends them and any work running, and returns
+// once a download has stopped and its files are gone; the app calls it as it quits.
 func (m *Manager) Start() {
 	if m.u != nil {
 		timeline.Infof("update: %s %s", m.cfg.Project, m.cfg.Version)
@@ -251,6 +252,12 @@ func (m *Manager) Start() {
 func (m *Manager) Stop() {
 	if m.u != nil {
 		m.u.Stop()
+	}
+}
+
+func (m *Manager) Close() {
+	if m.u != nil {
+		m.u.Close()
 	}
 }
 

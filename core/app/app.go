@@ -565,7 +565,7 @@ func (a *App) NewWindowWith(tab engine.TabID) engine.WindowID {
 // Stop flushes what's pending and says the run ended cleanly. Call it on the way out.
 func (a *App) Stop() {
 	timeline.Infof("app: stopping; the windows and tabs are kept in %s", filepath.Join(a.dir, "session.json"))
-	a.Update.Stop()
+	a.Update.Close()
 	a.Sync.Stop()
 	a.Store.Close()
 	a.Session.Close()
