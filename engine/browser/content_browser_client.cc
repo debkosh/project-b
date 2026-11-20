@@ -251,6 +251,13 @@ std::string ContentBrowserClient::GetUserAgent() {
   return embedder_support::GetUserAgent();
 }
 
+// The client hints a page reads, navigator.userAgentData and the Sec-CH-UA headers: Chrome's,
+// with its brands, platform and version. Without this, content's default is empty, and sites
+// that check them, Google's sign-in among them, took the app for an unsafe browser.
+blink::UserAgentMetadata ContentBrowserClient::GetUserAgentMetadata() {
+  return embedder_support::GetUserAgentMetadata();
+}
+
 // Cookies and the HTTP cache are saved in the partition's folder, as Chrome lays a
 // profile out: chromium/Network/Cookies and chromium/Cache. Cookies are stored as
 // Chromium writes them, unencrypted, with no OS keychain. Session cookies are not kept

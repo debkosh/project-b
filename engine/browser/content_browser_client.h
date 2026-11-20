@@ -101,6 +101,7 @@ class ContentBrowserClient : public ContentBrowserClientHooks {
       content::GuestPageHolder* guest_page_holder,
       content::LoginDelegate::LoginAuthRequiredCallback auth_required_callback) override;
   std::string GetUserAgent() override;
+  blink::UserAgentMetadata GetUserAgentMetadata() override;
   // A page's preferred colour scheme is the app's theme, or as the system is.
   void OverrideWebPreferences(content::WebContents* web_contents,
                               content::SiteInstance& main_frame_site,

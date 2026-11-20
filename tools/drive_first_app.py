@@ -178,6 +178,16 @@ class Pages(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
+        if self.path == "/signals":
+            # What a site reads to tell Chrome from an embedded browser: the client hints it
+            # asks for, kept for browser_signal_checks.
+            Pages.signals = {k.lower(): v for k, v in self.headers.items() if k.lower().startswith("sec-ch-ua")}
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.send_header("Accept-CH", "Sec-CH-UA-Full-Version-List, Sec-CH-UA-Platform-Version")
+            self.end_headers()
+            self.wfile.write(b"<!doctype html><title>Signals</title>")
+            return
         if self.path == "/cookie":
             # Sets a cookie that lasts an hour, and shows in its title the cookies it got.
             body = f"<!doctype html><title>{self.headers.get('Cookie', 'none')}</title>".encode()
@@ -2860,6 +2870,37 @@ def passkey_checks():
 KILLERS = web_features.probes()
 
 
+def browser_signal_checks():
+    """What a site reads to tell Chrome from an embedded or automated browser is Chrome's: the
+    client hints, navigator.userAgentData and the Sec-CH-UA headers, name Chromium at the user
+    agent's version on macOS, and navigator.webdriver is false. Empty client hints were
+    content's default, and Google's sign-in refused the app as a browser that may not be
+    secure."""
+    app = App(tempfile.mkdtemp(prefix="pb-profile-"))
+    visit(app, PAGES + "signals")
+    # Again, so the request carries the hints the first answer's Accept-CH asked for.
+    visit(app, PAGES + "signals")
+    app.js("(() => { window.sig = null; navigator.userAgentData.getHighEntropyValues(['platform', 'fullVersionList'])"
+           ".then(v => window.sig = JSON.stringify({brands: navigator.userAgentData.brands, platform: v.platform, "
+           "full: v.fullVersionList, webdriver: navigator.webdriver, ua: navigator.userAgent})); return 1 })()", page=True)
+    sig = None
+    for _ in range(50):
+        sig = app.js("window.sig", page=True)
+        if sig:
+            break
+        time.sleep(0.1)
+    sig = json.loads(sig or "{}")
+    major = (re.search(r"Chrome/(\d+)", sig.get("ua", "")) or [None, ""])[1]
+    brands = {b["brand"]: b["version"] for b in sig.get("brands", [])}
+    check("navigator.userAgentData names Chromium at the user agent's version, on macOS",
+          bool(major) and brands.get("Chromium") == major and sig.get("platform") == "macOS", sig)
+    check("and its full version list has Chromium's", any(b["brand"] == "Chromium" and b["version"].startswith(major + ".") for b in sig.get("full", [])), sig.get("full"))
+    check("navigator.webdriver is false", sig.get("webdriver") is False, sig.get("webdriver"))
+    h = getattr(Pages, "signals", {})
+    check("the Sec-CH-UA headers name Chromium and macOS", f'"Chromium";v="{major}"' in h.get("sec-ch-ua", "") and h.get("sec-ch-ua-platform") == '"macOS"', h)
+    app.close()
+
+
 def web_api_checks():
     """A page that calls each web API in the web-features registry keeps its renderer and
     gets what the registry says it gets on the Mac; a service worker that sets the badge
@@ -3348,5 +3389,5 @@ def app_link_checks():
 
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
-    parts = {"driver": [driver_checks], "browsing": [browsing_checks], "actions": [action_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "passkeys": [passkey_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks], "viewsource": [view_source_checks], "duplicate": [duplicate_checks], "applink": [app_link_checks]}
-    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, action_checks, settings_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, glide_checks, web_api_checks, passkey_checks, sparks_checks, links_checks, view_source_checks, duplicate_checks, app_link_checks, quit_checks]))
+    parts = {"driver": [driver_checks], "browsing": [browsing_checks], "actions": [action_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "signals": [browser_signal_checks], "passkeys": [passkey_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks], "viewsource": [view_source_checks], "duplicate": [duplicate_checks], "applink": [app_link_checks]}
+    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, action_checks, settings_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, glide_checks, browser_signal_checks, web_api_checks, passkey_checks, sparks_checks, links_checks, view_source_checks, duplicate_checks, app_link_checks, quit_checks]))
