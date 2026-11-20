@@ -385,11 +385,13 @@ progress, seems like a good starting rule to evolve from"):
 - **Counts:** a profile's passwords are counted without unlocking anything, from the rows
   and logins.json; the row says "· 36 passwords" and Passwords is a choice, ticked.
 - **Into the store:** the importer hands what it read, in memory only, to the passwords
-  store through `PasswordStore` (`App.UsePasswordStore`), which says how many it added, had
-  already (a login for the same origin and username is kept as it is) and left out. Until
-  the store is there, nothing names passwords. The mock's `-password-store` gives a store
-  that only counts, `-keychain` a test secret, and `-keychain-items` the names the keychain
-  lists, for the tests.
+  store through `PasswordStore`, the profile's saved logins (`core/passwords`,
+  [passwords.md](passwords.md)), which says how many it added, had already (the same
+  origin, username and password) and left out; a login for an origin and username saved
+  with another password is added beside it. The mock brings passwords only with
+  `-password-store`, as its made-up browsers have some and bringing them would ask the
+  Mac's own keychain; `-keychain` is a test secret, and `-keychain-items` the names the
+  keychain lists, for the tests.
 - **From a file,** in Settings' Import, under the browsers: Bookmarks file, the HTML every
   browser exports (Netscape's bookmark file), into a folder named after the file; and,
   with the store, Passwords file, the CSV of Chrome, Edge, Brave, Firefox or the Passwords

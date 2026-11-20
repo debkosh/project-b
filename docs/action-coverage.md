@@ -4,7 +4,7 @@ Every action a person can take, where the app offers it, and the tests that do i
 `tools/action_coverage.py` from the code; `tools/test.sh mock` fails while an action has no
 test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 
-**213 actions and messages, 205 with a test, 8 exempt with a reason, 0 with none; 28 of Go's actions done by no test of the real app.**
+**218 actions and messages, 210 with a test, 8 exempt with a reason, 0 with none; 28 of Go's actions done by no test of the real app.**
 
 ## Go's actions: the menu bar, keys and the shells' own menus
 
@@ -16,7 +16,7 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `app.hide` Hide Project B | menu bar, keys (chrome, firefox, glide, project-b) | **no** | `commands_test.go` |
 | `app.hideOthers` Hide Others | menu bar, keys (chrome, firefox, glide, project-b) | **no** | exempt: macOS's own: AppKit hides the other apps |
 | `app.quit` Quit Project B | menu bar | **no** | `menu_test.go`, `commands_test.go`, `shellmenu_test.go`, `settings.cjs` and 1 more |
-| `app.settings` Settings… | menu bar, fox, glide, minimal, mobile, standard, terminal, mobile-native | yes | `app_test.go`, `menu_test.go`, `settings_prepare_test.go`, `welcome_test.go` and 14 more |
+| `app.settings` Settings… | menu bar, fox, glide, minimal, mobile, standard, terminal, mobile-native | yes | `app_test.go`, `menu_test.go`, `settings_prepare_test.go`, `welcome_test.go` and 15 more |
 | `app.showAll` Show All | menu bar, keys (chrome, firefox, glide, project-b) | **no** | exempt: macOS's own: AppKit shows the hidden apps |
 | `bookmarks.show` Bookmark Manager | menu bar, keys (chrome, firefox, glide, project-b), mobile, standard, page:welcome | yes | `pages_test.go`, `pages.cjs`, `mobile.cjs`, `drive_first_app.py` |
 | `bookmarks.toggle` Bookmark This Page… | menu bar, keys (chrome, firefox, glide, project-b) | **no** | `pages_test.go`, `pages.cjs` |
@@ -24,7 +24,7 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `downloads.show` Downloads | menu bar, keys (chrome, firefox, glide, project-b), mobile, page:welcome, mobile-native | yes | `download_folder_settings_test.go`, `menu_test.go`, `pages_test.go`, `welcome_test.go` and 8 more |
 | `edit.copy` Copy | menu bar, keys (chrome, firefox, glide, project-b), minimal, ui | yes | `contextmenu_test.go`, `menu_test.go`, `shellmenu_test.go`, `standard.cjs` and 1 more |
 | `edit.cut` Cut | menu bar, keys (chrome, firefox, glide, project-b) | **no** | `contextmenu_test.go`, `standard.cjs` |
-| `edit.delete` Delete | menu bar, keys (chrome, firefox, glide, project-b) | yes | `download-details.cjs`, `pages.cjs`, `passkey-settings.cjs`, `settings.cjs` and 3 more |
+| `edit.delete` Delete | menu bar, keys (chrome, firefox, glide, project-b) | yes | `download-details.cjs`, `pages.cjs`, `passkey-settings.cjs`, `password-settings.cjs` and 4 more |
 | `edit.paste` Paste | menu bar, keys (chrome, firefox, glide, project-b) | **no** | `contextmenu_test.go`, `menu_test.go`, `standard.cjs` |
 | `edit.pasteAndMatchStyle` Paste and Match Style | menu bar, keys (chrome, firefox, glide, project-b) | **no** | exempt: macOS's own: AppKit's editing command, sent to the focused field |
 | `edit.redo` Redo | menu bar, keys (chrome, firefox, glide, project-b), glide, minimal, ui | yes | `app_test.go`, `contextmenu_test.go`, `drive_first_app.py` |
@@ -111,7 +111,8 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `addKey` | page:settings | **no** | `app_test.go`, `settings_messages_test.go` |
 | `addToGroup` | glide, mobile, mobile-native, standard | yes | `drive_first_app.py` |
 | `allowNotifications` | mobile, mobile-native | **no** | `download_offer_test.go` |
-| `answerDialog` | mobile-native | **no** | `dialogs_test.go`, `passkeys_test.go` |
+| `answerDialog` | mobile-native | **no** | `dialogs_test.go`, `passkeys_own_test.go`, `passkeys_test.go` |
+| `answerPasskey` | mobile-native | **no** | `passkeys_test.go`, `passkey-settings.cjs` |
 | `askNotifications` | page:welcome | yes | `drive_android.py` |
 | `back` | glide, mobile-native | **no** | `fullscreen_test.go` |
 | `backCloses` | mobile, mobile-native | **no** | exempt: not a person's action: the Mobile shell tells the engine whether the back key closes something of its own |
@@ -175,6 +176,10 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `openInWorkspace` | page:settings | **no** | `app_test.go` |
 | `passkeyDelete` | page:settings | **no** | `passkey-settings.cjs` |
 | `passkeysList` | page:settings | **no** | `passkey-settings.cjs` |
+| `passwordCopy` | page:settings | **no** | `password_settings_test.go`, `password-settings.cjs` |
+| `passwordDelete` | page:settings | **no** | `password_settings_test.go`, `password-settings.cjs` |
+| `passwordShow` | page:settings | **no** | `password_settings_test.go`, `password-settings.cjs` |
+| `passwordsList` | page:settings | **no** | `password_settings_test.go`, `password-settings.cjs` |
 | `ready` | mobile-native, page:bookmarks, page:downloads, page:history, page:picker, page:settings, page:welcome | **no** | `events_test.go`, `app_test.go`, `default_browser_settings_test.go`, `extensions_test.go` and 8 more |
 | `recording` | page:settings | **no** | `app_test.go` |
 | `relaunch` | fox, glide, minimal, mobile-native, page:settings, standard, terminal | **no** | `app_test.go` |

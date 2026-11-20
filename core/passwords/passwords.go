@@ -117,6 +117,18 @@ func (m *Manager) List() ([]Login, error) {
 	return out, err
 }
 
+// Get is one login, ErrNone when it isn't there. It reads no sealed column.
+func (m *Manager) Get(id string) (Login, error) {
+	l := Login{ID: id}
+	err := m.st.Wait(func(tx *store.Tx) error {
+		return tx.QueryRow(`SELECT origin, username, created, used FROM logins WHERE id = ?`, id).Scan(&l.Origin, &l.Username, &l.Created, &l.Used)
+	})
+	if err == sql.ErrNoRows {
+		return Login{}, ErrNone
+	}
+	return l, err
+}
+
 // Password is the login's password, after the device has checked the person: ErrNone for a
 // login that isn't there, which asks them nothing, ErrNotHere when the profile's key doesn't
 // open here, or the check's own error.

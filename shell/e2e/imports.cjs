@@ -224,6 +224,14 @@ const said = (frame, from) => frame.getByRole('list', { name: `From ${from}` }).
   await pw.getByRole('button', { name: 'Import another' }).click();
   await pw.getByLabel('Bookmarks file').setInputFiles({ name: 'bookmarks.html', mimeType: 'text/html', buffer: Buffer.from('<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<DL><p>\n<DT><H3>Reading</H3>\n<DL><p>\n<DT><A HREF="https://example.com/file">From a file</A>\n</DL><p>\n</DL><p>\n') });
   check('a bookmarks file comes over into its own folder', await until(async () => (await said(pw, 'bookmarks.html')).includes('1 bookmark')) && folders().includes('From bookmarks'), JSON.stringify(folders()));
+  // What came over is kept: Settings' Passwords lists it, by site, with no password.
+  await w.settings.locator('.nav [data-section="privacy"]').click();
+  const kept = w.settings.locator('.row', { hasText: 'Passwords' }).first();
+  check('the passwords brought over are counted on Privacy\'s Passwords row', await until(async () => /\b[4-9] passwords\b/.test((await kept.innerText().catch(() => '')).replace(/\s+/g, ' '))), await kept.innerText().catch(() => ''));
+  await kept.getByRole('button').first().click();
+  const keptList = w.settings.getByRole('region', { name: 'Passwords', exact: true });
+  check('and listed on its page, the file\'s among them, with no password shown', await until(async () => (await keptList.locator('.row.login', { hasText: 'new.example.com' }).count()) === 1) &&
+    (await keptList.locator('.row.login').count()) >= 4 && !(await keptList.innerText()).includes('n3w') && !(await keptList.innerText()).includes('hunter2'), await keptList.innerText().catch(() => ''));
   check('passwords and files logged no errors', w.errors.length === 0, w.errors.join(' | '));
   await w.page.close();
   await lib.stop();

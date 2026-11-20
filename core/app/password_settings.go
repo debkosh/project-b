@@ -16,7 +16,8 @@ import (
 // Settings' Passwords (docs/passwords.md): how many there are, on its row under Privacy, and
 // its list page, a row per saved login with its site and username. Neither is sealed, so the
 // list asks the person nothing. A password is: Show and Copy each have the device check the
-// person first, and the page gets the password for that one press.
+// person first. Show hands the asking page the password; Copy puts it on the clipboard here,
+// and the page never has it.
 
 // passwordRow is one row of Settings' Passwords.
 type passwordRow struct {
@@ -105,35 +106,62 @@ func (a *App) passwordSettingsPart(e engine.Engine) settings.Part {
 		Snapshot: func(into map[string]any) { into["passwordCount"] = count },
 		Handle: func(tab engine.TabID, t string, msg []byte) bool {
 			var c struct {
-				ID  string `json:"id"`
-				For string `json:"for"`
+				ID   string `json:"id"`
+				What string `json:"what"`
+			}
+			// why is an error as the page words it.
+			why := func(err error) string {
+				switch {
+				case errors.Is(err, passwords.ErrDenied), errors.Is(err, passwords.ErrCancelled):
+					return "denied"
+				case errors.Is(err, passwords.ErrNoScreenLock):
+					return "noScreenLock"
+				case errors.Is(err, passwords.ErrNotHere):
+					return "notHere"
+				case errors.Is(err, passwords.ErrNone):
+					return "gone"
+				}
+				timeline.Errorf("passwords: %v", err)
+				return "failed"
 			}
 			switch t {
 			case "passwordsList":
 				list()
 			case "passwordShow":
-				// For is what the page wants it for, "show" or "copy", handed back with the
-				// answer. The answer goes to the page that asked alone.
+				// The answer goes to the page that asked alone.
 				json.Unmarshal(msg, &c)
 				go func() {
-					password, err := a.Passwords.Password(context.Background(), c.ID)
-					answer := map[string]any{"t": "passwordShown", "id": c.ID, "for": c.For}
-					switch {
-					case err == nil:
+					answer := map[string]any{"t": "passwordShown", "id": c.ID}
+					if password, err := a.Passwords.Password(context.Background(), c.ID); err != nil {
+						answer["error"] = why(err)
+					} else {
 						answer["password"] = password
-					case errors.Is(err, passwords.ErrDenied), errors.Is(err, passwords.ErrCancelled):
-						answer["error"] = "denied"
-					case errors.Is(err, passwords.ErrNoScreenLock):
-						answer["error"] = "noScreenLock"
-					case errors.Is(err, passwords.ErrNotHere):
-						answer["error"] = "notHere"
-					case errors.Is(err, passwords.ErrNone):
-						answer["error"] = "gone"
-					default:
-						timeline.Errorf("passwords: %v", err)
-						answer["error"] = "failed"
 					}
 					e.Post(func() { a.Settings.SendTo(tab, answer) })
+				}()
+			case "passwordCopy":
+				// What is "password", after the device's check, or "username". Go puts it on the
+				// clipboard: the password never goes to the page for a copy.
+				json.Unmarshal(msg, &c)
+				go func() {
+					answer := map[string]any{"t": "passwordCopied", "id": c.ID, "what": c.What}
+					var text string
+					var err error
+					if c.What == "username" {
+						var l passwords.Login
+						l, err = a.Passwords.Get(c.ID)
+						text = l.Username
+					} else {
+						text, err = a.Passwords.Password(context.Background(), c.ID)
+					}
+					e.Post(func() {
+						if err != nil {
+							answer["error"] = why(err)
+						} else {
+							e.WriteClipboard(text)
+						}
+						a.Settings.SendTo(tab, answer)
+					})
 				}()
 			case "passwordDelete":
 				json.Unmarshal(msg, &c)

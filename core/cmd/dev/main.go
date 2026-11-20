@@ -24,6 +24,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/sudiptadeb/project-b/browserdata"
+
 	"projectb/app"
 	"projectb/engine"
 	"projectb/flags"
@@ -65,7 +67,7 @@ func main() {
 	browserHome := flag.String("browsers", "", "the home folder whose browsers Import finds, the user's by default")
 	keychain := flag.String("keychain", "", "the secret the login keychain gives for any browser's passwords, in place of the Mac's keychain")
 	keychainItems := flag.String("keychain-items", "", "with -keychain, the comma-separated names whose \"<name> Safe Storage\" items the keychain lists, none by default")
-	passwordStore := flag.Bool("password-store", false, "let passwords come over, into a store that only counts them, until core/passwords is there")
+	passwordStore := flag.Bool("password-store", false, "let an import bring passwords into the profile's saved logins: off unless asked, as the tests' made-up browsers have passwords, and bringing them without -keychain would ask the Mac's own keychain")
 	skipWelcome := flag.Bool("skip-welcome", false, "a start that would open the welcome notes it finished instead, as its Skip setup does")
 	// The updater runs for real against a manifest when given a version to be, the bundle
 	// it is "installed" as, and the manifest. Without a version it stays off, as it does
@@ -154,8 +156,8 @@ func main() {
 			e.SetListener(p)
 		} else {
 			a = start(*profile, *id)
-			if *passwordStore {
-				a.UsePasswordStore(&countingStore{saved: map[string]bool{}})
+			if !*passwordStore {
+				a.UsePasswordStore(nil)
 			}
 			e.SetListener(a)
 		}
@@ -306,6 +308,16 @@ func main() {
 			default:
 				sys.SetVerdict(verdicts[what])
 			}
+			return
+		}
+		// Saved logins, as an import brings them: a JSON list of {Origin, Username, Password}.
+		if r.FormValue("kind") == "logins" {
+			var logins []browserdata.Login
+			if err := json.Unmarshal([]byte(r.FormValue("value")), &logins); err != nil || a == nil {
+				http.Error(w, "logins: a JSON list of {Origin, Username, Password}", http.StatusBadRequest)
+				return
+			}
+			a.Passwords.Import(logins)
 			return
 		}
 		e.Fire(windowOf(r), engine.TabID(tab), r.FormValue("kind"), r.FormValue("value"))

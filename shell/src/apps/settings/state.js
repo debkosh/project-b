@@ -79,6 +79,13 @@ export const state = reactive({
   passkeys: null,
   // The profile's key doesn't open on this device, so its passkeys can't be shown.
   passkeysNotHere: false,
+  // The profile's saved logins (docs/passwords.md): how many, and, once the Passwords page
+  // has asked, each {id, site, origin, username, created}, with no password. passwordAnswer
+  // is Go's last answer to this page's Show or Copy: passwordShown {id, password} or
+  // passwordCopied {id, what}, either with error in place of what was asked.
+  passwordCount: 0,
+  passwords: null,
+  passwordAnswer: null,
   // The person's sparks (docs/site-features.md): {id, name, description, match, runAt, on,
   // error}; the one whose source Go last sent, {id, source, fileName}; and Go's word on the
   // last save, '' when it took, null before one. An import's sparks the profile already
@@ -157,6 +164,7 @@ export function connect() {
             siteSettings: m.siteSettings,
             sites: m.sites || [],
             passkeyCount: m.passkeyCount || 0,
+            passwordCount: m.passwordCount || 0,
             downloadsFolder: m.downloadsFolder || '',
             homeFolder: m.homeFolder || '',
             sparks: m.sparks || [],
@@ -255,6 +263,16 @@ export function connect() {
           break;
         case 'passkeyCount':
           state.passkeyCount = m.passkeyCount;
+          break;
+        case 'passwordCount':
+          state.passwordCount = m.passwordCount;
+          break;
+        case 'passwords':
+          state.passwords = m.passwords;
+          break;
+        case 'passwordShown':
+        case 'passwordCopied':
+          state.passwordAnswer = m;
           break;
         case 'passkeys':
           state.passkeys = m.passkeys;

@@ -11,7 +11,7 @@ import (
 // Settings' Passwords: the snapshot has how many there are; the list has each login's site
 // and username and no password, and asks the person nothing; Show has the device check the
 // person, and answers the asking page with the password, or with why not; Delete takes one
-// away. The names: passwordsList, passwordShow, passwordDelete.
+// away. The names: passwordsList, passwordShow, passwordCopy, passwordDelete.
 func TestSettingsPasswords(t *testing.T) {
 	r := start(t, t.TempDir())
 	defer r.stop()
@@ -42,23 +42,35 @@ func TestSettingsPasswords(t *testing.T) {
 	}
 
 	id := first["id"].(string)
-	r.settings(`{"t":"passwordShow","id":"` + id + `","for":"copy"}`)
+	r.settings(`{"t":"passwordShow","id":"` + id + `"}`)
 	m = r.waitOn(got, func(m map[string]any) bool { return m["t"] == "passwordShown" })
-	if m["id"] != id || m["for"] != "copy" || m["password"] != "correct horse" || m["error"] != nil {
+	if m["id"] != id || m["password"] != "correct horse" || m["error"] != nil {
 		t.Fatalf("shown: %v", m)
 	}
 	if checks := r.sys.Checks(); len(checks) != 1 || checks[0].Subtitle != "mail.example.org" {
 		t.Fatalf("the device's check: %+v", checks)
 	}
+	// Copy puts it on the clipboard here, after the check, and the page never has it; a
+	// username is copied with no check.
+	r.settings(`{"t":"passwordCopy","id":"` + id + `","what":"password"}`)
+	m = r.waitOn(got, func(m map[string]any) bool { return m["t"] == "passwordCopied" })
+	if m["what"] != "password" || m["password"] != nil || m["error"] != nil || r.e.Clipboard() != "correct horse" || len(r.sys.Checks()) != 2 {
+		t.Fatalf("copied: %v, the clipboard %q, %d checks", m, r.e.Clipboard(), len(r.sys.Checks()))
+	}
+	r.settings(`{"t":"passwordCopy","id":"` + id + `","what":"username"}`)
+	m = r.waitOn(got, func(m map[string]any) bool { return m["t"] == "passwordCopied" })
+	if m["what"] != "username" || r.e.Clipboard() != "asha@example.org" || len(r.sys.Checks()) != 2 {
+		t.Fatalf("the username copied: %v, the clipboard %q, %d checks", m, r.e.Clipboard(), len(r.sys.Checks()))
+	}
 	for verdict, why := range map[system.Verdict]string{system.Denied: "denied", system.NoScreenLock: "noScreenLock"} {
 		r.sys.SetVerdict(verdict)
-		r.settings(`{"t":"passwordShow","id":"` + id + `","for":"show"}`)
+		r.settings(`{"t":"passwordShow","id":"` + id + `"}`)
 		if m := r.waitOn(got, func(m map[string]any) bool { return m["t"] == "passwordShown" }); m["error"] != why || m["password"] != nil {
 			t.Fatalf("shown after %v: %v", verdict, m)
 		}
 	}
 	r.sys.SetVerdict(system.Verified)
-	r.settings(`{"t":"passwordShow","id":"none","for":"show"}`)
+	r.settings(`{"t":"passwordShow","id":"none"}`)
 	if m := r.waitOn(got, func(m map[string]any) bool { return m["t"] == "passwordShown" }); m["error"] != "gone" {
 		t.Fatalf("a login that isn't there: %v", m)
 	}
