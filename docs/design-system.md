@@ -232,6 +232,15 @@ From the settings audit of 2026-11-13 (owner approved). Every section follows th
 - **The row's menu holds every action on it:** Edit…, Move up and Move down where order
   matters, Details, then a separator and the destructive one last, in `--danger`.
   Right-clicking the row opens the same menu.
+- **A list of secrets is the exception: two quick actions on every row.** A saved password's
+  row carries Show (an eye, struck through for Hide) and Copy (two squares) as icon buttons
+  before its `RowMenu`, on a Mac and a phone alike, so one press shows or copies; the
+  username's copy and Delete… stay in the menu. Shown, the secret goes under the username in
+  monospace. The owner's ask, 2026-11-20: "too many clicks to see a password".
+- **The device's check holds while its page is open.** Showing or copying a secret asks for
+  Touch ID, the Mac's password or the screen lock at the first press, then not again for 5
+  minutes while the page stays open; leaving the page ends it, and a shown secret hides when
+  the hold ends. The page's intro says so.
 - **Adding:** a "New …" button on the right of the list's heading row, in the same place
   for every list. Never a form row after the items.
 - **Create and edit share one `Dialog`** with the item's fields, titled "New workspace" or
