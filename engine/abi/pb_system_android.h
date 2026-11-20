@@ -32,6 +32,8 @@ typedef struct PBSystemCalls {
   // Puts text on the clipboard as a clip marked sensitive, a password a person copied:
   // Android 13 and later show no preview of it.
   void (*copy_secret)(const char* text);
+  // The updater's state as its JSON, at each change: amarit's UpdateNotification shows it.
+  void (*show_update)(const char* state_json);
 } PBSystemCalls;
 
 #endif  // PROJECT_B_ENGINE_ABI_PB_SYSTEM_ANDROID_H_

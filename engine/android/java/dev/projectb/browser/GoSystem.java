@@ -16,6 +16,8 @@ import android.os.Looper;
 import android.os.PersistableBundle;
 import android.util.SparseArray;
 
+import io.github.sudiptadeb.amarit.UpdateNotification;
+
 import org.chromium.build.annotations.UsedByReflection;
 
 /**
@@ -68,6 +70,19 @@ final class GoSystem {
             extras.putBoolean("android.content.extra.IS_SENSITIVE", true);
             clip.getDescription().setExtras(extras);
             sActivity.getSystemService(ClipboardManager.class).setPrimaryClip(clip);
+        });
+    }
+
+    /**
+     * The Go updater's state, as its JSON, at each change: amarit's UpdateNotification shows it
+     * as the system's notification, progress with Cancel, Install when ready, Try again after a
+     * failure a retry can help. Its taps go back to Go.
+     */
+    @UsedByReflection("go_table.c")
+    static void showUpdate(String json) {
+        sMain.post(() -> {
+            UpdateNotification.commands = GoCore::updateCommand;
+            UpdateNotification.show(sActivity, json);
         });
     }
 

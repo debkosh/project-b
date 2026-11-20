@@ -96,5 +96,8 @@
                  android:isolatedProcess="false"
                  android:exported="false" />
         {% endfor %}
+        <!-- amarit's update notification takes its taps here (engine/android/amarit). -->
+        <receiver android:name="io.github.sudiptadeb.amarit.UpdateNotification$Receiver"
+                  android:exported="false" />
     </application>
 </manifest>

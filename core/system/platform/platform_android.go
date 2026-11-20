@@ -8,6 +8,7 @@ package platform
 static inline void call_open_file(const PBSystemCalls* c, const char* path) { c->open_file(path); }
 static inline void call_reveal_file(const PBSystemCalls* c) { c->reveal_file(); }
 static inline void call_copy_secret(const PBSystemCalls* c, const char* text) { c->copy_secret(text); }
+static inline void call_show_update(const PBSystemCalls* c, const char* json) { c->show_update(json); }
 static inline int call_is_default_browser(const PBSystemCalls* c) { return c->is_default_browser(); }
 static inline void call_ask_default_browser(const PBSystemCalls* c) { c->ask_default_browser(); }
 static inline int call_notifications_allowed(const PBSystemCalls* c) { return c->notifications_allowed(); }
@@ -50,6 +51,14 @@ func (s *System) CopySecret(text string) {
 	c := C.CString(text)
 	defer C.free(unsafe.Pointer(c))
 	C.call_copy_secret(calls.Load(), c)
+}
+
+// ShowUpdate hands the updater's state, as its JSON, to amarit's UpdateNotification, the
+// system's notification of a download, a release ready, or a failure a retry can help.
+func ShowUpdate(stateJSON string) {
+	c := C.CString(stateJSON)
+	defer C.free(unsafe.Pointer(c))
+	C.call_show_update(calls.Load(), c)
 }
 
 // RevealFile shows the system's Downloads, where a phone's finished downloads are.

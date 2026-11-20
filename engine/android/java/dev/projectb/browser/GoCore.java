@@ -31,4 +31,7 @@ final class GoCore {
 
     /** Opens a link another app sent, as a new tab. Only after Go started. */
     static native void openUrl(String url);
+
+    /** A tap on the update's notification: "cancel", "retry" or "relaunch", for the Go updater. */
+    static native void updateCommand(String name);
 }

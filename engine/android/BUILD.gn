@@ -240,6 +240,18 @@ jinja_template("manifest") {
   ]
 }
 
+# amarit's update notification, as sources (amarit/README.md).
+android_resources("amarit_resources") {
+  sources = [ "amarit/res/values/amarit_notification.xml" ]
+  custom_package = "io.github.sudiptadeb.amarit"
+}
+
+android_library("amarit_java") {
+  resources_package = "io.github.sudiptadeb.amarit"
+  deps = [ ":amarit_resources" ]
+  sources = [ "amarit/java/io/github/sudiptadeb/amarit/UpdateNotification.java" ]
+}
+
 android_resources("resources") {
   sources = [
     "res/drawable/icon.xml",
@@ -311,6 +323,7 @@ android_library("java") {
     "//ui/android:ui_java",
     "//ui/native_theme:os_settings_provider_android_bridge_java",
     ":native_shells_java",
+    ":amarit_java",
   ]
   srcjar_deps = [ ":jni_headers" ]
   sources = [
