@@ -153,11 +153,13 @@ manager is doing and its one button, the automatic updates switch, and the relea
 
 Every copy reads `releases/download/channels/releases.json`, the manifest of both channels
 on the pre-release tagged `channels` ([release-channels.md](release-channels.md)). A Stable
-release adds itself to it and uploads it there and to its own release, where copies from
-before channels read it. A Dev build writes its version, the next patch with the UTC minute,
-into `VERSION` for the build and puts it back after; its DMG, zip and APK go on the
-`channels` pre-release, `-prune` drops what no channel points at, and the older Dev builds'
-assets are deleted.
+release creates its numbered release first, then `amarit publish` adds it to the manifest on
+`channels`, and the same manifest goes on the numbered release, where copies from before
+channels read it. A Dev build takes its version from `amarit next-version -pre dev` (the next
+patch with the UTC minute), writes it into `VERSION` for the build and puts it back after;
+`amarit publish -prune` puts its DMG, zip and APK on `channels` beside the manifest and drops
+the Dev build it replaces, from the manifest and the tag. Both give the APK's versionCode from
+`amarit version-code`.
 
 Bump `VERSION` and commit first. The script makes the release build (`RELEASE=1
 OUT=out/rel`), packages and signs it, writes `Project-B-<v>.dmg` (for people) and

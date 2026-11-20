@@ -11,7 +11,7 @@
 # (docs/release-channels.md). A Dev build is the next patch with the time, 0.3.9-dev.<UTC
 # minute> while VERSION is 0.3.8; its assets go on that pre-release, and older Dev builds go.
 #
-# Needs gh (logged in) and amarit (go install github.com/sudiptadeb/amarit/cmd/amarit@latest).
+# Needs gh (logged in) and amarit v0.8.0 or later (go install github.com/sudiptadeb/amarit/cmd/amarit@latest).
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -55,8 +55,7 @@ if [ "$CHANNEL" = stable ]; then
   # its manifest: they must be this version's (docs/releasing.md).
   [ "$(sed -n 's/^# //p' "$NOTES" | head -1)" = "$VERSION" ] || { echo "$NOTES is for $(sed -n 's/^# //p' "$NOTES" | head -1), not $VERSION; write this release's notes first"; exit 1; }
 else
-  IFS=. read -r MAJOR MINOR PATCH <<< "$VERSION"
-  VERSION="$MAJOR.$MINOR.$((PATCH + 1))-dev.$(date -u +%Y%m%d%H%M)"
+  VERSION=$(amarit next-version -pre dev "$VERSION")
   # Every build reads VERSION: the app's bundle, the Go library and the APK. It goes back to
   # main's when the script ends, however it ends.
   printf '%s\n' "$VERSION" > VERSION
@@ -80,37 +79,31 @@ tools/package.sh android
 # pattern gives every target, for the updater. An APK is a zip.
 cp build/android/project-b-content.apk "$DIST/Project-B-$VERSION.apk"
 cp build/android/project-b-content.apk "$DIST/Project-B-$VERSION-android-arm64.zip"
-# Both channels' manifest, from the channels pre-release; the first time, from the Stable
-# release published last, which is where copies from before channels read it.
-gh release view "$CHANNELS" --repo "$REPO" >/dev/null 2>&1 ||
-  gh release create "$CHANNELS" --repo "$REPO" --prerelease --title "Project B channels" \
-    --notes "The manifest every copy of Project B checks, for Stable and Dev, and the Dev builds. Install from a numbered release."
-gh release download "$CHANNELS" --repo "$REPO" --pattern releases.json -O "$DIST/releases.json" 2>/dev/null ||
-  gh release download --repo "$REPO" --pattern releases.json -O "$DIST/releases.json" 2>/dev/null || true
-
+# amarit publish keeps both channels' manifest on the channels pre-release, making it the first
+# time from the Stable release published last, which is where copies from before channels read.
+CODE=$(amarit version-code "$VERSION")
 if [ "$CHANNEL" = dev ]; then
-  # A Dev build's assets are on the channels pre-release; releases no channel points at go.
-  amarit release -version "$VERSION" -channel dev -url "https://github.com/$REPO/releases/download/$CHANNELS/{asset}" \
-    -dist "$DIST" -out "$DIST/releases.json" -prune
+  # A Dev build's assets are on the channels pre-release, beside the manifest, and the Dev build
+  # it replaces goes, from the manifest and the tag.
   echo "=== $(date '+%F %T') publish $VERSION on $CHANNELS"
-  gh release upload "$CHANNELS" "$DIST"/* --repo "$REPO" --clobber
-  # The Dev builds' assets the manifest no longer names.
-  gh release view "$CHANNELS" --repo "$REPO" --json assets --jq '.assets[].name' | grep -- '-dev\.' | grep -vF -- "-$VERSION" |
-    while read -r old; do gh release delete-asset "$CHANNELS" "$old" --repo "$REPO" --yes; done || true
+  amarit publish -github "$REPO" -tag "$CHANNELS" -version "$VERSION" -version-code "$CODE" -channel dev \
+    -url '{asset}' -dist "$DIST" -out "$DIST/releases.json" -prune "$DIST/Project-B-$VERSION.dmg" "$DIST/Project-B-$VERSION.apk"
   echo "RESULT=ok $VERSION https://github.com/$REPO/releases/download/$CHANNELS/Project-B-$VERSION.dmg https://github.com/$REPO/releases/download/$CHANNELS/Project-B-$VERSION.apk"
   exit 0
 fi
-amarit release -version "$VERSION" -channel stable -dist "$DIST" -out "$DIST/releases.json"
 cp "$NOTES" "$DIST/release-notes.md"
 
 echo "=== $(date '+%F %T') publish $TAG"
 git tag -a "$TAG" -m "Project B $VERSION"
 git push origin "$TAG"
+# The numbered release first, so the manifest never names a file not there yet; then the
+# manifest on channels, and the same manifest on the release, where copies from before
+# channels read it.
 gh release create "$TAG" "$DIST"/* --repo "$REPO" --title "Project B $VERSION" \
     --notes "Project B $VERSION for Apple silicon Macs and arm64 Android phones. Install once from the DMG or the APK; an installed copy updates itself from here.
 
 $(grep '^- ' "$NOTES")$(
         [ -f "docs/test-reports/$VERSION.md" ] && printf '\n\nTests: https://github.com/%s/blob/%s/docs/test-reports/%s.md' "$REPO" "$TAG" "$VERSION")"
-# The manifest of both channels, which every copy since channels reads.
-gh release upload "$CHANNELS" "$DIST/releases.json" --repo "$REPO" --clobber
+amarit publish -github "$REPO" -tag "$CHANNELS" -version "$VERSION" -version-code "$CODE" -dist "$DIST" -out "$DIST/releases.json"
+gh release upload "$TAG" "$DIST/releases.json" --repo "$REPO" --clobber
 echo "RESULT=ok $TAG"
