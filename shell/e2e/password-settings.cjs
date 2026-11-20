@@ -57,7 +57,7 @@ if (layout === 'sections') fs.writeFileSync(path.join(lib.profile, 'prefs.json')
   const secret = async () => (await regions()).secretCopied;
 
   // The row, where Privacy is.
-  if (phone) await page.locator('.chips [data-section="privacy"]').click();
+  if (phone) await page.locator('.section-row[data-section="privacy"]').click();
   else await page.locator('.nav [data-section="privacy"]').click();
   await settle(page);
   const row = page.locator('.row', { hasText: 'Passwords' }).first();
