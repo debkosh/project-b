@@ -64,9 +64,12 @@ ln -sfn "$TREE/core" "$SRC/project_b/core"
 ln -sfn "$TREE/browserdata" "$SRC/project_b/browserdata"
 ln -sfn "$TREE/shell" "$SRC/project_b/shell"
 
-# The APK's versionCode grows with VERSION: 0.2.13 is 2013.
+# The APK's versionCode grows with VERSION: 0.2.13 is 2013. A Dev build, 0.2.14-dev.<time>,
+# has its version's code, 2014, as the Stable 0.2.14 after it does: an equal code with a new
+# name is an update on a phone (docs/release-channels.md).
 VERSION=$(tr -d '[:space:]' < "$TREE/VERSION")
 IFS=. read -r MAJOR MINOR PATCH <<< "$VERSION"
+PATCH=${PATCH%%-*}
 VERSION_CODE=$(( MAJOR * 1000000 + MINOR * 1000 + PATCH ))
 
 cd "$SRC" || exit 1

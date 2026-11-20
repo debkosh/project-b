@@ -99,11 +99,12 @@ import (
 )
 
 // Where releases are published. The project and the URL are the ones in amarit.json at the
-// repo root, which tools/release.sh publishes with. updateConfig, beside this file for each
+// repo root, which tools/release.sh publishes with: the manifest of both channels, Stable and
+// Dev, on the pre-release tagged channels (docs/release-channels.md). updateConfig, beside this file for each
 // platform, describes this build to the updater.
 const (
 	releaseProject  = "project-b"
-	releaseManifest = "https://github.com/sudiptadeb/project-b/releases/latest/download/releases.json"
+	releaseManifest = "https://github.com/sudiptadeb/project-b/releases/download/channels/releases.json"
 )
 
 // chromiumVersion is the version of Chromium this build is on, from chrome/VERSION, which
