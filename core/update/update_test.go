@@ -17,6 +17,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/sudiptadeb/amarit"
 )
 
 // fakeApp writes a bundle the way tools/package.sh lays one out: the plist and an
@@ -570,6 +572,32 @@ func TestDevIsChosenForEveryCopyAndTakenAtOnce(t *testing.T) {
 	on.m.SetChannel(Dev)
 	on.m.SetChannel(Stable)
 	eventually(t, on.m, func(s State) bool { return s.Check == UpToDate })
+}
+
+// A copy on a Stable release that chooses Dev isn't offered the Dev builds that came before
+// it: 0.2.1-dev.<minute> is older than 0.2.1, whatever the phone's versionCode says, as the
+// updater orders by version alone. The minute's twelve digits order as a number.
+func TestDevNeverOffersABuildOlderThanTheStableRunning(t *testing.T) {
+	for _, order := range [][2]string{
+		{"0.2.0", "0.2.1-dev.202611201415"},
+		{"0.2.1-dev.202611201415", "0.2.1-dev.202611201416"},
+		{"0.2.1-dev.202611201416", "0.2.1"},
+		{"0.2.1-dev.999999999999", "0.2.1"},
+	} {
+		if c, err := amarit.CompareVersions(order[0], order[1]); err != nil || c >= 0 {
+			t.Fatalf("%s should be before %s: %d %v", order[0], order[1], c, err)
+		}
+	}
+	stable := archive(t, fakeApp(t, t.TempDir(), "0.2.1"))
+	dev := archive(t, fakeApp(t, t.TempDir(), "0.2.1-dev.202611201415"))
+	rs := release(t, "0.2.1", stable, stable)
+	rs.Dev, rs.DevGood = "0.2.1-dev.202611201415", dev
+	r := start(t, "0.2.1", rs.url, nil)
+	r.m.SetChannel(Dev)
+	eventually(t, r.m, func(s State) bool { return s.Check == UpToDate })
+	if n := rs.downloads.Load(); n != 0 || r.m.State().Phase != Idle {
+		t.Fatalf("on 0.2.1, Dev's older build was taken: %d downloads, %+v", n, r.m.State())
+	}
 }
 
 // fakeCopies records what Relaunch asks of the other copies, and what the installed app
