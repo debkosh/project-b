@@ -10,12 +10,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"net/url"
 	"os"
 	"path/filepath"
 	"time"
-
-	"github.com/mattn/go-sqlite3"
 
 	"projectb/timeline"
 )
@@ -60,8 +57,7 @@ func Open(dir string) (*Store, error) {
 
 // openDB opens the database at path, with the store's own table.
 func openDB(path string) (*sql.DB, error) {
-	// The driver keeps each statement prepared once, so a query asked again isn't parsed again.
-	db, err := sql.Open("sqlite3", "file:"+(&url.URL{Path: path}).EscapedPath()+"?_journal_mode=WAL&_synchronous=NORMAL&_stmt_cache_size=64")
+	db, err := openSQLite(path)
 	if err != nil {
 		return nil, err
 	}
@@ -74,13 +70,6 @@ func openDB(path string) (*sql.DB, error) {
 		return nil, err
 	}
 	return db, nil
-}
-
-// damaged says SQLite found the file isn't a database, or is a damaged one: what a new file
-// mends, and nothing else does.
-func damaged(err error) bool {
-	var e sqlite3.Error
-	return errors.As(err, &e) && (e.Code == sqlite3.ErrNotADB || e.Code == sqlite3.ErrCorrupt)
 }
 
 // Do runs job on the worker, in a transaction that commits when it returns nil and rolls back

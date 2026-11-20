@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime/debug"
 	"time"
 
 	"projectb/engine"
@@ -78,7 +77,7 @@ func New(dir, reports string, exitReason func(pid int) string) *Manager {
 	if _, err := fmt.Fprintf(f, "pid %d, started %s\n", os.Getpid(), time.Now().Format(time.DateTime)); err != nil {
 		timeline.Errorf("crash: %v", err)
 	}
-	if err := debug.SetCrashOutput(f, debug.CrashOptions{}); err != nil {
+	if err := setCrashOutput(f); err != nil {
 		timeline.Errorf("crash: %v", err)
 	}
 	return m

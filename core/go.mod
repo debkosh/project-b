@@ -13,12 +13,15 @@ require github.com/sudiptadeb/gulal v0.3.0
 
 require (
 	github.com/mattn/go-sqlite3 v1.14.53
+	github.com/ncruces/go-sqlite3 v0.37.0
 	github.com/sudiptadeb/synckosh v0.2.0
 	golang.org/x/crypto v0.59.0
 	rsc.io/qr v0.2.0
 )
 
 require (
+	github.com/ncruces/go-sqlite3-wasm/v6 v6.5.35401 // indirect
+	github.com/ncruces/julianday v1.0.0 // indirect
 	go.etcd.io/bbolt v1.5.0 // indirect
 	golang.org/x/sys v0.50.0 // indirect
 )

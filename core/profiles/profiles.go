@@ -13,7 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"syscall"
 	"time"
 
 	"projectb/prefs"
@@ -93,7 +92,7 @@ func (m *Manager) change(f func(list []Profile) []Profile) error {
 		return err
 	}
 	defer lock.Close()
-	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX); err != nil {
+	if err := lockFile(lock); err != nil {
 		return err
 	}
 	list, err := m.List()
