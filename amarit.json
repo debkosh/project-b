@@ -1,6 +1,7 @@
 {
   "project": "project-b",
   "releases": "https://github.com/sudiptadeb/project-b/releases/download/channels/releases.json",
+  "auto_update": true,
   "release": {
     "targets": ["darwin/arm64", "android/arm64"],
     "asset": "Project-B-{version}-{os}-{arch}.zip",

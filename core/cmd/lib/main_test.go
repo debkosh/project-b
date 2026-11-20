@@ -16,14 +16,15 @@ func TestReleaseConstantsMatchTheRepo(t *testing.T) {
 		t.Fatal(err)
 	}
 	var cfg struct {
-		Project  string `json:"project"`
-		Releases string `json:"releases"`
+		Project    string `json:"project"`
+		Releases   string `json:"releases"`
+		AutoUpdate bool   `json:"auto_update"`
 	}
 	if err := json.Unmarshal(b, &cfg); err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Project != releaseProject || cfg.Releases != releaseManifest {
-		t.Fatalf("amarit.json says %s %s; the binary says %s %s", cfg.Project, cfg.Releases, releaseProject, releaseManifest)
+	if cfg.Project != releaseProject || cfg.Releases != releaseManifest || cfg.AutoUpdate != releaseAutoUpdate {
+		t.Fatalf("amarit.json says %s %s %v; the binary says %s %s %v", cfg.Project, cfg.Releases, cfg.AutoUpdate, releaseProject, releaseManifest, releaseAutoUpdate)
 	}
 
 	// The key folder, as tools/keys.sh finds it.

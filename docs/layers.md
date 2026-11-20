@@ -119,7 +119,7 @@ D-Bus, and Windows Win32 from Go):
 4. The fake keeps the same callback behaviour, so Go's tests cover a dismissed or
    never-answered request.
 - Then, in later commits, what is per OS in Go today moves behind it too: `core/instance`,
-  `core/relaunch`, `core/update/bundle.go`, and `core/cmd/lib`'s `*_darwin.go` and
+  `core/relaunch` (its OS calls now amarit's), and `core/cmd/lib`'s `*_darwin.go` and
   `*_android.go`, so a reader finds every OS call in one place.
 
 ## 3. Notifications through Go

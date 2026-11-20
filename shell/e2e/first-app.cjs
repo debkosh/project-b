@@ -747,7 +747,7 @@ const stopServer = lib.stop;
   const settingsTab = (await regions()).settings;
   await fetch(`${base}/shell/send`, { method: 'POST', body: JSON.stringify({ t: 'closeTab', id: settingsTab }) });
   await until(async () => (await regions()).settings === 0);
-  check('the installed app is left alone', version(path.join(installed, 'Project B.app')) === '0.1.0' && !fs.existsSync(path.join(profile, 'updates/stage')));
+  check('the installed app is left alone', version(path.join(installed, 'Project B.app')) === '0.1.0' && !(fs.readdirSync(path.join(profile, 'updates'), { recursive: true }).some((f) => String(f).startsWith('stage/') && String(f).endsWith('.app'))));
   await bar.fill('https://example.org/');
   await bar.press('Enter');
   await loaded('https://example.org/');

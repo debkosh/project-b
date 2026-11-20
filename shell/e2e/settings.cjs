@@ -144,7 +144,7 @@ async function until(fn, ms = 5000) {
 }
 const updateSettings = () => {
   try {
-    return JSON.parse(fs.readFileSync(path.join(profilesRoot, 'update/settings.json'), 'utf8'));
+    return JSON.parse(fs.readFileSync(path.join(profilesRoot, 'update/amarit/settings.json'), 'utf8'));
   } catch {
     return null;
   }
@@ -362,13 +362,13 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   check('Check asks the update manager, which says it is up to date', await until(async () => (await updateStatus.textContent()).trim() === 'Up to date'));
   check('one check reached the release server', manifests === counted + 1, `${counted} -> ${manifests}`);
   await autoUpdate.click();
-  check('the switch turns automatic updates off and saves it in the root\'s update folder, for every copy', await until(() => updateSettings()?.autoUpdate === false));
+  check('the switch turns automatic updates off and saves it in the root\'s update folder, for every copy', await until(() => updateSettings()?.auto_update === false));
   // Updates from: Stable until Dev is chosen, which is saved beside automatic updates and
   // checks the Dev channel at once.
   check('updates come from Stable, the default', await radio('Stable').isChecked());
   const beforeDev = manifests;
   await radio('Dev').click();
-  check('Dev is saved in the update folder, keeping automatic updates as they were', await until(() => updateSettings()?.channel === 'dev' && updateSettings()?.autoUpdate === false &&
+  check('Dev is saved in the update folder, keeping automatic updates as they were', await until(() => updateSettings()?.channel === 'dev' && updateSettings()?.auto_update === false &&
     radio('Dev').isChecked()), JSON.stringify(updateSettings()));
   check('and checks at once, which finds it up to date', await until(async () => manifests > beforeDev && (await updateStatus.textContent()).trim() === 'Up to date'),
     `${beforeDev} -> ${manifests}`);

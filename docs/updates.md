@@ -1,110 +1,77 @@
 # Updates
 
-An installed copy keeps itself current. It looks at the project's release manifest every
-minute, downloads a newer release by itself, checks it, and says once that it is ready, with
-Relaunch and Later ([The notice](#the-notice)). Settings' About shows what it is doing all
-along: the download on its way, the release ready, a failure. Nothing else shows.
+An installed copy keeps itself current, through amarit's updater. It looks at the project's
+release manifest every minute, downloads a newer release by itself, checks it, and says once
+that it is ready, with Relaunch and Later ([The notice](#the-notice)); on a Mac the Dock icon
+shows the download's progress and a notification offers Relaunch. Settings' About shows what
+it is doing all along: the download on its way, the release ready, a failure and why.
 
 ## Pieces
 
 | Where | What |
 |---|---|
-| `core/update` | The manager: the check loop, the download, the checks, the swap, the relaunch. `CheckInterval` is the one minute, in one place. |
-| `core/relaunch` | `relaunch.Copies`: the other copies on the root, told to quit over their sockets (`core/instance`) and waited for, and each profile started again after the swap. |
-| [amarit](https://github.com/sudiptadeb/amarit) | The manifest (`releases.json`), its rules (channels, no downgrade, `min_version`, a rejected version is not offered again) and the download, checked against the manifest's size and sha256 as it streams. Used through `amarit.Client`, the half of amarit for a program that installs itself. |
-| `shell/src/apps/shell/standard/UpdateNotice.vue`, `mobile/UpdateBar.svelte` | A ready release's one-time notice ([The notice](#the-notice)). The notice is inside the page's box, so it sits in the page's corner in both tab layouts and takes no room; `v-shell` makes it shell, so a click on it does not reach the page. |
-| `amarit.json`, `VERSION` | The project name, the manifest URL, the asset pattern; the version being built. |
+| [amarit](https://github.com/sudiptadeb/amarit) `appupdate` | The updater ([amarit's docs/appupdate.md](https://github.com/sudiptadeb/amarit/blob/main/docs/appupdate.md)): the rounds, the download with progress, Cancel and Retry, the release's checks, the stage, the install, the settings every copy shares, and the rollback of a release that won't start. It draws nothing. |
+| amarit `macapp` | A Mac bundle: unpacked with `ditto`, refused unless it says it is the manifest's version and its signature, checked in the app through the Security framework, is ours (`macapp.SignedBy` of our signing certificate's SHA-1, compiled in); staged, swapped in with one `renamex_np`, the old one kept in `previous/`. `macapp.Present` puts a progress bar on the Dock icon and posts a notification with Relaunch when a release is ready. |
+| amarit `relaunch` | Starting the new release once this process has gone; waiting for the other copies to end. |
+| `core/update` | What the pages see of it: amarit's state in project-b's words (`words`, `why`), and the commands they send. `CheckInterval` is the one minute. |
+| `core/relaunch` | `relaunch.Copies`: the other copies on the root, told to quit over their sockets (`core/instance`) and started again on each profile after the swap. |
+| `core/cmd/lib/update_<os>.go` | The installer: `macapp.Installer` on the Mac, `appupdate.File` handing the APK to Android's package installer. |
+| `shell/src/apps/shell/standard/UpdateNotice.vue`, `mobile/UpdateBar.svelte` | A ready release's one-time notice ([The notice](#the-notice)). |
+| `amarit.json`, `VERSION` | The project, the manifest URL, `auto_update: true` (copies check on their own unless the person turns it off), the asset pattern; the version being built. |
 | `tools/release.sh` | Publishes a release. |
-
-The app is a signed folder (two binaries, a library, resources), not the one binary amarit
-swaps in place, so the swap is ours. `amarit.Client` was added to amarit for this, and released in
-amarit v0.7.0.
 
 ## The update folder
 
 Updates are the app's, not a profile's. Every copy on a root shares its `update` folder,
-beside the profile folders (`~/.project-b/update`):
-
-- `lock`: one copy at a time holds it while it checks and downloads. A round of a copy that
-  can't take it does nothing more; Check for updates waits for it.
-- `stage/`: the release a copy downloaded and checked. Every copy reads it each round, so
-  each offers the relaunch.
-- `settings.json`: the automatic-updates setting, `{"autoUpdate": false}` when off, on when
-  there is none. Each copy reads it each round and when its settings page opens, so a
-  change in one holds in the others from then.
-- `download/`, `previous/` and `amarit/`, amarit's state.
-
-A copy started with `--user-data-dir` keeps all of this in `updates` in its own folder, and
-takes no part in the restart of every copy below: tests and ChromeDriver run their copies so,
-and never touch the copies on the root or the installed app those relaunch.
+beside the profile folders (`~/.project-b/update`): the lock one copy at a time holds while
+it checks and downloads, `stage/` (a checked release, which every copy offers),
+`previous/`, `download/`, and `amarit/`, amarit's state with `settings.json`: automatic
+updates and the channel, which every copy reads. A copy started with `--user-data-dir`
+keeps all of this in `updates` in its own folder, and takes no part in the restart of every
+copy: tests and ChromeDriver run their copies so.
 
 ## What happens
 
-1. Two seconds after start, then every `CheckInterval`, the manager reads the staged
-   release, and unless automatic updates are off in Settings or another copy holds the lock,
-   fetches
-   `https://github.com/sudiptadeb/project-b/releases/latest/download/releases.json`. That is
-   a plain web redirect to the latest release's asset, not GitHub's REST API, so a check a
-   minute is not rate limited (the response carries no rate-limit headers).
-2. If the install location isn't writable (a copy still on its DMG, or in a folder the user
-   doesn't own), About says so and nothing is downloaded.
-3. A newer `stable` version for `darwin/arm64` is downloaded into the update folder
-   (`~/.project-b/update/download`), size and sha256 checked by amarit.
-4. The zip is unpacked with `ditto` beside it, and the bundle inside must say it
-   is that version (`CFBundleShortVersionString`) and pass `codesign --verify --deep
-   --strict` and `codesign --verify -R='certificate leaf = H"<sha1>"'` with the SHA-1 of our
-   signing certificate, compiled into the main binary. These are the two checks
-   `tools/package.sh` makes before a build ships. A bundle that fails them is refused for
-   good on that install: `amarit.Client.Reject` records the version, so a bad release is
-   downloaded once, not every minute, by the automatic checks. Check for updates in
-   settings tries it again (`amarit.Client.Unreject`): a person asking means "try it". When
-   the signature check fails, `codesign --verbose=4`'s answer goes to the timeline, naming
-   each file that differs from the seal. A download that fails (network, or bytes that don't
-   match the manifest) is shown, and tried again next minute. A failure stays on show while
-   the channel still points at that release; once it points elsewhere, it goes.
-   A bundle that passes is moved into `update/stage`, so the stage only ever holds a
-   checked release.
-5. The notice, and About, offer relaunch, in every copy. Until one is pressed, the installed
-   app is untouched.
-6. Relaunch in one copy tells every other running copy to quit: each running copy holds
-   its folder's `lock` (a picker copy, the root's), and the asking copy sends each one's
-   socket `{"quit": true}`, the handover's request with a field of its own. Each answers
-   `{"pid": <its process>}` and quits, and an open picker quits too. Once the kernel says
-   each of those processes has ended, the asking copy renames the installed bundle to
-   `update/previous/Project B.app`, renames the staged one into its place, leaves a
-   `/bin/sh` behind for each profile that was running, its own among them, which waits for
-   this process to exit and then starts the new release on that profile
-   (`--root=<root> --profile=<id>`), and closes the window. A picker isn't started again.
-   Each copy comes back with a new tab. Unix lets the running processes keep using the
-   moved bundle, so the helpers never notice.
+amarit's docs/appupdate.md has the whole of it; what is project-b's:
 
-A failed automatic check of the manifest itself (offline) is logged, not shown: nothing was
-happening for the user to see. A build running from a build directory, or with no version in its
-bundle, never checks. A release staged and not relaunched into stays staged, and is offered
-again at the next start; a half-finished download is cleared when the next one begins.
+- **The checks.** Two seconds after start, then every `CheckInterval`, with automatic
+  updates on, a copy reads `releases/download/channels/releases.json` for its channel. A
+  newer release is downloaded, checked and staged; About and the notice offer it.
+- **A refusal is the release's own answer** (another version, or a signature broken or not
+  ours): it is rejected and not downloaded again until a person checks. A check that
+  couldn't be made (a file that couldn't be read) is tried again.
+- **Relaunch** in one copy tells every other running copy to quit (`{"quit": true}` on each
+  one's socket; each answers with its pid and ends), swaps the bundle, and starts the new
+  release on every profile that was running once this process has gone. A picker isn't
+  started again.
+- **Rollback.** Each start is counted early (`update.Manager.Settle`); the shell's first
+  `shown` says the release works (`Healthy`). A release that didn't get that far three
+  times is put back by the one before it, rejected, and the previous one started.
+- **Programs the app starts** get its own limit on open files (`core/cmd/lib/filelimit.go`),
+  not the 256 Go leaves them under launchd: they inherit the app's open files, and ditto and
+  codesign once failed for want of one.
+
+A failed automatic check of the manifest is logged, not shown. A build with no version (a
+build directory) never checks, but keeps the settings.
 
 ## States, and how each ends
 
 What a person sees is `update.State`: its phase, and beside it how a check they asked for
-went. No state lasts unless the person leaves it there: every progress has Retry and Cancel
-while it runs, as the UX guide (`docs/ux-guide.md`) asks of every progress, and stopping is the
-manager's, whatever the download is doing.
+went. Every progress has Cancel and Retry while it runs (`docs/ux-guide.md`).
 
 | State | Shown | Ends by |
 |---|---|---|
 | Idle | the version alone | a check finding a newer release (Downloading), or one asked for (Checking) |
-| Checking (asked for) | Checking… | Up to date, Downloading, or Couldn't check, with Try again; it waits at most 15 s (`lockWait`) for the folder's lock, held by another copy or a download still stopping, then says so |
-| Downloading | Downloading X… N%, with Cancel and Retry | the release checked and staged (Ready); no bytes for 30 s (`stalledAfter`), which is Failed with Try again; Retry, which stops it and checks again at once; Cancel, which stops it and shows Idle |
+| Checking (asked for) | Checking… | Up to date, Downloading, or Couldn't check, with why |
+| Downloading | Downloading X… N%, with Cancel and Retry (and while the release is checked after it) | the release staged (Ready); nothing arriving for 30 s (Failed); Retry; Cancel, which shows Idle and leaves that release to a person's check |
 | Ready | Relaunch to update to X, with Relaunch | Relaunch |
-| Failed | Couldn't update to X, with Try again | Try again (Retry); the channel moving off X |
+| Failed | Couldn't update to X, why on its own line, and Try again where it can help (`State.Retry`); a refused release offers Check for updates | Try again; Check for updates; a newer release |
 
-Retry and Cancel stop the download by its context's cause, so the download's own late
-answer is never shown: the state is the one Retry or Cancel set. A release the person
-cancelled is left alone by the automatic checks for the rest of the run, so it doesn't
-start again a minute later; Check for updates fetches it. The 30 s is awake time: the
-Mac's sleep doesn't count, so a download that slept through the night is given up 30 s after
-the wake, unless bytes arrive. Every other progress the app shows (downloads, imports) ends
-on the same 30 s. Nothing watches the system's wake or network: Retry is the person's.
+Why, in words (`core/update.why`): the download failed (…); the download stopped arriving;
+the download arrived damaged: it didn't match its checksum; its signature couldn't be checked
+(…); it isn't signed with Project B's key, or its signature is broken, so it won't be tried
+again; Project B can't be replaced where it is: move it to Applications; another download is
+still stopping; couldn't put the new app in place (…).
 
 Sudipta, 2026-11-18, after 0.2.76 stuck at "Downloading 0.2.85… 38%" overnight with nothing to
 press: "just have retry or cancel button whenever we show a progress, seems like a good
@@ -137,11 +104,11 @@ manager is doing and its one button, the automatic updates switch, and the relea
   it as the notice's does. Automatic checks never set the panel's check result. The menu
   bar's Check for Updates… opens Settings at About and checks.
 - **Updates from**, Stable | Dev, is the channel every copy follows, `channel` in
-  `update/settings.json` beside `autoUpdate`, Stable when absent ([release-channels.md](release-channels.md)).
+  amarit's settings beside automatic updates (`update/amarit/settings.json`), Stable when absent ([release-channels.md](release-channels.md)).
   A change checks the new channel at once; each check makes amarit's client again when the
   folder names another channel, so another copy's change holds from its next round. On a
   Dev build with Stable chosen, the hint says it stays on that build until a newer Stable.
-- **Automatic updates** is the app's, `autoUpdate` in `update/settings.json`, on by
+- **Automatic updates** is the app's, in `update/amarit/settings.json`, on by
   default, and every copy shows the same. Off, the next round of every copy checks nothing;
   on again here, the timer starts as it does at launch, and the other copies check from
   their next round.
@@ -180,39 +147,27 @@ takes it is in [android.md](android.md#updates-on-a-phone).
 
 ## Checked
 
-- `core/update` tests: a newer release is staged and relaunch swaps the bundle and keeps the
-  previous one; a corrupted download is refused and tried again; a bundle of another
-  version, or one that fails the signature check, is refused once; an unwritable location
-  is reported without downloading; the same version shows nothing.
-- `core/update` tests also cover a check asked for (up to date, a manifest that can't be
-  read, a newer release) and the timer stopping and starting with the switch.
-- `core/update` tests of the shared folder: two managers on one folder, one checks while
-  the other's round does nothing, then reads the staged release without downloading it;
-  the setting read the same by every manager; and a relaunch with other copies quits them
-  before the swap and starts each profile after it. `core/instance` checks the quit request
-  and its answer, and `core/relaunch` that `QuitOthers` returns only once real processes
-  owning a profile and the root have ended.
-- `tools/drive_first_app.py relaunch` runs it in the real app: copies on two profiles and a
-  picker on a root of the run's own, a clone of the app under test as the installed app,
-  and a staged bundle shaped like the update tests' fixtures whose executable records how
-  it was started.
-- `shell/e2e/settings.cjs` checks About's version, Check and switch against a local release
-  server.
-- `shell/e2e/update-notice.cjs` stages a release from a local server and checks the notice in
-  Standard and the Mobile shell, Later recording it so a restart doesn't show it again, and
-  About with this release's notes on a desktop and a phone.
-- `shell/e2e/first-app.cjs` runs the real manager against a local release server with a
-  slow asset, through the notice in both tab layouts, its Relaunch to the relaunch helper
-  starting the new bundle, and a corrupted download refused, About saying why.
-- The signature check runs only in the real app (`core/cmd/lib`); the mock has no signing
-  key and checks the version alone.
+- amarit's own tests cover the updater, the bundle, the signature verdicts, the swap, the
+  rollback and the relaunch (amarit's repo).
+- `core/update` tests: each failure's words and whether Try again is offered; a newer
+  release found, staged and handed to the installer; a check on the same version says up to
+  date; the channel and automatic updates shared by two managers on one folder, and heard;
+  a Dev build older than the Stable running never taken; a development build keeps its
+  settings and doesn't update.
+- `core/app` tests: Settings' update buttons by their messages, and the settings page's
+  switch and channel saved in the update folder.
+- `tools/drive_first_app.py relaunch` runs a relaunch in the real app, with copies on two
+  profiles and a picker.
+- `shell/e2e/settings.cjs`, `update-notice.cjs` and `first-app.cjs` run the real updater
+  against a local release server, through the mock's unsigned bundle: About, the notice,
+  Relaunch starting the new bundle, and a corrupted download refused with why.
+- The signature check runs only in the real app (`core/cmd/lib`); the mock's bundle isn't
+  signed, so it is asked for no signature.
 
 ## Not done
 
 - A swap that fails after the other copies quit leaves them closed; the copy asked shows the
   failure.
-- No automatic rollback: the previous release is kept, nothing starts it. A refused download
-  never reaches the install, which is the case that matters.
-- Only `stable`, only Apple silicon and arm64 Android, no delta downloads, no progress percentage.
+- Only Apple silicon and arm64 Android, no delta downloads.
 - A manifest signature (amarit's enterprise tier) isn't implemented in amarit; the bundle's
   code signature against the pinned key is the trust here.

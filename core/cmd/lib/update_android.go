@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"unsafe"
 
+	"github.com/sudiptadeb/amarit/appupdate"
+
 	"projectb/profiles"
 	"projectb/update"
 )
@@ -27,21 +29,26 @@ func appVersion() string { return version }
 // downloaded into the profile and handed to Android's package installer, which refuses one
 // signed with another key and asks the user.
 func updateConfig(c profiles.Choice) update.Config {
+	dir := filepath.Join(c.Dir, "updates")
 	return update.Config{
-		Project:  releaseProject,
-		Version:  version,
-		Releases: releaseManifest,
-		StateDir: filepath.Join(c.Dir, "updates"),
-		Install: func(apk string) {
-			// The installer ends this process to replace the app, which isn't a crash:
-			// the run counts as stopped cleanly from here. A user who cancels goes on
-			// without crash.log, so a crash later in that run goes unreported.
-			if theApp != nil {
-				theApp.Crash.Stop()
-			}
-			c := C.CString(apk)
-			defer C.free(unsafe.Pointer(c))
-			C.call_install_update(native.calls, c)
+		Project:    releaseProject,
+		Version:    version,
+		Releases:   releaseManifest,
+		AutoUpdate: releaseAutoUpdate,
+		StateDir:   dir,
+		Installer: func(func()) appupdate.Installer {
+			return appupdate.File{Dir: dir, Open: func(apk string) error {
+				// The installer ends this process to replace the app, which isn't a crash:
+				// the run counts as stopped cleanly from here. A user who cancels goes on
+				// without crash.log, so a crash later in that run goes unreported.
+				if theApp != nil {
+					theApp.Crash.Stop()
+				}
+				c := C.CString(apk)
+				defer C.free(unsafe.Pointer(c))
+				C.call_install_update(native.calls, c)
+				return nil
+			}}
 		},
 	}
 }

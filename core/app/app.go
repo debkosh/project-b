@@ -247,6 +247,11 @@ func Start(e engine.Engine, cfg Config) *App {
 		e.AppCommand(engine.AppQuit)
 	}
 	a.Update = update.New(cfg.Update, e.Post, a.quit)
+	// A release that didn't start three times is put back by the one before it, which this
+	// start then is: it ends, and the previous release starts in its place.
+	if a.Update.Settle() {
+		a.quit()
+	}
 	a.Commands = commands.New(e, cfg.ProfileDir, func() bool { return a.Window.FullScreen(a.Tabs.Front()) })
 	a.Commands.RegisterList(a.profileList(cfg))
 	a.Commands.RegisterList(a.workspaceList())

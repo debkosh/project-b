@@ -1324,7 +1324,7 @@ def update_checks(retry=False):
     personal = listed["profiles"][0]["id"]
     listed["profiles"].append({"id": "work", "name": "Work", "color": "#5b7fd6", "template": "Work"})
     guest("/bin/sh", "-c", f"mkdir -p {ROOT}/work && printf '%s' \"$1\" > {ROOT}/profiles.json && "
-          f"echo '{{\"autoUpdate\": true}}' > {ROOT}/update/settings.json", "sh", json.dumps(listed))
+          f"mkdir -p {ROOT}/update/amarit && echo '{{\"auto_update\": true}}' > {ROOT}/update/amarit/settings.json", "sh", json.dumps(listed))
     if retry:
         # amarit's state, which Reject writes when a download fails its checks.
         guest("/bin/sh", "-c", f"mkdir -p {ROOT}/update/amarit && printf '%s' \"$1\" > {ROOT}/update/amarit/state.json",

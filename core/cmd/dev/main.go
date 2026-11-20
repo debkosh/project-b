@@ -37,7 +37,6 @@ import (
 	"projectb/system"
 	"projectb/tabs"
 	"projectb/timeline"
-	"projectb/update"
 )
 
 //go:embed mock_page.html window.html webui.js
@@ -133,14 +132,8 @@ func main() {
 			Keychain:      keychainOf(*keychain, *keychainItems),
 			KeychainItems: keychainItemsOf(*keychain, *keychainItems),
 			System:        sys,
-			Update: update.Config{
-				Project:  "project-b",
-				Version:  *version,
-				Releases: *releases,
-				StateDir: updates,
-				App:      *appPath,
-			},
-			CrashReports: filepath.Join(home, "Library/Logs/DiagnosticReports"),
+			Update:        devUpdate(*version, *releases, updates, *appPath),
+			CrashReports:  filepath.Join(home, "Library/Logs/DiagnosticReports"),
 		})
 	}
 	// The app, or the picker in a picker copy, which opens a profile by naming it on

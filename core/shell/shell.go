@@ -78,14 +78,14 @@ type Manager struct {
 	onBack func(w engine.WindowID) bool
 	// onMenuOpened hears that a shell's menu opened in window w, when set.
 	onMenuOpened func(w engine.WindowID)
-	window *window.Manager
-	prefs  *prefs.Manager
-	update *update.Manager
-	crash  *crash.Manager
-	run    func(action string)
-	keys   func() map[string]string
-	os     string
-	parts  []Part
+	window       *window.Manager
+	prefs        *prefs.Manager
+	update       *update.Manager
+	crash        *crash.Manager
+	run          func(action string)
+	keys         func() map[string]string
+	os           string
+	parts        []Part
 	// The windows whose shell page has said it's ready. Until then nothing reaches it:
 	// its script isn't there to take a message, and the snapshot it asks for has it all,
 	// a new window's first tab included.
@@ -209,6 +209,8 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 		if !m.ready {
 			m.ready = true
 			timeline.Mark("app.ready")
+			// The release works: its starts stop counting toward a rollback.
+			m.update.Healthy()
 		}
 	case "timeline":
 		timeline.FromPage("shell", msg)

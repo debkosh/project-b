@@ -1878,8 +1878,9 @@ def relaunch_checks():
     with open(os.path.join(staged, "Contents/MacOS/project_b"), "w") as f:
         f.write(f"#!/bin/sh\necho \"$*\" >> '{started}'\n")
     os.chmod(os.path.join(staged, "Contents/MacOS/project_b"), 0o755)
-    with open(os.path.join(root, "update/settings.json"), "w") as f:
-        json.dump({"autoUpdate": False}, f)
+    os.makedirs(os.path.join(root, "update/amarit"), exist_ok=True)
+    with open(os.path.join(root, "update/amarit/settings.json"), "w") as f:
+        json.dump({"auto_update": False}, f)
 
     a = App(None, [f"--root={root}"], clone)
     add_work_profile(root)

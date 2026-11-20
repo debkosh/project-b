@@ -16,6 +16,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sudiptadeb/amarit/appupdate"
+
 	"projectb/app"
 	"projectb/commands"
 	"projectb/engine"
@@ -46,7 +48,7 @@ type rig struct {
 
 func start(t *testing.T, dir string, blocked ...string) *rig {
 	t.Helper()
-	return startWith(t, app.Config{ProfileDir: dir, Profiles: profiles.New(t.TempDir()), BlockedHosts: blocked, Update: update.Config{StateDir: filepath.Join(dir, "updates")}})
+	return startWith(t, app.Config{ProfileDir: dir, Profiles: profiles.New(t.TempDir()), BlockedHosts: blocked, Update: update.Config{StateDir: filepath.Join(dir, "updates"), AutoUpdate: true}})
 }
 
 // plainShell is the first shell the registry lists that takes none of Go's actions.
@@ -541,9 +543,15 @@ func TestTheSettingsPageReadsAndSetsTheSettings(t *testing.T) {
 	}
 	r.settings(`{"t":"setAutoUpdate","on":false}`)
 	r.waitOn(got, func(m map[string]any) bool { return m["t"] == "autoUpdate" && m["autoUpdate"] == false })
-	b, _ := os.ReadFile(filepath.Join(dir, "updates", "settings.json"))
-	if !strings.Contains(string(b), `"autoUpdate":false`) {
-		t.Fatalf("the update folder's settings.json = %s", b)
+	// amarit keeps the settings every copy shares, in the update folder.
+	saved := func() map[string]any {
+		var m map[string]any
+		b, _ := os.ReadFile(filepath.Join(dir, "updates", "amarit", "settings.json"))
+		json.Unmarshal(b, &m)
+		return m
+	}
+	if s := saved(); s["auto_update"] != false {
+		t.Fatalf("the update folder's settings = %v", s)
 	}
 	// The channel updates come from: Stable until Dev is chosen, kept beside the switch.
 	if snap["channel"] != "stable" {
@@ -551,9 +559,8 @@ func TestTheSettingsPageReadsAndSetsTheSettings(t *testing.T) {
 	}
 	r.settings(`{"t":"setChannel","text":"dev"}`)
 	r.waitOn(got, func(m map[string]any) bool { return m["t"] == "channel" && m["channel"] == "dev" })
-	b, _ = os.ReadFile(filepath.Join(dir, "updates", "settings.json"))
-	if !strings.Contains(string(b), `"autoUpdate":false`) || !strings.Contains(string(b), `"channel":"dev"`) {
-		t.Fatalf("the update folder's settings.json = %s", b)
+	if s := saved(); s["auto_update"] != false || s["channel"] != "dev" {
+		t.Fatalf("the update folder's settings = %v", s)
 	}
 	// The theme: saved, the shell told, the window's own parts dark.
 	if snap["theme"] != "system" || r.e.Layout(1).Theme != engine.ThemeSystem {
@@ -565,7 +572,7 @@ func TestTheSettingsPageReadsAndSetsTheSettings(t *testing.T) {
 		t.Fatalf("window theme = %v", r.e.Layout(1).Theme)
 	}
 	r.flushPrefs()
-	b, _ = os.ReadFile(filepath.Join(dir, "prefs.json"))
+	b, _ := os.ReadFile(filepath.Join(dir, "prefs.json"))
 	if !strings.Contains(string(b), `"theme":"dark"`) {
 		t.Fatalf("prefs.json = %s", b)
 	}
@@ -2062,9 +2069,12 @@ func TestTheSettingsPageInstallsAReadyUpdate(t *testing.T) {
 	defer srv.Close()
 	dir := t.TempDir()
 	installed := make(chan string, 4)
+	updates := filepath.Join(dir, "updates")
 	r := startWith(t, app.Config{ProfileDir: dir, Profiles: profiles.New(t.TempDir()), Update: update.Config{
-		Project: "project-b", Version: "0.1.0", Releases: srv.URL, StateDir: filepath.Join(dir, "updates"),
-		Install: func(apk string) { installed <- apk }}})
+		Project: "project-b", Version: "0.1.0", Releases: srv.URL, StateDir: updates,
+		Installer: func(func()) appupdate.Installer {
+			return appupdate.File{Dir: updates, Open: func(apk string) error { installed <- apk; return nil }}
+		}}})
 	defer r.stop()
 	r.e.Post(func() { r.a.Update.CheckNow() })
 	deadline := time.Now().Add(5 * time.Second)

@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sudiptadeb/amarit/appupdate"
+
 	"projectb/app"
 	"projectb/commands"
 	"projectb/engine"
@@ -127,7 +129,7 @@ func TestSettingsKeyboardMessages(t *testing.T) {
 }
 
 // Settings' update buttons, by the messages they send: Check for updates finds a release and
-// downloads it; the download's Cancel stops it and shows nothing; Retry starts it again.
+// downloads it; the download's Retry starts it again; Cancel stops it and shows nothing.
 func TestSettingsUpdateButtons(t *testing.T) {
 	asset := []byte("a release, as far as the updater cares")
 	sum := sha256.Sum256(asset)
@@ -152,8 +154,12 @@ func TestSettingsUpdateButtons(t *testing.T) {
 	}))
 	defer srv.Close()
 	dir := t.TempDir()
+	updates := filepath.Join(dir, "updates")
 	r := startWith(t, app.Config{ProfileDir: dir, Profiles: profiles.New(t.TempDir()), Update: update.Config{
-		Project: "project-b", Version: "0.1.0", Releases: srv.URL, StateDir: filepath.Join(dir, "updates")}})
+		Project: "project-b", Version: "0.1.0", Releases: srv.URL, StateDir: updates,
+		Installer: func(func()) appupdate.Installer {
+			return appupdate.File{Dir: updates, Open: func(string) error { return nil }}
+		}}})
 	defer r.stop()
 	r.openSettings()
 	phase := func(want string) {
@@ -171,8 +177,8 @@ func TestSettingsUpdateButtons(t *testing.T) {
 	}
 	r.settings(`{"t":"checkUpdate"}`)
 	phase(update.Downloading)
-	r.settings(`{"t":"cancelUpdate"}`)
-	phase(update.Idle)
 	r.settings(`{"t":"retryUpdate"}`)
 	phase(update.Downloading)
+	r.settings(`{"t":"cancelUpdate"}`)
+	phase(update.Idle)
 }

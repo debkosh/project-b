@@ -2,7 +2,7 @@ module projectb
 
 go 1.26.0
 
-require github.com/sudiptadeb/amarit v0.7.1
+require github.com/sudiptadeb/amarit v0.10.3
 
 require (
 	github.com/sudiptadeb/project-b/browserdata v0.0.0

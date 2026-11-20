@@ -1,6 +1,8 @@
 package relaunch
 
 import (
+	amarit "github.com/sudiptadeb/amarit/relaunch"
+
 	"projectb/instance"
 	"projectb/profiles"
 	"projectb/timeline"
@@ -45,7 +47,7 @@ func (c Copies) QuitOthers() []string {
 		pids = append(pids, pid)
 	}
 	timeline.Infof("relaunch: waiting for %d other copies to end", len(pids))
-	if err := waitEnded(pids); err != nil {
+	if err := amarit.WaitExited(pids); err != nil {
 		timeline.Errorf("relaunch: %v", err)
 	}
 	return started

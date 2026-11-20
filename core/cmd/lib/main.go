@@ -105,6 +105,9 @@ import (
 const (
 	releaseProject  = "project-b"
 	releaseManifest = "https://github.com/sudiptadeb/project-b/releases/download/channels/releases.json"
+	// releaseAutoUpdate is amarit.json's auto_update: copies check on their own unless the
+	// person turns it off.
+	releaseAutoUpdate = true
 )
 
 // chromiumVersion is the version of Chromium this build is on, from chrome/VERSION, which
