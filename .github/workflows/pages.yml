@@ -1,0 +1,68 @@
+# Publishes the project's site on GitHub Pages: the homepage (site/), with the Stable version
+# written in from VERSION, and the Linux Flatpak repository (docs/research/linux.md, 5) from
+# the newest release that has one, as Linux releases are built only when asked. It runs on
+# each Stable release, and by hand with a release's tag. The repository is under repo/, beside
+# project-b.flatpakref and project-b.flatpakrepo.
+name: Pages
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The Stable release whose site to publish
+        required: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    # A Dev build's channels pre-release is no Stable release.
+    if: github.event_name == 'workflow_dispatch' || !github.event.release.prerelease
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ inputs.tag || github.event.release.tag_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - name: The homepage, at its Stable version
+        run: |
+          mkdir _site
+          cp -R site/. _site/
+          version=$(tr -d '[:space:]' < VERSION)
+          sed -i "s/{{VERSION}}/$version/g" _site/index.html
+          touch _site/.nojekyll
+      - name: The Linux Flatpak repository, from the newest release that has one
+        run: |
+          linux=""
+          for t in $(gh release list --repo "$GITHUB_REPOSITORY" --exclude-pre-releases --limit 50 --json tagName --jq '.[].tagName'); do
+            if gh release view "$t" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' | grep -qx flatpak-repo.tar.gz; then
+              linux=$t
+              break
+            fi
+          done
+          if [ -n "$linux" ]; then
+            gh release download "$linux" --repo "$GITHUB_REPOSITORY" --dir dl \
+              --pattern flatpak-repo.tar.gz --pattern project-b.flatpakref --pattern project-b.flatpakrepo
+            tar -xzf dl/flatpak-repo.tar.gz -C _site
+            cp dl/project-b.flatpakref dl/project-b.flatpakrepo _site/
+            echo "Linux repository from $linux"
+          fi
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -141,3 +141,13 @@ merge into main while it runs; it reads that checkout. It takes about four minut
   has); a setting read before a shell's background prefs write landed; a tab navigated before
   its first page loaded, so the page replaced it in history. Wait for Go's state, a file Go
   wrote, or the page's title, never a fixed time.
+
+## The site
+
+The homepage is `site/` (`index.html` and its pictures), published with the Linux Flatpak
+repository by `.github/workflows/pages.yml` on GitHub Pages. The workflow runs on each Stable
+release, as the release is published, and by hand with a tag (`gh workflow run pages.yml -f
+tag=v<v>`): it takes `site/` at that tag, writes the Stable version from `VERSION` where the
+page has `{{VERSION}}`, and adds the Flatpak repository from the newest release that has one,
+as Linux releases are made only when asked. Each Stable release also carries its DMG and APK as
+`Project-B.dmg` and `Project-B.apk`, which the page links to through `releases/latest/download/`.

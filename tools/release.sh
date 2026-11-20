@@ -109,6 +109,10 @@ if [ "$CHANNEL" = dev ]; then
   exit 0
 fi
 cp "$NOTES" "$DIST/release-notes.md"
+# The same DMG and APK under names that don't change, which the homepage links to as
+# releases/latest/download/Project-B.dmg and .apk: always the newest Stable.
+cp "$DIST/Project-B-$VERSION.dmg" "$DIST/Project-B.dmg"
+cp "$DIST/Project-B-$VERSION.apk" "$DIST/Project-B.apk"
 
 echo "=== $(date '+%F %T') publish $TAG"
 git tag -a "$TAG" -m "Project B $VERSION"
