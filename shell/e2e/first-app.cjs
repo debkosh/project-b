@@ -740,7 +740,9 @@ const stopServer = lib.stop;
   await failed.getByText(/Couldn't update to 0\.2\.0/).waitFor({ timeout: 10000 });
   await settle(page);
   await page.screenshot({ path: path.join(out, '10-update-failed.png') });
-  check('a corrupted download is refused and About says so', /sha256/.test(await failed.getAttribute('title')), await failed.getAttribute('title'));
+  check('a corrupted download is refused and About says so', /checksum/.test(await failed.getAttribute('title')), await failed.getAttribute('title'));
+  const why = settingsPage.getByRole('region', { name: 'Version' }).locator('.why');
+  check('and says why on the page, in words that start with a capital, not only in a tooltip', await why.isVisible() && /^The download arrived damaged/.test(await why.textContent()), await why.textContent().catch(() => ''));
   // Closed again, so the page's tab is the one the address bar goes on.
   const settingsTab = (await regions()).settings;
   await fetch(`${base}/shell/send`, { method: 'POST', body: JSON.stringify({ t: 'closeTab', id: settingsTab }) });

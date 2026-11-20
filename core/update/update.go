@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -320,7 +321,7 @@ var (
 	// errRefused is a release's own answer against it: a bundle of another version, or a
 	// signature that is broken or someone else's. Only it rejects the release for good; a
 	// check that couldn't be made, as a download that failed, is tried at the next check.
-	errRefused   = errors.New("refused")
+	errRefused   = errors.New("so it won't be tried again")
 	errCancelled = errors.New("cancelled")
 	errRetried   = errors.New("retried")
 )
@@ -620,7 +621,7 @@ func (m *Manager) fetch(ctx context.Context, d *amarit.Decision) (string, error)
 		return "", why
 	}
 	if err != nil {
-		return "", err
+		return "", plainDownload(err)
 	}
 	if m.cfg.Install != nil {
 		staged := filepath.Join(stage, filepath.Base(archive))
@@ -649,13 +650,25 @@ func (m *Manager) fetch(ctx context.Context, d *amarit.Decision) (string, error)
 	return staged, os.Rename(app, staged)
 }
 
+// plainDownload words a failed download for the page: amarit's own words name sums and
+// sizes, which say nothing to a person. They stay in the timeline.
+func plainDownload(err error) error {
+	switch s := err.Error(); {
+	case strings.Contains(s, "does not match manifest"), strings.Contains(s, "manifest says"):
+		timeline.Errorf("update: %v", err)
+		return errors.New("the download arrived damaged: it didn't match its checksum; Try again")
+	default:
+		return fmt.Errorf("the download failed (%v); Try again", err)
+	}
+}
+
 func (m *Manager) checkBundle(app, version string) error {
 	v, _, err := bundleInfo(app)
 	if err != nil {
 		return err
 	}
 	if v != version {
-		return fmt.Errorf("%w: the download says it is %s", errRefused, v)
+		return fmt.Errorf("the download says it is %s, %w", v, errRefused)
 	}
 	if m.cfg.Verify != nil {
 		return m.cfg.Verify(app)

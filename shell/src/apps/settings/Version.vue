@@ -48,6 +48,8 @@ const busy = computed(() => state.update.check === 'checking');
             :style="{ width: percent + '%' }"
           ></span></span>
       </span>
+      <!-- Why it failed, in words, on its own line: a title alone shows on no phone. -->
+      <span v-if="update.failed && update.detail" class="why">{{ update.detail.charAt(0).toUpperCase() + update.detail.slice(1) }}</span>
     </template>
     <span class="actions">
       <!-- A ready release is applied from here: a relaunch on a desktop, Android's
@@ -89,6 +91,11 @@ const busy = computed(() => state.update.check === 'checking');
 .update {
   position: relative;
   white-space: nowrap;
+}
+
+.why {
+  display: block;
+  color: var(--danger);
 }
 
 .update.failed {

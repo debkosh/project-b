@@ -232,7 +232,7 @@ func TestCorruptedDownloadIsRefusedAndTriedAgain(t *testing.T) {
 	rs := release(t, "0.2.0", good, tampered)
 	r := start(t, "0.1.0", rs.url, nil)
 	r.check()
-	if r.phases() != "downloading failed" || !strings.Contains(r.states[1].Error, "sha256") {
+	if r.phases() != "downloading failed" || !strings.Contains(r.states[1].Error, "didn't match its checksum") {
 		t.Fatalf("phases %q states %+v", r.phases(), r.states)
 	}
 	if v, _ := Version(r.app); v != "0.1.0" {
@@ -282,7 +282,7 @@ func TestBundleOfAnotherVersionIsRefusedOnce(t *testing.T) {
 func TestBundleFailingVerifyIsRefused(t *testing.T) {
 	good := archive(t, fakeApp(t, t.TempDir(), "0.2.0"))
 	rs := release(t, "0.2.0", good, good)
-	r := start(t, "0.1.0", rs.url, func(string) error { return fmt.Errorf("%w: it isn't signed with Project B's key", errRefused) })
+	r := start(t, "0.1.0", rs.url, func(string) error { return fmt.Errorf("it isn't signed with Project B's key, %w", errRefused) })
 	r.check()
 	if r.phases() != "downloading failed" || !strings.Contains(r.states[1].Error, "isn't signed with Project B's key") {
 		t.Fatalf("phases %q states %+v", r.phases(), r.states)

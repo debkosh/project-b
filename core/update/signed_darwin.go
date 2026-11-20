@@ -106,10 +106,10 @@ func checkSigned(app, requirement string) error {
 	}
 	switch {
 	case verdict == 0:
-		return fmt.Errorf("its signature couldn't be checked: %s", words)
+		return fmt.Errorf("its signature couldn't be checked (%s); Try again, or it's tried at the next check", words)
 	case s == C.errSecCSReqFailed:
-		return fmt.Errorf("%w: it isn't signed with Project B's key", errRefused)
+		return fmt.Errorf("it isn't signed with Project B's key, %w", errRefused)
 	default:
-		return fmt.Errorf("%w: its signature is broken: %s", errRefused, words)
+		return fmt.Errorf("its signature is broken (%s), %w", words, errRefused)
 	}
 }
