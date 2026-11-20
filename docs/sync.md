@@ -1,7 +1,8 @@
 # Sync
 
-A profile's bookmarks, history and typed addresses, the same on every device a person links,
-through a sync server that holds them sealed. **Built 2026-11-19:** the Go side, then Settings'
+A profile's bookmarks, history, typed addresses, passkeys and saved passwords, the same on
+every device a person links, through a sync server that holds them sealed and can't read
+them ([who can do what](#who-can-do-what)). **Built 2026-11-19:** the Go side, then Settings'
 screens and the deep link, as the mocks the ux review approved that day have them ([the
 screens](#the-screens), [the link](#the-link)). The protocol and the library
 are [synckosh](https://github.com/sudiptadeb/synckosh): its SPEC.md is the protocol, and the core
@@ -25,6 +26,9 @@ uses its Go `client` package. The store it works over is [store.md](store.md).
   bucket url and token... then sync start asks for passphrase"
 - 2026-11-19: "we should build some deep link which we can click from the memd page to set the
   sync server details on the app in mac and android"
+- 2026-11-20: "our readme and docs should reflec our end to end ecrypted sync where arogue
+  server cannot do anything to the licnets.. and vise versa": [who can do what](#who-can-do-what),
+  with what a server and an app still can do beside what they can't.
 - Agreed in the discussion of 2026-11-19: local storage is ours, and synckosh is given its storage
   interface over it; sealing on disk is ours, field by field; history and bookmarks stay plain on
   disk, sealed only for the wire, by synckosh; the sync key is apart from the profile key.
@@ -104,6 +108,73 @@ and any other values the row binds in as additional data, so a sealed value can'
 another row or column. A fresh random nonce each time; the stored value is the nonce, then the
 sealed bytes. The `secrets` table holds named sealed values; sync keeps its address, token and
 sync key there.
+
+## Who can do what
+
+Sync is end to end encrypted: an item is sealed on the device, under the bucket's sync key,
+before it leaves, and opened only on a device that holds that key. The server never has the
+key. This is what that does and doesn't give, each line checked against synckosh's
+SPEC.md ("What sealing protects") and `core/sync`. A claim we can't back is here as a limit.
+
+**What leaves a device.** An item's private part, sealed with XChaCha20-Poly1305: the whole
+row as `core/sync` reads it, so an address and its title, a bookmark, a passkey with its key,
+a login with its username and password. Project B puts nothing in an item's public part.
+Outside the seal, and so read by the server: the collection's name (`bookmarks`, `history`,
+`typed`, `passkeys`, `logins`) and datatype, the item's guid, which is random and says
+nothing of the row, its timestamp, whether it is deleted, its size, and its identity, a
+hash keyed from the sync key that is the same for two items that are one thing. The seal
+binds the collection, datatype, guid, timestamp and the deleted mark with the content, so
+none of them can be changed apart from it.
+
+**The sync server, anyone who controls it, and anyone on the connection.**
+
+| It cannot | Why |
+|---|---|
+| Read what is synced | It has no key. The key reaches a new device only as a copy sealed under the passphrase, which the server never sees |
+| Change an item, forge one, or move one to another guid or collection | The seal doesn't open, and the device rejects the item: it changes nothing there, and Sync details says "not taken" |
+| Delete an item on a device, or clear a collection there | A delete is sealed like any edit, and so is a delete of everything before a time |
+| Learn an address or a site by guessing it | Guids are random; an identity is a hash under a key it doesn't have |
+
+| It still can | What that means |
+|---|---|
+| See how many items of each kind there are, their sizes and when they change | Roughly when and how much a person browses, saves or deletes; never what |
+| See which two items are one thing | Their identities are equal; nothing more |
+| Keep items back, refuse a push, stop answering | Sync stalls or a device misses changes. Sync details says what failed |
+| Lose or delete its copy | Devices keep their rows: nothing a server sends deletes them. A device then refills the server, or says the bucket was reset |
+| Hand over an older version that a key holder really wrote | A device being added can get old data or miss a delete. A device holding a version with a later timestamp keeps its own |
+| Say the bucket was reset (a new store id, with no sealed copy of the key) | Devices push nothing and say "The sync bucket was reset" until sync is set up again, under a new key. Nothing becomes readable |
+| Try passphrases against the sealed copy of the key, offline | Each try costs Argon2id at 64 MiB and 3 passes. Settings takes no passphrase under 12 characters. A passphrase a person could guess is the weak point |
+
+**A profile on a device.** A device that was given the passphrase holds the sync key, and
+is trusted in full: every device that holds the key can read and write everything, and a
+delete it makes reaches every other device. The key never shows on screen and has no
+export. There is no removing one device and no changing the key yet: resetting the bucket
+and setting sync up again with a new passphrase makes a new key, and a device that isn't
+given that passphrase is out.
+
+**An app or a person without the key.**
+
+- **With no token for the bucket:** nothing. The server asks its host which bucket a request
+  is for, and each bucket's items are apart; a token names one bucket.
+- **With the bucket's address and token, and no passphrase:** it can't read an item and
+  can't make a device take one. It can push junk, push over an item's version on the
+  server, and push a delete of everything before a time, which the server follows without
+  being able to check it. So it can spoil or erase the server's copy, and stall sync, and a
+  device added then gets less. The devices that hold the key keep their rows. The token is
+  a secret: sync takes only `https` addresses, the token is kept sealed on disk beside the
+  sync key, and Sync details never shows it. Resetting the bucket and setting sync up again
+  puts a spoiled bucket right.
+- **How much it can store.** The protocol caps one item (1 MiB sealed) and one push (1000
+  items, 16 MiB). How much a bucket may hold in all, and how often it may be written, are
+  the server's own to limit; synckosh's server sets neither.
+
+**On the connection.** Sync trusts the certificates the system does, which on Android
+include ones a person added. Someone who can read the connection gets what the server gets,
+and the token.
+
+**Not sync's to protect.** What is on a device: history and bookmarks are plain in the
+profile's folder, and passkeys' keys and saved passwords are sealed there with the profile
+key ([the keys](#the-keys)).
 
 ## The address
 

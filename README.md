@@ -60,20 +60,65 @@ Working today:
 - Per-site settings from the address field: an ad blocker, blocking links to other sites, and
   Sparks, your own userscripts for the pages they match.
 - Downloads, printing, find in page, history, and bookmarks in folders.
+- Sync between your devices, end to end encrypted, through a sync server you choose:
+  bookmarks, history, passkeys and saved passwords. [More below](#sync-is-end-to-end-encrypted).
+- Passkeys of its own, and saved passwords brought over from another browser, listed in
+  Settings on the desktop and on a phone.
 - A first-run welcome, and Project B as the system's default browser.
 - Releases that update themselves on both platforms.
 
 Not there yet:
 
-- Sync is planned. Its library, [synckosh](https://github.com/sudiptadeb/synckosh), is
-  separate and not wired in.
-- No saved passwords or autofill, no Safe Browsing warnings, no popup blocker.
+- Saved passwords aren't filled into pages yet, and a page's new password isn't offered to
+  be saved. No Safe Browsing warnings, no popup blocker.
 - Chrome extensions are in every build but off behind a flag (Settings, Flags).
 - Apple silicon Macs and arm64 Android (10 or newer) only.
 - The Mac app is signed with the project's own key, not notarized by Apple.
 
 The gaps, row by row: [docs/daily-use.md](docs/daily-use.md). What is decided and not built:
 [docs/todo.md](docs/todo.md).
+
+## Sync is end to end encrypted
+
+Bookmarks, history, the addresses you type, passkeys and saved passwords sync between your
+devices through a sync server you choose. Every item is sealed on your device before it
+leaves, under a key the server never has: the server stores and hands on what it cannot
+read. The protocol and its library are [synckosh](https://github.com/sudiptadeb/synckosh),
+a separate project; the detail of what follows is in
+[docs/sync.md](docs/sync.md#who-can-do-what).
+
+**A sync server, and anyone who breaks into it or sits on the connection, cannot:**
+
+- read anything you sync: no address, title, bookmark, username, password or passkey;
+- change an item, forge one, mark one deleted or move one without your devices refusing
+  it. Each item's seal covers its content, its name, its time and whether it is deleted, and
+  an item that doesn't check changes nothing on a device.
+
+**It still can:**
+
+- see how many items you have of each kind, how big each is and when they change, so
+  roughly when you browse, and which two items are the same thing, though not what it is;
+- keep items back, stop answering, or lose its copy. Your devices keep theirs: nothing the
+  server does deletes what is on a device;
+- hand a device an older version that one of your devices once really wrote, so a device
+  you add can get old data or miss a delete. A device that holds a newer version keeps it;
+- say the bucket was reset, which stops sync on your devices until you set it up again;
+- try passphrases against its sealed copy of the key, as fast as its own hardware allows.
+  Each try costs it 64 MiB of memory and three passes of Argon2id, and a passphrase is at
+  least 12 characters, but one a person can guess is the weak point.
+
+**The other way round:**
+
+- An app with no token for your bucket reaches nothing of it: the server keeps each bucket
+  apart.
+- An app that has your bucket's token and not your passphrase can't read anything, and
+  can't make your devices take anything. It can spoil or erase the server's copy, which
+  can't tell your sealed items from junk, so treat the token as a secret. Your devices keep
+  what they have; resetting the bucket and setting sync up again puts it right.
+- A device you set up with the passphrase is trusted in full. It reads and writes
+  everything, and what it deletes goes from every device. There is no way yet to remove one
+  device, or to change the key, short of resetting the bucket and setting sync up again
+  with a new passphrase.
 
 ## Try it
 
