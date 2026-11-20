@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Project B</title>
+<meta name="description" content="Project B: a browser in three separate parts, shell, core and renderer, each built and tested on its own. This page runs the real shell and core, with the renderer swapped out. For Mac, Android and Linux; free and open source.">
+<link rel="icon" href="icon-small.svg" type="image/svg+xml">
+<!-- The first bytes paint the page: white, or black in dark mode, before anything loads. -->
+<style>
+  :root { color-scheme: light dark; }
+  html, body { margin: 0; height: 100%; background: #fff; }
+  @media (prefers-color-scheme: dark) { html, body { background: #000; } }
+</style>
+<link rel="preload" href="core.wasm" as="fetch" type="application/wasm" crossorigin>
+<link rel="stylesheet" href="stage.css">
+<script src="fs.js"></script>
+<script src="wasm_exec.js"></script>
+<script>
+  // The core starts at once, while the intro plays. The visitor's OS is what the core
+  // reads as it starts (core/cmd/webdemo): a phone's app on Android, the Mac's keys on a
+  // Mac, Linux's on any other.
+  (() => {
+    const ua = navigator.userAgent;
+    // A phone, iPhones too (whose user agent also says Mac OS X), or any narrow screen, gets
+    // the phone's app, as stage.js gives it the phone's stage.
+    globalThis.pbcoreOS = /Android|iPhone|iPod/.test(ua) || innerWidth < 640 ? 'android' : /Macintosh|Mac OS X/.test(ua) ? 'mac' : 'linux';
+    const t0 = performance.now();
+    globalThis.pbcoreStarted = new Promise((ready, failed) => {
+      globalThis.pbcoreReady = () => {
+        globalThis.pbcoreStartMs = Math.round(performance.now() - t0);
+        ready();
+      };
+      const go = new Go();
+      // The core's size as built (build.sh writes it in), and how much of it has come, for
+      // the intro to say while it waits.
+      globalThis.pbcoreTotal = Number('{{WASM_BYTES}}') || 0;
+      globalThis.pbcoreBytes = 0;
+      fetch('core.wasm', { credentials: 'same-origin' })
+        .then((res) => {
+          if (!res.ok) throw new Error('core.wasm: ' + res.status);
+          const reader = res.body.getReader();
+          const counted = new ReadableStream({
+            async pull(c) {
+              const { done, value } = await reader.read();
+              if (done) { c.close(); return; }
+              globalThis.pbcoreBytes += value.byteLength;
+              c.enqueue(value);
+            },
+          });
+          return WebAssembly.instantiateStreaming(new Response(counted, { headers: { 'Content-Type': 'application/wasm' } }), go.importObject);
+        })
+        .then((r) => go.run(r.instance))
+        .catch(failed);
+    });
+  })();
+</script>
+</head>
+<body>
+<div id="intro" role="status"><span id="intro-status" class="mono"></span><span id="intro-hint">Press any key to skip</span></div>
+
+<main id="desktop" hidden>
+  <!-- The mock OS: the desktop, its menu bar and the app's windows, driven by the core. -->
+  <iframe id="os" title="Project B on a desktop"></iframe>
+
+  <div id="download">
+    <button id="fullscreen" hidden title="Fill the screen with the demo"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></svg>Best in full screen</button>
+    <button id="download-button" aria-haspopup="true" aria-expanded="false">Download</button>
+    <div id="download-menu" class="menu" hidden>
+      <a href="https://github.com/sudiptadeb/project-b/releases/download/v{{VERSION}}/Project-B-{{VERSION}}.dmg">Mac<small>Apple silicon · DMG</small></a>
+      <a href="https://github.com/sudiptadeb/project-b/releases/download/v{{VERSION}}/Project-B-{{VERSION}}.apk">Android<small>arm64 phones · APK</small></a>
+      <a href="https://projectb.debkosh.com/project-b.flatpakref">Linux<small>arm64 preview · Flatpak</small></a>
+      <hr>
+      <a href="https://github.com/sudiptadeb/project-b">Source on GitHub<small>MIT licence</small></a>
+    </div>
+  </div>
+
+  <aside id="log" aria-label="What happened">
+    <button id="log-toggle" aria-expanded="true"><span class="dot"></span>What happened</button>
+    <ol id="log-lines" aria-live="polite"></ol>
+  </aside>
+
+  <svg id="pointer" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3l14 9-6.5 1.5L9.5 20z" fill="#111" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>
+</main>
+
+<noscript>
+  <p class="noscript">Project B is a browser you shape to fit, for Mac, Android and Linux.
+  This page runs the real app, which needs JavaScript. <a href="mock-page.html">Read about it</a>, or
+  <a href="https://github.com/sudiptadeb/project-b/releases/latest">download it</a>.</p>
+</noscript>
+
+<script src="stage.js"></script>
+<script>
+  // Cloudflare Web Analytics on the published homepage only, so previews count nothing: visits,
+  // with no cookies.
+  if (location.hostname === 'projectb.debkosh.com') {
+    const s = document.createElement('script');
+    s.defer = true;
+    s.src = 'https://static.cloudflareinsights.com/beacon.min.js';
+    s.dataset.cfBeacon = '{"token": "c05cea8219544bf99c5f86290c9bf4b8"}';
+    document.head.append(s);
+  }
+</script>
+</body>
+</html>
