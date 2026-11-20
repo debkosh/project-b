@@ -1015,7 +1015,7 @@ def workspace_delete_checks():
     actions = lambda name: f"document.querySelector('[aria-label=\"Actions for {name}\"]')"
     delete_item = "[...document.querySelectorAll('[role=menuitem]')].find(b=>b.textContent.trim()==='Delete…')"
     open_settings(js, win)
-    # Workspaces' row, scrolled into sight, opens its page on the one-page layout.
+    # Workspaces, in the list of sections, shows its section.
     click("(e=>(e&&e.scrollIntoView({block:'center'}),e))(document.querySelector('[data-section=\"workspaces\"]'))")
     click(actions("Work"))
     items = settings("[...document.querySelectorAll('[role=menuitem]')].map(b=>b.textContent.trim())") or []
@@ -1245,22 +1245,27 @@ def update_checks(retry=False):
     old = until(copies, lambda c: len(c) == 2, 20)
     check(f"{before} runs two profiles, each in a copy of its own", len(old) == 2, str(old))
     # A round a minute, then the download and its checks.
-    button = "document.querySelector('.update.ready button')"
+    # The release ready: its one-time notice from 0.3.7 on (docs/updates.md), the bubble before
+    # it and once the notice is put away; each names the release, and has Relaunch.
+    offer = "(document.querySelector('.update-notice') || document.querySelector('.update.ready'))"
+    button = "(document.querySelector('.update-notice .primary') || document.querySelector('.update.ready button'))"
     if retry:
         held = until(lambda: js(f"{button}?.textContent.trim() || ''"), bool, 100)
         check(f"a refused {after} is held through the automatic rounds", held == "", held)
         js("document.querySelector('[aria-label=Menu]').click()")
         until(lambda: js(f"!!{SETTINGS_ITEM}"), bool, 10)
         js(f"{SETTINGS_ITEM}.click()")
+        # Check for updates is in About from 0.3.7 on, in the status line before it.
+        ask("evalsettings", "((b) => (b && b.click(), 1))(document.querySelector('.nav [data-section=about]'))")
         # After a refused release the button says Try again; otherwise Check for updates.
         find = "[...document.querySelectorAll('button')].find(b => ['Check for updates', 'Try again'].includes(b.textContent.trim()))"
         shown = until(lambda: json.loads(ask("evalsettings", f"!!{find}") or "false"), bool, 15)
-        check("Settings, General shows Check for updates, or Try again after a refused release", shown)
+        check("Settings shows Check for updates, or Try again after a refused release", shown)
         ask("evalsettings", f"({find}.click(), 1)")
         shot("u0-checked")
         # Closed again, so the bubble's button is the shell's to press.
         desk.key("cmd+w")  # Settings is a tab, closed like any.
-    offered = until(lambda: js(f"{button}?.textContent.trim() || ''"), bool, 600)
+    offered = until(lambda: js(f"{offer}?.textContent.trim() || ''"), bool, 600)
     shot("u1-ready")
     check(f"Check for updates tries the refused {after} again: it is downloaded and offered" if retry else
           f"with automatic updates on, {after} is found, downloaded and offered", after in offered, offered)

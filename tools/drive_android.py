@@ -660,11 +660,11 @@ def browsing():
     # Settings is a tab of ours: its title and a close where the address goes.
     menu("Settings")
     check("the settings button opens settings as a tab, its title where the address goes",
-          until(lambda: find("settings", text="Theme")) is not None and find("shell", text="Settings") is not None and
+          until(lambda: find("settings", text=SETTINGS_LIST)) is not None and find("shell", text="Settings") is not None and
           find("shell", label="Address", kind=FIELD) is None)
     shot("06c-settings")
     menu("Settings")
-    check("settings again shows the same tab", until(lambda: find("settings", text="Theme")) is not None)
+    check("settings again shows the same tab", until(lambda: find("settings", text=SETTINGS_LIST)) is not None)
     close_settings()
     check("its close closes the settings tab", "settings" not in screen_parts())
 
@@ -822,6 +822,7 @@ def mobile_shell():
     # Each screen in light and dark, the theme chosen in settings.
     for scheme in ("light", "dark"):
         menu("Settings")
+        settings_section("Appearance", "Theme")
         tap(middle(see("settings", text=scheme.capitalize())))
         close_settings()
         time.sleep(1)
@@ -844,6 +845,7 @@ def mobile_shell():
         key(4)
         key(4)
     menu("Settings")
+    settings_section("Appearance", "Theme")
     tap(middle(see("settings", text="System")))
     close_settings()
     # The active favicon in the strip closes its tab at a tap; a group of one then ends.
@@ -1022,7 +1024,7 @@ def settings_ahead():
             until(lambda: find("shell", label="Close Page A") is None)
             menu("Settings")
             check(shell + ": the menu's Settings shows that page, its tab the one made ahead",
-                  until(lambda: find("settings", text="Theme")) is not None and "settings.open.prepared_ready" in timeline_marks())
+                  until(lambda: find("settings", text=SETTINGS_LIST)) is not None and "settings.open.prepared_ready" in timeline_marks())
             close_settings()
             check(shell + ": and its close closes it", "settings" not in screen_parts())
         except TimeoutError:
@@ -1204,24 +1206,21 @@ def downloads():
 
 def settings_back():
     """The back key inside Settings goes back to where it was, not out of Settings
-    (docs/fragility.md, "The back key out of Settings"): from the Sites list to the page it
-    was opened from, and only from there out."""
+    (docs/fragility.md, "The back key out of Settings"): from the Sites list to Privacy, the
+    section it was opened from, then to the list of sections, and only from there out."""
     launch()
     menu("Settings")
-    see("settings", text="Theme")
-    # Down the page to Sites, which opens as a list of its own.
-    # A row that opens a list is named by its label.
-    for _ in range(12):
-        row = named("settings", "Sites")
-        if row is not None and 300 < middle(row)[1] < screen_size()[1] - 400:
-            break
-        adb("shell", "input", "swipe", "540", "1600", "540", "900", "300")
-        time.sleep(0.6)
+    see("settings", text=SETTINGS_LIST)
+    # Privacy has Sites, which opens as a list of its own. A row that opens a list is named by
+    # its label.
+    settings_section("Privacy", lambda t: t == "Clear browsing data…" or t == "Block ads")
     tap(middle(see_named("settings", "Sites")))
     check("Sites opens as a list of its own", until(lambda: find("settings", label=lambda l: (l or "").startswith("Back to"))) is not None)
     key(4)
-    check("the back key goes back to the page it was opened from, still in Settings",
-          until(lambda: "settings" in screen_parts() and find("settings", label=lambda l: (l or "").startswith("Back to")) is None and named("settings", "Sites") is not None) is not None)
+    check("the back key goes back to the section it was opened from, still in Settings",
+          until(lambda: "settings" in screen_parts() and find("settings", label="Back to Privacy") is None and named("settings", "Sites") is not None) is not None)
+    key(4)
+    check("then to the list of sections", until(lambda: "settings" in screen_parts() and named("settings", "Sites") is None and find("settings", text=SETTINGS_LIST) is not None) is not None)
     key(4)
     check("and only then out of Settings", until(lambda: "settings" not in screen_parts()) is not None)
 
@@ -1479,7 +1478,7 @@ def file_input_checks():
     check("a file picked reaches the page by its own name", asked("/said?file=" + urllib.parse.quote("SiteSparks.zip:%d" % size)), str(served))
 
     menu("Settings")
-    see("settings", text="Theme")
+    see("settings", text=SETTINGS_LIST)
     tap(middle(see("settings", kind=FIELD)))
     type_text("Sparks")
     # Android 10's keyboard holds the word it is composing, and the search reads only what is
@@ -1720,6 +1719,24 @@ def view_link(link):
 def settings_text(want):
     """A node of the settings page whose text is want, or a function of it."""
     return find("settings", text=want)
+
+
+def starts(words):
+    """A test of a node's text, that it starts with words."""
+    return lambda t: (t or "").startswith(words)
+
+
+# Settings on a phone opens at its list of sections, Profile first (docs/settings.md).
+SETTINGS_LIST = starts("Profile")
+
+
+def settings_section(label, inside):
+    """Settings at the section label: the list's row for it tapped, unless the page is in it
+    already, where the text inside shows. Returns that node."""
+    until(lambda: find("settings", text=inside) or find("settings", text=starts(label)))
+    if find("settings", text=inside) is None:
+        tap(middle(see("settings", text=starts(label))))
+    return see("settings", text=inside)
 
 
 def sync_on_the_phone():

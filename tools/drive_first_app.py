@@ -797,7 +797,7 @@ def settings_checks():
     time.sleep(0.5)
     check("it is a tab, its page where the layout puts a page, under the shell's top row",
           app.js(ROWS) == rows + 1 and app.cmd("hit", 600, 300) == "page" and app.cmd("hit", 300, BAR_Y) == "shell", (app.js(ROWS), app.cmd("hit", 600, 300), app.cmd("hit", 300, BAR_Y)))
-    check("it shows the general settings", settings("!!document.querySelector('.version')"))
+    check("it shows the settings, in sections", settings("!!document.querySelector('.sections-nav')"))
     print(app.cmd("capture", os.path.join(OUT, "settings-general.png")), flush=True)
 
     # A key recorded on the settings page reaches Go, and runs its action.
@@ -1885,9 +1885,10 @@ def relaunch_checks():
     add_work_profile(root)
     b = App(None, [f"--root={root}", "--profile=work"], clone)
     picker = App(None, [f"--root={root}", "--picker"], clone)
-    offer = "[...document.querySelectorAll('.update button')].some(b => b.textContent.includes('99.0.0 is ready'))"
+    # A ready release's one-time notice (docs/updates.md), whose Relaunch is the bubble's.
+    offer = "!!document.querySelector('.update-notice')?.textContent.includes('99.0.0 is ready')"
     check("each profile's copy offers the release staged in the root's update folder", bool(a.wait(offer, 20)) and bool(b.wait(offer, 20)))
-    a.js("document.querySelector('.update button').click(), 1")
+    a.js("document.querySelector('.update-notice .primary').click(), 1")
     check("relaunching one tells the other profile's copy to quit", b.proc.wait(timeout=30) == 0)
     check("and the picker copy", picker.proc.wait(timeout=30) == 0)
     check("and the copy asked quits once they have ended", a.proc.wait(timeout=30) == 0)
@@ -2329,7 +2330,7 @@ def delete_workspace(app, workspace, close=True):
     row = json.dumps(f'[data-workspace="{workspace}"]')
     click = "(b=>b&&(b.click(),1))"
     app.cmd("key", "cmd+,")
-    # Workspaces' row opens its page on the one-page layout, and its section on the other.
+    # Workspaces is a section of its own.
     in_settings(app, click + "(document.querySelector('[data-section=\"workspaces\"]'))")
     in_settings(app, click + f"(document.querySelector({row}+' .ui-row-menu > button'))")
     in_settings(app, click + "([...document.querySelectorAll('[role=menuitem]')].find(b=>b.textContent.trim()==='Delete…'))")
@@ -2440,6 +2441,8 @@ def site_data_checks():
     click = "(b=>b&&(b.click(),1))"
     button = lambda words: click + f"([...document.querySelectorAll('button')].find(b=>b.textContent.trim()==={json.dumps(words)}))"
     app.cmd("key", "cmd+,")
+    # Sites is a row of Privacy that opens it as a page of its own.
+    in_settings(app, click + "(document.querySelector('[data-section=\"privacy\"]'))")
     in_settings(app, click + "(document.querySelector('[data-section=\"sites\"]'))")
     # The pages are on 127.0.0.1, a site of its own: a cookie in each workspace.
     in_settings(app, click + "(document.querySelector('.site-row[data-site=\"127.0.0.1\"] button.open'))")
