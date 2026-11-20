@@ -1909,6 +1909,109 @@ def passkeys_on_the_phone():
     asked("/a")
 
 
+def passwords_on_the_phone():
+    """Saved passwords on a phone (docs/passwords.md): they come by sync, as a phone has no
+    import. Another device (core/cmd/syncdevice) saves a login and turns sync on with a bucket
+    on this Mac's sync server, choosing the passphrase; the phone joins the bucket with it,
+    and Privacy's Passwords row opens a page that lists the login by site and username, with
+    no password, and counts it. With no screen lock Show says to set one. With a PIN set, Show brings
+    Android's own check and the PIN shows the password; Copy brings it again and says the
+    password was copied. The PIN is cleared at the end, whatever happened: a lock left on
+    stalls every other run."""
+    pin = "1357"
+    site, username, password, passphrase = "mail.example", "asha", "copper-lantern-42", "river meadow lantern copper"
+    stopped = lambda: (adb("shell", "am", "force-stop", PACKAGE), until(lambda: PACKAGE + "_zygote" not in adb("shell", "ps", "-A", "-o", "NAME")))
+
+    def locked():
+        return "false" in adb("shell", "locksettings", "get-disabled", "--old", pin).lower()
+
+    def check_person():
+        """Android's own sheet for the check, and the PIN typed into it."""
+        sheet = until(lambda: system_node(text="Show your password"), 20)
+        if sheet is not None:
+            adb("shell", "input", "text", pin)
+            key(66)
+        return sheet is not None
+
+    folder = os.path.abspath(os.path.join(OUT, "passwords-syncserver"))
+    shutil.rmtree(folder, ignore_errors=True)
+    binaries = {}
+    for name in ("syncserver", "syncdevice"):
+        binaries[name] = os.path.abspath(os.path.join(OUT, name + "-bin"))
+        subprocess.run(["go", "build", "-tags", "sqlite_fts5", "-o", binaries[name], "./cmd/" + name], cwd=os.path.join(ROOT, "core"), check=True)
+    srv = subprocess.Popen([binaries["syncserver"], "-addr", "127.0.0.1:0", "-dir", folder], stdout=subprocess.PIPE, text=True)
+    port = int(srv.stdout.readline().strip().rsplit(":", 1)[1])
+    threading.Thread(target=lambda: [None for _ in srv.stdout], daemon=True).start()
+    address = "https://127.0.0.1:%d/sync/passwords" % port
+    adb("shell", "locksettings", "clear", "--old", pin)
+    try:
+        other = subprocess.run([binaries["syncdevice"], "-address", address, "-ca", os.path.join(folder, "ca.pem"), "-passphrase", passphrase,
+                                "-origin", "https://" + site, "-username", username, "-password", password], capture_output=True, text=True, timeout=120)
+        check("another device saves a login and turns sync on with the bucket", "synced" in other.stdout, other.stdout[-300:] + other.stderr[-600:])
+        adb("reverse", "tcp:%d" % port, "tcp:%d" % port)
+        adb("shell", "mkdir", "-p", "/data/misc/keychain/certs-added")
+        adb("push", os.path.join(folder, "ca.pem"), "/data/misc/keychain/certs-added/project-b-sync-test.0")
+        # A start past the welcome first, as each part's is; then the app, stopped, reads the
+        # device's CA folder again when the link starts it.
+        launch()
+        stopped()
+        view_link("project-b://sync?address=" + urllib.parse.quote(address, safe=""))
+        tap(middle(see("settings", text="Connect", timeout=30)))
+        see("settings", text="Enter your sync passphrase", timeout=30)
+        # The field, once Android reads the Dialog: its tree is empty while the Dialog comes in.
+        tap(middle(until(lambda: next((n for n in screen_parts().get("settings", ET.Element("none")).iter("node") if n.get("class") == FIELD), None), 20)))
+        type_text(passphrase)
+        # As in sync_on_the_phone: with the keyboard up the tap may only put it away.
+        for _ in range(3):
+            button = find("settings", text="Turn on sync")
+            if button is not None:
+                tap(middle(button))
+            if until(lambda: find("settings", text="Enter your sync passphrase") is None, 5):
+                break
+        check("the phone joins the bucket with the passphrase", until(lambda: find("settings", text="Sync now"), 60) is not None)
+
+        # The link opened Settings at Sync, and back from there leaves Settings: from the
+        # menu it opens at its list of sections, and Privacy is one.
+        key(4)
+        until(lambda: "settings" not in screen_parts())
+        menu("Settings")
+        # A row that opens a page is one button to Android, named by its label, where a row
+        # of words is text: both are looked at.
+        words = lambda: [w for n in screen_parts().get("settings", ET.Element("none")).iter("node") for w in (n.get("text"), n.get("content-desc")) if w]
+        node = lambda test: next((n for n in screen_parts().get("settings", ET.Element("none")).iter("node") if test(n.get("text") or "") or test(n.get("content-desc") or "")), None)
+        tap(middle(until(lambda: node(starts("Privacy")), 30)))
+        row = until(lambda: node(starts("Passwords")), 30)
+        check("Privacy has a Passwords row on a phone", row is not None, words()[:60])
+        shot("passwords-row")
+        tap(middle(row))
+        # The login sync brought: a run may still be bringing it as the page opens.
+        listed = until(lambda: node(starts(site)), 60)
+        said = words()
+        check("its page lists the login sync brought, by its site and username, with no password, and counts it",
+              listed is not None and any(username in t for t in said) and "1 saved" in said and not any(password in t for t in said) and any(t.startswith("Sealed for this profile; your sync server can't read them.") and "your screen lock" in t for t in said), said[:60])
+        shot("passwords-list")
+        tap(middle(listed))
+        show = "Show the password for " + site
+        tap(middle(see_named("settings", show)))  # does: passwordShow
+        check("with no screen lock, Show says to set one", until(lambda: settings_text("Set a screen lock on this device to show passwords"), 20) is not None)
+        shot("passwords-no-screen-lock")
+
+        adb("shell", "locksettings", "set-pin", pin)
+        check("a PIN is set for the run", until(locked) is not None, adb("shell", "locksettings", "get-disabled", "--old", pin))
+        tap(middle(see_named("settings", show)))
+        check("with one, Show brings Android's own check", check_person())
+        check("and the PIN shows the password", until(lambda: settings_text(password), 20) is not None)
+        shot("passwords-shown")
+        tap(middle(see_named("settings", "Copy the password for " + site)))  # does: passwordCopy
+        check("Copy brings the check again, and says the password was copied", check_person() and until(lambda: settings_text("Password copied"), 20) is not None)
+    finally:
+        adb("shell", "locksettings", "clear", "--old", pin)
+        check("the PIN is cleared after the run", until(lambda: "true" in adb("shell", "locksettings", "get-disabled").lower()) is not None, adb("shell", "locksettings", "get-disabled"))
+        srv.terminate()
+        adb("reverse", "--remove", "tcp:%d" % port)
+        adb("shell", "rm", "-f", "/data/misc/keychain/certs-added/project-b-sync-test.0")
+
+
 def the_page_renderer_dies():
     launch()
     go(BASE + "/a")
@@ -2374,7 +2477,7 @@ def main():
     adb("shell", "pm", "clear", PACKAGE)
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
-    every = (browsing, mobile_shell, custom_colour, settings_back, talkback_states, bookmark_star, settings_ahead, back_key_chain, page_dialogs, downloads, crash_notice, download_notifications, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, passkeys_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
+    every = (browsing, mobile_shell, custom_colour, settings_back, talkback_states, bookmark_star, settings_ahead, back_key_chain, page_dialogs, downloads, crash_notice, download_notifications, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, passkeys_on_the_phone, passwords_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
              the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web, long_press_menu, keyboard_bars, welcome_extras, welcome_last_step)
     for part in [p for p in every if not sys.argv[1:] or p.__name__ in sys.argv[1:]]:
         # tools/results.py splits a run's memory, CPU and checks by these lines.
