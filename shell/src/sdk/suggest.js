@@ -12,9 +12,8 @@ export const suggestionKinds = ['address', 'search', 'tab', 'history', 'action',
 
 // suggest asks for the list for text, with rows of the kinds named; id comes back with the
 // answer, so a late one for an earlier text is told apart. With nothing typed the list is
-// what a new tab offers, eight rows at most: with tab and closed asked for, the window's
-// other tabs, the most recently used first, and the tabs closed lately, three of each;
-// then the sites visited most, as history rows, and the newest bookmarks.
+// what a new tab offers, eight rows at most: with closed asked for, the tabs closed lately,
+// three at most; then the sites visited most, as history rows, and the newest bookmarks.
 export function suggest(id, text, kinds = suggestionKinds) {
   send({ t: 'suggest', id, text, kinds });
 }
@@ -24,4 +23,15 @@ export function suggest(id, text, kinds = suggestionKinds) {
 // action.
 export function chooseSuggestion(row, newTab = false) {
   send({ t: 'chooseSuggestion', row, newTab });
+}
+
+// typedFirst is a list after a delete, when Enter must be what was typed: the row that is
+// the typed text, the address or else the search whose title is the text, goes first, and
+// the completing row, which may be an address row for a host, keeps its place with no
+// completion. The search is otherwise last (docs/daily-driver.md, What the address field
+// suggests).
+export function typedFirst(list, text) {
+  const rows = list.map((r, i) => (i === 0 ? { ...r, inline: '' } : r));
+  const own = rows.findIndex((r, i) => i > 0 && (r.kind === 'address' || r.kind === 'search') && r.title === text.trim());
+  return own > 0 ? [rows[own], ...rows.slice(0, own), ...rows.slice(own + 1)] : rows;
 }

@@ -1,51 +1,54 @@
 <script>
-  import { chooseSuggestion, focusPage, send, shell, state as app } from '@/sdk/svelte.svelte.js';
+  import { tick } from 'svelte';
+  import { chooseSuggestion, focusPage, send, shell, state as app, typedFirst } from '@/sdk/svelte.svelte.js';
   import { inFolder } from '@/ui/bookmarks.js';
   import Icon from './Icon.svelte';
   import Mark from './Mark.svelte';
-  import { folderMark, tints } from '@/ui/tint.js';
   import { popupsWord } from '@/sdk/sites.js';
   import { nextQuery } from './queries.js';
 
   // The address pill. At rest it shows the host and the page's lock; a tap turns it into
-  // the field, with the whole address selected. Before anything is typed, and once the
-  // field is emptied, it lists what one more tap reaches: Go's list for nothing typed, the
-  // open tabs, the tabs closed lately, the sites visited most and the newest bookmarks,
-  // under a heading each. Typing asks Go for suggestions instead. Either list lies away
-  // from the field towards the page, the closest next to it: a tap on a row goes there,
-  // its ↖ puts its address in the field. Enter goes to what is in the field, never to a
-  // row: a row is taken only by a tap, so a list still answering an earlier text, as the
-  // list for nothing typed does just after fast typing, never takes Enter elsewhere. Escape
-  // or a press in the page puts the address back.
+  // the field, with the whole address selected (docs/daily-driver.md, What the address field
+  // suggests). One layer: while the field is focused either its list covers the page down to
+  // the keyboard, or nothing covers it. With nothing typed over a new tab nothing does, as
+  // the new tab page is the list; over a page it is the page's own row, with Copy, Share and
+  // Edit, and while bookmarksCommandBox is on the bookmarks as one row of tiles. Typing asks
+  // Go for its list: Enter's row first, completed in the field, then up to two open tabs,
+  // then the pages and bookmarks by their visits, the search last, as many rows as fit, five
+  // under three letters. The list lies away from the field towards the page, the first row
+  // next to it: a tap on a row goes there, its ↖ puts it in the field. Enter takes Enter's
+  // row only while the list answers what is typed now, else what was typed. Escape or a
+  // press in the page puts the address back.
   let { tab, top, onedit, onsite } = $props();
   let input;
-  let list = $state();
   let editing = $state(false);
+  // What the field shows, and what was typed of it: they differ by the completion, which
+  // shows selected after the caret.
   let text = $state('');
+  let typed = '';
+  let inline = '';
+  // A delete says the person wants what they typed, so the next answer completes nothing.
+  let deleting = false;
   let items = $state([]);
-  // The id of the last suggest sent: only its answer is listed. first is the id of the
-  // last one for nothing typed, and listed whether items is its answer.
+  // The id of the last suggest sent: only its answer is listed.
   let asked = 0;
-  let first = 0;
-  let listed = $state(false);
   // The text the last suggest was for, and the text the list on screen answers, which the
   // list carries as data-answers: until Go's answer comes, it is an earlier text's.
   let askedFor = '';
   let answers = $state('');
-  // Whether nothing is typed, as when the list for nothing typed shows.
+  // Whether nothing is typed: the field as it was tapped, or emptied.
   let blank = $state(true);
+  // The room between the field and the keyboard, which the list covers.
+  let room = $state(0);
 
-  // While bookmarksCommandBox is on, with nothing typed the bookmarks show nearest the field
-  // (docs/bookmark-folders.md, Where bookmarks show): the top folder's folders as chips, All
-  // first, and the chosen one's bookmarks as tiles, in it and in its folders. All is the top
-  // folder's, so every bookmark. They stand for the list's own bookmark rows, which aren't
-  // asked for meanwhile; typing replaces them with the suggestions.
+  // While bookmarksCommandBox is on, with nothing typed on a page the bookmarks show as one
+  // row of tiles, sideways for more, every bookmark of every folder; folders live on the new
+  // tab page and in All bookmarks (docs/bookmark-folders.md, Where bookmarks show).
   const marksOn = $derived(!!app.prefs.bookmarksCommandBox && app.bookmarks.some((e) => e.kind === 'bookmark'));
-  let chosen = $state('');
-  const chips = $derived(inFolder(app.bookmarks, '').filter((e) => e.kind === 'folder'));
   const under = (id) => inFolder(app.bookmarks, id).flatMap((e) => (e.kind === 'folder' ? under(e.id) : [e]));
-  const marks = $derived(marksOn ? under(chosen) : []);
-  const showMarks = $derived(editing && blank && marksOn);
+  const marks = $derived(marksOn ? under('') : []);
+  const onPage = $derived(editing && blank && !!tab.url);
+  const open = $derived(editing && (onPage || (!blank && items.length > 0)));
 
   const host = $derived.by(() => {
     if (!tab.url) return '';
@@ -56,6 +59,7 @@
       return tab.url;
     }
   });
+  const bareURL = (u) => u.replace(/^https?:\/\/(www\.)?/, '');
   // What went wrong with the page, said at the pill's end.
   const status = $derived(tab.blocked ? 'Blocked' : tab.crashed ? 'Crashed' : tab.error ? 'Failed' : '');
   // The lock only for a page that shows: one that failed, crashed or was blocked has the
@@ -65,68 +69,104 @@
   // certificate passed with Open anyway, says so in words at the pill's start, as Chrome
   // does; the words are part of the site's mark, which opens the site's sheet.
   const insecure = $derived(!status && !!tab.connection && tab.connection !== 'secure');
-  // The headings of the list for nothing typed, by the kind of row under them.
-  const kindIcons = { tab: 'tab', closed: 'closed', history: 'history', bookmark: 'star' };
-  const headings = { tab: 'Open tabs', closed: 'Recently closed', history: 'Frequently visited', bookmark: 'Bookmarks' };
+  // Each row's icon says its kind, so a typed list has no headings.
+  const kindIcons = { tab: 'tab', history: 'history', bookmark: 'star', search: 'search', address: 'globe', closed: 'closed' };
   // The list from the field outwards: under a field on top, over one at the bottom with
-  // the first suggestion nearest it. The list for nothing typed comes in groups, each row
-  // kind's under its heading, the heading above its rows either way.
-  const shown = $derived.by(() => {
-    const groups = [];
-    for (const row of items) {
-      const kind = listed ? row.kind : '';
-      if (groups.at(-1)?.kind === kind) groups.at(-1).rows.push(row);
-      else groups.push({ kind, rows: [row] });
-    }
-    if (!top) {
-      groups.reverse();
-      for (const g of groups) g.rows.reverse();
-    }
-    return groups.flatMap((g) => [
-      ...(headings[g.kind] ? [{ key: `h:${g.kind}`, heading: headings[g.kind] }] : []),
-      ...g.rows.map((row) => ({ key: `${g.kind}:${row.tab || row.url}`, row })),
-    ]);
-  });
-  // Over a bar at the foot, a list taller than its room starts scrolled to the rows nearest
-  // the field.
-  $effect(() => {
-    if (shown.length && list && !top) list.scrollTop = list.scrollHeight;
-  });
+  // the first row nearest it.
+  const shown = $derived(top ? items : [...items].reverse());
 
   $effect(() => onedit(editing));
+
+  // The room from the field to the keyboard, or to the window's top over a bar at the foot.
+  function measure() {
+    const r = input?.closest('.address')?.getBoundingClientRect();
+    if (!r) return;
+    room = Math.max(0, top ? window.innerHeight - r.bottom - 4 : r.top - 4);
+  }
+  $effect(() => {
+    if (!editing) return;
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  });
+
+  // How many rows Go is asked for: five under three letters; from three as many 48px rows as
+  // fit, at least five and at most eight.
+  function rowsFor(t) {
+    if ([...t.trim()].length < 3) return 5;
+    return Math.min(8, Math.max(5, Math.floor(room / 48)));
+  }
 
   function begin() {
     if (editing) return;
     editing = true;
-    chosen = '';
     text = tab.url;
+    typed = '';
+    inline = '';
+    blank = true;
+    items = [];
     // After the value is in, so the whole of it is selected.
     queueMicrotask(() => input.select());
-    askFirst();
   }
 
   function end() {
     editing = false;
     items = [];
-    asked = first = 0;
+    asked = 0;
+    inline = '';
   }
 
-  // Go's list for nothing typed. Over a new tab, whose page already shows the sites and the
-  // bookmarks, it is the open and closed tabs alone, so the two don't list the same rows.
-  function askFirst() {
-    const kinds = tab.url ? ['tab', 'closed', 'history', ...(marksOn ? [] : ['bookmark'])] : ['tab', 'closed'];
-    askedFor = '';
-    blank = true;
-    send({ t: 'suggest', id: (asked = first = nextQuery()), text: '', kinds });
+  function ask() {
+    askedFor = typed;
+    const kinds = ['address', 'search', 'tab', 'history', ...(app.prefs.bookmarksCommandBox ? ['bookmark'] : [])];
+    send({ t: 'suggest', id: (asked = nextQuery()), text: typed, kinds, rows: rowsFor(typed) });
   }
 
-  function oninput() {
-    if (text.trim() === '') askFirst();
-    else {
-      askedFor = text;
-      blank = false;
-      send({ t: 'suggest', id: (asked = nextQuery()), text });
+  function oninput(e) {
+    deleting = e?.inputType?.startsWith('delete') ?? false;
+    inline = '';
+    typed = text;
+    if (text.trim() === '') {
+      blank = true;
+      items = [];
+      asked = 0;
+      return;
     }
+    blank = false;
+    ask();
+  }
+
+  // showInline puts the completion after what was typed, selected, so the next key replaces
+  // it, Backspace takes it away, and Enter goes where the field shows.
+  async function showInline(rest) {
+    inline = rest;
+    text = typed + rest;
+    await tick();
+    input?.setSelectionRange(typed.length, text.length, 'backward');
+  }
+
+  // A key that matches the completion's next letter keeps the rest of it on show, rather than
+  // dropping it until Go answers again.
+  function onbeforeinput(e) {
+    if (!inline || e.inputType !== 'insertText' || !e.data) return;
+    if (input.selectionStart !== typed.length || input.selectionEnd !== text.length) return;
+    if (!inline.toLowerCase().startsWith(e.data.toLowerCase())) return;
+    e.preventDefault();
+    typed += e.data;
+    showInline(inline.slice(e.data.length));
+    ask();
+  }
+
+  // Enter: with nothing typed, the address again; otherwise Enter's row, the first, while
+  // the field shows its completion or the list answers what is typed now; else, as before
+  // any list comes, what was typed, so a fast typist's Enter never opens a row of the list
+  // for an earlier text.
+  function enter() {
+    if (blank) return go(text);
+    const completes = !!inline && text === typed + inline;
+    const row = completes || answers === typed ? items[0] : undefined;
+    if (row) choose(row);
+    else go(typed);
   }
 
   function go(value) {
@@ -135,8 +175,7 @@
     leave();
   }
 
-  // A row of the list for nothing typed: Go shows its tab, reopens the closed one, or loads
-  // its address in this tab.
+  // A row of the list: Go shows its tab, or loads its address or search in this tab.
   function choose(row) {
     chooseSuggestion(row);
     leave();
@@ -147,10 +186,26 @@
     focusPage();
   }
 
-  function fill(url) {
-    text = url;
+  function fill(value) {
+    text = value;
     input.focus();
     oninput();
+  }
+
+  // The page's row: Copy and Share hand its address on, Edit puts the caret at the end of it.
+  function copy() {
+    send({ t: 'copyText', text: tab.url });
+    leave();
+  }
+
+  function share() {
+    send({ t: 'shareText', text: tab.url });
+    leave();
+  }
+
+  function edit() {
+    input.focus();
+    input.setSelectionRange(text.length, text.length);
   }
 
   // What the shell asks of the field.
@@ -165,9 +220,22 @@
 
   export function suggestions(m) {
     if (m.id !== asked || !editing) return;
-    items = m.items;
-    listed = m.id === first;
+    let list = m.items;
+    const first = list[0];
+    if (first?.inline && deleting) list = typedFirst(list, askedFor);
+    items = list;
     answers = askedFor;
+    // Completed only while the field holds what was typed with the caret at its end, or with
+    // the completion still selected after it.
+    if (!input) return;
+    const end = input.selectionEnd === text.length;
+    const plain = text === typed && input.selectionStart === input.selectionEnd && end;
+    const still = !!inline && text === typed + inline && input.selectionStart === typed.length && end;
+    if (list[0]?.inline && (plain || still)) showInline(list[0].inline);
+    else if (still) {
+      inline = '';
+      text = typed;
+    }
   }
 </script>
 
@@ -180,9 +248,10 @@
   <input
     bind:this={input}
     value={editing ? text : host}
+    {onbeforeinput}
     oninput={(e) => {
       text = e.currentTarget.value;
-      oninput();
+      oninput(e);
     }}
     aria-label="Address"
     placeholder="Search or type an address"
@@ -199,7 +268,7 @@
       setTimeout(() => !document.hasFocus() && document.activeElement === input && input.blur());
     }}
     onkeydown={(e) => {
-      if (e.key === 'Enter') go(text);
+      if (e.key === 'Enter') enter();
       else if (e.key === 'Escape') leave();
     }}
   />
@@ -223,57 +292,52 @@
   {#if !editing && tab.loading}
     <span class="progress" style:width="{Math.max(tab.progress, 0.05) * 100}%"></span>
   {/if}
-  {#if editing && (items.length || showMarks)}
+  {#if open}
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="drop" class:below={top} use:shell onmousedown={(e) => e.preventDefault()}>
-    {#if top && showMarks}{@render bookmarks()}{/if}
-    {#if items.length}
-    <ul class="suggestions" class:below={top} bind:this={list} aria-label="Suggestions" data-answers={answers}>
-      {#each shown as { key, heading, row: item } (key)}
-        {#if heading}
-          <li class="heading" role="presentation">{heading}</li>
-        {:else if listed}
-          <li>
-            <button class="go" onclick={() => choose(item)}>
-              <Icon name={kindIcons[item.kind] || 'globe'} />
-              <span class="lines">
-                <span class="title">{item.title || item.url}</span>
-                <span class="url">{item.url.replace(/^https?:\/\/(www\.)?/, '')}</span>
-              </span>
-            </button>
-            {#if item.kind === 'history' || item.kind === 'bookmark'}
-              <button class="fill" aria-label="Edit {item.url}" onclick={() => fill(item.url)}><Icon name="fill" /></button>
-            {/if}
-          </li>
-        {:else}
-          <li>
-            <button class="go" onclick={() => go(item.url)}>
-              <Icon name={item.title ? 'globe' : 'search'} />
-              <span class="lines">
-                <span class="title">{item.title || item.url}</span>
-                {#if item.title}<span class="url">{item.url.replace(/^https?:\/\/(www\.)?/, '')}</span>{/if}
-              </span>
-            </button>
-            <button class="fill" aria-label="Edit {item.url}" onclick={() => fill(item.url)}><Icon name="fill" /></button>
-          </li>
-        {/if}
-      {/each}
-    </ul>
-    {/if}
-    {#if !top && showMarks}{@render bookmarks()}{/if}
+    <div class="drop" class:below={top} style:height="{room}px" use:shell onmousedown={(e) => e.preventDefault()}>
+      {#if onPage}
+        {#if top}{@render page()}{/if}
+        {#if marks.length}{@render bookmarks()}{/if}
+        {#if !top}{@render page()}{/if}
+      {:else}
+        <ul class="suggestions" class:below={top} aria-label="Suggestions" data-answers={answers}>
+          {#each shown as item (`${item.kind}:${item.tab || item.url}`)}
+            <li>
+              <button class="go" onclick={() => choose(item)}>
+                <Icon name={kindIcons[item.kind] || 'globe'} />
+                <span class="lines">
+                  <span class="title">{item.title || item.url}</span>
+                  <span class="url">{item.kind === 'search' || item.kind === 'address' ? item.detail : bareURL(item.url)}</span>
+                </span>
+                {#if item.kind === 'tab'}<span class="switch-tab">Switch to tab</span>{/if}
+              </button>
+              {#if item.kind !== 'tab'}
+                <button class="fill" aria-label="Edit {item.kind === 'search' ? item.title : item.url}" onclick={() => fill(item.kind === 'search' ? item.title : item.url)}><Icon name="fill" /></button>
+              {/if}
+            </li>
+          {/each}
+        </ul>
+      {/if}
     </div>
   {/if}
 </div>
 
+{#snippet page()}
+  <div class="this-page" role="group" aria-label="This page">
+    <Mark url={tab.url} title={tab.title} size={32} />
+    <span class="lines">
+      <span class="title">{tab.title || host}</span>
+      <span class="url">{bareURL(tab.url)}</span>
+    </span>
+    <button class="fill" aria-label="Copy address" onclick={copy}><Icon name="copy" /></button>
+    <button class="fill" aria-label="Share" onclick={share}><Icon name="share" /></button>
+    <button class="fill" aria-label="Edit address" onclick={edit}><Icon name="edit" /></button>
+  </div>
+{/snippet}
+
 {#snippet bookmarks()}
   <div class="marks" role="region" aria-label="Bookmarks">
     <p class="label" aria-hidden="true">Bookmarks</p>
-    <div class="chips" role="radiogroup" aria-label="Folder">
-      <button class="chip" role="radio" aria-checked={chosen === ''} onclick={() => (chosen = '')}><Icon name="star" size={16} /><span>All</span></button>
-      {#each chips as f (f.id)}
-        <button class="chip" role="radio" aria-checked={chosen === f.id} onclick={() => (chosen = f.id)}><span class="tint" style:color={chosen === f.id ? undefined : ($tints, folderMark(f.id))}><Icon name="folder" size={16} /></span><span>{f.title}</span></button>
-      {/each}
-    </div>
     <ul class="tiles" aria-label="Bookmarks">
       {#each marks as b (b.id)}
         <li><button class="tile" onclick={() => go(b.url)}><Mark url={b.url} title={b.title} size={48} /><span class="name">{b.title || b.url}</span></button></li>
@@ -415,7 +479,8 @@
     transition: width var(--motion) var(--ease);
   }
 
-  /* What lies away from the field towards the page: the suggestions, and the bookmarks
+  /* What lies away from the field towards the page, covering it down to the keyboard: the
+     suggestions, or the page's row and the bookmarks. Over a bar at the foot its rows sit
      nearest the field. */
   .drop {
     position: absolute;
@@ -427,17 +492,17 @@
     z-index: 5;
     display: flex;
     flex-direction: column;
+    justify-content: flex-end;
+    box-sizing: border-box;
     background: var(--surface);
     border-top: 1px solid var(--line);
-    /* The window's height less the bar's and a little: a long list scrolls. */
-    max-height: calc(100vh - 64px);
   }
 
   .drop.below {
     top: calc(100% + 4px);
     bottom: auto;
+    justify-content: flex-start;
     border-top: 0;
-    border-bottom: 1px solid var(--line);
   }
 
   .suggestions {
@@ -450,8 +515,7 @@
     overscroll-behavior: contain;
   }
 
-  /* The bookmarks: the folders as chips, a 32px pill in a 48px target each, and under them
-     the chosen one's bookmarks as tiles, one row of them scrolling sideways. */
+  /* The bookmarks: one row of tiles, scrolling sideways. */
   .marks {
     flex: none;
     padding: 4px 0 8px;
@@ -468,12 +532,6 @@
     font-weight: 500;
   }
 
-  .suggestions + .marks,
-  .marks + .suggestions {
-    border-top: 1px solid var(--line);
-  }
-
-  .chips,
   .tiles {
     display: flex;
     margin: 0;
@@ -481,43 +539,6 @@
     overflow-x: auto;
     scrollbar-width: none;
     list-style: none;
-  }
-
-  .chip {
-    position: relative;
-    flex: none;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    height: 48px;
-    padding: 0 14px;
-    border: 0;
-    background: none;
-    color: var(--text);
-    font-size: 13px;
-    font-weight: 500;
-  }
-
-  .chip::before {
-    content: '';
-    position: absolute;
-    inset: 8px 2px;
-    border: 1px solid var(--line);
-    border-radius: 16px;
-    background: var(--surface);
-  }
-
-  .chip[aria-checked='true'] {
-    color: var(--surface);
-  }
-
-  .chip[aria-checked='true']::before {
-    border-color: transparent;
-    background: var(--text);
-  }
-
-  .chip > :global(*) {
-    position: relative;
   }
 
   .marks .tiles li {
@@ -560,20 +581,6 @@
 
   li:last-child {
     border-bottom: 0;
-  }
-
-  /* A group's heading in the list for nothing typed: a muted line, nothing to press. */
-  li.heading {
-    height: 32px;
-    padding: 0 16px;
-    border: 0;
-    color: var(--muted);
-    font-size: 13px;
-    font-weight: 500;
-  }
-
-  .below li.heading {
-    border: 0;
   }
 
   .go {
@@ -631,8 +638,38 @@
     box-shadow: var(--focus-ring-inset);
   }
 
-  /* A folder's icon in its folder's colour, laid out as the icon alone. */
-  .tint {
-    display: contents;
+  /* The page's own row, with nothing typed: its mark, title and address, then Copy, Share
+     and Edit, on the bar's colour, as the field it belongs to. */
+  .this-page {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-height: 56px;
+    padding: 0 0 0 16px;
+    background: var(--bar);
+    color: var(--icon);
+  }
+
+  .this-page .lines {
+    margin-right: 4px;
+  }
+
+  .this-page + .marks,
+  .marks + .this-page {
+    border-top: 1px solid var(--line);
+  }
+
+  /* An open tab's row says what a tap does, as Chrome's does, where ↖ would be. */
+  .switch-tab {
+    flex: none;
+    margin-right: 12px;
+    padding: 3px 8px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
   }
 </style>

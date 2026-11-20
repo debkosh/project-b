@@ -155,8 +155,9 @@ const stopServer = lib.stop;
   await page.screenshot({ path: path.join(out, '2-suggestions.png') });
   const history = ui.locator('#suggestions [data-kind=history]');
   const visited = ui.locator('#suggestions [data-kind=history], #suggestions [data-kind=tab]');
-  // example.org is open, so the page the text completes is its tab's row, first.
-  check('Go\'s list: what Enter does first, the open page the text completes, then the visited pages', (await options.first().getAttribute('data-kind')) === 'tab' && (await visited.count()) === 2, String(await visited.count()));
+  // example.org is the page this tab shows, never offered as a tab to switch to, so the
+  // page the text completes is a page's row, first.
+  check('Go\'s list: what Enter does first, the page the text completes, then the visited pages', (await options.first().getAttribute('data-kind')) === 'history' && (await visited.count()) === 2, String(await visited.count()));
   check('titles arrive after the visit', /Mock example/.test(await history.first().innerText()));
 
   r = await regions();
@@ -226,7 +227,7 @@ const stopServer = lib.stop;
   const optionBox = await options.last().boundingBox();
   check('the suggestions lie over the page', optionBox.y > (await regions()).bounds.y, JSON.stringify(optionBox));
   await page.mouse.click(optionBox.x + 40, optionBox.y + optionBox.height / 2);
-  check('a press on them, over the page, reaches the shell', await until(async () => (await list.count()) === 0 && (await bar.inputValue()).startsWith('https://example')), await bar.inputValue());
+  check('a press on them, over the page, reaches the shell', await until(async () => (await list.count()) === 0 && (await bar.inputValue()).startsWith('https://')), await bar.inputValue());
 
   // Events from the page side. Shortcuts arrive from the engine, whichever page had focus.
   const shortcut = async (name) => {

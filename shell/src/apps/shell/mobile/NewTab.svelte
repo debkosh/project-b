@@ -7,9 +7,9 @@
   import { folderTile, tints } from '@/ui/tint.js';
   import { nextQuery } from './queries.js';
 
-  // Over a new tab, which has no page yet (docs/daily-driver.md, A new tab): up to three
-  // tabs closed lately, a tap reopening one in this tab's place (onreopen); then the sites
-  // visited most as tiles, named by their host, then while bookmarksNewTab is on the top
+  // Over a new tab, which has no page yet (docs/daily-driver.md, A new tab): the sites
+  // visited most as tiles, named by their host; then up to three tabs closed lately, a tap
+  // reopening one in this tab's place (onreopen); then while bookmarksNewTab is on the top
   // bookmark folder as tiles, its folders first (docs/bookmark-folders.md, Where bookmarks
   // show), then All bookmarks and History. The sites are Go's list for nothing typed. A tap
   // loads a site or a bookmark in this tab; a long press on a site's tile shows each tile's
@@ -83,17 +83,6 @@
 {/snippet}
 
 <div class="new-tab" use:shell role="region" aria-label="New tab" onclick={(e) => e.target === e.currentTarget && (editing = false)}>
-  {#if closed.items.length}
-    <h2 class="small">Recently closed</h2>
-    <div class="rows" role="group" aria-label="Recently closed">
-      {#each closed.items as row (row.url)}
-        <button class="row closed" onclick={() => onreopen(row)}>
-          <Mark url={row.url} title={row.title} size={32} />
-          <span class="lines"><span class="name">{row.title}</span><span class="host">{row.detail}</span></span>
-        </button>
-      {/each}
-    </div>
-  {/if}
   {#if sites.items.length}
     <h2>Frequently visited</h2>
     <ul class="tiles">
@@ -109,6 +98,17 @@
         </li>
       {/each}
     </ul>
+  {/if}
+  {#if closed.items.length}
+    <h2>Recently closed</h2>
+    <div class="rows" role="group" aria-label="Recently closed">
+      {#each closed.items as row (row.url)}
+        <button class="row closed" onclick={() => onreopen(row)}>
+          <Mark url={row.url} title={row.title} size={32} />
+          <span class="lines"><span class="name">{row.title}</span><span class="host">{row.detail}</span></span>
+        </button>
+      {/each}
+    </div>
   {/if}
   {#if marks.length}
     <h2>Bookmarks</h2>
@@ -373,10 +373,6 @@
     white-space: nowrap;
     text-overflow: ellipsis;
     color: var(--muted);
-    font-size: 12px;
-  }
-
-  h2.small {
     font-size: 12px;
   }
 
