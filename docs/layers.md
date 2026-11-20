@@ -38,7 +38,8 @@ Each step leaves Mac and Android working and the release run green.
 | 3 | Notifications through Go | tested: Mac suites and Go's tests, and a real one in a VM on 0.3.0's candidate: macOS asks once, then it shows, and its click fires the page's click and brings its tab forward; in 0.3.0 |
 | 4 | The Mac's open-link events into `core/system`, or a fourth exception | tested: Mac suites, Android 16, and a new VM check; no exception; branch `layers-links`, to release |
 | 5 | The shell embedded in the Go core | tested: Mac app suite, all of Android 16 and 17; in 0.3.3 |
-| 6 | The three-piece build, with the build-flow restructure below | tested: Mac candidate and app suite, an APK from the new commands driven on Android 10; branch `layers-build`, to release after 0.3.4 |
+| 6 | The three-piece build, with the build-flow restructure below | tested: Mac candidate and app suite, an APK from the new commands driven on Android 10; in 0.3.5 |
+| 7 | The out dirs by platform and cpu, restructure item 5 | branch `layers-out`; a moved out dir builds all of Chromium again, so it waits on release and the orchestrator |
 
 Linux and Windows are not in this work: they come later, from the platforms session.
 
@@ -220,6 +221,26 @@ own resources, and no folder of pages travels beside them.
   `build/android/project-b-content.apk`. Both old scripts are gone; `tools/release.sh` runs
   the two commands.
 
+## 7. The out dirs by platform and cpu
+
+Each platform and cpu builds in a folder of its own name, `<platform>-<cpu>`:
+
+| Was | Is |
+|---|---|
+| `chromium/src/out/pb` | `chromium/src/out/mac-arm64`, `tools/build.sh`'s default `out/<platform>-<cpu>` |
+| `chromium/src/out/rel` | `chromium/src/out/mac-arm64-rel`, the release build's |
+| `build/pb` | `build/mac-arm64`, still the out dir's name under `build/` |
+| `build/android` | `build/android-arm64` |
+
+The test tools' defaults (`PB_BIN`, `PB_APK`) follow. The lock stays `out/.pb-build.lock`, and
+the container's own out dir, inside pb, is unchanged. An out dir can't be moved to its new
+name: siso keeps its state by each file's path from `chromium/src`, out dir included
+(`out/pb/.siso_fs_state` holds `out/pb/obj/...`), so a clone of `out/pb` under a new name, with
+every file's time kept, started all of Chromium again, 55,079 steps. The new dirs are built
+fresh. A checkout older than this commit
+still builds into `out/pb`, which no longer exists, so it would build all of Chromium again:
+every session rebases first.
+
 ## The build-flow restructure
 
 Given to this work by the orchestrator on 2026-11-19, after step 1, as the platforms session
@@ -237,6 +258,7 @@ planned it:
    `out/rel` are moved (`out/mac-arm64`, `out/mac-arm64-rel`), then `gn gen`, never built
    fresh, and no links keep the old names. Before the move the orchestrator tells every
    session and the tester checks nothing runs against `out/` or `build/`; release cuts the
-   release from the commit at once, so main and the folders agree within the hour.
+   release from the commit at once, so main and the folders agree within the hour. (Step 7,
+   above.)
 
 Release and the orchestrator hear before any change to the `out/` or `build/` paths.

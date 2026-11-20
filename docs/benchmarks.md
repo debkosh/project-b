@@ -16,7 +16,7 @@ against a baseline; these are the deeper looks, run by hand when a question need
 | `go run -tags sqlite_fts5 ./perf/cmd/stress` (in `core/`) | A mixed workload at several tab counts: per-action latency, GC pauses and CPU, threads |
 
 Point `PB_BIN` at the package (`build/package/Project B.app/Contents/MacOS/project_b`)
-for what a user gets. The CPU view needs symbols, so it runs `chromium/src/out/pb/project_b`.
+for what a user gets. The CPU view needs symbols, so it runs `chromium/src/out/mac-arm64/project_b`.
 Run from a person's desktop session where you can (`deskrig run -- ...`): an agent's session
 has no screen, and AppKit can be slower there. Measure on a quiet machine: with emulators, the
 VM or a build running, `uptime`'s load runs past 20 and every mark moves later, Go's start

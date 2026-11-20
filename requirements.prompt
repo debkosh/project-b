@@ -17,7 +17,7 @@ Steps, in order, each with how to know it worked
    npx playwright install chromium for its browser.
 3. tools/fetch-chromium.sh. Long download. Done when it prints RESULT=ok and
    chromium/src is checked out at tag 155.0.8059.41.
-4. tools/build.sh. Done when it prints RESULT=ok and chromium/src/out/pb/project_b exists.
+4. tools/build.sh. Done when it prints RESULT=ok and chromium/src/out/mac-arm64/project_b exists.
    The first build is a full Chromium build: about an hour on 32 cores, several hours on a
    laptop. Run it in the background and wait for it once; don't poll in a tight loop.
 5. ChromeDriver 155.0.8059.41 for mac-arm64 from Chrome for Testing, unzipped so the binary

@@ -299,7 +299,7 @@ func TestBundleOfFindsTheApp(t *testing.T) {
 	if got := BundleOf("/Applications/Project B.app/Contents/MacOS/project_b"); got != "/Applications/Project B.app" {
 		t.Fatal(got)
 	}
-	if got := BundleOf("/Users/me/project-b/chromium/src/out/pb/project_b"); got != "" {
+	if got := BundleOf("/Users/me/project-b/chromium/src/out/mac-arm64/project_b"); got != "" {
 		t.Fatal(got)
 	}
 }

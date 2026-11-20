@@ -9,7 +9,7 @@ import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ROOT, "chromium/src/out/pb")
+OUT = os.path.join(ROOT, "chromium/src/out/mac-arm64")
 CLANG = "../../third_party/llvm-build/Release+Asserts/bin/clang++"
 
 

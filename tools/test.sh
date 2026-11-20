@@ -46,8 +46,8 @@ BUILT=$(python3 -c 'import json, os, sys
 out = set(filter(None, os.environ["WITHOUT"].split(",")))
 print(",".join(f["id"] for f in json.load(open("core/flags/registry.json")) if f.get("build") and f["id"] not in out))')
 built() { case ",$BUILT," in *",$1,"*) return 0 ;; esac; return 1; }
-BIN=${PB_BIN:-build/pb/project_b}
-APK=${PB_APK:-build/android/project-b-content.apk}
+BIN=${PB_BIN:-build/mac-arm64/project_b}
+APK=${PB_APK:-build/android-arm64/project-b-content.apk}
 ADB="$HOME/Library/Android/sdk/platform-tools/adb"
 # Each emulator the android group runs on, as its amarit unit and its adb port.
 EMULATORS=${EMULATORS:-project-b-emu-29:5604 project-b-emu:5600 project-b-emu-16k:5602 project-b-emu-37:5606}

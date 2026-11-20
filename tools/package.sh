@@ -2,12 +2,12 @@
 # Packs and signs what tools/build.sh built, for a platform. Flat on purpose.
 #
 #   tools/package.sh             # the Mac: "Project B.app" inside build/project-b.dmg
-#   tools/package.sh android     # build/android/project-b-content.apk
+#   tools/package.sh android     # build/android-arm64/project-b-content.apk
 #
-# OUT=out/rel tools/package.sh packs the Mac's release build instead.
+# OUT=out/mac-arm64-rel tools/package.sh packs the Mac's release build instead.
 #
 # It packs this checkout's own copy of its last build, build/<out dir's name>/ or
-# build/android/, which tools/build.sh makes under its lock, never the shared out dir itself:
+# build/android-arm64/, which tools/build.sh makes under its lock, never the shared out dir itself:
 # every checkout shares that, and another's build between this one's build and its package
 # would mix the two.
 set -euo pipefail
@@ -23,7 +23,7 @@ if [ "$PLATFORM" = android ]; then
   # Shrinks the APK and signs it with our stable key, on this Mac, where the key lives.
   SDK=$HOME/Library/Android/sdk
   BUILD_TOOLS=$SDK/build-tools/35.0.0
-  OUT=$ROOT/build/android
+  OUT=$ROOT/build/android-arm64
   APK=$OUT/project-b-content.apk
   if [ ! -f "$OUT/content-unsigned.apk" ]; then
     echo "RESULT=failed no APK in $OUT: run tools/build.sh android arm64 in this checkout first"
@@ -63,7 +63,7 @@ if [ "$PLATFORM" = android ]; then
   exit 0
 fi
 
-OUT=${OUT:-out/pb}
+OUT=${OUT:-out/mac-arm64}
 FROM=$ROOT/build/$(basename "$OUT")
 if [ ! -x "$FROM/project_b" ]; then
     echo "RESULT=failed no build in $FROM: run OUT=$OUT tools/build.sh in this checkout first"

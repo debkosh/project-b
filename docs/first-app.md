@@ -150,7 +150,7 @@ come: [windows.md](windows.md).
 
 The engine knows exactly one page of ours, `chrome://shell/`, built from `shell/` and served
 from Go, which holds the built files (`core/shellfiles`, `PBGoCalls.shell_file`): ninja builds
-them with vite into `out/pb/shell` through `engine/build_shell.py`, and `engine/build_go.py`
+them with vite into `out/mac-arm64/shell` through `engine/build_shell.py`, and `engine/build_go.py`
 puts them inside Go. It gets its bridge only in a window's own shell WebContents;
 anywhere else its WebUI controller gives it no bindings and drops whatever it sends, and
 the policy gate refuses it in every tab, however it is reached. Our pages load in a context
@@ -282,7 +282,7 @@ dev server and start it again on the same `--profile`.
 
 ## What the first run showed (2026-11-09)
 
-Measured on the dev Mac Studio (M3 Ultra, 32 cores), Chromium 155.0.8059.41, build `out/pb`:
+Measured on the dev Mac Studio (M3 Ultra, 32 cores), Chromium 155.0.8059.41, build `out/mac-arm64`:
 non-official with `dcheck_always_on = true`, so runtime numbers are pessimistic.
 
 The agent session that ran this has no GUI session (`CGSessionCopyCurrentDictionary`
@@ -370,7 +370,7 @@ the DMG passes the same 84.
 ## Packaging
 
 `tools/package.sh` makes `build/project-b.dmg` from the checkout's own copy of its last
-build, `build/pb/` (`build/rel/` for `OUT=out/rel`), never the shared `chromium/src/out/*`,
+build, `build/mac-arm64/` (`build/mac-arm64-rel/` for `OUT=out/mac-arm64-rel`), never the shared `chromium/src/out/*`,
 which another checkout's build may have replaced since; it refuses a copy built from another
 commit than the checkout's HEAD. The package is `Project B.app` with the two binaries in
 `Contents/MacOS`, the library in `Contents/Frameworks`, its data files inside, and a link to
@@ -387,23 +387,23 @@ Sizes in decimal MB, for arm64:
 
 | Binary | File | Code (`__TEXT`) | Symbols (`__LINKEDIT`) |
 |---|---:|---:|---:|
-| Library, `out/pb` | 415 | 258 | 149 |
+| Library, `out/mac-arm64` | 415 | 258 | 149 |
 | Library, stripped, in the DMG | 270 | | |
 | `project_b`, stripped, in the DMG | 2.3 | | |
 | `project_b_helper`, in the DMG | 0.04 | | |
 | A Chromium-based browser's framework 155, official | 249 | 234 | 2 |
 | Chrome for Testing 153 framework | 246 | | |
 
-`out/pb` isn't a debug build, but a non-official build keeps its symbols, has DCHECKs on and
+`out/mac-arm64` isn't a debug build, but a non-official build keeps its symbols, has DCHECKs on and
 skips link-time optimisation. The DMG is 82 MB. The installed app is 305 MB against 376 MB
 for Chrome for Testing.
 
 ## Commands
 
     tools/fetch-chromium.sh                # fresh Chromium 155, once
-    tools/build.sh                         # the library and both binaries, out/pb
-    RELEASE=1 OUT=out/rel tools/build.sh   # official-style build, takes hours
-    tools/package.sh                       # build/project-b.dmg; OUT=out/rel for the release
+    tools/build.sh                         # the library and both binaries, out/mac-arm64
+    RELEASE=1 OUT=out/mac-arm64-rel tools/build.sh  # official-style build, takes hours
+    tools/package.sh                       # build/project-b.dmg; OUT=out/mac-arm64-rel for the release
     python3 tools/drive_first_app.py       # real app, results in build/real (7 screenshots); PB_BIN picks another binary
     python3 tools/measure_first_app.py     # memory, boundary cost and overlay cost above
     python3 tools/measure.py               # start-up and responsiveness, from the app's timeline (logging.md)
@@ -413,7 +413,7 @@ for Chrome for Testing.
 
 Run the real app:
 
-    build/pb/project_b --block=blocked.test
+    build/mac-arm64/project_b --block=blocked.test
 
 `--skip-welcome` does what the welcome's Skip setup does (onboarding.md): a start that
 would open it notes it finished instead, so later starts open none either. The drivers

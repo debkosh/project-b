@@ -37,9 +37,9 @@ git fetch -q origin main
 if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then echo "$TAG is already released; bump VERSION"; exit 1; fi
 
 echo "=== $(date '+%F %T') release build"
-RELEASE=1 OUT=out/rel tools/build.sh | tail -3
+RELEASE=1 OUT=out/mac-arm64-rel tools/build.sh | tail -3
 echo "=== $(date '+%F %T') package"
-OUT=out/rel tools/package.sh
+OUT=out/mac-arm64-rel tools/package.sh
 
 echo "=== $(date '+%F %T') assets and manifest"
 rm -rf "$DIST" && mkdir -p "$DIST"
@@ -51,8 +51,8 @@ tools/build.sh android arm64
 tools/package.sh android
 # The APK people install from, and the same file under the name amarit.json's one asset
 # pattern gives every target, for the updater. An APK is a zip.
-cp build/android/project-b-content.apk "$DIST/Project-B-$VERSION.apk"
-cp build/android/project-b-content.apk "$DIST/Project-B-$VERSION-android-arm64.zip"
+cp build/android-arm64/project-b-content.apk "$DIST/Project-B-$VERSION.apk"
+cp build/android-arm64/project-b-content.apk "$DIST/Project-B-$VERSION-android-arm64.zip"
 # The manifest keeps every earlier release, so start from the one published last.
 gh release download --repo "$REPO" --pattern releases.json -O "$DIST/releases.json" 2>/dev/null || true
 amarit release -version "$VERSION" -dist "$DIST" -out "$DIST/releases.json"

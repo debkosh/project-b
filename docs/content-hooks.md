@@ -69,7 +69,7 @@ manager in `core/app/app.go`. The subscription then goes.
 **When Chromium is upgraded:** first run `python3 tools/web_features_bump.py`, which says
 what the web-features registry lacks and what it names that Chromium dropped
 ([web-features.md](web-features.md)); it compares with this table, so it goes first. Then
-run `python3 tools/gen_hooks.py` against the fresh `out/pb` (about five minutes the first
+run `python3 tools/gen_hooks.py` against the fresh `out/mac-arm64` (about five minutes the first
 time, under a minute with its cache under `build/gen_hooks/`), check the result in, rebuild. The numbers may move; both sides come
 from one run, the library carries the table's hash, and Go refuses to start against a
 library built from a different table.

@@ -35,7 +35,7 @@ You are the team's test person. Keep "testing" in your session name.
 - No CPU stress on emulators.
 - Never `pkill` test tools by name; other sessions run the same scripts.
 - A VM run and a desktop run must not overlap: the VM's frame checks need its window uncovered, and a desktop driver's windows cover it, which stops the VM run early.
-- `chromium/src/out/pb` is shared by every checkout; test and package only a checkout's own `build/pb` (`tools/package.sh` does). A build from another checkout while a release candidate builds and packages once gave a mixed DMG.
+- `chromium/src/out/mac-arm64` is shared by every checkout; test and package only a checkout's own `build/mac-arm64` (`tools/package.sh` does). A build from another checkout while a release candidate builds and packages once gave a mixed DMG.
 - Restart the emulators with `tools/restart-emulators.sh` after each release's Android group, and once a day: their qemu grows over days of runs, to 266 GB across four on 2026-11-18, which ran this Mac out of memory. It checks the app starts on each, and restarts again an emulator that booted with its GPU broken, as the Android 10 one does now and then. emu-29's unit always boots cold (-no-snapshot-load).
 - Never check out, reset or build in the main checkout, which release publishes from: work in your own worktree. A stray `git checkout origin/main --` there once left it detached.
 - Colima now and then keeps a stopped VM as running, with no docker socket; `tools/build.sh android` stops and starts it again then.

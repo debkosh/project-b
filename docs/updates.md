@@ -134,7 +134,7 @@ updates switch (Advanced; About Project B in its sections layout; [settings.md](
     tools/release.sh
 
 Bump `VERSION` and commit first. The script makes the release build (`RELEASE=1
-OUT=out/rel`), packages and signs it, writes `Project-B-<v>.dmg` (for people) and
+OUT=out/mac-arm64-rel`), packages and signs it, writes `Project-B-<v>.dmg` (for people) and
 `Project-B-<v>-darwin-arm64.zip` (for the updater) into `build/dist`, downloads the last
 release's `releases.json` so earlier releases stay listed, has `amarit release` add this
 one, tags `v<v>` and creates the GitHub release with all of it. The first updater-enabled

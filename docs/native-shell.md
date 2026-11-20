@@ -212,7 +212,7 @@ name.
 ## What the spike proves
 
 Branch `native-shell`, `engine/native/mac/NativeShell.swift`, about 330 lines, run
-headless through the driver on `build/pb/project_b` with a profile whose pref is
+headless through the driver on `build/mac-arm64/project_b` with a profile whose pref is
 `{"shell": "native"}`:
 
 - **The shell starts from Go's snapshot alone.** Its view says `ready` once it is in the

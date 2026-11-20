@@ -31,7 +31,7 @@ in a worktree of its own (main's checkout stays on main, since the release reads
 ## The release run
 
 The cut-back run, Sudipta's standard from 0.2.64, on the packaged app and the APK, not on
-`out/pb`:
+`out/mac-arm64`:
 
 - `PB_BIN=<pkg>/Contents/MacOS/project_b tools/test.sh app`: the driver, ChromeDriver and
   extensions.
@@ -72,8 +72,8 @@ merge into main while it runs; it reads that checkout. It takes about four minut
 ## Shared machines
 
 - **out/** is one build folder for every checkout. `tools/build.sh` holds its lock for the
-  whole build and copies the app it made into the checkout's own `build/pb/`; test that copy or
-  a package, never `out/pb` directly. A copy stops sharing blocks with `out/pb` once `out/pb` is
+  whole build and copies the app it made into the checkout's own `build/mac-arm64/`; test that copy or
+  a package, never `out/mac-arm64` directly. A copy stops sharing blocks with `out/mac-arm64` once `out/mac-arm64` is
   rebuilt, so each checkout's copy costs its full size (about 455 MB).
 - **The Android VM** (colima `pb-android`, container `pb`): `tools/android-content-build.sh`
   takes `/work/.android-build.lock`, so a second build waits, and `tools/build.sh android`

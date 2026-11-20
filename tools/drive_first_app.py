@@ -58,7 +58,7 @@ import web_features  # noqa: E402
 from drive_chromedriver import cdp, ws_open  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-BIN = os.environ.get("PB_BIN") or os.path.join(ROOT, "build/pb/project_b")
+BIN = os.environ.get("PB_BIN") or os.path.join(ROOT, "build/mac-arm64/project_b")
 OUT = os.path.join(ROOT, "build/real")
 BAR_Y = 26  # The middle of the top row, where the window buttons centre.
 BLOCKED = "blocked.test"

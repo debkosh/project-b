@@ -1,13 +1,13 @@
 #!/bin/bash
 # Builds the app for a platform and cpu. Flat on purpose; safe to re-run.
 #
-#   tools/build.sh                   # the Mac, arm64: build/pb/project_b
-#   tools/build.sh android arm64     # the APK, in container pb: build/android/content-unsigned.apk
+#   tools/build.sh                   # the Mac, arm64: build/mac-arm64/project_b
+#   tools/build.sh android arm64     # the APK, in container pb: build/android-arm64/content-unsigned.apk
 #
 # tools/package.sh <platform> then packs and signs what it built.
 #
 # The Mac build makes the library and two binaries.
-# RELEASE=1 OUT=out/rel tools/build.sh makes an official-style build: no DCHECKs, link-time
+# RELEASE=1 OUT=out/mac-arm64-rel tools/build.sh makes an official-style build: no DCHECKs, link-time
 # optimisation, no symbols. It takes hours and can't be rebuilt quickly.
 # Every build flag (core/flags/registry.json) is built in unless WITHOUT names it:
 # WITHOUT=extensions tools/build.sh. GN, Go's build tags and the shell all read it from
@@ -84,10 +84,11 @@ if [ "$PLATFORM" = android ]; then
 
   # The container's out dir is the next build's, from any checkout, so the APK comes out now,
   # still under the lock, with the commit it was built from, which tools/package.sh checks.
-  mkdir -p "$ROOT/build/android"
-  docker cp pb:/work/chromium/src/out/android/apks/ProjectB.apk "$ROOT/build/android/content-unsigned.apk"
-  git -C "$ROOT" rev-parse HEAD > "$ROOT/build/android/commit"
-  echo "=== the APK is $ROOT/build/android/content-unsigned.apk; tools/package.sh android signs it"
+  BUILT=$ROOT/build/$PLATFORM-$CPU
+  mkdir -p "$BUILT"
+  docker cp pb:/work/chromium/src/out/android/apks/ProjectB.apk "$BUILT/content-unsigned.apk"
+  git -C "$ROOT" rev-parse HEAD > "$BUILT/commit"
+  echo "=== the APK is $BUILT/content-unsigned.apk; tools/package.sh android signs it"
   echo "RESULT=ok $(date '+%F %T')"
   exit 0
 fi
@@ -103,7 +104,8 @@ os.set_inheritable(f.fileno(), True)
 os.environ["PB_BUILD_LOCKED"] = "1"
 os.execv("/bin/bash", ["/bin/bash"] + sys.argv[2:])' "$SRC/out/.pb-build.lock" "$0" "$@"
 fi
-OUT=${OUT:-out/pb}
+# Each platform and cpu has its own out dir, out/<platform>-<cpu>.
+OUT=${OUT:-out/$PLATFORM-$CPU}
 RELEASE=${RELEASE:-0}
 export WITHOUT=${WITHOUT:-}
 TARGETS=${TARGETS:-project_b project_b_helper}
@@ -126,7 +128,7 @@ agreed to the Xcode|accept the Xcode license: sudo xcodebuild -license accept
 xcrun: error: unable to lookup item|xcrun cannot see the SDK: check xcode-select -p, then sudo xcodebuild -runFirstLaunch
 SDKSettings.plist|xcrun cannot see the SDK: check xcode-select -p, then sudo xcodebuild -runFirstLaunch
 No space left on device|the disk is full: free space (the first build needs about 100 GB)
-go: command not found|gn cannot find Go: check project_b_go in out/pb/args.gn
+go: command not found|gn cannot find Go: check project_b_go in out/mac-arm64/args.gn
 no such file or directory: '"'"'/opt/homebrew/bin/go|gn is using the default Go path: re-run tools/build.sh so it writes project_b_go
 requires go >=|Go is older than core/go.mod asks for: install a newer Go from go.dev/dl
 hook table is|hook tables differ: python3 tools/gen_hooks.py, then rebuild
@@ -297,7 +299,7 @@ ls -la "$OUT/project_b" "$OUT/project_b_helper" "$OUT/libproject_b_content.dylib
 # $OUT is shared by every checkout, and the next build from any of them replaces what is in
 # it. So, still under the lock, the app this checkout built is copied to build/<out dir's
 # name>/ in the checkout, as APFS clones, which cost no time or space. Run and test that copy:
-# the test tools default to build/pb/project_b.
+# the test tools default to build/mac-arm64/project_b.
 APP_COPY=$ROOT/build/$(basename "$OUT")
 rm -rf "$APP_COPY" && mkdir -p "$APP_COPY"
 cp -c "$OUT/project_b" "$OUT/project_b_helper" "$OUT/libproject_b_content.dylib" \

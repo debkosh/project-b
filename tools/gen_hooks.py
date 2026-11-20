@@ -9,7 +9,7 @@ carries them to Go. Run it after a Chromium upgrade; the output is checked in:
 
 A hook is carried when every argument is plain data (numbers, strings, enums) or an
 object with a copier in COPIERS below, and its return is void or plain. Everything else
-is left, with the reason in the doc. Needs the build in chromium/src/out/pb for the
+is left, with the reason in the doc. Needs the build in chromium/src/out/mac-arm64 for the
 compile flags.
 """
 
@@ -24,7 +24,7 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 SRC = os.path.join(ROOT, "chromium/src")
-OUT = os.path.join(SRC, "out/pb")
+OUT = os.path.join(SRC, "out/mac-arm64")
 WORK = os.path.join(ROOT, "build/gen_hooks")
 CLANG = os.path.join(SRC, "third_party/llvm-build/Release+Asserts/bin")
 

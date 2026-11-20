@@ -33,7 +33,7 @@ doesn't yet is in [daily-use.md](daily-use.md); what is decided but not built is
 
 ## Daily commands
 
-    tools/build-and-wait.sh                    # incremental build of out/pb
+    tools/build-and-wait.sh                    # incremental build of out/mac-arm64
     tools/test.sh mock                         # Go's tests, and the shells on the mock engine in Playwright, the contract check for each
     tools/test.sh app                          # the real app, by its driver and by ChromeDriver; no display
     tools/test.sh basics                       # one check per checklist area; most fail today, a map of gaps
@@ -55,8 +55,8 @@ off by default. [extensions.md](extensions.md) and [flags.md](flags.md) have the
 
 ## Shipping a build to try
 
-    RELEASE=1 OUT=out/rel tools/build.sh       # the release build
-    OUT=out/rel tools/package.sh               # signed build/project-b.dmg
+    RELEASE=1 OUT=out/mac-arm64-rel tools/build.sh  # the release build
+    OUT=out/mac-arm64-rel tools/package.sh     # signed build/project-b.dmg
     hdiutil attach -nobrowse -readonly -mountpoint <dir> build/project-b.dmg
     PB_BIN="<dir>/Project B.app/Contents/MacOS/project_b" tools/test.sh app
 

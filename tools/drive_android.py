@@ -13,7 +13,7 @@ screenshots go to build/android-drive-content.
     python3 tools/drive_android.py links_to_other_sites   # only the parts named
 
 ADB_SERIAL picks another device than emulator-5600, and PB_APK another APK than
-build/android/project-b-content.apk. The APK is installed over what is there and the
+build/android-arm64/project-b-content.apk. The APK is installed over what is there and the
 app's data is cleared.
 """
 import http.server
@@ -39,7 +39,7 @@ import web_features  # noqa: E402
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SDK = os.path.expanduser("~/Library/Android/sdk")
 ADB = [SDK + "/platform-tools/adb", "-s", os.environ.get("ADB_SERIAL", "emulator-5600")]
-APK = os.environ.get("PB_APK") or ROOT + "/build/android/project-b-content.apk"
+APK = os.environ.get("PB_APK") or ROOT + "/build/android-arm64/project-b-content.apk"
 PACKAGE = "dev.projectb.browser"
 ACTIVITY = ".BrowserActivity"
 PROFILE = "app_project_b/profile"

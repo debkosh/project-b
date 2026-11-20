@@ -275,7 +275,7 @@ How they work is in [site-features.md](site-features.md).
   `tools/test.sh android` and the drivers one (per emulator, and one for the desktop).
 - The README's screenshots show the Standard shell from before 0.2.63: retake them from a
   release run (`tools/readme-shots.py`).
-- Each checkout's `build/pb/` copy costs about 455 MB once `out/pb` is rebuilt. A merged
+- Each checkout's `build/mac-arm64/` copy costs about 455 MB once `out/mac-arm64` is rebuilt. A merged
   worktree's copy can go with the worktree.
 
 ## Daily driver

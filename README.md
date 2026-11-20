@@ -124,7 +124,7 @@ settings page over them, unchanged.
 
        tools/build.sh
 
-The app is `build/pb/project_b`, a copy of what the build made in `chromium/src/out/pb`, which
+The app is `build/mac-arm64/project_b`, a copy of what the build made in `chromium/src/out/mac-arm64`, which
 every checkout on the machine shares and the next build replaces. Run the copy directly.
 
 Android is built in a Linux VM on the same Mac: [docs/android.md](docs/android.md).
