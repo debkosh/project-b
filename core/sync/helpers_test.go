@@ -10,6 +10,7 @@ import (
 	"strings"
 	gosync "sync"
 	"testing"
+	"time"
 
 	"github.com/sudiptadeb/synckosh"
 	"github.com/sudiptadeb/synckosh/bolt"
@@ -38,6 +39,11 @@ type testServer struct {
 	// held, while it is open, holds every request after the next pass.
 	held chan struct{}
 	pass int
+	// failing, when it isn't 0, is the status every request is answered with, as synckosh's
+	// server answers a failure of its own: in JSON, with the error's words.
+	failing int
+	// slow is how long every request waits before its answer.
+	slow time.Duration
 }
 
 func newServer(t *testing.T) *testServer {
@@ -50,11 +56,18 @@ func newServer(t *testing.T) *testServer {
 			r.Header.Set("Authorization", "Bearer "+token)
 		}
 		s.mu.Lock()
-		srv, held := s.srv, s.held
+		srv, held, failing, slow := s.srv, s.held, s.failing, s.slow
 		if held != nil && s.pass > 0 {
 			held, s.pass = nil, s.pass-1
 		}
 		s.mu.Unlock()
+		time.Sleep(slow)
+		if failing != 0 {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(failing)
+			w.Write([]byte(`{"error":"the test server fails"}`))
+			return
+		}
 		if held != nil {
 			<-held
 		}
@@ -112,6 +125,20 @@ func (s *testServer) refuse(token string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.refused[token] = true
+}
+
+// fail answers every request from now on with status, 0 for as usual.
+func (s *testServer) fail(status int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.failing = status
+}
+
+// delay answers every request from now on after d.
+func (s *testServer) delay(d time.Duration) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.slow = d
 }
 
 // bearer is the bucket's address without its token; single the one address with it.

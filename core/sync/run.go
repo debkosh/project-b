@@ -49,7 +49,9 @@ type Status struct {
 	LastSynced int64  `json:"lastSynced"`
 	Error      string `json:"error"`
 	// Problem names the error for the page (Problem): "token" when the server signed this
-	// device out, "unreachable" when it couldn't be reached.
+	// device out, "unreachable" when it gave no answer, "server" when it answered that it
+	// failed, "notBucket" when the bucket is gone, and "" for anything else, which the page
+	// calls by no more than that sync failed.
 	Problem string `json:"problem"`
 	// Locked says the profile's key doesn't open with this device's key, so sync is off
 	// until StartFresh.
@@ -106,7 +108,7 @@ func New(st *store.Store, k *keys.Keys, post func(func()), maps ...Mapping) *Man
 	ctx, cancel := context.WithCancel(context.Background())
 	m := &Manager{st: st, keys: k, post: post, maps: map[string]*Mapping{}, ops: make(chan func(), 64), wake: make(chan struct{}, 1),
 		ctx: ctx, cancel: cancel, done: make(chan struct{})}
-	m.http = checked(HTTPClient, m.noteRequest)
+	m.http = checked(HTTPClient, m.noteAsking, m.noteRequest)
 	for i := range maps {
 		m.maps[maps[i].Collection] = &maps[i]
 	}
