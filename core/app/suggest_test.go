@@ -18,12 +18,13 @@ func TestTheSuggestionListAndChoosingFromIt(t *testing.T) {
 	r.visit("https://mail.test/")
 	r.show(1)
 
-	// Words: the visited host they start, completed, which is open in a tab, so its row is
-	// the tab's; then the search, with the profile's engine.
+	// Words: the visited host they start, completed; it is the tab the list is typed over,
+	// which is never a tab row, so the row is the page's; then the search, with the
+	// profile's engine.
 	r.shell(`{"t":"suggest","id":3,"text":"mail","kinds":["address","search","tab","history","action"]}`)
 	items := r.waitFor(func(m map[string]any) bool { return m["t"] == "suggestions" && m["id"] == float64(3) })["items"].([]any)
 	first, second := items[0].(map[string]any), items[1].(map[string]any)
-	if first["kind"] != "tab" || first["tab"] != float64(1) || first["inline"] != ".test" || second["kind"] != "search" || second["url"] != "https://duckduckgo.com/?q=mail" {
+	if first["kind"] != "history" || first["inline"] != ".test" || second["kind"] != "search" || second["url"] != "https://duckduckgo.com/?q=mail" {
 		t.Fatalf("items = %v", items)
 	}
 
@@ -47,6 +48,12 @@ func TestTheSuggestionListAndChoosingFromIt(t *testing.T) {
 	r.waitForTab(func(tab map[string]any) bool {
 		return tab["url"] == "https://news.test/" && tab["loading"] == false && tab["title"] != ""
 	})
+	// Typed over another tab, the first tab, on its search for two words, is a tab row.
+	r.shell(`{"t":"suggest","id":4,"text":"two","kinds":["search","tab","history"]}`)
+	items = r.waitFor(func(m map[string]any) bool { return m["t"] == "suggestions" && m["id"] == float64(4) })["items"].([]any)
+	if row := items[1].(map[string]any); row["kind"] != "tab" || row["tab"] != float64(1) {
+		t.Fatalf("over another tab, items = %v", items)
+	}
 	r.shell(`{"t":"chooseSuggestion","row":{"kind":"tab","tab":1}}`)
 	r.waitFor(func(m map[string]any) bool { return m["t"] == "tabs" && m["active"] == float64(1) })
 	// An action's row runs it: Duplicate Tab makes a third.
@@ -54,9 +61,9 @@ func TestTheSuggestionListAndChoosingFromIt(t *testing.T) {
 	r.waitFor(func(m map[string]any) bool { return m["t"] == "tabs" && len(m["tabs"].([]any)) == 3 })
 }
 
-// With nothing typed, a phone's field as it is tapped asks for the window's other tabs and
-// the tabs closed lately; choosing a closed one reopens it, as Recently Closed does.
-func TestNothingTypedOffersTabsAndReopensAClosedOne(t *testing.T) {
+// With nothing typed, a phone's new tab page asks for the tabs closed lately; choosing a
+// closed one reopens it, as Recently Closed does.
+func TestNothingTypedOffersClosedTabsAndReopensOne(t *testing.T) {
 	r := start(t, t.TempDir())
 	defer r.stop()
 	r.visit("https://a.test/")
@@ -70,16 +77,12 @@ func TestNothingTypedOffersTabsAndReopensAClosedOne(t *testing.T) {
 	r.shell(fmt.Sprintf(`{"t":"closeTab","id":%v}`, b))
 	r.waitFor(func(m map[string]any) bool { return m["t"] == "tabs" && len(m["tabs"].([]any)) == 2 })
 
-	r.shell(`{"t":"suggest","id":9,"text":"","kinds":["tab","closed"]}`)
+	r.shell(`{"t":"suggest","id":9,"text":"","kinds":["closed"]}`)
 	items := r.waitFor(func(m map[string]any) bool { return m["t"] == "suggestions" && m["id"] == float64(9) })["items"].([]any)
-	if len(items) != 2 {
+	if len(items) != 1 {
 		t.Fatalf("items = %v", items)
 	}
-	tab, closed := items[0].(map[string]any), items[1].(map[string]any)
-	// c.test is the active tab, left out; a.test is the other.
-	if tab["kind"] != "tab" || tab["url"] != "https://a.test/" || tab["tab"] != float64(1) {
-		t.Fatalf("tab row = %v", tab)
-	}
+	closed := items[0].(map[string]any)
 	if closed["kind"] != "closed" || closed["url"] != "https://b.test/" || closed["title"] != "Mock b.test" || closed["detail"] != "b.test" {
 		t.Fatalf("closed row = %v", closed)
 	}
@@ -159,5 +162,30 @@ func TestForgetSiteTakesASiteOutOfHistory(t *testing.T) {
 	}
 	if len(r.suggestions("other")) == 0 {
 		t.Fatal("other.test should still be suggested")
+	}
+}
+
+// A phone's field: the shell says how many rows it has room for, and its page's row shares
+// the page's address to the system's share sheet and copies it.
+func TestAPhoneFieldsRowsAndItsPageRow(t *testing.T) {
+	r := start(t, t.TempDir())
+	defer r.stop()
+	for i := range 8 {
+		r.visit(fmt.Sprintf("https://site%d.test/", i))
+	}
+	r.shell(`{"t":"suggest","id":4,"text":"site","kinds":["search","history"],"rows":5}`)
+	items := r.waitFor(func(m map[string]any) bool { return m["t"] == "suggestions" && m["id"] == float64(4) })["items"].([]any)
+	if len(items) != 5 || items[4].(map[string]any)["kind"] != "search" {
+		t.Fatalf("five rows, the search last: %v", items)
+	}
+	r.shell(`{"t":"shareText","text":"https://site1.test/"}`)
+	r.e.Settle()
+	if got := r.e.SharedText(); got != "https://site1.test/" {
+		t.Fatalf("shared = %q", got)
+	}
+	r.shell(`{"t":"copyText","text":"https://site2.test/"}`)
+	r.e.Settle()
+	if got := r.e.Clipboard(); got != "https://site2.test/" {
+		t.Fatalf("clipboard = %q", got)
 	}
 }
