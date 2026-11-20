@@ -3,6 +3,7 @@ package passkeys
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 
 	"projectb/store"
 	"projectb/sync"
@@ -15,6 +16,8 @@ const Collection = "passkeys"
 // among them, as synckosh seals the private part end to end under the sync key and sync
 // keeps no copy of it. A []byte is base64 in JSON.
 type item struct {
+	// ID is the credential ID, as the row's id names it: which passkey the item is.
+	ID          string `json:"id"`
 	RPID        string `json:"rpId"`
 	UserHandle  []byte `json:"userHandle"`
 	UserName    string `json:"userName"`
@@ -23,7 +26,8 @@ type item struct {
 	Key         []byte `json:"key"`
 }
 
-// Synced is how the passkeys sync: an item each, its credential ID the guid. Read opens a
+// Synced is how the passkeys sync: an item each, which its credential ID tells from every
+// other. Read opens a
 // row and Write seals one, in sync's own job: sync runs only while the profile's key is at
 // hand, and stops altogether while a profile is locked. A passkey never changes once made,
 // so of two versions the one made later stays. changed runs on the main thread after a run
@@ -36,7 +40,13 @@ type item struct {
 func (m *Manager) Synced(changed func()) sync.Mapping {
 	return sync.Mapping{
 		Collection: Collection, Datatype: "passkey", Table: "passkeys", Key: "id",
-		KeyOf: func(guid string, _ json.RawMessage) (string, error) { return guid, nil },
+		KeyOf: func(private json.RawMessage) (string, error) {
+			var it item
+			if json.Unmarshal(private, &it) != nil || it.ID == "" {
+				return "", errors.New("passkeys: an item with no credential id")
+			}
+			return it.ID, nil
+		},
 		// Its site: the account's name is sealed, and Sync details opens nothing.
 		Name: func(tx *store.Tx, id string) string {
 			var site string
@@ -51,7 +61,7 @@ func (m *Manager) Synced(changed func()) sync.Mapping {
 			if err != nil {
 				return nil, false, err
 			}
-			b, err := json.Marshal(item{RPID: r.RPID, UserHandle: r.UserHandle, UserName: r.UserName, DisplayName: r.DisplayName, Created: r.Created, Key: r.key})
+			b, err := json.Marshal(item{ID: id, RPID: r.RPID, UserHandle: r.UserHandle, UserName: r.UserName, DisplayName: r.DisplayName, Created: r.Created, Key: r.key})
 			return b, err == nil, err
 		},
 		Write: func(tx *store.Tx, id string, private json.RawMessage) error {

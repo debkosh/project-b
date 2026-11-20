@@ -191,12 +191,12 @@ func TestARowThatCantBeSentIsSetAside(t *testing.T) {
 		t.Fatal(err)
 	}
 	a.settle()
-	// A bookmark whose id can't be a guid, beside two that can, and a page.
+	// A bookmark too big for one item, beside two that aren't, and a page.
 	a.main(func() {
 		a.bookmarks.Add("Before", "https://example.com/before")
 	})
 	if err := a.st.Wait(func(tx *store.Tx) error {
-		_, err := tx.Exec(`INSERT INTO bookmarks (id, parent, kind, title, url, added, edited, place) VALUES ('bad id', '', 'bookmark', 'Stuck one', 'https://example.com/stuck', 1, 1, 'z')`)
+		_, err := tx.Exec(`INSERT INTO bookmarks (id, parent, kind, title, url, added, edited, place) VALUES ('big one', '', 'bookmark', 'Stuck one', 'https://example.com/' || hex(zeroblob(1500000)), 1, 1, 'z')`)
 		return err
 	}); err != nil {
 		t.Fatal(err)
@@ -215,7 +215,7 @@ func TestARowThatCantBeSentIsSetAside(t *testing.T) {
 	}
 	d := a.details()
 	r := d.Runs[0]
-	if len(r.Unsent) != 1 || r.Unsent[0].Collection != bookmarks.Collection || r.Unsent[0].Name != "Stuck one" || !strings.Contains(r.Unsent[0].Error, "guid") ||
+	if len(r.Unsent) != 1 || r.Unsent[0].Collection != bookmarks.Collection || r.Unsent[0].Name != "Stuck one" || !strings.Contains(r.Unsent[0].Error, "over the item limit") ||
 		r.Sent[bookmarks.Collection] != 2 || r.Sent[history.Collection] != 1 || r.Error != "" {
 		t.Fatalf("the run's row: %+v", r)
 	}
@@ -223,7 +223,7 @@ func TestARowThatCantBeSentIsSetAside(t *testing.T) {
 	for _, w := range d.Waiting {
 		if w.Error != "" {
 			stuck++
-			if w.Name != "Stuck one" || !strings.Contains(w.Error, "guid") {
+			if w.Name != "Stuck one" || !strings.Contains(w.Error, "over the item limit") {
 				t.Fatalf("the queue's stuck row: %+v", w)
 			}
 		}
@@ -267,7 +267,7 @@ func TestARowThatCantBeSentIsSetAside(t *testing.T) {
 	}
 	// Its row gone, there is nothing left to send or to say.
 	if err := a.st.Wait(func(tx *store.Tx) error {
-		_, err := tx.Exec(`DELETE FROM bookmarks WHERE id = 'bad id'`)
+		_, err := tx.Exec(`DELETE FROM bookmarks WHERE id = 'big one'`)
 		return err
 	}); err != nil {
 		t.Fatal(err)

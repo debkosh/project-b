@@ -32,12 +32,12 @@ type typedRow struct {
 	Last  int64  `json:"last"`
 }
 
-// Synced is how history's pages and typed addresses sync: an item per address, its guid made
-// from the address, the larger count and the later time winning, with the title of the version
+// Synced is how history's pages and typed addresses sync: an item per address, which is what
+// makes two devices' items of it one, the larger count and the later time winning, with the title of the version
 // visited later.
 func Synced() []sync.Mapping {
 	return []sync.Mapping{{
-		Collection: Collection, Datatype: "page", Table: "history", Key: "url", Derived: true, Merges: true,
+		Collection: Collection, Datatype: "page", Table: "history", Key: "url", Merges: true,
 		KeyOf: urlOf,
 		Read: func(tx *store.Tx, url string) (json.RawMessage, bool, error) {
 			p := page{URL: url}
@@ -65,7 +65,7 @@ func Synced() []sync.Mapping {
 			return a
 		}),
 	}, {
-		Collection: TypedCollection, Datatype: "typed", Table: "typed", Key: "url", Derived: true, Merges: true,
+		Collection: TypedCollection, Datatype: "typed", Table: "typed", Key: "url", Merges: true,
 		KeyOf: urlOf,
 		Read: func(tx *store.Tx, url string) (json.RawMessage, bool, error) {
 			t := typedRow{URL: url}
@@ -108,7 +108,7 @@ func laterTitle(a, b page) string {
 }
 
 // urlOf is the address an item is of.
-func urlOf(_ string, private json.RawMessage) (string, error) {
+func urlOf(private json.RawMessage) (string, error) {
 	var v struct {
 		URL string `json:"url"`
 	}

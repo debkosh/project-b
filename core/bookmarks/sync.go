@@ -3,6 +3,7 @@ package bookmarks
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 
 	"projectb/store"
 	"projectb/sync"
@@ -11,8 +12,10 @@ import (
 // Collection is the collection the bookmarks sync as (docs/sync.md).
 const Collection = "bookmarks"
 
-// item is an entry as it syncs: all but its id, which is the item's guid.
+// item is an entry as it syncs. Its id is the bookmark's own, the one its children name as
+// their parent: it says which row an item is, and an item's guid says nothing of it.
 type item struct {
+	ID       string `json:"id"`
 	Parent   string `json:"parent"`
 	Kind     string `json:"kind"`
 	Title    string `json:"title"`
@@ -22,13 +25,18 @@ type item struct {
 	Place    string `json:"place"`
 }
 
-// Synced is how the bookmarks sync: an item per entry, its id the guid, the one changed last
-// winning. A run that changed them has the tree read again, and the subscribers told; post
+// Synced is how the bookmarks sync: an item per entry, the one changed last winning. A run that changed them has the tree read again, and the subscribers told; post
 // runs a function back on the main thread.
 func (m *Manager) Synced(post func(func())) sync.Mapping {
 	return sync.Mapping{
 		Collection: Collection, Datatype: "bookmark", Table: "bookmarks", Key: "id",
-		KeyOf: func(guid string, _ json.RawMessage) (string, error) { return guid, nil },
+		KeyOf: func(private json.RawMessage) (string, error) {
+			var it item
+			if json.Unmarshal(private, &it) != nil || it.ID == "" {
+				return "", errors.New("bookmarks: an item with no id")
+			}
+			return it.ID, nil
+		},
 		Name: func(tx *store.Tx, id string) string {
 			var title, url string
 			tx.QueryRow(`SELECT title, url FROM bookmarks WHERE id = ?`, id).Scan(&title, &url)
@@ -38,7 +46,7 @@ func (m *Manager) Synced(post func(func())) sync.Mapping {
 			return title
 		},
 		Read: func(tx *store.Tx, id string) (json.RawMessage, bool, error) {
-			var it item
+			it := item{ID: id}
 			err := tx.QueryRow(`SELECT parent, kind, title, url, added, edited, place FROM bookmarks WHERE id = ?`, id).
 				Scan(&it.Parent, &it.Kind, &it.Title, &it.URL, &it.Added, &it.Modified, &it.Place)
 			if err == sql.ErrNoRows {

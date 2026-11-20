@@ -350,8 +350,8 @@ Profile Lock is built, the passwords session swaps its inside for the store's se
 waits on the unlock Dialog for a person's call and answers "locked" for any other. Until then a
 profile is never locked, and `ErrLocked` is never answered.
 
-**Sync.** A Mapping with Collection `passkeys`, the credential ID its key (not derived), the
-private part every column in the clear, inside synckosh's sealing under the sync key. Read opens
+**Sync.** A Mapping with Collection `passkeys`, the credential ID its key, the private part
+every column in the clear, the credential ID among them, inside synckosh's sealing under the sync key. Read opens
 the row and Write seals it, which is fine as sync stops while a profile is locked. A passkey
 never changes once made, so Join takes the other when it is newer by `created`, and a delete
 beats an older version, as sync's merger does already. Name is the `rp_id`, for Sync details, and the collection gets its words in Sync details'

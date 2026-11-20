@@ -89,8 +89,8 @@ func (m *Manager) Inspect(address, token string, answer func(isNew bool, err err
 	go func() {
 		ctx, cancel := context.WithTimeout(m.ctx, time.Minute)
 		defer cancel()
-		p, err := (&client.Client{URL: address, Token: token, HTTP: m.http}).Pull(ctx, synckosh.Filter{}, 0, 1)
-		m.post(func() { answer(err == nil && len(p.Items) == 0, err) })
+		state, err := client.Look(ctx, &client.Client{URL: address, Token: token, HTTP: m.http})
+		m.post(func() { answer(err == nil && state == client.BucketNew, err) })
 	}()
 }
 
@@ -158,8 +158,8 @@ func (m *Manager) InspectAgain(answer func(isNew bool, err error)) {
 		go func() {
 			ctx, cancel := context.WithTimeout(m.ctx, time.Minute)
 			defer cancel()
-			p, err := (&client.Client{URL: address, Token: token, HTTP: m.http}).Pull(ctx, synckosh.Filter{}, 0, 1)
-			m.post(func() { answer(err == nil && len(p.Items) == 0, err) })
+			state, err := client.Look(ctx, &client.Client{URL: address, Token: token, HTTP: m.http})
+			m.post(func() { answer(err == nil && state == client.BucketNew, err) })
 		}()
 	}
 }
@@ -212,24 +212,9 @@ func (m *Manager) ChangePassphrase(passphrase string, done func(error)) {
 		if err := m.run(WhyPassphrase); err != nil {
 			return err
 		}
-		copy, err := c.key.SealedCopy(passphrase, passphraseLabel)
-		if err != nil {
+		// One write: the new copy, and the copies under other passphrases gone.
+		if err := c.replica.SetPassphrase(passphrase, passphraseLabel); err != nil {
 			return err
-		}
-		put, err := c.replica.Put(copy)
-		if err != nil {
-			return err
-		}
-		copies, err := c.replica.Items(synckosh.LibraryCollection)
-		if err != nil {
-			return err
-		}
-		for _, it := range copies {
-			if it.Datatype == synckosh.SealedKeyDatatype && it.GUID != put[0].GUID {
-				if err := c.replica.Delete(synckosh.LibraryCollection, it.GUID); err != nil {
-					return err
-				}
-			}
 		}
 		return m.run(WhyPassphrase)
 	})
