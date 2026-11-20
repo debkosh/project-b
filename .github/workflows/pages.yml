@@ -1,5 +1,6 @@
-# Publishes the project's site on GitHub Pages at site/CNAME's address: the homepage (site/),
-# with the Stable release's version written in, and the Linux Flatpak repository (docs/research/linux.md, 5) from
+# Publishes the project's site on GitHub Pages at site/CNAME's address: the homepage, which is
+# the live demo (core/cmd/webdemo: the shell and the Go core running in the page, the engine
+# a stand-in), with the Stable release's version written in, and the Linux Flatpak repository (docs/research/linux.md, 5) from
 # the newest release that has one, as Linux releases are built only when asked. It runs on
 # each Stable release, and by hand with a release's tag. The repository is under repo/, beside
 # project-b.flatpakref and project-b.flatpakrepo.
@@ -38,11 +39,20 @@ jobs:
       # The page as it is on the branch the workflow runs from, main for a run by hand; the
       # version is the release's own.
       - uses: actions/checkout@v4
-      - name: The homepage, at its Stable version
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: core/go.mod
+          cache-dependency-path: core/go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: shell/package-lock.json
+      - name: The homepage, the live demo, at its Stable version
         run: |
-          mkdir _site
+          (cd shell && npm ci && npm run build)
+          VERSION=${TAG#v} core/cmd/webdemo/build.sh "$PWD/_site"
           cp -R site/. _site/
-          sed -i "s/{{VERSION}}/${TAG#v}/g" _site/index.html
           touch _site/.nojekyll
       - name: The Linux Flatpak repository, from the newest release that has one
         run: |
