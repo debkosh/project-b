@@ -1122,6 +1122,96 @@ def passkey_checks():
     guest("/usr/bin/killall", "project_b")
 
 
+PASSWORDS = "/tmp/pb-passwords"  # In the guest: the driver's pipe and output, for password_checks.
+
+
+def password_checks():
+    """Saved passwords from end to end on the real engine (docs/passwords.md), where the
+    person can be played: a passwords file is handed to Settings' Import as a person's pick
+    is, and comes over into the profile's own logins, sealed under a key the VM's keychain
+    wraps; Settings' Passwords lists it with no password; Show brings macOS's own sheet,
+    and the account's password shows it; Copy brings the sheet again and puts the password
+    on the pasteboard with the concealed and transient types beside it, which clipboard
+    managers and history leave out; and a username is copied with no sheet and neither
+    type. Run it on a VM of its own: it writes to the VM's keychain and its clipboard."""
+    password = os.environ.get("PB_VM_PASSWORD", "admin")
+    secret = "correct-horse-battery"
+    guest("/usr/bin/killall", "project_b")
+    profile = f"{PASSWORDS}-profile"
+    ask = driven(PASSWORDS, profile)
+    js = lambda expr: json.loads(ask("eval", expr) or "null")
+
+    def settings(expr):
+        answer = ask("evalsettings", expr)
+        return None if answer.startswith("ERR") else json.loads(answer or "null")
+
+    def person():
+        """macOS's sheet for the check, once it is up: the password and Return."""
+        time.sleep(3)
+        desk.type(password)
+        desk.key("return")
+
+    # What the general pasteboard holds, by its types, and its text. The types are asked of
+    # NSPasteboard itself: AppleScript's "clipboard info" leaves out a type it has no class
+    # for, as the two marks are.
+    types = lambda: guest("/usr/bin/osascript", "-l", "JavaScript", "-e", "ObjC.import('AppKit'); ObjC.deepUnwrap($.NSPasteboard.generalPasteboard.types).join(' ')")
+    pasted = lambda: guest("/usr/bin/pbpaste")
+    button = lambda label: f"document.querySelector('[aria-label=\"{label}\"]')"
+    text = lambda: settings("document.querySelector('[aria-label=Passwords]')?.innerText.replace(/\\s+/g, ' ') || ''") or ""
+
+    window_or_stop("the app starts with its driver")
+    js("document.querySelector('[aria-label=Menu]').click()")
+    until(lambda: js(f"!!{SETTINGS_ITEM}"), bool, 10)
+    js(f"{SETTINGS_ITEM}.click()")
+    until(lambda: settings("!!document.querySelector('.nav [data-section=data]')"), bool, 15)
+    settings("(document.querySelector('.nav [data-section=data]').click(), 1)")
+    until(lambda: settings("!!document.querySelector('input[aria-label=\"Passwords file\"]')"), bool, 15)
+    csv = f"Title,URL,Username,Password,Notes,OTPAuth\\nmail,https://mail.example.org/,asha@example.org,{secret},,\\n"
+    settings("(() => { const input = document.querySelector('input[aria-label=\"Passwords file\"]'); const files = new DataTransfer(); "
+             f"files.items.add(new File(['{csv}'], 'Passwords.csv', {{type: 'text/csv'}})); input.files = files.files; "
+             "input.dispatchEvent(new Event('change', {bubbles: true})); return 1; })()")
+    came = until(lambda: settings("document.querySelector('[aria-label=Import]')?.innerText.replace(/\\s+/g, ' ') || ''") or "", lambda t: "1 password" in t, 30)
+    check("a passwords file comes over into the profile's own logins", "1 password" in came, came[-200:])
+    shot("passwords-imported")
+
+    settings("(document.querySelector('.nav [data-section=privacy]').click(), 1)")
+    row = "[...document.querySelectorAll('.row')].find(r => r.textContent.includes('Passwords') && r.textContent.includes('1 password'))"
+    check("Privacy's Passwords row counts it", bool(until(lambda: settings(f"!!{row}"), bool, 15)))
+    settings(f"({row}.querySelector('button').click(), 1)")
+    listed = until(text, lambda t: "mail.example.org" in t, 15)
+    check("Settings' Passwords lists it by its site and username, with no password", "mail.example.org asha@example.org" in listed and secret not in listed, listed)
+    settings("(document.querySelector('[aria-label=Passwords] .row.login').click(), 1)")
+    until(lambda: settings(f"!!{button('Show the password for mail.example.org')}"), bool, 10)
+    shot("passwords-open")
+
+    settings(f"({button('Show the password for mail.example.org')}.click(), 1)")
+    time.sleep(3)
+    shot("passwords-macos-sheet")
+    check("Show waits for macOS's own check, the password still hidden", secret not in text(), text())
+    person()
+    shown = until(text, lambda t: secret in t, 20)
+    check("and the Mac's password shows it", secret in shown, shown)
+    shot("passwords-shown")
+
+    guest("/bin/sh", "-c", "printf nothing | /usr/bin/pbcopy")
+    settings(f"({button('Copy the password for mail.example.org')}.click(), 1)")
+    person()
+    copied = until(text, lambda t: "Password copied" in t, 20)
+    check("Copy, after the same check, says the password is copied", "Password copied" in copied, copied)
+    kinds = until(types, lambda t: "ConcealedType" in t, 10)
+    check("the password is on the pasteboard, with the concealed and transient types beside it",
+          pasted() == secret and "org.nspasteboard.ConcealedType" in kinds and "org.nspasteboard.TransientType" in kinds, f"{pasted()!r} {kinds}")
+
+    before = len(text())
+    settings(f"({button('Copy the username for mail.example.org')}.click(), 1)")
+    plain = until(pasted, lambda t: t == "asha@example.org", 10)
+    kinds = types()
+    check("a username is copied with no check, and neither type", plain == "asha@example.org" and "public.utf8-plain-text" in kinds and "nspasteboard" not in kinds and before > 0, f"{plain!r} {kinds}")
+    shot("passwords-copied")
+
+    guest("/usr/bin/killall", "project_b")
+
+
 PICK = "/tmp/pb-pick"  # In the guest: the picker's driver pipe and output, for picker_checks.
 
 
@@ -1528,6 +1618,13 @@ if sys.argv[1:] in (["update"], ["update-retry"]):
 # "check.py passkeys" runs only our own passkeys, on a VM of its own.
 if sys.argv[1:] == ["passkeys"]:
     passkey_checks()
+    finished = True
+    sys.exit(1 if counts()["FAIL"] else 0)
+
+# "check.py passwords" runs only the checks of saved passwords, on a VM of its own as the
+# passkeys' are.
+if sys.argv[1:] == ["passwords"]:
+    password_checks()
     finished = True
     sys.exit(1 if counts()["FAIL"] else 0)
 

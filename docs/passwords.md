@@ -105,3 +105,8 @@ The snapshot has `passwordCount`, and `passwordCount {passwordCount}` follows ea
   and with no screen lock, Delete, and none left; and that a phone has no Passwords row.
 - `shell/e2e/imports.cjs`: passwords brought from a browser and from a file are counted on
   the row and listed on the page.
+- `tools/vm/check.py passwords`, the real app in a VM of its own, where macOS's own sheet is
+  answered with the account's password: a passwords file comes over, Passwords lists it,
+  Show and Copy each wait for the sheet, the copied password is on the pasteboard with
+  `org.nspasteboard.ConcealedType` and `TransientType` beside it, and a username with
+  neither. Passed 2026-11-20, 8 of 8.
