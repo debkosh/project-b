@@ -1,7 +1,5 @@
-// What the settings page holds, and how each layout arranges it (docs/settings.md). Every
-// setting is a part: a row, a few rows, or a block with cards of its own. The layouts
-// differ only in how parts are grouped and where a long list opens; the parts are the same
-// components in both.
+// What the settings page holds, and how its sections arrange it (docs/settings.md). Every
+// setting is a part: a row, a few rows, or a block with cards of its own.
 
 import { computed } from 'vue';
 import { extensionsSection } from '@extensions';
@@ -35,8 +33,8 @@ const where = {
 
 export const shown = (part) => !where[part] || where[part]();
 
-// The long lists. Each is a block of its own; a layout puts it in a section as it is, or
-// as a row that opens it as a page of its own, with a back link. The row's words, and what
+// The long lists. Each is a block of its own; a section has it as it is, or as a row that
+// opens it as a page of its own, with a back link. The row's words, and what
 // it shows on its right, are here.
 const words = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 export const lists = {
@@ -102,27 +100,6 @@ export const blockRows = {
   },
 };
 
-// Layout B: one page by task. Each group is a run of cards: an array is one card of rows
-// (a list among them is its row, which opens it), a name is a block, and {heading, rows}
-// a card under a heading of its own.
-const page = [
-  { id: 'look', label: 'Look', hint: 'How Project B looks', cards: [['theme', 'frameColour', 'tabLayout', 'addressBar', 'shell', 'settingsLayout']] },
-  {
-    id: 'browsing',
-    label: 'Browsing',
-    hint: 'Starting, searching, keys, workspaces and bookmarks',
-    cards: [['start', 'searchEngine', 'keys', 'keyboard', 'workspaces'], 'bookmarks', { heading: 'Downloads', rows: ['downloadFolder', 'askWhereToSave'] }],
-  },
-  { id: 'privacy', label: 'Privacy', hint: 'What sites can do and what they keep', cards: [['clearData', 'sites', 'passkeys', 'clearOnQuit', 'blockAds']] },
-  { id: 'data', label: 'Your data', hint: 'This profile and what you bring in', cards: [['profile'], 'sync', 'import', ['runSetup']] },
-  {
-    id: 'advanced',
-    label: 'Advanced',
-    hint: 'Updates, your scripts, and what is still being tried',
-    cards: [['autoUpdate', 'sparks', 'extensions', 'webFeatures'], 'flags'],
-  },
-];
-
 // A card's parts that show here, a list's as its row; a section's cards that have any.
 function arranged(sections) {
   return sections
@@ -140,12 +117,11 @@ function arranged(sections) {
     .filter((s) => s.cards.length);
 }
 
-export const pageGroups = computed(() => arranged(page));
-
-// Layout A: sections in a list, like Chrome's, one showing at a time; each has an icon and
-// a line saying what it is set to, which a phone's list of sections shows. Below the line at
-// the foot of the list, what is still being tried. A list is in its section as it is, but
-// Sites, which is in Privacy and sites with rows of its own, opens as its own page.
+// The sections, in a list, like Chrome's, one showing at a time (docs/settings.md); each has
+// an icon and a line saying what it is set to, which a phone's list of sections shows. Below
+// the line at the foot of the list, what is still being tried. A list is in its section as
+// it is, but Sites, which is in Privacy with rows of its own, opens as its own page. Each
+// name fits a phone's row on one line.
 const named = (list, value) => list.find((x) => x.value === value)?.label || '';
 const themeNames = [
   { value: 'system', label: 'System' },
@@ -157,11 +133,12 @@ const startNames = [
   { value: 'fresh', label: 'Start fresh' },
 ];
 const sectionList = () => [
+  { id: 'profile', label: 'Profile', icon: 'profile', cards: [['profile'], 'sync', 'import', ['runSetup']], summary: () => state.profile?.name || '' },
   {
     id: 'appearance',
     label: 'Appearance',
     icon: 'appearance',
-    cards: [['theme', 'frameColour', 'tabLayout', 'addressBar', 'shell', 'settingsLayout']],
+    cards: [['theme', 'frameColour', 'tabLayout', 'addressBar', 'shell']],
     summary: () => [named(themeNames, state.theme), colourName(state.windowColor)].join(' · '),
   },
   {
@@ -184,13 +161,6 @@ const sectionList = () => [
     },
   },
   {
-    id: 'privacy',
-    label: 'Privacy and sites',
-    icon: 'privacy',
-    cards: [['clearData', 'blockAds', 'clearOnQuit', 'sites', 'passkeys']],
-    summary: () => [state.prefs.blockAds ? 'Ads blocked' : 'Ads shown', lists.sites.summary()].filter((x) => x).join(' · '),
-  },
-  {
     id: 'downloads',
     label: 'Downloads',
     icon: 'download',
@@ -201,21 +171,34 @@ const sectionList = () => [
       return f ? `To ${f.split('/').filter((x) => x).pop() || f}` : 'To the Downloads folder';
     },
   },
-  { id: 'keyboard', label: 'Keyboard', icon: 'keyboard', cards: [['keys'], 'keyboard'], summary: () => '' },
-  { id: 'profile', label: 'Profile and import', icon: 'profile', cards: [['profile'], 'sync', 'import', ['runSetup']], summary: () => state.profile?.name || '' },
+  {
+    id: 'privacy',
+    label: 'Privacy',
+    icon: 'privacy',
+    cards: [['clearData', 'blockAds', 'clearOnQuit', 'sites', 'passkeys']],
+    summary: () => [state.prefs.blockAds ? 'Ads blocked' : 'Ads shown', lists.sites.summary()].filter((x) => x).join(' · '),
+  },
   {
     id: 'extensions',
-    label: shown('extensions') ? 'Extensions and sparks' : 'Sparks',
+    label: shown('extensions') ? 'Extensions' : 'Sparks',
     icon: 'extensions',
     cards: ['extensions', 'sparks'],
-    summary: lists.sparks.summary,
+    // A line under every section's name, as the others have: how many sparks are on.
+    summary: () => lists.sparks.summary() || 'None yet',
   },
-  { id: 'about', label: 'About Project B', icon: 'about', cards: [['autoUpdate']], summary: () => state.running || 'Development build' },
+  { id: 'keyboard', label: 'Keyboard', icon: 'keyboard', cards: [['keys'], 'keyboard'], summary: () => '' },
+  { id: 'about', label: 'About Project B', icon: 'about', cards: [['version', 'autoUpdate'], 'releaseNotes'], summary: aboutSummary },
   { id: 'flags', label: 'Flags', icon: 'flags', below: true, cards: ['flags'], summary: () => '' },
   { id: 'webFeatures', label: 'Web features', icon: 'webFeatures', below: true, cards: ['webFeatures'], summary: () => '' },
 ];
 
 export const sections = computed(() => arranged(sectionList()));
+
+// About's line in a phone's list of sections: the version, and a release ready to apply.
+function aboutSummary() {
+  const v = state.running || 'Development build';
+  return state.update.phase === 'ready' ? `${v} · Update ready` : v;
+}
 
 // The page's own name for the frame colour, for a summary: a preset's name or Custom.
 export function colourName(c) {

@@ -4,70 +4,66 @@ The settings page is one of our pages, in a tab of ours (`shell/src/apps/setting
 everything on it (`core/settings` and the parts other managers add); the page shows it and
 sends the person's changes back.
 
-It has two layouts, the same settings arranged two ways, and Look's Settings row switches
-between them while the page is open, with no relaunch: One page, by task, the default, and
-Sections, in a list. It is Go's `settingsLayout` pref, `page` or `sections`: Go saves it and
-sends the prefs again, and the page takes the other layout at once, showing Look, where the
-person is. The owner asked for both, to choose between by using them (2026-11-18), and to have
-the choice under Look rather than in Flags.
+Like Chrome's settings, it is a list of sections, one showing at a time. It had a second
+layout, every setting on one page by task, to choose between by using them (2026-11-18); the
+owner chose the sections (2026-11-20): "we are gonna also ditch the one page settings and only
+ship sectioned settings from now on.. i ahve used them and feel sections make better sense".
 
-## One page by task (`page`)
-
-Every setting is on one scrolling page, in five groups by task:
-
-| Group | What is in it |
-|---|---|
-| Look | Theme, Frame colour, Tab layout (desktop), Address bar (phone), Shell, Settings (this page's layout) |
-| Browsing | On start, Search engine, Keys, Keyboard shortcuts (desktop), Workspaces, Bookmarks, Downloads: Save to and Ask where to save (desktop) |
-| Privacy | Clear browsing data, Sites, Block ads |
-| Your data | Profile name, Template, Sync ([sync.md](sync.md#the-screens)), Import from other browsers, Run setup again |
-| Advanced | Automatic updates, Sparks, Extensions (with its flag on), Web features, Flags |
-
-On a desktop a rail at the left names the groups and marks the one at the top; a press scrolls
-the page to it. On a phone the same names are chips over the page. The long lists, Workspaces,
-Sites, Keyboard shortcuts, Sparks, Extensions and Web features, are each a row on the page that
-opens the list as a page of its own, in its place, with a back button to its group. The tab's
-title is Settings, or Settings › and the list's name on a list's page.
-
-## Sections in a list (`sections`)
-
-Like Chrome's settings: a list of sections, one showing at a time.
+## Sections
 
 | Section | What is in it |
 |---|---|
-| Appearance | Theme, Frame colour, Tab layout (desktop), Address bar (phone), Shell, Settings (this page's layout) |
+| Profile | Profile name, Template, Sync ([sync.md](sync.md#the-screens)), Import from other browsers (desktop), Run setup again |
+| Appearance | Theme, Frame colour, Tab layout (desktop), Address bar (phone), Shell |
 | Start and search | On start, Search engine |
 | Workspaces | The workspaces |
 | Bookmarks | Where bookmarks show, and the bar |
 | Downloads (desktop) | Save to, Ask where to save each file |
-| Privacy and sites | Clear browsing data, Block ads, Sites, which opens as a page of its own |
+| Privacy | Clear browsing data, Block ads, Clear cookies when the app quits (desktop), Sites, which opens as a page of its own, Passkeys |
+| Extensions, or Sparks | Extensions (with its flag on, desktop), and Sparks; named Sparks without extensions |
 | Keyboard (desktop) | Keys, and the keyboard shortcuts |
-| Profile and import | Profile name, Template, Sync, Import from other browsers, Run setup again |
-| Extensions and sparks | Extensions (with its flag on, desktop), Sparks; Sparks alone without them |
-| About Project B | Automatic updates |
+| About Project B | The version and its update, Automatic updates, What's new ([About](#about)) |
 | Flags, Web features | Under a line at the foot of the list |
 
+The order, also from 2026-11-20 ("the sequence of sections needs some love"): who you are
+first, as Chrome and Safari start with the account; then how the app looks, and how its
+windows and tabs open, Start and search and Workspaces; then your things, Bookmarks and
+Downloads; then Privacy; what you add to it; Keyboard, a page of reference seldom visited; and
+About last, as every browser has it. ux's review set Workspaces and Keyboard where they are.
+
 On a desktop the list is at the left, with an icon for each section; the tab's title is
-Settings › and the section's name. On a phone the page is the list, each section with a line
-saying what it is set to (System · Teal, Where you left off · DuckDuckGo); a press opens the
-section under its own heading, with a back button to the list.
+Settings › and the section's name, the first section, Profile, when Go names none. On a phone
+the page is the list, each section with a line saying what it is set to (System · Teal, Where
+you left off · DuckDuckGo; Sparks, how many are on, or None yet); a press opens the section
+under its own heading, with a back
+button to the list. Each section's name, and its line, stay on one line however narrow the
+phone: what doesn't fit ends in an ellipsis. "Profile and import" wrapped on his phone; the
+names are short now, and `settings.cjs` checks no row wraps at 360px.
 
 ## The status line
 
-Under the search, in both layouts, one line says whether the app is the default browser and
-which version runs. Not the default, it says so with **Make default browser**, which asks the
-system as the welcome's last step does (`system.System.AskDefaultBrowser`: macOS's question,
-Android's sheet); the answer comes back to its callback, which Go sends to the welcome pages
-and the settings page alike, `isDefault`. The snapshot reads `IsDefaultBrowser` as the page
-opens (`core/app/default_browser_settings.go`). The version has what the update manager is
-doing beside it, Up to date, Downloading or Relaunch to update, with Check for updates, or
-Relaunch (Install update on a phone) once a release is ready; while a release downloads,
-Cancel and Retry, Retry last and a little apart, with its progress as a line under the words. On a narrow page the line
-breaks between the version and the update, never inside the update, so its buttons stay
-beside what they act on and the progress line stays under its words. Automatic updates is a row of
-its own, under Advanced, or About Project B in the sections layout. The page shows the line
-over every group; the sections layout over every section on a desktop, and over the list of
-sections on a phone.
+Under the search, one line says whether the app is the default browser. Not the default, it
+says so with **Make default browser**, which asks the system as the welcome's last step does
+(`system.System.AskDefaultBrowser`: macOS's question, Android's sheet); the answer comes back
+to its callback, which Go sends to the welcome pages and the settings page alike, `isDefault`.
+The snapshot reads `IsDefaultBrowser` as the page opens (`core/app/default_browser_settings.go`).
+The line tops every section on a desktop, and the list of sections on a phone.
+
+## About
+
+The version and its updates, in one card (`Version.vue`), the About Project B section; the
+owner asked for them out of the status line, in a section of their own (2026-11-20). Its first
+row is Project B and the version running, with what the update manager is doing beside it, Up
+to date, Downloading or N is ready, and one button: Check for updates, or Relaunch (Install
+update on a phone) once a release is ready; while a release downloads, Cancel and Retry, Retry
+last and a little apart, with its progress as a line under the words
+([updates.md](updates.md#settings)). On a desktop this is the one place a download shows. The
+menu bar's Check for Updates… opens Settings here. Under it, **Automatic updates**, then
+**What's new in N**: this release's notes, only this release's, the owner's ask (2026-11-20:
+"release notes only gets the current relase notes not rhe whole history"). They are
+`shell/src/apps/settings/release-notes.md`, built into the page, and the release carries the
+same file beside its manifest ([releasing.md](releasing.md)). A phone's list of sections says
+the version on About's line, and Update ready while one is.
 
 ## Privacy
 
@@ -120,15 +116,14 @@ sections on a phone.
 
 ## Search
 
-Both layouts search every setting from one field: at the top of the page, at the top of the
-list of sections on a desktop, and over the list of sections on a phone. A row is found by its
-label, its second line, or the name of its group or section; what was found is marked. The
-page shows only the rows found, each working in place, under the group or section they are in
-(in the sections layout every section is shown, one after the other, under its name), with
-how many were found over them, or that none was. The rail or the list of sections counts the
-rows found in each, and dims those with none. A long list, and Import, which aren't rows,
-show as the row that goes to them while there are words. Escape empties the field and the page
-is as it was; going anywhere, from the rail, the list or a row found, ends the search. Every
+One field searches every setting: at the top of the list of sections on a desktop, and over
+the list on a phone. A row is found by its label, its second line, or the name of its section;
+what was found is marked. The page shows only the rows found, each working in place, under the
+section they are in, every section one after the other under its name, with how many were
+found over them, or that none was. The list of sections counts the rows found in each, and
+dims those with none. A long list, and Import, which aren't rows, show as the row that goes to
+them while there are words. Escape empties the field and the page is as it was; going
+anywhere, from the list or a row found, ends the search. Every
 `Row.vue` says whether it matches and counts itself in its section (`search.js`).
 
 ## On a phone
@@ -140,22 +135,21 @@ of its own).
 
 ## Parts, and how they are arranged
 
-Both layouts are made of the same parts (`arrange.js`): a row (`Rows.vue`, `KeysRow.vue`,
+The sections are made of parts (`arrange.js`): a row (`Rows.vue`, `KeysRow.vue`,
 `ProfileRows.vue`), or a block that brings its own cards (`Bookmarks.vue`, `Import.vue`,
 `Flags.vue`, and the long lists). Every row is drawn by `Row.vue`: its label, a second line
-under it, and its control. A layout is data: its groups or sections, each a run of cards, a card
-being a list of parts; `PageLayout.vue` and `SectionsLayout.vue` only arrange them. A list among
+under it, and its control. The sections are data, each a run of cards, a card being a list of
+parts or a block; `SectionsLayout.vue` only arranges them. A list among
 a card's parts is drawn as the row that opens it. `arrange.js` also says where each part shows
 (desktop, phone, or only when the page has what it needs, as Profile needs a listed profile).
 
 ## Addresses
 
 What the page shows is an address, `state.section`, which Go may name as it opens the page
-(`OpenSection`): a group or section (`look`, `browsing`, `privacy`, `data`, `advanced`;
-`appearance`, `start`, `profile`, `about`), a part (`import`, `sync`, `flags`), or a list (`workspaces`,
-`sites`, `sites/<site>`, `sites/<origin>`, `keyboard`, `sparks`, `extensions`, `webFeatures`). Both layouts take
-every address: the page opens a list's own page, or scrolls to the part or its group; the
-sections show the section that is it or holds it, or Sites' own page. The site panel's Details
+(`OpenSection`): a section (`profile`, `appearance`, `start`, `privacy`, `about`, ...), a part
+(`import`, `sync`, `flags`, `version`), or a list (`workspaces`, `sites`, `sites/<site>`,
+`sites/<origin>`, `keyboard`, `sparks`, `extensions`, `webFeatures`). The page shows the
+section that is it or holds it, or a list's own page, as Sites'. The site panel's Details
 opens `sites/<origin>`, the page of that origin's site with that origin's settings whether
 or not it has any, an extension's Manage opens `extensions`, and a `project-b://sync` link opens
 `sync`. Each address the page goes to is an entry in its tab's history, and each dialog or row
@@ -164,20 +158,20 @@ Settings ([shells.md](shells.md#back-on-our-pages)).
 
 ## Tests
 
-`shell/e2e/settings.cjs` drives the page on the mock engine, once in each layout, each run on a
-profile whose `settingsLayout` pref names it; it goes to each part as a person does, by the
-rail, the list of sections and the rows that open the lists. Each run also switches Look's
-Settings row to the other layout and back, in the same page; checks the status line (not the default browser, Make default
-browser, then the default; the version, and Check for updates reaching the release server
-once, and a download's Cancel and Retry on its own line at a phone's width), Block ads, Ask
+`shell/e2e/settings.cjs` drives the page on the mock engine; it goes to each part as a person
+does, by the list of sections and the rows that open the lists; checks the status line (not the default browser, Make default
+browser, then the default) and About (the version, Check for updates reaching the release
+server once, and a download's Cancel and Retry in its row at a phone's width), Block ads, Ask
 where to save, Save to with a folder chosen and Use Downloads, Clear browsing data's dialog,
 Sites with what two
 sites keep, a site's Clear data and a site's page with its Clear, and Clear cookies when
 the app quits with a site kept from its page; searches (rows found
 working in place, the counts, a section's name, nothing found, Escape, a list found); and walks
-a phone-sized page through every group or section, and a search.
+a phone-sized page through every section, in order, none of whose names or lines wraps at
+360px, and a search. `shell/e2e/update-notice.cjs` checks About with a release ready, on a
+desktop and a phone.
 
-In Go, `core/prefs/prefs_test.go` has the layout pref; `core/app/default_browser_settings_test.go`
+In Go, `core/app/default_browser_settings_test.go`
 the default browser's state in the snapshot, Make default browser and its answer;
 `clear_data_settings_test.go` what each choice clears, site data in every workspace with the
 tabs open, and a range: the pages each would take, and what the last hour clears and leaves;

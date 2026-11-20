@@ -1,6 +1,6 @@
 // Settings' Sync on the mock engine (docs/sync.md), against a real sync server: synckosh's,
 // which the dev server runs with -sync-server and sync reaches as memd.example.com. The card
-// under Your data in each of the page's two layouts and on a phone, search finding it, the
+// in Profile, in a desktop's sections and on a phone, search finding it, the
 // set-up Dialog through a new bucket and one in use, every refusal (a short passphrase, two
 // that differ, a wrong one, an http address, a server out of reach, an address that isn't a
 // bucket, a token refused), Suggest one, the connected rows (Sync now, syncing with Cancel
@@ -11,7 +11,7 @@
 // and from a page's own script, which does nothing.
 // Every state is saved in light and dark under build/sync-screens/<layout>/, with an
 // overview of each, for the ux review.
-// Run: node shell/e2e/sync.cjs [page|sections|phone]   (from the repo root, after `npm run
+// Run: node shell/e2e/sync.cjs [sections|phone]   (from the repo root, after `npm run
 // build` in shell/); with none, each in turn.
 
 const fs = require('fs');
@@ -21,7 +21,7 @@ const { chromium } = require('playwright');
 const layout = process.argv[2];
 if (!layout) {
   let code = 0;
-  for (const l of ['page', 'sections', 'phone']) {
+  for (const l of ['sections', 'phone']) {
     console.log(`=== ${l}`);
     code = code || require('child_process').spawnSync(process.execPath, [__filename, l], { stdio: 'inherit' }).status;
   }
@@ -31,14 +31,13 @@ if (!layout) {
 const lib = require('./lib.cjs');
 const { check, regions, settle, until } = lib;
 const phone = layout === 'phone';
-const sectionsLayout = layout === 'sections';
 
 // A listed profile, Personal, as the mocks show it; on the mock engine its keys are wrapped by
 // a folder.key of its own, as a folder named outright's are.
 const root = path.dirname(lib.profile);
 fs.writeFileSync(path.join(root, 'profiles.json'), JSON.stringify({ profiles: [{ id: 'profile', name: 'Personal', color: '#4f9e9e', template: 'Personal' }] }));
 // The frame colour the mocks are drawn in.
-fs.writeFileSync(path.join(lib.profile, 'prefs.json'), JSON.stringify({ frameColor: '#4f9e9e', ...(sectionsLayout ? { settingsLayout: 'sections' } : {}) }));
+fs.writeFileSync(path.join(lib.profile, 'prefs.json'), JSON.stringify({ frameColor: '#4f9e9e' }));
 const args = ['-sync-server', `-root=${root}`, '-id=profile'];
 
 // The sync server: its address, how many requests it has had, and how it answers.
@@ -81,15 +80,14 @@ const taken = [];
   // chrome.send posts each one to /settings/send.
   const sends = (msg) => page.waitForRequest((r) => r.url().includes('/settings/send') && JSON.parse(r.postData() || '{}').t === msg.t, { timeout: 5000 }).then(() => true, () => false);
 
-  // Sync's card, as a person goes to it: Your data's group, or the section that holds it.
+  // Sync's card, as a person goes to it: Profile, the section that holds it.
   const showSync = async () => {
-    if (sectionsLayout) await page.locator('.nav [data-section="profile"]').click();
-    else if (phone) await page.locator('.chips [data-section="data"]').click();
-    else await page.locator('.nav [data-section="data"]').click();
+    if (phone) await page.locator('.section-row[data-section="profile"]').click();
+    else await page.locator('.nav [data-section="profile"]').click();
     await settle(page);
   };
 
-  // A state's pictures, in each theme, the page where Your data's group starts, as the
+  // A state's pictures, in each theme, the page at Profile's section, as the
   // mocks have it.
   const shot = async (n, id) => {
     // The pointer goes aside, so nothing shows as hovered.
@@ -119,10 +117,11 @@ const taken = [];
   check('Sync is a card of its own after the profile\'s', order.before === true, JSON.stringify(order));
   check(phone ? 'and on a phone Run setup again follows it' : 'and Import follows it', phone ? order.after.includes('Run setup') : order.after === 'Import', JSON.stringify(order));
   check('off, it has one row, Set up sync, and its line', (await card().locator('.row').count()) === 1 && (await card().innerText()).includes('Bookmarks, history, typed addresses and passkeys, through your own sync server'));
-  if (!(phone || sectionsLayout)) check('the card is under the heading Sync', (await card().locator('h2').innerText()) === 'Sync');
   await shot(1, 'off');
 
-  // Search finds it by sync and by passphrase.
+  // Search finds it by sync and by passphrase. On a phone the field is over the list of
+  // sections, which back goes to.
+  if (phone) await page.getByRole('button', { name: 'Back to Settings' }).click();
   for (const word of ['sync', 'passphrase']) {
     const search = page.getByLabel('Search settings');
     await search.fill(word);

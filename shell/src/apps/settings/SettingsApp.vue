@@ -1,8 +1,7 @@
 <script setup>
-import { computed, provide, ref, watch, watchEffect } from 'vue';
+import { provide, ref, watch, watchEffect } from 'vue';
 import { paintTheme } from '@/theme.js';
 import { pageHistory } from '@/ui/escape.js';
-import PageLayout from './PageLayout.vue';
 import SectionsLayout from './SectionsLayout.vue';
 import { query } from './search.js';
 import { state } from './state.js';
@@ -43,16 +42,6 @@ watch(
   },
   { immediate: true },
 );
-
-// The layout is Look's Settings row, Go's settingsLayout pref: Go sends the prefs again as
-// it changes, and the page takes the other layout at once, at the same address.
-const layout = computed(() => (state.ready && state.prefs.settingsLayout === 'sections' ? SectionsLayout : PageLayout));
-// The layout is chosen in Look, so the other layout shows its row, where the person still
-// is. The snapshot's layout is no change.
-watch(
-  () => state.ready && layout.value,
-  (now, was) => was && go('settingsLayout'),
-);
 </script>
 
 <template>
@@ -60,7 +49,7 @@ watch(
     <!-- The page's name is the tab's title, which the shell shows; the heading is kept for
          a screen reader, and out of sight. -->
     <h1 class="hidden-heading">Settings</h1>
-    <component :is="layout" />
+    <SectionsLayout />
   </div>
 </template>
 

@@ -250,9 +250,8 @@ picture, light and dark, desktop and phone, is made by `shell/e2e/sync.cjs` unde
 ![Connected, phone](screenshots/sync/phone-09-on.png)
 ![Choosing a passphrase, phone, dark](screenshots/sync/phone-06-first-dark.png)
 
-- **Where:** a card under Your data with the heading Sync, after the profile's card and before
-  Import; in the Sections layout, in Profile and import. Its address is `sync` in both layouts
-  (`arrange.js`), and searching for sync or passphrase finds its rows.
+- **Where:** a card in Profile, after the profile's card and before Import. Its address is
+  `sync` (`arrange.js`), and searching for sync or passphrase finds its rows.
 - **Off:** one row, Set up sync, "Bookmarks, history, typed addresses and passkeys, through your own sync
   server", Set up….
 - **On:** the server's row, its letter on its tile as a site's, with "Last synced 2 minutes ago"

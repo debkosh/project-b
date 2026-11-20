@@ -63,8 +63,13 @@ the failed parts run again. Android 17's one known flake is the blank-shell star
 Before it: if main moved since the branch was cut, rebase the branch onto it. When the new
 commits only touch docs or tests, check `git diff <tested tip> HEAD -- . ':!<those paths>'` is
 empty and publish without a new run; when they touch the app, run the release again. Then
-fast-forward main to the release branch, bump `VERSION`, commit "Bump the version
-to <v>" and push. `tools/release.sh` takes `chromium/src/out/.pb-build.lock` for its whole
+fast-forward main to the release branch, bump `VERSION`, make the release notes this
+version's (`shell/src/apps/settings/release-notes.md`: `# <v>` and its changes, one `- ` line
+each in a user's words; the branches in it add theirs under the heading, a branch with none
+gets one here, and the last release's lines go), commit "Bump the version to <v>" and push.
+Only this release's notes: the app shows them in Settings' About, What's new in <v>, and
+`tools/release.sh` refuses notes of another version, publishes the file beside `releases.json`
+as `release-notes.md`, and puts its lines in the GitHub release. `tools/release.sh` takes `chromium/src/out/.pb-build.lock` for its whole
 run, waiting for any build that holds it, and releases the checkout amarit starts it in. Don't
 merge into main while it runs; it reads that checkout. It takes about four minutes. Wait for `RESULT=ok v<version>`: `tools/package.sh` prints a
 `RESULT=ok` of its own partway through.

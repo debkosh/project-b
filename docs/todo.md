@@ -21,8 +21,8 @@ Take an item off when it lands or is dropped.
   to talk through with the owner one at a time (2026-11-16: "rest goes to todo and lets
   discuss those here one at a time"). The three faults and items 1 to 10 are being built.
   - *11, phone gestures:* pull down to reload, and a swipe up on the bar for the switcher. M.
-  - *12, settings for a daily browser:* built 2026-11-18 in two layouts Look's Settings row
-    switches ([settings.md](settings.md)): search, the status line with the default
+  - *12, settings for a daily browser:* built 2026-11-18 in two layouts, sections alone from
+    2026-11-20 ([settings.md](settings.md)): search, the status line with the default
     browser, Clear browsing data, Block ads on every site, Ask where to save, Import and Run
     setup again; then Clear browsing data from a time, Sites with each site's data, Clear
     cookies when the app quits and Save to, a desktop's (the owner, 2026-11-18: "in phones

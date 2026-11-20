@@ -255,9 +255,8 @@ const same = (a, b) => !!a && !!b && ['x', 'y', 'w', 'h'].every((k) => Math.abs(
   await ui.locator('form.field').click();
   check('a click elsewhere in the shell closes the menu', await until(async () => (await menu.count()) === 0));
 
-  // Manage extensions opens the settings tab at its Extensions page, from closed and from
-  // elsewhere in settings. On the one-page layout, the default, it is one of the long
-  // lists, a page of its own with a link back to Advanced (docs/settings.md).
+  // Manage extensions opens the settings tab at its Extensions section, from closed and from
+  // elsewhere in settings (docs/settings.md).
   await page.close();
   await closeSettings();
   await puzzle.click();
@@ -265,8 +264,8 @@ const same = (a, b) => !!a && !!b && ['x', 'y', 'w', 'h'].every((k) => Math.abs(
   check('Manage extensions opens the settings tab', await until(async () => (await settingsTab()) !== 0 && (await regions()).active === (await settingsTab())));
   page = await open();
   installed = page.getByRole('region', { name: 'Installed' });
-  check('at its Extensions page', await until(() => installed.isVisible()) && await page.getByRole('heading', { name: 'Extensions', exact: true }).isVisible());
-  await page.getByRole('button', { name: 'Back to Advanced' }).click();
+  check('at its Extensions section', await until(() => installed.isVisible()) && (await page.title()) === 'Settings › Extensions', await page.title());
+  await page.locator('.nav [data-section="appearance"]').click();
   await until(async () => (await installed.count()) === 0);
   await puzzle.click();
   await menu.getByRole('button', { name: 'Manage extensions' }).click();
@@ -294,8 +293,10 @@ const same = (a, b) => !!a && !!b && ['x', 'y', 'w', 'h'].every((k) => Math.abs(
   await openSettings();
   await until(async () => (await settingsTab()) !== 0);
   page = await open();
-  // Flags are on the page itself, under Advanced.
-  check('and settings no Extensions row', await until(() => page.getByRole('switch', { name: /Extensions/ }).isVisible()) && (await page.locator('[data-section="extensions"]').count()) === 0);
+  // The section is Sparks alone; the flag is in Flags.
+  check('and settings no Extensions section, Sparks in its place', await until(async () => (await page.locator('.nav [data-section="extensions"]').textContent()).trim() === 'Sparks'));
+  await page.locator('.nav [data-section="flags"]').click();
+  await until(() => page.getByRole('switch', { name: /Extensions/ }).isVisible());
   check('but the flag is there to turn on', await page.getByRole('switch', { name: /Extensions/ }).isEnabled());
 
   check('no errors in the pages', errors.length === 0, errors.join(' | '));

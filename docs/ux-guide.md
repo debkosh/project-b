@@ -31,9 +31,10 @@ guide has the rules every feature follows.
   as a row that does nothing; it waits in [todo.md](todo.md). A row a device can't use (Ask
   where to save, Tab layout, the keyboard shortcuts on a phone; Import on a phone, which can't
   read another app's data) isn't drawn there.
-- **One page by task, or sections**, chosen in Look's Settings row and switched live; one page
-  is the default. 2026-11-18: under Look, not in Flags. Both have search, and a phone reaches every part. 2026-11-18: "build
-  both and a flag to switch… once i use it more i can be more sure". [settings.md](settings.md).
+- **Sections, one showing at a time**, with search, and a phone reaches every part. 2026-11-18:
+  "build both and a flag to switch… once i use it more i can be more sure"; 2026-11-20, the
+  one page dropped: "i ahve used them and feel sections make better sense". Each section's name
+  stays on one line on a phone. [settings.md](settings.md).
 - **Where a choice lives:** each new place a feature shows itself is a switch in Settings, with
   a sensible default, rather than one place forced on everyone. 2026-11-18, on the four places
   bookmarks can show: build them all, with a setting for choosing.

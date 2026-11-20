@@ -35,6 +35,10 @@ cd "$ROOT"
 git fetch -q origin main
 [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || { echo "main is not origin/main; push the bump first, or fast-forward to origin/main"; exit 1; }
 if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then echo "$TAG is already released; bump VERSION"; exit 1; fi
+# This release's notes, which the app shows in Settings' About and the release carries beside
+# its manifest: they must be this version's (docs/releasing.md).
+NOTES=shell/src/apps/settings/release-notes.md
+[ "$(sed -n 's/^# //p' "$NOTES" | head -1)" = "$VERSION" ] || { echo "$NOTES is for $(sed -n 's/^# //p' "$NOTES" | head -1), not $VERSION; write this release's notes first"; exit 1; }
 
 echo "=== $(date '+%F %T') release build"
 RELEASE=1 OUT=out/rel tools/build.sh | tail -3
@@ -56,11 +60,14 @@ cp build/android/project-b-content.apk "$DIST/Project-B-$VERSION-android-arm64.z
 # The manifest keeps every earlier release, so start from the one published last.
 gh release download --repo "$REPO" --pattern releases.json -O "$DIST/releases.json" 2>/dev/null || true
 amarit release -version "$VERSION" -dist "$DIST" -out "$DIST/releases.json"
+cp "$NOTES" "$DIST/release-notes.md"
 
 echo "=== $(date '+%F %T') publish $TAG"
 git tag -a "$TAG" -m "Project B $VERSION"
 git push origin "$TAG"
 gh release create "$TAG" "$DIST"/* --repo "$REPO" --title "Project B $VERSION" \
-    --notes "Project B $VERSION for Apple silicon Macs and arm64 Android phones. Install once from the DMG or the APK; an installed copy updates itself from here.$(
+    --notes "Project B $VERSION for Apple silicon Macs and arm64 Android phones. Install once from the DMG or the APK; an installed copy updates itself from here.
+
+$(grep '^- ' "$NOTES")$(
         [ -f "docs/test-reports/$VERSION.md" ] && printf '\n\nTests: https://github.com/%s/blob/%s/docs/test-reports/%s.md' "$REPO" "$TAG" "$VERSION")"
 echo "RESULT=ok $TAG"
