@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strconv"
 	"strings"
 	gosync "sync"
@@ -36,6 +37,10 @@ type syncServer struct {
 	down     bool
 	held     chan struct{}
 	failing  int
+	// For a reset: the store, its path, and who a token is.
+	data *bolt.Store
+	path string
+	auth server.Auth
 }
 
 // startSyncServer starts the server on its store in path, kept across restarts, and has sync's
@@ -45,15 +50,16 @@ func startSyncServer(path string) *syncServer {
 	if err != nil {
 		log.Fatalf("-sync-server: %v", err)
 	}
-	s := &syncServer{refused: map[string]bool{}}
-	s.srv = server.New(data, server.Bearer(func(token string) (string, error) {
+	s := &syncServer{refused: map[string]bool{}, data: data, path: path}
+	s.auth = server.Bearer(func(token string) (string, error) {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		if s.refused[token] {
 			return "", errors.New("signed out")
 		}
 		return "bucket-" + token, nil
-	}))
+	})
+	s.srv = server.New(data, s.auth)
 	s.ts = httptest.NewTLSServer(http.HandlerFunc(s.serve))
 	// The test certificate names example.com, which every host here is checked as.
 	t := s.ts.Client().Transport.(*http.Transport).Clone()
@@ -76,7 +82,7 @@ const syncHost = "memd.example.com"
 func (s *syncServer) serve(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	s.requests++
-	down, held, failing := s.down, s.held, s.failing
+	down, held, failing, srv := s.down, s.held, s.failing, s.srv
 	s.mu.Unlock()
 	if down {
 		if c, _, err := w.(http.Hijacker).Hijack(); err == nil {
@@ -109,15 +115,15 @@ func (s *syncServer) serve(w http.ResponseWriter, r *http.Request) {
 		r.URL.Path = "/" + path
 		r.Header.Set("Authorization", "Bearer "+token)
 	}
-	s.srv.ServeHTTP(w, r)
+	srv.ServeHTTP(w, r)
 }
 
 // control is /mock/sync: GET says the server's address and how many requests it has had;
 // POST changes how it answers, with refuse=<token> signing a token out, down=1 or 0 dropping
 // every connection or not, slow=1 holding every request until slow=0, fail=<status> answering
 // every request with that status as synckosh's server answers a failure, in JSON, until
-// fail=0, and stalled=<milliseconds> setting how long sync waits with nothing arriving before
-// it ends a request as stalled.
+// fail=0, stalled=<milliseconds> setting how long sync waits with nothing arriving before
+// it ends a request as stalled, and reset=1 emptying the server, key and all.
 func (s *syncServer) control(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -127,6 +133,19 @@ func (s *syncServer) control(w http.ResponseWriter, r *http.Request) {
 		}
 		if d := r.FormValue("down"); d != "" {
 			s.down = d == "1"
+		}
+		// reset=1 empties the server: every bucket is new, with no items and no key, as a
+		// bucket reset on the server's own page is.
+		if r.FormValue("reset") == "1" {
+			// In place, so the server is as empty after the app starts again.
+			s.data.Close()
+			os.Remove(s.path)
+			data, err := bolt.OpenStore(s.path)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			s.data, s.srv = data, server.New(data, s.auth)
 		}
 		if f := r.FormValue("fail"); f != "" {
 			s.failing, _ = strconv.Atoi(f)

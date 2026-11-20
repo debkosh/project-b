@@ -25,7 +25,7 @@ const TOKEN_PLACEHOLDER = 'Only if your server gave you one';
 const MIN = 12;
 
 // The server's row says of a run what Sync details' state row says, and offers the same.
-const { s, holding, lastSynced, serverRow, failed, unsent, syncNow, again } = useSyncRun();
+const { s, holding, lastSynced, serverRow, failed, setUpAgain, unsent, syncNow, again } = useSyncRun();
 
 // The server's mark: its letter on its tile, as a site's.
 const tints = useTints();
@@ -86,6 +86,8 @@ function open(o = {}) {
     wrong: false,
     busy: false,
     detail: '',
+    // The bucket sync is on with, set up anew after a reset: Go holds its address and token.
+    anew: false,
     ...o,
   });
 }
@@ -99,7 +101,16 @@ const setUp = () => {
   open();
   focus('address');
 };
+// Reconnect… after the server signed the device out asks for the token again. Set up again…
+// after the bucket was reset asks only for a passphrase: Go still holds the address and the
+// token, so it looks at the bucket at once, and an empty one has the first device choose a
+// passphrase, one in use has it entered.
 const reconnect = () => {
+  if (state.sync.problem === 'reset') {
+    open({ address: state.syncAddress, host: state.sync.host, anew: true, busy: true });
+    ask({ t: 'syncInspect', again: true });
+    return;
+  }
   open({ address: state.syncAddress });
   focus('token');
 };
@@ -248,6 +259,7 @@ function turnOn() {
   d.busy = true;
   // A profile whose keys don't open starts fresh, and one the server signed out lets the
   // old bucket go, first; Go does them in order.
+  if (d.anew) return ask({ t: 'syncConnect', again: true, passphrase: d.pass });
   if (state.sync.locked) send({ t: 'syncStartFresh' });
   else if (state.sync.on) send({ t: 'syncDisconnect' });
   ask({ t: 'syncConnect', address: d.address.trim(), token: d.token.trim(), passphrase: d.pass });
@@ -370,7 +382,7 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
           </template>
           <template #hint>
             <template v-if="serverRow === 'syncing'">Syncing…</template>
-            <span v-else-if="serverRow === 'signedOut'" class="err">The server signed this device out</span>
+            <span v-else-if="serverRow === 'signedOut'" class="err">{{ failed }}</span>
             <template v-else-if="serverRow === 'failed'"
               ><span class="err">{{ failed }}</span><template v-if="s.lastSynced"> · {{ lastSynced }}</template></template
             >
@@ -382,7 +394,7 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
             <button type="button" class="text-button quiet" @click="send({ t: 'syncCancel' })">Cancel</button>
             <button type="button" class="text-button quiet apart" @click="again">Retry</button>
           </span>
-          <button v-else-if="serverRow === 'signedOut'" type="button" class="text-button" @click="reconnect">Reconnect…</button>
+          <button v-else-if="serverRow === 'signedOut'" type="button" class="text-button" @click="reconnect">{{ setUpAgain }}</button>
           <button v-else-if="serverRow === 'failed'" type="button" class="text-button" @click="again">Try again</button>
           <button v-else type="button" class="text-button" :disabled="holding" @click="syncNow">Sync now</button>
         </Row>

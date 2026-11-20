@@ -449,6 +449,23 @@ const taken = [];
   await button('Turn on sync').click();
   check('the right one connects', await until(async () => (await dialog().count()) === 0 && (await button('Sync now', card()).isVisible()), 10000));
 
+  // The bucket reset on the server: its key is gone with everything else, so this device
+  // sends nothing and says so. Set up again… opens the set-up with the address filled in,
+  // and the bucket, empty again, asks for a new passphrase, as a first device's does.
+  await server({ reset: '1' });
+  await button('Sync now', card()).click();
+  check('a bucket that was reset says so on the row, with Set up again…', await until(async () => (await serverRow().innerText()).includes('The sync bucket was reset'), 15000) && (await button('Set up again…', card()).isVisible()) &&
+    (await button('Sync now', card()).count()) === 0, await serverRow().innerText());
+  await shot(34, 'bucket-reset');
+  told = sends({ t: 'syncInspect' });
+  await button('Set up again…', card()).click();
+  check('Set up again… asks nothing of the address or the token: Go holds them, and looks at the bucket at once', (await told) && (await field('Address').count()) === 0 || (await until(async () => (await dialog().getAttribute('aria-label')) === 'Choose a sync passphrase')));
+  check('the bucket is empty again, so a new passphrase is chosen, as a first device chooses one', await until(async () => (await dialog().getAttribute('aria-label')) === 'Choose a sync passphrase'));
+  await field('Passphrase').fill(changed);
+  await field('Type it again').fill(changed);
+  await button('Turn on sync').click();
+  check('and sync is on again, with everything here sent up', await until(async () => (await dialog().count()) === 0 && (await button('Sync now', card()).isVisible()) && !(await serverRow().innerText()).includes('reset'), 15000), await serverRow().innerText());
+
   // Signed out: the server no longer takes the token; Reconnect… fills in the address.
   await server({ refuse: token });
   await button('Sync now', card()).click();

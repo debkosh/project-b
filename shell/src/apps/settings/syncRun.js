@@ -10,6 +10,7 @@ const FAILED = {
   stalled: 'Stopped: nothing arrived for 30 seconds',
   notBucket: 'The server has no sync bucket at this address',
   token: 'The server signed this device out',
+  reset: 'The sync bucket was reset',
 };
 export const failedAs = (problem) => FAILED[problem] || "Couldn't sync";
 
@@ -75,11 +76,15 @@ export function useSyncRun() {
   // The row: what it says and what it offers. A failed run says what it was.
   const serverRow = computed(() => {
     if (syncingShown.value) return 'syncing';
-    if (s.value.problem === 'token') return 'signedOut';
+    // Signed out, or the bucket reset: nothing syncs until sync is set up again here.
+    if (s.value.problem === 'token' || s.value.problem === 'reset') return 'signedOut';
     if (s.value.error) return 'failed';
     return 'synced';
   });
   const failed = computed(() => failedAs(s.value.problem));
+  // What sets sync up again from the signed-out row: a reset bucket has no key any more, so
+  // the first device chooses a passphrase and the next enter it.
+  const setUpAgain = computed(() => (s.value.problem === 'reset' ? 'Set up again…' : 'Reconnect…'));
   // Rows that couldn't be sent while everything else synced: Sync details says which and why.
   const unsent = computed(() => {
     const n = s.value.unsent || 0;
@@ -92,5 +97,5 @@ export function useSyncRun() {
     syncNow();
   }
 
-  return { s, now, holding, ago, lastSynced, serverRow, failed, unsent, syncNow, again };
+  return { s, now, holding, ago, lastSynced, serverRow, failed, setUpAgain, unsent, syncNow, again };
 }

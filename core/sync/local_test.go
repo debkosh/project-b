@@ -159,15 +159,23 @@ func TestAServerResetIsRefilledFromTheRows(t *testing.T) {
 	a.main(func() { a.bookmarks.Add("Kept too", "https://example.net/") })
 	a.settle()
 	ra, la := replicaOf(t, a, s, "tok", key)
+	// The bucket's sealed copy of the key: a device refills only a bucket that still has it.
+	copy, err := key.SealedCopy("pass phrase", "Passphrase")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ra.Put(copy); err != nil {
+		t.Fatal(err)
+	}
 	handOver(t, a, ra, la)
 	syncNow(t, ra)
 
-	s.reset()
-	if n := len(s.items("tok")); n != 0 {
-		t.Fatalf("the server kept %d items", n)
+	s.loseAllButTheKey("tok")
+	if n := len(s.items("tok")); n != 1 {
+		t.Fatalf("the server kept %d items, want the key's copy alone", n)
 	}
 	syncNow(t, ra)
-	if n := len(s.items("tok")); n != 2 {
+	if n := len(s.items("tok")); n != 3 {
 		t.Fatalf("the server has %d items after the refill", n)
 	}
 	c := newProfile(t)

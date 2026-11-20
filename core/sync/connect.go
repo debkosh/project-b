@@ -89,7 +89,7 @@ func (m *Manager) Inspect(address, token string, answer func(isNew bool, err err
 	go func() {
 		ctx, cancel := context.WithTimeout(m.ctx, time.Minute)
 		defer cancel()
-		p, err := (&client.Client{URL: address, Token: token, HTTP: m.http}).Pull(ctx, "", 0, 1)
+		p, err := (&client.Client{URL: address, Token: token, HTTP: m.http}).Pull(ctx, synckosh.Filter{}, 0, 1)
 		m.post(func() { answer(err == nil && len(p.Items) == 0, err) })
 	}()
 }
@@ -125,6 +125,16 @@ func (m *Manager) connect(address, token, passphrase string) error {
 	if err := m.keys.Check(); err != nil {
 		return lockedError(err)
 	}
+	key, err := m.bucketKey(address, token, passphrase)
+	if err != nil {
+		return err
+	}
+	return m.begin(address, token, key)
+}
+
+// bucketKey is the bucket's sync key: made, with a copy sealed under the passphrase, when the
+// bucket is empty, or opened from its copy with the passphrase when it holds items.
+func (m *Manager) bucketKey(address, token, passphrase string) (*synckosh.DataKey, error) {
 	ctx, cancel := context.WithTimeout(m.ctx, time.Minute)
 	defer cancel()
 	c := &client.Client{URL: address, Token: token, HTTP: m.http}
@@ -132,10 +142,58 @@ func (m *Manager) connect(address, token, passphrase string) error {
 	if errors.Is(err, client.ErrHasKey) {
 		key, err = client.Join(ctx, c, passphrase)
 	}
-	if err != nil {
-		return err
+	return key, err
+}
+
+// InspectAgain is Inspect of the bucket sync is on with, for a device whose bucket was reset
+// (Problem "reset"): the address and the token are the ones it holds.
+func (m *Manager) InspectAgain(answer func(isNew bool, err error)) {
+	m.ops <- func() {
+		c := m.conn
+		if c == nil {
+			m.post(func() { answer(false, errors.New("sync: off")) })
+			return
+		}
+		address, token := c.address, c.token
+		go func() {
+			ctx, cancel := context.WithTimeout(m.ctx, time.Minute)
+			defer cancel()
+			p, err := (&client.Client{URL: address, Token: token, HTTP: m.http}).Pull(ctx, synckosh.Filter{}, 0, 1)
+			m.post(func() { answer(err == nil && len(p.Items) == 0, err) })
+		}()
 	}
-	return m.begin(address, token, key)
+}
+
+// ConnectAgain sets sync up again with the bucket it is on with, after the bucket was reset:
+// the bucket's key is made or opened with the passphrase first, and only then does the device
+// forget what it kept of sync and begin anew, so a wrong passphrase changes nothing. Every
+// row stays, and is handed over again.
+func (m *Manager) ConnectAgain(passphrase string, done func(error)) {
+	if passphrase == "" {
+		done(errors.New("sync: a passphrase is needed"))
+		return
+	}
+	m.ops <- func() {
+		err := func() error {
+			c := m.conn
+			if c == nil {
+				return errors.New("sync: off")
+			}
+			address, token := c.address, c.token
+			key, err := m.bucketKey(address, token, passphrase)
+			if err != nil {
+				return err
+			}
+			if err := m.end(); err != nil {
+				return err
+			}
+			return m.begin(address, token, key)
+		}()
+		m.post(func() { done(err) })
+		if err == nil {
+			m.run(WhyOn)
+		}
+	}
 }
 
 // ChangePassphrase puts a copy of the sync key sealed under passphrase and deletes the
@@ -162,13 +220,13 @@ func (m *Manager) ChangePassphrase(passphrase string, done func(error)) {
 		if err != nil {
 			return err
 		}
-		copies, err := c.replica.Items(synckosh.KeysCollection)
+		copies, err := c.replica.Items(synckosh.LibraryCollection)
 		if err != nil {
 			return err
 		}
 		for _, it := range copies {
-			if it.GUID != put[0].GUID {
-				if err := c.replica.Delete(synckosh.KeysCollection, it.GUID); err != nil {
+			if it.Datatype == synckosh.SealedKeyDatatype && it.GUID != put[0].GUID {
+				if err := c.replica.Delete(synckosh.LibraryCollection, it.GUID); err != nil {
 					return err
 				}
 			}

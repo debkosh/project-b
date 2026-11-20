@@ -98,6 +98,24 @@ func (s *testServer) reset() {
 	}))
 }
 
+// loseAllButTheKey gives the server a new store that holds only the bucket's sealed copies of
+// the sync key, as a restore from a backup that kept the key and lost what came after.
+func (s *testServer) loseAllButTheKey(token string) {
+	var keys []synckosh.Item
+	for _, it := range s.items(token) {
+		if it.Collection == synckosh.LibraryCollection && it.Datatype == synckosh.SealedKeyDatatype {
+			keys = append(keys, it)
+		}
+	}
+	s.reset()
+	s.mu.Lock()
+	data := s.data
+	s.mu.Unlock()
+	if err := data.Update("bucket-"+token, func(tx server.Tx) error { return tx.Put(keys) }); err != nil {
+		s.t.Fatal(err)
+	}
+}
+
 // hold holds every request until the release it returns, or the test's end.
 func (s *testServer) hold() (release func()) { return s.holdAfter(0) }
 
@@ -151,7 +169,7 @@ func (s *testServer) items(token string) []synckosh.Item {
 	data := s.data
 	s.mu.Unlock()
 	var out []synckosh.Item
-	if err := data.Since("bucket-"+token, "", 0, func(it synckosh.Item) bool { out = append(out, it); return true }); err != nil {
+	if err := data.Since("bucket-"+token, synckosh.Filter{}, 0, func(it synckosh.Item) bool { out = append(out, it); return true }); err != nil {
 		s.t.Fatal(err)
 	}
 	return out
