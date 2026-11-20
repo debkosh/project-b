@@ -30,7 +30,9 @@ state, what syncs with its counts, what waits to go out, and the runs since the 
   `within` says is reached from the Sync block), with Back to the section that holds Sync.
 - **The head:** Back and the title. No action of its own.
 - **The state,** the first card's first row, with the Sync card's own control: "Sync is on",
-  "After a change here, and every 5 minutes", Sync now; a run a person asked for reads
+  "After a change here, and every 5 minutes", Sync now; with rows that couldn't be sent, its
+  line reads "1 item couldn't be sent: the rest is synced" in `--danger`, and the Sync card's
+  row "1 item couldn't be sent · Last synced just now"; a run a person asked for reads
   "Syncing…" at once with Sync now disabled, and Cancel and Retry after a second; a failed one
   reads what it was in `--danger`, "Couldn't reach the server", "The server answered with an
   error", "Stopped: nothing arrived for 30 seconds" or "Couldn't sync"
@@ -51,7 +53,8 @@ state, what syncs with its counts, what waits to go out, and the runs since the 
 - **Waiting to send,** the queue: what changed here and hasn't gone out, with its kind, its
   name, a bookmark's title, a history or typed address's address without its "https://" (any other
   scheme stays), a passkey's site, read from its row, and since when (nothing, in the seconds before sync has looked at it). A delete has no row left to name it: "One deleted here"; history cleared is "Everything
-  cleared here". Three columns on a desktop;
+  cleared here". A row sync couldn't send says "Couldn't be sent" in `--danger` where its
+  time would be, with the error's own words under it, in monospace. Three columns on a desktop;
   on a phone the name, and under it "History · since 14:33", or "Bookmark · deleted · since
   14:35". Twenty at most, then "and 180 more". Empty: "Nothing is waiting".
 - **Runs since the app started,** newest first. A row: when, why, what it did, how long, and a chevron
@@ -67,6 +70,9 @@ state, what syncs with its counts, what waits to go out, and the runs since the 
     open: `GET v1/pull?after=1: 400 Bad Request: …`. His words, 2026-11-20, after a failed
     sync the card called out of reach: "the sync details page was supposed to reveal these
     kind of debug information only".
+  - What it couldn't do comes after what it did, and colours the row `--danger`: "Sent 2, 1
+    couldn't be sent", "1 couldn't be sent", "Received 3, 1 not taken". The run still counts:
+    everything else synced.
   - How long: "180 ms", "2.1 s"; nothing for a row of several.
   - **A run sync started itself that moved nothing and ended as the one before it, started
     the same way, joins that one's row:** "Scheduled, 18 times", "Today, 13:02 to 14:27". One
@@ -84,6 +90,9 @@ state, what syncs with its counts, what waits to go out, and the runs since the 
     another device", "One deleted here", and "Everything cleared on another device" for history
     cleared there. Twenty each way at most, then "and 8,719 more: 212
     bookmarks, 8,411 history, 96 typed addresses".
+  - "Couldn't be sent 1" and "Not taken from the server 1": each row by its kind and name,
+    with the error's own words under it. Not sent: one sync set aside as it couldn't hand it
+    over, or one the server refused. Not taken: an item of the server's this device refused.
   - Its requests, in monospace, under "2 requests · 612 B sent · 2.1 KB received": the time,
     GET pull or POST push, the status or "no answer", the size both ways, how long. Twenty at
     most, then "and 3 more". Sizes are the app's own (`ui/size.js`).
@@ -152,5 +161,6 @@ Sync now, Cancel, Retry, Try again and Reconnect… are the Sync card's own mess
   words under its row and no token in them; what went wrong on the state's card; a run going
   on as the first row, counting, and saying which request it waits on; a page visited
   while the server is out of reach waiting in the queue by its address, then going with Try
-  again, the run naming it; Sync now from the page; Back. Its pictures are 24, 25, 26 and 30 under
+  again, the run naming it; Sync now from the page; a row too big to send counted on the state
+  and the card, named in the queue and in the run that set it aside, each with why; Back. Its pictures are 24, 25, 26 and 30 under
   `build/sync-screens/`.

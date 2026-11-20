@@ -80,6 +80,11 @@ export function useSyncRun() {
     return 'synced';
   });
   const failed = computed(() => failedAs(s.value.problem));
+  // Rows that couldn't be sent while everything else synced: Sync details says which and why.
+  const unsent = computed(() => {
+    const n = s.value.unsent || 0;
+    return n ? `${n.toLocaleString('en-US')} ${n === 1 ? 'item' : 'items'} couldn't be sent` : '';
+  });
 
   // Retry, and Try again after a run with nothing back, start the run again.
   function again() {
@@ -87,5 +92,5 @@ export function useSyncRun() {
     syncNow();
   }
 
-  return { s, now, holding, ago, lastSynced, serverRow, failed, syncNow, again };
+  return { s, now, holding, ago, lastSynced, serverRow, failed, unsent, syncNow, again };
 }
