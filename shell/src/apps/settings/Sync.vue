@@ -402,7 +402,7 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
         <Row v-if="s.problem !== 'reset'" label="Change sync passphrase" hint="A device you add then asks for the new one" :words="words">
           <button type="button" class="text-button" @click="change">Change…</button>
         </Row>
-        <Row label="Turn off sync" hint="Keeps everything here and on the server" :words="words">
+        <Row label="Turn off sync" :hint="s.problem === 'reset' ? 'Keeps everything here' : 'Keeps everything here and on the server'" :words="words">
           <button type="button" class="text-button" @click="turnOff">Turn off…</button>
         </Row>
       </template>

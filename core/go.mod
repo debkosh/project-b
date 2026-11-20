@@ -13,7 +13,7 @@ require github.com/sudiptadeb/gulal v0.3.0
 
 require (
 	github.com/mattn/go-sqlite3 v1.14.53
-	github.com/sudiptadeb/synckosh v0.0.0-20261120100715-7dc01c3805f4
+	github.com/sudiptadeb/synckosh v0.2.0
 	golang.org/x/crypto v0.59.0
 	rsc.io/qr v0.2.0
 )
