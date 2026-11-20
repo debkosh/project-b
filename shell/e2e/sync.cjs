@@ -376,6 +376,31 @@ const taken = [];
   check('Sync now here says Syncing… at once, the button disabled', (await until(async () => (await stateRow().innerText()).includes('Syncing…'), 500)) && (await button('Sync now', details()).isDisabled()));
   check('and sends syncNow, and syncs', (await told) && await until(async () => (await requests()) > n));
   check('and the page asks again, so the run shows', await until(async () => (await stateRow().innerText()).includes('After a change here') && (await runRows().count()) === runsBefore + 1 && (await runRows().first().innerText()).includes('Sync now'), 5000), await details().locator('.runs').innerText());
+  // A row sync can't send is set aside, with why, and everything else syncs: the state
+  // counts it, the queue names it, and the run that set it aside says so.
+  await lib.fire('bigBookmark', 'add');
+  check("a row that can't be sent is counted on the state, in --danger, while the rest is synced", await until(async () => (await stateRow().innerText()).includes("1 item couldn't be sent: the rest is synced"), 20000) &&
+    (await stateRow().locator('.err').count()) === 1 && (await button('Sync now', details()).isVisible()), await stateRow().innerText());
+  const stuckText = async () => (await queue().innerText()).replace(/\s+/g, ' ');
+  check("the queue names it, says it couldn't be sent, and why under it", /Too big to send/.test(await stuckText()) && /couldn't be sent/i.test(await stuckText()) &&
+    (await queue().locator('.said.words').innerText()).length > 10 && !(await stuckText()).includes(token), await stuckText());
+  const setAside = details().locator('.runs .run', { hasText: /couldn't be sent/i }).first();
+  check("the run that set it aside says 1 couldn't be sent, in --danger", (await setAside.count()) === 1 && (await setAside.locator('.err').count()) >= 1, await details().locator('.runs').innerText());
+  await setAside.click();
+  check('and opens to it by name, with why', /Couldn't be sent 1/.test((await panel().innerText()).replace(/\s+/g, ' ')) && (await panel().innerText()).includes('Too big to send') && (await panel().locator('.aside .said.words').innerText()).length > 10, await panel().innerText());
+  await details().locator('.queue').evaluate((e) => e.scrollIntoView({ block: 'start' }));
+  await shot(32, 'details-unsent');
+  await setAside.click();
+  await page.getByRole('button', { name: /^Back to / }).click();
+  check("the card's row says so too, before when it last synced, with Sync now still there", await until(async () => /1 item couldn't be sent · Last synced/.test((await serverRow().innerText()).replace(/\s+/g, ' '))) &&
+    (await serverRow().locator('.err').count()) === 1 && (await button('Sync now', card()).isVisible()), await serverRow().innerText());
+  await shot(33, 'unsent');
+  // The row gone, nothing is left to say.
+  await lib.fire('bigBookmark', 'remove');
+  check('once the row is gone the card says only when it last synced', await until(async () => !(await serverRow().innerText()).includes("couldn't be sent") && (await serverRow().innerText()).includes('Last synced'), 30000), await serverRow().innerText());
+  await card().getByRole('button', { name: 'Sync details' }).click();
+  await until(() => shown(details()));
+
   // Back goes to the section that holds Sync.
   await page.getByRole('button', { name: /^Back to / }).click();
   check('Back goes to Sync\'s card', await shown(card()) && (await details().count()) === 0);

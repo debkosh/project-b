@@ -25,7 +25,7 @@ const TOKEN_PLACEHOLDER = 'Only if your server gave you one';
 const MIN = 12;
 
 // The server's row says of a run what Sync details' state row says, and offers the same.
-const { s, holding, lastSynced, serverRow, failed, syncNow, again } = useSyncRun();
+const { s, holding, lastSynced, serverRow, failed, unsent, syncNow, again } = useSyncRun();
 
 // The server's mark: its letter on its tile, as a site's.
 const tints = useTints();
@@ -374,7 +374,9 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
             <template v-else-if="serverRow === 'failed'"
               ><span class="err">{{ failed }}</span><template v-if="s.lastSynced"> · {{ lastSynced }}</template></template
             >
-            <template v-else>{{ lastSynced }}</template>
+            <template v-else
+              ><template v-if="unsent"><span class="err">{{ unsent }}</span> · </template>{{ lastSynced }}</template
+            >
           </template>
           <span v-if="serverRow === 'syncing' && !holding" class="ctl">
             <button type="button" class="text-button quiet" @click="send({ t: 'syncCancel' })">Cancel</button>

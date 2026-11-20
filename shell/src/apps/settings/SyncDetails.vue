@@ -12,7 +12,7 @@ import { failedAs, useSyncRun } from './syncRun.js';
 // nothing for it, so the page asks, and asks again as things change.
 
 const go = inject('settingsGo');
-const { s, now, holding, ago, serverRow, failed, syncNow, again } = useSyncRun();
+const { s, now, holding, ago, serverRow, failed, unsent, syncNow, again } = useSyncRun();
 const d = computed(() => state.syncDetails);
 
 // Asked as the page opens, whenever the status changes (a run began or ended), every ten
@@ -75,7 +75,7 @@ const lasted = (ms) => {
 const stateLabel = computed(() => (serverRow.value === 'signedOut' || serverRow.value === 'failed' ? failed.value : 'Sync is on'));
 const stateLine = computed(() => {
   if (serverRow.value === 'syncing') return 'Syncing…';
-  if (serverRow.value === 'synced') return 'After a change here, and every 5 minutes';
+  if (serverRow.value === 'synced') return unsent.value ? `${unsent.value}: the rest is synced` : 'After a change here, and every 5 minutes';
   if (serverRow.value === 'signedOut') return '';
   const min = d.value?.next ? Math.ceil((d.value.next - now.value) / 60000) : 0;
   return min > 0 ? `Trying again in ${min} ${min === 1 ? 'minute' : 'minutes'}` : '';
@@ -95,8 +95,10 @@ const waiting = computed(() =>
     kind: ONE[w.collection] || w.collection,
     name: w.all ? 'Everything cleared here' : w.deleted ? 'One deleted here' : plain(w.name),
     gone: w.deleted,
-    line: [ONE[w.collection] || w.collection, w.deleted && !w.all ? 'deleted' : '', w.since ? `since ${clock(w.since)}` : ''].filter((x) => x).join(' · '),
+    line: [ONE[w.collection] || w.collection, w.deleted && !w.all ? 'deleted' : '', w.error ? "couldn't be sent" : w.since ? `since ${clock(w.since)}` : ''].filter((x) => x).join(' · '),
     since: w.since ? `Since ${clock(w.since)}` : '',
+    // One sync couldn't send: set aside, with the error's own words under it.
+    stuck: w.error || '',
   })),
 );
 
@@ -107,11 +109,18 @@ function did(r) {
   if (r.error) return failedAs(r.problem);
   const got = sum(r.received);
   const went = sum(r.sent);
-  if (got && went) return `Received ${count(got)}, sent ${count(went)}`;
-  if (got) return `Received ${count(got)}`;
-  if (went) return `Sent ${count(went)}`;
-  return 'Nothing new';
+  // What it couldn't send, or didn't take, comes after what it did.
+  const left = [
+    (r.unsent || []).length ? `${count(r.unsent.length)} couldn't be sent` : '',
+    (r.untaken || []).length ? `${count(r.untaken.length)} not taken` : '',
+  ].filter((x) => x);
+  const moved = got && went ? `Received ${count(got)}, sent ${count(went)}` : got ? `Received ${count(got)}` : went ? `Sent ${count(went)}` : '';
+  if (left.length) return [moved, ...left].filter((x) => x).join(', ').replace(/^./, (c) => c.toUpperCase());
+  return moved || 'Nothing new';
 }
+// The rows a run couldn't send, or the server's it didn't take, each with why.
+const aside = (items, here) =>
+  (items || []).map((it) => ({ kind: ONE[it.collection] || it.collection, name: it.deleted ? `One deleted ${here ? 'here' : 'on another device'}` : plain(it.name || ''), gone: it.deleted, why: it.error }));
 // What a run moved one way: its named items, then how many more, by kind when of several.
 function moved(counts, items, here) {
   const total = sum(counts);
@@ -165,7 +174,7 @@ const runs = computed(() => {
       did: result,
       // Only an error is coloured; the text's own colour is for a run that moved something.
       quiet: !r.error && (r.cut || result === 'Nothing new'),
-      bad: !!r.error,
+      bad: !!r.error || !!(r.unsent || []).length || !!(r.untaken || []).length,
       took: several ? '' : took(r.took),
       // A failed run's own words, under its row, with nothing to open.
       said: r.error || '',
@@ -174,6 +183,8 @@ const runs = computed(() => {
         several: several ? `Each of the ${count(r.times)} ended the same way, the last at ${clock(r.last)}` : '',
         received: sum(r.received) || sum(r.sent) ? moved(r.received, r.receivedItems, false) : null,
         sent: sum(r.received) || sum(r.sent) ? moved(r.sent, r.sentItems, true) : null,
+        unsent: aside(r.unsent, true),
+        untaken: aside(r.untaken, false),
         requestsHead: unanswered ? '1 request, no answer' : `${requestCount(r.requestCount)} · ${size(r.out)} sent · ${size(r.in)} received`,
         requests,
         moreRequests: r.requestCount > requests.length ? `and ${count(r.requestCount - requests.length)} more` : '',
@@ -194,7 +205,9 @@ const toggle = (id) => (opened.value = opened.value === id ? '' : id);
     <template v-else>
       <div class="card">
         <Row :label="stateLabel" :class="{ bad: serverRow === 'signedOut' || serverRow === 'failed' }" class="state">
-          <template v-if="stateLine" #hint>{{ stateLine }}</template>
+          <template v-if="stateLine" #hint
+            ><span :class="{ err: serverRow === 'synced' && unsent }">{{ stateLine }}</span></template
+          >
           <span v-if="serverRow === 'syncing' && !holding" class="ctl">
             <button type="button" class="text-button quiet" @click="send({ t: 'syncCancel' })">Cancel</button>
             <button type="button" class="text-button quiet apart" @click="again">Retry</button>
@@ -267,14 +280,16 @@ const toggle = (id) => (opened.value = opened.value === id ? '' : id);
           <div v-if="phone" class="row wait">
             <span class="label"
               ><span class="one-line plain" :class="{ mut: w.gone }">{{ w.name }}</span
-              ><span class="secondary">{{ w.line }}</span></span
+              ><span class="secondary" :class="{ err: w.stuck }">{{ w.line }}</span></span
             >
           </div>
           <div v-else class="row wait">
             <span class="k">{{ w.kind }}</span>
             <span class="label one-line plain" :class="{ mut: w.gone }" :title="w.name">{{ w.name }}</span>
-            <span class="val mut">{{ w.since }}</span>
+            <span v-if="w.stuck" class="val err">Couldn't be sent</span>
+            <span v-else class="val mut">{{ w.since }}</span>
           </div>
+          <div v-if="w.stuck" class="said under words">{{ w.stuck }}</div>
         </template>
         <div v-if="d?.waitingMore" class="row"><span class="label none">and {{ count(d.waitingMore) }} more</span></div>
       </div>
@@ -306,6 +321,15 @@ const toggle = (id) => (opened.value = opened.value === id ? '' : id);
                 <div v-if="side.m.more" class="more">{{ side.m.more }}</div>
                 <div v-if="!side.m.total" class="more">Nothing</div>
               </div>
+            </div>
+            <div v-for="side in [{ name: 'Couldn\'t be sent', rows: r.panel.unsent || [] }, { name: 'Not taken from the server', rows: r.panel.untaken || [] }].filter((x) => x.rows.length)" :key="side.name" class="aside">
+              <h3>{{ side.name }} {{ count(side.rows.length) }}</h3>
+              <template v-for="(it, i) in side.rows" :key="i">
+                <div class="it">
+                  <span class="k">{{ it.kind }}</span><span class="one-line" :class="{ mut: it.gone }" :title="it.name">{{ it.name }}</span>
+                </div>
+                <div class="said words">{{ it.why }}</div>
+              </template>
             </div>
             <div class="reqs">
               <h3>{{ r.panel.requestsHead }}</h3>
@@ -477,6 +501,7 @@ table.kinds tr > :last-child {
 .run + .run,
 .panel + .run,
 .said + .run,
+.said + .wait,
 .row + .run {
   border-top: 1px solid var(--line);
 }
@@ -561,7 +586,10 @@ table.kinds tr > :last-child {
   line-height: 22px;
 }
 
-.cols + .reqs {
+.cols + .reqs,
+.cols + .aside,
+.aside + .aside,
+.aside + .reqs {
   margin-top: 12px;
 }
 

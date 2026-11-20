@@ -310,6 +310,23 @@ func main() {
 			}
 			return
 		}
+		// A bookmark sync can't send, as it is over what one item may hold: "add" makes it,
+		// "remove" takes it away again. For the row sync sets aside (docs/sync.md).
+		if r.FormValue("kind") == "bigBookmark" {
+			big := "https://example.com/" + strings.Repeat("x", 2<<20)
+			gone := r.FormValue("value") == "remove"
+			e.Post(func() {
+				if a == nil {
+					return
+				}
+				if gone {
+					a.Bookmarks.RemoveURL(big)
+				} else {
+					a.Bookmarks.Add("Too big to send", big)
+				}
+			})
+			return
+		}
 		// Saved logins, as an import brings them: a JSON list of {Origin, Username, Password}.
 		if r.FormValue("kind") == "logins" {
 			var logins []browserdata.Login
