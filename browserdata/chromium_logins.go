@@ -60,7 +60,7 @@ func chromiumLogins(dir string, k kind, keys Keys) ([]Login, error) {
 	if len(rows) == 0 {
 		return nil, nil
 	}
-	key, err := chromiumKey(k, keys)
+	key, err := chromiumKey(dir, k, keys)
 	if err != nil {
 		return nil, err
 	}
@@ -83,18 +83,31 @@ func chromiumLogins(dir string, k kind, keys Keys) ([]Login, error) {
 	return out, nil
 }
 
-// chromiumKey is the AES key, from the first of the browser's keychain names the keychain
-// has.
-func chromiumKey(k kind, keys Keys) ([]byte, error) {
+// chromiumKey is the AES key, from keys.Item, or else the first of the browser's keychain
+// names the keychain has: a known browser's own, or for one known by its folder alone the
+// names its folders give, then Chromium's.
+func chromiumKey(dir string, k kind, keys Keys) ([]byte, error) {
 	if keys.Secret == nil {
 		return nil, ErrNoSecret
 	}
-	names := k.keychain
-	if len(names) == 0 {
-		names = []string{"Chromium"}
+	items := []KeychainItem{keys.Item}
+	if keys.Item.Service == "" {
+		items = nil
+		names := k.keychain
+		if k.id == OtherChromium {
+			for _, f := range chromiumFolderNames(dir) {
+				names = append(names, namesOf(f)...)
+			}
+		}
+		if len(k.keychain) == 0 {
+			names = append(names, "Chromium")
+		}
+		for _, name := range names {
+			items = append(items, KeychainItem{Service: name + safeStorage, Account: name})
+		}
 	}
-	for _, name := range names {
-		secret, err := keys.Secret(name+" Safe Storage", name)
+	for _, i := range items {
+		secret, err := keys.Secret(i.Service, i.Account)
 		if err != nil || len(secret) == 0 {
 			continue
 		}
