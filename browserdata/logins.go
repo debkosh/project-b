@@ -18,9 +18,12 @@ type Login struct {
 
 // Keys is what unlocks a profile's saved passwords. Secret reads a Chromium browser's
 // "<name> Safe Storage" from the login keychain, which macOS asks the person about
-// (KeychainSecret); PrimaryPassword is Firefox's, "" when none is set.
+// (KeychainSecret); Item, when set, is the one item to read, as SafeStorage found it or
+// the person chose it, in place of the names the browser goes by. PrimaryPassword is
+// Firefox's, "" when none is set.
 type Keys struct {
 	Secret          func(service, account string) ([]byte, error)
+	Item            KeychainItem
 	PrimaryPassword string
 }
 

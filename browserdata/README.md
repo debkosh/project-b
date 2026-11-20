@@ -48,9 +48,11 @@ for _, b := range browserdata.Find(home) {        // the browsers with a profile
   neither is `ErrNoBrowser`.
 - **Passwords:** `p.Logins(Keys{Secret: KeychainSecret, PrimaryPassword: ""})`. A Chromium
   browser's come from Login Data (and Login Data For Account), "v10" AES-128-CBC, the key
-  from the keychain's "<name> Safe Storage", which macOS asks the person about. A Firefox
-  one's from logins.json, NSS-sealed with key4.db's key under the primary password
-  (`HasPrimaryPassword`, `ErrPrimaryPassword`). `Counts.Passwords` counts them unlocked.
+  from the keychain's "<name> Safe Storage", which macOS asks the person about. For a
+  browser known only by its folder, `KeychainItems` lists those items without asking,
+  `p.SafeStorage(items)` says which is its by the folder's name, or which to ask the person
+  about, and `Keys.Item` reads that one. A Firefox one's from logins.json, NSS-sealed with
+  key4.db's key under the primary password (`HasPrimaryPassword`, `ErrPrimaryPassword`). `Counts.Passwords` counts them unlocked.
 - **Files a person exported:** `ReadBookmarksHTML` (Netscape's bookmark file) and
   `ReadPasswordsCSV` (Chrome's, Firefox's or the Passwords app's columns).
 - Extensions are a Chromium profile's, those its person installed: what the browser, an
