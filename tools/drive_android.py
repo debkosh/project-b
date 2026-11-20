@@ -473,6 +473,9 @@ def page_top():
 
 def launch(block=""):
     adb("shell", "am", "force-stop", PACKAGE)
+    # A notification shade left pulled down, by a person or a probe, covers the app and takes
+    # every touch: emu-37's whole run failed at its first step so, 2026-11-21.
+    adb("shell", "cmd", "statusbar", "collapse")
     # Android takes the app zygote down a few seconds after a force stop. A start inside that window
     # reused the dying zygote once and hung for good, so wait it out. Killing it ourselves is worse:
     # the system never makes another, and no renderer starts.
