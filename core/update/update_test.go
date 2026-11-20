@@ -114,7 +114,7 @@ func (o *opened) list() []string {
 func manager(t *testing.T, dir, running, releases string, o *opened) *Manager {
 	t.Helper()
 	cfg := Config{Project: "project-b", Version: running, Releases: releases, AutoUpdate: true, StateDir: dir,
-		Installer: func(func()) appupdate.Installer {
+		Installer: func(func(func()), func()) appupdate.Installer {
 			return appupdate.File{Dir: dir, Open: func(f string) error {
 				o.mu.Lock()
 				defer o.mu.Unlock()

@@ -67,7 +67,7 @@ func updateConfig(c profiles.Choice) update.Config {
 	installer := func(quit func()) *macapp.Installer {
 		return &macapp.Installer{App: bundle, StateDir: cfg.StateDir, Requirement: macapp.SignedBy(signingLeafSHA1), Copies: copies, Quit: quit}
 	}
-	cfg.Installer = func(quit func()) appupdate.Installer { return installer(quit) }
+	cfg.Installer = func(_ func(func()), quit func()) appupdate.Installer { return installer(quit) }
 	cfg.Settle = func(cl *amarit.Client) (bool, error) { return installer(nil).Settle(cl) }
 	cfg.Present = func(u *appupdate.Updater) {
 		macapp.Present(u, macapp.Words{Ready: "%s %s is ready", Body: "Relaunch to update.", Relaunch: "Relaunch"})

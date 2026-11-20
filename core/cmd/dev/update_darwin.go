@@ -13,7 +13,7 @@ import (
 func devUpdate(version, releases, dir, app string) update.Config {
 	cfg := update.Config{Project: "project-b", Version: version, Releases: releases, StateDir: dir, AutoUpdate: true}
 	if app != "" {
-		cfg.Installer = func(quit func()) appupdate.Installer {
+		cfg.Installer = func(_ func(func()), quit func()) appupdate.Installer {
 			return &macapp.Installer{App: app, StateDir: dir, Quit: quit}
 		}
 	}

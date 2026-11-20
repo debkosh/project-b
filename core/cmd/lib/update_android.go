@@ -36,17 +36,25 @@ func updateConfig(c profiles.Choice) update.Config {
 		Releases:   releaseManifest,
 		AutoUpdate: releaseAutoUpdate,
 		StateDir:   dir,
-		Installer: func(func()) appupdate.Installer {
+		Installer: func(main func(func()), _ func()) appupdate.Installer {
 			return appupdate.File{Dir: dir, Open: func(apk string) error {
-				// The installer ends this process to replace the app, which isn't a crash:
-				// the run counts as stopped cleanly from here. A user who cancels goes on
-				// without crash.log, so a crash later in that run goes unreported.
-				if theApp != nil {
-					theApp.Crash.Stop()
-				}
-				c := C.CString(apk)
-				defer C.free(unsafe.Pointer(c))
-				C.call_install_update(native.calls, c)
+				// On the main thread: amarit opens the release on its own goroutine, and the
+				// engine's call off the main thread ended the app (a Dev build's Install).
+				done := make(chan struct{})
+				main(func() {
+					defer close(done)
+					// The installer ends this process to replace the app, which isn't a
+					// crash: the run counts as stopped cleanly from here. A user who cancels
+					// goes on without crash.log, so a crash later in that run goes
+					// unreported.
+					if theApp != nil {
+						theApp.Crash.Stop()
+					}
+					c := C.CString(apk)
+					defer C.free(unsafe.Pointer(c))
+					C.call_install_update(native.calls, c)
+				})
+				<-done
 				return nil
 			}}
 		},

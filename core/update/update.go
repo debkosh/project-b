@@ -83,9 +83,11 @@ type Config struct {
 	// StateDir is the update folder: the root's, shared by every copy on the root, or for a
 	// copy on a folder named outright, that folder's own.
 	StateDir string
-	// Installer makes the platform's installer, given how to end the app, which it calls
-	// once a bundle is in place. Nil: this build doesn't update.
-	Installer func(quit func()) appupdate.Installer
+	// Installer makes the platform's installer, given how to run a function on the main
+	// thread and how to end the app, which it calls once a bundle is in place. amarit calls an
+	// installer on its own goroutine, and the engine's calls must be made on the main thread.
+	// Nil: this build doesn't update.
+	Installer func(main func(func()), quit func()) appupdate.Installer
 	// Settle, when set, counts this start for the rollback, early: true means the previous
 	// release was put back and started, and this process should end.
 	Settle func(*amarit.Client) (bool, error)
@@ -135,7 +137,7 @@ func New(cfg Config, post func(func()), quit func()) *Manager {
 	}
 	m.u = appupdate.New(appupdate.Config{
 		Client:    c,
-		Installer: cfg.Installer(func() { post(quit) }),
+		Installer: cfg.Installer(post, func() { post(quit) }),
 		Dir:       cfg.StateDir,
 		Interval:  CheckInterval,
 		Logf:      timeline.Infof,

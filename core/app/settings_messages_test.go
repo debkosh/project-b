@@ -158,7 +158,7 @@ func TestSettingsUpdateButtons(t *testing.T) {
 	updates := filepath.Join(dir, "updates")
 	r := startWith(t, app.Config{ProfileDir: dir, Profiles: profiles.New(t.TempDir()), Update: update.Config{
 		Project: "project-b", Version: "0.1.0", Releases: srv.URL, StateDir: updates,
-		Installer: func(func()) appupdate.Installer {
+		Installer: func(func(func()), func()) appupdate.Installer {
 			return appupdate.File{Dir: updates, Open: func(string) error { return nil }}
 		}}})
 	defer r.stop()
