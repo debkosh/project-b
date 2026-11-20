@@ -18,6 +18,9 @@ published is in `docs/releasing.md`; keep it current as the way you work changes
   once with `tools/release.sh dev`; send the orchestrator its DMG and APK links. Stable is cut
   from main with the full run, as above.
 
+- A hotfix runs Go's tests and the mock suite alone, not the desk and Android groups, so
+  several can go out in one release and work stays quick: Sudipta, 2026-11-20, "yes hotfixes
+  skip tests so that we can merge multiple in one release... and keep our development speedy".
 - A branch that changes the phone shell comes with `tools/test.sh android` run in full on
   both emulators, emu-37 and emu-29, said in its handover (roles/feature.md). Refuse it until
   it does.
