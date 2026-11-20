@@ -1,6 +1,7 @@
 package mockengine
 
 import (
+	"encoding/base64"
 	"fmt"
 	"html"
 
@@ -47,8 +48,14 @@ func (e *Engine) CaptureThumbnail(id engine.TabID, maxWidth int) {
 	})
 }
 
-// ThumbnailURL is where the dev server serves a tab's picture (core/cmd/dev).
+// ThumbnailURL is where the dev server serves a tab's picture (core/cmd/dev), or with
+// InlineThumbnails the picture itself, as a data: URL.
 func (e *Engine) ThumbnailURL(tab engine.TabID, revision int64) string {
+	if e.InlineThumbnails {
+		if svg, ok := e.ThumbnailImage(tab); ok {
+			return "data:image/svg+xml;base64," + base64.StdEncoding.EncodeToString(svg)
+		}
+	}
 	return fmt.Sprintf("/mock/thumb/%d?v=%d", tab, revision)
 }
 

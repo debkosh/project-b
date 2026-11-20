@@ -85,6 +85,10 @@ type tab struct {
 // as it does with real content. Each window the app makes is a dev window of its own, the
 // shell at /?window=<id> on the dev server.
 type Engine struct {
+	// InlineThumbnails gives each tab's picture as a data: URL, where no server serves
+	// them: in a web page (core/cmd/webdemo). Set before Run.
+	InlineThumbnails bool
+
 	queue    chan func()
 	listener engine.Listener
 	nextTab  engine.TabID
@@ -686,7 +690,8 @@ func (e *Engine) Edits() []engine.EditCommand {
 //	  by slot, page only for a tab of ours, whose page shows there in place of a mock one,
 //	 "ours":[{"tab":id,"page":"settings"}] our tabs whose page the window holds,
 //	 "regions":[{x,y,w,h,"area":"drag"|"shell"}],
-//	 "frameColor":"#rrggbb", "frameWidth":px, "controls":the window buttons or null,
+//	 "frameColor":"#rrggbb", "frameDark":its colour while the window is dark,
+//	 "frameWidth":px, "controls":the window buttons or null,
 //	 "cornerRadius":px, "popup":the extension popup or null,
 //	 "showRegions":whether to outline every rectangle the window manager tracks}
 //
@@ -730,7 +735,7 @@ func (e *Engine) WindowState(w engine.WindowID) []byte {
 		controls = &s.Controls
 	}
 	b, _ := json.Marshal(map[string]any{"t": "window", "shell": page.Shell(), "pages": pages, "ours": ours, "regions": regions,
-		"frameColor": l.FrameColor, "frameWidth": l.FrameWidth, "controls": controls, "cornerRadius": s.CornerRadius,
+		"frameColor": l.FrameColor, "frameDark": l.FrameDark, "frameWidth": l.FrameWidth, "controls": controls, "cornerRadius": s.CornerRadius,
 		"popup": e.openPopup(w), "showRegions": e.showRegions})
 	return b
 }
