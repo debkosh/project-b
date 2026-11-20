@@ -64,6 +64,7 @@ func main() {
 	block := flag.String("block", "", "comma-separated blocked hosts")
 	browserHome := flag.String("browsers", "", "the home folder whose browsers Import finds, the user's by default")
 	keychain := flag.String("keychain", "", "the secret the login keychain gives for any browser's passwords, in place of the Mac's keychain")
+	keychainItems := flag.String("keychain-items", "", "with -keychain, the comma-separated names whose \"<name> Safe Storage\" items the keychain lists, none by default")
 	passwordStore := flag.Bool("password-store", false, "let passwords come over, into a store that only counts them, until core/passwords is there")
 	skipWelcome := flag.Bool("skip-welcome", false, "a start that would open the welcome notes it finished instead, as its Skip setup does")
 	// The updater runs for real against a manifest when given a version to be, the bundle
@@ -121,14 +122,15 @@ func main() {
 			updates = filepath.Join(list.Root(), "update")
 		}
 		return app.Start(e, app.Config{
-			ProfileDir:   dir,
-			Profiles:     list,
-			Profile:      id,
-			BlockedHosts: strings.Split(*block, ","),
-			SkipWelcome:  *skipWelcome,
-			BrowserHome:  *browserHome,
-			Keychain:     keychainOf(*keychain),
-			System:       sys,
+			ProfileDir:    dir,
+			Profiles:      list,
+			Profile:       id,
+			BlockedHosts:  strings.Split(*block, ","),
+			SkipWelcome:   *skipWelcome,
+			BrowserHome:   *browserHome,
+			Keychain:      keychainOf(*keychain),
+			KeychainItems: keychainItemsOf(*keychain, *keychainItems),
+			System:        sys,
 			Update: update.Config{
 				Project:  "project-b",
 				Version:  *version,

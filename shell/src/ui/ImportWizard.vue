@@ -24,12 +24,16 @@ const folderError = ref('');
 const choosing = ref(false);
 const title = ref(null);
 const primary = ref('');
+const safeStorage = ref('');
 const fileName = ref('');
 const fileKind = ref('');
 
 const profile = computed(() => browser.value?.profiles.find((p) => p.key === key.value) || null);
 const profileTitle = computed(() => (profile.value?.name ? `${browser.value.name} · ${profile.value.name}` : browser.value?.name || ''));
 const run = computed(() => imports.runs[key.value]);
+// A browser known only by its folder whose folder doesn't say which keychain item holds
+// its passwords' key: the person picks one before its passwords can come.
+const keychains = computed(() => (what.value.includes('passwords') && profile.value?.keychains) || []);
 
 // Each view's heading takes the keyboard's focus, so a screen reader reads where it is.
 watch(view, () => nextTick(() => title.value?.focus()));
@@ -37,6 +41,7 @@ watch(view, () => nextTick(() => title.value?.focus()));
 // A profile's choices, ticked but its extensions, which install things.
 function pick(p) {
   key.value = p.key;
+  safeStorage.value = '';
   what.value = choicesOf(p).map((c) => c.id).filter((id) => id !== 'extensions');
 }
 
@@ -80,18 +85,20 @@ watch(
 
 // An import, and its Retry and Cancel while it runs (docs/ux-guide.md): Retry starts the
 // same import over, Go ending the one going on; a Firefox primary password is kept here for
-// it until the person moves on, and kept nowhere else.
+// it until the person moves on, and kept nowhere else, as is the keychain item they chose.
 let lastPrimary = '';
+let lastKeychain = '';
 function bring() {
   asked.value = [...what.value];
   lastPrimary = primary.value;
+  lastKeychain = keychains.value.length ? safeStorage.value : '';
   primary.value = '';
   retry();
   view.value = 'importing';
 }
 function retry() {
   startRun(key.value);
-  props.send({ t: 'import', key: key.value, what: asked.value, primaryPassword: lastPrimary });
+  props.send({ t: 'import', key: key.value, what: asked.value, primaryPassword: lastPrimary, keychain: lastKeychain });
 }
 const cancel = () => props.send({ t: 'cancelImport', key: key.value });
 
@@ -123,6 +130,7 @@ const importingTitle = computed(() => {
 
 function again() {
   lastPrimary = '';
+  lastKeychain = '';
   browser.value = null;
   key.value = null;
   view.value = 'browsers';
@@ -235,9 +243,19 @@ function again() {
         <span class="state">Its passwords are behind it. It is used once, and kept nowhere.</span>
         <input v-model="primary" type="password" autocomplete="off" :aria-label="`${browser.name}'s primary password`" />
       </label>
+      <div v-if="keychains.length" class="safe-storage">
+        <span class="label">{{ browser.name }}'s key in the keychain</span>
+        <span class="state">Its folder doesn't say which of these holds its passwords' key.</span>
+        <div class="list" role="radiogroup" :aria-label="`${browser.name}'s key in the keychain`">
+          <label v-for="k in keychains" :key="k" class="item">
+            <input v-model="safeStorage" type="radio" name="safe-storage" :value="k" />
+            <span class="what"><span class="label">{{ k }}</span></span>
+          </label>
+        </div>
+      </div>
       <div class="buttons">
         <button type="button" class="text-button quiet" @click="view = 'browsers'">Back</button>
-        <button type="button" class="text-button primary" :disabled="!what.length" @click="bring">Import</button>
+        <button type="button" class="text-button primary" :disabled="!what.length || (keychains.length > 0 && !safeStorage)" @click="bring">Import</button>
       </div>
     </template>
 
@@ -403,6 +421,16 @@ function again() {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.ui-import-wizard .safe-storage {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ui-import-wizard .safe-storage .list {
+  margin-top: 4px;
 }
 
 .ui-import-wizard .primary input {

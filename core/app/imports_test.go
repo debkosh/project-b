@@ -389,3 +389,86 @@ func TestAKeychainQuestionDoesNotStall(t *testing.T) {
 		t.Fatalf("after the answer: %v", m)
 	}
 }
+
+// A browser known only by the folder the person chose keeps its passwords' key in the
+// keychain under its own "<name> Safe Storage", which the keychain lists without asking:
+// a folder named Quokka has its key in Quokka's item, read once with nothing to choose; a
+// folder whose name says nothing, Numbat's, shows the items to choose from, and the one
+// the person chose opens its passwords. A choice not among those shown opens nothing.
+func TestAFolderChosenFindsItsSafeStorage(t *testing.T) {
+	home := t.TempDir()
+	chrome := os.DirFS("../../browserdata/testdata/home/Library/Application Support/Google/Chrome")
+	for _, dir := range []string{"Library/Application Support/Bramblewood/Quokka", "Elsewhere/Numbat"} {
+		if err := os.CopyFS(filepath.Join(home, dir), chrome); err != nil {
+			t.Fatal(err)
+		}
+	}
+	dir := t.TempDir()
+	var asked []string
+	keychain := func(service, account string) ([]byte, error) {
+		asked = append(asked, service)
+		if service == "Quokka Safe Storage" && account == "Quokka" || service == "Wombat Safe Storage" && account == "Wombat" {
+			return []byte("test-safe-storage"), nil
+		}
+		return nil, browserdata.ErrNoSecret
+	}
+	items := func() ([]browserdata.KeychainItem, error) {
+		return []browserdata.KeychainItem{{Service: "Chrome Safe Storage", Account: "Chrome"}, {Service: "Quokka Safe Storage", Account: "Quokka"}, {Service: "Wombat Safe Storage", Account: "Wombat"}}, nil
+	}
+	r := startWith(t, app.Config{ProfileDir: dir, Profiles: profiles.New(t.TempDir()), Made: true, BrowserHome: home, Keychain: keychain, KeychainItems: items, Update: update.Config{StateDir: filepath.Join(dir, "updates")}})
+	snap := r.waitFor(func(m map[string]any) bool { return m["t"] == "snapshot" })
+	tab := engine.TabID(snap["welcome"].(float64))
+	got, stop := r.e.PageFeed(tab).Subscribe()
+	defer stop()
+	say := func(msg string) { r.e.Post(func() { r.a.PageMessage(tab, "welcome", []byte(msg)) }) }
+	r.e.Post(func() { r.a.UsePasswordStore(&fakePasswords{saved: map[string]string{}}) })
+	say(`{"t":"ready"}`)
+	next(t, got, "snapshot")
+	personal := func(path string) map[string]any {
+		t.Helper()
+		r.e.Fire(1, 0, "choose", filepath.Join(home, path))
+		say(`{"t":"chooseFolder"}`)
+		b := next(t, got, "folder")["browser"].(map[string]any)
+		for _, p := range profilesOf(b) {
+			if p["name"] == "Personal" {
+				return p
+			}
+		}
+		t.Fatalf("no Personal in %v", b)
+		return nil
+	}
+	passwords := func(key, chosen string) (string, string) {
+		t.Helper()
+		asked = nil
+		b, _ := json.Marshal(map[string]any{"t": "import", "key": key, "what": []string{"passwords"}, "keychain": chosen})
+		say(string(b))
+		for {
+			s := next(t, got, "importStep")
+			if s["state"] == "done" {
+				res, _ := json.Marshal(s["result"])
+				e, _ := s["error"].(string)
+				next(t, got, "imported")
+				return string(res), e
+			}
+		}
+	}
+
+	quokka := personal("Library/Application Support/Bramblewood/Quokka")
+	if quokka["keychains"] != nil {
+		t.Fatalf("Quokka's folder names its item, yet there is a choice: %v", quokka)
+	}
+	if res, err := passwords(quokka["key"].(string), ""); res != `{"added":3,"already":0,"skipped":0}` || err != "" || !slices.Equal(asked, []string{"Quokka Safe Storage"}) {
+		t.Fatalf("Quokka's: %s %q, the keychain asked for %q", res, err, asked)
+	}
+
+	numbat := personal("Elsewhere/Numbat")
+	if choices, _ := json.Marshal(numbat["keychains"]); string(choices) != `["Chrome Safe Storage","Quokka Safe Storage","Wombat Safe Storage"]` {
+		t.Fatalf("Numbat's choices: %s", choices)
+	}
+	if res, err := passwords(numbat["key"].(string), "Wombat Safe Storage"); res != `{"added":0,"already":3,"skipped":0}` || err != "" || !slices.Equal(asked, []string{"Wombat Safe Storage"}) {
+		t.Fatalf("Numbat's, with Wombat's item chosen: %s %q, the keychain asked for %q", res, err, asked)
+	}
+	if _, err := passwords(numbat["key"].(string), "Elsewhere Safe Storage"); err != "the keychain didn't give the browser's key" || slices.Contains(asked, "Elsewhere Safe Storage") {
+		t.Fatalf("Numbat's, with an item not shown: %q, the keychain asked for %q", err, asked)
+	}
+}
