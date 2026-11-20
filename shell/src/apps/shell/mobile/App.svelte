@@ -23,6 +23,7 @@
   import Strip from './Strip.svelte';
   import Switcher from './Switcher.svelte';
   import Toolbar from './Toolbar.svelte';
+  import UpdateBar from './UpdateBar.svelte';
   import { groupOf } from './groups.js';
 
   // The phone's shell: the page, and under it one bar, the address, the tab count and ⋯,
@@ -405,6 +406,7 @@
   </div>
   <div class="bars foot" class:away class:over class:full class:aside bind:offsetHeight={footHeight}>
     <CrashBar />
+    <UpdateBar />
     {#if !top}
       <div class="tool">
         <Toolbar {tab} count={go.tabs.length} {sheet} {onsheet} onswipe={swipe} onedit={(on) => (editing = on)} onclose={(id) => closeTabs([id])} bind:address />

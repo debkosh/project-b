@@ -659,11 +659,9 @@ const stopServer = lib.stop;
   execFileSync('ditto', ['-c', '-k', '--keepParent', fakeApp(path.join(releases, 'new'), '0.2.0'), zip]);
   const good = fs.readFileSync(zip);
   let served = good;
-  // On a port of its own, read once it listens. The first download stops half-way and stays
-  // so, as one does across the Mac's sleep, until the test ends.
+  // On a port of its own, read once it listens.
   let releasePort = 0;
   let assets = 0;
-  const held = [];
   const releaseServer = http.createServer((req, res) => {
     if (req.url === '/releases.json') {
       res.end(JSON.stringify({ spec: 1, project: 'project-b', published: '2026-11-09T00:00:00Z', channels: { stable: '0.2.0' },
@@ -673,14 +671,13 @@ const stopServer = lib.stop;
       const body = served;
       res.writeHead(200, { 'Content-Length': body.length });
       res.write(body.subarray(0, body.length >> 1));
-      if (assets++ === 0) held.push(res);
-      else setTimeout(() => res.end(body.subarray(body.length >> 1)), 1500);
+      assets++;
+      setTimeout(() => res.end(body.subarray(body.length >> 1)), 1500);
     }
   });
   await new Promise((r) => releaseServer.listen(0, '127.0.0.1', r));
   releasePort = releaseServer.address().port;
   const updateArgs = () => ['-version=0.1.0', `-releases=http://127.0.0.1:${releasePort}/releases.json`, `-app=${path.join(installed, 'Project B.app')}`];
-  const bubble = ui.locator('.update');
 
   fs.rmSync(installed, { recursive: true, force: true });
   fakeApp(installed, '0.1.0');
@@ -689,41 +686,31 @@ const stopServer = lib.stop;
   await page.goto(base + '/');
   errors.length = 0;
   await openFromBox('example.com/update', 'https://example.com/update');
-  // Stuck half-way: Retry and Cancel are there while it runs, and Retry fetches it again.
-  await ui.getByText(/Downloading Project B 0\.2\.0… [1-9]\d?%/).waitFor({ timeout: 10000 });
-  check('a download shows Retry and Cancel while it runs',
-    (await bubble.getByRole('button', { name: 'Retry' }).isVisible()) && (await bubble.getByRole('button', { name: 'Cancel' }).isVisible()));
-  await settle(page);
-  await page.screenshot({ path: path.join(out, '7-update-stuck.png') });
-  await bubble.getByRole('button', { name: 'Retry' }).click();
-  check('Retry fetches the release again', await until(() => assets === 2), String(assets));
-  await ui.getByText(/Downloading Project B 0\.2\.0… [1-9]\d?%/).waitFor({ timeout: 10000 });
-  await settle(page);
-  const progress = Number(await ui.getByRole('progressbar', { name: 'Update download' }).getAttribute('aria-valuenow'));
-  check('the bubble shows how much of the release has arrived', progress > 0 && progress < 100, String(progress));
-  await page.screenshot({ path: path.join(out, '7-update-downloading.png') });
-  r = await regions();
-  let bb = await bubble.boundingBox();
-  check('the download shows as a bubble in the page\'s bottom-left corner', bb.x === r.bounds.x && bb.y + bb.height === r.bounds.y + r.bounds.h, JSON.stringify({ bb, bounds: r.bounds }));
-  check('the bubble takes no layout space', JSON.stringify(r.bounds) === pageBounds, JSON.stringify(r.bounds));
-  check('the bubble is shell, so its click does not reach the page', r.regions.some((g) => g.x === bb.x && g.y === bb.y) && (await regions({ x: bb.x + 10, y: bb.y + 10 })).hit === 'shell', JSON.stringify(r.regions));
-  check('just above the bubble is still the page', (await regions({ x: bb.x + 10, y: bb.y - 10 })).hit === 'page');
-  const relaunch = ui.getByRole('button', { name: /Relaunch to update/ });
-  await relaunch.waitFor({ timeout: 10000 });
+  // A ready release says so once, in a card over the page's bottom-left corner; Standard has
+  // no bubble of its own while it downloads, which Settings' About shows (docs/updates.md).
+  const notice = ui.getByRole('dialog', { name: 'Update ready' });
+  await notice.waitFor({ timeout: 15000 });
   await settle(page);
   await page.screenshot({ path: path.join(out, '8-update-ready.png') });
-  check('the bubble offers relaunch once the release is checked and staged', /0\.2\.0 is ready/.test(await bubble.innerText()), await bubble.innerText());
+  check('a ready release shows its notice, with Relaunch', (await notice.innerText()).includes('Project B 0.2.0 is ready') && (await notice.getByRole('button', { name: 'Relaunch' }).isVisible()));
+  check('the release was fetched once', assets === 1, String(assets));
   check('the installed app is untouched until relaunch', version(path.join(installed, 'Project B.app')) === '0.1.0');
+  r = await regions();
+  let bb = await notice.boundingBox();
+  check('the notice sits over the page\'s bottom-left corner', bb.x > r.bounds.x && bb.x < r.bounds.x + 20 && bb.y + bb.height < r.bounds.y + r.bounds.h && bb.y + bb.height > r.bounds.y + r.bounds.h - 20, JSON.stringify({ bb, bounds: r.bounds }));
+  check('the notice takes no layout space', JSON.stringify(r.bounds) === pageBounds, JSON.stringify(r.bounds));
+  check('the notice is shell, so its click does not reach the page', (await regions({ x: bb.x + 10, y: bb.y + 10 })).hit === 'shell', JSON.stringify(r.regions));
+  check('just above the notice is still the page', (await regions({ x: bb.x + 10, y: bb.y - 10 })).hit === 'page');
   await ui.getByRole('button', { name: 'Tabs on top' }).click();
   await strip.waitFor();
   await settle(page);
   r = await regions();
-  bb = await bubble.boundingBox();
-  check('with the tabs on top the bubble follows the page\'s corner', bb.x === r.bounds.x && bb.x === 4 && bb.y + bb.height === r.bounds.y + r.bounds.h, JSON.stringify({ bb, bounds: r.bounds }));
+  bb = await notice.boundingBox();
+  check('with the tabs on top the notice follows the page\'s corner', bb.x > r.bounds.x && bb.x < r.bounds.x + 20 && bb.y + bb.height > r.bounds.y + r.bounds.h - 20, JSON.stringify({ bb, bounds: r.bounds }));
   await page.screenshot({ path: path.join(out, '9-update-ready-horizontal.png') });
   await ui.getByRole('button', { name: 'Tabs on the side' }).click();
   await ui.locator('nav').waitFor();
-  await relaunch.click();
+  await notice.getByRole('button', { name: 'Relaunch' }).click();
   await until(async () => (await regions()).closed === true);
   check('relaunch puts the new release in place and closes the window', version(path.join(installed, 'Project B.app')) === '0.2.0');
   check('the running release is kept as the previous one', version(path.join(profile, 'updates/previous/Project B.app')) === '0.1.0');
@@ -744,16 +731,25 @@ const stopServer = lib.stop;
   await startServer(updateArgs());
   await page.goto(base + '/');
   errors.length = 0;
-  await ui.getByText(/Update to 0\.2\.0 failed/).waitFor({ timeout: 10000 });
+  // Standard shows no failure of its own: Settings' About says so, the cause in its tooltip.
+  await ui.getByRole('button', { name: 'Menu', exact: true }).click();
+  await ui.getByRole('menuitem', { name: /^Settings…/ }).click();
+  const settingsPage = page.frameLocator('iframe.our-page[data-page="settings"]');
+  await settingsPage.locator('.nav [data-section="about"]').click();
+  const failed = settingsPage.getByRole('region', { name: 'Version' }).getByRole('status');
+  await failed.getByText(/Couldn't update to 0\.2\.0/).waitFor({ timeout: 10000 });
   await settle(page);
   await page.screenshot({ path: path.join(out, '10-update-failed.png') });
-  check('a corrupted download is refused and the bubble says so', /sha256/.test(await bubble.innerText()), await bubble.innerText());
+  check('a corrupted download is refused and About says so', /sha256/.test(await failed.getAttribute('title')), await failed.getAttribute('title'));
+  // Closed again, so the page's tab is the one the address bar goes on.
+  const settingsTab = (await regions()).settings;
+  await fetch(`${base}/shell/send`, { method: 'POST', body: JSON.stringify({ t: 'closeTab', id: settingsTab }) });
+  await until(async () => (await regions()).settings === 0);
   check('the installed app is left alone', version(path.join(installed, 'Project B.app')) === '0.1.0' && !fs.existsSync(path.join(profile, 'updates/stage')));
   await bar.fill('https://example.org/');
   await bar.press('Enter');
   await loaded('https://example.org/');
   check('the running release keeps working', (await bar.inputValue()) === 'https://example.org/');
-  held.forEach((res) => res.destroy());
   releaseServer.close();
 
   // With one workspace, Main, every tab is in it, and none shows a dot.

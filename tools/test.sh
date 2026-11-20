@@ -121,6 +121,7 @@ mock() {
     run "a download's details, on the desktop and a phone" node shell/e2e/download-details.cjs
     run "a passkey request's steps, on every desktop shell" node shell/e2e/passkeys.cjs
     run "Settings' Passkeys, on the mock engine" node shell/e2e/passkey-settings.cjs
+    run "a ready release's notice and Settings' About, on the desktop and a phone" node shell/e2e/update-notice.cjs
     built extensions || return
     need_store mock
     run "extensions on the mock engine" node shell/e2e/extensions.cjs

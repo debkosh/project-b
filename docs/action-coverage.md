@@ -4,7 +4,7 @@ Every action a person can take, where the app offers it, and the tests that do i
 `tools/action_coverage.py` from the code; `tools/test.sh mock` fails while an action has no
 test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 
-**213 actions and messages, 205 with a test, 8 exempt with a reason, 0 with none; 28 of Go's actions done by no test of the real app.**
+**214 actions and messages, 206 with a test, 8 exempt with a reason, 0 with none; 28 of Go's actions done by no test of the real app.**
 
 ## Go's actions: the menu bar, keys and the shells' own menus
 
@@ -111,13 +111,14 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `addKey` | page:settings | **no** | `app_test.go`, `settings_messages_test.go` |
 | `addToGroup` | glide, mobile, mobile-native, standard | yes | `drive_first_app.py` |
 | `allowNotifications` | mobile, mobile-native | **no** | `download_offer_test.go` |
-| `answerDialog` | mobile-native | **no** | `dialogs_test.go`, `passkeys_test.go` |
+| `answerDialog` | mobile-native | **no** | `dialogs_test.go`, `passkeys_own_test.go`, `passkeys_test.go` |
+| `answerPasskey` | mobile-native | **no** | `passkeys_test.go`, `passkey-settings.cjs` |
 | `askNotifications` | page:welcome | yes | `drive_android.py` |
 | `back` | glide, mobile-native | **no** | `fullscreen_test.go` |
 | `backCloses` | mobile, mobile-native | **no** | exempt: not a person's action: the Mobile shell tells the engine whether the back key closes something of its own |
 | `bookmark` | mobile-native | **no** | `pages_test.go`, `mobile.cjs`, `standard.cjs` |
 | `cancelImport` | ui | **no** | `imports_extensions_test.go` |
-| `cancelUpdate` | fox, page:settings, standard | **no** | `settings_messages_test.go` |
+| `cancelUpdate` | fox, page:settings | **no** | `settings_messages_test.go` |
 | `captureTab` | mobile | **no** | `thumbs_test.go` |
 | `checkUpdate` | page:settings | **no** | `settings_messages_test.go` |
 | `chooseDownloadFolder` | page:settings | **no** | `download_folder_settings_test.go` |
@@ -130,7 +131,7 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `clearSiteData` | page:settings | **no** | `site_data_settings_test.go` |
 | `close` | page:downloads | **no** | `pages_test.go` |
 | `closeGroup` | glide, mobile, mobile-native | **no** | `app_test.go` |
-| `closeTab` | fox, glide, minimal, mobile, mobile-native, standard, terminal | **no** | `app_test.go`, `fullscreen_test.go`, `pins_test.go`, `session_test.go` and 5 more |
+| `closeTab` | fox, glide, minimal, mobile, mobile-native, standard, terminal | **no** | `app_test.go`, `fullscreen_test.go`, `pins_test.go`, `session_test.go` and 6 more |
 | `contextMenuChoose` | mobile-native | **no** | `contextmenu_test.go` |
 | `contextMenuClose` | mobile-native | **no** | `contextmenu_test.go` |
 | `copyText` | glide | **no** | `glide.cjs` |
@@ -177,14 +178,14 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `passkeysList` | page:settings | **no** | `passkey-settings.cjs` |
 | `ready` | mobile-native, page:bookmarks, page:downloads, page:history, page:picker, page:settings, page:welcome | **no** | `events_test.go`, `app_test.go`, `default_browser_settings_test.go`, `extensions_test.go` and 8 more |
 | `recording` | page:settings | **no** | `app_test.go` |
-| `relaunch` | fox, glide, minimal, mobile-native, page:settings, standard, terminal | **no** | `app_test.go` |
+| `relaunch` | fox, glide, minimal, mobile, mobile-native, page:settings, standard, terminal | **no** | `app_test.go` |
 | `reload` | glide, mobile-native | yes | `drive_first_app.py` |
 | `removeBookmark` | mobile-native, page:bookmarks | **no** | `pages_test.go` |
 | `removeFromGroup` | glide, mobile, mobile-native, standard | yes | `drive_first_app.py` |
 | `removeKey` | page:settings | **no** | `settings_messages_test.go` |
 | `resetAction` | page:settings | **no** | `settings_messages_test.go` |
 | `resetProfile` | page:settings | **no** | `profile_test.go` |
-| `retryUpdate` | fox, page:settings, standard | **no** | `settings_messages_test.go` |
+| `retryUpdate` | fox, page:settings | **no** | `settings_messages_test.go` |
 | `run` | fox, glide, minimal, mobile, mobile-native, standard, terminal | yes | `app_test.go`, `settings_prepare_test.go`, `check_clipboard.py`, `drive_first_app.py` |
 | `saveBookmark` | mobile-native | **no** | `pages_test.go`, `mobile.cjs` |
 | `saveReport` | mobile, standard | **no** | `downloads_test.go` |
