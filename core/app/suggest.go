@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"slices"
 
 	"projectb/engine"
 	"projectb/shell"
@@ -10,9 +11,8 @@ import (
 )
 
 // suggestSources gives the suggestion list its sources beside history: every open tab of
-// the profile, with its workspace's name; the actions that can run now, with their keys;
-// the search engine; the bookmarks; a window's tabs in the order they were used; and the
-// tabs closed lately (docs/daily-driver.md).
+// the profile but the one the asking window shows, with its workspace's name; the actions that can run now, with their keys;
+// the search engine; the bookmarks; and the tabs closed lately (docs/daily-driver.md).
 func (a *App) suggestSources() suggest.Sources {
 	listed := func(all []tabs.Tab) []suggest.Tab {
 		names := map[string]string{}
@@ -26,8 +26,10 @@ func (a *App) suggestSources() suggest.Sources {
 		return out
 	}
 	return suggest.Sources{
-		Tabs:   func() []suggest.Tab { return listed(a.Tabs.All()) },
-		Recent: func(w engine.WindowID) []suggest.Tab { return listed(a.Tabs.RecentIn(w)) },
+		Tabs: func(w engine.WindowID) []suggest.Tab {
+			active := a.Tabs.ActiveIn(w)
+			return listed(slices.DeleteFunc(a.Tabs.All(), func(t tabs.Tab) bool { return t.ID == active }))
+		},
 		Closed: func() []suggest.Closed {
 			var out []suggest.Closed
 			for _, c := range a.closed {

@@ -7,9 +7,12 @@ package suggest
 
 import (
 	"net/url"
+	"slices"
 	"strings"
+	"unicode/utf8"
 
 	"projectb/engine"
+
 	"projectb/history"
 	"projectb/tabs"
 )
@@ -26,18 +29,28 @@ const (
 	KindClosed = "closed"
 )
 
-// How many rows of each kind a list has at most, and how many rows in all.
+// How many rows a list has (docs/daily-driver.md, What the address field suggests). A
+// typed list has at most typed rows, or fewer under three letters, unless the shell says
+// how many it has room for; the actions come on top. With nothing typed, how many rows in
+// all, how many of them the sites visited most keep when there are bookmarks too, and how
+// many closed tabs come first.
 const (
-	maxTabs      = 3
-	maxHistory   = 5
-	maxBookmarks = 3
-	maxActions   = 3
-	maxRows      = 10
-	// With nothing typed: how many rows in all, how many of them the sites visited most
-	// keep when there are bookmarks too, and how many open and closed tabs come first.
-	maxFirst   = 8
-	firstSites = 5
-	firstTabs  = 3
+	maxTabs    = 2
+	maxActions = 2
+	typedRows  = 8
+	shortRows  = 6
+	maxRows    = 10
+	// candidates is how many pages history is asked for: more than a list shows, since a
+	// page open in a tab is listed as the tab.
+	candidates  = 10
+	maxFirst    = 8
+	firstSites  = 5
+	firstClosed = 3
+	// short is how many letters text needs to match anywhere: shorter, it matches only where
+	// a host or a word of a title starts, as history's search does.
+	short = 3
+	// typedWeight is what a visit typed in the address field counts, against 1 for a click.
+	typedWeight = 3
 	// legacy is how many a shell that names no kinds gets: history alone, as it was.
 	legacy = 6
 )
@@ -85,16 +98,16 @@ type Closed struct {
 	URL   string
 }
 
-// Sources are where the rows come from, beside history: every open tab of the profile,
+// Sources are where the rows come from, beside history: every open tab of the profile but
+// the one window w shows, as a list never offers the tab it is typed over,
 // the actions that can run now, the search engine's name and what it makes of words, the
-// bookmarks, the newest first; and for nothing typed, a window's tabs the most recently
-// used first with its active one left out, and the tabs closed lately, the newest first.
+// bookmarks, the newest first; and for nothing typed, the tabs closed lately, the newest
+// first.
 type Sources struct {
-	Tabs      func() []Tab
+	Tabs      func(w engine.WindowID) []Tab
 	Actions   func() []Action
 	Engine    func() (name string, search func(words string) string)
 	Bookmarks func() []Bookmark
-	Recent    func(w engine.WindowID) []Tab
 	Closed    func() []Closed
 }
 
@@ -111,10 +124,11 @@ func New(hist *history.Manager) *Manager { return &Manager{hist: hist} }
 func (m *Manager) SetSources(s Sources) { m.src = s }
 
 // Query answers, on the main thread, with the list for what has been typed so far in window
-// w, with rows of the kinds named. With no kinds it is history alone, for a shell that draws
-// nothing else. With nothing typed it is what a new tab offers (first). History answers on
-// its worker, so the list comes once it has.
-func (m *Manager) Query(w engine.WindowID, text string, kinds []string, answer func([]Row)) {
+// w, with rows of the kinds named, at most most of them besides the actions: 0 is the
+// default, typedRows, or shortRows under three letters. With no kinds it is history alone,
+// for a shell that draws nothing else. With nothing typed it is what a new tab offers
+// (first). History answers on its worker, so the list comes once it has.
+func (m *Manager) Query(w engine.WindowID, text string, kinds []string, most int, answer func([]Row)) {
 	if len(kinds) == 0 {
 		m.hist.Search(text, legacy, func(es []history.Entry) { answer(markTyped(historyRows(es))) })
 		return
@@ -126,26 +140,31 @@ func (m *Manager) Query(w engine.WindowID, text string, kinds []string, answer f
 	q := strings.ToLower(strings.TrimSpace(text))
 	if q == "" {
 		if !want[KindHistory] {
-			answer(m.first(w, want, nil))
+			answer(m.first(want, nil))
 			return
 		}
-		m.hist.TopSites(maxFirst, func(sites []history.Entry) { answer(m.first(w, want, sites)) })
+		m.hist.TopSites(maxFirst, func(sites []history.Entry) { answer(m.first(want, sites)) })
 		return
+	}
+	if most <= 0 {
+		most = typedRows
+		if utf8.RuneCountInString(q) < short {
+			most = shortRows
+		}
 	}
 	if !want[KindHistory] {
-		answer(markTyped(m.rows(w, text, want, nil, nil)))
+		answer(markTyped(m.rows(w, text, want, most, nil, nil)))
 		return
 	}
-	// A few more than shown, since a page open in a tab is listed as the tab. The completion
-	// looks for the text without its scheme and www., the list for the text itself: one
-	// search when they are the same.
-	m.hist.Search(text, maxHistory+maxTabs, func(list []history.Entry) {
+	// The completion looks for the text without its scheme and www., the list for the text
+	// itself: one search when they are the same.
+	m.hist.Search(text, candidates, func(list []history.Entry) {
 		c := completing(text)
 		if c == "" || c == q {
-			answer(markTyped(m.rows(w, text, want, list, list)))
+			answer(markTyped(m.rows(w, text, want, most, list, list)))
 			return
 		}
-		m.hist.Search(c, maxHistory+maxTabs, func(found []history.Entry) { answer(markTyped(m.rows(w, text, want, list, found))) })
+		m.hist.Search(c, candidates, func(found []history.Entry) { answer(markTyped(m.rows(w, text, want, most, list, found))) })
 	})
 }
 
@@ -157,17 +176,29 @@ func markTyped(rows []Row) []Row {
 	return rows
 }
 
-// rows is the list for text, typed in window w, from what history found for it, list, and
-// for its completion, found.
-func (m *Manager) rows(w engine.WindowID, text string, want map[string]bool, list, found []history.Entry) []Row {
+// rows is the list for text, from what history found for it, list, and for its completion,
+// found, at most most rows besides the actions. First what Enter does: the completion, else
+// the address when the text reads as one, else the search. Then up to two open tabs, then the
+// pages from history and the bookmarks by their visits, a typed visit counting typedWeight,
+// a bookmark ahead of a page with as many; then up to two actions, and the search last when
+// it wasn't first. An address shows once, as the highest of its kinds: an open tab, then a
+// bookmark, then history; a page from history that is bookmarked is a bookmark row.
+func (m *Manager) rows(w engine.WindowID, text string, want map[string]bool, most int, list, found []history.Entry) []Row {
 	q := strings.ToLower(strings.TrimSpace(text))
-	rows := make([]Row, 0, maxRows)
+	match := matcher(q)
+	rows := make([]Row, 0, most+maxActions)
 	shown := map[string]bool{}
-	// First, what Enter does: a visited or bookmarked address the text completes, then the
-	// address when the text reads as one, the search otherwise.
 	var open []Tab
 	if want[KindTab] && m.src.Tabs != nil {
-		open = m.src.Tabs()
+		open = m.src.Tabs(w)
+	}
+	var marks []Bookmark
+	marked := map[string]bool{}
+	if want[KindBookmark] && m.src.Bookmarks != nil {
+		marks = m.src.Bookmarks()
+		for _, b := range marks {
+			marked[b.URL] = true
+		}
 	}
 	completed := int64(0)
 	if c, ok := m.completion(text, want, found); ok {
@@ -180,6 +211,9 @@ func (m *Manager) rows(w engine.WindowID, text string, want map[string]bool, lis
 				break
 			}
 		}
+		if c.Kind == KindHistory && marked[c.URL] {
+			c.Kind = KindBookmark
+		}
 		rows = append(rows, c)
 		shown[c.URL] = true
 	}
@@ -188,59 +222,81 @@ func (m *Manager) rows(w engine.WindowID, text string, want map[string]bool, lis
 		name, find := m.src.Engine()
 		search = &Row{Kind: KindSearch, Title: strings.TrimSpace(text), Detail: "Search " + name, URL: find(text)}
 	}
-	isAddress := tabs.LooksLikeAddress(text)
-	if isAddress && want[KindAddress] {
+	if tabs.LooksLikeAddress(text) && want[KindAddress] {
 		u := tabs.NormalizeInput(text, func(string) string { return "" })
-		rows = append(rows, Row{Kind: KindAddress, Title: strings.TrimSpace(text), Detail: "Go to address", URL: u})
-	} else if search != nil {
+		if !shown[u] {
+			rows = append(rows, Row{Kind: KindAddress, Title: strings.TrimSpace(text), Detail: "Go to address", URL: u})
+		}
+	} else if search != nil && len(rows) == 0 {
 		rows = append(rows, *search)
 		search = nil
 	}
-
-	if want[KindTab] {
-		n := 0
-		for _, t := range open {
-			if n == maxTabs {
-				break
-			}
-			if t.URL == "" || t.ID == completed || !strings.Contains(strings.ToLower(t.Title), q) && !strings.Contains(strings.ToLower(t.URL), q) {
-				continue
-			}
-			rows = append(rows, Row{Kind: KindTab, Title: orURL(t.Title, t.URL), Detail: t.Detail, URL: t.URL, Tab: t.ID})
-			shown[t.URL] = true
-			n++
+	// room is how many more rows fit, the search's place at the end kept.
+	room := func() int {
+		if search != nil {
+			return most - len(rows) - 1
 		}
+		return most - len(rows)
 	}
+
+	n := 0
+	for _, t := range open {
+		if n == maxTabs || room() <= 0 {
+			break
+		}
+		if t.URL == "" || t.ID == completed || shown[t.URL] || !match(t.Title, t.URL) {
+			continue
+		}
+		rows = append(rows, Row{Kind: KindTab, Title: orURL(t.Title, t.URL), Detail: t.Detail, URL: t.URL, Tab: t.ID})
+		shown[t.URL] = true
+		n++
+	}
+
+	// The pages and the bookmarks, by their visits.
+	type page struct {
+		row    Row
+		weight int
+	}
+	var pages []page
+	visits := map[string]int{}
 	if want[KindHistory] {
-		n := 0
 		for _, e := range list {
-			if n == maxHistory {
-				break
-			}
+			w := e.Visits + (typedWeight-1)*e.Typed
+			visits[e.URL] = w
 			if shown[e.URL] {
 				continue
 			}
-			rows = append(rows, Row{Kind: KindHistory, Title: orURL(e.Title, e.URL), Detail: host(e.URL), URL: e.URL})
+			kind := KindHistory
+			if marked[e.URL] {
+				kind = KindBookmark
+			}
+			pages = append(pages, page{Row{Kind: kind, Title: orURL(e.Title, e.URL), Detail: host(e.URL), URL: e.URL}, w})
 			shown[e.URL] = true
-			n++
 		}
 	}
-	// The bookmarks whose title or address holds the text, the newest first, past those
-	// already shown as a tab or a page from history.
-	if want[KindBookmark] && m.src.Bookmarks != nil {
-		n := 0
-		for _, b := range m.src.Bookmarks() {
-			if n == maxBookmarks {
-				break
-			}
-			if b.URL == "" || shown[b.URL] || !strings.Contains(strings.ToLower(b.Title), q) && !strings.Contains(strings.ToLower(b.URL), q) {
-				continue
-			}
-			rows = append(rows, Row{Kind: KindBookmark, Title: orURL(b.Title, b.URL), Detail: host(b.URL), URL: b.URL})
-			shown[b.URL] = true
-			n++
+	for _, b := range marks {
+		if b.URL == "" || shown[b.URL] || !match(b.Title, b.URL) {
+			continue
 		}
+		pages = append(pages, page{Row{Kind: KindBookmark, Title: orURL(b.Title, b.URL), Detail: host(b.URL), URL: b.URL}, visits[b.URL]})
+		shown[b.URL] = true
 	}
+	slices.SortStableFunc(pages, func(a, b page) int {
+		if a.weight != b.weight {
+			return b.weight - a.weight
+		}
+		if (a.row.Kind == KindBookmark) != (b.row.Kind == KindBookmark) {
+			if a.row.Kind == KindBookmark {
+				return -1
+			}
+			return 1
+		}
+		return 0
+	})
+	for _, p := range pages[:min(len(pages), max(room(), 0))] {
+		rows = append(rows, p.row)
+	}
+
 	// Asked for alone, as a field's actions-only mode does, the actions have the whole list
 	// and one letter is enough.
 	only := len(want) == 1
@@ -257,49 +313,49 @@ func (m *Manager) rows(w engine.WindowID, text string, want map[string]bool, lis
 			}
 		}
 		all := append(starts, holds...)
-		most := maxActions
+		n := maxActions
 		if only {
-			most = maxRows
+			n = maxRows
 		}
-		rows = append(rows, all[:min(len(all), most)]...)
+		rows = append(rows, all[:min(len(all), n)]...)
 	}
 	if search != nil {
 		rows = append(rows, *search)
 	}
-	return rows[:min(len(rows), maxRows)]
+	return rows
 }
 
-// first is the list with nothing typed in window w, what a new tab, or a phone's field
-// as it is tapped, offers, at most maxFirst rows in all and each address once: asked for,
-// the window's other tabs the most recently used first, then the tabs closed lately, the
-// newest first, up to firstTabs of each; then the sites visited most, as history rows, and
+// matcher is whether a tab or a bookmark, by its title and address, matches q: under three
+// letters only where its host or a word of its title starts with it, from three anywhere.
+func matcher(q string) func(title, u string) bool {
+	if utf8.RuneCountInString(q) >= short {
+		return func(title, u string) bool {
+			return strings.Contains(strings.ToLower(title), q) || strings.Contains(strings.ToLower(u), q)
+		}
+	}
+	return func(title, u string) bool {
+		t := strings.ToLower(title)
+		return strings.HasPrefix(strings.ToLower(bare(u)), q) || strings.HasPrefix(t, q) || strings.Contains(t, " "+q)
+	}
+}
+
+// first is the list with nothing typed, what a new tab offers, at most maxFirst rows in all
+// and each address once: asked for, the tabs closed lately, the newest first, up to
+// firstClosed; then the sites visited most, as history rows, and
 // the newest bookmarks. Asked for both, the sites keep up to firstSites of the rows left,
 // the bookmarks fill the rest, and the sites any rows the bookmarks leave. top is what
 // history.TopSites answered.
-func (m *Manager) first(w engine.WindowID, want map[string]bool, top []history.Entry) []Row {
+func (m *Manager) first(want map[string]bool, top []history.Entry) []Row {
 	var rows, sites, marks []Row
 	shown := map[string]bool{}
-	if want[KindTab] && m.src.Recent != nil {
-		for _, t := range m.src.Recent(w) {
-			if len(rows) == firstTabs {
-				break
-			}
-			if t.URL != "" && !shown[t.URL] {
-				rows = append(rows, Row{Kind: KindTab, Title: orURL(t.Title, t.URL), Detail: t.Detail, URL: t.URL, Tab: t.ID})
-				shown[t.URL] = true
-			}
-		}
-	}
 	if want[KindClosed] && m.src.Closed != nil {
-		n := 0
 		for _, c := range m.src.Closed() {
-			if n == firstTabs {
+			if len(rows) == firstClosed {
 				break
 			}
 			if c.URL != "" && !shown[c.URL] {
 				rows = append(rows, Row{Kind: KindClosed, Title: orURL(c.Title, c.URL), Detail: host(c.URL), URL: c.URL})
 				shown[c.URL] = true
-				n++
 			}
 		}
 	}

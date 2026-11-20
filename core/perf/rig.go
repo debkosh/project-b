@@ -188,7 +188,7 @@ func New(dir string, o Options) *Rig {
 	// asked after it waits for it.
 	if o.History > 0 {
 		read := false
-		r.A.Suggest.Query(0, "site", nil, func([]suggest.Row) { read = true })
+		r.A.Suggest.Query(0, "site", nil, 0, func([]suggest.Row) { read = true })
 		for !read {
 			r.Drain()
 			time.Sleep(time.Millisecond)

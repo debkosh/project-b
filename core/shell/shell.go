@@ -48,6 +48,9 @@ type command struct {
 	// Kinds are the kinds of row suggest's shell draws (package suggest); none is
 	// history alone.
 	Kinds []string `json:"kinds"`
+	// Rows is how many rows suggest's shell has room for, besides the actions; 0 is the
+	// default for the text's length.
+	Rows int `json:"rows"`
 	// moveTab's: Index is the place the tab has in its window's order after the move, and
 	// Window the window it moves into, this one when left out.
 	Index  int             `json:"index"`
@@ -284,6 +287,9 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 	// click, and an action it runs from the menu bar or a key has none.
 	case "copyText":
 		m.eng.WriteClipboard(c.Text)
+	// Text to the system's share sheet, as a phone's field shares its page's address.
+	case "shareText":
+		m.eng.ShareText(w, c.Text)
 	case "createGroup":
 		m.tabs.CreateGroup(c.IDs, derefOr(c.Name), derefOr(c.Color))
 	case "addToGroup":
@@ -341,7 +347,7 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 		m.crash.Dismiss()
 		m.sendAll(map[string]any{"t": "crashLog", "crashLog": "", "crashReport": ""})
 	case "suggest":
-		m.suggest.Query(w, c.Text, c.Kinds, func(items []suggest.Row) {
+		m.suggest.Query(w, c.Text, c.Kinds, c.Rows, func(items []suggest.Row) {
 			m.send(w, map[string]any{"t": "suggestions", "id": c.ID, "items": items})
 		})
 	case "layout":
