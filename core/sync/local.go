@@ -259,15 +259,33 @@ func (l *local) put(tx *store.Tx, e client.Entry) error {
 	m := l.maps[it.Collection]
 	var key sql.NullString
 	switch {
-	case m == nil || e.Locked:
-	case it.GUID == synckosh.DeleteBeforeItem:
-		if err := l.cut(tx, m, it); err != nil {
+	case synckosh.IsDeleteBefore(it) && !e.Locked && !it.Deleted:
+		// A delete-before is the library's own item, and says which collection it clears.
+		collection, cutoff, err := synckosh.Cutoff(it)
+		if err != nil {
 			return err
 		}
-		// One this device wrote itself is pending: its rows were cleared here already.
-		if !e.Pending {
-			l.moved.add(false, Moved{Collection: m.Collection, Deleted: true, All: true})
+		if cleared := l.maps[collection]; cleared != nil {
+			if err := l.cut(tx, cleared, cutoff); err != nil {
+				return err
+			}
+			// One this device wrote itself is pending: its rows were cleared here already.
+			// Once the server has taken it, it comes back neither pending nor sent.
+			var pending bool
+			var sent int64
+			err := tx.QueryRow(`SELECT pending, sent FROM sync_items WHERE collection = ? AND guid = ?`, it.Collection, it.GUID).Scan(&pending, &sent)
+			if err != nil && err != sql.ErrNoRows {
+				return err
+			}
+			switch {
+			case e.Pending:
+			case pending && sent != 0:
+				l.moved.add(true, Moved{Collection: collection, Deleted: true, All: true})
+			case !pending:
+				l.moved.add(false, Moved{Collection: collection, Deleted: true, All: true})
+			}
 		}
+	case m == nil || e.Locked:
 	case it.Deleted:
 		k, err := l.keyOf(tx, m, it)
 		if err != nil {
@@ -304,10 +322,8 @@ func (l *local) put(tx *store.Tx, e client.Entry) error {
 			return err
 		}
 		if pending && sent != 0 {
-			went := Moved{Collection: it.Collection, Deleted: it.Deleted, All: it.GUID == synckosh.DeleteBeforeItem}
-			if went.All {
-				went.Deleted = true
-			} else if !it.Deleted && key.Valid {
+			went := Moved{Collection: it.Collection, Deleted: it.Deleted}
+			if !it.Deleted && key.Valid {
 				went.Name = name(tx, mapped, key.String)
 			}
 			l.moved.add(true, went)
@@ -315,7 +331,7 @@ func (l *local) put(tx *store.Tx, e client.Entry) error {
 	}
 	// What a mapped item holds is its row's; a deleted one keeps nothing of it.
 	stored := it
-	if m != nil && !e.Locked && it.GUID != synckosh.DeleteBeforeItem {
+	if m != nil && !e.Locked {
 		stored.Private = nil
 	}
 	b, err := synckosh.Marshal(stored)
@@ -398,13 +414,8 @@ func (l *local) deleteRow(tx *store.Tx, m *Mapping, key string) (bool, error) {
 
 // cut follows a delete-before: the rows of its items at or before its cutoff go, but those
 // changed here since, and so does their bookkeeping, as the server forgets them too.
-func (l *local) cut(tx *store.Tx, m *Mapping, it synckosh.Item) error {
-	cutoff, err := synckosh.Cutoff(it)
-	if err != nil {
-		return err
-	}
-	r, err := tx.Query(`SELECT guid, key FROM sync_items WHERE collection = ? AND guid <> ? AND timestamp <= ? AND NOT locked`,
-		it.Collection, synckosh.DeleteBeforeItem, cutoff)
+func (l *local) cut(tx *store.Tx, m *Mapping, cutoff int64) error {
+	r, err := tx.Query(`SELECT guid, key FROM sync_items WHERE collection = ? AND timestamp <= ? AND NOT locked`, m.Collection, cutoff)
 	if err != nil {
 		return err
 	}
@@ -431,7 +442,7 @@ func (l *local) cut(tx *store.Tx, m *Mapping, it synckosh.Item) error {
 				return err
 			}
 		}
-		if _, err := tx.Exec(`DELETE FROM sync_items WHERE collection = ? AND guid = ?`, it.Collection, g.guid); err != nil {
+		if _, err := tx.Exec(`DELETE FROM sync_items WHERE collection = ? AND guid = ?`, m.Collection, g.guid); err != nil {
 			return err
 		}
 	}

@@ -497,8 +497,8 @@ type change struct {
 // first, then each row changed, read from it, and each deleted. A mark is deleted once it is
 // handed over, unless the row was marked again meanwhile. A row that can't be handed over,
 // one that doesn't read or that synckosh refuses, is set aside with why (stuck) and the rest
-// go: synckosh takes a batch whole or not at all, so a batch it refuses is handed over again
-// a row at a time. Marks set aside are tried again by a run a person asked for, and at the
+// go: synckosh takes a batch whole or not at all and names every item it refuses
+// (client.PutError), so the batch is handed over again without those. Marks set aside are tried again by a run a person asked for, and at the
 // start; a row that changes again is marked afresh.
 func (m *Manager) drain(c *connection, again bool) (aside []Moved, err error) {
 	if again {
@@ -562,12 +562,30 @@ func (m *Manager) drain(c *connection, again bool) (aside []Moved, err error) {
 		}
 		if len(puts) > 0 {
 			if _, err := c.replica.Put(puts...); err != nil {
+				// synckosh names every item of the batch it refuses, and has stored none: those
+				// are set aside, and the rest are handed over again.
+				var refused *client.PutError
+				if !errors.As(err, &refused) {
+					return aside, err
+				}
+				why := map[int]string{}
+				for _, it := range refused.Items {
+					why[it.Index] = it.Reason
+				}
+				var rest []synckosh.Item
 				for _, ch := range marks {
 					if ch.put < 0 {
 						continue
 					}
-					if _, err := c.replica.Put(puts[ch.put]); err != nil {
-						stuck[ch.rowid] = err.Error()
+					if reason, bad := why[ch.put]; bad {
+						stuck[ch.rowid] = reason
+					} else {
+						rest = append(rest, puts[ch.put])
+					}
+				}
+				if len(rest) > 0 {
+					if _, err := c.replica.Put(rest...); err != nil {
+						return aside, err
 					}
 				}
 			}

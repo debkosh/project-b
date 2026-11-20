@@ -116,7 +116,7 @@ func TestClearingHistoryReachesTheOtherDevice(t *testing.T) {
 		t.Fatalf("b kept %d pages and typed addresses", n)
 	}
 	for _, it := range s.items("tok") {
-		if it.Collection == "history" && it.GUID != synckosh.DeleteBeforeItem {
+		if it.Collection == "history" {
 			t.Fatalf("the server kept %+v", it)
 		}
 	}

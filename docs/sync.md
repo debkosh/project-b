@@ -198,8 +198,27 @@ an hour, and its error is in the status. `SyncNow` doesn't wait.
 **A damaged store.db**, which the store moves aside and makes again ([store.md](store.md)), takes
 the secrets and the bookkeeping with it: sync is off, and is connected again with the passphrase.
 
-**A server reset** (the server gives the bucket a new store id and forgets its items): synckosh
-pushes back everything this device holds, read from the rows, deletes included.
+**When the bucket has a new store id,** one test decides what a device does: does the bucket
+still hold a sealed copy of the key this device holds? His words, 2026-11-20: "reserting on my
+mind means server data gone... setup sync again with the first device asking to setup
+passphare and next one asking that... but auto healing when bucket might have lost some data
+but not the key shoudl also be there".
+
+- **It does** (a server restored from a backup, or one that lost items): the device heals it
+  by itself. synckosh pushes back everything the device holds, read from the rows, deletes
+  included.
+- **It doesn't** (the bucket was reset, so it is empty; or another device has set it up again
+  with a new key): the device pushes nothing. synckosh's `Sync` answers
+  `client.ErrBucketReset`, the status's problem is `reset`, and sync does nothing more until
+  it is set up again here: `InspectAgain` looks at the bucket with the address and the token
+  the device holds, and `ConnectAgain` makes the bucket's key with a passphrase when it is
+  empty, or opens it when another device was first, and only then forgets what the device
+  kept of sync and begins anew. A wrong passphrase changes nothing. Every row stays, and is
+  handed over again.
+
+The library's own items, the sealed copies of the key and each collection's delete-before,
+live in one collection, `_synckosh`; a delete-before names the collection it clears in its
+public part.
 
 ## The functions (`core/sync`)
 
@@ -286,6 +305,10 @@ picture, light and dark, desktop and phone, is made by `shell/e2e/sync.cjs` unde
   - A token the server refuses: "The server signed this device out", Reconnect…, which opens the
     set-up with the address filled in and the focus on Token. Connecting from it lets the old
     bucket go first and joins again.
+  - A bucket that was reset: "The sync bucket was reset", Set up again…, which asks for no
+    address and no token, as Go holds them: it looks at the bucket and opens the Dialog at
+    the passphrase, "Choose a sync passphrase" for the first device and "Enter your sync
+    passphrase" for the next (`syncInspect` and `syncConnect` with `again`).
 - **Keys that don't open here** (`locked`): "Sync can't run on this device", "This profile's
   saved sync details can't be opened here", Set up again…, the reason in the tooltip. A state,
   not an error. Set up again… opens the set-up empty; Turn on sync then starts the profile's keys
@@ -353,8 +376,9 @@ and `StartFresh` makes a new one; the Mac's keychain, under a test-only service,
 in-process, in both address forms; one address visited on both, one row with the larger count; a
 bookmark deleted on one gone from the other; clearing history reaching the other; no visit and no
 readable title or address on the server; a wrong passphrase; joining; a changed passphrase, which a
-third profile joins with while the old one fails; Disconnect keeping the rows; a server reset
-refilled; a locked profile key turning sync off; sync on at start running with what was kept.
+third profile joins with while the old one fails; Disconnect keeping the rows; a server that
+kept the bucket's key refilled, and a bucket reset stopping both devices, pushing nothing, until
+each sets sync up again, a wrong passphrase changing nothing; a locked profile key turning sync off; sync on at start running with what was kept.
 `core/sync` also: each problem reaching a bucket named, and a signed-out device's status; a run cut
 short; Connect answering before its first run; the address while on. `core/words`: the list and a
 passphrase of it. `core/abi`: `AppLink`'s values.
@@ -366,12 +390,12 @@ nothing. `core/cmd/lib`: a folder named outright gets no device key.
 `shell/e2e/sync.cjs` (in `tools/test.sh mock`), in the one-page and Sections layouts and on a
 phone, against synckosh's server, which the dev server runs with `-sync-server` and sync reaches
 as memd.example.com (`/mock/sync` counts its requests, signs a token out, drops connections,
-holds requests, answers each with a failure, or shortens the wait before a request stalls; `/mock/open` hands a link over as another app does): where the card is and search
+holds requests, answers each with a failure, shortens the wait before a request stalls, or empties itself as a reset does; `/mock/open` hands a link over as another app does): where the card is and search
 finding it; a new bucket and one in use; a short passphrase, two that differ, a wrong one, an http
 address, a server out of reach, an address that isn't a bucket, a refused token; Suggest one and
 the strength; Sync now, syncing with Cancel, out of reach with Try again, the server's own
 failure, a failure of another kind with its words in the tooltip, a run with nothing arriving
-that goes on saying it syncs and then ends as stopped, signed out with Reconnect; Change and Turn off; keys that don't open and Set up again; the link from another app
+that goes on saying it syncs and then ends as stopped, a bucket reset with Set up again… going straight to a new passphrase, signed out with Reconnect; Change and Turn off; keys that don't open and Set up again; the link from another app
 and pressed in a page with no request reaching the server before Connect, an http link's error,
 and a page's script going there doing nothing; on a phone, the buttons' 48px targets and the
 fields' 48px.

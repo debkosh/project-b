@@ -301,12 +301,14 @@ func (m *Manager) details() Details {
 		type wait struct {
 			guid, key string
 			w         Moved
+			// all is a delete of everything in the collection, on its way out.
+			all bool
 		}
 		var queue []wait
 		for _, c := range collections {
 			k := Kind{Collection: c}
-			if err := tx.QueryRow(`SELECT COALESCE(SUM(NOT deleted), 0), COALESCE(SUM(deleted), 0) FROM sync_items WHERE collection = ? AND guid <> ?`,
-				c, synckosh.DeleteBeforeItem).Scan(&k.Items, &k.Deletions); err != nil {
+			if err := tx.QueryRow(`SELECT COALESCE(SUM(NOT deleted), 0), COALESCE(SUM(deleted), 0) FROM sync_items WHERE collection = ?`,
+				c).Scan(&k.Items, &k.Deletions); err != nil {
 				return err
 			}
 			// What waits: the items synckosh holds to push, then the rows marked since, which it
@@ -324,9 +326,14 @@ func (m *Manager) details() Details {
 					r.Close()
 					return err
 				}
-				waits = append(waits, wait{guid, key, w})
+				waits = append(waits, wait{guid: guid, key: key, w: w})
 			}
 			r.Close()
+			// A delete of everything on its way out is the library's own item, in its collection.
+			var since int64
+			if tx.QueryRow(`SELECT timestamp FROM sync_items WHERE collection = ? AND guid = ? AND pending`, synckosh.LibraryCollection, synckosh.DeleteBeforeGUID(c)).Scan(&since) == nil {
+				waits = append(waits, wait{w: Moved{Collection: c, Since: since}, all: true})
+			}
 			r, err = tx.Query(`SELECT key, deleted, stuck FROM sync_changes WHERE collection = ? ORDER BY rowid`, c)
 			if err != nil {
 				return err
@@ -338,14 +345,14 @@ func (m *Manager) details() Details {
 					r.Close()
 					return err
 				}
-				waits = append(waits, wait{"", key, w})
+				waits = append(waits, wait{key: key, w: w})
 			}
 			r.Close()
 			for _, e := range waits {
 				w := e.w
 				id := e.key
 				switch {
-				case e.guid == synckosh.DeleteBeforeItem || e.guid == "" && e.key == "":
+				case e.all || e.guid == "" && e.key == "":
 					w.All, w.Deleted, id = true, true, "\x00all"
 				case e.key == "":
 					id = "\x00" + e.guid
@@ -355,7 +362,7 @@ func (m *Manager) details() Details {
 				}
 				seen[id] = true
 				k.Waiting++
-				queue = append(queue, wait{e.guid, e.key, w})
+				queue = append(queue, wait{guid: e.guid, key: e.key, w: w})
 			}
 			d.Kinds = append(d.Kinds, k)
 		}

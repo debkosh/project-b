@@ -64,6 +64,9 @@ func (a *App) syncSettingsPart() settings.Part {
 				Token      string `json:"token"`
 				Passphrase string `json:"passphrase"`
 				Link       string `json:"link"`
+				// Again says the bucket is the one sync is on with, set up again after it was
+				// reset: Go holds its address and token.
+				Again bool `json:"again"`
 			}
 			json.Unmarshal(msg, &c)
 			switch t {
@@ -83,17 +86,27 @@ func (a *App) syncSettingsPart() settings.Part {
 					answer("syncProposal", nil, map[string]any{"address": p.Address, "host": p.Host, "needsToken": p.NeedsToken})
 				}
 			case "syncInspect":
-				a.Sync.Inspect(c.Address, c.Token, func(isNew bool, err error) {
+				inspected := func(isNew bool, err error) {
 					if err != nil {
 						answer("syncBucket", err, nil)
 					} else {
 						answer("syncBucket", nil, map[string]any{"new": isNew})
 					}
-				})
+				}
+				if c.Again {
+					a.Sync.InspectAgain(inspected)
+				} else {
+					a.Sync.Inspect(c.Address, c.Token, inspected)
+				}
 			case "syncConnect":
-				a.Sync.Connect(c.Address, c.Token, c.Passphrase, func(err error) {
+				connected := func(err error) {
 					answer("syncConnected", err, map[string]any{"wrongPassphrase": errors.Is(err, sync.ErrPassphrase)})
-				})
+				}
+				if c.Again {
+					a.Sync.ConnectAgain(c.Passphrase, connected)
+				} else {
+					a.Sync.Connect(c.Address, c.Token, c.Passphrase, connected)
+				}
 			case "syncChangePassphrase":
 				a.Sync.ChangePassphrase(c.Passphrase, func(err error) { answer("syncPassphraseChanged", err, nil) })
 			case "syncDisconnect":

@@ -10,6 +10,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/sudiptadeb/synckosh/client"
 )
 
 // What can go wrong reaching a bucket, each of which the settings page words its own way
@@ -38,8 +40,14 @@ var (
 var StalledAfter = 30 * time.Second
 
 // Problem names what err is for the settings page: "address", "needsToken", "unreachable",
-// "server", "stalled", "notBucket", "token", or "" for anything else.
+// "server", "stalled", "notBucket", "token", "reset", or "" for anything else. "reset" is
+// synckosh's client.ErrBucketReset: the bucket holds no sealed copy of this device's key any
+// more, so it was emptied, or set up again from another device, and this device sends
+// nothing until sync is set up again here.
 func Problem(err error) string {
+	if errors.Is(err, client.ErrBucketReset) {
+		return "reset"
+	}
 	for _, p := range []struct {
 		err  error
 		name string

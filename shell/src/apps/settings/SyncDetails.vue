@@ -12,7 +12,7 @@ import { failedAs, useSyncRun } from './syncRun.js';
 // nothing for it, so the page asks, and asks again as things change.
 
 const go = inject('settingsGo');
-const { s, now, holding, ago, serverRow, failed, unsent, syncNow, again } = useSyncRun();
+const { s, now, holding, ago, serverRow, failed, setUpAgain, unsent, syncNow, again } = useSyncRun();
 const d = computed(() => state.syncDetails);
 
 // Asked as the page opens, whenever the status changes (a run began or ended), every ten
@@ -84,7 +84,7 @@ const lastSynced = computed(() => (s.value.lastSynced ? `${when(s.value.lastSync
 const nextSync = computed(() => {
   if (s.value.syncing) return 'Now';
   const next = d.value?.next || 0;
-  if (serverRow.value === 'signedOut') return 'After you reconnect';
+  if (serverRow.value === 'signedOut') return s.value.problem === 'reset' ? 'After you set sync up again' : 'After you reconnect';
   if (serverRow.value === 'failed') return next > now.value ? `About ${clock(next)}` : 'Soon';
   return next > now.value ? `About ${clock(next)}, or sooner after a change here` : 'After a change here';
 });
@@ -212,7 +212,7 @@ const toggle = (id) => (opened.value = opened.value === id ? '' : id);
             <button type="button" class="text-button quiet" @click="send({ t: 'syncCancel' })">Cancel</button>
             <button type="button" class="text-button quiet apart" @click="again">Retry</button>
           </span>
-          <button v-else-if="serverRow === 'signedOut'" type="button" class="text-button" @click="reconnect">Reconnect…</button>
+          <button v-else-if="serverRow === 'signedOut'" type="button" class="text-button" @click="reconnect">{{ setUpAgain }}</button>
           <button v-else-if="serverRow === 'failed'" type="button" class="text-button" @click="again">Try again</button>
           <button v-else type="button" class="text-button" :disabled="holding" @click="syncNow">Sync now</button>
         </Row>

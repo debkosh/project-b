@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/sudiptadeb/synckosh"
+	"github.com/sudiptadeb/synckosh/client"
 
 	"projectb/sync"
 	"projectb/timeline"
@@ -199,7 +200,7 @@ func TestTheServerHoldsNothingReadable(t *testing.T) {
 				t.Fatalf("the server can read %q: %s", secret, raw)
 			}
 		}
-		if it.Collection != synckosh.KeysCollection && len(it.Public) != 0 {
+		if it.Collection != synckosh.LibraryCollection && len(it.Public) != 0 {
 			t.Fatalf("a public part: %s", raw)
 		}
 	}
@@ -306,8 +307,9 @@ func TestDisconnectKeepsTheRows(t *testing.T) {
 	}
 }
 
-// A server that lost everything is filled again by the device, which a new one then joins.
-func TestAServerResetIsRefilled(t *testing.T) {
+// A server that lost what it held but kept the bucket's key, as one restored from a backup, is
+// healed by the devices by themselves: each pushes back everything it holds.
+func TestABucketThatKeptItsKeyIsRefilled(t *testing.T) {
 	s := newServer(t)
 	a, c := newProfile(t), newProfile(t)
 	a.startSync(s)
@@ -316,7 +318,7 @@ func TestAServerResetIsRefilled(t *testing.T) {
 	a.main(func() { a.bookmarks.Add("Kept", "https://example.com/") })
 	a.settle()
 	a.connect(s.bearer(), "tok", "pass phrase")
-	s.reset()
+	s.loseAllButTheKey("tok")
 	run(t, a)
 	if err := c.connect(s.bearer(), "tok", "pass phrase"); err != nil {
 		t.Fatal(err)
@@ -326,6 +328,89 @@ func TestAServerResetIsRefilled(t *testing.T) {
 	}
 	if title, _ := c.page("https://example.com/"); title != "Kept" {
 		t.Fatalf("c's history: %q", title)
+	}
+}
+
+// A bucket that was reset holds no key any more: a device pushes nothing into it, and says
+// the bucket was reset, until sync is set up again there. The first device to do so chooses
+// a passphrase, the next enters it, and each has everything of the other's.
+func TestABucketResetStopsSyncUntilSetUpAgain(t *testing.T) {
+	s := newServer(t)
+	a, b := newProfile(t), newProfile(t)
+	a.startSync(s)
+	b.startSync(s)
+	a.main(func() { a.bookmarks.Add("From a", "https://example.com/a") })
+	b.main(func() { b.bookmarks.Add("From b", "https://example.com/b") })
+	a.settle()
+	b.settle()
+	if err := a.connect(s.bearer(), "tok", "pass phrase"); err != nil {
+		t.Fatal(err)
+	}
+	if err := b.connect(s.bearer(), "tok", "pass phrase"); err != nil {
+		t.Fatal(err)
+	}
+	run(t, a)
+	s.reset()
+	for name, p := range map[string]*profile{"a": a, "b": b} {
+		err := p.sync.RunNow()
+		if !errors.Is(err, client.ErrBucketReset) || sync.Problem(err) != "reset" {
+			t.Fatalf("%s's run after the reset: %v", name, err)
+		}
+		p.settle()
+		if st := p.sync.Status(); !st.On || st.Problem != "reset" {
+			t.Fatalf("%s's status: %+v", name, st)
+		}
+	}
+	if n := len(s.items("tok")); n != 0 {
+		t.Fatalf("the devices pushed %d items into the reset bucket", n)
+	}
+	// Set up again, with the address and the token the device holds: the first device finds
+	// the bucket empty and chooses a passphrase, the next finds it in use and enters it. A
+	// wrong one changes nothing: the device still says the bucket was reset.
+	again := func(p *profile, passphrase string) error {
+		return p.call(func(done func(error)) { p.sync.ConnectAgain(passphrase, done) })
+	}
+	inspect := func(p *profile) bool {
+		got := make(chan bool, 1)
+		p.main(func() {
+			p.sync.InspectAgain(func(isNew bool, err error) {
+				if err != nil {
+					t.Error(err)
+				}
+				got <- isNew
+			})
+		})
+		return <-got
+	}
+	if !inspect(a) {
+		t.Fatal("the reset bucket isn't new to the first device")
+	}
+	if err := again(a, "a new pass phrase"); err != nil {
+		t.Fatal(err)
+	}
+	if inspect(b) {
+		t.Fatal("the bucket is still new to the second device")
+	}
+	if err := again(b, "not the pass phrase"); !errors.Is(err, sync.ErrPassphrase) {
+		t.Fatalf("the second device with a wrong passphrase: %v", err)
+	}
+	b.settle()
+	if st := b.sync.Status(); !st.On || st.Problem != "reset" {
+		t.Fatalf("b's status after a wrong passphrase: %+v", st)
+	}
+	if err := again(b, "a new pass phrase"); err != nil {
+		t.Fatal(err)
+	}
+	run(t, a, b, a)
+	for name, p := range map[string]*profile{"a": a, "b": b} {
+		got := p.bookmarked()
+		slices.Sort(got)
+		if !slices.Equal(got, []string{"From a", "From b"}) {
+			t.Fatalf("%s's bookmarks after setting sync up again: %v", name, got)
+		}
+		if st := p.sync.Status(); st.Problem != "" || st.Error != "" {
+			t.Fatalf("%s's status after: %+v", name, st)
+		}
 	}
 }
 
