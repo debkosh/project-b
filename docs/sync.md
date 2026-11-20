@@ -159,6 +159,11 @@ the row holds that is newer. History's and typed's `Join` is their merger too. `
 person calls a row, for [Sync details](sync-details.md): a bookmark's title; without it, the key,
 as an address is.
 
+An item's guid is made from the row's key under the sync key (history and typed, whose key is an
+address), or is the key itself (a bookmark's id, a passkey's). A synckosh guid can't start with
+an underscore, and a passkey's id, random bytes in base64url, does one time in 64: such a key,
+and one that starts with a `~`, goes with a `~` before it, and comes back without it.
+
 **Writing first, then telling sync.** Features write their rows as before. While sync is on,
 triggers on their tables write a mark in `sync_changes`, in the same transaction; with it off,
 none. Clearing all history replaces its marks with one, which becomes the delete-before. A run:

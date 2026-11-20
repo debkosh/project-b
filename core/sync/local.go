@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"strings"
 
 	"github.com/sudiptadeb/synckosh"
 	"github.com/sudiptadeb/synckosh/client"
@@ -92,14 +93,29 @@ func newLocal(st *store.Store, maps map[string]*Mapping, key *synckosh.DataKey) 
 	return &local{st: st, maps: maps, ids: ids.Sum(nil), wrote: map[string]bool{}}
 }
 
-// guid is the guid of the row key of a mapped collection.
+// guid is the guid of the row key of a mapped collection. A key that is the guid itself may
+// start with an underscore, as a passkey's id in base64url does one time in 64, which a
+// synckosh guid can't: it goes with a ~ before it, as does one that starts with a ~, so key
+// reads every guid back one way.
 func (l *local) guid(m *Mapping, key string) string {
 	if !m.Derived {
+		if strings.HasPrefix(key, "_") || strings.HasPrefix(key, "~") {
+			return "~" + key
+		}
 		return key
 	}
 	h := hmac.New(sha256.New, l.ids)
 	h.Write([]byte(m.Collection + "\x00" + key))
 	return hex.EncodeToString(h.Sum(nil)[:16])
+}
+
+// plain is the feature's own key in a guid that is one (guid): what a Mapping's KeyOf is
+// given for a collection whose guid isn't derived.
+func plain(m *Mapping, guid string) string {
+	if !m.Derived {
+		return strings.TrimPrefix(guid, "~")
+	}
+	return guid
 }
 
 func (l *local) do(job func(tx *store.Tx) error) error { return l.st.Wait(job) }
@@ -269,7 +285,7 @@ func (l *local) put(tx *store.Tx, e client.Entry) error {
 		}
 	default:
 		// One whose row can't be told is kept whole, and writes no row.
-		k, err := m.KeyOf(it.GUID, it.Private)
+		k, err := m.KeyOf(plain(m, it.GUID), it.Private)
 		if err != nil {
 			m = nil
 			break
@@ -323,7 +339,7 @@ func (l *local) keyOf(tx *store.Tx, m *Mapping, it synckosh.Item) (string, error
 		return key.String, nil
 	}
 	if !m.Derived {
-		return it.GUID, nil
+		return plain(m, it.GUID), nil
 	}
 	return "", nil
 }

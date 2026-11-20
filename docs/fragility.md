@@ -55,6 +55,8 @@ The seams:
   the code can tell apart gets its own words, the rest say no more than that it failed, and
   the error's own words are where a person can read them. One so far: a sync called out of
   reach that wasn't.
+- **An id used as a name elsewhere.** An id made in one place, with its alphabet, becomes a
+  name in another that allows less. One so far: a passkey whose id starts with an underscore.
 
 ## The keyboard left up by the native star's sheet, 2026-11-19
 
@@ -98,8 +100,10 @@ The seams:
   couldn't be written among them. And any run still going after 30 seconds read the same,
   from a clock in the page that measured how long the run had gone on, not how long nothing
   had arrived; a first sync against a full bucket can take longer, and Try again then cut the
-  working run short and started it over. Which of the two his Mac hit isn't known: its log
-  wasn't at hand, and Sync details showed a failed run's own words only once it was opened.
+  working run short and started it over. His Mac hit the first: the run failed on a passkey
+  (the next entry), which the server's log, every request answered 200, and then the
+  profile's own log showed. Sync details showed a failed run's own words only once it was
+  opened.
 - **Seam:** one sentence for every failure; and work that takes time, a clock on the wrong
   thing.
 - **Fix:** on sync-says-what-failed. `core/sync` names a server's own failure (`ErrServer`)
@@ -117,6 +121,23 @@ The seams:
   `shell/e2e/sync.cjs`: the row's words for each, the tooltip, a held run that goes on saying
   it syncs and then ends as stopped, and Sync details showing each failed run's words with
   nothing opened and a run going on with its count.
+
+## A passkey whose id starts with an underscore, 2026-11-20
+
+- **Seen:** the failed run above. The profile's log: "sync: passkeys _bNi…: guid: letters,
+  digits and ._:~- up to 128, not starting with underscore", at every run, with the wait
+  between them growing to half an hour. Nothing of the profile synced.
+- **Cause:** a passkey's guid in sync was its id, random bytes named in base64url, whose
+  first letter is an underscore one time in 64. synckosh keeps guids that start with an
+  underscore for its own items and refuses one, and one refused item fails the whole run.
+  The passkeys' tests made a few passkeys, never one of those.
+- **Seam:** an id from one place used as a name in another, each with its own alphabet.
+- **Fix:** on sync-says-what-failed: `core/sync` puts a `~` before a key that starts with an
+  underscore or a `~` when the key is the guid, and takes it off again (`local.guid`,
+  `plain`). No item of that kind ever reached a server, so nothing synced before changes.
+- **Guard:** `TestAPasskeyWhoseIDStartsWithAnUnderscoreSyncs` in `core/sync` makes passkeys
+  until one's id starts with an underscore, syncs it to a second profile, signs nothing away,
+  and deletes it there.
 
 ## Sync now that showed nothing, 2026-11-19
 

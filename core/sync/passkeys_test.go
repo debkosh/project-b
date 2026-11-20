@@ -6,6 +6,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"math/big"
@@ -111,5 +112,60 @@ func TestTwoPasskeysForOneAccount(t *testing.T) {
 		if len(list) != 1 {
 			t.Fatalf("%s lists %d for the account, want 1", name, len(list))
 		}
+	}
+}
+
+// A passkey's id is random bytes named in base64url, so one in 64 starts with an underscore,
+// which a synckosh guid can't: it syncs all the same, to a device that lists it by the same
+// id, and a delete of it goes round too.
+func TestAPasskeyWhoseIDStartsWithAnUnderscoreSyncs(t *testing.T) {
+	s := newServer(t)
+	a, b := newProfile(t), newProfile(t)
+	a.startSync(s)
+	b.startSync(s)
+	ctx := context.Background()
+	var id []byte
+	for range 4000 {
+		made, _, err := a.passkeys.Make(ctx, true, "under.example", passkeys.User{Handle: []byte("h"), Name: "asha"}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.HasPrefix(base64.RawURLEncoding.EncodeToString(made), "_") {
+			id = made
+			break
+		}
+		if err := a.passkeys.Delete(ctx, true, made); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if id == nil {
+		t.Fatal("no passkey in 4000 had an id starting with an underscore")
+	}
+	a.settle()
+	if err := a.connect(s.bearer(), "tok", "pass phrase"); err != nil {
+		t.Fatal(err)
+	}
+	a.settle()
+	if st := a.sync.Status(); st.Error != "" {
+		t.Fatalf("a's first run with it: %+v", st)
+	}
+	if err := b.connect(s.bearer(), "tok", "pass phrase"); err != nil {
+		t.Fatal(err)
+	}
+	b.settle()
+	if st := b.sync.Status(); st.Error != "" {
+		t.Fatalf("b's first run: %+v", st)
+	}
+	list, err := b.passkeys.List(ctx, true, "under.example", nil)
+	if err != nil || len(list) != 1 || !bytes.Equal(list[0].ID, id) {
+		t.Fatalf("b's passkeys: %+v, %v", list, err)
+	}
+	if err := b.passkeys.Delete(ctx, true, id); err != nil {
+		t.Fatal(err)
+	}
+	b.settle()
+	run(t, b, a)
+	if n, _ := a.passkeys.Total(); n != 0 {
+		t.Fatalf("a has %d passkeys after b deleted it", n)
 	}
 }
