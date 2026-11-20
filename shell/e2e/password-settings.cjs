@@ -61,15 +61,6 @@ if (layout === 'sections') fs.writeFileSync(path.join(lib.profile, 'prefs.json')
   else await page.locator('.nav [data-section="privacy"]').click();
   await settle(page);
   const row = page.locator('.row', { hasText: 'Passwords' }).first();
-  // A phone has no import, so nothing brings a password to it yet: it has no Passwords row.
-  if (phone) {
-    check('a phone has Passkeys under Privacy, and no Passwords row', (await until(() => page.locator('.row', { hasText: 'Passkeys' }).first().isVisible())) && (await row.count()) === 0, await page.locator('main').innerText().catch(() => ''));
-    check('no errors in the console', errors.length === 0, errors.join(' | '));
-    await browser.close();
-    await lib.stop();
-    await lib.done();
-    return;
-  }
   check('Privacy has a Passwords row, with how many there are', await until(async () => (await row.innerText().catch(() => '')).replace(/\s+/g, ' ').includes('3 passwords')), await row.innerText().catch(() => ''));
   await shoot('row');
   const asked = sends({ t: 'passwordsList' });
@@ -167,7 +158,7 @@ if (layout === 'sections') fs.writeFileSync(path.join(lib.profile, 'prefs.json')
     await dialog.getByRole('button', { name: 'Delete', exact: true }).click();
     await until(async () => (await rows.count()) === n - 1);
   }
-  check('with none left the page says so, with no search over it', await until(async () => (await list.locator('.row.empty').innerText().catch(() => '')) === 'No saved passwords yet. Bring them from another browser under Bring your things over.') && (await search.count()) === 0, await list.innerText());
+  check('with none left the page says so, with no search over it', await until(async () => (await list.locator('.row.empty').innerText().catch(() => '')) === (phone ? 'No saved passwords yet. With sync on, the ones on your other devices come here.' : 'No saved passwords yet. Bring them from another browser under Bring your things over.')) && (await search.count()) === 0, await list.innerText());
   await shoot('empty');
   await page.getByRole('button', { name: /^Back to/ }).click();
   check('and the row under Privacy has no count', await until(async () => { const t = (await row.innerText().catch(() => '')).replace(/\s+/g, ' '); return t.includes('Passwords') && !/\d password/.test(t); }), await row.innerText().catch(() => ''));

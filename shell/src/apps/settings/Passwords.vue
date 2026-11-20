@@ -102,15 +102,17 @@ function remove() {
   if (opened.value === deleting.value.id) toggle(opened.value);
   deleting.value = null;
 }
+// While sync is on the logins are on the sync server too, sealed, and a delete goes round.
+const syncing = computed(() => !!state.sync?.on);
 const count = computed(() => (all.value.length === 1 ? '1 saved' : `${all.value.length.toLocaleString('en-US')} saved`));
 </script>
 
 <template>
   <section aria-label="Passwords" class="passwords" :class="{ phone }">
-    <p class="secondary intro">Sealed on this device for this profile. Showing or copying a password asks for {{ phone ? 'your screen lock' : "Touch ID or your Mac's password" }} first.</p>
+    <p class="secondary intro">{{ syncing ? "Sealed for this profile; your sync server can't read them." : 'Sealed on this device for this profile.' }} Showing or copying a password asks for {{ phone ? 'your screen lock' : "Touch ID or your Mac's password" }} first.</p>
     <input v-if="all.length" v-model="filter" class="text-field filter" type="text" spellcheck="false" placeholder="Search passwords" aria-label="Search passwords" @keydown.esc.stop="filter = ''" />
     <div class="card list">
-      <div v-if="state.passwords && all.length === 0" class="row empty">No saved passwords yet. Bring them from another browser under Bring your things over.</div>
+      <div v-if="state.passwords && all.length === 0" class="row empty">No saved passwords yet. {{ phone ? 'With sync on, the ones on your other devices come here.' : 'Bring them from another browser under Bring your things over.' }}</div>
       <div v-else-if="all.length && rows.length === 0" class="row empty">No saved password matches “{{ filter.trim() }}”</div>
       <template v-for="l in rows" :key="l.id">
         <button type="button" class="row login" :data-site="l.site" :aria-expanded="opened === l.id" @click="toggle(l.id)">
@@ -144,7 +146,7 @@ const count = computed(() => (all.value.length === 1 ? '1 saved' : `${all.value.
     <Dialog v-if="deleting" title="Delete this password?" @close="deleting = null">
       <p>
         Your saved password for <b>{{ deleting.site }}</b
-        ><template v-if="deleting.username"> ({{ deleting.username }})</template> is deleted from this profile. Your account on {{ deleting.site }} isn't changed.
+        ><template v-if="deleting.username"> ({{ deleting.username }})</template> is deleted {{ syncing ? 'here and on your synced devices' : 'from this profile' }}. Your account on {{ deleting.site }} isn't changed.
       </p>
       <template #buttons>
         <button type="button" class="text-button" @click="deleting = null">Cancel</button>

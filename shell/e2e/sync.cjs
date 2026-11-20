@@ -116,7 +116,7 @@ const taken = [];
   });
   check('Sync is a card of its own after the profile\'s', order.before === true, JSON.stringify(order));
   check(phone ? 'and on a phone Run setup again follows it' : 'and Import follows it', phone ? order.after.includes('Run setup') : order.after === 'Import', JSON.stringify(order));
-  check('off, it has one row, Set up sync, and its line', (await card().locator('.row').count()) === 1 && (await card().innerText()).includes('Bookmarks, history, typed addresses and passkeys, through your own sync server'));
+  check('off, it has one row, Set up sync, and its line', (await card().locator('.row').count()) === 1 && (await card().innerText()).includes('Bookmarks, history, passwords and passkeys, through your own sync server'));
   await shot(1, 'off');
 
   // Search finds it by sync and by passphrase. On a phone the field is over the list of
@@ -298,7 +298,7 @@ const taken = [];
     /Last synced Today, \d\d:\d\d · /.test(await text()) && /Next sync About \d\d:\d\d, or sooner after a change here/.test(await text()) && (await text()).includes('Server changes read') &&
     (await text()).includes('What the server holds Sealed items only. The key stays on your devices'), await text());
   const kinds = await details().locator('[data-kind]').evaluateAll((rows) => rows.map((r) => r.getAttribute('data-kind')));
-  check('What syncs has bookmarks, history, passkeys and typed addresses, each with its counts', kinds.join() === 'bookmarks,history,passkeys,typed' && (await text()).includes('Bookmarks') && (await text()).includes('Typed addresses') && (await text()).includes('Passkeys') &&
+  check('What syncs has bookmarks, history, passwords, passkeys and typed addresses, each with its counts', kinds.join() === 'bookmarks,history,logins,passkeys,typed' && (await text()).includes('Bookmarks') && (await text()).includes('Typed addresses') && (await text()).includes('Passkeys') && (await text()).includes('Passwords') &&
     (phone ? (await text()).includes('Nothing waiting to send') : (await text()).includes('Items Deletions Waiting to send')), `${kinds} ${await text()}`);
   check('Waiting to send says nothing is waiting', (await text()).includes('Waiting to send Nothing is waiting') || (phone && (await text()).includes('Nothing is waiting')));
   check('the runs since the app started are listed, newest first, each saying why and what it did', (await text()).includes('Runs since the app started') && (await runRows().count()) >= 2 &&
@@ -448,6 +448,27 @@ const taken = [];
   await field('Passphrase').fill(changed);
   await button('Turn on sync').click();
   check('the right one connects', await until(async () => (await dialog().count()) === 0 && (await button('Sync now', card()).isVisible()), 10000));
+
+  // With sync on, the saved passwords are on the sync server too, sealed, and a delete goes
+  // round: the Passwords page says both, where with sync off it speaks of this device alone.
+  await lib.fire('logins', JSON.stringify([{ Origin: 'https://mail.example.org', Username: 'asha@example.org', Password: 'correct horse battery' }]));
+  if (phone) await page.getByRole('button', { name: 'Back to Settings' }).click();
+  if (phone) await page.locator('.section-row[data-section="privacy"]').click();
+  else await page.locator('.nav [data-section="privacy"]').click();
+  await settle(page);
+  await page.locator('.row', { hasText: 'Passwords' }).first().getByRole('button').first().click();
+  const passwords = page.getByRole('region', { name: 'Passwords', exact: true });
+  check("with sync on, Passwords says the sync server can't read them", await until(async () => (await passwords.locator('.intro').innerText().catch(() => '')).trim().startsWith("Sealed for this profile; your sync server can't read them. Showing or copying a password asks for ")),
+    await passwords.locator('.intro').innerText().catch(() => ''));
+  await passwords.locator('.row.login').first().click();
+  await passwords.getByRole('button', { name: /^Delete the password for / }).click();
+  check('and deleting one says it goes from the synced devices too', await until(async () => (await dialog().innerText()).replace(/\s+/g, ' ').includes("Your saved password for mail.example.org (asha@example.org) is deleted here and on your synced devices. Your account on mail.example.org isn't changed.")),
+    await dialog().innerText().catch(() => ''));
+  await shot(36, 'password-delete-synced');
+  await dialog().getByRole('button', { name: 'Cancel' }).click();
+  await page.getByRole('button', { name: /^Back to / }).click();
+  if (phone) await page.getByRole('button', { name: 'Back to Settings' }).click();
+  await showSync();
 
   // The bucket reset on the server: its key is gone with everything else, so this device
   // sends nothing and says so. Set up again… opens the set-up with the address filled in,

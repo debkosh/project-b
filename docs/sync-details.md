@@ -46,7 +46,7 @@ state, what syncs with its counts, what waits to go out, and the runs since the 
   after a change here"), Server changes read ("9,214", synckosh's cursor), and What
   the server holds: "Sealed items only. The key stays on your devices". On a phone the value goes
   under its label.
-- **What syncs:** Bookmarks, History, Passkeys and Typed addresses, each with Items, Deletions (its
+- **What syncs:** Bookmarks, History, Passwords, Passkeys and Typed addresses, each with Items, Deletions (its
   tooltip: "Kept so your other devices remove them too") and Waiting to send. A table on a
   desktop. On a phone one row each: the name with its count at the right, and one muted line,
   "2 waiting to send" or "Nothing waiting to send", with "· 3 deletions" when there are some.
