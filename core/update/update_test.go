@@ -217,3 +217,16 @@ func TestADevelopmentBuildDoesntUpdate(t *testing.T) {
 		t.Fatal("a development build has nothing to settle")
 	}
 }
+
+// The updater's log says a line the same as the one before only once: a round a minute
+// repeating "not downgrading" filled the timeline.
+func TestTheLogSaysARepeatedLineOnce(t *testing.T) {
+	var got []string
+	log := quietLog(func(l string) { got = append(got, l) })
+	for _, l := range []string{"a", "a", "a", "b", "a"} {
+		log("%s", l)
+	}
+	if strings.Join(got, ",") != "a,b,a" {
+		t.Fatalf("logged %v", got)
+	}
+}

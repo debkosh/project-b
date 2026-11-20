@@ -12,6 +12,7 @@ package update
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"path/filepath"
@@ -140,7 +141,7 @@ func New(cfg Config, post func(func()), quit func()) *Manager {
 		Installer: cfg.Installer(post, func() { post(quit) }),
 		Dir:       cfg.StateDir,
 		Interval:  CheckInterval,
-		Logf:      timeline.Infof,
+		Logf:      quietLog(func(line string) { timeline.Infof("%s", line) }),
 	})
 	m.raw = m.u.State()
 	m.state = words(m.raw)
@@ -149,6 +150,23 @@ func New(cfg Config, post func(func()), quit func()) *Manager {
 		cfg.Present(m.u)
 	}
 	return m
+}
+
+// quietLog logs what the updater says, a line the same as the one before only once: a round a
+// minute saying "running X is newer than Y; not downgrading" filled the timeline.
+func quietLog(out func(string)) func(string, ...any) {
+	var mu sync.Mutex
+	last := ""
+	return func(format string, args ...any) {
+		line := fmt.Sprintf(format, args...)
+		mu.Lock()
+		same := line == last
+		last = line
+		mu.Unlock()
+		if !same {
+			out(line)
+		}
+	}
 }
 
 // projectFile is amarit.json as amarit reads it: the project, where its manifest is, and
