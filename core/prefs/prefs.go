@@ -87,6 +87,9 @@ type Prefs struct {
 	// DownloadFolder is the folder downloads are saved in, a whole path, "" for the
 	// Downloads folder. A desktop's. docs/settings.md.
 	DownloadFolder string `json:"downloadFolder"`
+	// UpdateNoticed is the release whose one-time notice the person has seen, so the shell
+	// shows a ready release's notice once in a profile, not at every start. docs/updates.md.
+	UpdateNoticed string `json:"updateNoticed,omitempty"`
 }
 
 // Defaults are the settings before the user changes any.
@@ -99,6 +102,9 @@ func isTheme(t string) bool { return t == ThemeSystem || t == ThemeLight || t ==
 
 // A frame colour is "#rrggbb", as a colour input gives it.
 var frameColor = regexp.MustCompile(`^(#[0-9a-f]{6})?$`)
+
+// A version, as a release manifest names one: what UpdateNoticed may hold.
+var version = regexp.MustCompile(`^[A-Za-z0-9._+-]{1,64}$`)
 
 // A bookmark folder's id is 16 hex digits (core/bookmarks), "" being the top.
 var folderID = regexp.MustCompile(`^([0-9a-f]{16})?$`)
@@ -369,6 +375,17 @@ func (m *Manager) SetDownloadFolder(dir string) {
 // isFolder reports whether a download folder is one: "" or a whole path.
 func isFolder(dir string) bool { return dir == "" || filepath.IsAbs(dir) }
 
+// SetUpdateNoticed records that the person has seen the notice of a ready release, by its
+// version. Anything that isn't a version is ignored.
+func (m *Manager) SetUpdateNoticed(v string) {
+	if !version.MatchString(v) || v == m.prefs.UpdateNoticed {
+		return
+	}
+	m.prefs.UpdateNoticed = v
+	m.save()
+	m.changed()
+}
+
 // SetClearCookiesOnQuit turns on or off erasing cookies and site storage as the app quits.
 func (m *Manager) SetClearCookiesOnQuit(on bool) { m.setSwitch(&m.prefs.ClearCookiesOnQuit, on) }
 
@@ -458,6 +475,8 @@ func (m *Manager) Set(name, value string) bool {
 		if value == "true" || value == "false" {
 			m.SetClearCookiesOnQuit(value == "true")
 		}
+	case "updateNoticed":
+		m.SetUpdateNoticed(value)
 	default:
 		return false
 	}
