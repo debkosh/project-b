@@ -1917,9 +1917,9 @@ def passwords_on_the_phone():
     import. Another device (core/cmd/syncdevice) saves a login and turns sync on with a bucket
     on this Mac's sync server, choosing the passphrase; the phone joins the bucket with it,
     and Privacy's Passwords row opens a page that lists the login by site and username, with
-    no password, and counts it. With no screen lock Show says to set one. With a PIN set, Show brings
-    Android's own check and the PIN shows the password; Copy brings it again and says the
-    password was copied. The PIN is cleared at the end, whatever happened: a lock left on
+    no password, and counts it. With no screen lock Show, on the login's row, says to set
+    one. With a PIN set, Show brings Android's own check and the PIN shows the password; Copy,
+    the check holding for the page, brings none and says the password was copied. The PIN is cleared at the end, whatever happened: a lock left on
     stalls every other run."""
     pin = "1357"
     site, username, password, passphrase = "mail.example", "asha", "copper-lantern-42", "river meadow lantern copper"
@@ -1993,7 +1993,6 @@ def passwords_on_the_phone():
         check("its page lists the login sync brought, by its site and username, with no password, and counts it",
               listed is not None and any(username in t for t in said) and "1 saved" in said and not any(password in t for t in said) and any(t.startswith("Sealed for this profile; your sync server can't read them.") and "your screen lock" in t for t in said), said[:60])
         shot("passwords-list")
-        tap(middle(listed))
         show = "Show the password for " + site
         tap(middle(see_named("settings", show)))  # does: passwordShow
         check("with no screen lock, Show says to set one", until(lambda: settings_text("Set a screen lock on this device to show passwords"), 20) is not None)
@@ -2006,7 +2005,9 @@ def passwords_on_the_phone():
         check("and the PIN shows the password", until(lambda: settings_text(password), 20) is not None)
         shot("passwords-shown")
         tap(middle(see_named("settings", "Copy the password for " + site)))  # does: passwordCopy
-        check("Copy brings the check again, and says the password was copied", check_person() and until(lambda: settings_text("Password copied"), 20) is not None)
+        copied = until(lambda: settings_text("Password copied"), 20)
+        check("Copy, the check holding for the page, says the password was copied and brings no second check",
+              copied is not None and system_node(text="Show your password") is None)
     finally:
         adb("shell", "locksettings", "clear", "--old", pin)
         check("the PIN is cleared after the run", until(lambda: "true" in adb("shell", "locksettings", "get-disabled").lower()) is not None, adb("shell", "locksettings", "get-disabled"))

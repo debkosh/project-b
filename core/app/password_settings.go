@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/url"
+	"time"
 
 	"projectb/engine"
 	"projectb/passwords"
@@ -15,9 +16,17 @@ import (
 
 // Settings' Passwords (docs/passwords.md): how many there are, on its row under Privacy, and
 // its list page, a row per saved login with its site and username. Neither is sealed, so the
-// list asks the person nothing. A password is: Show and Copy each have the device check the
-// person first. Show hands the asking page the password; Copy puts it on the clipboard here,
-// and the page never has it.
+// list asks the person nothing. A password is: Show and Copy have the device check the
+// person first, once for the page: the check holds for passwordCheckHolds while that page
+// stays open, and is asked again after it, or once the page was closed or opened anew. Show
+// hands the asking page the password; Copy puts it on the clipboard here, and the page never
+// has it.
+
+// passwordCheckHolds is how long the device's check holds for the Passwords page that asked
+// it. Sudipta, 2026-11-20: "we should ask it once while on the screen and ask again either
+// after sometime say 5mins or if that place is closed". Firefox's saved logins hold a check
+// five minutes too; Chrome's settings hold it one.
+var passwordCheckHolds = 5 * time.Minute
 
 // passwordRow is one row of Settings' Passwords.
 type passwordRow struct {
@@ -102,12 +111,50 @@ func (a *App) passwordSettingsPart(e engine.Engine) settings.Part {
 		list()
 	})
 	recount()
+	// The check that holds: for the page in one tab, until a time. Read and set on the main
+	// thread alone. A tab's id is never another tab's, so a closed tab's hold opens nothing.
+	var heldTab engine.TabID
+	var heldUntil time.Time
+	holds := func(tab engine.TabID) bool { return tab == heldTab && time.Now().Before(heldUntil) }
+	release := func(tab engine.TabID) {
+		if tab == heldTab {
+			heldUntil = time.Time{}
+		}
+	}
+	// opened is a password for the page in tab: with no check while one holds for it, and a
+	// check that passed holding from then. done runs on the main thread.
+	opened := func(tab engine.TabID, id string, done func(password string, err error)) {
+		ctx := context.Background()
+		held := holds(tab)
+		if held {
+			ctx = passwords.Checked(ctx)
+		}
+		go func() {
+			password, err := a.Passwords.Password(ctx, id)
+			e.Post(func() {
+				if err == nil && !held {
+					heldTab, heldUntil = tab, time.Now().Add(passwordCheckHolds)
+				}
+				done(password, err)
+			})
+		}()
+	}
+	// until is when the hold for tab ends, Unix milliseconds, for the page to hide what it
+	// shows then; 0 with none.
+	until := func(tab engine.TabID) int64 {
+		if !holds(tab) {
+			return 0
+		}
+		return heldUntil.UnixMilli()
+	}
 	return settings.Part{
 		Snapshot: func(into map[string]any) { into["passwordCount"] = count },
 		Handle: func(tab engine.TabID, t string, msg []byte) bool {
 			var c struct {
 				ID   string `json:"id"`
 				What string `json:"what"`
+				// Fresh is the page's first asking for the list, as it opens.
+				Fresh bool `json:"fresh"`
 			}
 			// why is an error as the page words it.
 			why := func(err error) string {
@@ -126,49 +173,58 @@ func (a *App) passwordSettingsPart(e engine.Engine) settings.Part {
 			}
 			switch t {
 			case "passwordsList":
+				// A page that opens starts with no check held, whatever its tab held before.
+				json.Unmarshal(msg, &c)
+				if c.Fresh {
+					release(tab)
+				}
 				list()
+			case "passwordsClosed":
+				// The page was left: its check holds no more.
+				release(tab)
 			case "passwordShow":
 				// The answer goes to the page that asked alone.
 				json.Unmarshal(msg, &c)
-				go func() {
-					answer := map[string]any{"t": "passwordShown", "id": c.ID}
-					if password, err := a.Passwords.Password(context.Background(), c.ID); err != nil {
+				opened(tab, c.ID, func(password string, err error) {
+					answer := map[string]any{"t": "passwordShown", "id": c.ID, "heldUntil": until(tab)}
+					if err != nil {
 						answer["error"] = why(err)
 					} else {
 						answer["password"] = password
 					}
-					e.Post(func() { a.Settings.SendTo(tab, answer) })
-				}()
+					a.Settings.SendTo(tab, answer)
+				})
 			case "passwordCopy":
 				// What is "password", after the device's check, or "username". Go puts it on the
 				// clipboard, a password as a secret (system.CopySecret): it never goes to the
 				// page for a copy.
 				json.Unmarshal(msg, &c)
-				go func() {
-					answer := map[string]any{"t": "passwordCopied", "id": c.ID, "what": c.What}
-					var text string
-					var err error
-					if c.What == "username" {
-						var l passwords.Login
-						l, err = a.Passwords.Get(c.ID)
-						text = l.Username
+				answer := map[string]any{"t": "passwordCopied", "id": c.ID, "what": c.What}
+				if c.What == "username" {
+					go func() {
+						l, err := a.Passwords.Get(c.ID)
+						e.Post(func() {
+							if err != nil {
+								answer["error"] = why(err)
+							} else {
+								e.WriteClipboard(l.Username)
+							}
+							a.Settings.SendTo(tab, answer)
+						})
+					}()
+					break
+				}
+				opened(tab, c.ID, func(password string, err error) {
+					answer["heldUntil"] = until(tab)
+					if err != nil {
+						answer["error"] = why(err)
 					} else {
-						text, err = a.Passwords.Password(context.Background(), c.ID)
+						// A password goes on the clipboard marked as a secret, so what keeps or
+						// shows the clipboard's history leaves it out.
+						a.System.CopySecret(password)
 					}
-					e.Post(func() {
-						switch {
-						case err != nil:
-							answer["error"] = why(err)
-						case c.What == "username":
-							e.WriteClipboard(text)
-						default:
-							// A password goes on the clipboard marked as a secret, so what keeps or
-							// shows the clipboard's history leaves it out.
-							a.System.CopySecret(text)
-						}
-						a.Settings.SendTo(tab, answer)
-					})
-				}()
+					a.Settings.SendTo(tab, answer)
+				})
 			case "passwordDelete":
 				json.Unmarshal(msg, &c)
 				go func() {

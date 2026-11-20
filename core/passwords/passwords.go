@@ -129,9 +129,16 @@ func (m *Manager) Get(id string) (Login, error) {
 	return l, err
 }
 
-// Password is the login's password, after the device has checked the person: ErrNone for a
-// login that isn't there, which asks them nothing, ErrNotHere when the profile's key doesn't
-// open here, or the check's own error.
+type checkedKey struct{}
+
+// Checked is ctx for a caller that holds the device's check of the person already, made a
+// little while ago for the page that asks: Password then doesn't have them checked again.
+// The caller says for how long a check holds; Settings' Passwords does (docs/passwords.md).
+func Checked(ctx context.Context) context.Context { return context.WithValue(ctx, checkedKey{}, true) }
+
+// Password is the login's password, after the device has checked the person, unless ctx is
+// Checked: ErrNone for a login that isn't there, which asks them nothing, ErrNotHere when
+// the profile's key doesn't open here, or the check's own error.
 func (m *Manager) Password(ctx context.Context, id string) (string, error) {
 	var origin string
 	var sealed []byte
@@ -144,8 +151,10 @@ func (m *Manager) Password(ctx context.Context, id string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if err := m.verify(ctx, origin); err != nil {
-		return "", err
+	if ctx.Value(checkedKey{}) == nil {
+		if err := m.verify(ctx, origin); err != nil {
+			return "", err
+		}
 	}
 	plain, err := m.keys.Open("logins", id, "password", sealed, origin)
 	if errors.Is(err, keys.ErrLocked) {

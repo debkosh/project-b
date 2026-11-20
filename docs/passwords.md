@@ -62,31 +62,44 @@ with how many there are. It opens a list page. A phone has it too: it has no imp
 Android keeps each app's data from the others, and its logins come by sync.
 
 - **Over the list:** "Sealed on this device for this profile. Showing or copying a password
-  asks for Touch ID or your Mac's password first." (On a phone: "your screen lock".)
-  While sync is on the first sentence is "Sealed for this profile; your sync server can't
-  read them.": they are on the server too, sealed.
+  asks for Touch ID or your Mac's password, then not again for 5 minutes while this page
+  stays open." (On a phone: "your screen lock".) While sync is on the first sentence is
+  "Sealed for this profile; your sync server can't read them.": they are on the server too,
+  sealed.
 - **Search passwords:** keeps the logins whose site or username has what was typed. Escape
   empties it. None matching: "No saved password matches “…”".
-- **A row a login:** its site's mark, the site, the username ("No username" when it has
-  none), and a chevron down. It opens in place, one at a time, on `--accent-tint`:
-  - Username, with Copy.
-  - Password, hidden as dots, with Show and Copy. Show has the device check the person,
-    then the password is there in monospace with Hide, until it is hidden, the row closes,
-    another opens, or the window or the page is left: nothing still shows it on return.
-    Copy has the device check the person and puts the password on the clipboard in Go, so
-    the page never has it for a copy, and marked as a secret (`system.CopySecret`): on the
-    Mac the pasteboard's concealed and transient types, which clipboard managers and
-    Universal Clipboard's history leave out; on Android the clip's sensitive flag, which
-    also hides the system's preview of it from Android 13, from the phone's Passwords
-    page. A username is copied plainly.
-  - A line that says when it was saved, and answers the last press for two seconds:
-    "Password copied", "Username copied". With no screen lock on the device, in `--danger`:
-    "Set a screen lock on this device to show passwords". A check the person refuses says
-    nothing.
-  - Delete…, which asks: "Delete this password?", "Your saved password for **site**
-    (username) is deleted from this profile. Your account on site isn't changed." (while sync is
-    on, "…is deleted here and on your synced devices.", as the delete goes round), Cancel
-    and Delete, the danger.
+- **One row a login, on a Mac and on a phone alike:** its site's mark, the site, the
+  username ("No username" when it has none), and at its end three icon buttons: Show, Copy
+  and a menu. Sudipta, 2026-11-20: "too many clicks to see a password.. first expand then
+  copy... also the copy show can be icons", "one condensed row whic the username showing and
+  the password only when we click show", "both on android and on desktop". Hovering a row
+  says when it was saved.
+  - **Show** (an eye) puts the password on the row, under the username, in monospace, and
+    becomes Hide (an eye struck through). It stays until it is hidden, the window or the
+    page is left, or the check that showed it holds no more: nothing still shows it on
+    return.
+  - **Copy** puts the password on the clipboard in Go, so the page never has it for a copy,
+    and marked as a secret (`system.CopySecret`): on the Mac the pasteboard's concealed and
+    transient types, which clipboard managers and Universal Clipboard's history leave out;
+    on Android the clip's sensitive flag, which also hides the system's preview of it from
+    Android 13.
+  - **The menu** (⋯) has Copy username, copied plainly and with no check, and Delete…,
+    which asks: "Delete this password?", "Your saved password for **site** (username) is
+    deleted from this profile. Your account on site isn't changed." (while sync is on,
+    "…is deleted here and on your synced devices.", as the delete goes round), Cancel and
+    Delete, the danger.
+  - A line under the username answers the last press for two seconds: "Password copied",
+    "Username copied". With no screen lock on the device, in `--danger`: "Set a screen lock
+    on this device to show passwords". A check the person refuses says nothing.
+- **The device checks the person once for the page.** Sudipta, 2026-11-20: "its asking for
+  each and everyone... we should ask it once while on the screen and ask again either after
+  sometime say 5mins or if that place is closed". The first Show or Copy brings the
+  device's check; while that page stays open it holds for five minutes
+  (`passwordCheckHolds`), for every login on it, through a switch to another app and back.
+  It ends when the five minutes are up, when the page is left (`passwordsClosed`) and when
+  it opens anew (`passwordsList` with `fresh`); Go holds it, by the page's tab, so no page
+  can say it is checked. Firefox's saved logins hold a check five minutes and Chrome's
+  settings one; both ask again once the page is opened anew.
 - **Under the list:** "3 saved".
 - **None:** "No saved passwords yet. Bring them from another browser under Bring your things
   over." On a phone: "No saved passwords yet. With sync on, the ones on your
@@ -96,10 +109,11 @@ Android keeps each app's data from the others, and its logins come by sync.
 
 | The page sends | Go answers |
 |---|---|
-| `passwordsList` | `passwords {passwords}`: each `{id, site, origin, username, created}`, never a password. Sent again to every Settings page after a change |
-| `passwordShow {id}` | `passwordShown {id, password}` to the asking page alone, or `{id, error}`: `denied`, `noScreenLock`, `notHere`, `gone`, `failed` |
+| `passwordsList`, with `fresh` as the page opens | `passwords {passwords}`: each `{id, site, origin, username, created}`, never a password. Sent again to every Settings page after a change |
+| `passwordShow {id}` | `passwordShown {id, password, heldUntil}` to the asking page alone, `heldUntil` being when the check holds until, Unix milliseconds, for the page to hide what it shows then; or `{id, error}`: `denied`, `noScreenLock`, `notHere`, `gone`, `failed` |
 | `passwordCopy {id, what}` | `passwordCopied {id, what}`, with `error` as above. `what` is `password`, after the device's check, put on the clipboard as a secret, or `username`, with no check, plainly. Go writes the clipboard |
 | `passwordDelete {id}` | the list and the count again |
+| `passwordsClosed` | nothing: the page was left, and its check holds no more |
 
 The snapshot has `passwordCount`, and `passwordCount {passwordCount}` follows each change.
 
@@ -116,17 +130,22 @@ The snapshot has `passwordCount`, and `passwordCount {passwordCount}` follows ea
 - `core/passwords`: import, the list and a password after the check, with the store's file
   holding no password plain; brought again, and a clash keeping both; a password bound to
   its row; delete; Start fresh; a profile whose key doesn't open.
-- `core/app` (`TestSettingsPasswords`): the four messages, the device's check for Show and
-  Copy and none for a username, a password copied as a secret and a username plainly, and
-  each refusal.
+- `core/app` (`TestSettingsPasswords`): the five messages; the device's check at the first
+  Show, holding for that page through a Copy and another login's Show; asked again after
+  `passwordsClosed`, after the page opens anew, and once the hold has passed, and not when
+  the list is only read again; none for a username; a password copied as a secret and a
+  username plainly; and each refusal.
 - `shell/e2e/password-settings.cjs`, in the one-page, Sections and phone layouts: the row
-  and its count, the list, the search, a row opening, Show and Hide, Copy of both, the check
-  refused and with no screen lock, Delete, and none left.
+  and its count, the list, the search, a row's three icon buttons, Show and Hide on the
+  row, Copy and another login's Show with no second check, the username from the menu, the
+  check asked again once the page was left, refused and with no screen lock, Delete from
+  the menu, and none left.
 - `tools/drive_android.py passwords_on_the_phone`, the real app on an emulator: another
   device (`core/cmd/syncdevice`, a profile of its own) saves a login and turns sync on with
   a bucket on a test server; the phone joins it with the passphrase, Privacy's row counts
   the login, the page lists it, Show says to set a screen lock when there is none, and with
-  a PIN Android's own check shows the password and copies it.
+  a PIN Android's own check shows the password, and Copy then copies it with no second
+  check.
 - `core/sync` (`TestSavedLoginsSync`, `TestTheSameLoginOnTwoDevicesIsOne`): logins brought
   to one profile are on the other, each password opening there; the server reads nothing of
   them; a delete goes round; the same login on two devices is one row on both and one item
@@ -135,6 +154,7 @@ The snapshot has `passwordCount`, and `passwordCount {passwordCount}` follows ea
   the row and listed on the page.
 - `tools/vm/check.py passwords`, the real app in a VM of its own, where macOS's own sheet is
   answered with the account's password: a passwords file comes over, Passwords lists it,
-  Show and Copy each wait for the sheet, the copied password is on the pasteboard with
-  `org.nspasteboard.ConcealedType` and `TransientType` beside it, and a username with
-  neither. Passed 2026-11-20, 8 of 8.
+  Show waits for the sheet, Copy then brings none, the copied password is on the pasteboard
+  with `org.nspasteboard.ConcealedType` and `TransientType` beside it, and a username with
+  neither. Passed 2026-11-20, 8 of 8, with the earlier page, where Copy asked again; not
+  yet run with the row's icons and the check that holds.

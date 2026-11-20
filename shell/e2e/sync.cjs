@@ -458,10 +458,10 @@ const taken = [];
   await settle(page);
   await page.locator('.row', { hasText: 'Passwords' }).first().getByRole('button').first().click();
   const passwords = page.getByRole('region', { name: 'Passwords', exact: true });
-  check("with sync on, Passwords says the sync server can't read them", await until(async () => (await passwords.locator('.intro').innerText().catch(() => '')).trim().startsWith("Sealed for this profile; your sync server can't read them. Showing or copying a password asks for ")),
+  check("with sync on, Passwords says the sync server can't read them", await until(async () => (await passwords.locator('.intro').innerText().catch(() => '')).replace(/\s+/g, ' ').trim().startsWith("Sealed for this profile; your sync server can't read them. Showing or copying a password asks for ")),
     await passwords.locator('.intro').innerText().catch(() => ''));
-  await passwords.locator('.row.login').first().click();
-  await passwords.getByRole('button', { name: /^Delete the password for / }).click();
+  await passwords.locator('.row.login').first().getByRole('button', { name: /^More for / }).click();
+  await passwords.getByRole('menuitem', { name: 'Delete…' }).click();
   check('and deleting one says it goes from the synced devices too', await until(async () => (await dialog().innerText()).replace(/\s+/g, ' ').includes("Your saved password for mail.example.org (asha@example.org) is deleted here and on your synced devices. Your account on mail.example.org isn't changed.")),
     await dialog().innerText().catch(() => ''));
   await shot(36, 'password-delete-synced');

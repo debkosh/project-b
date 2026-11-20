@@ -1,17 +1,20 @@
 <script setup>
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import Dialog from '@/ui/Dialog.vue';
+import LineIcon from '@/ui/LineIcon.vue';
+import RowMenu from '@/ui/RowMenu.vue';
 import { phone } from '@/phone.js';
 import { siteTile } from '@/ui/tint.js';
 import { useTints } from '@/ui/useTints.js';
 import { send, state } from './state.js';
 
-// Passwords (docs/passwords.md): the logins Project B keeps, a row each with its site's
-// mark, the site and the username. Neither is sealed, so the list asks nothing. A row opens
-// in place to its username and its password, hidden; Show and Copy each have the device
-// check the person first. Show brings the password to this page until it is hidden again,
-// the row closes or the page is left; Copy never does, Go puts it on the clipboard.
-onMounted(() => send({ t: 'passwordsList' }));
+// Passwords (docs/passwords.md): the logins Project B keeps, one row each: its site's mark,
+// the site and the username, and at its end Show, Copy and a menu. Neither the site nor the
+// username is sealed, so the list asks nothing. Show brings the password to its row until
+// it is hidden again or the page is left; Copy never brings it here, Go puts it on the
+// clipboard. The device checks the person at the first of them, and Go holds that check
+// for this page for five minutes: the page opening, and its closing, tell Go, which ends it.
+onMounted(() => send({ t: 'passwordsList', fresh: true }));
 watch(
   () => state.passwordCount,
   () => send({ t: 'passwordsList' }),
@@ -38,9 +41,8 @@ const rows = computed(() => {
   return q ? all.value.filter((l) => l.site.toLowerCase().includes(q) || l.username.toLowerCase().includes(q)) : all.value;
 });
 
-// One row is open at a time. What it shows of itself: the password, while shown, and a line
-// that answers the last press, "Copied" or why a password didn't open.
-const opened = ref('');
+// What a row shows of itself: its password, while shown, and a line that answers the last
+// press, "Password copied" or why a password didn't open.
 const shown = reactive({});
 const said = reactive({});
 const WHY = {
@@ -49,28 +51,30 @@ const WHY = {
   gone: "This password isn't saved any more",
   failed: "Couldn't open this password",
 };
-const hide = (id) => {
-  delete shown[id];
-  delete said[id];
-};
-function toggle(id) {
-  if (opened.value) hide(opened.value);
-  opened.value = opened.value === id ? '' : id;
-}
 const show = (l) => (shown[l.id] ? delete shown[l.id] : send({ t: 'passwordShow', id: l.id }));
 const copy = (l, what) => send({ t: 'passwordCopy', id: l.id, what });
 
 // Go's answers, to this page alone. A check the person said no to says nothing.
-let saidFor = 0;
+const saidFor = {};
 function say(id, text, bad) {
   said[id] = { text, bad };
-  clearTimeout(saidFor);
-  if (!bad) saidFor = setTimeout(() => delete said[id], 2000);
+  clearTimeout(saidFor[id]);
+  if (!bad) saidFor[id] = setTimeout(() => delete said[id], 2000);
+}
+// A password shown goes back to dots when the window or the page is left, and when the
+// check that showed it holds no more: nothing still shows it on return.
+const hideShown = () => Object.keys(shown).forEach((id) => delete shown[id]);
+const hideWhenHidden = () => document.hidden && hideShown();
+let heldFor = 0;
+function heldUntil(ms) {
+  clearTimeout(heldFor);
+  if (ms) heldFor = setTimeout(hideShown, Math.max(0, ms - Date.now()));
 }
 watch(
   () => state.passwordAnswer,
   (m) => {
-    if (!m || m.id !== opened.value) return;
+    if (!m) return;
+    if (m.heldUntil !== undefined) heldUntil(m.heldUntil);
     if (m.error) {
       if (m.error !== 'denied') say(m.id, WHY[m.error] || WHY.failed, true);
     } else if (m.t === 'passwordShown') {
@@ -81,10 +85,6 @@ watch(
     }
   },
 );
-// A password shown goes back to dots when the window or the page is left, as it does when
-// its row closes: nothing still shows it on return.
-const hideShown = () => Object.keys(shown).forEach((id) => delete shown[id]);
-const hideWhenHidden = () => document.hidden && hideShown();
 onMounted(() => {
   window.addEventListener('blur', hideShown);
   document.addEventListener('visibilitychange', hideWhenHidden);
@@ -92,55 +92,56 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('blur', hideShown);
   document.removeEventListener('visibilitychange', hideWhenHidden);
-  clearTimeout(saidFor);
+  Object.values(saidFor).forEach(clearTimeout);
+  clearTimeout(heldFor);
   state.passwordAnswer = null;
+  send({ t: 'passwordsClosed' });
 });
 
+// The rest of a row's actions, in its menu.
 const deleting = ref(null);
+const items = (l) => [
+  { label: 'Copy username', run: () => copy(l, 'username'), disabled: !l.username },
+  { separator: true },
+  { label: 'Delete…', run: () => (deleting.value = l), danger: true },
+];
 function remove() {
   send({ t: 'passwordDelete', id: deleting.value.id });
-  if (opened.value === deleting.value.id) toggle(opened.value);
+  delete shown[deleting.value.id];
   deleting.value = null;
 }
 // While sync is on the logins are on the sync server too, sealed, and a delete goes round.
 const syncing = computed(() => !!state.sync?.on);
+const check = computed(() => (phone ? 'your screen lock' : "Touch ID or your Mac's password"));
 const count = computed(() => (all.value.length === 1 ? '1 saved' : `${all.value.length.toLocaleString('en-US')} saved`));
 </script>
 
 <template>
   <section aria-label="Passwords" class="passwords" :class="{ phone }">
-    <p class="secondary intro">{{ syncing ? "Sealed for this profile; your sync server can't read them." : 'Sealed on this device for this profile.' }} Showing or copying a password asks for {{ phone ? 'your screen lock' : "Touch ID or your Mac's password" }} first.</p>
+    <p class="secondary intro">
+      {{ syncing ? "Sealed for this profile; your sync server can't read them." : 'Sealed on this device for this profile.' }} Showing or copying a password asks for {{ check }}, then not again for 5 minutes while
+      this page stays open.
+    </p>
     <input v-if="all.length" v-model="filter" class="text-field filter" type="text" spellcheck="false" placeholder="Search passwords" aria-label="Search passwords" @keydown.esc.stop="filter = ''" />
     <div class="card list">
       <div v-if="state.passwords && all.length === 0" class="row empty">No saved passwords yet. {{ phone ? 'With sync on, the ones on your other devices come here.' : 'Bring them from another browser under Bring your things over.' }}</div>
       <div v-else-if="all.length && rows.length === 0" class="row empty">No saved password matches “{{ filter.trim() }}”</div>
-      <template v-for="l in rows" :key="l.id">
-        <button type="button" class="row login" :data-site="l.site" :aria-expanded="opened === l.id" @click="toggle(l.id)">
-          <span class="mark" aria-hidden="true" :style="{ background: tile(l.site).background, boxShadow: `inset 0 0 0 1px ${tile(l.site).border}`, color: tile(l.site).letter }">{{ letter(l.site) }}</span>
-          <span class="who">
-            <span class="name" :title="l.site">{{ l.site }}</span>
-            <span class="secondary name" :class="{ none: !l.username }" :title="l.username">{{ l.username || 'No username' }}</span>
-          </span>
-          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 6 8 10.5 12.5 6" /></svg>
+      <div v-for="l in rows" :key="l.id" class="row login" :data-site="l.site" :title="saved(l.created)">
+        <span class="mark" aria-hidden="true" :style="{ background: tile(l.site).background, boxShadow: `inset 0 0 0 1px ${tile(l.site).border}`, color: tile(l.site).letter }">{{ letter(l.site) }}</span>
+        <span class="who">
+          <span class="name" :title="l.site">{{ l.site }}</span>
+          <span class="secondary name" :class="{ none: !l.username }" :title="l.username">{{ l.username || 'No username' }}</span>
+          <span v-if="shown[l.id]" class="secret">{{ shown[l.id] }}</span>
+          <span v-if="said[l.id]" class="secondary said" :class="{ err: said[l.id].bad }" role="status">{{ said[l.id].text }}</span>
+        </span>
+        <button type="button" class="icon-button" :aria-label="`${shown[l.id] ? 'Hide' : 'Show'} the password for ${l.site}`" :title="shown[l.id] ? 'Hide password' : 'Show password'" :aria-pressed="!!shown[l.id]" @click="show(l)">
+          <LineIcon :name="shown[l.id] ? 'eyeOff' : 'eye'" />
         </button>
-        <div v-if="opened === l.id" class="panel">
-          <div class="kv">
-            <span class="k">Username</span>
-            <span class="v" :class="{ none: !l.username }">{{ l.username || 'None' }}</span>
-            <button v-if="l.username" type="button" class="text-button" :aria-label="`Copy the username for ${l.site}`" @click="copy(l, 'username')">Copy</button>
-          </div>
-          <div class="kv">
-            <span class="k">Password</span>
-            <span class="v secret" :class="{ plain: shown[l.id] }">{{ shown[l.id] || '••••••••••' }}</span>
-            <button type="button" class="text-button" :aria-label="`${shown[l.id] ? 'Hide' : 'Show'} the password for ${l.site}`" @click="show(l)">{{ shown[l.id] ? 'Hide' : 'Show' }}</button>
-            <button type="button" class="text-button" :aria-label="`Copy the password for ${l.site}`" @click="copy(l, 'password')">Copy</button>
-          </div>
-          <div class="foot">
-            <span class="secondary" :class="{ err: said[l.id]?.bad }" role="status">{{ said[l.id]?.text || saved(l.created) }}</span>
-            <button type="button" class="text-button" :aria-label="`Delete the password for ${l.site}, ${l.username}`" @click="deleting = l">Delete…</button>
-          </div>
-        </div>
-      </template>
+        <button type="button" class="icon-button" :aria-label="`Copy the password for ${l.site}`" title="Copy password" @click="copy(l, 'password')">
+          <LineIcon name="copy" />
+        </button>
+        <RowMenu :items="items(l)" :label="`More for ${l.site}${l.username ? `, ${l.username}` : ''}`" />
+      </div>
     </div>
     <p v-if="all.length" class="secondary after">{{ count }}</p>
     <Dialog v-if="deleting" title="Delete this password?" @close="deleting = null">
@@ -167,27 +168,14 @@ const count = computed(() => (all.value.length === 1 ? '1 saved' : `${all.value.
   margin-bottom: 12px;
 }
 
-/* A login's row is a button that opens it in place: a chevron down, which turns up. */
+/* A login is one row: its mark, who it is, then Show, Copy and its menu. */
 .login {
-  width: 100%;
-  gap: 12px;
+  gap: 4px;
   min-height: 56px;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
 }
 
-.login + .login,
-.panel + .login {
+.login + .login {
   border-top: 1px solid var(--line);
-}
-
-.login:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring-inset);
 }
 
 .mark {
@@ -196,6 +184,7 @@ const count = computed(() => (all.value.length === 1 ? '1 saved' : `${all.value.
   place-items: center;
   width: 32px;
   height: 32px;
+  margin-right: 8px;
   border-radius: 8px;
   font-size: 18px;
   font-weight: 600;
@@ -220,66 +209,17 @@ const count = computed(() => (all.value.length === 1 ? '1 saved' : `${all.value.
   color: var(--muted);
 }
 
-.chevron {
-  flex: none;
-  color: var(--icon);
-  transition: transform var(--motion) var(--ease);
-}
-
-.login[aria-expanded='true'] .chevron {
-  transform: rotate(180deg);
-}
-
-.panel {
-  padding: 8px 16px 12px;
-  border-top: 1px solid var(--line);
-  background: var(--accent-tint);
-}
-
-.kv {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 40px;
-}
-
-.k {
-  flex: none;
-  width: 96px;
-  color: var(--muted);
-}
-
-.v {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  user-select: text;
-}
-
+/* The password, once shown, under its username: every character told apart, and all of it
+   there, wrapped, as it is read off the page. */
 .secret {
-  letter-spacing: 2px;
-  color: var(--muted);
-}
-
-.secret.plain {
-  letter-spacing: 0;
-  color: var(--text);
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+  user-select: text;
   font:
     13px/20px ui-monospace,
     SFMono-Regular,
     Menlo,
     monospace;
-}
-
-.foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 40px;
-  margin-top: 4px;
 }
 
 .err {
@@ -288,16 +228,5 @@ const count = computed(() => (all.value.length === 1 ? '1 saved' : `${all.value.
 
 .after {
   margin: 8px 4px 0;
-}
-
-/* On a phone a label sits over its value, and the buttons keep their 48px. */
-.phone .kv {
-  flex-wrap: wrap;
-  gap: 0 12px;
-  padding: 4px 0;
-}
-
-.phone .k {
-  width: 100%;
 }
 </style>

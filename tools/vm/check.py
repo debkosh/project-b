@@ -1129,11 +1129,11 @@ def password_checks():
     """Saved passwords from end to end on the real engine (docs/passwords.md), where the
     person can be played: a passwords file is handed to Settings' Import as a person's pick
     is, and comes over into the profile's own logins, sealed under a key the VM's keychain
-    wraps; Settings' Passwords lists it with no password; Show brings macOS's own sheet,
-    and the account's password shows it; Copy brings the sheet again and puts the password
-    on the pasteboard with the concealed and transient types beside it, which clipboard
-    managers and history leave out; and a username is copied with no sheet and neither
-    type. Run it on a VM of its own: it writes to the VM's keychain and its clipboard."""
+    wraps; Settings' Passwords lists it with no password; Show, on its row, brings macOS's
+    own sheet, and the account's password shows it; Copy, the check still holding for the
+    page, brings no sheet and puts the password on the pasteboard with the concealed and
+    transient types beside it, which clipboard managers and history leave out; and a
+    username is copied from the row's menu with no sheet and neither type. Run it on a VM of its own: it writes to the VM's keychain and its clipboard."""
     password = os.environ.get("PB_VM_PASSWORD", "admin")
     secret = "correct-horse-battery"
     guest("/usr/bin/killall", "project_b")
@@ -1180,9 +1180,8 @@ def password_checks():
     settings(f"({row}.querySelector('button').click(), 1)")
     listed = until(text, lambda t: "mail.example.org" in t, 15)
     check("Settings' Passwords lists it by its site and username, with no password", "mail.example.org asha@example.org" in listed and secret not in listed, listed)
-    settings("(document.querySelector('[aria-label=Passwords] .row.login').click(), 1)")
     until(lambda: settings(f"!!{button('Show the password for mail.example.org')}"), bool, 10)
-    shot("passwords-open")
+    shot("passwords-list")
 
     settings(f"({button('Show the password for mail.example.org')}.click(), 1)")
     time.sleep(3)
@@ -1194,19 +1193,23 @@ def password_checks():
     shot("passwords-shown")
 
     guest("/bin/sh", "-c", "printf nothing | /usr/bin/pbcopy")
+    # The check holds for the page: no sheet comes, and nothing is typed into one. A sheet
+    # that came all the same would keep the password off the pasteboard, and fail this.
     settings(f"({button('Copy the password for mail.example.org')}.click(), 1)")
-    person()
     copied = until(text, lambda t: "Password copied" in t, 20)
-    check("Copy, after the same check, says the password is copied", "Password copied" in copied, copied)
+    check("Copy, the check still holding, asks nothing again and says the password is copied", "Password copied" in copied, copied)
     kinds = until(types, lambda t: "ConcealedType" in t, 10)
     check("the password is on the pasteboard, with the concealed and transient types beside it",
           pasted() == secret and "org.nspasteboard.ConcealedType" in kinds and "org.nspasteboard.TransientType" in kinds, f"{pasted()!r} {kinds}")
 
     before = len(text())
-    settings(f"({button('Copy the username for mail.example.org')}.click(), 1)")
+    settings(f"({button('More for mail.example.org, asha@example.org')}.click(), 1)")
+    item = "[...document.querySelectorAll('[role=menuitem]')].find(b => b.textContent.trim() === 'Copy username')"
+    until(lambda: settings(f"!!{item}"), bool, 10)
+    settings(f"({item}.click(), 1)")
     plain = until(pasted, lambda t: t == "asha@example.org", 10)
     kinds = types()
-    check("a username is copied with no check, and neither type", plain == "asha@example.org" and "public.utf8-plain-text" in kinds and "nspasteboard" not in kinds and before > 0, f"{plain!r} {kinds}")
+    check("a username is copied from the row's menu with no check, and neither type", plain == "asha@example.org" and "public.utf8-plain-text" in kinds and "nspasteboard" not in kinds and before > 0, f"{plain!r} {kinds}")
     shot("passwords-copied")
 
     guest("/usr/bin/killall", "project_b")
