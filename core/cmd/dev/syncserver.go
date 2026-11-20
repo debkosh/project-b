@@ -8,8 +8,10 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	gosync "sync"
+	"time"
 
 	"github.com/sudiptadeb/synckosh/bolt"
 	"github.com/sudiptadeb/synckosh/server"
@@ -22,8 +24,8 @@ import (
 // token as a bearer or at /sync/<token>; any other path is a web page, not a bucket. Sync's
 // requests reach it as https://memd.example.com, the name the mocks use, and trust its
 // certificate; any other host is dialled as it is. It counts every request it gets, and a
-// test changes how it answers: a token signed out, every connection dropped, or every
-// request held.
+// test changes how it answers: a token signed out, every connection dropped, every request
+// held, or every request answered with a failure.
 type syncServer struct {
 	ts *httptest.Server
 
@@ -33,6 +35,7 @@ type syncServer struct {
 	refused  map[string]bool
 	down     bool
 	held     chan struct{}
+	failing  int
 }
 
 // startSyncServer starts the server on its store in path, kept across restarts, and has sync's
@@ -73,7 +76,7 @@ const syncHost = "memd.example.com"
 func (s *syncServer) serve(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	s.requests++
-	down, held := s.down, s.held
+	down, held, failing := s.down, s.held, s.failing
 	s.mu.Unlock()
 	if down {
 		if c, _, err := w.(http.Hijacker).Hijack(); err == nil {
@@ -87,6 +90,12 @@ func (s *syncServer) serve(w http.ResponseWriter, r *http.Request) {
 		case <-r.Context().Done():
 			return
 		}
+	}
+	if failing != 0 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(failing)
+		w.Write([]byte(`{"error":"the test server fails"}`))
+		return
 	}
 	rest, ok := strings.CutPrefix(r.URL.Path, "/sync/")
 	if !ok {
@@ -105,7 +114,10 @@ func (s *syncServer) serve(w http.ResponseWriter, r *http.Request) {
 
 // control is /mock/sync: GET says the server's address and how many requests it has had;
 // POST changes how it answers, with refuse=<token> signing a token out, down=1 or 0 dropping
-// every connection or not, and slow=1 holding every request until slow=0.
+// every connection or not, slow=1 holding every request until slow=0, fail=<status> answering
+// every request with that status as synckosh's server answers a failure, in JSON, until
+// fail=0, and stalled=<milliseconds> setting how long sync waits with nothing arriving before
+// it ends a request as stalled.
 func (s *syncServer) control(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -115,6 +127,12 @@ func (s *syncServer) control(w http.ResponseWriter, r *http.Request) {
 		}
 		if d := r.FormValue("down"); d != "" {
 			s.down = d == "1"
+		}
+		if f := r.FormValue("fail"); f != "" {
+			s.failing, _ = strconv.Atoi(f)
+		}
+		if ms, err := strconv.Atoi(r.FormValue("stalled")); err == nil && ms > 0 {
+			sync.StalledAfter = time.Duration(ms) * time.Millisecond
 		}
 		switch r.FormValue("slow") {
 		case "1":

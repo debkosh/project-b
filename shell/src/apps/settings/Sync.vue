@@ -25,7 +25,7 @@ const TOKEN_PLACEHOLDER = 'Only if your server gave you one';
 const MIN = 12;
 
 // The server's row says of a run what Sync details' state row says, and offers the same.
-const { s, holding, lastSynced, serverRow, syncNow, again } = useSyncRun();
+const { s, holding, lastSynced, serverRow, failed, syncNow, again } = useSyncRun();
 
 // The server's mark: its letter on its tile, as a site's.
 const tints = useTints();
@@ -177,6 +177,10 @@ function problem(m) {
       return { field: 'token', text: 'This address needs a token' };
     case 'unreachable':
       return { field: 'address', text: `Couldn't reach ${host}` };
+    case 'server':
+      return { field: 'address', text: `${host} answered with an error` };
+    case 'stalled':
+      return { field: 'address', text: `Nothing arrived from ${host} for 30 seconds` };
     case 'notBucket':
       return { field: 'address', text: "That address isn't a sync bucket" };
     case 'address':
@@ -360,15 +364,15 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
         <button type="button" class="text-button" @click="setUp">Set up again…</button>
       </Row>
       <template v-else-if="s.on">
-        <Row :label="s.host" :hint="lastSynced" :words="words" class="server" :title="serverRow === 'unreachable' ? s.error : undefined">
+        <Row :label="s.host" :hint="lastSynced" :words="words" class="server" :title="serverRow === 'failed' ? s.error : undefined">
           <template #lead>
             <span class="mark" aria-hidden="true" :style="{ background: tile.background, boxShadow: `inset 0 0 0 1px ${tile.border}`, color: tile.letter }">{{ (s.host[0] || '').toUpperCase() }}</span>
           </template>
           <template #hint>
             <template v-if="serverRow === 'syncing'">Syncing…</template>
             <span v-else-if="serverRow === 'signedOut'" class="err">The server signed this device out</span>
-            <template v-else-if="serverRow === 'unreachable'"
-              ><span class="err">Couldn't reach the server</span><template v-if="s.lastSynced"> · {{ lastSynced }}</template></template
+            <template v-else-if="serverRow === 'failed'"
+              ><span class="err">{{ failed }}</span><template v-if="s.lastSynced"> · {{ lastSynced }}</template></template
             >
             <template v-else>{{ lastSynced }}</template>
           </template>
@@ -377,7 +381,7 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
             <button type="button" class="text-button quiet apart" @click="again">Retry</button>
           </span>
           <button v-else-if="serverRow === 'signedOut'" type="button" class="text-button" @click="reconnect">Reconnect…</button>
-          <button v-else-if="serverRow === 'unreachable'" type="button" class="text-button" @click="again">Try again</button>
+          <button v-else-if="serverRow === 'failed'" type="button" class="text-button" @click="again">Try again</button>
           <button v-else type="button" class="text-button" :disabled="holding" @click="syncNow">Sync now</button>
         </Row>
         <Row label="Sync details" hint="What synced, and when" opens="syncDetails" :words="words" />

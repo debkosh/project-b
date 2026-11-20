@@ -1,14 +1,26 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { send, state } from './state.js';
 
+// What a failed run was, as the page says it, by the name Go gives it (sync.Problem). A
+// failure with no name is no more than that sync failed: its own words are in the row's
+// tooltip and on Sync details.
+const FAILED = {
+  unreachable: "Couldn't reach the server",
+  server: 'The server answered with an error',
+  stalled: 'Stopped: nothing arrived for 30 seconds',
+  notBucket: 'The server has no sync bucket at this address',
+  token: 'The server signed this device out',
+};
+export const failedAs = (problem) => FAILED[problem] || "Couldn't sync";
+
 // A sync run as a row shows it (docs/sync.md): the Sync card's server row and Sync details'
 // state row say the same of it and offer the same. Call it in a component's setup.
 export function useSyncRun() {
   const s = computed(() => state.sync);
 
   // The time, each second while the row shows: the syncing row waits a second before it
-  // shows, a run with nothing back for 30 seconds reads as the server out of reach, and "Last
-  // synced" moves on.
+  // shows, and "Last synced" moves on. A run goes on saying it syncs for as long as it does:
+  // Go ends one that stalls, and says so.
   const now = ref(Date.now());
   let ticker = 0;
   onMounted(() => (ticker = setInterval(() => (now.value = Date.now()), 1000)));
@@ -47,8 +59,7 @@ export function useSyncRun() {
     },
   );
   onUnmounted(() => clearTimeout(held));
-  const syncingShown = computed(() => (asked.value || syncingFor.value >= 1000) && syncingFor.value < 30000);
-  const stalled = computed(() => syncingFor.value >= 30000);
+  const syncingShown = computed(() => asked.value || syncingFor.value >= 1000);
 
   // "2 minutes ago", for Last synced.
   function ago(ms) {
@@ -61,13 +72,14 @@ export function useSyncRun() {
   }
   const lastSynced = computed(() => (s.value.lastSynced ? `Last synced ${ago(s.value.lastSynced)}` : 'Not synced yet'));
 
-  // The row: what it says and what it offers.
+  // The row: what it says and what it offers. A failed run says what it was.
   const serverRow = computed(() => {
     if (syncingShown.value) return 'syncing';
     if (s.value.problem === 'token') return 'signedOut';
-    if (s.value.error || stalled.value) return 'unreachable';
+    if (s.value.error) return 'failed';
     return 'synced';
   });
+  const failed = computed(() => failedAs(s.value.problem));
 
   // Retry, and Try again after a run with nothing back, start the run again.
   function again() {
@@ -75,5 +87,5 @@ export function useSyncRun() {
     syncNow();
   }
 
-  return { s, now, holding, ago, lastSynced, serverRow, syncNow, again };
+  return { s, now, holding, ago, lastSynced, serverRow, failed, syncNow, again };
 }

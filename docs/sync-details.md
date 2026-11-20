@@ -32,10 +32,14 @@ state, what syncs with its counts, what waits to go out, and the runs since the 
 - **The state,** the first card's first row, with the Sync card's own control: "Sync is on",
   "After a change here, and every 5 minutes", Sync now; a run a person asked for reads
   "Syncing…" at once with Sync now disabled, and Cancel and Retry after a second; a failed one
-  reads "Couldn't reach the server" in `--danger`, "Trying again in 8 minutes", Try again; a
+  reads what it was in `--danger`, "Couldn't reach the server", "The server answered with an
+  error", "Stopped: nothing arrived for 30 seconds" or "Couldn't sync"
+  ([sync.md](sync.md)), "Trying again in 8 minutes", Try again; a
   refused token, "The server signed this device out", Reconnect…, which goes back to the Sync
   card and opens its set-up. The card and this row share one piece of code, `syncRun.js`.
-- **Then, a label and its value each:** Server (`https://<host>/sync/•••`, the host in
+- **Then, a label and its value each:** What went wrong, only after a run that failed: the
+  error's own words, in monospace and muted, so nobody has to guess what the state's sentence
+  stands for; Server (`https://<host>/sync/•••`, the host in
   `--text`), Last synced ("Today, 14:32 · 2 minutes ago"), Next sync ("About 14:37, or sooner
   after a change here"), Server changes read ("9,214", synckosh's cursor), and What
   the server holds: "Sealed items only. The key stays on your devices". On a phone the value goes
@@ -55,14 +59,24 @@ state, what syncs with its counts, what waits to go out, and the runs since the 
   - Why: "Sync now" (also Retry and Try again), "A change here", "Scheduled", "Starting the
     app", "Turning sync on", "Changing the sync passphrase".
   - What it did: "Received 3, sent 1", "Sent 2", "Nothing new", "Cancelled" for one a person
-    cut short, muted as "Nothing new" is, or the problem's sentence in `--danger`: "Couldn't reach the server", "The
+    cut short, muted as "Nothing new" is, or the problem's sentence in `--danger`, the state
+    row's own: "Couldn't reach the server", "The server answered with an error", "Stopped:
+    nothing arrived for 30 seconds", "The server has no sync bucket at this address", "The
     server signed this device out", else "Couldn't sync".
+  - **A failed run's own words are under its row,** in monospace and muted, with nothing to
+    open: `GET v1/pull?after=1: 400 Bad Request: …`. His words, 2026-11-20, after a failed
+    sync the card called out of reach: "the sync details page was supposed to reveal these
+    kind of debug information only".
   - How long: "180 ms", "2.1 s"; nothing for a row of several.
   - **A run sync started itself that moved nothing and ended as the one before it, started
     the same way, joins that one's row:** "Scheduled, 18 times", "Today, 13:02 to 14:27". One
     a person asked for always has its own row, so a press on Sync now shows its result. So a quiet day is one row, and a server out
     of reach for an hour is one row.
-  - The run going on is the first row: "Now", "Syncing…".
+  - **The run going on is the first row:** "Now", "Syncing… for 42 s", counting each second,
+    and under it what it is doing: "No request answered yet · waiting for GET pull, asked 12 s
+    ago", "14 requests answered · waiting for POST push, asked 1 s ago", or "14 requests
+    answered · working on what arrived" between requests. It opens to the requests answered
+    so far. While a run goes on the page asks every two seconds.
   - On a phone the row is two lines: when, then why and what it did.
 - **A run opens under its row,** on `--accent-tint`, its chevron turned up:
   - Received and Sent, each a list of what moved, by kind and name: a bookmark's title, a
@@ -73,15 +87,13 @@ state, what syncs with its counts, what waits to go out, and the runs since the 
   - Its requests, in monospace, under "2 requests · 612 B sent · 2.1 KB received": the time,
     GET pull or POST push, the status or "no answer", the size both ways, how long. Twenty at
     most, then "and 3 more". Sizes are the app's own (`ui/size.js`).
-  - A failed run: the error's own words, in monospace and muted. This is the one page that shows
-    them outright; everywhere else they are a tooltip.
   - A row of several runs says so: "Each of the 4 ended the same way, the last at 12:10", and
     shows the last one's requests.
 ## The token never shows
 
 An address may carry its token (`https://<host>/sync/<token>`). The page shows `/sync/•••`, an
-error's words name the host alone (`sync.Words`), and a request is shown by its last part
-(`pull`, `push`).
+error's words name a request from `v1` on, which is after the token (`sync.Words`), and a
+request in a run's list is shown by its last part (`pull`, `push`).
 
 ## Where it comes from (`core/sync`)
 
@@ -99,7 +111,8 @@ Nothing is stored for this page. What it shows is read when the page asks:
 - **From sync's memory:** the state, Last synced and Next sync, as today; and the runs since
   the app started, the newest 100 rows, each with why, how long, its error's words, the counts
   received and sent per collection, the names of up to twenty items each way, and up to twenty
-  requests. They are gone when the app closes, and when sync is turned off.
+  requests. They are gone when the app closes, and when sync is turned off. The run going on
+  also has the request that is out with no answer yet (`asking`), noted as it goes out.
   - **Received** is a version from the server that changed a row here; **sent** is an item of
     this device's that the server took. Both are counted in sync's `Local`, where synckosh
     hands them over, as synckosh's `Sync` answers only an error.
@@ -129,13 +142,15 @@ Sync now, Cancel, Retry, Try again and Reconnect… are the Sync card's own mess
 
 - `core/sync` (`details_test.go`): the counts and the queue with its names, from two profiles'
   changes; what a run received and sent, by name, and why it ran; its requests, by the last
-  part of their path, with no token; quiet runs on the timer sharing one row, and refused ones, their error with no token, while
+  part of their path, with no token; quiet runs on the timer sharing one row, and refused ones, their error with no token; a run going on naming the request it waits on, and a stalled one's row, its words and its request with no answer (`connect_test.go`); while
   a run a person asked for keeps its own; a new manager over the same store starting with only its start's run, no
   table added, and turning sync off forgetting the runs. `core/app`: `syncDetails` answered
   with sync off.
 - `shell/e2e/sync.cjs`, in the one-page and Sections layouts and on a phone: the row on the
   Sync card; the page asking Go; the state's control as the card's; the server with no token;
-  the three kinds; a run opening and closing, and a failed one's own words; a page visited
+  the kinds; a run opening and closing; each failed run saying what it was, with its own
+  words under its row and no token in them; what went wrong on the state's card; a run going
+  on as the first row, counting, and saying which request it waits on; a page visited
   while the server is out of reach waiting in the queue by its address, then going with Try
-  again, the run naming it; Sync now from the page; Back. Its pictures are 24, 25 and 26 under
+  again, the run naming it; Sync now from the page; Back. Its pictures are 24, 25, 26 and 30 under
   `build/sync-screens/`.

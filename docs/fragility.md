@@ -43,12 +43,18 @@ The seams:
   so far: a Dialog's buttons under the keyboard, the keyboard left up by the native star's
   sheet.
 - **Work that takes time.** A rule made for work nobody asked for, such as waiting before
-  saying it is busy, doesn't fit a press, which needs its answer at once. One so far: Sync
-  now that showed nothing.
+  saying it is busy, doesn't fit a press, which needs its answer at once; and a clock that
+  measures how long the work has gone on is not one that measures how long nothing has
+  arrived. Two so far: Sync now that showed nothing, a sync called out of reach that wasn't.
 - **An error as text.** A library's words for what went wrong hold more than we would say
   ourselves: Go names the whole address a request went to, and an address can be a secret.
   What goes to a log, a tooltip or a report has to be looked at as text a stranger may read.
   One so far: the sync token in the log.
+- **One sentence for every failure.** A row with one sentence for "it failed" says that
+  sentence for failures it doesn't fit, and the person checks the wrong thing. Each failure
+  the code can tell apart gets its own words, the rest say no more than that it failed, and
+  the error's own words are where a person can read them. One so far: a sync called out of
+  reach that wasn't.
 
 ## The keyboard left up by the native star's sheet, 2026-11-19
 
@@ -81,6 +87,36 @@ The seams:
   address cut down to its host, and the status, the page's answers and the timeline use it.
 - **Guard:** `TestAFailedRunsWordsLeaveTheTokenOut` in `core/sync` signs a device out and
   finds no token in the status or the timeline, having first seen that Go's own error has it.
+
+## A sync called out of reach that wasn't, 2026-11-20
+
+- **Seen:** on the Mac, in a new profile, he turned sync on against a bucket that already held
+  his other devices' data. The passphrase was taken, the dialog closed, and the Sync row said
+  "Couldn't reach the server" with Try again. The server answered him at once in a browser.
+- **Cause:** the row had one sentence for two things that aren't it. Any run that failed, for
+  whatever reason, read "Couldn't reach the server", the server's own 500 and a row that
+  couldn't be written among them. And any run still going after 30 seconds read the same,
+  from a clock in the page that measured how long the run had gone on, not how long nothing
+  had arrived; a first sync against a full bucket can take longer, and Try again then cut the
+  working run short and started it over. Which of the two his Mac hit isn't known: its log
+  wasn't at hand, and Sync details showed a failed run's own words only once it was opened.
+- **Seam:** one sentence for every failure; and work that takes time, a clock on the wrong
+  thing.
+- **Fix:** on sync-says-what-failed. `core/sync` names a server's own failure (`ErrServer`)
+  apart from no answer, and ends a request with nothing going or arriving for 30 seconds as
+  stalled (`ErrStalled`, in the http client it wraps), so a long run whose requests are
+  answered never stalls. The row says what a failed run was by the status's `problem`
+  (`syncRun.js`), keeps no clock of its own, and goes on saying "Syncing…" while a run does.
+  Sync details shows a failed run's own words under its row and on the state's card, and the
+  run going on with how long and which request it waits on. The words are the request and
+  then the cause (`sync.Words`), without the sentence over again.
+- **Guard:** `core/sync` (`TestAFailedRunSaysWhatItWas`,
+  `TestARunStallsOnlyWithNothingArriving`): a 500 is `server`, a 400 has no name, no answer is
+  `unreachable`; a run slower than the stall wait whose requests are answered ends well, one
+  with nothing arriving ends `stalled`, and Sync details names the request it waited on.
+  `shell/e2e/sync.cjs`: the row's words for each, the tooltip, a held run that goes on saying
+  it syncs and then ends as stopped, and Sync details showing each failed run's words with
+  nothing opened and a run going on with its count.
 
 ## Sync now that showed nothing, 2026-11-19
 
