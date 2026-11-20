@@ -81,7 +81,17 @@ watch(
     }
   },
 );
+// A password shown goes back to dots when the window or the page is left, as it does when
+// its row closes: nothing still shows it on return.
+const hideShown = () => Object.keys(shown).forEach((id) => delete shown[id]);
+const hideWhenHidden = () => document.hidden && hideShown();
+onMounted(() => {
+  window.addEventListener('blur', hideShown);
+  document.addEventListener('visibilitychange', hideWhenHidden);
+});
 onUnmounted(() => {
+  window.removeEventListener('blur', hideShown);
+  document.removeEventListener('visibilitychange', hideWhenHidden);
   clearTimeout(saidFor);
   state.passwordAnswer = null;
 });
@@ -115,13 +125,13 @@ const count = computed(() => (all.value.length === 1 ? '1 saved' : `${all.value.
           <div class="kv">
             <span class="k">Username</span>
             <span class="v" :class="{ none: !l.username }">{{ l.username || 'None' }}</span>
-            <button v-if="l.username" type="button" class="text-button quiet" :aria-label="`Copy the username for ${l.site}`" @click="copy(l, 'username')">Copy</button>
+            <button v-if="l.username" type="button" class="text-button" :aria-label="`Copy the username for ${l.site}`" @click="copy(l, 'username')">Copy</button>
           </div>
           <div class="kv">
             <span class="k">Password</span>
             <span class="v secret" :class="{ plain: shown[l.id] }">{{ shown[l.id] || '••••••••••' }}</span>
-            <button type="button" class="text-button quiet" :aria-label="`${shown[l.id] ? 'Hide' : 'Show'} the password for ${l.site}`" @click="show(l)">{{ shown[l.id] ? 'Hide' : 'Show' }}</button>
-            <button type="button" class="text-button quiet" :aria-label="`Copy the password for ${l.site}`" @click="copy(l, 'password')">Copy</button>
+            <button type="button" class="text-button" :aria-label="`${shown[l.id] ? 'Hide' : 'Show'} the password for ${l.site}`" @click="show(l)">{{ shown[l.id] ? 'Hide' : 'Show' }}</button>
+            <button type="button" class="text-button" :aria-label="`Copy the password for ${l.site}`" @click="copy(l, 'password')">Copy</button>
           </div>
           <div class="foot">
             <span class="secondary" :class="{ err: said[l.id]?.bad }" role="status">{{ said[l.id]?.text || saved(l.created) }}</span>

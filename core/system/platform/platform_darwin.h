@@ -19,6 +19,9 @@ void pb_system_answer_notifications(void);
 // thread. Cancel takes the sheet of check id away.
 void pb_system_verify_person(int32_t id, const char* reason);
 void pb_system_cancel_person(int32_t id);
+// Puts text on the general pasteboard with the concealed and transient types beside it
+// (nspasteboard.org), so clipboard managers and history skip it.
+void pb_system_copy_secret(const char* text);
 // rgb is 0xRRGGBB, or -1 for no dot.
 void pb_system_set_dock_color(int32_t rgb);
 // Posts a page's notification to the notification centre; a click on it reaches Go as

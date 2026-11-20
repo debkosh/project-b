@@ -52,9 +52,13 @@ with how many there are. It opens a list page.
   none), and a chevron down. It opens in place, one at a time, on `--accent-tint`:
   - Username, with Copy.
   - Password, hidden as dots, with Show and Copy. Show has the device check the person,
-    then the password is there in monospace with Hide, until it is hidden, the row closes
-    or the page is left. Copy has the device check the person and puts the password on the
-    clipboard in Go: the page never has it for a copy.
+    then the password is there in monospace with Hide, until it is hidden, the row closes,
+    another opens, or the window or the page is left: nothing still shows it on return.
+    Copy has the device check the person and puts the password on the clipboard in Go, so
+    the page never has it for a copy, and marked as a secret (`system.CopySecret`): on the
+    Mac the pasteboard's concealed and transient types, which clipboard managers and
+    Universal Clipboard's history leave out; on Android the clip's sensitive flag, which
+    also hides the system's preview of it from Android 13. A username is copied plainly.
   - A line that says when it was saved, and answers the last press for two seconds:
     "Password copied", "Username copied". With no screen lock on the device, in `--danger`:
     "Set a screen lock on this device to show passwords". A check the person refuses says
@@ -72,7 +76,7 @@ with how many there are. It opens a list page.
 |---|---|
 | `passwordsList` | `passwords {passwords}`: each `{id, site, origin, username, created}`, never a password. Sent again to every Settings page after a change |
 | `passwordShow {id}` | `passwordShown {id, password}` to the asking page alone, or `{id, error}`: `denied`, `noScreenLock`, `notHere`, `gone`, `failed` |
-| `passwordCopy {id, what}` | `passwordCopied {id, what}`, with `error` as above. `what` is `password`, after the device's check, or `username`, with none. Go writes the clipboard |
+| `passwordCopy {id, what}` | `passwordCopied {id, what}`, with `error` as above. `what` is `password`, after the device's check, put on the clipboard as a secret, or `username`, with no check, plainly. Go writes the clipboard |
 | `passwordDelete {id}` | the list and the count again |
 
 The snapshot has `passwordCount`, and `passwordCount {passwordCount}` follows each change.
@@ -82,6 +86,7 @@ The snapshot has `passwordCount`, and `passwordCount {passwordCount}` follows ea
 - Filling a login on a page, offering to save or update one, a generator.
 - Syncing them.
 - Adding or editing one by hand, and exporting them.
+- Clearing the clipboard a while after a password was copied.
 - Profile Lock, a passphrase over them: designed, on hold.
 
 ## Tests
@@ -90,7 +95,8 @@ The snapshot has `passwordCount`, and `passwordCount {passwordCount}` follows ea
   holding no password plain; brought again, and a clash keeping both; a password bound to
   its row; delete; Start fresh; a profile whose key doesn't open.
 - `core/app` (`TestSettingsPasswords`): the four messages, the device's check for Show and
-  Copy and none for a username, the clipboard, and each refusal.
+  Copy and none for a username, a password copied as a secret and a username plainly, and
+  each refusal.
 - `shell/e2e/password-settings.cjs`, in the one-page and Sections layouts and on a phone:
   the row and its count, the list, the search, a row opening, Show and Hide, Copy of both,
   the check refused and with no screen lock, Delete, and none left.

@@ -65,6 +65,13 @@ type System interface {
 	// takes the sheet away and leaves answered unrun.
 	VerifyPerson(check PersonCheck, answered func(Verdict)) (cancel func())
 
+	// CopySecret puts text on the clipboard marked as a secret, a password a person copied,
+	// so that what keeps or shows the clipboard's history leaves it out: on the Mac the
+	// pasteboard's concealed and transient types, which clipboard managers and Universal
+	// Clipboard's history honour; on Android the clip's sensitive flag, which also hides the
+	// system's preview of it from Android 13.
+	CopySecret(text string)
+
 	// Report is what a crash report says of this device, for the app at version: the
 	// release, the OS and the device, and on Android the app's own log.
 	Report(version string) []crash.Section

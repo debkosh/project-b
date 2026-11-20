@@ -29,6 +29,7 @@ static jmethodID go_system_notifications_allowed;
 static jmethodID go_system_ask_notifications;
 static jmethodID go_system_verify_person;
 static jmethodID go_system_cancel_person;
+static jmethodID go_system_copy_secret;
 
 // The calling thread's JNIEnv, attaching a thread of Go's that has none; *attached says to
 // detach it after, with detach.
@@ -122,6 +123,18 @@ static void system_cancel_person(int32_t id) {
   detach(env, attached);
 }
 
+static void system_copy_secret(const char* text) {
+  int attached;
+  JNIEnv* env = attach(&attached);
+  if (env == NULL) {
+    return;
+  }
+  jstring t = (*env)->NewStringUTF(env, text);
+  (*env)->CallStaticVoidMethod(env, go_system, go_system_copy_secret, t);
+  (*env)->DeleteLocalRef(env, t);
+  detach(env, attached);
+}
+
 static const PBSystemCalls system_calls = {
     .open_file = system_open_file,
     .reveal_file = system_reveal_file,
@@ -131,6 +144,7 @@ static const PBSystemCalls system_calls = {
     .ask_notifications = system_ask_notifications,
     .verify_person = system_verify_person,
     .cancel_person = system_cancel_person,
+    .copy_secret = system_copy_secret,
 };
 
 // read_device_key is DeviceKey.get, on whichever of Go's threads asks: 1 with the 32 bytes in
@@ -199,6 +213,7 @@ JNIEXPORT jlong JNICALL Java_dev_projectb_browser_GoCore_table(JNIEnv* env, jcla
     go_system_ask_notifications = (*env)->GetStaticMethodID(env, go_system, "askNotifications", "()V");
     go_system_verify_person = (*env)->GetStaticMethodID(env, go_system, "verifyPerson", "(ILjava/lang/String;Ljava/lang/String;)V");
     go_system_cancel_person = (*env)->GetStaticMethodID(env, go_system, "cancelPerson", "(I)V");
+    go_system_copy_secret = (*env)->GetStaticMethodID(env, go_system, "copySecret", "(Ljava/lang/String;)V");
     PBSetSystemCalls(&system_calls);
   }
   return (jlong)(intptr_t)&go;

@@ -34,6 +34,11 @@ func (s *System) RevealFile(path string) {
 	withPath(path, func(c *C.char) { C.pb_system_reveal_file(c) })
 }
 
+// CopySecret puts text on the pasteboard with the concealed and transient types beside it.
+func (s *System) CopySecret(text string) {
+	withPath(text, func(c *C.char) { C.pb_system_copy_secret(c) })
+}
+
 func (s *System) IsDefaultBrowser() bool { return C.pb_system_is_default_browser() != 0 }
 
 func (s *System) AskDefaultBrowser(answered func(bool)) {

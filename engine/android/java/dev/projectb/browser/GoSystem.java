@@ -4,6 +4,8 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.KeyguardManager;
 import android.app.role.RoleManager;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.pm.PackageManager;
 import android.hardware.biometrics.BiometricManager;
 import android.hardware.biometrics.BiometricPrompt;
@@ -11,6 +13,7 @@ import android.os.Build;
 import android.os.CancellationSignal;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.PersistableBundle;
 import android.util.SparseArray;
 
 import org.chromium.build.annotations.UsedByReflection;
@@ -49,6 +52,23 @@ final class GoSystem {
     @UsedByReflection("go_table.c")
     static void openFile(String path) {
         Downloads.open(path);
+    }
+
+    /**
+     * Puts a secret a person copied, a password, on the clipboard as a clip marked sensitive:
+     * Android 13 and later show no preview of it, and keyboards that keep a clipboard's history
+     * leave it out. The extra's name is ClipDescription.EXTRA_IS_SENSITIVE's own value, which
+     * has no constant before API 33.
+     */
+    @UsedByReflection("go_table.c")
+    static void copySecret(String text) {
+        sMain.post(() -> {
+            ClipData clip = ClipData.newPlainText("", text);
+            PersistableBundle extras = new PersistableBundle();
+            extras.putBoolean("android.content.extra.IS_SENSITIVE", true);
+            clip.getDescription().setExtras(extras);
+            sActivity.getSystemService(ClipboardManager.class).setPrimaryClip(clip);
+        });
     }
 
     /** Shows the system's Downloads. */

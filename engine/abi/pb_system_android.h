@@ -29,6 +29,9 @@ typedef struct PBSystemCalls {
   // thread. Cancel takes the sheet of check id away.
   void (*verify_person)(int32_t id, const char* title, const char* subtitle);
   void (*cancel_person)(int32_t id);
+  // Puts text on the clipboard as a clip marked sensitive, a password a person copied:
+  // Android 13 and later show no preview of it.
+  void (*copy_secret)(const char* text);
 } PBSystemCalls;
 
 #endif  // PROJECT_B_ENGINE_ABI_PB_SYSTEM_ANDROID_H_

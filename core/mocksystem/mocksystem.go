@@ -30,6 +30,8 @@ type System struct {
 	links           func(urls []string)
 	// The checks of the person: what each was for, the verdict they get, whether they wait
 	// for AnswerCheck, those waiting, and how many were taken back.
+	// secret is what CopySecret last put on the clipboard as a secret.
+	secret       string
 	checks       []system.PersonCheck
 	verdict      system.Verdict
 	holdChecks   bool
@@ -56,6 +58,20 @@ func (s *System) OpenFile(path string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.opened = append(s.opened, path)
+}
+
+// CopySecret keeps text as the secret last copied, for Secret.
+func (s *System) CopySecret(text string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.secret = text
+}
+
+// Secret is what CopySecret last put on the clipboard as a secret.
+func (s *System) Secret() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.secret
 }
 
 func (s *System) RevealFile(path string) {

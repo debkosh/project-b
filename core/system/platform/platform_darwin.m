@@ -36,6 +36,20 @@ void pb_system_open_file(const char* path) {
   });
 }
 
+void pb_system_copy_secret(const char* text) {
+  NSString* secret = [NSString stringWithUTF8String:text];
+  if (secret == nil) {
+    return;
+  }
+  OnMain(^{
+    NSPasteboard* board = NSPasteboard.generalPasteboard;
+    [board clearContents];
+    [board setString:secret forType:NSPasteboardTypeString];
+    [board setString:@"" forType:@"org.nspasteboard.ConcealedType"];
+    [board setString:@"" forType:@"org.nspasteboard.TransientType"];
+  });
+}
+
 void pb_system_reveal_file(const char* path) {
   NSURL* url = FileURL(path);
   OnMain(^{

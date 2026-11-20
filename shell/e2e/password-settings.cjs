@@ -54,6 +54,7 @@ if (layout === 'sections') fs.writeFileSync(path.join(lib.profile, 'prefs.json')
   };
   const sends = (msg) => page.waitForRequest((r) => r.url().includes('/settings/send') && JSON.parse(r.postData() || '{}').t === msg.t, { timeout: 5000 }).then((r) => JSON.parse(r.postData()), () => null);
   const clipboard = async () => (await regions()).clipboard;
+  const secret = async () => (await regions()).secretCopied;
 
   // The row, where Privacy is.
   if (phone) await page.locator('.chips [data-section="privacy"]').click();
@@ -110,9 +111,9 @@ if (layout === 'sections') fs.writeFileSync(path.join(lib.profile, 'prefs.json')
   await panel.getByRole('button', { name: 'Copy the password for mail.example.org' }).click();
   const copyMsg = await told;
   check('Copy sends Go passwordCopy for the password', !!copyMsg && copyMsg.what === 'password', JSON.stringify(copyMsg));
-  check('the password is on the clipboard, the row says so, and the page still hides it', await until(async () => (await clipboard()) === 'correct horse battery' && (await text()).includes('Password copied')) && /^•+$/.test(await panel.locator('.secret').innerText()), await text());
+  check('the password is on the clipboard as a secret, the row says so, and the page still hides it', await until(async () => (await secret()) === 'correct horse battery' && (await clipboard()) !== 'correct horse battery' && (await text()).includes('Password copied')) && /^•+$/.test(await panel.locator('.secret').innerText()), await text());
   await panel.getByRole('button', { name: 'Copy the username for mail.example.org' }).click();
-  check('the username copies too', await until(async () => (await clipboard()) === 'asha@example.org' && (await text()).includes('Username copied')), await text());
+  check('the username copies too, plainly', await until(async () => (await clipboard()) === 'asha@example.org' && (await text()).includes('Username copied')), await text());
   check('and the line goes back to when it was saved', await until(async () => (await text()).includes('Saved today'), 4000), await text());
 
   // The device's check refused: nothing shows and nothing is said. With no screen lock, why.

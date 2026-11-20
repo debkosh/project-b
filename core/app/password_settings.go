@@ -141,7 +141,8 @@ func (a *App) passwordSettingsPart(e engine.Engine) settings.Part {
 				}()
 			case "passwordCopy":
 				// What is "password", after the device's check, or "username". Go puts it on the
-				// clipboard: the password never goes to the page for a copy.
+				// clipboard, a password as a secret (system.CopySecret): it never goes to the
+				// page for a copy.
 				json.Unmarshal(msg, &c)
 				go func() {
 					answer := map[string]any{"t": "passwordCopied", "id": c.ID, "what": c.What}
@@ -155,10 +156,15 @@ func (a *App) passwordSettingsPart(e engine.Engine) settings.Part {
 						text, err = a.Passwords.Password(context.Background(), c.ID)
 					}
 					e.Post(func() {
-						if err != nil {
+						switch {
+						case err != nil:
 							answer["error"] = why(err)
-						} else {
+						case c.What == "username":
 							e.WriteClipboard(text)
+						default:
+							// A password goes on the clipboard marked as a secret, so what keeps or
+							// shows the clipboard's history leaves it out.
+							a.System.CopySecret(text)
 						}
 						a.Settings.SendTo(tab, answer)
 					})

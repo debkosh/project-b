@@ -50,12 +50,12 @@ func TestSettingsPasswords(t *testing.T) {
 	if checks := r.sys.Checks(); len(checks) != 1 || checks[0].Subtitle != "mail.example.org" {
 		t.Fatalf("the device's check: %+v", checks)
 	}
-	// Copy puts it on the clipboard here, after the check, and the page never has it; a
-	// username is copied with no check.
+	// Copy puts it on the clipboard here, after the check, marked as a secret, and the page
+	// never has it; a username is copied plainly, with no check.
 	r.settings(`{"t":"passwordCopy","id":"` + id + `","what":"password"}`)
 	m = r.waitOn(got, func(m map[string]any) bool { return m["t"] == "passwordCopied" })
-	if m["what"] != "password" || m["password"] != nil || m["error"] != nil || r.e.Clipboard() != "correct horse" || len(r.sys.Checks()) != 2 {
-		t.Fatalf("copied: %v, the clipboard %q, %d checks", m, r.e.Clipboard(), len(r.sys.Checks()))
+	if m["what"] != "password" || m["password"] != nil || m["error"] != nil || r.sys.Secret() != "correct horse" || r.e.Clipboard() == "correct horse" || len(r.sys.Checks()) != 2 {
+		t.Fatalf("copied: %v, as a secret %q, plainly %q, %d checks", m, r.sys.Secret(), r.e.Clipboard(), len(r.sys.Checks()))
 	}
 	r.settings(`{"t":"passwordCopy","id":"` + id + `","what":"username"}`)
 	m = r.waitOn(got, func(m map[string]any) bool { return m["t"] == "passwordCopied" })
