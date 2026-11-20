@@ -4,7 +4,8 @@
 // set-up Dialog through a new bucket and one in use, every refusal (a short passphrase, two
 // that differ, a wrong one, an http address, a server out of reach, an address that isn't a
 // bucket, a token refused), Suggest one, the connected rows (Sync now, syncing with Cancel
-// and Retry, out of reach, signed out and Reconnect), Change sync passphrase and Turn off;
+// and Retry, out of reach, the server's own failure, a failure of another kind, stalled,
+// signed out and Reconnect), Change sync passphrase and Turn off;
 // a profile whose keys don't open here, and Set up again; and the project-b://sync link,
 // from another app and pressed in a page, which sends nothing to the server before Connect,
 // and from a page's own script, which does nothing.
@@ -259,6 +260,29 @@ const taken = [];
   await button('Try again', card()).click();
   check('Try again syncs', await until(async () => (await button('Sync now', card()).isVisible()) && !(await serverRow().innerText()).includes("Couldn't")));
 
+  // A failed run says what it was. A server that answers that it failed was reached, so the
+  // row doesn't say it wasn't; a failure with no name of its own says no more than that sync
+  // failed, with the error's words in the tooltip; and a run with nothing arriving ends as
+  // stopped, which a run that is only long never does.
+  const rowSays = (words, within = 15000) => until(async () => (await serverRow().innerText()).includes(words), within);
+  await until(async () => (await serverRow().innerText()).includes('Last synced just now') && (await button('Sync now', card()).isEnabled()));
+  await server({ fail: '500' });
+  await button('Sync now', card()).click();
+  check("a server that answers with its own failure says that, not that it couldn't be reached, with Try again", (await rowSays('The server answered with an error · Last synced')) && !(await serverRow().innerText()).includes("Couldn't reach") && (await button('Try again', card()).isVisible()), await serverRow().innerText());
+  await shot(27, 'server-error');
+  await server({ fail: '400' });
+  await button('Try again', card()).click();
+  check("a failure of another kind says no more than Couldn't sync, with its own words in the tooltip", (await rowSays("Couldn't sync · Last synced")) && ((await serverRow().getAttribute('title')) || '').includes('400') && !((await serverRow().getAttribute('title')) || '').includes(token), `${await serverRow().innerText()} | ${await serverRow().getAttribute('title')}`);
+  await shot(28, 'failed');
+  await server({ fail: '0', slow: '1', stalled: '4000' });
+  await button('Try again', card()).click();
+  check('a run with nothing arriving goes on saying Syncing…, with Cancel and Retry', (await rowSays('Syncing…', 500)) && (await page.waitForTimeout(2000), (await serverRow().innerText()).includes('Syncing…')) && (await button('Cancel', card()).isVisible()));
+  check('and is ended as stopped, with Try again', (await rowSays('Stopped: nothing arrived for 30 seconds')) && (await button('Try again', card()).isVisible()), await serverRow().innerText());
+  await shot(29, 'stalled');
+  await server({ slow: '0', stalled: '30000' });
+  await button('Try again', card()).click();
+  check('Try again syncs after each', await until(async () => (await button('Sync now', card()).isVisible()) && (await serverRow().innerText()).includes('Last synced just now')), await serverRow().innerText());
+
   // Sync details (docs/sync-details.md): a page of its own from the card's second row, which
   // shows what sync holds now. Nothing is stored for it, so it asks Go as it opens.
   const details = () => page.getByRole('region', { name: 'Sync details', exact: true });
@@ -298,11 +322,15 @@ const taken = [];
   const cancelled = details().locator('.runs .run', { hasText: /cancelled/i }).first();
   check('a run a person cut short reads Cancelled, in --muted', (await cancelled.count()) === 1 &&
     (await cancelled.evaluate((r) => { const d = [...r.querySelectorAll('.did, .on-phone span')].find((e) => e.offsetParent && /cancelled/i.test(e.textContent)); const hint = r.querySelector('.secondary'); return !!d && getComputedStyle(d).color === getComputedStyle(hint).color; })));
-  // The failed run's own words, on this page alone.
-  const failed = details().locator('.runs .run', { has: page.locator('.err') }).first();
-  await failed.click();
-  check('a failed run opens to the error\'s own words, the host alone in them', await shown(panel().locator('.detail')) && !(await panel().innerText()).includes(token) && (await panel().locator('.detail').innerText()).length > 10, await panel().innerText());
-  await failed.click();
+  // Each failed run says what it was, and its error's own words are under its row with
+  // nothing to open, the host alone in them.
+  const said = async () => (await details().locator('.runs .said.words').allInnerTexts()).join(' | ');
+  const runsText = async () => (await details().locator('.runs').innerText()).replace(/\s+/g, ' ');
+  check('each failed run says what it was: out of reach, the server\'s own failure, stalled, or no more than that it failed',
+    /couldn't reach the server/i.test(await runsText()) && /the server answered with an error/i.test(await runsText()) && /stopped: nothing arrived for 30 seconds/i.test(await runsText()) && /couldn't sync/i.test(await runsText()), await runsText());
+  check('and its error\'s own words are under its row, with nothing opened and no token in them', (await panel().count()) === 0 && (await said()).includes('500 Internal Server Error') && (await said()).includes('400 Bad Request') &&
+    (await said()).includes('nothing arrived for 30 seconds') && (await said()).includes('GET v1/pull?after=') && !(await said()).includes('sync:') && !(await said()).includes(token), await said());
+  check('the words can be selected, to copy into a report', await details().locator('.runs .said.words').first().evaluate((e) => getComputedStyle(e).userSelect === 'text'));
   // The queue: a page visited while the server is out of reach waits to go out, named by its
   // address, and goes with the next run, which names it too.
   await server({ down: '1' });
@@ -313,6 +341,11 @@ const taken = [];
   check('and History counts it as waiting', await until(async () => /(^|\D)1( waiting to send)?$/.test((await details().locator('[data-kind="history"]').innerText()).trim())), await details().locator('[data-kind="history"]').innerText());
   check('the state says the server couldn\'t be reached, in --danger, with Try again and when it tries next', await until(async () => (await stateRow().innerText()).includes("Couldn't reach the server"), 15000) &&
     (await button('Try again', details()).isVisible()) && /Trying again in \d+ minutes?/.test(await stateRow().innerText()) && /Next sync About \d\d:\d\d/.test(await text()), await stateRow().innerText());
+  check('and what went wrong under it, the request and then the cause, with no token', /What went wrong (GET|POST) v1\/\S+: .{3,} Server https/.test(await text()) && !(await text()).includes(token) &&
+    (await details().locator('.wrong .said').evaluate((e) => getComputedStyle(e).userSelect === 'text')), await text());
+  await stateRow().evaluate((e) => e.scrollIntoView({ block: 'center' }));
+  await shot(31, 'details-wrong');
+  await queue().evaluate((e) => e.scrollIntoView({ block: 'start' }));
   await shot(26, 'details-waiting');
   await server({ down: '0' });
   await button('Try again', details()).click();
@@ -320,6 +353,21 @@ const taken = [];
   await runRows().first().click();
   check('and names what it sent', (await panel().innerText()).includes('example.org/waiting') && (await panel().innerText()).includes('Sent 1'), await panel().innerText());
   await runRows().first().click();
+
+  // A run going on is the first row: how long it has gone on, and which request it waits on.
+  await server({ slow: '1' });
+  await button('Sync now', details()).click();
+  const going = () => runRows().first().innerText();
+  const goingFor = async () => Number((/Syncing… for (\d+) s/i.exec(await going()) || [])[1] ?? -1);
+  const waitsFor = () => details().locator('.runs .said').first().innerText();
+  check('a run going on is the first row, Now, saying how long it has gone on', await until(async () => (await going()).includes('Now') && (await goingFor()) >= 0, 5000), await going());
+  check('and under it what it is doing: no request answered yet, waiting for its pull, and since when', await until(async () => /No request answered yet · waiting for GET pull, asked \d+ s ago/.test(await waitsFor()), 8000), await waitsFor());
+  const goneOn = await goingFor();
+  check('it counts on while the run goes on', await until(async () => (await goingFor()) >= goneOn + 2, 6000) && (await stateRow().innerText()).includes('Syncing…') && (await button('Cancel', details()).isVisible()), await going());
+  await runRows().first().evaluate((e) => e.scrollIntoView({ block: 'center' }));
+  await shot(30, 'details-syncing');
+  await server({ slow: '0' });
+  check('and when the run ends it is a row as any other', await until(async () => !(await going()).includes('Now') && (await button('Sync now', details()).isEnabled()), 15000), await going());
 
   // Sync now from here is the card's: at once, disabled, then a new run on the list.
   const runsBefore = await runRows().count();

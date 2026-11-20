@@ -203,8 +203,8 @@ and `OnStatus` answer at once; the rest run on sync's goroutine, after what was 
 | `SyncNow()` | a run now |
 | `CancelRun()` | cuts the run going on short: it ends with no error and no longer wait, and the next comes when it would have |
 | `Address() string` | the bucket's address while sync is on, for Reconnect |
-| `Problem(err) string` | what went wrong reaching a bucket, by name: `address` (not one Propose takes), `needsToken`, `unreachable` (no answer, or the server's own failure), `notBucket` (not found, or not JSON), `token` (refused), or `""` for anything else. A request's answer is looked at before synckosh reads it, and its error wraps `ErrAddress`, `ErrNeedsToken`, `ErrUnreachable`, `ErrNotBucket` or `ErrToken` |
-| `Words(err) string` | an error's text with a request's address cut down to its host, as an address may carry its token. What the status, the page's answers and the timeline say of an error |
+| `Problem(err) string` | what went wrong reaching a bucket, by name: `address` (not one Propose takes), `needsToken`, `unreachable` (no answer), `server` (the server answered that it failed, 500 and up: it was reached), `stalled` (a request with nothing going or arriving for `StalledAfter`, 30 seconds, which is ended), `notBucket` (not found, or not JSON), `token` (refused), or `""` for anything else, as a request the server won't take or a row that can't be written. A request's answer is looked at before synckosh reads it, and its error wraps `ErrAddress`, `ErrNeedsToken`, `ErrUnreachable`, `ErrServer`, `ErrStalled`, `ErrNotBucket` or `ErrToken` |
+| `Words(err) string` | an error's text, a failed request as the request and then the cause, `GET v1/pull?after=1: EOF`: the request named from `v1` on, as the address before it may carry its token, and without the words the page's own sentence says. What the status, the page's answers and the timeline say of an error |
 | `Details(answer func(Details))` | what the Sync details page shows ([sync-details.md](sync-details.md)): the address with no token, the counts, the queue, and the runs since the app started, kept in memory only |
 | `StartFresh(done func(error))` | for a locked profile key: `keys.StartFresh`, so sync is forgotten and off |
 | `Status() Status`, `OnStatus(func(Status))` | `on`, `syncing`, `host`, `lastSynced` (Unix ms, 0 for never), `error`, `problem` (the last run's, by `Problem`'s names: `token` when the server signed this device out), `locked` |
@@ -259,8 +259,17 @@ picture, light and dark, desktop and phone, is made by `shell/e2e/sync.cjs` unde
     so a run too quick to see still answers the press, and then reads "Last synced just now".
     For that second Sync now stays where it is, disabled, so a second tap lands on nothing;
     Cancel and Retry come only if the run is still going after it.
-  - After 30 seconds of syncing, or a run that failed, "Couldn't reach the server · Last synced
-    …" in `--danger`, with Try again; the error's own words in the row's tooltip.
+  - A run that failed says what it was, in `--danger`, then "· Last synced …", with Try again
+    and the error's own words in the row's tooltip (`syncRun.js`, by the status's `problem`):
+    "Couldn't reach the server" only when the server gave no answer; "The server answered with
+    an error" when it was reached and said it failed; "Stopped: nothing arrived for 30
+    seconds" when a request stalled, the same words as the updater's and an import's
+    ([ux-guide.md](ux-guide.md#anything-that-takes-time)); "The server has no sync bucket at
+    this address"; and "Couldn't sync" for anything else. The words themselves are on Sync
+    details, under the run.
+  - A run goes on saying "Syncing…" for as long as it does. Go ends a request that stalls;
+    the page keeps no clock of its own. A first sync against a bucket that holds a lot takes
+    as long as it takes.
   - A token the server refuses: "The server signed this device out", Reconnect…, which opens the
     set-up with the address filled in and the focus on Token. Connecting from it lets the old
     bucket go first and joins again.
@@ -343,12 +352,13 @@ nothing. `core/cmd/lib`: a folder named outright gets no device key.
 
 `shell/e2e/sync.cjs` (in `tools/test.sh mock`), in the one-page and Sections layouts and on a
 phone, against synckosh's server, which the dev server runs with `-sync-server` and sync reaches
-as memd.example.com (`/mock/sync` counts its requests, signs a token out, drops connections or
-holds requests; `/mock/open` hands a link over as another app does): where the card is and search
+as memd.example.com (`/mock/sync` counts its requests, signs a token out, drops connections,
+holds requests, answers each with a failure, or shortens the wait before a request stalls; `/mock/open` hands a link over as another app does): where the card is and search
 finding it; a new bucket and one in use; a short passphrase, two that differ, a wrong one, an http
 address, a server out of reach, an address that isn't a bucket, a refused token; Suggest one and
-the strength; Sync now, syncing with Cancel, out of reach with Try again, signed out with
-Reconnect; Change and Turn off; keys that don't open and Set up again; the link from another app
+the strength; Sync now, syncing with Cancel, out of reach with Try again, the server's own
+failure, a failure of another kind with its words in the tooltip, a run with nothing arriving
+that goes on saying it syncs and then ends as stopped, signed out with Reconnect; Change and Turn off; keys that don't open and Set up again; the link from another app
 and pressed in a page with no request reaching the server before Connect, an http link's error,
 and a page's script going there doing nothing; on a phone, the buttons' 48px targets and the
 fields' 48px.

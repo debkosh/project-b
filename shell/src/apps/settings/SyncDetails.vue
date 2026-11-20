@@ -4,7 +4,7 @@ import { phone } from '@/phone.js';
 import { size } from '@/ui/size.js';
 import Row from './Row.vue';
 import { send, state } from './state.js';
-import { useSyncRun } from './syncRun.js';
+import { failedAs, useSyncRun } from './syncRun.js';
 
 // Sync details (docs/sync-details.md): a page of its own, from a row of the Sync card, that
 // shows what sync holds right now and nothing more: the server and the state, what syncs
@@ -12,17 +12,20 @@ import { useSyncRun } from './syncRun.js';
 // nothing for it, so the page asks, and asks again as things change.
 
 const go = inject('settingsGo');
-const { s, now, holding, ago, serverRow, syncNow, again } = useSyncRun();
+const { s, now, holding, ago, serverRow, failed, syncNow, again } = useSyncRun();
 const d = computed(() => state.syncDetails);
 
-// Asked as the page opens, whenever the status changes (a run began or ended), and every
-// ten seconds, which is how often sync itself looks for changes: the queue grows as a
-// person browses.
+// Asked as the page opens, whenever the status changes (a run began or ended), every ten
+// seconds, which is how often sync itself looks for changes, as the queue grows while a
+// person browses, and every two while a run goes on, to say what it waits for.
 const ask = () => send({ t: 'syncDetails' });
 let asking = 0;
+let ticks = 0;
 onMounted(() => {
   ask();
-  asking = setInterval(ask, 10000);
+  asking = setInterval(() => {
+    if (s.value.syncing || ++ticks % 5 === 0) ask();
+  }, 2000);
 });
 onUnmounted(() => clearInterval(asking));
 watch(() => state.sync, ask);
@@ -62,8 +65,14 @@ const plain = (name) => name.replace(/^https:\/\//, '');
 // How long something took: "180 ms", "2.1 s", "12 s".
 const took = (ms) => (ms < 1000 ? `${ms} ms` : ms < 10000 ? `${(ms / 1000).toFixed(1)} s` : `${Math.round(ms / 1000)} s`);
 
+// How long something has gone on: "8 s", "1 min 12 s".
+const lasted = (ms) => {
+  const sec = Math.max(0, Math.round(ms / 1000));
+  return sec < 60 ? `${sec} s` : `${Math.floor(sec / 60)} min ${sec % 60} s`;
+};
+
 // The state's row: what it is called, its line, and when sync tries next after a failure.
-const stateLabel = computed(() => ({ signedOut: 'The server signed this device out', unreachable: "Couldn't reach the server" })[serverRow.value] || 'Sync is on');
+const stateLabel = computed(() => (serverRow.value === 'signedOut' || serverRow.value === 'failed' ? failed.value : 'Sync is on'));
 const stateLine = computed(() => {
   if (serverRow.value === 'syncing') return 'Syncing…';
   if (serverRow.value === 'synced') return 'After a change here, and every 5 minutes';
@@ -76,7 +85,7 @@ const nextSync = computed(() => {
   if (s.value.syncing) return 'Now';
   const next = d.value?.next || 0;
   if (serverRow.value === 'signedOut') return 'After you reconnect';
-  if (serverRow.value === 'unreachable') return next > now.value ? `About ${clock(next)}` : 'Soon';
+  if (serverRow.value === 'failed') return next > now.value ? `About ${clock(next)}` : 'Soon';
   return next > now.value ? `About ${clock(next)}, or sooner after a change here` : 'After a change here';
 });
 
@@ -95,7 +104,7 @@ const waiting = computed(() =>
 const sum = (counts) => Object.values(counts || {}).reduce((a, b) => a + b, 0);
 function did(r) {
   if (r.cut) return 'Cancelled';
-  if (r.error) return r.problem === 'token' ? 'The server signed this device out' : r.problem === 'unreachable' ? "Couldn't reach the server" : "Couldn't sync";
+  if (r.error) return failedAs(r.problem);
   const got = sum(r.received);
   const went = sum(r.sent);
   if (got && went) return `Received ${count(got)}, sent ${count(went)}`;
@@ -117,17 +126,37 @@ function moved(counts, items, here) {
   const by = kinds.length > 1 ? `: ${kinds.map(([c, n]) => `${count(n)} ${SMALL[c] || c}`).join(', ')}` : '';
   return { total, rows, more: more > 0 ? `and ${count(more)} more${by}` : '' };
 }
+// A request as a line of a run's list: when, what, the answer, its size and how long.
+const requestLine = (q) =>
+  [`${clock(q.at)}:${two(new Date(q.at).getSeconds())}.${String(q.at % 1000).padStart(3, '0')}`, q.method.padEnd(4), q.path.padEnd(4), (q.status ? String(q.status) : 'no answer').padEnd(3), size(q.out + q.in).padStart(7), took(q.took).padStart(7)].join('  ');
+const requestCount = (n) => `${count(n)} ${n === 1 ? 'request' : 'requests'}`;
 const runs = computed(() => {
   const out = [];
+  // The run going on says how long it has gone on, and what it is doing: which request it
+  // waits on and since when, or that it works on what arrived.
   const running = d.value?.running;
-  if (running && s.value.syncing) out.push({ id: 'now', when: 'Now', why: WHY[running.why] || '', did: 'Syncing…', quiet: true, took: '', panel: null });
+  if (running && s.value.syncing) {
+    const n = running.requestCount || 0;
+    const a = running.asking;
+    const requests = (running.requests || []).map(requestLine);
+    out.push({
+      id: 'now',
+      when: 'Now',
+      why: WHY[running.why] || '',
+      did: `Syncing… for ${lasted(now.value - running.began)}`,
+      quiet: true,
+      took: '',
+      said: `${n ? `${requestCount(n)} answered` : 'No request answered yet'} · ${a ? `waiting for ${a.method} ${a.path}, asked ${lasted(now.value - a.at)} ago` : n ? 'working on what arrived' : 'starting'}`,
+      panel: n
+        ? { several: '', received: null, sent: null, requestsHead: `${requestCount(n)} so far · ${size(running.out)} sent · ${size(running.in)} received`, requests, moreRequests: n > requests.length ? `and ${count(n - requests.length)} more` : '' }
+        : null,
+    });
+  }
   for (const r of d.value?.runs || []) {
     const several = r.times > 1;
     const sameDay = new Date(r.began).toDateString() === new Date(r.last).toDateString();
     const result = did(r);
-    const requests = (r.requests || []).map((q) =>
-      [`${clock(q.at)}:${two(new Date(q.at).getSeconds())}.${String(q.at % 1000).padStart(3, '0')}`, q.method.padEnd(4), q.path.padEnd(4), (q.status ? String(q.status) : 'no answer').padEnd(3), size(q.out + q.in).padStart(7), took(q.took).padStart(7)].join('  '),
-    );
+    const requests = (r.requests || []).map(requestLine);
     const unanswered = r.requestCount === 1 && r.requests?.[0]?.status === 0;
     out.push({
       id: String(r.began),
@@ -138,12 +167,14 @@ const runs = computed(() => {
       quiet: !r.error && (r.cut || result === 'Nothing new'),
       bad: !!r.error,
       took: several ? '' : took(r.took),
+      // A failed run's own words, under its row, with nothing to open.
+      said: r.error || '',
+      words: true,
       panel: {
         several: several ? `Each of the ${count(r.times)} ended the same way, the last at ${clock(r.last)}` : '',
-        error: r.error || '',
         received: sum(r.received) || sum(r.sent) ? moved(r.received, r.receivedItems, false) : null,
         sent: sum(r.received) || sum(r.sent) ? moved(r.sent, r.sentItems, true) : null,
-        requestsHead: unanswered ? '1 request, no answer' : `${count(r.requestCount)} ${r.requestCount === 1 ? 'request' : 'requests'} · ${size(r.out)} sent · ${size(r.in)} received`,
+        requestsHead: unanswered ? '1 request, no answer' : `${requestCount(r.requestCount)} · ${size(r.out)} sent · ${size(r.in)} received`,
         requests,
         moreRequests: r.requestCount > requests.length ? `and ${count(r.requestCount - requests.length)} more` : '',
       },
@@ -162,16 +193,19 @@ const toggle = (id) => (opened.value = opened.value === id ? '' : id);
     </div>
     <template v-else>
       <div class="card">
-        <Row :label="stateLabel" :class="{ bad: serverRow === 'signedOut' || serverRow === 'unreachable' }" class="state">
+        <Row :label="stateLabel" :class="{ bad: serverRow === 'signedOut' || serverRow === 'failed' }" class="state">
           <template v-if="stateLine" #hint>{{ stateLine }}</template>
           <span v-if="serverRow === 'syncing' && !holding" class="ctl">
             <button type="button" class="text-button quiet" @click="send({ t: 'syncCancel' })">Cancel</button>
             <button type="button" class="text-button quiet apart" @click="again">Retry</button>
           </span>
           <button v-else-if="serverRow === 'signedOut'" type="button" class="text-button" @click="reconnect">Reconnect…</button>
-          <button v-else-if="serverRow === 'unreachable'" type="button" class="text-button" @click="again">Try again</button>
+          <button v-else-if="serverRow === 'failed'" type="button" class="text-button" @click="again">Try again</button>
           <button v-else type="button" class="text-button" :disabled="holding" @click="syncNow">Sync now</button>
         </Row>
+        <div v-if="serverRow === 'signedOut' || serverRow === 'failed'" class="row kv wrong">
+          <span class="label">What went wrong</span><span class="val said words">{{ s.error }}</span>
+        </div>
         <div class="row kv">
           <span class="label">Server</span>
           <span class="val server"
@@ -260,9 +294,9 @@ const toggle = (id) => (opened.value = opened.value === id ? '' : id);
             <span class="took">{{ r.took }}</span>
             <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 6 8 10.5 12.5 6" /></svg>
           </button>
+          <div v-if="r.said" class="said under" :class="{ words: r.words }">{{ r.said }}</div>
           <div v-if="r.panel && opened === r.id" class="panel">
             <h3 v-if="r.panel.several">{{ r.panel.several }}</h3>
-            <div v-if="r.panel.error" class="detail">{{ r.panel.error }}</div>
             <div v-if="r.panel.received" class="cols">
               <div v-for="side in [{ name: 'Received', m: r.panel.received }, { name: 'Sent', m: r.panel.sent }]" :key="side.name">
                 <h3>{{ side.name }} {{ count(side.m.total) }}</h3>
@@ -442,6 +476,7 @@ table.kinds tr > :last-child {
 
 .run + .run,
 .panel + .run,
+.said + .run,
 .row + .run {
   border-top: 1px solid var(--line);
 }
@@ -526,13 +561,27 @@ table.kinds tr > :last-child {
   line-height: 22px;
 }
 
-.cols + .reqs,
-.detail + .reqs {
+.cols + .reqs {
   margin-top: 12px;
 }
 
+/* What a run says of itself with nothing to open: the run going on what it waits for, a
+   failed one its error's own words, which are monospace as a request's line is. */
+.said {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.said.under {
+  padding: 0 16px 10px;
+  margin-top: -4px;
+}
+
 .req,
-.detail {
+.said.words {
   font:
     12px/20px ui-monospace,
     SFMono-Regular,
@@ -546,10 +595,4 @@ table.kinds tr > :last-child {
   white-space: pre;
 }
 
-.detail {
-  margin-top: 4px;
-  color: var(--muted);
-  overflow-wrap: anywhere;
-  user-select: text;
-}
 </style>
