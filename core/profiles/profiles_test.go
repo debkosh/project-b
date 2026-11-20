@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"projectb/prefs"
+	"projectb/tones"
 )
 
 func TestFirstStartMakesTheListHoldingPersonal(t *testing.T) {
@@ -20,7 +21,7 @@ func TestFirstStartMakesTheListHoldingPersonal(t *testing.T) {
 		t.Fatalf("first start chose %+v", c)
 	}
 	list, err := m.List()
-	if err != nil || len(list) != 1 || list[0].ID != First || list[0].Name != "Personal" || list[0].Color != "" {
+	if err != nil || len(list) != 1 || list[0].ID != First || list[0].Name != "Personal" || list[0].Color != tones.Brand {
 		t.Fatalf("list = %+v, %v", list, err)
 	}
 }

@@ -30,7 +30,11 @@ type Both struct {
 	Hues  []Hue   `json:"hues"`
 }
 
-// None is no colour picked, as a profile starts (docs/onboarding.md): a light grey frame,
+// Brand is Project B's own colour, the logo's teal: the frame a profile starts with
+// (docs/onboarding.md).
+const Brand = "#0d7d86"
+
+// None is no colour picked: a light grey frame,
 // or a dark grey one in dark, and ink for the accent, the frame being too pale, or too
 // dark, to read as one.
 const None = ""

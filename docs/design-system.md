@@ -110,7 +110,7 @@ How it is built (`core/tones/hues.go`, `shell/src/ui/hues.js`):
   picked colours counting by their hue (`tones.Next`, and `next` in `hues.js` for a dialog
   that shows it before Go makes the item).
 
-Check light and dark with four frame colours: the default, None (a grey frame with ink for the
+Check light and dark with four frame colours: the default (the logo's teal, `tones.Brand`), None (a grey frame with ink for the
 accent), a dark one, a light one and a mid one such as `#4f9e9e`. `core/tones` must keep every pair readable.
 
 ## Type

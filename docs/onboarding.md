@@ -16,11 +16,11 @@ The owner on the first mocks, 2026-11-17: "nice mocks... the only thing is not t
 color i donot like the current green thing... also first time the welcome should come as full app
 screen... with a nice splash screen and stuff". So:
 
-- **No colour is chosen for the user.** The welcome and a new profile are neutral (a light grey
-  frame, ink for the accent) until a colour is picked; "None" is the first swatch and the one
-  selected. The dusty teal default (`#4f9e9e`) goes from the profile templates and the presets.
-  Built in slice 1: `frameColor` `""` is None (`tones.None`), a grey frame for light and one
-  for dark, which the window paints by its appearance, and no dot on the Dock icon.
+- **A profile starts in the logo's teal.** At first no colour was chosen for the user (a grey
+  frame, `tones.None`); since 2026-11-21, with the new logo, the owner: "the default theme needs
+  to match with the logo color and the aesthetics of our homepage". So `frameColor` starts as
+  `tones.Brand`, `#0d7d86`, the Teal swatch. "None" stays the first swatch, a light grey frame
+  with ink for the accent and its dark twin, with no dot on the Dock icon.
 - **The welcome takes the whole window,** with no browser UI around it: a splash (the mark draws
   itself, the name fades in), then the welcome, with a window behind the words that changes colour
   as it waits. The browser's UI comes in around the page at Start browsing. The phone's welcome

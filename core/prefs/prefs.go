@@ -87,7 +87,7 @@ type Prefs struct {
 
 // Defaults are the settings before the user changes any.
 func Defaults() Prefs {
-	return Prefs{TabLayout: TabsVertical, FrameColor: tones.None, Theme: ThemeSystem, Shell: shells.Default(), AddressBarPosition: AddressBottom, SearchEngine: search.Default, Start: StartContinue,
+	return Prefs{TabLayout: TabsVertical, FrameColor: tones.Brand, Theme: ThemeSystem, Shell: shells.Default(), AddressBarPosition: AddressBottom, SearchEngine: search.Default, Start: StartContinue,
 		BookmarksNewTab: true, BookmarksCommandBox: true, BlockAds: true, KeepCookies: []string{}}
 }
 
