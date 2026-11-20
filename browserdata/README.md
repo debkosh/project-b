@@ -39,7 +39,7 @@ for _, b := range browserdata.Find(home) {        // the browsers with a profile
   `Locked` says so. Safari has one profile, with no name.
 - **Forks** are a line each in the table of browsers (`kinds` in `browserdata.go`): an id,
   a name, the folder under Application Support, and whose files it keeps. Chrome Beta and
-  Canary, Edge Beta and Dev, Chromium, Vivaldi, Opera, Opera GX and Yandex Browser keep
+  Canary, Edge Beta and Dev, Chromium, Vivaldi, Opera, Opera GX, Yandex Browser and Ulaa keep
   Chromium's; Zen, LibreWolf, Waterfox and Floorp keep Firefox's. Opera can keep its one
   profile in its folder itself.
 - **`Open(home, dir)`** reads a folder the person chose: a Chromium browser's folder of

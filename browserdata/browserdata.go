@@ -98,6 +98,7 @@ var kinds = []kind{
 	{id: "opera", name: "Opera", data: "com.operasoftware.Opera", family: chromium, keychain: []string{"Opera"}},
 	{id: "opera-gx", name: "Opera GX", data: "com.operasoftware.OperaGX", family: chromium, keychain: []string{"Opera"}},
 	{id: "yandex", name: "Yandex Browser", data: "Yandex/YandexBrowser", family: chromium, keychain: []string{"Yandex"}},
+	{id: "ulaa", name: "Ulaa", data: "Zoho/Ulaa", family: chromium, keychain: []string{"Ulaa"}},
 	{id: "firefox", name: "Firefox", data: "Firefox", family: firefox},
 	{id: "zen", name: "Zen", data: "zen", family: firefox},
 	{id: "librewolf", name: "LibreWolf", data: "librewolf", family: firefox},
