@@ -184,3 +184,20 @@ func TestAProfileWhoseKeyDoesntOpenHere(t *testing.T) {
 		t.Fatalf("%d logins: what it had should stay", n)
 	}
 }
+
+// A caller that holds the device's check already says so with Checked, and Password then
+// asks the person nothing; without it every call has them checked.
+func TestACheckedCallerIsNotCheckedAgain(t *testing.T) {
+	p := open(t, t.TempDir())
+	if added, _, _ := p.m.Import([]browserdata.Login{{Origin: "https://mail.example.org", Username: "asha", Password: "correct horse"}}); added != 1 {
+		t.Fatal("the login wasn't kept")
+	}
+	list, _ := p.m.List()
+	p.denied = ErrDenied
+	if _, err := p.m.Password(context.Background(), list[0].ID); !errors.Is(err, ErrDenied) || len(p.asked) != 1 {
+		t.Fatalf("with no check held: %v, asked %d times", err, len(p.asked))
+	}
+	if got, err := p.m.Password(Checked(context.Background()), list[0].ID); err != nil || got != "correct horse" || len(p.asked) != 1 {
+		t.Fatalf("with the check held: %q, %v, asked %d times", got, err, len(p.asked))
+	}
+}
