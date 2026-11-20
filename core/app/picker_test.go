@@ -51,7 +51,7 @@ func TestThePickerShowsTheProfilesAndTheTemplates(t *testing.T) {
 	e.Post(func() { p.PickerMessage(1, []byte(`{"t":"ready"}`)) })
 	s := state(t, got)
 	b, _ := json.Marshal([]any{s["profiles"], s["templates"]})
-	if string(b) != `[[{"color":"","id":"default","name":"Personal"}],["Personal","Work"]]` {
+	if string(b) != `[[{"color":"#0d7d86","id":"default","name":"Personal"}],["Personal","Work"]]` {
 		t.Fatalf("the picker shows %s", b)
 	}
 }

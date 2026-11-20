@@ -463,12 +463,12 @@ func TestSnapshotCarriesTheWindowControls(t *testing.T) {
 	if m["cornerRadius"] != mockengine.CornerRadius {
 		t.Fatalf("cornerRadius = %v", m["cornerRadius"])
 	}
-	// No colour is picked at first: the window paints None's greys.
-	if l := r.e.Layout(1); m["windowColor"] != tones.None || l.FrameColor != tones.Frame(tones.None, false) || l.FrameDark != tones.Frame(tones.None, true) {
+	// The window starts in the brand colour.
+	if l := r.e.Layout(1); m["windowColor"] != tones.Brand || l.FrameColor != tones.Frame(tones.Brand, false) || l.FrameDark != tones.Frame(tones.Brand, true) {
 		t.Fatalf("frame colour: shell %v, engine %v and %v", m["windowColor"], l.FrameColor, l.FrameDark)
 	}
 	// Our pages' background goes with it, for the engine to show until a page of ours draws.
-	if l := r.e.Layout(1); l.PageColor != tones.For(tones.None, false)["--bar"] || l.PageDark != tones.For(tones.None, true)["--bar"] {
+	if l := r.e.Layout(1); l.PageColor != tones.For(tones.Brand, false)["--bar"] || l.PageDark != tones.For(tones.Brand, true)["--bar"] {
 		t.Fatalf("page colour: engine %v and %v", l.PageColor, l.PageDark)
 	}
 
@@ -1199,7 +1199,7 @@ func TestTheProfilesMenuAndTheProfilesColour(t *testing.T) {
 	go e.Run()
 	<-ready
 	e.Settle()
-	if got := sys.DockColor(); got != tones.None {
+	if got := sys.DockColor(); got != tones.Brand {
 		t.Fatalf("the Dock shows %q", got)
 	}
 	var items engine.Menu
@@ -2157,7 +2157,7 @@ func TestAShellSetsGoPrefsByName(t *testing.T) {
 	r := start(t, dir)
 	defer r.stop()
 	snap := r.waitFor(func(m map[string]any) bool { return m["t"] == "snapshot" })
-	if p, _ := snap["prefs"].(map[string]any); p == nil || p["frameColor"] != tones.None || p["theme"] != "system" {
+	if p, _ := snap["prefs"].(map[string]any); p == nil || p["frameColor"] != tones.Brand || p["theme"] != "system" {
 		t.Fatalf("the snapshot's prefs are %v", snap["prefs"])
 	}
 	r.shell(`{"t":"setPref","name":"frameColor","value":"#d03434"}`)
@@ -2195,7 +2195,7 @@ func TestTheTonesComeWithTheFrameColour(t *testing.T) {
 	}
 	r.shell(`{"t":"ready"}`)
 	m := r.waitFor(func(m map[string]any) bool { return m["t"] == "snapshot" })
-	if accent(m, "light") != tones.For(tones.None, false)["--accent"] || accent(m, "dark") != tones.For(tones.None, true)["--accent"] {
+	if accent(m, "light") != tones.For(tones.Brand, false)["--accent"] || accent(m, "dark") != tones.For(tones.Brand, true)["--accent"] {
 		t.Fatalf("snapshot tones = %v", m["tones"])
 	}
 	ws := m["workspaces"].([]any)[0].(map[string]any)

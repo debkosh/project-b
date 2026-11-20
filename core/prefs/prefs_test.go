@@ -34,10 +34,10 @@ func TestTabLayoutSurvivesARestart(t *testing.T) {
 	}
 }
 
-func TestNoFrameColorIsPickedByDefaultAndOneSurvivesARestart(t *testing.T) {
+func TestTheFrameStartsInTheBrandColourAndOnePickedSurvivesARestart(t *testing.T) {
 	dir := t.TempDir()
 	m := New(dir)
-	if m.FrameColor() != tones.None {
+	if m.FrameColor() != tones.Brand {
 		t.Fatalf("default = %q", m.FrameColor())
 	}
 	var got []string
