@@ -1188,7 +1188,9 @@ const H = 915;
   check('Settings in the menu opens the settings tab, the one made ahead', await until(async () => (await regions()).settings === ahead.prepared && (await regions()).active === ahead.prepared));
 
   // The address bar on top, from settings on a phone: the toolbar moves under the status
-  // bar, the strip stays at the foot, the suggestions grow down.
+  // bar, the strip stays at the foot, the suggestions grow down. Settings opens at its list
+  // of sections; the address bar is Appearance's.
+  await w.settings.locator('.section-row[data-section="appearance"]').tap();
   await w.settings.getByRole('radiogroup', { name: 'Address bar' }).getByRole('radio', { name: 'Top' }).tap();
   // The settings page's message goes on its tab's channel, which a closed tab no longer has,
   // so the tab closes only once Go has kept the choice.

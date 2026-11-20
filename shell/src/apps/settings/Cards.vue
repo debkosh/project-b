@@ -12,9 +12,11 @@ import Row from './Row.vue';
 import Rows from './Rows.vue';
 import Passkeys from './Passkeys.vue';
 import Passwords from './Passwords.vue';
+import ReleaseNotes from './ReleaseNotes.vue';
 import SiteSettings from './SiteSettings.vue';
 import Sparks from './Sparks.vue';
 import Sync from './Sync.vue';
+import Version from './Version.vue';
 import SyncDetails from './SyncDetails.vue';
 import WebFeatures from './WebFeatures.vue';
 import Workspaces from './Workspaces.vue';
@@ -38,6 +40,7 @@ const blocks = {
   keyboard: Keyboard,
   passkeys: Passkeys,
   passwords: Passwords,
+  releaseNotes: ReleaseNotes,
   sites: SiteSettings,
   sparks: Sparks,
   sync: Sync,
@@ -66,6 +69,7 @@ const cards = computed(() => props.section.cards.map((c) => (typeof c === 'strin
           <KeysRow v-else-if="p === 'keys'" />
           <ProfileRows v-else-if="p === 'profile'" />
           <ClearData v-else-if="p === 'clearData'" />
+          <Version v-else-if="p === 'version'" />
           <Rows v-else :part="p" />
         </template>
       </div>

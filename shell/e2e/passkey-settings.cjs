@@ -1,10 +1,10 @@
 // Settings' Passkeys on the mock engine (docs/passkeys.md, Seeing and deleting them), in
-// each of the page's two layouts and on a phone: the row under Privacy with how many
+// a desktop's sections and on a phone: the row under Privacy with how many
 // there are, its list page with a row per passkey, Delete asking first and sending Go the
 // passkey, the count following, and the page with none. The passkeys are made as a page
 // makes them, through the mock's own request.
 // It leaves screenshots in build/e2e/passkey-settings-<layout>-*.png.
-// Run: node shell/e2e/passkey-settings.cjs [page|sections|phone]   (from the repo root,
+// Run: node shell/e2e/passkey-settings.cjs [sections|phone]   (from the repo root,
 // after `npm run build` in shell/); with none, each in turn.
 
 const fs = require('fs');
@@ -14,7 +14,7 @@ const { chromium } = require('playwright');
 const layout = process.argv[2];
 if (!layout) {
   let code = 0;
-  for (const l of ['page', 'sections', 'phone']) {
+  for (const l of ['sections', 'phone']) {
     console.log(`=== ${l}`);
     code = code || require('child_process').spawnSync(process.execPath, [__filename, l], { stdio: 'inherit' }).status;
   }
@@ -25,7 +25,6 @@ const lib = require('./lib.cjs');
 const { regions, settle, until } = lib;
 const check = (name, ok, detail) => lib.check(`${layout}: ${name}`, ok, detail);
 const phone = layout === 'phone';
-if (layout === 'sections') fs.writeFileSync(path.join(lib.profile, 'prefs.json'), JSON.stringify({ settingsLayout: 'sections' }));
 
 (async () => {
   const browser = await chromium.launch();
@@ -61,8 +60,7 @@ if (layout === 'sections') fs.writeFileSync(path.join(lib.profile, 'prefs.json')
   const sends = (msg) => page.waitForRequest((r) => r.url().includes('/settings/send') && JSON.parse(r.postData() || '{}').t === msg.t, { timeout: 5000 }).then((r) => JSON.parse(r.postData()), () => null);
 
   // The row, where Privacy is.
-  if (layout === 'sections') await page.locator('.nav [data-section="privacy"]').click();
-  else if (phone) await page.locator('.chips [data-section="privacy"]').click();
+  if (phone) await page.locator('.section-row[data-section="privacy"]').click();
   else await page.locator('.nav [data-section="privacy"]').click();
   await settle(page);
   const row = page.locator('.row', { hasText: 'Passkeys' }).first();

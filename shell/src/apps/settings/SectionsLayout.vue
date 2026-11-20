@@ -12,7 +12,7 @@ import { lists, resolve, sections } from './arrange.js';
 import { hits, searching } from './search.js';
 import { state } from './state.js';
 
-// Layout A, sections in a list (docs/settings.md), as Chrome's: on a desktop the list at the
+// The settings in sections (docs/settings.md), as Chrome's: on a desktop the list at the
 // left, with icons, and one section beside it; on a phone the list alone, each section with
 // a line saying what it is set to, a press going in and the back button out again. Search,
 // at the top of the list, shows the rows that match from every section, under each
@@ -190,6 +190,15 @@ watch(
   color: inherit;
   font: inherit;
   text-align: left;
+}
+
+/* A section's name, and the line under it, each on one line: what doesn't fit ends in an
+   ellipsis, however narrow the phone or large its type. */
+.section-row .label,
+.section-row .secondary {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .section-list .section-row + .section-row {

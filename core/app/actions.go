@@ -22,7 +22,7 @@ func (a *App) registerActions(e engine.Engine) {
 	a.actions = append(a.actions, copyActions(e, a.quit, func(r engine.WindowRequest) { a.Window.Request(a.Tabs.Front(), r) })...)
 	add("app.settings", "Settings…", func() { a.Settings.Open(a.Tabs.Front()) })
 	add("app.checkUpdate", "Check for Updates…", func() {
-		a.Settings.Open(a.Tabs.Front())
+		a.Settings.OpenSection(a.Tabs.Front(), "about")
 		a.Update.CheckNow()
 	})
 	add("history.show", "Show All History", func() { a.Tabs.OpenPage(a.Tabs.Front(), "history") })

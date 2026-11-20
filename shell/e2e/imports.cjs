@@ -114,7 +114,7 @@ const said = (frame, from) => frame.getByRole('list', { name: `From ${from}` }).
   // Settings' Import: the same wizard. A folder chosen is a browser; one of no browser
   // says so.
   await lib.fire('menu', 'app.settings');
-  await w.settings.locator('[data-section="data"]').click();
+  await w.settings.locator('[data-section="profile"]').click();
   const imp = w.settings.getByRole('region', { name: 'Import' });
   check('Import lists the browsers', await until(() => imp.getByRole('button', { name: 'From Chrome' }).isVisible()));
   await lib.fire('choose', path.join(home, 'Library'));
@@ -147,7 +147,7 @@ const said = (frame, from) => frame.getByRole('list', { name: `From ${from}` }).
   await lib.start(['-use=standard', '-skip-welcome', `-browsers=${home}`, `-store=${packStore()}`]);
   w = await lib.openWindow(browser, { viewport: { width: 1280, height: 800 } });
   await lib.fire('menu', 'app.settings');
-  await w.settings.locator('[data-section="data"]').click();
+  await w.settings.locator('[data-section="profile"]').click();
   const ex = w.settings.getByRole('region', { name: 'Import' });
   await ex.getByRole('button', { name: 'From Chrome' }).click();
   const ext = ex.getByRole('checkbox', { name: /Extensions/ });
@@ -186,7 +186,7 @@ const said = (frame, from) => frame.getByRole('list', { name: `From ${from}` }).
   await lib.start(['-use=standard', '-skip-welcome', `-browsers=${home}`, '-password-store', '-keychain=test-safe-storage', '-keychain-items=Chrome,Wombat=another-browsers-key']);
   w = await lib.openWindow(browser, { viewport: { width: 1280, height: 800 } });
   await lib.fire('menu', 'app.settings');
-  await w.settings.locator('[data-section="data"]').click();
+  await w.settings.locator('[data-section="profile"]').click();
   const pw = w.settings.getByRole('region', { name: 'Import' });
   await pw.getByRole('button', { name: 'From Chrome' }).click();
   check('a profile offers its passwords, ticked', await until(() => pw.getByRole('checkbox', { name: /Passwords/ }).isChecked()) && (await pw.getByText('4 bookmarks · 3 pages · 3 passwords').isVisible()));

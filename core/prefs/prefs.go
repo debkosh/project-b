@@ -26,11 +26,6 @@ const (
 const (
 	AddressBottom = "bottom"
 	AddressTop    = "top"
-
-	// How the settings page lays itself out: every setting on one page by task, or one
-	// section at a time from a list. docs/settings.md.
-	SettingsOnePage  = "page"
-	SettingsSections = "sections"
 )
 
 // What a start opens: the windows and tabs as they were, or a window opened fresh, as the
@@ -56,8 +51,6 @@ type Prefs struct {
 	Shell string `json:"shell"`
 	// AddressBarPosition is AddressBottom or AddressTop. Only the Mobile shell reads it.
 	AddressBarPosition string `json:"addressBarPosition"`
-	// SettingsLayout is SettingsOnePage or SettingsSections. Only the settings page reads it.
-	SettingsLayout string `json:"settingsLayout"`
 	// SearchEngine is the id of the engine typed words are searched with (package search).
 	SearchEngine string `json:"searchEngine"`
 	// Start is what a start opens: StartContinue or StartFresh.
@@ -94,7 +87,7 @@ type Prefs struct {
 
 // Defaults are the settings before the user changes any.
 func Defaults() Prefs {
-	return Prefs{TabLayout: TabsVertical, FrameColor: tones.None, Theme: ThemeSystem, Shell: shells.Default(), AddressBarPosition: AddressBottom, SettingsLayout: SettingsOnePage, SearchEngine: search.Default, Start: StartContinue,
+	return Prefs{TabLayout: TabsVertical, FrameColor: tones.None, Theme: ThemeSystem, Shell: shells.Default(), AddressBarPosition: AddressBottom, SearchEngine: search.Default, Start: StartContinue,
 		BookmarksNewTab: true, BookmarksCommandBox: true, BlockAds: true, KeepCookies: []string{}}
 }
 
@@ -146,9 +139,6 @@ func New(dir string) *Manager {
 			}
 			if s.AddressBarPosition != AddressBottom && s.AddressBarPosition != AddressTop {
 				s.AddressBarPosition = AddressBottom
-			}
-			if s.SettingsLayout != SettingsOnePage && s.SettingsLayout != SettingsSections {
-				s.SettingsLayout = SettingsOnePage
 			}
 			if s.Start != StartContinue && s.Start != StartFresh {
 				s.Start = StartContinue
@@ -333,17 +323,6 @@ func (m *Manager) SetBookmarks(at string, on bool) {
 	m.changed()
 }
 
-// SetSettingsLayout lays the settings page out as SettingsOnePage or SettingsSections.
-// Anything else is ignored.
-func (m *Manager) SetSettingsLayout(layout string) {
-	if layout != SettingsOnePage && layout != SettingsSections || layout == m.prefs.SettingsLayout {
-		return
-	}
-	m.prefs.SettingsLayout = layout
-	m.save()
-	m.changed()
-}
-
 // SetBookmarksBarFolder sets the folder the bookmarks bar shows: its id, "" for the top.
 // Anything that isn't a folder's id is ignored.
 func (m *Manager) SetBookmarksBarFolder(id string) {
@@ -452,8 +431,6 @@ func (m *Manager) Set(name, value string) bool {
 		m.SetShell(value)
 	case "addressBarPosition":
 		m.SetAddressBarPosition(value)
-	case "settingsLayout":
-		m.SetSettingsLayout(value)
 	case "bookmarksNewTab", "bookmarksSidebar", "bookmarksCommandBox", "bookmarksBar":
 		if value != "true" && value != "false" {
 			return true
@@ -499,7 +476,6 @@ func (m *Manager) Apply(values json.RawMessage) error {
 	m.SetTheme(p.Theme)
 	m.SetShell(p.Shell)
 	m.SetAddressBarPosition(p.AddressBarPosition)
-	m.SetSettingsLayout(p.SettingsLayout)
 	m.SetSearchEngine(p.SearchEngine)
 	m.SetStart(p.Start)
 	m.SetBookmarks("newTab", p.BookmarksNewTab)

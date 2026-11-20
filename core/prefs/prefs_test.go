@@ -71,7 +71,7 @@ func TestApplySetsWhatTheValuesHoldThroughTheSetters(t *testing.T) {
 		t.Fatalf("heard %v", heard)
 	}
 	m.Close()
-	if got := New(dir).All(); !reflect.DeepEqual(got, Prefs{TabLayout: TabsHorizontal, FrameColor: "#5b7fd6", Theme: ThemeDark, Shell: "standard", AddressBarPosition: AddressBottom, SettingsLayout: SettingsOnePage, SearchEngine: "duckduckgo", Start: StartContinue, BookmarksNewTab: true, BookmarksCommandBox: true, BlockAds: true, KeepCookies: []string{}}) {
+	if got := New(dir).All(); !reflect.DeepEqual(got, Prefs{TabLayout: TabsHorizontal, FrameColor: "#5b7fd6", Theme: ThemeDark, Shell: "standard", AddressBarPosition: AddressBottom, SearchEngine: "duckduckgo", Start: StartContinue, BookmarksNewTab: true, BookmarksCommandBox: true, BlockAds: true, KeepCookies: []string{}}) {
 		t.Fatalf("saved %+v", got)
 	}
 }
@@ -124,31 +124,6 @@ func TestTheAddressBarPosition(t *testing.T) {
 	}
 	if New(dir).AddressBarPosition() != AddressBottom {
 		t.Fatalf("a position that isn't one loads as %q", New(dir).AddressBarPosition())
-	}
-}
-
-// The settings page is one page by default; sections is the other layout, set by name as
-// a shell's setPref does, and it survives a restart. Anything else is ignored.
-func TestTheSettingsLayout(t *testing.T) {
-	dir := t.TempDir()
-	m := New(dir)
-	changes := 0
-	m.OnChanged(func(Prefs) { changes++ })
-	if m.All().SettingsLayout != SettingsOnePage {
-		t.Fatalf("default %q", m.All().SettingsLayout)
-	}
-	m.Set("settingsLayout", "tabs")
-	m.Set("settingsLayout", SettingsSections)
-	m.Set("settingsLayout", SettingsSections)
-	m.Close()
-	if m.All().SettingsLayout != SettingsSections || changes != 1 || New(dir).All().SettingsLayout != SettingsSections {
-		t.Fatalf("changes %d, saved %q", changes, New(dir).All().SettingsLayout)
-	}
-	if err := os.WriteFile(filepath.Join(dir, "prefs.json"), []byte(`{"settingsLayout":"tabs"}`), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if New(dir).All().SettingsLayout != SettingsOnePage {
-		t.Fatalf("a layout that isn't one loads as %q", New(dir).All().SettingsLayout)
 	}
 }
 

@@ -3,11 +3,8 @@
 // shows the page in the settings tab's frame once Go opens the tab, as the real window
 // does (core/cmd/dev/window.html); the test drives a page of its own, the same tab's at
 // /settings/?tab=<id>, which talks to Go the same way.
-// It runs once for each of the page's two layouts (docs/settings.md), each on a profile of its
-// own whose settingsLayout pref names it; a run of one checks that Look's Settings row
-// switches the layout at once.
-// Run: node shell/e2e/settings.cjs [page|sections]   (from the repo root, after `npm run
-// build` in shell/); with no layout, both.
+// The page is a list of sections, one showing at a time (docs/settings.md).
+// Run: node shell/e2e/settings.cjs   (from the repo root, after `npm run build` in shell/)
 
 const { spawn, execFileSync } = require('child_process');
 const fs = require('fs');
@@ -16,18 +13,6 @@ const os = require('os');
 const path = require('path');
 const { chromium } = require('playwright');
 
-// With no layout named, each is a run of its own, one after the other.
-const layout = process.argv[2];
-if (!layout) {
-  let code = 0;
-  for (const l of ['page', 'sections']) {
-    console.log(`=== the ${l} layout`);
-    const status = require('child_process').spawnSync(process.execPath, [__filename, l], { stdio: 'inherit' }).status;
-    code = code || status;
-  }
-  process.exit(code);
-}
-const sectionsLayout = layout === 'sections';
 
 const root = path.resolve(__dirname, '../..');
 const out = path.join(root, 'build/e2e');
@@ -40,8 +25,7 @@ const webFeatures = JSON.parse(fs.readFileSync(path.join(root, 'core/webfeatures
 let base = '';
 
 fs.mkdirSync(out, { recursive: true });
-// The pictures, the sections layout's with its name after theirs.
-const shot = (name) => path.join(out, `${name}${sectionsLayout ? '-sections' : ''}.png`);
+const shot = (name) => path.join(out, `${name}.png`);
 // zipOf is a zip of [name, Buffer] pairs, stored as they are.
 const zipOf = (files) => {
   const { crc32 } = require('zlib');
@@ -84,8 +68,6 @@ const profilesRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'project-b-settings-'
 const profileID = 'a1b2c3d4';
 const profile = path.join(profilesRoot, profileID);
 fs.mkdirSync(profile);
-// The layout the profile starts with, one page being the default.
-if (sectionsLayout) fs.writeFileSync(path.join(profile, 'prefs.json'), JSON.stringify({ settingsLayout: 'sections' }));
 fs.writeFileSync(path.join(profilesRoot, 'profiles.json'), JSON.stringify({ profiles: [{ id: profileID, name: 'Personal', color: '#4f9e9e', template: 'Personal' }] }));
 const listed = () => JSON.parse(fs.readFileSync(path.join(profilesRoot, 'profiles.json'), 'utf8')).profiles[0];
 const bin = path.join(out, 'dev');
@@ -239,7 +221,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   await openSettings();
   check('the gear opens the settings tab and shows it', await until(settingsShown));
   check('and the dev window shows the page in the tab\'s frame', await until(() => shell.locator('iframe.our-page[data-page="settings"]').isVisible()));
-  const firstTitle = sectionsLayout ? 'Settings › Appearance' : 'Settings';
+  const firstTitle = 'Settings › Profile';
   check('its title is the page\'s own, with the section showing', await until(async () => (await regions()).tabs.find((t) => t.page === 'settings').title === firstTitle), JSON.stringify((await regions()).tabs.find((t) => t.page === 'settings')?.title));
   const titleBox = await ui.locator('form.field').boundingBox();
   check('the title in the address field is the shell\'s, not a drag area', await until(async () => (await regions(`?x=${Math.round(titleBox.x + titleBox.width / 2)}&y=${Math.round(titleBox.y + titleBox.height / 2)}`)).hit === 'shell'));
@@ -287,25 +269,16 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
     return p;
   };
   let page = await open();
-  // show goes to where a part of the page is, as a person does: back from a list's own
-  // page, then the row that opens the list when it is one (docs/settings.md).
-  const lists = ['workspaces', 'sites', 'keyboard', 'sparks', 'extensions', 'webFeatures'];
-  // The sections layout has each part in a section of its own, which its list goes to;
-  // Sites is a row there that opens it.
+  // show goes to where a part of the page is, as a person does: the section it is in, from
+  // the list of sections, and Sites, a row of Privacy that opens it (docs/settings.md).
   const sectionOf = {
-    theme: 'appearance', frameColour: 'appearance', tabLayout: 'appearance', shell: 'appearance', settingsLayout: 'appearance', start: 'start', searchEngine: 'start',
+    theme: 'appearance', frameColour: 'appearance', tabLayout: 'appearance', shell: 'appearance', start: 'start', searchEngine: 'start',
     workspaces: 'workspaces', bookmarks: 'bookmarks', sites: 'privacy', keys: 'keyboard', keyboard: 'keyboard', profile: 'profile',
     sparks: 'extensions', blockAds: 'privacy', clearData: 'privacy', clearOnQuit: 'privacy', askWhereToSave: 'downloads', downloadFolder: 'downloads', version: 'about', autoUpdate: 'about', flags: 'flags', webFeatures: 'webFeatures',
   };
   const show = async (part) => {
-    if (sectionsLayout) {
-      await page.locator(`.nav [data-section="${sectionOf[part]}"]`).click();
-      if (part === 'sites') await page.locator('[data-section="sites"]').click();
-    } else {
-      // Back from a site's page goes to Sites, and from there to its section.
-      while (await page.locator('.list-page').count()) await page.locator('.list-page .list-head .back').click();
-      if (lists.includes(part)) await page.locator(`[data-section="${part}"]`).click();
-    }
+    await page.locator(`.nav [data-section="${sectionOf[part]}"]`).click();
+    if (part === 'sites') await page.locator('[data-section="sites"]').click();
     await settle(page);
   };
   const radio = (label) => page.getByRole('radio', { name: label });
@@ -316,10 +289,12 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   await show('version');
   check('it shows the running version', (await page.locator('.version').textContent()) === '0.2.0');
   check('it shows automatic updates on, the default', await autoUpdate.isChecked());
-  // The status line, over every layout's page: the default browser, and the version.
+  // The status line, over every layout's page: the default browser alone; the version is
+  // About's.
   const status = page.getByRole('region', { name: 'Status' });
-  check('the status line says the app isn\'t the default browser, with a way to make it so', (await status.textContent()).includes('Not your default browser') &&
-    (await status.locator('.version').textContent()) === '0.2.0');
+  check('the status line says the app isn\'t the default browser, with a way to make it so, and not the version', (await status.textContent()).includes('Not your default browser') &&
+    !(await status.textContent()).includes('0.2.0'));
+  const about = page.getByRole('region', { name: 'Version' });
   await status.getByRole('button', { name: 'Make default browser' }).click();
   check('Make default browser asks the system, and the line says it is now', await until(async () => (await status.textContent()).includes('Your default browser') &&
     (await status.getByRole('button', { name: 'Make default browser' }).count()) === 0));
@@ -383,7 +358,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   await page.getByRole('radio', { name: 'Blue' }).click();
   await show('version');
   await page.getByRole('button', { name: 'Check for updates' }).click();
-  const updateStatus = page.getByRole('region', { name: 'Status' }).getByRole('status');
+  const updateStatus = about.getByRole('status');
   check('Check asks the update manager, which says it is up to date', await until(async () => (await updateStatus.textContent()).trim() === 'Up to date'));
   check('one check reached the release server', manifests === counted + 1, `${counted} -> ${manifests}`);
   await autoUpdate.click();
@@ -391,39 +366,37 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   // A release stuck half-way: Retry and Cancel are there while it downloads, in place of
   // Check for updates; Retry fetches it again, and Cancel stops it and leaves the version.
   stuck = true;
-  await status.getByRole('button', { name: 'Check for updates' }).click();
+  await about.getByRole('button', { name: 'Check for updates' }).click();
   check('a download shows Cancel and Retry while it runs, in place of Check for updates',
-    await until(async () => /Downloading 0\.3\.0… \d+%/.test(await updateStatus.textContent()) && (await status.getByRole('button', { name: 'Retry' }).isVisible()) &&
-      (await status.getByRole('button', { name: 'Cancel' }).isVisible()) && (await status.getByRole('button', { name: 'Check for updates' }).count()) === 0),
+    await until(async () => /Downloading 0\.3\.0… \d+%/.test(await updateStatus.textContent()) && (await about.getByRole('button', { name: 'Retry' }).isVisible()) &&
+      (await about.getByRole('button', { name: 'Cancel' }).isVisible()) && (await about.getByRole('button', { name: 'Check for updates' }).count()) === 0),
     await updateStatus.textContent());
   await settle(page);
   await page.screenshot({ path: shot('settings-update-stuck') });
-  // At a phone's width the line wraps between the version and the download, never inside the
-  // download: Retry and Cancel stay on the line of what they act on, and the progress line
-  // stays under those words. On a phone Cancel fell to a line of its own, with the progress
-  // line under it.
-  // The line as wide as a 360-point phone's page leaves it.
-  await status.evaluate((s) => { s.style.width = '328px'; });
-  const narrow = await status.evaluate((s) => {
+  // At a phone's width the row keeps Cancel then Retry beside what they act on, Retry last,
+  // and the progress line stays under the download's words.
+  // The row as wide as a 360-point phone's page leaves it.
+  await about.evaluate((s) => { s.style.width = '328px'; });
+  const narrow = await about.evaluate((s) => {
     const box = (e) => e.getBoundingClientRect();
+    const row = box(s);
     const words = box(s.querySelector('[role="status"]'));
     const bar = box(s.querySelector('[role="progressbar"]'));
     const buttons = [...s.querySelectorAll('button')].filter((b) => /^(Retry|Cancel)$/.test(b.textContent.trim()));
-    const tops = buttons.map((b) => Math.round(box(b).top + box(b).height / 2));
-    const mid = Math.round(words.top + words.height / 2);
-    return { mid, tops, order: buttons.map((b) => b.textContent.trim()).join(' '), inside: bar.left >= words.left - 1 && bar.right <= words.right + 1 && bar.top >= words.bottom - 1 && bar.top <= words.bottom + 6 };
+    return { order: buttons.map((b) => b.textContent.trim()).join(' '), within: buttons.every((b) => box(b).right <= row.right + 1 && box(b).left >= row.left - 1),
+      inside: bar.left >= words.left - 1 && bar.right <= words.right + 1 && bar.top >= words.bottom - 1 && bar.top <= words.bottom + 6 };
   });
-  check('at a phone\'s width, Cancel then Retry stay on the download\'s line, and its progress line under its words',
-    narrow.tops.length === 2 && narrow.tops.every((t) => Math.abs(t - narrow.mid) <= 3) && narrow.inside && narrow.order === 'Cancel Retry', JSON.stringify(narrow));
+  check('at a phone\'s width, Cancel then Retry stay in the row, and its progress line under its words',
+    narrow.within && narrow.inside && narrow.order === 'Cancel Retry', JSON.stringify(narrow));
   await settle(page);
-  await status.screenshot({ path: shot('settings-update-narrow') });
-  await status.evaluate((s) => { s.style.width = ''; });
-  await status.getByRole('button', { name: 'Retry' }).click();
+  await about.screenshot({ path: shot('settings-update-narrow') });
+  await about.evaluate((s) => { s.style.width = ''; });
+  await about.getByRole('button', { name: 'Retry' }).click();
   check('Retry fetches it again', await until(() => assets === 2), String(assets));
   await until(async () => /Downloading 0\.3\.0/.test(await updateStatus.textContent()));
-  await status.getByRole('button', { name: 'Cancel' }).click();
-  check('Cancel stops it, and Check for updates is back', await until(async () => !/Downloading/.test(await status.textContent()) &&
-    (await status.getByRole('button', { name: 'Check for updates' }).isEnabled())), await status.textContent());
+  await about.getByRole('button', { name: 'Cancel' }).click();
+  check('Cancel stops it, and Check for updates is back', await until(async () => !/Downloading/.test(await about.textContent()) &&
+    (await about.getByRole('button', { name: 'Check for updates' }).isEnabled())), await about.textContent());
   stuck = false;
 
   // A dialog's answer reads on its fill in every preset colour, light and dark: its words
@@ -560,9 +533,8 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   check('search shows the rows that match, and says how many', await until(async () => (await bookmarksBar.isVisible()) &&
     (await page.getByRole('radiogroup', { name: 'Theme' }).count()) === 0 && /^\d+ settings? match “bar”$/.test(await page.locator('.results').textContent())), await page.locator('.results').textContent());
   check('marking what it found', (await page.locator('mark.hit', { hasText: /^bar$/i }).count()) >= 2);
-  const bookmarksHome = sectionsLayout ? 'bookmarks' : 'browsing';
-  check('and the list of sections counts them in each, and dims those with none', (await page.locator(`.nav [data-section="${bookmarksHome}"] .count`).textContent()).trim() === String(await bookmarksSection.locator('.row').count()) &&
-    (await page.locator(`.nav [data-section="${sectionsLayout ? 'appearance' : 'look'}"]`).evaluate((b) => b.classList.contains('dim'))));
+  check('and the list of sections counts them in each, and dims those with none', (await page.locator('.nav [data-section="bookmarks"] .count').textContent()).trim() === String(await bookmarksSection.locator('.row').count()) &&
+    (await page.locator('.nav [data-section="appearance"]').evaluate((b) => b.classList.contains('dim'))));
   await settle(page);
   await page.screenshot({ path: shot('settings-search') });
   await bookmarksBar.click();
@@ -570,7 +542,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   await bookmarksBar.click();
   await until(() => prefsFile().bookmarksBar === false);
   // A section's name finds its rows.
-  await search.fill(sectionsLayout ? 'about' : 'advanced');
+  await search.fill('about');
   check('a section\'s name finds every row in it', await until(() => page.getByRole('switch', { name: /Automatic updates/ }).isVisible()));
   await search.fill('zzzz');
   check('words nothing has say so', await until(async () => (await page.locator('.results').textContent()) === 'No settings match “zzzz”' && (await page.locator('.content .row').count()) === 0));
@@ -744,27 +716,6 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   await sizes.press('Enter');
   await until(flagsAsStarted);
 
-  check('the layout is no flag', (await flagsRegion.getByText('Settings layout').count()) === 0);
-
-  // The layout is Look's Settings row, Go's settingsLayout pref: choosing the other switches
-  // the page at once, with no relaunch and no new page, and choosing this one switches it back.
-  await show('settingsLayout');
-  const layoutRow = page.getByRole('radiogroup', { name: 'Settings', exact: true });
-  const thisLayout = sectionsLayout ? 'Sections' : 'One page';
-  const otherLayout = sectionsLayout ? 'One page' : 'Sections';
-  check('Look\'s Settings row shows this layout', (await layoutRow.getByRole('radio', { name: thisLayout }).getAttribute('aria-checked')) === 'true');
-  await page.evaluate(() => (window.samePage = true));
-  await layoutRow.getByRole('radio', { name: otherLayout }).click();
-  const otherShows = () => (sectionsLayout ? page.locator('.nav [data-section="look"]') : page.locator('.nav [data-section="appearance"]')).isVisible();
-  check('choosing the other layout switches the page at once, in the same page, with no relaunch, and is saved', await until(otherShows) &&
-    (await page.evaluate(() => window.samePage)) && (await relaunch.count()) === 0 && prefsFile().settingsLayout === (sectionsLayout ? 'page' : 'sections'));
-  check('and opens where the row it was chosen in is', await until(() => layoutRow.isVisible()));
-  await settle(page);
-  await page.screenshot({ path: shot('settings-switched') });
-  await layoutRow.getByRole('radio', { name: thisLayout }).click();
-  check('choosing this one switches it back', await until(async () => !(await otherShows())) && (await page.evaluate(() => window.samePage)) &&
-    prefsFile().settingsLayout === (sectionsLayout ? 'sections' : 'page'));
-
   // Web features: the registry, as Go sends it for this platform, only shown, in groups by
   // status, worst first.
   await show('webFeatures');
@@ -811,7 +762,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
 
   // Keyboard.
   await show('keyboard');
-  const keyboardTitle = sectionsLayout ? 'Settings › Keyboard' : 'Settings › Keyboard shortcuts';
+  const keyboardTitle = 'Settings › Keyboard';
   check('the page\'s title follows what shows, under its gear', await until(async () => (await page.title()) === keyboardTitle) &&
     (await page.locator('link[rel=icon]').getAttribute('href')).startsWith('data:image/svg+xml'), await page.title());
   // Back, the phone's key or the toolbar's, goes to where the page was, not out of it, and
@@ -1279,105 +1230,90 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   await settle(page);
   await page.screenshot({ path: shot('settings-phone-search') });
   await phoneSearch.fill('');
-  if (sectionsLayout) {
-    // The sections layout's phone page is the list of sections; each opens, with a way back.
-    const sectionRows = page.locator('.section-row');
-    const want = {
-      appearance: () => page.getByRole('radiogroup', { name: 'Address bar' }),
-      start: () => page.getByRole('radiogroup', { name: 'On start, open' }),
-      workspaces: () => page.getByRole('region', { name: 'Workspaces', exact: true }),
-      bookmarks: () => page.getByRole('region', { name: 'Bookmarks', exact: true }),
-      privacy: () => page.locator('[data-section="sites"]'),
-      profile: () => page.getByLabel('Profile name'),
-      extensions: () => page.getByRole('region', { name: 'Sparks', exact: true }),
-      about: () => page.getByRole('switch', { name: /Automatic updates/ }),
-      flags: () => page.getByRole('region', { name: 'Flags', exact: true }),
-      webFeatures: () => page.locator('.web-features'),
-    };
-    check('on a phone, the list has every section but Keyboard, each with what it is set to', JSON.stringify(await sectionRows.evaluateAll((rs) => rs.map((r) => r.dataset.section))) === JSON.stringify(Object.keys(want)) &&
-      (await sectionRows.first().textContent()).includes('System'), JSON.stringify(await sectionRows.evaluateAll((rs) => rs.map((r) => r.dataset.section))));
-    await page.screenshot({ path: shot('settings-phone') });
-    for (const [id, there] of Object.entries(want)) {
-      await page.locator(`.section-row[data-section="${id}"]`).click();
-      check(`on a phone, ${id} opens, under its own heading`, await until(() => there().isVisible()) && (await page.locator('.list-head .list-title').textContent()) !== '');
-      const tight = await crowded(page);
-      check(`and ${id}'s headings and cards have room above them`, tight.length === 0, tight.join(' | '));
-      if (id === 'appearance') {
-        await settle(page);
-        await page.screenshot({ path: shot('settings-phone-section') });
-        check('and there is no Tab layout on a phone', (await page.getByRole('radiogroup', { name: 'Tab layout' }).count()) === 0);
-      }
-      if (id === 'workspaces') await phoneCustomColour();
-      if (id === 'privacy') {
-        await page.locator('[data-section="sites"]').click();
-        check('on a phone, Sites opens its page, and back goes to its section', await until(() => page.getByRole('region', { name: 'Site settings', exact: true }).isVisible()));
-        await page.locator('.list-page .list-head .back').click();
-        await until(() => there().isVisible());
-      }
-      await page.getByRole('button', { name: 'Back to Settings' }).click();
-      await until(() => sectionRows.first().isVisible());
-    }
-  } else {
-    const groups = ['Look', 'Browsing', 'Privacy', 'Your data', 'Advanced'];
-    for (const g of groups) {
-      await page.locator('.chip', { hasText: g }).click();
-      check(`on a phone, the ${g} chip goes to its group`, await until(async () => {
-        const box = await page.getByRole('region', { name: g, exact: true }).boundingBox();
-        return box && box.y < 120;
-      }));
-    }
-    await page.locator('.chip').first().click();
-    await settle(page);
-    await page.screenshot({ path: shot('settings-phone') });
+  // The phone's page is the list of sections; each opens, with a way back. A phone has no
+  // Keyboard, nor Downloads, whose two rows are a desktop's.
+  const sectionRows = page.locator('.section-row');
+  const want = {
+    profile: () => page.getByLabel('Profile name'),
+    appearance: () => page.getByRole('radiogroup', { name: 'Address bar' }),
+    start: () => page.getByRole('radiogroup', { name: 'On start, open' }),
+    workspaces: () => page.getByRole('region', { name: 'Workspaces', exact: true }),
+    bookmarks: () => page.getByRole('region', { name: 'Bookmarks', exact: true }),
+    privacy: () => page.locator('[data-section="sites"]'),
+    extensions: () => page.getByRole('region', { name: 'Sparks', exact: true }),
+    about: () => page.getByRole('switch', { name: /Automatic updates/ }),
+    flags: () => page.getByRole('region', { name: 'Flags', exact: true }),
+    webFeatures: () => page.locator('.web-features'),
+  };
+  check('on a phone, the list has every section but Keyboard and Downloads, in order, each with what it is set to', JSON.stringify(await sectionRows.evaluateAll((rs) => rs.map((r) => r.dataset.section))) === JSON.stringify(Object.keys(want)) &&
+    (await page.locator('.section-row[data-section="appearance"]').textContent()).includes('System'), JSON.stringify(await sectionRows.evaluateAll((rs) => rs.map((r) => r.dataset.section))));
+  await page.screenshot({ path: shot('settings-phone') });
+  // On the narrowest phone each section's name, and the line under it, stay on one line.
+  await page.setViewportSize({ width: 360, height: 860 });
+  await settle(page);
+  const wrapped = await sectionRows.evaluateAll((rs) => rs.flatMap((r) => [...r.querySelectorAll('.label, .secondary')].map((e) => {
+    const text = [...e.childNodes].find((n) => n.nodeType === 3 && n.textContent.trim());
+    const range = document.createRange();
+    range.selectNodeContents(text);
+    return new Set([...range.getClientRects()].map((x) => Math.round(x.top))).size > 1 ? `${r.dataset.section}: ${text.textContent.trim()}` : '';
+  })).filter((x) => x));
+  check('at 360px, no section\'s name or line wraps', wrapped.length === 0, wrapped.join(' | '));
+  check('and every section above the line has a line under its name', (await page.locator('.section-list:not(.below) .section-row').evaluateAll((rs) => rs.filter((r) => !r.querySelector('.secondary')).map((r) => r.dataset.section))).length === 0);
+  await page.screenshot({ path: shot('settings-phone-360') });
+  await page.setViewportSize({ width: 412, height: 860 });
+  for (const [id, there] of Object.entries(want)) {
+    await page.locator(`.section-row[data-section="${id}"]`).click();
+    check(`on a phone, ${id} opens, under its own heading`, await until(() => there().isVisible()) && (await page.locator('.list-head .list-title').textContent()) !== '');
     const tight = await crowded(page);
-    check('on a phone, every heading and card has room above it', tight.length === 0, tight.join(' | '));
-    for (const [list, region] of [['workspaces', 'Workspaces'], ['sites', 'Site settings'], ['sparks', 'Sparks'], ['webFeatures', '']]) {
-      await page.locator(`[data-section="${list}"]`).click();
-      const there = region ? page.getByRole('region', { name: region, exact: true }) : page.locator('.web-features');
-      check(`on a phone, ${list}'s row opens its page`, await until(() => there.isVisible()));
-      if (list === 'workspaces') await phoneCustomColour();
-      if (list === 'sparks') {
-        // How the list, an import's clash, its outcome and Export… look on a phone, in dark.
-        await page.emulateMedia({ colorScheme: 'dark' });
-        const picker = there.locator('input[type=file]');
-        const dialog = page.getByRole('dialog');
-        await picker.setInputFiles([{ name: 'SiteSparks.zip', mimeType: 'application/zip', buffer: hisZip }]);
-        await until(() => dialog.getByRole('button', { name: 'Done' }).isVisible());
-        await dialog.getByRole('button', { name: 'Done' }).click();
-        await picker.setInputFiles([changed('2')]);
-        await until(() => dialog.getByRole('radio', { name: 'Rename' }).isVisible());
-        await dialog.getByRole('radio', { name: 'Rename' }).click();
-        await settle(page);
-        await page.screenshot({ path: shot('settings-sparks-clash-phone-dark'), fullPage: true });
-        await dialog.getByRole('button', { name: 'Import' }).click();
-        await until(() => dialog.getByRole('button', { name: 'Done' }).isVisible());
-        await settle(page);
-        await page.screenshot({ path: shot('settings-sparks-imported-phone-dark'), fullPage: true });
-        await dialog.getByRole('button', { name: 'Done' }).click();
-        await settle(page);
-        await page.screenshot({ path: shot('settings-sparks-phone-dark'), fullPage: true });
-        await page.getByRole('button', { name: 'More for sparks' }).click();
-        await page.getByRole('menuitem', { name: 'Export…' }).click();
-        await settle(page);
-        await page.screenshot({ path: shot('settings-sparks-export-phone-dark'), fullPage: true });
-        await dialog.getByRole('button', { name: 'Cancel' }).click();
-        for (const name of ['Limit Screen Time', 'Page Cleanup', 'dhd', 'dhd 2']) {
-          await there.getByRole('group', { name, exact: true }).getByRole('button', { name: `Actions for ${name}` }).click();
-          await page.getByRole('menuitem', { name: 'Delete', exact: true }).click();
-        }
-        await until(async () => (await there.textContent()).includes('No sparks yet'));
-        await page.emulateMedia({ colorScheme: 'light' });
-      }
-      await page.locator('.list-page .list-head .back').click();
-      await until(async () => (await page.locator('.list-page').count()) === 0);
+    check(`and ${id}'s headings and cards have room above them`, tight.length === 0, tight.join(' | '));
+    if (id === 'appearance') {
+      await settle(page);
+      await page.screenshot({ path: shot('settings-phone-section') });
+      check('and there is no Tab layout on a phone', (await page.getByRole('radiogroup', { name: 'Tab layout' }).count()) === 0);
     }
-    check('on a phone there is no Tab layout, Keys, Keyboard shortcuts, Ask where to save, Save to or Clear cookies when the app quits', (await page.getByRole('radiogroup', { name: 'Tab layout' }).count()) === 0 &&
-      (await page.getByRole('switch', { name: /Ask where to save/ }).count()) === 0 && (await page.getByRole('switch', { name: /Clear cookies when the app quits/ }).count()) === 0 &&
-      (await page.locator('.row', { has: page.getByText('Save to', { exact: true }) }).count()) === 0 &&
-      (await page.getByRole('radiogroup', { name: 'Keys' }).count()) === 0 && (await page.locator('[data-section="keyboard"]').count()) === 0);
-    check('and every other part is there', (await page.getByRole('radiogroup', { name: 'Address bar' }).count()) === 1 && (await page.getByLabel('Profile name').count()) === 1 &&
-      (await page.getByRole('button', { name: 'Close the app' }).count()) === 1 && (await page.getByRole('region', { name: 'Flags', exact: true }).count()) === 1 &&
-      (await page.getByRole('region', { name: 'Bookmarks' }).count()) === 1);
+    if (id === 'workspaces') await phoneCustomColour();
+    if (id === 'privacy') {
+      check('on a phone Privacy has no Clear cookies when the app quits', (await page.getByRole('switch', { name: /Clear cookies when the app quits/ }).count()) === 0);
+      await page.locator('[data-section="sites"]').click();
+      check('on a phone, Sites opens its page, and back goes to its section', await until(() => page.getByRole('region', { name: 'Site settings', exact: true }).isVisible()));
+      await page.locator('.list-page .list-head .back').click();
+      await until(() => there().isVisible());
+    }
+    if (id === 'extensions') {
+      const there = page.getByRole('region', { name: 'Sparks', exact: true });
+      // How the list, an import's clash, its outcome and Export… look on a phone, in dark.
+      await page.emulateMedia({ colorScheme: 'dark' });
+      const picker = there.locator('input[type=file]');
+      const dialog = page.getByRole('dialog');
+      await picker.setInputFiles([{ name: 'SiteSparks.zip', mimeType: 'application/zip', buffer: hisZip }]);
+      await until(() => dialog.getByRole('button', { name: 'Done' }).isVisible());
+      await dialog.getByRole('button', { name: 'Done' }).click();
+      await picker.setInputFiles([changed('2')]);
+      await until(() => dialog.getByRole('radio', { name: 'Rename' }).isVisible());
+      await dialog.getByRole('radio', { name: 'Rename' }).click();
+      await settle(page);
+      await page.screenshot({ path: shot('settings-sparks-clash-phone-dark'), fullPage: true });
+      await dialog.getByRole('button', { name: 'Import' }).click();
+      await until(() => dialog.getByRole('button', { name: 'Done' }).isVisible());
+      await settle(page);
+      await page.screenshot({ path: shot('settings-sparks-imported-phone-dark'), fullPage: true });
+      await dialog.getByRole('button', { name: 'Done' }).click();
+      await settle(page);
+      await page.screenshot({ path: shot('settings-sparks-phone-dark'), fullPage: true });
+      await page.getByRole('button', { name: 'More for sparks' }).click();
+      await page.getByRole('menuitem', { name: 'Export…' }).click();
+      await settle(page);
+      await page.screenshot({ path: shot('settings-sparks-export-phone-dark'), fullPage: true });
+      await dialog.getByRole('button', { name: 'Cancel' }).click();
+      for (const name of ['Limit Screen Time', 'Page Cleanup', 'dhd', 'dhd 2']) {
+        await there.getByRole('group', { name, exact: true }).getByRole('button', { name: `Actions for ${name}` }).click();
+        await page.getByRole('menuitem', { name: 'Delete', exact: true }).click();
+      }
+      await until(async () => (await there.textContent()).includes('No sparks yet'));
+      await page.emulateMedia({ colorScheme: 'light' });
+    }
+    await page.getByRole('button', { name: 'Back to Settings' }).click();
+    await until(() => sectionRows.first().isVisible());
   }
   await phoneContext.close();
   await fetch(`${base}/mock/fire`, { method: 'POST', body: new URLSearchParams({ kind: 'key', value: 'closeTab' }) });
