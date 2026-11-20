@@ -1,7 +1,7 @@
 # Release channels
 
-A design for Stable and Dev updates; not built yet. Stable is what every copy follows
-today: a release made by [releasing.md](releasing.md)'s full run. Dev is each finished
+Stable and Dev updates. Stable is what a copy follows unless Dev is chosen: a release made
+by [releasing.md](releasing.md)'s full run. Dev is each finished
 branch, out as soon as it lands, after Go's tests and the mock suite alone, for Sudipta
 to try before the full run makes it Stable.
 

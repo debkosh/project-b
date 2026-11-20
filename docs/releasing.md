@@ -53,6 +53,15 @@ label it removed) or the app; the test's owner fixes the first with a tools-only
 the failed parts run again. Android 17's one known flake is the blank-shell start-up race in
 [todo.md](todo.md).
 
+## Dev builds
+
+A finished branch lands on main as it comes, rebased, once Go's tests and the mock suite pass
+on it, and `tools/release.sh dev` publishes it to the Dev channel from the main checkout,
+under `pb-release` as below ([release-channels.md](release-channels.md)). It runs Go's tests
+and the mock suite again on main first, and stops at a failure; no tag, no test report, no
+release notes. Send the orchestrator the DMG and APK links from its `RESULT=ok` line. Stable
+is cut from main later, with the full run.
+
 ## Publishing
 
     amarit rm pb-release

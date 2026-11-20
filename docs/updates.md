@@ -136,6 +136,11 @@ manager is doing and its one button, the automatic updates switch, and the relea
   goes the way an automatic one does, and About's Relaunch (Install update on a phone) applies
   it as the notice's does. Automatic checks never set the panel's check result. The menu
   bar's Check for Updates… opens Settings at About and checks.
+- **Updates from**, Stable | Dev, is the channel every copy follows, `channel` in
+  `update/settings.json` beside `autoUpdate`, Stable when absent ([release-channels.md](release-channels.md)).
+  A change checks the new channel at once; each check makes amarit's client again when the
+  folder names another channel, so another copy's change holds from its next round. On a
+  Dev build with Stable chosen, the hint says it stays on that build until a newer Stable.
 - **Automatic updates** is the app's, `autoUpdate` in `update/settings.json`, on by
   default, and every copy shows the same. Off, the next round of every copy checks nothing;
   on again here, the timer starts as it does at launch, and the other copies check from
@@ -143,7 +148,16 @@ manager is doing and its one button, the automatic updates switch, and the relea
 
 ## Publishing
 
-    tools/release.sh
+    tools/release.sh       # Stable
+    tools/release.sh dev   # Dev: main after Go's tests and the mock suite
+
+Every copy reads `releases/download/channels/releases.json`, the manifest of both channels
+on the pre-release tagged `channels` ([release-channels.md](release-channels.md)). A Stable
+release adds itself to it and uploads it there and to its own release, where copies from
+before channels read it. A Dev build writes its version, the next patch with the UTC minute,
+into `VERSION` for the build and puts it back after; its DMG, zip and APK go on the
+`channels` pre-release, `-prune` drops what no channel points at, and the older Dev builds'
+assets are deleted.
 
 Bump `VERSION` and commit first. The script makes the release build (`RELEASE=1
 OUT=out/rel`), packages and signs it, writes `Project-B-<v>.dmg` (for people) and
