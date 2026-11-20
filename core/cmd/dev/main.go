@@ -376,6 +376,7 @@ func main() {
 	if syncSrv != nil {
 		mux.HandleFunc("/mock/sync", syncSrv.control)
 	}
+	osRoutes(mux, e, func() *app.App { return a })
 	for _, add := range routes {
 		add(mux, e)
 	}
