@@ -398,6 +398,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Prefs.OnAddressBarPositionChanged(a.Shell.AddressBarPositionChanged)
 	a.Prefs.OnAddressBarPositionChanged(a.Settings.AddressBarPositionChanged)
 	a.Update.OnAutoChanged(a.Settings.AutoUpdateChanged)
+	a.Update.OnChannelChanged(a.Settings.ChannelChanged)
 	a.Update.OnChanged(a.Shell.UpdateChanged)
 	a.Update.OnChanged(a.Settings.UpdateChanged)
 	a.Commands.OnChanged(a.Settings.KeyboardChanged)

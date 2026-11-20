@@ -64,10 +64,13 @@ func archive(t *testing.T, app string) []byte {
 // releaseServer serves a manifest pointing stable at Version, and the asset. The manifest's
 // digest is of Good; Served is what the client gets. Both can change between checks.
 type releaseServer struct {
-	mu        sync.Mutex
-	Version   string
-	Good      []byte
-	Served    []byte
+	mu      sync.Mutex
+	Version string
+	Good    []byte
+	Served  []byte
+	// Dev, when set, is the Dev channel's release, whose bundle DevGood is served as it is.
+	Dev       string
+	DevGood   []byte
 	downloads atomic.Int32
 	manifests atomic.Int32
 	url       string
@@ -83,10 +86,23 @@ func release(t *testing.T, version string, good, served []byte) *releaseServer {
 		rs.manifests.Add(1)
 		rs.mu.Lock()
 		defer rs.mu.Unlock()
-		sum := sha256.Sum256(rs.Good)
-		fmt.Fprintf(w, `{"spec":1,"project":"project-b","published":"2026-11-09T00:00:00Z","channels":{"stable":"%s"},
-		  "releases":{"%s":{"assets":{"%s/%s":{"url":"%s/asset.zip","sha256":"%s","size":%d}}}}}`,
-			rs.Version, rs.Version, runtime.GOOS, runtime.GOARCH, srv.URL, hex.EncodeToString(sum[:]), len(rs.Good))
+		entry := func(version, path string, good []byte) string {
+			sum := sha256.Sum256(good)
+			return fmt.Sprintf(`"%s":{"assets":{"%s/%s":{"url":"%s/%s","sha256":"%s","size":%d}}}`,
+				version, runtime.GOOS, runtime.GOARCH, srv.URL, path, hex.EncodeToString(sum[:]), len(good))
+		}
+		channels, releases := fmt.Sprintf(`"stable":"%s"`, rs.Version), entry(rs.Version, "asset.zip", rs.Good)
+		if rs.Dev != "" {
+			channels += fmt.Sprintf(`,"dev":"%s"`, rs.Dev)
+			releases += "," + entry(rs.Dev, "dev.zip", rs.DevGood)
+		}
+		fmt.Fprintf(w, `{"spec":1,"project":"project-b","published":"2026-11-09T00:00:00Z","channels":{%s},"releases":{%s}}`, channels, releases)
+	})
+	mux.HandleFunc("/dev.zip", func(w http.ResponseWriter, r *http.Request) {
+		rs.downloads.Add(1)
+		rs.mu.Lock()
+		defer rs.mu.Unlock()
+		w.Write(rs.DevGood)
 	})
 	mux.HandleFunc("/asset.zip", func(w http.ResponseWriter, r *http.Request) {
 		rs.downloads.Add(1)
@@ -515,6 +531,45 @@ func TestTheAutomaticUpdatesSettingIsShared(t *testing.T) {
 	if !one.Auto() {
 		t.Fatal("turned on in the other copy, this one reads it off")
 	}
+}
+
+// A copy follows Stable until Dev is chosen, which checks at once and takes the Dev build;
+// every copy sharing the folder follows the same channel. Back on Stable, the Dev build
+// stays: Stable has nothing newer than it.
+func TestDevIsChosenForEveryCopyAndTakenAtOnce(t *testing.T) {
+	stable := archive(t, fakeApp(t, t.TempDir(), "0.2.0"))
+	dev := archive(t, fakeApp(t, t.TempDir(), "0.2.1-dev.202611201415"))
+	rs := release(t, "0.2.0", stable, stable)
+	rs.Dev, rs.DevGood = "0.2.1-dev.202611201415", dev
+	r := start(t, "0.2.0", rs.url, nil)
+	if r.m.Channel() != Stable {
+		t.Fatalf("a new folder follows %q", r.m.Channel())
+	}
+	r.check()
+	if rs.downloads.Load() != 0 {
+		t.Fatalf("on Stable, %d downloads", rs.downloads.Load())
+	}
+	var heard []string
+	r.m.OnChannelChanged(func(ch string) { heard = append(heard, ch) })
+	r.m.SetChannel("nightly")
+	r.m.SetChannel(Dev)
+	r.m.SetChannel(Dev)
+	if len(heard) != 1 || heard[0] != Dev {
+		t.Fatalf("heard %v", heard)
+	}
+	s := eventually(t, r.m, func(s State) bool { return s.Phase == Ready })
+	if s.Version != "0.2.1-dev.202611201415" {
+		t.Fatalf("state %+v", s)
+	}
+	other := sharing(t, r.m.cfg.StateDir, "0.2.0", rs.url, func(f func()) { f() }, func() {})
+	if other.Channel() != Dev {
+		t.Fatalf("the other copy follows %q", other.Channel())
+	}
+
+	on := start(t, "0.2.1-dev.202611201415", rs.url, nil)
+	on.m.SetChannel(Dev)
+	on.m.SetChannel(Stable)
+	eventually(t, on.m, func(s State) bool { return s.Check == UpToDate })
 }
 
 // fakeCopies records what Relaunch asks of the other copies, and what the installed app

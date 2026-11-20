@@ -194,7 +194,7 @@ const sectionList = () => [
     summary: () => lists.sparks.summary() || 'None yet',
   },
   { id: 'keyboard', label: 'Keyboard', icon: 'keyboard', cards: [['keys'], 'keyboard'], summary: () => '' },
-  { id: 'about', label: 'About Project B', icon: 'about', cards: [['version', 'autoUpdate'], 'releaseNotes'], summary: aboutSummary },
+  { id: 'about', label: 'About Project B', icon: 'about', cards: [['version', 'autoUpdate', 'channel'], 'releaseNotes'], summary: aboutSummary },
   { id: 'flags', label: 'Flags', icon: 'flags', below: true, cards: ['flags'], summary: () => '' },
   { id: 'webFeatures', label: 'Web features', icon: 'webFeatures', below: true, cards: ['webFeatures'], summary: () => '' },
 ];

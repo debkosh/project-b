@@ -106,10 +106,13 @@ type Copies interface {
 // Manager owns the update state. Every method runs on the main thread; the check loop
 // runs on its own goroutine and comes back through post.
 type Manager struct {
-	cfg    Config
-	post   func(func())
-	quit   func()
-	client *amarit.Client
+	cfg  Config
+	post func(func())
+	quit func()
+	// client checks the channel it was made for, clientChannel; useChannel makes it again
+	// when the folder's channel has changed, in this copy or another.
+	client        *amarit.Client
+	clientChannel string
 
 	mu     sync.Mutex
 	state  State
@@ -124,9 +127,17 @@ type Manager struct {
 	started bool          // Start has run
 	timer   chan struct{} // closing it ends the running timer; nil when none runs
 
-	onChanged     []func(State)
-	onAutoChanged []func(bool)
+	onChanged        []func(State)
+	onAutoChanged    []func(bool)
+	onChannelChanged []func(string)
 }
+
+// The channels a copy can follow (docs/release-channels.md): Stable is each release made by
+// the full run, Dev each finished branch as it lands.
+const (
+	Stable = "stable"
+	Dev    = "dev"
+)
 
 // New returns a manager. post runs a function on the main thread; quit ends the app, which
 // Relaunch calls once the new bundle is in place.
@@ -135,14 +146,26 @@ func New(cfg Config, post func(func()), quit func()) *Manager {
 	if cfg.Version == "" {
 		return m
 	}
-	c, err := amarit.NewClient(filepath.Join(cfg.StateDir, "amarit"), "stable",
-		amarit.Project(cfg.Project), amarit.Version(cfg.Version), amarit.Releases(cfg.Releases))
-	if err != nil {
+	if err := m.useChannel(); err != nil {
 		timeline.Errorf("update: %v; updates are off", err)
-		return m
 	}
-	m.client = c
 	return m
+}
+
+// useChannel makes the client again when the folder names another channel than the one it
+// checks.
+func (m *Manager) useChannel() error {
+	ch := m.Channel()
+	if m.client != nil && ch == m.clientChannel {
+		return nil
+	}
+	c, err := amarit.NewClient(filepath.Join(m.cfg.StateDir, "amarit"), ch,
+		amarit.Project(m.cfg.Project), amarit.Version(m.cfg.Version), amarit.Releases(m.cfg.Releases))
+	if err != nil {
+		return err
+	}
+	m.client, m.clientChannel = c, ch
+	return nil
 }
 
 // State returns what is happening now.
@@ -176,10 +199,43 @@ func (m *Manager) Stop() {
 	m.stopTimer()
 }
 
-// autoFile is the automatic-updates setting, in the folder, so every copy sharing it has
-// the same one. On when there is none.
-type autoFile struct {
-	AutoUpdate bool `json:"autoUpdate"`
+// settingsFile is the automatic-updates setting and the channel, in the folder, so every
+// copy sharing it has the same ones. Automatic updates are on, and the channel Stable, when
+// there is none.
+type settingsFile struct {
+	AutoUpdate bool   `json:"autoUpdate"`
+	Channel    string `json:"channel,omitempty"`
+}
+
+func (m *Manager) readSettings() settingsFile {
+	f := settingsFile{AutoUpdate: true}
+	if b, err := os.ReadFile(m.autoPath()); err == nil {
+		json.Unmarshal(b, &f)
+	}
+	if f.Channel != Dev {
+		f.Channel = Stable
+	}
+	return f
+}
+
+// writeSettings puts f in the folder: a new file renamed over the old, so no copy reads
+// half of one.
+func (m *Manager) writeSettings(f settingsFile) bool {
+	b, _ := json.Marshal(f)
+	if err := os.MkdirAll(m.cfg.StateDir, 0o700); err != nil {
+		timeline.Errorf("update: %v", err)
+		return false
+	}
+	tmp := m.autoPath() + ".tmp"
+	if err := os.WriteFile(tmp, append(b, '\n'), 0o600); err != nil {
+		timeline.Errorf("update: %v", err)
+		return false
+	}
+	if err := os.Rename(tmp, m.autoPath()); err != nil {
+		timeline.Errorf("update: %v", err)
+		return false
+	}
+	return true
 }
 
 func (m *Manager) autoPath() string { return filepath.Join(m.cfg.StateDir, "settings.json") }
@@ -187,12 +243,41 @@ func (m *Manager) autoPath() string { return filepath.Join(m.cfg.StateDir, "sett
 // Auto says whether the app checks for updates on its own. It reads the folder each time,
 // so a change in another copy holds here from its next round. A check the user asks for
 // runs either way.
-func (m *Manager) Auto() bool {
-	f := autoFile{AutoUpdate: true}
-	if b, err := os.ReadFile(m.autoPath()); err == nil {
-		json.Unmarshal(b, &f)
+func (m *Manager) Auto() bool { return m.readSettings().AutoUpdate }
+
+// Channel is the channel every copy sharing the folder follows: Stable or Dev.
+func (m *Manager) Channel() string { return m.readSettings().Channel }
+
+// OnChannelChanged subscribes to this copy choosing another channel.
+func (m *Manager) OnChannelChanged(f func(string)) {
+	m.onChannelChanged = append(m.onChannelChanged, f)
+}
+
+// SetChannel chooses the channel for every copy sharing the folder, and checks it at once.
+// A download of the other channel's release stops. The updater never goes back a version,
+// so a copy on a Dev build that chooses Stable stays on it until a Stable release passes it.
+func (m *Manager) SetChannel(ch string) {
+	if ch != Stable && ch != Dev {
+		return
 	}
-	return f.AutoUpdate
+	f := m.readSettings()
+	if ch == f.Channel {
+		return
+	}
+	f.Channel = ch
+	if !m.writeSettings(f) {
+		return
+	}
+	timeline.Infof("update: following %s", ch)
+	for _, g := range m.onChannelChanged {
+		g(ch)
+	}
+	if m.client == nil {
+		return
+	}
+	m.stopFetch(errRetried)
+	m.set(State{})
+	m.CheckNow()
 }
 
 // OnAutoChanged subscribes to this copy turning automatic checks on or off.
@@ -201,22 +286,12 @@ func (m *Manager) OnAutoChanged(f func(bool)) { m.onAutoChanged = append(m.onAut
 // SetAuto turns automatic checks on or off for every copy sharing the folder. Turned on
 // here, the timer starts again as it does at launch.
 func (m *Manager) SetAuto(on bool) {
-	if on == m.Auto() {
+	f := m.readSettings()
+	if on == f.AutoUpdate {
 		return
 	}
-	b, _ := json.Marshal(autoFile{AutoUpdate: on})
-	if err := os.MkdirAll(m.cfg.StateDir, 0o700); err != nil {
-		timeline.Errorf("update: %v", err)
-		return
-	}
-	// A new file renamed over the old, so no copy reads half of one.
-	tmp := m.autoPath() + ".tmp"
-	if err := os.WriteFile(tmp, append(b, '\n'), 0o600); err != nil {
-		timeline.Errorf("update: %v", err)
-		return
-	}
-	if err := os.Rename(tmp, m.autoPath()); err != nil {
-		timeline.Errorf("update: %v", err)
+	f.AutoUpdate = on
+	if !m.writeSettings(f) {
 		return
 	}
 	if on {
@@ -382,6 +457,10 @@ func (m *Manager) CheckNow() {
 		defer lock.Close()
 		// A person asking means "try it": a release an earlier download refused is
 		// offered again. Automatic checks keep holding it.
+		if err := m.useChannel(); err != nil {
+			m.setCheck(CheckFailed, err.Error())
+			return
+		}
 		if err := m.client.Unreject(); err != nil {
 			timeline.Errorf("update: %v", err)
 		}
@@ -443,6 +522,11 @@ func (m *Manager) check(ctx context.Context, asked bool) (current bool, err erro
 			m.set(State{Phase: Failed, Error: err.Error()})
 			return false, nil
 		}
+	}
+	// The channel may have changed since the last check, in this copy or another.
+	if err := m.useChannel(); err != nil {
+		timeline.Errorf("update: %v", err)
+		return false, err
 	}
 	d, err := m.client.Check(ctx)
 	if err != nil {

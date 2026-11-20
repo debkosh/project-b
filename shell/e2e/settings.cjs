@@ -94,7 +94,7 @@ const releaseServer = http.createServer((req, res) => {
   const asset = { url: `http://127.0.0.1:${releaseServer.address().port}/asset.zip`, sha256: require('crypto').createHash('sha256').update(stuckAsset).digest('hex'), size: stuckAsset.length };
   res.end(JSON.stringify(stuck
     ? { spec: 1, project: 'project-b', published: '2026-11-09T00:00:00Z', channels: { stable: '0.3.0' }, releases: { '0.3.0': { assets: { [`${process.platform}/${process.arch}`]: asset } } } }
-    : { spec: 1, project: 'project-b', published: '2026-11-09T00:00:00Z', channels: { stable: '0.2.0' }, releases: { '0.2.0': { assets: {} } } }));
+    : { spec: 1, project: 'project-b', published: '2026-11-09T00:00:00Z', channels: { stable: '0.2.0', dev: '0.2.0' }, releases: { '0.2.0': { assets: {} } } }));
 });
 const installed = fs.mkdtempSync(path.join(os.tmpdir(), 'project-b-installed-'));
 fs.mkdirSync(path.join(installed, 'Project B.app/Contents/MacOS'), { recursive: true });
@@ -363,6 +363,20 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   check('one check reached the release server', manifests === counted + 1, `${counted} -> ${manifests}`);
   await autoUpdate.click();
   check('the switch turns automatic updates off and saves it in the root\'s update folder, for every copy', await until(() => updateSettings()?.autoUpdate === false));
+  // Updates from: Stable until Dev is chosen, which is saved beside automatic updates and
+  // checks the Dev channel at once.
+  check('updates come from Stable, the default', await radio('Stable').isChecked());
+  const beforeDev = manifests;
+  await radio('Dev').click();
+  check('Dev is saved in the update folder, keeping automatic updates as they were', await until(() => updateSettings()?.channel === 'dev' && updateSettings()?.autoUpdate === false &&
+    radio('Dev').isChecked()), JSON.stringify(updateSettings()));
+  check('and checks at once, which finds it up to date', await until(async () => manifests > beforeDev && (await updateStatus.textContent()).trim() === 'Up to date'),
+    `${beforeDev} -> ${manifests}`);
+  await settle(page);
+  await page.screenshot({ path: shot('settings-update-channel') });
+  await radio('Stable').click();
+  check('Stable again is saved', await until(() => updateSettings()?.channel === 'stable' && radio('Stable').isChecked()));
+  await until(async () => (await updateStatus.textContent()).trim() === 'Up to date');
   // A release stuck half-way: Retry and Cancel are there while it downloads, in place of
   // Check for updates; Retry fetches it again, and Cancel stops it and leaves the version.
   stuck = true;

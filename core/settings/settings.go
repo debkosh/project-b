@@ -165,6 +165,7 @@ func (m *Manager) Handle(tab engine.TabID, msg []byte) {
 			"searchEngine":       m.prefs.SearchEngine().ID,
 			"searchEngines":      search.All(),
 			"autoUpdate":         m.update.Auto(),
+			"channel":            m.update.Channel(),
 			"update":             m.update.State(),
 			"running":            m.update.Running(),
 			"keyboard":           m.commands.View(),
@@ -193,6 +194,8 @@ func (m *Manager) Handle(tab engine.TabID, msg []byte) {
 		m.prefs.SetSearchEngine(c.Text)
 	case "setAutoUpdate":
 		m.update.SetAuto(c.On)
+	case "setChannel":
+		m.update.SetChannel(c.Text)
 	case "setFrameColor":
 		m.prefs.SetFrameColor(c.Text)
 	case "checkUpdate":
@@ -249,7 +252,7 @@ func (m *Manager) SearchEngineChanged(id string) {
 	m.sendAll(map[string]any{"t": "searchEngine", "searchEngine": id})
 }
 
-// TabLayoutChanged, ThemeChanged, AutoUpdateChanged, UpdateChanged and WindowColorChanged
+// TabLayoutChanged, ThemeChanged, AutoUpdateChanged, ChannelChanged, UpdateChanged and WindowColorChanged
 // tell every settings page what the managers now say.
 func (m *Manager) TabLayoutChanged(layout string) {
 	m.sendAll(map[string]any{"t": "tabLayout", "tabLayout": layout})
@@ -265,6 +268,10 @@ func (m *Manager) ThemeChanged(theme string) {
 
 func (m *Manager) AutoUpdateChanged(on bool) {
 	m.sendAll(map[string]any{"t": "autoUpdate", "autoUpdate": on})
+}
+
+func (m *Manager) ChannelChanged(channel string) {
+	m.sendAll(map[string]any{"t": "channel", "channel": channel})
 }
 
 func (m *Manager) UpdateChanged(s update.State) {

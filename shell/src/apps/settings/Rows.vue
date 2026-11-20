@@ -11,6 +11,13 @@ import { send, setPref, state } from './state.js';
 // sent back. A row changes only when Go says so.
 defineProps({ part: String });
 
+// Where updates come from (docs/release-channels.md): Stable, each release after its full
+// run, or Dev, each finished change as it lands.
+const channels = [
+  { value: 'stable', label: 'Stable' },
+  { value: 'dev', label: 'Dev' },
+];
+
 const themes = [
   { value: 'system', label: 'System' },
   { value: 'light', label: 'Light' },
@@ -121,6 +128,10 @@ const layouts = [
       :aria-checked="String(state.autoUpdate)"
       @change="send({ t: 'setAutoUpdate', on: $event.target.checked })"
     />
+  </Row>
+
+  <Row v-else-if="part === 'channel'" label="Updates from" hint="Dev brings each change as it lands, before its full tests">
+    <Segmented label="Updates from" :options="channels" :model-value="state.channel" @update:model-value="send({ t: 'setChannel', text: $event })" />
   </Row>
 
   <!-- The ad blocker on every site; each site can still turn it off for itself. -->

@@ -31,6 +31,8 @@ export const state = reactive({
   searchEngine: '',
   searchEngines: [],
   autoUpdate: true,
+  // The channel updates come from, 'stable' or 'dev'.
+  channel: 'stable',
   update: { phase: '' },
   // What Clear browsing data last cleared, as Go said, {since, history, siteData, cache,
   // downloads}; null before it has. clearCounts is how many pages each of its ranges
@@ -151,6 +153,7 @@ export function connect() {
             searchEngine: m.searchEngine,
             searchEngines: m.searchEngines || [],
             autoUpdate: m.autoUpdate,
+            channel: m.channel || 'stable',
             isDefault: !!m.isDefault,
             update: m.update,
             running: m.running,
@@ -198,6 +201,9 @@ export function connect() {
           break;
         case 'autoUpdate':
           state.autoUpdate = m.autoUpdate;
+          break;
+        case 'channel':
+          state.channel = m.channel;
           break;
         case 'update':
           state.update = m.update;
