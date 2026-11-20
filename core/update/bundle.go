@@ -9,6 +9,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
+	"syscall"
 )
 
 // BundleOf returns the .app the executable runs from, or "" when it runs from a build
@@ -79,6 +81,7 @@ func unpack(archive, dir string) (string, error) {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", err
 	}
+	keepFileLimit()
 	if out, err := exec.Command("/usr/bin/ditto", "-x", "-k", archive, dir).CombinedOutput(); err != nil {
 		return "", fmt.Errorf("unpack: %s", firstLine(out, err))
 	}
@@ -88,6 +91,18 @@ func unpack(archive, dir string) (string, error) {
 	}
 	return apps[0], nil
 }
+
+// keepFileLimit gives the programs the app starts its own limit on open files. Go raises
+// its own at start but starts children with the limit it found, 256 under launchd, and a
+// child of the app also inherits the files the app holds open, which can be most of that:
+// ditto then failed with "Too many open files". Setting the limit, even to what it is,
+// tells Go to leave it to the children as it is.
+var keepFileLimit = sync.OnceFunc(func() {
+	var lim syscall.Rlimit
+	if err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &lim); err == nil {
+		syscall.Setrlimit(syscall.RLIMIT_NOFILE, &lim)
+	}
+})
 
 func firstLine(out []byte, err error) string {
 	if line, _, _ := strings.Cut(strings.TrimSpace(string(out)), "\n"); line != "" {
