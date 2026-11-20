@@ -400,11 +400,10 @@ def import_checks():
     finally:
         os.environ["HOME"] = real_home
     open_settings(app)
-    # Import is in Your data, which either layout's nav names (data-section): on the one
-    # page, the default, it scrolls there; in the sections layout it shows the section. The
-    # page draws its nav a moment after it opens, so it waits for it.
-    settings_wait(app, "!!document.querySelector('[data-section=\"data\"]')", 30)
-    settings_click(app, '[data-section="data"]')
+    # Import is in Profile, which the list of sections names (data-section). The page draws
+    # its list a moment after it opens, so it waits for it.
+    settings_wait(app, "!!document.querySelector('[data-section=\"profile\"]')", 30)
+    settings_click(app, '[data-section="profile"]')
     settings_wait(app, "!!document.querySelector('[aria-label=\"From Chrome\"]')", 30)
     settings_click(app, '[aria-label="From Chrome"]')
     box = "[...document.querySelectorAll('.ui-import-choice')].find(l=>l.textContent.includes(%s))"
@@ -495,7 +494,7 @@ def flag_off_checks():
     # profile, with the same arguments.
     open_settings(app)
     settings_wait(app, "!!document.querySelector('.nav')", 30)
-    settings(app, "document.querySelector('[data-section=advanced]').click()")
+    settings(app, "document.querySelector('[data-section=flags]').click()")
     settings_wait(app, "!!document.querySelector('section[aria-label=Flags]')")
     settings_click(app, "section[aria-label=Flags] [role=switch]")
     relaunch = "[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Relaunch')"
