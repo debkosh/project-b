@@ -149,7 +149,7 @@ old one.
 |---|---|
 | `sync_items` | synckosh's bookkeeping per item: its sequence, base, timestamp, pending, sent, and the row it is (the feature's key, the address or the bookmark's id). An item's content is the feature's own row, never a second copy. Only what has no row is kept whole: a deleted item, without its content; one sealed under a key this device doesn't hold, as it came; the sealed copies of the sync key; a delete-before |
 | `sync_meta` | synckosh's values: its clock, cursor, store id and last pull |
-| `sync_changes` | the rows changed here since the last run: collection, the row's key, deleted |
+| `sync_changes` | the rows changed here since the last run: collection, the row's key, deleted, and `stuck`, why a row couldn't be handed over, empty for one that only waits |
 | `sync_state` | one row: whether changes are marked, which is whether sync is on |
 
 Each synced feature gives a mapping (`sync.Mapping`): its collection and datatype, its table and
@@ -172,6 +172,13 @@ update aborts on a conflict, which would fail the feature's own write. Clearing 
 
 1. Drains the marks into synckosh: a delete-before first, then a changed row as `Replica.Put`, a
    deleted one as `Replica.Delete`, which finds the item by its bookkeeping though the row is gone.
+   **A row that can't be handed over is set aside, and the rest goes.** synckosh takes a batch
+   whole or not at all, so a batch it refuses is handed over again a row at a time; a row it
+   still refuses (too big for one item, say), or one that doesn't read, keeps its mark with
+   why in the mark's `stuck` column. Sync's own runs leave such a mark be; a run a person
+   asked for, the first of a start, and the row changing again try it anew. The status
+   counts them (`unsent`), with what the server refused in the last run, and Sync details
+   names each with its reason. Before this one such row failed every run of the profile.
 2. `Replica.Sync`: pull, push.
 3. A version from the server is joined into its row (`Join`), on the store's worker, with the
    triggers quiet. When the row then differs from it, the row holds something newer, and is

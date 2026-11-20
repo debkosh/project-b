@@ -56,6 +56,9 @@ type Status struct {
 	// Locked says the profile's key doesn't open with this device's key, so sync is off
 	// until StartFresh.
 	Locked bool `json:"locked"`
+	// Unsent is how many rows couldn't be sent: those set aside, and those the server
+	// refused in the last run. Everything else syncs; Sync details says which and why.
+	Unsent int `json:"unsent"`
 }
 
 // Manager syncs one profile. Everything it does runs on a goroutine of its own, one thing at
@@ -390,7 +393,7 @@ func unkeep(b []byte) (*synckosh.DataKey, error) {
 // marked says whether rows wait to go out.
 func (m *Manager) marked() bool {
 	has := false
-	m.st.Wait(func(tx *store.Tx) error { return tx.QueryRow(`SELECT EXISTS (SELECT 1 FROM sync_changes)`).Scan(&has) })
+	m.st.Wait(func(tx *store.Tx) error { return tx.QueryRow(`SELECT EXISTS (SELECT 1 FROM sync_changes WHERE stuck = '')`).Scan(&has) })
 	return has
 }
 
@@ -411,9 +414,25 @@ func (m *Manager) run(why string) error {
 		m.mu.Unlock()
 		cancel()
 	}()
-	err := m.drain(c)
+	// A run a person asked for, and the first of a start, try again what was set aside.
+	unsent, err := m.drain(c, why != WhyTimer && why != WhyChange)
+	var untaken []Moved
+	refusedNow := 0
 	if err == nil {
 		err = c.replica.Sync(ctx)
+		// Items the server refused, and items of the server's this device didn't take, are
+		// named by synckosh, and everything else was synced: the run went, and says which.
+		var refused *client.RefusedError
+		var rejected *client.RejectedError
+		if errors.As(err, &refused) || errors.As(err, &rejected) {
+			errors.As(err, &refused)
+			errors.As(err, &rejected)
+			by := m.named(refused, nil)
+			refusedNow = len(by)
+			unsent, untaken = append(unsent, by...), m.named(nil, rejected)
+			timeline.Warnf("sync: %s", Words(err))
+			err = nil
+		}
 	}
 	for collection := range c.local.wrote {
 		if f := m.maps[collection].Changed; f != nil {
@@ -427,7 +446,7 @@ func (m *Manager) run(why string) error {
 	cut := m.cut
 	m.mu.Unlock()
 	if cut && err != nil {
-		m.ended(moved, nil, true)
+		m.ended(moved, nil, true, unsent, nil)
 		m.setStatus(func(s *Status) { s.Syncing = false })
 		return err
 	}
@@ -439,7 +458,17 @@ func (m *Manager) run(why string) error {
 	} else {
 		m.wait, m.next = 0, time.Time{}
 	}
-	m.ended(moved, err, false)
+	m.ended(moved, err, false, unsent, untaken)
+	// What couldn't be sent: every mark set aside, by this run or an earlier one, and what
+	// the server refused in this one.
+	stuck := refusedNow
+	m.st.Wait(func(tx *store.Tx) error {
+		var aside int
+		if tx.QueryRow(`SELECT COUNT(*) FROM sync_changes WHERE stuck <> ''`).Scan(&aside) == nil {
+			stuck += aside
+		}
+		return nil
+	})
 	m.mu.Lock()
 	if m.nextRun = m.next; err == nil {
 		m.nextRun = m.last.Add(every)
@@ -450,33 +479,47 @@ func (m *Manager) run(why string) error {
 		if s.Error, s.Problem = "", ""; err != nil {
 			s.Error, s.Problem = Words(err), Problem(err)
 		} else {
-			s.LastSynced = m.last.UnixMilli()
+			s.LastSynced, s.Unsent = m.last.UnixMilli(), stuck
 		}
 	})
 	return err
 }
 
-// change is one mark.
+// change is one mark. put is its place among the items a batch hands over, -1 for none.
 type change struct {
 	rowid           int64
 	collection, key string
 	deleted         bool
+	put             int
 }
 
 // drain hands the marked rows to synckosh, a few hundred at a time: a delete of everything
 // first, then each row changed, read from it, and each deleted. A mark is deleted once it is
-// handed over, unless the row was marked again meanwhile.
-func (m *Manager) drain(c *connection) error {
+// handed over, unless the row was marked again meanwhile. A row that can't be handed over,
+// one that doesn't read or that synckosh refuses, is set aside with why (stuck) and the rest
+// go: synckosh takes a batch whole or not at all, so a batch it refuses is handed over again
+// a row at a time. Marks set aside are tried again by a run a person asked for, and at the
+// start; a row that changes again is marked afresh.
+func (m *Manager) drain(c *connection, again bool) (aside []Moved, err error) {
+	if again {
+		if err := m.st.Wait(func(tx *store.Tx) error {
+			_, err := tx.Exec(`UPDATE sync_changes SET stuck = '' WHERE stuck <> ''`)
+			return err
+		}); err != nil {
+			return nil, err
+		}
+	}
 	for {
 		var marks []change
 		var puts []synckosh.Item
+		stuck := map[int64]string{}
 		err := m.st.Wait(func(tx *store.Tx) error {
-			r, err := tx.Query(`SELECT rowid, collection, key, deleted FROM sync_changes ORDER BY key <> '', rowid LIMIT 500`)
+			r, err := tx.Query(`SELECT rowid, collection, key, deleted FROM sync_changes WHERE stuck = '' ORDER BY key <> '', rowid LIMIT 500`)
 			if err != nil {
 				return err
 			}
 			for r.Next() {
-				var ch change
+				ch := change{put: -1}
 				if err := r.Scan(&ch.rowid, &ch.collection, &ch.key, &ch.deleted); err != nil {
 					r.Close()
 					return err
@@ -494,47 +537,69 @@ func (m *Manager) drain(c *connection) error {
 				}
 				private, has, err := mp.Read(tx, ch.key)
 				if err != nil {
-					return err
+					// A row that doesn't read stays as it is everywhere: it isn't said to be gone.
+					stuck[ch.rowid] = err.Error()
+					continue
 				}
 				if !has {
 					marks[i].deleted = true
 					continue
 				}
+				marks[i].put = len(puts)
 				puts = append(puts, synckosh.Item{Collection: mp.Collection, Datatype: mp.Datatype, GUID: c.local.guid(mp, ch.key), Private: private})
 			}
 			return nil
 		})
 		if err != nil || len(marks) == 0 {
-			return err
+			return aside, err
 		}
 		for _, ch := range marks {
 			if mp := m.maps[ch.collection]; mp != nil && ch.key == "" {
 				if err := c.replica.DeleteBefore(ch.collection, time.Now()); err != nil {
-					return err
+					return aside, err
 				}
 			}
 		}
 		if len(puts) > 0 {
 			if _, err := c.replica.Put(puts...); err != nil {
-				return err
+				for _, ch := range marks {
+					if ch.put < 0 {
+						continue
+					}
+					if _, err := c.replica.Put(puts[ch.put]); err != nil {
+						stuck[ch.rowid] = err.Error()
+					}
+				}
 			}
 		}
 		for _, ch := range marks {
 			if mp := m.maps[ch.collection]; mp != nil && ch.key != "" && ch.deleted {
 				if err := c.replica.Delete(ch.collection, c.local.guid(mp, ch.key)); err != nil {
-					return err
+					stuck[ch.rowid] = err.Error()
 				}
 			}
 		}
 		if err := m.st.Wait(func(tx *store.Tx) error {
 			for _, ch := range marks {
+				if why, is := stuck[ch.rowid]; is {
+					timeline.Warnf("sync: %s %s can't be sent: %s", ch.collection, ch.key, why)
+					if _, err := tx.Exec(`UPDATE sync_changes SET stuck = ? WHERE rowid = ?`, why, ch.rowid); err != nil {
+						return err
+					}
+					one := Moved{Collection: ch.collection, Deleted: ch.deleted, Error: why}
+					if mp := m.maps[ch.collection]; mp != nil && !ch.deleted {
+						one.Name = name(tx, mp, ch.key)
+					}
+					aside = append(aside, one)
+					continue
+				}
 				if _, err := tx.Exec(`DELETE FROM sync_changes WHERE rowid = ?`, ch.rowid); err != nil {
 					return err
 				}
 			}
 			return nil
 		}); err != nil {
-			return err
+			return aside, err
 		}
 	}
 }

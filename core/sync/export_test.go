@@ -30,6 +30,9 @@ func NewLocal(st *store.Store, maps []Mapping, key *synckosh.DataKey) (*Local, m
 // GUID is the guid of the row key of m.
 func (l *local) GUID(m *Mapping, key string) string { return l.guid(m, key) }
 
+// Plain is plain: the feature's own key in a guid that is one.
+func Plain(m *Mapping, guid string) string { return plain(m, guid) }
+
 // ReplicaConfig is replicaConfig.
 func ReplicaConfig(c *client.Client, l *Local, key *synckosh.DataKey, maps map[string]*Mapping) client.Config {
 	return replicaConfig(c, l, key, maps)

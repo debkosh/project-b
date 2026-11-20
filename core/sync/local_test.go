@@ -180,3 +180,35 @@ func TestAServerResetIsRefilledFromTheRows(t *testing.T) {
 		t.Fatalf("c's bookmarks: %d", n)
 	}
 }
+
+// Every guid sync makes is one synckosh takes, whatever the feature's key: a key that is
+// the guid itself may start with an underscore or a tilde, as an id from elsewhere can, and
+// a key the guid is made from may be anything at all. Each kind that syncs is asked.
+func TestEveryGuidMadeIsValid(t *testing.T) {
+	p := newProfile(t)
+	key, _ := synckosh.NewDataKey()
+	l, maps := sync.NewLocal(p.st, p.maps, key)
+	if len(maps) != 4 {
+		t.Fatalf("%d kinds sync, and this test knows 4", len(maps))
+	}
+	for _, m := range maps {
+		keys := []string{"plain", "_starts-with-an-underscore", "~starts-with-a-tilde", "_", "0199a8f3-5e21-7b40-9c3d-2f6a1e8b4d07", "A-b_c-9"}
+		if m.Derived {
+			keys = append(keys, "https://example.com/a path?with=every&kind#of text", "", strings.Repeat("long ", 400))
+		}
+		seen := map[string]string{}
+		for _, k := range keys {
+			guid := l.GUID(m, k)
+			if err := synckosh.Valid(synckosh.Item{Collection: m.Collection, Datatype: m.Datatype, GUID: guid, Timestamp: 1}); err != nil {
+				t.Errorf("%s: the guid %q of key %q: %v", m.Collection, guid, k, err)
+			}
+			if was, dup := seen[guid]; dup {
+				t.Errorf("%s: keys %q and %q have one guid, %q", m.Collection, was, k, guid)
+			}
+			seen[guid] = k
+			if !m.Derived && sync.Plain(m, guid) != k {
+				t.Errorf("%s: the guid %q of key %q reads back as %q", m.Collection, guid, k, sync.Plain(m, guid))
+			}
+		}
+	}
+}

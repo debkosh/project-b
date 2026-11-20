@@ -15,6 +15,12 @@ func setup(st *store.Store) {
 	st.Schema("sync", func(tx *store.Tx) error {
 		_, err := tx.Exec(tables)
 		return err
+	}, func(tx *store.Tx) error {
+		// A mark sync couldn't hand over is set aside, with why, until its row changes again,
+		// the app starts or a person asks for a run: one row that can't go mustn't hold the
+		// others back, run after run.
+		_, err := tx.Exec(`ALTER TABLE sync_changes ADD COLUMN stuck TEXT NOT NULL DEFAULT ''`)
+		return err
 	})
 }
 
