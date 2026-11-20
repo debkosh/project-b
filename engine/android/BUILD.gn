@@ -118,6 +118,7 @@ source_set("browser") {
     "//project_b/engine/mojom",
     "//cc/slim",
     "//components/embedder_support:user_agent",
+    "//components/client_hints/browser:in_memory",
     "//components/embedder_support/android:web_contents_delegate",
     "//components/input",
     "//components/version_info:version_info_with_user_agent",

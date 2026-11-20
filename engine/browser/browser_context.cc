@@ -1,6 +1,12 @@
 #include "project_b/engine/browser/browser_context.h"
 
+#include "base/functional/bind.h"
 #include "build/build_config.h"
+#include "components/client_hints/browser/in_memory_client_hints_controller_delegate.h"
+#include "components/embedder_support/user_agent_utils.h"
+#include "content/public/browser/network_service_instance.h"
+#include "services/network/public/cpp/network_quality_tracker.h"
+#include "url/gurl.h"
 #include "project_b/engine/browser/downloads.h"
 #if BUILDFLAG(IS_MAC)
 #include "project_b/engine/browser/notifications.h"
@@ -85,9 +91,21 @@ BrowserContext::GetReduceAcceptLanguageControllerDelegate() {
   return nullptr;
 }
 
+// Chrome's client hints on every request, navigations' too, from Chrome's own user-agent
+// metadata (content_browser_client.cc); a page's JavaScript is always allowed, as the app has
+// no per-site switch for it that hints should follow.
 content::ClientHintsControllerDelegate*
 BrowserContext::GetClientHintsControllerDelegate() {
-  return nullptr;
+  if (!client_hints_) {
+    network_quality_tracker_ = std::make_unique<network::NetworkQualityTracker>(
+        base::BindRepeating(&content::GetNetworkService));
+    client_hints_ =
+        std::make_unique<client_hints::InMemoryClientHintsControllerDelegate>(
+            network_quality_tracker_.get(),
+            base::BindRepeating([](const GURL&) { return true; }),
+            embedder_support::GetUserAgentMetadata());
+  }
+  return client_hints_.get();
 }
 
 content::BackgroundFetchDelegate* BrowserContext::GetBackgroundFetchDelegate() {

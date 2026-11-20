@@ -304,6 +304,7 @@ source_set("browser") {
     "//project_b/engine/mojom",
     "//base",
     "//components/embedder_support:user_agent",
+    "//components/client_hints/browser:in_memory",
     "//components/input",
     "//components/version_info:version_info_with_user_agent",
     "//components/viz/common",

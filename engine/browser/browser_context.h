@@ -8,6 +8,13 @@
 #include "content/public/browser/browser_context.h"
 #include "project_b/engine/browser/permissions.h"
 
+namespace client_hints {
+class InMemoryClientHintsControllerDelegate;
+}
+namespace network {
+class NetworkQualityTracker;
+}
+
 namespace project_b {
 
 class Downloads;
@@ -54,6 +61,11 @@ class BrowserContext : public content::BrowserContext {
   Permissions permissions_;
   // A profile's downloads, made when content first asks.
   std::unique_ptr<Downloads> downloads_;
+  // The client hints a navigation's request carries, Sec-CH-UA among them, made when content
+  // first asks: without a delegate a page's own request had none, and Google's sign-in took
+  // the app for a browser that may not be secure.
+  std::unique_ptr<network::NetworkQualityTracker> network_quality_tracker_;
+  std::unique_ptr<client_hints::InMemoryClientHintsControllerDelegate> client_hints_;
 #if BUILDFLAG(IS_MAC)
   // A profile's notifications, made when content first asks.
   std::unique_ptr<Notifications> notifications_;
