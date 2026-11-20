@@ -250,7 +250,7 @@ func (m *Manager) do(done func(error), f func() error) {
 // load reads what sync is on with, and runs. A locked profile key leaves it off, saying so.
 func (m *Manager) load() {
 	if err := m.keys.Check(); err != nil {
-		m.setStatus(func(s *Status) { *s = Status{Locked: errors.Is(err, keys.ErrLocked), Error: lockedError(err).Error()} })
+		m.setStatus(func(s *Status) { *s = Status{Locked: errors.Is(err, keys.ErrNotHere), Error: lockedError(err).Error()} })
 		return
 	}
 	var address, token, key []byte
@@ -281,7 +281,7 @@ func (m *Manager) load() {
 
 // lockedError is what the status says of keys that don't open.
 func lockedError(err error) error {
-	if errors.Is(err, keys.ErrLocked) {
+	if errors.Is(err, keys.ErrNotHere) {
 		return errors.New("sync is off: this profile's keys don't open on this device; start fresh to sync it again")
 	}
 	return err

@@ -2,7 +2,8 @@
 // first time something is sealed, kept in the profile folder's profile.key wrapped by the
 // device key; what it seals, field by field; and the secrets table, named values sealed with
 // it. A folder named outright wraps its profile key with a key of its own, folder.key beside
-// it, and never asks for a device key.
+// it, and never asks for a device key. Profile Lock puts a passphrase over the profile key
+// (lock.go, docs/profile-lock.md).
 package keys
 
 import (
@@ -27,10 +28,11 @@ type Device func(create bool) ([]byte, error)
 // ErrNoDeviceKey is a Device's answer when it holds no key and wasn't asked to make one.
 var ErrNoDeviceKey = errors.New("keys: no device key")
 
-// ErrLocked is what sealing and opening fail with when the device key doesn't open the
+// ErrNotHere is what sealing and opening fail with when the device key doesn't open the
 // profile's key: the folder came from another device, or the keychain's item was lost or
-// replaced. Nothing is overwritten; StartFresh makes a new key.
-var ErrLocked = errors.New("keys: this profile's key doesn't open with this device's key")
+// replaced. Nothing is overwritten; StartFresh makes a new key. Locked is Profile Lock's
+// word alone (ErrLocked).
+var ErrNotHere = errors.New("keys: this profile's key doesn't open with this device's key")
 
 // errNone is the profile having no key yet: nothing was sealed in it.
 var errNone = errors.New("keys: nothing has been sealed in this profile")
@@ -41,10 +43,21 @@ type Keys struct {
 	st           *store.Store
 	device       Device
 
+	// op is held through a change of Profile Lock, one at a time; mu guards what is below, and
+	// is never held while a passphrase's key is made.
+	op  sync.Mutex
 	mu  sync.Mutex
-	key []byte // the profile key, once opened
+	key []byte // the profile key, once opened: one buffer, overwritten at Lock
 	// fresh are what StartFresh deletes besides the secrets: each feature's own sealed rows.
 	fresh []func(tx *store.Tx) error
+	// Profile Lock (lock.go): its file's head while it is on, who hears its changes, who shows
+	// the unlock Dialog, and the calls waiting on it.
+	lock        *head
+	lockChanged []func(Lock)
+	ask         func(Ask)
+	askOver     func()
+	waiting     map[int]chan error
+	nextWait    int
 }
 
 // OnStartFresh has job run in StartFresh's own job, beside the secrets' delete: a feature
@@ -67,11 +80,14 @@ func New(dir, profile string, st *store.Store, device Device) *Keys {
 		_, err := tx.Exec(`CREATE TABLE secrets (name TEXT PRIMARY KEY, value BLOB NOT NULL) WITHOUT ROWID`)
 		return err
 	})
-	return &Keys{dir: dir, profile: profile, st: st, device: device}
+	k := &Keys{dir: dir, profile: profile, st: st, device: device}
+	k.loadLock()
+	return k
 }
 
-// Check opens the profile key: nil when it opens or nothing was sealed yet, ErrLocked when
-// the device key doesn't open it, or why the device key couldn't be read. Call it off the main
+// Check opens the profile key: nil when it opens or nothing was sealed yet, ErrNotHere when
+// the device key doesn't open it, ErrLocked while Profile Lock holds it, or why the device key
+// couldn't be read. Call it off the main
 // thread: it may ask the keychain.
 func (k *Keys) Check() error {
 	k.mu.Lock()
@@ -92,6 +108,10 @@ func (k *Keys) profileKey(create bool) ([]byte, error) {
 	path := filepath.Join(k.dir, "profile.key")
 	wrapped, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
+		// With Profile Lock on, no profile.key is the profile locked: its key is in profile.lock.
+		if k.lock != nil {
+			return nil, ErrLocked
+		}
 		if !create {
 			return nil, errNone
 		}
@@ -102,14 +122,14 @@ func (k *Keys) profileKey(create bool) ([]byte, error) {
 	}
 	wrap, err := k.device(false)
 	if errors.Is(err, ErrNoDeviceKey) {
-		return nil, ErrLocked
+		return nil, ErrNotHere
 	}
 	if err != nil {
 		return nil, fmt.Errorf("keys: the device key: %w", err)
 	}
 	key, err := open(wrap, wrapped, k.wrapping())
 	if err != nil || len(key) != chacha20poly1305.KeySize {
-		return nil, ErrLocked
+		return nil, ErrNotHere
 	}
 	k.key = key
 	return key, nil
@@ -141,9 +161,10 @@ func (k *Keys) wrapping() []byte { return bound("profile key", k.profile) }
 // in: it opens only with the same. The answer is the nonce, then the sealed bytes. It makes the
 // profile key the first time.
 func (k *Keys) Seal(table, id, column string, plain []byte, also ...string) ([]byte, error) {
+	// mu is held through the seal: Lock overwrites the key's buffer.
 	k.mu.Lock()
+	defer k.mu.Unlock()
 	key, err := k.profileKey(true)
-	k.mu.Unlock()
 	if err != nil {
 		return nil, err
 	}
@@ -153,8 +174,8 @@ func (k *Keys) Seal(table, id, column string, plain []byte, also ...string) ([]b
 // Open opens what Seal sealed for the same table, row, column and values.
 func (k *Keys) Open(table, id, column string, sealed []byte, also ...string) ([]byte, error) {
 	k.mu.Lock()
+	defer k.mu.Unlock()
 	key, err := k.profileKey(false)
-	k.mu.Unlock()
 	if err != nil {
 		return nil, err
 	}
@@ -199,11 +220,14 @@ func (k *Keys) DeleteSecrets(tx *store.Tx, names ...string) error {
 	return nil
 }
 
-// StartFresh is for a profile whose key is locked: it deletes every secret, the features'
-// sealed rows (OnStartFresh) and the profile key, and makes a new key, which the device key
-// wraps. History and bookmarks are untouched. Not on the main thread: it waits for the
-// store's worker.
+// StartFresh is for a profile whose key can't be had: the device key doesn't open it, or
+// Profile Lock's passphrase is forgotten. It deletes every secret, the features' sealed rows
+// (OnStartFresh), the profile key and Profile Lock, which is then off, and makes a new key,
+// which the device key wraps. History and bookmarks are untouched. Not on the main thread: it
+// waits for the store's worker.
 func (k *Keys) StartFresh() error {
+	k.op.Lock()
+	defer k.op.Unlock()
 	k.mu.Lock()
 	fresh := append([]func(tx *store.Tx) error(nil), k.fresh...)
 	k.mu.Unlock()
@@ -221,13 +245,22 @@ func (k *Keys) StartFresh() error {
 		return err
 	}
 	k.mu.Lock()
-	defer k.mu.Unlock()
 	path := filepath.Join(k.dir, "profile.key")
-	if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return err
+	err := os.Remove(path)
+	if errors.Is(err, os.ErrNotExist) {
+		err = os.Remove(filepath.Join(k.dir, lockFile))
 	}
-	k.key = nil
-	_, err := k.makeKey(path)
+	if errors.Is(err, os.ErrNotExist) {
+		err = nil
+	}
+	if err == nil {
+		clear(k.key)
+		k.key, k.lock = nil, nil
+		_, err = k.makeKey(path)
+	}
+	then := k.told(ErrCancelled, true)
+	k.mu.Unlock()
+	then()
 	return err
 }
 

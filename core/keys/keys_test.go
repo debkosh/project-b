@@ -116,7 +116,7 @@ func TestAListedProfileOpenedOutrightAsksNoDeviceKey(t *testing.T) {
 	}
 	asked := d.asked
 	k := New(dir, "", st, nil)
-	if err := k.Check(); !errors.Is(err, ErrLocked) {
+	if err := k.Check(); !errors.Is(err, ErrNotHere) {
 		t.Fatalf("check: %v", err)
 	}
 	if d.asked != asked {
@@ -141,14 +141,14 @@ func TestALockedKeyAndStartingFresh(t *testing.T) {
 
 	for name, d := range map[string]*device{"another device's key": {key: random32()}, "no device key": {}} {
 		k = New(dir, "p1", st, d.get)
-		if err := k.Check(); !errors.Is(err, ErrLocked) {
+		if err := k.Check(); !errors.Is(err, ErrNotHere) {
 			t.Fatalf("%s: check: %v", name, err)
 		}
-		if _, err := k.Seal("secrets", "b", "value", []byte("y")); !errors.Is(err, ErrLocked) {
+		if _, err := k.Seal("secrets", "b", "value", []byte("y")); !errors.Is(err, ErrNotHere) {
 			t.Fatalf("%s: seal: %v", name, err)
 		}
 		err := st.Wait(func(tx *store.Tx) error { _, _, err := k.Secret(tx, "sync.token"); return err })
-		if !errors.Is(err, ErrLocked) {
+		if !errors.Is(err, ErrNotHere) {
 			t.Fatalf("%s: secret: %v", name, err)
 		}
 		if d.key == nil && d.asked == 0 {
@@ -159,7 +159,7 @@ func TestALockedKeyAndStartingFresh(t *testing.T) {
 		}
 	}
 	// Listed under another id, the same device key doesn't open it either.
-	if err := New(dir, "p2", st, first.get).Check(); !errors.Is(err, ErrLocked) {
+	if err := New(dir, "p2", st, first.get).Check(); !errors.Is(err, ErrNotHere) {
 		t.Fatalf("under another id: %v", err)
 	}
 

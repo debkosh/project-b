@@ -106,9 +106,10 @@ CREATE INDEX passkeys_rp ON passkeys (rp_id)`)
 // here says the profile's key opens on this device, or nothing was sealed yet: nil, or
 // ErrNotHere. It may ask the keychain, once.
 func (m *Manager) here() error {
-	if err := m.keys.Check(); errors.Is(err, keys.ErrLocked) {
+	// A profile Profile Lock holds is here: sealed asks for its passphrase.
+	if err := m.keys.Check(); errors.Is(err, keys.ErrNotHere) {
 		return ErrNotHere
-	} else if err != nil {
+	} else if err != nil && !errors.Is(err, keys.ErrLocked) {
 		return err
 	}
 	return nil
@@ -158,13 +159,33 @@ func (m *Manager) Total() (int, error) {
 
 // sealed runs job, which reads or writes what the profile key seals, on the store's
 // worker. asked says a person asked for it. It is the one place a call meets the profile
-// key: today a profile is never locked, and the job runs. With Profile Lock a person's job
-// waits here on the unlock Dialog, and one nobody asked for is answered ErrLocked.
+// key. While Profile Lock holds the profile, a person's job waits here on the unlock Dialog
+// (keys.Unlocked, which says what for from the context), and one nobody asked for is
+// answered ErrLocked, as one whose Dialog the person cancelled is.
 func (m *Manager) sealed(ctx context.Context, asked bool, job func(tx *store.Tx) error) error {
+	if err := m.unlocked(ctx, asked); err != nil {
+		return err
+	}
+	return m.st.Wait(job)
+}
+
+// unlocked is sealed's wait alone, for a call that checks the person with the device before
+// its job: the profile's passphrase comes first, so nobody passes the device's check for a
+// profile that then stays locked.
+func (m *Manager) unlocked(ctx context.Context, asked bool) error {
 	if ctx.Err() != nil {
 		return ErrCancelled
 	}
-	return m.st.Wait(job)
+	switch err := m.keys.Unlocked(ctx, asked); {
+	case err == nil:
+		return nil
+	case ctx.Err() != nil:
+		return ErrCancelled
+	case errors.Is(err, keys.ErrCancelled), errors.Is(err, keys.ErrLocked):
+		return ErrLocked
+	default:
+		return err
+	}
 }
 
 // row is a passkey as its row keeps it.
@@ -305,9 +326,8 @@ type User struct {
 // ErrExcluded, and a profile whose key doesn't open here ErrNotHere, before the person is
 // asked anything.
 //
-// The person is checked before sealed is entered. With Profile Lock that would be the
-// device's check and then the unlock Dialog; the unlock belongs first, and is ordered when
-// sealed's inside is swapped.
+// A locked profile is unlocked first, then the person is checked with the device, then the
+// passkey is made.
 func (m *Manager) Make(ctx context.Context, asked bool, rpID string, user User, exclude [][]byte) (id, cose []byte, err error) {
 	if err := m.here(); err != nil {
 		return nil, nil, err
@@ -320,6 +340,9 @@ func (m *Manager) Make(ctx context.Context, asked bool, rpID string, user User, 
 		if n > 0 {
 			return nil, nil, ErrExcluded
 		}
+	}
+	if err := m.unlocked(ctx, asked); err != nil {
+		return nil, nil, err
 	}
 	if err := m.verify(ctx, ToSave, rpID); err != nil {
 		return nil, nil, err
@@ -370,6 +393,9 @@ func (m *Manager) Sign(ctx context.Context, asked bool, rpID string, id, data []
 		return nil, nil, err
 	} else if n == 0 {
 		return nil, nil, ErrNone
+	}
+	if err := m.unlocked(ctx, asked); err != nil {
+		return nil, nil, err
 	}
 	if err := m.verify(ctx, ToUse, rpID); err != nil {
 		return nil, nil, err
