@@ -667,13 +667,16 @@ const stopServer = lib.stop;
     if (req.url === '/releases.json') {
       res.end(JSON.stringify({ spec: 1, project: 'project-b', published: '2026-11-09T00:00:00Z', channels: { stable: '0.2.0' },
         releases: { '0.2.0': { assets: { 'darwin/arm64': { url: `http://127.0.0.1:${releasePort}/asset.zip`, sha256: crypto.createHash('sha256').update(good).digest('hex'), size: good.length } } } } }));
-    } else {
+    } else if (req.url === '/asset.zip') {
       // Half at once and the rest later, so the download is seen part-way.
       const body = served;
       res.writeHead(200, { 'Content-Length': body.length });
       res.write(body.subarray(0, body.length >> 1));
       assets++;
       setTimeout(() => res.end(body.subarray(body.length >> 1)), 1500);
+    } else {
+      // The release's notes, which the updater asks for beside the manifest: this one has none.
+      res.writeHead(404).end();
     }
   });
   await new Promise((r) => releaseServer.listen(0, '127.0.0.1', r));
