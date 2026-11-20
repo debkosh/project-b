@@ -32,8 +32,20 @@ const profile = computed(() => browser.value?.profiles.find((p) => p.key === key
 const profileTitle = computed(() => (profile.value?.name ? `${browser.value.name} · ${profile.value.name}` : browser.value?.name || ''));
 const run = computed(() => imports.runs[key.value]);
 // A browser known only by its folder whose folder doesn't say which keychain item holds
-// its passwords' key: the person picks one before its passwords can come.
-const keychains = computed(() => (what.value.includes('passwords') && profile.value?.keychains) || []);
+// its passwords' key: the person picks one before its passwords can come. One that didn't
+// open them (failed) is said so, and another is picked from those Go then names.
+const failed = ref(null);
+const keychains = computed(() => (what.value.includes('passwords') && (failed.value?.keychains || profile.value?.keychains)) || []);
+const wrong = computed(() => {
+  const s = run.value?.done && run.value.steps.passwords;
+  return s && s.wrongKey && (s.keychains || []).length > 1 ? s : null;
+});
+function pickAnother() {
+  failed.value = { service: wrong.value.keychain, keychains: wrong.value.keychains };
+  safeStorage.value = '';
+  what.value = ['passwords'];
+  view.value = 'profile';
+}
 
 // Each view's heading takes the keyboard's focus, so a screen reader reads where it is.
 watch(view, () => nextTick(() => title.value?.focus()));
@@ -42,6 +54,7 @@ watch(view, () => nextTick(() => title.value?.focus()));
 function pick(p) {
   key.value = p.key;
   safeStorage.value = '';
+  failed.value = null;
   what.value = choicesOf(p).map((c) => c.id).filter((id) => id !== 'extensions');
 }
 
@@ -131,6 +144,7 @@ const importingTitle = computed(() => {
 function again() {
   lastPrimary = '';
   lastKeychain = '';
+  failed.value = null;
   browser.value = null;
   key.value = null;
   view.value = 'browsers';
@@ -245,7 +259,8 @@ function again() {
       </label>
       <div v-if="keychains.length" class="safe-storage">
         <span class="label">{{ browser.name }}'s key in the keychain</span>
-        <span class="state">Its folder doesn't say which of these holds its passwords' key.</span>
+        <span v-if="failed" class="state problem" role="alert">The passwords didn't open with {{ failed.service || 'that key' }}. Pick another and import again.</span>
+        <span v-else class="state">Its folder doesn't say which of these holds its passwords' key.</span>
         <div class="list" role="radiogroup" :aria-label="`${browser.name}'s key in the keychain`">
           <label v-for="k in keychains" :key="k" class="item">
             <input v-model="safeStorage" type="radio" name="safe-storage" :value="k" />
@@ -279,6 +294,7 @@ function again() {
         <button type="button" class="text-button quiet" @click="cancel">Cancel</button>
       </div>
       <div v-else class="buttons">
+        <button v-if="wrong" type="button" class="text-button" @click="pickAnother">Pick another key</button>
         <button v-if="ended" type="button" class="text-button" @click="retry">Try again</button>
         <button type="button" class="text-button" @click="again">Import another</button>
       </div>

@@ -183,7 +183,7 @@ const said = (frame, from) => frame.getByRole('list', { name: `From ${from}` }).
   // folder chosen whose name says nothing with the keychain item the person picks (the
   // mock's keychain lists Chrome's and Wombat's). Files a person exported come over in
   // Settings too: bookmarks and passwords.
-  await lib.start(['-use=standard', '-skip-welcome', `-browsers=${home}`, '-password-store', '-keychain=test-safe-storage', '-keychain-items=Chrome,Wombat']);
+  await lib.start(['-use=standard', '-skip-welcome', `-browsers=${home}`, '-password-store', '-keychain=test-safe-storage', '-keychain-items=Chrome,Wombat=another-browsers-key']);
   w = await lib.openWindow(browser, { viewport: { width: 1280, height: 800 } });
   await lib.fire('menu', 'app.settings');
   await w.settings.locator('[data-section="data"]').click();
@@ -217,7 +217,21 @@ const said = (frame, from) => frame.getByRole('list', { name: `From ${from}` }).
   await settle(w.page);
   await w.page.screenshot({ path: path.join(lib.out, 'settings-safe-storage.png') });
   await pw.getByRole('button', { name: 'Import', exact: true }).click();
-  check('with one picked, its passwords open', await until(async () => (await said(pw, 'Numbat · Personal')).includes('3 saved already')), await said(pw, 'Numbat · Personal'));
+  // Wombat's item is another browser's: nothing comes, the step says which item it was,
+  // and the person picks another.
+  check('an item that is another browser\'s brings no passwords, and the step says which it was', await until(async () => (await said(pw, 'Numbat · Personal')).includes("they didn't open with Wombat Safe Storage")) &&
+    !/\d+ (passwords?|saved)/.test(await said(pw, 'Numbat · Personal')), await said(pw, 'Numbat · Personal'));
+  await settle(w.page);
+  await w.page.screenshot({ path: path.join(lib.out, 'settings-safe-storage-wrong.png') });
+  await pw.getByRole('button', { name: 'Pick another key' }).click();
+  check('Pick another key goes back to the choice, which says so in place of its line, with none picked', await until(() => keys.isVisible()) &&
+    (await pw.getByRole('alert').innerText()) === "The passwords didn't open with Wombat Safe Storage. Pick another and import again." &&
+    (await keys.getByRole('radio', { checked: true }).count()) === 0 && (await pw.getByRole('button', { name: 'Import', exact: true }).isDisabled()), await pw.innerText());
+  await settle(w.page);
+  await w.page.screenshot({ path: path.join(lib.out, 'settings-safe-storage-again.png') });
+  await keys.getByRole('radio', { name: 'Chrome Safe Storage' }).check();
+  await pw.getByRole('button', { name: 'Import', exact: true }).click();
+  check('with the right one picked, its passwords open', await until(async () => (await said(pw, 'Numbat · Personal')).includes('3 saved already')), await said(pw, 'Numbat · Personal'));
   await pw.getByRole('button', { name: 'Import another' }).click();
   await pw.getByLabel('Passwords file').setInputFiles({ name: 'Passwords.csv', mimeType: 'text/csv', buffer: Buffer.from('Title,URL,Username,Password,Notes,OTPAuth\nnew,https://new.example.com/,nina,n3w,,\nagain,https://example.org/,bob,hunter2,,\n') });
   check('a passwords file comes over, and says to delete it', await until(async () => (await said(pw, 'Passwords.csv')).includes('1 password') && (await pw.getByText('Delete Passwords.csv now').isVisible())), await said(pw, 'Passwords.csv'));

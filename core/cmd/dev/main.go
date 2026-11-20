@@ -130,7 +130,7 @@ func main() {
 			BlockedHosts:  strings.Split(*block, ","),
 			SkipWelcome:   *skipWelcome,
 			BrowserHome:   *browserHome,
-			Keychain:      keychainOf(*keychain),
+			Keychain:      keychainOf(*keychain, *keychainItems),
 			KeychainItems: keychainItemsOf(*keychain, *keychainItems),
 			System:        sys,
 			Update: update.Config{

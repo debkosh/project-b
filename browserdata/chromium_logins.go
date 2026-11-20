@@ -9,6 +9,7 @@ import (
 	"errors"
 	"path/filepath"
 	"strconv"
+	"unicode/utf8"
 )
 
 // A Chromium browser on the Mac keeps saved passwords in its profile's Login Data (and,
@@ -77,8 +78,11 @@ func chromiumLogins(dir string, k kind, keys Keys) ([]Login, error) {
 			Created: webkitTime(strconv.FormatInt(s.created, 10)), LastUsed: webkitTime(strconv.FormatInt(s.lastUsed, 10)),
 		})
 	}
-	if bad > 0 && len(out) == 0 {
-		return nil, errors.New("browserdata: the keychain's key opens none of the passwords")
+	// A key that isn't this browser's opens none of them, or by chance one in a few hundred,
+	// as nonsense; this browser's own opens all but any it sealed under a key it has since
+	// lost. So when more fail than open, the key is the wrong one, and none is brought.
+	if bad > len(out) {
+		return nil, ErrWrongKey
 	}
 	return out, nil
 }
@@ -129,6 +133,9 @@ func chromiumDecrypt(key, sealed []byte) (string, error) {
 	out := make([]byte, len(data))
 	cipher.NewCBCDecrypter(block, bytes.Repeat([]byte(" "), aes.BlockSize)).CryptBlocks(out, data)
 	out, err = unpad(out, aes.BlockSize)
+	if err == nil && !utf8.Valid(out) {
+		return "", errors.New("browserdata: not text: the key isn't this one")
+	}
 	return string(out), err
 }
 

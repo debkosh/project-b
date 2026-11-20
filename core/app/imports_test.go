@@ -398,7 +398,7 @@ func TestAKeychainQuestionDoesNotStall(t *testing.T) {
 func TestAFolderChosenFindsItsSafeStorage(t *testing.T) {
 	home := t.TempDir()
 	chrome := os.DirFS("../../browserdata/testdata/home/Library/Application Support/Google/Chrome")
-	for _, dir := range []string{"Library/Application Support/Bramblewood/Quokka", "Elsewhere/Numbat"} {
+	for _, dir := range []string{"Library/Application Support/Bramblewood/Quokka", "Elsewhere/Numbat", "Elsewhere/Chrome"} {
 		if err := os.CopyFS(filepath.Join(home, dir), chrome); err != nil {
 			t.Fatal(err)
 		}
@@ -409,6 +409,10 @@ func TestAFolderChosenFindsItsSafeStorage(t *testing.T) {
 		asked = append(asked, service)
 		if service == "Quokka Safe Storage" && account == "Quokka" || service == "Wombat Safe Storage" && account == "Wombat" {
 			return []byte("test-safe-storage"), nil
+		}
+		// Another browser's key, which opens none of these.
+		if service == "Chrome Safe Storage" {
+			return []byte("another-browsers-key"), nil
 		}
 		return nil, browserdata.ErrNoSecret
 	}
@@ -437,7 +441,8 @@ func TestAFolderChosenFindsItsSafeStorage(t *testing.T) {
 		t.Fatalf("no Personal in %v", b)
 		return nil
 	}
-	passwords := func(key, chosen string) (string, string) {
+	// step is the passwords step's last word, and passwords what it brought and its error.
+	step := func(key, chosen string) map[string]any {
 		t.Helper()
 		asked = nil
 		b, _ := json.Marshal(map[string]any{"t": "import", "key": key, "what": []string{"passwords"}, "keychain": chosen})
@@ -445,12 +450,17 @@ func TestAFolderChosenFindsItsSafeStorage(t *testing.T) {
 		for {
 			s := next(t, got, "importStep")
 			if s["state"] == "done" {
-				res, _ := json.Marshal(s["result"])
-				e, _ := s["error"].(string)
 				next(t, got, "imported")
-				return string(res), e
+				return s
 			}
 		}
+	}
+	passwords := func(key, chosen string) (string, string) {
+		t.Helper()
+		s := step(key, chosen)
+		res, _ := json.Marshal(s["result"])
+		e, _ := s["error"].(string)
+		return string(res), e
 	}
 
 	quokka := personal("Library/Application Support/Bramblewood/Quokka")
@@ -470,5 +480,26 @@ func TestAFolderChosenFindsItsSafeStorage(t *testing.T) {
 	}
 	if _, err := passwords(numbat["key"].(string), "Elsewhere Safe Storage"); err != "the keychain didn't give the browser's key" || slices.Contains(asked, "Elsewhere Safe Storage") {
 		t.Fatalf("Numbat's, with an item not shown: %q, the keychain asked for %q", err, asked)
+	}
+
+	// An item that is another browser's opens nothing: no password is brought, the step
+	// says which item it was, and names those to pick another from.
+	all := `["Chrome Safe Storage","Quokka Safe Storage","Wombat Safe Storage"]`
+	s := step(numbat["key"].(string), "Chrome Safe Storage")
+	if choices, _ := json.Marshal(s["keychains"]); s["error"] != "they didn't open with Chrome Safe Storage" || s["wrongKey"] != true || s["keychain"] != "Chrome Safe Storage" || string(choices) != all || s["result"] != nil {
+		t.Fatalf("Numbat's, with another browser's item chosen: %v", s)
+	}
+	// A folder whose own name leads to another browser's item: the same, and every item
+	// is then the person's to pick from, the right one opening them.
+	named := personal("Elsewhere/Chrome")
+	if named["keychains"] != nil {
+		t.Fatalf("a folder named Chrome has a choice before its item failed: %v", named)
+	}
+	s = step(named["key"].(string), "")
+	if choices, _ := json.Marshal(s["keychains"]); s["wrongKey"] != true || s["keychain"] != "Chrome Safe Storage" || string(choices) != all || s["result"] != nil {
+		t.Fatalf("a folder whose name leads to another browser's item: %v", s)
+	}
+	if res, err := passwords(named["key"].(string), "Quokka Safe Storage"); res != `{"added":0,"already":3,"skipped":0}` || err != "" || !slices.Equal(asked, []string{"Quokka Safe Storage"}) {
+		t.Fatalf("the same folder, with the right item picked: %s %q, the keychain asked for %q", res, err, asked)
 	}
 }

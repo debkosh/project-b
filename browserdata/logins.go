@@ -34,6 +34,9 @@ var (
 	// ErrNoSecret is what Logins says when the keychain has no key for the browser, or the
 	// person refused it.
 	ErrNoSecret = errors.New("browserdata: the keychain gave no key for this browser")
+	// ErrWrongKey is what Logins says when the keychain's item doesn't open the browser's
+	// passwords: it is another browser's. Nothing is brought.
+	ErrWrongKey = errors.New("browserdata: the keychain's key doesn't open these passwords")
 )
 
 // Logins reads the profile's saved passwords: a Chromium browser's from Login Data and Login

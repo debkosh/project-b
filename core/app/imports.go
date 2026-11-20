@@ -118,6 +118,9 @@ type shownFrom struct {
 	browser      string
 	keychain     []browserdata.KeychainItem
 	keychainSure bool
+	// keychainAll is every item the keychain listed, which the person chooses from once the
+	// one its folder named turned out to be another browser's.
+	keychainAll []browserdata.KeychainItem
 }
 
 // safeStorage is the keychain's item that holds the profile's passwords' key: the one its
@@ -377,6 +380,7 @@ func findSafeStorage(s *shownBrowser, ps []shownFrom, list func() ([]browserdata
 			listed = true
 		}
 		ps[i].keychain, ps[i].keychainSure = ps[i].SafeStorage(items)
+		ps[i].keychainAll = items
 		switch {
 		case ps[i].keychainSure:
 			timeline.Infof("imports: %s's passwords' key is the keychain's %q", s.Name, ps[i].keychain[0].Service)
@@ -428,6 +432,12 @@ func (im *importer) step(key, step, state string, result any, err error) {
 	}
 	if err != nil {
 		m["error"] = err.Error()
+	}
+	// The keychain's item didn't open the passwords: which it was, and those to choose
+	// another from.
+	var wrong *wrongKeyError
+	if errors.As(err, &wrong) {
+		m["wrongKey"], m["keychain"], m["keychains"] = true, wrong.service, wrong.choices
 	}
 	im.send(m)
 }
@@ -500,10 +510,28 @@ func (im *importer) bring(key string, what []string, primaryPassword, keychain s
 			keys := browserdata.Keys{Secret: im.keychain, Item: p.safeStorage(keychain), PrimaryPassword: primaryPassword}
 			logins := func() ([]browserdata.Login, error) { return p.Logins(keys) }
 			read(logins, func(ls []browserdata.Login, err error) {
-				if alive() {
-					r.asking = false
-					done(im.addPasswords(ls), passwordError(err))
+				if !alive() {
+					return
 				}
+				r.asking = false
+				// A key that is another browser's brings nothing, and the person picks another:
+				// of those they were shown, or, when the folder's own name led to this one, of
+				// every item the keychain lists.
+				if errors.Is(err, browserdata.ErrWrongKey) {
+					if p.keychainSure && len(p.keychainAll) > 1 {
+						p.keychainSure, p.keychain = false, p.keychainAll
+						im.profiles[key] = p
+					}
+					wrong := &wrongKeyError{service: keys.Item.Service}
+					if !p.keychainSure {
+						for _, it := range p.keychain {
+							wrong.choices = append(wrong.choices, it.Service)
+						}
+					}
+					done(nil, wrong)
+					return
+				}
+				done(im.addPasswords(ls), passwordError(err))
 			}, im.e)
 		case "extensions":
 			read(p.Extensions, func(xs []browserdata.Extension, err error) {
@@ -605,6 +633,21 @@ func (im *importer) addPasswords(ls []browserdata.Login) broughtPasswords {
 	}
 	added, already, skipped := im.passwords.Import(ls)
 	return broughtPasswords{Added: added, Already: already, Skipped: skipped}
+}
+
+// wrongKeyError is the keychain's item not opening a browser's passwords: the item's
+// service, "" when it was one of the names the browser goes by, and the items the person
+// can choose another from, none when there is no other.
+type wrongKeyError struct {
+	service string
+	choices []string
+}
+
+func (e *wrongKeyError) Error() string {
+	if e.service == "" {
+		return "the keychain's key didn't open them"
+	}
+	return "they didn't open with " + e.service
 }
 
 // passwordError says why passwords didn't come, in words a page shows.

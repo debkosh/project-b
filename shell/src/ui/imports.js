@@ -34,7 +34,9 @@ export function importMessage(m) {
       return true;
     case 'importStep': {
       const run = imports.runs[m.key] || (imports.runs[m.key] = { steps: {}, done: false });
-      run.steps[m.step] = { state: m.state, result: m.result, error: m.error };
+      // A passwords step whose keychain item didn't open them says which it was (keychain)
+      // and those to choose another from (keychains).
+      run.steps[m.step] = { state: m.state, result: m.result, error: m.error, wrongKey: m.wrongKey, keychain: m.keychain, keychains: m.keychains };
       return true;
     }
     case 'imported':
