@@ -61,7 +61,8 @@ A finished branch lands on main as it comes, rebased, once Go's tests and the mo
 on it, and `tools/release.sh dev` publishes it to the Dev channel from the main checkout,
 as the `pb-release` job below ([release-channels.md](release-channels.md)). It runs Go's tests
 and the mock suite again on main first, and stops at a failure; no tag, no test report, no
-release notes. Send the orchestrator the DMG and APK links from its `RESULT=ok` line. Stable
+release notes to write: `tools/dev_notes.py` writes them from the commits since the Dev build
+before it. Send the orchestrator the DMG and APK links from its `RESULT=ok` line. Stable
 is cut from main later, with the full run.
 
 ## Publishing

@@ -50,8 +50,11 @@ takes the newest Dev build at the next check.
    from the manifest and from the pre-release's assets.
 3. The link to the Dev build goes to the orchestrator.
 
-No tag and no test report: the build's commit is in its name's time and in the
-manifest's `published`. Stable stays as it is: the full run, `VERSION` bumped, its own
+No tag and no test report. Its notes are written for it (`tools/dev_notes.py`): one line for
+each commit that changes the app since the Dev build before it, the first clause of the
+subject, with the commit it is made from in a comment, where the next Dev build starts. The
+build carries them as its own notes, What's new in it, and they are published beside the
+manifest as `notes-<version>.md`, as a Stable release's are. Stable stays as it is: the full run, `VERSION` bumped, its own
 tag and release, and its report.
 
 ## The switch

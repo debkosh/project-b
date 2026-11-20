@@ -55,11 +55,25 @@ if [ "$CHANNEL" = stable ]; then
   # its manifest: they must be this version's (docs/releasing.md).
   [ "$(sed -n 's/^# //p' "$NOTES" | head -1)" = "$VERSION" ] || { echo "$NOTES is for $(sed -n 's/^# //p' "$NOTES" | head -1), not $VERSION; write this release's notes first"; exit 1; }
 else
+  STABLE=$VERSION
   VERSION=$(amarit next-version -pre dev "$VERSION")
-  # Every build reads VERSION: the app's bundle, the Go library and the APK. It goes back to
-  # main's when the script ends, however it ends.
+  # Every build reads VERSION: the app's bundle, the Go library and the APK; and its notes are
+  # the page's own. Both go back to main's when the script ends, however it ends.
+  trap 'git checkout -q -- VERSION "$NOTES"' EXIT
   printf '%s\n' "$VERSION" > VERSION
-  trap 'git checkout -q -- VERSION' EXIT
+  # The notes: the changes since the Dev build before this one, from the commit its notes
+  # name, or since the Stable release when there is none (tools/dev_notes.py).
+  prev=$(mktemp -d)
+  since=""
+  if gh release download "$CHANNELS" --repo "$REPO" --pattern releases.json -D "$prev" 2>/dev/null; then
+    last=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("channels", {}).get("dev", ""))' "$prev/releases.json")
+    if [ -n "$last" ] && gh release download "$CHANNELS" --repo "$REPO" --pattern "notes-$last.md" -D "$prev" 2>/dev/null; then
+      since=$(sed -n 's/^<!-- commit: \([0-9a-f]*\) -->$/\1/p' "$prev/notes-$last.md")
+    fi
+  fi
+  rm -rf -- "${prev:?}"
+  git cat-file -e "${since:-none}^{commit}" 2>/dev/null || since="v$STABLE"
+  python3 tools/dev_notes.py "$VERSION" "$since" > "$NOTES"
 fi
 
 echo "=== $(date '+%F %T') release build"
@@ -70,6 +84,9 @@ OUT=out/rel tools/package.sh
 echo "=== $(date '+%F %T') assets and manifest"
 rm -rf "$DIST" && mkdir -p "$DIST"
 cp build/project-b.dmg "$DIST/Project-B-$VERSION.dmg"
+# The notes beside the manifest, by version, which a copy shows as "Coming in" while it
+# downloads the release (docs/updates.md).
+cp "$NOTES" "$DIST/notes-$VERSION.md"
 ditto -c -k --keepParent "build/package/Project B.app" "$DIST/Project-B-$VERSION-darwin-arm64.zip"
 
 echo "=== $(date '+%F %T') Android"
@@ -87,7 +104,7 @@ if [ "$CHANNEL" = dev ]; then
   # it replaces goes, from the manifest and the tag.
   echo "=== $(date '+%F %T') publish $VERSION on $CHANNELS"
   amarit publish -github "$REPO" -tag "$CHANNELS" -version "$VERSION" -version-code "$CODE" -channel dev \
-    -url '{asset}' -dist "$DIST" -out "$DIST/releases.json" -prune "$DIST/Project-B-$VERSION.dmg" "$DIST/Project-B-$VERSION.apk"
+    -url '{asset}' -dist "$DIST" -out "$DIST/releases.json" -prune "$DIST/Project-B-$VERSION.dmg" "$DIST/Project-B-$VERSION.apk" "$DIST/notes-$VERSION.md"
   echo "RESULT=ok $VERSION https://github.com/$REPO/releases/download/$CHANNELS/Project-B-$VERSION.dmg https://github.com/$REPO/releases/download/$CHANNELS/Project-B-$VERSION.apk"
   exit 0
 fi
@@ -106,4 +123,5 @@ $(grep '^- ' "$NOTES")$(
         [ -f "docs/test-reports/$VERSION.md" ] && printf '\n\nTests: https://github.com/%s/blob/%s/docs/test-reports/%s.md' "$REPO" "$TAG" "$VERSION")"
 amarit publish -github "$REPO" -tag "$CHANNELS" -version "$VERSION" -version-code "$CODE" -dist "$DIST" -out "$DIST/releases.json"
 gh release upload "$TAG" "$DIST/releases.json" --repo "$REPO" --clobber
+gh release upload "$CHANNELS" "$DIST/notes-$VERSION.md" --repo "$REPO" --clobber
 echo "RESULT=ok $TAG"
