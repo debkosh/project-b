@@ -5,8 +5,10 @@ import { reactive } from 'vue';
 // Each page's state.js hands Go's messages to importMessage.
 //
 // browsers: null until Go has looked, then each {id, name, locked, profiles: [{key, name,
-//   counts: {bookmarks, folders, pages, passwords, extensions}, primaryPassword}]}; a
-//   locked one, Safari's until the app has Full Disk Access, has nothing counted.
+//   counts: {bookmarks, folders, pages, passwords, extensions}, primaryPassword,
+//   keychains}]}; keychains are a folder-known browser's Safe Storage items to choose
+//   its passwords' key from, when its folder doesn't say which. A locked one, Safari's
+//   until the app has Full Disk Access, has nothing counted.
 //   Extensions are counted only while they can be installed (the Extensions flag), and
 //   passwords once there is a store for them (passwords says so).
 // folder: what the last folder chosen was, {browser} or {error}, or {cancelled}; null

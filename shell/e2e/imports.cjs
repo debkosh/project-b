@@ -49,6 +49,8 @@ open(os.path.join(out, 'crx', ext + '_1.0.crx'), 'wb').write(b'Cr24' + struct.pa
 // The test home, copied, with Safari locked until unlock.
 const home = path.join(lib.profile, '..', 'browsers');
 fs.cpSync(lib.browsers, home, { recursive: true });
+// A made-up browser known only by its folder, its profiles Chrome's.
+fs.cpSync(path.join(home, 'Library/Application Support/Google/Chrome'), path.join(home, 'Elsewhere/Numbat'), { recursive: true });
 const safari = path.join(home, 'Library/Safari');
 const lock = () => fs.chmodSync(safari, 0);
 const unlock = () => fs.existsSync(safari) && fs.chmodSync(safari, 0o755);
@@ -177,9 +179,11 @@ const said = (frame, from) => frame.getByRole('list', { name: `From ${from}` }).
   await lib.stop();
 
   // With a passwords store, passwords come over too: Chrome's through the keychain (the
-  // mock's gives the test home's secret), Zen's with its primary password, typed. Files
-  // a person exported come over in Settings too: bookmarks and passwords.
-  await lib.start(['-use=standard', '-skip-welcome', `-browsers=${home}`, '-password-store', '-keychain=test-safe-storage']);
+  // mock's gives the test home's secret), Zen's with its primary password, typed, and a
+  // folder chosen whose name says nothing with the keychain item the person picks (the
+  // mock's keychain lists Chrome's and Wombat's). Files a person exported come over in
+  // Settings too: bookmarks and passwords.
+  await lib.start(['-use=standard', '-skip-welcome', `-browsers=${home}`, '-password-store', '-keychain=test-safe-storage', '-keychain-items=Chrome,Wombat']);
   w = await lib.openWindow(browser, { viewport: { width: 1280, height: 800 } });
   await lib.fire('menu', 'app.settings');
   await w.settings.locator('[data-section="data"]').click();
@@ -200,6 +204,20 @@ const said = (frame, from) => frame.getByRole('list', { name: `From ${from}` }).
   check('and with it, its password comes over', await until(async () => (await said(pw, 'Zen · Default (release)')).includes('1 password')), await said(pw, 'Zen · Default (release)'));
   await settle(w.page);
   await w.page.screenshot({ path: path.join(lib.out, 'settings-passwords.png') });
+  await pw.getByRole('button', { name: 'Import another' }).click();
+  await lib.fire('choose', path.join(home, 'Elsewhere/Numbat'));
+  await pw.getByRole('button', { name: 'From another browser' }).click();
+  check('a folder of a browser no one named is chosen', await until(() => pw.getByRole('heading', { name: 'Numbat', exact: true }).isVisible()));
+  await pw.getByRole('radio', { name: /Personal/ }).check();
+  for (const name of [/Bookmarks/, /History/]) await pw.getByRole('checkbox', { name }).uncheck();
+  const keys = pw.getByRole('radiogroup', { name: "Numbat's key in the keychain" });
+  check('its folder names no keychain item: the keychain\'s are offered, and Import waits for one', await until(() => keys.isVisible()) &&
+    (await keys.getByRole('radio').count()) === 2 && (await pw.getByRole('button', { name: 'Import', exact: true }).isDisabled()));
+  await keys.getByRole('radio', { name: 'Wombat Safe Storage' }).check();
+  await settle(w.page);
+  await w.page.screenshot({ path: path.join(lib.out, 'settings-safe-storage.png') });
+  await pw.getByRole('button', { name: 'Import', exact: true }).click();
+  check('with one picked, its passwords open', await until(async () => (await said(pw, 'Numbat · Personal')).includes('3 saved already')), await said(pw, 'Numbat · Personal'));
   await pw.getByRole('button', { name: 'Import another' }).click();
   await pw.getByLabel('Passwords file').setInputFiles({ name: 'Passwords.csv', mimeType: 'text/csv', buffer: Buffer.from('Title,URL,Username,Password,Notes,OTPAuth\nnew,https://new.example.com/,nina,n3w,,\nagain,https://example.org/,bob,hunter2,,\n') });
   check('a passwords file comes over, and says to delete it', await until(async () => (await said(pw, 'Passwords.csv')).includes('1 password') && (await pw.getByText('Delete Passwords.csv now').isVisible())), await said(pw, 'Passwords.csv'));

@@ -360,6 +360,20 @@ progress, seems like a good starting rule to evolve from"):
   app itself (`KeychainSecret`), so macOS's question names Project B: Allow, Always Allow
   or Deny, and the Mac's password. "Never save" entries, federated ones and HTTP auth ones
   aren't brought.
+- **A Chromium browser no one named**, its folder chosen, has its key in the keychain too.
+  Chromium names the item in its own code: service "Chrome Safe Storage" and account
+  "Chrome" in Google's builds, "Chromium" in others (`components/os_crypt`,
+  `keychain_password_mac.mm`). Each fork puts its own name there, as a rule its product's,
+  which names its folder under Application Support too. So when the folder is chosen, Go
+  lists the keychain's items whose service ends in " Safe Storage" (`KeychainItems`). The
+  list holds their names only, so macOS asks nothing. The item named after the folder is
+  the one: "Quokka" for `Bramblewood/Quokka`, or "Bramblewood", the vendor's folder above,
+  or the last part of `io.bramblewood.Quokka`. Else one whose name the folder's begins, or
+  begins with, as Brave's "Brave" for `Brave-Browser` (`Profile.SafeStorage`). Only that
+  item is read, so macOS asks once. When the folder names none for sure, the wizard lists
+  the items under the choices, as the browser's key in the keychain, and Import waits until
+  the person picks one. With no list, the importer tries the names the folder gives, then
+  "Chromium".
 - **A Firefox profile's** are in logins.json, each value sealed by NSS with the key in
   key4.db, which is sealed under the primary password, "" when none is set: PBES2 (PBKDF2
   with HMAC-SHA256 of SHA1(global salt + password), then AES-256-CBC), or the older
@@ -374,7 +388,8 @@ progress, seems like a good starting rule to evolve from"):
   store through `PasswordStore` (`App.UsePasswordStore`), which says how many it added, had
   already (a login for the same origin and username is kept as it is) and left out. Until
   the store is there, nothing names passwords. The mock's `-password-store` gives a store
-  that only counts, and `-keychain` a test secret, for the tests.
+  that only counts, `-keychain` a test secret, and `-keychain-items` the names the keychain
+  lists, for the tests.
 - **From a file,** in Settings' Import, under the browsers: Bookmarks file, the HTML every
   browser exports (Netscape's bookmark file), into a folder named after the file; and,
   with the store, Passwords file, the CSV of Chrome, Edge, Brave, Firefox or the Passwords
@@ -386,7 +401,12 @@ progress, seems like a good starting rule to evolve from"):
   Firefox's with no primary password, Zen's under "letmein". `browserdata`
   (`TestLogins`, `TestSHA1And3DESKey`, `TestReadExportedFiles`), `core/app`
   (`TestPasswordsComeOver`) and `shell/e2e/imports.cjs`. The keychain itself is untried:
-  this Mac has no Chrome with saved passwords.
+  this Mac has no Chrome with saved passwords. A browser no one named is a made-up one,
+  its profiles Chrome's copied: `browserdata` (`TestSafeStorageFromTheFolder`,
+  `TestLoginsOfABrowserKnownByItsFolder`), `core/app` (`TestAFolderChosenFindsItsSafeStorage`,
+  with a keychain that lists its items) and `shell/e2e/imports.cjs`, which picks one
+  ([the choice](../build/e2e/settings-safe-storage.png)). The real list was tried once on
+  this Mac: it answered at once, with no question.
 
 **Import as a wizard, forks, and a folder chosen** (branch `import-wizard`):
 
@@ -405,7 +425,8 @@ progress, seems like a good starting rule to evolve from"):
   import brought while it is on screen. Bookmarks say what is there already, and a second
   import adds only what is new, as before.
 - **Messages:** a page sends `findBrowsers`, `chooseFolder`, `openAccess` and `import {key,
-  what}`; Go sends `browsers` (each `{id, name, locked, profiles: [{key, name, counts}]}`,
+  what, keychain}`, keychain the item picked; Go sends `browsers` (each `{id, name, locked,
+  profiles: [{key, name, counts, keychains}]}`, keychains the items to pick from,
   a profile's key its folder), `folder` (`{browser}`, `{error}` or `{cancelled}`),
   `importStep {key, step, state, result, error}` as each kind starts and ends, and
   `imported {key}` at the end.

@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"path/filepath"
 
+	"github.com/sudiptadeb/project-b/browserdata"
+
 	"projectb/bookmarks"
 	"projectb/commands"
 	"projectb/crash"
@@ -56,6 +58,10 @@ type Config struct {
 	// Keychain reads a Chromium browser's passwords' key, its "<name> Safe Storage": the
 	// login keychain's when nil, a test's own in the mock.
 	Keychain func(service, account string) ([]byte, error)
+	// KeychainItems lists the login keychain's "<name> Safe Storage" items, for a browser
+	// known only by the folder the person chose: the login keychain's when nil, a test's
+	// own in the mock.
+	KeychainItems func() ([]browserdata.KeychainItem, error)
 	// URLs are the addresses the command line names, which the first window opens as its
 	// tabs at the start, in place of the blank one; ChromeDriver starts the app so.
 	URLs         []string
@@ -284,7 +290,7 @@ func Start(e engine.Engine, cfg Config) *App {
 			return true
 		},
 	})
-	a.imports = newImporter(a, e, cfg.BrowserHome, cfg.Keychain, func(v any) {
+	a.imports = newImporter(a, e, cfg.BrowserHome, cfg.Keychain, cfg.KeychainItems, func(v any) {
 		a.welcome.sendAll(v)
 		a.Settings.Send(v)
 	})

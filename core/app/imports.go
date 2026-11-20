@@ -51,9 +51,11 @@ type importer struct {
 	// the Extensions flag is on, in a build with extensions.
 	store extensionStore
 	// passwords is the passwords store, once there is one (UsePasswordStore); keychain
-	// reads a Chromium browser's key for its passwords.
-	passwords PasswordStore
-	keychain  func(service, account string) ([]byte, error)
+	// reads a Chromium browser's key for its passwords, and keychainItems lists the
+	// keychain's items of those keys, for a browser known only by its folder.
+	passwords     PasswordStore
+	keychain      func(service, account string) ([]byte, error)
+	keychainItems func() ([]browserdata.KeychainItem, error)
 }
 
 // PasswordStore is what bringing passwords over needs of the passwords store
@@ -108,19 +110,41 @@ type shownBrowser struct {
 	Profiles []shownProfile `json:"profiles"`
 }
 
-// shownFrom is a profile shown, with the name of its browser.
+// shownFrom is a profile shown, with the name of its browser. For a browser known only by
+// its folder, keychain is the keychain's items its passwords' key may be in: the one it is
+// when sure, else those the person was shown to choose from.
 type shownFrom struct {
 	browserdata.Profile
-	browser string
+	browser      string
+	keychain     []browserdata.KeychainItem
+	keychainSure bool
+}
+
+// safeStorage is the keychain's item that holds the profile's passwords' key: the one its
+// folder names, or the person's choice, by its service, of those they were shown. None
+// leaves it to the names the browser goes by.
+func (p shownFrom) safeStorage(chosen string) browserdata.KeychainItem {
+	if p.keychainSure {
+		return p.keychain[0]
+	}
+	for _, i := range p.keychain {
+		if i.Service == chosen {
+			return i
+		}
+	}
+	return browserdata.KeychainItem{}
 }
 
 // shownProfile is a profile: its key, its name ("" for a browser of one), what it holds,
-// and whether its passwords are behind a primary password, Firefox's.
+// and whether its passwords are behind a primary password, Firefox's. Keychains are the
+// keychain's items, by service, for the person to choose its passwords' key from, when
+// its folder doesn't say which.
 type shownProfile struct {
 	Key             string             `json:"key"`
 	Name            string             `json:"name"`
 	Counts          browserdata.Counts `json:"counts"`
 	PrimaryPassword bool               `json:"primaryPassword,omitempty"`
+	Keychains       []string           `json:"keychains,omitempty"`
 }
 
 // The kinds of things an import brings, in the order it brings them.
@@ -147,14 +171,17 @@ var skipWhy = map[browserdata.Skip]string{
 	browserdata.SkipManifestV2: "Manifest V2, which no longer runs",
 }
 
-func newImporter(a *App, e engine.Engine, home string, keychain func(string, string) ([]byte, error), send func(any)) *importer {
+func newImporter(a *App, e engine.Engine, home string, keychain func(string, string) ([]byte, error), keychainItems func() ([]browserdata.KeychainItem, error), send func(any)) *importer {
 	if home == "" {
 		home, _ = os.UserHomeDir()
 	}
 	if keychain == nil {
 		keychain = browserdata.KeychainSecret
 	}
-	return &importer{a: a, e: e, home: home, keychain: keychain, profiles: map[string]shownFrom{}, runs: map[string]*importRun{}, send: send}
+	if keychainItems == nil {
+		keychainItems = browserdata.KeychainItems
+	}
+	return &importer{a: a, e: e, home: home, keychain: keychain, keychainItems: keychainItems, profiles: map[string]shownFrom{}, runs: map[string]*importRun{}, send: send}
 }
 
 // snapshot is what a page starts with: no browsers until a look ends.
@@ -199,7 +226,7 @@ func shown(b browserdata.Browser, extensions, passwords bool) (shownBrowser, []s
 	}
 	from := make([]shownFrom, len(b.Profiles))
 	for i, p := range b.Profiles {
-		from[i] = shownFrom{p, b.Name}
+		from[i] = shownFrom{Profile: p, browser: b.Name}
 	}
 	return s, from
 }
@@ -245,11 +272,13 @@ func (im *importer) look() {
 
 // importMessage is what a page sends: the profile to bring over, by key, and which of its
 // things, of importSteps, with Firefox's primary password for its passwords, used once and
-// kept nowhere. A file's: its kind, bookmarks or passwords, its name and what it holds.
+// kept nowhere, and the keychain's item the person chose for its passwords' key, by its
+// service. A file's: its kind, bookmarks or passwords, its name and what it holds.
 type importMessage struct {
 	Key             string   `json:"key"`
 	What            []string `json:"what"`
 	PrimaryPassword string   `json:"primaryPassword"`
+	Keychain        string   `json:"keychain"`
 	Kind            string   `json:"kind"`
 	Name            string   `json:"name"`
 	Text            string   `json:"text"`
@@ -277,7 +306,7 @@ func (im *importer) handle(tab engine.TabID, t string, msg []byte) bool {
 			timeline.Warnf("imports: bad message: %v", err)
 			return true
 		}
-		im.bring(m.Key, m.What, m.PrimaryPassword)
+		im.bring(m.Key, m.What, m.PrimaryPassword, m.Keychain)
 	case "cancelImport":
 		var m importMessage
 		if json.Unmarshal(msg, &m) == nil {
@@ -303,10 +332,13 @@ func (im *importer) folderChosen(path string) {
 		im.send(map[string]any{"t": "folder", "cancelled": true})
 		return
 	}
-	home, extensions, passwords := im.home, im.store != nil, im.passwords != nil
+	home, extensions, passwords, list := im.home, im.store != nil, im.passwords != nil, im.keychainItems
 	go func() {
 		b, err := browserdata.Open(home, path)
 		s, ps := shown(b, extensions, passwords)
+		if err == nil && passwords && b.ID == browserdata.OtherChromium {
+			findSafeStorage(&s, ps, list)
+		}
 		im.e.Post(func() {
 			if err != nil {
 				why := "Couldn't read that folder: " + err.Error()
@@ -324,6 +356,39 @@ func (im *importer) folderChosen(path string) {
 			im.send(map[string]any{"t": "folder", "browser": s})
 		})
 	}()
+}
+
+// findSafeStorage finds, for each profile with passwords of a browser known only by its
+// folder, the keychain's item of their key: listing the items asks the person nothing.
+// One its folder names for sure is kept for the import; else the profile shows those to
+// choose from. Called on a worker.
+func findSafeStorage(s *shownBrowser, ps []shownFrom, list func() ([]browserdata.KeychainItem, error)) {
+	var items []browserdata.KeychainItem
+	listed := false
+	for i := range ps {
+		if s.Profiles[i].Counts.Passwords == 0 {
+			continue
+		}
+		if !listed {
+			var err error
+			if items, err = list(); err != nil {
+				timeline.Warnf("imports: listing the keychain's Safe Storage items: %v", err)
+			}
+			listed = true
+		}
+		ps[i].keychain, ps[i].keychainSure = ps[i].SafeStorage(items)
+		switch {
+		case ps[i].keychainSure:
+			timeline.Infof("imports: %s's passwords' key is the keychain's %q", s.Name, ps[i].keychain[0].Service)
+		case len(ps[i].keychain) > 0:
+			for _, it := range ps[i].keychain {
+				s.Profiles[i].Keychains = append(s.Profiles[i].Keychains, it.Service)
+			}
+			timeline.Infof("imports: %s's passwords' key is one of %d keychain items, for the person to choose", s.Name, len(ps[i].keychain))
+		default:
+			timeline.Infof("imports: no Safe Storage item in the keychain for %s; its folder's names are tried", s.Name)
+		}
+	}
 }
 
 // wait tries the locked profiles' files each second, on a worker, and looks again once
@@ -371,7 +436,7 @@ func (im *importer) step(key, step, state string, result any, err error) {
 // read on a worker, then added here, and told to the pages as it lands. Asked again while
 // it runs, as Retry does, the run going on ends and a new one starts at once; what came
 // already isn't brought twice.
-func (im *importer) bring(key string, what []string, primaryPassword string) {
+func (im *importer) bring(key string, what []string, primaryPassword, keychain string) {
 	p, ok := im.profiles[key]
 	if !ok || p.Locked() {
 		timeline.Warnf("imports: %q is not a profile shown, or is locked", key)
@@ -432,7 +497,7 @@ func (im *importer) bring(key string, what []string, primaryPassword string) {
 				r.asking = true
 				im.progress(key, r, s, "asking", nil, nil)
 			}
-			keys := browserdata.Keys{Secret: im.keychain, PrimaryPassword: primaryPassword}
+			keys := browserdata.Keys{Secret: im.keychain, Item: p.safeStorage(keychain), PrimaryPassword: primaryPassword}
 			logins := func() ([]browserdata.Login, error) { return p.Logins(keys) }
 			read(logins, func(ls []browserdata.Login, err error) {
 				if alive() {
