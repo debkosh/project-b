@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"projectb/store"
 )
@@ -279,10 +280,21 @@ func TestTypedAddressesFirst(t *testing.T) {
 	m.AddTypedVisit("https://www.github.test/", "GitHub")
 	m.AddTypedVisit("https://gitlab.test/", "GitLab")
 	m.AddTypedVisit("https://gitlab.test/", "GitLab")
-	// Typed, but not an address the text starts.
-	m.AddTypedVisit("https://mail.test/g", "Mail")
-	if got := urls(find(m, "g", 10)); got != "https://gitlab.test/ https://www.github.test/ https://gist.test/ https://notes.test/g https://mail.test/g" {
+	// Typed, but not an address the text starts: one letter leaves it out, as it only holds
+	// the letter; three find it.
+	m.AddTypedVisit("https://mail.test/gom", "Mail")
+	if got := urls(find(m, "g", 10)); got != "https://gitlab.test/ https://www.github.test/ https://gist.test/ https://notes.test/g" {
 		t.Fatalf("g: %s", got)
+	}
+	if got := urls(find(m, "gom", 10)); got != "https://mail.test/gom" {
+		t.Fatalf("gom: %s", got)
+	}
+	// Each row says how often it was typed.
+	if es := find(m, "gitl", 1); len(es) != 1 || es[0].Typed != 2 {
+		t.Fatalf("typed count: %+v", es)
+	}
+	if es := find(m, "gom", 1); len(es) != 1 || es[0].Typed != 1 {
+		t.Fatalf("typed count, from the holds tier: %+v", es)
 	}
 	if got := urls(find(m, "g", 1)); got != "https://gitlab.test/" {
 		t.Fatalf("one row: %s", got)
@@ -296,9 +308,11 @@ func TestTypedAddressesFirst(t *testing.T) {
 	}
 }
 
-// today is the search before the store, in memory: score every entry, best first.
+// today is the search before the store, in memory: score every entry, best first. Under
+// three letters an address matches only where it starts, and a title where a word starts.
 func today(es []Entry, text string, limit int) []Entry {
 	q := strings.ToLower(strings.TrimSpace(text))
+	short := utf8.RuneCountInString(q) < 3
 	type hit struct {
 		e     Entry
 		score int
@@ -310,6 +324,11 @@ func today(es []Entry, text string, limit int) []Entry {
 		switch {
 		case strings.HasPrefix(bareURL(low), q):
 			base = 1000
+		case short:
+			if !strings.HasPrefix(title, q) && !strings.Contains(title, " "+q) {
+				continue
+			}
+			base = 50
 		case strings.Contains(low, q):
 			base = 100
 		case strings.Contains(title, q):

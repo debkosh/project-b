@@ -24,6 +24,9 @@ type Entry struct {
 	Title     string `json:"title"`
 	Visits    int    `json:"visits"`
 	LastVisit int64  `json:"lastVisit"`
+	// Typed is how many of the visits were reached from the address field, as a search
+	// answers it: suggestions count a typed visit more than a clicked one.
+	Typed int `json:"-"`
 }
 
 // Manager owns the history.

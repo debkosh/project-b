@@ -25,8 +25,8 @@ type scored struct {
 // order is the score order, which history_rank keeps within a tier.
 const order = ` ORDER BY h.rank DESC, h.last_visit DESC, h.url LIMIT `
 
-// columns are what a tier reads of a row.
-const columns = `SELECT h.url, h.title, h.visits, h.last_visit, h.rank FROM `
+// columns are what a tier reads of a row: with its rank, how often it was typed.
+const columns = `SELECT h.url, h.title, h.visits, h.last_visit, h.rank, coalesce((SELECT t.count FROM typed t WHERE t.url = h.url), 0) FROM `
 
 // The tiers' conditions on a history row h. ?1 is the text, ?2 the text and a byte after any
 // UTF-8, so a bare address that starts with the text is one in [?1, ?2); ?3 is the least
@@ -35,7 +35,14 @@ const (
 	starts = `h.bare >= ?1 AND h.bare < ?2`
 	holds  = `?3 >= 0 AND instr(h.low_url, ?1) > 0 AND NOT (` + starts + `)`
 	titled = `h.rank >= ?3 AND instr(h.low_title, ?1) > 0 AND instr(h.low_url, ?1) = 0`
+	// worded is a title with a word that starts with the text, for text under three letters,
+	// which matches only at a start: an address that starts with it is the starts tier's.
+	worded = `h.rank >= ?3 AND (h.low_title >= ?1 AND h.low_title < ?2 OR instr(h.low_title, ' ' || ?1) > 0) AND NOT (` + starts + `)`
 )
+
+// short is how many letters text must have to match anywhere: shorter, it matches only
+// where an address starts or a word of a title does (docs/daily-driver.md).
+const short = 3
 
 // head is how many rows of the score order a tier looks at first, when the trigram index
 // matches too many rows to read them all.
@@ -47,13 +54,13 @@ func search(tx *store.Tx, q string, limit int) ([]Entry, error) {
 	var out []Entry
 	shown := map[string]bool{}
 	if !s.spaced {
-		typed, err := entries(tx.Query(`SELECT h.url, h.title, h.visits, h.last_visit FROM typed t CROSS JOIN history h ON h.url = t.url
-			WHERE h.bare >= ?1 AND h.bare < ?2 ORDER BY t.count DESC, t.last DESC, t.url LIMIT ?3`, q, s.hi, limit))
+		typed, err := s.rows(0, `SELECT h.url, h.title, h.visits, h.last_visit, 0, t.count FROM typed t CROSS JOIN history h ON h.url = t.url
+			WHERE h.bare >= ?1 AND h.bare < ?2 ORDER BY t.count DESC, t.last DESC, t.url LIMIT ?3`, q, s.hi, limit)
 		if err != nil {
 			return nil, err
 		}
 		for _, e := range typed {
-			out = append(out, e)
+			out = append(out, e.Entry)
 			shown[e.URL] = true
 		}
 	}
@@ -86,6 +93,15 @@ func search(tx *store.Tx, q string, limit int) ([]Entry, error) {
 	// An address match scores 102 to 200 and a title match 52 to 150: both are fetched and
 	// merged. Once n address matches are in, a title match needs a rank that reaches the last.
 	var rest []scored
+	if utf8.RuneCountInString(q) < short {
+		// Under three letters a title matches only by a word's start, and an address only
+		// where it starts, which the starts tier has found.
+		titles, err := s.tier(worded, "low_title", 50, n, 0)
+		for _, e := range titles {
+			out = append(out, e.Entry)
+		}
+		return out, err
+	}
 	if !s.spaced {
 		var err error
 		if rest, err = s.tier(holds, "low_url", 100, n, 0); err != nil {
@@ -153,7 +169,7 @@ func (s *searching) tier(cond, column string, base, n, least int) ([]scored, err
 	walk := func() ([]scored, error) {
 		return s.rows(base, columns+`history h INDEXED BY history_rank WHERE `+cond+order+strconv.Itoa(n), s.q, s.hi, least)
 	}
-	if utf8.RuneCountInString(s.q) < 3 {
+	if utf8.RuneCountInString(s.q) < short {
 		return walk()
 	}
 	if s.matched == "" {
@@ -230,7 +246,7 @@ func (s *searching) rows(base int, q string, args ...any) ([]scored, error) {
 	for r.Next() {
 		var e scored
 		var rank int
-		if err := r.Scan(&e.URL, &e.Title, &e.Visits, &e.LastVisit, &rank); err != nil {
+		if err := r.Scan(&e.URL, &e.Title, &e.Visits, &e.LastVisit, &rank, &e.Typed); err != nil {
 			return nil, err
 		}
 		e.score = base + 2*rank
