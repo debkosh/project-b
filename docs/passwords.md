@@ -122,6 +122,11 @@ The snapshot has `passwordCount`, and `passwordCount {passwordCount}` follows ea
 - `shell/e2e/password-settings.cjs`, in the one-page, Sections and phone layouts: the row
   and its count, the list, the search, a row opening, Show and Hide, Copy of both, the check
   refused and with no screen lock, Delete, and none left.
+- `tools/drive_android.py passwords_on_the_phone`, the real app on an emulator: another
+  device (`core/cmd/syncdevice`, a profile of its own) saves a login and turns sync on with
+  a bucket on a test server; the phone joins it with the passphrase, Privacy's row counts
+  the login, the page lists it, Show says to set a screen lock when there is none, and with
+  a PIN Android's own check shows the password and copies it.
 - `core/sync` (`TestSavedLoginsSync`, `TestTheSameLoginOnTwoDevicesIsOne`): logins brought
   to one profile are on the other, each password opening there; the server reads nothing of
   them; a delete goes round; the same login on two devices is one row on both and one item
