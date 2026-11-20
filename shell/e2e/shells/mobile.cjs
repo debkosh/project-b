@@ -295,6 +295,28 @@ const H = 915;
     return await inField() && f.value === onPageNow.url && f.start === f.value.length && f.end === f.value.length;
   }), JSON.stringify(await fieldNow()));
 
+  // While the keyboard composes a word, Go's answer lists rows but completes nothing in the
+  // field: Android 10's Gboard holds the word it composes and typed it again over a
+  // completion, doubling the first letter. Once the word ends, the field completes.
+  await field.evaluate((el) => {
+    el.value = '';
+    el.dispatchEvent(new CompositionEvent('compositionstart', { data: '', bubbles: true }));
+    el.value = 'e';
+    el.setSelectionRange(1, 1);
+    el.dispatchEvent(new InputEvent('input', { inputType: 'insertCompositionText', data: 'e', isComposing: true, bubbles: true }));
+  });
+  check('while the keyboard composes, Go\'s answer lists rows and completes nothing in the field', await listAnswers('e') &&
+    !!(await lastAnswer())?.items?.[0]?.inline && (await fieldNow()).value === 'e',
+    JSON.stringify({ field: await fieldNow(), answers: await ui.getByRole('list', { name: 'Suggestions' }).getAttribute('data-answers').catch(() => null), sent: await lastSuggest(), got: (await lastAnswer())?.items?.[0] }));
+  await field.evaluate((el) => {
+    el.dispatchEvent(new CompositionEvent('compositionend', { data: 'e', bubbles: true }));
+    el.dispatchEvent(new InputEvent('input', { inputType: 'insertText', data: 'e', bubbles: true }));
+  });
+  check('and once the word ends, it completes', await until(async () => {
+    const f = await fieldNow();
+    return f.value.startsWith('e') && f.value.length > 1 && f.start === 1;
+  }), JSON.stringify(await fieldNow()));
+
   // One letter: Enter's row and four more at most, matched where a host or a title's word
   // starts, completed in the field.
   await page.keyboard.press('ControlOrMeta+A');

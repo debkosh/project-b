@@ -29,6 +29,11 @@
   let inline = '';
   // A delete says the person wants what they typed, so the next answer completes nothing.
   let deleting = false;
+  // Whether the keyboard is composing a word: it holds what it composes, and a completion
+  // put in the field under it is typed over with the word again, Android 10's Gboard doubling
+  // the first letter. While it composes, an answer lists but doesn't complete; the input that
+  // ends the word asks again.
+  let composing = false;
   let items = $state([]);
   // The id of the last suggest sent: only its answer is listed.
   let asked = 0;
@@ -231,7 +236,7 @@
     const end = input.selectionEnd === text.length;
     const plain = text === typed && input.selectionStart === input.selectionEnd && end;
     const still = !!inline && text === typed + inline && input.selectionStart === typed.length && end;
-    if (list[0]?.inline && (plain || still)) showInline(list[0].inline);
+    if (list[0]?.inline && !composing && (plain || still)) showInline(list[0].inline);
     else if (still) {
       inline = '';
       text = typed;
@@ -249,6 +254,8 @@
     bind:this={input}
     value={editing ? text : host}
     {onbeforeinput}
+    oncompositionstart={() => (composing = true)}
+    oncompositionend={() => (composing = false)}
     oninput={(e) => {
       text = e.currentTarget.value;
       oninput(e);
