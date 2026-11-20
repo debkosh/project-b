@@ -12,6 +12,8 @@ package update
 
 import (
 	"encoding/json"
+	"io"
+	"net/http"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -65,6 +67,9 @@ type State struct {
 	// the settings panel shows these; the bubble shows Phase alone.
 	Check      string `json:"check,omitempty"`
 	CheckError string `json:"checkError,omitempty"`
+	// Notes are Version's release notes, as markdown, once fetched, while it downloads or is
+	// ready: About shows them as "Coming in Version".
+	Notes string `json:"notes,omitempty"`
 }
 
 // Config says what this build is and where it lives.
@@ -100,6 +105,8 @@ type Manager struct {
 	mu    sync.Mutex
 	state State
 	raw   appupdate.State
+	// notes are a known release's notes, fetched once per version (notesFor).
+	notes, notesFor string
 
 	onChanged        []func(State)
 	onAutoChanged    []func(bool)
@@ -188,8 +195,19 @@ func (m *Manager) changed(s appupdate.State) {
 	m.mu.Lock()
 	was := m.raw
 	m.raw, m.state = s, words(s)
+	coming := m.state.Phase == Downloading || m.state.Phase == Ready
+	if coming && m.notesFor == m.state.Version {
+		m.state.Notes = m.notes
+	}
+	fetch := coming && m.notesFor != m.state.Version
+	if fetch {
+		m.notesFor = m.state.Version
+	}
 	st := m.state
 	m.mu.Unlock()
+	if fetch {
+		go m.fetchNotes(st.Version)
+	}
 	if s.AutoUpdate != was.AutoUpdate {
 		for _, f := range m.onAutoChanged {
 			f(s.AutoUpdate)
@@ -203,6 +221,46 @@ func (m *Manager) changed(s appupdate.State) {
 	for _, f := range m.onChanged {
 		f(st)
 	}
+}
+
+// notesURL is where a release's notes are: beside the manifest, by version (tools/release.sh).
+func (m *Manager) notesURL(version string) string {
+	if !strings.HasSuffix(m.cfg.Releases, "/releases.json") {
+		return ""
+	}
+	return strings.TrimSuffix(m.cfg.Releases, "releases.json") + "notes-" + version + ".md"
+}
+
+// fetchNotes gets a known release's notes, and shows them once they arrive. A release with
+// none, or a failure to get them, shows no "Coming in": nothing else depends on them.
+func (m *Manager) fetchNotes(version string) {
+	url := m.notesURL(version)
+	if url == "" {
+		return
+	}
+	client := http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Get(url)
+	if err != nil {
+		timeline.Infof("update: %s's notes: %v", version, err)
+		return
+	}
+	defer resp.Body.Close()
+	b, err := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
+	if err != nil || resp.StatusCode != http.StatusOK {
+		timeline.Infof("update: %s's notes: %s", version, resp.Status)
+		return
+	}
+	m.post(func() {
+		m.mu.Lock()
+		if m.notesFor != version {
+			m.mu.Unlock()
+			return
+		}
+		m.notes = string(b)
+		raw := m.raw
+		m.mu.Unlock()
+		m.changed(raw)
+	})
 }
 
 // State returns what is happening now.

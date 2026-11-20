@@ -39,6 +39,8 @@ const installed = path.join(releases, 'installed/Project B.app');
 fs.mkdirSync(path.join(installed, 'Contents/MacOS'), { recursive: true });
 const server = http.createServer((req, res) => {
   if (req.url === '/asset.zip') return res.end(asset);
+  // 0.3.7's notes beside the manifest, which About shows as Coming in 0.3.7.
+  if (req.url === '/notes-0.3.7.md') return res.end('# 0.3.7\n\n<!-- commit: 0 -->\n\n- Saved passwords come to the phone\n- The Dock shows the download\n');
   const a = { url: `http://127.0.0.1:${server.address().port}/asset.zip`, sha256: crypto.createHash('sha256').update(asset).digest('hex'), size: asset.length };
   res.end(JSON.stringify({ spec: 1, project: 'project-b', published: '2026-11-20T00:00:00Z', channels: { stable: '0.3.7' }, releases: { '0.3.7': { assets: { [`${process.platform}/${process.arch}`]: a } } } }));
 });
@@ -90,6 +92,11 @@ const server = http.createServer((req, res) => {
   const notesVersion = fs.readFileSync(path.join(__dirname, '../src/apps/settings/release-notes.md'), 'utf8').match(/^# (.+)$/m)[1].trim();
   check('and Automatic updates, and this release\'s notes under its version', (await page.getByRole('switch', { name: 'Automatic updates' }).isVisible()) &&
     (await notes.getByRole('heading').textContent()) === `What's new in ${notesVersion}` && (await notes.getByRole('listitem').count()) > 0);
+  const coming = page.getByRole('region', { name: 'Coming next' });
+  check('and above them, the release ready\'s own notes, as Coming in it', await until(async () => (await coming.isVisible()) &&
+    (await coming.getByRole('heading').textContent()) === 'Coming in 0.3.7' &&
+    JSON.stringify(await coming.getByRole('listitem').allTextContents()) === JSON.stringify(['Saved passwords come to the phone', 'The Dock shows the download'])),
+    await coming.textContent().catch(() => ''));
   for (const scheme of ['light', 'dark']) {
     await page.emulateMedia({ colorScheme: scheme });
     await settle(page);

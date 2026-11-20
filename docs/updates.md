@@ -44,6 +44,10 @@ amarit's docs/appupdate.md has the whole of it; what is project-b's:
   one's socket; each answers with its pid and ends), swaps the bundle, and starts the new
   release on every profile that was running once this process has gone. A picker isn't
   started again.
+- **Coming in.** While a newer release downloads or is ready, the manager fetches its notes
+  from beside the manifest (`notes-<version>.md`, `tools/release.sh`), and About shows them
+  as Coming in it, above the running release's What's new. A release with none shows only
+  the running one's. Once it is installed, they are What's new.
 - **Rollback.** Each start is counted early (`update.Manager.Settle`); the shell's first
   `shown` says the release works (`Healthy`). A release that didn't get that far three
   times is put back by the one before it, rejected, and the previous one started.

@@ -74,6 +74,14 @@ func serve(t *testing.T, stable, dev string) *server {
 			w.Write(s.content)
 			return
 		}
+		if r.URL.Path == "/notes-"+s.stable+".md" {
+			fmt.Fprintf(w, "# %s\n\n- Saved passwords sync\n", s.stable)
+			return
+		}
+		if strings.HasPrefix(r.URL.Path, "/notes-") {
+			http.NotFound(w, r)
+			return
+		}
 		sum := sha256.Sum256(s.content)
 		entry := func(v string) string {
 			return fmt.Sprintf(`"%s":{"assets":{"%s/%s":{"url":"%s/%s.zip","sha256":"%s","size":%d}}}`,
@@ -130,8 +138,8 @@ func eventually(t *testing.T, m *Manager, ok func(State) bool) State {
 	return State{}
 }
 
-// A check finds the newer release, downloads and stages it, the page sees it ready, and
-// Relaunch hands it to the installer.
+// A check finds the newer release, downloads and stages it, the page sees it ready with its
+// notes, and Relaunch hands it to the installer.
 func TestANewerReleaseIsReadyAndInstalled(t *testing.T) {
 	s := serve(t, "0.2.0", "")
 	var o opened
@@ -140,6 +148,8 @@ func TestANewerReleaseIsReadyAndInstalled(t *testing.T) {
 	m.OnChanged(func(st State) { heard = append(heard, st.Phase+"/"+st.Check) })
 	m.CheckNow()
 	eventually(t, m, func(st State) bool { return st.Phase == Ready && st.Version == "0.2.0" })
+	// Its notes, beside the manifest, come with it: About shows them as Coming in 0.2.0.
+	eventually(t, m, func(st State) bool { return strings.Contains(st.Notes, "- Saved passwords sync") })
 	m.Relaunch()
 	deadline := time.Now().Add(5 * time.Second)
 	for len(o.list()) == 0 && time.Now().Before(deadline) {
