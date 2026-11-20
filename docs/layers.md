@@ -38,7 +38,7 @@ Each step leaves Mac and Android working and the release run green.
 | 3 | Notifications through Go | tested: Mac suites and Go's tests, and a real one in a VM on 0.3.0's candidate: macOS asks once, then it shows, and its click fires the page's click and brings its tab forward; in 0.3.0 |
 | 4 | The Mac's open-link events into `core/system`, or a fourth exception | tested: Mac suites, Android 16, and a new VM check; no exception; branch `layers-links`, to release |
 | 5 | The shell embedded in the Go core | tested: Mac app suite, all of Android 16 and 17; in 0.3.3 |
-| 6 | The three-piece build, with the build-flow restructure below | tested: Mac candidate and app suite, an APK from the new commands driven on Android 10; branch `layers-build`, to release after 0.3.4 |
+| 6 | The three-piece build, with the build-flow restructure below | tested: Mac candidate and app suite, an APK from the new commands driven on Android 10; in 0.3.5 |
 
 Linux and Windows are not in this work: they come later, from the platforms session.
 
@@ -232,11 +232,14 @@ planned it:
 3. `tools/package.sh <platform>`: the Mac as today, Android folding in
    `android-content-package.sh`. (Step 6, below.)
 4. Later: Linux in container pb, with a slot from the tester.
-5. `out/<platform>-<cpu>`, switched in one commit together with release's scripts.
-   Agreed with release on 2026-11-20: a release of its own, after step 6's. `out/pb` and
-   `out/rel` are moved (`out/mac-arm64`, `out/mac-arm64-rel`), then `gn gen`, never built
-   fresh, and no links keep the old names. Before the move the orchestrator tells every
-   session and the tester checks nothing runs against `out/` or `build/`; release cuts the
-   release from the commit at once, so main and the folders agree within the hour.
+5. `out/<platform>-<cpu>`: shelved on 2026-11-20, by the orchestrator with release. An out
+   dir can't be renamed without building all of Chromium again: siso keeps its state by each
+   file's path from `chromium/src`, out dir included (`out/pb/.siso_fs_state` holds
+   `out/pb/obj/...`), and a clone of `out/pb` under a new name, every file's time kept,
+   started 55,079 steps. Every Mac build is mac-arm64 today, so the new names would buy only
+   consistency. The commit is ready on branch `layers-out` (`out/pb` to `out/mac-arm64`,
+   `out/rel` to `out/mac-arm64-rel`, `build/pb` to `build/mac-arm64`, `build/android` to
+   `build/android-arm64`). Pick it up when a second Mac build comes (mac-x64, say): that one
+   starts under its own name, and the rename rides the overnight rebuild it needs anyway.
 
 Release and the orchestrator hear before any change to the `out/` or `build/` paths.
