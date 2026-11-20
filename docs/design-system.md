@@ -375,6 +375,10 @@ has little room. A phone shows as much page as it can.
   address field the first Escape closes the suggestions and drops a completion, leaving
   what was typed, and the second puts the page's address back and gives the page the
   keyboard, as every browser does.
+- **Settings and Quit have their platform's keys.** On the Mac, Cmd+, and Cmd+Q. On Linux
+  and Windows, Ctrl+, for Settings, as GNOME's Preferences and most apps there have it, and
+  Ctrl+Shift+Q for Quit, as Chrome has it: Ctrl+Q sits beside Ctrl+W and Ctrl+Tab, and a
+  slip would close every window. Quit asks nothing first, on every platform. 2026-11-20.
 - **Back on our pages** closes what is open first, as Escape does, then goes to the place
   before in the page, then leaves it ([shells.md](shells.md)). A page's own ← to its parent
   ("Back to Privacy") is Up: it goes back when the place before is that parent, and otherwise
