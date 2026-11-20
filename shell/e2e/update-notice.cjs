@@ -86,8 +86,10 @@ const server = http.createServer((req, res) => {
   check('About has the version and the release ready, with Relaunch', await until(async () => (await version.textContent()).includes('Version 0.3.6') &&
     (await version.textContent()).includes('0.3.7 is ready') && (await version.getByRole('button', { name: 'Relaunch' }).isVisible())), await version.textContent());
   const notes = page.getByRole('region', { name: 'Release notes' });
+  // The notes are the release's own, so their heading moves with each bump.
+  const notesVersion = fs.readFileSync(path.join(__dirname, '../src/apps/settings/release-notes.md'), 'utf8').match(/^# (.+)$/m)[1].trim();
   check('and Automatic updates, and this release\'s notes under its version', (await page.getByRole('switch', { name: 'Automatic updates' }).isVisible()) &&
-    (await notes.getByRole('heading').textContent()) === "What's new in 0.3.7" && (await notes.getByRole('listitem').count()) > 0);
+    (await notes.getByRole('heading').textContent()) === `What's new in ${notesVersion}` && (await notes.getByRole('listitem').count()) > 0);
   for (const scheme of ['light', 'dark']) {
     await page.emulateMedia({ colorScheme: scheme });
     await settle(page);
