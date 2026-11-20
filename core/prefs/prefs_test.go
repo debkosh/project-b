@@ -152,6 +152,28 @@ func TestTheSettingsLayout(t *testing.T) {
 	}
 }
 
+// The release whose notice was seen is none at first, a version set by name as a shell's
+// setPref does, anything else ignored, and it survives a restart.
+func TestTheUpdateNoticed(t *testing.T) {
+	dir := t.TempDir()
+	m := New(dir)
+	changes := 0
+	m.OnChanged(func(Prefs) { changes++ })
+	if m.All().UpdateNoticed != "" {
+		t.Fatalf("default %q", m.All().UpdateNoticed)
+	}
+	if !m.Set("updateNoticed", "0.3.7") {
+		t.Fatal("updateNoticed is no pref")
+	}
+	m.Set("updateNoticed", "0.3.7")
+	m.Set("updateNoticed", "")
+	m.Set("updateNoticed", "0.3.8 <b>")
+	m.Close()
+	if m.All().UpdateNoticed != "0.3.7" || changes != 1 || New(dir).All().UpdateNoticed != "0.3.7" {
+		t.Fatalf("changes %d, now %q, saved %q", changes, m.All().UpdateNoticed, New(dir).All().UpdateNoticed)
+	}
+}
+
 // Bookmarks show on the new tab page and in the command box by default, not beside the tabs
 // nor in a bar. Each turns on and off by name, as a shell's setPref does, the bar's folder
 // is a folder's id or the top, and they survive a restart.
