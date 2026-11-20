@@ -34,7 +34,7 @@ func replicaConfig(c *client.Client, l *local, key *synckosh.DataKey, maps map[s
 			mergers[m.Datatype] = merger(m)
 		}
 	}
-	return client.Config{Client: c, Local: l, Key: key, KeepDeleted: true, Mergers: mergers}
+	return client.Config{Client: c, Local: l, Key: key, KeepDeleted: true, Mergers: mergers, Identity: l.identity}
 }
 
 // merger is a datatype's Join as synckosh's merger. Between a delete and an edit the newer

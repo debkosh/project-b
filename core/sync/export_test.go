@@ -18,20 +18,17 @@ func Setup(st *store.Store) { setup(st) }
 // Local is the Local over the store.
 type Local = local
 
-// NewLocal is a Local of maps over st, for a bucket of key.
-func NewLocal(st *store.Store, maps []Mapping, key *synckosh.DataKey) (*Local, map[string]*Mapping) {
+// NewLocal is a Local of maps over st.
+func NewLocal(st *store.Store, maps []Mapping) (*Local, map[string]*Mapping) {
 	byName := map[string]*Mapping{}
 	for i := range maps {
 		byName[maps[i].Collection] = &maps[i]
 	}
-	return newLocal(st, byName, key), byName
+	return newLocal(st, byName), byName
 }
 
-// GUID is the guid of the row key of m.
-func (l *local) GUID(m *Mapping, key string) string { return l.guid(m, key) }
-
-// Plain is plain: the feature's own key in a guid that is one.
-func Plain(m *Mapping, guid string) string { return plain(m, guid) }
+// GuidOf is guidOf: the guid the row of key goes out under.
+func GuidOf(tx *store.Tx, m *Mapping, key string) (string, error) { return guidOf(tx, m, key) }
 
 // ReplicaConfig is replicaConfig.
 func ReplicaConfig(c *client.Client, l *Local, key *synckosh.DataKey, maps map[string]*Mapping) client.Config {

@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -203,11 +204,18 @@ func TestTheServerHoldsNothingReadable(t *testing.T) {
 		if it.Collection != synckosh.LibraryCollection && len(it.Public) != 0 {
 			t.Fatalf("a public part: %s", raw)
 		}
+		// An item's guid is a random one, which says nothing of its row; what makes it one
+		// thing with another device's is its identity, a keyed hash.
+		if it.Collection != synckosh.LibraryCollection && (!uuid.MatchString(it.GUID) || len(it.Identity) != 64) {
+			t.Fatalf("an item's guid %q and identity %q", it.GUID, it.Identity)
+		}
 	}
 	if counts["history"] != 2 || counts["typed"] != 1 || counts["bookmarks"] != 1 || len(counts) != 4 {
 		t.Fatalf("the server holds %v", counts)
 	}
 }
+
+var uuid = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
 // A wrong passphrase changes nothing; the right one joins.
 func TestAWrongPassphrase(t *testing.T) {
@@ -411,6 +419,35 @@ func TestABucketResetStopsSyncUntilSetUpAgain(t *testing.T) {
 		if st := p.sync.Status(); st.Problem != "" || st.Error != "" {
 			t.Fatalf("%s's status after: %+v", name, st)
 		}
+	}
+	// Each device had both bookmarks, and sent them under guids of its own: the bucket holds
+	// each once, as the second device took the first one's items for its rows.
+	live := 0
+	for _, it := range s.items("tok") {
+		if it.Collection == "bookmarks" {
+			if it.Deleted {
+				t.Fatalf("a bookmark's item was deleted to make two one: %+v", it)
+			}
+			live++
+		}
+	}
+	if live != 2 {
+		t.Fatalf("the bucket holds %d items for two bookmarks", live)
+	}
+	// And a change to one on the second device reaches the first, under the item it took.
+	var id string
+	b.main(func() {
+		for _, e := range b.bookmarks.All() {
+			if e.Title == "From a" {
+				id = e.ID
+			}
+		}
+		b.bookmarks.Edit(id, "From a, renamed on b", "https://example.com/a")
+	})
+	b.settle()
+	run(t, b, a)
+	if got := a.bookmarked(); !slices.Contains(got, "From a, renamed on b") || len(got) != 2 {
+		t.Fatalf("a's bookmarks after b renamed one: %v", got)
 	}
 }
 

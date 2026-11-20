@@ -2,12 +2,8 @@ package sync
 
 import (
 	"bytes"
-	"crypto/hmac"
-	"crypto/sha256"
 	"database/sql"
-	"encoding/hex"
 	"encoding/json"
-	"strings"
 
 	"github.com/sudiptadeb/synckosh"
 	"github.com/sudiptadeb/synckosh/client"
@@ -23,11 +19,11 @@ type Mapping struct {
 	// Table is the feature's table and Key the column that names a row: the marks of changed
 	// rows name them by it.
 	Table, Key string
-	// Derived makes an item's guid from its key with the sync key, so one key on two devices is
-	// one item, and the server can't read the key off the guid. Otherwise the key is the guid.
-	Derived bool
-	// KeyOf is the key of the row an item is, from its guid and private part.
-	KeyOf func(guid string, private json.RawMessage) (string, error)
+	// KeyOf is the key of the row an item is, read from its private part. An item's guid says
+	// nothing of its row: it is a random one (synckosh.NewGUID) given when the row first goes
+	// out, and sync_items remembers which row it is. The key is what makes an item one thing
+	// with one made on another device, so it is the item's identity in synckosh too.
+	KeyOf func(private json.RawMessage) (string, error)
 	// Read is the row of key as an item's private part, and whether there is one.
 	Read func(tx *store.Tx, key string) (json.RawMessage, bool, error)
 	// Write makes the row of key hold private, new or changed. One it can't keep, it leaves.
@@ -77,7 +73,6 @@ INSERT INTO sync_state VALUES (0);
 type local struct {
 	st   *store.Store
 	maps map[string]*Mapping
-	ids  []byte // the key a derived guid is made with
 	// wrote is the collections whose rows a version from the server changed, since the run
 	// began. Only the sync goroutine reads it, after the jobs that set it.
 	wrote map[string]bool
@@ -87,35 +82,61 @@ type local struct {
 
 var _ client.Local = (*local)(nil)
 
-func newLocal(st *store.Store, maps map[string]*Mapping, key *synckosh.DataKey) *local {
-	ids := hmac.New(sha256.New, key.Bytes())
-	ids.Write([]byte("project-b item ids"))
-	return &local{st: st, maps: maps, ids: ids.Sum(nil), wrote: map[string]bool{}}
+func newLocal(st *store.Store, maps map[string]*Mapping) *local {
+	return &local{st: st, maps: maps, wrote: map[string]bool{}}
 }
 
-// guid is the guid of the row key of a mapped collection. A key that is the guid itself may
-// start with an underscore, as a passkey's id in base64url does one time in 64, which a
-// synckosh guid can't: it goes with a ~ before it, as does one that starts with a ~, so key
-// reads every guid back one way.
-func (l *local) guid(m *Mapping, key string) string {
-	if !m.Derived {
-		if strings.HasPrefix(key, "_") || strings.HasPrefix(key, "~") {
-			return "~" + key
+// identity is what makes an item one thing with another, for synckosh (client.Config's
+// Identity): its row's key. Two devices that each have the row send it under guids of their
+// own, and synckosh keeps the first and has the other device take it. It reads no row.
+func (l *local) identity(it synckosh.Item) []byte {
+	m := l.maps[it.Collection]
+	if m == nil {
+		return nil
+	}
+	key, err := m.KeyOf(it.Private)
+	if err != nil || key == "" {
+		return nil
+	}
+	return []byte(key)
+}
+
+// guidOf is the guid the row of key goes out under: the one its item has here, a live one
+// before a deleted one, which the row then brings back; a new one for a row that never
+// went out.
+func guidOf(tx *store.Tx, m *Mapping, key string) (string, error) {
+	var guid string
+	err := tx.QueryRow(`SELECT guid FROM sync_items WHERE collection = ? AND key = ? ORDER BY deleted, pending, timestamp DESC LIMIT 1`, m.Collection, key).Scan(&guid)
+	if err == sql.ErrNoRows {
+		return synckosh.NewGUID(), nil
+	}
+	return guid, err
+}
+
+// liveGuids is the guids of the live items the row of key is: one, but while two devices'
+// items of one row are being made one.
+func liveGuids(tx *store.Tx, m *Mapping, key string) ([]string, error) {
+	r, err := tx.Query(`SELECT guid FROM sync_items WHERE collection = ? AND key = ? AND NOT deleted`, m.Collection, key)
+	if err != nil {
+		return nil, err
+	}
+	defer r.Close()
+	var out []string
+	for r.Next() {
+		var g string
+		if err := r.Scan(&g); err != nil {
+			return nil, err
 		}
-		return key
+		out = append(out, g)
 	}
-	h := hmac.New(sha256.New, l.ids)
-	h.Write([]byte(m.Collection + "\x00" + key))
-	return hex.EncodeToString(h.Sum(nil)[:16])
+	return out, r.Err()
 }
 
-// plain is the feature's own key in a guid that is one (guid): what a Mapping's KeyOf is
-// given for a collection whose guid isn't derived.
-func plain(m *Mapping, guid string) string {
-	if !m.Derived {
-		return strings.TrimPrefix(guid, "~")
-	}
-	return guid
+// held says whether the row of key is a live item's under another guid than guid.
+func held(tx *store.Tx, collection, key, guid string) (bool, error) {
+	var n int
+	err := tx.QueryRow(`SELECT count(*) FROM sync_items WHERE collection = ? AND key = ? AND guid <> ? AND NOT deleted`, collection, key, guid).Scan(&n)
+	return n > 0, err
 }
 
 func (l *local) do(job func(tx *store.Tx) error) error { return l.st.Wait(job) }
@@ -293,18 +314,25 @@ func (l *local) put(tx *store.Tx, e client.Entry) error {
 		}
 		key = sql.NullString{String: k, Valid: k != ""}
 		if key.Valid {
-			gone, err := l.deleteRow(tx, m, k)
+			// The row may be another item's by now, made again under a guid of its own.
+			other, err := held(tx, it.Collection, k, it.GUID)
 			if err != nil {
 				return err
 			}
-			if gone {
-				l.moved.add(false, Moved{Collection: m.Collection, Deleted: true})
+			if !other {
+				gone, err := l.deleteRow(tx, m, k)
+				if err != nil {
+					return err
+				}
+				if gone {
+					l.moved.add(false, Moved{Collection: m.Collection, Deleted: true})
+				}
 			}
 		}
 	default:
 		// One whose row can't be told is kept whole, and writes no row.
-		k, err := m.KeyOf(plain(m, it.GUID), it.Private)
-		if err != nil {
+		k, err := m.KeyOf(it.Private)
+		if err != nil || k == "" {
 			m = nil
 			break
 		}
@@ -343,21 +371,14 @@ func (l *local) put(tx *store.Tx, e client.Entry) error {
 	return err
 }
 
-// keyOf is the row a deleted item was: from its bookkeeping, or its guid when the guid is the
-// key; "" for one this device never had.
+// keyOf is the row a deleted item was, from its bookkeeping; "" for one this device never had.
 func (l *local) keyOf(tx *store.Tx, m *Mapping, it synckosh.Item) (string, error) {
 	var key sql.NullString
 	err := tx.QueryRow(`SELECT key FROM sync_items WHERE collection = ? AND guid = ?`, it.Collection, it.GUID).Scan(&key)
 	if err != nil && err != sql.ErrNoRows {
 		return "", err
 	}
-	if key.Valid {
-		return key.String, nil
-	}
-	if !m.Derived {
-		return plain(m, it.GUID), nil
-	}
-	return "", nil
+	return key.String, nil
 }
 
 // join takes a version into the row of key.
@@ -449,9 +470,10 @@ func (l *local) cut(tx *store.Tx, m *Mapping, cutoff int64) error {
 	return nil
 }
 
-// Remove forgets entries, which synckosh does only for a device away past the server's
-// cleanup, starting over, and for deleted entries it cleans up: the rows stay, and one still
-// here is marked to go out again.
+// Remove forgets entries, which synckosh does for a device away past the server's cleanup,
+// starting over, for deleted entries it cleans up, and for this device's item of a row
+// another device sent first, after storing that one: the rows stay, and one still here is
+// marked to go out again, unless it is another item's.
 func (l *local) Remove(collection string, guids ...string) error {
 	if len(guids) == 0 {
 		return nil
@@ -468,6 +490,11 @@ func (l *local) Remove(collection string, guids ...string) error {
 				return err
 			}
 			if m == nil || !key.Valid {
+				continue
+			}
+			if other, err := held(tx, collection, key.String, g); err != nil {
+				return err
+			} else if other {
 				continue
 			}
 			if _, has, err := m.Read(tx, key.String); err != nil {

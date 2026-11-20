@@ -296,7 +296,7 @@ func lockedError(err error) error {
 
 // open makes the connection to the bucket at address, with its token and key.
 func (m *Manager) open(address, token string, key *synckosh.DataKey) error {
-	l := newLocal(m.st, m.maps, key)
+	l := newLocal(m.st, m.maps)
 	r, err := client.Open(replicaConfig(&client.Client{URL: address, Token: token, HTTP: m.http}, l, key, m.maps))
 	if err != nil {
 		return err
@@ -491,6 +491,8 @@ type change struct {
 	collection, key string
 	deleted         bool
 	put             int
+	// gone is the guids of the items a row that is gone was.
+	gone []string
 }
 
 // drain hands the marked rows to synckosh, a few hundred at a time: a delete of everything
@@ -532,21 +534,31 @@ func (m *Manager) drain(c *connection, again bool) (aside []Moved, err error) {
 			}
 			for i, ch := range marks {
 				mp := m.maps[ch.collection]
-				if mp == nil || ch.deleted {
+				if mp == nil || ch.key == "" {
 					continue
 				}
-				private, has, err := mp.Read(tx, ch.key)
-				if err != nil {
-					// A row that doesn't read stays as it is everywhere: it isn't said to be gone.
-					stuck[ch.rowid] = err.Error()
-					continue
-				}
-				if !has {
+				if !ch.deleted {
+					private, has, err := mp.Read(tx, ch.key)
+					if err != nil {
+						// A row that doesn't read stays as it is everywhere: it isn't said to be gone.
+						stuck[ch.rowid] = err.Error()
+						continue
+					}
+					if has {
+						guid, err := guidOf(tx, mp, ch.key)
+						if err != nil {
+							return err
+						}
+						marks[i].put = len(puts)
+						puts = append(puts, synckosh.Item{Collection: mp.Collection, Datatype: mp.Datatype, GUID: guid, Private: private})
+						continue
+					}
 					marks[i].deleted = true
-					continue
 				}
-				marks[i].put = len(puts)
-				puts = append(puts, synckosh.Item{Collection: mp.Collection, Datatype: mp.Datatype, GUID: c.local.guid(mp, ch.key), Private: private})
+				// A row that is gone: its items go, and one that never went out has none.
+				if marks[i].gone, err = liveGuids(tx, mp, ch.key); err != nil {
+					return err
+				}
 			}
 			return nil
 		})
@@ -591,8 +603,8 @@ func (m *Manager) drain(c *connection, again bool) (aside []Moved, err error) {
 			}
 		}
 		for _, ch := range marks {
-			if mp := m.maps[ch.collection]; mp != nil && ch.key != "" && ch.deleted {
-				if err := c.replica.Delete(ch.collection, c.local.guid(mp, ch.key)); err != nil {
+			for _, guid := range ch.gone {
+				if err := c.replica.Delete(ch.collection, guid); err != nil {
 					stuck[ch.rowid] = err.Error()
 				}
 			}

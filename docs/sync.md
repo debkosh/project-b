@@ -147,7 +147,7 @@ old one.
 
 | Table | What it holds |
 |---|---|
-| `sync_items` | synckosh's bookkeeping per item: its sequence, base, timestamp, pending, sent, and the row it is (the feature's key, the address or the bookmark's id). An item's content is the feature's own row, never a second copy. Only what has no row is kept whole: a deleted item, without its content; one sealed under a key this device doesn't hold, as it came; the sealed copies of the sync key; a delete-before |
+| `sync_items` | synckosh's bookkeeping per item: its sequence, base, timestamp, pending, sent, and the row it is (the feature's key: the address, the bookmark's id, the passkey's credential ID), which is how a row's guid is found again. An item's content is the feature's own row, never a second copy. Only what has no row is kept whole: a deleted item, without its content; one sealed under a key this device doesn't hold, as it came; the sealed copies of the sync key; a delete-before |
 | `sync_meta` | synckosh's values: its clock, cursor, store id and last pull |
 | `sync_changes` | the rows changed here since the last run: collection, the row's key, deleted, and `stuck`, why a row couldn't be handed over, empty for one that only waits |
 | `sync_state` | one row: whether changes are marked, which is whether sync is on |
@@ -159,10 +159,23 @@ the row holds that is newer. History's and typed's `Join` is their merger too. `
 person calls a row, for [Sync details](sync-details.md): a bookmark's title; without it, the key,
 as an address is.
 
-An item's guid is made from the row's key under the sync key (history and typed, whose key is an
-address), or is the key itself (a bookmark's id, a passkey's). A synckosh guid can't start with
-an underscore, and a passkey's id, random bytes in base64url, does one time in 64: such a key,
-and one that starts with a `~`, goes with a `~` before it, and comes back without it.
+**An item's guid says nothing of its row.** It is a random one (`synckosh.NewGUID`, a UUIDv7),
+given when the row first goes out, and `sync_items` remembers which row it is (`guidOf`). It is
+only a unique name in the bucket: nothing is worked out from it, and nothing of the row is put
+into it. Sudipta, 2026-11-20: "since we just want a unique key".
+
+**The row's key is in the item's private part**, sealed, and the mapping's `KeyOf` reads it
+there: the address for history and typed, the bookmark's own id, the passkey's credential ID.
+
+**Two devices' items of one row are made one by the item's identity.** `core/sync` gives
+synckosh the row's key as what makes an item one thing (`client.Config.Identity`), and
+synckosh sends a hash of it beside the sealed item, which the server keeps one live item
+for in a collection. So when two devices each have a row before they sync, or set sync up
+again after a bucket was reset, each sends it under a guid of its own, the first is kept,
+and the second device is handed that one: it stores it, joined into its row as any version
+is, and forgets its own guid (`Remove`, which leaves a row that is another item's
+unmarked). A row deleted and made again goes out under the guid it had; made again on
+another device it is a new item, and the old item's delete leaves that row alone.
 
 **Writing first, then telling sync.** Features write their rows as before. While sync is on,
 triggers on their tables write a mark in `sync_changes`, in the same transaction; with it off,
@@ -229,9 +242,10 @@ and `OnStatus` answer at once; the rest run on sync's goroutine, after what was 
 |---|---|
 | `Link(link) (address, error)` | the address in a `project-b://sync?address=` link |
 | `Propose(address) (Proposal, error)` | checks an address and says what would be connected: `Address`, `Host`, `NeedsToken`. Changes nothing |
-| `Inspect(address, token, answer func(isNew bool, err error))` | whether the bucket is empty, so new. Changes nothing |
+| `Inspect(address, token, answer func(isNew bool, err error))` | whether the bucket is empty, so new (synckosh's `client.Look`). Changes nothing |
+| `InspectAgain(answer)`, `ConnectAgain(passphrase, done)` | the same two for the bucket sync is on with, after it was reset: the address and the token are the ones held |
 | `Connect(address, token, passphrase, done func(error))` | starts the bucket or joins it, keeps its details sealed, and syncs. `errors.Is(err, sync.ErrPassphrase)` for a wrong passphrase |
-| `ChangePassphrase(passphrase, done func(error))` | puts a sealed copy under the new passphrase and deletes the others |
+| `ChangePassphrase(passphrase, done func(error))` | in one write, a sealed copy under the new passphrase and the others gone (synckosh's `SetPassphrase`) |
 | `Disconnect(done func(error))` | stops syncing and forgets the address, token and sync key; every row stays |
 | `SyncNow()` | a run now |
 | `CancelRun()` | cuts the run going on short: it ends with no error and no longer wait, and the next comes when it would have |
@@ -252,7 +266,7 @@ names. The page sends:
 | Message | Go answers |
 |---|---|
 | `syncPropose {address}`, or `{link}` for a deep link's | `syncProposal {address, host, needsToken}` or `{error, problem, address}`, the address as given |
-| `syncInspect {address, token}` | `syncBucket {new}` or `{error}` |
+| `syncInspect {address, token}`, or `{again}` after a reset | `syncBucket {new}` or `{error}` |
 | `syncConnect {address, token, passphrase}` | `syncConnected {wrongPassphrase}`, with `error` when it failed |
 | `syncChangePassphrase {passphrase}` | `syncPassphraseChanged {}` or `{error}` |
 | `syncDisconnect` | `syncDisconnected {}` or `{error}` |

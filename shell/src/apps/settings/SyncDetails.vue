@@ -95,7 +95,8 @@ const waiting = computed(() =>
     kind: ONE[w.collection] || w.collection,
     name: w.all ? 'Everything cleared here' : w.deleted ? 'One deleted here' : plain(w.name),
     gone: w.deleted,
-    line: [ONE[w.collection] || w.collection, w.deleted && !w.all ? 'deleted' : '', w.error ? "couldn't be sent" : w.since ? `since ${clock(w.since)}` : ''].filter((x) => x).join(' · '),
+    // A phone's line under the name; one that couldn't be sent says so after it, in red.
+    line: [ONE[w.collection] || w.collection, w.deleted && !w.all ? 'deleted' : '', !w.error && w.since ? `since ${clock(w.since)}` : ''].filter((x) => x).join(' · '),
     since: w.since ? `Since ${clock(w.since)}` : '',
     // One sync couldn't send: set aside, with the error's own words under it.
     stuck: w.error || '',
@@ -280,7 +281,9 @@ const toggle = (id) => (opened.value = opened.value === id ? '' : id);
           <div v-if="phone" class="row wait">
             <span class="label"
               ><span class="one-line plain" :class="{ mut: w.gone }">{{ w.name }}</span
-              ><span class="secondary" :class="{ err: w.stuck }">{{ w.line }}</span></span
+              ><span class="secondary"
+                >{{ w.line }}<template v-if="w.stuck"> · <span class="err">couldn't be sent</span></template></span
+              ></span
             >
           </div>
           <div v-else class="row wait">

@@ -154,11 +154,11 @@ feature of ours:
 ### Sparks kept for sync
 
 A spark is an item sync can carry ([synckosh](https://github.com/sudiptadeb/synckosh)'s
-SPEC): collection `sparks`, one item per spark, its guid the spark's id, its data the
+SPEC): collection `sparks`, one item per spark, the spark's id inside it, its data the
 source and whether it is on. So each spark has:
 
 - **an id made once and never changed**: a UUIDv7 for a new spark; one kept since 0.2.70
-  keeps its eight hex digits, which are a guid too;
+  keeps its eight hex digits;
 - **`added` and `modified`**, Unix milliseconds: when it was kept, and when an edit or a
   switch last changed it. The list's order is the order they were added in; a place key
   comes when sparks can be moved.

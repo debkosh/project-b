@@ -60,8 +60,9 @@ file once (below).
 
 **Sync.** Every table that syncs has `id`, made once, and `edited`, Unix milliseconds of its
 last change. A new table's id is a UUIDv7 as text (`store.NewID`); the bookmarks keep the ids
-they have had since folders, 16 random hex digits, which are their items' guids; history and
-typed are synced by address. Deleting still deletes the row, with no tombstone: while sync is
+they have had since folders, 16 random hex digits; history and typed are synced by address.
+An item's guid in sync is none of these: it is a random one of synckosh's, and the row's id or
+address travels inside the item ([sync.md](sync.md)). Deleting still deletes the row, with no tombstone: while sync is
 on, triggers on `bookmarks`, `history` and `typed` write a mark in `sync_changes` in the same
 transaction, a delete's included, and synckosh's bookkeeping in `sync_items` remembers the item
 after its row is gone. sync makes those triggers again at each start, from the features'

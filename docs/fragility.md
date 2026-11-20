@@ -135,15 +135,16 @@ The seams:
   underscore for its own items and refuses one, and one refused item fails the whole run.
   The passkeys' tests made a few passkeys, never one of those.
 - **Seam:** an id from one place used as a name in another, each with its own alphabet.
-- **Fix:** on sync-says-what-failed: `core/sync` puts a `~` before a key that starts with an
-  underscore or a `~` when the key is the guid, and takes it off again (`local.guid`,
-  `plain`). No item of that kind ever reached a server, so nothing synced before changes.
+- **Fix:** at first, in 0.3.6, `core/sync` put a `~` before such a key. Since the move to
+  random guids the seam is gone: an item's guid is `synckosh.NewGUID`'s, the credential ID
+  is in the item's sealed private part, and no id of ours is used as a name of synckosh's
+  ([sync.md](sync.md)).
 - **And so no one row can do it again:** a row sync can't hand over is set aside with why,
   and the rest goes (`drain` in `core/sync/run.go`, the marks' `stuck` column); Sync details
   names it. `TestARowThatCantBeSentIsSetAside` and `TestAnItemTheServerRefusesIsNamed`.
 - **Guard:** `TestAPasskeyWhoseIDStartsWithAnUnderscoreSyncs` in `core/sync` makes passkeys
   until one's id starts with an underscore, syncs it to a second profile, signs nothing away,
-  and deletes it there.
+  and deletes it there. `TestTheServerHoldsNothingReadable` has every item's guid a UUIDv7.
 
 ## A row changed twice before a run, 2026-11-20
 

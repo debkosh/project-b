@@ -399,7 +399,7 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
           <button v-else type="button" class="text-button" :disabled="holding" @click="syncNow">Sync now</button>
         </Row>
         <Row label="Sync details" hint="What synced, and when" opens="syncDetails" :words="words" />
-        <Row label="Change sync passphrase" hint="A device you add then asks for the new one" :words="words">
+        <Row v-if="s.problem !== 'reset'" label="Change sync passphrase" hint="A device you add then asks for the new one" :words="words">
           <button type="button" class="text-button" @click="change">Change…</button>
         </Row>
         <Row label="Turn off sync" hint="Keeps everything here and on the server" :words="words">
