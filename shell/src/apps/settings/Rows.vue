@@ -130,7 +130,11 @@ const layouts = [
     />
   </Row>
 
-  <Row v-else-if="part === 'channel'" label="Updates from" hint="Dev brings each change as it lands, before its full tests">
+  <Row
+    v-else-if="part === 'channel'"
+    label="Updates from"
+    :hint="state.channel === 'stable' && /-dev\./.test(state.running || '') ? 'Stays on this Dev build until a newer Stable' : 'Dev brings each change as it lands, before its full tests'"
+  >
     <Segmented label="Updates from" :options="channels" :model-value="state.channel" @update:model-value="send({ t: 'setChannel', text: $event })" />
   </Row>
 
