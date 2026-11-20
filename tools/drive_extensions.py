@@ -151,7 +151,7 @@ def row(name):
     return f"[aria-label={json.dumps(name)}]"
 
 
-INSTALLED = "[...document.querySelectorAll('section')[0].querySelectorAll('.pbx-extension')].map(e=>e.getAttribute('aria-label'))"
+INSTALLED = "[...document.querySelectorAll('section[aria-labelledby=pbx-installed] .pbx-extension')].map(e=>e.getAttribute('aria-label'))"
 
 
 def open_extension_settings(app):
