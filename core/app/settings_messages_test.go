@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -181,4 +182,13 @@ func TestSettingsUpdateButtons(t *testing.T) {
 	phase(update.Downloading)
 	r.settings(`{"t":"cancelUpdate"}`)
 	phase(update.Idle)
+	// The cancelled download clears its file on its own goroutine: the test's folder goes
+	// only once it has.
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if left, _ := os.ReadDir(filepath.Join(updates, "download")); len(left) == 0 {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
 }
