@@ -32,3 +32,6 @@ published is in `docs/releasing.md`; keep it current as the way you work changes
 - A new worktree needs `.tools` (chromedriver, the mock extension store) before its mock
   run, or the run stops at the extensions group.
 - A slot once given back is the tester's again: ask before even a minute's rerun on it.
+- Before landing a handed-over commit a person would notice, check it has a `Notes:` line, and
+  add one if not: a Dev build's notes are those lines alone, and the importer's went out unnamed.
+- Push nothing to main while a `pb-release` job runs: release.sh dev checks main after its mock.
