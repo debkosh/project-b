@@ -85,7 +85,8 @@ devices through a sync server you choose. Every item is sealed on your device be
 leaves, under a key the server never has: the server stores and hands on what it cannot
 read. The protocol and its library are [synckosh](https://github.com/sudiptadeb/synckosh),
 a separate project; the detail of what follows is in
-[docs/sync.md](docs/sync.md#who-can-do-what).
+[docs/sync.md](docs/sync.md#who-can-do-what). Setting it up, step by step:
+[docs/setting-up-sync.md](docs/setting-up-sync.md).
 
 **A sync server, and anyone who breaks into it or sits on the connection, cannot:**
 
