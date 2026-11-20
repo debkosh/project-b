@@ -195,6 +195,13 @@ static BOOL HasBundle(void) {
 - (void)userNotificationCenter:(UNUserNotificationCenter*)center
     didReceiveNotificationResponse:(UNNotificationResponse*)response
              withCompletionHandler:(void (^)(void))completionHandler {
+  // An update's notification is amarit's (macapp.Present): its Relaunch goes to the updater.
+  NSString* category = response.notification.request.content.categoryIdentifier;
+  if ([category isEqualToString:@"amarit.update"]) {
+    PBSystemAmaritResponse((char*)category.UTF8String, (char*)response.actionIdentifier.UTF8String);
+    completionHandler();
+    return;
+  }
   NSString* identifier = response.notification.request.identifier;
   BOOL clicked = [response.actionIdentifier isEqualToString:UNNotificationDefaultActionIdentifier];
   if (clicked) {

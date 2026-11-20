@@ -17,6 +17,8 @@ import (
 	"strings"
 	"unsafe"
 
+	"github.com/sudiptadeb/amarit/macapp"
+
 	"projectb/crash"
 	"projectb/system"
 	"projectb/timeline"
@@ -115,3 +117,11 @@ func (s *System) Report(version string) []crash.Section {
 
 // DownloadsDir is where downloads go on a Mac: the user's own Downloads folder.
 func DownloadsDir(home string) string { return filepath.Join(home, "Downloads") }
+
+// PBSystemAmaritResponse is a press on the update's notification, which amarit posted
+// (macapp.Present): Relaunch goes to the updater.
+//
+//export PBSystemAmaritResponse
+func PBSystemAmaritResponse(category, action *C.char) {
+	macapp.HandleNotificationResponse(C.GoString(category), C.GoString(action))
+}
