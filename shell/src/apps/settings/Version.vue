@@ -63,7 +63,8 @@ const busy = computed(() => state.update.check === 'checking');
         <button type="button" class="text-button apart" @click="send({ t: 'retryUpdate' })">Retry</button>
       </template>
       <button v-else type="button" class="text-button" :disabled="busy" @click="send({ t: 'checkUpdate' })">
-        {{ update.failed ? 'Try again' : 'Check for updates' }}
+        <!-- Try again where it can help; a release refused waits for a newer one, or this. -->
+        {{ update.failed && (state.update.phase !== 'failed' || state.update.retry) ? 'Try again' : 'Check for updates' }}
       </button>
     </span>
   </Row>

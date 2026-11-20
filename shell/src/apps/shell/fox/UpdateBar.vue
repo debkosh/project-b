@@ -35,7 +35,8 @@ const percent = computed(() => {
       </template>
       <template v-else>
         <span class="text" role="status" :title="state.update.error">Update{{ state.update.version ? ' to ' + state.update.version : '' }} failed: {{ state.update.error }}</span>
-        <button class="text-button" type="button" @click="send({ t: 'retryUpdate' })">Try again</button>
+        <!-- Try again only where it can help: a refused release waits for a newer one. -->
+        <button v-if="state.update.retry" class="text-button" type="button" @click="send({ t: 'retryUpdate' })">Try again</button>
       </template>
     </div>
   </div>
