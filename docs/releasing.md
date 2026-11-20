@@ -48,7 +48,9 @@ The APK step starts only once the candidate build is done: `tools/build.sh andro
 its lock. The desktop run and the APK build then go side by side, and the Android run once the
 APK exists.
 
-Run each under amarit. A failure is either a test the change didn't follow (a selector or a
+Run each as an amarit job (`amarit job -name N -log F -- ...`), never an `amarit run` unit: a
+unit is a service amarit starts again after its own restart, and on 2026-11-20 an update
+replayed 311 finished ones. A failure is either a test the change didn't follow (a selector or a
 label it removed) or the app; the test's owner fixes the first with a tools-only commit and only
 the failed parts run again. Android 17's one known flake is the blank-shell start-up race in
 [todo.md](todo.md).
@@ -57,17 +59,15 @@ the failed parts run again. Android 17's one known flake is the blank-shell star
 
 A finished branch lands on main as it comes, rebased, once Go's tests and the mock suite pass
 on it, and `tools/release.sh dev` publishes it to the Dev channel from the main checkout,
-under `pb-release` as below ([release-channels.md](release-channels.md)). It runs Go's tests
+as the `pb-release` job below ([release-channels.md](release-channels.md)). It runs Go's tests
 and the mock suite again on main first, and stops at a failure; no tag, no test report, no
 release notes. Send the orchestrator the DMG and APK links from its `RESULT=ok` line. Stable
 is cut from main later, with the full run.
 
 ## Publishing
 
-    amarit rm pb-release
-    amarit run -name pb-release -restart never -dir <main checkout> /bin/bash -c \
-      "env HOME=$HOME KEYKOSH_ROOT=$KEYKOSH_ROOT PATH=$PATH caffeinate -i \
-       tools/release.sh > ~/PW_TOOLS/project-b-release/<v>.log 2>&1"
+    amarit job -name pb-release -dir <main checkout> -log ~/PW_TOOLS/project-b-release/<v>.log -- \
+      env KEYKOSH_ROOT=$KEYKOSH_ROOT caffeinate -i tools/release.sh
 
 Before it: if main moved since the branch was cut, rebase the branch onto it. When the new
 commits only touch docs or tests, check `git diff <tested tip> HEAD -- . ':!<those paths>'` is
@@ -79,7 +79,7 @@ gets one here, and the last release's lines go), commit "Bump the version to <v>
 Only this release's notes: the app shows them in Settings' About, What's new in <v>, and
 `tools/release.sh` refuses notes of another version, publishes the file beside `releases.json`
 as `release-notes.md`, and puts its lines in the GitHub release. `tools/release.sh` takes `chromium/src/out/.pb-build.lock` for its whole
-run, waiting for any build that holds it, and releases the checkout amarit starts it in. Don't
+run, waiting for any build that holds it, and releases the checkout the job starts in. Don't
 merge into main while it runs; it reads that checkout. It takes about four minutes. Wait for `RESULT=ok v<version>`: `tools/package.sh` prints a
 `RESULT=ok` of its own partway through.
 
@@ -100,9 +100,10 @@ merge into main while it runs; it reads that checkout. It takes about four minut
 
 ## Traps
 
-- After `amarit rm X; amarit run -name X ...`, check the output says `running, pid` and the
-  log's first line is new. If it printed `unit X: ...` instead, nothing started, and a wait for
-  it returns at once over the last run's output. Twice that nearly passed off an old APK as a
+- A job's `-log` file is appended to, and its last line says how it ended (`amarit job N: exit
+  0`, or `killed: ...`). Wait for that line, and give each run a new log file: in an old one a
+  wait returns at once over the last run's end. A log with no such line, and the job gone from
+  `amarit jobs`, means a reboot or a kill -9 ended it. Twice that nearly passed off an old APK as a
   new one: check a new build's file is newer than its start, or differs from the last.
 - A commit id given in a message may be a typo: check out the branch's tip from origin, or
   check the id against it, before building.
