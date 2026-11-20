@@ -16,7 +16,7 @@ const places = computed(() => [
     ? { pref: 'bookmarksSidebar', label: 'In the tab switcher', hint: 'Tabs and Bookmarks, side by side' }
     : { pref: 'bookmarksSidebar', label: 'Beside the tabs', hint: 'The folders under the tabs, in the sidebar' },
   phone
-    ? { pref: 'bookmarksCommandBox', label: 'In the address bar', hint: 'Folders and bookmarks while it is empty' }
+    ? { pref: 'bookmarksCommandBox', label: 'In the address bar', hint: 'A row of them over a page, and among the suggestions as you type' }
     : { pref: 'bookmarksCommandBox', label: 'In the command box', hint: 'Type * for bookmarks only' },
 ]);
 

@@ -154,8 +154,10 @@ const H = 915;
   check('each row is 48px', rows.every((h) => Math.round(h) === 48 || Math.round(h) === 49), JSON.stringify(rows));
   check('a press on them reaches the shell, over the page', await until(async () => (await regions({ x: 100, y: list.bottom - 10 })).hit === 'shell'));
   await shots('suggestions');
+  // A row's address, from its ↖'s name.
+  const rowURL = async (row) => (await row.getByRole('button', { name: /^Edit / }).getAttribute('aria-label')).slice('Edit '.length);
   const nearest = suggestions.last();
-  const target = await nearest.locator('.url').innerText();
+  const target = await rowURL(nearest);
   await nearest.getByRole('button', { name: /^Edit / }).tap();
   check('↖ puts its address in the field and keeps editing', await until(async () => (await field.inputValue()).endsWith(target) && await inField()), await field.inputValue());
   await page.keyboard.press('Escape');
@@ -164,9 +166,9 @@ const H = 915;
   await page.keyboard.type('example.com/docs/re');
   await listAnswers('example.com/docs/re');
   await until(async () => (await suggestions.count()) >= 1);
-  const go = await suggestions.last().locator('.url').innerText();
+  const go = (await rowURL(suggestions.last())).replace(/\/$/, '');
   await suggestions.last().getByRole('button').first().tap();
-  check('a tap on a suggestion goes there', await until(async () => (await active()).url.endsWith(go) && (await suggestions.count()) === 0), JSON.stringify({ go, now: (await active()).url }));
+  check('a tap on a suggestion goes there', await until(async () => (await active()).url.replace(/\/$/, '') === go && (await suggestions.count()) === 0), JSON.stringify({ go, now: (await active()).url }));
 
   // A new tab from the menu starts in edit mode. The page loaded first, so the menu offers
   // Reload rather than Stop.
@@ -240,16 +242,15 @@ const H = 915;
   check('the count says 2', (await tabsButton.innerText()) === '2');
   await visit('example.net/mail', 'https://example.net/mail');
 
-  // The bar tapped with nothing typed lists what one more tap reaches, Go's list for nothing
-  // typed, the closest nearest the thumb. What the shell sends and Go's answers are
-  // watched in the shell's frame, each sent message with whether the switcher showed, and
-  // a whole answer is handed to it as Go would send one.
+  // What the field suggests, and when (docs/daily-driver.md). What the shell sends and Go's
+  // answers are watched in the shell's frame, each sent message with whether the switcher
+  // showed.
   await w.shell().evaluate(() => {
     const send = window.chrome.send;
     window.sent = [];
     window.chrome.send = (channel, args) => {
       const m = JSON.parse(args[0]);
-      window.sent.push({ t: m.t, switcher: !document.querySelector('.switcher')?.hidden });
+      window.sent.push({ t: m.t, text: m.text, switcher: !document.querySelector('.switcher')?.hidden });
       if (m.t === 'suggest') window.lastSuggest = m;
       return send.call(window.chrome, channel, args);
     };
@@ -261,55 +262,131 @@ const H = 915;
     };
   });
   const lastSuggest = () => w.shell().evaluate(() => window.lastSuggest);
-  const headingsShown = () => ui.locator('.suggestions li.heading').allInnerTexts();
+  const lastAnswer = () => w.shell().evaluate(() => window.lastAnswer);
+  const sentOf = (t) => w.shell().evaluate((t) => window.sent.filter((m) => m.t === t), t);
+  const thisPage = ui.getByRole('group', { name: 'This page' });
+  const fieldNow = () => field.evaluate((el) => ({ value: el.value, start: el.selectionStart, end: el.selectionEnd }));
+  const onPageNow = await active();
+
+  // Nothing typed, on a page: the page's own row, with Copy, Share and Edit, and nothing else
+  // from Go; it covers the page from the field to the window's top.
+  await w.shell().evaluate(() => (window.lastSuggest = null));
   await field.tap();
-  check('a tap on the bar asks Go for its list for nothing typed: open and closed tabs, top sites and bookmarks', await until(async () => {
+  check('a tap on the bar on a page shows the page\'s row, its title and address', await until(() => thisPage.isVisible()) &&
+    (await thisPage.locator('.url').innerText()) === onPageNow.url.replace(/^https?:\/\/(www\.)?/, ''), await thisPage.innerText().catch(() => ''));
+  check('with Copy, Share and Edit', (await thisPage.getByRole('button', { name: 'Copy address' }).count()) === 1 &&
+    (await thisPage.getByRole('button', { name: 'Share' }).count()) === 1 && (await thisPage.getByRole('button', { name: 'Edit address' }).count()) === 1);
+  check('and asks Go for nothing: no sites, no open or closed tabs', (await lastSuggest()) === null && (await suggestions.count()) === 0, JSON.stringify(await lastSuggest()));
+  const cover = await box('.drop');
+  const pageRow = await thisPage.boundingBox();
+  check('one layer: it covers the page from the field up, the page\'s row nearest the field', Math.round(cover.top) <= 4 && cover.bottom <= (await field.boundingBox()).y && pageRow.y + pageRow.height >= cover.bottom - 1, JSON.stringify({ cover, pageRow }));
+  await shots('this-page');
+  await thisPage.getByRole('button', { name: 'Copy address' }).tap();
+  check('Copy hands the page\'s address to the clipboard, and the field lets go', await until(async () => (await sentOf('copyText')).at(-1)?.text === onPageNow.url && !(await inField())), JSON.stringify(await sentOf('copyText')));
+  await field.tap();
+  await until(() => thisPage.isVisible());
+  await thisPage.getByRole('button', { name: 'Share' }).tap();
+  check('Share hands it to the system\'s share sheet, and the field lets go', await until(async () => (await sentOf('shareText')).at(-1)?.text === onPageNow.url && !(await inField())), JSON.stringify(await sentOf('shareText')));
+  await field.tap();
+  await until(() => thisPage.isVisible());
+  await thisPage.getByRole('button', { name: 'Edit address' }).tap();
+  check('Edit puts the caret at the address\'s end, still editing', await until(async () => {
+    const f = await fieldNow();
+    return await inField() && f.value === onPageNow.url && f.start === f.value.length && f.end === f.value.length;
+  }), JSON.stringify(await fieldNow()));
+
+  // One letter: Enter's row and four more at most, matched where a host or a title's word
+  // starts, completed in the field.
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.type('e');
+  check('a letter asks Go for five rows of every kind the field draws', await until(async () => {
     const m = await lastSuggest();
-    return m && m.text === '' && JSON.stringify(m.kinds) === JSON.stringify(['tab', 'closed', 'history', 'bookmark']);
+    return m?.text === 'e' && m.rows === 5 && JSON.stringify(m.kinds) === JSON.stringify(['address', 'search', 'tab', 'history', 'bookmark']);
   }), JSON.stringify(await lastSuggest()));
-  check('and lists it before anything is typed, the sites visited under Frequently visited', await until(async () => (await suggestions.count()) >= 1 && (await headingsShown()).includes('Frequently visited')), JSON.stringify(await headingsShown()));
-  const answer = await w.shell().evaluate(() => window.lastAnswer);
-  check('Go\'s first row nearest the thumb', (await suggestions.last().locator('.title').innerText()) === answer.items[0].title, JSON.stringify(answer.items[0]));
-  // Go's whole list, as the suggestions' contract has it: the open tabs (the active one left
-  // out), the tabs closed lately, the sites visited most and the newest bookmarks. Closed
-  // rows come from Go once the suggestions' branch lands; until then this one is handed in.
-  const before4 = await regions();
-  const other = before4.tabs.find((t) => t.id !== before4.active);
-  await w.shell().evaluate(({ id, other }) => window.__shellReceive(JSON.stringify({ t: 'suggestions', id, items: [
-    { kind: 'tab', title: other.title || other.url, detail: '', url: other.url, tab: other.id },
-    { kind: 'closed', title: 'A page closed lately', detail: 'closed.example', url: 'https://closed.example/page' },
-    { kind: 'history', title: 'Example Domain', detail: 'example.com', url: 'https://example.com/' },
-    { kind: 'history', title: 'Example Org', detail: 'example.org', url: 'https://example.org/' },
-    { kind: 'bookmark', title: 'Release notes', detail: 'example.org', url: 'https://example.org/release-notes' },
-  ] })), { id: (await lastSuggest()).id, other });
-  check('each kind under its heading, Open tabs nearest the thumb and Bookmarks furthest', await until(async () => JSON.stringify(await headingsShown()) === JSON.stringify(['Bookmarks', 'Frequently visited', 'Recently closed', 'Open tabs'])), JSON.stringify(await headingsShown()));
-  check('the open tab the row nearest the field', (await suggestions.last().locator('.url').innerText()) === other.url.replace(/^https?:\/\/(www\.)?/, ''));
-  check('only a page or a bookmark has ↖, not a tab', (await suggestions.last().getByRole('button', { name: /^Edit / }).count()) === 0 && (await suggestions.first().getByRole('button', { name: /^Edit / }).count()) === 1);
-  const listBox = await box('.suggestions');
-  check('the list lies over the field', listBox.bottom <= (await field.boundingBox()).y, JSON.stringify(listBox));
-  await shots('empty-list');
-  await suggestions.last().getByRole('button').first().tap();
-  check('a tap on an open tab\'s row shows that tab, and the list goes', await until(async () => (await regions()).active === other.id && (await suggestions.count()) === 0));
-  // Enter goes to what is typed, never to a row: keys and Enter sent in one go, before Go
-  // can answer the new text, as a fast typist's do, with the list for nothing typed on screen.
+  check('and lists Go\'s answer, five rows at most, no headings', await listAnswers('e') && (await suggestions.count()) >= 1 && (await suggestions.count()) <= 5 && (await ui.locator('.suggestions li.heading').count()) === 0, String(await suggestions.count()));
+  const oneLetter = await lastAnswer();
+  check('Go\'s first row nearest the field', (await suggestions.last().locator('.title').innerText()) === oneLetter.items[0].title, JSON.stringify(oneLetter.items[0]));
+  check('the page\'s row gone once something is typed', (await thisPage.count()) === 0);
+  check('Go completes the letter to a site visited', !!oneLetter.items[0].inline, JSON.stringify(oneLetter.items[0]));
+  check('which the field shows after the caret, selected', await until(async () => {
+    const f = await fieldNow();
+    return f.value === 'e' + oneLetter.items[0].inline && f.start === 1 && f.end === f.value.length;
+  }), JSON.stringify(await fieldNow()));
+  check('an open tab\'s row says Switch to tab and has no ↖; a page\'s has ↖', await until(async () => {
+    const kinds = (await lastAnswer()).items.map((r) => r.kind);
+    const tabRows = suggestions.filter({ has: ui.locator('.switch-tab') });
+    return (await tabRows.count()) === kinds.filter((k) => k === 'tab').length && (await tabRows.getByRole('button', { name: /^Edit / }).count()) === 0 &&
+      (await suggestions.getByRole('button', { name: /^Edit / }).count()) === kinds.length - kinds.filter((k) => k === 'tab').length;
+  }), JSON.stringify((await lastAnswer()).items.map((r) => r.kind)));
+  const tabPill = await ui.locator('.suggestions .switch-tab').first().evaluate((el) => ({ text: el.innerText, w: el.getBoundingClientRect().width }));
+  check('the pill reads Switch to tab, whole', tabPill.text === 'Switch to tab' && tabPill.w > 70, JSON.stringify(tabPill));
+  check('the search last, furthest from the field', (await lastAnswer()).items.at(-1).kind === 'search' && (await suggestions.first().locator('.url').innerText()).startsWith('Search '));
+  await shots('one-letter');
+  // A key that matches the completion's next letter keeps it on show.
+  const rest = oneLetter.items[0].inline;
+  await page.keyboard.type(rest[0]);
+  check('a key matching the completion keeps the rest of it selected', await until(async () => {
+    const f = await fieldNow();
+    return f.value === 'e' + rest && f.start === 2 && f.end === f.value.length;
+  }), JSON.stringify(await fieldNow()));
+  // Backspace takes the completion away, and the next answer completes nothing.
+  await page.keyboard.press('Backspace');
+  check('Backspace takes the completion away', await until(async () => (await fieldNow()).value === 'e' + rest[0]), JSON.stringify(await fieldNow()));
+  await listAnswers('e' + rest[0]);
+  await settle(page);
+  check('and the next answer completes nothing, so Enter is what was typed', (await fieldNow()).value === 'e' + rest[0], JSON.stringify(await fieldNow()));
+  check('the search, what was typed, moves nearest the field', (await suggestions.last().locator('.url').innerText()).startsWith('Search '), await suggestions.last().innerText());
+
+  // From three letters, as many rows as fit above the keyboard, five at least.
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.type('example.net/m');
+  check('from three letters it asks for the rows that fit, five to eight', await until(async () => {
+    const m = await lastSuggest();
+    return m?.text === 'example.net/m' && m.rows >= 5 && m.rows <= 8;
+  }), JSON.stringify(await lastSuggest()));
+  await listAnswers('example.net/m');
+  check('and gets no more', (await suggestions.count()) <= (await lastSuggest()).rows);
+  // Enter takes Enter's row, the completion: example.net/mail, the page this tab shows, which
+  // is never offered as a tab to switch to, so its row is the page's.
+  const enterRow = (await lastAnswer()).items[0];
+  await page.keyboard.press('Enter');
+  check('Enter takes Enter\'s row while the list answers what is typed: this tab\'s page, completed, not a tab to switch to', enterRow.kind === 'history' && enterRow.inline === 'ail' && await until(async () => !(await inField()) && (await active()).url === 'https://example.net/mail'), JSON.stringify({ enterRow, now: await active() }));
+  await until(async () => !(await active()).loading);
+
+  // An open tab's row shows that tab.
+  const now = await regions();
+  const other = now.tabs.find((t) => t.id !== now.active && t.url);
   await field.tap();
-  await until(async () => (await headingsShown()).length > 0);
+  await page.keyboard.type(other.url.replace(/^https?:\/\/(www\.)?/, ''));
+  await until(async () => (await ui.locator('.suggestions .switch-tab').count()) >= 1);
+  await suggestions.filter({ has: ui.locator('.switch-tab') }).first().getByRole('button').first().tap();
+  check('a tap on an open tab\'s row shows that tab, and the list goes', await until(async () => (await regions()).active === other.id && (await suggestions.count()) === 0), JSON.stringify(other));
+
+  // Enter goes to what is typed when the list isn't the answer for it: keys and Enter sent in
+  // one go, before Go can answer the new text, as a fast typist's do.
+  await field.tap();
+  await page.keyboard.type('exa');
+  await listAnswers('exa');
   await field.evaluate((el) => {
     el.select();
     document.execCommand('insertText', false, 'example.com/typed-fast');
     el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
   });
-  check('typing and Enter before Go answers goes to what was typed, not a row of the list for nothing typed', await until(async () => (await active()).url === 'https://example.com/typed-fast' && !(await active()).loading), JSON.stringify(await active()));
-  // Over a new tab, whose page shows the sites and bookmarks, the bar lists the tabs alone.
+  check('typing and Enter before Go answers goes to what was typed, not a row of an earlier list', await until(async () => (await active()).url === 'https://example.com/typed-fast' && !(await active()).loading), JSON.stringify(await active()));
+
+  // Over a new tab nothing covers the page: the new tab page is the list.
   await fire('menu', 'tab.new');
   await until(newTabPage);
+  await w.shell().evaluate(() => (window.lastSuggest = null));
   await field.tap();
-  check('on a new tab it asks for the open and closed tabs alone, which its page doesn\'t show', await until(async () => JSON.stringify((await lastSuggest())?.kinds) === JSON.stringify(['tab', 'closed'])), JSON.stringify(await lastSuggest()));
+  await settle(page);
+  check('on a new tab the field asks for nothing and draws no list, the new tab page showing', await inField() && (await lastSuggest()) === null && (await ui.locator('.drop').count()) === 0 &&
+    await ui.getByRole('region', { name: 'New tab' }).isVisible(), JSON.stringify(await lastSuggest()));
   await page.keyboard.type('example');
-  check('typing replaces the list with the usual one, without headings', await until(async () => (await suggestions.count()) >= 1 && (await headingsShown()).length === 0));
+  check('typing lists over it, covering it', await until(async () => (await suggestions.count()) >= 1 && Math.round((await box('.drop')).top) <= 4));
   await page.keyboard.press('ControlOrMeta+A');
   await page.keyboard.press('Backspace');
-  check('and emptying the field asks for the list for nothing typed again', await until(async () => (await lastSuggest()).text === ''));
+  check('and emptying the field takes the list away', await until(async () => (await ui.locator('.drop').count()) === 0));
   await page.keyboard.press('Escape');
   await lib.closeTab((await regions()).active);
   await tabCount(2);
@@ -1371,23 +1448,18 @@ const H = 915;
   check('it opens on Tabs again', await until(async () => (await views.getByRole('radio', { name: /^Tabs/ }).getAttribute('aria-checked')) === 'true' && (await cards.filter({ visible: true }).count()) > 0));
   await page.keyboard.press('Escape');
 
-  // The address (bookmarksCommandBox, on by default): with nothing typed, the top folder's
-  // folders as chips, All first, and the chosen one's bookmarks as tiles, nearest the field:
-  // under it with the bar on top, over it with the bar at the foot. Typing replaces them.
-  const addressMarks = ui.getByRole('region', { name: 'Bookmarks' }).filter({ has: ui.getByRole('radiogroup', { name: 'Folder' }) });
-  const folderChips = addressMarks.getByRole('radio');
+  // The address (bookmarksCommandBox, on by default): on a page with nothing typed, every
+  // bookmark as one row of tiles, beside the page's row: under it with the bar on top, over
+  // it with the bar at the foot. Typing replaces them, and bookmarks join the typed rows.
+  const addressMarks = ui.locator('.drop').getByRole('region', { name: 'Bookmarks' });
   const addressTiles = () => addressMarks.locator('.tile .name').allInnerTexts();
   const recipeTitles = recipeMarks.map(([title]) => title).reverse();
-  await fire('menu', 'tab.new');
-  await until(newTabPage);
   await field.tap();
-  check('the address tapped shows the folders as chips, All first and chosen', await until(() => addressMarks.isVisible()) &&
-    JSON.stringify(await folderChips.allInnerTexts()) === JSON.stringify(['All', 'Reading', 'Recipes', 'Travel']) && (await folderChips.first().getAttribute('aria-checked')) === 'true', JSON.stringify(await folderChips.allInnerTexts()));
-  check('All: every bookmark, as the folders hold them', JSON.stringify(await addressTiles()) === JSON.stringify(['News', 'Science', 'Bread', ...recipeTitles, 'Maps', 'Hotels', 'Bank', 'Shop']), JSON.stringify(await addressTiles()));
+  check('the address tapped on a page shows every bookmark as one row of tiles, no folders', await until(() => addressMarks.isVisible()) &&
+    JSON.stringify(await addressTiles()) === JSON.stringify(['News', 'Science', 'Bread', ...recipeTitles, 'Maps', 'Hotels', 'Bank', 'Shop']) && (await addressMarks.getByRole('radiogroup').count()) === 0, JSON.stringify(await addressTiles()));
   const topField = await field.boundingBox();
-  check('with the bar on top, they lie under the field', (await addressMarks.boundingBox()).y >= topField.y + topField.height, JSON.stringify(await addressMarks.boundingBox()));
-  await folderChips.filter({ hasText: 'Recipes' }).tap();
-  check('a folder\'s chip shows its bookmarks, in it and in its folders', await until(async () => JSON.stringify(await addressTiles()) === JSON.stringify(['Bread', ...recipeTitles])) && await inField(), JSON.stringify(await addressTiles()));
+  const topRow = await thisPage.boundingBox();
+  check('with the bar on top, the page\'s row under the field, the bookmarks under it', topRow.y >= topField.y + topField.height && (await addressMarks.boundingBox()).y >= topRow.y + topRow.height, JSON.stringify({ topRow, marks: await addressMarks.boundingBox() }));
   await shots('bookmarks-address-top');
   await page.keyboard.type('example');
   check('typing replaces them with the suggestions', await until(async () => (await addressMarks.count()) === 0 && (await suggestions.count()) >= 1));
@@ -1411,15 +1483,22 @@ const H = 915;
   await setPref('addressBarPosition', 'bottom');
   await until(async () => (await box('.toolbar')).bottom === H);
   await field.tap();
-  check('on a page, the list for nothing typed asks for no bookmark rows, the bookmarks showing', await until(async () => JSON.stringify((await lastSuggest())?.kinds) === JSON.stringify(['tab', 'closed', 'history'])) && await until(() => addressMarks.isVisible()), JSON.stringify(await lastSuggest()));
+  await until(() => addressMarks.isVisible());
   const footField = await field.boundingBox();
   const marksBox = await addressMarks.boundingBox();
-  check('with the bar at the foot, they lie over the field, the list over them', marksBox.y + marksBox.height <= footField.y && (await box('.suggestions').then((b) => !b || b.bottom <= marksBox.y + 1)), JSON.stringify({ marksBox, footField, list: await box('.suggestions') }));
+  const footRow = await thisPage.boundingBox();
+  check('with the bar at the foot, the page\'s row over the field, the bookmarks over it', footRow.y + footRow.height <= footField.y && marksBox.y + marksBox.height <= footRow.y + 1, JSON.stringify({ marksBox, footRow, footField }));
   await shots('bookmarks-address');
+  await page.keyboard.type('cu');
+  check('typed, bookmarks are among the rows asked for', await until(async () => (await lastSuggest())?.kinds.includes('bookmark')), JSON.stringify(await lastSuggest()));
+  check('and a bookmark whose title starts with the letters is a row, with its star', await until(async () => (await suggestions.filter({ hasText: 'Curry' }).count()) >= 1), JSON.stringify((await lastAnswer().catch(() => null))?.items));
   await page.keyboard.press('Escape');
   await setPref('bookmarksCommandBox', false);
   await field.tap();
-  check('with bookmarksCommandBox off, the address has none, and asks for bookmark rows again', await until(async () => JSON.stringify((await lastSuggest())?.kinds) === JSON.stringify(['tab', 'closed', 'history', 'bookmark'])) && (await addressMarks.count()) === 0);
+  await until(() => thisPage.isVisible());
+  check('with bookmarksCommandBox off, the page\'s row alone', (await addressMarks.count()) === 0);
+  await page.keyboard.type('cu');
+  check('and the typed rows ask for no bookmarks', await until(async () => (await lastSuggest())?.text === 'cu' && !(await lastSuggest()).kinds.includes('bookmark')), JSON.stringify(await lastSuggest()));
   await page.keyboard.press('Escape');
   await setPref('bookmarksCommandBox', true);
 

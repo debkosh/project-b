@@ -1,6 +1,6 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
-import { activeTab, bookmark, chooseSuggestion, focusPage, isBookmarked, send, state, suggest, tabLabel } from '@/sdk/vue.js';
+import { activeTab, bookmark, chooseSuggestion, focusPage, isBookmarked, send, state, suggest, tabLabel, typedFirst } from '@/sdk/vue.js';
 import SuggestionList from './SuggestionList.vue';
 import { hasSite, openSite, popupsWord, promptFor } from '@/sdk/sites.js';
 import PermissionPrompt from '@/ui/PermissionPrompt.vue';
@@ -214,11 +214,7 @@ onMounted(() => {
   addressBar.suggestions = (id, list) => {
     if (id !== latestQuery) return;
     const first = list[0];
-    if (first?.inline && deleting) {
-      // After a delete Enter is what was typed: the completing row moves down a place,
-      // as a row like the others.
-      list = list.length > 1 ? [list[1], { ...first, inline: '' }, ...list.slice(2)] : [{ ...first, inline: '' }];
-    }
+    if (first?.inline && deleting) list = typedFirst(list, asked);
     items.value = list;
     shownFor = asked;
     highlight.value = -1;

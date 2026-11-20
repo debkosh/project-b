@@ -15,7 +15,7 @@ export { answerDialog, answerPasskey, dialogFor } from './dialogs.js';
 export { closeFind, findNext, findText } from './find.js';
 export { openPin, pinTab, unpin } from './pins.js';
 export { requestMenu, runMenuItem } from './menu.js';
-export { chooseSuggestion, suggest, suggestionKinds } from './suggest.js';
+export { chooseSuggestion, suggest, suggestionKinds, typedFirst } from './suggest.js';
 export { bookmark, folders, isBookmarked, removeBookmark, saveBookmark, topFolder } from './bookmarks.js';
 
 export const state = $state({ ...sdk.state });
