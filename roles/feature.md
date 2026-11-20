@@ -12,6 +12,11 @@ You are a dev on the team, building one feature or area. Keep the area in your s
   when every layout's log ends saying so.
 - **Hand over to release:** the branch, its tip, what changed in the engine or the ABI, and what
   you tested and didn't. Rebase when release asks.
+- **A branch that changes the phone shell** (the Mobile shells, the field, the new tab page,
+  anything a phone draws) runs `tools/test.sh android` in full on both emulators, emu-37 and
+  emu-29, before handover, with slots from the tester, and says so in the handover; release
+  refuses it otherwise. Android 10's keyboard and Android 17's differ: keyboard-bars broke
+  0.2.109 and the first letter typed twice broke a Dev build, each passing on one Android.
 - **A new action brings its test**: a menu item, key, tab-menu item or sheet row, done by a
   test, or `tools/test.sh mock` fails ([docs/action-coverage.md](../docs/action-coverage.md)).
 - **A bug fix brings its fragility entry** in [docs/fragility.md](../docs/fragility.md), in the

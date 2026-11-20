@@ -18,6 +18,10 @@ published is in `docs/releasing.md`; keep it current as the way you work changes
   once with `tools/release.sh dev`; send the orchestrator its DMG and APK links. Stable is cut
   from main with the full run, as above.
 
+- A branch that changes the phone shell comes with `tools/test.sh android` run in full on
+  both emulators, emu-37 and emu-29, said in its handover (roles/feature.md). Refuse it until
+  it does.
+
 ## Learned
 
 - The APK step waits for the candidate build: both write `shell/dist`.

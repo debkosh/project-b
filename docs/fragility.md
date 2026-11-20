@@ -39,9 +39,9 @@ The seams:
   limits: what a page may do only after a click, a shell can't do for an action that comes
   from the menu bar or a key. One so far: Glide's Copy Address.
 - **The phone's keyboard.** It takes half the screen or more, by an amount that differs
-  between Android versions, and what a person needs next has to stay in sight above it. Two
-  so far: a Dialog's buttons under the keyboard, the keyboard left up by the native star's
-  sheet.
+  between Android versions, and what a person needs next has to stay in sight above it, and
+  what it is composing is its own until the word ends. Three so far: a Dialog's buttons under
+  the keyboard, the keyboard left up by the native star's sheet, the first letter typed twice.
 - **Work that takes time.** A rule made for work nobody asked for, such as waiting before
   saying it is busy, doesn't fit a press, which needs its answer at once; and a clock that
   measures how long the work has gone on is not one that measures how long nothing has
@@ -60,6 +60,26 @@ The seams:
 - **A trigger runs under its caller's rules.** What a trigger's own statement says about a
   conflict gives way to the statement that fired it. One so far: a row changed twice before a
   run.
+
+## The first letter typed twice, 2026-11-20
+
+- **Seen:** on Android 10, typing an address in the phone's field showed its first letter
+  twice: "localhost" became "llocalhost". Found by drive_android on Dev 0.3.9-dev.202611201508,
+  where 24 parts of Android 10's run failed at typing; Android 17 passed.
+- **Cause:** the field completes what is typed with the rest of an address, put in the field
+  after the caret. Android 10's Gboard holds the word it is composing as its own, and when the
+  field's text changed under it, it typed the word again over the completion.
+- **Seam:** the phone's keyboard: what it composes is its own until the word ends, and the
+  page may not rewrite the field under it.
+- **Fix:** while the keyboard composes, Go's answer lists rows and completes nothing; the
+  input that ends the word asks again and completes. The same in Standard, for a desktop's
+  input methods (`Address.svelte`, `AddressBar.vue`, 0c5e1630).
+- **Guard:** mobile.cjs composes a letter and checks the field holds only it while Go's answer
+  lists a completion, and that it completes once the word ends; it failed without the fix.
+  drive_android's browsing on Android 10 types into the field.
+- **Missed:** the branch was tested with Gboard on Android 16 only, which composes otherwise,
+  and drive_android wasn't run on it before handover, as its handover said. A phone shell
+  change now runs drive_android in full on both emulators before handover (roles/feature.md).
 
 ## The keyboard left up by the native star's sheet, 2026-11-19
 
