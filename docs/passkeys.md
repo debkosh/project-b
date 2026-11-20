@@ -34,6 +34,7 @@ reaches the person. The research behind it, with the options not taken yet, is i
 
 | | Mac | Android |
 |---|---|---|
+| Passkeys saved in Project B, synced ([Our own passkeys](#our-own-passkeys)) | Yes | Yes |
 | USB security key, with or without a PIN | Yes | No (needs the system's approval of the app) |
 | A phone's passkey, by QR code and Bluetooth | Yes | No |
 | Touch ID, the Mac's keychain, iCloud Keychain | No (needs an Apple team) | |
@@ -41,16 +42,15 @@ reaches the person. The research behind it, with the options not taken yet, is i
 
 ## Limitations
 
-- **No passkeys or security keys on Android.** A page's request is refused at once
-  (`NotSupportedError`; webauthn.io says "No available authenticator supported any of the
-  specified pubKeyCredParams algorithms"). Android answers a browser's request for another
+- **On Android, only passkeys saved in Project B.** No security key, and none of the passkeys
+  in the phone's password manager: a request that wants a key apart from the device is
+  refused at once. Android answers a browser's request for another
   site only through Credential Manager or Play Services FIDO, and the providers behind them
   (Google Password Manager, other password managers) answer only browsers on their
   privileged lists, by package name and signing key. USB and NFC security keys go through
   the same gate. Project B (`dev.projectb.browser`) isn't on those lists. Lifting it: Google's
   approval, then registering content's `components/webauthn/android` in `BROWSER` mode
-  (research, option D, 3 to 5 days); or passkeys of our own, which would still not reach the
-  ones in the phone's password manager (option E).
+  (research, option D, 3 to 5 days).
 - **No Touch ID, Mac keychain or iCloud Keychain passkeys on the Mac.** They need a signing
   team and Apple's browser entitlement; Project B signs with its own certificate and has no
   team, nor plans one (option C is off). A Mac signs in with a security key or a phone, and
