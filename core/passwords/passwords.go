@@ -24,6 +24,12 @@ var (
 	// ErrNotHere: the profile's key doesn't open on this device, so no password opens and
 	// none can be kept.
 	ErrNotHere = errors.New("passwords: this profile's passwords don't open on this device")
+	// ErrDenied: the person didn't pass the device's check, or said no to it.
+	ErrDenied = errors.New("passwords: the person wasn't verified")
+	// ErrNoScreenLock: the device has no screen lock to check the person with.
+	ErrNoScreenLock = errors.New("passwords: the device has no screen lock")
+	// ErrCancelled: the caller's context ended while the check waited.
+	ErrCancelled = errors.New("passwords: cancelled")
 )
 
 // Login is a saved login, without its password.

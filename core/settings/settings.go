@@ -288,6 +288,10 @@ func (m *Manager) FlagsChanged() {
 // Send sends one message to every settings page, for a part.
 func (m *Manager) Send(v any) { m.sendAll(v) }
 
+// SendTo sends one message to the settings page in tab alone, for a part's answer that is
+// the asking page's and no other's, as a password shown is.
+func (m *Manager) SendTo(tab engine.TabID, v any) { m.send(tab, v) }
+
 func (m *Manager) sendAll(v any) {
 	for tab := range m.pages {
 		m.send(tab, v)

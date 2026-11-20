@@ -17,6 +17,7 @@ import (
 	"projectb/history"
 	"projectb/keys"
 	"projectb/passkeys"
+	"projectb/passwords"
 	"projectb/pins"
 	"projectb/policy"
 	"projectb/prefs"
@@ -146,6 +147,8 @@ type App struct {
 	Keys *keys.Keys
 	// Passkeys are the profile's own passkeys (docs/passkeys.md).
 	Passkeys *passkeys.Manager
+	// Passwords are the profile's saved logins (docs/passwords.md).
+	Passwords *passwords.Manager
 	// passkeysChanged counts the passkeys again for Settings, after sync wrote some.
 	passkeysChanged func()
 	// Sync syncs the bookmarks and history (docs/sync.md).
@@ -218,6 +221,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	// The passkeys before sync, which marks their table's rows as it does the others'.
 	a.Passkeys = passkeys.New(st, a.Keys, verifyPerson(cfg.System, e.Post))
 	a.Sync = sync.New(st, a.Keys, e.Post, append(history.Synced(), a.Bookmarks.Synced(e.Post), a.Passkeys.Synced(func() { a.passkeysChanged() }))...)
+	a.Passwords = passwords.New(st, a.Keys, checkForPassword(cfg.System, e.Post))
 	a.Suggest = suggest.New(a.History)
 	a.Workspaces = workspaces.New(cfg.ProfileDir)
 	a.Pins = pins.New(cfg.ProfileDir)
@@ -294,6 +298,8 @@ func Start(e engine.Engine, cfg Config) *App {
 		a.welcome.sendAll(v)
 		a.Settings.Send(v)
 	})
+	// What comes over from another browser or a file is kept in the profile's own logins.
+	a.imports.passwords = a.Passwords
 	a.Settings.AddPart(settings.Part{
 		Snapshot: a.imports.snapshot,
 		Handle:   func(tab engine.TabID, t string, msg []byte) bool { return a.imports.handle(tab, t, msg) },
@@ -303,6 +309,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Settings.AddPart(a.clearDataSettingsPart(e))
 	a.Settings.AddPart(a.siteDataSettingsPart(e))
 	a.Settings.AddPart(a.passkeySettingsPart(e))
+	a.Settings.AddPart(a.passwordSettingsPart(e))
 	a.Settings.AddPart(a.keepCookiesSettingsPart())
 	a.Settings.AddPart(a.downloadFolderSettingsPart(e, cfg.DownloadsDir))
 	a.Settings.AddPart(a.syncSettingsPart())
