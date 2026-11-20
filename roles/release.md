@@ -24,4 +24,4 @@ published is in `docs/releasing.md`; keep it current as the way you work changes
 - A session's "all passed" may come from one layout's log. Trust the candidate's mock run.
 - A new worktree needs `.tools` (chromedriver, the mock extension store) before its mock
   run, or the run stops at the extensions group.
-- Return a slot means asking again before even a minute's rerun on it.
+- A slot once given back is the tester's again: ask before even a minute's rerun on it.
