@@ -80,6 +80,9 @@ type Run struct {
 	RequestCount int       `json:"requestCount"`
 	Out          int64     `json:"out"`
 	In           int64     `json:"in"`
+	// Asking is the request out now with no answer yet, of the run going on: nil between
+	// requests, while sync works on what arrived, and for a run that is over.
+	Asking *Request `json:"asking,omitempty"`
 }
 
 func (r *Run) moved() bool { return len(r.Received) > 0 || len(r.Sent) > 0 }
@@ -149,14 +152,24 @@ func (m *Manager) started(why string) {
 	m.mu.Unlock()
 }
 
-// noteRequest adds a request to the run going on. Requests outside a run, as Connect's look
-// at the bucket, are none of the page's.
+// noteAsking notes a request of the run going on as out, with no answer yet.
+func (m *Manager) noteAsking(r Request) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.cur != nil {
+		m.cur.Asking = &r
+	}
+}
+
+// noteRequest adds a request to the run going on, over now. Requests outside a run, as
+// Connect's look at the bucket, are none of the page's.
 func (m *Manager) noteRequest(r Request) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.cur == nil {
 		return
 	}
+	m.cur.Asking = nil
 	m.cur.RequestCount++
 	m.cur.Out += r.Out
 	m.cur.In += r.In
@@ -176,7 +189,7 @@ func (m *Manager) ended(t tally, err error, cut bool) {
 	if r == nil {
 		return
 	}
-	r.Took = time.Now().UnixMilli() - r.Began
+	r.Took, r.Asking = time.Now().UnixMilli()-r.Began, nil
 	r.Received, r.Sent, r.ReceivedItems, r.SentItems = t.received, t.sent, t.receivedItems, t.sentItems
 	if cut {
 		r.Cut = true

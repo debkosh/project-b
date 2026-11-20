@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -463,8 +464,112 @@ func TestTheProblemsReachingABucket(t *testing.T) {
 	}
 }
 
-// A failed run's words, in the status and in the timeline, name the server by its host alone:
-// the address may carry the bucket's token, and Go's own error names the whole address.
+// A run that fails says what it was, in the status the page reads: a server that answers that
+// it failed was reached, so it is "server" and not "unreachable"; one that gives no answer is
+// "unreachable"; and a failure that is neither, as a request the server won't take, has no
+// name, with its words in Error. None of them is the other.
+func TestAFailedRunSaysWhatItWas(t *testing.T) {
+	s := newServer(t)
+	p := newProfile(t)
+	p.startSync(s)
+	if err := p.connect(s.single("tok"), "", "pass phrase"); err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct {
+		status int
+		want   string
+	}{{http.StatusInternalServerError, "server"}, {http.StatusBadGateway, "server"}, {http.StatusBadRequest, ""}} {
+		s.fail(c.status)
+		err := p.sync.RunNow()
+		if err == nil || sync.Problem(err) != c.want {
+			t.Fatalf("a run answered %d: problem %q, want %q (%v)", c.status, sync.Problem(err), c.want, err)
+		}
+		p.settle()
+		if st := p.sync.Status(); st.Problem != c.want || !strings.HasPrefix(st.Error, "GET v1/pull?after=") || !strings.Contains(st.Error, strconv.Itoa(c.status)) || strings.Contains(st.Error, "sync:") || st.Syncing {
+			t.Fatalf("the status after %d: %+v", c.status, st)
+		}
+	}
+	s.fail(0)
+	s.ts.CloseClientConnections()
+	s.ts.Close()
+	if err := p.sync.RunNow(); sync.Problem(err) != "unreachable" {
+		t.Fatalf("a run with no answer: %v", err)
+	}
+	p.settle()
+	if st := p.sync.Status(); st.Problem != "unreachable" || !strings.HasPrefix(st.Error, "GET v1/pull?after=") || strings.Contains(st.Error, "couldn't reach") {
+		t.Fatalf("the status with no answer: %+v", st)
+	}
+}
+
+// A run stalls when nothing arrives for StalledAfter, and ends saying so; one that takes
+// longer than that while its requests are answered doesn't.
+func TestARunStallsOnlyWithNothingArriving(t *testing.T) {
+	was := sync.StalledAfter
+	sync.StalledAfter = 300 * time.Millisecond
+	t.Cleanup(func() { sync.StalledAfter = was })
+	s := newServer(t)
+	p := newProfile(t)
+	p.startSync(s)
+	if err := p.connect(s.single("tok"), "", "pass phrase"); err != nil {
+		t.Fatal(err)
+	}
+	// Every request answered, each after most of the wait: longer than it in all, with a
+	// page to send.
+	p.history.AddVisit("https://example.org/slow", "Slow")
+	s.delay(200 * time.Millisecond)
+	began := time.Now()
+	if err := p.sync.RunNow(); err != nil {
+		t.Fatalf("a slow run whose requests are answered: %v", err)
+	}
+	if took := time.Since(began); took < sync.StalledAfter {
+		t.Fatalf("the slow run took %s, which tests nothing", took)
+	}
+	s.delay(0)
+	// Sync details says what the run waits for while it goes on, and what it was after.
+	sync.StalledAfter = time.Second
+	release := s.hold()
+	began = time.Now()
+	ended := make(chan error, 1)
+	go func() { ended <- p.sync.RunNow() }()
+	var going *sync.Run
+	for going == nil || going.Asking == nil {
+		if time.Since(began) > 900*time.Millisecond {
+			t.Fatalf("the run going on never showed its request: %+v", going)
+		}
+		time.Sleep(20 * time.Millisecond)
+		going = p.details().Running
+	}
+	if a := going.Asking; a.Path != "pull" || a.Method != "GET" || a.At == 0 || going.Why != sync.WhyAsked || going.Began == 0 {
+		t.Fatalf("the run going on: %+v, asking %+v", going, a)
+	}
+	err := <-ended
+	if sync.Problem(err) != "stalled" {
+		t.Fatalf("a run with nothing arriving: %v", err)
+	}
+	if took := time.Since(began); took > 5*time.Second {
+		t.Fatalf("it took %s to end", took)
+	}
+	p.settle()
+	if st := p.sync.Status(); st.Problem != "stalled" || st.Syncing {
+		t.Fatalf("the status: %+v", st)
+	}
+	d := p.details()
+	if d.Running != nil || len(d.Runs) == 0 {
+		t.Fatalf("after it: %+v", d)
+	}
+	if r := d.Runs[0]; r.Problem != "stalled" || !strings.HasPrefix(r.Error, "GET v1/pull?after=") || !strings.HasSuffix(r.Error, ": nothing arrived for 30 seconds") || r.Asking != nil ||
+		len(r.Requests) != 1 || r.Requests[0].Status != 0 || r.Requests[0].Took < 900 {
+		t.Fatalf("the stalled run's row: %+v", r)
+	}
+	release()
+	if err := p.sync.RunNow(); err != nil {
+		t.Fatalf("the run after: %v", err)
+	}
+}
+
+// A failed run's words, in the status and in the timeline, are the request and then the cause,
+// the request named from v1 on: the address before it may carry the bucket's token, and Go's
+// own error names the whole address.
 func TestAFailedRunsWordsLeaveTheTokenOut(t *testing.T) {
 	const token = "k3v9x2m7q8rd"
 	s := newServer(t)
@@ -480,7 +585,7 @@ func TestAFailedRunsWordsLeaveTheTokenOut(t *testing.T) {
 		t.Fatalf("Go's error of a refused run should name the whole address: %v", err)
 	}
 	p.settle()
-	if st := p.sync.Status(); st.Error == "" || strings.Contains(st.Error, token) || !strings.Contains(st.Error, st.Host) {
+	if st := p.sync.Status(); strings.Contains(st.Error, token) || !strings.HasPrefix(st.Error, "GET v1/pull?after=") || !strings.HasSuffix(st.Error, ": the server didn't accept the token") {
 		t.Fatalf("the status's error: %q", st.Error)
 	}
 	logged, _ := timeline.Since(seen)
