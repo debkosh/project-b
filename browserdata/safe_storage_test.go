@@ -93,3 +93,31 @@ func TestLoginsOfABrowserKnownByItsFolder(t *testing.T) {
 		t.Errorf("none of its names: %v, asked %q", err, asked)
 	}
 }
+
+// Ulaa is found by its own name in its vendor's folder, and its passwords open with its own
+// keychain item, with no other asked for.
+func TestUlaaIsKnownByName(t *testing.T) {
+	home := t.TempDir()
+	browser := filepath.Join(Support(home), "Zoho/Ulaa")
+	if err := os.CopyFS(filepath.Join(browser, "Default"), os.DirFS("testdata/home/Library/Application Support/Google/Chrome/Default")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(browser, "Local State"), []byte(`{"profile":{"info_cache":{"Default":{"name":"Me"}}}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	found := Find(home)
+	if len(found) != 1 || found[0].ID != "ulaa" || found[0].Name != "Ulaa" || len(found[0].Profiles) != 1 {
+		t.Fatalf("found %+v", found)
+	}
+	var asked []string
+	ls, err := found[0].Profiles[0].Logins(Keys{Secret: func(service, account string) ([]byte, error) {
+		asked = append(asked, service)
+		if service == "Ulaa Safe Storage" && account == "Ulaa" {
+			return []byte("test-safe-storage"), nil
+		}
+		return nil, ErrNoSecret
+	}})
+	if len(ls) != 3 || err != nil || !slices.Equal(asked, []string{"Ulaa Safe Storage"}) {
+		t.Fatalf("its passwords: %d, %v, the keychain asked for %q", len(ls), err, asked)
+	}
+}

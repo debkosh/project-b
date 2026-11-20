@@ -434,7 +434,7 @@ progress, seems like a good starting rule to evolve from"):
   `imported {key}` at the end.
 - **Forks** are lines of `browserdata`'s table, each an id, a name and the folder its
   profiles are in under Application Support, and the family whose files it keeps: Chrome
-  Beta and Canary, Edge Beta and Dev, Chromium, Vivaldi, Opera, Opera GX and Yandex
+  Beta and Canary, Edge Beta and Dev, Chromium, Vivaldi, Opera, Opera GX, Ulaa and Yandex
   Browser, which keep Chromium's; Zen, LibreWolf, Waterfox and Floorp, which keep Firefox's.
   The Chromium ones' folders are those Firefox's own importer uses
   (`ChromeMigrationUtils.sys.mjs`); the Firefox forks' were taken from their own docs and
