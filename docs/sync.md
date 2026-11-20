@@ -37,6 +37,7 @@ uses its Go `client` package. The store it works over is [store.md](store.md).
 | `history` | address | the address, its title, how many visits, the last visit |
 | `typed` | address typed | the address, how many times, the last time |
 | `passkeys` | passkey, by its credential ID | its site, user handle, names, when it was made and its key ([passkeys.md](passkeys.md)) |
+| `logins` | saved login, by its id | its site, username and password, when it was saved, last changed and last used ([passwords.md](passwords.md)) |
 
 **Not synced:** each visit (the `visits` table), the sites (`sites`, made from history on each
 device), the folder a bookmark was last saved in, and everything kept in JSON files (prefs,
@@ -177,6 +178,12 @@ is, and forgets its own guid (`Remove`, which leaves a row that is another item'
 unmarked). A row deleted and made again goes out under the guid it had; made again on
 another device it is a new item, and the old item's delete leaves that row alone.
 
+**A feature whose rows are one thing by more than their key says so** (`Mapping.Identity` and
+`Twin`): a saved login is one with another by its site, username and password, as each
+device gives a login it brings in an id of its own. When the first device's item arrives,
+`Twin` finds the row this device made of the same login, and that row goes as the item's row
+takes its place: both devices then hold the login under one id.
+
 **Writing first, then telling sync.** Features write their rows as before. While sync is on,
 triggers on their tables write a mark in `sync_changes`, in the same transaction; with it off,
 none. A mark takes the place of the row's earlier one by deleting it and writing it again: an
@@ -292,7 +299,7 @@ picture, light and dark, desktop and phone, is made by `shell/e2e/sync.cjs` unde
 
 - **Where:** a card in Profile, after the profile's card and before Import. Its address is
   `sync` (`arrange.js`), and searching for sync or passphrase finds its rows.
-- **Off:** one row, Set up sync, "Bookmarks, history, typed addresses and passkeys, through your own sync
+- **Off:** one row, Set up sync, "Bookmarks, history, passwords and passkeys, through your own sync
   server", Set up….
 - **On:** the server's row, its letter on its tile as a site's, with "Last synced 2 minutes ago"
   ("just now" in its first minute, "Not synced yet" before a first run ends) and Sync now; then
@@ -376,7 +383,7 @@ set-up with the address and its error. Any other `project-b:` link does nothing.
 ## Not built
 
 - The passphrase lock over the keychain, and a policy forcing it.
-- Saved logins, and any sealed field but the secrets.
+- Any sealed field but the secrets, the passkeys' keys and the saved passwords.
 - A token per device: every device uses the bucket's token.
 - A backup code (synckosh's `BackupCode`).
 

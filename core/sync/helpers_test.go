@@ -20,6 +20,7 @@ import (
 	"projectb/history"
 	"projectb/keys"
 	"projectb/passkeys"
+	"projectb/passwords"
 	"projectb/store"
 	"projectb/sync"
 )
@@ -185,6 +186,7 @@ type profile struct {
 	history   *history.Manager
 	bookmarks *bookmarks.Manager
 	passkeys  *passkeys.Manager
+	passwords *passwords.Manager
 	posted    chan func()
 	maps      []sync.Mapping
 	sync      *sync.Manager
@@ -213,7 +215,8 @@ func openProfile(t *testing.T, dir string) *profile {
 	p.history = history.New(dir, st, p.post)
 	// The device's check always passes here: core/passkeys' own tests hold it.
 	p.passkeys = passkeys.New(st, p.keys, func(context.Context, passkeys.Why, string) error { return nil })
-	p.maps = append(history.Synced(), p.bookmarks.Synced(p.post), p.passkeys.Synced(func() {}))
+	p.passwords = passwords.New(st, p.keys, func(context.Context, string) error { return nil })
+	p.maps = append(history.Synced(), p.bookmarks.Synced(p.post), p.passkeys.Synced(func() {}), p.passwords.Synced())
 	sync.Setup(st)
 	closed := false
 	p.close = func() {

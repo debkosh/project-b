@@ -24,6 +24,14 @@ type Mapping struct {
 	// out, and sync_items remembers which row it is. The key is what makes an item one thing
 	// with one made on another device, so it is the item's identity in synckosh too.
 	KeyOf func(private json.RawMessage) (string, error)
+	// Identity is what makes an item one thing with another device's, from its private part,
+	// for a feature whose rows are one thing by more than their key: a saved login's site,
+	// username and password. Without it the key is. A feature that gives it gives Twin too.
+	Identity func(private json.RawMessage) []byte
+	// Twin is the key of another row here that is the same thing as the item whose row is key,
+	// "" for none: a row this device made of what another device sent first. That row goes
+	// when the item arrives, as the item's row takes its place.
+	Twin func(tx *store.Tx, key string, private json.RawMessage) (string, error)
 	// Read is the row of key as an item's private part, and whether there is one.
 	Read func(tx *store.Tx, key string) (json.RawMessage, bool, error)
 	// Write makes the row of key hold private, new or changed. One it can't keep, it leaves.
@@ -87,12 +95,16 @@ func newLocal(st *store.Store, maps map[string]*Mapping) *local {
 }
 
 // identity is what makes an item one thing with another, for synckosh (client.Config's
-// Identity): its row's key. Two devices that each have the row send it under guids of their
-// own, and synckosh keeps the first and has the other device take it. It reads no row.
+// Identity): its row's key, or what its feature says. Two devices that each have the row send
+// it under guids of their own, and synckosh keeps the first and has the other device take
+// it. It reads no row.
 func (l *local) identity(it synckosh.Item) []byte {
 	m := l.maps[it.Collection]
 	if m == nil {
 		return nil
+	}
+	if m.Identity != nil {
+		return m.Identity(it.Private)
 	}
 	key, err := m.KeyOf(it.Private)
 	if err != nil || key == "" {
@@ -337,6 +349,24 @@ func (l *local) put(tx *store.Tx, e client.Entry) error {
 			break
 		}
 		key = sql.NullString{String: k, Valid: true}
+		// The server's item of a thing this device has as another row: that row goes, with
+		// its mark, and the item's row is the one thing. Its own item, never sent, synckosh
+		// removes next.
+		if m.Twin != nil && !e.Pending {
+			twin, err := m.Twin(tx, k, it.Private)
+			if err != nil {
+				return err
+			}
+			if twin != "" {
+				if err := m.Delete(tx, twin); err != nil {
+					return err
+				}
+				if _, err := tx.Exec(`DELETE FROM sync_changes WHERE collection = ? AND key = ?`, m.Collection, twin); err != nil {
+					return err
+				}
+				l.wrote[m.Collection] = true
+			}
+		}
 		if err := l.join(tx, m, k, it.Private); err != nil {
 			return err
 		}

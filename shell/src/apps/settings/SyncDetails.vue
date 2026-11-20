@@ -36,9 +36,9 @@ function reconnect() {
   go('sync');
 }
 
-const KINDS = { bookmarks: 'Bookmarks', history: 'History', typed: 'Typed addresses', passkeys: 'Passkeys' };
-const ONE = { bookmarks: 'Bookmark', history: 'History', typed: 'Typed address', passkeys: 'Passkey' };
-const SMALL = { bookmarks: 'bookmarks', history: 'history', typed: 'typed addresses', passkeys: 'passkeys' };
+const KINDS = { bookmarks: 'Bookmarks', history: 'History', typed: 'Typed addresses', passkeys: 'Passkeys', logins: 'Passwords' };
+const ONE = { bookmarks: 'Bookmark', history: 'History', typed: 'Typed address', passkeys: 'Passkey', logins: 'Password' };
+const SMALL = { bookmarks: 'bookmarks', history: 'history', typed: 'typed addresses', passkeys: 'passkeys', logins: 'passwords' };
 const WHY = { asked: 'Sync now', change: 'A change here', timer: 'Scheduled', start: 'Starting the app', on: 'Turning sync on', passphrase: 'Changing the sync passphrase' };
 
 const count = (n) => n.toLocaleString('en-US');

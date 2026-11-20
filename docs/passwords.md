@@ -2,8 +2,8 @@
 
 The logins Project B keeps for a profile. **The first slice, built 2026-11-20:** they come
 over from another browser or a file, are kept sealed, and are listed in Settings, where one
-can be shown, copied and deleted. Filling them on pages, offering to save a new one and
-syncing them are not built. The keys under it are in [sync.md](sync.md#the-keys); bringing them over is in
+can be shown, copied and deleted. **Since 2026-11-20 they sync,** and a phone has the list
+too. Filling them on pages and offering to save a new one are not built. The keys under it are in [sync.md](sync.md#the-keys); bringing them over is in
 [onboarding.md](onboarding.md).
 
 ![The list, a login opened and its password shown](screenshots/passwords/desktop-shown.png)
@@ -17,6 +17,8 @@ syncing them are not built. The keys under it are in [sync.md](sync.md#the-keys)
   password etc". A login that clashes with one saved: "both stays".
 - 2026-11-20: "i need to be able to import passwords", from a browser Project B doesn't know
   by name, through its folder.
+- 2026-11-20, to release: "i want the sync fixed so that i can take everything cleanly to my
+  phone", his passwords with it: they sync, and the phone lists them.
 
 ## What is kept (`core/passwords`)
 
@@ -28,6 +30,21 @@ the username, the password, when it was saved, last edited and last used.
 - **The origin and the username are plain,** so the list is read with no key, and asks the
   person nothing.
 - **Start fresh deletes them** (`keys.OnStartFresh`): a new profile key opens none.
+
+## Sync
+
+Collection `logins`, an item per login (`Synced` in `core/passwords/sync.go`,
+[sync.md](sync.md)). The item's private part is every column in the clear, the password
+among them, inside synckosh's sealing under the sync key: the server reads no site, no
+username and no password. Read opens a row's password and Write seals it under this
+profile's own key, in sync's job, and asks the person nothing: only showing or copying one
+does. A row that doesn't open is set aside, with why on Sync details, and the rest syncs.
+The one changed last wins.
+
+**What makes two devices' logins one is the site, the username and the password**, not the
+row's id, which each device makes for itself. The same login brought to two devices ends as
+one entry on both, under the id of the one that synced first; a second password for a site
+and username stays a second entry, as bringing one in keeps both.
 - A profile whose key doesn't open on this device keeps what it has, shows none of it, and
   takes nothing new.
 
@@ -41,13 +58,13 @@ the username, the password, when it was saved, last edited and last used.
 ## Settings, Privacy, Passwords
 
 A row under Privacy, over Passkeys: "Passwords", "The logins Project B keeps for your sites",
-with how many there are. It opens a list page. **Not on a phone yet:** Android keeps each
-app's data from the others, so a phone has no import, and nothing else brings a login to it
-until they sync or are saved from a page; its list could only be empty.
+with how many there are. It opens a list page. A phone has it too: it has no import, as
+Android keeps each app's data from the others, and its logins come by sync.
 
 - **Over the list:** "Sealed on this device for this profile. Showing or copying a password
-  asks for Touch ID or your Mac's password first." (On a phone, when it has the page: "your
-  screen lock".)
+  asks for Touch ID or your Mac's password first." (On a phone: "your screen lock".)
+  While sync is on the first sentence is "Sealed for this profile; your sync server can't
+  read them.": they are on the server too, sealed.
 - **Search passwords:** keeps the logins whose site or username has what was typed. Escape
   empties it. None matching: "No saved password matches “…”".
 - **A row a login:** its site's mark, the site, the username ("No username" when it has
@@ -60,18 +77,20 @@ until they sync or are saved from a page; its list could only be empty.
     the page never has it for a copy, and marked as a secret (`system.CopySecret`): on the
     Mac the pasteboard's concealed and transient types, which clipboard managers and
     Universal Clipboard's history leave out; on Android the clip's sensitive flag, which
-    also hides the system's preview of it from Android 13, written and built into the APK,
-    and not yet reached by anything on a phone. A username is copied plainly.
+    also hides the system's preview of it from Android 13, from the phone's Passwords
+    page. A username is copied plainly.
   - A line that says when it was saved, and answers the last press for two seconds:
     "Password copied", "Username copied". With no screen lock on the device, in `--danger`:
     "Set a screen lock on this device to show passwords". A check the person refuses says
     nothing.
   - Delete…, which asks: "Delete this password?", "Your saved password for **site**
-    (username) is deleted from this profile. Your account on site isn't changed.", Cancel
+    (username) is deleted from this profile. Your account on site isn't changed." (while sync is
+    on, "…is deleted here and on your synced devices.", as the delete goes round), Cancel
     and Delete, the danger.
 - **Under the list:** "3 saved".
 - **None:** "No saved passwords yet. Bring them from another browser under Bring your things
-  over."
+  over." On a phone: "No saved passwords yet. With sync on, the ones on your
+  other devices come here."
 
 ## Messages
 
@@ -100,9 +119,13 @@ The snapshot has `passwordCount`, and `passwordCount {passwordCount}` follows ea
 - `core/app` (`TestSettingsPasswords`): the four messages, the device's check for Show and
   Copy and none for a username, a password copied as a secret and a username plainly, and
   each refusal.
-- `shell/e2e/password-settings.cjs`, in the one-page and Sections layouts: the row and its
-  count, the list, the search, a row opening, Show and Hide, Copy of both, the check refused
-  and with no screen lock, Delete, and none left; and that a phone has no Passwords row.
+- `shell/e2e/password-settings.cjs`, in the one-page, Sections and phone layouts: the row
+  and its count, the list, the search, a row opening, Show and Hide, Copy of both, the check
+  refused and with no screen lock, Delete, and none left.
+- `core/sync` (`TestSavedLoginsSync`, `TestTheSameLoginOnTwoDevicesIsOne`): logins brought
+  to one profile are on the other, each password opening there; the server reads nothing of
+  them; a delete goes round; the same login on two devices is one row on both and one item
+  on the server, with a second password for it kept.
 - `shell/e2e/imports.cjs`: passwords brought from a browser and from a file are counted on
   the row and listed on the page.
 - `tools/vm/check.py passwords`, the real app in a VM of its own, where macOS's own sheet is

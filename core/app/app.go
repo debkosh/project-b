@@ -220,8 +220,9 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.History.OnClearAll(sync.ClearedAll)
 	// The passkeys before sync, which marks their table's rows as it does the others'.
 	a.Passkeys = passkeys.New(st, a.Keys, verifyPerson(cfg.System, e.Post))
-	a.Sync = sync.New(st, a.Keys, e.Post, append(history.Synced(), a.Bookmarks.Synced(e.Post), a.Passkeys.Synced(func() { a.passkeysChanged() }))...)
+	// And the saved logins, likewise.
 	a.Passwords = passwords.New(st, a.Keys, checkForPassword(cfg.System, e.Post))
+	a.Sync = sync.New(st, a.Keys, e.Post, append(history.Synced(), a.Bookmarks.Synced(e.Post), a.Passkeys.Synced(func() { a.passkeysChanged() }), a.Passwords.Synced())...)
 	a.Suggest = suggest.New(a.History)
 	a.Workspaces = workspaces.New(cfg.ProfileDir)
 	a.Pins = pins.New(cfg.ProfileDir)

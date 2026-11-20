@@ -406,7 +406,7 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
           <button type="button" class="text-button" @click="turnOff">Turn off…</button>
         </Row>
       </template>
-      <Row v-else label="Set up sync" hint="Bookmarks, history, typed addresses and passkeys, through your own sync server" :words="words">
+      <Row v-else label="Set up sync" hint="Bookmarks, history, passwords and passkeys, through your own sync server" :words="words">
         <button type="button" class="text-button" @click="setUp">Set up…</button>
       </Row>
     </div>
@@ -525,7 +525,7 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
       </template>
 
       <div v-else-if="d.step === 'turnOff'" class="ui-dialog-part">
-        <p>Bookmarks, history, typed addresses and passkeys stay here and on <b>{{ s.host }}</b>. To sync again, you'll need the sync passphrase.</p>
+        <p>Bookmarks, history, passwords and passkeys stay here and on <b>{{ s.host }}</b>. To sync again, you'll need the sync passphrase.</p>
       </div>
 
       <template #buttons>
