@@ -29,10 +29,10 @@ type item struct {
 // so of two versions the one made later stays. changed runs on the main thread after a run
 // wrote rows.
 //
-// A row that doesn't open makes Read fail, and with it the whole sync run, each time. That
-// is meant: saying the row is gone would delete the passkey on every other device. A
-// profile key that doesn't open here ends sync before any Read, and starting fresh deletes
-// these rows, so only a damaged row gets that far.
+// A row that doesn't open makes Read fail, and sync sets that row aside, saying why on Sync
+// details, while the rest syncs: it is never said to be gone, which would delete the
+// passkey on every other device. A profile key that doesn't open here ends sync before any
+// Read, and starting fresh deletes these rows, so only a damaged row gets that far.
 func (m *Manager) Synced(changed func()) sync.Mapping {
 	return sync.Mapping{
 		Collection: Collection, Datatype: "passkey", Table: "passkeys", Key: "id",

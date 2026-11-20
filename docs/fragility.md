@@ -138,6 +138,9 @@ The seams:
 - **Fix:** on sync-says-what-failed: `core/sync` puts a `~` before a key that starts with an
   underscore or a `~` when the key is the guid, and takes it off again (`local.guid`,
   `plain`). No item of that kind ever reached a server, so nothing synced before changes.
+- **And so no one row can do it again:** a row sync can't hand over is set aside with why,
+  and the rest goes (`drain` in `core/sync/run.go`, the marks' `stuck` column); Sync details
+  names it. `TestARowThatCantBeSentIsSetAside` and `TestAnItemTheServerRefusesIsNamed`.
 - **Guard:** `TestAPasskeyWhoseIDStartsWithAnUnderscoreSyncs` in `core/sync` makes passkeys
   until one's id starts with an underscore, syncs it to a second profile, signs nothing away,
   and deletes it there.

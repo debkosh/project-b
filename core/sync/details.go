@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/url"
 	"sort"
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"github.com/sudiptadeb/synckosh"
+	"github.com/sudiptadeb/synckosh/client"
 
 	"projectb/store"
 )
@@ -42,6 +44,9 @@ type Moved struct {
 	All        bool   `json:"all,omitempty"`
 	// Since is when it began to wait, Unix milliseconds, 0 when sync hasn't looked at it yet.
 	Since int64 `json:"since,omitempty"`
+	// Error is why it couldn't be sent, or wasn't taken from the server, in the error's own
+	// words; "" for one that moved, or only waits.
+	Error string `json:"error,omitempty"`
 }
 
 // Request is one request of a run, by the last part of its path: the address before it may
@@ -75,6 +80,10 @@ type Run struct {
 	Sent          map[string]int `json:"sent"`
 	ReceivedItems []Moved        `json:"receivedItems"`
 	SentItems     []Moved        `json:"sentItems"`
+	// Unsent are the rows it couldn't send, set aside or refused by the server, and Untaken
+	// the server's items this device didn't take, each with why; namesKept at most each.
+	Unsent  []Moved `json:"unsent,omitempty"`
+	Untaken []Moved `json:"untaken,omitempty"`
 	// The last one's requests, requestsKept at most, with how many there were and their bytes.
 	Requests     []Request `json:"requests"`
 	RequestCount int       `json:"requestCount"`
@@ -85,7 +94,9 @@ type Run struct {
 	Asking *Request `json:"asking,omitempty"`
 }
 
-func (r *Run) moved() bool { return len(r.Received) > 0 || len(r.Sent) > 0 }
+func (r *Run) moved() bool {
+	return len(r.Received) > 0 || len(r.Sent) > 0 || len(r.Unsent) > 0 || len(r.Untaken) > 0
+}
 
 // Kind is one collection's counts.
 type Kind struct {
@@ -181,7 +192,7 @@ func (m *Manager) noteRequest(r Request) {
 // ended notes the run going on as over, with what the Local counted: a row of its own, or one
 // more of the newest row's when sync started both itself and it moved nothing and ended as
 // that one did. A run a person asked for always has its own row, so a press shows its result.
-func (m *Manager) ended(t tally, err error, cut bool) {
+func (m *Manager) ended(t tally, err error, cut bool, unsent, untaken []Moved) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	r := m.cur
@@ -191,6 +202,7 @@ func (m *Manager) ended(t tally, err error, cut bool) {
 	}
 	r.Took, r.Asking = time.Now().UnixMilli()-r.Began, nil
 	r.Received, r.Sent, r.ReceivedItems, r.SentItems = t.received, t.sent, t.receivedItems, t.sentItems
+	r.Unsent, r.Untaken = unsent[:min(len(unsent), namesKept)], untaken[:min(len(untaken), namesKept)]
 	if cut {
 		r.Cut = true
 	} else if err != nil {
@@ -208,6 +220,37 @@ func (m *Manager) ended(t tally, err error, cut bool) {
 	if len(m.runs) > runsKept {
 		m.runs = m.runs[:runsKept]
 	}
+}
+
+// named are synckosh's refused or rejected items as the page names them: by the feature's
+// row, which the bookkeeping knows by the item's guid, each with why.
+func (m *Manager) named(refused *client.RefusedError, rejected *client.RejectedError) []Moved {
+	type item struct{ collection, guid, why string }
+	var items []item
+	if refused != nil {
+		for _, it := range refused.Items {
+			items = append(items, item{it.Collection, it.GUID, it.Error})
+		}
+	}
+	if rejected != nil {
+		for _, it := range rejected.Items {
+			items = append(items, item{it.Collection, it.GUID, it.Error})
+		}
+	}
+	var out []Moved
+	m.st.Wait(func(tx *store.Tx) error {
+		for _, it := range items {
+			one := Moved{Collection: it.collection, Error: it.why}
+			var key sql.NullString
+			tx.QueryRow(`SELECT key FROM sync_items WHERE collection = ? AND guid = ?`, it.collection, it.guid).Scan(&key)
+			if mp := m.maps[it.collection]; mp != nil && key.Valid {
+				one.Name = name(tx, mp, key.String)
+			}
+			out = append(out, one)
+		}
+		return nil
+	})
+	return out
 }
 
 // Details reads what the page shows and answers on the main thread. It never waits for a run:
@@ -284,14 +327,14 @@ func (m *Manager) details() Details {
 				waits = append(waits, wait{guid, key, w})
 			}
 			r.Close()
-			r, err = tx.Query(`SELECT key, deleted FROM sync_changes WHERE collection = ? ORDER BY rowid`, c)
+			r, err = tx.Query(`SELECT key, deleted, stuck FROM sync_changes WHERE collection = ? ORDER BY rowid`, c)
 			if err != nil {
 				return err
 			}
 			for r.Next() {
 				var key string
 				w := Moved{Collection: c}
-				if err := r.Scan(&key, &w.Deleted); err != nil {
+				if err := r.Scan(&key, &w.Deleted, &w.Error); err != nil {
 					r.Close()
 					return err
 				}

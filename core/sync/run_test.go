@@ -8,6 +8,10 @@ import (
 
 	"github.com/sudiptadeb/synckosh"
 	"github.com/sudiptadeb/synckosh/client"
+	"projectb/bookmarks"
+	"projectb/history"
+	"projectb/store"
+	"projectb/sync"
 	"projectb/timeline"
 )
 
@@ -170,5 +174,151 @@ func TestARowChangedTwiceBeforeARunKeepsBoth(t *testing.T) {
 	}
 	if n := p.count(`SELECT COUNT(*) FROM sync_changes`); n != 0 {
 		t.Fatalf("%d marks left after the run", n)
+	}
+}
+
+// A row that can't be sent is set aside, with why, and everything else syncs: synckosh takes a
+// batch whole or not at all, and one row it refuses mustn't hold the rest back, run after
+// run. The status counts it, Sync details names it in the queue and in the run's row, sync's
+// own runs leave it be, a run a person asks for tries it again, and the row changed again
+// goes like any other.
+func TestARowThatCantBeSentIsSetAside(t *testing.T) {
+	s := newServer(t)
+	a, b := newProfile(t), newProfile(t)
+	a.startSync(s)
+	b.startSync(s)
+	if err := a.connect(s.single("tok"), "", "pass phrase"); err != nil {
+		t.Fatal(err)
+	}
+	a.settle()
+	// A bookmark whose id can't be a guid, beside two that can, and a page.
+	a.main(func() {
+		a.bookmarks.Add("Before", "https://example.com/before")
+	})
+	if err := a.st.Wait(func(tx *store.Tx) error {
+		_, err := tx.Exec(`INSERT INTO bookmarks (id, parent, kind, title, url, added, edited, place) VALUES ('bad id', '', 'bookmark', 'Stuck one', 'https://example.com/stuck', 1, 1, 'z')`)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	a.main(func() {
+		a.bookmarks.Add("After", "https://example.com/after")
+	})
+	a.history.AddVisit("https://example.com/page", "A page")
+	a.settle()
+	if err := a.sync.RunAs(sync.WhyChange); err != nil {
+		t.Fatalf("the run with a row that can't go: %v", err)
+	}
+	a.settle()
+	if st := a.sync.Status(); st.Error != "" || st.Unsent != 1 || st.LastSynced == 0 {
+		t.Fatalf("the status: %+v", st)
+	}
+	d := a.details()
+	r := d.Runs[0]
+	if len(r.Unsent) != 1 || r.Unsent[0].Collection != bookmarks.Collection || r.Unsent[0].Name != "Stuck one" || !strings.Contains(r.Unsent[0].Error, "guid") ||
+		r.Sent[bookmarks.Collection] != 2 || r.Sent[history.Collection] != 1 || r.Error != "" {
+		t.Fatalf("the run's row: %+v", r)
+	}
+	stuck := 0
+	for _, w := range d.Waiting {
+		if w.Error != "" {
+			stuck++
+			if w.Name != "Stuck one" || !strings.Contains(w.Error, "guid") {
+				t.Fatalf("the queue's stuck row: %+v", w)
+			}
+		}
+	}
+	if stuck != 1 || len(d.Waiting) != 1 {
+		t.Fatalf("the queue: %+v", d.Waiting)
+	}
+	// The other device has all but it.
+	if err := b.connect(s.single("tok"), "", "pass phrase"); err != nil {
+		t.Fatal(err)
+	}
+	b.settle()
+	if got := b.bookmarked(); !slices.Contains(got, "Before") || !slices.Contains(got, "After") || slices.Contains(got, "Stuck one") {
+		t.Fatalf("the other device's bookmarks: %v", got)
+	}
+	if _, visits := b.page("https://example.com/page"); visits != 1 {
+		t.Fatal("the page didn't reach the other device")
+	}
+
+	// Sync's own runs leave it aside: nothing is marked for them, and one says nothing of it.
+	if n := a.count(`SELECT COUNT(*) FROM sync_changes WHERE stuck = ''`); n != 0 {
+		t.Fatalf("%d marks a run of sync's own would take", n)
+	}
+	if err := a.sync.RunAs(sync.WhyTimer); err != nil {
+		t.Fatal(err)
+	}
+	a.settle()
+	if r := a.details().Runs[0]; len(r.Unsent) != 0 {
+		t.Fatalf("a run of sync's own tried it again: %+v", r)
+	}
+	if st := a.sync.Status(); st.Unsent != 1 {
+		t.Fatalf("the status after it: %+v", st)
+	}
+	// A run a person asks for tries it again, and says so again.
+	if err := a.sync.RunNow(); err != nil {
+		t.Fatal(err)
+	}
+	a.settle()
+	if r := a.details().Runs[0]; len(r.Unsent) != 1 || r.Unsent[0].Name != "Stuck one" {
+		t.Fatalf("a run a person asked for: %+v", r)
+	}
+	// Its row gone, there is nothing left to send or to say.
+	if err := a.st.Wait(func(tx *store.Tx) error {
+		_, err := tx.Exec(`DELETE FROM bookmarks WHERE id = 'bad id'`)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.sync.RunAs(sync.WhyChange); err != nil {
+		t.Fatal(err)
+	}
+	a.settle()
+	if st := a.sync.Status(); st.Unsent != 0 {
+		t.Fatalf("the status once the row is gone: %+v", st)
+	}
+	if n := a.count(`SELECT COUNT(*) FROM sync_changes`); n != 0 {
+		t.Fatalf("%d marks left", n)
+	}
+}
+
+// An item the server refuses is named, with the server's reason, and the run still counts:
+// everything else it sent and received stands.
+func TestAnItemTheServerRefusesIsNamed(t *testing.T) {
+	s := newServer(t)
+	p := newProfile(t)
+	p.startSync(s)
+	if err := p.connect(s.single("tok"), "", "pass phrase"); err != nil {
+		t.Fatal(err)
+	}
+	p.settle()
+	// The server takes smaller items than the device thinks it does.
+	s.mu.Lock()
+	s.srv.Limits.ItemBytes = 2000
+	s.mu.Unlock()
+	p.main(func() {
+		p.bookmarks.Add("Small", "https://example.com/small")
+		p.bookmarks.Add("Too big for this server", "https://example.com/"+strings.Repeat("x", 3000))
+	})
+	p.settle()
+	if err := p.sync.RunAs(sync.WhyChange); err != nil {
+		t.Fatalf("the run with an item the server refuses: %v", err)
+	}
+	p.settle()
+	st := p.sync.Status()
+	r := p.details().Runs[0]
+	if st.Error != "" || st.Unsent != 1 || len(r.Unsent) != 1 || r.Unsent[0].Name != "Too big for this server" || r.Unsent[0].Error == "" || r.Sent[bookmarks.Collection] != 1 {
+		t.Fatalf("the status %+v, the run %+v", st, r)
+	}
+	n := 0
+	for _, it := range s.items("tok") {
+		if it.Collection == bookmarks.Collection {
+			n++
+		}
+	}
+	if n != 1 {
+		t.Fatalf("the server holds %d bookmarks, want the small one", n)
 	}
 }
