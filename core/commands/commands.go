@@ -103,7 +103,7 @@ type Manager struct {
 func New(eng engine.Engine, dir string, fullScreen func() bool) *Manager {
 	return &Manager{
 		eng:        eng,
-		platform:   platformOf(runtime.GOOS),
+		platform:   platformOf(OS),
 		keymapFile: filepath.Join(dir, "keymap.json"),
 		menuFile:   filepath.Join(dir, "menu.json"),
 		fullScreen: fullScreen,
@@ -120,6 +120,10 @@ func NewFromTemplates(eng engine.Engine, fullScreen func() bool) *Manager {
 	m.keymapFile, m.menuFile = "", ""
 	return m
 }
+
+// OS is the OS whose keys the app follows: the one it runs on, or in a web page the
+// visitor's (core/cmd/webdemo), which sets it before the app starts.
+var OS = runtime.GOOS
 
 func platformOf(goos string) string {
 	switch goos {
