@@ -7,7 +7,6 @@ syncing them are not built. The keys under it are in [sync.md](sync.md#the-keys)
 [onboarding.md](onboarding.md).
 
 ![The list, a login opened and its password shown](screenshots/passwords/desktop-shown.png)
-![The list on a phone, a login opened](screenshots/passwords/phone-open.png)
 
 ## His words
 
@@ -42,10 +41,13 @@ the username, the password, when it was saved, last edited and last used.
 ## Settings, Privacy, Passwords
 
 A row under Privacy, over Passkeys: "Passwords", "The logins Project B keeps for your sites",
-with how many there are. It opens a list page.
+with how many there are. It opens a list page. **Not on a phone yet:** Android keeps each
+app's data from the others, so a phone has no import, and nothing else brings a login to it
+until they sync or are saved from a page; its list could only be empty.
 
 - **Over the list:** "Sealed on this device for this profile. Showing or copying a password
-  asks for Touch ID or your Mac's password first." On a phone, "your screen lock".
+  asks for Touch ID or your Mac's password first." (On a phone, when it has the page: "your
+  screen lock".)
 - **Search passwords:** keeps the logins whose site or username has what was typed. Escape
   empties it. None matching: "No saved password matches “…”".
 - **A row a login:** its site's mark, the site, the username ("No username" when it has
@@ -58,7 +60,8 @@ with how many there are. It opens a list page.
     the page never has it for a copy, and marked as a secret (`system.CopySecret`): on the
     Mac the pasteboard's concealed and transient types, which clipboard managers and
     Universal Clipboard's history leave out; on Android the clip's sensitive flag, which
-    also hides the system's preview of it from Android 13. A username is copied plainly.
+    also hides the system's preview of it from Android 13, written and built into the APK,
+    and not yet reached by anything on a phone. A username is copied plainly.
   - A line that says when it was saved, and answers the last press for two seconds:
     "Password copied", "Username copied". With no screen lock on the device, in `--danger`:
     "Set a screen lock on this device to show passwords". A check the person refuses says
@@ -97,8 +100,8 @@ The snapshot has `passwordCount`, and `passwordCount {passwordCount}` follows ea
 - `core/app` (`TestSettingsPasswords`): the four messages, the device's check for Show and
   Copy and none for a username, a password copied as a secret and a username plainly, and
   each refusal.
-- `shell/e2e/password-settings.cjs`, in the one-page and Sections layouts and on a phone:
-  the row and its count, the list, the search, a row opening, Show and Hide, Copy of both,
-  the check refused and with no screen lock, Delete, and none left.
+- `shell/e2e/password-settings.cjs`, in the one-page and Sections layouts: the row and its
+  count, the list, the search, a row opening, Show and Hide, Copy of both, the check refused
+  and with no screen lock, Delete, and none left; and that a phone has no Passwords row.
 - `shell/e2e/imports.cjs`: passwords brought from a browser and from a file are counted on
   the row and listed on the page.

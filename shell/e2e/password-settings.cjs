@@ -1,5 +1,5 @@
 // Settings' Passwords on the mock engine (docs/passwords.md), in each of the page's two
-// layouts and on a phone: the row under Privacy with how many there are, its list page with
+// layouts, and on a phone that it isn't there: the row under Privacy with how many there are, its list page with
 // a row per saved login and no password, the search, a row opening in place, Show and Copy
 // each after the device's check (passed, refused, and with no screen lock), a username
 // copied with no check, Delete asking first, and the page with none. The logins are brought
@@ -61,6 +61,15 @@ if (layout === 'sections') fs.writeFileSync(path.join(lib.profile, 'prefs.json')
   else await page.locator('.nav [data-section="privacy"]').click();
   await settle(page);
   const row = page.locator('.row', { hasText: 'Passwords' }).first();
+  // A phone has no import, so nothing brings a password to it yet: it has no Passwords row.
+  if (phone) {
+    check('a phone has Passkeys under Privacy, and no Passwords row', (await until(() => page.locator('.row', { hasText: 'Passkeys' }).first().isVisible())) && (await row.count()) === 0, await page.locator('main').innerText().catch(() => ''));
+    check('no errors in the console', errors.length === 0, errors.join(' | '));
+    await browser.close();
+    await lib.stop();
+    await lib.done();
+    return;
+  }
   check('Privacy has a Passwords row, with how many there are', await until(async () => (await row.innerText().catch(() => '')).replace(/\s+/g, ' ').includes('3 passwords')), await row.innerText().catch(() => ''));
   await shoot('row');
   const asked = sends({ t: 'passwordsList' });
@@ -135,10 +144,6 @@ if (layout === 'sections') fs.writeFileSync(path.join(lib.profile, 'prefs.json')
   check('opening another row closes this one', await until(async () => (await first.getAttribute('aria-expanded')) === 'false' && (await rows.nth(1).getAttribute('aria-expanded')) === 'true' && (await list.locator('.panel').count()) === 1));
   await first.click();
   check('and what it showed is hidden when it opens again', await until(async () => /^•+$/.test(await panel.locator('.secret').innerText())));
-  if (phone) {
-    const sizes = await panel.locator('button').evaluateAll((all) => all.map((b) => Math.round(b.getBoundingClientRect().height)));
-    check('on a phone its buttons are 40px or more', sizes.every((h) => h >= 40), JSON.stringify(sizes));
-  }
 
   // Delete asks first.
   await panel.getByRole('button', { name: 'Delete the password for mail.example.org, asha@example.org' }).click();

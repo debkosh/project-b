@@ -30,6 +30,8 @@ const where = {
   // Android keeps each app's data from the others, so a phone has no browser to bring
   // things over from.
   import: () => !phone,
+  // Passwords come from an import, and a phone has none: its list could only be empty.
+  passwords: () => !phone,
   extensions: () => !phone && !!extensionsSection?.shown(),
 };
 
