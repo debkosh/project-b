@@ -8,6 +8,7 @@ import (
 
 	"github.com/sudiptadeb/synckosh"
 	"github.com/sudiptadeb/synckosh/client"
+	"projectb/timeline"
 )
 
 // newKey starts a bucket on the server, as Connect does, and returns its key.
@@ -122,5 +123,52 @@ func TestClearingHistoryReachesTheOtherDevice(t *testing.T) {
 	sb.RunNow()
 	if title, _ := b.page("https://example.com/later"); title != "Later" {
 		t.Fatalf("a page after the clear: %q", title)
+	}
+}
+
+// A row changed again while its first change still waits to go out is written all the same:
+// a page visited twice between two runs counts both visits, and a bookmark edited twice
+// keeps the second edit. An upsert's update runs its triggers with its own way of meeting a
+// conflict, which overrides the mark's, so the mark can't rely on one.
+func TestARowChangedTwiceBeforeARunKeepsBoth(t *testing.T) {
+	s := newServer(t)
+	p := newProfile(t)
+	p.startSync(s)
+	if err := p.connect(s.single("tok"), "", "pass phrase"); err != nil {
+		t.Fatal(err)
+	}
+	p.settle()
+	_, seen := timeline.Since(0)
+	var id string
+	p.main(func() {
+		e, _ := p.bookmarks.Add("First", "https://example.com/mark")
+		id = e.ID
+		p.bookmarks.Edit(id, "Second", "https://example.com/mark")
+		p.bookmarks.Edit(id, "Third", "https://example.com/mark")
+	})
+	for range 3 {
+		p.history.AddTypedVisit("https://example.com/twice", "Twice")
+	}
+	p.settle()
+	if _, visits := p.page("https://example.com/twice"); visits != 3 {
+		t.Fatalf("three visits before a run counted %d", visits)
+	}
+	if n := p.count(`SELECT count FROM typed WHERE url = ?`, "https://example.com/twice"); n != 3 {
+		t.Fatalf("typed three times before a run counted %d", n)
+	}
+	if n := p.count(`SELECT COUNT(*) FROM bookmarks WHERE id = ? AND title = 'Third'`, id); n != 1 {
+		t.Fatal("the bookmark's second edit before a run was lost")
+	}
+	logged, _ := timeline.Since(seen)
+	for _, e := range logged {
+		if strings.Contains(e.Text, "constraint") {
+			t.Fatalf("the store refused a write: %q", e.Text)
+		}
+	}
+	if err := p.sync.RunNow(); err != nil {
+		t.Fatal(err)
+	}
+	if n := p.count(`SELECT COUNT(*) FROM sync_changes`); n != 0 {
+		t.Fatalf("%d marks left after the run", n)
 	}
 }

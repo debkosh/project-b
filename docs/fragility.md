@@ -57,6 +57,9 @@ The seams:
   reach that wasn't.
 - **An id used as a name elsewhere.** An id made in one place, with its alphabet, becomes a
   name in another that allows less. One so far: a passkey whose id starts with an underscore.
+- **A trigger runs under its caller's rules.** What a trigger's own statement says about a
+  conflict gives way to the statement that fired it. One so far: a row changed twice before a
+  run.
 
 ## The keyboard left up by the native star's sheet, 2026-11-19
 
@@ -138,6 +141,27 @@ The seams:
 - **Guard:** `TestAPasskeyWhoseIDStartsWithAnUnderscoreSyncs` in `core/sync` makes passkeys
   until one's id starts with an underscore, syncs it to a second profile, signs nothing away,
   and deletes it there.
+
+## A row changed twice before a run, 2026-11-20
+
+- **Seen:** in the same log, between the failed runs: "store: UNIQUE constraint failed:
+  sync_changes.collection, sync_changes.key", many times. Each was a write the store refused:
+  a page visited again, or typed again, while its first visit still waited to go out. The
+  visit wasn't counted. With runs failing the wait was long; with sync well it is the ten
+  seconds between sync's looks, so it has lost repeat visits since sync was released.
+- **Cause:** the trigger that marks a changed row wrote the mark with `INSERT OR REPLACE`.
+  SQLite runs a trigger's statements with the conflict handling of the statement that fired
+  it when that statement has one, and an upsert's `DO UPDATE` is an update that aborts. So a
+  second change of a marked row, through an upsert, failed on the mark's unique pair and took
+  the feature's own write with it. History, typed addresses and bookmarks all write that way.
+  The tests changed each row once between runs.
+- **Seam:** a trigger's body runs under its caller's rules, not its own.
+- **Fix:** on sync-says-what-failed: the trigger deletes the row's mark and writes it again
+  (`triggers` in `core/sync/run.go`). Triggers are made again at each start, so a profile has
+  the new ones once it runs the new app.
+- **Guard:** `TestARowChangedTwiceBeforeARunKeepsBoth` in `core/sync`: a page visited and
+  typed three times and a bookmark edited twice between two runs keep every change, the
+  store logs no refusal, and the run leaves no mark.
 
 ## Sync now that showed nothing, 2026-11-19
 

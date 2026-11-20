@@ -166,7 +166,9 @@ and one that starts with a `~`, goes with a `~` before it, and comes back withou
 
 **Writing first, then telling sync.** Features write their rows as before. While sync is on,
 triggers on their tables write a mark in `sync_changes`, in the same transaction; with it off,
-none. Clearing all history replaces its marks with one, which becomes the delete-before. A run:
+none. A mark takes the place of the row's earlier one by deleting it and writing it again: an
+`INSERT OR REPLACE` in a trigger is overridden by the statement that fired it, and an upsert's
+update aborts on a conflict, which would fail the feature's own write. Clearing all history replaces its marks with one, which becomes the delete-before. A run:
 
 1. Drains the marks into synckosh: a delete-before first, then a changed row as `Replica.Put`, a
    deleted one as `Replica.Delete`, which finds the item by its bookkeeping though the row is gone.

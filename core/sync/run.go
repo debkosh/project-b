@@ -120,7 +120,10 @@ func New(st *store.Store, k *keys.Keys, post func(func()), maps ...Mapping) *Man
 }
 
 // triggers are what mark the features' changed rows while marking is on. They are made again
-// at each start from the mappings, so they always match them.
+// at each start from the mappings, so they always match them. A mark takes the place of the
+// row's earlier one by deleting it first: an INSERT OR REPLACE here would be overridden by the
+// statement that fired the trigger, and an upsert's update aborts on a conflict, so a row
+// changed again before a run would fail the feature's own write.
 func (m *Manager) triggers(tx *store.Tx) error {
 	for _, mp := range m.maps {
 		for _, t := range []struct{ name, when, row, deleted string }{
@@ -131,8 +134,9 @@ func (m *Manager) triggers(tx *store.Tx) error {
 				return err
 			}
 			if _, err := tx.Exec(fmt.Sprintf(`CREATE TRIGGER %s AFTER %s ON "%s" WHEN (SELECT marking FROM sync_state) BEGIN
-				INSERT OR REPLACE INTO sync_changes (collection, key, deleted) VALUES ('%s', %s."%s", %s); END`,
-				name, t.when, mp.Table, mp.Collection, t.row, mp.Key, t.deleted)); err != nil {
+				DELETE FROM sync_changes WHERE collection = '%s' AND key = %s."%s";
+				INSERT INTO sync_changes (collection, key, deleted) VALUES ('%s', %s."%s", %s); END`,
+				name, t.when, mp.Table, mp.Collection, t.row, mp.Key, mp.Collection, t.row, mp.Key, t.deleted)); err != nil {
 				return err
 			}
 		}
