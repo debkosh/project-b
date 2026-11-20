@@ -14,6 +14,30 @@
   "memGB": 256
  },
  "groups": {
+  "android": {
+   "passed": 1,
+   "failed": 0,
+   "known": 1,
+   "did_not_run": 0,
+   "ok": 435,
+   "fail": 1
+  },
+  "app": {
+   "passed": 3,
+   "failed": 0,
+   "known": 0,
+   "did_not_run": 0,
+   "ok": 586,
+   "fail": 0
+  },
+  "basics": {
+   "passed": 0,
+   "failed": 0,
+   "known": 1,
+   "did_not_run": 0,
+   "ok": 32,
+   "fail": 7
+  },
   "mock": {
    "passed": 35,
    "failed": 0,
@@ -21,9 +45,321 @@
    "did_not_run": 0,
    "ok": 3345,
    "fail": 0
+  },
+  "quit": {
+   "passed": 1,
+   "failed": 0,
+   "known": 0,
+   "did_not_run": 0,
+   "ok": 3,
+   "fail": 0
+  },
+  "vm": {
+   "passed": 2,
+   "failed": 0,
+   "known": 0,
+   "did_not_run": 0,
+   "ok": 0,
+   "fail": 0
   }
  },
  "tests": [
+  {
+   "group": "android",
+   "name": "the Android app on project-b-emu-29 (10)",
+   "status": "known",
+   "seconds": 1821.0,
+   "ok": 210,
+   "fail": 1,
+   "failures": [
+    {
+     "line": "FAIL  it covers the whole screen, with nothing of the shell or Android's bars on it  (0, 0, 1080, 2274) on a 1080x2400 screen",
+     "known": "Android 10 keeps its bars over a page in full screen."
+    }
+   ],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "android",
+   "name": "the Android app on project-b-emu-37 (17)",
+   "status": "passed",
+   "seconds": 2814.9,
+   "ok": 225,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "app",
+   "name": "extensions in the real app",
+   "status": "passed",
+   "seconds": 41.0,
+   "ok": 66,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {
+    "browser": {
+     "peakMB": 229,
+     "avgMB": 180,
+     "peakCPU": 55,
+     "avgCPU": 27,
+     "grows": false
+    },
+    "gpu": {
+     "peakMB": 118,
+     "avgMB": 101,
+     "peakCPU": 23,
+     "avgCPU": 9,
+     "grows": false
+    },
+    "renderer": {
+     "peakMB": 1139,
+     "avgMB": 625,
+     "peakCPU": 118,
+     "avgCPU": 45,
+     "grows": false
+    },
+    "utility": {
+     "peakMB": 93,
+     "avgMB": 61,
+     "peakCPU": 25,
+     "avgCPU": 5,
+     "grows": false
+    }
+   },
+   "grows": [
+    "extension_checks: renderer"
+   ],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "app",
+   "name": "the real app through ChromeDriver",
+   "status": "passed",
+   "seconds": 6.8,
+   "ok": 40,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {
+    "browser": {
+     "peakMB": 145,
+     "avgMB": 130,
+     "peakCPU": 49,
+     "avgCPU": 32,
+     "grows": false
+    },
+    "gpu": {
+     "peakMB": 96,
+     "avgMB": 74,
+     "peakCPU": 13,
+     "avgCPU": 8,
+     "grows": false
+    },
+    "renderer": {
+     "peakMB": 353,
+     "avgMB": 201,
+     "peakCPU": 30,
+     "avgCPU": 16,
+     "grows": false
+    },
+    "utility": {
+     "peakMB": 48,
+     "avgMB": 43,
+     "peakCPU": 4,
+     "avgCPU": 2,
+     "grows": false
+    }
+   },
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "app",
+   "name": "the real app through its driver",
+   "status": "passed",
+   "seconds": 416.9,
+   "ok": 480,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {
+    "browser": {
+     "peakMB": 391,
+     "avgMB": 150,
+     "peakCPU": 106,
+     "avgCPU": 15,
+     "grows": false
+    },
+    "gpu": {
+     "peakMB": 286,
+     "avgMB": 97,
+     "peakCPU": 50,
+     "avgCPU": 5,
+     "grows": false
+    },
+    "helper": {
+     "peakMB": 425,
+     "avgMB": 251,
+     "peakCPU": 78,
+     "avgCPU": 51,
+     "grows": false
+    },
+    "renderer": {
+     "peakMB": 1271,
+     "avgMB": 442,
+     "peakCPU": 145,
+     "avgCPU": 12,
+     "grows": false
+    },
+    "utility": {
+     "peakMB": 137,
+     "avgMB": 65,
+     "peakCPU": 32,
+     "avgCPU": 1,
+     "grows": false
+    }
+   },
+   "grows": [
+    "action_checks: renderer",
+    "app_link_checks: renderer",
+    "links_checks: renderer",
+    "view_source_checks: browser"
+   ],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "basics",
+   "name": "the basics, one check per area",
+   "status": "known",
+   "seconds": 155.1,
+   "ok": 32,
+   "fail": 7,
+   "failures": [
+    {
+     "line": "FAIL         1 window lifecycle: a page's beforeunload asks before its tab closes -> the tab closed without asking",
+     "known": "The basics are a map of what isn't built yet; most fail on purpose. Their count of checks passed is compared instead."
+    },
+    {
+     "line": "FAIL         6 popups: window.open without a click is blocked -> 2 tabs: the popup opened without a click",
+     "known": "The basics are a map of what isn't built yet; most fail on purpose. Their count of checks passed is compared instead."
+    },
+    {
+     "line": "FAIL         8 URL display: the address bar hides a URL's password -> http://user:secret@<local>/a",
+     "known": "The basics are a map of what isn't built yet; most fail on purpose. Their count of checks passed is compared instead."
+    },
+    {
+     "line": "FAIL        23 profiles and contexts: a second browser context -> {'code': -32000, 'message': 'Failed to create browser context.'}",
+     "known": "The basics are a map of what isn't built yet; most fail on purpose. Their count of checks passed is compared instead."
+    },
+    {
+     "line": "FAIL        26 proxy: --proxy-server carries the request -> the request didn't go through --proxy-server",
+     "known": "The basics are a map of what isn't built yet; most fail on purpose. Their count of checks passed is compared instead."
+    },
+    {
+     "line": "FAIL        28 Safe Browsing: a malware test page warns -> Safe Browsing's test malware page loaded with no warning",
+     "known": "The basics are a map of what isn't built yet; most fail on purpose. Their count of checks passed is compared instead."
+    },
+    {
+     "line": "FAIL        36 picture-in-picture: a video enters it -> picture-in-picture gave 'NotSupportedError'",
+     "known": "The basics are a map of what isn't built yet; most fail on purpose. Their count of checks passed is compared instead."
+    }
+   ],
+   "reruns": [],
+   "processes": {
+    "browser": {
+     "peakMB": 157,
+     "avgMB": 143,
+     "peakCPU": 55,
+     "avgCPU": 14,
+     "grows": false
+    },
+    "gpu": {
+     "peakMB": 101,
+     "avgMB": 92,
+     "peakCPU": 33,
+     "avgCPU": 6,
+     "grows": false
+    },
+    "helper": {
+     "peakMB": 216,
+     "avgMB": 216,
+     "peakCPU": 0,
+     "avgCPU": 0,
+     "grows": false
+    },
+    "renderer": {
+     "peakMB": 473,
+     "avgMB": 317,
+     "peakCPU": 80,
+     "avgCPU": 13,
+     "grows": false
+    },
+    "utility": {
+     "peakMB": 100,
+     "avgMB": 47,
+     "peakCPU": 8,
+     "avgCPU": 1,
+     "grows": false
+    }
+   },
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
   {
    "group": "mock",
    "name": "Go managers",
@@ -720,6 +1056,98 @@
     "com.apple.Virtualization.VirtualMachine",
     "emulator-5600",
     "emulator-5602",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "quit",
+   "name": "quitting after a download",
+   "status": "passed",
+   "seconds": 2.5,
+   "ok": 3,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {
+    "browser": {
+     "peakMB": 153,
+     "avgMB": 153,
+     "peakCPU": 17,
+     "avgCPU": 17,
+     "grows": false
+    },
+    "gpu": {
+     "peakMB": 98,
+     "avgMB": 98,
+     "peakCPU": 14,
+     "avgCPU": 14,
+     "grows": false
+    },
+    "renderer": {
+     "peakMB": 368,
+     "avgMB": 368,
+     "peakCPU": 34,
+     "avgCPU": 34,
+     "grows": false
+    },
+    "utility": {
+     "peakMB": 48,
+     "avgMB": 48,
+     "peakCPU": 2,
+     "avgCPU": 2,
+     "grows": false
+    }
+   },
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "vm",
+   "name": "our own passkeys in the macOS VM",
+   "status": "passed",
+   "seconds": 74.9,
+   "ok": 0,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "vm",
+   "name": "real clicks in the macOS VM",
+   "status": "passed",
+   "seconds": 545.0,
+   "ok": 0,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
     "emulator-5606",
     "mds_stores"
    ]
