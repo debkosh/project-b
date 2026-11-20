@@ -474,7 +474,9 @@ const taken = [];
   // sends nothing and says so. Set up again… opens the set-up with the address filled in,
   // and the bucket, empty again, asks for a new passphrase, as a first device's does.
   await server({ reset: '1' });
-  await button('Sync now', card()).click();
+  // Sync now finds it, unless a run of sync's own found it first: the login brought above
+  // is a change, and its run takes the button away as it starts.
+  await button('Sync now', card()).click({ timeout: 3000 }).catch(() => {});
   check('a bucket that was reset says so on the row, with Set up again…', await until(async () => (await serverRow().innerText()).includes('The sync bucket was reset'), 15000) && (await button('Set up again…', card()).isVisible()) &&
     (await button('Sync now', card()).count()) === 0, await serverRow().innerText());
   check('with no passphrase to change until then, and Turn off still there, keeping what is here: the server holds nothing', !(await card().innerText()).includes('Change sync passphrase') && (await button('Turn off…', card()).isVisible()) &&
