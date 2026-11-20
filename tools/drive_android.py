@@ -1973,6 +1973,13 @@ def web_apis():
     go(BASE + "/apis")
     for when in ("load", "tap"):
         if when == "tap":
+            # The page's call to make a passkey asked to save one, and the dialog waits for a
+            # person over the page: Cancel, or it takes the tap.
+            cancel = until(lambda: first(lambda: find("shell", text="Cancel"), lambda: find("shell", label="Cancel")), 5)
+            if cancel is not None:
+                tap(middle(cancel))
+            check("its call to make a passkey asks to save one, and Cancel takes the dialog away",
+                  cancel is not None and until(lambda: find("shell", text="Save") is None and find("shell", label="Save") is None, 5) is not None)
             tap(middle(see("page")))
         lived = asked("/apis-alive?" + when, 30)
         # Content says which interface it found no binder for.
