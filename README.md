@@ -136,18 +136,18 @@ then on the app updates itself.
   manager to install apps when Android asks.
 
 - **Linux (arm64, a preview).** It installs as a Flatpak, from
-  [our repository](https://sudiptadeb.github.io/project-b/). On Ubuntu, add Flatpak and GNOME
+  [our repository](https://projectb.debkosh.com/). On Ubuntu, add Flatpak and GNOME
   Software's Flatpak support first, once (Ubuntu's own App Center doesn't open Flatpak links);
   Debian, Fedora, Arch and KDE's own distros have them or they're one command away:
 
       sudo apt install flatpak gnome-software-plugin-flatpak
 
-  Then open [project-b.flatpakref](https://sudiptadeb.github.io/project-b/project-b.flatpakref):
+  Then open [project-b.flatpakref](https://projectb.debkosh.com/project-b.flatpakref):
   GNOME Software or KDE Discover shows the app, its permissions, and Install. The first
   install also brings the shared Freedesktop runtime from Flathub, which Flatpak asks to add.
   Or in a terminal:
 
-      flatpak install --from https://sudiptadeb.github.io/project-b/project-b.flatpakref
+      flatpak install --from https://projectb.debkosh.com/project-b.flatpakref
 
   Flatpak updates it with your other apps. It's a preview: the window, the system's file and
   notification dialogs, and printing are still being built.

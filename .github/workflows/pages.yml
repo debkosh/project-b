@@ -1,5 +1,5 @@
-# Publishes the project's site on GitHub Pages: the homepage (site/), with the Stable version
-# written in from VERSION, and the Linux Flatpak repository (docs/research/linux.md, 5) from
+# Publishes the project's site on GitHub Pages at site/CNAME's address: the homepage (site/),
+# with the Stable release's version written in, and the Linux Flatpak repository (docs/research/linux.md, 5) from
 # the newest release that has one, as Linux releases are built only when asked. It runs on
 # each Stable release, and by hand with a release's tag. The repository is under repo/, beside
 # project-b.flatpakref and project-b.flatpakrepo.
@@ -35,15 +35,14 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       TAG: ${{ inputs.tag || github.event.release.tag_name }}
     steps:
+      # The page as it is on the branch the workflow runs from, main for a run by hand; the
+      # version is the release's own.
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ env.TAG }}
       - name: The homepage, at its Stable version
         run: |
           mkdir _site
           cp -R site/. _site/
-          version=$(tr -d '[:space:]' < VERSION)
-          sed -i "s/{{VERSION}}/$version/g" _site/index.html
+          sed -i "s/{{VERSION}}/${TAG#v}/g" _site/index.html
           touch _site/.nojekyll
       - name: The Linux Flatpak repository, from the newest release that has one
         run: |
@@ -59,6 +58,8 @@ jobs:
               --pattern flatpak-repo.tar.gz --pattern project-b.flatpakref --pattern project-b.flatpakrepo
             tar -xzf dl/flatpak-repo.tar.gz -C _site
             cp dl/project-b.flatpakref dl/project-b.flatpakrepo _site/
+            # The site's own address, site/CNAME, where an older release's files named Pages'.
+            sed -i "s|https://sudiptadeb.github.io/project-b/|https://$(cat site/CNAME)/|g" _site/project-b.flatpakref _site/project-b.flatpakrepo
             echo "Linux repository from $linux"
           fi
       - uses: actions/upload-pages-artifact@v3
