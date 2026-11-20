@@ -545,6 +545,16 @@ func TestTheSettingsPageReadsAndSetsTheSettings(t *testing.T) {
 	if !strings.Contains(string(b), `"autoUpdate":false`) {
 		t.Fatalf("the update folder's settings.json = %s", b)
 	}
+	// The channel updates come from: Stable until Dev is chosen, kept beside the switch.
+	if snap["channel"] != "stable" {
+		t.Fatalf("channel starts as %v", snap["channel"])
+	}
+	r.settings(`{"t":"setChannel","text":"dev"}`)
+	r.waitOn(got, func(m map[string]any) bool { return m["t"] == "channel" && m["channel"] == "dev" })
+	b, _ = os.ReadFile(filepath.Join(dir, "updates", "settings.json"))
+	if !strings.Contains(string(b), `"autoUpdate":false`) || !strings.Contains(string(b), `"channel":"dev"`) {
+		t.Fatalf("the update folder's settings.json = %s", b)
+	}
 	// The theme: saved, the shell told, the window's own parts dark.
 	if snap["theme"] != "system" || r.e.Layout(1).Theme != engine.ThemeSystem {
 		t.Fatalf("theme starts as %v, window %v", snap["theme"], r.e.Layout(1).Theme)
