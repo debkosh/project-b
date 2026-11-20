@@ -154,6 +154,12 @@ Take an item off when it lands or is dropped.
 
 ## Small fixes
 
+- On Android, a tap on the address field selects the whole address, and WebView raises its
+  Cut/Copy/Select all menu with it, over the page's row. ux, 2026-11-20: keep the address
+  selected but hold the menu back, as Chrome does, showing it only on a long press or a drag
+  of the handles; the page's row has Copy. Needs a custom action mode callback on the
+  WebView in the Android app, and an emulator check
+  ([daily-driver.md](daily-driver.md#what-the-address-field-suggests-and-when)).
 - The first real click after leaving full screen doesn't land; keys work.
 - `tools/vm/check.py` times clicks by pixels, so it measures the VM's display; time inside the
   app instead.

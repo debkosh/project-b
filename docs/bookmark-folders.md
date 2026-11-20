@@ -20,7 +20,7 @@ settings page sets them by name with `setPref`, as a shell does.
 |---|---|---|---|
 | `bookmarksNewTab` | on | the new tab shows the top folder as tiles, folders first; a folder opens in place, with Open all as a group | the same, on its new tab page |
 | `bookmarksSidebar` | off | the folders as a tree under the tabs | the switcher has Tabs and Bookmarks |
-| `bookmarksCommandBox` | on | `*` in the command box narrows it to bookmarks, the folders on its left | the empty address shows the folders as chips and their bookmarks as tiles |
+| `bookmarksCommandBox` | on | `*` in the command box narrows it to bookmarks, the folders on its left | the address tapped on a page shows every bookmark as one row of tiles, and typed rows include bookmarks |
 | `bookmarksBar`, `bookmarksBarFolder` | off, the top | a bar of the folder's bookmarks under the address bar; a folder in it drops down | a strip of them above the bars, which hides with them |
 
 The bar's folder is a folder's id, `""` for the top; a shell shows the top when the folder
@@ -76,15 +76,13 @@ How Standard shows them (`shell/src/apps/shell/standard/`, `bookmarks.js` for wh
   holds, a tap going into one, then its bookmarks, each its letter, name and host. A tap on
   a bookmark opens it in a new tab, in the workspace the switcher shows, and closes the
   switcher. It opens on Tabs each time. Off, it has its tabs alone, as before.
-- **The address** (`Address.svelte`), tapped, shows the bookmarks while nothing is typed,
-  as the list for nothing typed shows: before a letter is typed and once the field is
-  emptied. The top folder's folders are chips, All first and chosen each time, and the
-  chosen one's bookmarks, in it and in its folders, are a row of tiles that scrolls
-  sideways; All is the top folder's, so every bookmark. They lie nearest the thumb: just
-  over the field with the bar at the foot, the list over them, and just under it with the
-  bar on top. A tap on a tile loads it in the tab. Meanwhile the list for nothing typed
-  asks for no `bookmark` rows, which would list the same pages; typing replaces the
-  bookmarks with the suggestions. With no bookmarks, or off, the address is as before.
+- **The address** (`Address.svelte`), tapped on a page with nothing typed, shows every
+  bookmark, of every folder, as one row of tiles that scrolls sideways, beside the page's
+  own row: under it with the bar on top, over it with the bar at the foot. No folders: they
+  live on the new tab page and in All bookmarks (owner, 2026-11-20, [daily-driver.md](daily-driver.md#what-the-address-field-suggests-and-when)).
+  A tap on a tile loads it in the tab. Typing replaces them with the suggestions, which
+  then include bookmark rows. Over a new tab the field shows nothing, the page having its
+  own. Off, the page's row shows alone, and typed rows have no bookmarks.
 - **The bookmarks bar** (`MarksBar.svelte`) is one more of the bars: a 48px row of chips,
   what `bookmarksBarFolder` holds, the top's when that folder is gone, its folders first,
   scrolling sideways. A bookmark is its letter and name, and a tap loads it in the tab; a
