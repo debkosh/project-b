@@ -1,10 +1,9 @@
 # Updates
 
 An installed copy keeps itself current. It looks at the project's release manifest every
-minute, downloads a newer release by itself, checks it, and shows a small bubble in the
-page's bottom-left corner, the way a browser shows a link's address: "Downloading Project B
-0.2.1…", then "Project B 0.2.1 is ready. Relaunch to update". Clicking relaunches into the
-new version. Nothing shows when nothing is happening.
+minute, downloads a newer release by itself, checks it, and says once that it is ready, with
+Relaunch and Later ([The notice](#the-notice)). Settings' About shows what it is doing all
+along: the download on its way, the release ready, a failure. Nothing else shows.
 
 ## Pieces
 
@@ -13,7 +12,7 @@ new version. Nothing shows when nothing is happening.
 | `core/update` | The manager: the check loop, the download, the checks, the swap, the relaunch. `CheckInterval` is the one minute, in one place. |
 | `core/relaunch` | `relaunch.Copies`: the other copies on the root, told to quit over their sockets (`core/instance`) and waited for, and each profile started again after the swap. |
 | [amarit](https://github.com/sudiptadeb/amarit) | The manifest (`releases.json`), its rules (channels, no downgrade, `min_version`, a rejected version is not offered again) and the download, checked against the manifest's size and sha256 as it streams. Used through `amarit.Client`, the half of amarit for a program that installs itself. |
-| `shell/src/UpdateStatus.vue` | The bubble. It is inside the page's box, so it sits in the page's corner in both tab layouts and takes no room; `v-shell` makes it shell, so a click on it does not reach the page. |
+| `shell/src/apps/shell/standard/UpdateNotice.vue`, `mobile/UpdateBar.svelte` | A ready release's one-time notice ([The notice](#the-notice)). The notice is inside the page's box, so it sits in the page's corner in both tab layouts and takes no room; `v-shell` makes it shell, so a click on it does not reach the page. |
 | `amarit.json`, `VERSION` | The project name, the manifest URL, the asset pattern; the version being built. |
 | `tools/release.sh` | Publishes a release. |
 
@@ -29,7 +28,7 @@ beside the profile folders (`~/.project-b/update`):
 - `lock`: one copy at a time holds it while it checks and downloads. A round of a copy that
   can't take it does nothing more; Check for updates waits for it.
 - `stage/`: the release a copy downloaded and checked. Every copy reads it each round, so
-  the bubble offering the relaunch shows in each.
+  each offers the relaunch.
 - `settings.json`: the automatic-updates setting, `{"autoUpdate": false}` when off, on when
   there is none. Each copy reads it each round and when its settings page opens, so a
   change in one holds in the others from then.
@@ -48,7 +47,7 @@ and never touch the copies on the root or the installed app those relaunch.
    a plain web redirect to the latest release's asset, not GitHub's REST API, so a check a
    minute is not rate limited (the response carries no rate-limit headers).
 2. If the install location isn't writable (a copy still on its DMG, or in a folder the user
-   doesn't own), the bubble says so and nothing is downloaded.
+   doesn't own), About says so and nothing is downloaded.
 3. A newer `stable` version for `darwin/arm64` is downloaded into the update folder
    (`~/.project-b/update/download`), size and sha256 checked by amarit.
 4. The zip is unpacked with `ditto` beside it, and the bundle inside must say it
@@ -62,11 +61,11 @@ and never touch the copies on the root or the installed app those relaunch.
    the signature check fails, `codesign --verbose=4`'s answer goes to the timeline, naming
    each file that differs from the seal. A download that fails (network, or bytes that don't
    match the manifest) is shown, and tried again next minute. A failure stays on show while
-   the channel still points at that release; once it points elsewhere, the bubble goes.
+   the channel still points at that release; once it points elsewhere, it goes.
    A bundle that passes is moved into `update/stage`, so the stage only ever holds a
    checked release.
-5. The bubble offers relaunch, in every copy. Until it is clicked, the installed app is
-   untouched.
+5. The notice, and About, offer relaunch, in every copy. Until one is pressed, the installed
+   app is untouched.
 6. Relaunch in one copy tells every other running copy to quit: each running copy holds
    its folder's `lock` (a picker copy, the root's), and the asking copy sends each one's
    socket `{"quit": true}`, the handover's request with a field of its own. Each answers
@@ -111,19 +110,32 @@ Sudipta, 2026-11-18, after 0.2.76 stuck at "Downloading 0.2.85… 38%" overnight
 press: "just have retry or cancel button whenever we show a progress, seems like a good
 starting rule to evolve from".
 
+## The notice
+
+A release ready to relaunch into says so once, the owner's ask (2026-11-20: "when update become
+available we can show a one time popup"). In Standard, a card over the page's bottom-left
+corner, "Project B 0.3.7 is ready", with Later and Relaunch. In the Mobile shell, a bar over the
+toolbar in the crash bar's form, with Later and Install. Either button records the version in
+the profile's prefs, `updateNoticed`, through `setPref`, so the notice shows once a release in
+a profile, not at every start, and goes in every window at once. After Later, Settings' About,
+and on a phone the menu's Install update, offer it. Standard had a bubble in the page's corner
+for every state; with the notice it went (2026-11-20: "since we have the popup we can remove
+the bubble all together"), and a download on its way shows in About alone. The other shells
+keep their own bubble or line.
+
 ## Settings
 
-The settings page, which the toolbar's gear opens in a tab, shows the running
-version with a Check for updates button in its status line, at its top, and the automatic
-updates switch (Advanced; About Project B in its sections layout; [settings.md](settings.md)).
+Settings' About ([settings.md](settings.md#about)) shows the running version with what the
+manager is doing and its one button, the automatic updates switch, and the release notes.
 
 - **Check for updates** runs one check at once, whatever the switch says (`CheckNow`).
   While a release downloads, Retry and Cancel stand in its place, as they do after the
-  percentage in Standard's bubble and Fox's update bar; a failure there has Try again. The
+  percentage in Fox's update bar; a failure there has Try again. The
   page shows what the manager says: checking, up to date, downloading a version, ready to
   relaunch, or the error it hit, including a manifest it couldn't read. A release it finds
-  goes the way an automatic one does, and the bubble stays the one place to relaunch.
-  Automatic checks never set the panel's check result, so the bubble is unchanged.
+  goes the way an automatic one does, and About's Relaunch (Install update on a phone) applies
+  it as the notice's does. Automatic checks never set the panel's check result. The menu
+  bar's Check for Updates… opens Settings at About and checks.
 - **Automatic updates** is the app's, `autoUpdate` in `update/settings.json`, on by
   default, and every copy shows the same. Off, the next round of every copy checks nothing;
   on again here, the timer starts as it does at launch, and the other copies check from
@@ -168,10 +180,14 @@ takes it is in [android.md](android.md#updates-on-a-phone).
   picker on a root of the run's own, a clone of the app under test as the installed app,
   and a staged bundle shaped like the update tests' fixtures whose executable records how
   it was started.
-- `shell/e2e/settings.cjs` checks the settings page's version, Check and switch against a
-  local release server.
+- `shell/e2e/settings.cjs` checks About's version, Check and switch against a local release
+  server.
+- `shell/e2e/update-notice.cjs` stages a release from a local server and checks the notice in
+  Standard and the Mobile shell, Later recording it so a restart doesn't show it again, and
+  About with this release's notes on a desktop and a phone.
 - `shell/e2e/first-app.cjs` runs the real manager against a local release server with a
-  slow asset, in both layouts, through to the relaunch helper starting the new bundle.
+  slow asset, through the notice in both tab layouts, its Relaunch to the relaunch helper
+  starting the new bundle, and a corrupted download refused, About saying why.
 - The signature check runs only in the real app (`core/cmd/lib`); the mock has no signing
   key and checks the version alone.
 

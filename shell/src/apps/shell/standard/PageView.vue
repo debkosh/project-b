@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import CrashNotice from './CrashNotice.vue';
 import FindBar from '@/ui/FindBar.vue';
 import PageDialog from '@/ui/PageDialog.vue';
-import UpdateStatus from './UpdateStatus.vue';
+import UpdateNotice from './UpdateNotice.vue';
 import PageNotice from '@/ui/PageNotice.vue';
 import CommandBox from './CommandBox.vue';
 import { activeTab, isNewTab, state } from '@/sdk/vue.js';
@@ -23,7 +23,7 @@ const shown = computed(() => !state.pageFullScreen && isNewTab(activeTab.value))
     <CrashNotice />
     <FindBar />
     <PageDialog />
-    <UpdateStatus />
+    <UpdateNotice />
   </div>
 </template>
 
