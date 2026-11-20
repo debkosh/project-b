@@ -23,12 +23,17 @@ const edited = ref(false);
 // selected after the caret, as Chrome and Safari show it (docs/daily-driver.md). A delete
 // says the person wants what they typed, so the next answer completes nothing.
 const inline = ref('');
-// Whether an input method is composing: it holds what it composes, and a completion put in
-// the field under it is typed over with it again. While it composes, an answer lists but
-// doesn't complete; the input that ends the composition asks again.
-let composing = false;
-function compose(on) {
-  composing = on;
+// Whether an input method composes: it holds what it composes, and a completion in the field,
+// put in under it or there when it begins, is typed over with it again. Once it has composed
+// in an edit, the field completes nothing more until the edit ends, and a completion on show
+// when it begins goes (the phone's field, Address.svelte, the same).
+let composes = false;
+function composeStart() {
+  composes = true;
+  if (inline.value) {
+    inline.value = '';
+    text.value = typed.value;
+  }
 }
 let deleting = false;
 
@@ -210,6 +215,7 @@ function onMouseUp(e) {
 
 function onBlur() {
   focused.value = false;
+  composes = false;
   dropEscape?.();
   dropEscape = null;
   if (inline.value) text.value = typed.value;
@@ -232,7 +238,7 @@ onMounted(() => {
     const end = el.selectionEnd === text.value.length;
     const plain = text.value === typed.value && el.selectionStart === el.selectionEnd && end;
     const shown = !!inline.value && text.value === typed.value + inline.value && el.selectionStart === typed.value.length && end;
-    if (list[0]?.inline && !composing && (plain || shown)) showInline(list[0].inline);
+    if (list[0]?.inline && !composes && (plain || shown)) showInline(list[0].inline);
     else if (shown) {
       inline.value = '';
       text.value = typed.value;
@@ -356,8 +362,7 @@ function closeMarked() {
       spellcheck="false"
       @beforeinput="onBeforeInput"
       @input="onInput"
-      @compositionstart="compose(true)"
-      @compositionend="compose(false)"
+      @compositionstart="composeStart"
       @keydown="onKeydown"
       @mouseup="onMouseUp"
       @focus="onFocus"

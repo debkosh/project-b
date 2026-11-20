@@ -295,27 +295,29 @@ const H = 915;
     return await inField() && f.value === onPageNow.url && f.start === f.value.length && f.end === f.value.length;
   }), JSON.stringify(await fieldNow()));
 
-  // While the keyboard composes a word, Go's answer lists rows but completes nothing in the
-  // field: Android 10's Gboard holds the word it composes and typed it again over a
-  // completion, doubling the first letter. Once the word ends, the field completes.
-  await field.evaluate((el) => {
-    el.value = '';
+  // A keyboard that composes words holds what it composes, and typed it again over a
+  // completion in the field, put in under it or there when a word began: Android 10's Gboard
+  // doubled a letter ("llocalhost", "/ttblocked"). Once it has composed in an edit, Go's
+  // answers list rows and complete nothing in the field until the edit ends.
+  const composeLetter = (letter, from) => field.evaluate((el, [l, f]) => {
     el.dispatchEvent(new CompositionEvent('compositionstart', { data: '', bubbles: true }));
-    el.value = 'e';
-    el.setSelectionRange(1, 1);
-    el.dispatchEvent(new InputEvent('input', { inputType: 'insertCompositionText', data: 'e', isComposing: true, bubbles: true }));
-  });
+    el.value = f + l;
+    el.setSelectionRange(el.value.length, el.value.length);
+    el.dispatchEvent(new InputEvent('input', { inputType: 'insertCompositionText', data: l, isComposing: true, bubbles: true }));
+    el.dispatchEvent(new CompositionEvent('compositionend', { data: l, bubbles: true }));
+  }, [letter, from]);
+  await field.evaluate((el) => (el.value = ''));
+  await composeLetter('e', '');
   check('while the keyboard composes, Go\'s answer lists rows and completes nothing in the field', await listAnswers('e') &&
     !!(await lastAnswer())?.items?.[0]?.inline && (await fieldNow()).value === 'e',
-    JSON.stringify({ field: await fieldNow(), answers: await ui.getByRole('list', { name: 'Suggestions' }).getAttribute('data-answers').catch(() => null), sent: await lastSuggest(), got: (await lastAnswer())?.items?.[0] }));
-  await field.evaluate((el) => {
-    el.dispatchEvent(new CompositionEvent('compositionend', { data: 'e', bubbles: true }));
-    el.dispatchEvent(new InputEvent('input', { inputType: 'insertText', data: 'e', bubbles: true }));
-  });
-  check('and once the word ends, it completes', await until(async () => {
-    const f = await fieldNow();
-    return f.value.startsWith('e') && f.value.length > 1 && f.start === 1;
-  }), JSON.stringify(await fieldNow()));
+    JSON.stringify({ field: await fieldNow(), got: (await lastAnswer())?.items?.[0] }));
+  await composeLetter('x', 'e');
+  check('nor after the word, for the rest of the edit', await listAnswers('ex') && (await fieldNow()).value === 'ex', JSON.stringify(await fieldNow()));
+  // A new edit, by keys as a desktop's keyboard types, completes again.
+  await page.keyboard.press('Escape');
+  await until(async () => !(await inField()));
+  await field.tap();
+  await until(() => inField());
 
   // One letter: Enter's row and four more at most, matched where a host or a title's word
   // starts, completed in the field.
