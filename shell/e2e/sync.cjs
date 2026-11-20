@@ -456,7 +456,8 @@ const taken = [];
   await button('Sync now', card()).click();
   check('a bucket that was reset says so on the row, with Set up again…', await until(async () => (await serverRow().innerText()).includes('The sync bucket was reset'), 15000) && (await button('Set up again…', card()).isVisible()) &&
     (await button('Sync now', card()).count()) === 0, await serverRow().innerText());
-  check('with no passphrase to change until then, and Turn off still there', !(await card().innerText()).includes('Change sync passphrase') && (await button('Turn off…', card()).isVisible()));
+  check('with no passphrase to change until then, and Turn off still there, keeping what is here: the server holds nothing', !(await card().innerText()).includes('Change sync passphrase') && (await button('Turn off…', card()).isVisible()) &&
+    (await card().innerText()).includes('Keeps everything here') && !(await card().innerText()).includes('and on the server'));
   await shot(34, 'bucket-reset');
   told = sends({ t: 'syncInspect' });
   await button('Set up again…', card()).click();
