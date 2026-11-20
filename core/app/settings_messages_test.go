@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -137,9 +138,11 @@ func TestSettingsUpdateButtons(t *testing.T) {
 	// The download sends its first bytes and then waits, so it is still running for Cancel.
 	release := make(chan struct{})
 	defer close(release)
+	var asked atomic.Int32 // the asset's requests
 	var srv *httptest.Server
 	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		if req.URL.Path == "/asset" {
+			asked.Add(1)
 			w.Header().Set("Content-Length", fmt.Sprint(len(asset)))
 			w.Write(asset[:4])
 			w.(http.Flusher).Flush()
@@ -180,6 +183,11 @@ func TestSettingsUpdateButtons(t *testing.T) {
 	phase(update.Downloading)
 	r.settings(`{"t":"retryUpdate"}`)
 	phase(update.Downloading)
+	// Retry's new download has begun before Cancel: a Cancel during Retry's restart left
+	// the new one running (amarit, reported).
+	for deadline := time.Now().Add(5 * time.Second); asked.Load() < 2 && time.Now().Before(deadline); {
+		time.Sleep(10 * time.Millisecond)
+	}
 	r.settings(`{"t":"cancelUpdate"}`)
 	phase(update.Idle)
 	// The cancelled download clears its file on its own goroutine: the test's folder goes
