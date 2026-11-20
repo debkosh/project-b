@@ -238,12 +238,13 @@ title, detail, actions}`, absent otherwise
 | `focusTab` | `id` | Gives the active tab's page the keyboard. One for a tab no longer active, as when the address typed for it went to another tab, does nothing |
 | `focusShell` | | Gives the shell the keyboard |
 | `captureTab` | | Asks for a picture of the active tab's page, for its `thumb`, as the Mobile shell's switcher opens: send it before the layout that covers or hides the page. Only a phone shell's windows get one, and Go itself pictures the tab a window leaves as another becomes active. A window gets one picture each half second at most, one asked for sooner being dropped; never one of a tab with no address, which shows the shell's new tab page, nor of a tab with a `notice` |
-| `suggest` | `id`, `text`, `kinds` | Asks for suggestions with rows of the kinds named. The bare message without `kinds` gets history alone, as it always did; the SDK's `suggest()` asks for every kind unless told otherwise. With no text, what a new tab offers: with `tab` and `closed`, the window's other tabs, the most recently used first, and the tabs closed lately; then the sites visited most and the newest bookmarks (docs/daily-driver.md, A new tab) |
+| `suggest` | `id`, `text`, `kinds`, `rows` | Asks for suggestions with rows of the kinds named, at most `rows` of them besides the actions (left out: 6 under three letters, 8 from three; docs/daily-driver.md, What the address field suggests). The bare message without `kinds` gets history alone, as it always did; the SDK's `suggest()` asks for every kind unless told otherwise. With no text, what a new tab offers: with `closed`, the tabs closed lately; then the sites visited most and the newest bookmarks (docs/daily-driver.md, A new tab) |
 | `forgetSite` | `url` | Takes the site at `url` out of history, every page of it, as the new tab page's × does |
 | `bookmark` | `url`, `title`, `on` | Bookmarks the address, or takes its bookmark away: the address bar's star |
 | `chooseSuggestion` | `row`, `newTab` | Runs a row: Go loads its address or search in the active tab, or a new one, shows its tab, reopens a `closed` tab, or runs its action. A row of a list for typed text carries `typed`, and its address is a typed one once it loads |
 | `run` | `text`: an action's id | Runs an action, as its menu item would |
 | `copyText` | `text` | Puts the text on the clipboard, as a context menu's Copy Link does. A shell page's own write needs a click, which an action from the menu bar or a key hasn't |
+| `shareText` | `text` | Hands the text to the system's share sheet, as a context menu's Share Link does: a phone's field shares its page's address |
 | `menuOpened` | | A phone shell's menu sheet opened: Go starts the window's settings page out of sight, as Settings is a tap away, so the tap shows it drawn ([windows.md](windows.md#settings-loads-as-the-phones-menu-opens-decided-2026-11-19)). A desktop shell doesn't send it |
 | `menu` | | Asks for the menu bar's menus for this window, as the shell opens its own menu; Go answers with `menu` ([menus-shortcuts.md](menus-shortcuts.md#the-shells-menu)) |
 | `window` | `text`: `close`, `minimise`, `zoom` or `fullScreen` | Asks the window |
@@ -926,21 +927,19 @@ address field, and a menu button at the far right, in our tones.
   window, and on a phone the app (owner, 2026-11-18). Closing the last tab another way
   does too. For one of our tabs, settings, the
   pill is the tab's title with a close, and nothing to type (rule 19).
-- **The bar tapped with nothing typed** lists what one more tap reaches, before a letter is
-  typed and again once the field is emptied: Go's list for nothing typed (`suggest` with
-  empty text and kinds `tab`, `closed`, `history`, `bookmark`), under a heading per kind,
-  Open tabs, Recently closed, Frequently visited and Bookmarks, the first row nearest the
-  thumb as in the typed list. A row is chosen with `chooseSuggestion`: an open tab shows,
-  a closed one reopens, a site or a bookmark loads; only a site or a bookmark has ↖. Over
-  a new tab, whose page already shows the sites and the bookmarks, it asks for `tab` and
-  `closed` alone, so the two never list the same rows and the page stays in view when
-  there are none. Every suggest the shell sends takes its id from one count
-  (`queries.js`), so the bar's and the new tab page's answers never mix. Until Go's
-  answer for the latest text comes, the list on screen is an earlier text's; it carries
-  the text it answers as `data-answers`, which the shell's tests wait on before they press
-  a row. While `bookmarksCommandBox` is on and there are bookmarks, they show nearest the
-  field instead of the Bookmarks rows, which aren't asked for meanwhile
-  ([bookmark-folders.md](bookmark-folders.md#on-the-mobile-web-shell)).
+- **What the field suggests** follows
+  [daily-driver.md](daily-driver.md#what-the-address-field-suggests-and-when). Tapped over
+  a new tab it draws nothing, the new tab page being the list. Over a page, with nothing
+  typed, it covers the page with the page's own row (Copy, Share, Edit) and, while
+  `bookmarksCommandBox` is on, every bookmark as one row of tiles
+  ([bookmark-folders.md](bookmark-folders.md#on-the-mobile-web-shell)). Typed, it asks Go
+  for its list with `rows`, the rows that fit, and draws it without headings, the first
+  row nearest the field, an open tab's row with Switch to tab, the others with ↖; the first
+  row's completion shows selected in the field. Every suggest the shell sends takes its id
+  from one count (`queries.js`), so the bar's and the new tab page's answers never mix.
+  Until Go's answer for the latest text comes, the list on screen is an earlier text's; it
+  carries the text it answers as `data-answers`, which the shell's tests wait on before
+  they press a row, and Enter takes the first row only while it answers what is typed.
 - **The bookmarks bar,** while `bookmarksBar` is on, is one of the bars: over the group
   strip and the toolbar, or under the toolbar on top
   ([bookmark-folders.md](bookmark-folders.md#on-the-mobile-web-shell)).

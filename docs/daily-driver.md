@@ -325,19 +325,16 @@ rows, each tagged with where it comes from:
 |---|---|---|
 | `address` | What was typed, read as an address | `url` |
 | `search` | "Search DuckDuckGo for …" | `url`, the search |
-| `tab` | A tab open in any window and workspace of the profile, matched by title or address | `tab`, `url`, `workspace` |
+| `tab` | A tab open in any window and workspace of the profile, matched by title or address, but never the tab the field is over | `tab`, `url`, `workspace` |
 | `history` | A page visited before | `url` |
 | `action` | An action that can run now, matched by its title | `action` |
 | `bookmark` | A bookmark whose title or address holds the text, or with nothing typed one of the newest ([A new tab](#a-new-tab)) | `url` |
 | `closed` | A tab closed lately, with nothing typed only ([A new tab](#a-new-tab)). Choosing it reopens that tab | `url` |
 
 Every row has `kind`, `title` and `detail`, a second line: the address's host, the tab's
-workspace, or an action's key. The order: first what Enter does, the `address` row when the
-text reads as one and the `search` row otherwise; then up to three tabs, five from history,
-three bookmarks and three actions, best first in each (the bookmarks newest first); and the
-`search` row last when an address came first. A page shows once: history and the bookmarks
-leave out what a tab already lists. With nothing typed, the list is what a new tab offers
-([A new tab](#a-new-tab)).
+workspace, or an action's key. The order, the matching and how many rows come are in
+[What the address field suggests, and when](#what-the-address-field-suggests-and-when).
+With nothing typed, the list is what a new tab offers ([A new tab](#a-new-tab)).
 
 **Inline completion,** all local, as the owner approved (item 5 of the UX comparison). When
 the text has no space and the bare address (no scheme, no `www.`) of a page from history or
@@ -364,10 +361,11 @@ field now: the completion shown is that row's rest after what was typed, or the 
 answers what is typed now. Before Go's answer for the latest text, as after fast typing,
 Enter takes what was typed, never a row of the list for an earlier text; a row the arrow
 keys or a click chose is taken as always. Standard's command box takes the same rule from
-0.2.76, and Mobile's field takes a row only at a tap, so its Enter is always what was typed.
+0.2.76, and Mobile's field the same rule since the framework below.
 
-**The messages.** As today, `suggest {id, text}` and `suggestions {id, items}`, with two
-additions. The shell names the kinds it draws, `kinds: ["tab", "history", …]`; without it the
+**The messages.** As today, `suggest {id, text}` and `suggestions {id, items}`, with three
+additions. `rows` says how many rows the shell has room for, besides the actions; without
+it Go uses its own caps. The shell names the kinds it draws, `kinds: ["tab", "history", …]`; without it the
 list is history alone, as it was, so a shell that hasn't changed still works. And a shell runs
 a row with `chooseSuggestion {row, newTab}`: Go loads the address or the search in the active
 tab, or a new one, shows the tab, in whichever window it is, or runs the action. The SDK has
@@ -392,6 +390,99 @@ Bar moves onto this list, in place of its own search of tabs and actions. In Sta
 goes to the window's new tab, opening one when there is none, and the box shows on it
 (the owner, 2026-11-18, [windows.md](windows.md#every-window-has-a-tab-decided-2026-11-18)); the box over a page, with
 its scrim, went then.
+
+## What the address field suggests, and when
+
+The owner approved this on 2026-11-20 from the ux session's mocks, and it was built on the
+`suggest-framework` branch. What changed: a phone's field showed everything it had as it was
+tapped (open tabs, closed tabs, the sites visited most, the bookmarks as folder chips and
+tiles), under four headings, over a new tab page that showed most of the same things; and
+one typed letter matched inside almost every title and address, so ten rows came back, most
+of them under the keyboard.
+
+The owner's answers, 2026-11-20: Recently closed only on the new tab page; sites and
+bookmarks separate, never mixed; and "Rank by visits when suggesting. One typed letter
+showing the sites that start with it is expected; showing sites with nothing typed is not."
+
+**How Chrome does it**, from Chromium's source and launch notes, leaving out what depends on
+Google being the search engine (we use DuckDuckGo, and send no keystrokes anywhere). On
+Android, tapping the field on a page shows that page first, with Copy, Share and Edit, then
+one row of most-visited tiles; tapping the new tab page's box with another engine than
+Google drops nothing down, the page staying the list. On a desktop, focusing the field on a
+page with another engine shows nothing until you type; the new tab page's box shows 8 rows
+at most. Typed: at most 8 rows on a desktop, and on Android as many as fit above the
+keyboard, never fewer than 5. The first row is always what Enter does, completed in the
+field; an address shows once, and an open tab offers Switch to tab rather than a second copy.
+
+### The rules
+
+1. **One layer.** While the field is focused, either its list covers the page down to the
+   keyboard, or nothing covers it. A list never sits over a new tab page.
+2. **Each thing once on screen.** An address shows once, as the highest of its kinds: an
+   open tab, then a bookmark, then history. A bookmarked page from history is one row, with
+   the star. The tab the field is over is never offered as a tab to switch to, as in Chrome:
+   its page is a row like any other.
+3. **Short text matches starts only.** Under three characters, a row matches only where its
+   host starts with the text, or a word of its title does. From three characters on, a
+   match anywhere counts.
+4. **Enter's row comes first.** That's the completion, else the address, else the search.
+   The search row goes last whenever it isn't first.
+5. **Headings only with nothing typed.** A typed list has none, as each row's icon says its
+   kind.
+6. **No folders in the field's list.** Folders live on the new tab page and in All
+   bookmarks. With nothing typed, bookmarks show as their own row of tiles while their pref
+   is on, never mixed with sites. Once you type, they join the rows.
+7. **Nothing leaves the device.** No suggestions fetched from the search engine, as before.
+   The clipboard ("Link you copied") isn't in this round.
+
+### Each state
+
+| State | Phone | Desktop (Standard) |
+|---|---|---|
+| Nothing typed, on a new tab | No list: the new tab page is the list, in the order Frequently visited, Recently closed (3 at most), Bookmarks. | The new tab's command box, as before: 8 rows at most of sites and bookmarks. The address bar shows no list. |
+| Nothing typed, on a page | The page's own row, with Copy, Share and Edit, and nothing else: no sites, no closed tabs. While Bookmarks in the address bar is on, the bookmarks follow as their own row of tiles. | No list. |
+| 1–2 characters | Enter's row and up to 4 more: open tabs (2 at most), then the pages from history and the bookmarks by their visits, then the search. Starts only. | The same, with up to 5 more. |
+| 3 or more characters | Enter's row, then rows in the same order, as many as fit above the keyboard: at least 5 in all, 6 on a common phone, 8 at most. | 8 rows at most, and up to 2 actions besides in Glide's Command Bar. |
+
+**Ranking.** Rows rank by visits: a page visited more comes first, and a visit typed in the
+field counts three, a clicked one one. A bookmark goes ahead of another page only when their
+visits are equal; a bookmark never visited ranks as none. Recently closed tabs show only on
+the new tab page, and sites only once something is typed, never in the field's list with
+nothing typed.
+
+<p>
+<img src="screenshots/suggest/this-page.png" width="200" alt="A phone's field tapped on a page: the page's row with Copy, Share and Edit over the field, nothing else">
+<img src="screenshots/suggest/bookmarks-top.png" width="200" alt="With the bar on top: the page's row under the field, then the bookmarks as one row of tiles">
+<img src="screenshots/suggest/one-letter.png" width="200" alt="One letter typed: example.com completed in the field, two open tabs with Switch to tab, a page from history and the search last">
+</p>
+
+### How it is built
+
+- **Go (`core/suggest`, `core/history`).** History's search matches under three letters only
+  where a bare address starts with the text or a word of a title does; each row says how
+  often it was typed. `core/suggest` puts Enter's row first, then up to two open tabs (not
+  the one the asking window shows), then
+  the pages and bookmarks together by their visits (a typed visit weighing three), the
+  bookmark first of two with as many, then up to two actions, then the search; a page from
+  history that is bookmarked is a `bookmark` row. A list has `rows` rows besides the
+  actions, the shell's number, or 6 under three letters and 8 from three.
+- **The phone (`shell/src/apps/shell/mobile/Address.svelte`).** Tapped over a new tab it
+  asks for nothing and draws nothing. Over a page it draws the page's row from the tab it
+  has, with Copy (`copyText`), Share (`shareText`, the system's share sheet) and Edit (the
+  caret to the address's end), and the bookmarks' tiles while `bookmarksCommandBox` is on.
+  Typed, it asks for `address`, `search`, `tab`, `history` and, while that pref is on,
+  `bookmark`, with `rows` 5 under three letters and otherwise the 48px rows that fit
+  between the field and the keyboard, 5 to 8. It completes in the field as Standard does,
+  and Enter takes the first row while the list answers what is typed, else the text.
+- **The phone's new tab page (`NewTab.svelte`).** Frequently visited, then Recently closed,
+  then the bookmarks.
+
+**Checked** by Go's tests (`core/suggest`, `core/history`, `core/app`) and the mobile
+shell's tests on the mock engine, 2026-11-20: the page's row and each of its buttons, the
+covering list, one letter's five rows, the completion kept by a matching key and dropped by
+Backspace, the rows asked for from three letters, Enter on a completed open tab, Switch to
+tab, a fast typist's Enter, a new tab's field drawing nothing, and the bookmarks' row with
+the bar on top and at the foot, and with the pref off.
 
 ## Permissions
 
@@ -620,15 +711,13 @@ the sites keep up to five rows when there are bookmarks to show, the bookmarks f
 and the sites any rows the bookmarks leave. Asked for one kind, it has all eight. Choosing a
 row loads it as any row does.
 
-**Open and closed tabs, for a phone's field as it is tapped** (ux-comparison.md item 4).
-A shell that asks for `tab` with nothing typed gets the window's other tabs first, the most
-recently used first, its active tab left out, three at most, as `tab` rows; one that asks for
-`closed` gets the tabs closed lately next, the newest first, three at most, as `closed` rows
-`{kind, title, detail: the host, url}`. Then come the sites and the bookmarks in the rows
-left, eight in all, each address once. Choosing a `closed` row reopens the newest closed tab
-at its address, the way History > Recently Closed does (`reopen` in `core/app/session.go`,
-the span `tab.reopen`). A shell that asks for neither kind gets what it got before: Standard's
-command box asks for `history` and `bookmark` alone.
+**Closed tabs, for a phone's new tab page.** A shell that asks for `closed` with nothing
+typed gets the tabs closed lately, the newest first, three at most, as `closed` rows
+`{kind, title, detail: the host, url}`, ahead of the sites and the bookmarks it asks for, eight
+in all, each address once. Choosing a `closed` row reopens the newest closed tab at its
+address, the way History > Recently Closed does (`reopen` in `core/app/session.go`, the span
+`tab.reopen`). A phone's field no longer asks for open or closed tabs as it is tapped
+([What the address field suggests](#what-the-address-field-suggests-and-when)).
 
 **Standard.** New Tab opens the command box ([shells.md](shells.md#a-shells-own-actions)),
 which now shows the list before anything is typed, under Frequently visited and Bookmarks,
@@ -643,11 +732,13 @@ window always has a tab. Back on it closes it, and with it the app, as Back on a
 does. The native Kotlin shell does the same; it has no new tab page.
 
 A tab with no page yet, a new tab, shows the new tab page over it
-instead of a blank page: first up to three tabs closed lately, under Recently closed, each a
-56px row of its site's mark, its title and its host (Go's `closed` rows, asked for alone); a
-tap reopens it, and the new tab it was chosen on goes, so the tab comes back in its place.
-Then the sites as tiles, four to a row, each a letter on a colour taken
-from its host, with the page's title under it; the top bookmark folder as tiles while
+instead of a blank page: first the sites as tiles, under Frequently visited, four to a row,
+each a letter on a colour taken from its host, with the page's title under it; then up to
+three tabs closed lately, under Recently closed, each a 56px row of its site's mark, its
+title and its host (Go's `closed` rows, asked for alone); a tap reopens it, and the new tab
+it was chosen on goes, so the tab comes back in its place (the order since 2026-11-20,
+[What the address field suggests](#what-the-address-field-suggests-and-when)). Then the
+top bookmark folder as tiles while
 `bookmarksNewTab` is on ([bookmark-folders.md](bookmark-folders.md#where-bookmarks-show));
 then All bookmarks and History, which open those pages of ours (`bookmarks.show`,
 `history.show`). It asks Go for the sites alone. The keyboard stays down, so nothing covers the tiles; a tap
