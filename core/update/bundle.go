@@ -9,8 +9,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-
-	"projectb/timeline"
 )
 
 // BundleOf returns the .app the executable runs from, or "" when it runs from a build
@@ -89,26 +87,6 @@ func unpack(archive, dir string) (string, error) {
 		return "", fmt.Errorf("the archive holds %d apps, not one", len(apps))
 	}
 	return apps[0], nil
-}
-
-// SignedBy returns a check that a bundle's signature is intact and was made with the key
-// whose certificate has this SHA-1: the same two checks tools/package.sh makes before it
-// ships one.
-func SignedBy(leafSHA1 string) func(app string) error {
-	return func(app string) error {
-		if out, err := exec.Command("/usr/bin/codesign", "--verify", "--deep", "--strict", app).CombinedOutput(); err != nil {
-			// Verbose output names each file that differs from the seal, which the one
-			// line doesn't; it goes to the timeline.
-			detail, _ := exec.Command("/usr/bin/codesign", "--verify", "--deep", "--strict", "--verbose=4", app).CombinedOutput()
-			timeline.Errorf("update: codesign on %s:\n%s", app, strings.TrimSpace(string(detail)))
-			return fmt.Errorf("the signature is broken: %s", firstLine(out, err))
-		}
-		requirement := fmt.Sprintf(`certificate leaf = H"%s"`, leafSHA1)
-		if out, err := exec.Command("/usr/bin/codesign", "--verify", "-R="+requirement, app).CombinedOutput(); err != nil {
-			return fmt.Errorf("not signed with Project B's key: %s", firstLine(out, err))
-		}
-		return nil
-	}
 }
 
 func firstLine(out []byte, err error) string {

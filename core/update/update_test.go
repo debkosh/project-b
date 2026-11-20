@@ -282,13 +282,44 @@ func TestBundleOfAnotherVersionIsRefusedOnce(t *testing.T) {
 func TestBundleFailingVerifyIsRefused(t *testing.T) {
 	good := archive(t, fakeApp(t, t.TempDir(), "0.2.0"))
 	rs := release(t, "0.2.0", good, good)
-	r := start(t, "0.1.0", rs.url, func(string) error { return errors.New("not signed with Project B's key") })
+	r := start(t, "0.1.0", rs.url, func(string) error { return fmt.Errorf("%w: it isn't signed with Project B's key", errRefused) })
 	r.check()
-	if r.phases() != "downloading failed" || !strings.Contains(r.states[1].Error, "not signed") {
+	if r.phases() != "downloading failed" || !strings.Contains(r.states[1].Error, "isn't signed with Project B's key") {
 		t.Fatalf("phases %q states %+v", r.phases(), r.states)
 	}
 	if _, err := os.Stat(r.m.stageDir()); err == nil {
 		t.Fatal("a refused bundle left a stage")
+	}
+	r.check()
+	if n := rs.downloads.Load(); n != 1 {
+		t.Fatalf("a refused release was downloaded %d times", n)
+	}
+}
+
+// A check that couldn't be made, as codesign's was for want of open files, is no answer
+// about the release: it isn't rejected, and the next check, automatic or asked for, tries
+// it again.
+func TestACheckThatCouldNotBeMadeIsTriedAgain(t *testing.T) {
+	good := archive(t, fakeApp(t, t.TempDir(), "0.2.0"))
+	rs := release(t, "0.2.0", good, good)
+	var broken atomic.Bool
+	broken.Store(true)
+	r := start(t, "0.1.0", rs.url, func(string) error {
+		if broken.Load() {
+			return errors.New("its signature couldn't be checked: Too many open files")
+		}
+		return nil
+	})
+	r.check()
+	if s := r.m.State(); s.Phase != Failed || !strings.Contains(s.Error, "couldn't be checked: Too many open files") {
+		t.Fatalf("state %+v", s)
+	}
+	r.m.CheckNow()
+	eventually(t, r.m, func(s State) bool { return s.Phase == Failed && rs.downloads.Load() == 2 })
+	broken.Store(false)
+	r.check()
+	if s := r.m.State(); s.Phase != Ready || s.Version != "0.2.0" {
+		t.Fatalf("the next check should take it: %+v", s)
 	}
 }
 

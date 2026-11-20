@@ -317,6 +317,10 @@ type attempt struct {
 // Why a download was stopped: by the person's Cancel or Retry, which set the state
 // themselves, or by no bytes arriving.
 var (
+	// errRefused is a release's own answer against it: a bundle of another version, or a
+	// signature that is broken or someone else's. Only it rejects the release for good; a
+	// check that couldn't be made, as a download that failed, is tried at the next check.
+	errRefused   = errors.New("refused")
 	errCancelled = errors.New("cancelled")
 	errRetried   = errors.New("retried")
 )
@@ -629,11 +633,14 @@ func (m *Manager) fetch(ctx context.Context, d *amarit.Decision) (string, error)
 	if err == nil {
 		err = m.checkBundle(app, d.Version)
 	}
-	if err != nil {
+	if errors.Is(err, errRefused) {
 		if rerr := m.client.Reject(d.Version); rerr != nil {
 			timeline.Errorf("update: %v", rerr)
 		}
-		return "", fmt.Errorf("%s was refused: %w", d.Version, err)
+		return "", err
+	}
+	if err != nil {
+		return "", err
 	}
 	staged := filepath.Join(stage, filepath.Base(app))
 	if err := os.MkdirAll(stage, 0o700); err != nil {
@@ -648,7 +655,7 @@ func (m *Manager) checkBundle(app, version string) error {
 		return err
 	}
 	if v != version {
-		return fmt.Errorf("the download says it is %s", v)
+		return fmt.Errorf("%w: the download says it is %s", errRefused, v)
 	}
 	if m.cfg.Verify != nil {
 		return m.cfg.Verify(app)
