@@ -32,10 +32,10 @@ APP = "/Applications/Project B.app"
 SCREEN = (1440, 900)
 # A fresh profile has no frame colour picked (core/tones, None): the light tones of its grey
 # frame, which the guest shows as its appearance is light.
-FRAME = (220, 222, 226)  # --frame, #dcdee2
-BAR = (250, 251, 251)  # --bar, the frame mixed 0.87 toward white
+FRAME = (13, 125, 134)  # --frame, a new profile's teal, #0d7d86
+BAR = (224, 238, 239)  # --bar, the frame mixed 0.87 toward white
 WHITE = (255, 255, 255)  # --surface
-ICON = (74, 79, 88)  # --icon, the toolbar's buttons: None's ink, #4a4f58
+ICON = (11, 105, 113)  # --icon, the toolbar's buttons: the teal's ink
 # Standard's command box fills the page area with the bar's colour mixed 60% into --surface
 # (shell/src/apps/shell/standard/CommandBox.vue), on a new tab. A window opens on a new tab,
 # with this box in the page area; Standard takes New Tab: Cmd+T goes to the window's new tab,
