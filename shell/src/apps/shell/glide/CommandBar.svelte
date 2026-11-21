@@ -108,6 +108,9 @@
   }
 
   const icons = { tab: 'tab', action: 'bolt', visit: 'clock', go: 'globe' };
+  // The hints' keys as the platform writes them: ↩ everywhere, as PC keyboards print it too;
+  // the Mac's ⌘ and ⎋, Ctrl and Esc elsewhere.
+  const mac = $derived(go.platform === 'mac');
 </script>
 
 <!-- Over the pages only: the sidebar stays in reach, and a press there closes the bar. -->
@@ -147,7 +150,7 @@
         {/each}
       </ul>
     {/if}
-    <div class="hints"><span>↩ Go</span><span>⌘↩ Split View</span><span>/ Actions</span><span>⎋ Close</span></div>
+    <div class="hints"><span>↩ Go</span><span>{mac ? '⌘↩' : 'Ctrl+↩'} Split View</span><span>/ Actions</span><span>{mac ? '⎋' : 'Esc'} Close</span></div>
   </div>
 </div>
 
