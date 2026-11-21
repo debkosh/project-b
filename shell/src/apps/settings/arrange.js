@@ -29,6 +29,8 @@ const where = {
   // things over from.
   import: () => !phone,
   extensions: () => !phone && !!extensionsSection?.shown(),
+  // The Mac has its own menu bar; a phone has none.
+  menuBar: () => !phone && state.keyboard.platform !== 'mac',
   // Linux has one Flatpak branch, Stable, with no Dev to choose (docs/research/linux.md).
   channel: () => state.keyboard.platform !== 'linux',
 };
@@ -145,7 +147,7 @@ const sectionList = () => [
     id: 'appearance',
     label: 'Appearance',
     icon: 'appearance',
-    cards: [['theme', 'frameColour', 'tabLayout', 'addressBar', 'shell']],
+    cards: [['theme', 'frameColour', 'tabLayout', 'addressBar', 'shell', 'menuBar']],
     summary: () => [named(themeNames, state.theme), colourName(state.windowColor)].join(' · '),
   },
   {

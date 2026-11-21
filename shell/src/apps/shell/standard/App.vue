@@ -1,6 +1,7 @@
 <script setup>
 import { computed, watchEffect } from 'vue';
 import BookmarkBar from './BookmarkBar.vue';
+import MenuBar from '@/ui/MenuBar.vue';
 import FloatMenu from './FloatMenu.vue';
 import PageMenu from '@/ui/PageMenu.vue';
 import TabMenu from './TabMenu.vue';
@@ -42,6 +43,7 @@ watchEffect(() => {
   <div v-if="state.loaded" class="app" :class="{ 'page-full': pageFull }">
     <!-- Hidden, not taken away, while a page fills the screen or the welcome the window:
          each keeps what it holds, as the address it shows. -->
+    <MenuBar :hidden="bare" />
     <TabStrip v-if="tabsOnTop" v-show="!bare" />
     <TopBar v-show="!bare" />
     <div v-if="welcome" class="edge top"></div>

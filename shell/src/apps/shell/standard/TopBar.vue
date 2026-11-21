@@ -80,8 +80,9 @@ function switchLayout() {
   background: var(--frame);
 }
 
+/* None under a kept menu bar, which is the window's top then (ui/MenuBar.vue). */
 .band.top {
-  height: var(--frame-width);
+  height: var(--top-band, var(--frame-width));
 }
 
 .row {

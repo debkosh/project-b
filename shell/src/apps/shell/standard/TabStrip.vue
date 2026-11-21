@@ -111,8 +111,8 @@ const items = computed(() =>
   display: flex;
   align-items: center;
   flex: none;
-  height: 48px;
-  padding: var(--frame-width) var(--frame-width) 0;
+  height: calc(44px + var(--top-band, var(--frame-width)));
+  padding: var(--top-band, var(--frame-width)) var(--frame-width) 0;
   box-sizing: border-box;
   background: linear-gradient(var(--bar), var(--bar)) content-box, var(--frame);
   color: var(--text);

@@ -71,6 +71,11 @@ export const state = {
   pins: [],
   // The shell's own menu, as Go last sent it when asked (menu.js).
   menu: [],
+  // The menu bar's whole tree, off the Mac, as Go last sent it when asked (requestBarMenu).
+  barMenu: [],
+  // Go asking for the menu bar, off the Mac (Linux, Windows): open says F10's first menu
+  // open, else Alt alone's bar for a moment with its first title focused; n counts the asks.
+  menuBar: { open: false, n: 0 },
   // The report of the last run's crash, '' when it didn't crash or the notice was closed.
   crashLog: '',
   // macOS's report of that crash, or the folder it keeps its reports in; '' on Linux, which
@@ -137,7 +142,7 @@ export const state = {
 
 // The messages that are only state: each sets the fields it carries, whole. The one
 // exception is tabs, whose tabs carry no favicon: each keeps the one it had (below).
-const updates = new Set(['theme', 'windowColor', 'controls', 'keys', 'workspaces', 'update', 'crashLog', 'tabLayout', 'addressBarPosition', 'extensions', 'profileData', 'contextMenu', 'downloads', 'dialogs', 'prefs', 'find', 'pageFullScreen', 'welcome', 'searchEngine', 'permissionPrompts', 'openSites', 'bookmarks', 'bookmarkPanel', 'pins', 'menu']);
+const updates = new Set(['theme', 'windowColor', 'controls', 'keys', 'workspaces', 'update', 'crashLog', 'tabLayout', 'addressBarPosition', 'extensions', 'profileData', 'contextMenu', 'downloads', 'dialogs', 'prefs', 'find', 'pageFullScreen', 'welcome', 'searchEngine', 'permissionPrompts', 'openSites', 'bookmarks', 'bookmarkPanel', 'pins', 'menu', 'barMenu']);
 
 const listeners = [];
 
@@ -289,6 +294,9 @@ export function connect(handlers = {}, drawn = (fn) => fn()) {
           break;
         case 'tab':
           change({ tabs: state.tabs.map((t) => (t.id === m.tab.id ? m.tab : t)) });
+          break;
+        case 'menuBar':
+          change({ menuBar: { open: !!m.open, n: state.menuBar.n + 1 } });
           break;
         // Go leaves the favicons out of the list, a data URL each it would send again on
         // every change: a tab keeps the favicon it had. A tab new to the window comes with

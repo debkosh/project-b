@@ -118,6 +118,7 @@ mock() {
     run "Settings' Sync against a sync server, on the mock engine" node shell/e2e/sync.cjs
     run "the picker on the mock engine" node shell/e2e/picker.cjs
     run "the crash report on the mock engine" node shell/e2e/crash-report.cjs
+    run "the menu bar off the Mac, on the mock engine as Linux" node shell/e2e/menu-bar.cjs
     run "a download's details, on the desktop and a phone" node shell/e2e/download-details.cjs
     run "a passkey request's steps, on every desktop shell" node shell/e2e/passkeys.cjs
     run "Settings' Passkeys, on the mock engine" node shell/e2e/passkey-settings.cjs

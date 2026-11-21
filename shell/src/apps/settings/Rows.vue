@@ -174,6 +174,18 @@ const layouts = [
     </button>
   </Row>
 
+  <Row v-else-if="part === 'menuBar'" v-slot="{ named }" tag="label" label="Show menu bar" hint="Alt shows it for a moment">
+    <input
+      v-bind="named"
+      type="checkbox"
+      role="switch"
+      class="switch"
+      :checked="!!state.prefs.showMenuBar"
+      :aria-checked="String(!!state.prefs.showMenuBar)"
+      @change="setPref('showMenuBar', $event.target.checked)"
+    />
+  </Row>
+
   <Row v-else-if="part === 'askWhereToSave'" v-slot="{ named }" tag="label" label="Ask where to save each file" hint="Each download opens the Save panel, as Save Link As does; off, files go straight to the Save to folder">
     <input
       v-bind="named"

@@ -9,9 +9,10 @@ import { pushEscape } from './escape.js';
 // next item starting with it, and Escape, Tab or a press outside closes it. Opened by the
 // mouse, no item is highlighted until the pointer or a key moves. The cover under it takes
 // every press outside, over the page too: it is the root, for the caller to mark as the
-// shell's.
+// shell's. A menu bar's menu hears move, -1 or 1, for ← and → where they open or close no
+// submenu, and close carries the press that closed it, to open the title under it.
 const props = defineProps({ items: Array, x: Number, y: Number, label: String, keyboard: Boolean });
-const emit = defineEmits(['close']);
+const emit = defineEmits(['close', 'move']);
 
 const menu = ref(null);
 const sub = ref(null);
@@ -122,6 +123,7 @@ function onKey(e, inSub) {
   else if (e.key === 'End') list[list.length - 1]?.focus();
   else if (e.key === 'ArrowRight' && !inSub && i >= 0 && props.items[+list[i].dataset.i]?.items) openSub(+list[i].dataset.i, true);
   else if (e.key === 'ArrowLeft' && inSub) closeSub(true);
+  else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') emit('move', e.key === 'ArrowRight' ? 1 : -1);
   else if (e.key === 'Tab') emit('close');
   else if (e.key.length === 1 && /\S/.test(e.key)) {
     const k = e.key.toLowerCase();
@@ -140,7 +142,7 @@ function onKey(e, inSub) {
 </script>
 
 <template>
-  <div class="ui-context-cover" @pointerdown.self="emit('close')" @contextmenu.self.prevent="emit('close')" @wheel.self="emit('close')">
+  <div class="ui-context-cover" @pointerdown.self="emit('close', $event)" @contextmenu.self.prevent="emit('close')" @wheel.self="emit('close')">
   <div
     ref="menu"
     class="ui-menu ui-context-menu"
