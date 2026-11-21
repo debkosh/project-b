@@ -111,6 +111,7 @@ func main() {
 		p.Close()
 	}
 	e := mockengine.New()
+	e.NoControls = *platform != "" && *platform != "mac"
 	sys := mocksystem.New(e.Post)
 	// The flags saved in the profile reach the engine at launch, as the real engine's
 	// command line, so one turned on in settings takes effect on Relaunch, as it does there.

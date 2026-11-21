@@ -50,6 +50,8 @@ var Keys = map[string]engine.Key{
 	"tab3":            {Code: '3', Mods: engine.ModCmd},
 	"tab9":            {Code: '9', Mods: engine.ModCmd},
 	"settings":        {Code: 0xBC, Mods: engine.ModCmd},
+	"f10":             {Code: 0x79},
+	"alt":             {Code: 0x12, Mods: engine.ModAlt},
 	"splitRight":      {Code: 'D', Mods: engine.ModCmd | engine.ModAlt},
 	"splitDown":       {Code: 'D', Mods: engine.ModCmd | engine.ModShift},
 	"paneLeft":        {Code: 0x25, Mods: engine.ModCtrl | engine.ModCmd},
@@ -85,6 +87,9 @@ type tab struct {
 // as it does with real content. Each window the app makes is a dev window of its own, the
 // shell at /?window=<id> on the dev server.
 type Engine struct {
+	// NoControls: the windows have no controls of the OS's, as on Linux and Windows,
+	// where the shell draws its own (ui/WindowButtons.vue). The mock's -platform sets it.
+	NoControls bool
 	// InlineThumbnails gives each tab's picture as a data: URL, where no server serves
 	// them: in a web page (core/cmd/webdemo). Set before Run.
 	InlineThumbnails bool
@@ -290,7 +295,9 @@ func (e *Engine) reportWindow(w engine.WindowID) {
 	}
 	s := engine.WindowState{W: win.w, H: win.h, FullScreen: win.full, Bounds: win.bounds, Minimised: win.minimised, Zoomed: win.zoomed}
 	if !win.full {
-		s.Controls = Controls
+		if !e.NoControls {
+			s.Controls = Controls
+		}
 		s.CornerRadius = CornerRadius
 	}
 	e.mu.Lock()
@@ -1097,6 +1104,11 @@ func (e *Engine) Fire(w engine.WindowID, tab engine.TabID, kind, value string) {
 		case "release":
 			// Every modifier let go.
 			e.listener.ModsChanged(0)
+		case "mods":
+			// The modifiers held now, engine.Mods as a number: "2" is Alt alone.
+			if n, err := strconv.Atoi(value); err == nil {
+				e.listener.ModsChanged(engine.Mods(n))
+			}
 		case "fullscreen":
 			// The system's own button, which asks no one.
 			win.full = !win.full
