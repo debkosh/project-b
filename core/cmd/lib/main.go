@@ -612,13 +612,13 @@ func PBShellFile(name *C.char, length *C.size_t) *C.char {
 	return (*C.char)(C.CBytes(b))
 }
 
-// rootOf is the folder that holds the profiles: the one --root names, else ~/.project-b.
+// rootOf is the folder that holds the profiles: the one --root names, else this platform's
+// (defaultRoot).
 func rootOf(root string) string {
 	if root != "" {
 		return root
 	}
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".project-b")
+	return defaultRoot()
 }
 
 // Go's own work runs on the main thread, one event at a time, so the collector is what
