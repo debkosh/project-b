@@ -1,4 +1,5 @@
 <script>
+  import WindowButtons from '@/ui/WindowButtons.svelte';
   import { activeTab, controlSpace, drag, send, shell, state } from '@/sdk/svelte.svelte.js';
   import Downloads from './Downloads.svelte';
   import Icon from './Icon.svelte';
@@ -23,6 +24,7 @@
   <button class="g-icon" aria-label="New Tab" title={hint('New Tab', 'tab.new')} onclick={() => send({ t: 'newTab', workspace: g.spaceId() })}><Icon name="plus" /></button>
   <Downloads />
   <button class="g-icon" aria-label="Settings" onclick={() => send({ t: 'run', text: 'app.settings' })}><Icon name="gear" /></button>
+  <WindowButtons />
 </div>
 
 <style>

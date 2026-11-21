@@ -1,4 +1,5 @@
 <script>
+  import WindowButtons from '@/ui/WindowButtons.svelte';
   import { controlSpace, drag, send, shell, state } from '@/sdk/svelte.svelte.js';
   import { hint } from './hint.js';
   import { TAB, topRow } from './rows.js';
@@ -22,6 +23,7 @@
     <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v12M2 8h12" /></svg>
   </button>
   <div class="drag" use:drag></div>
+  <WindowButtons />
 </div>
 
 <style>

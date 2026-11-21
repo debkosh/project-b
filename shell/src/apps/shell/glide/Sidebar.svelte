@@ -1,4 +1,5 @@
 <script>
+  import WindowButtons from '@/ui/WindowButtons.svelte';
   import { extensionsBuilt } from '@extensions';
   import { activeTab, controlSpace, drag, openPin, send, shell, state, tabLabel, unpin } from '@/sdk/svelte.svelte.js';
   import Extensions from './Extensions.svelte';
@@ -105,6 +106,8 @@
     <span class="gap"></span>
     <button class="g-icon" aria-label="Hide Sidebar" title={hint('Hide Sidebar', 'glide.sidebar')} onclick={() => ((g.win.hidden = true), g.save())}><Icon name="sidebar" /></button>
     <Nav />
+    <!-- Off the Mac, the window's own buttons, until Glide has a Linux frame of its own. -->
+    <WindowButtons />
   </div>
 
   <div class="address">
