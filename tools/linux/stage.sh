@@ -22,9 +22,11 @@ cd \$s/stage/files && rm -f *.TOC libVkICD_mock_icd.so libVkLayer_khronos_valida
 [ $app = project_b ] && rm -f \$s/stage/files/content_shell.pak
 true
 ls \$s/stage/files" || exit 1
-for f in project-b.sh io.github.sudiptadeb.project-b.desktop icon.svg; do
+for f in project-b.sh io.github.sudiptadeb.project-b.desktop; do
   docker cp "$here/$f" "pb:/work/linux-stage/$cpu/stage/$f"
 done
+# The app's icon, the logo as it fills its square, as GNOME's and KDE's icons do.
+docker cp "$here/../../core/cmd/dev/icon.svg" "pb:/work/linux-stage/$cpu/stage/icon.svg"
 # The metainfo carries the release: VERSION and today's date.
 meta=io.github.sudiptadeb.project-b.metainfo.xml
 sed -e "s/@VERSION@/$(tr -d '[:space:]' < "$here/../../VERSION")/" -e "s/@DATE@/$(date +%F)/" "$here/$meta" |
