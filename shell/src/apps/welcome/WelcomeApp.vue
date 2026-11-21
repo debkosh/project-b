@@ -146,7 +146,7 @@ onMounted(() => heading.value?.focus());
 
       <!-- Bring your things over: the import wizard, Settings' Import's too. -->
       <section v-else-if="step === 'bring'" class="bring">
-        <ImportWizard :send="send" heading="h1" />
+        <ImportWizard :send="send" heading="h1" :platform="state.platform" />
       </section>
 
       <!-- Style: the picture beside the choices, each taken at once. -->

@@ -49,6 +49,7 @@ const bars = async (w) => (await w.ui.getByRole('tab').first().isVisible()) || (
   await welcome.getByRole('button', { name: 'Get started' }).click();
   // Bring your things over, the import wizard (shell/e2e/imports.cjs), then the style.
   await welcome.getByRole('heading', { name: 'Bring your things over' }).waitFor();
+  check('on the Mac it brings things from another browser on this Mac', await until(() => welcome.getByText('From another browser on this Mac.').isVisible()));
   await welcome.getByRole('button', { name: 'Continue' }).click();
   await welcome.getByRole('radio', { name: 'Blue' }).click();
   const rootOf = (name) => welcome.locator(':root').evaluate((el, n) => getComputedStyle(el).getPropertyValue(n).trim(), name);
@@ -151,6 +152,7 @@ const bars = async (w) => (await w.ui.getByRole('tab').first().isVisible()) || (
   const lw = w.page.frameLocator('iframe.our-page[data-page="welcome"]');
   await lw.getByRole('button', { name: 'Get started' }).click();
   await lw.getByRole('heading', { name: 'Bring your things over' }).waitFor();
+  check('on Linux, from another browser on this computer', await until(() => lw.getByText('From another browser on this computer.').isVisible()));
   await lw.getByRole('button', { name: 'Continue' }).click();
   for (const [name, shot] of [['Tabs on the side', 'side'], ['Tabs on top', 'top'], ['Glide', 'glide']]) {
     await lw.getByRole('radio', { name }).click();

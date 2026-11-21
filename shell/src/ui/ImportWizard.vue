@@ -13,7 +13,9 @@ import { aboutBrowser, choicesOf, holds, imports, passwordsLine, startRun, stepL
 // password, used once. With files, as Settings has it, a file a browser exported comes
 // too: bookmarks as HTML, passwords as CSV, which the page reads and hands to Go. send is
 // the page's way to Go; heading is the level of the wizard's headings.
-const props = defineProps({ send: Function, heading: { type: String, default: 'h2' }, files: Boolean });
+// platform is the one the app runs on, "mac", "linux" or "windows", to name the computer.
+const props = defineProps({ send: Function, heading: { type: String, default: 'h2' }, files: Boolean, platform: { type: String, default: 'mac' } });
+const computer = computed(() => (props.platform === 'mac' ? 'this Mac' : 'this computer'));
 
 const view = ref('browsers');
 const browser = ref(null);
@@ -157,7 +159,7 @@ function again() {
     <!-- Which browser -->
     <template v-if="view === 'browsers'">
       <component :is="heading" ref="title" tabindex="-1">Bring your things over</component>
-      <p class="sub">From another browser on this Mac. Nothing leaves it.</p>
+      <p class="sub">From another browser on {{ computer }}. Nothing leaves it.</p>
       <div class="list">
         <div v-if="imports.browsers === null" class="item"><span class="state">Looking for other browsers…</span></div>
         <button v-for="b in imports.browsers || []" :key="b.id" type="button" class="item" :aria-label="`From ${b.name}`" @click="open(b)">
