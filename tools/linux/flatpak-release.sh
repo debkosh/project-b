@@ -8,7 +8,8 @@
 #   project-b.flatpakrepo adds the repository itself
 #   io.github.sudiptadeb.project-b.flatpak   the app in one file, deskrig's way in
 #   tools/linux/flatpak-release.sh
-# Needs pb-ubuntu running (tools/linux/vm.sh start) and the signing key, in the kosh at
+# Before the repository is kept, the app installed from it must pass restart_check.py in the
+# VM's desktop session. Needs pb-ubuntu running (tools/linux/vm.sh start) and the signing key, in the kosh at
 # project-b/flatpak-repo-signing.asc. The key goes to the VM for the build only, in a GnuPG
 # home of its own, and is removed after. Linux releases are built only when Sudipta asks.
 set -euo pipefail
@@ -32,6 +33,8 @@ echo "=== $(date '+%F %T') copy the stage, the manifest and the key in"
 ssh "${o[@]}" admin@"$ip" 'rm -rf ~/pb-release && mkdir -p ~/pb-release && chmod 700 ~/pb-release'
 scp "${o[@]}" -q "$stage" "$here/$app.yml" admin@"$ip":pb-release/
 scp "${o[@]}" -q "$key" admin@"$ip":pb-release/key.asc
+# The harness, for the restart check.
+git -C "$root" archive HEAD tools core/webfeatures | ssh "${o[@]}" admin@"$ip" 'mkdir -p ~/pb-release/src && tar -x -C ~/pb-release/src'
 
 echo "=== $(date '+%F %T') build and sign the repository"
 ssh "${o[@]}" admin@"$ip" "bash -s" <<GUEST
@@ -48,6 +51,13 @@ flatpak build-update-repo --gpg-sign=\$fpr --gpg-homedir="\$GNUPGHOME" --generat
   --title="Project B" --default-branch=stable repo
 flatpak build-bundle --gpg-sign=\$fpr --gpg-homedir="\$GNUPGHOME" --repo-url=$url/repo/ \
   repo $app.flatpak $app stable
+# The app as a user has it keeps its profile between starts and keeps no key in a file
+# (restart_check.py), in the desktop's session; a build that fails isn't released.
+export XDG_RUNTIME_DIR=/run/user/\$(id -u) WAYLAND_DISPLAY=wayland-0
+export DBUS_SESSION_BUS_ADDRESS=unix:path=\$XDG_RUNTIME_DIR/bus
+flatpak --user install -y --noninteractive --reinstall --bundle $app.flatpak >/dev/null
+trap 'flatpak --user uninstall -y --noninteractive --delete-data $app >/dev/null 2>&1; rm -rf ~/pb-release/gnupg ~/pb-release/key.asc' EXIT
+python3 src/tools/linux/restart_check.py || { echo "FAILED: the restart check"; exit 1; }
 pub=\$(gpg --export \$fpr | base64 -w0)
 cat > project-b.flatpakref <<REF
 [Flatpak Ref]
