@@ -2870,6 +2870,49 @@ def passkey_checks():
 KILLERS = web_features.probes()
 
 
+def client_cert_checks():
+    """A site whose TLS handshake asks for a client certificate, as an optional one, loads: the
+    app offers none and the connection goes on, as Chrome's does with none to offer. Content's
+    default drops the request, and the page failed with ERR_SSL_CLIENT_AUTH_CERT_NEEDED."""
+    import ssl
+    d = tempfile.mkdtemp(prefix="pb-clientcert-")
+    key, crt = os.path.join(d, "key.pem"), os.path.join(d, "cert.pem")
+    subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1", "-subj", "/CN=127.0.0.1",
+                    "-keyout", key, "-out", crt], check=True, capture_output=True)
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ctx.load_cert_chain(crt, key)
+    ctx.load_verify_locations(crt)
+    ctx.verify_mode = ssl.CERT_OPTIONAL
+
+    class Page(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            body = b"<!doctype html><title>no certificate, and in</title>"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *a):
+            pass
+
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Page)
+    server.socket = ctx.wrap_socket(server.socket, server_side=True)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    url = f"https://127.0.0.1:{server.server_address[1]}/"
+    # The server's own certificate is self-made: the switch lets it pass, so the check is the
+    # client certificate request alone.
+    app = App(tempfile.mkdtemp(prefix="pb-profile-"), extra=("--ignore-certificate-errors",))
+    try:
+        visit(app, url)
+        title = app.js("document.title", page=True)
+        check("a site asking for an optional client certificate loads, with none given", title == "no certificate, and in", title)
+    finally:
+        app.close()
+        server.shutdown()
+        shutil.rmtree(d, ignore_errors=True)
+
+
 def browser_signal_checks():
     """What a site reads to tell Chrome from an embedded or automated browser is Chrome's: the
     client hints, navigator.userAgentData and the Sec-CH-UA headers, name Chromium at the user
@@ -3389,5 +3432,5 @@ def app_link_checks():
 
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
-    parts = {"driver": [driver_checks], "browsing": [browsing_checks], "actions": [action_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "signals": [browser_signal_checks], "passkeys": [passkey_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks], "viewsource": [view_source_checks], "duplicate": [duplicate_checks], "applink": [app_link_checks]}
-    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, action_checks, settings_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, glide_checks, browser_signal_checks, web_api_checks, passkey_checks, sparks_checks, links_checks, view_source_checks, duplicate_checks, app_link_checks, quit_checks]))
+    parts = {"driver": [driver_checks], "browsing": [browsing_checks], "actions": [action_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "signals": [browser_signal_checks], "clientcert": [client_cert_checks], "passkeys": [passkey_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks], "viewsource": [view_source_checks], "duplicate": [duplicate_checks], "applink": [app_link_checks]}
+    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, action_checks, settings_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, glide_checks, browser_signal_checks, client_cert_checks, web_api_checks, passkey_checks, sparks_checks, links_checks, view_source_checks, duplicate_checks, app_link_checks, quit_checks]))
