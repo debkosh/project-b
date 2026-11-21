@@ -53,6 +53,7 @@ import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 import links_page  # noqa: E402
+from server_kinds import SERVER_KINDS  # noqa: E402
 import timeline  # noqa: E402
 import web_features  # noqa: E402
 from drive_chromedriver import cdp, ws_open  # noqa: E402
@@ -3125,6 +3126,45 @@ def view_source_checks():
     app.close()
 
 
+def web_server_kinds_checks():
+    """Each kind of web server in tools/server_kinds.py shows as a person should see it: its
+    page, or our error page with the right title, never an unexplained failure. Each opens in
+    a tab of its own. A public page can be down, so a miss is tried once more, and the check
+    names the site."""
+    app = App(tempfile.mkdtemp(prefix="pb-profile-"))
+    page_text = lambda tab: (lambda t: t or "")(_quiet(lambda: app.js("document.title + ' | ' + (document.body ? document.body.innerText : '')", tab=tab, timeout=5)))
+    shell_text = lambda: _quiet(lambda: app.js("document.body.innerText", timeout=5)) or ""
+    for link, want, words in SERVER_KINDS:
+        ok, said = False, ""
+        for attempt in (1, 2):
+            tab = int(app.cmd("opentab", "a", link))
+            deadline, got = time.time() + 45, None
+            while time.time() < deadline and got is None:
+                page, shell = page_text(tab), shell_text()
+                if want == "page" and words.lower() in page.lower():
+                    got = "page"
+                elif "Open anyway" in shell or re.search(r"\bFailed\b|ERR_[A-Z_]+", shell):
+                    got = "error"
+                else:
+                    time.sleep(0.5)
+            shell = shell_text()
+            ok = got == want and (want == "page" or words.lower() in shell.lower())
+            said = "the page: %s / the shell: %s" % (" ".join(page_text(tab).split())[:200], " ".join(shell.split())[:240])
+            if ok:
+                break
+        check("%s shows %s" % (link, "its page" if want == "page" else "our error page: " + words), ok,
+              "" if ok else "after two tries; " + said)
+    app.close()
+
+
+def _quiet(f):
+    """f's answer, or None when the page went or didn't answer."""
+    try:
+        return f()
+    except (RuntimeError, TimeoutError):
+        return None
+
+
 def quit_checks():
     """Quitting from the Dock is a clean stop: crash.log, which says the app is running, is
     gone, and the next start has no crash to report."""
@@ -3432,5 +3472,5 @@ def app_link_checks():
 
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
-    parts = {"driver": [driver_checks], "browsing": [browsing_checks], "actions": [action_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "signals": [browser_signal_checks], "clientcert": [client_cert_checks], "passkeys": [passkey_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks], "viewsource": [view_source_checks], "duplicate": [duplicate_checks], "applink": [app_link_checks]}
-    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, action_checks, settings_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, glide_checks, browser_signal_checks, client_cert_checks, web_api_checks, passkey_checks, sparks_checks, links_checks, view_source_checks, duplicate_checks, app_link_checks, quit_checks]))
+    parts = {"driver": [driver_checks], "browsing": [browsing_checks], "actions": [action_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "signals": [browser_signal_checks], "clientcert": [client_cert_checks], "passkeys": [passkey_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks], "viewsource": [view_source_checks], "duplicate": [duplicate_checks], "applink": [app_link_checks], "serverkinds": [web_server_kinds_checks]}
+    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, action_checks, settings_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, glide_checks, browser_signal_checks, client_cert_checks, web_api_checks, passkey_checks, sparks_checks, links_checks, view_source_checks, duplicate_checks, app_link_checks, web_server_kinds_checks, quit_checks]))
