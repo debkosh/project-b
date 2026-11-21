@@ -29,6 +29,8 @@ const where = {
   // things over from.
   import: () => !phone,
   extensions: () => !phone && !!extensionsSection?.shown(),
+  // Linux has one Flatpak branch, Stable, with no Dev to choose (docs/research/linux.md).
+  channel: () => state.keyboard.platform !== 'linux',
 };
 
 export const shown = (part) => !where[part] || where[part]();

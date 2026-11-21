@@ -116,6 +116,18 @@ const server = http.createServer((req, res) => {
   page = await about(await settingsTab());
   check('after a restart About offers the release still', await until(() => page.getByRole('region', { name: 'Version' }).getByRole('button', { name: 'Relaunch' }).isVisible(), 15000));
   check('but its notice shows no more', !(await notice.isVisible()));
+  check('About offers Updates from, Stable or Dev', await page.getByRole('radiogroup', { name: 'Updates from' }).isVisible());
+  await page.close();
+  await w.page.close();
+  await lib.stop();
+
+  // Linux has no Dev channel: About has no Updates from, and keeps Automatic updates.
+  await lib.start([...args('standard'), '-platform=linux']);
+  w = await lib.openWindow(browser);
+  page = await about(await settingsTab());
+  await page.getByRole('region', { name: 'Version' }).waitFor();
+  check('on Linux About has Automatic updates and no Updates from', await until(() => page.getByRole('switch', { name: 'Automatic updates' }).isVisible()) &&
+    (await page.getByRole('radiogroup', { name: 'Updates from' }).count()) === 0);
   await page.close();
   await w.page.close();
   await lib.stop();
