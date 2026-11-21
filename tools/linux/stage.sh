@@ -22,10 +22,12 @@ cd \$s/stage/files && rm -f *.TOC libVkICD_mock_icd.so libVkLayer_khronos_valida
 [ $app = project_b ] && rm -f \$s/stage/files/content_shell.pak
 true
 ls \$s/stage/files" || exit 1
-for f in project-b.sh io.github.sudiptadeb.project-b.desktop; do
+for f in project-b.sh io.github.sudiptadeb.project-b.desktop icon-64.png icon-128.png; do
   docker cp "$here/$f" "pb:/work/linux-stage/$cpu/stage/$f"
 done
-# The app's icon, the logo as it fills its square, as GNOME's and KDE's icons do.
+# The app's icon, the logo as it fills its square, as GNOME's and KDE's icons do; and drawn at
+# 64 (the small logo, as the app has below 64) and 128, which the repository's AppStream data
+# carries so a software centre shows it before the app is installed.
 docker cp "$here/../../core/cmd/dev/icon.svg" "pb:/work/linux-stage/$cpu/stage/icon.svg"
 # The metainfo carries the release: VERSION and today's date.
 meta=io.github.sudiptadeb.project-b.metainfo.xml
