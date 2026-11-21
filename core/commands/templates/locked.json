@@ -1,5 +1,13 @@
 {
   "actions": {
+    "app.menuBar": {
+      "linux": [
+        {
+          "keys": "F10",
+          "reserve": "always"
+        }
+      ]
+    },
     "app.quit": {
       "mac": [
         {

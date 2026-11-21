@@ -72,6 +72,9 @@ type Prefs struct {
 	// AskWhereToSave sends every download through the Save panel, as Save Link As does,
 	// rather than straight to the downloads folder. docs/daily-driver.md.
 	AskWhereToSave bool `json:"askWhereToSave"`
+	// ShowMenuBar keeps the shell's menu bar over the window, off the Mac (Linux, Windows);
+	// off, Alt alone shows it for a moment.
+	ShowMenuBar bool `json:"showMenuBar"`
 	// ClearCookiesOnQuit erases every workspace's cookies and site storage as the app
 	// quits, but the sites' in KeepCookies, registrable domains, sorted. A desktop's: a
 	// phone's app has no quit of its own. docs/settings.md.
@@ -337,6 +340,9 @@ func (m *Manager) SetBookmarksBarFolder(id string) {
 // SetBlockAds turns the ad blocker on or off on every site.
 func (m *Manager) SetBlockAds(on bool) { m.setSwitch(&m.prefs.BlockAds, on) }
 
+// SetShowMenuBar turns the menu bar always shown on or off.
+func (m *Manager) SetShowMenuBar(on bool) { m.setSwitch(&m.prefs.ShowMenuBar, on) }
+
 // SetAskWhereToSave turns on or off asking where each download goes.
 func (m *Manager) SetAskWhereToSave(on bool) { m.setSwitch(&m.prefs.AskWhereToSave, on) }
 
@@ -445,6 +451,10 @@ func (m *Manager) Set(name, value string) bool {
 	case "askWhereToSave":
 		if value == "true" || value == "false" {
 			m.SetAskWhereToSave(value == "true")
+		}
+	case "showMenuBar":
+		if value == "true" || value == "false" {
+			m.SetShowMenuBar(value == "true")
 		}
 	case "downloadFolder":
 		m.SetDownloadFolder(value)

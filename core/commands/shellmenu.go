@@ -109,3 +109,85 @@ func tidy(items []ShellItem) []ShellItem {
 	}
 	return out
 }
+
+// BarMenu is the menu bar's tree for a shell that draws the menu bar itself, off the Mac
+// (Linux, Windows; ui/MenuBar.vue): every menu this platform's tree has, whatever its
+// scope, with its submenus, lists as their items, and of the shells' own actions only
+// shell's. These desktops have no app menu: its items go where their apps keep them, Quit
+// at the end of File, Settings at the end of Edit, and the rest in Help, About last.
+func (m *Manager) BarMenu(shell string) []ShellItem {
+	var out []ShellItem
+	var app []ShellItem
+	for _, n := range m.tree {
+		if n.Only != "" && n.Only != m.platform {
+			continue
+		}
+		items := m.barItems(n.Items, shell)
+		if n.Role == "app" {
+			app = items
+			continue
+		}
+		if len(items) > 0 {
+			out = append(out, ShellItem{Title: n.Title, Items: items})
+		}
+	}
+	add := func(title string, items ...ShellItem) {
+		i := slices.IndexFunc(out, func(s ShellItem) bool { return s.Title == title })
+		if i < 0 {
+			out = append(out, ShellItem{Title: title})
+			i = len(out) - 1
+		}
+		out[i].Items = tidy(append(append(out[i].Items, ShellItem{Separator: true}), items...))
+	}
+	var help, about []ShellItem
+	for _, it := range app {
+		switch it.Action {
+		case "":
+		case "app.quit":
+			add("File", it)
+		case "app.settings":
+			add("Edit", it)
+		case "app.about":
+			about = append(about, it)
+		default:
+			help = append(help, it)
+		}
+	}
+	if len(help)+len(about) > 0 {
+		add("Help", append(append(help, ShellItem{Separator: true}), about...)...)
+	}
+	return out
+}
+
+// barItems is what nodes show in the menu bar a shell draws: BarMenu's.
+func (m *Manager) barItems(nodes []Node, shell string) []ShellItem {
+	var out []ShellItem
+	for _, n := range nodes {
+		if n.Only != "" && n.Only != m.platform {
+			continue
+		}
+		switch {
+		case n.Separator:
+			out = append(out, ShellItem{Separator: true})
+		case n.List != "":
+			for _, it := range m.ListItems(n.List) {
+				out = append(out, ShellItem{Title: it.Title, Action: it.Action, Enabled: true, Checked: it.Checked})
+			}
+		case n.Action != "":
+			a, ok := m.actions[n.Action]
+			if !ok || m.hidden(n) || (a.Shell != "" && a.Shell != shell) {
+				continue
+			}
+			title := a.Title
+			if a.Label != nil {
+				title = a.Label()
+			}
+			out = append(out, ShellItem{Title: title, Action: a.ID, Enabled: a.Enabled == nil || a.Enabled(), Checked: a.Checked != nil && a.Checked()})
+		default:
+			if items := m.barItems(n.Items, shell); len(items) > 0 {
+				out = append(out, ShellItem{Title: n.Title, Items: items})
+			}
+		}
+	}
+	return tidy(out)
+}

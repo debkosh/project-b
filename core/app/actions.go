@@ -21,6 +21,8 @@ func (a *App) registerActions(e engine.Engine) {
 	}
 	a.actions = append(a.actions, copyActions(e, a.quit, func(r engine.WindowRequest) { a.Window.Request(a.Tabs.Front(), r) })...)
 	add("app.settings", "Settings…", func() { a.Settings.Open(a.Tabs.Front()) })
+	// The menu bar with its first menu open, F10 off the Mac; Alt alone shows it too.
+	add("app.menuBar", "Open the Menu Bar", func() { a.Shell.MenuBar(a.Tabs.Front(), true) })
 	add("app.checkUpdate", "Check for Updates…", func() {
 		a.Settings.OpenSection(a.Tabs.Front(), "about")
 		a.Update.CheckNow()

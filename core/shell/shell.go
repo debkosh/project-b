@@ -503,6 +503,13 @@ func (m *Manager) Action(w engine.WindowID, id string) {
 // Send sends one message to every shell, for a part.
 func (m *Manager) Send(v any) { m.sendAll(v) }
 
+// MenuBar has window w's shell show its menu bar, where it draws one (Linux and Windows):
+// for a moment with the first menu's title focused, as Alt alone does, or with the first
+// menu open, as F10 does.
+func (m *Manager) MenuBar(w engine.WindowID, open bool) {
+	m.send(w, map[string]any{"t": "menuBar", "open": open})
+}
+
 // sendAll sends to every window's shell.
 func (m *Manager) sendAll(v any) {
 	for _, w := range m.window.Windows() {

@@ -319,3 +319,66 @@ func TestTheViewHasOnlyTheShellInUsesOwnActions(t *testing.T) {
 		t.Fatalf("with Glide on its group is %+v", g)
 	}
 }
+
+// Alt pressed and let go alone taps the menu bar, off the Mac; a key or another modifier
+// between, or Alt joining another modifier, doesn't.
+func TestAltTap(t *testing.T) {
+	full := false
+	m, _ := manager(t, t.TempDir(), &full)
+	m.platform = Linux
+	taps := 0
+	m.OnAltTap(func() { taps++ })
+	alt := func() {
+		m.Key(engine.Key{Code: 0x12, Mods: engine.ModAlt}, engine.KeyBeforePage)
+		m.ModsChanged(engine.ModAlt)
+	}
+	alt()
+	m.ModsChanged(0)
+	if taps != 1 {
+		t.Fatalf("Alt alone: %d taps", taps)
+	}
+	alt()
+	m.Key(engine.Key{Code: 'F', Mods: engine.ModAlt}, engine.KeyBeforePage)
+	m.ModsChanged(0)
+	m.ModsChanged(engine.ModCtrl)
+	m.ModsChanged(engine.ModCtrl | engine.ModAlt)
+	m.ModsChanged(engine.ModCtrl)
+	m.ModsChanged(0)
+	alt()
+	m.ModsChanged(engine.ModAlt | engine.ModShift)
+	m.ModsChanged(engine.ModAlt)
+	m.ModsChanged(0)
+	if taps != 1 {
+		t.Fatalf("Alt with a key or a modifier: %d taps, want still 1", taps)
+	}
+	// Alt+Tab: Alt's release goes to another window; back here, a key and Alt again.
+	alt()
+	m.WindowFocused()
+	m.ModsChanged(0)
+	if taps != 1 {
+		t.Fatalf("Alt let go in another window tapped the menu bar here")
+	}
+	m.platform = Mac
+	alt()
+	m.ModsChanged(0)
+	if taps != 1 {
+		t.Fatalf("Option on the Mac tapped the menu bar")
+	}
+}
+
+// A locked key whose action is in no menu still runs it: F10's menu bar on Linux.
+func TestLockedKeyOutsideTheTree(t *testing.T) {
+	m := New(mockengine.New(), t.TempDir(), func() bool { return false })
+	m.platform = Linux
+	ran := 0
+	m.Register(Action{ID: "app.menuBar", Title: "Open the Menu Bar", Run: func() { ran++ }})
+	m.Load()
+	if !m.Key(engine.Key{Code: 0x79}, engine.KeyBeforePage) || ran != 1 {
+		t.Fatalf("F10 on Linux ran app.menuBar %d times", ran)
+	}
+	m.platform = Mac
+	m.Load()
+	if m.Key(engine.Key{Code: 0x79}, engine.KeyBeforePage) {
+		t.Fatal("F10 on the Mac took the key")
+	}
+}

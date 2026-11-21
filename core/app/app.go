@@ -265,6 +265,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Commands.RegisterList(a.shellList())
 	a.Commands.RegisterList(a.closedList(e))
 	a.Shell = shell.New(e, a.Tabs, a.Suggest, a.Window, a.Prefs, a.Update, a.Crash, a.Commands.Run, a.Commands.ShownKeys, a.Commands.Platform())
+	a.Commands.OnAltTap(func() { a.Shell.MenuBar(a.Tabs.Front(), false) })
 	a.Shell.AddPart(a.workspaceShellPart(e))
 	a.Shell.AddPart(a.pinShellPart())
 	a.Shell.AddPart(a.menuShellPart())
@@ -746,6 +747,7 @@ func (a *App) WindowClosed(w engine.WindowID) {
 
 // WindowFocused puts the window in front: commands and the menu follow it.
 func (a *App) WindowFocused(w engine.WindowID) {
+	a.Commands.WindowFocused()
 	a.Tabs.Focus(w)
 	a.refreshMenu()
 }

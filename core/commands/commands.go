@@ -10,8 +10,10 @@ package commands
 
 import (
 	"encoding/json"
+	"maps"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 
 	"projectb/engine"
@@ -96,6 +98,13 @@ type Manager struct {
 	holding   *held
 	sent      string // the menu last sent, as JSON
 	onChanged []func()
+
+	// Alt pressed and let go alone, with no key or other modifier between, shows the menu
+	// bar where the shell draws one (Linux and Windows; docs/research/linux.md, the menu
+	// strip). altDown is that Alt is down alone so far; onAltTap hears the tap.
+	mods     engine.Mods
+	altDown  bool
+	onAltTap func()
 }
 
 // New returns a manager for the files in dir. fullScreen says whether the window is in
@@ -295,9 +304,16 @@ func (m *Manager) apply() {
 			}
 		}
 	}
-	// Locked keys win; then the tree's order decides between two actions on one key.
+	// Locked keys win; then the tree's order decides between two actions on one key. A
+	// locked key's action may be in no menu, as F10's menu bar off the Mac: it comes last.
 	order := m.order()
-	add(m.locked, order)
+	locked := slices.Clone(order)
+	for _, id := range slices.Sorted(maps.Keys(m.locked.Actions)) {
+		if !slices.Contains(order, id) {
+			locked = append(locked, id)
+		}
+	}
+	add(m.locked, locked)
 	add(m.keys, order)
 	m.RefreshMenu()
 	for _, f := range m.onChanged {
@@ -377,11 +393,36 @@ func (m *Manager) ModsChanged(mods engine.Mods) {
 	if m.holding != nil && mods&m.holding.mods != m.holding.mods {
 		m.letGo()
 	}
+	switch {
+	case mods == engine.ModAlt && m.mods == 0:
+		m.altDown = true
+	case mods == 0 && m.altDown && m.mods == engine.ModAlt:
+		m.altDown = false
+		if m.onAltTap != nil && m.platform != Mac {
+			m.onAltTap()
+		}
+	default:
+		m.altDown = false
+	}
+	m.mods = mods
 }
+
+// WindowFocused forgets the modifiers: one let go while another window had the keys, as
+// after Alt+Tab, never comes back, and the engine starts again from none held.
+func (m *Manager) WindowFocused() {
+	m.mods = 0
+	m.altDown = false
+}
+
+// OnAltTap subscribes to Alt pressed and let go alone, off the Mac: the menu bar's key.
+func (m *Manager) OnAltTap(f func()) { m.onAltTap = f }
 
 // Key decides about one key press. Before the page, only a reserved binding takes it;
 // after the page didn't use it, any binding does.
 func (m *Manager) Key(k engine.Key, phase engine.KeyPhase) bool {
+	if !modifierKey(k.Code) {
+		m.altDown = false
+	}
 	if m.recording {
 		return false
 	}
@@ -699,4 +740,14 @@ func (m *Manager) lockedItem(id string) bool {
 	}
 	walk(m.tree)
 	return found
+}
+
+// modifierKey says whether code, a Windows virtual-key code, is a modifier's own key: its
+// press comes before the modifiers change, and isn't a key between Alt's press and release.
+func modifierKey(code int) bool {
+	switch code {
+	case 0x10, 0x11, 0x12, 0x5B, 0x5C, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5:
+		return true
+	}
+	return false
 }
