@@ -102,6 +102,17 @@ class ContentBrowserClient : public ContentBrowserClientHooks {
       content::LoginDelegate::LoginAuthRequiredCallback auth_required_callback) override;
   std::string GetUserAgent() override;
   blink::UserAgentMetadata GetUserAgentMetadata() override;
+  // A site that asks for a client certificate gets none: the request goes on without one, as
+  // Chrome's does when it has none to offer. Content's own answer drops the request instead,
+  // which fails the page with ERR_SSL_CLIENT_AUTH_CERT_NEEDED even where the certificate is
+  // optional. Choosing a certificate isn't built.
+  base::OnceClosure SelectClientCertificate(
+      content::BrowserContext* browser_context,
+      int process_id,
+      content::WebContents* web_contents,
+      net::SSLCertRequestInfo* cert_request_info,
+      net::ClientCertIdentityList client_certs,
+      std::unique_ptr<content::ClientCertificateDelegate> delegate) override;
   // A page's preferred colour scheme is the app's theme, or as the system is.
   void OverrideWebPreferences(content::WebContents* web_contents,
                               content::SiteInstance& main_frame_site,

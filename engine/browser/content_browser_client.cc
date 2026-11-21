@@ -11,6 +11,11 @@
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/service_worker_version_base_info.h"
 #include "content/public/browser/certificate_request_result_type.h"
+#include "content/public/browser/client_certificate_delegate.h"
+#include "net/ssl/client_cert_identity.h"
+#include "net/ssl/ssl_cert_request_info.h"
+#include "net/ssl/ssl_private_key.h"
+#include "net/cert/x509_certificate.h"
 #include "content/public/browser/web_contents.h"
 #include "mojo/public/cpp/bindings/binder_map.h"
 #include "net/base/net_errors.h"
@@ -256,6 +261,17 @@ std::string ContentBrowserClient::GetUserAgent() {
 // that check them, Google's sign-in among them, took the app for an unsafe browser.
 blink::UserAgentMetadata ContentBrowserClient::GetUserAgentMetadata() {
   return embedder_support::GetUserAgentMetadata();
+}
+
+base::OnceClosure ContentBrowserClient::SelectClientCertificate(
+    content::BrowserContext* browser_context,
+    int process_id,
+    content::WebContents* web_contents,
+    net::SSLCertRequestInfo* cert_request_info,
+    net::ClientCertIdentityList client_certs,
+    std::unique_ptr<content::ClientCertificateDelegate> delegate) {
+  delegate->ContinueWithCertificate(nullptr, nullptr);
+  return base::OnceClosure();
 }
 
 // Cookies and the HTTP cache are saved in the partition's folder, as Chrome lays a
