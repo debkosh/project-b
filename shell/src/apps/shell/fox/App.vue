@@ -5,6 +5,7 @@ import NavBar from './NavBar.vue';
 import TabStrip from './TabStrip.vue';
 import UpdateBar from './UpdateBar.vue';
 import FindBar from '@/ui/FindBar.vue';
+import MenuBar from '@/ui/MenuBar.vue';
 import PageDialog from '@/ui/PageDialog.vue';
 import PageMenu from '@/ui/PageMenu.vue';
 import PageNotice from '@/ui/PageNotice.vue';
@@ -25,6 +26,7 @@ watchEffect(() => setFrame(pageFull.value ? 0 : 4));
 <template>
   <div class="splash" :aria-busy="!state.loaded">Project B</div>
   <div v-if="state.loaded" class="window">
+    <MenuBar :hidden="pageFull" />
     <TabStrip v-show="!pageFull" />
     <NavBar v-show="!pageFull" />
     <CrashBar v-show="!pageFull" />
@@ -47,6 +49,7 @@ watchEffect(() => setFrame(pageFull.value ? 0 : 4));
 
 <style>
 .window {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;

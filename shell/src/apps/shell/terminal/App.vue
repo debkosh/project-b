@@ -1,6 +1,7 @@
 <script setup>
 import { computed, watchEffect } from 'vue';
 import PaneTree from './PaneTree.vue';
+import MenuBar from '@/ui/MenuBar.vue';
 import PageMenu from '@/ui/PageMenu.vue';
 import { findBar } from '@/ui/find.js';
 import PromptLine from './PromptLine.vue';
@@ -51,7 +52,8 @@ connect({
 <template>
   <div class="splash" :aria-busy="!state.loaded">Project B</div>
   <div v-if="state.loaded" class="app">
-    <div v-show="!pageFull" v-drag class="band across"></div>
+    <MenuBar :hidden="pageFull" />
+    <div v-show="!pageFull" v-drag class="band across top"></div>
     <div class="middle">
       <div v-show="!pageFull" class="band side"></div>
       <div class="inner">
@@ -71,6 +73,7 @@ connect({
 
 <style>
 .app {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -115,6 +118,11 @@ connect({
 
 .band.across {
   height: var(--frame-width);
+}
+
+/* None under a kept menu bar, which is the window's top then (ui/MenuBar.vue). */
+.band.across.top {
+  height: var(--top-band, var(--frame-width));
 }
 
 .band.side {

@@ -129,6 +129,33 @@ const altTap = async () => {
   await w.page.close();
   await lib.stop();
 
+  // Every other desktop shell takes the same bar above its own top, and ends its top row with
+  // the window's own buttons; Show menu bar is still on.
+  for (const shell of (process.env.SHELLS || 'fox terminal').split(' ')) {
+    await lib.start([`-use=${shell}`, '-platform=linux']);
+    w = await lib.openWindow(browser, { viewport: { width: 1280, height: 800 } });
+    await until(async () => (await regions()).shell === shell);
+    const kept = w.ui.getByRole('menubar', { name: 'Menu bar' });
+    check(`${shell}: the bar is kept at the window's top`, await until(() => kept.isVisible()) &&
+      (await w.shell().evaluate(() => Math.round(document.querySelector('.menu-bar').getBoundingClientRect().top))) === 0);
+    check(`${shell}: its top row ends with the window's own buttons`, await until(() => w.ui.getByRole('button', { name: 'Close', exact: true }).isVisible()) &&
+      (await w.ui.getByRole('button', { name: 'Minimise' }).count()) === 1);
+    await lib.fire('key', 'f10');
+    const menu = w.ui.getByRole('menu', { name: 'File' });
+    check(`${shell}: F10 opens File`, await until(() => menu.isVisible()));
+    for (const scheme of ['light', 'dark']) {
+      await w.page.emulateMedia({ colorScheme: scheme });
+      await settle(w.page);
+      await w.page.screenshot({ path: shot(`menu-bar-linux-${shell}-${scheme}`) });
+    }
+    await w.page.emulateMedia({ colorScheme: 'light' });
+    await w.page.keyboard.press('Escape');
+    check(`${shell}: Esc closes it, and the kept bar stays`, await until(async () => !(await menu.isVisible()) && (await kept.isVisible())));
+    check(`${shell}: no errors`, w.errors.length === 0, w.errors.join(' | '));
+    await w.page.close();
+    await lib.stop();
+  }
+
   // The Mac has its own menu bar: no row in Settings, and Option alone does nothing.
   await lib.start(['-use=standard']);
   w = await lib.openWindow(browser, { viewport: { width: 1280, height: 800 } });
