@@ -426,6 +426,35 @@ Debian 13 GNOME (`deskrig-deb`), and KDE Plasma on Arch Linux ARM (`deskrig-kde`
 - **Then:** the top row's look and the buttons at the right, and the menu strip, to ux's mocks
   and the design system, reviewed by ux; shots from all four desktops to platforms.
 
+### Step 3, where it stands (2026-11-22)
+
+Done, reviewed by ux, on the four desktops in clones of deskrig's VMs (`pb-flat-ub2`, `-ubx`,
+`-deb`, `-kde`):
+
+- **The real window** passes `tools/linux/check_real_window.py` on all four: the window isn't
+  blank, and matches the driver's composed view (mean difference 0.0). Its shots are
+  [linux-step3/window-*.png](linux-step3/). The guest opens its page as a link would: a real
+  Wayland desktop's input method takes only the compositor's keys, so the driver's typed keys
+  never reach a field there.
+- **The window's own buttons** end the top row in every desktop shell off the Mac
+  (`ui/WindowButtons.vue`, `.svelte`); Glide's sit in its sidebar's top row until it has a
+  Linux frame.
+- **The menu bar** (`ui/MenuBar.vue`, `.svelte`), ux's spec: off by default, Settings >
+  Appearance > Show menu bar keeps it inside the frame's band; Alt alone shows it for a moment
+  over the first row, F10 opens File. Go detects the Alt tap from the modifiers the window
+  now reports (`window_linux.cc`, as the Mac's flagsChanged), resets it when a window gains
+  focus, and sends the whole bar (`commands.BarMenu`): the Mac's app menu's items go to File
+  (Quit), Edit (Settings) and Help (About). Shots on GNOME: `linux-step3/menu-bar-gnome-*.png`.
+  `shell/e2e/menu-bar.cjs` walks all five desktop shells on the mock as Linux.
+- **Mac wording** off the Mac: the crash notice names the log's file, Import says "this
+  computer", About has no Updates from, Glide's hints use Ctrl and Esc.
+- **The profile** is in `$XDG_DATA_HOME/project-b` (Flatpak keeps it), and a listed profile's
+  key comes from the desktop's Secret portal (GNOME Keyring, KWallet); a release's repository
+  is kept only once the app installed from it passes `restart_check.py`.
+
+Left for step 4: "System" theme follows the desktop through the Settings portal (on GNOME it
+stays light today), and the rest of `core/system`.
+
 ## Spike (2026-11-20)
 
 Step 1 of 7: stock content_shell for Linux arm64, none of our code, as a Flatpak through
