@@ -17,13 +17,46 @@ it is [sync.md](sync.md); this page is only the steps.
 
 - Project B on each device, from the
   [latest release](https://github.com/sudiptadeb/project-b/releases/latest).
-- **A sync server you run yourself.** There is no hosted sync service today. The server is
-  [synckosh](https://github.com/sudiptadeb/synckosh), a Go library, not a ready-made program:
-  you put it in a small Go program of your own. One is below.
+- **A sync server.** There are two ways to get one:
+  - [Option A](#option-a-try-the-small-hosted-server): a small server at `memd.debkosh.com`
+    that you can use to try sync out.
+  - [Option B](#option-b-run-your-own-server): your own. The server is
+    [synckosh](https://github.com/sudiptadeb/synckosh), a Go library, not a ready-made
+    program: you put it in a small Go program of your own. One is below.
 - The server must be reachable over `https` from every device. Project B refuses a plain
   `http` address.
 
-## Run a server
+Either way the server is treated as untrusted. synckosh seals everything on your device
+before it leaves, and the key never leaves your devices. The server can't read your
+bookmarks, history, passwords or passkeys. It can still see some things about them: how many
+items you have of each kind, how big each is and when they change. The whole list is under
+[What the server can and can't do](#what-the-server-can-and-cant-do).
+
+## Option A: try the small hosted server
+
+The project's author runs a sync server at [memd.debkosh.com](https://memd.debkosh.com). It
+is a small personal VPS, there for trying sync out. There is no promise that it stays up or
+that it keeps your bucket: your devices hold the real copy, so nothing on them is lost if it
+goes away. Move to your own server whenever you like.
+
+1. Open `https://memd.debkosh.com` and press **Log in**. It takes you to a sign-in page.
+   Sign in with Google there.
+2. Open **Sync buckets** and press **Add bucket**. Give the bucket a name and press **Add
+   bucket**.
+3. The bucket's card shows its **URL** and **Token**, and one address that carries the token.
+   Then either:
+   - press **Open in Project B** on a device that has Project B. It opens the set-up with
+     the address filled in; or
+   - press **Copy**, and paste the address into Project B yourself. That address carries its
+     token, so leave Token empty.
+4. Go on from step 2 of [Turn it on, on the first device](#turn-it-on-on-the-first-device).
+
+Treat the address as a secret: it holds the bucket's token. **New token** on the card
+replaces it, and the old one stops working on every device at once.
+
+Besides what any sync server sees, this one knows the account you signed in with.
+
+## Option B: run your own server
 
 This is the shortest way we know. You need [Go](https://go.dev/dl/) 1.26 or newer, a machine
 your devices can reach, and a domain name for it.
@@ -105,9 +138,10 @@ bucket and no limit on how much is stored or how often.
 
 Project B takes a sync address in two forms:
 
-- `https://<host>/sync`, with the token typed in apart. The program above works this way.
-- `https://<host>/sync/<token>`, one address that carries its token. Some servers hand out
-  this form; then you leave Token empty.
+- `https://<host>/sync`, with the token typed in apart. The program in Option B works this
+  way.
+- `https://<host>/sync/<token>`, one address that carries its token. Then you leave Token
+  empty. The hosted server in Option A shows both forms.
 
 Only `https` is taken, with no user name, query or fragment in the address.
 
@@ -203,10 +237,10 @@ everything stays on the device and on the server.
   doesn't need the old one.
 - **No device still syncs:** nobody can recover it. The server never had the passphrase or
   the key. Your devices still hold their own bookmarks, history, passwords and passkeys. Reset
-  the bucket on the server. With the program above: stop it, move `server.db` away and start
-  it again. Each device then says **The sync bucket was reset**. Press **Set up again…** on
-  one and choose a new passphrase, then enter it on the others. Each device sends what it
-  holds.
+  the bucket on the server. On the hosted server, press **Reset** on the bucket's card. With
+  the program in Option B: stop it, move `server.db` away and start it again. Each device
+  then says **The sync bucket was reset**. Press **Set up again…** on one and choose a new
+  passphrase, then enter it on the others. Each device sends what it holds.
 
 ## What the server can and can't do
 
