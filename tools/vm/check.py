@@ -30,12 +30,18 @@ SHOTS = os.environ.get("PB_VM_SHOTS") or time.strftime(VM_HOME + "/shots/%Y%m%d-
 BUNDLE_ID = "dev.projectb.browser"
 APP = "/Applications/Project B.app"
 SCREEN = (1440, 900)
-# A fresh profile has no frame colour picked (core/tones, None): the light tones of its grey
-# frame, which the guest shows as its appearance is light.
-FRAME = (13, 125, 134)  # --frame, a new profile's teal, #0d7d86
-BAR = (224, 238, 239)  # --bar, the frame mixed 0.87 toward white
-WHITE = (255, 255, 255)  # --surface
-ICON = (11, 105, 113)  # --icon, the toolbar's buttons: the teal's ink
+# A new profile's colours, light, as the guest's appearance is: asked of Go's own tones
+# (core/cmd/tones), not copied here, as copies outlived the brand teal and failed 11 checks
+# of 0.3.9's run (2026-11-22).
+def _tones():
+    out = subprocess.run(["go", "run", "./cmd/tones"], cwd=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "core"),
+                         capture_output=True, text=True, check=True).stdout
+    palette = json.loads(out)
+    rgb = lambda h: tuple(int(h.lstrip("#")[i:i + 2], 16) for i in (0, 2, 4))
+    return rgb(palette["frame"]), rgb(palette["light"]["--bar"]), rgb(palette["light"]["--surface"]), rgb(palette["light"]["--icon"])
+
+
+FRAME, BAR, WHITE, ICON = _tones()  # --frame, --bar, --surface, and --icon, the toolbar's buttons
 # Standard's command box fills the page area with the bar's colour mixed 60% into --surface
 # (shell/src/apps/shell/standard/CommandBox.vue), on a new tab. A window opens on a new tab,
 # with this box in the page area; Standard takes New Tab: Cmd+T goes to the window's new tab,
