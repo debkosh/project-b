@@ -1,14 +1,14 @@
 <script setup>
 import { send, state } from '@/sdk/vue.js';
 
-// Says the last run crashed, where its log is and where macOS's report is, until the user
+// Says the last run crashed, where its log is and, on the Mac, where macOS's report is, until the user
 // closes it. Go decides whether there is one.
 </script>
 
 <template>
   <div v-if="state.crashLog" v-shell class="notice">
     <div class="bar" role="status">
-      <span class="text">Project B crashed last time. The log is at {{ state.crashLog }}, macOS's report at {{ state.crashReport }}</span>
+      <span class="text">Project B crashed last time. The log is at {{ state.crashLog }}<template v-if="state.crashReport">, macOS's report at {{ state.crashReport }}</template></span>
       <button class="icon-button" type="button" aria-label="Close" @click="send({ t: 'dismissCrash' })">
         <svg width="9" height="9" viewBox="0 0 9 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M7.43.9.75 7.58M.9.75l6.68 6.68" /></svg>
       </button>

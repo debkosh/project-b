@@ -135,7 +135,7 @@ func main() {
 			KeychainItems: keychainItemsOf(*keychain, *keychainItems),
 			System:        sys,
 			Update:        devUpdate(*version, *releases, updates, *appPath),
-			CrashReports:  filepath.Join(home, "Library/Logs/DiagnosticReports"),
+			CrashReports:  crashReports(home, *platform),
 		})
 	}
 	// The app, or the picker in a picker copy, which opens a profile by naming it on
@@ -473,4 +473,13 @@ func stream(w http.ResponseWriter, r *http.Request, f *mockengine.Feed, now ...f
 			flusher.Flush()
 		}
 	}
+}
+
+// crashReports is the folder macOS writes its crash reports to, or "" for -platform linux,
+// which keeps none, as the app on Linux has.
+func crashReports(home, platform string) string {
+	if platform == "linux" {
+		return ""
+	}
+	return filepath.Join(home, "Library/Logs/DiagnosticReports")
 }

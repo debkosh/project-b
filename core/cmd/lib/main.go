@@ -693,7 +693,7 @@ func startProfile(c profiles.Choice) {
 		URLs:         startURLs,
 		BlockedHosts: blocked,
 		Update:       updateConfig(c),
-		CrashReports: filepath.Join(home, "Library/Logs/DiagnosticReports"),
+		CrashReports: crashReports(home),
 		DownloadsDir: platform.DownloadsDir(home),
 		System:       platform.New(),
 		DeviceKey:    deviceKeyFor(c),

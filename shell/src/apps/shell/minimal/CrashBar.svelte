@@ -6,7 +6,7 @@
 </script>
 
 {#if state.crashLog}
-  <div class="crash" use:shell title="macOS's report: {state.crashReport}">
+  <div class="crash" use:shell title={state.crashReport ? `macOS's report: ${state.crashReport}` : undefined}>
     <span role="status">Project B crashed last time. The log is at {state.crashLog}</span>
     <button class="words" onclick={() => send({ t: 'dismissCrash' })}>Dismiss</button>
   </div>

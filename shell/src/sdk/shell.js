@@ -73,7 +73,8 @@ export const state = {
   menu: [],
   // The report of the last run's crash, '' when it didn't crash or the notice was closed.
   crashLog: '',
-  // macOS's report of that crash, or the folder it keeps its reports in.
+  // macOS's report of that crash, or the folder it keeps its reports in; '' on Linux, which
+  // keeps none.
   crashReport: '',
   // The extensions' buttons, null while the Extensions flag is off: buttons, each {id, name,
   // title, icon, badge, badgeColor, badgeTextColor, enabled, pinned}, in the order the

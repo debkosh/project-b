@@ -41,7 +41,7 @@ var crashed = map[string]bool{"crash": true, "native crash": true, "not respondi
 
 // New starts this run's crash.log in dir, after keeping the last run's, if there is one,
 // as crash-<time>.log, unless exitReason, why the process it names ended as the system
-// keeps it, says that was no crash. reports is the folder macOS writes its crash reports to.
+// keeps it, says that was no crash. reports is the folder macOS writes its crash reports to, "" on an OS that keeps none.
 func New(dir, reports string, exitReason func(pid int) string) *Manager {
 	m := &Manager{current: filepath.Join(dir, "crash.log"), children: filepath.Join(dir, "crashes.log")}
 	if pid := loggedPID(m.current); pid != 0 {
@@ -98,8 +98,11 @@ func loggedPID(path string) int {
 }
 
 // osReport is macOS's report of the process that wrote the crash log at path, or the
-// folder of reports if it hasn't written one there.
+// folder of reports if it hasn't written one there; "" where the OS keeps none, reports "".
 func osReport(path string, since time.Time, reports string) string {
+	if reports == "" {
+		return ""
+	}
 	var pid int
 	if f, err := os.Open(path); err == nil {
 		fmt.Fscanf(f, "pid %d,", &pid)

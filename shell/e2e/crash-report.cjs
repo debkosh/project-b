@@ -18,6 +18,8 @@ const { check, regions, settle, until } = lib;
   const w = await lib.openWindow(browser);
   const share = w.ui.getByRole('button', { name: 'Share report' });
   check('the last run\'s crash notice offers Share report', await until(() => share.isVisible(), 10000));
+  const said = () => w.ui.getByRole('status').filter({ hasText: 'crashed last time' }).textContent();
+  check('on the Mac it names macOS\'s report', (await said()).includes('macOS\'s report at'), await said());
   await share.click(); // does: shareReport
   const shared = await until(async () => (await regions()).shared);
   const report = shared ? fs.readFileSync((await regions()).shared, 'utf8') : '';
@@ -42,6 +44,18 @@ const { check, regions, settle, until } = lib;
   check('and it stays away when the shell loads again, as Go has forgotten the crash',
     await until(async () => (await notice.count()) === 0) && !(await share.isVisible()));
   check('no errors in the page', w.errors.length === 0, w.errors.join(' | '));
+  await w.page.close();
+  await lib.stop();
+
+  // Linux keeps no crash reports of its own: the notice names the log alone.
+  fs.writeFileSync(path.join(lib.profile, 'crash.log'), 'pid 1, started 2026-11-14 09:00:00\npanic: the last run\n');
+  await lib.start(['-use=standard', '-platform=linux']);
+  const lw = await lib.openWindow(browser);
+  const linuxNotice = lw.ui.getByRole('status').filter({ hasText: 'crashed last time' });
+  check('on Linux the notice names the log and no macOS report', await until(async () => {
+    const t = (await linuxNotice.textContent().catch(() => '')) || '';
+    return t.includes('The log is at') && !t.includes('macOS');
+  }, 10000), await linuxNotice.textContent().catch(() => ''));
   await browser.close();
   await lib.done();
 })();

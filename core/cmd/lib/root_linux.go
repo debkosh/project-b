@@ -17,3 +17,6 @@ func defaultRoot() string {
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".local", "share", "project-b")
 }
+
+// crashReports is "": Linux keeps no crash reports of its own for the crash notice to name.
+func crashReports(string) string { return "" }
