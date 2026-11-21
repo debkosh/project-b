@@ -5,6 +5,7 @@ import AllTabs from './AllTabs.vue';
 import TabIcon from './TabIcon.vue';
 import { withKey } from './hints.js';
 import { controlSpace, send, state, tabLabel, workspaceOf } from '@/sdk/vue.js';
+import WindowButtons from '@/ui/WindowButtons.vue';
 
 // The top row is the title bar: the native window buttons' space, the tabs, New Tab right
 // after the last one, then empty space that drags the window, and the list of all tabs.
@@ -99,6 +100,8 @@ watch(() => [state.active, state.tabs.length], update, { flush: 'post' });
     </button>
     <div v-drag class="rest"></div>
     <AllTabs />
+    <!-- The strip is the title bar: the window's own buttons end it where the frame is ours. -->
+    <WindowButtons class="window-end" />
     <div v-drag class="space" :style="{ width: controlSpace.right }"></div>
   </div>
 </template>
@@ -118,6 +121,11 @@ watch(() => [state.active, state.tabs.length], update, { flush: 'post' });
   box-sizing: border-box;
   background: var(--frame);
   color: var(--on-accent);
+}
+
+/* On the frame's colour, as the strip's other buttons are. */
+.strip :deep(.window-buttons .icon-button:not(.close:hover)) {
+  color: inherit;
 }
 
 .space {
