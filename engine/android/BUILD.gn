@@ -254,7 +254,10 @@ android_library("amarit_java") {
 
 android_resources("resources") {
   sources = [
+    "res/drawable-anydpi-v26/icon.xml",
     "res/drawable/icon.xml",
+    "res/drawable/icon_background.xml",
+    "res/drawable/icon_foreground.xml",
     "res/values/styles.xml",
     "res/xml/updates.xml",
   ]
