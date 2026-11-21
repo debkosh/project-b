@@ -97,6 +97,7 @@ cp "$FROM/project_b" "$MACOS/"
 cp "$FROM/project_b_helper" "$HELPER"
 cp "$FROM/libproject_b_content.dylib" "$FRAMEWORKS/"
 cp "$FROM/commit" "$RESOURCES/commit"   # what tools/results.py says was tested
+cp "$ROOT/engine/mac/AppIcon.icns" "$RESOURCES/"   # the app's icon, made from engine/mac/icon*.svg
 cp "$FROM/project_b.pak" "$FROM/icudtl.dat" "$FROM/snapshot_blob.bin" "$FROM"/v8_context_snapshot.*.bin "$RESOURCES/"
 cp "$FROM/libEGL.dylib" "$FROM/libGLESv2.dylib" "$FROM/libvk_swiftshader.dylib" "$FROM/libvulkan.dylib" \
    "$FROM/vk_swiftshader_icd.json" "$LIBRARIES/"
@@ -108,6 +109,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <dict>
   <key>CFBundleDisplayName</key><string>Project B</string>
   <key>CFBundleExecutable</key><string>project_b</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundleIdentifier</key><string>dev.projectb.browser</string>
   <key>CFBundleName</key><string>Project B</string>
   <key>CFBundlePackageType</key><string>APPL</string>
