@@ -17,6 +17,7 @@
 #include "components/input/native_web_keyboard_event.h"
 #include "content/public/browser/web_contents.h"
 #include "project_b/engine/abi/pb_abi.h"
+#include "project_b/engine/browser/hooks.h"
 #include "project_b/engine/browser/timeline.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/aura/client/default_capture_client.h"
@@ -38,6 +39,7 @@
 #include "ui/platform_window/wm/wm_move_resize_handler.h"
 #include "ui/base/hit_test.h"
 #include "ui/events/event_handler.h"
+#include "ui/events/keycodes/keyboard_codes.h"
 #include "ui/gfx/geometry/point_conversions.h"
 #include "ui/wm/core/base_focus_rules.h"
 #include "ui/wm/core/focus_controller.h"
@@ -125,6 +127,9 @@ struct Window::Impl {
     void OnCloseRequest() override { impl_->Closed(); }
     void OnActivationChanged(bool active) override {
       aura::WindowTreeHostPlatform::OnActivationChanged(active);
+      // A modifier let go in another window never reaches this one: the next key starts
+      // from none held, as Go's focus does (core/commands, the Alt tap).
+      impl_->mods = 0;
       if (active) {
         impl_->on_key.Run();
       }
@@ -136,7 +141,8 @@ struct Window::Impl {
   // The top row's own parts, as a frame of the OS's would have them (docs/research/linux.md, 2):
   // a press in a drag area hands the window to the compositor to move, one on the border to
   // resize, a double-click in a drag area maximises or restores, and a right-click there
-  // opens the desktop's window menu. Before anything else sees the press.
+  // opens the desktop's window menu. Before anything else sees the press. And every key, for
+  // the modifiers it holds.
   class FrameHandler : public ui::EventHandler {
    public:
     explicit FrameHandler(Impl* impl) : impl_(impl) {}
@@ -177,6 +183,51 @@ struct Window::Impl {
             hit, impl_->host->GetBoundsInPixels().origin() + in_window.OffsetFromOrigin());
         event->SetHandled();
       }
+    }
+
+    // The modifiers held, told to Go whenever they change (PB_EVENT_MODS_CHANGED), as the
+    // Mac's flagsChanged does: a modifier's own key changes its bit; any other key's flags
+    // say what is held.
+    void OnKeyEvent(ui::KeyEvent* event) override {
+      const bool down = event->type() == ui::EventType::kKeyPressed;
+      int held = 0;
+      const int flags = event->flags();
+      held |= (flags & ui::EF_CONTROL_DOWN) ? PB_MOD_CTRL : 0;
+      held |= (flags & ui::EF_ALT_DOWN) ? PB_MOD_ALT : 0;
+      held |= (flags & ui::EF_SHIFT_DOWN) ? PB_MOD_SHIFT : 0;
+      held |= (flags & ui::EF_COMMAND_DOWN) ? PB_MOD_CMD : 0;
+      int own = 0;
+      switch (event->key_code()) {
+        case ui::VKEY_CONTROL:
+        case ui::VKEY_LCONTROL:
+        case ui::VKEY_RCONTROL:
+          own = PB_MOD_CTRL;
+          break;
+        case ui::VKEY_MENU:
+        case ui::VKEY_LMENU:
+        case ui::VKEY_RMENU:
+          own = PB_MOD_ALT;
+          break;
+        case ui::VKEY_SHIFT:
+        case ui::VKEY_LSHIFT:
+        case ui::VKEY_RSHIFT:
+          own = PB_MOD_SHIFT;
+          break;
+        case ui::VKEY_LWIN:
+        case ui::VKEY_RWIN:
+          own = PB_MOD_CMD;
+          break;
+        default:
+          break;
+      }
+      held = down ? (held | own) : (held & ~own);
+      if (held == impl_->mods) {
+        return;
+      }
+      impl_->mods = held;
+      hooks::Args args;
+      args.Int(held);
+      hooks::Fire(PB_EVENT_MODS_CHANGED, args);
     }
 
    private:
@@ -364,6 +415,7 @@ struct Window::Impl {
   aura::Window* Popup() const { return popup.windows().empty() ? nullptr : popup.windows().front(); }
   std::vector<Region> regions;
 
+  int mods = 0;  // PBMods held, as last told to Go.
   base::OnceClosure on_close;
   base::RepeatingClosure on_key;
   base::RepeatingCallback<void(bool)> on_minimised;
