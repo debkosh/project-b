@@ -1,4 +1,5 @@
 <script>
+  import MenuBar from '@/ui/MenuBar.svelte';
   import { untrack } from 'svelte';
   import { activeTab, connect, focusPage, isNewTab, page, send, setFrame, shell, state as go } from '@/sdk/svelte.svelte.js';
   import Address from './Address.svelte';
@@ -58,6 +59,7 @@
 <div class="splash" aria-busy={!go.loaded}>Project B</div>
 {#if go.loaded}
   <div class="window" class:full={pageFull}>
+    <MenuBar hidden={pageFull} />
     {#if horizontal}
       <TabBar />
     {/if}
@@ -92,6 +94,7 @@
 
 <style>
   .window {
+    position: relative;
     display: flex;
     flex-direction: column;
     height: 100%;

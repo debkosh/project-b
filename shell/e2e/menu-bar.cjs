@@ -131,7 +131,7 @@ const altTap = async () => {
 
   // Every other desktop shell takes the same bar above its own top, and ends its top row with
   // the window's own buttons; Show menu bar is still on.
-  for (const shell of (process.env.SHELLS || 'fox terminal').split(' ')) {
+  for (const shell of (process.env.SHELLS || 'fox terminal glide minimal').split(' ')) {
     await lib.start([`-use=${shell}`, '-platform=linux']);
     w = await lib.openWindow(browser, { viewport: { width: 1280, height: 800 } });
     await until(async () => (await regions()).shell === shell);

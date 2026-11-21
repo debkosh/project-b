@@ -1,4 +1,5 @@
 <script>
+  import MenuBar from '@/ui/MenuBar.svelte';
   import { tick } from 'svelte';
   import { activeTab, chooseContextItem, closeContextMenu, connect, contextMenuPoint, drag, focusPage, page, send, setFrame, state as go } from '@/sdk/svelte.svelte.js';
   import CommandBar from './CommandBar.svelte';
@@ -176,6 +177,7 @@
 <div class="splash" aria-busy={!go.loaded}>Project B</div>
 {#if go.loaded}
 <div class="glide" style={tokens} class:dark>
+  <MenuBar hidden={pageFull} />
   {#if pageFull}
     <main class="page-full" use:page={go.active}></main>
     {#if welcome}<div class="welcome-drag" use:drag></div>{/if}
