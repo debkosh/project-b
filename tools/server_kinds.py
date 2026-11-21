@@ -16,7 +16,7 @@ SERVER_KINDS = [
     ("https://self-signed.badssl.com/", "error", "self-signed"),
     ("https://wrong.host.badssl.com/", "error", "is for another site"),
     ("https://untrusted-root.badssl.com/", "error", "certificate"),
-    ("https://incomplete-chain.badssl.com/", "page", "incomplete-chain.badssl.com"),
+    ("https://incomplete-chain.badssl.com/", "page", "missing an intermediate certificate"),
     ("https://mixed.badssl.com/", "page", "mixed.badssl.com"),
     ("https://hsts.badssl.com/", "page", "hsts.badssl.com"),
     ("https://cloudflare-quic.com/", "page", "QUIC"),
@@ -25,5 +25,5 @@ SERVER_KINDS = [
     ("https://httpbin.org/brotli", "page", '"brotli": true'),
     ("https://httpbin.org/delay/3", "page", "httpbin.org/delay/3"),
     ("https://httpbin.org/stream/5", "page", '"id":4'),
-    ("https://robu.in/", "page", "robu"),
+    ("https://robu.in/", "page", "Robotics"),
 ]

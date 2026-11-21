@@ -2486,7 +2486,9 @@ def web_server_kinds():
             view_link(link)
             def outcome():
                 page, shell = shown_words("page"), shown_words("shell")
-                if want == "page" and words.lower() in page.lower():
+                # A page with a "Sign in" link reads as the shell (PARTS), so its words are
+                # looked for in both; the address pill shows only the host.
+                if want == "page" and words.lower() in (page + " | " + shell).lower():
                     return "page"
                 if "Failed" in shell.split(" | ") or "Open anyway" in shell:
                     return "error"
