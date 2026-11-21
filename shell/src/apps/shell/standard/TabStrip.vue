@@ -123,9 +123,14 @@ const items = computed(() =>
   height: 100%;
 }
 
-/* The room the window controls need when they are on the right, at the strip's end. */
+/* The room the window controls need when they are on the right, at the strip's end; after
+   our own buttons, which already take the free room, it adds none of its own. */
 .end {
   margin-left: auto;
+}
+
+.window-end ~ .end {
+  margin-left: 0;
 }
 
 .tab {
