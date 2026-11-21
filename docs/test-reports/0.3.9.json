@@ -1,0 +1,1475 @@
+{
+ "schema": 1,
+ "version": "0.3.9",
+ "date": "2026-11-21",
+ "commits": [
+  "70a6e27e",
+  "766a6f63",
+  "app 70a6e27e"
+ ],
+ "newFailures": 0,
+ "flaky": [
+  {
+   "group": "app",
+   "name": "the real app through its driver",
+   "check": "made from the Personal template: its prefs are Personal's, and the list says so",
+   "failed": 1,
+   "runs": 3
+  },
+  {
+   "group": "vm",
+   "name": "real clicks in the macOS VM",
+   "check": "Ctrl+Cmd+F: controls move into the buttons' space: 0 pixels of the first control at the far left",
+   "failed": 2,
+   "runs": 6
+  },
+  {
+   "group": "vm",
+   "name": "real clicks in the macOS VM",
+   "check": "FAILED: 109 passed, 1 failed as known bugs, 11 failed, shots in ~/PW_TOOLS/macos-vm/shots/20261121-235450-pb-test",
+   "failed": 1,
+   "runs": 6
+  },
+  {
+   "group": "vm",
+   "name": "real clicks in the macOS VM",
+   "check": "after the tabs move back to the side, the sidebar shows within 1 s: shown after 5.1 s",
+   "failed": 1,
+   "runs": 6
+  },
+  {
+   "group": "vm",
+   "name": "real clicks in the macOS VM",
+   "check": "double-clicking the empty strip zooms: size (1280, 720) to (1280, 720)",
+   "failed": 1,
+   "runs": 6
+  },
+  {
+   "group": "vm",
+   "name": "real clicks in the macOS VM",
+   "check": "green button: after leaving, the shell takes a click within 1 s: the layout button did nothing in 5 s, window (0, 30, 1440, 794)",
+   "failed": 1,
+   "runs": 6
+  },
+  {
+   "group": "vm",
+   "name": "real clicks in the macOS VM",
+   "check": "green button: controls move into the buttons' space: 0 pixels of the first control at the far left",
+   "failed": 2,
+   "runs": 6
+  },
+  {
+   "group": "vm",
+   "name": "real clicks in the macOS VM",
+   "check": "tabs on the side: shell draws over the page: sidebar 0.00, frame 0.00, shell colour in page 0.00",
+   "failed": 1,
+   "runs": 6
+  },
+  {
+   "group": "vm",
+   "name": "real clicks in the macOS VM",
+   "check": "tabs on top, green button: after leaving, the shell takes a click within 1 s: the layout button did nothing in 5 s, window (0, 30, 1440, 794)",
+   "failed": 1,
+   "runs": 6
+  },
+  {
+   "group": "vm",
+   "name": "real clicks in the macOS VM",
+   "check": "tabs on top, green button: controls move into the buttons' space: 0 pixels of the first control at the far left",
+   "failed": 1,
+   "runs": 6
+  },
+  {
+   "group": "vm",
+   "name": "real clicks in the macOS VM",
+   "check": "tabs on top: shell draws over the page: frame 0.00, shell colour in page 0.00",
+   "failed": 1,
+   "runs": 6
+  },
+  {
+   "group": "vm",
+   "name": "real clicks in the macOS VM",
+   "check": "the layout button brings the tabs back to the side:",
+   "failed": 1,
+   "runs": 6
+  },
+  {
+   "group": "vm",
+   "name": "real clicks in the macOS VM",
+   "check": "the layout button puts the tabs on top: strip 0.00, shell colour where the sidebar was 0.00",
+   "failed": 1,
+   "runs": 6
+  }
+ ],
+ "changed": [
+  {
+   "group": "android",
+   "name": "the Android app on project-b-emu-37 (17)",
+   "check": "and a control named by <label for> says its name  None",
+   "failed": 1,
+   "runs": 4
+  },
+  {
+   "group": "android",
+   "name": "the Android app on project-b-emu-37 (17)",
+   "check": "and a control named by aria-labelledby says its name  None",
+   "failed": 1,
+   "runs": 4
+  },
+  {
+   "group": "android",
+   "name": "the Android app on project-b-emu-37 (17)",
+   "check": "and its checkbox the same  None",
+   "failed": 1,
+   "runs": 4
+  },
+  {
+   "group": "android",
+   "name": "the Android app on project-b-emu-37 (17)",
+   "check": "bookmark star ran to its end  never showed in the shell: {'label': 'Bookmark'}; the app is gone",
+   "failed": 1,
+   "runs": 4
+  },
+  {
+   "group": "android",
+   "name": "the Android app on project-b-emu-37 (17)",
+   "check": "browsing ran to its end  never showed in the shell: {'kind': 'android.widget.EditText'}; the app is running",
+   "failed": 1,
+   "runs": 4
+  },
+  {
+   "group": "android",
+   "name": "the Android app on project-b-emu-37 (17)",
+   "check": "custom colour ran to its end  never showed in the shell: {'kind': 'android.widget.Button', 'label': <function custom_colour.<locals>.<lambda> at 0x10a3dfe20>}; the app is running",
+   "failed": 1,
+   "runs": 4
+  },
+  {
+   "group": "android",
+   "name": "the Android app on project-b-emu-37 (17)",
+   "check": "links to other sites ran to its end  never showed in the shell: {'label': 'Tabs'}; the app is gone",
+   "failed": 1,
+   "runs": 4
+  },
+  {
+   "group": "android",
+   "name": "the Android app on project-b-emu-37 (17)",
+   "check": "mobile shell ran to its end  never showed in the shell: {'kind': 'android.widget.EditText'}; the app is running",
+   "failed": 1,
+   "runs": 4
+  },
+  {
+   "group": "android",
+   "name": "the Android app on project-b-emu-37 (17)",
+   "check": "settings back ran to its end  never showed in the settings: {'text': <function starts.<locals>.<lambda> at 0x10a3deda0>}; the app is running",
+   "failed": 1,
+   "runs": 4
+  },
+  {
+   "group": "vm",
+   "name": "real clicks in the macOS VM",
+   "check": "FAILED: 1 passed, 0 failed as known bugs, 0 failed, and the checks stopped early, shots in ~/PW_TOOLS/macos-vm/shots/20261122-004255-pb-test",
+   "failed": 1,
+   "runs": 6
+  },
+  {
+   "group": "vm",
+   "name": "real clicks in the macOS VM",
+   "check": "FAILED: 37 passed, 0 failed as known bugs, 2 failed, and the checks stopped early, shots in ~/PW_TOOLS/macos-vm/shots/20261122-004454-pb-test",
+   "failed": 1,
+   "runs": 6
+  }
+ ],
+ "machine": {
+  "model": "Mac15,14",
+  "os": "macOS 26.7.1",
+  "memGB": 256
+ },
+ "groups": {
+  "android": {
+   "passed": 1,
+   "failed": 0,
+   "known": 1,
+   "did_not_run": 0,
+   "ok": 457,
+   "fail": 1
+  },
+  "app": {
+   "passed": 3,
+   "failed": 0,
+   "known": 0,
+   "did_not_run": 0,
+   "ok": 591,
+   "fail": 0
+  },
+  "basics": {
+   "passed": 0,
+   "failed": 0,
+   "known": 1,
+   "did_not_run": 0,
+   "ok": 32,
+   "fail": 7
+  },
+  "mock": {
+   "passed": 37,
+   "failed": 0,
+   "known": 0,
+   "did_not_run": 0,
+   "ok": 3165,
+   "fail": 0
+  },
+  "quit": {
+   "passed": 1,
+   "failed": 0,
+   "known": 0,
+   "did_not_run": 0,
+   "ok": 3,
+   "fail": 0
+  },
+  "vm": {
+   "passed": 3,
+   "failed": 0,
+   "known": 0,
+   "did_not_run": 0,
+   "ok": 0,
+   "fail": 0
+  }
+ },
+ "tests": [
+  {
+   "group": "android",
+   "name": "the Android app on project-b-emu-29 (10)",
+   "status": "known",
+   "seconds": 1845.4,
+   "ok": 221,
+   "fail": 1,
+   "failures": [
+    {
+     "line": "FAIL  it covers the whole screen, with nothing of the shell or Android's bars on it  (0, 0, 1080, 2274) on a 1080x2400 screen",
+     "known": "Android 10 keeps its bars over a page in full screen."
+    }
+   ],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "android",
+   "name": "the Android app on project-b-emu-37 (17)",
+   "status": "passed",
+   "seconds": 2884.8,
+   "ok": 236,
+   "fail": 0,
+   "failures": [],
+   "reruns": [
+    "a_page_spins",
+    "back_key_chain",
+    "bookmark_star",
+    "browsing",
+    "crash_notice",
+    "custom_colour",
+    "download_notifications",
+    "downloads",
+    "file_inputs",
+    "find_in_page",
+    "history_after_a_restart",
+    "keyboard_bars",
+    "links_from_other_apps",
+    "links_to_other_sites",
+    "long_press_menu",
+    "mobile_shell",
+    "page_dialogs",
+    "page_full_screen",
+    "page_paints",
+    "passkeys_on_the_phone",
+    "settings_ahead",
+    "settings_back",
+    "sync_on_the_phone",
+    "talkback_states",
+    "the_gpu_process_dies",
+    "the_page_renderer_dies",
+    "the_real_web",
+    "the_shell_renderer_dies",
+    "web_apis",
+    "welcome_extras",
+    "welcome_last_step",
+    "where_go_runs",
+    "links_to_other_sites"
+   ],
+   "processes": {},
+   "grows": [
+    "back_key_chain: android-app",
+    "bookmark_star: android-app",
+    "custom_colour: android-renderer",
+    "file_inputs: android-renderer",
+    "page_dialogs: android-renderer",
+    "settings_back: android-app",
+    "talkback_states: android-app"
+   ],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "app",
+   "name": "extensions in the real app",
+   "status": "passed",
+   "seconds": 36.7,
+   "ok": 66,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {
+    "browser": {
+     "peakMB": 227,
+     "avgMB": 181,
+     "peakCPU": 65,
+     "avgCPU": 26,
+     "grows": false
+    },
+    "gpu": {
+     "peakMB": 114,
+     "avgMB": 101,
+     "peakCPU": 18,
+     "avgCPU": 8,
+     "grows": false
+    },
+    "helper": {
+     "peakMB": 33,
+     "avgMB": 33,
+     "peakCPU": 0,
+     "avgCPU": 0,
+     "grows": false
+    },
+    "renderer": {
+     "peakMB": 1098,
+     "avgMB": 623,
+     "peakCPU": 163,
+     "avgCPU": 60,
+     "grows": false
+    },
+    "utility": {
+     "peakMB": 61,
+     "avgMB": 54,
+     "peakCPU": 12,
+     "avgCPU": 2,
+     "grows": false
+    }
+   },
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "app",
+   "name": "the real app through ChromeDriver",
+   "status": "passed",
+   "seconds": 6.6,
+   "ok": 40,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {
+    "browser": {
+     "peakMB": 146,
+     "avgMB": 138,
+     "peakCPU": 51,
+     "avgCPU": 33,
+     "grows": false
+    },
+    "gpu": {
+     "peakMB": 96,
+     "avgMB": 81,
+     "peakCPU": 14,
+     "avgCPU": 9,
+     "grows": false
+    },
+    "renderer": {
+     "peakMB": 342,
+     "avgMB": 278,
+     "peakCPU": 31,
+     "avgCPU": 29,
+     "grows": false
+    },
+    "utility": {
+     "peakMB": 49,
+     "avgMB": 46,
+     "peakCPU": 8,
+     "avgCPU": 4,
+     "grows": false
+    }
+   },
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "app",
+   "name": "the real app through its driver",
+   "status": "passed",
+   "seconds": 395.9,
+   "ok": 485,
+   "fail": 0,
+   "failures": [],
+   "reruns": [
+    "action_checks",
+    "app_link_checks",
+    "bounds_checks",
+    "browser_signal_checks",
+    "browsing_checks",
+    "client_cert_checks",
+    "cookie_checks",
+    "copies_checks",
+    "driver_checks",
+    "duplicate_checks",
+    "glide_checks",
+    "internal_checks",
+    "last_tab_checks",
+    "links_checks",
+    "move_checks",
+    "passkey_checks",
+    "picker_checks",
+    "profile_checks",
+    "quit_checks",
+    "quit_erasure_checks",
+    "relaunch_checks",
+    "settings_checks",
+    "shell_checks",
+    "site_data_checks",
+    "sparks_checks",
+    "timeline_checks",
+    "version_checks",
+    "view_source_checks",
+    "visible_tabs_checks",
+    "web_api_checks",
+    "window_checks",
+    "workspace_checks",
+    "workspace_delete_checks",
+    "workspace_menu_checks"
+   ],
+   "processes": {
+    "browser": {
+     "peakMB": 390,
+     "avgMB": 151,
+     "peakCPU": 107,
+     "avgCPU": 10,
+     "grows": false
+    },
+    "gpu": {
+     "peakMB": 282,
+     "avgMB": 96,
+     "peakCPU": 54,
+     "avgCPU": 4,
+     "grows": false
+    },
+    "helper": {
+     "peakMB": 74,
+     "avgMB": 54,
+     "peakCPU": 12,
+     "avgCPU": 4,
+     "grows": false
+    },
+    "renderer": {
+     "peakMB": 1414,
+     "avgMB": 449,
+     "peakCPU": 105,
+     "avgCPU": 17,
+     "grows": false
+    },
+    "utility": {
+     "peakMB": 141,
+     "avgMB": 66,
+     "peakCPU": 23,
+     "avgCPU": 1,
+     "grows": false
+    }
+   },
+   "grows": [
+    "action_checks: renderer",
+    "app_link_checks: renderer"
+   ],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "basics",
+   "name": "the basics, one check per area",
+   "status": "known",
+   "seconds": 151.5,
+   "ok": 32,
+   "fail": 7,
+   "failures": [
+    {
+     "line": "FAIL         1 window lifecycle: a page's beforeunload asks before its tab closes -> the tab closed without asking",
+     "known": "The basics are a map of what isn't built yet; most fail on purpose. Their count of checks passed is compared instead."
+    },
+    {
+     "line": "FAIL         6 popups: window.open without a click is blocked -> 2 tabs: the popup opened without a click",
+     "known": "The basics are a map of what isn't built yet; most fail on purpose. Their count of checks passed is compared instead."
+    },
+    {
+     "line": "FAIL         8 URL display: the address bar hides a URL's password -> http://user:secret@<local>/a",
+     "known": "The basics are a map of what isn't built yet; most fail on purpose. Their count of checks passed is compared instead."
+    },
+    {
+     "line": "FAIL        23 profiles and contexts: a second browser context -> {'code': -32000, 'message': 'Failed to create browser context.'}",
+     "known": "The basics are a map of what isn't built yet; most fail on purpose. Their count of checks passed is compared instead."
+    },
+    {
+     "line": "FAIL        26 proxy: --proxy-server carries the request -> the request didn't go through --proxy-server",
+     "known": "The basics are a map of what isn't built yet; most fail on purpose. Their count of checks passed is compared instead."
+    },
+    {
+     "line": "FAIL        28 Safe Browsing: a malware test page warns -> Safe Browsing's test malware page loaded with no warning",
+     "known": "The basics are a map of what isn't built yet; most fail on purpose. Their count of checks passed is compared instead."
+    },
+    {
+     "line": "FAIL        36 picture-in-picture: a video enters it -> picture-in-picture gave 'NotSupportedError'",
+     "known": "The basics are a map of what isn't built yet; most fail on purpose. Their count of checks passed is compared instead."
+    }
+   ],
+   "reruns": [],
+   "processes": {
+    "browser": {
+     "peakMB": 157,
+     "avgMB": 148,
+     "peakCPU": 86,
+     "avgCPU": 12,
+     "grows": false
+    },
+    "gpu": {
+     "peakMB": 100,
+     "avgMB": 93,
+     "peakCPU": 39,
+     "avgCPU": 6,
+     "grows": false
+    },
+    "renderer": {
+     "peakMB": 467,
+     "avgMB": 315,
+     "peakCPU": 66,
+     "avgCPU": 13,
+     "grows": false
+    },
+    "utility": {
+     "peakMB": 101,
+     "avgMB": 48,
+     "peakCPU": 12,
+     "avgCPU": 1,
+     "grows": false
+    }
+   },
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "Go managers",
+   "status": "passed",
+   "seconds": 1.1,
+   "ok": 41,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "Go managers, with extensions",
+   "status": "passed",
+   "seconds": 5.1,
+   "ok": 42,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "Settings' Passkeys, on the mock engine",
+   "status": "passed",
+   "seconds": 14.6,
+   "ok": 28,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "Settings' Passwords, on the mock engine",
+   "status": "passed",
+   "seconds": 44.1,
+   "ok": 102,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "Settings' Sync against a sync server, on the mock engine",
+   "status": "passed",
+   "seconds": 176.5,
+   "ok": 226,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "a download's details, on the desktop and a phone",
+   "status": "passed",
+   "seconds": 12.3,
+   "ok": 23,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "a passkey request's steps, on every desktop shell",
+   "status": "passed",
+   "seconds": 56.7,
+   "ok": 342,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "a ready release's notice and Settings' About, on the desktop and a phone",
+   "status": "passed",
+   "seconds": 14.4,
+   "ok": 17,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "bringing things over from other browsers, on the mock engine",
+   "status": "passed",
+   "seconds": 20.2,
+   "ok": 44,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "build the shell",
+   "status": "passed",
+   "seconds": 4.3,
+   "ok": 0,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "every action a person can take has a test (docs/action-coverage.md)",
+   "status": "passed",
+   "seconds": 1.0,
+   "ok": 0,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "extensions on the mock engine",
+   "status": "passed",
+   "seconds": 12.6,
+   "ok": 43,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "reading other browsers",
+   "status": "passed",
+   "seconds": 0.3,
+   "ok": 1,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "the crash report on the mock engine",
+   "status": "passed",
+   "seconds": 4.5,
+   "ok": 7,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "the fox shell keeps the shells' contract",
+   "status": "passed",
+   "seconds": 28.8,
+   "ok": 154,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "the fox shell's own tests",
+   "status": "passed",
+   "seconds": 21.3,
+   "ok": 52,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "the glide shell keeps the shells' contract",
+   "status": "passed",
+   "seconds": 16.1,
+   "ok": 132,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "the glide shell's own tests",
+   "status": "passed",
+   "seconds": 13.9,
+   "ok": 46,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "the history and bookmarks pages on the mock engine",
+   "status": "passed",
+   "seconds": 11.7,
+   "ok": 28,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "the minimal shell keeps the shells' contract",
+   "status": "passed",
+   "seconds": 18.7,
+   "ok": 144,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "the minimal shell's own tests",
+   "status": "passed",
+   "seconds": 28.4,
+   "ok": 82,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "the mobile shell keeps the shells' contract",
+   "status": "passed",
+   "seconds": 32.3,
+   "ok": 142,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "the mobile shell's own tests",
+   "status": "passed",
+   "seconds": 124.8,
+   "ok": 384,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "the picker on the mock engine",
+   "status": "passed",
+   "seconds": 1.6,
+   "ok": 12,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "the region outlines on the mock engine",
+   "status": "passed",
+   "seconds": 9.9,
+   "ok": 18,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "the settings page on the mock engine",
+   "status": "passed",
+   "seconds": 91.6,
+   "ok": 252,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "the shell on the mock engine",
+   "status": "passed",
+   "seconds": 50.1,
+   "ok": 159,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "the standard shell keeps the shells' contract",
+   "status": "passed",
+   "seconds": 20.8,
+   "ok": 154,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "the standard shell's own tests",
+   "status": "passed",
+   "seconds": 68.6,
+   "ok": 103,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "the standard-bookmarks shell's own tests",
+   "status": "passed",
+   "seconds": 14.1,
+   "ok": 57,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "the standard-drag shell's own tests",
+   "status": "passed",
+   "seconds": 7.1,
+   "ok": 9,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "the standard-groups shell's own tests",
+   "status": "passed",
+   "seconds": 11.2,
+   "ok": 25,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "the standard-pins shell's own tests",
+   "status": "passed",
+   "seconds": 8.7,
+   "ok": 12,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "the standard-workspaces shell's own tests",
+   "status": "passed",
+   "seconds": 6.7,
+   "ok": 14,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "the terminal shell keeps the shells' contract",
+   "status": "passed",
+   "seconds": 26.0,
+   "ok": 145,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "the terminal shell's own tests",
+   "status": "passed",
+   "seconds": 22.7,
+   "ok": 102,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "mock",
+   "name": "the welcome on the mock engine",
+   "status": "passed",
+   "seconds": 9.3,
+   "ok": 23,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "quit",
+   "name": "quitting after a download",
+   "status": "passed",
+   "seconds": 1.3,
+   "ok": 3,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "vm",
+   "name": "our own passkeys in the macOS VM",
+   "status": "passed",
+   "seconds": 72.5,
+   "ok": 0,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "vm",
+   "name": "real clicks in the macOS VM",
+   "status": "passed",
+   "seconds": 534.6,
+   "ok": 0,
+   "fail": 0,
+   "failures": [],
+   "reruns": [
+    "all",
+    "all",
+    "all"
+   ],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  },
+  {
+   "group": "vm",
+   "name": "saved passwords in the macOS VM",
+   "status": "passed",
+   "seconds": 81.8,
+   "ok": 0,
+   "fail": 0,
+   "failures": [],
+   "reruns": [],
+   "processes": {},
+   "grows": [],
+   "hogs": [
+    "bb_worker",
+    "com.apple.Virtualization.VirtualMachine",
+    "emulator-5600",
+    "emulator-5602",
+    "emulator-5604",
+    "emulator-5606",
+    "mds_stores"
+   ]
+  }
+ ]
+}
