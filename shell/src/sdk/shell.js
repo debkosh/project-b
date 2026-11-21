@@ -249,6 +249,25 @@ export function tabLabel(tab) {
   return 'New Tab';
 }
 
+// fileName is the last part of a path, as a notice names a file whose whole path would
+// fill it: the path itself goes in its tooltip.
+export function fileName(path) {
+  return (path || '').split('/').pop();
+}
+
+// crashLine is the crash notice's words after "Project B crashed last time.": the log's
+// file name, and on the Mac macOS's report's, or the folder of reports it keeps.
+export function crashLine(s = state) {
+  let line = `The log is ${fileName(s.crashLog)}`;
+  if (s.crashReport) line += s.crashReport.endsWith('.ips') ? `, macOS's report ${fileName(s.crashReport)}` : `, macOS's reports are in ${fileName(s.crashReport)}`;
+  return line;
+}
+
+// crashPaths is the crash notice's tooltip: the whole paths it names.
+export function crashPaths(s = state) {
+  return [s.crashLog, s.crashReport].filter(Boolean).join('\n');
+}
+
 // keyLabel is the key an action shows, as the menus show it, or '' when it has none.
 export function keyLabel(s, action) {
   const keys = s.keys[action];

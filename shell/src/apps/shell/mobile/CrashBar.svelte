@@ -1,5 +1,5 @@
 <script>
-  import { send, shell, state } from '@/sdk/svelte.svelte.js';
+  import { crashLine, crashPaths, send, shell, state } from '@/sdk/svelte.svelte.js';
 
   // The last run's crash, in a line over the toolbar until it is dismissed, with Share
   // report, which hands one file with all of it to the phone's share sheet, and Save, which
@@ -11,8 +11,8 @@
 </script>
 
 {#if state.crashLog}
-  <div class="crash" use:shell title={state.crashReport}>
-    <span role="status">Project B crashed last time. The log is at {state.crashLog}</span>
+  <div class="crash" use:shell title={crashPaths(state)}>
+    <span role="status">Project B crashed last time. {crashLine(state)}</span>
     <button class="text-button quiet" onclick={share}>Share report</button>
     <button class="text-button quiet" onclick={() => send({ t: 'saveReport' })}>Save</button>
     <button class="text-button quiet" onclick={() => send({ t: 'dismissCrash' })}>Dismiss</button>

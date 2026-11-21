@@ -1,13 +1,13 @@
 <script>
-  import { send, shell, state } from '@/sdk/svelte.svelte.js';
+  import { crashLine, crashPaths, send, shell, state } from '@/sdk/svelte.svelte.js';
 
   // The last run's crash, in one line under the toolbar until it is dismissed: where its
   // log is, and macOS's report on pointing at it.
 </script>
 
 {#if state.crashLog}
-  <div class="crash" use:shell title={state.crashReport ? `macOS's report: ${state.crashReport}` : undefined}>
-    <span role="status">Project B crashed last time. The log is at {state.crashLog}</span>
+  <div class="crash" use:shell title={crashPaths(state)}>
+    <span role="status">Project B crashed last time. {crashLine(state)}</span>
     <button class="words" onclick={() => send({ t: 'dismissCrash' })}>Dismiss</button>
   </div>
 {/if}

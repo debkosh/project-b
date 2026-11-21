@@ -19,7 +19,9 @@ const { check, regions, settle, until } = lib;
   const share = w.ui.getByRole('button', { name: 'Share report' });
   check('the last run\'s crash notice offers Share report', await until(() => share.isVisible(), 10000));
   const said = () => w.ui.getByRole('status').filter({ hasText: 'crashed last time' }).textContent();
-  check('on the Mac it names macOS\'s report', (await said()).includes('macOS\'s report at'), await said());
+  check('on the Mac it names the log and macOS\'s reports by name, not by path', /The log is crash-[^/]*\.log, macOS's report/.test(await said()), await said());
+  const paths = await w.ui.getByRole('status').filter({ hasText: 'crashed last time' }).locator('[title]').first().getAttribute('title').catch(() => '');
+  check('with the whole paths in its tooltip', paths.includes(lib.profile) && paths.includes('/crash-'), paths);
   await share.click(); // does: shareReport
   const shared = await until(async () => (await regions()).shared);
   const report = shared ? fs.readFileSync((await regions()).shared, 'utf8') : '';
@@ -54,7 +56,7 @@ const { check, regions, settle, until } = lib;
   const linuxNotice = lw.ui.getByRole('status').filter({ hasText: 'crashed last time' });
   check('on Linux the notice names the log and no macOS report', await until(async () => {
     const t = (await linuxNotice.textContent().catch(() => '')) || '';
-    return t.includes('The log is at') && !t.includes('macOS');
+    return /The log is crash-[^/]*\.log$/.test(t.trim().split('\n')[0].replace(/(Share|Save) report.*/, '').trim()) && !t.includes('macOS');
   }, 10000), await linuxNotice.textContent().catch(() => ''));
   await browser.close();
   await lib.done();
