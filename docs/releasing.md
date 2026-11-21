@@ -144,10 +144,13 @@ merge into main while it runs; it reads that checkout. It takes about four minut
 
 ## The site
 
-The homepage is `site/` (`index.html` and its pictures), published with the Linux Flatpak
-repository by `.github/workflows/pages.yml` on GitHub Pages. The workflow runs on each Stable
-release, as the release is published, and by hand with a tag (`gh workflow run pages.yml -f
-tag=v<v>`): it takes `site/` at that tag, writes the Stable version from `VERSION` where the
-page has `{{VERSION}}`, and adds the Flatpak repository from the newest release that has one,
-as Linux releases are made only when asked. Each Stable release also carries its DMG and APK as
-`Project-B.dmg` and `Project-B.apk`, which the page links to through `releases/latest/download/`.
+The homepage, projectb.debkosh.com (`site/CNAME`), is the live demo: `core/cmd/webdemo`, the
+shell and the Go core as WebAssembly in the visitor's tab. `.github/workflows/pages.yml` builds
+it and publishes it on GitHub Pages with the Linux Flatpak repository, taken from the newest
+Stable release that has `flatpak-repo.tar.gz`, as Linux releases are made only when asked. It
+runs on each Stable release, at the release's tag, and by hand on main with a tag (`gh workflow
+run pages.yml -f tag=v<v>`); the page names the tag's version. The `github-pages` environment
+lets main and tags `v*` deploy: a release's run is at its tag, and was refused until 0.3.9 added
+the tag rule. Each Stable release also carries its DMG and APK as `Project-B.dmg` and
+`Project-B.apk`, which the page links to through `releases/latest/download/`. After a release,
+check the live page names the new version and both links fetch it.
