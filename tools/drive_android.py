@@ -2466,6 +2466,41 @@ def welcome_last_step():
             adb("shell", "cmd", "role", "add-role-holder", "android.app.role.BROWSER", holder)
 
 
+# The kinds of web server and what each should show: tools/server_kinds.py.
+from server_kinds import SERVER_KINDS  # noqa: E402
+
+def shown_words(part):
+    """Every text and label in a part of the screen, joined."""
+    view = screen_parts().get(part)
+    return " | ".join(n.get("text") or n.get("content-desc") for n in (view.iter("node") if view is not None else ()) if n.get("text") or n.get("content-desc"))
+
+
+def web_server_kinds():
+    """Each kind of web server in SERVER_KINDS shows as a person should see it: its page, or
+    our error page with the right title, never an unexplained failure. A public page can be
+    down, so a miss is tried once more before it fails, and the check names the site."""
+    for link, want, words in SERVER_KINDS:
+        said = ""
+        for attempt in (1, 2):
+            launch()
+            view_link(link)
+            def outcome():
+                page, shell = shown_words("page"), shown_words("shell")
+                if want == "page" and words.lower() in page.lower():
+                    return "page"
+                if "Failed" in shell.split(" | ") or "Open anyway" in shell:
+                    return "error"
+                return None
+            got = until(outcome, 45)
+            said = "the page: %s / the shell: %s" % (shown_words("page")[:200], shown_words("shell")[:240])
+            ok = got == want and (want == "page" or words.lower() in shown_words("shell").lower())
+            if ok:
+                break
+        shot("kinds-" + re.sub(r"[^a-z0-9]+", "-", link.split("//", 1)[1].lower()).strip("-"))
+        check("%s shows %s" % (link, "its page" if want == "page" else "our error page: " + words), ok,
+              "" if ok else "after two tries; " + said)
+
+
 CHANNELS = "https://github.com/sudiptadeb/project-b/releases/download/channels/releases.json"
 
 
@@ -2568,7 +2603,7 @@ def main():
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
     every = (browsing, mobile_shell, custom_colour, settings_back, talkback_states, bookmark_star, settings_ahead, back_key_chain, page_dialogs, downloads, crash_notice, download_notifications, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, passkeys_on_the_phone, passwords_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
-             the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web, long_press_menu, keyboard_bars, welcome_extras, welcome_last_step, update_on_the_phone)
+             the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web, long_press_menu, keyboard_bars, welcome_extras, welcome_last_step, web_server_kinds, update_on_the_phone)
     for part in [p for p in every if not sys.argv[1:] or p.__name__ in sys.argv[1:]]:
         # tools/results.py splits a run's memory, CPU and checks by these lines.
         print("--- part " + part.__name__, flush=True)
