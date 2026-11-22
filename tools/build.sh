@@ -47,22 +47,13 @@ if [ "$PLATFORM" = linux ]; then
   echo "=== $(date '+%F %T') build the shell"
   (cd shell && npm run build --silent)
 
-  echo "=== $(date '+%F %T') start the VM"
-  colima start -p pb-android --activate=false
-  if [ ! -S "$HOME/.colima/pb-android/docker.sock" ]; then
-    colima stop -p pb-android
-    colima start -p pb-android --activate=false
-  fi
-  # Nice inside the guest doesn't lower the VM on macOS: its host process, found by its disk.
-  tools/linux/renice-vm.sh colima-pb-android/ || true
+  echo "=== $(date '+%F %T') start the VM and hold it up"
   # Held up from starting the container to this build's end, /work/.vm-in-use.lock shared, as
   # the APK build does (its note below): another build ending meanwhile leaves the VM up.
+  # tools/colima-vm.sh starts and stops it one caller at a time.
   hold=vm-hold-$$
-  trap 'docker exec pb sh -c "kill \$(cat /tmp/$hold) 2>/dev/null; rm -f /tmp/$hold"; docker exec pb flock -n /work/.android-build.lock true && docker exec pb flock -n /work/.vm-in-use.lock true && colima stop -p pb-android' EXIT
-  docker start pb >/dev/null
-  echo "=== $(date '+%F %T') hold the VM up (waits while a job holds /work/.vm-in-use.lock alone)"
-  docker exec -d pb flock -s /work/.vm-in-use.lock sh -c "echo \$\$ > /tmp/$hold; exec sleep 86400"
-  until docker exec pb test -s "/tmp/$hold"; do sleep 1; done
+  trap '"$ROOT/tools/colima-vm.sh" down "$hold"' EXIT
+  "$ROOT/tools/colima-vm.sh" up "$hold" || { echo "RESULT=failed the VM didn't start"; exit 1; }
 
   echo "=== $(date '+%F %T') copy the tree in"
   docker exec pb sh -c 'rm -rf /work/linux-release && mkdir /work/linux-release'
@@ -106,14 +97,7 @@ if [ "$PLATFORM" = android ]; then
   echo "=== $(date '+%F %T') build the shell"
   (cd shell && npm run build --silent)
 
-  echo "=== $(date '+%F %T') start the VM"
-  colima start -p pb-android --activate=false
-  # Colima can keep a stopped VM's state as running: start says "already running" and there is
-  # no docker socket. A VM with no socket is no use to anyone, so stop it and start it again.
-  if [ ! -S "$HOME/.colima/pb-android/docker.sock" ]; then
-    colima stop -p pb-android
-    colima start -p pb-android --activate=false
-  fi
+  echo "=== $(date '+%F %T') start the VM and hold it up (waits while a job holds /work/.vm-in-use.lock alone)"
   # Stopped after, unless another session's build holds the VM (tools/android-content-build.sh's
   # lock), which stopping would kill. Another long job in the container that needs the VM up,
   # such as a Linux build, holds /work/.vm-in-use.lock for as long as it runs (docs/android.md),
@@ -123,12 +107,10 @@ if [ "$PLATFORM" = android ]; then
   # alone came too late: it is taken only once the build starts, and a build ending while this
   # one copied its tree in stopped the VM under it, twice on 2026-11-20. The hold goes first
   # in the exit, so this build's own check doesn't see it.
+  # tools/colima-vm.sh starts and stops it one caller at a time.
   hold=vm-hold-$$
-  trap 'docker exec pb sh -c "kill \$(cat /tmp/$hold) 2>/dev/null; rm -f /tmp/$hold"; docker exec pb flock -n /work/.android-build.lock true && docker exec pb flock -n /work/.vm-in-use.lock true && colima stop -p pb-android' EXIT
-  docker start pb >/dev/null
-  echo "=== $(date '+%F %T') hold the VM up (waits while a job holds /work/.vm-in-use.lock alone)"
-  docker exec -d pb flock -s /work/.vm-in-use.lock sh -c "echo \$\$ > /tmp/$hold; exec sleep 86400"
-  until docker exec pb test -s "/tmp/$hold"; do sleep 1; done
+  trap '"$ROOT/tools/colima-vm.sh" down "$hold"' EXIT
+  "$ROOT/tools/colima-vm.sh" up "$hold" || { echo "RESULT=failed the VM didn't start"; exit 1; }
 
   echo "=== $(date '+%F %T') copy the tree in"
   docker exec pb sh -c 'rm -rf /work/release && mkdir /work/release'

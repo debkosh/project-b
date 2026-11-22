@@ -18,9 +18,11 @@ CPU=${CPU:-arm64}
 IMAGE=pb-linux-run:2
 export DOCKER_HOST=unix://$HOME/.colima/pb-android/docker.sock
 
-colima start -p pb-android --activate=false >/dev/null 2>&1
-"$here/renice-vm.sh" colima-pb-android/ || true
-docker start pb >/dev/null
+# The VM held up for the run, started one caller at a time (tools/colima-vm.sh), so a build
+# ending meanwhile doesn't stop it under this run's container.
+hold=vm-hold-$$
+"$root/tools/colima-vm.sh" up "$hold" >/dev/null || { echo "the VM didn't start"; exit 1; }
+trap '"$root/tools/colima-vm.sh" down "$hold" >/dev/null' EXIT
 
 # The image: Ubuntu with what Chromium links to, fonts and Python, made once. Our network
 # lets only 443 out, with no IPv6, so apt goes over https; the bare image has no CA
@@ -50,7 +52,7 @@ docker exec pb rm -f "$marker"
 docker exec -d pb flock /work/.android-build.lock sh -c "touch $marker; while [ -e $marker ]; do sleep 1; done"
 echo "=== $(date '+%F %T') waiting for the container's build lock"
 until docker exec pb test -e "$marker"; do sleep 2; done
-trap 'docker exec pb rm -f "$marker"' EXIT
+trap 'docker exec pb rm -f "$marker"; "$root/tools/colima-vm.sh" down "$hold" >/dev/null' EXIT
 
 docker rm -f pb-linux-run >/dev/null 2>&1 || true
 set +e
