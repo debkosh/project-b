@@ -126,6 +126,14 @@ gh release create "$TAG" "$DIST"/* --repo "$REPO" --title "Project B $VERSION" \
 $(grep '^- ' "$NOTES")$(
         [ -f "docs/test-reports/$VERSION.md" ] && printf '\n\nTests: https://github.com/%s/blob/%s/docs/test-reports/%s.md' "$REPO" "$TAG" "$VERSION")"
 amarit publish -github "$REPO" -tag "$CHANNELS" -version "$VERSION" -version-code "$CODE" -dist "$DIST" -out "$DIST/releases.json"
+# Dev takes the Stable release too: a Stable release holds every Dev build before it, and a Dev
+# build sorts below its Stable (0.3.9-dev.* < 0.3.9), so a copy on Dev was never offered 0.3.9.
+# The Dev build it replaces goes, as a Dev build's own publish does; the next Dev build is
+# 0.3.10-dev.*, its notes since this tag.
+amarit publish -github "$REPO" -tag "$CHANNELS" -version "$VERSION" -version-code "$CODE" -channel dev -prune \
+  -dist "$DIST" -out "$DIST/releases.json"
+channels=$(python3 -c 'import json,sys; c=json.load(open(sys.argv[1]))["channels"]; print(c.get("stable", ""), c.get("dev", ""))' "$DIST/releases.json")
+[ "$channels" = "$VERSION $VERSION" ] || { echo "RESULT=failed the manifest's channels are $channels, not stable and dev both at $VERSION"; exit 1; }
 gh release upload "$TAG" "$DIST/releases.json" --repo "$REPO" --clobber
 gh release upload "$CHANNELS" "$DIST/notes-$VERSION.md" --repo "$REPO" --clobber
 echo "RESULT=ok $TAG"

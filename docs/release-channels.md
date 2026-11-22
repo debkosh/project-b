@@ -40,6 +40,11 @@ Dev to Stable leaves the copy on its Dev build until Stable passes it, which the
 Stable release does, since a Dev build is always before the next version. Stable to Dev
 takes the newest Dev build at the next check.
 
+A Stable release is Dev's too: `tools/release.sh` points both channels at it, as it holds
+every Dev build before it, and Dev moves on from it with the next Dev build. A Dev build
+sorts below its Stable (`0.3.9-dev.*` < `0.3.9`), so without that a copy on Dev was never
+offered the Stable release.
+
 ## A Dev build
 
 1. A finished branch lands on `main`, rebased, as it does for a release now.
