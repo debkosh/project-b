@@ -1288,6 +1288,16 @@ def upgrade_checks():
     build = lambda: (guest("/usr/bin/defaults", "read", f"{APP}/Contents/Info", "CFBundleShortVersionString"),
                      guest("/sbin/md5", "-q", f"{APP}/Contents/MacOS/project_b"))
     before, was = build()
+
+    def acl(when):
+        """The device key item's access entries, as the keychain keeps them: which builds may
+        read it, by partition (cdhash: or teamid:) and by app, printed for whoever reads the run."""
+        dump = guest("/bin/sh", "-c", "security dump-keychain -a ~/Library/Keychains/login.keychain-db 2>/dev/null")
+        items = dump.split("keychain: ")
+        mine = next((i for i in items if '"svce"<blob>="Project B"' in i and '"acct"<blob>="device key"' in i), "")
+        lines = [l.strip() for l in mine.splitlines() if re.search(r"entry|description|applications|authorizations|Partition|cdhash|teamid|apple|\d+: ", l)]
+        print(f"  the device key's access entries, {when}:\n    " + "\n    ".join(lines[:60]), flush=True)
+        return mine
     ask, settings = started()
     settings("(document.querySelector('.nav [data-section=data]').click(), 1)")
     until(lambda: settings("!!document.querySelector('input[aria-label=\"Passwords file\"]')"), bool, 15)
@@ -1300,6 +1310,7 @@ def upgrade_checks():
     check("and its key is wrapped by the login keychain's device key, not a folder's", item() == "yes" and not guest("/bin/ls", f"{PROFILE}/folder.key"),
           guest("/bin/ls", PROFILE))
     shot("upgrade-before")
+    acl(f"made by {before}")
     # Quit as a person does: a kill would leave the next start a crash notice over the page.
     ask("close")
     if until(lambda: guest("/usr/bin/pgrep", "-x", "project_b"), lambda p: p == "", 15) != "":
@@ -1329,6 +1340,7 @@ def upgrade_checks():
         shown = until(text, lambda t: secret in t, 20)
         check("and its password opens, the key unwrapped by the same device key", secret in shown, shown[-200:])
         shot("upgrade-after")
+        acl("after Always Allow for the newer build")
     guest("/usr/bin/killall", "project_b")
 
 
