@@ -670,6 +670,7 @@ func PBStart(calls *C.PBEngineCalls, blockedHosts *C.char, skip C.int) {
 	}
 	skipWelcome = skip != 0
 	followDark()
+	shareClipboard()
 	if profile.Pick {
 		timeline.Infof("profile: none chosen yet; the picker shows the list in %s", filepath.Join(list.Root(), "profiles.json"))
 		picker := app.StartPicker(native, list, func(id string) {

@@ -24,7 +24,23 @@ func (s *System) RevealFile(path string) {
 	timeline.Errorf("system: no RevealFile on Linux yet: %s", path)
 }
 
-func (s *System) CopySecret(string) { timeline.Errorf("system: no CopySecret on Linux yet") }
+// writeClipboard is the engine's clipboard, plain text, which the library hands over at start
+// (UseClipboard). Main thread.
+var writeClipboard func(text string)
+
+// UseClipboard gives CopySecret the engine's clipboard. Once, as the app starts.
+func (s *System) UseClipboard(write func(text string)) { writeClipboard = write }
+
+// CopySecret puts the text on the clipboard as Copy Link does, through the engine: no portal
+// marks a clipboard entry as a secret, so it is plain text, as the desktop's other apps copy a
+// password.
+func (s *System) CopySecret(text string) {
+	if writeClipboard == nil {
+		timeline.Errorf("system: no clipboard to copy to")
+		return
+	}
+	writeClipboard(text)
+}
 
 // IsDefaultBrowser is false: no portal says which browser is the default.
 func (s *System) IsDefaultBrowser() bool { return false }
