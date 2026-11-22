@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
+	"time"
 
 	"projectb/timeline"
 )
@@ -25,7 +26,15 @@ type Owner struct {
 
 // Claim takes the profile folder dir. It returns the Owner when this copy now owns it. When
 // another copy owns it, Claim hands that copy urls and returns nil: this copy then quits.
-func Claim(dir string, urls []string) (*Owner, error) {
+func Claim(dir string, urls []string) (*Owner, error) { return claim(dir, urls, 0) }
+
+// ClaimAfter takes the folder dir once the copy that owns it has gone, waiting up to wait for
+// it: a copy the Flatpak portal starts for an update (Spawn) starts at once, while the copy it
+// replaces is still quitting, and mustn't hand itself over to that one. Past wait, the owner
+// still running, it hands over as Claim does.
+func ClaimAfter(dir string, wait time.Duration) (*Owner, error) { return claim(dir, nil, wait) }
+
+func claim(dir string, urls []string, wait time.Duration) (*Owner, error) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, err
 	}
@@ -37,12 +46,19 @@ func Claim(dir string, urls []string) (*Owner, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
-		lock.Close()
+	for deadline := time.Now().Add(wait); ; time.Sleep(50 * time.Millisecond) {
+		err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+		if err == nil {
+			break
+		}
 		if !errors.Is(err, syscall.EWOULDBLOCK) {
+			lock.Close()
 			return nil, err
 		}
-		return nil, handOver(socket, urls)
+		if !time.Now().Before(deadline) {
+			lock.Close()
+			return nil, handOver(socket, urls)
+		}
 	}
 	// A socket file left here is a crashed owner's: we hold the lock, so nobody listens on it.
 	os.Remove(socket)

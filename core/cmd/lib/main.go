@@ -541,7 +541,7 @@ func PBInit(argc C.int, argv **C.char) **C.char {
 		fmt.Printf("Project B %s, Chromium %s\n", v, chromiumVersion)
 		return nil
 	}
-	if !claim(line.Value("root"), line.Value("profile"), line.Value("user-data-dir"), line.Has("picker"), line.Args()) {
+	if !claim(line.Value("root"), line.Value("profile"), line.Value("user-data-dir"), line.Has("picker"), line.Has(afterUpdate), line.Args()) {
 		return nil
 	}
 	out := line.With(contentSwitches(copyDir)...)
@@ -554,9 +554,17 @@ func PBInit(argc C.int, argv **C.char) **C.char {
 	return list
 }
 
+// afterUpdate is the switch of a copy started for an update while the copy it replaces is
+// still quitting (Linux's, update_linux.go): it waits for the folder, up to afterUpdateWait,
+// rather than handing itself over.
+const (
+	afterUpdate     = "after-update"
+	afterUpdateWait = 30 * time.Second
+)
+
 // claim chooses the profile, as PBInit says, and claims its folder. It is false when another
 // copy owns the folder and has been handed urls, so this copy quits.
-func claim(root, id, userDataDir string, picker bool, urls []string) bool {
+func claim(root, id, userDataDir string, picker, after bool, urls []string) bool {
 	list = profiles.New(rootOf(root))
 	var err error
 	if userDataDir != "" {
@@ -578,7 +586,12 @@ func claim(root, id, userDataDir string, picker bool, urls []string) bool {
 	if profile.Pick {
 		dir = list.Root()
 	}
-	o, err := instance.Claim(dir, urls)
+	var o *instance.Owner
+	if after {
+		o, err = instance.ClaimAfter(dir, afterUpdateWait)
+	} else {
+		o, err = instance.Claim(dir, urls)
+	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "the profile folder: %v\n", err)
 		os.Exit(1)
