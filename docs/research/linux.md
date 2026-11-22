@@ -493,7 +493,7 @@ stays light today), and the rest of `core/system`.
 
 Step 4 is `core/system` on Linux (section 4's table), all from pure Go over D-Bus
 (`github.com/godbus/dbus/v5`, already in `core/go.mod` for the Secret portal in
-`core/keys/secretportal_linux.go`, which shows the portal Request/Response pattern).
+`oskit/secret/secret_linux.go`, which shows the portal Request/Response pattern).
 
 1. **Dark mode first** (ux wants shots of "System" following GNOME's dark mode). Today the
    engine reads `ui::NativeTheme::...preferred_color_scheme()` (`window_linux.cc` Dark(),
