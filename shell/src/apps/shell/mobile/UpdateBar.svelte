@@ -5,8 +5,9 @@
   // the crash bar is, with Later and Install. Either one records the version as seen in the
   // profile's prefs (updateNoticed), so it shows once a release, not at every start; the
   // menu's Install update and Settings › About still offer it.
-  const version = $derived(state.update?.phase === 'ready' ? state.update.version : '');
-  const shown = $derived(!!version && state.prefs?.updateNoticed !== version);
+  const ready = $derived(state.update?.phase === 'ready');
+  const version = $derived(ready ? state.update.version || '' : '');
+  const shown = $derived(ready && state.prefs?.updateNoticed !== version);
 
   function later() {
     setPref('updateNoticed', version);
@@ -20,7 +21,7 @@
 
 {#if shown}
   <div class="update" use:shell role="dialog" aria-label="Update ready">
-    <span class="words" role="status">Project B {version} is ready</span>
+    <span class="words" role="status">{version ? `Project B ${version} is ready` : 'An update is ready'}</span>
     <button class="text-button quiet" onclick={later}>Later</button>
     <button class="text-button primary" onclick={install}>Install</button>
   </div>

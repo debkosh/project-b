@@ -14,8 +14,8 @@ import { send, state } from './state.js';
 const update = computed(() => {
   const s = state.update;
   if (s.check === 'checking') return { text: 'Checking…' };
-  if (s.phase === 'downloading') return { text: `Downloading ${s.version}… ${percent.value}%` };
-  if (s.phase === 'ready') return { text: `${s.version} is ready`, ready: true };
+  if (s.phase === 'downloading') return { text: `Downloading ${s.version || 'an update'}… ${percent.value}%` };
+  if (s.phase === 'ready') return { text: s.version ? `${s.version} is ready` : 'An update is ready', ready: true };
   if (s.phase === 'failed') return { text: s.version ? `Couldn't update to ${s.version}` : "Couldn't update", detail: s.error, failed: true };
   if (s.check === 'current') return { text: 'Up to date' };
   if (s.check === 'failed') return { text: "Couldn't check for updates", detail: s.checkError, failed: true };

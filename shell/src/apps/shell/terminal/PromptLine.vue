@@ -183,7 +183,7 @@ watch(
       </ul>
     </form>
     <span v-if="state.update.phase === 'ready'" class="status">
-      {{ state.update.version }} ready
+      {{ state.update.version ? state.update.version + ' ready' : 'Update ready' }}
       <button class="text-button relaunch" type="button" @click="send({ t: 'relaunch' })">Relaunch</button>
     </span>
   </footer>

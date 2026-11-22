@@ -15,7 +15,7 @@ const percent = computed(() => {
   <div v-if="state.update.phase" v-shell class="notice">
     <div class="bar" :class="state.update.phase">
       <template v-if="state.update.phase === 'downloading'">
-        <span class="text" role="status">Downloading Project B {{ state.update.version }}… {{ percent }}%</span>
+        <span class="text" role="status">Downloading {{ state.update.version ? 'Project B ' + state.update.version : 'an update' }}… {{ percent }}%</span>
         <span
           class="progress"
           role="progressbar"
@@ -30,7 +30,7 @@ const percent = computed(() => {
         <button class="text-button apart" type="button" @click="send({ t: 'retryUpdate' })">Retry</button>
       </template>
       <template v-else-if="state.update.phase === 'ready'">
-        <span class="text" role="status">Project B {{ state.update.version }} is ready.</span>
+        <span class="text" role="status">{{ state.update.version ? `Project B ${state.update.version} is ready.` : 'An update is ready.' }}</span>
         <button class="text-button" type="button" @click="send({ t: 'relaunch' })">Relaunch to update</button>
       </template>
       <template v-else>

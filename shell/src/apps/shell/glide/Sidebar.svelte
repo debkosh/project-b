@@ -171,7 +171,7 @@
   </div>
 
   {#if state.update?.phase === 'ready'}
-    <button class="g-row notice" onclick={() => send({ t: 'relaunch' })}><Icon name="update" /><span class="label">Relaunch to update to {state.update.version}</span></button>
+    <button class="g-row notice" onclick={() => send({ t: 'relaunch' })}><Icon name="update" /><span class="label">{state.update.version ? `Relaunch to update to ${state.update.version}` : 'Relaunch to update'}</span></button>
   {/if}
   {#if state.crashLog}
     <div class="g-row notice">
