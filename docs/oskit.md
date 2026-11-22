@@ -1,6 +1,6 @@
 # oskit: the OS's capabilities as one Go module
 
-Status: agreed 2026-11-22; notify built on the Mac and Android, Linux's next.
+Status: agreed 2026-11-22; notify and secret built on the Mac, Android and Linux.
 
 oskit is what an app asks of the OS itself, apart from its windows: notifications, a device
 key, a check of the person, opening files and links, and the clipboard's secret copy. It is a

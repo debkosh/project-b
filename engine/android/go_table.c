@@ -10,9 +10,7 @@
 #include "project_b/engine/abi/pb_exports.h"
 #include "project_b/engine/abi/pb_system_android.h"
 
-// Go's own: where it asks for the device key (core/cmd/lib/keys_android.go), and the OS's
-// calls and their answers (core/system/platform).
-void PBSetDeviceKeyReader(int (*read)(int create, uint8_t* out));
+// Go's own: the OS's calls and their answers (core/system/platform).
 void PBSetSystemCalls(const PBSystemCalls* calls);
 void PBSystemAnswered(int32_t question, int yes);
 void PBSystemPersonVerified(int32_t id, int verdict);
@@ -20,8 +18,6 @@ void PBSystemPersonVerified(int32_t id, int verdict);
 void OskitAttach(void* env);
 
 static JavaVM* vm;
-static jclass device_key;
-static jmethodID device_key_get;
 static jclass go_system;
 static jmethodID go_system_open_file;
 static jmethodID go_system_reveal_file;
@@ -157,38 +153,6 @@ static const PBSystemCalls system_calls = {
     .show_update = system_show_update,
 };
 
-// read_device_key is DeviceKey.get, on whichever of Go's threads asks: 1 with the 32 bytes in
-// out, 0 for none, -1 when Java threw, which goes to the log.
-static int read_device_key(int create, uint8_t* out) {
-  JNIEnv* env;
-  int attached = 0;
-  if ((*vm)->GetEnv(vm, (void**)&env, JNI_VERSION_1_6) == JNI_EDETACHED) {
-    if ((*vm)->AttachCurrentThread(vm, &env, NULL) != JNI_OK) {
-      return -1;
-    }
-    attached = 1;
-  }
-  int got = -1;
-  jbyteArray key = (jbyteArray)(*env)->CallStaticObjectMethod(env, device_key, device_key_get,
-                                                              (jboolean)(create != 0));
-  if ((*env)->ExceptionCheck(env)) {
-    (*env)->ExceptionDescribe(env);
-    (*env)->ExceptionClear(env);
-  } else if (key == NULL) {
-    got = 0;
-  } else if ((*env)->GetArrayLength(env, key) == 32) {
-    (*env)->GetByteArrayRegion(env, key, 0, 32, (jbyte*)out);
-    got = 1;
-  }
-  if (key != NULL) {
-    (*env)->DeleteLocalRef(env, key);
-  }
-  if (attached) {
-    (*vm)->DetachCurrentThread(vm);
-  }
-  return got;
-}
-
 JNIEXPORT jlong JNICALL Java_dev_projectb_browser_GoCore_table(JNIEnv* env, jclass cls) {
   static const PBGoCalls go = {
       .copy_dir = PBCopyDir,
@@ -207,13 +171,10 @@ JNIEXPORT jlong JNICALL Java_dev_projectb_browser_GoCore_table(JNIEnv* env, jcla
       .timeline_page_origin = PBTimelinePageOrigin,
       .free = PBFree,
   };
-  // DeviceKey, GoSystem and oskit's classes are found here, on Java's thread, by this class's loader: a thread
+  // GoSystem and oskit's classes are found here, on Java's thread, by this class's loader: a thread
   // of Go's that attaches later finds only the system's classes.
   if (vm == NULL) {
     (*env)->GetJavaVM(env, &vm);
-    device_key = (*env)->NewGlobalRef(env, (*env)->FindClass(env, "dev/projectb/browser/DeviceKey"));
-    device_key_get = (*env)->GetStaticMethodID(env, device_key, "get", "(Z)[B");
-    PBSetDeviceKeyReader(read_device_key);
     go_system = (*env)->NewGlobalRef(env, (*env)->FindClass(env, "dev/projectb/browser/GoSystem"));
     go_system_open_file = (*env)->GetStaticMethodID(env, go_system, "openFile", "(Ljava/lang/String;)V");
     go_system_reveal_file = (*env)->GetStaticMethodID(env, go_system, "revealFile", "()V");

@@ -257,6 +257,7 @@ android_library("oskit_java") {
   sources = [
     "//project_b/oskit/android/java/io/github/sudiptadeb/oskit/Notify.java",
     "//project_b/oskit/android/java/io/github/sudiptadeb/oskit/OsKit.java",
+    "//project_b/oskit/android/java/io/github/sudiptadeb/oskit/Secret.java",
   ]
   proguard_configs = [ "//project_b/oskit/android/proguard.flags" ]
 }
@@ -344,7 +345,6 @@ android_library("java") {
     "java/dev/projectb/browser/BrowserApplication.java",
     "java/dev/projectb/browser/BrowserWindow.java",
     "java/dev/projectb/browser/ClipboardImages.java",
-    "java/dev/projectb/browser/DeviceKey.java",
     "java/dev/projectb/browser/Downloads.java",
     "java/dev/projectb/browser/ExitReasons.java",
     "java/dev/projectb/browser/GoCore.java",
