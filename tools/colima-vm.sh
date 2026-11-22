@@ -30,9 +30,17 @@ up)
   # Nice inside the guest doesn't lower the VM on macOS: its host process, found by its disk.
   "$(dirname "$0")/linux/renice-vm.sh" colima-pb-android/ || true
   docker start pb >/dev/null || exit 1
-  # Waits while a job holds the lock alone.
-  docker exec -d pb flock -s /work/.vm-in-use.lock sh -c "echo \$\$ > /tmp/$hold; exec sleep 86400"
-  until docker exec pb test -s "/tmp/$hold"; do sleep 1; done
+  # Waits while a job holds the lock alone, for a minute at most: this runs under the Mac's
+  # lock, which every other build waits for.
+  docker exec -d pb flock -s /work/.vm-in-use.lock sh -c "echo \$\$ > /tmp/$hold; exec sleep 86400" || exit 1
+  for _ in $(seq 60); do
+    docker exec pb test -s "/tmp/$hold" && exit 0
+    sleep 1
+  done
+  # The waiting flock would take the lock later and hold it for a day: it goes.
+  docker exec pb pkill -f "/tmp/$hold" 2>/dev/null
+  echo "colima-vm.sh: no hold on /work/.vm-in-use.lock after a minute: a job holds it alone"
+  exit 1
   ;;
 down)
   docker exec pb sh -c "kill \$(cat /tmp/$hold) 2>/dev/null; rm -f /tmp/$hold"
