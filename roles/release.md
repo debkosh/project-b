@@ -35,6 +35,8 @@ published is in `docs/releasing.md`; keep it current as the way you work changes
 - Before landing a handed-over commit a person would notice, check it has a `Notes:` line, and
   add one if not: a Dev build's notes are those lines alone, and the importer's went out unnamed.
 - Push nothing to main while a `pb-release` job runs: release.sh dev checks main after its mock.
+- Push the commit you checked, by its id (`git push origin <sha>:main`), never a branch's name: a
+  branch can gain a commit between your check and the push, and d993d88f went to main unread.
 - A Stable release moves Dev to it as well (Sudipta, 2026-11-22: "the dev channel should also get
   stable releases when we release one... that includes all the dev before it"). release.sh does
   it and stops unless the manifest then names the version on both; 0.3.9 left Dev behind.
