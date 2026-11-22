@@ -1,0 +1,2 @@
+# oskit's Java is called from Go through JNI, which R8 can't see: keep it as it is.
+-keep class io.github.sudiptadeb.oskit.** { *; }
