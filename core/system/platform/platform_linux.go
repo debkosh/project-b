@@ -29,6 +29,11 @@ func (s *System) CopySecret(string) { timeline.Errorf("system: no CopySecret on 
 // IsDefaultBrowser is false: no portal says which browser is the default.
 func (s *System) IsDefaultBrowser() bool { return false }
 
+// DefaultBrowserLive is false in the Flatpak: its permission to read mimeapps.list mounts the
+// file as it was when the sandbox started, so a change the desktop's settings make meanwhile,
+// which replace the file, shows at the next start.
+func (s *System) DefaultBrowserLive() bool { return os.Getenv("FLATPAK_ID") == "" }
+
 // Desktop is GNOME or KDE, by XDG_CURRENT_DESKTOP, which may list several ("ubuntu:GNOME"),
 // and other for the rest.
 func (s *System) Desktop() string {

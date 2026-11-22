@@ -40,6 +40,22 @@ func TestSettingsDefaultBrowserQuestionDismissed(t *testing.T) {
 // The default browser set in the OS's own settings, outside the app, as Linux's desktops
 // have the person do: the window coming to the front asks the system again, and the open
 // settings page hears it; another focus, with nothing changed, sends nothing more.
+// Where the system reads the default browser at start only, as Linux's Flatpak does, a window
+// coming to the front doesn't ask again: the page keeps what it was told.
+func TestFocusDoesntRecheckWhereTheSystemCant(t *testing.T) {
+	r := start(t, t.TempDir())
+	defer r.stop()
+	r.sys.SetDesktop("gnome")
+	r.sys.SetDefaultBrowserStale(true)
+	got, _ := r.openSettings()
+	r.sys.SetDefaultBrowser(true)
+	r.e.Fire(1, 0, "focus", "")
+	r.settings(`{"t":"ready"}`)
+	if m := r.waitOn(got, func(m map[string]any) bool { return m["t"] == "isDefault" || m["t"] == "snapshot" }); m["t"] != "snapshot" {
+		t.Fatalf("a focus asked again where the system can't see a change: %v", m)
+	}
+}
+
 func TestFocusRechecksTheDefaultBrowser(t *testing.T) {
 	r := start(t, t.TempDir())
 	defer r.stop()

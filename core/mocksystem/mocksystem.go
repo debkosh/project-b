@@ -20,6 +20,7 @@ type System struct {
 	dismiss         bool
 	isDefault       bool
 	desktop         string
+	stale           bool // IsDefaultBrowser reads the OS's choice at start only
 	allowed         bool
 	dock            string
 	opened, shown   []string
@@ -100,6 +101,19 @@ func (s *System) Desktop() string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.desktop
+}
+
+// DefaultBrowserLive is true unless SetDefaultBrowserStale made it Linux's Flatpak's.
+func (s *System) DefaultBrowserLive() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return !s.stale
+}
+
+func (s *System) SetDefaultBrowserStale(stale bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.stale = stale
 }
 
 func (s *System) SetDesktop(d string) {

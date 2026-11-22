@@ -153,6 +153,16 @@ targets. The same calls work outside a Flatpak, which keeps headless tests simpl
 | Relaunch (`core/relaunch`) | the Flatpak portal's `Spawn`; after an update, amarit's, with the latest-version flag (see 5) |
 | Updates | see 5 |
 
+**The default browser is read as the app starts** (2026-11-22, GNOME 46, the real Flatpak).
+`--filesystem=xdg-config/mimeapps.list:ro` bind-mounts that one file when the sandbox starts.
+A file that didn't exist then is never seen, and the desktop's settings write a new file and
+rename it over the old one, which the mount doesn't follow: the running app keeps reading the
+file as it was. So `IsDefaultBrowser` is right as of the start, and a choice made in the
+desktop's settings shows at the next start. Widening the permission to `xdg-config:ro` (every
+app's settings) or asking the host through `flatpak-spawn --host` (a way out of the sandbox) cost
+too much (platforms, 2026-11-22). `System.DefaultBrowserLive` is false in the Flatpak, so a window
+coming to the front doesn't ask again, and the pages' words say the app notices at its next start.
+
 Through Chromium, not `core/system`:
 
 - **Save as and the folder chooser.** `ui::SelectFileDialog` uses the FileChooser portal, so

@@ -26,6 +26,10 @@ type System interface {
 	// says whether it is once the person has answered; a question dismissed says what is so.
 	IsDefaultBrowser() bool
 	AskDefaultBrowser(answered func(isDefault bool))
+	// DefaultBrowserLive says whether IsDefaultBrowser sees a change the person makes in the OS's
+	// settings while the app runs. Linux's Flatpak reads the desktop's choice as it was when the
+	// app started (docs/research/linux.md, 4), so it doesn't.
+	DefaultBrowserLive() bool
 	// Desktop is the Linux desktop the app runs on, "gnome", "kde" or "other", for the pages'
 	// words where the person must go to the desktop's own settings, as to set the default
 	// browser; "" off Linux.

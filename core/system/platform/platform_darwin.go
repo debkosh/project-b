@@ -45,6 +45,8 @@ func (s *System) IsDefaultBrowser() bool { return C.pb_system_is_default_browser
 
 func (s *System) Desktop() string { return "" }
 
+func (s *System) DefaultBrowserLive() bool { return true }
+
 func (s *System) AskDefaultBrowser(answered func(bool)) {
 	s.defaultBrowser.Ask(answered, func() { C.pb_system_ask_default_browser() })
 }

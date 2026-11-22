@@ -106,6 +106,8 @@ func (e *Eng) NotificationsAllowed() bool                           { return tru
 // Desktop is the Linux desktop's name: none here.
 func (e *Eng) Desktop() string { return "" }
 
+func (e *Eng) DefaultBrowserLive() bool { return true }
+
 func (e *Eng) SendToShell(w engine.WindowID, msg []byte) {
 	e.Calls[CSendToShell]++
 	e.ShellMsgs++

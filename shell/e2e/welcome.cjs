@@ -166,14 +166,14 @@ const bars = async (w) => (await w.ui.getByRole('tab').first().isVisible()) || (
     await lw.getByRole('button', { name: 'Continue' }).click();
     await settle(w.page);
   }
-  check('on Linux, the last step says where to set the default browser', await until(() => lw.getByText('Set it in GNOME Settings, under Default Apps.').isVisible()) &&
+  check('on Linux, the last step says where to set the default browser', await until(() => lw.getByText('Set it in GNOME Settings, under Default Apps. Project B notices the next time it starts.').isVisible()) &&
     (await lw.getByRole('button', { name: 'Make default browser' }).count()) === 0);
   await w.page.screenshot({ path: path.join(lib.out, 'welcome-linux-done.png') });
   await lw.getByRole('button', { name: 'Start browsing' }).click();
   await lib.fire('menu', 'app.settings');
   const status = w.settings.getByRole('region', { name: 'Status' });
   check('and Settings\' status line does too', await until(async () => ((await status.textContent()) || '').includes('Not your default browser') &&
-    ((await status.textContent()) || '').includes('Set it in GNOME Settings, under Default Apps.')) &&
+    ((await status.textContent()) || '').includes('Set it in GNOME Settings, under Default Apps. Project B notices the next time it starts.')) &&
     (await status.getByRole('button', { name: 'Make default browser' }).count()) === 0, await status.textContent().catch((e) => String(e)));
   await settle(w.page);
   await w.page.screenshot({ path: path.join(lib.out, 'settings-linux-default.png') });

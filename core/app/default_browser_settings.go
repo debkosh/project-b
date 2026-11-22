@@ -14,9 +14,13 @@ func (a *App) isDefault() bool {
 }
 
 // defaultBrowserChanged asks the system again as a window comes to the front, so a person
-// who set the default browser in the OS's own settings, as Linux's desktops have them do,
-// comes back to pages that say so; nothing is sent when nothing changed.
+// who set the default browser in the OS's own settings comes back to pages that say so;
+// nothing is sent when nothing changed. Where the system reads it at start only (Linux's
+// Flatpak), asking again would say nothing new, so it doesn't.
 func (a *App) defaultBrowserChanged() {
+	if !a.System.DefaultBrowserLive() {
+		return
+	}
 	if was := a.wasDefault; a.isDefault() != was {
 		a.defaultBrowserAnswered(a.wasDefault)
 	}
