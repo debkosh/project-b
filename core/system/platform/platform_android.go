@@ -5,7 +5,6 @@ package platform
 #include <stdlib.h>
 #include "pb_system_android.h"
 
-static inline void call_copy_secret(const PBSystemCalls* c, const char* text) { c->copy_secret(text); }
 static inline void call_show_update(const PBSystemCalls* c, const char* json) { c->show_update(json); }
 static inline void call_verify_person(const PBSystemCalls* c, int32_t id, const char* title, const char* subtitle) { c->verify_person(id, title, subtitle); }
 static inline void call_cancel_person(const PBSystemCalls* c, int32_t id) { c->cancel_person(id); }
@@ -21,6 +20,8 @@ import (
 	"sync/atomic"
 	"unsafe"
 
+	"github.com/sudiptadeb/oskit/clip"
+
 	"projectb/crash"
 	"projectb/system"
 )
@@ -34,12 +35,8 @@ var calls atomic.Pointer[C.PBSystemCalls]
 //export PBSetSystemCalls
 func PBSetSystemCalls(c *C.PBSystemCalls) { calls.Store(c) }
 
-// CopySecret puts text on the clipboard as a clip marked sensitive.
-func (s *System) CopySecret(text string) {
-	c := C.CString(text)
-	defer C.free(unsafe.Pointer(c))
-	C.call_copy_secret(calls.Load(), c)
-}
+// CopySecret puts text on the clipboard as a clip marked sensitive (oskit/clip).
+func (s *System) CopySecret(text string) { clip.New().CopySecret(text) }
 
 // ShowUpdate hands the updater's state, as its JSON, to amarit's UpdateNotification, the
 // system's notification of a download, a release ready, or a failure a retry can help.

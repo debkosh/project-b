@@ -20,7 +20,6 @@ static JavaVM* vm;
 static jclass go_system;
 static jmethodID go_system_verify_person;
 static jmethodID go_system_cancel_person;
-static jmethodID go_system_copy_secret;
 static jmethodID go_system_show_update;
 
 // The calling thread's JNIEnv, attaching a thread of Go's that has none; *attached says to
@@ -73,18 +72,6 @@ static void system_cancel_person(int32_t id) {
   detach(env, attached);
 }
 
-static void system_copy_secret(const char* text) {
-  int attached;
-  JNIEnv* env = attach(&attached);
-  if (env == NULL) {
-    return;
-  }
-  jstring t = (*env)->NewStringUTF(env, text);
-  (*env)->CallStaticVoidMethod(env, go_system, go_system_copy_secret, t);
-  (*env)->DeleteLocalRef(env, t);
-  detach(env, attached);
-}
-
 static void system_show_update(const char* state_json) {
   int attached;
   JNIEnv* env = attach(&attached);
@@ -100,7 +87,6 @@ static void system_show_update(const char* state_json) {
 static const PBSystemCalls system_calls = {
     .verify_person = system_verify_person,
     .cancel_person = system_cancel_person,
-    .copy_secret = system_copy_secret,
     .show_update = system_show_update,
 };
 
@@ -129,7 +115,6 @@ JNIEXPORT jlong JNICALL Java_dev_projectb_browser_GoCore_table(JNIEnv* env, jcla
     go_system = (*env)->NewGlobalRef(env, (*env)->FindClass(env, "dev/projectb/browser/GoSystem"));
     go_system_verify_person = (*env)->GetStaticMethodID(env, go_system, "verifyPerson", "(ILjava/lang/String;Ljava/lang/String;)V");
     go_system_cancel_person = (*env)->GetStaticMethodID(env, go_system, "cancelPerson", "(I)V");
-    go_system_copy_secret = (*env)->GetStaticMethodID(env, go_system, "copySecret", "(Ljava/lang/String;)V");
     go_system_show_update = (*env)->GetStaticMethodID(env, go_system, "showUpdate", "(Ljava/lang/String;)V");
     PBSetSystemCalls(&system_calls);
     // oskit's packages find their Java classes here too (oskit/internal/jni).
