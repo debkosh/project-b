@@ -11,7 +11,8 @@ const { chromium } = require('playwright');
 const lib = require('./lib.cjs');
 const { check, fire, regions, settle, until } = lib;
 
-const url = 'https://example.com/files/2026/quarterly-report.pdf';
+// A zip, which Open hands to the OS: a page, PDF, image or text would open in a tab here.
+const url = 'https://example.com/files/2026/quarterly-report.zip';
 
 async function shots(page, what, clip) {
   for (const scheme of ['light', 'dark']) {
@@ -25,8 +26,8 @@ async function shots(page, what, clip) {
 // The checks on one list, the panel or the page: the download's details, Copy link, and
 // the report's.
 async function details(list, { savedIn }) {
-  const row = list.getByRole('listitem', { name: 'quarterly-report.pdf' });
-  const more = row.getByRole('button', { name: 'Details of quarterly-report.pdf' });
+  const row = list.getByRole('listitem', { name: 'quarterly-report.zip' });
+  const more = row.getByRole('button', { name: 'Details of quarterly-report.zip' });
   check('a row has Details, closed', (await more.getAttribute('aria-expanded')) === 'false');
   await more.click();
   check('which opens it out', (await more.getAttribute('aria-expanded')) === 'true');
@@ -49,11 +50,11 @@ async function details(list, { savedIn }) {
 // day, the name and one line, a tap to open it, everything else in its ⋮, a sheet whose head
 // says where it came from; and a search.
 async function phonePage(page, w) {
-  const row = page.getByRole('listitem', { name: 'quarterly-report.pdf' });
+  const row = page.getByRole('listitem', { name: 'quarterly-report.zip' });
   check('a row says its size and its host on one line, under Today', (await row.innerText()).includes('example.com') &&
     (await page.getByRole('region', { name: 'Today' }).isVisible()), await row.innerText());
-  await row.getByRole('button', { name: 'Actions for quarterly-report.pdf' }).click();
-  const sheet = page.getByRole('dialog', { name: 'quarterly-report.pdf' });
+  await row.getByRole('button', { name: 'Actions for quarterly-report.zip' }).click();
+  const sheet = page.getByRole('dialog', { name: 'quarterly-report.zip' });
   check('its ⋮ opens a sheet whose head has its whole address, without its scheme', await until(async () => (await sheet.isVisible()) &&
     (await sheet.innerText()).includes(url.replace('https://', '')) && !(await sheet.innerText()).includes('https://')), await sheet.innerText());
   const said = await sheet.getByRole('button').allInnerTexts();
@@ -61,11 +62,11 @@ async function phonePage(page, w) {
   await shots(w.page, 'page-sheet');
   await sheet.getByRole('button', { name: 'Copy link' }).click();
   check('Copy link copies the address, and the sheet goes', await until(async () => (await regions()).clipboard === url && !(await sheet.isVisible())), (await regions()).clipboard);
-  await row.getByRole('button', { name: 'Actions for quarterly-report.pdf' }).click();
+  await row.getByRole('button', { name: 'Actions for quarterly-report.zip' }).click();
   await sheet.getByRole('button', { name: 'Share' }).click();
-  check('Share hands the file to the system\'s share sheet', await until(async () => ((await regions()).shared || '').endsWith('quarterly-report.pdf')), (await regions()).shared);
-  await row.getByRole('button', { name: /^quarterly-report\.pdf/ }).click();
-  check('a tap on the row opens the file', await until(async () => ((await regions()).openedFiles || []).some((f) => f.endsWith('quarterly-report.pdf'))), JSON.stringify((await regions()).openedFiles));
+  check('Share hands the file to the system\'s share sheet', await until(async () => ((await regions()).shared || '').endsWith('quarterly-report.zip')), (await regions()).shared);
+  await row.getByRole('button', { name: /^quarterly-report\.zip/ }).click();
+  check('a tap on the row opens the file', await until(async () => ((await regions()).openedFiles || []).some((f) => f.endsWith('quarterly-report.zip'))), JSON.stringify((await regions()).openedFiles));
 
   const report = page.getByRole('listitem').filter({ hasText: 'project-b-report-' }).first();
   await report.getByRole('button', { name: /^Actions for project-b-report-/ }).click();
@@ -85,13 +86,13 @@ async function phonePage(page, w) {
   check('and Back closes the search, the list whole again', await until(async () => (await report.isVisible()) && (await page.getByRole('heading', { name: 'Downloads' }).isVisible())), JSON.stringify(await names()));
 
   // Delete, asked first.
-  await row.getByRole('button', { name: 'Actions for quarterly-report.pdf' }).click();
+  await row.getByRole('button', { name: 'Actions for quarterly-report.zip' }).click();
   await sheet.getByRole('button', { name: 'Delete' }).click();
-  const confirm = page.getByRole('dialog', { name: 'Delete quarterly-report.pdf?' });
+  const confirm = page.getByRole('dialog', { name: 'Delete quarterly-report.zip?' });
   check('Delete asks first', await until(() => confirm.isVisible()));
   await shots(w.page, 'page-delete');
   await confirm.getByRole('button', { name: 'Delete' }).click();
-  check('and deletes it, gone from the list', await until(async () => (await row.count()) === 0 && ((await regions()).deleted || []).some((f) => f.endsWith('quarterly-report.pdf'))), JSON.stringify((await regions()).deleted));
+  check('and deletes it, gone from the list', await until(async () => (await row.count()) === 0 && ((await regions()).deleted || []).some((f) => f.endsWith('quarterly-report.zip'))), JSON.stringify((await regions()).deleted));
 }
 
 (async () => {
@@ -129,7 +130,7 @@ async function phonePage(page, w) {
   await w.ui.getByRole('button', { name: 'Menu' }).click();
   await w.ui.getByRole('menuitem', { name: 'Downloads' }).click();
   const page = w.page.frameLocator('iframe.our-page[data-page="downloads"]');
-  await until(() => page.getByRole('listitem', { name: 'quarterly-report.pdf' }).isVisible());
+  await until(() => page.getByRole('listitem', { name: 'quarterly-report.zip' }).isVisible());
   await shots(w.page, 'page');
   await phonePage(page, w);
   check('no errors in the page', w.errors.length === 0, w.errors.join(' | '));
