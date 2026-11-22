@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """The guest's half of tools/linux/check_dark_mode.py, run in a Linux desktop session: with
-the app's theme left at System, turns the desktop light and dark with its own settings
+the app's theme left at System and no colour picked, turns the desktop light and dark with its own settings
 (GNOME's gsettings, KDE's colour scheme) and checks the app follows each, through the Settings
 portal: the shell's and a page's prefers-color-scheme, and the window's frame colour. At each
 step it writes <step>.json and <step>.ready, and waits for the Mac's half to take its shot
@@ -72,6 +72,10 @@ def main():
         profile = tempfile.mkdtemp(prefix="pb-profile-")
         with open(os.path.join(profile, "workspaces.json"), "w") as f:
             json.dump({"workspaces": [{"id": "0a1b2c3d", "name": "Work", "color": "#3470d0"}]}, f)
+        # No colour picked: its frame is the grey of light or of dark, which shows the window's
+        # own parts turning; a picked colour is the same in both.
+        with open(os.path.join(profile, "prefs.json"), "w") as f:
+            json.dump({"frameColor": ""}, f)
         desktop(False)
         time.sleep(1)
         app = start(profile)
