@@ -218,6 +218,11 @@ class Pages(http.server.BaseHTTPRequestHandler):
                        b'<form onsubmit="event.preventDefault()"><input id=email name=email type=email style="display:block;width:300px;height:30px;margin-bottom:20px">'
                        b'<input id=password name=password type=password style="display:block;width:300px;height:30px"></form>'
                        b'<script>window.seen = [typeof __pbFormsSend, typeof __pbFormsTransport, typeof __pbFormsReceive, typeof formScript].join()</script>',
+            # The same sign-in, whose form goes through: sent, the tab goes on to a page with
+            # no sign-in, as a site's own script does after its request.
+            "/signin-go": b'<!doctype html><title>Sign in and go</title><body style="margin:40px"><h1 id=aside style="margin:0 0 20px">Sign in</h1>'
+                          b'<form onsubmit="event.preventDefault(); location.href=\'/clicks\'"><input id=email name=email type=email style="display:block;width:300px;height:30px;margin-bottom:20px">'
+                          b'<input id=password name=password type=password style="display:block;width:300px;height:30px"><button id=go style="position:absolute;left:400px;top:40px">Sign in</button></form>',
             "/copy": b'<!doctype html><title>Copy</title><button id=copy style="width:300px;height:100px" onclick="navigator.clipboard.writeText(\'copied\').then(()=>document.title=\'copied\',e=>document.title=\'refused \'+e.name)">Copy</button>',
             # Passkeys (docs/passkeys.md): make(name, exclude, attachment) saves one for a
             # user, on a key that remembers it, or only on the kind of key attachment names;
@@ -3615,7 +3620,8 @@ def filling_checks():
     on the password field brings the shell's list beside the field, as the shell's own area;
     a press on a login fills the username and the password into the page; a press elsewhere
     on the page takes a list away; and the page's own scripts see nothing of the form
-    script, which runs in a world of its own."""
+    script, which runs in a world of its own. Then saving: a sign-in typed with a login that
+    isn't saved is offered to be saved once it has gone through."""
     app = App(tempfile.mkdtemp(prefix="pb-profile-"))
     secret = "correct-horse-battery"
     settings = lambda expr: json.loads(app.cmd("evalsettings", expr))
@@ -3703,6 +3709,52 @@ def filling_checks():
         filled = app.js("[document.querySelector('#email').value, document.querySelector('#password').value]", page=True)
         time.sleep(0.1)
     check("Down then Enter fills the login, from the keyboard alone", filled == ["asha@example.org", secret], [filled[0], len(filled[1]) if len(filled) > 1 else None])
+
+    # Saving: a sign-in typed with a login that isn't saved, on a page whose form goes
+    # through. Enter in the password field, with the list up and no arrow pressed, still
+    # sends the page's form. Once the tab has gone on, the address field shows a key with
+    # its panel; Save keeps the login, which the list then offers and fills.
+    fresh = "second-horse-staple"
+    KEY = "document.querySelector('[data-password-key]')"
+    PANEL = "document.querySelector('[role=dialog][aria-label=\"Save password?\"]')"
+    new_tab(app, PAGES + "signin-go")
+    check("a page with nothing sent shows no key", not app.js(f"!!{KEY}"))
+    page_click(app, "#email")
+    app.cmd("type", "work@example.org")
+    # On to the password as a person typing goes on, with Tab: the list under the first
+    # field lies over the second, where a click would land on the list.
+    app.cmd("key", "tab")
+    deadline = time.time() + 10
+    while app.js("document.activeElement && document.activeElement.id", page=True) != "password" and time.time() < deadline:
+        time.sleep(0.1)
+    app.cmd("type", fresh)
+    typed = app.js("[document.querySelector('#email').value, document.querySelector('#password').value]", page=True)
+    check("typing goes to the page's fields while a list is up", typed == ["work@example.org", fresh], [typed[0], len(typed[1])])
+    app.cmd("key", "enter")
+    loaded(app, PAGES + "clicks")
+    check("Enter in the field, with no arrow pressed, sends the page's form", True)
+    app.wait(f"!!{PANEL}", 10)
+    said = app.js(f"{PANEL}.innerText.replace(/\\s+/g, ' ').trim()")
+    check("once the tab has gone on, the key's panel asks to save, with the site and the username", "Save password?" in said and "work@example.org" in said and "••••••••" in said and app.js(f"{KEY}.getAttribute('aria-expanded')") == "true", said)
+    check("no typed password is in the shell", fresh not in app.js("document.documentElement.outerHTML"))
+    sx, sy = app.js(f"(()=>{{const r={PANEL}.getBoundingClientRect();return [r.x,r.y]}})()")
+    check("the panel is the shell's own area over the page", holds_hit(app, sx + 20, sy + 60), app.cmd("hit", sx + 20, sy + 60))
+    print(app.cmd("capture", os.path.join(OUT, "saving-panel.png")), flush=True)
+    click(app, "[role=dialog][aria-label=\"Save password?\"] button[type=submit]")
+    app.wait(f"!{PANEL}&&!{KEY}", 10)
+    check("Save takes the panel and the key away", True)
+    new_tab(app, PAGES + "signin")
+    page_click(app, "#password")
+    app.wait(f"!!{LIST}", 10)
+    check("the saved login is listed at the site's sign-in, with the one brought in", sorted(rows()[:-1]) == ["asha@example.org••••••••", "work@example.org••••••••"], rows())
+    time.sleep(0.7)
+    click_menu_item(app, "work@example.org")
+    deadline = time.time() + 10
+    filled = []
+    while filled != ["work@example.org", fresh] and time.time() < deadline:
+        filled = app.js("[document.querySelector('#email').value, document.querySelector('#password').value]", page=True)
+        time.sleep(0.1)
+    check("and fills with the password that was saved", filled == ["work@example.org", fresh], [filled[0], len(filled[1]) if len(filled) > 1 else None])
     app.close()
 
 
