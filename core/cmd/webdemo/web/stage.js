@@ -71,6 +71,8 @@ addEventListener('message', (e) => {
   if (!m || !m.pbOS) return;
   if (m.pbOS === 'log') log(m.who, m.text);
   if (m.pbOS === 'visitor') handOver();
+  if (m.pbOS === 'layers') layersButton.setAttribute('aria-pressed', String(!!m.open));
+  if (m.pbOS === 'launched' || m.pbOS === 'state') layersButton.hidden = phone || reduced || !(m.pbOS === 'launched' || m.shown > 0);
   if (m.pbOS === 'restart') {
     log('you', 'opened Project B again: it starts afresh');
     setTimeout(() => location.reload(), 400);
@@ -156,6 +158,18 @@ async function tour() {
     log('core', `same tabs and history; the shell is now ${shell}`);
     await wait(TOUR_STEP_MS);
   }
+  // Last, the window pulled apart into its layers for a moment, so the button is found.
+  if (touring && !layersButton.hidden) {
+    await moveTo(layersButton);
+    if (touring) {
+      await press();
+      if (touring) {
+        await osFrame.contentWindow.pbLayers(true, 'tour');
+        await wait(2500);
+        if (osFrame.contentWindow.pbLayersOpen()) await osFrame.contentWindow.pbLayers(false, 'tour');
+      }
+    }
+  }
   if (touring) {
     log('tour', 'your turn: try View › Shell');
     logEl.classList.add('ping');
@@ -239,6 +253,18 @@ async function intro() {
   introPlaying = false;
   el.remove();
 }
+
+// ---- See the layers: the window pulled apart (the OS page's pbLayers) ----------------
+
+const layersButton = $('layers-button');
+layersButton.addEventListener('click', (e) => {
+  const os = osFrame.contentWindow;
+  if (os.pbLayers) os.pbLayers(undefined, e.isTrusted ? 'you' : 'tour');
+});
+addEventListener('keydown', (e) => {
+  const os = osFrame.contentWindow;
+  if (e.key === 'Escape' && os && os.pbLayersOpen && os.pbLayersOpen()) os.pbLayers(false, 'you');
+});
 
 // ---- Download -------------------------------------------------------------------------
 

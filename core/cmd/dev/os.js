@@ -209,6 +209,12 @@
         syncing = false;
       }
     }
+    // front is the window shown on top, for the parts that act on one (the layers).
+    os.front = () => {
+      let best = null;
+      for (const w of wins.values()) if (w.shown && (!best || +w.el.style.zIndex > +best.el.style.zIndex)) best = w;
+      return best;
+    };
     const tick = () => sync().catch((e) => console.error(e)).finally(() => setTimeout(tick, 250));
     tick();
     addEventListener('resize', () => { for (const id of wins.keys()) place(id); });
@@ -272,6 +278,155 @@
       });
       document.body.append(home);
     }
+  }
+
+  // ---- The layers: the front window pulled apart, live ----------------------------------
+  //
+  // pbLayers(on, who) lifts the window page's real layers apart in 3D, as the window stacks
+  // them: the window's background (the OS's), the tab pages (content), the shell, then the
+  // frame band with the window's buttons, each with its label. Nothing is a picture: the
+  // demo keeps running in them. A press, Esc or the same call again puts them back.
+
+  function layersPart() {
+    if (phone) return;
+    // Each group's height above the window's background, and the angle, for a 380px wide
+    // window: the layers diagram's ending frame (docs: the window's layers).
+    const Z = { content: 72, shell: 136, frame: 200 };
+    const EASE = '0.8s cubic-bezier(0.2, 0.8, 0.2, 1)';
+    const LABELS = [
+      ['frame', 'Frame', 'The frame band and the window buttons', "4px of frame colour on the window's corner, over the page and the shell; the buttons sit on it."],
+      ['shell', 'Shell', 'The shell', 'A web page over the whole window, with a hole where the page shows.'],
+      ['content', 'Content', "The tab's page", "A plain rectangle, where Go's layout puts it."],
+      ['os', 'OS', 'The desktop and the window', 'The window: a rounded rectangle in the frame colour, under everything.'],
+    ];
+    const overlay = document.createElement('div');
+    overlay.id = 'layers';
+    overlay.hidden = true;
+    document.body.append(overlay);
+    let open = null;
+
+    function styleIn(doc) {
+      if (doc.getElementById('pb-layers')) return;
+      const st = doc.createElement('style');
+      st.id = 'pb-layers';
+      const parts = '#window > .mock-page, #window > .our-page, #window > .shell, #window > .band, #window > .controls';
+      st.textContent = `
+        html.pb-layers, html.pb-layers body { background: transparent !important; }
+        html.pb-layers #window { overflow: visible !important; transform-style: preserve-3d; transition: transform ${EASE}; transform: var(--pbl-t) !important; }
+        html.pb-layers ${parts.replaceAll('#window', 'html.pb-layers #window')} { transition: transform ${EASE}; }
+        html.pb-layers .mock-page, html.pb-layers .our-page { transform: translateZ(var(--pbl-content)); }
+        html.pb-layers .shell { transform: translateZ(var(--pbl-shell)); }
+        html.pb-layers .band, html.pb-layers .controls { transform: translateZ(var(--pbl-frame)); }
+        html.pb-layers .outlines { display: none !important; }`;
+      doc.head.append(st);
+      // Esc in the window, where the keyboard may still be, puts it back too.
+      doc.defaultView.addEventListener('keydown', (e) => { if (open && e.key === 'Escape') set(false, by(e)); });
+    }
+    // The stack's transform and heights, apart or together: the same functions each way, so
+    // the move between them is one smooth turn.
+    function pose(doc, w, apart) {
+      const r = w.el.getBoundingClientRect();
+      const k = r.width / 380;
+      const root = doc.documentElement;
+      const t = apart ? `translate(${-r.width * 0.19}px, ${r.height * 0.16}px) scale(0.44) rotateX(55deg) rotateZ(-28deg)` : 'translate(0px, 0px) scale(1) rotateX(0deg) rotateZ(0deg)';
+      root.style.setProperty('--pbl-t', t);
+      for (const [g, z] of Object.entries(Z)) root.style.setProperty('--pbl-' + g, (apart ? z * k : 0) + 'px');
+    }
+    const wait = (ms) => new Promise((res) => setTimeout(res, ms));
+
+    function labels(w, doc) {
+      overlay.replaceChildren();
+      const fr = w.frame.getBoundingClientRect();
+      const wr = w.el.getBoundingClientRect();
+      const shown = (sel) => [...doc.querySelectorAll(sel)].find((e) => getComputedStyle(e).display !== 'none');
+      const el = { os: doc.getElementById('window'), content: shown('.mock-page, .our-page'), shell: doc.querySelector('.shell'), frame: doc.querySelector('.band') };
+      const x0 = Math.round(wr.left + wr.width * 0.66);
+      const width = Math.min(340, wr.right - x0 - 28);
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('width', innerWidth);
+      svg.setAttribute('height', innerHeight);
+      overlay.append(svg);
+      let prev = -1e9;
+      for (const [g, group, title, text] of LABELS) {
+        if (!el[g]) continue;
+        const r = el[g].getBoundingClientRect();
+        const ax = fr.left + r.right + 6, ay = fr.top + r.top + r.height * 0.5;
+        const lab = document.createElement('div');
+        lab.className = 'lab';
+        lab.innerHTML = '<div class="g"></div><b></b><span></span>';
+        lab.querySelector('.g').textContent = group;
+        lab.querySelector('b').textContent = title;
+        lab.querySelector('span').textContent = text;
+        Object.assign(lab.style, { left: x0 + 'px', width: width + 'px' });
+        overlay.append(lab);
+        const top = Math.max(ay - 9, prev + 14);
+        lab.style.top = top + 'px';
+        prev = top + lab.offsetHeight;
+        const ly = top + 8;
+        const bend = Math.max(ax + 4, x0 - 16 - (ly - ay) * 0.7);
+        svg.insertAdjacentHTML('beforeend', `<path d="M${ax},${ay} H${bend} L${x0 - 16},${ly} H${x0 - 4}" /><circle cx="${ax}" cy="${ay}" r="3.5" />`);
+      }
+      const note = document.createElement('p');
+      note.className = 'note';
+      note.textContent = 'The core draws nothing: it decides where each layer goes.';
+      Object.assign(note.style, { left: x0 + 'px', width: width + 'px', top: prev + 16 + 'px' });
+      overlay.append(note);
+    }
+
+    async function set(on, who = 'you') {
+      if (on === undefined) on = !open;
+      if (!!open === on) return;
+      os.layersOpen = on;
+      if (on) {
+        // Any open menu shuts first, as a press elsewhere shuts it.
+        os.emit('press', null);
+        const w = os.front();
+        if (!w || !w.frame.contentDocument) { os.layersOpen = false; return; }
+        const doc = w.frame.contentDocument;
+        styleIn(doc);
+        open = { w, doc };
+        os.log(who, 'pulled the window apart into its layers');
+        pose(doc, w, false);
+        doc.documentElement.classList.add('pb-layers');
+        w.el.classList.add('layers');
+        document.body.classList.add('layering');
+        // The window page has no colour scheme of its own; its frame says so too, or Chrome
+        // paints the frame opaque in dark, over the desktop behind the layers.
+        w.frame.style.colorScheme = 'light';
+        // The keyboard comes here, so Esc puts the window back wherever it was.
+        if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+        window.focus();
+        w.frame.getBoundingClientRect();
+        pose(doc, w, true);
+        overlay.hidden = false;
+        overlay.classList.remove('shown');
+        await wait(os.reduced ? 0 : 820);
+        if (open && open.w === w) {
+          labels(w, doc);
+          overlay.classList.add('shown');
+        }
+      } else {
+        const { w, doc } = open;
+        open = null;
+        os.log(who, 'put the window back together');
+        overlay.classList.remove('shown');
+        pose(doc, w, false);
+        await wait(os.reduced ? 0 : 820);
+        if (open) return;
+        overlay.hidden = true;
+        overlay.replaceChildren();
+        doc.documentElement.classList.remove('pb-layers');
+        w.el.classList.remove('layers');
+        document.body.classList.remove('layering');
+        w.frame.style.colorScheme = '';
+      }
+      os.tell({ t: 'layers', open: !!open });
+    }
+    window.pbLayers = set;
+    window.pbLayersOpen = () => !!open;
+    // A press anywhere, or Esc, puts the window back together.
+    overlay.addEventListener('click', (e) => { e.stopPropagation(); set(false, by(e)); });
+    addEventListener('keydown', (e) => { if (open && e.key === 'Escape') set(false, by(e)); });
   }
 
   // ---- The menu bar: the app's menus, as the app sets them ------------------------------
@@ -392,6 +547,8 @@
 
     function open(wrap, button, item) {
       closeMenus();
+      // While the window is apart, the menus stay shut: the layers have the screen.
+      if (os.layersOpen) return;
       const menu = document.createElement('div');
       menu.className = 'menu';
       fill(menu, item.items, [button.textContent]);
@@ -482,7 +639,7 @@
 
   // The parts, in order. Each later one is one more entry: notifications, the person
   // check's sheet, the default-browser question, the OS's dialogs.
-  const parts = [windowsPart, menuBarPart, iconPart, inputPart];
+  const parts = [windowsPart, menuBarPart, iconPart, inputPart, layersPart];
   for (const part of parts) part();
   window.mockOS = os;
 })();

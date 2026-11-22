@@ -110,6 +110,28 @@
   .win .buttons:hover button:nth-child(2)::after { content: "–"; color: #8a5a00; }
   .win .buttons:hover button:nth-child(3)::after { content: "+"; color: #0b5d1e; }
 
+  /* The layers: the front window pulled apart (os.js, layersPart), its labels beside it. */
+  .win.layers { overflow: visible; box-shadow: none; background: transparent; }
+  .win.layers iframe { pointer-events: none; }
+  /* The app's icon on the desktop would show through the window's gaps: it steps back. */
+  #icons { transition: opacity 0.3s ease; }
+  .layering #icons { opacity: 0; }
+  .win.layers .buttons { display: none; }
+  #layers { position: fixed; inset: 0; z-index: 999; cursor: default; }
+  #layers svg { position: absolute; left: 0; top: 0; opacity: 0; transition: opacity 0.3s ease; }
+  #layers svg path { fill: none; stroke: var(--brand-a); stroke-opacity: 0.45; stroke-dasharray: 3 4; }
+  #layers svg circle { fill: var(--brand-a); }
+  #layers .lab, #layers .note { position: absolute; opacity: 0; transform: translateY(4px); transition: opacity 0.3s ease, transform 0.3s ease; }
+  #layers.shown svg, #layers.shown .lab, #layers.shown .note { opacity: 1; transform: none; }
+  #layers .lab .g { font: 600 11px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brand-a); }
+  #layers .lab b { display: block; font-size: 14px; margin-top: 2px; color: var(--text); }
+  #layers .lab span { display: block; font-size: 12.5px; color: var(--muted); line-height: 1.4; }
+  #layers .note { margin: 0; font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--brand-a); }
+  @media (prefers-color-scheme: dark) {
+    #layers svg path { stroke: var(--mint); } #layers svg circle { fill: var(--mint); }
+    #layers .lab .g, #layers .note { color: var(--mint); }
+  }
+
   /* A phone: a status bar, the home screen's icons, and the app over the whole screen. */
   .phone #menubar { height: 28px; padding: 0 16px; font-weight: 600; font-size: 13px; }
   .phone #menus, .phone #menubar .mark { display: none; }

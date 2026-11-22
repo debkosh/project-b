@@ -163,6 +163,37 @@ h3.sub + .lead { margin-bottom: 16px; }
 .downloads .alts { flex-basis: 100%; font-size: 13.5px; color: var(--muted); margin: 2px 0 0; }
 .downloads .alts a { color: var(--ink); }
 
+/* The window's layers, still: the demo's "See the layers" for phones, reduced motion and the
+   page on its own. The same layers and angle as the live one; they part as they come into
+   sight, and are apart at once with reduced motion. */
+.lyrs { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 28px; align-items: center; margin-top: 36px; }
+.lyrs[hidden] { display: none; }
+.lyrs .scene { position: relative; height: 360px; }
+.lyrs .stack { position: absolute; left: 50%; top: 58%; width: 380px; height: 250px; margin: -125px 0 0 -190px; transform-style: preserve-3d; transform: scale(0.82) rotateX(55deg) rotateZ(-28deg); }
+.lyrs .p { position: absolute; inset: 0; transform-style: preserve-3d; transition: transform 0.9s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.lyrs .os { border-radius: 22px; background: linear-gradient(135deg, var(--brand), var(--brand-deep)); box-shadow: 0 22px 40px rgba(5, 40, 45, 0.25); }
+.lyrs .content { left: 96px; top: 54px; right: 8px; bottom: 8px; background: var(--surface); box-shadow: 0 0 0 1px var(--line-strong); }
+.lyrs .content i { display: block; height: 6px; border-radius: 3px; background: var(--line-strong); margin: 14px 16px 0; }
+.lyrs .shell { background: color-mix(in srgb, var(--mint) 52%, var(--surface)); box-shadow: 0 0 0 1px var(--line-strong);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 0, 25.3% 21.6%, 25.3% 96.8%, 97.9% 96.8%, 97.9% 21.6%, 25.3% 21.6%); }
+.lyrs .shell b { position: absolute; left: 96px; top: 15px; width: 250px; height: 20px; border-radius: 10px; background: var(--surface); }
+.lyrs .frame { border-radius: 22px; box-shadow: inset 0 0 0 7px var(--brand); }
+.lyrs .frame span { position: absolute; left: 16px; top: 14px; display: flex; gap: 7px; }
+.lyrs .frame span i { width: 13px; height: 13px; border-radius: 50%; }
+.lyrs.apart .content { transform: translateZ(72px); }
+.lyrs.apart .shell { transform: translateZ(136px); }
+.lyrs.apart .frame { transform: translateZ(200px); }
+.lyrs ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+.lyrs li .g { font: 600 11.5px ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); }
+.lyrs li b { display: block; font-size: 15px; margin-top: 2px; }
+.lyrs li span { display: block; color: var(--muted); font-size: 14px; }
+.lyrs .note { margin: 4px 0 0; font: 12.5px ui-monospace, "SF Mono", Menlo, monospace; color: var(--ink); }
+@media (max-width: 720px) {
+  .lyrs { grid-template-columns: 1fr; gap: 8px; }
+  .lyrs .scene { height: 300px; }
+  .lyrs .stack { transform: scale(0.62) rotateX(55deg) rotateZ(-28deg); }
+}
+
 /* Scroll-in, only where motion is welcome */
 .reveal { opacity: 0; transform: translateY(18px); transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1); }
 .reveal.seen { opacity: 1; transform: none; }
@@ -173,6 +204,7 @@ h3.sub + .lead { margin-bottom: 16px; }
   .hero .icon .pt { animation: none; transform: none; }
   .layer.live .state::before { animation: none; }
   .stage picture { transition: none; }
+  .lyrs .p { transition: none; }
 }
 
 @media (max-width: 760px) {
@@ -253,6 +285,21 @@ h3.sub + .lead { margin-bottom: 16px; }
       <div><b>Open a tab</b>The + in the tab list, or File, then New Tab.</div>
       <div><b>Change its shape</b>View, then Shell, in the menu bar.</div>
       <div><b>Look around</b>Settings, history, bookmarks: all real, all in this tab.</div>
+    </div>
+    <div class="lyrs" hidden aria-label="The window's layers, pulled apart">
+      <div class="scene" aria-hidden="true"><div class="stack">
+        <div class="p os"></div>
+        <div class="p content"><i style="width:45%"></i><i style="width:82%"></i><i style="width:70%"></i><i style="width:88%"></i><i style="width:64%"></i></div>
+        <div class="p shell"><b></b></div>
+        <div class="p frame"><span><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></span></div>
+      </div></div>
+      <ol>
+        <li><span class="g">Frame</span><b>The frame band and the window buttons</b><span>4px of frame colour on the window's corner, over the page and the shell.</span></li>
+        <li><span class="g">Shell</span><b>The shell</b><span>A web page over the whole window, with a hole where the page shows.</span></li>
+        <li><span class="g">Content</span><b>The tab's page</b><span>A plain rectangle, where Go's layout puts it: the renderer's.</span></li>
+        <li><span class="g">OS</span><b>The desktop and the window</b><span>A rounded rectangle in the frame colour, under everything.</span></li>
+        <li class="note">The core draws nothing: it decides where each layer goes.</li>
+      </ol>
     </div>
     <p class="check live-only" hidden>Check it: <code>core.wasm</code> in your browser's network panel. It's built from <a href="https://github.com/sudiptadeb/project-b/tree/main/core/cmd/webdemo">core/cmd/webdemo</a>.</p>
   </section>
@@ -420,6 +467,20 @@ try {
     for (const e of entries) if (e.isIntersecting) { e.target.classList.add('seen'); io.unobserve(e.target); }
   }, { rootMargin: '0px 0px -8% 0px' });
   els.forEach((el) => io.observe(el));
+})();
+
+// The window's layers, still: where the demo's live "See the layers" isn't, on a phone, with
+// reduced motion or with the page on its own. They part as they come into sight.
+(() => {
+  const el = document.querySelector('.lyrs');
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const phone = /Android|iPhone|iPod/.test(navigator.userAgent) || (window.top !== window ? top.innerWidth : innerWidth) < 640;
+  if (window.top !== window && !phone && !still) return;
+  el.hidden = false;
+  if (still || !('IntersectionObserver' in window)) { el.classList.add('apart'); return; }
+  new IntersectionObserver(([e], io) => {
+    if (e.isIntersecting) { setTimeout(() => el.classList.add('apart'), 250); io.disconnect(); }
+  }, { threshold: 0.45 }).observe(el);
 })();
 
 // Sent here because the demo couldn't start in this browser: say so, once.
