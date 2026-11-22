@@ -27,8 +27,9 @@ wrong.
 ## Every session
 
 - Public repo, MIT. No AI attribution. Commit as sudiptadeb.
-- A commit a person would notice carries a `Notes:` line in plain words: a Dev build's notes are
-  those lines alone.
+- A commit a person would notice in the app carries a `Notes:` line in plain words: a Dev build's
+  notes are those lines alone. Not for the homepage demo, docs or tests; a line for one platform
+  starts with it, "On Linux, …" (roles/feature.md).
 - Work in a worktree of your own; never remove another session's worktree, branch or unit.
 - Write risky commands in guarded form (`rm -f "${L:?}"/*`); a permission dialog stalls you
   while he is away.

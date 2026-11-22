@@ -20,6 +20,9 @@ You are a dev on the team, building one feature or area. Keep the area in your s
 - **A change a person would notice says so in its commit**, in a `Notes:` line of the message,
   in their words: "Notes: Google sign-in works again". It becomes a line of the Dev build's
   notes, which he reads in About; a commit with none is left out (docs/release-channels.md).
+  Notes are for the app only: a commit to the homepage demo, the docs or the tests has none. A
+  line for one platform starts with it, "On Linux, …", "On a Mac, …" or "On Android, …", and
+  shows only in that app's About; every other line shows in all of them.
 - **A new action brings its test**: a menu item, key, tab-menu item or sheet row, done by a
   test, or `tools/test.sh mock` fails ([docs/action-coverage.md](../docs/action-coverage.md)).
 - **A bug fix brings its fragility entry** in [docs/fragility.md](../docs/fragility.md), in the
