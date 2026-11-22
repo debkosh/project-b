@@ -16,6 +16,7 @@ ADB_SERIAL picks another device than emulator-5600, and PB_APK another APK than
 build/android/project-b-content.apk. The APK is installed over what is there and the
 app's data is cleared.
 """
+import atexit
 import http.server
 import json
 import os
@@ -2596,6 +2597,9 @@ def main():
     if not until(lambda: adb("shell", "id", "-u").strip() == "0", 30):
         sys.exit("no rooted device answers as %s: start the emulator with `amarit start project-b-emu`" % ADB[-1])
     adb("reverse", "tcp:%d" % PORT, "tcp:%d" % PORT)
+    # Removed however the run ends, an error outside a part's own too: runs that ended so
+    # left their reverses on the emulator for the next session to find (2026-11-22).
+    atexit.register(lambda: adb("reverse", "--remove", "tcp:%d" % PORT))
     # -d: an older APK goes over a newer one, as comparing releases needs.
     # Never incremental: adb picks it on some emulators, and the app then dies of SIGBUS in
     # libproject_b_content.so at every start, as its library pages arrive late.
