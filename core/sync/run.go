@@ -59,6 +59,8 @@ type Status struct {
 	// Unsent is how many rows couldn't be sent: those set aside, and those the server
 	// refused in the last run. Everything else syncs; Sync details says which and why.
 	Unsent int `json:"unsent"`
+	// Backup is the bucket's backup code, nil for none (backup.go).
+	Backup *Backup `json:"backup"`
 }
 
 // Manager syncs one profile. Everything it does runs on a goroutine of its own, one thing at
@@ -78,7 +80,7 @@ type Manager struct {
 
 	mu       gosync.Mutex
 	status   Status
-	address  string // the bucket's, while sync is on
+	address  string         // the bucket's, while sync is on
 	onStatus []func(Status) // the main thread's
 	// stopRun cuts the run going on short, nil between runs, and cut says CancelRun did.
 	stopRun func()
@@ -91,9 +93,11 @@ type Manager struct {
 
 	// The sync goroutine's own.
 	conn *connection
-	last time.Time // when the last run ended
-	wait time.Duration
-	next time.Time // no run before, after a failed one
+	// newBackup is the copy of the backup code just made, until it is kept or dropped.
+	newBackup string
+	last      time.Time // when the last run ended
+	wait      time.Duration
+	next      time.Time // no run before, after a failed one
 }
 
 // connection is a bucket sync is on with.
@@ -306,7 +310,8 @@ func (m *Manager) open(address, token string, key *synckosh.DataKey) error {
 	m.mu.Lock()
 	m.address = address
 	m.mu.Unlock()
-	m.setStatus(func(s *Status) { *s = Status{On: true, Host: hostOf(address)} })
+	backup := m.conn.backup()
+	m.setStatus(func(s *Status) { *s = Status{On: true, Host: hostOf(address), Backup: backup} })
 	return nil
 }
 
@@ -393,7 +398,9 @@ func unkeep(b []byte) (*synckosh.DataKey, error) {
 // marked says whether rows wait to go out.
 func (m *Manager) marked() bool {
 	has := false
-	m.st.Wait(func(tx *store.Tx) error { return tx.QueryRow(`SELECT EXISTS (SELECT 1 FROM sync_changes WHERE stuck = '')`).Scan(&has) })
+	m.st.Wait(func(tx *store.Tx) error {
+		return tx.QueryRow(`SELECT EXISTS (SELECT 1 FROM sync_changes WHERE stuck = '')`).Scan(&has)
+	})
 	return has
 }
 
@@ -480,6 +487,9 @@ func (m *Manager) run(why string) error {
 			s.Error, s.Problem = Words(err), Problem(err)
 		} else {
 			s.LastSynced, s.Unsent = m.last.UnixMilli(), stuck
+			if c := m.conn; c != nil {
+				s.Backup = c.backup()
+			}
 		}
 	})
 	return err

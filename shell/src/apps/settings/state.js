@@ -119,7 +119,8 @@ export const state = reactive({
   // Sync (docs/sync.md): its status as Go sends it, {on, syncing, host, lastSynced, error,
   // problem, locked}; the bucket's address while it is on, which Reconnect fills in; and a
   // project-b://sync link Go was handed, which opens the set-up, '' once it has.
-  sync: { on: false, syncing: false, host: '', lastSynced: 0, error: '', problem: '', locked: false },
+  // backup is its backup code, {made}, or null for none.
+  sync: { on: false, syncing: false, host: '', lastSynced: 0, error: '', problem: '', locked: false, backup: null },
   syncAddress: '',
   syncLink: '',
   // Sync details (docs/sync-details.md): what Go last answered syncDetails with, null before;
@@ -130,7 +131,7 @@ export const state = reactive({
 
 // Go's answers to what Sync asked, each heard by every function here.
 export const syncAnswers = new Set();
-const syncAnswerTypes = new Set(['syncProposal', 'syncBucket', 'syncConnected', 'syncPassphraseChanged', 'syncDisconnected', 'syncStartedFresh', 'syncSuggested']);
+const syncAnswerTypes = new Set(['syncProposal', 'syncBucket', 'syncConnected', 'syncPassphraseChanged', 'syncDisconnected', 'syncStartedFresh', 'syncSuggested', 'syncBackupMade', 'syncBackupSettled', 'syncBackupChecked', 'syncBackupCopied']);
 
 // setPref sets one of Go's prefs by its name in prefs, as a shell's does.
 export function setPref(name, value) {

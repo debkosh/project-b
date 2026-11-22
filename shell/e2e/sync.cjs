@@ -221,11 +221,84 @@ const taken = [];
   const passphrase = await field('Passphrase').inputValue();
   await field('Type it again').fill(passphrase);
   await button('Turn on sync').click();
-  check('Turn on sync connects and closes the Dialog', await until(async () => (await dialog().count()) === 0, 10000));
+  // The second step: the backup code (docs/sync.md, "Backup code").
+  const titled = async (title, ms = 10000) => until(async () => (await dialog().getAttribute('aria-label').catch(() => '')) === title, ms);
+  // The code as the card holds it: its text, which has the dash between its two lines too.
+  const codeShown = async () => ((await dialog().getByLabel('Backup code', { exact: true }).textContent().catch(() => '')) || '').replace(/\s+/g, '');
+  const aCode = /^([0-9A-Z]{4}-){5}[0-9A-Z]{4}$/;
+  check('Turn on sync connects, and a bucket just made goes on to its backup code, step 2 of 2', (await titled('Save your backup code')) && (await dialog().innerText()).includes('Step 2 of 2') &&
+    (await dialog().innerText()).includes('If you forget your passphrase, this code opens your sync. Keep it somewhere apart from this device.'), await dialog().innerText().catch(() => ''));
+  check('the code shows, six groups of four on two lines', await until(async () => aCode.test(await codeShown()), 10000) && (await dialog().getByLabel('Backup code', { exact: true }).locator('span:not(.between)').count()) === 2, await codeShown());
+  const firstCode = await codeShown();
+  check('with Copy, Save as file, Show as QR, Skip for now, and I\'ve saved it, which has the keyboard', JSON.stringify(await dialog().getByRole('button').allInnerTexts()) === JSON.stringify(['Copy', 'Save as file', 'Show as QR', 'Skip for now', "I've saved it"]) &&
+    (await button("I've saved it").evaluate((el) => document.activeElement === el)), JSON.stringify(await dialog().getByRole('button').allInnerTexts()));
+  check('and no QR until it is asked for', (await dialog().getByRole('img').count()) === 0);
+  await shot(40, 'backup-code');
+  await button('Copy').click(); // does: syncBackupCopy
+  check('Copy puts the code on the clipboard as a secret, and says so', await until(async () => (await regions()).secretCopied === firstCode && (await dialog().innerText()).includes('Copied')));
+  const saving = page.waitForEvent('download', { timeout: 10000 }).catch(() => null);
+  await button('Save as file').click();
+  const saved = await saving;
+  const file = saved && fs.readFileSync(await saved.path(), 'utf8');
+  check('Save as file saves it as text, named for what it is, with the server\'s name', !!saved && saved.suggestedFilename() === 'Project B backup code.txt' && file.includes(firstCode) && file.includes(HOST), saved && saved.suggestedFilename());
+  await button('Show as QR').click();
+  check('Show as QR draws its code, the code in a line under it, and offers to hide it', (await dialog().getByRole('img', { name: 'QR code of your backup code' }).isVisible()) && (await codeShown()) === firstCode && (await button('Hide QR').count()) === 1);
+  await shot(41, 'backup-code-qr');
+  await button('Hide QR').click();
+  await button("I've saved it").click(); // does: syncBackupKeep
+  check('I\'ve saved it closes the Dialog', await until(async () => (await dialog().count()) === 0, 10000));
   check('the card shows the server and when it last synced, with Sync now', await until(async () => (await serverRow().innerText()).includes(HOST) && (await serverRow().innerText()).includes('Last synced just now'), 10000) &&
     (await button('Sync now', card()).isVisible()), await card().innerText());
-  check('and the passphrase\'s and Turn off\'s rows, naming nothing synced', (await card().locator('.row').count()) === 4 && !(await serverRow().innerText()).includes('Bookmarks'));
+  check('and the passphrase\'s, the backup code\'s and Turn off\'s rows, naming nothing synced', (await card().locator('.row').count()) === 5 && !(await serverRow().innerText()).includes('Bookmarks'));
   await shot(9, 'on');
+
+  // The backup code's row: when it was made, Check… and New code….
+  const backupRow = () => card().locator('.row', { hasText: 'Backup code' });
+  const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  check('the Backup code row says when it was made, with Check… and New code…', (await backupRow().innerText()).replace(/\s+/g, ' ').trim() === `Backup code Made ${today} Check… New code…`, await backupRow().innerText());
+  await button('Check…', card()).click();
+  await titled('Check your backup code');
+  await field('Backup code').fill('0000-0000-0000-0000-0000-0000');
+  await button('Check').click(); // does: syncBackupCheck
+  check('Check… says of another code that it isn\'t this sync\'s, as an answer and no error', await until(async () => (await dialog().innerText()).includes("That's not this sync's backup code.")) && (await dialog().locator('.text-field-error').count()) === 0);
+  await field('Backup code').fill(firstCode.toLowerCase().replace(/-/g, ' '));
+  await field('Backup code').press('Enter');
+  check('and of the code itself, typed in small letters with spaces, that it is', await until(async () => (await dialog().innerText()).includes('This is your backup code.')), await dialog().innerText());
+  await shot(42, 'backup-check');
+  await button('Done').click();
+  // New code…: a warning first, and the old code stays until the new one is said to be saved.
+  await button('New code…', card()).click();
+  check('New code… warns first that the current one stops working once the new one is saved', (await titled('Make a new backup code?')) && (await dialog().innerText()).includes("Your current code stops working once you've saved the new one.") &&
+    JSON.stringify(await dialog().getByRole('button').allInnerTexts()) === JSON.stringify(['Cancel', 'Make new code']));
+  await shot(43, 'backup-new');
+  await button('Make new code').click(); // does: syncBackupMake
+  await titled('Save your backup code');
+  await until(async () => aCode.test(await codeShown()), 10000);
+  const dropped = await codeShown();
+  check('the new code\'s card has Cancel, and no step', dropped !== firstCode && (await button('Cancel').count()) === 1 && !(await dialog().innerText()).includes('Step 2 of 2'));
+  await button('Cancel').click(); // does: syncBackupDrop
+  await until(async () => (await dialog().count()) === 0);
+  const is = async (code) => {
+    await button('Check…', card()).click();
+    await titled('Check your backup code');
+    await field('Backup code').fill(code);
+    await button('Check').click();
+    await until(async () => /This is your backup code\.|That's not this sync's backup code\./.test(await dialog().innerText()), 10000);
+    const said = await dialog().innerText();
+    await button('Done').click();
+    return said.includes('This is your backup code.');
+  };
+  const afterCancel = [await is(firstCode), await is(dropped)];
+  check('Cancel takes the new code away and keeps the old one', afterCancel[0] && !afterCancel[1], JSON.stringify(afterCancel));
+  await button('New code…', card()).click();
+  await button('Make new code').click();
+  await titled('Save your backup code');
+  await until(async () => aCode.test(await codeShown()), 10000);
+  const code = await codeShown();
+  await button("I've saved it").click();
+  await until(async () => (await dialog().count()) === 0, 10000);
+  const afterKept = [await is(code), await is(firstCode)];
+  check('I\'ve saved it makes the new code the one, and the old one stops working', afterKept[0] && !afterKept[1], JSON.stringify(afterKept));
 
   // Sync now asks the server again.
   let n = await requests();
@@ -443,11 +516,40 @@ const taken = [];
   await field('Passphrase').fill(passphrase);
   await button('Turn on sync').click();
   check('a wrong one is refused under the field, with where to set a new one', await until(async () => (await errorUnder('Passphrase').innerText()) === "That's not the sync passphrase", 10000) &&
-    (await dialog().innerText()).includes("Forgot it? Set a new one on a device that's still syncing."));
+    (await dialog().innerText()).includes("Forgot it? Use your backup code, or set a new one on a device that's still syncing."));
   await shot(8, 'later-wrong');
   await field('Passphrase').fill(changed);
   await button('Turn on sync').click();
   check('the right one connects', await until(async () => (await dialog().count()) === 0 && (await button('Sync now', card()).isVisible()), 10000));
+
+  // The other way in: the backup code, typed, and then a new passphrase if the person likes.
+  await button('Turn off…', card()).click();
+  await button('Turn off').click();
+  await shown(button('Set up…', card()));
+  await button('Set up…', card()).click();
+  await field('Address').fill(bucket);
+  await field('Token').fill(token);
+  await button('Connect').click();
+  await titled('Enter your sync passphrase');
+  await field('Passphrase').fill('not the passphrase at all');
+  await button('Turn on sync').click();
+  check('a wrong passphrase now names the backup code too', await until(async () => (await dialog().innerText()).includes("Forgot it? Use your backup code, or set a new one on a device that's still syncing."), 10000));
+  await button('Use backup code instead').click();
+  check('Use backup code instead asks for the code, shown as it is typed', (await dialog().innerText()).includes('Type the backup code you saved. Then you can choose a new passphrase.') && (await field('Backup code').getAttribute('type')) === 'text' &&
+    (await field('Backup code').inputValue()) === '' && (await button('Use the passphrase instead').count()) === 1 && (await focused('Backup code')));
+  await field('Backup code').fill('0000-0000-0000-0000-0000-0000');
+  await shot(44, 'backup-join');
+  await button('Turn on sync').click();
+  check('a code that isn\'t this sync\'s is refused under the field', await until(async () => (await errorUnder('Backup code').innerText()) === "That's not this sync's backup code", 10000));
+  await field('Backup code').fill(code.toLowerCase().replace(/-/g, ''));
+  await button('Turn on sync').click();
+  check('the code, typed in small letters with no dashes, gets in, and a new passphrase can be chosen', (await titled('Choose a new sync passphrase')) &&
+    (await dialog().innerText()).includes("You're in with your backup code, which still works.") && (await button('Not now').count()) === 1 && (await field('New passphrase').inputValue()) === '');
+  await shot(45, 'backup-renew');
+  await field('New passphrase').fill(changed);
+  await field('Type it again').fill(changed);
+  await button('Change').click();
+  check('Change sets it, and sync is on', await until(async () => (await dialog().count()) === 0 && (await button('Sync now', card()).isVisible()), 10000));
 
   // With sync on, the saved passwords are on the sync server too, sealed, and a delete goes
   // round: the Passwords page says both, where with sync off it speaks of this device alone.
@@ -490,6 +592,8 @@ const taken = [];
   await field('Passphrase').fill(changed);
   await field('Type it again').fill(changed);
   await button('Turn on sync').click();
+  await titled('Save your backup code');
+  await button('Skip for now').click();
   check('and sync is on again, with everything here sent up', await until(async () => (await dialog().count()) === 0 && (await button('Sync now', card()).isVisible()) && !(await serverRow().innerText()).includes('reset'), 15000), await serverRow().innerText());
 
   // Signed out: the server no longer takes the token; Reconnect… fills in the address.
@@ -507,7 +611,9 @@ const taken = [];
   await field('Passphrase').fill(changed);
   await field('Type it again').fill(changed);
   await button('Turn on sync').click();
-  check('and connecting again with a new token syncs again', await until(async () => (await dialog().count()) === 0 && (await button('Sync now', card()).isVisible()), 10000));
+  await titled('Save your backup code');
+  await button('Skip for now').click();
+  check('and connecting again with a new token syncs again, the backup code skipped: its row offers to make one', (await until(async () => (await card().innerText().catch(() => '')).includes('No backup code'), 10000)) && (await button('Make one…', card()).count()) === 1 && (await dialog().count()) === 0 && (await button('Sync now', card()).isVisible()), await card().innerText().catch(() => ''));
   await button('Turn off…', card()).click();
   await button('Turn off').click();
   await shown(button('Set up…', card()));

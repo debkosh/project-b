@@ -32,6 +32,7 @@ const (
 	WhyStart      = "start"      // the app starting
 	WhyOn         = "on"         // turning sync on
 	WhyPassphrase = "passphrase" // changing the sync passphrase
+	WhyBackupCode = "backupCode" // making, keeping or dropping a backup code
 )
 
 // Moved is one item a run received or sent, or one waiting to go out, as the feature names

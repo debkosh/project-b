@@ -58,12 +58,25 @@ func (a *App) syncSettingsPart() settings.Part {
 	}
 	return settings.Part{
 		Snapshot: func(into map[string]any) { into["sync"], into["syncAddress"] = a.Sync.Status(), a.Sync.Address() },
-		Handle: func(_ engine.TabID, t string, msg []byte) bool {
+		Handle: func(tab engine.TabID, t string, msg []byte) bool {
+			// The backup code's answers go to the page that asked alone: one of them is the code.
+			asked := func(t string, err error, more map[string]any) {
+				m := map[string]any{"t": t}
+				for k, v := range more {
+					m[k] = v
+				}
+				if err != nil {
+					m["error"], m["problem"] = sync.Words(err), sync.Problem(err)
+				}
+				a.Settings.SendTo(tab, m)
+			}
 			var c struct {
 				Address    string `json:"address"`
 				Token      string `json:"token"`
 				Passphrase string `json:"passphrase"`
 				Link       string `json:"link"`
+				// Code is a backup code: the one just made, to copy, or one typed, to check.
+				Code string `json:"code"`
 				// Again says the bucket is the one sync is on with, set up again after it was
 				// reset: Go holds its address and token.
 				Again bool `json:"again"`
@@ -122,6 +135,26 @@ func (a *App) syncSettingsPart() settings.Part {
 				answer("syncSuggested", nil, map[string]any{"passphrase": words.Passphrase(5)})
 			case "syncStartFresh":
 				a.Sync.StartFresh(func(err error) { answer("syncStartedFresh", err, nil) })
+			case "syncBackupMake":
+				// The code, to show once, and its QR, which the page draws only when asked.
+				a.Sync.MakeBackupCode(func(code string, err error) {
+					more := map[string]any{}
+					if err == nil {
+						more["code"], more["qr"] = code, qrRows(code)
+					}
+					asked("syncBackupMade", err, more)
+				})
+			case "syncBackupKeep":
+				a.Sync.KeepBackupCode(func(err error) { asked("syncBackupSettled", err, map[string]any{"kept": true}) })
+			case "syncBackupDrop":
+				a.Sync.DropBackupCode(func(err error) { asked("syncBackupSettled", err, nil) })
+			case "syncBackupCheck":
+				a.Sync.CheckBackupCode(c.Code, func(is bool, err error) { asked("syncBackupChecked", err, map[string]any{"is": is}) })
+			case "syncBackupCopy":
+				// As a saved password is copied: marked as a secret, so what keeps the
+				// clipboard's history leaves it out.
+				a.System.CopySecret(c.Code)
+				asked("syncBackupCopied", nil, nil)
 			default:
 				return false
 			}
