@@ -41,7 +41,11 @@ type System struct {
 	// The checks of the person: what each was for, the verdict they get, whether they wait
 	// for AnswerCheck, those waiting, and how many were taken back.
 	// secret is what CopySecret last put on the clipboard as a secret.
-	secret       string
+	secret string
+	// scanner is whether there is a scanner, and scan what the next scan reads, "" for a
+	// person who leaves it: SetScanner.
+	scanner      bool
+	scan         string
 	checks       []system.PersonCheck
 	verdict      system.Verdict
 	holdChecks   bool
@@ -68,6 +72,28 @@ func (s *System) OpenFile(path string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.opened = append(s.opened, path)
+}
+
+// CanScanCode is as SetScanner said, no scanner to begin with.
+func (s *System) CanScanCode() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.scanner
+}
+
+// ScanCode answers with what SetScanner said the scanner reads, or with ok false for "".
+func (s *System) ScanCode(prompt string, answered func(text string, ok bool)) {
+	s.mu.Lock()
+	text, has := s.scan, s.scanner
+	s.mu.Unlock()
+	s.post(func() { answered(text, has && text != "") })
+}
+
+// SetScanner gives the device a scanner that reads text, or one a person leaves for "".
+func (s *System) SetScanner(text string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.scanner, s.scan = true, text
 }
 
 // CopySecret keeps text as the secret last copied, for Secret.

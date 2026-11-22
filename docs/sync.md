@@ -265,8 +265,15 @@ Decided 2026-11-22, the owner approving the mocks: "the backup mock looks nice g
 - **What the server knows.** Each copy has a label in the clear, "Passphrase" or "Backup, 22
   Nov", and when it was made, so memd's page can list the keys that open a bucket.
 - **Skipped at set-up**, the Sync card says "No backup code" and offers to make one.
-- **Not built:** scanning a code's QR with the device's camera. The QR is for a person's own
-  phone to read and keep; the join step takes the code typed.
+- **Scanning, on Android only** (the owner, 2026-11-22: "scanning only for android", "use
+  lib for scanning"): an icon button at the end of the backup code's field, **Scan QR code**, in the join step
+  and in Check…, opens ZXing's own scanner screen over
+  the app (`engine/android/third_party/zxing`, used as published), which asks for the
+  camera the first time and reads QR codes only; what it reads goes into the field: the
+  person then turns sync on, and Check… checks it at once. The join step says "Type or scan"
+  there. A computer has no scanner: the code is typed there.
+  `System.CanScanCode` and `ScanCode` (`core/system`), `scan_code` in
+  `engine/abi/pb_system_android.h`, `GoSystem.scanCode`.
 
 `core/sync/backup.go`: `MakeBackupCode`, `KeepBackupCode`, `DropBackupCode`, `CheckBackupCode`,
 and `Status.Backup`, `{made}` or nil. The page, `shell/src/apps/settings/SyncBackup.vue`.
@@ -419,6 +426,7 @@ names. The page sends:
 | `syncBackupMake` | `syncBackupMade {code, qr}` to the asking page alone: the code, and its QR as rows of 0 and 1, which the page draws only when asked; or `{error}` |
 | `syncBackupKeep`, `syncBackupDrop` | `syncBackupSettled {kept}` or `{error}`, to the asking page; the status follows with `backup` |
 | `syncBackupCheck {code}` | `syncBackupChecked {is}` or `{error}`, to the asking page |
+| `syncBackupScan` | `syncBackupScanned {code, ok}` to the asking page: what a phone's scanner read, or `ok` false when the person left it. The snapshot's `canScan` says whether there is a scanner |
 | `syncBackupCopy {code}` | `syncBackupCopied {}`: Go put it on the clipboard as a secret, as a saved password is copied |
 
 ## The screens
@@ -545,7 +553,6 @@ set-up with the address and its error. Any other `project-b:` link does nothing.
 - The passphrase lock over the keychain, and a policy forcing it.
 - Any sealed field but the secrets, the passkeys' keys and the saved passwords.
 - A token per device: every device uses the bucket's token.
-- Scanning a backup code's QR with the device's camera.
 
 ## Tests
 

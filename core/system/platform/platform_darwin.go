@@ -98,3 +98,8 @@ func otherNote(id, action string) bool {
 	macapp.HandleNotificationResponse(id, action)
 	return true
 }
+
+// CanScanCode: no scanner here; a code is typed.
+func (s *System) CanScanCode() bool { return false }
+
+func (s *System) scanCode(id int32, _ string) { s.scanned(id, "", false) }

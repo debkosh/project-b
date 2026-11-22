@@ -28,6 +28,9 @@ type System struct {
 	// crosses with its answer, and lastCheck the last number given. Main thread.
 	checks    map[int32]func(system.Verdict)
 	lastCheck int32
+	// scans are the scans of a code the OS has not answered, as checks are.
+	scans    map[int32]func(string, bool)
+	lastScan int32
 }
 
 var the = &System{notes: notify.New(), opener: open.New(), media: media.New()}
@@ -87,6 +90,32 @@ func (s *System) VerifyPerson(check system.PersonCheck, answered func(system.Ver
 			s.cancelPerson(id)
 		}
 	}
+}
+
+// ScanCode opens the scanner, as scanCode does it on this OS.
+func (s *System) ScanCode(prompt string, answered func(text string, ok bool)) {
+	if s.scans == nil {
+		s.scans = map[int32]func(string, bool){}
+	}
+	s.lastScan++
+	s.scans[s.lastScan] = answered
+	s.scanCode(s.lastScan, prompt)
+}
+
+// scanned ends scan id with what it read, or with ok false.
+func (s *System) scanned(id int32, text string, ok bool) {
+	if answered := s.scans[id]; answered != nil {
+		delete(s.scans, id)
+		answered(text, ok)
+	}
+}
+
+// PBSystemCodeScanned is the OS saying how scan id ended, on the main thread: the code's
+// text, or ok 0 when the person left the scanner or it couldn't open.
+//
+//export PBSystemCodeScanned
+func PBSystemCodeScanned(id C.int32_t, text *C.char, ok C.int) {
+	the.scanned(int32(id), C.GoString(text), ok != 0)
 }
 
 // PBSystemPersonVerified is the OS saying how check id of the person ended, on the main

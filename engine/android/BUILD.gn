@@ -260,6 +260,26 @@ android_java_prebuilt("native_shells_java") {
   ]
 }
 
+# ZXing's QR scanner, as published (third_party/zxing/README.md): its screen, an .aar, and
+# the reading under it, a .jar. The scanner's own manifest is passed over: its screen is
+# listed in ours, as every screen of the app is.
+android_java_prebuilt("zxing_core_java") {
+  jar_path = "third_party/zxing/core-3.4.1.jar"
+  supports_android = true
+}
+
+android_aar_prebuilt("zxing_embedded_java") {
+  aar_path = "third_party/zxing/zxing-android-embedded-4.3.0.aar"
+  info_path = "third_party/zxing/zxing-android-embedded-4.3.0.info"
+  ignore_manifest = true
+  deps = [
+    ":zxing_core_java",
+    "//third_party/androidx:androidx_activity_activity_java",
+    "//third_party/androidx:androidx_annotation_annotation_java",
+    "//third_party/androidx:androidx_core_core_java",
+  ]
+}
+
 android_library("java") {
   resources_package = "dev.projectb.browser"
   deps = [
@@ -290,6 +310,8 @@ android_library("java") {
     ":native_shells_java",
     ":amarit_java",
     ":oskit_java",
+    ":zxing_core_java",
+    ":zxing_embedded_java",
   ]
   srcjar_deps = [ ":jni_headers" ]
   sources = [

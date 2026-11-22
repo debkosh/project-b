@@ -106,3 +106,8 @@ func (s *System) Report(version string) []crash.Section {
 // DownloadsDir is the user's Downloads folder; in the Flatpak, xdg-download (5) makes it the
 // same path as outside. A desktop that names it otherwise (user-dirs.dirs) comes with step 4.
 func DownloadsDir(home string) string { return filepath.Join(home, "Downloads") }
+
+// CanScanCode: no scanner here; a code is typed.
+func (s *System) CanScanCode() bool { return false }
+
+func (s *System) scanCode(id int32, _ string) { s.scanned(id, "", false) }

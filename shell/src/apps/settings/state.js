@@ -124,6 +124,8 @@ export const state = reactive({
   syncAddress: '',
   // The address of the server to start with, which fills the set-up.
   syncStart: '',
+  // Whether this device can scan a backup code's QR (a phone).
+  canScan: false,
   syncLink: '',
   // Sync details (docs/sync-details.md): what Go last answered syncDetails with, null before;
   // and whether its Reconnect… asked the Sync card to open its set-up.
@@ -133,7 +135,7 @@ export const state = reactive({
 
 // Go's answers to what Sync asked, each heard by every function here.
 export const syncAnswers = new Set();
-const syncAnswerTypes = new Set(['syncProposal', 'syncBucket', 'syncConnected', 'syncPassphraseChanged', 'syncDisconnected', 'syncStartedFresh', 'syncSuggested', 'syncBackupMade', 'syncBackupSettled', 'syncBackupChecked', 'syncBackupCopied']);
+const syncAnswerTypes = new Set(['syncProposal', 'syncBucket', 'syncConnected', 'syncPassphraseChanged', 'syncDisconnected', 'syncStartedFresh', 'syncSuggested', 'syncBackupMade', 'syncBackupSettled', 'syncBackupChecked', 'syncBackupCopied', 'syncBackupScanned']);
 
 // setPref sets one of Go's prefs by its name in prefs, as a shell's does.
 export function setPref(name, value) {
@@ -188,6 +190,7 @@ export function connect() {
             sync: m.sync || state.sync,
             syncAddress: m.syncAddress || '',
             syncStart: m.syncStart || '',
+            canScan: !!m.canScan,
             ready: true,
           });
           mark('settings.snapshot');

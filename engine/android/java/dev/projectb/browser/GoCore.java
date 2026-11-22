@@ -26,6 +26,9 @@ final class GoCore {
     /** How check id of the person ended: 0 verified, 1 not, 2 no screen lock. */
     static native void personVerified(int id, int verdict);
 
+    /** How scan id of a code ended: its text, or ok false when nothing was read. */
+    static native void codeScanned(int id, String text, boolean ok);
+
     /** A tap on the update's notification: "cancel", "retry" or "relaunch", for the Go updater. */
     static native void updateCommand(String name);
 }

@@ -59,6 +59,8 @@ func (a *App) syncSettingsPart() settings.Part {
 	return settings.Part{
 		Snapshot: func(into map[string]any) {
 			into["sync"], into["syncAddress"], into["syncStart"] = a.Sync.Status(), a.Sync.Address(), sync.StartServer
+			// Whether a backup code can be scanned here, as a QR: a phone's scanner.
+			into["canScan"] = a.System.CanScanCode()
 		},
 		Handle: func(tab engine.TabID, t string, msg []byte) bool {
 			// The backup code's answers go to the page that asked alone: one of them is the code.
@@ -159,6 +161,11 @@ func (a *App) syncSettingsPart() settings.Part {
 				a.Sync.DropBackupCode(func(err error) { asked("syncBackupSettled", err, nil) })
 			case "syncBackupCheck":
 				a.Sync.CheckBackupCode(c.Code, func(is bool, err error) { asked("syncBackupChecked", err, map[string]any{"is": is}) })
+			case "syncBackupScan":
+				// The scanner's screen, over the app: what it read, or that it read nothing.
+				a.System.ScanCode("Scan your backup code's QR", func(text string, ok bool) {
+					asked("syncBackupScanned", nil, map[string]any{"code": text, "ok": ok})
+				})
 			case "syncBackupCopy":
 				// As a saved password is copied: marked as a secret, so what keeps the
 				// clipboard's history leaves it out.

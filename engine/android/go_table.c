@@ -13,6 +13,7 @@
 // Go's own: the OS's calls and their answers (core/system/platform).
 void PBSetSystemCalls(const PBSystemCalls* calls);
 void PBSystemPersonVerified(int32_t id, int verdict);
+void PBSystemCodeScanned(int32_t id, char* text, int ok);
 // oskit's (oskit/internal/jni): its packages find their Java and register their natives.
 void OskitAttach(void* env);
 
@@ -20,6 +21,7 @@ static JavaVM* vm;
 static jclass go_system;
 static jmethodID go_system_verify_person;
 static jmethodID go_system_cancel_person;
+static jmethodID go_system_scan_code;
 static jmethodID go_system_show_update;
 
 // The calling thread's JNIEnv, attaching a thread of Go's that has none; *attached says to
@@ -62,6 +64,18 @@ static void system_verify_person(int32_t id, const char* title, const char* subt
   detach(env, attached);
 }
 
+static void system_scan_code(int32_t id, const char* prompt) {
+  int attached;
+  JNIEnv* env = attach(&attached);
+  if (env == NULL) {
+    return;
+  }
+  jstring p = (*env)->NewStringUTF(env, prompt);
+  (*env)->CallStaticVoidMethod(env, go_system, go_system_scan_code, (jint)id, p);
+  (*env)->DeleteLocalRef(env, p);
+  detach(env, attached);
+}
+
 static void system_cancel_person(int32_t id) {
   int attached;
   JNIEnv* env = attach(&attached);
@@ -87,6 +101,7 @@ static void system_show_update(const char* state_json) {
 static const PBSystemCalls system_calls = {
     .verify_person = system_verify_person,
     .cancel_person = system_cancel_person,
+    .scan_code = system_scan_code,
     .show_update = system_show_update,
 };
 
@@ -115,6 +130,7 @@ JNIEXPORT jlong JNICALL Java_dev_projectb_browser_GoCore_table(JNIEnv* env, jcla
     go_system = (*env)->NewGlobalRef(env, (*env)->FindClass(env, "dev/projectb/browser/GoSystem"));
     go_system_verify_person = (*env)->GetStaticMethodID(env, go_system, "verifyPerson", "(ILjava/lang/String;Ljava/lang/String;)V");
     go_system_cancel_person = (*env)->GetStaticMethodID(env, go_system, "cancelPerson", "(I)V");
+    go_system_scan_code = (*env)->GetStaticMethodID(env, go_system, "scanCode", "(ILjava/lang/String;)V");
     go_system_show_update = (*env)->GetStaticMethodID(env, go_system, "showUpdate", "(Ljava/lang/String;)V");
     PBSetSystemCalls(&system_calls);
     // oskit's packages find their Java classes here too (oskit/internal/jni).
@@ -168,6 +184,16 @@ JNIEXPORT jobjectArray JNICALL Java_dev_projectb_browser_GoCore_init(JNIEnv* env
 JNIEXPORT void JNICALL Java_dev_projectb_browser_GoCore_personVerified(JNIEnv* env, jclass cls,
                                                                         jint id, jint verdict) {
   PBSystemPersonVerified(id, verdict);
+}
+
+// How a scan of a code ended, from GoSystem on the main thread: its text, or nothing read.
+JNIEXPORT void JNICALL Java_dev_projectb_browser_GoCore_codeScanned(JNIEnv* env, jclass cls,
+                                                                     jint id, jstring text, jboolean ok) {
+  const char* chars = text != NULL ? (*env)->GetStringUTFChars(env, text, NULL) : NULL;
+  PBSystemCodeScanned(id, (char*)(chars != NULL ? chars : ""), ok && chars != NULL ? 1 : 0);
+  if (chars != NULL) {
+    (*env)->ReleaseStringUTFChars(env, text, chars);
+  }
 }
 
 // A tap on the update's notification, "cancel", "retry" or "relaunch", from GoSystem.

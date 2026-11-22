@@ -2,6 +2,7 @@ package dev.projectb.browser;
 
 import android.app.Activity;
 import android.app.KeyguardManager;
+import android.content.Intent;
 import android.hardware.biometrics.BiometricManager;
 import android.hardware.biometrics.BiometricPrompt;
 import android.os.Build;
@@ -9,6 +10,9 @@ import android.os.CancellationSignal;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.SparseArray;
+
+import com.google.zxing.client.android.Intents;
+import com.journeyapps.barcodescanner.CaptureActivity;
 
 import io.github.sudiptadeb.amarit.UpdateNotification;
 
@@ -23,6 +27,15 @@ import org.chromium.build.annotations.UsedByReflection;
  */
 @UsedByReflection("go_table.c")
 final class GoSystem {
+    /**
+     * What BrowserActivity hears back from the QR scanner's screen: a number no question of
+     * oskit's has (0x05c1, 0x05c2).
+     */
+    static final int SCAN_REQUEST = 0x05d1;
+
+    // The scan Go waits on, by its number, 0 for none: the scanner is one screen.
+    private static int sScan;
+
     private static final Handler sMain = new Handler(Looper.getMainLooper());
 
     // The one activity, which Go's managers live as long as. Set before Go starts.
@@ -116,6 +129,47 @@ final class GoSystem {
                         cancel.cancel();
                     }
                 });
+    }
+
+    /**
+     * Opens the QR scanner over the app, under prompt: ZXing's own screen
+     * (engine/android/third_party/zxing), which asks for the camera the first time and reads
+     * QR codes only. BrowserActivity hears how it ended.
+     */
+    @UsedByReflection("go_table.c")
+    static void scanCode(int id, String prompt) {
+        sMain.post(
+                () -> {
+                    if (sScan != 0) {
+                        int waiting = sScan;
+                        sScan = 0;
+                        GoCore.codeScanned(waiting, "", false);
+                    }
+                    Intent scan = new Intent(sActivity, CaptureActivity.class);
+                    scan.setAction(Intents.Scan.ACTION);
+                    scan.putExtra(Intents.Scan.FORMATS, "QR_CODE");
+                    scan.putExtra(Intents.Scan.PROMPT_MESSAGE, prompt);
+                    scan.putExtra(Intents.Scan.BEEP_ENABLED, false);
+                    scan.putExtra(Intents.Scan.ORIENTATION_LOCKED, false);
+                    sScan = id;
+                    try {
+                        sActivity.startActivityForResult(scan, SCAN_REQUEST);
+                    } catch (RuntimeException e) {
+                        sScan = 0;
+                        GoCore.codeScanned(id, "", false);
+                    }
+                });
+    }
+
+    /** Tells Go how the scanner ended: what it read, or that the person left it. */
+    static void codeScanned(int resultCode, Intent data) {
+        int id = sScan;
+        sScan = 0;
+        if (id == 0) {
+            return;
+        }
+        String text = resultCode == Activity.RESULT_OK && data != null ? data.getStringExtra(Intents.Scan.RESULT) : null;
+        sMain.post(() -> GoCore.codeScanned(id, text == null ? "" : text, text != null));
     }
 
     private static void personVerified(int id, int verdict) {

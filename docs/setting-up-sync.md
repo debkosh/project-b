@@ -251,7 +251,9 @@ everything stays on the device and on the server.
 ## If you forget the passphrase
 
 - **You saved the backup code:** on the device that asks, press **Use backup code instead**
-  and type it. Then choose a new passphrase. The backup code keeps working.
+  and type it. On an Android phone, **Scan QR code** at the end of the field reads it from
+  the code's QR instead, with the camera. Then choose a new passphrase. The backup code
+  keeps working.
 - **A device still syncs:** set a new passphrase there with **Change sync passphrase**. It
   doesn't need the old one.
 - **No device still syncs:** nobody can recover it. The server never had the passphrase or

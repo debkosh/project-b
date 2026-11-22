@@ -93,6 +93,13 @@ type System interface {
 	// system's preview of it from Android 13.
 	CopySecret(text string)
 
+	// CanScanCode is whether this device has a scanner of the app's to read a QR code
+	// with its camera: a phone's. ScanCode opens it over the app, under prompt; answered
+	// runs once, with the code's text, or with ok false when the person left the scanner
+	// or it couldn't open. Where there is none it answers false.
+	CanScanCode() bool
+	ScanCode(prompt string, answered func(text string, ok bool))
+
 	// Report is what a crash report says of this device, for the app at version: the
 	// release, the OS and the device, and on Android the app's own log.
 	Report(version string) []crash.Section

@@ -88,6 +88,8 @@ function check() {
   open({ step: 'check' });
   focus(field);
 }
+// A phone's scanner reads the code into the field, and it is checked at once.
+const scan = () => ask({ t: 'syncBackupScan' });
 function checkNow() {
   if (b.busy || !b.typed.trim()) return;
   b.busy = true;
@@ -113,6 +115,11 @@ function heard(m) {
       return;
     case 'syncBackupCopied':
       if (b.step === 'code') say('Copied');
+      return;
+    case 'syncBackupScanned':
+      if (b.step !== 'check' || !m.ok) return;
+      b.typed = m.code;
+      checkNow();
       return;
     case 'syncBackupChecked':
       if (b.step !== 'check') return;
@@ -193,19 +200,31 @@ onUnmounted(() => {
   <Dialog v-else-if="b.step === 'check'" title="Check your backup code" @close="shut">
     <div class="ui-dialog-part">
       <label for="sync-backup-typed">Backup code</label>
-      <input
-        id="sync-backup-typed"
-        ref="field"
-        v-model="b.typed"
-        class="text-field typed"
-        type="text"
-        spellcheck="false"
-        autocomplete="off"
-        autocapitalize="characters"
-        placeholder="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX"
-        @input="b.is = null"
-        @keydown.enter.prevent="checkNow"
-      />
+      <div class="scans">
+        <input
+          id="sync-backup-typed"
+          ref="field"
+          v-model="b.typed"
+          class="text-field typed"
+          :class="{ scanned: state.canScan }"
+          type="text"
+          spellcheck="false"
+          autocomplete="off"
+          autocapitalize="characters"
+          placeholder="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX"
+          @input="b.is = null"
+          @keydown.enter.prevent="checkNow"
+        />
+        <!-- A phone's scanner, at the field's end: a saved code may be only its QR. -->
+        <button v-if="state.canScan" type="button" class="scan" aria-label="Scan QR code" title="Scan QR code" @click="scan">
+          <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="2" y="2" width="4.5" height="4.5" rx="0.5" />
+          <rect x="9.5" y="2" width="4.5" height="4.5" rx="0.5" />
+          <rect x="2" y="9.5" width="4.5" height="4.5" rx="0.5" />
+          <path d="M9.5 9.5h1.5v1.5M14 9.5v1.5M9.5 14h1.5M13 13h1v1" />
+          </svg>
+        </button>
+      </div>
       <div v-if="b.error" class="text-field-error" role="alert">{{ b.error }}</div>
       <div v-else-if="b.is === true" class="answer yes" role="status">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.25 3.25L13 5" /></svg>
@@ -311,6 +330,31 @@ onUnmounted(() => {
 
 .leave {
   margin-right: auto;
+}
+
+/* The field with a phone's scanner at its end: an icon button, 40px in a 48px field. */
+.scans {
+  position: relative;
+}
+
+.scan {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--icon);
+  cursor: pointer;
+}
+
+.touch .text-field.scanned {
+  padding-right: 48px;
+  font-size: 14px;
 }
 
 .typed {

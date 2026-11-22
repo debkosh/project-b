@@ -379,6 +379,11 @@ function heard(m) {
       }
       focus('pass');
       return;
+    case 'syncBackupScanned':
+      if (d.step !== 'enter' || !d.byCode) return;
+      if (m.ok) Object.assign(d, { pass: m.code, passError: '', wrong: false });
+      focus(m.ok ? 'primary' : 'pass');
+      return;
     case 'syncPassphraseChanged':
       if (d.step !== 'change') return;
       d.busy = false;
@@ -408,6 +413,9 @@ const title = computed(
       turnOff: 'Turn off sync on this device?',
     })[d.step],
 );
+// A phone's scanner reads the code's QR into the field; the person still turns sync on.
+const scan = () => ask({ t: 'syncBackupScan' });
+
 // The enter step's other way in.
 function otherWay() {
   Object.assign(d, { byCode: !d.byCode, pass: '', passError: '', wrong: false, passShown: false });
@@ -541,7 +549,7 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
       <template v-else-if="d.step === 'choose' || d.step === 'change' || d.step === 'enter'">
         <div class="ui-dialog-part">
           <p v-if="d.step === 'choose'">Nothing is synced on <b>{{ d.host }}</b> yet. Every device you add asks for this passphrase.</p>
-          <p v-else-if="d.step === 'enter' && d.byCode"><b>{{ d.host }}</b> already has synced data. Type the backup code you saved. Then you can choose a new passphrase.</p>
+          <p v-else-if="d.step === 'enter' && d.byCode"><b>{{ d.host }}</b> already has synced data. {{ state.canScan ? 'Type or scan' : 'Type' }} the backup code you saved. Then you can choose a new passphrase.</p>
           <p v-else-if="d.step === 'enter'"><b>{{ d.host }}</b> already has synced data. Type the passphrase you chose for it.</p>
           <p v-else-if="d.renewed">You're in with your backup code, which still works. Choose a new passphrase: a device you add asks for it.</p>
           <p v-else>Devices that sync now keep syncing. A device you add asks for the new one.</p>
@@ -565,6 +573,15 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
               @keydown.enter.prevent="primary"
             />
             <button v-if="!d.byCode" type="button" class="show" :aria-pressed="String(d.passShown)" @click="d.passShown = !d.passShown">{{ d.passShown ? 'Hide' : 'Show' }}</button>
+            <!-- A phone's scanner, at the field's end: what it reads goes into the field. -->
+            <button v-else-if="state.canScan" type="button" class="scan" aria-label="Scan QR code" title="Scan QR code" @click="scan">
+              <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="2" y="2" width="4.5" height="4.5" rx="0.5" />
+                <rect x="9.5" y="2" width="4.5" height="4.5" rx="0.5" />
+                <rect x="2" y="9.5" width="4.5" height="4.5" rx="0.5" />
+                <path d="M9.5 9.5h1.5v1.5M14 9.5v1.5M9.5 14h1.5M13 13h1v1" />
+              </svg>
+            </button>
           </div>
           <div v-if="d.passError || d.step !== 'enter'" class="under">
             <span v-if="d.passError" class="text-field-error" role="alert">{{ d.passError }}</span>
@@ -739,6 +756,22 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
   margin-top: 8px;
 }
 
+/* A phone's scanner: an icon button at the field's end, 40px in a 48px field. */
+.scan {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--icon);
+  cursor: pointer;
+}
+
 .other .link {
   font-size: 13px;
   font-weight: 500;
@@ -802,6 +835,12 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
 
 .touch .secret .text-field {
   padding-right: 68px;
+}
+
+/* The whole code in the field at a phone's width, 29 characters, beside its scanner. */
+.touch .sync-dialog .text-field.code {
+  padding-right: 48px;
+  font-size: 14px;
 }
 
 .touch .dress {

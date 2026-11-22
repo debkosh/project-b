@@ -304,6 +304,13 @@ func main() {
 		// The OS's check of the person, which the mock system plays: how every check ends
 		// from now on (verified, denied or noScreenLock), hold to make checks wait as the
 		// OS's sheet does, and answer with a verdict after it to end the oldest waiting.
+		// The device has a QR scanner, a phone's, which reads the value given, or which the
+		// person leaves when none is. Before the settings page opens, as its snapshot says
+		// whether there is one.
+		if r.FormValue("kind") == "scanner" {
+			sys.SetScanner(r.FormValue("value"))
+			return
+		}
 		if r.FormValue("kind") == "personCheck" {
 			verdicts := map[string]system.Verdict{"verified": system.Verified, "denied": system.Denied, "noScreenLock": system.NoScreenLock}
 			switch what, verdict, _ := strings.Cut(r.FormValue("value"), " "); what {

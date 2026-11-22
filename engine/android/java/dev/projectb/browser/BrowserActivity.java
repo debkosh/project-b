@@ -144,6 +144,9 @@ public final class BrowserActivity extends Activity {
         super.onActivityResult(requestCode, resultCode, data);
         intentRequests.onActivityResult(requestCode, resultCode, data);
         OsKit.onActivityResult(requestCode);
+        if (requestCode == GoSystem.SCAN_REQUEST) {
+            GoSystem.codeScanned(resultCode, data);
+        }
     }
 
     // Android's question about notifications has been answered, or one the window asked, such

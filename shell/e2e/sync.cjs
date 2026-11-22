@@ -103,6 +103,8 @@ const taken = [];
   };
 
   await lib.start(args);
+  // A phone has a QR scanner, which a person leaves until the test says what it reads.
+  if (phone) await lib.fire('scanner', '');
   const address = (await server()).address;
   await openSettings();
   await showSync();
@@ -293,6 +295,14 @@ const taken = [];
   await field('Backup code').fill(firstCode.toLowerCase().replace(/-/g, ' '));
   await field('Backup code').press('Enter');
   check('and of the code itself, typed in small letters with spaces, that it is', await until(async () => (await dialog().innerText()).includes('This is your backup code.')), await dialog().innerText());
+  if (phone) {
+    // A saved code may be only its QR: a phone's scanner reads it into the field and checks it.
+    await field('Backup code').fill('');
+    await lib.fire('scanner', firstCode);
+    await button('Scan QR code').click();
+    check('on a phone Check… scans a code too, and checks what was read', await until(async () => (await field('Backup code').inputValue()) === firstCode && (await dialog().innerText()).includes('This is your backup code.'), 10000));
+    await lib.fire('scanner', '');
+  }
   await shot(42, 'backup-check');
   await button('Done').click();
   // New code…: a warning first, and the old code stays until the new one is said to be saved.
@@ -564,8 +574,22 @@ const taken = [];
   await button('Turn on sync').click();
   check('a wrong passphrase now names the backup code too', await until(async () => (await dialog().innerText()).includes("Forgot it? Use your backup code, or set a new one on a device that's still syncing."), 10000));
   await button('Use backup code instead').click();
-  check('Use backup code instead asks for the code, shown as it is typed', (await dialog().innerText()).includes('Type the backup code you saved. Then you can choose a new passphrase.') && (await field('Backup code').getAttribute('type')) === 'text' &&
+  check('Use backup code instead asks for the code, shown as it is typed', (await dialog().innerText()).includes(`${phone ? 'Type or scan' : 'Type'} the backup code you saved. Then you can choose a new passphrase.`) && (await field('Backup code').getAttribute('type')) === 'text' &&
     (await field('Backup code').inputValue()) === '' && (await button('Use the passphrase instead').count()) === 1 && (await focused('Backup code')));
+  if (phone) {
+    check('a phone offers to scan the code\'s QR, at the field\'s end, and says so', (await button('Scan QR code').count()) === 1 && (await dialog().innerText()).includes('Type or scan the backup code you saved.') &&
+      (await button('Scan QR code').evaluate((b) => { const r = b.getBoundingClientRect(), f = document.getElementById('sync-pass').getBoundingClientRect(); return r.width === 40 && r.height === 40 && r.right <= f.right && r.left > f.left && r.top >= f.top && r.bottom <= f.bottom; })));
+    await button('Scan QR code').click(); // does: syncBackupScan
+    await page.waitForTimeout(500);
+    check('a scanner the person leaves fills nothing in', (await field('Backup code').inputValue()) === '');
+    await lib.fire('scanner', code);
+    await button('Scan QR code').click();
+    check('what the scanner reads goes into the field, and the person turns sync on', await until(async () => (await field('Backup code').inputValue()) === code) &&
+      (await button('Turn on sync').evaluate((el) => document.activeElement === el)));
+    await shot(46, 'backup-scan');
+  } else {
+    check('a computer has no scanner: the code is typed', (await button('Scan QR code').count()) === 0 && (await dialog().innerText()).includes('Type the backup code you saved.'));
+  }
   await field('Backup code').fill('0000-0000-0000-0000-0000-0000');
   await shot(44, 'backup-join');
   await button('Turn on sync').click();

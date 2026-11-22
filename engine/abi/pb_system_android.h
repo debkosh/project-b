@@ -17,6 +17,11 @@ typedef struct PBSystemCalls {
   // thread. Cancel takes the sheet of check id away.
   void (*verify_person)(int32_t id, const char* title, const char* subtitle);
   void (*cancel_person)(int32_t id);
+  // Opens the QR scanner's own screen over the app, under prompt (ZXing's, in
+  // engine/android/third_party/zxing): it asks for the camera the first time. How it ended
+  // reaches Go as PBSystemCodeScanned(id, text, 1), or (id, "", 0) when the person left it
+  // or it couldn't open, on the main thread.
+  void (*scan_code)(int32_t id, const char* prompt);
   // The updater's state as its JSON, at each change: amarit's UpdateNotification shows it.
   void (*show_update)(const char* state_json);
 } PBSystemCalls;

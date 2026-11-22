@@ -21,6 +21,20 @@ func TestSettingsSync(t *testing.T) {
 	if s, ok := snapshot["sync"].(map[string]any); !ok || s["on"] != false {
 		t.Fatalf("the snapshot's sync: %v", snapshot["sync"])
 	}
+	// A backup code's QR: no scanner on this device, the snapshot says, and a scan reads
+	// nothing; a device with one answers with what it read, to the asking page.
+	if snapshot["canScan"] != false {
+		t.Fatalf("the snapshot's canScan with no scanner: %v", snapshot["canScan"])
+	}
+	r.settings(`{"t":"syncBackupScan"}`)
+	if m := r.waitOn(got, func(m map[string]any) bool { return m["t"] == "syncBackupScanned" }); m["ok"] != false || m["code"] != "" {
+		t.Fatalf("a scan with no scanner: %v", m)
+	}
+	r.sys.SetScanner("7K4Q-M2XH-9RTD-WC6F-3NVA-8PSE")
+	r.settings(`{"t":"syncBackupScan"}`)
+	if m := r.waitOn(got, func(m map[string]any) bool { return m["t"] == "syncBackupScanned" }); m["ok"] != true || m["code"] != "7K4Q-M2XH-9RTD-WC6F-3NVA-8PSE" {
+		t.Fatalf("what the scanner read: %v", m)
+	}
 
 	r.settings(`{"t":"syncPropose","link":"project-b://sync?address=https%3A%2F%2Fmemd.example%2Fsync%2Ft0k"}`)
 	m := r.waitOn(got, func(m map[string]any) bool { return m["t"] == "syncProposal" })

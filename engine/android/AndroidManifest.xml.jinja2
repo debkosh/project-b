@@ -4,8 +4,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="{{ manifest_package }}">
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- A page's camera and microphone, asked when a page a site allows first needs them
-         (docs/media-permissions.md). -->
+         (docs/media-permissions.md), and the QR scanner's, which reads a sync backup code and
+         asks when it first opens. No device is kept from the app for having no camera. -->
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -51,6 +53,17 @@
                 <data android:scheme="project-b" />
             </intent-filter>
         </activity>
+
+        <!-- The QR scanner's screen (third_party/zxing), opened by GoSystem.scanCode. It
+             turns with the phone, as the rest of the app does. -->
+        <activity
+            android:name="com.journeyapps.barcodescanner.CaptureActivity"
+            android:exported="false"
+            android:clearTaskOnLaunch="true"
+            android:screenOrientation="fullSensor"
+            android:stateNotNeeded="true"
+            android:theme="@style/zxing_CaptureTheme"
+            android:windowSoftInputMode="stateAlwaysHidden" />
 
         <!-- Lets Android's package installer read a downloaded update. -->
         <provider
