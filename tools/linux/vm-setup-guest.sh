@@ -39,6 +39,18 @@ sleep-inactive-ac-type='nothing'
 CONF
 dconf update
 systemctl set-default graphical.target
+# The device key comes from the Secret portal, which GNOME backs with gnome-keyring
+# (restart_check.py seals a login under it). The user's login keyring has an empty password:
+# gnome-keyring keeps such a keyring in a plain file and open with no prompt, as nothing would
+# unlock it with a password on a desktop that logs in by itself.
+apt-get install -y --no-install-recommends gnome-keyring
+keyrings=/home/$user/.local/share/keyrings
+mkdir -p "$keyrings"
+printf '[keyring]\ndisplay-name=login\nctime=0\nmtime=0\nlock-on-idle=false\nlock-after=false\n' > "$keyrings/login.keyring"
+printf 'login' > "$keyrings/default"
+chown -R "$user:$user" "/home/$user/.local"
+chmod 700 "$keyrings"
+chmod 600 "$keyrings/login.keyring" "$keyrings/default"
 flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 flatpak install -y --noninteractive flathub \
   org.freedesktop.Platform//26.08 org.freedesktop.Sdk//26.08 org.electronjs.Electron2.BaseApp//26.08

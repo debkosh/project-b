@@ -9,7 +9,10 @@ installed (tools/linux/flatpak-release.sh runs it before a release's repository 
 3. The next start has the tab and the setting back.
 4. No folder.key is anywhere in the profiles: a listed profile's key is wrapped by the desktop's
    Secret portal's, never by a key in a file.
-5. A copy the app starts outlives it: Profiles… opens the picker, which stays when the app
+5. What the profile seals opens again on the next start: a login imported before the restart
+   makes the profile's key, wrapped by the device key from the desktop's Secret portal, and
+   one imported after has to open it again; a desktop with no Secret backend fails here.
+6. A copy the app starts outlives it: Profiles… opens the picker, which stays when the app
    quits, and Settings' Relaunch brings the app back on its profile. The sandbox ends every
    process in it with the first, so a copy started from inside would end too.
 
@@ -73,6 +76,36 @@ def wait_for(ok, timeout=20):
     return ok()
 
 
+def settings(app):
+    """Opens Settings and has its page keep every message Go sends it, in window.__got."""
+    run(app, "app.settings")
+    deadline = time.time() + 15
+    while time.time() < deadline and app.cmd("evalsettings", "!!document.querySelector('h1')") != "true":
+        time.sleep(0.3)
+    app.cmd("evalsettings", "(() => { if (!window.__got) { window.__got = []; const o = window.__shellReceive; "
+                            "window.__shellReceive = (j) => { window.__got.push(JSON.parse(j)); o(j); }; } return 1; })()")
+
+
+def import_login(app, user):
+    """Imports one login, as a passwords file from Settings, and returns Go's answer."""
+    text = f"name,url,username,password\nexample,https://example.com/,{user},check-{user}\n"
+    msg = {"t": "importFile", "kind": "passwords", "name": "check.csv", "text": text}
+    app.cmd("evalsettings", f"chrome.send('settings', [{json.dumps(json.dumps(msg))}]), 1")
+    deadline = time.time() + 30
+    while time.time() < deadline:
+        got = json.loads(app.cmd("evalsettings", "window.__got.filter(m => m.t === 'fileImported')"))
+        if got:
+            app.cmd("evalsettings", "window.__got = window.__got.filter(m => m.t !== 'fileImported'), 1")
+            return got[-1]
+        time.sleep(0.3)
+    return {"error": "no answer"}
+
+
+def added(answer):
+    """How many logins an import sealed: one that couldn't be sealed is skipped, not added."""
+    return (answer.get("result") or {}).get("added", 0)
+
+
 def prefs():
     found = glob.glob(os.path.join(DATA, "*", "prefs.json"))
     return json.load(open(found[0])) if found else {}
@@ -84,6 +117,9 @@ def main():
     workspace = tabs["tabs"][0]["workspace"]
     app.cmd("opentab", workspace, URL)
     run(app, "view.tabsTop")
+    settings(app)
+    first = import_login(app, "before")
+    d.check("a login imported is sealed under the device key", added(first) == 1, first)
     deadline = time.time() + 15
     while time.time() < deadline and not (prefs().get("tabLayout") == "horizontal" and
                                             any(t.get("url") == URL for t in d.tabs_of(app)["tabs"])):
@@ -103,6 +139,11 @@ def main():
     d.check("and the tabs on top", prefs().get("tabLayout") == "horizontal", prefs().get("tabLayout"))
     keys = [os.path.relpath(p, DATA) for p in glob.glob(os.path.join(DATA, "**", "folder.key"), recursive=True)]
     d.check("no folder.key in the profiles", keys == [], keys)
+    d.check("the profile's key is kept, wrapped", bool(glob.glob(os.path.join(DATA, "*", "profile.key"))),
+            os.listdir(DATA) if os.path.isdir(DATA) else "no " + DATA)
+    settings(again)
+    second = import_login(again, "after")
+    d.check("and opens again on the next start: a second login seals", added(second) == 1, second)
 
     # Profiles… starts the picker as a copy of its own; it stays when the app quits.
     run(again, "profile.picker")
