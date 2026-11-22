@@ -1,7 +1,7 @@
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/godbus/dbus/v5 v5.1.0 h1:4KLkAxT3aOY8Li4FRJe/KvhoNFFxo0m6fNuFUO8QJUk=
-github.com/godbus/dbus/v5 v5.1.0/go.mod h1:xhWf0FNVPg57R7Z0UbKHbJfkEywrmjJnf7w5xrFpKfA=
+github.com/godbus/dbus/v5 v5.2.4 h1:F2gUCy++NMIxGmo9J+z5le/+ZC8W1OgeR51P4i9ZB/U=
+github.com/godbus/dbus/v5 v5.2.4/go.mod h1:3AAv2+hPq5rdnr5txxxRwiGjPXamgoIHgz9FPBfOp3c=
 github.com/mattn/go-sqlite3 v1.14.53 h1:mnTM0owzUMrKuLo+0w51NUiB0ir2Fo7kFXlPt/l3BGs=
 github.com/mattn/go-sqlite3 v1.14.53/go.mod h1:6JTjA44L93a0QCyJef5YvlPoKXntQPjzWv5gtm9sB6w=
 github.com/ncruces/go-sqlite3 v0.37.0 h1:Ps3EH70hhznZ+qkWIrTUlbTRlEv3dGTSQ/LOXlJxpaM=
@@ -14,8 +14,10 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
-github.com/sudiptadeb/amarit v0.10.4 h1:3EyQMlhKet70ymqjkWWSXNmsk8eeawyZQQDux8fTj7E=
-github.com/sudiptadeb/amarit v0.10.4/go.mod h1:Be7M5MMgjZCAoAEYqUOCLdnfu5mvcZDguey4qX3Nb2A=
+github.com/sudiptadeb/amarit v0.11.1 h1:PJWHidtoAu/5T4MJGd5goDb4Tt2lbFR+XvQ7FlWI6iI=
+github.com/sudiptadeb/amarit v0.11.1/go.mod h1:Be7M5MMgjZCAoAEYqUOCLdnfu5mvcZDguey4qX3Nb2A=
+github.com/sudiptadeb/amarit/flatpak v0.11.2 h1:J3oDpOIj3UF2yMcLUPxGgyCap3nFwZf/CT6A91UUvts=
+github.com/sudiptadeb/amarit/flatpak v0.11.2/go.mod h1:zEvS4p6iBthqM1YvdbgQeDAasACb+KFWmTim2AaV8Og=
 github.com/sudiptadeb/gulal v0.3.0 h1:A2m8ehZ2121thfkq1e+9X3NRW8RnwvI1tAJQr0AbNto=
 github.com/sudiptadeb/gulal v0.3.0/go.mod h1:pjAFRJpO+wtGCzGHKe56Od2sdGiPpyfmiWZ6wjV1Hx8=
 github.com/sudiptadeb/synckosh v0.2.0 h1:nxsX5B0+ORS10Mz35noQVp/8yL7jlw0uLdrEt3PFLh4=

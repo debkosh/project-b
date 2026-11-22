@@ -213,6 +213,18 @@ container with a stub portal.
     - A notification through the Notification portal offers Relaunch. amarit posts it
       itself, while `oskit/notify` is planned as the app's one notification stack (decided
       2026-11-22): the two are to meet later.
+  - **Versions** (2026-11-22): the portal names commits, not versions, so the release
+    publishes `repo/linux.json`, `{"stable": [{"commit", "version"}, ...]}` for every commit
+    the repository keeps, inside the repository's folder: the same tarball and the same Pages
+    deploy, so the two never disagree, and `flatpak-release.sh` fails when the stable ref's
+    commit isn't in it. amarit/flatpak's `VersionOf(ctx, commit)` (flatpak/v0.11.1) asks
+    `core/update`'s `Commits` for it, which reads the file again at most once a minute for a
+    commit it doesn't know. A commit it can't name has no version, and every shell then says
+    "An update is ready" and "Relaunch to update". The version also finds the release notes.
+  - **The relaunch.** Spawn starts the new copies at once, each `--root --profile
+    --after-update` (`relaunch.Copies.Args`), while the old ones are still quitting: with
+    `--after-update` a copy waits up to 30 seconds for its profile's lock
+    (`instance.ClaimAfter`) instead of handing itself over to the copy it replaces.
   - **What the person sees** (amarit's checks in pb-ubuntu, Flatpak 1.14.6, 2026-11-22):
     - The first self-update asks the person once: GNOME's Access dialog, "Allow … to update
       itself?", and `Update` waits on the answer. What KDE shows is still to see. Headless
