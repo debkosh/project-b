@@ -5,6 +5,7 @@ package open
 
 import (
 	"context"
+	"sync"
 
 	"github.com/sudiptadeb/oskit"
 )
@@ -32,4 +33,35 @@ func AskDefaultBrowserWait(ctx context.Context, o Opener) (bool, error) {
 		o.AskDefaultBrowser(answered)
 		return nil
 	})
+}
+
+// links holds OnOpenURLs' func, and the links that came before it, as a link that started the
+// app.
+type links struct {
+	mu     sync.Mutex
+	opened func([]string)
+	early  [][]string
+}
+
+func (l *links) set(opened func([]string)) {
+	l.mu.Lock()
+	l.opened = opened
+	early := l.early
+	l.early = nil
+	l.mu.Unlock()
+	for _, urls := range early {
+		oskit.Post(func() { opened(urls) })
+	}
+}
+
+func (l *links) open(urls []string) {
+	l.mu.Lock()
+	opened := l.opened
+	if opened == nil {
+		l.early = append(l.early, urls)
+	}
+	l.mu.Unlock()
+	if opened != nil {
+		oskit.Post(func() { opened(urls) })
+	}
 }
