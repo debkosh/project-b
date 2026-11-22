@@ -18,6 +18,7 @@ import (
 	"unsafe"
 
 	"github.com/sudiptadeb/amarit/macapp"
+	"github.com/sudiptadeb/oskit/clip"
 
 	"projectb/crash"
 	"projectb/system"
@@ -31,10 +32,9 @@ func withPath(path string, call func(*C.char)) {
 	call(c)
 }
 
-// CopySecret puts text on the pasteboard with the concealed and transient types beside it.
-func (s *System) CopySecret(text string) {
-	withPath(text, func(c *C.char) { C.pb_system_copy_secret(c) })
-}
+// CopySecret puts text on the pasteboard with the concealed and transient types beside it
+// (oskit/clip).
+func (s *System) CopySecret(text string) { clip.New().CopySecret(text) }
 
 func (s *System) Desktop() string { return "" }
 

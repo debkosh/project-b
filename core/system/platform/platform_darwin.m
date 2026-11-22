@@ -17,20 +17,6 @@ static void OnMain(dispatch_block_t block) {
   }
 }
 
-void pb_system_copy_secret(const char* text) {
-  NSString* secret = [NSString stringWithUTF8String:text];
-  if (secret == nil) {
-    return;
-  }
-  OnMain(^{
-    NSPasteboard* board = NSPasteboard.generalPasteboard;
-    [board clearContents];
-    [board setString:secret forType:NSPasteboardTypeString];
-    [board setString:@"" forType:@"org.nspasteboard.ConcealedType"];
-    [board setString:@"" forType:@"org.nspasteboard.TransientType"];
-  });
-}
-
 // The checks of the person macOS has not answered, by Go's number. Main thread only.
 static NSMutableDictionary<NSNumber*, LAContext*>* PersonChecks(void) {
   static NSMutableDictionary<NSNumber*, LAContext*>* checks;

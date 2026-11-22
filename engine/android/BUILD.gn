@@ -258,6 +258,7 @@ android_library("amarit_java") {
 # oskit's Java (oskit/README.md), which its Go calls through JNI.
 android_library("oskit_java") {
   sources = [
+    "//project_b/oskit/android/java/io/github/sudiptadeb/oskit/Clip.java",
     "//project_b/oskit/android/java/io/github/sudiptadeb/oskit/Notify.java",
     "//project_b/oskit/android/java/io/github/sudiptadeb/oskit/Open.java",
     "//project_b/oskit/android/java/io/github/sudiptadeb/oskit/OsKit.java",
