@@ -2,7 +2,6 @@ package dev.projectb.browser;
 
 import android.app.Activity;
 import android.app.KeyguardManager;
-import android.app.role.RoleManager;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.hardware.biometrics.BiometricManager;
@@ -27,12 +26,6 @@ import org.chromium.build.annotations.UsedByReflection;
  */
 @UsedByReflection("go_table.c")
 final class GoSystem {
-    /** What BrowserActivity hears back from Android's sheet asking to be the default browser. */
-    static final int DEFAULT_BROWSER_REQUEST = 1;
-
-    // The question's number as Go knows it (core/system/platform).
-    private static final int QUESTION_DEFAULT_BROWSER = 1;
-
     private static final Handler sMain = new Handler(Looper.getMainLooper());
 
     // The one activity, which Go's managers live as long as. Set before Go starts.
@@ -42,12 +35,6 @@ final class GoSystem {
 
     static void attach(Activity activity) {
         sActivity = activity;
-    }
-
-    /** Opens a finished download's shared copy. */
-    @UsedByReflection("go_table.c")
-    static void openFile(String path) {
-        Downloads.open(path);
     }
 
     /**
@@ -78,42 +65,6 @@ final class GoSystem {
             UpdateNotification.commands = GoCore::updateCommand;
             UpdateNotification.show(sActivity, json);
         });
-    }
-
-    /** Shows the system's Downloads. */
-    @UsedByReflection("go_table.c")
-    static void revealFile() {
-        sMain.post(Downloads::reveal);
-    }
-
-    /** Whether the app holds the browser role now. */
-    @UsedByReflection("go_table.c")
-    static boolean isDefaultBrowser() {
-        return sActivity.getSystemService(RoleManager.class).isRoleHeld(RoleManager.ROLE_BROWSER);
-    }
-
-    /**
-     * Asks Android to make the app the default browser: its own sheet asks the person, and
-     * BrowserActivity hears how it ended. Already the default, it says so at once.
-     */
-    @UsedByReflection("go_table.c")
-    static void askDefaultBrowser() {
-        sMain.post(
-                () -> {
-                    RoleManager roles = sActivity.getSystemService(RoleManager.class);
-                    if (roles.isRoleHeld(RoleManager.ROLE_BROWSER)) {
-                        defaultBrowserAnswered();
-                        return;
-                    }
-                    sActivity.startActivityForResult(
-                            roles.createRequestRoleIntent(RoleManager.ROLE_BROWSER),
-                            DEFAULT_BROWSER_REQUEST);
-                });
-    }
-
-    /** Tells Go how asking to be the default browser ended, a sheet closed unanswered too. */
-    static void defaultBrowserAnswered() {
-        answer(QUESTION_DEFAULT_BROWSER, isDefaultBrowser());
     }
 
 
@@ -191,7 +142,4 @@ final class GoSystem {
         sMain.post(() -> GoCore.personVerified(id, verdict));
     }
 
-    private static void answer(int question, boolean yes) {
-        sMain.post(() -> GoCore.answered(question, yes));
-    }
 }

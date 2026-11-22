@@ -9,30 +9,25 @@ package platform
 import "C"
 
 import (
-	"strings"
-
 	"github.com/sudiptadeb/oskit/notify"
+	"github.com/sudiptadeb/oskit/open"
 
 	"projectb/system"
 )
 
-// The question the OS answers later, by the number that crosses with the answer.
-const questionDefaultBrowser = 1
-
 // System is this OS's system.System. There is one, as there is one OS: New returns it.
 type System struct {
-	defaultBrowser system.Question
-	// notes are the OS's notifications (oskit/notify).
-	notes notify.Notifier
-	// opened is OnOpenURLs', set once at start. Main thread.
-	opened func(urls []string)
+	// notes are the OS's notifications (oskit/notify), and opener its opening of files and
+	// links (oskit/open).
+	notes  notify.Notifier
+	opener open.Opener
 	// checks are the checks of the person the OS has not answered, by the number that
 	// crosses with its answer, and lastCheck the last number given. Main thread.
 	checks    map[int32]func(system.Verdict)
 	lastCheck int32
 }
 
-var the = &System{notes: notify.New()}
+var the = &System{notes: notify.New(), opener: open.New()}
 
 var _ system.System = the
 
@@ -62,15 +57,11 @@ func (s *System) OnNotificationClicked(clicked func(id string)) {
 	})
 }
 
-// PBSystemOpenURLs is the links and files the OS hands the app, one per line, on the main
-// thread.
-//
-//export PBSystemOpenURLs
-func PBSystemOpenURLs(urls *C.char) {
-	if the.opened != nil {
-		the.opened(strings.Split(C.GoString(urls), "\n"))
-	}
-}
+func (s *System) OpenFile(path string)                  { s.opener.OpenFile(path) }
+func (s *System) RevealFile(path string)                { s.opener.Reveal(path) }
+func (s *System) IsDefaultBrowser() bool                { return s.opener.IsDefaultBrowser() }
+func (s *System) AskDefaultBrowser(answered func(bool)) { s.opener.AskDefaultBrowser(answered) }
+func (s *System) OnOpenURLs(opened func(urls []string)) { s.opener.OnOpenURLs(opened) }
 
 // VerifyPerson asks the OS to check the person, as verifyPerson does it on this OS.
 func (s *System) VerifyPerson(check system.PersonCheck, answered func(system.Verdict)) (cancel func()) {
@@ -97,16 +88,5 @@ func PBSystemPersonVerified(id C.int32_t, verdict C.int) {
 	if answered := the.checks[int32(id)]; answered != nil {
 		delete(the.checks, int32(id))
 		answered(system.Verdict(verdict))
-	}
-}
-
-// PBSystemAnswered is the OS answering a question the core asked, on the main thread:
-// whether the app is the default browser now.
-//
-//export PBSystemAnswered
-func PBSystemAnswered(question C.int32_t, yes C.int) {
-	switch question {
-	case questionDefaultBrowser:
-		the.defaultBrowser.Answer(yes != 0)
 	}
 }

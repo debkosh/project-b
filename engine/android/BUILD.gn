@@ -205,6 +205,7 @@ android_library("amarit_java") {
 android_library("oskit_java") {
   sources = [
     "//project_b/oskit/android/java/io/github/sudiptadeb/oskit/Notify.java",
+    "//project_b/oskit/android/java/io/github/sudiptadeb/oskit/Open.java",
     "//project_b/oskit/android/java/io/github/sudiptadeb/oskit/OsKit.java",
     "//project_b/oskit/android/java/io/github/sudiptadeb/oskit/Secret.java",
   ]

@@ -17,24 +17,6 @@ static void OnMain(dispatch_block_t block) {
   }
 }
 
-// Tells Go a question's answer on the main thread, after whatever asked has returned.
-static void Answer(int32_t question, int yes) {
-  dispatch_async(dispatch_get_main_queue(), ^{
-    PBSystemAnswered(question, yes);
-  });
-}
-
-static NSURL* FileURL(const char* path) {
-  return [NSURL fileURLWithPath:[NSString stringWithUTF8String:path]];
-}
-
-void pb_system_open_file(const char* path) {
-  NSURL* url = FileURL(path);
-  OnMain(^{
-    [NSWorkspace.sharedWorkspace openURL:url];
-  });
-}
-
 void pb_system_copy_secret(const char* text) {
   NSString* secret = [NSString stringWithUTF8String:text];
   if (secret == nil) {
@@ -46,46 +28,6 @@ void pb_system_copy_secret(const char* text) {
     [board setString:secret forType:NSPasteboardTypeString];
     [board setString:@"" forType:@"org.nspasteboard.ConcealedType"];
     [board setString:@"" forType:@"org.nspasteboard.TransientType"];
-  });
-}
-
-void pb_system_reveal_file(const char* path) {
-  NSURL* url = FileURL(path);
-  OnMain(^{
-    [NSWorkspace.sharedWorkspace activateFileViewerSelectingURLs:@[ url ]];
-  });
-}
-
-int pb_system_is_default_browser(void) {
-  NSURL* app = [NSWorkspace.sharedWorkspace
-      URLForApplicationToOpenURL:[NSURL URLWithString:@"https://example.com/"]];
-  return app && [[NSBundle bundleWithURL:app].bundleIdentifier
-                    isEqualToString:NSBundle.mainBundle.bundleIdentifier];
-}
-
-void pb_system_ask_default_browser(void) {
-  // macOS asks the person once, for http, and changes https with it; https is set too in case
-  // it didn't. Either completion may come on any queue.
-  NSURL* app = NSBundle.mainBundle.bundleURL;
-  void (^report)(void) = ^{
-    Answer(1, pb_system_is_default_browser());
-  };
-  OnMain(^{
-    [NSWorkspace.sharedWorkspace
-        setDefaultApplicationAtURL:app
-              toOpenURLsWithScheme:@"http"
-                 completionHandler:^(NSError* error) {
-                   if (error) {
-                     NSLog(@"default browser: %@", error.localizedDescription);
-                     report();
-                     return;
-                   }
-                   [NSWorkspace.sharedWorkspace setDefaultApplicationAtURL:app
-                                                      toOpenURLsWithScheme:@"https"
-                                                         completionHandler:^(NSError* e) {
-                                                           report();
-                                                         }];
-                 }];
   });
 }
 
@@ -168,28 +110,3 @@ void pb_system_set_dock_color(int32_t rgb) {
   });
 }
 
-// The links and files macOS opens with the app, as its default browser or from a file opened
-// with it (Info.plist's URL and document types).
-@interface PBLinkReceiver : NSObject <NSApplicationDelegate>
-@end
-
-@implementation PBLinkReceiver
-- (void)application:(NSApplication*)application openURLs:(NSArray<NSURL*>*)urls {
-  NSMutableArray<NSString*>* lines = [NSMutableArray array];
-  for (NSURL* url in urls) {
-    [lines addObject:url.absoluteString];
-  }
-  PBSystemOpenURLs((char*)[lines componentsJoinedByString:@"\n"].UTF8String);
-}
-@end
-
-void pb_system_receive_links(void) {
-  OnMain(^{
-    // NSApp's delegate is weak, so the receiver lives as long as the app.
-    static PBLinkReceiver* receiver;
-    if (!receiver) {
-      receiver = [[PBLinkReceiver alloc] init];
-    }
-    NSApp.delegate = receiver;
-  });
-}

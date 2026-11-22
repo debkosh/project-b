@@ -5,12 +5,8 @@ package platform
 #include <stdlib.h>
 #include "pb_system_android.h"
 
-static inline void call_open_file(const PBSystemCalls* c, const char* path) { c->open_file(path); }
-static inline void call_reveal_file(const PBSystemCalls* c) { c->reveal_file(); }
 static inline void call_copy_secret(const PBSystemCalls* c, const char* text) { c->copy_secret(text); }
 static inline void call_show_update(const PBSystemCalls* c, const char* json) { c->show_update(json); }
-static inline int call_is_default_browser(const PBSystemCalls* c) { return c->is_default_browser(); }
-static inline void call_ask_default_browser(const PBSystemCalls* c) { c->ask_default_browser(); }
 static inline void call_verify_person(const PBSystemCalls* c, int32_t id, const char* title, const char* subtitle) { c->verify_person(id, title, subtitle); }
 static inline void call_cancel_person(const PBSystemCalls* c, int32_t id) { c->cancel_person(id); }
 */
@@ -38,12 +34,6 @@ var calls atomic.Pointer[C.PBSystemCalls]
 //export PBSetSystemCalls
 func PBSetSystemCalls(c *C.PBSystemCalls) { calls.Store(c) }
 
-func (s *System) OpenFile(path string) {
-	c := C.CString(path)
-	defer C.free(unsafe.Pointer(c))
-	C.call_open_file(calls.Load(), c)
-}
-
 // CopySecret puts text on the clipboard as a clip marked sensitive.
 func (s *System) CopySecret(text string) {
 	c := C.CString(text)
@@ -59,18 +49,9 @@ func ShowUpdate(stateJSON string) {
 	C.call_show_update(calls.Load(), c)
 }
 
-// RevealFile shows the system's Downloads, where a phone's finished downloads are.
-func (s *System) RevealFile(string) { C.call_reveal_file(calls.Load()) }
-
-func (s *System) IsDefaultBrowser() bool { return C.call_is_default_browser(calls.Load()) != 0 }
-
 func (s *System) Desktop() string { return "" }
 
 func (s *System) DefaultBrowserLive() bool { return true }
-
-func (s *System) AskDefaultBrowser(answered func(bool)) {
-	s.defaultBrowser.Ask(answered, func() { C.call_ask_default_browser(calls.Load()) })
-}
 
 // verifyPerson asks Android's own sheet, BiometricPrompt: a fingerprint, a face or the
 // screen lock.
@@ -85,10 +66,6 @@ func (s *System) cancelPerson(id int32) { C.call_cancel_person(calls.Load(), C.i
 
 // otherNote is none on a phone: amarit's update notification is Java's (ShowUpdate).
 func otherNote(string, string) bool { return false }
-
-// OnOpenURLs takes the links other apps send, which Java's BrowserActivity hands go_table.c,
-// once Go has started.
-func (s *System) OnOpenURLs(opened func(urls []string)) { s.opened = opened }
 
 // SetDockColor does nothing: a phone has no Dock.
 func (s *System) SetDockColor(string) {}

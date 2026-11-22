@@ -220,6 +220,7 @@ func (p *Picker) ImageSaved(string, bool)                                 {}
 func (p *Picker) SiteDataListed(string, []engine.SiteData)                {}
 func (p *Picker) DevToolsCommand(string, []byte) (any, error)             { return nil, engine.ErrUnknownCommand }
 func (p *Picker) DownloadNotificationCommand(int, engine.DownloadCommand) {}
+func (p *Picker) DownloadPublished(string, string)                        {}
 
 // The picker's page is our own, in no tab: each kind has its default, with no prompt.
 func (p *Picker) PermissionRequested(r engine.PermissionRequest) {
