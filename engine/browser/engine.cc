@@ -537,6 +537,18 @@ void CallFocusShell(int64_t window) {
   g_engine->FocusShell(window);
 }
 
+#if BUILDFLAG(IS_LINUX)
+// Content's Linux has no toolkit to ask, so the theme's own "system" is never dark: the
+// desktop's answer, from Go, is the override every theme's instance takes, which repaints
+// the windows (window_linux.cc) and has the pages ask again.
+void CallSetSystemDark(int dark) {
+  CheckMainThread();
+  ui::NativeTheme::SetPreferredColorSchemeOverride(
+      dark ? ui::NativeTheme::PreferredColorScheme::kDark
+           : ui::NativeTheme::PreferredColorScheme::kLight);
+}
+#endif
+
 void CallSetShellBack(int64_t window, int on) {
   CheckMainThread();
   if (auto* w = g_engine->window(window)) {
@@ -755,6 +767,9 @@ const PBEngineCalls* Engine::Calls() {
 #if BUILDFLAG(IS_ANDROID)
       .exit_reason = ExitReason,
       .delete_download = CallDeleteDownload,
+#endif
+#if BUILDFLAG(IS_LINUX)
+      .set_system_dark = CallSetSystemDark,
 #endif
   };
   return &calls;
