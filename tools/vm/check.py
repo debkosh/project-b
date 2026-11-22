@@ -1221,6 +1221,117 @@ def password_checks():
     guest("/usr/bin/killall", "project_b")
 
 
+UPGRADE = "/tmp/pb-upgrade"  # In the guest: the driver's pipe and output, for upgrade_checks.
+
+
+def upgrade_checks():
+    """An existing profile's sealed data across an update, on the Mac's own device key: the
+    other parts each start the app on a folder of its own (--user-data-dir), which wraps its
+    key in folder.key and never touches the keychain. Here the installed build starts on its
+    listed profile as a person's first start does, a login comes over into it, sealed under a
+    key the login keychain's "Project B" / "device key" item wraps; then PB_UPGRADE_TO, a later
+    build, goes in place of it as an update does, and starts on the same profile, the
+    keychain asking to allow the new build answered as a person does; and the login still
+    opens: Show, macOS's sheet answered, gives the password. Run it on a VM of its own: it
+    writes to the VM's keychain."""
+    password = os.environ.get("PB_VM_PASSWORD", "admin")
+    newer = os.environ.get("PB_UPGRADE_TO", "")
+    if not newer:
+        screen.refuse("upgrade needs PB_UPGRADE_TO, the DMG to update to")
+    secret = "upgrade-keeps-this"
+    site = "upgrade.example.org"
+    item = lambda: guest("/bin/sh", "-c", "security find-generic-password -s 'Project B' -a 'device key' >/dev/null 2>&1 && echo yes")
+    guest("/usr/bin/killall", "project_b")
+    guest("/bin/sh", "-c", "security delete-generic-password -s 'Project B' -a 'device key' >/dev/null 2>&1; true")
+    fresh_profile()  # The listed profile's folder, the welcome finished, and no other.
+
+    def started():
+        """The installed app on its listed profile, as Finder starts it, with its driver; the
+        keychain's allow sheet, if it asks, answered as a person does."""
+        ask = driven(UPGRADE, None, [f"--root={ROOT}"])
+        settings = lambda expr: (lambda a: None if a.startswith("ERR") else json.loads(a or "null"))(ask("evalsettings", expr))
+        js = lambda expr: json.loads(ask("eval", expr) or "null")
+        window_or_stop("the app starts on its listed profile")
+        js("document.querySelector('[aria-label=Menu]').click()")
+        until(lambda: js(f"!!{SETTINGS_ITEM}"), bool, 10)
+        js(f"{SETTINGS_ITEM}.click()")
+        until(lambda: settings("!!document.querySelector('.nav [data-section=data]')"), bool, 15)
+        return ask, settings
+
+    def keychain_sheet():
+        """macOS's "wants to access key … in your keychain" sheet, as (x, y, w, h), or None."""
+        found = json.loads(guest("/usr/bin/osascript", "-l", "JavaScript", "-e", WINDOWS.replace('["Project B", "project_b"]', '["SecurityAgent"]').replace("w.kCGWindowLayer == 0 && ", "")) or "[]")
+        sheets = [(w["X"], w["Y"], w["Width"], w["Height"]) for w in found if w["Width"] > 300]
+        return sheets[0] if sheets else None
+
+    def asked_keychain():
+        """Answers macOS's keychain sheet as a person updating does: the login password, and
+        Always Allow, so the new build isn't asked again at each read (Allow lets one read
+        through, and the sheet came back at the next, 2026-11-22)."""
+        sheet = until(keychain_sheet, bool, 8)
+        if not sheet:
+            return False
+        time.sleep(1)
+        shot("upgrade-keychain-asks")
+        desk.type(password)
+        # Always Allow, the sheet's left button: 147 and 149 points into the 434 by 180 sheet.
+        at = (sheet[0] + sheet[2] * 147 // 434, sheet[1] + sheet[3] * 149 // 180)
+        print(f"  the keychain's sheet at {sheet}; Always Allow clicked at {at}", flush=True)
+        desk.click(*at)
+        time.sleep(1)
+        shot("upgrade-keychain-answered")
+        until(keychain_sheet, lambda s: s is None, 10)
+        return True
+
+    # Which build is installed, by its version and its binary's checksum: a release
+    # candidate carries the last release's version until it is published.
+    build = lambda: (guest("/usr/bin/defaults", "read", f"{APP}/Contents/Info", "CFBundleShortVersionString"),
+                     guest("/sbin/md5", "-q", f"{APP}/Contents/MacOS/project_b"))
+    before, was = build()
+    ask, settings = started()
+    settings("(document.querySelector('.nav [data-section=data]').click(), 1)")
+    until(lambda: settings("!!document.querySelector('input[aria-label=\"Passwords file\"]')"), bool, 15)
+    csv = f"Title,URL,Username,Password,Notes,OTPAuth\\nsite,https://{site}/,asha@example.org,{secret},,\\n"
+    settings("(() => { const input = document.querySelector('input[aria-label=\"Passwords file\"]'); const files = new DataTransfer(); "
+             f"files.items.add(new File(['{csv}'], 'Passwords.csv', {{type: 'text/csv'}})); input.files = files.files; "
+             "input.dispatchEvent(new Event('change', {bubbles: true})); return 1; })()")
+    came = until(lambda: settings("document.querySelector('[aria-label=Import]')?.innerText.replace(/\\s+/g, ' ') || ''") or "", lambda t: "1 password" in t, 30)
+    check(f"{before} on its listed profile takes a login in", "1 password" in came, came[-200:])
+    check("and its key is wrapped by the login keychain's device key, not a folder's", item() == "yes" and not guest("/bin/ls", f"{PROFILE}/folder.key"),
+          guest("/bin/ls", PROFILE))
+    shot("upgrade-before")
+    # Quit as a person does: a kill would leave the next start a crash notice over the page.
+    ask("close")
+    if until(lambda: guest("/usr/bin/pgrep", "-x", "project_b"), lambda p: p == "", 15) != "":
+        guest("/usr/bin/killall", "project_b")
+
+    subprocess.run(["deskrig", "--target", VM, "install", newer], check=True, capture_output=True, timeout=600)
+    after, now = build()
+    check(f"the newer build ({after}, {now[:8]}) goes in place of {before} ({was[:8]})", now != "" and now != was, f"{was} -> {now}")
+
+    ask, settings = started()
+    asked = asked_keychain()
+    print(f"  the keychain {'asked to allow the new build, and was answered' if asked else 'asked nothing'}", flush=True)
+    settings("(document.querySelector('.nav [data-section=privacy]').click(), 1)")
+    row = "[...document.querySelectorAll('.row')].find(r => r.textContent.includes('Passwords') && r.textContent.includes('1 password'))"
+    listed = until(lambda: settings(f"!!{row}"), bool, 20)
+    check(f"{after} on the same profile still has the login", bool(listed))
+    if listed:
+        settings(f"({row}.querySelector('button').click(), 1)")
+        show = f"document.querySelector('[aria-label=\"Show the password for {site}\"]')"
+        until(lambda: settings(f"!!{show}"), bool, 15)
+        settings(f"({show}.click(), 1)")
+        time.sleep(3)
+        asked_keychain()
+        desk.type(password)  # Show's own sheet: the account's password, as password_checks' person.
+        desk.key("return")
+        text = lambda: settings("document.querySelector('[aria-label=Passwords]')?.innerText.replace(/\\s+/g, ' ') || ''") or ""
+        shown = until(text, lambda t: secret in t, 20)
+        check("and its password opens, the key unwrapped by the same device key", secret in shown, shown[-200:])
+        shot("upgrade-after")
+    guest("/usr/bin/killall", "project_b")
+
+
 PICK = "/tmp/pb-pick"  # In the guest: the picker's driver pipe and output, for picker_checks.
 
 
@@ -1639,6 +1750,13 @@ if sys.argv[1:] == ["passkeys"]:
 # passkeys' are.
 if sys.argv[1:] == ["passwords"]:
     password_checks()
+    finished = True
+    sys.exit(1 if counts()["FAIL"] else 0)
+
+# "check.py upgrade" runs only the update of a listed profile's sealed data, on a VM of its
+# own, from the installed build to PB_UPGRADE_TO.
+if sys.argv[1:] == ["upgrade"]:
+    upgrade_checks()
     finished = True
     sys.exit(1 if counts()["FAIL"] else 0)
 

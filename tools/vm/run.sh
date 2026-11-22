@@ -10,6 +10,8 @@
 #   tools/vm/run.sh <path or URL of a DMG> shells     # only the terminal and fox shells
 #   PB_VM=<a VM of its own> tools/vm/run.sh <path or URL of a DMG> passkeys # only our own passkeys
 #   PB_VM=<a VM of its own> tools/vm/run.sh <path or URL of a DMG> passwords # only saved passwords
+#   PB_VM=<a VM of its own> PB_UPGRADE_TO=<a later DMG> tools/vm/run.sh <DMG> upgrade # a listed profile's
+#        sealed login, on the Mac's keychain device key, kept across an update to the later DMG
 #
 # It takes the VM's lock, starts the VM if it isn't running, readies it (prepare.py), installs
 # the DMG, runs check.py,
