@@ -159,7 +159,7 @@
       {#if ready}
         <button class="row" role="menuitem" onclick={() => act({ t: 'relaunch' })}>
           <Icon name="update" />
-          <span class="name">Install update to {go.update.version}</span>
+          <span class="name">{go.update.version ? `Install update to ${go.update.version}` : 'Install update'}</span>
         </button>
       {/if}
       <button class="row" role="menuitem" aria-label="Settings" onclick={() => run('app.settings')}>

@@ -6,8 +6,10 @@ import { send, setPref, state } from '@/sdk/vue.js';
 // bottom-left corner, with Later and Relaunch. Either one records the version as seen in the
 // profile's prefs (updateNoticed), so the card shows once a release, not at every start;
 // Settings › About still offers it, and shows a download on its way.
-const version = computed(() => (state.update.phase === 'ready' ? state.update.version : ''));
-const shown = computed(() => !!version.value && state.prefs.updateNoticed !== version.value);
+// One with no version, as a Flatpak's whose version wasn't found, is seen once as "".
+const ready = computed(() => state.update.phase === 'ready');
+const version = computed(() => (ready.value ? state.update.version || '' : ''));
+const shown = computed(() => ready.value && state.prefs.updateNoticed !== version.value);
 
 function later() {
   setPref('updateNoticed', version.value);
@@ -21,7 +23,7 @@ function relaunch() {
 
 <template>
   <div v-if="shown" v-shell class="update-notice" role="dialog" aria-label="Update ready">
-    <h2 class="title">Project B {{ version }} is ready</h2>
+    <h2 class="title">{{ version ? `Project B ${version} is ready` : 'An update is ready' }}</h2>
     <p class="words">Relaunch to update now, or later from Settings&nbsp;›&nbsp;About.</p>
     <div class="buttons">
       <button type="button" class="text-button" @click="later">Later</button>
