@@ -173,7 +173,7 @@ async function tour() {
 // saying how far it has come, so the desktop never comes up empty.
 const LINE_MS = 1100;
 const LAST_MS = 1600;
-const FADE_MS = 600;
+const FADE_MS = 300;
 async function intro() {
   const el = $('intro');
   introPlaying = true;
@@ -184,9 +184,25 @@ async function intro() {
   addEventListener('keydown', skip, true);
   // pause waits ms, or less once skipped.
   const pause = (ms) => new Promise((r) => { const t = setTimeout(r, ms); wake = () => { clearTimeout(t); r(); }; });
-  const ps = OPENING.map((t) => {
+  // Each line its own part of one hierarchy (stage.css): the headline, the three parts as
+  // separate words, a quieter line, and the last as the page's "running" chip.
+  const ps = OPENING.map((t, i) => {
     const p = document.createElement('p');
-    p.textContent = t;
+    p.className = 'l' + (i + 1);
+    if (i === 1) {
+      for (const w of t.split(/\s+/)) {
+        const s = document.createElement('span');
+        s.textContent = w.replace(/\.$/, '');
+        p.append(s);
+      }
+      p.setAttribute('aria-label', t);
+    } else if (i === 3) {
+      const s = document.createElement('span');
+      s.textContent = t;
+      p.append(s);
+    } else {
+      p.textContent = t;
+    }
     el.append(p);
     return p;
   });
