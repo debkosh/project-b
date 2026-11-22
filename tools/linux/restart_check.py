@@ -9,6 +9,9 @@ installed (tools/linux/flatpak-release.sh runs it before a release's repository 
 3. The next start has the tab and the setting back.
 4. No folder.key is anywhere in the profiles: a listed profile's key is wrapped by the desktop's
    Secret portal's, never by a key in a file.
+5. A copy the app starts outlives it: Profiles… opens the picker, which stays when the app
+   quits, and Settings' Relaunch brings the app back on its profile. The sandbox ends every
+   process in it with the first, so a copy started from inside would end too.
 
 The driver's FIFO and the harness's temporary folders are in the app's own folder, which the
 sandbox sees at the same path.
@@ -18,6 +21,7 @@ import glob
 import json
 import os
 import shutil
+import subprocess
 import sys
 import time
 
@@ -54,6 +58,21 @@ def run(app, action):
     app.js(f"chrome.send('shell', [{json.dumps(json.dumps({'t': 'run', 'text': action}))}]), 1")
 
 
+def copies(arg):
+    """The app's processes whose command line has arg, as the host sees them."""
+    out = subprocess.run(["pgrep", "-af", "/app/project-b/project_b"], capture_output=True, text=True).stdout
+    return [line for line in out.splitlines() if arg in line and "--type=" not in line]
+
+
+def wait_for(ok, timeout=20):
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if ok():
+            return True
+        time.sleep(0.5)
+    return ok()
+
+
 def prefs():
     found = glob.glob(os.path.join(DATA, "*", "prefs.json"))
     return json.load(open(found[0])) if found else {}
@@ -84,7 +103,39 @@ def main():
     d.check("and the tabs on top", prefs().get("tabLayout") == "horizontal", prefs().get("tabLayout"))
     keys = [os.path.relpath(p, DATA) for p in glob.glob(os.path.join(DATA, "**", "folder.key"), recursive=True)]
     d.check("no folder.key in the profiles", keys == [], keys)
-    again.close()
+
+    # Profiles… starts the picker as a copy of its own; it stays when the app quits.
+    run(again, "profile.picker")
+    d.check("Profiles… opens the picker", wait_for(lambda: copies("--picker")), copies(""))
+    run(again, "app.quit")
+    try:
+        again.proc.wait(timeout=30)
+        d.App.running.remove(again)
+    except Exception as e:  # noqa: BLE001
+        d.check("app.quit ends the app", False, e)
+    time.sleep(5)
+    d.check("and the picker stays when the app quits", bool(copies("--picker")), copies(""))
+    subprocess.run(["flatpak", "kill", APP], capture_output=True)
+    wait_for(lambda: not copies(""))
+
+    # Settings' Relaunch ends the app and starts it again on its profile.
+    third = start()
+    run(third, "app.settings")
+    deadline = time.time() + 15
+    while time.time() < deadline and third.cmd("evalsettings", "!!document.querySelector('h1')") != "true":
+        time.sleep(0.3)
+    third.cmd("evalsettings", "chrome.send('settings', [JSON.stringify({t: 'relaunch'})]), 1")
+    try:
+        third.proc.wait(timeout=30)
+        d.App.running.remove(third)
+        ended = True
+    except Exception:  # noqa: BLE001
+        ended = False
+    d.check("Settings' Relaunch ends the app", ended)
+    d.check("and starts it again", wait_for(lambda: copies("--after-update"), 30), copies(""))
+    time.sleep(5)
+    d.check("which keeps running", bool(copies("--after-update")), copies(""))
+    subprocess.run(["flatpak", "kill", APP], capture_output=True)
     shutil.rmtree(SCRATCH, ignore_errors=True)
     print(f"{d.failures} FAILED" if d.failures else "all passed", flush=True)
     sys.exit(1 if d.failures else 0)
