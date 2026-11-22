@@ -19,6 +19,7 @@ app's data is cleared.
 import atexit
 import http.server
 import json
+import mimetypes
 import os
 import re
 import shutil
@@ -150,7 +151,9 @@ class Server(http.server.BaseHTTPRequestHandler):
         if path.startswith("/dl/"):
             data = b"Project B download check\n"
             self.send_response(200)
-            self.send_header("Content-Type", "text/plain")
+            # Its own name's type, as a server's is: the phone's shared Downloads takes a file
+            # under a name that fits its type.
+            self.send_header("Content-Type", mimetypes.guess_type(path[4:])[0] or "application/octet-stream")
             self.send_header("Content-Disposition", 'attachment; filename="%s"' % path[4:])
             self.send_header("Content-Length", str(len(data)))
             self.end_headers()
@@ -1168,11 +1171,12 @@ def notification_of(name):
 def downloads():
     """A file the page downloads goes to the phone's Downloads, with a notification that
     says so and opens it at a tap; the menu's Downloads opens the Downloads page, which lists
-    it, Open opens it in another app, and Show in Downloads opens the phone's Downloads app;
-    and a restart doesn't download it again."""
+    it, Open opens a zip in another app, and Show in Downloads opens the phone's Downloads app;
+    a restart doesn't download it again; and Open shows a text file in a tab of the app's own,
+    as the engine shows it itself."""
     adb("shell", "pm", "grant", PACKAGE, "android.permission.POST_NOTIFICATIONS")
     launch()
-    name = "pb-check-%d.txt" % int(time.time())
+    name = "pb-check-%d.zip" % int(time.time())
     go(BASE + "/a")
     asked("/a")
     go(BASE + "/dl/" + name)
@@ -1225,7 +1229,7 @@ def downloads():
     # the next free name, and once refused it outright, which closed the app.
     until(lambda: "BrowserActivity" in in_front_now(), 10)
     go(BASE + "/dl/" + name)
-    again = name.replace(".txt", " (1).txt")
+    again = name.replace(".zip", " (1).zip")
     stored = until(lambda: again in adb("shell", "ls", "/sdcard/Download/"), 20)
     check("the same name again reaches the phone's Downloads as name (1), and the app keeps running",
           stored is not None and alive(), adb("shell", "ls", "/sdcard/Download/")[-200:])
@@ -1243,9 +1247,18 @@ def downloads():
     tap(middle(see("page", text="Delete", kind="android.widget.Button")))
     files = lambda: adb("shell", "ls", "-1", "/sdcard/Download/").splitlines()
     check("Delete deletes it from the phone's Downloads, and the list", until(lambda: name not in files() and find("page", label="Actions for " + name) is None, 10) is not None,
-          [f for f in files() if f.startswith(name[:-len(".txt")])])
+          [f for f in files() if f.startswith(name[:-len(".zip")])])
     check("and leaves the same name's later copy", again in files() and find("page", label="Actions for " + again) is not None,
-          [f for f in files() if f.startswith(name[:-len(".txt")])])
+          [f for f in files() if f.startswith(name[:-len(".zip")])])
+    # A text file the engine shows itself: Open, a tap on its row, shows it in a tab here.
+    press("Close Downloads")
+    text = "pb-text-%d.txt" % int(time.time())
+    go(BASE + "/dl/" + text)
+    until(lambda: text in adb("shell", "ls", "/sdcard/Download/"), 20)
+    menu("Downloads")
+    tap(middle(see("page", text=lambda t: (t or "").startswith(text))))
+    shown = until(lambda: find("page", text=lambda t: "Project B download check" in (t or "")), 15)
+    check("Open shows a text file in a tab of the app's own", shown is not None and "BrowserActivity" in in_front_now(), in_front_now())
 
 
 def settings_back():
