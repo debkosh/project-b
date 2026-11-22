@@ -16,6 +16,8 @@ void PBSetDeviceKeyReader(int (*read)(int create, uint8_t* out));
 void PBSetSystemCalls(const PBSystemCalls* calls);
 void PBSystemAnswered(int32_t question, int yes);
 void PBSystemPersonVerified(int32_t id, int verdict);
+// oskit's (oskit/internal/jni): its packages find their Java and register their natives.
+void OskitAttach(void* env);
 
 static JavaVM* vm;
 static jclass device_key;
@@ -25,8 +27,6 @@ static jmethodID go_system_open_file;
 static jmethodID go_system_reveal_file;
 static jmethodID go_system_is_default_browser;
 static jmethodID go_system_ask_default_browser;
-static jmethodID go_system_notifications_allowed;
-static jmethodID go_system_ask_notifications;
 static jmethodID go_system_verify_person;
 static jmethodID go_system_cancel_person;
 static jmethodID go_system_copy_secret;
@@ -97,8 +97,6 @@ static void system_open_file(const char* path) {
 static void system_reveal_file(void) { system_void(go_system_reveal_file); }
 static int system_is_default_browser(void) { return system_bool(go_system_is_default_browser); }
 static void system_ask_default_browser(void) { system_void(go_system_ask_default_browser); }
-static int system_notifications_allowed(void) { return system_bool(go_system_notifications_allowed); }
-static void system_ask_notifications(void) { system_void(go_system_ask_notifications); }
 
 static void system_verify_person(int32_t id, const char* title, const char* subtitle) {
   int attached;
@@ -153,8 +151,6 @@ static const PBSystemCalls system_calls = {
     .reveal_file = system_reveal_file,
     .is_default_browser = system_is_default_browser,
     .ask_default_browser = system_ask_default_browser,
-    .notifications_allowed = system_notifications_allowed,
-    .ask_notifications = system_ask_notifications,
     .verify_person = system_verify_person,
     .cancel_person = system_cancel_person,
     .copy_secret = system_copy_secret,
@@ -211,7 +207,7 @@ JNIEXPORT jlong JNICALL Java_dev_projectb_browser_GoCore_table(JNIEnv* env, jcla
       .timeline_page_origin = PBTimelinePageOrigin,
       .free = PBFree,
   };
-  // DeviceKey and GoSystem are found here, on Java's thread, by this class's loader: a thread
+  // DeviceKey, GoSystem and oskit's classes are found here, on Java's thread, by this class's loader: a thread
   // of Go's that attaches later finds only the system's classes.
   if (vm == NULL) {
     (*env)->GetJavaVM(env, &vm);
@@ -223,13 +219,13 @@ JNIEXPORT jlong JNICALL Java_dev_projectb_browser_GoCore_table(JNIEnv* env, jcla
     go_system_reveal_file = (*env)->GetStaticMethodID(env, go_system, "revealFile", "()V");
     go_system_is_default_browser = (*env)->GetStaticMethodID(env, go_system, "isDefaultBrowser", "()Z");
     go_system_ask_default_browser = (*env)->GetStaticMethodID(env, go_system, "askDefaultBrowser", "()V");
-    go_system_notifications_allowed = (*env)->GetStaticMethodID(env, go_system, "notificationsAllowed", "()Z");
-    go_system_ask_notifications = (*env)->GetStaticMethodID(env, go_system, "askNotifications", "()V");
     go_system_verify_person = (*env)->GetStaticMethodID(env, go_system, "verifyPerson", "(ILjava/lang/String;Ljava/lang/String;)V");
     go_system_cancel_person = (*env)->GetStaticMethodID(env, go_system, "cancelPerson", "(I)V");
     go_system_copy_secret = (*env)->GetStaticMethodID(env, go_system, "copySecret", "(Ljava/lang/String;)V");
     go_system_show_update = (*env)->GetStaticMethodID(env, go_system, "showUpdate", "(Ljava/lang/String;)V");
     PBSetSystemCalls(&system_calls);
+    // oskit's packages find their Java classes here too (oskit/internal/jni).
+    OskitAttach(env);
   }
   return (jlong)(intptr_t)&go;
 }

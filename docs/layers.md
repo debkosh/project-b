@@ -96,6 +96,8 @@ in `core/system`, and their C++ leaves the adapter:
 - On the Mac some of it is Objective-C, in `.m` files beside the Go, built by cgo. macOS
   allows its UI only on the main thread: `core/system` hops there itself, so no caller can
   get it wrong.
+- Since oskit ([oskit.md](oskit.md)), `core/system/platform` hands the OS's capabilities on
+  to that module, notifications first, and keeps only what is the app's own.
 - `core/system` is the interface alone, so the managers build and test with no cgo; each OS's
   is `core/system/platform`, which only `core/cmd/lib` links; `core/mocksystem`, beside
   `core/mockengine`, is the tests' and the dev server's. It answers as a person who says yes,

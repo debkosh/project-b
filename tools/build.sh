@@ -57,7 +57,7 @@ if [ "$PLATFORM" = linux ]; then
 
   echo "=== $(date '+%F %T') copy the tree in"
   docker exec pb sh -c 'rm -rf /work/linux-release && mkdir /work/linux-release'
-  { git ls-files -z core browserdata engine tools/linux/engine-build.sh VERSION; find shell/dist -type f -print0; } |
+  { git ls-files -z core browserdata oskit engine tools/linux/engine-build.sh VERSION; find shell/dist -type f -print0; } |
     COPYFILE_DISABLE=1 tar -c --no-xattrs --no-mac-metadata --null -T - |
     docker exec -i pb tar -x -C /work/linux-release
 
@@ -114,7 +114,7 @@ if [ "$PLATFORM" = android ]; then
 
   echo "=== $(date '+%F %T') copy the tree in"
   docker exec pb sh -c 'rm -rf /work/release && mkdir /work/release'
-  { git ls-files -z core browserdata engine tools/android-content-build.sh VERSION; find shell/dist -type f -print0; } |
+  { git ls-files -z core browserdata oskit engine tools/android-content-build.sh VERSION; find shell/dist -type f -print0; } |
     COPYFILE_DISABLE=1 tar -c --no-xattrs --no-mac-metadata --null -T - |
     docker exec -i pb tar -x -C /work/release
 
@@ -262,6 +262,7 @@ mkdir -p "$SRC/project_b"
 ln -sfn "$ROOT/engine" "$SRC/project_b/engine"
 ln -sfn "$ROOT/core" "$SRC/project_b/core"
 ln -sfn "$ROOT/browserdata" "$SRC/project_b/browserdata"
+ln -sfn "$ROOT/oskit" "$SRC/project_b/oskit"
 ln -sfn "$ROOT/shell" "$SRC/project_b/shell"
 
 cd "$SRC" || exit 1
@@ -273,7 +274,7 @@ mkdir -p "$OUT"
 if [ "$(cat "$OUT/.pb-tree" 2>/dev/null)" != "$ROOT" ]; then
   echo "  last built from $(cat "$OUT/.pb-tree" 2>/dev/null || echo nothing recorded); rebuilding project_b from $ROOT"
   # Only files there now: touching one a branch deletes would make it again, empty.
-  (cd "$ROOT" && git ls-files -z engine core browserdata shell | xargs -0 touch -c)
+  (cd "$ROOT" && git ls-files -z engine core browserdata oskit shell | xargs -0 touch -c)
 fi
 echo "$ROOT" > "$OUT/.pb-tree"
 cat > "$OUT/args.gn" <<ARGS

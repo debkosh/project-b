@@ -49,7 +49,7 @@ type System interface {
 
 	// ShowNotification shows a page's notification on the system, once Go has let it. A
 	// click on it comes back through OnNotificationClicked; RemoveNotification takes it away,
-	// as when its page closes it. A phone shows no page's notification yet, and does nothing.
+	// as when its page closes it. Both are oskit/notify's on every OS.
 	ShowNotification(n Notification)
 	RemoveNotification(id string)
 	// OnNotificationClicked is how a click on a notification ShowNotification showed reaches

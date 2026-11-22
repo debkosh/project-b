@@ -252,6 +252,15 @@ android_library("amarit_java") {
   sources = [ "amarit/java/io/github/sudiptadeb/amarit/UpdateNotification.java" ]
 }
 
+# oskit's Java (oskit/README.md), which its Go calls through JNI.
+android_library("oskit_java") {
+  sources = [
+    "//project_b/oskit/android/java/io/github/sudiptadeb/oskit/Notify.java",
+    "//project_b/oskit/android/java/io/github/sudiptadeb/oskit/OsKit.java",
+  ]
+  proguard_configs = [ "//project_b/oskit/android/proguard.flags" ]
+}
+
 android_resources("resources") {
   sources = [
     "res/drawable-anydpi-v26/icon.xml",
@@ -327,6 +336,7 @@ android_library("java") {
     "//ui/native_theme:os_settings_provider_android_bridge_java",
     ":native_shells_java",
     ":amarit_java",
+    ":oskit_java",
   ]
   srcjar_deps = [ ":jni_headers" ]
   sources = [

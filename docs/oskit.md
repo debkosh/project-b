@@ -1,6 +1,6 @@
 # oskit: the OS's capabilities as one Go module
 
-Status: spec, for agreement before code (2026-11-22).
+Status: agreed 2026-11-22; notify built on the Mac and Android, Linux's next.
 
 oskit is what an app asks of the OS itself, apart from its windows: notifications, a device
 key, a check of the person, opening files and links, and the clipboard's secret copy. It is a
@@ -34,8 +34,11 @@ oskit/
 - Android's halves call Java through JNI from Go itself (`internal/jni`), not through
   go_table.c. The Java lives in `oskit/android/java`, and engine/android/BUILD.gn builds it as an
   `android_library("oskit_java")` from `//project_b/oskit/android/java`, as it builds amarit's
-  Java. Java calls `OsKit.attach(activity)` once, before Go starts; that native method, in
-  libcore.so, keeps the VM and the app's class loader.
+  Java, kept from R8 by `oskit/android/proguard.flags`. The activity calls
+  `OsKit.attach(activity)` as it is made, and go_table.c calls Go's `OskitAttach(env)` once on
+  a Java thread, where each package finds its class with the app's class loader and registers
+  its natives. A tap on a note comes back as an intent, which the activity hands to
+  `OsKit.onIntent`.
 - Linux's halves are pure Go over godbus and the desktop portals, so they work inside the
   Flatpak.
 
@@ -54,16 +57,16 @@ thread to show. The twin takes a context; when it ends, the question is taken ba
 person's sheet goes away) and the twin returns the context's error.
 
 ```go
-v, err := verify.Wait(ctx, check)        // Verified, Denied or NoScreenLock
-ok, err := notify.AskWait(ctx)
-ok, err := open.AskDefaultBrowserWait(ctx)
+v, err := verify.Wait(ctx, v, check)     // Verified, Denied or NoScreenLock
+ok, err := notify.AskWait(ctx, n)
+ok, err := open.AskDefaultBrowserWait(ctx, o)
 key, err := secret.DeviceKey(ctx, "Project B", true) // waits already: it has no callback form
 ```
 
 Each twin is the callback form with `oskit.Wait`, one generic helper:
 `func Wait[T any](ctx context.Context, ask func(answered func(T)) (cancel func())) (T, error)`.
-Its answer comes straight to the waiting goroutine, not through Post, so waiting never needs
-the main thread to be free.
+Its answer only fills a channel the waiting goroutine reads, so a Post to a busy main thread
+never blocks it, and the main thread never waits.
 
 ## API
 

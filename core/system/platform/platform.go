@@ -11,46 +11,55 @@ import "C"
 import (
 	"strings"
 
+	"github.com/sudiptadeb/oskit/notify"
+
 	"projectb/system"
 )
 
-// The questions the OS answers later, by the numbers that cross with the answer.
-const (
-	questionDefaultBrowser = 1
-	questionNotifications  = 2
-)
+// The question the OS answers later, by the number that crosses with the answer.
+const questionDefaultBrowser = 1
 
 // System is this OS's system.System. There is one, as there is one OS: New returns it.
 type System struct {
 	defaultBrowser system.Question
-	notifications  system.Question
-	// clicked is OnNotificationClicked's, and opened OnOpenURLs', set once at start. Main
-	// thread.
-	clicked func(id string)
-	opened  func(urls []string)
+	// notes are the OS's notifications (oskit/notify).
+	notes notify.Notifier
+	// opened is OnOpenURLs', set once at start. Main thread.
+	opened func(urls []string)
 	// checks are the checks of the person the OS has not answered, by the number that
 	// crosses with its answer, and lastCheck the last number given. Main thread.
 	checks    map[int32]func(system.Verdict)
 	lastCheck int32
 }
 
-var the = &System{}
+var the = &System{notes: notify.New()}
 
 var _ system.System = the
 
 // New is this OS's system.System.
 func New() *System { return the }
 
-func (s *System) OnNotificationClicked(clicked func(id string)) { s.clicked = clicked }
+func (s *System) NotificationsAllowed() bool { return s.notes.Allowed() }
 
-// PBSystemNotificationClicked is a click on a notification ShowNotification showed, on the
-// main thread.
-//
-//export PBSystemNotificationClicked
-func PBSystemNotificationClicked(id *C.char) {
-	if the.clicked != nil {
-		the.clicked(C.GoString(id))
-	}
+func (s *System) AskNotifications(answered func(allowed bool)) { s.notes.Ask(answered) }
+
+func (s *System) ShowNotification(n system.Notification) {
+	s.notes.Show(notify.Note{ID: n.ID, Title: n.Title, Subtitle: n.Subtitle, Body: n.Body})
+}
+
+func (s *System) RemoveNotification(id string) { s.notes.Remove(id) }
+
+// OnNotificationClicked takes the clicks on a page's notifications, a click on the note itself;
+// on the Mac a press on the update's, which amarit posted, goes to the updater (otherNote).
+func (s *System) OnNotificationClicked(clicked func(id string)) {
+	s.notes.OnClick(func(id, action string) {
+		if otherNote(id, action) {
+			return
+		}
+		if action == "" {
+			clicked(id)
+		}
+	})
 }
 
 // PBSystemOpenURLs is the links and files the OS hands the app, one per line, on the main
@@ -92,14 +101,12 @@ func PBSystemPersonVerified(id C.int32_t, verdict C.int) {
 }
 
 // PBSystemAnswered is the OS answering a question the core asked, on the main thread:
-// whether the app is the default browser now, or may show its notifications.
+// whether the app is the default browser now.
 //
 //export PBSystemAnswered
 func PBSystemAnswered(question C.int32_t, yes C.int) {
 	switch question {
 	case questionDefaultBrowser:
 		the.defaultBrowser.Answer(yes != 0)
-	case questionNotifications:
-		the.notifications.Answer(yes != 0)
 	}
 }

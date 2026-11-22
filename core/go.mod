@@ -11,6 +11,8 @@ require (
 
 require github.com/sudiptadeb/gulal v0.3.0
 
+require github.com/sudiptadeb/oskit v0.0.0
+
 require (
 	github.com/godbus/dbus/v5 v5.2.4
 	github.com/mattn/go-sqlite3 v1.14.53
@@ -29,3 +31,5 @@ require (
 )
 
 replace github.com/sudiptadeb/project-b/browserdata => ../browserdata
+
+replace github.com/sudiptadeb/oskit => ../oskit

@@ -3,7 +3,6 @@
 
 #import <AppKit/AppKit.h>
 #import <LocalAuthentication/LocalAuthentication.h>
-#import <UserNotifications/UserNotifications.h>
 
 #include "platform_darwin.h"
 
@@ -90,10 +89,6 @@ void pb_system_ask_default_browser(void) {
   });
 }
 
-void pb_system_answer_notifications(void) {
-  Answer(2, 1);
-}
-
 // The checks of the person macOS has not answered, by Go's number. Main thread only.
 static NSMutableDictionary<NSNumber*, LAContext*>* PersonChecks(void) {
   static NSMutableDictionary<NSNumber*, LAContext*>* checks;
@@ -170,100 +165,6 @@ void pb_system_set_dock_color(int32_t rgb) {
           [[NSBezierPath bezierPathWithOvalInRect:NSInsetRect(dot, d * 0.1, d * 0.1)] fill];
           return YES;
         }];
-  });
-}
-
-// macOS's notification centre needs an app bundle: a bare binary posts nothing.
-static BOOL HasBundle(void) {
-  return NSBundle.mainBundle.bundleIdentifier != nil;
-}
-
-// Shows a page's notifications while the app is in front too, and takes their clicks.
-@interface PBNotificationDelegate : NSObject <UNUserNotificationCenterDelegate>
-@end
-
-@implementation PBNotificationDelegate
-
-- (void)userNotificationCenter:(UNUserNotificationCenter*)center
-       willPresentNotification:(UNNotification*)notification
-         withCompletionHandler:
-             (void (^)(UNNotificationPresentationOptions))completionHandler {
-  completionHandler(UNNotificationPresentationOptionBanner | UNNotificationPresentationOptionList |
-                    UNNotificationPresentationOptionSound);
-}
-
-- (void)userNotificationCenter:(UNUserNotificationCenter*)center
-    didReceiveNotificationResponse:(UNNotificationResponse*)response
-             withCompletionHandler:(void (^)(void))completionHandler {
-  // An update's notification is amarit's (macapp.Present): its Relaunch goes to the updater.
-  NSString* category = response.notification.request.content.categoryIdentifier;
-  if ([category isEqualToString:@"amarit.update"]) {
-    PBSystemAmaritResponse((char*)category.UTF8String, (char*)response.actionIdentifier.UTF8String);
-    completionHandler();
-    return;
-  }
-  NSString* identifier = response.notification.request.identifier;
-  BOOL clicked = [response.actionIdentifier isEqualToString:UNNotificationDefaultActionIdentifier];
-  if (clicked) {
-    dispatch_async(dispatch_get_main_queue(), ^{
-      PBSystemNotificationClicked((char*)identifier.UTF8String);
-    });
-  }
-  completionHandler();
-}
-
-@end
-
-static UNUserNotificationCenter* Center(void) {
-  static PBNotificationDelegate* delegate;
-  UNUserNotificationCenter* center = UNUserNotificationCenter.currentNotificationCenter;
-  if (!delegate) {
-    delegate = [[PBNotificationDelegate alloc] init];
-    center.delegate = delegate;
-  }
-  return center;
-}
-
-static NSString* String(const char* s) {
-  return [NSString stringWithUTF8String:s];
-}
-
-void pb_system_show_notification(const char* id,
-                                 const char* title,
-                                 const char* subtitle,
-                                 const char* body) {
-  if (!HasBundle()) {
-    return;
-  }
-  UNMutableNotificationContent* content = [[UNMutableNotificationContent alloc] init];
-  content.title = String(title);
-  content.subtitle = String(subtitle);
-  content.body = String(body);
-  content.threadIdentifier = String(subtitle);
-  UNNotificationRequest* request = [UNNotificationRequest requestWithIdentifier:String(id)
-                                                                        content:content
-                                                                        trigger:nil];
-  OnMain(^{
-    UNUserNotificationCenter* center = Center();
-    // macOS asks the person once whether the app may notify; until then, and if they say
-    // no, the request does nothing.
-    [center requestAuthorizationWithOptions:(UNAuthorizationOptionAlert | UNAuthorizationOptionSound)
-                          completionHandler:^(BOOL granted, NSError* error) {
-                            if (granted) {
-                              [center addNotificationRequest:request withCompletionHandler:nil];
-                            }
-                          }];
-  });
-}
-
-void pb_system_remove_notification(const char* id) {
-  if (!HasBundle()) {
-    return;
-  }
-  NSArray* ids = @[ String(id) ];
-  OnMain(^{
-    [Center() removeDeliveredNotificationsWithIdentifiers:ids];
-    [Center() removePendingNotificationRequestsWithIdentifiers:ids];
   });
 }
 

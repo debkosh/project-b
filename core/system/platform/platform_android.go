@@ -11,8 +11,6 @@ static inline void call_copy_secret(const PBSystemCalls* c, const char* text) { 
 static inline void call_show_update(const PBSystemCalls* c, const char* json) { c->show_update(json); }
 static inline int call_is_default_browser(const PBSystemCalls* c) { return c->is_default_browser(); }
 static inline void call_ask_default_browser(const PBSystemCalls* c) { c->ask_default_browser(); }
-static inline int call_notifications_allowed(const PBSystemCalls* c) { return c->notifications_allowed(); }
-static inline void call_ask_notifications(const PBSystemCalls* c) { c->ask_notifications(); }
 static inline void call_verify_person(const PBSystemCalls* c, int32_t id, const char* title, const char* subtitle) { c->verify_person(id, title, subtitle); }
 static inline void call_cancel_person(const PBSystemCalls* c, int32_t id) { c->cancel_person(id); }
 */
@@ -72,14 +70,6 @@ func (s *System) AskDefaultBrowser(answered func(bool)) {
 	s.defaultBrowser.Ask(answered, func() { C.call_ask_default_browser(calls.Load()) })
 }
 
-func (s *System) NotificationsAllowed() bool {
-	return C.call_notifications_allowed(calls.Load()) != 0
-}
-
-func (s *System) AskNotifications(answered func(bool)) {
-	s.notifications.Ask(answered, func() { C.call_ask_notifications(calls.Load()) })
-}
-
 // verifyPerson asks Android's own sheet, BiometricPrompt: a fingerprint, a face or the
 // screen lock.
 func (s *System) verifyPerson(id int32, check system.PersonCheck) {
@@ -91,10 +81,8 @@ func (s *System) verifyPerson(id int32, check system.PersonCheck) {
 
 func (s *System) cancelPerson(id int32) { C.call_cancel_person(calls.Load(), C.int32_t(id)) }
 
-// ShowNotification and RemoveNotification do nothing: a phone shows no page's notification
-// yet (docs/daily-driver.md).
-func (s *System) ShowNotification(system.Notification) {}
-func (s *System) RemoveNotification(string)            {}
+// otherNote is none on a phone: amarit's update notification is Java's (ShowUpdate).
+func otherNote(string, string) bool { return false }
 
 // OnOpenURLs takes the links other apps send, which Java's BrowserActivity hands go_table.c,
 // once Go has started.

@@ -5,6 +5,8 @@ import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
 
+import io.github.sudiptadeb.oskit.OsKit;
+
 import org.chromium.base.CommandLine;
 import org.chromium.base.PathUtils;
 import org.chromium.base.library_loader.LibraryLoader;
@@ -35,6 +37,7 @@ public final class BrowserActivity extends Activity {
         // One process holds it, so the claim is always this copy's and Go never says quit:
         // added is never null here.
         GoSystem.attach(this);
+        OsKit.attach(this);
         // A page's passkey requests are ours to answer (docs/passkeys.md).
         Passkeys.register();
         String data = PathUtils.getDataDirectory();
@@ -62,6 +65,8 @@ public final class BrowserActivity extends Activity {
         pendingLink = linkOf(getIntent());
         openDownload(getIntent());
         long goTable = GoCore.table();
+        // A tap on a page's notification that started the app: Go takes it once it starts.
+        OsKit.onIntent(getIntent());
         BrowserStartupController.getInstance()
                 .startBrowserProcessesAsync(
                         LibraryProcessType.PROCESS_BROWSER,
@@ -91,6 +96,7 @@ public final class BrowserActivity extends Activity {
         super.onNewIntent(intent);
         open(linkOf(intent));
         openDownload(intent);
+        OsKit.onIntent(intent);
     }
 
     // A tap on a finished download's notification: its file opens as the list's Open does.
@@ -145,9 +151,7 @@ public final class BrowserActivity extends Activity {
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
         super.onRequestPermissionsResult(requestCode, permissions, results);
         windowAndroid.handlePermissionResult(requestCode, permissions, results);
-        if (requestCode == GoSystem.NOTIFICATIONS_REQUEST) {
-            GoSystem.notificationsAnswered();
-        }
+        OsKit.onRequestPermissionsResult(requestCode);
     }
 
     // The activity handles uiMode itself, so a theme that follows the system follows it here.

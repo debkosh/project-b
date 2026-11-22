@@ -1,12 +1,10 @@
 package dev.projectb.browser;
 
-import android.Manifest;
 import android.app.Activity;
 import android.app.KeyguardManager;
 import android.app.role.RoleManager;
 import android.content.ClipData;
 import android.content.ClipboardManager;
-import android.content.pm.PackageManager;
 import android.hardware.biometrics.BiometricManager;
 import android.hardware.biometrics.BiometricPrompt;
 import android.os.Build;
@@ -32,12 +30,8 @@ final class GoSystem {
     /** What BrowserActivity hears back from Android's sheet asking to be the default browser. */
     static final int DEFAULT_BROWSER_REQUEST = 1;
 
-    /** What BrowserActivity hears back from Android's question about notifications. */
-    static final int NOTIFICATIONS_REQUEST = 2;
-
-    // The questions' numbers as Go knows them (core/system/platform).
+    // The question's number as Go knows it (core/system/platform).
     private static final int QUESTION_DEFAULT_BROWSER = 1;
-    private static final int QUESTION_NOTIFICATIONS = 2;
 
     private static final Handler sMain = new Handler(Looper.getMainLooper());
 
@@ -122,37 +116,6 @@ final class GoSystem {
         answer(QUESTION_DEFAULT_BROWSER, isDefaultBrowser());
     }
 
-    /** Whether the app may post its notifications now. */
-    @UsedByReflection("go_table.c")
-    static boolean notificationsAllowed() {
-        return android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU
-                || sActivity.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
-                        == PackageManager.PERMISSION_GRANTED;
-    }
-
-    /**
-     * Asks Android to let the app show its notifications, a download's: Android asks the
-     * person from 13 on, and BrowserActivity hears how it ended. Allowed already, or before 13,
-     * where nothing asks, it says so at once.
-     */
-    @UsedByReflection("go_table.c")
-    static void askNotifications() {
-        sMain.post(
-                () -> {
-                    if (notificationsAllowed()) {
-                        notificationsAnswered();
-                        return;
-                    }
-                    sActivity.requestPermissions(
-                            new String[] {Manifest.permission.POST_NOTIFICATIONS},
-                            NOTIFICATIONS_REQUEST);
-                });
-    }
-
-    /** Tells Go how asking to show notifications ended. */
-    static void notificationsAnswered() {
-        answer(QUESTION_NOTIFICATIONS, notificationsAllowed());
-    }
 
     // How a check of the person ended, as Go knows it (core/system's Verdict).
     private static final int VERIFIED = 0;
