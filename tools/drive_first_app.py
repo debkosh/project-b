@@ -211,6 +211,13 @@ class Pages(http.server.BaseHTTPRequestHandler):
             # is by default and rel=noopener says outright.
             "/store": b'<!doctype html><title>Store</title><a id=link href=/store>Here</a> <a id=blank target=_blank href=/store>Blank</a> <a id=noopener target=_blank rel=noopener href=/store>No opener</a>',
             # A copy button, as sites make them: a click writes to the clipboard.
+            # A sign-in (docs/password-autofill.md): an email and a password in a form, text
+            # beside them to press on, and what the page's own world can see of the form
+            # script, which must be nothing.
+            "/signin": b'<!doctype html><title>Sign in</title><body style="margin:40px"><h1 id=aside style="margin:0 0 20px">Sign in</h1>'
+                       b'<form onsubmit="event.preventDefault()"><input id=email name=email type=email style="display:block;width:300px;height:30px;margin-bottom:20px">'
+                       b'<input id=password name=password type=password style="display:block;width:300px;height:30px"></form>'
+                       b'<script>window.seen = [typeof __pbFormsSend, typeof __pbFormsTransport, typeof __pbFormsReceive, typeof formScript].join()</script>',
             "/copy": b'<!doctype html><title>Copy</title><button id=copy style="width:300px;height:100px" onclick="navigator.clipboard.writeText(\'copied\').then(()=>document.title=\'copied\',e=>document.title=\'refused \'+e.name)">Copy</button>',
             # Passkeys (docs/passkeys.md): make(name, exclude, attachment) saves one for a
             # user, on a key that remembers it, or only on the kind of key attachment names;
@@ -3602,7 +3609,114 @@ def app_link_checks():
     app.close()
 
 
+def filling_checks():
+    """Filling a saved login on the real engine (docs/password-autofill.md). A login for this
+    Mac's test site comes in through Settings' passwords file. On its sign-in page a press
+    on the password field brings the shell's list beside the field, as the shell's own area;
+    a press on a login fills the username and the password into the page; a press elsewhere
+    on the page takes a list away; and the page's own scripts see nothing of the form
+    script, which runs in a world of its own."""
+    app = App(tempfile.mkdtemp(prefix="pb-profile-"))
+    secret = "correct-horse-battery"
+    settings = lambda expr: json.loads(app.cmd("evalsettings", expr))
+    app.cmd("key", "cmd+,")
+    deadline = time.time() + 10
+    while app.cmd("evalsettings", "!!document.querySelector('h1')") != "true":
+        if time.time() > deadline:
+            raise TimeoutError("the settings page never opened")
+        time.sleep(0.1)
+    file_input = "document.querySelector('input[aria-label=\"Passwords file\"]')"
+    deadline = time.time() + 15
+    while app.cmd("evalsettings", f"!!{file_input}") != "true":
+        if time.time() > deadline:
+            raise TimeoutError("Settings never showed its passwords file")
+        time.sleep(0.1)
+    csv = f"Title,URL,Username,Password,Notes,OTPAuth\\nsite,{PAGES},asha@example.org,{secret},,\\n"
+    settings("(() => { const input = " + file_input + "; const files = new DataTransfer(); "
+             f"files.items.add(new File(['{csv}'], 'Passwords.csv', {{type: 'text/csv'}})); input.files = files.files; "
+             "input.dispatchEvent(new Event('change', {bubbles: true})); return 1; })()")
+    deadline = time.time() + 30
+    came = ""
+    while "1 password" not in came and time.time() < deadline:
+        came = settings("document.querySelector('[aria-label=Import]')?.innerText.replace(/\\s+/g, ' ') || ''") or ""
+        time.sleep(0.2)
+    check("a login for the test site comes in through Settings", "1 password" in came, came[-200:])
+
+    # In a tab of its own: Settings' tab has no address field to type in.
+    new_tab(app, PAGES + "signin")
+    LIST = "document.querySelector('[role=menu][aria-label^=\"Saved passwords for\"]')"
+    rows = lambda: app.js(f"[...({LIST}?.querySelectorAll('[role=menuitem]') || [])].map(e => e.textContent.replace(/\\s+/g, ' ').trim())")
+    check("the page's own scripts see nothing of the form script", app.js("window.seen", page=True) == "undefined,undefined,undefined,undefined", app.js("window.seen", page=True))
+    check("a page's fields alone bring no list", not app.js(f"!!{LIST}"))
+    page_click(app, "#password")
+    app.wait(f"!!{LIST}", 10)
+    # A row's words run together as the page holds them: the username, then the dots.
+    check("a press on the password field lists the site's login, and Manage passwords…", rows() == ["asha@example.org••••••••", "Manage passwords…"], rows())
+    # Under the field, in the window: the page's place, then the field's in the page.
+    px, py = json.loads(app.cmd("bounds"))["reported"][:2]
+    fx, fy, fw, fh = app.js("(()=>{const r=document.querySelector('#password').getBoundingClientRect();return [r.x,r.y,r.width,r.height]})()", page=True)
+    lx, ly = app.js(f"(()=>{{const r={LIST}.getBoundingClientRect();return [r.x,r.y]}})()")
+    check("the list hangs under the field, at its left edge", abs(lx - (px + fx)) <= 2 and abs(ly - (py + fy + fh + 4)) <= 2, (lx, ly, px + fx, py + fy + fh + 4))
+    check("and is the shell's own area there, over the page", holds_hit(app, lx + 20, ly + 12), app.cmd("hit", lx + 20, ly + 12))
+
+    # A press elsewhere on the page takes it away, with nothing filled.
+    page_click(app, "#aside")
+    app.wait(f"!{LIST}", 10)
+    check("a press elsewhere on the page takes the list away, with nothing filled", app.js("document.querySelector('#password').value", page=True) == "")
+
+    # A press on the login fills, once the list has been up for its first half second.
+    page_click(app, "#email")
+    app.wait(f"!!{LIST}", 10)
+    time.sleep(0.7)
+    click_menu_item(app, "asha@example.org")
+    deadline = time.time() + 10
+    filled = []
+    while filled != ["asha@example.org", secret] and time.time() < deadline:
+        filled = app.js("[document.querySelector('#email').value, document.querySelector('#password').value]", page=True)
+        time.sleep(0.1)
+    check("a press on the login fills its username and its password into the page", filled == ["asha@example.org", secret], [filled[0], len(filled[1]) if len(filled) > 1 else None])
+    app.wait(f"!{LIST}", 10)
+    check("and the list goes", not app.js(f"!!{LIST}"))
+    check("no password is in the shell", secret not in app.js("document.documentElement.outerHTML"))
+
+    # The page keeps the keyboard: Down in the field goes to the login, Escape takes the
+    # list away with the field as it was, and Down then Enter fills.
+    app.js("document.querySelector('#email').value = ''; document.querySelector('#password').value = ''; 1", page=True)
+    page_click(app, "#password")
+    app.wait(f"!!{LIST}", 10)
+    app.cmd("key", "down")
+    app.wait(f"!!{LIST}?.querySelector('.login.at')", 10)
+    check("Down, pressed in the page's field, goes to the login", app.js(f"{LIST}.querySelector('[aria-current]').textContent.includes('asha@example.org')"))
+    print(app.cmd("capture", os.path.join(OUT, "filling-list.png")), flush=True)
+    app.cmd("key", "escape")
+    app.wait(f"!{LIST}", 10)
+    check("Escape in the field takes the list away, with nothing filled", app.js("document.querySelector('#password').value", page=True) == "")
+    page_click(app, "#aside")
+    page_click(app, "#password")
+    app.wait(f"!!{LIST}", 10)
+    app.cmd("key", "down")
+    app.wait(f"!!{LIST}?.querySelector('.login.at')", 10)
+    app.cmd("key", "enter")
+    deadline = time.time() + 10
+    filled = []
+    while filled != ["asha@example.org", secret] and time.time() < deadline:
+        filled = app.js("[document.querySelector('#email').value, document.querySelector('#password').value]", page=True)
+        time.sleep(0.1)
+    check("Down then Enter fills the login, from the keyboard alone", filled == ["asha@example.org", secret], [filled[0], len(filled[1]) if len(filled) > 1 else None])
+    app.close()
+
+
+def holds_hit(app, x, y, timeout=5):
+    """Whether the window comes to agree that a point is the shell's."""
+    end = time.time() + timeout
+    while time.time() < end:
+        if app.cmd("hit", x, y) == "shell":
+            return True
+        time.sleep(0.05)
+    return False
+
+
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
-    parts = {"driver": [driver_checks], "browsing": [browsing_checks], "actions": [action_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "signals": [browser_signal_checks], "clientcert": [client_cert_checks], "passkeys": [passkey_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks], "viewsource": [view_source_checks], "duplicate": [duplicate_checks], "applink": [app_link_checks], "serverkinds": [web_server_kinds_checks]}
-    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, action_checks, settings_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, glide_checks, browser_signal_checks, client_cert_checks, web_api_checks, passkey_checks, sparks_checks, links_checks, view_source_checks, duplicate_checks, app_link_checks, web_server_kinds_checks, quit_checks]))
+    parts = {"filling": [filling_checks], "driver": [driver_checks], "browsing": [browsing_checks], "actions": [action_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "signals": [browser_signal_checks], "clientcert": [client_cert_checks], "passkeys": [passkey_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks], "viewsource": [view_source_checks], "duplicate": [duplicate_checks], "applink": [app_link_checks], "serverkinds": [web_server_kinds_checks]}
+    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, action_checks, settings_checks, filling_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, glide_checks, browser_signal_checks, client_cert_checks, web_api_checks, passkey_checks, sparks_checks, links_checks, view_source_checks, duplicate_checks, app_link_checks, web_server_kinds_checks, quit_checks]))

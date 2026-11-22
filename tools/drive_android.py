@@ -254,6 +254,15 @@ PAGES["/passkey"] = ("<title>Passkey</title><style>button{display:block;width:10
                      ".then((c) => 'used ' + new TextDecoder().decode(c.response.userHandle)));</script>")
 
 
+# A sign-in (docs/password-autofill.md): an email and a password, big enough to tap, which
+# tells the server what they hold once both hold something. Not at /signin, which is the
+# server's own path for a sign-in over HTTP, answered before these pages; and with no "Sign in"
+# among its words, which is how screen_parts knows the shell's own sign-in dialog.
+PAGES["/login"] = ("<title>A login form</title><style>input{display:block;width:90%;height:12vh;font-size:40px;margin:4vh auto}</style>"
+                    "<form onsubmit='event.preventDefault()'><input id=e name=email type=email><input id=p name=password type=password></form><script>"
+                    "document.addEventListener('input', () => e.value && p.value && fetch('/said?filled=' + encodeURIComponent(e.value + ' ' + p.value)));</script>")
+
+
 # A page that fills the screen at a tap, as a video's full screen does, and says when it has.
 # A file input over the whole page, which says which file it got, or that the picker closed.
 PAGES["/upload"] = ("<title>Upload</title><input type=file id=f style='position:fixed;inset:0;width:100%;height:100%;opacity:0'><script>"
@@ -296,6 +305,22 @@ def until(condition, timeout=15):
         if time.time() > deadline:
             return None
         time.sleep(0.1)
+
+
+def still(find_node, timeout=20, hold=0.6):
+    """Waits for a node to show and then to stay where it is, and returns it, or None. A bar
+    over the foot of the page moves as the keyboard comes and goes, and a tap aimed at where a
+    chip was a moment ago lands on the keyboard or the page."""
+    deadline = time.time() + timeout
+    last = None
+    while time.time() < deadline:
+        node = find_node()
+        at = node.get("bounds") if node is not None else None
+        if at is not None and at == last:
+            return node
+        last = at
+        time.sleep(hold)
+    return None
 
 
 def asked(path, timeout=15):
@@ -411,6 +436,14 @@ def middle(node):
 
 def tap(point):
     adb("shell", "input", "tap", str(point[0]), str(point[1]))
+
+
+def finger(point, ms=150):
+    """A tap as a finger makes it, down for a moment before it is up. `input tap` is up at
+    once, before anything the touch set off has moved what is under it: it filled from a chip
+    that a finger missed nearly every time (docs/fragility.md, "A tap on a saved login's chip
+    lost")."""
+    adb("shell", "input", "swipe", str(point[0]), str(point[1]), str(point[0]), str(point[1]), str(ms))
 
 
 def press(label):
@@ -1920,7 +1953,10 @@ def passwords_on_the_phone():
     and Privacy's Passwords row opens a page that lists the login by site and username, with
     no password, and counts it. With no screen lock Show, on the login's row, says to set
     one. With a PIN set, Show brings Android's own check and the PIN shows the password; Copy,
-    the check holding for the page, brings none and says the password was copied. The PIN is cleared at the end, whatever happened: a lock left on
+    the check holding for the page, brings none and says the password was copied. Then
+    filling (docs/password-autofill.md): on a sign-in page of this Mac's test site, a tap on
+    the password field brings the login sync brought for that site as a chip over the foot
+    of the page, and a tap on the chip fills the page's fields, with no check of the person. The PIN is cleared at the end, whatever happened: a lock left on
     stalls every other run."""
     pin = "1357"
     site, username, password, passphrase = "mail.example", "asha", "copper-lantern-42", "river meadow lantern copper"
@@ -1949,9 +1985,12 @@ def passwords_on_the_phone():
     address = "https://127.0.0.1:%d/sync/passwords" % port
     adb("shell", "locksettings", "clear", "--old", pin)
     try:
+        # Two logins: one for a site to list in Settings, one for this Mac's test site to fill.
+        fill_user, fill_password = "filler@example.org", "fill-me-in-7"
         other = subprocess.run([binaries["syncdevice"], "-address", address, "-ca", os.path.join(folder, "ca.pem"), "-passphrase", passphrase,
-                                "-origin", "https://" + site, "-username", username, "-password", password], capture_output=True, text=True, timeout=120)
-        check("another device saves a login and turns sync on with the bucket", "synced" in other.stdout, other.stdout[-300:] + other.stderr[-600:])
+                                "-login", "https://%s|%s|%s" % (site, username, password),
+                                "-login", "http://%s|%s|%s" % (BASE, fill_user, fill_password)], capture_output=True, text=True, timeout=120)
+        check("another device saves two logins and turns sync on with the bucket", "synced" in other.stdout, other.stdout[-300:] + other.stderr[-600:])
         adb("reverse", "tcp:%d" % port, "tcp:%d" % port)
         adb("shell", "mkdir", "-p", "/data/misc/keychain/certs-added")
         adb("push", os.path.join(folder, "ca.pem"), "/data/misc/keychain/certs-added/project-b-sync-test.0")
@@ -1992,7 +2031,7 @@ def passwords_on_the_phone():
         listed = until(lambda: node(starts(site)), 60)
         said = words()
         check("its page lists the login sync brought, by its site and username, with no password, and counts it",
-              listed is not None and any(username in t for t in said) and "1 saved" in said and not any(password in t for t in said) and any(t.startswith("Sealed for this profile; your sync server can't read them.") and "your screen lock" in t for t in said), said[:60])
+              listed is not None and any(username in t for t in said) and "2 saved" in said and not any(password in t for t in said) and any(t.startswith("Sealed for this profile; your sync server can't read them.") and "your screen lock" in t for t in said), said[:60])
         shot("passwords-list")
         show = "Show the password for " + site
         tap(middle(see_named("settings", show)))  # does: passwordShow
@@ -2009,6 +2048,28 @@ def passwords_on_the_phone():
         copied = until(lambda: settings_text("Password copied"), 20)
         check("Copy, the check holding for the page, says the password was copied and brings no second check",
               copied is not None and system_node(text="Show your password") is None)
+
+        # Filling, with the PIN still set: a fill asks for no check.
+        launch()
+        go(BASE + "/login")
+        asked("/login")
+        served.clear()
+        inputs = until(lambda: [n for n in screen_parts().get("page", ET.Element("none")).iter("node") if n.get("class") == FIELD] or None, 20) or []
+        check("the sign-in page shows its two fields", len(inputs) == 2, len(inputs))
+        tap(middle(inputs[1]))
+        chip = until(lambda: first(lambda: find("shell", text=fill_user), lambda: find("shell", label=fill_user)), 20)
+        check("a tap on the password field brings the site's login as a chip, outside the page", chip is not None,
+              [w for n in screen_parts().get("shell", ET.Element("none")).iter("node") for w in (n.get("text"), n.get("content-desc")) if w][:40])
+        shot("passwords-fill-chip")
+        # A tap in the bar's first half second is no pick; and the chip is tapped where it
+        # is once the keyboard has stopped moving the bar, as a finger taps: down a moment,
+        # in which the keyboard goes and the bar with it.
+        time.sleep(0.8)
+        chip = still(lambda: first(lambda: find("shell", text=fill_user), lambda: find("shell", label=fill_user)))
+        finger(middle(chip))
+        check("a tap on the chip fills the username and the password into the page", asked("/said?filled=" + urllib.parse.quote(fill_user + " " + fill_password)), str(served))
+        check("and nothing asked for the PIN", system_node(text="Show your password") is None)
+        shot("passwords-filled")
     finally:
         adb("shell", "locksettings", "clear", "--old", pin)
         check("the PIN is cleared after the run", until(lambda: "true" in adb("shell", "locksettings", "get-disabled").lower()) is not None, adb("shell", "locksettings", "get-disabled"))
