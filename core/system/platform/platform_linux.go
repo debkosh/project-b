@@ -59,8 +59,9 @@ func (s *System) verifyPerson(id int32, _ system.PersonCheck) {
 
 func (s *System) cancelPerson(int32) {}
 
-// otherNote is none on Linux: every note is a page's.
-func otherNote(string, string) bool { return false }
+// otherNote is amarit's update notice on Linux, which its flatpak package posts and answers
+// itself (id "amarit-update"): a press on it is no page's.
+func otherNote(id, _ string) bool { return id == "amarit-update" }
 
 // OnOpenURLs: the desktop hands links and files on the command line, and a copy already
 // running gets them through core/instance, so nothing comes this way.
