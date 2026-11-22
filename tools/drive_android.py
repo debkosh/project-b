@@ -2103,6 +2103,32 @@ def passwords_on_the_phone():
         view_link("project-b://sync?address=" + urllib.parse.quote(address, safe=""))
         tap(middle(see("settings", text="Connect", timeout=30)))
         see("settings", text="Enter your sync passphrase", timeout=30)
+        # The other way in, a backup code, can be scanned on a phone (docs/sync.md, "Backup
+        # code"): the scanner's own screen opens over the app, asking for the camera the
+        # first time, and the back key leaves it with nothing read. What it reads from a
+        # code held up to a real camera is not something an emulator can show.
+        tap(middle(see("settings", text="Use backup code instead")))
+        tap(middle(see("settings", label="Scan QR code")))  # does: syncBackupScan
+        until(lambda: "GrantPermissions" in in_front_now() or "CaptureActivity" in in_front_now(), 20)
+        if "GrantPermissions" in in_front_now():
+            # Android 11 and later ask "While using the app"; Android 10 asks "Allow".
+            allow = first(lambda: system_button("While using the app", 5), lambda: system_button("Allow", 5))
+            if allow is not None:
+                tap(middle(allow))
+        check("Scan QR code, at the field's end, opens the scanner's own screen, once Android's question about the camera is answered",
+              until(lambda: "CaptureActivity" in in_front_now(), 20) is not None, in_front_now())
+        # The camera takes a moment to start: then its picture shows, under the scanner's frame.
+        time.sleep(4)
+        shot("passwords-scanner")
+        # A back key pressed while the camera is still starting can be lost (emu-37, once in
+        # three runs): once more if the scanner is still in front.
+        key(4)
+        if until(lambda: "CaptureActivity" not in in_front_now(), 6) is None:
+            key(4)
+        check("the back key leaves the scanner, with the join step as it was and nothing read",
+              until(lambda: in_front() and find("settings", text="Use the passphrase instead") is not None, 20) is not None, in_front_now())
+        tap(middle(see("settings", text="Use the passphrase instead")))
+        see("settings", text="Enter your sync passphrase", timeout=30)
         # The field, once Android reads the Dialog: its tree is empty while the Dialog comes in.
         tap(middle(until(lambda: next((n for n in screen_parts().get("settings", ET.Element("none")).iter("node") if n.get("class") == FIELD), None), 20)))
         type_text(passphrase)
@@ -2216,6 +2242,9 @@ def passwords_on_the_phone():
         srv.terminate()
         adb("reverse", "--remove", "tcp:%d" % port)
         adb("shell", "rm", "-f", "/data/misc/keychain/certs-added/project-b-sync-test.0")
+        # The scanner was allowed the camera: taken back, as a reinstall over the app can
+        # keep the grant, and a later run would then see no question about it.
+        adb("shell", "pm", "revoke", PACKAGE, "android.permission.CAMERA")
 
 
 def the_page_renderer_dies():
