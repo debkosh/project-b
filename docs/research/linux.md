@@ -524,10 +524,14 @@ Step 4 is `core/system` on Linux (section 4's table), all from pure Go over D-Bu
   passed; the one failure, the first run after boot, had no new copy after Relaunch, and the
   check now prints the serving portal's environment to find out why (amarit's guess: a
   portal systemd started with no display, so the spawned copy had none).
-- **Still to check on a desktop:** dark mode on GNOME and KDE; the update notification's
-  Relaunch button; single instance and links from the OS (already built: core/instance's
-  socket in `$XDG_RUNTIME_DIR/app/<id>`, the `.desktop` file's `%U`). Then the AppStream
-  screenshots with ux.
+- **Checked on desktops** (2026-11-22): dark mode on GNOME and KDE (ux approved the shots);
+  the update notification's Relaunch, clicked on GNOME on a fresh boot; single instance and
+  links from the OS on both (core/instance's socket in `$XDG_RUNTIME_DIR/app/<id>`, the
+  `.desktop` file's `%U`); the stock portal gives a spawned copy the session's display.
+- **The software centres' screenshots** (`tools/linux/appstream_shots.py`, ux's set and
+  captions): Standard and the welcome are in the metainfo, from the site's
+  `linux/screenshots/`; Glide follows once a fresh profile's Main workspace starts teal, as
+  Glide paints the workspace's colour and it starts pink today.
 
 How the Linux work runs (rules from this branch's sessions):
 - Build: `tools/build.sh linux arm64` (amarit job; container `pb`, build lock), then
