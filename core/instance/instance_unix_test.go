@@ -73,3 +73,38 @@ func TestTheOwnerAnswersQuitWithItsProcessAndQuits(t *testing.T) {
 		t.Fatalf("a folder whose owner has gone: %d, %v", pid, err)
 	}
 }
+
+// A copy the Flatpak portal starts for an update, while the copy it replaces is quitting,
+// waits for the folder rather than handing itself over; one whose owner never goes hands
+// over once the wait is up.
+func TestClaimAfterWaitsForTheOwnerToGo(t *testing.T) {
+	dir := t.TempDir()
+	old, err := Claim(dir, nil)
+	if err != nil || old == nil {
+		t.Fatalf("the old copy: %v, %v", old, err)
+	}
+	go func() {
+		time.Sleep(300 * time.Millisecond)
+		old.Close()
+	}()
+	started := time.Now()
+	next, err := ClaimAfter(dir, 10*time.Second)
+	if err != nil || next == nil {
+		t.Fatalf("the new copy should own the folder once the old one has gone: %v, %v", next, err)
+	}
+	if waited := time.Since(started); waited < 250*time.Millisecond {
+		t.Fatalf("it owned the folder after %v, while the old copy still held it", waited)
+	}
+
+	got := make(chan []string, 1)
+	next.Serve(func(urls []string) { got <- urls }, func() {})
+	defer next.Close()
+	if o, err := ClaimAfter(dir, 200*time.Millisecond); err != nil || o != nil {
+		t.Fatalf("with the owner staying, it should hand over: %v, %v", o, err)
+	}
+	select {
+	case <-got:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the owner was never handed over to")
+	}
+}
