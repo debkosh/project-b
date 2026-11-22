@@ -479,7 +479,7 @@ Done, reviewed by ux, on the four desktops in clones of deskrig's VMs (`pb-flat-
 Left for step 4: "System" theme follows the desktop through the Settings portal (on GNOME it
 stays light today), and the rest of `core/system`.
 
-### Step 4, the plan (resume here)
+### Step 4, the plan
 
 Step 4 is `core/system` on Linux (section 4's table), all from pure Go over D-Bus
 (`github.com/godbus/dbus/v5`, already in `core/go.mod` for the Secret portal in
@@ -504,6 +504,30 @@ Step 4 is `core/system` on Linux (section 4's table), all from pure Go over D-Bu
 2. Then the rest of section 4's table: OpenURI (OpenFile, RevealFile), notifications (the
    Notification portal, ActionInvoked), IsDefaultBrowser from `mimeapps.list`, the accent colour.
 3. Step 5's remaining piece is amarit's Flatpak update source (amarit's docs/design.md).
+
+### Steps 4 and 5, where they stand (2026-11-22, resume here)
+
+- **Dark mode** is in: Go reads the Settings portal (`portal_linux.go`, WatchDark) and the
+  engine's `set_system_dark` makes it Chromium's colour-scheme override, so the frames repaint
+  and the pages, the shells among them, follow. Its Go test passed on pb-ubuntu against a fake
+  portal; `tools/linux/check_dark_mode.py` checks it on GNOME and KDE, with shots for ux, and
+  is still to run.
+- **Opening files, the default browser, notifications and the device key** move to oskit
+  ([oskit.md](../oskit.md)): the Linux halves are written (open and secret on branch
+  `oskit-linux`, notify in oskit), and their tests passed on pb-ubuntu. Until oskit is on main,
+  Linux's OpenFile and RevealFile only log, and IsDefaultBrowser is false; once it is,
+  `core/system/platform` becomes the adapter onto it and `core/keys`' Secret-portal code goes.
+- **The default browser's words** (ux's): no button on Linux; the line names GNOME's or KDE's
+  settings (`Desktop()`), and every desktop asks again as a window comes to the front.
+- **Updates** (step 5) are in: amarit/flatpak (section 5). `tools/linux/update_check.py`
+  updates the real Flatpak end to end from a local repository in pb-ubuntu: 6 of 7 runs
+  passed; the one failure, the first run after boot, had no new copy after Relaunch, and the
+  check now prints the serving portal's environment to find out why (amarit's guess: a
+  portal systemd started with no display, so the spawned copy had none).
+- **Still to check on a desktop:** dark mode on GNOME and KDE; the update notification's
+  Relaunch button; single instance and links from the OS (already built: core/instance's
+  socket in `$XDG_RUNTIME_DIR/app/<id>`, the `.desktop` file's `%U`). Then the AppStream
+  screenshots with ux.
 
 How the Linux work runs (rules from this branch's sessions):
 - Build: `tools/build.sh linux arm64` (amarit job; container `pb`, build lock), then
