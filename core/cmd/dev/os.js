@@ -293,6 +293,7 @@
     // window: the layers diagram's ending frame (docs: the window's layers).
     const Z = { content: 72, shell: 136, frame: 200 };
     const EASE = '0.8s cubic-bezier(0.2, 0.8, 0.2, 1)';
+    const SCALE = 0.44;
     const LABELS = [
       ['frame', 'Frame', 'The frame band and the window buttons', "4px of frame colour on the window's corner, over the page and the shell; the buttons sit on it."],
       ['shell', 'Shell', 'The shell', 'A web page over the whole window, with a hole where the page shows.'],
@@ -317,7 +318,9 @@
         html.pb-layers .mock-page, html.pb-layers .our-page { transform: translateZ(var(--pbl-content)); }
         html.pb-layers .shell { transform: translateZ(var(--pbl-shell)); }
         html.pb-layers .band, html.pb-layers .controls { transform: translateZ(var(--pbl-frame)); }
-        html.pb-layers .outlines { display: none !important; }`;
+        html.pb-layers .outlines { display: none !important; }
+        html.pb-layers #window, html.pb-layers .band { border-radius: var(--pbl-r) !important; transition: transform ${EASE}, border-radius ${EASE}, border-width ${EASE}; }
+        html.pb-layers .band { border-width: var(--pbl-bw) !important; }`;
       doc.head.append(st);
       // Esc in the window, where the keyboard may still be, puts it back too.
       doc.defaultView.addEventListener('keydown', (e) => { if (open && e.key === 'Escape') set(false, by(e)); });
@@ -328,9 +331,17 @@
       const r = w.el.getBoundingClientRect();
       const k = r.width / 380;
       const root = doc.documentElement;
-      const t = apart ? `translate(${-r.width * 0.19}px, ${r.height * 0.16}px) scale(0.44) rotateX(55deg) rotateZ(-28deg)` : 'translate(0px, 0px) scale(1) rotateX(0deg) rotateZ(0deg)';
+      const t = apart ? `translate(${-r.width * 0.19}px, ${r.height * 0.16}px) scale(${SCALE}) rotateX(55deg) rotateZ(-28deg)` : 'translate(0px, 0px) scale(1) rotateX(0deg) rotateZ(0deg)';
       root.style.setProperty('--pbl-t', t);
       for (const [g, z] of Object.entries(Z)) root.style.setProperty('--pbl-' + g, (apart ? z * k : 0) + 'px');
+      // The stack is drawn at SCALE, so the window's corner and its band are drawn larger by
+      // as much, to look as they do on the window itself: rounded, and 4px wide.
+      const radius = w.radius || 0;
+      const bw = parseFloat(getComputedStyle(doc.querySelector('.band')).borderTopWidth) || 0;
+      root.style.setProperty('--pbl-r', (apart ? radius / SCALE : radius) + 'px');
+      if (!root.dataset.pblBw) root.dataset.pblBw = bw;
+      const band0 = +root.dataset.pblBw;
+      root.style.setProperty('--pbl-bw', (apart ? band0 / SCALE : band0) + 'px');
     }
     const wait = (ms) => new Promise((res) => setTimeout(res, ms));
 
@@ -416,6 +427,7 @@
         overlay.hidden = true;
         overlay.replaceChildren();
         doc.documentElement.classList.remove('pb-layers');
+        delete doc.documentElement.dataset.pblBw;
         w.el.classList.remove('layers');
         document.body.classList.remove('layering');
         w.frame.style.colorScheme = '';
