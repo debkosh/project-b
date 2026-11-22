@@ -123,8 +123,8 @@ def main():
         cwd=os.path.join(repo, "core"), env=env)
 
     deps.append(os.path.join(link, "engine/abi/pb_abi.h"))
-    # core, and browserdata, the module of its own that core's go.mod replaces with ../browserdata.
-    for module in ("core", "browserdata"):
+    # core, and the modules of their own that core's go.mod replaces: browserdata and oskit.
+    for module in ("core", "browserdata", "oskit"):
         top = os.path.join(repo, module)
         for root, _, files in os.walk(top):
             if "testdata" in os.path.relpath(root, top).split(os.sep):
@@ -133,7 +133,8 @@ def main():
             # which knows only the files that were there last time, would keep the old library.
             deps.append(os.path.join(link, module, os.path.relpath(root, top)))
             for name in files:
-                if name.endswith((".go", ".mod", ".json")) and not name.endswith("_test.go"):
+                if (name.endswith((".go", ".mod", ".json", ".c", ".h", ".m"))
+                        and not name.endswith("_test.go")):
                     rel = os.path.relpath(os.path.join(root, name), top)
                     deps.append(os.path.join(link, module, rel))
     with open(depfile, "w") as f:

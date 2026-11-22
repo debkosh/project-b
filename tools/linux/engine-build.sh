@@ -30,7 +30,7 @@ python3 - "$REPO" "$TREE" <<'PY' || { echo "RESULT=failed copy"; exit 1; }
 import filecmp, os, shutil, sys
 src, dst = sys.argv[1:3]
 keep = set()
-for top in ("engine", "core", "browserdata", "shell/dist", "VERSION"):
+for top in ("engine", "core", "browserdata", "oskit", "shell/dist", "VERSION"):
     base = os.path.join(src, top)
     files = [base] if os.path.isfile(base) else [os.path.join(d, f) for d, _, fs in os.walk(base) for f in fs]
     for path in files:
@@ -51,7 +51,7 @@ for d, _, fs in os.walk(dst):
 PY
 
 mkdir -p "$SRC/project_b"
-for part in engine core browserdata shell VERSION; do
+for part in engine core browserdata oskit shell VERSION; do
   ln -sfn "$TREE/$part" "$SRC/project_b/$part"
 done
 

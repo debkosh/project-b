@@ -85,6 +85,8 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/sudiptadeb/oskit"
+
 	"projectb/abi"
 	"projectb/app"
 	"projectb/cmdline"
@@ -637,6 +639,8 @@ func PBStart(calls *C.PBEngineCalls, blockedHosts *C.char, skip C.int) {
 	timeline.Mark("go.starting")
 	// The tables are C memory that lives as long as the process.
 	native = &nativeEngine{calls: calls}
+	// The OS's answers and events (oskit's) come to the main thread, as everything Go's does.
+	oskit.SetPost(native.Post)
 	events = abi.New()
 	// An engine with no content under it has no hooks, and nothing subscribes to one.
 	hooks = content.New(func(content.Hook) {})

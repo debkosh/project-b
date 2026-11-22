@@ -37,7 +37,7 @@ python3 - "$REPO" "$TREE" <<'PY' || { echo "RESULT=failed copy"; exit 1; }
 import filecmp, os, shutil, sys
 src, dst = sys.argv[1:3]
 keep = set()
-for top in ("engine", "core", "browserdata", "shell/dist", "VERSION"):
+for top in ("engine", "core", "browserdata", "oskit", "shell/dist", "VERSION"):
     base = os.path.join(src, top)
     files = [base] if os.path.isfile(base) else [os.path.join(d, f) for d, _, fs in os.walk(base) for f in fs]
     for path in files:
@@ -62,6 +62,7 @@ mkdir -p "$SRC/project_b"
 ln -sfn "$TREE/engine" "$SRC/project_b/engine"
 ln -sfn "$TREE/core" "$SRC/project_b/core"
 ln -sfn "$TREE/browserdata" "$SRC/project_b/browserdata"
+ln -sfn "$TREE/oskit" "$SRC/project_b/oskit"
 ln -sfn "$TREE/shell" "$SRC/project_b/shell"
 
 # The APK's versionCode grows with VERSION: 0.2.13 is 2013. A Dev build, 0.2.14-dev.<time>,

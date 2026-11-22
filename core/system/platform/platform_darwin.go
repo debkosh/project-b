@@ -2,7 +2,7 @@ package platform
 
 /*
 #cgo CFLAGS: -fobjc-arc
-#cgo LDFLAGS: -framework AppKit -framework UserNotifications -framework LocalAuthentication
+#cgo LDFLAGS: -framework AppKit -framework LocalAuthentication
 #include <stdlib.h>
 #include "platform_darwin.h"
 */
@@ -47,12 +47,6 @@ func (s *System) AskDefaultBrowser(answered func(bool)) {
 	s.defaultBrowser.Ask(answered, func() { C.pb_system_ask_default_browser() })
 }
 
-// A Mac's notifications are the app's own to show: allowed, with nothing to ask.
-func (s *System) NotificationsAllowed() bool { return true }
-
-func (s *System) AskNotifications(answered func(bool)) {
-	s.notifications.Ask(answered, func() { C.pb_system_answer_notifications() })
-}
 
 // verifyPerson asks macOS's own sheet: Touch ID, else the Mac's password.
 func (s *System) verifyPerson(id int32, check system.PersonCheck) {
@@ -72,19 +66,6 @@ func (s *System) SetDockColor(color string) {
 		return
 	}
 	C.pb_system_set_dock_color(C.int32_t(rgb))
-}
-
-func (s *System) ShowNotification(n system.Notification) {
-	id, title, subtitle, body := C.CString(n.ID), C.CString(n.Title), C.CString(n.Subtitle), C.CString(n.Body)
-	defer C.free(unsafe.Pointer(id))
-	defer C.free(unsafe.Pointer(title))
-	defer C.free(unsafe.Pointer(subtitle))
-	defer C.free(unsafe.Pointer(body))
-	C.pb_system_show_notification(id, title, subtitle, body)
-}
-
-func (s *System) RemoveNotification(id string) {
-	withPath(id, func(c *C.char) { C.pb_system_remove_notification(c) })
 }
 
 func (s *System) OnOpenURLs(opened func(urls []string)) {
@@ -118,10 +99,12 @@ func (s *System) Report(version string) []crash.Section {
 // DownloadsDir is where downloads go on a Mac: the user's own Downloads folder.
 func DownloadsDir(home string) string { return filepath.Join(home, "Downloads") }
 
-// PBSystemAmaritResponse is a press on the update's notification, which amarit posted
-// (macapp.Present): Relaunch goes to the updater.
-//
-//export PBSystemAmaritResponse
-func PBSystemAmaritResponse(category, action *C.char) {
-	macapp.HandleNotificationResponse(C.GoString(category), C.GoString(action))
+// otherNote takes a press on the update's notification, which amarit posted (macapp.Present)
+// under its category as its id: Relaunch goes to the updater.
+func otherNote(id, action string) bool {
+	if id != macapp.Category {
+		return false
+	}
+	macapp.HandleNotificationResponse(id, action)
+	return true
 }

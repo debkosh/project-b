@@ -19,10 +19,6 @@ typedef struct PBSystemCalls {
   // question 1.
   int (*is_default_browser)(void);
   void (*ask_default_browser)(void);
-  // 1 when the app may post notifications now; asking asks the person from Android 13,
-  // answered as question 2.
-  int (*notifications_allowed)(void);
-  void (*ask_notifications)(void);
   // Checks the person is the phone's owner, in Android's own sheet (BiometricPrompt): a
   // fingerprint, a face or the screen lock, under title and subtitle. How it ended reaches
   // Go as PBSystemPersonVerified(id, 0 verified, 1 not, 2 no screen lock), on the main
