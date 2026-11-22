@@ -78,6 +78,10 @@ const transport = `
   const press = await last('pressed');
   const box = await page.locator('[name=pass]').boundingBox();
   check('a press on a field tells which, and where it is', !!press && press.ref === pass.ref && Math.abs(press.box.x - box.x) < 1 && Math.abs(press.box.y - box.y) < 1 && Math.abs(press.box.w - box.width) < 1 && press.box.h > 5, JSON.stringify(press));
+  // A press on the page away from any field is told with no field, so a list goes.
+  await page.mouse.click(600, 500);
+  check('a press on the page that is on no field is told as one on none', await until(async () => (await last('pressed')).ref === ''), JSON.stringify(await last('pressed')));
+
   // A field the page focuses itself, as autofocus does, is told as well: the list may be
   // offered there, and nothing is filled until the person picks from it.
   await page.evaluate(() => document.querySelector('[name=email]').focus());
@@ -107,6 +111,35 @@ const transport = `
   check('a field out of sight, or one that can\'t be typed in, is never filled', (await page.locator('[name=hid]').inputValue()) === '' && (await page.locator('[name=ro]').inputValue()) === '');
   check('the page hears a fill as it hears typing', JSON.stringify(await page.evaluate(() => window.heard)) === '["user=asha","pass=tr0ub4dor&3"]', JSON.stringify(await page.evaluate(() => window.heard)));
 
+  // While Go asks for a field's keys, its arrows, Escape, and Enter once an arrow has
+  // moved, are told and kept from the page; nothing typed is told; and with no field
+  // asked for, the keys are the page's own.
+  await open(`<form onsubmit="event.preventDefault(); window.sent = (window.sent || 0) + 1"><input name="user"><input name="pass" type="password"><button>Go</button></form>
+    <script>window.keys = []; document.addEventListener('keydown', (e) => window.keys.push(e.key));</script>`);
+  await until(async () => (await sent('fields')).length >= 1);
+  const ku = await byName('user');
+  await page.locator('[name=user]').click();
+  await page.keyboard.press('ArrowDown');
+  check('with no field asked for, a key is the page\'s and nothing is told', (await sent('key')).length === 0 && JSON.stringify(await page.evaluate(() => window.keys)) === '["ArrowDown"]');
+  await toScript('keys', { ref: ku.ref });
+  await page.keyboard.press('Enter');
+  check('Enter before any arrow is the page\'s: it sends the form, and isn\'t told', (await sent('key')).length === 0 && (await page.evaluate(() => window.sent)) === 1);
+  await page.keyboard.type('ab');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Escape');
+  check('the arrows, then Enter, and Escape are told, in order', JSON.stringify((await sent('key')).map((k) => k.key)) === '["ArrowDown","ArrowUp","Enter","Escape"]' && (await sent('key')).every((k) => k.ref === ku.ref), JSON.stringify(await sent('key')));
+  check('and kept from the page, which heard only the Enter before and what was typed', JSON.stringify(await page.evaluate(() => window.keys)) === '["ArrowDown","Enter","a","b"]' && (await page.evaluate(() => window.sent)) === 1, JSON.stringify(await page.evaluate(() => window.keys)));
+  check('nothing typed was told', !JSON.stringify(await page.evaluate(() => window.__sent)).includes('"ab"') && (await sent('key')).length === 4);
+  await page.locator('[name=pass]').click();
+  await page.keyboard.press('ArrowDown');
+  check('a key in another field than the one asked for is the page\'s', (await sent('key')).length === 4);
+  await toScript('keys', { ref: '' });
+  await page.locator('[name=user]').click();
+  await page.keyboard.press('ArrowDown');
+  check('and once Go asks for none, the keys are the page\'s again', (await sent('key')).length === 4);
+
   // Fields in no form, sent by a script's own button; and a form that goes after its request.
   await open(`<input name="user" value="asha"><input name="pass" type="password" value="s3cret"><button id="go" type="button">Log in</button>
     <script>document.getElementById('go').addEventListener('click', () => setTimeout(() => document.querySelectorAll('input').forEach((i) => i.remove()), 300));</script>`);
@@ -135,11 +168,31 @@ const transport = `
   await toScript('fill', { values: { [su.ref]: 'asha', [sp.ref]: 'in-the-shadows' } });
   check('and a fill reaches it', (await page.locator('login-box').locator('[name=user]').inputValue()) === 'asha' && (await page.locator('login-box').locator('[name=pass]').inputValue()) === 'in-the-shadows');
 
+  // A field in a frame of the page's own site is told where it is in the page, not in
+  // its frame.
+  await page.route('https://forms.test/inner', (route) => route.fulfill({ contentType: 'text/html', body: '<!doctype html><body style="margin:0"><input name="deep" style="position:absolute;left:30px;top:40px">' }));
+  await open('<div style="height:100px"></div><iframe src="https://forms.test/inner" style="position:absolute;left:200px;top:150px;border:0" width="300" height="200"></iframe>');
+  const inner = page.frames().find((f) => f.url().endsWith('/inner'));
+  await inner.locator('[name=deep]').click();
+  const deep = await until(async () => (await inner.evaluate(() => window.__sent.filter((m) => m[0] === 'pressed').map((m) => m[1]).at(-1))) || null);
+  const where = await inner.evaluate(() => window.__sent.filter((m) => m[0] === 'pressed').map((m) => m[1]).at(-1));
+  check('a press on a field in a frame of the page\'s own site is told where it is in the page', !!deep && Math.abs(where.box.x - 230) <= 1 && Math.abs(where.box.y - 190) <= 1, JSON.stringify(where));
+
   // A field kept only for a password manager to find, drawn nowhere, is told as neither
   // seen nor to be used.
   await open('<form><input name="email" type="email"><input name="hint" type="password" style="display:none" tabindex="0"><input name="off" type="password" style="position:absolute;left:-9999px"></form>');
   await until(async () => (await sent('fields')).length >= 1);
   check('a field drawn nowhere is neither seen nor to be used, and one off the page\'s edge isn\'t seen', (await byName('hint')).visible === false && (await byName('hint')).focusable === false && (await byName('off')).visible === false, JSON.stringify(await last('fields')));
+
+  // A field focused the moment it is put on the page, as an autofocus and a quick press
+  // are: its page's fields are told first, with that field among them, and then the press.
+  await open('<p id="here"></p><script>setTimeout(() => { here.innerHTML = \'<form><input name="user" type="email"><input name="pw" type="password"></form>\'; here.querySelector("[name=pw]").focus(); }, 300);</script>');
+  await until(async () => (await sent('pressed')).length >= 1);
+  const order = await page.evaluate(() => window.__sent.map((m) => m[0]));
+  const quick = (await sent('pressed'))[0];
+  const first = (await sent('fields'))[0];
+  check('a field focused as it appears is told among its page\'s fields before its press is', order.indexOf('fields') >= 0 && order.indexOf('fields') < order.indexOf('pressed') &&
+    !!first && first.fields.some((f) => f.ref === quick.ref && f.name === 'pw'), JSON.stringify([order, quick, first && first.fields.map((f) => [f.ref, f.name])]));
 
   // A page with no field tells nothing.
   await open('<p>Nothing to fill in here.</p>');

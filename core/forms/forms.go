@@ -110,6 +110,21 @@ type Fill struct {
 	Values map[string]string `json:"values"`
 }
 
+// Keys is Go's "keys": the field whose arrow keys, Enter and Escape the page side tells
+// and keeps from the page, while a list is offered at it; "" for none. The person's
+// typing in the field is never told.
+type Keys struct {
+	Ref string `json:"ref"`
+}
+
+// Key is the page side's "key": one of those keys pressed in that field: "ArrowDown",
+// "ArrowUp", "Enter" or "Escape". Enter is told, and kept from the page, only once an
+// arrow has moved in the list: before that it is the page's, as it sends a form.
+type Key struct {
+	Ref string `json:"ref"`
+	Key string `json:"key"`
+}
+
 // Filled is the page side's answer to a fill: the fields it filled.
 type Filled struct {
 	Refs []string `json:"refs"`

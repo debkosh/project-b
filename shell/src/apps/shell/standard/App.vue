@@ -3,6 +3,7 @@ import { computed, watchEffect } from 'vue';
 import BookmarkBar from './BookmarkBar.vue';
 import MenuBar from '@/ui/MenuBar.vue';
 import FloatMenu from './FloatMenu.vue';
+import PasswordOffer from './PasswordOffer.vue';
 import PageMenu from '@/ui/PageMenu.vue';
 import TabMenu from './TabMenu.vue';
 import PageView from './PageView.vue';
@@ -61,6 +62,7 @@ watchEffect(() => {
     </div>
     <div v-show="!pageFull" class="edge bottom"></div>
     <FloatMenu />
+    <PasswordOffer />
     <PageMenu />
     <TabMenu />
   </div>

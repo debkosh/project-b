@@ -138,11 +138,16 @@ export const state = {
   // own tabs and answers with permissions.js (docs/daily-driver.md).
   permissionPrompts: [],
   openSites: {},
+  // The saved logins offered at a field of a tab's page the person pressed, or null:
+  // {id, tab, box, site, framed, field, logins: [{id, username, savedFor}]}, the box in
+  // the tab's page. A shell lists them beside the field and answers passwordPick or
+  // passwordDismiss (docs/password-autofill.md). It holds no password.
+  passwordOffer: null,
 };
 
 // The messages that are only state: each sets the fields it carries, whole. The one
 // exception is tabs, whose tabs carry no favicon: each keeps the one it had (below).
-const updates = new Set(['theme', 'windowColor', 'controls', 'keys', 'workspaces', 'update', 'crashLog', 'tabLayout', 'addressBarPosition', 'extensions', 'profileData', 'contextMenu', 'downloads', 'dialogs', 'prefs', 'find', 'pageFullScreen', 'welcome', 'searchEngine', 'permissionPrompts', 'openSites', 'bookmarks', 'bookmarkPanel', 'pins', 'menu', 'barMenu']);
+const updates = new Set(['theme', 'windowColor', 'controls', 'keys', 'workspaces', 'update', 'crashLog', 'tabLayout', 'addressBarPosition', 'extensions', 'profileData', 'contextMenu', 'downloads', 'dialogs', 'prefs', 'find', 'pageFullScreen', 'welcome', 'searchEngine', 'permissionPrompts', 'openSites', 'bookmarks', 'bookmarkPanel', 'pins', 'menu', 'barMenu', 'passwordOffer']);
 
 const listeners = [];
 

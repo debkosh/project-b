@@ -121,6 +121,7 @@ source_set("common") {
     "common/renderer_client.h",
     "common/utility_client.cc",
     "common/utility_client.h",
+    "common/worlds.h",
   ]
   deps = [
     "//base",
@@ -263,6 +264,8 @@ source_set("browser") {
     "browser/notifications.cc",
     "browser/notifications.h",
     "browser/permissions.cc",
+    "browser/forms.cc",
+    "browser/forms.h",
     "browser/printing.cc",
     "browser/printing.h",
     "browser/browser_context.h",

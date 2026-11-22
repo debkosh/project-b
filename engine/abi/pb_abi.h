@@ -126,6 +126,16 @@ typedef enum PBEvent {
                                         // page from its host
   PB_EVENT_NOTIFICATION_CLOSED = 49,    // s: notification; the page, or its service worker,
                                         // closed one it showed
+  PB_EVENT_FORM_MESSAGE = 50,           // i: tab, s: frame, s: document, s: the frame's
+                                        // committed origin or "null", i: bits: 1 the tab's
+                                        // own frame, 2 a frame of another origin above it,
+                                        // 4 sandboxed or with no origin of its own, 8 https
+                                        // with a certificate that checks, i: x, i: y, the
+                                        // frame's top left corner in the tab's page, s:
+                                        // kind, s: json. A message of the page protocol
+                                        // from a frame's form script
+                                        // (docs/password-autofill.md): everything before
+                                        // kind is the engine's own word, never the page's
 
   // What a tab's page does, 60 to 79, as any engine can say it: Go's core/abi turns each
   // into the engine.Listener call of its name. A tab here is never a page of ours.
@@ -554,6 +564,15 @@ typedef struct PBEngineCalls {
   // frames and every page that follows the system, the shells among them, turn with it. The
   // Mac and Android follow their own, and leave this null.
   void (*set_system_dark)(int dark);
+  // The form script (docs/password-autofill.md), given once before any tab opens: the
+  // engine runs it at document start in every frame of every tab's page, in a world of its
+  // own, with a send function bound only there, and tells its messages as
+  // PB_EVENT_FORM_MESSAGE.
+  void (*set_form_script)(const char* source);
+  // Sends a message of the page protocol, kind and its json, to the form script of a
+  // tab's frame, by the names PB_EVENT_FORM_MESSAGE gave. 1 when it went; 0 when that
+  // document isn't the frame's any more, which gets nothing.
+  int (*form_send)(int64_t tab, const char* frame, const char* document, const char* kind, const char* json);
 } PBEngineCalls;
 
 // What the adapter can tell the Go core, once PBInit (pb_exports.h) has said this copy runs.

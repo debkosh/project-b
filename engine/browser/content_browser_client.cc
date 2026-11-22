@@ -23,6 +23,7 @@
 #include "services/network/public/cpp/resource_request.h"
 #include "services/network/public/mojom/websocket.mojom.h"
 #include "third_party/blink/public/common/loader/url_loader_throttle.h"
+#include "project_b/engine/browser/forms.h"
 #include "project_b/engine/browser/printing.h"
 #include "project_b/engine/browser/site_features.h"
 #include "project_b/engine/common/block_rules.h"
@@ -131,6 +132,7 @@ void ContentBrowserClient::RegisterAssociatedInterfaceBindersForRenderFrameHost(
 void ContentBrowserClient::RenderProcessWillLaunch(
     content::RenderProcessHost* host) {
   site_features::RendererLaunching(host);
+  forms::RendererLaunching(host);
   ContentBrowserClientHooks::RenderProcessWillLaunch(host);
 }
 

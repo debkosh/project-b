@@ -1,5 +1,6 @@
 // What the browser process tells a renderer of ours: the ad blocker's rules for all its
-// pages, and a frame's sparks for the page about to commit in it (docs/site-features.md).
+// pages, and a frame's sparks for the page about to commit in it (docs/site-features.md);
+// and the form script with its messages, both ways (docs/password-autofill.md).
 module project_b.mojom;
 
 import "mojo/public/mojom/base/unguessable_token.mojom";
@@ -19,6 +20,9 @@ interface Renderer {
   // The hosts the ad blocker keeps requests from, and any under them, lower case; and the
   // origins of the pages it lets reach them.
   SetAdRules(array<string> hosts, array<string> off);
+  // The form script, which each frame of a web page runs at document start in a world of
+  // its own.
+  SetFormScript(string source);
 };
 
 // The browser's, on each renderer's channel: what the renderer tells it.
@@ -31,6 +35,8 @@ interface AdReports {
 interface Frame {
   // The scripts the page at url runs; none clears them.
   SetSparks(string url, array<Spark> sparks);
+  // A message of the page protocol for the frame's form script: kind and its JSON.
+  FormMessage(string kind, string json);
 };
 
 // The browser's, on each frame's channel: what the frame asks of it.
@@ -38,4 +44,7 @@ interface FrameHost {
   // The page called window.print(). The browser asks Go, and prints the frame through the
   // system's panel if Go says so (docs/daily-driver.md, Printing).
   Print();
+  // A message of the page protocol from the frame's form script: kind and its JSON. Only
+  // the script's world can send one.
+  FormMessage(string kind, string json);
 };

@@ -138,17 +138,21 @@
       gone();
     });
 
-    // The fields are told when there are some, and again only when they differ.
+    // The fields are told when there are some, and again only when they differ: a moment
+    // after the page changes, as it changes in bursts, and at once before anything that
+    // names a field, so what is told of a field never comes before the field itself.
     let due = 0;
+    function tellFields() {
+      clearTimeout(due);
+      const now = fields();
+      const json = JSON.stringify(now);
+      if (json === sent || (!now.fields.length && !sent)) return;
+      sent = json;
+      transport.send('fields', now);
+    }
     function report() {
       clearTimeout(due);
-      due = setTimeout(() => {
-        const now = fields();
-        const json = JSON.stringify(now);
-        if (json === sent || (!now.fields.length && !sent)) return;
-        sent = json;
-        transport.send('fields', now);
-      }, 100);
+      due = setTimeout(tellFields, 100);
     }
 
     // The values of the watched fields of a form, or of every watched field with no form.
@@ -165,6 +169,21 @@
       const v = values(form);
       if (Object.keys(v).length) transport.send(type, { form: form ? ref(form, 'F') : '', values: v });
     };
+
+    // While a list is offered at a field, its arrow keys, Enter and Escape are Go's: told,
+    // and kept from the page. Enter only once an arrow has moved in the list; before that
+    // it is the page's own, which sends its form. Nothing typed is ever told.
+    let keysOf = '';
+    let moved = false;
+    document.addEventListener('keydown', (e) => {
+      if (!keysOf || !e.isTrusted || element(keysOf) !== at(e)) return;
+      const arrow = e.key === 'ArrowDown' || e.key === 'ArrowUp';
+      if (!arrow && e.key !== 'Escape' && !(e.key === 'Enter' && moved)) return;
+      moved = moved || arrow;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      transport.send('key', { ref: keysOf, key: e.key });
+    }, true);
 
     // A form is sent: its submit event, Enter in one of its fields, or a press on what
     // looks like its button. A page that sends with its own script fires no submit event,
@@ -196,12 +215,35 @@
     function pressed(e) {
       const el = at(e);
       if (!e.isTrusted || !(el instanceof HTMLInputElement) || !isField(el)) return;
-      if (!refs.has(el)) report();
+      // The fields first, as they are now: a field focused as its page appears, an
+      // autofocus or a quick press, was pressed before its page's fields were told, and
+      // nothing was offered at it.
+      tellFields();
       const box = el.getBoundingClientRect();
-      transport.send('pressed', { ref: ref(el, 'f'), box: { x: box.x, y: box.y, w: box.width, h: box.height } });
+      // In the view this frame is drawn in: the frames above it that are of its own site
+      // share its view, and each adds where it sits in the one above. A frame of another
+      // site has a view of its own, whose place the carrier knows.
+      let x = box.x;
+      let y = box.y;
+      try {
+        for (let w = window; w !== w.parent && w.frameElement; w = w.parent) {
+          const in_ = w.frameElement.getBoundingClientRect();
+          x += in_.x + w.frameElement.clientLeft;
+          y += in_.y + w.frameElement.clientTop;
+        }
+      } catch {
+        // The frame above is of another site: this view ends here.
+      }
+      transport.send('pressed', { ref: ref(el, 'f'), box: { x, y, w: box.width, h: box.height } });
     }
     document.addEventListener('focusin', pressed, true);
-    document.addEventListener('pointerdown', (e) => at(e) === at(e).getRootNode().activeElement && pressed(e), true);
+    document.addEventListener('pointerdown', (e) => {
+      const el = at(e);
+      if (el === el.getRootNode().activeElement) return pressed(e);
+      // A press on the page that is on no field says so, with no field named: a list
+      // offered at a field goes when the person presses elsewhere.
+      if (e.isTrusted && !(el instanceof HTMLInputElement && isField(el))) transport.send('pressed', { ref: '', box: { x: 0, y: 0, w: 0, h: 0 } });
+    }, true);
 
     // A watched field that went, or went out of sight, soon after a form was sent: the
     // sign-in went through without the page leaving. Its value is still the element's.
@@ -233,7 +275,10 @@
     }
 
     transport.receive((type, payload) => {
-      if (type === 'watch') {
+      if (type === 'keys') {
+        keysOf = payload.ref || '';
+        moved = false;
+      } else if (type === 'watch') {
         watched = new Set(payload.refs || []);
         here.clear();
         for (const r of watched) here.set(r, !!element(r) && visible(element(r)));

@@ -35,6 +35,7 @@
 #include "project_b/engine/browser/dialogs.h"
 #include "project_b/engine/browser/downloads.h"
 #include "project_b/engine/browser/exit_reason.h"
+#include "project_b/engine/browser/forms.h"
 #include "project_b/engine/browser/go.h"
 #include "base/strings/string_split.h"
 #include "project_b/engine/abi/pb_content_abi.h"
@@ -322,6 +323,21 @@ void CallPrint(int64_t tab) {
   if (PageTab* page = g_engine->tab(tab)) {
     printing::Print(page->contents());
   }
+}
+
+void CallSetFormScript(const char* source) {
+  CheckMainThread();
+  forms::SetScript(source ? source : "");
+}
+
+int CallFormSend(int64_t tab,
+                 const char* frame,
+                 const char* document,
+                 const char* kind,
+                 const char* json) {
+  CheckMainThread();
+  PageTab* page = g_engine->tab(tab);
+  return page && forms::Send(page->contents(), frame, document, kind, json) ? 1 : 0;
 }
 
 void CallCaptureThumbnail(int64_t tab, int32_t max_width) {
@@ -771,6 +787,8 @@ const PBEngineCalls* Engine::Calls() {
 #if BUILDFLAG(IS_LINUX)
       .set_system_dark = CallSetSystemDark,
 #endif
+      .set_form_script = CallSetFormScript,
+      .form_send = CallFormSend,
   };
   return &calls;
 }

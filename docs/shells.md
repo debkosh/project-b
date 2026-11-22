@@ -154,6 +154,7 @@ gives the page the same two.
 | `profileData` | `profileData`: what this shell saved for the profile | A shell in any window of the profile saved it |
 | `prefs` | `prefs`: every one of Go's prefs by its name in the file (`frameColor`, `theme`, `tabLayout`, `shell`, `addressBarPosition`); the snapshot carries it too | Any pref changed, after the message of its own (`windowColor`, `theme`, ...) |
 | `permissionPrompts` | `permissionPrompts`: every prompt open in the profile, `{id, tab, origin, kinds, once}` | A site asked to use its camera, microphone or notifications, or a prompt was answered or dropped |
+| `passwordOffer` | `passwordOffer`: the saved logins offered at a field of a tab's page the person pressed, `{id, tab, box, site, framed, field, logins: [{id, username, savedFor}], at}`, or null; the snapshot carries it too. `box` is the field in the tab's page; `at` the login the keys or the pointer are at, -1 for none. It holds no password ([password-autofill.md](password-autofill.md)) | A sign-in's field was pressed, the keys moved in the list, or the offer went: filled, dismissed, a press elsewhere, the tab going on |
 | `sync` | `sync`: sync's status, `{on, syncing, host, lastSynced, error, problem, locked}`; the snapshot carries it too ([sync.md](sync.md#the-functions-coresync)) | It changed: sync turned on or off, a run began or ended, or the profile's keys don't open |
 
 The snapshot's `profileData` is what this shell last saved for the profile, `null` when
@@ -272,6 +273,10 @@ title, detail, actions}`, absent otherwise
 | `extensionClosePopup` | | Closes the extension popup that is open |
 | `extensionAnswerPrompt` | `on` | Answers the install or removal prompt |
 | `permissionAnswer` | `id`, `choice`: `allow`, `once`, `block` or `dismiss` | Answers a permission prompt; `once` only where the prompt says `once` |
+| `passwordPick` | `offer`, `login` | Fills a login of the offer showing into the page: its username and its password, into the fields Go found. Nothing asks the device to check the person |
+| `passwordAt` | `offer`, `at` | The pointer is over a login of the offer's list: it is the current one, which Enter in the page's field fills |
+| `passwordDismiss` | `offer` | Takes the offer away with nothing filled |
+| `passwordsManage` | | Opens settings at Passwords |
 | `openSiteSettings` | | Opens settings at the site of the window's active tab |
 | `noticeAction` | `id`: the tab, `action`: one of its notice's actions' ids | Does what the person chose on a tab's notice: `reload`, `back` or `proceed` |
 | `timeline` | `kind`, `name`, `text`, `at` | An entry on the app's timeline ([logging.md](logging.md)): `kind` is `mark`, `begin`, `end`, `info`, `warn` or `error`, and `at` the page's `performance.now()`. The SDK sends them |

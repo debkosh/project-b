@@ -371,6 +371,15 @@ type Engine interface {
 	// Post runs fn on the main thread, later.
 	Post(fn func())
 
+	// SetFormScript gives the engine the form script (docs/password-autofill.md): the engine
+	// runs it in every frame of every tab's page, in a world of its own that the page's
+	// scripts can't reach, and carries its messages. Set once, before any tab opens.
+	SetFormScript(source string)
+	// SendForm sends a message of the page protocol to a frame's form script: kind and its
+	// payload, JSON. It reaches only the document to names: a frame that has gone on to
+	// another page gets nothing, and false says so.
+	SendForm(to FormFrame, kind, payload string) bool
+
 	// PageURL is the address one of our pages has in this engine, and OurPage the page an
 	// address is, when it is one of ours. ViewSourceURL is the address that shows a
 	// page's source. Each only names an address; nothing loads.
@@ -399,6 +408,24 @@ type Script struct {
 	ID     string `json:"id"`
 	Source string `json:"source"`
 	RunAt  string `json:"runAt"`
+}
+
+// FormFrame is the frame a form script's message came from, as the engine itself knows it:
+// nothing in it is the page's word (docs/password-autofill.md, the stamp).
+type FormFrame struct {
+	Tab TabID
+	// Frame is the frame, and Document its document, new at each navigation: the engine's
+	// own names for them, which mean nothing outside it.
+	Frame, Document string
+	// Origin is the frame's committed origin, scheme://host[:port], or "null" for none.
+	Origin string
+	// Top is the tab's own frame; CrossOrigin a frame with a frame of another origin above
+	// it; Opaque a sandboxed frame or one with no origin of its own; Secure https with a
+	// certificate that checks.
+	Top, CrossOrigin, Opaque, Secure bool
+	// X and Y are where the frame's top left corner is in the tab's page, so a box the
+	// script gives in its frame can be placed in the page.
+	X, Y float64
 }
 
 // BlankURL is the empty page every engine has.
@@ -560,6 +587,9 @@ type Listener interface {
 	// SparksFor is the scripts a frame of tab's runs in the page it is about to show at
 	// url, each in a world of its own: mainFrame says it is the tab's own.
 	SparksFor(tab TabID, url string, mainFrame bool) []Script
+	// FormMessage is a message of the page protocol from a frame's form script: kind and
+	// its payload, JSON, with the frame as the engine knows it.
+	FormMessage(from FormFrame, kind, payload string)
 	// AdBlocked says the ad blocker kept one request of tab's page from its host.
 	AdBlocked(tab TabID)
 	// PrintRequested asks whether a frame of tab's page may print itself, as its

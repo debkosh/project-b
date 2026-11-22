@@ -40,8 +40,10 @@ The seams:
   from the menu bar or a key. One so far: Glide's Copy Address.
 - **The phone's keyboard.** It takes half the screen or more, by an amount that differs
   between Android versions, and what a person needs next has to stay in sight above it, and
-  what it is composing is its own until the word ends. Three so far: a Dialog's buttons under
-  the keyboard, the keyboard left up by the native star's sheet, the first letter typed twice.
+  what it is composing is its own until the word ends; and when it goes, what stood over it
+  goes down with it, from under a finger still on the glass. Four so far: a Dialog's buttons
+  under the keyboard, the keyboard left up by the native star's sheet, the first letter typed
+  twice, a tap on a saved login's chip lost.
 - **Work that takes time.** A rule made for work nobody asked for, such as waiting before
   saying it is busy, doesn't fit a press, which needs its answer at once; and a clock that
   measures how long the work has gone on is not one that measures how long nothing has
@@ -60,6 +62,45 @@ The seams:
 - **A trigger runs under its caller's rules.** What a trigger's own statement says about a
   conflict gives way to the statement that fired it. One so far: a row changed twice before a
   run.
+
+## A field pressed before its page was told, 2026-11-22
+
+- **Seen:** before filling was released, on the real Mac app: a press on a sign-in's field
+  right after its page appeared brought no list, and nothing brought it later. The real
+  app's check had passed in the morning, and failed three times in three once main had moved
+  under it.
+- **Cause:** the form script tells a page's fields a tenth of a second after the page
+  changes, as pages change in bursts, and told a press at once. A field pressed inside that
+  tenth, or focused by the page as it appears, as an autofocus is, was a press on a field Go
+  hadn't heard of, so Go offered nothing. The morning's runs happened to press later.
+- **Seam:** the order in which each side hears of a thing: the page's script and Go.
+- **Fix:** the form script tells the fields, as they are at that moment, before every press
+  it tells (`tellFields` in `core/forms/page/forms.js`).
+- **Guard:** `shell/e2e/form-script.cjs` puts a form on a page and focuses its field in the
+  same breath, and wants the fields told, that field among them, before the press; it fails
+  on the script as it was. `tools/drive_first_app.py filling` presses a real page's field as
+  soon as it has loaded.
+
+## A tap on a saved login's chip lost, 2026-11-22
+
+- **Seen:** on a phone, before filling was released: a tap on a saved login's chip, in the
+  bar over the keyboard, filled nothing. The keyboard went down and the chips stayed. A
+  second tap filled. The emulators' check passed most times and missed now and then.
+- **Cause:** a touch on the shell takes the keyboard from the page, so the keyboard goes
+  down and the bar over it goes down with it, while the finger is still on the glass. The
+  click that follows a tap is aimed at where the finger is, and the chip was no longer there.
+  `adb shell input tap` is down and up at once, so it nearly always beat the keyboard; a
+  press of 150 milliseconds, as a finger's, missed four times in four.
+- **Seam:** the phone's keyboard, and a shell control that stands over it.
+- **Fix:** the chips and Manage take a tap as the finger coming up where it went down, told
+  to the control it went down on, wherever that control has gone (`tap` in
+  `shell/src/apps/shell/mobile/PasswordBar.svelte`), and stop the click that would follow
+  it onto whatever the bar left there. A click with no finger before it, a screen reader's,
+  still picks.
+- **Guard:** `shell/e2e/password-fill-mobile.cjs` holds a finger on a chip, takes the
+  keyboard down under it, and lifts it: the login fills and the address field isn't opened;
+  it fails on the bar as it was. `tools/drive_android.py` taps the chips with `finger`, down
+  for 150 milliseconds, on the emulators.
 
 ## The first letter typed twice, 2026-11-20
 

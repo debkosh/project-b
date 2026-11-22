@@ -19,6 +19,7 @@
   import SiteSheet from './SiteSheet.svelte';
   import PageDialog from './PageDialog.svelte';
   import PageNotice from './PageNotice.svelte';
+  import PasswordBar from './PasswordBar.svelte';
   import NewTab from './NewTab.svelte';
   import Strip from './Strip.svelte';
   import Switcher from './Switcher.svelte';
@@ -377,6 +378,9 @@
       <!-- A download as it happens, over the foot of the page; never over a sheet, nor over
            the Downloads page, which shows it already. -->
       <DownloadBar bind:this={downloadBar} hidden={!!sheet || full || tab.page === 'downloads'} away={aside} />
+      <!-- The saved logins offered at a field of the page, over its foot: above the keyboard
+           while it is up. Never over a sheet. -->
+      <PasswordBar tab={go.active} hidden={!!sheet || full} />
     </main>
     {#if group || (marksBar && !top)}
       <div class="bars strip" class:away class:over class:full bind:offsetHeight={stripHeight}>

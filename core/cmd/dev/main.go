@@ -337,6 +337,34 @@ func main() {
 			a.Passwords.Import(logins)
 			return
 		}
+		// A frame's form script telling Go something, as an engine would carry it: a JSON
+		// {frame: {frame, document, origin, top, crossOrigin, opaque, secure, x, y}, kind,
+		// payload}, for the tab named or the window's active one.
+		if r.FormValue("kind") == "form" {
+			var m struct {
+				Frame struct {
+					Frame, Document, Origin          string
+					Top, CrossOrigin, Opaque, Secure bool
+					X, Y                             float64
+				} `json:"frame"`
+				Kind    string          `json:"kind"`
+				Payload json.RawMessage `json:"payload"`
+			}
+			if err := json.Unmarshal([]byte(r.FormValue("value")), &m); err != nil {
+				http.Error(w, "form: a JSON {frame, kind, payload}", http.StatusBadRequest)
+				return
+			}
+			win := windowOf(r)
+			e.Post(func() {
+				id := engine.TabID(tab)
+				if id == 0 && a != nil {
+					id = a.Tabs.ActiveIn(win)
+				}
+				f := m.Frame
+				e.FormMessage(engine.FormFrame{Tab: id, Frame: f.Frame, Document: f.Document, Origin: f.Origin, Top: f.Top, CrossOrigin: f.CrossOrigin, Opaque: f.Opaque, Secure: f.Secure, X: f.X, Y: f.Y}, m.Kind, string(m.Payload))
+			})
+			return
+		}
 		e.Fire(windowOf(r), engine.TabID(tab), r.FormValue("kind"), r.FormValue("value"))
 	})
 	mux.HandleFunc("GET /mock/regions", func(w http.ResponseWriter, r *http.Request) {
@@ -363,6 +391,12 @@ func main() {
 		})
 		<-done
 		out := map[string]any{"tabs": goTabs, "active": active, "settings": settings, "prepared": prepared, "regions": shell, "drag": drag, "bounds": mockengine.Page(l), "visible": append([]engine.VisibleTab{}, l.Tabs...), "closed": e.Closed(win), "quit": e.Quit(), "windows": e.Windows(), "hidden": e.Hidden(win), "windowColor": l.FrameColor, "shownColor": e.ShownColor(), "frameWidth": l.FrameWidth, "page": e.PageOf(win), "shell": e.PageOf(win).Shell(), "focused": e.Focused(), "unshownFocus": e.UnshownFocus(), "leftApp": e.Left(), "dock": sys.DockColor(), "opened": opened.Load(), "menu": e.Menu(), "edits": e.Edits(), "permissions": e.PermissionAnswers(), "notifications": sys.Notifications(), "notificationsAllowed": sys.NotificationsAllowed(), "clipboard": e.Clipboard(), "secretCopied": sys.Secret(), "openedFiles": sys.Opened(), "shown": sys.Shown(), "dialogAnswers": e.DialogAnswers(), "passkeyAnswers": e.PasskeyAnswers(), "personChecks": sys.Checks(), "personChecksCancelled": sys.CancelledChecks(), "window": e.Reported(win), "shared": e.Shared(), "deleted": e.Deleted(), "sharedText": e.SharedText(), "copiedImage": e.CopiedImage(), "savedImages": e.SavedImages(), "published": e.Published(), "findsStopped": e.FindsStopped()}
+		// What Go sent to form scripts: each {frame, document, kind, payload}.
+		sent := []map[string]any{}
+		for _, s := range e.FormsSent() {
+			sent = append(sent, map[string]any{"tab": s.To.Tab, "frame": s.To.Frame, "document": s.To.Document, "kind": s.Kind, "payload": json.RawMessage(s.Payload)})
+		}
+		out["formsSent"] = sent
 		if q := r.URL.Query(); q.Has("x") {
 			x, _ := strconv.ParseFloat(q.Get("x"), 64)
 			y, _ := strconv.ParseFloat(q.Get("y"), 64)

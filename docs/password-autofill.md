@@ -32,8 +32,41 @@ research papers).
     to fill a test login; the terminal says each thing the page side told. It holds test
     logins only, and tells a sent password by its length alone.
     `shell/e2e/form-lab.cjs` runs the whole of it in a real Chromium.
-- **Not built:** the engine's carrier, the list and the prompts in the shells, matching
-  and saving in `core/passwords`.
+- **Filling, 2026-11-22**, on the Mac's Standard shell and the phone's Mobile shell:
+  - **The carrier in the engine.** Go gives the engine the form script once
+    (`Engine.SetFormScript`, `set_form_script`); the renderer runs it at document start in
+    every frame of a web page, in a world of its own (`kFormsWorld`,
+    `engine/common/worlds.h`), with its send function bound only in that world's context
+    (`Forms` in `engine/common/renderer_client.cc`). A message reaches the browser on the
+    frame's own channel (`FrameHost.FormMessage`), which stamps it from the frame itself
+    (`engine/browser/forms.cc`: the tab, the frame, a name for the document that is new
+    with each document, the committed origin, the tab's own frame or not, a frame of
+    another origin above it, sandboxed or with no origin, https with a certificate that
+    checks, and where the frame's view begins in the page) and tells Go
+    (`PB_EVENT_FORM_MESSAGE`, `Listener.FormMessage`). Go's messages go back with
+    `Engine.SendForm` (`form_send`), only to the document named. A page of ours, and a
+    frame with no address of its own, run no script.
+  - **Go's filling** (`core/passwords/fill.go`): `Filler` keeps what each document told,
+    offers the frame's logins at a pressed field of a sign-in (`Manager.Matching`,
+    `MayFill`), moves through them with the field's arrow keys, and fills a pick with
+    `passwords.Checked`, so nothing asks the device to check the person.
+    `core/app/password_fill.go` wires it to the engine and the tab's shell.
+  - **The shells.** Standard: `PasswordOffer.vue`, the design system's floating menu under
+    the field. Mobile: `PasswordBar.svelte`, chips in a bar over the foot of the page,
+    above the keyboard when it is up. The state and the messages are in
+    [shells.md](shells.md) (`passwordOffer`, `passwordPick`, `passwordAt`,
+    `passwordDismiss`, `passwordsManage`).
+  - **The keys.** The page keeps the keyboard while a list shows. Go asks the form script
+    for the field's arrow keys, Enter and Escape (`keys`), and the script tells each
+    (`key`) and keeps it from the page; Enter only once an arrow has moved, so before that
+    it still sends the page's form.
+  - **Tests:** `core/passwords/fill_test.go`, `TestFillingASavedLogin` in `core/app`,
+    the ABI's event test; `shell/e2e/password-fill.cjs` and `password-fill-mobile.cjs` on
+    the mock engine, where the test plays the form script; `tools/drive_first_app.py
+    filling` on the real Mac app (a real sign-in page, real presses and keys);
+    `tools/drive_android.py passwords_on_the_phone` on an emulator.
+- **Not built:** Save and Update, which follow straight after; the key in the address
+  field with the site's count; the generator; Android's switch to another service.
 
 ## The short version
 
@@ -356,12 +389,20 @@ Each is a proposal for the discussion. The reason follows each one.
    and Export, and "Ask before filling" (below); Export; a backup code (synckosh's passphrase
    copy of the key); sync (the bucket's key, the same items); old passwords kept on change;
    notes; passkeys.
-9. **Touch ID or the device's lock** (a feature on the base, to settle after it)
-   - always before Show, Copy and Export in Settings;
-   - before filling only when "Ask before filling" is on;
-   - one approval lasts five minutes.
+9. **Touch ID or the device's lock: for Settings, never for a fill.**
+   - Before Show and Copy in Settings, once for the page, held five minutes
+     ([passwords.md](passwords.md)).
+   - A fill asks nothing: picking a login from the list fills it. There is no "Ask before
+     filling" setting.
+   - A locked profile is the keys' business, not filling's: filling asks for the password
+     through the one call that opens it, and when a profile is locked that call is what
+     asks for the passphrase.
 
-   *Why:* this matches Chrome. Safari asks before every fill, which is safer but slower.
+   **Decided 2026-11-22**, the owner: "filling doesnot ask for fingerprint... only if
+   profile is locked we can ask the passphrase but that should come automatically from we
+   calling the get password call not something we should be worrying about". So filling
+   opens a password with `passwords.Checked`, which has no device check, and adds no
+   unlock logic of its own.
 10. **Phones.** Keep our own manager. Later, add Chrome's "Autofill using another service" switch,
     which sends forms to Android's autofill framework through Chromium's `android_autofill`, as
     WebView does. Then 1Password and Bitwarden users get their own manager in Project B. *Why:*
@@ -439,7 +480,8 @@ From the ux session's review, 2026-11-18. The pictures follow it.
 
 1. ~~Shape C~~ **Decided: shape D**, 2026-11-18 ([the shape](#the-shape)).
 2. ~~Fill on press only, on the Mac too~~ **Decided: yes**, 2026-11-18, with the matching table.
-3. **"Ask before filling" off by default,** on both platforms, with Show and Copy always asking?
+3. ~~"Ask before filling" off by default~~ **Decided: a fill never asks, and there is no
+   such setting**, 2026-11-22 ([recommendation 9](#recommendations)).
 4. ~~Save flow as drawn~~ **Decided: "flow fine"**, 2026-11-18.
 5. ~~Generator in Apple's format, offered on sure new-password fields~~ **Decided: on demand
    only, in several kinds**, 2026-11-18 ([recommendation 7](#recommendations)).
@@ -481,6 +523,10 @@ Settled with other sessions, whichever way these go:
   the login's id.
 
 ## Order of work, once agreed
+
+**Decided 2026-11-22**, the owner: "yes auto fill next... and all platforms", and "yes fill
+before save and update", "but fast follow": filling ships first, on the Mac, Android and
+Linux, and Save and Update straight after it, with nothing else between.
 
 1. `core/passwords`: the base (logins as sealed synckosh items, the profile's key), Import, the Passwords page in Settings
    ([picture](screenshots/passwords/settings.png)). This unblocks onboarding's importers.

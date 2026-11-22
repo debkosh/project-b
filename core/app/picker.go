@@ -237,6 +237,7 @@ func (p *Picker) CertificateError(engine.TabID, engine.CertificateError) bool { 
 func (p *Picker) SparksFor(engine.TabID, string, bool) []engine.Script        { return nil }
 func (p *Picker) AdBlocked(engine.TabID)                                      {}
 func (p *Picker) PrintRequested(engine.TabID) bool                            { return false }
+func (p *Picker) FormMessage(engine.FormFrame, string, string)                {}
 
 // The picker shows no notifications.
 func (p *Picker) NotificationShown(engine.Notification) bool { return false }

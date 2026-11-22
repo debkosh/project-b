@@ -116,6 +116,11 @@ type Engine struct {
 	badCerts map[string]bool
 	// printed is the tabs whose pages the app printed, in order. Under mu.
 	printed []engine.TabID
+	// The form script the app gave, the document each frame that spoke has, and what the
+	// app sent to form scripts (forms.go).
+	formScript    string
+	formDocuments map[string]string
+	formSent      []FormSent
 	// captures are the pictures the app asked for, in order, and thumbs each tab's latest.
 	// Under mu.
 	captures []Capture

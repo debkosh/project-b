@@ -18,6 +18,7 @@
 #include "content/public/browser/web_contents.h"
 #include "mojo/public/cpp/bindings/associated_receiver_set.h"
 #include "project_b/engine/abi/pb_abi.h"
+#include "project_b/engine/browser/forms.h"
 #include "project_b/engine/browser/hooks.h"
 #include "project_b/engine/mojom/project_b.mojom.h"
 #include "third_party/blink/public/common/associated_interfaces/associated_interface_registry.h"
@@ -67,7 +68,8 @@ void PrintFrame(content::WebContents* contents, content::RenderFrameHost* frame)
           contents->GetWeakPtr()));
 }
 
-// Each frame's window.print(), by the frame that asked.
+// What each frame asks of the browser, by the frame that asked: its window.print(), and
+// its form script's messages.
 class Hosts : public mojom::FrameHost {
  public:
   void Bind(content::GlobalRenderFrameHostId frame,
@@ -90,6 +92,11 @@ class Hosts : public mojom::FrameHost {
     if (hooks::Ask(PB_EVENT_PRINT_REQUESTED, args, &yes) && yes.i) {
       PrintFrame(contents, frame);
     }
+  }
+
+  void FormMessage(const std::string& kind, const std::string& json) override {
+    forms::FromFrame(
+        content::RenderFrameHost::FromID(receivers_.current_context()), kind, json);
   }
 
  private:

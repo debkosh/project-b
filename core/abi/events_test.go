@@ -192,6 +192,10 @@ func (r *adapterRecorder) SparksFor(tab engine.TabID, url string, mainFrame bool
 	return []engine.Script{{ID: "ab12cd34", Source: "1", RunAt: "document-end"}}
 }
 func (r *adapterRecorder) AdBlocked(tab engine.TabID) { r.note(fmt.Sprintf("ad %d", tab)) }
+func (r *adapterRecorder) FormMessage(from engine.FormFrame, kind, payload string) {
+	r.note(fmt.Sprintf("form %+v %s %s", from, kind, payload))
+}
+
 func (r *adapterRecorder) PrintRequested(tab engine.TabID) bool {
 	r.note(fmt.Sprintf("print %d", tab))
 	return true
@@ -326,6 +330,18 @@ func TestAPageAsksToPrint(t *testing.T) {
 		t.Fatalf("answered %v %v", ok, v)
 	}
 	if !reflect.DeepEqual(r.got, []string{"print 3"}) {
+		t.Fatalf("got %v", r.got)
+	}
+}
+
+// A form script's message comes with the frame as the engine knows it: its bits are the
+// tab's own frame, a frame of another origin above it, no origin of its own, and https
+// with a certificate that checks.
+func TestAFormScriptsMessageComesStamped(t *testing.T) {
+	h, r := wired(t)
+	h.Dispatch(FormMessage, pack(3, "frame-9", "doc-4", "https://pay.test", 2|8, 40, 300, "pressed", `{"ref":"f1"}`))
+	want := `form {Tab:3 Frame:frame-9 Document:doc-4 Origin:https://pay.test Top:false CrossOrigin:true Opaque:false Secure:true X:40 Y:300} pressed {"ref":"f1"}`
+	if !reflect.DeepEqual(r.got, []string{want}) {
 		t.Fatalf("got %v", r.got)
 	}
 }

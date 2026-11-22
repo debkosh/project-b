@@ -153,6 +153,9 @@ type App struct {
 	Passkeys *passkeys.Manager
 	// Passwords are the profile's saved logins (docs/passwords.md).
 	Passwords *passwords.Manager
+	// Fill is filling saved logins into pages, and fillWork its queue (password_fill.go).
+	Fill     *passwords.Filler
+	fillWork chan func()
 	// passkeysChanged counts the passkeys again for Settings, after sync wrote some.
 	passkeysChanged func()
 	// Sync syncs the bookmarks and history (docs/sync.md).
@@ -327,6 +330,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Settings.AddPart(a.siteDataSettingsPart(e))
 	a.Settings.AddPart(a.passkeySettingsPart(e))
 	a.Settings.AddPart(a.passwordSettingsPart(e))
+	a.startFilling(e)
 	a.Settings.AddPart(a.keepCookiesSettingsPart())
 	a.Settings.AddPart(a.downloadFolderSettingsPart(e, cfg.DownloadsDir))
 	a.Settings.AddPart(a.syncSettingsPart())

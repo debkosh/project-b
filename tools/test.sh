@@ -124,6 +124,8 @@ mock() {
     run "a passkey request's steps, on every desktop shell" node shell/e2e/passkeys.cjs
     run "Settings' Passkeys, on the mock engine" node shell/e2e/passkey-settings.cjs
     run "Settings' Passwords, on the mock engine" node shell/e2e/password-settings.cjs
+    run "filling a saved login, in the Standard shell on the mock engine" node shell/e2e/password-fill.cjs
+    run "filling a saved login on a phone, in the Mobile shell on the mock engine" node shell/e2e/password-fill-mobile.cjs
     run "the form script, in a page of its own" node shell/e2e/form-script.cjs
     run "the form rules' test bench: pwlab and its extension in a real Chromium" node shell/e2e/form-lab.cjs
     run "a ready release's notice and Settings' About, on the desktop and a phone" node shell/e2e/update-notice.cjs

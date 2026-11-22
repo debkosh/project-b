@@ -44,6 +44,10 @@ static inline void call_show_download(const PBEngineCalls* c, int64_t id, const 
 static inline void call_find(const PBEngineCalls* c, int64_t tab, int32_t request, const char* text, int forward, int find_next) { c->find(tab, request, text, forward, find_next); }
 static inline void call_stop_finding(const PBEngineCalls* c, int64_t tab) { c->stop_finding(tab); }
 static inline void call_print(const PBEngineCalls* c, int64_t tab) { c->print(tab); }
+static inline void call_set_form_script(const PBEngineCalls* c, const char* source) { c->set_form_script(source); }
+static inline int call_form_send(const PBEngineCalls* c, int64_t tab, const char* frame, const char* document, const char* kind, const char* json) {
+	return c->form_send(tab, frame, document, kind, json);
+}
 static inline void call_capture_thumbnail(const PBEngineCalls* c, int64_t tab, int32_t max_width) { c->capture_thumbnail(tab, max_width); }
 static inline void call_exit_page_full_screen(const PBEngineCalls* c, int64_t tab) { c->exit_page_full_screen(tab); }
 static inline void call_click_notification(const PBEngineCalls* c, const char* id) { c->click_notification(id); }
@@ -272,6 +276,21 @@ func (e *nativeEngine) Find(tab engine.TabID, request int, text string, forward,
 
 func (e *nativeEngine) StopFinding(tab engine.TabID) { C.call_stop_finding(e.calls, C.int64_t(tab)) }
 func (e *nativeEngine) Print(tab engine.TabID)       { C.call_print(e.calls, C.int64_t(tab)) }
+
+func (e *nativeEngine) SetFormScript(source string) {
+	s := C.CString(source)
+	defer C.free(unsafe.Pointer(s))
+	C.call_set_form_script(e.calls, s)
+}
+
+func (e *nativeEngine) SendForm(to engine.FormFrame, kind, payload string) bool {
+	frame, document, k, json := C.CString(to.Frame), C.CString(to.Document), C.CString(kind), C.CString(payload)
+	defer C.free(unsafe.Pointer(frame))
+	defer C.free(unsafe.Pointer(document))
+	defer C.free(unsafe.Pointer(k))
+	defer C.free(unsafe.Pointer(json))
+	return C.call_form_send(e.calls, C.int64_t(to.Tab), frame, document, k, json) != 0
+}
 
 func (e *nativeEngine) CaptureThumbnail(tab engine.TabID, maxWidth int) {
 	C.call_capture_thumbnail(e.calls, C.int64_t(tab), C.int32_t(maxWidth))

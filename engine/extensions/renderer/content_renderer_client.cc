@@ -1,5 +1,6 @@
 #include "project_b/engine/extensions/renderer/content_renderer_client.h"
 
+#include "project_b/engine/common/worlds.h"
 #include "project_b/engine/extensions/renderer/api_provider.h"
 
 #include "content/public/common/isolated_world_ids.h"
@@ -29,10 +30,8 @@ class ExtensionsHooks : public extensions::ExtensionsRendererClient {
 
  private:
   bool IsIncognitoProcess() const override { return false; }
-  // Content scripts get the isolated worlds from the first one content leaves free.
-  int GetLowestIsolatedWorldId() const override {
-    return content::ISOLATED_WORLD_ID_CONTENT_END + 1;
-  }
+  // Content scripts get the isolated worlds after the ones that are ours.
+  int GetLowestIsolatedWorldId() const override { return kFirstExtensionWorld; }
 };
 
 // The Chrome Web Store's page in Project B's words: its Add and Remove button names
