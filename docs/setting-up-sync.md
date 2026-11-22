@@ -18,8 +18,9 @@ it is [sync.md](sync.md); this page is only the steps.
 - Project B on each device, from the
   [latest release](https://github.com/sudiptadeb/project-b/releases/latest).
 - **A sync server.** There are two ways to get one:
-  - [Option A](#option-a-try-the-small-hosted-server): a small server at `memd.debkosh.com`
-    that you can use to try sync out.
+  - [Option A](#option-a-try-the-small-hosted-server): a small server at
+    [memd.debkosh.com/synckosh](https://memd.debkosh.com/synckosh) that you can use to try
+    sync out.
   - [Option B](#option-b-run-your-own-server): your own. The server is
     [synckosh](https://github.com/sudiptadeb/synckosh), a Go library, not a ready-made
     program: you put it in a small Go program of your own. One is below.
@@ -34,25 +35,31 @@ items you have of each kind, how big each is and when they change. The whole lis
 
 ## Option A: try the small hosted server
 
-The project's author runs a sync server at [memd.debkosh.com](https://memd.debkosh.com). It
-is a small personal VPS, there for trying sync out. There is no promise that it stays up or
-that it keeps your bucket: your devices hold the real copy, so nothing on them is lost if it
-goes away. Move to your own server whenever you like.
+The project's author runs a sync server at
+[memd.debkosh.com/synckosh](https://memd.debkosh.com/synckosh). It is a small personal VPS,
+there for trying sync out. There is no promise that it stays up or that it keeps your bucket:
+your devices hold the real copy, so nothing on them is lost if it goes away. Move to your own
+server whenever you like.
 
-1. Open `https://memd.debkosh.com` and press **Log in**. It takes you to a sign-in page.
-   Sign in with Google there.
-2. Open **Sync buckets** and press **Add bucket**. Give the bucket a name and press **Add
-   bucket**.
-3. The bucket's card shows its **URL** and **Token**, and one address that carries the token.
-   Then either:
+1. Open [memd.debkosh.com/synckosh](https://memd.debkosh.com/synckosh) and press **Sign in
+   with Google**.
+2. Press **+ New bucket**, give the bucket a name and press **Create**.
+3. The page shows the bucket's address, which carries its token. Then either:
    - press **Open in Project B** on a device that has Project B. It opens the set-up with
      the address filled in; or
    - press **Copy**, and paste the address into Project B yourself. That address carries its
      token, so leave Token empty.
 4. Go on from step 2 of [Turn it on, on the first device](#turn-it-on-on-the-first-device).
 
-Treat the address as a secret: it holds the bucket's token. **New token** on the card
-replaces it, and the old one stops working on every device at once.
+Your buckets stay listed on that page, each with its address (**Show** and **Copy**),
+**Open in Project B** for your other devices, **Reset** and **Delete**. **Reset** empties the
+bucket on the server, sealed key included, and keeps its address: each device then stops
+syncing and asks to set sync up again, the first with a new passphrase and the others joining
+with it.
+
+Treat the address as a secret: it holds the bucket's token. To replace the token, so the old
+one stops working on every device at once, use **New token** on the bucket in memd's own
+dashboard at [memd.debkosh.com](https://memd.debkosh.com).
 
 Besides what any sync server sees, this one knows the account you signed in with.
 
