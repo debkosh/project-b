@@ -1,6 +1,8 @@
 # oskit: the OS's capabilities as one Go module
 
-Status: agreed 2026-11-22; notify, secret and open built on the Mac, Android and Linux.
+Status: agreed 2026-11-22; notify, secret and open built on the Mac, Android and Linux, and clip
+on the Mac and Android. Linux's secret copy stays core's: the app writes its clipboard through
+the engine, and only what goes to the OS reaches oskit (his rule, 2026-11-22).
 
 On Android, open does what Chromium does (his call, 2026-11-22): a finished download's path is
 its copy's content:// address in the shared Downloads, which OpenFile hands to the app the
