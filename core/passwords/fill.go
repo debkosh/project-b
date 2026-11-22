@@ -42,6 +42,9 @@ type Offer struct {
 	// than the frames above it, when the list says whose logins these are.
 	Site   string `json:"site"`
 	Framed bool   `json:"framed,omitempty"`
+	// Insecure is the frame's page not being https: what is filled there goes as it is, and
+	// the list says so.
+	Insecure bool `json:"insecure,omitempty"`
 	// Field is the role of the field pressed: "username" or "current-password".
 	Field  forms.Role `json:"field"`
 	Logins []Match    `json:"logins"`
@@ -217,7 +220,7 @@ func (f *Filler) pressed(stamp forms.Stamp, p forms.Pressed) {
 	}
 	was := f.open
 	o := &showing{stamp: stamp, ref: p.Ref, found: found, offer: Offer{
-		ID: f.next, Tab: stamp.Tab, Site: site, Framed: stamp.CrossOrigin, Field: role, Logins: logins, At: -1,
+		ID: f.next, Tab: stamp.Tab, Site: site, Framed: stamp.CrossOrigin, Insecure: !stamp.Secure, Field: role, Logins: logins, At: -1,
 		Box: forms.Box{X: p.Box.X, Y: p.Box.Y, W: p.Box.W, H: p.Box.H},
 	}}
 	f.open = o

@@ -122,6 +122,8 @@ function onKey(e) {
       This sign-in is from <b>{{ offer.site }}</b
       ><template v-if="pageHost">, shown inside {{ pageHost }}</template>.
     </div>
+    <!-- A page that isn't https: what is filled there can be read on its way. -->
+    <div v-if="offer.insecure" class="whose">This page isn't secure: what you fill could be read on the way.</div>
     <button v-for="(l, i) in offer.logins" :key="l.id" type="button" role="menuitem" class="ui-menu-item login" :class="{ at: offer.at === i }" :aria-current="offer.at === i || undefined" @pointermove="over(i)" @click="pick(l)">
       <!-- The key: 16px at a 1.5px stroke, as the design system's line icons are. -->
       <svg class="key" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

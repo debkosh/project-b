@@ -105,7 +105,7 @@ func TestAPressOffersAndAPickFills(t *testing.T) {
 	keys := func() string { return x.of("keys")[len(x.of("keys"))-1].payload }
 	x.tell(shop, "pressed", forms.Pressed{Ref: "f2", Box: forms.Box{X: 10, Y: 20, W: 200, H: 30}})
 	o := x.last()
-	if o == nil || o.Tab != "7" || o.Site != "shop.example" || o.Framed || o.Field != forms.CurrentPassword || o.Box != (forms.Box{X: 10, Y: 20, W: 200, H: 30}) ||
+	if o == nil || o.Tab != "7" || o.Site != "shop.example" || o.Framed || o.Insecure || o.Field != forms.CurrentPassword || o.Box != (forms.Box{X: 10, Y: 20, W: 200, H: 30}) ||
 		!slices.Equal(usernames(o), []string{"asha@", "work@"}) {
 		t.Fatalf("the offer: %+v", o)
 	}
@@ -144,6 +144,19 @@ func TestAPressOffersAndAPickFills(t *testing.T) {
 	x.f.Dismiss(old)
 	if err := x.f.Pick(old, "x"); !errors.Is(err, ErrNoOffer) || len(x.of("fill")) != 1 {
 		t.Fatalf("a pick of an offer taken away: %v, %d fills", err, len(x.of("fill")))
+	}
+}
+
+// A page that isn't https is offered the logins saved for it, and the offer says the page
+// isn't secure, for the list to say so.
+func TestAPageThatIsntHTTPSSaysSo(t *testing.T) {
+	x := newFilling(t, browserdata.Login{Origin: "http://plain.example", Username: "asha", Password: "plain one"})
+	plain := shop
+	plain.Origin, plain.Secure = "http://plain.example", false
+	x.tell(plain, "fields", login)
+	x.tell(plain, "pressed", forms.Pressed{Ref: "f2"})
+	if o := x.last(); o == nil || !o.Insecure || len(o.Logins) != 1 {
+		t.Fatalf("the offer on a page that isn't https: %+v", o)
 	}
 }
 

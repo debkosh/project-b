@@ -22,6 +22,7 @@ const check = (name, ok, detail) => lib.check(name, ok, detail);
     { Origin: 'https://pay.example', Username: 'payer', Password: 'frame-secret' },
     { Origin: 'https://a-very-long-host-name-of-the-single-sign-on.identity.long.example', Username: 'a.person.with.a.very.long.address.for.their.account@mail.long.example', Password: 'long-one' },
     { Origin: 'https://www.long.example', Username: 'short', Password: 'other-long' },
+    { Origin: 'http://plain.example', Username: 'plain-user', Password: 'plain-one' },
   ]));
   const browser = await chromium.launch();
   const w = await lib.openWindow(browser);
@@ -155,6 +156,22 @@ const check = (name, ok, detail) => lib.check(name, ok, detail);
   await shot('long');
   await tell(long, 'pressed', { ref: '', box: { x: 0, y: 0, w: 0, h: 0 } });
   await until(async () => (await longList.count()) === 0);
+
+  // A page that isn't https: its own logins are offered, under a line that says so.
+  await fetch(`${lib.base}/shell/send`, { method: 'POST', body: JSON.stringify({ t: 'navigate', text: 'http://plain.example/' }) });
+  await until(async () => (await regions()).tabs.some((t) => t.url === 'http://plain.example/'));
+  const plain = { ...page, frame: 'plain', document: 'doc-30', origin: 'http://plain.example', secure: false };
+  await tell(plain, 'fields', fields);
+  await tell(plain, 'pressed', { ref: 'f2', box });
+  const plainList = w.ui.getByRole('menu', { name: 'Saved passwords for plain.example' });
+  check('on a page that isn\'t https the list says so, over the site\'s own logins', await until(() => plainList.isVisible()) &&
+    (await plainList.innerText()).replace(/\s+/g, ' ').startsWith('This page isn\'t secure: what you fill could be read on the way. plain-user'), await plainList.innerText().catch(() => ''));
+  check('and a list on an https page has no such line', !(await list.count()) || !(await list.innerText()).includes('secure'));
+  await shot('not-secure');
+  await tell(plain, 'pressed', { ref: '', box: { x: 0, y: 0, w: 0, h: 0 } });
+  await until(async () => (await plainList.count()) === 0);
+  await fetch(`${lib.base}/shell/send`, { method: 'POST', body: JSON.stringify({ t: 'navigate', text: 'https://shop.example/login' }) });
+  await until(async () => (await regions()).tabs.some((t) => t.url === 'https://shop.example/login'));
 
   // Manage passwords… opens Settings at Passwords.
   await tell(framed, 'pressed', { ref: 'f1', box: { x: 10, y: 10, w: 200, h: 30 } });

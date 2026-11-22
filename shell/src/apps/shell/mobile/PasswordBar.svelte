@@ -88,6 +88,9 @@
     {#if offer.framed}
       <div class="whose">This sign-in is from <b>{offer.site}</b>{#if pageHost}, shown inside {pageHost}{/if}.</div>
     {/if}
+    {#if offer.insecure}
+      <div class="whose">This page isn't secure: what you fill could be read on the way.</div>
+    {/if}
     <div class="bar">
       <div class="chips">
         {#each offer.logins as l, i (l.id)}

@@ -51,6 +51,10 @@ research papers).
     `MayFill`), moves through them with the field's arrow keys, and fills a pick with
     `passwords.Checked`, so nothing asks the device to check the person.
     `core/app/password_fill.go` wires it to the engine and the tab's shell.
+    On a page that isn't https with a certificate that checks, the offer says so
+    (`insecure`), and the list carries one line over the logins: what is filled there
+    could be read on the way. It is the address field's own "Not secure" rule, localhost
+    included.
   - **The shells.** Standard: `PasswordOffer.vue`, the design system's floating menu under
     the field. Mobile: `PasswordBar.svelte`, chips in a bar over the foot of the page,
     above the keyboard when it is up. The state and the messages are in
