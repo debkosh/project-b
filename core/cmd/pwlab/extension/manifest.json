@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Project B form lab",
+  "version": "1.0",
+  "description": "A test tool: runs Project B's form script on the pages you open and shows what its rules make of their fields. It talks only to pwlab on this computer.",
+  "permissions": ["tabs", "webNavigation"],
+  "host_permissions": ["<all_urls>"],
+  "background": { "service_worker": "carrier.js" },
+  "action": { "default_title": "Project B form lab", "default_popup": "popup.html" },
+  "content_scripts": [
+    { "matches": ["<all_urls>"], "js": ["transport.js", "forms.js"], "all_frames": true, "match_about_blank": true, "run_at": "document_start" }
+  ]
+}

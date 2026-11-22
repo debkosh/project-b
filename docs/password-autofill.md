@@ -1,6 +1,6 @@
 # Saved passwords and autofill: how others do it, and what Project B should do
 
-Research for a design discussion, 2026-11-17, and what the owner has decided since. Nothing here is built. It covers how Chromium's
+Research for a design discussion, 2026-11-17, and what the owner has decided since. What is built of it is listed first. It covers how Chromium's
 password manager, Safari with iCloud Keychain, Firefox, 1Password and Bitwarden find sign-in
 fields, decide when to save, decide when to fill, generate passwords, and what attacks shaped
 them. It ends with recommendations for Project B, each with its reason, and the questions for
@@ -13,6 +13,27 @@ The detailed notes, with a file and line or a link for every fact, are in
 [firefox.md](password-autofill/firefox.md) (mozilla-central and Bugzilla), and
 [managers.md](password-autofill/managers.md) (Bitwarden's source, 1Password's docs, and the
 research papers).
+
+## What is built
+
+- **The store, sync and Settings' Passwords** ([passwords.md](passwords.md)): saved logins
+  sealed in the profile's store, brought from other browsers, synced end to end encrypted,
+  listed on a Mac and a phone.
+- **Step 1 of filling, 2026-11-22: the page side and Go's rules, with no engine yet.**
+  - `core/forms`: the page protocol's messages (`forms.go`), and `Roles`, which works out
+    each field's role and each form's kind from what the form script reports (`roles.go`,
+    its table of forms in `roles_test.go`).
+  - `core/forms/page/forms.js`: the form script. `shell/e2e/form-script.cjs` runs it in a
+    real page.
+  - `core/cmd/pwlab`: the test bench. `go run ./cmd/pwlab -extension /tmp/pb-form-lab
+    -anywhere asha:made-up-password` from `core/` writes the test extension to that folder
+    and answers it; in any Chrome, Extensions, Developer mode, Load unpacked, that folder.
+    Its popup shows, for the page in front, the roles Go found in each frame and a button
+    to fill a test login; the terminal says each thing the page side told. It holds test
+    logins only, and tells a sent password by its length alone.
+    `shell/e2e/form-lab.cjs` runs the whole of it in a real Chromium.
+- **Not built:** the engine's carrier, the list and the prompts in the shells, matching
+  and saving in `core/passwords`.
 
 ## The short version
 
