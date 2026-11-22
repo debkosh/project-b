@@ -3,7 +3,9 @@
 # `tools/build.sh linux arm64` built and staged (build/linux/stage-arm64.tar.gz): built in the
 # Ubuntu VM into an OSTree repository on branch stable, signed with our key, with the
 # .flatpakref and .flatpakrepo that point at it and a single-file bundle, into build/linux/:
-#   flatpak-repo.tar.gz   the repository, which the Pages workflow publishes at <url>/repo/
+#   flatpak-repo.tar.gz   the repository, which the Pages workflow publishes at <url>/repo/,
+#                         with repo/linux.json, which names its commits by version for the
+#                         app's updater (core/update, Commits)
 #   project-b.flatpakref  one click in GNOME Software or KDE Discover installs the app
 #   project-b.flatpakrepo adds the repository itself
 #   io.github.sudiptadeb.project-b.flatpak   the app in one file, deskrig's way in
@@ -47,6 +49,14 @@ fpr=\$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr/{print \$10; exit}'
 tar -xzf stage-arm64.tar.gz
 flatpak-builder --force-clean --default-branch=stable --repo=repo \
   --gpg-sign=\$fpr --gpg-homedir="\$GNUPGHOME" build-dir $app.yml >build.log 2>&1 || { tail -30 build.log; exit 1; }
+# The commits by version, as the updater reads them, in the repository's own folder, so the
+# two are published together and never disagree. The version is the one the binary says.
+version=\$(stage/files/project_b --version | sed -n 's/^Project B \([0-9][^,]*\),.*/\1/p')
+commit=\$(cat repo/refs/heads/app/$app/aarch64/stable)
+[ -n "\$version" ] && [ -n "\$commit" ] || { echo "FAILED: no version (\$version) or commit (\$commit)"; exit 1; }
+printf '{"stable":[{"commit":"%s","version":"%s"}]}\n' "\$commit" "\$version" > repo/linux.json
+grep -q "\"\$commit\"" repo/linux.json || { echo "FAILED: linux.json doesn't name the stable commit"; exit 1; }
+echo "stable is \$version, commit \$commit"
 flatpak build-update-repo --gpg-sign=\$fpr --gpg-homedir="\$GNUPGHOME" --generate-static-deltas \
   --title="Project B" --default-branch=stable repo
 flatpak build-bundle --gpg-sign=\$fpr --gpg-homedir="\$GNUPGHOME" --repo-url=$url/repo/ \

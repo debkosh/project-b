@@ -89,6 +89,11 @@ type Config struct {
 	// installer on its own goroutine, and the engine's calls must be made on the main thread.
 	// Nil: this build doesn't update.
 	Installer func(main func(func()), quit func()) appupdate.Installer
+	// Source, when set, is where releases come from instead of the manifest, and what puts
+	// them in place: Linux's Flatpak update portal (amarit/flatpak). It is made with how to end
+	// the app, and closed with the manager when it is an io.Closer; Installer is then unused.
+	// Nil from it: this copy doesn't update.
+	Source func(quit func()) appupdate.Source
 	// Settle, when set, counts this start for the rollback, early: true means the previous
 	// release was put back and started, and this process should end.
 	Settle func(*amarit.Client) (bool, error)
@@ -104,6 +109,7 @@ type Manager struct {
 	post   func(func())
 	client *amarit.Client
 	u      *appupdate.Updater
+	src    appupdate.Source
 
 	mu    sync.Mutex
 	state State
@@ -133,16 +139,24 @@ func New(cfg Config, post func(func()), quit func()) *Manager {
 	}
 	m.client = c
 	m.raw = appupdate.State{Channel: c.Channel(), AutoUpdate: c.AutoUpdate()}
-	if cfg.Version == "" || cfg.Installer == nil {
+	if cfg.Version == "" || (cfg.Installer == nil && cfg.Source == nil) {
 		return m
 	}
-	m.u = appupdate.New(appupdate.Config{
-		Client:    c,
-		Installer: cfg.Installer(post, func() { post(quit) }),
-		Dir:       cfg.StateDir,
-		Interval:  CheckInterval,
-		Logf:      quietLog(func(line string) { timeline.Infof("%s", line) }),
-	})
+	ucfg := appupdate.Config{
+		Client:   c,
+		Dir:      cfg.StateDir,
+		Interval: CheckInterval,
+		Logf:     quietLog(func(line string) { timeline.Infof("%s", line) }),
+	}
+	if cfg.Source != nil {
+		if m.src = cfg.Source(func() { post(quit) }); m.src == nil {
+			return m
+		}
+		ucfg.Source = m.src
+	} else {
+		ucfg.Installer = cfg.Installer(post, func() { post(quit) })
+	}
+	m.u = appupdate.New(ucfg)
 	m.raw = m.u.State()
 	m.state = words(m.raw)
 	m.u.OnChange(func(s appupdate.State) { post(func() { m.changed(s) }) })
@@ -337,6 +351,9 @@ func (m *Manager) Close() {
 	if m.u != nil {
 		m.u.Close()
 	}
+	if c, ok := m.src.(io.Closer); ok {
+		c.Close()
+	}
 }
 
 // CheckNow checks at once, whether or not automatic checks are on, and tries again a
@@ -467,6 +484,10 @@ func why(s appupdate.State) string {
 		return "another download is still stopping; check again in a moment"
 	case appupdate.InstallFailed:
 		return "couldn't put the new app in place (" + s.Error + ")"
+	case appupdate.NeedsPermission:
+		return "bring Project B to the front and press Try again to allow updates"
+	case appupdate.NeedsUser:
+		return "this update is made in your software centre, as it asks for something new, or updates weren't allowed"
 	}
 	return s.Error
 }

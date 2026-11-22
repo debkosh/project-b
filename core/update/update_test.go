@@ -1,6 +1,7 @@
 package update
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -229,4 +230,81 @@ func TestTheLogSaysARepeatedLineOnce(t *testing.T) {
 	if strings.Join(got, ",") != "a,b,a" {
 		t.Fatalf("logged %v", got)
 	}
+}
+
+// source is a Flatpak's portal as appupdate sees it: a release it heard of, made at Fetch,
+// and Install, which is the relaunch; Close is the manager's.
+type source struct {
+	mu        sync.Mutex
+	installed bool
+	closed    bool
+}
+
+func (s *source) Look(context.Context) (appupdate.Found, error) {
+	return appupdate.Found{ID: "c2", Version: "0.2.0"}, nil
+}
+
+func (s *source) Fetch(_ context.Context, _ appupdate.Found, report func(done, total int64)) error {
+	report(1, 1)
+	return nil
+}
+
+func (s *source) Install() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.installed = true
+	return nil
+}
+
+func (s *source) Changed() <-chan struct{} { return nil }
+
+func (s *source) Close() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.closed = true
+	return nil
+}
+
+// A release from a Source, as Linux's update portal gives them: ready with its version, and
+// Relaunch is the source's Install; the source closes with the manager. A refusal that needs
+// the software centre says so, with no Try again; a Source that can't start, outside the
+// Flatpak, is a copy that doesn't update.
+func TestASourcesReleaseIsReadyAndInstalled(t *testing.T) {
+	src := &source{}
+	cfg := Config{Project: "project-b", Version: "0.1.0", AutoUpdate: true, StateDir: t.TempDir(),
+		Source: func(func()) appupdate.Source { return src }}
+	m := New(cfg, func(f func()) { f() }, func() {})
+	m.CheckNow()
+	eventually(t, m, func(st State) bool { return st.Phase == Ready && st.Version == "0.2.0" })
+	m.Relaunch()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		src.mu.Lock()
+		done := src.installed
+		src.mu.Unlock()
+		if done {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	m.Close()
+	if !src.installed || !src.closed {
+		t.Fatalf("installed %v, closed %v", src.installed, src.closed)
+	}
+
+	if st := words(appupdate.State{Phase: appupdate.Failed, Kind: appupdate.NeedsUser, Error: "NotSupported"}); st.Retry || !strings.Contains(st.Error, "software centre") {
+		t.Errorf("an update for the software centre: %+v", st)
+	}
+	// GNOME asks to allow the first update only for the app in front.
+	if st := words(appupdate.State{Phase: appupdate.Failed, Kind: appupdate.NeedsPermission, Error: "AccessDenied"}); !st.Retry || !strings.Contains(st.Error, "Try again") {
+		t.Errorf("an update to allow with the app in front: %+v", st)
+	}
+
+	none := New(Config{Project: "project-b", Version: "0.1.0", StateDir: t.TempDir(),
+		Source: func(func()) appupdate.Source { return nil }}, func(f func()) { f() }, func() {})
+	none.CheckNow()
+	if st := none.State(); st.Check != CheckFailed {
+		t.Errorf("a copy whose source didn't start: %+v", st)
+	}
+	none.Close()
 }
