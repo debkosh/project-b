@@ -455,6 +455,48 @@ Done, reviewed by ux, on the four desktops in clones of deskrig's VMs (`pb-flat-
 Left for step 4: "System" theme follows the desktop through the Settings portal (on GNOME it
 stays light today), and the rest of `core/system`.
 
+### Step 4, the plan (resume here)
+
+Step 4 is `core/system` on Linux (section 4's table), all from pure Go over D-Bus
+(`github.com/godbus/dbus/v5`, already in `core/go.mod` for the Secret portal in
+`core/keys/secretportal_linux.go`, which shows the portal Request/Response pattern).
+
+1. **Dark mode first** (ux wants shots of "System" following GNOME's dark mode). Today the
+   engine reads `ui::NativeTheme::...preferred_color_scheme()` (`window_linux.cc` Dark(),
+   `content_browser_client.cc`), which knows nothing of the desktop on Linux without GTK.
+   - Go: `system/platform/platform_linux.go` reads `org.freedesktop.portal.Settings`
+     `ReadOne("org.freedesktop.appearance", "color-scheme")` (0 none, 1 dark, 2 light) and
+     watches `SettingChanged`; a missing portal means light.
+   - A new engine call, appended at the end of `PBEngineCalls` (`engine/abi/pb_abi.h`):
+     `set_system_dark(int dark)`, null on the Mac and Android; Go's `engine.Engine` gets
+     `SetSystemDark(bool)` (native in `core/cmd/lib/main.go` with a `call_` helper as
+     `call_focus_shell`; no-op in `core/mockengine` and `core/perf/rig.go`).
+   - The engine sets `ui::NativeTheme::GetInstanceForNativeUi()` and `GetInstanceForWeb()`
+     `set_preferred_color_scheme(kDark|kLight)` and calls `NotifyOnNativeThemeUpdated()`
+     (as `engine.cc` around line 775 does), so pages' `prefers-color-scheme`, the shell's
+     `theme.js` and the window's frame follow.
+   - Check on GNOME (`gsettings set org.gnome.desktop.interface color-scheme prefer-dark`)
+     and KDE; shots to ux. The mock can't show it; a Go test fakes the portal's answer.
+2. Then the rest of section 4's table: OpenURI (OpenFile, RevealFile), notifications (the
+   Notification portal, ActionInvoked), IsDefaultBrowser from `mimeapps.list`, the accent colour.
+3. Step 5's remaining piece is amarit's Flatpak update source (amarit's docs/design.md).
+
+How the Linux work runs (rules from this branch's sessions):
+- Build: `tools/build.sh linux arm64` (amarit job; container `pb`, build lock), then
+  `tools/linux/flatpak-release.sh` in pb-ubuntu (`tools/linux/vm.sh start|stop`): signed repo,
+  bundle and `.flatpakref` in `build/linux/`, kept only if `restart_check.py` passes. The
+  signing key is `$KEYKOSH_ROOT/project-b/flatpak-repo-signing.asc`; the script empties
+  `~/pb-release` on the VM.
+- Desktops: clones `pb-flat-ub2` (GNOME Wayland), `pb-flat-ubx` (GNOME Xorg), `pb-flat-deb`
+  (Debian, 20 GB disk), `pb-flat-kde`, `pb-flat-ub3`. The tester owns them: ask before every
+  VM start, one at a time; each start opens a window on the Mac's desktop and can cover
+  release's runs. `deskrig --target <vm> run -- sync` before every `deskrig vm stop`, which
+  doesn't flush the guest's disk; stop deskrig's `capture-serve` by its pid after.
+- `deskrig run` has the session's `XDG_SESSION_TYPE` and D-Bus but no `WAYLAND_DISPLAY` or
+  `DISPLAY`; start apps from the GNOME search (Super, type, Enter) or set them.
+- Linux releases only when Sudipta asks; a release hands release the four files in
+  `build/linux/` to replace or attach, and Pages serves the newest release's.
+
 ## Spike (2026-11-20)
 
 Step 1 of 7: stock content_shell for Linux arm64, none of our code, as a Flatpak through
