@@ -261,6 +261,13 @@ PAGES["/passkey"] = ("<title>Passkey</title><style>button{display:block;width:10
 PAGES["/login"] = ("<title>A login form</title><style>input{display:block;width:90%;height:12vh;font-size:40px;margin:4vh auto}</style>"
                     "<form onsubmit='event.preventDefault()'><input id=e name=email type=email><input id=p name=password type=password></form><script>"
                     "document.addEventListener('input', () => e.value && p.value && fetch('/said?filled=' + encodeURIComponent(e.value + ' ' + p.value)));</script>")
+# The same sign-in, whose form goes through: its button first, clear of the keyboard, and a
+# tap on it sends the form and takes the tab on to a page with no sign-in. Its path doesn't
+# begin as /login does: the address field would complete /login to it once it was visited.
+PAGES["/onward"] = ("<title>A login form that goes on</title><style>input,button{display:block;width:90%;height:9vh;font-size:40px;margin:3vh auto}</style>"
+                       "<form onsubmit=\"event.preventDefault(); location.href='/signed-in'\"><button id=go>Go on</button>"
+                       "<input id=e name=email type=email><input id=p name=password type=password></form>")
+PAGES["/signed-in"] = "<title>Signed in</title><p>signed in"
 
 
 # A page that fills the screen at a tap, as a video's full screen does, and says when it has.
@@ -2070,6 +2077,44 @@ def passwords_on_the_phone():
         check("a tap on the chip fills the username and the password into the page", asked("/said?filled=" + urllib.parse.quote(fill_user + " " + fill_password)), str(served))
         check("and nothing asked for the PIN", system_node(text="Show your password") is None)
         shot("passwords-filled")
+
+        # Saving: a sign-in typed with a login that isn't saved, on a page whose form goes
+        # through. Once the tab has gone on, the shell's sheet asks; Save keeps the login,
+        # which the sign-in page's chips then offer and fill.
+        save_user, save_password = "saver@example.org", "save-me-in-9"
+        fields = lambda: until(lambda: [n for n in screen_parts().get("page", ET.Element("none")).iter("node") if n.get("class") == FIELD] or None, 20) or []
+        go(BASE + "/onward")
+        asked("/onward")
+        tap(middle(fields()[0]))
+        until(keyboard_shown, 10)
+        type_text(save_user)
+        # The page may have moved under the keyboard: its fields are read again.
+        tap(middle(fields()[1]))
+        time.sleep(1)
+        type_text(save_password)
+        served.clear()
+        tap(middle(see("page", text="Go on")))
+        check("the sign-in's button sends its form, and the tab goes on", asked("/signed-in"), str(served))
+        sheet = until(lambda: named("shell", "Save password?"), 30)
+        words = [w for n in screen_parts().get("shell", ET.Element("none")).iter("node") for w in (n.get("text"), n.get("content-desc")) if w]
+        check("once the page has loaded, the shell's sheet asks to save, with the username", sheet is not None and save_user in words, words[:40])
+        check("and the typed password is nowhere in the shell", not any(save_password in w for w in words))
+        shot("passwords-save-sheet")
+        tap(middle(see("shell", text="Save")))  # does: passwordSaveAnswer
+        check("Save takes the sheet away", until(lambda: named("shell", "Save password?") is None, 20) is not None)
+        go(BASE + "/login")
+        asked("/login")
+        served.clear()
+        tap(middle(fields()[1]))
+        chip = until(lambda: first(lambda: find("shell", text=save_user), lambda: find("shell", label=save_user)), 20)
+        check("the saved login is a chip at the site's sign-in", chip is not None,
+              [w for n in screen_parts().get("shell", ET.Element("none")).iter("node") for w in (n.get("text"), n.get("content-desc")) if w][:40])
+        time.sleep(0.8)
+        chip = still(lambda: first(lambda: find("shell", text=save_user), lambda: find("shell", label=save_user)))
+        shot("passwords-saved-chip")
+        finger(middle(chip))
+        check("and fills with the password that was saved", asked("/said?filled=" + urllib.parse.quote(save_user + " " + save_password)), str(served))
+        shot("passwords-saved-filled")
     finally:
         adb("shell", "locksettings", "clear", "--old", pin)
         check("the PIN is cleared after the run", until(lambda: "true" in adb("shell", "locksettings", "get-disabled").lower()) is not None, adb("shell", "locksettings", "get-disabled"))
