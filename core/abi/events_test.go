@@ -170,6 +170,7 @@ func (r *adapterRecorder) ImageSaved(string, bool)                              
 func (r *adapterRecorder) SiteDataListed(string, []engine.SiteData)                {}
 func (r *adapterRecorder) IsPageFullScreen(engine.TabID) bool                      { return false }
 func (r *adapterRecorder) DownloadNotificationCommand(int, engine.DownloadCommand) {}
+func (r *adapterRecorder) DownloadPublished(string, string)                        {}
 
 func (r *adapterRecorder) PermissionRequested(p engine.PermissionRequest) {
 	r.note(fmt.Sprintf("permission %d tab %d %s %v gesture=%v", p.ID, p.Tab, p.Origin, p.Kinds, p.Gesture))

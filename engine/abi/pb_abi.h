@@ -183,6 +183,10 @@ typedef enum PBEvent {
   PB_EVENT_DOWNLOAD_ACTION = 83,        // i: download, Go's id as show_download had it,
                                         // i: PBDownloadCommand; Android only, its
                                         // notification's Pause, Resume or Cancel
+  PB_EVENT_DOWNLOAD_PUBLISHED = 84,     // s: a finished file's path, s: its copy in the
+                                        // phone's shared Downloads, a content:// address,
+                                        // or "" when the copy failed; Android only. The
+                                        // address is the download's path from then on
   PB_EVENT_PAGE_MESSAGE = 23,           // i: tab, s: the page's name ("settings",
                                         // "history", "bookmarks", "downloads",
                                         // "welcome"), s: json, from the page of ours

@@ -238,7 +238,11 @@ func (e *nativeEngine) DownloadCommand(id engine.DownloadID, c engine.DownloadCo
 }
 
 func (e *nativeEngine) ShowDownload(id int, d engine.Download) {
-	name, path := C.CString(filepath.Base(d.Path)), C.CString(d.Path)
+	shown := d.Name
+	if shown == "" {
+		shown = filepath.Base(d.Path)
+	}
+	name, path := C.CString(shown), C.CString(d.Path)
 	defer C.free(unsafe.Pointer(name))
 	defer C.free(unsafe.Pointer(path))
 	paused := 0

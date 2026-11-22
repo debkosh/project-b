@@ -31,22 +31,10 @@ func withPath(path string, call func(*C.char)) {
 	call(c)
 }
 
-func (s *System) OpenFile(path string) { withPath(path, func(c *C.char) { C.pb_system_open_file(c) }) }
-func (s *System) RevealFile(path string) {
-	withPath(path, func(c *C.char) { C.pb_system_reveal_file(c) })
-}
-
 // CopySecret puts text on the pasteboard with the concealed and transient types beside it.
 func (s *System) CopySecret(text string) {
 	withPath(text, func(c *C.char) { C.pb_system_copy_secret(c) })
 }
-
-func (s *System) IsDefaultBrowser() bool { return C.pb_system_is_default_browser() != 0 }
-
-func (s *System) AskDefaultBrowser(answered func(bool)) {
-	s.defaultBrowser.Ask(answered, func() { C.pb_system_ask_default_browser() })
-}
-
 
 // verifyPerson asks macOS's own sheet: Touch ID, else the Mac's password.
 func (s *System) verifyPerson(id int32, check system.PersonCheck) {
@@ -66,11 +54,6 @@ func (s *System) SetDockColor(color string) {
 		return
 	}
 	C.pb_system_set_dock_color(C.int32_t(rgb))
-}
-
-func (s *System) OnOpenURLs(opened func(urls []string)) {
-	s.opened = opened
-	C.pb_system_receive_links()
 }
 
 // fullDiskAccess is System Settings' Privacy & Security, at Full Disk Access.

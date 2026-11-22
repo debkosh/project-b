@@ -12,17 +12,12 @@
 
 // Go's own: the OS's calls and their answers (core/system/platform).
 void PBSetSystemCalls(const PBSystemCalls* calls);
-void PBSystemAnswered(int32_t question, int yes);
 void PBSystemPersonVerified(int32_t id, int verdict);
 // oskit's (oskit/internal/jni): its packages find their Java and register their natives.
 void OskitAttach(void* env);
 
 static JavaVM* vm;
 static jclass go_system;
-static jmethodID go_system_open_file;
-static jmethodID go_system_reveal_file;
-static jmethodID go_system_is_default_browser;
-static jmethodID go_system_ask_default_browser;
 static jmethodID go_system_verify_person;
 static jmethodID go_system_cancel_person;
 static jmethodID go_system_copy_secret;
@@ -54,46 +49,6 @@ static void detach(JNIEnv* env, int attached) {
 }
 
 // GoSystem's static methods, as PBSystemCalls has them.
-static void system_void(jmethodID method) {
-  int attached;
-  JNIEnv* env = attach(&attached);
-  if (env == NULL) {
-    return;
-  }
-  (*env)->CallStaticVoidMethod(env, go_system, method);
-  detach(env, attached);
-}
-
-static int system_bool(jmethodID method) {
-  int attached;
-  JNIEnv* env = attach(&attached);
-  if (env == NULL) {
-    return 0;
-  }
-  jboolean yes = (*env)->CallStaticBooleanMethod(env, go_system, method);
-  if ((*env)->ExceptionCheck(env)) {
-    yes = JNI_FALSE;
-  }
-  detach(env, attached);
-  return yes ? 1 : 0;
-}
-
-static void system_open_file(const char* path) {
-  int attached;
-  JNIEnv* env = attach(&attached);
-  if (env == NULL) {
-    return;
-  }
-  jstring p = (*env)->NewStringUTF(env, path);
-  (*env)->CallStaticVoidMethod(env, go_system, go_system_open_file, p);
-  (*env)->DeleteLocalRef(env, p);
-  detach(env, attached);
-}
-
-static void system_reveal_file(void) { system_void(go_system_reveal_file); }
-static int system_is_default_browser(void) { return system_bool(go_system_is_default_browser); }
-static void system_ask_default_browser(void) { system_void(go_system_ask_default_browser); }
-
 static void system_verify_person(int32_t id, const char* title, const char* subtitle) {
   int attached;
   JNIEnv* env = attach(&attached);
@@ -143,10 +98,6 @@ static void system_show_update(const char* state_json) {
 }
 
 static const PBSystemCalls system_calls = {
-    .open_file = system_open_file,
-    .reveal_file = system_reveal_file,
-    .is_default_browser = system_is_default_browser,
-    .ask_default_browser = system_ask_default_browser,
     .verify_person = system_verify_person,
     .cancel_person = system_cancel_person,
     .copy_secret = system_copy_secret,
@@ -176,10 +127,6 @@ JNIEXPORT jlong JNICALL Java_dev_projectb_browser_GoCore_table(JNIEnv* env, jcla
   if (vm == NULL) {
     (*env)->GetJavaVM(env, &vm);
     go_system = (*env)->NewGlobalRef(env, (*env)->FindClass(env, "dev/projectb/browser/GoSystem"));
-    go_system_open_file = (*env)->GetStaticMethodID(env, go_system, "openFile", "(Ljava/lang/String;)V");
-    go_system_reveal_file = (*env)->GetStaticMethodID(env, go_system, "revealFile", "()V");
-    go_system_is_default_browser = (*env)->GetStaticMethodID(env, go_system, "isDefaultBrowser", "()Z");
-    go_system_ask_default_browser = (*env)->GetStaticMethodID(env, go_system, "askDefaultBrowser", "()V");
     go_system_verify_person = (*env)->GetStaticMethodID(env, go_system, "verifyPerson", "(ILjava/lang/String;Ljava/lang/String;)V");
     go_system_cancel_person = (*env)->GetStaticMethodID(env, go_system, "cancelPerson", "(I)V");
     go_system_copy_secret = (*env)->GetStaticMethodID(env, go_system, "copySecret", "(Ljava/lang/String;)V");
@@ -232,12 +179,6 @@ JNIEXPORT jobjectArray JNICALL Java_dev_projectb_browser_GoCore_init(JNIEnv* env
 }
 #pragma clang unsafe_buffer_usage end
 
-// An answer to a question Go asked of Android, from GoSystem on the main thread.
-JNIEXPORT void JNICALL Java_dev_projectb_browser_GoCore_answered(JNIEnv* env, jclass cls,
-                                                                  jint question, jboolean yes) {
-  PBSystemAnswered(question, yes ? 1 : 0);
-}
-
 // How a check of the person ended, from GoSystem on the main thread.
 JNIEXPORT void JNICALL Java_dev_projectb_browser_GoCore_personVerified(JNIEnv* env, jclass cls,
                                                                         jint id, jint verdict) {
@@ -254,13 +195,3 @@ JNIEXPORT void JNICALL Java_dev_projectb_browser_GoCore_updateCommand(JNIEnv* en
   (*env)->ReleaseStringUTFChars(env, name, s);
 }
 
-// The link another app sent, from BrowserActivity on the main thread, after Go started: the
-// links the OS hands the app, core/system's (PBSystemOpenURLs, one per line).
-void PBSystemOpenURLs(char* urls);
-
-JNIEXPORT void JNICALL Java_dev_projectb_browser_GoCore_openUrl(JNIEnv* env, jclass cls,
-                                                                 jstring url) {
-  const char* s = (*env)->GetStringUTFChars(env, url, NULL);
-  PBSystemOpenURLs((char*)s);
-  (*env)->ReleaseStringUTFChars(env, url, s);
-}

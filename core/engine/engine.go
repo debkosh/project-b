@@ -538,6 +538,10 @@ type Listener interface {
 	// DownloadNotificationCommand is a phone's notification of a download, by the id
 	// ShowDownload gave it, asking to cancel, pause or resume it.
 	DownloadNotificationCommand(id int, c DownloadCommand)
+	// DownloadPublished is a phone's copy of a finished file in its shared Downloads, by the
+	// file's path: its content:// address, the download's path from then on, as Chromium's
+	// is; "" when the copy failed.
+	DownloadPublished(path, address string)
 	// SiteDataListed is what ListSiteData found in a workspace's storage, by host.
 	SiteDataListed(workspace string, hosts []SiteData)
 
@@ -715,8 +719,11 @@ const (
 
 // Download is a download as the engine reports it. Total is -1 when unknown.
 type Download struct {
-	ID       DownloadID
-	Path     string
+	ID   DownloadID
+	Path string
+	// Name is the file's name, for ShowDownload: "" is the path's last part, which a phone's
+	// published copy, a content:// address, doesn't have.
+	Name     string
 	URL      string
 	Mime     string
 	State    DownloadState

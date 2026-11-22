@@ -1,6 +1,5 @@
 package dev.projectb.browser;
 
-import android.app.DownloadManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -16,6 +15,8 @@ import android.graphics.drawable.Icon;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.SystemClock;
 import android.provider.MediaStore;
 import android.util.Log;
@@ -31,21 +32,28 @@ import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 /**
  * A finished download, handed to the phone (docs/daily-driver.md): copied into the shared
  * Downloads through MediaStore, where the Files app and other apps find it, and the app's own
- * copy removed. What each file became is kept, so Open in the downloads list opens the shared
- * copy after a restart too.
+ * copy removed. Go hears the shared copy's content:// address and keeps it as the download's
+ * path from then on, as Chromium does, so Open, Share and Delete use it directly.
  */
 @JNINamespace("project_b")
 final class Downloads {
     private static final String TAG = "pb.downloads";
-    // Where each download went: the app's path, as Go lists it, to the shared copy's address.
+    // Where each download went, the app's path to the shared copy's address, as 0.3.9 and
+    // before kept it: reportKept hands it to Go once, then it goes.
     private static final String PUBLISHED = "pb.downloads.published";
+    // The paths being copied, whose done notification waits for Go to have the copy's address.
+    // Main thread.
+    private static final Set<String> sPublishing = new HashSet<>();
+    private static final Handler sMain = new Handler(Looper.getMainLooper());
     // One at a time, off the main thread: a copy can take a while.
     private static final Executor sCopier = Executors.newSingleThreadExecutor();
 
@@ -107,70 +115,49 @@ final class Downloads {
         return null;
     }
 
+    // Copies the finished file into the shared Downloads, removes the app's own copy, and
+    // tells Go the copy's address (PB_EVENT_DOWNLOAD_PUBLISHED), or "" when there is none.
     @CalledByNative
     static void publish(String path, String mime) {
+        sPublishing.add(path);
         sCopier.execute(() -> {
             File file = new File(path);
             Uri uri = copyToShared(file, mime);
-            if (uri == null) return;
-            published().edit().putString(path, uri.toString()).apply();
-            file.delete();
+            if (uri != null) file.delete();
+            String address = uri == null ? "" : uri.toString();
+            sMain.post(() -> {
+                sPublishing.remove(path);
+                DownloadsJni.get().published(path, address);
+            });
         });
     }
 
-    // The shared copy a download's file became, or null: Share sends that, as the app's own
-    // copy is gone once it is made.
-    static Uri sharedCopy(String path) {
-        String shared = published().getString(path, null);
-        return shared == null ? null : Uri.parse(shared);
+    // Hands Go what 0.3.9 and before kept of each download's shared copy, once Go has started,
+    // so its list keeps opening them, and forgets it.
+    static void reportKept() {
+        Map<String, ?> kept = published().getAll();
+        for (Map.Entry<String, ?> e : kept.entrySet()) {
+            DownloadsJni.get().published(e.getKey(), String.valueOf(e.getValue()));
+        }
+        if (!kept.isEmpty()) published().edit().clear().apply();
     }
 
-    // Deletes a download's shared copy, and forgets what the path became.
+    // The shared copy a download's path names, or null: Share sends that, as the app's own copy
+    // is gone once it is made.
+    static Uri sharedCopy(String path) {
+        return path.startsWith("content://") ? Uri.parse(path) : null;
+    }
+
+    // Deletes a download's shared copy, by its address.
     @CalledByNative
     static boolean delete(String path) {
         Uri uri = sharedCopy(path);
         if (uri == null) return false;
         try {
-            ContextUtils.getApplicationContext().getContentResolver().delete(uri, null, null);
+            return ContextUtils.getApplicationContext().getContentResolver().delete(uri, null, null) > 0;
         } catch (RuntimeException e) {
             Log.w(TAG, "could not delete " + path, e);
             return false;
-        }
-        published().edit().remove(path).apply();
-        return true;
-    }
-
-    // Opens the shared copy, once the copy publish started is made: Open right after a
-    // download ends would otherwise find nothing yet and do nothing. GoSystem's.
-    static void open(String path) {
-        sCopier.execute(() -> openNow(path));
-    }
-
-    private static void openNow(String path) {
-        Context context = ContextUtils.getApplicationContext();
-        String shared = published().getString(path, null);
-        if (shared == null) {
-            Log.w(TAG, "nothing shared for " + path + " yet");
-            return;
-        }
-        Uri uri = Uri.parse(shared);
-        Intent intent = new Intent(Intent.ACTION_VIEW)
-                .setDataAndType(uri, context.getContentResolver().getType(uri))
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        try {
-            context.startActivity(Intent.createChooser(intent, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-        } catch (Exception e) {
-            Log.w(TAG, "nothing opens " + path, e);
-        }
-    }
-
-    // Shows the phone's own list of downloads, where the shared copies are. GoSystem's.
-    static void reveal() {
-        Context context = ContextUtils.getApplicationContext();
-        try {
-            context.startActivity(new Intent(DownloadManager.ACTION_VIEW_DOWNLOADS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-        } catch (Exception e) {
-            Log.w(TAG, "no downloads app", e);
         }
     }
 
@@ -263,20 +250,20 @@ final class Downloads {
             return;
         }
         // Done: a tap opens the file as Open does. It goes through the app's activity, which
-        // opens it: Android lets only the app itself hand its shared copy to another app.
+        // opens it: Android lets only the app itself hand its shared copy to another app. While
+        // the copy is made, the notification waits: Go shows it again with the copy's address.
+        if (sPublishing.contains(path)) return;
         PendingIntent tap = PendingIntent.getActivity(context, tag,
                 new Intent(context, BrowserActivity.class).setAction(OPEN).putExtra(OPEN, path)
                         .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-        sCopier.execute(() -> {
-            manager.notify(TAG_NOTIFICATION, tag, new Notification.Builder(context, DONE)
-                    .setSmallIcon(android.R.drawable.stat_sys_download_done)
-                    .setContentTitle(name)
-                    .setContentText(total > 0 ? "Downloaded · " + sizeOf(total) : "Downloaded")
-                    .setAutoCancel(true)
-                    .setContentIntent(tap)
-                    .build());
-        });
+        manager.notify(TAG_NOTIFICATION, tag, new Notification.Builder(context, DONE)
+                .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                .setContentTitle(name)
+                .setContentText(total > 0 ? "Downloaded · " + sizeOf(total) : "Downloaded")
+                .setAutoCancel(true)
+                .setContentIntent(tap)
+                .build());
     }
 
     private static void forget(long id) {
@@ -328,6 +315,10 @@ final class Downloads {
     interface Natives {
         // A notification's Pause, Resume or Cancel, to Go (PB_EVENT_DOWNLOAD_ACTION).
         void command(long id, int command);
+
+        // A finished file's shared copy, by the app's path for it: its content:// address, or
+        // "" when the copy failed (PB_EVENT_DOWNLOAD_PUBLISHED).
+        void published(String path, String address);
     }
 
     // A size as the phone gives it: 1000 to a kilobyte, one decimal place under ten.

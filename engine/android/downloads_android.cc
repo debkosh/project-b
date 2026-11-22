@@ -15,6 +15,7 @@
 namespace project_b {
 
 using base::android::AttachCurrentThread;
+using base::android::ConvertJavaStringToUTF8;
 using base::android::ConvertUTF8ToJavaString;
 
 void ChooseSavePath(content::WebContents* contents,
@@ -45,6 +46,17 @@ void ShowDownload(int64_t id,
   Java_Downloads_show(env, id, ConvertUTF8ToJavaString(env, name),
                       ConvertUTF8ToJavaString(env, path.AsUTF8Unsafe()), state, received, total,
                       paused);
+}
+
+// A finished file's copy in the shared Downloads, by its path, to Go, which keeps the copy's
+// address as the download's path from then on.
+static void JNI_Downloads_Published(JNIEnv* env,
+                                    const jni_zero::JavaRef<jstring>& jpath,
+                                    const jni_zero::JavaRef<jstring>& jaddress) {
+  hooks::Args args;
+  args.Str(ConvertJavaStringToUTF8(env, jpath));
+  args.Str(ConvertJavaStringToUTF8(env, jaddress));
+  hooks::Fire(PB_EVENT_DOWNLOAD_PUBLISHED, args);
 }
 
 // A notification's Pause, Resume or Cancel, by Go's id for the download, to Go as the

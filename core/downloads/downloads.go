@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -45,7 +46,16 @@ type Item struct {
 	engine engine.DownloadID
 	// retrying is set by Retry until the engine's download for it shows up.
 	retrying bool
+	// publishing is set, on a phone, from done until the engine has said where its copy in
+	// the shared Downloads is (Published); waiting is what Open and Share asked meanwhile,
+	// done with that copy once it is there.
+	publishing bool
+	waiting    []func(path string)
 }
+
+// publishes says the engine copies each finished file into the phone's shared Downloads and
+// says where (Published), as Chromium's does: Android.
+var publishes = runtime.GOOS == "android"
 
 var states = map[engine.DownloadState]string{
 	engine.DownloadProgress:  "progress",
@@ -164,8 +174,8 @@ func cleanName(name string) string {
 
 // free is a path in the folder for name that no file and no download in the list has:
 // name, then name (1), name (2) and so on, before its extension. A phone moves a finished
-// download's file to the shared Downloads, so its path is empty again, but each download
-// keeps its own: its copy there is found by it.
+// download's file to the shared Downloads, so its path is empty again, but its name stays the
+// download's (taken): two of one name are told apart in the list, as in the shared Downloads.
 func (m *Manager) free(name string) string {
 	ext := filepath.Ext(name)
 	stem := strings.TrimSuffix(name, ext)
@@ -185,11 +195,15 @@ func (m *Manager) free(name string) string {
 	}
 }
 
-// taken says a download in the list has the path: not one being retried, whose new copy
-// takes its name.
+// taken says a download in the list has the path, or on a phone had it before its file went
+// to the shared Downloads and its path became the copy's address: not one being retried, whose
+// new copy takes its name.
 func (m *Manager) taken(path string) bool {
 	for _, it := range m.list {
-		if it.Path == path && !it.retrying {
+		if it.retrying {
+			continue
+		}
+		if it.Path == path || strings.HasPrefix(it.Path, "content://") && it.Name == filepath.Base(path) {
 			return true
 		}
 	}
@@ -221,6 +235,7 @@ func (m *Manager) Updated(d engine.Download) int {
 	it.retrying = false
 	it.Path, it.Name = d.Path, filepath.Base(d.Path)
 	it.State, it.Received, it.Total, it.Paused, it.Reason = states[d.State], d.Received, d.Total, d.Paused, d.Reason
+	it.publishing = publishes && it.State == "done"
 	m.e.ShowDownload(it.ID, d)
 	// A failed download stays the engine's: it may resume, by itself or by Retry.
 	if it.State == "done" || it.State == "cancelled" {
@@ -248,6 +263,7 @@ func (m *Manager) Keep(src, from string) (int, error) {
 	it := &Item{ID: m.next, Name: filepath.Base(path), Path: path, From: from, State: "done", Received: size, Total: size, Started: time.Now().Unix()}
 	m.next++
 	m.list = append([]*Item{it}, m.list...)
+	it.publishing = publishes
 	m.e.PublishFile(path)
 	m.e.ShowDownload(it.ID, engine.Download{Path: path, State: engine.DownloadDone, Received: size, Total: size})
 	m.save()
@@ -291,8 +307,43 @@ func (m *Manager) retried(url string) *Item {
 func (m *Manager) Share(id int, w engine.WindowID) {
 	for _, it := range m.list {
 		if it.ID == id && it.State == "done" {
-			m.e.ShareFile(w, it.Path, engine.Rect{})
+			it.when(func(path string) { m.e.ShareFile(w, path, engine.Rect{}) })
 		}
+	}
+}
+
+// when does do with the file's path now, or, while a phone makes its shared copy, with the
+// copy's once it is made.
+func (it *Item) when(do func(path string)) {
+	if it.publishing {
+		it.waiting = append(it.waiting, do)
+		return
+	}
+	do(it.Path)
+}
+
+// Published takes a phone's copy of a finished file in its shared Downloads, by the file's
+// path: its content:// address is the download's path from then on, as Chromium's is, so
+// Open, Share and Delete hand that on. Its notification is shown again with it, and what was
+// asked while it was made is done. An address of "" is a copy that failed: the path stays.
+func (m *Manager) Published(path, address string) {
+	for _, it := range m.list {
+		if it.Path != path || it.State != "done" {
+			continue
+		}
+		if address != "" {
+			it.Path = address
+		}
+		it.publishing = false
+		waiting := it.waiting
+		it.waiting = nil
+		m.e.ShowDownload(it.ID, engine.Download{Path: it.Path, Name: it.Name, State: engine.DownloadDone, Received: it.Received, Total: it.Total})
+		for _, do := range waiting {
+			do(it.Path)
+		}
+		m.save()
+		m.changed()
+		return
 	}
 }
 
@@ -300,7 +351,7 @@ func (m *Manager) Share(id int, w engine.WindowID) {
 // takes it off the list.
 func (m *Manager) Delete(id int) bool {
 	it := m.find(id)
-	if it == nil || it.State != "done" || !m.e.DeleteDownload(it.Path) {
+	if it == nil || it.State != "done" || it.publishing || !m.e.DeleteDownload(it.Path) {
 		return false
 	}
 	m.drop(func(x *Item) bool { return x == it })
@@ -335,7 +386,7 @@ func (m *Manager) Act(id int, action string) {
 	switch action {
 	case "open":
 		if it.State == "done" {
-			m.sys.OpenFile(it.Path)
+			it.when(m.sys.OpenFile)
 		}
 	case "reveal":
 		if it.State == "done" {

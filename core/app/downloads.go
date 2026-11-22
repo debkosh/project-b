@@ -146,6 +146,9 @@ func (n *downloadNews) changed(list []downloads.Item, offer bool) []map[string]a
 	return out
 }
 
+// DownloadPublished takes a phone's copy of a finished download in its shared Downloads.
+func (a *App) DownloadPublished(path, address string) { a.Downloads.Published(path, address) }
+
 // DownloadNotificationCommand does what a download's notification on a phone asks, as the
 // bar's and the Downloads page's buttons do.
 func (a *App) DownloadNotificationCommand(id int, c engine.DownloadCommand) {
