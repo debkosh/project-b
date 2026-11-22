@@ -296,11 +296,79 @@ fsButton.addEventListener('click', (e) => {
 document.addEventListener('fullscreenchange', fsShow);
 fsShow();
 
+// ---- Full screen, offered first ----------------------------------------------------------
+
+// Before the intro, where the browser can and the page isn't already full screen: "Go full
+// screen" (its press is the gesture full screen needs), or "Not now". Esc, any other key, a
+// press elsewhere, or FS_MS passing starts the intro as it is. The countdown waits while the
+// pointer rests on the offer. Phones never see it.
+const FS_MS = 2000;
+function offerFullScreen() {
+  if (phone || !document.fullscreenEnabled || document.fullscreenElement) return Promise.resolve();
+  return new Promise((done) => {
+    const el = document.createElement('div');
+    el.id = 'fs-prompt';
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-label', 'Best experienced in full screen');
+    el.innerHTML = '<div class="eyebrow">Best experienced in full screen</div>' +
+      '<div class="row"><button class="go" type="button"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4"/></svg>Go full screen</button>' +
+      '<button class="later" type="button">Not now</button></div><div class="time" aria-hidden="true"><i></i></div>';
+    el.style.setProperty('--fs-ms', FS_MS + 'ms');
+    document.body.append(el);
+    const go = el.querySelector('.go');
+    go.focus({ preventScroll: true });
+    let left = FS_MS;
+    let since = performance.now();
+    let timer = setTimeout(() => finish(false), left);
+    let over = false;
+    const finish = (full) => {
+      if (!el.isConnected || el.classList.contains('leaving')) return;
+      clearTimeout(timer);
+      removeEventListener('keydown', onKey, true);
+      if (full) document.documentElement.requestFullscreen?.().catch(() => {});
+      el.classList.add('leaving');
+      setTimeout(() => { el.remove(); done(); }, reduced ? 0 : 250);
+    };
+    // Resting on the offer holds the countdown, so reaching for the button never loses it.
+    const card = el.querySelector('.row');
+    card.addEventListener('pointerenter', () => {
+      if (over) return;
+      over = true;
+      clearTimeout(timer);
+      left -= performance.now() - since;
+      el.classList.add('paused');
+    });
+    card.addEventListener('pointerleave', () => {
+      if (!over) return;
+      over = false;
+      since = performance.now();
+      timer = setTimeout(() => finish(false), Math.max(left, 300));
+      el.classList.remove('paused');
+    });
+    go.addEventListener('click', (e) => { e.stopPropagation(); finish(true); });
+    el.querySelector('.later').addEventListener('click', (e) => { e.stopPropagation(); finish(false); });
+    el.addEventListener('click', () => finish(false));
+    const onKey = (e) => {
+      if (e.key === 'Tab') return;
+      if ((e.key === 'Enter' || e.key === ' ') && document.activeElement === go) {
+        e.preventDefault();
+        finish(true);
+        return;
+      }
+      if ((e.key === 'Enter' || e.key === ' ') && el.contains(document.activeElement)) return;
+      e.preventDefault();
+      finish(false);
+    };
+    addEventListener('keydown', onKey, true);
+  });
+}
+
 // ---- Start ----------------------------------------------------------------------------
 
 (async () => {
   // The intro plays on every load while the core starts; one who asked for less motion sees
   // its lines still, then the desktop, with no tour.
+  await offerFullScreen();
   const introDone = intro();
   let started = true;
   try {
