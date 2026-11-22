@@ -58,7 +58,12 @@ def start():
 
 
 def run(app, action):
-    app.js(f"chrome.send('shell', [{json.dumps(json.dumps({'t': 'run', 'text': action}))}]), 1")
+    try:
+        app.js(f"chrome.send('shell', [{json.dumps(json.dumps({'t': 'run', 'text': action}))}]), 1")
+    except RuntimeError as e:
+        # Quit can end the app before the driver answers the eval that asked for it.
+        if not (action == "app.quit" and "ERR gone" in str(e)):
+            raise
 
 
 def copies(arg):
