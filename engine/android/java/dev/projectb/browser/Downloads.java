@@ -132,6 +132,12 @@ final class Downloads {
         });
     }
 
+    // A tap on a finished download's notification, by Go's id for it: Open, to Go, once Go
+    // listens.
+    static void opened(long id) {
+        DownloadsJni.get().command(id, OPEN_IT);
+    }
+
     // Hands Go what 0.3.9 and before kept of each download's shared copy, once Go has started,
     // so its list keeps opening them, and forgets it.
     static void reportKept() {
@@ -178,7 +184,7 @@ final class Downloads {
     // The action of a notification's Pause, Resume or Cancel, with Go's id and the
     // PBDownloadCommand.
     private static final String COMMAND = "dev.projectb.browser.DOWNLOAD_COMMAND";
-    private static final int CANCEL = 1, PAUSE = 2, RESUME = 3;
+    private static final int CANCEL = 1, PAUSE = 2, RESUME = 3, OPEN_IT = 5;
     private static final Map<Long, Long> sShownAt = new HashMap<>();
     // Each running download's speed, for its time left: when and how much it had at the
     // last notification, and the bytes a second, smoothed.
@@ -249,12 +255,13 @@ final class Downloads {
                     .build());
             return;
         }
-        // Done: a tap opens the file as Open does. It goes through the app's activity, which
-        // opens it: Android lets only the app itself hand its shared copy to another app. While
-        // the copy is made, the notification waits: Go shows it again with the copy's address.
+        // Done: a tap opens the file as Open does, which Go decides: in a tab of the app's own,
+        // or in another app. It goes through the app's activity, which hands Go the download's
+        // id (opened). While the copy is made, the notification waits: Go shows it again with
+        // the copy's address.
         if (sPublishing.contains(path)) return;
         PendingIntent tap = PendingIntent.getActivity(context, tag,
-                new Intent(context, BrowserActivity.class).setAction(OPEN).putExtra(OPEN, path)
+                new Intent(context, BrowserActivity.class).setAction(OPEN).putExtra(OPEN, id)
                         .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         manager.notify(TAG_NOTIFICATION, tag, new Notification.Builder(context, DONE)

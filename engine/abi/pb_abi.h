@@ -241,6 +241,7 @@ typedef enum PBDownloadCommand {
   PB_DOWNLOAD_PAUSE = 2,
   PB_DOWNLOAD_RESUME = 3,
   PB_DOWNLOAD_REMOVE = 4,
+  PB_DOWNLOAD_OPEN = 5,  // a tap on a finished download's notification: Open, as Go's list's
 } PBDownloadCommand;
 
 // A permission's state. Matches engine.PermissionStatus.

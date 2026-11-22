@@ -159,5 +159,7 @@ func (a *App) DownloadNotificationCommand(id int, c engine.DownloadCommand) {
 		a.Downloads.Act(id, "pause")
 	case engine.DownloadResume:
 		a.Downloads.Act(id, "resume")
+	case engine.DownloadOpen:
+		a.Downloads.Act(id, "open")
 	}
 }
