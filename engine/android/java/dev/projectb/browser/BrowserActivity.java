@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
 
+import io.github.sudiptadeb.oskit.Open;
 import io.github.sudiptadeb.oskit.OsKit;
 
 import org.chromium.base.CommandLine;
@@ -21,9 +22,6 @@ public final class BrowserActivity extends Activity {
     // Hands the window the answers of what it asked other apps for, such as a file picked.
     private IntentRequestTracker intentRequests;
     private ActivityWindowAndroid windowAndroid;
-    // Go has started: until then a link from another app waits here.
-    private boolean started;
-    private String pendingLink;
 
     @Override
     protected void onCreate(Bundle saved) {
@@ -62,10 +60,10 @@ public final class BrowserActivity extends Activity {
         // The same list the Mac app takes as --block, and its --skip-welcome.
         String blocked = getIntent().getStringExtra("block");
         boolean skipWelcome = getIntent().getBooleanExtra("skip-welcome", false);
-        pendingLink = linkOf(getIntent());
         openDownload(getIntent());
         long goTable = GoCore.table();
-        // A tap on a page's notification that started the app: Go takes it once it starts.
+        // A link from another app or a tap on a page's notification that started the app:
+        // oskit keeps it for Go, which takes it once it starts.
         OsKit.onIntent(getIntent());
         BrowserStartupController.getInstance()
                 .startBrowserProcessesAsync(
@@ -78,8 +76,9 @@ public final class BrowserActivity extends Activity {
                             public void onSuccess(
                                     BrowserStartupController.StartupMetrics metrics) {
                                 window.start(goTable, blocked == null ? "" : blocked, skipWelcome);
-                                started = true;
-                                open(pendingLink);
+                                // What 0.3.9 and before kept of each download's shared copy,
+                                // to Go once, now that it listens.
+                                Downloads.reportKept();
                             }
 
                             @Override
@@ -94,7 +93,6 @@ public final class BrowserActivity extends Activity {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
-        open(linkOf(intent));
         openDownload(intent);
         OsKit.onIntent(intent);
     }
@@ -102,24 +100,8 @@ public final class BrowserActivity extends Activity {
     // A tap on a finished download's notification: its file opens as the list's Open does.
     private static void openDownload(Intent intent) {
         if (Downloads.OPEN.equals(intent.getAction())) {
-            Downloads.open(intent.getStringExtra(Downloads.OPEN));
+            Open.openFile(intent.getStringExtra(Downloads.OPEN));
         }
-    }
-
-    private void open(String link) {
-        if (link == null) {
-            return;
-        }
-        if (!started) {
-            pendingLink = link;
-            return;
-        }
-        pendingLink = null;
-        GoCore.openUrl(link);
-    }
-
-    private static String linkOf(Intent intent) {
-        return Intent.ACTION_VIEW.equals(intent.getAction()) ? intent.getDataString() : null;
     }
 
     @Override
@@ -140,9 +122,7 @@ public final class BrowserActivity extends Activity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         intentRequests.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == GoSystem.DEFAULT_BROWSER_REQUEST) {
-            GoSystem.defaultBrowserAnswered();
-        }
+        OsKit.onActivityResult(requestCode);
     }
 
     // Android's question about notifications has been answered, or one the window asked, such

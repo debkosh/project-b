@@ -194,10 +194,13 @@ the system's share sheet. The back key closes the search or the sheet first.
 
 **Android.** There is no Save panel: a download goes where Go says, the profile's own
 Downloads folder. Once done, the engine copies it into the phone's shared Downloads through
-MediaStore, where the Files app and other apps find it, and removes the app's own copy. Open
-opens the shared copy with the app the phone picks, and Show opens the phone's own list of
-downloads. What each file became is kept in the app, so Open still works after a restart.
-Open waits for that copy, so it works the moment a download ends.
+MediaStore, where the Files app and other apps find it, removes the app's own copy, and tells
+Go the copy's content:// address (`PB_EVENT_DOWNLOAD_PUBLISHED`), which is the download's path
+from then on, as Chromium's is. Open (oskit/open) opens that address with the app the phone
+picks, Share and Delete hand it on, and Show opens the phone's own list of downloads. Open and
+Share pressed while the copy is made wait for it, so they work the moment a download ends; its
+"Downloaded" notification comes once Go has the address. 0.3.9 and before kept each copy's
+address in the app instead: the first start after the update hands those to Go once.
 
 **A phone's notification.** Go shows each download where the system shows such things
 (`ShowDownload`, the engine's `show_download`; nothing on the Mac): on Android, a

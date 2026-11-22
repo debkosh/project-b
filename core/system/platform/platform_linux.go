@@ -14,15 +14,9 @@ import (
 	"projectb/timeline"
 )
 
-// Linux's calls are desktop portals over D-Bus, from pure Go (docs/research/linux.md, 4). Until
-// they come (step 4), each says it isn't on this system yet, and every question is answered at
-// once, so the managers run as they do elsewhere.
-
-func (s *System) OpenFile(path string) { timeline.Errorf("system: no OpenFile on Linux yet: %s", path) }
-
-func (s *System) RevealFile(path string) {
-	timeline.Errorf("system: no RevealFile on Linux yet: %s", path)
-}
+// Linux's calls are desktop portals over D-Bus, from pure Go (docs/research/linux.md, 4), most
+// of them oskit's. What has no portal yet says it isn't on this system, and every question is
+// answered at once, so the managers run as they do elsewhere.
 
 // writeClipboard is the engine's clipboard, plain text, which the library hands over at start
 // (UseClipboard). Main thread.
@@ -41,9 +35,6 @@ func (s *System) CopySecret(text string) {
 	}
 	writeClipboard(text)
 }
-
-// IsDefaultBrowser is false: no portal says which browser is the default.
-func (s *System) IsDefaultBrowser() bool { return false }
 
 // DefaultBrowserLive is false in the Flatpak: its permission to read mimeapps.list mounts the
 // file as it was when the sandbox started, so a change the desktop's settings make meanwhile,
@@ -64,12 +55,6 @@ func (s *System) Desktop() string {
 	return "other"
 }
 
-// AskDefaultBrowser answers no: no portal can set it; the shell says where the desktop's
-// settings are (docs/research/linux.md, 4).
-func (s *System) AskDefaultBrowser(answered func(bool)) {
-	s.defaultBrowser.Ask(answered, func() { s.defaultBrowser.Answer(false) })
-}
-
 // verifyPerson says there is nothing to check the person with, until a portal does it.
 func (s *System) verifyPerson(id int32, _ system.PersonCheck) {
 	if answered := s.checks[id]; answered != nil {
@@ -83,10 +68,6 @@ func (s *System) cancelPerson(int32) {}
 // otherNote is amarit's update notice on Linux, which its flatpak package posts and answers
 // itself (id "amarit-update"): a press on it is no page's.
 func otherNote(id, _ string) bool { return id == "amarit-update" }
-
-// OnOpenURLs: the desktop hands links and files on the command line, and a copy already
-// running gets them through core/instance, so nothing comes this way.
-func (s *System) OnOpenURLs(opened func(urls []string)) { s.opened = opened }
 
 // SetDockColor and OpenFullDiskAccess are the Mac's: nothing on Linux.
 func (s *System) SetDockColor(string) {}
