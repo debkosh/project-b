@@ -39,9 +39,12 @@ type file struct {
 // version 2 lists Main. A file from before has no version.
 const version = 2
 
-// mainWorkspace is the workspace a new profile starts with, in the first of the colours
-// the pickers offer.
-var mainWorkspace = Workspace{ID: "", Name: "Main", Color: tones.Next(nil)}
+// MainColor is the colour a new profile's Main starts in: the logo's teal, as the profile's
+// frame is, so a shell that paints the workspace's colour starts in it too.
+const MainColor = tones.Brand
+
+// mainWorkspace is the workspace a new profile starts with.
+var mainWorkspace = Workspace{ID: "", Name: "Main", Color: MainColor}
 
 // Manager owns the list.
 type Manager struct {
