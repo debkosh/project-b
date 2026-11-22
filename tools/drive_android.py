@@ -1836,6 +1836,16 @@ def sync_on_the_phone():
                 tap(middle(button))
             if until(lambda: find("settings", text="Choose a sync passphrase") is None, 5):
                 break
+        # The second step, for a bucket the phone just made: its backup code (docs/sync.md,
+        # "Backup code"), in two lines of three groups of four.
+        see("settings", text="Save your backup code", timeout=60)
+        said = lambda: " ".join(w for n in screen_parts().get("settings", ET.Element("none")).iter("node") for w in (n.get("text"), n.get("content-desc")) if w)
+        check("a bucket the phone just made goes on to its backup code, six groups of four, whole in what a screen reader reads",
+              until(lambda: re.search(r"\b([0-9A-Z]{4}-){5}[0-9A-Z]{4}\b", said()) is not None, 30) is not None, said()[:300])
+        shot("sync-backup-code")
+        tap(middle(see("settings", text="I've saved it")))  # does: syncBackupKeep
+        check("I've saved it closes it, and the Sync card has its Backup code row",
+              until(lambda: find("settings", text="Save your backup code") is None and find("settings", text="Backup code") is not None, 30) is not None, said()[:300])
         pushed = until(lambda: any("/push" in r for r in requests), 60)
         shot("sync-on")
         key = adb("shell", "stat", "-c", "%s", DEVICE_KEY).strip()
