@@ -1,9 +1,12 @@
 <script setup>
+import { setDefaultBrowserHint } from '@/desktop.js';
 import { send, state } from './state.js';
 
 // The status line at the top of Settings, in both layouts (docs/settings.md): whether the
 // app is the default browser, with Make default browser when it isn't. Go owns it; the page
-// shows it. The version and its updates are About's (Version.vue).
+// shows it. The version and its updates are About's (Version.vue). On Linux no app can make
+// itself the default, so the line says where in the desktop's settings it's set, with no
+// button, and Go asks again as the window comes back.
 </script>
 
 <template>
@@ -12,6 +15,10 @@ import { send, state } from './state.js';
       <template v-if="state.isDefault">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8.5 6.5 11.5 12.5 4.5" /></svg>
         Your default browser
+      </template>
+      <template v-else-if="state.desktop">
+        Not your default browser
+        <span class="hint">{{ setDefaultBrowserHint(state.desktop) }}</span>
       </template>
       <template v-else>
         Not your default browser
@@ -37,6 +44,10 @@ import { send, state } from './state.js';
   flex-wrap: wrap;
   align-items: center;
   gap: 6px 8px;
+}
+
+.hint {
+  flex-basis: 100%;
 }
 
 .default.yes {

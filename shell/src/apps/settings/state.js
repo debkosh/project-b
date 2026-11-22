@@ -46,6 +46,9 @@ export const state = reactive({
   homeFolder: '',
   // Whether the app is the system's default browser, as the page opened or since it asked.
   isDefault: false,
+  // The Linux desktop, "gnome", "kde" or "other", whose own settings set the default browser;
+  // "" off Linux.
+  desktop: '',
   running: '',
   // The section showing: the one Go asks for when it opens the page at one, or the one the
   // user picked. '' is the first.
@@ -155,6 +158,7 @@ export function connect() {
             autoUpdate: m.autoUpdate,
             channel: m.channel || 'stable',
             isDefault: !!m.isDefault,
+            desktop: m.desktop || '',
             update: m.update,
             running: m.running,
             keyboard: m.keyboard,

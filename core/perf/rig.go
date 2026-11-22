@@ -103,6 +103,9 @@ func (e *Eng) ChooseFolder(engine.WindowID, string)                 { e.Calls[CO
 func (e *Eng) IsDefaultBrowser() bool                               { return false }
 func (e *Eng) AskNotifications()                                    { e.Calls[COther]++ }
 func (e *Eng) NotificationsAllowed() bool                           { return true }
+// Desktop is the Linux desktop's name: none here.
+func (e *Eng) Desktop() string { return "" }
+
 func (e *Eng) SendToShell(w engine.WindowID, msg []byte) {
 	e.Calls[CSendToShell]++
 	e.ShellMsgs++

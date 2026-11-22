@@ -26,6 +26,10 @@ type System interface {
 	// says whether it is once the person has answered; a question dismissed says what is so.
 	IsDefaultBrowser() bool
 	AskDefaultBrowser(answered func(isDefault bool))
+	// Desktop is the Linux desktop the app runs on, "gnome", "kde" or "other", for the pages'
+	// words where the person must go to the desktop's own settings, as to set the default
+	// browser; "" off Linux.
+	Desktop() string
 
 	// NotificationsAllowed says whether the app may show its own notifications, as a
 	// download's. AskNotifications asks, where the OS asks the person: a phone, from Android 13.

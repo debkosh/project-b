@@ -211,6 +211,7 @@ func (w *welcome) handle(tab engine.TabID, msg []byte) {
 // default browser ended.
 func (a *App) defaultBrowserAnswered(is bool) {
 	timeline.Infof("welcome: the default browser is this one: %v", is)
+	a.wasDefault = is
 	m := map[string]any{"t": "isDefault", "isDefault": is}
 	a.welcome.sendAll(m)
 	a.Settings.Send(m)
@@ -241,7 +242,7 @@ func (w *welcome) snapshot(tab engine.TabID) map[string]any {
 		"prefs":         w.a.Prefs.All(),
 		"searchEngines": search.All(),
 		"autoUpdate":    w.a.Update.Auto(),
-		"isDefault":     w.a.System.IsDefaultBrowser(),
+		"isDefault":     w.a.isDefault(),
 		"notifications": w.a.System.NotificationsAllowed(),
 		"layouts": []welcomeShell{
 			{ID: "side", Shell: "standard", TabLayout: "vertical", Name: "Tabs on the side"},
@@ -256,6 +257,7 @@ func (w *welcome) snapshot(tab engine.TabID) map[string]any {
 	s["keymaps"] = keymaps
 	s["keymap"] = w.a.Commands.Template()
 	s["platform"] = w.a.Commands.Platform()
+	s["desktop"] = w.a.System.Desktop()
 	s["workspaces"] = w.a.Workspaces.List()
 	s["sparks"] = w.a.Sparks.Builtins()
 	w.a.imports.snapshot(s)

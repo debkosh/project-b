@@ -43,6 +43,8 @@ func (s *System) CopySecret(text string) {
 
 func (s *System) IsDefaultBrowser() bool { return C.pb_system_is_default_browser() != 0 }
 
+func (s *System) Desktop() string { return "" }
+
 func (s *System) AskDefaultBrowser(answered func(bool)) {
 	s.defaultBrowser.Ask(answered, func() { C.pb_system_ask_default_browser() })
 }

@@ -186,7 +186,10 @@ type App struct {
 	pages *ourPages
 	// welcome is the first start's welcome page (welcome.go).
 	welcome *welcome
-	imports *importer
+	// wasDefault is whether the app was the default browser when the system last said
+	// (defaultBrowserChanged). Main thread.
+	wasDefault bool
+	imports    *importer
 	// keyIn is which page had the keyboard at the last key press.
 	keyIn engine.Surface
 	// lastWindow is the id of the window made last; Go numbers them from 1.
@@ -750,6 +753,7 @@ func (a *App) WindowFocused(w engine.WindowID) {
 	a.Commands.WindowFocused()
 	a.Tabs.Focus(w)
 	a.refreshMenu()
+	a.defaultBrowserChanged()
 }
 
 func (a *App) ProcessCrashed(p engine.ProcessCrash) { a.Crash.ProcessCrashed(p) }

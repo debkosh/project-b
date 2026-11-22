@@ -19,6 +19,7 @@ type System struct {
 	mu              sync.Mutex
 	dismiss         bool
 	isDefault       bool
+	desktop         string
 	allowed         bool
 	dock            string
 	opened, shown   []string
@@ -84,6 +85,27 @@ func (s *System) IsDefaultBrowser() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.isDefault
+}
+
+// SetDefaultBrowser makes the app the default browser, or not, as the person may in the
+// OS's settings, outside the app.
+func (s *System) SetDefaultBrowser(is bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.isDefault = is
+}
+
+// Desktop is the Linux desktop SetDesktop gave, "" by default, as off Linux.
+func (s *System) Desktop() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.desktop
+}
+
+func (s *System) SetDesktop(d string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.desktop = d
 }
 
 func (s *System) AskDefaultBrowser(answered func(bool)) {

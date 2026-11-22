@@ -29,6 +29,20 @@ func (s *System) CopySecret(string) { timeline.Errorf("system: no CopySecret on 
 // IsDefaultBrowser is false: no portal says which browser is the default.
 func (s *System) IsDefaultBrowser() bool { return false }
 
+// Desktop is GNOME or KDE, by XDG_CURRENT_DESKTOP, which may list several ("ubuntu:GNOME"),
+// and other for the rest.
+func (s *System) Desktop() string {
+	for _, d := range strings.Split(os.Getenv("XDG_CURRENT_DESKTOP"), ":") {
+		switch strings.ToUpper(d) {
+		case "GNOME":
+			return "gnome"
+		case "KDE":
+			return "kde"
+		}
+	}
+	return "other"
+}
+
 // AskDefaultBrowser answers no: no portal can set it; the shell says where the desktop's
 // settings are (docs/research/linux.md, 4).
 func (s *System) AskDefaultBrowser(answered func(bool)) {

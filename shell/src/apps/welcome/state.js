@@ -26,6 +26,9 @@ export const state = reactive({
   autoUpdate: true,
   // Whether the app is the default browser, as the system says.
   isDefault: false,
+  // The Linux desktop, "gnome", "kde" or "other", whose own settings set the default browser;
+  // "" off Linux.
+  desktop: '',
   // Whether the app may show its notifications, a download's: a phone asks the person.
   notifications: true,
   // The ways to work the style step offers, each {id, shell, tabLayout, name}.
@@ -61,6 +64,7 @@ export function connect() {
             searchEngines: m.searchEngines || [],
             autoUpdate: m.autoUpdate,
             isDefault: m.isDefault,
+            desktop: m.desktop || '',
             notifications: m.notifications,
             layouts: m.layouts || [],
             keymaps: m.keymaps || {},
