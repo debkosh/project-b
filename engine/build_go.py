@@ -127,7 +127,9 @@ def main():
     for module in ("core", "browserdata", "oskit"):
         top = os.path.join(repo, module)
         for root, _, files in os.walk(top):
-            if "testdata" in os.path.relpath(root, top).split(os.sep):
+            # Test data, and oskit's demo app, which core doesn't link and whose built bundle
+            # is no input of the library.
+            if {"testdata", "demo"} & set(os.path.relpath(root, top).split(os.sep)):
                 continue
             # Each folder too: a Go file added or removed changes its folder's time, and ninja,
             # which knows only the files that were there last time, would keep the old library.
