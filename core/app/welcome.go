@@ -288,7 +288,7 @@ func (w *welcome) starters(ticked []workspaces.Workspace) {
 		w.name("", ticked[0])
 		w.renamed = true
 	case w.renamed:
-		w.name("", workspaces.Workspace{Name: "Main", Color: tones.Next(nil)})
+		w.name("", workspaces.Workspace{Name: "Main", Color: workspaces.MainColor})
 		w.renamed = false
 	}
 	for _, t := range rest {

@@ -576,7 +576,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   const wsName = wsDialog.getByLabel('Name', { exact: true });
   check('New workspace… opens a dialog with the name ready to type', await until(async () => await wsName.evaluate((e) => e === document.activeElement)));
   check('its colours are gulal\'s seven hues and a +, and it starts on the one farthest from Main\'s', (await wsDialog.getByRole('radio').count()) === 7 &&
-    (await wsDialog.getByRole('radio', { name: 'Teal' }).getAttribute('aria-checked')) === 'true' && (await wsDialog.getByLabel('Custom colour').getAttribute('type')) === 'color');
+    (await wsDialog.getByRole('radio', { name: 'Rose' }).getAttribute('aria-checked')) === 'true' && (await wsDialog.getByLabel('Custom colour').getAttribute('type')) === 'color');
   await wsDialog.getByLabel('Custom colour').fill('#c2410c');
   await wsName.fill('Work');
   await wsName.press('Enter');

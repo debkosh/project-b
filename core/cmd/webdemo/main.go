@@ -30,7 +30,6 @@ import (
 	"projectb/shells"
 	"projectb/tabs"
 	"projectb/timeline"
-	"projectb/tones"
 	"projectb/update"
 )
 
@@ -83,11 +82,6 @@ func main() {
 			Update:      update.Config{Project: "project-b", StateDir: profile + "/updates"},
 		})
 		a.UsePasswordStore(nil)
-		// The first workspace takes the logo's teal, as the profile does, so a shell that
-		// shows the workspace's colour (Glide's sidebar) stays in the brand's.
-		if ws := a.Workspaces.List(); len(ws) > 0 {
-			a.Workspaces.SetColor(ws[0].ID, tones.Brand)
-		}
 		e.SetListener(a)
 		close(started)
 	})
