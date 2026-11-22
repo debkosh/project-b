@@ -3,6 +3,7 @@ package app_test
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -152,8 +153,8 @@ func TestTheDownloadsPageListsAndActs(t *testing.T) {
 	say := func(msg string) { r.e.Post(func() { r.a.PageMessage(tab, "downloads", []byte(msg)) }) }
 	say(fmt.Sprintf(`{"t":"downloadAction","id":%v,"action":"open"}`, list[0].(map[string]any)["id"]))
 	r.e.Settle()
-	if opened := r.sys.Opened(); len(opened) != 1 {
-		t.Fatalf("Open from the page opened %v", opened)
+	if opened, urls := r.sys.Opened(), r.urls(); len(opened) != 0 || !slices.ContainsFunc(urls, func(u string) bool { return strings.HasSuffix(u, "/report.pdf") }) {
+		t.Fatalf("Open from the page opened %v with the OS, tabs %v; want a tab", opened, urls)
 	}
 	// Share, from a phone's ⋮, hands the file to the system's share sheet.
 	say(fmt.Sprintf(`{"t":"downloadAction","id":%v,"action":"share"}`, list[0].(map[string]any)["id"]))

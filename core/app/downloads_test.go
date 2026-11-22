@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"projectb/engine"
@@ -55,12 +56,14 @@ func TestADownloadGoesToTheFolderAndIsListed(t *testing.T) {
 		t.Fatalf("the second should be numbered: %v", first(list))
 	}
 
-	// Open and reveal ask the engine; remove leaves the file.
+	// Open shows a file the engine shows itself, a PDF, in a tab of the app's own, and reveal
+	// asks the OS; remove leaves the file.
 	r.shell(fmt.Sprintf(`{"t":"downloadAction","id":%v,"action":"open"}`, first(list)["id"]))
 	r.shell(fmt.Sprintf(`{"t":"downloadAction","id":%v,"action":"reveal"}`, first(list)["id"]))
 	r.e.Settle()
-	if want := []string{filepath.Join(dir, "report (1).pdf")}; !slices.Equal(r.sys.Opened(), want) || !slices.Equal(r.sys.Shown(), want) {
-		t.Fatalf("opened %v, shown %v", r.sys.Opened(), r.sys.Shown())
+	pdf := (&url.URL{Scheme: "file", Path: filepath.Join(dir, "report (1).pdf")}).String()
+	if want := []string{filepath.Join(dir, "report (1).pdf")}; len(r.sys.Opened()) != 0 || !slices.Contains(r.urls(), pdf) || !slices.Equal(r.sys.Shown(), want) {
+		t.Fatalf("opened %v, tabs %v, shown %v", r.sys.Opened(), r.urls(), r.sys.Shown())
 	}
 	r.shell(fmt.Sprintf(`{"t":"downloadAction","id":%v,"action":"remove"}`, first(list)["id"]))
 	r.downloads(func(l []any) bool { return len(l) == 1 })
@@ -330,5 +333,30 @@ func TestARunningDownloadStartsOverOnRetry(t *testing.T) {
 	list = r.downloads(func(l []any) bool { return len(l) == 1 && first(l)["state"] == "done" })
 	if first(list)["id"] != id || first(list)["name"] != "big.iso" {
 		t.Fatalf("the retry should finish in the same row: %v", list)
+	}
+}
+
+// Open takes what the engine shows itself, a page, to a tab of the app's own, and anything
+// else, a zip, to the OS's app for it (oskit/open).
+func TestOpenShowsAPageHereAndHandsAZipToTheOS(t *testing.T) {
+	profile, dir := t.TempDir(), t.TempDir()
+	r := startDownloading(t, profile, dir)
+	defer r.stop()
+	r.visit("https://a.test/")
+	r.show(1)
+	r.e.Fire(1, 0, "download", "https://a.test/files/notes.html")
+	page := first(r.downloads(func(l []any) bool { return len(l) == 1 && first(l)["state"] == "done" }))
+	r.e.Fire(1, 0, "download", "https://a.test/files/photos.zip")
+	zip := first(r.downloads(func(l []any) bool { return len(l) == 2 && first(l)["state"] == "done" }))
+
+	r.shell(fmt.Sprintf(`{"t":"downloadAction","id":%v,"action":"open"}`, page["id"]))
+	r.shell(fmt.Sprintf(`{"t":"downloadAction","id":%v,"action":"open"}`, zip["id"]))
+	r.e.Settle()
+	html := (&url.URL{Scheme: "file", Path: filepath.Join(dir, "notes.html")}).String()
+	if !slices.Contains(r.urls(), html) {
+		t.Fatalf("the page didn't open in a tab: %v", r.urls())
+	}
+	if want := []string{filepath.Join(dir, "photos.zip")}; !slices.Equal(r.sys.Opened(), want) {
+		t.Fatalf("the OS opened %v; want only the zip", r.sys.Opened())
 	}
 }

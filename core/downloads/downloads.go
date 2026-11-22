@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -85,6 +86,10 @@ type Manager struct {
 	byEngine  map[engine.DownloadID]*Item
 	onChanged []func()
 
+	// openHere opens an address in a new tab of the app's own: Open's way for a file the
+	// engine shows itself (ShowsItself).
+	openHere func(address string)
+
 	// stopped are engine downloads Go has stopped and let go of, by Retry, whose news, a
 	// cancel coming back, is no longer any row's.
 	stopped map[engine.DownloadID]bool
@@ -94,6 +99,32 @@ type Manager struct {
 // New returns a manager for the profile folder profile, saving files into dir.
 func New(e engine.Engine, sys system.System, profile, dir string) *Manager {
 	return &Manager{e: e, sys: sys, file: filepath.Join(profile, "downloads.json"), dir: dir, next: 1, byEngine: map[engine.DownloadID]*Item{}, stopped: map[engine.DownloadID]bool{}}
+}
+
+// OpenHere is how Open opens a file the engine shows itself: in a new tab of the app's own,
+// at the address it gives. Set as the app starts; until then every file goes to the OS.
+func (m *Manager) OpenHere(open func(address string)) { m.openHere = open }
+
+// shownHere are the files the engine shows itself, by extension: pages, PDFs, images and
+// plain text. Open opens these in a tab of the app's own, and everything else, a zip or a
+// document, in the OS's app for it (oskit/open).
+var shownHere = map[string]bool{
+	".html": true, ".htm": true, ".xhtml": true, ".svg": true,
+	".pdf": true,
+	".png": true, ".jpg": true, ".jpeg": true, ".gif": true, ".webp": true, ".avif": true,
+	".txt": true, ".json": true,
+}
+
+// ShowsItself says whether the engine shows a file of this name itself.
+func ShowsItself(name string) bool { return shownHere[strings.ToLower(filepath.Ext(name))] }
+
+// addressOf is a file's address for a tab: a phone's content:// copy as it is, a path as a
+// file:// URL.
+func addressOf(path string) string {
+	if strings.HasPrefix(path, "content://") {
+		return path
+	}
+	return (&url.URL{Scheme: "file", Path: path}).String()
 }
 
 // SetDir is where files are saved from now on.
@@ -386,7 +417,13 @@ func (m *Manager) Act(id int, action string) {
 	switch action {
 	case "open":
 		if it.State == "done" {
-			it.when(m.sys.OpenFile)
+			it.when(func(path string) {
+				if m.openHere != nil && ShowsItself(it.Name) {
+					m.openHere(addressOf(path))
+					return
+				}
+				m.sys.OpenFile(path)
+			})
 		}
 	case "reveal":
 		if it.State == "done" {
