@@ -63,7 +63,7 @@
       const r = rectOf(id, w);
       Object.assign(w.el.style, { left: r.x + 'px', top: r.y + 'px', width: r.w + 'px', height: r.h + 'px' });
       w.el.classList.toggle('zoomed', !!(w.core && w.core.zoomed));
-      if (!phone && w.radius !== undefined) w.el.style.borderRadius = w.core && w.core.zoomed ? '0' : w.radius + 'px';
+      if (!phone && w.radius !== undefined) w.el.style.borderRadius = w.radius + 'px';
     }
     // toIcon is the transform that puts a window over the icon's picture.
     function toIcon(el) {
@@ -103,10 +103,11 @@
       const w = { el, frame, buttons, shown: false, minimised: false, core: null };
       wins.set(id, w);
       place(id);
-      // On a phone the window has no frame: the page draws none. Elsewhere this page is the
-      // window's edge, its corners the window's own, so the window page's band, a second
-      // edge inside it, is not drawn; behind the shell the window takes its dark colour
-      // while the system is dark, as the real window paints FrameDark by its appearance.
+      // On a phone the window has no frame: the page draws none. Elsewhere the window page
+      // draws the frame as the real window does, its band over the shell's edge and its
+      // corners rounded, and this page only clips to the same corners and adds the shadow.
+      // The band takes the window's dark colour while the system is dark, as the real window
+      // paints FrameDark by its appearance; the window page itself paints frameColor.
       let band = null;
       frame.addEventListener('load', () => {
         const s = frame.contentDocument.createElement('style');
@@ -119,7 +120,7 @@
       const paintBand = () => {
         if (!band || phone || !w.colors) return;
         const c = dark.matches ? w.colors.dark : w.colors.light;
-        band.textContent = `.band { display: none !important; } #window { background: ${c} !important; }`;
+        band.textContent = `.band { border-color: ${c} !important; } #window { background: ${c} !important; }`;
       };
       dark.addEventListener('change', paintBand);
       // Where the engine puts the window's buttons, as the window page reads it.
@@ -127,9 +128,10 @@
       feed.onmessage = (e) => {
         const m = JSON.parse(e.data);
         if (m.t !== 'window') return;
-        // The frame is the shape the engine gives the window: its corners are the window's.
+        // The clip is the shape the engine gives the window, the window page's own corners:
+        // square only where the engine makes them so, as in full screen.
         w.radius = m.cornerRadius || 0;
-        if (!phone) el.style.borderRadius = w.core && w.core.zoomed ? '0' : w.radius + 'px';
+        if (!phone) el.style.borderRadius = w.radius + 'px';
         w.colors = { light: m.frameColor, dark: m.frameDark || m.frameColor };
         // Where the window drags, for a double-click on its empty title area.
         w.regions = m.regions || [];
