@@ -9,7 +9,7 @@ Linux half (the desktop portals over D-Bus) and a fake for tests.
 | `notify` | The system's notifications: show with buttons, remove, clicks, asking to be allowed | Mac, Android; Linux next |
 | `secret` | The device key: the login keychain, a file sealed by the Android Keystore, the Secret portal | Mac, Android, Linux |
 | `verify` | A check of the person: Touch ID, a fingerprint, the screen lock | to come |
-| `open` | Open a file, reveal it, the default browser, links the OS hands the app | to come |
+| `open` | Open a file, reveal it, the default browser, links the OS hands the app | Mac, Android, Linux |
 | `clip` | Copy a secret so clipboard history leaves it out | to come |
 
 It imports nothing of the app that uses it. Project B's core takes it with

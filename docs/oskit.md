@@ -1,6 +1,10 @@
 # oskit: the OS's capabilities as one Go module
 
-Status: agreed 2026-11-22; notify and secret built on the Mac, Android and Linux.
+Status: agreed 2026-11-22; notify, secret and open built on the Mac, Android and Linux.
+
+On Android, open does what Chromium does (his call, 2026-11-22): a finished download's path is
+its copy's content:// address in the shared Downloads, which OpenFile hands to the app the
+person picks; Reveal shows the phone's Downloads.
 
 oskit is what an app asks of the OS itself, apart from its windows: notifications, a device
 key, a check of the person, opening files and links, and the clipboard's secret copy. It is a
