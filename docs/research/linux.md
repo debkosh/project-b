@@ -210,7 +210,19 @@ container with a stub portal.
       the software centre.
     - The relaunch after an update is the Flatpak portal's `Spawn` with the latest-version
       flag, inside `amarit/flatpak`; the new copy waits for our single-instance socket.
-    - A notification through the Notification portal offers Relaunch.
+    - A notification through the Notification portal offers Relaunch. amarit posts it
+      itself, while `oskit/notify` is planned as the app's one notification stack (decided
+      2026-11-22): the two are to meet later.
+  - **What the person sees** (amarit's checks in pb-ubuntu, Flatpak 1.14.6, 2026-11-22):
+    - The first self-update asks the person once: GNOME's Access dialog, "Allow … to update
+      itself?", and `Update` waits on the answer. What KDE shows is still to see. Headless
+      tests grant it beforehand: `flatpak permission-set flatpak updates <app id> yes`.
+    - The portal's monitor polls every 30 minutes, so an installed copy hears of a release up
+      to 30 minutes after it's published. Tests run the portal with `--poll-timeout=15`
+      (`/usr/libexec/flatpak-portal --replace --no-idle-exit`).
+    - A copy `Spawn` starts keeps the running copy's sandbox permissions, so a release that
+      adds permissions takes effect at the person's next start; those go through the
+      software centre anyway (`needs-user`).
   - **The split.** amarit owns updates and the relaunch after an update; `core/relaunch`'s
     `After` and the kqueue wait (`wait_darwin.go`) leave once project-b switches to it.
     project-b keeps `core/instance`, and `core/relaunch`'s `Copy`, `Self` and `Copies`.
