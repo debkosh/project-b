@@ -131,7 +131,8 @@ const { check, fire, regions, settle, until } = lib;
   const pageHasKeys = async () => (await regions()).focused === (await regions()).active;
   await fire('focusTab');
   await until(pageHasKeys);
-  await fire('download', 'https://a.test/files/report.pdf');
+  // A zip, which Open hands to the OS: a page, PDF, image or text would open in a tab here.
+  await fire('download', 'https://a.test/files/report.zip');
   check('a download brings the Downloads control', await until(() => control.isVisible()));
   // It opens the list under the control by itself, and closes it after about five seconds.
   const opened = Date.now();
@@ -143,7 +144,7 @@ const { check, fire, regions, settle, until } = lib;
   check('it closes by itself after about five seconds', (await until(async () => (await list.count()) === 0, 8000)) && Date.now() - opened > 4500, String(Date.now() - opened));
   check('and gives the page the keyboard back', await until(pageHasKeys));
   await control.click();
-  const entry = list.getByRole('listitem', { name: 'report.pdf' });
+  const entry = list.getByRole('listitem', { name: 'report.zip' });
   check('its list shows the download by its file name', await until(() => entry.isVisible()));
   check('done, it offers Open and Show in Finder', await until(async () => (await entry.getByRole('button', { name: 'Open' }).count()) === 1 && (await entry.getByRole('button', { name: 'Show in Finder' }).count()) === 1));
   await shoot('downloads');
