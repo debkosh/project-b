@@ -66,6 +66,8 @@ func (s *System) RevealFile(string) { C.call_reveal_file(calls.Load()) }
 
 func (s *System) IsDefaultBrowser() bool { return C.call_is_default_browser(calls.Load()) != 0 }
 
+func (s *System) Desktop() string { return "" }
+
 func (s *System) AskDefaultBrowser(answered func(bool)) {
 	s.defaultBrowser.Ask(answered, func() { C.call_ask_default_browser(calls.Load()) })
 }

@@ -159,6 +159,24 @@ const bars = async (w) => (await w.ui.getByRole('tab').first().isVisible()) || (
     await settle(w.page);
     await w.page.screenshot({ path: path.join(lib.out, `welcome-linux-${shot}.png`) });
   }
+  // No app can make itself the default browser on Linux: the last step says where the
+  // desktop's settings set it, GNOME's for the mock, with no button; so does Settings.
+  const set = lw.getByRole('heading', { name: "You're set" });
+  for (let i = 0; i < 6 && !(await set.isVisible()); i++) {
+    await lw.getByRole('button', { name: 'Continue' }).click();
+    await settle(w.page);
+  }
+  check('on Linux, the last step says where to set the default browser', await until(() => lw.getByText('Set it in GNOME Settings, under Default Apps.').isVisible()) &&
+    (await lw.getByRole('button', { name: 'Make default browser' }).count()) === 0);
+  await w.page.screenshot({ path: path.join(lib.out, 'welcome-linux-done.png') });
+  await lw.getByRole('button', { name: 'Start browsing' }).click();
+  await lib.fire('menu', 'app.settings');
+  const status = w.settings.getByRole('region', { name: 'Status' });
+  check('and Settings\' status line does too', await until(async () => ((await status.textContent()) || '').includes('Not your default browser') &&
+    ((await status.textContent()) || '').includes('Set it in GNOME Settings, under Default Apps.')) &&
+    (await status.getByRole('button', { name: 'Make default browser' }).count()) === 0, await status.textContent().catch((e) => String(e)));
+  await settle(w.page);
+  await w.page.screenshot({ path: path.join(lib.out, 'settings-linux-default.png') });
   check('it logged no errors on Linux', w.errors.length === 0, w.errors.join(' | '));
   await w.page.close();
   await browser.close();

@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch, watchEffect } from 'vue';
+import { setDefaultBrowserHint } from '@/desktop.js';
 import { paintTheme } from '@/theme.js';
 import ImportWizard from '@/ui/ImportWizard.vue';
 import Segmented from '@/ui/Segmented.vue';
@@ -295,6 +296,7 @@ onMounted(() => heading.value?.focus());
           <div class="row">
             <span class="label">Default browser</span>
             <span v-if="state.isDefault" class="state">This is your default browser</span>
+            <span v-else-if="state.desktop" class="state linux-default">Not your default browser<br /><small>{{ setDefaultBrowserHint(state.desktop) }}</small></span>
             <button v-else type="button" class="text-button" @click="send({ t: 'makeDefault' })">Make default browser</button>
           </div>
           <div v-if="state.phone" class="row">
@@ -631,6 +633,11 @@ h1 {
 
 .card.default {
   margin-bottom: 32px;
+}
+
+.linux-default {
+  padding: 8px 0;
+  text-align: right;
 }
 
 /* How you work: the switcher's menu as the standard shell draws it, at the sidebar's foot. */
