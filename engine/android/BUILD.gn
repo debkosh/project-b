@@ -4,6 +4,7 @@
 import("//build/config/android/config.gni")
 import("//build/config/android/rules.gni")
 import("//project_b/engine/flags.gni")
+import("//project_b/engine/sources.gni")
 import("//third_party/jni_zero/jni_zero.gni")
 import("//tools/grit/repack.gni")
 
@@ -33,72 +34,17 @@ generate_jni("jni_headers") {
 }
 
 source_set("browser") {
-  sources = [
-    "../browser/browser_context.cc",
-    "../browser/permissions.cc",
-    "../browser/printing.cc",
-    "../browser/printing.h",
-    "../browser/browser_context.h",
-    "../browser/browser_main_parts.h",
-    "../browser/child_processes.cc",
-    "../browser/child_processes.h",
-    "../browser/content_browser_client.cc",
-    "../browser/forms.cc",
-    "../browser/forms.h",
-    "../browser/content_browser_client.h",
-    "../browser/dialogs.cc",
-    "../browser/downloads.cc",
-    "../browser/downloads.h",
-    "../browser/dialogs.h",
-    "../browser/engine.cc",
-    "../browser/engine.h",
-    "../browser/go.cc",
-    "../browser/go.h",
-    "../browser/events.cc",
-    "../browser/events.h",
-    "../browser/file_chooser.cc",
-    "../browser/file_chooser.h",
-    "../browser/hooks.cc",
-    "../browser/hooks.h",
-    "../browser/hooks_gen.cc",
-    "../browser/hooks_gen.h",
-    "../browser/page_tab.cc",
-    "../browser/page_tab.h",
-    "../browser/shell_page.cc",
-    "../browser/shell_page.h",
-    "../browser/site_data.cc",
-    "../browser/site_data.h",
-    "../browser/site_features.cc",
-    "../browser/site_features.h",
-    "../browser/timeline.cc",
-    "../browser/timeline.h",
-    "../browser/window.h",
-    "../browser_main_delegate.cc",
-    "../browser_main_delegate.h",
-    "../common/ad_rules.cc",
-    "../common/ad_rules.h",
-    "../common/block_rules.cc",
-    "../common/block_rules.h",
-    "../common/content_client.cc",
-    "../common/content_client.h",
-    "../common/main_delegate.cc",
-    "../common/main_delegate.h",
-    "../common/print_helper.cc",
-    "../common/print_helper.h",
-    "../common/renderer_client.cc",
-    "../common/renderer_client.h",
-    "../common/utility_client.cc",
-    "../common/utility_client.h",
-    "../common/worlds.h",
-    "browser_main_parts_android.cc",
-    "downloads_android.cc",
-    "descriptors.h",
-    "exit_reason_android.cc",
-    "passkeys_android.cc",
-    "passkeys_android.h",
-    "printing_android.cc",
-    "window_android.cc",
-  ]
+  # The shared lists (engine/sources.gni), and the APK's own.
+  sources = engine_common_sources + engine_browser_sources + [
+              "browser_main_parts_android.cc",
+              "descriptors.h",
+              "downloads_android.cc",
+              "exit_reason_android.cc",
+              "passkeys_android.cc",
+              "passkeys_android.h",
+              "printing_android.cc",
+              "window_android.cc",
+            ]
   deps = [
     "//ui/shell_dialogs",
     "//components/download/public/common:public",

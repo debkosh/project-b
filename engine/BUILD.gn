@@ -8,6 +8,7 @@ if (is_linux) {
   import("//build/config/sysroot.gni")
 }
 import("//project_b/engine/flags.gni")
+import("//project_b/engine/sources.gni")
 import("//third_party/inspector_protocol/inspector_protocol.gni")
 import("//tools/grit/repack.gni")
 if (project_b_extensions) {
@@ -105,24 +106,7 @@ if (is_mac) {
 
 # What every process needs from the adapter.
 source_set("common") {
-  sources = [
-    "common/ad_rules.cc",
-    "common/ad_rules.h",
-    "common/block_rules.cc",
-    "common/block_rules.h",
-    "common/content_client.cc",
-    "common/content_client.h",
-    "common/extensions_on.h",
-    "common/main_delegate.cc",
-    "common/main_delegate.h",
-    "common/print_helper.cc",
-    "common/print_helper.h",
-    "common/renderer_client.cc",
-    "common/renderer_client.h",
-    "common/utility_client.cc",
-    "common/utility_client.h",
-    "common/worlds.h",
-  ]
+  sources = engine_common_sources + engine_desktop_common_sources
   deps = [
     "//base",
     "//components/printing/renderer",
@@ -255,68 +239,7 @@ inspector_protocol_generate("protocol_sources") {
 # The C++ adapter. Each function is thin and forwards to the Go core, through the table
 # in browser/go.h, so nothing here links to Go.
 source_set("browser") {
-  sources = [
-    "abi/pb_abi.h",
-    "abi/pb_content_abi.h",
-    "browser/browser_context.cc",
-    "browser/choose_path.cc",
-    "browser/choose_path.h",
-    "browser/notifications.cc",
-    "browser/notifications.h",
-    "browser/permissions.cc",
-    "browser/forms.cc",
-    "browser/forms.h",
-    "browser/printing.cc",
-    "browser/printing.h",
-    "browser/browser_context.h",
-    "browser/browser_main_parts.h",
-    "browser/child_processes.cc",
-    "browser/child_processes.h",
-    "browser/content_browser_client.cc",
-    "browser/content_browser_client.h",
-    "browser/devtools.cc",
-    "browser/devtools.h",
-    "browser/devtools_session.cc",
-    "browser/devtools_session.h",
-    "browser/dialogs.cc",
-    "browser/dialogs.h",
-    "browser/downloads.cc",
-    "browser/downloads.h",
-    "browser/downloads_desktop.cc",
-    "browser/driver.h",
-    "browser/engine.cc",
-    "browser/engine.h",
-    "browser/events.cc",
-    "browser/events.h",
-    "browser/file_chooser.cc",
-    "browser/file_chooser.h",
-    "browser/go.cc",
-    "browser/go.h",
-    "browser/hooks.cc",
-    "browser/hooks.h",
-    "browser/hooks_gen.cc",
-    "browser/hooks_gen.h",
-    "browser/page_tab.cc",
-    "browser/page_tab.h",
-    "browser/passkeys.cc",
-    "browser/passkeys.h",
-    "browser/shell_page.cc",
-    "browser/shell_page.h",
-    "browser/site_data.cc",
-    "browser/site_data.h",
-    "browser/site_features.cc",
-    "browser/site_features.h",
-    "browser/timeline.cc",
-    "browser/timeline.h",
-    "browser/window.h",
-    "browser_main_delegate.cc",
-    "browser_main_delegate.h",
-  ]
-  sources += [
-    "browser/browser_main_parts_desktop.cc",
-    "browser/driver.cc",
-    "browser/driver_platform.h",
-  ]
+  sources = engine_browser_sources + engine_desktop_browser_sources
   if (is_mac) {
     sources += [
       "browser/driver_mac.mm",

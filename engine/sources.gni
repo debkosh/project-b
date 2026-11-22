@@ -1,0 +1,98 @@
+# The engine's sources, listed once, for engine/BUILD.gn (the Mac and Linux) and
+# engine/android/BUILD.gn (the APK): a file added to one list alone compiled on the Mac and
+# failed the APK at its link, an hour into a container build (forms.cc, 2026-11-22). Paths are
+# source-absolute, as the two BUILD.gn files sit in different folders. What only one OS builds,
+# such as window_mac.mm or the *_android.cc files, stays in that OS's BUILD.gn.
+
+engine_dir = "//project_b/engine"
+
+# What every process needs, on every OS.
+engine_common_sources = [
+  "$engine_dir/common/ad_rules.cc",
+  "$engine_dir/common/ad_rules.h",
+  "$engine_dir/common/block_rules.cc",
+  "$engine_dir/common/block_rules.h",
+  "$engine_dir/common/content_client.cc",
+  "$engine_dir/common/content_client.h",
+  "$engine_dir/common/main_delegate.cc",
+  "$engine_dir/common/main_delegate.h",
+  "$engine_dir/common/print_helper.cc",
+  "$engine_dir/common/print_helper.h",
+  "$engine_dir/common/renderer_client.cc",
+  "$engine_dir/common/renderer_client.h",
+  "$engine_dir/common/utility_client.cc",
+  "$engine_dir/common/utility_client.h",
+  "$engine_dir/common/worlds.h",
+]
+
+# The browser process's adapter, on every OS.
+engine_browser_sources = [
+  "$engine_dir/browser/browser_context.cc",
+  "$engine_dir/browser/browser_context.h",
+  "$engine_dir/browser/browser_main_parts.h",
+  "$engine_dir/browser/child_processes.cc",
+  "$engine_dir/browser/child_processes.h",
+  "$engine_dir/browser/content_browser_client.cc",
+  "$engine_dir/browser/content_browser_client.h",
+  "$engine_dir/browser/dialogs.cc",
+  "$engine_dir/browser/dialogs.h",
+  "$engine_dir/browser/downloads.cc",
+  "$engine_dir/browser/downloads.h",
+  "$engine_dir/browser/engine.cc",
+  "$engine_dir/browser/engine.h",
+  "$engine_dir/browser/events.cc",
+  "$engine_dir/browser/events.h",
+  "$engine_dir/browser/file_chooser.cc",
+  "$engine_dir/browser/file_chooser.h",
+  "$engine_dir/browser/forms.cc",
+  "$engine_dir/browser/forms.h",
+  "$engine_dir/browser/go.cc",
+  "$engine_dir/browser/go.h",
+  "$engine_dir/browser/hooks.cc",
+  "$engine_dir/browser/hooks.h",
+  "$engine_dir/browser/hooks_gen.cc",
+  "$engine_dir/browser/hooks_gen.h",
+  "$engine_dir/browser/page_tab.cc",
+  "$engine_dir/browser/page_tab.h",
+  "$engine_dir/browser/permissions.cc",
+  "$engine_dir/browser/printing.cc",
+  "$engine_dir/browser/printing.h",
+  "$engine_dir/browser/shell_page.cc",
+  "$engine_dir/browser/shell_page.h",
+  "$engine_dir/browser/site_data.cc",
+  "$engine_dir/browser/site_data.h",
+  "$engine_dir/browser/site_features.cc",
+  "$engine_dir/browser/site_features.h",
+  "$engine_dir/browser/timeline.cc",
+  "$engine_dir/browser/timeline.h",
+  "$engine_dir/browser/window.h",
+  "$engine_dir/browser_main_delegate.cc",
+  "$engine_dir/browser_main_delegate.h",
+]
+
+# The desktop's own, beside the shared lists: the Mac and Linux, not the APK.
+engine_desktop_common_sources = [
+  "$engine_dir/common/extensions_on.h",
+]
+
+# The desktop's browser process: devtools, the driver, Go's ABI headers, the folder chooser,
+# notifications and passkeys of its own, and the desktop's main parts and downloads.
+engine_desktop_browser_sources = [
+  "$engine_dir/abi/pb_abi.h",
+  "$engine_dir/abi/pb_content_abi.h",
+  "$engine_dir/browser/browser_main_parts_desktop.cc",
+  "$engine_dir/browser/choose_path.cc",
+  "$engine_dir/browser/choose_path.h",
+  "$engine_dir/browser/devtools.cc",
+  "$engine_dir/browser/devtools.h",
+  "$engine_dir/browser/devtools_session.cc",
+  "$engine_dir/browser/devtools_session.h",
+  "$engine_dir/browser/downloads_desktop.cc",
+  "$engine_dir/browser/driver.cc",
+  "$engine_dir/browser/driver.h",
+  "$engine_dir/browser/driver_platform.h",
+  "$engine_dir/browser/notifications.cc",
+  "$engine_dir/browser/notifications.h",
+  "$engine_dir/browser/passkeys.cc",
+  "$engine_dir/browser/passkeys.h",
+]

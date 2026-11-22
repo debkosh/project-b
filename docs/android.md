@@ -228,7 +228,7 @@ pinned version builds.
 
 | Folder or file | What it is |
 |---|---|
-| `engine/android/BUILD.gn` | The APK: the content library, the Go libraries (`libcore.so` holds the shell's pages) and the pak as an asset |
+| `engine/android/BUILD.gn` | The APK: the content library, the Go libraries (`libcore.so` holds the shell's pages) and the pak as an asset. The engine's sources it shares with the Mac and Linux come from `engine/sources.gni`, the one list both BUILD.gn files read; only the `*_android` files are its own |
 | `engine/android/window_android.cc` | `Window` on Android: one compositor, the shell's layer over the shown page's |
 | `engine/android/java/.../BrowserWindow.java` | The views: the surface, a `ContentView` per tab and the shell's, the touch rule, the frame colour |
 | `engine/android/java/.../BrowserActivity.java` | Starts content, then the window, then Go |
