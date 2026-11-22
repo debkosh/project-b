@@ -11,8 +11,10 @@ import (
 	"flag"
 	"log"
 	"os"
+	"strconv"
 
 	"projectb/tones"
+	"projectb/workspaces"
 )
 
 func main() {
@@ -22,7 +24,15 @@ func main() {
 	if both == nil {
 		log.Fatalf("not a frame colour: %q", *frame)
 	}
-	out := map[string]any{"frame": tones.Frame(*frame, false), "light": both.Light, "dark": both.Dark}
+	// Main's dot as the shell paints it in light: a hue as its mark for this frame, a picked
+	// colour as it is.
+	main := workspaces.MainColor
+	for _, h := range both.Hues {
+		if strconv.Itoa(h.Hue) == main {
+			main = h.Light
+		}
+	}
+	out := map[string]any{"frame": tones.Frame(*frame, false), "light": both.Light, "dark": both.Dark, "main": main}
 	if err := json.NewEncoder(os.Stdout).Encode(out); err != nil {
 		log.Fatal(err)
 	}

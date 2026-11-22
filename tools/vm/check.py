@@ -38,10 +38,10 @@ def _tones():
                          capture_output=True, text=True, check=True).stdout
     palette = json.loads(out)
     rgb = lambda h: tuple(int(h.lstrip("#")[i:i + 2], 16) for i in (0, 2, 4))
-    return rgb(palette["frame"]), rgb(palette["light"]["--bar"]), rgb(palette["light"]["--surface"]), rgb(palette["light"]["--icon"])
+    return rgb(palette["frame"]), rgb(palette["light"]["--bar"]), rgb(palette["light"]["--surface"]), rgb(palette["light"]["--icon"]), rgb(palette["main"])
 
 
-FRAME, BAR, WHITE, ICON = _tones()  # --frame, --bar, --surface, and --icon, the toolbar's buttons
+FRAME, BAR, WHITE, ICON, MAIN_DOT = _tones()  # --frame, --bar, --surface, --icon (the toolbar's buttons), and Main's dot
 # Standard's command box fills the page area with the bar's colour mixed 60% into --surface
 # (shell/src/apps/shell/standard/CommandBox.vue), on a new tab. A window opens on a new tab,
 # with this box in the page area; Standard takes New Tab: Cmd+T goes to the window's new tab,
@@ -913,7 +913,6 @@ def profile_checks():
 
 
 WORK_DOT = (194, 65, 12)  # The colour workspace_checks gives Work.
-MAIN_DOT = (198, 95, 131)  # Main's, hue "0" (Rose) as Go draws it on a new profile's frame in light, #c65f83.
 WORK_ID, SHOPPING_ID = "0a1b2c3d", "4e5f6a7b"  # The workspaces the workspace checks list.
 
 
@@ -945,7 +944,10 @@ def workspace_checks():
     # The app starts on a new tab: the page the checks look at is typed in its address field.
     go_to(ALPHA)
     until(titles, lambda t: t == ["Alpha"])
-    dot = near(crop(desk.image(), win[0], win[1] + 40, 220, 200), MAIN_DOT, 24).sum()
+    # Main's dot is the frame's own teal now: the sidebar's crop starts past the frame band,
+    # which is that colour too, and matches within 8, as the toolbar's icons (ICON) are about
+    # 20 from it.
+    dot = near(crop(desk.image(), win[0] + 12, win[1] + 40, 208, 200), MAIN_DOT, 8).sum()
     check("a fresh profile's tab shows no workspace dot", dot <= 4, f"{dot} pixels of Main's colour")
     guest("/usr/bin/killall", "project_b")
     until(lambda: guest("/usr/bin/pgrep", "-x", "project_b"), lambda p: p == "", 10)
@@ -956,8 +958,8 @@ def workspace_checks():
     win = window_or_stop("the app starts on its first profile")
     go_to(ALPHA)
     until(titles, lambda t: t == ["Alpha"])
-    sidebar = crop(desk.image(), win[0], win[1] + 40, 220, 200)
-    check("with three workspaces, the first tab shows Main's dot", near(sidebar, MAIN_DOT, 24).sum() > 4)
+    sidebar = crop(desk.image(), win[0] + 12, win[1] + 40, 208, 200)
+    check("with three workspaces, the first tab shows Main's dot", near(sidebar, MAIN_DOT, 8).sum() > 4)
     names = new_tab_in("Work")
     shot("p4-dots-side")
     check("Tab, New Tab in Workspace lists Main and the profile's workspaces", names == ["Main", "Work", "Shopping"], str(names))
