@@ -12,7 +12,10 @@ installed (tools/linux/flatpak-release.sh runs it before a release's repository 
 5. What the profile seals opens again on the next start: a login imported before the restart
    makes the profile's key, wrapped by the device key from the desktop's Secret portal, and
    one imported after has to open it again; a desktop with no Secret backend fails here.
-6. A copy the app starts outlives it: Profiles… opens the picker, which stays when the app
+6. The default browser is the desktop's choice as the app starts: with mimeapps.list naming the
+   app before a start, Settings says so. In the sandbox the file is mounted as it was then, so a
+   change while the app runs shows at the next start (docs/research/linux.md, 4).
+7. A copy the app starts outlives it: Profiles… opens the picker, which stays when the app
    quits, and Settings' Relaunch brings the app back on its profile. The sandbox ends every
    process in it with the first, so a copy started from inside would end too.
 
@@ -149,6 +152,34 @@ def main():
     settings(again)
     second = import_login(again, "after")
     d.check("and opens again on the next start: a second login seals", added(second) == 1, second)
+
+    # The desktop's choice of browser, read as the app starts.
+    run(again, "app.quit")
+    try:
+        again.proc.wait(timeout=30)
+        d.App.running.remove(again)
+    except Exception as e:  # noqa: BLE001
+        d.check("app.quit ends the app", False, e)
+    mimeapps = os.path.join(HOME, ".config/mimeapps.list")
+    kept = open(mimeapps).read() if os.path.exists(mimeapps) else None
+    os.makedirs(os.path.dirname(mimeapps), exist_ok=True)
+    with open(mimeapps, "w") as f:
+        f.write(f"[Default Applications]\nx-scheme-handler/https={APP}.desktop\nx-scheme-handler/http={APP}.desktop\n")
+    try:
+        again = start()
+        settings(again)
+        line, deadline = "", time.time() + 10
+        while not line and time.time() < deadline:
+            line = json.loads(again.cmd("evalsettings", "document.querySelector('.status-line')?.textContent.trim() || ''"))
+            time.sleep(0.3)
+        d.check("with the desktop's choice made before the start, Settings says it is the default browser",
+                line.startswith("Your default browser"), line)
+    finally:
+        if kept is None:
+            os.remove(mimeapps)
+        else:
+            with open(mimeapps, "w") as f:
+                f.write(kept)
 
     # Profiles… starts the picker as a copy of its own; it stays when the app quits.
     run(again, "profile.picker")
