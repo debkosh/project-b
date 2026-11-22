@@ -42,7 +42,7 @@
   <releases>
     <release version="@VERSION@" date="@DATE@" type="development">
       <description>
-        <p>The first Linux preview.</p>
+        <p>A preview for Linux on arm64: it follows the desktop's dark mode and updates itself.</p>
       </description>
     </release>
   </releases>
