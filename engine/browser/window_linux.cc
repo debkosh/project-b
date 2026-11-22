@@ -13,6 +13,7 @@
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/no_destructor.h"
+#include "base/scoped_observation.h"
 #include "base/task/sequenced_task_runner.h"
 #include "components/input/native_web_keyboard_event.h"
 #include "content/public/browser/web_contents.h"
@@ -34,6 +35,7 @@
 #include "ui/events/event.h"
 #include "ui/gfx/geometry/rect_conversions.h"
 #include "ui/native_theme/native_theme.h"
+#include "ui/native_theme/native_theme_observer.h"
 #include "ui/platform_window/platform_window.h"
 #include "ui/platform_window/platform_window_init_properties.h"
 #include "ui/platform_window/wm/wm_move_resize_handler.h"
@@ -136,6 +138,20 @@ struct Window::Impl {
     }
 
     raw_ptr<Impl> impl_;
+  };
+
+  // The desktop turning light or dark (set_system_dark) repaints a window that follows it.
+  class ThemeObserver : public ui::NativeThemeObserver {
+   public:
+    explicit ThemeObserver(Impl* impl) : impl_(impl) {
+      observation_.Observe(ui::NativeTheme::GetInstanceForNativeUi());
+    }
+
+   private:
+    void OnNativeThemeUpdated(ui::NativeTheme*) override { impl_->Paint(); }
+
+    raw_ptr<Impl> impl_;
+    base::ScopedObservation<ui::NativeTheme, ui::NativeThemeObserver> observation_{this};
   };
 
   // The top row's own parts, as a frame of the OS's would have them (docs/research/linux.md, 2):
@@ -401,6 +417,7 @@ struct Window::Impl {
   std::unique_ptr<aura::client::DefaultCaptureClient> capture;
   std::unique_ptr<ParentingClient> parenting;
   std::unique_ptr<FrameHandler> frame;
+  std::unique_ptr<ThemeObserver> theme_observer;
   // The holders, owned by the tree: the window's colour, the pages and the shell.
   raw_ptr<aura::Window> content = nullptr;
   raw_ptr<aura::Window> background = nullptr;
@@ -516,9 +533,11 @@ Window::Window(base::OnceClosure on_close,
   impl_->shell_holder->SetEventTargeter(
       std::make_unique<Impl::Targeter>(impl_.get(), Area::kShell));
   impl_->Relayout(gfx::Size());
+  impl_->theme_observer = std::make_unique<Impl::ThemeObserver>(impl_.get());
 }
 
 Window::~Window() {
+  impl_->theme_observer.reset();
   impl_->on_state.Reset();
   aura::Window* root = impl_->root();
   root->RemovePreTargetHandler(impl_->focus.get());

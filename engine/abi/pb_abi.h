@@ -549,6 +549,11 @@ typedef struct PBEngineCalls {
   // Android only: deletes a finished download's copy in the phone's shared Downloads, by
   // the app's own path for it; 1 when it did, 0 when there is none. The Mac leaves it null.
   int (*delete_download)(const char* path);
+  // Linux only: whether the desktop is dark, 1, or light, 0, as its Settings portal says,
+  // once at start and at each change (core/system/platform/portal_linux.go): the windows'
+  // frames and every page that follows the system, the shells among them, turn with it. The
+  // Mac and Android follow their own, and leave this null.
+  void (*set_system_dark)(int dark);
 } PBEngineCalls;
 
 // What the adapter can tell the Go core, once PBInit (pb_exports.h) has said this copy runs.
