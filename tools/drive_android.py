@@ -1748,8 +1748,8 @@ def sync_on_the_phone():
     sync on against a sync server on this Mac (core/cmd/syncserver, reached through adb reverse,
     its own CA put in the device's user CA folder, which Go reads, as sync takes only https)
     makes the device key, wrapped by the Android Keystore, and the profile's key; after a
-    restart sync runs again with what was kept, so the Keystore opened the key; and DeviceKey
-    logs no exception."""
+    restart sync runs again with what was kept, so the Keystore opened the key; and oskit's
+    Secret logs no exception."""
     stopped = lambda: (adb("shell", "am", "force-stop", PACKAGE), until(lambda: PACKAGE + "_zygote" not in adb("shell", "ps", "-A", "-o", "NAME")))
     linked = lambda: until(lambda: settings_text("https://sync.example.test/sync/abc"), 30)
     adb("logcat", "-c")
@@ -1826,8 +1826,8 @@ def sync_on_the_phone():
         check("after a restart sync runs again with what was kept: the Keystore opened the device key",
               until(lambda: len(requests) > before, 60) is not None, requests[before:])
         logcat = adb("logcat", "-d")
-        trouble = [l for l in logcat.splitlines() if "DeviceKey" in l and ("Exception" in l or "Error" in l)]
-        check("DeviceKey logs no exception", not trouble, trouble[:5])
+        trouble = [l for l in logcat.splitlines() if "oskit.Secret" in l and ("Exception" in l or "Error" in l)]
+        check("oskit's Secret, the device key, logs no exception", not trouble, trouble[:5])
     finally:
         srv.terminate()
         adb("reverse", "--remove", "tcp:%d" % port) if "port" in locals() else None
