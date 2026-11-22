@@ -126,6 +126,7 @@ mock() {
     run "the form script, in a page of its own" node shell/e2e/form-script.cjs
     run "the form rules' test bench: pwlab and its extension in a real Chromium" node shell/e2e/form-lab.cjs
     run "a ready release's notice and Settings' About, on the desktop and a phone" node shell/e2e/update-notice.cjs
+    run "release notes show each platform its own lines" node shell/e2e/platform-notes.cjs
     built extensions || return
     need_store mock
     run "extensions on the mock engine" node shell/e2e/extensions.cjs
