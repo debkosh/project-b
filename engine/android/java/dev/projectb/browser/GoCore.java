@@ -23,14 +23,8 @@ final class GoCore {
     /** The address of the table of Go's functions, for the content library. */
     static native long table();
 
-    /** An answer to a question Go asked of Android (GoSystem), on the main thread. */
-    static native void answered(int question, boolean yes);
-
     /** How check id of the person ended: 0 verified, 1 not, 2 no screen lock. */
     static native void personVerified(int id, int verdict);
-
-    /** Opens a link another app sent, as a new tab. Only after Go started. */
-    static native void openUrl(String url);
 
     /** A tap on the update's notification: "cancel", "retry" or "relaunch", for the Go updater. */
     static native void updateCommand(String name);

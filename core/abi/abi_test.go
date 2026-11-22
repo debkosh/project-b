@@ -77,6 +77,10 @@ func (r *recorder) DownloadNotificationCommand(id int, c engine.DownloadCommand)
 	r.note("download notification %d %d", id, c)
 }
 
+func (r *recorder) DownloadPublished(path, address string) {
+	r.note("download published %s %s", path, address)
+}
+
 func listening() (*Events, *recorder) {
 	e, r := New(), &recorder{}
 	e.Listen(r)
@@ -115,6 +119,7 @@ func TestEachEventReachesTheListener(t *testing.T) {
 		{FolderChosen, []Value{i(1), s("/Users/me/Vivaldi")}, "folder 1 /Users/me/Vivaldi"},
 		{AppLink, []Value{i(2), s("project-b://sync?address=x")}, "app link 2 project-b://sync?address=x"},
 		{DownloadAction, []Value{i(3), i(2)}, "download notification 3 2"},
+		{DownloadPublished, []Value{s("/data/files/a.pdf"), s("content://media/external/downloads/7")}, "download published /data/files/a.pdf content://media/external/downloads/7"},
 	} {
 		r.got = nil
 		if _, answered := e.Dispatch(c.id, c.args); answered {

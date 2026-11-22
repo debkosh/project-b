@@ -47,6 +47,8 @@ const (
 	AppLink        Event = 81
 	ImageSaved     Event = 82
 	DownloadAction Event = 83
+	// DownloadPublished is Android's.
+	DownloadPublished Event = 84
 )
 
 var names = map[Event]string{
@@ -72,6 +74,7 @@ var names = map[Event]string{
 	AppLink:                "engine.AppLink",
 	ImageSaved:             "engine.ImageSaved",
 	DownloadAction:         "engine.DownloadNotificationCommand",
+	DownloadPublished:      "engine.DownloadPublished",
 }
 
 // linksAndImagesOnly is a phone's way: only a long press on a link or an image is the
@@ -164,6 +167,8 @@ func (e *Events) Dispatch(id Event, args []Value) (Value, bool) {
 		l.ImageSaved(r.str(), r.bool())
 	case DownloadAction:
 		l.DownloadNotificationCommand(int(r.int()), engine.DownloadCommand(r.int()))
+	case DownloadPublished:
+		l.DownloadPublished(r.str(), r.str())
 	default:
 		return e.adapter(id, l, r)
 	}

@@ -72,7 +72,8 @@ function copyLink(d) {
   copiedTimer = setTimeout(() => (copied.value = 0), 1500);
 }
 
-const folder = (path) => path.slice(0, path.lastIndexOf('/')) || '/';
+// A phone's finished download is its copy in the shared Downloads, a content:// address.
+const folder = (path) => (path.startsWith('content://') ? 'Downloads' : path.slice(0, path.lastIndexOf('/')) || '/');
 
 async function show() {
   const r = button.value.getBoundingClientRect();
