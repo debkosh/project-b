@@ -35,14 +35,6 @@ func (s *System) AskDefaultBrowser(answered func(bool)) {
 	s.defaultBrowser.Ask(answered, func() { s.defaultBrowser.Answer(false) })
 }
 
-// NotificationsAllowed is true: the Notification portal has no question to ask; the person
-// turns them off in the desktop's settings.
-func (s *System) NotificationsAllowed() bool { return true }
-
-func (s *System) AskNotifications(answered func(bool)) {
-	s.notifications.Ask(answered, func() { s.notifications.Answer(true) })
-}
-
 // verifyPerson says there is nothing to check the person with, until a portal does it.
 func (s *System) verifyPerson(id int32, _ system.PersonCheck) {
 	if answered := s.checks[id]; answered != nil {
@@ -53,9 +45,8 @@ func (s *System) verifyPerson(id int32, _ system.PersonCheck) {
 
 func (s *System) cancelPerson(int32) {}
 
-// ShowNotification and RemoveNotification wait for the Notification portal.
-func (s *System) ShowNotification(system.Notification) {}
-func (s *System) RemoveNotification(string)            {}
+// otherNote is none on Linux: every note is a page's.
+func otherNote(string, string) bool { return false }
 
 // OnOpenURLs: the desktop hands links and files on the command line, and a copy already
 // running gets them through core/instance, so nothing comes this way.
