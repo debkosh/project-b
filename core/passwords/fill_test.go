@@ -97,8 +97,10 @@ func TestAPressOffersAndAPickFills(t *testing.T) {
 		browserdata.Login{Origin: "https://shop.example", Username: "work", Password: "second one"},
 		browserdata.Login{Origin: "https://other.example", Username: "elsewhere", Password: "never here"})
 	x.tell(shop, "fields", login)
-	if len(x.sent) != 0 {
-		t.Fatalf("Go asked a page for something before any press: %+v", x.sent)
+	// All Go asks of a page it was told of is the values of the two fields it took for a
+	// role, for when the form is sent: never the search field's.
+	if len(x.sent) != 1 || x.sent[0].kind != "watch" || x.sent[0].payload != `{"refs":["f1","f2"]}` {
+		t.Fatalf("what Go asked of a page before any press: %+v", x.sent)
 	}
 	keys := func() string { return x.of("keys")[len(x.of("keys"))-1].payload }
 	x.tell(shop, "pressed", forms.Pressed{Ref: "f2", Box: forms.Box{X: 10, Y: 20, W: 200, H: 30}})

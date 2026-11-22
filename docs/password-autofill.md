@@ -65,8 +65,43 @@ research papers).
     the mock engine, where the test plays the form script; `tools/drive_first_app.py
     filling` on the real Mac app (a real sign-in page, real presses and keys);
     `tools/drive_android.py passwords_on_the_phone` on an emulator.
-- **Not built:** Save and Update, which follow straight after; the key in the address
-  field with the site's count; the generator; Android's switch to another service.
+- **Save and Update, 2026-11-22**, on both shells:
+  - **When.** Go asks the form script for the values of the fields it took for a role, and
+    no others (`watch`), so a form that is sent, or that goes, tells them (`submitted`,
+    `gone`). A form sent proves nothing: Go only notes what it held, in memory. It offers
+    once the sign-in is seen to go through: the form went with its page staying (`gone`),
+    or the tab went on and the page it came to, once loaded, showed no sign-in again within
+    two seconds (`passwords.Settle`). A sign-in that comes back to a sign-in offers nothing.
+  - **What.** A login saved as it is offers nothing, and counts as used. A saved username
+    with another password offers Update, which gives that login the new password. Anything
+    else offers Save. A username sent alone, the first step of a sign-in in two, is kept
+    for five minutes for the password that follows on the same site in the same tab.
+  - **Where not.** Nothing is offered where nothing is filled (`MayFill`: a frame with no
+    origin of its own, https under a certificate that doesn't check), for a password of
+    one character, which is a box of a code split in pieces, or on a site the person said
+    Never for (`logins_never`, in the profile's store; saving a login for the site by
+    another way ends it). A saved login's new password is still offered there.
+  - **The answer** (`core/passwords/save.go`: `Filler.Answer`, `Manager.Add`, `Change`,
+    `Never`): Save or Update, Not now, which keeps nothing, and Never for this site. The
+    offer holds no password; Show asks Go for what was typed (`Filler.Typed`), which goes
+    to the asking shell alone. An offer stays while its tab stays on the site it was made
+    on, and goes when it is answered, another sign-in is sent in the tab, the tab goes to
+    another site, or closes; Go then forgets what was typed.
+  - **Never, undone.** Settings' Passwords lists the sites under Never saved, each with
+    Remove (`Manager.NeverSites`, `Allow`; `passwordNeverRemove`). The list stays on the
+    device: it doesn't sync.
+  - **The shells.** Standard: a key in the address field, with `PasswordSavePanel.vue`
+    hanging from it as the star's panel does, open as the offer comes; Escape or a press
+    outside closes the panel and the key brings it back. Mobile: `PasswordSaveSheet.svelte`,
+    the shell's bottom sheet; a tap outside it or a swipe down is Not now. The state and the
+    messages are in [shells.md](shells.md) (`passwordSave`, `passwordSaveShown`,
+    `passwordSaveAnswer`, `passwordSaveShow`).
+  - **Tests:** `core/passwords/save_test.go`, `TestSavingALoginSignedInWith` in `core/app`,
+    `shell/e2e/password-save.cjs` and `password-save-mobile.cjs` on the mock engine, where
+    the test plays the form script.
+- **Not built:** the key in the address field with the site's count; the generator;
+  Android's switch to another service; saving a generated password before its form is
+  sent.
 
 ## The short version
 

@@ -20,6 +20,7 @@
   import PageDialog from './PageDialog.svelte';
   import PageNotice from './PageNotice.svelte';
   import PasswordBar from './PasswordBar.svelte';
+  import PasswordSaveSheet from './PasswordSaveSheet.svelte';
   import NewTab from './NewTab.svelte';
   import Strip from './Strip.svelte';
   import Switcher from './Switcher.svelte';
@@ -60,6 +61,8 @@
     });
   });
   const markedBookmark = $derived(marked && go.bookmarks.find((b) => b.id === marked.id));
+  // The offer to save a password just signed in with, when it is for the tab shown.
+  const saveOffer = $derived(go.passwordSave && Number(go.passwordSave.tab) === go.active ? go.passwordSave : null);
   // What a long press in the page was on, for the 'link' sheet.
   let pressed = $state(null);
   // The workspace new tabs open in, and the switcher shows: the active tab's, until the
@@ -422,6 +425,9 @@
     <MenuSheet {tab} {group} {workspace} onclose={() => (sheet = '')} onnewtab={(inGroup) => newTab(inGroup ? go.active : 0)} {onsheet} onworkspace={(id) => (workspace = id)} />
   {:else if sheet === 'site' && /^https?:/.test(tab.url || '')}
     <SiteSheet {tab} onclose={() => (sheet = '')} />
+  {:else if !sheet && saveOffer}
+    <!-- The offer to save a password just signed in with: the tab's own, over the window. -->
+    <PasswordSaveSheet offer={saveOffer} />
   {:else if sheet === 'bookmark' && markedBookmark}
     {#key marked.key}
       <BookmarkSheet bookmark={markedBookmark} list={go.bookmarks} added={marked.new} onclose={() => (sheet = '')} />

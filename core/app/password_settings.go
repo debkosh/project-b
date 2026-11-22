@@ -103,7 +103,16 @@ func (a *App) passwordSettingsPart(e engine.Engine) settings.Part {
 			for _, l := range all {
 				rows = append(rows, passwordRow{ID: l.ID, Site: siteOfOrigin(l.Origin), Origin: l.Origin, Username: l.Username, Created: l.Created})
 			}
-			e.Post(func() { a.Settings.Send(map[string]any{"t": "passwords", "passwords": rows}) })
+			// The sites a person said never to offer to save on, for them to take one off.
+			never := []map[string]string{}
+			sites, err := a.Passwords.NeverSites()
+			if err != nil {
+				timeline.Errorf("passwords: %v", err)
+			}
+			for _, origin := range sites {
+				never = append(never, map[string]string{"origin": origin, "site": siteOfOrigin(origin)})
+			}
+			e.Post(func() { a.Settings.Send(map[string]any{"t": "passwords", "passwords": rows, "never": never}) })
 		}()
 	}
 	a.Passwords.OnChanged(func() {
@@ -151,8 +160,9 @@ func (a *App) passwordSettingsPart(e engine.Engine) settings.Part {
 		Snapshot: func(into map[string]any) { into["passwordCount"] = count },
 		Handle: func(tab engine.TabID, t string, msg []byte) bool {
 			var c struct {
-				ID   string `json:"id"`
-				What string `json:"what"`
+				ID     string `json:"id"`
+				Origin string `json:"origin"`
+				What   string `json:"what"`
 				// Fresh is the page's first asking for the list, as it opens.
 				Fresh bool `json:"fresh"`
 			}
@@ -225,6 +235,14 @@ func (a *App) passwordSettingsPart(e engine.Engine) settings.Part {
 					}
 					a.Settings.SendTo(tab, answer)
 				})
+			case "passwordNeverRemove":
+				// A site taken off the list of those never offered on: it is offered on again.
+				json.Unmarshal(msg, &c)
+				go func() {
+					if err := a.Passwords.Allow(c.Origin); err != nil {
+						timeline.Errorf("passwords: %v", err)
+					}
+				}()
 			case "passwordDelete":
 				json.Unmarshal(msg, &c)
 				go func() {

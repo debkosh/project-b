@@ -143,11 +143,18 @@ export const state = {
   // the tab's page. A shell lists them beside the field and answers passwordPick or
   // passwordDismiss (docs/password-autofill.md). It holds no password.
   passwordOffer: null,
+  // The offer to save a login the person just signed in with, or to update a saved one's
+  // password, or null: {id, tab, site, username, update}. A shell asks and answers
+  // passwordSaveAnswer {offer, choice}: "save", "never" or "dismiss". passwordSaveShown is
+  // what they typed, {offer, password}, once the shell asked for it with passwordSaveShow,
+  // for them to look at; null otherwise.
+  passwordSave: null,
+  passwordSaveShown: null,
 };
 
 // The messages that are only state: each sets the fields it carries, whole. The one
 // exception is tabs, whose tabs carry no favicon: each keeps the one it had (below).
-const updates = new Set(['theme', 'windowColor', 'controls', 'keys', 'workspaces', 'update', 'crashLog', 'tabLayout', 'addressBarPosition', 'extensions', 'profileData', 'contextMenu', 'downloads', 'dialogs', 'prefs', 'find', 'pageFullScreen', 'welcome', 'searchEngine', 'permissionPrompts', 'openSites', 'bookmarks', 'bookmarkPanel', 'pins', 'menu', 'barMenu', 'passwordOffer']);
+const updates = new Set(['theme', 'windowColor', 'controls', 'keys', 'workspaces', 'update', 'crashLog', 'tabLayout', 'addressBarPosition', 'extensions', 'profileData', 'contextMenu', 'downloads', 'dialogs', 'prefs', 'find', 'pageFullScreen', 'welcome', 'searchEngine', 'permissionPrompts', 'openSites', 'bookmarks', 'bookmarkPanel', 'pins', 'menu', 'barMenu', 'passwordOffer', 'passwordSave', 'passwordSaveShown']);
 
 const listeners = [];
 

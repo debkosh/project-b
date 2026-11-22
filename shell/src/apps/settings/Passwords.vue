@@ -14,6 +14,8 @@ import { send, state } from './state.js';
 // it is hidden again or the page is left; Copy never brings it here, Go puts it on the
 // clipboard. The device checks the person at the first of them, and Go holds that check
 // for this page for five minutes: the page opening, and its closing, tell Go, which ends it.
+// Under the list, the sites never offered to save on (docs/password-autofill.md), each with
+// Remove.
 onMounted(() => send({ t: 'passwordsList', fresh: true }));
 watch(
   () => state.passwordCount,
@@ -113,6 +115,7 @@ function remove() {
 // While sync is on the logins are on the sync server too, sealed, and a delete goes round.
 const syncing = computed(() => !!state.sync?.on);
 const check = computed(() => (phone ? 'your screen lock' : "Touch ID or your Mac's password"));
+const never = computed(() => state.passwordsNever || []);
 const count = computed(() => (all.value.length === 1 ? '1 saved' : `${all.value.length.toLocaleString('en-US')} saved`));
 </script>
 
@@ -144,6 +147,20 @@ const count = computed(() => (all.value.length === 1 ? '1 saved' : `${all.value.
       </div>
     </div>
     <p v-if="all.length" class="secondary after">{{ count }}</p>
+    <!-- The sites a person answered Never for this site on, when a sign-in offered to save:
+         Remove has a site offered on again. -->
+    <template v-if="never.length">
+      <h2 class="never-title">Never saved</h2>
+      <p class="secondary intro">Project B doesn't offer to save passwords on these sites.</p>
+      <div class="card list" aria-label="Never saved">
+        <div v-for="n in never" :key="n.origin" class="row never" :data-site="n.site">
+          <span class="who"
+            ><span class="name" :title="n.origin">{{ n.site }}</span></span
+          >
+          <button type="button" class="text-button" :aria-label="`Remove ${n.site} from never saved`" @click="send({ t: 'passwordNeverRemove', origin: n.origin })">Remove</button>
+        </div>
+      </div>
+    </template>
     <Dialog v-if="deleting" title="Delete this password?" @close="deleting = null">
       <p>
         Your saved password for <b>{{ deleting.site }}</b
@@ -228,5 +245,19 @@ const count = computed(() => (all.value.length === 1 ? '1 saved' : `${all.value.
 
 .after {
   margin: 8px 4px 0;
+}
+
+.never-title {
+  margin: 28px 4px 4px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.never {
+  min-height: 48px;
+}
+
+.never + .never {
+  border-top: 1px solid var(--line);
 }
 </style>

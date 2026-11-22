@@ -1,7 +1,8 @@
 // Package passwords is a profile's saved logins (docs/passwords.md): a site's origin and a
 // username, plain, and the password, sealed with the profile key and bound to its row and its
-// site. They come from other browsers and from files (Import); a person sees them listed in
-// Settings, and a password is opened only after the device has checked the person.
+// site. They come from other browsers and from files (Import), and from the sign-ins a person
+// agrees to save (save.go); a person sees them listed in Settings, where a password is opened
+// only after the device has checked the person, and they fill into sign-in pages (fill.go).
 package passwords
 
 import (
@@ -72,6 +73,10 @@ CREATE TABLE logins (
   used INTEGER NOT NULL
 ) WITHOUT ROWID;
 CREATE INDEX logins_site ON logins (origin, username)`)
+		return err
+	}, func(tx *store.Tx) error {
+		// The sites a person said never to offer to save on.
+		_, err := tx.Exec(`CREATE TABLE logins_never (origin TEXT PRIMARY KEY, at INTEGER NOT NULL) WITHOUT ROWID`)
 		return err
 	})
 	// Starting fresh makes a new profile key, which opens none of these rows.

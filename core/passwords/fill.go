@@ -61,10 +61,19 @@ type Filler struct {
 	carry   Carrier
 	offered func(*Offer)
 
+	// saving is told each offer to save, and nil when it is no more (save.go).
+	saving func(*SaveOffer)
+
 	mu    sync.Mutex
 	next  int64
 	pages map[string]*page // by tab and frame
 	open  *showing
+	// sent is what each tab's last form held when it was sent, until it is seen to go
+	// through and is answered; usernames the usernames sent alone, by tab and site.
+	sent      map[string]*sent
+	usernames map[string]typed
+	// where is the site each tab is on, as its last address said.
+	where map[string]string
 }
 
 // page is what a frame's document has told.
@@ -87,7 +96,7 @@ type showing struct {
 // each offer to show, and nil when the one showing is no more. Both are called on whatever
 // thread the Filler's own call came on, or a worker's: the caller posts where it must.
 func NewFiller(m *Manager, carry Carrier, offered func(*Offer)) *Filler {
-	return &Filler{m: m, carry: carry, offered: offered, pages: map[string]*page{}}
+	return &Filler{m: m, carry: carry, offered: offered, pages: map[string]*page{}, sent: map[string]*sent{}, usernames: map[string]typed{}, where: map[string]string{}}
 }
 
 func key(s forms.Stamp) string { return s.Tab + "\x00" + s.Frame }
@@ -107,9 +116,18 @@ func (f *Filler) Message(stamp forms.Stamp, kind string, payload []byte) {
 		if json.Unmarshal(payload, &fields) != nil {
 			return
 		}
+		found := forms.Roles(fields, nil)
 		f.mu.Lock()
-		f.pages[key(stamp)] = &page{stamp: stamp, fields: fields, found: forms.Roles(fields, nil)}
+		f.pages[key(stamp)] = &page{stamp: stamp, fields: fields, found: found}
 		f.mu.Unlock()
+		f.again(stamp, found)
+		f.watch(stamp, found)
+	case "submitted", "gone":
+		var s forms.Sent
+		if json.Unmarshal(payload, &s) != nil {
+			return
+		}
+		f.formSent(stamp, s, kind == "gone")
 	case "pressed":
 		var p forms.Pressed
 		if json.Unmarshal(payload, &p) != nil {
@@ -251,8 +269,9 @@ func (f *Filler) Dismiss(offer int64) {
 
 // Navigated takes a tab's offer away: its page went on to another address. What its
 // frames told stays, as an address can change with the page staying.
-func (f *Filler) Navigated(tab string) {
+func (f *Filler) Navigated(tab, address string) {
 	f.close(func(o *showing) bool { return o.stamp.Tab == tab })
+	f.moved(tab, address)
 }
 
 // Left forgets what a tab's frames told, and takes its offer away: the tab closed, or a
@@ -264,7 +283,21 @@ func (f *Filler) Left(tab, frame string) {
 			delete(f.pages, k)
 		}
 	}
+	// A closed tab's offer to save goes with it, and what it sent is forgotten.
+	gone := frame == "" && f.sent[tab] != nil && f.sent[tab].offered
+	if frame == "" {
+		delete(f.sent, tab)
+		delete(f.where, tab)
+		for k := range f.usernames {
+			if strings.HasPrefix(k, tab+"\x00") {
+				delete(f.usernames, k)
+			}
+		}
+	}
 	f.mu.Unlock()
+	if gone && f.saving != nil {
+		f.saving(nil)
+	}
 	f.close(func(o *showing) bool { return o.stamp.Tab == tab && (frame == "" || o.stamp.Frame == frame) })
 }
 

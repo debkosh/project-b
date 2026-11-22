@@ -1,15 +1,19 @@
 package app_test
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/sudiptadeb/project-b/browserdata"
 
+	"projectb/app"
 	"projectb/engine"
 	"projectb/forms"
 	"projectb/mockengine"
+	"projectb/passwords"
 )
 
 // Filling a saved login into a page: the engine is given the form script; a frame's
@@ -105,6 +109,92 @@ func TestFillingASavedLogin(t *testing.T) {
 	}
 	r.shell(`{"t":"passwordsManage"}`)
 	r.waitForTab(func(t map[string]any) bool { return t["page"] == "settings" })
+}
+
+// Saving a login a person signed in with: the form's values, as the form script tells them
+// when it is sent, bring nothing until the tab goes on; then the tab's shell is offered to
+// save, with no password in the offer; passwordSaveShow answers the asking shell with what
+// was typed; passwordSaveAnswer with save keeps the login, and the offer goes. A second
+// sign-in with another password offers an update, and never has the site not offered on.
+func TestSavingALoginSignedInWith(t *testing.T) {
+	defer app.SetPasswordSettle(30 * time.Millisecond)()
+	r := start(t, t.TempDir())
+	defer r.stop()
+	r.visit("https://shop.example/login")
+	tab := r.activeTab()
+	fields := `{"fields":[{"ref":"f1","form":"F1","tag":"input","type":"email","name":"email","visible":true,"focusable":true,"empty":true},
+		{"ref":"f2","form":"F1","tag":"input","type":"password","name":"password","visible":true,"focusable":true,"empty":true}]}`
+	signIn := func(doc, username, password string) {
+		from := engine.FormFrame{Tab: tab, Frame: "frame-1", Document: doc, Origin: "https://shop.example", Top: true, Secure: true}
+		r.e.Post(func() { r.e.FormMessage(from, "fields", fields) })
+		r.e.Post(func() {
+			r.e.FormMessage(from, "submitted", `{"form":"F1","values":{"f1":`+toJSON(username)+`,"f2":`+toJSON(password)+`}}`)
+		})
+	}
+	offer := func() map[string]any {
+		t.Helper()
+		m := r.waitFor(func(m map[string]any) bool { return m["t"] == "passwordSave" && m["passwordSave"] != nil })
+		return m["passwordSave"].(map[string]any)
+	}
+	gone := func() {
+		t.Helper()
+		r.waitFor(func(m map[string]any) bool { return m["t"] == "passwordSave" && m["passwordSave"] == nil })
+	}
+	saved := func() []string {
+		t.Helper()
+		out := []string{}
+		list, _ := r.a.Passwords.List()
+		for _, l := range list {
+			p, err := r.a.Passwords.Password(passwords.Checked(context.Background()), l.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			out = append(out, l.Origin+" "+l.Username+" "+p)
+		}
+		return out
+	}
+
+	signIn("doc-1", "asha", "correct horse")
+	r.shell(`{"t":"navigate","text":"https://shop.example/account"}`)
+	o := offer()
+	if o["site"] != "shop.example" || o["username"] != "asha" || o["update"] != nil || strings.Contains(toJSON(o), "correct horse") {
+		t.Fatalf("the offer to save: %v", o)
+	}
+	r.shell(`{"t":"passwordSaveShow","offer":` + toJSON(o["id"]) + `}`)
+	if m := r.waitFor(func(m map[string]any) bool { return m["t"] == "passwordSaveShown" })["passwordSaveShown"].(map[string]any); m["password"] != "correct horse" || m["offer"] != o["id"] {
+		t.Fatalf("what was typed, shown: %v", m)
+	}
+	r.shell(`{"t":"passwordSaveAnswer","offer":` + toJSON(o["id"]) + `,"choice":"save"}`)
+	gone()
+	if got := saved(); len(got) != 1 || got[0] != "https://shop.example asha correct horse" {
+		t.Fatalf("after Save: %v", got)
+	}
+	if n := len(r.sys.Checks()); n != 0 {
+		t.Fatalf("saving had the device check the person %d times", n)
+	}
+
+	// Another password for the saved username: an update, which changes it.
+	signIn("doc-2", "asha", "a new one")
+	r.shell(`{"t":"navigate","text":"https://shop.example/again"}`)
+	o = offer()
+	if o["update"] != true || o["username"] != "asha" {
+		t.Fatalf("the offer to update: %v", o)
+	}
+	r.shell(`{"t":"passwordSaveAnswer","offer":` + toJSON(o["id"]) + `,"choice":"save"}`)
+	gone()
+	if got := saved(); len(got) != 1 || got[0] != "https://shop.example asha a new one" {
+		t.Fatalf("after Update: %v", got)
+	}
+
+	// Never: the offer goes, nothing is kept, and the site isn't offered on again.
+	signIn("doc-3", "work", "second one")
+	r.shell(`{"t":"navigate","text":"https://shop.example/third"}`)
+	o = offer()
+	r.shell(`{"t":"passwordSaveAnswer","offer":` + toJSON(o["id"]) + `,"choice":"never"}`)
+	gone()
+	if never, _ := r.a.Passwords.IsNever("https://shop.example"); !never || len(saved()) != 1 {
+		t.Fatalf("after Never: never %v, saved %v", never, saved())
+	}
 }
 
 func toJSON(v any) string {

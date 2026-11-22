@@ -3,7 +3,9 @@
 The logins Project B keeps for a profile. **The first slice, built 2026-11-20:** they come
 over from another browser or a file, are kept sealed, and are listed in Settings, where one
 can be shown, copied and deleted. **Since 2026-11-20 they sync,** and a phone has the list
-too. Filling them on pages and offering to save a new one are not built. The keys under it are in [sync.md](sync.md#the-keys); bringing them over is in
+too. **Since 2026-11-22 they fill into sign-in pages, and a sign-in with a new login or a
+new password offers to save it** ([password-autofill.md](password-autofill.md)). The keys
+under it are in [sync.md](sync.md#the-keys); bringing them over is in
 [onboarding.md](onboarding.md).
 
 ![The list, a login opened and its password shown](screenshots/passwords/desktop-shown.png)
@@ -109,18 +111,18 @@ Android keeps each app's data from the others, and its logins come by sync.
 
 | The page sends | Go answers |
 |---|---|
-| `passwordsList`, with `fresh` as the page opens | `passwords {passwords}`: each `{id, site, origin, username, created}`, never a password. Sent again to every Settings page after a change |
+| `passwordsList`, with `fresh` as the page opens | `passwords {passwords, never}`: each login `{id, site, origin, username, created}`, never a password, and `never`, the sites never offered to save on, each `{origin, site}`. Sent again to every Settings page after a change |
 | `passwordShow {id}` | `passwordShown {id, password, heldUntil}` to the asking page alone, `heldUntil` being when the check holds until, Unix milliseconds, for the page to hide what it shows then; or `{id, error}`: `denied`, `noScreenLock`, `notHere`, `gone`, `failed` |
 | `passwordCopy {id, what}` | `passwordCopied {id, what}`, with `error` as above. `what` is `password`, after the device's check, put on the clipboard as a secret, or `username`, with no check, plainly. Go writes the clipboard |
 | `passwordDelete {id}` | the list and the count again |
+| `passwordNeverRemove {origin}` | the list again, without that site under Never saved |
 | `passwordsClosed` | nothing: the page was left, and its check holds no more |
 
 The snapshot has `passwordCount`, and `passwordCount {passwordCount}` follows each change.
 
 ## Not in it yet
 
-- Filling a login on a page, offering to save or update one, a generator.
-- Syncing them.
+- A generator.
 - Adding or editing one by hand, and exporting them.
 - Clearing the clipboard a while after a password was copied.
 - Profile Lock, a passphrase over them: designed, on hold.

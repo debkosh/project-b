@@ -7,6 +7,7 @@ import PermissionPrompt from '@/ui/PermissionPrompt.vue';
 import { pushEscape } from '@/ui/escape.js';
 import SitePanel from '@/ui/SitePanel.vue';
 import BookmarkPanel from '@/ui/BookmarkPanel.vue';
+import PasswordSavePanel from '@/ui/PasswordSavePanel.vue';
 import { addressBar, nextQuery } from './state.js';
 
 const input = ref(null);
@@ -267,6 +268,15 @@ function follow() {
 }
 watch(() => state.active, follow);
 onMounted(follow);
+// The offer to save a password, when it is for the tab shown: its panel opens as it comes.
+const saveOffer = computed(() => (state.passwordSave && Number(state.passwordSave.tab) === activeTab.value?.id ? state.passwordSave : null));
+const saveOpen = ref(false);
+watch(
+  () => saveOffer.value?.id,
+  (id) => (saveOpen.value = !!id),
+  { immediate: true },
+);
+
 // The star: the page shown is bookmarked, or not. A press asks Go to bookmark it, into the
 // folder last saved in, or to find its bookmark; Go answers with the panel to show, as it
 // does for Cmd+D (docs/bookmark-folders.md).
@@ -385,6 +395,24 @@ function closeMarked() {
       </svg>
       <span>{{ activeTab.popupsBlocked }}</span>
     </button>
+    <!-- The key: an offer to save the password just signed in with waits here. Its panel
+         opens with the offer; Escape or a press outside closes it, and the key brings it back. -->
+    <button
+      v-if="saveOffer && !focused"
+      type="button"
+      class="star key on"
+      data-password-key
+      :aria-label="saveOffer.update ? 'Update password' : 'Save password'"
+      :aria-expanded="saveOpen"
+      :title="saveOffer.update ? 'Update password' : 'Save password'"
+      @mousedown.prevent
+      @click="saveOpen = !saveOpen"
+    >
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="5.25" cy="10.75" r="3.25" />
+        <path d="M7.6 8.4 13.75 2.25M11 5l1.75 1.75M13 3l1.5 1.5" />
+      </svg>
+    </button>
     <button
       v-if="activeTab.url && !ours && !focused"
       type="button"
@@ -413,6 +441,7 @@ function closeMarked() {
     />
     <PermissionPrompt v-if="prompt && !open && !panel && !markedBookmark" :key="prompt.id" v-shell class="prompt" :prompt="prompt" />
     <SitePanel v-if="panel && !open && hasSite(activeTab)" v-shell class="prompt" :tab="activeTab" :site="site" @close="panel = false" />
+    <PasswordSavePanel v-if="saveOffer && saveOpen && !open && !markedBookmark" :key="saveOffer.id" v-shell class="prompt end" :offer="saveOffer" @close="saveOpen = false" />
     <BookmarkPanel
       v-if="markedBookmark && !open"
       :key="marked.key"

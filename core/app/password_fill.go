@@ -23,6 +23,13 @@ import (
 // tab's page, or null when there is none any more; the snapshot has it too. What it says:
 // passwordPick {offer, login}, passwordAt {offer, at}, the login the pointer is over,
 // passwordDismiss {offer}, and passwordsManage, which opens Settings at Passwords.
+//
+// Saving: passwordSave {passwordSave}, the offer to save a login a person just signed in
+// with, or to update a saved one's password, or null; the snapshot has it too. The shell
+// says passwordSaveAnswer {offer, choice}, "save", "never" or "dismiss", and
+// passwordSaveShow {offer}, which is answered to it alone with passwordSaveShown
+// {passwordSaveShown: {offer, password}}: what the person typed a moment ago, for them to
+// look at before they agree. It is null again once the offer has gone.
 
 // stampOf is the page protocol's stamp for a frame as the engine named it.
 func stampOf(f engine.FormFrame) forms.Stamp {
@@ -76,6 +83,25 @@ func (a *App) startFilling(e engine.Engine) {
 	}
 	a.Fill = passwords.NewFiller(a.Passwords, carry, offered)
 	a.fillWork = work
+	// The offer to save, as the list's offer: to the window of its tab.
+	var saving *passwords.SaveOffer
+	a.Fill.OnSave(func(o *passwords.SaveOffer) {
+		e.Post(func() {
+			was := saving
+			saving = o
+			at := o
+			if at == nil {
+				at = was
+			}
+			if at != nil {
+				w := a.Tabs.WindowOf(tabOf(forms.Stamp{Tab: at.Tab}))
+				if o == nil {
+					a.Shell.SendTo(w, map[string]any{"t": "passwordSaveShown", "passwordSaveShown": nil})
+				}
+				a.Shell.SendTo(w, map[string]any{"t": "passwordSave", "passwordSave": o})
+			}
+		})
+	})
 
 	// A tab that goes on to another page, or closes, takes its offer with it.
 	at := map[engine.TabID]string{}
@@ -83,7 +109,13 @@ func (a *App) startFilling(e engine.Engine) {
 		if at[t.ID] != t.URL {
 			at[t.ID] = t.URL
 			tab := strconv.FormatInt(int64(t.ID), 10)
-			work <- func() { a.Fill.Navigated(tab) }
+			address := t.URL
+			work <- func() { a.Fill.Navigated(tab, address) }
+		}
+		// A page done loading is when what the tab sent before is looked at, for saving.
+		if !t.Loading {
+			tab := strconv.FormatInt(int64(t.ID), 10)
+			work <- func() { a.Fill.Loaded(tab) }
 		}
 	})
 	a.Tabs.OnClosed(func(t tabs.Tab) {
@@ -92,12 +124,13 @@ func (a *App) startFilling(e engine.Engine) {
 		work <- func() { a.Fill.Left(tab, "") }
 	})
 	a.Shell.AddPart(shell.Part{
-		Snapshot: func(into map[string]any) { into["passwordOffer"] = showing },
+		Snapshot: func(into map[string]any) { into["passwordOffer"], into["passwordSave"] = showing, saving },
 		Handle: func(w engine.WindowID, t string, msg []byte) bool {
 			var c struct {
-				Offer int64  `json:"offer"`
-				Login string `json:"login"`
-				At    int    `json:"at"`
+				Offer  int64  `json:"offer"`
+				Login  string `json:"login"`
+				At     int    `json:"at"`
+				Choice string `json:"choice"`
 			}
 			switch t {
 			case "passwordPick":
@@ -115,6 +148,16 @@ func (a *App) startFilling(e engine.Engine) {
 				work <- func() { a.Fill.Dismiss(c.Offer) }
 			case "passwordsManage":
 				a.Settings.OpenSection(w, "passwords")
+			case "passwordSaveAnswer":
+				json.Unmarshal(msg, &c)
+				work <- func() {
+					if err := a.Fill.Answer(c.Offer, c.Choice); err != nil && !errors.Is(err, passwords.ErrNoOffer) {
+						timeline.Errorf("passwords: saving: %v", err)
+					}
+				}
+			case "passwordSaveShow":
+				json.Unmarshal(msg, &c)
+				a.Shell.SendTo(w, map[string]any{"t": "passwordSaveShown", "passwordSaveShown": map[string]any{"offer": c.Offer, "password": a.Fill.Typed(c.Offer)}})
 			default:
 				return false
 			}

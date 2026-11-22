@@ -88,8 +88,11 @@ export const state = reactive({
   // has asked, each {id, site, origin, username, created}, with no password. passwordAnswer
   // is Go's last answer to this page's Show or Copy: passwordShown {id, password} or
   // passwordCopied {id, what}, either with error in place of what was asked.
+  // passwordsNever is the sites the person said never to offer to save a password on, each
+  // {origin, site}, which comes with the list.
   passwordCount: 0,
   passwords: null,
+  passwordsNever: [],
   passwordAnswer: null,
   // The person's sparks (docs/site-features.md): {id, name, description, match, runAt, on,
   // error}; the one whose source Go last sent, {id, source, fileName}; and Go's word on the
@@ -279,6 +282,7 @@ export function connect() {
           break;
         case 'passwords':
           state.passwords = m.passwords;
+          state.passwordsNever = m.never || [];
           break;
         case 'passwordShown':
         case 'passwordCopied':
