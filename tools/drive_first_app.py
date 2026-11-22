@@ -322,10 +322,11 @@ READY = re.compile(r" mark +go +app\.ready$")
 class App:
     running = []  # Every app started and not yet closed.
 
-    def __init__(self, profile, extra=(), bin=None):
+    def __init__(self, profile, extra=(), bin=None, welcome=False):
         """Starts the app on the folder profile, as it is, or with profile None on whatever
         the start chooses from extra. The root is a new one unless extra names one, so the
-        app never reads the real list. bin is another binary than BIN to start."""
+        app never reads the real list. bin is another binary than BIN to start. With welcome,
+        a first start opens the welcome, as a person's does."""
         if not any(x.startswith("--root=") for x in extra):
             extra = [f"--root={tempfile.mkdtemp(prefix='pb-root-')}", *extra]
         self.fifo = os.path.join(tempfile.mkdtemp(prefix="pb-driver-"), "fifo")
@@ -339,7 +340,7 @@ class App:
             [bin or BIN, *([f"--user-data-dir={profile}"] if profile else []), f"--block={BLOCKED},{BLOCKED_LOCAL}", f"--pb-driver={self.fifo}", "--disable-backgrounding-occluded-windows",
              # A first start would open the welcome over the window (docs/onboarding.md):
              # these checks start past it, as its Skip setup does.
-             "--skip-welcome", *ARGS, *extra],
+             *([] if welcome else ["--skip-welcome"]), *ARGS, *extra],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace", bufsize=1,
         )
         App.running.append(self)
