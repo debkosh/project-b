@@ -5,7 +5,6 @@ import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
 
-import io.github.sudiptadeb.oskit.Open;
 import io.github.sudiptadeb.oskit.OsKit;
 
 import org.chromium.base.CommandLine;
@@ -22,6 +21,9 @@ public final class BrowserActivity extends Activity {
     // Hands the window the answers of what it asked other apps for, such as a file picked.
     private IntentRequestTracker intentRequests;
     private ActivityWindowAndroid windowAndroid;
+    // Go listens: until then a tap on a download's notification waits here, by Go's id for it.
+    private boolean started;
+    private long pendingDownload = -1;
 
     @Override
     protected void onCreate(Bundle saved) {
@@ -79,6 +81,11 @@ public final class BrowserActivity extends Activity {
                                 // What 0.3.9 and before kept of each download's shared copy,
                                 // to Go once, now that it listens.
                                 Downloads.reportKept();
+                                started = true;
+                                if (pendingDownload >= 0) {
+                                    Downloads.opened(pendingDownload);
+                                    pendingDownload = -1;
+                                }
                             }
 
                             @Override
@@ -97,10 +104,16 @@ public final class BrowserActivity extends Activity {
         OsKit.onIntent(intent);
     }
 
-    // A tap on a finished download's notification: its file opens as the list's Open does.
-    private static void openDownload(Intent intent) {
-        if (Downloads.OPEN.equals(intent.getAction())) {
-            Open.openFile(intent.getStringExtra(Downloads.OPEN));
+    // A tap on a finished download's notification: Go opens it as the list's Open does.
+    private void openDownload(Intent intent) {
+        if (!Downloads.OPEN.equals(intent.getAction())) {
+            return;
+        }
+        long id = intent.getLongExtra(Downloads.OPEN, -1);
+        if (started) {
+            Downloads.opened(id);
+        } else {
+            pendingDownload = id;
         }
     }
 

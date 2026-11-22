@@ -774,6 +774,8 @@ const (
 	DownloadPause
 	DownloadResume
 	DownloadRemove
+	// DownloadOpen is a tap on a phone's notification of a finished download: Open.
+	DownloadOpen
 )
 
 // Failure is why a navigation failed, in words any engine can say. A shell may match on

@@ -126,6 +126,13 @@ The shell asks for one action at a time, `downloadAction {id, action}`: `open` t
 `reveal` it in Finder, `cancel`, `pause`, `resume`, `retry`, or `remove` it from the list
 (the file stays). `clearDownloads` removes every finished one.
 
+**Open: here or in the OS.** The app decides first, and only what it doesn't keep reaches oskit.
+A file the engine shows itself opens in a new tab of the app's own, in the window in front: a
+page (.html, .htm, .xhtml, .svg), a PDF, an image (.png, .jpg, .jpeg, .gif, .webp, .avif) or
+plain text (.txt, .json), by its file:// address on the desktop and its content:// copy on a
+phone (`downloads.ShowsItself`). Anything else, a zip or a document, goes to the OS's app for
+it through oskit/open (his call, 2026-11-22).
+
 **The shell.** A control named Downloads shows once the list has one, and opens the list:
 each download a `listitem` by its file name, its progress while it runs, Open and Show in
 Finder once done, Pause (or Resume), Cancel and Retry while it runs, and Retry once it failed
@@ -207,7 +214,8 @@ address in the app instead: the first start after the update hands those to Go o
 notification per download, its progress while it runs (once a second at most) as
 "16 MB of 42 MB · 1 min left", the time left at the speed so far in Chrome's words, with
 Pause and Cancel, or "Paused · 16 MB of 42 MB" with Resume and Cancel; "Downloaded" with
-the size once done, which opens the file at a tap as Open does; and "Download failed"; a
+the size once done, which opens the file at a tap as Open does (the tap reaches Go as
+`PB_DOWNLOAD_OPEN`, Go's Open deciding where; one that starts the app waits for Go); and "Download failed"; a
 cancelled one goes. Pause, Resume and Cancel come back to Go as `PB_EVENT_DOWNLOAD_ACTION`,
 by Go's id, and do what the Downloads page's buttons do. Two quiet channels, as Chrome's:
 "Downloads in progress" and "Completed downloads".

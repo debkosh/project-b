@@ -241,6 +241,11 @@ func Start(e engine.Engine, cfg Config) *App {
 		cfg.DownloadsDir = filepath.Join(cfg.ProfileDir, "Downloads")
 	}
 	a.Downloads = downloads.New(e, cfg.System, cfg.ProfileDir, cfg.DownloadsDir)
+	// A downloaded page, PDF, image or text opens in a tab here; anything else goes to the OS.
+	a.Downloads.OpenHere(func(address string) {
+		a.Window.Request(a.Tabs.Front(), engine.WindowFront)
+		a.Tabs.Open(address)
+	})
 	a.Downloads.Load()
 	a.Tabs = tabs.New(e, a.Workspaces, a.Pins)
 	a.Prefs = prefs.New(cfg.ProfileDir)
