@@ -320,7 +320,8 @@
         html.pb-layers .band, html.pb-layers .controls { transform: translateZ(var(--pbl-frame)); }
         html.pb-layers .outlines { display: none !important; }
         html.pb-layers #window, html.pb-layers .band { border-radius: var(--pbl-r) !important; transition: transform ${EASE}, border-radius ${EASE}, border-width ${EASE}; }
-        html.pb-layers .band { border-width: var(--pbl-bw) !important; }`;
+        html.pb-layers .band { border-width: var(--pbl-bw) !important; }
+        html.pb-layers .band > .controls { transform: none; margin: calc(-1 * var(--pbl-bw)) 0 0 calc(-1 * var(--pbl-bw)); }`;
       doc.head.append(st);
       // Esc in the window, where the keyboard may still be, puts it back too.
       doc.defaultView.addEventListener('keydown', (e) => { if (open && e.key === 'Escape') set(false, by(e)); });
@@ -398,6 +399,10 @@
         open = { w, doc };
         os.log(who, 'pulled the window apart into its layers');
         pose(doc, w, false);
+        // The window's buttons ride in the band's own layer while it's apart, so no engine
+        // can draw them apart from it (Firefox 160 drew them as a layer of their own).
+        const band = doc.querySelector('#window > .band'), buttons = doc.querySelector('#window > .controls');
+        if (band && buttons) band.append(buttons);
         doc.documentElement.classList.add('pb-layers');
         w.el.classList.add('layers');
         document.body.classList.add('layering');
@@ -427,6 +432,8 @@
         overlay.hidden = true;
         overlay.replaceChildren();
         doc.documentElement.classList.remove('pb-layers');
+        const band = doc.querySelector('#window > .band'), buttons = band && band.querySelector('.controls');
+        if (buttons) band.after(buttons);
         delete doc.documentElement.dataset.pblBw;
         w.el.classList.remove('layers');
         document.body.classList.remove('layering');
