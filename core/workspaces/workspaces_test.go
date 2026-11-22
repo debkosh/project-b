@@ -7,12 +7,14 @@ import (
 	"regexp"
 	"slices"
 	"testing"
+
+	"projectb/tones"
 )
 
 // A new profile has one workspace, Main, the profile's own storage, which is first.
 func TestANewProfileHasMain(t *testing.T) {
 	m := New(t.TempDir())
-	if l := m.List(); !slices.Equal(l, []Workspace{{ID: "", Name: "Main", Color: "0"}}) || m.First() != "" {
+	if l := m.List(); !slices.Equal(l, []Workspace{{ID: "", Name: "Main", Color: tones.Brand}}) || m.First() != "" {
 		t.Fatalf("list %+v, first %q", l, m.First())
 	}
 }
@@ -22,7 +24,7 @@ func TestANewProfileHasMain(t *testing.T) {
 func TestAnOldListGetsMainOnce(t *testing.T) {
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "workspaces.json"), []byte(`{"workspaces":[{"id":"0a1b2c3d","name":"Work","color":"#5b7fd6"}]}`), 0o600)
-	main, work := Workspace{ID: "", Name: "Main", Color: "0"}, Workspace{ID: "0a1b2c3d", Name: "Work", Color: "#5b7fd6"}
+	main, work := Workspace{ID: "", Name: "Main", Color: tones.Brand}, Workspace{ID: "0a1b2c3d", Name: "Work", Color: "#5b7fd6"}
 	m := New(dir)
 	if l := m.List(); !slices.Equal(l, []Workspace{main, work}) || m.First() != "" {
 		t.Fatalf("list %+v", l)
@@ -62,7 +64,7 @@ func TestTheListIsKeptInTheProfile(t *testing.T) {
 	if err := m.SetName(work.ID, "Office"); err != nil {
 		t.Fatal(err)
 	}
-	want := []Workspace{{ID: "", Name: "Main", Color: "0"}, {ID: work.ID, Name: "Office", Color: "#5b7fd6"}, {ID: shop.ID, Name: "Shopping", Color: "#c2410c"}}
+	want := []Workspace{{ID: "", Name: "Main", Color: tones.Brand}, {ID: work.ID, Name: "Office", Color: "#5b7fd6"}, {ID: shop.ID, Name: "Shopping", Color: "#c2410c"}}
 	if got := New(dir).List(); !slices.Equal(got, want) || changes != 3 {
 		t.Fatalf("read back %+v after %d changes", got, changes)
 	}

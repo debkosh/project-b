@@ -214,7 +214,7 @@ const names = ['Example Domain', 'Mail · Work', 'Project B on GitHub', 'Weather
   await until(async () => (await regions()).active === (await regions()).tabs[0].id);
   check('a tab shows its workspace\'s colour as a small square: Work\'s, and Main\'s, which Go put above it, for the others',
     (await ui.locator('.tab .dot').count()) === 4 && (await tabs.nth(1).locator('.dot').evaluate((e) => getComputedStyle(e).backgroundColor)) === 'rgb(217, 119, 6)' &&
-      (await tabs.nth(0).locator('.dot').evaluate((e) => getComputedStyle(e).backgroundColor)) === (await ui.locator('body').evaluate(() => { const p = document.body.appendChild(document.createElement('i')); p.style.background = 'var(--hue-0)'; const c = getComputedStyle(p).backgroundColor; p.remove(); return c; })));
+      (await tabs.nth(0).locator('.dot').evaluate((e) => getComputedStyle(e).backgroundColor)) === (await ui.locator('body').evaluate(() => { const p = document.body.appendChild(document.createElement('i')); p.style.background = '#0d7d86'; const c = getComputedStyle(p).backgroundColor; p.remove(); return c; })));
   await name();
   const widths = await tabs.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().width));
   check('four tabs are 200px wide each', widths.every((x) => near(x, 200)), JSON.stringify(widths));
