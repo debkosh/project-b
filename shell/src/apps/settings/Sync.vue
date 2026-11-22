@@ -4,6 +4,7 @@ import Dialog from '@/ui/Dialog.vue';
 import { siteTile } from '@/ui/tint.js';
 import { useTints } from '@/ui/useTints.js';
 import Row from './Row.vue';
+import SyncBackup from './SyncBackup.vue';
 import { send, state, syncAnswers } from './state.js';
 import { useSyncRun } from './syncRun.js';
 
@@ -19,6 +20,17 @@ const titled = inject('settingsTitled', false);
 
 // Search finds every row of the card by these, as well as by its words.
 const words = 'sync passphrase';
+
+// The backup code's rows and its card (SyncBackup.vue). A bucket this device just made
+// goes on to the card, as the second step of setting sync up: once the card's rows are
+// there, which is once Go has said sync is on.
+const backup = ref(null);
+let offerBackup = false;
+watch(backup, (rows) => {
+  if (!rows || !offerBackup) return;
+  offerBackup = false;
+  rows.offer();
+});
 
 const NO_KEY_DETAIL = "The key that seals this profile's secrets isn't on this device. That happens when a profile folder is moved from another device.";
 const TOKEN_PLACEHOLDER = 'Only if your server gave you one';
@@ -51,6 +63,10 @@ const d = reactive({
   wrong: false,
   busy: false,
   detail: '',
+  // byCode is the enter step taking the backup code in place of the passphrase; renewed
+  // the change step that follows getting in with one.
+  byCode: false,
+  renewed: false,
 });
 let opened = 0;
 let askedIn = -1;
@@ -88,6 +104,8 @@ function open(o = {}) {
     detail: '',
     // The bucket sync is on with, set up anew after a reset: Go holds its address and token.
     anew: false,
+    byCode: false,
+    renewed: false,
     ...o,
   });
 }
@@ -316,9 +334,26 @@ function heard(m) {
     case 'syncConnected':
       if (d.step !== 'choose' && d.step !== 'enter') return;
       d.busy = false;
-      if (!m.error) return shut();
+      if (!m.error) {
+        // In with the backup code: a new passphrase can be chosen now, as nobody who used
+        // the code has to know the old one. The code still works.
+        if (d.byCode) {
+          Object.assign(d, { step: 'change', renewed: true, byCode: false, pass: '', again: '', passShown: false, againShown: false, passError: '', againError: '', wrong: false });
+          focus('pass');
+          return;
+        }
+        // A bucket just made: its backup code, as the second step.
+        if (d.step === 'choose') {
+          offerBackup = true;
+          if (backup.value) {
+            offerBackup = false;
+            backup.value.offer();
+          }
+        }
+        return shut();
+      }
       if (m.wrongPassphrase) {
-        d.passError = "That's not the sync passphrase";
+        d.passError = d.byCode ? "That's not this sync's backup code" : "That's not the sync passphrase";
         d.wrong = true;
       } else {
         d.passError = problem(m).text;
@@ -349,11 +384,16 @@ const title = computed(
     ({
       address: d.fromLink ? `Sync with ${d.host}?` : 'Set up sync',
       choose: 'Choose a sync passphrase',
-      enter: 'Enter your sync passphrase',
-      change: 'Change sync passphrase',
+      enter: d.byCode ? 'Enter your backup code' : 'Enter your sync passphrase',
+      change: d.renewed ? 'Choose a new sync passphrase' : 'Change sync passphrase',
       turnOff: 'Turn off sync on this device?',
     })[d.step],
 );
+// The enter step's other way in.
+function otherWay() {
+  Object.assign(d, { byCode: !d.byCode, pass: '', passError: '', wrong: false, passShown: false });
+  focus('pass');
+}
 const primaryLabel = computed(
   () =>
     ({
@@ -402,6 +442,7 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
         <Row v-if="s.problem !== 'reset'" label="Change sync passphrase" hint="A device you add then asks for the new one" :words="words">
           <button type="button" class="text-button" @click="change">Change…</button>
         </Row>
+        <SyncBackup v-if="s.problem !== 'reset'" ref="backup" :words="words + ' backup code'" />
         <Row label="Turn off sync" :hint="s.problem === 'reset' ? 'Keeps everything here' : 'Keeps everything here and on the server'" :words="words">
           <button type="button" class="text-button" @click="turnOff">Turn off…</button>
         </Row>
@@ -470,34 +511,38 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
       <template v-else-if="d.step === 'choose' || d.step === 'change' || d.step === 'enter'">
         <div class="ui-dialog-part">
           <p v-if="d.step === 'choose'">Nothing is synced on <b>{{ d.host }}</b> yet. Every device you add asks for this passphrase.</p>
+          <p v-else-if="d.step === 'enter' && d.byCode"><b>{{ d.host }}</b> already has synced data. Type the backup code you saved. Then you can choose a new passphrase.</p>
           <p v-else-if="d.step === 'enter'"><b>{{ d.host }}</b> already has synced data. Type the passphrase you chose for it.</p>
+          <p v-else-if="d.renewed">You're in with your backup code, which still works. Choose a new passphrase: a device you add asks for it.</p>
           <p v-else>Devices that sync now keep syncing. A device you add asks for the new one.</p>
         </div>
         <div class="ui-dialog-part">
-          <label for="sync-pass">{{ d.step === 'change' ? 'New passphrase' : 'Passphrase' }}</label>
+          <label for="sync-pass">{{ d.step === 'change' ? 'New passphrase' : d.byCode ? 'Backup code' : 'Passphrase' }}</label>
           <div class="secret">
             <input
               id="sync-pass"
               ref="passField"
               v-model="d.pass"
               class="text-field"
-              :class="{ invalid: d.passError }"
-              :type="d.passShown ? 'text' : 'password'"
+              :class="{ invalid: d.passError, code: d.byCode }"
+              :type="d.passShown || d.byCode ? 'text' : 'password'"
               spellcheck="false"
               autocomplete="off"
-              autocapitalize="off"
+              :autocapitalize="d.byCode ? 'characters' : 'off'"
+              :placeholder="d.byCode ? 'XXXX-XXXX-XXXX-XXXX-XXXX-XXXX' : undefined"
               :aria-invalid="d.passError ? 'true' : undefined"
               :title="d.passError && d.detail && !d.wrong ? d.detail : undefined"
               @keydown.enter.prevent="primary"
             />
-            <button type="button" class="show" :aria-pressed="String(d.passShown)" @click="d.passShown = !d.passShown">{{ d.passShown ? 'Hide' : 'Show' }}</button>
+            <button v-if="!d.byCode" type="button" class="show" :aria-pressed="String(d.passShown)" @click="d.passShown = !d.passShown">{{ d.passShown ? 'Hide' : 'Show' }}</button>
           </div>
           <div v-if="d.passError || d.step !== 'enter'" class="under">
             <span v-if="d.passError" class="text-field-error" role="alert">{{ d.passError }}</span>
             <span v-else-if="d.step !== 'enter'" class="secondary">{{ strength }}</span>
             <button v-if="d.step !== 'enter'" type="button" class="link" @click="suggest">Suggest one</button>
           </div>
-          <div v-if="d.wrong" class="under"><span class="secondary">Forgot it? Set a new one on a device that's still syncing.</span></div>
+          <div v-if="d.wrong && !d.byCode" class="under"><span class="secondary">Forgot it? Use your backup code, or set a new one on a device that's still syncing.</span></div>
+          <div v-if="d.step === 'enter'" class="other"><button type="button" class="link" @click="otherWay">{{ d.byCode ? 'Use the passphrase instead' : 'Use backup code instead' }}</button></div>
         </div>
         <div v-if="d.step !== 'enter'" class="ui-dialog-part">
           <label for="sync-again">Type it again</label>
@@ -529,7 +574,7 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
       </div>
 
       <template #buttons>
-        <button type="button" class="text-button" @click="shut">Cancel</button>
+        <button type="button" class="text-button" @click="shut">{{ d.renewed ? 'Not now' : 'Cancel' }}</button>
         <button ref="primaryButton" type="button" class="text-button primary" :disabled="connectingNow" @click="primary">{{ primaryLabel }}</button>
       </template>
     </Dialog>
@@ -652,6 +697,21 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
   margin-left: auto;
   font-size: 12px;
   font-weight: 500;
+}
+
+/* The enter step's other way in, on a line of its own under the field. */
+.other {
+  margin-top: 8px;
+}
+
+.other .link {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.text-field.code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variant-numeric: slashed-zero;
 }
 
 /* A phone: buttons drawn at the touch size, 40px, each a 48px target, as the Mobile shell's

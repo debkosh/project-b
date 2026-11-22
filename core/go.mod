@@ -18,7 +18,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.53
 	github.com/ncruces/go-sqlite3 v0.37.0
 	github.com/sudiptadeb/amarit/flatpak v0.11.2
-	github.com/sudiptadeb/synckosh v0.2.0
+	github.com/sudiptadeb/synckosh v0.3.0
 	golang.org/x/crypto v0.59.0
 	rsc.io/qr v0.2.0
 )

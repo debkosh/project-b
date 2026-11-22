@@ -143,6 +143,7 @@ none of them can be changed apart from it.
 | Lose or delete its copy | Devices keep their rows: nothing a server sends deletes them. A device then refills the server, or says the bucket was reset |
 | Hand over an older version that a key holder really wrote | A device being added can get old data or miss a delete. A device holding a version with a later timestamp keeps its own |
 | Say the bucket was reset (a new store id, with no sealed copy of the key) | Devices push nothing and say "The sync bucket was reset" until sync is set up again, under a new key. Nothing becomes readable |
+| See how many keys open the bucket, and when each was added | Each sealed copy of the key is an item with a label in the clear, "Passphrase" or "Backup, 22 Nov", and its date. It learns that a backup code exists and when a passphrase or a code was changed; never what either is |
 | Try passphrases against the sealed copy of the key, offline | Each try costs Argon2id at 64 MiB and 3 passes. Settings takes no passphrase under 12 characters. A passphrase a person could guess is the weak point |
 
 **A profile on a device.** A device that was given the passphrase holds the sync key, and
@@ -212,6 +213,35 @@ connects. How it reaches the app is [the link](#the-link).
 
 The passphrase is never kept: the device holds the sync key, so changing the passphrase needs no
 old one.
+
+## Backup code
+
+Decided 2026-11-22, the owner approving the mocks: "the backup mock looks nice go ahead".
+
+- **What it is.** A second passphrase, random, that the app shows once for a person to keep
+  apart from the device: 120 random bits as six groups of four, `7K4Q-M2XH-9RTD-WC6F-3NVA-8PSE`,
+  in Crockford's alphabet, which has no O, I, L or U. It has a sealed copy of the sync key of its
+  own in the bucket, as the passphrase has (synckosh's `AddBackupCode`). **The sync key itself is
+  never shown**, as a code, a file or a QR.
+- **What it does.** It opens the bucket wherever the passphrase does: a device joins with it, and
+  a person who forgot the passphrase gets in with it and can then choose a new passphrase, which
+  needs no old one. It is taken as typed: small letters, no dashes, spaces, O for 0, I or L for 1.
+- **One at a time.** synckosh allows many; this app keeps one. A new code is made as its card
+  opens, and both open the bucket until the person says "I've saved it", which takes the old one
+  away; leaving the card any other way takes the new one away and leaves the old.
+- **It stays** when the passphrase changes (synckosh's `SetPassphrase` replaces the passphrases'
+  copies and keeps the codes'), and it is as strong as its 120 bits: the server can try guesses
+  against its sealed copy as it can against the passphrase's, to no end.
+- **Making and removing are changes in the profile**, which the next run sends: neither needs the
+  server at that moment. Until a removal has been sent, the server still holds the old copy.
+- **What the server knows.** Each copy has a label in the clear, "Passphrase" or "Backup, 22
+  Nov", and when it was made, so memd's page can list the keys that open a bucket.
+- **Skipped at set-up**, the Sync card says "No backup code" and offers to make one.
+- **Not built:** scanning a code's QR with the device's camera. The QR is for a person's own
+  phone to read and keep; the join step takes the code typed.
+
+`core/sync/backup.go`: `MakeBackupCode`, `KeepBackupCode`, `DropBackupCode`, `CheckBackupCode`,
+and `Status.Backup`, `{made}` or nil. The page, `shell/src/apps/settings/SyncBackup.vue`.
 
 ## How it runs (`core/sync`)
 
@@ -332,6 +362,9 @@ and `OnStatus` answer at once; the rest run on sync's goroutine, after what was 
 | `Words(err) string` | an error's text, a failed request as the request and then the cause, `GET v1/pull?after=1: EOF`: the request named from `v1` on, as the address before it may carry its token, and without the words the page's own sentence says. What the status, the page's answers and the timeline say of an error |
 | `Details(answer func(Details))` | what the Sync details page shows ([sync-details.md](sync-details.md)): the address with no token, the counts, the queue, and the runs since the app started, kept in memory only |
 | `StartFresh(done func(error))` | for a locked profile key: `keys.StartFresh`, so sync is forgotten and off |
+| `MakeBackupCode(done func(code string, err error))` | a run, a new backup code with its sealed copy (`AddBackupCode`, labelled "Backup, 22 Nov"), a run; the code is answered once and kept nowhere |
+| `KeepBackupCode(done)`, `DropBackupCode(done)` | the code just made becomes the bucket's one, every other backup copy removed; or it is removed and the others stay. A run follows, and one that can't reach the server sends the change later |
+| `CheckBackupCode(typed, answer func(is bool, err error))` | whether what was typed is written as a code and opens a copy of the key, as of the last run; no server is asked |
 | `Status() Status`, `OnStatus(func(Status))` | `on`, `syncing`, `host`, `lastSynced` (Unix ms, 0 for never), `error`, `problem` (the last run's, by `Problem`'s names: `token` when the server signed this device out), `locked` |
 
 **The settings page's messages** (`core/app/sync_settings.go`). Go sends `{"t": "sync", "sync":
@@ -353,6 +386,10 @@ names. The page sends:
 | `syncCancel` | the status, the run cut short (`CancelRun`) |
 | `syncSuggest` | `syncSuggested {passphrase}`: five words from `core/words`' list of 662, picked at random |
 | `syncStartFresh` | `syncStartedFresh {}` or `{error}` |
+| `syncBackupMake` | `syncBackupMade {code, qr}` to the asking page alone: the code, and its QR as rows of 0 and 1, which the page draws only when asked; or `{error}` |
+| `syncBackupKeep`, `syncBackupDrop` | `syncBackupSettled {kept}` or `{error}`, to the asking page; the status follows with `backup` |
+| `syncBackupCheck {code}` | `syncBackupChecked {is}` or `{error}`, to the asking page |
+| `syncBackupCopy {code}` | `syncBackupCopied {}`: Go put it on the clipboard as a secret, as a saved password is copied |
 
 ## The screens
 
@@ -417,7 +454,23 @@ picture, light and dark, desktop and phone, is made by `shell/e2e/sync.cjs` unde
     shown, and waits on Type it again. Turn on sync refuses one under 12 characters ("Use at least
     12 characters") and two that differ ("The passphrases don't match").
   - **Enter your sync passphrase**, for a bucket in use: once. A wrong one: "That's not the sync
-    passphrase", and "Forgot it? Set a new one on a device that's still syncing."
+    passphrase", and "Forgot it? Use your backup code, or set a new one on a device that's still
+    syncing." Under the field, **Use backup code instead** turns the step into **Enter your
+    backup code**: "Type the backup code you saved. Then you can choose a new passphrase.", the
+    field shown as it is typed, a wrong one "That's not this sync's backup code", and Use the
+    passphrase instead to go back. In with a code, the Dialog goes on to **Choose a new sync
+    passphrase**, "You're in with your backup code, which still works.", with Not now.
+  - **Save your backup code**, "Step 2 of 2", after a bucket this device just made: "If you
+    forget your passphrase, this code opens your sync. Keep it somewhere apart from this
+    device.", the code in two lines of three groups, its zero slashed, Copy (as a secret), Save
+    as file (a text file, "Project B backup code.txt", where the device's downloads go), Show as
+    QR, which draws it only then, Skip for now, and I've saved it.
+- **The Backup code row**, while sync is on: "Made 22 Nov 2026", Check… and New code…; with no
+  code, "No backup code", "A way back in if you forget your passphrase", Make one….
+  - **Check your backup code:** one field; "This is your backup code." with a tick, or "That's
+    not this sync's backup code.", which is an answer and no error. Done and Check.
+  - **Make a new backup code?** "Your current code stops working once you've saved the new
+    one.", Cancel and Make new code; then the code's card, with Cancel in place of Skip for now.
 - **Change sync passphrase:** only the new one, twice, with the same checks and Suggest one.
 - **Turn off sync on this device?** with a plain primary Turn off: nothing is destroyed.
 - **A phone** uses the same Dialog. Sync's buttons there are drawn at the touch size, 40px,
@@ -456,7 +509,7 @@ set-up with the address and its error. Any other `project-b:` link does nothing.
 - The passphrase lock over the keychain, and a policy forcing it.
 - Any sealed field but the secrets, the passkeys' keys and the saved passwords.
 - A token per device: every device uses the bucket's token.
-- A backup code (synckosh's `BackupCode`).
+- Scanning a backup code's QR with the device's camera.
 
 ## Tests
 
@@ -468,7 +521,9 @@ and `StartFresh` makes a new one; the Mac's keychain, under a test-only service,
 in-process, in both address forms; one address visited on both, one row with the larger count; a
 bookmark deleted on one gone from the other; clearing history reaching the other; no visit and no
 readable title or address on the server; a wrong passphrase; joining; a changed passphrase, which a
-third profile joins with while the old one fails; Disconnect keeping the rows; a server that
+third profile joins with while the old one fails; a backup code joining a device as typed,
+staying when the passphrase changes, a new one taking the old one's place only once kept, and one
+dropped leaving the old; Disconnect keeping the rows; a server that
 kept the bucket's key refilled, and a bucket reset stopping both devices, pushing nothing, until
 each sets sync up again, a wrong passphrase changing nothing; a locked profile key turning sync off; sync on at start running with what was kept.
 `core/sync` also: each problem reaching a bucket named, and a signed-out device's status; a run cut
@@ -485,7 +540,10 @@ as memd.example.com (`/mock/sync` counts its requests, signs a token out, drops 
 holds requests, answers each with a failure, shortens the wait before a request stalls, or empties itself as a reset does; `/mock/open` hands a link over as another app does): where the card is and search
 finding it; a new bucket and one in use; a short passphrase, two that differ, a wrong one, an http
 address, a server out of reach, an address that isn't a bucket, a refused token; Suggest one and
-the strength; Sync now, syncing with Cancel, out of reach with Try again, the server's own
+the strength; the backup code as a new bucket's second step, copied as a secret, saved as a file
+and shown as a QR only when asked, its row, Check… with a wrong code and the right one typed
+loosely, New code… cancelled and kept, joining with the code and choosing a new passphrase, and
+"No backup code" when it was skipped; Sync now, syncing with Cancel, out of reach with Try again, the server's own
 failure, a failure of another kind with its words in the tooltip, a run with nothing arriving
 that goes on saying it syncs and then ends as stopped, a bucket reset with Set up again… going straight to a new passphrase, signed out with Reconnect; Change and Turn off; keys that don't open and Set up again; the link from another app
 and pressed in a page with no request reaching the server before Connect, an http link's error,
