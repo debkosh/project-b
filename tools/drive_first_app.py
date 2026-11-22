@@ -3258,14 +3258,16 @@ def view_source_checks():
 def web_server_kinds_checks():
     """Each kind of web server in tools/server_kinds.py shows as a person should see it: its
     page, or our error page with the right title, never an unexplained failure. Each opens in
-    a tab of its own. A public page can be down, so a miss is tried once more, and the check
-    names the site."""
+    a tab of its own. A public page can be down or reset a connection now and then, so a miss is tried
+    twice more, 20 s apart, and the check names the site."""
     app = App(tempfile.mkdtemp(prefix="pb-profile-"))
     page_text = lambda tab: (lambda t: t or "")(_quiet(lambda: app.js("document.title + ' | ' + (document.body ? document.body.innerText : '')", tab=tab, timeout=5)))
     shell_text = lambda: _quiet(lambda: app.js("document.body.innerText", timeout=5)) or ""
     for link, want, words in SERVER_KINDS:
         ok, said = False, ""
-        for attempt in (1, 2):
+        for attempt in (1, 2, 3):
+            if attempt > 1:
+                time.sleep(20)
             tab = int(app.cmd("opentab", "a", link))
             deadline, got = time.time() + 45, None
             while time.time() < deadline and got is None:
@@ -3282,7 +3284,7 @@ def web_server_kinds_checks():
             if ok:
                 break
         check("%s shows %s" % (link, "its page" if want == "page" else "our error page: " + words), ok,
-              "" if ok else "after two tries; " + said)
+              "" if ok else "after three tries; " + said)
     app.close()
 
 

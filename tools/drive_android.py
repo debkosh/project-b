@@ -2479,10 +2479,13 @@ def shown_words(part):
 def web_server_kinds():
     """Each kind of web server in SERVER_KINDS shows as a person should see it: its page, or
     our error page with the right title, never an unexplained failure. A public page can be
-    down, so a miss is tried once more before it fails, and the check names the site."""
+    down or reset a connection now and then, so a miss is tried twice more, 20 s apart, before
+    it fails, and the check names the site."""
     for link, want, words in SERVER_KINDS:
         said = ""
-        for attempt in (1, 2):
+        for attempt in (1, 2, 3):
+            if attempt > 1:
+                time.sleep(20)
             launch()
             view_link(link)
             def outcome():
@@ -2501,7 +2504,7 @@ def web_server_kinds():
                 break
         shot("kinds-" + re.sub(r"[^a-z0-9]+", "-", link.split("//", 1)[1].lower()).strip("-"))
         check("%s shows %s" % (link, "its page" if want == "page" else "our error page: " + words), ok,
-              "" if ok else "after two tries; " + said)
+              "" if ok else "after three tries; " + said)
 
 
 CHANNELS = "https://github.com/sudiptadeb/project-b/releases/download/channels/releases.json"

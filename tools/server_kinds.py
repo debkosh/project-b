@@ -6,7 +6,8 @@ badssl.com for TLS and certificates, httpbin.org for redirects, encodings, a slo
 and a streamed body, Cloudflare's QUIC page for HTTP/2 and 3, and robu.in, whose optional
 client-certificate request our engine once refused (ERR_SSL_CLIENT_AUTH_CERT_NEEDED,
 2026-11-21). Plain http and other ports aren't here: office networks pass 443 only. A public
-page can be down, so a driver tries a miss once more and names the site.
+page can be down, and badssl's client-certificate hosts reset a connection now and then
+(Android 10, 2026-11-22), so a driver tries a miss twice more, 20 s apart, and names the site.
 """
 
 SERVER_KINDS = [
