@@ -41,7 +41,8 @@ state, what syncs with its counts, what waits to go out, and the runs since the 
   card and opens its set-up. The card and this row share one piece of code, `syncRun.js`.
 - **Then, a label and its value each:** What went wrong, only after a run that failed: the
   error's own words, in monospace and muted, so nobody has to guess what the state's sentence
-  stands for; Server (`https://<host>/sync/•••`, the host in
+  stands for; Server (`https://<host>/sync`, or `https://<host>/•••` for an address given with no
+  token, the host in
   `--text`), Last synced ("Today, 14:32 · 2 minutes ago"), Next sync ("About 14:37, or sooner
   after a change here"), Server changes read ("9,214", synckosh's cursor), and What
   the server holds: "Sealed items only. The key stays on your devices". On a phone the value goes
@@ -100,9 +101,12 @@ state, what syncs with its counts, what waits to go out, and the runs since the 
     shows the last one's requests.
 ## The token never shows
 
-An address may carry its token (`https://<host>/sync/<token>`). The page shows `/sync/•••`, an
-error's words name a request from `v1` on, which is after the token (`sync.Words`), and a
-request in a run's list is shown by its last part (`pull`, `push`).
+The token itself is never sent to the page. An address given with no token is itself what
+lets a device in, wherever in its path its server put that (`https://<host>/sync/<token>` is
+one way), so the page shows none of such an address's path: `/•••`. An address that has a
+token beside it shows its path. An error's words name a request from `v1` on, which is after
+the address (`sync.Words`), and a request in a run's list is shown by its last part (`pull`,
+`push`).
 
 ## Where it comes from (`core/sync`)
 
@@ -134,7 +138,7 @@ Nothing is stored for this page. What it shows is read when the page asks:
 
 | The page sends | Go answers |
 |---|---|
-| `syncDetails` | `syncDetails {details}`: `sync.Details`, the address as `scheme`, `host` and `rest` with the token left out, `next`, `cursor`, `kinds` (`collection`, `items`, `deletions`, `waiting`), `waiting` and `waitingMore`, `running` and `runs` |
+| `syncDetails` | `syncDetails {details}`: `sync.Details`, the address as `scheme`, `host` and `rest`, the path or `/•••`, `next`, `cursor`, `kinds` (`collection`, `items`, `deletions`, `waiting`), `waiting` and `waitingMore`, `running` and `runs` |
 
 Sync now, Cancel, Retry, Try again and Reconnect… are the Sync card's own messages.
 

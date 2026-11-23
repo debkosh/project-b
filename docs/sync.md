@@ -179,15 +179,24 @@ key ([the keys](#the-keys)).
 
 ## The address
 
-A bucket on the memd server is reached two ways, and both are taken as they are:
+Decided 2026-11-23, the owner: "we cannot know if the users' sync server uses the same
+thing.. we cannot split stuff... we just take a url and an optional bearer token that's it".
 
-- `https://<host>/sync`, with the token sent as `Authorization: Bearer <token>`;
-- `https://<host>/sync/<token>`, the one address, with no token apart.
+Sync takes two things, and reads nothing into either:
 
-Only `https`, with a host, no user, query or fragment. An address whose path ends in `/sync` needs
-its token given; one that goes on past it carries its token. Status shows the host alone, and
-so does an error's text, in the status, on the page and in the timeline (`Words`): Go's own error
-for a request names the whole address.
+- **The address:** the server's, used exactly as it is given. Only `https`, with a host, no
+  user, query or fragment. Its path is any server's to shape: the app never splits it and
+  never looks in it for a token.
+- **A token, optional:** a bearer token. Given, every request carries it as
+  `Authorization: Bearer <token>`; left empty, nothing is sent. A server that wants one and
+  gets none, or gets another, refuses, and the page says so under Token.
+
+So both of the memd server's forms work as they are: `https://<host>/sync` with its token in
+Token, and `https://<host>/sync/<token>`, the one address, with Token empty.
+
+Status shows the host alone, and so does an error's text, in the status, on the page and in
+the timeline (`Words`): Go's own error for a request names the whole address, and an address
+given with no token is itself what lets a device in.
 
 **The deep link** the memd page offers is
 
@@ -195,9 +204,11 @@ for a request names the whole address.
 project-b://sync?address=<the https address, percent-encoded>
 ```
 
-It only fills in what Settings would connect to: it never connects by itself. Settings shows the
-host and asks for the passphrase (and the token, for an address without one), and only then
-connects. How it reaches the app is [the link](#the-link).
+with `&token=<the token, percent-encoded>` after it when the server gives its token apart.
+
+It only fills in what Settings would connect to, the address and, when the link has one, the
+token, hidden in its field: it never connects by itself. Settings shows the host and waits for
+Connect, then asks for the passphrase. How it reaches the app is [the link](#the-link).
 
 ## Turning it on
 
@@ -349,7 +360,8 @@ and `OnStatus` answer at once; the rest run on sync's goroutine, after what was 
 | Function | What it does |
 |---|---|
 | `Link(link) (address, error)` | the address in a `project-b://sync?address=` link |
-| `Propose(address) (Proposal, error)` | checks an address and says what would be connected: `Address`, `Host`, `NeedsToken`. Changes nothing |
+| `Propose(address) (Proposal, error)` | checks an address and says what would be connected: `Address`, `Host`. Changes nothing |
+| `Link(link) (address, token string, err error)` | a deep link's address, and its token when it has one |
 | `Inspect(address, token, answer func(isNew bool, err error))` | whether the bucket is empty, so new (synckosh's `client.Look`). Changes nothing |
 | `InspectAgain(answer)`, `ConnectAgain(passphrase, done)` | the same two for the bucket sync is on with, after it was reset: the address and the token are the ones held |
 | `Connect(address, token, passphrase, done func(error))` | starts the bucket or joins it, keeps its details sealed, and syncs. `errors.Is(err, sync.ErrPassphrase)` for a wrong passphrase |
@@ -358,7 +370,7 @@ and `OnStatus` answer at once; the rest run on sync's goroutine, after what was 
 | `SyncNow()` | a run now |
 | `CancelRun()` | cuts the run going on short: it ends with no error and no longer wait, and the next comes when it would have |
 | `Address() string` | the bucket's address while sync is on, for Reconnect |
-| `Problem(err) string` | what went wrong reaching a bucket, by name: `address` (not one Propose takes), `needsToken`, `unreachable` (no answer), `server` (the server answered that it failed, 500 and up: it was reached), `stalled` (a request with nothing going or arriving for `StalledAfter`, 30 seconds, which is ended), `notBucket` (not found, or not JSON), `token` (refused), or `""` for anything else, as a request the server won't take or a row that can't be written. A request's answer is looked at before synckosh reads it, and its error wraps `ErrAddress`, `ErrNeedsToken`, `ErrUnreachable`, `ErrServer`, `ErrStalled`, `ErrNotBucket` or `ErrToken` |
+| `Problem(err) string` | what went wrong reaching a bucket, by name: `address` (not one Propose takes), `unreachable` (no answer), `server` (the server answered that it failed, 500 and up: it was reached), `stalled` (a request with nothing going or arriving for `StalledAfter`, 30 seconds, which is ended), `notBucket` (not found, or not JSON), `token` (refused), or `""` for anything else, as a request the server won't take or a row that can't be written. A request's answer is looked at before synckosh reads it, and its error wraps `ErrAddress`, `ErrNeedsToken`, `ErrUnreachable`, `ErrServer`, `ErrStalled`, `ErrNotBucket` or `ErrToken` |
 | `Words(err) string` | an error's text, a failed request as the request and then the cause, `GET v1/pull?after=1: EOF`: the request named from `v1` on, as the address before it may carry its token, and without the words the page's own sentence says. What the status, the page's answers and the timeline say of an error |
 | `Details(answer func(Details))` | what the Sync details page shows ([sync-details.md](sync-details.md)): the address with no token, the counts, the queue, and the runs since the app started, kept in memory only |
 | `StartFresh(done func(error))` | for a locked profile key: `keys.StartFresh`, so sync is forgotten and off |
@@ -376,7 +388,7 @@ names. The page sends:
 
 | Message | Go answers |
 |---|---|
-| `syncPropose {address}`, or `{link}` for a deep link's | `syncProposal {address, host, needsToken}` or `{error, problem, address}`, the address as given |
+| `syncPropose {address}`, or `{link}` for a deep link's | `syncProposal {address, host, token}`, the token a link's or "", or `{error, problem, address}`, the address as given |
 | `syncInspect {address, token}`, or `{again}` after a reset | `syncBucket {new}` or `{error}` |
 | `syncConnect {address, token, passphrase}` | `syncConnected {wrongPassphrase}`, with `error` when it failed |
 | `syncChangePassphrase {passphrase}` | `syncPassphraseChanged {}` or `{error}` |
@@ -444,10 +456,12 @@ picture, light and dark, desktop and phone, is made by `shell/e2e/sync.cjs` unde
   afresh (`syncStartFresh`) before it connects.
 - **Setting up is one Dialog** whose title follows the step:
   - **Set up sync:** "Paste the address from your sync server.", Address and Token ("Only if your
-    server gave you one"). An address that can't become https is refused as it is typed: "Sync
+    server gave you one"). The token is hidden as it is typed, with Show and Hide at the field's
+    end once it holds something. An address that can't become https is refused as it is typed: "Sync
     needs an https address". Connect reads "Connecting…" while Go looks at the bucket, and Cancel
     still works. Under Address: "Couldn't reach memd.example.com", "That address isn't a sync
-    bucket"; under Token: "The server didn't accept that token". The typed text stays.
+    bucket"; under Token: "The server didn't accept that token", or "This server needs a token" when none
+    was given. The typed text stays.
   - **Choose a sync passphrase**, for an empty bucket: twice, Passphrase and Type it again, the
     strength in words under the first ("Fair: add another word", "Strong"; four words of three
     letters or more, or 24 characters, are strong), and Suggest one, which fills in five words,

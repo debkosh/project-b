@@ -134,6 +134,15 @@ const taken = [];
   await button('Set up…', card()).click();
   check('Set up… opens the Dialog, Set up sync, the address field focused', await shown(dialog()) && (await dialog().getAttribute('aria-label')) === 'Set up sync' && (await focused('Address')));
   check('with the token as an option', (await field('Token').getAttribute('placeholder')) === 'Only if your server gave you one');
+  // The token is a secret: hidden as it is typed, with Show once there is one to show.
+  check('an empty Token field has no Show', (await field('Token').getAttribute('type')) === 'password' && (await button('Show', dialog()).count()) === 0);
+  await field('Token').fill('TOKEN-k3v9x2m7q8rd');
+  check('a token is hidden as it is typed', (await field('Token').getAttribute('type')) === 'password' && (await shown(button('Show', dialog()))));
+  await button('Show', dialog()).click();
+  check('Show shows it, and reads Hide', (await field('Token').getAttribute('type')) === 'text' && (await field('Token').inputValue()) === 'TOKEN-k3v9x2m7q8rd' && (await shown(button('Hide', dialog()))));
+  await button('Hide', dialog()).click();
+  check('Hide hides it again', (await field('Token').getAttribute('type')) === 'password');
+  await field('Token').fill('');
   await field('Address').fill(`${address}/sync/7kq2mx9pab4c`);
   await shot(3, 'address');
   await field('Address').fill(`http://${HOST}/sync/7kq2mx9pab4c`);
@@ -170,7 +179,9 @@ const taken = [];
   await refusal(`${address}/sync/7kq2mx9pab4c`, '', 'Address', `Couldn't reach ${HOST}`, 16, 'address-unreachable');
   await server({ down: '0' });
   await refusal(`${address}/notes/sync/7kq2mx9pab4c`, '', 'Address', "That address isn't a sync bucket", 17, 'not-bucket');
-  await refusal(`${address}/sync`, '', 'Token', 'This address needs a token');
+  // An address is taken as it is given, whatever its path: the server says whether it wants a
+  // token, and the page says so under Token.
+  await refusal(`${address}/sync`, '', 'Token', 'This server needs a token');
   await server({ refuse: 'TOKEN-k3v9x2m7q8rd' });
   await refusal(`${address}/sync`, 'TOKEN-k3v9x2m7q8rd', 'Token', "The server didn't accept that token", 18, 'token-refused');
 
@@ -632,6 +643,16 @@ const taken = [];
   await shot(5, 'link');
   await button('Connect').click();
   check('until Connect', await until(async () => (await requests()) > n) && await until(async () => (await dialog().getAttribute('aria-label')) === 'Choose a sync passphrase'));
+  await button('Cancel').click();
+  await until(async () => (await dialog().count()) === 0);
+
+  // A link that gives a token too: it is in its field, hidden, and goes with Connect.
+  await fetch(`${lib.base}/mock/open`, { method: 'POST', body: new URLSearchParams({ url: `${link(`${address}/sync`)}&token=${encodeURIComponent(`tok-link-${layout}`)}` }) });
+  check('a link with a token opens the set-up with the token in its field, hidden', await until(async () => (await dialog().count()) === 1 && (await field('Token').inputValue()) === `tok-link-${layout}`) &&
+    (await field('Token').getAttribute('type')) === 'password' && (await field('Address').inputValue()) === `${address}/sync`);
+  await shot(48, 'link-token');
+  await button('Connect').click();
+  check('and Connect reaches the server with it', await until(async () => (await dialog().getAttribute('aria-label')) === 'Choose a sync passphrase'));
   await button('Cancel').click();
   await until(async () => (await dialog().count()) === 0);
 

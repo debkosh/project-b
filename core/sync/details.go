@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/url"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/sudiptadeb/synckosh"
@@ -109,8 +108,8 @@ type Kind struct {
 
 // Details is what the page shows beside the status.
 type Details struct {
-	// Server is the bucket's address with its token left out: Rest is the path, "/sync/•••"
-	// for an address that carries its token.
+	// Server is the bucket's address as it can be shown: Rest is its path, or "/•••" for an
+	// address given with no token, which is then itself what lets a device in.
 	Scheme string `json:"scheme"`
 	Host   string `json:"host"`
 	Rest   string `json:"rest"`
@@ -266,7 +265,7 @@ func (m *Manager) Details(answer func(Details)) {
 func (m *Manager) details() Details {
 	d := Details{Kinds: []Kind{}, Waiting: []Moved{}, Runs: []Run{}}
 	m.mu.Lock()
-	address := m.address
+	address, bearer := m.address, m.bearer
 	if m.cur != nil {
 		r := *m.cur
 		r.Requests = append([]Request(nil), r.Requests...)
@@ -282,11 +281,10 @@ func (m *Manager) details() Details {
 	}
 	if u, err := url.Parse(address); err == nil {
 		d.Scheme, d.Host, d.Rest = u.Scheme+"://", u.Host, u.EscapedPath()
-		// An address that goes on past /sync carries its token as its last part (Propose).
-		if p, err := Propose(address); err == nil && !p.NeedsToken {
-			if i := strings.LastIndex(d.Rest, "/"); i >= 0 {
-				d.Rest = d.Rest[:i+1] + "•••"
-			}
+		// A server shapes its own address, and one that asks for no token may hold what lets a
+		// device in anywhere in its path: none of the path is shown then.
+		if !bearer && d.Rest != "" {
+			d.Rest = "/•••"
 		}
 	}
 	collections := make([]string, 0, len(m.maps))

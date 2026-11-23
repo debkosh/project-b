@@ -22,16 +22,17 @@ func TestSettingsSync(t *testing.T) {
 
 	r.settings(`{"t":"syncPropose","link":"project-b://sync?address=https%3A%2F%2Fmemd.example%2Fsync%2Ft0k"}`)
 	m := r.waitOn(got, func(m map[string]any) bool { return m["t"] == "syncProposal" })
-	if m["address"] != "https://memd.example/sync/t0k" || m["host"] != "memd.example" || m["needsToken"] != false || m["error"] != nil {
+	if m["address"] != "https://memd.example/sync/t0k" || m["host"] != "memd.example" || m["token"] != "" || m["error"] != nil {
 		t.Fatalf("proposal %v", m)
 	}
 	r.settings(`{"t":"syncPropose","address":"http://memd.example/sync"}`)
 	if m := r.waitOn(got, func(m map[string]any) bool { return m["t"] == "syncProposal" }); m["error"] == nil || m["problem"] != "address" {
 		t.Fatalf("an http address was proposed: %v", m)
 	}
-	r.settings(`{"t":"syncConnect","address":"https://memd.example/sync","passphrase":"p"}`)
-	if m := r.waitOn(got, func(m map[string]any) bool { return m["t"] == "syncConnected" }); m["error"] == nil || m["problem"] != "needsToken" {
-		t.Fatalf("connected with no token: %v", m)
+	// A link may carry the token, which goes back to the page for its Token field.
+	r.settings(`{"t":"syncPropose","link":"project-b://sync?address=https%3A%2F%2Fmemd.example%2Fsync&token=t0k"}`)
+	if m := r.waitOn(got, func(m map[string]any) bool { return m["t"] == "syncProposal" }); m["address"] != "https://memd.example/sync" || m["token"] != "t0k" || m["error"] != nil {
+		t.Fatalf("a link with a token proposed: %v", m)
 	}
 	r.settings(`{"t":"syncSuggest"}`)
 	if m := r.waitOn(got, func(m map[string]any) bool { return m["t"] == "syncSuggested" }); len(strings.Fields(m["passphrase"].(string))) != 5 {

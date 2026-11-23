@@ -20,8 +20,6 @@ import (
 var (
 	// ErrAddress is an address Propose doesn't take.
 	ErrAddress = errors.New("sync: not a sync address")
-	// ErrNeedsToken is an address that needs its token, given none.
-	ErrNeedsToken = errors.New("sync: the address needs its token")
 	// ErrUnreachable is a request that got no answer.
 	ErrUnreachable = errors.New("sync: couldn't reach the server")
 	// ErrServer is the server answering that it failed: it was reached.
@@ -30,7 +28,8 @@ var (
 	ErrStalled = errors.New("sync: nothing arrived for 30 seconds")
 	// ErrNotBucket is an answer that isn't a bucket's: not found, or not JSON.
 	ErrNotBucket = errors.New("sync: the address isn't a sync bucket")
-	// ErrToken is the server refusing the token: it signed this device out.
+	// ErrToken is the server refusing the token, or wanting one when none was given: it signed
+	// this device out.
 	ErrToken = errors.New("sync: the server didn't accept the token")
 )
 
@@ -39,7 +38,7 @@ var (
 // (docs/ux-guide.md). A run that takes long while its requests are answered never stalls.
 var StalledAfter = 30 * time.Second
 
-// Problem names what err is for the settings page: "address", "needsToken", "unreachable",
+// Problem names what err is for the settings page: "address", "unreachable",
 // "server", "stalled", "notBucket", "token", "reset", or "" for anything else. "reset" is
 // synckosh's client.ErrBucketReset: the bucket holds no sealed copy of this device's key any
 // more, so it was emptied, or set up again from another device, and this device sends
@@ -51,7 +50,7 @@ func Problem(err error) string {
 	for _, p := range []struct {
 		err  error
 		name string
-	}{{ErrAddress, "address"}, {ErrNeedsToken, "needsToken"}, {ErrUnreachable, "unreachable"}, {ErrServer, "server"}, {ErrStalled, "stalled"}, {ErrNotBucket, "notBucket"}, {ErrToken, "token"}} {
+	}{{ErrAddress, "address"}, {ErrUnreachable, "unreachable"}, {ErrServer, "server"}, {ErrStalled, "stalled"}, {ErrNotBucket, "notBucket"}, {ErrToken, "token"}} {
 		if errors.Is(err, p.err) {
 			return p.name
 		}
@@ -61,8 +60,8 @@ func Problem(err error) string {
 
 // Words is err in words, for the page and the timeline: a request that failed reads as the
 // request and then the cause, "GET v1/pull?after=1: EOF", as synckosh words an answer it
-// refuses. An address may carry its token (https://<host>/sync/<token>) and Go names the whole
-// address in a request's error, so the request is named from v1 on; and what the page's
+// refuses. An address may be a secret itself, as one that holds a token in its path is, and Go
+// names the whole address in a request's error, so the request is named from v1 on; and what the page's
 // sentence already says of the failure isn't said again.
 func Words(err error) string {
 	text := err.Error()

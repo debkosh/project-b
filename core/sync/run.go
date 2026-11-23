@@ -81,6 +81,7 @@ type Manager struct {
 	mu       gosync.Mutex
 	status   Status
 	address  string         // the bucket's, while sync is on
+	bearer   bool           // whether a token goes with it
 	onStatus []func(Status) // the main thread's
 	// stopRun cuts the run going on short, nil between runs, and cut says CancelRun did.
 	stopRun func()
@@ -308,7 +309,7 @@ func (m *Manager) open(address, token string, key *synckosh.DataKey) error {
 	m.conn = &connection{address: address, token: token, key: key, local: l, replica: r}
 	m.wait, m.next = 0, time.Time{}
 	m.mu.Lock()
-	m.address = address
+	m.address, m.bearer = address, token != ""
 	m.mu.Unlock()
 	backup := m.conn.backup()
 	m.setStatus(func(s *Status) { *s = Status{On: true, Host: hostOf(address), Backup: backup} })
@@ -353,7 +354,7 @@ func (m *Manager) begin(address, token string, key *synckosh.DataKey) error {
 func (m *Manager) end() error {
 	m.conn = nil
 	m.mu.Lock()
-	m.address = ""
+	m.address, m.bearer = "", false
 	m.cur, m.runs, m.nextRun = nil, nil, time.Time{}
 	m.mu.Unlock()
 	err := m.st.Wait(func(tx *store.Tx) error {

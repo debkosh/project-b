@@ -196,7 +196,7 @@ passphrase**, once. A wrong passphrase changes nothing; try again.
 | ![Choosing a passphrase on a phone, dark](screenshots/sync/phone-06-first-dark.png) | ![The Sync card on a phone](screenshots/sync/phone-09-on.png) |
 
 A server's own page can also offer a link that starts with `project-b://sync?address=`.
-Opening it fills in the address and nothing more. Project B shows the host and asks first.
+Opening it fills in the address, and the token when the link gives one, and nothing more. Project B shows the host and asks first.
 Connect only if the server is yours.
 
 ![Set-up opened from a link](screenshots/sync/desktop-05-link.png)

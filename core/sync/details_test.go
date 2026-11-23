@@ -53,8 +53,8 @@ func TestDetailsCountsQueueAndRuns(t *testing.T) {
 		t.Fatal(err)
 	}
 	d := a.details()
-	if d.Scheme != "https://" || !strings.HasPrefix(s.ts.URL, d.Scheme+d.Host) || d.Rest != "/sync/•••" {
-		t.Fatalf("the server, its token left out: %q %q %q", d.Scheme, d.Host, d.Rest)
+	if d.Scheme != "https://" || !strings.HasPrefix(s.ts.URL, d.Scheme+d.Host) || d.Rest != "/•••" {
+		t.Fatalf("the server, given with no token, its path left out: %q %q %q", d.Scheme, d.Host, d.Rest)
 	}
 	if k := kind(d, bookmarks.Collection); k.Items != 2 || k.Deletions != 0 || k.Waiting != 0 {
 		t.Fatalf("a's bookmarks after its first run: %+v", k)

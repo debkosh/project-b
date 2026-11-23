@@ -26,27 +26,26 @@ type Proposal struct {
 	Address string `json:"address"`
 	// Host is all of it that is shown.
 	Host string `json:"host"`
-	// NeedsToken says the address holds no token, so one is asked for.
-	NeedsToken bool `json:"needsToken"`
 }
 
-// Link is the address in a deep link, project-b://sync?address=<the address, percent-encoded>.
-// It only reads it: the address still goes to Propose.
-func Link(link string) (string, error) {
+// Link is the address in a deep link, and the token when the link gives one:
+// project-b://sync?address=<the address, percent-encoded>, with &token=<the token> or
+// without. It only reads them: the address still goes to Propose.
+func Link(link string) (address, token string, err error) {
 	u, err := url.Parse(strings.TrimSpace(link))
 	if err != nil || u.Scheme != "project-b" || u.Host != "sync" {
-		return "", errors.New("sync: not a project-b://sync link")
+		return "", "", errors.New("sync: not a project-b://sync link")
 	}
-	address := u.Query().Get("address")
+	address = u.Query().Get("address")
 	if address == "" {
-		return "", fmt.Errorf("%w: the link has none", ErrAddress)
+		return "", "", fmt.Errorf("%w: the link has none", ErrAddress)
 	}
-	return address, nil
+	return address, u.Query().Get("token"), nil
 }
 
 // Propose checks an address and says what it would connect to, changing nothing: https, with a
-// host, and no user, query or fragment, else ErrAddress. One whose path ends in /sync needs its token given;
-// one that goes on past it carries its token, as https://<host>/sync/<token> does.
+// host, and no user, query or fragment, else ErrAddress. The address is the server's own, and
+// is taken as it is given: nothing is read into its path, which is any server's to shape.
 func Propose(address string) (Proposal, error) {
 	u, err := url.Parse(strings.TrimSpace(address))
 	switch {
@@ -58,24 +57,18 @@ func Propose(address string) (Proposal, error) {
 		return Proposal{}, fmt.Errorf("%w: it can't have a user, a query or a fragment", ErrAddress)
 	}
 	path := strings.TrimRight(u.EscapedPath(), "/")
-	return Proposal{Address: "https://" + u.Host + path, Host: u.Host, NeedsToken: path == "/sync" || strings.HasSuffix(path, "/sync")}, nil
+	return Proposal{Address: "https://" + u.Host + path, Host: u.Host}, nil
 }
 
-// check is the address and token a bucket is reached with: a token only for an address that
-// needs one, and then always one, else ErrNeedsToken.
+// check is the address and token a bucket is reached with. The token is a bearer token, and
+// the person's to give or leave out: given, every request carries it ("Authorization: Bearer"),
+// and with none nothing is sent. A server that wanted one refuses, which is ErrToken.
 func check(address, token string) (string, string, error) {
 	p, err := Propose(address)
 	if err != nil {
 		return "", "", err
 	}
-	token = strings.TrimSpace(token)
-	switch {
-	case p.NeedsToken && token == "":
-		return "", "", ErrNeedsToken
-	case !p.NeedsToken:
-		token = ""
-	}
-	return p.Address, token, nil
+	return p.Address, strings.TrimSpace(token), nil
 }
 
 // Inspect answers whether the bucket is new, empty, so a new passphrase is asked for twice, or

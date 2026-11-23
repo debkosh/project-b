@@ -58,6 +58,7 @@ const d = reactive({
   again: '',
   passShown: false,
   againShown: false,
+  tokenShown: false,
   passError: '',
   againError: '',
   wrong: false,
@@ -97,6 +98,7 @@ function open(o = {}) {
     again: '',
     passShown: false,
     againShown: false,
+    tokenShown: false,
     passError: '',
     againError: '',
     wrong: false,
@@ -200,10 +202,9 @@ function problem(m) {
   const host = d.host || hostOf(d.address);
   d.detail = m.error || '';
   switch (m.problem) {
+    // The server wants a token: the one given isn't it, or none was given.
     case 'token':
-      return { field: 'token', text: "The server didn't accept that token" };
-    case 'needsToken':
-      return { field: 'token', text: 'This address needs a token' };
+      return { field: 'token', text: d.token.trim() ? "The server didn't accept that token" : 'This server needs a token' };
     case 'unreachable':
       return { field: 'address', text: `Couldn't reach ${host}` };
     case 'server':
@@ -312,8 +313,9 @@ function heard(m) {
       d.addressError = problem(m).text;
       focus('address');
     } else {
-      open({ fromLink: true, address: m.address, host: m.host });
-      focus(m.needsToken ? 'token' : 'primary');
+      // A link may give a token too, which is in its field, hidden, for the person to see.
+      open({ fromLink: true, address: m.address, host: m.host, token: m.token || '' });
+      focus('primary');
     }
     return;
   }
@@ -490,20 +492,23 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
         </div>
         <div class="ui-dialog-part">
           <label for="sync-token">Token</label>
-          <input
-            id="sync-token"
-            ref="tokenField"
-            v-model="d.token"
-            class="text-field"
-            :class="{ invalid: d.tokenError }"
-            type="text"
-            spellcheck="false"
-            autocomplete="off"
-            autocapitalize="off"
-            :placeholder="TOKEN_PLACEHOLDER"
-            :aria-invalid="d.tokenError ? 'true' : undefined"
-            @keydown.enter.prevent="primary"
-          />
+          <div class="secret">
+            <input
+              id="sync-token"
+              ref="tokenField"
+              v-model="d.token"
+              class="text-field"
+              :class="{ invalid: d.tokenError }"
+              :type="d.tokenShown ? 'text' : 'password'"
+              spellcheck="false"
+              autocomplete="off"
+              autocapitalize="off"
+              :placeholder="TOKEN_PLACEHOLDER"
+              :aria-invalid="d.tokenError ? 'true' : undefined"
+              @keydown.enter.prevent="primary"
+            />
+            <button v-if="d.token" type="button" class="show" :aria-pressed="String(d.tokenShown)" @click="d.tokenShown = !d.tokenShown">{{ d.tokenShown ? 'Hide' : 'Show' }}</button>
+          </div>
           <div v-if="d.tokenError" class="text-field-error" role="alert">{{ d.tokenError }}</div>
         </div>
       </template>

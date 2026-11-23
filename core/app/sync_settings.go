@@ -20,8 +20,8 @@ func isAppLink(u string) bool {
 }
 
 // OpenAppLink takes one of the app's own links, however it came: from another app, as the Mac
-// and Android hand it over, or a page's link clicked. project-b://sync?address=<address> opens
-// window w's Settings at Sync, with the set-up Dialog filled in from it, and sends nothing to
+// and Android hand it over, or a page's link clicked. project-b://sync?address=<address>, with
+// &token=<token> or without, opens window w's Settings at Sync, with the set-up Dialog filled in from it, and sends nothing to
 // the server nor keeps anything until the person connects. Any other does nothing.
 func (a *App) OpenAppLink(w engine.WindowID, link string) {
 	if u, err := url.Parse(strings.TrimSpace(link)); err != nil || !strings.EqualFold(u.Scheme, "project-b") || u.Host != "sync" {
@@ -84,9 +84,9 @@ func (a *App) syncSettingsPart() settings.Part {
 			json.Unmarshal(msg, &c)
 			switch t {
 			case "syncPropose":
-				address, err := c.Address, error(nil)
+				address, token, err := c.Address, "", error(nil)
 				if c.Link != "" {
-					address, err = sync.Link(c.Link)
+					address, token, err = sync.Link(c.Link)
 				}
 				var p sync.Proposal
 				if err == nil {
@@ -96,7 +96,8 @@ func (a *App) syncSettingsPart() settings.Part {
 					// With the address it was given, which a link's set-up shows under its error.
 					answer("syncProposal", err, map[string]any{"address": address})
 				} else {
-					answer("syncProposal", nil, map[string]any{"address": p.Address, "host": p.Host, "needsToken": p.NeedsToken})
+					// A link's token fills the set-up's Token field, where the person sees it is there.
+					answer("syncProposal", nil, map[string]any{"address": p.Address, "host": p.Host, "token": token})
 				}
 			case "syncInspect":
 				inspected := func(isNew bool, err error) {

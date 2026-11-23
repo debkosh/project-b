@@ -523,9 +523,11 @@ func TestSyncOnAtStartRuns(t *testing.T) {
 
 func TestProposeAndLink(t *testing.T) {
 	for address, want := range map[string]sync.Proposal{
-		"https://memd.example/sync":          {Address: "https://memd.example/sync", Host: "memd.example", NeedsToken: true},
-		" https://memd.example/sync/ ":       {Address: "https://memd.example/sync", Host: "memd.example", NeedsToken: true},
+		"https://memd.example/sync":          {Address: "https://memd.example/sync", Host: "memd.example"},
+		" https://memd.example/sync/ ":       {Address: "https://memd.example/sync", Host: "memd.example"},
 		"https://memd.example:8443/sync/t0k": {Address: "https://memd.example:8443/sync/t0k", Host: "memd.example:8443"},
+		"https://kosh.example/b/9f2c/items":  {Address: "https://kosh.example/b/9f2c/items", Host: "kosh.example"},
+		"https://kosh.example":               {Address: "https://kosh.example", Host: "kosh.example"},
 	} {
 		if got, err := sync.Propose(address); err != nil || got != want {
 			t.Errorf("%q: %+v, %v", address, got, err)
@@ -536,19 +538,24 @@ func TestProposeAndLink(t *testing.T) {
 			t.Errorf("%q was taken", bad)
 		}
 	}
-	got, err := sync.Link("project-b://sync?address=" + "https%3A%2F%2Fmemd.example%2Fsync%2Ft0k")
-	if err != nil || got != "https://memd.example/sync/t0k" {
-		t.Fatalf("link: %q, %v", got, err)
+	// A link gives the address, and a token when it has one; neither is read into.
+	got, token, err := sync.Link("project-b://sync?address=" + "https%3A%2F%2Fmemd.example%2Fsync%2Ft0k")
+	if err != nil || got != "https://memd.example/sync/t0k" || token != "" {
+		t.Fatalf("link: %q, %q, %v", got, token, err)
 	}
-	for _, bad := range []string{"project-b://other?address=x", "https://sync?address=x", "project-b://sync"} {
-		if _, err := sync.Link(bad); err == nil {
+	got, token, err = sync.Link("project-b://sync?address=" + "https%3A%2F%2Fmemd.example%2Fsync" + "&token=t0k%2Bn")
+	if err != nil || got != "https://memd.example/sync" || token != "t0k+n" {
+		t.Fatalf("a link with a token: %q, %q, %v", got, token, err)
+	}
+	for _, bad := range []string{"project-b://other?address=x", "https://sync?address=x", "project-b://sync", "project-b://sync?token=t0k"} {
+		if _, _, err := sync.Link(bad); err == nil {
 			t.Errorf("%q was taken", bad)
 		}
 	}
 }
 
-// What goes wrong reaching a bucket is named for the page: an address that isn't one, one
-// that needs its token, a server that can't be reached, an answer that isn't a bucket's, and a
+// What goes wrong reaching a bucket is named for the page: an address that isn't one, a
+// server that wants a token and was given none, a server that can't be reached, an answer that isn't a bucket's, and a
 // token the server refuses, at once and later, when the server signs a device out.
 func TestTheProblemsReachingABucket(t *testing.T) {
 	s := newServer(t)
@@ -563,7 +570,7 @@ func TestTheProblemsReachingABucket(t *testing.T) {
 	}
 	for _, c := range []struct{ address, token, want string }{
 		{"http://memd.example/sync/tok", "", "address"},
-		{s.bearer(), "", "needsToken"},
+		{s.bearer(), "", "token"},
 		{gone.URL + "/sync/tok", "", "unreachable"},
 		{s.ts.URL + "/elsewhere/sync/tok", "", "notBucket"},
 		{s.bearer(), "refused", "token"},
