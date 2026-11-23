@@ -1583,17 +1583,27 @@ def file_input_checks():
     launch()
     go(BASE + "/upload")
     asked("/upload")
-    page = screen_parts().get("page")
-    tap(middle(page))
-    opened = until(picker_shows) is not None
+    def open_picker():
+        """Taps the page's file input and waits for the phone's picker. An older Android asks
+        for the camera first: the app declares it, for the QR scanner, and content's chooser
+        asks so that it can offer the camera as a source. Refused, the picker opens all the
+        same, which is what this checks; allowed, Android shows its own chooser before it."""
+        tap(middle(screen_parts().get("page")))
+        until(lambda: picker_shows() or "GrantPermissions" in in_front_now(), 15)
+        if "GrantPermissions" in in_front_now():
+            no = first(lambda: system_button("Deny", 5), lambda: system_button("Don't allow", 5))
+            if no is not None:
+                tap(middle(no))
+        return until(picker_shows) is not None
+
+    opened = open_picker()
     check("a page's file input opens the phone's picker", opened, in_front_now())
     if not opened:
         return
     shot("40-file-picker")
     key(4)
     check("and closing it tells the page", asked("/said?cancelled"), str(served))
-    tap(middle(screen_parts().get("page")))
-    until(picker_shows)
+    open_picker()
     pick("SiteSparks.zip")
     check("a file picked reaches the page by its own name", asked("/said?file=" + urllib.parse.quote("SiteSparks.zip:%d" % size)), str(served))
 
