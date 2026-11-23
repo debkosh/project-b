@@ -17,6 +17,12 @@ in a worktree of its own (main's checkout stays on main, since the release reads
   name added to the SDK's update list, an export, a docs row, a test function. A Go test file
   where both sides appended a test often loses a closing brace at the join; `gofmt -l` finds it.
   A conflict that changes behaviour on both sides goes back to the branch's owner to rebase.
+- Take DuckDuckGo's latest field matching, which finds a page's sign-in fields
+  ([password-autofill.md](password-autofill.md), "Detection"): `tools/form-matching.sh update`.
+  It prints the scores on their labelled forms before and after; a pull that finds fewer fields
+  shows there, and then stays out of this release and goes to the passwords session. When
+  the three files it names changed, commit them on the release branch; the mock run below
+  checks the built file is the one recorded.
 - Then, once per release candidate: `go vet` and `go test ./...` in `core`, with `-tags sqlite_fts5` as every Go build has it ([store.md](store.md#how-it-works)),, `tools/build.sh`,
   `tools/test.sh mock`, `tools/package.sh` into a copy, and `tools/build.sh android arm64` then
   `tools/package.sh android` for the APK. Push the branch so the owners can rebase onto it.
