@@ -22,7 +22,6 @@ static jclass go_system;
 static jmethodID go_system_verify_person;
 static jmethodID go_system_cancel_person;
 static jmethodID go_system_scan_code;
-static jmethodID go_system_show_update;
 static jmethodID go_system_process_ends;
 static jmethodID go_system_relaunch_after_quit;
 
@@ -88,18 +87,6 @@ static void system_cancel_person(int32_t id) {
   detach(env, attached);
 }
 
-static void system_show_update(const char* state_json) {
-  int attached;
-  JNIEnv* env = attach(&attached);
-  if (env == NULL) {
-    return;
-  }
-  jstring t = (*env)->NewStringUTF(env, state_json);
-  (*env)->CallStaticVoidMethod(env, go_system, go_system_show_update, t);
-  (*env)->DeleteLocalRef(env, t);
-  detach(env, attached);
-}
-
 static void system_relaunch_after_quit(void) {
   int attached;
   JNIEnv* env = attach(&attached);
@@ -137,7 +124,6 @@ static const PBSystemCalls system_calls = {
     .verify_person = system_verify_person,
     .cancel_person = system_cancel_person,
     .scan_code = system_scan_code,
-    .show_update = system_show_update,
     .process_ends = system_process_ends,
     .relaunch_after_quit = system_relaunch_after_quit,
 };
@@ -168,7 +154,6 @@ JNIEXPORT jlong JNICALL Java_dev_projectb_browser_GoCore_table(JNIEnv* env, jcla
     go_system_verify_person = (*env)->GetStaticMethodID(env, go_system, "verifyPerson", "(ILjava/lang/String;Ljava/lang/String;)V");
     go_system_cancel_person = (*env)->GetStaticMethodID(env, go_system, "cancelPerson", "(I)V");
     go_system_scan_code = (*env)->GetStaticMethodID(env, go_system, "scanCode", "(ILjava/lang/String;)V");
-    go_system_show_update = (*env)->GetStaticMethodID(env, go_system, "showUpdate", "(Ljava/lang/String;)V");
     go_system_process_ends = (*env)->GetStaticMethodID(env, go_system, "processEnds", "()Ljava/lang/String;");
     go_system_relaunch_after_quit = (*env)->GetStaticMethodID(env, go_system, "relaunchAfterQuit", "()V");
     PBSetSystemCalls(&system_calls);
@@ -233,15 +218,5 @@ JNIEXPORT void JNICALL Java_dev_projectb_browser_GoCore_codeScanned(JNIEnv* env,
   if (chars != NULL) {
     (*env)->ReleaseStringUTFChars(env, text, chars);
   }
-}
-
-// A tap on the update's notification, "cancel", "retry" or "relaunch", from GoSystem.
-void PBUpdateCommand(char* name);
-
-JNIEXPORT void JNICALL Java_dev_projectb_browser_GoCore_updateCommand(JNIEnv* env, jclass cls,
-                                                                       jstring name) {
-  const char* s = (*env)->GetStringUTFChars(env, name, NULL);
-  PBUpdateCommand((char*)s);
-  (*env)->ReleaseStringUTFChars(env, name, s);
 }
 

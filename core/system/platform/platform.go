@@ -45,23 +45,16 @@ func (s *System) NotificationsAllowed() bool { return s.notes.Allowed() }
 func (s *System) AskNotifications(answered func(allowed bool)) { s.notes.Ask(answered) }
 
 func (s *System) ShowNotification(n system.Notification) {
-	s.notes.Show(notify.Note{ID: n.ID, Title: n.Title, Subtitle: n.Subtitle, Body: n.Body})
+	note := notify.Note{ID: n.ID, Title: n.Title, Subtitle: n.Subtitle, Body: n.Body, Ongoing: n.Ongoing, Progress: n.Progress, Quiet: n.Quiet}
+	for _, a := range n.Actions {
+		note.Actions = append(note.Actions, notify.Action{ID: a.ID, Label: a.Label})
+	}
+	s.notes.Show(note)
 }
 
 func (s *System) RemoveNotification(id string) { s.notes.Remove(id) }
 
-// OnNotificationClicked takes the clicks on a page's notifications, a click on the note itself;
-// on the Mac a press on the update's, which amarit posted, goes to the updater (otherNote).
-func (s *System) OnNotificationClicked(clicked func(id string)) {
-	s.notes.OnClick(func(id, action string) {
-		if otherNote(id, action) {
-			return
-		}
-		if action == "" {
-			clicked(id)
-		}
-	})
-}
+func (s *System) OnNotificationClicked(clicked func(id, action string)) { s.notes.OnClick(clicked) }
 
 func (s *System) OpenFile(path string)                  { s.opener.OpenFile(path) }
 func (s *System) RevealFile(path string)                { s.opener.Reveal(path) }

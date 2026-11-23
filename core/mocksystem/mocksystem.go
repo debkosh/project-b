@@ -36,7 +36,9 @@ type System struct {
 	notifications   system.Question
 	asked           map[string]int
 	posted, removed []string
-	clicked         func(id string)
+	clicked         func(id, action string)
+	// notes is each notification ShowNotification was given, in order.
+	notes []system.Notification
 	links           func(urls []string)
 	// The checks of the person: what each was for, the verdict they get, whether they wait
 	// for AnswerCheck, those waiting, and how many were taken back.
@@ -288,6 +290,14 @@ func (s *System) ShowNotification(n system.Notification) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.posted = append(s.posted, n.ID)
+	s.notes = append(s.notes, n)
+}
+
+// Notes is each notification shown, in order, whole.
+func (s *System) Notes() []system.Notification {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]system.Notification(nil), s.notes...)
 }
 
 func (s *System) RemoveNotification(id string) {
@@ -296,7 +306,7 @@ func (s *System) RemoveNotification(id string) {
 	s.removed = append(s.removed, id)
 }
 
-func (s *System) OnNotificationClicked(clicked func(id string)) {
+func (s *System) OnNotificationClicked(clicked func(id, action string)) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.clicked = clicked
@@ -304,12 +314,15 @@ func (s *System) OnNotificationClicked(clicked func(id string)) {
 
 // Click is the person clicking the notification id on the system, as a test does it: the
 // app hears it on the main thread.
-func (s *System) Click(id string) {
+func (s *System) Click(id string) { s.ClickAction(id, "") }
+
+// ClickAction is the person pressing the button action on notification id.
+func (s *System) ClickAction(id, action string) {
 	s.mu.Lock()
 	clicked := s.clicked
 	s.mu.Unlock()
 	if clicked != nil {
-		s.post(func() { clicked(id) })
+		s.post(func() { clicked(id, action) })
 	}
 }
 

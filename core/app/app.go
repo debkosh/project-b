@@ -269,7 +269,10 @@ func Start(e engine.Engine, cfg Config) *App {
 		a.quitting = true
 		e.AppCommand(engine.AppQuit)
 	}
-	a.Update = update.New(cfg.Update, e.Post, a.quit)
+	// The update's notification is one of the app's own, through the OS's door.
+	uc := cfg.Update
+	uc.Notes = cfg.System
+	a.Update = update.New(uc, e.Post, a.quit)
 	// A release that didn't start three times is put back by the one before it, which this
 	// start then is: it ends, and the previous release starts in its place.
 	if a.Update.Settle() {
@@ -387,7 +390,14 @@ func Start(e engine.Engine, cfg Config) *App {
 	// The profile's colour is its frame colour: on its Dock icon, and in the list.
 	a.System.SetDockColor(a.Prefs.FrameColor())
 	a.Prefs.OnFrameColorChanged(a.System.SetDockColor)
-	a.System.OnNotificationClicked(func(id string) { a.notificationClicked(e, id) })
+	// A click on a notification: the update's goes to the updater, a page's to its page.
+	a.System.OnNotificationClicked(func(id, action string) {
+		if id == update.NoteID {
+			a.Update.NoteClicked(action)
+		} else if action == "" {
+			a.notificationClicked(e, id)
+		}
+	})
 	// The links and files the OS hands the app open as a second copy's do, beside the window
 	// used last.
 	a.System.OnOpenURLs(a.Handover)

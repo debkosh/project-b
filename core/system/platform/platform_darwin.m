@@ -96,3 +96,44 @@ void pb_system_set_dock_color(int32_t rgb) {
   });
 }
 
+// The app's icon, with its dot, and a progress bar along its foot.
+@interface PBDockProgressView : NSView
+@property double fraction;
+@end
+
+@implementation PBDockProgressView
+- (void)drawRect:(NSRect)dirty {
+  NSRect b = self.bounds;
+  [NSApp.applicationIconImage drawInRect:b];
+  NSRect bar = NSMakeRect(NSWidth(b) * 0.12, NSHeight(b) * 0.1, NSWidth(b) * 0.76, NSHeight(b) * 0.09);
+  CGFloat r = NSHeight(bar) / 2;
+  [[NSColor colorWithWhite:0 alpha:0.55] setFill];
+  [[NSBezierPath bezierPathWithRoundedRect:bar xRadius:r yRadius:r] fill];
+  NSRect fill = NSInsetRect(bar, 1.5, 1.5);
+  fill.size.width = MAX(fill.size.height, fill.size.width * MIN(MAX(self.fraction, 0), 1));
+  CGFloat fr = NSHeight(fill) / 2;
+  [NSColor.controlAccentColor setFill];
+  [[NSBezierPath bezierPathWithRoundedRect:fill xRadius:fr yRadius:fr] fill];
+}
+@end
+
+void pb_system_dock_progress(double fraction) {
+  OnMain(^{
+    NSDockTile* tile = NSApp.dockTile;
+    PBDockProgressView* view =
+        [tile.contentView isKindOfClass:PBDockProgressView.class] ? (PBDockProgressView*)tile.contentView : nil;
+    if (fraction < 0) {
+      if (view != nil) {
+        tile.contentView = nil;
+        [tile display];
+      }
+      return;
+    }
+    if (view == nil) {
+      view = [[PBDockProgressView alloc] initWithFrame:NSMakeRect(0, 0, tile.size.width, tile.size.height)];
+      tile.contentView = view;
+    }
+    view.fraction = fraction;
+    [tile display];
+  });
+}

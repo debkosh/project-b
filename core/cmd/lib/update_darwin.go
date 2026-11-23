@@ -11,6 +11,7 @@ import (
 	"projectb/links"
 	"projectb/profiles"
 	"projectb/relaunch"
+	"projectb/system/platform"
 	"projectb/timeline"
 	"projectb/update"
 )
@@ -70,8 +71,7 @@ func updateConfig(c profiles.Choice) update.Config {
 	}
 	cfg.Installer = func(_ func(func()), quit func()) appupdate.Installer { return installer(quit) }
 	cfg.Settle = func(cl *amarit.Client) (bool, error) { return installer(nil).Settle(cl) }
-	cfg.Present = func(u *appupdate.Updater) {
-		macapp.Present(u, macapp.Words{Ready: "%s %s is ready", Body: "Relaunch to update.", Relaunch: "Relaunch"})
-	}
+	// The download's progress on the Dock icon; the ready notification is core/update's.
+	cfg.Dock = platform.SetDockProgress
 	return cfg
 }

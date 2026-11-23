@@ -17,7 +17,6 @@ import (
 	"strings"
 	"unsafe"
 
-	"github.com/debkosh/amarit/macapp"
 	"github.com/debkosh/project-b/oskit/clip"
 
 	"projectb/crash"
@@ -92,17 +91,11 @@ func (s *System) Report(version string, _ []int) []crash.Section {
 // DownloadsDir is where downloads go on a Mac: the user's own Downloads folder.
 func DownloadsDir(home string) string { return filepath.Join(home, "Downloads") }
 
-// otherNote takes a press on the update's notification, which amarit posted (macapp.Present)
-// under its category as its id: Relaunch goes to the updater.
-func otherNote(id, action string) bool {
-	if id != macapp.Category {
-		return false
-	}
-	macapp.HandleNotificationResponse(id, action)
-	return true
-}
-
 // CanScanCode: no scanner here; a code is typed.
 func (s *System) CanScanCode() bool { return false }
 
 func (s *System) scanCode(id int32, _ string) { s.scanned(id, "", false) }
+
+// SetDockProgress draws a progress bar along the foot of the app's Dock icon, fraction of the
+// way, 0 to 1, as the update downloads; -1 takes it away (core/update's Dock).
+func SetDockProgress(fraction float64) { C.pb_system_dock_progress(C.double(fraction)) }

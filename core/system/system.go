@@ -64,14 +64,16 @@ type System interface {
 	// is each app's own, and it does nothing.
 	OpenFullDiskAccess()
 
-	// ShowNotification shows a page's notification on the system, once Go has let it. A
-	// click on it comes back through OnNotificationClicked; RemoveNotification takes it away,
-	// as when its page closes it. Both are oskit/notify's on every OS.
+	// ShowNotification shows one of the app's notifications on the system: a page's, once Go
+	// has let it, or the update's. A click on it comes back through OnNotificationClicked;
+	// RemoveNotification takes it away, as when its page closes it. Both are oskit/notify's
+	// on every OS.
 	ShowNotification(n Notification)
 	RemoveNotification(id string)
 	// OnNotificationClicked is how a click on a notification ShowNotification showed reaches
-	// Go: clicked runs on the main thread with its id. Set once, as the app starts.
-	OnNotificationClicked(clicked func(id string))
+	// Go: clicked runs on the main thread with its id and the button's action, "" for the
+	// notification itself. Set once, as the app starts.
+	OnNotificationClicked(clicked func(id, action string))
 
 	// OnOpenURLs is how the links and files the OS hands the app reach Go: on the Mac what
 	// it opens with the app as the default browser or a file's app, on Android a link
@@ -114,7 +116,17 @@ type System interface {
 // under it, and its body. ID is the engine's, for its click.
 type Notification struct {
 	ID, Title, Subtitle, Body string
+	// Actions are its buttons, as oskit/notify's.
+	Actions []NoteAction
+	// Ongoing is a task still running, Progress its part done, 0 to 1 or -1 for unknown, and
+	// Quiet a notification that makes no sound: a phone draws them, as the update's download.
+	Ongoing  bool
+	Progress float64
+	Quiet    bool
 }
+
+// NoteAction is a button on a notification: its action as a click names it, and its words.
+type NoteAction struct{ ID, Label string }
 
 // PersonCheck is what the OS's sheet says a check of the person is for. Reason ends the
 // Mac's sentence, "Project B is trying to": "use a passkey for example.com". Title and

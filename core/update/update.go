@@ -97,9 +97,14 @@ type Config struct {
 	// Settle, when set, counts this start for the rollback, early: true means the previous
 	// release was put back and started, and this process should end.
 	Settle func(*amarit.Client) (bool, error)
-	// Present, when set, shows the updater the system's way too: the Mac's Dock and
-	// notification.
-	Present func(*appupdate.Updater)
+	// Notes, when set, shows the updater's state as the app's notification
+	// (docs/update-notifications.md): ready with Relaunch everywhere, and with ProgressNotes,
+	// as a phone does, the download with Cancel and a failure with Try again too.
+	Notes         Notes
+	ProgressNotes bool
+	// Dock, when set, shows the download's progress, 0 to 1, on the app's Dock icon, -1 for
+	// none: the Mac's.
+	Dock func(fraction float64)
 }
 
 // Manager is the app's updater. Its commands may be sent from any thread; its listeners
@@ -109,6 +114,10 @@ type Manager struct {
 	post   func(func())
 	quit   func()
 	client *amarit.Client
+	// shownPhase and shownAt are what the notification last showed, and when: its download's
+	// progress shows once a second at most (present).
+	shownPhase appupdate.Phase
+	shownAt    time.Time
 	// u is the updater, once made (makeUpdater): nil for a build that doesn't update.
 	u    *appupdate.Updater
 	src  appupdate.Source
@@ -177,9 +186,7 @@ func (m *Manager) makeUpdater() bool {
 	}
 	m.u = appupdate.New(ucfg)
 	m.u.OnChange(func(s appupdate.State) { m.post(func() { m.changed(s) }) })
-	if cfg.Present != nil {
-		cfg.Present(m.u)
-	}
+	m.present(m.u.State())
 	return true
 }
 
@@ -251,6 +258,7 @@ func (m *Manager) Healthy() {
 }
 
 func (m *Manager) changed(s appupdate.State) {
+	m.present(s)
 	m.mu.Lock()
 	was := m.raw
 	m.raw, m.state = s, words(s)
@@ -416,8 +424,13 @@ func (m *Manager) Cancel() {
 	}
 }
 
+// Relaunch installs the ready release. Its notification goes first, so it doesn't outlive the
+// update it announced.
 func (m *Manager) Relaunch() {
 	if m.u != nil {
+		if m.cfg.Notes != nil {
+			m.cfg.Notes.RemoveNotification(NoteID)
+		}
 		m.u.Relaunch()
 	}
 }
