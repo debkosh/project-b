@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"maps"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -122,6 +123,10 @@ type Prompt struct {
 	Kinds  []string     `json:"kinds"`
 	// Once says the prompt may offer Allow this time: every kind it asks for offers it.
 	Once bool `json:"once"`
+	// OS is set when the site is allowed but the OS itself refused Kinds, the camera or the
+	// microphone: "android" or "macos", whose words the shell uses. Such a prompt answers
+	// Settings, which opens the OS's settings and keeps it, or Dismiss ("Not now").
+	OS string `json:"os,omitempty"`
 
 	req engine.PermissionRequest
 	// answers are the statuses of the request's kinds decided before the prompt, by kind.
@@ -166,6 +171,46 @@ type Manager struct {
 	last      int
 	onPrompts []func()
 	onSites   []func()
+
+	// osMedia is the OS's own camera and microphone permission, and osName its name for the
+	// prompt's words; nil where the OS lets the app use both.
+	osMedia OS
+	osName  string
+	// quiet is each tab's page after Not now on its OS prompt: until the tab leaves it, the OS's
+	// no is answered with no prompt.
+	quiet map[engine.TabID]string
+}
+
+// OS is the OS's own permission for the app's camera and microphone (oskit/media), which a
+// page's camera or microphone needs besides the site's setting, as Chrome's does.
+type OS interface {
+	Allowed(kind string) bool
+	Ask(kinds []string, answered func(allowed map[string]bool))
+	OpenSettings(kind string)
+}
+
+// Settings is an OS prompt's answer: open the OS's settings, the prompt staying until the OS
+// allows or the person says Not now (Dismiss).
+const Settings = "settings"
+
+// UseOS has a granted camera or microphone checked with the OS too, which is named name in
+// the prompt ("android", "macos"). Set once, as the app starts.
+func (m *Manager) UseOS(o OS, name string) { m.osMedia, m.osName = o, name }
+
+// Returned is the app back in front, as after the OS's settings: an OS prompt whose kinds the
+// OS now allows answers its page granted.
+func (m *Manager) Returned() {
+	if m.osMedia == nil {
+		return
+	}
+	for _, p := range m.Prompts() {
+		if p.OS == "" {
+			continue
+		}
+		if !slices.ContainsFunc(p.Kinds, func(k string) bool { return !m.osMedia.Allowed(k) }) {
+			m.close(m.open[p.Tab], engine.PermissionGranted)
+		}
+	}
 }
 
 type onceGrant struct {
@@ -184,6 +229,7 @@ func New(dir string, t Tabs, answer func(engine.PermissionID, []engine.Permissio
 		open:    map[engine.TabID]*Prompt{},
 		waiting: map[engine.TabID][]engine.PermissionRequest{},
 		once:    map[engine.TabID]onceGrant{},
+		quiet:   map[engine.TabID]string{},
 	}
 	b, err := os.ReadFile(m.path)
 	switch {
@@ -280,6 +326,20 @@ func (m *Manager) Request(r engine.PermissionRequest) {
 func (m *Manager) Answer(id int, choice string) {
 	p := m.byID(id)
 	if p == nil {
+		return
+	}
+	if p.OS != "" {
+		switch choice {
+		case Settings:
+			kind := Camera
+			if !slices.Contains(p.Kinds, Camera) {
+				kind = Microphone
+			}
+			m.osMedia.OpenSettings(kind)
+		case Dismiss:
+			m.quiet[p.Tab] = p.url
+			m.close(p, engine.PermissionDenied)
+		}
 		return
 	}
 	var s engine.PermissionStatus
@@ -427,6 +487,9 @@ func (m *Manager) TabChanged(tab engine.TabID, u string) {
 	if g, ok := m.once[tab]; ok && Origin(u) != g.origin {
 		delete(m.once, tab)
 	}
+	if q, ok := m.quiet[tab]; ok && page(u) != q {
+		delete(m.quiet, tab)
+	}
 	if p := m.open[tab]; p != nil && page(u) != p.url {
 		m.dropTab(tab)
 	}
@@ -435,6 +498,7 @@ func (m *Manager) TabChanged(tab engine.TabID, u string) {
 // TabClosed answers the tab's prompts as dismissed and forgets the tab.
 func (m *Manager) TabClosed(tab engine.TabID) {
 	delete(m.once, tab)
+	delete(m.quiet, tab)
 	m.dropTab(tab)
 }
 
@@ -445,7 +509,11 @@ func (m *Manager) dropTab(tab engine.TabID) {
 		m.reply(r, dismissed(r))
 	}
 	if p := m.open[tab]; p != nil {
-		m.close(p, engine.PermissionAsk)
+		s := engine.PermissionAsk
+		if p.OS != "" {
+			s = engine.PermissionDenied
+		}
+		m.close(p, s)
 	}
 }
 
@@ -463,7 +531,11 @@ func (m *Manager) close(p *Prompt, s engine.PermissionStatus) {
 	for _, k := range p.Kinds {
 		p.answers[k] = s
 	}
-	m.reply(p.req, p.answers)
+	if p.OS != "" {
+		m.send(p.req, p.answers)
+	} else {
+		m.reply(p.req, p.answers)
+	}
 	m.changed()
 	if next := m.waiting[p.Tab]; len(next) > 0 {
 		m.waiting[p.Tab] = next[1:]
@@ -474,7 +546,62 @@ func (m *Manager) close(p *Prompt, s engine.PermissionStatus) {
 	}
 }
 
+// reply answers r with answers, once the OS has allowed what the site was granted of its
+// camera and microphone: what it refuses becomes an OS prompt on the tab, or after Not now on
+// that page, denied.
 func (m *Manager) reply(r engine.PermissionRequest, answers map[string]engine.PermissionStatus) {
+	var need []string
+	if m.osMedia != nil {
+		for _, k := range r.Kinds {
+			if (k == Camera || k == Microphone) && answers[k] == engine.PermissionGranted && !slices.Contains(need, k) && !m.osMedia.Allowed(k) {
+				need = append(need, k)
+			}
+		}
+	}
+	if len(need) == 0 {
+		m.send(r, answers)
+		return
+	}
+	u, _ := m.tabs.URLOf(r.Tab)
+	if q, ok := m.quiet[r.Tab]; ok && q == page(u) {
+		m.send(r, deny(answers, need))
+		return
+	}
+	asked := page(u)
+	m.osMedia.Ask(need, func(allowed map[string]bool) {
+		var refused []string
+		for _, k := range need {
+			if !allowed[k] {
+				refused = append(refused, k)
+			}
+		}
+		u, ok := m.tabs.URLOf(r.Tab)
+		switch {
+		case len(refused) == 0:
+			m.send(r, answers)
+		case !ok || page(u) != asked || m.open[r.Tab] != nil:
+			// The tab is gone or left the page, or shows another prompt meanwhile: the page gets
+			// its denial.
+			m.send(r, deny(answers, refused))
+		default:
+			m.last++
+			m.open[r.Tab] = &Prompt{ID: m.last, Tab: r.Tab, Origin: r.Origin, Kinds: refused, OS: m.osName, req: r, answers: answers, url: page(u)}
+			m.changed()
+		}
+	})
+}
+
+// deny is answers with kinds denied.
+func deny(answers map[string]engine.PermissionStatus, kinds []string) map[string]engine.PermissionStatus {
+	out := maps.Clone(answers)
+	for _, k := range kinds {
+		out[k] = engine.PermissionDenied
+	}
+	return out
+}
+
+// send answers r with answers, to the engine.
+func (m *Manager) send(r engine.PermissionRequest, answers map[string]engine.PermissionStatus) {
 	statuses := make([]engine.PermissionStatus, len(r.Kinds))
 	for i, k := range r.Kinds {
 		statuses[i] = answers[k]
