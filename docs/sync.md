@@ -93,6 +93,13 @@ the secrets, and each feature's own sealed rows, which the feature deletes in th
 (`keys.OnStartFresh`; the passkeys do), and makes a new profile key. History and bookmarks are untouched. A device key is made only when
 a new profile key needs one, never in place of one that is there.
 
+**The OS is asked for the device key only when something needs it.** Asking may put a question
+to the person: a Linux keyring to unlock, the Mac's keychain after an update. So a start asks
+only when sync is on, which `sync.address` being kept tells without opening anything sealed;
+with sync off the first ask is the person's own doing: a saved password shown or filled, a
+passkey, turning sync on. A locked profile key is then found when sync is turned on, which
+says `locked` as a start with sync on does.
+
 **macOS asks after every update.** The app is signed with the project's own certificate and has
 no Apple team id, so macOS files the keychain item under the code hash of the build that made it.
 Measured in a VM on 2026-11-19 with two builds signed with the project's identity: every new
@@ -554,7 +561,7 @@ third profile joins with while the old one fails; a backup code joining a device
 staying when the passphrase changes, a new one taking the old one's place only once kept, and one
 dropped leaving the old; Disconnect keeping the rows; a server that
 kept the bucket's key refilled, and a bucket reset stopping both devices, pushing nothing, until
-each sets sync up again, a wrong passphrase changing nothing; a locked profile key turning sync off; sync on at start running with what was kept.
+each sets sync up again, a wrong passphrase changing nothing; a locked profile key turning sync off; a start asking for the device key only with sync on, and a locked key found when sync is turned on; sync on at start running with what was kept.
 `core/sync` also: each problem reaching a bucket named, and a signed-out device's status; a run cut
 short; Connect answering before its first run; the address while on. `core/words`: the list and a
 passphrase of it. `core/abi`: `AppLink`'s values.

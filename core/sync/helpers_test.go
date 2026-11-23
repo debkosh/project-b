@@ -197,7 +197,10 @@ func newProfile(t *testing.T) *profile {
 	return openProfile(t, t.TempDir())
 }
 
-func openProfile(t *testing.T, dir string) *profile {
+func openProfile(t *testing.T, dir string) *profile { return openProfileOn(t, dir, nil) }
+
+// openProfileOn is openProfile for a device whose key is device's, nil for the folder's own.
+func openProfileOn(t *testing.T, dir string, device keys.Device) *profile {
 	st, err := store.Open(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -210,7 +213,7 @@ func openProfile(t *testing.T, dir string) *profile {
 			f()
 		}
 	}()
-	p.keys = keys.New(dir, "", st, nil)
+	p.keys = keys.New(dir, "", st, device)
 	p.bookmarks = bookmarks.New(dir, st)
 	p.history = history.New(dir, st, p.post)
 	// The device's check always passes here: core/passkeys' own tests hold it.

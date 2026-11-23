@@ -10,6 +10,8 @@ import (
 
 	"github.com/sudiptadeb/synckosh"
 	"github.com/sudiptadeb/synckosh/client"
+
+	"projectb/keys"
 )
 
 // ErrPassphrase is Connect's answer for a passphrase that opens none of the bucket's sealed
@@ -127,6 +129,11 @@ func (m *Manager) connect(address, token, passphrase string) error {
 	// Turning sync on seals what it is on with, and a profile's first seal makes its key,
 	// which asks the OS: here, and not in the store's job (keys.Ready).
 	if err := m.keys.Ready(); err != nil {
+		// A start with sync off never looked: this is where a locked key is found, and
+		// Settings then offers to start fresh.
+		if errors.Is(err, keys.ErrLocked) {
+			m.setStatus(func(s *Status) { *s = Status{Locked: true, Error: lockedError(err).Error()} })
+		}
 		return lockedError(err)
 	}
 	key, err := m.bucketKey(address, token, passphrase)

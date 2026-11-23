@@ -202,6 +202,14 @@ func (k *Keys) Secret(tx *store.Tx, name string) ([]byte, bool, error) {
 	return plain, err == nil, err
 }
 
+// HasSecret says whether a value is kept under name. It reads nothing sealed, so it asks the
+// OS nothing.
+func (k *Keys) HasSecret(tx *store.Tx, name string) (bool, error) {
+	n := 0
+	err := tx.QueryRow(`SELECT count(*) FROM secrets WHERE name = ?`, name).Scan(&n)
+	return n > 0, err
+}
+
 // DeleteSecrets deletes the values kept under names.
 func (k *Keys) DeleteSecrets(tx *store.Tx, names ...string) error {
 	for _, n := range names {

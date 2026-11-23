@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -494,6 +495,86 @@ func TestALockedProfileKeyAndStartingFresh(t *testing.T) {
 	}
 	if st := a.sync.Status(); !st.On || st.Error != "" {
 		t.Fatalf("status after connecting again: %+v", st)
+	}
+}
+
+// A start asks the OS for the device key only when sync is on. A profile that has sealed
+// something, as one with a saved login has, and sync off, asks nothing at start: on a Linux
+// desktop the keyring's question would come up for nothing. With sync on, the start opens it.
+func TestAStartAsksForTheDeviceKeyOnlyWithSyncOn(t *testing.T) {
+	s := newServer(t)
+	dir := t.TempDir()
+	var asked atomic.Int32
+	device := func(bool) ([]byte, error) {
+		asked.Add(1)
+		return []byte(strings.Repeat("d", 32)), nil
+	}
+	a := openProfileOn(t, dir, device)
+	a.startSync(s)
+	if err := a.keys.Ready(); err != nil {
+		t.Fatal(err)
+	}
+	a.close()
+
+	asked.Store(0)
+	a = openProfileOn(t, dir, device)
+	a.startSync(s)
+	if n := asked.Load(); n != 0 {
+		t.Fatalf("a start with sync off asked for the device key %d times", n)
+	}
+	if st := a.sync.Status(); st.On || st.Locked || st.Error != "" {
+		t.Fatalf("status with sync off: %+v", st)
+	}
+	if err := a.connect(s.bearer(), "tok", "pass phrase"); err != nil {
+		t.Fatal(err)
+	}
+	a.close()
+
+	asked.Store(0)
+	a = openProfileOn(t, dir, device)
+	defer a.close()
+	a.startSync(s)
+	if asked.Load() == 0 {
+		t.Fatal("a start with sync on didn't ask for the device key")
+	}
+	if st := a.sync.Status(); !st.On || st.Error != "" {
+		t.Fatalf("status with sync on: %+v", st)
+	}
+}
+
+// A profile whose key doesn't open, with sync off, says nothing at start, where nothing
+// looked; turning sync on finds it, says so as a locked profile's does, and StartFresh mends it.
+func TestALockedProfileKeyFoundWhenTurningSyncOn(t *testing.T) {
+	s := newServer(t)
+	dir := t.TempDir()
+	a := openProfileOn(t, dir, func(bool) ([]byte, error) { return []byte(strings.Repeat("d", 32)), nil })
+	a.startSync(s)
+	if err := a.keys.Ready(); err != nil {
+		t.Fatal(err)
+	}
+	a.close()
+
+	// Another device's key now, as a folder copied from another device has.
+	a = openProfileOn(t, dir, func(bool) ([]byte, error) { return []byte(strings.Repeat("e", 32)), nil })
+	defer a.close()
+	a.startSync(s)
+	if st := a.sync.Status(); st.On || st.Locked || st.Error != "" {
+		t.Fatalf("status at start: %+v", st)
+	}
+	if err := a.connect(s.bearer(), "tok", "pass phrase"); err == nil {
+		t.Fatal("connected with its keys locked")
+	}
+	if st := a.sync.Status(); st.On || !st.Locked || st.Error == "" {
+		t.Fatalf("status after trying to turn sync on: %+v", st)
+	}
+	if err := a.call(a.sync.StartFresh); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.connect(s.bearer(), "tok", "pass phrase"); err != nil {
+		t.Fatal(err)
+	}
+	if st := a.sync.Status(); !st.On || st.Locked || st.Error != "" {
+		t.Fatalf("status after starting fresh and connecting: %+v", st)
 	}
 }
 

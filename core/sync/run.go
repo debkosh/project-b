@@ -259,8 +259,22 @@ func (m *Manager) do(done func(error), f func() error) {
 	}
 }
 
-// load reads what sync is on with, and runs. A locked profile key leaves it off, saying so.
+// load reads what sync is on with, and runs. Whether sync is on is told by its address being
+// kept, which reads nothing sealed: with sync off a start asks the OS for no key, and the
+// desktop's keyring puts no question up for nothing. A locked profile key leaves sync off,
+// saying so.
 func (m *Manager) load() {
+	on := false
+	if err := m.st.Wait(func(tx *store.Tx) (err error) {
+		on, err = m.keys.HasSecret(tx, secretAddress)
+		return err
+	}); err != nil {
+		m.setStatus(func(s *Status) { *s = Status{Error: Words(err), Problem: Problem(err)} })
+		return
+	}
+	if !on {
+		return
+	}
 	if err := m.keys.Check(); err != nil {
 		m.setStatus(func(s *Status) { *s = Status{Locked: errors.Is(err, keys.ErrLocked), Error: lockedError(err).Error()} })
 		return

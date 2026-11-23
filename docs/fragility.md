@@ -49,9 +49,10 @@ The seams:
   measures how long the work has gone on is not one that measures how long nothing has
   arrived. And a call that may wait on the person must be reached from no thread and no
   job that others wait on. And a wait that is the person's, at a question the OS put up, is
-  not ours to end: the question stays, and its answer goes nowhere. Four so far: Sync now
-  that showed nothing, a sync called out of reach that wasn't, the app frozen while the
-  desktop asked for its keyring, GNOME's keyring broken by our giving up.
+  not ours to end: the question stays, and its answer goes nowhere. Nor is a question put
+  to the person for nothing they did. Five so far: Sync now that showed nothing, a sync
+  called out of reach that wasn't, the app frozen while the desktop asked for its keyring,
+  GNOME's keyring broken by our giving up, the keyring's question at every start.
 - **An error as text.** A library's words for what went wrong hold more than we would say
   ourselves: Go names the whole address a request went to, and an address can be a secret.
   What goes to a log, a tooltip or a report has to be looked at as text a stranger may read.
@@ -70,6 +71,26 @@ The seams:
 - **A trigger runs under its caller's rules.** What a trigger's own statement says about a
   conflict gives way to the statement that fired it. One so far: a row changed twice before a
   run.
+
+## The keyring's question at every start, 2026-11-24
+
+- **Seen:** by the Linux session reading 0.3.10 on GNOME: a profile that had ever sealed
+  anything, a saved password or a passkey, asked the OS for the device key at every start,
+  with sync off too. On a desktop that logs in by itself the keyring is locked, so its unlock
+  question came up from nowhere at each start: the question most likely to be left up while
+  the person quits, which breaks gnome-keyring (the entry below).
+- **Cause:** sync's start opened the profile key first and only then looked whether sync was
+  on, because what says so, its address, is sealed.
+- **Seam:** work that takes time: a question put to the person for nothing they did.
+- **Fix:** whether sync is on is told by its address being kept at all, which opens nothing.
+  With sync off a start asks for no key; the first ask follows the person's own action. A
+  profile key that doesn't open is then found when sync is turned on, and says so there.
+- **Why it was missed:** on a Mac and on a desktop whose keyring opens at login the ask is
+  silent, so it cost nothing anyone saw; no test counted the asks.
+- **Guard:** core/sync's `TestAStartAsksForTheDeviceKeyOnlyWithSyncOn` counts them: none at
+  a start with sync off, one or more with sync on. `TestALockedProfileKeyFoundWhenTurningSyncOn`
+  wants a locked key said when sync is turned on, and mended by starting fresh. Both fail on
+  the code as it was. With sync on, the question still comes at start, as the run does.
 
 ## GNOME's keyring broken by our giving up, 2026-11-24
 
