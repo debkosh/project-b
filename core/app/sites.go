@@ -42,24 +42,33 @@ func (a *App) startSites(e engine.Engine, dir string) {
 	// too where it keeps one: it is asked as a page first needs them.
 	if name := a.System.MediaOS(); name != "" {
 		a.Sites.UseOS(mediaOf{a.System}, name)
-		a.System.OnMediaReturn(a.Sites.Returned)
 	}
 	a.Sparks = sparks.New(dir)
 	// A profile's first start on a version with the built-in sparks gives it them, off.
 	a.Sparks.AddBuiltins()
 	a.startSiteFeatures(e)
+	// sendOpen sends every shell the settings of each site a tab is open on, set below.
+	var sendOpen func()
 	a.Sites.OnPromptsChanged(func() {
 		a.Shell.Send(map[string]any{"t": "permissionPrompts", "permissionPrompts": a.Sites.Prompts()})
+		// What the OS lets the app use may have changed with it, which the site panel says.
+		sendOpen()
 	})
 	// Every shell hears the settings of each site a tab is open on, for its site panel.
 	var open string
-	sendOpen := func() {
+	sendOpen = func() {
 		o := a.openSites()
 		if b, _ := json.Marshal(o); string(b) != open {
 			open = string(b)
 			a.Shell.Send(map[string]any{"t": "openSites", "openSites": o})
 		}
 	}
+	// Back in front, as after the OS's settings: a page waiting on the OS gets its device if
+	// the OS allows it now, and the site panel says what the OS lets the app use.
+	a.System.OnMediaReturn(func() {
+		a.Sites.Returned()
+		sendOpen()
+	})
 	a.Sites.OnSitesChanged(func() {
 		a.Settings.Send(map[string]any{"t": "siteSettings", "siteSettings": a.Sites.Sites()})
 		sendOpen()
@@ -112,6 +121,15 @@ func (a *App) startSites(e engine.Engine, dir string) {
 				}
 				json.Unmarshal(msg, &c)
 				a.Sites.Set(c.Origin, c.Kind, c.Value)
+			case "openMediaSettings":
+				// The site panel's Open settings, while the OS refuses the app a kind.
+				var c struct {
+					Kind string `json:"kind"`
+				}
+				json.Unmarshal(msg, &c)
+				if c.Kind == sites.Camera || c.Kind == sites.Microphone {
+					a.System.OpenMediaSettings(c.Kind)
+				}
 			case "openSiteSettings":
 				// Settings, on the site of the window's active tab: its own address.
 				t, _ := a.Tabs.Get(a.Tabs.ActiveIn(w))
@@ -176,6 +194,13 @@ func (a *App) openSites() map[string]openSite {
 			list := a.Sites.SettingsOf(o)
 			if !a.Prefs.All().BlockAds {
 				list = slices.DeleteFunc(list, func(s sites.Setting) bool { return s.Kind == sites.Ads })
+			}
+			if os := a.System.MediaOS(); os != "" {
+				for i, s := range list {
+					if (s.Kind == sites.Camera || s.Kind == sites.Microphone) && !a.System.MediaAllowed(s.Kind) {
+						list[i].OSOff = os
+					}
+				}
 			}
 			site = openSite{Settings: list, Sparks: []string{}}
 		}

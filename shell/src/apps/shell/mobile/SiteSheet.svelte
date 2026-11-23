@@ -1,6 +1,6 @@
 <script>
   import { state as go } from '@/sdk/svelte.svelte.js';
-  import { linkChoices, openSite, openSiteSettings, permissionWord, reloadPage, setSiteSetting, siteOrigin, siteSetting, sparkNames } from '@/sdk/sites.js';
+  import { linkChoices, openMediaSettings, openSite, openSiteSettings, osOffNote, permissionWord, reloadPage, setSiteSetting, siteOrigin, siteSetting, sparkNames } from '@/sdk/sites.js';
   import Sheet from './Sheet.svelte';
 
   // The site panel as a sheet (docs/site-features.md): the active tab's site and its
@@ -89,7 +89,11 @@
     <div role="group" aria-label="Permissions">
       <p class="label">Permissions</p>
       {#each permissions as p (p.kind)}
-        <div class="row"><span class="text">{p.title}</span><span class="value {p.value}">{permissionWord(p.value)}</span></div>
+        <div class="row">
+          <span class="text"><span>{p.title}</span>{#if osOffNote(p)}<small>{osOffNote(p)}</small>{/if}</span>
+          {#if osOffNote(p)}<button type="button" class="settings" onclick={() => openMediaSettings(p.kind)}>Open settings</button>{/if}
+          <span class="value {p.value}">{permissionWord(p.value)}</span>
+        </div>
       {/each}
     </div>
   {/if}
@@ -137,6 +141,16 @@
   .text small {
     font-size: 13px;
     color: var(--muted);
+  }
+  /* Open settings, beside a permission the OS refuses the app: a thumb's size. */
+  .settings {
+    min-height: 48px;
+    padding: 0 12px;
+    border: 0;
+    background: none;
+    color: var(--accent);
+    font: inherit;
+    font-size: 14px;
   }
   .label {
     margin: 0;

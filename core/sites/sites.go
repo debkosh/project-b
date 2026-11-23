@@ -149,6 +149,9 @@ type Setting struct {
 	Value string `json:"value"`
 	// Choices are one of our own kinds' values; none for one a page asks for.
 	Choices []string `json:"choices,omitempty"`
+	// OSOff names the OS, "android" or "macos", while it refuses the app the camera or
+	// microphone this setting is of: the site panel says so, with the way to its settings.
+	OSOff string `json:"osOff,omitempty"`
 }
 
 // Tabs is what the manager reads of the tabs.

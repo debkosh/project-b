@@ -3,6 +3,7 @@
   import * as g from './glide.svelte.js';
   import FindBar from './FindBar.svelte';
   import PageDialog from './PageDialog.svelte';
+  import Prompt from './Prompt.svelte';
 
   // The pages: the active tab as a card inset in the frame, or the tabs of its split side
   // by side, 8px apart, the active one ringed in the accent; a press in a pane's page makes
@@ -64,6 +65,7 @@
           <div class="blank" use:shell role="presentation" onpointerdown={() => id !== go.active && send({ t: 'activateTab', id })}></div>
         {/if}
         <PageDialog tab={id} />
+        <Prompt tab={id} />
         {#if id === go.active}<FindBar bind:this={find} />{/if}
         <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
         <span class="ring"></span>
