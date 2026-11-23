@@ -13,7 +13,7 @@ it is built again above Chromium's content layer.
   unpatched) loads and renders pages through a thin C++ adapter. A mock engine sits behind the
   same interface, so the shell and the core run and are tested without a Chromium build.
 
-It runs on Apple silicon Macs and arm64 Android phones, and as a preview on arm64 Linux, from
+It runs on Apple silicon Macs and arm64 Android phones, and as a beta on arm64 Linux, from
 one tree, and installed copies update themselves. The
 [latest release](https://github.com/sudiptadeb/project-b/releases/latest) has them all. More at
 [debkosh.com/project-b](https://debkosh.com/project-b).
@@ -69,10 +69,9 @@ Working today:
 
 Not there yet:
 
-- Saved passwords aren't filled into pages yet, and a page's new password isn't offered to
-  be saved. No Safe Browsing warnings, no popup blocker.
-- Chrome extensions are in every build but off behind a flag (Settings, Flags).
-- Apple silicon Macs and arm64 Android (10 or newer) only.
+- No Safe Browsing warnings, no popup blocker.
+- Chromium extensions are in every build but off behind a flag (Settings, Flags).
+- Apple silicon Macs, arm64 Android (10 or newer) and arm64 Linux (a beta) only.
 - The Mac app is signed with the project's own key, not notarized by Apple.
 
 The gaps, row by row: [docs/daily-use.md](docs/daily-use.md). What is decided and not built:
@@ -136,7 +135,7 @@ then on the app updates itself.
 - **Android (arm64, Android 10 or newer).** Install the APK, allowing your browser or file
   manager to install apps when Android asks.
 
-- **Linux (arm64, a preview).** It installs as a Flatpak, from
+- **Linux (arm64, a beta).** It installs as a Flatpak, from
   [our repository](https://projectb.debkosh.com/). On Ubuntu, add Flatpak and GNOME
   Software's Flatpak support first, once (Ubuntu's own App Center doesn't open Flatpak links);
   Debian, Fedora, Arch and KDE's own distros have them or they're one command away:
@@ -150,8 +149,7 @@ then on the app updates itself.
 
       flatpak install --from https://projectb.debkosh.com/project-b.flatpakref
 
-  Flatpak updates it with your other apps. It's a preview: the window, the system's file and
-  notification dialogs, and printing are still being built.
+  Flatpak updates it with your other apps. It's a beta: tell us on GitHub what doesn't work.
 
 ## Build it from source
 
