@@ -299,6 +299,11 @@ onMounted(() => heading.value?.focus());
             <span v-else-if="state.desktop" class="state linux-default">Not your default browser<br /><small>{{ setDefaultBrowserHint(state.desktop) }}</small></span>
             <button v-else type="button" class="text-button" @click="send({ t: 'makeDefault' })">Make default browser</button>
           </div>
+          <!-- The Mac asks once after each update, as the app's signature changes with it: say so
+               here, before the first time, so the sheet isn't a surprise. -->
+          <div v-if="state.platform === 'mac'" class="row keychain">
+            <span class="label">macOS will ask to let Project B use its key<br /><small>Choose Always Allow. It asks again once after each update; Deny leaves your passwords and sync locked.</small></span>
+          </div>
           <div v-if="state.phone" class="row">
             <span class="label">Download notifications</span>
             <span v-if="state.notifications" class="state">On</span>
@@ -633,6 +638,15 @@ h1 {
 
 .card.default {
   margin-bottom: 32px;
+}
+
+.keychain {
+  padding: 12px 16px;
+}
+
+.keychain small {
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .linux-default {

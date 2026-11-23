@@ -90,6 +90,10 @@ const bars = async (w) => (await w.ui.getByRole('tab').first().isVisible()) || (
   // Make default browser asks the system, which the mock answers yes for.
   await welcome.getByRole('button', { name: 'Make default browser' }).click();
   check('Make default browser asks, and the page says it is the default', await until(() => welcome.getByText('This is your default browser').isVisible()));
+  // On a Mac, macOS asks to let the app use its keychain key once after each update: the last
+  // step says to choose Always Allow before the first time.
+  check('on a Mac, the last step says to choose Always Allow when macOS asks for the key', await welcome.getByText('macOS will ask to let Project B use its key').isVisible() &&
+    await welcome.getByText(/Choose Always Allow\./).isVisible());
   await settle(w.page);
   await w.page.screenshot({ path: path.join(lib.out, 'welcome-done.png') });
   await welcome.getByRole('button', { name: 'Start browsing' }).click();
@@ -168,6 +172,7 @@ const bars = async (w) => (await w.ui.getByRole('tab').first().isVisible()) || (
   }
   check('on Linux, the last step says where to set the default browser', await until(() => lw.getByText('Set it in GNOME Settings, under Default Apps. Project B notices the next time it starts.').isVisible()) &&
     (await lw.getByRole('button', { name: 'Make default browser' }).count()) === 0);
+  check('and says nothing of the Mac\'s keychain', (await lw.getByText('macOS will ask to let Project B use its key').count()) === 0);
   await w.page.screenshot({ path: path.join(lib.out, 'welcome-linux-done.png') });
   await lw.getByRole('button', { name: 'Start browsing' }).click();
   await lib.fire('menu', 'app.settings');
