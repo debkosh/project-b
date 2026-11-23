@@ -32,6 +32,14 @@ public final class OsKit {
         return intent != null && (Notify.onIntent(intent) || Open.onIntent(intent));
     }
 
+    /**
+     * The activity has come back to the front, as after Android's settings: oskit/media's
+     * OnReturn. Call it from onResume.
+     */
+    public static void onResume() {
+        Media.returned();
+    }
+
     /** The result of an activity oskit started: Android's sheet for the default browser. */
     public static void onActivityResult(int requestCode) {
         if (requestCode == Open.DEFAULT_BROWSER_REQUEST) {
@@ -43,6 +51,9 @@ public final class OsKit {
     public static void onRequestPermissionsResult(int requestCode) {
         if (requestCode == Notify.PERMISSION_REQUEST) {
             Notify.permissionAnswered();
+        }
+        if (requestCode == Media.PERMISSION_REQUEST) {
+            Media.permissionAnswered();
         }
     }
 }
