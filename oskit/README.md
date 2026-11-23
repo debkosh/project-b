@@ -11,6 +11,7 @@ Linux half (the desktop portals over D-Bus) and a fake for tests.
 | `verify` | A check of the person: Touch ID, a fingerprint, the screen lock | to come |
 | `open` | Open a file, reveal it, the default browser, links the OS hands the app | Mac, Android, Linux |
 | `clip` | Copy a secret so clipboard history leaves it out | Mac, Android; Linux's app writes its clipboard itself |
+| `media` | The OS's own camera and microphone permission: Android's runtime ask, macOS's Privacy & Security; settings; the return to the front | Mac, Android; Linux allows |
 
 It imports nothing of the app that uses it. Project B's core takes it with
 `replace github.com/sudiptadeb/oskit => ../oskit`; it can leave as a repo of its own with
