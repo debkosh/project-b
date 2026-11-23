@@ -539,9 +539,9 @@ Step 4 is `core/system` on Linux (section 4's table), all from pure Go over D-Bu
   links from the OS on both (core/instance's socket in `$XDG_RUNTIME_DIR/app/<id>`, the
   `.desktop` file's `%U`); the stock portal gives a spawned copy the session's display.
 - **The software centres' screenshots** (`tools/linux/appstream_shots.py`, ux's set and
-  captions): Standard and the welcome are in the metainfo, from the site's
-  `linux/screenshots/`; Glide follows once a fresh profile's Main workspace starts teal, as
-  Glide paints the workspace's colour and it starts pink today.
+  captions): Standard, Glide and the welcome, in the metainfo from the site's
+  `linux/screenshots/`; Glide's was retaken on 2026-11-23, once a fresh profile's Main workspace
+  started in the logo's teal.
 
 How the Linux work runs (rules from this branch's sessions):
 - Build: `tools/build.sh linux arm64` (amarit job; container `pb`, build lock), then

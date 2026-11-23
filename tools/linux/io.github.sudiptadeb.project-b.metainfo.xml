@@ -27,6 +27,10 @@
       <image type="source" width="1280" height="800">https://projectb.debkosh.com/linux/screenshots/1-standard.png</image>
     </screenshot>
     <screenshot>
+      <caption>The same browser in another shape: Glide</caption>
+      <image type="source" width="1280" height="800">https://projectb.debkosh.com/linux/screenshots/2-glide.png</image>
+    </screenshot>
+    <screenshot>
       <caption>Pick the shape that suits you, now or later in Settings</caption>
       <image type="source" width="1280" height="800">https://projectb.debkosh.com/linux/screenshots/3-welcome.png</image>
     </screenshot>
