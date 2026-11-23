@@ -87,8 +87,12 @@ const noTitleYet = {
 // who brings them to each (docs/daily-driver.md). Rules 30 and 31 hold every other shell to
 // them.
 const noPromptYet = {
+  'mobile-native': 'the native mobile shell session brings it',
+};
+
+// The shells with no Site settings control yet, and why. Rule 31 holds every other shell to it.
+const noSiteControlYet = {
   glide: 'the daily driver session brings it',
-  mobile: 'the android session brings it, as a sheet',
   'mobile-native': 'the native mobile shell session brings it',
 };
 
@@ -666,14 +670,39 @@ const noNoticeYet = {
         await until(() => again.isVisible());
         await page.keyboard.press('Escape');
         rule(30, 'Escape dismisses it, answering neither', JSON.stringify(await answered(3)) === '[0]' && (await until(async () => (await again.count()) === 0)));
+        // The OS refusing what the site is allowed (docs/media-permissions.md): the mock
+        // system plays macOS here.
+        await fire('navigate', 'https://os.test/call', { tab });
+        await loaded(tab, 'https://os.test/call');
+        await fire('permission', 'camera', { tab });
+        const site = asked('os.test', 'use your camera');
+        await until(() => site.isVisible());
+        await site.getByRole('button', { name: 'Always allow', exact: true }).click();
+        await answered(4);
+        await fire('mediaOS', 'refuse camera');
+        await fire('permission', 'camera', { tab });
+        const os = ui.getByRole('dialog', { name: "macOS hasn't let Project B use your camera" });
+        rule(30, "the OS's no, for a site allowed, is the prompt's state in the OS's words, the page waiting", (await until(() => os.isVisible())) && (await regions()).permissions.length === 4);
+        await os.getByRole('button', { name: 'Open settings' }).click();
+        await fire('mediaOS', 'refuse');
+        await fire('mediaOS', 'return');
+        rule(30, 'Open settings, then back with the OS allowing, gives the page the camera and the prompt goes', JSON.stringify(await answered(5)) === '[1]' && (await until(async () => (await os.count()) === 0)));
+        await fire('mediaOS', 'refuse camera');
+        await fire('navigate', 'https://os.test/again', { tab });
+        await loaded(tab, 'https://os.test/again');
+        await fire('permission', 'camera', { tab });
+        await until(() => os.isVisible());
+        await os.getByRole('button', { name: 'Not now' }).click();
+        rule(30, 'Not now denies the page, and the prompt goes', JSON.stringify(await answered(6)) === '[2]' && (await until(async () => (await os.count()) === 0)));
+        await fire('mediaOS', 'refuse');
       } catch (e) {
         rule(30, 'its checks ran to their end', false, e.message.split('\n')[0]);
       }
     }
 
     // 31. Site settings, from the page's site.
-    if (noPromptYet[id]) {
-      rule(31, `not checked yet: ${noPromptYet[id]}`, true);
+    if (noSiteControlYet[id]) {
+      rule(31, `not checked yet: ${noSiteControlYet[id]}`, true);
     } else {
       try {
         const tab = (await regions()).active;
