@@ -88,13 +88,15 @@ if (is_mac) {
     public_deps = [ ":core" ]
     # What the archive's cgo needs, which a c-archive leaves to the binary that links it:
     # browserdata reads other browsers' databases with macOS's own SQLite, core/system asks
-    # AppKit for the Dock, Finder and the default browser, and oskit's notify the
-    # notification centre for a page's notifications.
+    # AppKit for the Dock, Finder and the default browser, oskit's notify the notification
+    # centre for a page's notifications, and oskit's media AVFoundation for the camera and
+    # microphone permission.
     libs = [
       "$target_gen_dir/libcore.a",
       "sqlite3",
     ]
     frameworks = [
+      "AVFoundation.framework",
       "AppKit.framework",
       "CoreFoundation.framework",
       "LocalAuthentication.framework",

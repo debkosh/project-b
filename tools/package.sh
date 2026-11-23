@@ -120,6 +120,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>NSSupportsAutomaticGraphicsSwitching</key><true/>
   <!-- Phone as key (docs/passkeys.md): macOS asks the person the first time, with these
        words, and content uses no Bluetooth without them. -->
+  <key>NSCameraUsageDescription</key><string>A site you allow can use the camera.</string>
+  <key>NSMicrophoneUsageDescription</key><string>A site you allow can use the microphone.</string>
   <key>NSBluetoothAlwaysUsageDescription</key><string>Project B uses Bluetooth to check your phone is near when you sign in with a passkey on it.</string>
   <!-- A browser to macOS, which offers it as the default one and opens web links and web
        pages with it (docs/onboarding.md, Make default browser); and the app's own links,
