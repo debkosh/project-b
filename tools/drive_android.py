@@ -1272,7 +1272,7 @@ def downloads():
 def page_camera():
     """A page's camera (docs/media-permissions.md): Go asks the site in its sheet, then
     Android for the app's own permission, the first time an allowed site needs it, and the
-    page gets the emulator's camera; with Android refusing for good, the sheet says so in
+    page gets the emulator's camera; refused at Android's question, the sheet says so in
     Android's words, and Not now denies the page."""
     camera = "android.permission.CAMERA"
     adb("shell", "pm", "revoke", PACKAGE, camera)
@@ -1296,16 +1296,18 @@ def page_camera():
         tap(middle(question))
     check("and allowed there too, the page gets the camera", asked("/said?camera=ok", 20), str(served[-5:]))
 
-    # Refused for good: Android answers no at once, and the sheet says why.
+    # Refused at Android's question, which Android 10 always asks again (it has no
+    # permission flags to fix a refusal with): the sheet says why.
     adb("shell", "am", "force-stop", PACKAGE)
     adb("shell", "pm", "revoke", PACKAGE, camera)
-    adb("shell", "pm", "set-permission-flags", PACKAGE, camera, "user-set", "user-fixed")
     try:
         launch()
         go(BASE + "/camera")
         asked("/camera")
         tap(middle(screen_parts().get("page")))
-        said = until(lambda: find("shell", text=lambda t: (t or "").startswith("Android hasn't let Project B use your camera")), 15)
+        refused = lambda: find("shell", text=lambda t: (t or "").startswith("Android hasn't let Project B use your camera"))
+        refuse_android_question(refused)
+        said = until(refused, 15)
         check("Android refusing it, the sheet says so in Android's words, with Open settings and Not now",
               said is not None and find("shell", text="Open settings") is not None and find("shell", text="Not now") is not None)
         shot("52-camera-refused")
@@ -1584,11 +1586,7 @@ def file_input_checks():
         asks so that it can offer the camera as a source. Refused, the picker opens all the
         same, which is what this checks; allowed, Android shows its own chooser before it."""
         tap(middle(screen_parts().get("page")))
-        until(lambda: picker_shows() or "GrantPermissions" in in_front_now(), 15)
-        if "GrantPermissions" in in_front_now():
-            no = first(lambda: system_button("Deny", 5), lambda: system_button("Don't allow", 5))
-            if no is not None:
-                tap(middle(no))
+        refuse_android_question(picker_shows)
         return until(picker_shows) is not None
 
     opened = open_picker()
@@ -1627,6 +1625,7 @@ def file_input_checks():
     tap(middle(see("settings", kind="android.widget.Button", bounds=lambda b: b is not None and
                    box_of(b)[0] >= box(new)[2] and box_of(b)[1] == box(new)[1])))
     tap(middle(see("settings", text="Import…")))
+    refuse_android_question(picker_shows)
     check("Settings' Sparks Import… opens the phone's picker", until(picker_shows) is not None, in_front_now())
     pick("SiteSparks.zip", several=True)
     check("and a zip of sparks picked there imports them", see("settings", text="Added 3 sparks") is not None)
@@ -2589,6 +2588,17 @@ def welcome_extras():
     check("its switch turns Screen time limit on, in Go", until(lambda: ons() == [False, True, False], 5) is not None, ons())
     shot("46-welcome-extras-on")
     tap(middle(see("page", text="Skip setup")))
+
+
+def refuse_android_question(shown, timeout=15):
+    """Waits until shown() or Android's own permission question, and refuses the question
+    when it is the one up: Deny on Android 10, Don't allow from 11. An older Android asks for
+    the camera at any file input, as the app declares it (docs/media-permissions.md)."""
+    until(lambda: shown() or "GrantPermissions" in in_front_now(), timeout)
+    if "GrantPermissions" in in_front_now():
+        no = first(lambda: system_button("Deny", 5), lambda: system_button("Don't allow", 5))
+        if no is not None:
+            tap(middle(no))
 
 
 def system_button(text, timeout=10):
