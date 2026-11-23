@@ -950,6 +950,11 @@ def profile_file(name, data):
     adb("push", local, folder + "/" + name)
     owner = adb("shell", "stat", "-c", "%u:%g", "/data/data/" + PACKAGE).strip()
     adb("shell", "chown", "-R", owner, "/data/data/%s/app_project_b" % PACKAGE)
+    # And its SELinux label, the app's category: a push over a file kept the label of the
+    # install that made it, and after an uninstall and install (an upgrade check's) the new
+    # app was denied its own bookmarks.json and prefs.json, with no table made and nothing
+    # bookmarked, until a reboot relabelled them (2026-11-23).
+    adb("shell", "restorecon", "-RF", "/data/data/%s/app_project_b" % PACKAGE)
 
 
 def profile_json(name):
