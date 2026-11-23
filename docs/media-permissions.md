@@ -1,6 +1,7 @@
 # A page's camera and microphone, and the OS's own permission
 
-Status: spec, for agreement before code (2026-11-22).
+Status: agreed 2026-11-23 ("we should ask them when we need them if possible": the OS is asked
+only when a page a site allows first needs the camera or microphone, never at start); built.
 
 **The gap.** A page's camera and microphone (getUserMedia, video calls) can't work on Android:
 the manifest declares neither `CAMERA` nor `RECORD_AUDIO`, and nothing asks Android at run
