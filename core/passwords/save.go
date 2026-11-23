@@ -20,6 +20,9 @@ import (
 // Add saves a login a person agreed to save, and gives its id. A site they once said never
 // to offer on is offered on again.
 func (m *Manager) Add(origin, username, password string) (string, error) {
+	if err := m.ready(); err != nil {
+		return "", err
+	}
 	id := store.NewID()
 	err := m.st.Wait(func(tx *store.Tx) error {
 		sealed, err := m.keys.Seal("logins", id, "password", []byte(password), origin)
@@ -42,6 +45,9 @@ func (m *Manager) Add(origin, username, password string) (string, error) {
 
 // Change gives a saved login a new password.
 func (m *Manager) Change(id, password string) error {
+	if err := m.ready(); err != nil {
+		return err
+	}
 	err := m.st.Wait(func(tx *store.Tx) error {
 		var origin string
 		if err := tx.QueryRow(`SELECT origin FROM logins WHERE id = ?`, id).Scan(&origin); err != nil {

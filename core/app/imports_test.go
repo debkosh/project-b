@@ -390,6 +390,90 @@ func TestAKeychainQuestionDoesNotStall(t *testing.T) {
 	}
 }
 
+// waitingPasswords is a passwords store whose Import waits, as sealing a profile's first
+// password does while the OS asks the person before it gives the device key.
+type waitingPasswords struct {
+	fakePasswords
+	began  chan struct{}
+	answer chan struct{}
+}
+
+func (s *waitingPasswords) Import(logins []browserdata.Login) (added, already, skipped int) {
+	s.began <- struct{}{}
+	<-s.answer
+	return s.fakePasswords.Import(logins)
+}
+
+// Keeping passwords that came over may wait on the person, where the OS asks before it
+// gives the device key: a keyring to unlock on Linux, the Mac's keychain after an update.
+// The main thread doesn't wait with it, from a browser or from a file, the step's clock
+// doesn't run meanwhile, and the import ends as done once they answer.
+func TestKeepingPasswordsNeverHoldsTheMainThread(t *testing.T) {
+	restore := app.SetStallAfter(100 * time.Millisecond)
+	defer restore()
+	home, _ := filepath.Abs("../../browserdata/testdata/home")
+	dir := t.TempDir()
+	keychain := func(service, account string) ([]byte, error) { return []byte("test-safe-storage"), nil }
+	r := startWith(t, app.Config{ProfileDir: dir, Profiles: profiles.New(t.TempDir()), Made: true, BrowserHome: home, Keychain: keychain, Update: update.Config{StateDir: filepath.Join(dir, "updates")}})
+	store := &waitingPasswords{fakePasswords: fakePasswords{saved: map[string]string{}}, began: make(chan struct{}, 4), answer: make(chan struct{})}
+	// However the test ends, the store answers, so that nothing is left waiting on it.
+	t.Cleanup(func() { close(store.answer) })
+	snap := r.waitFor(func(m map[string]any) bool { return m["t"] == "snapshot" })
+	tab := engine.TabID(snap["welcome"].(float64))
+	got, stop := r.e.PageFeed(tab).Subscribe()
+	defer stop()
+	say := func(msg string) { r.e.Post(func() { r.a.PageMessage(tab, "welcome", []byte(msg)) }) }
+	r.e.Post(func() { r.a.UsePasswordStore(store) })
+	say(`{"t":"ready"}`)
+	next(t, got, "snapshot")
+	// The store is asked for the passwords, and while it waits the main thread still runs
+	// what is posted to it.
+	free := func(what string) {
+		t.Helper()
+		select {
+		case <-store.began:
+		case <-time.After(5 * time.Second):
+			t.Fatalf("%s: the store was never asked to keep them", what)
+		}
+		ran := make(chan struct{})
+		r.e.Post(func() { close(ran) })
+		select {
+		case <-ran:
+		case <-time.After(2 * time.Second):
+			t.Fatalf("%s: the main thread waited while the passwords were being kept", what)
+		}
+	}
+	say(`{"t":"findBrowsers"}`)
+	key := profilesOf(browserIn(t, next(t, got, "browsers")["browsers"].([]any), "chrome"))[0]["key"].(string)
+	say(`{"t":"import","key":"` + key + `","what":["passwords"]}`)
+	free("from a browser")
+	// Four times the step's clock, and it hasn't ended as stalled.
+	wait := time.After(400 * time.Millisecond)
+	for waiting := true; waiting; {
+		select {
+		case b := <-got:
+			var m map[string]any
+			json.Unmarshal(b, &m)
+			if m["t"] == "imported" {
+				t.Fatalf("while the passwords were being kept: %s", b)
+			}
+		case <-wait:
+			waiting = false
+		}
+	}
+	store.answer <- struct{}{}
+	if m := next(t, got, "imported"); m["how"] != "done" {
+		t.Fatalf("after the answer: %v", m)
+	}
+	b, _ := json.Marshal(map[string]any{"t": "importFile", "kind": "passwords", "name": "Passwords.csv", "text": "Title,URL,Username,Password,Notes,OTPAuth\nnew,https://new.example.com/,nina,n3w,,\n"})
+	say(string(b))
+	free("from a file")
+	store.answer <- struct{}{}
+	if f, _ := json.Marshal(next(t, got, "fileImported")["result"]); string(f) != `{"added":1,"already":0,"skipped":0}` {
+		t.Fatalf("a passwords file: %s", f)
+	}
+}
+
 // A browser known only by the folder the person chose keeps its passwords' key in the
 // keychain under its own "<name> Safe Storage", which the keychain lists without asking:
 // a folder named Quokka has its key in Quokka's item, read once with nothing to choose; a

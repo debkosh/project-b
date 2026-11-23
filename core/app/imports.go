@@ -531,7 +531,15 @@ func (im *importer) bring(key string, what []string, primaryPassword, keychain s
 					done(nil, wrong)
 					return
 				}
-				done(im.addPasswords(ls), passwordError(err))
+				// Keeping them may wait on the person too, where the OS asks before it gives
+				// the device key: the step's clock waits with it.
+				r.asking = true
+				im.addPasswords(ls, func(b broughtPasswords) {
+					if alive() {
+						r.asking = false
+						done(b, passwordError(err))
+					}
+				})
 			}, im.e)
 		case "extensions":
 			read(p.Extensions, func(xs []browserdata.Extension, err error) {
@@ -627,12 +635,19 @@ func (im *importer) addBookmarks(p shownFrom, folder string, bs []browserdata.Bo
 	return got
 }
 
-func (im *importer) addPasswords(ls []browserdata.Login) broughtPasswords {
+// addPasswords keeps logins and hands what came of them to then, on the main thread.
+// Keeping them is a worker's: sealing the first password of a profile asks the OS for the
+// device key, which may wait on the person, as a Linux keyring to unlock does and the Mac's
+// keychain after an update (oskit/secret), and the main thread must never wait on that.
+func (im *importer) addPasswords(ls []browserdata.Login, then func(broughtPasswords)) {
 	if len(ls) == 0 {
-		return broughtPasswords{}
+		then(broughtPasswords{})
+		return
 	}
-	added, already, skipped := im.passwords.Import(ls)
-	return broughtPasswords{Added: added, Already: already, Skipped: skipped}
+	read(func() (broughtPasswords, error) {
+		added, already, skipped := im.passwords.Import(ls)
+		return broughtPasswords{Added: added, Already: already, Skipped: skipped}, nil
+	}, func(b broughtPasswords, _ error) { then(b) }, im.e)
 }
 
 // wrongKeyError is the keychain's item not opening a browser's passwords: the item's
@@ -703,7 +718,7 @@ func (im *importer) bringFile(kind, name, text string) {
 				reply(nil, notAFile(err, "a passwords file a browser or the Passwords app exported"))
 				return
 			}
-			reply(im.addPasswords(ls), nil)
+			im.addPasswords(ls, func(b broughtPasswords) { reply(b, nil) })
 		}, im.e)
 	}
 }

@@ -166,8 +166,18 @@ func TestSavingALoginSignedInWith(t *testing.T) {
 	}
 	r.shell(`{"t":"passwordSaveAnswer","offer":` + toJSON(o["id"]) + `,"choice":"save"}`)
 	gone()
-	if got := saved(); len(got) != 1 || got[0] != "https://shop.example asha correct horse" {
-		t.Fatalf("after Save: %v", got)
+	// The offer goes at once and the login is kept on filling's own worker, which finds the
+	// profile's key first: the store has it a moment after.
+	kept := func(want string) bool {
+		for end := time.Now().Add(5 * time.Second); time.Now().Before(end); time.Sleep(10 * time.Millisecond) {
+			if got := saved(); len(got) == 1 && got[0] == want {
+				return true
+			}
+		}
+		return false
+	}
+	if !kept("https://shop.example asha correct horse") {
+		t.Fatalf("after Save: %v", saved())
 	}
 	if n := len(r.sys.Checks()); n != 0 {
 		t.Fatalf("saving had the device check the person %d times", n)
@@ -182,8 +192,8 @@ func TestSavingALoginSignedInWith(t *testing.T) {
 	}
 	r.shell(`{"t":"passwordSaveAnswer","offer":` + toJSON(o["id"]) + `,"choice":"save"}`)
 	gone()
-	if got := saved(); len(got) != 1 || got[0] != "https://shop.example asha a new one" {
-		t.Fatalf("after Update: %v", got)
+	if !kept("https://shop.example asha a new one") {
+		t.Fatalf("after Update: %v", saved())
 	}
 
 	// Never: the offer goes, nothing is kept, and the site isn't offered on again.

@@ -122,7 +122,9 @@ func (m *Manager) connect(address, token, passphrase string) error {
 	if m.conn != nil {
 		return errors.New("sync: on already; disconnect first")
 	}
-	if err := m.keys.Check(); err != nil {
+	// Turning sync on seals what it is on with, and a profile's first seal makes its key,
+	// which asks the OS: here, and not in the store's job (keys.Ready).
+	if err := m.keys.Ready(); err != nil {
 		return lockedError(err)
 	}
 	key, err := m.bucketKey(address, token, passphrase)
