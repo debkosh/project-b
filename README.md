@@ -22,7 +22,7 @@ one tree, and installed copies update themselves. The
 
 ## Why it is built this way
 
-Most browsers are a fork of Chrome's whole browser, with changes carried as patches and
+Most browsers are a fork of the whole Chromium browser, with changes carried as patches and
 rebased on every Chromium release. Project B starts one layer lower. The content layer, the
 part that loads and renders pages, comes in as it is, with no patches. Everything above it is
 ours.
