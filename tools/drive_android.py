@@ -273,6 +273,14 @@ PAGES["/onward"] = ("<title>A login form that goes on</title><style>input,button
 PAGES["/signed-in"] = "<title>Signed in</title><p>signed in"
 
 
+# A page's camera (docs/media-permissions.md): a tap asks for it, and the page tells the server
+# how it ended, the stream's track or the error's name.
+PAGES["/camera"] = ("<title>Camera</title><button id=c style='position:fixed;inset:0;width:100%;height:100%;font-size:40px'>camera</button><script>"
+                    "c.onclick = () => navigator.mediaDevices.getUserMedia({video: true}).then("
+                    "(s) => { s.getTracks().forEach((t) => t.stop()); return 'ok'; }, (e) => e.name)"
+                    ".then((v) => fetch('/said?camera=' + encodeURIComponent(v)));</script>")
+
+
 # A page that fills the screen at a tap, as a video's full screen does, and says when it has.
 # A file input over the whole page, which says which file it got, or that the picker closed.
 PAGES["/upload"] = ("<title>Upload</title><input type=file id=f style='position:fixed;inset:0;width:100%;height:100%;opacity:0'><script>"
@@ -1264,6 +1272,56 @@ def downloads():
     tap(middle(see("page", text=lambda t: (t or "").startswith(text))))
     shown = until(lambda: find("page", text=lambda t: "Project B download check" in (t or "")), 15)
     check("Open shows a text file in a tab of the app's own", shown is not None and "BrowserActivity" in in_front_now(), in_front_now())
+
+
+def page_camera():
+    """A page's camera (docs/media-permissions.md): Go asks the site in its sheet, then
+    Android for the app's own permission, the first time an allowed site needs it, and the
+    page gets the emulator's camera; with Android refusing for good, the sheet says so in
+    Android's words, and Not now denies the page."""
+    camera = "android.permission.CAMERA"
+    adb("shell", "pm", "revoke", PACKAGE, camera)
+    adb("shell", "pm", "clear-permission-flags", PACKAGE, camera, "user-set", "user-fixed")
+    launch()
+    go(BASE + "/camera")
+    asked("/camera")
+    tap(middle(screen_parts().get("page")))
+    site = until(lambda: find("shell", text="Always allow"), 15)
+    check("a page asking for the camera brings the site's question, as a sheet", site is not None and find("shell", text=lambda t: "wants to use your camera" in (t or "")) is not None)
+    shot("50-camera-site")
+    if site is None:
+        return
+    tap(middle(site))
+    allow_ids = ["com.android.permissioncontroller:id/permission_allow_foreground_only_button",
+                 "com.android.permissioncontroller:id/permission_allow_button"]
+    question = until(lambda: next((n for n in (system_node(**{"resource-id": i}) for i in allow_ids) if n is not None), None), 15)
+    check("allowed there, Android asks for the app's own camera permission", question is not None, in_front_now())
+    shot("51-camera-android")
+    if question is not None:
+        tap(middle(question))
+    check("and allowed there too, the page gets the camera", asked("/said?camera=ok", 20), str(served[-5:]))
+
+    # Refused for good: Android answers no at once, and the sheet says why.
+    adb("shell", "am", "force-stop", PACKAGE)
+    adb("shell", "pm", "revoke", PACKAGE, camera)
+    adb("shell", "pm", "set-permission-flags", PACKAGE, camera, "user-set", "user-fixed")
+    try:
+        launch()
+        go(BASE + "/camera")
+        asked("/camera")
+        tap(middle(screen_parts().get("page")))
+        said = until(lambda: find("shell", text=lambda t: (t or "").startswith("Android hasn't let Project B use your camera")), 15)
+        check("Android refusing it, the sheet says so in Android's words, with Open settings and Not now",
+              said is not None and find("shell", text="Open settings") is not None and find("shell", text="Not now") is not None)
+        shot("52-camera-refused")
+        if said is not None:
+            tap(middle(find("shell", text="Not now")))
+        check("and Not now denies the page", asked("/said?camera=NotAllowedError", 15), str(served[-5:]))
+    finally:
+        # The next run sees Android's question again.
+        for p in (camera, "android.permission.RECORD_AUDIO"):
+            adb("shell", "pm", "clear-permission-flags", PACKAGE, p, "user-set", "user-fixed")
+            adb("shell", "pm", "revoke", PACKAGE, p)
 
 
 def settings_back():
@@ -2745,7 +2803,7 @@ def main():
     adb("shell", "pm", "clear", PACKAGE)
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
-    every = (browsing, mobile_shell, custom_colour, settings_back, talkback_states, bookmark_star, settings_ahead, back_key_chain, page_dialogs, downloads, crash_notice, download_notifications, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, passkeys_on_the_phone, passwords_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
+    every = (browsing, mobile_shell, custom_colour, settings_back, talkback_states, bookmark_star, settings_ahead, back_key_chain, page_dialogs, page_camera, downloads, crash_notice, download_notifications, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, passkeys_on_the_phone, passwords_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
              the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web, long_press_menu, keyboard_bars, welcome_extras, welcome_last_step, web_server_kinds, update_on_the_phone)
     for part in [p for p in every if not sys.argv[1:] or p.__name__ in sys.argv[1:]]:
         # tools/results.py splits a run's memory, CPU and checks by these lines.
