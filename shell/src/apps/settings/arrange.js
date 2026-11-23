@@ -31,8 +31,9 @@ const where = {
   extensions: () => !phone && !!extensionsSection?.shown(),
   // The Mac has its own menu bar; a phone has none.
   menuBar: () => !phone && state.keyboard.platform !== 'mac',
-  // Linux has one Flatpak branch, Stable, with no Dev to choose (docs/research/linux.md).
-  channel: () => state.keyboard.platform !== 'linux',
+  // Linux has one Flatpak branch, Stable, with no Dev to choose (docs/research/linux.md). A
+  // phone's keys follow Linux's too, but it has both channels.
+  channel: () => phone || state.keyboard.platform !== 'linux',
 };
 
 export const shown = (part) => !where[part] || where[part]();
