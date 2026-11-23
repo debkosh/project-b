@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"regexp"
 	"testing"
 	"time"
 
@@ -170,6 +171,84 @@ func TestSigningInWithAPasskeyOfOurs(t *testing.T) {
 	r.dialogs(func(l []any) bool { return len(l) == 0 })
 	r.e.Fire(1, 0, "passkey", "get own allow=bm90LW91cnM")
 	r.passkey("key")
+}
+
+// A second passkey saved for one account on a site stays beside the first, as a site that
+// names no passkey to leave out lets a person make: a sign-in lists both, the newer first,
+// each saying when it was made, as they read the same otherwise, and either signs. Another
+// account's goes after or before the two, never between them.
+func TestTwoPasskeysForOneAccountAreBothOffered(t *testing.T) {
+	r := start(t, t.TempDir())
+	defer r.stop()
+	r.visit("https://a.test/")
+	r.show(1)
+
+	first := r.save("asha")
+	time.Sleep(2 * time.Millisecond) // so the second is the newer by the store's clock
+	second := r.save("asha")
+	if first["credentialId"] == second["credentialId"] {
+		t.Fatalf("the two saves made one passkey: %v", first)
+	}
+	if n, _ := r.a.Passkeys.Total(); n != 2 {
+		t.Fatalf("the profile has %d passkeys, want both", n)
+	}
+
+	r.e.Fire(1, 0, "passkey", "get own")
+	d, p := r.passkey("own")
+	rows := p["accounts"].([]any)
+	if len(rows) != 2 {
+		t.Fatalf("rows = %v, want both passkeys", rows)
+	}
+	// Both were made just now: today, so with the time, unless midnight fell between them.
+	made := regexp.MustCompile(`^asha@example\.com · Made (today, \d\d:\d\d|today|\d{1,2} [A-Z][a-z]{2})$`)
+	for _, row := range rows {
+		if a := row.(map[string]any); a["title"] != "Asha Rao" || !made.MatchString(fmt.Sprint(a["secondary"])) {
+			t.Fatalf("a row reads %v", a)
+		}
+	}
+	// The older one, the second row, still signs, as itself.
+	r.passkeyAnswer(d["id"], "account", "1")
+	r.dialogs(func(l []any) bool { return len(l) == 0 })
+	var signed map[string]string
+	json.Unmarshal([]byte(r.answerTo("signed").Text), &signed)
+	if signed["credentialId"] != first["credentialId"] || string(raw(t, signed["userHandle"])) != "handle-asha" {
+		t.Fatalf("signed with %v, want the first passkey %v", signed, first["credentialId"])
+	}
+
+	// Another account's, made between a third of the first account's and the two, says no
+	// date, as its row reads as no other does, and comes after the three: the account with
+	// the newest passkey is first, its passkeys together.
+	time.Sleep(2 * time.Millisecond)
+	work := r.save("work")
+	time.Sleep(2 * time.Millisecond)
+	third := r.save("asha")
+	r.e.Fire(1, 0, "passkey", "get own")
+	d, p = r.passkey("own")
+	rows = p["accounts"].([]any)
+	if len(rows) != 4 || fmt.Sprint(rows[3]) != "map[secondary:work@example.com title:Work Rao]" {
+		t.Fatalf("rows with another account's = %v", rows)
+	}
+	// The rows are the passkeys in that order: the first row signs with the newest, the
+	// last with the other account's.
+	for row, want := range map[string]map[string]string{"0": third, "3": work} {
+		before := len(r.e.PasskeyAnswers())
+		r.passkeyAnswer(d["id"], "account", row)
+		r.dialogs(func(l []any) bool { return len(l) == 0 })
+		// The engine hears the press, then the signature.
+		last := func() mockengine.PasskeyAnswer { all := r.e.PasskeyAnswers(); return all[len(all)-1] }
+		deadline := time.Now().Add(5 * time.Second)
+		for (len(r.e.PasskeyAnswers()) == before || last().Action != "signed") && time.Now().Before(deadline) {
+			time.Sleep(5 * time.Millisecond)
+		}
+		json.Unmarshal([]byte(last().Text), &signed)
+		if last().Action != "signed" || signed["credentialId"] != want["credentialId"] {
+			t.Fatalf("row %s signed with %v, want %v", row, last(), want["credentialId"])
+		}
+		if row == "0" {
+			r.e.Fire(1, 0, "passkey", "get own")
+			d, _ = r.passkey("own")
+		}
+	}
 }
 
 // Use a security key or phone goes to the engine's key step, which waited all along, and

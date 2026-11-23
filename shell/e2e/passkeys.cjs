@@ -23,6 +23,9 @@ if (shots) fs.mkdirSync(shots, { recursive: true });
   for (const id of shells) {
     console.log(`--- part ${id}`);
     const check = (name, ok, detail) => lib.check(`${id}: ${name}`, ok, detail);
+    // Each shell starts with no passkeys: the profile keeps every one saved, and the checks
+    // below count them.
+    for (const file of ['store.db', 'store.db-wal', 'store.db-shm']) fs.rmSync(path.join(lib.profile, file), { force: true });
     await lib.start([`-use=${id}`]);
     const { page, ui, errors } = await lib.openWindow(browser);
     page.setDefaultTimeout(5000);
@@ -279,6 +282,28 @@ if (shots) fs.mkdirSync(shots, { recursive: true });
     const failures = (await heard('ownFailed')).length;
     await button('Close').click();
     check('Close ends it, and the engine hears why', await until(async () => (await card.count()) === 0 && (await heard('ownFailed')).length === failures + 1 && (await last()).text === 'excluded'), JSON.stringify(await last()));
+
+    // A second passkey for an account that has one here, from a site that names none to
+    // leave out: both stay, and a sign-in lists every one, the two for the one account
+    // each saying when it was made.
+    await fire('passkey', 'create own');
+    await named('Create a passkey');
+    await button('Save').click();
+    await until(async () => (await heard('made')).length === 3);
+    await fire('passkey', 'get own');
+    await named('Sign in to example.com');
+    const every = async () => (await mine.allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
+    // Both were made just now: today, so with the time, unless midnight fell between them.
+    const twice = /^Asha Rao asha@example\.com · Made (today, \d\d:\d\d|today|\d{1,2} [A-Z][a-z]{2})$/;
+    check(
+      'a second passkey for one account stays beside the first: a sign-in lists both together, each with when it was made, then the other account\'s',
+      (await until(async () => (await mine.count()) === 3)) && twice.test((await every())[0]) && twice.test((await every())[1]) && (await every())[2] === 'Work Rao work@example.com',
+      JSON.stringify(await every()),
+    );
+    await page.mouse.move(1, 1);
+    await shoot('own-two-for-one');
+    await button('Cancel').click();
+    await until(async () => (await card.count()) === 0);
 
     check('no errors in the console', errors.length === 0, errors.join(' | '));
     await page.close();

@@ -280,6 +280,12 @@ make and sign.
   providers don't answer us ([Limitations](#limitations)).
 - Signing in shows the site's passkeys in Project B as account rows. Choosing one asks for
   Touch ID or the Mac's password, or the phone's fingerprint, face or screen lock, and signs in.
+- A passkey stays until you delete it in Settings. Saving another for the same account on a
+  site keeps both: a sign-in lists both, together and the newer first, each row saying when
+  it was made, as they read the same otherwise: "asha@example.com · Made 12 Nov", in
+  Settings' Passkeys' words ("Made today", the year once it is another), with the time only
+  when two of them were made on one day ("Made today, 20:15"). The accounts go by their
+  newest passkey, the newest first.
 - Each use asks again. Nothing is remembered between uses.
 - With sync on, a passkey made on the Mac signs in on the phone, and back.
 
@@ -306,8 +312,8 @@ The calls, each with a context the caller cancels, and `asked` saying a person a
 | Call | Returns |
 |---|---|
 | `Count(rpID, allow)` | How many passkeys the site has, of the credential IDs `allow` names when it names any. Plain columns only: never asks for the key |
-| `List(ctx, asked, rpID, allow)` | `[{id, userName, displayName}]` |
-| `Make(ctx, asked, rpID, user, exclude)` | The credential ID and the public key (COSE). A passkey with the same site and user handle is replaced; one of the `exclude` IDs answers `ErrExcluded` |
+| `List(ctx, asked, rpID, allow)` | `[{id, userName, displayName, created}]`, every passkey of the site, the newest first |
+| `Make(ctx, asked, rpID, user, exclude)` | The credential ID and the public key (COSE). It is kept beside any the site has here, for that user handle or another; one of the `exclude` IDs answers `ErrExcluded` |
 | `Sign(ctx, asked, rpID, id, data)` | A DER ES256 signature of `data` and the user handle. A passkey signs only for its own site: another's answers `ErrNone` |
 | `All(ctx, asked)`, `Delete(ctx, asked, id)`, `Total()` | Settings' list, its Delete, and its count, the count from the plain columns |
 
@@ -324,12 +330,18 @@ is on now), a count of 0, and for a new passkey our AAGUID, its id and its COSE 
 Mac's C++ and Android's Java carry the same bytes and build none of their own, and Go's tests
 hold them byte for byte.
 
-- **Replace on Make** compares sealed user handles, so Make opens every row of the site first
-  (it holds the key anyway); it can't be done in SQL.
-- **Two devices offline** can each make one for the same site and account; after sync there are
-  two rows with one user handle, and both work at the site, which kept both public keys. List
-  shows the newer by `created`; the older stays in the store and in Settings, where the person
-  can delete it. Nothing deletes it for them, as a delete syncs.
+- **Make deletes nothing** (2026-11-23, after Sudipta found his earlier passkeys for a site
+  gone). A passkey is its credential ID, and only the person's Delete in Settings takes one
+  away. Until then Make replaced the passkey of the same site and user handle, as WebAuthn's
+  model of an authenticator has one per account (6.3.2) and as Apple's and Google's managers
+  do. That lost passkeys a person still wanted, with nothing said, and the delete synced.
+  What it costs: a passkey the site has since forgotten stays listed until the person
+  deletes it; it is the older row, under the one that works.
+- **Several for one account** are each a row: made here one after another, where the site
+  names none to leave out, or on two devices while apart. All work at the site while it keeps
+  their public keys. List has every one, the newest first; a sign-in's card puts one
+  account's together (`ownOrder`) and has each of them say when it was made (`ownRows`,
+  both in `core/app/passkeys_own.go`).
 - **Settings' list** shows the account, which is sealed, so opening it is a person's call that
   raises the unlock Dialog when the profile is locked, and Delete sits behind the same unlock.
 
@@ -475,11 +487,13 @@ public key until the person removes it there, which the Delete Dialog says.
 ### Tests
 
 - **Go** (`core/passkeys`, `core/sync/passkeys_test.go`, `core/app/passkeys_own_test.go`): make,
-  list, sign and replace on a store; a signature that verifies against the public key; the
+  list and sign on a store, and a second for one account kept beside the first; a signature that verifies against the public key; the
   authenticator data byte for byte; what the disk holds, and every seal's bound values; a cancel
   during the device's check; no screen lock; a passkey signing only for its site; sync between
-  two profiles through synckosh's server in process, the server reading nothing, a delete, and
-  two made apart for one account; and the whole of a request on the mock engine.
+  two profiles through synckosh's server in process, the server reading nothing, a delete,
+  two made apart for one account, and several made on one device for one site all reaching
+  the other; and the whole of a request on the mock engine, two for one account both offered
+  among it.
 - **The mock engine and the shells** (`shell/e2e/passkeys.cjs`, every desktop shell): Save and
   the way to a security key, the card away while the OS checks, the rows, a no to the check,
   Already saved, the 440px card and the keyboard's place. `/mock/fire` kind `passkey` takes
