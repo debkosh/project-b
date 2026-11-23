@@ -14,11 +14,14 @@
 # VM's desktop session. Needs pb-ubuntu running (tools/linux/vm.sh start) and the signing key, in the kosh at
 # project-b/flatpak-repo-signing.asc. The key goes to the VM for the build only, in a GnuPG
 # home of its own, and is removed after. Linux releases are built only when Sudipta asks.
+# A release's version mustn't be published yet (repo/linux.json); PB_FLATPAK_CHECK=1 builds a
+# check's repository and bundle, never published, from a version that is.
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$here/../.." && pwd)
 app=io.github.sudiptadeb.project-b
 url=${PB_FLATPAK_URL:-https://projectb.debkosh.com}
+check=${PB_FLATPAK_CHECK:-}
 key=${KEYKOSH_ROOT:-$HOME/mykeykosh}/project-b/flatpak-repo-signing.asc
 out=$root/build/linux
 stage=$out/stage-arm64.tar.gz
@@ -47,6 +50,17 @@ export GNUPGHOME=~/pb-release/gnupg; mkdir -m 700 "\$GNUPGHOME"
 gpg --batch --quiet --import key.asc
 fpr=\$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr/{print \$10; exit}')
 tar -xzf stage-arm64.tar.gz
+# A version is published once, as release.sh refuses a tag that is out: a rebuild under the
+# same version is a new commit, which every install of that version would be offered as
+# "<version> is ready". So the published linux.json mustn't list it yet.
+staged=\$(stage/files/project_b --version | sed -n 's/^Project B \([0-9][^,]*\),.*/\1/p')
+listed=\$(python3 -c 'import json,sys,urllib.request
+print("yes" if any(e.get("version") == sys.argv[2] for es in json.load(urllib.request.urlopen(sys.argv[1], timeout=30)).values() for e in es) else "no")' \
+  "$url/repo/linux.json" "\$staged") || { echo "FAILED: couldn't read $url/repo/linux.json"; exit 1; }
+if [ "\$listed" = no ]; then :
+elif [ "$check" = 1 ]; then echo "\$staged is published: this build is a check's, never to publish"
+else echo "FAILED: $url/repo/linux.json already lists \$staged; bump the version to release a new build"; exit 1
+fi
 flatpak-builder --force-clean --default-branch=stable --repo=repo \
   --gpg-sign=\$fpr --gpg-homedir="\$GNUPGHOME" build-dir $app.yml >build.log 2>&1 || { tail -30 build.log; exit 1; }
 # The commits by version, as the updater reads them, in the repository's own folder, so the

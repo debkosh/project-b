@@ -592,7 +592,9 @@ How the Linux work runs (rules from this branch's sessions):
   `tools/linux/flatpak-release.sh` in pb-ubuntu (`tools/linux/vm.sh start|stop`): signed repo,
   bundle and `.flatpakref` in `build/linux/`, kept only if `restart_check.py` passes. The
   signing key is `$KEYKOSH_ROOT/project-b/flatpak-repo-signing.asc`; the script empties
-  `~/pb-release` on the VM.
+  `~/pb-release` on the VM. It refuses a version the published `repo/linux.json` already
+  lists, since a rebuild under it would offer "0.3.10 is ready" to people on 0.3.10. A check's
+  build of main, never published, runs it with `PB_FLATPAK_CHECK=1`.
 - Desktops: clones `pb-flat-ub2` (GNOME Wayland), `pb-flat-ubx` (GNOME Xorg), `pb-flat-deb`
   (Debian, 20 GB disk), `pb-flat-kde`, `pb-flat-ub3`. The tester owns them: ask before every
   VM start, one at a time; each start opens a window on the Mac's desktop and can cover
