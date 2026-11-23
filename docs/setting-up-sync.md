@@ -172,6 +172,12 @@ Only `https` is taken, with no user name, query or fragment in the address.
 
    ![The Sync card with sync on](screenshots/sync/desktop-09-on.png)
 
+5. Project B then offers a **backup code**, as step 2 of 2: a code that opens your sync if you
+   forget the passphrase. **Copy** it, **Save as file**, or show it as a QR code, keep it
+   somewhere apart from this device, and press **I've saved it**. **Skip for now** leaves it
+   for later: the Sync card has it under **Backup code**, where **Check…** tells you whether a
+   code is this sync's and **New code…** makes a new one, which stops the old one working.
+
 The pictures show an example host, `memd.example.com`. Yours shows your own.
 
 Sync then runs by itself: after a change on the device, and every 5 minutes. **Sync now** runs
@@ -240,6 +246,8 @@ everything stays on the device and on the server.
 
 ## If you forget the passphrase
 
+- **You saved the backup code:** on the device that asks, press **Use backup code instead**
+  and type it. Then choose a new passphrase. The backup code keeps working.
 - **A device still syncs:** set a new passphrase there with **Change sync passphrase**. It
   doesn't need the old one.
 - **No device still syncs:** nobody can recover it. The server never had the passphrase or
@@ -283,7 +291,6 @@ The same goes for anyone who breaks into the server or sits on the connection.
 
 - No removing one device, and no changing the key. Resetting the bucket and setting sync up
   again with a new passphrase is the only way to shut a device out.
-- No backup code.
 - Sync protects what leaves a device, not the device. On the device, history and bookmarks
   are plain files in the profile's folder. Saved passwords and passkeys are sealed there.
 
