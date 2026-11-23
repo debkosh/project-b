@@ -9,6 +9,7 @@ package platform
 import "C"
 
 import (
+	"github.com/sudiptadeb/oskit/media"
 	"github.com/sudiptadeb/oskit/notify"
 	"github.com/sudiptadeb/oskit/open"
 
@@ -21,13 +22,15 @@ type System struct {
 	// links (oskit/open).
 	notes  notify.Notifier
 	opener open.Opener
+	// media is the OS's own camera and microphone permission (oskit/media).
+	media media.Media
 	// checks are the checks of the person the OS has not answered, by the number that
 	// crosses with its answer, and lastCheck the last number given. Main thread.
 	checks    map[int32]func(system.Verdict)
 	lastCheck int32
 }
 
-var the = &System{notes: notify.New(), opener: open.New()}
+var the = &System{notes: notify.New(), opener: open.New(), media: media.New()}
 
 var _ system.System = the
 
@@ -61,6 +64,12 @@ func (s *System) OpenFile(path string)                  { s.opener.OpenFile(path
 func (s *System) RevealFile(path string)                { s.opener.Reveal(path) }
 func (s *System) IsDefaultBrowser() bool                { return s.opener.IsDefaultBrowser() }
 func (s *System) AskDefaultBrowser(answered func(bool)) { s.opener.AskDefaultBrowser(answered) }
+func (s *System) MediaAllowed(kind string) bool         { return s.media.Allowed(kind) }
+func (s *System) AskMedia(kinds []string, answered func(map[string]bool)) {
+	s.media.Ask(kinds, answered)
+}
+func (s *System) OpenMediaSettings(kind string)         { s.media.OpenSettings(kind) }
+func (s *System) OnMediaReturn(returned func())         { s.media.OnReturn(returned) }
 func (s *System) OnOpenURLs(opened func(urls []string)) { s.opener.OnOpenURLs(opened) }
 
 // VerifyPerson asks the OS to check the person, as verifyPerson does it on this OS.

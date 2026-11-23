@@ -16,10 +16,18 @@ import (
 type System struct {
 	post func(func())
 
-	mu              sync.Mutex
-	dismiss         bool
-	isDefault       bool
-	desktop         string
+	mu        sync.Mutex
+	dismiss   bool
+	isDefault bool
+	desktop   string
+	// mediaOS is MediaOS's answer, and mediaRefused the kinds the OS refuses, as the person
+	// refused them; mediaAsked is each AskMedia's kinds, mediaOpened OpenMediaSettings's, and
+	// returned OnMediaReturn's func.
+	mediaOS         string
+	mediaRefused    map[string]bool
+	mediaAsked      [][]string
+	mediaOpened     []string
+	returned        func()
 	stale           bool // IsDefaultBrowser reads the OS's choice at start only
 	allowed         bool
 	dock            string
@@ -94,6 +102,87 @@ func (s *System) SetDefaultBrowser(is bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.isDefault = is
+}
+
+// MediaOS is the OS SetMediaOS named, "" by default, where the OS lets the app use both.
+func (s *System) MediaOS() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.mediaOS
+}
+
+// SetMediaOS has the mock keep the OS's own camera and microphone permission, as name
+// ("android", "macos") does, allowing both until SetMediaRefused says otherwise. Before the
+// app starts.
+func (s *System) SetMediaOS(name string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.mediaOS = name
+}
+
+// SetMediaRefused is the OS refusing kinds, as the person did in its question or its
+// settings, and allowing the rest.
+func (s *System) SetMediaRefused(kinds ...string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.mediaRefused = map[string]bool{}
+	for _, k := range kinds {
+		s.mediaRefused[k] = true
+	}
+}
+
+func (s *System) MediaAllowed(kind string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return !s.mediaRefused[kind]
+}
+
+// AskMedia answers at once, through post, with what SetMediaRefused left allowed.
+func (s *System) AskMedia(kinds []string, answered func(map[string]bool)) {
+	s.mu.Lock()
+	s.mediaAsked = append(s.mediaAsked, append([]string(nil), kinds...))
+	allowed := map[string]bool{}
+	for _, k := range kinds {
+		allowed[k] = !s.mediaRefused[k]
+	}
+	s.mu.Unlock()
+	s.post(func() { answered(allowed) })
+}
+
+// MediaAsked is each AskMedia's kinds, in order.
+func (s *System) MediaAsked() [][]string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([][]string(nil), s.mediaAsked...)
+}
+
+func (s *System) OpenMediaSettings(kind string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.mediaOpened = append(s.mediaOpened, kind)
+}
+
+// MediaOpened is each kind OpenMediaSettings was given.
+func (s *System) MediaOpened() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]string(nil), s.mediaOpened...)
+}
+
+func (s *System) OnMediaReturn(returned func()) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.returned = returned
+}
+
+// Return is the app coming back to the front, as after the OS's settings, through post.
+func (s *System) Return() {
+	s.mu.Lock()
+	r := s.returned
+	s.mu.Unlock()
+	if r != nil {
+		s.post(r)
+	}
 }
 
 // Desktop is the Linux desktop SetDesktop gave, "" by default, as off Linux.

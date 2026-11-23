@@ -35,6 +35,19 @@ type System interface {
 	// browser; "" off Linux.
 	Desktop() string
 
+	// MediaOS names the OS when it keeps its own permission for the app's camera and
+	// microphone besides a site's, "android" or "macos", and "" where it lets the app use
+	// both (Linux). That permission is oskit/media's: MediaAllowed says whether it lets the
+	// app use a kind ("camera", "microphone") now; AskMedia asks it, which may ask the
+	// person, answered once with each kind as it stands; OpenMediaSettings opens where the
+	// person can change it; and OnMediaReturn is how the app hears it came back to the
+	// front, as after those settings. Set once, as the app starts.
+	MediaOS() string
+	MediaAllowed(kind string) bool
+	AskMedia(kinds []string, answered func(allowed map[string]bool))
+	OpenMediaSettings(kind string)
+	OnMediaReturn(returned func())
+
 	// NotificationsAllowed says whether the app may show its own notifications, as a
 	// download's. AskNotifications asks, where the OS asks the person: a phone, from Android 13.
 	// A Mac's are the app's own to show: allowed, and answered says so.

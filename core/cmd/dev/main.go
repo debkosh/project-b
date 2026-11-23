@@ -113,8 +113,15 @@ func main() {
 	e := mockengine.New()
 	e.NoControls = *platform != "" && *platform != "mac"
 	sys := mocksystem.New(e.Post)
+	// The OS keeps its own camera and microphone permission, allowing both until a test's
+	// mediaOS fire refuses them.
+	if *platform == "android" {
+		sys.SetMediaOS("android")
+	} else if *platform != "linux" {
+		sys.SetMediaOS("macos")
+	}
 	if *platform == "linux" {
-		sys.SetDesktop("gnome") // The desktop the Linux pages' words are checked on.
+		sys.SetDesktop("gnome")          // The desktop the Linux pages' words are checked on.
 		sys.SetDefaultBrowserStale(true) // As the Flatpak, it reads the default at start.
 	}
 	// The flags saved in the profile reach the engine at launch, as the real engine's
@@ -307,6 +314,19 @@ func main() {
 				sys.AnswerCheck(verdicts[verdict])
 			default:
 				sys.SetVerdict(verdicts[what])
+			}
+			return
+		}
+		// The OS's own camera and microphone permission, which the mock system plays: "refuse"
+		// and the kinds it refuses ("refuse camera", "refuse" for none), and "return", the app
+		// back in front as after the OS's settings.
+		if r.FormValue("kind") == "mediaOS" {
+			what, rest, _ := strings.Cut(r.FormValue("value"), " ")
+			switch what {
+			case "refuse":
+				sys.SetMediaRefused(strings.Fields(rest)...)
+			case "return":
+				sys.Return()
 			}
 			return
 		}
