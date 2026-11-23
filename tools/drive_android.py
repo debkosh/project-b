@@ -2706,7 +2706,11 @@ def web_server_kinds():
                 # looked for in both; the address pill shows only the host.
                 if want == "page" and words.lower() in (page + " | " + shell).lower():
                     return "page"
-                if "Failed" in shell.split(" | ") or "Open anyway" in shell:
+                # An error page is judged by its own title, not by Failed alone, which shows
+                # a moment before the title does (drive_first_app's, 0.3.10's run).
+                if want == "error" and words.lower() in shell.lower():
+                    return "error"
+                if want == "page" and ("Failed" in shell.split(" | ") or "Open anyway" in shell):
                     return "error"
                 return None
             got = until(outcome, 45)

@@ -3287,7 +3287,12 @@ def web_server_kinds_checks():
                 page, shell = page_text(tab), shell_text()
                 if want == "page" and words.lower() in page.lower():
                     got = "page"
-                elif "Open anyway" in shell or re.search(r"\bFailed\b|ERR_[A-Z_]+", shell):
+                # An error page is judged by its own title, not by "Failed" alone: the shell
+                # says Failed a moment before the page's title shows, and the expired check
+                # once read the tab before (0.3.10's run).
+                elif want == "error" and words.lower() in shell.lower():
+                    got = "error"
+                elif want == "page" and ("Open anyway" in shell or re.search(r"\bFailed\b|ERR_[A-Z_]+", shell)):
                     got = "error"
                 else:
                     time.sleep(0.5)
