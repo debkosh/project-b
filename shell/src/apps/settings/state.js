@@ -122,6 +122,8 @@ export const state = reactive({
   // backup is its backup code, {made}, or null for none.
   sync: { on: false, syncing: false, host: '', lastSynced: 0, error: '', problem: '', locked: false, backup: null },
   syncAddress: '',
+  // The address of the server to start with, which fills the set-up.
+  syncStart: '',
   syncLink: '',
   // Sync details (docs/sync-details.md): what Go last answered syncDetails with, null before;
   // and whether its Reconnect… asked the Sync card to open its set-up.
@@ -185,6 +187,7 @@ export function connect() {
             bookmarks: m.bookmarks || [],
             sync: m.sync || state.sync,
             syncAddress: m.syncAddress || '',
+            syncStart: m.syncStart || '',
             ready: true,
           });
           mark('settings.snapshot');

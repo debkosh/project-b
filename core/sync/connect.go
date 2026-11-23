@@ -20,6 +20,15 @@ var ErrPassphrase = synckosh.ErrPassphrase
 // ChangePassphrase make.
 const passphraseLabel = "Passphrase"
 
+// A server to start with (docs/sync.md, "A server to start with"): ours, free to try. It can
+// read nothing of what it keeps, as no sync server can. StartServer fills the set-up's
+// Address, for a person to change to their own server's, and BucketPage is the page where
+// they get a bucket on it.
+const (
+	StartServer = "https://memd.debkosh.com/sync"
+	BucketPage  = "https://memd.debkosh.com/synckosh"
+)
+
 // Proposal is what an address would connect to.
 type Proposal struct {
 	// Address is the address as it is connected to.

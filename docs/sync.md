@@ -198,6 +198,16 @@ Status shows the host alone, and so does an error's text, in the status, on the 
 the timeline (`Words`): Go's own error for a request names the whole address, and an address
 given with no token is itself what lets a device in.
 
+**A server to start with.** Decided 2026-11-23, the owner: "the browser should prefill our
+address and also guide the users to create a sync bucket from our service from the browser
+itself.. currently someone just installing the browser cannot find synckosh service". The
+set-up opens with Server address filled with `https://memd.debkosh.com/sync`
+(`sync.StartServer`), there to be changed to any other server's, and offers **Get a free sync
+bucket**, which opens `https://memd.debkosh.com/synckosh` (`sync.BucketPage`) in a tab. That
+page makes a bucket and its Open in Project B comes back as the deep link. Nothing goes to
+that server before Connect, as with any other. The dev server answers for that address itself
+(`core/cmd/dev/syncserver.go`), so no test reaches it.
+
 **The deep link** the memd page offers is
 
 ```
@@ -388,6 +398,7 @@ names. The page sends:
 
 | Message | Go answers |
 |---|---|
+| `syncGetBucket` | nothing: the server to start with's bucket page opens in a tab beside Settings |
 | `syncPropose {address}`, or `{link}` for a deep link's | `syncProposal {address, host, token}`, the token a link's or "", or `{error, problem, address}`, the address as given |
 | `syncInspect {address, token}`, or `{again}` after a reset | `syncBucket {new}` or `{error}` |
 | `syncConnect {address, token, passphrase}` | `syncConnected {wrongPassphrase}`, with `error` when it failed |
@@ -455,13 +466,17 @@ picture, light and dark, desktop and phone, is made by `shell/e2e/sync.cjs` unde
   not an error. Set up again… opens the set-up empty; Turn on sync then starts the profile's keys
   afresh (`syncStartFresh`) before it connects.
 - **Setting up is one Dialog** whose title follows the step:
-  - **Set up sync:** "Paste the address from your sync server.", Address and Token ("Only if your
-    server gave you one"). The token is hidden as it is typed, with Show and Hide at the field's
+  - **Set up sync:** "Sync through your own server, or try ours.", then muted
+    "memd.debkosh.com is free to try. It can't read your data, and you can host your own.", and
+    under it the button Get a free sync bucket, which opens that server's page in a tab and
+    closes the Dialog. Server address, filled with the server to start with, the focus in it,
+    and Token ("Only if your server gave you one"). The token is hidden as it is typed, with Show and Hide at the field's
     end once it holds something. An address that can't become https is refused as it is typed: "Sync
     needs an https address". Connect reads "Connecting…" while Go looks at the bucket, and Cancel
-    still works. Under Address: "Couldn't reach memd.example.com", "That address isn't a sync
+    still works. Under Server address: "Couldn't reach memd.example.com", "That address isn't a sync
     bucket"; under Token: "The server didn't accept that token", or "This server needs a token" when none
-    was given. The typed text stays.
+    was given; for the server to start with that line goes on, "Get a free sync bucket to make
+    one.", its first words a link that does what the button does. The typed text stays.
   - **Choose a sync passphrase**, for an empty bucket: twice, Passphrase and Type it again, the
     strength in words under the first ("Fair: add another word", "Strong"; four words of three
     letters or more, or 24 characters, are strong), and Suggest one, which fills in five words,

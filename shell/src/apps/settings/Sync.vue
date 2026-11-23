@@ -54,6 +54,7 @@ const d = reactive({
   host: '',
   addressError: '',
   tokenError: '',
+  tokenWay: false,
   pass: '',
   again: '',
   passShown: false,
@@ -94,6 +95,7 @@ function open(o = {}) {
     host: '',
     addressError: '',
     tokenError: '',
+    tokenWay: false,
     pass: '',
     again: '',
     passShown: false,
@@ -117,10 +119,17 @@ function shut() {
   d.step = '';
 }
 
+// The set-up starts on the server to start with, ours, for a person to change to their own.
 const setUp = () => {
-  open();
+  open({ address: state.syncStart });
   focus('address');
 };
+// The page where a person gets a bucket on that server, in a tab; its Open in Project B comes
+// back here as a link, so this Dialog goes.
+function getBucket() {
+  send({ t: 'syncGetBucket' });
+  shut();
+}
 // Reconnect… after the server signed the device out asks for the token again. Set up again…
 // after the bucket was reset asks only for a passphrase: Go still holds the address and the
 // token, so it looks at the bucket at once, and an empty one has the first device choose a
@@ -183,7 +192,10 @@ watch(
 );
 watch(
   () => d.token,
-  () => (d.tokenError = ''),
+  () => {
+    d.tokenError = '';
+    d.tokenWay = false;
+  },
 );
 watch(
   () => d.pass,
@@ -204,7 +216,9 @@ function problem(m) {
   switch (m.problem) {
     // The server wants a token: the one given isn't it, or none was given.
     case 'token':
-      return { field: 'token', text: d.token.trim() ? "The server didn't accept that token" : 'This server needs a token' };
+      if (d.token.trim()) return { field: 'token', text: "The server didn't accept that token" };
+      d.tokenWay = !!startHost.value && hostOf(d.address) === startHost.value;
+      return { field: 'token', text: d.tokenWay ? 'This server needs a token.' : 'This server needs a token' };
     case 'unreachable':
       return { field: 'address', text: `Couldn't reach ${host}` };
     case 'server':
@@ -218,6 +232,8 @@ function problem(m) {
   }
   return { field: 'address', text: `Couldn't set up sync with ${host}` };
 }
+
+const startHost = computed(() => hostOf(state.syncStart));
 
 function hostOf(a) {
   try {
@@ -244,6 +260,7 @@ function connect() {
     return;
   }
   d.addressError = d.tokenError = '';
+  d.tokenWay = false;
   d.busy = true;
   d.host = hostOf(d.address);
   ask({ t: 'syncInspect', address: d.address.trim(), token: d.token.trim() });
@@ -460,10 +477,14 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
       <template v-if="d.step === 'address'">
         <div class="ui-dialog-part">
           <p v-if="d.fromLink">A link asked to set up sync with this server. Connect only if it's yours.</p>
-          <p v-else>Paste the address from your sync server.</p>
+          <template v-else>
+            <p>Sync through your own server, or try ours.</p>
+            <p class="secondary start">{{ startHost }} is free to try. It can't read your data, and you can host your own.</p>
+            <div class="start"><button type="button" class="text-button" @click="getBucket">Get a free sync bucket</button></div>
+          </template>
         </div>
         <div class="ui-dialog-part">
-          <label for="sync-address">Address</label>
+          <label for="sync-address">Server address</label>
           <div class="address">
             <input
               id="sync-address"
@@ -509,7 +530,11 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
             />
             <button v-if="d.token" type="button" class="show" :aria-pressed="String(d.tokenShown)" @click="d.tokenShown = !d.tokenShown">{{ d.tokenShown ? 'Hide' : 'Show' }}</button>
           </div>
-          <div v-if="d.tokenError" class="text-field-error" role="alert">{{ d.tokenError }}</div>
+          <div v-if="d.tokenError" class="text-field-error" role="alert">
+            {{ d.tokenError }}
+            <!-- The server to start with wants a token, and this is where one comes from. -->
+            <template v-if="d.tokenWay"><button type="button" class="link" @click="getBucket">Get a free sync bucket</button> to make one.</template>
+          </div>
         </div>
       </template>
 
@@ -702,6 +727,11 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
   margin-left: auto;
   font-size: 12px;
   font-weight: 500;
+}
+
+/* The set-up's offer of a server to start with: what it is, then the way to a bucket on it. */
+.start {
+  margin-top: 8px;
 }
 
 /* The enter step's other way in, on a line of its own under the field. */

@@ -42,7 +42,11 @@ your devices hold the real copy, so nothing on them is lost if it goes away. Mov
 server whenever you like.
 
 1. Open [memd.debkosh.com/synckosh](https://memd.debkosh.com/synckosh) and press **Sign in
-   with Google**.
+   with Google**. In Project B the same page opens from **Settings**, **Sync**, **Set up…**,
+   **Get a free sync bucket**.
+
+   ![Set up sync, with the server to start with](screenshots/sync/desktop-49-start.png)
+
 2. Press **+ New bucket**, give the bucket a name and press **Create**.
 3. The page shows the bucket's address, which carries its token. Then either:
    - press **Open in Project B** on a device that has Project B. It opens the set-up with

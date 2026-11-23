@@ -132,7 +132,25 @@ const taken = [];
 
   // Setting up: the address, as typed.
   await button('Set up…', card()).click();
-  check('Set up… opens the Dialog, Set up sync, the address field focused', await shown(dialog()) && (await dialog().getAttribute('aria-label')) === 'Set up sync' && (await focused('Address')));
+  check('Set up… opens the Dialog, Set up sync, the address field focused', await shown(dialog()) && (await dialog().getAttribute('aria-label')) === 'Set up sync' && (await focused('Server address')));
+  // The server to start with: its address is there to change, and a link goes to the page
+  // that gives a bucket on it, in a tab, the Dialog going with it.
+  const START = 'https://memd.debkosh.com/sync';
+  check('the address starts as the server to start with, for a person to change', (await field('Server address').inputValue()) === START);
+  check('with what that server is, and Get a free sync bucket', (await dialog().innerText()).includes("Sync through your own server, or try ours.") &&
+    (await dialog().innerText()).includes("memd.debkosh.com is free to try. It can't read your data, and you can host your own.") && (await shown(button('Get a free sync bucket'))));
+  await shot(49, 'start');
+  // Connect with that address and no token is no dead end: what the server said, and the way
+  // to a token, which does what the button above does.
+  await button('Connect').click();
+  const way = errorUnder('Token').getByRole('button', { name: 'Get a free sync bucket' });
+  check('Connect on the server to start with, with no token, says it needs one and how to get one', await until(async () => (await errorUnder('Token').count()) === 1 &&
+    (await errorUnder('Token').innerText()).replace(/\s+/g, ' ') === 'This server needs a token. Get a free sync bucket to make one.') && (await way.count()) === 1, await dialog().innerText());
+  await shot(50, 'start-needs-token');
+  await way.click(); // does: syncGetBucket
+  check('Get a free sync bucket, there as above, opens its page in a tab, and the Dialog goes', await until(async () => (await dialog().count()) === 0 && (await regions()).tabs.some((t) => t.url === 'https://memd.debkosh.com/synckosh')),
+    JSON.stringify((await regions()).tabs.map((t) => t.url)));
+  await button('Set up…', card()).click();
   check('with the token as an option', (await field('Token').getAttribute('placeholder')) === 'Only if your server gave you one');
   // The token is a secret: hidden as it is typed, with Show once there is one to show.
   check('an empty Token field has no Show', (await field('Token').getAttribute('type')) === 'password' && (await button('Show', dialog()).count()) === 0);
@@ -143,11 +161,11 @@ const taken = [];
   await button('Hide', dialog()).click();
   check('Hide hides it again', (await field('Token').getAttribute('type')) === 'password');
   await field('Token').fill('');
-  await field('Address').fill(`${address}/sync/7kq2mx9pab4c`);
+  await field('Server address').fill(`${address}/sync/7kq2mx9pab4c`);
   await shot(3, 'address');
-  await field('Address').fill(`http://${HOST}/sync/7kq2mx9pab4c`);
-  check('an http address is refused as it is typed, under the field, the text kept', await until(async () => (await errorUnder('Address').innerText()) === 'Sync needs an https address') &&
-    (await field('Address').inputValue()) === `http://${HOST}/sync/7kq2mx9pab4c`);
+  await field('Server address').fill(`http://${HOST}/sync/7kq2mx9pab4c`);
+  check('an http address is refused as it is typed, under the field, the text kept', await until(async () => (await errorUnder('Server address').innerText()) === 'Sync needs an https address') &&
+    (await field('Server address').inputValue()) === `http://${HOST}/sync/7kq2mx9pab4c`);
   await shot(4, 'address-error');
   const before = await requests();
   await button('Connect').click();
@@ -155,7 +173,7 @@ const taken = [];
 
   // Connecting: the button says so and waits; Cancel still works.
   await server({ slow: '1' });
-  await field('Address').fill(`${address}/sync/7kq2mx9pab4c`);
+  await field('Server address').fill(`${address}/sync/7kq2mx9pab4c`);
   await button('Connect').click();
   check('Connect reads Connecting… and waits', await shown(button('Connecting…')) && (await button('Connecting…').isDisabled()));
   await shot(15, 'connecting');
@@ -166,19 +184,19 @@ const taken = [];
   // What the server says, under the field it is about, the text kept.
   const refusal = async (addr, token, under, words, n, id) => {
     await button('Set up…', card()).click();
-    await field('Address').fill(addr);
+    await field('Server address').fill(addr);
     if (token) await field('Token').fill(token);
     await button('Connect').click();
     const ok = await until(async () => (await errorUnder(under).count()) === 1 && (await errorUnder(under).innerText()) === words);
-    check(`${words}, under ${under}, the text kept`, ok && (await field('Address').inputValue()) === addr && (await field('Token').inputValue()) === token, ok ? '' : await dialog().innerText());
+    check(`${words}, under ${under}, the text kept`, ok && (await field('Server address').inputValue()) === addr && (await field('Token').inputValue()) === token, ok ? '' : await dialog().innerText());
     if (n) await shot(n, id);
     await button('Cancel').click();
   };
-  if (!phone) await refusal('https://127.0.0.1:1/sync/7kq2mx9pab4c', '', 'Address', "Couldn't reach 127.0.0.1:1");
+  if (!phone) await refusal('https://127.0.0.1:1/sync/7kq2mx9pab4c', '', 'Server address', "Couldn't reach 127.0.0.1:1");
   await server({ down: '1' });
-  await refusal(`${address}/sync/7kq2mx9pab4c`, '', 'Address', `Couldn't reach ${HOST}`, 16, 'address-unreachable');
+  await refusal(`${address}/sync/7kq2mx9pab4c`, '', 'Server address', `Couldn't reach ${HOST}`, 16, 'address-unreachable');
   await server({ down: '0' });
-  await refusal(`${address}/notes/sync/7kq2mx9pab4c`, '', 'Address', "That address isn't a sync bucket", 17, 'not-bucket');
+  await refusal(`${address}/notes/sync/7kq2mx9pab4c`, '', 'Server address', "That address isn't a sync bucket", 17, 'not-bucket');
   // An address is taken as it is given, whatever its path: the server says whether it wants a
   // token, and the page says so under Token.
   await refusal(`${address}/sync`, '', 'Token', 'This server needs a token');
@@ -189,7 +207,7 @@ const taken = [];
   const bucket = `${address}/sync`;
   const token = `tok-${layout}`;
   await button('Set up…', card()).click();
-  await field('Address').fill(bucket);
+  await field('Server address').fill(bucket);
   await field('Token').fill(token);
   await button('Connect').click();
   check('an empty bucket asks for a new passphrase, twice', await until(async () => (await dialog().getAttribute('aria-label')) === 'Choose a sync passphrase') &&
@@ -517,7 +535,7 @@ const taken = [];
 
   // A bucket in use: its passphrase, once; the old one is wrong now.
   await button('Set up…', card()).click();
-  await field('Address').fill(bucket);
+  await field('Server address').fill(bucket);
   await field('Token').fill(token);
   await button('Connect').click();
   check('a bucket in use asks for its passphrase once', await until(async () => (await dialog().getAttribute('aria-label')) === 'Enter your sync passphrase') &&
@@ -538,7 +556,7 @@ const taken = [];
   await button('Turn off').click();
   await shown(button('Set up…', card()));
   await button('Set up…', card()).click();
-  await field('Address').fill(bucket);
+  await field('Server address').fill(bucket);
   await field('Token').fill(token);
   await button('Connect').click();
   await titled('Enter your sync passphrase');
@@ -597,7 +615,7 @@ const taken = [];
   await shot(34, 'bucket-reset');
   told = sends({ t: 'syncInspect' });
   await button('Set up again…', card()).click();
-  check('Set up again… asks nothing of the address or the token: Go holds them, and looks at the bucket at once', (await told) && (await field('Address').count()) === 0 || (await until(async () => (await dialog().getAttribute('aria-label')) === 'Choose a sync passphrase')));
+  check('Set up again… asks nothing of the address or the token: Go holds them, and looks at the bucket at once', (await told) && (await field('Server address').count()) === 0 || (await until(async () => (await dialog().getAttribute('aria-label')) === 'Choose a sync passphrase')));
   check('the bucket is empty again, so a new passphrase is chosen, as a first device chooses one', await until(async () => (await dialog().getAttribute('aria-label')) === 'Choose a sync passphrase'));
   await shot(35, 'reset-choose');
   await field('Passphrase').fill(changed);
@@ -613,7 +631,7 @@ const taken = [];
   check('a token the server refuses signs the device out, with Reconnect…', await until(async () => (await serverRow().innerText()).includes('The server signed this device out')) && (await button('Reconnect…', card()).isVisible()));
   await shot(12, 'signed-out');
   await button('Reconnect…', card()).click();
-  check('Reconnect… opens the set-up with the address filled in and the focus on Token', await shown(dialog()) && (await field('Address').inputValue()) === bucket && await until(() => focused('Token')));
+  check('Reconnect… opens the set-up with the address filled in and the focus on Token', await shown(dialog()) && (await field('Server address').inputValue()) === bucket && await until(() => focused('Token')));
   await shot(23, 'reconnect');
   const token2 = `${token}-again`;
   await field('Token').fill(token2);
@@ -636,7 +654,7 @@ const taken = [];
   await fetch(`${lib.base}/mock/open`, { method: 'POST', body: new URLSearchParams({ url: link(linked) }) });
   check('a link from another app opens the Dialog in its link form', await until(async () => (await dialog().count()) === 1 && (await dialog().getAttribute('aria-label')) === `Sync with ${HOST}?`));
   check('its title has the host in bold', (await dialog().locator('.ui-dialog-title').evaluate((h) => [...h.querySelectorAll('.w')].map((w) => getComputedStyle(w).fontWeight).join() + '|' + getComputedStyle(h).fontWeight)) === '400,400|600');
-  check('with the address filled in', (await field('Address').inputValue()) === linked && (await dialog().innerText()).includes("A link asked to set up sync with this server. Connect only if it's yours."));
+  check('with the address filled in', (await field('Server address').inputValue()) === linked && (await dialog().innerText()).includes("A link asked to set up sync with this server. Connect only if it's yours."));
   check('and Settings at Sync', await card().isVisible());
   await page.waitForTimeout(500);
   check('nothing went to the server', (await requests()) === n, `${(await requests()) - n} requests`);
@@ -649,7 +667,7 @@ const taken = [];
   // A link that gives a token too: it is in its field, hidden, and goes with Connect.
   await fetch(`${lib.base}/mock/open`, { method: 'POST', body: new URLSearchParams({ url: `${link(`${address}/sync`)}&token=${encodeURIComponent(`tok-link-${layout}`)}` }) });
   check('a link with a token opens the set-up with the token in its field, hidden', await until(async () => (await dialog().count()) === 1 && (await field('Token').inputValue()) === `tok-link-${layout}`) &&
-    (await field('Token').getAttribute('type')) === 'password' && (await field('Address').inputValue()) === `${address}/sync`);
+    (await field('Token').getAttribute('type')) === 'password' && (await field('Server address').inputValue()) === `${address}/sync`);
   await shot(48, 'link-token');
   await button('Connect').click();
   check('and Connect reaches the server with it', await until(async () => (await dialog().getAttribute('aria-label')) === 'Choose a sync passphrase'));
@@ -659,7 +677,7 @@ const taken = [];
   // An http address in a link: the plain set-up, with the address and its error.
   await fetch(`${lib.base}/mock/open`, { method: 'POST', body: new URLSearchParams({ url: link(`http://${HOST}/sync/7kq2mx9pab4c`) }) });
   check('a link with an http address opens the set-up with the address error', await until(async () => (await dialog().count()) === 1 && (await dialog().getAttribute('aria-label')) === 'Set up sync' &&
-    (await errorUnder('Address').count()) === 1 && (await errorUnder('Address').innerText()) === 'Sync needs an https address') && (await field('Address').inputValue()) === `http://${HOST}/sync/7kq2mx9pab4c`);
+    (await errorUnder('Server address').count()) === 1 && (await errorUnder('Server address').innerText()) === 'Sync needs an https address') && (await field('Server address').inputValue()) === `http://${HOST}/sync/7kq2mx9pab4c`);
   await button('Cancel').click();
   await until(async () => (await dialog().count()) === 0);
 
@@ -697,7 +715,7 @@ const taken = [];
   // A profile whose keys don't open here: connected, then its folder.key replaced, as a
   // folder from another device has.
   await button('Set up…', card()).click();
-  await field('Address').fill(bucket);
+  await field('Server address').fill(bucket);
   await field('Token').fill(token2);
   await button('Connect').click();
   await until(async () => (await dialog().getAttribute('aria-label')) === 'Enter your sync passphrase');
@@ -717,8 +735,8 @@ const taken = [];
   check('its reason in the tooltip', ((await card().locator('.row').getAttribute('title')) || '').includes('moved from another device'));
   await shot(2, 'no-key');
   await button('Set up again…', card()).click();
-  check('Set up again… opens the Dialog empty', await shown(dialog()) && (await field('Address').inputValue()) === '' && (await field('Token').inputValue()) === '');
-  await field('Address').fill(bucket);
+  check('Set up again… opens the Dialog as new', await shown(dialog()) && (await field('Server address').inputValue()) === 'https://memd.debkosh.com/sync' && (await field('Token').inputValue()) === '');
+  await field('Server address').fill(bucket);
   await field('Token').fill(token2);
   await button('Connect').click();
   await until(async () => (await dialog().getAttribute('aria-label')) === 'Enter your sync passphrase');

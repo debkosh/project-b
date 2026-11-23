@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -23,7 +24,8 @@ import (
 // syncServer is a sync server for the tests (shell/e2e/sync.cjs, docs/sync.md): synckosh's
 // server over https in this process, as the memd server serves a bucket, at /sync with its
 // token as a bearer or at /sync/<token>; any other path is a web page, not a bucket. Sync's
-// requests reach it as https://memd.example.com, the name the mocks use, and trust its
+// requests reach it as https://memd.example.com, the name the mocks use, and as the server
+// to start with (sync.StartServer), which no test may reach for real, and trust its
 // certificate; any other host is dialled as it is. It counts every request it gets, and a
 // test changes how it answers: a token signed out, every connection dropped, every request
 // held, or every request answered with a failure.
@@ -66,7 +68,7 @@ func startSyncServer(path string) *syncServer {
 	t.TLSClientConfig.ServerName = "example.com"
 	listening := s.ts.Listener.Addr().String()
 	t.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-		if addr == syncHost+":443" {
+		if addr == syncHost+":443" || addr == startHost+":443" {
 			addr = listening
 		}
 		return (&net.Dialer{}).DialContext(ctx, network, addr)
@@ -78,6 +80,12 @@ func startSyncServer(path string) *syncServer {
 
 // syncHost is the name sync reaches the server by.
 const syncHost = "memd.example.com"
+
+// startHost is the host of the server to start with.
+var startHost = func() string {
+	u, _ := url.Parse(sync.StartServer)
+	return u.Host
+}()
 
 func (s *syncServer) serve(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()

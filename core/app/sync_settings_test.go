@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"projectb/sync"
 )
 
 // Settings' Sync: the page has the status, a deep link's address is only proposed, and a
@@ -33,6 +35,19 @@ func TestSettingsSync(t *testing.T) {
 	r.settings(`{"t":"syncPropose","link":"project-b://sync?address=https%3A%2F%2Fmemd.example%2Fsync&token=t0k"}`)
 	if m := r.waitOn(got, func(m map[string]any) bool { return m["t"] == "syncProposal" }); m["address"] != "https://memd.example/sync" || m["token"] != "t0k" || m["error"] != nil {
 		t.Fatalf("a link with a token proposed: %v", m)
+	}
+	// The server to start with: its address goes to the page with the snapshot, and the page
+	// that gives a bucket on it opens in a tab beside Settings.
+	if snapshot["syncStart"] != sync.StartServer {
+		t.Fatalf("the server to start with: %v", snapshot["syncStart"])
+	}
+	r.settings(`{"t":"syncGetBucket"}`)
+	opened := false
+	for _, tab := range r.tabsNow(1) {
+		opened = opened || tab.URL == sync.BucketPage
+	}
+	if !opened {
+		t.Fatalf("Get a free sync bucket opened no tab at %s: %+v", sync.BucketPage, r.tabsNow(1))
 	}
 	r.settings(`{"t":"syncSuggest"}`)
 	if m := r.waitOn(got, func(m map[string]any) bool { return m["t"] == "syncSuggested" }); len(strings.Fields(m["passphrase"].(string))) != 5 {

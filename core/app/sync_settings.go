@@ -57,7 +57,9 @@ func (a *App) syncSettingsPart() settings.Part {
 		a.Settings.Send(m)
 	}
 	return settings.Part{
-		Snapshot: func(into map[string]any) { into["sync"], into["syncAddress"] = a.Sync.Status(), a.Sync.Address() },
+		Snapshot: func(into map[string]any) {
+			into["sync"], into["syncAddress"], into["syncStart"] = a.Sync.Status(), a.Sync.Address(), sync.StartServer
+		},
 		Handle: func(tab engine.TabID, t string, msg []byte) bool {
 			// The backup code's answers go to the page that asked alone: one of them is the code.
 			asked := func(t string, err error, more map[string]any) {
@@ -83,6 +85,12 @@ func (a *App) syncSettingsPart() settings.Part {
 			}
 			json.Unmarshal(msg, &c)
 			switch t {
+			case "syncGetBucket":
+				// The page where a person gets a bucket on the server to start with, in a tab
+				// beside Settings. Its own "Open in Project B" comes back as a link.
+				if t, ok := a.Tabs.Get(tab); ok {
+					a.Tabs.OpenFrom(tab, sync.BucketPage, t.Workspace, true)
+				}
 			case "syncPropose":
 				address, token, err := c.Address, "", error(nil)
 				if c.Link != "" {
