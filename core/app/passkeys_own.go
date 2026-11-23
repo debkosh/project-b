@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strconv"
+	"time"
 
 	"projectb/engine"
 	"projectb/passkeys"
@@ -164,7 +165,7 @@ func (k *passkeyCards) listed(id engine.DialogID, o *ownPasskey, rows []passkeys
 	case err != nil || len(rows) == 0:
 		k.none(id, o)
 	default:
-		o.rows = rows
+		o.rows = ownOrder(rows)
 		k.show(id, "own", o)
 	}
 }
@@ -339,6 +340,67 @@ func (k *passkeyCards) ownAnswer(id engine.DialogID, step, action, text string) 
 	return true
 }
 
+// ownOrder is the site's passkeys as its card lists them, one account's together: the
+// accounts by their newest passkey, the newest first, and an account's own the newest
+// first. rows come the newest first.
+func ownOrder(rows []passkeys.Passkey) []passkeys.Passkey {
+	out := make([]passkeys.Passkey, 0, len(rows))
+	seen := map[string]bool{}
+	for _, r := range rows {
+		if seen[string(r.UserHandle)] {
+			continue
+		}
+		seen[string(r.UserHandle)] = true
+		for _, same := range rows {
+			if string(same.UserHandle) == string(r.UserHandle) {
+				out = append(out, same)
+			}
+		}
+	}
+	return out
+}
+
+// madeOn is when a passkey was made, as Settings' Passkeys says it: "Made today", or its
+// day, with the year once it is another than now's.
+func madeOn(at, now time.Time) string {
+	switch {
+	case at.Year() == now.Year() && at.YearDay() == now.YearDay():
+		return "Made today"
+	case at.Year() == now.Year():
+		return at.Format("Made 2 Jan")
+	}
+	return at.Format("Made 2 Jan 2006")
+}
+
+// ownRows are the rows of the site's passkeys here, one each. Those for one account read
+// the same, so each of them says when it was made as well, and the time too when that
+// says the same for two of them: the time shows only where it tells them apart.
+func ownRows(rows []passkeys.Passkey, now time.Time) []passkeyAccount {
+	// How many passkeys an account has, and how many of them were made on a day.
+	shared, sameDay := map[string]int{}, map[string]int{}
+	for _, r := range rows {
+		shared[string(r.UserHandle)]++
+		sameDay[string(r.UserHandle)+"\x00"+madeOn(time.UnixMilli(r.Created), now)]++
+	}
+	out := make([]passkeyAccount, len(rows))
+	for i, r := range rows {
+		out[i] = accountRow(r.UserName, r.DisplayName)
+		if shared[string(r.UserHandle)] == 1 {
+			continue
+		}
+		at := time.UnixMilli(r.Created)
+		made := madeOn(at, now)
+		if sameDay[string(r.UserHandle)+"\x00"+made] > 1 {
+			made += at.Format(", 15:04")
+		}
+		if out[i].Secondary != "" {
+			made = out[i].Secondary + " · " + made
+		}
+		out[i].Secondary = made
+	}
+	return out
+}
+
 // ownDialog words a card of ours for the request d.
 func ownDialog(d pageDialog, step string, o *ownPasskey) pageDialog {
 	site := d.Host
@@ -357,9 +419,7 @@ func ownDialog(d pageDialog, step string, o *ownPasskey) pageDialog {
 	case "own":
 		p.Title = "Sign in to " + site
 		s.Other = other
-		for _, r := range o.rows {
-			s.Accounts = append(s.Accounts, accountRow(r.UserName, r.DisplayName))
-		}
+		s.Accounts = ownRows(o.rows, time.Now())
 	case "ownLocked":
 		p.Title, p.Message, p.OK = "Sign in to "+site, "Your passkeys are locked.", "Unlock…"
 		s.Primary, s.Other = "unlock", other

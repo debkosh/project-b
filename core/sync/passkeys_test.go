@@ -91,7 +91,7 @@ func TestAPasskeySyncs(t *testing.T) {
 }
 
 // Two profiles each make a passkey for one account before either syncs: both keep both,
-// as the site kept both public keys, and each lists the newer.
+// as the site kept both public keys, and each lists both.
 func TestTwoPasskeysForOneAccount(t *testing.T) {
 	s := newServer(t)
 	a, b := newProfile(t), newProfile(t)
@@ -109,8 +109,44 @@ func TestTwoPasskeysForOneAccount(t *testing.T) {
 			t.Fatalf("%s has %d passkeys, want both", name, n)
 		}
 		list, _ := p.passkeys.List(ctx, true, "example.com", nil)
-		if len(list) != 1 {
-			t.Fatalf("%s lists %d for the account, want 1", name, len(list))
+		if len(list) != 2 {
+			t.Fatalf("%s lists %d for the account, want both", name, len(list))
+		}
+	}
+}
+
+// One profile makes two passkeys for one site and one account, and a third for another
+// account there: every one reaches the other profile, where each signs, and making the
+// later ones deleted nothing on either.
+func TestSeveralPasskeysOnOneSiteSync(t *testing.T) {
+	s := newServer(t)
+	a, b := newProfile(t), newProfile(t)
+	a.startSync(s)
+	b.startSync(s)
+	ctx := context.Background()
+	a.connect(s.bearer(), "tok", "pass phrase")
+	b.connect(s.bearer(), "tok", "pass phrase")
+	asha := passkeys.User{Handle: []byte("handle-1"), Name: "asha"}
+	var ids [][]byte
+	for _, user := range []passkeys.User{asha, asha, {Handle: []byte("handle-2"), Name: "work"}} {
+		id, _, err := a.passkeys.Make(ctx, true, "example.com", user, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids = append(ids, id)
+		// Each goes round before the next is made, as a person's do.
+		a.settle()
+		run(t, a, b)
+	}
+	for name, p := range map[string]*profile{"a": a, "b": b} {
+		list, err := p.passkeys.List(ctx, true, "example.com", nil)
+		if err != nil || len(list) != 3 {
+			t.Fatalf("%s lists %d of the site's three: %v", name, len(list), err)
+		}
+		for _, id := range ids {
+			if _, _, err := p.passkeys.Sign(ctx, true, "example.com", id, []byte("data")); err != nil {
+				t.Fatalf("%s signs with %x: %v", name, id, err)
+			}
 		}
 	}
 }

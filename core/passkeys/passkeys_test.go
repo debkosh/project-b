@@ -154,9 +154,10 @@ func TestSignOnlyForItsSite(t *testing.T) {
 	}
 }
 
-// A second passkey for one account takes the first's place; another account's stays. List
-// has the site's, the newest first, and only those the page allows when it names any.
-func TestReplaceListAndCount(t *testing.T) {
+// A second passkey for one account is kept beside the first, as another account's is. List
+// has every one of the site's, the newest first, and only those the page allows when it
+// names any.
+func TestMakeKeepsListAndCount(t *testing.T) {
 	m, _, _ := profile(t)
 	asha := User{Handle: []byte("u1"), Name: "asha@example.com", DisplayName: "Asha Rao"}
 	first, _, _ := m.Make(ctx, true, "example.com", asha, nil)
@@ -170,21 +171,29 @@ func TestReplaceListAndCount(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(list) != 2 {
-		t.Fatalf("example.com has %d passkeys, want 2: %+v", len(list), list)
+	if len(list) != 3 {
+		t.Fatalf("example.com has %d passkeys, want 3: %+v", len(list), list)
 	}
 	ids := map[string]Passkey{}
 	for _, p := range list {
 		ids[string(p.ID)] = p
 	}
-	if _, kept := ids[string(first)]; kept {
-		t.Fatal("the replaced passkey is still listed")
+	for which, id := range map[string][]byte{"first": first, "second": second} {
+		if p, kept := ids[string(id)]; !kept || p.UserName != "asha@example.com" || p.DisplayName != "Asha Rao" || string(p.UserHandle) != "u1" || p.RPID != "example.com" || p.Created == 0 {
+			t.Fatalf("the account's %s passkey reads %+v, listed %v", which, p, kept)
+		}
 	}
-	if p := ids[string(second)]; p.UserName != "asha@example.com" || p.DisplayName != "Asha Rao" || string(p.UserHandle) != "u1" || p.RPID != "example.com" || p.Created == 0 {
-		t.Fatalf("the new passkey reads %+v", p)
+	if _, kept := ids[string(work)]; !kept {
+		t.Fatal("the other account's passkey isn't listed")
 	}
-	if n, _ := m.Count("example.com", nil); n != 2 {
-		t.Fatalf("Count %d, want 2", n)
+	// Each still signs: the site kept both public keys.
+	for which, id := range map[string][]byte{"first": first, "second": second} {
+		if _, handle, err := m.Sign(ctx, true, "example.com", id, []byte("data")); err != nil || string(handle) != "u1" {
+			t.Fatalf("the account's %s passkey signs: %q, %v", which, handle, err)
+		}
+	}
+	if n, _ := m.Count("example.com", nil); n != 3 {
+		t.Fatalf("Count %d, want 3", n)
 	}
 	if n, _ := m.Count("example.com", [][]byte{work, []byte("elsewhere")}); n != 1 {
 		t.Fatalf("Count of the allowed %d, want 1", n)
@@ -193,11 +202,11 @@ func TestReplaceListAndCount(t *testing.T) {
 	if len(only) != 1 || !bytes.Equal(only[0].ID, work) {
 		t.Fatalf("List of the allowed: %+v", only)
 	}
-	if n, _ := m.Total(); n != 3 {
-		t.Fatalf("Total %d, want 3", n)
+	if n, _ := m.Total(); n != 4 {
+		t.Fatalf("Total %d, want 4", n)
 	}
 	all, _ := m.All(ctx, true)
-	if len(all) != 3 || all[0].RPID != "example.com" || all[2].RPID != "other.example" {
+	if len(all) != 4 || all[0].RPID != "example.com" || all[3].RPID != "other.example" {
 		t.Fatalf("All: %+v", all)
 	}
 }
@@ -309,8 +318,8 @@ func hexOf(b []byte) string {
 	return string(out)
 }
 
-// Of two passkeys two devices made for one account while apart, List shows the newer;
-// the older stays, where Settings can delete it.
+// Of two passkeys for one account, as two devices make while apart, List has both, the
+// newer first, as Settings does.
 func TestTwoForOneAccount(t *testing.T) {
 	m, _, st := profile(t)
 	older := row{Passkey: Passkey{ID: []byte("older-credential"), RPID: "example.com", UserHandle: []byte("u1"), UserName: "asha", Created: 100}, key: []byte("k")}
@@ -324,7 +333,7 @@ func TestTwoForOneAccount(t *testing.T) {
 		t.Fatal(err)
 	}
 	list, _ := m.List(ctx, true, "example.com", nil)
-	if len(list) != 1 || string(list[0].ID) != "newer-credential" {
+	if len(list) != 2 || string(list[0].ID) != "newer-credential" || string(list[1].ID) != "older-credential" {
 		t.Fatalf("List: %+v", list)
 	}
 	if all, _ := m.All(ctx, true); len(all) != 2 {

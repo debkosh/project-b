@@ -251,9 +251,8 @@ func (m *Manager) query(tx *store.Tx, where string, args ...any) ([]Passkey, err
 	return out, rows.Err()
 }
 
-// List is the site's passkeys, of those allow names when it names any, the newest first.
-// Two for one account, as two devices can each make while offline, show as the newer: the
-// older stays in the store, and in All.
+// List is the site's passkeys, every one, of those allow names when it names any, the
+// newest first. A site can have several for one account, each made at its own time.
 func (m *Manager) List(ctx context.Context, asked bool, rpID string, allow [][]byte) ([]Passkey, error) {
 	if err := m.here(); err != nil {
 		return nil, err
@@ -265,18 +264,7 @@ func (m *Manager) List(ctx context.Context, asked bool, rpID string, allow [][]b
 		all, err = m.query(tx, `WHERE rp_id = ?`+in+` ORDER BY created DESC, id`, append([]any{rpID}, args...)...)
 		return err
 	})
-	if err != nil {
-		return nil, err
-	}
-	seen := map[string]bool{}
-	out := all[:0]
-	for _, p := range all {
-		if !seen[string(p.UserHandle)] {
-			seen[string(p.UserHandle)] = true
-			out = append(out, p)
-		}
-	}
-	return out, nil
+	return all, err
 }
 
 // All is every passkey of the profile, by site and then the newest first, for Settings.
@@ -299,11 +287,11 @@ type User struct {
 	Name, DisplayName string
 }
 
-// Make checks the person, then makes a passkey for user at the site rpID and keeps it, in
-// place of any the site already had here for that user. It answers its credential ID and
-// its public key, as a COSE key. A passkey kept here that exclude names answers
-// ErrExcluded, and a profile whose key doesn't open here ErrNotHere, before the person is
-// asked anything.
+// Make checks the person, then makes a passkey for user at the site rpID and keeps it,
+// beside any the site already has here, for that user or another: a passkey goes only when
+// the person deletes it. It answers its credential ID and its public key, as a COSE key. A
+// passkey kept here that exclude names answers ErrExcluded, and a profile whose key doesn't
+// open here ErrNotHere, before the person is asked anything.
 //
 // The person is checked before sealed is entered. With Profile Lock that would be the
 // device's check and then the unlock Dialog; the unlock belongs first, and is ordered when
@@ -339,22 +327,7 @@ func (m *Manager) Make(ctx context.Context, asked bool, rpID string, user User, 
 	id = make([]byte, 16)
 	rand.Read(id)
 	made := row{Passkey: Passkey{ID: id, RPID: rpID, UserHandle: user.Handle, UserName: user.Name, DisplayName: user.DisplayName, Created: store.Now()}, key: der}
-	err = m.sealed(ctx, asked, func(tx *store.Tx) error {
-		// The user handles are sealed, so the site's rows are opened to find the one this
-		// replaces: SQL can't compare them.
-		had, err := m.query(tx, `WHERE rp_id = ?`, rpID)
-		if err != nil {
-			return err
-		}
-		for _, p := range had {
-			if string(p.UserHandle) == string(user.Handle) {
-				if _, err := tx.Exec(`DELETE FROM passkeys WHERE id = ?`, name(p.ID)); err != nil {
-					return err
-				}
-			}
-		}
-		return m.put(tx, made)
-	})
+	err = m.sealed(ctx, asked, func(tx *store.Tx) error { return m.put(tx, made) })
 	if err != nil {
 		return nil, nil, err
 	}

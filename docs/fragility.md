@@ -61,9 +61,41 @@ The seams:
   reach that wasn't.
 - **An id used as a name elsewhere.** An id made in one place, with its alphabet, becomes a
   name in another that allows less. One so far: a passkey whose id starts with an underscore.
+- **A spec's model taken as our rule.** A standard describes a device as it models one, and
+  that model can be poorer than what a person expects of a manager they can look into. A
+  rule copied from it that deletes or hides something of the person's has to be asked of
+  them first. One so far: earlier passkeys for a site gone.
 - **A trigger runs under its caller's rules.** What a trigger's own statement says about a
   conflict gives way to the statement that fired it. One so far: a row changed twice before a
   run.
+
+## Earlier passkeys for a site gone, 2026-11-23
+
+- **Seen:** by Sudipta, on webauthn.io: he made several passkeys for the site over some days,
+  and only the latest was there.
+- **Cause:** saving a passkey deleted the one already kept for the same site and the same
+  account, by the site's user handle, and a sign-in listed only the newest of two for one
+  account. That was the design, not a slip: WebAuthn models an authenticator as holding one
+  passkey per site and account, and Apple's and Google's managers replace as well. A site
+  normally stops a second one by naming the first as one to leave out; webauthn.io forgets a
+  registration after a day and then names none, and its user handle is made from the
+  username, so the same username on a later day replaced the earlier passkey. The delete
+  synced, so it went from every device.
+- **Seam:** a spec's model taken as our rule.
+- **Fix:** `Make` in `core/passkeys` deletes nothing, and `List` has every passkey of the
+  site. A sign-in's card keeps one account's passkeys together, each saying when it was
+  made (`ownOrder` and `ownRows`, `core/app/passkeys_own.go`). The passkeys already replaced can't be brought back.
+- **Why it was missed:** the test said the wrong thing on purpose: it wanted the first passkey
+  gone after a second for its account. The rule was in the design's table of calls, as one
+  clause, and was never put to Sudipta as a choice.
+- **Guard:** `TestMakeKeepsListAndCount` (`core/passkeys`) makes two for one account and a
+  third for another, and wants all listed and each signing;
+  `TestTwoPasskeysForOneAccountAreBothOffered` (`core/app`) saves two through the Save card
+  and wants both rows at a sign-in, and the older one signing;
+  `TestOwnRowsOrderAndWhenMade` holds the rows' order and words;
+  `TestSeveralPasskeysOnOneSiteSync` (`core/sync`) wants all three on a second device;
+  `shell/e2e/passkeys.cjs` saves a second for one account and wants both rows on the card.
+  Each fails on the code as it was.
 
 ## The app frozen while the desktop asked for its keyring, 2026-11-23
 
