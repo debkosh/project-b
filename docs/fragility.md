@@ -18,8 +18,8 @@ The seams:
 - **Shell layers.** What lies over the page has to stay under the shell's own menus, and
   back has to close what is open before it leaves. Three so far: the menu under the crash
   page, the back key out of Settings, a download bar lost under the keyboard.
-- **Tooling and test machines.** Shared folders and long-lived emulators. Two so far: the
-  mixed package, the emulators' memory.
+- **Tooling and test machines.** Shared folders and long-lived emulators. Three so far: the
+  mixed package, the emulators' memory, a pushed file another install's.
 - **Narrow widths.** What sits next to something, or under it, has to be measured against
   a piece that doesn't wrap. One so far: the update line on a phone.
 - **A page's own navigations**, which Go rules on, against Chromium's way of starting,
@@ -68,6 +68,28 @@ The seams:
 - **A trigger runs under its caller's rules.** What a trigger's own statement says about a
   conflict gives way to the statement that fired it. One so far: a row changed twice before a
   run.
+
+## A pushed file labelled for another install, 2026-11-23
+
+- **Seen:** on the test emulators after a long day of runs, drive_android's bookmark_star failed
+  on every build: the menu's Bookmark saved nothing, then "the app is gone". A restart of the
+  emulator cleared it, and it came back after more runs.
+- **Cause:** the driver, not the app. profile_file writes bookmarks.json and prefs.json into
+  the app's data as root with `adb push`, then fixes their owner. adbd labels each file it
+  pushes for the app's SELinux category, from a list of packages it reads once and keeps; once
+  an upgrade check had uninstalled and installed the app, the app had a new category and adbd
+  went on using the old one. The app was then denied its own files: the store never made its
+  bookmarks table, and nothing could be bookmarked. Proven on emu-16k: after a reinstall the
+  app's folder was c221, and a file pushed next was c220.
+- **Seam:** a driver writing into an app's private data as root, fixing one kind of ownership
+  and not the other.
+- **Fix:** profile_file runs `restorecon -RF` on the app's folder after its chown (8ca72878).
+  restorecon is a new process each time, so it labels with today's category.
+- **Why it was missed:** the failure looked like the app dying, and a restart cleared it, so it
+  passed as built-up emulator state for a day. The passwords session found the SELinux denial
+  in the run's saved logcat.
+- **Guard:** the fix itself, on every profile_file call, and the tester's restart of the
+  release emulators before each release's Android group (roles/tester.md).
 
 ## Earlier passkeys for a site gone, 2026-11-23
 
