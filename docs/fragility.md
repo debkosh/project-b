@@ -704,3 +704,21 @@ The seams:
   makes the shell page again.
 - **Guard:** `tools/android-attach-check.sh`, which starts the app again and again and checks
   the shell draws each time.
+
+## The keychain asks after every Mac update
+
+**What he sees.** After an update, macOS asks "Project B wants to access key 'Project B device key'";
+Always Allow answers it until the next update.
+
+**The cause.** The app is signed with our own certificate, which has no Team ID. Since macOS 10.12 a
+keychain item's access list carries a partition list, and for an app with no team that is
+`cdhash:<the build that made it>`. Every build has a new cdhash, so it is outside the list until a
+person allows it; Always Allow adds that build's cdhash. The designated requirement is already the
+same for every build (`identifier "dev.projectb.browser" and certificate root = H"…"`), so signing
+differently can't help.
+
+**The decision.** Keep the sheet and say so (Sudipta, 2026-11-23): a line in every Stable release's
+notes and a hint at first start. A Developer ID's Team ID would give a stable `teamid:` partition.
+
+**The check.** `tools/vm/run.sh <0.3.9 DMG> upgrade` (PB_VM=pb-secret, PB_UPGRADE_TO=<new DMG>) prints
+the item's partition list before and after the update.
