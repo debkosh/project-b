@@ -117,6 +117,14 @@ public final class BrowserActivity extends Activity {
         }
     }
 
+    // Back in front, as after Android's settings: a page waiting on the camera or microphone
+    // the OS refused gets it if the person turned it on there (oskit/media).
+    @Override
+    protected void onResume() {
+        super.onResume();
+        OsKit.onResume();
+    }
+
     @Override
     protected void onStart() {
         super.onStart();
