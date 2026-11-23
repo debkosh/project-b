@@ -101,6 +101,7 @@ mock() {
     run "the OS's capabilities (oskit)" go -C oskit test ./...
     [ -n "$BUILT" ] && run "Go managers, with $BUILT" go -C core test -tags "sqlite_fts5,$BUILT" ./...
     run "every action a person can take has a test (docs/action-coverage.md)" python3 tools/action_coverage.py --check
+    run "the field matching built into the form script is the one recorded (docs/password-autofill.md, Detection)" tools/form-matching.sh check
     run "build the shell" npm --prefix shell run build
     run "the shell on the mock engine" node shell/e2e/first-app.cjs
     run "the region outlines on the mock engine" node shell/e2e/outlines.cjs

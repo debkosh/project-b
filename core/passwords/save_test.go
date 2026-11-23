@@ -219,8 +219,8 @@ func TestUpdateNotNowAndNever(t *testing.T) {
 // sign-in under a certificate that doesn't check, and a single letter, as a box of a code.
 func TestTwoStepsAndWhereNothingIsSaved(t *testing.T) {
 	s := newSaving(t)
-	first := forms.Fields{Fields: []forms.Field{{Ref: "u", Form: "F", Tag: "input", Type: "email", Name: "identifier", Autocomplete: "username", Visible: true, Focusable: true}}}
-	second := forms.Fields{Fields: []forms.Field{{Ref: "p", Form: "F", Tag: "input", Type: "password", Name: "password", Visible: true, Focusable: true}}}
+	first := forms.Fields{Fields: []forms.Field{{Ref: "u", Form: "F", Tag: "input", Type: "email", Name: "identifier", Autocomplete: "username", Guess: "username", Visible: true, Focusable: true}}}
+	second := forms.Fields{Fields: []forms.Field{{Ref: "p", Form: "F", Tag: "input", Type: "password", Name: "password", Guess: "password", Visible: true, Focusable: true}}}
 	one := shop
 	one.Document = "step-1"
 	s.tell(one, "fields", first)

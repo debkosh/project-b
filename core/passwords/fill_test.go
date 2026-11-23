@@ -82,8 +82,8 @@ func usernames(o *Offer) []string {
 var (
 	shop  = forms.Stamp{Tab: "7", Frame: "main", Document: "d1", Origin: "https://shop.example", Top: true, Secure: true}
 	login = forms.Fields{Fields: []forms.Field{
-		{Ref: "f1", Form: "F1", Tag: "input", Type: "email", Name: "email", Visible: true, Focusable: true, Empty: true},
-		{Ref: "f2", Form: "F1", Tag: "input", Type: "password", Name: "password", Visible: true, Focusable: true, Empty: true},
+		{Ref: "f1", Form: "F1", Tag: "input", Type: "email", Name: "email", Guess: "username", Visible: true, Focusable: true, Empty: true},
+		{Ref: "f2", Form: "F1", Tag: "input", Type: "password", Name: "password", Guess: "password", Visible: true, Focusable: true, Empty: true},
 		{Ref: "f3", Tag: "input", Type: "search", Name: "q", Visible: true, Focusable: true, Empty: true},
 	}}
 )
@@ -266,8 +266,8 @@ func TestWhereNothingIsOffered(t *testing.T) {
 	}
 	// A sign-up's fields are never offered a saved login.
 	signUp := forms.Fields{Fields: []forms.Field{
-		{Ref: "u", Tag: "input", Type: "email", Name: "email", Autocomplete: "username", Visible: true, Focusable: true},
-		{Ref: "n", Tag: "input", Type: "password", Name: "new", Autocomplete: "new-password", Visible: true, Focusable: true},
+		{Ref: "u", Tag: "input", Type: "email", Name: "email", Autocomplete: "username", Guess: "email", Visible: true, Focusable: true},
+		{Ref: "n", Tag: "input", Type: "password", Name: "new", Autocomplete: "new-password", Guess: "password.new", Visible: true, Focusable: true},
 	}}
 	s := shop
 	s.Document = "d3"

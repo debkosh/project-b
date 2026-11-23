@@ -38,8 +38,8 @@ func TestFillingASavedLogin(t *testing.T) {
 	// A frame of the page, 40 across and 300 down in it, of the page's own origin.
 	from := engine.FormFrame{Tab: tab, Frame: "frame-1", Document: "doc-1", Origin: "https://shop.example", Secure: true, X: 40, Y: 300}
 	tell := func(kind, payload string) { r.e.Post(func() { r.e.FormMessage(from, kind, payload) }) }
-	fields := `{"fields":[{"ref":"f1","form":"F1","tag":"input","type":"email","name":"email","visible":true,"focusable":true,"empty":true},
-		{"ref":"f2","form":"F1","tag":"input","type":"password","name":"password","visible":true,"focusable":true,"empty":true}]}`
+	fields := `{"fields":[{"ref":"f1","form":"F1","tag":"input","type":"email","name":"email","guess":"username","visible":true,"focusable":true,"empty":true},
+		{"ref":"f2","form":"F1","tag":"input","type":"password","name":"password","guess":"password","visible":true,"focusable":true,"empty":true}]}`
 	offer := func() map[string]any {
 		t.Helper()
 		m := r.waitFor(func(m map[string]any) bool { return m["t"] == "passwordOffer" && m["passwordOffer"] != nil })
@@ -122,8 +122,8 @@ func TestSavingALoginSignedInWith(t *testing.T) {
 	defer r.stop()
 	r.visit("https://shop.example/login")
 	tab := r.activeTab()
-	fields := `{"fields":[{"ref":"f1","form":"F1","tag":"input","type":"email","name":"email","visible":true,"focusable":true,"empty":true},
-		{"ref":"f2","form":"F1","tag":"input","type":"password","name":"password","visible":true,"focusable":true,"empty":true}]}`
+	fields := `{"fields":[{"ref":"f1","form":"F1","tag":"input","type":"email","name":"email","guess":"username","visible":true,"focusable":true,"empty":true},
+		{"ref":"f2","form":"F1","tag":"input","type":"password","name":"password","guess":"password","visible":true,"focusable":true,"empty":true}]}`
 	signIn := func(doc, username, password string) {
 		from := engine.FormFrame{Tab: tab, Frame: "frame-1", Document: doc, Origin: "https://shop.example", Top: true, Secure: true}
 		r.e.Post(func() { r.e.FormMessage(from, "fields", fields) })

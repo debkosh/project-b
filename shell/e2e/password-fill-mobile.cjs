@@ -29,8 +29,8 @@ const check = (name, ok, detail) => lib.check(name, ok, detail);
   const page = { frame: 'main', document: 'doc-1', origin: 'https://shop.example', top: true, secure: true, x: 0, y: 0 };
   const tell = (frame, kind, payload) => lib.fire('form', JSON.stringify({ frame, kind, payload }));
   const fields = { fields: [
-    { ref: 'f1', form: 'F1', tag: 'input', type: 'email', name: 'email', visible: true, focusable: true, empty: true },
-    { ref: 'f2', form: 'F1', tag: 'input', type: 'password', name: 'password', visible: true, focusable: true, empty: true },
+    { ref: 'f1', form: 'F1', tag: 'input', type: 'email', name: 'email', guess: 'username', visible: true, focusable: true, empty: true },
+    { ref: 'f2', form: 'F1', tag: 'input', type: 'password', name: 'password', guess: 'password', visible: true, focusable: true, empty: true },
   ] };
   const box = { x: 40, y: 300, w: 300, h: 44 };
   const bar = w.ui.getByRole('group', { name: 'Saved passwords for shop.example' });

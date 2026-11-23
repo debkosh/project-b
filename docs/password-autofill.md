@@ -22,7 +22,8 @@ research papers).
 - **Step 1 of filling, 2026-11-22: the page side and Go's rules, with no engine yet.**
   - `core/forms`: the page protocol's messages (`forms.go`), and `Roles`, which works out
     each field's role and each form's kind from what the form script reports (`roles.go`,
-    its table of forms in `roles_test.go`).
+    its table of forms in `roles_test.go`). Since 2026-11-23 what a field is comes from
+    DuckDuckGo's matching ([Detection](#detection)); the rules written here first are gone.
   - `core/forms/page/forms.js`: the form script. `shell/e2e/form-script.cjs` runs it in a
     real page.
   - `core/cmd/pwlab`: the test bench. `go run ./cmd/pwlab -extension /tmp/pb-form-lab
@@ -106,6 +107,61 @@ research papers).
 - **Not built:** the key in the address field with the site's count; the generator;
   Android's switch to another service; saving a generated password before its form is
   sent.
+
+## Detection
+
+Decided 2026-11-22 and 23, the owner: asked "did we do any research on available libraries
+for autofill detection", then "yes switch to ddg detection", and "make it so that we can just
+pull the latest one from theirs during every release or during every upgrade content".
+
+- **What finds the fields is DuckDuckGo's matching**
+  ([duckduckgo/duckduckgo-autofill](https://github.com/duckduckgo/duckduckgo-autofill), Apache
+  License 2.0), not rules of ours: their `Matching`, a table of selectors and words in many
+  languages that takes each field for a username, a password (new or current), a code, an
+  email address and so on, and their `FormAnalyzer`, which judges a form a sign-in or a
+  sign-up. Both are used as they publish them. Their `Scanner` and `Form` are left out: they
+  belong to their apps and draw into the page.
+- **Our glue** (`core/forms/page/matching/entry.js`) calls the two the way their own Scanner
+  and Form do: it groups fields into forms as their `getParentForm` does, and keeps their
+  rule that in a sign-in with a password and no username, the one field that is unknown, a
+  phone or a card number is the username. It reads the page and changes nothing in it: no
+  attribute is set and nothing is listened for.
+- **The form script is the adapter** (`core/forms/page/forms.js`): it asks the matching what
+  each field is and reports that with the facts it already tells, as `guess` ("username",
+  "password", "password.current", "password.new", "totp", "email") and `group`, the element
+  taken for the field's form. Nothing else of the matching leaves the page.
+- **Go still decides** (`core/forms/roles.go`): which of two or three password fields is the
+  current one, the new one and its confirmation; which username goes with them, an email
+  address beside a password being one; what the form is for; and that nothing a person can't
+  see gets a role beside something they can. Offering, filling and saving are unchanged.
+- **Built in, not fetched at run time.** `tools/form-matching.sh update` fetches their latest
+  (or `update <commit>`), bundles the glue with their matching into
+  `core/forms/page/matching.gen.js` (about 59 KB; Go embeds it before the form script), keeps
+  their licence in `core/forms/page/matching/LICENSE`, scores the result, and records their
+  commit, the file's SHA-256 and the scores in `core/forms/page/matching/SOURCE.json`.
+  **Run it at each release and with each new version of content**, then `tools/test.sh mock`,
+  and commit the three files. `tools/form-matching.sh check`, in the mock tests, fails when
+  the built file isn't the one recorded.
+- **The measure** is their own 564 saved forms, each field labelled by hand: the form script
+  runs over each in a real Chromium with the network shut, Go gives the roles
+  (`core/cmd/formroles`), and `tools/form-matching/score.py` counts them against the labels.
+  Before and after the switch, on 2026-11-23, their matching at `4e39741`:
+
+  | | Our own rules, before | Their matching, after |
+  |---|---|---|
+  | Password fields found, of 595 | 568 | 581; 13 of the rest are hidden in the page |
+  | New and current passwords confused | 13 | 2 |
+  | Username fields found, of 426 | 349 | 362 |
+  | Other fields wrongly given a role, of 1,183 | 17 | 4 |
+
+  Their rules were tuned on these forms and ours never saw them, so the comparison flatters
+  theirs. A field hidden in the page is passed over on purpose. Their matching names all 8
+  of the corpus's one-time code fields; Go gives one a role only beside a sign-in (2 of the
+  8), as nothing is done with codes yet.
+- **On live pages** nothing changed: of 25 sign-in pages read on 2026-11-23 with the old rules
+  and the new (`core/cmd/pwlab`), every one read the same.
+- **What it costs a page:** about 1 ms a frame to load on a Mac, and about 12 ms to read a
+  page that has fields.
 
 ## The short version
 

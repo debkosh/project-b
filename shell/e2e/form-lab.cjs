@@ -61,7 +61,7 @@ const work = fs.mkdtempSync(path.join(os.tmpdir(), 'pwlab-'));
   lab.stdout.on('data', (d) => said.push(...String(d).split('\n').filter(Boolean)));
   await until(() => said.some((l) => l.startsWith('pwlab on')), 15000);
   check('pwlab writes out the test extension, with the real form script in it', ['manifest.json', 'carrier.js', 'transport.js', 'popup.html', 'popup.js', 'forms.js'].every((f) => fs.existsSync(path.join(ext, f))) &&
-    fs.readFileSync(path.join(ext, 'forms.js'), 'utf8') === fs.readFileSync(path.join(root, 'core/forms/page/forms.js'), 'utf8') && fs.readFileSync(path.join(ext, 'carrier.js'), 'utf8').includes(`127.0.0.1:${port}`));
+    fs.readFileSync(path.join(ext, 'forms.js'), 'utf8') === fs.readFileSync(path.join(root, 'core/forms/page/matching.gen.js'), 'utf8') + '\n' + fs.readFileSync(path.join(root, 'core/forms/page/forms.js'), 'utf8') && fs.readFileSync(path.join(ext, 'carrier.js'), 'utf8').includes(`127.0.0.1:${port}`));
 
   const context = await chromium.launchPersistentContext(path.join(work, 'profile'), { channel: 'chromium', headless: true, args: [`--disable-extensions-except=${ext}`, `--load-extension=${ext}`] });
   const worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker');

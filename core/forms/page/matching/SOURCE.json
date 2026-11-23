@@ -1,0 +1,24 @@
+{
+  "source": "https://github.com/duckduckgo/duckduckgo-autofill",
+  "license": "Apache-2.0",
+  "commit": "4e3974196cb8b336c93d5112bdf387b00e83cd1c",
+  "date": "2026-11-16",
+  "built": "core/forms/page/matching.gen.js",
+  "bytes": 58925,
+  "sha256": "78fc089353c4f82ba3f73df335739660c8aea2a68efc83331d55984dd6cba2fc",
+  "scores": {
+    "password fields": 595,
+    "password fields found": 581,
+    "password fields not found, hidden in the page": 13,
+    "new and current passwords confused": 2,
+    "username fields": 426,
+    "username fields found": 362,
+    "username fields not found, hidden in the page": 4,
+    "one-time code fields": 8,
+    "one-time code fields found": 2,
+    "other fields": 1183,
+    "other fields wrongly given a role": 4,
+    "pages": 563,
+    "pages that didn't load": 0
+  }
+}

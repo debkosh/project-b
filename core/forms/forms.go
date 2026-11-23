@@ -53,10 +53,17 @@ type Field struct {
 	// WasPassword is a field that was type=password once and is text now, as a field with
 	// its password shown is.
 	WasPassword bool `json:"wasPassword,omitempty"`
-	Visible     bool `json:"visible"`
-	Focusable   bool `json:"focusable"`
-	ReadOnly    bool `json:"readOnly,omitempty"`
-	Empty       bool `json:"empty"`
+	// Guess is what DuckDuckGo's matching took the field for, read in the page
+	// (page/matching.gen.js): "username", "password", "password.current", "password.new",
+	// "totp" or "email", and "" for anything else. Group is the script's name for the
+	// element that matching took for the field's form, where a page has fields in no form
+	// element or one form around the whole page; "" when the matching passed the field over.
+	Guess     string `json:"guess,omitempty"`
+	Group     string `json:"group,omitempty"`
+	Visible   bool   `json:"visible"`
+	Focusable bool   `json:"focusable"`
+	ReadOnly  bool   `json:"readOnly,omitempty"`
+	Empty     bool   `json:"empty"`
 }
 
 // Form is a form element of the frame.

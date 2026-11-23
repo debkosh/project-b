@@ -1,7 +1,7 @@
 // The form script (docs/password-autofill.md): the page side of the page protocol, run in
 // each frame, in a world of its own that the page's scripts can't reach. It reports facts
-// about the frame's fields, tells when the person presses one and when a form is sent or
-// goes, and fills fields on command. It knows nothing of logins and decides nothing: Go
+// about the frame's fields, with what DuckDuckGo's matching takes each for, tells when the
+// person presses one and when a form is sent or goes, and fills fields on command. It knows nothing of logins and decides nothing: Go
 // does (core/forms).
 //
 // It speaks through a transport its carrier gives it: transport.send(type, payload) to Go,
@@ -98,8 +98,17 @@
 
     function fields() {
       const all = inputs(document, []).filter(isField).slice(0, MOST);
+      // What each field is, and the element taken for its form, as DuckDuckGo's matching
+      // reads the page (matching.gen.js, which comes before this file). It reads, and
+      // changes nothing; only the kind it names leaves the page.
+      let read = [];
+      try {
+        read = globalThis.__pbFormMatching?.(all) || [];
+      } catch {
+        read = [];
+      }
       const forms = new Map();
-      const out = all.map((el) => {
+      const out = all.map((el, i) => {
         if ((el.getAttribute('type') || '').toLowerCase() === 'password') wasPassword.add(el);
         const f = { ref: ref(el, 'f'), tag: 'input', visible: visible(el), focusable: focusable(el), empty: el.value === '' };
         if (el.form) {
@@ -107,6 +116,8 @@
           forms.set(f.form, el.form);
         }
         const put = (key, value) => value && (f[key] = value);
+        put('guess', read[i]?.kind);
+        if (read[i]?.form) f.group = ref(read[i].form, 'G');
         put('type', (el.getAttribute('type') || '').toLowerCase());
         put('name', el.name);
         put('id', el.id);

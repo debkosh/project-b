@@ -12,7 +12,8 @@ const lib = require('./lib.cjs');
 const { until } = lib;
 const check = (name, ok, detail) => lib.check(name, ok, detail);
 
-const script = fs.readFileSync(path.join(__dirname, '../../core/forms/page/forms.js'), 'utf8');
+// The field matching first, then the form script, as Go hands them to the engine (core/forms).
+const script = ['matching.gen.js', 'forms.js'].map((f) => fs.readFileSync(path.join(__dirname, '../../core/forms/page', f), 'utf8')).join('\n');
 // The carrier's side, in the page: what the script sent, and a way to speak to it as Go does.
 const transport = `
   window.__sent = [];
@@ -56,6 +57,11 @@ const transport = `
   check('a field is told with what the page calls it, and no value', email.tag === 'input' && email.type === 'email' && email.id === 'u' && email.autocomplete === 'username' && email.placeholder === 'you@example.com' &&
     email.label === 'Email address' && email.visible && email.focusable && email.empty && !('value' in email), JSON.stringify(email));
   const pass = await byName('pass');
+  // What DuckDuckGo's matching takes each field for goes with it, and the element it takes
+  // for the field's form; the page itself is left as it was.
+  check('each field is told with what the matching takes it for: the account\'s name, a password, and nothing for a search box', ['username', 'email'].includes(email.guess) && String(pass.guess).startsWith('password') && !('guess' in (await byName('q'))) &&
+    !!email.group && email.group === pass.group, JSON.stringify([email.guess, pass.guess, (await byName('q')).guess, email.group, pass.group]));
+  check('and the matching writes nothing into the page', await page.evaluate(() => ![...document.querySelectorAll('*')].some((el) => [...el.attributes].some((a) => a.name.startsWith('data-ddg')))));
   check('a field with no label is told with the text before it, and its longest length', pass.nearby === 'Password' && pass.maxLength === 64 && !pass.label, JSON.stringify(pass));
   check('a field out of sight is told as that, and one switched off as not to be used', (await byName('gone')).visible === false && (await byName('off')).focusable === false);
   const ro = await byName('ro');

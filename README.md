@@ -289,3 +289,8 @@ build Mac: [docs/updates.md](docs/updates.md).
 
 MIT. See [LICENSE](LICENSE).
 Chromium keeps its own licences.
+The field matching that finds sign-in fields is DuckDuckGo's
+([duckduckgo-autofill](https://github.com/duckduckgo/duckduckgo-autofill)), used as published
+under the Apache License 2.0: its licence is in
+[core/forms/page/matching/LICENSE](core/forms/page/matching/LICENSE), and which version is
+built in is in [SOURCE.json](core/forms/page/matching/SOURCE.json).

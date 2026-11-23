@@ -24,8 +24,8 @@ const check = (name, ok, detail) => lib.check(name, ok, detail);
   };
   const tell = (frame, kind, payload) => lib.fire('form', JSON.stringify({ frame, kind, payload }));
   const fields = { fields: [
-    { ref: 'f1', form: 'F1', tag: 'input', type: 'email', name: 'email', visible: true, focusable: true, empty: true },
-    { ref: 'f2', form: 'F1', tag: 'input', type: 'password', name: 'password', visible: true, focusable: true, empty: true },
+    { ref: 'f1', form: 'F1', tag: 'input', type: 'email', name: 'email', guess: 'username', visible: true, focusable: true, empty: true },
+    { ref: 'f2', form: 'F1', tag: 'input', type: 'password', name: 'password', guess: 'password', visible: true, focusable: true, empty: true },
   ] };
   let docs = 0;
   const page = () => ({ frame: 'main', document: `doc-${docs}`, origin: 'https://shop.example', top: true, secure: true, x: 0, y: 0 });
