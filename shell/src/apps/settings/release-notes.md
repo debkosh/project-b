@@ -1,11 +1,24 @@
-# 0.3.9
+# 0.3.10
 
-- Saved passwords sync between your devices, and a phone has the Passwords page.
-- Passwords is quicker to use: each login is one row with Show and Copy, and Touch ID or your screen lock is asked once, then not again for 5 minutes while the page stays open.
-- Sync runs on the new synckosh. An item that can't be sent is set aside, with why, in Sync details, and everything else still syncs.
-- The address field's suggestions come in a new order: the one Enter opens first, then your open tabs.
-- On Android 10 the first letter you type is no longer doubled.
-- Google sign-in works again.
-- Sites that ask for a client certificate, such as some shops, open again instead of failing with a certificate error.
-- Updates show the system's way: on a Mac a progress bar on the Dock icon and a notification with Relaunch, on a phone a notification with Install. About says why an update failed, and what's coming in the next version.
-- A new app icon, which on a phone fills the launcher's shape like other apps', and a new profile starts in the logo's teal.
+- Saved passwords fill into sign-in pages. Press a sign-in field and pick a login from the list; on a phone the logins are chips above the keyboard.
+- After you sign in to a site with a password that isn't saved, Project B offers to save it, or to update the saved one. Never for this site stops the offers there, until you remove the site under Never saved in Settings' Passwords.
+- Saving another passkey for the same account on a site no longer removes the earlier one; sign-in lists them all.
+- On a page that isn't secure, the list of saved passwords says that what you fill could be read on the way.
+- Sync has a backup code: a code to keep somewhere safe that gets you back in if you forget your sync passphrase. A new sync offers it as its second step, and Settings' Sync has it under Backup code.
+- A page's camera and microphone work on Android and the Mac: once a site you allow needs one, Project B asks the system for it, and says so on the page when the system says no.
+- Opening a downloaded page, PDF, image or text file shows it in a new tab here; a zip or a document still opens in its own app.
+- Bringing passwords over no longer freezes the app while your system asks for its keyring, wallet or keychain password.
+- A new profile, and its first workspace, start in the logo's teal.
+- What's new in About lists only what changed for this device.
+- On Dev, you get each Stable release too, as it holds every Dev build before it.
+- The crash notice names the log's file, with its whole path in a tooltip.
+- On Android, a page's notifications show in the shade, and a tap on one opens its page.
+- On Android, About has Updates from again, to pick Stable or Dev.
+- On Linux, this is a beta, for arm64, installed as a Flatpak. Project B updates itself, and keeps tabs, history and settings between starts.
+- On Linux, the System theme follows the desktop's dark mode, GNOME's and KDE's.
+- On Linux, a page's notifications show on the desktop, and a download's Open and Show in folder work.
+- On Linux, Settings says where to set Project B as your default browser, and knows when it is.
+- On Linux, sync and saved passwords keep their key in the desktop's keyring.
+- On Linux, the window draws its own minimise, maximise and close buttons, and Alt shows a menu bar.
+- On a Mac, the welcome says to choose Always Allow when macOS asks for Project B's key.
+- On a Mac, after an update, macOS asks to let Project B use its key: choose Always Allow.
