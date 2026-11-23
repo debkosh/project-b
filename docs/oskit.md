@@ -97,8 +97,9 @@ type Store interface {
     // DeviceKey is the 32-byte key this device keeps for the app under name: the login
     // keychain on the Mac, a file wrapped by the Android Keystore, the Secret portal on
     // Linux. create makes one when there is none; else ErrNone. It may wait on the person
-    // (the Mac's keychain, a Linux keyring to unlock, up to 2 minutes), so call it off the
-    // main thread. Linux's portal makes its secret on the first call, so create changes
+    // (the Mac's keychain, a Linux keyring to unlock, for as long as its question is up), so
+    // call it off the main thread; ctx doesn't end the wait, as the OS's question can't be
+    // taken back. Linux's portal makes its secret on the first call, so create changes
     // nothing there.
     DeviceKey(ctx context.Context, name string, create bool) ([]byte, error)
 }

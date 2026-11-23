@@ -48,8 +48,10 @@ The seams:
   saying it is busy, doesn't fit a press, which needs its answer at once; and a clock that
   measures how long the work has gone on is not one that measures how long nothing has
   arrived. And a call that may wait on the person must be reached from no thread and no
-  job that others wait on. Three so far: Sync now that showed nothing, a sync called out of
-  reach that wasn't, the app frozen while the desktop asked for its keyring.
+  job that others wait on. And a wait that is the person's, at a question the OS put up, is
+  not ours to end: the question stays, and its answer goes nowhere. Four so far: Sync now
+  that showed nothing, a sync called out of reach that wasn't, the app frozen while the
+  desktop asked for its keyring, GNOME's keyring broken by our giving up.
 - **An error as text.** A library's words for what went wrong hold more than we would say
   ourselves: Go names the whole address a request went to, and an address can be a secret.
   What goes to a log, a tooltip or a report has to be looked at as text a stranger may read.
@@ -68,6 +70,34 @@ The seams:
 - **A trigger runs under its caller's rules.** What a trigger's own statement says about a
   conflict gives way to the statement that fired it. One so far: a row changed twice before a
   run.
+
+## GNOME's keyring broken by our giving up, 2026-11-24
+
+- **Seen:** on Linux 0.3.10 under GNOME (Ubuntu 24.04, gnome-keyring 46): the "unlock the
+  login keyring" question left up for more than two minutes and then answered. From then on
+  nothing could be sealed or opened: an import said "skipped 1", for that person and every
+  later start of the app, until they logged out and in.
+- **Cause:** the request for the device key gave up after two minutes when its caller set
+  no limit, and the app sets none. Giving up closed the portal's Request, but GNOME's
+  question stayed up. Once the person answered it, gnome-keyring answered every later
+  request for a secret, from any app, "The operation was cancelled", at once and with the
+  keyring unlocked, until it started again at the next login. The Linux session's probe took
+  the two halves of giving up apart: closing the Request alone sets it off, closing the pipe
+  the secret is written to does not. The fault is gnome-keyring's; we set it off.
+- **Seam:** work that takes time: a limit of our own on a wait that is the person's.
+- **Fix:** `oskit/secret` on Linux waits for as long as the question is up and never closes
+  its Request, whatever its caller's context says, as the Mac's keychain request already
+  did. Nothing freezes while it waits, since the app asks off the main thread and outside
+  the store's jobs (the entry below).
+- **Why it was missed:** the limit was there against a portal that never answers, which
+  nobody had seen, and nobody asked what ending the wait leaves behind. The tests' portal
+  answers at once, and no check on a real desktop waited two minutes at the question.
+- **Guard:** the reason is written at the call in `oskit/secret/secret_linux.go`, and the
+  call can no longer be ended from outside. No automated test holds a real keyring's
+  question; the Linux session's probe on GNOME is the check: the question up for three
+  minutes, then unlocked, and the key arrived, as it did for two requests after. Not
+  guarded, and not ours to guard: a process that quits or is killed while the question is
+  up, whose requests the portal closes itself.
 
 ## A pushed file labelled for another install, 2026-11-23
 
@@ -142,8 +172,9 @@ The seams:
   and the import done after the answer. core/passwords'
   `TestTheDeviceKeyIsAskedOutsideTheStore` has a device key that waits, and wants the store
   still answering while it does, for saving, changing and bringing over. Both fail on the
-  code as it was. Not checked on a real KDE desktop yet: the Linux session's check stopped
-  at the wallet's password.
+  code as it was. Checked on KDE with 0.3.10, 2026-11-24: with KWallet's question up, for a
+  new wallet and for a closed one, the window and Settings keep answering and the login
+  arrives once the wallet opens.
 
 ## A field pressed before its page was told, 2026-11-22
 

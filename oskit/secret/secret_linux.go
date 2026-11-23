@@ -11,7 +11,6 @@ import (
 	"io"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/godbus/dbus/v5"
 
@@ -22,26 +21,25 @@ import (
 // Keyring, KWallet), or one that refused. Nothing is kept in a file instead.
 var ErrNoPortal = errors.New("secret: the desktop's Secret portal gave no key")
 
-// wait is the most the portal may take when ctx says nothing: the desktop may ask the person to
-// unlock their keyring first.
-const wait = 2 * time.Minute
-
 // linux is the Secret portal, org.freedesktop.portal.Secret: it gives each app a secret of its
 // own from the desktop's keyring, the same at every call, made at the first. The key is drawn
 // from it with HKDF-SHA256, its info named after name ("Project B": "project-b device key"),
 // so one app keeps a key per name.
+//
+// The desktop may ask the person to unlock their keyring first, and the call waits for as
+// long as that question is up. ctx isn't waited on, as on the Mac: the question can't be
+// taken back. Closing our Request while GNOME's question is up leaves the question there,
+// and once it is answered gnome-keyring answers every later request, from any app, "The
+// operation was cancelled" (the portal's code 2, at once), with the keyring unlocked, until
+// it starts again at the next login (gnome-keyring 46, 2026-11-24). A process that ends
+// while the question is up sets off the same, as the portal closes its requests then.
 type linux struct{}
 
 // New is this OS's Store.
 func New() Store { return linux{} }
 
-func (linux) DeviceKey(ctx context.Context, name string, _ bool) ([]byte, error) {
-	if _, ok := ctx.Deadline(); !ok {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, wait)
-		defer cancel()
-	}
-	s, err := retrieve(ctx)
+func (linux) DeviceKey(_ context.Context, name string, _ bool) ([]byte, error) {
+	s, err := retrieve()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrNoPortal, err)
 	}
@@ -58,7 +56,7 @@ func info(name string) string {
 
 // retrieve asks the portal for the app's secret: RetrieveSecret writes it to a pipe we hand
 // it, and its Request answers once it has (0 is done).
-func retrieve(ctx context.Context) ([]byte, error) {
+func retrieve() ([]byte, error) {
 	r, w, err := os.Pipe()
 	if err != nil {
 		return nil, err
@@ -69,7 +67,7 @@ func retrieve(ctx context.Context) ([]byte, error) {
 		b, _ := io.ReadAll(r)
 		read <- b
 	}()
-	code, _, err := portal.Request(ctx, func(_ *dbus.Conn, p dbus.BusObject, token string) (dbus.ObjectPath, error) {
+	code, _, err := portal.Request(context.Background(), func(_ *dbus.Conn, p dbus.BusObject, token string) (dbus.ObjectPath, error) {
 		var request dbus.ObjectPath
 		err := p.Call("org.freedesktop.portal.Secret.RetrieveSecret", 0, dbus.UnixFD(w.Fd()),
 			map[string]dbus.Variant{"handle_token": dbus.MakeVariant(token)}).Store(&request)
@@ -83,10 +81,5 @@ func retrieve(ctx context.Context) ([]byte, error) {
 	if code != 0 {
 		return nil, fmt.Errorf("the portal answered %d", code)
 	}
-	select {
-	case b := <-read:
-		return b, nil
-	case <-ctx.Done():
-		return nil, errors.New("the portal never wrote the secret")
-	}
+	return <-read, nil
 }
