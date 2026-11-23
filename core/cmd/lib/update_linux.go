@@ -35,7 +35,6 @@ func updateConfig(c profiles.Choice) update.Config {
 		cfg.StateDir = filepath.Join(list.Root(), "update")
 		opts = flatpak.Options{Copies: relaunch.Copies{List: list, Profile: c.ID}}
 	}
-	var src *flatpak.Source
 	commits := &update.Commits{URL: links.LinuxVersions, Channel: update.Stable}
 	cfg.Source = func(quit func()) appupdate.Source {
 		opts.Quit = quit
@@ -45,13 +44,7 @@ func updateConfig(c profiles.Choice) update.Config {
 			timeline.Infof("update: %v; this copy doesn't update", err)
 			return nil
 		}
-		src = s
 		return s
-	}
-	cfg.Present = func(u *appupdate.Updater) {
-		if err := src.Present(u, flatpak.Words{Title: "An update to Project B is ready", Body: "Relaunch to update.", Relaunch: "Relaunch"}); err != nil {
-			timeline.Errorf("update: the ready notification: %v", err)
-		}
 	}
 	return cfg
 }

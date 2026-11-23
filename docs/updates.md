@@ -2,8 +2,10 @@
 
 An installed copy keeps itself current, through amarit's updater. It looks at the project's
 release manifest every minute, downloads a newer release by itself, checks it, and says once
-that it is ready, with Relaunch and Later ([The notice](#the-notice)); on a Mac the Dock icon
-shows the download's progress and a notification offers Relaunch. Settings' About shows what
+that it is ready, with Relaunch and Later ([The notice](#the-notice)); the app's own
+notification offers Relaunch (Install on a phone, which also shows the download's progress
+with Cancel, and Try again), and on a Mac the Dock icon shows the download's progress
+([update-notifications.md](update-notifications.md)). Settings' About shows what
 it is doing all along: the download on its way, the release ready, a failure and why.
 
 ## Pieces
@@ -11,9 +13,9 @@ it is doing all along: the download on its way, the release ready, a failure and
 | Where | What |
 |---|---|
 | [amarit](https://github.com/debkosh/amarit) `appupdate` | The updater ([amarit's docs/appupdate.md](https://github.com/debkosh/amarit/blob/main/docs/appupdate.md)): the rounds, the download with progress, Cancel and Retry, the release's checks, the stage, the install, the settings every copy shares, and the rollback of a release that won't start. It draws nothing. |
-| amarit `macapp` | A Mac bundle: unpacked with `ditto`, refused unless it says it is the manifest's version and its signature, checked in the app through the Security framework, is ours (`macapp.SignedBy` of our signing certificate's SHA-1, compiled in); staged, swapped in with one `renamex_np`, the old one kept in `previous/`. `macapp.Present` puts a progress bar on the Dock icon and posts a notification with Relaunch when a release is ready. |
+| amarit `macapp` | A Mac bundle: unpacked with `ditto`, refused unless it says it is the manifest's version and its signature, checked in the app through the Security framework, is ours (`macapp.SignedBy` of our signing certificate's SHA-1, compiled in); staged, swapped in with one `renamex_np`, the old one kept in `previous/`. |
 | amarit `relaunch` | Starting the new release once this process has gone; waiting for the other copies to end. |
-| `core/update` | What the pages see of it: amarit's state in project-b's words (`words`, `why`), and the commands they send. `CheckInterval` is the one minute. |
+| `core/update` | What the pages see of it: amarit's state in project-b's words (`words`, `why`), and the commands they send. `CheckInterval` is the one minute. Its notification too (`notes.go`): one presenter for every OS, through core/system and oskit/notify, whose button presses come back as `NoteClicked`; the Dock's progress through `Config.Dock` (core/system/platform's `SetDockProgress`). amarit's own presenters (`macapp.Present`, `UpdateNotification.java`, `flatpak.Source.Present`) are for apps without oskit; this one uses none of them. |
 | `core/relaunch` | `relaunch.Copies`: the other copies on the root, told to quit over their sockets (`core/instance`) and started again on each profile after the swap. |
 | `core/cmd/lib/update_<os>.go` | The installer: `macapp.Installer` on the Mac, `appupdate.File` handing the APK to Android's package installer. |
 | `shell/src/apps/shell/pbshell/UpdateNotice.vue`, `mwshell/UpdateBar.svelte` | A ready release's one-time notice ([The notice](#the-notice)). |

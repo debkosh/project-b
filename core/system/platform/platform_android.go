@@ -5,7 +5,6 @@ package platform
 #include <stdlib.h>
 #include "pb_system_android.h"
 
-static inline void call_show_update(const PBSystemCalls* c, const char* json) { c->show_update(json); }
 static inline void call_verify_person(const PBSystemCalls* c, int32_t id, const char* title, const char* subtitle) { c->verify_person(id, title, subtitle); }
 static inline void call_cancel_person(const PBSystemCalls* c, int32_t id) { c->cancel_person(id); }
 static inline void call_scan_code(const PBSystemCalls* c, int32_t id, const char* prompt) { c->scan_code(id, prompt); }
@@ -43,14 +42,6 @@ func PBSetSystemCalls(c *C.PBSystemCalls) { calls.Store(c) }
 // CopySecret puts text on the clipboard as a clip marked sensitive (oskit/clip).
 func (s *System) CopySecret(text string) { clip.New().CopySecret(text) }
 
-// ShowUpdate hands the updater's state, as its JSON, to amarit's UpdateNotification, the
-// system's notification of a download, a release ready, or a failure a retry can help.
-func ShowUpdate(stateJSON string) {
-	c := C.CString(stateJSON)
-	defer C.free(unsafe.Pointer(c))
-	C.call_show_update(calls.Load(), c)
-}
-
 // RelaunchAfterQuit has Android start the app again once it has quit: relaunch.Self on a
 // phone, through the activity, as Chrome restarts, with no program started here.
 func RelaunchAfterQuit() { C.call_relaunch_after_quit(calls.Load()) }
@@ -86,9 +77,6 @@ func (s *System) scanCode(id int32, prompt string) {
 	defer C.free(unsafe.Pointer(p))
 	C.call_scan_code(calls.Load(), C.int32_t(id), p)
 }
-
-// otherNote is none on a phone: amarit's update notification is Java's (ShowUpdate).
-func otherNote(string, string) bool { return false }
 
 // SetDockColor does nothing: a phone has no Dock.
 func (s *System) SetDockColor(string) {}

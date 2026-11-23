@@ -9,7 +9,6 @@ static inline void call_install_update(const PBEngineCalls* c, const char* path)
 import "C"
 
 import (
-	"encoding/json"
 	"path/filepath"
 	"unsafe"
 
@@ -17,7 +16,6 @@ import (
 
 	"projectb/links"
 	"projectb/profiles"
-	"projectb/system/platform"
 	"projectb/update"
 )
 
@@ -39,15 +37,9 @@ func updateConfig(c profiles.Choice) update.Config {
 		Releases:   links.Releases,
 		AutoUpdate: releaseAutoUpdate,
 		StateDir:   dir,
-		// The system's notification too: progress with Cancel, Install when ready, Try again.
-		Present: func(u *appupdate.Updater) {
-			show := func(st appupdate.State) {
-				b, _ := json.Marshal(st)
-				platform.ShowUpdate(string(b))
-			}
-			u.OnChange(show)
-			show(u.State())
-		},
+		// The system's notification shows the download's progress too, with Cancel, Install
+		// when ready, and Try again (core/update's notes).
+		ProgressNotes: true,
 		Installer: func(main func(func()), _ func()) appupdate.Installer {
 			return appupdate.File{Dir: dir, Open: func(apk string) error {
 				// On the main thread: amarit opens the release on its own goroutine, and the
@@ -73,20 +65,3 @@ func updateConfig(c profiles.Choice) update.Config {
 	}
 }
 
-// PBUpdateCommand is a tap on the update's notification, from Java: "cancel", "retry" or
-// "relaunch". The updater takes commands from any thread.
-//
-//export PBUpdateCommand
-func PBUpdateCommand(name *C.char) {
-	if theApp == nil {
-		return
-	}
-	switch C.GoString(name) {
-	case "cancel":
-		theApp.Update.Cancel()
-	case "retry":
-		theApp.Update.Retry()
-	case "relaunch":
-		theApp.Update.Relaunch()
-	}
-}

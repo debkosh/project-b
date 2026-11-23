@@ -73,10 +73,6 @@ func (s *System) verifyPerson(id int32, _ system.PersonCheck) {
 
 func (s *System) cancelPerson(int32) {}
 
-// otherNote is amarit's update notice on Linux, which its flatpak package posts and answers
-// itself (id "amarit-update"): a press on it is no page's.
-func otherNote(id, _ string) bool { return id == "amarit-update" }
-
 // SetDockColor and OpenFullDiskAccess are the Mac's: nothing on Linux.
 func (s *System) SetDockColor(string) {}
 func (s *System) OpenFullDiskAccess() {}

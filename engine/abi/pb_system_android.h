@@ -22,8 +22,6 @@ typedef struct PBSystemCalls {
   // reaches Go as PBSystemCodeScanned(id, text, 1), or (id, "", 0) when the person left it
   // or it couldn't open, on the main thread.
   void (*scan_code)(int32_t id, const char* prompt);
-  // The updater's state as its JSON, at each change: amarit's UpdateNotification shows it.
-  void (*show_update)(const char* state_json);
   // What Android says of the app's processes that ended, newest first, for a crash report
   // (ProcessEnds.java): each one's reason, signal and memory, renderers' among them. The
   // text is malloc'd, for the caller to free; NULL when it can't be had.

@@ -13,6 +13,8 @@
 // thread. Cancel takes the sheet of check id away.
 void pb_system_verify_person(int32_t id, const char* reason);
 void pb_system_cancel_person(int32_t id);
+// A progress bar along the foot of the Dock icon, fraction of the way, 0 to 1; below 0, none.
+void pb_system_dock_progress(double fraction);
 // rgb is 0xRRGGBB, or -1 for no dot.
 void pb_system_set_dock_color(int32_t rgb);
 

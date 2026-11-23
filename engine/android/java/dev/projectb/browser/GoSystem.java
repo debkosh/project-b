@@ -14,8 +14,6 @@ import android.util.SparseArray;
 import com.google.zxing.client.android.Intents;
 import com.journeyapps.barcodescanner.CaptureActivity;
 
-import io.github.sudiptadeb.amarit.UpdateNotification;
-
 import org.chromium.build.annotations.UsedByReflection;
 
 /**
@@ -45,19 +43,6 @@ final class GoSystem {
 
     static void attach(Activity activity) {
         sActivity = activity;
-    }
-
-    /**
-     * The Go updater's state, as its JSON, at each change: amarit's UpdateNotification shows it
-     * as the system's notification, progress with Cancel, Install when ready, Try again after a
-     * failure a retry can help. Its taps go back to Go.
-     */
-    @UsedByReflection("go_table.c")
-    static void showUpdate(String json) {
-        sMain.post(() -> {
-            UpdateNotification.commands = GoCore::updateCommand;
-            UpdateNotification.show(sActivity, json);
-        });
     }
 
 
