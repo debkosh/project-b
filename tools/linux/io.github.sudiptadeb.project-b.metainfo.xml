@@ -3,7 +3,7 @@
 <component type="desktop-application">
   <id>io.github.sudiptadeb.project-b</id>
   <name>Project B</name>
-  <summary>A browser with a shell anyone can customise (preview)</summary>
+  <summary>A browser with a shell anyone can customise (beta)</summary>
   <metadata_license>MIT</metadata_license>
   <project_license>MIT</project_license>
   <developer id="io.github.sudiptadeb">
@@ -15,9 +15,10 @@
       small Go core that owns every decision, and Chromium's content layer, unpatched.
     </p>
     <p>
-      This is a preview for Linux on arm64. It follows the desktop's dark mode and updates
-      itself; opening downloads in other apps, notifications and knowing it is the default
-      browser are still being built.
+      This is a beta for Linux on arm64. It follows the desktop's dark mode, updates itself,
+      shows notifications and opens downloads in the desktop's own apps. Printing, and what
+      needs the person checked first, such as showing a saved password or using a passkey, are
+      still to come.
     </p>
   </description>
   <!-- The pictures are the site's (site/linux/screenshots/), from tools/linux/appstream_shots.py. -->
@@ -46,7 +47,7 @@
   <releases>
     <release version="@VERSION@" date="@DATE@" type="development">
       <description>
-        <p>A preview for Linux on arm64: it follows the desktop's dark mode and updates itself.</p>
+        <p>Beta: Project B on Linux, with notifications, downloads opened in the desktop's own apps, and Settings knowing when it is the default browser.</p>
       </description>
     </release>
   </releases>
