@@ -21,6 +21,8 @@
   import PageNotice from './PageNotice.svelte';
   import PasswordBar from './PasswordBar.svelte';
   import PasswordSaveSheet from './PasswordSaveSheet.svelte';
+  import PermissionSheet from './PermissionSheet.svelte';
+  import { answerPermission, promptFor } from '@/sdk/sites.js';
   import NewTab from './NewTab.svelte';
   import Strip from './Strip.svelte';
   import Switcher from './Switcher.svelte';
@@ -63,6 +65,8 @@
   const markedBookmark = $derived(marked && go.bookmarks.find((b) => b.id === marked.id));
   // The offer to save a password just signed in with, when it is for the tab shown.
   const saveOffer = $derived(go.passwordSave && Number(go.passwordSave.tab) === go.active ? go.passwordSave : null);
+  // The shown tab's permission prompt, a sheet over the window, which the back key dismisses.
+  const permission = $derived(promptFor(go, go.active));
   // What a long press in the page was on, for the 'link' sheet.
   let pressed = $state(null);
   // The workspace new tabs open in, and the switcher shows: the active tab's, until the
@@ -87,7 +91,7 @@
   // own field has it, the address or find (docs/design-system.md, On a phone).
   let keyboard = $state(false);
   const aside = $derived(keyboard && !editing && !finding);
-  $effect(() => send({ t: 'backCloses', on: !!sheet || editing || asking || finding }));
+  $effect(() => send({ t: 'backCloses', on: !!sheet || editing || asking || finding || !!permission }));
 
   // The phone's back key: what is open over a sheet closes, as the Custom colour sheet
   // (escape.js), the page's dialog is answered no, the sheet open closes, or the editing
@@ -96,6 +100,7 @@
     if (closeInnermost()) return;
     if (asking) pageDialog.cancel();
     else if (sheet) sheet = '';
+    else if (permission) answerPermission(permission, 'dismiss');
     else if (finding) findBar.close();
     else if (editing) {
       address.blur();
@@ -425,6 +430,9 @@
     <MenuSheet {tab} {group} {workspace} onclose={() => (sheet = '')} onnewtab={(inGroup) => newTab(inGroup ? go.active : 0)} {onsheet} onworkspace={(id) => (workspace = id)} />
   {:else if sheet === 'site' && /^https?:/.test(tab.url || '')}
     <SiteSheet {tab} onclose={() => (sheet = '')} />
+  {:else if !sheet && permission}
+    <!-- A site's question about its camera, microphone or notifications, or the OS's no. -->
+    <PermissionSheet prompt={permission} />
   {:else if !sheet && saveOffer}
     <!-- The offer to save a password just signed in with: the tab's own, over the window. -->
     <PasswordSaveSheet offer={saveOffer} />
