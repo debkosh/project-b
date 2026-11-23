@@ -112,6 +112,15 @@ def display_of(pid):
     return [v.decode() for v in env if v.split(b"=")[0].decode(errors="replace") in DISPLAY_VARS]
 
 
+def session_env():
+    """The environment systemd gives the stock portal, with this shell's display. Its
+    XDG_DATA_DIRS has Flatpak's per-user exports, where the portal finds our .desktop file to
+    name the app in the desktop's questions ("Update Project B?"); a shell's may not."""
+    env = dict(line.split("=", 1) for line in sh("systemctl", "--user", "show-environment").splitlines() if "=" in line)
+    env.update({k: os.environ[k] for k in DISPLAY_VARS if k in os.environ})
+    return env
+
+
 def timeline_has(app, text):
     try:
         return any(text in e.get("text", "") for e in json.loads(app.cmd("timeline", 0))["result"]["entries"])
@@ -130,7 +139,7 @@ def main():
         sh("flatpak", "install", "--user", "-y", "--noninteractive", "--reinstall", REMOTE, APP)
         sh("flatpak", "permission-set", "flatpak", "updates", APP, "yes")
         portal = subprocess.Popen(["/usr/libexec/flatpak-portal", "--replace", "--no-idle-exit", "--poll-timeout=15"],
-                                  stdout=open(PORTAL_LOG, "w"), stderr=subprocess.STDOUT)
+                                  stdout=open(PORTAL_LOG, "w"), stderr=subprocess.STDOUT, env=session_env())
         # Spawn has the serving portal's environment: the app starts only once ours owns the
         # name, with the session's display, or a copy it spawns may have none.
         deadline = time.time() + 20
