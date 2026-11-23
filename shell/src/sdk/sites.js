@@ -32,6 +32,45 @@ export function permissionAsk(prompt) {
   return parts.join(' and ');
 }
 
+// A prompt with os set is the OS refusing what the site is allowed, its camera or microphone
+// (docs/media-permissions.md): osTitle and osLine are its words, ux's, for Android and macOS.
+// Its answers are 'settings', which opens the OS's settings and keeps it, and 'dismiss',
+// Not now.
+function osName(prompt) {
+  return prompt.os === 'macos' ? 'macOS' : 'Android';
+}
+
+function devices(prompt) {
+  return ['camera', 'microphone'].filter((k) => prompt.kinds.includes(k));
+}
+
+export function osTitle(prompt) {
+  return `${osName(prompt)} hasn't let Project B use your ${devices(prompt).join(' and ')}`;
+}
+
+export function osLine(prompt) {
+  const both = devices(prompt).length > 1;
+  const so = `So ${permissionHost(prompt)} can't use ${both ? 'them' : 'it'}, though you've allowed ${both ? 'them' : 'it'}.`;
+  if (prompt.os === 'macos') {
+    const pane = devices(prompt).map((k) => k[0].toUpperCase() + k.slice(1)).join(' and ');
+    return `${so} Turn on Project B in System Settings › Privacy & Security › ${pane}.`;
+  }
+  return `${so} Turn ${both ? 'them' : 'it'} on in Project B's app settings.`;
+}
+
+// osOffNote is a site setting's line while the OS refuses the app what the site is allowed
+// (setting.osOff, docs/media-permissions.md), or '' when it doesn't: ux's words.
+export function osOffNote(setting) {
+  if (!setting.osOff || setting.value !== 'allow') return '';
+  return `Turned off for Project B in ${setting.osOff === 'macos' ? 'System Settings' : 'Android settings'}`;
+}
+
+// openMediaSettings opens the OS's settings at kind, the camera or the microphone, where the
+// person can let the app use it.
+export function openMediaSettings(kind) {
+  send({ t: 'openMediaSettings', kind });
+}
+
 // openSiteSettings opens settings on the site of the window's active tab.
 export function openSiteSettings() {
   send({ t: 'openSiteSettings' });
