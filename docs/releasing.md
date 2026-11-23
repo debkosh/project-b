@@ -77,7 +77,9 @@ fast-forward main to the release branch, bump `VERSION`, make the release notes 
 version's (`shell/src/apps/settings/release-notes.md`: `# <v>` and its changes, one `- ` line
 each in a user's words; the branches in it add theirs under the heading, a branch with none
 gets one here, and the last release's lines go), commit "Bump the version to <v>" and push.
-Only this release's notes: the app shows them in Settings' About, What's new in <v>, and
+Every Stable release's notes end with the standing line "- On a Mac, after an update, macOS asks to let
+Project B use its key: choose Always Allow." (Sudipta, 2026-11-23): with no Team ID, macOS ties the
+keychain item to each build, so every update asks once (docs/fragility.md has why). Only this release's notes: the app shows them in Settings' About, What's new in <v>, and
 `tools/release.sh` refuses notes of another version, publishes the file beside `releases.json`
 as `release-notes.md`, and puts its lines in the GitHub release. `tools/release.sh` takes `chromium/src/out/.pb-build.lock` for its whole
 run, waiting for any build that holds it, and releases the checkout the job starts in. Don't
