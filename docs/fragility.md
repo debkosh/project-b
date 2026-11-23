@@ -47,7 +47,9 @@ The seams:
 - **Work that takes time.** A rule made for work nobody asked for, such as waiting before
   saying it is busy, doesn't fit a press, which needs its answer at once; and a clock that
   measures how long the work has gone on is not one that measures how long nothing has
-  arrived. Two so far: Sync now that showed nothing, a sync called out of reach that wasn't.
+  arrived. And a call that may wait on the person must be reached from no thread and no
+  job that others wait on. Three so far: Sync now that showed nothing, a sync called out of
+  reach that wasn't, the app frozen while the desktop asked for its keyring.
 - **An error as text.** A library's words for what went wrong hold more than we would say
   ourselves: Go names the whole address a request went to, and an address can be a secret.
   What goes to a log, a tooltip or a report has to be looked at as text a stranger may read.
@@ -62,6 +64,32 @@ The seams:
 - **A trigger runs under its caller's rules.** What a trigger's own statement says about a
   conflict gives way to the statement that fired it. One so far: a row changed twice before a
   run.
+
+## The app frozen while the desktop asked for its keyring, 2026-11-23
+
+- **Seen:** on Linux 0.3.9 under KDE: importing a passwords file from Settings brought
+  KWallet's question for its password, and while it waited the desktop marked Project B's
+  window "Not Responding" and nothing in the app answered.
+- **Cause:** a profile's key is opened the first time something is sealed with it, and
+  opening it asks the OS for the device key, which may wait on the person: a keyring or
+  wallet to unlock on Linux, the Mac's keychain after an update. Two things then waited with
+  it. The import kept its logins on the main thread, though keeping them was written to run
+  on a worker; and every seal ran inside a store job, so the store's one worker waited too,
+  and with it anything that waits on the store. On a Mac and on most Linux desktops the OS
+  answers at once, so nothing showed.
+- **Seam:** work that takes time: a call that may wait on the person, reached from a thread
+  and from a job that must not wait.
+- **Fix:** the import keeps its logins on a worker and answers on the main thread, its
+  step's clock stopped meanwhile. `keys.Ready` makes or opens the profile key, and saving a
+  login, changing one, bringing logins over, making a passkey and turning sync on each call
+  it before their store job, so the job itself asks the OS nothing.
+- **Guard:** core/app's `TestKeepingPasswordsNeverHoldsTheMainThread` has a store that waits
+  as a keyring does, from a browser and from a file, and wants the main thread still running
+  and the import done after the answer. core/passwords'
+  `TestTheDeviceKeyIsAskedOutsideTheStore` has a device key that waits, and wants the store
+  still answering while it does, for saving, changing and bringing over. Both fail on the
+  code as it was. Not checked on a real KDE desktop yet: the Linux session's check stopped
+  at the wallet's password.
 
 ## A field pressed before its page was told, 2026-11-22
 

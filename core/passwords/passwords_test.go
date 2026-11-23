@@ -201,3 +201,82 @@ func TestACheckedCallerIsNotCheckedAgain(t *testing.T) {
 		t.Fatalf("with the check held: %q, %v, asked %d times", got, err, len(p.asked))
 	}
 }
+
+// The OS may ask the person before it gives the device key, a Linux keyring to unlock or
+// the Mac's keychain after an update, and a profile's key is opened the first time
+// something is sealed with it. That first time never comes inside a store job: while the
+// OS waits on the person, the store still answers, so nothing that waits on the store, the
+// main thread least of all, waits with it. Saving a login, changing one and bringing
+// logins over each find the key first.
+func TestTheDeviceKeyIsAskedOutsideTheStore(t *testing.T) {
+	wrap := bytes.Repeat([]byte{7}, 32)
+	for _, c := range []struct {
+		name string
+		seal func(m *Manager, id string) error
+	}{
+		{"saving a login", func(m *Manager, _ string) error {
+			_, err := m.Add("https://new.example.org", "nina", "n3w")
+			return err
+		}},
+		{"changing a password", func(m *Manager, id string) error { return m.Change(id, "another") }},
+		{"bringing logins over", func(m *Manager, _ string) error {
+			if added, _, _ := m.Import([]browserdata.Login{mail}); added != 1 {
+				return errors.New("nothing came")
+			}
+			return nil
+		}},
+	} {
+		dir := t.TempDir()
+		asking, answer, waits := make(chan struct{}, 1), make(chan struct{}), false
+		device := func(create bool) ([]byte, error) {
+			if waits {
+				asking <- struct{}{}
+				<-answer
+			}
+			return wrap, nil
+		}
+		start := func() (*store.Store, *Manager) {
+			st, err := store.Open(dir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return st, New(st, keys.New(dir, "", st, device), func(context.Context, string) error { return nil })
+		}
+		// A profile with a login, so that its key is there to open; then the app starts
+		// again, and its first seal meets an OS that asks.
+		st, m := start()
+		id, err := m.Add("https://example.org", "bob", "hunter2")
+		if err != nil {
+			t.Fatal(err)
+		}
+		st.Close()
+		st, m = start()
+		waits = true
+		sealed := make(chan error, 1)
+		go func() { sealed <- c.seal(m, id) }()
+		select {
+		case <-asking:
+		case <-time.After(5 * time.Second):
+			t.Fatalf("%s: the device key was never asked for", c.name)
+		}
+		counted := make(chan error, 1)
+		go func() {
+			_, err := m.Total()
+			counted <- err
+		}()
+		select {
+		case err := <-counted:
+			if err != nil {
+				t.Fatal(err)
+			}
+		case <-time.After(2 * time.Second):
+			close(answer)
+			t.Fatalf("%s: the store waited while the OS asked for the device key", c.name)
+		}
+		close(answer)
+		if err := <-sealed; err != nil {
+			t.Fatalf("%s, once the OS answered: %v", c.name, err)
+		}
+		st.Close()
+	}
+}

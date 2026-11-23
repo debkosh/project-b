@@ -309,7 +309,11 @@ type User struct {
 // device's check and then the unlock Dialog; the unlock belongs first, and is ordered when
 // sealed's inside is swapped.
 func (m *Manager) Make(ctx context.Context, asked bool, rpID string, user User, exclude [][]byte) (id, cose []byte, err error) {
-	if err := m.here(); err != nil {
+	// Making seals, and a profile's first seal makes its key, which asks the OS: here, and
+	// not in the store's job (keys.Ready).
+	if err := m.keys.Ready(); errors.Is(err, keys.ErrLocked) {
+		return nil, nil, ErrNotHere
+	} else if err != nil {
 		return nil, nil, err
 	}
 	if len(exclude) > 0 {

@@ -83,6 +83,19 @@ func (k *Keys) Check() error {
 	return err
 }
 
+// Ready makes or opens the profile key now, so that a Seal or an Open after it asks the OS
+// nothing. Opening it asks the OS for the device key, which may wait on the person: a Linux
+// keyring to unlock, the Mac's keychain after an update. So call it before a store job that
+// seals, off the main thread and outside the job: a job that waited on the person would hold
+// the store's worker, and with it everything that waits on the store, the main thread too.
+// ErrLocked when the device key doesn't open it, or why the device key couldn't be read.
+func (k *Keys) Ready() error {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	_, err := k.profileKey(true)
+	return err
+}
+
 // profileKey is the profile key, made when there is none and create is true. Call it with mu
 // held.
 func (k *Keys) profileKey(create bool) ([]byte, error) {
@@ -139,7 +152,7 @@ func (k *Keys) wrapping() []byte { return bound("profile key", k.profile) }
 
 // Seal seals plain for the column of row id in table, with any other values the row binds
 // in: it opens only with the same. The answer is the nonce, then the sealed bytes. It makes the
-// profile key the first time.
+// profile key the first time, which asks the OS: a caller in a store job calls Ready first.
 func (k *Keys) Seal(table, id, column string, plain []byte, also ...string) ([]byte, error) {
 	k.mu.Lock()
 	key, err := k.profileKey(true)

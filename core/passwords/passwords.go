@@ -180,12 +180,27 @@ func (m *Manager) Delete(id string) error {
 	return err
 }
 
+// ready has the profile key made or opened before a job that seals with it: the OS may ask
+// the person before it gives the device key, and no store job waits on that (keys.Ready).
+// ErrNotHere when the key doesn't open on this device. Not on the main thread.
+func (m *Manager) ready() error {
+	err := m.keys.Ready()
+	if errors.Is(err, keys.ErrLocked) {
+		return ErrNotHere
+	}
+	return err
+}
+
 // Import keeps logins brought from another browser or a file, and counts them: added;
 // already, the ones saved here as they are, the same site, username and password; and
 // skipped, one whose site isn't a web page's or that has no password, or that couldn't be
 // sealed. A login for a site and username saved here with another password is added beside
 // it: both stay, and the person chooses. Not on the main thread.
 func (m *Manager) Import(logins []browserdata.Login) (added, already, skipped int) {
+	if err := m.ready(); err != nil {
+		timeline.Errorf("passwords: bringing %d logins: %v", len(logins), err)
+		return 0, 0, len(logins)
+	}
 	err := m.st.Wait(func(tx *store.Tx) error {
 		added, already, skipped = 0, 0, 0
 		// The passwords saved here for a site and username, opened as they are first met.
