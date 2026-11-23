@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { linkChoices, openSiteSettings, permissionWord, reloadPage, setSiteSetting, siteOrigin, siteSetting, sparkNames } from '@/sdk/sites.js';
+import { linkChoices, openMediaSettings, openSiteSettings, osOffNote, permissionWord, reloadPage, setSiteSetting, siteOrigin, siteSetting, sparkNames } from '@/sdk/sites.js';
 import Segmented from './Segmented.vue';
 import { pushEscape } from './escape.js';
 
@@ -114,7 +114,11 @@ onUnmounted(() => pop());
     <div v-if="permissions.length" class="ui-site-group" role="group" aria-label="Permissions">
       <p class="ui-site-label">Permissions</p>
       <div v-for="p in permissions" :key="p.kind" class="ui-site-row">
-        <span class="ui-site-text"><span>{{ p.title }}</span></span>
+        <span class="ui-site-text">
+          <span>{{ p.title }}</span>
+          <small v-if="osOffNote(p)">{{ osOffNote(p) }}</small>
+        </span>
+        <button v-if="osOffNote(p)" type="button" class="text-button" @click="openMediaSettings(p.kind)">Open settings</button>
         <span class="ui-site-value" :class="p.value">{{ permissionWord(p.value) }}</span>
       </div>
     </div>

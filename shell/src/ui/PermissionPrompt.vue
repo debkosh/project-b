@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, onUnmounted } from 'vue';
-import { answerPermission, permissionAsk, permissionHost } from '@/sdk/sites.js';
+import { answerPermission, osLine, osTitle, permissionAsk, permissionHost } from '@/sdk/sites.js';
 import { pushEscape } from './escape.js';
 
 // A site asking to use its camera, microphone or notifications (docs/daily-driver.md): the
@@ -8,10 +8,14 @@ import { pushEscape } from './escape.js';
 // what is asked. Where Go offers this time, the buttons are Block, Always allow and Allow
 // this time, the primary; otherwise Block and Allow. Escape dismisses it. It takes no
 // focus, so the page keeps the keyboard; it follows the address field in tab order. The
-// root floats over the page: the caller marks it the shell's and places it.
+// root floats over the page: the caller marks it the shell's and places it. With prompt.os,
+// the site is allowed but the OS refused its camera or microphone (docs/media-permissions.md):
+// the OS's words, then Not now and Open settings, the primary; the page's request waits.
 const props = defineProps({ prompt: Object });
 
-const question = computed(() => `${permissionHost(props.prompt)} wants to ${permissionAsk(props.prompt)}`);
+const question = computed(() =>
+  props.prompt.os ? osTitle(props.prompt) : `${permissionHost(props.prompt)} wants to ${permissionAsk(props.prompt)}`,
+);
 const answer = (choice) => answerPermission(props.prompt, choice);
 
 // The glyph: a camera, a microphone, or a bell.
@@ -45,9 +49,14 @@ onUnmounted(() => pop());
           <path d="M4 11.5V7a4 4 0 0 1 8 0v4.5l1 1H3zM6.5 14h3" />
         </template>
       </svg>
-      <span><strong>{{ permissionHost(prompt) }}</strong> wants to {{ permissionAsk(prompt) }}</span>
+      <span v-if="prompt.os"><strong>{{ osTitle(prompt) }}</strong><span class="ui-permission-line">{{ osLine(prompt) }}</span></span>
+      <span v-else><strong>{{ permissionHost(prompt) }}</strong> wants to {{ permissionAsk(prompt) }}</span>
     </p>
-    <div class="ui-permission-buttons">
+    <div v-if="prompt.os" class="ui-permission-buttons">
+      <button type="button" class="text-button" @click="answer('dismiss')">Not now</button>
+      <button type="button" class="text-button primary" @click="answer('settings')">Open settings</button>
+    </div>
+    <div v-else class="ui-permission-buttons">
       <button type="button" class="text-button" @click="answer('block')">Block</button>
       <template v-if="prompt.once">
         <button type="button" class="text-button" @click="answer('allow')">Always allow</button>
@@ -69,6 +78,12 @@ onUnmounted(() => pop());
   border-radius: 8px;
   box-shadow: var(--shadow-float);
   color: var(--text);
+}
+
+.ui-permission-line {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
 }
 
 .ui-permission-question {
