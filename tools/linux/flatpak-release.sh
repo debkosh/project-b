@@ -73,12 +73,12 @@ cat > project-b.flatpakref <<REF
 [Flatpak Ref]
 Name=$app
 Branch=stable
-Title=Project B (preview)
+Title=Project B (beta)
 Url=$url/repo/
 RuntimeRepo=https://dl.flathub.org/repo/flathub.flatpakrepo
 IsRuntime=false
 Homepage=https://github.com/sudiptadeb/project-b
-Comment=A browser with a shell anyone can customise (preview)
+Comment=A browser with a shell anyone can customise (beta)
 GPGKey=\$pub
 REF
 cat > project-b.flatpakrepo <<REPO
@@ -86,7 +86,7 @@ cat > project-b.flatpakrepo <<REPO
 Title=Project B
 Url=$url/repo/
 Homepage=https://github.com/sudiptadeb/project-b
-Comment=Project B, the Linux preview
+Comment=Project B for Linux, beta
 GPGKey=\$pub
 REPO
 tar -czf flatpak-repo.tar.gz repo
