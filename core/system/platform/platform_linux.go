@@ -41,6 +41,9 @@ func (s *System) CopySecret(text string) {
 // which replace the file, shows at the next start.
 func (s *System) DefaultBrowserLive() bool { return os.Getenv("FLATPAK_ID") == "" }
 
+// MediaOS is none: Linux keeps no permission of its own for the app's camera and microphone.
+func (s *System) MediaOS() string { return "" }
+
 // Desktop is GNOME or KDE, by XDG_CURRENT_DESKTOP, which may list several ("ubuntu:GNOME"),
 // and other for the rest.
 func (s *System) Desktop() string {

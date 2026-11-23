@@ -19,6 +19,15 @@ import (
 // every shell hears the open prompts and draws those of its own tabs, and settings lists
 // each site's settings and removes them.
 
+// mediaOf is the OS's own camera and microphone permission, as the sites manager asks it.
+type mediaOf struct{ s system.System }
+
+func (m mediaOf) Allowed(kind string) bool { return m.s.MediaAllowed(kind) }
+func (m mediaOf) Ask(kinds []string, answered func(map[string]bool)) {
+	m.s.AskMedia(kinds, answered)
+}
+func (m mediaOf) OpenSettings(kind string) { m.s.OpenMediaSettings(kind) }
+
 // tabURLs is what the sites manager reads of the tabs.
 type tabURLs struct{ t *tabs.Manager }
 
@@ -29,6 +38,12 @@ func (u tabURLs) URLOf(tab engine.TabID) (string, bool) {
 
 func (a *App) startSites(e engine.Engine, dir string) {
 	a.Sites = sites.New(dir, tabURLs{a.Tabs}, e.AnswerPermission)
+	// A page's camera and microphone, which a site is allowed, need the OS's own permission
+	// too where it keeps one: it is asked as a page first needs them.
+	if name := a.System.MediaOS(); name != "" {
+		a.Sites.UseOS(mediaOf{a.System}, name)
+		a.System.OnMediaReturn(a.Sites.Returned)
+	}
 	a.Sparks = sparks.New(dir)
 	// A profile's first start on a version with the built-in sparks gives it them, off.
 	a.Sparks.AddBuiltins()

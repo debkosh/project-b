@@ -50,6 +50,9 @@ func (s *System) Desktop() string { return "" }
 
 func (s *System) DefaultBrowserLive() bool { return true }
 
+// MediaOS is Android: its runtime permissions let the app use the camera and microphone.
+func (s *System) MediaOS() string { return "android" }
+
 // verifyPerson asks Android's own sheet, BiometricPrompt: a fingerprint, a face or the
 // screen lock.
 func (s *System) verifyPerson(id int32, check system.PersonCheck) {
