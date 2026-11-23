@@ -626,9 +626,11 @@ Rules 30 and 31.
 - **Which camera or microphone.** The adapter gives the one the page named, else the
   system's first; Go has no say in it yet.
 
-**Android.** The same messages, and the Mobile shell's prompt as a sheet. Once Go allows the
-camera or microphone, the adapter asks Android for its own grant before the page gets a
-device. Built after the Mac's.
+**Android, and the OS's own permission.** The same messages, and the Mobile shell's prompt as
+a sheet (Glide's is a card over the tab's pane). Once a site is allowed the camera or
+microphone, Go asks the OS for the app's own permission before the page gets a device:
+Android's runtime question, macOS's Privacy & Security (oskit/media). The OS's no is the
+prompt's state, `os` set, with Open settings and Not now (docs/media-permissions.md).
 ## Error pages and certificate warnings
 
 A page that fails to load, crashes or is blocked, or has a bad certificate, has nothing to
