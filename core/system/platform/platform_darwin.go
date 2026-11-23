@@ -40,6 +40,9 @@ func (s *System) Desktop() string { return "" }
 
 func (s *System) DefaultBrowserLive() bool { return true }
 
+// MediaOS is macOS: its Privacy & Security lets the app use the camera and microphone.
+func (s *System) MediaOS() string { return "macos" }
+
 // verifyPerson asks macOS's own sheet: Touch ID, else the Mac's password.
 func (s *System) verifyPerson(id int32, check system.PersonCheck) {
 	withPath(check.Reason, func(c *C.char) { C.pb_system_verify_person(C.int32_t(id), c) })
