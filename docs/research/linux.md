@@ -163,6 +163,42 @@ app's settings) or asking the host through `flatpak-spawn --host` (a way out of 
 too much (platforms, 2026-11-22). `System.DefaultBrowserLive` is false in the Flatpak, so a window
 coming to the front doesn't ask again, and the pages' words say the app notices at its next start.
 
+**The device key and GNOME's keyring** (2026-11-24, Ubuntu 24.04, gnome-keyring 46, the real
+Flatpak and probes in its sandbox). The device key is the Secret portal's secret for the app
+(oskit/secret). When the login keyring is locked (a desktop that logs in by itself never
+unlocks it), the portal's first request brings up GNOME's "Authentication required" dialog,
+and the request waits on it. If the Request is closed while that dialog is up, gnome-keyring's
+portal breaks once the person unlocks. That happens through `org.freedesktop.portal.Request.Close`,
+or because the asking process exits, and the portal then closes its requests itself. From
+then on every request answers code 2 within milliseconds ("Backend call failed: The operation
+was cancelled" in the user journal), from any process, with the keyring unlocked, until
+gnome-keyring restarts: logging out and in, or `systemctl --user restart
+gnome-keyring-daemon`. The app can then seal and open nothing: an import skips its logins.
+Each case was tried on its own, with gnome-keyring restarted between:
+
+| While the dialog is up, the asker... | that request | later requests |
+|---|---|---|
+| waits; the person unlocks (3 minutes later) | the key | fine |
+| waits; the person presses Cancel | fails | fine: the dialog comes back |
+| closes the Request, keeps the pipe; then the unlock | the secret arrives, Response 0 | broken |
+| closes the pipe, keeps the Request; then the unlock | 2 ("Broken pipe") | fine |
+| exits; then the unlock | — | broken |
+
+Request.Close itself gets no reply (it times out after 25 s) and leaves the dialog up. So:
+
+- oskit/secret waits for as long as the dialog is up and closes nothing on its own: the app's
+  request has no deadline (passwords' `keyring-wait`, verified with the dialog up 3 minutes).
+  A caller that must give up closes the pipe, never the Request.
+- Quitting the app while the dialog is up still breaks the keyring, and nothing on our side
+  can stop it. So the dialog should come only right after the person's own action. Today
+  it doesn't: sync's `load` checks the profile key at every start, so a profile that has sealed
+  anything asks at start-up, in the background, sync on or off (from reading the code, not yet
+  seen on a desktop). That's with passwords and platforms.
+- Telling the person ("log out and back in") is Sudipta's call, with passwords; an
+  upstream report for gnome-keyring is drafted for him to file.
+- KDE doesn't break this way: Plasma 6's ksecretd answered every later request in the same
+  tries.
+
 Through Chromium, not `core/system`:
 
 - **Save as and the folder chooser.** `ui::SelectFileDialog` uses the FileChooser portal, so
@@ -538,6 +574,14 @@ Step 4 is `core/system` on Linux (section 4's table), all from pure Go over D-Bu
   the update notification's Relaunch, clicked on GNOME on a fresh boot; single instance and
   links from the OS on both (core/instance's socket in `$XDG_RUNTIME_DIR/app/<id>`, the
   `.desktop` file's `%U`); the stock portal gives a spawned copy the session's display.
+- **0.3.10, the first beta** (2026-11-24, from the live flatpakref). On KDE, importing a
+  passwords file while KWallet asks no longer freezes the window, whether it's a new wallet or
+  opening a closed one; the full restart check passed 13 of 13. GNOME: a fresh install passed 13
+  of 13. 0.3.9 has no Linux updater (the Flatpak one came in 0.3.10), and GNOME Software updated
+  it to 0.3.10 by itself a minute after the install; a restart had it on 0.3.10 with its tabs.
+  The app's own update and Relaunch are first checked from 0.3.10 to the next release. The
+  release's bundle used to install its remote with no-gpg-verify; `flatpak-release.sh` now gives
+  it the key and fails a bundle whose remote doesn't check signatures.
 - **The software centres' screenshots** (`tools/linux/appstream_shots.py`, ux's set and
   captions): Standard, Glide and the welcome, in the metainfo from the site's
   `linux/screenshots/`; Glide's was retaken on 2026-11-23, once a fresh profile's Main workspace
@@ -556,6 +600,16 @@ How the Linux work runs (rules from this branch's sessions):
   doesn't flush the guest's disk; stop deskrig's `capture-serve` by its pid after.
 - `deskrig run` has the session's `XDG_SESSION_TYPE` and D-Bus but no `WAYLAND_DISPLAY` or
   `DISPLAY`; start apps from the GNOME search (Super, type, Enter) or set them.
+- The keyrings, so `restart_check.py` seals with no question. pb-ubuntu's login keyring has
+  an empty password (`vm-setup-guest.sh`). In pb-flat-kde, kdewallet has an empty password
+  (2026-11-24, the tester's yes): with the old wallet's files in `~/.local/share/kwalletd/` removed,
+  the first request opens KWallet's wizard; choose Blowfish, Finish, leave both password
+  fields empty, OK, and Yes to "Low Password Strength". Plasma 6 here serves the wallet from
+  ksecretd, not kwalletd6, and keeps it open while ksecretd runs (Secret Service says Locked
+  even so); `pkill -x ksecretd` closes it for real, and D-Bus starts it again on the next
+  request. pb-flat-ub3's login keyring has a password, the VM user's, as a person's does: unlock it
+  in GNOME's dialog while the request waits, and if a check stopped while the dialog was up,
+  restart gnome-keyring first (section 4).
 - Linux releases only when Sudipta asks; a release hands release the four files in
   `build/linux/` to replace or attach, and Pages serves the newest release's.
 
