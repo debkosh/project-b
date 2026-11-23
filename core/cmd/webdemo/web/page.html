@@ -330,12 +330,12 @@ h3.sub + .lead { margin-bottom: 16px; }
     <div class="head">
       <span class="eyebrow">03 · The core and the renderer</span>
       <h2>Each part, on its own.</h2>
-      <p class="lead">Most browsers carry patches on all of Chrome. Project B starts a layer lower: Chromium's engine draws pages, and everything above it is new and kept apart.</p>
+      <p class="lead">Most browsers carry patches on all of Chromium. Project B starts a layer lower: Chromium's engine draws pages, and everything above it is new and kept apart.</p>
     </div>
     <div class="built">
       <div><span class="n">shell</span><b>Built and tested in a browser</b><p>A web page in Vue and Svelte. It runs and is tested against a stand-in renderer, with no Chromium build at all.</p></div>
       <div><span class="n">core</span><b>Plain Go, tested alone</b><p>Tabs, profiles, history, bookmarks, settings and updates. Its tests run with a stand-in renderer, the same one this page uses.</p></div>
-      <div><span class="n">renderer</span><b>Chromium's engine</b><p>The engine that draws pages, joined to the core through one interface. Chrome's own interface isn't in it.</p></div>
+      <div><span class="n">renderer</span><b>Chromium's engine</b><p>The engine that draws pages, joined to the core through one interface. Chromium's browser interface isn't in it.</p></div>
     </div>
   </section>
 
