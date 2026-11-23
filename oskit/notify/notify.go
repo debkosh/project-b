@@ -15,6 +15,12 @@ type Note struct {
 	ID, Title, Subtitle, Body string
 	// Actions are its buttons, up to three; the OS may show fewer.
 	Actions []Action
+	// Ongoing is a task still running, which the note stays up for, and Progress its part
+	// done, 0 to 1, or -1 for unknown; Quiet makes no sound. Android draws all three (a
+	// progress bar, a quiet channel); the Mac and Linux show the note as it is.
+	Ongoing  bool
+	Progress float64
+	Quiet    bool
 }
 
 // Action is a button on a note.

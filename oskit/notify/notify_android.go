@@ -68,7 +68,8 @@ func (a *android) Show(n Note) {
 	}
 	id, title, subtitle, body := cs(n.ID), cs(n.Title), cs(n.Subtitle), cs(n.Body)
 	jni.Do(func(env unsafe.Pointer) {
-		C.oskit_notify_show((*C.JNIEnv)(env), id, title, subtitle, body, ids, labels, C.int(len(n.Actions)))
+		C.oskit_notify_show((*C.JNIEnv)(env), id, title, subtitle, body, ids, labels, C.int(len(n.Actions)),
+			yes(n.Ongoing), C.double(n.Progress), yes(n.Quiet))
 	})
 }
 
@@ -91,3 +92,10 @@ func oskitNotifyClicked(id, action *C.char) {
 //
 //export oskitNotifyAnswered
 func oskitNotifyAnswered(yes C.int) { the.asking.Answer(yes != 0) }
+
+func yes(b bool) C.int {
+	if b {
+		return 1
+	}
+	return 0
+}

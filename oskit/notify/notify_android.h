@@ -16,7 +16,10 @@ void oskit_notify_show(JNIEnv* env,
                        const char* body,
                        const char** action_ids,
                        const char** action_labels,
-                       int n_actions);
+                       int n_actions,
+                       int ongoing,
+                       double progress,
+                       int quiet);
 void oskit_notify_remove(JNIEnv* env, const char* id);
 
 #endif  // OSKIT_NOTIFY_NOTIFY_ANDROID_H_

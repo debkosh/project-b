@@ -30,7 +30,7 @@ int oskit_notify_register(JNIEnv* env) {
   show = (*env)->GetStaticMethodID(
       env, notify, "show",
       "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;"
-      "[Ljava/lang/String;[Ljava/lang/String;)V");
+      "[Ljava/lang/String;[Ljava/lang/String;ZDZ)V");
   remove_ = (*env)->GetStaticMethodID(env, notify, "remove", "(Ljava/lang/String;)V");
   static const JNINativeMethod natives[] = {
       {"clicked", "(Ljava/lang/String;Ljava/lang/String;)V", (void*)Clicked},
@@ -67,14 +67,18 @@ void oskit_notify_show(JNIEnv* env,
                        const char* body,
                        const char** action_ids,
                        const char** action_labels,
-                       int n_actions) {
+                       int n_actions,
+                       int ongoing,
+                       double progress,
+                       int quiet) {
   jstring i = (*env)->NewStringUTF(env, id);
   jstring t = (*env)->NewStringUTF(env, title);
   jstring s = (*env)->NewStringUTF(env, subtitle);
   jstring b = (*env)->NewStringUTF(env, body);
   jobjectArray ids = Strings(env, action_ids, n_actions);
   jobjectArray labels = Strings(env, action_labels, n_actions);
-  (*env)->CallStaticVoidMethod(env, notify, show, i, t, s, b, ids, labels);
+  (*env)->CallStaticVoidMethod(env, notify, show, i, t, s, b, ids, labels, (jboolean)(ongoing != 0),
+                               (jdouble)progress, (jboolean)(quiet != 0));
   (*env)->DeleteLocalRef(env, i);
   (*env)->DeleteLocalRef(env, t);
   (*env)->DeleteLocalRef(env, s);

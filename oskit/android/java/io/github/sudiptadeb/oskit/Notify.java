@@ -22,6 +22,8 @@ final class Notify {
     static final int PERMISSION_REQUEST = 0x05c1;
 
     private static final String CHANNEL = "oskit.notes";
+    // Quiet notes, as a download's progress: no sound, and no peeking over the screen.
+    private static final String QUIET = "oskit.quiet";
     private static final String TAP = "io.github.sudiptadeb.oskit.NOTE";
     private static final String EXTRA_ID = "oskit.id";
     private static final String EXTRA_ACTION = "oskit.action";
@@ -69,6 +71,10 @@ final class Notify {
                     new NotificationChannel(
                             CHANNEL, "Notifications", NotificationManager.IMPORTANCE_DEFAULT));
         }
+        if (manager.getNotificationChannel(QUIET) == null) {
+            manager.createNotificationChannel(
+                    new NotificationChannel(QUIET, "Progress", NotificationManager.IMPORTANCE_LOW));
+        }
         return manager;
     }
 
@@ -94,19 +100,30 @@ final class Notify {
             String subtitle,
             String body,
             String[] actionIds,
-            String[] actionLabels) {
+            String[] actionLabels,
+            boolean ongoing,
+            double progress,
+            boolean quiet) {
         sMain.post(
                 () -> {
                     Activity activity = OsKit.activity();
                     Notification.Builder b =
-                            new Notification.Builder(activity, CHANNEL)
-                                    .setSmallIcon(android.R.drawable.ic_popup_reminder)
+                            new Notification.Builder(activity, quiet ? QUIET : CHANNEL)
+                                    .setSmallIcon(
+                                            ongoing
+                                                    ? android.R.drawable.stat_sys_download
+                                                    : android.R.drawable.ic_popup_reminder)
                                     .setContentTitle(title)
                                     .setContentText(body)
                                     .setSubText(subtitle)
                                     .setStyle(new Notification.BigTextStyle().bigText(body))
                                     .setContentIntent(tap(id, ""))
-                                    .setAutoCancel(true);
+                                    .setOnlyAlertOnce(true)
+                                    .setOngoing(ongoing)
+                                    .setAutoCancel(!ongoing);
+                    if (ongoing) {
+                        b.setProgress(1000, progress < 0 ? 0 : (int) (progress * 1000), progress < 0);
+                    }
                     for (int i = 0; i < actionIds.length; i++) {
                         b.addAction(
                                 new Notification.Action.Builder(
