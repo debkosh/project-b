@@ -59,13 +59,22 @@ grep -q "\"\$commit\"" repo/linux.json || { echo "FAILED: linux.json doesn't nam
 echo "stable is \$version, commit \$commit"
 flatpak build-update-repo --gpg-sign=\$fpr --gpg-homedir="\$GNUPGHOME" --generate-static-deltas \
   --title="Project B" --default-branch=stable repo
-flatpak build-bundle --gpg-sign=\$fpr --gpg-homedir="\$GNUPGHOME" --repo-url=$url/repo/ \
-  repo $app.flatpak $app stable
+# The bundle carries the repository's public key, so the remote it installs checks what it
+# pulls; without --gpg-keys, Flatpak makes that remote with no-gpg-verify.
+gpg --export \$fpr > repo-key.gpg
+flatpak build-bundle --gpg-sign=\$fpr --gpg-homedir="\$GNUPGHOME" --gpg-keys=repo-key.gpg \
+  --repo-url=$url/repo/ repo $app.flatpak $app stable
 # The app as a user has it keeps its profile between starts and keeps no key in a file
 # (restart_check.py), in the desktop's session; a build that fails isn't released.
 export XDG_RUNTIME_DIR=/run/user/\$(id -u) WAYLAND_DISPLAY=wayland-0
 export DBUS_SESSION_BUS_ADDRESS=unix:path=\$XDG_RUNTIME_DIR/bus
-flatpak --user install -y --noninteractive --reinstall --bundle $app.flatpak >/dev/null
+flatpak --user uninstall -y --noninteractive --delete-data $app >/dev/null 2>&1 || true
+flatpak --user remote-delete --force project-b-origin >/dev/null 2>&1 || true
+flatpak --user install -y --noninteractive --bundle $app.flatpak >/dev/null
+remote=\$(flatpak --user remotes --columns=url,options | grep -F "$url/repo/") ||
+  { echo "FAILED: the bundle installed no remote for $url/repo/"; exit 1; }
+case "\$remote" in *no-gpg-verify*) echo "FAILED: the bundle's remote doesn't check signatures"; exit 1 ;; esac
+echo "the bundle's remote checks signatures"
 trap 'flatpak --user uninstall -y --noninteractive --delete-data $app >/dev/null 2>&1; rm -rf ~/pb-release/gnupg ~/pb-release/key.asc' EXIT
 python3 src/tools/linux/restart_check.py || { echo "FAILED: the restart check"; exit 1; }
 pub=\$(gpg --export \$fpr | base64 -w0)
