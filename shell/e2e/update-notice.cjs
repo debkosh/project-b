@@ -135,7 +135,9 @@ const server = http.createServer((req, res) => {
   // The Mobile shell, on a fresh notice: a bar over the toolbar, with Later and Install,
   // light and dark; and a phone's Settings' About.
   fs.writeFileSync(path.join(lib.profile, 'prefs.json'), JSON.stringify({ ...prefs(), updateNoticed: '' }));
-  await lib.start(args('mobile'));
+  // As a phone's app runs: its keys' platform is Linux's (core/commands' platformOf), which a
+  // phone's About mustn't take for Linux's one channel.
+  await lib.start([...args('mobile'), '-platform=linux']);
   w = await lib.openWindow(browser, { viewport: { width: 412, height: 915 }, hasTouch: true });
   const bar = w.ui.getByRole('dialog', { name: 'Update ready' });
   check('on a phone, a ready release shows its bar over the toolbar', await until(() => bar.isVisible(), 15000));
@@ -163,6 +165,7 @@ const server = http.createServer((req, res) => {
   check('on a phone, About\'s line says an update is ready', await until(async () => (await phonePage.locator('.section-row[data-section="about"]').textContent()).includes('0.3.6 · Update ready')));
   await phonePage.locator('.section-row[data-section="about"]').tap();
   check('on a phone, About offers Install update', await until(() => phonePage.getByRole('region', { name: 'Version' }).getByRole('button', { name: 'Install update' }).isVisible()));
+  check('and Updates from, Stable or Dev, as a phone has both', await phonePage.getByRole('radiogroup', { name: 'Updates from' }).isVisible());
   for (const scheme of ['light', 'dark']) {
     await phonePage.emulateMedia({ colorScheme: scheme });
     await settle(phonePage);
