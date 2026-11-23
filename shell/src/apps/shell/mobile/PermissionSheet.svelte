@@ -1,5 +1,6 @@
 <script>
   import { answerPermission, osLine, osTitle, permissionAsk, permissionHost } from '@/sdk/sites.js';
+  import { pushEscape } from '@/ui/escape.js';
   import Sheet from './Sheet.svelte';
 
   // A site asking to use its camera, microphone or notifications, on a phone
@@ -13,6 +14,11 @@
   const question = $derived(prompt.os ? osTitle(prompt) : `${permissionHost(prompt)} wants to ${permissionAsk(prompt)}`);
   const glyph = $derived(prompt.kinds.includes('camera') ? 'camera' : prompt.kinds.includes('microphone') ? 'microphone' : 'bell');
   const answer = (choice) => answerPermission(prompt, choice);
+  // Escape, and the back key through it, is Dismiss.
+  $effect(() => {
+    const p = prompt;
+    return pushEscape(() => answerPermission(p, 'dismiss'));
+  });
 </script>
 
 <Sheet label={question} onclose={() => answer('dismiss')}>
