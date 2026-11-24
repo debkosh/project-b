@@ -360,6 +360,9 @@ function again() {
 }
 
 .ui-import-wizard .item {
+  /* Holds the file input a row may have (.file), which would otherwise sit against the
+     page and stretch it past the window. */
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
