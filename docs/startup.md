@@ -29,10 +29,25 @@ func Begin(post func(func()))
 
 // Run runs f on the main thread once the wait is over, or soon if it already is.
 func Run(f func())
+
+// Stop drops what is still waiting; App.Stop calls it.
+func Stop()
 ```
 
-- `Run` before `Begin` queues `f` and runs it the same way once the wait ends.
-- Tests set `later.Wait = 0`, so a mockengine run waits for nothing.
+- **Thread.** `f` always runs on the main thread, through `post`. A job that works
+  elsewhere passes a function that only hands over: sync's is `m.Wanted`, which sends
+  its own goroutine the load. Nothing slow runs on the main thread.
+- **After the wait.** `Run` posts `f` straight away. It never calls `f` inside `Run`, so
+  `f` runs at the same point whether it came early or late.
+- **Before `Begin`.** `Run` queues `f`, and it runs once the wait is over.
+- **A quit within the wait.** `Stop` drops what is still waiting, so it never runs, and
+  every later `Run` does nothing.
+- **Which starts.** Every `app.Start` calls `Begin`: a normal start, one after an update,
+  one after a crash. The profile picker copy and a copy that hands over and quits never
+  call `app.Start`, so they never call `Begin` or `Run`, and wait for nothing.
+- **More than one app in a process.** The tests start many apps in one process, so
+  `Begin` starts over: it drops anything still waiting and starts a new clock.
+- **Tests.** Tests set `later.Wait = 0`, so a mockengine run waits for nothing.
 - `later` has no knowledge of any feature. A job tells it nothing apart from the function it
   passes.
 
