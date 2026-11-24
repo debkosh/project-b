@@ -171,6 +171,11 @@ if [ -n "$DRIVER" ]; then
 fi
 
 [ -n "$DRIVER" ] || stop "tests: Chrome for Testing has no ChromeDriver for $MAJOR yet; run this again once it has"
+echo
+if [ "$(ask "The test opens the app's windows on this desktop. Run it now? [Y/n]")" = n ]; then
+  echo "RESULT=stopped tests: not run yet; run the same line again to run them"
+  exit 1
+fi
 step "the engine interface on the real engine (tools/test.sh app; log $LOGS/app.log)"
 tools/test.sh app > "$LOGS/app.log" 2>&1
 code=$?

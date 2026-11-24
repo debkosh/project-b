@@ -83,7 +83,8 @@ above it don't change.
    hooks.
 5. Fetches ChromeDriver into `.tools/chromedriver`.
 6. `tools/test.sh app`: the real engine through its driver and through ChromeDriver. It opens
-   the app's windows on the desktop.
+   the app's windows on the desktop, so it asks first; a no stops there, and the same line
+   again later runs it (the build is already done by then).
 
 A patch within a major goes through with no hands after the yes. A new major stops at 3, 4 or
 6 when it needs adapter work. After it: commit with `Notes: Chromium <version>, with its
