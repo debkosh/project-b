@@ -46,6 +46,11 @@ async function details(list, { savedIn }) {
     (await report.locator('dl').getByRole('button', { name: 'Copy link' }).count()) === 0, said);
 }
 
+// A sheet risen to its place: tapped while it still rises, a button can sit below the page,
+// and the tap lands outside it. Playwright's own "stable" can't tell, since a rise slowed on
+// a loaded Mac moves nothing between its two frames (2026-11-24, at a load of 28).
+const risen = (sheet) => until(async () => (await sheet.isVisible()) && sheet.evaluate((el) => el.getAnimations({ subtree: true }).length === 0), 10000);
+
 // A phone's Downloads page (docs/design-system.md, "On a phone"): one row each under its
 // day, the name and one line, a tap to open it, everything else in its ⋮, a sheet whose head
 // says where it came from; and a search.
@@ -55,6 +60,7 @@ async function phonePage(page, w) {
     (await page.getByRole('region', { name: 'Today' }).isVisible()), await row.innerText());
   await row.getByRole('button', { name: 'Actions for quarterly-report.zip' }).click();
   const sheet = page.getByRole('dialog', { name: 'quarterly-report.zip' });
+  await risen(sheet);
   check('its ⋮ opens a sheet whose head has its whole address, without its scheme', await until(async () => (await sheet.isVisible()) &&
     (await sheet.innerText()).includes(url.replace('https://', '')) && !(await sheet.innerText()).includes('https://')), await sheet.innerText());
   const said = await sheet.getByRole('button').allInnerTexts();
@@ -63,6 +69,7 @@ async function phonePage(page, w) {
   await sheet.getByRole('button', { name: 'Copy link' }).click();
   check('Copy link copies the address, and the sheet goes', await until(async () => (await regions()).clipboard === url && !(await sheet.isVisible())), (await regions()).clipboard);
   await row.getByRole('button', { name: 'Actions for quarterly-report.zip' }).click();
+  await risen(sheet);
   await sheet.getByRole('button', { name: 'Share' }).click();
   check('Share hands the file to the system\'s share sheet', await until(async () => ((await regions()).shared || '').endsWith('quarterly-report.zip')), (await regions()).shared);
   await row.getByRole('button', { name: /^quarterly-report\.zip/ }).click();
@@ -71,6 +78,7 @@ async function phonePage(page, w) {
   const report = page.getByRole('listitem').filter({ hasText: 'project-b-report-' }).first();
   await report.getByRole('button', { name: /^Actions for project-b-report-/ }).click();
   const reportSheet = page.getByRole('dialog', { name: /^project-b-report-/ });
+  await risen(reportSheet);
   check('the crash report\'s sheet says it is one, with no address to copy', await until(async () => (await reportSheet.innerText()).includes('Crash report')) &&
     (await reportSheet.getByRole('button', { name: 'Copy link' }).count()) === 0, await reportSheet.innerText());
   await page.locator('.ui-sheet-backdrop').click({ position: { x: 20, y: 20 } });
@@ -87,6 +95,7 @@ async function phonePage(page, w) {
 
   // Delete, asked first.
   await row.getByRole('button', { name: 'Actions for quarterly-report.zip' }).click();
+  await risen(sheet);
   await sheet.getByRole('button', { name: 'Delete' }).click();
   const confirm = page.getByRole('dialog', { name: 'Delete quarterly-report.zip?' });
   check('Delete asks first', await until(() => confirm.isVisible()));
