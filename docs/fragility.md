@@ -56,11 +56,12 @@ The seams:
   while the work is still going is taken back once it is done, not forgotten because there
   was nothing yet to take. And what is made for a person to accept isn't said to be theirs
   until they accept it. And an answer belongs to its asking, not to whatever is on the screen
-  when it arrives. Nine so far: Sync now that showed nothing, a sync called out of reach
+  when it arrives. Ten so far: Sync now that showed nothing, a sync called out of reach
   that wasn't, the app frozen while the desktop asked for its keyring, GNOME's keyring
   broken by our giving up, the keyring's question at every start, a keyring that gave no key
   and nothing said or to try, a backup code kept that nobody saw, a backup code told of
-  before it was kept, a backup code's card that took another's answer.
+  before it was kept, a backup code's card that took another's answer, the sync set-up moved
+  on by an answer to an earlier asking.
 - **An error as text.** A library's words for what went wrong hold more than we would say
   ourselves: Go names the whole address a request went to, and an address can be a secret.
   What goes to a log, a tooltip or a report has to be looked at as text a stranger may read.
@@ -82,6 +83,25 @@ The seams:
 - **What a platform doesn't have.** A thing one OS has no way to do is not a setting the
   person left off. Answered as that, it tells them to fix what they can't, in words written
   for another OS. One so far: saved passwords Linux couldn't show.
+
+## The sync set-up moved on by an answer to an earlier asking, 2026-11-24
+
+- **Seen:** by nobody; found by reading, after the backup code's card below, and then made to
+  happen in the test. Connect to a slow server, Cancel, open the set-up again and ask
+  something else: when the first bucket's answer came, the Dialog took it and went on to
+  "Choose a sync passphrase" for an address it had just refused.
+- **Cause:** the same as the card's: the Dialog counted its openings, which tells an answer
+  from before a Cancel only until it asks again. And the answers went to every Settings
+  page, not the one that asked.
+- **Seam:** work that takes time: an answer belongs to its asking.
+- **Fix:** what the Dialog asks carries a number from one counter for the page, Go's answer
+  brings it back and goes to the asking page alone, and the Dialog takes the answer to what
+  it asked last. The link's proposal and the backup code's card use the same number.
+- **Why it was missed:** my miss: one pattern, written twice, and I looked for it in the
+  second place only when the first one failed.
+- **Guard:** `shell/e2e/sync.cjs`: with the mock's server held, Connect, Cancel, Set up…
+  again and an address Go refuses at once, then the server let go; the Dialog stays where
+  it is. Seen to fail by its name without the fix.
 
 ## A backup code's card that took another's answer, 2026-11-24
 

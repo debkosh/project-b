@@ -139,6 +139,11 @@ export const state = reactive({
 
 // Go's answers to what Sync asked, each heard by every function here.
 export const syncAnswers = new Set();
+// What Sync asks of Go for an answer goes with a number, n, which the answer brings back
+// (docs/sync.md). A Dialog takes the answer to what it asked last and no other: the answer to
+// what was asked before a Cancel can come after the Dialog was opened again and asked anew.
+let syncAsks = 0;
+export const numbered = (m) => ({ ...m, n: ++syncAsks });
 const syncAnswerTypes = new Set(['syncProposal', 'syncBucket', 'syncConnected', 'syncPassphraseChanged', 'syncDisconnected', 'syncStartedFresh', 'syncSuggested', 'syncBackupMade', 'syncBackupSettled', 'syncBackupChecked', 'syncBackupCopied', 'syncBackupScanned']);
 
 // setPref sets one of Go's prefs by its name in prefs, as a shell's does.

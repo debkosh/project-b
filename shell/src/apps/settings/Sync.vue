@@ -7,7 +7,7 @@ import Row from './Row.vue';
 import SyncBackup from './SyncBackup.vue';
 import { KEYRING } from './keyring.js';
 import KeyringHelp from './KeyringHelp.vue';
-import { send, state, syncAnswers } from './state.js';
+import { numbered, send, state, syncAnswers } from './state.js';
 import { useSyncRun } from './syncRun.js';
 
 // Sync (docs/sync.md): a card under Your data. Off, one row sets it up; on, the server's row
@@ -56,8 +56,10 @@ const serverHint = computed(() => (s.value.host ? lastSynced.value : 'Starts in 
 const tile = computed(() => (tints.value, s.value.host ? siteTile(`https://${s.value.host}`) : { background: 'var(--bar)', border: 'var(--line)', letter: '' }));
 
 // The Dialog. step is '' while it is shut, 'address', 'choose', 'enter', 'change' or
-// 'turnOff'; fromLink is the address step as a link opened it. Each opening counts, so an
-// answer to what was asked before Cancel is dropped.
+// 'turnOff'; fromLink is the address step as a link opened it. Each thing it asks of Go has a
+// number, which the answer brings back (numbered), and the Dialog takes the answer to what
+// it asked last and no other: one to what was asked before Cancel is dropped, though it come
+// after the Dialog was opened again and has asked anew.
 const d = reactive({
   step: '',
   fromLink: false,
@@ -82,11 +84,11 @@ const d = reactive({
   byCode: false,
   renewed: false,
 });
-let opened = 0;
-let askedIn = -1;
+let asked = 0;
 function ask(m) {
-  askedIn = opened;
-  send(m);
+  const q = numbered(m);
+  asked = q.n;
+  send(q);
 }
 
 const addressField = ref(null);
@@ -98,7 +100,7 @@ const fields = { address: addressField, token: tokenField, pass: passField, agai
 const focus = (name) => nextTick(() => fields[name].value?.focus());
 
 function open(o = {}) {
-  opened++;
+  asked = 0;
   Object.assign(d, {
     step: 'address',
     fromLink: false,
@@ -127,7 +129,7 @@ function open(o = {}) {
 }
 
 function shut() {
-  opened++;
+  asked = 0;
   d.step = '';
 }
 
@@ -163,10 +165,11 @@ const turnOff = () => open({ step: 'turnOff' });
 
 // A link Go was handed: Go reads its address, and the Dialog opens on what it would connect
 // to, or on the address and its error.
-let linkAsked = false;
+let linkAsked = 0;
 function fromLink(link) {
-  linkAsked = true;
-  send({ t: 'syncPropose', link });
+  const q = numbered({ t: 'syncPropose', link });
+  linkAsked = q.n;
+  send(q);
 }
 watch(
   () => state.syncLink,
@@ -336,8 +339,8 @@ const primary = () => ({ address: connect, choose: turnOn, enter: turnOn, change
 // Go's answers: a link's address, and what this opening of the Dialog asked.
 function heard(m) {
   if (m.t === 'syncProposal') {
-    if (!linkAsked) return;
-    linkAsked = false;
+    if (!linkAsked || m.n !== linkAsked) return;
+    linkAsked = 0;
     if (m.error) {
       // A link's address that isn't one: the plain set-up, with the address and its error.
       open({ address: m.address || '' });
@@ -350,7 +353,7 @@ function heard(m) {
     }
     return;
   }
-  if (!d.step || askedIn !== opened) return;
+  if (!d.step || !asked || m.n !== asked) return;
   switch (m.t) {
     case 'syncBucket':
       if (d.step !== 'address') return;

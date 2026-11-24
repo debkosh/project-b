@@ -3,7 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue';
 import Dialog from '@/ui/Dialog.vue';
 import { codePath, codeSize } from '@/ui/passkey.js';
 import Row from './Row.vue';
-import { send, state, syncAnswers } from './state.js';
+import { numbered, send, state, syncAnswers } from './state.js';
 
 // The backup code (docs/sync.md, "Backup code"): a second, random passphrase the app shows
 // once, for a person to keep apart from the device. Its row in the Sync card says when it
@@ -23,14 +23,15 @@ const made = computed(() => {
 // The Dialog: step is '' while shut, 'confirm' (a new code in place of one), 'code' (the
 // card) or 'check'. setup is the card as the second step of setting sync up.
 const b = reactive({ step: '', setup: false, code: '', qr: null, showQR: false, busy: false, error: '', said: '', typed: '', is: null });
-// Each thing asked of Go has a number, which its answer brings back, and the card takes the
-// answer to what it asked last and no other. Go answers in turn, so the answer to a making
-// that was left can come after the card was opened again and asked for a code of its own.
-let asks = 0;
+// Each thing asked of Go has a number, which its answer brings back (numbered), and the card
+// takes the answer to what it asked last and no other. Go answers in turn, so the answer to a
+// making that was left can come after the card was opened again and asked for a code of its
+// own.
 let asked = 0;
 function ask(m) {
-  asked = ++asks;
-  send({ ...m, n: asked });
+  const q = numbered(m);
+  asked = q.n;
+  send(q);
 }
 function open(o) {
   asked = 0;

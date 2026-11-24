@@ -46,17 +46,6 @@ func (a *App) syncSettingsPart() settings.Part {
 		Snapshot: func(into map[string]any) { into["sync"] = a.Sync.Status() },
 		Handle:   func(engine.WindowID, string, []byte) bool { return false },
 	})
-	// answer sends t, with err's text when there is one, and its problem's name.
-	answer := func(t string, err error, more map[string]any) {
-		m := map[string]any{"t": t}
-		for k, v := range more {
-			m[k] = v
-		}
-		if err != nil {
-			m["error"], m["problem"] = sync.Words(err), sync.Problem(err)
-		}
-		a.Settings.Send(m)
-	}
 	return settings.Part{
 		Snapshot: func(into map[string]any) {
 			into["sync"], into["syncAddress"], into["syncStart"] = a.Sync.Status(), a.Sync.Address(), links.SyncServer
@@ -74,14 +63,15 @@ func (a *App) syncSettingsPart() settings.Part {
 				// Again says the bucket is the one sync is on with, set up again after it was
 				// reset: Go holds its address and token.
 				Again bool `json:"again"`
-				// N is the number the backup code's card gave what it asks.
+				// N is the number the page gave what it asks.
 				N int `json:"n"`
 			}
 			json.Unmarshal(msg, &c)
-			// The backup code's answers go to the page that asked alone: one of them is the code.
-			// Each brings back the number its asking came with, for the page to tell the answer
-			// to what its card asked from one to a card left before.
-			asked := func(t string, err error, more map[string]any) {
+			// answer sends t, with err's text when there is one, and its problem's name, to
+			// the page that asked alone: one answer is a backup code. It brings back the number
+			// the asking came with, for the page to tell the answer to what its Dialog asked
+			// last from one to what was asked before a Cancel.
+			answer := func(t string, err error, more map[string]any) {
 				m := map[string]any{"t": t, "n": c.N}
 				for k, v := range more {
 					m[k] = v
@@ -158,24 +148,24 @@ func (a *App) syncSettingsPart() settings.Part {
 					if err == nil {
 						more["code"], more["qr"] = code, qrRows(code)
 					}
-					asked("syncBackupMade", err, more)
+					answer("syncBackupMade", err, more)
 				})
 			case "syncBackupKeep":
-				a.Sync.KeepBackupCode(func(err error) { asked("syncBackupSettled", err, map[string]any{"kept": true}) })
+				a.Sync.KeepBackupCode(func(err error) { answer("syncBackupSettled", err, map[string]any{"kept": true}) })
 			case "syncBackupDrop":
-				a.Sync.DropBackupCode(func(err error) { asked("syncBackupSettled", err, nil) })
+				a.Sync.DropBackupCode(func(err error) { answer("syncBackupSettled", err, nil) })
 			case "syncBackupCheck":
-				a.Sync.CheckBackupCode(c.Code, func(is bool, err error) { asked("syncBackupChecked", err, map[string]any{"is": is}) })
+				a.Sync.CheckBackupCode(c.Code, func(is bool, err error) { answer("syncBackupChecked", err, map[string]any{"is": is}) })
 			case "syncBackupScan":
 				// The scanner's screen, over the app: what it read, or that it read nothing.
 				a.System.ScanCode("Scan your backup code's QR", func(text string, ok bool) {
-					asked("syncBackupScanned", nil, map[string]any{"code": text, "ok": ok})
+					answer("syncBackupScanned", nil, map[string]any{"code": text, "ok": ok})
 				})
 			case "syncBackupCopy":
 				// As a saved password is copied: marked as a secret, so what keeps the
 				// clipboard's history leaves it out.
 				a.System.CopySecret(c.Code)
-				asked("syncBackupCopied", nil, nil)
+				answer("syncBackupCopied", nil, nil)
 			default:
 				return false
 			}

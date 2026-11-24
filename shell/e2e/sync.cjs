@@ -711,6 +711,30 @@ const taken = [];
   await button('Turn off').click();
   await shown(button('Set up…', card()));
 
+  // The Dialog opened again while an answer is on its way. With the server slow, Connect to
+  // an empty bucket and Cancel: sync is still looking at it. Then Set up… again, and Connect
+  // to an address that is no bucket's, which Go says at once without the server. The first
+  // bucket's answer comes after that, to a Dialog that has asked since, and is not its own:
+  // taken for it, the Dialog would go on to a passphrase for an address it just refused.
+  await server({ slow: '1' });
+  n = await requests();
+  await button('Set up…', card()).click();
+  await field('Server address').fill(`${address}/sync/4c7kq2mx9pab`);
+  await button('Connect').click();
+  const looking = await until(async () => (await requests()) > n);
+  await button('Cancel').click();
+  await until(async () => (await dialog().count()) === 0);
+  await button('Set up…', card()).click();
+  await field('Server address').fill(`${address}/sync/4c7kq2mx9pab?to=1`);
+  await button('Connect').click();
+  const refused = await until(async () => (await errorUnder('Server address').count()) === 1 && (await errorUnder('Server address').innerText()) === "That address isn't a sync bucket");
+  await server({ slow: '0' });
+  const tookIt = await until(async () => (await dialog().getAttribute('aria-label').catch(() => '')) !== 'Set up sync', 3000);
+  check('a Dialog opened again while an earlier answer was on its way takes only its own: the first bucket\'s answer, come late, moves it nowhere',
+    looking && refused && !tookIt && (await errorUnder('Server address').count()) === 1, `looking ${looking}, refused ${refused}, now ${await dialog().getAttribute('aria-label').catch(() => 'no Dialog')}`);
+  await button('Cancel').click();
+  await until(async () => (await dialog().count()) === 0);
+
   // The link from another app: Settings at Sync, the Dialog in its link form, and nothing
   // sent until Connect.
   const linked = `${address}/sync/7kq2mx9pab4c`;

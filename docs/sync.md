@@ -445,11 +445,14 @@ names. The page sends:
 | `syncBackupScan` | `syncBackupScanned {code, ok}` to the asking page: what a phone's scanner read, or `ok` false when the person left it. The snapshot's `canScan` says whether there is a scanner |
 | `syncBackupCopy {code}` | `syncBackupCopied {}`: Go put it on the clipboard as a secret, as a saved password is copied |
 
-Each of the backup code's messages carries a number, `n`, which its answer brings back. The
-card takes the answer to what it asked last and no other: Go answers in turn, so the answer to
-a making that was left can arrive after the card was opened again and has asked for a code of
-its own, and taken as that card's it would show a code about to be taken away, and then shut
-the card.
+Each answer goes to the page that asked, alone, except `syncDetails` and the status, which
+every Settings page hears. What a Dialog asks for an answer carries a number, `n`, which the
+answer brings back (`numbered`, `shell/src/apps/settings/state.js`), and a Dialog takes the
+answer to what it asked last and no other. An answer can come late: the one to a making that
+was left arrives after the backup code's card was opened again and has asked for a code of its
+own, and taken as that card's it would show a code about to be taken away, and then shut the
+card; the one to a bucket looked at before Cancel arrives after the set-up was opened again,
+and taken as its own would move it on to a passphrase for another address.
 
 ## The screens
 
