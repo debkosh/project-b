@@ -340,6 +340,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Settings.AddPart(a.keepCookiesSettingsPart())
 	a.Settings.AddPart(a.downloadFolderSettingsPart(e, cfg.DownloadsDir))
 	a.Settings.AddPart(a.syncSettingsPart())
+	a.Settings.AddPart(a.helpSettingsPart())
 	a.registerActions(e)
 
 	a.Tabs.AddGate(a.Policy.IsAllowedURL)
