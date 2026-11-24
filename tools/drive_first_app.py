@@ -24,6 +24,7 @@ session (tools/check_full_screen.py, tools/check_clipboard.py). This needs no di
     python3 tools/drive_first_app.py sitedata   # only Settings' Sites and Clear browsing data on the engine's storage
     python3 tools/drive_first_app.py quiterase  # only Clear cookies when the app quits, but the sites kept
     python3 tools/drive_first_app.py shells     # only every shell: starting on it, and switching to it live
+    python3 tools/drive_first_app.py proxy      # only a page going through --proxy-server
     python3 tools/drive_first_app.py webapis    # only the web APIs in core/webfeatures/registry.json
     python3 tools/drive_first_app.py sparks     # only sparks: in the page itself, styled and writing HTML on strict sites
     python3 tools/drive_first_app.py passkeys   # only a page's passkey request, with a virtual security key
@@ -3073,6 +3074,41 @@ def client_cert_checks():
         shutil.rmtree(d, ignore_errors=True)
 
 
+def proxy_checks():
+    """A page goes through the proxy --proxy-server names, as Chrome's does: the engine gave
+    the network context no proxy at all, so the switch, and the system's own proxy settings,
+    were ignored and every request went direct."""
+    asked = []
+
+    class Proxy(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            asked.append(self.path)
+            body = b"<!doctype html><title>through the proxy</title>"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *a):
+            pass
+
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Proxy)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    # A name that exists nowhere, so only the proxy can answer it; <-loopback> lets the
+    # driver's own pages on 127.0.0.1 go direct as before.
+    app = App(tempfile.mkdtemp(prefix="pb-profile-"),
+              extra=(f"--proxy-server=http://127.0.0.1:{server.server_address[1]}", "--proxy-bypass-list=<-loopback>"))
+    try:
+        visit(app, "http://proxied.test/a")
+        title = app.js("document.title", page=True)
+        check("a page goes through the proxy --proxy-server names", "http://proxied.test/a" in asked and title == "through the proxy",
+              f"the proxy was asked {asked}, the page is {title!r}")
+    finally:
+        app.close()
+        server.shutdown()
+
+
 def browser_signal_checks():
     """What a site reads to tell Chrome from an embedded or automated browser is Chrome's: the
     client hints, navigator.userAgentData and the Sec-CH-UA headers, name Chromium at the user
@@ -3801,5 +3837,5 @@ def holds_hit(app, x, y, timeout=5):
 
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
-    parts = {"filling": [filling_checks], "driver": [driver_checks], "browsing": [browsing_checks], "actions": [action_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "arshell": [arshell_checks], "webapis": [web_api_checks], "signals": [browser_signal_checks], "clientcert": [client_cert_checks], "passkeys": [passkey_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks], "viewsource": [view_source_checks], "duplicate": [duplicate_checks], "applink": [app_link_checks], "serverkinds": [web_server_kinds_checks]}
-    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, action_checks, settings_checks, filling_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, arshell_checks, browser_signal_checks, client_cert_checks, web_api_checks, passkey_checks, sparks_checks, links_checks, view_source_checks, duplicate_checks, app_link_checks, web_server_kinds_checks, quit_checks]))
+    parts = {"filling": [filling_checks], "driver": [driver_checks], "browsing": [browsing_checks], "actions": [action_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "arshell": [arshell_checks], "webapis": [web_api_checks], "signals": [browser_signal_checks], "proxy": [proxy_checks], "clientcert": [client_cert_checks], "passkeys": [passkey_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks], "viewsource": [view_source_checks], "duplicate": [duplicate_checks], "applink": [app_link_checks], "serverkinds": [web_server_kinds_checks]}
+    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, action_checks, settings_checks, filling_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, arshell_checks, browser_signal_checks, proxy_checks, client_cert_checks, web_api_checks, passkey_checks, sparks_checks, links_checks, view_source_checks, duplicate_checks, app_link_checks, web_server_kinds_checks, quit_checks]))

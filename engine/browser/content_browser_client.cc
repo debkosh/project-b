@@ -25,6 +25,7 @@
 #include "third_party/blink/public/common/loader/url_loader_throttle.h"
 #include "project_b/engine/browser/forms.h"
 #include "project_b/engine/browser/printing.h"
+#include "project_b/engine/browser/proxy_configs.h"
 #include "project_b/engine/browser/site_features.h"
 #include "project_b/engine/common/block_rules.h"
 #include "project_b/engine/abi/pb_abi.h"
@@ -295,7 +296,8 @@ base::OnceClosure ContentBrowserClient::SelectClientCertificate(
 // Cookies and the HTTP cache are saved in the partition's folder, as Chrome lays a
 // profile out: chromium/Network/Cookies and chromium/Cache. Cookies are stored as
 // Chromium writes them, unencrypted, with no OS keychain. Session cookies are not kept
-// across a quit, Chromium's default. An in-memory partition gets no files. DevTools
+// across a quit, Chromium's default. An in-memory partition gets no files. Every
+// partition goes through the command line's proxy or the system's (ProxyConfigs). DevTools
 // lays its own proxy over these params after this.
 void ContentBrowserClient::ConfigureNetworkContextParams(
     content::BrowserContext* context,
@@ -308,6 +310,7 @@ void ContentBrowserClient::ConfigureNetworkContextParams(
       context, in_memory, relative_partition_path, network_context_params,
       cert_verifier_creation_params);
   network_context_params->enable_encrypted_cookies = false;
+  ProxyConfigs::Get()->AddTo(network_context_params);
   if (in_memory) {
     return;
   }
