@@ -134,7 +134,7 @@
     "api": "navigator.credentials.get(), navigator.credentials.store() with passwords",
     "interface": {"name": "blink.mojom.CredentialManager", "scope": ["frame"]},
     "status": {"mac": "quiet", "linux": "quiet", "android": "quiet"},
-    "why": "Content's empty binder answers, so the call rejects with NotSupportedError; there is no password manager",
+    "why": "Content's empty binder answers, so the call rejects with NotSupportedError; our password manager fills forms but doesn't answer this call",
     "needs": ["go-manager", "prompt"],
     "probe": [
       {"name": "passwordCredential", "expect": {"mac": "rejected:NotSupportedError", "linux": "rejected:NotSupportedError", "android": "rejected:NotSupportedError"}, "call": "navigator.credentials.store(new PasswordCredential({id: 'a', password: 'b'}))"},
@@ -165,7 +165,7 @@
     "api": "LanguageModel, Summarizer, Writer, Rewriter, Proofreader",
     "delegate": "ContentBrowserClient::BindAIManager",
     "status": {"mac": "quiet", "linux": "quiet", "android": "absent"},
-    "why": "On Mac content's test echo answers and says a model can be downloaded; off on Android",
+    "why": "On the desktop content's test echo answers and tells a page a model can be downloaded, though none can; off on Android",
     "needs": ["stay-off"],
     "probe": [
       {"name": "languageModel", "expect": {"mac": "resolved:\"downloadable\"", "linux": "resolved:\"downloadable\"", "android": "absent:ReferenceError"}, "call": "LanguageModel.availability()"},
@@ -291,7 +291,7 @@
     "name": "Screen orientation lock",
     "api": "screen.orientation.lock()",
     "status": {"mac": "quiet", "linux": "quiet", "android": "quiet"},
-    "why": "Rejects: it needs a page in full screen, which there isn't",
+    "why": "On the desktop there is no orientation to lock, as in Chrome; on Android it needs the page in full screen",
     "needs": ["go-manager"],
     "probe": [{"name": "orientationLock", "expect": {"mac": "rejected:NotSupportedError", "linux": "rejected:NotSupportedError", "android": "rejected:SecurityError"}, "call": "screen.orientation.lock('landscape')"}],
     "test": ["probe:orientationLock"]
@@ -378,7 +378,7 @@
     "api": "element.requestPointerLock()",
     "delegate": "WebContentsDelegate::RequestPointerLock",
     "status": {"mac": "quiet", "linux": "quiet", "android": "quiet"},
-    "why": "The hook reaches Go but nothing answers it, so the request rejects",
+    "why": "Nothing in Go answers the request, so it rejects with an UnknownError",
     "needs": ["go-manager"]
   },
   {
@@ -397,7 +397,7 @@
     "api": "navigator.registerProtocolHandler()",
     "delegate": "WebContentsDelegate::RegisterProtocolHandler",
     "status": {"mac": "quiet", "linux": "quiet", "android": "quiet"},
-    "why": "The hook reaches Go but nothing answers it, so nothing is registered",
+    "why": "Nothing in Go answers the request, so nothing is registered",
     "needs": ["go-manager", "prompt"]
   },
   {
