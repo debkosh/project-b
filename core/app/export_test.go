@@ -3,8 +3,12 @@ package app
 import (
 	"time"
 
+	"projectb/later"
 	"projectb/passwords"
 )
+
+// The tests' apps wait for nothing after a start: their background jobs are asked for at once.
+func init() { later.Wait = 0 }
 
 // SetStallAfter makes an import's step end as failed after d with nothing new, for a test,
 // and returns what puts it back.

@@ -58,7 +58,7 @@ func Stop()
 | Job | Today, at start | Through `later.Run` |
 |---|---|---|
 | Updates | `a.Update.Start()` at the end of `app.Start`: amarit's first round has no wait (`FirstCheck` is zero), so it fetches the manifest, or `linux.json` and the portal, at once | `later.Run(a.Update.Start)`. On Linux, `flatpak.New` (the portal's UpdateMonitor) moves from `update.New` into `Start` with it |
-| Sync | `sync.New` loads at once on main. `sync-start-wait` waits its own `startWait` | Its first load goes through `later.Run`, and `startWait` and its timer go |
+| Sync | `sync.New` loaded at once, on sync's goroutine | `later.Run(a.Sync.Wanted)`: at a start sync only reads whether it is on, and its first load, which asks the OS for the device key, comes with `Wanted` |
 
 amarit doesn't change: its `FirstCheck` stays zero, and project-b chooses when to call
 `Start`.

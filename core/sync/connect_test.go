@@ -542,6 +542,49 @@ func TestAStartAsksForTheDeviceKeyOnlyWithSyncOn(t *testing.T) {
 	}
 }
 
+// A start with sync on says so at once and does no more: the device key isn't asked for and
+// no server is opened until something is asked of sync, which is the app's Wanted once its
+// start's wait is over (docs/startup.md).
+func TestAStartOnlySaysSyncIsOnUntilWanted(t *testing.T) {
+	s := newServer(t)
+	dir := t.TempDir()
+	var asked atomic.Int32
+	device := func(bool) ([]byte, error) {
+		asked.Add(1)
+		return []byte(strings.Repeat("d", 32)), nil
+	}
+	a := openProfileOn(t, dir, device)
+	a.startSync(s)
+	if err := a.connect(s.bearer(), "tok", "pass phrase"); err != nil {
+		t.Fatal(err)
+	}
+	a.close()
+
+	within := func(what string, is func() bool) {
+		t.Helper()
+		for end := time.Now().Add(5 * time.Second); !is(); time.Sleep(5 * time.Millisecond) {
+			if time.Now().After(end) {
+				t.Fatalf("%s: never, with status %+v", what, a.sync.Status())
+			}
+		}
+	}
+	defer sync.SetHTTPClient(s.ts.Client())()
+	asked.Store(0)
+	a = openProfileOn(t, dir, device)
+	defer a.close()
+	a.sync = sync.New(a.st, a.keys, a.post, a.maps...)
+	within("sync says it is on", func() bool { return a.sync.Status().On })
+	time.Sleep(50 * time.Millisecond)
+	if st := a.sync.Status(); asked.Load() != 0 || st.Host != "" {
+		t.Fatalf("with nothing asked of sync: asked for the device key %d times, status %+v", asked.Load(), st)
+	}
+	a.sync.Wanted()
+	within("sync opens its server once wanted", func() bool { return a.sync.Status().Host != "" })
+	if asked.Load() == 0 {
+		t.Fatal("sync opened its server without the device key")
+	}
+}
+
 // A profile whose key doesn't open, with sync off, says nothing at start, where nothing
 // looked; turning sync on finds it, says so as a locked profile's does, and StartFresh mends it.
 func TestALockedProfileKeyFoundWhenTurningSyncOn(t *testing.T) {

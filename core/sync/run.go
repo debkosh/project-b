@@ -96,9 +96,11 @@ type Manager struct {
 	conn *connection
 	// newBackup is the copy of the backup code just made, until it is kept or dropped.
 	newBackup string
-	last      time.Time // when the last run ended
-	wait      time.Duration
-	next      time.Time // no run before, after a failed one
+	// loaded says the start's wait is over: what sync is on with was read, and it ran.
+	loaded bool
+	last   time.Time // when the last run ended
+	wait   time.Duration
+	next   time.Time // no run before, after a failed one
 }
 
 // connection is a bucket sync is on with.
@@ -123,7 +125,6 @@ func New(st *store.Store, k *keys.Keys, post func(func()), maps ...Mapping) *Man
 	setup(st)
 	st.Do(m.triggers)
 	go m.loop()
-	m.ops <- m.load
 	return m
 }
 
@@ -222,8 +223,12 @@ func (m *Manager) Stop() {
 	<-m.done
 }
 
+// loop is the sync goroutine. A start only reads whether sync is on: load comes with what is
+// asked of sync first, which is the app's Wanted once its start's wait is over
+// (docs/startup.md), or what a person does in sync's settings before that.
 func (m *Manager) loop() {
 	defer close(m.done)
+	m.kept()
 	tick := time.NewTicker(look)
 	defer tick.Stop()
 	for {
@@ -231,9 +236,13 @@ func (m *Manager) loop() {
 		case <-m.ctx.Done():
 			return
 		case op := <-m.ops:
+			// What is asked of sync finds it started, however soon after the app it comes.
+			m.load()
 			op()
 		case <-m.wake:
-			if m.conn != nil {
+			if !m.loaded {
+				m.load()
+			} else if m.conn != nil {
 				m.run(WhyAsked)
 			}
 		case <-tick.C:
@@ -259,22 +268,38 @@ func (m *Manager) do(done func(error), f func() error) {
 	}
 }
 
-// load reads what sync is on with, and runs. Whether sync is on is told by its address being
-// kept, which reads nothing sealed: with sync off a start asks the OS for no key, and the
-// desktop's keyring puts no question up for nothing. A locked profile key leaves sync off,
-// saying so.
-func (m *Manager) load() {
+// kept reads, at start, whether sync is on, and says so: it is on while its address is kept,
+// which reads nothing sealed, so this asks the OS for no key and the desktop's keyring puts
+// no question up. With sync off there is nothing more for a start to do.
+func (m *Manager) kept() {
 	on := false
 	if err := m.st.Wait(func(tx *store.Tx) (err error) {
 		on, err = m.keys.HasSecret(tx, secretAddress)
 		return err
 	}); err != nil {
+		m.loaded = true
 		m.setStatus(func(s *Status) { *s = Status{Error: Words(err), Problem: Problem(err)} })
 		return
 	}
 	if !on {
+		m.loaded = true
 		return
 	}
+	m.setStatus(func(s *Status) { *s = Status{On: true} })
+}
+
+// Wanted has sync open what it is on with and run, as nothing has before: the app asks for
+// it as one of the background jobs that wait for a start to be over (core/later). It only
+// hands over to sync's goroutine.
+func (m *Manager) Wanted() { m.do(nil, func() error { return nil }) }
+
+// load opens what sync is on with, and runs: once, with the first thing asked of sync. It is what asks the OS for the device key, with sync on. A
+// locked profile key leaves sync off, saying so.
+func (m *Manager) load() {
+	if m.loaded {
+		return
+	}
+	m.loaded = true
 	if err := m.keys.Check(); err != nil {
 		m.setStatus(func(s *Status) { *s = Status{Locked: errors.Is(err, keys.ErrLocked), Error: lockedError(err).Error()} })
 		return

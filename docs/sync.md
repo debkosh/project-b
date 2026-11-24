@@ -100,6 +100,14 @@ with sync off the first ask is the person's own doing: a saved password shown or
 passkey, turning sync on. A locked profile key is then found when sync is turned on, which
 says `locked` as a start with sync on does.
 
+**A start waits before sync does anything of its own.** Sync's first load is one of the app's
+background jobs, which all wait for the one timer after a start, ten seconds
+([startup.md](startup.md)): at once sync only reads whether it is on, and says so in the
+status, `on` with no `host` yet. When the wait is over the app calls `Wanted`, and sync asks
+for the device key, opens its server and runs. Settings showing sync's state doesn't end
+the wait; what a person does there does, as Sync now or turning sync off, which finds sync
+loaded first.
+
 **macOS asks after every update.** The app is signed with the project's own certificate and has
 no Apple team id, so macOS files the keychain item under the code hash of the build that made it.
 Measured in a VM on 2026-11-19 with two builds signed with the project's identity: every new
@@ -346,7 +354,7 @@ synckosh keeps deleted items (`KeepDeleted`), so it never removes an entry for a
 removal (a device away past the server's cleanup starts over) only forgets the bookkeeping: the
 rows stay, and go out again.
 
-**When it runs:** at start when sync is on, within ten seconds of a change (it looks for marks
+**When it runs:** after the start's wait when sync is on ([startup.md](startup.md)), within ten seconds of a change (it looks for marks
 that often), every five minutes, and on `SyncNow`. On a goroutine of its own, never the main
 thread; one run at a time. A failed run waits 30 seconds, then twice as long each time, up to half
 an hour, and its error is in the status. `SyncNow` doesn't wait.
@@ -392,6 +400,7 @@ and `OnStatus` answer at once; the rest run on sync's goroutine, after what was 
 | `ChangePassphrase(passphrase, done func(error))` | in one write, a sealed copy under the new passphrase and the others gone (synckosh's `SetPassphrase`) |
 | `Disconnect(done func(error))` | stops syncing and forgets the address, token and sync key; every row stays |
 | `SyncNow()` | a run now |
+| `Wanted()` | has sync open what it is on with and run, as nothing has before: the app's background job after a start (`core/later`) |
 | `CancelRun()` | cuts the run going on short: it ends with no error and no longer wait, and the next comes when it would have |
 | `Address() string` | the bucket's address while sync is on, for Reconnect |
 | `Problem(err) string` | what went wrong reaching a bucket, by name: `address` (not one Propose takes), `unreachable` (no answer), `server` (the server answered that it failed, 500 and up: it was reached), `stalled` (a request with nothing going or arriving for `StalledAfter`, 30 seconds, which is ended), `notBucket` (not found, or not JSON), `token` (refused), or `""` for anything else, as a request the server won't take or a row that can't be written. A request's answer is looked at before synckosh reads it, and its error wraps `ErrAddress`, `ErrNeedsToken`, `ErrUnreachable`, `ErrServer`, `ErrStalled`, `ErrNotBucket` or `ErrToken` |
@@ -568,7 +577,7 @@ third profile joins with while the old one fails; a backup code joining a device
 staying when the passphrase changes, a new one taking the old one's place only once kept, and one
 dropped leaving the old; Disconnect keeping the rows; a server that
 kept the bucket's key refilled, and a bucket reset stopping both devices, pushing nothing, until
-each sets sync up again, a wrong passphrase changing nothing; a locked profile key turning sync off; a start asking for the device key only with sync on, and a locked key found when sync is turned on; sync on at start running with what was kept.
+each sets sync up again, a wrong passphrase changing nothing; a locked profile key turning sync off; a start asking for the device key only with sync on, and a locked key found when sync is turned on; a start with sync on saying so at once and asking for no device key until something is asked of sync, as the app's `Wanted` after its start's wait; sync on at start running with what was kept.
 `core/sync` also: each problem reaching a bucket named, and a signed-out device's status; a run cut
 short; Connect answering before its first run; the address while on. `core/words`: the list and a
 passphrase of it. `core/abi`: `AppLink`'s values.

@@ -39,9 +39,13 @@ const MIN = 12;
 // The server's row says of a run what Sync details' state row says, and offers the same.
 const { s, holding, lastSynced, serverRow, failed, setUpAgain, unsent, syncNow, again } = useSyncRun();
 
-// The server's mark: its letter on its tile, as a site's.
+// The server's mark: its letter on its tile, as a site's. For a moment after the app starts
+// sync is on with its server not opened yet: the tile is the page's quiet one then, with no
+// letter, so nothing changes colour when the server comes.
 const tints = useTints();
-const tile = computed(() => (tints.value, siteTile(`https://${s.value.host}`)));
+// What is the bucket's is shown once sync has opened it, and while it isn't reset.
+const bucketKnown = computed(() => !!s.value.host && s.value.problem !== 'reset');
+const tile = computed(() => (tints.value, s.value.host ? siteTile(`https://${s.value.host}`) : { background: 'var(--bar)', border: 'var(--line)', letter: '' }));
 
 // The Dialog. step is '' while it is shut, 'address', 'choose', 'enter', 'change' or
 // 'turnOff'; fromLink is the address step as a link opened it. Each opening counts, so an
@@ -443,7 +447,7 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
         <button type="button" class="text-button" @click="setUp">Set up again…</button>
       </Row>
       <template v-else-if="s.on">
-        <Row :label="s.host" :hint="lastSynced" :words="words" class="server" :title="serverRow === 'failed' ? s.error : undefined">
+        <Row :label="s.host || 'Sync is starting'" :hint="lastSynced" :words="words" class="server" :title="serverRow === 'failed' ? s.error : undefined">
           <template #lead>
             <span class="mark" aria-hidden="true" :style="{ background: tile.background, boxShadow: `inset 0 0 0 1px ${tile.border}`, color: tile.letter }">{{ (s.host[0] || '').toUpperCase() }}</span>
           </template>
@@ -466,10 +470,12 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
           <button v-else type="button" class="text-button" :disabled="holding" @click="syncNow">Sync now</button>
         </Row>
         <Row label="Sync details" hint="What synced, and when" opens="syncDetails" :words="words" />
-        <Row v-if="s.problem !== 'reset'" label="Change sync passphrase" hint="A device you add then asks for the new one" :words="words">
+        <!-- The passphrase and the backup code are the bucket's, known once sync has opened it:
+             while it is starting, or can't, neither row is there to say what isn't known. -->
+        <Row v-if="bucketKnown" label="Change sync passphrase" hint="A device you add then asks for the new one" :words="words">
           <button type="button" class="text-button" @click="change">Change…</button>
         </Row>
-        <SyncBackup v-if="s.problem !== 'reset'" ref="backup" :words="words + ' backup code'" />
+        <SyncBackup v-if="bucketKnown" ref="backup" :words="words + ' backup code'" />
         <Row label="Turn off sync" :hint="s.problem === 'reset' ? 'Keeps everything here' : 'Keeps everything here and on the server'" :words="words">
           <button type="button" class="text-button" @click="turnOff">Turn off…</button>
         </Row>

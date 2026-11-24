@@ -29,6 +29,7 @@ import (
 	"projectb/app"
 	"projectb/engine"
 	"projectb/flags"
+	"projectb/later"
 	"projectb/mockengine"
 	"projectb/mocksystem"
 	"projectb/prefs"
@@ -82,6 +83,8 @@ func main() {
 	// A sync server of its own, for the tests of Settings' Sync, which sync trusts.
 	withSyncServer := flag.Bool("sync-server", false, "run a sync server over https, which sync trusts, its store beside the profile; /mock/sync says its address")
 	flag.Parse()
+	// The mock engine's app waits for nothing after a start, as the tests that drive it don't.
+	later.Wait = 0
 	var syncSrv *syncServer
 	if *withSyncServer {
 		syncSrv = startSyncServer(filepath.Join(filepath.Dir(*profile), "sync-server.db"))

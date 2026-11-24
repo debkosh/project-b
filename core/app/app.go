@@ -16,6 +16,7 @@ import (
 	"projectb/flags"
 	"projectb/history"
 	"projectb/keys"
+	"projectb/later"
 	"projectb/passkeys"
 	"projectb/passwords"
 	"projectb/pins"
@@ -480,6 +481,10 @@ func Start(e engine.Engine, cfg Config) *App {
 	}
 	a.keepSession(e)
 	a.Update.Start()
+	// The background jobs wait for the start to be over, all for the one wait
+	// (docs/startup.md): asked for after Begin, which drops an app before's.
+	later.Begin(e.Post)
+	later.Run(a.Sync.Wanted)
 	return a
 }
 
@@ -585,6 +590,7 @@ func (a *App) NewWindowWith(tab engine.TabID) engine.WindowID {
 // Stop flushes what's pending and says the run ended cleanly. Call it on the way out.
 func (a *App) Stop() {
 	timeline.Infof("app: stopping; the windows and tabs are kept in %s", filepath.Join(a.dir, "session.json"))
+	later.Stop()
 	a.Update.Close()
 	a.Sync.Stop()
 	a.Store.Close()
