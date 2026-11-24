@@ -681,9 +681,7 @@ const taken = [];
   await button('Skip for now').click();
   check('and connecting again with a new token syncs again, the backup code skipped: its row offers to make one', (await until(async () => (await card().innerText().catch(() => '')).includes('No backup code'), 10000)) && (await button('Make one…', card()).count()) === 1 && (await dialog().count()) === 0 && (await button('Sync now', card()).isVisible()), await card().innerText().catch(() => ''));
   // A code still being made when its card is left goes too, as one already shown does: with
-  // the server slow, Cancel comes while the card still says it is making one. Sync does what
-  // is asked of it in turn, so the card opened again shows its code only once the first was
-  // made and taken away; that one left too, the bucket has no backup code.
+  // the server slow, Cancel comes while the card still says it is making one.
   await server({ slow: '1' });
   await button('Make one…', card()).click();
   await titled('Save your backup code');
@@ -692,20 +690,23 @@ const taken = [];
   await button('Cancel').click();
   check('Cancel while the code is still being made asks for it to be taken away', await told);
   await until(async () => (await dialog().count()) === 0);
-  await server({ slow: '0' });
-  // A code that stayed leaves the row with no Make one… to press, which is the failure too.
+  // The card opened again while the first code is still being made. Sync does what is asked
+  // of it in turn, so the answers to the first making and to its taking away reach the page
+  // while this card is up, and they are not this card's: its code is the one made for it,
+  // which stays up, and which "I've saved it" keeps.
   const again = await button('Make one…', card()).click({ timeout: 15000 }).then(() => true, () => false);
-  if (again) {
-    await titled('Save your backup code');
-    await until(async () => (await codeShown()) !== '', 20000);
-    await button('Cancel').click();
-  }
-  check('a code left while it was still being made is taken away, as one left after it showed is: the row still offers to make one',
-    again && (await until(async () => (await card().innerText()).includes('No backup code') && (await button('Make one…', card()).count()) === 1, 15000)) && !(await card().innerText()).includes('New code…'), await card().innerText());
-  // Each code made since the watch began was made by the time the last one showed in its
-  // card, sync doing what is asked of it in turn.
-  check("and at no time did the row tell of a backup code, with every one made here left unsaved: a code is the bucket's once a person says they saved it",
+  check('the row still offers to make one, and the card opened again says it is making its code', again && (await titled('Save your backup code')) && (await until(async () => (await dialog().innerText()).includes('Making your backup code…'))),
+    await card().innerText());
+  await server({ slow: '0' });
+  await until(async () => aCode.test(await codeShown()), 20000);
+  const mine = await codeShown();
+  // Each code made since the watch began was made by the time this one showed, in turn.
+  check("at no time did the row tell of a backup code, with every one made until here left unsaved: a code is the bucket's once a person says they saved it",
     !(await page.evaluate(() => (window.codeWatch.disconnect(), window.toldOfACode))));
+  const pressed = await button("I've saved it").click({ timeout: 5000 }).then(() => true, () => false);
+  const keptIt = pressed && (await until(async () => (await dialog().count()) === 0 && (await button('Check…', card()).count()) === 1, 15000));
+  check('a card opened again while the first code was still being made shows the code made for it, and "I\'ve saved it" keeps that one: an answer to the card left before is not taken for its own',
+    keptIt && (await is(mine)), keptIt ? 'the code the card showed is not the one kept' : `the card went, or showed no code to save: ${mine || 'none'}`);
   await button('Turn off…', card()).click();
   await button('Turn off').click();
   await shown(button('Set up…', card()));

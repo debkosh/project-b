@@ -23,18 +23,21 @@ const made = computed(() => {
 // The Dialog: step is '' while shut, 'confirm' (a new code in place of one), 'code' (the
 // card) or 'check'. setup is the card as the second step of setting sync up.
 const b = reactive({ step: '', setup: false, code: '', qr: null, showQR: false, busy: false, error: '', said: '', typed: '', is: null });
-let opened = 0;
-let askedIn = -1;
+// Each thing asked of Go has a number, which its answer brings back, and the card takes the
+// answer to what it asked last and no other. Go answers in turn, so the answer to a making
+// that was left can come after the card was opened again and asked for a code of its own.
+let asks = 0;
+let asked = 0;
 function ask(m) {
-  askedIn = opened;
-  send(m);
+  asked = ++asks;
+  send({ ...m, n: asked });
 }
 function open(o) {
-  opened++;
+  asked = 0;
   Object.assign(b, { step: '', setup: false, code: '', qr: null, showQR: false, busy: false, error: '', said: '', typed: '', is: null, ...o });
 }
 function shut() {
-  opened++;
+  asked = 0;
   Object.assign(b, { step: '', code: '', qr: null, typed: '' });
 }
 
@@ -100,7 +103,7 @@ function checkNow() {
 }
 
 function heard(m) {
-  if (!b.step || askedIn !== opened) return;
+  if (!b.step || !asked || m.n !== asked) return;
   switch (m.t) {
     case 'syncBackupMade':
       if (b.step !== 'code') return;

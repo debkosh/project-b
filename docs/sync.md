@@ -445,6 +445,12 @@ names. The page sends:
 | `syncBackupScan` | `syncBackupScanned {code, ok}` to the asking page: what a phone's scanner read, or `ok` false when the person left it. The snapshot's `canScan` says whether there is a scanner |
 | `syncBackupCopy {code}` | `syncBackupCopied {}`: Go put it on the clipboard as a secret, as a saved password is copied |
 
+Each of the backup code's messages carries a number, `n`, which its answer brings back. The
+card takes the answer to what it asked last and no other: Go answers in turn, so the answer to
+a making that was left can arrive after the card was opened again and has asked for a code of
+its own, and taken as that card's it would show a code about to be taken away, and then shut
+the card.
+
 ## The screens
 
 Settings' Sync, as the mocks of 2026-11-19 have it, every word theirs (the research repo's

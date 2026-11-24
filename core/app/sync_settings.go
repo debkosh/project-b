@@ -64,17 +64,6 @@ func (a *App) syncSettingsPart() settings.Part {
 			into["canScan"] = a.System.CanScanCode()
 		},
 		Handle: func(tab engine.TabID, t string, msg []byte) bool {
-			// The backup code's answers go to the page that asked alone: one of them is the code.
-			asked := func(t string, err error, more map[string]any) {
-				m := map[string]any{"t": t}
-				for k, v := range more {
-					m[k] = v
-				}
-				if err != nil {
-					m["error"], m["problem"] = sync.Words(err), sync.Problem(err)
-				}
-				a.Settings.SendTo(tab, m)
-			}
 			var c struct {
 				Address    string `json:"address"`
 				Token      string `json:"token"`
@@ -85,8 +74,23 @@ func (a *App) syncSettingsPart() settings.Part {
 				// Again says the bucket is the one sync is on with, set up again after it was
 				// reset: Go holds its address and token.
 				Again bool `json:"again"`
+				// N is the number the backup code's card gave what it asks.
+				N int `json:"n"`
 			}
 			json.Unmarshal(msg, &c)
+			// The backup code's answers go to the page that asked alone: one of them is the code.
+			// Each brings back the number its asking came with, for the page to tell the answer
+			// to what its card asked from one to a card left before.
+			asked := func(t string, err error, more map[string]any) {
+				m := map[string]any{"t": t, "n": c.N}
+				for k, v := range more {
+					m[k] = v
+				}
+				if err != nil {
+					m["error"], m["problem"] = sync.Words(err), sync.Problem(err)
+				}
+				a.Settings.SendTo(tab, m)
+			}
 			switch t {
 			case "syncGetBucket":
 				// The page where a person gets a bucket on the server to start with, in a tab

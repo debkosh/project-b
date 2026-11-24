@@ -55,11 +55,12 @@ The seams:
   what they refused once they may allow at the next asking. And what a person takes back
   while the work is still going is taken back once it is done, not forgotten because there
   was nothing yet to take. And what is made for a person to accept isn't said to be theirs
-  until they accept it. Eight so far: Sync now that showed nothing, a sync called out of
-  reach that wasn't, the app frozen while the desktop asked for its keyring, GNOME's keyring
+  until they accept it. And an answer belongs to its asking, not to whatever is on the screen
+  when it arrives. Nine so far: Sync now that showed nothing, a sync called out of reach
+  that wasn't, the app frozen while the desktop asked for its keyring, GNOME's keyring
   broken by our giving up, the keyring's question at every start, a keyring that gave no key
   and nothing said or to try, a backup code kept that nobody saw, a backup code told of
-  before it was kept.
+  before it was kept, a backup code's card that took another's answer.
 - **An error as text.** A library's words for what went wrong hold more than we would say
   ourselves: Go names the whole address a request went to, and an address can be a secret.
   What goes to a log, a tooltip or a report has to be looked at as text a stranger may read.
@@ -82,6 +83,29 @@ The seams:
   person left off. Answered as that, it tells them to fix what they can't, in words written
   for another OS. One so far: saved passwords Linux couldn't show.
 
+## A backup code's card that took another's answer, 2026-11-24
+
+- **Seen:** in my own runs of Settings' Sync, two of eight on a busy Mac: the backup code's
+  card, opened a second time, went away by itself. For a person: Cancel while it says
+  "Making your backup code…", then Make one… again before the first code is made. The card
+  shows a code and shuts a moment later; that code was the first card's, already taken
+  away, and the second card's own code was left on the bucket with nobody having seen it.
+- **Cause:** the card dropped an answer only if it had been asked before the card last
+  opened or shut. It asked again on opening, and from then every answer passed, the ones to
+  the first card's making and to its taking away among them. Go answers in turn, so those
+  came first.
+- **Seam:** work that takes time: an answer belongs to its asking, not to whatever is on
+  the screen when it arrives.
+- **Fix:** each thing the card asks has a number, Go's answer brings it back, and the card
+  takes the answer to what it asked last and no other.
+- **Why it was missed:** my miss. I counted openings, which tells an answer from before a
+  Cancel only until the next question, and no test opened the card again while an earlier
+  answer was still on its way. The fix for a code kept unseen made it show: before it, a
+  card left while making sent nothing, so there was one answer fewer to mistake.
+- **Guard:** `shell/e2e/sync.cjs`: with the mock's server held, Make one…, Cancel, Make
+  one… again, then the server let go; the code the card shows is saved, and Check… says it
+  is the bucket's code. Seen to fail by its name without the fix.
+
 ## A backup code told of before it was kept, 2026-11-24
 
 - **Seen:** by the Linux session's run of Settings' Sync, once, on a busy Mac: Make one… left
@@ -103,9 +127,9 @@ The seams:
   making and the drop; its test passed on a row read too early.
 - **Guard:** `core/sync/backup_test.go`: the status with a code made and not kept, dropped,
   dropped while being made, and made beside a kept one. `shell/e2e/sync.cjs`: from the
-  set-up's Skip for now to the last code left, the row is watched and never offers New
-  code…; and Cancel while the code is being made is seen to send the drop. Both seen to fail
-  without the fix.
+  set-up's Skip for now until a code is at last saved, the row is watched and never offers
+  New code…; and Cancel while the code is being made is seen to send the drop. Both seen to
+  fail without the fix.
 
 ## Typed keys a Wayland desktop drops, 2026-11-24
 
