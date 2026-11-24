@@ -148,9 +148,9 @@ emu-29 before handover, with slots from the tester.
   sidebar button or its shortcut opens it over the page; the next tap or click on the page or
   the toolbar closes it. Standard already has tabs on top as a setting, which he felt suits a
   tablet ("i thing top bar would make more sense on tablets").
-- **New names for Standard and for the Arc-like shell, Glide** (2026-11-24: "we should rename
-  standard to something nice... and arc like becomes curve or soemthing"). Only the names
-  people see change; the ids profiles save, `standard` and `glide`, stay.
+- **Standard keeps its name; Glide, the Arc-like shell, gets a new one** (2026-11-24: "lets
+  keep stamdard and change glide to  curve or aomething else meaning arc"). Only the name
+  people see changes; the id profiles save, `glide`, stays.
 
 ## Questions for Sudipta
 
