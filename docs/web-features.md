@@ -132,7 +132,10 @@ in the log. Each call is held to its probe's `expect`.
   calls on one page, on load and again on a tap. Per pass, the page keeps its renderer, and
   every registry call gave what its `expect` says for Android (`android-tap` on the tap). A few calls whose browser side is
   content's own (`CONTENT_APIS`) are made too, for the renderer's sake only.
-- **Basics**: a row's `basics:<n>` names the `tools/check_basics.py` check that shows it.
+- **Basics**: a row's `basics:<n>` names the `tools/check_basics.py` check that shows it, and
+  the run holds the two together on its platform: a check that works under a row that isn't
+  `works`, `partly` or `unknown`, or fails under one that is `works`, prints a `REGISTRY` line
+  naming the row and fails the run.
 
 ## After a Chromium bump
 

@@ -24,6 +24,7 @@ import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 import drive_first_app as d  # noqa: E402
+import web_features  # noqa: E402
 from drive_chromedriver import cdp, listening_ports, ws_open, ws_send  # noqa: E402
 
 ROOT = d.ROOT
@@ -715,6 +716,26 @@ def run(area, name, fn, extra):
     print(f"{status:<11} {area:>2} {name}{shown}", flush=True)
 
 
+def registry_disagrees(results):
+    """Each web-features row that names a basics check (core/webfeatures/registry.json) and
+    says otherwise than it found on this platform: a check that works under a row that says
+    the feature doesn't, or one that fails under a row that says it works. Partly and unknown
+    rows take either. A row's basics:N was only checked for its spelling, and ten checks
+    worked under rows that said quiet or absent."""
+    platform = "linux" if d.LINUX else "mac"
+    found = {area: status for area, _, status, _ in results}
+    wrong = []
+    for row in web_features.load():
+        status = row["status"][platform]
+        for t in row.get("test", []):
+            if not t.startswith("basics:") or found.get(int(t[7:])) not in ("ok", "FAIL"):
+                continue
+            ok = found[int(t[7:])] == "ok"
+            if (ok and status not in ("works", "partly", "unknown")) or (not ok and status == "works"):
+                wrong.append(f"{row['id']} is {status} on {platform}, but basics {t[7:]} {'works' if ok else 'fails'}")
+    return wrong
+
+
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
     LOG = open(os.path.join(OUT, "basics.log"), "w")
@@ -724,4 +745,7 @@ if __name__ == "__main__":
             run(area, name, fn, extra)
     counts = {s: sum(1 for r in results if r[2] == s) for s in ("ok", "FAIL", "NOT WRITTEN")}
     print(f"\nbasics: {counts['ok']} of {len(results)} areas work, {counts['FAIL']} missing, {counts['NOT WRITTEN']} not written yet", flush=True)
-    sys.exit(1 if counts["FAIL"] else 0)
+    wrong = registry_disagrees(results)
+    for w in wrong:
+        print(f"REGISTRY   {w}", flush=True)
+    sys.exit(1 if counts["FAIL"] or wrong else 0)
