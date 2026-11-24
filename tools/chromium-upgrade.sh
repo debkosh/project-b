@@ -46,14 +46,12 @@ if [ "${1:-}" = --locked ]; then
   step "CHROMIUM_VERSION is $WANT"
   printf '%s\n' "$WANT" > CHROMIUM_VERSION
 
-  if [ "$(tree_version)" = "$WANT" ]; then
-    step "chromium/src is at $WANT already"
-  else
-    step "fetch chromium/src at $WANT (long; log $LOGS/fetch.log)"
-    tools/fetch-chromium.sh > "$LOGS/fetch.log" 2>&1
-    grep -q '^RESULT=ok' "$LOGS/fetch.log" || { tail -30 "$LOGS/fetch.log"; stop "fetch: tools/fetch-chromium.sh failed; $LOGS/fetch.log"; }
-    [ "$(tree_version)" = "$WANT" ] || stop "fetch: chromium/src is $(tree_version) after the fetch, not $WANT"
-  fi
+  # Always: chrome/VERSION is at the tag as soon as src is checked out, before its
+  # dependencies are, so it can't say a fetch finished; a sync of a synced tree is quick.
+  step "fetch chromium/src at $WANT (long the first time; log $LOGS/fetch.log)"
+  tools/fetch-chromium.sh > "$LOGS/fetch.log" 2>&1
+  grep -q '^RESULT=ok' "$LOGS/fetch.log" || { tail -30 "$LOGS/fetch.log"; stop "fetch: tools/fetch-chromium.sh failed; $LOGS/fetch.log"; }
+  [ "$(tree_version)" = "$WANT" ] || stop "fetch: chromium/src is $(tree_version) after the fetch, not $WANT"
 
   step "web features (tools/web_features_bump.py)"
   python3 tools/web_features_bump.py > "$LOGS/web-features.log" 2>&1 || {
