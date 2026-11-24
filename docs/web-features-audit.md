@@ -29,8 +29,8 @@ end waits for his yes.
   the rows were wrong.
 - **The basics never meet the rows.** A row's `basics:N` is only checked for its spelling.
   Basics 10, 12, 13, 14, 15, 16, 17, 18, 22 and 41 pass, under rows that say `quiet` or
-  `absent`. `tools/test.sh` says basics is not part of a release, while `docs/releasing.md`
-  lists it.
+  `absent`. Release's full runs do run basics, and its failures (the URL password, a tab
+  closing without asking) were reported each time as known, never raised as bugs.
 - **The rows aren't touched when a feature lands.** Dialogs, downloads, the file chooser, full
   screen, camera and microphone, notifications, print, H.264 and password filling all landed
   without their row changing. The doc asks for it, but nothing fails when it is missed.
