@@ -215,10 +215,15 @@ tail -12 "$LOGS/app.log"
 
 rm -f "$LOGS/stopped"
 step "done: this checkout builds on Chromium $WANT"
-git status --short
+changed=$(git status --short)
 say
-say "Nothing is committed. Next: commit these with the line"
-say "  Notes: Chromium $WANT, with its security fixes"
-say "and hand the branch to release, which runs the release run (docs/releasing.md)."
+if [ -n "$changed" ]; then
+  echo "$changed"
+  say "Nothing is committed. Next: commit these with the line"
+  say "  Notes: Chromium $WANT, with its security fixes"
+  say "and hand the branch to release, which runs the release run (docs/releasing.md)."
+else
+  say "Everything is committed. Next: hand the branch to release (docs/releasing.md)."
+fi
 say "Logs: $LOGS"
 echo "RESULT=ok $WANT"
