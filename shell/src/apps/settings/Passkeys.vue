@@ -5,6 +5,7 @@ import { phone } from '@/phone.js';
 import { siteTile } from '@/ui/tint.js';
 import { useTints } from '@/ui/useTints.js';
 import { KEYRING } from './keyring.js';
+import KeyringHelp from './KeyringHelp.vue';
 import { send, state } from './state.js';
 
 // Passkeys (docs/passkeys.md, Seeing and deleting them): the passkeys Project B keeps, a
@@ -44,7 +45,7 @@ function remove() {
     <div class="card">
       <div v-if="state.passkeysNotHere" class="row empty">These passkeys were made on another device and only open there.</div>
       <div v-else-if="state.passkeysKeyring" class="row keyring">
-        <span class="err" role="alert">{{ KEYRING }}</span>
+        <span class="line"><span class="err" role="alert">{{ KEYRING }}</span> <KeyringHelp /></span>
         <button type="button" class="text-button" @click="send({ t: 'passkeysList' })">Try again</button>
       </div>
       <div v-else-if="state.passkeys && rows.length === 0" class="row empty">No passkeys yet. When a site offers to create one, Project B can save it here.</div>
@@ -109,13 +110,16 @@ function remove() {
   font-style: normal;
 }
 
-/* A keyring that gave no key: why, and Try again at the row's end. */
+/* A keyring that gave no key: why, Learn more, and Try again at the row's end. */
 .keyring {
   gap: 12px;
 }
 
-.keyring .err {
+.keyring .line {
   flex: 1;
+}
+
+.keyring .err {
   color: var(--danger);
 }
 

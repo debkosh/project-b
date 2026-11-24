@@ -108,6 +108,44 @@ const phone = layout === 'phone';
   await page.getByRole('button', { name: /^Back to/ }).click();
   check('and the row under Privacy has no count', await until(async () => { const t = (await row.innerText().catch(() => '')).replace(/\s+/g, ' '); return t.includes('Passkeys') && !/\d passkey/.test(t); }), await row.innerText().catch(() => ''));
   check('no errors in the console', errors.length === 0, errors.join(' | '));
+  await page.close();
+  await lib.stop();
+
+  // GNOME's keyring gives no key: the page says so in place of the list, with Learn more,
+  // which says why and what to do, and Try again, which asks again.
+  await lib.start(['-platform=linux', '-keyring-locked']);
+  await lib.fire('menu', 'app.settings');
+  await until(async () => (await regions()).settings !== 0);
+  const locked = await context.newPage();
+  lib.watch(locked, errors);
+  await locked.goto(`${lib.base}/settings/?tab=${(await regions()).settings}`);
+  await locked.getByRole('heading', { name: 'Settings' }).waitFor();
+  if (phone) await locked.locator('.section-row[data-section="privacy"]').click();
+  else await locked.locator('.nav [data-section="privacy"]').click();
+  await locked.locator('.row', { hasText: 'Passkeys' }).first().getByRole('button').first().click();
+  const shut = locked.getByRole('region', { name: 'Passkeys', exact: true }).locator('.row.keyring');
+  check('a keyring that gives no key: the line, Learn more and Try again', await until(async () => (await shut.innerText().catch(() => '')).includes("Your keyring is locked. Unlock it when asked; if it doesn't ask, log out and back in.")) &&
+    (await shut.getByRole('button', { name: 'Learn more' }).isVisible()) && (await shut.getByRole('button', { name: 'Try again' }).isVisible()), await shut.innerText().catch(() => ''));
+  await locked.mouse.move(1, viewport.height - 1);
+  await settle(locked);
+  await locked.screenshot({ path: path.join(lib.out, `passkey-settings-${layout}-keyring.png`) });
+  await shut.getByRole('button', { name: 'Learn more' }).click();
+  const why = locked.getByRole('dialog', { name: 'Why is my keyring locked?' });
+  check('Learn more says why, and on GNOME that logging out and in mends a keyring that never asks', await until(() => why.isVisible()) &&
+    (await why.innerText()).includes('pressed Cancel, try again and unlock it') && (await why.innerText()).includes("GNOME's keyring has stopped answering") && (await why.innerText()).includes('Log out and back in'), await why.innerText().catch(() => ''));
+  check('Close has the focus, so Enter only dismisses it', await until(() => why.getByRole('button', { name: 'Close' }).evaluate((b) => b === document.activeElement)));
+  await settle(locked);
+  await locked.screenshot({ path: path.join(lib.out, `passkey-settings-${layout}-keyring-why.png`) });
+  await locked.keyboard.press('Enter');
+  check('Enter shuts it', await until(async () => (await why.count()) === 0));
+  await shut.getByRole('button', { name: 'Learn more' }).click();
+  const help = locked.waitForRequest((r) => r.url().includes('/settings/send') && JSON.parse(r.postData() || '{}').t === 'openHelp', { timeout: 5000 }).then((r) => JSON.parse(r.postData()), () => null);
+  await why.getByRole('button', { name: 'Read more' }).click();
+  check('Read more asks Go for the keyring\'s help page, and shuts the dialog', (await help)?.page === 'keyring' && (await until(async () => (await why.count()) === 0)), JSON.stringify(await help));
+  const askedAgain = locked.waitForRequest((r) => r.url().includes('/settings/send') && JSON.parse(r.postData() || '{}').t === 'passkeysList', { timeout: 5000 }).then(() => true, () => false);
+  await shut.getByRole('button', { name: 'Try again' }).click();
+  check('Try again asks Go for the list again, and the line stays while the keyring gives nothing', (await askedAgain) && (await until(() => shut.isVisible())));
+  check('no errors in the console with the keyring locked', errors.length === 0, errors.join(' | '));
   await browser.close();
   await lib.stop();
   await lib.done();

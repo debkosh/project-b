@@ -489,7 +489,13 @@ picture, light and dark, desktop and phone, is made by `shell/e2e/sync.cjs` unde
     if it doesn't ask, log out and back in." (`keyring.js`): the one line for a question the
     person said no to and for a keyring that answers nothing until the next login, which the
     app can't tell apart. Try again asks the keyring again. The set-up Dialog says the same
-    line when turning sync on meets it.
+    line when turning sync on meets it. Learn more after the line, wherever it shows
+    (`KeyringHelp.vue`), opens a Dialog that says why: the key is kept in the desktop's
+    keyring; Cancel pressed on its question means try again and unlock it; a keyring that
+    never asks (on GNOME, one an app closed on while its question was up) mends by logging out
+    and in. Its Read more opens the help page, [help/keyring.md](help/keyring.md), in a tab:
+    the app's pages name a help page and Go has its address, every one in `core/help`. The
+    page has the way round logging out.
   - A run goes on saying "Syncing…" for as long as it does. Go ends a request that stalls;
     the page keeps no clock of its own. A first sync against a bucket that holds a lot takes
     as long as it takes.

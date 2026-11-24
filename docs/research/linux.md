@@ -189,13 +189,17 @@ Request.Close itself gets no reply (it times out after 25 s) and leaves the dial
 - oskit/secret waits for as long as the dialog is up and closes nothing on its own: the app's
   request has no deadline (passwords' `keyring-wait`, verified with the dialog up 3 minutes).
   A caller that must give up closes the pipe, never the Request.
-- Quitting the app while the dialog is up still breaks the keyring, and nothing on our side
-  can stop it. So the dialog should come only right after the person's own action. Today
-  it doesn't: sync's `load` checks the profile key at every start, so a profile that has sealed
-  anything asks at start-up, in the background, sync on or off (from reading the code, not yet
-  seen on a desktop). That's with passwords and platforms.
-- Telling the person ("log out and back in") is Sudipta's call, with passwords; an
-  upstream report for gnome-keyring is drafted for him to file.
+- Quitting the app while the dialog is up no longer breaks it: the app stays alive without a
+  window until the dialog is answered, then exits, so the Request is never closed (seen on
+  ub3). A crash or a kill still closes it, and so does any other app that closes its own
+  request, which nothing on our side can stop.
+- The dialog comes only when something needs the key: ten seconds after a start with sync on
+  (passwords' `start-later`), or at a saved password, a passkey or turning sync on.
+- The pages say "Your keyring is locked…" with Try again, and Learn more says why and that a
+  keyring that never asks mends by logging out and in ([sync.md](../sync.md)); its Read more
+  opens [help/keyring.md](../help/keyring.md), which also has the way without logging out:
+  `systemctl --user restart gnome-keyring-daemon`, then Try again. An upstream
+  report for gnome-keyring is drafted for Sudipta to file.
 - KDE doesn't break this way: Plasma 6's ksecretd answered every later request in the same
   tries.
 

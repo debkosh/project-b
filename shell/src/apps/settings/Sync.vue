@@ -6,6 +6,7 @@ import { useTints } from '@/ui/useTints.js';
 import Row from './Row.vue';
 import SyncBackup from './SyncBackup.vue';
 import { KEYRING } from './keyring.js';
+import KeyringHelp from './KeyringHelp.vue';
 import { send, state, syncAnswers } from './state.js';
 import { useSyncRun } from './syncRun.js';
 
@@ -464,7 +465,9 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
             <template v-if="serverRow === 'syncing'">Syncing…</template>
             <span v-else-if="serverRow === 'signedOut'" class="err">{{ failed }}</span>
             <template v-else-if="serverRow === 'failed'"
-              ><span class="err">{{ failed }}</span><template v-if="s.lastSynced"> · {{ lastSynced }}</template></template
+              ><span class="err">{{ failed }}</span> <KeyringHelp v-if="s.problem === 'keyring'" /><template v-if="s.lastSynced">
+                · {{ lastSynced }}</template
+              ></template
             >
             <template v-else
               ><template v-if="unsent"><span class="err">{{ unsent }}</span> · </template>{{ serverHint }}</template
@@ -599,7 +602,9 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
             </button>
           </div>
           <div v-if="d.passError || d.step !== 'enter'" class="under">
-            <span v-if="d.passError" class="text-field-error" role="alert">{{ d.passError }}</span>
+            <span v-if="d.passError" class="text-field-error" role="alert"
+              >{{ d.passError }} <KeyringHelp v-if="d.passError === KEYRING"
+            /></span>
             <span v-else-if="d.step !== 'enter'" class="secondary">{{ strength }}</span>
             <button v-if="d.step !== 'enter'" type="button" class="link" @click="suggest">Suggest one</button>
           </div>
