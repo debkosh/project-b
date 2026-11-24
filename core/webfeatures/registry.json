@@ -280,10 +280,10 @@
     "name": "Full screen for a page",
     "api": "element.requestFullscreen()",
     "delegate": "WebContentsDelegate::EnterFullscreenModeForTab",
-    "status": {"mac": "quiet", "linux": "quiet", "android": "quiet"},
-    "why": "The hook reaches Go but nothing answers it, so the request stays pending",
-    "needs": ["go-manager"],
-    "test": ["basics:18"]
+    "status": {"mac": "works", "linux": "works", "android": "works"},
+    "why": "After a click the page fills the screen, and Escape brings it back",
+    "owner": "engine/browser/page_tab.cc:PageTab::EnterFullscreenModeForTab",
+    "test": ["basics:18", "check:drive_android page_full_screen"]
   },
   {
     "id": "orientation-lock",
