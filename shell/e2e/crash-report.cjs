@@ -3,6 +3,7 @@
 // log, and hands it to the system's share sheet (on the mock, it says what it was given);
 // and Save report, which keeps the same report as a finished download, in Downloads and the
 // Downloads list, whose panel opens by itself to show it.
+// In every shell, the notice is a strip of its own and covers nothing of the page.
 // Run: node shell/e2e/crash-report.cjs   (from the repo root, after `npm run build` in shell/)
 
 const fs = require('fs');
@@ -58,6 +59,30 @@ const { check, regions, settle, until } = lib;
     const t = (await linuxNotice.textContent().catch(() => '')) || '';
     return /The log is crash-[^/]*\.log$/.test(t.trim().split('\n')[0].replace(/(Share|Save) report.*/, '').trim()) && !t.includes('macOS');
   }, 10000), await linuxNotice.textContent().catch(() => ''));
+  await lw.page.close();
+  await lib.stop();
+
+  // In every shell that has it, the notice is a strip of its own, which the page lies beside:
+  // it covers nothing of the page, as a page's own search box at its top-left.
+  for (const [id, viewport, hasTouch] of [['standard'], ['fox'], ['minimal'], ['mobile', { width: 412, height: 915 }, true]]) {
+    fs.writeFileSync(path.join(lib.profile, 'crash.log'), 'pid 1, started 2026-11-14 09:00:00\npanic: the last run\n');
+    await lib.start([`-use=${id}`]);
+    const sw = await lib.openWindow(browser, { ...(viewport ? { viewport } : {}), hasTouch: !!hasTouch });
+    await until(async () => (await regions()).shell === id);
+    await fetch(`${lib.base}/shell/send?window=1`, { method: 'POST', body: JSON.stringify({ t: 'newTab', text: 'https://example.com/' }) });
+    const bar = sw.ui.getByRole('status').filter({ hasText: 'crashed last time' });
+    let page = null;
+    let box = null;
+    const apart = async () => {
+      const r = await regions();
+      page = r.visible.length === 1 ? r.visible[0].rect : null;
+      box = await bar.boundingBox().catch(() => null);
+      return !!page && !!box && (box.y + box.height <= page.y + 0.5 || page.y + page.h <= box.y + 0.5);
+    };
+    check(`${id}: the crash notice and the page don't overlap`, await until(apart, 10000), JSON.stringify({ page, box }));
+    await sw.page.close();
+    await lib.stop();
+  }
   await browser.close();
   await lib.done();
 })();
