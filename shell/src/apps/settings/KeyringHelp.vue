@@ -6,7 +6,7 @@ import { send, state } from './state.js';
 // Learn more, beside the keyring's line (keyring.js): why the desktop's keyring gave no key,
 // and what to do, in a dialog. GNOME's keyring can stop answering every app until the next
 // login, when an app closes while its unlock question is up (docs/research/linux.md, 4).
-// Read more opens the help page, docs/help/keyring.md (core/help, "keyring"), which has the
+// Read more opens the help page, docs/help/keyring.md (core/links, "keyring"), which has the
 // way round that without logging out.
 const open = ref(false);
 const readMore = () => {

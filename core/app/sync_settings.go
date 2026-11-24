@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"projectb/engine"
+	"projectb/links"
 	"projectb/settings"
 	"projectb/shell"
 	"projectb/sync"
@@ -58,7 +59,7 @@ func (a *App) syncSettingsPart() settings.Part {
 	}
 	return settings.Part{
 		Snapshot: func(into map[string]any) {
-			into["sync"], into["syncAddress"], into["syncStart"] = a.Sync.Status(), a.Sync.Address(), sync.StartServer
+			into["sync"], into["syncAddress"], into["syncStart"] = a.Sync.Status(), a.Sync.Address(), links.SyncServer
 			// Whether a backup code can be scanned here, as a QR: a phone's scanner.
 			into["canScan"] = a.System.CanScanCode()
 		},
@@ -91,7 +92,7 @@ func (a *App) syncSettingsPart() settings.Part {
 				// The page where a person gets a bucket on the server to start with, in a tab
 				// beside Settings. Its own "Open in Project B" comes back as a link.
 				if t, ok := a.Tabs.Get(tab); ok {
-					a.Tabs.OpenFrom(tab, sync.BucketPage, t.Workspace, true)
+					a.Tabs.OpenFrom(tab, links.SyncBucket, t.Workspace, true)
 				}
 			case "syncPropose":
 				address, token, err := c.Address, "", error(nil)

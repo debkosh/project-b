@@ -8,15 +8,12 @@ import (
 	"github.com/sudiptadeb/amarit/appupdate"
 	"github.com/sudiptadeb/amarit/flatpak"
 
+	"projectb/links"
 	"projectb/profiles"
 	"projectb/relaunch"
 	"projectb/timeline"
 	"projectb/update"
 )
-
-// linuxVersions names the Flatpak repository's commits by version, published with it on
-// Pages by tools/linux/flatpak-release.sh, in the repository's own folder.
-const linuxVersions = "https://projectb.debkosh.com/repo/linux.json"
 
 // version is the release this build is, from VERSION, set at build time by
 // engine/build_go.py.
@@ -32,14 +29,14 @@ func appVersion() string { return version }
 // on a folder named outright keeps its own and relaunches alone. Outside the Flatpak, as a
 // build directory's binary, the portal refuses and the copy doesn't update.
 func updateConfig(c profiles.Choice) update.Config {
-	cfg := update.Config{Project: releaseProject, Releases: releaseManifest, StateDir: filepath.Join(c.Dir, "updates"), AutoUpdate: releaseAutoUpdate, Version: version}
+	cfg := update.Config{Project: releaseProject, Releases: links.Releases, StateDir: filepath.Join(c.Dir, "updates"), AutoUpdate: releaseAutoUpdate, Version: version}
 	opts := flatpak.Options{Args: []string{"/app/bin/project-b", "--user-data-dir=" + c.Dir, "--after-update"}}
 	if c.ID != "" {
 		cfg.StateDir = filepath.Join(list.Root(), "update")
 		opts = flatpak.Options{Copies: relaunch.Copies{List: list, Profile: c.ID}}
 	}
 	var src *flatpak.Source
-	commits := &update.Commits{URL: linuxVersions, Channel: update.Stable}
+	commits := &update.Commits{URL: links.LinuxVersions, Channel: update.Stable}
 	cfg.Source = func(quit func()) appupdate.Source {
 		opts.Quit = quit
 		opts.VersionOf = commits.VersionOf

@@ -24,6 +24,7 @@ import (
 	"projectb/app"
 	"projectb/commands"
 	"projectb/engine"
+	"projectb/links"
 	"projectb/mockengine"
 	"projectb/mocksystem"
 	"projectb/profiles"
@@ -34,10 +35,6 @@ import (
 )
 
 const profile = "/profile/dev"
-
-// home is the page each window opens on: the homepage, which every page the demo loads
-// shows, as there is no web engine to load another.
-const home = "https://projectb.debkosh.com/"
 
 func main() {
 	// The app is the one for the visitor's OS, as the page says before the core starts
@@ -77,7 +74,7 @@ func main() {
 			ProfileDir:  profile,
 			Profiles:    list,
 			SkipWelcome: true,
-			URLs:        []string{home},
+			URLs:        []string{links.Home},
 			System:      sys,
 			Update:      update.Config{Project: "project-b", StateDir: profile + "/updates"},
 		})
