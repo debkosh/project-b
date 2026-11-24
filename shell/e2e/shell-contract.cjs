@@ -928,9 +928,11 @@ const noNoticeYet = {
         await settle(page);
         const field = ui.getByRole('textbox', { name: 'Address', exact: true }).or(ui.getByRole('combobox', { name: 'Address', exact: true }));
         rule(19, 'no field named Address shows for it', (await field.filter({ visible: true }).count()) === 0);
-        const titled = await ui.getByText(title, { exact: true }).filter({ visible: true })
-          .evaluateAll((els) => els.filter((el) => !el.closest('[role=tab]')).length);
-        rule(19, `its title, ${title}, shows outside the tabs`, titled > 0);
+        // Waited for: the title outside the tabs draws a frame after the tab's own, later
+        // than one settle on a loaded Mac (2026-11-24, at a load of 30).
+        const titled = await until(async () => (await ui.getByText(title, { exact: true }).filter({ visible: true })
+          .evaluateAll((els) => els.filter((el) => !el.closest('[role=tab]')).length)) > 0);
+        rule(19, `its title, ${title}, shows outside the tabs`, titled);
         const close = ui.getByRole('button', { name: new RegExp(`^Close (Tab|${title})\\b`) }).filter({ visible: true });
         if (rule(19, 'a way to close it shows', (await close.count()) > 0)) {
           await close.first().click();
