@@ -137,6 +137,21 @@ emu-29 before handover, with slots from the tester.
 5. The emulators and the driver's large-screen part, alongside: about 2 days.
 6. Several windows, after 1 to 5 are released: about a week.
 
+## Decided
+
+- **Standard on a wide window, for now** (2026-11-24: "ok for now lets go with stands"; "lets
+  go with standard as an option whne the phone is wide"). An iPad, if we ever build for
+  iPadOS, gets Standard too.
+- **A sidebar on demand, on tablets and desktops** (2026-11-24: "a collapbsable side bar which
+  open on some clikc or shortcuts and closes on any interactions or page or tool bar click...
+  this is nice to have in desktop too"). The tabs stay in the sidebar, closed until the
+  sidebar button or its shortcut opens it over the page; the next tap or click on the page or
+  the toolbar closes it. Standard already has tabs on top as a setting, which he felt suits a
+  tablet ("i thing top bar would make more sense on tablets").
+- **New names for Standard and for the Arc-like shell, Glide** (2026-11-24: "we should rename
+  standard to something nice... and arc like becomes curve or soemthing"). Only the names
+  people see change; the ids profiles save, `standard` and `glide`, stay.
+
 ## Questions for Sudipta
 
 1. **Automatic, or the user's choice?** Recommended: automatic by size, as above, with Settings
