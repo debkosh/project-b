@@ -261,9 +261,10 @@
     "name": "Client certificates",
     "api": "A site asking for a TLS client certificate",
     "delegate": "ContentBrowserClient::SelectClientCertificate",
-    "status": {"mac": "unknown", "linux": "unknown", "android": "unknown"},
-    "why": "The default goes on without a certificate; not run",
-    "needs": ["delegate", "prompt"]
+    "status": {"mac": "partly", "linux": "partly", "android": "partly"},
+    "why": "A site that asks for an optional certificate goes on without one; none can be picked",
+    "needs": ["delegate", "prompt"],
+    "test": ["check:drive_first_app clientcert"]
   },
   {
     "id": "popup-block",
@@ -309,8 +310,8 @@
     "id": "pip-document",
     "name": "Document picture in picture",
     "api": "documentPictureInPicture.requestWindow()",
-    "status": {"mac": "unknown", "linux": "unknown", "android": "absent"},
-    "why": "Chrome opens a browser window for it; on Mac it's on but not run, off on Android",
+    "status": {"mac": "partly", "linux": "partly", "android": "absent"},
+    "why": "On the desktop its window opens as a tab, not a small window over the others; off on Android",
     "needs": ["stay-off"]
   },
   {
@@ -346,8 +347,8 @@
     "name": "Context menu",
     "api": "Right-click or long press on a page",
     "delegate": "WebContentsDelegate::HandleContextMenu",
-    "status": {"mac": "partly", "linux": "partly", "android": "works"},
-    "why": "Go answers for links and images; on Mac a right-click on plain text gets no menu",
+    "status": {"mac": "works", "linux": "works", "android": "works"},
+    "why": "Every right-click and long press gets our menu, on text too",
     "owner": "engine/browser/page_tab.cc:HandleContextMenu",
     "test": ["basics:22"]
   },
@@ -356,8 +357,8 @@
     "name": "Colour picker",
     "api": "<input type=color>",
     "delegate": "WebContentsDelegate::OpenColorChooser",
-    "status": {"mac": "quiet", "linux": "quiet", "android": "quiet"},
-    "why": "No colour chooser: nothing opens",
+    "status": {"mac": "quiet", "linux": "quiet", "android": "works"},
+    "why": "Android shows a colour sheet; on the desktop nothing opens",
     "needs": ["delegate"]
   },
   {
@@ -594,9 +595,8 @@
     "name": "Client hints kept across loads",
     "api": "Accept-CH",
     "delegate": "BrowserContext::GetClientHintsControllerDelegate",
-    "status": {"mac": "quiet", "linux": "quiet", "android": "quiet"},
-    "why": "No client hints delegate: a site's request for more hints isn't remembered",
-    "needs": ["delegate"]
+    "status": {"mac": "works", "linux": "works", "android": "works"},
+    "why": "Content's delegate keeps the hints a site asks for, for the session"
   },
   {
     "id": "local-network",
@@ -748,8 +748,8 @@
     "id": "eme",
     "name": "Protected video (Widevine)",
     "api": "navigator.requestMediaKeySystemAccess()",
-    "status": {"mac": "absent", "linux": "absent", "android": "absent"},
-    "why": "No Widevine: it needs Google's licence and its component",
+    "status": {"mac": "partly", "linux": "partly", "android": "partly"},
+    "why": "ClearKey plays; Widevine needs Google's licence and its component, so most paid streaming does not",
     "needs": ["build"]
   },
   {
@@ -773,9 +773,10 @@
     "id": "autofill",
     "name": "Autofill and saved passwords",
     "api": "Filling addresses, cards and passwords",
-    "status": {"mac": "absent", "linux": "absent", "android": "absent"},
-    "why": "Autofill and the password manager are Chrome's",
-    "needs": ["go-manager"]
+    "status": {"mac": "partly", "linux": "partly", "android": "partly"},
+    "why": "Saved passwords fill and save; addresses and cards are not filled",
+    "needs": ["go-manager"],
+    "test": ["check:drive_first_app filling"]
   },
   {
     "id": "translate",
