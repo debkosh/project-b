@@ -49,6 +49,9 @@ const tints = useTints();
 const serverLabel = computed(() => s.value.host || (s.value.problem === 'keyring' ? "Sync can't start" : 'Sync is starting'));
 // What is the bucket's is shown once sync has opened it, and while it isn't reset.
 const bucketKnown = computed(() => !!s.value.host && s.value.problem !== 'reset');
+// Its hint, while sync is starting, says it comes by itself: the wait after a start is ten
+// seconds (docs/startup.md), long enough to wonder whether something is to be done.
+const serverHint = computed(() => (s.value.host ? lastSynced.value : 'Starts in a few seconds'));
 const tile = computed(() => (tints.value, s.value.host ? siteTile(`https://${s.value.host}`) : { background: 'var(--bar)', border: 'var(--line)', letter: '' }));
 
 // The Dialog. step is '' while it is shut, 'address', 'choose', 'enter', 'change' or
@@ -453,7 +456,7 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
         <button type="button" class="text-button" @click="setUp">Set up again…</button>
       </Row>
       <template v-else-if="s.on">
-        <Row :label="serverLabel" :hint="lastSynced" :words="words" class="server" :title="serverRow === 'failed' ? s.error : undefined">
+        <Row :label="serverLabel" :hint="serverHint" :words="words" class="server" :title="serverRow === 'failed' ? s.error : undefined">
           <template #lead>
             <span class="mark" aria-hidden="true" :style="{ background: tile.background, boxShadow: `inset 0 0 0 1px ${tile.border}`, color: tile.letter }">{{ (s.host[0] || '').toUpperCase() }}</span>
           </template>
@@ -464,7 +467,7 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
               ><span class="err">{{ failed }}</span><template v-if="s.lastSynced"> · {{ lastSynced }}</template></template
             >
             <template v-else
-              ><template v-if="unsent"><span class="err">{{ unsent }}</span> · </template>{{ lastSynced }}</template
+              ><template v-if="unsent"><span class="err">{{ unsent }}</span> · </template>{{ serverHint }}</template
             >
           </template>
           <span v-if="serverRow === 'syncing' && !holding" class="ctl">

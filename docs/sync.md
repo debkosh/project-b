@@ -480,8 +480,11 @@ picture, light and dark, desktop and phone, is made by `shell/e2e/sync.cjs` unde
     ([ux-guide.md](ux-guide.md#anything-that-takes-time)); "The server has no sync bucket at
     this address"; and "Couldn't sync" for anything else. The words themselves are on Sync
     details, under the run.
-  - Until sync has opened its server, a moment after a start, the row's label is "Sync is
-    starting" on the page's quiet tile. A Linux keyring that gave no device key leaves it as
+  - Until sync has opened its server, for the wait after a start, the row's label is "Sync is
+    starting" on the page's quiet tile, and its hint "Starts in a few seconds"; Sync now starts
+    it at once. The rows for what is the bucket's, Change sync passphrase and the backup
+    code, come with the server: until then the page doesn't know whether there is a backup
+    code, and "No backup code", with Make one…, would have a person who has one replace it. A Linux keyring that gave no device key leaves it as
     a failed row, "Sync can't start", saying "Your keyring is locked. Unlock it when asked;
     if it doesn't ask, log out and back in." (`keyring.js`): the one line for a question the
     person said no to and for a keyring that answers nothing until the next login, which the
