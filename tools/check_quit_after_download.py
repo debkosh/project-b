@@ -41,6 +41,10 @@ threading.Thread(target=server.serve_forever, daemon=True).start()
 os.makedirs(d.OUT, exist_ok=True)
 profile = tempfile.mkdtemp(prefix="pb-quit-")
 print("--- part quit_after_download", flush=True)
+# app.log gathers every start's output (drive_first_app opens it to append), so this run's
+# part starts where the log ends now: its last 4000 characters missed a crash early in a long run.
+log = os.path.join(d.OUT, "app.log")
+start = os.path.getsize(log) if os.path.exists(log) else 0
 app = d.App(profile)
 d.visit(app, "http://127.0.0.1:%d/" % server.server_port)
 d.page_click(app, "#a")
@@ -60,8 +64,10 @@ except Exception:
     code = "still running"
     app.proc.kill()
 d.check("Cmd+Q after it ends the app cleanly, exit 0", code == 0, code)
-tail = open(os.path.join(d.OUT, "app.log")).read()[-4000:]
-seen = [w for w in ("dangling", "freed allocation", "Received signal", "SIGSEGV", "SIGTRAP") if w in tail]
+with open(log, errors="replace") as f:
+    f.seek(start)
+    ours = f.read()
+seen = [w for w in ("dangling", "freed allocation", "Received signal", "SIGSEGV", "SIGTRAP") if w in ours]
 d.check("and its log has no crash", not seen, seen)
 try:
     os.remove(os.path.expanduser("~/Downloads/" + NAME))
