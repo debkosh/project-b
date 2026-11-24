@@ -189,6 +189,15 @@ if [ -n "$DRIVER" ]; then
 fi
 
 [ -n "$DRIVER" ] || stop "tests: Chrome for Testing has no ChromeDriver for $MAJOR yet; run this again once it has"
+# The mock store holds what the Web Store serves this version of Chromium, so it is fetched
+# again for it; the app's tests install from it when extensions are built in.
+case " ${WITHOUT:-} " in
+  *" extensions "*) ;;
+  *) step "the mock store's extensions for $WANT (tools/fetch-extensions.sh, tools/pack-test-extension.py)"
+     { tools/fetch-extensions.sh && python3 tools/pack-test-extension.py; } > "$LOGS/extensions.log" 2>&1 ||
+       { tail -20 "$LOGS/extensions.log"; stop "tests: the mock store's fetch failed; $LOGS/extensions.log"; }
+     tail -8 "$LOGS/extensions.log" ;;
+esac
 echo
 if [ "$(ask "The test opens the app's windows on this desktop. Run it now? [Y/n]")" = n ]; then
   echo "RESULT=stopped tests: not run yet; run the same line again to run them"
