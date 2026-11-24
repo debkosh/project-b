@@ -649,13 +649,13 @@ const taken = [];
   await button('Skip for now').click();
   check('and sync is on again, with everything here sent up', await until(async () => (await dialog().count()) === 0 && (await button('Sync now', card()).isVisible()) && !(await serverRow().innerText()).includes('reset'), 15000), await serverRow().innerText());
 
-  // Signed out: the server no longer takes the token; Reconnect… fills in the address. The
-  // run that set-up began is over first: for its first second the row still offers Sync now,
-  // and a token refused under it signs the device out before the press, which then finds no
-  // Sync now to press.
-  await until(async () => (await serverRow().innerText()).includes('Last synced just now') && (await button('Sync now', card()).isEnabled().catch(() => false)), 20000);
+  // Signed out: the server no longer takes the token; Reconnect… fills in the address. Sync
+  // now is pressed for a run to meet the refusal. A run may be going already, which the row
+  // doesn't show in its first second: the one that takes away the backup code just skipped,
+  // which comes after its making however long that takes. Refused, it signs the device out
+  // by itself, and then there is no Sync now to press, and no need of one.
   await server({ refuse: token });
-  await button('Sync now', card()).click();
+  await button('Sync now', card()).click({ timeout: 5000 }).catch(() => {});
   check('a token the server refuses signs the device out, with Reconnect…', await until(async () => (await serverRow().innerText()).includes('The server signed this device out')) && (await button('Reconnect…', card()).isVisible()));
   await shot(12, 'signed-out');
   await button('Reconnect…', card()).click();
