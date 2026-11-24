@@ -229,8 +229,14 @@ func TestTwoPasskeysForOneAccountAreBothOffered(t *testing.T) {
 		t.Fatalf("rows with another account's = %v", rows)
 	}
 	// The rows are the passkeys in that order: the first row signs with the newest, the
-	// last with the other account's.
-	for row, want := range map[string]map[string]string{"0": third, "3": work} {
+	// last with the other account's. In this order, as the Dialog is asked for again only
+	// after the first press: a map's order had the last row pressed first one run in eight,
+	// and the first row then pressed on a Dialog that was gone.
+	for _, press := range []struct {
+		row  string
+		want map[string]string
+	}{{"0", third}, {"3", work}} {
+		row, want := press.row, press.want
 		before := len(r.e.PasskeyAnswers())
 		r.passkeyAnswer(d["id"], "account", row)
 		r.dialogs(func(l []any) bool { return len(l) == 0 })
