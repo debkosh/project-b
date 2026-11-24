@@ -770,6 +770,30 @@ const taken = [];
   check('Turn on sync sends syncStartFresh first, as the keys here don\'t open', await told);
   check('and syncs again with the passphrase, starting the profile\'s keys afresh', await until(async () => (await dialog().count()) === 0 && (await button('Sync now', card()).isVisible()), 10000));
 
+  // A Linux keyring that gives no device key, as a locked or broken one: sync stays on and
+  // says it can't start, with the keyring's line, Learn more and Try again, where it showed
+  // as off; Try again asks again, and a start whose keyring gives the key syncs as before.
+  await page.close();
+  await lib.stop();
+  await lib.start([...args, '-platform=linux', '-keyring-locked']);
+  await openSettings();
+  await showSync();
+  const KEYRING = "Your keyring is locked. Unlock it when asked; if it doesn't ask, log out and back in.";
+  check('a keyring that gives no key leaves sync on: Sync can\'t start, with the keyring\'s line, Learn more and Try again',
+    (await until(async () => (await card().innerText()).includes("Sync can't start"))) && (await card().innerText()).includes(KEYRING) &&
+      (await button('Learn more', card()).isVisible()) && (await button('Try again', card()).isVisible()) && (await button('Set up…', card()).count()) === 0, await card().innerText());
+  check('the rest of the card stays, as sync is on: Sync details and Turn off sync', (await card().innerText()).includes('Sync details') && (await button('Turn off…', card()).isVisible()));
+  await shot(27, 'keyring');
+  told = sends({ t: 'syncNow' });
+  await button('Try again', card()).click();
+  check('Try again asks sync to start again, and the line is back while the keyring gives nothing', (await told) && (await until(async () => (await card().innerText()).includes(KEYRING))), await card().innerText());
+  await page.close();
+  await lib.stop();
+  await lib.start(args);
+  await openSettings();
+  await showSync();
+  check('a start whose keyring gives the key syncs as before', await until(async () => (await button('Sync now', card()).isVisible()), 10000), await card().innerText());
+
   // A phone's buttons: drawn at 40px, each in a 48px target; its fields 48px.
   if (phone) {
     const targets = async (within) => page.evaluate((sel) => [...document.querySelectorAll(sel)]
@@ -794,7 +818,7 @@ const taken = [];
   check('no errors in the pages', errors.length === 0, errors.join(' | '));
 
   // An overview of every state, light and dark, in the mocks' order.
-  const flow = [1, 2, 3, 4, 15, 16, 17, 18, 5, 6, 20, 21, 19, 7, 8, 9, 10, 11, 24, 25, 26, 12, 23, 13, 22, 14];
+  const flow = [1, 2, 27, 3, 4, 15, 16, 17, 18, 5, 6, 20, 21, 19, 7, 8, 9, 10, 11, 24, 25, 26, 12, 23, 13, 22, 14];
   const names = flow.map((k) => taken.find((t) => t.startsWith(String(k).padStart(2, '0') + '-'))).filter((x) => x);
   for (const scheme of ['light', 'dark']) {
     const w = phone ? 412 : 1000;
