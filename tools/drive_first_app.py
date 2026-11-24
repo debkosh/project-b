@@ -577,7 +577,14 @@ def visit(app, url):
     """Types url in the bar and returns once the tab has its page: the shell shows it, and the
     engine has committed it and finished loading. The shell alone can show the address and no
     progress a moment before the navigation begins, and the page asked about then is the one
-    being replaced, whose answer never comes."""
+    being replaced, whose answer never comes. On a Linux desktop under Wayland the driver's
+    typed characters reach no field (only the input method's commit gives text there,
+    docs/research/linux.md, step 3), so there the shell's own navigate message goes instead."""
+    if LINUX and os.environ.get("WAYLAND_DISPLAY"):
+        app.js(f"(chrome.send('shell',[{json.dumps(json.dumps({'t': 'navigate', 'text': url}))}]),1)")
+        app.wait(f"{VALUE}.startsWith({json.dumps(url)})", 30)
+        loaded(app, url)
+        return
     focus_bar(app)
     app.cmd("type", url)
     app.wait(f"{VALUE}==={json.dumps(url)}")
