@@ -283,6 +283,9 @@ if [ "$(cat "$OUT/.pb-tree" 2>/dev/null)" != "$ROOT" ]; then
   (cd "$ROOT" && git ls-files -z engine core browserdata oskit shell | xargs -0 touch -c)
 fi
 echo "$ROOT" > "$OUT/.pb-tree"
+# use_clang_modules: from Chromium 158 siso refuses a remote compile of a clang module, whose
+# depfile names the worker's own clang folder ("request is not relocatable"); with modules
+# off every compile is an ordinary one, local and remote alike.
 cat > "$OUT/args.gn" <<ARGS
 is_debug = false
 is_component_build = false
@@ -297,6 +300,7 @@ proprietary_codecs = true
 ffmpeg_branding = "Chrome"
 project_b_go = "$GO"
 project_b_node = "$NODE"
+use_clang_modules = false
 ARGS
 if [ "$RELEASE" = 1 ]; then
   cat >> "$OUT/args.gn" <<ARGS
