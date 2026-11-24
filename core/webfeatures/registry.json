@@ -318,10 +318,10 @@
     "name": "Camera and microphone",
     "api": "navigator.mediaDevices.getUserMedia()",
     "delegate": "WebContentsDelegate::RequestMediaAccessPermission",
-    "status": {"mac": "quiet", "linux": "quiet", "android": "quiet"},
-    "why": "Rejects with NotSupportedError, with no prompt",
-    "needs": ["delegate", "prompt"],
-    "test": ["basics:17"]
+    "status": {"mac": "works", "linux": "partly", "android": "works"},
+    "why": "The site asks first, then gets the camera and microphone; on Linux the Flatpak has no camera portal yet, so the microphone only",
+    "owner": "engine/browser/page_tab.cc:PageTab::RequestMediaAccessPermission",
+    "test": ["basics:17", "check:drive_android page_camera"]
   },
   {
     "id": "screen-capture",
@@ -554,8 +554,8 @@
     "api": "Notification, ServiceWorkerRegistration.showNotification()",
     "delegate": "BrowserContext::GetPlatformNotificationService",
     "permissions": ["NOTIFICATIONS"],
-    "status": {"mac": "quiet", "linux": "quiet", "android": "quiet"},
-    "why": "Asking for permission answers denied, with no prompt and no notification service",
+    "status": {"mac": "works", "linux": "works", "android": "quiet"},
+    "why": "The site asks first, and its notifications show as the system shows any; Android has no notification service yet, so a page allowed to shows none",
     "needs": ["delegate", "go-manager", "prompt"],
     "owner": "engine/browser/permissions.cc:Permissions",
     "probe": [{"name": "notification", "expect": {"mac": "resolved:\"default\"", "linux": "resolved:\"default\"", "android": "resolved:\"default\"", "android-tap": "pending"}, "call": "Notification.requestPermission()"}],
