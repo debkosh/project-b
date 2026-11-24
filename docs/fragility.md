@@ -91,6 +91,9 @@ The seams:
   a start with sync off, one or more with sync on. `TestALockedProfileKeyFoundWhenTurningSyncOn`
   wants a locked key said when sync is turned on, and mended by starting fresh. Both fail on
   the code as it was. With sync on, the question still comes at start, as the run does.
+  Checked on GNOME by the Linux session, 2026-11-24, on a build of main with the keyring
+  locked: with sync off and a saved password a start put up no question, and the passwords
+  list came without one.
 
 ## GNOME's keyring broken by our giving up, 2026-11-24
 
@@ -116,9 +119,12 @@ The seams:
 - **Guard:** the reason is written at the call in `oskit/secret/secret_linux.go`, and the
   call can no longer be ended from outside. No automated test holds a real keyring's
   question; the Linux session's probe on GNOME is the check: the question up for three
-  minutes, then unlocked, and the key arrived, as it did for two requests after. Not
-  guarded, and not ours to guard: a process that quits or is killed while the question is
-  up, whose requests the portal closes itself.
+  minutes, then unlocked, and the key arrived, as it did for two requests after. The same
+  on a build of main, 2026-11-24, with sync on: the question came at start and stayed up
+  three minutes while the tabs and Settings kept answering, sync ran after the unlock, and
+  an import begun meanwhile finished after it, with one question for the two. Not guarded,
+  and not ours to guard: a process that quits or is killed while the question is up, whose
+  requests the portal closes itself.
 
 ## A pushed file labelled for another install, 2026-11-23
 
