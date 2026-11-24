@@ -226,8 +226,9 @@ already brought Playwright; it needs its browser once:
 
     (cd shell && npx playwright install chromium)
 
-ChromeDriver, of the Chromium we build (`tools/chromium-upgrade.sh` fetches it too; when
-Chrome for Testing has no build of that exact version yet, take the newest of the same major):
+ChromeDriver, of the Chromium we build. `tools/fetch-test-tools.sh` fetches it, with the mock
+store's extensions; by hand, when Chrome for Testing has no build of that exact version yet,
+take the newest of the same major:
 
     mkdir -p .tools/chromedriver && cd .tools/chromedriver
     curl -LO https://storage.googleapis.com/chrome-for-testing-public/$(cat ../../CHROMIUM_VERSION)/mac-arm64/chromedriver-mac-arm64.zip
