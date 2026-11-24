@@ -7,6 +7,8 @@
 #   tools/chromium-upgrade.sh                    # asks for the platform, offers the newest Stable
 #   tools/chromium-upgrade.sh mac                # the Mac build
 #   tools/chromium-upgrade.sh mac 158.0.8127.89  # a version of your choosing
+#   tools/chromium-upgrade.sh android            # then the APK, on container pb's tree
+#   tools/chromium-upgrade.sh linux              # and the Linux app, on that same tree
 #
 # Chromium is under the engine interface (docs/engine-interface.md), so an upgrade builds the
 # engine and what is under it, and tests that interface; the core and the shells above it
@@ -16,6 +18,11 @@
 # It stops, saying why, when one of them needs a person: a gone or missing web feature, a
 # compile error, hooks that changed beyond their version line (content's API moved), or a
 # failed test. It commits nothing: it ends with what changed.
+#
+# The Mac goes first: the web features and the hooks are checked there, and CHROMIUM_VERSION
+# follows its tree. android and linux then move container pb's tree, /work/chromium, which
+# both build from (docs/android.md), build there, and run the phone's or Linux's driver: the
+# APK on Android 17 (tools/test.sh android), the Linux app headless (tools/linux/headless.sh).
 set -uo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -25,8 +32,8 @@ OUT_PB=$SRC/out/pb
 URL=https://chromium.googlesource.com/chromium/src.git
 DASH='https://chromiumdash.appspot.com/fetch_releases?channel=Stable&platform=Mac&num=1'
 # The platforms this script builds, and the ones it lists as not yet.
-BUILDS="mac"
-LATER="android linux"
+BUILDS="mac android linux"
+LATER=""
 # What gen_hooks.py writes; only their "from Chromium <version>" lines may change in a patch.
 GENERATED="core/content engine/browser/hooks_gen.h engine/browser/hooks_gen.cc docs/content-hooks.md"
 
@@ -116,13 +123,13 @@ say "Project B is on Chromium $HAVE."
 [ "$TREE" = "$HAVE" ] || say "The tree in chromium/src is at ${TREE:-nothing}, not $HAVE."
 if [ -n "$STABLE" ]; then say "Newest Stable is $STABLE_V, out ${STABLE#* } (chromiumdash, Mac)."
 else say "chromiumdash didn't answer, so the newest Stable is unknown."; fi
-say "From this Mac you can build: $BUILDS. Not yet in this script: $LATER."
+say "From this Mac you can build: $BUILDS${LATER:+. Not yet in this script: $LATER}."
 
 if [ -z "$PLATFORM" ]; then PLATFORM=$(ask "Platform [mac]:"); PLATFORM=${PLATFORM:-mac}; fi
 case " $BUILDS " in
   *" $PLATFORM "*) ;;
   *) case " $LATER " in
-       *" $PLATFORM "*) say "$PLATFORM isn't in this script yet; it builds mac only (docs/chromium-upgrade.md)."; exit 2 ;;
+       *" $PLATFORM "*) say "$PLATFORM isn't in this script yet (docs/chromium-upgrade.md)."; exit 2 ;;
        *) say "no platform called $PLATFORM: $BUILDS"; exit 2 ;;
      esac ;;
 esac
@@ -134,7 +141,7 @@ fi
 echo "$WANT" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' || { say "$WANT is not a Chromium version, like 158.0.8127.89"; exit 2; }
 MAJOR=${WANT%%.*}
 
-if [ "$WANT" = "$HAVE" ] && [ "$TREE" = "$WANT" ] && [ ! -f "build/chromium-upgrade/$WANT/stopped" ]; then
+if [ "$PLATFORM" = mac ] && [ "$WANT" = "$HAVE" ] && [ "$TREE" = "$WANT" ] && [ ! -f "build/chromium-upgrade/$WANT/stopped" ]; then
   say "This checkout and its tree are on $WANT already; nothing to do."
   exit 0
 fi
@@ -143,6 +150,62 @@ newer "$HAVE" "$WANT" && say "Note: $WANT is older than $HAVE."
 if ! git ls-remote --exit-code --tags "$URL" "refs/tags/$WANT" >/dev/null 2>&1; then
   stop "version: Chromium has no tag $WANT ($URL)"
 fi
+if [ "$PLATFORM" != mac ]; then
+  [ "$HAVE" = "$WANT" ] && [ "$TREE" = "$WANT" ] && [ ! -f "build/chromium-upgrade/$WANT/stopped" ] ||
+    stop "order: upgrade mac to $WANT first, to its end: the web features and the hooks are checked on the Mac's tree"
+  say
+  say "This re-checks out container pb's /work/chromium at $WANT, which every checkout's APK and"
+  say "Linux builds use, under the container's build lock, and builds $PLATFORM there. It starts"
+  say "the pb-android VM and lowers it to nice 15. Its test runs on an emulator or a Linux"
+  say "container; ask the tester first. It commits nothing."
+  [ "$(ask "Upgrade $PLATFORM to $WANT? [y/N]")" = y ] || { say "Nothing changed."; exit 0; }
+  LOGS=$ROOT/build/chromium-upgrade/$WANT/$PLATFORM
+  mkdir -p "$LOGS"
+  export PATH=$HOME/.local/bin:/opt/homebrew/bin:$PATH
+  export DOCKER_HOST=unix://$HOME/.colima/pb-android/docker.sock
+  hold=chromium-upgrade-$$
+  trap 'tools/colima-vm.sh down "$hold"' EXIT
+  step "the pb-android VM, held up while this runs"
+  tools/colima-vm.sh up "$hold" || stop "container: the VM didn't start"
+  tools/linux/renice-vm.sh colima-pb-android/ | tail -1
+  container_version() { docker exec pb sh -c 'sed -n "s/^[A-Z]*=//p" /work/chromium/src/chrome/VERSION | paste -sd. -'; }
+  say "container pb's tree is at $(container_version)"
+
+  # Always, as on the Mac: the version file is at the tag before the dependencies are synced.
+  step "fetch /work/chromium at $WANT (long the first time; log $LOGS/fetch.log)"
+  docker exec -i -e TAG="$WANT" pb flock /work/.android-build.lock bash -s < tools/android-content-fetch.sh > "$LOGS/fetch.log" 2>&1
+  grep -q 'RESULT=ok' "$LOGS/fetch.log" || { tail -30 "$LOGS/fetch.log"; stop "fetch: tools/android-content-fetch.sh failed; $LOGS/fetch.log"; }
+  [ "$(container_version)" = "$WANT" ] || stop "fetch: /work/chromium is $(container_version) after the fetch, not $WANT"
+
+  step "build $PLATFORM (tools/build.sh $PLATFORM arm64; log $LOGS/build.log)"
+  tools/build.sh "$PLATFORM" arm64 > "$LOGS/build.log" 2>&1
+  grep -q '^RESULT=ok' "$LOGS/build.log" || { tail -40 "$LOGS/build.log"; stop "build: tools/build.sh $PLATFORM failed, above; $LOGS/build.log"; }
+  if [ "$PLATFORM" = android ]; then
+    step "sign the APK (tools/package.sh android; log $LOGS/package.log)"
+    tools/package.sh android > "$LOGS/package.log" 2>&1 || { tail -20 "$LOGS/package.log"; stop "tests: tools/package.sh android failed; $LOGS/package.log"; }
+  fi
+
+  echo
+  if [ "$(ask "The test needs the tester's emulator or Linux slot. Run it now? [Y/n]")" = n ]; then
+    echo "RESULT=stopped tests: not run yet; run the same line again to run them"
+    exit 1
+  fi
+  if [ "$PLATFORM" = android ]; then
+    step "the engine interface on Android 17 (tools/test.sh android; log $LOGS/test.log)"
+    PB_APK=$ROOT/build/android/project-b-content.apk EMULATORS='project-b-emu-37:5606' tools/test.sh android > "$LOGS/test.log" 2>&1
+  else
+    step "the engine interface on Linux, headless (tools/linux/headless.sh; log $LOGS/test.log)"
+    tools/linux/headless.sh > "$LOGS/test.log" 2>&1
+  fi
+  code=$?
+  tail -12 "$LOGS/test.log"
+  [ $code = 0 ] || stop "tests: $PLATFORM's driver didn't pass, above; $LOGS/test.log"
+  step "done: $PLATFORM builds on Chromium $WANT"
+  git status --short
+  echo "RESULT=ok $WANT $PLATFORM"
+  exit 0
+fi
+
 DRIVER=$(tools/fetch-test-tools.sh --which "$WANT")
 if [ -z "$DRIVER" ]; then say "ChromeDriver: Chrome for Testing has none for $MAJOR yet; tools/test.sh app will wait for one."
 elif [ "$DRIVER" = "$WANT" ]; then say "ChromeDriver: $DRIVER."
