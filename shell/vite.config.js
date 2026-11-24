@@ -9,7 +9,7 @@ import { apps as allApps } from './apps.js';
 // what apps share in src/ (imported as @/). Each shell is an app too, src/apps/shell/<id>/,
 // in Vue, Svelte or no framework, on src/sdk/ (apps.js lists them). `VITE_APP=<app> vite
 // build` builds one app into dist/<app>/ as index.html, <name>.js and <name>.css, where name
-// is the app's own folder: dist/settings/settings.js, dist/shell/standard/standard.js. `npm
+// is the app's own folder: dist/settings/settings.js, dist/shell/pbshell/pbshell.js. `npm
 // run build` builds every app (build.js). `npm run dev` serves them all, with hot reload,
 // against core/cmd/dev on :8765.
 // Each build flag in core/flags/registry.json is @<id>: src/<id>, or src/<id>-off, which has

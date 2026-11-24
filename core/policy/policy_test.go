@@ -24,7 +24,7 @@ func TestIsAllowedURL(t *testing.T) {
 		"https://blocked.test/":             false,
 		"https://www.blocked.test/x":        false,
 		"chrome://shell/":                   false,
-		"chrome://shell/standard/":          false,
+		"chrome://shell/pbshell/":          false,
 		"CHROME://SHELL/index.html":         false,
 		"chrome://gpu/":                     true,
 		"chrome://process-internals/":       true,

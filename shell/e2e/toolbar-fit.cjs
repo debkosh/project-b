@@ -12,12 +12,12 @@ const { check, regions, settle, until } = lib;
 const desktop = [500, 640, 760, 841, 960, 1100, 1440];
 const phone = [320, 360, 412];
 const shells = [
-  ['standard', desktop],
-  ['fox', desktop],
-  ['minimal', desktop],
-  ['glide', desktop],
-  ['terminal', desktop],
-  ['mobile', phone, true],
+  ['pbshell', desktop],
+  ['fxshell', desktop],
+  ['mnshell', desktop],
+  ['arshell', desktop],
+  ['tmshell', desktop],
+  ['mwshell', phone, true],
 ];
 
 // overlaps lists each pair of the shell's visible controls, outside the page, whose boxes

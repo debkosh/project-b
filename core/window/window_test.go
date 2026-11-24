@@ -35,7 +35,7 @@ func (r *recorder) last() engine.WindowLayout { return r.layouts[len(r.layouts)-
 
 // one is a manager with window 1 open.
 func one(e *recorder) *Manager {
-	m := New(e, engine.ShellPage("standard"), "#4f9e9e", engine.ThemeSystem, func() engine.WindowID { return 1 })
+	m := New(e, engine.ShellPage("pbshell"), "#4f9e9e", engine.ThemeSystem, func() engine.WindowID { return 1 })
 	m.Open(1, 0)
 	return m
 }
@@ -307,7 +307,7 @@ func TestEachWindowHasItsOwnLayout(t *testing.T) {
 // windows open and close.
 func TestWhatAnotherManagerReadsAndHears(t *testing.T) {
 	front := engine.WindowID(1)
-	m := New(&recorder{}, engine.ShellPage("standard"), "#4f9e9e", engine.ThemeSystem, func() engine.WindowID { return front })
+	m := New(&recorder{}, engine.ShellPage("pbshell"), "#4f9e9e", engine.ThemeSystem, func() engine.WindowID { return front })
 	var events []Event
 	m.OnEvent(func(e Event) { events = append(events, e) })
 	m.Open(1, 0)
@@ -336,11 +336,11 @@ func TestAnotherPageDropsWhatTheOldOneClaimed(t *testing.T) {
 	e := &recorder{}
 	m := one(e)
 	m.HandleShellLayout(1, report)
-	m.SetPage(engine.ShellPage("minimal"))
-	if l := e.last(); !reflect.DeepEqual(e.pages, []engine.Page{"shell/minimal"}) || len(l.Regions) != 0 || !reflect.DeepEqual(l.Tabs, report.Tabs) {
+	m.SetPage(engine.ShellPage("mnshell"))
+	if l := e.last(); !reflect.DeepEqual(e.pages, []engine.Page{"shell/mnshell"}) || len(l.Regions) != 0 || !reflect.DeepEqual(l.Tabs, report.Tabs) {
 		t.Fatalf("pages %v, layout %+v", e.pages, l)
 	}
-	if m.page != "shell/minimal" {
+	if m.page != "shell/mnshell" {
 		t.Fatalf("a new window gets %q", m.page)
 	}
 }

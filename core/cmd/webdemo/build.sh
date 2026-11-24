@@ -44,6 +44,8 @@ sed 's|<head>|<head><script src="shim.js"></script>|' "$HERE/web/page.html" > "$
 # The Stable version it names: VERSION, as the Pages workflow gives it, else the repo's.
 VERSION=${VERSION:-$(cat "$CORE/../VERSION")} perl -pi -e 's/\{\{VERSION\}\}/$ENV{VERSION}/g' "$OUT/mock-page.html" "$OUT/index.html"
 cp -R "$HERE/web/shots" "$OUT/"
+# The shells' ids, names and words, which the homepage and the tour read.
+cp "$CORE/shells/registry.json" "$OUT/shells.json"
 
 # Our pages, each with the shim and webui.js first, as dev's server puts webui.js in.
 cp -R "$DIST"/. "$OUT/"

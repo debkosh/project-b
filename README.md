@@ -56,7 +56,7 @@ ours.
 Working today:
 
 - The Standard shell on the desktop and the Mobile shell on a phone. These two are the focus;
-  the other shells in the tree (Glide, Terminal, Fox, Minimal) are experiments, parked.
+  the other shells in the tree (Curve, Terminal, Fox, Minimal) are experiments, parked.
 - Per-site settings from the address field: an ad blocker, blocking links to other sites, and
   Sparks, your own userscripts for the pages they match.
 - Downloads, printing, find in page, history, and bookmarks in folders.
@@ -209,7 +209,7 @@ The address field's suggestions, and tabs on top:
 
 <img src="docs/screenshots/suggestions.png" width="49%"> <img src="docs/screenshots/horizontal.png" width="49%">
 
-The parked experiments, each a web page on the same core: Glide and its Command Bar, the
+The parked experiments, each a web page on the same core: Curve and its Command Bar, the
 Terminal shell with two panes, Fox, and Minimal.
 
 <img src="docs/screenshots/glide.png" width="49%"> <img src="docs/screenshots/glide-command-bar.png" width="49%">

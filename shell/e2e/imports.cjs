@@ -65,7 +65,7 @@ const said = (frame, from) => frame.getByRole('list', { name: `From ${from}` }).
   // The welcome.
   flags({ showWelcome: 'on' });
   lock();
-  await lib.start(['-use=standard', `-browsers=${home}`]);
+  await lib.start(['-use=pbshell', `-browsers=${home}`]);
   let w = await lib.openWindow(browser, { viewport: { width: 1280, height: 800 } });
   const welcome = w.page.frameLocator('iframe.our-page[data-page="welcome"]');
   await welcome.getByRole('button', { name: 'Get started' }).click();
@@ -144,7 +144,7 @@ const said = (frame, from) => frame.getByRole('list', { name: `From ${from}` }).
   // with no prompt from a store of this run's own that has the test extension and not
   // uBlock Origin Lite, which fails; those no store can have are left out, each with why.
   flags({ extensions: 'on' });
-  await lib.start(['-use=standard', '-skip-welcome', `-browsers=${home}`, `-store=${packStore()}`]);
+  await lib.start(['-use=pbshell', '-skip-welcome', `-browsers=${home}`, `-store=${packStore()}`]);
   w = await lib.openWindow(browser, { viewport: { width: 1280, height: 800 } });
   await lib.fire('menu', 'app.settings');
   await w.settings.locator('.nav [data-parts~="import"]').click();
@@ -183,7 +183,7 @@ const said = (frame, from) => frame.getByRole('list', { name: `From ${from}` }).
   // folder chosen whose name says nothing with the keychain item the person picks (the
   // mock's keychain lists Chrome's and Wombat's). Files a person exported come over in
   // Settings too: bookmarks and passwords.
-  await lib.start(['-use=standard', '-skip-welcome', `-browsers=${home}`, '-password-store', '-keychain=test-safe-storage', '-keychain-items=Chrome,Wombat=another-browsers-key']);
+  await lib.start(['-use=pbshell', '-skip-welcome', `-browsers=${home}`, '-password-store', '-keychain=test-safe-storage', '-keychain-items=Chrome,Wombat=another-browsers-key']);
   w = await lib.openWindow(browser, { viewport: { width: 1280, height: 800 } });
   await lib.fire('menu', 'app.settings');
   await w.settings.locator('.nav [data-parts~="import"]').click();
@@ -277,7 +277,7 @@ const said = (frame, from) => frame.getByRole('list', { name: `From ${from}` }).
 
   // No browser in the home folder: the step still offers another browser's folder.
   flags({ showWelcome: 'on' });
-  await lib.start(['-use=standard']);
+  await lib.start(['-use=pbshell']);
   w = await lib.openWindow(browser, { viewport: { width: 1280, height: 800 } });
   const again = w.page.frameLocator('iframe.our-page[data-page="welcome"]');
   await again.getByRole('button', { name: 'Get started' }).click();

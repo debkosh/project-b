@@ -26,7 +26,7 @@ import org.json.JSONObject
 import kotlin.math.abs
 
 /**
- * The Mobile shell drawn with Android's views: "Mobile (native)", beside the web Mobile shell and
+ * The Mobile shell drawn with Android's views, mkshell in the registry, beside the web one and
  * of the same design (docs/shells.md, "The mobile shell", and the spec it was built from), so the
  * owner can compare the feel of the two. Everything at the thumb: the page, and under it one 48dp
  * bar with the address pill, the tab count and ⋯; the address bar can sit on top instead, as a

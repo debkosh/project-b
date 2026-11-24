@@ -13,6 +13,8 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+
+	"projectb/shells"
 )
 
 // Reserve values: who wins a key.
@@ -92,7 +94,10 @@ func (k Keymap) clone() Keymap {
 // Node is one entry of a menu tree: a submenu (Title and Items), an action, or a
 // separator. Locked parts can't be hidden or removed, and live only inside locked menus.
 type Node struct {
-	Title     string `json:"title,omitempty"`
+	Title string `json:"title,omitempty"`
+	// Of makes the entry the submenu of a shell's own actions, by the shell's id: its
+	// title is that shell's name, from the registry, so a shell's name is written once.
+	Of        string `json:"of,omitempty"`
 	Action    string `json:"action,omitempty"`
 	Separator bool   `json:"separator,omitempty"`
 	// List places a list of items that changes while the app runs, by its id.
@@ -171,7 +176,20 @@ func menuTemplate(name string) (MenuFile, bool) {
 	if err := json.Unmarshal(b, &m); err != nil {
 		panic(fmt.Sprintf("menu template %s: %v", name, err))
 	}
+	nameShells(m.Menus, name)
 	return m, true
+}
+
+// nameShells gives each submenu of a shell's actions that shell's name.
+func nameShells(nodes []Node, template string) {
+	for i := range nodes {
+		if n := &nodes[i]; n.Of != "" {
+			if n.Title = shells.Name(n.Of); n.Title == "" {
+				panic(fmt.Sprintf("menu template %s: no shell %q", template, n.Of))
+			}
+		}
+		nameShells(nodes[i].Items, template)
+	}
 }
 
 func lockedKeys() Keymap {

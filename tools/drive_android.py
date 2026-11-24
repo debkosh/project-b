@@ -1002,7 +1002,7 @@ def bookmark_star():
     (docs/bookmark-folders.md): the menu's Bookmark bookmarks the page into the folder last
     saved in and shows its sheet; Enter in the name saves it with the folder chosen; the back
     key closes it as it was; on a bookmarked page the star is on, and Remove takes it away."""
-    for shell in ("mobile", "mobile-native"):
+    for shell in ("mwshell", "mkshell"):
         # Two folders, the second in the first, and the first the one last saved in.
         profile_file("bookmarks.json", {"version": 2, "last": "f1", "entries": [
             {"id": "f1", "parent": "", "kind": "folder", "title": "Reading", "added": 1, "modified": 1, "place": "a"},
@@ -1018,7 +1018,7 @@ def bookmark_star():
                              store_rows("SELECT parent, title FROM bookmarks WHERE url = ?", "http://" + BASE + "/a")]
             # The folder chosen, by its name; checked only in the native shell's tree, as the
             # tree a web page gives Android without a screen reader on carries no checked state.
-            chosen = {"checked": "true"} if shell == "mobile-native" else {"kind": "android.widget.RadioButton"}
+            chosen = {"checked": "true"} if shell == "mkshell" else {"kind": "android.widget.RadioButton"}
             check(shell + ": the menu's Bookmark bookmarks the page into the folder last saved in, and shows its sheet",
                   until(lambda: [e["parent"] for e in saved()] == ["f1"]) is not None
                   and until(lambda: named("shell", "Reading", **chosen)) is not None, saved())
@@ -1062,7 +1062,7 @@ def settings_ahead():
     one (docs/windows.md): the menu opening starts the settings page out of sight, no tab to
     the person, neither counted, nor a card in the switcher, nor on screen; the menu's
     Settings then shows that page, already started."""
-    for shell in ("mobile", "mobile-native"):
+    for shell in ("mwshell", "mkshell"):
         use_shell(shell)
         try:
             launch()
@@ -1390,7 +1390,7 @@ def download_notifications():
     the bar shows the download with no offer, and the notification shows all the same."""
     # Android 13 (API 33) brought POST_NOTIFICATIONS, the leave the offer asks for.
     asks = int(adb("shell", "getprop", "ro.build.version.sdk").strip() or 0) >= 33
-    for shell in ("mobile", "mobile-native"):
+    for shell in ("mwshell", "mkshell"):
         forget_notifications()
         use_shell(shell)
         launch()
@@ -2470,7 +2470,7 @@ def long_press_menu():
     tiles = lambda *names: all(named("shell", n) is not None for n in names)
     # Android's own question at the first download would cover the sheet.
     adb("shell", "pm", "grant", PACKAGE, "android.permission.POST_NOTIFICATIONS")
-    for shell in ("mobile", "mobile-native"):
+    for shell in ("mwshell", "mkshell"):
         use_shell(shell)
         # Through the media index, as a plain rm leaves its rows, and a download of the same name
         # then can't be published.
@@ -2547,7 +2547,7 @@ def keyboard_bars():
     (docs/design-system.md, On a phone): a tap in a page's field brings it up, the toolbar goes
     and the page takes its room; the keyboard going brings the toolbar back and the page gives
     the room back; and the address field in edit keeps the toolbar with the keyboard up."""
-    for shell in ("mobile", "mobile-native"):
+    for shell in ("mwshell", "mkshell"):
         use_shell(shell)
         try:
             launch()

@@ -62,7 +62,7 @@ const outlinesMatch = async (page, when) => {
   await lib.start();
   let w = await lib.openWindow(browser);
   // Standard starts with no tab: the checks want a page, so one is opened.
-  await until(async () => (await regions()).shell === 'standard');
+  await until(async () => (await regions()).shell === 'pbshell');
   await fetch(`${lib.base}/shell/send?window=1`, { method: 'POST', body: JSON.stringify({ t: 'newTab', text: 'https://example.com/' }) });
   check('the shell comes up with one tab shown', await until(async () => (await regions()).visible.length === 1));
   await settle(w.page);

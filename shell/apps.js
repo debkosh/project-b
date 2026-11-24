@@ -1,6 +1,6 @@
 // The apps the build makes, each a folder of src/apps: settings and picker, and each shell,
 // a folder of src/apps/shell (docs/shells.md). An app's name is its folder under src/apps,
-// such as 'settings' or 'shell/standard'.
+// such as 'settings' or 'shell/pbshell'.
 import { readdirSync } from 'fs';
 import { resolve } from 'path';
 

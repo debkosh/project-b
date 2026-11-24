@@ -354,8 +354,8 @@ adapter here, with `Window` as the one Android file (`engine/android/window_andr
 | Updates | The same manager and the same `amarit.Client`, every minute, on the `android/arm64` asset. The APK is downloaded into the profile, size and sha256 checked by amarit, and the bubble and the settings panel offer to install it: see [Updates on a phone](#updates-on-a-phone) |
 
 **The Mobile shell.** A phone loads only the shells the registry marks `phone`, and its Go holds only those
-and the settings page, so it starts on `mobile`
-([shells.md](shells.md#the-mobile-shell)), even where a profile's prefs name `standard`, as the templates do: one
+and the settings page, so it starts on `mwshell`
+([shells.md](shells.md#the-mobile-shell)), even where a profile's prefs name `pbshell`, as the templates do: one
 bar at the foot, a tab switcher, tab groups in a strip, the long-press link menu the shell draws, and the bars
 hiding on scroll. The phone's back key closes the shell's sheet or ends its address editing first
 (`set_shell_back`), then settings', then goes back in the page, then on a tab with no history closes it, the

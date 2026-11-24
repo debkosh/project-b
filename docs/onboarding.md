@@ -36,7 +36,7 @@ And on the second mocks, 2026-11-17:
   discussed the implementation". It is out of the onboarding; nothing in the app does Safe
   Browsing today, and how it would work is for a discussion first.
 - **Approved:** no "How you work" step, five steps on the desktop; the style step offers tabs on
-  the side, on top, and Glide. Changed 2026-11-18, the owner: "it should show the stuff we have
+  the side, on top, and Curve. Changed 2026-11-18, the owner: "it should show the stuff we have
   built so shell and keyboard stays". So the style step shows the shells as they look, and How
   you work is back as the fourth of six: starter workspaces, Personal and Work ticked, which
   the welcome makes, and the keys, "since we sonot differe from chrome.. make the other keymap
@@ -104,7 +104,7 @@ The mocks are drawn in [screenshots/onboarding/mocks.html](screenshots/onboardin
    what came over ([mock](screenshots/onboarding/mock-d2c.png)). Open tabs come over as a
    workspace named after the browser.
 3. **Pick your style:** a picture of the browser beside the choices: tabs on the side, on top,
-   or Glide, each drawn as that shell draws itself; the colour, None first; theme. The picture and
+   or Curve, each drawn as that shell draws itself; the colour, None first; theme. The picture and
    the page itself, with its window's frame, take each choice at once
    ([none](screenshots/onboarding/mock-d3.png), [blue](screenshots/onboarding/mock-d3b.png),
    [dark](screenshots/onboarding/mock-d3c.png)).
@@ -186,7 +186,7 @@ Each slice goes out through a release of its own.
 - **Over the whole window:** Go tells every shell which tab is the welcome with the window
   to itself (`welcome` in the shell's state). While it is the active tab, Standard hides its
   bars and keeps the frame's band, with a top edge, and a strip across the top to drag the
-  window by; Glide shows the page alone with that strip; the Mobile web shell hides its bars
+  window by; Curve shows the page alone with that strip; the Mobile web shell hides its bars
   as for a page in full screen, keeping the system's. Finishing closes the tab, the shell
   comes back, and a shell that opens a tab at the start gets one.
 - **The splash** plays once over the whole window: the mark grows and draws itself, the name
@@ -462,7 +462,7 @@ progress, seems like a good starting rule to evolve from"):
 
 - **Pick your style** draws each shell as it draws itself (`Preview.vue`): Standard's address
   bar and buttons, New Tab with ⌘T, tabs with their titles and the workspace switcher, on the
-  side or along the top; Glide's address, its Space with its dot, its tabs and its dots at the
+  side or along the top; Curve's address, its Space with its dot, its tabs and its dots at the
   foot; a page. On a 640 by 400 grid scaled by the picture's width, so a choice's card is the
   same picture as the large one, in the page's tones as before.
 - **How you work** ([shot](../build/e2e/welcome-work.png)) lists Personal ("Everyday

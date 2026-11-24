@@ -411,14 +411,14 @@ def session(fixture, extra_args=(), full=True):
     check("/json/version says Chrome", version.get("Browser") == "Chrome/" + VERSION, version.get("Browser"))
     browser_ws = version["webSocketDebuggerUrl"].replace("localhost", "127.0.0.1")
 
-    # DevTools gives no new way into the shell's bridge: a navigation to chrome://shell/standard/,
+    # DevTools gives no new way into the shell's bridge: a navigation to chrome://shell/pbshell/,
     # and a new target opened on it, both end without chrome.send.
     has_bridge = "return [location.href, typeof (window.chrome && chrome.send)]"
-    wd_call("POST", "/url", {"url": "chrome://shell/standard/"})
+    wd_call("POST", "/url", {"url": "chrome://shell/pbshell/"})
     landed = wd_call("POST", "/execute/sync", {"script": has_bridge, "args": []})
-    check("navigating to chrome://shell/standard/ gets no bridge", landed[0] != "chrome://shell/standard/" and landed[1] == "undefined", landed)
+    check("navigating to chrome://shell/pbshell/ gets no bridge", landed[0] != "chrome://shell/pbshell/" and landed[1] == "undefined", landed)
     s, code = ws_open(browser_ws)
-    r = cdp(s, 1, "Target.createTarget", {"url": "chrome://shell/standard/"})
+    r = cdp(s, 1, "Target.createTarget", {"url": "chrome://shell/pbshell/"})
     s.close()
     handles = wd_call("GET", "/window/handles")
     stray = [h for h in handles if h != first]
@@ -429,7 +429,7 @@ def session(fixture, extra_args=(), full=True):
         landed = wd_call("POST", "/execute/sync", {"script": has_bridge, "args": []})
         wd_call("DELETE", "/window")
         wd_call("POST", "/window", {"handle": first})
-    check("a target opened on chrome://shell/standard/ gets no bridge", landed is None or (landed[0] != "chrome://shell/standard/" or landed[1] == "undefined"), (r, landed))
+    check("a target opened on chrome://shell/pbshell/ gets no bridge", landed is None or (landed[0] != "chrome://shell/pbshell/" or landed[1] == "undefined"), (r, landed))
     wd_call("POST", "/url", {"url": fixture + "/"})
     s, code = ws_open(browser_ws)
     check("a client with no Origin connects", code == 101, code)

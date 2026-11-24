@@ -3,7 +3,7 @@
 The features a person expects from a browser they use every day, and where Project B stands
 on each. Checked on the 0.2.59 package on macOS, 2026-11-14: the areas `tools/test.sh basics`
 covers, one check each, by that run; the rest by hand in the app through the driver. Each
-feature is judged in the Standard shell, the default; Glide and Fox are optional styles.
+feature is judged in the Standard shell, the default; Curve and Fox are optional styles.
 Update this list when a check's result changes or a plan is decided.
 
 **Status:** works, partly or missing. **Plan:** who builds it, or "needs discussion" when nobody
@@ -17,7 +17,7 @@ and Android, in the web-features registry: [web-features.md](web-features.md).
 
 | # | Feature | Status | Plan |
 |---|---|---|---|
-| 1 | Downloads: saving a file from a link | works in Standard: files go to ~/Downloads, with a Downloads list, and Save Link As opens the Save panel | done, r6 ([daily-driver.md](daily-driver.md#downloads)); Glide and the other shells to come, rule 17; Android later |
+| 1 | Downloads: saving a file from a link | works in Standard: files go to ~/Downloads, with a Downloads list, and Save Link As opens the Save panel | done, r6 ([daily-driver.md](daily-driver.md#downloads)); Curve and the other shells to come, rule 17; Android later |
 | 2 | File upload: a file input opens a chooser | works on the Mac: the system's panel, as a sheet | done, r6 ([daily-driver.md](daily-driver.md#file-upload)); Android already opens its own |
 | 3 | JavaScript dialogs: alert, confirm, prompt, and "leave this page?" on close | works in Standard, over the page | done, r6 ([daily-driver.md](daily-driver.md#javascript-dialogs)); the other shells to come, rule 15; Android with the Mobile shell |
 | 4 | Right-click menu on a page: open link in a new tab, copy link, copy and save images | works in Standard: drawn by the shell from Go's actions | done, r6 ([daily-driver.md](daily-driver.md#right-click)); the other shells to come, rule 16 |
@@ -30,7 +30,7 @@ and Android, in the web-features registry: [web-features.md](web-features.md).
 | 11 | A history page | works: Show All History (Cmd+Y), grouped by day, with search, removal and Clear history | done, r6 ([daily-driver.md](daily-driver.md#history-and-bookmarks)) |
 | 12 | Saved passwords and autofill | missing: nothing of ours; the Edit menu's Passwords… and Contact… are macOS's AutoFill | needs discussion |
 | 13 | Printing | works: Print… (Cmd+P, under File, and at the top of the shell's menu), the right-click menu and the page's own `window.print()` open the system's print panel, the Mac's or Android's, with the page as a PDF | done ([daily-driver.md](daily-driver.md#printing)) |
-| 14 | Error pages: a failed load, a bad certificate | works in Standard since 0.2.65 and the Mobile web shell after 0.2.74: Go's notice over the page, with Try again, Go back, and Open anyway for a certificate that may be passed | done ([daily-driver.md](daily-driver.md#error-pages-and-certificate-warnings)); Glide and the native Mobile shell to come, rule 32 |
+| 14 | Error pages: a failed load, a bad certificate | works in Standard since 0.2.65 and the Mobile web shell after 0.2.74: Go's notice over the page, with Try again, Go back, and Open anyway for a certificate that may be passed | done ([daily-driver.md](daily-driver.md#error-pages-and-certificate-warnings)); Curve and the native Mobile shell to come, rule 32 |
 | 15 | A new tab page | works: Standard's box lists the sites visited most and the newest bookmarks before anything is typed; on a phone a new tab shows them as tiles and rows, with All bookmarks and History | done ([daily-driver.md](daily-driver.md#a-new-tab)) |
 
 ## Safety, which a person doesn't see until it matters

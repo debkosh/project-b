@@ -1728,11 +1728,11 @@ func TestViewShellSwitchesTheShellLive(t *testing.T) {
 	for len(r.got) > 0 {
 		<-r.got
 	}
-	r.e.Post(func() { r.a.MenuChosen("shells:minimal") })
+	r.e.Post(func() { r.a.MenuChosen("shells:mnshell") })
 	r.e.Settle()
 	l := r.e.Layout(1)
 	r.flushPrefs()
-	if r.e.PageOf(1) != "shell/minimal" || prefs.New(dir).Shell() != "minimal" || len(l.Regions) != 0 || len(l.Tabs) != 1 {
+	if r.e.PageOf(1) != "shell/mnshell" || prefs.New(dir).Shell() != "mnshell" || len(l.Regions) != 0 || len(l.Tabs) != 1 {
 		t.Fatalf("the window loads %q, the pref is %q, the layout %+v", r.e.PageOf(1), prefs.New(dir).Shell(), l)
 	}
 	r.e.Post(func() { r.a.Shell.TabsChanged() })
@@ -1778,7 +1778,7 @@ func TestAShellsOwnDataIsKeptPerWindow(t *testing.T) {
 	if m := r.waitOn(got, func(m map[string]any) bool { return m["t"] == "snapshot" }); m["data"] != nil {
 		t.Fatalf("another window's shell has %v", m["data"])
 	}
-	r.e.Post(func() { r.a.MenuChosen("shells:minimal") })
+	r.e.Post(func() { r.a.MenuChosen("shells:mnshell") })
 	if m := snapshot(); m["data"] != nil {
 		t.Fatalf("the next shell has %v", m["data"])
 	}
@@ -1802,7 +1802,7 @@ func TestAShellsOwnActionRunsOnlyWhileItsShellIsOn(t *testing.T) {
 	if took(cmdD) || took(shiftCmdD) {
 		t.Fatal("with the standard shell on, the terminal's keys were taken")
 	}
-	r.e.Post(func() { r.a.MenuChosen("terminal.splitRight") })
+	r.e.Post(func() { r.a.MenuChosen("tmshell.splitRight") })
 	r.e.Settle()
 	for len(r.got) > 0 {
 		var m map[string]any
@@ -1812,19 +1812,19 @@ func TestAShellsOwnActionRunsOnlyWhileItsShellIsOn(t *testing.T) {
 		}
 	}
 
-	r.e.Post(func() { r.a.MenuChosen("shells:terminal") })
+	r.e.Post(func() { r.a.MenuChosen("shells:tmshell") })
 	r.shell(`{"t":"ready"}`)
 	r.waitFor(func(m map[string]any) bool { return m["t"] == "snapshot" })
 	if !took(cmdD) {
 		t.Fatal("with the terminal shell on, Option+Cmd+D wasn't taken")
 	}
-	if m := r.waitFor(func(m map[string]any) bool { return m["t"] == "action" }); m["id"] != "terminal.splitRight" {
+	if m := r.waitFor(func(m map[string]any) bool { return m["t"] == "action" }); m["id"] != "tmshell.splitRight" {
 		t.Fatalf("Option+Cmd+D sent %v", m)
 	}
 	if !took(shiftCmdD) {
 		t.Fatal("with the terminal shell on, Shift+Cmd+D wasn't taken")
 	}
-	if m := r.waitFor(func(m map[string]any) bool { return m["t"] == "action" }); m["id"] != "terminal.splitDown" {
+	if m := r.waitFor(func(m map[string]any) bool { return m["t"] == "action" }); m["id"] != "tmshell.splitDown" {
 		t.Fatalf("Shift+Cmd+D sent %v", m)
 	}
 }
@@ -2012,13 +2012,13 @@ func TestTheShellHearsTheActionsByTitle(t *testing.T) {
 	}
 }
 
-// The glide keymap gives Cmd+T to the Command Bar and Option+Cmd+Right to
-// the next Space; Ctrl+1 is Space 1 in every keymap. Each reaches Glide as its action.
+// Curve's keymap gives Cmd+T to the Command Bar and Option+Cmd+Right to
+// the next Space; Ctrl+1 is Space 1 in every keymap. Each reaches Curve as its action.
 func TestTheGlideKeymap(t *testing.T) {
 	r := start(t, t.TempDir())
 	defer r.stop()
 	r.waitFor(func(m map[string]any) bool { return m["t"] == "snapshot" })
-	r.e.Post(func() { r.a.MenuChosen("shells:glide") })
+	r.e.Post(func() { r.a.MenuChosen("shells:arshell") })
 	r.shell(`{"t":"ready"}`)
 	r.waitFor(func(m map[string]any) bool { return m["t"] == "snapshot" })
 	take := func(keys string) {
@@ -2043,11 +2043,11 @@ func TestTheGlideKeymap(t *testing.T) {
 			t.Fatalf("%s sent %v, want %s", keys, m, want)
 		}
 	}
-	press("Ctrl+1", "glide.space1")
-	r.e.Post(func() { r.a.Commands.UseTemplate("glide") })
+	press("Ctrl+1", "arshell.space1")
+	r.e.Post(func() { r.a.Commands.UseTemplate("arshell") })
 	r.e.Settle()
-	press("Cmd+T", "glide.commandBar")
-	press("Option+Cmd+Right", "glide.spaceNext")
+	press("Cmd+T", "arshell.commandBar")
+	press("Option+Cmd+Right", "arshell.spaceNext")
 }
 
 // The settings page's Install update hands a ready release to the installer, as the
@@ -2221,10 +2221,10 @@ func TestAPhonesSettingsChooseItsShell(t *testing.T) {
 	_, snap := r.openSettings()
 	ps, _ := snap["phoneShells"].(map[string]any)
 	list, _ := ps["shells"].([]any)
-	if ps["shell"] != "mobile" || len(list) == 0 || list[0].(map[string]any)["id"] != "mobile" {
+	if ps["shell"] != "mwshell" || len(list) == 0 || list[0].(map[string]any)["id"] != "mwshell" {
 		t.Fatalf("phone shells %v", snap["phoneShells"])
 	}
-	r.settings(`{"t":"setShell","text":"mobile"}`)
+	r.settings(`{"t":"setShell","text":"mwshell"}`)
 	// Off a phone the part isn't there: the Profile section offers the shells.
 	shells.OnPhone = false
 	r2 := start(t, t.TempDir())

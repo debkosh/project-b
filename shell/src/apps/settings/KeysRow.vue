@@ -10,9 +10,11 @@ import { send, state } from './state.js';
 // until the answer. Each shortcut is edited in Keyboard shortcuts.
 const kb = computed(() => state.keyboard);
 
-const templateNames = { 'project-b': 'Project B', chrome: 'Chrome', firefox: 'Firefox', glide: 'Glide' };
-const options = computed(() => kb.value.templates.map((t) => ({ value: t, label: templateNames[t] || t })));
-const labelOf = (name) => templateNames[name] || name;
+// A template named for a shell, such as Curve's, is called by that shell's name, as the
+// registry gives it.
+const templateNames = { 'project-b': 'Project B', chrome: 'Chrome', firefox: 'Firefox' };
+const labelOf = (name) => templateNames[name] || state.profile?.shells?.find((s) => s.id === name)?.name || name;
+const options = computed(() => kb.value.templates.map((t) => ({ value: t, label: labelOf(t) })));
 
 // How many actions differ from the template: what a reset or another template loses.
 const changed = computed(() => kb.value.groups.reduce((n, g) => n + g.actions.filter((a) => a.changed).length, 0));

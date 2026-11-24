@@ -1,7 +1,7 @@
 // A page's camera and microphone when the OS refuses what the site is allowed
 // (docs/media-permissions.md), on the mock: the site's question, then the OS's no as the
 // prompt's state in the OS's words, Open settings and Not now, and the site panel's line, in
-// Standard and Glide (the mock playing macOS) and Mobile (playing Android), with pictures of
+// Standard and Curve (the mock playing macOS) and Mobile (playing Android), with pictures of
 // each for ux.
 
 const fs = require('fs');
@@ -63,9 +63,9 @@ async function inShell(browser, id, os, viewport, hasTouch) {
 
 (async () => {
   const browser = await chromium.launch();
-  await inShell(browser, 'standard', 'macOS', { width: 1100, height: 700 }, false);
-  await inShell(browser, 'glide', 'macOS', { width: 1100, height: 700 }, false);
-  await inShell(browser, 'mobile', 'Android', { width: 412, height: 915 }, true);
+  await inShell(browser, 'pbshell', 'macOS', { width: 1100, height: 700 }, false);
+  await inShell(browser, 'arshell', 'macOS', { width: 1100, height: 700 }, false);
+  await inShell(browser, 'mwshell', 'Android', { width: 412, height: 915 }, true);
   await browser.close();
   await lib.done();
 })();

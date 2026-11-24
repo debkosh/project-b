@@ -5,7 +5,7 @@ profiles with nothing of a person's: what the app's own surfaces draw, window bu
 and no desktop around them (the driver's capture). As ux chose:
 
 1. Standard, tabs down the side, on a real page with two more tabs.
-2. Glide, the same tabs, its sidebar showing and nothing over it.
+2. Curve, the same tabs, its sidebar showing and nothing over it.
 3. The welcome's Pick your style, on the default teal.
 
     python3 tools/linux/appstream_shots.py <out folder>
@@ -72,8 +72,8 @@ def main():
     time.sleep(3)
     print(app.cmd("capture", os.path.join(SHOTS, "1-standard.png")), flush=True)
 
-    send({"t": "run", "text": "shells:glide"})
-    app.wait("location.href==='chrome://shell/glide/'&&!!document.querySelector('.glide')", 30)
+    send({"t": "run", "text": "shells:arshell"})
+    app.wait("location.href==='chrome://shell/arshell/'&&!!document.querySelector('.arshell')", 30)
     app.cmd("resize", 1280, 800)
     time.sleep(3)
     print(app.cmd("capture", os.path.join(SHOTS, "2-glide.png")), flush=True)

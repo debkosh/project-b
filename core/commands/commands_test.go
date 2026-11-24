@@ -293,13 +293,13 @@ func TestTheViewHasOnlyTheShellInUsesOwnActions(t *testing.T) {
 	full := false
 	m, _ := manager(t, t.TempDir(), &full)
 	on := false
-	m.Register(Action{ID: "glide.sidebar", Title: "Show or Hide Sidebar", Shell: "Glide", Enabled: func() bool { return on }})
+	m.Register(Action{ID: "arshell.sidebar", Title: "Show or Hide Sidebar", Shell: "Curve", Enabled: func() bool { return on }})
 	m.Load()
 	find := func() *Group {
 		v := m.View()
 		for i, g := range v.Groups {
 			for _, a := range g.Actions {
-				if a.ID == "glide.sidebar" {
+				if a.ID == "arshell.sidebar" {
 					return &v.Groups[i]
 				}
 			}
@@ -307,16 +307,16 @@ func TestTheViewHasOnlyTheShellInUsesOwnActions(t *testing.T) {
 		return nil
 	}
 	if g := find(); g != nil {
-		t.Fatalf("with Glide off its action shows, in %+v", g)
+		t.Fatalf("with Curve off its action shows, in %+v", g)
 	}
 	for _, id := range m.View().Gone {
-		if id == "glide.sidebar" {
-			t.Fatal("with Glide off its action counts as gone")
+		if id == "arshell.sidebar" {
+			t.Fatal("with Curve off its action counts as gone")
 		}
 	}
 	on = true
-	if g := find(); g == nil || g.Shell != "Glide" {
-		t.Fatalf("with Glide on its group is %+v", g)
+	if g := find(); g == nil || g.Shell != "Curve" {
+		t.Fatalf("with Curve on its group is %+v", g)
 	}
 }
 

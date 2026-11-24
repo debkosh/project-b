@@ -29,7 +29,7 @@ object NativeShells {
     @JvmStatic
     fun make(id: String, context: Context, send: ShellSender): NativeShell =
         when (id) {
-            "mobile-native" -> MobileNativeShell(context, send)
+            "mkshell" -> MobileNativeShell(context, send)
             else -> throw IllegalArgumentException("no native shell $id")
         }
 }

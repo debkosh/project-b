@@ -16,7 +16,7 @@ func TestBarMenuOffTheMac(t *testing.T) {
 		m.Register(Action{ID: id, Title: id, Run: func() {}})
 	}
 	m.Load()
-	bar := m.BarMenu("standard")
+	bar := m.BarMenu("pbshell")
 	var titles []string
 	for _, it := range bar {
 		titles = append(titles, it.Title)

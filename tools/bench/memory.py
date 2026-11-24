@@ -8,8 +8,8 @@ rest give the median. A shell that takes New Tab ("takes" in core/shells/registr
 the standard shell does for its command box, starts with no tab, so its numbers have no
 tab's page in them, where every other shell's have its first, new tab's.
 
-    python3 tools/bench/memory.py standard minimal terminal fox
-    python3 tools/bench/memory.py -n 5 --out build/bench/memory.json standard
+    python3 tools/bench/memory.py pbshell mnshell tmshell fxshell
+    python3 tools/bench/memory.py -n 5 --out build/bench/memory.json pbshell
 
 PB_BIN picks the binary, as for tools/drive_first_app.py; point it at the package
 (build/package/Project B.app/Contents/MacOS/project_b) for the numbers a user gets.

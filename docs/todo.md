@@ -131,17 +131,17 @@ Take an item off when it lands or is dropped.
 ## Shells, the contract and the shell menu
 
 - **The shell menu in the other shells.** Standard's ☰ and Mobile's ⋯ draw Go's menu
-  ([menus-shortcuts.md](menus-shortcuts.md#the-shells-menu)); Fox, Minimal, Terminal and Glide
+  ([menus-shortcuts.md](menus-shortcuts.md#the-shells-menu)); Fox, Minimal, Terminal and Curve
   still have a Settings button or a menu of their own. Next: move Standard's `AppMenu.vue` to
-  `shell/src/ui` for Fox and Terminal; a Svelte one for Minimal and Glide. Ask the owner whether
+  `shell/src/ui` for Fox and Terminal; a Svelte one for Minimal and Curve. Ask the owner whether
   each shell should have it (recommended: yes, it is the "everything you can do" menu).
 - **A submenu's own submenu** shows as its items between lines in the shared menu (View's
   Shell). Make `ui/ContextMenu.vue` open a third level only if the owner asks.
 - **Pinned tabs, later steps** ([windows.md](windows.md#pinned-tabs)): reordering pins, a pin
   that follows its tab, extensions seeing `pinned`, and a contract rule (40 to 49 are free for
   it), once more shells draw pins.
-- **Rules not yet met:** rule 19 (our tab's title) by Glide and mobile-native; rule 30's
-  prompt by Glide, Mobile and mobile-native; the lists in `shell/e2e/shell-contract.cjs` name who
+- **Rules not yet met:** rule 19 (our tab's title) by Curve and mobile-native; rule 30's
+  prompt by Curve, Mobile and mobile-native; the lists in `shell/e2e/shell-contract.cjs` name who
   brings each.
 - **Minimal's Svelte parts are ports** of the shared Vue ones (`PageDialog`, `PageMenu`,
   `Downloads`, `FindBar`): a change to one is made to the other, or both become shared Svelte
@@ -216,7 +216,7 @@ steps 1 to 4 and every contract rule are on main, described in
   - The prompt as a command line: `:open <url>` (`navigate`), `:tab <url>` (`newTab` with
     `text`), `:split` and `:vsplit <url>` (a split, then the address), `:ws <name>` and
     `:ws new <name>`, `:group <name>` (`editGroup` on the window's group), `:close`,
-    `:only`, `:zoom`, `:run <action>` (by name from the snapshot's `actions`, as Glide's
+    `:only`, `:zoom`, `:run <action>` (by name from the snapshot's `actions`, as Curve's
     Command Bar does), `:b <words>` to jump to a pane by title. History in the shell's
     profile data (Up, Ctrl+R), Tab to complete. Shift+Cmd+; (reads as Cmd+:) focuses it.
   - Workspaces shown one at a time or all, all by default: a pill at the strip's left with
@@ -224,14 +224,14 @@ steps 1 to 4 and every contract rule are on main, described in
   - Go's tab groups as coloured brackets over their chips, the group's name on the bracket.
   - Pinned tabs (Go has them now) as favicon squares after the pill, never closed by `:only`.
   - The research and mocks: `project-b-ux-audit/terminal/` beside the repo (summary,
-    research, audit, mocks.html and PNGs). An opt-in, unbound `terminal.prefix` action for
+    research, audit, mocks.html and PNGs). An opt-in, unbound `tmshell.prefix` action for
     tmux users was proposed; the owner chose chords only.
 - **Check in the real app:** the chips, Split down disabled under 321px, and rules 15 to 32
   have run only on the mock. The chords were checked with real keys in the VM on 0.2.64:
   none is taken by macOS.
 - **Cmd+1 to 9 count tabs, the chips count windows.** Go's `tab.select` picks the Nth tab in
   the strip's order; a chip's number is its window's. Recommendation: leave it unless the
-  owner finds it confusing; then Terminal's own `terminal.window1`..`9` on Ctrl+1 to 9.
+  owner finds it confusing; then Terminal's own `tmshell.window1`..`9` on Ctrl+1 to 9.
 - The shared page parts (dialog, find bar, menu, downloads, prompt, notice) have the design
   system's look, not Terminal's square monospace; restyling them means Terminal's own copies.
 
@@ -240,7 +240,7 @@ steps 1 to 4 and every contract rule are on main, described in
 How they work is in [site-features.md](site-features.md).
 
 - The site panel is in Standard, Fox and Mobile (contract rule 33); Minimal goes straight to
-  settings; Terminal and Glide don't have it yet.
+  settings; Terminal and Curve don't have it yet.
 - The ad blocker's list (`core/adblock/hosts.txt`) is a few hundred hosts kept by hand, with no
   cosmetic rules. A published list (EasyList's hosts) is the next step, once its licence fits.
 - Links to other sites, later if wanted: separate settings for a page's navigations in place
@@ -306,5 +306,5 @@ What a browser needs to be used all day ([daily-driver.md](daily-driver.md)).
 - **Printing, later.** Headers and footers (the date, title, address and page numbers, as
   Chrome's option prints them) need Chromium's template page in our pak; backgrounds and a
   page's selection alone are the system panel's to offer, which it can't for a PDF.
-- **Error pages in Glide and the native Mobile shell.** Rule 32 exempts both until they draw
+- **Error pages in Curve and the native Mobile shell.** Rule 32 exempts both until they draw
   Go's notice.

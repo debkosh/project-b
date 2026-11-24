@@ -27,12 +27,21 @@ the real app; "What the real app adds" lists the little the mock can't show.
   shell's to own: every shell gets them through the messages. A shell that doesn't want a
   feature still copes with Go's data: for workspaces it can keep to one, for tab groups it
   can draw them or take every tab out of its group itself.
+- **A shell's id is a code name, not its name** (the owner, 2026-11-24: "lets name the ids
+  like ... code name like crshell arshell fxshell pbshell mwshell mnshell"). The id is what
+  profiles save, folders and action ids carry, and it never changes; the name and the
+  words about it are what people see, written once, in the registry, and free to change.
+  Glide became Curve that day by one line there. The ids: `pbshell` Standard, `arshell`
+  Curve, `tmshell` Terminal, `fxshell` Fox, `mnshell` Minimal, `mwshell` Mobile, `mkshell`
+  Mobile (native).
 
 ## Where a shell lives
 
 - **A shell is one folder,** `shell/src/apps/shell/<id>/`, with an `index.html` and a
-  `main.js`, and **one line in `core/shells/registry.json`:** its id and the name the user
-  sees, `"phone": true` for a shell made for a phone, and its own actions and those of
+  `main.js`, and **one line in `core/shells/registry.json`:** its id, the name the user
+  sees and a line about it (the only place either is written: Settings, View, Shell, the
+  menus, the welcome and the homepage read them from there, and a Go test fails on a copy),
+  `"phone": true` for a shell made for a phone, and its own actions and those of
   Go's it takes, if it has any ([below](#a-shells-own-actions)). The id is lower-case letters,
   digits and dashes.
 - Each shell builds into `shell/<id>/` beside the other pages, and loads at
@@ -40,13 +49,15 @@ the real app; "What the real app adds" lists the little the mock can't show.
   engine names a shell: it serves `chrome://shell/<id>/` from that folder.
 - Every shell speaks on the one channel, `shell`. Go doesn't know which shell is on the
   other end.
-- The shells: `standard`, the default and the reference shell (below); `glide`, a sidebar
-  of Spaces with the page as a card ([glide.md](glide.md)); `terminal`, panes that split,
-  as a terminal's do; `fox`, laid out as Firefox is.
+- The shells: Standard (`pbshell`), the default and the reference shell (below); Curve
+  (`arshell`), a sidebar of Spaces with the page as a card ([arshell.md](arshell.md));
+  Terminal (`tmshell`), panes that split, as a terminal's do; Fox (`fxshell`), laid out as
+  Firefox is; Minimal (`mnshell`); and on a phone Mobile (`mwshell`) and Mobile (native)
+  (`mkshell`).
 
 ## The reference shell
 
-The owner, 2026-11-14: `standard` is the neutral, feature-complete reference shell, and
+The owner, 2026-11-14: Standard (`pbshell`) is the neutral, feature-complete reference shell, and
 the default for new profiles and both profile templates.
 
 - **Every Go feature shows there first.** A feature that a shell can show is drawn by
@@ -55,7 +66,7 @@ the default for new profiles and both profile templates.
   for Standard, and other shells have their own on top.
 - **The internal pages share its look:** settings and the rest are drawn from the same
   design system ([design-system.md](design-system.md)), so they and Standard read as one.
-- Glide and fox are styles to choose, Minimal the stripped-down one, and Mobile the phone's.
+- Curve and fox are styles to choose, Minimal the stripped-down one, and Mobile the phone's.
 
 ## Choosing a shell
 
@@ -363,7 +374,7 @@ now, and will be saved with the windows and tabs when sessions are.
 shell in every window, and it comes back as `state.profileData` in every snapshot. Go never
 reads it. It survives a restart, a closed window and a switch to another shell and back; a
 reset to a template keeps it, as it keeps the workspaces. It names no tabs, since a tab's id
-lasts only as long as the tab: Glide keeps its Favorites here.
+lasts only as long as the tab: Curve keeps its Favorites here.
 
 A shell's data names tabs by id. A tab in the data that Go no longer lists is gone, and a
 tab Go lists that the data doesn't have is new: Go's list is the truth.
@@ -374,7 +385,7 @@ A shell may have actions of its own, with keys, such as the terminal's splits. E
 ordinary action in the keymap ([menus-shortcuts.md](menus-shortcuts.md#a-shells-own-actions)):
 
 - **The shell declares them** in its entry in `core/shells/registry.json`, each an id and
-  the title its menu item shows: `"actions": [{"id": "terminal.splitRight", "title":
+  the title its menu item shows: `"actions": [{"id": "tmshell.splitRight", "title":
   "Split right"}]`. The id starts with the shell's id and a dot, and never changes once
   released.
 - Go registers them, and each is enabled only while its shell is the profile's. Their keys
@@ -511,7 +522,7 @@ it there; a phone shell may be left out of a rule for a desktop feature.
     named by its question, "*site* wants to use your camera and microphone", with buttons
     named Block and Allow, or, where `once`, Block, Always allow and Allow this time; an
     Allow grants it, Block denies it, and Escape dismisses it. Standard, Fox, Minimal and
-    Terminal have it. Not yet in Glide, whose own session brings it, nor in Mobile,
+    Terminal have it. Not yet in Curve, whose own session brings it, nor in Mobile,
     which gets it as a sheet from the Android session, nor in Mobile Native, from its session.
 31. **A site's settings are one press away on a web page:** a control named Site settings
     opens settings on the active tab's site (`openSiteSettings`): at once, or from Details in
@@ -519,7 +530,7 @@ it there; a phone shell may be left out of a rule for a desktop feature.
 32. **A page with nothing to show says why:** while the active tab has a `notice`, the
     shell covers its page with an `alert` holding Go's title, its detail, and a button for
     each of its actions, by Go's titles, which sends `noticeAction`. Standard, Fox, Minimal
-    and Terminal have it. Not yet in Glide, whose own session brings it; Mobile and
+    and Terminal have it. Not yet in Curve, whose own session brings it; Mobile and
     Mobile Native draw a notice of their own until their sessions move them to Go's.
 
 33. **The site panel** ([site-features.md](site-features.md)): the Site settings control
@@ -531,7 +542,7 @@ it there; a phone shell may be left out of a rule for a desktop feature.
     `popupsBlocked`, when above 0, shows in the address field as a button named by its count
     ("1 popup blocked"), which opens the panel. Standard
     and Fox draw the shared `@/ui/SitePanel.vue`; Mobile, a sheet. Minimal goes straight to
-    settings; Terminal and Glide, from their sessions.
+    settings; Terminal and Curve, from their sessions.
 
 **The names a shell gives its basic controls.** Each is a button, or a menu item in a menu
 one of the shell's controls opens; a menu item's name may end with its key.
@@ -547,7 +558,7 @@ one of the shell's controls opens; a menu item's name may end with its key.
 - **Extensions**, while their flag is on, whose menu has **Manage extensions**.
 
 **The extensions.** Every shell shows the extensions' buttons and the install prompt, from
-`state.extensions`: the Vue shells with `ExtensionsToolbar`, `minimal` with its
+`state.extensions`: the Vue shells with `ExtensionsToolbar`, `mnshell` with its
 own. What a shell draws carries the hooks the real app's extensions tests
 (`tools/drive_extensions.py`) find it by:
 
@@ -612,8 +623,8 @@ active tab into view.
    the shell wants one.
 4. Run it on the mock (below) and make the check pass.
 
-The shell to read first is Minimal, `shell/src/apps/shell/minimal/`, the smallest, in
-Svelte; Standard, `shell/src/apps/shell/standard/`, in Vue, is the reference that shows
+The shell to read first is Minimal, `shell/src/apps/shell/mnshell/`, the smallest, in
+Svelte; Standard, `shell/src/apps/shell/pbshell/`, in Vue, is the reference that shows
 every feature Go offers. `go run -tags sqlite_fts5 ./cmd/dev -use minimal` loads one. The SDK needs no
 framework: a shell may draw with the DOM itself and `onChange` ([The adapters](#the-adapters)).
 The owner, 2026-11-14: no hidden example shells, so none is kept for that path. In Vue,
@@ -743,7 +754,7 @@ so after the shell's DOM changes, so a real-app check of a region waits for it (
 A phone shell gives the page the whole screen while it is read, as every phone browser
 does: its bars go while the page scrolls down and come back when it scrolls up. This is the
 model to build that on, for any shell. The Mobile web shell follows it
-(`apps/shell/mobile/App.svelte`, `bars()`), and `e2e/shells/mobile.cjs` checks each rule
+(`apps/shell/mwshell/App.svelte`, `bars()`), and `e2e/shells/mwshell.cjs` checks each rule
 below.
 
 **What Go gives.** A `scroll` message, `{tab, direction}`, when a tab's page starts
@@ -840,7 +851,7 @@ A shell can't avoid that; only the engine can (proposal 3 below).
 
 ## The terminal shell
 
-`terminal`: a minimal shell laid out as a terminal emulator with split panes. Monospace,
+`tmshell`: a minimal shell laid out as a terminal emulator with split panes. Monospace,
 dense and square.
 
 - **Go's tabs are panes, in windows,** as tmux calls them. One window shows at a time and
@@ -861,11 +872,11 @@ dense and square.
   foot is the address bar, with back, forward and reload, and the update when one is ready.
 - **Its keys are chords, with no prefix key** (owner, 2026-11-14), each one of its own
   actions: Option+Cmd+D splits the active pane right and Shift+Cmd+D down
-  (`terminal.splitRight`, `terminal.splitDown`), Cmd+D being Bookmark in every shell; Ctrl+Cmd and an arrow makes the pane that way active, the nearest
-  sharing most of its height or width (`terminal.focusLeft` and so on); Ctrl+Shift+Cmd and
+  (`tmshell.splitRight`, `tmshell.splitDown`), Cmd+D being Bookmark in every shell; Ctrl+Cmd and an arrow makes the pane that way active, the nearest
+  sharing most of its height or width (`tmshell.focusLeft` and so on); Ctrl+Shift+Cmd and
   an arrow moves a divider of the active pane 32px that way, the one on that side of it,
-  else the one on its other side (`terminal.resizeLeft` and so on); Shift+Cmd+Enter zooms
-  the active pane to fill the body and back (`terminal.zoom`). A zoom ends when another
+  else the one on its other side (`tmshell.resizeLeft` and so on); Shift+Cmd+Enter zooms
+  the active pane to fill the body and back (`tmshell.zoom`). A zoom ends when another
   pane becomes active, on a split, or when the pane closes, and is kept in the shell's
   data. A pane's title bar has Zoom beside the splits while its group has more than one
   pane; the buttons' titles show the keys.
@@ -894,7 +905,7 @@ dense and square.
 
 ## The fox shell
 
-`fox` puts the tabs in a strip on top, a navigation bar under it with a wide centred
+`fxshell` puts the tabs in a strip on top, a navigation bar under it with a wide centred
 address field, and a menu button at the far right, in our tones.
 
 - **The tab strip** is the title bar. Tabs share it between a minimum and a maximum width;
@@ -916,12 +927,12 @@ address field, and a menu button at the far right, in our tones.
 
 ## The mobile shell
 
-`mobile`: the phone's shell, in Svelte, everything at the thumb. Its guideline is
+`mwshell`: the phone's shell, in Svelte, everything at the thumb. Its guideline is
 `project-b-research/mobile-shell/spec.md`.
 
 - **The registry marks it `"phone": true`.** A phone offers and loads only phone shells,
   and the APK carries only those (owner, 2026-11-14: more phone shells can join it later),
-  so it starts on Mobile even where a profile's pref names `standard`, as the templates do;
+  so it starts on Mobile even where a profile's pref names `pbshell`, as the templates do;
   a desktop offers none, though it loads one named outright, as the mock does for the
   shell's tests in a phone-sized window. With more than one phone shell, Settings, Look on
   a phone has Shell to choose between them (a phone has no View menu).
@@ -1069,7 +1080,7 @@ the standard shell reads.
 
 Each commit builds, leaves a working app, and carries its tests.
 
-1. The standard shell moves to `apps/shell/standard`, what every shell needs moves into
+1. The standard shell moves to `apps/shell/pbshell`, what every shell needs moves into
    the kit, and the engine and the mock load a shell by its id. No change the user sees.
 2. The mock shows a page for every tab a layout lists.
 3. The `shell` pref, the registry, View, Shell and the settings choice, the live switch.
@@ -1082,7 +1093,7 @@ Each commit builds, leaves a working app, and carries its tests.
 The owner asked that the shell's API not depend on Vue, and that a shell in Svelte show
 where a shell's functional part ends and its presentation begins. The branch `shell-api`
 builds it: the SDK above with no framework in it, a Vue and a Svelte adapter over it, and
-`minimal`, a bare shell in Svelte that keeps every rule. This is the line it draws,
+`mnshell`, a bare shell in Svelte that keeps every rule. This is the line it draws,
 and what is left to decide.
 
 ### The functional part: the SDK
@@ -1159,7 +1170,7 @@ the framework then knows what was read.
 
 ### What a shell's author writes
 
-In Vue, as above. In Svelte, as `minimal` does:
+In Vue, as above. In Svelte, as `mnshell` does:
 
 ```svelte
 <script>
@@ -1208,12 +1219,12 @@ Drawing them is the shell's. The SDK keeps `state.extensions`, sends what goes b
 closes an open popup on a press elsewhere in the shell; each pinned button carries
 `data-extension="<id>"` so its own press isn't one. The Vue shells keep `ExtensionsToolbar`,
 which now takes `extensions` as a prop and sends through the SDK, and looks and works as
-it did. `minimal` draws plain buttons and a plain prompt with the same hooks.
+it did. `mnshell` draws plain buttons and a plain prompt with the same hooks.
 `extensionsBuilt` from `@extensions` lets a shell's own buttons leave a build without
 extensions, and nothing of `@extensions` but that one constant reaches a Svelte shell, so
 no Vue does.
 
-What it costs: `minimal` is 51 KB, 20 KB gzipped, of which its extensions part is
+What it costs: `mnshell` is 51 KB, 20 KB gzipped, of which its extensions part is
 under 5 KB, and 47 KB without extensions. The example, the same shell in Vue, is 81 KB,
 32 KB gzipped. The SDK alone is 13 KB, 5 KB gzipped.
 
@@ -1222,18 +1233,18 @@ under 5 KB, and 47 KB without extensions. The example, the same shell in Vue, is
 The shell asks for it with `setFrame(width)`, and the SDK sends it in the layout as
 `frame`. Go keeps it per window and the engine draws it from that width, as it already
 took the width with every layout, so the engine didn't change. The four Vue shells ask for
-4px and look as they did; `minimal` asks for none and its page reaches the window's
+4px and look as they did; `mnshell` asks for none and its page reaches the window's
 edge. Rule 3 checks the pages lie inside the band the shell asked for. The snapshot no
 longer has `frameWidth`; the settings page had a copy it never read, which went too.
 
 ### The two minimal shells
 
-`minimal`, and `minimal-js` until it was dropped with the hidden shells, were to be, in the owner's words, a tab bar, a toolbar, a
+`mnshell`, and `minimal-js` until it was dropped with the hidden shells, were to be, in the owner's words, a tab bar, a toolbar, a
 vertical list too, the simplest button placements, a simple layout, no rounding, with
 thought for many tabs. The SDK makes that easy: a shell draws `state.tabs` however it lays
 them out, marks its bars, and the SDK measures whatever moves. A strip that scrolls is
 marked `shell`, with `drag` spaces beside it, as the fox shell's is; a list that wraps or
-scrolls is the same. The spike's `minimal` is not that design: it only proves the
+scrolls is the same. The spike's `mnshell` is not that design: it only proves the
 API, with every control plain.
 
 ### What the spike changed
@@ -1245,7 +1256,7 @@ API, with every control plain.
 3. Svelte joined the build, with its adapter. `svelte` 5 and `@sveltejs/vite-plugin-svelte`
    6 are new dependencies of `shell/`, so `npm install` there comes before the next build:
    the engine's build and the Android release both build from `shell/node_modules`.
-4. `minimal`, registered with `"example": true`, so it is offered nowhere.
+4. `mnshell`, registered with `"example": true`, so it is offered nowhere.
 5. The band became the shell's.
 6. Rule 12, the basic controls, and the example's.
 
@@ -1275,7 +1286,7 @@ API, with every control plain.
   the only way a shell's own extensions buttons leave a build without extensions without
   Vue coming with them. Recommendation: keep it, named as the extensions session likes.
 - **A tab that becomes active.** The standard, fox and terminal shells, and
-  `minimal`, each repeat one rule: a tab with nothing in it wants the address, one
+  `mnshell`, each repeat one rule: a tab with nothing in it wants the address, one
   with a page wants its page. It names the address field, which is presentation, so the
   SDK leaves it to the shell. Recommendation: leave it there.
 - **The standard shell's tab position.** `state.tabLayout` and `setTabLayout` are only the

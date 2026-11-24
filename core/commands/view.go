@@ -197,7 +197,7 @@ type ActionTitle struct {
 }
 
 // Titles is every action in the menus on this platform that can run now, in the menus'
-// order, each once, with its title: what a shell lists to run by name, such as Glide's
+// order, each once, with its title: what a shell lists to run by name, such as Curve's
 // Command Bar.
 func (m *Manager) Titles() []ActionTitle {
 	out := []ActionTitle{}

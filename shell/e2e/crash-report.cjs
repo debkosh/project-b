@@ -14,7 +14,7 @@ const { check, regions, settle, until } = lib;
 
 (async () => {
   fs.writeFileSync(path.join(lib.profile, 'crash.log'), 'pid 1, started 2026-11-14 09:00:00\npanic: the last run\n');
-  await lib.start(['-use=standard']);
+  await lib.start(['-use=pbshell']);
   const browser = await chromium.launch();
   const w = await lib.openWindow(browser);
   const share = w.ui.getByRole('button', { name: 'Share report' });
@@ -52,7 +52,7 @@ const { check, regions, settle, until } = lib;
 
   // Linux keeps no crash reports of its own: the notice names the log alone.
   fs.writeFileSync(path.join(lib.profile, 'crash.log'), 'pid 1, started 2026-11-14 09:00:00\npanic: the last run\n');
-  await lib.start(['-use=standard', '-platform=linux']);
+  await lib.start(['-use=pbshell', '-platform=linux']);
   const lw = await lib.openWindow(browser);
   const linuxNotice = lw.ui.getByRole('status').filter({ hasText: 'crashed last time' });
   check('on Linux the notice names the log and no macOS report', await until(async () => {
@@ -64,7 +64,7 @@ const { check, regions, settle, until } = lib;
 
   // In every shell that has it, the notice is a strip of its own, which the page lies beside:
   // it covers nothing of the page, as a page's own search box at its top-left.
-  for (const [id, viewport, hasTouch] of [['standard'], ['fox'], ['minimal'], ['mobile', { width: 412, height: 915 }, true]]) {
+  for (const [id, viewport, hasTouch] of [['pbshell'], ['fxshell'], ['mnshell'], ['mwshell', { width: 412, height: 915 }, true]]) {
     fs.writeFileSync(path.join(lib.profile, 'crash.log'), 'pid 1, started 2026-11-14 09:00:00\npanic: the last run\n');
     await lib.start([`-use=${id}`]);
     const sw = await lib.openWindow(browser, { ...(viewport ? { viewport } : {}), hasTouch: !!hasTouch });

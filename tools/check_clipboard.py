@@ -42,25 +42,25 @@ def clipboard_checks():
 
 
 
-def glide_copy_checks():
-    """Glide's Copy Address from the menu bar, an action with no click in the shell, puts the
+def arshell_copy_checks():
+    """Curve's Copy Address from the menu bar, an action with no click in the shell, puts the
     page's address on the Mac's clipboard: Go writes it, as the shell's own write would be
     refused (docs/fragility.md)."""
     app = drive.App(None, [f"--root={tempfile.mkdtemp(prefix='pb-root-')}"])
     send = lambda msg: app.js(f"chrome.send('shell', [{json.dumps(json.dumps(msg))}]), 1")
     try:
-        app.wait("location.href==='chrome://shell/standard/'", 30)
-        send({"t": "run", "text": "shells:glide"})
-        app.wait("location.href==='chrome://shell/glide/'&&!!document.querySelector('.glide')", 30)
+        app.wait("location.href==='chrome://shell/pbshell/'", 30)
+        send({"t": "run", "text": "shells:arshell"})
+        app.wait("location.href==='chrome://shell/arshell/'&&!!document.querySelector('.arshell')", 30)
         send({"t": "navigate", "text": drive.URL_A})
         app.wait("document.querySelector('[role=tab][aria-selected=true]')?.title !== 'New Tab'", 30)
-        send({"t": "run", "text": "glide.copyAddress"})
+        send({"t": "run", "text": "arshell.copyAddress"})
         for _ in range(40):
             pasted = subprocess.run(["pbpaste"], capture_output=True, text=True).stdout
             if pasted == drive.URL_A:
                 break
             time.sleep(0.25)
-        check("Glide's Copy Address from the menu bar puts the page's address on the clipboard", pasted == drive.URL_A, repr(pasted))
+        check("Curve's Copy Address from the menu bar puts the page's address on the clipboard", pasted == drive.URL_A, repr(pasted))
     finally:
         app.close()
 
@@ -70,6 +70,6 @@ if __name__ == "__main__":
     # The clipboard is the person's at this Mac: what they had copied goes back after.
     theirs = subprocess.run(["pbpaste"], capture_output=True).stdout
     try:
-        drive.run_parts([clipboard_checks, glide_copy_checks])
+        drive.run_parts([clipboard_checks, arshell_copy_checks])
     finally:
         subprocess.run(["pbcopy"], input=theirs)

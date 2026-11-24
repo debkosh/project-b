@@ -67,7 +67,7 @@ def sources():
         out["page:" + name] = " ".join(read(p) for p in glob.glob(os.path.join(ROOT, "shell", "src", "apps", name, "**", "*.*"), recursive=True))
     out["ui"] = " ".join(read(p) for p in glob.glob(os.path.join(ROOT, "shell", "src", "ui", "**", "*.*"), recursive=True))
     kotlin = os.path.join(ROOT, "engine", "android", "java")
-    out["mobile-native"] = out.get("mobile-native", "") + " ".join(read(p) for p in glob.glob(os.path.join(kotlin, "**", "*.kt"), recursive=True))
+    out["mkshell"] = out.get("mkshell", "") + " ".join(read(p) for p in glob.glob(os.path.join(kotlin, "**", "*.kt"), recursive=True))
     return out
 
 

@@ -159,7 +159,7 @@ func (a *App) deleteWorkspace(e engine.Engine, id string) error {
 }
 
 // shownWorkspace is a workspace as the shells and settings hear of it: with the tones of
-// its colour, light and dark, for a shell that paints with a workspace's colour, as Glide
+// its colour, light and dark, for a shell that paints with a workspace's colour, as Curve
 // paints a Space; a hue is filled as a frame first (tones.Fill). The tones are made as it
 // is sent, never saved.
 type shownWorkspace struct {

@@ -156,7 +156,7 @@ func TestAMenuGoesWithoutRunningAnything(t *testing.T) {
 // A phone's sheet has no Save panel: it downloads at once and shares, copies a link's words
 // and the image itself, and shows the image pressed once the engine has fetched it.
 func TestAPhoneMenuDownloadsSharesAndCopies(t *testing.T) {
-	r := startOn(t, "mobile")
+	r := startOn(t, "mwshell")
 	defer r.stop()
 	r.visit("https://a.test/")
 	r.show(1)

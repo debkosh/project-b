@@ -30,7 +30,7 @@ const bars = async (w) => (await w.ui.getByRole('tab').first().isVisible()) || (
   const browser = await chromium.launch();
 
   flags({ showWelcome: 'on' });
-  await lib.start(['-use=standard']);
+  await lib.start(['-use=pbshell']);
   let w = await lib.openWindow(browser, { viewport: { width: 1280, height: 800 } });
   const welcome = w.page.frameLocator('iframe.our-page[data-page="welcome"]');
   check('a start with the flag on opens the welcome, its tab the active one', await until(async () => {
@@ -106,9 +106,9 @@ const bars = async (w) => (await w.ui.getByRole('tab').first().isVisible()) || (
   // Finished, and the flag off: no welcome. Show the welcome again closes the app, and the
   // next start opens it over the whole window.
   flags({});
-  await lib.start(['-use=standard']);
+  await lib.start(['-use=pbshell']);
   w = await lib.openWindow(browser, { viewport: { width: 1280, height: 800 } });
-  await until(async () => (await regions()).shell === 'standard');
+  await until(async () => (await regions()).shell === 'pbshell');
   check('a start after it was finished opens none', !welcomeTab(await regions()));
   await lib.fire('menu', 'app.settings');
   await w.settings.locator('.nav [data-parts~="runSetup"]').click();
@@ -117,7 +117,7 @@ const bars = async (w) => (await w.ui.getByRole('tab').first().isVisible()) || (
   check('and welcome.json says it is unfinished', done() === false, String(done()));
   await w.page.close();
   await lib.stop();
-  await lib.start(['-use=standard']);
+  await lib.start(['-use=pbshell']);
   w = await lib.openWindow(browser, { viewport: { width: 1280, height: 800 } });
   check('the next start opens it over the whole window', await until(async () => {
     const r = await regions();
@@ -148,7 +148,7 @@ const bars = async (w) => (await w.ui.getByRole('tab').first().isVisible()) || (
   await picture(w, 'mac');
   await w.page.close();
   await lib.stop();
-  await lib.start(['-use=standard', '-platform=linux']);
+  await lib.start(['-use=pbshell', '-platform=linux']);
   w = await lib.openWindow(browser, { viewport: { width: 1280, height: 800 } });
   await until(async () => welcomeTab(await regions()));
   await picture(w, 'linux');
@@ -159,7 +159,7 @@ const bars = async (w) => (await w.ui.getByRole('tab').first().isVisible()) || (
   await lw.getByRole('heading', { name: 'Bring your things over' }).waitFor();
   check('on Linux, from another browser on this computer', await until(() => lw.getByText('From another browser on this computer.').isVisible()));
   await lw.getByRole('button', { name: 'Continue' }).click();
-  for (const [name, shot] of [['Tabs on the side', 'side'], ['Tabs on top', 'top'], ['Glide', 'glide']]) {
+  for (const [name, shot] of [['Tabs on the side', 'side'], ['Tabs on top', 'top'], ['Curve', 'arshell']]) {
     await lw.getByRole('radio', { name }).click();
     await settle(w.page);
     await w.page.screenshot({ path: path.join(lib.out, `welcome-linux-${shot}.png`) });

@@ -161,7 +161,7 @@ class Pages(http.server.BaseHTTPRequestHandler):
             return
         if self.path == "/redirect":
             self.send_response(302)
-            self.send_header("Location", "chrome://shell/standard/")
+            self.send_header("Location", "chrome://shell/pbshell/")
             self.end_headers()
             return
         if self.path in ("/strict", "/strict.js", "/trusted"):
@@ -251,7 +251,7 @@ function use() {
             # A service worker that sets the app's badge as it starts, as push handlers do.
             "/badge-worker": b'<!doctype html><title>Worker</title><script>navigator.serviceWorker.register("/badge-sw.js")</script>',
             "/badge-sw.js": b'self.oninstall = () => navigator.setAppBadge(1)',
-        }.get(self.path, b'<!doctype html><title>Links</title><a href="chrome://shell/standard/">The shell</a>')
+        }.get(self.path, b'<!doctype html><title>Links</title><a href="chrome://shell/pbshell/">The shell</a>')
         self.send_response(200)
         self.send_header("Content-Type", "text/javascript" if self.path.endswith(".js") else "text/html")
         self.send_header("Content-Length", str(len(body)))
@@ -610,7 +610,7 @@ def loaded(app, url):
         time.sleep(0.05)
 
 
-# Standard's command box (shell/src/apps/shell/standard/CommandBox.vue), which shows on a new
+# Standard's command box (shell/src/apps/shell/pbshell/CommandBox.vue), which shows on a new
 # tab. Standard takes New Tab: Cmd+T, File > New Tab and its + buttons go to the window's new
 # tab, opening one when there is none, and a row chosen there, or an address typed with
 # Enter, loads in that tab. A window opens on a new tab (docs/windows.md).
@@ -1256,12 +1256,12 @@ def browsing_checks():
 
     status = "(document.querySelector('.status')||{}).innerText||''"
     visit(app, PAGES + "links")
-    typed("chrome://shell/standard/")
+    typed("chrome://shell/pbshell/")
     try:
         app.wait(f"{status}==='Blocked'", 10)
-        check("typing chrome://shell/standard/ is refused by the gate", True)
+        check("typing chrome://shell/pbshell/ is refused by the gate", True)
     except TimeoutError as e:
-        check("typing chrome://shell/standard/ is refused by the gate", False, e)
+        check("typing chrome://shell/pbshell/ is refused by the gate", False, e)
     # A refused load leaves the tab on content's error page, a moment after the chip shows.
     try:
         app.wait("location.href==='chrome-error://chromewebdata/'", 10, page=True)
@@ -1272,11 +1272,11 @@ def browsing_checks():
     app.js("document.querySelector('a').click(), 1", page=True)
     time.sleep(1)
     landed = app.js("[location.href, typeof (window.chrome && chrome.send)]", page=True)
-    check("a page's link to chrome://shell/standard/ is refused, and the tab has no bridge", landed[0] != "chrome://shell/standard/" and landed[1] == "undefined", (landed, app.js(status)))
+    check("a page's link to chrome://shell/pbshell/ is refused, and the tab has no bridge", landed[0] != "chrome://shell/pbshell/" and landed[1] == "undefined", (landed, app.js(status)))
     typed(PAGES + "redirect")
     time.sleep(2)
     landed = app.js("[location.href, typeof (window.chrome && chrome.send)]", page=True)
-    check("a redirect to chrome://shell/standard/ is refused, and the tab has no bridge", landed[0] != "chrome://shell/standard/" and landed[1] == "undefined", landed)
+    check("a redirect to chrome://shell/pbshell/ is refused, and the tab has no bridge", landed[0] != "chrome://shell/pbshell/" and landed[1] == "undefined", landed)
     # Content serves chrome://gpu/ itself. The gate lets it through; whether it renders
     # depends on the resources the app bundles.
     typed("chrome://gpu/")
@@ -1289,12 +1289,12 @@ def browsing_checks():
     before = shell_messages()
     stray = app.cmd("strayshell pages", timeout=30)
     time.sleep(1)
-    check("a chrome://shell/standard/ page outside the shell gets no bridge", stray == "chrome://shell/standard/ undefined", stray)
+    check("a chrome://shell/pbshell/ page outside the shell gets no bridge", stray == "chrome://shell/pbshell/ undefined", stray)
     check("and Go receives no shell message from it", shell_messages() == before, (before, shell_messages()))
     # Our pages load only in their own context. In the profile's, where every tab is, the
     # shell's address is no page at all, even with no gate in the way.
     stray = app.cmd("strayshell tabs", timeout=30)
-    check("chrome://shell/standard/ in the tabs' context doesn't load the shell: it ends on an error page", stray == "chrome-error://chromewebdata/ undefined", stray)
+    check("chrome://shell/pbshell/ in the tabs' context doesn't load the shell: it ends on an error page", stray == "chrome-error://chromewebdata/ undefined", stray)
     click(app, "[aria-label='Tabs on top']")
     try:
         app.wait("!!document.querySelector('.strip')", 5)
@@ -2721,23 +2721,23 @@ def cookie_checks():
 TERMINATE = 'ObjC.import("AppKit"); $.NSRunningApplication.runningApplicationWithProcessIdentifier(Number(%d)).terminate'
 
 
-def glide_checks():
-    """Glide, chosen on a profile a first start makes: it comes up, keeps a
+def arshell_checks():
+    """Curve, chosen on a profile a first start makes: it comes up, keeps a
     Favorite and a pinned tab, draws a folder for a tab group, and its Command Bar finds the
     open tabs; Copy Address says it copied (check_clipboard.py reads the clipboard), New Space
     makes a Space, and Space 1 to 9 show theirs. Leaves glide.png and glide-command-bar.png, which the README shows."""
     root = tempfile.mkdtemp(prefix="pb-root-")
     app = App(None, [f"--root={root}"])
     send = lambda msg: app.js(f"chrome.send('shell', [{json.dumps(json.dumps(msg))}]), 1")
-    app.wait("location.href==='chrome://shell/standard/'", 30)
+    app.wait("location.href==='chrome://shell/pbshell/'", 30)
     check("a first start comes up on the standard shell, the default", True)
-    send({"t": "run", "text": "shells:glide"})
-    app.wait("location.href==='chrome://shell/glide/'&&!!document.querySelector('.glide')", 30)
-    check("choosing Glide brings it up", True)
+    send({"t": "run", "text": "shells:arshell"})
+    app.wait("location.href==='chrome://shell/arshell/'&&!!document.querySelector('.arshell')", 30)
+    check("choosing Curve brings it up", True)
     app.cmd("resize", 1280, 800)
     send({"t": "navigate", "text": URL_A})
     app.wait(f"{ROWS}===1&&document.querySelector('[role=tab][aria-selected=true]').title!=='New Tab'", 30)
-    send({"t": "run", "text": "glide.favorite"})
+    send({"t": "run", "text": "arshell.favorite"})
     check("Add to Favorites puts a tile at the top", bool(app.wait("document.querySelectorAll('.fav').length===1", 10)))
     for url in (URL_B, PAGES + "store", PAGES):
         send({"t": "newTab", "text": url})
@@ -2752,7 +2752,7 @@ def glide_checks():
     send({"t": "activateTab", "id": tabs[0]})
     time.sleep(2)
     print(app.cmd("capture", os.path.join(OUT, "glide.png")), flush=True)
-    send({"t": "run", "text": "glide.commandBar"})
+    send({"t": "run", "text": "arshell.commandBar"})
     app.wait("!!document.querySelector('[aria-label=Address]')", 10)
     app.js("(i => { i.value = 'example'; i.dispatchEvent(new Event('input', {bubbles: true})); })(document.querySelector('[aria-label=Address]')), 1")
     check("the Command Bar finds the open tabs", bool(app.wait("[...document.querySelectorAll('[role=option]')].some(o => o.textContent.includes('Example'))", 10)))
@@ -2764,14 +2764,14 @@ def glide_checks():
     # Copy Address, as the menu bar and its keys run it, with no click in the shell. Only the
     # desktop's own session reaches the Mac's clipboard, so check_clipboard.py reads it back.
     app.js("window.toastSeen = ''; new MutationObserver(() => { const t = document.querySelector('.toast'); if (t) window.toastSeen = t.textContent; }).observe(document.body, {subtree: true, childList: true, characterData: true}), 1")
-    send({"t": "run", "text": "glide.copyAddress"})
+    send({"t": "run", "text": "arshell.copyAddress"})
     told = app.wait("window.toastSeen", 10)
     check("Copy Address says it copied", told == "Copied", told)
 
     # New Space opens its dialog, which makes the Space and shows it.
     head = "document.querySelector('.space-head .label')?.textContent.trim()"
     first = app.js(head)
-    send({"t": "run", "text": "glide.newSpace"})
+    send({"t": "run", "text": "arshell.newSpace"})
     check("New Space asks for the Space's name", bool(app.wait("!!document.querySelector('[role=dialog][aria-label=\"New Space\"] input[aria-label=Name]')", 10)))
     app.js("(i => { i.value = 'Two'; i.dispatchEvent(new Event('input', {bubbles: true})); })(document.querySelector('[role=dialog] input[aria-label=Name]')), 1")
     app.wait("!document.querySelector('[role=dialog] [type=submit]').disabled", 5)
@@ -2787,12 +2787,12 @@ def glide_checks():
     app.wait("document.querySelectorAll('.foot .space').length === 9", 15)
     names = ["Two"] + [f"S{n}" for n in range(3, 10)]
     shown = []
-    for name, action in zip(names, ("glide.space2", "glide.space3", "glide.space4", "glide.space5", "glide.space6", "glide.space7", "glide.space8", "glide.space9")):
+    for name, action in zip(names, ("arshell.space2", "arshell.space3", "arshell.space4", "arshell.space5", "arshell.space6", "arshell.space7", "arshell.space8", "arshell.space9")):
         send({"t": "run", "text": action})
         shown.append(name if app.wait(f"{head} === {json.dumps(name)}", 10) else f"{action}: {app.js(head)}")
         app.cmd("key", "escape")
     check("Space 2 to 9 each show their Space", shown == names, ", ".join(shown))
-    send({"t": "run", "text": "glide.space1"})
+    send({"t": "run", "text": "arshell.space1"})
     check("and Space 1 the first again", bool(app.wait(f"{head} === {json.dumps(first)}", 10)), app.js(head))
     app.close()
 
@@ -3791,5 +3791,5 @@ def holds_hit(app, x, y, timeout=5):
 
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
-    parts = {"filling": [filling_checks], "driver": [driver_checks], "browsing": [browsing_checks], "actions": [action_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "glide": [glide_checks], "webapis": [web_api_checks], "signals": [browser_signal_checks], "clientcert": [client_cert_checks], "passkeys": [passkey_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks], "viewsource": [view_source_checks], "duplicate": [duplicate_checks], "applink": [app_link_checks], "serverkinds": [web_server_kinds_checks]}
-    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, action_checks, settings_checks, filling_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, glide_checks, browser_signal_checks, client_cert_checks, web_api_checks, passkey_checks, sparks_checks, links_checks, view_source_checks, duplicate_checks, app_link_checks, web_server_kinds_checks, quit_checks]))
+    parts = {"filling": [filling_checks], "driver": [driver_checks], "browsing": [browsing_checks], "actions": [action_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "arshell": [arshell_checks], "webapis": [web_api_checks], "signals": [browser_signal_checks], "clientcert": [client_cert_checks], "passkeys": [passkey_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks], "viewsource": [view_source_checks], "duplicate": [duplicate_checks], "applink": [app_link_checks], "serverkinds": [web_server_kinds_checks]}
+    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, action_checks, settings_checks, filling_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, arshell_checks, browser_signal_checks, client_cert_checks, web_api_checks, passkey_checks, sparks_checks, links_checks, view_source_checks, duplicate_checks, app_link_checks, web_server_kinds_checks, quit_checks]))

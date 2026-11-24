@@ -26,7 +26,7 @@ settings page sets them by name with `setPref`, as a shell does.
 The bar's folder is a folder's id, `""` for the top; a shell shows the top when the folder
 is gone.
 
-How Standard shows them (`shell/src/apps/shell/standard/`, `bookmarks.js` for what they share):
+How Standard shows them (`shell/src/apps/shell/pbshell/`, `bookmarks.js` for what they share):
 
 - **The new tab** (`NewTabBookmarks.vue`): under the command box, which then lists only the
   sites visited most with nothing typed, as the tiles hold the bookmarks. A bookmark has no
@@ -109,7 +109,7 @@ How Standard shows them (`shell/src/apps/shell/standard/`, `bookmarks.js` for wh
   Enter in the name, or Done, saves; the back key, a tap outside or a swipe down close it.
   The native Mobile shell draws the same sheet in Kotlin (`bookmarkSheet` in `Sheets.kt`),
   its folders in the icon colour, as it has no gulal for their tints.
-- **Shells with no panel** (Glide, Fox, Minimal, Terminal) have Cmd+D save the bookmark all
+- **Shells with no panel** (Curve, Fox, Minimal, Terminal) have Cmd+D save the bookmark all
   the same, into the folder last saved in.
 - **The Bookmarks page** has the folders on its left: Bookmarks, the top, with the folders
   under it, nested, each with how many bookmarks it holds, in it and in its folders; New
@@ -181,7 +181,7 @@ The Bookmarks page sends `editBookmark {id, title, url}`, `moveBookmark {id, par
 places), `core/app` (`TestBookmarksFromTheShellAndThePage`: Cmd+D, the star, the panel's
 save, and the page's messages), `shell/e2e/pages.cjs` (the panel, Cmd+D, the folders, a drag,
 Move to…, a search, a folder deleted with what it holds, the panel's folder kept for the
-next), `shell/e2e/shells/mobile.cjs` (the sheet), `tools/drive_android.py bookmark_star`
+next), `shell/e2e/shells/mwshell.cjs` (the sheet), `tools/drive_android.py bookmark_star`
 (the star and its sheet on a phone, in both Mobile shells: the folder last saved in, Enter,
 the back key, Remove) and `shell/e2e/shells/standard-bookmarks.cjs`
 (Standard's places, each on and off with its pref: the new tab's tiles, a folder opened in
