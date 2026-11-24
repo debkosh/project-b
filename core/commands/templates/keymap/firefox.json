@@ -579,7 +579,7 @@
         }
       ]
     },
-    "terminal.splitRight": {
+    "tmshell.splitRight": {
       "hidden": true,
       "mac": [
         {
@@ -588,7 +588,7 @@
         }
       ]
     },
-    "terminal.splitDown": {
+    "tmshell.splitDown": {
       "hidden": true,
       "mac": [
         {
@@ -597,7 +597,7 @@
         }
       ]
     },
-    "terminal.focusLeft": {
+    "tmshell.focusLeft": {
       "hidden": true,
       "mac": [
         {
@@ -606,7 +606,7 @@
         }
       ]
     },
-    "terminal.focusRight": {
+    "tmshell.focusRight": {
       "hidden": true,
       "mac": [
         {
@@ -615,7 +615,7 @@
         }
       ]
     },
-    "terminal.focusUp": {
+    "tmshell.focusUp": {
       "hidden": true,
       "mac": [
         {
@@ -624,7 +624,7 @@
         }
       ]
     },
-    "terminal.focusDown": {
+    "tmshell.focusDown": {
       "hidden": true,
       "mac": [
         {
@@ -633,7 +633,7 @@
         }
       ]
     },
-    "terminal.resizeLeft": {
+    "tmshell.resizeLeft": {
       "hidden": true,
       "mac": [
         {
@@ -642,7 +642,7 @@
         }
       ]
     },
-    "terminal.resizeRight": {
+    "tmshell.resizeRight": {
       "hidden": true,
       "mac": [
         {
@@ -651,7 +651,7 @@
         }
       ]
     },
-    "terminal.resizeUp": {
+    "tmshell.resizeUp": {
       "hidden": true,
       "mac": [
         {
@@ -660,7 +660,7 @@
         }
       ]
     },
-    "terminal.resizeDown": {
+    "tmshell.resizeDown": {
       "hidden": true,
       "mac": [
         {
@@ -669,7 +669,7 @@
         }
       ]
     },
-    "terminal.zoom": {
+    "tmshell.zoom": {
       "hidden": true,
       "mac": [
         {
@@ -1061,7 +1061,7 @@
         }
       ]
     },
-    "glide.sidebar": {
+    "arshell.sidebar": {
       "mac": [
         {
           "keys": "Cmd+S",
@@ -1069,7 +1069,7 @@
         }
       ]
     },
-    "glide.copyAddress": {
+    "arshell.copyAddress": {
       "mac": [
         {
           "keys": "Shift+Cmd+C",
@@ -1077,7 +1077,7 @@
         }
       ]
     },
-    "glide.splitAdd": {
+    "arshell.splitAdd": {
       "hidden": true,
       "mac": [
         {
@@ -1086,7 +1086,7 @@
         }
       ]
     },
-    "glide.splitRemove": {
+    "arshell.splitRemove": {
       "hidden": true,
       "mac": [
         {
@@ -1095,7 +1095,7 @@
         }
       ]
     },
-    "glide.space1": {
+    "arshell.space1": {
       "hidden": true,
       "mac": [
         {
@@ -1104,7 +1104,7 @@
         }
       ]
     },
-    "glide.space2": {
+    "arshell.space2": {
       "hidden": true,
       "mac": [
         {
@@ -1113,7 +1113,7 @@
         }
       ]
     },
-    "glide.space3": {
+    "arshell.space3": {
       "hidden": true,
       "mac": [
         {
@@ -1122,7 +1122,7 @@
         }
       ]
     },
-    "glide.space4": {
+    "arshell.space4": {
       "hidden": true,
       "mac": [
         {
@@ -1131,7 +1131,7 @@
         }
       ]
     },
-    "glide.space5": {
+    "arshell.space5": {
       "hidden": true,
       "mac": [
         {
@@ -1140,7 +1140,7 @@
         }
       ]
     },
-    "glide.space6": {
+    "arshell.space6": {
       "hidden": true,
       "mac": [
         {
@@ -1149,7 +1149,7 @@
         }
       ]
     },
-    "glide.space7": {
+    "arshell.space7": {
       "hidden": true,
       "mac": [
         {
@@ -1158,7 +1158,7 @@
         }
       ]
     },
-    "glide.space8": {
+    "arshell.space8": {
       "hidden": true,
       "mac": [
         {
@@ -1167,7 +1167,7 @@
         }
       ]
     },
-    "glide.space9": {
+    "arshell.space9": {
       "hidden": true,
       "mac": [
         {

@@ -171,99 +171,99 @@
           ]
         },
         {
-          "title": "Terminal",
+          "of": "tmshell",
           "items": [
             {
-              "action": "terminal.splitRight"
+              "action": "tmshell.splitRight"
             },
             {
-              "action": "terminal.splitDown"
+              "action": "tmshell.splitDown"
             },
             {
-              "action": "terminal.focusLeft"
+              "action": "tmshell.focusLeft"
             },
             {
-              "action": "terminal.focusRight"
+              "action": "tmshell.focusRight"
             },
             {
-              "action": "terminal.focusUp"
+              "action": "tmshell.focusUp"
             },
             {
-              "action": "terminal.focusDown"
+              "action": "tmshell.focusDown"
             },
             {
-              "action": "terminal.resizeLeft"
+              "action": "tmshell.resizeLeft"
             },
             {
-              "action": "terminal.resizeRight"
+              "action": "tmshell.resizeRight"
             },
             {
-              "action": "terminal.resizeUp"
+              "action": "tmshell.resizeUp"
             },
             {
-              "action": "terminal.resizeDown"
+              "action": "tmshell.resizeDown"
             },
             {
-              "action": "terminal.zoom"
+              "action": "tmshell.zoom"
             }
           ]
         },
         {
-          "title": "Glide",
+          "of": "arshell",
           "items": [
             {
-              "action": "glide.commandBar"
+              "action": "arshell.commandBar"
             },
             {
-              "action": "glide.sidebar"
+              "action": "arshell.sidebar"
             },
             {
-              "action": "glide.favorite"
+              "action": "arshell.favorite"
             },
             {
-              "action": "glide.copyAddress"
+              "action": "arshell.copyAddress"
             },
             {
-              "action": "glide.splitAdd"
+              "action": "arshell.splitAdd"
             },
             {
-              "action": "glide.splitRemove"
+              "action": "arshell.splitRemove"
             },
             {
-              "action": "glide.spacePrevious"
+              "action": "arshell.spacePrevious"
             },
             {
-              "action": "glide.spaceNext"
+              "action": "arshell.spaceNext"
             },
             {
-              "action": "glide.newSpace"
+              "action": "arshell.newSpace"
             },
             {
-              "action": "glide.space1"
+              "action": "arshell.space1"
             },
             {
-              "action": "glide.space2"
+              "action": "arshell.space2"
             },
             {
-              "action": "glide.space3"
+              "action": "arshell.space3"
             },
             {
-              "action": "glide.space4"
+              "action": "arshell.space4"
             },
             {
-              "action": "glide.space5"
+              "action": "arshell.space5"
             },
             {
-              "action": "glide.space6"
+              "action": "arshell.space6"
             },
             {
-              "action": "glide.space7"
+              "action": "arshell.space7"
             },
             {
-              "action": "glide.space8"
+              "action": "arshell.space8"
             },
             {
-              "action": "glide.space9"
+              "action": "arshell.space9"
             }
           ]
         },

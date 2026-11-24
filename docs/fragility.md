@@ -37,7 +37,7 @@ The seams:
   name.
 - **A shell is a page.** Our shells are web pages, and Chromium holds them to a page's
   limits: what a page may do only after a click, a shell can't do for an action that comes
-  from the menu bar or a key. One so far: Glide's Copy Address.
+  from the menu bar or a key. One so far: Curve's Copy Address.
 - **The phone's keyboard.** It takes half the screen or more, by an amount that differs
   between Android versions, and what a person needs next has to stay in sight above it, and
   what it is composing is its own until the word ends; and when it goes, what stood over it
@@ -324,7 +324,7 @@ The seams:
 - **Seam:** the phone's keyboard, and a shell control that stands over it.
 - **Fix:** the chips and Manage take a tap as the finger coming up where it went down, told
   to the control it went down on, wherever that control has gone (`tap` in
-  `shell/src/apps/shell/mobile/PasswordBar.svelte`), and stop the click that would follow
+  `shell/src/apps/shell/mwshell/PasswordBar.svelte`), and stop the click that would follow
   it onto whatever the bar left there. A click with no finger before it, a screen reader's,
   still picks.
 - **Guard:** `shell/e2e/password-fill-mobile.cjs` holds a finger on a chip, takes the
@@ -345,7 +345,7 @@ The seams:
 - **Fix:** while the keyboard composes, Go's answer lists rows and completes nothing; the
   input that ends the word asks again and completes. The same in Standard, for a desktop's
   input methods (`Address.svelte`, `AddressBar.vue`, 0c5e1630).
-- **Guard:** mobile.cjs composes a letter and checks the field holds only it while Go's answer
+- **Guard:** mwshell.cjs composes a letter and checks the field holds only it while Go's answer
   lists a completion, and that it completes once the word ends; it failed without the fix.
   drive_android's browsing on Android 10 types into the field.
 - **Missed:** the branch was tested with Gboard on Android 16 only, which composes otherwise,
@@ -492,7 +492,7 @@ The seams:
   page's prompt or sign-in does the same (`PageDialog.svelte`), as the design system's "On
   a phone" says.
 - **Guard:** `shell/e2e/sync.cjs` gives the passphrase Dialog 380px of height, and
-  `shell/e2e/shells/mobile.cjs` a page's sign-in 300px; each checks the title and the
+  `shell/e2e/shells/mwshell.cjs` a page's sign-in 300px; each checks the title and the
   buttons are in sight and only the body scrolls. On the device, drive_android's
   sync_on_the_phone taps Turn on sync with the keyboard up.
 
@@ -527,28 +527,28 @@ The seams:
 - **Seam:** shell layers: hidden because the person moved on, against out of the way for
   a moment.
 - **Fix:** on dd-batch-0.2.109: the keyboard puts the bar away rather than hiding it
-  (`away`, shell/src/apps/shell/mobile/DownloadBar.svelte): it keeps its news out of
+  (`away`, shell/src/apps/shell/mwshell/DownloadBar.svelte): it keeps its news out of
   sight and shows it once the keyboard goes, its time and the offer's one showing starting
   then.
-- **Guard:** shell/e2e/shells/mobile.cjs: a download starting with the keyboard up keeps
+- **Guard:** shell/e2e/shells/mwshell.cjs: a download starting with the keyboard up keeps
   its bar out of sight, then offers notifications; drive_android's
   download_notifications on a phone.
 
-## Glide's Copy Address that couldn't copy, 2026-11-19
+## Curve's Copy Address that couldn't copy, 2026-11-19
 
-- **Seen:** in the real app, Glide's Copy Address from the menu bar said "Could not copy",
+- **Seen:** in the real app, Curve's Copy Address from the menu bar said "Could not copy",
   and the clipboard kept what it had. The new real-app check found it while the action
   coverage's owed tests were worked off; no test had run it from the menu before.
-- **Cause:** Glide wrote the address with the page's own clipboard call. Chromium lets a
+- **Cause:** Curve wrote the address with the page's own clipboard call. Chromium lets a
   page write the clipboard only just after a click or a key press in that page, and the menu
   bar's action reaches the shell as a message from Go, with neither, as Shift+Cmd+C's does.
   The sidebar's copy button worked, as it is a click.
 - **Seam:** a shell is a page: a page's limit, met by an action that isn't the page's.
-- **Fix:** on glide-copy-address: the shell sends Go `copyText`, and Go puts the text on the
-  clipboard, as it does a context menu's Copy Link. Every Copy Address of Glide's goes that
+- **Fix:** on arshell-copy-address: the shell sends Go `copyText`, and Go puts the text on the
+  clipboard, as it does a context menu's Copy Link. Every Copy Address of Curve's goes that
   way: the menu bar's, the sidebar's, and its menus' (`menus.js` `copy`).
-- **Guard:** glide.cjs runs Copy Address from the menu and finds the address on Go's
-  clipboard; in the real app, drive_first_app's glide part runs it and check_clipboard.py
+- **Guard:** arshell.cjs runs Copy Address from the menu and finds the address on Go's
+  clipboard; in the real app, drive_first_app's arshell part runs it and check_clipboard.py
   finds the address on the Mac's clipboard.
 
 ## A copied image pasting empty, 2026-11-19
@@ -687,7 +687,7 @@ The seams:
   the site panel's and site sheet's. The line under a switch still reaches Android, by
   aria-describedby. On dd-a11y-names: the engine puts such names in the control's text
   again, as Chrome does, so selects and fields named by a label are named too.
-- **Guard:** `shell/e2e/shells/mobile.cjs` counts a switch or checkbox without aria-label as
+- **Guard:** `shell/e2e/shells/mwshell.cjs` counts a switch or checkbox without aria-label as
   nameless. For the engine, the tester's drive_android talkback_states turns TalkBack on and
   reads a page's switch named by a wrapping label, one by aria-labelledby and a field named
   by `<label for>`, each with its name; all three failed on 0.2.103 and pass since 0.2.105.
@@ -732,7 +732,7 @@ The seams:
 - **Guard:** drive_android.py bookmark_star finds the star and the folders by their names
   in Android's tree, and every control of the sheet is 48dp or more (the checked folder too,
   in the native shell; the web shell's checked state reaches the tree only with a screen
-  reader on, see "TalkBack heard every switch as off"); `shell/e2e/shells/mobile.cjs` checks the star on is named Edit
+  reader on, see "TalkBack heard every switch as off"); `shell/e2e/shells/mwshell.cjs` checks the star on is named Edit
   bookmark, with no aria-pressed.
 
 ## The back key in full screen, 2026-11-18

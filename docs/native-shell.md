@@ -262,7 +262,7 @@ now", then "mobile now has two shells... native and web both same design... this
 can test the feel of both". So:
 
 - **The Mac's Swift shell stops at the spike** (branch `native-shell`, kept, not built on).
-- **The phone gets a second shell, `mobile-native`, "Mobile (native)":** the Mobile shell's
+- **The phone gets a second shell, `mkshell`, "Mobile (native)":** the Mobile shell's
   design (the same spec, `project-b-research/mobile-shell/spec.md`, and
   [shells.md](shells.md#the-mobile-shell)), drawn with Android views in Kotlin. Both are
   phone shells, both in Settings' list, and nothing replaces the other: the comparison is
@@ -291,7 +291,7 @@ can test the feel of both". So:
                                    hooks::Fire(PB_EVENT_SHELL_MESSAGE, 1, json)  -->  Go
 ```
 
-- **The engine** makes no shell `WebContents` for the page `shell/mobile-native`: it tells
+- **The engine** makes no shell `WebContents` for the page `shell/mkshell`: it tells
   the window to make the native shell by its id (`Window::SetNativeShell`), and
   `SendToShell`, `FocusShell` and the live switch go to the window instead of a page. Go
   and every other shell don't change.
@@ -360,7 +360,7 @@ Each step builds, runs on the emulator, and is committed with its test and a pic
    Mobile shell's thumb bar on Android), with the same name, so a profile that syncs
    keeps it.
 2. **Where it sits in the lineup.** Standard stays the default and the reference.
-   Recommendation: Native is a style to choose, as Glide and Fox are, and follows Standard
+   Recommendation: Native is a style to choose, as Curve and Fox are, and follows Standard
    one release behind; it is never where a Go feature shows first.
 3. **AppKit and views, or SwiftUI and Compose?** Recommendation: AppKit and plain Android
    views now, for frames the layout reads directly and no start-up cost; revisit SwiftUI

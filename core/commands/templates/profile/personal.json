@@ -4,6 +4,6 @@
     "tabLayout": "vertical",
     "frameColor": "#0d7d86",
     "theme": "system",
-    "shell": "standard"
+    "shell": "pbshell"
   }
 }

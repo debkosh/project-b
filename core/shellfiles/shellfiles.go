@@ -16,7 +16,7 @@ import (
 var files embed.FS
 
 // Read is one built file by its name under the shell's folder, as the engine asks for it:
-// "settings/index.html", "shell/standard/standard.js". false when there is no such file.
+// "settings/index.html", "shell/pbshell/pbshell.js". false when there is no such file.
 func Read(name string) ([]byte, bool) {
 	if !fs.ValidPath(name) || name == "." {
 		return nil, false

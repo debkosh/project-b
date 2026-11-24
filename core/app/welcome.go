@@ -245,9 +245,9 @@ func (w *welcome) snapshot(tab engine.TabID) map[string]any {
 		"isDefault":     w.a.isDefault(),
 		"notifications": w.a.System.NotificationsAllowed(),
 		"layouts": []welcomeShell{
-			{ID: "side", Shell: "standard", TabLayout: "vertical", Name: "Tabs on the side"},
-			{ID: "top", Shell: "standard", TabLayout: "horizontal", Name: "Tabs on top"},
-			{ID: "glide", Shell: "glide", Name: "Glide"},
+			{ID: "side", Shell: "pbshell", TabLayout: "vertical", Name: "Tabs on the side"},
+			{ID: "top", Shell: "pbshell", TabLayout: "horizontal", Name: "Tabs on top"},
+			{ID: "arshell", Shell: "arshell", Name: shells.Name("arshell")},
 		},
 	}
 	keymaps := map[string]map[string]string{}

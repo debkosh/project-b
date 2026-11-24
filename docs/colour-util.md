@@ -14,7 +14,7 @@ below is how it got there, and gulal's spec is now the contract.
 ## Why
 
 Today's letter tiles take `hsl(hue 45% 42%)` with white letters, the hue from a hash of the
-host (`shell/src/apps/shell/standard/SiteMark.vue`, `shell/src/apps/shell/mobile/Mark.svelte`).
+host (`shell/src/apps/shell/pbshell/SiteMark.vue`, `shell/src/apps/shell/mwshell/Mark.svelte`).
 The owner, 2026-11-18: "the rounded squares with random colors feels very odd and does not sit
 with our theme design". He asked for a standard util that takes the theme colour, light or
 dark, its saturation and the background, and gives the same colour for the same text every

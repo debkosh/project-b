@@ -60,7 +60,7 @@ template folder in the app:
 
 | | Current file | Templates |
 |---|---|---|
-| Key bindings | `keymap.json` | `templates/keymap/`: `project-b.json`, `chrome.json`, `glide.json`, `firefox.json`, `safari.json`, `edge.json` |
+| Key bindings | `keymap.json` | `templates/keymap/`: `project-b.json`, `chrome.json`, `arshell.json`, `firefox.json`, `safari.json`, `edge.json` |
 | Menu tree | `menu.json` | `templates/menu/`: `project-b.json` |
 
 - **The default template for both is `project-b`.**
@@ -347,7 +347,7 @@ work today; Chrome actions for features we don't have are added with their featu
 pages, profiles, extensions, spelling, the task manager, Cast, Translate, the Google
 services). Keys are Chrome's Mac keys; `*` marks the ones reserved outside full screen.
 
-`glide.json` is `project-b.json` with Glide's keys over it ([glide.md](glide.md)): Cmd+T opens
+`arshell.json` is `project-b.json` with Curve's keys over it ([arshell.md](arshell.md)): Cmd+T opens
 the Command Bar, and Option+Cmd+Left and Right go to the previous and next
 Space, so New Tab, the terminal's Split right, and Previous and Next Tab lose those keys
 there. Choosing it is the user's, in Keyboard settings; the shell doesn't choose a keymap.
@@ -435,7 +435,7 @@ right, iTerm's Cmd+D, moved to Option+Cmd+D, and Pin Tab has no default key.
 
 - **Declared in the registry.** A shell lists its actions in its entry in
   `core/shells/registry.json`, each an id and a title: `"actions": [{"id":
-  "terminal.splitRight", "title": "Split right"}]`. The id starts with the shell's id and a
+  "tmshell.splitRight", "title": "Split right"}]`. The id starts with the shell's id and a
   dot, and never changes once released, like any action's.
 - **Registered by Go** with the rest (`core/app/actions.go`), every shell's in the
   registry, before Load. Each is enabled only while its shell is the profile's: the live one, so View, Shell
@@ -540,7 +540,7 @@ Mac only, on branch `menus-shortcuts`.
   macOS App Shortcuts are read at start and on every change (key-value observing on our
   defaults, All Applications included) and sent to Go. The settings page is in a tab of
   ours, a `PageTab` in our pages' context, whose WebUI speaks for its tab.
-- **Shell:** `shell/src/apps/settings/` is the settings app and `shell/src/apps/shell/standard/`
+- **Shell:** `shell/src/apps/settings/` is the settings app and `shell/src/apps/shell/pbshell/`
   the standard shell, each built on its own (`npm run build` builds both). The shell's panel is gone; the gear runs
   `app.settings`, and the sidebar's New Tab hint shows whatever key New Tab has now.
 

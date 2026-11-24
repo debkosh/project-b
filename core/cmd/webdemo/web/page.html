@@ -411,14 +411,10 @@ try {
 } catch (e) {}
 
 // The shapes: each shell's picture, taken from this demo, light or dark as the reader's is.
-(() => {
-  const shells = [
-    ['standard', 'Standard', 'Tabs down the side or along the top, an address field, and a menu. The familiar one.'],
-    ['glide', 'Glide', 'A command bar for everything, spaces, favourites and split view.'],
-    ['terminal', 'Terminal', 'A strip of windows along the top and a prompt line for the address, like a terminal; split any window into panes.'],
-    ['fox', 'Fox', 'Tabs on top and a toolbar under them, in the classic layout.'],
-    ['minimal', 'Minimal', 'The least it can be: a slim list of tabs, one line for the address, nothing else.'],
-  ];
+// The desktop's shells, their names and words, are the registry's (shells.json, copied in by
+// build.sh), so a shell is renamed there alone.
+(async () => {
+  const shells = (await (await fetch('shells.json')).json()).filter((s) => !s.phone).map((s) => [s.id, s.name, s.description]);
   const picker = document.querySelector('.picker');
   const stage = document.querySelector('.stage');
   const capB = document.querySelector('.caption b');

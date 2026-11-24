@@ -17,8 +17,12 @@ import (
 
 // Shell is one shell of the registry.
 type Shell struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID string `json:"id"`
+	// Name and Description are what people see: in Settings, the welcome, the menus and
+	// the homepage. They are written here only, so a shell is renamed here alone; the id
+	// never changes, as profiles save it.
+	Name        string `json:"name"`
+	Description string `json:"description"`
 	// Phone is a shell made for a phone: a phone offers and loads only these, and a desktop
 	// offers none of them, though it loads one named outright, as the mock does for a
 	// phone-sized test.
@@ -61,7 +65,7 @@ var all = func() []Shell {
 		panic(fmt.Sprintf("shells: registry.json: %v", err))
 	}
 	for _, s := range out {
-		if !id.MatchString(s.ID) || s.Name == "" {
+		if !id.MatchString(s.ID) || s.Name == "" || s.Description == "" {
 			panic(fmt.Sprintf("shells: registry.json: %+v", s))
 		}
 		for _, a := range s.Actions {
@@ -137,6 +141,16 @@ func Phone(id string) bool {
 		}
 	}
 	return false
+}
+
+// Name is the name people see for the shell called id, "" for no shell.
+func Name(id string) string {
+	for _, s := range all {
+		if s.ID == id {
+			return s.Name
+		}
+	}
+	return ""
 }
 
 // Has says whether id is a shell's.

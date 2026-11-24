@@ -109,7 +109,7 @@ async function phonePage(page, w) {
 
   // The desktop: Standard's panel.
   fs.writeFileSync(path.join(lib.profile, 'crash.log'), 'pid 1, started 2026-11-14 09:00:00\npanic: the last run\n');
-  await lib.start(['-use=standard']);
+  await lib.start(['-use=pbshell']);
   let w = await lib.openWindow(browser);
   await fire('download', url);
   await until(async () => (await regions()).tabs !== undefined);
@@ -131,7 +131,7 @@ async function phonePage(page, w) {
 
   // A phone: the Downloads page, from the menu.
   fs.writeFileSync(path.join(lib.profile, 'crash.log'), 'pid 1, started 2026-11-14 09:00:00\npanic: the last run\n');
-  await lib.start(['-use=mobile']);
+  await lib.start(['-use=mwshell']);
   w = await lib.openWindow(browser, { viewport: { width: 412, height: 915 }, hasTouch: true });
   await fire('download', url);
   await w.ui.getByRole('button', { name: 'Save', exact: true }).click();

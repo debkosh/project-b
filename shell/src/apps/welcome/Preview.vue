@@ -1,10 +1,10 @@
 <script setup>
 import { computed } from 'vue';
 // A picture of the browser as the style step's choices make it: tabs on the side, on top,
-// or Glide, or a phone with its address bar on top or at the foot. The desktop's three are
-// drawn as those shells draw themselves (shell/src/apps/shell/standard and glide): the
+// or Curve, or a phone with its address bar on top or at the foot. The desktop's three are
+// drawn as those shells draw themselves (shell/src/apps/shell/pbshell and arshell): the
 // address bar and its buttons, New Tab, tabs with their titles, the workspace switcher or
-// Glide's Space and its dots, and a page. It is drawn, not a picture, in the page's own
+// Curve's Space and its dots, and a page. It is drawn, not a picture, in the page's own
 // tones, so it takes the colour and the theme as the page does; sized by its own width, so
 // a choice's small one is the same picture as the large one. The window's buttons are the
 // platform's: the Mac's lights at the left, or on Linux and Windows a small copy of
@@ -56,7 +56,7 @@ const rows = [
           <span v-for="(t, i) in tabs" :key="t" class="vtab" :class="{ on: i === 3 }">{{ t }}</span>
           <span class="ws foot"><b class="d1"></b><b class="d2"></b>All workspaces</span>
         </div>
-        <div v-if="layout === 'glide'" class="rail glide-rail">
+        <div v-if="layout === 'arshell'" class="rail arshell-rail">
           <span v-if="mac" class="lights"><i></i><i></i><i></i></span>
           <span class="pill">mail.example.com</span>
           <span class="space"><b class="d2"></b>Work</span>
@@ -65,7 +65,7 @@ const rows = [
           <span class="dots"><b class="d1"></b><b class="d2 on"></b></span>
         </div>
         <div class="page">
-          <template v-if="layout === 'glide'"><span v-if="!mac" class="window-buttons"><svg viewBox="0 0 16 16"><path d="M3.5 8h9"/></svg><svg viewBox="0 0 16 16"><rect x="3.75" y="3.75" width="8.5" height="8.5" rx="1"/></svg><svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8"/></svg></span></template>
+          <template v-if="layout === 'arshell'"><span v-if="!mac" class="window-buttons"><svg viewBox="0 0 16 16"><path d="M3.5 8h9"/></svg><svg viewBox="0 0 16 16"><rect x="3.75" y="3.75" width="8.5" height="8.5" rx="1"/></svg><svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8"/></svg></span></template>
           <small>INBOX</small>
           <strong>Good morning</strong>
           <span v-for="r in rows" :key="r[0]" class="row"><i></i><span><b>{{ r[0] }}</b>{{ r[1] }}</span></span>
@@ -139,7 +139,7 @@ const rows = [
   stroke-width: 1.5;
 }
 
-/* Glide's frame has no place for them yet: the page area's top right. */
+/* Curve's frame has no place for them yet: the page area's top right. */
 .page .window-buttons {
   position: absolute;
   top: calc(var(--u) * 6);
@@ -259,11 +259,11 @@ const rows = [
   padding: calc(var(--u) * 3) calc(var(--u) * 4);
 }
 
-.glide-rail {
+.arshell-rail {
   padding-top: calc(var(--u) * 8);
 }
 
-.glide-rail .lights {
+.arshell-rail .lights {
   margin-bottom: calc(var(--u) * 6);
 }
 
@@ -282,7 +282,7 @@ const rows = [
   padding: calc(var(--u) * 3) calc(var(--u) * 4);
 }
 
-.glide-rail .vtab.on {
+.arshell-rail .vtab.on {
   background: var(--surface);
 }
 
@@ -318,7 +318,7 @@ const rows = [
   position: relative;
 }
 
-.glide .page {
+.arshell .page {
   margin: calc(var(--u) * 4) calc(var(--u) * 4) calc(var(--u) * 4) 0;
   border-radius: calc(var(--u) * 8);
   box-shadow: 0 0 0 1px var(--line);

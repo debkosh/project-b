@@ -208,7 +208,7 @@ func TestHowYouWorkMakesTheWorkspacesAndChoosesTheKeys(t *testing.T) {
 	if k.Follows != "firefox" {
 		t.Fatalf("keymap.json follows %q", k.Follows)
 	}
-	say(`{"t":"useKeymap","value":"glide"}`)
+	say(`{"t":"useKeymap","value":"arshell"}`)
 	say(`{"t":"useKeymap","value":"project-b"}`)
 	if m := next(t, got, "keymap"); m["keymap"] != "project-b" {
 		t.Fatalf("a keymap the step doesn't offer was taken: %v", m)

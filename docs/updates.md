@@ -16,7 +16,7 @@ it is doing all along: the download on its way, the release ready, a failure and
 | `core/update` | What the pages see of it: amarit's state in project-b's words (`words`, `why`), and the commands they send. `CheckInterval` is the one minute. |
 | `core/relaunch` | `relaunch.Copies`: the other copies on the root, told to quit over their sockets (`core/instance`) and started again on each profile after the swap. |
 | `core/cmd/lib/update_<os>.go` | The installer: `macapp.Installer` on the Mac, `appupdate.File` handing the APK to Android's package installer. |
-| `shell/src/apps/shell/standard/UpdateNotice.vue`, `mobile/UpdateBar.svelte` | A ready release's one-time notice ([The notice](#the-notice)). |
+| `shell/src/apps/shell/pbshell/UpdateNotice.vue`, `mwshell/UpdateBar.svelte` | A ready release's one-time notice ([The notice](#the-notice)). |
 | `amarit.json`, `VERSION` | The project, the manifest URL, `auto_update: true` (copies check on their own unless the person turns it off), the asset pattern; the version being built. |
 | `tools/release.sh` | Publishes a release. |
 

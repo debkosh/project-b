@@ -612,7 +612,7 @@ typedef struct PBGoCalls {
   // Returns a string the caller frees with free().
   char* (*go_stats)(void);
   // One of the shell's built files, which Go holds (core/shellfiles), by its name under the
-  // shell's folder, as "settings/index.html" or "shell/standard/standard.js": its bytes,
+  // shell's folder, as "settings/index.html" or "shell/pbshell/pbshell.js": its bytes,
   // length long, which the caller frees with free below; NULL when there is no such file.
   char* (*shell_file)(const char* name, size_t* length);
 

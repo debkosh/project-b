@@ -87,7 +87,7 @@ as built so far, and the order of building at the end says which steps are done.
   with it. A tab in a workspace the list doesn't hold shows none, nor does one of ours. Every shell has the list
   in its snapshot, and hears it again, `{"t": "workspaces", "workspaces": [...]}`, when it
   changes, so the dots follow at once (`core/app/workspaces.go`,
-  `shell/src/apps/shell/standard/`). The mock's page fires a menu item by its action, as
+  `shell/src/apps/shell/pbshell/`). The mock's page fires a menu item by its action, as
   the menu bar does (`/mock/fire`, kind `menu`).
 - Settings has a Workspaces section, after Profile: a list of rows, each with the
   workspace's colour, its name and the number of web tabs open in it, and a menu (the ⋯

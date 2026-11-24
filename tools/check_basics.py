@@ -467,7 +467,7 @@ def a24(app):
 
 def a25(app):
     go(app, P + "/a")
-    app.js("location.href='chrome://shell/standard/'", page=True)
+    app.js("location.href='chrome://shell/pbshell/'", page=True)
     time.sleep(1.5)
     href = app.js("location.href", page=True)
     return not href.startswith("chrome://shell"), href
@@ -653,7 +653,7 @@ AREAS = [
     (22, "context menu: right-click on a link shows a menu", a22, ("--remote-debugging-port=0",)),
     (23, "profiles and contexts: a second browser context", a23, ("--remote-debugging-port=0",)),
     (24, "cookies: a persistent cookie survives a restart", a24, ()),
-    (25, "internal pages: a tab can't navigate to chrome://shell/standard/", a25, ()),
+    (25, "internal pages: a tab can't navigate to chrome://shell/pbshell/", a25, ()),
     (26, "proxy: --proxy-server carries the request", a26, ("--proxy-server=PROXY",)),
     (27, "URL policy: a blocked host's image isn't fetched", a27, ("--host-resolver-rules=MAP blocked.test 127.0.0.1",)),
     (28, "Safe Browsing: a malware test page warns", a28, ()),

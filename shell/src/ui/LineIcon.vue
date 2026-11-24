@@ -1,6 +1,6 @@
 <script setup>
 // The line icons of our pages on a phone: 20px on a 24px box at a 1.5px stroke, in the
-// colour around them, as the Mobile shell's (shell/src/apps/shell/mobile/Icon.svelte).
+// colour around them, as the Mobile shell's (shell/src/apps/shell/mwshell/Icon.svelte).
 const props = defineProps({ name: String, size: { type: Number, default: 20 } });
 const paths = {
   back: 'M15 5l-7 7 7 7',

@@ -73,43 +73,43 @@ const noDownloadsYet = {
 // The shells that don't draw a splash yet, and who brings it to each. Rule 14 holds every
 // other shell to it.
 const noSplashYet = {
-  mobile: 'r3 brings it',
+  mwshell: 'r3 brings it',
 };
 
 // The shells that don't draw our tabs' title yet, and who brings it to each: their
 // owners. Rule 19 holds every other shell to it.
 const noTitleYet = {
-  glide: 'r6 brings it',
-  'mobile-native': 'r8, the native mobile shell\'s session, brings it',
+  arshell: 'r6 brings it',
+  mkshell: 'r8, the native mobile shell\'s session, brings it',
 };
 
 // The shells that don't draw the permission prompt and the Site settings control yet, and
 // who brings them to each (docs/daily-driver.md). Rules 30 and 31 hold every other shell to
 // them.
 const noPromptYet = {
-  'mobile-native': 'the native mobile shell session brings it',
+  mkshell: 'the native mobile shell session brings it',
 };
 
 // The shells with no Site settings control yet, and why. Rule 31 holds every other shell to it.
 const noSiteControlYet = {
-  glide: 'the daily driver session brings it',
-  'mobile-native': 'the native mobile shell session brings it',
+  arshell: 'the daily driver session brings it',
+  mkshell: 'the native mobile shell session brings it',
 };
 
 // The shells whose Site settings control goes straight to settings, without the site panel,
 // and why (docs/site-features.md). Rule 33 holds every other shell to the panel.
 const noPanelYet = {
-  minimal: 'goes straight to settings, as a minimal shell',
-  terminal: 'the terminal session brings it',
-  glide: 'the daily driver session brings it',
-  'mobile-native': 'the native mobile shell is on hold',
+  mnshell: 'goes straight to settings, as a minimal shell',
+  tmshell: 'the terminal session brings it',
+  arshell: 'the daily driver session brings it',
+  mkshell: 'the native mobile shell is on hold',
 };
 
 // The shells that don't draw Go's notice over a page yet, and who brings it to each
 // (docs/daily-driver.md). Rule 32 holds every other shell to it.
 const noNoticeYet = {
-  glide: 'the daily driver session brings it',
-  'mobile-native': 'it draws a notice of its own; the native mobile shell session moves it to Go\'s',
+  arshell: 'the daily driver session brings it',
+  mkshell: 'it draws a notice of its own; the native mobile shell session moves it to Go\'s',
 };
 
 (async () => {

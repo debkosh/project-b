@@ -71,7 +71,7 @@ func TestApplySetsWhatTheValuesHoldThroughTheSetters(t *testing.T) {
 		t.Fatalf("heard %v", heard)
 	}
 	m.Close()
-	if got := New(dir).All(); !reflect.DeepEqual(got, Prefs{TabLayout: TabsHorizontal, FrameColor: "#5b7fd6", Theme: ThemeDark, Shell: "standard", AddressBarPosition: AddressBottom, SearchEngine: "duckduckgo", Start: StartContinue, BookmarksNewTab: true, BookmarksCommandBox: true, BlockAds: true, KeepCookies: []string{}}) {
+	if got := New(dir).All(); !reflect.DeepEqual(got, Prefs{TabLayout: TabsHorizontal, FrameColor: "#5b7fd6", Theme: ThemeDark, Shell: "pbshell", AddressBarPosition: AddressBottom, SearchEngine: "duckduckgo", Start: StartContinue, BookmarksNewTab: true, BookmarksCommandBox: true, BlockAds: true, KeepCookies: []string{}}) {
 		t.Fatalf("saved %+v", got)
 	}
 }
@@ -81,26 +81,26 @@ func TestApplySetsWhatTheValuesHoldThroughTheSetters(t *testing.T) {
 func TestTheShellIsAShellsIDAndSurvivesARestart(t *testing.T) {
 	dir := t.TempDir()
 	m := New(dir)
-	if m.Shell() != "standard" {
+	if m.Shell() != "pbshell" {
 		t.Fatalf("default = %q", m.Shell())
 	}
 	var got []string
 	m.OnShellChanged(func(id string) { got = append(got, id) })
 	m.SetShell("no-such-shell")
-	m.SetShell("minimal")
-	m.SetShell("minimal")
+	m.SetShell("mnshell")
+	m.SetShell("mnshell")
 	m.Close()
-	if len(got) != 1 || got[0] != "minimal" || New(dir).Shell() != "minimal" {
+	if len(got) != 1 || got[0] != "mnshell" || New(dir).Shell() != "mnshell" {
 		t.Fatalf("changes %v, saved %q", got, New(dir).Shell())
 	}
-	if err := m.Apply(json.RawMessage(`{"shell":"standard"}`)); err != nil || m.Shell() != "standard" || len(got) != 2 {
+	if err := m.Apply(json.RawMessage(`{"shell":"pbshell"}`)); err != nil || m.Shell() != "pbshell" || len(got) != 2 {
 		t.Fatalf("apply: %v, shell %q, changes %v", err, m.Shell(), got)
 	}
 	m.Close()
 	if err := os.WriteFile(filepath.Join(dir, "prefs.json"), []byte(`{"shell":"gone"}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if New(dir).Shell() != "standard" {
+	if New(dir).Shell() != "pbshell" {
 		t.Fatalf("a shell that isn't one loads as %q", New(dir).Shell())
 	}
 }

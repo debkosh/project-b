@@ -168,7 +168,7 @@ std::unique_ptr<content::WebContents>& Stray() {
 void AskStrayShell(std::string id, int tries) {
   content::WebContents* contents = Stray().get();
   if (tries > 0 && (contents->IsLoading() ||
-                    contents->GetLastCommittedURL() != GURL("chrome://shell/standard/"))) {
+                    contents->GetLastCommittedURL() != GURL("chrome://shell/pbshell/"))) {
     base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE, base::BindOnce(&AskStrayShell, id, tries - 1), base::Milliseconds(50));
     return;
@@ -555,7 +555,7 @@ void Run(const std::string& line) {
         parts.size() > 2 && parts[2] == "tabs" ? engine->browser_context()
                                                : engine->pages_context()));
     Stray()->GetController().LoadURLWithParams(
-        content::NavigationController::LoadURLParams(GURL("chrome://shell/standard/")));
+        content::NavigationController::LoadURLParams(GURL("chrome://shell/pbshell/")));
     AskStrayShell(id, 100);
   } else if (cmd == "crashpage") {
     Focused()->contents()->GetPrimaryMainFrame()->GetProcess()->Shutdown(1);

@@ -31,7 +31,7 @@ const stopServer = lib.stop;
   // survive it loading again; keyboard, mouse and screenshots are the window's.
   await page.goto(base + '/');
   const ui = page.frameLocator('iframe.shell');
-  const shellFrame = () => page.frame({ url: /\/shell\/standard\/\?window=1$/ });
+  const shellFrame = () => page.frame({ url: /\/shell\/pbshell\/\?window=1$/ });
   // A person's pointer arrives in many moves. The window gives the shell the pointer on
   // the first move into its region, so the shell's hover begins with the next; Playwright's
   // hover is one move, so this makes two.
@@ -79,7 +79,7 @@ const stopServer = lib.stop;
 
   let r = await regions();
   check('opens empty with the top bar and the sidebar as shell', r.regions.some((g) => g.x === 0 && g.y === 0 && g.w === 1100) && (await regions({ x: 100, y: 600 })).hit === 'shell' && (await bar.inputValue()) === '', JSON.stringify(r));
-  check('the window loads the standard shell', r.shell === 'standard', r.shell);
+  check('the window loads the standard shell', r.shell === 'pbshell', r.shell);
   check('opens with the new tab\'s box focused, and the page area the shell\'s', await newTabBox.evaluate((el) => el === document.activeElement) && (await regions({ x: 600, y: 400 })).hit === 'shell');
   check('no update bubble when nothing is happening', (await ui.locator('.update').count()) === 0);
 
@@ -633,7 +633,7 @@ const stopServer = lib.stop;
   await phoneUi.getByRole('option').first().waitFor();
   await settle(phone);
   await phone.screenshot({ path: path.join(out, '3-phone.png') });
-  const scroll = await phone.frame({ url: /\/shell\/standard\/\?window=1$/ }).evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
+  const scroll = await phone.frame({ url: /\/shell\/pbshell\/\?window=1$/ }).evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
   check('no horizontal scroll on a phone', scroll);
   // The mock engine keeps one layout, the last any page sent. Left open, this page sends its
   // own again when the server restarts below, and now and then it lands after the other's.

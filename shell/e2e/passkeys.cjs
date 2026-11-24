@@ -55,7 +55,7 @@ if (shots) fs.mkdirSync(shots, { recursive: true });
         await page.emulateMedia({ colorScheme: scheme });
         await settle(page);
         await page.screenshot({ path: path.join(lib.out, `passkey-${id}-${name}-${scheme}.png`) });
-        if (shots && id === 'standard') await page.screenshot({ path: path.join(shots, `${name}-${scheme}.png`) });
+        if (shots && id === 'pbshell') await page.screenshot({ path: path.join(shots, `${name}-${scheme}.png`) });
       }
       await page.emulateMedia({ colorScheme: 'light' });
     };
@@ -119,7 +119,7 @@ if (shots) fs.mkdirSync(shots, { recursive: true });
       const s = getComputedStyle(el);
       return { border: s.borderTopWidth, radius: s.borderTopLeftRadius, gap: el.getBoundingClientRect().top - el.previousElementSibling.getBoundingClientRect().bottom, between: getComputedStyle(el.children[1]).borderTopWidth, first: getComputedStyle(el.children[0]).borderTopWidth, pad: getComputedStyle(el.children[0]).padding };
     });
-    check('the rows sit in a card 16px under the words, a hairline round it and between them', look.border === '1px' && (look.radius === '6px' || id === 'minimal') && Math.abs(look.gap - 16) < 1 && look.between === '1px' && look.first === '0px' && look.pad === '8px 12px', JSON.stringify(look));
+    check('the rows sit in a card 16px under the words, a hairline round it and between them', look.border === '1px' && (look.radius === '6px' || id === 'mnshell') && Math.abs(look.gap - 16) < 1 && look.between === '1px' && look.first === '0px' && look.pad === '8px 12px', JSON.stringify(look));
     check('a long name is cut with its whole in the tooltip', (await rows.nth(2).getAttribute('title')).includes('a-very-long-account-name-that-cannot-fit-on-one-line-of-the-card@example.com'));
     await shoot('account');
     await rows.nth(1).click();
@@ -195,7 +195,7 @@ if (shots) fs.mkdirSync(shots, { recursive: true });
     await page.keyboard.press('Tab');
     await page.keyboard.press('Tab');
     check('Tab goes round the card\'s controls', (await focused()) === 'Cancel', await focused());
-    if (id === 'standard') {
+    if (id === 'pbshell') {
       const t1 = (await regions()).active;
       await fetch(`${lib.base}/shell/send?window=1`, { method: 'POST', body: JSON.stringify({ t: 'newTab', text: 'https://b.test/' }) });
       check('another tab shown hides it', await until(async () => (await card.count()) === 0 && (await regions()).active !== t1));

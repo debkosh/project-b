@@ -21,7 +21,7 @@ GOARCH = {"arm64": "arm64", "x64": "amd64"}
 
 # What a phone serves of the shell's built pages, under shell/dist: our pages and the
 # phone's shells, the registry's "phone": true. A phone loads no other shell.
-PHONE_SHELL = ("settings", "downloads", "history", "bookmarks", "welcome", "shell/mobile")
+PHONE_SHELL = ("settings", "downloads", "history", "bookmarks", "welcome", "shell/mwshell")
 
 
 def main():

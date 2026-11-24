@@ -28,9 +28,9 @@ const altTap = async () => {
 
 (async () => {
   const browser = await chromium.launch();
-  await lib.start(['-use=standard', '-platform=linux']);
+  await lib.start(['-use=pbshell', '-platform=linux']);
   let w = await lib.openWindow(browser, { viewport: { width: 1280, height: 800 } });
-  await until(async () => (await regions()).shell === 'standard');
+  await until(async () => (await regions()).shell === 'pbshell');
   const bar = () => w.ui.getByRole('menubar', { name: 'Menu bar' });
   // Where the shell's top row starts: a bar shown for a moment lies over it, so it stays.
   const rowTop = () => w.shell().evaluate(() => document.querySelector('header.top')?.getBoundingClientRect().top);
@@ -131,7 +131,7 @@ const altTap = async () => {
 
   // Every other desktop shell takes the same bar above its own top, and ends its top row with
   // the window's own buttons; Show menu bar is still on.
-  for (const shell of (process.env.SHELLS || 'fox terminal glide minimal').split(' ')) {
+  for (const shell of (process.env.SHELLS || 'fxshell tmshell arshell mnshell').split(' ')) {
     await lib.start([`-use=${shell}`, '-platform=linux']);
     w = await lib.openWindow(browser, { viewport: { width: 1280, height: 800 } });
     await until(async () => (await regions()).shell === shell);
@@ -157,9 +157,9 @@ const altTap = async () => {
   }
 
   // The Mac has its own menu bar: no row in Settings, and Option alone does nothing.
-  await lib.start(['-use=standard']);
+  await lib.start(['-use=pbshell']);
   w = await lib.openWindow(browser, { viewport: { width: 1280, height: 800 } });
-  await until(async () => (await regions()).shell === 'standard');
+  await until(async () => (await regions()).shell === 'pbshell');
   await altTap();
   await settle(w.page);
   check('on the Mac, Option alone shows no menu bar, even with the pref on', (await w.ui.getByRole('menubar').count()) === 0);

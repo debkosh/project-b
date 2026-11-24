@@ -1,7 +1,7 @@
 # The daily driver
 
 What a browser needs before someone can use it all day: right-click, downloads, file upload and
-the page's own dialogs. Built in this order, one branch each, in Standard first, then Glide, then
+the page's own dialogs. Built in this order, one branch each, in Standard first, then Curve, then
 the other shells through their owners. Mac first, then Android where it applies.
 
 One rule for all four. **Go owns each request a page makes:** what is asked, the choices, how long
@@ -74,7 +74,7 @@ Go also drops the menu, and sends `null`, when its tab closes, navigates or stop
 one. Copying is Go's, through the engine's clipboard, so no shell needs `navigator.clipboard`.
 
 **The design is the shell's.** It may order, group and leave out Go's actions, and add actions of
-its own (Glide's Pin, say). Separators are its choice; `group` is there to help. In Standard it is
+its own (Curve's Pin, say). Separators are its choice; `group` is there to help. In Standard it is
 the design system's menu ([design-system.md](design-system.md)), at the press, kept inside the
 window.
 
@@ -317,7 +317,7 @@ dialogs to it. Nothing is remembered yet: saved passwords are a later step.
 ## Search engines and one suggestion source
 
 Two things that go together: which search engine a typed text goes to, and one list of
-suggestions for every place text is typed: the address field, Glide's Command Bar, and the
+suggestions for every place text is typed: the address field, Curve's Command Bar, and the
 command box a new tab shows in the page's place.
 
 **Search engines.** Go has a short built-in list (`core/search`): DuckDuckGo, Google, Bing,
@@ -396,7 +396,7 @@ keystroke to the engine, so they are a setting to decide, off by default if adde
 keeps them off.
 
 **The new tab.** A tab with nothing in it shows the shell's own command box where the page
-would be, drawing this list; the look is the standard shell session's mock. Glide's Command
+would be, drawing this list; the look is the standard shell session's mock. Curve's Command
 Bar moves onto this list, in place of its own search of tabs and actions. In Standard, New Tab
 goes to the window's new tab, opening one when there is none, and the box shows on it
 (the owner, 2026-11-18, [windows.md](windows.md#every-window-has-a-tab-decided-2026-11-18)); the box over a page, with
@@ -453,7 +453,7 @@ field; an address shows once, and an open tab offers Switch to tab rather than a
 | Nothing typed, on a new tab | No list: the new tab page is the list, in the order Frequently visited, Recently closed (3 at most), Bookmarks. | The new tab's command box, as before: 8 rows at most of sites and bookmarks. The address bar shows no list. |
 | Nothing typed, on a page | The page's own row, with Copy, Share and Edit, and nothing else: no sites, no closed tabs. While Bookmarks in the address bar is on, the bookmarks follow as their own row of tiles. | No list. |
 | 1–2 characters | Enter's row and up to 4 more: open tabs (2 at most), then the pages from history and the bookmarks by their visits, then the search. Starts only. | The same, with up to 5 more. |
-| 3 or more characters | Enter's row, then rows in the same order, as many as fit above the keyboard: at least 5 in all, 6 on a common phone, 8 at most. | 8 rows at most, and up to 2 actions besides in Glide's Command Bar. |
+| 3 or more characters | Enter's row, then rows in the same order, as many as fit above the keyboard: at least 5 in all, 6 on a common phone, 8 at most. | 8 rows at most, and up to 2 actions besides in Curve's Command Bar. |
 
 **Ranking.** Rows rank by visits: a page visited more comes first, and a visit typed in the
 field counts three, a clicked one one. A bookmark goes ahead of another page only when their
@@ -477,7 +477,7 @@ nothing typed.
   bookmark first of two with as many, then up to two actions, then the search; a page from
   history that is bookmarked is a `bookmark` row. A list has `rows` rows besides the
   actions, the shell's number, or 6 under three letters and 8 from three.
-- **The phone (`shell/src/apps/shell/mobile/Address.svelte`).** Tapped over a new tab it
+- **The phone (`shell/src/apps/shell/mwshell/Address.svelte`).** Tapped over a new tab it
   asks for nothing and draws nothing. Over a page it draws the page's row from the tab it
   has, with Copy (`copyText`), Share (`shareText`, the system's share sheet) and Edit (the
   caret to the address's end), and the bookmarks' tiles while `bookmarksCommandBox` is on.
@@ -627,7 +627,7 @@ Rules 30 and 31.
   system's first; Go has no say in it yet.
 
 **Android, and the OS's own permission.** The same messages, and the Mobile shell's prompt as
-a sheet (Glide's is a card over the tab's pane). Once a site is allowed the camera or
+a sheet (Curve's is a card over the tab's pane). Once a site is allowed the camera or
 microphone, Go asks the OS for the app's own permission before the page gets a device:
 Android's runtime question, macOS's Privacy & Security (oskit/media). The OS's no is the
 prompt's state, `os` set, with Open settings and Not now (docs/media-permissions.md).
@@ -662,7 +662,7 @@ the title, the detail in the muted colour, and the actions as buttons, the prima
 first. It is an `alert`, its buttons by Go's titles. The contract's rule 32 checks it on the
 mock: a load that fails brings an alert with Try again, which loads the page again, and a bad
 certificate one with Open anyway. In the Mobile web shell it is the same, sized for a thumb:
-48 px buttons in a row, the others quiet, and Share report beside Reload after a crash. Glide
+48 px buttons in a row, the others quiet, and Share report beside Reload after a crash. Curve
 and the native Mobile shell are still to take it.
 
 **Android.** The same messages; the certificate question comes with the Mac's, as the
@@ -766,7 +766,7 @@ with the keyboard down, a long press shows each tile's ×, and All bookmarks and
 those pages, which the APK now carries as it carries Settings and Downloads.
 
 **Not built:** pinned or edited tiles, a background picture, and on a phone a greeting, the
-workspace or Reopen all. Glide and the other shells
+workspace or Reopen all. Curve and the other shells
 keep what they had.
 
 ## Tabs come back, and closed ones reopen

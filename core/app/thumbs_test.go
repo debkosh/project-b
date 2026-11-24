@@ -40,7 +40,7 @@ func (r *rig) activeTab() engine.TabID {
 // On a phone shell, the tab a window leaves is pictured as the next becomes active, while
 // its page still shows, and the tab's thumb then points at the picture.
 func TestAPhoneShellPicturesTheTabItLeaves(t *testing.T) {
-	r := startOn(t, "mobile")
+	r := startOn(t, "mwshell")
 	r.visit("https://a.test/")
 	a := r.activeTab()
 	r.shell(`{"t":"newTab","text":"https://b.test/"}`)
@@ -54,7 +54,7 @@ func TestAPhoneShellPicturesTheTabItLeaves(t *testing.T) {
 
 // The shell's captureTab pictures the active tab, as the Mobile shell's switcher opens.
 func TestCaptureTabPicturesTheActiveTab(t *testing.T) {
-	r := startOn(t, "mobile")
+	r := startOn(t, "mwshell")
 	r.visit("https://a.test/")
 	a := r.activeTab()
 	r.shell(`{"t":"captureTab"}`)
@@ -66,7 +66,7 @@ func TestCaptureTabPicturesTheActiveTab(t *testing.T) {
 
 // A tab with no page yet shows the shell's new tab page, which is no picture of a page.
 func TestATabWithNoPageIsNotPictured(t *testing.T) {
-	r := startOn(t, "mobile")
+	r := startOn(t, "mwshell")
 	r.shell(`{"t":"captureTab"}`)
 	r.shell(`{"t":"newTab"}`)
 	if got := r.captures(); len(got) != 0 {
@@ -89,7 +89,7 @@ func TestADesktopShellAsksForNoPictures(t *testing.T) {
 // A window asks for one picture each half second at most: a burst of switches, or the
 // switcher opening as a switch happens, costs one copy, and the next after the gap is asked.
 func TestPicturesAreAskedForAtMostTwiceASecond(t *testing.T) {
-	r := startOn(t, "mobile")
+	r := startOn(t, "mwshell")
 	r.visit("https://a.test/")
 	a := r.activeTab()
 	r.shell(`{"t":"newTab","text":"https://b.test/"}`)

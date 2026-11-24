@@ -13,7 +13,7 @@ const { regions, settle, until } = lib;
 const check = (name, ok, detail) => lib.check(name, ok, detail);
 
 (async () => {
-  await lib.start(['-use=mobile']);
+  await lib.start(['-use=mwshell']);
   await lib.fire('logins', JSON.stringify([
     { Origin: 'https://shop.example', Username: 'asha@example.org', Password: 'correct horse battery' },
     { Origin: 'https://shop.example', Username: 'work', Password: 'second-one' },

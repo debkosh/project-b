@@ -13,7 +13,7 @@ const lib = require('./lib.cjs');
 const { check, fire, regions, settle, until } = lib;
 
 (async () => {
-  await lib.start(['-use=standard']);
+  await lib.start(['-use=pbshell']);
   const browser = await chromium.launch();
   const w = await lib.openWindow(browser);
   const { page, ui } = w;

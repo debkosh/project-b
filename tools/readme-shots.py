@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Refresh the README's screenshots in docs/screenshots/ from the last test runs.
 
-Glide's and the standard shell's shots come from the app driver's run (build/real/, tools/test.sh app).
+Curve's and the standard shell's shots come from the app driver's run (build/real/, tools/test.sh app).
 The other shells' come from the newest VM run that has each one (~/PW_TOOLS/macos-vm/shots/,
 tools/vm/run.sh shells), cut down to the window so no desktop shows. Look at each one before
 committing: a shot from a failed run is not one to show.
@@ -26,7 +26,7 @@ SHOTS = [
     (REAL, "settings-general.png", "settings.png", None),
     (VM, "terminal-split.png", "terminal.png", WINDOW),
     (VM, "fox-menu.png", "fox.png", WINDOW),
-    (VM, "minimal.png", "minimal.png", WINDOW),
+    (VM, "mnshell.png", "minimal.png", WINDOW),
 ]
 
 

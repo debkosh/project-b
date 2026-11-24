@@ -172,8 +172,8 @@ from there i get the folder names and also when these events happen". So each of
 | `prefs: shell standard, tabs vertical, theme system, colour #…, in <dir>/prefs.json` | Each start, as read |
 | `workspaces: 2, listed in <dir>/workspaces.json`, then `workspace <id>: its sites in <folder>` for each | Each start |
 | `session: restoring 1 window and 3 tabs from <dir>/session.json`, or `session: nothing to restore` | Each start |
-| `window 1: opened, loading shell/standard`; `window 1: shell standard ready`; `window 2: closed` | Each window, and its shell once Go has sent it its first state |
-| `windows: every window loads shell/glide now` | The shell changed |
+| `window 1: opened, loading shell/pbshell`; `window 1: shell standard ready`; `window 2: closed` | Each window, and its shell once Go has sent it its first state |
+| `windows: every window loads shell/arshell now` | The shell changed |
 | `workspace <id>: made, its sites in <folder>`; `workspace <id>: deleted, and its sites erased from <folder>` | A workspace made or deleted, from settings or a shell |
 | `app: stopping; the windows and tabs are kept in <dir>/session.json` | Quitting |
 

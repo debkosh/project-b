@@ -31,7 +31,7 @@ function cannotRun(why) {
 if (!fs.existsSync(path.join(storeDir, 'catalogue.json'))) {
   cannotRun('No mock store: run tools/fetch-extensions.sh and tools/pack-test-extension.py first.');
 }
-if (!fs.readFileSync(path.join(root, 'shell/dist/shell/standard/standard.js'), 'utf8').includes('pbx-')) {
+if (!fs.readFileSync(path.join(root, 'shell/dist/shell/pbshell/pbshell.js'), 'utf8').includes('pbx-')) {
   cannotRun('shell/dist was built without extensions: run `npm run build` in shell/ without WITHOUT=extensions first.');
 }
 

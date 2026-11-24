@@ -43,7 +43,7 @@ def _tones():
 
 FRAME, BAR, WHITE, ICON, MAIN_DOT = _tones()  # --frame, --bar, --surface, --icon (the toolbar's buttons), and Main's dot
 # Standard's command box fills the page area with the bar's colour mixed 60% into --surface
-# (shell/src/apps/shell/standard/CommandBox.vue), on a new tab. A window opens on a new tab,
+# (shell/src/apps/shell/pbshell/CommandBox.vue), on a new tab. A window opens on a new tab,
 # with this box in the page area; Standard takes New Tab: Cmd+T goes to the window's new tab,
 # opening one when there is none, and an address typed in the box with Enter loads there.
 PAGE_LOAD = 3.0
@@ -1633,9 +1633,9 @@ def shell_checks():
     a pane by its title bar's button and a click in each page gives that page the keyboard;
     the fox shell opens a tab from its strip and opens its menu. In both, a drag on the
     strip's empty end moves the window and a double-click there zooms."""
-    ask, js = on_shell("terminal")
+    ask, js = on_shell("tmshell")
     win = window_or_stop("the app starts on the terminal shell")
-    check("the app starts on the terminal shell", js("location.pathname") == "/terminal/", js("location.href"))
+    check("the app starts on the terminal shell", js("location.pathname") == "/tmshell/", js("location.href"))
     go_to(ALPHA)
     until(titles, lambda t: t == ["Alpha"])
     split = js(f"{RECT}(document.querySelector('[aria-label=\"Split right\"]'))")
@@ -1661,9 +1661,9 @@ def shell_checks():
     zooms(*end, win)
     quit_app()
 
-    ask, js = on_shell("fox")
+    ask, js = on_shell("fxshell")
     win = window_or_stop("the app starts on the fox shell")
-    check("the app starts on the fox shell", js("location.pathname") == "/fox/", js("location.href"))
+    check("the app starts on the fox shell", js("location.pathname") == "/fxshell/", js("location.href"))
     new_tab = js(f"{RECT}(document.querySelector('.new-tab'))")
     desk.click(win[0] + middle(new_tab)[0], win[1] + middle(new_tab)[1])
     tabs = until(lambda: js("document.querySelectorAll('[role=tab]').length"), lambda n: n == 2, 10)
@@ -1682,10 +1682,10 @@ def shell_checks():
     end = ("the fox strip's empty end", rest[0] + rest[2] - 20, middle(rest)[1])
     drags(*end, win)
     zooms(*end, win)
-    shot("fox")
+    shot("fxshell")
     quit_app()
 
-    for shell in ("minimal",):
+    for shell in ("mnshell",):
         basic_shell_checks(shell)
 
 

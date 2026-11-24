@@ -13,8 +13,13 @@ const OPENING = [
   'Like now: no renderer, and the rest is running in this tab.',
 ];
 
-// The tour, once the window is open: View › Shell › each of these, in turn.
-const TOUR = ['Glide', 'Terminal', 'Fox', 'Minimal', 'Standard'];
+// The tour, once the window is open: View › Shell › each of the desktop's shells, by the
+// names the registry gives them (shells.json), from the second, ending on the first, which
+// the window opens on. Each is [id, name].
+const TOUR = fetch('shells.json').then((r) => r.json()).then((all) => {
+  const desk = all.filter((s) => !s.phone).map((s) => [s.id, s.name]);
+  return [...desk.slice(1), desk[0]];
+});
 const TOUR_STEP_MS = 2200;
 
 const $ = (id) => document.getElementById(id);
@@ -127,7 +132,7 @@ async function tour() {
   const doc = osDoc();
   const topButton = (title) => [...doc.querySelectorAll('#menus > div > button')].find((b) => b.textContent === title);
   const item = (menu, title) => [...menu.querySelectorAll(':scope > .item')].find((b) => b.firstChild && b.firstChild.textContent === title);
-  for (const shell of TOUR) {
+  for (const [, shell] of await TOUR) {
     if (!touring) return;
     const view = await until(() => topButton('View'));
     if (!view || !touring) return;
@@ -389,7 +394,7 @@ function offerFullScreen() {
   await new Promise((r) => osFrame.addEventListener('load', r, { once: true }));
   osDoc().addEventListener('click', closeDownload);
   // The other shells, fetched while the first one shows, so switching is quick.
-  for (const id of ['glide', 'terminal', 'fox', 'minimal']) {
+  for (const [id] of (await TOUR).slice(0, -1)) {
     for (const ext of ['js', 'css']) {
       const l = document.createElement('link');
       l.rel = 'prefetch';

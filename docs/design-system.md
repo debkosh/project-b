@@ -140,7 +140,7 @@ No monospace in the UI. Code-like strings (a permission name, a host) are body t
 | Settings row | at least 48px high, padding 8px 16px |
 | Gaps | 4px between toolbar buttons, 8px between buttons in a group, 12px between an icon and its text in a header |
 | Touch | buttons grow to 40px; hover does nothing |
-| A phone | every control a finger presses is at least 48px each way, Android's least (48dp; a CSS pixel is a dp on a phone). What it draws may be smaller inside its target, as a 32px chip in a 48px row, or a 40px button in a 48px target. The Mobile shell's tests check every control on each screen (`shell/e2e/shells/mobile.cjs`) |
+| A phone | every control a finger presses is at least 48px each way, Android's least (48dp; a CSS pixel is a dp on a phone). What it draws may be smaller inside its target, as a 32px chip in a 48px row, or a 40px button in a 48px target. The Mobile shell's tests check every control on each screen (`shell/e2e/shells/mwshell.cjs`) |
 
 ## Motion
 
@@ -159,7 +159,7 @@ The owner, 2026-11-14: animations are very quick, about 100 ms, and smooth.
 
 - **Flat:** the bar, the settings page. No border, no shadow.
 - **Card:** `--surface`, a `--line` hairline, radius 8, rows divided by hairlines.
-- **The page as a card in the frame** (Glide): its corners are concentric with the window's,
+- **The page as a card in the frame** (Curve): its corners are concentric with the window's,
   the window's radius less the inset (26 − 8 = 18 on macOS 26), and 8 when the window's
   corners are square, as in full screen. Radius 8 everywhere else.
 - **Floating:** a menu, the address bar's suggestions, a dialog. `--surface`, a `--line`
@@ -436,7 +436,7 @@ A shell may keep a look of its own where it is the point of the shell. What is l
 is deliberate, not drift; everything else on this page still holds for it, colours,
 contrast and focus rings first.
 
-**Terminal** (`shell/src/apps/shell/terminal/`):
+**Terminal** (`shell/src/apps/shell/tmshell/`):
 - Monospace, 12px on a 16px line, set on `.app`, for the whole shell.
 - Square corners on what floats (the suggestions) and on its marks (a workspace's square,
   a pane's square in the strip); controls keep radius 4.

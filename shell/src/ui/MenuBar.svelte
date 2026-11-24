@@ -279,7 +279,7 @@
     background: linear-gradient(var(--bar), var(--bar)) content-box, linear-gradient(var(--frame), var(--frame)) padding-box, var(--bar);
     border-bottom: 1px solid var(--line);
     box-sizing: border-box;
-    /* Above what a shell lays over its page, as Glide's command bar's dimming. */
+    /* Above what a shell lays over its page, as Curve's command bar's dimming. */
     position: relative;
     z-index: 2;
     font: 13px/1 var(--sans, system-ui, sans-serif);

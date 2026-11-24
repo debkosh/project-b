@@ -51,7 +51,7 @@ const server = http.createServer((req, res) => {
   const browser = await chromium.launch();
 
   // The Standard shell: the card shows once the release is ready, in light and dark.
-  await lib.start(args('standard'));
+  await lib.start(args('pbshell'));
   let w = await lib.openWindow(browser);
   let notice = w.ui.getByRole('dialog', { name: 'Update ready' });
   check('a ready release shows its notice over the page', await until(() => notice.isVisible(), 15000));
@@ -110,7 +110,7 @@ const server = http.createServer((req, res) => {
   check('Later puts the notice away and records the release as seen', await until(async () => !(await notice.isVisible()) && prefs().updateNoticed === '0.3.7'));
   await w.page.close();
   await lib.stop();
-  await lib.start(args('standard'));
+  await lib.start(args('pbshell'));
   w = await lib.openWindow(browser);
   notice = w.ui.getByRole('dialog', { name: 'Update ready' });
   page = await about(await settingsTab());
@@ -122,7 +122,7 @@ const server = http.createServer((req, res) => {
   await lib.stop();
 
   // Linux has no Dev channel: About has no Updates from, and keeps Automatic updates.
-  await lib.start([...args('standard'), '-platform=linux']);
+  await lib.start([...args('pbshell'), '-platform=linux']);
   w = await lib.openWindow(browser);
   page = await about(await settingsTab());
   await page.getByRole('region', { name: 'Version' }).waitFor();
@@ -137,7 +137,7 @@ const server = http.createServer((req, res) => {
   fs.writeFileSync(path.join(lib.profile, 'prefs.json'), JSON.stringify({ ...prefs(), updateNoticed: '' }));
   // As a phone's app runs: its keys' platform is Linux's (core/commands' platformOf), which a
   // phone's About mustn't take for Linux's one channel.
-  await lib.start([...args('mobile'), '-platform=linux']);
+  await lib.start([...args('mwshell'), '-platform=linux']);
   w = await lib.openWindow(browser, { viewport: { width: 412, height: 915 }, hasTouch: true });
   const bar = w.ui.getByRole('dialog', { name: 'Update ready' });
   check('on a phone, a ready release shows its bar over the toolbar', await until(() => bar.isVisible(), 15000));

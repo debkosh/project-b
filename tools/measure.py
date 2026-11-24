@@ -14,7 +14,7 @@ to our code having it.
     python3 tools/measure.py --save              # also writes the baseline, tools/baseline/<where>.json
     python3 tools/measure.py --compare           # against that baseline; or --compare FILE
     python3 tools/measure.py --trace build/measure/trace.json   # the last start, for ui.perfetto.dev
-    python3 tools/measure.py --shell fox --out build/measure/fox.json   # another shell
+    python3 tools/measure.py --shell fxshell --out build/measure/fxshell.json   # another shell
 
 On a Mac every start can load another shell, by its id in core/shells/registry.json, and the
 run finds the controls by role and name (docs/shells.md, "What every shell does"), so the
@@ -90,7 +90,7 @@ class Mac:
         import drive_first_app
         self.d = drive_first_app
         self.shell = shell
-        self.empty = takes_new_tab(shell or "standard")
+        self.empty = takes_new_tab(shell or "pbshell")
         self.started = STARTED_EMPTY if self.empty else STARTED
         # A session without a screen has numbers of its own, and a baseline of its own.
         self.session = subprocess.run(["launchctl", "managername"], capture_output=True, text=True).stdout.strip()
@@ -337,7 +337,7 @@ def main():
         os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
         with open(path, "w") as f:
             json.dump({"platform": target.name, "date": datetime.date.today().isoformat(), "version": version, "commit": commit,
-                       "starts": args.n, "shell": args.shell or "standard", **target.describe(), **result}, f, indent=1, sort_keys=True)
+                       "starts": args.n, "shell": args.shell or "pbshell", **target.describe(), **result}, f, indent=1, sort_keys=True)
             f.write("\n")
         print("\nsaved: " + path)
 

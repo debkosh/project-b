@@ -296,7 +296,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Shell.AddPart(a.thumbs.shellPart())
 	a.Shell.AddPart(a.bookmarksShellPart(e))
 	a.Shell.AddPart(a.menus.shellPart())
-	// Every action a shell can run by name, for a shell that lists them, as Glide's
+	// Every action a shell can run by name, for a shell that lists them, as Curve's
 	// Command Bar does.
 	a.Shell.AddPart(shell.Part{
 		Snapshot: func(into map[string]any) { into["actions"] = a.Commands.Titles() },

@@ -204,7 +204,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
     await ui.getByRole('button', { name: 'Menu', exact: true }).click();
     await ui.getByRole('menuitem', { name: /^Settings…/ }).click();
   };
-  const shellFrame = () => shell.frame({ url: /\/shell\/standard\/\?window=1$/ });
+  const shellFrame = () => shell.frame({ url: /\/shell\/pbshell\/\?window=1$/ });
   await shell.goto(base + '/');
   // The window starts on a new tab: the checks want a page, so it loads one.
   await fetch(`${base}/shell/send`, { method: 'POST', body: JSON.stringify({ t: 'navigate', text: 'https://example.com/' }) });
@@ -458,12 +458,12 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   // is the profile's pref, and every window loads that shell at once.
   await show('shell');
   const shellChoice = page.getByLabel('Shell', { exact: true });
-  check('Profile shows the shell in use, and offers only the listed shells', (await shellChoice.inputValue()) === 'standard' &&
+  check('Profile shows the shell in use, and offers only the listed shells', (await shellChoice.inputValue()) === 'pbshell' &&
     JSON.stringify(await shellChoice.locator('option').allTextContents()) === JSON.stringify(listedShells));
-  await fetch(`${base}/settings/send?tab=${(await regions()).settings}`, { method: 'POST', body: JSON.stringify({ t: 'setShell', text: 'minimal' }) });
-  check('choosing a shell saves it and the window loads it', await until(async () => prefsFile().shell === 'minimal' && (await regions()).shell === 'minimal'));
-  await shellChoice.selectOption('standard');
-  check('and choosing the standard one loads it again', await until(async () => prefsFile().shell === 'standard' && (await regions()).shell === 'standard' && (await ui.getByRole('button', { name: 'Menu', exact: true }).count()) === 1));
+  await fetch(`${base}/settings/send?tab=${(await regions()).settings}`, { method: 'POST', body: JSON.stringify({ t: 'setShell', text: 'mnshell' }) });
+  check('choosing a shell saves it and the window loads it', await until(async () => prefsFile().shell === 'mnshell' && (await regions()).shell === 'mnshell'));
+  await shellChoice.selectOption('pbshell');
+  check('and choosing the standard one loads it again', await until(async () => prefsFile().shell === 'pbshell' && (await regions()).shell === 'pbshell' && (await ui.getByRole('button', { name: 'Menu', exact: true }).count()) === 1));
   await show('profile');
   const resetButton = page.getByRole('button', { name: 'Reset to template…' });
   await resetButton.click();
@@ -803,17 +803,17 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   check('the keymap follows its template until an edit', keymapFile() === null);
   check('with the standard shell in use, no shell\'s own actions show, and no Shells part', (await page.getByRole('region', { name: 'Shells' }).count()) === 0 &&
     (await page.locator('button.action', { hasText: 'Split right' }).count()) === 0 && (await page.locator('button.action', { hasText: 'Open Command Bar' }).count()) === 0);
-  await fetch(`${base}/settings/send?tab=${(await regions()).settings}`, { method: 'POST', body: JSON.stringify({ t: 'setShell', text: 'glide' }) });
-  check('with Glide in use, its own actions are listed last, under a Shells part, marked In use', await until(async () => {
-    const glide = page.getByRole('region', { name: 'Glide', exact: true });
-    if (!(await glide.count()) || !(await page.getByRole('region', { name: 'Shells' }).count())) return false;
-    const add = await glide.locator('button.action', { hasText: 'Add to Split View' }).textContent();
+  await fetch(`${base}/settings/send?tab=${(await regions()).settings}`, { method: 'POST', body: JSON.stringify({ t: 'setShell', text: 'arshell' }) });
+  check('with Curve in use, its own actions are listed last, under a Shells part, marked In use', await until(async () => {
+    const arshell = page.getByRole('region', { name: 'Curve', exact: true });
+    if (!(await arshell.count()) || !(await page.getByRole('region', { name: 'Shells' }).count())) return false;
+    const add = await arshell.locator('button.action', { hasText: 'Add to Split View' }).textContent();
     const last = await page.locator('section[aria-label]').last().getAttribute('aria-label');
-    return (await glide.locator('h2').textContent()).includes('In use') && add.includes('Hidden') && last === 'Glide';
+    return (await arshell.locator('h2').textContent()).includes('In use') && add.includes('Hidden') && last === 'Curve';
   }));
   check('and the shells that are off show none of theirs', (await page.locator('button.action', { hasText: 'Split right' }).count()) === 0);
   await page.screenshot({ path: shot('settings-keyboard-shells'), fullPage: true });
-  await fetch(`${base}/settings/send?tab=${(await regions()).settings}`, { method: 'POST', body: JSON.stringify({ t: 'setShell', text: 'standard' }) });
+  await fetch(`${base}/settings/send?tab=${(await regions()).settings}`, { method: 'POST', body: JSON.stringify({ t: 'setShell', text: 'pbshell' }) });
   check('switching back takes the Shells part away', await until(async () => (await page.getByRole('region', { name: 'Shells' }).count()) === 0));
   await openRow('New Tab');
   await page.getByRole('button', { name: 'Add key' }).click();
