@@ -35,6 +35,17 @@ var Platforms = []string{"mac", "android"}
 
 var statuses = []string{Works, Off, Quiet, Absent, Partly, Kills, Unknown}
 
+// What a probe's call may give under each status.
+var gives = map[string][]string{
+	Works:   {"resolved"},
+	Quiet:   {"resolved", "rejected", "pending"},
+	Partly:  {"resolved", "rejected", "pending"},
+	Off:     {"absent"},
+	Absent:  {"absent"},
+	Kills:   {"killed"},
+	Unknown: {"resolved", "rejected", "pending", "absent"},
+}
+
 // What a row may say it needs to work as in Chrome.
 var needs = []string{"stay-off", "binder", "delegate", "go-manager", "prompt", "build"}
 
@@ -84,6 +95,12 @@ type Probe struct {
 	// SeesNothing says the call has no answer a page can see, as adding a link has none.
 	// The probes only check that the renderer lives.
 	SeesNothing bool `json:"sees_nothing,omitempty"`
+	// Expect is what the call gives, by platform, as the probes write it: absent, resolved,
+	// rejected, pending or killed, then a colon and the error's name or the value's start
+	// when the kind alone doesn't tell (rejected:NotAllowedError, resolved:false). A probe
+	// passes when what it saw starts so. "<platform>-tap" is what it gives on a tap, where
+	// that differs. A call with sees_nothing has none.
+	Expect map[string]string `json:"expect,omitempty"`
 }
 
 // All is every row, in the file's order.
@@ -129,6 +146,7 @@ var (
 	idPattern      = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 	featurePattern = regexp.MustCompile(`^[A-Za-z0-9_]+$`)
 	basicsPattern  = regexp.MustCompile(`^basics:[1-9][0-9]*$`)
+	expectPattern  = regexp.MustCompile(`^(absent|resolved|rejected|pending|killed)(:.+)?$`)
 )
 
 func (f *Feature) check() error {
@@ -185,6 +203,9 @@ func (f *Feature) check() error {
 		if p.Name == "" || p.Call == "" {
 			return fmt.Errorf("a probe has a name and a call")
 		}
+		if err := f.checkExpect(p); err != nil {
+			return fmt.Errorf("probe %s: %w", p.Name, err)
+		}
 	}
 	for _, t := range f.Test {
 		switch {
@@ -202,6 +223,36 @@ func (f *Feature) check() error {
 			}
 		default:
 			return fmt.Errorf("a test is probe:, basics: or check:, not %q", t)
+		}
+	}
+	return nil
+}
+
+// checkExpect holds a probe's expect to its row: what the call gives on each platform, given
+// for each, and allowed by the row's status there.
+func (f *Feature) checkExpect(p Probe) error {
+	if p.SeesNothing {
+		if len(p.Expect) > 0 {
+			return fmt.Errorf("a call with sees_nothing expects nothing")
+		}
+		return nil
+	}
+	for key, e := range p.Expect {
+		platform := strings.TrimSuffix(key, "-tap")
+		if !slices.Contains(Platforms, platform) {
+			return fmt.Errorf("expect %q isn't a platform, or a platform's -tap", key)
+		}
+		m := expectPattern.FindStringSubmatch(e)
+		if m == nil {
+			return fmt.Errorf("expect %s %q isn't absent, resolved, rejected, pending or killed, with what follows a colon", key, e)
+		}
+		if s := f.Status[platform]; !slices.Contains(gives[s], m[1]) {
+			return fmt.Errorf("expect %s is %s, which %s on %s doesn't give", key, m[1], s, platform)
+		}
+	}
+	for _, platform := range Platforms {
+		if _, ok := p.Expect[platform]; !ok {
+			return fmt.Errorf("expect says what it gives on %s", platform)
 		}
 	}
 	return nil

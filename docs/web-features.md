@@ -55,11 +55,18 @@ The inventory is a reading of Chromium 155 and Project B 0.2.61; the registry is
 | `needs` | | What it would take to work as in Chrome: `stay-off`, `binder`, `delegate`, `go-manager`, `prompt`, `build` |
 | `owner` | | Our file and function that answers for it; none when nothing of ours does |
 | `disable_blink_features`, `disable_features` | | The Blink runtime features and base features the engine turns off for it |
-| `probe` | | The calls the probes make: `name`, `call`, and `sees_nothing` for a call with no answer a page can see |
+| `probe` | | The calls the probes make: `name`, `call`, `expect` (below), and `sees_nothing` for a call with no answer a page can see |
 | `test` | | The checks that prove the status: `probe:<name>`, `basics:<number>` (`tools/check_basics.py`), or `check:<a check's name>` |
 
-A key Go doesn't know, a status that isn't one of the list, a probe name used twice, or a
-`test` that names a probe the row doesn't have fails `TestTheRegistry` (`go test -tags sqlite_fts5 ./...` in
+A probe's `expect` says what its call gives on each platform, as the probes write it: the kind
+(`absent`, `resolved`, `rejected`, `pending`, `killed`), then a colon and the error's name or
+the start of the value where the kind alone doesn't tell (`rejected:NotAllowedError`,
+`resolved:false`, `resolved:[]`). A call passes when what it gave starts so. `android-tap` is
+what it gives on a tap, where that differs from load. Every probe but a `sees_nothing` one
+gives one for each platform, and its kind must be one the row's status allows there (below).
+
+A key Go doesn't know, a status that isn't one of the list, a probe name used twice, an
+`expect` missing or out of its status, or a `test` that names a probe the row doesn't have fails `TestTheRegistry` (`go test -tags sqlite_fts5 ./...` in
 `core`), and stops the app at its start.
 
 ## In settings
@@ -77,7 +84,7 @@ colours, nothing to change, and the filter.
 
 ## The statuses
 
-| Status | A page gets | A probe's call may give |
+| Status | A page gets | A probe's `expect` may be |
 |---|---|---|
 | `works` | What Chrome gives | resolved |
 | `quiet` | A rejection, an empty or "denied" answer, or no answer; the page carries on | resolved, rejected, or no answer in 2 s |
@@ -92,8 +99,9 @@ whatever the status.
 
 ## Changing it
 
-- **A status changed** (a fix landed, a feature came or went): change the row's `status` and
-  `why` in the same commit as the change. The probes fail until the two agree.
+- **A status changed** (a fix landed, a feature came or went): change the row's `status`,
+  `why` and its probes' `expect` in the same commit as the change. The probes fail until they
+  agree with what a page gets.
 - **Turning a feature off**: add its Blink runtime feature to `disable_blink_features`, or a
   base feature that sets it to `disable_features`, and make its status `off` on both
   platforms; the switches are global, so an entry with either list must be off everywhere,
@@ -109,18 +117,19 @@ whatever the status.
 ## How the tests use it
 
 `tools/web_features.py` loads the file for the probes. Each call runs through one wrapper
-that says what it gave: absent, resolved, rejected, or pending after 2 s. A killed renderer
-is read from content's "bad Mojo message" in the log.
+that says what it gave: absent or rejected with the error's name, resolved with the start of
+the value, or pending after 2 s. A killed renderer is read from content's "bad Mojo message"
+in the log. Each call is held to its probe's `expect`.
 
 - **Mac**, `python3 tools/drive_first_app.py webapis` (part of `tools/test.sh app`): every
   probe call on a fresh page, one at a time. Per call, "a page that calls `<name>` keeps its
-  renderer"; then one check that every call gave what the Mac's status allows, naming each
-  row that didn't. Calls of `unknown` rows print what they gave, to fill the row in. The
+  renderer"; then one check that every call gave what its `expect` says for the Mac, naming
+  each row that didn't. Calls of `unknown` rows print what they gave, to fill the row in. The
   service worker that sets the badge is held to `badge-sw`, and the copy button to
   `clipboard-async`.
 - **Android**, the `web_apis` part of `tools/drive_android.py` (`tools/test.sh android`): all
   calls on one page, on load and again on a tap. Per pass, the page keeps its renderer, and
-  every registry call gave what Android's status allows. A few calls whose browser side is
+  every registry call gave what its `expect` says for Android (`android-tap` on the tap). A few calls whose browser side is
   content's own (`CONTENT_APIS`) are made too, for the renderer's sake only.
 - **Basics**: a row's `basics:<n>` names the `tools/check_basics.py` check that shows it.
 

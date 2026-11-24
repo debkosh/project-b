@@ -2347,7 +2347,7 @@ def web_apis():
             return
         ran = next(s for s in served if s.startswith("/apis-ran?%s&seen=" % when))
         seen = json.loads(urllib.parse.unquote(ran.split("&seen=", 1)[1]))
-        wrong = [web_features.mismatch(row, probe, "android", "killed" if killed else seen[probe["name"]])
+        wrong = [web_features.mismatch(row, probe, "android", "killed" if killed else seen[probe["name"]], when)
                  for row, probe in REGISTRY_APIS]
         wrong = [w for w in wrong if w]
         check("and its %d calls of the web-features registry give what it says for Android, on %s" % (len(REGISTRY_APIS), on),
