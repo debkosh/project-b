@@ -55,7 +55,8 @@ class ContentBrowserClient : public ContentBrowserClientHooks {
       int child_process_id,
       content::PosixFileDescriptorInfo* mappings) override;
 #else
-  base::FilePath GetChildProcessPath(int flags) override;
+  base::FilePath GetChildProcessPath(int flags,
+                                     content::ChildProcessId child_process_id) override;
   std::unique_ptr<content::DevToolsManagerDelegate>
   CreateDevToolsManagerDelegate() override;
   // A page's passkey request goes to Go as a dialog with steps (docs/passkeys.md). A
@@ -98,6 +99,7 @@ class ContentBrowserClient : public ContentBrowserClientHooks {
       const GURL& url,
       scoped_refptr<net::HttpResponseHeaders> response_headers,
       bool first_auth_attempt,
+      bool do_not_prompt_for_login,
       content::GuestPageHolder* guest_page_holder,
       content::LoginDelegate::LoginAuthRequiredCallback auth_required_callback) override;
   std::string GetUserAgent() override;
@@ -108,7 +110,7 @@ class ContentBrowserClient : public ContentBrowserClientHooks {
   // optional. Choosing a certificate isn't built.
   base::OnceClosure SelectClientCertificate(
       content::BrowserContext* browser_context,
-      int process_id,
+      content::ChildProcessId process_id,
       content::WebContents* web_contents,
       net::SSLCertRequestInfo* cert_request_info,
       net::ClientCertIdentityList client_certs,

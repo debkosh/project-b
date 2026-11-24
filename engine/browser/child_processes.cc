@@ -56,9 +56,9 @@ ChildProcesses::ChildProcesses() {
   // The GPU process and the shell's renderer start before Go, so before this.
   for (content::BrowserChildProcessHostIterator it; !it.Done(); ++it) {
     const base::Process& process =
-        content::BrowserChildProcessHost::FromID(it.GetData().id)->GetProcess();
+        content::BrowserChildProcessHost::FromID(it.GetData().GetChildProcessId())->GetProcess();
     if (process.IsValid()) {
-      pids_[it.GetData().id] = process.Pid();
+      pids_[it.GetData().GetChildProcessId()] = process.Pid();
     }
   }
   for (auto it = content::RenderProcessHost::AllHostsIterator(); !it.IsAtEnd();
@@ -78,7 +78,7 @@ ChildProcesses::~ChildProcesses() {
 void ChildProcesses::BrowserChildProcessLaunchedAndConnected(
     const content::ChildProcessData& data,
     const base::Process& process) {
-  pids_[data.id] = process.Pid();
+  pids_[data.GetChildProcessId()] = process.Pid();
 }
 
 void ChildProcesses::BrowserChildProcessCrashed(
@@ -100,8 +100,8 @@ void ChildProcesses::ChildGone(
   if (data.process_type == content::PROCESS_TYPE_UTILITY) {
     type += " " + data.metrics_name;
   }
-  Fire(type, info, pids_[data.id], "");
-  pids_.erase(data.id);
+  Fire(type, info, pids_[data.GetChildProcessId()], "");
+  pids_.erase(data.GetChildProcessId());
 }
 
 // Content calls this again when a renderer that died is started again in the same host,
@@ -114,13 +114,13 @@ void ChildProcesses::OnRenderProcessHostCreated(
 }
 
 void ChildProcesses::RenderProcessReady(content::RenderProcessHost* host) {
-  pids_[host->GetDeprecatedID()] = host->GetProcess().Pid();
+  pids_[host->GetID()] = host->GetProcess().Pid();
 }
 
 void ChildProcesses::RenderProcessExited(
     content::RenderProcessHost* host,
     const content::ChildProcessTerminationInfo& info) {
-  const int id = host->GetDeprecatedID();
+  const content::ChildProcessId id = host->GetID();
   const base::ProcessId pid = pids_[id];
   pids_.erase(id);
   // A renderer that is no longer needed, as for a closed tab, ends normally.

@@ -597,12 +597,12 @@ content::WebContents* PageTab::OpenURLFromTab(
     const content::OpenURLParams& params,
     base::OnceCallback<void(content::NavigationHandle&)> callback) {
   content::WebContents* target = source;
-  if (params.disposition != WindowOpenDisposition::CURRENT_TAB && !internal()) {
+  if (params.disposition != WindowOpenDisposition::kCurrentTab && !internal()) {
     // A link asked for another tab, which is in this tab's workspace. Go hears about
     // the tab before its first navigation, so the gate finds it.
     PageTab* tab = Engine::Get()->CreateTab(workspace_);
     Engine::TabOpened(id_, tab->id(), params.url,
-                      params.disposition != WindowOpenDisposition::NEW_BACKGROUND_TAB,
+                      params.disposition != WindowOpenDisposition::kNewBackgroundTab,
                       /*new_window=*/false);
     target = tab->contents();
   }
@@ -653,7 +653,7 @@ content::WebContents* PageTab::AddNewContents(
     tab = engine->CreateTab(workspace_);
   }
   Engine::TabOpened(id_, tab->id(), target_url,
-                    disposition != WindowOpenDisposition::NEW_BACKGROUND_TAB,
+                    disposition != WindowOpenDisposition::kNewBackgroundTab,
                     /*new_window=*/false);
   return tab->contents();
 }
@@ -717,22 +717,26 @@ bool PageTab::IsFullscreenForTabOrPending(
   return WebContentsDelegateHooks::IsFullscreenForTabOrPending(web_contents);
 }
 
-void PageTab::FindReply(content::WebContents* web_contents,
-                        int request_id,
-                        int number_of_matches,
-                        const gfx::Rect& selection_rect,
-                        int active_match_ordinal,
-                        bool final_update) {
+void PageTab::DidReceiveFindReply(int request_id,
+                                  int number_of_matches,
+                                  const gfx::Rect& selection_rect,
+                                  int active_match_ordinal,
+                                  bool final_update) {
+  auto go = find_requests_.find(request_id);
+  int go_request = go == find_requests_.end() ? request_id : go->second;
+  if (final_update && go != find_requests_.end()) {
+    find_requests_.erase(go);
+  }
   hooks::Args args;
   args.Int(id_);
-  args.Int(request_id);
+  args.Int(go_request);
   args.Int(number_of_matches);
   args.Int(active_match_ordinal);
   args.Bool(final_update);
   hooks::Fire(PB_EVENT_FIND_REPLY, args);
-  WebContentsDelegateHooks::FindReply(web_contents, request_id, number_of_matches,
-                                      selection_rect, active_match_ordinal,
-                                      final_update);
+  WebContentsObserverHooks::DidReceiveFindReply(request_id, number_of_matches,
+                                                selection_rect, active_match_ordinal,
+                                                final_update);
 }
 
 // A right click, or a long press, in the page: Go says whether the shell draws the menu.
