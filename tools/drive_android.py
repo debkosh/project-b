@@ -1328,19 +1328,19 @@ def page_camera():
 
 def settings_back():
     """The back key inside Settings goes back to where it was, not out of Settings
-    (docs/fragility.md, "The back key out of Settings"): from the Sites list to Privacy, the
-    section it was opened from, then to the list of sections, and only from there out."""
+    (docs/fragility.md, "The back key out of Settings"): from the Sites list to Privacy and
+    sites, the section it was opened from, then to the list of sections, and only from there out."""
     launch()
     menu("Settings")
     see("settings", text=SETTINGS_LIST)
-    # Privacy has Sites, which opens as a list of its own. A row that opens a list is named by
+    # Privacy and sites has Sites, which opens as a list of its own. A row that opens a list is named by
     # its label.
-    settings_section("Privacy", lambda t: t == "Clear browsing data…" or t == "Block ads")
+    settings_section("Privacy and sites", lambda t: t == "Clear browsing data…" or t == "Block ads")
     tap(middle(see_named("settings", "Sites")))
     check("Sites opens as a list of its own", until(lambda: find("settings", label=lambda l: (l or "").startswith("Back to"))) is not None)
     key(4)
     check("the back key goes back to the section it was opened from, still in Settings",
-          until(lambda: "settings" in screen_parts() and find("settings", label="Back to Privacy") is None and named("settings", "Sites") is not None) is not None)
+          until(lambda: "settings" in screen_parts() and find("settings", label="Back to Privacy and sites") is None and named("settings", "Sites") is not None) is not None)
     key(4)
     check("then to the list of sections", until(lambda: "settings" in screen_parts() and named("settings", "Sites") is None and find("settings", text=SETTINGS_LIST) is not None) is not None)
     key(4)
@@ -2052,7 +2052,7 @@ def passwords_on_the_phone():
     """Saved passwords on a phone (docs/passwords.md): they come by sync, as a phone has no
     import. Another device (core/cmd/syncdevice) saves a login and turns sync on with a bucket
     on this Mac's sync server, choosing the passphrase; the phone joins the bucket with it,
-    and Privacy's Passwords row opens a page that lists the login by site and username, with
+    and the Passwords section's Passwords row opens a page that lists the login by site and username, with
     no password, and counts it. With no screen lock Show, on the login's row, says to set
     one. With a PIN set, Show brings Android's own check and the PIN shows the password; Copy,
     the check holding for the page, brings none and says the password was copied. Then
@@ -2142,7 +2142,7 @@ def passwords_on_the_phone():
         check("the phone joins the bucket with the passphrase", until(lambda: find("settings", text="Sync now"), 60) is not None)
 
         # The link opened Settings at Sync, and back from there leaves Settings: from the
-        # menu it opens at its list of sections, and Privacy is one.
+        # menu it opens at its list of sections, and Passwords is one.
         key(4)
         until(lambda: "settings" not in screen_parts())
         menu("Settings")
@@ -2150,9 +2150,12 @@ def passwords_on_the_phone():
         # of words is text: both are looked at.
         words = lambda: [w for n in screen_parts().get("settings", ET.Element("none")).iter("node") for w in (n.get("text"), n.get("content-desc")) if w]
         node = lambda test: next((n for n in screen_parts().get("settings", ET.Element("none")).iter("node") if test(n.get("text") or "") or test(n.get("content-desc") or "")), None)
-        tap(middle(until(lambda: node(starts("Privacy")), 30)))
-        row = until(lambda: node(starts("Passwords")), 30)
-        check("Privacy has a Passwords row on a phone", row is not None, words()[:60])
+        tap(middle(until(lambda: node(starts("Passwords")), 30)))
+        # The list's row for the section starts "Passwords" too, and so does the section's
+        # heading: Passkeys shows once inside, and the row is the one that takes a tap.
+        inside = until(lambda: node(starts("Passkeys")), 30)
+        row = next((n for n in screen_parts().get("settings", ET.Element("none")).iter("node") if n.get("clickable") == "true" and ((n.get("text") or "").startswith("Passwords") or (n.get("content-desc") or "").startswith("Passwords"))), None)
+        check("Passwords is a section on a phone, with its Passwords row", inside is not None and row is not None, words()[:60])
         shot("passwords-row")
         tap(middle(row))
         # The login sync brought: a run may still be bringing it as the page opens.
