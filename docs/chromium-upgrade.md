@@ -83,9 +83,10 @@ above it don't change.
    their version line mean content's API moved: it stops and shows what changed. A compile
    error stops it with build.sh's known-failure hints. Otherwise it builds again with the new
    hooks.
-5. Fetches ChromeDriver into `.tools/chromedriver`, and the mock store's extensions for the
-   version (`fetch-extensions.sh`, `pack-test-extension.py`), then packs the app
-   (`tools/package.sh`), which the test runs as people get it.
+5. Fetches the test tools for the version, ChromeDriver and the mock store's extensions
+   (`tools/fetch-test-tools.sh`), then packs the app (`tools/package.sh`), which the test
+   runs as people get it. Every other checkout's `.tools/` is still for the old version:
+   `tools/fetch-test-tools.sh` there brings it to the tree's.
 6. `tools/test.sh app`: the real engine through its driver and through ChromeDriver. It opens
    the app's windows on the desktop, so it asks first; a no stops there, and the same line
    again later runs it (the build is already done by then).

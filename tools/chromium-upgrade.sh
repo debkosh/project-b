@@ -24,8 +24,6 @@ SRC=$ROOT/chromium/src
 OUT_PB=$SRC/out/pb
 URL=https://chromium.googlesource.com/chromium/src.git
 DASH='https://chromiumdash.appspot.com/fetch_releases?channel=Stable&platform=Mac&num=1'
-CFT=https://googlechromelabs.github.io/chrome-for-testing/latest-versions-per-milestone-with-downloads.json
-CFT_FILES=https://storage.googleapis.com/chrome-for-testing-public
 # The platforms this script builds, and the ones it lists as not yet.
 BUILDS="mac"
 LATER="android linux"
@@ -145,14 +143,7 @@ newer "$HAVE" "$WANT" && say "Note: $WANT is older than $HAVE."
 if ! git ls-remote --exit-code --tags "$URL" "refs/tags/$WANT" >/dev/null 2>&1; then
   stop "version: Chromium has no tag $WANT ($URL)"
 fi
-# Chrome for Testing lags a patch at times, its list more than its files; ChromeDriver
-# drives any browser of its major.
-driver_zip() { echo "$CFT_FILES/$1/mac-arm64/chromedriver-mac-arm64.zip"; }
-if curl -fsI --max-time 20 "$(driver_zip "$WANT")" >/dev/null 2>&1; then DRIVER=$WANT
-else
-  DRIVER=$(curl -fsS --max-time 30 "$CFT" | python3 -I -c 'import json, sys
-print(json.load(sys.stdin)["milestones"].get(sys.argv[1], {}).get("version", ""))' "$MAJOR" 2>/dev/null)
-fi
+DRIVER=$(tools/fetch-test-tools.sh --which "$WANT")
 if [ -z "$DRIVER" ]; then say "ChromeDriver: Chrome for Testing has none for $MAJOR yet; tools/test.sh app will wait for one."
 elif [ "$DRIVER" = "$WANT" ]; then say "ChromeDriver: $DRIVER."
 else say "ChromeDriver: $DRIVER, the newest of $MAJOR (Chrome for Testing has no $WANT yet)."; fi
@@ -176,28 +167,10 @@ fcntl.flock(f, fcntl.LOCK_EX)
 os.set_inheritable(f.fileno(), True)
 os.execv("/bin/bash", ["/bin/bash"] + sys.argv[2:])' "$SRC/out/.pb-build.lock" "$0" --locked "$WANT" "$LOGS" || exit 1
 
-if [ -n "$DRIVER" ]; then
-  step "ChromeDriver $DRIVER into .tools/chromedriver"
-  CD=$ROOT/.tools/chromedriver
-  mkdir -p "$CD"
-  if [ ! -f "$CD/cd-$DRIVER.zip" ]; then
-    curl -fsSL -o "$CD/cd-$DRIVER.zip.part" "$(driver_zip "$DRIVER")" || stop "chromedriver: download of $DRIVER failed"
-    mv "$CD/cd-$DRIVER.zip.part" "$CD/cd-$DRIVER.zip"
-  fi
-  (cd "$CD" && unzip -qo "cd-$DRIVER.zip") || stop "chromedriver: unzip failed"
-  "$CD/chromedriver-mac-arm64/chromedriver" --version
-fi
-
 [ -n "$DRIVER" ] || stop "tests: Chrome for Testing has no ChromeDriver for $MAJOR yet; run this again once it has"
-# The mock store holds what the Web Store serves this version of Chromium, so it is fetched
-# again for it; the app's tests install from it when extensions are built in.
-case " ${WITHOUT:-} " in
-  *" extensions "*) ;;
-  *) step "the mock store's extensions for $WANT (tools/fetch-extensions.sh, tools/pack-test-extension.py)"
-     { tools/fetch-extensions.sh && python3 tools/pack-test-extension.py; } > "$LOGS/extensions.log" 2>&1 ||
-       { tail -20 "$LOGS/extensions.log"; stop "tests: the mock store's fetch failed; $LOGS/extensions.log"; }
-     tail -8 "$LOGS/extensions.log" ;;
-esac
+step "the test tools for $WANT: ChromeDriver and the mock store (tools/fetch-test-tools.sh; log $LOGS/test-tools.log)"
+tools/fetch-test-tools.sh > "$LOGS/test-tools.log" 2>&1 || { tail -20 "$LOGS/test-tools.log"; stop "tests: tools/fetch-test-tools.sh failed; $LOGS/test-tools.log"; }
+tail -1 "$LOGS/test-tools.log"
 echo
 if [ "$(ask "The test opens the app's windows on this desktop. Run it now? [Y/n]")" = n ]; then
   echo "RESULT=stopped tests: not run yet; run the same line again to run them"
