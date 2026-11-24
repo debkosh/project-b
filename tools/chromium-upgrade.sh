@@ -67,6 +67,14 @@ if [ "${1:-}" = --locked ]; then
     tail -40 "$LOGS/build-$1.log"
     return 1
   }
+  # A new Chromium brings a new clang, which the remote build server's workers must have
+  # before they compile (docs/remote-build.md); with no server answering, build.sh builds here.
+  REMOTE=${PB_REMOTE:-localhost:8980}
+  if [ "$REMOTE" != off ] && nc -z -G 3 "${REMOTE%:*}" "${REMOTE##*:}" 2>/dev/null; then
+    step "clang for the remote build server (tools/remote/toolchain.sh)"
+    case ${REMOTE%:*} in localhost | 127.0.0.1) export PB_RBE_SSH=local ;; esac
+    tools/remote/toolchain.sh || stop "build: tools/remote/toolchain.sh failed, above"
+  fi
   # The first build may fail only because Go's hook table is the old one; gen_hooks.py needs
   # the build's out/pb, so it runs after either way, and the build goes again after it.
   build first || grep -q 'hook table is' "$LOGS/build-first.log" || stop "build: tools/build.sh failed, above; $LOGS/build-first.log"
