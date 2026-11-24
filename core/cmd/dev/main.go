@@ -29,6 +29,7 @@ import (
 	"projectb/app"
 	"projectb/engine"
 	"projectb/flags"
+	"projectb/keys"
 	"projectb/later"
 	"projectb/mockengine"
 	"projectb/mocksystem"
@@ -82,6 +83,9 @@ func main() {
 	use := flag.String("use", "", "the shell the profile has chosen, by its id, as if the settings page had chosen it before this start")
 	// A sync server of its own, for the tests of Settings' Sync, which sync trusts.
 	withSyncServer := flag.Bool("sync-server", false, "run a sync server over https, which sync trusts, its store beside the profile; /mock/sync says its address")
+	// A Linux desktop's keyring that gives no device key, as a locked or broken GNOME keyring,
+	// for the tests of what the pages say then.
+	keyringLocked := flag.Bool("keyring-locked", false, "the desktop's keyring gives no device key (keys.ErrKeyring), as a locked or broken one on Linux")
 	flag.Parse()
 	// The mock engine's app waits for nothing after a start, as the tests that drive it don't.
 	later.Wait = 0
@@ -151,6 +155,7 @@ func main() {
 			System:        sys,
 			Update:        devUpdate(*version, *releases, updates, *appPath),
 			CrashReports:  crashReports(home, *platform),
+			DeviceKey:     lockedKeyring(*keyringLocked),
 		})
 	}
 	// The app, or the picker in a picker copy, which opens a profile by naming it on
@@ -551,4 +556,13 @@ func crashReports(home, platform string) string {
 		return ""
 	}
 	return filepath.Join(home, "Library/Logs/DiagnosticReports")
+}
+
+// lockedKeyring is -keyring-locked's device key, which never gives one; nil, a folder's own
+// key, otherwise.
+func lockedKeyring(locked bool) keys.Device {
+	if !locked {
+		return nil
+	}
+	return func(bool) ([]byte, error) { return nil, keys.ErrKeyring }
 }
