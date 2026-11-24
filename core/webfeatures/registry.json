@@ -436,7 +436,7 @@
     "name": "Federated sign-in (FedCM)",
     "api": "navigator.credentials.get({identity})",
     "delegate": "ContentBrowserClient::CreateIdentityRequestDialogController",
-    "status": {"mac": "unknown", "linux": "unknown", "android": "quiet"},
+    "status": {"mac": "quiet", "linux": "quiet", "android": "quiet"},
     "why": "No account picker: the call fails or times out",
     "needs": ["stay-off"],
     "probe": [{"name": "fedcm", "expect": {"mac": "rejected:TimeoutError", "linux": "rejected:TimeoutError", "android": "rejected"},
@@ -448,7 +448,7 @@
     "name": "One-time codes from SMS",
     "api": "navigator.credentials.get({otp})",
     "delegate": "WebContentsDelegate::CreateSmsPrompt",
-    "status": {"mac": "unknown", "linux": "unknown", "android": "quiet"},
+    "status": {"mac": "quiet", "linux": "quiet", "android": "quiet"},
     "why": "No SMS prompt and no SMS retriever: the call times out",
     "needs": ["stay-off"],
     "probe": [{"name": "otp", "expect": {"mac": "rejected:TimeoutError", "linux": "rejected:TimeoutError", "android": "rejected:TimeoutError"}, "call": "navigator.credentials.get({otp: {transport: ['sms']}, signal: AbortSignal.timeout(1500)})"}],
@@ -469,8 +469,8 @@
     "name": "Web Bluetooth",
     "api": "navigator.bluetooth",
     "delegate": "ContentBrowserClient::GetBluetoothDelegate",
-    "status": {"mac": "unknown", "linux": "absent", "android": "quiet"},
-    "why": "No Bluetooth delegate and no device chooser",
+    "status": {"mac": "quiet", "linux": "absent", "android": "quiet"},
+    "why": "No Bluetooth delegate and no device chooser, so no device is ever there; the Linux build has no Web Bluetooth",
     "needs": ["stay-off"],
     "probe": [{"name": "bluetooth", "expect": {"mac": "resolved:false", "linux": "absent:TypeError", "android": "resolved:false"}, "call": "navigator.bluetooth.getAvailability()"}],
     "test": ["probe:bluetooth"]
@@ -545,8 +545,8 @@
     "id": "speech-synthesis",
     "name": "Speech synthesis",
     "api": "speechSynthesis",
-    "status": {"mac": "unknown", "linux": "unknown", "android": "works"},
-    "why": "Content's own text to speech; on Android the voices are listed, the Mac was not run",
+    "status": {"mac": "quiet", "linux": "quiet", "android": "works"},
+    "why": "Android lists its voices; on the desktop no voice is listed",
     "probe": [{"name": "speechSynthesis", "expect": {"mac": "resolved:[]", "linux": "resolved:[]", "android": "resolved"}, "call": "speechSynthesis.getVoices()"}],
     "test": ["probe:speechSynthesis"]
   },
@@ -586,8 +586,8 @@
     "name": "Background fetch",
     "api": "BackgroundFetchManager",
     "delegate": "BrowserContext::GetBackgroundFetchDelegate",
-    "status": {"mac": "unknown", "linux": "unknown", "android": "unknown"},
-    "why": "No background fetch delegate; not run",
+    "status": {"mac": "quiet", "linux": "quiet", "android": "quiet"},
+    "why": "Its permission is denied, so a fetch never starts",
     "needs": ["stay-off"]
   },
   {
@@ -756,8 +756,8 @@
     "id": "pdf",
     "name": "PDF viewer",
     "api": "Opening a PDF in a tab",
-    "status": {"mac": "unknown", "linux": "unknown", "android": "unknown"},
-    "why": "The PDF viewer is Chrome's; what a PDF link does today was not run",
+    "status": {"mac": "absent", "linux": "absent", "android": "absent"},
+    "why": "The PDF viewer is Chrome's, so a page is told there is none (navigator.pdfViewerEnabled is false)",
     "needs": ["build"]
   },
   {
