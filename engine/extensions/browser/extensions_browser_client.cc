@@ -487,7 +487,7 @@ ExtensionsBrowserClient::GetComponentExtensionResourceManager() {
 void ExtensionsBrowserClient::BroadcastEventToRenderers(
     extensions::events::HistogramValue histogram_value,
     const std::string& event_name,
-    base::ListValue args,
+    scoped_refptr<const extensions::EventArgs> args,
     bool dispatch_to_off_the_record_profiles) {
   extensions::EventRouter::Get(browser_context_)
       ->BroadcastEvent(std::make_unique<extensions::Event>(
@@ -496,6 +496,11 @@ void ExtensionsBrowserClient::BroadcastEventToRenderers(
 
 extensions::ExtensionCache* ExtensionsBrowserClient::GetExtensionCache() {
   return extension_cache_.get();
+}
+
+extensions::BrowserContextLifetimeTracker*
+ExtensionsBrowserClient::GetBrowserContextLifetimeTracker() {
+  return nullptr;
 }
 
 bool ExtensionsBrowserClient::IsBackgroundUpdateAllowed() {

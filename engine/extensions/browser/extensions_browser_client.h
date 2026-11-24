@@ -109,9 +109,11 @@ class ExtensionsBrowserClient : public extensions::ExtensionsBrowserClient {
   void BroadcastEventToRenderers(
       extensions::events::HistogramValue histogram_value,
       const std::string& event_name,
-      base::ListValue args,
+      scoped_refptr<const extensions::EventArgs> args,
       bool dispatch_to_off_the_record_profiles) override;
   extensions::ExtensionCache* GetExtensionCache() override;
+  // None: an extension here never sees an off-the-record sibling's lifetime.
+  extensions::BrowserContextLifetimeTracker* GetBrowserContextLifetimeTracker() override;
   bool IsBackgroundUpdateAllowed() override;
   bool IsMinBrowserVersionSupported(const std::string& min_version) override;
   void CreateExtensionWebContentsObserver(
