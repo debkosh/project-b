@@ -85,6 +85,15 @@ need_store() {
     [ -f .tools/extensions/catalogue.json ] || cannot "$1" "no mock store in .tools/extensions. Run tools/fetch-extensions.sh and tools/pack-test-extension.py."
 }
 
+# ChromeDriver for the app's Chromium: each checkout keeps its own in .tools, and a move of the
+# shared tree leaves it at the old version (155's against 158, 2026-11-24).
+need_driver() {
+    have=$(.tools/chromedriver/chromedriver-mac-arm64/chromedriver --version 2>/dev/null | awk '{print $2}' | cut -d. -f1)
+    want=$(cut -d. -f1 CHROMIUM_VERSION)
+    [ -n "$have" ] || cannot "$1" "no ChromeDriver in .tools/chromedriver. Run tools/fetch-test-tools.sh."
+    [ "$have" = "$want" ] || cannot "$1" "ChromeDriver in .tools is $have, the app's Chromium is $want. Run tools/fetch-test-tools.sh."
+}
+
 need_go() {
     command -v go >/dev/null || cannot "$1" "go is not on PATH. Install it from go.dev/dl, or add /usr/local/go/bin to PATH."
 }
@@ -142,6 +151,7 @@ mock() {
 
 app() {
     need_app app
+    need_driver app
     built extensions && need_store app && need_go app
     run "the real app through its driver" python3 tools/drive_first_app.py
     run "the real app through ChromeDriver" python3 tools/drive_chromedriver.py
