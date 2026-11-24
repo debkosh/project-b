@@ -9,10 +9,10 @@ The seams:
 
 - **Engine and adapter**, our C++ between Chromium and Go. Chromium has rules it doesn't
   check until run time, and breaking one kills a process, and duties it leaves to us; and
-  the order in which each side hears of a thing. Eight so far: StackBlitz, the quit crash,
+  the order in which each side hears of a thing. Nine so far: StackBlitz, the quit crash,
   the Android blank shell, file uploads on Android, sparks on strict sites, a duplicated
   tab that failed to load, a View Source tab named as its page, a copied image pasting
-  empty.
+  empty, dangling pointers at quit on 158.
 - **The network across sleep.** A download that stops receiving waits for ever unless
   something gives up on it. Two so far: downloads after sleep, the stuck updater.
 - **Shell layers.** What lies over the page has to stay under the shell's own menus, and
@@ -168,6 +168,25 @@ The seams:
   web features audit.
 - **Guard:** none yet beyond the fix: a check that types into a field on Linux under Wayland
   still fails, and says so.
+
+## Dangling pointers at quit on Chromium 158, 2026-11-24
+
+- **Seen:** by release, in the quit check on the 158 candidate: the download finished and
+  the app quit cleanly, but its log had 92 reports that "a raw_ptr is dangling", all at quit,
+  where 155 had none in every run that day.
+- **Cause:** our main delegate held content's client first and the renderer and utility
+  clients after it, so C++ destroyed it last. Content's client keeps raw_ptrs to those two,
+  and by then they were freed; its destructor let go of pointers to freed memory, which
+  Chromium's dangling-pointer check reports. The order was the same on 155; 158 is what
+  made the check fire.
+- **Seam:** engine and adapter: the order our objects end in, against pointers content keeps.
+- **Fix:** content's client is declared last in MainDelegate, so it goes first, before
+  anything it points at.
+- **Why it was missed:** my miss. The upgrade tests the engine interface, tools/test.sh app,
+  as he scoped it; the quit check reads the log after quitting and is in release's run only.
+  I didn't run it on 158 before handing over.
+- **Guard:** tools/check_quit_after_download.py fails on "dangling" in the app's log after
+  quit (tools/test.sh quit); it caught this one, and passes with the fix.
 
 ## A backup code kept that nobody saw, 2026-11-24
 
