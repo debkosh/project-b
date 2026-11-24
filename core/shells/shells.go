@@ -153,6 +153,14 @@ func Name(id string) string {
 	return ""
 }
 
+// Before is each shell's id before the ids became code names (2026-11-24), to its id now:
+// a profile saved on an old id keeps its shell. It goes once every profile has been
+// opened by a release that has it, two releases on.
+var Before = map[string]string{
+	"standard": "pbshell", "glide": "arshell", "terminal": "tmshell", "fox": "fxshell",
+	"minimal": "mnshell", "mobile": "mwshell", "mobile-native": "mkshell",
+}
+
 // Has says whether id is a shell's.
 func Has(id string) bool {
 	for _, s := range all {

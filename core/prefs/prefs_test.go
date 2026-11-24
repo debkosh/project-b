@@ -242,3 +242,14 @@ func TestAChangeReachesTheDiskWithoutClose(t *testing.T) {
 		time.Sleep(time.Millisecond)
 	}
 }
+
+// A profile saved on a shell's id from before the code names keeps its shell.
+func TestAShellSavedOnItsOldIdIsKept(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "prefs.json"), []byte(`{"shell":"glide"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if got := New(dir).Shell(); got != "arshell" {
+		t.Fatalf("glide loads as %q", got)
+	}
+}

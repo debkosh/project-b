@@ -149,6 +149,9 @@ func New(dir string) *Manager {
 			if _, ok := search.Get(s.SearchEngine); !ok {
 				s.SearchEngine = search.Default
 			}
+			if id, ok := shells.Before[s.Shell]; ok {
+				s.Shell = id
+			}
 			if !shells.Fits(s.Shell) {
 				s.Shell = Defaults().Shell
 			}

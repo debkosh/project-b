@@ -212,6 +212,9 @@ func (m *Manager) loadKeymap() {
 	templates := keymapTemplates()
 	if !ok || f.Follows != "" || f.Actions == nil {
 		name := f.Follows
+		if name == "glide" {
+			name = "arshell" // Curve's keymap, before the ids became code names
+		}
 		if _, found := templates[name]; !found {
 			if name != "" {
 				m.problem("keymap.json follows " + name + ", which isn't a template; using " + DefaultTemplate)
