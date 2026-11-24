@@ -69,7 +69,7 @@ if [ "${1:-}" = --locked ]; then
   }
   # The first build may fail only because Go's hook table is the old one; gen_hooks.py needs
   # the build's out/pb, so it runs after either way, and the build goes again after it.
-  build first || grep -q 'hook table is' "$LOGS/build-first.log" || stop "build: a compile error, above; $LOGS/build-first.log"
+  build first || grep -q 'hook table is' "$LOGS/build-first.log" || stop "build: tools/build.sh failed, above; $LOGS/build-first.log"
 
   step "content's hooks (tools/gen_hooks.py)"
   python3 tools/gen_hooks.py > "$LOGS/gen-hooks.log" 2>&1 || { tail -30 "$LOGS/gen-hooks.log"; stop "hooks: tools/gen_hooks.py failed; $LOGS/gen-hooks.log"; }
@@ -80,7 +80,7 @@ if [ "${1:-}" = --locked ]; then
     stop "hooks: content's API moved: the generated hooks changed beyond their version line. See git diff -- $GENERATED; the adapter needs a person (docs/content-hooks.md, \"When Chromium is upgraded\")"
   fi
   say "only the version line changed"
-  build again || stop "build: a compile error after gen_hooks.py, above; $LOGS/build-again.log"
+  build again || stop "build: tools/build.sh failed after gen_hooks.py, above; $LOGS/build-again.log"
   exit 0
 fi
 
