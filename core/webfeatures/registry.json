@@ -212,10 +212,10 @@
     "api": "<input type=file>",
     "interface": {"name": "blink.mojom.FileChooser", "scope": ["frame"]},
     "delegate": "WebContentsDelegate::RunFileChooser",
-    "status": {"mac": "quiet", "linux": "quiet", "android": "unknown"},
-    "why": "The default file chooser cancels at once, so no file can be picked",
-    "needs": ["delegate", "prompt"],
-    "test": ["basics:14"]
+    "status": {"mac": "works", "linux": "unknown", "android": "works"},
+    "why": "A file input opens the system file chooser; on Linux it goes through the file portal, not run yet",
+    "owner": "engine/browser/page_tab.cc:PageTab::RunFileChooser",
+    "test": ["basics:14", "check:drive_android file_inputs"]
   },
   {
     "id": "fs-access",
@@ -231,10 +231,10 @@
     "name": "Downloads",
     "api": "<a download>, Content-Disposition: attachment",
     "delegate": "BrowserContext::GetDownloadManagerDelegate",
-    "status": {"mac": "quiet", "linux": "quiet", "android": "quiet"},
-    "why": "No download manager delegate: no file arrives",
-    "needs": ["delegate", "go-manager"],
-    "test": ["basics:15"]
+    "status": {"mac": "works", "linux": "works", "android": "works"},
+    "why": "A download saves to the downloads folder, and the downloads list shows it",
+    "owner": "engine/browser/downloads.h",
+    "test": ["basics:15", "check:drive_android downloads"]
   },
   {
     "id": "http-auth",
