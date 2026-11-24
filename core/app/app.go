@@ -670,7 +670,7 @@ func (a *App) TabOpened(opener, tab engine.TabID, url, workspace string, foregro
 
 func (a *App) TabFocused(tab engine.TabID) { a.Tabs.HandleTabFocused(tab) }
 
-func (a *App) CloseRequested(tab engine.TabID) { a.Tabs.Close(tab) }
+func (a *App) CloseRequested(tab engine.TabID) { a.Tabs.HandleCloseRequested(tab) }
 
 // ActivateRequested shows a tab in its window, and brings the window to the front.
 func (a *App) ActivateRequested(tab engine.TabID) {

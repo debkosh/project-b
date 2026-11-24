@@ -131,6 +131,10 @@ class PageTab : public WebContentsObserverHooks, public WebContentsDelegateHooks
   bool HandleContextMenu(content::RenderFrameHost& render_frame_host,
                          const content::ContextMenuParams& params) override;
   void CloseContents(content::WebContents* source) override;
+  using WebContentsObserverHooks::BeforeUnloadFired;
+  void BeforeUnloadFired(content::WebContents* tab,
+                         bool proceed,
+                         bool* proceed_to_fire_unload) override;
   void ActivateContents(content::WebContents* contents) override;
   bool IsFullscreenForTabOrPending(
       const content::WebContents* web_contents) override;

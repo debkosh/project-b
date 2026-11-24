@@ -17,6 +17,7 @@ static inline void call_erase_workspace(const PBEngineCalls* c, const char* work
 static inline void call_list_site_data(const PBEngineCalls* c, const char* workspace) { c->list_site_data(workspace); }
 static inline void call_set_quit_erasure(const PBEngineCalls* c, const char* workspaces, const PBErasure* erasure) { c->set_quit_erasure(workspaces, erasure); }
 static inline void call_close_tab(const PBEngineCalls* c, int64_t tab) { c->close_tab(tab); }
+static inline int call_ask_to_close_tab(const PBEngineCalls* c, int64_t tab) { return c->ask_to_close_tab(tab); }
 static inline void call_open_profile(const PBEngineCalls* c, const char* dir) { c->open_profile(dir); }
 static inline void call_set_block_rules(const PBEngineCalls* c, const char* hosts) { c->set_block_rules(hosts); }
 static inline void call_set_ad_rules(const PBEngineCalls* c, const char* hosts, const char* off) { c->set_ad_rules(hosts, off); }
@@ -182,6 +183,10 @@ func (e *nativeEngine) ListSiteData(workspace string) {
 }
 
 func (e *nativeEngine) CloseTab(tab engine.TabID) { C.call_close_tab(e.calls, C.int64_t(tab)) }
+
+func (e *nativeEngine) AskToCloseTab(tab engine.TabID) bool {
+	return C.call_ask_to_close_tab(e.calls, C.int64_t(tab)) != 0
+}
 
 func (e *nativeEngine) RequestWindow(w engine.WindowID, r engine.WindowRequest) {
 	C.call_request_window(e.calls, C.int64_t(w), C.int32_t(r))

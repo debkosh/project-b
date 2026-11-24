@@ -228,6 +228,12 @@ type Engine interface {
 	// no kinds erases nothing. A desktop engine's: a phone's app has no quit of its own.
 	SetQuitErasure(workspaces []string, r Erasure)
 	CloseTab(tab TabID)
+	// AskToCloseTab is a person closing a tab. A page with no beforeunload or unload
+	// handler has nothing to say: it returns false, and the caller closes the tab.
+	// Otherwise it returns true, the page's beforeunload runs, asking them through Dialog
+	// when it wants to, then its unload, and CloseRequested comes once the tab may go.
+	// When they stay, nothing comes.
+	AskToCloseTab(tab TabID) bool
 	LoadURL(tab TabID, url string)
 
 	// GoBack, GoForward and Reload move within the tab's own session history. What
@@ -477,7 +483,8 @@ type Listener interface {
 	TabFocused(tab TabID)
 
 	// CloseRequested says something asked to close a tab: its page called
-	// window.close(), or a DevTools client closed its target. ActivateRequested asks
+	// window.close(), a DevTools client closed its target, or the page let a person's
+	// close go on (AskToCloseTab). ActivateRequested asks
 	// for a tab to be shown, as a DevTools client's Target.activateTarget does. The app
 	// decides; the engine has done nothing yet.
 	CloseRequested(tab TabID)

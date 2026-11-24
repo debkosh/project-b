@@ -23,6 +23,9 @@ type fakeEngine struct {
 	ours []engine.TabID
 	// empty are the tabs made empty, to start no renderer until they load.
 	empty []engine.TabID
+	// unload are the tabs whose page has a beforeunload or unload handler, so a person's
+	// close asks it first; asked are those it asked.
+	unload, asked []engine.TabID
 }
 
 func (f *fakeEngine) CreateInternalTab() engine.TabID {
@@ -61,9 +64,16 @@ func (f *fakeEngine) ThumbnailURL(tab engine.TabID, revision int64) string {
 func (f *fakeEngine) DuplicateTab(engine.TabID) engine.TabID { f.next++; return f.next }
 func (f *fakeEngine) WriteClipboard(string)                  {}
 func (f *fakeEngine) CloseTab(id engine.TabID)               { f.closed = append(f.closed, id) }
-func (f *fakeEngine) LoadURL(engine.TabID, string)           {}
-func (f *fakeEngine) Reload(engine.TabID)                    { f.reloads++ }
-func (f *fakeEngine) GoBack(engine.TabID)                    {}
+func (f *fakeEngine) AskToCloseTab(id engine.TabID) bool {
+	if !slices.Contains(f.unload, id) {
+		return false
+	}
+	f.asked = append(f.asked, id)
+	return true
+}
+func (f *fakeEngine) LoadURL(engine.TabID, string) {}
+func (f *fakeEngine) Reload(engine.TabID)          { f.reloads++ }
+func (f *fakeEngine) GoBack(engine.TabID)          {}
 
 // work is the first workspace in the tests' list.
 const work = "0a1b2c3d"
@@ -530,6 +540,36 @@ func TestClosingToTheRecentTab(t *testing.T) {
 	m.CloseToRecent(a)
 	if len(m.AllIn(1)) != 0 || m.ActiveIn(1) != 0 {
 		t.Fatalf("tabs %v, active %d", ids(m.AllIn(1)), m.ActiveIn(1))
+	}
+}
+
+// A person's close asks a page with a beforeunload handler first: its tab stays until the
+// engine says it may go, so "Leave site?" can keep it, and then closes as asked, to the
+// recent tab. A page with no handler closes at once. Closing went straight to CloseTab,
+// and the page never asked.
+func TestAPersonsCloseAsksThePageFirst(t *testing.T) {
+	e := &fakeEngine{}
+	m := oneWindow(e)
+	a, b, c := m.Create(1), m.Create(1), m.Create(1)
+	e.unload = []engine.TabID{c}
+	m.Activate(a)
+	m.Activate(c)
+	m.AskToClose(c, true)
+	if !slices.Equal(e.asked, []engine.TabID{c}) || len(e.closed) != 0 || len(m.AllIn(1)) != 3 {
+		t.Fatalf("asked %v, closed %v, tabs %v: the tab went before its page answered", e.asked, e.closed, ids(m.AllIn(1)))
+	}
+	// The person stays: nothing comes, and a second close asks again.
+	m.AskToClose(c, true)
+	if len(e.asked) != 2 || len(m.AllIn(1)) != 3 {
+		t.Fatalf("asked %v, tabs %v", e.asked, ids(m.AllIn(1)))
+	}
+	m.HandleCloseRequested(c)
+	if got := ids(m.AllIn(1)); !slices.Equal(got, []engine.TabID{a, b}) || m.ActiveIn(1) != a || !slices.Equal(e.closed, []engine.TabID{c}) {
+		t.Fatalf("tabs %v, active %d, closed %v: want %d's close, to the tab used before", got, m.ActiveIn(1), e.closed, c)
+	}
+	m.AskToClose(b, false)
+	if got := ids(m.AllIn(1)); !slices.Equal(got, []engine.TabID{a}) || len(e.asked) != 2 {
+		t.Fatalf("a tab with no handler: tabs %v, asked %v", got, e.asked)
 	}
 }
 

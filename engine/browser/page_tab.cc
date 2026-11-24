@@ -759,6 +759,15 @@ bool PageTab::HandleContextMenu(content::RenderFrameHost& render_frame_host,
   return WebContentsDelegateHooks::HandleContextMenu(render_frame_host, params);
 }
 
+// A person's close ran the page's beforeunload (Engine::AskToCloseTab): its unload runs,
+// and then CloseContents, only when they chose to leave. Content's default goes on either
+// way, so Stay closed the tab too.
+void PageTab::BeforeUnloadFired(content::WebContents* tab,
+                                bool proceed,
+                                bool* proceed_to_fire_unload) {
+  *proceed_to_fire_unload = proceed;
+}
+
 // Content asks the tab's delegate to close or show it; Go decides.
 void PageTab::CloseContents(content::WebContents* source) {
   Fire(PB_EVENT_CLOSE_REQUESTED);

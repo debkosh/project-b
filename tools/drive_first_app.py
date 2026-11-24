@@ -15,6 +15,7 @@ session (tools/check_full_screen.py, tools/check_clipboard.py). This needs no di
     python3 tools/drive_first_app.py visible    # only the tabs a window shows
     python3 tools/drive_first_app.py windows    # only several windows
     python3 tools/drive_first_app.py empty      # only the new tab a window opens on, and its last tab
+    python3 tools/drive_first_app.py leave      # only closing a tab whose page has unsaved work: Leave site? first
     python3 tools/drive_first_app.py move       # only moving a tab between windows
     python3 tools/drive_first_app.py bounds     # only a window's frame, set and read
     python3 tools/drive_first_app.py profiles   # only the start choosing a profile from the list
@@ -210,6 +211,8 @@ class Pages(http.server.BaseHTTPRequestHandler):
             # Links to itself: in this tab, in a new tab without its opener, as target=_blank
             # is by default and rel=noopener says outright.
             "/store": b'<!doctype html><title>Store</title><a id=link href=/store>Here</a> <a id=blank target=_blank href=/store>Blank</a> <a id=noopener target=_blank rel=noopener href=/store>No opener</a>',
+            # A page with unsaved work: its beforeunload asks before it goes, once clicked.
+            "/unsaved": b'<!doctype html><title>Leave</title><body style="height:100vh;margin:0" onbeforeunload="event.preventDefault()" onclick="document.title=\'clicked\'">',
             # A copy button, as sites make them: a click writes to the clipboard.
             # A sign-in (docs/password-autofill.md): an email and a password in a form, text
             # beside them to press on, and what the page's own world can see of the form
@@ -1697,6 +1700,56 @@ def window_checks():
         code = None
     check("closing the last window quits, cleanly", code == 0, code)
     App.running.remove(app)
+
+
+def leave_checks():
+    """Closing a tab whose page has unsaved work asks first, as Chrome does: the page's
+    "Leave site?" shows, Cancel keeps the tab, and Leave closes it. The close went straight
+    to the engine, so the tab and its work went without a word."""
+    app = App(tempfile.mkdtemp(prefix="pb-profile-"))
+    card = "document.querySelector('[role=alertdialog]')"
+    asked = f"{card}?.getAttribute('aria-label')==='Leave site?'"
+    close = lambda: app.js("(chrome.send('shell',[JSON.stringify({t:'closeTab'})]),1)")
+
+    def press(word):
+        at = app.js(f"(()=>{{const b=[...({card}?.querySelectorAll('button')||[])].find(b=>b.textContent.trim()==={json.dumps(word)});"
+                    "const r=b&&b.getBoundingClientRect();return r?[r.x+r.width/2,r.y+r.height/2]:null})()")
+        if at:
+            click_at(app, *at, word)
+        return bool(at)
+
+    visit(app, PAGES + "store")
+    new_tab(app, PAGES + "unsaved")
+    # A page's beforeunload asks only once a person has used it.
+    page_click(app, "body")
+    app.wait("document.title==='clicked'", 10, page=True)
+    n = app.js(ROWS)
+    close()
+    try:
+        app.wait(asked, 10)
+        shown = True
+    except TimeoutError:
+        shown = False
+    check("closing a tab whose page has unsaved work asks Leave site? first", shown, f"{app.js(ROWS)} of {n} tabs")
+    words = app.js(f"[...({card}?.querySelectorAll('button')||[])].map(b=>b.textContent.trim())") or []
+    stay = next((w for w in words if w != "Leave"), "")
+    pressed = shown and press(stay)
+    try:
+        app.wait(f"!{card}", 10)
+    except TimeoutError:
+        pass
+    time.sleep(1)
+    check(f"and {stay or 'its other button'} keeps the tab, its page there", pressed and app.js(ROWS) == n and app.js("document.title", page=True) == "clicked",
+          f"{app.js(ROWS)} of {n} tabs, buttons {words}")
+    close()
+    try:
+        app.wait(asked, 10)
+        left = press("Leave")
+        app.wait(f"{ROWS}=={n - 1}", 10)
+    except TimeoutError:
+        left = False
+    check("and Leave closes it", left and app.js(ROWS) == n - 1, f"{app.js(ROWS)} of {n} tabs")
+    app.close()
 
 
 def last_tab_checks():
@@ -3801,5 +3854,5 @@ def holds_hit(app, x, y, timeout=5):
 
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
-    parts = {"filling": [filling_checks], "driver": [driver_checks], "browsing": [browsing_checks], "actions": [action_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "arshell": [arshell_checks], "webapis": [web_api_checks], "signals": [browser_signal_checks], "clientcert": [client_cert_checks], "passkeys": [passkey_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks], "viewsource": [view_source_checks], "duplicate": [duplicate_checks], "applink": [app_link_checks], "serverkinds": [web_server_kinds_checks]}
-    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, action_checks, settings_checks, filling_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, arshell_checks, browser_signal_checks, client_cert_checks, web_api_checks, passkey_checks, sparks_checks, links_checks, view_source_checks, duplicate_checks, app_link_checks, web_server_kinds_checks, quit_checks]))
+    parts = {"filling": [filling_checks], "driver": [driver_checks], "browsing": [browsing_checks], "actions": [action_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "leave": [leave_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "arshell": [arshell_checks], "webapis": [web_api_checks], "signals": [browser_signal_checks], "clientcert": [client_cert_checks], "passkeys": [passkey_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks], "viewsource": [view_source_checks], "duplicate": [duplicate_checks], "applink": [app_link_checks], "serverkinds": [web_server_kinds_checks]}
+    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, action_checks, settings_checks, filling_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, leave_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, arshell_checks, browser_signal_checks, client_cert_checks, web_api_checks, passkey_checks, sparks_checks, links_checks, view_source_checks, duplicate_checks, app_link_checks, web_server_kinds_checks, quit_checks]))

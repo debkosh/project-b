@@ -147,7 +147,7 @@ func (m *Manager) typed(c command, load func()) {
 // CloseTab is Close Tab in window w: it closes the active tab, and with the last one the
 // window.
 func (m *Manager) CloseTab(w engine.WindowID) {
-	m.Interaction(w, "tab.close", func() { m.tabs.Close(m.tabs.ActiveIn(w)) })
+	m.Interaction(w, "tab.close", func() { m.tabs.AskToClose(m.tabs.ActiveIn(w), false) })
 }
 
 // SwitchTabLayout is the interaction that moves the tabs. The page moves too, a step
@@ -279,10 +279,10 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 			if m.onBack != nil && m.onBack(w) {
 				return
 			}
-			m.Interaction(w, "tab.close", func() { m.tabs.CloseToRecent(id) })
+			m.Interaction(w, "tab.close", func() { m.tabs.AskToClose(id, true) })
 			return
 		}
-		m.Interaction(w, "tab.close", func() { m.tabs.Close(id) })
+		m.Interaction(w, "tab.close", func() { m.tabs.AskToClose(id, false) })
 	case "activateTab":
 		m.Interaction(w, "tab.activate", func() { m.tabs.Activate(engine.TabID(c.ID)) })
 	// The clipboard, written for a shell: a shell page's own write is refused without a

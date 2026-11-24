@@ -173,6 +173,9 @@ type Manager struct {
 	// waiting is each restored tab not shown yet, with the address it loads when it is
 	// first made active. Until then it has its address and title, and the blank page.
 	waiting map[engine.TabID]string
+	// asked is each tab a person asked to close, until its page lets it go: true when the
+	// tab used before it then becomes active (AskToClose).
+	asked map[engine.TabID]bool
 	// onClosedAt hear of a tab the person closed: as it was, its window and its place.
 	onClosedAt []func(t Tab, w engine.WindowID, index int)
 	// typing says the loads asked for now are typed (Typed).
@@ -217,7 +220,7 @@ type window struct {
 // New returns a manager with no windows, on the profile's workspaces and pins.
 func New(eng engine.Engine, w Workspaces, p Pins) *Manager {
 	o := own{Engine: eng, issued: map[engine.TabID]string{}}
-	return &Manager{eng: o, own: o, workspaces: w, pins: p, search: defaultEngine().For, tabs: map[engine.TabID]*Tab{}, windowOf: map[engine.TabID]engine.WindowID{}, windows: map[engine.WindowID]*window{}, certificates: map[engine.TabID]*certificate{}, passed: map[string]bool{}, waiting: map[engine.TabID]string{}}
+	return &Manager{eng: o, own: o, workspaces: w, pins: p, search: defaultEngine().For, tabs: map[engine.TabID]*Tab{}, windowOf: map[engine.TabID]engine.WindowID{}, windows: map[engine.WindowID]*window{}, certificates: map[engine.TabID]*certificate{}, passed: map[string]bool{}, waiting: map[engine.TabID]string{}, asked: map[engine.TabID]bool{}}
 }
 
 // defaultEngine is the engine a manager searches with until SetSearch says another.
@@ -649,6 +652,29 @@ func (m *Manager) Close(id engine.TabID) { m.close(id, false) }
 // a tab with no history left.
 func (m *Manager) CloseToRecent(id engine.TabID) { m.close(id, true) }
 
+// AskToClose is a person closing a tab, as Close, or with recent as CloseToRecent. A page
+// with a beforeunload or unload handler is asked first, and its "Leave site?" may keep it:
+// the tab then closes only once the engine says it may (HandleCloseRequested). Close
+// closed every tab at once, and the page never asked.
+func (m *Manager) AskToClose(id engine.TabID, recent bool) {
+	if m.tabs[id] == nil || m.tabs[id].held {
+		return
+	}
+	if m.eng.AskToCloseTab(id) {
+		m.asked[id] = recent
+		return
+	}
+	m.close(id, recent)
+}
+
+// HandleCloseRequested closes a tab the engine says may go: one a person asked to close,
+// as they asked, or one its page or a DevTools client closed.
+func (m *Manager) HandleCloseRequested(id engine.TabID) {
+	recent := m.asked[id]
+	delete(m.asked, id)
+	m.close(id, recent)
+}
+
 func (m *Manager) close(id engine.TabID, recent bool) {
 	if m.tabs[id] == nil || m.tabs[id].held {
 		return
@@ -665,6 +691,7 @@ func (m *Manager) close(id engine.TabID, recent bool) {
 	delete(m.tabs, id)
 	delete(m.certificates, id)
 	delete(m.waiting, id)
+	delete(m.asked, id)
 	m.eng.CloseTab(id)
 	m.closed(t)
 	for _, f := range m.onClosedAt {

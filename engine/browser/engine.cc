@@ -217,6 +217,11 @@ void CallCloseTab(int64_t tab) {
   g_engine->CloseTab(tab);
 }
 
+int CallAskToCloseTab(int64_t tab) {
+  CheckMainThread();
+  return g_engine->AskToCloseTab(tab) ? 1 : 0;
+}
+
 void CallLoadURL(int64_t tab, const char* url) {
   CheckMainThread();
   g_engine->LoadURL(tab, url);
@@ -726,6 +731,7 @@ const PBEngineCalls* Engine::Calls() {
       .list_site_data = CallListSiteData,
       .set_quit_erasure = CallSetQuitErasure,
       .close_tab = CallCloseTab,
+      .ask_to_close_tab = CallAskToCloseTab,
       .load_url = CallLoadURL,
       .go_back = CallGoBack,
       .go_forward = CallGoForward,
@@ -1274,6 +1280,21 @@ void Engine::CloseTab(int64_t tab) {
   content::GetUIThreadTaskRunner({})->DeleteSoon(FROM_HERE,
                                                  std::move(it->second));
   tabs_.erase(it);
+}
+
+// As Chrome's tab strip closes a tab: a page with neither handler closes at once, and
+// for one with either, content runs its beforeunload, asking through the dialog manager.
+// When the person leaves (PageTab::BeforeUnloadFired), content runs its unload and calls
+// the delegate's CloseContents, which tells Go (PageTab::CloseContents). ClosePage alone
+// runs only the unload, so the page never asked.
+bool Engine::AskToCloseTab(int64_t tab) {
+  auto it = tabs_.find(tab);
+  if (it == tabs_.end() ||
+      !it->second->contents()->NeedToFireBeforeUnloadOrUnloadEvents()) {
+    return false;
+  }
+  it->second->contents()->DispatchBeforeUnload(/*auto_cancel=*/false);
+  return true;
 }
 
 void Engine::LoadURL(int64_t tab, const char* url) {
