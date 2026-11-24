@@ -311,6 +311,25 @@ func TestOnlyATabThatLoadsNothingYetIsMadeEmpty(t *testing.T) {
 	}
 }
 
+// A URL with a user name and password shows without them, while loading and once committed,
+// so the password isn't in the address bar, history, bookmarks or sync.
+func TestAURLsPasswordIsNotShown(t *testing.T) {
+	m := oneWindow(&fakeEngine{})
+	id := m.Create(1)
+	m.HandleNavigationStarting(id, 1, "http://user:secret@example.com/a?b#c")
+	if tab := m.Active(); tab.URL != "http://example.com/a?b#c" {
+		t.Fatalf("loading, the tab shows %q", tab.URL)
+	}
+	m.HandleNavigationFinished(id, 1, "http://user:secret@example.com/a?b#c")
+	if tab := m.Active(); tab.URL != "http://example.com/a?b#c" {
+		t.Fatalf("committed, the tab shows %q", tab.URL)
+	}
+	m.HandleNavigationFinished(id, 2, "https://example.org/x%20y")
+	if tab := m.Active(); tab.URL != "https://example.org/x%20y" {
+		t.Fatalf("a URL with no password shows as %q", tab.URL)
+	}
+}
+
 // The blank page can commit, or fail, after the user's navigation has begun. That late
 // result leaves the address the user is going to, which shows until its own commit.
 func TestALateBlankPageLeavesTheNewerAddress(t *testing.T) {

@@ -15,6 +15,7 @@ import (
 	"cmp"
 	"maps"
 	"math"
+	"net/url"
 	"slices"
 	"strings"
 
@@ -518,10 +519,16 @@ func (m *Manager) create(w engine.WindowID, workspace string, empty bool) engine
 	return id
 }
 
-// address is what a tab shows for a URL: nothing for the blank page.
+// address is what a tab shows for a URL: nothing for the blank page, and no user name or
+// password, as Chrome shows none. The tab's URL goes to the address bar, history, bookmarks,
+// closed tabs and sync, so a password typed into a URL went to all of them.
 func address(u string) string {
 	if u == BlankURL {
 		return ""
+	}
+	if p, err := url.Parse(u); err == nil && p.User != nil {
+		p.User = nil
+		return p.String()
 	}
 	return u
 }
