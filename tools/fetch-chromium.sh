@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-TAG=155.0.8059.41
+TAG=$(tr -d "[:space:]" < "$ROOT/CHROMIUM_VERSION")
 DT=$ROOT/depot_tools
 CR=$ROOT/chromium
 URL=https://chromium.googlesource.com/chromium/src.git

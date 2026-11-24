@@ -227,7 +227,7 @@ void ContentBrowserClient::AllowCertificateError(
          : content::CERTIFICATE_REQUEST_RESULT_TYPE_DENY);
 }
 
-// What Chrome reports, "Chrome/155.0.8059.41": DevTools' /json/version and
+// What Chrome reports, "Chrome/<CHROMIUM_VERSION>": DevTools' /json/version and
 // Browser.getVersion show it, and ChromeDriver reads the browser's version from it. The
 // user agent pages see comes from GetUserAgent, not from this.
 std::unique_ptr<content::LoginDelegate> ContentBrowserClient::CreateLoginDelegate(

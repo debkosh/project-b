@@ -89,6 +89,7 @@ HELPER=$HELPER_APP/Contents/MacOS/project_b_helper
 need_key identity.p12
 RCODESIGN=$HOME/PW_TOOLS/project-b-signing/rcodesign   # tools/signing-setup.sh fetches it
 VERSION=$(tr -d '[:space:]' < "$ROOT/VERSION")   # what the installed app says it is, and compares releases against
+CHROMIUM=$(tr -d "[:space:]" < "$ROOT/CHROMIUM_VERSION")   # the Chromium it is built on
 
 rm -rf "$STAGE" "$DMG"
 mkdir -p "$MACOS" "$RESOURCES" "$LIBRARIES" "$FRAMEWORKS" "$HELPER_APP/Contents/MacOS"
@@ -114,7 +115,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleName</key><string>Project B</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>$VERSION</string>
-  <key>CFBundleVersion</key><string>155.0.8059.41</string>
+  <key>CFBundleVersion</key><string>$CHROMIUM</string>
   <key>LSMinimumSystemVersion</key><string>13.0</string>
   <key>NSHighResolutionCapable</key><true/>
   <key>NSSupportsAutomaticGraphicsSwitching</key><true/>
@@ -161,7 +162,7 @@ cat > "$HELPER_APP/Contents/Info.plist" <<PLIST
   <key>CFBundleName</key><string>Project B Helper</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>$VERSION</string>
-  <key>CFBundleVersion</key><string>155.0.8059.41</string>
+  <key>CFBundleVersion</key><string>$CHROMIUM</string>
   <key>LSMinimumSystemVersion</key><string>13.0</string>
   <key>LSUIElement</key><true/>
 </dict>
