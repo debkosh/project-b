@@ -35,7 +35,7 @@ BIN = os.environ.get("PB_BIN") or os.path.join(ROOT, "build/pb/project_b")
 CHROMEDRIVER = os.environ.get("CHROMEDRIVER") or os.path.join(
     ROOT, ".tools/chromedriver/chromedriver-mac-arm64/chromedriver")
 OUT = os.path.join(ROOT, "build/cdp")
-VERSION = "155.0.8059.41"
+VERSION = open(os.path.join(ROOT, "CHROMIUM_VERSION")).read().strip()
 
 # What Go thinks the tabs are, as the shell shows them.
 ROWS = "document.querySelectorAll('[role=tab]').length"

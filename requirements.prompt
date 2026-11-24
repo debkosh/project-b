@@ -3,7 +3,7 @@ yourself; README.md in this repo has the same steps for a person. Stop and repor
 step fails in a way these notes don't cover.
 
 What it is: a clean-sheet browser. Go managers in core/, web shells in shell/, a C++
-adapter in engine/ on Chromium's content layer, tag 155.0.8059.41, with no patches.
+adapter in engine/ on Chromium's content layer, at the tag in CHROMIUM_VERSION, with no patches.
 
 The machine
 - Apple silicon Mac. The full Xcode app selected with xcode-select; the command line tools
@@ -16,13 +16,14 @@ Steps, in order, each with how to know it worked
 2. npm install in shell/. That also brings Playwright for the mock tests; then, in shell/,
    npx playwright install chromium for its browser.
 3. tools/fetch-chromium.sh. Long download. Done when it prints RESULT=ok and
-   chromium/src is checked out at tag 155.0.8059.41.
+   chromium/src is checked out at the tag in CHROMIUM_VERSION.
 4. tools/build.sh. Done when it prints RESULT=ok and chromium/src/out/pb/project_b exists.
    The first build is a full Chromium build: about an hour on 32 cores, several hours on a
    laptop. Run it in the background and wait for it once; don't poll in a tight loop.
-5. ChromeDriver 155.0.8059.41 for mac-arm64 from Chrome for Testing, unzipped so the binary
-   is .tools/chromedriver/chromedriver-mac-arm64/chromedriver in the repo. .tools/ is
-   git-ignored. Its version must match the Chromium tag.
+5. ChromeDriver of the version in CHROMIUM_VERSION, for mac-arm64, from Chrome for Testing,
+   unzipped so the binary is .tools/chromedriver/chromedriver-mac-arm64/chromedriver in the
+   repo. .tools/ is git-ignored. Its major must match the Chromium tag's; take the exact
+   version when Chrome for Testing has it.
 6. Run, from the repo root, the two groups that need no screen. Each ends with one line
    per test, and every line should say "passed":
    tools/test.sh mock       # Go's tests, and the shell on the mock engine
@@ -41,7 +42,7 @@ Known traps
   allowed. That is not a failure of the app; say so and go on.
 - tools/test.sh vm and tools/test.sh android need a macOS VM and an Android emulator
   (docs/vm-testing.md, docs/android.md). Not part of this setup.
-- A machine that already has ChromeDriver 155.0.8059.41 elsewhere: link .tools/chromedriver
+- A machine that already has that ChromeDriver elsewhere: link .tools/chromedriver
   to that folder, or set CHROMEDRIVER.
 - Packaging and releases need the signing keys, which aren't on a fresh machine. They're
   read from $KEYKOSH_ROOT/project-b, else .keys/ (tools/keys.sh). Not part of this setup.
