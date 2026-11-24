@@ -3394,7 +3394,15 @@ def internal_checks():
     check("it is visible to itself", app.cmd("evalsettings", "document.visibilityState") == '"visible"')
     # Into the shell first: a tab of ours has a title, not an address field.
     click(app, "[role=tab][aria-selected=true]")
-    app.cmd("click", 600, 300)
+    # The press is on the first heading the section shows, which does nothing. A point fixed in the window
+    # lands on whatever the section shows there: once Profile got shorter it was From another
+    # browser, whose folder sheet stayed on the window, and a Mac window with a sheet ignores
+    # its close button, so the app never quit.
+    x, y = json.loads(app.cmd("evalsettings", "(()=>{const r=[...document.querySelectorAll('h2')].find(h=>h.getBoundingClientRect().width>0).getBoundingClientRect();return [r.x+r.width/2,r.y+r.height/2]})()"))
+    check("the press lands on no control of the page",
+          app.cmd("evalsettings", f"!document.elementFromPoint({x},{y}).closest('button,a,input,select,textarea,label,[role=button],[tabindex]:not([tabindex=\"-1\"])')") == "true")
+    px, py = json.loads(app.cmd("bounds"))["reported"][:2]
+    app.cmd("click", px + x, py + y)
     deadline = time.time() + 5
     while app.cmd("evalsettings", "document.hasFocus()") != "true" and time.time() < deadline:
         time.sleep(0.05)
