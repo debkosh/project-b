@@ -93,7 +93,9 @@ Android keeps each app's data from the others, and its logins come by sync.
   - A line under the username answers the last press for two seconds: "Password copied",
     "Username copied". With no screen lock on the device, in `--danger`: "Set a screen lock
     on this device to show passwords". A check the person refuses says nothing. A Linux
-    keyring that gave no key says the keyring's line (docs/sync.md); Show or Copy again asks it again.
+    keyring that gave no key has a line of its own (docs/sync.md), which Show and Copy would
+    say; on Linux they don't reach it today, as Linux has nothing yet to check the person
+    with and they stop at the screen-lock line first (checked on GNOME, 2026-11-24).
 - **The device checks the person once for the page.** Sudipta, 2026-11-20: "its asking for
   each and everyone... we should ask it once while on the screen and ask again either after
   sometime say 5mins or if that place is closed". The first Show or Copy brings the

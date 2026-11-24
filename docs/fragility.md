@@ -89,15 +89,21 @@ The seams:
   app asks for the device key. Sync stays on and says it can't start, with one line for
   both causes, as the app can't tell them apart: "Your keyring is locked. Unlock it when
   asked; if it doesn't ask, log out and back in." Try again asks the keyring again. The
-  same line is on a password's row, on Passkeys with Try again, and in the set-up Dialog.
+  same line is on Passkeys with Try again and in the set-up Dialog. A password's row has it
+  too, and never shows it on Linux today: Show and Copy stop before the keyring, at the
+  screen-lock line, as Linux has nothing yet to check the person with.
 - **Why it was missed:** every test's device key always came. The Linux checks answered the
   keyring's question each time.
 - **Guard:** core/keys' `TestAKeyringThatGaveNoKeyIsAskedAgain` and core/sync's
   `TestAKeyringThatGivesNoKeyAtStart`: sync on with no host and the problem named, and its
   server opened once the keyring gives the key. Not guarded: the pages' words, which no
-  mock can reach, as the mock's device key always comes, and `keyring_linux.go`, which only
-  a Linux build compiles. Nothing is said on a web page where a fill or a passkey doesn't
-  happen for this.
+  mock can reach, as the mock's device key always comes. Checked on GNOME by the Linux
+  session, 2026-11-24, on a build of a03b3cf5: `keyring_linux.go` compiles; Cancel gives
+  "Sync can't start" with the line, and Try again asks again and sync runs once unlocked;
+  Passkeys says the line with Try again; a keyring broken by a killed app says the line at
+  once, at each Try again. A person's own quit while the question is up no longer breaks
+  the keyring: the app stays, with no window, until the question is answered, and ends
+  then. Nothing is said on a web page where a fill or a passkey doesn't happen for this.
 
 ## The keyring's question at every start, 2026-11-24
 
