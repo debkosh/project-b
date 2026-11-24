@@ -57,11 +57,13 @@ function act(msg) {
 }
 
 /* Three columns: the outer two share what the field leaves, so the field sits in the
-   row's middle, as wide as it may be. */
+   row's middle, as wide as it may be. Each holds its buttons whole, however narrow the
+   window: the field gives up its width first, and leaves the middle when the two sides
+   differ. */
 .bar {
   position: relative;
   display: grid;
-  grid-template-columns: 1fr minmax(0, 800px) 1fr;
+  grid-template-columns: minmax(max-content, 1fr) minmax(0, 800px) minmax(max-content, 1fr);
   align-items: center;
   column-gap: 12px;
   height: 40px;
@@ -75,7 +77,6 @@ function act(msg) {
   display: flex;
   align-items: center;
   gap: 4px;
-  min-width: 0;
 }
 
 .side.end {
