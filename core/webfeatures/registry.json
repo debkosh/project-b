@@ -190,19 +190,20 @@
     "name": "Alert, confirm and prompt",
     "api": "alert(), confirm(), prompt()",
     "delegate": "WebContentsDelegate::GetJavaScriptDialogManager",
-    "status": {"mac": "quiet", "linux": "quiet", "android": "quiet"},
-    "why": "No dialog manager: each returns at once without showing anything",
-    "needs": ["delegate", "prompt"],
-    "test": ["basics:13"]
+    "status": {"mac": "works", "linux": "works", "android": "works"},
+    "why": "Our dialog manager shows each over its tab, and the page waits for the answer",
+    "owner": "engine/browser/dialogs.cc:Dialogs::RunJavaScriptDialog",
+    "test": ["basics:13", "check:drive_android page_dialogs"]
   },
   {
     "id": "beforeunload",
     "name": "Leave this page?",
     "api": "beforeunload",
     "delegate": "JavaScriptDialogManager::RunBeforeUnloadDialog",
-    "status": {"mac": "quiet", "linux": "quiet", "android": "quiet"},
-    "why": "No dialog manager: a tab closes without asking",
-    "needs": ["delegate", "prompt"],
+    "status": {"mac": "partly", "linux": "partly", "android": "partly"},
+    "why": "Leaving the page asks Leave site?; closing its tab goes without asking",
+    "owner": "engine/browser/dialogs.cc:Dialogs::RunBeforeUnloadDialog",
+    "needs": ["delegate"],
     "test": ["basics:1"]
   },
   {
@@ -240,9 +241,9 @@
     "name": "Sign-in for HTTP and proxy auth",
     "api": "A 401 or 407 answer",
     "delegate": "ContentBrowserClient::CreateLoginDelegate",
-    "status": {"mac": "quiet", "linux": "quiet", "android": "quiet"},
-    "why": "No login prompt: the 401 page shows instead",
-    "needs": ["delegate", "prompt"],
+    "status": {"mac": "works", "linux": "works", "android": "works"},
+    "why": "A 401 asks for a user name and password in our sign-in dialog",
+    "owner": "engine/browser/dialogs.cc:Dialogs::SignInRequest",
     "test": ["basics:12"]
   },
   {
@@ -250,9 +251,9 @@
     "name": "Certificate errors",
     "api": "A site with a bad certificate",
     "delegate": "ContentBrowserClient::AllowCertificateError",
-    "status": {"mac": "quiet", "linux": "quiet", "android": "quiet"},
-    "why": "The load is refused with an empty page; no warning page and no way to go on",
-    "needs": ["delegate"],
+    "status": {"mac": "works", "linux": "works", "android": "works"},
+    "why": "A bad certificate shows our warning over the page, with a way to go on",
+    "owner": "engine/browser/content_browser_client.cc:ContentBrowserClient::AllowCertificateError",
     "test": ["basics:10"]
   },
   {
