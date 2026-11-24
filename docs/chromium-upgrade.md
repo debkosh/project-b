@@ -76,12 +76,16 @@ above it don't change.
 1. Writes `CHROMIUM_VERSION`.
 2. Fetches `chromium/src` at the tag in place (`tools/fetch-chromium.sh`), under the build
    lock: every checkout on this Mac builds on this tree, so other builds wait.
+   With a remote build server answering, it puts the new clang there
+   (`tools/remote/toolchain.sh`).
 3. `web_features_bump.py`: exit 1 stops it; a person decides.
 4. Builds (`tools/build.sh`), then `gen_hooks.py`. Generated files that differ in more than
    their version line mean content's API moved: it stops and shows what changed. A compile
    error stops it with build.sh's known-failure hints. Otherwise it builds again with the new
    hooks.
-5. Fetches ChromeDriver into `.tools/chromedriver`.
+5. Fetches ChromeDriver into `.tools/chromedriver`, and the mock store's extensions for the
+   version (`fetch-extensions.sh`, `pack-test-extension.py`), then packs the app
+   (`tools/package.sh`), which the test runs as people get it.
 6. `tools/test.sh app`: the real engine through its driver and through ChromeDriver. It opens
    the app's windows on the desktop, so it asks first; a no stops there, and the same line
    again later runs it (the build is already done by then).

@@ -203,8 +203,12 @@ if [ "$(ask "The test opens the app's windows on this desktop. Run it now? [Y/n]
   echo "RESULT=stopped tests: not run yet; run the same line again to run them"
   exit 1
 fi
+# The packed app, as people get it and as the release run tests it: relaunching to update
+# is checked on the app in its bundle only.
+step "pack the app (tools/package.sh; log $LOGS/package.log)"
+tools/package.sh > "$LOGS/package.log" 2>&1 || { tail -20 "$LOGS/package.log"; stop "tests: tools/package.sh failed; $LOGS/package.log"; }
 step "the engine interface on the real engine (tools/test.sh app; log $LOGS/app.log)"
-tools/test.sh app > "$LOGS/app.log" 2>&1
+PB_BIN="$ROOT/build/package/Project B.app/Contents/MacOS/project_b" tools/test.sh app > "$LOGS/app.log" 2>&1
 code=$?
 tail -12 "$LOGS/app.log"
 [ $code = 0 ] || stop "tests: tools/test.sh app didn't pass, above; $LOGS/app.log"
