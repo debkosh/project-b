@@ -47,6 +47,7 @@ type System struct {
 	scanner      bool
 	scan         string
 	checks       []system.PersonCheck
+	noCheck      bool
 	verdict      system.Verdict
 	holdChecks   bool
 	waitingCheck []func(system.Verdict)
@@ -377,6 +378,20 @@ func (s *System) VerifyPerson(check system.PersonCheck, answered func(system.Ver
 			s.mu.Unlock()
 		}
 	}
+}
+
+// CanVerifyPerson is true until SetPersonCheck says the OS has no check, as Linux.
+func (s *System) CanVerifyPerson() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return !s.noCheck
+}
+
+// SetPersonCheck is whether the OS has a check of the person.
+func (s *System) SetPersonCheck(has bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.noCheck = !has
 }
 
 // SetVerdict is how every check of the person ends from now on.

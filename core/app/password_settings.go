@@ -21,7 +21,10 @@ import (
 // person first, once for the page: the check holds for passwordCheckHolds while that page
 // stays open, and is asked again after it, or once the page was closed or opened anew. Show
 // hands the asking page the password; Copy puts it on the clipboard here, and the page never
-// has it.
+// has it. Where the OS has no check of the person, Linux, Show and Copy ask none and nothing
+// holds: opening the password asks the keyring for the device key, which the desktop has the
+// person unlock (Sudipta, 2026-11-24: "in linux we can just show them the passwords if the
+// keyring is not unlocks ask for it and thats it").
 
 // passwordCheckHolds is how long the device's check holds for the Passwords page that asked
 // it. Sudipta, 2026-11-20: "we should ask it once while on the screen and ask again either
@@ -41,9 +44,12 @@ type passwordRow struct {
 }
 
 // checkForPassword is the device's check before a password is shown or copied, as the
-// passkeys' is before one is used.
+// passkeys' is before one is used. An OS with no check of the person passes at once.
 func checkForPassword(sys system.System, post func(func())) passwords.Verify {
 	return func(ctx context.Context, origin string) error {
+		if !sys.CanVerifyPerson() {
+			return nil
+		}
 		site := siteOfOrigin(origin)
 		got := make(chan system.Verdict, 1)
 		var cancel func()
@@ -132,7 +138,8 @@ func (a *App) passwordSettingsPart(e engine.Engine) settings.Part {
 		}
 	}
 	// opened is a password for the page in tab: with no check while one holds for it, and a
-	// check that passed holding from then. done runs on the main thread.
+	// check that passed holding from then; an OS with no check has nothing to hold. done
+	// runs on the main thread.
 	opened := func(tab engine.TabID, id string, done func(password string, err error)) {
 		ctx := context.Background()
 		held := holds(tab)
@@ -142,7 +149,7 @@ func (a *App) passwordSettingsPart(e engine.Engine) settings.Part {
 		go func() {
 			password, err := a.Passwords.Password(ctx, id)
 			e.Post(func() {
-				if err == nil && !held {
+				if err == nil && !held && a.System.CanVerifyPerson() {
 					heldTab, heldUntil = tab, time.Now().Add(passwordCheckHolds)
 				}
 				done(password, err)
@@ -158,7 +165,11 @@ func (a *App) passwordSettingsPart(e engine.Engine) settings.Part {
 		return heldUntil.UnixMilli()
 	}
 	return settings.Part{
-		Snapshot: func(into map[string]any) { into["passwordCount"] = count },
+		Snapshot: func(into map[string]any) {
+			into["passwordCount"] = count
+			// Whether Show and Copy have the device check the person, for the page's words.
+			into["passwordCheck"] = a.System.CanVerifyPerson()
+		},
 		Handle: func(tab engine.TabID, t string, msg []byte) bool {
 			var c struct {
 				ID     string `json:"id"`

@@ -50,6 +50,9 @@ func (s *System) verifyPerson(id int32, check system.PersonCheck) {
 
 func (s *System) cancelPerson(id int32) { C.pb_system_cancel_person(C.int32_t(id)) }
 
+// CanVerifyPerson: the Mac has its sheet.
+func (s *System) CanVerifyPerson() bool { return true }
+
 func (s *System) SetDockColor(color string) {
 	if color == tones.None {
 		C.pb_system_set_dock_color(-1)

@@ -25,6 +25,9 @@ func TestSettingsPasswords(t *testing.T) {
 		t.Fatalf("brought %d", added)
 	}
 	got, snapshot := r.openSettings()
+	if snapshot["passwordCheck"] != true {
+		t.Fatalf("the snapshot doesn't say the device checks the person: %v", snapshot["passwordCheck"])
+	}
 	if snapshot["passwordCount"] != float64(2) {
 		// The count is read off the main thread: the snapshot may come first.
 		r.waitOn(got, func(m map[string]any) bool { return m["t"] == "passwordCount" && m["passwordCount"] == float64(2) })
@@ -126,4 +129,35 @@ func TestSettingsPasswords(t *testing.T) {
 		}
 		return listed && counted
 	})
+}
+
+// Where the OS has no check of the person, as Linux, the snapshot says so for the page's
+// words, Show and Copy open a password asking nobody, and nothing holds: the page is told of
+// no time to hide what it shows at.
+func TestSettingsPasswordsWhereTheOSChecksNobody(t *testing.T) {
+	r := start(t, t.TempDir())
+	defer r.stop()
+	r.sys.SetPersonCheck(false)
+	if added, _, _ := r.a.Passwords.Import([]browserdata.Login{
+		{Origin: "https://mail.example.org", Username: "asha@example.org", Password: "correct horse"},
+	}); added != 1 {
+		t.Fatalf("brought %d", added)
+	}
+	got, snapshot := r.openSettings()
+	if snapshot["passwordCheck"] != false {
+		t.Fatalf("the snapshot doesn't say the device checks nobody: %v", snapshot["passwordCheck"])
+	}
+	r.settings(`{"t":"passwordsList","fresh":true}`)
+	m := r.waitOn(got, func(m map[string]any) bool { return m["t"] == "passwords" })
+	id := m["passwords"].([]any)[0].(map[string]any)["id"].(string)
+	r.settings(`{"t":"passwordShow","id":"` + id + `"}`)
+	m = r.waitOn(got, func(m map[string]any) bool { return m["t"] == "passwordShown" })
+	if m["password"] != "correct horse" || m["error"] != nil || m["heldUntil"] != float64(0) || len(r.sys.Checks()) != 0 {
+		t.Fatalf("shown: %v, %d checks", m, len(r.sys.Checks()))
+	}
+	r.settings(`{"t":"passwordCopy","id":"` + id + `","what":"password"}`)
+	m = r.waitOn(got, func(m map[string]any) bool { return m["t"] == "passwordCopied" })
+	if m["error"] != nil || m["heldUntil"] != float64(0) || r.sys.Secret() != "correct horse" || len(r.sys.Checks()) != 0 {
+		t.Fatalf("copied: %v, as a secret %q, %d checks", m, r.sys.Secret(), len(r.sys.Checks()))
+	}
 }

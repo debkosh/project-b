@@ -54,7 +54,7 @@ and username stays a second entry, as bringing one in keeps both.
 |---|---|
 | `Import(logins) (added, already, skipped)` | keeps what an import read. Already: the same origin, username and password. A login for an origin and username saved with another password is added beside it. Skipped: an origin that isn't a web page's, or no password; all of them when the profile's key doesn't open |
 | `List()`, `Total()`, `Get(id)` | the logins without their passwords, by site and then username; how many; one |
-| `Password(ctx, id)` | the password, after the device has checked the person (`Verify`): Touch ID or the Mac's password, the phone's screen lock. `ErrNone` for a login that isn't there asks nothing |
+| `Password(ctx, id)` | the password, after the device has checked the person (`Verify`): Touch ID or the Mac's password, the phone's screen lock; on Linux, which has no such check, nothing is asked but the keyring's key. `ErrNone` for a login that isn't there asks nothing |
 | `Delete(id)` | deletes one |
 
 ## Settings, Privacy, Passwords
@@ -67,7 +67,8 @@ Android keeps each app's data from the others, and its logins come by sync.
   asks for Touch ID or your Mac's password, then not again for 5 minutes while this page
   stays open." (On a phone: "your screen lock".) While sync is on the first sentence is
   "Sealed for this profile; your sync server can't read them.": they are on the server too,
-  sealed.
+  sealed. On Linux the second sentence is "Your keyring unlocks them.": there is no check
+  to speak of, and the keyring is what stands before them (ux).
 - **Search passwords:** keeps the logins whose site or username has what was typed. Escape
   empties it. None matching: "No saved password matches “…”".
 - **One row a login, on a Mac and on a phone alike:** its site's mark, the site, the
@@ -93,9 +94,8 @@ Android keeps each app's data from the others, and its logins come by sync.
   - A line under the username answers the last press for two seconds: "Password copied",
     "Username copied". With no screen lock on the device, in `--danger`: "Set a screen lock
     on this device to show passwords". A check the person refuses says nothing. A Linux
-    keyring that gave no key has a line of its own (docs/sync.md), which Show and Copy would
-    say; on Linux they don't reach it today, as Linux has nothing yet to check the person
-    with and they stop at the screen-lock line first (checked on GNOME, 2026-11-24).
+    keyring that gave no key has a line of its own (docs/sync.md), which Show and Copy say
+    there; the next press asks the keyring again.
 - **The device checks the person once for the page.** Sudipta, 2026-11-20: "its asking for
   each and everyone... we should ask it once while on the screen and ask again either after
   sometime say 5mins or if that place is closed". The first Show or Copy brings the
@@ -105,6 +105,15 @@ Android keeps each app's data from the others, and its logins come by sync.
   it opens anew (`passwordsList` with `fresh`); Go holds it, by the page's tab, so no page
   can say it is checked. Firefox's saved logins hold a check five minutes and Chrome's
   settings one; both ask again once the page is opened anew.
+- **Linux has no check, and asks none.** Sudipta, 2026-11-24: "in linux we can just show
+  them the passwords if the keyring is not unlocks ask for it and thats it". No portal
+  gives a Flatpak a check of the person, so `system.CanVerifyPerson` is false there: Show
+  and Copy open the password at once, and nothing holds, so nothing is hidden at five
+  minutes. What stands before a password on Linux is the desktop's keyring, which keeps the
+  device key: opening the first password of a run asks it, and the desktop has the person
+  unlock it when it is locked. Until this, Show and Copy on Linux stopped at "Set a screen
+  lock on this device to show passwords", which nobody could do, and the page spoke of
+  Touch ID.
 - **Under the list:** "3 saved".
 - **None:** "No saved passwords yet. Bring them from another browser under Bring your things
   over." On a phone: "No saved passwords yet. With sync on, the ones on your
@@ -115,7 +124,7 @@ Android keeps each app's data from the others, and its logins come by sync.
 | The page sends | Go answers |
 |---|---|
 | `passwordsList`, with `fresh` as the page opens | `passwords {passwords, never}`: each login `{id, site, origin, username, created}`, never a password, and `never`, the sites never offered to save on, each `{origin, site}`. Sent again to every Settings page after a change |
-| `passwordShow {id}` | `passwordShown {id, password, heldUntil}` to the asking page alone, `heldUntil` being when the check holds until, Unix milliseconds, for the page to hide what it shows then; or `{id, error}`: `denied`, `noScreenLock`, `notHere`, `gone`, `failed` |
+| `passwordShow {id}` | `passwordShown {id, password, heldUntil}` to the asking page alone, `heldUntil` being when the check holds until, Unix milliseconds, for the page to hide what it shows then, 0 where the OS has no check; or `{id, error}`: `denied`, `noScreenLock`, `notHere`, `keyring`, `gone`, `failed` |
 | `passwordCopy {id, what}` | `passwordCopied {id, what}`, with `error` as above. `what` is `password`, after the device's check, put on the clipboard as a secret, or `username`, with no check, plainly. Go writes the clipboard |
 | `passwordDelete {id}` | the list and the count again |
 | `passwordNeverRemove {origin}` | the list again, without that site under Never saved |
@@ -139,12 +148,16 @@ The snapshot has `passwordCount`, and `passwordCount {passwordCount}` follows ea
   Show, holding for that page through a Copy and another login's Show; asked again after
   `passwordsClosed`, after the page opens anew, and once the hold has passed, and not when
   the list is only read again; none for a username; a password copied as a secret and a
-  username plainly; and each refusal.
+  username plainly; and each refusal. `TestSettingsPasswordsWhereTheOSChecksNobody`: with
+  no check of the person, as Linux, the snapshot says so, and Show and Copy open the
+  password asking nobody and holding nothing.
 - `shell/e2e/password-settings.cjs`, in the one-page, Sections and phone layouts: the row
   and its count, the list, the search, a row's three icon buttons, Show and Hide on the
   row, Copy and another login's Show with no second check, the username from the menu, the
   check asked again once the page was left, refused and with no screen lock, Delete from
-  the menu, and none left.
+  the menu, and none left. And once as Linux (`-platform=linux`): the page names the
+  keyring in place of a check, Show and Copy ask none, and after a start whose keyring
+  gives no key (`-keyring-locked`) Show says the keyring's line on its row.
 - `tools/drive_android.py passwords_on_the_phone`, the real app on an emulator: another
   device (`core/cmd/syncdevice`, a profile of its own) saves a login and turns sync on with
   a bucket on a test server; the phone joins it with the passphrase, Privacy's row counts

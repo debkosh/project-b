@@ -130,6 +130,7 @@ func main() {
 	if *platform == "linux" {
 		sys.SetDesktop("gnome")          // The desktop the Linux pages' words are checked on.
 		sys.SetDefaultBrowserStale(true) // As the Flatpak, it reads the default at start.
+		sys.SetPersonCheck(false)        // Linux has no check of the person.
 	}
 	// The flags saved in the profile reach the engine at launch, as the real engine's
 	// command line, so one turned on in settings takes effect on Relaunch, as it does there.

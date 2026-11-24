@@ -73,6 +73,38 @@ The seams:
 - **A trigger runs under its caller's rules.** What a trigger's own statement says about a
   conflict gives way to the statement that fired it. One so far: a row changed twice before a
   run.
+- **What a platform doesn't have.** A thing one OS has no way to do is not a setting the
+  person left off. Answered as that, it tells them to fix what they can't, in words written
+  for another OS. One so far: saved passwords Linux couldn't show.
+
+## Saved passwords Linux couldn't show, 2026-11-24
+
+- **Seen:** by the Linux session on GNOME, while it checked the keyring's line. In Settings'
+  Passwords on Linux, Show and Copy answered "Set a screen lock on this device to show
+  passwords", whatever the person did, and the page said they would be asked for "Touch ID
+  or your Mac's password". Nobody on Linux could see or copy a password they had saved.
+  Filling one into a site worked.
+- **Cause:** Linux has no check of the person a Flatpak can ask, and its `verifyPerson`
+  answered as a Mac with no password set does: no screen lock. The page's sentence had two
+  wordings, a phone's and a Mac's, and Linux got the Mac's.
+- **Seam:** what a platform doesn't have.
+- **Fix:** his decision, 2026-11-24: on Linux show them, the keyring being what is asked.
+  `system.CanVerifyPerson` says whether the OS has a check: false on Linux. There Show and
+  Copy ask none and nothing holds; opening the password asks the keyring for the device
+  key, which the desktop has the person unlock. The page says "Your keyring unlocks them."
+  where it spoke of the check.
+- **Why it was missed:** Passwords was built for the Mac and the phone, each with a check,
+  and its tests' device always had one. When Linux came, the stub was written as "until a
+  portal does it" and nobody went through Passwords' own page there; I didn't either, until
+  the Linux session's note.
+- **Guard:** core/app's `TestSettingsPasswordsWhereTheOSChecksNobody`, and
+  `shell/e2e/password-settings.cjs` run once as Linux: the page's words, Show and Copy with
+  no check asked, and the keyring's line on the row when the keyring gives no key. Checked
+  on GNOME 46 by the Linux session, 2026-11-24, on a build of f3fe73b5: the line over the
+  list; Show and Copy, the password pasting from the system's clipboard; with the keyring
+  locked at a start nothing asks until Show, which brings the desktop's question, the app
+  answering meanwhile, and Unlock shows the password; Cancel leaves the keyring's line on
+  the row, and Show asks again.
 
 ## A keyring that gave no key, and nothing said or to try, 2026-11-24
 
@@ -90,8 +122,8 @@ The seams:
   both causes, as the app can't tell them apart: "Your keyring is locked. Unlock it when
   asked; if it doesn't ask, log out and back in." Try again asks the keyring again. The
   same line is on Passkeys with Try again and in the set-up Dialog. A password's row has it
-  too, and never shows it on Linux today: Show and Copy stop before the keyring, at the
-  screen-lock line, as Linux has nothing yet to check the person with.
+  too, and on Linux reaches it since the entry above: until then Show and Copy stopped
+  before the keyring, at the screen-lock line.
 - **Why it was missed:** every test's device key always came. The Linux checks answered the
   keyring's question each time.
 - **Guard:** core/keys' `TestAKeyringThatGaveNoKeyIsAskedAgain` and core/sync's

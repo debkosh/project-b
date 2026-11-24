@@ -58,7 +58,12 @@ func (s *System) Desktop() string {
 	return "other"
 }
 
-// verifyPerson says there is nothing to check the person with, until a portal does it.
+// CanVerifyPerson: Linux has no check of the person a Flatpak can ask. What stands before a
+// saved password here is the keyring that keeps the device key (docs/passwords.md).
+func (s *System) CanVerifyPerson() bool { return false }
+
+// verifyPerson says there is nothing to check the person with: CanVerifyPerson is false, so
+// nothing asks.
 func (s *System) verifyPerson(id int32, _ system.PersonCheck) {
 	if answered := s.checks[id]; answered != nil {
 		delete(s.checks, id)

@@ -85,6 +85,10 @@ type System interface {
 	// answered runs once with how it ended, unless the returned cancel ran first, which
 	// takes the sheet away and leaves answered unrun.
 	VerifyPerson(check PersonCheck, answered func(Verdict)) (cancel func())
+	// CanVerifyPerson is whether this OS has such a check for VerifyPerson to ask: a Mac
+	// and a phone have. Linux has none: there the desktop's keyring, which keeps the device
+	// key and asks to be unlocked, is what stands before a saved password.
+	CanVerifyPerson() bool
 
 	// CopySecret puts text on the clipboard marked as a secret, a password a person copied,
 	// so that what keeps or shows the clipboard's history leaves it out: on the Mac the

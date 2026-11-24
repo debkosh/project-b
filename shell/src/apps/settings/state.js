@@ -93,6 +93,8 @@ export const state = reactive({
   // passwordsNever is the sites the person said never to offer to save a password on, each
   // {origin, site}, which comes with the list.
   passwordCount: 0,
+  // passwordCheck is whether Show and Copy have the device check the person: not on Linux.
+  passwordCheck: true,
   passwords: null,
   passwordsNever: [],
   passwordAnswer: null,
@@ -182,6 +184,7 @@ export function connect() {
             sites: m.sites || [],
             passkeyCount: m.passkeyCount || 0,
             passwordCount: m.passwordCount || 0,
+            passwordCheck: m.passwordCheck !== false,
             downloadsFolder: m.downloadsFolder || '',
             homeFolder: m.homeFolder || '',
             sparks: m.sparks || [],

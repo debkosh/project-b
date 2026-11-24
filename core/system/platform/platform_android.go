@@ -65,6 +65,9 @@ func (s *System) verifyPerson(id int32, check system.PersonCheck) {
 
 func (s *System) cancelPerson(id int32) { C.call_cancel_person(calls.Load(), C.int32_t(id)) }
 
+// CanVerifyPerson: a phone has BiometricPrompt.
+func (s *System) CanVerifyPerson() bool { return true }
+
 // CanScanCode: a phone has the scanner (engine/android/third_party/zxing).
 func (s *System) CanScanCode() bool { return true }
 

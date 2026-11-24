@@ -15,6 +15,7 @@ import { send, state } from './state.js';
 // it is hidden again or the page is left; Copy never brings it here, Go puts it on the
 // clipboard. The device checks the person at the first of them, and Go holds that check
 // for this page for five minutes: the page opening, and its closing, tell Go, which ends it.
+// On Linux there is no such check (state.passwordCheck): the keyring is what is unlocked.
 // Under the list, the sites never offered to save on (docs/password-autofill.md), each with
 // Remove.
 onMounted(() => send({ t: 'passwordsList', fresh: true }));
@@ -124,8 +125,9 @@ const count = computed(() => (all.value.length === 1 ? '1 saved' : `${all.value.
 <template>
   <section aria-label="Passwords" class="passwords" :class="{ phone }">
     <p class="secondary intro">
-      {{ syncing ? "Sealed for this profile; your sync server can't read them." : 'Sealed on this device for this profile.' }} Showing or copying a password asks for {{ check }}, then not again for 5 minutes while
-      this page stays open.
+      {{ syncing ? "Sealed for this profile; your sync server can't read them." : 'Sealed on this device for this profile.' }}
+      <template v-if="state.passwordCheck">Showing or copying a password asks for {{ check }}, then not again for 5 minutes while this page stays open.</template>
+      <template v-else>Your keyring unlocks them.</template>
     </p>
     <input v-if="all.length" v-model="filter" class="text-field filter" type="text" spellcheck="false" placeholder="Search passwords" aria-label="Search passwords" @keydown.esc.stop="filter = ''" />
     <div class="card list">

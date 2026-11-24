@@ -3,10 +3,12 @@
 // one row per saved login and no password, the search, Show and Copy at a row's end, the
 // device's check asked once and held for the page (passed, refused, and with no screen
 // lock) until the page is left, the username copied from the row's menu with no check,
-// Delete asking first, and the page with none. The logins are brought as an import brings
-// them, through the mock's own request.
+// Delete asking first, and the page with none. Then as Linux, where the OS has no check of
+// the person: the page names the keyring in its place, Show and Copy ask none, and with a
+// keyring that gives no key (`-keyring-locked`) Show says the keyring's line. The logins are
+// brought as an import brings them, through the mock's own request.
 // It leaves screenshots in build/e2e/password-settings-<layout>-*.png.
-// Run: node shell/e2e/password-settings.cjs [page|sections|phone]   (from the repo root,
+// Run: node shell/e2e/password-settings.cjs [page|sections|phone|linux]   (from the repo root,
 // after `npm run build` in shell/); with none, each in turn.
 
 const fs = require('fs');
@@ -16,7 +18,7 @@ const { chromium } = require('playwright');
 const layout = process.argv[2];
 if (!layout) {
   let code = 0;
-  for (const l of ['page', 'sections', 'phone']) {
+  for (const l of ['page', 'sections', 'phone', 'linux']) {
     console.log(`=== ${l}`);
     code = code || require('child_process').spawnSync(process.execPath, [__filename, l], { stdio: 'inherit' }).status;
   }
@@ -27,6 +29,7 @@ const lib = require('./lib.cjs');
 const { regions, settle, until } = lib;
 const check = (name, ok, detail) => lib.check(`${layout}: ${name}`, ok, detail);
 const phone = layout === 'phone';
+const linux = layout === 'linux';
 if (layout === 'sections') fs.writeFileSync(path.join(lib.profile, 'prefs.json'), JSON.stringify({ settingsLayout: 'sections' }));
 
 (async () => {
@@ -34,7 +37,7 @@ if (layout === 'sections') fs.writeFileSync(path.join(lib.profile, 'prefs.json')
   const errors = [];
   const viewport = phone ? { width: 412, height: 860 } : { width: 1000, height: 680 };
   const context = await browser.newContext({ viewport, hasTouch: phone, deviceScaleFactor: 2 });
-  await lib.start([]);
+  await lib.start(linux ? ['-platform=linux'] : []);
 
   await lib.fire('logins', JSON.stringify([
     { Origin: 'https://mail.example.org', Username: 'asha@example.org', Password: 'correct horse battery' },
@@ -73,7 +76,9 @@ if (layout === 'sections') fs.writeFileSync(path.join(lib.profile, 'prefs.json')
   check('with a row per login, by site and then username, and no password', (await until(async () => (await rows.count()) === 3)) &&
     JSON.stringify(await whos()) === '["mail.example.org asha@example.org","shop.example.com asha","shop.example.com work@example.com"]' && !(await list.innerText()).includes('correct horse'), JSON.stringify(await whos()));
   check('each with its site\'s mark, 32px', JSON.stringify(await rows.locator('.mark').evaluateAll((all) => all.map((m) => [m.textContent, m.offsetWidth, m.offsetHeight]))) === '[["M",32,32],["S",32,32],["S",32,32]]');
-  check('over them, what keeps them, and that showing one asks once for the page', /^Sealed on this device for this profile\. Showing or copying a password asks for .+, then not again for 5 minutes while this page stays open\.$/.test((await list.locator('.intro').innerText()).replace(/\s+/g, ' ').trim()), await list.locator('.intro').innerText());
+  const intro = (await list.locator('.intro').innerText()).replace(/\s+/g, ' ').trim();
+  if (linux) check('over them, what keeps them, and the keyring in place of a check, as Linux has none', intro === 'Sealed on this device for this profile. Your keyring unlocks them.', intro);
+  else check('over them, what keeps them, and that showing one asks once for the page', /^Sealed on this device for this profile\. Showing or copying a password asks for .+, then not again for 5 minutes while this page stays open\.$/.test(intro), intro);
   check('and under them, how many', (await list.locator('p.after').innerText()) === '3 saved');
   check('listing had the device check nobody', (await sendsNone()) === true);
   await shoot('list');
@@ -101,6 +106,43 @@ if (layout === 'sections') fs.writeFileSync(path.join(lib.profile, 'prefs.json')
     (await first.locator('.secret').count()) === 0 && (await text()) === 'M mail.example.org asha@example.org', await text());
   const sizes = await first.locator('.icon-button').evaluateAll((all) => all.map((b) => { const r = b.getBoundingClientRect(); return Math.round(Math.min(r.width, r.height)); }));
   check(`its three buttons are the design system's icon buttons, ${phone ? 40 : 28}px`, sizes.length === 3 && sizes.every((n) => n === (phone ? 40 : 28)), JSON.stringify(sizes));
+
+  // As Linux the OS has no check of the person: Show and Copy open the password asking none,
+  // and Go tells the page of no hold to hide it at.
+  if (linux) {
+    await eye().click();
+    check('Show shows the password on its row, and the device checked nobody', await until(async () => (await first.locator('.secret').innerText().catch(() => '')) === 'correct horse battery' && (await eye('Hide').isVisible())) && (await checks()) === 0, `${await text()} ${await checks()}`);
+    await shoot('shown');
+    await eye('Hide').click();
+    await until(async () => (await first.locator('.secret').count()) === 0);
+    await copyButton.click();
+    check('Copy puts it on the clipboard, the row says so, and the device checked nobody', await until(async () => (await secret()) === 'correct horse battery' && (await text()).includes('Password copied')) && (await checks()) === 0, `${await text()} ${await checks()}`);
+    check('no errors in the console', errors.length === 0, errors.join(' | '));
+
+    // A start whose keyring gives no key, as one the person left locked: Show says the
+    // keyring's line on its row, and shows nothing.
+    await page.close();
+    await lib.stop();
+    await lib.start(['-platform=linux', '-keyring-locked']);
+    await lib.fire('menu', 'app.settings');
+    await until(async () => (await regions()).settings !== 0);
+    const locked = await context.newPage();
+    await locked.goto(`${lib.base}/settings/?tab=${(await regions()).settings}`);
+    await locked.locator('.nav [data-section="privacy"]').click();
+    await locked.locator('.row', { hasText: 'Passwords' }).first().getByRole('button').first().click();
+    const lockedRow = locked.getByRole('region', { name: 'Passwords', exact: true }).locator('.row.login').first();
+    await lockedRow.getByRole('button', { name: 'Show the password for mail.example.org' }).click();
+    const lockedText = async () => (await lockedRow.innerText()).replace(/\s+/g, ' ');
+    check('with a keyring that gives no key, Show says the keyring\'s line on its row and shows nothing', await until(async () => (await lockedText()).includes("Your keyring is locked. Unlock it when asked; if it doesn't ask, log out and back in.")) &&
+      (await lockedRow.locator('.secret').count()) === 0 && (await lockedRow.locator('.said.err').count()) === 1, await lockedText());
+    await locked.mouse.move(1, viewport.height - 1);
+    await settle(locked);
+    await locked.screenshot({ path: path.join(lib.out, `password-settings-${layout}-keyring.png`) });
+    await browser.close();
+    await lib.stop();
+    await lib.done();
+    return;
+  }
 
   // Show: the device checks the person, then the password is on the row until it is hidden.
   let told = sends({ t: 'passwordShow' });
