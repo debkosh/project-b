@@ -3,6 +3,7 @@ import { computed, nextTick, ref, watch } from 'vue';
 import ActionSheet from '@/ui/ActionSheet.vue';
 import Dialog from '@/ui/Dialog.vue';
 import LineIcon from '@/ui/LineIcon.vue';
+import { find } from '@/ui/filter.js';
 import { pageHistory, pushEscape } from '@/ui/escape.js';
 import { act, clear, send, state } from './state.js';
 import { hostOf, status } from './words.js';
@@ -46,7 +47,7 @@ function closeSearch() {
 const shown = computed(() => {
   const q = text.value.trim().toLowerCase();
   if (!q) return state.downloads;
-  return state.downloads.filter((d) => d.name.toLowerCase().includes(q) || hostOf(d.url || '').includes(q));
+  return find(state.downloads, (d) => [d.name, hostOf(d.url || '')], q);
 });
 
 // The day each started, as a group's heading: Today, Yesterday, then the date; one listed

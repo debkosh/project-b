@@ -5,6 +5,7 @@
 import { reactive, watch } from 'vue';
 import { send, state } from '@/sdk/vue.js';
 import { folders, inFolder, topFolder } from '@/ui/bookmarks.js';
+import { find } from '@/ui/filter.js';
 
 export function host(url) {
   try {
@@ -82,12 +83,13 @@ export function under(list, id) {
 }
 
 // finderResults is what the command box's bookmarks list on their right for folder at and
-// the text typed: the folder's bookmarks, its folders' too, whose title or address holds the
-// text; then, with something typed, those elsewhere, after a rule. Each is {e, folder,
+// the text typed: the folder's bookmarks, its folders' too, whose title and address have every
+// word typed, in any order (filter.js); then, with something typed, those elsewhere, after a rule. Each is {e, folder,
 // elsewhere}: folder names the folder it is in when that isn't at, else ''.
 export function finderResults(list, at, text) {
   const q = text.trim().toLowerCase();
-  const match = (e) => !q || e.title.toLowerCase().includes(q) || e.url.toLowerCase().includes(q);
+  const found = new Set(find(list, (e) => [e.title, e.url], q).map((e) => e.id));
+  const match = (e) => !q || found.has(e.id);
   const name = (id) => (id ? list.find((e) => e.id === id)?.title || '' : topFolder);
   const here = under(list, at).filter(match);
   const out = here.map((e) => ({ e, folder: e.parent === at ? '' : name(e.parent), elsewhere: false }));

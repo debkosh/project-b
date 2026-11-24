@@ -2,6 +2,7 @@
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue';
 import { comboOf, shown } from '@/keys.js';
 import { pushEscape } from '@/ui/escape.js';
+import { find } from '@/ui/filter.js';
 import { send, state } from './state.js';
 
 // Every action by menu, with its keys on this platform. The list only shows; clicking an
@@ -47,14 +48,16 @@ function toggle(id) {
   open.value = open.value === id ? '' : id;
 }
 
-// The filter keeps the actions whose title or one of whose keys has what was typed, in
-// any case, the keys as shown here or as the keymap writes them.
+// The filter keeps the actions whose title has every word typed, in any order (filter.js), or
+// one of whose keys has what was typed, in any case, the keys as shown here or as the keymap
+// writes them.
 const filter = ref('');
 const groups = computed(() => {
   const q = filter.value.trim().toLowerCase();
   if (!q) return kb.value.groups;
+  const titled = new Set(find(kb.value.groups.flatMap((g) => g.actions), (a) => [a.title], q));
   const hit = (a) =>
-    a.title.toLowerCase().includes(q) ||
+    titled.has(a) ||
     a.keys.some((k) => k.keys.toLowerCase().includes(q) || shown(k.keys, platform.value).toLowerCase().includes(q));
   return kb.value.groups.map((g) => ({ ...g, actions: g.actions.filter(hit) })).filter((g) => g.actions.length);
 });

@@ -4,6 +4,7 @@ import { paintTheme } from '@/theme.js';
 import Dialog from '@/ui/Dialog.vue';
 import { pageHistory, upTo } from '@/ui/escape.js';
 import RowMenu from '@/ui/RowMenu.vue';
+import { find } from '@/ui/filter.js';
 import { bookmarksUnder, folders, inFolder, path, topFolder } from '@/ui/bookmarks.js';
 import { send, state } from './state.js';
 
@@ -30,12 +31,13 @@ const here = computed(() => trail.value[trail.value.length - 1]);
 const count = (id) => bookmarksUnder(state.bookmarks, id);
 
 const text = ref('');
-// Typed, the bookmarks in every folder whose title or address holds the text; else the
+// Typed, the bookmarks in every folder whose title and address have every word typed, in any
+// order (filter.js); else the
 // folder's entries.
 const shown = computed(() => {
   const q = text.value.trim().toLowerCase();
   if (!q) return inFolder(state.bookmarks, at.value);
-  return state.bookmarks.filter((e) => e.kind === 'bookmark' && (e.title.toLowerCase().includes(q) || e.url.toLowerCase().includes(q)));
+  return find(state.bookmarks.filter((e) => e.kind === 'bookmark'), (e) => [e.title, e.url], q);
 });
 const folderName = (id) => (id ? state.bookmarks.find((e) => e.id === id)?.title || '' : topFolder);
 

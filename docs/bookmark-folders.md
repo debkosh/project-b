@@ -44,7 +44,7 @@ How Standard shows them (`shell/src/apps/shell/standard/`, `bookmarks.js` for wh
 - **In the command box** (`BookmarkFinder.vue`, the keys in `CommandBox.vue`): a `*` typed
   first narrows the box to bookmarks, a ★ Bookmarks chip before the text, and Go is asked
   nothing. The left lists All bookmarks, then the folders; the right, the chosen folder's
-  bookmarks, its folders' too, whose title or address holds the text, then, once something is
+  bookmarks, its folders' too, whose title and address have every word typed, in any order and with a typo forgiven (shell/src/ui/filter.js), then, once something is
   typed, those in other folders after a rule; one not in the chosen folder says which it is
   in. ↑ and ↓ choose a bookmark, ← and → a folder; Enter opens the bookmark where the box's
   rows open, and Shift+Enter the chosen folder's own bookmarks as a group, as the new tab's

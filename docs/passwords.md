@@ -69,7 +69,7 @@ Android keeps each app's data from the others, and its logins come by sync.
   "Sealed for this profile; your sync server can't read them.": they are on the server too,
   sealed. On Linux the second sentence is "Your keyring unlocks them.": there is no check
   to speak of, and the keyring is what stands before them (ux).
-- **Search passwords:** keeps the logins whose site or username has what was typed. Escape
+- **Search passwords:** keeps the logins whose site and username have every word typed, in any order, each with one typo forgiven, so "sbi shankuan" finds sbi.co.in's login for shankuand (shell/src/ui/filter.js, uFuzzy). Escape
   empties it. None matching: "No saved password matches “…”".
 - **One row a login, on a Mac and on a phone alike:** its site's mark, the site, the
   username ("No username" when it has none), and at its end three icon buttons: Show, Copy
