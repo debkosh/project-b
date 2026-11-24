@@ -9,6 +9,7 @@ import (
 	"projectb/extensions"
 	"projectb/extensions/chromeapi"
 	"projectb/flags"
+	"projectb/links"
 	"projectb/settings"
 	"projectb/shell"
 )
@@ -73,10 +74,6 @@ func (x *extensionEvents) ExtensionBlockedCount(id string, tab engine.TabID, cou
 	x.m.HandleBlockedCount(id, tab, count)
 }
 
-// webStore is where "Chrome Web Store" in the extension manager goes. An extension is
-// installed from the store's own page.
-const webStore = "https://chromewebstore.google.com/"
-
 // extensionCommand is what the shell and the settings page send about extensions.
 type extensionCommand struct {
 	ID   string      `json:"extension"`
@@ -122,7 +119,7 @@ func extensionsSettingsPart(a *App, m *extensions.Manager) settings.Part {
 			switch t {
 			case "extensionOpenStore":
 				// The store is a website, which the settings page opens as it opens any.
-				a.Tabs.OpenBeside(tab, webStore)
+				a.Tabs.OpenBeside(tab, links.WebStore)
 			case "extensionAnswerPrompt":
 				m.AnswerPrompt(c.On)
 			case "extensionLoadUnpacked":

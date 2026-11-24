@@ -104,13 +104,11 @@ import (
 	"projectb/timeline"
 )
 
-// Where releases are published. The project and the URL are the ones in amarit.json at the
-// repo root, which tools/release.sh publishes with: the manifest of both channels, Stable and
-// Dev, on the pre-release tagged channels (docs/release-channels.md). updateConfig, beside this file for each
-// platform, describes this build to the updater.
+// Where releases are published. The project and the manifest (links.Releases) are the ones in
+// amarit.json at the repo root, which tools/release.sh publishes with. updateConfig, beside
+// this file for each platform, describes this build to the updater.
 const (
-	releaseProject  = "project-b"
-	releaseManifest = "https://github.com/sudiptadeb/project-b/releases/download/channels/releases.json"
+	releaseProject = "project-b"
 	// releaseAutoUpdate is amarit.json's auto_update: copies check on their own unless the
 	// person turns it off.
 	releaseAutoUpdate = true

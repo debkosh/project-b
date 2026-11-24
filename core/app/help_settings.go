@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 
 	"projectb/engine"
-	"projectb/help"
+	"projectb/links"
 	"projectb/settings"
 )
 
-// helpSettingsPart opens a help page (core/help) by its name beside Settings, in a new tab
+// helpSettingsPart opens a help page (core/links) by its name beside Settings, in a new tab
 // of its workspace, as Learn more's Read more asks; a name with no page opens nothing.
 func (a *App) helpSettingsPart() settings.Part {
 	return settings.Part{
@@ -22,7 +22,7 @@ func (a *App) helpSettingsPart() settings.Part {
 				Page string `json:"page"`
 			}
 			json.Unmarshal(msg, &m)
-			if u := help.URL(m.Page); u != "" {
+			if u := links.Help(m.Page); u != "" {
 				if t, ok := a.Tabs.Get(tab); ok {
 					a.Tabs.OpenFrom(tab, u, t.Workspace, true)
 				}

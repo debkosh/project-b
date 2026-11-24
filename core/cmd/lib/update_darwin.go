@@ -8,6 +8,7 @@ import (
 	"github.com/sudiptadeb/amarit/appupdate"
 	"github.com/sudiptadeb/amarit/macapp"
 
+	"projectb/links"
 	"projectb/profiles"
 	"projectb/relaunch"
 	"projectb/timeline"
@@ -48,7 +49,7 @@ func appVersion() string {
 // binary running from a build directory rather than an installed bundle has no version, and
 // never updates.
 func updateConfig(c profiles.Choice) update.Config {
-	cfg := update.Config{Project: releaseProject, Releases: releaseManifest, StateDir: filepath.Join(c.Dir, "updates"), AutoUpdate: releaseAutoUpdate}
+	cfg := update.Config{Project: releaseProject, Releases: links.Releases, StateDir: filepath.Join(c.Dir, "updates"), AutoUpdate: releaseAutoUpdate}
 	var copies macapp.Copies
 	if c.ID != "" {
 		cfg.StateDir = filepath.Join(list.Root(), "update")

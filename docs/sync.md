@@ -222,8 +222,8 @@ given with no token is itself what lets a device in.
 address and also guide the users to create a sync bucket from our service from the browser
 itself.. currently someone just installing the browser cannot find synckosh service". The
 set-up opens with Server address filled with `https://memd.debkosh.com/sync`
-(`sync.StartServer`), there to be changed to any other server's, and offers **Get a free sync
-bucket**, which opens `https://memd.debkosh.com/synckosh` (`sync.BucketPage`) in a tab. That
+(`links.SyncServer`), there to be changed to any other server's, and offers **Get a free sync
+bucket**, which opens `https://memd.debkosh.com/synckosh` (`links.SyncBucket`) in a tab. That
 page makes a bucket and its Open in Project B comes back as the deep link. Nothing goes to
 that server before Connect, as with any other. The dev server answers for that address itself
 (`core/cmd/dev/syncserver.go`), so no test reaches it.
@@ -494,8 +494,8 @@ picture, light and dark, desktop and phone, is made by `shell/e2e/sync.cjs` unde
     keyring; Cancel pressed on its question means try again and unlock it; a keyring that
     never asks (on GNOME, one an app closed on while its question was up) mends by logging out
     and in. Its Read more opens the help page, [help/keyring.md](help/keyring.md), in a tab:
-    the app's pages name a help page and Go has its address, every one in `core/help`. The
-    page has the way round logging out.
+    the app's pages name a help page and Go has its address, in `core/links` with every other
+    address the app opens or reads. The page has the way round logging out.
   - A run goes on saying "Syncing…" for as long as it does. Go ends a request that stalls;
     the page keeps no clock of its own. A first sync against a bucket that holds a lot takes
     as long as it takes.

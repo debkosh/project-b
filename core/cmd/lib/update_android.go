@@ -15,6 +15,7 @@ import (
 
 	"github.com/sudiptadeb/amarit/appupdate"
 
+	"projectb/links"
 	"projectb/profiles"
 	"projectb/system/platform"
 	"projectb/update"
@@ -35,7 +36,7 @@ func updateConfig(c profiles.Choice) update.Config {
 	return update.Config{
 		Project:    releaseProject,
 		Version:    version,
-		Releases:   releaseManifest,
+		Releases:   links.Releases,
 		AutoUpdate: releaseAutoUpdate,
 		StateDir:   dir,
 		// The system's notification too: progress with Cancel, Install when ready, Try again.

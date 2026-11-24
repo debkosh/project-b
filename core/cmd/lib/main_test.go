@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"projectb/links"
 )
 
 // The binary and the release tool must agree on the project and the manifest URL, and the
@@ -23,8 +25,8 @@ func TestReleaseConstantsMatchTheRepo(t *testing.T) {
 	if err := json.Unmarshal(b, &cfg); err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Project != releaseProject || cfg.Releases != releaseManifest || cfg.AutoUpdate != releaseAutoUpdate {
-		t.Fatalf("amarit.json says %s %s %v; the binary says %s %s %v", cfg.Project, cfg.Releases, cfg.AutoUpdate, releaseProject, releaseManifest, releaseAutoUpdate)
+	if cfg.Project != releaseProject || cfg.Releases != links.Releases || cfg.AutoUpdate != releaseAutoUpdate {
+		t.Fatalf("amarit.json says %s %s %v; the binary says %s %s %v", cfg.Project, cfg.Releases, cfg.AutoUpdate, releaseProject, links.Releases, releaseAutoUpdate)
 	}
 
 	// The key folder, as tools/keys.sh finds it.

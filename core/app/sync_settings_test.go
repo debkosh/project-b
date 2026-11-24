@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"projectb/sync"
+	"projectb/links"
 )
 
 // Settings' Sync: the page has the status, a deep link's address is only proposed, and a
@@ -52,16 +52,16 @@ func TestSettingsSync(t *testing.T) {
 	}
 	// The server to start with: its address goes to the page with the snapshot, and the page
 	// that gives a bucket on it opens in a tab beside Settings.
-	if snapshot["syncStart"] != sync.StartServer {
+	if snapshot["syncStart"] != links.SyncServer {
 		t.Fatalf("the server to start with: %v", snapshot["syncStart"])
 	}
 	r.settings(`{"t":"syncGetBucket"}`)
 	opened := false
 	for _, tab := range r.tabsNow(1) {
-		opened = opened || tab.URL == sync.BucketPage
+		opened = opened || tab.URL == links.SyncBucket
 	}
 	if !opened {
-		t.Fatalf("Get a free sync bucket opened no tab at %s: %+v", sync.BucketPage, r.tabsNow(1))
+		t.Fatalf("Get a free sync bucket opened no tab at %s: %+v", links.SyncBucket, r.tabsNow(1))
 	}
 	r.settings(`{"t":"syncSuggest"}`)
 	if m := r.waitOn(got, func(m map[string]any) bool { return m["t"] == "syncSuggested" }); len(strings.Fields(m["passphrase"].(string))) != 5 {

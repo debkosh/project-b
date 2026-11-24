@@ -18,6 +18,7 @@ import (
 	"github.com/sudiptadeb/synckosh/bolt"
 	"github.com/sudiptadeb/synckosh/server"
 
+	"projectb/links"
 	"projectb/sync"
 )
 
@@ -25,7 +26,7 @@ import (
 // server over https in this process, as the memd server serves a bucket, at /sync with its
 // token as a bearer or at /sync/<token>; any other path is a web page, not a bucket. Sync's
 // requests reach it as https://memd.example.com, the name the mocks use, and as the server
-// to start with (sync.StartServer), which no test may reach for real, and trust its
+// to start with (links.SyncServer), which no test may reach for real, and trust its
 // certificate; any other host is dialled as it is. It counts every request it gets, and a
 // test changes how it answers: a token signed out, every connection dropped, every request
 // held, or every request answered with a failure.
@@ -83,7 +84,7 @@ const syncHost = "memd.example.com"
 
 // startHost is the host of the server to start with.
 var startHost = func() string {
-	u, _ := url.Parse(sync.StartServer)
+	u, _ := url.Parse(links.SyncServer)
 	return u.Host
 }()
 
