@@ -269,6 +269,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
     return p;
   };
   let page = await open();
+  check('on a desktop, the search field has the focus as the page opens, to type in at once', await until(() => page.getByLabel('Search settings').evaluate((el) => document.activeElement === el)));
   // show goes to where a part of the page is, as a person does: the section that holds it,
   // from the list of sections, found by the part, wherever it is arranged, and Sites, a row
   // that opens its own page (docs/settings.md).
@@ -1235,6 +1236,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   await page.goto(`${base}/settings/?tab=${(await regions()).settings}`);
   await page.getByRole('heading', { name: 'Settings' }).waitFor();
   const phoneSearch = page.getByLabel('Search settings');
+  check('on a phone the search field takes no focus, so no keyboard comes up over the list', !(await phoneSearch.evaluate((el) => document.activeElement === el)));
   await phoneSearch.fill('address bar');
   check('on a phone, search finds what is there', await until(() => page.getByRole('radiogroup', { name: 'Address bar' }).isVisible()) && (await page.getByRole('radiogroup', { name: 'Theme' }).count()) === 0);
   await settle(page);

@@ -55,7 +55,7 @@ watch(
 <template>
   <div class="body">
     <nav v-if="!phone" class="nav sections-nav" aria-label="Settings sections">
-      <SearchBox class="nav-search" />
+      <SearchBox class="nav-search" focus />
       <template v-for="(group, i) in [above, below]" :key="i">
         <div v-if="i === 1" class="nav-line" role="separator"></div>
         <button
