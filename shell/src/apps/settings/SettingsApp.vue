@@ -84,11 +84,21 @@ body {
   box-sizing: border-box;
 }
 
+/* In a window too short for them, the sections scroll on their own under the search
+   (SectionsLayout's .nav-list), as the content does: the page itself never scrolls. */
 .nav {
   flex: none;
+  display: flex;
+  flex-direction: column;
   width: 200px;
   padding: 8px 12px;
   box-sizing: border-box;
+}
+
+.nav-list {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .nav-item {

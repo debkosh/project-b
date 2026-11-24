@@ -23,6 +23,7 @@ const go = inject('settingsGo');
 provide('settingsTitled', phone);
 const jumps = inject('settingsJumps');
 const content = ref(null);
+const navList = ref(null);
 
 // The section showing. A desktop shows the first when the address names none; a phone
 // shows its list of sections.
@@ -41,6 +42,17 @@ watchEffect(() => {
 const above = computed(() => sections.value.filter((s) => !s.below));
 const below = computed(() => sections.value.filter((s) => s.below));
 
+// The current section's row is in sight in a list too long for the window, when Settings
+// opens and when the section changes, from the list or from outside (a link, Go, search).
+watch(
+  () => shown.value.section?.id,
+  async () => {
+    await nextTick();
+    navList.value?.querySelector('[aria-current]')?.scrollIntoView({ block: 'nearest' });
+  },
+  { immediate: true, flush: 'post' },
+);
+
 // Each new section starts at its top, and a part named in the address is scrolled to.
 watch(
   () => [state.section, jumps.value],
@@ -56,24 +68,27 @@ watch(
   <div class="body">
     <nav v-if="!phone" class="nav sections-nav" aria-label="Settings sections">
       <SearchBox class="nav-search" focus />
-      <template v-for="(group, i) in [above, below]" :key="i">
-        <div v-if="i === 1" class="nav-line" role="separator"></div>
-        <button
-          v-for="s in group"
-          :key="s.id"
-          type="button"
-          class="nav-item"
-          :class="{ below: s.below, dim: searching && !hits.by[s.id] }"
-          :data-section="s.id"
-          :data-parts="partsOf(s).join(' ')"
-          :aria-current="!searching && shown.section?.id === s.id ? 'page' : undefined"
-          @click="go(s.id)"
-        >
-          <Icon :name="s.icon" />
-          {{ s.label }}
-          <span v-if="searching && hits.by[s.id]" class="count">{{ hits.by[s.id] }}</span>
-        </button>
-      </template>
+      <!-- The sections scroll under the search in a window too short for them. -->
+      <div ref="navList" class="nav-list">
+        <template v-for="(group, i) in [above, below]" :key="i">
+          <div v-if="i === 1" class="nav-line" role="separator"></div>
+          <button
+            v-for="s in group"
+            :key="s.id"
+            type="button"
+            class="nav-item"
+            :class="{ below: s.below, dim: searching && !hits.by[s.id] }"
+            :data-section="s.id"
+            :data-parts="partsOf(s).join(' ')"
+            :aria-current="!searching && shown.section?.id === s.id ? 'page' : undefined"
+            @click="go(s.id)"
+          >
+            <Icon :name="s.icon" />
+            {{ s.label }}
+            <span v-if="searching && hits.by[s.id]" class="count">{{ hits.by[s.id] }}</span>
+          </button>
+        </template>
+      </div>
     </nav>
     <main ref="content" class="content" :class="{ phone, searching }">
       <div class="column">
@@ -123,6 +138,7 @@ watch(
 }
 
 .nav-search {
+  flex: none;
   margin-bottom: 12px;
 }
 
