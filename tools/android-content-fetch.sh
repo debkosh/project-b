@@ -49,8 +49,15 @@ stamp "src at $TAG"
 git -C src fetch --depth 1 origin "+refs/tags/$TAG:refs/tags/$TAG"
 git -C src checkout -q -f "refs/tags/$TAG"
 
+# chromium.googlesource.com answers 429 to too many fetches at once, as tools/fetch-chromium.sh
+# met first: 8 at a time, and a sync that fails goes again, up to 3 times, from where it was.
 stamp "gclient sync, no hooks yet"
-gclient sync --no-history -D --force --nohooks
+for try in 1 2 3; do
+  gclient sync --no-history -D --force --nohooks --jobs 8 && break
+  [ "$try" = 3 ] && { stamp "RESULT=failed gclient sync, 3 tries"; exit 1; }
+  stamp "gclient sync failed; again in a minute (try $((try + 1)) of 3)"
+  sleep 60
+done
 
 stamp "build dependencies"
 export http_proxy=$PROXY
