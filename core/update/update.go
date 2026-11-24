@@ -107,9 +107,12 @@ type Config struct {
 type Manager struct {
 	cfg    Config
 	post   func(func())
+	quit   func()
 	client *amarit.Client
-	u      *appupdate.Updater
-	src    appupdate.Source
+	// u is the updater, once made (makeUpdater): nil for a build that doesn't update.
+	u    *appupdate.Updater
+	src  appupdate.Source
+	made bool
 
 	mu    sync.Mutex
 	state State
@@ -124,7 +127,7 @@ type Manager struct {
 
 // New returns a manager. post runs a function on the main thread; quit ends the app.
 func New(cfg Config, post func(func()), quit func()) *Manager {
-	m := &Manager{cfg: cfg, post: post}
+	m := &Manager{cfg: cfg, post: post, quit: quit}
 	// The client keeps the settings every copy shares, a development build's too; only a
 	// release with an installer checks and installs.
 	// A development build has no version: its client keeps the settings and never checks.
@@ -139,31 +142,53 @@ func New(cfg Config, post func(func()), quit func()) *Manager {
 	}
 	m.client = c
 	m.raw = appupdate.State{Channel: c.Channel(), AutoUpdate: c.AutoUpdate()}
-	if cfg.Version == "" || (cfg.Installer == nil && cfg.Source == nil) {
-		return m
+	// An installer's updater is made here, which asks nothing of anything. A Source is asked
+	// as it is made, as Linux's update portal is, so its updater comes with Start.
+	if cfg.Source == nil && m.makeUpdater() {
+		m.raw = m.u.State()
+		m.state = words(m.raw)
 	}
+	return m
+}
+
+// makeUpdater makes the updater, once, and says whether there is one now: none for a
+// development build, a build with neither an installer nor a Source, or a Source that
+// didn't start.
+func (m *Manager) makeUpdater() bool {
+	cfg := m.cfg
+	if m.made || m.client == nil || cfg.Version == "" || (cfg.Installer == nil && cfg.Source == nil) {
+		return m.u != nil
+	}
+	m.made = true
 	ucfg := appupdate.Config{
-		Client:   c,
+		Client:   m.client,
 		Dir:      cfg.StateDir,
 		Interval: CheckInterval,
 		Logf:     quietLog(func(line string) { timeline.Infof("%s", line) }),
 	}
+	quit := func() { m.post(m.quit) }
 	if cfg.Source != nil {
-		if m.src = cfg.Source(func() { post(quit) }); m.src == nil {
-			return m
+		if m.src = cfg.Source(quit); m.src == nil {
+			return false
 		}
 		ucfg.Source = m.src
 	} else {
-		ucfg.Installer = cfg.Installer(post, func() { post(quit) })
+		ucfg.Installer = cfg.Installer(m.post, quit)
 	}
 	m.u = appupdate.New(ucfg)
-	m.raw = m.u.State()
-	m.state = words(m.raw)
-	m.u.OnChange(func(s appupdate.State) { post(func() { m.changed(s) }) })
+	m.u.OnChange(func(s appupdate.State) { m.post(func() { m.changed(s) }) })
 	if cfg.Present != nil {
 		cfg.Present(m.u)
 	}
-	return m
+	return true
+}
+
+// begun is the updater there for Start or for a person's Check now, whichever is first: a
+// Source's is made then, and what it has to say is told.
+func (m *Manager) begun() {
+	if m.u == nil && m.makeUpdater() {
+		m.changed(m.u.State())
+	}
 }
 
 // quietLog logs what the updater says, a line the same as the one before only once: a round a
@@ -333,8 +358,11 @@ func (m *Manager) OnChannelChanged(f func(string)) {
 }
 
 // Start begins the checks; Stop ends them. Close ends them and any work running, and returns
-// once a download has stopped and its files are gone; the app calls it as it quits.
+// once a download has stopped and its files are gone; the app calls it as it quits. Start is
+// one of the app's background jobs, which wait for a start to be over (docs/startup.md): a
+// Source, as Linux's update portal, is first asked here.
 func (m *Manager) Start() {
+	m.begun()
 	if m.u != nil {
 		timeline.Infof("update: %s %s", m.cfg.Project, m.cfg.Version)
 		m.u.Start()
@@ -359,6 +387,8 @@ func (m *Manager) Close() {
 // CheckNow checks at once, whether or not automatic checks are on, and tries again a
 // release refused or cancelled before.
 func (m *Manager) CheckNow() {
+	// A person who asks before the start's wait is over has the checks begin now.
+	m.begun()
 	if m.u == nil {
 		m.mu.Lock()
 		m.state.Check, m.state.CheckError = CheckFailed, "a development build doesn't update"

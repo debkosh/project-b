@@ -34,7 +34,9 @@ copy: tests and ChromeDriver run their copies so.
 
 amarit's docs/appupdate.md has the whole of it; what is project-b's:
 
-- **The checks.** Two seconds after start, then every `CheckInterval`, with automatic
+- **The checks.** The first comes when the wait after a start is over, ten seconds
+  ([startup.md](startup.md)): `Start` is one of the app's background jobs, and Linux's update
+  portal is first asked there too, not as the manager is made. Then every `CheckInterval`, with automatic
   updates on, a copy reads `releases/download/channels/releases.json` for its channel. A
   newer release is downloaded, checked and staged; About and the notice offer it.
 - **A refusal is the release's own answer** (another version, or a signature broken or not

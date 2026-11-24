@@ -308,3 +308,29 @@ func TestASourcesReleaseIsReadyAndInstalled(t *testing.T) {
 	}
 	none.Close()
 }
+
+// A Source is asked as its updater is made, as Linux's update portal is, so New doesn't make
+// it: Start does, with the app's other background jobs (docs/startup.md), or Check now, when
+// a person asks first. Until then the manager has the settings and no more.
+func TestASourceIsFirstAskedAtStartOrCheckNow(t *testing.T) {
+	for name, first := range map[string]func(*Manager){"Start": (*Manager).Start, "Check now": (*Manager).CheckNow} {
+		asked := 0
+		cfg := Config{Project: "project-b", Version: "0.1.0", AutoUpdate: true, StateDir: t.TempDir(),
+			Source: func(func()) appupdate.Source { asked++; return &source{} }}
+		m := New(cfg, func(f func()) { f() }, func() {})
+		if st := m.State(); asked != 0 || st.Phase != "" {
+			t.Fatalf("%s: before it, the source was asked %d times, and the state is %+v", name, asked, st)
+		}
+		first(m)
+		if asked != 1 {
+			t.Fatalf("%s: the source was asked %d times", name, asked)
+		}
+		eventually(t, m, func(st State) bool { return st.Phase == Ready && st.Version == "0.2.0" })
+		m.Start()
+		m.CheckNow()
+		if asked != 1 {
+			t.Fatalf("%s: after it, the source was asked %d times", name, asked)
+		}
+		m.Close()
+	}
+}

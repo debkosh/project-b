@@ -480,10 +480,10 @@ func Start(e engine.Engine, cfg Config) *App {
 		a.welcome.openWhole(w)
 	}
 	a.keepSession(e)
-	a.Update.Start()
 	// The background jobs wait for the start to be over, all for the one wait
 	// (docs/startup.md): asked for after Begin, which drops an app before's.
 	later.Begin(e.Post)
+	later.Run(a.Update.Start)
 	later.Run(a.Sync.Wanted)
 	return a
 }
