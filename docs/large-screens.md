@@ -27,17 +27,18 @@ device profiles this Mac already has.
 **A narrow window shows the Mobile shell, a wide one the Standard shell**, decided again each
 time the window settles on a new size.
 
-- **Wide** is a window at least 840 dp wide (Android's "expanded" width), or at least 600 dp
-  with a mouse or touchpad connected. **Narrow** is less than 600 dp. Between the two, the
-  shell already showing stays, so a window dragged about its edge doesn't flip back and forth.
+- **Narrow** is a window under 600 dp wide or under 480 dp tall (Android's compact width and
+  compact height); **wide** is the rest. The height keeps a phone turned sideways (891 by 412
+  dp) on Mobile. A window being dragged in desktop mode switches only 40 dp past either line,
+  so it doesn't flip back and forth at the edge (ux, 2026-11-24).
 - **It switches once the size has settled**, half a second after the last change, so dragging
   a desktop window's corner doesn't reload the shell on every step.
 - **Switching is the reload shells already do** ([shells.md](shells.md#choosing-a-shell)): the
   tabs keep running, the new shell says `ready` and gets the snapshot. A foldable opened mid-page
   keeps its page, scroll and form.
-- So: a phone stays on Mobile. An unfolded foldable gets Standard, folded Mobile. A tablet in
-  landscape gets Standard; in portrait (about 800 dp) it keeps whichever it had, Mobile from
-  a fresh start. A desktop-mode window is whichever its size says.
+- So: a phone stays on Mobile, upright or sideways. A foldable is Mobile folded and Standard
+  open. A tablet is Standard both ways round, so turning it never changes the browser. A
+  desktop-mode window is whichever its size says.
 - **In Go:** `shells.OnPhone` stops being a build-time fact. The engine tells Go the window's
   class, wide or narrow, with its size; the shell manager picks the profile's shell for that
   class. The APK carries the Standard shell's pages too (about 1 MB).
@@ -47,6 +48,18 @@ screen: no window buttons (the system's caption bar has its own in desktop mode,
 "the shell draws the window buttons only when the window has no title bar of its own",
 2026-11-19), no drag areas, square corners. With no menu bar, Go's menus are reached from
 Standard's own Menu button (`AppMenu.vue`), as on Linux and Windows with the menu strip off.
+
+**Why Standard, of the desktop shells.** It is the reference: every Go feature lands there
+first and its tests already run, so large screens add no shell to keep complete. Fox looks the
+most like a tablet browser, tabs on top, but has no tab menu, pinned tabs or bookmarks bar, and
+at 841 dp its address field covers Back. Glide adds spaces and a command bar; Terminal and
+Minimal are keyboard-first. Mocks of all five: [the mocks](https://claude.ai/artifact/EdgkSnyUs1Xo8WcaemfTSJ).
+
+**Standard's touch density** (ux, 2026-11-24): one switch on `(pointer: coarse)` with no fine
+pointer, not a layout. Sidebar rows grow from 32 to 44 to 48 dp, toolbar buttons get a 44 dp
+target with the icons the same size, the active tab's close button always shows, the shortcut
+hints go, and a long press opens the menus a right click opens. A mouse brings today's density
+back. It works the same on a Mac with a touch screen, so it is Standard's, not Android's.
 
 ### 2. The mouse and the touchpad
 
@@ -76,8 +89,7 @@ own, and step 1 to 3 don't need it, so it waits until they are out.
 
 ## What we wouldn't do
 
-- No tablet layout of the Mobile shell: a tablet wide enough gets Standard, and Mobile at
-  600 to 840 dp is the phone layout, wider. Ux may want it centred or capped in width there.
+- No tablet layout of the Mobile shell, and no third shell: a window wide enough gets Standard.
 - No other desktop shells offered on Android at first (Glide, Terminal, Fox, Minimal). They
   would work as Standard does; offering them is a list away once Standard works.
 - No drawing into desktop mode's caption bar. Android 15 lets an app draw there, as our
@@ -119,22 +131,21 @@ emu-29 before handover, with slots from the tester.
 ## Order and size
 
 1. The shell follows the window, with the Standard shell in the APK: about 4 days.
-2. Mouse and touchpad: about 2 days.
-3. Keyboard shortcuts: about 2 days.
-4. The emulators and the driver's large-screen part, alongside: about 2 days.
-5. Several windows, after 1 to 4 are released: about a week.
+2. Standard's touch density: about 2 days.
+3. Mouse and touchpad: about 2 days.
+4. Keyboard shortcuts: about 2 days.
+5. The emulators and the driver's large-screen part, alongside: about 2 days.
+6. Several windows, after 1 to 5 are released: about a week.
 
 ## Questions for Sudipta
 
 1. **Automatic, or the user's choice?** Recommended: automatic by size, as above, with Settings
-   letting a profile pin one shell for every size. The other way is a setting only, Mobile by
-   default.
-2. **Which pref holds what?** A profile's `shell` pref today means "the desktop shell" on a Mac
-   and "the phone shell" on Android. Recommended: `shell` is the wide window's (Standard, as
-   the templates already say), and a new `phone_shell` the narrow one's (Mobile, or Mobile
+   letting a profile pin one shell for every size.
+2. **Which pref holds what?** Recommended: `shell` is the wide window's (Standard, as the
+   templates already say), and a new `phone_shell` the narrow one's (Mobile, or Mobile
    (native)). A phone that chose Mobile (native) would show Mobile once, until chosen again;
    no migration code.
-3. **The line.** Recommended: Mobile below 600 dp, Standard from 840 dp, or from 600 dp with a
-   mouse, and in between the one showing stays. Simpler: one line at 600 dp.
-4. **Several windows** as a second step after 1 to 3 are released, or in the same branch?
+3. **Standard as the one desktop shell on Android**, with the touch density, rather than Fox
+   or a shell of its own. Recommended: yes.
+4. **Several windows** as a second step after the rest is released, or in the same branch?
    Recommended: a second step.
