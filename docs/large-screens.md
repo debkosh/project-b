@@ -148,9 +148,14 @@ emu-29 before handover, with slots from the tester.
   sidebar button or its shortcut opens it over the page; the next tap or click on the page or
   the toolbar closes it. Standard already has tabs on top as a setting, which he felt suits a
   tablet ("i thing top bar would make more sense on tablets").
-- **Standard keeps its name; Glide, the Arc-like shell, gets a new one** (2026-11-24: "lets
-  keep stamdard and change glide to  curve or aomething else meaning arc"). Only the name
-  people see changes; the id profiles save, `glide`, stays.
+- **Standard keeps its name; Glide, the Arc-like shell, is now Curve** (2026-11-24: "lets
+  keep stamdard and change glide to  curve or aomething else meaning arc"; "curve it it").
+- **Shell ids are code names, apart from the names** (2026-11-24: "lets name the ids like
+  ... code name like crshell arshell fxshell pbshell mwshell mnshell"): `pbshell` Standard,
+  `arshell` Curve, `tmshell` Terminal, `fxshell` Fox, `mnshell` Minimal, `mwshell` Mobile,
+  `mkshell` Mobile (native), with each name and description written in the registry only.
+  Done on its own branch, `shell-ids`, before this work; the shells below are named by
+  those ids from then on.
 
 ## Questions for Sudipta
 
