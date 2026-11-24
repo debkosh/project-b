@@ -26,25 +26,17 @@ function share(e) {
 </template>
 
 <style scoped>
-/* The update bubble's look, in the page's top-left corner instead of its bottom-left, with
-   a tab's close button. It may take the page's width and wraps, so both paths show whole. */
+/* A strip of its own above the page, the page's width, with a tab's close button at its
+   end. It wraps, so both paths show whole. */
 .crash {
-  position: absolute;
-  left: 0;
-  top: 0;
-  /* Over the page's notice, as a crashed tab's own notice must not hide it. */
-  z-index: 3;
+  flex: none;
   display: flex;
   align-items: center;
-  gap: 6px;
-  min-height: 22px;
-  max-width: 100%;
-  padding: 3px 3px 3px 10px;
+  gap: 8px;
+  min-height: 28px;
+  padding: 3px 12px;
   box-sizing: border-box;
-  border: 1px solid var(--line);
-  border-left: 0;
-  border-top: 0;
-  border-radius: 0 0 6px 0;
+  border-bottom: 1px solid var(--line);
   background: var(--bar);
   color: var(--text);
   font-size: 12px;
@@ -52,6 +44,8 @@ function share(e) {
 }
 
 .crash span {
+  flex: 1;
+  min-width: 0;
   overflow-wrap: anywhere;
 }
 
