@@ -40,13 +40,15 @@ func Stop()
 - **After the wait.** `Run` posts `f` straight away. It never calls `f` inside `Run`, so
   `f` runs at the same point whether it came early or late.
 - **Before `Begin`.** `Run` queues `f`, and it runs once the wait is over.
-- **A quit within the wait.** `Stop` drops what is still waiting, so it never runs, and
-  every later `Run` does nothing.
+- **A quit within the wait.** `Stop` drops what is still waiting, so it never runs. A job
+  asked for after it waits for a `Begin`, which an app that is quitting never calls.
 - **Which starts.** Every `app.Start` calls `Begin`: a normal start, one after an update,
   one after a crash. The profile picker copy and a copy that hands over and quits never
   call `app.Start`, so they never call `Begin` or `Run`, and wait for nothing.
 - **More than one app in a process.** The tests start many apps in one process, so
-  `Begin` starts over: it drops anything still waiting and starts a new clock.
+  `Begin` starts over: it drops anything still waiting and starts a new clock. So
+  `app.Start` asks for its jobs after its own `Begin`, at its end, where they can't be
+  taken for the jobs of the app before.
 - **Tests.** Tests set `later.Wait = 0`, so a mockengine run waits for nothing.
 - `later` has no knowledge of any feature. A job tells it nothing apart from the function it
   passes.
