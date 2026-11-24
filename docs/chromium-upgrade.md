@@ -97,3 +97,33 @@ security fixes`, and hand the branch to release, which runs the release run
 
 Not in it, for now: worktrees, the VM, Android and Linux, watching for releases,
 notifications, publishing.
+
+### The first run: 155.0.8059.41 to 158.0.8127.89, 2026-11-24
+
+Three majors at once, so it stopped where a new major should, and each stop that a later run
+would meet again became a step of the script or a fix in the tool it called:
+
+- chromium.googlesource.com answered 429 to the sync at 32 jobs: `fetch-chromium.sh` syncs 8
+  at a time and tries again up to 3 times.
+- A sync that failed had already checked out `src` at the new tag, so `chrome/VERSION` said
+  done: the script fetches every time.
+- The new clang wasn't on the remote build server, which runs on this Mac:
+  `toolchain.sh` copies locally with `PB_RBE_SSH=local`, and the script runs it.
+- 158's siso refused the remote compile of libc++'s clang module, whose depfile names the
+  worker's clang folder: `build.sh` builds with `use_clang_modules = false`.
+- The old `hooks_gen.h` was itself among what didn't compile: `gen_hooks.py` runs after a
+  failed first build too, and the stop names what moved.
+- The adapter moved by hand, in one commit with the version and the hooks: find in page
+  (content numbers its own requests; the reply is the observer's `DidReceiveFindReply`),
+  `ChildProcessId`, `CreateLoginDelegate`'s `do_not_prompt_for_login`, `EventArgs` for
+  extension events, `GetBrowserContextLifetimeTracker` (none), and the window dispositions'
+  new names.
+- The test needs the mock store for the version and the packed app: the script fetches the
+  one and packs the other.
+
+`web_features_bump.py` on 158 found no missing interface and no gone name, and 17 new
+delegate methods, which the web features session takes to him as rows.
+
+Still to do: Android and Linux build in container `pb` from its own tree, `/work/chromium`,
+still at 155, and `engine/` now compiles against 158 only. Until that tree moves, main can
+build one side or the other, not both, and `tools/release.sh` builds both.
