@@ -143,7 +143,15 @@ const startNames = [
   { value: 'fresh', label: 'Start fresh' },
 ];
 const sectionList = () => [
-  { id: 'profile', label: 'Profile', icon: 'profile', cards: [['profile'], 'sync', 'import', ['runSetup']], summary: () => state.profile?.name || '' },
+  { id: 'profile', label: 'Profile', icon: 'profile', cards: [['profile'], 'import'], summary: () => state.profile?.name || '' },
+  { id: 'syncing', label: 'Sync', icon: 'sync', cards: ['sync'], summary: () => (state.sync.on ? state.sync.host || 'On' : 'Off') },
+  {
+    id: 'logins',
+    label: 'Passwords',
+    icon: 'key',
+    cards: [['passwords', 'passkeys']],
+    summary: () => [lists.passwords.summary(), lists.passkeys.summary()].filter((x) => x).join(' · ') || 'None yet',
+  },
   {
     id: 'appearance',
     label: 'Appearance',
@@ -183,9 +191,9 @@ const sectionList = () => [
   },
   {
     id: 'privacy',
-    label: 'Privacy',
+    label: 'Privacy and sites',
     icon: 'privacy',
-    cards: [['clearData', 'blockAds', 'clearOnQuit', 'sites', 'passwords', 'passkeys']],
+    cards: [['clearData', 'blockAds', 'clearOnQuit', 'sites']],
     summary: () => [state.prefs.blockAds ? 'Ads blocked' : 'Ads shown', lists.sites.summary()].filter((x) => x).join(' · '),
   },
   {
@@ -197,7 +205,7 @@ const sectionList = () => [
     summary: () => lists.sparks.summary() || 'None yet',
   },
   { id: 'keyboard', label: 'Keyboard', icon: 'keyboard', cards: [['keys'], 'keyboard'], summary: () => '' },
-  { id: 'about', label: 'About Project B', icon: 'about', cards: [['version', 'autoUpdate', 'channel'], 'releaseNotes'], summary: aboutSummary },
+  { id: 'about', label: 'About Project B', icon: 'about', cards: [['version', 'autoUpdate', 'channel'], 'releaseNotes', ['runSetup']], summary: aboutSummary },
   { id: 'flags', label: 'Flags', icon: 'flags', below: true, cards: ['flags'], summary: () => '' },
   { id: 'webFeatures', label: 'Web features', icon: 'webFeatures', below: true, cards: ['webFeatures'], summary: () => '' },
 ];
@@ -217,6 +225,11 @@ export function colourName(c) {
 
 // The parts a card holds as rows: none for a block.
 export const rowsOf = (card) => (typeof card === 'string' ? [] : Array.isArray(card) ? card : card.rows);
+
+// Every part a section holds, its rows' and its blocks' names. The page puts them on the
+// section's place in the list, so a test or a link finds a setting by what it is, not by
+// the section that holds it today: moving a part to another section is this file alone.
+export const partsOf = (section) => section.cards.flatMap((c) => (typeof c === 'string' ? [c] : rowsOf(c)));
 
 // What the page shows for an address, state.section: a list's own page when a section has
 // the list as a row (sites/<site> or sites/<origin> is the sites list's page, at that

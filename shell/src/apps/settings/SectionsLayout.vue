@@ -8,7 +8,7 @@ import ListPage from './ListPage.vue';
 import Results from './Results.vue';
 import SearchBox from './SearchBox.vue';
 import StatusLine from './StatusLine.vue';
-import { lists, resolve, sections } from './arrange.js';
+import { lists, partsOf, resolve, sections } from './arrange.js';
 import { hits, searching } from './search.js';
 import { state } from './state.js';
 
@@ -65,6 +65,7 @@ watch(
           class="nav-item"
           :class="{ below: s.below, dim: searching && !hits.by[s.id] }"
           :data-section="s.id"
+          :data-parts="partsOf(s).join(' ')"
           :aria-current="!searching && shown.section?.id === s.id ? 'page' : undefined"
           @click="go(s.id)"
         >
@@ -101,7 +102,7 @@ watch(
         <!-- A phone's list of sections, each saying what it is set to. -->
         <template v-else>
           <div v-for="(group, i) in [above, below]" :key="i" class="card section-list" :class="{ below: i === 1 }">
-            <button v-for="s in group" :key="s.id" type="button" class="row section-row" :data-section="s.id" @click="go(s.id)">
+            <button v-for="s in group" :key="s.id" type="button" class="row section-row" :data-section="s.id" :data-parts="partsOf(s).join(' ')" @click="go(s.id)">
               <span v-if="i === 0" class="section-icon"><Icon :name="s.icon" /></span>
               <span class="label">
                 {{ s.label }}

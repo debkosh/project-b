@@ -1,5 +1,5 @@
 // Settings' Passkeys on the mock engine (docs/passkeys.md, Seeing and deleting them), in
-// a desktop's sections and on a phone: the row under Privacy with how many
+// a desktop's sections and on a phone: the row under Passwords with how many
 // there are, its list page with a row per passkey, Delete asking first and sending Go the
 // passkey, the count following, and the page with none. The passkeys are made as a page
 // makes them, through the mock's own request.
@@ -59,12 +59,12 @@ const phone = layout === 'phone';
   };
   const sends = (msg) => page.waitForRequest((r) => r.url().includes('/settings/send') && JSON.parse(r.postData() || '{}').t === msg.t, { timeout: 5000 }).then((r) => JSON.parse(r.postData()), () => null);
 
-  // The row, where Privacy is.
-  if (phone) await page.locator('.section-row[data-section="privacy"]').click();
-  else await page.locator('.nav [data-section="privacy"]').click();
+  // The row, in the section that holds it.
+  if (phone) await page.locator('.section-row[data-parts~="passkeys"]').click();
+  else await page.locator('.nav [data-parts~="passkeys"]').click();
   await settle(page);
   const row = page.locator('.row', { hasText: 'Passkeys' }).first();
-  check('Privacy has a Passkeys row, with how many there are', await until(async () => (await row.innerText().catch(() => '')).replace(/\s+/g, ' ').includes('2 passkeys')), await row.innerText().catch(() => ''));
+  check('Passwords has a Passkeys row, with how many there are', await until(async () => (await row.innerText().catch(() => '')).replace(/\s+/g, ' ').includes('2 passkeys')), await row.innerText().catch(() => ''));
   await shoot('row');
   const asked = sends({ t: 'passkeysList' });
   await row.getByRole('button').first().click();
@@ -106,7 +106,7 @@ const phone = layout === 'phone';
   check('with none left the page says so', await until(async () => (await rows.count()) === 0 && (await list.locator('.row.empty').innerText().catch(() => '')) === 'No passkeys yet. When a site offers to create one, Project B can save it here.'), await list.innerText());
   await shoot('empty');
   await page.getByRole('button', { name: /^Back to/ }).click();
-  check('and the row under Privacy has no count', await until(async () => { const t = (await row.innerText().catch(() => '')).replace(/\s+/g, ' '); return t.includes('Passkeys') && !/\d passkey/.test(t); }), await row.innerText().catch(() => ''));
+  check('and the row under Passwords has no count', await until(async () => { const t = (await row.innerText().catch(() => '')).replace(/\s+/g, ' '); return t.includes('Passkeys') && !/\d passkey/.test(t); }), await row.innerText().catch(() => ''));
   check('no errors in the console', errors.length === 0, errors.join(' | '));
   await page.close();
   await lib.stop();
@@ -120,8 +120,8 @@ const phone = layout === 'phone';
   lib.watch(locked, errors);
   await locked.goto(`${lib.base}/settings/?tab=${(await regions()).settings}`);
   await locked.getByRole('heading', { name: 'Settings' }).waitFor();
-  if (phone) await locked.locator('.section-row[data-section="privacy"]').click();
-  else await locked.locator('.nav [data-section="privacy"]').click();
+  if (phone) await locked.locator('.section-row[data-parts~="passkeys"]').click();
+  else await locked.locator('.nav [data-parts~="passkeys"]').click();
   await locked.locator('.row', { hasText: 'Passkeys' }).first().getByRole('button').first().click();
   const shut = locked.getByRole('region', { name: 'Passkeys', exact: true }).locator('.row.keyring');
   check('a keyring that gives no key: the line, Learn more and Try again', await until(async () => (await shut.innerText().catch(() => '')).includes("Your keyring is locked. Unlock it when asked; if it doesn't ask, log out and back in.")) &&

@@ -1,5 +1,5 @@
 // Settings' Passwords on the mock engine (docs/passwords.md), in each of the page's two
-// layouts and on a phone: the row under Privacy with how many there are, its list page with
+// layouts and on a phone: the row under Passwords with how many there are, its list page with
 // one row per saved login and no password, the search, Show and Copy at a row's end, the
 // device's check asked once and held for the page (passed, refused, and with no screen
 // lock) until the page is left, the username copied from the row's menu with no check,
@@ -60,12 +60,12 @@ if (layout === 'sections') fs.writeFileSync(path.join(lib.profile, 'prefs.json')
   const clipboard = async () => (await regions()).clipboard;
   const secret = async () => (await regions()).secretCopied;
 
-  // The row, where Privacy is.
-  if (phone) await page.locator('.section-row[data-section="privacy"]').click();
-  else await page.locator('.nav [data-section="privacy"]').click();
+  // The row, in the section that holds it.
+  if (phone) await page.locator('.section-row[data-parts~="passwords"]').click();
+  else await page.locator('.nav [data-parts~="passwords"]').click();
   await settle(page);
   const row = page.locator('.row', { hasText: 'Passwords' }).first();
-  check('Privacy has a Passwords row, with how many there are', await until(async () => (await row.innerText().catch(() => '')).replace(/\s+/g, ' ').includes('3 passwords')), await row.innerText().catch(() => ''));
+  check('Passwords has a Passwords row, with how many there are', await until(async () => (await row.innerText().catch(() => '')).replace(/\s+/g, ' ').includes('3 passwords')), await row.innerText().catch(() => ''));
   await shoot('row');
   const asked = sends({ t: 'passwordsList' });
   await row.getByRole('button').first().click();
@@ -128,7 +128,7 @@ if (layout === 'sections') fs.writeFileSync(path.join(lib.profile, 'prefs.json')
     await until(async () => (await regions()).settings !== 0);
     const locked = await context.newPage();
     await locked.goto(`${lib.base}/settings/?tab=${(await regions()).settings}`);
-    await locked.locator('.nav [data-section="privacy"]').click();
+    await locked.locator('.nav [data-parts~="passwords"]').click();
     await locked.locator('.row', { hasText: 'Passwords' }).first().getByRole('button').first().click();
     const lockedRow = locked.getByRole('region', { name: 'Passwords', exact: true }).locator('.row.login').first();
     await lockedRow.getByRole('button', { name: 'Show the password for mail.example.org' }).click();
@@ -220,7 +220,7 @@ if (layout === 'sections') fs.writeFileSync(path.join(lib.profile, 'prefs.json')
   check('with none left the page says so, with no search over it', await until(async () => (await list.locator('.row.empty').innerText().catch(() => '')) === (phone ? 'No saved passwords yet. With sync on, the ones on your other devices come here.' : 'No saved passwords yet. Bring them from another browser under Bring your things over.')) && (await search.count()) === 0, await list.innerText());
   await shoot('empty');
   await page.getByRole('button', { name: /^Back to/ }).click();
-  check('and the row under Privacy has no count', await until(async () => { const t = (await row.innerText().catch(() => '')).replace(/\s+/g, ' '); return t.includes('Passwords') && !/\d password/.test(t); }), await row.innerText().catch(() => ''));
+  check('and the row under Passwords has no count', await until(async () => { const t = (await row.innerText().catch(() => '')).replace(/\s+/g, ' '); return t.includes('Passwords') && !/\d password/.test(t); }), await row.innerText().catch(() => ''));
   check('no errors in the console', errors.length === 0, errors.join(' | '));
   await browser.close();
   await lib.stop();

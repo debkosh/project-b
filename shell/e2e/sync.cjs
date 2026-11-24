@@ -80,10 +80,10 @@ const taken = [];
   // chrome.send posts each one to /settings/send.
   const sends = (msg) => page.waitForRequest((r) => r.url().includes('/settings/send') && JSON.parse(r.postData() || '{}').t === msg.t, { timeout: 5000 }).then(() => true, () => false);
 
-  // Sync's card, as a person goes to it: Profile, the section that holds it.
+  // Sync's card, as a person goes to it: the section that holds it, Sync.
   const showSync = async () => {
-    if (phone) await page.locator('.section-row[data-section="profile"]').click();
-    else await page.locator('.nav [data-section="profile"]').click();
+    if (phone) await page.locator('.section-row[data-parts~="sync"]').click();
+    else await page.locator('.nav [data-parts~="sync"]').click();
     await settle(page);
   };
 
@@ -109,15 +109,11 @@ const taken = [];
   await openSettings();
   await showSync();
 
-  // Where it is: a card under Your data, after the profile's and before Import (none on a
-  // phone), and its address, sync, goes to it.
-  const order = await page.evaluate(() => {
-    const sync = document.querySelector('[data-part="sync"]');
-    const before = sync?.previousElementSibling;
-    return { before: before?.textContent.includes('Profile name'), after: sync?.nextElementSibling?.getAttribute('aria-label') || sync?.nextElementSibling?.textContent.slice(0, 20) };
-  });
-  check('Sync is a card of its own after the profile\'s', order.before === true, JSON.stringify(order));
-  check(phone ? 'and on a phone Run setup again follows it' : 'and Import follows it', phone ? order.after.includes('Run setup') : order.after === 'Import', JSON.stringify(order));
+  // Where it is: a section of its own, named Sync, that holds the card alone.
+  const home = phone
+    ? { parts: 'sync', name: (await page.locator('.list-head .list-title').innerText()).trim() }
+    : await page.locator('.nav [aria-current="page"]').evaluate((b) => ({ parts: b.dataset.parts, name: b.innerText.trim() }));
+  check('Sync is a section of its own, named Sync, the card alone in it', home.parts === 'sync' && home.name === 'Sync' && (await page.locator('[data-part="sync"]').count()) === 1, JSON.stringify(home));
   check('off, it has one row, Set up sync, and its line', (await card().locator('.row').count()) === 1 && (await card().innerText()).includes('Bookmarks, history, passwords and passkeys, through your own sync server'));
   await shot(1, 'off');
 
@@ -608,8 +604,8 @@ const taken = [];
   // round: the Passwords page says both, where with sync off it speaks of this device alone.
   await lib.fire('logins', JSON.stringify([{ Origin: 'https://mail.example.org', Username: 'asha@example.org', Password: 'correct horse battery' }]));
   if (phone) await page.getByRole('button', { name: 'Back to Settings' }).click();
-  if (phone) await page.locator('.section-row[data-section="privacy"]').click();
-  else await page.locator('.nav [data-section="privacy"]').click();
+  if (phone) await page.locator('.section-row[data-parts~="passwords"]').click();
+  else await page.locator('.nav [data-parts~="passwords"]').click();
   await settle(page);
   await page.locator('.row', { hasText: 'Passwords' }).first().getByRole('button').first().click();
   const passwords = page.getByRole('region', { name: 'Passwords', exact: true });
