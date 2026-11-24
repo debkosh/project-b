@@ -1,4 +1,5 @@
 <script>
+  import { find } from '@/ui/filter.js';
   import { paint } from '@/ui/hues.js';
   import { shell, state as go, tabLabel } from '@/sdk/svelte.svelte.js';
   import Favicon from './Favicon.svelte';
@@ -37,7 +38,9 @@
   const inWorkspace = (tab) => (tab.workspace || '') === workspace;
   const long = $derived(go.tabs.filter(inWorkspace).length > 3);
   const words = $derived(query.trim().toLowerCase());
-  const matches = (tab) => !words || tabLabel(tab).toLowerCase().includes(words) || (tab.url || '').toLowerCase().includes(words);
+  // Every word typed, in any order, in a tab's title or address (filter.js).
+  const found = $derived(new Set(find(go.tabs, (tab) => [tabLabel(tab), tab.url || ''], words).map((tab) => tab.id)));
+  const matches = (tab) => !words || found.has(tab.id);
   // Each search starts afresh: closed, the switcher forgets it.
   $effect(() => {
     if (open) return;

@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@debkosh/gulal": "file:vendor/debkosh-gulal-0.3.0.tgz",
+    "@leeoniya/ufuzzy": "1.0.19",
     "svelte": "^5.0.0",
     "vue": "^3.5.0"
   },

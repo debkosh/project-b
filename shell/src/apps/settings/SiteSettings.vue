@@ -4,6 +4,7 @@ import Dialog from '@/ui/Dialog.vue';
 import RowMenu from '@/ui/RowMenu.vue';
 import Segmented from '@/ui/Segmented.vue';
 import { size } from '@/ui/size.js';
+import { find } from '@/ui/filter.js';
 import { send, state } from './state.js';
 
 // Sites (docs/settings.md), in two views of one section. At "sites", a row per site, its
@@ -58,10 +59,7 @@ const menus = {};
 // A filter, once there are more sites than fit at a glance.
 const filterAfter = 8;
 const filter = ref('');
-const shown = computed(() => {
-  const f = filter.value.trim().toLowerCase();
-  return f ? state.sites.filter((r) => [r.site, ...r.hosts, ...r.origins].some((x) => x.toLowerCase().includes(f))) : state.sites;
-});
+const shown = computed(() => find(state.sites, (r) => [r.site, ...r.hosts, ...r.origins], filter.value));
 
 // The one site shown, from the section's address: a site, or an origin of one. '' is every
 // site.

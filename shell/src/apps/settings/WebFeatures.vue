@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue';
+import { find } from '@/ui/filter.js';
 import { state } from './state.js';
 
 // The web-features registry (core/webfeatures/registry.json), as Go sends it for this
@@ -22,10 +23,8 @@ const rank = (s) => (order.includes(s) ? order.indexOf(s) : order.length);
 // The filter keeps the features whose name, reason or status has what was typed.
 const filter = ref('');
 const groups = computed(() => {
-  const q = filter.value.trim().toLowerCase();
-  const hit = (f) => !q || [f.name, f.why, statusText[f.status]].some((s) => s.toLowerCase().includes(q));
   const byStatus = new Map();
-  for (const f of state.webFeatures.filter(hit)) {
+  for (const f of find(state.webFeatures, (f) => [f.name, f.why, statusText[f.status]], filter.value)) {
     if (!byStatus.has(f.status)) byStatus.set(f.status, []);
     byStatus.get(f.status).push(f);
   }

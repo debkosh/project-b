@@ -83,12 +83,17 @@ if (layout === 'sections') fs.writeFileSync(path.join(lib.profile, 'prefs.json')
   check('listing had the device check nobody', (await sendsNone()) === true);
   await shoot('list');
 
-  // The search keeps the logins whose site or username has what was typed.
+  // The search keeps the logins whose site and username have every word typed.
   const search = list.getByRole('textbox', { name: 'Search passwords' });
   await search.fill('SHOP');
   check('the search keeps the sites that match', await until(async () => (await rows.count()) === 2 && (await whos()).every((w) => w.startsWith('shop.example.com'))), JSON.stringify(await whos()));
   await search.fill('work@');
   check('and the usernames', await until(async () => JSON.stringify(await whos()) === '["shop.example.com work@example.com"]'), JSON.stringify(await whos()));
+  // Every word typed, in any order, across the site and the username, as "sbi shankuan" does.
+  await search.fill('asha shop');
+  check('two words find the login that has both, the site and the username, in either order', await until(async () => JSON.stringify(await whos()) === '["shop.example.com asha"]'), JSON.stringify(await whos()));
+  await search.fill('wrok shop');
+  check('and forgive a word one typo', await until(async () => JSON.stringify(await whos()) === '["shop.example.com work@example.com"]'), JSON.stringify(await whos()));
   await search.fill('zzz');
   check('and says when none does', await until(async () => (await rows.count()) === 0 && (await list.locator('.row.empty').innerText()) === 'No saved password matches “zzz”'));
   await search.press('Escape');

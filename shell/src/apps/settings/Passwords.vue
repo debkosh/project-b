@@ -6,6 +6,7 @@ import RowMenu from '@/ui/RowMenu.vue';
 import { phone } from '@/phone.js';
 import { siteTile } from '@/ui/tint.js';
 import { useTints } from '@/ui/useTints.js';
+import { find } from '@/ui/filter.js';
 import { KEYRING } from './keyring.js';
 import { send, state } from './state.js';
 
@@ -37,13 +38,11 @@ function saved(ms) {
   return `Saved ${d.toLocaleDateString('en-GB', opts)}`;
 }
 
-// The filter keeps the logins whose site or username has what was typed.
+// The filter keeps the logins whose site and username have every word typed, in any order,
+// as "sbi shankuan" (filter.js).
 const filter = ref('');
 const all = computed(() => state.passwords || []);
-const rows = computed(() => {
-  const q = filter.value.trim().toLowerCase();
-  return q ? all.value.filter((l) => l.site.toLowerCase().includes(q) || l.username.toLowerCase().includes(q)) : all.value;
-});
+const rows = computed(() => find(all.value, (l) => [l.site, l.username], filter.value));
 
 // What a row shows of itself: its password, while shown, and a line that answers the last
 // press, "Password copied" or why a password didn't open.
