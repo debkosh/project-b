@@ -82,7 +82,9 @@ void ContentBrowserClient::GetAdditionalMappedFilesForChildProcess(
 // The helper beside the main binary in a build, and in an app of its own in the packed app:
 // one whose Info.plist says LSUIElement, so no child process ever shows in the Dock, as a
 // capture service that touches the camera would otherwise.
-base::FilePath ContentBrowserClient::GetChildProcessPath(int flags) {
+base::FilePath ContentBrowserClient::GetChildProcessPath(
+    int flags,
+    content::ChildProcessId child_process_id) {
 #if BUILDFLAG(IS_LINUX)
   // Linux has one binary: a child is this one with --type, and never loads Go (app/main_linux.cc).
   base::FilePath exe;
@@ -240,8 +242,13 @@ std::unique_ptr<content::LoginDelegate> ContentBrowserClient::CreateLoginDelegat
     const GURL& url,
     scoped_refptr<net::HttpResponseHeaders> response_headers,
     bool first_auth_attempt,
+    bool do_not_prompt_for_login,
     content::GuestPageHolder* guest_page_holder,
     content::LoginDelegate::LoginAuthRequiredCallback auth_required_callback) {
+  // A request that may not ask the person is cancelled, as content does with no delegate.
+  if (do_not_prompt_for_login) {
+    return nullptr;
+  }
   return Dialogs::Get()->SignIn(web_contents, auth_info, std::move(auth_required_callback));
 }
 
@@ -276,7 +283,7 @@ blink::UserAgentMetadata ContentBrowserClient::GetUserAgentMetadata() {
 
 base::OnceClosure ContentBrowserClient::SelectClientCertificate(
     content::BrowserContext* browser_context,
-    int process_id,
+    content::ChildProcessId process_id,
     content::WebContents* web_contents,
     net::SSLCertRequestInfo* cert_request_info,
     net::ClientCertIdentityList client_certs,

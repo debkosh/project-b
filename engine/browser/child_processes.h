@@ -9,6 +9,7 @@
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/render_process_host_creation_observer.h"
 #include "content/public/browser/render_process_host_observer.h"
+#include "content/public/common/child_process_id.h"
 
 namespace project_b {
 
@@ -50,7 +51,7 @@ class ChildProcesses : public content::BrowserChildProcessObserver,
                  const content::ChildProcessTerminationInfo& info);
 
   // By content's child process id, which renderers share with the others.
-  std::map<int, base::ProcessId> pids_;
+  std::map<content::ChildProcessId, base::ProcessId> pids_;
   base::ScopedMultiSourceObservation<content::RenderProcessHost,
                                      content::RenderProcessHostObserver>
       hosts_{this};

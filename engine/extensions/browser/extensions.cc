@@ -47,6 +47,7 @@
 #include "extensions/browser/crx_installer.h"
 #include "extensions/browser/disable_reason.h"
 #include "extensions/browser/event_router.h"
+#include "extensions/common/event_args.h"
 #include "extensions/browser/extension_file_task_runner.h"
 #include "extensions/browser/extension_prefs.h"
 #include "extensions/browser/extension_registry.h"
@@ -677,8 +678,9 @@ void Extensions::DispatchEvent(const std::string& id,
       base::JSONReader::ReadList(args_json, base::JSON_PARSE_RFC);
   extensions::EventRouter::Get(browser_context_)
       ->DispatchEventToExtension(
-          id, std::make_unique<extensions::Event>(kNumbers.at(event), event,
-                                                  std::move(*args)));
+          id, std::make_unique<extensions::Event>(
+                  kNumbers.at(event), event,
+                  base::MakeRefCounted<extensions::EventArgs>(std::move(*args))));
 }
 
 void Extensions::OpenPopup(int64_t window,

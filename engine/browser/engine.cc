@@ -314,8 +314,10 @@ void CallFind(int64_t tab, int32_t request, const char* text, int forward, int f
   auto options = blink::mojom::FindOptions::New();
   options->forward = forward;
   options->new_session = !find_next;
-  page->contents()->Find(request, base::UTF8ToUTF16(text), std::move(options),
-                         /*skip_delay=*/false);
+  page->contents()->Find(base::UTF8ToUTF16(text), std::move(options),
+                         /*skip_delay=*/false, [page, request](int content_request) {
+                           page->MapFindRequest(content_request, request);
+                         });
 }
 
 void CallPrint(int64_t tab) {

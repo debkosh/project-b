@@ -2,6 +2,7 @@
 #define PROJECT_B_ENGINE_BROWSER_PAGE_TAB_H_
 
 #include <cstdint>
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -34,6 +35,10 @@ class PageTab : public WebContentsObserverHooks, public WebContentsDelegateHooks
           const std::string& workspace,
           bool internal);
   PageTab(const PageTab&) = delete;
+  // Content numbers a find request itself; Go's number for it is what Go hears back.
+  void MapFindRequest(int content_request, int go_request) {
+    find_requests_[content_request] = go_request;
+  }
   PageTab& operator=(const PageTab&) = delete;
   ~PageTab() override;
 
@@ -129,12 +134,11 @@ class PageTab : public WebContentsObserverHooks, public WebContentsDelegateHooks
   void ActivateContents(content::WebContents* contents) override;
   bool IsFullscreenForTabOrPending(
       const content::WebContents* web_contents) override;
-  void FindReply(content::WebContents* web_contents,
-                 int request_id,
-                 int number_of_matches,
-                 const gfx::Rect& selection_rect,
-                 int active_match_ordinal,
-                 bool final_update) override;
+  void DidReceiveFindReply(int request_id,
+                           int number_of_matches,
+                           const gfx::Rect& selection_rect,
+                           int active_match_ordinal,
+                           bool final_update) override;
 
   // Tells Go one thing about this tab: the event with the tab's id, and a yes or no.
   void Fire(PBEvent event);
@@ -186,6 +190,8 @@ class PageTab : public WebContentsObserverHooks, public WebContentsDelegateHooks
   int thumbnail_request_ = 0;
   int64_t thumbnail_revision_ = 0;
   scoped_refptr<base::RefCountedMemory> thumbnail_;
+  // Content's find request numbers to Go's, until each one's final reply.
+  std::map<int, int> find_requests_;
   base::WeakPtrFactory<PageTab> weak_factory_{this};
 };
 
