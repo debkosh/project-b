@@ -23,8 +23,13 @@ const { check, fire, regions, settle, until } = lib;
   const tab = (id) => ui.locator(`[role=tab][data-tab="${id}"]`);
   const bar = ui.getByRole('dialog', { name: 'Command Bar' });
   const field = ui.getByRole('combobox', { name: 'Address' });
-  const kept = () => JSON.parse(fs.readFileSync(path.join(lib.profile, 'shells', 'arshell.json'), 'utf8'));
-  const pins = () => JSON.parse(fs.readFileSync(path.join(lib.profile, 'pins.json'), 'utf8'));
+  // Go writes these files a moment after the page shows the change, so until() reads a file
+  // not yet there, or half written, as empty and asks again.
+  const json = (file, empty) => {
+    try { return JSON.parse(fs.readFileSync(path.join(lib.profile, ...file), 'utf8')); } catch { return empty; }
+  };
+  const kept = () => json(['shells', 'arshell.json'], {});
+  const pins = () => json(['pins.json'], []);
   const active = async () => {
     const r = await regions();
     return r.tabs.find((t) => t.id === r.active);
