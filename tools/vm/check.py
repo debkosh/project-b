@@ -1232,9 +1232,10 @@ def upgrade_checks():
     key in folder.key and never touches the keychain. Here the installed build starts on its
     listed profile as a person's first start does, a login comes over into it, sealed under a
     key the login keychain's "Project B" / "device key" item wraps; then PB_UPGRADE_TO, a later
-    build, goes in place of it as an update does, and starts on the same profile, the
-    keychain asking to allow the new build answered as a person does; and the login still
-    opens: Show, macOS's sheet answered, gives the password. Run it on a VM of its own: it
+    build, goes in place of it as an update does, and starts on the same profile; and the login
+    still opens: Show, its sheet answered, gives the password. The keychain asks to allow the
+    new build at its first read of the device key, at the start with sync on or after Show's
+    sheet with it off, and is answered there as a person does. Run it on a VM of its own: it
     writes to the VM's keychain."""
     password = os.environ.get("PB_VM_PASSWORD", "admin")
     newer = os.environ.get("PB_UPGRADE_TO", "")
@@ -1323,8 +1324,10 @@ def upgrade_checks():
     check(f"the newer build ({after}, {now[:8]}) goes in place of {before} ({was[:8]})", now != "" and now != was, f"{was} -> {now}")
 
     ask, settings = started()
+    # A start with sync on reads the device key; with it off nothing reads it until a password
+    # is shown, so the keychain asks then instead, after Show's own sheet (70660038).
     asked = asked_keychain()
-    print(f"  the keychain {'asked to allow the new build, and was answered' if asked else 'asked nothing'}", flush=True)
+    check(f"{after}'s start, with sync off, asks the keychain nothing", not asked)
     settings("(document.querySelector('.nav [data-section=privacy]').click(), 1)")
     row = "[...document.querySelectorAll('.row')].find(r => r.textContent.includes('Passwords') && r.textContent.includes('1 password'))"
     listed = until(lambda: settings(f"!!{row}"), bool, 20)
@@ -1335,9 +1338,11 @@ def upgrade_checks():
         until(lambda: settings(f"!!{show}"), bool, 15)
         settings(f"({show}.click(), 1)")
         time.sleep(3)
-        asked_keychain()
         desk.type(password)  # Show's own sheet: the account's password, as password_checks' person.
         desk.key("return")
+        if not asked:
+            asked = asked_keychain()
+            print(f"  at Show, the keychain {'asked to allow the new build, and was answered' if asked else 'asked nothing'}", flush=True)
         text = lambda: settings("document.querySelector('[aria-label=Passwords]')?.innerText.replace(/\\s+/g, ' ') || ''") or ""
         shown = until(text, lambda t: secret in t, 20)
         check("and its password opens, the key unwrapped by the same device key", secret in shown, shown[-200:])
