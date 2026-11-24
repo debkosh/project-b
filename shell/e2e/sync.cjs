@@ -783,6 +783,8 @@ const taken = [];
     (await until(async () => (await card().innerText()).includes("Sync can't start"))) && (await card().innerText()).includes(KEYRING) &&
       (await button('Learn more', card()).isVisible()) && (await button('Try again', card()).isVisible()) && (await button('Set up…', card()).count()) === 0, await card().innerText());
   check('the rest of the card stays, as sync is on: Sync details and Turn off sync', (await card().innerText()).includes('Sync details') && (await button('Turn off…', card()).isVisible()));
+  check('what is the bucket\'s isn\'t there, as nothing is known of it yet: no Change sync passphrase, and no backup code\'s row to say there is none',
+    !(await card().innerText()).includes('Change sync passphrase') && !(await card().innerText()).includes('backup code') && (await button('Make one…', card()).count()) === 0, await card().innerText());
   await shot(27, 'keyring');
   told = sends({ t: 'syncNow' });
   await button('Try again', card()).click();
