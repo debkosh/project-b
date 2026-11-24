@@ -51,10 +51,12 @@ The seams:
   job that others wait on. And a wait that is the person's, at a question the OS put up, is
   not ours to end: the question stays, and its answer goes nowhere. Nor is a question put
   to the person for nothing they did. And an answer that depends on the person isn't final:
-  what they refused once they may allow at the next asking. Six so far: Sync now that showed
-  nothing, a sync called out of reach that wasn't, the app frozen while the desktop asked
-  for its keyring, GNOME's keyring broken by our giving up, the keyring's question at every
-  start, a keyring that gave no key and nothing said or to try.
+  what they refused once they may allow at the next asking. And what a person takes back
+  while the work is still going is taken back once it is done, not forgotten because there
+  was nothing yet to take. Seven so far: Sync now that showed nothing, a sync called out of
+  reach that wasn't, the app frozen while the desktop asked for its keyring, GNOME's keyring
+  broken by our giving up, the keyring's question at every start, a keyring that gave no key
+  and nothing said or to try, a backup code kept that nobody saw.
 - **An error as text.** A library's words for what went wrong hold more than we would say
   ourselves: Go names the whole address a request went to, and an address can be a secret.
   What goes to a log, a tooltip or a report has to be looked at as text a stranger may read.
@@ -76,6 +78,29 @@ The seams:
 - **What a platform doesn't have.** A thing one OS has no way to do is not a setting the
   person left off. Answered as that, it tells them to fix what they can't, in words written
   for another OS. One so far: saved passwords Linux couldn't show.
+
+## A backup code kept that nobody saw, 2026-11-24
+
+- **Seen:** by release, as a test of Settings' Sync that failed now and then while the Mac
+  was busy with a build: after Skip for now on "Save your backup code", the card said
+  "Backup code, Made 24 Nov 2026" where it should have offered to make one.
+- **Cause:** the code is made as its card opens, which takes a round trip to the server.
+  Leaving the card dropped the code only if the page already had it. Left sooner, by Skip
+  for now, Cancel or Escape while the card still said "Making your backup code…", the code
+  was made all the same and never dropped. The bucket then had a backup code nobody had
+  seen, and the row said there was one. A person who skipped would believe they had a way
+  back in, and after New code… and Cancel the bucket had two.
+- **Seam:** work that takes time: what a person takes back while the work is still going.
+- **Fix:** leaving the card sends the drop whether the code has come or not. Go does what is
+  asked of sync in turn, so the drop follows the making, and with nothing made it does
+  nothing.
+- **Why it was missed:** my miss. I wrote the page to drop what it held, and thought of the
+  making as instant: every test's server answered at once, so Skip always came after the
+  code. Only a loaded machine made the press come first.
+- **Guard:** `shell/e2e/sync.cjs`: with the mock's sync server slow, Cancel while the card
+  says it is making the code, then the card opened again and left; the row still offers to
+  make one. Seen to fail by its name without the fix, and to pass with it; and the whole
+  test, under a load average of 24, failed before the fix at the check release saw.
 
 ## Saved passwords Linux couldn't show, 2026-11-24
 

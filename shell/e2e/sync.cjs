@@ -671,6 +671,26 @@ const taken = [];
   await titled('Save your backup code');
   await button('Skip for now').click();
   check('and connecting again with a new token syncs again, the backup code skipped: its row offers to make one', (await until(async () => (await card().innerText().catch(() => '')).includes('No backup code'), 10000)) && (await button('Make one…', card()).count()) === 1 && (await dialog().count()) === 0 && (await button('Sync now', card()).isVisible()), await card().innerText().catch(() => ''));
+  // A code still being made when its card is left goes too, as one already shown does: with
+  // the server slow, Cancel comes while the card still says it is making one. Sync does what
+  // is asked of it in turn, so the card opened again shows its code only once the first was
+  // made and taken away; that one left too, the bucket has no backup code.
+  await server({ slow: '1' });
+  await button('Make one…', card()).click();
+  await titled('Save your backup code');
+  check('with the server slow, the card says it is making the code', await until(async () => (await dialog().innerText()).includes('Making your backup code…')), await dialog().innerText());
+  await button('Cancel').click();
+  await until(async () => (await dialog().count()) === 0);
+  await server({ slow: '0' });
+  // A code that stayed leaves the row with no Make one… to press, which is the failure too.
+  const again = await button('Make one…', card()).click({ timeout: 15000 }).then(() => true, () => false);
+  if (again) {
+    await titled('Save your backup code');
+    await until(async () => (await codeShown()) !== '', 20000);
+    await button('Cancel').click();
+  }
+  check('a code left while it was still being made is taken away, as one left after it showed is: the row still offers to make one',
+    again && (await until(async () => (await card().innerText()).includes('No backup code') && (await button('Make one…', card()).count()) === 1, 15000)) && !(await card().innerText()).includes('New code…'), await card().innerText());
   await button('Turn off…', card()).click();
   await button('Turn off').click();
   await shown(button('Set up…', card()));

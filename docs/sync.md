@@ -538,7 +538,11 @@ picture, light and dark, desktop and phone, is made by `shell/e2e/sync.cjs` unde
     forget your passphrase, this code opens your sync. Keep it somewhere apart from this
     device.", the code in two lines of three groups, its zero slashed, Copy (as a secret), Save
     as file (a text file, "Project B backup code.txt", where the device's downloads go), Show as
-    QR, which draws it only then, Skip for now, and I've saved it.
+    QR, which draws it only then, Skip for now, and I've saved it. The code is made as the
+    card opens, and while it is the card says "Making your backup code…". Leaving the card
+    without I've saved it takes the code away again, whether it had shown yet or not: the
+    page sends `syncBackupDrop` either way, and Go, which does what is asked of sync in
+    turn, drops it once it is made.
 - **The Backup code row**, while sync is on: "Made 22 Nov 2026", Check… and New code…; with no
   code, "No backup code", "A way back in if you forget your passphrase", Make one….
   - **Check your backup code:** one field; "This is your backup code." with a tick, or "That's

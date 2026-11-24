@@ -55,9 +55,11 @@ function keep() {
   b.busy = true;
   ask({ t: 'syncBackupKeep' });
 }
-// Leaving the card any other way: the code just made goes, as nobody said they saved it.
+// Leaving the card any other way: the code just made goes, as nobody said they saved it. So
+// does one still being made, which this page hasn't got yet: Go takes what is asked of sync
+// in turn, so the drop comes after the making, and with nothing made it does nothing.
 function leave() {
-  if (b.code) send({ t: 'syncBackupDrop' });
+  send({ t: 'syncBackupDrop' });
   shut();
 }
 
@@ -133,7 +135,7 @@ onMounted(() => syncAnswers.add(heard));
 onUnmounted(() => {
   syncAnswers.delete(heard);
   clearTimeout(saidFor);
-  if (b.step === 'code' && b.code) send({ t: 'syncBackupDrop' });
+  if (b.step === 'code') send({ t: 'syncBackupDrop' });
 });
 </script>
 
