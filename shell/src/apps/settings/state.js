@@ -84,6 +84,8 @@ export const state = reactive({
   passkeys: null,
   // The profile's key doesn't open on this device, so its passkeys can't be shown.
   passkeysNotHere: false,
+  // The desktop's keyring gave no key, so the passkeys couldn't be listed (keyring.js).
+  passkeysKeyring: false,
   // The profile's saved logins (docs/passwords.md): how many, and, once the Passwords page
   // has asked, each {id, site, origin, username, created}, with no password. passwordAnswer
   // is Go's last answer to this page's Show or Copy: passwordShown {id, password} or
@@ -298,6 +300,7 @@ export function connect() {
         case 'passkeys':
           state.passkeys = m.passkeys;
           state.passkeysNotHere = !!m.notHere;
+          state.passkeysKeyring = !!m.keyring;
           break;
         case 'prefs':
           state.prefs = m.prefs;

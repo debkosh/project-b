@@ -6,6 +6,7 @@ import RowMenu from '@/ui/RowMenu.vue';
 import { phone } from '@/phone.js';
 import { siteTile } from '@/ui/tint.js';
 import { useTints } from '@/ui/useTints.js';
+import { KEYRING } from './keyring.js';
 import { send, state } from './state.js';
 
 // Passwords (docs/passwords.md): the logins Project B keeps, one row each: its site's mark,
@@ -51,6 +52,7 @@ const WHY = {
   noScreenLock: 'Set a screen lock on this device to show passwords',
   notHere: "This profile's passwords can't be opened on this device",
   gone: "This password isn't saved any more",
+  keyring: KEYRING,
   failed: "Couldn't open this password",
 };
 const show = (l) => (shown[l.id] ? delete shown[l.id] : send({ t: 'passwordShow', id: l.id }));

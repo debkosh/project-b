@@ -32,6 +32,11 @@ var ErrNoDeviceKey = errors.New("keys: no device key")
 // replaced. Nothing is overwritten; StartFresh makes a new key.
 var ErrLocked = errors.New("keys: this profile's key doesn't open with this device's key")
 
+// ErrKeyring is a Device's answer when the desktop's keyring gave no key (Linux): the person
+// said no to its question, or it is refusing every request until the next login
+// (docs/fragility.md). Nothing is kept of the answer, so asking again may open it.
+var ErrKeyring = errors.New("keys: the desktop's keyring gave no key")
+
 // errNone is the profile having no key yet: nothing was sealed in it.
 var errNone = errors.New("keys: nothing has been sealed in this profile")
 

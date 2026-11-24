@@ -6,6 +6,7 @@ import (
 	"errors"
 
 	"projectb/engine"
+	"projectb/keys"
 	"projectb/passkeys"
 	"projectb/settings"
 	"projectb/timeline"
@@ -57,7 +58,9 @@ func (a *App) passkeySettingsPart(e engine.Engine) settings.Part {
 			all, err := a.Passkeys.All(context.Background(), true)
 			// A profile whose key doesn't open here has passkeys it can't show.
 			notHere := errors.Is(err, passkeys.ErrNotHere)
-			if err != nil && !notHere {
+			// A desktop keyring that gave no key: the page says so, and offers to try again.
+			keyring := errors.Is(err, keys.ErrKeyring)
+			if err != nil && !notHere && !keyring {
 				timeline.Errorf("passkeys: %v", err)
 			}
 			rows := []passkeyRow{}
@@ -65,7 +68,9 @@ func (a *App) passkeySettingsPart(e engine.Engine) settings.Part {
 				account := accountRow(p.UserName, p.DisplayName)
 				rows = append(rows, passkeyRow{ID: b64(p.ID), Site: p.RPID, Title: account.Title, Secondary: account.Secondary, Unnamed: account.Unnamed, Created: p.Created})
 			}
-			e.Post(func() { a.Settings.Send(map[string]any{"t": "passkeys", "passkeys": rows, "notHere": notHere}) })
+			e.Post(func() {
+				a.Settings.Send(map[string]any{"t": "passkeys", "passkeys": rows, "notHere": notHere, "keyring": keyring})
+			})
 		}()
 	}
 	return settings.Part{

@@ -4,6 +4,7 @@ import Dialog from '@/ui/Dialog.vue';
 import { phone } from '@/phone.js';
 import { siteTile } from '@/ui/tint.js';
 import { useTints } from '@/ui/useTints.js';
+import { KEYRING } from './keyring.js';
 import { send, state } from './state.js';
 
 // Passkeys (docs/passkeys.md, Seeing and deleting them): the passkeys Project B keeps, a
@@ -42,6 +43,10 @@ function remove() {
   <section aria-label="Passkeys">
     <div class="card">
       <div v-if="state.passkeysNotHere" class="row empty">These passkeys were made on another device and only open there.</div>
+      <div v-else-if="state.passkeysKeyring" class="row keyring">
+        <span class="err" role="alert">{{ KEYRING }}</span>
+        <button type="button" class="text-button" @click="send({ t: 'passkeysList' })">Try again</button>
+      </div>
       <div v-else-if="state.passkeys && rows.length === 0" class="row empty">No passkeys yet. When a site offers to create one, Project B can save it here.</div>
       <div v-for="p in rows" :key="p.id" class="row passkey" :data-site="p.site">
         <span class="mark" aria-hidden="true" :style="{ background: tile(p.site).background, boxShadow: `inset 0 0 0 1px ${tile(p.site).border}`, color: tile(p.site).letter }">{{ letter(p.site) }}</span>
@@ -102,6 +107,16 @@ function remove() {
 
 .unnamed {
   font-style: normal;
+}
+
+/* A keyring that gave no key: why, and Try again at the row's end. */
+.keyring {
+  gap: 12px;
+}
+
+.keyring .err {
+  flex: 1;
+  color: var(--danger);
 }
 
 /* An empty list is one muted row. */

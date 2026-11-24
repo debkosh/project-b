@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/sudiptadeb/oskit/secret"
 
@@ -19,6 +20,9 @@ func deviceKey(create bool) ([]byte, error) {
 	b, err := secret.New().DeviceKey(context.Background(), deviceKeyName, create)
 	if errors.Is(err, secret.ErrNone) {
 		return nil, keys.ErrNoDeviceKey
+	}
+	if noKeyring(err) {
+		return nil, fmt.Errorf("%w: %v", keys.ErrKeyring, err)
 	}
 	return b, err
 }

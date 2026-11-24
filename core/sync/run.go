@@ -48,7 +48,8 @@ type Status struct {
 	// LastSynced is when a run last ended well, Unix milliseconds, 0 for never.
 	LastSynced int64  `json:"lastSynced"`
 	Error      string `json:"error"`
-	// Problem names the error for the page (Problem): "token" when the server signed this
+	// Problem names the error for the page (Problem): "keyring" when the desktop's keyring
+	// gave no device key at start, so sync is on with no host; "token" when the server signed this
 	// device out, "unreachable" when it gave no answer, "server" when it answered that it
 	// failed, "notBucket" when the bucket is gone, and "" for anything else, which the page
 	// calls by no more than that sync failed.
@@ -97,7 +98,9 @@ type Manager struct {
 	// newBackup is the copy of the backup code just made, until it is kept or dropped.
 	newBackup string
 	// loaded says the start's wait is over: what sync is on with was read, and it ran.
+	// noKey says it wasn't, for the keyring giving no device key: SyncNow has it tried again.
 	loaded bool
+	noKey  bool
 	last   time.Time // when the last run ended
 	wait   time.Duration
 	next   time.Time // no run before, after a failed one
@@ -240,6 +243,11 @@ func (m *Manager) loop() {
 			m.load()
 			op()
 		case <-m.wake:
+			if m.noKey {
+				// Try again, after a keyring that gave no key: sync is starting again.
+				m.noKey, m.loaded = false, false
+				m.setStatus(func(s *Status) { *s = Status{On: true} })
+			}
 			if !m.loaded {
 				m.load()
 			} else if m.conn != nil {
@@ -300,7 +308,12 @@ func (m *Manager) load() {
 		return
 	}
 	m.loaded = true
-	if err := m.keys.Check(); err != nil {
+	if err := m.keys.Check(); errors.Is(err, keys.ErrKeyring) {
+		// Sync stays on, and says why it can't start: asking the keyring again may open it.
+		m.noKey = true
+		m.setStatus(func(s *Status) { *s = Status{On: true, Error: Words(err), Problem: Problem(err)} })
+		return
+	} else if err != nil {
 		m.setStatus(func(s *Status) { *s = Status{Locked: errors.Is(err, keys.ErrLocked), Error: lockedError(err).Error()} })
 		return
 	}

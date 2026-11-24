@@ -1,4 +1,5 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { KEYRING } from './keyring.js';
 import { send, state } from './state.js';
 
 // What a failed run was, as the page says it, by the name Go gives it (sync.Problem). A
@@ -11,6 +12,7 @@ const FAILED = {
   notBucket: 'The server has no sync bucket at this address',
   token: 'The server signed this device out',
   reset: 'The sync bucket was reset',
+  keyring: KEYRING,
 };
 export const failedAs = (problem) => FAILED[problem] || "Couldn't sync";
 

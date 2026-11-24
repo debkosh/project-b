@@ -50,9 +50,11 @@ The seams:
   arrived. And a call that may wait on the person must be reached from no thread and no
   job that others wait on. And a wait that is the person's, at a question the OS put up, is
   not ours to end: the question stays, and its answer goes nowhere. Nor is a question put
-  to the person for nothing they did. Five so far: Sync now that showed nothing, a sync
-  called out of reach that wasn't, the app frozen while the desktop asked for its keyring,
-  GNOME's keyring broken by our giving up, the keyring's question at every start.
+  to the person for nothing they did. And an answer that depends on the person isn't final:
+  what they refused once they may allow at the next asking. Six so far: Sync now that showed
+  nothing, a sync called out of reach that wasn't, the app frozen while the desktop asked
+  for its keyring, GNOME's keyring broken by our giving up, the keyring's question at every
+  start, a keyring that gave no key and nothing said or to try.
 - **An error as text.** A library's words for what went wrong hold more than we would say
   ourselves: Go names the whole address a request went to, and an address can be a secret.
   What goes to a log, a tooltip or a report has to be looked at as text a stranger may read.
@@ -71,6 +73,31 @@ The seams:
 - **A trigger runs under its caller's rules.** What a trigger's own statement says about a
   conflict gives way to the statement that fired it. One so far: a row changed twice before a
   run.
+
+## A keyring that gave no key, and nothing said or to try, 2026-11-24
+
+- **Seen:** reading the code while the two entries below were fixed, not in a report. On
+  Linux the desktop's keyring gives no device key when the person says no to its unlock
+  question, and when GNOME's keyring is refusing everything until the next login. With sync
+  on, Settings' Sync then showed "Set up sync" as though sync were off, and nothing asked
+  again until a restart. Passkeys came up as an empty list. Passwords said only that a
+  password couldn't be opened.
+- **Cause:** the answer was one more error with no name. Sync's start ran once, so an
+  answer that a second asking would have changed was final for that run of the app.
+- **Seam:** work that takes time: an answer that depends on the person taken as final.
+- **Fix:** the answer has a name, `keys.ErrKeyring`, made of oskit's `ErrNoPortal` where the
+  app asks for the device key. Sync stays on and says it can't start, with one line for
+  both causes, as the app can't tell them apart: "Your keyring is locked. Unlock it when
+  asked; if it doesn't ask, log out and back in." Try again asks the keyring again. The
+  same line is on a password's row, on Passkeys with Try again, and in the set-up Dialog.
+- **Why it was missed:** every test's device key always came. The Linux checks answered the
+  keyring's question each time.
+- **Guard:** core/keys' `TestAKeyringThatGaveNoKeyIsAskedAgain` and core/sync's
+  `TestAKeyringThatGivesNoKeyAtStart`: sync on with no host and the problem named, and its
+  server opened once the keyring gives the key. Not guarded: the pages' words, which no
+  mock can reach, as the mock's device key always comes, and `keyring_linux.go`, which only
+  a Linux build compiles. Nothing is said on a web page where a fill or a passkey doesn't
+  happen for this.
 
 ## The keyring's question at every start, 2026-11-24
 

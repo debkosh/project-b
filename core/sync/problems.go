@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/sudiptadeb/synckosh/client"
+
+	"projectb/keys"
 )
 
 // What can go wrong reaching a bucket, each of which the settings page words its own way
@@ -39,7 +41,8 @@ var (
 var StalledAfter = 30 * time.Second
 
 // Problem names what err is for the settings page: "address", "unreachable",
-// "server", "stalled", "notBucket", "token", "reset", or "" for anything else. "reset" is
+// "server", "stalled", "notBucket", "token", "keyring", "reset", or "" for anything else.
+// "keyring" is the desktop's keyring giving no device key (keys.ErrKeyring). "reset" is
 // synckosh's client.ErrBucketReset: the bucket holds no sealed copy of this device's key any
 // more, so it was emptied, or set up again from another device, and this device sends
 // nothing until sync is set up again here.
@@ -50,7 +53,7 @@ func Problem(err error) string {
 	for _, p := range []struct {
 		err  error
 		name string
-	}{{ErrAddress, "address"}, {ErrUnreachable, "unreachable"}, {ErrServer, "server"}, {ErrStalled, "stalled"}, {ErrNotBucket, "notBucket"}, {ErrToken, "token"}} {
+	}{{ErrAddress, "address"}, {ErrUnreachable, "unreachable"}, {ErrServer, "server"}, {ErrStalled, "stalled"}, {ErrNotBucket, "notBucket"}, {ErrToken, "token"}, {keys.ErrKeyring, "keyring"}} {
 		if errors.Is(err, p.err) {
 			return p.name
 		}

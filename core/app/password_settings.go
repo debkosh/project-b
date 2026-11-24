@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"projectb/engine"
+	"projectb/keys"
 	"projectb/passwords"
 	"projectb/settings"
 	"projectb/system"
@@ -175,6 +176,8 @@ func (a *App) passwordSettingsPart(e engine.Engine) settings.Part {
 					return "noScreenLock"
 				case errors.Is(err, passwords.ErrNotHere):
 					return "notHere"
+				case errors.Is(err, keys.ErrKeyring):
+					return "keyring"
 				case errors.Is(err, passwords.ErrNone):
 					return "gone"
 				}

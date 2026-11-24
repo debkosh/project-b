@@ -5,6 +5,7 @@ import { siteTile } from '@/ui/tint.js';
 import { useTints } from '@/ui/useTints.js';
 import Row from './Row.vue';
 import SyncBackup from './SyncBackup.vue';
+import { KEYRING } from './keyring.js';
 import { send, state, syncAnswers } from './state.js';
 import { useSyncRun } from './syncRun.js';
 
@@ -43,6 +44,9 @@ const { s, holding, lastSynced, serverRow, failed, setUpAgain, unsent, syncNow, 
 // sync is on with its server not opened yet: the tile is the page's quiet one then, with no
 // letter, so nothing changes colour when the server comes.
 const tints = useTints();
+// The row's label is the server, once sync has opened it: until then sync is starting, or
+// can't, for a keyring that gave no key (keyring.js).
+const serverLabel = computed(() => s.value.host || (s.value.problem === 'keyring' ? "Sync can't start" : 'Sync is starting'));
 // What is the bucket's is shown once sync has opened it, and while it isn't reset.
 const bucketKnown = computed(() => !!s.value.host && s.value.problem !== 'reset');
 const tile = computed(() => (tints.value, s.value.host ? siteTile(`https://${s.value.host}`) : { background: 'var(--bar)', border: 'var(--line)', letter: '' }));
@@ -231,6 +235,8 @@ function problem(m) {
       return { field: 'address', text: `Nothing arrived from ${host} for 30 seconds` };
     case 'notBucket':
       return { field: 'address', text: "That address isn't a sync bucket" };
+    case 'keyring':
+      return { field: 'address', text: KEYRING };
     case 'address':
       return { field: 'address', text: isHttps(d.address) ? "That address isn't a sync bucket" : 'Sync needs an https address' };
   }
@@ -447,7 +453,7 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
         <button type="button" class="text-button" @click="setUp">Set up again…</button>
       </Row>
       <template v-else-if="s.on">
-        <Row :label="s.host || 'Sync is starting'" :hint="lastSynced" :words="words" class="server" :title="serverRow === 'failed' ? s.error : undefined">
+        <Row :label="serverLabel" :hint="lastSynced" :words="words" class="server" :title="serverRow === 'failed' ? s.error : undefined">
           <template #lead>
             <span class="mark" aria-hidden="true" :style="{ background: tile.background, boxShadow: `inset 0 0 0 1px ${tile.border}`, color: tile.letter }">{{ (s.host[0] || '').toUpperCase() }}</span>
           </template>

@@ -3,6 +3,7 @@ package sync_test
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -18,6 +19,7 @@ import (
 	"github.com/sudiptadeb/synckosh"
 	"github.com/sudiptadeb/synckosh/client"
 
+	"projectb/keys"
 	"projectb/sync"
 	"projectb/timeline"
 )
@@ -582,6 +584,51 @@ func TestAStartOnlySaysSyncIsOnUntilWanted(t *testing.T) {
 	within("sync opens its server once wanted", func() bool { return a.sync.Status().Host != "" })
 	if asked.Load() == 0 {
 		t.Fatal("sync opened its server without the device key")
+	}
+}
+
+// A desktop keyring that gives no device key at a start leaves sync on, saying it can't start
+// and why, with no host; SyncNow, as the page's Try again, asks again, and sync opens its
+// server once the keyring gives the key.
+func TestAKeyringThatGivesNoKeyAtStart(t *testing.T) {
+	s := newServer(t)
+	dir := t.TempDir()
+	var gives atomic.Bool
+	gives.Store(true)
+	device := func(bool) ([]byte, error) {
+		if !gives.Load() {
+			return nil, fmt.Errorf("%w: the portal answered 2", keys.ErrKeyring)
+		}
+		return []byte(strings.Repeat("d", 32)), nil
+	}
+	a := openProfileOn(t, dir, device)
+	a.startSync(s)
+	if err := a.connect(s.bearer(), "tok", "pass phrase"); err != nil {
+		t.Fatal(err)
+	}
+	a.close()
+
+	gives.Store(false)
+	a = openProfileOn(t, dir, device)
+	defer a.close()
+	a.startSync(s)
+	if st := a.sync.Status(); !st.On || st.Host != "" || st.Problem != "keyring" || st.Error == "" || st.Locked {
+		t.Fatalf("status with the keyring giving no key: %+v", st)
+	}
+	a.sync.SyncNow()
+	a.sync.Idle()
+	if st := a.sync.Status(); !st.On || st.Host != "" || st.Problem != "keyring" {
+		t.Fatalf("status after trying again with the keyring still giving none: %+v", st)
+	}
+	gives.Store(true)
+	a.sync.SyncNow()
+	for end := time.Now().Add(5 * time.Second); a.sync.Status().Host == ""; time.Sleep(5 * time.Millisecond) {
+		if time.Now().After(end) {
+			t.Fatalf("sync never opened its server once the keyring gave the key: %+v", a.sync.Status())
+		}
+	}
+	if st := a.sync.Status(); !st.On || st.Problem != "" || st.Error != "" {
+		t.Fatalf("status once the keyring gave the key: %+v", st)
 	}
 }
 

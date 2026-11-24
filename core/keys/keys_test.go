@@ -3,6 +3,7 @@ package keys
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -178,5 +179,34 @@ func TestALockedKeyAndStartingFresh(t *testing.T) {
 	}
 	if err := New(dir, "p1", st, second.get).Check(); err != nil {
 		t.Fatalf("the new key, opened again: %v", err)
+	}
+}
+
+// A desktop keyring that gave no key is told apart from a locked profile key, and nothing is
+// kept of it: the next asking, which the keyring answers, opens the key.
+func TestAKeyringThatGaveNoKeyIsAskedAgain(t *testing.T) {
+	dir := t.TempDir()
+	gives := true
+	device := func(bool) ([]byte, error) {
+		if !gives {
+			return nil, fmt.Errorf("%w: the portal answered 2", ErrKeyring)
+		}
+		return bytes.Repeat([]byte{7}, 32), nil
+	}
+	k := New(dir, "p", openStore(t, dir), device)
+	if err := k.Ready(); err != nil {
+		t.Fatal(err)
+	}
+
+	gives = false
+	k = New(dir, "p", openStore(t, t.TempDir()), device)
+	for _, err := range []error{k.Check(), k.Ready()} {
+		if !errors.Is(err, ErrKeyring) || errors.Is(err, ErrLocked) {
+			t.Fatalf("with the keyring giving no key: %v", err)
+		}
+	}
+	gives = true
+	if err := k.Ready(); err != nil {
+		t.Fatalf("once the keyring gives the key: %v", err)
 	}
 }

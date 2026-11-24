@@ -100,6 +100,11 @@ with sync off the first ask is the person's own doing: a saved password shown or
 passkey, turning sync on. A locked profile key is then found when sync is turned on, which
 says `locked` as a start with sync on does.
 
+**A keyring that gives no key leaves sync on.** On Linux the device key may not come: the
+person said no to the keyring's question, or the keyring refuses everything until the next
+login. That is `keys.ErrKeyring`, the status's `keyring` problem with `on` and no `host`, and
+`SyncNow` asks again.
+
 **A start waits before sync does anything of its own.** Sync's first load is one of the app's
 background jobs, which all wait for the one timer after a start, ten seconds
 ([startup.md](startup.md)): at once sync only reads whether it is on, and says so in the
@@ -403,7 +408,7 @@ and `OnStatus` answer at once; the rest run on sync's goroutine, after what was 
 | `Wanted()` | has sync open what it is on with and run, as nothing has before: the app's background job after a start (`core/later`) |
 | `CancelRun()` | cuts the run going on short: it ends with no error and no longer wait, and the next comes when it would have |
 | `Address() string` | the bucket's address while sync is on, for Reconnect |
-| `Problem(err) string` | what went wrong reaching a bucket, by name: `address` (not one Propose takes), `unreachable` (no answer), `server` (the server answered that it failed, 500 and up: it was reached), `stalled` (a request with nothing going or arriving for `StalledAfter`, 30 seconds, which is ended), `notBucket` (not found, or not JSON), `token` (refused), or `""` for anything else, as a request the server won't take or a row that can't be written. A request's answer is looked at before synckosh reads it, and its error wraps `ErrAddress`, `ErrNeedsToken`, `ErrUnreachable`, `ErrServer`, `ErrStalled`, `ErrNotBucket` or `ErrToken` |
+| `Problem(err) string` | what went wrong reaching a bucket, by name: `address` (not one Propose takes), `unreachable` (no answer), `server` (the server answered that it failed, 500 and up: it was reached), `stalled` (a request with nothing going or arriving for `StalledAfter`, 30 seconds, which is ended), `notBucket` (not found, or not JSON), `token` (refused), `keyring` (the desktop's keyring gave no device key, `keys.ErrKeyring`), or `""` for anything else, as a request the server won't take or a row that can't be written. A request's answer is looked at before synckosh reads it, and its error wraps `ErrAddress`, `ErrNeedsToken`, `ErrUnreachable`, `ErrServer`, `ErrStalled`, `ErrNotBucket` or `ErrToken` |
 | `Words(err) string` | an error's text, a failed request as the request and then the cause, `GET v1/pull?after=1: EOF`: the request named from `v1` on, as the address before it may carry its token, and without the words the page's own sentence says. What the status, the page's answers and the timeline say of an error |
 | `Details(answer func(Details))` | what the Sync details page shows ([sync-details.md](sync-details.md)): the address with no token, the counts, the queue, and the runs since the app started, kept in memory only |
 | `StartFresh(done func(error))` | for a locked profile key: `keys.StartFresh`, so sync is forgotten and off |
@@ -475,6 +480,13 @@ picture, light and dark, desktop and phone, is made by `shell/e2e/sync.cjs` unde
     ([ux-guide.md](ux-guide.md#anything-that-takes-time)); "The server has no sync bucket at
     this address"; and "Couldn't sync" for anything else. The words themselves are on Sync
     details, under the run.
+  - Until sync has opened its server, a moment after a start, the row's label is "Sync is
+    starting" on the page's quiet tile. A Linux keyring that gave no device key leaves it as
+    a failed row, "Sync can't start", saying "Your keyring is locked. Unlock it when asked;
+    if it doesn't ask, log out and back in." (`keyring.js`): the one line for a question the
+    person said no to and for a keyring that answers nothing until the next login, which the
+    app can't tell apart. Try again asks the keyring again. The set-up Dialog says the same
+    line when turning sync on meets it.
   - A run goes on saying "Syncing…" for as long as it does. Go ends a request that stalls;
     the page keeps no clock of its own. A first sync against a bucket that holds a lot takes
     as long as it takes.
