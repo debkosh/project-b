@@ -9,9 +9,10 @@ it is built again above Chromium's content layer.
 - **A small, safe Go core that owns every decision.** Tabs, windows, profiles, history,
   bookmarks, downloads, site settings and updates are plain Go. It knows nothing about how
   pages render.
-- **A performant engine behind one interface.** Chromium's content layer (155.0.8059.41,
-  unpatched) loads and renders pages through a thin C++ adapter. A mock engine sits behind the
-  same interface, so the shell and the core run and are tested without a Chromium build.
+- **A performant engine behind one interface.** Chromium's content layer (the version in
+  [CHROMIUM_VERSION](CHROMIUM_VERSION), unpatched) loads and renders pages through a thin C++
+  adapter. A mock engine sits behind the same interface, so the shell and the core run and are
+  tested without a Chromium build.
 
 It runs on Apple silicon Macs and arm64 Android phones, and as a beta on arm64 Linux, from
 one tree, and installed copies update themselves. The
@@ -225,10 +226,11 @@ already brought Playwright; it needs its browser once:
 
     (cd shell && npx playwright install chromium)
 
-ChromeDriver, pinned to the Chromium we build:
+ChromeDriver, of the Chromium we build (`tools/chromium-upgrade.sh` fetches it too; when
+Chrome for Testing has no build of that exact version yet, take the newest of the same major):
 
     mkdir -p .tools/chromedriver && cd .tools/chromedriver
-    curl -LO https://storage.googleapis.com/chrome-for-testing-public/155.0.8059.41/mac-arm64/chromedriver-mac-arm64.zip
+    curl -LO https://storage.googleapis.com/chrome-for-testing-public/$(cat ../../CHROMIUM_VERSION)/mac-arm64/chromedriver-mac-arm64.zip
     unzip chromedriver-mac-arm64.zip && cd ../..
 
 The tests come in six groups, by what each needs. One command runs a group, and a group

@@ -5,7 +5,7 @@ set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 OUT=$ROOT/.tools/extensions
-PROD=155.0.8059.41
+PROD=$(tr -d "[:space:]" < "$ROOT/CHROMIUM_VERSION")
 UPDATE=https://clients2.google.com/service/update2/crx
 IDS="
 ddkjiahejlhfcafbddmgiahcphecmpfh uBlock Origin Lite

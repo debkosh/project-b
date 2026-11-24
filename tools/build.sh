@@ -218,7 +218,13 @@ if GO=$(command -v go); then
   fi
 else problem "go is not on PATH" "brew install go, or add /usr/local/go/bin to PATH"; fi
 
-if [ -d "$SRC" ] && [ -x "$ROOT/depot_tools/gn" ]; then ok "chromium and depot_tools present"
+if [ -d "$SRC" ] && [ -x "$ROOT/depot_tools/gn" ]; then
+  ok "chromium and depot_tools present"
+  # CHROMIUM_VERSION is the one place the version is written; the tree must be at it.
+  TREE_HAVE=$(sed -n 's/^[A-Z]*=//p' "$SRC/chrome/VERSION" | paste -sd. -)
+  TREE_WANT=$(tr -d '[:space:]' < "$ROOT/CHROMIUM_VERSION")
+  if [ "$TREE_HAVE" = "$TREE_WANT" ]; then ok "chromium/src is at $TREE_WANT"
+  else problem "chromium/src is $TREE_HAVE, CHROMIUM_VERSION is $TREE_WANT" "tools/chromium-upgrade.sh, or tools/fetch-chromium.sh"; fi
 else problem "chromium/src or depot_tools is missing" "tools/fetch-chromium.sh"; fi
 
 DEV_DIR=$(xcode-select -p 2>/dev/null)

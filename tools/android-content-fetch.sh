@@ -1,10 +1,11 @@
 #!/bin/bash
-# Chromium 155 for Android, on a Linux amd64 host. Chromium only builds Android on Linux x86-64,
+# Chromium for Android, on a Linux amd64 host. Chromium only builds Android on Linux x86-64,
 # so on the Mac this runs in an amd64 container under Rosetta (docs/android.md). Flat on purpose;
 # safe to re-run. Runs as root inside its own throwaway container.
 set -euo pipefail
 
-TAG=155.0.8059.41
+# The tag is CHROMIUM_VERSION, which the caller reads and passes: TAG=$(cat CHROMIUM_VERSION).
+TAG=${TAG:?the Chromium tag, from CHROMIUM_VERSION}
 WORK=/work
 DT=$WORK/depot_tools
 CR=$WORK/chromium
