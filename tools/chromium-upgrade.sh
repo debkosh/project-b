@@ -21,6 +21,7 @@ set -uo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT"
 SRC=$ROOT/chromium/src
+OUT_PB=$SRC/out/pb
 URL=https://chromium.googlesource.com/chromium/src.git
 DASH='https://chromiumdash.appspot.com/fetch_releases?channel=Stable&platform=Mac&num=1'
 CFT=https://googlechromelabs.github.io/chrome-for-testing/latest-versions-per-milestone-with-downloads.json
@@ -75,19 +76,30 @@ if [ "${1:-}" = --locked ]; then
     case ${REMOTE%:*} in localhost | 127.0.0.1) export PB_RBE_SSH=local ;; esac
     tools/remote/toolchain.sh || stop "build: tools/remote/toolchain.sh failed, above"
   fi
-  # The first build may fail only because Go's hook table is the old one; gen_hooks.py needs
-  # the build's out/pb, so it runs after either way, and the build goes again after it.
-  build first || grep -q 'hook table is' "$LOGS/build-first.log" || stop "build: tools/build.sh failed, above; $LOGS/build-first.log"
+  # gen_hooks.py reads content's headers through out/pb's compile commands, so it runs after the
+  # first build, failed or not: with a new major the old generated hooks are themselves among
+  # what fails to compile (hooks_gen.h overriding methods content dropped). The build goes
+  # again after it.
+  first=ok
+  build first || first=failed
 
   step "content's hooks (tools/gen_hooks.py)"
-  python3 tools/gen_hooks.py > "$LOGS/gen-hooks.log" 2>&1 || { tail -30 "$LOGS/gen-hooks.log"; stop "hooks: tools/gen_hooks.py failed; $LOGS/gen-hooks.log"; }
+  python3 tools/gen_hooks.py > "$LOGS/gen-hooks.log" 2>&1 || {
+    tail -30 "$LOGS/gen-hooks.log"
+    [ "$first" = ok ] || stop "build: tools/build.sh failed, and gen_hooks.py couldn't read content without it; $LOGS/build-first.log"
+    stop "hooks: tools/gen_hooks.py failed; $LOGS/gen-hooks.log"
+  }
   # shellcheck disable=SC2086
   moved=$(git diff --stat -I 'Chromium [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' -- $GENERATED)
   if [ -n "$moved" ]; then
     echo "$moved"
-    stop "hooks: content's API moved: the generated hooks changed beyond their version line. See git diff -- $GENERATED; the adapter needs a person (docs/content-hooks.md, \"When Chromium is upgraded\")"
+    # What the hand-written adapter no longer compiles against, by file, when the build failed.
+    [ "$first" = ok ] || sed 's/\x1b\[[0-9;]*m//g' "$OUT_PB/siso_output" 2>/dev/null |
+      grep -o '\.\./\.\./project_b/[^:]*:[0-9]*:[0-9]*: error: .*' | grep -v '_gen\.' | sort -u | head -40
+    stop "hooks: content's API moved: the generated hooks changed beyond their version line${first:+ (the first build: $first)}. See git diff -- $GENERATED and the errors above; the adapter needs a person (docs/content-hooks.md, \"When Chromium is upgraded\")"
   fi
   say "only the version line changed"
+  # Hooks the same and the build still failing: the hand-written adapter is what moved.
   build again || stop "build: tools/build.sh failed after gen_hooks.py, above; $LOGS/build-again.log"
   exit 0
 fi
