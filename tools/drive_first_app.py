@@ -3096,9 +3096,10 @@ def browser_signal_checks():
 
 def web_api_checks():
     """A page that calls each web API in the web-features registry keeps its renderer and
-    gets what the registry says it gets on the Mac; a service worker that sets the badge
+    gets what the registry says it gets on this platform, the Mac or Linux; a service worker that sets the badge
     keeps its process, and a copy button's click puts its text on the clipboard, as the
     registry says."""
+    platform = "linux" if LINUX else "mac"
     app = App(tempfile.mkdtemp(prefix="pb-profile-"))
     log = os.path.join(OUT, "app.log")
     wrong, unknown = [], []
@@ -3117,14 +3118,14 @@ def web_api_checks():
         alive = title == "Store" and not killed
         check(f"a page that calls {probe['name']} keeps its renderer", alive, "; ".join(killed) or ("" if alive else "the page stopped answering"))
         seen = (seen or "pending") if alive else "killed"
-        if row["status"]["mac"] == "unknown":
+        if row["status"][platform] == "unknown":
             unknown.append(f"{row['id']} ({probe['name']}): {seen}")
-        wrong.append(web_features.mismatch(row, probe, "mac", seen))
+        wrong.append(web_features.mismatch(row, probe, platform, seen))
     wrong = [w for w in wrong if w]
-    check(f"the {len(KILLERS)} calls give what the web-features registry says for the Mac", not wrong, "; ".join(wrong))
+    check(f"the {len(KILLERS)} calls give what the web-features registry says for {platform}", not wrong, "; ".join(wrong))
     if unknown:
-        print("  not yet known on the Mac, seen now: " + "; ".join(unknown), flush=True)
-    status = web_features.feature("badge-sw")["status"]["mac"]
+        print(f"  not yet known on {platform}, seen now: " + "; ".join(unknown), flush=True)
+    status = web_features.feature("badge-sw")["status"][platform]
     visit(app, PAGES + "badge-worker")
     start = os.path.getsize(log)
     time.sleep(3)
@@ -3132,8 +3133,8 @@ def web_api_checks():
         f.seek(start)
         killed = [l.split("Received bad user message: ", 1)[-1].strip() for l in f if "bad Mojo message" in l]
     check("a service worker that calls setAppBadge keeps its process", not killed, "; ".join(killed))
-    check("as the registry's badge-sw says", bool(killed) == (status == "kills"), f"badge-sw is {status} on mac")
-    status = web_features.feature("clipboard-async")["status"]["mac"]
+    check("as the registry's badge-sw says", bool(killed) == (status == "kills"), f"badge-sw is {status} on {platform}")
+    status = web_features.feature("clipboard-async")["status"][platform]
     visit(app, PAGES + "copy")
     page_click(app, "#copy")
     try:
@@ -3142,7 +3143,7 @@ def web_api_checks():
         pass
     title = app.js("document.title", page=True)
     check("a copy button's click puts its text on the clipboard", title == "copied", title)
-    check("as the registry's clipboard-async says", (title == "copied") == (status in ("works", "partly")), f"clipboard-async is {status} on mac")
+    check("as the registry's clipboard-async says", (title == "copied") == (status in ("works", "partly")), f"clipboard-async is {status} on {platform}")
     app.close()
 
 

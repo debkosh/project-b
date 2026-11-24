@@ -30,7 +30,7 @@ The inventory is a reading of Chromium 155 and Project B 0.2.61; the registry is
   "name": "App badge",
   "api": "navigator.setAppBadge(), navigator.clearAppBadge()",
   "interface": {"name": "blink.mojom.BadgeService", "scope": ["frame"]},
-  "status": {"mac": "quiet", "android": "works"},
+  "status": {"mac": "quiet", "linux": "quiet", "android": "works"},
   "why": "On Mac the call goes to an empty binder, so no badge shows; Android doesn't ask the browser",
   "needs": ["go-manager"],
   "owner": "engine/browser/content_browser_client.cc:ContentBrowserClient::RegisterBrowserInterfaceBindersForFrame",
@@ -47,7 +47,7 @@ The inventory is a reading of Chromium 155 and Project B 0.2.61; the registry is
 | `id` | required | Lower-case words joined by `-`; the inventory's id |
 | `name` | required | What a person calls it, for the settings page |
 | `api` | required | What a page calls or does |
-| `status` | required | What a page gets, for `mac` and for `android` (below) |
+| `status` | required | What a page gets, for `mac`, `linux` and `android` (below) |
 | `why` | required | One line a person can read: why it is so |
 | `interface` | | The Mojo interface Blink asks the browser for, and its scopes: `frame`, `service_worker`, `dedicated_worker`, `shared_worker` |
 | `delegate` | | The content method that decides it, `Class::Method` |
@@ -121,9 +121,10 @@ that says what it gave: absent or rejected with the error's name, resolved with 
 the value, or pending after 2 s. A killed renderer is read from content's "bad Mojo message"
 in the log. Each call is held to its probe's `expect`.
 
-- **Mac**, `python3 tools/drive_first_app.py webapis` (part of `tools/test.sh app`): every
+- **Mac and Linux**, `python3 tools/drive_first_app.py webapis` (part of `tools/test.sh app`),
+  each held to its own column: every
   probe call on a fresh page, one at a time. Per call, "a page that calls `<name>` keeps its
-  renderer"; then one check that every call gave what its `expect` says for the Mac, naming
+  renderer"; then one check that every call gave what its `expect` says for the platform, naming
   each row that didn't. Calls of `unknown` rows print what they gave, to fill the row in. The
   service worker that sets the badge is held to `badge-sw`, and the copy button to
   `clipboard-async`.

@@ -31,7 +31,7 @@ const (
 )
 
 // Platforms are the platforms each row gives a status for.
-var Platforms = []string{"mac", "android"}
+var Platforms = []string{"mac", "linux", "android"}
 
 var statuses = []string{Works, Off, Quiet, Absent, Partly, Kills, Unknown}
 
@@ -267,10 +267,12 @@ func (f *Feature) hasProbe(name string) bool {
 	return false
 }
 
-// Platform is the platform this runs on, as the rows name it.
+// Platform is the platform this runs on, as the rows name it. Linux answered "mac", so
+// Settings on Linux showed the Mac's statuses.
 func Platform() string {
-	if runtime.GOOS == "android" {
-		return "android"
+	switch runtime.GOOS {
+	case "android", "linux":
+		return runtime.GOOS
 	}
 	return "mac"
 }
