@@ -45,12 +45,14 @@ class MainDelegate : public content::ContentMainDelegate {
 #endif
 
  private:
-  std::unique_ptr<content::ContentClient> content_client_;
   std::unique_ptr<content::ContentRendererClient> renderer_client_;
   std::unique_ptr<content::ContentUtilityClient> utility_client_;
 #if BUILDFLAG(PB_EXTENSIONS)
   std::unique_ptr<extensions::ExtensionsClient> extensions_client_;
 #endif
+  // Last, so it goes first: it holds raw_ptrs to the clients above (content's renderer_ and
+  // utility_), which may not outlive what they point at. Gone before them, it never dangles.
+  std::unique_ptr<content::ContentClient> content_client_;
 };
 
 }  // namespace project_b
