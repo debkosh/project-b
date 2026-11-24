@@ -37,6 +37,8 @@ His decisions, 2026-11-24:
   working... so testing also should be only for the engine interface; if the interface is
   good then we should be good."
 - It commits nothing; it ends with what changed, and a person commits it with the Notes line.
+- On moving Android and Linux too, rather than a Mac-only release, 2026-11-24: "i would say
+  we upgrade everyone".
 
 ### Running it
 
@@ -99,8 +101,20 @@ A patch within a major goes through with no hands after the yes. A new major sto
 security fixes`, and hand the branch to release, which runs the release run
 ([releasing.md](releasing.md)) and takes DuckDuckGo's field matching as at every release.
 
-Not in it, for now: worktrees, the VM, Android and Linux, watching for releases,
-notifications, publishing.
+### Then android and linux
+
+`tools/chromium-upgrade.sh android`, then `linux`, once the Mac's run has ended green: the web
+features and the hooks are checked on the Mac's tree, and `CHROMIUM_VERSION` follows it. Both
+build in container pb from one tree, `/work/chromium`, so `android` moves it
+(`tools/android-content-fetch.sh`, under the container's build lock, with the pb-android VM
+held up and lowered to nice 15) and `linux` syncs it again, which is quick. Each builds
+(`tools/build.sh <platform> arm64`), and after asking, runs its driver: the APK on Android 17
+(`tools/test.sh android`), the Linux app headless (`tools/linux/headless.sh`). Both need the
+tester's slot. The container's builds stop when `/work/chromium` isn't at `CHROMIUM_VERSION`,
+as the Mac's does.
+
+Not in it, for now: worktrees, the macOS VM, watching for releases, notifications,
+publishing.
 
 ### The first run: 155.0.8059.41 to 158.0.8127.89, 2026-11-24
 
