@@ -10,7 +10,6 @@ import org.chromium.base.library_loader.LibraryLoader;
 import org.chromium.base.library_loader.LibraryProcessType;
 import org.chromium.net.NetworkChangeNotifier;
 import org.chromium.ui.accessibility.AccessibilityState;
-import org.chromium.ui.base.ResourceBundle;
 
 /** Runs first in every process, the main one and each child service. A child's name has a colon. */
 public final class BrowserApplication extends Application {
@@ -22,7 +21,6 @@ public final class BrowserApplication extends Application {
     protected void attachBaseContext(Context base) {
         super.attachBaseContext(base);
         ContextUtils.initApplicationContext(this);
-        ResourceBundle.setNoAvailableLocalePaks();
         LibraryLoader.getInstance()
                 .setLibraryProcessType(
                         isMainProcess()

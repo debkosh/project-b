@@ -256,7 +256,7 @@ android_java_prebuilt("native_shells_java") {
   supports_android = true
   deps = [
     ":native_shells_kotlin",
-    "//third_party/kotlin_stdlib:kotlin_stdlib_java",
+    "//third_party/android_deps:kotlin_stdlib_java",
   ]
 }
 
