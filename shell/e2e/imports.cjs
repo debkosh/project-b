@@ -188,13 +188,30 @@ const said = (frame, from) => frame.getByRole('list', { name: `From ${from}` }).
   await lib.fire('menu', 'app.settings');
   await w.settings.locator('.nav [data-parts~="import"]').click();
   const pw = w.settings.getByRole('region', { name: 'Import' });
-  // Settings has one scroller, its content: the file rows' hidden inputs, below the fold in a
-  // short window, stay in their rows and don't stretch the page past the window, which
-  // classic scrollbars (Linux) showed as a second bar.
+  // Settings' page never scrolls: its content does, and in a window too short for them its
+  // sections, under the search. The file rows' hidden inputs, below the fold, stay in their
+  // rows; nothing stretches the page past the window, which classic scrollbars (Linux) showed
+  // as a second bar.
   await until(() => pw.getByLabel('Passwords file').count());
-  await w.page.setViewportSize({ width: 1280, height: 420 });
+  // Measured once the short window has reached Settings' frame: before, its page is the tall
+  // window's and fits it, which says nothing.
   const doc = () => w.settings.locator('html').evaluate((e) => [e.scrollHeight, e.clientHeight]);
-  check('in a short window, only Settings\' content scrolls, not its page', await until(async () => { const [s, c] = await doc(); return c > 0 && s === c; }), await doc());
+  const [, tall] = await doc();
+  await w.page.setViewportSize({ width: 1280, height: 420 });
+  check('in a short window, only Settings\' content and its sections scroll, not its page', await until(async () => { const [s, c] = await doc(); return c > 0 && c < tall && s === c; }, 10000), `${await doc()} from ${tall}`);
+  const navList = w.settings.locator('.nav-list');
+  const searchTop = () => w.settings.locator('.nav-search input').evaluate((e) => Math.round(e.getBoundingClientRect().top));
+  const before = await searchTop();
+  const scrolled = await navList.evaluate((e) => { e.scrollTop = 60; return e.scrollTop; });
+  check('the sections scroll under the search, which stays put', scrolled > 0 && (await searchTop()) === before, `scrolled ${scrolled}, search at ${before} then ${await searchTop()}`);
+  await w.page.screenshot({ path: path.join(lib.out, 'settings-short-window.png') });
+  await navList.evaluate((e) => { e.scrollTop = 0; });
+  // Opened at a section from outside, About by Check for Updates…, the list shows its row.
+  await lib.fire('menu', 'app.checkUpdate');
+  const current = w.settings.locator('.nav-list [aria-current]');
+  const inSight = () => current.evaluate((row) => { const r = row.getBoundingClientRect(); const l = row.closest('.nav-list').getBoundingClientRect(); return (row.textContent.includes('About') && r.top >= l.top && r.bottom <= l.bottom) || `${row.textContent.trim()} ${Math.round(r.top)}-${Math.round(r.bottom)} in ${Math.round(l.top)}-${Math.round(l.bottom)}`; }).catch((e) => e.message);
+  check('opened at About in a short window, the list scrolls its row into sight', await until(async () => (await inSight()) === true), await inSight());
+  await w.settings.locator('[data-section="profile"]').click();
   await w.page.setViewportSize({ width: 1280, height: 800 });
   await pw.getByRole('button', { name: 'From Chrome' }).click();
   check('a profile offers its passwords, ticked', await until(() => pw.getByRole('checkbox', { name: /Passwords/ }).isChecked()) && (await pw.getByText('4 bookmarks · 3 pages · 3 passwords').isVisible()));
