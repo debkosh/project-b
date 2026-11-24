@@ -57,7 +57,7 @@ if [ "$PLATFORM" = linux ]; then
 
   echo "=== $(date '+%F %T') copy the tree in"
   docker exec pb sh -c 'rm -rf /work/linux-release && mkdir /work/linux-release'
-  { git ls-files -z core browserdata oskit engine tools/linux/engine-build.sh VERSION; find shell/dist -type f -print0; } |
+  { git ls-files -z core browserdata oskit engine tools/linux/engine-build.sh VERSION CHROMIUM_VERSION; find shell/dist -type f -print0; } |
     COPYFILE_DISABLE=1 tar -c --no-xattrs --no-mac-metadata --null -T - |
     docker exec -i pb tar -x -C /work/linux-release
 
@@ -114,7 +114,7 @@ if [ "$PLATFORM" = android ]; then
 
   echo "=== $(date '+%F %T') copy the tree in"
   docker exec pb sh -c 'rm -rf /work/release && mkdir /work/release'
-  { git ls-files -z core browserdata oskit engine tools/android-content-build.sh VERSION; find shell/dist -type f -print0; } |
+  { git ls-files -z core browserdata oskit engine tools/android-content-build.sh VERSION CHROMIUM_VERSION; find shell/dist -type f -print0; } |
     COPYFILE_DISABLE=1 tar -c --no-xattrs --no-mac-metadata --null -T - |
     docker exec -i pb tar -x -C /work/release
 

@@ -25,6 +25,11 @@ if ! flock -n 9; then
   flock 9
 fi
 
+# CHROMIUM_VERSION is the one place the version is written; the container's tree must be at it.
+TREE_HAVE=$(sed -n 's/^[A-Z]*=//p' "$SRC/chrome/VERSION" | paste -sd. -)
+TREE_WANT=$(tr -d '[:space:]' < "$REPO/CHROMIUM_VERSION")
+[ "$TREE_HAVE" = "$TREE_WANT" ] || { echo "RESULT=failed /work/chromium is $TREE_HAVE, CHROMIUM_VERSION is $TREE_WANT: tools/chromium-upgrade.sh android"; exit 1; }
+
 echo "=== $(date '+%F %T') copy $REPO to $TREE by content"
 python3 - "$REPO" "$TREE" <<'PY' || { echo "RESULT=failed copy"; exit 1; }
 import filecmp, os, shutil, sys

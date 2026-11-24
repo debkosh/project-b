@@ -32,6 +32,11 @@ fi
 # GN builds a copy of the tree in which a file is rewritten only when its content changes. Ninja
 # goes by file times, so building another checkout straight from where it is could leave an
 # output newer than a changed source, and the output would be kept.
+# CHROMIUM_VERSION is the one place the version is written; the container's tree must be at it.
+TREE_HAVE=$(sed -n 's/^[A-Z]*=//p' "$SRC/chrome/VERSION" | paste -sd. -)
+TREE_WANT=$(tr -d '[:space:]' < "$REPO/CHROMIUM_VERSION")
+[ "$TREE_HAVE" = "$TREE_WANT" ] || { echo "RESULT=failed /work/chromium is $TREE_HAVE, CHROMIUM_VERSION is $TREE_WANT: tools/chromium-upgrade.sh android"; exit 1; }
+
 echo "=== $(date '+%F %T') copy $REPO to $TREE by content"
 python3 - "$REPO" "$TREE" <<'PY' || { echo "RESULT=failed copy"; exit 1; }
 import filecmp, os, shutil, sys
