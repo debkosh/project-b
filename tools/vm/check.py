@@ -1171,8 +1171,8 @@ def password_checks():
     js("document.querySelector('[aria-label=Menu]').click()")
     until(lambda: js(f"!!{SETTINGS_ITEM}"), bool, 10)
     js(f"{SETTINGS_ITEM}.click()")
-    until(lambda: settings("!!document.querySelector('.nav [data-section=data]')"), bool, 15)
-    settings("(document.querySelector('.nav [data-section=data]').click(), 1)")
+    until(lambda: settings("!!document.querySelector('.nav [data-parts~=import]')"), bool, 15)
+    settings("(document.querySelector('.nav [data-parts~=import]').click(), 1)")
     until(lambda: settings("!!document.querySelector('input[aria-label=\"Passwords file\"]')"), bool, 15)
     csv = f"Title,URL,Username,Password,Notes,OTPAuth\\nmail,https://mail.example.org/,asha@example.org,{secret},,\\n"
     settings("(() => { const input = document.querySelector('input[aria-label=\"Passwords file\"]'); const files = new DataTransfer(); "
@@ -1182,9 +1182,9 @@ def password_checks():
     check("a passwords file comes over into the profile's own logins", "1 password" in came, came[-200:])
     shot("passwords-imported")
 
-    settings("(document.querySelector('.nav [data-section=privacy]').click(), 1)")
+    settings("(document.querySelector('.nav [data-parts~=passwords]').click(), 1)")
     row = "[...document.querySelectorAll('.row')].find(r => r.textContent.includes('Passwords') && r.textContent.includes('1 password'))"
-    check("Privacy's Passwords row counts it", bool(until(lambda: settings(f"!!{row}"), bool, 15)))
+    check("Settings' Passwords row counts it", bool(until(lambda: settings(f"!!{row}"), bool, 15)))
     settings(f"({row}.querySelector('button').click(), 1)")
     listed = until(text, lambda t: "mail.example.org" in t, 15)
     check("Settings' Passwords lists it by its site and username, with no password", "mail.example.org asha@example.org" in listed and secret not in listed, listed)
@@ -1258,7 +1258,7 @@ def upgrade_checks():
         js("document.querySelector('[aria-label=Menu]').click()")
         until(lambda: js(f"!!{SETTINGS_ITEM}"), bool, 10)
         js(f"{SETTINGS_ITEM}.click()")
-        until(lambda: settings("!!document.querySelector('.nav [data-section=data]')"), bool, 15)
+        until(lambda: settings("!!document.querySelector('.nav [data-parts~=import]')"), bool, 15)
         return ask, settings
 
     def keychain_sheet():
@@ -1302,7 +1302,7 @@ def upgrade_checks():
         print(f"  the device key's access entries, {when}:\n    " + "\n    ".join(lines[:60]), flush=True)
         return mine
     ask, settings = started()
-    settings("(document.querySelector('.nav [data-section=data]').click(), 1)")
+    settings("(document.querySelector('.nav [data-parts~=import]').click(), 1)")
     until(lambda: settings("!!document.querySelector('input[aria-label=\"Passwords file\"]')"), bool, 15)
     csv = f"Title,URL,Username,Password,Notes,OTPAuth\\nsite,https://{site}/,asha@example.org,{secret},,\\n"
     settings("(() => { const input = document.querySelector('input[aria-label=\"Passwords file\"]'); const files = new DataTransfer(); "
@@ -1328,7 +1328,7 @@ def upgrade_checks():
     # is shown, so the keychain asks then instead, after Show's own sheet (70660038).
     asked = asked_keychain()
     check(f"{after}'s start, with sync off, asks the keychain nothing", not asked)
-    settings("(document.querySelector('.nav [data-section=privacy]').click(), 1)")
+    settings("(document.querySelector('.nav [data-parts~=passwords]').click(), 1)")
     row = "[...document.querySelectorAll('.row')].find(r => r.textContent.includes('Passwords') && r.textContent.includes('1 password'))"
     listed = until(lambda: settings(f"!!{row}"), bool, 20)
     check(f"{after} on the same profile still has the login", bool(listed))

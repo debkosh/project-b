@@ -114,7 +114,7 @@ const said = (frame, from) => frame.getByRole('list', { name: `From ${from}` }).
   // Settings' Import: the same wizard. A folder chosen is a browser; one of no browser
   // says so.
   await lib.fire('menu', 'app.settings');
-  await w.settings.locator('[data-section="profile"]').click();
+  await w.settings.locator('.nav [data-parts~="import"]').click();
   const imp = w.settings.getByRole('region', { name: 'Import' });
   check('Import lists the browsers', await until(() => imp.getByRole('button', { name: 'From Chrome' }).isVisible()));
   await lib.fire('choose', path.join(home, 'Library'));
@@ -147,7 +147,7 @@ const said = (frame, from) => frame.getByRole('list', { name: `From ${from}` }).
   await lib.start(['-use=standard', '-skip-welcome', `-browsers=${home}`, `-store=${packStore()}`]);
   w = await lib.openWindow(browser, { viewport: { width: 1280, height: 800 } });
   await lib.fire('menu', 'app.settings');
-  await w.settings.locator('[data-section="profile"]').click();
+  await w.settings.locator('.nav [data-parts~="import"]').click();
   const ex = w.settings.getByRole('region', { name: 'Import' });
   await ex.getByRole('button', { name: 'From Chrome' }).click();
   const ext = ex.getByRole('checkbox', { name: /Extensions/ });
@@ -186,7 +186,7 @@ const said = (frame, from) => frame.getByRole('list', { name: `From ${from}` }).
   await lib.start(['-use=standard', '-skip-welcome', `-browsers=${home}`, '-password-store', '-keychain=test-safe-storage', '-keychain-items=Chrome,Wombat=another-browsers-key']);
   w = await lib.openWindow(browser, { viewport: { width: 1280, height: 800 } });
   await lib.fire('menu', 'app.settings');
-  await w.settings.locator('[data-section="profile"]').click();
+  await w.settings.locator('.nav [data-parts~="import"]').click();
   const pw = w.settings.getByRole('region', { name: 'Import' });
   // Settings has one scroller, its content: the file rows' hidden inputs, below the fold in a
   // short window, stay in their rows and don't stretch the page past the window, which
@@ -247,9 +247,9 @@ const said = (frame, from) => frame.getByRole('list', { name: `From ${from}` }).
   await pw.getByLabel('Bookmarks file').setInputFiles({ name: 'bookmarks.html', mimeType: 'text/html', buffer: Buffer.from('<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<DL><p>\n<DT><H3>Reading</H3>\n<DL><p>\n<DT><A HREF="https://example.com/file">From a file</A>\n</DL><p>\n</DL><p>\n') });
   check('a bookmarks file comes over into its own folder', await until(async () => (await said(pw, 'bookmarks.html')).includes('1 bookmark')) && folders().includes('From bookmarks'), JSON.stringify(folders()));
   // What came over is kept: Settings' Passwords lists it, by site, with no password.
-  await w.settings.locator('.nav [data-section="privacy"]').click();
+  await w.settings.locator('.nav [data-parts~="passwords"]').click();
   const kept = w.settings.locator('.row', { hasText: 'Passwords' }).first();
-  check('the passwords brought over are counted on Privacy\'s Passwords row', await until(async () => /\b[4-9] passwords\b/.test((await kept.innerText().catch(() => '')).replace(/\s+/g, ' '))), await kept.innerText().catch(() => ''));
+  check('the passwords brought over are counted on its Passwords row', await until(async () => /\b[4-9] passwords\b/.test((await kept.innerText().catch(() => '')).replace(/\s+/g, ' '))), await kept.innerText().catch(() => ''));
   await kept.getByRole('button').first().click();
   const keptList = w.settings.getByRole('region', { name: 'Passwords', exact: true });
   check('and listed on its page, the file\'s among them, with no password shown', await until(async () => (await keptList.locator('.row.login', { hasText: 'new.example.com' }).count()) === 1) &&

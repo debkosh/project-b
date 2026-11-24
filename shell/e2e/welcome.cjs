@@ -111,6 +111,7 @@ const bars = async (w) => (await w.ui.getByRole('tab').first().isVisible()) || (
   await until(async () => (await regions()).shell === 'standard');
   check('a start after it was finished opens none', !welcomeTab(await regions()));
   await lib.fire('menu', 'app.settings');
+  await w.settings.locator('.nav [data-parts~="runSetup"]').click();
   await w.settings.getByRole('button', { name: 'Close the app' }).click();
   check('Run setup again, in Settings, closes the app', await until(async () => (await regions()).quit));
   check('and welcome.json says it is unfinished', done() === false, String(done()));

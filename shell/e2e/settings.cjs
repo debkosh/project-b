@@ -269,15 +269,11 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
     return p;
   };
   let page = await open();
-  // show goes to where a part of the page is, as a person does: the section it is in, from
-  // the list of sections, and Sites, a row of Privacy that opens it (docs/settings.md).
-  const sectionOf = {
-    theme: 'appearance', frameColour: 'appearance', tabLayout: 'appearance', shell: 'appearance', start: 'start', searchEngine: 'start',
-    workspaces: 'workspaces', bookmarks: 'bookmarks', sites: 'privacy', keys: 'keyboard', keyboard: 'keyboard', profile: 'profile',
-    sparks: 'extensions', blockAds: 'privacy', clearData: 'privacy', clearOnQuit: 'privacy', askWhereToSave: 'downloads', downloadFolder: 'downloads', version: 'about', autoUpdate: 'about', flags: 'flags', webFeatures: 'webFeatures',
-  };
+  // show goes to where a part of the page is, as a person does: the section that holds it,
+  // from the list of sections, found by the part, wherever it is arranged, and Sites, a row
+  // that opens its own page (docs/settings.md).
   const show = async (part) => {
-    await page.locator(`.nav [data-section="${sectionOf[part]}"]`).click();
+    await page.locator(`.nav [data-parts~="${part}"]`).click();
     if (part === 'sites') await page.locator('[data-section="sites"]').click();
     await settle(page);
   };
@@ -1249,6 +1245,8 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   const sectionRows = page.locator('.section-row');
   const want = {
     profile: () => page.getByLabel('Profile name'),
+    syncing: () => page.getByRole('button', { name: /Set up/ }),
+    logins: () => page.locator('[data-section="passwords"]'),
     appearance: () => page.getByRole('radiogroup', { name: 'Address bar' }),
     start: () => page.getByRole('radiogroup', { name: 'On start, open' }),
     workspaces: () => page.getByRole('region', { name: 'Workspaces', exact: true }),

@@ -13,23 +13,34 @@ ship sectioned settings from now on.. i ahve used them and feel sections make be
 
 | Section | What is in it |
 |---|---|
-| Profile | Profile name, Template, Sync ([sync.md](sync.md#the-screens)), Import from other browsers (desktop), Run setup again |
+| Profile | Profile name, Template, Import from other browsers (desktop) |
+| Sync | Sync's card ([sync.md](sync.md#the-screens)) |
+| Passwords | Passwords and Passkeys, each opening as a page of its own; named Passwords alone, as "Passwords and passkeys" took two lines in a desktop's list |
 | Appearance | Theme, Frame colour, Tab layout (desktop), Address bar (phone), Shell |
 | Start and search | On start, Search engine |
 | Workspaces | The workspaces |
 | Bookmarks | Where bookmarks show, and the bar |
 | Downloads (desktop) | Save to, Ask where to save each file |
-| Privacy | Clear browsing data, Block ads, Clear cookies when the app quits (desktop), Sites, which opens as a page of its own, Passkeys |
+| Privacy and sites | Clear browsing data, Block ads, Clear cookies when the app quits (desktop), Sites, which opens as a page of its own |
 | Extensions, or Sparks | Extensions (with its flag on, desktop), and Sparks; named Sparks without extensions |
 | Keyboard (desktop) | Keys, and the keyboard shortcuts |
-| About Project B | The version and its update, Automatic updates, What's new ([About](#about)) |
+| About Project B | The version and its update, Automatic updates, What's new ([About](#about)), Run setup again |
 | Flags, Web features | Under a line at the foot of the list |
 
 The order, also from 2026-11-20 ("the sequence of sections needs some love"): who you are
-first, as Chrome and Safari start with the account; then how the app looks, and how its
+first, as Chrome and Safari start with the account, with its Sync and its Passwords after it; then how the app looks, and how its
 windows and tabs open, Start and search and Workspaces; then your things, Bookmarks and
-Downloads; then Privacy; what you add to it; Keyboard, a page of reference seldom visited; and
+Downloads; then Privacy and sites; what you add to it; Keyboard, a page of reference seldom visited; and
 About last, as every browser has it. ux's review set Workspaces and Keyboard where they are.
+
+Each section's name says what is in it (2026-11-24). Sync had been under Profile, and
+Passwords and Passkeys under Privacy, where nobody looks for them ("inside profile we have
+most of the stuff related to sync... inside privacy we mostly have data"); the owner chose
+this arrangement from three, one section per thing, over fewer broader groups and Chrome's
+names. The arrangement is one list in shell/src/apps/settings/arrange.js. Everything else
+finds a setting by what it is, never by the section that holds it today: Go opens the page
+at a part's address (sync, passwords, sites/…), and each section's place in the list names
+its parts (data-parts), which the tests click by. Moving a part is that list alone.
 
 On a desktop the list is at the left, with an icon for each section; the tab's title is
 Settings › and the section's name, the first section, Profile, when Go names none. On a phone
