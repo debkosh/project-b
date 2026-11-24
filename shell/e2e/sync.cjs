@@ -667,6 +667,15 @@ const taken = [];
   await until(async () => (await dialog().getAttribute('aria-label')) === 'Choose a sync passphrase');
   await field('Passphrase').fill(changed);
   await field('Type it again').fill(changed);
+  // From here no code is kept, so the row has none to tell of, whatever is still being made
+  // or taken away behind it: New code…, which only a row with a code offers, is watched for
+  // until the last of the codes left below has been made.
+  await page.evaluate(() => {
+    const offered = () => [...document.querySelectorAll('button')].some((b) => b.textContent.trim() === 'New code…');
+    window.toldOfACode = offered();
+    window.codeWatch = new MutationObserver(() => (window.toldOfACode ||= offered()));
+    window.codeWatch.observe(document.body, { childList: true, subtree: true, characterData: true });
+  });
   await button('Turn on sync').click();
   await titled('Save your backup code');
   await button('Skip for now').click();
@@ -679,7 +688,9 @@ const taken = [];
   await button('Make one…', card()).click();
   await titled('Save your backup code');
   check('with the server slow, the card says it is making the code', await until(async () => (await dialog().innerText()).includes('Making your backup code…')), await dialog().innerText());
+  told = sends({ t: 'syncBackupDrop' });
   await button('Cancel').click();
+  check('Cancel while the code is still being made asks for it to be taken away', await told);
   await until(async () => (await dialog().count()) === 0);
   await server({ slow: '0' });
   // A code that stayed leaves the row with no Make one… to press, which is the failure too.
@@ -691,6 +702,10 @@ const taken = [];
   }
   check('a code left while it was still being made is taken away, as one left after it showed is: the row still offers to make one',
     again && (await until(async () => (await card().innerText()).includes('No backup code') && (await button('Make one…', card()).count()) === 1, 15000)) && !(await card().innerText()).includes('New code…'), await card().innerText());
+  // Each code made since the watch began was made by the time the last one showed in its
+  // card, sync doing what is asked of it in turn.
+  check("and at no time did the row tell of a backup code, with every one made here left unsaved: a code is the bucket's once a person says they saved it",
+    !(await page.evaluate(() => (window.codeWatch.disconnect(), window.toldOfACode))));
   await button('Turn off…', card()).click();
   await button('Turn off').click();
   await shown(button('Set up…', card()));

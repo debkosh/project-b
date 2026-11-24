@@ -54,10 +54,12 @@ The seams:
   to the person for nothing they did. And an answer that depends on the person isn't final:
   what they refused once they may allow at the next asking. And what a person takes back
   while the work is still going is taken back once it is done, not forgotten because there
-  was nothing yet to take. Seven so far: Sync now that showed nothing, a sync called out of
+  was nothing yet to take. And what is made for a person to accept isn't said to be theirs
+  until they accept it. Eight so far: Sync now that showed nothing, a sync called out of
   reach that wasn't, the app frozen while the desktop asked for its keyring, GNOME's keyring
   broken by our giving up, the keyring's question at every start, a keyring that gave no key
-  and nothing said or to try, a backup code kept that nobody saw.
+  and nothing said or to try, a backup code kept that nobody saw, a backup code told of
+  before it was kept.
 - **An error as text.** A library's words for what went wrong hold more than we would say
   ourselves: Go names the whole address a request went to, and an address can be a secret.
   What goes to a log, a tooltip or a report has to be looked at as text a stranger may read.
@@ -79,6 +81,31 @@ The seams:
 - **What a platform doesn't have.** A thing one OS has no way to do is not a setting the
   person left off. Answered as that, it tells them to fix what they can't, in words written
   for another OS. One so far: saved passwords Linux couldn't show.
+
+## A backup code told of before it was kept, 2026-11-24
+
+- **Seen:** by the Linux session's run of Settings' Sync, once, on a busy Mac: Make one… left
+  the page as the test pressed it and didn't come back. For a person: skip "Save your backup
+  code" while it still says "Making your backup code…", and the row says "No backup code",
+  then "Backup code, Made 24 Nov 2026" with Check… and New code…, then "No backup code"
+  again, the middle one for as long as the server takes to hear the code is gone.
+- **Cause:** the status Go sends the page told of the bucket's newest backup code, and a
+  code just made is in the bucket before anyone has said they saved it. So the row told of
+  it the moment it was made, behind its own card, and after the card was left, until the
+  drop's run ended. In the test the server was held just then, so it never ended.
+- **Seam:** work that takes time: what is made for a person to accept isn't theirs yet.
+- **Fix:** the status leaves out the code just made until "I've saved it" keeps it
+  (`Manager.backup`). While its card shows, and while it is being taken away, the row says
+  what was there before: the older code, or none.
+- **Why it was missed:** my miss, twice. When I wrote the backup code I took the bucket's
+  codes for the person's, and no test looked at the row while the card was up. And the fix
+  before this one sent the drop sooner without my asking what the row says between the
+  making and the drop; its test passed on a row read too early.
+- **Guard:** `core/sync/backup_test.go`: the status with a code made and not kept, dropped,
+  dropped while being made, and made beside a kept one. `shell/e2e/sync.cjs`: from the
+  set-up's Skip for now to the last code left, the row is watched and never offers New
+  code…; and Cancel while the code is being made is seen to send the drop. Both seen to fail
+  without the fix.
 
 ## Typed keys a Wayland desktop drops, 2026-11-24
 

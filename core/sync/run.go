@@ -363,7 +363,7 @@ func (m *Manager) open(address, token string, key *synckosh.DataKey) error {
 	m.mu.Lock()
 	m.address, m.bearer = address, token != ""
 	m.mu.Unlock()
-	backup := m.conn.backup()
+	backup := m.backup()
 	m.setStatus(func(s *Status) { *s = Status{On: true, Host: hostOf(address), Backup: backup} })
 	return nil
 }
@@ -540,8 +540,8 @@ func (m *Manager) run(why string) error {
 			s.Error, s.Problem = Words(err), Problem(err)
 		} else {
 			s.LastSynced, s.Unsent = m.last.UnixMilli(), stuck
-			if c := m.conn; c != nil {
-				s.Backup = c.backup()
+			if m.conn != nil {
+				s.Backup = m.backup()
 			}
 		}
 	})

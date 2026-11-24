@@ -23,15 +23,22 @@ type Backup struct {
 // keys that open a bucket: "Backup, 22 Nov".
 func backupLabel(now time.Time) string { return "Backup, " + now.Format("2 Jan") }
 
-// backup is the bucket's backup code, the newest when it has more than one, nil for none.
-func (c *connection) backup() *Backup {
+// backup is the bucket's backup code as the page tells of it, the newest when it has more
+// than one, nil for none. A code just made isn't told of until it is kept: nobody has said
+// they saved it, and leaving its card takes it away, so until then the page says what was
+// there before it.
+func (m *Manager) backup() *Backup {
+	c := m.conn
+	if c == nil {
+		return nil
+	}
 	all, err := c.replica.Passphrases()
 	if err != nil {
 		return nil
 	}
 	var out *Backup
 	for _, p := range all {
-		if !p.BackupCode {
+		if !p.BackupCode || p.GUID == m.newBackup {
 			continue
 		}
 		made := int64(0)
@@ -97,7 +104,7 @@ func (m *Manager) settleBackup(keep bool, done func(error)) {
 		}
 		// The change is in the profile; a run that can't reach the server now sends it later.
 		m.run(WhyBackupCode)
-		m.setStatus(func(s *Status) { s.Backup = c.backup() })
+		m.setStatus(func(s *Status) { s.Backup = m.backup() })
 		return nil
 	})
 }

@@ -269,7 +269,9 @@ Decided 2026-11-22, the owner approving the mocks: "the backup mock looks nice g
   needs no old one. It is taken as typed: small letters, no dashes, spaces, O for 0, I or L for 1.
 - **One at a time.** synckosh allows many; this app keeps one. A new code is made as its card
   opens, and both open the bucket until the person says "I've saved it", which takes the old one
-  away; leaving the card any other way takes the new one away and leaves the old.
+  away; leaving the card any other way takes the new one away and leaves the old. Until it is
+  kept, the Sync card tells of what was there before: a code just made is the bucket's backup
+  code only once the person says they saved it (`Manager.backup`, `core/sync/backup.go`).
 - **It stays** when the passphrase changes (synckosh's `SetPassphrase` replaces the passphrases'
   copies and keeps the codes'), and it is as strong as its 120 bits: the server can try guesses
   against its sealed copy as it can against the passphrase's, to no end.

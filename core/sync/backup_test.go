@@ -49,7 +49,34 @@ func TestTheBackupCode(t *testing.T) {
 		}
 		return ok
 	}
+	// A code made is no backup code of the bucket's until it is kept: the status tells of
+	// none while its card shows, and of none once it was dropped.
+	left := make()
+	if got := a.sync.Status().Backup; got != nil {
+		t.Fatalf("the status with a code made and not yet kept: %+v", got)
+	}
+	if err := a.call(a.sync.DropBackupCode); err != nil {
+		t.Fatal(err)
+	}
+	if got := a.sync.Status().Backup; got != nil || is(left) {
+		t.Fatalf("after a code was dropped, the status: %+v, and it opens: %v", got, is(left))
+	}
+	// A drop asked for while the code is still being made comes after it, and takes it away.
+	early := ""
+	if err := a.call(func(done func(error)) {
+		a.sync.MakeBackupCode(func(made string, err error) { early = made })
+		a.sync.DropBackupCode(done)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if got := a.sync.Status().Backup; early == "" || got != nil || is(early) {
+		t.Fatalf("a code dropped while it was being made: made %v, the status %+v, and it opens: %v", early != "", got, is(early))
+	}
+
 	first := make()
+	if got := a.sync.Status().Backup; got != nil {
+		t.Fatalf("the status with the first code made and not yet kept: %+v", got)
+	}
 	if err := a.call(a.sync.KeepBackupCode); err != nil {
 		t.Fatal(err)
 	}
@@ -94,12 +121,19 @@ func TestTheBackupCode(t *testing.T) {
 		t.Fatalf("the new code: %v", err)
 	}
 
-	// A code made and not kept leaves the one before it.
+	// A code made and not kept leaves the one before it, which the status tells of throughout.
+	kept := a.sync.Status().Backup
 	third := make()
+	if got := a.sync.Status().Backup; got == nil || kept == nil || *got != *kept {
+		t.Fatalf("the status with a new code made beside a kept one: %+v, was %+v", got, kept)
+	}
 	if err := a.call(a.sync.DropBackupCode); err != nil {
 		t.Fatal(err)
 	}
 	if is(third) || !is(second) {
 		t.Fatal("a code dropped still opens, or the one before it doesn't")
+	}
+	if got := a.sync.Status().Backup; got == nil || *got != *kept {
+		t.Fatalf("the status after the new code was dropped: %+v, was %+v", got, kept)
 	}
 }
