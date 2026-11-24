@@ -412,9 +412,10 @@
     "id": "print",
     "name": "Printing",
     "api": "window.print()",
-    "status": {"mac": "quiet", "linux": "quiet", "android": "quiet"},
-    "why": "Printing is Chrome's: the call returns at once and nothing prints",
-    "needs": ["build"]
+    "status": {"mac": "works", "linux": "quiet", "android": "works"},
+    "why": "The page prints through the system print panel, and through the print sheet on Android; on Linux nothing shows yet",
+    "owner": "engine/browser/printing.cc",
+    "needs": ["go-manager"]
   },
   {
     "id": "webauthn",
@@ -738,9 +739,10 @@
     "id": "codecs-h264",
     "name": "H.264, AAC and MP4",
     "api": "<video src=x.mp4>, canPlayType('video/mp4')",
-    "status": {"mac": "absent", "linux": "absent", "android": "absent"},
-    "why": "The build leaves out proprietary codecs, which need a licensing decision",
-    "needs": ["build"]
+    "status": {"mac": "works", "linux": "absent", "android": "works"},
+    "why": "H.264 and AAC play on the Mac and Android; the Linux build leaves them out, so most MP4 video and audio does not play there",
+    "needs": ["build"],
+    "test": ["basics:41"]
   },
   {
     "id": "eme",
