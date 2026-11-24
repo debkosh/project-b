@@ -410,6 +410,9 @@ func (e *Engine) EraseWorkspace(workspace string, r engine.Erasure) {
 // Erased are the erases the app asked for, in order. Main thread.
 func (e *Engine) Erased() []Erase { return slices.Clone(e.erased) }
 
+// AskToCloseTab: the mock's pages have no beforeunload, so each may go at once.
+func (e *Engine) AskToCloseTab(engine.TabID) bool { return false }
+
 func (e *Engine) CloseTab(id engine.TabID) {
 	e.dropDialogs(id)
 	e.dropThumbnail(id)

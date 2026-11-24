@@ -186,6 +186,7 @@ class Engine {
   // Counts what a workspace's storage holds, by host, for PB_EVENT_SITE_DATA.
   void ListSiteData(const std::string& workspace);
   void CloseTab(int64_t tab);
+  bool AskToCloseTab(int64_t tab);
   void LoadURL(int64_t tab, const char* url);
   void GoBack(int64_t tab);
   void GoForward(int64_t tab);

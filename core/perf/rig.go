@@ -66,9 +66,11 @@ func (e *Eng) ListSiteData(string)                     { e.Calls[COther]++ }
 func (e *Eng) SetQuitErasure([]string, engine.Erasure) { e.Calls[COther]++ }
 
 func (e *Eng) CreateTab(string, bool) engine.TabID { e.Calls[CCreateTab]++; e.next++; return e.next }
-func (e *Eng) CreateInternalTab() engine.TabID   { e.Calls[CCreateTab]++; e.next++; return e.next }
-func (e *Eng) SetFirstWorkspace(string)          { e.Calls[COther]++ }
-func (e *Eng) CloseTab(engine.TabID)             { e.Calls[CCloseTab]++ }
+func (e *Eng) CreateInternalTab() engine.TabID     { e.Calls[CCreateTab]++; e.next++; return e.next }
+func (e *Eng) SetFirstWorkspace(string)            { e.Calls[COther]++ }
+func (e *Eng) CloseTab(engine.TabID)               { e.Calls[CCloseTab]++ }
+func (e *Eng) AskToCloseTab(engine.TabID) bool     { e.Calls[CCloseTab]++; return false }
+
 func (e *Eng) LoadURL(engine.TabID, string)      { e.Calls[CLoadURL]++ }
 func (e *Eng) GoBack(engine.TabID)               { e.Calls[CNav]++ }
 func (e *Eng) GoForward(engine.TabID)            { e.Calls[CNav]++ }
@@ -103,6 +105,7 @@ func (e *Eng) ChooseFolder(engine.WindowID, string)                 { e.Calls[CO
 func (e *Eng) IsDefaultBrowser() bool                               { return false }
 func (e *Eng) AskNotifications()                                    { e.Calls[COther]++ }
 func (e *Eng) NotificationsAllowed() bool                           { return true }
+
 // Desktop is the Linux desktop's name: none here.
 func (e *Eng) Desktop() string { return "" }
 

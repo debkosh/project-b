@@ -408,6 +408,12 @@ typedef struct PBEngineCalls {
   // quit of its own.
   void (*set_quit_erasure)(const char* workspaces, const PBErasure* erasure);
   void (*close_tab)(int64_t tab);
+  // A person closing a tab. A page with no beforeunload or unload handler has nothing to
+  // say: it returns 0, and the caller closes the tab. Otherwise it returns 1, the
+  // page's beforeunload runs, asking through PB_EVENT_DIALOG when it wants to, then its
+  // unload, and PB_EVENT_CLOSE_REQUESTED comes once the tab may go; nothing comes when the
+  // person stays.
+  int (*ask_to_close_tab)(int64_t tab);
   void (*load_url)(int64_t tab, const char* url);
   void (*go_back)(int64_t tab);
   void (*go_forward)(int64_t tab);
