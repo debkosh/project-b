@@ -18,8 +18,9 @@ The seams:
 - **Shell layers.** What lies over the page has to stay under the shell's own menus, and
   back has to close what is open before it leaves. Three so far: the menu under the crash
   page, the back key out of Settings, a download bar lost under the keyboard.
-- **Tooling and test machines.** Shared folders and long-lived emulators. Three so far: the
-  mixed package, the emulators' memory, a pushed file another install's.
+- **Tooling and test machines.** Shared folders, long-lived emulators, and how the driver
+  types. Four so far: the mixed package, the emulators' memory, a pushed file another
+  install's, typed keys a Wayland desktop drops.
 - **Narrow widths.** What sits next to something, or under it, has to be measured against
   a piece that doesn't wrap. One so far: the update line on a phone.
 - **A page's own navigations**, which Go rules on, against Chromium's way of starting,
@@ -78,6 +79,24 @@ The seams:
 - **What a platform doesn't have.** A thing one OS has no way to do is not a setting the
   person left off. Answered as that, it tells them to fix what they can't, in words written
   for another OS. One so far: saved passwords Linux couldn't show.
+
+## Typed keys a Wayland desktop drops, 2026-11-24
+
+- **Seen:** on ub3, a GNOME desktop under Wayland, drive_first_app's visit() timed out on 0.3.10:
+  the address it typed never reached Standard's address bar. Enter, Escape and Tab still acted.
+- **Cause:** the driver, not the app. The driver's type command (engine/browser/driver_linux.cc,
+  SendKey) makes key events and hands them to the window. Under Wayland a field takes text only
+  from the input method's commit, so a made-up character key gives no text. Keys typed through
+  the desktop itself, as deskrig types them, do reach the field.
+- **Seam:** a test driver sending input past the desktop's own input path.
+- **Fix:** visit() sends the shell's own navigate message on Linux under Wayland (49023eb7).
+  Open: the driver could put a character's text into the focused field itself, through its
+  text input client, so that every typed check works there; that needs a Linux engine build.
+- **Why it was missed:** the Linux checks ran headless in a container, with no input method in
+  the way; linux.md's step 3 notes the gap, but no driver check ran on a real desktop until the
+  web features audit.
+- **Guard:** none yet beyond the fix: a check that types into a field on Linux under Wayland
+  still fails, and says so.
 
 ## A backup code kept that nobody saw, 2026-11-24
 
