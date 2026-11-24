@@ -188,6 +188,14 @@ const said = (frame, from) => frame.getByRole('list', { name: `From ${from}` }).
   await lib.fire('menu', 'app.settings');
   await w.settings.locator('[data-section="profile"]').click();
   const pw = w.settings.getByRole('region', { name: 'Import' });
+  // Settings has one scroller, its content: the file rows' hidden inputs, below the fold in a
+  // short window, stay in their rows and don't stretch the page past the window, which
+  // classic scrollbars (Linux) showed as a second bar.
+  await until(() => pw.getByLabel('Passwords file').count());
+  await w.page.setViewportSize({ width: 1280, height: 420 });
+  const doc = () => w.settings.locator('html').evaluate((e) => [e.scrollHeight, e.clientHeight]);
+  check('in a short window, only Settings\' content scrolls, not its page', await until(async () => { const [s, c] = await doc(); return c > 0 && s === c; }), await doc());
+  await w.page.setViewportSize({ width: 1280, height: 800 });
   await pw.getByRole('button', { name: 'From Chrome' }).click();
   check('a profile offers its passwords, ticked', await until(() => pw.getByRole('checkbox', { name: /Passwords/ }).isChecked()) && (await pw.getByText('4 bookmarks · 3 pages · 3 passwords').isVisible()));
   for (const name of [/Bookmarks/, /History/]) await pw.getByRole('checkbox', { name }).uncheck();
