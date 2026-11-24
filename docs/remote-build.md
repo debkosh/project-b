@@ -50,7 +50,8 @@ the cores less two). After a reboot, run `start` again.
     tools/remote/toolchain.sh                      # copies clang only when it changed
     tools/build.sh
 
-`toolchain.sh` reads the build Mac's ssh name from `PB_RBE_SSH`. Re-run it after every
+`toolchain.sh` reads the build Mac's ssh name from `PB_RBE_SSH`, or `local` when the server runs on
+the Mac that builds. Re-run it after every
 Chromium roll: a new clang gets a new folder. With no tunnel, `build.sh` says "no remote
 build server answers" and builds here.
 
