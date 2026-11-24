@@ -176,7 +176,7 @@ no such file or directory: '"'"'/opt/homebrew/bin/go|gn is using the default Go 
 requires go >=|Go is older than core/go.mod asks for: install a newer Go from go.dev/dl
 hook table is|hook tables differ: python3 tools/gen_hooks.py, then rebuild
 Too many open files|raise the file limit: ulimit -n 10240, then re-run
-/Users/Shared/pb-rbe/toolchains|the remote build server lacks this checkout'"'"'s clang: tools/remote/toolchain.sh
+/Users/Shared/pb-rbe/toolchains|the remote build server lacks this checkout'"'"'s clang: tools/remote/toolchain.sh (PB_RBE_SSH=local when the server is this Mac)
 remote exec timeout|remote compiles waited too long at the server: lower PB_REMOTE_JOBS, or PB_REMOTE=off'
 
 # explain FILE prints the fix for each known failure found in FILE.

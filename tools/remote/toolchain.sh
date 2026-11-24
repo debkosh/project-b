@@ -10,7 +10,8 @@
 # checkout's exact binary: the folder is named by Chromium's clang package version and
 # its hash is checked against ours. tools/remote/siso/main.star points compiles there.
 #
-# PB_RBE_SSH is the ssh host of the build Mac (default debmin).
+# PB_RBE_SSH is the ssh host of the build Mac (default debmin), or local when the build
+# server runs on this Mac.
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
@@ -19,6 +20,9 @@ LLVM=$SRC/third_party/llvm-build/Release+Asserts
 HOST=${PB_RBE_SSH:-debmin}
 # Must match _TOOLCHAINS in tools/remote/siso/main.star.
 TOOLCHAINS=/Users/Shared/pb-rbe/toolchains
+# on runs a command on the build Mac; to names a path there for rsync.
+on() { if [ "$HOST" = local ]; then bash -c "$1"; else ssh "$HOST" "$1"; fi; }
+to() { if [ "$HOST" = local ]; then echo "$1"; else echo "$HOST:$1"; fi; }
 
 version() {
   local rev sub
@@ -32,19 +36,19 @@ VERSION=$(version)
 DEST=$TOOLCHAINS/$VERSION
 HASH=$(shasum -a 256 "$LLVM/bin/clang" | cut -d' ' -f1)
 
-if [ "$(ssh "$HOST" "shasum -a 256 '$DEST/bin/clang' 2>/dev/null | cut -d' ' -f1")" = "$HASH" ]; then
+if [ "$(on "shasum -a 256 '$DEST/bin/clang' 2>/dev/null | cut -d' ' -f1")" = "$HASH" ]; then
   echo "  ok   clang $VERSION on $HOST"
   exit 0
 fi
 
 echo "  copying clang $VERSION to $HOST:$DEST"
-ssh "$HOST" "mkdir -p '$DEST.partial/bin' '$DEST.partial/lib'"
-rsync -a "$LLVM/bin/clang" "$LLVM/bin/clang++" "$HOST:$DEST.partial/bin/"
-rsync -a "$LLVM/lib/clang" "$HOST:$DEST.partial/lib/"
+on "mkdir -p '$DEST.partial/bin' '$DEST.partial/lib'"
+rsync -a "$LLVM/bin/clang" "$LLVM/bin/clang++" "$(to "$DEST.partial/bin/")"
+rsync -a "$LLVM/lib/clang" "$(to "$DEST.partial/lib/")"
 # Check the copy, run it once so macOS scans it now rather than in the first build, and
 # only then put it where the workers look.
-ssh "$HOST" "set -e
+on "set -e
   [ \"\$(shasum -a 256 '$DEST.partial/bin/clang' | cut -d' ' -f1)\" = '$HASH' ]
   '$DEST.partial/bin/clang' --version > /dev/null
-  rm -rf '$DEST' && mv '$DEST.partial' '$DEST'"
+  rm -rf '${DEST:?}' && mv '$DEST.partial' '$DEST'"
 echo "  ok   clang $VERSION on $HOST"
