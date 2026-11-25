@@ -577,7 +577,13 @@ shows nothing under 12 characters.
 each ends in one Go function, `App.OpenAppLink` (`core/app/sync_settings.go`): Settings opens at
 Sync in that window, and the page is told the link (`syncLink`), whose address it asks Go to read
 (`syncPropose {link}`). The Dialog opens as "Sync with **memd.example.com**?", "A link asked to set
-up sync with this server. Connect only if it's yours.", the address filled in and read only, and
+up sync with this server. Connect only if it's yours.", the address as text under its label, with no field, since it can't be changed there (its
+host in the text's colour, the rest muted; it can be selected to copy; the paragraph has no
+name of its own, so a screen reader reads the label and then the address). A host too long for
+its line wraps only after a dot, in the title and in the address, each of its labels being one
+piece: a line that ends in "company-" reads as another name. The title's pieces are kept from a
+screen reader, which is given the sentence whole, as a host has to be heard as it is written. A label wider than the line breaks
+inside itself, so nothing of a host is ever out of sight. And
 nothing is sent to the server or kept until Connect. An address that isn't https opens the plain
 set-up with the address and its error. Any other `project-b:` link does nothing.
 

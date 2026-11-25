@@ -269,6 +269,10 @@ const addressParts = computed(() => {
 });
 const dressed = computed(() => !addressFocused.value && addressParts.value);
 
+// A host's labels, each with the dot that ends it: where a link's Dialog shows the host for a
+// person to check, each is one piece, so that a long host wraps only after a dot.
+const labels = (host) => host.split(/(?<=\.)/);
+
 function connect() {
   if (d.busy) return;
   if (!isHttps(d.address)) {
@@ -501,7 +505,15 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
     </div>
 
     <Dialog v-if="d.step" class="sync-dialog" :title="title" @close="shut">
-      <template v-if="d.step === 'address' && d.fromLink" #title><span class="w">Sync with</span> {{ d.host }}<span class="w">?</span></template>
+      <!-- The title is heard as one sentence, kept out of sight, and what is seen is kept from
+           a screen reader: Android put a space after each dot of a host made of pieces, and
+           a host has to be heard as it is written. -->
+      <template v-if="d.step === 'address' && d.fromLink" #title
+        ><span class="heard">Sync with {{ d.host }}?</span
+        ><span aria-hidden="true"
+          ><span class="w">Sync with</span> <span v-for="(l, i) in labels(d.host)" :key="i" class="host-label">{{ l }}<span v-if="i === labels(d.host).length - 1" class="w">?</span></span></span
+        ></template
+      >
 
       <template v-if="d.step === 'address'">
         <div class="ui-dialog-part">
@@ -512,7 +524,22 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
             <div class="start"><button type="button" class="text-button" @click="getBucket">Get a free sync bucket</button></div>
           </template>
         </div>
-        <div class="ui-dialog-part">
+        <!-- A link's address can't be changed here, so it is text, not a field that looks as
+             if it could be typed in: the one thing to check before Connect. It can be selected.
+             The paragraph has no name of its own: a name would be read in place of its text,
+             and a screen reader would say the label twice and never the address. -->
+        <div v-if="d.fromLink" class="ui-dialog-part">
+          <label>Server address</label>
+          <p class="address-shown">
+            <template v-if="addressParts"
+              ><span v-for="(l, i) in labels(addressParts.host)" :key="i" class="host-label" role="none"
+                ><span v-if="i === 0" class="mut">{{ addressParts.scheme }}</span>{{ l }}</span
+              ><span class="mut">{{ addressParts.rest }}</span></template
+            >
+            <template v-else>{{ d.address }}</template>
+          </p>
+        </div>
+        <div v-else class="ui-dialog-part">
           <label for="sync-address">Server address</label>
           <div class="address">
             <input
@@ -527,7 +554,6 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
               autocomplete="off"
               autocapitalize="off"
               placeholder="https://"
-              :readonly="d.fromLink"
               :aria-invalid="d.addressError ? 'true' : undefined"
               :title="d.addressError && d.detail ? d.detail : undefined"
               @focus="addressFocused = true"
@@ -673,6 +699,17 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
   font-weight: 400;
 }
 
+/* In the text, out of sight: the title as a screen reader is given it. */
+.heard {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  user-select: none;
+}
+
 /* A row's two quiet buttons, 8px apart, Retry a little further. */
 .ctl {
   flex: none;
@@ -697,6 +734,31 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
 
 .dressed {
   color: transparent;
+}
+
+/* A link's address, as text under its label: no box, wrapping where it must, and selectable
+   to copy. */
+.ui-dialog .address-shown {
+  margin: 0;
+  color: var(--text);
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+/* The host a person checks before Connect wraps only after a dot: each of its labels is one
+   piece, as a line that ends in "company-" reads as another name. A label wider than the line
+   breaks inside itself, so that nothing of a host is ever out of sight. In the address the
+   pieces have no role, so the text is read as one. */
+.host-label {
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+/* What follows the host goes on from it on its line and breaks wherever the line ends, rather
+   than starting a line of its own after a host that wrapped. */
+.address-shown > .mut {
+  word-break: break-all;
 }
 
 .dress {

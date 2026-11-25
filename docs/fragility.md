@@ -104,6 +104,26 @@ The seams:
   25 of 500 answers cut, the new one none of 2,500; then links, timeline, quit and driver on
   the real Linux app, three times.
 
+## A sync link's address nobody heard, 2026-11-26
+
+- **Seen:** by the passwords session on emu-37, before the branch was handed over. A sync
+  link's Dialog showed its server address as text, and Android's tree gave that paragraph as
+  "Server address", its label, with the address nowhere: TalkBack would have said the label
+  twice and never the one thing to check before Connect. Two parts of drive_android, which
+  look for the address by its text, failed on it.
+- **Cause:** the paragraph was named by its label, with aria-labelledby, as a field is. A
+  name on a paragraph is read in place of its text.
+- **Seam:** what a screen reader is given is not what the page shows, and the mock checks
+  read the page. A name belongs on a control; text that is to be read carries none.
+- **Fix:** the paragraph has no name, and its label is plain text before it. The host's
+  labels, each one piece so that a long host wraps only after a dot, have no role, so the
+  address is still one text. The title, made of the same pieces, was given by Android as
+  "Sync with sync. example. test?", a space after each dot: its pieces are kept from a
+  screen reader, which gets the sentence whole from text kept out of sight.
+- **Guard:** sync.cjs, "its text is what a screen reader is given, with no name over it" and
+  the title "is one sentence for a screen reader", both seen failing; and on a phone
+  drive_android's sync_on_the_phone, which reads the title and the address in Android's tree.
+
 ## The main checkout's shell packages emptied through a link, 2026-11-26
 
 - **Seen:** the hotfix Dev publish's mock failed at once: the main checkout's

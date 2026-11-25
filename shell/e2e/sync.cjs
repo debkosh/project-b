@@ -743,7 +743,22 @@ const taken = [];
   await fetch(`${lib.base}/mock/open`, { method: 'POST', body: new URLSearchParams({ url: link(linked) }) });
   check('a link from another app opens the Dialog in its link form', await until(async () => (await dialog().count()) === 1 && (await dialog().getAttribute('aria-label')) === `Sync with ${HOST}?`));
   check('its title has the host in bold', (await dialog().locator('.ui-dialog-title').evaluate((h) => [...h.querySelectorAll('.w')].map((w) => getComputedStyle(w).fontWeight).join() + '|' + getComputedStyle(h).fontWeight)) === '400,400|600');
-  check('with the address filled in', (await field('Server address').inputValue()) === linked && (await dialog().innerText()).includes("A link asked to set up sync with this server. Connect only if it's yours."));
+  // The host is drawn in pieces, and a heading made of pieces is heard with a stop at each
+  // dot: a phone's screen reader was given "memd. example. com".
+  check('and is one sentence for a screen reader, the host as it is written', (await dialog().getByRole('heading', { name: `Sync with ${HOST}?`, exact: true }).count()) === 1 &&
+    (await dialog().locator('.ui-dialog-title').evaluate((h) => [...h.children].map((c) => `${c.getAttribute('aria-hidden') || 'heard'}:${c.textContent.replace(/\s+/g, ' ')}`).join('|'))) === `heard:Sync with ${HOST}?|true:Sync with ${HOST}?`,
+    await dialog().locator('.ui-dialog-title').evaluate((h) => h.innerHTML.replace(/<!--.*?-->/g, '')));
+  // A link's address can't be changed in its Dialog, so it shows as text, not as a field.
+  const asText = dialog().locator('.address-shown');
+  check('with the address as text under its label, the host in the text\'s colour and the rest muted', (await asText.innerText()) === linked && (await dialog().getByText('Server address', { exact: true }).isVisible()) &&
+    (await dialog().innerText()).includes("A link asked to set up sync with this server. Connect only if it's yours.") &&
+    (await asText.evaluate((p) => { const of = (n) => getComputedStyle(n).color; const [scheme, rest] = p.querySelectorAll('.mut'); return of(scheme) === of(rest) && of(scheme) !== of(p); })), await asText.innerText().catch(() => ''));
+  const plain = await asText.evaluate((p) => { const c = getComputedStyle(p); return { border: c.borderTopWidth, background: c.backgroundColor, select: c.userSelect, stop: p.tabIndex, fields: p.closest('.ui-dialog-part').querySelectorAll('input').length }; });
+  check('with no box and no stop for the keyboard, no field in its place, and it can be selected', plain.border === '0px' && plain.background === 'rgba(0, 0, 0, 0)' && plain.select === 'text' && plain.stop === -1 && plain.fields === 0, JSON.stringify(plain));
+  // A name on the paragraph is read in place of its text: a phone's screen reader said the
+  // label twice and never the address (docs/fragility.md, "A sync link's address nobody heard").
+  const read = await asText.evaluate((p) => { getSelection().selectAllChildren(p); const picked = getSelection().toString(); getSelection().removeAllRanges(); return { named: ['aria-label', 'aria-labelledby', 'title'].filter((a) => p.hasAttribute(a)), roles: [...p.querySelectorAll('*')].map((e) => e.getAttribute('role') || '').filter((r) => r && r !== 'none'), picked }; });
+  check('its text is what a screen reader is given, with no name over it, and selecting it gives the address as it is', read.named.length === 0 && read.roles.length === 0 && read.picked === linked, JSON.stringify(read));
   check('and Settings at Sync', await card().isVisible());
   await page.waitForTimeout(500);
   check('nothing went to the server', (await requests()) === n, `${(await requests()) - n} requests`);
@@ -753,10 +768,59 @@ const taken = [];
   await button('Cancel').click();
   await until(async () => (await dialog().count()) === 0);
 
+  // A host too long for its line wraps only after a dot, in the title and in the address: a
+  // line that ends in "company-" reads as another name. The path breaks where it must.
+  // What an element shows, line by line, and where each line ends in its text.
+  const lines = (part) => dialog().locator(part).evaluate((el) => {
+    const rows = [];
+    const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    for (let node; (node = walk.nextNode()); ) {
+      for (let i = 0; i < node.data.length; i++) {
+        const one = document.createRange();
+        one.setStart(node, i);
+        one.setEnd(node, i + 1);
+        const top = one.getBoundingClientRect().top;
+        const row = rows.find((r) => Math.abs(r.top - top) < 4);
+        if (row) row.text += node.data[i];
+        else rows.push({ top, text: node.data[i] });
+      }
+    }
+    return { rows: rows.map((r) => r.text), cut: el.scrollWidth > el.clientWidth };
+  });
+  // The ends of lines that fall inside the host, by the character each comes after.
+  const inHost = (rows, host) => {
+    const from = rows.join('').indexOf(host);
+    const ends = [];
+    let at = 0;
+    for (const row of rows.slice(0, -1)) {
+      at += row.length;
+      if (at > from && at < from + host.length) ends.push(row.slice(-1));
+    }
+    return ends;
+  };
+  for (const [what, host, dots] of [
+    ['a host too long for its line', 'sync.storage.a-long-company-name.example.test', true],
+    ['a host with one label longer than the line', 'a-single-label-that-is-much-longer-than-the-line-can-hold.example.test', false],
+  ]) {
+    const far = `https://${host}/sync/buckets/0123456789abcdef0123456789abcdef/profiles/home`;
+    await fetch(`${lib.base}/mock/open`, { method: 'POST', body: new URLSearchParams({ url: link(far) }) });
+    await until(async () => (await dialog().count()) === 1 && (await dialog().getAttribute('aria-label')) === `Sync with ${host}?`);
+    const title = await lines('.ui-dialog-title > [aria-hidden]');
+    const shown = await lines('.address-shown');
+    const whole = shown.rows.join('') === far && title.rows.join('').replace(/\s/g, '') === `Syncwith${host}?`;
+    // On a phone the first of these can't fit its line, so it shows the rule at work.
+    const ends = [...inHost(title.rows, host), ...inHost(shown.rows, host)];
+    if (dots) check(`${what} wraps only after a dot, in the title and in the address`, whole && ends.every((c) => c === '.') && (!phone || inHost(shown.rows, host).length > 0), JSON.stringify([title.rows, shown.rows]));
+    check(`${what} is all in sight, in the title and in the address`, whole && !title.cut && !shown.cut && !(await dialog().evaluate((d) => d.scrollWidth > d.clientWidth)), JSON.stringify([title, shown]));
+    if (dots) await shot(51, 'link-long-host');
+    await button('Cancel').click();
+    await until(async () => (await dialog().count()) === 0);
+  }
+
   // A link that gives a token too: it is in its field, hidden, and goes with Connect.
   await fetch(`${lib.base}/mock/open`, { method: 'POST', body: new URLSearchParams({ url: `${link(`${address}/sync`)}&token=${encodeURIComponent(`tok-link-${layout}`)}` }) });
   check('a link with a token opens the set-up with the token in its field, hidden', await until(async () => (await dialog().count()) === 1 && (await field('Token').inputValue()) === `tok-link-${layout}`) &&
-    (await field('Token').getAttribute('type')) === 'password' && (await field('Server address').inputValue()) === `${address}/sync`);
+    (await field('Token').getAttribute('type')) === 'password' && (await dialog().locator('.address-shown').innerText()) === `${address}/sync`);
   await shot(48, 'link-token');
   await button('Connect').click();
   check('and Connect reaches the server with it', await until(async () => (await dialog().getAttribute('aria-label')) === 'Choose a sync passphrase'));
