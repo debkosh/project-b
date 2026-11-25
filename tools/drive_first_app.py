@@ -2159,9 +2159,12 @@ def workspace_checks():
     went_back = int(app.cmd("opentab", "a", "about:blank"))
     committed(app, went_back)
     visit(app, STORE)
-    app.cmd("key", "cmd+[")
+    # Cmd+[ and Cmd+] are the Mac's Back and Forward; elsewhere, as the shell's buttons send them.
+    nav = lambda t: app.cmd("key", {"back": "cmd+[", "forward": "cmd+]"}[t]) if MAC else \
+        app.js(f"chrome.send('shell', [{json.dumps(json.dumps({'t': t}))}]), 1")
+    nav("back")
     app.wait("location.href==='about:blank'&&document.readyState==='complete'", tab=went_back)
-    app.cmd("key", "cmd+]")
+    nav("forward")
     app.wait("location.pathname==='/store'&&document.readyState==='complete'", tab=went_back)
     check("so does one gone back to the blank page and forward again", stored(app, went_back) == ["w=a", "a"], stored(app, went_back))
     attached = open_in(app, "a", STORE + "?devtools")
