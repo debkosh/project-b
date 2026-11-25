@@ -246,6 +246,11 @@ PAGES["/popups"] = ("<title>Popups</title><button id=tap style='display:block;wi
                     "setTimeout(() => window.open('/popped-untapped'), 300)</script>")
 PAGES["/popped-tapped"] = "<title>Popped</title><p>popped"
 PAGES["/popped-untapped"] = "<title>Popped</title><p>popped"
+# A page with unsaved work: its beforeunload asks before it goes, once a person has used it.
+PAGES["/unsaved"] = ("<title>Unsaved</title><style>button{display:block;width:100%;height:60vh;font-size:40px}</style>"
+                     "<button id=w>unsaved work</button><script>"
+                     "w.onclick = () => fetch('/said?used=1');"
+                     "onbeforeunload = e => e.preventDefault();</script>")
 PAGES["/dialogs"] = ("<title>Dialogs</title><style>button{display:block;width:100%;height:30vh;font-size:40px}</style>"
                      "<button id=c>confirm</button><button id=p>prompt</button><button id=al>alert</button><script>"
                      "const say = (what, v) => fetch('/said?' + what + '=' + encodeURIComponent(String(v)));"
@@ -1175,6 +1180,49 @@ def back_key_chain():
     check("back in that tab goes back in its page", asked("/a"), str(served))
     key(4)
     check("back on the last tab, with no history, closes it, and so the app", until(lambda: not in_front()) is not None)
+
+
+def leave():
+    """Closing a tab whose page has unsaved work asks first, as Chrome does: its card's close
+    in the tab switcher shows "Leave site?", Cancel keeps the tab, and Leave closes it. The
+    close went straight to the engine, so the tab and its work went without a word."""
+    launch()
+    go(BASE + "/a")
+    asked("/a")
+    menu("New Tab")
+    see("shell", text="All bookmarks")
+    go(BASE + "/unsaved")
+    asked("/unsaved")
+    # A page's beforeunload asks only once a person has used it.
+    tap(middle(see("page", text="unsaved work")))
+    asked("/said?used=1")
+    cards = lambda: [n.get("content-desc") for n in screen_parts().get("shell", ET.Element("x")).iter("node")
+                     if (n.get("content-desc") or "").startswith("Close ")]
+    press("Tabs")
+    until(cards, 5)
+    before = cards()
+    press("Close Unsaved")
+    shown = until(lambda: find("shell", text="Leave site?"), 10)
+    shot("50-leave-site")
+    check("closing a tab whose page has unsaved work asks Leave site? first", shown is not None, before)
+    if shown is not None:
+        tap(middle(see("shell", text="Cancel")))
+        until(lambda: find("shell", text="Leave site?") is None, 10)
+    time.sleep(1)
+    if not cards():
+        press("Tabs")
+        until(cards, 5)
+    check("and Cancel keeps the tab", shown is not None and "Close Unsaved" in cards(), (before, cards()))
+    press("Close Unsaved")
+    left = until(lambda: find("shell", text="Leave site?"), 10) is not None
+    if left:
+        tap(middle(see("shell", text="Leave")))
+    if not cards():
+        press("Tabs")
+    check("and Leave closes it", left and until(lambda: cards() and "Close Unsaved" not in cards(), 10) is not None, cards())
+    key(4)
+    go(BASE + "/a")
+    asked("/a")
 
 
 def page_dialogs():
@@ -2990,7 +3038,7 @@ def main():
     clear_data()
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
-    every = (browsing, mobile_shell, custom_colour, settings_back, talkback_states, bookmark_star, settings_ahead, back_key_chain, page_dialogs, popups, page_camera, downloads, crash_notice, download_notifications, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, passkeys_on_the_phone, passwords_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
+    every = (browsing, mobile_shell, custom_colour, settings_back, talkback_states, bookmark_star, settings_ahead, back_key_chain, page_dialogs, popups, leave, page_camera, downloads, crash_notice, download_notifications, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, passkeys_on_the_phone, passwords_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
              the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web, long_press_menu, keyboard_bars, welcome_extras, welcome_last_step, web_server_kinds, update_on_the_phone)
     for part in [p for p in every if not sys.argv[1:] or p.__name__ in sys.argv[1:]]:
         # tools/results.py splits a run's memory, CPU and checks by these lines.
