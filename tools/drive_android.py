@@ -1536,26 +1536,33 @@ def start_as_it_is():
 def crash_notice():
     """The "crashed last time" notice comes only after a crash (docs/fragility.md, "A
     crash notice after runs that never crashed"): not after Android ends the app in the
-    background, nor after it's swiped away, both of which leave its crash.log behind as a
-    crash would; a native crash of the app's process still brings it. Before Android 11,
-    which keeps no reasons, only the crash is checked: any crash.log left is told."""
+    background, nor after it's swiped away or stopped from its app info, all of which leave
+    its crash.log behind as a crash would; a native crash of the app's process still brings
+    it. Android 11 and later say why the process ended; before 11 the app's crash log does."""
     said = lambda: find("shell", text=lambda t: (t or "").startswith("Project B crashed last time"))
+    # The process went, so the check below is of a run that ended.
+    ended = lambda: until(lambda: not adb("shell", "pidof", PACKAGE).strip(), 10) is not None
     launch()
     go(BASE + "/a")
     asked("/a")
-    reasons = int(adb("shell", "getprop", "ro.build.version.sdk").strip() or 0) >= 30
-    if reasons:
-        # In the background, ended as Android ends one it wants the memory of.
-        key(3)
-        time.sleep(1)
-        adb("shell", "am", "kill", PACKAGE)
-        start_as_it_is()
-        check("no crash notice after Android ended the app in the background", until(said, 5) is None)
+    # In the background, ended as Android ends one it wants the memory of. am kill ends
+    # only an app Android already ranks as in the background, which may take it a moment
+    # after Home on a busy phone, and else does nothing: so again until it has gone.
+    key(3)
+    gone = until(lambda: adb("shell", "am", "kill", PACKAGE) is not None and not adb("shell", "pidof", PACKAGE).strip(), 10) is not None
+    start_as_it_is()
+    check("no crash notice after Android ended the app in the background", gone and until(said, 5) is None, "" if gone else "it never ended")
+    # Stopped from its app info, Force stop.
+    adb("shell", "am", "force-stop", PACKAGE)
+    gone = ended()
+    start_as_it_is()
+    check("nor after Force stop", gone and until(said, 5) is None, "" if gone else "it never ended")
     # Swiped away from the recent apps: Android 14 and later stop it so from the shell.
-    if reasons and "stop-app" in adb("shell", "am", "help"):
+    if "stop-app" in adb("shell", "am", "help"):
         adb("shell", "am", "stop-app", PACKAGE)
+        gone = ended()
         start_as_it_is()
-        check("nor after it was swiped away", until(said, 5) is None)
+        check("nor after it was swiped away", gone and until(said, 5) is None, "" if gone else "it never ended")
     # A crash of the app's own process.
     adb("shell", "kill", "-SEGV", adb("shell", "pidof", PACKAGE).strip().split()[0])
     start_as_it_is()
@@ -1564,6 +1571,9 @@ def crash_notice():
     dismiss = named("shell", "Dismiss")
     if dismiss is not None:
         tap(middle(dismiss))
+    # A second crash within a minute of this one, as a rerun of this part brings, has
+    # Android put "Project B keeps stopping" over the app, and it stays across a reinstall.
+    adb("shell", "am", "broadcast", "-a", "android.intent.action.CLOSE_SYSTEM_DIALOGS")
 
 
 def screen_size():
