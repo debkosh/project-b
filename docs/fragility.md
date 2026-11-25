@@ -84,6 +84,21 @@ The seams:
   person left off. Answered as that, it tells them to fix what they can't, in words written
   for another OS. One so far: saved passwords Linux couldn't show.
 
+## A page's field typed into as Gboard comes up, 2026-11-25
+
+- **Seen:** on emu-29 (Android 10), with the 158 candidate: one passwords_on_the_phone run
+  typed "saver@example.org" into a page's field and got "ssaver@example.org", and in a loop of
+  about sixty go() calls one never showed its address in the field. In 58 typings straight
+  after the keyboard said it was shown, with and without a saved login's chip, none doubled.
+- **Cause:** open. Both spots type the instant the field or the keyboard reports ready, and
+  Gboard on Android 10 may still be coming up then, so its first composed letter can land
+  twice or not at all. Not yet shown either way.
+- **Seam:** a test driver typing on a ready signal the keyboard gives before it takes input.
+  Not the address bar's doubled letter of 2026-11-20, which was the field's completion.
+- **Fix:** none yet. If it shows again in anyone's run, keep the screenshot and logcat and send
+  them to passwords.
+- **Guard:** none yet.
+
 ## The sync set-up moved on by an answer to an earlier asking, 2026-11-24
 
 - **Seen:** by nobody; found by reading, after the backup code's card below, and then made to
