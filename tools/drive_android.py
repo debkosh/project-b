@@ -1271,7 +1271,9 @@ def downloads():
     menu("Downloads")
     tap(middle(see("page", text=lambda t: (t or "").startswith(text))))
     shown = until(lambda: find("page", text=lambda t: "Project B download check" in (t or "")), 15)
-    check("Open shows a text file in a tab of the app's own", shown is not None and "BrowserActivity" in in_front_now(), in_front_now())
+    page = screen_parts().get("page")
+    check("Open shows a text file in a tab of the app's own", shown is not None and "BrowserActivity" in in_front_now(),
+          (in_front_now(), sorted(screen_parts()), [t for t in (n.get("text") for n in (page.iter("node") if page is not None else ())) if t][:8]))
 
 
 def page_camera():
