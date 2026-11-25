@@ -52,6 +52,7 @@
 #include "ui/events/keycodes/keyboard_code_conversion.h"
 #include "ui/gfx/geometry/point_conversions.h"
 #include "ui/gfx/geometry/rect_conversions.h"
+#include "ui/gfx/geometry/size_conversions.h"
 #include "ui/wm/public/activation_client.h"
 
 #if BUILDFLAG(PB_EXTENSIONS)
@@ -299,7 +300,8 @@ std::string Focused(Window* window) {
   // Which view, by the name content or we gave it, and whether the input method has a text
   // field to put characters in: a key with no client there gives none.
   ui::InputMethod* ime = RootOf(window)->GetHost()->GetInputMethod();
-  return Classify(window, focused) + ":" + (focused ? focused->GetName() : "") +
+  const std::string name = focused ? std::string(focused->GetName()) : std::string();
+  return Classify(window, focused) + ":" + name +
          (ime && ime->GetTextInputClient() ? " ime:client" : " ime:none");
 }
 
