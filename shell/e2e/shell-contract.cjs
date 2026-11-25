@@ -929,11 +929,20 @@ const noNoticeYet = {
         const field = ui.getByRole('textbox', { name: 'Address', exact: true }).or(ui.getByRole('combobox', { name: 'Address', exact: true }));
         rule(19, 'no field named Address shows for it', (await field.filter({ visible: true }).count()) === 0);
         // Waited for: the title outside the tabs draws a frame after the tab's own, later
-        // than one settle on a loaded Mac (2026-11-24, at a load of 30).
-        const titled = await until(async () => (await ui.getByText(title, { exact: true }).filter({ visible: true })
-          .evaluateAll((els) => els.filter((el) => !el.closest('[role=tab]')).length)) > 0);
-        rule(19, `its title, ${title}, shows outside the tabs`, titled);
-        const close = ui.getByRole('button', { name: new RegExp(`^Close (Tab|${title})\\b`) }).filter({ visible: true });
+        // than one settle on a loaded Mac (2026-11-24, at a load of 30). And the title asked
+        // for is the tab's at each try: Settings names itself again as it opens its first
+        // section ("Settings › Profile"), which can come after the title read above.
+        let now = title;
+        const titled = await until(async () => {
+          const r = await regions();
+          now = r.tabs.find((t) => t.id === r.settings)?.title || now;
+          return (await ui.getByText(now, { exact: true }).filter({ visible: true })
+            .evaluateAll((els) => els.filter((el) => !el.closest('[role=tab]')).length)) > 0;
+        });
+        const bar = titled ? '' : await w.shell().evaluate(() => [...document.querySelectorAll('[role=tab], [role=toolbar] *, header *')]
+          .filter((el) => el.children.length === 0 && el.textContent.trim()).map((el) => el.textContent.trim().slice(0, 40)).join(' | '));
+        rule(19, 'its title shows outside the tabs', titled, titled ? now : `the tab's title is ${now}; the shell shows: ${bar}`);
+        const close = ui.getByRole('button', { name: /^Close Tab\b/ }).or(ui.getByRole('button', { name: `Close ${now}` })).filter({ visible: true });
         if (rule(19, 'a way to close it shows', (await close.count()) > 0)) {
           await close.first().click();
           rule(19, 'and closes it', await until(async () => (await regions()).settings === 0));
