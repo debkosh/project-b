@@ -39,6 +39,7 @@
 #include "ui/native_theme/native_theme.h"
 
 #if BUILDFLAG(IS_ANDROID)
+#include "base/android/content_uri_utils.h"
 #include "base/posix/global_descriptors.h"
 #include "content/public/browser/posix_file_descriptor_info.h"
 #include "project_b/engine/android/descriptors.h"
@@ -76,6 +77,18 @@ void ContentBrowserClient::GetAdditionalMappedFilesForChildProcess(
   auto* descriptors = base::GlobalDescriptors::GetInstance();
   mappings->ShareWithRegion(kPakDescriptor, descriptors->Get(kPakDescriptor),
                             descriptors->GetRegion(kPakDescriptor));
+}
+
+// A content:// address opens in a tab, as Open does for a download in the phone's Downloads,
+// except one of the app's own providers that it doesn't export, which no other app could
+// read either. Chrome's rule. Since Chromium 158, content refuses every content:// address
+// unless the embedder says yes, and the tab showed ERR_BLOCKED_BY_CLIENT.
+bool ContentBrowserClient::IsContentSchemeURLNavigationAllowed(const GURL& url) {
+  if (!url.is_valid() || url.host().empty()) {
+    return false;
+  }
+  return base::ResolveContentUriOwner(base::FilePath(url.spec())) !=
+         base::ContentUriOwner::kNonExportedFromCurrentApp;
 }
 #else
 // Every child process runs the helper, which has no Go in it.
