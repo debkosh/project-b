@@ -130,6 +130,55 @@ func TestLinksToOtherSitesHoldThePagesOwnNavigations(t *testing.T) {
 	r.waitForTab(func(tab map[string]any) bool { return tab["url"] == "https://elsewhere.test/" })
 }
 
+// A site's Pop-ups at Block, the default, a tab its page opens with no tap first closes as
+// it opens, counted on the page with its address; one after a tap opens. The site panel's
+// Open it opens it, and Pop-ups at Allow lets the next one open.
+func TestASitesPopupsAreBlockedUntilAllowed(t *testing.T) {
+	r := start(t, t.TempDir())
+	defer r.stop()
+	r.visit("https://news.test/")
+	settle := func() { r.e.Settle(); r.main(func() {}); r.e.Settle() }
+	now := func() (n int, tb tabsTab) {
+		r.main(func() {
+			x, _ := r.a.Tabs.Get(1)
+			n, tb = len(r.a.Tabs.All()), tabsTab{x.PopupsBlocked, x.BlockedPopup}
+		})
+		return
+	}
+
+	r.e.Fire(1, 1, "popup", "https://ads.test/win")
+	settle()
+	if n, tb := now(); n != 1 || tb != (tabsTab{1, "https://ads.test/win"}) {
+		t.Fatalf("a pop-up under Block: %d tabs, %v", n, tb)
+	}
+	r.e.Fire(1, 1, "open", "https://ads.test/tapped")
+	settle()
+	if n, _ := now(); n != 2 {
+		t.Fatalf("a tab opened after a tap: %d tabs", n)
+	}
+	r.main(func() { r.a.Tabs.Activate(1) })
+
+	r.shell(`{"t":"openBlockedPopup"}`)
+	settle()
+	if n, tb := now(); n != 3 || tb != (tabsTab{0, ""}) {
+		t.Fatalf("after Open it: %d tabs, %v", n, tb)
+	}
+	r.main(func() { r.a.Tabs.Activate(1) })
+
+	r.main(func() { r.a.Sites.Set("https://news.test", sites.Popups, sites.Allow) })
+	r.e.Fire(1, 1, "popup", "https://ads.test/again")
+	settle()
+	if n, tb := now(); n != 4 || tb.count != 0 {
+		t.Fatalf("a pop-up under Allow: %d tabs, %v", n, tb)
+	}
+}
+
+// tabsTab is what a tab says of the pop-ups its page opened that Go closed.
+type tabsTab struct {
+	count int
+	last  string
+}
+
 // The engine has the ad blocker's hosts from the start, and the sites it is off for as each
 // switches; a blocked request counts on the tab until its next page. Off on every site, the
 // engine has no hosts and the site panel no switch.

@@ -91,7 +91,7 @@ func TestATabAPageOpensJoinsItsOpenersGroupAfterIt(t *testing.T) {
 	g := m.CreateGroup([]engine.TabID{a, b}, "", "")
 	e.next++
 	opener, _ := m.Get(a)
-	m.HandleTabOpened(a, e.next, "https://opened.test/", opener.Workspace, true)
+	m.HandleTabOpened(a, e.next, "https://opened.test/", opener.Workspace, true, true)
 	if got := groupTabs(m, 1); !slices.Equal(got[0], []engine.TabID{a, e.next, b}) {
 		t.Fatalf("groups %v", got)
 	}

@@ -94,8 +94,8 @@ func (r *adapterRecorder) PageCrashed(tab engine.TabID) { r.note("crashed") }
 func (r *adapterRecorder) FaviconChanged(tab engine.TabID, dataURL string) {
 	r.note("favicon " + dataURL)
 }
-func (r *adapterRecorder) TabOpened(opener, tab engine.TabID, url, workspace string, foreground, newWindow bool) {
-	r.note(fmt.Sprint("opened ", url, " in ", workspace, " new window ", newWindow))
+func (r *adapterRecorder) TabOpened(opener, tab engine.TabID, url, workspace string, foreground, newWindow, tapped bool) {
+	r.note(fmt.Sprint("opened ", url, " in ", workspace, " new window ", newWindow, " tapped ", tapped))
 }
 func (r *adapterRecorder) CloseRequested(tab engine.TabID) { r.note(fmt.Sprintf("close %d", tab)) }
 func (r *adapterRecorder) ActivateRequested(tab engine.TabID) {
@@ -225,7 +225,7 @@ func wired(t *testing.T) (*Events, *adapterRecorder) {
 // The adapter's events reach the listener with no subscription, and are counted.
 func TestAdapterEventsReachTheListener(t *testing.T) {
 	h, r := wired(t)
-	h.Dispatch(TabOpened, []Value{{I: 0}, {I: 2}, {S: "https://p.test/"}, {S: "a1b2c3d4"}, {I: 1}, {I: 1}})
+	h.Dispatch(TabOpened, []Value{{I: 0}, {I: 2}, {S: "https://p.test/"}, {S: "a1b2c3d4"}, {I: 1}, {I: 1}, {I: 0}})
 	h.Dispatch(WindowChanged, []Value{{I: 2}, {D: 1100}, {D: 700}, {D: 1}, {D: 2}, {D: 3}, {D: 4}, {D: 20}, {I: 1}})
 	h.Dispatch(ShellCrashed, []Value{{I: 2}})
 	h.Dispatch(ShellMessage, []Value{{I: 2}, {S: `{"t":"ready"}`}})
@@ -234,7 +234,7 @@ func TestAdapterEventsReachTheListener(t *testing.T) {
 	h.Dispatch(WindowFocused, []Value{{I: 2}})
 	h.Dispatch(WindowClosed, []Value{{I: 2}})
 	h.Dispatch(ProcessCrashed, []Value{{S: "renderer"}, {S: "crashed"}, {I: 11}, {I: 42}, {S: "https://p.test/"}})
-	if !reflect.DeepEqual(r.got, []string{"opened https://p.test/ in a1b2c3d4 new window true", "window 2 1100x700 r=20 full=true", "shell 2 crashed", `shell 2 {"t":"ready"}`, `page 2 history {"t":"ready"}`, `picker 2 {"t":"open"}`, "window 2 focused", "window 2 closed", "renderer crashed 11 42 https://p.test/"}) {
+	if !reflect.DeepEqual(r.got, []string{"opened https://p.test/ in a1b2c3d4 new window true tapped false", "window 2 1100x700 r=20 full=true", "shell 2 crashed", `shell 2 {"t":"ready"}`, `page 2 history {"t":"ready"}`, `picker 2 {"t":"open"}`, "window 2 focused", "window 2 closed", "renderer crashed 11 42 https://p.test/"}) {
 		t.Fatalf("got %v", r.got)
 	}
 	if h.Counts()["engine.TabOpened"] != 1 {

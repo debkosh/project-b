@@ -81,12 +81,15 @@ class Engine {
 
   static Engine* Get();
   // Tells Go a page or a client opened a tab, which the adapter already made, in a window
-  // of its own when new_window, and which workspace it is in.
+  // of its own when new_window, and which workspace it is in. tapped is content's
+  // user_gesture: a real tap, click or key reached the opener's page just before, which a
+  // tab no page opened always has.
   static void TabOpened(int64_t opener,
                         int64_t tab,
                         const GURL& url,
                         bool foreground,
-                        bool new_window);
+                        bool new_window,
+                        bool tapped);
 
   // The table handed to Go. Lives as long as the process.
   static const PBEngineCalls* Calls();

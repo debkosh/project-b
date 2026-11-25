@@ -88,9 +88,8 @@ const choices = [
   { value: 'allow', label: 'Allow' },
   { value: 'block', label: 'Block' },
 ];
-// One of our own kinds has no Ask: a site without a setting has its default, the first
-// choice.
-const valueOf = (o, k) => settingsOf(o).find((x) => x.kind === k.kind)?.value || (k.choices ? k.choices[0] : '');
+// One of our own kinds has no Ask: a site without a setting has its default, the kind's value.
+const valueOf = (o, k) => settingsOf(o).find((x) => x.kind === k.kind)?.value || k.value || '';
 const ourWords = { on: 'On', off: 'Off', allow: 'Allow', block: 'Block' };
 const choicesOf = (k) => (k.choices ? k.choices.map((v) => ({ value: v, label: ourWords[v] || v })) : choices);
 const set = (origin, kind, value) => send({ t: 'setSiteSetting', origin, kind, value });

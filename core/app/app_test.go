@@ -1100,7 +1100,7 @@ func TestADevToolsTargetInANewWindow(t *testing.T) {
 	var tab engine.TabID
 	r.e.Post(func() {
 		tab = r.e.CreateTab("", false)
-		r.a.TabOpened(0, tab, "https://n.test/", "", true, true)
+		r.a.TabOpened(0, tab, "https://n.test/", "", true, true, true)
 	})
 	r.e.Settle()
 	var inSecond []tabs.Tab
@@ -1127,7 +1127,7 @@ func TestAWindowMadeForATabClosesWithIt(t *testing.T) {
 	var tab engine.TabID
 	r.e.Post(func() {
 		tab = r.e.CreateTab("", false)
-		r.a.TabOpened(0, tab, "https://n.test/", "", true, true)
+		r.a.TabOpened(0, tab, "https://n.test/", "", true, true, true)
 	})
 	r.e.Settle()
 	r.e.Post(func() { r.a.CloseRequested(tab) })

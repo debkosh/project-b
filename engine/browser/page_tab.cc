@@ -603,7 +603,7 @@ content::WebContents* PageTab::OpenURLFromTab(
     PageTab* tab = Engine::Get()->CreateTab(workspace_);
     Engine::TabOpened(id_, tab->id(), params.url,
                       params.disposition != WindowOpenDisposition::kNewBackgroundTab,
-                      /*new_window=*/false);
+                      /*new_window=*/false, params.user_gesture);
     target = tab->contents();
   }
   base::WeakPtr<content::NavigationHandle> handle =
@@ -654,7 +654,7 @@ content::WebContents* PageTab::AddNewContents(
   }
   Engine::TabOpened(id_, tab->id(), target_url,
                     disposition != WindowOpenDisposition::kNewBackgroundTab,
-                    /*new_window=*/false);
+                    /*new_window=*/false, user_gesture);
   return tab->contents();
 }
 

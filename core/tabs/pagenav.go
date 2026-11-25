@@ -14,12 +14,14 @@ import (
 // opens. A page's navigation is put to the page guard, which says whether it may go.
 
 // PageNavigation is a navigation a page started: in its own tab, or in a tab it opened
-// (Opener, the tab whose page opened it; its page is From).
+// (Opener, the tab whose page opened it; its page is From). Untapped is a tab the page
+// opened with no real tap first, a pop-up, as it opens.
 type PageNavigation struct {
-	Tab    engine.TabID
-	From   string
-	To     string
-	Opener engine.TabID
+	Tab      engine.TabID
+	From     string
+	To       string
+	Opener   engine.TabID
+	Untapped bool
 }
 
 // SetPageGuard sets what decides each page's navigation: false drops it. A navigation in
@@ -94,13 +96,13 @@ func (m *Manager) pageMay(t *Tab, nav int64, u string) bool {
 	if !t.byPage || m.guard == nil {
 		return true
 	}
-	return m.pageMayOpen(t, u)
+	return m.pageMayOpen(t, u, false)
 }
 
 // pageMayOpen puts a page's navigation of t to u to the guard, closing t when it is a tab
-// the page opened that the guard refuses.
-func (m *Manager) pageMayOpen(t *Tab, u string) bool {
-	n := PageNavigation{Tab: t.ID, From: t.URL, To: u}
+// the page opened that the guard refuses. untapped is a pop-up as it opens.
+func (m *Manager) pageMayOpen(t *Tab, u string, untapped bool) bool {
+	n := PageNavigation{Tab: t.ID, From: t.URL, To: u, Untapped: untapped}
 	if t.opener != 0 && !t.ownPage {
 		n.From, n.Opener = t.openerURL, t.opener
 	}
@@ -109,16 +111,19 @@ func (m *Manager) pageMayOpen(t *Tab, u string) bool {
 	}
 	if n.Opener != 0 {
 		t.refused = true
-		m.blockPopup(t.ID, n.Opener)
+		m.blockPopup(t.ID, n.Opener, u)
 	}
 	return false
 }
 
 // blockPopup closes a tab a page opened, after the engine's question it was asked in, and
-// counts it on its opener, which shows again.
-func (m *Manager) blockPopup(id, opener engine.TabID) {
+// counts it on its opener, which shows again and keeps u for Open it.
+func (m *Manager) blockPopup(id, opener engine.TabID, u string) {
 	if o := m.tabs[opener]; o != nil {
 		o.PopupsBlocked++
+		if u != "" && u != "about:blank" {
+			o.BlockedPopup = u
+		}
 		m.changed(o)
 	}
 	m.post(func() {
@@ -130,3 +135,17 @@ func (m *Manager) blockPopup(id, opener engine.TabID) {
 }
 
 func (m *Manager) post(f func()) { m.eng.Post(f) }
+
+// OpenBlockedPopup opens the latest pop-up tab's page blocked, beside it, as the person's:
+// Open it. It counts as blocked no longer.
+func (m *Manager) OpenBlockedPopup(tab engine.TabID) {
+	t := m.tabs[tab]
+	if t == nil || t.BlockedPopup == "" {
+		return
+	}
+	u := t.BlockedPopup
+	t.BlockedPopup = ""
+	t.PopupsBlocked = max(t.PopupsBlocked-1, 0)
+	m.changed(t)
+	m.OpenBeside(tab, u)
+}

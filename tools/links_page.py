@@ -51,4 +51,4 @@ def page(other):
 
 def popups_word(n):
     """What the address field's popup count says, as shell/src/sdk/sites.js's popupsWord."""
-    return "1 popup blocked" if n == 1 else f"{n} popups blocked"
+    return "1 pop-up blocked" if n == 1 else f"{n} pop-ups blocked"

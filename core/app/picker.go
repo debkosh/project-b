@@ -182,22 +182,22 @@ func (p *Picker) PageMessage(engine.TabID, engine.Page, []byte) {}
 func (p *Picker) NavigationStarting(engine.TabID, int64, string) engine.Navigation {
 	return engine.NavigationBlock
 }
-func (p *Picker) NavigationFinished(engine.TabID, int64, string)                       {}
-func (p *Picker) AppLink(engine.TabID, string)                                         {}
-func (p *Picker) NavigationFailed(engine.TabID, int64, string, engine.Failure, string) {}
-func (p *Picker) HistoryChanged(engine.TabID, bool, bool)                              {}
-func (p *Picker) TitleChanged(engine.TabID, string)                                    {}
-func (p *Picker) LoadingChanged(engine.TabID, bool)                                    {}
-func (p *Picker) LoadProgressChanged(engine.TabID, float64)                            {}
-func (p *Picker) ScrollDirectionChanged(engine.TabID, bool)                            {}
-func (p *Picker) ContextMenu(engine.TabID, engine.ContextMenu)                         {}
-func (p *Picker) PageCrashed(engine.TabID)                                             {}
-func (p *Picker) FaviconChanged(engine.TabID, string)                                  {}
-func (p *Picker) TabOpened(engine.TabID, engine.TabID, string, string, bool, bool)     {}
-func (p *Picker) TabFocused(engine.TabID)                                              {}
-func (p *Picker) CloseRequested(engine.TabID)                                          {}
-func (p *Picker) ActivateRequested(engine.TabID)                                       {}
-func (p *Picker) ProcessCrashed(engine.ProcessCrash)                                   {}
+func (p *Picker) NavigationFinished(engine.TabID, int64, string)                         {}
+func (p *Picker) AppLink(engine.TabID, string)                                           {}
+func (p *Picker) NavigationFailed(engine.TabID, int64, string, engine.Failure, string)   {}
+func (p *Picker) HistoryChanged(engine.TabID, bool, bool)                                {}
+func (p *Picker) TitleChanged(engine.TabID, string)                                      {}
+func (p *Picker) LoadingChanged(engine.TabID, bool)                                      {}
+func (p *Picker) LoadProgressChanged(engine.TabID, float64)                              {}
+func (p *Picker) ScrollDirectionChanged(engine.TabID, bool)                              {}
+func (p *Picker) ContextMenu(engine.TabID, engine.ContextMenu)                           {}
+func (p *Picker) PageCrashed(engine.TabID)                                               {}
+func (p *Picker) FaviconChanged(engine.TabID, string)                                    {}
+func (p *Picker) TabOpened(engine.TabID, engine.TabID, string, string, bool, bool, bool) {}
+func (p *Picker) TabFocused(engine.TabID)                                                {}
+func (p *Picker) CloseRequested(engine.TabID)                                            {}
+func (p *Picker) ActivateRequested(engine.TabID)                                         {}
+func (p *Picker) ProcessCrashed(engine.ProcessCrash)                                     {}
 
 // The picker downloads nothing.
 func (p *Picker) DownloadTarget(engine.DownloadRequest) engine.DownloadTarget {

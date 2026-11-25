@@ -1095,11 +1095,12 @@ func (e *Engine) Fire(w engine.WindowID, tab engine.TabID, kind, value string) {
 		case "menu":
 			// A menu bar item chosen, by its action id, as the real menu bar says.
 			e.listener.MenuChosen(value)
-		case "open":
+		case "open", "popup":
 			// What a page's target=_blank or window.open does: the engine makes the
-			// tab, in the page's workspace, tells the app, then loads it.
+			// tab, in the page's workspace, tells the app, then loads it. "open" is one
+			// after a tap; "popup" one the page opened on its own, which has none.
 			id := e.CreateTab(e.Workspace(shown), false)
-			e.listener.TabOpened(shown, id, value, e.Workspace(shown), true, false)
+			e.listener.TabOpened(shown, id, value, e.Workspace(shown), true, false, kind == "open")
 			e.navigate(id, value)
 		case "key":
 			// A key pressed in the page, which uses none of them.

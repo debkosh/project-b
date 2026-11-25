@@ -63,8 +63,11 @@ type Tab struct {
 	Notice *Notice `json:"notice,omitempty"`
 	// AdsBlocked is how many requests of its page the ad blocker kept from their hosts.
 	AdsBlocked int `json:"adsBlocked,omitempty"`
-	// PopupsBlocked is how many tabs its page opened that Links to other sites closed.
-	PopupsBlocked int `json:"popupsBlocked,omitempty"`
+	// PopupsBlocked is how many tabs its page opened that Go closed as they opened: pop-ups,
+	// opened with no tap while Allow pop-ups is off, and those Links to other sites refused.
+	// BlockedPopup is the address of the latest that had one, which Open it opens.
+	PopupsBlocked int    `json:"popupsBlocked,omitempty"`
+	BlockedPopup  string `json:"blockedPopup,omitempty"`
 	// Group is the id of the tab group it is in, "" for none (groups.go).
 	Group string `json:"group,omitempty"`
 	// Pin is the id of the pin the tab is open for, "" for none (package pins). A window
@@ -1048,7 +1051,7 @@ func (m *Manager) open(opener engine.TabID, u, workspace string, foreground bool
 		return m.OpenPage(w, page)
 	}
 	id := m.eng.CreateTab(workspace, false)
-	m.HandleTabOpened(opener, id, u, workspace, foreground)
+	m.HandleTabOpened(opener, id, u, workspace, foreground, true)
 	m.loadURL(id, u)
 	return id
 }
@@ -1121,8 +1124,9 @@ func (m *Manager) zoomTo(f float64) {
 // HandleTabOpened records a tab a page opened, in the opener's window, or in the window
 // in front when no tab opened it, in the workspace the engine made it in, and in its
 // opener's group, and shows it if the page asked for the foreground, or if it is its
-// window's first.
-func (m *Manager) HandleTabOpened(opener, id engine.TabID, u, workspace string, foreground bool) {
+// window's first. tapped says a real tap reached the opener's page just before: one it
+// opened without is a pop-up, which the guard may refuse.
+func (m *Manager) HandleTabOpened(opener, id engine.TabID, u, workspace string, foreground, tapped bool) {
 	w := m.windowOf[opener]
 	if w == 0 {
 		w = m.Front()
@@ -1134,7 +1138,7 @@ func (m *Manager) HandleTabOpened(opener, id engine.TabID, u, workspace string, 
 	if o := m.tabs[opener]; o != nil {
 		t.opener, t.openerURL = opener, o.URL
 		t.byPage = true
-		if m.guard != nil && !m.pageMayOpen(t, u) {
+		if m.guard != nil && !m.pageMayOpen(t, u, !tapped) {
 			return
 		}
 	}
@@ -1220,7 +1224,7 @@ func (m *Manager) HandleNavigationFinished(id engine.TabID, nav int64, u string)
 		t.Thumb = ""
 	}
 	t.committed = u
-	t.AdsBlocked, t.PopupsBlocked = 0, 0
+	t.AdsBlocked, t.PopupsBlocked, t.BlockedPopup = 0, 0, ""
 	// The blank page a popup opens on isn't a page of its own: it still goes by its
 	// opener's.
 	t.ownPage = t.ownPage || t.URL != ""
