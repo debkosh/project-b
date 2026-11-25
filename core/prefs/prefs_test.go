@@ -71,7 +71,7 @@ func TestApplySetsWhatTheValuesHoldThroughTheSetters(t *testing.T) {
 		t.Fatalf("heard %v", heard)
 	}
 	m.Close()
-	if got := New(dir).All(); !reflect.DeepEqual(got, Prefs{TabLayout: TabsHorizontal, FrameColor: "#5b7fd6", Theme: ThemeDark, Shell: "pbshell", AddressBarPosition: AddressBottom, SearchEngine: "duckduckgo", Start: StartContinue, BookmarksNewTab: true, BookmarksCommandBox: true, BlockAds: true, KeepCookies: []string{}}) {
+	if got := New(dir).All(); !reflect.DeepEqual(got, Prefs{TabLayout: TabsHorizontal, FrameColor: "#5b7fd6", Theme: ThemeDark, Shell: "pbshell", PhoneShell: "mwshell", AddressBarPosition: AddressBottom, SearchEngine: "duckduckgo", Start: StartContinue, BookmarksNewTab: true, BookmarksCommandBox: true, BlockAds: true, KeepCookies: []string{}}) {
 		t.Fatalf("saved %+v", got)
 	}
 }
@@ -85,7 +85,7 @@ func TestTheShellIsAShellsIDAndSurvivesARestart(t *testing.T) {
 		t.Fatalf("default = %q", m.Shell())
 	}
 	var got []string
-	m.OnShellChanged(func(id string) { got = append(got, id) })
+	m.OnShellChanged(func() { got = append(got, m.Shell()) })
 	m.SetShell("no-such-shell")
 	m.SetShell("mnshell")
 	m.SetShell("mnshell")

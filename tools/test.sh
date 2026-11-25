@@ -118,6 +118,7 @@ mock() {
     run "build the shell" npm --prefix shell run build
     run "the shell on the mock engine" node shell/e2e/first-app.cjs
     run "the region outlines on the mock engine" node shell/e2e/outlines.cjs
+    run "the shell following the window's size on Android, on the mock engine" node shell/e2e/large-screens.cjs
     run "every shell's bars keep their controls apart at every width" node shell/e2e/toolbar-fit.cjs
     run "the welcome on the mock engine" node shell/e2e/welcome.cjs
     run "bringing things over from other browsers, on the mock engine" node shell/e2e/imports.cjs

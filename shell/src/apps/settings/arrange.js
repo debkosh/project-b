@@ -14,8 +14,8 @@ const where = {
   tabLayout: () => !phone,
   addressBar: () => phone,
   // On a desktop the profile loads the shell, so a copy on a folder named outright has
-  // none to choose; a phone chooses among its own.
-  shell: () => (phone ? state.phoneShells?.shells.length > 1 : !!state.profile),
+  // none to choose; Android chooses among its own.
+  shell: () => (phone ? !!state.androidShells : !!state.profile),
   profile: () => !!state.profile,
   keys: () => !phone,
   keyboard: () => !phone,

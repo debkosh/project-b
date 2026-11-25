@@ -23,10 +23,13 @@ type Shell struct {
 	// never changes, as profiles save it.
 	Name        string `json:"name"`
 	Description string `json:"description"`
-	// Phone is a shell made for a phone: a phone offers and loads only these, and a desktop
-	// offers none of them, though it loads one named outright, as the mock does for a
-	// phone-sized test.
+	// Phone is a shell made for a phone: Android loads one in a narrow window, and a
+	// desktop offers none of them, though it loads one named outright, as the mock does
+	// for a phone-sized test.
 	Phone bool `json:"phone,omitempty"`
+	// Android is a desktop shell Android offers, and loads in a wide window
+	// (docs/large-screens.md).
+	Android bool `json:"android,omitempty"`
 	// Native is a shell drawn by the platform's own views, not a web page: it has no folder
 	// in shell/src/apps/shell, and its page is native/<id>, which the engine makes as that
 	// platform's view (docs/native-shell.md).
@@ -48,9 +51,21 @@ type Action struct {
 	Title string `json:"title"`
 }
 
-// OnPhone is whether this app runs on a phone. Android is a phone: the app has no tablet
-// layout.
-var OnPhone = runtime.GOOS == "android"
+// OnAndroid is whether this app runs on Android, where the window's size picks its shell:
+// a phone's in a narrow window, a desktop's in a wide one (Narrow).
+var OnAndroid = runtime.GOOS == "android"
+
+// Narrow says whether a window w by h dp wide is narrow on Android: under 600 wide or 480
+// tall, Android's compact width and height, so a phone on its side is narrow too. was is
+// what the window was before: it changes only 40 dp past either line, so a window dragged
+// to the edge doesn't flip back and forth.
+func Narrow(w, h float64, was bool) bool {
+	const width, height, margin = 600, 480, 40
+	if was {
+		return w < width+margin || h < height+margin
+	}
+	return w < width-margin || h < height-margin
+}
 
 //go:embed registry.json
 var registry []byte
@@ -85,11 +100,23 @@ var all = func() []Shell {
 // All is every shell, in the registry's order.
 func All() []Shell { return append([]Shell(nil), all...) }
 
-// Listed is the shells the user can choose: every one made for this kind of device.
+// Listed is the shells the user can choose for a wide window: a desktop's every desktop
+// shell, Android's those it offers.
 func Listed() []Shell {
 	var out []Shell
 	for _, s := range all {
-		if s.Phone == OnPhone {
+		if !s.Phone && (s.Android || !OnAndroid) {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// Phones is the shells Android offers for a narrow window.
+func Phones() []Shell {
+	var out []Shell
+	for _, s := range all {
+		if s.Phone {
 			out = append(out, s)
 		}
 	}
@@ -106,21 +133,23 @@ func Takes(id, action string) bool {
 	return false
 }
 
-// Default is the shell a profile loads until it chooses one: the first the user can
-// choose on this kind of device.
+// Default is the shell a profile loads in a wide window until it chooses one: the first
+// listed.
 func Default() string { return Listed()[0].ID }
 
-// Fits says whether a profile whose pref names id loads it. A desktop loads any shell
-// named outright, a phone's too; a phone only a phone's, so the desktop's that
-// the profile templates name loads Default there.
+// DefaultPhone is the shell a profile loads in a narrow window on Android until it
+// chooses one.
+func DefaultPhone() string { return Phones()[0].ID }
+
+// Fits says whether a profile whose shell pref names id loads it. A desktop loads any
+// shell named outright, a phone's too; Android only one it lists, so a profile template
+// that names another loads Default there.
 func Fits(id string) bool {
-	for _, s := range all {
-		if s.ID == id {
-			return s.Phone || !OnPhone
-		}
-	}
-	return false
+	return slices.ContainsFunc(Listed(), func(s Shell) bool { return s.ID == id }) || (!OnAndroid && Has(id))
 }
+
+// FitsPhone says whether a profile whose phone shell pref names id loads it.
+func FitsPhone(id string) bool { return Phone(id) }
 
 // Page is the page a window loads for the shell called id: native/<id> for a native
 // shell, shell/<id> for the rest.

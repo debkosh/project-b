@@ -35,6 +35,12 @@ const (
 	StartFresh    = "fresh"
 )
 
+// What OneShell keeps at every size: the phone shell, or the wide one.
+const (
+	OneShellPhone = "phone"
+	OneShellWide  = "wide"
+)
+
 // Themes: the shell and the window follow the system's light or dark, or stay one.
 const (
 	ThemeSystem = "system"
@@ -47,8 +53,13 @@ type Prefs struct {
 	TabLayout  string `json:"tabLayout"`
 	FrameColor string `json:"frameColor"`
 	Theme      string `json:"theme"`
-	// Shell is the id of the shell every window loads.
+	// Shell is the id of the shell every window loads; on Android, a wide window's.
 	Shell string `json:"shell"`
+	// PhoneShell is the id of the shell a narrow window loads on Android.
+	PhoneShell string `json:"phoneShell"`
+	// OneShell keeps one of the two at every size on Android: OneShellPhone or
+	// OneShellWide; "" lets the window's size choose. docs/large-screens.md.
+	OneShell string `json:"oneShell,omitempty"`
 	// AddressBarPosition is AddressBottom or AddressTop. Only the Mobile shell reads it.
 	AddressBarPosition string `json:"addressBarPosition"`
 	// SearchEngine is the id of the engine typed words are searched with (package search).
@@ -90,7 +101,7 @@ type Prefs struct {
 
 // Defaults are the settings before the user changes any.
 func Defaults() Prefs {
-	return Prefs{TabLayout: TabsVertical, FrameColor: tones.Brand, Theme: ThemeSystem, Shell: shells.Default(), AddressBarPosition: AddressBottom, SearchEngine: search.Default, Start: StartContinue,
+	return Prefs{TabLayout: TabsVertical, FrameColor: tones.Brand, Theme: ThemeSystem, Shell: shells.Default(), PhoneShell: shells.DefaultPhone(), AddressBarPosition: AddressBottom, SearchEngine: search.Default, Start: StartContinue,
 		BookmarksNewTab: true, BookmarksCommandBox: true, BlockAds: true, KeepCookies: []string{}}
 }
 
@@ -112,7 +123,7 @@ type Manager struct {
 	onLayout     []func(string)
 	onFrameColor []func(string)
 	onTheme      []func(string)
-	onShell      []func(string)
+	onShell      []func()
 	onAddress    []func(string)
 	onSearch     []func(string)
 	onChanged    []func(Prefs)
@@ -151,6 +162,12 @@ func New(dir string) *Manager {
 			}
 			if !shells.Fits(s.Shell) {
 				s.Shell = Defaults().Shell
+			}
+			if !shells.FitsPhone(s.PhoneShell) {
+				s.PhoneShell = Defaults().PhoneShell
+			}
+			if s.OneShell != OneShellPhone && s.OneShell != OneShellWide {
+				s.OneShell = ""
 			}
 			if !folderID.MatchString(s.BookmarksBarFolder) {
 				s.BookmarksBarFolder = ""
@@ -228,21 +245,49 @@ func (m *Manager) SetTheme(theme string) {
 	m.changed()
 }
 
-// Shell is the id of the shell every window loads.
+// Shell is the id of the shell every window loads; on Android, a wide window's.
 func (m *Manager) Shell() string { return m.prefs.Shell }
 
-// OnShellChanged subscribes to the shell changing.
-func (m *Manager) OnShellChanged(f func(string)) { m.onShell = append(m.onShell, f) }
+// PhoneShell is the id of the shell a narrow window loads on Android.
+func (m *Manager) PhoneShell() string { return m.prefs.PhoneShell }
 
-// SetShell changes the shell. Anything but a shell's id is ignored.
+// OneShell is OneShellPhone or OneShellWide when one shell stays at every size, else "".
+func (m *Manager) OneShell() string { return m.prefs.OneShell }
+
+// OnShellChanged subscribes to any of the three changing.
+func (m *Manager) OnShellChanged(f func()) { m.onShell = append(m.onShell, f) }
+
+// SetShell changes the shell. Anything but the id of a shell this device loads is ignored.
 func (m *Manager) SetShell(id string) {
-	if !shells.Has(id) || id == m.prefs.Shell {
+	if shells.Fits(id) {
+		m.setShell(&m.prefs.Shell, id)
+	}
+}
+
+// SetPhoneShell changes a narrow window's shell. Anything but a phone shell's id is
+// ignored.
+func (m *Manager) SetPhoneShell(id string) {
+	if shells.FitsPhone(id) {
+		m.setShell(&m.prefs.PhoneShell, id)
+	}
+}
+
+// SetOneShell keeps the phone shell or the wide one at every size, or with "" lets the
+// size choose again. Anything else is ignored.
+func (m *Manager) SetOneShell(one string) {
+	if one == "" || one == OneShellPhone || one == OneShellWide {
+		m.setShell(&m.prefs.OneShell, one)
+	}
+}
+
+func (m *Manager) setShell(pref *string, v string) {
+	if *pref == v {
 		return
 	}
-	m.prefs.Shell = id
+	*pref = v
 	m.save()
 	for _, f := range m.onShell {
-		f(id)
+		f()
 	}
 	m.changed()
 }
@@ -435,6 +480,10 @@ func (m *Manager) Set(name, value string) bool {
 		m.SetTheme(value)
 	case "shell":
 		m.SetShell(value)
+	case "phoneShell":
+		m.SetPhoneShell(value)
+	case "oneShell":
+		m.SetOneShell(value)
 	case "addressBarPosition":
 		m.SetAddressBarPosition(value)
 	case "bookmarksNewTab", "bookmarksSidebar", "bookmarksCommandBox", "bookmarksBar":
@@ -485,6 +534,8 @@ func (m *Manager) Apply(values json.RawMessage) error {
 	m.SetFrameColor(p.FrameColor)
 	m.SetTheme(p.Theme)
 	m.SetShell(p.Shell)
+	m.SetPhoneShell(p.PhoneShell)
+	m.SetOneShell(p.OneShell)
 	m.SetAddressBarPosition(p.AddressBarPosition)
 	m.SetSearchEngine(p.SearchEngine)
 	m.SetStart(p.Start)

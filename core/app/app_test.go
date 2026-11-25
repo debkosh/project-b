@@ -2211,27 +2211,81 @@ func TestTheTonesComeWithTheFrameColour(t *testing.T) {
 	}
 }
 
-// On a phone, the settings page offers the phone's shells, and a choice there loads it:
-// a phone has no Profile section or View menu.
-func TestAPhonesSettingsChooseItsShell(t *testing.T) {
-	defer func(was bool) { shells.OnPhone = was }(shells.OnPhone)
-	shells.OnPhone = true
-	r := start(t, t.TempDir())
-	defer r.stop()
-	_, snap := r.openSettings()
-	ps, _ := snap["phoneShells"].(map[string]any)
-	list, _ := ps["shells"].([]any)
-	if ps["shell"] != "mwshell" || len(list) == 0 || list[0].(map[string]any)["id"] != "mwshell" {
-		t.Fatalf("phone shells %v", snap["phoneShells"])
+// androidProfile is a profile folder for a test as on Android, whose one desktop shell,
+// Standard, takes Go's New Tab.
+func androidProfile(t *testing.T) string {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "prefs.json"), []byte(`{"shell":"pbshell"}`), 0o644); err != nil {
+		t.Fatal(err)
 	}
-	r.settings(`{"t":"setShell","text":"mwshell"}`)
-	// Off a phone the part isn't there: the Profile section offers the shells.
-	shells.OnPhone = false
+	return dir
+}
+
+// On Android the settings page offers the phone shells for a narrow window, Standard for a
+// wide one, and keeping one at every size; a desktop's has no such part, as its Profile
+// section offers the shells.
+func TestAndroidsSettingsChooseAShellForEachSize(t *testing.T) {
+	defer func(was bool) { shells.OnAndroid = was }(shells.OnAndroid)
+	shells.OnAndroid = true
+	r := start(t, androidProfile(t))
+	defer r.stop()
+	ch, snap := r.openSettings()
+	as, _ := snap["androidShells"].(map[string]any)
+	phones, _ := as["phones"].([]any)
+	wides, _ := as["wides"].([]any)
+	if as["phone"] != "mwshell" || as["wide"] != "pbshell" || as["one"] != "" || len(phones) != 2 || len(wides) != 1 {
+		t.Fatalf("android shells %v", snap["androidShells"])
+	}
+	r.settings(`{"t":"setPhoneShell","text":"mkshell"}`)
+	r.waitOn(ch, func(m map[string]any) bool {
+		as, _ := m["androidShells"].(map[string]any)
+		return m["t"] == "androidShells" && as["phone"] == "mkshell"
+	})
+	r.settings(`{"t":"setOneShell","text":"wide"}`)
+	r.waitOn(ch, func(m map[string]any) bool {
+		as, _ := m["androidShells"].(map[string]any)
+		return m["t"] == "androidShells" && as["one"] == "wide"
+	})
+	shells.OnAndroid = false
 	r2 := start(t, t.TempDir())
 	defer r2.stop()
-	if _, snap2 := r2.openSettings(); snap2["phoneShells"] != nil {
-		t.Fatalf("a desktop's settings offer phone shells: %v", snap2["phoneShells"])
+	if _, snap2 := r2.openSettings(); snap2["androidShells"] != nil {
+		t.Fatalf("a desktop's settings offer Android's shells: %v", snap2["androidShells"])
 	}
+}
+
+// On Android the window's size picks its shell: the first size at once, a later one once it
+// has stayed half a second, so a size that comes back in time changes nothing. Keeping one
+// shell at every size overrides it.
+func TestOnAndroidTheShellFollowsTheWindowsSize(t *testing.T) {
+	defer func(was bool) { shells.OnAndroid = was }(shells.OnAndroid)
+	shells.OnAndroid = true
+	r := start(t, androidProfile(t))
+	defer r.stop()
+	page := func(want engine.Page, within time.Duration) {
+		t.Helper()
+		for end := time.Now().Add(within); r.e.PageOf(1) != want; time.Sleep(10 * time.Millisecond) {
+			if time.Now().After(end) {
+				t.Fatalf("the window loads %s, not %s", r.e.PageOf(1), want)
+			}
+		}
+	}
+	r.e.Resize(1, 1280, 800)
+	page("shell/pbshell", time.Second)
+	r.e.Resize(1, 412, 915)
+	time.Sleep(200 * time.Millisecond)
+	if r.e.PageOf(1) != "shell/pbshell" {
+		t.Fatal("the shell changed before the size settled")
+	}
+	r.e.Resize(1, 1280, 800)
+	time.Sleep(700 * time.Millisecond)
+	if r.e.PageOf(1) != "shell/pbshell" {
+		t.Fatal("a size that came back in time changed the shell")
+	}
+	r.e.Resize(1, 891, 412)
+	page("shell/mwshell", 2*time.Second)
+	r.e.Post(func() { r.a.Prefs.SetOneShell("wide") })
+	page("shell/pbshell", time.Second)
 }
 
 // The menu skips a tab's changes it doesn't read, and still follows the ones it does: a tab

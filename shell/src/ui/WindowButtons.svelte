@@ -5,7 +5,7 @@
   // shells: WindowButtons.vue's (docs/design-system.md, "The window's own buttons and
   // menus"). Minimise, maximise and close at the right end of the top row; the Mac keeps its
   // own, and this draws nothing there. Each runs Go's action, as a menu would.
-  const ours = $derived(go.platform !== 'mac' && !(go.controls && go.controls.w > 0));
+  const ours = $derived(go.platform !== 'mac' && go.platform !== 'android' && !(go.controls && go.controls.w > 0));
   const run = (action) => send({ t: 'run', text: action });
 </script>
 

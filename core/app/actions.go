@@ -60,7 +60,7 @@ func (a *App) registerActions(e engine.Engine) {
 	for _, s := range shells.All() {
 		for _, sa := range s.Actions {
 			act := add(sa.ID, sa.Title, func() { a.Shell.Action(a.Tabs.Front(), sa.ID) })
-			act.Enabled = func() bool { return a.Prefs.Shell() == s.ID }
+			act.Enabled = func() bool { return a.shells.InUse() == s.ID }
 			act.Shell = s.Name
 		}
 	}
@@ -140,7 +140,7 @@ func (a *App) registerActions(e engine.Engine) {
 			}
 			run := act.Run
 			act.Run = func() {
-				if a.Prefs.Shell() != s.ID {
+				if a.shells.InUse() != s.ID {
 					run()
 					return
 				}

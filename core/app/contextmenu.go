@@ -144,7 +144,7 @@ func (c *contextMenus) show(tab engine.TabID, cm engine.ContextMenu) {
 // phone says whether the shell chosen is a phone's, whose long-press sheet downloads,
 // shares and copies images too.
 func (c *contextMenus) phone() bool {
-	id := c.a.Prefs.Shell()
+	id := c.a.shells.InUse()
 	return slices.ContainsFunc(shells.All(), func(s shells.Shell) bool { return s.ID == id && s.Phone })
 }
 

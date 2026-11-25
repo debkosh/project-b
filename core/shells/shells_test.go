@@ -48,21 +48,50 @@ func TestTheRegistryAndTheFoldersNameTheSameShells(t *testing.T) {
 	}
 }
 
-// A desktop offers no phone shell, a phone only those, and each starts on the first it
-// offers: standard on a desktop, mobile on a phone. A desktop loads either named outright;
-// a phone doesn't load standard, which the profile templates name.
-func TestEachKindOfDeviceOffersItsOwnShells(t *testing.T) {
-	defer func(was bool) { OnPhone = was }(OnPhone)
-	for _, phone := range []bool{false, true} {
-		OnPhone = phone
-		for _, s := range Listed() {
-			if s.Phone != phone {
-				t.Fatalf("on a phone %v, %s is offered", phone, s.ID)
-			}
+// A desktop offers its desktop shells and no phone shell, and starts on Standard; it loads
+// any shell named outright. Android offers the phone shells for a narrow window and
+// Standard for a wide one, and loads only those.
+func TestEachPlatformOffersItsOwnShells(t *testing.T) {
+	defer func(was bool) { OnAndroid = was }(OnAndroid)
+	OnAndroid = false
+	for _, s := range Listed() {
+		if s.Phone {
+			t.Fatalf("a desktop offers %s", s.ID)
 		}
-		want := map[bool]string{false: "pbshell", true: "mwshell"}[phone]
-		if Default() != want || !Fits(want) || Fits("pbshell") == phone || !Fits("mwshell") || Fits("nothing") {
-			t.Fatalf("on a phone %v, the default is %s", phone, Default())
+	}
+	if Default() != "pbshell" || len(Listed()) < 2 || !Fits("tmshell") || !Fits("mwshell") || Fits("nothing") {
+		t.Fatalf("on a desktop: default %s, listed %v", Default(), Listed())
+	}
+	OnAndroid = true
+	if len(Listed()) != 1 || Default() != "pbshell" || DefaultPhone() != "mwshell" {
+		t.Fatalf("on Android: listed %v, default %s, phone %s", Listed(), Default(), DefaultPhone())
+	}
+	if !Fits("pbshell") || Fits("tmshell") || Fits("mwshell") || !FitsPhone("mkshell") || FitsPhone("pbshell") {
+		t.Fatal("on Android, Fits takes a shell it doesn't list")
+	}
+}
+
+// A window is narrow under 600 dp wide or 480 tall, so a phone on its side is too, and
+// changes only 40 dp past either line.
+func TestAWindowIsNarrowUnder600WideOr480Tall(t *testing.T) {
+	for _, c := range []struct {
+		w, h      float64
+		was, want bool
+	}{
+		{412, 915, false, true},   // a phone
+		{891, 412, false, true},   // a phone on its side
+		{841, 673, true, false},   // a foldable, opened
+		{1280, 800, true, false},  // a tablet
+		{800, 1280, true, false},  // a tablet, upright
+		{580, 900, false, false},  // just under the line, was wide
+		{580, 900, true, true},    // the same, was narrow
+		{630, 900, true, true},    // 30 past, still narrow
+		{650, 900, true, false},   // 50 past
+		{1000, 500, true, true},   // 20 over 480 tall, was narrow
+		{1000, 430, false, true},  // 50 under 480 tall
+	} {
+		if got := Narrow(c.w, c.h, c.was); got != c.want {
+			t.Errorf("%v by %v, was narrow %v: narrow %v", c.w, c.h, c.was, got)
 		}
 	}
 }
@@ -103,6 +132,27 @@ func TestNoShellNameIsWrittenOutsideTheRegistry(t *testing.T) {
 		})
 		if err != nil {
 			t.Fatal(err)
+		}
+	}
+}
+
+// The APK carries the pages of every web shell Android loads, the phone's and the desktop
+// shells it lists, and of no other (engine/build_go.py's ANDROID_PAGES).
+func TestTheAPKCarriesEveryShellAndroidLoads(t *testing.T) {
+	b, err := os.ReadFile("../../engine/build_go.py")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var line string
+	for _, l := range strings.Split(string(b), "\n") {
+		if strings.HasPrefix(l, "ANDROID_PAGES = ") {
+			line = l
+		}
+	}
+	for _, s := range All() {
+		carried := strings.Contains(line, `"shell/`+s.ID+`"`)
+		if want := !s.Native && (s.Phone || s.Android); carried != want {
+			t.Errorf("the APK carries %s: %v", s.ID, carried)
 		}
 	}
 }
