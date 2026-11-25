@@ -34,6 +34,17 @@ const mockEngine = {
   transformIndexHtml: () => [{ tag: 'script', attrs: { src: '/mock/webui.js' }, injectTo: 'head-prepend' }],
 };
 
+// Every page of ours is as wide as the device it is on, said here alone; a page that says
+// more, as the phone's shell does, writes its own whole line. The scale is left open: our
+// pages pinch on a phone until they follow Android's font size (docs/ux-guide.md, "The phone").
+const viewport = {
+  name: 'viewport',
+  transformIndexHtml: (html) =>
+    /<meta\s+name="viewport"/.test(html)
+      ? []
+      : [{ tag: 'meta', attrs: { name: 'viewport', content: 'width=device-width, initial-scale=1' }, injectTo: 'head-prepend' }],
+};
+
 export default defineConfig(({ command }) => {
   const app = process.env.VITE_APP;
   if (command === 'build' && !app) {
@@ -41,7 +52,7 @@ export default defineConfig(({ command }) => {
   }
   const name = basename(app || '');
   return {
-    plugins: [vue(), svelte({ configFile: false }), mockEngine],
+    plugins: [vue(), svelte({ configFile: false }), mockEngine, viewport],
     // A build's root is its app's folder, so its index.html lands at dist/<app>/index.html.
     root: resolve(apps, app || ''),
     base: './',

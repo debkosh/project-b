@@ -141,6 +141,17 @@ body {
   background: var(--surface);
 }
 
+/* Anything a person types in takes no pinch. On a phone Android can zoom a page in around
+   a field that asks for the keyboard while it is up already, as a Dialog's next field
+   does, and Chromium never does that to a field a pinch couldn't zoom back out of
+   (docs/fragility.md, "Settings zoomed by itself on a phone"). A pinch anywhere else on the
+   page zooms it as before. */
+input,
+textarea,
+[contenteditable] {
+  touch-action: pan-x pan-y;
+}
+
 /* A text field: 30px high, a hairline, a 6px radius. An empty field's placeholder is muted;
    .invalid draws it in --danger while its error shows under it. */
 .text-field {

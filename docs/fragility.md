@@ -42,9 +42,11 @@ The seams:
 - **The phone's keyboard.** It takes half the screen or more, by an amount that differs
   between Android versions, and what a person needs next has to stay in sight above it, and
   what it is composing is its own until the word ends; and when it goes, what stood over it
-  goes down with it, from under a finger still on the glass. Four so far: a Dialog's buttons
-  under the keyboard, the keyboard left up by the native star's sheet, the first letter typed
-  twice, a tap on a saved login's chip lost.
+  goes down with it, from under a finger still on the glass. And Android can zoom a page
+  in around a field that asks for the keyboard while it is up, unless that field takes no
+  pinch. Five so far: a Dialog's buttons under the keyboard, the keyboard left up by the native star's
+  sheet, the first letter typed twice, a tap on a saved login's chip lost, Settings zoomed
+  by itself on a phone.
 - **Work that takes time.** A rule made for work nobody asked for, such as waiting before
   saying it is busy, doesn't fit a press, which needs its answer at once; and a clock that
   measures how long the work has gone on is not one that measures how long nothing has
@@ -140,6 +142,42 @@ The seams:
   CHROMIUM_VERSION. The published APK never ran anywhere before it went out: the release
   installs and starts it on an emulator before publishing it, as no test build carries a
   release's version.
+
+## Settings zoomed by itself on a phone, 2026-11-25
+
+- **Seen:** twice on the Android 10 emulator, in the phone's sync and passwords runs, on
+  2026-11-24 and 2026-11-25. The keyboard was up, a sync Dialog moved to its next step, and
+  as that step's field took focus Settings grew to about four times its size, one word
+  filling the screen. The next tap of the run landed on nothing. A person would have had to
+  pinch it back.
+- **Cause:** read from Chromium's code, not made to happen. Android's input code asks a page
+  to bring its focused field into view, and to zoom in around it, in three cases; one is a
+  field asking for the keyboard while it is up already, which is what a Dialog's next field
+  does (`ImeAdapterImpl.onShowKeyboardReceiveResult`). Blink then zooms unless the page
+  counts as made for phones at that instant, which it tells by the layout being as wide as
+  the screen (`VisualViewport::ShouldDisableDesktopWorkarounds`), or the field takes no pinch
+  (`can_zoom`, set where the field is scrolled into view). Our pages are made for phones,
+  so the zoom is rare: it needs the two widths out of step in that instant. Why they were,
+  twice, on Android 10, is not known.
+- **Seam:** the phone's keyboard.
+- **Fix:** every field of ours takes no pinch (`touch-action` in `design.css`), so that zoom
+  can't run on one, whatever the page is taken for. Our pages still pinch everywhere else,
+  as they have to while the app doesn't follow Android's font size (docs/ux-guide.md, "The
+  phone"). The viewport line every page of ours has is now written once, by the build.
+- **Why it was missed:** my miss, twice. The pages were written for the desktop, and nobody
+  asked what Android does to a page's field. And when I saw the zoom the first time I
+  couldn't make it happen again and set it down as "mine if it returns", without reading
+  what in the engine zooms a page.
+- **Guard:** half a guard, and said so. The zoom could not be made to happen on an emulator,
+  on the app before the fix either: a web page with no viewport line was not zoomed around
+  its field, with one field or with a second taking focus under the keyboard. So no check
+  has been seen to fail for the zoom itself. `shell/e2e/sync.cjs` checks that the fields of
+  a Settings Dialog take no pinch, and fails without the rule. `tools/drive_android.py`,
+  Settings keeps its size, shows only that a Dialog's second field taking focus with the
+  keyboard up leaves Settings its size, and that a pinch still makes Settings and a web page
+  bigger. **A zoomed Settings seen after this fix means the reading above is wrong**: look
+  then at what else changes a page's scale, starting from the three callers of
+  `scrollFocusedEditableNodeIntoView`.
 
 ## Passkeys Linux couldn't save, 2026-11-25
 

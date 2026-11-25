@@ -63,6 +63,14 @@ guide has the rules every feature follows.
   and come back on a scroll up, as phone browsers do. 2026-11-19, over always shown and hiding
   once the page loads: "ok with you".
 - **Our pages are tabs**, decided 2026-11-14 ([windows.md](windows.md#our-own-pages-are-tabs-decided-2026-11-14)).
+- **Our own pages pinch, and never zoom by themselves.** A person who needs bigger words can
+  pinch Settings and the rest as they pinch a web page, and Android's display size makes the
+  whole app bigger. The app doesn't follow Android's font size yet; when it does, and our
+  pages hold at 1.3 and 2.0, their scale can be fixed, as the phone shell's is. Until then
+  the one thing stopped is Android zooming a page in around a field that takes focus while
+  the keyboard is up, as a Dialog's next field does ([fragility.md](fragility.md)): a field
+  takes no pinch (`design.css`), and Chromium doesn't zoom in around such a field. Decided
+  2026-11-25.
 
 ## The first start
 

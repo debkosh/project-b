@@ -135,6 +135,11 @@ const taken = [];
   // that gives a bucket on it, in a tab, the Dialog going with it.
   const START = 'https://memd.debkosh.com/sync';
   check('the address starts as the server to start with, for a person to change', (await field('Server address').inputValue()) === START);
+  // On a phone Android zooms a page in around a field that takes focus unless the field
+  // takes no pinch (docs/fragility.md, "Settings zoomed by itself on a phone").
+  const pinches = await page.evaluate(() => [...document.querySelectorAll('input, textarea, [contenteditable]')].map((el) => getComputedStyle(el).touchAction));
+  check('every field on the page, the Dialog\'s too, takes no pinch, so that Android leaves the page its size when one takes focus',
+    pinches.length > 0 && pinches.every((t) => t === 'pan-x pan-y'), JSON.stringify(pinches));
   check('with what that server is, and Get a free sync bucket', (await dialog().innerText()).includes("Sync through your own server, or try ours.") &&
     (await dialog().innerText()).includes("memd.debkosh.com is free to try. It can't read your data, and you can host your own.") && (await shown(button('Get a free sync bucket'))));
   await shot(49, 'start');
