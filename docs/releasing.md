@@ -71,6 +71,17 @@ release notes to write: `tools/dev_notes.py` writes them from the `Notes:` lines
 since the Dev build before it. Send the orchestrator the DMG and APK links from its `RESULT=ok` line. Stable
 is cut from main later, with the full run.
 
+## Rolling Dev back
+
+A Dev build that is broken for people (on 2026-11-26 the first one on Chromium 158 aborted at
+every start on Android) comes off the channel with one manifest edit, on the orchestrator's or
+Sudipta's word: `tools/dev-rollback.sh <version>` points Dev at an earlier version whose files are
+still there, checks each downloads first, and checks the live manifest after. The updater never
+downgrades, so a copy already on the bad build stays on it (a phone needs the fixed APK by hand),
+and no other copy is offered it. A Dev publish keeps the files of the Dev build before it, and
+drops only older ones (`tools/release_versions.py prune-dev`), so there is always one to go back
+to; a Stable release is always there too.
+
 ## Publishing
 
     amarit job -name pb-release -dir <main checkout> -log ~/PW_TOOLS/project-b-release/<v>.log -- \

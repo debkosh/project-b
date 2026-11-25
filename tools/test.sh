@@ -111,6 +111,7 @@ mock() {
     [ -n "$BUILT" ] && run "Go managers, with $BUILT" go -C core test -tags "sqlite_fts5,$BUILT" ./...
     run "every action a person can take has a test (docs/action-coverage.md)" python3 tools/action_coverage.py --check
     run "the Chromium bump tools read every platform's #if (docs/chromium-upgrade.md)" python3 tools/platform_methods_test.py
+    run "a Dev publish keeps the Dev build before it, and a rollback moves only Dev (docs/releasing.md)" python3 tools/release_versions_test.py
     run "the field matching built into the form script is the one recorded (docs/password-autofill.md, Detection)" tools/form-matching.sh check
     run "build the shell" npm --prefix shell run build
     run "the shell on the mock engine" node shell/e2e/first-app.cjs

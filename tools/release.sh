@@ -9,7 +9,8 @@
 #
 # Both channels' manifest lives on the pre-release tagged channels, which every copy reads
 # (docs/release-channels.md). A Dev build is the next patch with the time, 0.3.9-dev.<UTC
-# minute> while VERSION is 0.3.8; its assets go on that pre-release, and older Dev builds go.
+# minute> while VERSION is 0.3.8; its assets go on that pre-release, and the Dev build two back
+# goes: the one before stays, so a rollback is one manifest edit (tools/dev-rollback.sh).
 #
 # Needs gh (logged in) and amarit v0.8.0 or later (go install github.com/sudiptadeb/amarit/cmd/amarit@latest).
 set -euo pipefail
@@ -76,6 +77,20 @@ else
   python3 tools/dev_notes.py "$VERSION" "$since" > "$NOTES"
 fi
 
+# The channels release keeps the newest Dev build's files besides the one just published, and
+# drops older ones (tools/release_versions.py prune-dev). amarit's -prune dropped the Dev build
+# Dev pointed at until now, so on 2026-11-26 a Dev build that crashed at start couldn't be rolled
+# back to the one before it: its files were gone.
+prune_dev_files() {
+  local names gone n
+  names=$(gh release view "$CHANNELS" --repo "$REPO" --json assets --jq '.assets[].name')
+  # shellcheck disable=SC2086
+  gone=$(python3 tools/release_versions.py prune-dev "$VERSION" $names)
+  for n in $gone; do
+    gh release delete-asset "$CHANNELS" "$n" --repo "$REPO" -y
+  done
+}
+
 echo "=== $(date '+%F %T') release build"
 RELEASE=1 OUT=out/rel tools/build.sh | tail -3
 echo "=== $(date '+%F %T') package"
@@ -100,11 +115,13 @@ cp build/android/project-b-content.apk "$DIST/Project-B-$VERSION-android-arm64.z
 # time from the Stable release published last, which is where copies from before channels read.
 CODE=$(amarit version-code "$VERSION")
 if [ "$CHANNEL" = dev ]; then
-  # A Dev build's assets are on the channels pre-release, beside the manifest, and the Dev build
-  # it replaces goes, from the manifest and the tag.
+  # A Dev build's assets are on the channels pre-release, beside the manifest. The Dev build it
+  # replaces keeps its files, so pointing Dev back at it is one manifest edit; the one before
+  # that goes (prune_dev_files).
   echo "=== $(date '+%F %T') publish $VERSION on $CHANNELS"
   amarit publish -github "$REPO" -tag "$CHANNELS" -version "$VERSION" -version-code "$CODE" -channel dev \
-    -url '{asset}' -dist "$DIST" -out "$DIST/releases.json" -prune "$DIST/Project-B-$VERSION.dmg" "$DIST/Project-B-$VERSION.apk" "$DIST/notes-$VERSION.md"
+    -url '{asset}' -dist "$DIST" -out "$DIST/releases.json" "$DIST/Project-B-$VERSION.dmg" "$DIST/Project-B-$VERSION.apk" "$DIST/notes-$VERSION.md"
+  prune_dev_files
   echo "RESULT=ok $VERSION https://github.com/$REPO/releases/download/$CHANNELS/Project-B-$VERSION.dmg https://github.com/$REPO/releases/download/$CHANNELS/Project-B-$VERSION.apk"
   exit 0
 fi
@@ -128,12 +145,13 @@ $(grep '^- ' "$NOTES")$(
 amarit publish -github "$REPO" -tag "$CHANNELS" -version "$VERSION" -version-code "$CODE" -dist "$DIST" -out "$DIST/releases.json"
 # Dev takes the Stable release too: a Stable release holds every Dev build before it, and a Dev
 # build sorts below its Stable (0.3.9-dev.* < 0.3.9), so a copy on Dev was never offered 0.3.9.
-# The Dev build it replaces goes, as a Dev build's own publish does; the next Dev build is
+# The last Dev build keeps its files, as after a Dev build's own publish; the next Dev build is
 # 0.3.10-dev.*, its notes since this tag.
-amarit publish -github "$REPO" -tag "$CHANNELS" -version "$VERSION" -version-code "$CODE" -channel dev -prune \
+amarit publish -github "$REPO" -tag "$CHANNELS" -version "$VERSION" -version-code "$CODE" -channel dev \
   -dist "$DIST" -out "$DIST/releases.json"
 channels=$(python3 -c 'import json,sys; c=json.load(open(sys.argv[1]))["channels"]; print(c.get("stable", ""), c.get("dev", ""))' "$DIST/releases.json")
 [ "$channels" = "$VERSION $VERSION" ] || { echo "RESULT=failed the manifest's channels are $channels, not stable and dev both at $VERSION"; exit 1; }
 gh release upload "$TAG" "$DIST/releases.json" --repo "$REPO" --clobber
 gh release upload "$CHANNELS" "$DIST/notes-$VERSION.md" --repo "$REPO" --clobber
+prune_dev_files
 echo "RESULT=ok $TAG"
