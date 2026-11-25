@@ -2178,7 +2178,9 @@ def workspace_checks():
           app.proc.poll() is None and stored(app, attached) == ["w=a", "a"], stored(app, attached))
     popup = opened_by(app, a, f"window.open({json.dumps(STORE)})")
     check("a tab a page opens with window.open is in its workspace", stored(app, popup) == ["w=a", "a"], stored(app, popup))
-    linked = opened_by(app, a, "document.getElementById('link').dispatchEvent(new MouseEvent('click',{metaKey:true,bubbles:true,cancelable:true}))")
+    # A new tab's click is Cmd on the Mac and Ctrl elsewhere.
+    new_tab_key = "metaKey" if MAC else "ctrlKey"
+    linked = opened_by(app, a, "document.getElementById('link').dispatchEvent(new MouseEvent('click',{" + new_tab_key + ":true,bubbles:true,cancelable:true}))")
     check("so is a link it opens in a new tab", stored(app, linked) == ["w=a", "a"], stored(app, linked))
     blank = int(app.cmd("opentab", "a", "about:blank"))
     committed(app, blank)
