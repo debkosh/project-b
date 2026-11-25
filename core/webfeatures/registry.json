@@ -461,7 +461,7 @@
     "status": {"mac": "absent", "linux": "absent", "android": "quiet"},
     "why": "Android only, and there is no contact picker behind it: it rejects",
     "needs": ["stay-off"],
-    "probe": [{"name": "contacts", "expect": {"mac": "absent:TypeError", "linux": "absent:TypeError", "android": "rejected:SecurityError", "android-tap": "rejected:TypeError"}, "call": "navigator.contacts.select(['name'])"}],
+    "probe": [{"name": "contacts", "expect": {"mac": "absent:TypeError", "linux": "absent:TypeError", "android": "rejected:SecurityError", "android_tap": "rejected:TypeError"}, "call": "navigator.contacts.select(['name'])"}],
     "test": ["probe:contacts"]
   },
   {
@@ -560,7 +560,7 @@
     "why": "The site asks first, and its notifications show as the system shows any; Android has no notification service yet, so a page allowed to shows none",
     "needs": ["delegate", "go-manager", "prompt"],
     "owner": "engine/browser/permissions.cc:Permissions",
-    "probe": [{"name": "notification", "expect": {"mac": "resolved:\"default\"", "linux": "resolved:\"default\"", "android": "resolved:\"default\"", "android-tap": "pending"}, "call": "Notification.requestPermission()"}],
+    "probe": [{"name": "notification", "expect": {"mac": "resolved:\"default\"", "linux": "resolved:\"default\"", "android": "resolved:\"default\"", "android_tap": "pending"}, "call": "Notification.requestPermission()"}],
     "test": ["probe:notification", "basics:16"]
   },
   {
@@ -626,7 +626,7 @@
     "why": "Writing is allowed, as copy buttons need; reading is refused, with no prompt",
     "needs": ["prompt"],
     "owner": "engine/browser/permissions.cc:Permissions",
-    "probe": [{"name": "clipboard", "expect": {"mac": "rejected:NotAllowedError", "linux": "rejected:NotAllowedError", "android": "rejected:NotAllowedError", "android-tap": "resolved:undefined"}, "call": "navigator.clipboard.writeText('x')"}],
+    "probe": [{"name": "clipboard", "expect": {"mac": "rejected:NotAllowedError", "linux": "rejected:NotAllowedError", "android": "rejected:NotAllowedError", "android_tap": "resolved:undefined"}, "call": "navigator.clipboard.writeText('x')"}],
     "test": ["probe:clipboard", "check:a copy button's click puts its text on the clipboard"]
   },
   {
@@ -684,7 +684,7 @@
     "why": "The permission is denied with no prompt",
     "needs": ["prompt"],
     "owner": "engine/browser/permissions.cc:Permissions",
-    "probe": [{"name": "idle", "expect": {"mac": "rejected:NotAllowedError", "linux": "rejected:NotAllowedError", "android": "rejected:NotAllowedError", "android-tap": "resolved:\"denied\""}, "call": "IdleDetector.requestPermission()"}],
+    "probe": [{"name": "idle", "expect": {"mac": "rejected:NotAllowedError", "linux": "rejected:NotAllowedError", "android": "rejected:NotAllowedError", "android_tap": "resolved:\"denied\""}, "call": "IdleDetector.requestPermission()"}],
     "test": ["probe:idle"]
   },
   {

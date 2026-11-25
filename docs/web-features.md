@@ -61,7 +61,7 @@ The inventory is a reading of Chromium 155 and Project B 0.2.61; the registry is
 A probe's `expect` says what its call gives on each platform, as the probes write it: the kind
 (`absent`, `resolved`, `rejected`, `pending`, `killed`), then a colon and the error's name or
 the start of the value where the kind alone doesn't tell (`rejected:NotAllowedError`,
-`resolved:false`, `resolved:[]`). A call passes when what it gave starts so. `android-tap` is
+`resolved:false`, `resolved:[]`). A call passes when what it gave starts so. `android_tap` is
 what it gives on a tap, where that differs from load. Every probe but a `sees_nothing` one
 gives one for each platform, and its kind must be one the row's status allows there (below).
 
@@ -130,7 +130,7 @@ in the log. Each call is held to its probe's `expect`.
   `clipboard-async`.
 - **Android**, the `web_apis` part of `tools/drive_android.py` (`tools/test.sh android`): all
   calls on one page, on load and again on a tap. Per pass, the page keeps its renderer, and
-  every registry call gave what its `expect` says for Android (`android-tap` on the tap). A few calls whose browser side is
+  every registry call gave what its `expect` says for Android (`android_tap` on the tap). A few calls whose browser side is
   content's own (`CONTENT_APIS`) are made too, for the renderer's sake only.
 - **Basics**: a row's `basics:<n>` names the `tools/check_basics.py` check that shows it, and
   the run holds the two together on its platform: a check that works under a row that isn't

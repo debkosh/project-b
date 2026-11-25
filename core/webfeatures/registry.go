@@ -98,7 +98,7 @@ type Probe struct {
 	// Expect is what the call gives, by platform, as the probes write it: absent, resolved,
 	// rejected, pending or killed, then a colon and the error's name or the value's start
 	// when the kind alone doesn't tell (rejected:NotAllowedError, resolved:false). A probe
-	// passes when what it saw starts so. "<platform>-tap" is what it gives on a tap, where
+	// passes when what it saw starts so. "<platform>_tap" is what it gives on a tap, where
 	// that differs. A call with sees_nothing has none.
 	Expect map[string]string `json:"expect,omitempty"`
 }
@@ -238,9 +238,9 @@ func (f *Feature) checkExpect(p Probe) error {
 		return nil
 	}
 	for key, e := range p.Expect {
-		platform := strings.TrimSuffix(key, "-tap")
+		platform := strings.TrimSuffix(key, "_tap")
 		if !slices.Contains(Platforms, platform) {
-			return fmt.Errorf("expect %q isn't a platform, or a platform's -tap", key)
+			return fmt.Errorf("expect %q isn't a platform, or a platform's _tap", key)
 		}
 		m := expectPattern.FindStringSubmatch(e)
 		if m == nil {
