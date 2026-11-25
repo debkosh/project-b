@@ -64,6 +64,44 @@ const { check, fire, regions, until } = lib;
   };
   check('and keeps the tab and its page', await until(kept));
 
+  // A narrow window with a mouse, as on a tablet: a right click opens Mobile's sheet, whose
+  // rows light under the pointer (docs/large-screens.md).
+  const cdp = await w.page.context().newCDPSession(w.page);
+  await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: false });
+  check('the narrow window has a mouse', await w.shell().evaluate(() => matchMedia('(any-hover: hover)').matches));
+  await fire('contextMenu', JSON.stringify({ x: 60, y: 60, link: 'https://news.example/other' }), { tab });
+  const sheet = w.ui.getByRole('dialog', { name: 'Link' });
+  check('a right click in Mobile opens its sheet', await until(() => sheet.isVisible()));
+  const lit = sheet.getByRole('menuitem').last();
+  const unlit = await lit.evaluate((e) => getComputedStyle(e).backgroundColor);
+  // Once the sheet has risen, the pointer moves onto the row as a mouse does: one jump into
+  // the shell's frame, which is how hover() moves it, didn't always light it in headless
+  // Chromium, and a row still rising moves out from under the pointer.
+  await sheet.evaluate((e) => Promise.all(e.getAnimations({ subtree: true }).map((a) => a.finished)));
+  const at = await lit.boundingBox();
+  await w.page.mouse.move(at.x + 4, at.y + 4);
+  await w.page.mouse.move(at.x + at.width / 2, at.y + at.height / 2, { steps: 4 });
+  check('its rows light under the pointer', await until(async () => (await lit.evaluate((e) => getComputedStyle(e).backgroundColor)) !== unlit), unlit);
+  await w.page.keyboard.press('Escape');
+  check('and Escape closes it', await until(async () => (await sheet.count()) === 0));
+  // A field in a sheet keeps its own Escape: in the group's name, it undoes the rename and
+  // the sheet stays; the next Escape closes the sheet.
+  await fire('contextMenu', JSON.stringify({ x: 60, y: 60, link: 'https://news.example/grouped' }), { tab });
+  await sheet.getByRole('menuitem', { name: 'In group' }).click();
+  const dot = w.ui.locator('.strip .dot');
+  await until(() => dot.isVisible());
+  await dot.click();
+  const groupSheet = w.ui.getByRole('dialog', { name: 'Group' });
+  const field = groupSheet.getByRole('textbox', { name: 'Group name' });
+  await field.click();
+  const was = await field.inputValue();
+  await field.pressSequentially('Renamed');
+  await w.page.keyboard.press('Escape');
+  check('Escape in a sheet\'s field undoes what was typed', await until(async () => (await field.inputValue()) === was), await field.inputValue());
+  check('and the sheet stays', await groupSheet.isVisible());
+  await w.page.keyboard.press('Escape');
+  check('the next Escape closes the sheet', await until(async () => (await groupSheet.count()) === 0));
+
   await w.page.setViewportSize({ width: 891, height: 412 });
   await new Promise((r) => setTimeout(r, 1200));
   check('a phone on its side stays on Mobile', /\/shell\/mwshell\//.test(w.shell()?.url() || ''));

@@ -361,7 +361,8 @@
   });
 </script>
 
-<svelte:window onkeydown={(e) => e.key === 'Escape' && sheet && ((sheet = ''), e.preventDefault())} />
+<!-- Escape closes the switcher; a Sheet closes itself, through escape.js. -->
+<svelte:window onkeydown={(e) => e.key === 'Escape' && sheet === 'switcher' && ((sheet = ''), e.preventDefault())} />
 
 <div class="window" data-settling={settling || undefined} data-bars={shown ? 'shown' : 'hidden'} style:--head="{headHeight}px" style:--strip="{stripHeight}px" style:--foot="{footHeight}px" style:--covered="{over && !away ? stripHeight + footHeight : 0}px">
   {#if clear && !full}

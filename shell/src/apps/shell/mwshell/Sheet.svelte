@@ -1,9 +1,14 @@
 <script>
   import { shell } from '@/sdk/svelte.svelte.js';
+  import { pushEscape } from '@/ui/escape.js';
 
   // A bottom sheet over the window: the backdrop, a tap on which closes it, and the panel,
-  // which a swipe down on its handle closes too. label names it for a screen reader.
+  // which a swipe down on its handle closes too. label names it for a screen reader. With a
+  // mouse, as in a narrow window on a tablet, Esc closes it too, and its rows light under the
+  // pointer (docs/large-screens.md). Escape is a layer of escape.js's while it is open, so the
+  // back key closes it the same way, and a layer opened inside it goes first.
   let { label, onclose, children } = $props();
+  $effect(() => pushEscape(() => onclose()));
   let start = null;
 
   function down(e) {
@@ -59,6 +64,14 @@
     height: 4px;
     border-radius: 2px;
     background: var(--line);
+  }
+
+  /* Any pointer that hovers, not only the first: a phone or a folded foldable with a mouse
+     still names its finger first. */
+  @media (any-hover: hover) {
+    .sheet :global([role='menuitem']:hover:not(:disabled)) {
+      background: var(--accent-tint);
+    }
   }
 
   @keyframes rise {

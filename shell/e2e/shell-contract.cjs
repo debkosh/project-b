@@ -604,7 +604,25 @@ const noNoticeYet = {
     // 16. The right-click menu, on a desktop shell.
     const shell = registry.find((s) => s.id === id);
     if (shell.phone) {
-      rule(16, 'not for a phone: a long press keeps its own sheet', true);
+      // A phone's right click is its long press, opening the same sheet; with a mouse, as in
+      // a narrow window on a tablet, the sheet closes on Escape and a press outside
+      // (docs/large-screens.md). large-screens.cjs sees its rows light under a mouse.
+      try {
+        const sheet = ui.getByRole('dialog', { name: 'Link' });
+        const open = async (link) => {
+          await fire('contextMenu', JSON.stringify({ x: 60, y: 60, link }));
+          return until(() => sheet.isVisible());
+        };
+        const closed = () => until(async () => (await sheet.count()) === 0);
+        rule(16, 'a right click on a link opens the sheet a long press does', await open('https://contract.test/menu'));
+        await page.keyboard.press('Escape');
+        rule(16, 'Escape closes it', await closed());
+        await open('https://contract.test/outside');
+        await page.mouse.click(10, 10);
+        rule(16, 'a press outside closes it', await closed());
+      } catch (e) {
+        rule(16, 'its checks ran to their end', false, e.message.split('\n')[0]);
+      }
     } else if (noMenuYet[id]) {
       rule(16, `not checked yet: ${noMenuYet[id]}`, true);
     } else {
