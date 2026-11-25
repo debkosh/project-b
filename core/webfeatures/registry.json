@@ -366,10 +366,10 @@
     "name": "Eye dropper",
     "api": "new EyeDropper().open()",
     "delegate": "WebContentsDelegate::OpenEyeDropper",
-    "status": {"mac": "quiet", "linux": "quiet", "android": "absent"},
-    "why": "On Mac it's there, but no dropper opens; not on Android",
+    "status": {"mac": "quiet", "linux": "quiet", "android": "quiet"},
+    "why": "It's there, but no dropper opens; on Android since Chromium 158",
     "needs": ["stay-off"],
-    "probe": [{"name": "eyeDropper", "expect": {"mac": "rejected:NotAllowedError", "linux": "rejected:NotAllowedError", "android": "absent:ReferenceError"}, "call": "new EyeDropper().open()"}],
+    "probe": [{"name": "eyeDropper", "expect": {"mac": "rejected:NotAllowedError", "linux": "rejected:NotAllowedError", "android": "rejected:NotAllowedError", "android_tap": "rejected:AbortError"}, "call": "new EyeDropper().open()"}],
     "test": ["probe:eyeDropper"]
   },
   {
@@ -502,10 +502,10 @@
     "name": "WebHID",
     "api": "navigator.hid",
     "delegate": "ContentBrowserClient::GetHidDelegate",
-    "status": {"mac": "quiet", "linux": "quiet", "android": "absent"},
-    "why": "On Mac there is no HID delegate, so no device is listed; not on Android",
+    "status": {"mac": "quiet", "linux": "quiet", "android": "quiet"},
+    "why": "There is no HID delegate, so no device is listed; on Android since Chromium 158",
     "needs": ["stay-off"],
-    "probe": [{"name": "hid", "expect": {"mac": "resolved:[]", "linux": "resolved:[]", "android": "absent:TypeError"}, "call": "navigator.hid.getDevices()"}],
+    "probe": [{"name": "hid", "expect": {"mac": "resolved:[]", "linux": "resolved:[]", "android": "resolved:[]"}, "call": "navigator.hid.getDevices()"}],
     "test": ["probe:hid"]
   },
   {
@@ -560,7 +560,7 @@
     "why": "The site asks first, and its notifications show as the system shows any; Android has no notification service yet, so a page allowed to shows none",
     "needs": ["delegate", "go-manager", "prompt"],
     "owner": "engine/browser/permissions.cc:Permissions",
-    "probe": [{"name": "notification", "expect": {"mac": "resolved:\"default\"", "linux": "resolved:\"default\"", "android": "resolved:\"default\"", "android_tap": "pending"}, "call": "Notification.requestPermission()"}],
+    "probe": [{"name": "notification", "expect": {"mac": "resolved:\"default\"", "linux": "resolved:\"default\"", "android": "resolved:\"default\"", "android_tap": "resolved:\"default\""}, "call": "Notification.requestPermission()"}],
     "test": ["probe:notification", "basics:16"]
   },
   {
