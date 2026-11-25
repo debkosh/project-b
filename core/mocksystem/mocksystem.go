@@ -364,6 +364,10 @@ func (s *System) VerifyPerson(check system.PersonCheck, answered func(system.Ver
 	s.mu.Lock()
 	s.checks = append(s.checks, check)
 	hold, v := s.holdChecks, s.verdict
+	if s.noCheck {
+		// An OS with no check has nothing to ask with, and says so at once, as Linux's does.
+		hold, v = false, system.NoScreenLock
+	}
 	if hold {
 		s.waitingCheck = append(s.waitingCheck, answer)
 	}

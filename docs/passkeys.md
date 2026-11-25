@@ -386,7 +386,23 @@ one site, and must not answer for another.
   Android 10 (our minimum), the `BIOMETRIC_STRONG | DEVICE_CREDENTIAL` authenticators from 11.
   No screen lock answers `ErrNoScreenLock`. The manifest asks for `USE_BIOMETRIC`: without it
   Android ends the app at the check.
-- **Mock** (`core/mocksystem`): answers as the test says.
+- **Linux** has no check of the person a Flatpak can ask (`CanVerifyPerson` is false), and
+  none is asked: Save saves and a passkey signs in at the press, as a saved password shows
+  there (docs/passwords.md). Sudipta, 2026-11-25, chose this over our passkeys being off on
+  Linux, and over keeping them only while sync is on behind the sync passphrase: a passphrase
+  asked at use is a check of the person, but it seals nothing on this computer, where an
+  administrator can read a passkey as they can a password. What stands before a passkey on
+  Linux is the desktop's keyring, which keeps the device key and has the person unlock it
+  when it is locked. The site is told the person was verified, as on a Mac after its
+  password: on Linux what verified them is the login that opened their session and its
+  keyring. A keyring that gave no key ends Save with the keyring's line. Settings' Passkeys
+  says so on Linux, over the list: "Your keyring unlocks them, and nothing asks when one is
+  used, so an administrator of this computer, or a program running as you, can read them."
+  with Learn more, the help page `saved-on-linux`. A lock for the profile with a passphrase of its own would
+  close them at rest, and is not built. The passphrase step that was built and set aside
+  is on the local branch `passkeys-linux-passphrase`, for that lock's check.
+- **Mock** (`core/mocksystem`): answers as the test says, and as Linux's, no screen lock at
+  once, when told the OS has no check.
 
 ### The authenticator: the engine
 
@@ -469,8 +485,10 @@ what they have.
   alone). `already-saved` "Already saved": "Project B already has a passkey for **example.com**
   for this account." (Close alone). A Mac with no password: `no-screen-lock` reads "Set a password
   first": "Project B checks it's you with your Mac's password before using a passkey. Set one in
-  System Settings, then try again." Anything else of ours that fails: "Something went wrong",
-  "The request didn't finish." (Close alone).
+  System Settings, then try again." A Linux keyring that gave no key: `keyring` "Your keyring
+  is locked": "Unlock it when asked; if it doesn't ask, log out and back in." (Close alone),
+  the keyring's line as Settings says it. Anything else of ours that fails: "Something went
+  wrong", "The request didn't finish." (Close alone).
 - The person saying no to Touch ID or the screen lock ends the request with `NotAllowedError`,
   as Cancel does.
 - A sign-in field's passkey list (conditional mediation) stays quiet, as today.

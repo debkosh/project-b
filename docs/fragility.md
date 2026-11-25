@@ -82,7 +82,38 @@ The seams:
   run.
 - **What a platform doesn't have.** A thing one OS has no way to do is not a setting the
   person left off. Answered as that, it tells them to fix what they can't, in words written
-  for another OS. One so far: saved passwords Linux couldn't show.
+  for another OS. Two so far: saved passwords Linux couldn't show, passkeys Linux couldn't
+  save.
+
+## Passkeys Linux couldn't save, 2026-11-25
+
+- **Seen:** by the Linux session, in the headless run of the Chromium 158 stack. A page
+  asking whether the device can keep a passkey heard yes, the card offered Project B with
+  Save, and Save answered "Set a password first": "Project B checks it's you with your Mac's
+  password before using a passkey. Set one in System Settings, then try again." Nobody on
+  Linux could save a passkey in Project B, or sign in with one that sync had brought.
+- **Cause:** the same as the saved passwords', a day after they were fixed: Linux has no
+  check of the person, its `verifyPerson` answers no screen lock, and the passkeys' check
+  asked it all the same.
+- **Seam:** what a platform doesn't have.
+- **Fix:** his decision, 2026-11-25, after weighing our passkeys only with sync on, behind
+  the sync passphrase: treat them as passwords are on Linux. Where the OS has no check, a
+  passkey asks none: Save saves and a passkey signs in at the press, the keyring being what
+  stands before it. A keyring that gave no key ends Save with the keyring's line, where it
+  said "Something went wrong". And since a Linux keyring gives its key to whoever runs as
+  the person, which a Mac's keychain and a phone's keystore don't, Settings' Passwords and
+  Passkeys say on Linux that an administrator of the computer, or a program running as the
+  person, can read them, with a help page behind Learn more.
+- **Why it was missed:** my miss. When Passwords was fixed for Linux I changed the one caller
+  I had been shown and didn't look for the others of the same check; there was one, and it
+  was mine too. And the mock's Linux passed every check it was asked, where the real one
+  refuses, so no mock run could show it.
+- **Guard:** core/app's `TestOurPasskeysWhereTheOSHasNoCheck` and
+  `TestSavingAPasskeyWithTheKeyringLocked`; `shell/e2e/passkeys.cjs` run as Linux, and as
+  Linux with its keyring locked; the Linux runs of `passkey-settings.cjs` and
+  `password-settings.cjs` for the line and its Learn more. The mock's check now answers as
+  Linux's does. Seen to fail without the fix, the mock run with the very card: "Set a
+  password first".
 
 ## A page's field typed into as Gboard comes up, 2026-11-25
 

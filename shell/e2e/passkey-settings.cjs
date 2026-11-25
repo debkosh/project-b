@@ -126,6 +126,13 @@ const phone = layout === 'phone';
   const shut = locked.getByRole('region', { name: 'Passkeys', exact: true }).locator('.row.keyring');
   check('a keyring that gives no key: the line, Learn more and Try again', await until(async () => (await shut.innerText().catch(() => '')).includes("Your keyring is locked. Unlock it when asked; if it doesn't ask, log out and back in.")) &&
     (await shut.getByRole('button', { name: 'Learn more' }).isVisible()) && (await shut.getByRole('button', { name: 'Try again' }).isVisible()), await shut.innerText().catch(() => ''));
+  // Linux has no check of the person, and its keyring gives the key to whoever runs as them:
+  // the page says so over the list, with the help page behind Learn more.
+  const warning = locked.getByRole('region', { name: 'Passkeys', exact: true }).locator('.intro');
+  check('on Linux the page says the keyring unlocks them, nothing asks, and who else can read them', (await warning.innerText()).replace(/\s+/g, ' ').trim() === 'Your keyring unlocks them, and nothing asks when one is used, so an administrator of this computer, or a program running as you, can read them. Learn more', await warning.innerText().catch(() => ''));
+  const reach = locked.waitForRequest((r) => r.url().includes('/settings/send') && JSON.parse(r.postData() || '{}').t === 'openHelp', { timeout: 5000 }).then((r) => JSON.parse(r.postData()), () => null);
+  await warning.getByRole('button', { name: 'Learn more' }).click();
+  check('and its Learn more asks Go for that help page', (await reach)?.page === 'saved-on-linux', JSON.stringify(await reach));
   await locked.mouse.move(1, viewport.height - 1);
   await settle(locked);
   await locked.screenshot({ path: path.join(lib.out, `passkey-settings-${layout}-keyring.png`) });

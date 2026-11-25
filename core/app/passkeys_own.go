@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"projectb/engine"
+	"projectb/keys"
 	"projectb/passkeys"
 	"projectb/system"
 	"projectb/timeline"
@@ -64,9 +65,14 @@ func unb64s(list []string) [][]byte {
 }
 
 // verifyPerson is core/passkeys' check of the person, through the OS's own sheet: it asks
-// on the main thread, and waits off it.
+// on the main thread, and waits off it. An OS with no check of the person passes at once,
+// as before a saved password (docs/passwords.md): what stands before a passkey there is
+// the keyring that keeps the device key.
 func verifyPerson(sys system.System, post func(func())) passkeys.Verify {
 	return func(ctx context.Context, why passkeys.Why, rpID string) error {
+		if !sys.CanVerifyPerson() {
+			return nil
+		}
 		check := system.PersonCheck{Reason: "use a passkey for " + rpID, Title: "Use your passkey", Subtitle: rpID}
 		if why == passkeys.ToSave {
 			check = system.PersonCheck{Reason: "save a passkey for " + rpID, Title: "Save your passkey", Subtitle: rpID}
@@ -210,6 +216,8 @@ func (k *passkeyCards) fail(id engine.DialogID, o *ownPasskey, err error) {
 		reason = "not-here"
 	case errors.Is(err, passkeys.ErrNoScreenLock):
 		reason = "no-screen-lock"
+	case errors.Is(err, keys.ErrKeyring):
+		reason = "keyring"
 	default:
 		timeline.Errorf("passkey: %v", err)
 	}
@@ -435,6 +443,9 @@ func ownDialog(d pageDialog, step string, o *ownPasskey) pageDialog {
 			if o.only {
 				p.Title, p.Message = "Set a screen lock first", "Project B checks it's you with your screen lock before using a passkey. Set one in your phone's Settings, then try again."
 			}
+		case "keyring":
+			// The keyring's line, as Settings says it (docs/sync.md).
+			p.Title, p.Message = "Your keyring is locked", "Unlock it when asked; if it doesn't ask, log out and back in."
 		default:
 			p.Title, p.Message = "Something went wrong", "The request didn't finish."
 		}

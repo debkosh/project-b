@@ -39,6 +39,10 @@ var HelpPages = map[string]string{
 	// Why the desktop's keyring gave no key, and how to mend one that stopped answering
 	// (Settings' Learn more beside the keyring's line).
 	"keyring": "docs/help/keyring.md",
+	// Who can read saved passwords and passkeys on Linux, where the keyring is all that
+	// stands before them, and why a Mac and a phone differ (Settings' Learn more beside the
+	// line that says so on Passwords and Passkeys).
+	"saved-on-linux": "docs/help/saved-on-linux.md",
 }
 
 // Help is the address of the help page called name, or "" for none.

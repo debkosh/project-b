@@ -42,6 +42,10 @@ function remove() {
 
 <template>
   <section aria-label="Passkeys">
+    <p v-if="state.passwordCheck === false" class="secondary intro">
+      Your keyring unlocks them, and nothing asks when one is used, so an administrator of this computer, or a program running as you, can read them.
+      <button type="button" class="link" @click="send({ t: 'openHelp', page: 'saved-on-linux' })">Learn more</button>
+    </p>
     <div class="card">
       <div v-if="state.passkeysNotHere" class="row empty">These passkeys were made on another device and only open there.</div>
       <div v-else-if="state.passkeysKeyring" class="row keyring">
@@ -76,6 +80,10 @@ function remove() {
 </template>
 
 <style scoped>
+.intro {
+  margin: 0 4px 12px;
+}
+
 .passkey {
   gap: 12px;
   min-height: 56px;

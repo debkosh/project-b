@@ -309,6 +309,44 @@ if (shots) fs.mkdirSync(shots, { recursive: true });
     await page.close();
     await lib.stop();
   }
+  // As Linux, which has no check of the person (docs/passkeys.md, Our own passkeys): Save
+  // saves and a passkey here signs in with nothing asked, the keyring being what stands
+  // before a passkey there; and with a keyring that gave no key, Save says the keyring's line.
+  for (const locked of [false, true]) {
+    console.log(`--- part linux${locked ? ', its keyring locked' : ''}`);
+    const check = (name, ok, detail) => lib.check(`linux${locked ? ', its keyring locked' : ''}: ${name}`, ok, detail);
+    for (const file of ['store.db', 'store.db-wal', 'store.db-shm']) fs.rmSync(path.join(lib.profile, file), { force: true });
+    await lib.start(['-use=pbshell', '-platform=linux', ...(locked ? ['-keyring-locked'] : [])]);
+    const { page, ui } = await lib.openWindow(browser);
+    page.setDefaultTimeout(5000);
+    await until(async () => (await regions()).shell === 'pbshell', 10000);
+    await fetch(`${lib.base}/shell/send?window=1`, { method: 'POST', body: JSON.stringify({ t: 'newTab', text: 'https://start.test/' }) });
+    await until(async () => {
+      const r = await regions();
+      return r.visible.length === 1 && r.visible[0].tab === r.active && !!r.tabs.find((t) => t.id === r.active)?.title.includes('start.test');
+    }, 10000);
+    const card = ui.getByRole('alertdialog');
+    const named = (title) => until(async () => (await card.count()) === 1 && (await card.getAttribute('aria-label')) === title && (await card.isVisible()));
+    const heard = async (action) => ((await regions()).passkeyAnswers || []).filter((a) => a.action === action);
+    const checks = async () => ((await regions()).personChecks || []).length;
+    await fire('passkey', 'create own');
+    await named('Create a passkey');
+    await card.getByRole('button', { name: 'Save', exact: true }).click();
+    if (locked) {
+      check('Save says the keyring\'s line, with Close alone', (await named('Your keyring is locked')) && (await card.locator('p').first().innerText()) === 'Unlock it when asked; if it doesn\'t ask, log out and back in.' && JSON.stringify(await card.locator('.buttons button').allInnerTexts()) === '["Close"]',
+        await card.innerText().catch(() => ''));
+      await card.getByRole('button', { name: 'Close', exact: true }).click();
+      check('and Close ends the request, nothing made', (await until(async () => (await card.count()) === 0)) && (await heard('made')).length === 0);
+    } else {
+      check('Save saves the passkey, with nothing asked of the person', await until(async () => (await heard('made')).length === 1 && (await checks()) === 0 && (await card.count()) === 0), await card.innerText().catch(() => ''));
+      await fire('passkey', 'get own');
+      await named('Sign in to example.com');
+      await page.keyboard.press('Enter');
+      check('and a passkey here signs in, with nothing asked', await until(async () => (await heard('signed')).length === 1 && (await checks()) === 0 && (await card.count()) === 0), JSON.stringify((await regions()).passkeyAnswers));
+    }
+    await page.close();
+    await lib.stop();
+  }
   await browser.close();
   await lib.done();
 })().catch(async (e) => {

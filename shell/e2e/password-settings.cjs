@@ -77,7 +77,12 @@ if (layout === 'sections') fs.writeFileSync(path.join(lib.profile, 'prefs.json')
     JSON.stringify(await whos()) === '["mail.example.org asha@example.org","shop.example.com asha","shop.example.com work@example.com"]' && !(await list.innerText()).includes('correct horse'), JSON.stringify(await whos()));
   check('each with its site\'s mark, 32px', JSON.stringify(await rows.locator('.mark').evaluateAll((all) => all.map((m) => [m.textContent, m.offsetWidth, m.offsetHeight]))) === '[["M",32,32],["S",32,32],["S",32,32]]');
   const intro = (await list.locator('.intro').innerText()).replace(/\s+/g, ' ').trim();
-  if (linux) check('over them, what keeps them, and the keyring in place of a check, as Linux has none', intro === 'Sealed on this device for this profile. Your keyring unlocks them.', intro);
+  if (linux) {
+    check('over them, what keeps them, the keyring in place of a check, as Linux has none, and who else can read them', intro === 'Sealed on this device for this profile. Your keyring unlocks them, so an administrator of this computer, or a program running as you, can read them. Learn more', intro);
+    const asked = sends({ t: 'openHelp' });
+    await list.locator('.intro').getByRole('button', { name: 'Learn more' }).click();
+    check('Learn more asks Go for the page that says who can read them on Linux', (await asked)?.page === 'saved-on-linux', JSON.stringify(await asked));
+  }
   else check('over them, what keeps them, and that showing one asks once for the page', /^Sealed on this device for this profile\. Showing or copying a password asks for .+, then not again for 5 minutes while this page stays open\.$/.test(intro), intro);
   check('and under them, how many', (await list.locator('p.after').innerText()) === '3 saved');
   check('listing had the device check nobody', (await sendsNone()) === true);

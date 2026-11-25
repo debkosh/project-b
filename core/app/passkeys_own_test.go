@@ -13,8 +13,11 @@ import (
 	"testing"
 	"time"
 
+	"projectb/app"
+	"projectb/keys"
 	"projectb/mockengine"
 	"projectb/passkeys"
+	"projectb/profiles"
 	"projectb/system"
 )
 
@@ -354,6 +357,56 @@ func TestOurPasskeysErrors(t *testing.T) {
 	}
 	if n, _ := r.a.Passkeys.Total(); n != 1 {
 		t.Fatalf("%d passkeys, want the first alone", n)
+	}
+}
+
+// On an OS with no check of the person, as Linux, Save saves and a sign-in signs with
+// nothing asked: the keyring that keeps the device key is what stands before a passkey
+// there (docs/passkeys.md). Save used to stop at the card that tells a person to set their
+// Mac's password.
+func TestOurPasskeysWhereTheOSHasNoCheck(t *testing.T) {
+	r := start(t, t.TempDir())
+	defer r.stop()
+	r.sys.SetPersonCheck(false)
+	r.visit("https://a.test/")
+	r.show(1)
+
+	made := r.save("asha")
+	if n, _ := r.a.Passkeys.Total(); n != 1 || len(r.sys.Checks()) != 0 {
+		t.Fatalf("%d passkeys kept, %d checks asked; want one and none", n, len(r.sys.Checks()))
+	}
+	r.e.Fire(1, 0, "passkey", "get own")
+	d, _ := r.passkey("own")
+	r.passkeyAnswer(d["id"], "account", "0")
+	var signed map[string]string
+	json.Unmarshal([]byte(r.answerTo("signed").Text), &signed)
+	if signed["credentialId"] != made["credentialId"] || len(r.sys.Checks()) != 0 {
+		t.Fatalf("signed with %v, %d checks asked; want %v and none", signed, len(r.sys.Checks()), made["credentialId"])
+	}
+}
+
+// A keyring that gave no key, as a locked one on Linux: Save says the keyring's line on a
+// card with Close alone, where it said only that something went wrong, and keeps nothing.
+func TestSavingAPasskeyWithTheKeyringLocked(t *testing.T) {
+	r := startWith(t, app.Config{ProfileDir: t.TempDir(), Profiles: profiles.New(t.TempDir()),
+		DeviceKey: func(bool) ([]byte, error) { return nil, keys.ErrKeyring }})
+	defer r.stop()
+	r.sys.SetPersonCheck(false)
+	r.visit("https://a.test/")
+	r.show(1)
+
+	r.e.Fire(1, 0, "passkey", "create own")
+	d, _ := r.passkey("save")
+	r.passkeyAnswer(d["id"], "own", "")
+	d, p := r.passkey("ownError")
+	words(t, d, "Your keyring is locked", "Unlock it when asked; if it doesn't ask, log out and back in.", "Close", "")
+	if p["primary"] != "cancel" || p["other"] != nil {
+		t.Fatalf("error step = %v", p)
+	}
+	r.passkeyAnswer(d["id"], "cancel", "")
+	r.dialogs(func(l []any) bool { return len(l) == 0 })
+	if n, _ := r.a.Passkeys.Total(); n != 0 {
+		t.Fatalf("%d passkeys kept with no key to seal them", n)
 	}
 }
 

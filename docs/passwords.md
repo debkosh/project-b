@@ -67,8 +67,13 @@ Android keeps each app's data from the others, and its logins come by sync.
   asks for Touch ID or your Mac's password, then not again for 5 minutes while this page
   stays open." (On a phone: "your screen lock".) While sync is on the first sentence is
   "Sealed for this profile; your sync server can't read them.": they are on the server too,
-  sealed. On Linux the second sentence is "Your keyring unlocks them.": there is no check
-  to speak of, and the keyring is what stands before them (ux).
+  sealed. On Linux the second sentence is "Your keyring unlocks them, so an administrator of
+  this computer, or a program running as you, can read them." with Learn more, which opens
+  the help page `saved-on-linux`:
+  there is no check to speak of, the keyring is what stands before them, and it gives its
+  key to whoever runs as the person. A Mac's keychain and a phone's keystore don't, so only
+  Linux says it (Sudipta, 2026-11-25: "we add a small warning about this if on other
+  platforms admin cannot read your keys").
 - **Search passwords:** keeps the logins whose site and username have every word typed, in any order, each with one typo forgiven, so "sbi shankuan" finds sbi.co.in's login for shankuand (shell/src/ui/filter.js, uFuzzy). Escape
   empties it. None matching: "No saved password matches “…”".
 - **One row a login, on a Mac and on a phone alike:** its site's mark, the site, the

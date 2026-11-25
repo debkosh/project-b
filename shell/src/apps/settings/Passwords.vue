@@ -126,7 +126,10 @@ const count = computed(() => (all.value.length === 1 ? '1 saved' : `${all.value.
     <p class="secondary intro">
       {{ syncing ? "Sealed for this profile; your sync server can't read them." : 'Sealed on this device for this profile.' }}
       <template v-if="state.passwordCheck">Showing or copying a password asks for {{ check }}, then not again for 5 minutes while this page stays open.</template>
-      <template v-else>Your keyring unlocks them.</template>
+      <template v-else>
+        Your keyring unlocks them, so an administrator of this computer, or a program running as you, can read them.
+        <button type="button" class="link" @click="send({ t: 'openHelp', page: 'saved-on-linux' })">Learn more</button>
+      </template>
     </p>
     <input v-if="all.length" v-model="filter" class="text-field filter" type="text" spellcheck="false" placeholder="Search passwords" aria-label="Search passwords" @keydown.esc.stop="filter = ''" />
     <div class="card list">
