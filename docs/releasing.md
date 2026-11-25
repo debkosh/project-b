@@ -71,6 +71,14 @@ release notes to write: `tools/dev_notes.py` writes them from the `Notes:` lines
 since the Dev build before it. Send the orchestrator the DMG and APK links from its `RESULT=ok` line. Stable
 is cut from main later, with the full run.
 
+The gate runs what ships. At its start, `tools/release.sh version dev` gives the Dev version, and
+the gate writes it into its worktree's `VERSION` (uncommitted) before any build, so every
+candidate, APK and Linux build it drives says that version; release.sh then publishes with
+`PB_APP_VERSION=<that version> PB_GATED_COMMIT=<the gated tip>` and refuses another commit, or a
+version not newer than the Dev build out now. On 2026-11-26 every gate ran APKs that said 0.3.10,
+the published one said 0.3.11-dev.<time>, and that one aborted at every start on Android. A Stable
+release's gate runs after its "Bump the version" commit, so it builds the version itself.
+
 ## Rolling Dev back
 
 A Dev build that is broken for people (on 2026-11-26 the first one on Chromium 158 aborted at
@@ -86,6 +94,8 @@ to; a Stable release is always there too.
 
     amarit job -name pb-release -dir <main checkout> -log ~/PW_TOOLS/project-b-release/<v>.log -- \
       env KEYKOSH_ROOT=$KEYKOSH_ROOT caffeinate -i tools/release.sh
+
+and for a Dev build, `env PB_APP_VERSION=<v> PB_GATED_COMMIT=<sha> ... tools/release.sh dev`.
 
 Before it: if main moved since the branch was cut, rebase the branch onto it. When the new
 commits only touch docs or tests, check `git diff <tested tip> HEAD -- . ':!<those paths>'` is

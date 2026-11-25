@@ -6,6 +6,13 @@
 #
 #   tools/release.sh       # Stable: VERSION, after the full run (docs/releasing.md)
 #   tools/release.sh dev   # Dev: main as it is, after Go's tests and the mock suite
+#   tools/release.sh version dev   # prints the next Dev version, for a gate to build and run
+#
+# A Dev build publishes the version and commit its gate ran: PB_APP_VERSION, from
+# `tools/release.sh version dev` at the gate's start and written into VERSION before its builds,
+# and PB_GATED_COMMIT, the tip the gate tested, which must be main. On 2026-11-26 the gates ran
+# APKs built with VERSION 0.3.10 while the published one said 0.3.11-dev.<time>, and that one
+# aborted at every start on Android (docs/releasing.md, "Dev builds").
 #
 # Both channels' manifest lives on the pre-release tagged channels, which every copy reads
 # (docs/release-channels.md). A Dev build is the next patch with the time, 0.3.9-dev.<UTC
@@ -16,6 +23,11 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
+if [ "${1:-}" = version ]; then
+  [ "${2:-}" = dev ] || { echo "usage: tools/release.sh version dev"; exit 2; }
+  PATH=$PATH:$HOME/go/bin amarit next-version -pre dev "$(tr -d '[:space:]' < "$ROOT/VERSION")"
+  exit 0
+fi
 CHANNEL=${1:-stable}
 case $CHANNEL in stable | dev) ;; *) echo "usage: tools/release.sh [dev]"; exit 2 ;; esac
 cd "$ROOT"
@@ -25,6 +37,10 @@ cd "$ROOT"
 [ "$(git branch --show-current)" = main ] || { echo "the checkout is not on main ($(git rev-parse --short HEAD)); a release is main"; exit 1; }
 git fetch -q origin main
 [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || { echo "main is not origin/main; push the bump first, or fast-forward to origin/main"; exit 1; }
+# Before the 20 minutes of tests: a Dev build is the version and commit its gate ran.
+if [ "$CHANNEL" = dev ] && { [ -z "${PB_APP_VERSION:-}" ] || [ "${PB_GATED_COMMIT:-}" != "$(git rev-parse HEAD)" ]; }; then
+  echo "a Dev build needs PB_APP_VERSION and PB_GATED_COMMIT (main, $(git rev-parse --short HEAD)) from the gate that ran it: see the top of this file"; exit 1
+fi
 # A Dev build's tests, before the build lock: Go's and the mock suite, which build nothing in out/.
 if [ "$CHANNEL" = dev ] && [ "${PB_BUILD_LOCKED:-}" != 1 ]; then
   echo "=== $(date '+%F %T') Go's tests and the mock suite"
@@ -57,7 +73,13 @@ if [ "$CHANNEL" = stable ]; then
   [ "$(sed -n 's/^# //p' "$NOTES" | head -1)" = "$VERSION" ] || { echo "$NOTES is for $(sed -n 's/^# //p' "$NOTES" | head -1), not $VERSION; write this release's notes first"; exit 1; }
 else
   STABLE=$VERSION
-  VERSION=$(amarit next-version -pre dev "$VERSION")
+  VERSION=${PB_APP_VERSION:?PB_APP_VERSION: the Dev version the gate built and ran, from tools/release.sh version dev}
+  [ "${PB_GATED_COMMIT:?PB_GATED_COMMIT: the commit the gate tested}" = "$(git rev-parse HEAD)" ] ||
+    { echo "main is $(git rev-parse --short HEAD), not the gated $PB_GATED_COMMIT: run the gate on main as it is"; exit 1; }
+  # The next patch's Dev build: what tools/release.sh version dev made, newer than this Stable.
+  [ "${VERSION%-dev.*}" = "$(amarit next-version -pre dev "$STABLE" | sed 's/-dev\..*//')" ] &&
+    python3 tools/release_versions.py newer "$VERSION" "$STABLE" ||
+    { echo "$VERSION isn't a Dev build of the patch after $STABLE"; exit 1; }
   # Every build reads VERSION: the app's bundle, the Go library and the APK; and its notes are
   # the page's own. Both go back to main's when the script ends, however it ends.
   trap 'git checkout -q -- VERSION "$NOTES"' EXIT
@@ -68,6 +90,9 @@ else
   since=""
   if gh release download "$CHANNELS" --repo "$REPO" --pattern releases.json -D "$prev" 2>/dev/null; then
     last=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("channels", {}).get("dev", ""))' "$prev/releases.json")
+    if [ -n "$last" ] && ! python3 tools/release_versions.py newer "$VERSION" "$last"; then
+      echo "$VERSION isn't newer than the Dev build published now, $last: run the gate again for a new version"; exit 1
+    fi
     if [ -n "$last" ] && gh release download "$CHANNELS" --repo "$REPO" --pattern "notes-$last.md" -D "$prev" 2>/dev/null; then
       since=$(sed -n 's/^<!-- commit: \([0-9a-f]*\) -->$/\1/p' "$prev/notes-$last.md")
     fi
