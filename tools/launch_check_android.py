@@ -8,7 +8,8 @@ before it uploads anything (docs/releasing.md, "Publishing").
 Fresh: the app is uninstalled first, so its data goes; run it only in a slot the tester gave.
 It passes when, WAIT seconds after the start, the app's process is the one that started (no
 restart in between) and Android's crash log holds nothing of the app's. The app is
-force-stopped at the end. Exit 0 passed, 1 failed, 2 couldn't run.
+force-stopped and uninstalled at the end, since a release-signed install would stop the next
+drive's test APK installing over it. Exit 0 passed, 1 failed, 2 couldn't run.
 On 2026-11-26 a published Dev APK aborted at every start; no gate had installed that file.
 """
 import argparse
@@ -55,6 +56,8 @@ def main():
     last = pid(a.serial)
     crash = [l for l in adb(a.serial, "logcat", "-b", "crash", "-d").stdout.splitlines() if PACKAGE in l or "libproject_b" in l]
     adb(a.serial, "shell", "am", "force-stop", PACKAGE)
+    # Gone again: a release-signed install would stop the next test APK installing over it.
+    adb(a.serial, "uninstall", PACKAGE)
     ok = bool(first) and first == last and not crash
     if ok:
         print(f"ok   {os.path.basename(a.apk)} starts on {a.serial} and is up {a.wait} s later, pid {first}")
