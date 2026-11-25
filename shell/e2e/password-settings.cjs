@@ -115,7 +115,7 @@ if (layout === 'sections') fs.writeFileSync(path.join(lib.profile, 'prefs.json')
   check('a row has Show, Copy and a menu at its end, as icons with their names, and no password', (await eye().isVisible()) && (await copyButton.isVisible()) && (await more.isVisible()) &&
     (await first.locator('.secret').count()) === 0 && (await text()) === 'M mail.example.org asha@example.org', await text());
   const sizes = await first.locator('.icon-button').evaluateAll((all) => all.map((b) => { const r = b.getBoundingClientRect(); return Math.round(Math.min(r.width, r.height)); }));
-  check(`its three buttons are the design system's icon buttons, ${phone ? 40 : 28}px`, sizes.length === 3 && sizes.every((n) => n === (phone ? 40 : 28)), JSON.stringify(sizes));
+  check(`its three buttons are the design system's icon buttons, ${phone ? 44 : 28}px`, sizes.length === 3 && sizes.every((n) => n === (phone ? 44 : 28)), JSON.stringify(sizes));
 
   // As Linux the OS has no check of the person: Show and Copy open the password asking none,
   // and Go tells the page of no hold to hide it at.
