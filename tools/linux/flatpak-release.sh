@@ -38,8 +38,8 @@ echo "=== $(date '+%F %T') copy the stage, the manifest and the key in"
 ssh "${o[@]}" admin@"$ip" 'rm -rf ~/pb-release && mkdir -p ~/pb-release && chmod 700 ~/pb-release'
 scp "${o[@]}" -q "$stage" "$here/$app.yml" admin@"$ip":pb-release/
 scp "${o[@]}" -q "$key" admin@"$ip":pb-release/key.asc
-# The harness, for the restart check.
-git -C "$root" archive HEAD tools core/webfeatures | ssh "${o[@]}" admin@"$ip" 'mkdir -p ~/pb-release/src && tar -x -C ~/pb-release/src'
+# The harness, for the restart check, and CHROMIUM_VERSION, which drive_chromedriver.py reads as it loads.
+git -C "$root" archive HEAD CHROMIUM_VERSION tools core/webfeatures | ssh "${o[@]}" admin@"$ip" 'mkdir -p ~/pb-release/src && tar -x -C ~/pb-release/src'
 
 echo "=== $(date '+%F %T') build and sign the repository"
 ssh "${o[@]}" admin@"$ip" "bash -s" <<GUEST
