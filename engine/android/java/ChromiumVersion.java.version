@@ -1,0 +1,12 @@
+package dev.projectb.browser;
+
+/**
+ * Chromium's own version, from //chrome/VERSION as the build reads it (BUILD.gn
+ * chromium_version_constant). On Android Chromium takes its version from the app's versionName,
+ * which is ours (BrowserApplication).
+ */
+final class ChromiumVersion {
+    static final String VERSION = "@MAJOR@.@MINOR@.@BUILD@.@PATCH@";
+
+    private ChromiumVersion() {}
+}
