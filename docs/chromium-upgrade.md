@@ -131,6 +131,14 @@ Then Android and Linux, in container `pb`'s own tree, `/work/chromium`:
   `ResourceBundle.setNoAvailableLocalePaks` is gone. On 158, EyeDropper and WebHID are there,
   both quiet, so the registry has them; `web_features_bump.py` compares the Mac's delegates
   only, so the Android drive found them.
+- Android: Open on a downloaded text file showed ERR_BLOCKED_BY_CLIENT. Since 158, content
+  refuses every content:// navigation unless the embedder's `IsContentSchemeURLNavigationAllowed`
+  says yes; the engine answers as Chrome does. The method is Android-only, so neither
+  `gen_hooks.py` nor `web_features_bump.py`, both on the Mac's tree, saw it. On a new major,
+  read the Android-only methods of `content_browser_client.h` that are new in it, in the
+  container's tree. I first called the drive's failure intermittent after one passing rerun;
+  it failed 4 times in 4 afterwards. A drive failure on a new major is the version's until a
+  look at the page shows otherwise.
 - The container fetch's `gclient runhooks` hung for 8 hours, its python under Rosetta in a
   mutex: each try gets 30 minutes now, up to 3.
 - Linux: `aura::Window::GetName` gives a `string_view`, and `gfx::ToRoundedSize` needs
