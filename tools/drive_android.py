@@ -529,6 +529,18 @@ def page_top():
     return (left + right) // 2, top + 10
 
 
+def clear_data():
+    """The app's data cleared, then its automatic updates turned off, as a person can in
+    Settings: a test build older than the published release found that release at its first
+    check and downloaded it mid-run, and its notification and update bar moved what the parts
+    read (downloads' tap opened the group's summary; keyboard_bars and page_full_screen read
+    the page 170 px short), 2026-11-26. update_on_the_phone clears the data itself, so it
+    updates as a new profile does."""
+    adb("shell", "pm", "clear", PACKAGE)
+    adb("shell", "run-as", PACKAGE, "sh", "-c",
+        "'mkdir -p app_project_b/profile/updates/amarit && echo {\\\"auto_update\\\":false} > app_project_b/profile/updates/amarit/settings.json'")
+
+
 def launch(block=""):
     adb("shell", "am", "force-stop", PACKAGE)
     # A notification shade left pulled down, by a person or a probe, covers the app and takes
@@ -1577,7 +1589,7 @@ def file_inputs():
         file_input_checks()
     finally:
         adb("shell", "am", "force-stop", PACKAGE)
-        adb("shell", "pm", "clear", PACKAGE)
+        clear_data()
 
 
 def file_input_checks():
@@ -2616,7 +2628,7 @@ def keyboard_bars():
 def open_welcome():
     """A new profile's welcome, past Get started at Pick your style. False when it never got
     there, which it says as a check."""
-    adb("shell", "pm", "clear", PACKAGE)
+    clear_data()
     until(lambda: PACKAGE + "_zygote" not in adb("shell", "ps", "-A", "-o", "NAME"))
     adb("shell", "am", "start", "-W", "-n", PACKAGE + "/" + ACTIVITY)
     see("page", timeout=60, text="Get started")
@@ -2868,7 +2880,7 @@ def update_on_the_phone():
             shot("updated")
     finally:
         adb("install", "-r", "-d", "--no-incremental", APK)
-        adb("shell", "pm", "clear", PACKAGE)
+        clear_data()
 
 
 def main():
@@ -2886,7 +2898,7 @@ def main():
     # libproject_b_content.so at every start, as its library pages arrive late.
     if "Success" not in adb("install", "-r", "-d", "--no-incremental", APK):
         sys.exit("can't install %s" % APK)
-    adb("shell", "pm", "clear", PACKAGE)
+    clear_data()
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
     every = (browsing, mobile_shell, custom_colour, settings_back, talkback_states, bookmark_star, settings_ahead, back_key_chain, page_dialogs, page_camera, downloads, crash_notice, download_notifications, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, passkeys_on_the_phone, passwords_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
