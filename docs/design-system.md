@@ -115,8 +115,8 @@ accent), a dark one, a light one and a mid one such as `#4f9e9e`. `core/tones` m
 
 ## Type
 
-One family, the system font, 14px with a line height of 1.4, set on
-the root by `design.css`.
+One family, the system font, 14px with a line height of 1.4, set by `design.css`: the
+family and line height on the root, the 14px on `body`.
 
 | Size | Weight | Use |
 |---|---|---|
@@ -128,6 +128,26 @@ the root by `design.css`.
 | 9px | 600 | An extension's badge only |
 
 No monospace in the UI. Code-like strings (a permission name, a host) are body text.
+
+### Android's font size
+
+Our pages follow it, as a site that asks Chrome to does ([font-size.md](font-size.md)):
+
+- **Sizes in rem.** Every font size and line height is written in rem, as
+  `calc(13rem / 16)` for 13px, never in px, which would stay put. The root keeps the
+  browser's medium, so 1rem is 16px at the normal size. `shell/e2e/font-scale.cjs` fails on
+  a px size.
+- **Pages, sheets and dialogs grow all the way**, to twice the size at Android's largest.
+- **The bars are held at 1.3 times**: the address bar, the tabs and sidebar, the bookmarks
+  bar, the find bar and the notice bars, chrome in fixed space, as Chrome's own toolbar
+  barely follows the font size. Their text is in `var(--capped-rem)`, 1rem held at 1.3 times
+  16px, written `calc(13 * var(--capped-rem) / 16)`.
+- **Icons beside text grow with it up to 1.3 times**, in `var(--capped-rem)` too, and a tile
+  around one with it. Icons alone in a bar stay their size.
+- **A row grows with its text.** Its height is a `min-height` or padding, never a fixed
+  `height` around text. A line that ends in an ellipsis at the normal size, such as a row's
+  summary, wraps to two lines first (`-webkit-line-clamp: 2`), so a larger size shows the
+  words rather than fewer of them. A name or a title stays on one line.
 
 ## Sizes and spacing
 

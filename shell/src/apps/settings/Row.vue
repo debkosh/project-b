@@ -98,8 +98,11 @@ onUnmounted(addRow({ section: section?.id, hit: () => hit.value }));
   color: var(--muted);
   font-size: calc(13rem / 16);
   font-weight: 400;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  /* Two lines at most, then an ellipsis: a larger font size shows the words. */
+  display: -webkit-box;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .chevron {

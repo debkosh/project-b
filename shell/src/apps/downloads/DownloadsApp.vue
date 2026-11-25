@@ -284,7 +284,7 @@ body {
 }
 
 .details .text-button {
-  height: 24px;
+  min-height: 24px;
   padding: 0 6px;
   font-size: calc(12rem / 16);
   color: var(--accent);

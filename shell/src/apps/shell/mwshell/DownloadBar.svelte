@@ -153,8 +153,8 @@
     display: flex;
     flex-direction: column;
     padding: 6px 0;
-    font-size: calc(14rem / 16);
-    line-height: calc(18rem / 16);
+    font-size: calc(14 * var(--capped-rem) / 16);
+    line-height: calc(18 * var(--capped-rem) / 16);
   }
 
   /* Two lines at most, so a failure's reason isn't cut off; a long name still ends in an

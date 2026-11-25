@@ -101,7 +101,7 @@ function fold(id) {
   background: none;
   color: var(--muted);
   font: inherit;
-  font-size: calc(13rem / 16);
+  font-size: calc(13 * var(--capped-rem) / 16);
   font-weight: 500;
   cursor: pointer;
 }
@@ -126,7 +126,7 @@ function fold(id) {
   background: none;
   color: var(--text);
   font: inherit;
-  font-size: calc(13rem / 16);
+  font-size: calc(13 * var(--capped-rem) / 16);
   text-align: left;
   cursor: pointer;
 }
@@ -165,7 +165,7 @@ function fold(id) {
 .count {
   flex: none;
   color: var(--muted);
-  font-size: calc(12rem / 16);
+  font-size: calc(12 * var(--capped-rem) / 16);
 }
 
 /* A bookmark open in a tab of this window. */
