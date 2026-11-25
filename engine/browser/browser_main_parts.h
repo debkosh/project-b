@@ -57,6 +57,12 @@ class BrowserMainParts : public content::BrowserMainParts {
   void WillRunMainMessageLoop(
       std::unique_ptr<base::RunLoop>& run_loop) override;
   void PostMainMessageLoopRun() override;
+#if BUILDFLAG(IS_LINUX)
+  // Bluetooth's D-Bus manager, which WebAuthn's Bluetooth check reaches for on Linux since
+  // Chromium 158: up as content shell brings it up, and down after the threads are.
+  void PostCreateMainMessageLoop() override;
+  void PostDestroyThreads() override;
+#endif
 
 #if BUILDFLAG(IS_MAC)
   std::unique_ptr<display::ScopedNativeScreen> screen_;

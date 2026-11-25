@@ -313,6 +313,7 @@ source_set("browser") {
   if (is_linux) {
     # The window's Aura tree on Ozone (window_linux.cc), and the driver's events.
     deps += [
+      "//device/bluetooth",
       "//ui/aura",
       "//ui/compositor",
       "//ui/events:dom_keycode_converter",
