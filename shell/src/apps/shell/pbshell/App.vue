@@ -149,4 +149,21 @@ watchEffect(() => {
   height: 40px;
 }
 
+/* Touch: a finger and no mouse, a tablet's (docs/large-screens.md, Standard's touch
+   density). Targets grow to 44px, the icons stay their size, and a mouse brings the
+   desktop's density back. Each part grows its own rows; the buttons grow here. */
+@media (pointer: coarse) and (not (any-pointer: fine)) {
+  .icon-button {
+    width: 44px;
+    height: 44px;
+  }
+  /* What the bar opens is touch-sized too: the ☰ menu and the right-click menus, with no
+     keys shown, as a finger has none. */
+  .ui-menu.ui-context-menu .ui-menu-item {
+    height: 44px;
+  }
+  .ui-menu-key {
+    display: none;
+  }
+}
 </style>

@@ -133,4 +133,10 @@ function switchLayout() {
   opacity: 1;
 }
 
+/* Touch: the bar holds 44px buttons (App.vue). */
+@media (pointer: coarse) and (not (any-pointer: fine)) {
+  .bar {
+    height: 52px;
+  }
+}
 </style>
