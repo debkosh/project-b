@@ -561,6 +561,12 @@ def launch(block=""):
     adb(*args)
     # Content starts in the background, so the window shows before the shell does.
     see("shell", timeout=60, label="Menu")
+    # The shell asked for is the one that loaded: the native one's root view is its own, the
+    # web one's a WebView. Setting the wrong pref once left every native part on the web
+    # shell, passing while testing the wrong one.
+    native = until(lambda: screen_parts().get("shell")).get("class") == "dev.projectb.browser.NativeShell"
+    if native != (asked_shell == "mkshell"):
+        raise RuntimeError("asked for the %s shell, and the %s one loaded" % (asked_shell or "phone's own", "native" if native else "web"))
     # A run that ended in a kill leaves a notice over the top of the page. It is shell, so
     # it would take the touches meant for the page.
     # The Mobile shell's has Dismiss.
@@ -1003,12 +1009,19 @@ def profile_json(name):
         return {}
 
 
+# The phone shell use_shell asked for, which launch checks loaded: '' for the phone's own.
+asked_shell = ""
+
+
 def use_shell(shell):
-    """Makes shell the profile's at the next start, '' for the phone's own, by its pref."""
+    """Makes shell the phone's at the next start, '' for its own. A phone-sized window loads
+    the phoneShell pref, not shell, which is the wide window's (docs/large-screens.md)."""
+    global asked_shell
+    asked_shell = shell
     prefs = profile_json("prefs.json")
-    prefs.pop("shell", None)
+    prefs.pop("phoneShell", None)
     if shell:
-        prefs["shell"] = shell
+        prefs["phoneShell"] = shell
     profile_file("prefs.json", prefs)
 
 
