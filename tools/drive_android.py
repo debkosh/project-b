@@ -62,6 +62,10 @@ PAGES = {
     "/input": "<title>Input</title><form action=/typed><input name=q autofocus "
               "style='width:100%;height:200px;font-size:40px'></form>",
     "/typed": "<title>Typed</title>typed",
+    # Tells its scale as it changes, as a pinch changes it.
+    "/pinch": "<meta name=viewport content='width=device-width, initial-scale=1'><title>Pinch</title>"
+              "<p style='font-size:20px'>Pinch me</p>"
+              "<script>visualViewport.onresize = () => fetch('/said?scale=' + visualViewport.scale.toFixed(2))</script>",
     "/words": "<title>Words</title><p style='font-size:40px'>Some words to hold a finger on, " + "words " * 200,
     "/to-blocked": None,
 }
@@ -3148,6 +3152,67 @@ def update_on_the_phone():
         clear_data()
 
 
+def pinch():
+    """Two fingers set down near the middle of the screen's upper half and moved apart, as a
+    person pinches a page bigger: monkey's PinchZoom, `input` having one finger only."""
+    w, h = screen_size()
+    x, y = w // 2, h * 3 // 10
+    script = os.path.join(OUT, "pinch.txt")
+    with open(script, "w") as f:
+        f.write("type= user\ncount= 1\nspeed= 1.0\nstart data >>\nPinchZoom(%d,%d,%d,%d,%d,%d,%d,%d,12)\n"
+                % (x - 60, y - 60, x - 300, y - 300, x + 60, y + 60, x + 300, y + 300))
+    adb("push", script, "/data/local/tmp/pinch.txt")
+    adb("shell", "monkey", "-f", "/data/local/tmp/pinch.txt", "1")
+
+
+def settings_keeps_its_size():
+    """Settings keeps its size when a second field of a Dialog takes focus with the keyboard up,
+    and still pinches (docs/ux-guide.md, "The phone"; docs/fragility.md, "Settings zoomed by
+    itself on a phone"). That is the case in which Android asks a page to zoom in around a
+    field, read from Chromium's code: a field asks for the keyboard while it is up already.
+    The zoom itself was never made to happen here, on the app before the fix either, so this
+    shows only that the case leaves Settings as it was, not that the zoom can't come. A pinch
+    makes Settings bigger, as it does a web page: our pages pinch until the app follows
+    Android's font size."""
+    launch()
+    go(BASE + "/pinch")
+    see("page", text="Pinch me")
+    scales = lambda: [float(s.split("=", 1)[1]) for s in served if s.startswith("/said?scale=")]
+    pinch()
+    check("a pinch makes a web page in a tab bigger", until(lambda: any(v > 1.2 for v in scales()), 10) is not None, scales())
+    # Settings at Sync, by its link, whose Dialog is put away: Set up… then opens the set-up
+    # at a press, as a person does, its first field with the keyboard.
+    view_link("project-b://sync?address=https://sync.example.test/sync/abc")
+    until(lambda: settings_text("https://sync.example.test/sync/abc"), 30)
+    tap(middle(see("settings", text="Cancel")))
+    tap(middle(see("settings", text="Set up…")))
+    fields = lambda: until(lambda: [n for n in screen_parts().get("settings", ET.Element("none")).iter("node") if n.get("class") == FIELD] or None, 20) or []
+    check("Set up… opens the set-up with the keyboard", len(fields()) >= 2 and until(keyboard_shown, 10) is not None, len(fields()))
+    # A button's width and height say the page's scale: the Dialog moves with the keyboard,
+    # and its button stays as big as it was.
+    def size():
+        left, top, right, bottom = box(see("settings", text="Connect"))
+        return right - left, bottom - top
+    still(lambda: find("settings", text="Connect"))
+    own = size()
+    # As big as it was, to a few pixels: Android rounds a box as the Dialog moves, and the
+    # zoom this looks for is of a third or more.
+    same = lambda: all(abs(now - was) <= 4 for now, was in zip(size(), own))
+    tap(middle(fields()[1]))
+    time.sleep(4)
+    check("Settings keeps its size when the Dialog's second field takes focus with the keyboard up",
+          keyboard_shown() and same(), "%s, was %s; the keyboard is %s" % (size(), own, "up" if keyboard_shown() else "away"))
+    shot("settings-second-field")
+    key(4)
+    until(lambda: not keyboard_shown(), 10)
+    still(lambda: find("settings", text="Connect"))
+    pinch()
+    bigger = lambda: find("settings", text="Connect") is None or not same()
+    check("and a pinch still makes Settings bigger", until(bigger, 10) is not None,
+          "%s, was %s" % (size() if find("settings", text="Connect") is not None else "out of sight", own))
+    shot("settings-pinched")
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     adb("root")
@@ -3167,7 +3232,7 @@ def main():
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
     every = (browsing, mobile_shell, custom_colour, settings_back, talkback_states, bookmark_star, settings_ahead, back_key_chain, page_dialogs, popups, leave, page_camera, downloads, crash_notice, relaunch_on_the_phone, download_notifications, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, passkeys_on_the_phone, passwords_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
-             the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web, secure_dns, long_press_menu, keyboard_bars, welcome_extras, welcome_last_step, web_server_kinds, update_on_the_phone)
+             the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web, secure_dns, long_press_menu, keyboard_bars, welcome_extras, welcome_last_step, web_server_kinds, update_on_the_phone, settings_keeps_its_size)
     for part in [p for p in every if not sys.argv[1:] or p.__name__ in sys.argv[1:]]:
         # tools/results.py splits a run's memory, CPU and checks by these lines.
         print("--- part " + part.__name__, flush=True)
