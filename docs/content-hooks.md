@@ -17,6 +17,9 @@ generated hook; Go acts on it only where it subscribes or answers, counted as us
 | `ContentRendererClient` (renderer process) | 64 | 0 | 0 | 64 | 0 |
 | `ContentUtilityClient` (utility process) | 5 | 0 | 0 | 5 | 0 |
 
+Read from the Mac's tree, so the counts are the Mac's. Methods only other platforms have are
+listed too, as left, so a new one shows: 19 on Android only, 1 on Android and Linux only.
+
 Left, by group:
 
 | Group | `WebContentsObserver` | `WebContentsDelegate` | `ContentBrowserClient` | `NavigationThrottle` | Total |
@@ -471,6 +474,17 @@ crossing the engine interface stays ours and generalised.
 | `WebContentsDelegate` | `UpdateTargetURL` | carried, struct copy | `WebContentsDelegateHooks::UpdateTargetURL` · `Hooks.Delegate.OnUpdateTargetURL` |
 | `WebContentsDelegate` | `VisibleSecurityStateChanged` | carried, struct copy | `WebContentsDelegateHooks::VisibleSecurityStateChanged` · `Hooks.Delegate.OnVisibleSecurityStateChanged` |
 | `WebContentsDelegate` | `WebContentsCreated` | carried, struct copy | `WebContentsDelegateHooks::WebContentsCreated` · `Hooks.Delegate.OnWebContentsCreated` |
+| `WebContentsDelegate` | `DidBackForwardTransitionAnimationChange` | left: Android only, not in the Mac's tree this reads | `content/public/browser/web_contents_delegate.h` |
+| `WebContentsDelegate` | `FindMatchRectsReply` | left: Android only, not in the Mac's tree this reads | `content/public/browser/web_contents_delegate.h` |
+| `WebContentsDelegate` | `GetBackForwardTransitionFallbackUXConfig` | left: Android only, not in the Mac's tree this reads | `content/public/browser/web_contents_delegate.h` |
+| `WebContentsDelegate` | `GetBackForwardTransitionFallbackUXInternalPageIcon` | left: Android only, not in the Mac's tree this reads | `content/public/browser/web_contents_delegate.h` |
+| `WebContentsDelegate` | `MaybeCopyContentAreaAsBitmapSync` | left: Android only, not in the Mac's tree this reads | `content/public/browser/web_contents_delegate.h` |
+| `WebContentsDelegate` | `MaybeCopyContentAreaAsHardwareBuffer` | left: Android only, not in the Mac's tree this reads | `content/public/browser/web_contents_delegate.h` |
+| `WebContentsDelegate` | `OpenColorChooser` | left: Android only, not in the Mac's tree this reads | `content/public/browser/web_contents_delegate.h` · by hand in `engine/browser/page_tab.cc` |
+| `WebContentsDelegate` | `SetOverlayMode` | left: Android only, not in the Mac's tree this reads | `content/public/browser/web_contents_delegate.h` |
+| `WebContentsDelegate` | `ShouldBlockMediaRequest` | left: Android only, not in the Mac's tree this reads | `content/public/browser/web_contents_delegate.h` |
+| `WebContentsDelegate` | `UpdateUserGestureCarryoverInfo` | left: Android only, not in the Mac's tree this reads | `content/public/browser/web_contents_delegate.h` |
+| `WebContentsDelegate` | `UseFileChooserForFileSystemAccess` | left: Android only, not in the Mac's tree this reads | `content/public/browser/web_contents_delegate.h` |
 | `ContentBrowserClient` | `AddPresentationObserver` | left: no copier for content::PresentationObserver | `content/public/browser/content_browser_client.h:1594` |
 | `ContentBrowserClient` | `AllowCertificateError` | left: no copier for net::SSLInfo | `content/public/browser/content_browser_client.h:1223` |
 | `ContentBrowserClient` | `AllowCompressionDictionaryTransport` | carried, struct copy | `ContentBrowserClientHooks::AllowCompressionDictionaryTransport` · `Hooks.Browser.AnswerAllowCompressionDictionaryTransport` |
@@ -825,6 +839,15 @@ crossing the engine interface stays ours and generalised.
 | `ContentBrowserClient` | `WillCreateURLLoaderRequestInterceptors` | left: off the main thread | `content/public/browser/content_browser_client.h:2159` |
 | `ContentBrowserClient` | `WillCreateWebTransport` | left: mojo | `content/public/browser/content_browser_client.h:2099` |
 | `ContentBrowserClient` | `WillInterceptWebSocket` | carried, struct copy | `ContentBrowserClientHooks::WillInterceptWebSocket` · `Hooks.Browser.AnswerWillInterceptWebSocket` |
+| `ContentBrowserClient` | `CreateTtsEnvironmentAndroid` | left: Android only, not in the Mac's tree this reads | `content/public/browser/content_browser_client.h` |
+| `ContentBrowserClient` | `GetAdditionalMappedFilesForChildProcess` | left: Android and Linux only, not in the Mac's tree this reads | `content/public/browser/content_browser_client.h` · by hand in `engine/browser/content_browser_client.cc` |
+| `ContentBrowserClient` | `GetWideColorGamutHeuristic` | left: Android only, not in the Mac's tree this reads | `content/public/browser/content_browser_client.h` |
+| `ContentBrowserClient` | `GetXrIntegrationClient` | left: Android only, not in the Mac's tree this reads | `content/public/browser/content_browser_client.h` |
+| `ContentBrowserClient` | `IsContentSchemeURLNavigationAllowed` | left: Android only, not in the Mac's tree this reads | `content/public/browser/content_browser_client.h` · by hand in `engine/browser/content_browser_client.cc` |
+| `ContentBrowserClient` | `ShouldAllowSystemUiPopups` | left: Android only, not in the Mac's tree this reads | `content/public/browser/content_browser_client.h` |
+| `ContentBrowserClient` | `ShouldObserveContainerViewLocationForDialogOverlays` | left: Android only, not in the Mac's tree this reads | `content/public/browser/content_browser_client.h` |
+| `ContentBrowserClient` | `ShouldOverrideUrlLoading` | left: Android only, not in the Mac's tree this reads | `content/public/browser/content_browser_client.h` |
+| `ContentBrowserClient` | `ShouldUseGmsCoreGeolocationProvider` | left: Android only, not in the Mac's tree this reads | `content/public/browser/content_browser_client.h` |
 | `NavigationThrottle` | `CancelDeferredNavigation` | left: no copier for content::NavigationThrottle::ThrottleCheckResult | `content/public/browser/navigation_throttle.h:251` |
 | `NavigationThrottle` | `Resume` | carried | `NavigationThrottleHooks::Resume` · `Hooks.Throttle.OnResume` |
 | `NavigationThrottle` | `WillCommitWithoutUrlLoader` | carried | `NavigationThrottleHooks::WillCommitWithoutUrlLoader` · `Hooks.Throttle.AnswerWillCommitWithoutUrlLoader` |

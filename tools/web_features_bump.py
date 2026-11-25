@@ -29,7 +29,7 @@ sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 import web_features  # noqa: E402
 
 ROOT = web_features.ROOT
-PLATFORMS = ("mac", "android")
+PLATFORMS = ("mac", "android", "linux")
 
 # Where chrome adds its binders, by the scope of ContentBrowserClient's
 # RegisterBrowserInterfaceBindersFor<Scope>. Chrome's override for frames hands the map to
@@ -56,14 +56,17 @@ MOJOM_DIRS = ["third_party/blink/public", "components", "chrome/common", "conten
 # Where base features are declared.
 FEATURE_DIRS = ["content/public/common", "content/common", "third_party/blink/common", "services/network/public/cpp"]
 
-# What a build flag is on each platform. Any other is taken as on.
+# What a build flag is on each platform, ahead of OFF_EVERYWHERE. Any other is taken as on.
 BUILDFLAGS = {
     "mac": {"IS_MAC": True, "IS_APPLE": True, "IS_POSIX": True, "IS_ANDROID": False, "IS_DESKTOP_ANDROID": False,
-            "ENABLE_VR": False},
-    "android": {"IS_ANDROID": True, "IS_POSIX": True, "IS_MAC": False, "IS_APPLE": False, "ENABLE_EXTENSIONS": False,
-                "ENABLE_EXTENSIONS_CORE": False, "ENABLE_PRINT_PREVIEW": False, "IS_DESKTOP_ANDROID": False},
+            "IS_LINUX": False, "ENABLE_VR": False},
+    "android": {"IS_ANDROID": True, "IS_POSIX": True, "IS_MAC": False, "IS_APPLE": False, "IS_LINUX": False,
+                "ENABLE_EXTENSIONS": False, "ENABLE_EXTENSIONS_CORE": False, "ENABLE_PRINT_PREVIEW": False,
+                "IS_DESKTOP_ANDROID": False},
+    "linux": {"IS_LINUX": True, "IS_POSIX": True, "IS_MAC": False, "IS_APPLE": False, "IS_ANDROID": False,
+              "IS_DESKTOP_ANDROID": False, "ENABLE_VR": False},
 }
-OFF_EVERYWHERE = ("IS_WIN", "IS_LINUX", "IS_CHROMEOS", "IS_FUCHSIA", "IS_IOS")
+OFF_EVERYWHERE = ("IS_WIN", "IS_CHROMEOS", "IS_FUCHSIA", "IS_IOS")
 
 
 def read(src, path):
@@ -145,9 +148,9 @@ def on(platform, conditions):
     """Whether #if conditions let a line in on platform."""
     def flag(m):
         name = m.group(1)
-        if name in OFF_EVERYWHERE:
-            return "False"
-        return str(BUILDFLAGS[platform].get(name, True))
+        if name in BUILDFLAGS[platform]:
+            return str(BUILDFLAGS[platform][name])
+        return str(name not in OFF_EVERYWHERE)
     for c in conditions:
         expr = re.sub(r"BUILDFLAG\((\w+)\)", flag, c)
         expr = re.sub(r"defined\s*\(\s*\w+\s*\)", "False", expr)
@@ -286,14 +289,18 @@ def main():
     delegates = {cls: methods(src, h) for cls, h in DELEGATES.items()}
     in_rows = {r["delegate"] for r in rows if "delegate" in r}
     new = []
-    print("\nDelegate methods (the hooks table is generated for the Mac, so only those the Mac has are compared):")
+    # On every platform we build, not the Mac's alone: the hooks table lists the methods only
+    # Android or Linux have too (tools/gen_hooks.py), so one new on a phone is new here.
+    # Chromium 158's Android-only IsContentSchemeURLNavigationAllowed went unseen when this
+    # compared the Mac's, and a downloaded file opened as a blank tab.
+    print("\nDelegate methods, on any of %s:" % ", ".join(PLATFORMS))
     for cls in LISTED_DELEGATES:
-        mac = {m for m, plats in delegates[cls].items() if "mac" in plats}
-        print("  %s: %d virtual methods, %d of them on the Mac" % (cls, len(delegates[cls]), len(mac)))
+        ours = {m for m, plats in delegates[cls].items() if plats}
+        print("  %s: %d virtual methods, %d of them on %s" % (cls, len(delegates[cls]), len(ours), " or ".join(PLATFORMS)))
         if listing:
             for m, plats in sorted(delegates[cls].items()):
                 print("    %-60s %s" % (m, "+".join(plats) or "none"))
-        new += ["%s::%s" % (cls, m) for m in sorted(mac - known.get(cls, set()))
+        new += ["%s::%s (%s)" % (cls, m, "+".join(delegates[cls][m])) for m in sorted(ours - known.get(cls, set()))
                 if "%s::%s" % (cls, m) not in in_rows]
 
     # What the rows name.
