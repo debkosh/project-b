@@ -166,7 +166,7 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
         address.apply {
             background = null
             setSingleLine(true)
-            setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14f)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
             setPadding(dp(14), 0, dp(8), 0)
             gravity = Gravity.CENTER_VERTICAL
             hint = "Search or type an address"
@@ -185,7 +185,7 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
             })
         }
         status.apply {
-            setTextSize(TypedValue.COMPLEX_UNIT_DIP, 12f)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
             setPadding(0, 0, dp(14), 0)
             visibility = GONE
         }
@@ -205,7 +205,7 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
         ours.gravity = Gravity.CENTER_VERTICAL
         ours.setPadding(dp(14), 0, dp(0), 0)
         ours.visibility = GONE
-        oursTitle.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14f)
+        oursTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
         oursTitle.typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
         oursTitle.setSingleLine(true)
         oursTitle.ellipsize = android.text.TextUtils.TruncateAt.END
