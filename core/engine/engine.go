@@ -292,8 +292,9 @@ type Engine interface {
 	CaptureThumbnail(tab TabID, maxWidth int)
 	// ExitReason is why the app's process with this id, one from an earlier run, ended, as
 	// a phone's system keeps it: "crash", "native crash" or "not responding" for a crash,
-	// or one of Android's own reasons, such as "low memory" or "user requested"; "" when
-	// the system doesn't say, as a desktop's doesn't.
+	// one of Android's own reasons, such as "low memory" or "user requested", or "no crash
+	// logged" when Android kept no reason and its crash log holds none of that process;
+	// "" when the system doesn't say, as a desktop's doesn't.
 	ExitReason(pid int) string
 	// ChooseFolder asks the person for a folder, in a dialog on the window opening at start,
 	// or where it last was for "", as Import asks for another browser's; FolderChosen
