@@ -654,4 +654,10 @@ input::placeholder {
   right: 0;
 }
 
+/* Touch: the field as tall as the buttons beside it. */
+@media (pointer: coarse) and (not (any-pointer: fine)) {
+  .field {
+    height: 40px;
+  }
+}
 </style>

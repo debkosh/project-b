@@ -317,4 +317,21 @@ const rows = computed(() =>
   background: var(--press);
   color: var(--text);
 }
+
+/* Touch: rows a finger hits, a close button as large on every row, as a finger has no
+   hover to show it, and no shortcut hints, which a finger has no keys for
+   (docs/large-screens.md). */
+@media (pointer: coarse) and (not (any-pointer: fine)) {
+  .row {
+    height: 44px;
+  }
+  .close {
+    width: 32px;
+    height: 32px;
+    visibility: visible;
+  }
+  .hint {
+    display: none;
+  }
+}
 </style>

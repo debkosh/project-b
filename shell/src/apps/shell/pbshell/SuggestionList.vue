@@ -147,4 +147,11 @@ img.icon {
   align-items: center;
   font-size: 11px;
 }
+
+/* Touch: suggestions a finger hits (docs/large-screens.md). */
+@media (pointer: coarse) and (not (any-pointer: fine)) {
+  [role='option'] {
+    height: 44px;
+  }
+}
 </style>

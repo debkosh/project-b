@@ -330,4 +330,19 @@ const items = computed(() =>
   background: var(--accent-tint);
 }
 
+/* Touch: tabs and their close buttons a finger hits, a close on every tab, as a finger
+   has no hover to show it, 8px from the next tab (docs/large-screens.md). */
+@media (pointer: coarse) and (not (any-pointer: fine)) {
+  .strip {
+    height: calc(52px + var(--top-band, var(--frame-width)));
+  }
+  .tab {
+    height: 40px;
+  }
+  .close {
+    width: 28px;
+    height: 28px;
+    visibility: visible;
+  }
+}
 </style>
