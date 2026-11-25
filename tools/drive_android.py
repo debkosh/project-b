@@ -108,6 +108,8 @@ PAGES["/apis"] = ("<title>APIs</title><button style='position:fixed;inset:0;widt
 served = []
 # Each request's host and path, for Links to other sites, which serves two sites.
 seen = []
+# Each request's user agent.
+agents = []
 results = []
 
 
@@ -115,6 +117,7 @@ class Server(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         served.append(self.path)
         seen.append(self.headers.get("Host", "").split(":")[0] + self.path)
+        agents.append(self.headers.get("User-Agent", ""))
         path = self.path.split("?")[0]
         if path in ("/leave", "/leave-redirect"):
             # Links to other sites (tools/links_page.py): the other site is this server as
@@ -680,6 +683,10 @@ def browsing():
     go(BASE + "/a")
     check("typing a URL loads it", asked("/a"))
     check("the visit reached Go's history", until(lambda: visited(url("/a"))))
+    # Chromium takes its version from the app's on Android unless the app hands it its own
+    # (docs/fragility.md, "A Dev build that never started"): sites were told Chrome/0.0.0.0.
+    major = open(os.path.join(ROOT, "CHROMIUM_VERSION")).read().split(".")[0]
+    check("pages are told Chromium's own version, Chrome/%s" % major, agents and "Chrome/%s." % major in agents[-1], agents[-1:])
     shot("02-page-a")
 
     # A tap on the page belongs to the page.
