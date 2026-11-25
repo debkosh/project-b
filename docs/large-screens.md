@@ -1,6 +1,6 @@
 # Android tablets, foldables and desktop mode
 
-A spec for discussion, 2026-11-22. Nothing here is built or agreed. It turns the section
+A spec, 2026-11-22, agreed 2026-11-25. Nothing here is built yet. It turns the section
 "Android tablets, foldables and desktop mode" of [research/platforms.md](research/platforms.md)
 into what we would build, what we would leave, and how we would test it.
 
@@ -52,7 +52,7 @@ Standard's own Menu button (`AppMenu.vue`), as on Linux and Windows with the men
 **Why Standard, of the desktop shells.** It is the reference: every Go feature lands there
 first and its tests already run, so large screens add no shell to keep complete. Fox looks the
 most like a tablet browser, tabs on top, but has no tab menu, pinned tabs or bookmarks bar, and
-at 841 dp its address field covers Back. Glide adds spaces and a command bar; Terminal and
+at 841 dp its address field covers Back. Curve adds spaces and a command bar; Terminal and
 Minimal are keyboard-first. Mocks of all five: [the mocks](https://claude.ai/artifact/EdgkSnyUs1Xo8WcaemfTSJ).
 
 **Standard's touch density** (ux, 2026-11-24): one switch on `(pointer: coarse)` with no fine
@@ -80,17 +80,12 @@ back. It works the same on a Mac with a touch screen, so it is Standard's, not A
 - **Settings, Keyboard** shows on Android when a hardware keyboard is connected.
 - The shell's menu items show their keys when a keyboard is connected, else not.
 
-### 4. Several windows (a second step)
-
-A window of ours is one activity, in the one process, each with its own Go window.
-"New Window" opens another activity as a new task (`FLAG_ACTIVITY_NEW_DOCUMENT`); closing one
-closes its window, and the last one closing ends the process, as now. This is a week of its
-own, and step 1 to 3 don't need it, so it waits until they are out.
-
 ## What we wouldn't do
 
+- No several windows for now: one window, as on a phone. New Window stays out of the menus on
+  Android.
 - No tablet layout of the Mobile shell, and no third shell: a window wide enough gets Standard.
-- No other desktop shells offered on Android at first (Glide, Terminal, Fox, Minimal). They
+- No other desktop shells offered on Android at first (Curve, Terminal, Fox, Minimal). They
   would work as Standard does; offering them is a list away once Standard works.
 - No drawing into desktop mode's caption bar. Android 15 lets an app draw there, as our
   shell does beside the Mac's buttons; it can come later.
@@ -106,7 +101,7 @@ to download. The tester makes and owns them:
 |---|---|---|
 | `project-b-tablet` | `pixel_tablet` | Landscape Standard, portrait in between, keyboard and mouse |
 | `project-b-fold` | `pixel_fold` | Folding and unfolding mid-page (the emulator's fold control) |
-| `project-b-desktop` | `pixel_tablet`, with desktop windowing switched on in its developer options | Freeform windows: resizing, the caption bar, several windows later |
+| `project-b-desktop` | `pixel_tablet`, with desktop windowing switched on in its developer options | Freeform windows: resizing, the caption bar |
 
 If the Android 17 image won't turn on desktop windowing, the `desktop_medium` profile with the
 same image is next; a desktop system image would be a download, which this spec doesn't ask for.
@@ -135,7 +130,6 @@ emu-29 before handover, with slots from the tester.
 3. Mouse and touchpad: about 2 days.
 4. Keyboard shortcuts: about 2 days.
 5. The emulators and the driver's large-screen part, alongside: about 2 days.
-6. Several windows, after 1 to 5 are released: about a week.
 
 ## Decided
 
@@ -156,16 +150,9 @@ emu-29 before handover, with slots from the tester.
   `mkshell` Mobile (native), with each name and description written in the registry only.
   Done on its own branch, `shell-ids`, before this work; the shells below are named by
   those ids from then on.
-
-## Questions for Sudipta
-
-1. **Automatic, or the user's choice?** Recommended: automatic by size, as above, with Settings
-   letting a profile pin one shell for every size.
-2. **Which pref holds what?** Recommended: `shell` is the wide window's (Standard, as the
-   templates already say), and a new `phone_shell` the narrow one's (Mobile, or Mobile
-   (native)). A phone that chose Mobile (native) would show Mobile once, until chosen again;
-   no migration code.
-3. **Standard as the one desktop shell on Android**, with the touch density, rather than Fox
-   or a shell of its own. Recommended: yes.
-4. **Several windows** as a second step after the rest is released, or in the same branch?
-   Recommended: a second step.
+- **The shell follows the window, by size** (2026-11-25: "rest is fine"), with Settings
+  letting a profile pin one shell for every size.
+- **`shell` is the wide window's shell, a new `phone_shell` the narrow one's**, with no
+  migration: a phone on Mobile (native) shows Mobile once until chosen again.
+- **Standard is the one desktop shell on Android**, with the touch density.
+- **No several windows for now** (2026-11-25: "no multi window for now").
