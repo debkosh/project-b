@@ -1,24 +1,27 @@
-# 0.3.10
+# 0.3.11
 
-- Saved passwords fill into sign-in pages. Press a sign-in field and pick a login from the list; on a phone the logins are chips above the keyboard.
-- After you sign in to a site with a password that isn't saved, Project B offers to save it, or to update the saved one. Never for this site stops the offers there, until you remove the site under Never saved in Settings' Passwords.
-- Saving another passkey for the same account on a site no longer removes the earlier one; sign-in lists them all.
-- On a page that isn't secure, the list of saved passwords says that what you fill could be read on the way.
-- Sync has a backup code: a code to keep somewhere safe that gets you back in if you forget your sync passphrase. A new sync offers it as its second step, and Settings' Sync has it under Backup code.
-- A page's camera and microphone work on Android and the Mac: once a site you allow needs one, Project B asks the system for it, and says so on the page when the system says no.
-- Opening a downloaded page, PDF, image or text file shows it in a new tab here; a zip or a document still opens in its own app.
-- Bringing passwords over no longer freezes the app while your system asks for its keyring, wallet or keychain password.
-- A new profile, and its first workspace, start in the logo's teal.
-- What's new in About lists only what changed for this device.
-- On Dev, you get each Stable release too, as it holds every Dev build before it.
-- The crash notice names the log's file, with its whole path in a tooltip.
-- On Android, a page's notifications show in the shade, and a tap on one opens its page.
-- On Android, About has Updates from again, to pick Stable or Dev.
-- On Linux, this is a beta, for arm64, installed as a Flatpak. Project B updates itself, and keeps tabs, history and settings between starts.
-- On Linux, the System theme follows the desktop's dark mode, GNOME's and KDE's.
-- On Linux, a page's notifications show on the desktop, and a download's Open and Show in folder work.
-- On Linux, Settings says where to set Project B as your default browser, and knows when it is.
-- On Linux, sync and saved passwords keep their key in the desktop's keyring.
-- On Linux, the window draws its own minimise, maximise and close buttons, and Alt shows a menu bar.
-- On a Mac, the welcome says to choose Always Allow when macOS asks for Project B's key.
+- Project B is now on Chromium 158, with its security fixes, on the Mac, Android and Linux.
+- Closing a tab whose page has unsaved changes now asks "Leave site?" first, instead of losing them.
+- Pages now load through your system's proxy settings, and through --proxy-server when the app is started with it.
+- A web address with a user name and password in it no longer shows the password in the address bar or keeps it in history.
+- Searching passwords, bookmarks, sites, downloads and tabs finds every word you type, in any order, and forgives a typo.
+- Settings opens with the cursor in its search field. Sync and Passwords are sections of their own, Privacy is now Privacy and sites, and Run setup again is in About.
+- In a short window, Settings' list of sections scrolls on its own under the search, keeping the current section in sight.
+- Settings' Web features says more exactly what works, what is quiet and what isn't there yet, for each platform.
+- Glide is now called Curve. Once, after this update, the browser opens on the Standard shell, and a shell's own arrangement and any shortcuts you changed start over.
+- Sync setup offers a free sync bucket to start with, and takes any server's address as it is, with an optional token that stays hidden unless you choose Show.
+- Backup codes: making one right after cancelling one, skipping one, or leaving the card early no longer shows a code you didn't keep or says you have one when you don't.
+- With sync off, starting Project B no longer asks to unlock the keyring on Linux or for the keychain on a Mac; it asks when a saved password, a passkey or sync first needs it.
+- The first check for updates, and sync, wait ten seconds after the app starts, so starting isn't slowed by them.
+- After a crash, the notice that says so sits in its own strip above the page instead of covering its top.
+- Sign-in fields are found better: more password and username fields are recognised, in more languages, and fewer other fields are mistaken for them.
+- In the Fox shell, a narrow window no longer hides Back, Forward and Reload under the address field.
+- On Android, sites are told the Chromium version Project B is on, not version 0.
+- On Android, opening a downloaded text file, page or picture shows it in a tab.
+- On Android, joining sync with a backup code can scan the code's QR with the camera instead of typing it.
+- On Linux, this is still a beta, for arm64, installed as a Flatpak.
+- On Linux, saving a passkey in Project B and signing in with one now work, with the desktop's keyring keeping them; Settings' Passwords and Passkeys say who else on the computer can read them, and why.
+- On Linux, Settings' Passwords can show and copy a saved password, without asking for a screen lock Linux has no way to set.
+- On Linux, a locked keyring is explained: Learn more says why and how to unlock it, Settings offers Try again when it gives no key, and answering its question late no longer leaves passwords and sync locked.
+- On Linux, Settings shows one scrollbar, not two, and Web features says what Linux gives, not what the Mac gives.
 - On a Mac, after an update, macOS asks to let Project B use its key: choose Always Allow.
