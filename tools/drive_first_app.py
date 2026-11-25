@@ -439,11 +439,15 @@ class App:
     def cmd(self, *parts, timeout=20):
         return self.wait_reply(self.send(*parts), timeout)
 
-    def js(self, expr, page=False, timeout=20, tab=None):
+    def js(self, expr, page=False, timeout=20, tab=None, tapped=False):
         """Runs expr in the shell, the focused tab's page with page, or tab's page, by Go's
-        id for it. The driver's ERR, for a tab that isn't there or a page that went before
-        it answered, is a failure."""
-        where = ["evaltab", tab] if tab else ["evalpage" if page else "eval"]
+        id for it; tapped, in a page as if a real tap came first, so a tab it opens is no
+        pop-up. The driver's ERR, for a tab that isn't there or a page that went before it
+        answered, is a failure."""
+        if tapped:
+            where = ["taptab", tab] if tab else ["tappage"]
+        else:
+            where = ["evaltab", tab] if tab else ["evalpage" if page else "eval"]
         r = self.cmd(*where, expr.replace("\n", " "), timeout=timeout)
         if r.startswith("ERR"):
             raise RuntimeError(f"{' '.join(map(str, where))}: {r}")
@@ -1433,16 +1437,16 @@ def browsing_checks():
     print(app.cmd("capture", os.path.join(OUT, "5-tabs.png")), flush=True)
 
     # Pages opening tabs.
-    app.js("window.open('https://example.com/?popup')", page=True)
+    app.js("window.open('https://example.com/?popup')", page=True, tapped=True)
     app.wait(f"{ROWS}===3", 15)
     app.wait(f"{VALUE}==='https://example.com/?popup'", 30)
     app.wait(TAB_READY, 30)
     check("window.open opens a new, active tab", app.js(ACTIVE_ROW_TITLE) == "Example Domain", app.js(ACTIVE_ROW_TITLE))
-    app.js("(()=>{const a=document.createElement('a');a.href='https://example.com/?blank';a.target='_blank';a.textContent='x';document.body.appendChild(a);a.click();return 1})()", page=True)
+    app.js("(()=>{const a=document.createElement('a');a.href='https://example.com/?blank';a.target='_blank';a.textContent='x';document.body.appendChild(a);a.click();return 1})()", page=True, tapped=True)
     app.wait(f"{ROWS}===4", 15)
     app.wait(f"{VALUE}==='https://example.com/?blank'", 30)
     check("target=_blank opens a new, active tab", True)
-    app.js("window.open('https://www.blocked.test/popup')", page=True)
+    app.js("window.open('https://www.blocked.test/popup')", page=True, tapped=True)
     app.wait(f"{ROWS}===5", 15)
     try:
         app.wait("document.querySelector('.status')&&document.querySelector('.status').innerText==='Blocked'", 10)
@@ -2151,7 +2155,7 @@ def opened_by(app, opener, script):
     """Runs script in opener's page, which opens one tab on the store page in front, and
     returns Go's id for that tab once its page has loaded."""
     rows = app.js(ROWS)
-    app.js(script, tab=opener)
+    app.js(script, tab=opener, tapped=True)
     app.wait(f"{ROWS}==={rows + 1}")
     tab = max(t["id"] for t in json.loads(app.cmd("projectb", "getTabs", "{}"))["result"]["tabs"])
     app.wait("document.readyState==='complete'&&location.pathname==='/store'", tab=tab)

@@ -156,6 +156,14 @@ void Eval(const std::string& id, content::WebContents* contents, const std::stri
       /*world_id=*/0);
 }
 
+// Eval as if a real tap had just reached the page, as Chromium's browser tests do: what the
+// script opens is no pop-up (docs/site-features.md, Pop-ups).
+void EvalTapped(const std::string& id, content::WebContents* contents, const std::string& js) {
+  contents->GetPrimaryMainFrame()->ExecuteJavaScriptWithUserGestureForTests(
+      base::UTF8ToUTF16(js), (new EvalReply(id, contents))->Result(),
+      /*world_id=*/0);
+}
+
 // A WebContents that is neither the shell nor a tab, asked for the standard shell: a copy of
 // the shell that got past the gate, which only sees tabs. It is in our pages' context, or
 // in the profile's, where the tabs are.
@@ -248,7 +256,7 @@ void Run(const std::string& line) {
 
   // The commands that act on the focused tab's page, which a window with no tabs hasn't.
   static const base::NoDestructor<std::set<std::string>> kNeedTab(
-      std::set<std::string>{"evalpage", "committed", "bounds", "pids", "pagecolor",
+      std::set<std::string>{"evalpage", "tappage", "committed", "bounds", "pids", "pagecolor",
                             "crashpage", "stats"});
   if (kNeedTab->contains(cmd) && !Focused()) {
     Reply(id, "ERR no tab");
@@ -377,12 +385,22 @@ void Run(const std::string& line) {
     } else {
       Reply(id, "ERR no tab");
     }
+  } else if (cmd == "tappage") {
+    // evalpage, as if a tap came first.
+    EvalTapped(id, Focused()->contents(), rest(2));
+  } else if (cmd == "taptab") {
+    // evaltab, as if a tap came first.
+    if (PageTab* tab = Engine::Get()->tab(number(2))) {
+      EvalTapped(id, tab->contents(), rest(3));
+    } else {
+      Reply(id, "ERR no tab");
+    }
   } else if (cmd == "opentab") {
     // "opentab <workspace> <url>" opens a tab in a workspace, by Go's id for it, as a page
     // opens one: Go hears of it and shows it, then it loads. Replies with the tab's id.
     PageTab* tab = Engine::Get()->CreateTab(parts[2]);
     Engine::TabOpened(/*opener=*/0, tab->id(), GURL(rest(3)), /*foreground=*/true,
-                      /*new_window=*/false);
+                      /*new_window=*/false, /*tapped=*/true);
     Engine::Get()->LoadURL(tab->id(), rest(3).c_str());
     Reply(id, base::NumberToString(tab->id()));
   } else if (cmd == "showtabs") {
