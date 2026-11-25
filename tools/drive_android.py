@@ -1855,8 +1855,11 @@ def starts(words):
     return lambda t: (t or "").startswith(words)
 
 
-# Settings on a phone opens at its list of sections, Profile first (docs/settings.md).
-SETTINGS_LIST = starts("Profile")
+# Settings on a phone opens at its list of sections (docs/settings.md). Its row Appearance
+# marks the list: a phone always has that section, and only the list and the section itself
+# show the word first, where Profile, which only holds a named profile on a phone, is not
+# there at all.
+SETTINGS_LIST = starts("Appearance")
 
 
 def settings_section(label, inside):
