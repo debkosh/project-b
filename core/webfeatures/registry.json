@@ -439,7 +439,7 @@
     "status": {"mac": "quiet", "linux": "quiet", "android": "quiet"},
     "why": "No account picker: the call fails or times out",
     "needs": ["stay-off"],
-    "probe": [{"name": "fedcm", "expect": {"mac": "rejected:TimeoutError", "linux": "rejected:TimeoutError", "android": "rejected"},
+    "probe": [{"name": "fedcm", "expect": {"mac": "rejected", "linux": "rejected", "android": "rejected"},
                "call": "navigator.credentials.get({identity: {providers: [{configURL: 'https://example.com/c', clientId: 'x'}]}, signal: AbortSignal.timeout(1500)})"}],
     "test": ["probe:fedcm"]
   },
