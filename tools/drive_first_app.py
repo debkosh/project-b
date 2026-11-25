@@ -776,7 +776,9 @@ def version_checks():
     # 30 s: a package's first launch is checked by macOS first, which took over 10 s once
     # while an APK build loaded the Mac (0.2.100).
     r = subprocess.run([BIN, "--version"], capture_output=True, text=True, timeout=30)
-    want = bundle_version() or "development build"
+    # On Linux every build is stamped with VERSION at build time (core/cmd/lib/update_linux.go);
+    # on the Mac only a bundle is, by its Info.plist.
+    want = open(os.path.join(ROOT, "VERSION")).read().strip() if LINUX else bundle_version() or "development build"
     check("--version prints the version and exits", r.returncode == 0 and re.fullmatch(rf"Project B {re.escape(want)}, Chromium [0-9.]+\n", r.stdout) is not None, (r.returncode, r.stdout))
 
 
