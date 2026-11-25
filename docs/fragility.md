@@ -113,7 +113,13 @@ The seams:
   Linux with its keyring locked; the Linux runs of `passkey-settings.cjs` and
   `password-settings.cjs` for the line and its Learn more. The mock's check now answers as
   Linux's does. Seen to fail without the fix, the mock run with the very card: "Set a
-  password first".
+  password first". Checked on GNOME (Ubuntu 24.04, Wayland, the keyring locked after an
+  automatic login) by the Linux session, 2026-11-25, on a build of cc0a2c43 with a listed
+  profile: Save brings the desktop's own question to unlock the keyring, and once it is
+  unlocked the passkey is made with nothing more asked; a press on the passkey's row signs
+  in at once; and Settings' two lines read as written, their Learn more opening the help
+  page's address. The Linux headless run saves and signs in too
+  (`tools/drive_first_app.py`'s passkey part, on a folder with a key of its own).
 
 ## A page's field typed into as Gboard comes up, 2026-11-25
 
