@@ -200,11 +200,11 @@
     "name": "Leave this page?",
     "api": "beforeunload",
     "delegate": "JavaScriptDialogManager::RunBeforeUnloadDialog",
-    "status": {"mac": "partly", "linux": "partly", "android": "partly"},
-    "why": "Leaving the page asks Leave site?; closing its tab goes without asking",
+    "status": {"mac": "works", "linux": "works", "android": "works"},
+    "why": "Leaving the page or closing its tab asks Leave site?, as Chrome does",
     "owner": "engine/browser/dialogs.cc:Dialogs::RunBeforeUnloadDialog",
     "needs": ["delegate"],
-    "test": ["basics:1"]
+    "test": ["basics:1", "check:drive_first_app leave", "check:drive_android leave"]
   },
   {
     "id": "file-input",
