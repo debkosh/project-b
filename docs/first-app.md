@@ -221,11 +221,15 @@ writes it to `timeline.log` in the profile and keeps it in memory for
 While the app runs, `crash.log` in the profile (`~/.project-b/default/` unless
 `--user-data-dir` names another) starts with the process id (`core/crash`). A clean stop
 deletes it, so one found at the next start means the last run crashed, whatever crashed;
-a force quit counts too. On Android 11 and later Go first asks why that process ended
-(`ExitReason`, the engine's `exit_reason`, ApplicationExitInfo): Android ends an app in
-the background when it wants the memory, or when it's swiped away, and leaves crash.log
-as a crash would. Only a crash, a native crash or not responding are told then; any other
-reason goes in the timeline, and crash.log with it. Go renames it `crash-<yyyy-mm-dd-hhmmss>.log`, the time it was
+a force quit counts too. On Android Go first asks why that process ended (`ExitReason`,
+the engine's `exit_reason`): Android ends an app in the background when it wants the
+memory, when it's swiped away or stopped from its app info, and leaves crash.log as a
+crash would. Android 11 and later keep the reason (ApplicationExitInfo). Before 11, or
+when Android lost it, as after the phone lost its power, the app's own crash log says:
+Android writes a crash there as the process dies, Java's FATAL EXCEPTION or a native
+signal, Go's abort among them, and nothing when it ends one. Only a crash, a native crash
+or not responding are told then; any other reason, and no crash logged, goes in the
+timeline, and crash.log with it. Go renames it `crash-<yyyy-mm-dd-hhmmss>.log`, the time it was
 last written, and the shell shows a notice over the page's top-left corner, wrapped so
 both paths show whole: "Project B crashed last time. The log is at" that file, "macOS's
 report at" macOS's report of that process, with a close button, which sends

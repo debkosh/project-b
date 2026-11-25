@@ -125,13 +125,14 @@ func TestAChildProcessCrashIsALineAndNoNotice(t *testing.T) {
 }
 
 // A crash.log Android's reason says was no crash, as a background app ended for memory or
-// one swiped away, is no crash: no notice, and the log goes. A crash, a native crash or
-// not responding still is, as is a reason Android doesn't keep.
+// one swiped away, or with no reason kept, no crash in Android's crash log, is no crash:
+// no notice, and the log goes. A crash, a native crash or not responding still is, as is
+// a run the system says nothing of, as a desktop doesn't.
 func TestAProcessTheSystemEndedIsNoCrash(t *testing.T) {
 	for _, c := range []struct {
 		why     string
 		crashed bool
-	}{{"low memory", false}, {"user requested", false}, {"other", false}, {"crash", true}, {"native crash", true}, {"not responding", true}, {"", true}} {
+	}{{"low memory", false}, {"user requested", false}, {"other", false}, {"no crash logged", false}, {"crash", true}, {"native crash", true}, {"not responding", true}, {"", true}} {
 		dir := t.TempDir()
 		if err := os.WriteFile(filepath.Join(dir, "crash.log"), []byte("pid 4242, started 2026-11-18 20:43:59\n"), 0o600); err != nil {
 			t.Fatal(err)

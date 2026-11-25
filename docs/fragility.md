@@ -789,9 +789,31 @@ The seams:
 - **Fix:** on dd-exit-reason: at the next start Go asks Android why the process crash.log
   names ended (ApplicationExitInfo, Android 11 and later, `ExitReason`). Only a crash, a
   native crash or not responding bring the notice; other reasons go in the timeline, and
-  crash.log with them. Before 11 it stays as it was.
+  crash.log with them. Before 11 it stayed as it was, until the entry below.
 - **Guard:** drive_android's crash_notice: Android ending the app in the background and a
   swipe-away bring no notice, a native crash of the app's process does; and
+  `TestAProcessTheSystemEndedIsNoCrash` in core/crash.
+
+## The crash notice after a Force stop on Android 10, 2026-11-25
+
+- **Seen:** on the Android 10 emulator, "Project B crashed last time" at the start after
+  each `am force-stop`. The kept logs held only their first line, "pid N, started …": no
+  panic, no signal. Android 17 told the same stops as "user requested", and showed no
+  notice, except at the first start after the emulator itself was stopped hard.
+- **Cause:** the fix above asks Android why the process ended, and Android 10 keeps no
+  reasons: with none, a crash.log left behind was told as a crash. So on Android 10 every
+  background memory kill, swipe-away and Force stop brought the notice, and on 11 and
+  later a run that ended with the phone's power, as Android keeps no reason then either.
+- **Seam:** Android's process lifecycle, as above, on a version that keeps no record of it.
+- **Fix:** on android-crash-evidence: where Android keeps no reason, `ExitReasons` reads
+  the app's own crash log (`logcat -b crash --pid`), where Android writes a crash as the
+  process dies, Java's FATAL EXCEPTION or a native signal, Go's abort among them (a Go
+  library aborts on a fatal error), and nothing when it ends one. None there is "no crash
+  logged", no crash. A desktop keeps its rule: a native crash there leaves only crash.log's
+  first line, so a rule of "only a log with a panic in it" would hide those.
+- **Guard:** drive_android's crash_notice runs on every Android now: Android ending the
+  app in the background and a Force stop, and a swipe-away from 14, bring no notice, each
+  only once the process has gone; a native crash still brings it. And
   `TestAProcessTheSystemEndedIsNoCrash` in core/crash.
 
 ## The back key out of Settings, 2026-11-19

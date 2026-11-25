@@ -6,9 +6,12 @@
 // time it was last written, so no crash overwrites another, and the shell is told where
 // it is and where macOS put its own report of that process. Unless the system says that
 // process ended for its own reasons: Android ends an app in the background when it wants
-// the memory, or when it's swiped away, and leaves crash.log as a crash would. Only a
-// crash, a native crash or not responding are crashes then; any other reason goes in the
-// timeline, and crash.log with it.
+// the memory, when it's swiped away or stopped from its app info, and leaves crash.log as
+// a crash would. Only a crash, a native crash or not responding are crashes then; any other
+// reason goes in the timeline, and crash.log with it. Where Android keeps no reason, before
+// 11 or after the phone lost its power, its crash log says whether that process crashed.
+// A desktop says nothing, and there a crash.log left is a crash: a native one leaves
+// nothing in it but its first line.
 //
 // A child process that crashes is one line in crashes.log, which is kept.
 package crash
