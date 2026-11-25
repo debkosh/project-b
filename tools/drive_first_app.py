@@ -1756,6 +1756,9 @@ def popup_checks():
         opened = True
     except TimeoutError:
         opened = False
+    deadline = time.time() + 10
+    while opened and "127.0.0.1/popped-tapped" not in Pages.seen and time.time() < deadline:
+        time.sleep(0.05)
     check("a tab a real click opens, opens", opened and "127.0.0.1/popped-tapped" in Pages.seen, (app.js(ROWS), Pages.seen[-4:]))
     if opened:
         app.cmd("key", "cmd+w")
@@ -1812,6 +1815,10 @@ def popup_checks():
         allowed = True
     except TimeoutError:
         allowed = False
+    # Its row shows a moment before its page's request reaches the test server.
+    deadline = time.time() + 10
+    while allowed and untapped not in Pages.seen and time.time() < deadline:
+        time.sleep(0.05)
     check("with the site's Pop-ups at Allow, the pop-up opens", allowed and untapped in Pages.seen, (app.js(ROWS), Pages.seen[-4:]))
     app.close()
 
