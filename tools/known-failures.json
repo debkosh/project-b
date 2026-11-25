@@ -5,12 +5,6 @@
    "group": "basics",
    "match": ".*",
    "why": "The basics are a map of what isn't built yet; most fail on purpose. Their count of checks passed is compared instead."
-  },
-  {
-   "group": "android",
-   "match": "it covers the whole screen, with nothing of the shell or Android's bars on it",
-   "test": "emu-29",
-   "why": "Android 10 keeps its bars over a page in full screen."
   }
  ]
 }

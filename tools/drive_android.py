@@ -281,13 +281,16 @@ PAGES["/camera"] = ("<title>Camera</title><button id=c style='position:fixed;ins
                     ".then((v) => fetch('/said?camera=' + encodeURIComponent(v)));</script>")
 
 
-# A page that fills the screen at a tap, as a video's full screen does, and says when it has.
+# A page that fills the screen at a tap, as a video's full screen does, and says when it has
+# and how big it is then, in device pixels. Its one colour is the screen's wherever it shows.
 # A file input over the whole page, which says which file it got, or that the picker closed.
 PAGES["/upload"] = ("<title>Upload</title><input type=file id=f style='position:fixed;inset:0;width:100%;height:100%;opacity:0'><script>"
                     "f.onchange = () => fetch('/said?file=' + encodeURIComponent([...f.files].map(x => x.name + ':' + x.size).join(',')));"
                     "f.oncancel = () => fetch('/said?cancelled');</script>")
-PAGES["/full"] = ("<title>Full</title><button id=f style='position:fixed;inset:0;width:100%;height:100%;font-size:40px'>full</button><script>"
-                  "f.onclick = () => document.documentElement.requestFullscreen().then(() => fetch('/full-on'));"
+PAGES["/full"] = ("<title>Full</title><button id=f style='position:fixed;inset:0;width:100%;height:100%;font-size:40px;border:0;background:#2e9d5b;color:#fff'>full</button><script>"
+                  "const size = () => document.fullscreenElement && fetch('/full-size?' + Math.round(visualViewport.width * devicePixelRatio) + 'x' + Math.round(visualViewport.height * devicePixelRatio));"
+                  "f.onclick = () => document.documentElement.requestFullscreen().then(() => fetch('/full-on')).then(size);"
+                  "visualViewport.onresize = size;"
                   "document.onfullscreenchange = () => document.fullscreenElement || fetch('/full-off');</script>")
 
 
@@ -1657,10 +1660,19 @@ def page_full_screen():
     before = box(see("page", text="full"))
     tap(middle(see("page", text="full")))
     check("a page's requestFullscreen is granted", asked("/full-on"), str(served))
+    # Not by the page's box in Android's tree: on Android 10 uiautomator cuts every box at the
+    # bottom of the screen less the navigation bar, even with the bar hidden and the page
+    # drawn there. The page says its own size, and the screen's top and bottom rows show
+    # its colour, not a bar's or the shell's.
     width, height = screen_size()
-    covers = until(lambda: find("shell", label="Menu") is None and (lambda b: b[1] == 0 and b[3] == height and b[2] == width)(box(see("page", text="full"))), 10)
+    sizes = lambda: [tuple(map(int, s.split("?")[1].split("x"))) for s in served if s.startswith("/full-size?")]
+    whole = lambda: bool(sizes()) and all(abs(a - b) <= 2 for a, b in zip(sizes()[-1], (width, height)))
+    green = lambda c: all(abs(a - b) < 10 for a, b in zip(c, (0x2e, 0x9d, 0x5b)))
+    edges = lambda: [pixel_at(x, y) for x in (2, width // 2, width - 3) for y in (2, height - 3)]
+    covers = until(lambda: find("shell", label="Menu") is None and whole() and all(map(green, edges())), 10)
     check("it covers the whole screen, with nothing of the shell or Android's bars on it", covers is not None,
-          "%s on a %dx%d screen" % (box(see("page", text="full")), width, height))
+          "the page says %s, the screen's corners and edges are %s, on a %dx%d screen"
+          % (sizes()[-1:] or "nothing of its size", edges(), width, height))
     shot("30-full-screen")
     served.clear()
     key(4)
