@@ -85,6 +85,23 @@ The seams:
   for another OS. Two so far: saved passwords Linux couldn't show, passkeys Linux couldn't
   save.
 
+## Test builds that updated themselves mid-run, 2026-11-26
+
+- **Seen:** once Stable 0.3.11 was out, drive runs of branches that sat before the 0.3.11
+  bump failed steadily on every emulator. downloads' "a tap on the notification opens the
+  file" landed on the app, then "the app is gone"; keyboard_bars and page_full_screen read
+  the page 170 px short. Main's APK passed the same parts.
+- **Cause:** a test build is a release to the updater, by VERSION. One older than the
+  published release found it at its first check, a minute in, and downloaded it. Its
+  notification sat beside the download's, Android grouped them, and the tap opened the
+  group's summary, whose Back left the app; Mobile's update bar took 64 px of the page.
+- **Seam:** the drive and the real release manifest: a test build checks the live channel.
+- **Fix:** drive_android's clear_data turns the app's automatic updates off after each data
+  clear, as a person can in Settings (the updater's settings.json, auto_update false).
+  update_on_the_phone clears the data itself, so it still updates as a new profile does.
+- **Guard:** with that, downloads passed 14 of 14 twice with a 0.3.10 APK on Android 14,
+  where it failed every time before.
+
 ## A Dev build that never started, 2026-11-26
 
 - **Seen:** the first Dev build on Chromium 158, 0.3.11-dev.202611250935, ended at every
