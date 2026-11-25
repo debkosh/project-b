@@ -136,6 +136,23 @@ tools/package.sh android
 # pattern gives every target, for the updater. An APK is a zip.
 cp build/android/project-b-content.apk "$DIST/Project-B-$VERSION.apk"
 cp build/android/project-b-content.apk "$DIST/Project-B-$VERSION-android-arm64.zip"
+# Nothing goes up that wasn't installed and started first: the exact signed APK, fresh, on each
+# emulator in PB_LAUNCH_EMULATORS (emu-16k and emu-29 by default), up 30 s after its start, and
+# the exact DMG installed in the VM and its window checks run. On 2026-11-26 a Dev APK that
+# aborted at every start was published, since every gate had run another build of it. The
+# emulators and the VM are the tester's: this waits for the go-launch file the tester touches,
+# with no way round it. The Linux Flatpak gets the same from flatpak-release.sh's restart check.
+LAUNCH=${PB_LAUNCH_DIR:-$HOME/PW_TOOLS/project-b-release/launch-$VERSION}
+mkdir -p "$LAUNCH"
+echo "=== $(date '+%F %T') launch check: waiting for $LAUNCH/go-launch from the tester"
+until [ -f "$LAUNCH/go-launch" ]; do sleep 30; done
+for serial in ${PB_LAUNCH_EMULATORS:-emulator-5602 emulator-5604}; do
+  python3 tools/launch_check_android.py "$serial" "$DIST/Project-B-$VERSION.apk" ||
+    { echo "RESULT=failed the APK doesn't stay up on $serial; nothing was published"; exit 1; }
+done
+tools/vm/run.sh "$DIST/Project-B-$VERSION.dmg" windows > "$LAUNCH/vm.txt" 2>&1 ||
+  { tail -20 "$LAUNCH/vm.txt"; echo "RESULT=failed the DMG in the VM ($LAUNCH/vm.txt); nothing was published"; exit 1; }
+echo "=== $(date '+%F %T') launch check passed; the emulators and the VM are the tester's again"
 # amarit publish keeps both channels' manifest on the channels pre-release, making it the first
 # time from the Stable release published last, which is where copies from before channels read.
 CODE=$(amarit version-code "$VERSION")
