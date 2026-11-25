@@ -139,6 +139,20 @@ would meet again became a step of the script or a fix in the tool it called:
 `web_features_bump.py` on 158 found no missing interface and no gone name, and 17 new
 delegate methods, which the web features session takes to him as rows.
 
-Still to do: Android and Linux build in container `pb` from its own tree, `/work/chromium`,
-still at 155, and `engine/` now compiles against 158 only. Until that tree moves, main can
-build one side or the other, not both, and `tools/release.sh` builds both.
+Then Android and Linux, in container `pb`'s own tree, `/work/chromium`:
+
+- Android: Kotlin's stdlib is `//third_party/android_deps:kotlin_stdlib_java`, and
+  `ResourceBundle.setNoAvailableLocalePaks` is gone. On 158, EyeDropper and WebHID are there,
+  both quiet, so the registry has them; `web_features_bump.py` compares the Mac's delegates
+  only, so the Android drive found them.
+- The container fetch's `gclient runhooks` hung for 8 hours, its python under Rosetta in a
+  mutex: each try gets 30 minutes now, up to 3.
+- Linux: `aura::Window::GetName` gives a `string_view`, and `gfx::ToRoundedSize` needs
+  `size_conversions.h`. A page making a passkey killed the app: WebAuthn's Bluetooth check
+  reached `BluezDBusManager::Get` before anything made it, and the engine now brings it up
+  as content shell does.
+- The headless Linux run's other failures weren't 158's but the driver's, met for the first
+  time on Linux: Tab ran out inside the shell, which ends with the window's own buttons there;
+  Cmd+[ and a Cmd-click are the Mac's; the Linux driver's menu read a submenu as off and
+  didn't fill lists when choosing. The Mac-only checks it still runs there (osascript,
+  launchctl, the Dock, deskrig) fail on Linux as before.
