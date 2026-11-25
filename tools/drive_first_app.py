@@ -2937,10 +2937,10 @@ def passkey_checks():
     settle()
     title("t.startsWith('refused')")
     # Save: the card goes while macOS asks the person, and the page going elsewhere takes
-    # the request, and macOS's sheet with it, back. Linux has no person check of its own
-    # for our passkeys yet.
+    # the request, and macOS's sheet with it, back. Linux asks nothing at Save: its
+    # passkey is made at the press, checked at the part's end, where it changes nothing else.
     if not MAC:
-        print("skip Save with our own passkey (the Mac's person check)", flush=True)
+        print("skip Save takes the card away while macOS checks the person (Linux's Save is at the end)", flush=True)
     else:
         app.js("make('ada')", page=True)
         card("Create a passkey")
@@ -3035,6 +3035,25 @@ def passkey_checks():
     made = title("t.startsWith('made ')||t.startsWith('refused')")
     check("with the virtual key's UI off, a passkey is made with no card", made.startswith("made ") and not app.js(f"!!{CARD}"), made)
     s.close()
+    if LINUX:
+        # Save on Linux, in a profile of its own, with no virtual key: nothing asks the person,
+        # as for a saved password (docs/passkeys.md), so the press makes the passkey and its
+        # row signs in with it. A folder named outright keeps its key beside it and never asks
+        # the keyring (core/keys), so the keyring's own card is the mock's to check.
+        app.close()
+        app = App(tempfile.mkdtemp(prefix="pb-profile-"))
+        visit(app, url)
+        app.js("make('lin')", page=True)
+        card("Create a passkey")
+        pressed = button("Save")
+        made = title("t.startsWith('made ')||t.startsWith('refused')")
+        check("on Linux, Save makes the passkey at the press, asking nothing", pressed and made.startswith("made ") and gone(), (made, app.js(TITLE)))
+        app.js("use()", page=True)
+        check("and signing in offers it", card("Sign in to localhost"), app.js(TITLE))
+        pressed = press(f"{ROWS_}[0]", "the passkey's row")
+        used = title("t.startsWith('used ')||t.startsWith('refused')")
+        check("its row signs in with it, asking nothing", pressed and used == "used lin", (used, app.js(TITLE)))
+        gone()
     app.close()
 
 
