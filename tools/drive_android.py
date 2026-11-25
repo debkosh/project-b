@@ -980,11 +980,18 @@ def profile_file(name, data):
     adb("push", local, folder + "/" + name)
     owner = adb("shell", "stat", "-c", "%u:%g", "/data/data/" + PACKAGE).strip()
     adb("shell", "chown", "-R", owner, "/data/data/%s/app_project_b" % PACKAGE)
-    # And its SELinux label, the app's category: a push over a file kept the label of the
+    # And its SELinux label, the app's categories: a push over a file kept the label of the
     # install that made it, and after an uninstall and install (an upgrade check's) the new
     # app was denied its own bookmarks.json and prefs.json, with no table made and nothing
-    # bookmarked, until a reboot relabelled them (2026-11-23).
-    adb("shell", "restorecon", "-RF", "/data/data/%s/app_project_b" % PACKAGE)
+    # bookmarked, until a reboot relabelled them (2026-11-23). The label is the app's data
+    # folder's, which the system keeps right. restorecon looks the categories up instead, and
+    # on emu-16k it gave an earlier install's: the app was denied the files it was given, and
+    # bookmark_star's folders never came (2026-11-26). ls -Z, not stat -c %C: Android 10's
+    # stat prints "?" for it, and chcon to that left the folder unlabeled and the app aborting.
+    label = adb("shell", "ls", "-Zd", "/data/data/" + PACKAGE).split()[0]
+    if not label.startswith("u:object_r:"):
+        raise RuntimeError("the app's data folder has no label to copy: " + label)
+    adb("shell", "chcon", "-R", label, "/data/data/%s/app_project_b" % PACKAGE)
 
 
 def profile_json(name):
