@@ -364,8 +364,8 @@
     "name": "Eye dropper",
     "api": "new EyeDropper().open()",
     "delegate": "WebContentsDelegate::OpenEyeDropper",
-    "status": {"mac": "quiet", "android": "absent"},
-    "why": "On Mac it's there, but no dropper opens; not on Android",
+    "status": {"mac": "quiet", "android": "quiet"},
+    "why": "It's there, but no dropper opens; on Android since Chromium 158",
     "needs": ["stay-off"],
     "probe": [{"name": "eyeDropper", "call": "new EyeDropper().open()"}],
     "test": ["probe:eyeDropper"]
@@ -499,8 +499,8 @@
     "name": "WebHID",
     "api": "navigator.hid",
     "delegate": "ContentBrowserClient::GetHidDelegate",
-    "status": {"mac": "quiet", "android": "absent"},
-    "why": "On Mac there is no HID delegate, so no device is listed; not on Android",
+    "status": {"mac": "quiet", "android": "quiet"},
+    "why": "There is no HID delegate, so no device is listed; on Android since Chromium 158",
     "needs": ["stay-off"],
     "probe": [{"name": "hid", "call": "navigator.hid.getDevices()"}],
     "test": ["probe:hid"]
