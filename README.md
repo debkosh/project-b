@@ -41,7 +41,7 @@ ours.
                   |  one engine interface (core/engine, a plain C ABI)
     +-----------------------------+   +-------------------------+
     |  C++ adapter      engine/   |   |  Mock engine            |
-    |  Chromium 155 content       |   |  core/mockengine        |
+    |  Chromium 158 content       |   |  core/mockengine        |
     |  layer, unpatched           |   |  for development, tests |
     +-----------------------------+   +-------------------------+
 

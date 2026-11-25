@@ -61,11 +61,14 @@ the build is incremental). The end is `RESULT=ok <version>` and `git status` of 
 ### The version lives in one file
 
 `CHROMIUM_VERSION` at the root, one line, as `VERSION` is for the app. The fetch scripts,
-`fetch-extensions.sh`, `drive_chromedriver.py`, `package.sh`'s bundle version, the README and
+`fetch-extensions.sh`, `drive_chromedriver.py`, `package.sh`'s bundle version and
 `requirements.prompt` read it; `android-content-fetch.sh` is given it by its caller (`TAG=`).
 `tools/build.sh` stops when the tree's `chrome/VERSION` is another version, which is what keeps
 the one place true. The generated hooks' headers carry the version gen_hooks.py read; docs
 that record a past measurement keep theirs.
+The README's architecture diagram writes the major by hand ("Chromium 158 content"):
+`tools/test.sh mock` fails until it names `CHROMIUM_VERSION`'s major, after 0.3.11 shipped with
+the README still saying 155.
 
 ### What it does, for mac
 

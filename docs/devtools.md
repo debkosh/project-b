@@ -1,9 +1,10 @@
 # DevTools remote debugging
 
-The app opens Chrome's DevTools endpoint the way Chrome 155 does, so tools built for
+The app opens Chrome's DevTools endpoint the way Chrome does, at the Chromium in `CHROMIUM_VERSION`, so tools built for
 Chrome drive it unchanged: Google's ChromeDriver, Puppeteer, anything speaking CDP. We
 invent nothing here; where we differ from Chrome it is said below, with the reason.
-`tools/drive_chromedriver.py` proves it with ChromeDriver 155.0.8059.41.
+`tools/drive_chromedriver.py` proves it with the ChromeDriver of that version, which
+`tools/fetch-test-tools.sh` fetches.
 
 ## Switches
 
@@ -19,7 +20,7 @@ one, it opens on any profile, the default `~/.project-b/default` included. Chrom
 and later refuse the default profile; we add no check of our own (the reference browser
 doesn't refuse it either, below).
 
-`GetProduct` answers `Chrome/155.0.8059.41`, as Chrome does. `/json/version` and
+`GetProduct` answers `Chrome/<CHROMIUM_VERSION>` (`Chrome/158.0.8127.89` today), as Chrome does. `/json/version` and
 `Browser.getVersion` show it and ChromeDriver reads the version from it. It also reaches
 `chrome://gpu` and the GPU process. It is not the user agent: pages still get
 `GetUserAgent`'s.
