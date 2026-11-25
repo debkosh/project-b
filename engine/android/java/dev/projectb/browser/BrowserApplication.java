@@ -2,7 +2,10 @@ package dev.projectb.browser;
 
 import android.app.Application;
 import android.content.Context;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 
+import org.chromium.base.ApkInfo;
 import org.chromium.base.ApplicationStatus;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.PathUtils;
@@ -21,6 +24,9 @@ public final class BrowserApplication extends Application {
     protected void attachBaseContext(Context base) {
         super.attachBaseContext(base);
         ContextUtils.initApplicationContext(this);
+        // The browser process alone: a child takes the browser's (ApkInfo), and a renderer,
+        // isolated, can't ask Android for packages.
+        if (isMainProcess()) chromiumVersion(base);
         LibraryLoader.getInstance()
                 .setLibraryProcessType(
                         isMainProcess()
@@ -29,6 +35,23 @@ public final class BrowserApplication extends Application {
         if (isMainProcess()) {
             PathUtils.setPrivateDataDirectorySuffix("project_b");
             ApplicationStatus.initialize(this);
+        }
+    }
+
+    // On Android Chromium takes its own version from the app's versionName, which is ours,
+    // such as 0.3.11-dev.202611250935: it read as no version, and from Chromium 158 the user
+    // agent's first build indexed its empty parts and aborted every start of a Dev build; a
+    // Stable's read as version 0, and sites were told Chrome/0.0.0.0 (docs/fragility.md, "A
+    // Dev build that never started"). So Chromium is handed the app's own package with
+    // Chromium's version in it, as WebView hands it its own, before it first reads it.
+    // Android, and so Settings and the updater, keep ours.
+    private static void chromiumVersion(Context base) {
+        try {
+            PackageInfo own = base.getPackageManager().getPackageInfo(base.getPackageName(), 0);
+            own.versionName = ChromiumVersion.VERSION;
+            ApkInfo.setBrowserPackageInfo(own);
+        } catch (PackageManager.NameNotFoundException e) {
+            throw new IllegalStateException(e);
         }
     }
 

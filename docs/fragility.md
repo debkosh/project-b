@@ -85,6 +85,30 @@ The seams:
   for another OS. Two so far: saved passwords Linux couldn't show, passkeys Linux couldn't
   save.
 
+## A Dev build that never started, 2026-11-26
+
+- **Seen:** the first Dev build on Chromium 158, 0.3.11-dev.202611250935, ended at every
+  start on every Android: on a phone after it updated, and on the Android 14 and 16
+  emulators from a fresh install. Android said the app "closed because this app has a bug".
+  The test builds of the same code, which every drive ran, started.
+- **Cause:** on Android Chromium takes its own version from the app's versionName
+  (`version_info::GetVersionNumber()` is `apk_info::package_version_name()`), and ours is
+  the release, from VERSION. A Dev build's, "0.3.11-dev.…", is no version to
+  `base::Version`, so it has no parts, and the user agent's first build, for the first
+  page's network context, took part 0 of none: from 158 libc++'s hardening ends the process
+  there. A test build's "0.3.10" read as version 0, so every Android build told sites it was
+  Chrome/0.0.0.0, and Sec-CH-UA "Chromium";v="0".
+- **Seam:** Chromium and the embedder: a value of Chromium's own that Android Chromium reads
+  from the app, which assumes the app is Chrome.
+- **Fix:** on android-chromium-version: the build writes Chromium's version, from
+  //chrome/VERSION, into `ChromiumVersion`, and `BrowserApplication` hands Chromium the app's
+  own package with that version in it (`ApkInfo.setBrowserPackageInfo`, as WebView hands it
+  its own) before Chromium first reads it. Android keeps ours for Settings and the updater.
+- **Guard:** drive_android's browsing checks that a page is told Chrome/ and the major in
+  CHROMIUM_VERSION. The published APK never ran anywhere before it went out: the release
+  installs and starts it on an emulator before publishing it, as no test build carries a
+  release's version.
+
 ## Passkeys Linux couldn't save, 2026-11-25
 
 - **Seen:** by the Linux session, in the headless run of the Chromium 158 stack. A page

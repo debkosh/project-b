@@ -5,6 +5,7 @@ import("//build/config/android/config.gni")
 import("//build/config/android/rules.gni")
 import("//project_b/engine/flags.gni")
 import("//project_b/engine/sources.gni")
+import("//build/util/process_version.gni")
 import("//third_party/jni_zero/jni_zero.gni")
 import("//tools/grit/repack.gni")
 
@@ -280,9 +281,21 @@ android_aar_prebuilt("zxing_embedded_java") {
   ]
 }
 
+_chromium_version_java = "$target_gen_dir/java/dev/projectb/browser/ChromiumVersion.java"
+
+# Chromium's version for Java, from //chrome/VERSION, as base's VersionConstants is made:
+# BrowserApplication hands it to Chromium in place of the app's versionName.
+process_version("chromium_version_constant") {
+  process_only = true
+  template_file = "java/ChromiumVersion.java.version"
+  sources = [ "//chrome/VERSION" ]
+  output = _chromium_version_java
+}
+
 android_library("java") {
   resources_package = "dev.projectb.browser"
   deps = [
+    ":chromium_version_constant",
     ":resources",
     "//base:base_java",
     "//base:process_launcher_java",
@@ -325,6 +338,7 @@ android_library("java") {
     "java/dev/projectb/browser/GoSystem.java",
     "java/dev/projectb/browser/Passkeys.java",
     "java/dev/projectb/browser/Printing.java",
+    _chromium_version_java,
   ]
 }
 
