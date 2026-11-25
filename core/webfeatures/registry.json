@@ -270,11 +270,10 @@
     "id": "popup-block",
     "name": "Pop-up blocking",
     "api": "window.open() without a click",
-    "delegate": "ContentBrowserClient::CanCreateWindow",
-    "status": {"mac": "partly", "linux": "partly", "android": "partly"},
-    "why": "Pop-ups open, but nothing blocks one without a click as Chrome does",
-    "needs": ["delegate"],
-    "test": ["basics:6"]
+    "delegate": "WebContentsDelegate::AddNewContents",
+    "status": {"mac": "works", "linux": "works", "android": "works"},
+    "why": "A tab a page opens with no tap first is blocked and counted in the address field, with Open it, unless the site's Pop-ups is set to Allow",
+    "test": ["basics:6", "check:drive_first_app popups", "check:drive_android popups"]
   },
   {
     "id": "fullscreen",
