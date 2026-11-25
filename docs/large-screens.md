@@ -69,8 +69,14 @@ back. It works the same on a Mac with a touch screen, so it is Standard's, not A
 
 - **Hover and the wheel go by Go's regions**, as touches do: over a shell region to the shell,
   otherwise to the page. `ShellHolder` answers generic motion as it answers a finger.
-- **A right click** opens the context menu the shell draws for a mouse, not the long-press
-  sheet, by the event's source.
+- **A right click opens the menu the window's layout has, whatever the input** (ux,
+  2026-11-25). In Standard that is the menu at the pointer, which a long press opens too. In
+  Mobile, which a narrow window gets, it is the sheet a long press opens: a narrow window is
+  laid out as a phone, and a second menu in both Mobile shells for a rare case isn't worth it.
+  So the two differ on purpose; neither is to be made to match the other. With a mouse the
+  sheet closes on Esc and on a click outside it, its rows show the Hover state
+  ([design-system.md](design-system.md)) and take a click, and the right click opens it once,
+  starting no selection, drag or menu of the page's own.
 - **Pointer shapes** (the hand over a link, the text bar) come from content, as on the Mac.
 - **Pinch on a touchpad** zooms the page, as content already does.
 
