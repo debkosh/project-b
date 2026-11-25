@@ -70,7 +70,7 @@ body {
 
 h1 {
   margin: 0 0 16px;
-  font-size: 16px;
+  font-size: calc(16rem / 16);
   font-weight: 600;
 }
 

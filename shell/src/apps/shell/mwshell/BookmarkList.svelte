@@ -74,7 +74,7 @@
     border: 0;
     background: none;
     color: var(--muted);
-    font-size: 14px;
+    font-size: calc(14rem / 16);
   }
 
   .trail button.here {
@@ -136,7 +136,7 @@
 
   .title {
     color: var(--text);
-    font-size: 15px;
+    font-size: calc(15rem / 16);
   }
 
   .row > .title {
@@ -147,7 +147,7 @@
   .host,
   .count {
     color: var(--muted);
-    font-size: 12px;
+    font-size: calc(12rem / 16);
   }
 
   .empty {

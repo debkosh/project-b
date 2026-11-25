@@ -150,9 +150,9 @@ watch(menu, (on) => {
   border-radius: 3px;
   background: var(--accent);
   color: var(--on-accent);
-  font-size: 9px;
+  font-size: calc(9rem / 16);
   font-weight: 600;
-  line-height: 12px;
+  line-height: calc(12rem / 16);
   text-align: center;
   white-space: nowrap;
   pointer-events: none;
@@ -197,7 +197,7 @@ watch(menu, (on) => {
   background: none;
   color: var(--text);
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13rem / 16);
   text-align: left;
   cursor: pointer;
 }
@@ -234,7 +234,7 @@ watch(menu, (on) => {
   margin: 0;
   padding: 8px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: calc(13rem / 16);
 }
 
 .pbx-line {

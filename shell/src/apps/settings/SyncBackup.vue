@@ -255,7 +255,7 @@ onUnmounted(() => {
   display: block;
   margin-bottom: 4px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
   font-weight: 400;
 }
 
@@ -270,7 +270,7 @@ onUnmounted(() => {
   border-radius: 8px;
   background: var(--surface-2, var(--surface));
   font:
-    600 20px/28px ui-monospace,
+    600 calc(20rem / 16)/28px ui-monospace,
     SFMono-Regular,
     Menlo,
     monospace;
@@ -293,7 +293,7 @@ onUnmounted(() => {
 .code.making {
   color: var(--muted);
   font:
-    400 13px/28px system-ui,
+    400 calc(13rem / 16)/28px system-ui,
     sans-serif;
   letter-spacing: 0;
 }
@@ -315,7 +315,7 @@ onUnmounted(() => {
   font-variant-numeric: slashed-zero;
   color: var(--muted);
   font:
-    12px/16px ui-monospace,
+    calc(12rem / 16)/16px ui-monospace,
     SFMono-Regular,
     Menlo,
     monospace;
@@ -360,7 +360,7 @@ onUnmounted(() => {
 
 .touch .text-field.scanned {
   padding-right: 48px;
-  font-size: 14px;
+  font-size: calc(14rem / 16);
 }
 
 .typed {

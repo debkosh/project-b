@@ -261,7 +261,7 @@
     border-radius: 12px;
     background: none;
     color: var(--muted);
-    font-size: 14px;
+    font-size: calc(14rem / 16);
     font-weight: 500;
   }
 
@@ -319,7 +319,7 @@
     border: 0;
     background: none;
     color: var(--text);
-    font-size: 13px;
+    font-size: calc(13rem / 16);
     font-weight: 500;
   }
 
@@ -385,7 +385,7 @@
     background: none;
     color: var(--text);
     font: inherit;
-    font-size: 14px;
+    font-size: calc(14rem / 16);
   }
 
   .search input::placeholder {
@@ -481,7 +481,7 @@
     white-space: nowrap;
     text-overflow: ellipsis;
     color: var(--text);
-    font-size: 13px;
+    font-size: calc(13rem / 16);
     font-weight: 500;
   }
 
@@ -549,8 +549,8 @@
     white-space: nowrap;
     text-overflow: ellipsis;
     color: var(--muted);
-    font-size: 12px;
-    line-height: 28px;
+    font-size: calc(12rem / 16);
+    line-height: calc(28rem / 16);
   }
 
   button:focus-visible {

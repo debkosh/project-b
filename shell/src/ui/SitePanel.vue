@@ -178,14 +178,14 @@ onUnmounted(() => pop());
 
 .ui-site-host {
   margin: 0;
-  font-size: 14px;
+  font-size: calc(14rem / 16);
   font-weight: 600;
   overflow-wrap: anywhere;
 }
 
 .ui-site-note {
   margin: 2px 0 0;
-  font-size: 12px;
+  font-size: calc(12rem / 16);
   color: var(--muted);
 }
 
@@ -197,7 +197,7 @@ onUnmounted(() => pop());
 .ui-site-label {
   margin: 0;
   padding: 8px 16px 2px;
-  font-size: 11px;
+  font-size: calc(11rem / 16);
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -210,7 +210,7 @@ onUnmounted(() => pop());
   gap: 12px;
   min-height: 40px;
   padding: 4px 16px;
-  font-size: 13px;
+  font-size: calc(13rem / 16);
 }
 
 /* A control that doesn't fit beside its label wraps under it, the gap only then. */
@@ -227,7 +227,7 @@ onUnmounted(() => pop());
   background: none;
   color: var(--accent);
   font: inherit;
-  font-size: 12px;
+  font-size: calc(12rem / 16);
   cursor: pointer;
 }
 
@@ -239,12 +239,12 @@ onUnmounted(() => pop());
 }
 
 .ui-site-text small {
-  font-size: 12px;
+  font-size: calc(12rem / 16);
   color: var(--muted);
 }
 
 .ui-site-value {
-  font-size: 12px;
+  font-size: calc(12rem / 16);
   color: var(--muted);
 }
 
@@ -263,7 +263,7 @@ onUnmounted(() => pop());
   gap: 8px;
   border-top: 1px solid var(--line);
   padding: 8px 8px 8px 16px;
-  font-size: 12px;
+  font-size: calc(12rem / 16);
   color: var(--muted);
 }
 

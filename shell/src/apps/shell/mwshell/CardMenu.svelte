@@ -52,7 +52,7 @@
     white-space: nowrap;
     text-overflow: ellipsis;
     color: var(--muted);
-    font-size: 12px;
+    font-size: calc(12rem / 16);
     border-bottom: 1px solid var(--line);
   }
 
@@ -71,7 +71,7 @@
     border: 0;
     background: none;
     color: var(--icon);
-    font-size: 14px;
+    font-size: calc(14rem / 16);
     text-align: left;
   }
 

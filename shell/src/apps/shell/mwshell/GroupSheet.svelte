@@ -110,7 +110,7 @@
     flex: 1;
     min-width: 0;
     height: 48px;
-    font-size: 14px;
+    font-size: calc(14rem / 16);
   }
 
   .dot {
@@ -166,7 +166,7 @@
     grid-area: 1 / 1;
     z-index: 1;
     color: var(--text);
-    font-size: 18px;
+    font-size: calc(18rem / 16);
     font-style: normal;
     font-weight: 500;
     line-height: 1;
@@ -200,7 +200,7 @@
     border: 0;
     background: none;
     color: var(--text);
-    font-size: 14px;
+    font-size: calc(14rem / 16);
     text-align: left;
   }
 
@@ -255,7 +255,7 @@
 
   h2 {
     margin: 0;
-    font-size: 15px;
+    font-size: calc(15rem / 16);
     font-weight: 600;
   }
 

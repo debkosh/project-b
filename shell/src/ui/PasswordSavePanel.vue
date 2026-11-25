@@ -85,14 +85,14 @@ onUnmounted(() => {
 
 .ui-password-save-head {
   margin: 0;
-  font-size: 14px;
+  font-size: calc(14rem / 16);
   font-weight: 600;
 }
 
 .ui-password-save-site {
   margin: 0 0 4px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
 }
 
 .ui-password-save-site b {
@@ -126,7 +126,7 @@ onUnmounted(() => {
 
 .ui-password-save-value.secret {
   font:
-    13px/20px ui-monospace,
+    calc(13rem / 16)/20px ui-monospace,
     SFMono-Regular,
     Menlo,
     monospace;

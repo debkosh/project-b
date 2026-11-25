@@ -125,7 +125,7 @@ body {
 .count {
   margin-left: auto;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
   font-weight: 400;
 }
 
@@ -165,8 +165,8 @@ section + section {
 /* A heading row is 30px high, with a button on its right or none. */
 h2 {
   margin: 0;
-  line-height: 30px;
-  font-size: 13px;
+  line-height: calc(30rem / 16);
+  font-size: calc(13rem / 16);
   font-weight: 500;
   color: var(--muted);
 }

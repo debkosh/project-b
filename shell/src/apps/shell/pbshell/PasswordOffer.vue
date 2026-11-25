@@ -149,8 +149,8 @@ function onKey(e) {
 .whose {
   padding: 6px 12px 8px;
   color: var(--muted);
-  font-size: 12px;
-  line-height: 16px;
+  font-size: calc(12rem / 16);
+  line-height: calc(16rem / 16);
 }
 
 .whose b {
@@ -195,8 +195,8 @@ function onKey(e) {
 
 .for {
   grid-column: 2 / 4;
-  font-size: 12px;
-  line-height: 16px;
+  font-size: calc(12rem / 16);
+  line-height: calc(16rem / 16);
 }
 
 .none,

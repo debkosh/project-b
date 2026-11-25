@@ -320,7 +320,7 @@ function again() {
 
 /* Settings' own h2 is a small section label; the wizard's is its title. */
 .ui-import-wizard h2 {
-  font-size: 20px;
+  font-size: calc(20rem / 16);
   font-weight: 600;
   color: var(--text);
   letter-spacing: normal;
@@ -404,12 +404,12 @@ function again() {
 
 .ui-import-wizard .state {
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
 }
 
 .ui-import-wizard .go {
   color: var(--muted);
-  font-size: 18px;
+  font-size: calc(18rem / 16);
 }
 
 .ui-import-wizard .problem {

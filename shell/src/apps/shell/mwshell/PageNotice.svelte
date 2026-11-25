@@ -68,14 +68,14 @@
   }
 
   .said {
-    font-size: 15px;
+    font-size: calc(15rem / 16);
     font-weight: 600;
   }
 
   .code {
     max-width: 320px;
     color: var(--muted);
-    font-size: 12px;
+    font-size: calc(12rem / 16);
     line-height: 1.45;
   }
 

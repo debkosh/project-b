@@ -243,12 +243,12 @@
   .bluetooth span {
     flex: 1;
     color: var(--muted);
-    font-size: 12px;
+    font-size: calc(12rem / 16);
   }
 
   .bluetooth .text-button {
     flex: none;
-    font-size: 13px;
+    font-size: calc(13rem / 16);
   }
 
   /* The way to another kind of key sits apart, on the left. */

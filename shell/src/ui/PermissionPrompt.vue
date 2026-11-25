@@ -90,7 +90,7 @@ onUnmounted(() => pop());
   display: flex;
   gap: 10px;
   margin: 0 0 16px;
-  font-size: 13px;
+  font-size: calc(13rem / 16);
   line-height: 1.45;
   overflow-wrap: anywhere;
 }

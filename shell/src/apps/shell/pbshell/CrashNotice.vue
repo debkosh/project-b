@@ -39,8 +39,8 @@ function share(e) {
   border-bottom: 1px solid var(--line);
   background: var(--bar);
   color: var(--text);
-  font-size: 12px;
-  line-height: 16px;
+  font-size: calc(12rem / 16);
+  line-height: calc(16rem / 16);
 }
 
 .crash span {
@@ -58,7 +58,7 @@ function share(e) {
   background: var(--surface);
   color: var(--text);
   font: inherit;
-  font-size: 12px;
+  font-size: calc(12rem / 16);
 }
 
 .share:hover {

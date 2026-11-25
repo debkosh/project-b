@@ -75,7 +75,7 @@ dialog.ui-dialog[open] {
 .ui-dialog-title {
   margin: 0 0 16px;
   color: var(--text);
-  font-size: 15px;
+  font-size: calc(15rem / 16);
   font-weight: 600;
   line-height: 1.35;
 }
@@ -97,7 +97,7 @@ dialog.ui-dialog[open] {
   display: block;
   margin: 0 0 4px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
 }
 
 /* An item picked from a list: its checkbox, then its name. */

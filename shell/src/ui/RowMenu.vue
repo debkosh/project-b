@@ -131,7 +131,7 @@ defineExpose({ open });
   background: none;
   color: var(--text);
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13rem / 16);
   text-align: left;
   white-space: nowrap;
   cursor: pointer;

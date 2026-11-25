@@ -72,7 +72,7 @@ const busy = computed(() => state.update.check === 'checking');
 
 <style scoped>
 .version-row :deep(.name) {
-  font-size: 15px;
+  font-size: calc(15rem / 16);
   font-weight: 600;
 }
 

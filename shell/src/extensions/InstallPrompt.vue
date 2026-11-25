@@ -91,13 +91,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKey, true));
 .pbx-prompt-title {
   margin: 0;
   color: var(--text);
-  font-size: 15px;
+  font-size: calc(15rem / 16);
   font-weight: 600;
 }
 
 .pbx-prompt-version {
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
 }
 
 .pbx-prompt-text {
@@ -107,7 +107,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKey, true));
 .pbx-prompt-label {
   margin: 16px 0 0;
   color: var(--muted);
-  font-size: 13px;
+  font-size: calc(13rem / 16);
   font-weight: 500;
 }
 
@@ -120,7 +120,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKey, true));
   border: 1px solid var(--line);
   border-radius: 6px;
   list-style: none;
-  font-size: 13px;
+  font-size: calc(13rem / 16);
 }
 
 .pbx-prompt-list li {

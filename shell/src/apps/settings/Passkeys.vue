@@ -96,7 +96,7 @@ function remove() {
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  font-size: 18px;
+  font-size: calc(18rem / 16);
   font-weight: 600;
   line-height: 1;
 }

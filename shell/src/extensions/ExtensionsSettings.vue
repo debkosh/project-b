@@ -200,7 +200,7 @@ function remove() {
   padding: 8px 16px 12px 52px;
   border-top: 1px solid var(--line);
   background: var(--accent-tint);
-  font-size: 13px;
+  font-size: calc(13rem / 16);
 }
 
 .pbx-details dt {

@@ -55,14 +55,14 @@ function relaunch() {
 
 .title {
   margin: 0;
-  font-size: 13px;
+  font-size: calc(13rem / 16);
   font-weight: 600;
 }
 
 .words {
   margin: 4px 0 12px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
   line-height: 1.45;
 }
 

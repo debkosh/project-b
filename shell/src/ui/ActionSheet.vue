@@ -91,13 +91,13 @@ function run(action) {
 }
 
 .ui-sheet-name {
-  font-size: 14px;
+  font-size: calc(14rem / 16);
   font-weight: 600;
 }
 
 .ui-sheet-detail {
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
 }
 
 .ui-sheet-tiles {
@@ -119,7 +119,7 @@ function run(action) {
   background: none;
   color: var(--icon);
   font: inherit;
-  font-size: 11.5px;
+  font-size: calc(11.5rem / 16);
 }
 
 .ui-sheet-tile span {
@@ -141,7 +141,7 @@ function run(action) {
   background: none;
   color: var(--icon);
   font: inherit;
-  font-size: 14px;
+  font-size: calc(14rem / 16);
   text-align: left;
 }
 

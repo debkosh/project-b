@@ -163,7 +163,7 @@
   h2 {
     margin: 0 0 12px 4px;
     color: var(--muted);
-    font-size: 13px;
+    font-size: calc(13rem / 16);
     font-weight: 600;
   }
 
@@ -191,7 +191,7 @@
     border: 0;
     background: none;
     color: var(--text);
-    font-size: 12px;
+    font-size: calc(12rem / 16);
   }
 
   /* A folder: the first four of its bookmarks, two by two, on a tile the size of a site's. */
@@ -271,7 +271,7 @@
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
-    font-size: 15px;
+    font-size: calc(15rem / 16);
     font-weight: 600;
   }
 
@@ -287,7 +287,7 @@
     border: 0;
     background: none;
     color: var(--text);
-    font-size: 14px;
+    font-size: calc(14rem / 16);
     font-weight: 600;
   }
 
@@ -349,7 +349,7 @@
     background: none;
     color: var(--text);
     text-align: left;
-    font-size: 14px;
+    font-size: calc(14rem / 16);
   }
 
   .row:first-child {
@@ -373,7 +373,7 @@
     white-space: nowrap;
     text-overflow: ellipsis;
     color: var(--muted);
-    font-size: 12px;
+    font-size: calc(12rem / 16);
   }
 
   .row .name {

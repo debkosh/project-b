@@ -356,7 +356,7 @@ const where = (s) => (s.match || []).map((m) => (m === '<all_urls>' ? 'every sit
 .intro {
   margin: 4px 0 12px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: calc(13rem / 16);
 }
 
 .spark {
@@ -408,7 +408,7 @@ const where = (s) => (s.match || []).map((m) => (m === '<all_urls>' ? 'every sit
 .clash .secondary,
 .outcome .secondary {
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
 }
 
 .outcome {
@@ -440,13 +440,13 @@ textarea {
   border-radius: 6px;
   background: var(--surface);
   color: var(--text);
-  font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  font: calc(12rem / 16)/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
   resize: vertical;
 }
 
 .problem {
   margin: 8px 0 0;
-  font-size: 13px;
+  font-size: calc(13rem / 16);
 }
 
 .buttons {

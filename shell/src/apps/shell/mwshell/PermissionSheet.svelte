@@ -67,7 +67,7 @@
 
   .head p {
     margin: 0;
-    font-size: 15px;
+    font-size: calc(15rem / 16);
     line-height: 1.4;
     overflow-wrap: anywhere;
   }
@@ -80,7 +80,7 @@
     display: block;
     margin-top: 4px;
     color: var(--muted);
-    font-size: 13px;
+    font-size: calc(13rem / 16);
   }
 
   .buttons {
@@ -99,7 +99,7 @@
     background: none;
     color: var(--text);
     font: inherit;
-    font-size: 15px;
+    font-size: calc(15rem / 16);
   }
 
   .primary {

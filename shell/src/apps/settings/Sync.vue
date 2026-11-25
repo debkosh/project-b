@@ -659,7 +659,7 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  font-size: 18px;
+  font-size: calc(18rem / 16);
   font-weight: 600;
   line-height: 1;
 }
@@ -704,7 +704,7 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
   inset: 0;
   padding: 0 9px;
   overflow: hidden;
-  line-height: 30px;
+  line-height: calc(30rem / 16);
   white-space: nowrap;
   text-overflow: ellipsis;
   pointer-events: none;
@@ -734,7 +734,7 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
   background: none;
   color: var(--icon);
   font: inherit;
-  font-size: 12px;
+  font-size: calc(12rem / 16);
   font-weight: 500;
   cursor: pointer;
 }
@@ -765,7 +765,7 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
 .under .link {
   flex: none;
   margin-left: auto;
-  font-size: 12px;
+  font-size: calc(12rem / 16);
   font-weight: 500;
 }
 
@@ -796,7 +796,7 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
 }
 
 .other .link {
-  font-size: 13px;
+  font-size: calc(13rem / 16);
   font-weight: 500;
 }
 
@@ -863,12 +863,12 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
 /* The whole code in the field at a phone's width, 29 characters, beside its scanner. */
 .touch .sync-dialog .text-field.code {
   padding-right: 48px;
-  font-size: 14px;
+  font-size: calc(14rem / 16);
 }
 
 .touch .dress {
   padding: 0 13px;
-  line-height: 48px;
+  line-height: calc(48rem / 16);
 }
 
 .touch .show {
@@ -876,6 +876,6 @@ const connectingNow = computed(() => d.busy && d.step === 'address');
   right: 0;
   height: 48px;
   padding: 0 14px;
-  font-size: 13px;
+  font-size: calc(13rem / 16);
 }
 </style>

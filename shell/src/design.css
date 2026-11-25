@@ -2,8 +2,10 @@
    ring and the controls. Each app's main.js imports it. docs/design-system.md describes
    it; the colours are Go's tones (core/tones), set on the root by theme.js. */
 
+/* The root keeps the browser's medium, 16px or as Android's font size makes it, as rem is
+   that size: the text everything inherits, 14px, is set on body. */
 :root {
-  font: 14px/1.4 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+  font: 1rem/1.4 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
   color: var(--text);
   -webkit-font-smoothing: antialiased;
   /* Anything that floats over the rest: a menu, the suggestions, a dialog. */
@@ -14,6 +16,10 @@
   /* Motion: every transition, quick and smooth (docs/design-system.md, Motion). */
   --motion: 100ms;
   --ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+body {
+  font-size: calc(14rem / 16);
 }
 
 /* Asked for less motion, things change at once. */
@@ -245,7 +251,7 @@ input[type='checkbox'] {
   /* A hairline, not a fill, so a tag keeps its shape on a hovered or open row. */
   box-shadow: inset 0 0 0 1px var(--line);
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
   font-weight: 500;
   white-space: nowrap;
 }
@@ -254,7 +260,7 @@ input[type='checkbox'] {
 .secondary {
   display: block;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
   font-weight: 400;
 }
 
@@ -262,7 +268,7 @@ input[type='checkbox'] {
 .text-field-error {
   margin-top: 4px;
   color: var(--danger);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
 }
 
 /* A destructive answer in a dialog: Delete, Discard, Remove. */
@@ -333,7 +339,7 @@ input[type='checkbox'] {
 .ui-colour-head h2 {
   flex: 1;
   margin: 0;
-  font-size: 15px;
+  font-size: calc(15rem / 16);
   font-weight: 600;
 }
 
@@ -373,9 +379,9 @@ input[type='checkbox'] {
   border-radius: 14px;
   background: var(--ui-colour);
   color: var(--ui-colour-ink);
-  font-size: 13px;
+  font-size: calc(13rem / 16);
   font-weight: 600;
-  line-height: 28px;
+  line-height: calc(28rem / 16);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -386,7 +392,7 @@ input[type='checkbox'] {
   margin: 0;
   padding: 0 16px 4px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
 }
 
 /* Hue: a 28px track in a 48px target, with a 36px thumb in the hue's middle shade. */
@@ -565,7 +571,7 @@ input[type='checkbox'] {
 .ui-menu-key {
   flex: none;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
 }
 
 .ui-menu-chevron {

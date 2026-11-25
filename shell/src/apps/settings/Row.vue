@@ -96,7 +96,7 @@ onUnmounted(addRow({ section: section?.id, hit: () => hit.value }));
   max-width: 50%;
   overflow: hidden;
   color: var(--muted);
-  font-size: 13px;
+  font-size: calc(13rem / 16);
   font-weight: 400;
   text-overflow: ellipsis;
   white-space: nowrap;

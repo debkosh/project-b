@@ -84,7 +84,7 @@
     border: 0;
     background: none;
     color: var(--text);
-    font-size: 14px;
+    font-size: calc(14rem / 16);
     text-align: left;
   }
 
@@ -105,9 +105,9 @@
     border-radius: 4px;
     background: var(--accent);
     color: var(--on-accent);
-    font-size: 9px;
+    font-size: calc(9rem / 16);
     font-weight: 600;
-    line-height: 14px;
+    line-height: calc(14rem / 16);
   }
 
   .pin {
@@ -119,7 +119,7 @@
     border-radius: 20px;
     background: none;
     color: var(--text);
-    font-size: 13px;
+    font-size: calc(13rem / 16);
   }
 
   .pin.on {
@@ -135,7 +135,7 @@
     border-radius: 4px;
     background: var(--accent);
     color: var(--on-accent);
-    font-size: 12px;
+    font-size: calc(12rem / 16);
     font-weight: 600;
   }
 
@@ -161,14 +161,14 @@
 
   h2 {
     margin: 0 0 8px;
-    font-size: 15px;
+    font-size: calc(15rem / 16);
     font-weight: 600;
   }
 
   ul {
     margin: 8px 0;
     padding-left: 20px;
-    font-size: 13px;
+    font-size: calc(13rem / 16);
   }
 
   .answers .text-button {

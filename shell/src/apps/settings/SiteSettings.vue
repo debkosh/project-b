@@ -238,7 +238,7 @@ const uid = useId();
   margin: 4px 0 0;
   overflow: hidden;
   color: var(--text);
-  font-size: 15px;
+  font-size: calc(15rem / 16);
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -275,7 +275,7 @@ const uid = useId();
   margin: 16px 0 6px;
   overflow: hidden;
   color: var(--muted);
-  font-size: 13px;
+  font-size: calc(13rem / 16);
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -284,7 +284,7 @@ const uid = useId();
 .intro {
   margin: 0;
   color: var(--muted);
-  font-size: 13px;
+  font-size: calc(13rem / 16);
 }
 
 .filter {

@@ -15,6 +15,6 @@ import { hits, query } from './search.js';
 .results {
   margin: 12px 0 0;
   color: var(--muted);
-  font-size: 13px;
+  font-size: calc(13rem / 16);
 }
 </style>

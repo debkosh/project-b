@@ -97,7 +97,7 @@ onUnmounted(() => {
 
 .ui-bookmark-head {
   margin: 0;
-  font-size: 14px;
+  font-size: calc(14rem / 16);
   font-weight: 600;
 }
 
@@ -115,7 +115,7 @@ onUnmounted(() => {
 .ui-bookmark-field > legend {
   padding: 0;
   margin-bottom: 4px;
-  font-size: 12px;
+  font-size: calc(12rem / 16);
   color: var(--muted);
 }
 
@@ -134,7 +134,7 @@ onUnmounted(() => {
   height: 32px;
   padding-right: 8px;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: calc(13rem / 16);
   color: var(--text);
   cursor: default;
 }

@@ -405,7 +405,7 @@
     padding: 0 8px 0 16px;
     color: var(--danger);
     font: inherit;
-    font-size: 12px;
+    font-size: calc(12rem / 16);
     font-weight: 500;
     white-space: nowrap;
   }
@@ -413,7 +413,7 @@
   .mark.insecure span {
     padding-right: 8px;
     border-right: 1px solid var(--line);
-    line-height: 16px;
+    line-height: calc(16rem / 16);
   }
 
   /* The field and its Clear reach 48px, the toolbar's height, past the 40px pill. */
@@ -428,7 +428,7 @@
     background: none;
     color: inherit;
     font-family: inherit;
-    font-size: 14px;
+    font-size: calc(14rem / 16);
     font-weight: 500;
     text-overflow: ellipsis;
   }
@@ -456,7 +456,7 @@
     background: none;
     color: var(--icon);
     font: inherit;
-    font-size: 13px;
+    font-size: calc(13rem / 16);
     font-weight: 600;
   }
 
@@ -466,7 +466,7 @@
     border: 1px solid var(--danger);
     border-radius: 10px;
     color: var(--danger);
-    font-size: 12px;
+    font-size: calc(12rem / 16);
   }
 
   .clear {
@@ -543,7 +543,7 @@
     margin: 0;
     padding: 0 16px;
     color: var(--muted);
-    font-size: 13px;
+    font-size: calc(13rem / 16);
     font-weight: 500;
   }
 
@@ -572,7 +572,7 @@
     border: 0;
     background: none;
     color: var(--text);
-    font-size: 12px;
+    font-size: calc(12rem / 16);
   }
 
   .tile .name {
@@ -629,12 +629,12 @@
 
   .title {
     color: var(--text);
-    font-size: 14px;
+    font-size: calc(14rem / 16);
   }
 
   .url {
     color: var(--muted);
-    font-size: 12px;
+    font-size: calc(12rem / 16);
   }
 
   .fill {
@@ -683,7 +683,7 @@
     border: 1px solid var(--line);
     border-radius: 10px;
     color: var(--accent);
-    font-size: 12px;
+    font-size: calc(12rem / 16);
     font-weight: 500;
     white-space: nowrap;
   }

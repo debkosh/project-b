@@ -128,13 +128,13 @@
   }
   h2 {
     margin: 0;
-    font-size: 16px;
+    font-size: calc(16rem / 16);
     font-weight: 600;
     overflow-wrap: anywhere;
   }
   .head p {
     margin: 2px 0 0;
-    font-size: 13px;
+    font-size: calc(13rem / 16);
     color: var(--muted);
   }
   .row {
@@ -143,7 +143,7 @@
     gap: 12px;
     min-height: 52px;
     padding: 4px 20px;
-    font-size: 15px;
+    font-size: calc(15rem / 16);
   }
   .row.stacked {
     flex-wrap: wrap;
@@ -156,7 +156,7 @@
     flex-direction: column;
   }
   .text small {
-    font-size: 13px;
+    font-size: calc(13rem / 16);
     color: var(--muted);
   }
   /* Open settings, beside a permission the OS refuses the app: a thumb's size. */
@@ -170,7 +170,7 @@
     background: none;
     color: var(--accent);
     font: inherit;
-    font-size: 12px;
+    font-size: calc(12rem / 16);
   }
 
   .settings {
@@ -180,13 +180,13 @@
     background: none;
     color: var(--accent);
     font: inherit;
-    font-size: 14px;
+    font-size: calc(14rem / 16);
   }
   .label {
     margin: 0;
     padding: 12px 20px 2px;
     border-top: 1px solid var(--line);
-    font-size: 12px;
+    font-size: calc(12rem / 16);
     font-weight: 600;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -206,7 +206,7 @@
     background: none;
     color: var(--text);
     font: inherit;
-    font-size: 14px;
+    font-size: calc(14rem / 16);
   }
   .choices button + button {
     border-left: 1px solid var(--line);
@@ -218,7 +218,7 @@
     font-weight: 600;
   }
   .value {
-    font-size: 14px;
+    font-size: calc(14rem / 16);
     color: var(--muted);
   }
   .value.allow {
@@ -234,7 +234,7 @@
     gap: 8px;
     padding: 8px 8px 8px 20px;
     border-top: 1px solid var(--line);
-    font-size: 13px;
+    font-size: calc(13rem / 16);
     color: var(--muted);
   }
 

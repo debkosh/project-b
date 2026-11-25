@@ -116,7 +116,7 @@ function close() {
   right: 10px;
   transform: translateY(-50%);
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
   white-space: nowrap;
   pointer-events: none;
 }

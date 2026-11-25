@@ -61,7 +61,7 @@
     border-radius: 14px;
     background: none;
     color: var(--icon);
-    font-size: 13px;
+    font-size: calc(13rem / 16);
   }
 
   .name {
