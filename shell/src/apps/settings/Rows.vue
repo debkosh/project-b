@@ -104,33 +104,33 @@ const layouts = [
     <Segmented label="Address bar" :options="positions" :model-value="state.addressBarPosition" @update:model-value="send({ t: 'setAddressBarPosition', text: $event })" />
   </Row>
 
-  <!-- Android's shells are a few, side by side: a phone's for a narrow window, a
-       desktop's for a wide one, each shown only when there is more than one, and
-       whether the window's size chooses. A desktop's are the profile's, and every
-       window loads the one chosen at once. -->
+  <!-- Android's shells, side by side: first whether the window's size chooses or one
+       stays, then the phone shell's way of drawing, Web or Native, while a phone-sized
+       window can show it, and a wide window's shell when there is more than one. A
+       desktop's are the profile's, and every window loads the one chosen at once. -->
   <template v-else-if="part === 'shell' && phone">
-    <Row v-if="state.androidShells.phones.length > 1" label="Phone-sized window">
-      <Segmented
-        label="Phone-sized window"
-        :options="state.androidShells.phones.map((s) => ({ value: s.id, label: s.name }))"
-        :model-value="state.androidShells.phone"
-        @update:model-value="send({ t: 'setPhoneShell', text: $event })"
-      />
-    </Row>
-    <Row v-if="state.androidShells.wides.length > 1" label="Wide window">
-      <Segmented
-        label="Wide window"
-        :options="state.androidShells.wides.map((s) => ({ value: s.id, label: s.name }))"
-        :model-value="state.androidShells.wide"
-        @update:model-value="send({ t: 'setShell', text: $event })"
-      />
-    </Row>
-    <Row label="Shell" hint="Follows the window's size, or stays one">
+    <Row label="Shell" hint="Switches with the window">
       <Segmented
         label="Shell"
         :options="oneShells"
         :model-value="state.androidShells.one"
         @update:model-value="send({ t: 'setOneShell', text: $event })"
+      />
+    </Row>
+    <Row v-if="state.androidShells.phones.length > 1 && state.androidShells.one !== 'wide'" label="Phone layout">
+      <Segmented
+        label="Phone layout"
+        :options="state.androidShells.phones.map((s) => ({ value: s.id, label: s.native ? 'Native' : 'Web' }))"
+        :model-value="state.androidShells.phone"
+        @update:model-value="send({ t: 'setPhoneShell', text: $event })"
+      />
+    </Row>
+    <Row v-if="state.androidShells.wides.length > 1 && state.androidShells.one !== 'phone'" label="Wide window">
+      <Segmented
+        label="Wide window"
+        :options="state.androidShells.wides.map((s) => ({ value: s.id, label: s.name }))"
+        :model-value="state.androidShells.wide"
+        @update:model-value="send({ t: 'setShell', text: $event })"
       />
     </Row>
   </template>
