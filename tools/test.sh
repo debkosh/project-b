@@ -120,6 +120,7 @@ mock() {
     run "the region outlines on the mock engine" node shell/e2e/outlines.cjs
     run "the shell following the window's size on Android, on the mock engine" node shell/e2e/large-screens.cjs
     run "every shell's bars keep their controls apart at every width" node shell/e2e/toolbar-fit.cjs
+    run "our pages grow with Android's font size, with nothing cut off" node shell/e2e/font-scale.cjs
     run "the welcome on the mock engine" node shell/e2e/welcome.cjs
     run "bringing things over from other browsers, on the mock engine" node shell/e2e/imports.cjs
     # What every shell does, for each shell in the registry, and each shell's own tests.
