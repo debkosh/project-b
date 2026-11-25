@@ -34,6 +34,8 @@ const (
 	// Our own, which no page asks for (docs/site-features.md).
 	Ads   = "ads"
 	Links = "links"
+	// Popups is whether a page may open a tab with no tap first: Block by default.
+	Popups = "popups"
 	// Sparks is whether the person's sparks run on the site's pages, all of them or none.
 	Sparks = "sparks"
 )
@@ -53,8 +55,18 @@ type Kind struct {
 	Gesture bool
 	// Once offers Allow this time.
 	Once bool
-	// Choices are the values one of our own kinds takes, its default first.
+	// Choices are the values one of our own kinds takes, in the order settings shows them;
+	// Initial is its default, the first choice when it names none.
 	Choices []string
+	Initial string
+}
+
+// initial is one of our own kinds' default.
+func (k Kind) initial() string {
+	if k.Initial != "" {
+		return k.Initial
+	}
+	return k.Choices[0]
 }
 
 // The values of our own kinds.
@@ -78,6 +90,8 @@ var Kinds = []Kind{
 	{Name: ClipboardWrite, Title: "Clipboard", Requested: true, Default: engine.PermissionGranted},
 	{Name: Ads, Title: "Ad blocker", Choices: adsChoices()},
 	{Name: Links, Title: "Links to other sites", Choices: []string{Allow, Block}},
+	// Allow and Block in Links' order, so the two rows' choices sit alike.
+	{Name: Popups, Title: "Pop-ups", Choices: []string{Allow, Block}, Initial: Block},
 	{Name: Sparks, Title: "Sparks", Choices: []string{On, Off}},
 }
 
@@ -410,7 +424,7 @@ func (m *Manager) Set(origin, kind, value string) {
 	}
 	if len(k.Choices) > 0 {
 		switch {
-		case value == "" || value == k.Choices[0]:
+		case value == "" || value == k.initial():
 			m.Forget(origin, kind)
 		case slices.Contains(k.Choices, value):
 			m.keep(origin, []string{kind}, value)
@@ -438,7 +452,7 @@ func (m *Manager) Value(origin, kind string) string {
 	if v, ok := m.sites[origin][kind]; ok && slices.Contains(k.Choices, v) {
 		return v
 	}
-	return k.Choices[0]
+	return k.initial()
 }
 
 // SettingsOf is origin's value of each kind settings can set, in order, "" where it has
@@ -460,7 +474,11 @@ func Settable() []Setting {
 	list := []Setting{}
 	for _, k := range Kinds {
 		if k.Askable || len(k.Choices) > 0 {
-			list = append(list, Setting{Kind: k.Name, Title: k.Title, Choices: k.Choices})
+			s := Setting{Kind: k.Name, Title: k.Title, Choices: k.Choices}
+			if len(k.Choices) > 0 {
+				s.Value = k.initial()
+			}
+			list = append(list, s)
 		}
 	}
 	return list

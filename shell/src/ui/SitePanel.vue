@@ -1,12 +1,13 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { linkChoices, openMediaSettings, openSiteSettings, osOffNote, permissionWord, reloadPage, setSiteSetting, siteOrigin, siteSetting, sparkNames } from '@/sdk/sites.js';
+import { linkChoices, openBlockedPopup, openMediaSettings, openPopupWord, openSiteSettings, osOffNote, popupChoices, popupsNote, permissionWord, reloadPage, setSiteSetting, siteOrigin, siteSetting, sparkNames } from '@/sdk/sites.js';
 import Segmented from './Segmented.vue';
 import { pushEscape } from './escape.js';
 
 // The site panel (docs/site-features.md): what the address field's site icon opens over the
 // page, for the active tab's site. Its host and connection; the ad blocker, with what it
-// kept from this page; whether sparks run on the site; links to other sites; the permissions;
+// kept from this page; whether sparks run on the site; links to other sites; pop-ups, with
+// those blocked on this page and Open it; the permissions;
 // and Details, to settings. Every change goes to Go, which answers with the site's new
 // settings. The root floats over the page: the caller marks it the shell's, places it, and
 // closes it on close (Escape, Details).
@@ -23,6 +24,7 @@ const connection = computed(() => {
 
 const ads = computed(() => siteSetting(props.site, 'ads'));
 const links = computed(() => siteSetting(props.site, 'links'));
+const popups = computed(() => siteSetting(props.site, 'popups'));
 // The permissions the site has set.
 const permissions = computed(() => (props.site?.settings || []).filter((s) => !s.choices && s.value));
 const sparksOn = computed(() => siteSetting(props.site, 'sparks'));
@@ -48,6 +50,11 @@ function details() {
   emit('close');
   openSiteSettings();
 }
+function openPopup() {
+  emit('close');
+  openBlockedPopup();
+}
+
 
 let pop = null;
 onMounted(() => (pop = pushEscape(() => emit('close'))));
@@ -108,6 +115,14 @@ onUnmounted(() => pop());
           <span id="ui-site-links">Links to other sites</span>
         </span>
         <Segmented :model-value="links.value" :options="linkChoices" label="Links to other sites" @update:model-value="(v) => setSiteSetting(origin, 'links', v)" />
+      </div>
+      <div v-if="popups" class="ui-site-row stacked">
+        <span class="ui-site-text">
+          <span>Pop-ups</span>
+          <small v-if="tab.popupsBlocked" id="ui-site-popups-note">{{ popupsNote(tab) }}</small>
+          <button v-if="tab.popupsBlocked && tab.blockedPopup" type="button" class="ui-site-inline" @click="openPopup">{{ openPopupWord(tab.popupsBlocked) }}</button>
+        </span>
+        <Segmented :model-value="popups.value" :options="popupChoices" label="Pop-ups" @update:model-value="(v) => setSiteSetting(origin, 'popups', v)" />
       </div>
     </div>
 
@@ -198,9 +213,22 @@ onUnmounted(() => pop());
   font-size: 13px;
 }
 
+/* A control that doesn't fit beside its label wraps under it, the gap only then. */
 .ui-site-row.stacked {
   flex-wrap: wrap;
-  padding-bottom: 8px;
+  row-gap: 8px;
+}
+
+/* An action on a line of its own under a note, in the note's size. */
+.ui-site-inline {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
 }
 
 .ui-site-text {

@@ -150,7 +150,7 @@ DevToolsManagerDelegate::CreateNewTarget(const GURL& url,
   }
   PageTab* tab = engine->CreateTab(engine->first_workspace());
   Engine::TabOpened(/*opener=*/0, tab->id(), url, /*foreground=*/true,
-                    new_window);
+                    new_window, /*tapped=*/true);
   content::NavigationController::LoadURLParams params(url);
   params.transition_type = ui::PAGE_TRANSITION_AUTO_TOPLEVEL;
   tab->contents()->GetController().LoadURLWithParams(params);

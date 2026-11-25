@@ -41,7 +41,7 @@ const rules = {
   22: 'A site\'s sign-in shows as an alertdialog with text boxes named Username and Password, and Go\'s Sign in answers with both',
   30: 'A site asking for its camera, microphone or notifications in the active tab brings a dialog named by its question, with Block and Allow, or Block, Always allow and Allow this time; an Allow grants it, Block denies it, Escape dismisses it',
   31: 'On a web page, a control named Site settings opens settings on that site, at once or from its panel\'s Details',
-  33: 'The Site settings control opens a panel over the page, a dialog named Site settings for the site\'s host, with a switch named Ad blocker, a switch named Sparks with the names of the sparks that run on the page, and a choice of Links to other sites, Allow or Block, each Go\'s and each changing Go\'s setting; a change that applies when the page loads again says so, with a Reload button; Escape closes it; a popup Links to other sites closed shows in the address field as a button named by its count, which opens the panel',
+  33: 'The Site settings control opens a panel over the page, a dialog named Site settings for the site\'s host, with a switch named Ad blocker, a switch named Sparks with the names of the sparks that run on the page, and a choice of Links to other sites, Allow or Block, each Go\'s and each changing Go\'s setting; a change that applies when the page loads again says so, with a Reload button; Escape closes it; a popup Links to other sites closed shows in the address field as a button named by its count, which opens the panel; a pop-up opened with no tap closes and counts too, under the panel\'s choice of Pop-ups, Block by default or Allow, beside Open it, which opens the last one in a tab',
   32: 'A page that failed to load, or has a bad certificate, is covered by an alert with Go\'s sentence and its actions as buttons; Try again loads it again, and Open anyway opens it',
 };
 
@@ -776,14 +776,54 @@ const noNoticeYet = {
         await page.keyboard.press('Escape');
         await until(async () => (await panel.count()) === 0);
         await fire('open', 'https://elsewhere.test/', { tab });
-        const popups = ui.getByRole('button', { name: '1 popup blocked' });
+        const popups = ui.getByRole('button', { name: '1 pop-up blocked' });
         rule(33, 'a popup to another site under Block closes, and the field counts it', (await until(() => popups.isVisible())) && (await regions()).tabs.length === tabsBefore);
+        await page.screenshot({ path: path.join(__dirname, `../../build/e2e/popups-field-1-${id}.png`) });
         await popups.click();
         rule(33, 'the count opens the panel', await until(() => panel.isVisible()));
+        await page.waitForTimeout(200);
+        await page.screenshot({ path: path.join(__dirname, `../../build/e2e/popups-panel-1-${id}.png`) });
         await ads.click();
         await panel.getByRole('radiogroup', { name: 'Links to other sites' }).getByRole('radio', { name: 'Allow' }).click();
         await page.keyboard.press('Escape');
         rule(33, 'Escape closes it', await until(async () => (await panel.count()) === 0));
+        // A pop-up, a tab the page opens with no tap first, closes while Allow pop-ups is
+        // off, as it is by default, and counts; the panel's Open it opens it beside.
+        await fire('popup', 'https://contract.test/first', { tab });
+        await fire('popup', 'https://contract.test/popup', { tab });
+        const two = ui.getByRole('button', { name: '3 pop-ups blocked' });
+        rule(33, 'a pop-up opened with no tap closes, and the field counts it', (await until(() => two.isVisible())) && (await regions()).tabs.length === tabsBefore);
+        await page.screenshot({ path: path.join(__dirname, `../../build/e2e/popups-field-3-${id}.png`) });
+        await two.click();
+        const once = panel.getByRole('button', { name: 'Open the last one' });
+        const popupChoice = (word) => panel.getByRole('radiogroup', { name: 'Pop-ups' }).getByRole('radio', { name: word });
+        rule(33, 'the panel says how many were blocked, with Open the last one and Pop-ups at Block', (await until(() => once.isVisible())) && (await panel.getByText('3 blocked on this page').isVisible()) && (await popupChoice('Block').getAttribute('aria-checked')) === 'true');
+        await page.waitForTimeout(200);
+        await page.screenshot({ path: path.join(__dirname, `../../build/e2e/popups-panel-3-${id}.png`) });
+        await once.click();
+        const popupTab = async () => (await regions()).tabs.find((x) => x.url === 'https://contract.test/popup');
+        rule(33, 'Open the last one opens the pop-up in a tab, and the panel closes', (await until(async () => !!(await popupTab()))) && (await regions()).tabs.length === tabsBefore + 1 && (await panel.count()) === 0);
+        await fire('menu', 'tab.close');
+        await until(async () => (await regions()).tabs.length === tabsBefore);
+        await fire('focusTab', '', { tab });
+        // Pop-ups at Allow, the next one opens.
+        await control.click();
+        await until(() => panel.isVisible());
+        await popupChoice('Allow').click();
+        await reopen();
+        rule(33, 'Pop-ups set to Allow, Go keeps it', await until(async () => (await popupChoice('Allow').getAttribute('aria-checked')) === 'true'));
+        await page.keyboard.press('Escape');
+        await until(async () => (await panel.count()) === 0);
+        await fire('popup', 'https://contract.test/allowed', { tab });
+        rule(33, 'under Allow, a pop-up opens', await until(async () => (await regions()).tabs.length === tabsBefore + 1));
+        await fire('menu', 'tab.close');
+        await until(async () => (await regions()).tabs.length === tabsBefore);
+        await fire('focusTab', '', { tab });
+        await control.click();
+        await until(() => panel.isVisible());
+        await popupChoice('Block').click();
+        await page.keyboard.press('Escape');
+        await until(async () => (await panel.count()) === 0);
       } catch (e) {
         rule(33, 'its checks ran to their end', false, e.message.split('\n')[0]);
       }

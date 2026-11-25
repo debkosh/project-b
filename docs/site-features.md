@@ -15,6 +15,7 @@ requests (`Requested` off), with their own values.
 | `ads` | `on`, `off` (the blocker on this site) | `on` |
 | `links` | `allow`, `block` (a page's own navigations to other sites) | `allow` |
 | `sparks` | `on`, `off` (the person's sparks, all of them, on this site) | `on` |
+| `popups` | `block`, `allow` (a tab the page opens with no tap first) | `block` |
 
 A site is its origin, as for permissions. A value that is the kind's default is never kept,
 so `sites.json` holds only what the person changed. The ad blocker's default is one constant
@@ -231,7 +232,7 @@ guard, `App.pageMay` (`core/app/sites.go`), which says go or not:
 - **Refused in a tab the page opened:** the tab closes as it opens, its opener shows again,
   and the opener's `popupsBlocked` counts it; a new page in the opener starts the count
   again. A blank popup closes at once; one the page later sends to another site closes then.
-- **The address field** shows the count with an icon, a button named "1 popup blocked",
+- **The address field** shows the count with an icon, a button named "1 pop-up blocked",
   which opens the site panel (contract rule 33). It is the place a general popup blocker
   will count too.
 
@@ -270,8 +271,8 @@ server redirects (a 302) and a popup opened as the page leaves.
   ad blocker's count comes over mojom (`AdReports`); Blink drops script run from its own
   observer callbacks, so Sparks run at `RunScriptsAtDocumentStart/End`.
 
-**Later, if wanted:** separate settings for a page's navigations in place and for its
-popups; a popup let open hidden and closed after a second, for sites that wait on
+**Later, if wanted:** separate settings for a page's navigations in place and for the
+tabs it opens after a tap; a popup let open hidden and closed after a second, for sites that wait on
 `window.opener`.
 
 ## The ad blocker
@@ -296,6 +297,48 @@ site's own setting is kept, and counts again once it is on.
   request fails as `ERR_BLOCKED_BY_CLIENT` (the policy's as `ERR_BLOCKED_BY_ADMINISTRATOR`),
   which the browser counts for the tab (`PB_EVENT_AD_BLOCKED`, 48), and Go clears at the
   tab's next page.
+
+## Pop-ups
+
+**Decided 2026-11-26, the owner:** "just have a per app simple setting.... allow popups ...
+default block... show something somewhere on blocking a popup", then "no no per site
+setting". Asked which pop-ups, once he heard the engine knows whether a real tap came first:
+only those opened without one, Chromium's rule. The sign is the address field's.
+
+- **One setting per site,** `popups`: **Block** (the default) or **Allow**, a row of the
+  kinds table like Links to other sites. It is set in the site panel and in Site settings,
+  which lists it as it lists every kind of ours. There is no switch for the whole app.
+- **A pop-up is a tab a page opens with no tap first:** `window.open`, `target=_blank` or a
+  form to a new tab, when no real tap, click or key reached the page just before. That is
+  Chromium's user activation, which a page's script can't fake. The engine passes content's
+  `user_gesture` as `TAB_OPENED`'s last value, `tapped` (`PageTab::AddNewContents` and
+  `OpenURLFromTab`). A tab no page opened, such as one from our menus, the debugging port or
+  an extension, is always tapped. A link pressed, or a `window.open` in the moments after a
+  press, is tapped and opens, so sign-in windows keep working.
+- **Decided in Go, in the page guard** (`App.pageMay`). The tabs manager puts a tab a page
+  opened to the guard as it opens (`PageNavigation.Untapped` for an untapped one). The guard
+  refuses it unless the opener's site has Pop-ups at Allow; a page that isn't a site has
+  none, so it is refused. Only the opening is put to the guard this way: a pop-up let open
+  is a tab like any other after it. A refused one goes the way Links to other sites'
+  refused tabs go. The tab closes as it opens, its opener shows again, and the opener counts
+  it in `popupsBlocked`, with the address field's "1 pop-up blocked". The opener also keeps
+  the latest address, `blockedPopup`, that isn't the blank page. A new page in the opener
+  clears both.
+- **The site panel** (and Mobile's sheet), which that count opens, has a **Pop-ups** row
+  after Links to other sites, its choice in Links' order, Allow then Block, Block chosen by
+  default. While the page has blocked some, the note under it says "*n* blocked on this
+  page", and under that, on a line of its own so no panel width breaks it, **Open it**, or
+  **Open the last one** when there were more (ux's words, the same day). It closes the panel and opens the kept address in a tab beside the opener, as the
+  person's, so no guard holds it, and the count drops by one. Its message is
+  `openBlockedPopup`, for the window's active tab. The address field's count says "1 pop-up
+  blocked" and "3 pop-ups blocked", for Links' refused tabs too. A kind of ours whose default
+  isn't its first choice names it (`Kind.Initial`), and Site settings has it as the kind's
+  value.
+- **Checked by** Go's tests (`TestAPopupMeetsTheGuardAsItOpensAndOpensOnce`,
+  `TestASitesPopupsAreBlockedUntilAllowed`), the contract's rule 33 on the mock engine (its
+  `popup` page action is an untapped `window.open`), and the real-app drivers' `popups`
+  parts. The drivers run their own script in a page with no tap, so a check that wants its
+  script's window opened runs it as if tapped (the driver's `tappage` and `taptab`).
 
 ## Not in the first version
 

@@ -1,12 +1,13 @@
 <script>
   import { state as go } from '@/sdk/svelte.svelte.js';
-  import { linkChoices, openMediaSettings, openSite, openSiteSettings, osOffNote, permissionWord, reloadPage, setSiteSetting, siteOrigin, siteSetting, sparkNames } from '@/sdk/sites.js';
+  import { linkChoices, openBlockedPopup, openMediaSettings, openPopupWord, openSite, openSiteSettings, osOffNote, popupChoices, popupsNote, permissionWord, reloadPage, setSiteSetting, siteOrigin, siteSetting, sparkNames } from '@/sdk/sites.js';
   import Sheet from './Sheet.svelte';
 
   // The site panel as a sheet (docs/site-features.md): the active tab's site and its
   // connection; the ad blocker, with what it kept from this page; whether sparks run on the
-  // site; links to other sites; the permissions the site has set; and Details, to settings.
-  // Every change goes to Go, which answers with the site's settings.
+  // site; links to other sites; pop-ups, with those blocked on this page and Open it;
+  // the permissions the site has set; and Details, to settings. Every change goes to Go,
+  // which answers with the site's settings.
   let { tab, onclose } = $props();
 
   const origin = $derived(siteOrigin(tab));
@@ -14,6 +15,7 @@
   const site = $derived(openSite(go, tab));
   const ads = $derived(siteSetting(site, 'ads'));
   const links = $derived(siteSetting(site, 'links'));
+  const popups = $derived(siteSetting(site, 'popups'));
   const permissions = $derived((site?.settings || []).filter((s) => !s.choices && s.value));
   const sparksOn = $derived(siteSetting(site, 'sparks'));
   // The sparks that run here while the site's sparks are on, by name.
@@ -38,6 +40,11 @@
     onclose();
     openSiteSettings();
   }
+  function openPopup() {
+    onclose();
+    openBlockedPopup();
+  }
+
 </script>
 
 <Sheet label="Site settings for {host}" {onclose}>
@@ -81,6 +88,16 @@
       <div class="choices" role="radiogroup" aria-label="Links to other sites">
         {#each linkChoices as c (c.value)}
           <button type="button" role="radio" aria-checked={links.value === c.value} onclick={() => setSiteSetting(origin, 'links', c.value)}>{c.label}</button>
+        {/each}
+      </div>
+    </div>
+  {/if}
+  {#if popups}
+    <div class="row stacked">
+      <span class="text"><span>Pop-ups</span>{#if tab.popupsBlocked}<small id="site-popups-note">{popupsNote(tab)}</small>{#if tab.blockedPopup}<button type="button" class="inline" onclick={openPopup}>{openPopupWord(tab.popupsBlocked)}</button>{/if}{/if}</span>
+      <div class="choices" role="radiogroup" aria-label="Pop-ups">
+        {#each popupChoices as c (c.value)}
+          <button type="button" role="radio" aria-checked={popups.value === c.value} onclick={() => setSiteSetting(origin, 'popups', c.value)}>{c.label}</button>
         {/each}
       </div>
     </div>
@@ -143,6 +160,19 @@
     color: var(--muted);
   }
   /* Open settings, beside a permission the OS refuses the app: a thumb's size. */
+  /* An action on a line of its own under a note, in the note's size: its padding makes a
+     48px target, and the margin takes it back so the line keeps the note's height. */
+  .inline {
+    align-self: flex-start;
+    padding: 16px 4px;
+    margin: -16px -4px;
+    border: 0;
+    background: none;
+    color: var(--accent);
+    font: inherit;
+    font-size: 12px;
+  }
+
   .settings {
     min-height: 48px;
     padding: 0 12px;

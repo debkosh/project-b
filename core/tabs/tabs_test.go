@@ -170,7 +170,7 @@ func TestATabIntoAWindowWithNoTabsIsActive(t *testing.T) {
 		t.Fatalf("added behind into a window with none: active %v", m.ActiveIn(1))
 	}
 	m.Close(a)
-	m.HandleTabOpened(0, 9, "https://b.test/", work, false)
+	m.HandleTabOpened(0, 9, "https://b.test/", work, false, true)
 	if m.ActiveIn(1) != 9 {
 		t.Fatalf("opened behind into a window with none: active %v", m.ActiveIn(1))
 	}
@@ -184,11 +184,11 @@ func TestATabAPageOpensIsShownOnlyInTheForeground(t *testing.T) {
 	e := &fakeEngine{}
 	m := oneWindow(e)
 	a := m.Create(1)
-	m.HandleTabOpened(a, 7, "https://b.test/", "", false)
+	m.HandleTabOpened(a, 7, "https://b.test/", "", false, true)
 	if m.ActiveID() != a || m.All()[1].URL != "https://b.test/" {
 		t.Fatalf("background open: active %v all %v", m.ActiveID(), m.All())
 	}
-	m.HandleTabOpened(a, 8, "https://c.test/", "", true)
+	m.HandleTabOpened(a, 8, "https://c.test/", "", true, true)
 	if m.ActiveID() != 8 {
 		t.Fatalf("foreground open: active %v", m.ActiveID())
 	}
@@ -409,12 +409,12 @@ func TestWindowsKeepTheirOwnTabs(t *testing.T) {
 	}
 
 	// A page in window 2 opens a tab: it goes in window 2, though window 1 is in front.
-	m.HandleTabOpened(c, 9, "https://p.test/", "", true)
+	m.HandleTabOpened(c, 9, "https://p.test/", "", true, true)
 	if m.WindowOf(9) != 2 || m.ActiveIn(2) != 9 || m.ActiveID() != a {
 		t.Fatalf("opened tab in window %v, window 2 active %v, in front %v", m.WindowOf(9), m.ActiveIn(2), m.ActiveID())
 	}
 	// One no page opened goes in the window in front.
-	m.HandleTabOpened(0, 10, "https://q.test/", "", true)
+	m.HandleTabOpened(0, 10, "https://q.test/", "", true, true)
 	if m.WindowOf(10) != 1 {
 		t.Fatalf("tab with no opener in window %v", m.WindowOf(10))
 	}
@@ -476,7 +476,7 @@ func TestATabKeepsItsWorkspace(t *testing.T) {
 	m := oneWindow(&fakeEngine{})
 	plain := m.CreateIn(1, "")
 	work := m.CreateIn(1, "0a1b2c3d")
-	m.HandleTabOpened(work, 9, "https://p.test/", "0a1b2c3d", true)
+	m.HandleTabOpened(work, 9, "https://p.test/", "0a1b2c3d", true, true)
 	m.Duplicate()
 	workspace := func(id engine.TabID) string { t, _ := m.Get(id); return t.Workspace }
 	got := []string{workspace(plain), workspace(work), workspace(9), workspace(m.ActiveID())}

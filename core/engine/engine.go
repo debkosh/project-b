@@ -475,8 +475,10 @@ type Listener interface {
 	// has already created it, hidden, in workspace, its opener's; the app decides whether
 	// to show it. A tab a client of the debugging port asks for is in the first
 	// workspace, and may be in a window of its own, newWindow; a page's never is, so its
-	// tab goes in its window.
-	TabOpened(opener, tab TabID, url, workspace string, foreground, newWindow bool)
+	// tab goes in its window. tapped says a real tap, click or key reached the opener's page
+	// just before, Chromium's user activation, which a page's script can't fake; a tab no
+	// page opened is always tapped. Allow pop-ups off, an untapped one is a pop-up Go blocks.
+	TabOpened(opener, tab TabID, url, workspace string, foreground, newWindow, tapped bool)
 
 	// TabFocused says the keyboard went into a visible tab's page: a click, Tab from the
 	// shell, or FocusTab.

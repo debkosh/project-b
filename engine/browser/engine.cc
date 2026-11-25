@@ -709,7 +709,8 @@ void Engine::TabOpened(int64_t opener,
                        int64_t tab,
                        const GURL& url,
                        bool foreground,
-                       bool new_window) {
+                       bool new_window,
+                       bool tapped) {
   hooks::Args args;
   args.Int(opener);
   args.Int(tab);
@@ -717,6 +718,7 @@ void Engine::TabOpened(int64_t opener,
   args.Str(Get()->tab(tab)->workspace());
   args.Bool(foreground);
   args.Bool(new_window);
+  args.Bool(tapped);
   hooks::Fire(PB_EVENT_TAB_OPENED, args);
 }
 

@@ -138,6 +138,10 @@ func (a *App) startSites(e engine.Engine, dir string) {
 				} else {
 					a.Settings.OpenSection(w, "sites")
 				}
+			case "openBlockedPopup":
+				// The site panel's Open it: the latest pop-up the active tab's page
+				// opened that Go closed.
+				a.Tabs.OpenBlockedPopup(a.Tabs.ActiveIn(w))
 			default:
 				return false
 			}
@@ -296,11 +300,16 @@ func (a *App) siteConnections() map[string]siteConnection {
 	return out
 }
 
-// pageMay is Links to other sites (docs/site-features.md): a page's navigation, in its own
-// tab or a tab it opened, may go to its own site whatever the setting, and anywhere under
-// Allow; under Block, nowhere else, the blank page included.
+// pageMay is the page guard (docs/site-features.md). A pop-up, a tab a page opens with no
+// tap first, goes only where its opener's site has Pop-ups at Allow. Then Links to other
+// sites: a page's navigation, in its own tab or a tab it opened, may go to its own site
+// whatever the setting, and anywhere under Allow; under Block, nowhere else, the blank page
+// included.
 func (a *App) pageMay(n tabs.PageNavigation) bool {
 	o := sites.Origin(n.From)
+	if n.Untapped && (o == "" || a.Sites.Value(o, sites.Popups) != sites.Allow) {
+		return false
+	}
 	if o == "" || a.Sites.Value(o, sites.Links) != sites.Block {
 		return true
 	}

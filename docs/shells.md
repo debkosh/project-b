@@ -540,7 +540,7 @@ it there; a phone shell may be left out of a rule for a desktop feature.
     (Allow, Block), the site's permissions, and Details.
     Each change is `setSiteSetting`; Escape (a phone's back key) closes it. A tab's
     `popupsBlocked`, when above 0, shows in the address field as a button named by its count
-    ("1 popup blocked"), which opens the panel. Standard
+    ("1 pop-up blocked"), which opens the panel. Standard
     and Fox draw the shared `@/ui/SitePanel.vue`; Mobile, a sheet. Minimal goes straight to
     settings; Terminal and Curve, from their sessions.
 

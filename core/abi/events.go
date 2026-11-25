@@ -82,7 +82,7 @@ func (e *Events) adapter(id Event, l engine.Listener, r *reader) (Value, bool) {
 	case PageMessage:
 		l.PageMessage(engine.TabID(r.int()), engine.Page(r.str()), []byte(r.str()))
 	case TabOpened:
-		l.TabOpened(engine.TabID(r.int()), engine.TabID(r.int()), r.str(), r.str(), r.bool(), r.bool())
+		l.TabOpened(engine.TabID(r.int()), engine.TabID(r.int()), r.str(), r.str(), r.bool(), r.bool(), r.bool())
 	case FaviconChanged:
 		l.FaviconChanged(engine.TabID(r.int()), r.str())
 	case WindowChanged:

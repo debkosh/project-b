@@ -221,7 +221,7 @@ func TestSettingsSetsAnAskableKindForASite(t *testing.T) {
 	if m.Status(0, "https://meet.test", Camera) != A || len(m.Sites()) != 0 {
 		t.Fatalf("reset kept %+v", m.Sites())
 	}
-	if s := Settable(); len(s) != 6 || s[3].Kind != Ads || s[4].Kind != Links || s[5].Kind != Sparks || s[0].Kind != Camera || s[0].Title != "Camera" {
+	if s := Settable(); len(s) != 7 || s[3].Kind != Ads || s[4].Kind != Links || s[5].Kind != Popups || s[5].Value != Block || s[4].Value != Allow || s[6].Kind != Sparks || s[0].Kind != Camera || s[0].Title != "Camera" {
 		t.Fatalf("settable %+v", s)
 	}
 }

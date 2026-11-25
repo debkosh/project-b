@@ -76,6 +76,18 @@ export function openSiteSettings() {
   send({ t: 'openSiteSettings' });
 }
 
+// openBlockedPopup opens the latest pop-up the active tab's page opened that Go closed, in a
+// tab beside it: Open it.
+export function openBlockedPopup() {
+  send({ t: 'openBlockedPopup' });
+}
+
+// popupsNote is the site panel's line under Pop-ups: how many were blocked on this page.
+export function popupsNote(tab) {
+  const n = tab?.popupsBlocked || 0;
+  return `${n} blocked on this page`;
+}
+
 // hasSite says whether a tab's page is a site, which has settings of its own.
 export function hasSite(tab) {
   return /^https?:\/\//.test(tab?.url || '');
@@ -83,10 +95,12 @@ export function hasSite(tab) {
 
 // The site panel (docs/site-features.md). Go sends state.openSites: by origin, each site a
 // web tab is open on, {settings: [{kind, title, value, choices?}], sparks: [{id, name, on}]}.
-// Settings with choices are ours (ads: on or off; links: allow or block); the rest
+// Settings with choices are ours (ads: on or off; links: allow or block; popups: block or
+// allow); the rest
 // are a page's permissions, "" (ask), "allow" or "block". A tab's adsBlocked counts what the
-// ad blocker kept from its page, and its popupsBlocked the tabs its page opened that
-// Links to other sites closed.
+// ad blocker kept from its page, and its popupsBlocked the tabs its page opened that Go
+// closed: pop-ups, where the site's Pop-ups is Block, and those Links to other sites refused;
+// blockedPopup is the latest one's address, which Open it opens.
 
 // siteOrigin is the origin of a tab's page, "" for one that isn't a site.
 export function siteOrigin(tab) {
@@ -127,14 +141,27 @@ export function sparkNames(names) {
 }
 
 // The words for our own kinds' values, and a permission's.
+// The site's Pop-ups, Block by default, in Links' order so the two rows' choices sit alike.
+export const popupChoices = [
+  { value: 'allow', label: 'Allow' },
+  { value: 'block', label: 'Block' },
+];
+
 export const linkChoices = [
   { value: 'allow', label: 'Allow' },
   { value: 'block', label: 'Block' },
 ];
 
-// popupsWord says how many popups Links to other sites closed on a tab's page.
+// popupsWord says how many pop-ups Go closed on a tab's page: those opened with no tap, and
+// those Links to other sites refused.
 export function popupsWord(n) {
-  return n === 1 ? '1 popup blocked' : `${n} popups blocked`;
+  return n === 1 ? '1 pop-up blocked' : `${n} pop-ups blocked`;
+}
+
+// openPopupWord is the panel's button that opens the latest pop-up blocked: "Open it", or
+// "Open the last one" when there were more.
+export function openPopupWord(n) {
+  return n > 1 ? 'Open the last one' : 'Open it';
 }
 
 export function permissionWord(value) {
