@@ -529,10 +529,15 @@ base::ListValue Items(const base::ListValue& from) {
     base::DictValue d;
     d.Set("title", title ? *title : "");
     d.Set("key", key ? KeyText(*key) : "");
-    d.Set("enabled", item.FindBool("enabled").value_or(false));
     d.Set("checked", item.FindBool("checked").value_or(false));
     if (const base::ListValue* sub = item.FindList("items")) {
-      d.Set("items", Items(*sub));
+      // A submenu's own item is enabled when it lists something, as AppKit makes it on the
+      // Mac: Go gives it no enabled of its own.
+      base::ListValue listed = Items(*sub);
+      d.Set("enabled", !listed.empty());
+      d.Set("items", std::move(listed));
+    } else {
+      d.Set("enabled", item.FindBool("enabled").value_or(false));
     }
     items.Append(std::move(d));
   }
