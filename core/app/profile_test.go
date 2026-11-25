@@ -75,7 +75,7 @@ func TestResetToATemplateTakesItsValuesAndKeepsTheRest(t *testing.T) {
 		t.Fatalf("listed %+v", listed)
 	}
 	r.flushPrefs()
-	if got := prefs.New(c.Dir).All(); !reflect.DeepEqual(got, prefs.Prefs{TabLayout: prefs.TabsVertical, FrameColor: "#5b7fd6", Theme: prefs.ThemeSystem, Shell: "pbshell", AddressBarPosition: prefs.AddressBottom, SearchEngine: "duckduckgo", Start: prefs.StartContinue, BookmarksNewTab: true, BookmarksCommandBox: true, BlockAds: true, KeepCookies: []string{}}) {
+	if got := prefs.New(c.Dir).All(); !reflect.DeepEqual(got, prefs.Prefs{TabLayout: prefs.TabsVertical, FrameColor: "#5b7fd6", Theme: prefs.ThemeSystem, Shell: "pbshell", PhoneShell: "mwshell", AddressBarPosition: prefs.AddressBottom, SearchEngine: "duckduckgo", Start: prefs.StartContinue, BookmarksNewTab: true, BookmarksCommandBox: true, BlockAds: true, KeepCookies: []string{}}) {
 		t.Fatalf("the prefs are %+v", got)
 	}
 	if items := r.suggestions("exam"); len(items) != 1 {

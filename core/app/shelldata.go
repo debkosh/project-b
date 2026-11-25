@@ -14,7 +14,7 @@ import (
 // has its own, so a switch to another shell and back finds it as it was.
 func (a *App) shellDataPart() shell.Part {
 	return shell.Part{
-		Snapshot: func(into map[string]any) { into["profileData"] = a.ShellData.Get(a.Prefs.Shell()) },
+		Snapshot: func(into map[string]any) { into["profileData"] = a.ShellData.Get(a.shells.InUse()) },
 		Handle: func(_ engine.WindowID, t string, msg []byte) bool {
 			if t != "profileData" {
 				return false
@@ -26,7 +26,7 @@ func (a *App) shellDataPart() shell.Part {
 				timeline.Warnf("shell: bad profileData")
 				return true
 			}
-			if err := a.ShellData.Set(a.Prefs.Shell(), c.Data); err != nil {
+			if err := a.ShellData.Set(a.shells.InUse(), c.Data); err != nil {
 				timeline.Errorf("shelldata: %v", err)
 				return true
 			}

@@ -39,9 +39,13 @@ time the window settles on a new size.
 - So: a phone stays on Mobile, upright or sideways. A foldable is Mobile folded and Standard
   open. A tablet is Standard both ways round, so turning it never changes the browser. A
   desktop-mode window is whichever its size says.
-- **In Go:** `shells.OnPhone` stops being a build-time fact. The engine tells Go the window's
-  class, wide or narrow, with its size; the shell manager picks the profile's shell for that
-  class. The APK carries the Standard shell's pages too (about 1 MB).
+- **In Go:** `shells.OnPhone` became `shells.OnAndroid`, the platform, and `shells.Narrow`
+  the rule. Go already hears the window's size in dp (`WindowState`), so the engine is
+  unchanged: `app.shellPick` decides from it, the first size at once and a later one once
+  it has settled, and the windows load the shell it says. The APK carries the Standard
+  shell's pages too (`ANDROID_PAGES` in `engine/build_go.py`, under 300 KB). The mock plays
+  Android with `-platform=android`, and `shell/e2e/large-screens.cjs` resizes it across
+  the line.
 
 What Standard needs on Android, all of it already true of Standard in a Mac window at full
 screen: no window buttons (the system's caption bar has its own in desktop mode, which fits
@@ -152,7 +156,8 @@ emu-29 before handover, with slots from the tester.
   those ids from then on.
 - **The shell follows the window, by size** (2026-11-25: "rest is fine"), with Settings
   letting a profile pin one shell for every size.
-- **`shell` is the wide window's shell, a new `phone_shell` the narrow one's**, with no
-  migration: a phone on Mobile (native) shows Mobile once until chosen again.
+- **`shell` is the wide window's shell, a new `phoneShell` the narrow one's**, with no
+  migration: a phone on Mobile (native) shows Mobile once until chosen again. `oneShell`
+  keeps one at every size, `phone` or `wide`; unset, the size chooses.
 - **Standard is the one desktop shell on Android**, with the touch density.
 - **No several windows for now** (2026-11-25: "no multi window for now").

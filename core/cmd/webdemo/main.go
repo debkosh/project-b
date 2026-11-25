@@ -41,7 +41,7 @@ func main() {
 	// (pbcoreOS): a phone's on a phone, the Mac's keys on a Mac, Linux's on any other.
 	switch js.Global().Get("pbcoreOS").String() {
 	case "android":
-		commands.OS, shells.OnPhone = "android", true
+		commands.OS, shells.OnAndroid = "android", true
 	case "mac":
 		commands.OS = "darwin"
 	default:

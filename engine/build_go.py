@@ -19,9 +19,10 @@ import sys
 GOOS = {"mac": "darwin", "linux": "linux", "android": "android"}
 GOARCH = {"arm64": "arm64", "x64": "amd64"}
 
-# What a phone serves of the shell's built pages, under shell/dist: our pages and the
-# phone's shells, the registry's "phone": true. A phone loads no other shell.
-PHONE_SHELL = ("settings", "downloads", "history", "bookmarks", "welcome", "shell/mwshell")
+# What Android serves of the shell's built pages, under shell/dist: our pages, the phone's
+# web shell for a narrow window, and the desktop shells it lists for a wide one, the
+# registry's "android": true (docs/large-screens.md). Android loads no other shell.
+ANDROID_PAGES = ("settings", "downloads", "history", "bookmarks", "welcome", "shell/mwshell", "shell/pbshell")
 
 
 def main():
@@ -95,7 +96,7 @@ def main():
         built = os.path.join(repo, "shell", "dist")
         shutil.rmtree(dist)
         deps = []
-        for folder in PHONE_SHELL:
+        for folder in ANDROID_PAGES:
             shutil.copytree(os.path.join(built, folder), os.path.join(dist, folder))
             for root, _, files in os.walk(os.path.join(built, folder)):
                 deps += [os.path.join(link, os.path.relpath(os.path.join(root, name), repo))

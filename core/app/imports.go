@@ -239,7 +239,7 @@ func (im *importer) look() {
 	if im.looking {
 		return
 	}
-	if shells.OnPhone {
+	if shells.OnAndroid {
 		im.send(map[string]any{"t": "browsers", "browsers": []shownBrowser{}})
 		return
 	}

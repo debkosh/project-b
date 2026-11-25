@@ -21,7 +21,7 @@ func (a *App) menuShellPart() shell.Part {
 			if t != "menu" {
 				return false
 			}
-			id := a.Prefs.Shell()
+			id := a.shells.InUse()
 			var ask struct {
 				Bar bool `json:"bar"`
 			}

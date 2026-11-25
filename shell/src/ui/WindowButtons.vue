@@ -2,11 +2,13 @@
 // The window's own buttons where the frame is ours, Linux and Windows (docs/design-system.md,
 // "The window's own buttons and menus"): minimise, maximise and close at the right end of the
 // title bar's row. The Mac keeps its own, which leave their space in the row instead
-// (controlSpace), so there this draws nothing. Each runs Go's action, as a menu would.
+// (controlSpace), so there this draws nothing. Android's window is the whole screen, or in
+// desktop mode has a caption bar with buttons of its own, so there it draws none either.
+// Each runs Go's action, as a menu would.
 import { computed } from 'vue';
 import { send, state } from '@/sdk/vue.js';
 
-const ours = computed(() => state.platform !== 'mac' && !(state.controls && state.controls.w > 0));
+const ours = computed(() => state.platform !== 'mac' && state.platform !== 'android' && !(state.controls && state.controls.w > 0));
 const run = (action) => send({ t: 'run', text: action });
 </script>
 

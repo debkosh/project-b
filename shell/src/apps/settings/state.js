@@ -20,7 +20,7 @@ export const state = reactive({
   // Where a phone shell puts its address bar: 'bottom' or 'top'.
   addressBarPosition: 'bottom',
   // A phone's shells to choose from, and the one in use: {shell, shells}, null off a phone.
-  phoneShells: null,
+  androidShells: null,
   // What a start opens: 'continue', the windows and tabs as they were, or 'fresh', a window opened
   // as the shell opens one.
   start: 'continue',
@@ -167,7 +167,7 @@ export function connect() {
             tones: m.tones,
             tabLayout: m.tabLayout,
             addressBarPosition: m.addressBarPosition,
-            phoneShells: m.phoneShells || null,
+            androidShells: m.androidShells || null,
             theme: m.theme,
             start: m.start,
             searchEngine: m.searchEngine,
@@ -220,8 +220,8 @@ export function connect() {
         case 'addressBarPosition':
           state.addressBarPosition = m.addressBarPosition;
           break;
-        case 'phoneShells':
-          state.phoneShells = m.phoneShells;
+        case 'androidShells':
+          state.androidShells = m.androidShells;
           break;
         case 'autoUpdate':
           state.autoUpdate = m.autoUpdate;

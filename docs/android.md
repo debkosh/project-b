@@ -353,9 +353,10 @@ adapter here, with `Window` as the one Android file (`engine/android/window_andr
 | Pictures of the pages | The Mobile shell's switcher shows each tab's page as it last looked (`thumb`). Go asks the engine to copy the page as a tab is left and as the switcher opens (`captureTab`); the engine copies it from the compositor, 720 pixels wide at most, keeps a JPEG per tab and serves it to the shell at `chrome://thumb/<tab>`. The copy completes though the tab is hidden just after: the window's one compositor keeps the page's surface until it is done. The Mac makes them only for a phone shell named outright |
 | Updates | The same manager and the same `amarit.Client`, every minute, on the `android/arm64` asset. The APK is downloaded into the profile, size and sha256 checked by amarit, and the bubble and the settings panel offer to install it: see [Updates on a phone](#updates-on-a-phone) |
 
-**The Mobile shell.** A phone loads only the shells the registry marks `phone`, and its Go holds only those
-and the settings page, so it starts on `mwshell`
-([shells.md](shells.md#the-mobile-shell)), even where a profile's prefs name `pbshell`, as the templates do: one
+**The Mobile shell.** A narrow window, a phone's, loads the profile's `phoneShell`, one the registry marks
+`phone`, `mwshell` until another is chosen; a wide one, a tablet's or an opened foldable's, loads Standard
+([large-screens.md](large-screens.md)). The APK carries those two web shells and the settings page
+([shells.md](shells.md#the-mobile-shell)). Mobile is: one
 bar at the foot, a tab switcher, tab groups in a strip, the long-press link menu the shell draws, and the bars
 hiding on scroll. The phone's back key closes the shell's sheet or ends its address editing first
 (`set_shell_back`), then settings', then goes back in the page, then on a tab with no history closes it, the

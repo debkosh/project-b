@@ -36,7 +36,7 @@ func (a *App) profileSettingsPart(list *profiles.Manager, id string) settings.Pa
 		return map[string]any{"name": p.Name, "template": p.Template, "templates": templates, "shell": a.Prefs.Shell(), "shells": listed}
 	}
 	// The shell changes from View, Shell too.
-	a.Prefs.OnShellChanged(func(string) { a.Settings.Send(map[string]any{"t": "profile", "profile": view()}) })
+	a.Prefs.OnShellChanged(func() { a.Settings.Send(map[string]any{"t": "profile", "profile": view()}) })
 	return settings.Part{
 		Snapshot: func(into map[string]any) { into["profile"] = view() },
 		Handle: func(_ engine.TabID, t string, msg []byte) bool {

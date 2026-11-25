@@ -39,7 +39,7 @@ func newPageThumbs(a *App, e engine.Engine) *pageThumbs {
 func (t *pageThumbs) capture(id engine.TabID) {
 	w := t.a.Tabs.WindowOf(id)
 	tab, ok := t.a.Tabs.Get(id)
-	if !ok || w == 0 || !shells.Phone(t.a.Prefs.Shell()) || tab.URL == "" || tab.Notice != nil {
+	if !ok || w == 0 || !shells.Phone(t.a.shells.InUse()) || tab.URL == "" || tab.Notice != nil {
 		return
 	}
 	now := time.Now()

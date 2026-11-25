@@ -69,7 +69,7 @@ func main() {
 	keychain := flag.String("keychain", "", "the secret the login keychain gives for any browser's passwords, in place of the Mac's keychain")
 	keychainItems := flag.String("keychain-items", "", "with -keychain, the comma-separated names whose \"<name> Safe Storage\" items the keychain lists, none by default")
 	passwordStore := flag.Bool("password-store", false, "let an import bring passwords into the profile's saved logins: off unless asked, as the tests' made-up browsers have passwords, and bringing them without -keychain would ask the Mac's own keychain")
-	platform := flag.String("platform", "", "the platform the keys and the pages are written for, mac, windows or linux; this one's by default")
+	platform := flag.String("platform", "", "the platform the keys and the pages are written for, mac, windows, linux or android; this one's by default")
 	skipWelcome := flag.Bool("skip-welcome", false, "a start that would open the welcome notes it finished instead, as its Skip setup does")
 	// The updater runs for real against a manifest when given a version to be, the bundle
 	// it is "installed" as, and the manifest. Without a version it stays off, as it does
@@ -89,6 +89,8 @@ func main() {
 	flag.Parse()
 	// The mock engine's app waits for nothing after a start, as the tests that drive it don't.
 	later.Wait = 0
+	// As on Android, the window's size picks the shell (docs/large-screens.md).
+	shells.OnAndroid = *platform == "android"
 	var syncSrv *syncServer
 	if *withSyncServer {
 		syncSrv = startSyncServer(filepath.Join(filepath.Dir(*profile), "sync-server.db"))
@@ -113,7 +115,11 @@ func main() {
 	// for a profile that chose it.
 	if *use != "" && !*pick {
 		p := prefs.New(*profile)
-		p.SetShell(*use)
+		if shells.OnAndroid && shells.Phone(*use) {
+			p.SetPhoneShell(*use)
+		} else {
+			p.SetShell(*use)
+		}
 		// Saves are written in the background; Close waits for this one, so the app reads it.
 		p.Close()
 	}

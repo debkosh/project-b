@@ -236,7 +236,7 @@ func (w *welcome) snapshot(tab engine.TabID) map[string]any {
 	s := map[string]any{
 		"t":             "snapshot",
 		"whole":         tab == w.whole,
-		"phone":         shells.OnPhone,
+		"phone":         shells.OnAndroid,
 		"theme":         w.a.Prefs.Theme(),
 		"tones":         tones.Of(w.a.Window.Color()),
 		"prefs":         w.a.Prefs.All(),

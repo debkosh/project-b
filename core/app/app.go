@@ -127,6 +127,9 @@ type App struct {
 	Policy   *policy.Manager
 	Window   *window.Manager
 	Prefs    *prefs.Manager
+	// shells is the shell the windows load: the shell pref, or on Android the one the
+	// window's size picks.
+	shells *shellPick
 	Flags    *flags.Manager
 	Update   *update.Manager
 	Shell    *shell.Manager
@@ -250,8 +253,9 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Downloads.Load()
 	a.Tabs = tabs.New(e, a.Workspaces, a.Pins)
 	a.Prefs = prefs.New(cfg.ProfileDir)
+	a.shells = newShellPick(a.Prefs, e.Post)
 	a.Flags = flags.New(cfg.ProfileDir)
-	a.Window = window.New(e, shells.Page(a.Prefs.Shell()), a.Prefs.FrameColor(), themeOf(a.Prefs.Theme()), a.Tabs.Front)
+	a.Window = window.New(e, shells.Page(a.shells.InUse()), a.Prefs.FrameColor(), themeOf(a.Prefs.Theme()), a.Tabs.Front)
 	a.Tabs.OnFrontChanged(a.Window.HandleFrontChanged)
 	a.Tabs.OnMoved(a.Window.HandleTabMoved)
 	a.sayStart(cfg.ProfileDir)
@@ -384,8 +388,8 @@ func Start(e engine.Engine, cfg Config) *App {
 		})
 		a.Settings.AddPart(a.profileSettingsPart(cfg.Profiles, cfg.Profile))
 	}
-	if shells.OnPhone {
-		a.Settings.AddPart(a.phoneShellPart())
+	if shells.OnAndroid {
+		a.Settings.AddPart(a.androidShellPart())
 	}
 	// A change to the workspaces reaches every shell at once, for the dots, and every
 	// settings page; the Tab menu reads the list as it opens. The engine hears which is
@@ -417,7 +421,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Shell.AddPart(a.suggestShellPart(e))
 	// Another shell loads in every window at once. The old one's regions go, as after a
 	// crash, and the tabs stay where they were until the new one reports.
-	a.Prefs.OnShellChanged(func(id string) {
+	a.shells.OnChanged(func(id string) {
 		a.Shell.ShellChanged()
 		a.Window.SetPage(shells.Page(id))
 	})
@@ -446,9 +450,9 @@ func Start(e engine.Engine, cfg Config) *App {
 	})
 	a.Tabs.OnListChanged(a.refreshMenu)
 	a.Prefs.OnTabLayoutChanged(func(string) { a.refreshMenu() })
-	a.Prefs.OnShellChanged(func(string) { a.refreshMenu() })
+	a.shells.OnChanged(func(string) { a.refreshMenu() })
 	// Keyboard settings lists only the shell in use's own actions.
-	a.Prefs.OnShellChanged(func(string) { a.Settings.KeyboardChanged() })
+	a.shells.OnChanged(func(string) { a.Settings.KeyboardChanged() })
 	a.Window.OnControlsChanged(func(engine.WindowID, engine.Rect, float64) { a.refreshMenu() })
 	a.Commands.Load()
 	for _, start := range starters {
@@ -510,29 +514,43 @@ func (a *App) profileList(cfg Config) commands.List {
 	}
 }
 
-// phoneShellPart is a phone's choice of shell, in General: a phone has no Profile
-// section or View menu, the desktop's two places for it. The shells it offers are a
-// phone's own (shells.Listed).
-func (a *App) phoneShellPart() settings.Part {
-	view := func() map[string]any {
-		listed := []map[string]string{}
-		for _, s := range shells.Listed() {
-			listed = append(listed, map[string]string{"id": s.ID, "name": s.Name})
+// androidShellPart is Android's choice of shell, in General: Android has no Profile
+// section or View menu, the desktop's two places for it. It offers the phone shells for a
+// narrow window, the desktop shells Android lists for a wide one, and keeping one of the
+// two at every size.
+func (a *App) androidShellPart() settings.Part {
+	list := func(of []shells.Shell) []map[string]string {
+		out := []map[string]string{}
+		for _, s := range of {
+			out = append(out, map[string]string{"id": s.ID, "name": s.Name})
 		}
-		return map[string]any{"shell": a.Prefs.Shell(), "shells": listed}
+		return out
 	}
-	a.Prefs.OnShellChanged(func(string) { a.Settings.Send(map[string]any{"t": "phoneShells", "phoneShells": view()}) })
+	view := func() map[string]any {
+		return map[string]any{
+			"phone": a.Prefs.PhoneShell(), "phones": list(shells.Phones()),
+			"wide": a.Prefs.Shell(), "wides": list(shells.Listed()),
+			"one": a.Prefs.OneShell(),
+		}
+	}
+	a.Prefs.OnShellChanged(func() { a.Settings.Send(map[string]any{"t": "androidShells", "androidShells": view()}) })
 	return settings.Part{
-		Snapshot: func(into map[string]any) { into["phoneShells"] = view() },
+		Snapshot: func(into map[string]any) { into["androidShells"] = view() },
 		Handle: func(_ engine.TabID, t string, msg []byte) bool {
-			if t != "setShell" {
-				return false
-			}
 			var c struct {
 				Text string `json:"text"`
 			}
 			json.Unmarshal(msg, &c)
-			a.Prefs.SetShell(c.Text)
+			switch t {
+			case "setShell":
+				a.Prefs.SetShell(c.Text)
+			case "setPhoneShell":
+				a.Prefs.SetPhoneShell(c.Text)
+			case "setOneShell":
+				a.Prefs.SetOneShell(c.Text)
+			default:
+				return false
+			}
 			return true
 		},
 	}
@@ -546,7 +564,7 @@ func (a *App) shellList() commands.List {
 		Items: func() []commands.ListItem {
 			var items []commands.ListItem
 			for _, s := range shells.Listed() {
-				items = append(items, commands.ListItem{Key: s.ID, Title: s.Name, Checked: s.ID == a.Prefs.Shell()})
+				items = append(items, commands.ListItem{Key: s.ID, Title: s.Name, Checked: s.ID == a.shells.InUse()})
 			}
 			return items
 		},
@@ -744,6 +762,7 @@ func (a *App) PickerMessage(engine.WindowID, []byte) {}
 func (a *App) WindowChanged(w engine.WindowID, s engine.WindowState) {
 	a.Window.HandleWindowChanged(w, s)
 	a.fulls.windowChanged(w, s)
+	a.shells.WindowChanged(s)
 }
 
 func (a *App) ShellCrashed(w engine.WindowID) {

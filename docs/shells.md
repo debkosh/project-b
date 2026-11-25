@@ -930,12 +930,13 @@ address field, and a menu button at the far right, in our tones.
 `mwshell`: the phone's shell, in Svelte, everything at the thumb. Its guideline is
 `project-b-research/mobile-shell/spec.md`.
 
-- **The registry marks it `"phone": true`.** A phone offers and loads only phone shells,
-  and the APK carries only those (owner, 2026-11-14: more phone shells can join it later),
-  so it starts on Mobile even where a profile's pref names `pbshell`, as the templates do;
-  a desktop offers none, though it loads one named outright, as the mock does for the
-  shell's tests in a phone-sized window. With more than one phone shell, Settings, Look on
-  a phone has Shell to choose between them (a phone has no View menu).
+- **The registry marks it `"phone": true`.** On Android a narrow window loads a phone
+  shell, the profile's `phoneShell`, and a wide one the desktop shells the registry marks
+  `"android": true`, Standard alone so far, its `shell` ([large-screens.md](large-screens.md)).
+  The APK carries those. A desktop offers no phone shell, though it loads one named
+  outright, as the mock does for the shell's tests in a phone-sized window. Settings, Look
+  on Android chooses the phone shell when there is more than one, and whether the size
+  chooses or one stays at every size (Android has no View menu).
 - **One bar at the foot, 48px:** the address pill, which shows the host and the lock and
   becomes the field when tapped, with the suggestions over it, the closest nearest the
   thumb; the tab count, which opens the switcher; and ⋯, the menu sheet. A swipe along
