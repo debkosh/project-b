@@ -54,6 +54,7 @@ class ContentBrowserClient : public ContentBrowserClientHooks {
       const base::CommandLine& command_line,
       int child_process_id,
       content::PosixFileDescriptorInfo* mappings) override;
+  bool IsContentSchemeURLNavigationAllowed(const GURL& url) override;
 #else
   base::FilePath GetChildProcessPath(int flags,
                                      content::ChildProcessId child_process_id) override;
