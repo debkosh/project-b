@@ -82,7 +82,7 @@
     flex: 1;
     min-width: 0;
     overflow: hidden;
-    font-size: calc(14rem / 16);
+    font-size: calc(14 * var(--capped-rem) / 16);
     font-weight: 500;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -153,7 +153,7 @@
     box-sizing: border-box;
     border: 1.5px solid currentColor;
     border-radius: 5px;
-    font-size: calc(11rem / 16);
+    font-size: calc(11 * var(--capped-rem) / 16);
     font-weight: 600;
     line-height: 1;
   }

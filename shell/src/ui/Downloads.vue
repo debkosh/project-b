@@ -428,7 +428,7 @@ li.failed .name {
 
 /* The design system's quiet text button, at the list's size. */
 .text-button {
-  height: 26px;
+  min-height: 26px;
   padding: 0 8px;
   font-size: calc(12rem / 16);
 }

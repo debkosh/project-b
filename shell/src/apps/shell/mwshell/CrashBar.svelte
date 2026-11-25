@@ -29,7 +29,7 @@
     padding: 0 4px 0 16px;
     background: var(--bar);
     border-top: 1px solid var(--line);
-    font-size: calc(12rem / 16);
+    font-size: calc(12 * var(--capped-rem) / 16);
   }
 
   button {

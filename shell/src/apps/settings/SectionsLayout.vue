@@ -209,13 +209,22 @@ watch(
   text-align: left;
 }
 
-/* A section's name, and the line under it, each on one line: what doesn't fit ends in an
-   ellipsis, however narrow the phone or large its type. */
-.section-row .label,
-.section-row .secondary {
+/* A section's name on one line, and the line under it on two at most: what doesn't fit ends
+   in an ellipsis, however narrow the phone, and a larger font size shows the words rather
+   than fewer of them. */
+.section-row .label {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+/* Inside the label, which keeps its name on one line. */
+.section-row .secondary {
+  display: -webkit-box;
+  overflow: hidden;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .section-list .section-row + .section-row {
@@ -236,11 +245,16 @@ watch(
   flex: none;
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: calc(36 * var(--capped-rem) / 16);
+  height: calc(36 * var(--capped-rem) / 16);
   border-radius: 8px;
   background: var(--accent-tint);
   color: var(--accent);
+}
+
+.section-icon .icon {
+  width: var(--capped-rem);
+  height: var(--capped-rem);
 }
 
 .chevron {

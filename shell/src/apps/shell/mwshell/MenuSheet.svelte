@@ -176,6 +176,14 @@
 </Sheet>
 
 <style>
+  /* Icons beside the rows' and tiles' names grow with the text up to 1.3 times. */
+  .row :global(svg),
+  .tile :global(svg),
+  .blank {
+    width: calc(20 * var(--capped-rem) / 16);
+    height: calc(20 * var(--capped-rem) / 16);
+  }
+
   .note {
     color: var(--muted);
     font-size: calc(12rem / 16);

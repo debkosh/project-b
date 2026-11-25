@@ -6,6 +6,9 @@
    that size: the text everything inherits, 14px, is set on body. */
 :root {
   font: 1rem/1.4 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+  /* 1rem, which grows with Android's font size, held at 1.3 times its size at the normal
+     size (docs/font-size.md): for the bars' text, in fixed space, and icons beside text. */
+  --capped-rem: min(1rem, 20.8px);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
   /* Anything that floats over the rest: a menu, the suggestions, a dialog. */
@@ -55,11 +58,12 @@ body {
 }
 
 /* Words: 30px high, a hairline, a 6px radius. .primary is the one answer a dialog wants;
-   .quiet sits in a row without a border until it is pointed at. */
+   .quiet sits in a row without a border until it is pointed at. At least 30px, with room
+   above and below its words, so it grows with a larger font size. */
 .text-button {
   flex: none;
-  height: 30px;
-  padding: 0 12px;
+  min-height: 30px;
+  padding: 4px 12px;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: var(--surface);
@@ -546,9 +550,14 @@ input[type='checkbox'] {
   flex: none;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
+  width: var(--capped-rem);
+  height: var(--capped-rem);
   color: var(--icon, var(--muted));
+}
+
+.ui-menu-icon svg {
+  width: 100%;
+  height: 100%;
 }
 
 .ui-menu-icon.dot {

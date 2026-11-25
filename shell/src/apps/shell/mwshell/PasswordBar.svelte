@@ -125,8 +125,8 @@
   .whose {
     padding: 8px 16px 0;
     color: var(--muted);
-    font-size: calc(12rem / 16);
-    line-height: calc(16rem / 16);
+    font-size: calc(12 * var(--capped-rem) / 16);
+    line-height: calc(16 * var(--capped-rem) / 16);
   }
 
   .whose b {
@@ -188,7 +188,7 @@
   .for {
     flex: none;
     color: var(--muted);
-    font-size: calc(12rem / 16);
+    font-size: calc(12 * var(--capped-rem) / 16);
   }
 
   .none {

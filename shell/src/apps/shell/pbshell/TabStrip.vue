@@ -142,7 +142,7 @@ const items = computed(() =>
   height: 30px;
   padding: 0 8px 0 12px;
   border-radius: 6px;
-  font-size: calc(13rem / 16);
+  font-size: calc(13 * var(--capped-rem) / 16);
   font-weight: 500;
   cursor: pointer;
   box-sizing: border-box;
@@ -175,7 +175,7 @@ const items = computed(() =>
   background: color-mix(in srgb, var(--group) 18%, transparent);
   color: var(--text);
   font: inherit;
-  font-size: calc(12rem / 16);
+  font-size: calc(12 * var(--capped-rem) / 16);
   font-weight: 500;
   cursor: pointer;
 }

@@ -138,7 +138,7 @@ const hidden = computed(() => entries.value.slice(fits.value));
   background: none;
   color: var(--text);
   font: inherit;
-  font-size: calc(13rem / 16);
+  font-size: calc(13 * var(--capped-rem) / 16);
   cursor: pointer;
 }
 
@@ -177,6 +177,6 @@ const hidden = computed(() => entries.value.slice(fits.value));
   flex: none;
   width: 28px;
   height: 26px;
-  font-size: calc(14rem / 16);
+  font-size: calc(14 * var(--capped-rem) / 16);
 }
 </style>

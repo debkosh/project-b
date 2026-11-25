@@ -61,6 +61,8 @@
 
   .head svg {
     flex: none;
+    width: calc(20 * var(--capped-rem) / 16);
+    height: calc(20 * var(--capped-rem) / 16);
     margin-top: 2px;
     color: var(--icon);
   }

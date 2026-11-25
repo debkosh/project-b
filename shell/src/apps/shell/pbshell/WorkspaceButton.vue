@@ -42,7 +42,7 @@ const current = computed(() => workspaces.value.find((w) => w.id === view.worksp
   background: none;
   color: var(--text);
   font: inherit;
-  font-size: calc(13rem / 16);
+  font-size: calc(13 * var(--capped-rem) / 16);
   font-weight: 500;
   text-align: left;
   cursor: pointer;
@@ -61,7 +61,7 @@ const current = computed(() => workspaces.value.find((w) => w.id === view.worksp
   height: 28px;
   margin-right: 6px;
   padding: 0 8px;
-  font-size: calc(12rem / 16);
+  font-size: calc(12 * var(--capped-rem) / 16);
 }
 
 .dot {
