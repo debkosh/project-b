@@ -1179,13 +1179,18 @@ def browsing_checks():
     leave_bar(app)
 
     # Tab off the end of the shell moves into the page. The sidebar comes after the bar.
+    # Off the Mac the shell's top row ends with the window's own buttons, three stops more,
+    # so 8 Tabs ran out inside the shell on Linux: 20 is room for either. On a failure, where
+    # each Tab left the shell's focus says where the chain stopped.
     focus_bar(app)
-    for _ in range(8):
+    stops = []
+    for _ in range(20):
         app.cmd("key", "tab")
         time.sleep(0.15)
         if app.js("document.hasFocus()", page=True):
             break
-    check("tab past the end of the shell moves into the page", app.js("document.hasFocus()", page=True))
+        stops.append(app.js("(e=>e?e.tagName+(e.id?'#'+e.id:'')+'['+(e.getAttribute('aria-label')||e.className||'')+']':'none')(document.activeElement)+(document.hasFocus()?'':' unfocused')"))
+    check("tab past the end of the shell moves into the page", app.js("document.hasFocus()", page=True), stops)
 
     # Policy answered synchronously by Go.
     focus_bar(app)
