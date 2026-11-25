@@ -64,8 +64,15 @@ export http_proxy=$PROXY
 src/build/install-build-deps.sh --no-prompt --android --no-arm --no-nacl --no-chromeos-fonts >/dev/null
 unset http_proxy
 
+# gclient runhooks once hung for 8 hours on 158: its python, under Rosetta, sat in a mutex
+# while git ls-files waited to write to it. Hooks take minutes, so a try gets 30, and a try
+# that ends any other way than ok goes again, up to 3 times.
 stamp "hooks"
-gclient runhooks
+for try in 1 2 3; do
+  timeout -k 1m 30m gclient runhooks && break
+  [ "$try" = 3 ] && { stamp "RESULT=failed gclient runhooks, 3 tries"; exit 1; }
+  stamp "gclient runhooks failed or hung; again (try $((try + 1)) of 3)"
+done
 
 stamp verify
 git -C src log -1 --format='%h %s'
