@@ -11,9 +11,11 @@ import android.net.Uri;
 import android.os.Process;
 import android.os.SystemClock;
 import android.view.ActionMode;
+import android.view.InputDevice;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
+import android.view.PointerIcon;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.ViewGroup;
@@ -227,12 +229,76 @@ final class BrowserWindow extends FrameLayout {
             super(context);
         }
 
+        // The shell's view was told the pointer came in, and not yet that it left.
+        private boolean hovering;
+
         @Override
         public boolean dispatchTouchEvent(MotionEvent e) {
             if (e.getActionMasked() == MotionEvent.ACTION_DOWN && !inShell(e.getX(), e.getY())) {
                 return false;
             }
             return super.dispatchTouchEvent(e);
+        }
+
+        /**
+         * A mouse's hover and wheel go by the same regions a finger does
+         * (docs/large-screens.md): over the shell to the shell, and the rest to the page below,
+         * which Android tries next when this refuses. The shell's view stays under the pointer
+         * all over the window, so Android never tells it the pointer left: this does, as it
+         * crosses onto the page, or a shell button would stay lit.
+         */
+        @Override
+        public boolean dispatchGenericMotionEvent(MotionEvent e) {
+            if (!e.isFromSource(InputDevice.SOURCE_CLASS_POINTER)) {
+                return super.dispatchGenericMotionEvent(e);
+            }
+            boolean shell = inShell(e.getX(), e.getY());
+            switch (e.getActionMasked()) {
+                case MotionEvent.ACTION_HOVER_ENTER:
+                case MotionEvent.ACTION_HOVER_MOVE:
+                    if (!shell) {
+                        hover(e, MotionEvent.ACTION_HOVER_EXIT, false);
+                        return false;
+                    }
+                    if (e.getActionMasked() == MotionEvent.ACTION_HOVER_ENTER) {
+                        hovering = true;
+                    } else {
+                        hover(e, MotionEvent.ACTION_HOVER_ENTER, true);
+                    }
+                    super.dispatchGenericMotionEvent(e);
+                    return true;
+                case MotionEvent.ACTION_HOVER_EXIT:
+                    hover(e, MotionEvent.ACTION_HOVER_EXIT, false);
+                    return shell;
+                default:
+                    // The wheel over the bar is the bar's, even where nothing there scrolls.
+                    if (!shell) {
+                        return false;
+                    }
+                    super.dispatchGenericMotionEvent(e);
+                    return true;
+            }
+        }
+
+        // Tells the shell's view the pointer came in or left, once each.
+        private void hover(MotionEvent e, int action, boolean in) {
+            if (hovering == in) {
+                return;
+            }
+            hovering = in;
+            MotionEvent told = MotionEvent.obtain(e);
+            told.setAction(action);
+            super.dispatchGenericMotionEvent(told);
+            told.recycle();
+        }
+
+        // The pointer's shape over the page is the page's, as Android asks the next view.
+        @Override
+        public PointerIcon onResolvePointerIcon(MotionEvent e, int pointerIndex) {
+            if (!inShell(e.getX(pointerIndex), e.getY(pointerIndex))) {
+                return null;
+            }
+            return super.onResolvePointerIcon(e, pointerIndex);
         }
     }
 
