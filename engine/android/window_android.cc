@@ -130,6 +130,8 @@ class BrowserWindow : public content::CompositorClient,
   // Our pages' background for the theme Java shows, where nothing draws.
   void PageColorShown(JNIEnv* env, int32_t rgb) { SetColor(rgb); }
 
+  void FontScaleChanged(JNIEnv* env, float scale) { Engine::SetFontScale(scale); }
+
   void SizeChanged(JNIEnv* env, double width, double height) {
     size_ = gfx::SizeF(width, height);
     ReportState();
@@ -244,7 +246,10 @@ static int64_t JNI_BrowserWindow_Start(JNIEnv* env,
                                        int64_t go_table,
                                        int64_t process_age_ms,
                                        const JavaRef<jstring>& jblocked_hosts,
-                                       jboolean skip_welcome) {
+                                       jboolean skip_welcome,
+                                       float font_scale) {
+  // Before the first page is made, so none starts at another size.
+  Engine::SetFontScale(font_scale);
   SetGo(reinterpret_cast<const PBGoCalls*>(go_table));
   timeline::Start(ProfileDir(), base::Milliseconds(process_age_ms));
   g_browser_window = new BrowserWindow(
