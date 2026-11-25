@@ -1,6 +1,10 @@
 package webfeatures
 
-import "testing"
+import (
+	"encoding/json"
+	"regexp"
+	"testing"
+)
 
 // Every row of registry.json holds together, and a row that doesn't is refused.
 func TestTheRegistry(t *testing.T) {
@@ -38,8 +42,8 @@ func TestTheRegistry(t *testing.T) {
 		`[{"id":"a",` + row + `,"status":{"mac":"quiet","linux":"quiet","android":"works"},"probe":[{"name":"p","call":"p()","expect":{"mac":"absent:TypeError","linux":"absent:TypeError","android":"resolved"}}]}]`,
 		`[{"id":"a",` + row + `,"status":{"mac":"works","linux":"works","android":"works"},"probe":[{"name":"p","call":"p()","expect":{"mac":"fine","linux":"fine","android":"resolved"}}]}]`,
 		`[{"id":"a",` + row + `,"status":{"mac":"works","linux":"works","android":"works"},"probe":[{"name":"p","call":"p()","expect":{"mac":"resolved:","linux":"resolved:","android":"resolved"}}]}]`,
-		`[{"id":"a",` + row + `,"status":{"mac":"works","linux":"works","android":"works"},"probe":[{"name":"p","call":"p()",` + both + `,"expect":{"mac":"resolved","linux":"resolved","android":"resolved","windows-tap":"resolved"}}]}]`,
-		`[{"id":"a",` + row + `,"status":{"mac":"works","linux":"works","android":"quiet"},"probe":[{"name":"p","call":"p()","expect":{"mac":"resolved","linux":"resolved","android":"pending","android-tap":"absent"}}]}]`,
+		`[{"id":"a",` + row + `,"status":{"mac":"works","linux":"works","android":"works"},"probe":[{"name":"p","call":"p()",` + both + `,"expect":{"mac":"resolved","linux":"resolved","android":"resolved","windows_tap":"resolved"}}]}]`,
+		`[{"id":"a",` + row + `,"status":{"mac":"works","linux":"works","android":"quiet"},"probe":[{"name":"p","call":"p()","expect":{"mac":"resolved","linux":"resolved","android":"pending","android_tap":"absent"}}]}]`,
 		`[{"id":"a",` + row + `,"status":{"mac":"works","linux":"works","android":"works"},"probe":[{"name":"p","call":"p()","sees_nothing":true,` + both + `}]}]`,
 	} {
 		if _, err := Parse([]byte(bad)); err == nil {
@@ -50,7 +54,7 @@ func TestTheRegistry(t *testing.T) {
 		`"probe":[{"name":"p","call":"p()","expect":{"mac":"absent:ReferenceError","linux":"absent:ReferenceError","android":"absent"}},{"name":"q","call":"q()","sees_nothing":true}],` +
 		`"test":["probe:p","basics:3","check:a page keeps its renderer"]}]`
 	quiet := `[{"id":"a",` + row + `,"status":{"mac":"quiet","linux":"quiet","android":"unknown"},` +
-		`"probe":[{"name":"p","call":"p()","expect":{"mac":"rejected:NotAllowedError","linux":"rejected:NotAllowedError","android":"pending","android-tap":"absent"}}]}]`
+		`"probe":[{"name":"p","call":"p()","expect":{"mac":"rejected:NotAllowedError","linux":"rejected:NotAllowedError","android":"pending","android_tap":"absent"}}]}]`
 	for _, ok := range []string{good, quiet} {
 		if _, err := Parse([]byte(ok)); err != nil {
 			t.Errorf("refused %s: %v", ok, err)
@@ -70,4 +74,32 @@ func TestTheView(t *testing.T) {
 			t.Errorf("%s: %+v", f.ID, r)
 		}
 	}
+}
+
+// Every key in registry.json is one GN can name: engine/web_features.gni reads the file
+// with read_file(..., "json"), which makes each key an identifier, and a key such as
+// "android-tap" failed gn gen on every engine build while Go passed.
+func TestTheRegistrysKeysAreGNIdentifiers(t *testing.T) {
+	var file any
+	if err := json.Unmarshal(registry, &file); err != nil {
+		t.Fatal(err)
+	}
+	ident := regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+	var walk func(v any, at string)
+	walk = func(v any, at string) {
+		switch v := v.(type) {
+		case map[string]any:
+			for k, e := range v {
+				if !ident.MatchString(k) {
+					t.Errorf("%s has key %q, which GN can't read", at, k)
+				}
+				walk(e, at+"."+k)
+			}
+		case []any:
+			for _, e := range v {
+				walk(e, at)
+			}
+		}
+	}
+	walk(file, "registry.json")
 }

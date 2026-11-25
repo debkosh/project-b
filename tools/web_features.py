@@ -55,7 +55,7 @@ def mismatch(row, probe, platform, seen, when="load"):
         if (seen == "killed") == (status == "kills"):
             return ""
         return "%s gave %s, but %s is %s on %s in the registry" % (probe["name"], seen, row["id"], status, platform)
-    expect = probe["expect"].get(platform + "-" + when, probe["expect"][platform])
+    expect = probe["expect"].get(platform + "_" + when, probe["expect"][platform])
     if seen.startswith(expect):
         return ""
     return "%s gave %s on %s, but the registry expects %s (%s is %s on %s)" % (
