@@ -1881,7 +1881,7 @@ def copies_checks():
         check("a click in the address bar of the copy behind gives it the keyboard", False, e)
     # Personal has no colour picked, so its icon has no dot: where it would be shows the
     # icon's own artwork, as the picker's does.
-    check("each copy's Dock icon has a dot in its profile's colour, and none with no colour", b.cmd("dockdot") == "#5b7fd6" and a.cmd("dockdot") != "#5b7fd6", (a.cmd("dockdot"), b.cmd("dockdot")))
+    check_mac("each copy's Dock icon has a dot in its profile's colour, and none with no colour", b.cmd("dockdot") == "#5b7fd6" and a.cmd("dockdot") != "#5b7fd6", (a.cmd("dockdot"), b.cmd("dockdot")))
     shown = lambda app: [(i["title"], i["checked"]) for m in json.loads(app.cmd("menu")) if m["title"] == "Profiles" for i in m["items"] if i != "-"]
     check("the Profiles menu lists both, with a tick on this one", shown(a) == [("Personal", True), ("Work", False), ("Profiles…", False)] and shown(b) == [("Personal", False), ("Work", True), ("Profiles…", False)], (shown(a), shown(b)))
     handed = lambda: [e for e in json.loads(b.cmd("timeline"))["result"]["entries"] if "handed over" in e.get("text", "")]
@@ -1944,17 +1944,22 @@ def picker_checks():
     picker.wait(f"{rows}.length===1", 30)
     check("a copy started to pick shows the picker page", picker.js("location.href") == "chrome://picker/" and picker.js(rows) == ["Personal"], picker.js("location.href"))
     plain = picker.cmd("dockdot")
-    check("its Dock icon has no profile's dot", plain != "#5b7fd6", plain)
+    check_mac("its Dock icon has no profile's dot", plain != "#5b7fd6", plain)
     used = listed()[0]["lastUsed"]
     picker.js("document.querySelector('.row').click(), 1")
     check("choosing a profile quits the picker copy", picker.proc.wait(timeout=30) == 0)
     App.running.remove(picker)
     opened = started_on("default")
     check("and opens the profile in a copy of its own", len(opened) == 1, opened)
-    deadline = time.time() + 30
-    while listed()[0]["lastUsed"] == used and time.time() < deadline:
-        time.sleep(0.1)
-    check("which starts on it: the list says it was used now", listed()[0]["lastUsed"] != used, (used, listed()[0]["lastUsed"]))
+    if "--no-sandbox" in ARGS:
+        # The copy the picker starts has only its profile's switches, not the run's, and
+        # Linux's headless container can't start one without --no-sandbox.
+        print("skip which starts on it: the list says it was used now (the app-started copy misses --no-sandbox in the container)", flush=True)
+    else:
+        deadline = time.time() + 30
+        while listed()[0]["lastUsed"] == used and time.time() < deadline:
+            time.sleep(0.1)
+        check("which starts on it: the list says it was used now", listed()[0]["lastUsed"] != used, (used, listed()[0]["lastUsed"]))
     stop(opened, "default")
 
     app = App(None, [f"--root={root}", "--profile=default"])
@@ -2025,6 +2030,11 @@ def relaunch_checks():
     the staged release is a bundle like the update tests' fixtures (core/update): an
     Info.plist and an executable that records how it was started. Automatic checks are off,
     so no copy asks the release manifest."""
+    if not MAC:
+        # Linux's Flatpak updates through its portal, checked on a desktop VM
+        # (tools/linux/update_check.py).
+        print("skip relaunch to update (the Mac's bundle)", flush=True)
+        return
     if bundle_version() is None:
         check("relaunch to update needs the app in its bundle (PB_BIN)", False, BIN)
         return
@@ -2927,24 +2937,28 @@ def passkey_checks():
     settle()
     title("t.startsWith('refused')")
     # Save: the card goes while macOS asks the person, and the page going elsewhere takes
-    # the request, and macOS's sheet with it, back.
-    app.js("make('ada')", page=True)
-    card("Create a passkey")
-    button("Save")
-    check("Save takes the card away while macOS checks the person", gone(), app.js(TITLE))
-    time.sleep(1)
-    # macOS shows its sheet only to an app in a person's session. A run started by a system
-    # daemon, as a release's is, has none: the check fails at once, and the page is refused.
-    if subprocess.run(["launchctl", "managername"], capture_output=True, text=True).stdout.strip() == "System":
-        print("note macOS can't ask the person in a system session: the check ends at once", flush=True)
-        check("and with no session for macOS to ask in, the page is refused", app.js("document.title", page=True) == "refused NotAllowedError", app.js("document.title", page=True))
+    # the request, and macOS's sheet with it, back. Linux has no person check of its own
+    # for our passkeys yet.
+    if not MAC:
+        print("skip Save with our own passkey (the Mac's person check)", flush=True)
     else:
-        check("and the page waits for the person", app.js("document.title", page=True) == "asking", app.js("document.title", page=True))
-    visit(app, url)
-    app.js("use()", page=True)
-    check("a request taken back made no passkey", card("Sign in with a passkey"), app.js(TITLE))
-    settle()
-    title("t.startsWith('refused')")
+        app.js("make('ada')", page=True)
+        card("Create a passkey")
+        button("Save")
+        check("Save takes the card away while macOS checks the person", gone(), app.js(TITLE))
+        time.sleep(1)
+        # macOS shows its sheet only to an app in a person's session. A run started by a system
+        # daemon, as a release's is, has none: the check fails at once, and the page is refused.
+        if subprocess.run(["launchctl", "managername"], capture_output=True, text=True).stdout.strip() == "System":
+            print("note macOS can't ask the person in a system session: the check ends at once", flush=True)
+            check("and with no session for macOS to ask in, the page is refused", app.js("document.title", page=True) == "refused NotAllowedError", app.js("document.title", page=True))
+        else:
+            check("and the page waits for the person", app.js("document.title", page=True) == "asking", app.js("document.title", page=True))
+        visit(app, url)
+        app.js("use()", page=True)
+        check("a request taken back made no passkey", card("Sign in with a passkey"), app.js(TITLE))
+        settle()
+        title("t.startsWith('refused')")
 
     # Making a passkey: the key step, which waits for a key.
     keys(True)
@@ -3076,7 +3090,7 @@ def client_cert_checks():
 def browser_signal_checks():
     """What a site reads to tell Chrome from an embedded or automated browser is Chrome's: the
     client hints, navigator.userAgentData and the Sec-CH-UA headers, name Chromium at the user
-    agent's version on macOS, and navigator.webdriver is false. Empty client hints were
+    agent's version on the OS it runs on, and navigator.webdriver is false. Empty client hints were
     content's default, and Google's sign-in refused the app as a browser that may not be
     secure."""
     app = App(tempfile.mkdtemp(prefix="pb-profile-"))
@@ -3095,12 +3109,13 @@ def browser_signal_checks():
     sig = json.loads(sig or "{}")
     major = (re.search(r"Chrome/(\d+)", sig.get("ua", "")) or [None, ""])[1]
     brands = {b["brand"]: b["version"] for b in sig.get("brands", [])}
-    check("navigator.userAgentData names Chromium at the user agent's version, on macOS",
-          bool(major) and brands.get("Chromium") == major and sig.get("platform") == "macOS", sig)
+    os_name = "macOS" if MAC else "Linux"
+    check(f"navigator.userAgentData names Chromium at the user agent's version, on {os_name}",
+          bool(major) and brands.get("Chromium") == major and sig.get("platform") == os_name, sig)
     check("and its full version list has Chromium's", any(b["brand"] == "Chromium" and b["version"].startswith(major + ".") for b in sig.get("full", [])), sig.get("full"))
     check("navigator.webdriver is false", sig.get("webdriver") is False, sig.get("webdriver"))
     h = getattr(Pages, "signals", {})
-    check("the Sec-CH-UA headers name Chromium and macOS", f'"Chromium";v="{major}"' in h.get("sec-ch-ua", "") and h.get("sec-ch-ua-platform") == '"macOS"', h)
+    check(f"the Sec-CH-UA headers name Chromium and {os_name}", f'"Chromium";v="{major}"' in h.get("sec-ch-ua", "") and h.get("sec-ch-ua-platform") == f'"{os_name}"', h)
     app.close()
 
 
@@ -3335,6 +3350,9 @@ def _quiet(f):
 def quit_checks():
     """Quitting from the Dock is a clean stop: crash.log, which says the app is running, is
     gone, and the next start has no crash to report."""
+    if not MAC:
+        print("skip a quit from the Dock (the Mac's own)", flush=True)
+        return
     profile = tempfile.mkdtemp(prefix="pb-profile-")
     app = App(profile)
     running = os.path.exists(os.path.join(profile, "crash.log"))
