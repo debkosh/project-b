@@ -44,8 +44,9 @@ The cut-back run, Sudipta's standard from 0.2.64, on the packaged app and the AP
 - `PB_DMG=<dmg> tools/test.sh vm`: the VM. Run it after the app group, not beside it, since the
   app's windows can cover the VM's.
 - `PB_APK=<apk> EMULATORS='project-b-emu-37:5606 project-b-emu-29:5604' tools/test.sh android`.
-  emu-29 (Android 10) has one known failure, the full-screen gap ((0, 0, 1080, 2274) on a
-  1080x2400 screen).
+  And on emu-16k (Android 16 with 16 KB pages, `project-b-emu-16k:5602`): at least a launch of
+  the APK on every Android gate, and all of drive_android there before a Stable (the
+  orchestrator, 2026-11-26, after a Dev build that aborted at start reached a phone).
 - `tools/test.sh basics` (32 of 41 areas; it exits 1 by design) and the tester's
   `quit_after_download.py` on the packaged app.
 

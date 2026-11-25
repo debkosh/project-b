@@ -24,6 +24,11 @@ published is in `docs/releasing.md`; keep it current as the way you work changes
 - A branch that changes the phone shell comes with `tools/test.sh android` run in full on
   both emulators, emu-37 and emu-29, said in its handover (roles/feature.md). Refuse it until
   it does.
+- Every Android gate also launches its APK on emu-16k (Android 16, 16 KB pages), and a Stable
+  runs all of drive_android there. A gate builds with the version it will publish
+  (docs/releasing.md, "Dev builds"), and nothing is published that wasn't installed and
+  launched first: the first Chromium 158 Dev build aborted at every start on Android, while
+  every gate had run a build that said 0.3.10 (2026-11-26).
 
 ## Learned
 
