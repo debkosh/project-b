@@ -2360,22 +2360,25 @@ def action_checks():
     # F6 moves the keyboard between the shell and the page, and Shift+F6 back: by the real
     # keys, as the action goes by which side the last key was pressed in, and the driver's
     # own key command has no F keys. From the address bar first, so it starts in the shell.
-    def real_key(combo):
-        """A key from the Mac's own keyboard, to the window in front, which is the app's."""
-        subprocess.run(["deskrig", "key", combo], capture_output=True, timeout=20)
-    run("address.focus")
-    app.wait("document.activeElement&&document.activeElement.matches('input')", 5)
-    real_key("f6")  # does: focus.nextPane
-    page_has = lambda: bool(app.js("document.hasFocus()", page=True))
-    deadline = time.time() + 5
-    while not page_has() and time.time() < deadline:
-        time.sleep(0.1)
-    check("focus.nextPane moves the keyboard to the page", page_has())
-    real_key("shift+f6")  # does: focus.previousPane
-    deadline = time.time() + 5
-    while page_has() and time.time() < deadline:
-        time.sleep(0.1)
-    check("focus.previousPane moves it back to the shell", not page_has() and bool(app.js("document.hasFocus()")))
+    if not MAC:
+        print("skip focus.nextPane and focus.previousPane by the real F6 keys (the Mac's keyboard, through deskrig)", flush=True)
+    else:
+        def real_key(combo):
+            """A key from the Mac's own keyboard, to the window in front, which is the app's."""
+            subprocess.run(["deskrig", "key", combo], capture_output=True, timeout=20)
+        run("address.focus")
+        app.wait("document.activeElement&&document.activeElement.matches('input')", 5)
+        real_key("f6")  # does: focus.nextPane
+        page_has = lambda: bool(app.js("document.hasFocus()", page=True))
+        deadline = time.time() + 5
+        while not page_has() and time.time() < deadline:
+            time.sleep(0.1)
+        check("focus.nextPane moves the keyboard to the page", page_has())
+        real_key("shift+f6")  # does: focus.previousPane
+        deadline = time.time() + 5
+        while page_has() and time.time() < deadline:
+            time.sleep(0.1)
+        check("focus.previousPane moves it back to the shell", not page_has() and bool(app.js("document.hasFocus()")))
     run("address.focus")
     check("address.focus gives the address bar the keyboard", bool(app.wait("document.activeElement&&document.activeElement.matches('input')", 5)))
     app.cmd("key", "escape")
