@@ -554,7 +554,8 @@ def launch(block=""):
     # shell, passing while testing the wrong one.
     native = until(lambda: screen_parts().get("shell")).get("class") == "dev.projectb.browser.NativeShell"
     if native != (asked_shell == "mkshell"):
-        raise RuntimeError("asked for the %s shell, and the %s one loaded" % (asked_shell or "phone's own", "native" if native else "web"))
+        # A TimeoutError, as a screen that never came: the part fails and the run goes on.
+        raise TimeoutError("asked for the %s shell, and the %s one loaded" % (asked_shell or "phone's own", "native" if native else "web"))
     # A run that ended in a kill leaves a notice over the top of the page. It is shell, so
     # it would take the touches meant for the page.
     # The Mobile shell's has Dismiss.
