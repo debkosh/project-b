@@ -496,32 +496,43 @@ std::string KeyText(const base::DictValue& key) {
          (mods & PB_MOD_SHIFT ? "$" : "") + (mods & PB_MOD_CMD ? "@" : "") + name;
 }
 
+// A menu's items with each list in place of its items, asked of Go now, as the Mac fills
+// them in as the menu opens.
+base::ListValue WithLists(const base::ListValue& from) {
+  base::ListValue items;
+  for (const base::Value& value : from) {
+    const std::string* list = value.is_dict() ? value.GetDict().FindString("list") : nullptr;
+    if (!list) {
+      items.Append(value.Clone());
+      continue;
+    }
+    hooks::Args args;
+    args.Str(*list);
+    PBValue result;
+    if (hooks::Ask(PB_EVENT_MENU_LIST, args, &result)) {
+      std::optional<base::Value> listed = base::JSONReader::Read(hooks::TakeString(result), 0);
+      if (listed && listed->is_list()) {
+        for (base::Value& one : listed->GetList()) {
+          items.Append(std::move(one));
+        }
+      }
+    }
+  }
+  return items;
+}
+
 // A menu's items as the Mac's driver reports them: each one's title, key, whether it is
 // enabled and checked, and its submenu's items; "-" for a separator; a list's items, asked
 // of Go as the menu opens, in its place.
 base::ListValue Items(const base::ListValue& from) {
   base::ListValue items;
-  for (const base::Value& value : from) {
+  for (const base::Value& value : WithLists(from)) {
     if (!value.is_dict()) {
       continue;
     }
     const base::DictValue& item = value.GetDict();
     if (item.FindBool("separator").value_or(false)) {
       items.Append("-");
-      continue;
-    }
-    if (const std::string* list = item.FindString("list")) {
-      hooks::Args args;
-      args.Str(*list);
-      PBValue result;
-      if (hooks::Ask(PB_EVENT_MENU_LIST, args, &result)) {
-        std::optional<base::Value> listed = base::JSONReader::Read(hooks::TakeString(result), 0);
-        if (listed && listed->is_list()) {
-          for (base::Value& one : Items(listed->GetList())) {
-            items.Append(std::move(one));
-          }
-        }
-      }
       continue;
     }
     const std::string* title = item.FindString("title");
@@ -562,10 +573,16 @@ bool ChooseMenu(const std::string& menu, const std::string& path) {
   if (!bar || !bar->is_list()) {
     return false;
   }
-  const base::DictValue* item = Titled(&bar->GetList(), menu);
+  // Each level with its lists filled in, as the menu shows them: a list's item, as a
+  // workspace under New Tab in Workspace, is found by its title too.
+  const base::ListValue top = WithLists(bar->GetList());
+  const base::DictValue* item = Titled(&top, menu);
+  base::ListValue level;
   for (const std::string& title :
        base::SplitStringUsingSubstr(path, " > ", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL)) {
-    item = item ? Titled(item->FindList("items"), title) : nullptr;
+    const base::ListValue* sub = item ? item->FindList("items") : nullptr;
+    level = sub ? WithLists(*sub) : base::ListValue();
+    item = Titled(&level, title);
   }
   const std::string* action = item ? item->FindString("action") : nullptr;
   if (!action || !item->FindBool("enabled").value_or(false)) {
