@@ -36,6 +36,8 @@
 #include "project_b/engine/browser/mac_app.h"
 #endif
 #if BUILDFLAG(IS_LINUX)
+#include "device/bluetooth/bluetooth_adapter_factory.h"
+#include "device/bluetooth/dbus/dbus_bluez_manager_wrapper_linux.h"
 #include "ui/aura/screen_ozone.h"
 #endif
 
@@ -147,5 +149,16 @@ void BrowserMainParts::PostMainMessageLoopRun() {
   pages_context_.reset();
   screen_.reset();
 }
+
+#if BUILDFLAG(IS_LINUX)
+void BrowserMainParts::PostCreateMainMessageLoop() {
+  bluez::DBusBluezManagerWrapperLinux::Initialize();
+}
+
+void BrowserMainParts::PostDestroyThreads() {
+  device::BluetoothAdapterFactory::Shutdown();
+  bluez::DBusBluezManagerWrapperLinux::Shutdown();
+}
+#endif
 
 }  // namespace project_b
