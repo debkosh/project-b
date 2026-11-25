@@ -84,10 +84,10 @@ async function onKey(e) {
 }
 
 .touch .ui-segmented {
-  height: 40px;
+  height: 44px;
 }
 
 .touch .ui-segmented button {
-  height: 34px;
+  height: 38px;
 }
 </style>

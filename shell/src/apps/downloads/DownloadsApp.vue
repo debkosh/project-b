@@ -368,7 +368,7 @@ body {
 }
 
 .touch .row .details .text-button {
-  height: 40px;
+  height: 44px;
   min-width: 0;
   margin-left: 0;
 }

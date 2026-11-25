@@ -77,7 +77,7 @@ const phone = layout === 'phone';
   const del = rows.first().getByRole('button');
   if (phone) {
     const box = await del.boundingBox();
-    check('on a phone Delete is a 40px button named for its passkey, and the date is left out', box.width === 40 && box.height === 40 && /^Delete passkey for example\.com, (Asha|Work) Rao$/.test(await del.getAttribute('aria-label')) && (await rows.locator('.when').count()) === 0, JSON.stringify(box));
+    check('on a phone Delete is a 44px button named for its passkey, and the date is left out', box.width === 44 && box.height === 44 && /^Delete passkey for example\.com, (Asha|Work) Rao$/.test(await del.getAttribute('aria-label')) && (await rows.locator('.when').count()) === 0, JSON.stringify(box));
   } else {
     check('each says when it was made, with Delete… after it', (await rows.first().locator('.when').innerText()) === 'Made today' && (await del.innerText()) === 'Delete…' && /^Delete passkey for example\.com, (Asha|Work) Rao$/.test(await del.getAttribute('aria-label')));
   }

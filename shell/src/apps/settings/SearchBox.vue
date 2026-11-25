@@ -54,4 +54,9 @@ function onEscape(e) {
   padding-left: 32px;
   box-sizing: border-box;
 }
+
+/* A finger's target, as tall as the rows under it; the glass stays centred. */
+:global(.touch .search-box .text-field) {
+  height: 44px;
+}
 </style>

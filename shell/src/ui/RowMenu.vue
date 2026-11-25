@@ -161,6 +161,6 @@ defineExpose({ open });
 }
 
 .touch .ui-menu-item {
-  height: 40px;
+  height: 44px;
 }
 </style>
