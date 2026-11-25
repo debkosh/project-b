@@ -395,6 +395,12 @@ void ContentBrowserClient::OverrideWebPreferences(
     blink::web_pref::WebPreferences* prefs) {
   prefs->preferred_color_scheme = PagesColorScheme();
   prefs->preferred_root_scrollbar_color_scheme = prefs->preferred_color_scheme;
+#if BUILDFLAG(IS_ANDROID)
+  // Android's font size, as Chrome passes it (chrome_content_browser_client.cc's
+  // kWebKitFontScaleFactor): a page with <meta name="text-scale" content="scale"> grows
+  // its text by it, ours among them, and the furthest zoom grows with it.
+  prefs->font_scale_factor = Engine::font_scale();
+#endif
 }
 
 bool ContentBrowserClient::WebPreferencesNeedUpdateForColorRelatedStateChanges(

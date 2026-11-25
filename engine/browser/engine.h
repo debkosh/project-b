@@ -105,6 +105,12 @@ class Engine {
   // Takes the theme a layout asks for, and has every page work out its colour scheme
   // again when it changed.
   void SetTheme(int theme);
+  // Android's font size, 1 elsewhere: pages hear it as Chrome's do, as their font scale
+  // factor (ContentBrowserClient::OverrideWebPreferences, docs/font-size.md). Set before
+  // the engine starts, and again when it changes, when every page works out its
+  // preferences again.
+  static float font_scale();
+  static void SetFontScale(float scale);
   const std::map<int64_t, std::unique_ptr<AppWindow>>& windows() const {
     return windows_;
   }

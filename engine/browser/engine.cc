@@ -808,6 +808,32 @@ PageTab* Engine::tab(int64_t id) const {
   return it == tabs_.end() ? nullptr : it->second.get();
 }
 
+namespace {
+float g_font_scale = 1.f;
+}  // namespace
+
+float Engine::font_scale() {
+  return g_font_scale;
+}
+
+void Engine::SetFontScale(float scale) {
+  if (scale == g_font_scale) {
+    return;
+  }
+  g_font_scale = scale;
+  if (!g_engine) {
+    return;
+  }
+  for (const auto& [id, window] : g_engine->windows_) {
+    if (window->shell && window->shell->contents()) {
+      window->shell->contents()->NotifyPreferencesChanged();
+    }
+  }
+  for (const auto& [id, tab] : g_engine->tabs_) {
+    tab->contents()->NotifyPreferencesChanged();
+  }
+}
+
 void Engine::SetTheme(int theme) {
   if (theme == theme_) {
     return;

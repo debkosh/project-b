@@ -159,11 +159,13 @@ public final class BrowserActivity extends Activity {
         OsKit.onRequestPermissionsResult(requestCode);
     }
 
-    // The activity handles uiMode itself, so a theme that follows the system follows it here.
+    // The activity handles uiMode and fontScale itself, so a theme that follows the system
+    // follows it here, and pages take a new font size without the activity starting again.
     @Override
     public void onConfigurationChanged(Configuration config) {
         super.onConfigurationChanged(config);
         window.applyTheme();
+        window.applyFontScale();
     }
 
     /** Escape's press went to the shell, so its release does too. */

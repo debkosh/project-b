@@ -132,7 +132,7 @@ final class BrowserWindow extends FrameLayout {
         nativeWindow =
                 BrowserWindowJni.get()
                         .start(this, windowAndroid, goTable, processAgeMs, blockedHosts,
-                                skipWelcome);
+                                skipWelcome, fontScale());
         // Go's first layout and theme arrive inside start, before there is a window to tell,
         // so the frame and our pages' colour are painted now; else they waited for the next
         // change, and a phone started in dark kept the light frame.
@@ -533,6 +533,17 @@ final class BrowserWindow extends FrameLayout {
         applyTheme();
     }
 
+    // Android's font size, 1 as it comes and up to 2 for the largest, which pages hear as
+    // Chrome's do (docs/font-size.md).
+    private float fontScale() {
+        return getResources().getConfiguration().fontScale;
+    }
+
+    /** Android's font size changed while the app runs: every page hears the new one. */
+    void applyFontScale() {
+        if (nativeWindow != 0) BrowserWindowJni.get().fontScaleChanged(nativeWindow, fontScale());
+    }
+
     /**
      * As the system is, the phone's own dark mode decides, now and when it changes. The pages,
      * ours and the web's, hear it as their preferred colour scheme.
@@ -679,7 +690,8 @@ final class BrowserWindow extends FrameLayout {
                 long goTable,
                 long processAgeMs,
                 String blockedHosts,
-                boolean skipWelcome);
+                boolean skipWelcome,
+                float fontScale);
 
         void surfaceCreated(long nativeBrowserWindow);
 
@@ -695,6 +707,8 @@ final class BrowserWindow extends FrameLayout {
         void sizeChanged(long nativeBrowserWindow, double width, double height);
 
         void pageColorShown(long nativeBrowserWindow, int rgb);
+
+        void fontScaleChanged(long nativeBrowserWindow, float scale);
 
         void contentsMoved(
                 long nativeBrowserWindow,
