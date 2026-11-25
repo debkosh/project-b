@@ -62,7 +62,7 @@ defineEmits(['open']);
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--bar);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
   color: var(--muted);
 }
 

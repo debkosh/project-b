@@ -209,7 +209,7 @@ const count = computed(() => (all.value.length === 1 ? '1 saved' : `${all.value.
   height: 32px;
   margin-right: 8px;
   border-radius: 8px;
-  font-size: 18px;
+  font-size: calc(18rem / 16);
   font-weight: 600;
   line-height: 1;
 }
@@ -239,7 +239,7 @@ const count = computed(() => (all.value.length === 1 ? '1 saved' : `${all.value.
   overflow-wrap: anywhere;
   user-select: text;
   font:
-    13px/20px ui-monospace,
+    calc(13rem / 16)/20px ui-monospace,
     SFMono-Regular,
     Menlo,
     monospace;
@@ -255,7 +255,7 @@ const count = computed(() => (all.value.length === 1 ? '1 saved' : `${all.value.
 
 .never-title {
   margin: 28px 4px 4px;
-  font-size: 15px;
+  font-size: calc(15rem / 16);
   font-weight: 600;
 }
 

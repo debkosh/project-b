@@ -130,7 +130,7 @@
   h2 {
     flex: none;
     margin: 0 0 12px;
-    font-size: 17px;
+    font-size: calc(17rem / 16);
     font-weight: 600;
     overflow-wrap: anywhere;
   }
@@ -138,7 +138,7 @@
   .words {
     margin: 0;
     color: var(--muted);
-    font-size: 15px;
+    font-size: calc(15rem / 16);
     white-space: pre-wrap;
     overflow-wrap: anywhere;
   }
@@ -162,7 +162,7 @@
     background: none;
     color: var(--text);
     font: inherit;
-    font-size: 15px;
+    font-size: calc(15rem / 16);
     text-align: left;
   }
 
@@ -183,13 +183,13 @@
   }
 
   .account .secondary {
-    font-size: 13px;
+    font-size: calc(13rem / 16);
   }
 
   .realm {
     margin: 4px 0 0;
     color: var(--muted);
-    font-size: 13px;
+    font-size: calc(13rem / 16);
     overflow-wrap: anywhere;
   }
 
@@ -197,14 +197,14 @@
     display: block;
     margin: 16px 0 4px;
     color: var(--muted);
-    font-size: 13px;
+    font-size: calc(13rem / 16);
   }
 
   .text-field {
     width: 100%;
     height: 48px;
     box-sizing: border-box;
-    font-size: 16px;
+    font-size: calc(16rem / 16);
   }
 
   .words + .text-field {
@@ -214,7 +214,7 @@
   .insecure {
     margin: 12px 0 0;
     color: var(--danger);
-    font-size: 13px;
+    font-size: calc(13rem / 16);
   }
 
   .buttons {
@@ -229,7 +229,7 @@
     min-width: 64px;
     height: 48px;
     padding: 0 16px;
-    font-size: 15px;
+    font-size: calc(15rem / 16);
   }
 
   /* A fade only: the card is its own size from the first frame. */

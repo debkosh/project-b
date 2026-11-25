@@ -512,7 +512,7 @@
     flex-direction: column;
     height: 100%;
     color: var(--text);
-    font-size: 14px;
+    font-size: calc(14rem / 16);
     -webkit-user-select: none;
     user-select: none;
   }

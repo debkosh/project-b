@@ -178,7 +178,7 @@
 <style>
   .note {
     color: var(--muted);
-    font-size: 12px;
+    font-size: calc(12rem / 16);
   }
 
   .actions {
@@ -205,7 +205,7 @@
 
   .actions span {
     color: var(--muted);
-    font-size: 12px;
+    font-size: calc(12rem / 16);
   }
 
   .actions button.on {
@@ -248,7 +248,7 @@
     background: none;
     color: var(--icon);
     text-align: left;
-    font-size: 14px;
+    font-size: calc(14rem / 16);
   }
 
   .name {
@@ -295,7 +295,7 @@
     white-space: nowrap;
     text-overflow: ellipsis;
     color: var(--text);
-    font-size: 13px;
+    font-size: calc(13rem / 16);
   }
 
   .tile .note {

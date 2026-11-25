@@ -165,18 +165,18 @@
 
   .name {
     color: var(--text);
-    font-size: 14px;
+    font-size: calc(14rem / 16);
     font-weight: 600;
   }
 
   .url {
     color: var(--muted);
-    font-size: 12px;
+    font-size: calc(12rem / 16);
   }
 
   .url.alone {
     color: var(--text);
-    font-size: 14px;
+    font-size: calc(14rem / 16);
   }
 
   .tiles {
@@ -196,7 +196,7 @@
     height: 24px;
     padding: 0 16px;
     color: var(--muted);
-    font-size: 12px;
+    font-size: calc(12rem / 16);
   }
 
   [role='menu'] {
@@ -221,7 +221,7 @@
 
   .tile span {
     color: var(--text);
-    font-size: 11.5px;
+    font-size: calc(11.5rem / 16);
     white-space: nowrap;
   }
 
@@ -239,7 +239,7 @@
     border: 0;
     background: none;
     color: var(--icon);
-    font-size: 14px;
+    font-size: calc(14rem / 16);
     text-align: left;
   }
 

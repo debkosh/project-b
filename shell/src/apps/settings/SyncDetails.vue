@@ -407,7 +407,7 @@ h2 {
 .phone .kv .val {
   max-width: 100%;
   color: var(--muted);
-  font-size: 13px;
+  font-size: calc(13rem / 16);
   text-align: left;
 }
 
@@ -430,7 +430,7 @@ table.kinds td {
 table.kinds thead th {
   height: 32px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
 }
 
 table.kinds tbody tr {
@@ -523,7 +523,7 @@ table.kinds tr > :last-child {
   flex: none;
   width: 52px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
@@ -557,13 +557,13 @@ table.kinds tr > :last-child {
   padding: 12px 16px 14px;
   border-top: 1px solid var(--line);
   background: var(--accent-tint);
-  font-size: 13px;
+  font-size: calc(13rem / 16);
 }
 
 .panel h3 {
   margin: 0 0 4px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
   font-weight: 500;
 }
 
@@ -581,12 +581,12 @@ table.kinds tr > :last-child {
   display: flex;
   gap: 8px;
   min-width: 0;
-  line-height: 22px;
+  line-height: calc(22rem / 16);
 }
 
 .more {
   color: var(--muted);
-  line-height: 22px;
+  line-height: calc(22rem / 16);
 }
 
 .cols + .reqs,
@@ -600,8 +600,8 @@ table.kinds tr > :last-child {
    failed one its error's own words, which are monospace as a request's line is. */
 .said {
   color: var(--muted);
-  font-size: 12px;
-  line-height: 18px;
+  font-size: calc(12rem / 16);
+  line-height: calc(18rem / 16);
   overflow-wrap: anywhere;
   user-select: text;
 }
@@ -614,7 +614,7 @@ table.kinds tr > :last-child {
 .req,
 .said.words {
   font:
-    12px/20px ui-monospace,
+    calc(12rem / 16)/20px ui-monospace,
     SFMono-Regular,
     Menlo,
     monospace;

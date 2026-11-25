@@ -104,13 +104,13 @@
     background: none;
     color: var(--text);
     font-family: inherit;
-    font-size: 14px;
+    font-size: calc(14rem / 16);
   }
 
   .count {
     flex: none;
     color: var(--muted);
-    font-size: 13px;
+    font-size: calc(13rem / 16);
     font-variant-numeric: tabular-nums;
   }
 

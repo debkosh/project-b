@@ -154,7 +154,7 @@ const rows = computed(() =>
   background: none;
   color: var(--text);
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13rem / 16);
   font-weight: 500;
   text-align: left;
   cursor: pointer;
@@ -287,7 +287,7 @@ const rows = computed(() =>
   flex: none;
   margin-right: 4px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: calc(13rem / 16);
   opacity: 0.6;
 }
 

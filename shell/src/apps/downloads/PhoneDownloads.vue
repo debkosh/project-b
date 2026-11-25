@@ -192,7 +192,7 @@ watch(
 .title {
   flex: 1;
   margin: 0 0 0 4px;
-  font-size: 18px;
+  font-size: calc(18rem / 16);
   font-weight: 600;
 }
 
@@ -210,7 +210,7 @@ watch(
   background: none;
   color: var(--text);
   font: inherit;
-  font-size: 16px;
+  font-size: calc(16rem / 16);
   outline: none;
 }
 
@@ -235,7 +235,7 @@ watch(
 .empty {
   margin: 32px 16px;
   color: var(--muted);
-  font-size: 14px;
+  font-size: calc(14rem / 16);
   text-align: center;
 }
 
@@ -243,7 +243,7 @@ watch(
   margin: 0;
   padding: 16px 16px 4px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
   font-weight: 600;
 }
 
@@ -306,12 +306,12 @@ ul {
 }
 
 .name {
-  font-size: 15px;
+  font-size: calc(15rem / 16);
 }
 
 .line {
   color: var(--muted);
-  font-size: 13px;
+  font-size: calc(13rem / 16);
 }
 
 .failed .line {
@@ -364,7 +364,7 @@ ul {
 .words {
   margin: 8px 0 0;
   color: var(--muted);
-  font-size: 14px;
+  font-size: calc(14rem / 16);
 }
 
 .hidden-heading {

@@ -353,7 +353,7 @@ body {
   background: none;
   color: var(--text);
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13rem / 16);
   text-align: left;
   cursor: default;
 }
@@ -383,7 +383,7 @@ body {
 .count {
   flex: none;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
   font-weight: 400;
 }
 
@@ -423,7 +423,7 @@ body {
 
 .where h1 {
   margin: 0;
-  font-size: 18px;
+  font-size: calc(18rem / 16);
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -436,7 +436,7 @@ body {
   margin: 0 0 2px;
   padding: 0;
   list-style: none;
-  font-size: 13px;
+  font-size: calc(13rem / 16);
   color: var(--muted);
 }
 
@@ -555,7 +555,7 @@ body {
 
 .in {
   margin-left: auto;
-  font-size: 12px;
+  font-size: calc(12rem / 16);
 }
 
 .edit {
@@ -597,7 +597,7 @@ body {
   min-height: 32px;
   padding-right: 8px;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: calc(13rem / 16);
 }
 
 .target:hover {

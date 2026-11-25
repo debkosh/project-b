@@ -148,7 +148,7 @@ const label = (e) => e.title || (e.kind === 'folder' ? 'Folder' : host(e.url));
 h2 {
   margin: 0;
   color: var(--muted);
-  font-size: 13px;
+  font-size: calc(13rem / 16);
   font-weight: 500;
 }
 
@@ -158,7 +158,7 @@ h2 {
   background: none;
   color: var(--muted);
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13rem / 16);
   cursor: pointer;
 }
 
@@ -189,7 +189,7 @@ h2 {
   background: none;
   color: var(--text);
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13rem / 16);
   cursor: pointer;
 }
 
@@ -259,7 +259,7 @@ h2 {
   align-items: baseline;
   gap: 4px;
   min-width: 0;
-  font-size: 13px;
+  font-size: calc(13rem / 16);
 }
 
 .crumb {
@@ -280,7 +280,7 @@ h2 {
 }
 
 .here {
-  font-size: 15px;
+  font-size: calc(15rem / 16);
   font-weight: 600;
 }
 
@@ -292,6 +292,6 @@ h2 {
 .empty {
   margin: 0;
   color: var(--muted);
-  font-size: 13px;
+  font-size: calc(13rem / 16);
 }
 </style>

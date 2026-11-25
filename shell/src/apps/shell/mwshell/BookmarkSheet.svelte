@@ -59,7 +59,7 @@
   h2 {
     margin: 0;
     padding: 4px 20px 12px;
-    font-size: 16px;
+    font-size: calc(16rem / 16);
     font-weight: 600;
   }
   .field {
@@ -70,7 +70,7 @@
   }
   .field span,
   .label {
-    font-size: 13px;
+    font-size: calc(13rem / 16);
     color: var(--muted);
   }
   .field input {
@@ -82,7 +82,7 @@
     background: var(--surface);
     color: var(--text);
     font: inherit;
-    font-size: 15px;
+    font-size: calc(15rem / 16);
   }
   .label {
     margin: 0;
@@ -104,7 +104,7 @@
     border: 0;
     background: none;
     font: inherit;
-    font-size: 15px;
+    font-size: calc(15rem / 16);
     text-align: left;
     color: var(--text);
   }
@@ -134,7 +134,7 @@
     border: 0;
     border-radius: 10px;
     font: inherit;
-    font-size: 15px;
+    font-size: calc(15rem / 16);
   }
   .quiet {
     background: none;

@@ -56,7 +56,7 @@ defineProps({ tab: Object });
 
 .ui-notice-title {
   margin: 8px 0 0;
-  font-size: 15px;
+  font-size: calc(15rem / 16);
   font-weight: 600;
 }
 
@@ -64,7 +64,7 @@ defineProps({ tab: Object });
   max-width: 420px;
   margin: 0;
   color: var(--muted);
-  font-size: 13px;
+  font-size: calc(13rem / 16);
   line-height: 1.45;
   overflow-wrap: anywhere;
 }

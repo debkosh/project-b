@@ -349,7 +349,7 @@ onUnmounted(() => {
   background: var(--surface);
   box-shadow: var(--shadow-float);
   color: var(--text);
-  font-size: 13px;
+  font-size: calc(13rem / 16);
 }
 
 .head {
@@ -415,7 +415,7 @@ li.failed .name {
 .status {
   grid-column: 2;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
 }
 
 .actions {
@@ -430,7 +430,7 @@ li.failed .name {
 .text-button {
   height: 26px;
   padding: 0 8px;
-  font-size: 12px;
+  font-size: calc(12rem / 16);
 }
 
 .remove,
@@ -457,7 +457,7 @@ li.failed .name {
   align-items: baseline;
   gap: 4px 10px;
   margin: 6px 0 2px;
-  font-size: 12px;
+  font-size: calc(12rem / 16);
 }
 
 .details dt {

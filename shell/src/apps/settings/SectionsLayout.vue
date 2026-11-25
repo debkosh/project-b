@@ -190,7 +190,7 @@ watch(
 
 .list-title {
   color: var(--text);
-  font-size: 17px;
+  font-size: calc(17rem / 16);
   font-weight: 600;
 }
 

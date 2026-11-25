@@ -244,7 +244,7 @@ input {
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 15px;
+  font-size: calc(15rem / 16);
 }
 
 /* Bookmarks only: a chip in the accent before what is typed. */
@@ -259,7 +259,7 @@ input {
   border-radius: 6px;
   background: var(--accent);
   color: var(--on-accent);
-  font-size: 13px;
+  font-size: calc(13rem / 16);
   font-weight: 500;
 }
 
@@ -272,7 +272,7 @@ input {
 .hint {
   flex: none;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
 }
 
 input::placeholder {

@@ -364,7 +364,7 @@ body {
 
 h1 {
   margin: 0 0 24px;
-  font-size: 24px;
+  font-size: calc(24rem / 16);
   font-weight: 600;
   outline: none;
 }
@@ -426,7 +426,7 @@ h1 {
 }
 
 .splash .name {
-  font-size: 20px;
+  font-size: calc(20rem / 16);
   font-weight: 600;
   opacity: 0;
   animation: fade-in 400ms var(--ease) 800ms forwards;
@@ -479,13 +479,13 @@ h1 {
 
 .hello h1 {
   margin-bottom: 8px;
-  font-size: 32px;
+  font-size: calc(32rem / 16);
 }
 
 .line {
   margin: 0 0 24px;
   color: var(--muted);
-  font-size: 15px;
+  font-size: calc(15rem / 16);
 }
 
 .welcome:has(.hello) {
@@ -556,7 +556,7 @@ h1 {
   background: var(--surface);
   color: inherit;
   font: inherit;
-  font-size: 12px;
+  font-size: calc(12rem / 16);
   cursor: pointer;
   transition: border-color var(--motion) var(--ease);
 }
@@ -610,7 +610,7 @@ h1 {
 }
 
 .spark .state {
-  font-size: 13px;
+  font-size: calc(13rem / 16);
 }
 
 .tips {
@@ -646,7 +646,7 @@ h1 {
 
 .keychain small {
   color: var(--muted);
-  font-size: 13px;
+  font-size: calc(13rem / 16);
 }
 
 .linux-default {
@@ -799,7 +799,7 @@ h1 {
 }
 
 .what .state {
-  font-size: 12px;
+  font-size: calc(12rem / 16);
 }
 
 /* A phone: one column, the way through at the thumb. */

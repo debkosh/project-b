@@ -166,7 +166,7 @@ body {
 h2 {
   margin: 16px 0 8px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
   font-weight: 600;
 }
 
@@ -195,7 +195,7 @@ h2 {
   flex: none;
   width: 64px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
 }
 
 .link {

@@ -152,7 +152,7 @@ function answer(yes) {
 .realm {
   margin: 4px 0 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
   overflow-wrap: anywhere;
 }
 
@@ -178,6 +178,6 @@ function answer(yes) {
 .insecure {
   margin: 16px 0 0;
   color: var(--danger);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
 }
 </style>

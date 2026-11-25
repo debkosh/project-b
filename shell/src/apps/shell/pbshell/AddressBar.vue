@@ -489,7 +489,7 @@ function closeMarked() {
   background: var(--accent-tint);
   color: var(--icon);
   font: inherit;
-  font-size: 12px;
+  font-size: calc(12rem / 16);
   font-weight: 600;
   cursor: pointer;
 }
@@ -527,7 +527,7 @@ input {
   background: transparent;
   color: inherit;
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13rem / 16);
 }
 
 input::placeholder {
@@ -573,7 +573,7 @@ input::placeholder {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  font-size: 13px;
+  font-size: calc(13rem / 16);
   font-weight: 500;
 }
 
@@ -619,7 +619,7 @@ input::placeholder {
 }
 
 .words {
-  font-size: 12px;
+  font-size: calc(12rem / 16);
   font-weight: 500;
   white-space: nowrap;
 }
@@ -628,7 +628,7 @@ input::placeholder {
   flex: none;
   margin-right: 8px;
   color: var(--danger);
-  font-size: 13px;
+  font-size: calc(13rem / 16);
   font-weight: 500;
 }
 

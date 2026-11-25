@@ -53,7 +53,7 @@
   h2 {
     margin: 0;
     padding: 4px 20px 2px;
-    font-size: 16px;
+    font-size: calc(16rem / 16);
     font-weight: 600;
   }
 
@@ -61,7 +61,7 @@
     margin: 0;
     padding: 0 20px 8px;
     color: var(--muted);
-    font-size: 13px;
+    font-size: calc(13rem / 16);
   }
 
   .site b {
@@ -75,7 +75,7 @@
     gap: 12px;
     min-height: 48px;
     padding: 0 8px 0 20px;
-    font-size: 15px;
+    font-size: calc(15rem / 16);
   }
 
   .row > svg {
@@ -97,7 +97,7 @@
 
   .secret {
     font:
-      14px/20px ui-monospace,
+      calc(14rem / 16)/20px ui-monospace,
       SFMono-Regular,
       Menlo,
       monospace;
@@ -121,7 +121,7 @@
     background: none;
     color: var(--text);
     font: inherit;
-    font-size: 15px;
+    font-size: calc(15rem / 16);
   }
 
   .show {

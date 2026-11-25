@@ -73,13 +73,13 @@ const favicon = (row) => (row.kind === 'tab' ? state.tabs.find((t) => t.id === r
   background: var(--surface);
   box-shadow: var(--shadow-float);
   color: var(--text);
-  font-size: 13px;
+  font-size: calc(13rem / 16);
 }
 
 .heading {
   padding: 8px 10px 4px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
   font-weight: 500;
 }
 
@@ -135,7 +135,7 @@ img.icon {
   margin-left: auto;
   padding-left: 12px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
 }
 
 .tag {
@@ -145,7 +145,7 @@ img.icon {
   border-radius: 4px;
   display: flex;
   align-items: center;
-  font-size: 11px;
+  font-size: calc(11rem / 16);
 }
 
 /* Touch: suggestions a finger hits (docs/large-screens.md). */

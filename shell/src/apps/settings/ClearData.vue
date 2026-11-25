@@ -100,7 +100,7 @@ const hint = computed(() => {
   gap: 10px;
   margin: 0;
   color: var(--text);
-  font-size: 13px;
+  font-size: calc(13rem / 16);
 }
 
 .kinds .kind input {

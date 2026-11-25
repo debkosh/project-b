@@ -47,7 +47,7 @@ const to = computed(() => (state.section.startsWith(`${props.list}/`) ? { id: pr
 
 .list-title {
   color: var(--text);
-  font-size: 17px;
+  font-size: calc(17rem / 16);
   font-weight: 600;
 }
 </style>

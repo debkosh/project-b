@@ -63,7 +63,7 @@ async function onKey(e) {
   background: none;
   color: var(--muted);
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13rem / 16);
   font-weight: 500;
   cursor: pointer;
 }

@@ -409,13 +409,13 @@ const replaceable = (t) => !t.key.locked && !t.key.fromOS;
 
 .shells-title {
   color: var(--text);
-  font-size: 14px;
+  font-size: calc(14rem / 16);
 }
 
 .shells-note {
   margin: -4px 0 0;
   color: var(--muted);
-  font-size: 13px;
+  font-size: calc(13rem / 16);
 }
 
 h2 .tag {
@@ -514,7 +514,7 @@ kbd {
   box-sizing: border-box;
   background: var(--bar);
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13rem / 16);
   white-space: nowrap;
 }
 
@@ -553,7 +553,7 @@ kbd.clash {
 
 .note {
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
 }
 
 .menu-switch {
@@ -561,7 +561,7 @@ kbd.clash {
   align-items: center;
   gap: 8px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: calc(13rem / 16);
 }
 
 /* The recorder is a field that shows it is listening: always ringed while it lasts. */

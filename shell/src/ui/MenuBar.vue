@@ -216,7 +216,7 @@ watch(shown, (on) => on && requestBarMenu(), { immediate: true });
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13rem / 16);
   white-space: nowrap;
 }
 

@@ -98,7 +98,7 @@ watchEffect(() => {
   inset: 0;
   display: grid;
   place-items: center;
-  font: 500 15px/1 system-ui, sans-serif;
+  font: 500 calc(15rem / 16)/1 system-ui, sans-serif;
   letter-spacing: 0.02em;
   color: rgb(255 255 255 / 0.85);
   user-select: none;

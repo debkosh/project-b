@@ -36,7 +36,7 @@ import { send, state } from './state.js';
   gap: 8px 24px;
   margin-bottom: 16px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: calc(13rem / 16);
 }
 
 .part {

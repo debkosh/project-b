@@ -282,7 +282,7 @@
     /* Above what a shell lays over its page, as Curve's command bar's dimming. */
     position: relative;
     z-index: 2;
-    font: 13px/1 var(--sans, system-ui, sans-serif);
+    font: calc(13rem / 16)/1 var(--sans, system-ui, sans-serif);
   }
 
   .menu-bar.moment {
@@ -307,7 +307,7 @@
     background: transparent;
     color: var(--text);
     font: inherit;
-    font-size: 13px;
+    font-size: calc(13rem / 16);
     white-space: nowrap;
   }
 

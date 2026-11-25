@@ -129,7 +129,7 @@ body {
 .count {
   flex: 1;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
 }
 
 .content {
@@ -202,7 +202,7 @@ body {
 
 .status {
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
 }
 
 .failed .status {
@@ -254,7 +254,7 @@ body {
   padding: 8px 0 0 32px;
   display: grid;
   gap: 6px;
-  font-size: 12px;
+  font-size: calc(12rem / 16);
 }
 
 .details > div {
@@ -286,7 +286,7 @@ body {
 .details .text-button {
   height: 24px;
   padding: 0 6px;
-  font-size: 12px;
+  font-size: calc(12rem / 16);
   color: var(--accent);
 }
 
@@ -359,7 +359,7 @@ body {
 
 .touch .details {
   padding-left: 32px;
-  font-size: 13px;
+  font-size: calc(13rem / 16);
 }
 
 .touch .details > div {

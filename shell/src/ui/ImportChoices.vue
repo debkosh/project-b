@@ -37,7 +37,7 @@ function toggle(id, on) {
   border: 1px solid var(--line);
   border-radius: 6px;
   background: var(--surface);
-  font-size: 13px;
+  font-size: calc(13rem / 16);
   color: var(--text);
 }
 

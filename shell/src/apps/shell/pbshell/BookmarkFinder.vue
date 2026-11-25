@@ -85,7 +85,7 @@ watch(
   background: var(--surface);
   box-shadow: var(--shadow-float);
   color: var(--text);
-  font-size: 13px;
+  font-size: calc(13rem / 16);
   box-sizing: border-box;
 }
 
@@ -174,7 +174,7 @@ ul {
 .detail,
 .where {
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
 }
 
 .where {
@@ -199,7 +199,7 @@ ul {
   padding: 8px 12px;
   border-top: 1px solid var(--line);
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12rem / 16);
 }
 
 kbd {
