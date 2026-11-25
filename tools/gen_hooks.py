@@ -22,6 +22,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import web_features_bump  # noqa: E402
+
 ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 SRC = os.path.join(ROOT, "chromium/src")
 OUT = os.path.join(SRC, "out/pb")
@@ -1188,6 +1191,23 @@ def grep_uses(method):
     return out
 
 
+def elsewhere_only(src, header, seen):
+    """The class's virtual methods that only Android or Linux have, which clang, reading the
+    Mac's tree, never sees: by name, with those platforms. Listed so that a new one changes
+    the doc, and a Chromium upgrade stops on it as on any other new hook. Chromium 158's
+    Android-only IsContentSchemeURLNavigationAllowed slipped by unlisted, and Android opened a
+    downloaded file as a blank tab."""
+    return {name: plats for name, plats in sorted(web_features_bump.methods(src, header).items())
+            if plats and "mac" not in plats and name not in seen}
+
+
+def by_hand(name):
+    """The engine's own files that override a method of that name."""
+    found = subprocess.run(["git", "-C", ROOT, "grep", "-l", "-E", r"::%s\(" % name, "--", "engine/*.cc"],
+                           capture_output=True, text=True).stdout.split()
+    return [f for f in found if not f.endswith("_gen.cc")]
+
+
 def write_doc(classes, hooks, methods, demangled, version, enums, records):
     path = os.path.join(ROOT, "docs/content-hooks.md")
     hand = ""
@@ -1201,6 +1221,7 @@ def write_doc(classes, hooks, methods, demangled, version, enums, records):
     groups = {}
     rows = []
     totals = []
+    elsewhere = []
     for qualified, header, go, scope, ms in classes:
         short = qualified.split("::")[-1]
         carried = [m for m in ms if m.reason is None]
@@ -1223,6 +1244,12 @@ def write_doc(classes, hooks, methods, demangled, version, enums, records):
                 status = "left: " + m.reason
                 where = f"`{header}:{m.line}`"
             rows.append((short, m.name, status, where))
+        for name, plats in elsewhere_only(SRC, header, {m.name for m in ms}).items():
+            only = " and ".join(p.capitalize() for p in plats)
+            own = by_hand(name)
+            elsewhere.append(only)
+            rows.append((short, name, f"left: {only} only, not in the Mac's tree this reads",
+                         f"`{header}`" + (" · by hand in " + ", ".join(f"`{f}`" for f in own) if own else "")))
     other = []
     for qualified, header, process in OTHER_PROCESSES:
         nodes, lines = methods[qualified]
@@ -1242,6 +1269,10 @@ def write_doc(classes, hooks, methods, demangled, version, enums, records):
     out.append(f"| **Total** | **{tn}** | **{tp}** | **{tc}** | **{tl}** | **{tu}** |")
     for short, n, process, header in other:
         out.append(f"| `{short}` ({process} process) | {n} | 0 | 0 | {n} | 0 |")
+    if elsewhere:
+        counts = {p: elsewhere.count(p) for p in sorted(set(elsewhere))}
+        out += ["", "Read from the Mac's tree, so the counts are the Mac's. Methods only other platforms have are",
+                "listed too, as left, so a new one shows: " + ", ".join(f"{n} on {p} only" for p, n in counts.items()) + "."]
     out += ["", "Left, by group:", ""]
     out.append("| Group | " + " | ".join(f"`{s}`" for s, *_ in totals) + " | Total |")
     out.append("|---|" + "---:|" * (len(totals) + 1))
