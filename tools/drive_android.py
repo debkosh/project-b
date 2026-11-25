@@ -2114,14 +2114,20 @@ def passwords_on_the_phone():
         # code held up to a real camera is not something an emulator can show.
         tap(middle(see("settings", text="Use backup code instead")))
         tap(middle(see("settings", label="Scan QR code")))  # does: syncBackupScan
-        until(lambda: "GrantPermissions" in in_front_now() or "CaptureActivity" in in_front_now(), 20)
-        if "GrantPermissions" in in_front_now():
-            # Android 11 and later ask "While using the app"; Android 10 asks "Allow".
-            allow = first(lambda: system_button("While using the app", 5), lambda: system_button("Allow", 5))
-            if allow is not None:
-                tap(middle(allow))
+        # The scanner's screen comes in front first and asks for the camera from there, so
+        # Android's question covers it a moment later: the question is answered whenever it
+        # is the one in front, and the scanner counts as open once the app has the camera.
+        def scanner():
+            front = in_front_now()
+            if "GrantPermissions" in front:
+                # Android 11 and later ask "While using the app"; Android 10 asks "Allow".
+                allow = first(lambda: system_button("While using the app", 2), lambda: system_button("Allow", 2))
+                if allow is not None:
+                    tap(middle(allow))
+                return None
+            return "CaptureActivity" in front and "android.permission.CAMERA: granted=true" in adb("shell", "dumpsys", "package", PACKAGE)
         check("Scan QR code, at the field's end, opens the scanner's own screen, once Android's question about the camera is answered",
-              until(lambda: "CaptureActivity" in in_front_now(), 20) is not None, in_front_now())
+              until(scanner, 40) is not None, in_front_now())
         # The camera takes a moment to start: then its picture shows, under the scanner's frame.
         time.sleep(4)
         shot("passwords-scanner")
