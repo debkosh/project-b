@@ -7,6 +7,7 @@
   import { paint, swatches } from '@/ui/hues.js';
   import { inkOn } from '@/ui/tint.js';
   import { groupLabel } from './groups.js';
+  import { pushEscape } from '@/ui/escape.js';
 
   // A group's sheet: its name, saved on Enter or on leaving the field; its colour, one of
   // gulal's seven hues or any from the Custom colour sheet behind the +; its tabs, a tap on
@@ -16,6 +17,8 @@
   // What the sheet opens with: it is made again for another group.
   // svelte-ignore state_referenced_locally
   let name = $state(group.name);
+  // The rename's Escape layer while the name field has the keyboard, and what takes it off.
+  let renaming = null;
   // svelte-ignore state_referenced_locally
   let asking = $state(ask);
 
@@ -45,15 +48,20 @@
       aria-label="Group name"
       placeholder="Name"
       bind:value={name}
-      onblur={save}
-      onkeydown={(e) => {
-        if (e.key === 'Enter') e.currentTarget.blur();
-        else if (e.key === 'Escape') {
-          e.stopPropagation();
+      onfocus={(e) => {
+        const field = e.currentTarget;
+        // Escape while typing undoes the rename and keeps the sheet: a layer over the sheet's.
+        renaming = pushEscape(() => {
           name = group.name;
-          e.currentTarget.blur();
-        }
+          field.blur();
+        });
       }}
+      onblur={() => {
+        renaming?.();
+        renaming = null;
+        save();
+      }}
+      onkeydown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
     />
   </div>
   <div class="swatches" role="radiogroup" aria-label="Colour">
