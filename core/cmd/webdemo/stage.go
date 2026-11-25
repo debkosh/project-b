@@ -10,6 +10,7 @@ import (
 
 	"projectb/app"
 	"projectb/engine"
+	"projectb/links"
 	"projectb/mockengine"
 )
 
@@ -22,7 +23,7 @@ type demoEngine struct {
 }
 
 func (d *demoEngine) LoadURL(tab engine.TabID, u string) {
-	if _, ours := d.OurPage(u); !ours && u != home && u != "" && u != "about:blank" {
+	if _, ours := d.OurPage(u); !ours && u != links.Home && u != "" && u != "about:blank" {
 		d.say("load " + u + ": the renderer is a stand-in here, so Project B's own page shows instead")
 	}
 	d.Engine.LoadURL(tab, u)
