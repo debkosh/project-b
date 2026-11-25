@@ -519,10 +519,10 @@ func (a *App) profileList(cfg Config) commands.List {
 // narrow window, the desktop shells Android lists for a wide one, and keeping one of the
 // two at every size.
 func (a *App) androidShellPart() settings.Part {
-	list := func(of []shells.Shell) []map[string]string {
-		out := []map[string]string{}
+	list := func(of []shells.Shell) []map[string]any {
+		out := []map[string]any{}
 		for _, s := range of {
-			out = append(out, map[string]string{"id": s.ID, "name": s.Name})
+			out = append(out, map[string]any{"id": s.ID, "name": s.Name, "native": s.Native})
 		}
 		return out
 	}
