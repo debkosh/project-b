@@ -239,6 +239,13 @@ PAGES["/switches"] = ("<title>Switches</title><h1>Switches</h1>"
                       "<p><label><input type=checkbox role=switch checked> Wrapped</label></p>"
                       "<p><span id=lb>By id</span> <button role=switch aria-checked=false aria-labelledby=lb>y</button></p>"
                       "<p><label for=f>Field</label> <input id=f></p>")
+# Pop-ups (docs/site-features.md, Pop-ups): one the page opens on its own as it loads, and one
+# a tap opens.
+PAGES["/popups"] = ("<title>Popups</title><button id=tap style='display:block;width:100%;height:40vh;font-size:40px'>tap to open</button><script>"
+                    "tap.onclick = () => window.open('/popped-tapped');"
+                    "setTimeout(() => window.open('/popped-untapped'), 300)</script>")
+PAGES["/popped-tapped"] = "<title>Popped</title><p>popped"
+PAGES["/popped-untapped"] = "<title>Popped</title><p>popped"
 PAGES["/dialogs"] = ("<title>Dialogs</title><style>button{display:block;width:100%;height:30vh;font-size:40px}</style>"
                      "<button id=c>confirm</button><button id=p>prompt</button><button id=al>alert</button><script>"
                      "const say = (what, v) => fetch('/said?' + what + '=' + encodeURIComponent(String(v)));"
@@ -2392,6 +2399,67 @@ def web_apis():
     shot("18b-web-apis")
 
 
+def popups():
+    """Pop-ups (docs/site-features.md, Pop-ups): with the site's Pop-ups at Block, as every
+    site starts, a tab a page opens with no tap first closes as it opens, its page never asked,
+    and the pill counts it; one a tap opens, opens. The site sheet's Open it opens the
+    blocked one, and its Pop-ups set to Allow lets the next one open."""
+    launch()
+    del served[:]
+    go(BASE + "/popups")
+    asked("/popups")
+    counted = until(lambda: find("shell", label="1 pop-up blocked"), 10)
+    time.sleep(1)
+    check("a pop-up a page opens with no tap closes as it opens, its page never asked, and the pill counts it",
+          counted is not None and not asked("/popped-untapped", 0.5),
+          "counted=%s served=%s" % (counted is not None, served[-4:]))
+
+    button = until(lambda: first(lambda: find("page", text="tap to open"), lambda: find("page", label="tap to open")), 10)
+    if button is not None:
+        tap(middle(button))
+    check("a tab a tap opens, opens", asked("/popped-tapped", 10), served[-4:])
+    # Back to the page that opened it: the new tab's Back closes it, as a phone's tab does.
+    press("Tabs")
+    tap(middle(see("shell", label="Close Popped")))
+    key(4)
+    until(lambda: find("shell", label="1 pop-up blocked"), 10)
+
+    count = find("shell", label="1 pop-up blocked")
+    if count is not None:
+        tap(middle(count))
+    once = until(lambda: find("shell", text="Open it"), 5)
+    if once is not None:
+        tap(middle(once))
+    check("the count opens the site sheet, whose Open it opens the pop-up in a tab",
+          once is not None and asked("/popped-untapped", 10), served[-4:])
+    shot("45-popups-open-once")
+
+    go(BASE + "/popups?again")
+    asked("/popups?again")
+    count = until(lambda: find("shell", label="1 pop-up blocked"), 10)
+    if count is not None:
+        tap(middle(count))
+    # The sheet's last Allow is Pop-ups': its row comes after Links to other sites.
+    allows = lambda: [n for n in screen_parts().get("shell", ET.Element("x")).iter("node") if n.get("text") == "Allow"]
+    allow = until(lambda: allows()[-1] if len(allows()) >= 2 else None, 5)
+    if allow is not None:
+        tap(middle(allow))
+    sites = "/data/data/%s/%s/sites.json" % (PACKAGE, PROFILE)
+
+    def kept():
+        try:
+            return json.loads(adb("shell", "cat", sites) or "{}").get("http://" + BASE, {}).get("popups")
+        except ValueError:
+            return None
+    check("the site sheet's Pop-ups set to Allow, Go keeps it for the site", allow is not None and until(lambda: kept() == "allow", 10),
+          "allow=%s kept=%s" % (allow is not None, kept()))
+    key(4)
+    del served[:]
+    go(BASE + "/popups?allowed")
+    check("with the site's Pop-ups at Allow, the pop-up opens", asked("/popped-untapped", 10), served[-4:])
+    adb("shell", "am", "force-stop", PACKAGE)
+
+
 def links_to_other_sites():
     """Links to other sites (docs/site-features.md#checking-it), set to Block from the site's
     sheet: each of the ten ways a page leaves for another site goes nowhere, the page staying
@@ -2889,7 +2957,7 @@ def main():
     adb("shell", "pm", "clear", PACKAGE)
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
-    every = (browsing, mobile_shell, custom_colour, settings_back, talkback_states, bookmark_star, settings_ahead, back_key_chain, page_dialogs, page_camera, downloads, crash_notice, download_notifications, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, passkeys_on_the_phone, passwords_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
+    every = (browsing, mobile_shell, custom_colour, settings_back, talkback_states, bookmark_star, settings_ahead, back_key_chain, page_dialogs, popups, page_camera, downloads, crash_notice, download_notifications, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, passkeys_on_the_phone, passwords_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
              the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web, long_press_menu, keyboard_bars, welcome_extras, welcome_last_step, web_server_kinds, update_on_the_phone)
     for part in [p for p in every if not sys.argv[1:] or p.__name__ in sys.argv[1:]]:
         # tools/results.py splits a run's memory, CPU and checks by these lines.

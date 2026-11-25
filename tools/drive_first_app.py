@@ -212,6 +212,10 @@ class Pages(http.server.BaseHTTPRequestHandler):
             # Links to itself: in this tab, in a new tab without its opener, as target=_blank
             # is by default and rel=noopener says outright.
             "/store": b'<!doctype html><title>Store</title><a id=link href=/store>Here</a> <a id=blank target=_blank href=/store>Blank</a> <a id=noopener target=_blank rel=noopener href=/store>No opener</a>',
+            # Pop-ups: one the page opens on its own as it loads, and one a click opens.
+            "/popups": b'<!doctype html><title>Popups</title><button id=tap style="width:200px;height:80px" onclick="window.open(\'/popped-tapped\')">Open</button><script>setTimeout(()=>window.open("/popped-untapped"),300)</script>',
+            # The same again, by a path of its own: a page is found by its whole path, query and all.
+            "/popups-again": b'<!doctype html><title>Popups</title><script>setTimeout(()=>window.open("/popped-untapped"),300)</script>',
             # A page with unsaved work: its beforeunload asks before it goes, once clicked.
             "/unsaved": b'<!doctype html><title>Leave</title><body style="height:100vh;margin:0" onbeforeunload="event.preventDefault()" onclick="document.title=\'clicked\'">',
             # A copy button, as sites make them: a click writes to the clipboard.
@@ -1705,6 +1709,103 @@ def window_checks():
         code = None
     check("closing the last window quits, cleanly", code == 0, code)
     App.running.remove(app)
+
+
+def popup_checks():
+    """Pop-ups (docs/site-features.md, Pop-ups): with the site's Pop-ups at Block, as every
+    site starts, a tab a page opens with no tap first closes as it opens, its page never asked,
+    and the address field counts it; one a real click opens, opens. The site panel's Open it
+    once opens the blocked one beside, and its Pop-ups set to Allow lets the next one open.
+    Pages opened every window.open, so ads' pop-ups opened over what was read."""
+    profile = tempfile.mkdtemp(prefix="pb-popups-")
+    app = App(profile)
+    count = "document.querySelector('.popups')?.getAttribute('aria-label')||''"
+    untapped = "127.0.0.1/popped-untapped"
+
+    def shell_press(selector_js, what):
+        """Presses a control of the shell, found by selector_js, with a real click."""
+        at = app.js(f"(()=>{{const b={selector_js};const r=b&&b.getBoundingClientRect();return r?[r.x+r.width/2,r.y+r.height/2]:null}})()")
+        if at:
+            click_at(app, *at, what)
+        return bool(at)
+
+    by_text = lambda word: f"[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==={json.dumps(word)})"
+
+    Pages.seen.clear()
+    visit(app, PAGES + "popups")
+    try:
+        app.wait(f"{count}==='1 pop-up blocked'", 10)
+        counted = True
+    except TimeoutError:
+        counted = False
+    time.sleep(0.5)
+    check("a pop-up a page opens with no tap closes as it opens, its page never asked, and the address field counts it",
+          counted and app.js(ROWS) == 1 and untapped not in Pages.seen, (app.js(count), app.js(ROWS), Pages.seen[-4:]))
+
+    page_click(app, "#tap")
+    try:
+        app.wait(f"{ROWS}===2", 10)
+        opened = True
+    except TimeoutError:
+        opened = False
+    check("a tab a real click opens, opens", opened and "127.0.0.1/popped-tapped" in Pages.seen, (app.js(ROWS), Pages.seen[-4:]))
+    if opened:
+        app.cmd("key", "cmd+w")
+        app.wait(f"{ROWS}===1")
+
+    shell_press("document.querySelector('.popups')", "the pop-up count")
+    try:
+        app.wait(f"!!{by_text('Open it')}", 5)
+        shown = shell_press(by_text("Open it"), "Open it")
+    except TimeoutError:
+        shown = False
+    try:
+        app.wait(f"{ROWS}===2", 10)
+        once = True
+    except TimeoutError:
+        once = False
+    deadline = time.time() + 10
+    while once and untapped not in Pages.seen and time.time() < deadline:
+        time.sleep(0.05)
+    check("the count opens the site panel, whose Open it opens the pop-up in a tab",
+          shown and once and untapped in Pages.seen, (shown, app.js(ROWS), Pages.seen[-4:]))
+    if once:
+        app.cmd("key", "cmd+w")
+        app.wait(f"{ROWS}===1")
+
+    # The site's Pop-ups set to Allow in its panel, as a person sets it, and kept in
+    # sites.json, which holds only what isn't the default, Block.
+    visit(app, PAGES + "popups")
+    app.wait(f"{count}==='1 pop-up blocked'", 10)
+    shell_press("document.querySelector('.popups')", "the pop-up count")
+    allow = "[...(document.querySelector('[role=radiogroup][aria-label=\"Pop-ups\"]')?.querySelectorAll('[role=radio]')||[])].find(b=>b.textContent.trim()==='Allow')"
+    try:
+        app.wait(f"!!{allow}", 5)
+        shell_press(allow, "Pop-ups: Allow")
+        found = True
+    except TimeoutError:
+        found = False
+    origin = PAGES.rstrip("/")
+    deadline = time.time() + 10
+    kept = False
+    while time.time() < deadline and not kept:
+        try:
+            kept = json.load(open(os.path.join(profile, "sites.json"))).get(origin, {}).get("popups") == "allow"
+        except (OSError, ValueError):
+            pass
+        time.sleep(0.05)
+    check("the site panel's Pop-ups set to Allow, Go keeps it for the site", found and kept, (found, kept))
+    app.cmd("key", "escape")
+    Pages.seen.clear()
+    rows = app.js(ROWS)
+    visit(app, PAGES + "popups-again")
+    try:
+        app.wait(f"{ROWS}==={rows + 1}", 10)
+        allowed = True
+    except TimeoutError:
+        allowed = False
+    check("with the site's Pop-ups at Allow, the pop-up opens", allowed and untapped in Pages.seen, (app.js(ROWS), Pages.seen[-4:]))
+    app.close()
 
 
 def leave_checks():
@@ -3931,5 +4032,5 @@ def holds_hit(app, x, y, timeout=5):
 
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
-    parts = {"filling": [filling_checks], "driver": [driver_checks], "browsing": [browsing_checks], "actions": [action_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "leave": [leave_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "arshell": [arshell_checks], "webapis": [web_api_checks], "signals": [browser_signal_checks], "proxy": [proxy_checks], "clientcert": [client_cert_checks], "passkeys": [passkey_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks], "viewsource": [view_source_checks], "duplicate": [duplicate_checks], "applink": [app_link_checks], "serverkinds": [web_server_kinds_checks]}
-    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, action_checks, settings_checks, filling_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, leave_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, arshell_checks, browser_signal_checks, proxy_checks, client_cert_checks, web_api_checks, passkey_checks, sparks_checks, links_checks, view_source_checks, duplicate_checks, app_link_checks, web_server_kinds_checks, quit_checks]))
+    parts = {"filling": [filling_checks], "driver": [driver_checks], "browsing": [browsing_checks], "actions": [action_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "leave": [leave_checks], "popups": [popup_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "arshell": [arshell_checks], "webapis": [web_api_checks], "signals": [browser_signal_checks], "proxy": [proxy_checks], "clientcert": [client_cert_checks], "passkeys": [passkey_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks], "viewsource": [view_source_checks], "duplicate": [duplicate_checks], "applink": [app_link_checks], "serverkinds": [web_server_kinds_checks]}
+    run_parts(parts.get(" ".join(sys.argv[1:]), [version_checks, driver_checks, timeline_checks, browsing_checks, action_checks, settings_checks, filling_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, leave_checks, popup_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, arshell_checks, browser_signal_checks, proxy_checks, client_cert_checks, web_api_checks, passkey_checks, sparks_checks, links_checks, view_source_checks, duplicate_checks, app_link_checks, web_server_kinds_checks, quit_checks]))
