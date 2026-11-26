@@ -119,6 +119,9 @@ class Window {
 
   // Opens Android's package installer for the APK at path, where the user confirms.
   void InstallPackage(const std::string& path);
+  // A new activity's views take the window over, after the last one went while a download
+  // ran (BrowserActivity): its shell, its pages, the shown one and the layout again.
+  void Reattach();
 
 #else
   void SetShellView(gfx::NativeView view);

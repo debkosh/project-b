@@ -128,6 +128,7 @@ final class Downloads {
             sMain.post(() -> {
                 sPublishing.remove(path);
                 DownloadsJni.get().published(path, address);
+                idle();
             });
         });
     }
@@ -186,6 +187,36 @@ final class Downloads {
     private static final String COMMAND = "dev.projectb.browser.DOWNLOAD_COMMAND";
     private static final int CANCEL = 1, PAUSE = 2, RESUME = 3, OPEN_IT = 5;
     private static final Map<Long, Long> sShownAt = new HashMap<>();
+    // The running download whose notification DownloadService shows, keeping the app alive
+    // while it runs, or 0. Main thread.
+    private static long sHeld;
+    // The downloads running, not paused, by id, and what runs when none is left. Main thread.
+    private static final Set<Long> sRunning = new HashSet<>();
+    private static Runnable sWhenNoneRunning;
+
+    /** Whether a download is running, not paused. */
+    static boolean running() {
+        return !sRunning.isEmpty();
+    }
+
+    /** Runs then once no download runs; null forgets it. */
+    static void whenNoneRunning(Runnable then) {
+        sWhenNoneRunning = then;
+        idle();
+    }
+
+    // Runs what waits for no download to run, once none runs and no finished one is being
+    // copied into the shared Downloads, whose copy Go must hear of. Go asks for the copy just
+    // after a download's last news, so a moment passes first, and the check is made again.
+    private static void idle() {
+        if (sWhenNoneRunning == null || !sRunning.isEmpty() || !sPublishing.isEmpty()) return;
+        sMain.postDelayed(() -> {
+            if (sWhenNoneRunning == null || !sRunning.isEmpty() || !sPublishing.isEmpty()) return;
+            Runnable then = sWhenNoneRunning;
+            sWhenNoneRunning = null;
+            then.run();
+        }, 2000);
+    }
     // Each running download's speed, for its time left: when and how much it had at the
     // last notification, and the bytes a second, smoothed.
     private static final Map<Long, long[]> sLast = new HashMap<>();
@@ -219,6 +250,17 @@ final class Downloads {
         Context context = ContextUtils.getApplicationContext();
         NotificationManager manager = notifications(context);
         int tag = (int) id;
+        if (state == 0 && !paused) {
+            sRunning.add(id);
+        } else if (sRunning.remove(id)) {
+            idle();
+        }
+        // A download that stops running gives the service up; another running one takes it
+        // at its next news.
+        if (sHeld == id && (state != 0 || paused)) {
+            sHeld = 0;
+            DownloadService.stop(context);
+        }
         if (state == 2) {
             forget(id);
             manager.cancel(TAG_NOTIFICATION, tag);
@@ -241,6 +283,14 @@ final class Downloads {
                     .setContentIntent(app(context))
                     .addAction(action(context, id, paused ? RESUME : PAUSE, paused ? "Resume" : "Pause"))
                     .addAction(action(context, id, CANCEL, "Cancel"));
+            // One running download's notification is the download service's, which keeps the
+            // app alive while it runs: swiping the app away ended the process, and the download.
+            if (!paused && (sHeld == 0 || sHeld == id)) {
+                sHeld = id;
+                manager.cancel(TAG_NOTIFICATION, tag);
+                DownloadService.show(context, tag, b.build());
+                return;
+            }
             manager.notify(TAG_NOTIFICATION, tag, b.build());
             return;
         }

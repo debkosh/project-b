@@ -63,6 +63,28 @@ class BrowserWindow : public content::CompositorClient,
 
   const JavaRef<jobject>& java() const { return java_; }
 
+  // Whether an activity's views are the window's. None while the app runs on with no
+  // screen, for a download, after its activity went (BrowserActivity.onDestroy).
+  bool attached() const { return !java_.is_null(); }
+
+  // The activity went: its compositor goes with its surface, and Java hears nothing more.
+  // The layers, the shell and the pages stay, for the next activity.
+  void Detach(JNIEnv* env) {
+    compositor_.reset();
+    java_.Reset();
+    surface_format_ = 0;
+  }
+
+  // A new activity's views, and a compositor for its window, drawing the same layers.
+  void Attach(JNIEnv* env,
+              const JavaRef<jobject>& obj,
+              ui::WindowAndroid* window_android) {
+    java_.Reset(env, obj);
+    compositor_.reset(content::Compositor::Create(this, window_android));
+    compositor_->SetRootLayer(root_);
+    surface_format_ = 0;
+  }
+
   // Children draw in order: the shown page first, the shell last, on top.
   void SetShell(content::WebContents* contents) {
     root_->AddChild(contents->GetNativeView()->GetLayer());
@@ -209,7 +231,7 @@ class BrowserWindow : public content::CompositorClient,
   void BrowserChildProcessKilled(
       const content::ChildProcessData& data,
       const content::ChildProcessTerminationInfo& info) override {
-    if (data.process_type == content::PROCESS_TYPE_GPU) {
+    if (data.process_type == content::PROCESS_TYPE_GPU && attached()) {
       compositor_->SetSurface(nullptr, false, nullptr);
       Java_BrowserWindow_recreateSurface(AttachCurrentThread(), java_);
     }
@@ -260,6 +282,19 @@ static int64_t JNI_BrowserWindow_Start(JNIEnv* env,
   return reinterpret_cast<intptr_t>(g_browser_window);
 }
 
+// A new activity takes over the window, when the app ran on with no screen for a download.
+static int64_t JNI_BrowserWindow_Attach(JNIEnv* env,
+                                        const JavaRef<jobject>& obj,
+                                        const JavaRef<jobject>& jwindow_android,
+                                        float font_scale) {
+  Engine::SetFontScale(font_scale);
+  g_browser_window->Attach(env, obj, ui::WindowAndroid::FromJavaWindowAndroid(jwindow_android));
+  if (Engine::AppWindow* window = Engine::Get()->window(1)) {
+    window->window->Reattach();
+  }
+  return reinterpret_cast<intptr_t>(g_browser_window);
+}
+
 struct Window::Impl {
   uint32_t frame_rgb = 0;
   uint32_t frame_rgb_dark = 0;
@@ -272,6 +307,12 @@ struct Window::Impl {
   // The shell's page, while the shell is one; null for a native shell.
   raw_ptr<content::WebContents> shell = nullptr;
   raw_ptr<content::WebContents> shown = nullptr;
+  // What a new activity's views are given again (Reattach): the native shell's id, while
+  // the shell is one, every page, and the last placing.
+  std::string native_shell;
+  std::vector<raw_ptr<content::WebContents>> pages;
+  std::vector<double> regions;
+  gfx::RectF page;
 };
 
 // A phone's one window never closes, nor stops being the one in front, nor is minimised.
@@ -290,7 +331,11 @@ void Window::PlaceNear(Window* other) {}
 // Android put the activity's window on screen before content started.
 void Window::Show() {}
 
+// With no activity there is nothing on screen to close.
 void Window::Close() {
+  if (!g_browser_window->attached()) {
+    return;
+  }
   Java_BrowserWindow_close(AttachCurrentThread(), g_browser_window->java());
 }
 
@@ -300,23 +345,38 @@ void Window::SetTitle(const std::u16string& title) {}
 void Window::SetShellContents(content::WebContents* contents) {
   impl_->shell = contents;
   g_browser_window->SetShell(contents);
+  if (!g_browser_window->attached()) {
+    return;
+  }
   Java_BrowserWindow_setShell(AttachCurrentThread(), g_browser_window->java(),
                               contents->GetJavaWebContents());
 }
 
 void Window::SetNativeShell(const std::string& id) {
+  impl_->native_shell = id;
+  if (!g_browser_window->attached()) {
+    return;
+  }
   JNIEnv* env = AttachCurrentThread();
   Java_BrowserWindow_setNativeShell(env, g_browser_window->java(),
                                     base::android::ConvertUTF8ToJavaString(env, id));
 }
 
+// With no activity, the native shell's next one asks Go for a snapshot (ready), so nothing
+// sent meanwhile is missed.
 void Window::SendToNativeShell(const std::string& json) {
+  if (!g_browser_window->attached()) {
+    return;
+  }
   JNIEnv* env = AttachCurrentThread();
   Java_BrowserWindow_receiveShell(env, g_browser_window->java(),
                                   base::android::ConvertUTF8ToJavaString(env, json));
 }
 
 void Window::FocusNativeShell() {
+  if (!g_browser_window->attached()) {
+    return;
+  }
   Java_BrowserWindow_focusNativeShell(AttachCurrentThread(), g_browser_window->java());
 }
 
@@ -325,10 +385,18 @@ void Window::RemoveShell() {
     g_browser_window->RemoveShell(impl_->shell);
     impl_->shell = nullptr;
   }
+  impl_->native_shell.clear();
+  if (!g_browser_window->attached()) {
+    return;
+  }
   Java_BrowserWindow_removeShell(AttachCurrentThread(), g_browser_window->java());
 }
 
 void Window::AddPageContents(content::WebContents* contents) {
+  impl_->pages.push_back(contents);
+  if (!g_browser_window->attached()) {
+    return;
+  }
   Java_BrowserWindow_addPage(AttachCurrentThread(), g_browser_window->java(),
                              contents->GetJavaWebContents());
 }
@@ -337,7 +405,11 @@ void Window::RemovePageContents(content::WebContents* contents) {
   if (impl_->shown == contents) {
     impl_->shown = nullptr;
   }
+  std::erase(impl_->pages, contents);
   g_browser_window->RemovePage(contents);
+  if (!g_browser_window->attached()) {
+    return;
+  }
   Java_BrowserWindow_removePage(AttachCurrentThread(), g_browser_window->java(),
                                 contents->GetJavaWebContents());
 }
@@ -347,6 +419,13 @@ void Window::RemovePageContents(content::WebContents* contents) {
 // Java places the page and ignores a stale one itself, so the pages always follow.
 bool Window::SetLayout(Layout layout) {
   JNIEnv* env = AttachCurrentThread();
+  if (!g_browser_window->attached()) {
+    // Told again, whole, to the next activity (Reattach).
+    impl_->has_frame = false;
+    impl_->theme = -1;
+    impl_->layout = std::move(layout);
+    return true;
+  }
   if (!impl_->has_frame || layout.frame_rgb != impl_->frame_rgb ||
       layout.frame_rgb_dark != impl_->frame_rgb_dark ||
       layout.page_rgb != impl_->page_rgb ||
@@ -375,11 +454,14 @@ bool Window::SetLayout(Layout layout) {
 void Window::SetPages(const std::vector<Page>& pages) {
   JNIEnv* env = AttachCurrentThread();
   const Layout& layout = impl_->layout;
+  const bool attached = g_browser_window->attached();
   if (!pages.empty() && pages.front().contents != impl_->shown) {
     impl_->shown = pages.front().contents;
     g_browser_window->ShowPage(impl_->shown);
-    Java_BrowserWindow_showPage(env, g_browser_window->java(),
-                                impl_->shown->GetJavaWebContents());
+    if (attached) {
+      Java_BrowserWindow_showPage(env, g_browser_window->java(),
+                                  impl_->shown->GetJavaWebContents());
+    }
   }
   std::vector<double> flat;
   flat.reserve(layout.regions.size() * 5);
@@ -391,10 +473,42 @@ void Window::SetPages(const std::vector<Page>& pages) {
     flat.push_back(static_cast<double>(r.area));
   }
   const gfx::RectF page = pages.empty() ? gfx::RectF() : pages.front().rect;
+  impl_->regions = flat;
+  impl_->page = page;
+  if (!attached) {
+    return;
+  }
   Java_BrowserWindow_setLayout(env, g_browser_window->java(),
                                layout.viewport.width(), layout.viewport.height(),
                                page.x(), page.y(), page.width(), page.height(),
                                base::android::ToJavaDoubleArray(env, flat));
+}
+
+void Window::Reattach() {
+  JNIEnv* env = AttachCurrentThread();
+  const JavaRef<jobject>& java = g_browser_window->java();
+  if (impl_->shell) {
+    Java_BrowserWindow_setShell(env, java, impl_->shell->GetJavaWebContents());
+  } else if (!impl_->native_shell.empty()) {
+    Java_BrowserWindow_setNativeShell(env, java,
+                                      base::android::ConvertUTF8ToJavaString(env, impl_->native_shell));
+  }
+  for (content::WebContents* contents : impl_->pages) {
+    Java_BrowserWindow_addPage(env, java, contents->GetJavaWebContents());
+  }
+  if (impl_->shown) {
+    Java_BrowserWindow_showPage(env, java, impl_->shown->GetJavaWebContents());
+  }
+  // The colours and theme are told again, as they are the first time.
+  impl_->has_frame = false;
+  impl_->theme = -1;
+  Layout layout = impl_->layout;
+  SetLayout(std::move(layout));
+  const Layout& placed = impl_->layout;
+  const gfx::RectF& page = impl_->page;
+  Java_BrowserWindow_setLayout(env, java, placed.viewport.width(), placed.viewport.height(),
+                               page.x(), page.y(), page.width(), page.height(),
+                               base::android::ToJavaDoubleArray(env, impl_->regions));
 }
 
 void Window::ListenForState(
@@ -403,30 +517,45 @@ void Window::ListenForState(
 }
 
 void Window::InstallPackage(const std::string& path) {
+  if (!g_browser_window->attached()) {
+    return;
+  }
   JNIEnv* env = AttachCurrentThread();
   Java_BrowserWindow_installPackage(env, g_browser_window->java(),
                                     base::android::ConvertUTF8ToJavaString(env, path));
 }
 
 void Window::ShareFile(const std::string& path, const gfx::RectF& anchor) {
+  if (!g_browser_window->attached()) {
+    return;
+  }
   JNIEnv* env = AttachCurrentThread();
   Java_BrowserWindow_shareFile(env, g_browser_window->java(),
                                base::android::ConvertUTF8ToJavaString(env, path));
 }
 
 void Window::ShareText(const std::string& text) {
+  if (!g_browser_window->attached()) {
+    return;
+  }
   JNIEnv* env = AttachCurrentThread();
   Java_BrowserWindow_shareText(env, g_browser_window->java(),
                                base::android::ConvertUTF8ToJavaString(env, text));
 }
 
 void CopyImageFile(const std::string& path) {
+  if (!g_browser_window->attached()) {
+    return;
+  }
   JNIEnv* env = AttachCurrentThread();
   Java_BrowserWindow_copyImage(env, g_browser_window->java(),
                                base::android::ConvertUTF8ToJavaString(env, path));
 }
 
 void Window::Minimize() {
+  if (!g_browser_window->attached()) {
+    return;
+  }
   Java_BrowserWindow_minimize(AttachCurrentThread(), g_browser_window->java());
 }
 
@@ -436,6 +565,9 @@ void Window::Zoom() {}
 void Window::ToggleFullScreen() {}
 
 void Window::SetSystemBarsHidden(bool hidden) {
+  if (!g_browser_window->attached()) {
+    return;
+  }
   Java_BrowserWindow_setSystemBarsHidden(AttachCurrentThread(), g_browser_window->java(), hidden);
 }
 

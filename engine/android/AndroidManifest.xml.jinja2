@@ -4,6 +4,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
           xmlns:tools="http://schemas.android.com/tools" package="{{ manifest_package }}">
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- DownloadService, which keeps the app alive while a download runs. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <!-- A page's camera and microphone, asked when a page a site allows first needs them
          (docs/media-permissions.md), and the QR scanner's, which reads a sync backup code and
          asks when it first opens. No device is kept from the app for having no camera. -->
@@ -78,6 +81,12 @@
             android:exported="false"
             android:process=":phoenix"
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <!-- Keeps the app alive while a download runs (DownloadService). -->
+        <service
+            android:name="dev.projectb.browser.DownloadService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <!-- Lets Android's package installer read a downloaded update. -->
         <provider

@@ -62,6 +62,9 @@ final class BrowserWindow extends FrameLayout {
     private final float density;
 
     private long nativeWindow;
+    // The native window, which outlives an activity while a download runs: the next one
+    // attaches to it (attach), and the last download's end stops Go (endWithoutScreen).
+    private static long sNativeWindow;
     // Whether the soft keyboard is up, as the shell last heard.
     private boolean keyboardUp;
     // Where the native compositor draws.
@@ -133,10 +136,50 @@ final class BrowserWindow extends FrameLayout {
                 BrowserWindowJni.get()
                         .start(this, windowAndroid, goTable, processAgeMs, blockedHosts,
                                 skipWelcome, fontScale());
+        sNativeWindow = nativeWindow;
         // Go's first layout and theme arrive inside start, before there is a window to tell,
         // so the frame and our pages' colour are painted now; else they waited for the next
         // change, and a phone started in dark kept the light frame.
         paintFrame();
+        addSurface();
+    }
+
+    /**
+     * A new activity, while the app ran on with no screen for a download: the native window
+     * takes these views, and gives them its shell, pages and layout again.
+     */
+    void attach() {
+        Clipboard.getInstance().setImageFileProvider(images);
+        nativeWindow = BrowserWindowJni.get().attach(this, windowAndroid, fontScale());
+        paintFrame();
+        addSurface();
+    }
+
+    /**
+     * The activity goes while a download runs: the native window keeps Go's window, its
+     * shell and its pages, with nothing on screen, until the next activity or the download's
+     * end. The pages leave this activity's window.
+     */
+    void detach() {
+        if (nativeWindow == 0) return;
+        if (shellContents != null) shellContents.setTopLevelNativeWindow(null);
+        for (WebContents contents : pages.keySet()) contents.setTopLevelNativeWindow(null);
+        BrowserWindowJni.get().detach(nativeWindow);
+        nativeWindow = 0;
+    }
+
+    /** Whether Go and content run in this process already, with or without a screen. */
+    static boolean running() {
+        return sNativeWindow != 0;
+    }
+
+    /** The last download has ended with no screen: Go stops, saving the profile, and the app ends. */
+    static void endWithoutScreen() {
+        if (sNativeWindow != 0) BrowserWindowJni.get().stop(sNativeWindow);
+        System.exit(0);
+    }
+
+    private void addSurface() {
         surface = new SurfaceView(getContext());
         surface.setZOrderMediaOverlay(true);
         // A SurfaceView defaults to 16 bits per pixel.
@@ -692,6 +735,10 @@ final class BrowserWindow extends FrameLayout {
                 String blockedHosts,
                 boolean skipWelcome,
                 float fontScale);
+
+        long attach(BrowserWindow self, WindowAndroid windowAndroid, float fontScale);
+
+        void detach(long nativeBrowserWindow);
 
         void surfaceCreated(long nativeBrowserWindow);
 
