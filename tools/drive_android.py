@@ -3207,6 +3207,9 @@ def settings_keeps_its_size():
     shows only that the case leaves Settings as it was, not that the zoom can't come. A pinch
     makes Settings bigger, as it does a web page: our pages pinch until the app follows
     Android's font size."""
+    # A profile with no sync set up, whatever part ran before: after sync_on_the_phone sync is
+    # on, and Settings has no Set up… to press.
+    clear_data()
     launch()
     go(BASE + "/pinch")
     see("page", text="Pinch me")
