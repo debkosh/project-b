@@ -105,6 +105,12 @@ PAGES["/apis"] = ("<title>APIs</title><button style='position:fixed;inset:0;widt
                   " .then(() => setTimeout(() => fetch('/apis-alive?' + when), 3000)) }"
                   "run('load'); document.querySelector('button').onclick = () => run('tap')</script>")
 
+# A <permission> element, as Google's search page shows for its voice search: Blink reads its
+# words from the app's resources as it lays it out, and without them the renderer aborted. Says
+# a moment later that it lives, and whether Blink knows the element.
+PAGES["/permission-element"] = ("<title>Permission element</title><permission type=microphone></permission>"
+                                "<script>setTimeout(() => fetch('/permission-alive?' + typeof HTMLPermissionElement), 3000)</script>")
+
 served = []
 # Each request's host and path, for Links to other sites, which serves two sites.
 seen = []
@@ -2452,6 +2458,14 @@ def web_apis():
         if unknown:
             print("  not yet known on Android, seen on %s: %s" % (on, "; ".join(unknown)), flush=True)
     shot("18b-web-apis")
+    # A fresh start: the tap's calls can leave a dialog of theirs over the page, and the
+    # address field out of reach.
+    launch()
+    go(BASE + "/permission-element")
+    lived = asked("/permission-alive", 30)
+    known = [s for s in served if s.startswith("/permission-alive")]
+    check("a page with a <permission> element keeps its renderer, as Google's search page does", lived is not None and known[-1].endswith("?function"),
+          known[-1] if known else "no word from the page")
 
 
 def popups():
