@@ -31,6 +31,10 @@ public final class BrowserActivity extends Activity {
     @Override
     protected void onCreate(Bundle saved) {
         super.onCreate(saved);
+        if (BrowserWindow.running()) {
+            reattach();
+            return;
+        }
         if (!CommandLine.isInitialized()) {
             CommandLine.init(null);
         }
@@ -96,6 +100,28 @@ public final class BrowserActivity extends Activity {
                                 finish();
                             }
                         });
+    }
+
+    // The app ran on with no screen for a download, after the last activity went: Go and
+    // content run already, so this activity takes the window over, its tabs as they were.
+    private void reattach() {
+        Downloads.whenNoneRunning(null);
+        GoSystem.attach(this);
+        OsKit.attach(this);
+        intentRequests = IntentRequestTracker.createFromActivity(this);
+        windowAndroid =
+                new ActivityWindowAndroid(
+                        this,
+                        /* listenToActivityState= */ true,
+                        intentRequests,
+                        /* insetObserver= */ null,
+                        /* occlusionTrackingAllowed= */ true);
+        window = new BrowserWindow(this, windowAndroid);
+        setContentView(window);
+        window.attach();
+        started = true;
+        openDownload(getIntent());
+        OsKit.onIntent(getIntent());
     }
 
     // A link from another app while the app runs: the activity is singleTask, so Android
@@ -209,8 +235,22 @@ public final class BrowserActivity extends Activity {
     // process of its own (:phoenix), ends this one, if it's still here, and opens the app's
     // launcher activity in a new task, as Chrome's restart does. Go has stopped by then, so
     // the profile is saved, and no program is started from Go, which Android 10 forbids it.
+    //
+    // But a download outlives the screen, as Chrome's does: swiping the app away from the
+    // recent apps ended the process, and the download with it. While one runs, the activity
+    // goes and the app runs on, its download service keeping it alive (DownloadService); Go's
+    // window keeps its tabs with nothing on screen. Opening the app again attaches a new
+    // activity to it (reattach); the last download's end, with no activity, stops Go and ends
+    // the app as before (docs/daily-driver.md, Downloads).
     @Override
     protected void onDestroy() {
+        if (!relaunch && started && Downloads.running()) {
+            window.detach();
+            windowAndroid.destroy();
+            super.onDestroy();
+            Downloads.whenNoneRunning(BrowserWindow::endWithoutScreen);
+            return;
+        }
         window.stop();
         super.onDestroy();
         if (relaunch) ProcessPhoenix.triggerRebirth(getApplicationContext());

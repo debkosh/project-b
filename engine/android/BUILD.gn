@@ -308,6 +308,7 @@ android_library("java") {
     "java/dev/projectb/browser/BrowserApplication.java",
     "java/dev/projectb/browser/BrowserWindow.java",
     "java/dev/projectb/browser/ClipboardImages.java",
+    "java/dev/projectb/browser/DownloadService.java",
     "java/dev/projectb/browser/Downloads.java",
     "java/dev/projectb/browser/ExitReasons.java",
     "java/dev/projectb/browser/GoCore.java",

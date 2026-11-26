@@ -220,6 +220,24 @@ cancelled one goes. Pause, Resume and Cancel come back to Go as `PB_EVENT_DOWNLO
 by Go's id, and do what the Downloads page's buttons do. Two quiet channels, as Chrome's:
 "Downloads in progress" and "Completed downloads".
 
+**A download outlives the app's screen**, as Chrome's does. Swiping the app away from the
+recent apps ended its activity, and the app ended its process with it (Go's state lives as
+long as its window), so every running download died (his phone, 2026-11-27). Now, while one
+runs (not paused), the activity goes and the app runs on with no screen:
+
+- **Kept alive** by a foreground service (`DownloadService`, type `dataSync`), whose
+  notification is one running download's own, so nothing new shows. When that one ends or
+  pauses, the service stops and the next running one takes it at its next news. Android 12
+  and later refuse to start it from the background, where the download goes on without it.
+- **Go's window stays**, its tabs and shell as they were, with nothing on screen: the native
+  window lets go of the activity's views and compositor (`detach`) and keeps its layers.
+- **Opening the app again** attaches the new activity to it (`attach`): the shell, every
+  page, the shown one and the layout are given to the new views, and a native shell asks Go
+  for a snapshot as it does at a start.
+- **The end:** once no download runs and no finished one is being copied into the shared
+  Downloads, Go stops, saving the profile, and the app ends, as it did when its screen went.
+  A paused download doesn't keep it running.
+
 **Asking for notifications.** Android 13 and later show them only once the person allows
 them. The app never asks in the middle of a download: the welcome's last step asks, and
 otherwise the first download's bar offers, once, "Downloading big.bin" with "Show progress

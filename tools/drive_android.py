@@ -1302,6 +1302,43 @@ def in_front_now():
     return adb("shell", "dumpsys", "window", "displays").split("mCurrentFocus", 1)[-1].split("\n", 1)[0]
 
 
+def swipe_away():
+    """Swipes the app away from the recent apps, as a person closes it."""
+    adb("shell", "input", "keyevent", "KEYCODE_APP_SWITCH")
+    time.sleep(2)
+    adb("shell", "input", "swipe", "540", "1200", "540", "200", "300")
+    until(lambda: "BrowserActivity" not in in_front_now(), 10)
+
+
+def download_outlives_screen():
+    """A download outlives the app's screen, as Chrome's does: swiped away from the recent
+    apps mid-download, the app runs on with no screen and the file still arrives; opened
+    again meanwhile, it shows its tabs as they were; once the download is done, with no
+    screen, the app ends (docs/daily-driver.md, Downloads). Swiping it away ended the
+    process at once, and the download with it."""
+    adb("shell", "pm", "grant", PACKAGE, "android.permission.POST_NOTIFICATIONS")
+    launch()
+    name = "pb-outlive-%d.bin" % int(time.time())
+    go(BASE + "/a")
+    asked("/a")
+    go(BASE + "/slow/" + name)
+    until(lambda: (notification_of(name) or "") != "", 15)
+    swipe_away()
+    time.sleep(5)
+    pid = adb("shell", "pidof", PACKAGE).strip()
+    check("swiped away mid-download, the app runs on with no screen", bool(pid) and "BrowserActivity" not in in_front_now(), in_front_now())
+    adb("shell", "am", "start", "-W", "-n", PACKAGE + "/" + ACTIVITY)
+    back = until(lambda: find("page", text="to b"), 20)
+    check("opened again mid-download, it shows its tab as it was, in the same process",
+          back is not None and adb("shell", "pidof", PACKAGE).strip() == pid, adb("shell", "pidof", PACKAGE).strip() + " was " + pid)
+    swipe_away()
+    stored = until(lambda: name in adb("shell", "ls", "/sdcard/Download/"), 150)
+    check("swiped away again, the file still reaches the phone's Downloads", stored is not None)
+    ended = until(lambda: not adb("shell", "pidof", PACKAGE).strip(), 30)
+    check("and with the download done and no screen, the app ends", ended is not None)
+    adb("shell", "rm", "-f", "/sdcard/Download/" + name)
+
+
 def notification_of(name):
     """The download notification for the file name, its title and text as Android keeps them,
     or None."""
@@ -3342,7 +3379,7 @@ def main():
     clear_data()
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
-    every = (browsing, mobile_shell, custom_colour, settings_back, talkback_states, bookmark_star, settings_ahead, back_key_chain, page_dialogs, popups, leave, page_camera, downloads, crash_notice, relaunch_on_the_phone, download_notifications, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, passkeys_on_the_phone, passwords_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
+    every = (browsing, mobile_shell, custom_colour, settings_back, talkback_states, bookmark_star, settings_ahead, back_key_chain, page_dialogs, popups, leave, page_camera, downloads, crash_notice, relaunch_on_the_phone, download_notifications, download_outlives_screen, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, passkeys_on_the_phone, passwords_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
              the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web, secure_dns, long_press_menu, keyboard_bars, welcome_extras, welcome_last_step, web_server_kinds, update_on_the_phone, settings_keeps_its_size, update_notification)
     for part in [p for p in every if not sys.argv[1:] or p.__name__ in sys.argv[1:]]:
         # tools/results.py splits a run's memory, CPU and checks by these lines.
