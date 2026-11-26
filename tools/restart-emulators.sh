@@ -3,7 +3,7 @@
 # GPU. The Android 10 image now and then boots with its GPU broken, and the app then dies at start
 # with "GPU process isn't usable"; that emulator is restarted again, up to three times.
 # Their qemu grows over days of runs, so restart them after each release's Android group and
-# daily (roles/tester.md). The app must be installed.
+# daily (roles/tester.md). With the app not installed, the GPU goes unchecked, and it says so.
 #
 #   tools/restart-emulators.sh                          # the two release emulators
 #   tools/restart-emulators.sh project-b-emu-16k:5602   # amarit unit:port, any number
@@ -28,6 +28,11 @@ for emulator in "$@"; do
         prefs=/data/data/com.google.android.inputmethod.latin/shared_prefs/com.google.android.inputmethod.latin_preferences.xml
         "$ADB" -s "$serial" shell "[ -f $prefs ] && { grep -q auto_correction $prefs || sed -i 's|</map>|    <boolean name=\"auto_correction\" value=\"false\" />\n</map>|' $prefs; sed -i 's|name=\"auto_correction\" value=\"true\"|name=\"auto_correction\" value=\"false\"|' $prefs; am force-stop com.google.android.inputmethod.latin; }" >/dev/null 2>&1
         "$ADB" -s "$serial" logcat -c
+        # A release's launch check leaves the app uninstalled; with no app to start, its GPU
+        # goes unchecked, and restarting the emulator again can't change that.
+        if [ -z "$("$ADB" -s "$serial" shell pm list packages "$PACKAGE" | tr -d '\r')" ]; then
+            ok=nogpu; break
+        fi
         "$ADB" -s "$serial" shell am start -n "$PACKAGE/.BrowserActivity" -d about:blank >/dev/null
         sleep 20
         pid=$("$ADB" -s "$serial" shell pidof "$PACKAGE" | tr -d '\r')
@@ -36,6 +41,7 @@ for emulator in "$@"; do
         if [ -n "$pid" ] && [ "$dead" = 0 ]; then ok=1; break; fi
         echo "$unit: attempt $attempt, the app didn't start (GPU process died $dead times); restarting it again"
     done
-    if [ -n "$ok" ]; then echo "$unit: up, the app starts"; else echo "$unit: NOT USABLE"; status=1; fi
+    if [ "$ok" = nogpu ]; then echo "$unit: up, booted; the app isn't installed, so its GPU went unchecked"
+    elif [ -n "$ok" ]; then echo "$unit: up, the app starts"; else echo "$unit: NOT USABLE"; status=1; fi
 done
 exit $status
