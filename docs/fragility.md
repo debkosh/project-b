@@ -87,6 +87,23 @@ The seams:
   for another OS. Two so far: saved passwords Linux couldn't show, passkeys Linux couldn't
   save.
 
+## A driver answer cut in two under load, 2026-11-27
+
+- **Seen:** in Stable 0.3.13's desk run, drive_first_app stopped in links_checks with a
+  Traceback: getTabs' answer was cut-off JSON, "Unterminated string ... char 494", so the
+  parts after it never ran. The same driver ran clean in four gates that day; three phone
+  runs were loading the Mac.
+- **Cause:** the engine writes the driver's answers to stdout and Go writes the timeline to
+  stderr, and the driver read both through one pipe. A pipe keeps a write whole only up to
+  512 bytes; getTabs with several tabs is longer, and with the pipe full a timeline line
+  ("tab.first_paint tab=7") landed inside the answer, in app.log as in the reply.
+- **Seam:** the driver and the app's output: two writers sharing one pipe.
+- **Fix:** the driver reads stdout and stderr through a pipe each, into the same app.log, and
+  counts the app gone once both close, so its last lines, a crash at quit among them, are in.
+- **Guard:** a stand-in app answering long on stdout while flooding stderr: the old driver got
+  25 of 500 answers cut, the new one none of 2,500; then links, timeline, quit and driver on
+  the real Linux app, three times.
+
 ## The main checkout's shell packages emptied through a link, 2026-11-26
 
 - **Seen:** the hotfix Dev publish's mock failed at once: the main checkout's
