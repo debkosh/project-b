@@ -2254,6 +2254,19 @@ func TestAndroidsSettingsChooseAShellForEachSize(t *testing.T) {
 	}
 }
 
+// On Android the shells hear Android, for what they draw, though its keys are Linux's: the
+// window buttons of Standard on a tablet showed, as Go named the platform by its keymap.
+func TestOnAndroidTheShellsHearAndroid(t *testing.T) {
+	defer func(was bool) { shells.OnAndroid = was }(shells.OnAndroid)
+	shells.OnAndroid = true
+	r := start(t, androidProfile(t))
+	defer r.stop()
+	snap := r.waitOn(r.got, func(m map[string]any) bool { return m["t"] == "snapshot" })
+	if snap["platform"] != "android" {
+		t.Fatalf("the shells hear %v", snap["platform"])
+	}
+}
+
 // On Android the window's size picks its shell: the first size at once, a later one once it
 // has stayed half a second, so a size that comes back in time changes nothing. Keeping one
 // shell at every size overrides it.

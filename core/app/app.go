@@ -280,7 +280,13 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Commands.RegisterList(a.workspaceList())
 	a.Commands.RegisterList(a.shellList())
 	a.Commands.RegisterList(a.closedList(e))
-	a.Shell = shell.New(e, a.Tabs, a.Suggest, a.Window, a.Prefs, a.Update, a.Crash, a.Commands.Run, a.Commands.ShownKeys, a.Commands.Platform())
+	// The shells hear the platform as the keymap names it, but Android is Android to them,
+	// though its keys are Linux's: it has no window buttons or menu bar of ours.
+	shellOS := a.Commands.Platform()
+	if shells.OnAndroid {
+		shellOS = "android"
+	}
+	a.Shell = shell.New(e, a.Tabs, a.Suggest, a.Window, a.Prefs, a.Update, a.Crash, a.Commands.Run, a.Commands.ShownKeys, shellOS)
 	a.Commands.OnAltTap(func() { a.Shell.MenuBar(a.Tabs.Front(), false) })
 	a.Shell.AddPart(a.workspaceShellPart(e))
 	a.Shell.AddPart(a.pinShellPart())
