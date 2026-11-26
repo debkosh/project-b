@@ -3286,6 +3286,119 @@ def client_cert_checks():
         shutil.rmtree(d, ignore_errors=True)
 
 
+class DohServer:
+    """A DNS-over-HTTPS server on 127.0.0.1, over https with a self-made certificate, which
+    answers every A question with 127.0.0.1 and others with no records, and keeps each name
+    asked, in order (RFC 8484, GET with ?dns=, and POST)."""
+
+    def __init__(self):
+        import base64
+        import ssl
+        import struct
+        self.asked = []
+        self.dir = tempfile.mkdtemp(prefix="pb-doh-")
+        key, crt = os.path.join(self.dir, "key.pem"), os.path.join(self.dir, "cert.pem")
+        subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1", "-subj", "/CN=127.0.0.1",
+                        "-keyout", key, "-out", crt], check=True, capture_output=True)
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        ctx.load_cert_chain(crt, key)
+        asked = self.asked
+
+        def answer(q):
+            # The question: a 12-byte header, then the name's labels, its type and class.
+            i, labels = 12, []
+            while q[i]:
+                labels.append(q[i + 1:i + 1 + q[i]].decode())
+                i += 1 + q[i]
+            qtype = struct.unpack(">H", q[i + 1:i + 3])[0]
+            question = q[12:i + 5]
+            asked.append(".".join(labels).lower())
+            records = b""
+            if qtype == 1:
+                records = b"\xc0\x0c" + struct.pack(">HHIH", 1, 1, 60, 4) + bytes([127, 0, 0, 1])
+            return q[:2] + struct.pack(">HHHHH", 0x8180, 1, 1 if records else 0, 0, 0) + question + records
+
+        class Doh(http.server.BaseHTTPRequestHandler):
+            def reply(self, q):
+                body = answer(q)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/dns-message")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def do_GET(self):
+                dns = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get("dns", [""])[0]
+                self.reply(base64.urlsafe_b64decode(dns + "=" * (-len(dns) % 4)))
+
+            def do_POST(self):
+                self.reply(self.rfile.read(int(self.headers.get("Content-Length", "0"))))
+
+            def log_message(self, *a):
+                pass
+
+        self.server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Doh)
+        self.server.socket = ctx.wrap_socket(self.server.socket, server_side=True)
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+        self.template = f"https://127.0.0.1:{self.server.server_address[1]}/dns-query{{?dns}}"
+
+    def close(self):
+        self.server.shutdown()
+        shutil.rmtree(self.dir, ignore_errors=True)
+
+
+def secure_dns_checks():
+    """Secure DNS on the real engine (docs/secure-dns.md), against a DNS-over-HTTPS server of
+    the driver's own that knows names nobody else does: Off, the start, never asks it and
+    such a name doesn't load; Secure only, from prefs.json at the start, asks it alone, and
+    the name loads; Settings' check asks it too; and changed live to Off, then Automatic, the
+    engine follows at once. The engine had no Secure DNS: every lookup went to the network's
+    own DNS."""
+    doh = DohServer()
+    port = pages.server_port
+    profile = tempfile.mkdtemp(prefix="pb-profile-")
+    send = lambda app, msg: app.js(f"(chrome.send('shell',[{json.dumps(json.dumps(msg))}]),1)")
+    # The page server answers any path; a name only the driver's server knows reaches it.
+    reached = lambda name: any(s.startswith(f"{name}/dns") for s in Pages.seen)
+    # Every request goes direct, whatever the system's proxy says, so names are looked up here.
+    extra = ("--ignore-certificate-errors", "--no-proxy-server")
+    try:
+        app = App(profile, extra=extra)
+        visit(app, f"http://pb-off.test:{port}/dns")
+        check("Off, the start, never asks a DNS-over-HTTPS server, and a name only it knows doesn't load",
+              not reached("pb-off.test") and not doh.asked, (doh.asked, Pages.seen[-3:]))
+        app.close()
+        with open(os.path.join(profile, "prefs.json"), "w") as f:
+            json.dump({"secureDns": "secure", "dnsProvider": "custom", "dnsCustom": doh.template}, f)
+        app = App(profile, extra=extra)
+        visit(app, f"http://pb-secure.test:{port}/dns")
+        check("Secure only, set at the start, looks a name up at its provider alone, and the page loads",
+              reached("pb-secure.test") and "pb-secure.test" in doh.asked, (doh.asked, Pages.seen[-3:]))
+        deadline = time.time() + 10
+        while "google.com" not in doh.asked and time.time() < deadline:
+            time.sleep(0.1)
+        check("the provider is checked as it's set, Settings' check asking it a known name",
+              "google.com" in doh.asked, doh.asked)
+        send(app, {"t": "setPref", "name": "secureDns", "value": "off"})
+        before = len(doh.asked)
+        time.sleep(1)
+        visit(app, f"http://pb-live-off.test:{port}/dns")
+        check("changed to Off live, the next lookup goes to the network's DNS, not the provider",
+              not reached("pb-live-off.test") and "pb-live-off.test" not in doh.asked[before:], (doh.asked, Pages.seen[-3:]))
+        send(app, {"t": "setPref", "name": "secureDns", "value": "automatic"})
+        # Automatic asks the provider once a background check has found it answering.
+        deadline = time.time() + 30
+        n = 0
+        while not reached(f"pb-auto{n}.test") and time.time() < deadline:
+            n += 1
+            visit(app, f"http://pb-auto{n}.test:{port}/dns")
+        check("changed to Automatic live, the provider answers once it's found answering",
+              reached(f"pb-auto{n}.test"), (doh.asked[-5:], Pages.seen[-3:]))
+        app.close()
+    finally:
+        doh.close()
+
+
 def proxy_checks():
     """A page goes through the proxy --proxy-server names, as Chrome's does: the engine gave
     the network context no proxy at all, so the switch, and the system's own proxy settings,
@@ -4064,12 +4177,12 @@ def holds_hit(app, x, y, timeout=5):
 
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
-    parts = {"version": [version_checks], "filling": [filling_checks], "driver": [driver_checks], "browsing": [browsing_checks], "actions": [action_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "leave": [leave_checks], "popups": [popup_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "arshell": [arshell_checks], "webapis": [web_api_checks], "signals": [browser_signal_checks], "proxy": [proxy_checks], "clientcert": [client_cert_checks], "passkeys": [passkey_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks], "viewsource": [view_source_checks], "duplicate": [duplicate_checks], "applink": [app_link_checks], "serverkinds": [web_server_kinds_checks]}
+    parts = {"version": [version_checks], "filling": [filling_checks], "driver": [driver_checks], "browsing": [browsing_checks], "actions": [action_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "leave": [leave_checks], "popups": [popup_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "arshell": [arshell_checks], "webapis": [web_api_checks], "signals": [browser_signal_checks], "proxy": [proxy_checks], "clientcert": [client_cert_checks], "passkeys": [passkey_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks], "viewsource": [view_source_checks], "duplicate": [duplicate_checks], "applink": [app_link_checks], "serverkinds": [web_server_kinds_checks], "securedns": [secure_dns_checks]}
     # Each name given is a part, run in the order given; none runs them all. A name that
     # isn't a part ends the run before it starts: two names once read as one unknown name
     # and quietly ran every part on the shared desktop (2026-11-26).
     unknown = [a for a in sys.argv[1:] if a not in parts]
     if unknown:
         sys.exit("no part named %s; the parts are: %s" % (", ".join(unknown), " ".join(sorted(parts))))
-    every = [version_checks, driver_checks, timeline_checks, browsing_checks, action_checks, settings_checks, filling_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, leave_checks, popup_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, arshell_checks, browser_signal_checks, proxy_checks, client_cert_checks, web_api_checks, passkey_checks, sparks_checks, links_checks, view_source_checks, duplicate_checks, app_link_checks, web_server_kinds_checks, quit_checks]
+    every = [version_checks, driver_checks, timeline_checks, browsing_checks, action_checks, settings_checks, filling_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, leave_checks, popup_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, arshell_checks, browser_signal_checks, proxy_checks, client_cert_checks, secure_dns_checks, web_api_checks, passkey_checks, sparks_checks, links_checks, view_source_checks, duplicate_checks, app_link_checks, web_server_kinds_checks, quit_checks]
     run_parts([c for a in sys.argv[1:] for c in parts[a]] if sys.argv[1:] else every)
