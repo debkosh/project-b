@@ -1,27 +1,15 @@
-# 0.3.11
+# 0.3.12
 
-- Project B is now on Chromium 158, with its security fixes, on the Mac, Android and Linux.
-- Closing a tab whose page has unsaved changes now asks "Leave site?" first, instead of losing them.
-- Pages now load through your system's proxy settings, and through --proxy-server when the app is started with it.
-- A web address with a user name and password in it no longer shows the password in the address bar or keeps it in history.
-- Searching passwords, bookmarks, sites, downloads and tabs finds every word you type, in any order, and forgives a typo.
-- Settings opens with the cursor in its search field. Sync and Passwords are sections of their own, Privacy is now Privacy and sites, and Run setup again is in About.
-- In a short window, Settings' list of sections scrolls on its own under the search, keeping the current section in sight.
-- Settings' Web features says more exactly what works, what is quiet and what isn't there yet, for each platform.
-- Glide is now called Curve. Once, after this update, the browser opens on the Standard shell, and a shell's own arrangement and any shortcuts you changed start over.
-- Sync setup offers a free sync bucket to start with, and takes any server's address as it is, with an optional token that stays hidden unless you choose Show.
-- Backup codes: making one right after cancelling one, skipping one, or leaving the card early no longer shows a code you didn't keep or says you have one when you don't.
-- With sync off, starting Project B no longer asks to unlock the keyring on Linux or for the keychain on a Mac; it asks when a saved password, a passkey or sync first needs it.
-- The first check for updates, and sync, wait ten seconds after the app starts, so starting isn't slowed by them.
-- After a crash, the notice that says so sits in its own strip above the page instead of covering its top.
-- Sign-in fields are found better: more password and username fields are recognised, in more languages, and fewer other fields are mistaken for them.
-- In the Fox shell, a narrow window no longer hides Back, Forward and Reload under the address field.
-- On Android, sites are told the Chromium version Project B is on, not version 0.
-- On Android, opening a downloaded text file, page or picture shows it in a tab.
-- On Android, joining sync with a backup code can scan the code's QR with the camera instead of typing it.
-- On Linux, this is still a beta, for arm64, installed as a Flatpak.
-- On Linux, saving a passkey in Project B and signing in with one now work, with the desktop's keyring keeping them; Settings' Passwords and Passkeys say who else on the computer can read them, and why.
-- On Linux, Settings' Passwords can show and copy a saved password, without asking for a screen lock Linux has no way to set.
-- On Linux, a locked keyring is explained: Learn more says why and how to unlock it, Settings offers Try again when it gives no key, and answering its question late no longer leaves passwords and sync locked.
-- On Linux, Settings shows one scrollbar, not two, and Web features says what Linux gives, not what the Mac gives.
+- On Android, Google's search page no longer crashes a second after it shows.
+- Pages can't open pop-ups unless you tapped or clicked first; the site panel shows what was blocked, can open it, or can allow pop-ups for that site.
+- Settings' Web features now shows "Leave this page?" as working: closing a tab whose page has unsaved work asks first.
+- On an Android tablet, or a foldable opened, the browser uses the Standard shell, with tabs and the menu, and Mobile again on a phone-sized window; Settings can keep one shell at every size.
+- On an Android tablet, Standard's tabs, buttons and menus are sized for a finger, with a close button on every tab and no window buttons of its own.
+- On an Android tablet, typing works in Standard: the on-screen keyboard coming up no longer reloads the browser's bar.
+- On Android, Settings, Appearance asks for the Shell first, By size, Mobile or Standard, and then the phone layout, Web or Native.
+- On Android, buttons, menus and choices in Settings, Downloads and the other pages are a little larger, easier to hit with a finger.
+- On Android, a mouse or touchpad scrolls the page and lights the shell's buttons as you point at them, and Escape on a keyboard closes a sheet or menu, as the back key does.
+- On Android 10, Save report and Share report no longer close the app.
+- On Android, "Project B crashed last time" shows only after a crash, not after the phone ends the app in the background, a swipe-away, a Force stop on Android 10 or a power loss.
+- On Android, a crash report says how the app and its graphics process ended, names a crashed page by its site only, and no longer names a macOS reports folder.
 - On a Mac, after an update, macOS asks to let Project B use its key: choose Always Allow.
