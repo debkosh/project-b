@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Follows content/shell/android/shell_apk/AndroidManifest.xml.jinja2. The services are the child
      processes: same APK, same content library, and none of the Go library. -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="{{ manifest_package }}">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:tools="http://schemas.android.com/tools" package="{{ manifest_package }}">
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- A page's camera and microphone, asked when a page a site allows first needs them
          (docs/media-permissions.md), and the QR scanner's, which reads a sync backup code and
@@ -14,6 +15,11 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <!-- Every app's log, for a crash report's lines of a page's renderer, which runs under a
+         user id of its own (docs/android.md, "Crash logs"). Android never grants it to an app
+         by itself: only adb's pm grant does, as on a phone we develop on. Without it the app
+         reads its own lines alone, as before. -->
+    <uses-permission android:name="android.permission.READ_LOGS" tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application

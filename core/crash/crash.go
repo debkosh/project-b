@@ -25,6 +25,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"projectb/engine"
@@ -37,6 +38,8 @@ type Manager struct {
 	children string
 	last     string
 	report   string
+	// ended are the pids of this run's children that crashed, in turn.
+	ended []int
 	// System is what the platform says of itself for a report: the version, the OS and
 	// the device, and on Android the app's own log. Nil says nothing.
 	System func() []Section
@@ -161,6 +164,7 @@ func (m *Manager) ProcessCrashed(p engine.ProcessCrash) {
 		return
 	}
 	defer f.Close()
+	m.ended = append(m.ended, p.PID)
 	line := fmt.Sprintf("%s %s %s, exit code %d, pid %d", time.Now().Format(time.DateTime), p.Type, p.Status, p.ExitCode, p.PID)
 	if o := origin(p.URL); o != "" {
 		line += ", " + o
@@ -181,6 +185,15 @@ func origin(address string) string {
 		return u.Scheme + ":"
 	}
 	return u.Scheme + "://" + u.Host
+}
+
+// Ended is the pids of this run's newest n children that crashed, oldest first, for a
+// report to find each one's own lines by (Android's).
+func (m *Manager) Ended(n int) []int {
+	if len(m.ended) > n {
+		return slices.Clone(m.ended[len(m.ended)-n:])
+	}
+	return slices.Clone(m.ended)
 }
 
 // Last is the log of the last run's crash, or "" if it didn't crash or the notice was

@@ -441,7 +441,7 @@ func (s *System) CancelledChecks() int {
 	return s.cancelled
 }
 
-func (s *System) Report(string) []crash.Section {
+func (s *System) Report(string, []int) []crash.Section {
 	return []crash.Section{{Title: "Version", Text: "Project B on the mock engine"}}
 }
 
