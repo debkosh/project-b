@@ -123,6 +123,9 @@ class ContentBrowserClient : public ContentBrowserClientHooks {
   bool WebPreferencesNeedUpdateForColorRelatedStateChanges(
       content::WebContents& web_contents,
       const content::SiteInstance& main_frame_site) const override;
+  bool ShouldForceDownloadResource(content::BrowserContext* browser_context,
+                                   const GURL& url,
+                                   const std::string& mime_type) override;
   void OnNetworkServiceCreated(
       network::mojom::NetworkService* network_service) override;
   void ConfigureNetworkContextParams(
