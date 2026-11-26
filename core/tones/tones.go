@@ -16,7 +16,7 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/sudiptadeb/gulal"
+	"github.com/debkosh/gulal"
 )
 
 // Palette is one theme's tokens, by name: "--accent" and so on.

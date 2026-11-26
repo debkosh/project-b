@@ -5,8 +5,8 @@ package main
 import (
 	"path/filepath"
 
-	"github.com/sudiptadeb/amarit/appupdate"
-	"github.com/sudiptadeb/amarit/flatpak"
+	"github.com/debkosh/amarit/appupdate"
+	"github.com/debkosh/amarit/flatpak"
 
 	"projectb/links"
 	"projectb/profiles"

@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sudiptadeb/synckosh"
-	"github.com/sudiptadeb/synckosh/bolt"
-	"github.com/sudiptadeb/synckosh/server"
+	"github.com/debkosh/synckosh"
+	"github.com/debkosh/synckosh/bolt"
+	"github.com/debkosh/synckosh/server"
 
 	"projectb/bookmarks"
 	"projectb/history"

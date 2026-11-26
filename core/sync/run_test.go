@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sudiptadeb/synckosh"
-	"github.com/sudiptadeb/synckosh/client"
+	"github.com/debkosh/synckosh"
+	"github.com/debkosh/synckosh/client"
 	"projectb/bookmarks"
 	"projectb/history"
 	"projectb/store"

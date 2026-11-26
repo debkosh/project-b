@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sudiptadeb/synckosh/client"
+	"github.com/debkosh/synckosh/client"
 
 	"projectb/keys"
 )

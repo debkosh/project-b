@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strconv"
 
-	"github.com/sudiptadeb/gulal"
+	"github.com/debkosh/gulal"
 )
 
 // The colours of what the user makes and names, a workspace or a tab group
