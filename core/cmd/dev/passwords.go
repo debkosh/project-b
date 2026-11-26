@@ -3,7 +3,7 @@ package main
 import (
 	"strings"
 
-	"github.com/sudiptadeb/project-b/browserdata"
+	"github.com/debkosh/project-b/browserdata"
 )
 
 // keychainOf is -keychain: a login keychain that gives secret for every browser, or nil,

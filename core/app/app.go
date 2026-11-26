@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"path/filepath"
 
-	"github.com/sudiptadeb/project-b/browserdata"
+	"github.com/debkosh/project-b/browserdata"
 
 	"projectb/bookmarks"
 	"projectb/commands"

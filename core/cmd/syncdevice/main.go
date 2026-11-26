@@ -24,7 +24,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sudiptadeb/project-b/browserdata"
+	"github.com/debkosh/project-b/browserdata"
 
 	"projectb/keys"
 	"projectb/passwords"

@@ -5,7 +5,7 @@ go 1.26.0
 require github.com/sudiptadeb/amarit v0.11.1
 
 require (
-	github.com/sudiptadeb/project-b/browserdata v0.0.0
+	github.com/debkosh/project-b/browserdata v0.0.0
 	golang.org/x/net v0.62.0
 )
 
@@ -30,6 +30,6 @@ require (
 	golang.org/x/sys v0.50.0 // indirect
 )
 
-replace github.com/sudiptadeb/project-b/browserdata => ../browserdata
+replace github.com/debkosh/project-b/browserdata => ../browserdata
 
 replace github.com/sudiptadeb/oskit => ../oskit

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sudiptadeb/project-b/browserdata"
+	"github.com/debkosh/project-b/browserdata"
 
 	"projectb/passwords"
 	"projectb/sync"
