@@ -83,7 +83,7 @@ func (s *System) OpenFullDiskAccess() {}
 
 // Report is what a crash report says of this machine: the release, the distribution and the
 // kernel, and whether it runs in the Flatpak.
-func (s *System) Report(version string) []crash.Section {
+func (s *System) Report(version string, _ []int) []crash.Section {
 	// Inside the Flatpak, /etc/os-release is the runtime's; the host's is under /run/host.
 	osName := "unknown"
 	release, err := os.ReadFile("/run/host/os-release")

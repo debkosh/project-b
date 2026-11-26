@@ -105,8 +105,9 @@ type System interface {
 	ScanCode(prompt string, answered func(text string, ok bool))
 
 	// Report is what a crash report says of this device, for the app at version: the
-	// release, the OS and the device, and on Android the app's own log.
-	Report(version string) []crash.Section
+	// release, the OS and the device, and on Android the app's own log and the lines of
+	// ended, this run's children that crashed, by pid.
+	Report(version string, ended []int) []crash.Section
 }
 
 // Notification is a page's notification as the system shows it: its title, the site's host

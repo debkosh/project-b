@@ -217,7 +217,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	e.OpenProfile(cfg.ProfileDir)
 	a := &App{passkeysChanged: func() {}, System: cfg.System, profiles: cfg.Profiles, startedIn: map[engine.DownloadID]engine.WindowID{}, dir: cfg.ProfileDir}
 	a.Crash = crash.New(cfg.ProfileDir, cfg.CrashReports, e.ExitReason)
-	a.Crash.System = func() []crash.Section { return cfg.System.Report(cfg.Update.Version) }
+	a.Crash.System = func() []crash.Section { return cfg.System.Report(cfg.Update.Version, a.Crash.Ended(3)) }
 	a.Session = session.New(cfg.ProfileDir)
 	a.Policy = policy.New(cfg.BlockedHosts, e.OurPage)
 	e.SetBlockRules(a.Policy.BlockRules())

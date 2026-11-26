@@ -77,7 +77,7 @@ func (s *System) OpenFullDiskAccess() {
 
 // Report is what a crash report says of this Mac: the release, macOS's version and the model.
 // macOS's own report of a crash is added from the crash manager's.
-func (s *System) Report(version string) []crash.Section {
+func (s *System) Report(version string, _ []int) []crash.Section {
 	run := func(name string, args ...string) string {
 		out, _ := exec.Command(name, args...).Output()
 		return strings.TrimSpace(string(out))

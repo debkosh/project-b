@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -113,6 +114,12 @@ func TestAChildProcessCrashIsALineAndNoNotice(t *testing.T) {
 	m := New(dir, "", noReason)
 	m.ProcessCrashed(engine.ProcessCrash{Type: "renderer", Status: "crashed", ExitCode: 11, PID: 42, URL: "https://p.test:8080/search?q=private#x"})
 	m.ProcessCrashed(engine.ProcessCrash{Type: "GPU", Status: "crashed", ExitCode: 11, PID: 43})
+	if got := m.Ended(1); !slices.Equal(got, []int{43}) {
+		t.Fatalf("Ended(1) = %v", got)
+	}
+	if got := m.Ended(3); !slices.Equal(got, []int{42, 43}) {
+		t.Fatalf("Ended(3) = %v", got)
+	}
 	m.Stop()
 	if New(dir, "", noReason).Last() != "" {
 		t.Fatal("a child's crash brings up the notice")

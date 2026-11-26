@@ -103,27 +103,73 @@ func (s *System) OpenFullDiskAccess() {}
 // with its date, an old one reads as old rather than as the top of this run's log. The record
 // says why the app's process or the GPU process ended; not a renderer's crash, which Android
 // files under the renderer's own isolated user id (ProcessEnds.java).
-func (s *System) Report(version string) []crash.Section {
+func (s *System) Report(version string, ended []int) []crash.Section {
 	prop := func(name string) string {
 		out, _ := run("/system/bin/getprop", name)
 		return strings.TrimSpace(out)
 	}
-	logcat := func(buffers, lines string) string {
-		out, err := run("/system/bin/logcat", "-d", "-b", buffers, "-t", lines, "-v", "time")
-		if err != nil {
-			out += "\n(logcat: " + err.Error() + ")"
-		}
-		return out
-	}
+	// The app's own lines: once the app may read every app's log (READ_LOGS, which only adb
+	// grants), logcat would give the whole phone's.
+	// logcat's -t counts lines before --uid keeps the app's, so the end is cut here.
+	own := "--uid=" + strconv.Itoa(os.Getuid())
+	mine := lastLines(logcat("-b", "main,system", own), 600)
 	return []crash.Section{
 		{Title: "Version", Text: "Project B " + version + ", " + runtime.GOOS + "/" + runtime.GOARCH + ", pid " + strconv.Itoa(os.Getpid())},
 		{Title: "Android", Text: "Android " + prop("ro.build.version.release") + " (API " + prop("ro.build.version.sdk") + "), " +
 			prop("ro.build.fingerprint")},
 		{Title: "Device", Text: prop("ro.product.manufacturer") + " " + prop("ro.product.model") + ", page size " + strconv.Itoa(os.Getpagesize())},
-		{Title: "The app's log, its end (logcat)", Text: logcat("main,system", "600")},
-		{Title: "The app's last crashes Android kept, newest last (logcat crash buffer)", Text: logcat("crash", "50")},
+		{Title: "The app's log, its end (logcat)", Text: mine},
+		{Title: "The app's last crashes Android kept, newest last (logcat crash buffer)", Text: lastLines(logcat("-b", "crash", own), 50)},
+		{Title: "The children that crashed in this run, their own lines, the newest three (logcat, by pid)", Text: childLines(ended)},
 		{Title: "How Android says the app's processes ended, newest first (ApplicationExitInfo)", Text: processEnds()},
 	}
+}
+
+// logcat is the end of the phone's log as the app may read it, each line with its time.
+func logcat(args ...string) string {
+	out, err := run(append([]string{"/system/bin/logcat", "-d", "-v", "time"}, args...)...)
+	if err != nil {
+		out += "\n(logcat: " + err.Error() + ")"
+	}
+	return out
+}
+
+// lastLines is text's last n lines.
+func lastLines(text string, n int) string {
+	lines := strings.Split(strings.TrimRight(text, "\n"), "\n")
+	if len(lines) > n {
+		lines = lines[len(lines)-n:]
+	}
+	return strings.Join(lines, "\n")
+}
+
+// childLines is what the children in ended wrote before they crashed, found by their pids:
+// a page's renderer's abort message and stack among them, as "Check failed: ... Unable to
+// find resource: 47513" was on Google's page. ended is the crash log's, content's word of
+// each, since a phone's own log may name none of them. A renderer runs under a user id of
+// its own, so Android shows the app its lines only once adb has granted it READ_LOGS
+// (docs/android.md, "Crash logs").
+func childLines(ended []int) string {
+	if len(ended) == 0 {
+		return "(no child of the app crashed in this run)"
+	}
+	var b strings.Builder
+	for _, pid := range ended {
+		lines := strings.TrimSpace(logcat("-b", "main,crash", "-t", "120", "--pid="+strconv.Itoa(pid)))
+		if !strings.Contains(lines, "\n") {
+			lines = "(none the app may read: Android shows it a renderer's lines once adb has run " +
+				"pm grant " + packageName() + " android.permission.READ_LOGS)"
+		}
+		fmt.Fprintf(&b, "pid %d:\n%s\n\n", pid, lines)
+	}
+	return strings.TrimSpace(b.String())
+}
+
+// packageName is the app's, its main process's name.
+func packageName() string {
+	b, _ := os.ReadFile("/proc/self/cmdline")
+	name, _, _ := strings.Cut(string(b), "\x00")
+	return name
 }
 
 // run runs one of the phone's programs and answers what it wrote, its output and its errors
