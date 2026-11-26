@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
+import android.view.KeyEvent;
 
 import io.github.sudiptadeb.oskit.OsKit;
 
@@ -163,6 +164,30 @@ public final class BrowserActivity extends Activity {
     public void onConfigurationChanged(Configuration config) {
         super.onConfigurationChanged(config);
         window.applyTheme();
+    }
+
+    /** Escape's press went to the shell, so its release does too. */
+    private boolean escapeToShell;
+
+    /**
+     * Escape closes what the shell has open, as the back key does, with a hardware keyboard
+     * (docs/large-screens.md). The page has the keys, so without this a sheet opened over it
+     * never heard Escape. With nothing of the shell's open, Escape is the page's, as before.
+     */
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event.getKeyCode() == KeyEvent.KEYCODE_ESCAPE && event.hasNoModifiers()) {
+            if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
+                escapeToShell = window.shellOpen();
+            }
+            if (escapeToShell) {
+                if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
+                    window.backKey();
+                }
+                return true;
+            }
+        }
+        return super.dispatchKeyEvent(event);
     }
 
     @Override

@@ -152,6 +152,12 @@ class BrowserWindow : public content::CompositorClient,
   // then goes back in the tab's history; and on a tab with none, as a tab of ours, closes
   // it, the tab used before it taking its place. Closing the last tab closes the window,
   // and so the app. Android has one window, 1.
+  // Whether the shell has something open the back key closes, which Escape closes too.
+  bool ShellOpen(JNIEnv* env) {
+    Engine::AppWindow* window = Engine::Get()->window(1);
+    return window && window->shell_back;
+  }
+
   bool BackKey(JNIEnv* env) {
     if (Engine::Get()->window(1)->shell_back) {
       hooks::Args args;
