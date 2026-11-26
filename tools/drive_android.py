@@ -562,8 +562,8 @@ def clear_data():
     Settings: a test build older than the published release found that release at its first
     check and downloaded it mid-run, and its notification and update bar moved what the parts
     read (downloads' tap opened the group's summary; keyboard_bars and page_full_screen read
-    the page 170 px short), 2026-11-26. update_on_the_phone clears the data itself, so it
-    updates as a new profile does."""
+    the page 170 px short), 2026-11-26. update_on_the_phone and update_notification clear the
+    data themselves (update_ready), so they update as a new profile does."""
     adb("shell", "pm", "clear", PACKAGE)
     adb("shell", "run-as", PACKAGE, "sh", "-c",
         "'mkdir -p app_project_b/profile/updates/amarit && echo {\\\"auto_update\\\":false} > app_project_b/profile/updates/amarit/settings.json'")
@@ -3075,6 +3075,52 @@ def version_installed():
     return said.group(1) if said else ""
 
 
+def update_ready(part, channel=None):
+    """PB_UPDATE_FROM installed, an older signed APK whose updater is the one tested, followed
+    in About to channel ("dev" or "stable"; its own when None) until the channel's newest
+    (CHANNELS) is downloaded and About says it is ready. Returns (before, target), or None
+    after checking what failed, or with nothing checked when PB_UPDATE_FROM isn't set."""
+    old = os.environ.get("PB_UPDATE_FROM", "")
+    if not old:
+        print("note: %s needs PB_UPDATE_FROM, an older signed APK of a published channel; skipped" % part, flush=True)
+        return None
+    if "Success" not in adb("install", "-r", "-d", "--no-incremental", old):
+        check("the older build installs to update from", False, old)
+        return None
+    adb("shell", "pm", "clear", PACKAGE)
+    before = version_installed()
+    channel = channel or ("dev" if "-dev." in before else "stable")
+    out = subprocess.run(["curl", "-sSL", "--max-time", "30", CHANNELS], capture_output=True, text=True).stdout
+    target = (json.loads(out or "{}").get("channels") or {}).get(channel, "")
+    if not target or target == before:
+        check("the %s channel has a newer build than %s to update to" % (channel, before), False, "the manifest names %r" % target)
+        return None
+    # Android asks once whether this app may install apps; a person allows it in Settings.
+    adb("shell", "appops", "set", PACKAGE, "REQUEST_INSTALL_PACKAGES", "allow")
+    adb("shell", "pm", "grant", PACKAGE, "android.permission.POST_NOTIFICATIONS")
+    adb("logcat", "-b", "crash", "-c")
+    launch()
+    # Settings' About shows the update's state and its Install update button. A new
+    # profile follows Stable whatever build it runs, so About's Updates from picks Dev.
+    menu("Settings")
+    see("settings", text=SETTINGS_LIST, timeout=30)
+    w, h = screen_size()
+    for _ in range(8):
+        if find("settings", text=starts("About Project B")) is not None:
+            break
+        adb("shell", "input", "swipe", str(w // 2), str(h * 7 // 10), str(w // 2), str(h * 3 // 10), "300")
+        time.sleep(1)
+    settings_section("About Project B", "Updates from")
+    if channel == "dev":
+        tap(middle(see("settings", text="Dev")))
+    # The app checks every minute (core/update) and downloads what it finds.
+    ready = until(lambda: find("settings", text=target + " is ready"), 300)
+    shot(part + "-ready")
+    check("%s finds %s on %s and has it ready" % (before, target, channel), ready is not None,
+          "About says: %s" % ", ".join(n.get("text") for n in screen_parts()["settings"].iter("node") if n.get("text"))[:300] if ready is None and "settings" in screen_parts() else "")
+    return (before, target) if ready is not None else None
+
+
 def update_on_the_phone():
     """An update on a phone, end to end, as tools/vm/check.py's update is on a Mac: the app
     PB_UPDATE_FROM names, an older published build of the same channel, signed with the same
@@ -3084,46 +3130,11 @@ def update_on_the_phone():
     version starts. A post-check of what is published: the updater tested is PB_UPDATE_FROM's,
     as an update runs the installed app's code, so give it the build just before the newest.
     Skipped without PB_UPDATE_FROM. Ends with PB_APK installed again, as it found it."""
-    old = os.environ.get("PB_UPDATE_FROM", "")
-    if not old:
-        print("note: update_on_the_phone needs PB_UPDATE_FROM, an older signed APK of a published channel; skipped", flush=True)
-        return
     try:
-        if "Success" not in adb("install", "-r", "-d", "--no-incremental", old):
-            check("the older build installs to update from", False, old)
+        found = update_ready("update")
+        if found is None:
             return
-        adb("shell", "pm", "clear", PACKAGE)
-        before = version_installed()
-        channel = "dev" if "-dev." in before else "stable"
-        out = subprocess.run(["curl", "-sSL", "--max-time", "30", CHANNELS], capture_output=True, text=True).stdout
-        target = (json.loads(out or "{}").get("channels") or {}).get(channel, "")
-        if not target or target == before:
-            check("the %s channel has a newer build than %s to update to" % (channel, before), False, "the manifest names %r" % target)
-            return
-        # Android asks once whether this app may install apps; a person allows it in Settings.
-        adb("shell", "appops", "set", PACKAGE, "REQUEST_INSTALL_PACKAGES", "allow")
-        adb("logcat", "-b", "crash", "-c")
-        launch()
-        # Settings' About shows the update's state and its Install update button. A new
-        # profile follows Stable whatever build it runs, so About's Updates from picks Dev.
-        menu("Settings")
-        see("settings", text=SETTINGS_LIST, timeout=30)
-        w, h = screen_size()
-        for _ in range(8):
-            if find("settings", text=starts("About Project B")) is not None:
-                break
-            adb("shell", "input", "swipe", str(w // 2), str(h * 7 // 10), str(w // 2), str(h * 3 // 10), "300")
-            time.sleep(1)
-        settings_section("About Project B", "Updates from")
-        if channel == "dev":
-            tap(middle(see("settings", text="Dev")))
-        # The app checks every minute (core/update) and downloads what it finds.
-        ready = until(lambda: find("settings", text=target + " is ready"), 300)
-        shot("update-ready")
-        check("%s finds %s on %s and has it ready" % (before, target, channel), ready is not None,
-              "About says: %s" % ", ".join(n.get("text") for n in screen_parts()["settings"].iter("node") if n.get("text"))[:300] if ready is None and "settings" in screen_parts() else "")
-        if ready is None:
-            return
+        before, target = found
         tap(middle(see("settings", text="Install update")))
         installer = lambda: re.search(r"(com\.(google\.)?android\.packageinstaller)", in_front_now())
         shown = until(installer, 30)
@@ -3213,6 +3224,59 @@ def settings_keeps_its_size():
     shot("settings-pinched")
 
 
+def update_notification():
+    """The update's notification on a phone (docs/update-notifications.md): PB_UPDATE_FROM,
+    following Dev, has the newest ready; its notification says so as About does, and its
+    Install, tapped in the shade with the app in the background, opens Android's package
+    installer in front. An app can't start an activity from the background since Android 10,
+    which is how amarit's Install did nothing (0.3.9), and a notification's updates past a few
+    a second are dropped, which kept 0.3.9's on Downloading. Its updater is PB_UPDATE_FROM's,
+    as update_on_the_phone's is: before a release, the candidate built with a VERSION older
+    than Dev's newest; after one, the published build before Dev's newest. Skipped without
+    PB_UPDATE_FROM. Ends with PB_APK installed again, as it found it."""
+    try:
+        found = update_ready("notification", channel="dev")
+        if found is None:
+            return
+        before, target = found
+
+        def ours():
+            dump = adb("shell", "dumpsys", "notification", "--noredact")
+            recs = [r for r in dump.split("NotificationRecord(")[1:] if "pkg=" + PACKAGE in r]
+            return " | ".join(re.findall(r"android\.title=String \(([^)]*)\)", " ".join(recs)))
+        said = until(lambda: "is ready" in ours(), 90)
+        check("the update's notification says %s is ready, as About does" % target, said is not None, "its title: %s" % ours())
+        if said is None:
+            return
+        adb("logcat", "-c")
+        key(3)  # home: the app in the background
+        time.sleep(2)
+        adb("shell", "cmd", "statusbar", "expand-notifications")
+        time.sleep(2)
+        # A collapsed notification hides its buttons: its chevron, at the row's right, opens it.
+        title = until(lambda: system_node(text=lambda t: "is ready" in t), 10)
+        install = lambda: system_node(text=lambda t: t in ("Install", "INSTALL"))
+        if title is not None and install() is None:
+            _, y1, _, y2 = box_of(title.get("bounds"))
+            tap((screen_size()[0] - 110, (y1 + y2) // 2))
+            time.sleep(1)
+        button = until(install, 15)
+        shot("notification-install")
+        check("the shade has the update's notification with Install", button is not None)
+        if button is None:
+            return
+        tap(middle(button))
+        shown = until(lambda: re.search(r"packageinstaller", in_front_now()), 30)
+        shot("notification-installer")
+        blocked = [l for l in adb("logcat", "-d").splitlines() if re.search(r"Background activity|Abort background activity|BAL_BLOCK", l)][:3]
+        check("Install in the notification, the app in the background, opens Android's package installer", shown is not None,
+              "in front: %s%s" % (in_front_now().strip(), "; " + " / ".join(blocked) if blocked else ""))
+    finally:
+        adb("shell", "cmd", "statusbar", "collapse")
+        adb("install", "-r", "-d", "--no-incremental", APK)
+        clear_data()
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     adb("root")
@@ -3232,7 +3296,7 @@ def main():
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
     every = (browsing, mobile_shell, custom_colour, settings_back, talkback_states, bookmark_star, settings_ahead, back_key_chain, page_dialogs, popups, leave, page_camera, downloads, crash_notice, relaunch_on_the_phone, download_notifications, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, passkeys_on_the_phone, passwords_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
-             the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web, secure_dns, long_press_menu, keyboard_bars, welcome_extras, welcome_last_step, web_server_kinds, update_on_the_phone, settings_keeps_its_size)
+             the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web, secure_dns, long_press_menu, keyboard_bars, welcome_extras, welcome_last_step, web_server_kinds, update_on_the_phone, settings_keeps_its_size, update_notification)
     for part in [p for p in every if not sys.argv[1:] or p.__name__ in sys.argv[1:]]:
         # tools/results.py splits a run's memory, CPU and checks by these lines.
         print("--- part " + part.__name__, flush=True)
