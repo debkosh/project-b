@@ -14,13 +14,14 @@ import java.util.Locale;
 import java.util.TimeZone;
 
 /**
- * What Android says of the app's processes that ended, newest first, for a crash report: the
- * browser and its children, renderers, the GPU and utilities. A renderer runs under a user id
- * of its own, so the app can't read its lines in logcat, its crash among them; and Chromium
- * can't tell its crash from Android ending it for memory while the page is in use, which it
- * calls OOM_PROTECTED. Android 11 and later keep a record of each process's end that says:
- * ended by a signal (11 a segmentation fault, 6 an abort, 9 a kill), or for low memory, and how
- * much memory it had. Android keeps no tombstone with the record of an isolated process.
+ * What Android says of the app's processes that ended, newest first, for a crash report: why
+ * each ended, a crash, a signal (11 a segmentation fault, 6 an abort, 9 a kill) or low memory,
+ * and how much memory it had, from Android 11. It covers the app's own process and the
+ * children that run as the app, the GPU process among them. A renderer runs under an isolated
+ * user id of its own: Android files one that crashed or was killed under that id, which the
+ * app can't ask about (an emulator's dumpsys exit-info shows it there), and lists only those
+ * it ended itself as no longer needed. So a renderer's crash isn't here; content's word for it
+ * is in crashes.log.
  */
 final class ProcessEnds {
     private ProcessEnds() {}
@@ -41,7 +42,8 @@ final class ProcessEnds {
             // Children Android ends once nothing binds them, as after the browser itself ended:
             // the most of the list, and none of them a crash.
             if (e.getReason() == ApplicationExitInfo.REASON_OTHER
-                    && "isolated not needed".equals(e.getDescription())) {
+                    && e.getDescription() != null
+                    && e.getDescription().contains("isolated not needed")) {
                 unneeded++;
                 continue;
             }

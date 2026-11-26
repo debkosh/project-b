@@ -254,10 +254,11 @@ report at" macOS's report of that process, with a close button, which sends
   notice. macOS writes a `project_b_helper` report for these as well. Android gives no
   exit status: a child that dies while the app keeps it from memory kills, as a page in
   front, is "ended while in use", a crash or Android ending it anyway, and its crash
-  isn't the app's to read, as it runs under a user id of its own. A crash report there
-  adds Android's record of each process's end (`ProcessEnds.java`, Android 11 and
-  later): ended by a signal (11 a segmentation fault, 6 an abort, 9 a kill) or for low
-  memory, with its memory. Android keeps no tombstone with an isolated process's record.
+  isn't the app's to read, as it runs under a user id of its own: Android files its
+  crash, its log lines and its record of the end under that id. A crash report there
+  adds Android's record of the ends it does show the app (`ProcessEnds.java`, Android 11
+  and later): the app's own process and the GPU process, ended by a signal (11 a
+  segmentation fault, 6 an abort, 9 a kill) or for low memory, with their memory.
 
 Go's handlers for SIGSEGV, SIGBUS and SIGFPE are installed when the binary loads, before
 `ContentMain`, which would reset them and, outside official builds, put Chromium's stack

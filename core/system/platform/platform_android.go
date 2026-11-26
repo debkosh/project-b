@@ -94,8 +94,8 @@ func (s *System) OpenFullDiskAccess() {}
 // shows an app its own lines), the app's last crashes Android kept, and Android's record of
 // each process of the app that ended. Android keeps those across runs, days back: apart, each
 // with its date, an old one reads as old rather than as the top of this run's log. The record
-// is the one word on a renderer's end: it runs under a user id of its own, so its lines aren't
-// the app's, and content can't tell its crash from Android ending it for memory.
+// says why the app's process or the GPU process ended; not a renderer's crash, which Android
+// files under the renderer's own isolated user id (ProcessEnds.java).
 func (s *System) Report(version string) []crash.Section {
 	prop := func(name string) string {
 		out, _ := exec.Command("/system/bin/getprop", name).Output()
