@@ -16,7 +16,7 @@ it is built again above Chromium's content layer.
 
 It runs on Apple silicon Macs and arm64 Android phones, and as a beta on arm64 Linux, from
 one tree, and installed copies update themselves. The
-[latest release](https://github.com/sudiptadeb/project-b/releases/latest) has them all. More at
+[latest release](https://github.com/debkosh/project-b/releases/latest) has them all. More at
 [debkosh.com/project-b](https://debkosh.com/project-b).
 
 ![The Standard shell: tabs down the side, the address field on top, a page beside them](docs/screenshots/standard.png)
@@ -124,7 +124,7 @@ a separate project; the detail of what follows is in
 ## Try it
 
 Get the DMG or the APK from the
-[latest release](https://github.com/sudiptadeb/project-b/releases/latest). Install once; from
+[latest release](https://github.com/debkosh/project-b/releases/latest). Install once; from
 then on the app updates itself.
 
 - **Mac (Apple silicon).** Open the DMG and drag Project B to Applications. The app is not
@@ -161,7 +161,7 @@ these steps.
 **No Chromium needed to start.** The shell and the Go core run on the mock engine in a minute,
 with Go 1.26 or newer and Node:
 
-    git clone https://github.com/sudiptadeb/project-b
+    git clone https://github.com/debkosh/project-b
     cd project-b
     (cd shell && npm install && npm run build)
     (cd core && go run -tags sqlite_fts5 ./cmd/dev -shell ../shell/dist)    # then open http://127.0.0.1:8765
