@@ -5,7 +5,7 @@ import "sync"
 // Fake is a Notifier for tests: it keeps what it was asked, and answers and clicks when the
 // test says.
 type Fake struct {
-	mu sync.Mutex
+	mu      sync.Mutex
 	allow   bool
 	asking  []func(bool)
 	shown   map[string]Note

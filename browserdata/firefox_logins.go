@@ -50,7 +50,7 @@ type pbes2Params struct {
 		Params struct {
 			Salt       []byte
 			Iterations int
-			KeyLength  int `asn1:"optional"`
+			KeyLength  int           `asn1:"optional"`
 			PRF        asn1.RawValue `asn1:"optional"`
 		}
 	}

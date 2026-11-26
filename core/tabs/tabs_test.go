@@ -578,7 +578,7 @@ func TestPageOf(t *testing.T) {
 	for in, want := range map[string]string{
 		"chrome://settings/":            "settings",
 		"chrome://settings/keyboard":    "settings",
-		"chrome://shell/pbshell/":      "",
+		"chrome://shell/pbshell/":       "",
 		"chrome://picker/":              "",
 		"https://settings/":             "",
 		"https://example.com/settings/": "",

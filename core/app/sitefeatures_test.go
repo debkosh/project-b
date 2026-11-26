@@ -100,7 +100,9 @@ func TestLinksToOtherSitesHoldThePagesOwnNavigations(t *testing.T) {
 		t.Fatalf("a page's link to another site under Block took the tab to %q", u)
 	}
 	r.e.Fire(1, 1, "navigate", "https://shop.test/cart")
-	r.waitForTab(func(tab map[string]any) bool { return tab["url"] == "https://shop.test/cart" && tab["loading"] == false })
+	r.waitForTab(func(tab map[string]any) bool {
+		return tab["url"] == "https://shop.test/cart" && tab["loading"] == false
+	})
 
 	r.e.Fire(1, 1, "open", "https://ads.test/")
 	settle()

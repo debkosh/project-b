@@ -78,17 +78,17 @@ func TestAWindowIsNarrowUnder600WideOr480Tall(t *testing.T) {
 		w, h      float64
 		was, want bool
 	}{
-		{412, 915, false, true},   // a phone
-		{891, 412, false, true},   // a phone on its side
-		{841, 673, true, false},   // a foldable, opened
-		{1280, 800, true, false},  // a tablet
-		{800, 1280, true, false},  // a tablet, upright
-		{580, 900, false, false},  // just under the line, was wide
-		{580, 900, true, true},    // the same, was narrow
-		{630, 900, true, true},    // 30 past, still narrow
-		{650, 900, true, false},   // 50 past
-		{1000, 500, true, true},   // 20 over 480 tall, was narrow
-		{1000, 430, false, true},  // 50 under 480 tall
+		{412, 915, false, true},  // a phone
+		{891, 412, false, true},  // a phone on its side
+		{841, 673, true, false},  // a foldable, opened
+		{1280, 800, true, false}, // a tablet
+		{800, 1280, true, false}, // a tablet, upright
+		{580, 900, false, false}, // just under the line, was wide
+		{580, 900, true, true},   // the same, was narrow
+		{630, 900, true, true},   // 30 past, still narrow
+		{650, 900, true, false},  // 50 past
+		{1000, 500, true, true},  // 20 over 480 tall, was narrow
+		{1000, 430, false, true}, // 50 under 480 tall
 	} {
 		if got := Narrow(c.w, c.h, c.was); got != c.want {
 			t.Errorf("%v by %v, was narrow %v: narrow %v", c.w, c.h, c.was, got)
