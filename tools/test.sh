@@ -114,6 +114,7 @@ mock() {
     [ -n "$BUILT" ] && run "Go managers, with $BUILT" go -C core test -tags "sqlite_fts5,$BUILT" ./...
     run "every action a person can take has a test (docs/action-coverage.md)" python3 tools/action_coverage.py --check
     run "the Chromium bump tools read every platform's #if (docs/chromium-upgrade.md)" python3 tools/platform_methods_test.py
+    run "Go's code is gofmt-clean in core, oskit and browserdata" sh -c 'f=$(gofmt -l core oskit browserdata | grep -v /vendor/); [ -z "$f" ] && echo "ok   gofmt is clean" || { echo "FAIL gofmt would change:"; echo "$f"; exit 1; }'
     run "a Dev publish keeps the Dev build before it, and a rollback moves only Dev (docs/releasing.md)" python3 tools/release_versions_test.py
     run "the field matching built into the form script is the one recorded (docs/password-autofill.md, Detection)" tools/form-matching.sh check
     run "build the shell" npm --prefix shell run build

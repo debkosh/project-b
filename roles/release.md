@@ -45,3 +45,8 @@ published is in `docs/releasing.md`; keep it current as the way you work changes
 - A Stable release moves Dev to it as well (Sudipta, 2026-11-22: "the dev channel should also get
   stable releases when we release one... that includes all the dev before it"). release.sh does
   it and stops unless the manifest then names the version on both; 0.3.9 left Dev behind.
+- Each Stable ships the Linux beta too, unless he says otherwise (the orchestrator, 2026-11-26,
+  after 0.3.12's Google fix nearly skipped Linux): the Linux build, flatpak-release.sh with its
+  restart check, its files on the release's tag, then Pages again until linux.json names it.
+- Read every hand-over's file list as well as its names (`git diff --stat`): a vitest cache in
+  `shell/src/apps/node_modules` passed a names grep and broke a gate's shell build (2026-11-26).
