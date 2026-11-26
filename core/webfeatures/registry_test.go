@@ -45,13 +45,15 @@ func TestTheRegistry(t *testing.T) {
 		`[{"id":"a",` + row + `,"status":{"mac":"works","linux":"works","android":"works"},"probe":[{"name":"p","call":"p()",` + both + `,"expect":{"mac":"resolved","linux":"resolved","android":"resolved","windows_tap":"resolved"}}]}]`,
 		`[{"id":"a",` + row + `,"status":{"mac":"works","linux":"works","android":"quiet"},"probe":[{"name":"p","call":"p()","expect":{"mac":"resolved","linux":"resolved","android":"pending","android_tap":"absent"}}]}]`,
 		`[{"id":"a",` + row + `,"status":{"mac":"works","linux":"works","android":"works"},"probe":[{"name":"p","call":"p()","sees_nothing":true,` + both + `}]}]`,
+		`[{"id":"a",` + row + `,"status":{"mac":"works","linux":"works","android":"works"},"probe":[{"name":"p","call":"p()","tap_races":true,"expect":{"mac":"resolved","linux":"resolved","android":"resolved","android_tap":"pending"}}]}]`,
 	} {
 		if _, err := Parse([]byte(bad)); err == nil {
 			t.Errorf("accepted %s", bad)
 		}
 	}
 	good := `[{"id":"a",` + row + `,"status":{"mac":"off","linux":"off","android":"off"},"disable_blink_features":["A"],` +
-		`"probe":[{"name":"p","call":"p()","expect":{"mac":"absent:ReferenceError","linux":"absent:ReferenceError","android":"absent"}},{"name":"q","call":"q()","sees_nothing":true}],` +
+		`"probe":[{"name":"p","call":"p()","expect":{"mac":"absent:ReferenceError","linux":"absent:ReferenceError","android":"absent"}},{"name":"q","call":"q()","sees_nothing":true},` +
+		`{"name":"r","call":"r()","tap_races":true,"expect":{"mac":"absent:ReferenceError","linux":"absent:ReferenceError","android":"absent"}}],` +
 		`"test":["probe:p","basics:3","check:a page keeps its renderer"]}]`
 	quiet := `[{"id":"a",` + row + `,"status":{"mac":"quiet","linux":"quiet","android":"unknown"},` +
 		`"probe":[{"name":"p","call":"p()","expect":{"mac":"rejected:NotAllowedError","linux":"rejected:NotAllowedError","android":"pending","android_tap":"absent"}}]}]`
