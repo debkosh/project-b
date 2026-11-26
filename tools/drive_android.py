@@ -2387,6 +2387,10 @@ def passwords_on_the_phone():
 
 
 def the_page_renderer_dies():
+    # With every app's log open to it, as adb grants on a phone we develop on, its report
+    # holds the killed renderer's own lines, and its app sections the app's alone. Granted
+    # before the start: Android ends an app that gets READ_LOGS, which gives it the log group.
+    adb("shell", "pm", "grant", PACKAGE, "android.permission.READ_LOGS")
     launch()
     go(BASE + "/a")
     asked("/a")
@@ -2409,16 +2413,32 @@ def the_page_renderer_dies():
     reports = lambda: set(re.findall(r"project-b-report-[\w-]+\.txt", adb("shell", "ls", "/sdcard/Download/")))
     had = reports()
     tap(middle(see("shell", text="Save report")))
+    # From Android 13 an app that reads every app's log asks the person first, once a run.
+    sdk = int(adb("shell", "getprop", "ro.build.version.sdk").strip() or 0)
+    if sdk >= 33:
+        consent = system_button("Allow one-time access", 10)
+        if consent is not None:
+            tap(middle(consent))
     saved = until(lambda: (reports() - had) or None, 20)
     report = until(lambda: adb("shell", "cat", "/sdcard/Download/" + sorted(saved)[-1]) or None, 10) if saved else None
     children = (report or "").split("== Processes that crashed (crashes.log)")[-1].split("\n==")[0]
     check("a page crash's report says the renderer ended while in use, with its page's origin only",
           any("renderer ended while in use" in l and l.endswith(", " + url("/a").rsplit("/", 1)[0]) for l in children.splitlines()),
           children.strip()[-400:] or "no report saved")
+    section = lambda title: (report or "").split("== " + title)[-1].split("\n==")[0] if "== " + title in (report or "") else ""
+    ended = section("The children that crashed in this run")
+    killed = before[1:]
+    check("with READ_LOGS granted, it has the killed renderer's own lines, by its pid",
+          any(re.search(r"\(\s*%d\):" % pid, ended) for pid in killed), ended.strip()[:400] or "no such section")
+    system = adb("shell", "pidof", "system_server").strip()
+    own = section("The app's log, its end")
+    check("and its app's log holds the app's lines alone, none of Android's own",
+          own.strip() != "" and system != "" and not re.search(r"\(\s*%s\):" % system, own), "system_server is %s" % system)
     served.clear()
     menu("Reload")
     check("reload recovers after a crash", asked("/a"), str(served))
     shot("17-reloaded-after-crash")
+    adb("shell", "pm", "revoke", PACKAGE, "android.permission.READ_LOGS")
 
 
 def the_shell_renderer_dies():
