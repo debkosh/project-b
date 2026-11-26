@@ -79,6 +79,18 @@
     );
   }
 
+  // The address Project B saves as a download from this page: the file's, its fragment
+  // swapped for #pb-download, which no server sees.
+  function savedFrom(url) {
+    try {
+      const u = new URL(url, location.href);
+      u.hash = 'pb-download';
+      return u.href;
+    } catch {
+      return url;
+    }
+  }
+
   function guessFilename(url) {
     try {
       const parsed = new URL(url, location.href);
@@ -312,6 +324,7 @@
 
   const ICONS = {
     download: '<path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/>',
+    check: '<path d="m5 12 5 5 9-10"/>',
     more: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
     close: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
     copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
@@ -463,6 +476,10 @@
       cursor: pointer;
     }
     .btn.quiet { background: transparent; color: var(--text); border: 1px solid var(--line); }
+    .btn { transition: background-color 150ms ease-out, color 150ms ease-out; }
+    .btn.quiet:active { background: var(--accent); color: var(--on-accent); border-color: transparent; }
+    /* A status, not a button: the quiet button's outline, its tick and word in the accent. */
+    .btn.started { background: transparent; color: var(--accent); border: 1px solid var(--accent); cursor: default; }
     .empty { padding: 16px; }
     .empty p { margin: 0 0 12px; color: var(--muted); }
 
@@ -525,7 +542,9 @@
         color: var(--text);
         justify-content: center;
       }
-      .row .btn:active, .icon-btn:active { background: var(--hover); }
+      .icon-btn:active { background: var(--hover); }
+      .row .btn:active { background: var(--accent); color: var(--on-accent); }
+      .row .btn.started { background: transparent; color: var(--accent); }
       .row .btn .btn-text { display: none; }
       .menu button { height: 44px; padding: 0 12px; }
     }
@@ -594,26 +613,28 @@
       text.append(el('div', 'note', "Streams can't be saved as one file"));
     } else if (state.downloading.has(row.url)) {
       text.append(el('div', 'note', 'Downloading: see Downloads'));
+      // The button turns to a tick in the accent, a status rather than a button, so the tap
+      // is seen to have taken.
+      const started = el('span', 'btn started');
+      started.setAttribute('role', 'img');
+      started.setAttribute('aria-label', `Downloading ${row.label}`);
+      started.innerHTML = icon('check');
+      started.append(el('span', 'btn-text', 'Downloading'));
+      li.append(started);
     } else {
-      // Another site's file: the browser ignores `download` for it and opens it in a tab,
-      // where the person can save it.
-      let elsewhere = false;
-      try {
-        elsewhere = new URL(row.url).origin !== location.origin;
-      } catch {}
-      if (elsewhere) text.append(el('div', 'note', 'Opens in a new tab, where you can save it'));
+      // A plain link, so a right click or a long press has the browser's own menu for it.
+      // Its address ends in #pb-download, which Project B saves as a download from this
+      // page, another site's file too: a browser ignores `download` for another site's
+      // file and opens it in a tab, where a site that serves its files only to its own
+      // pages refuses it (docs/site-features.md).
       const link = el('a', 'btn quiet');
-      link.href = row.url;
+      link.href = savedFrom(row.url);
       link.download = guessFilename(row.url);
-      // The browser may ignore `download` for another site's file; then it opens in a tab.
-      link.target = '_blank';
-      link.rel = 'noopener';
       link.setAttribute('aria-label', `Download ${row.label}`);
       link.innerHTML = icon('download');
       // A phone shows the icon alone, its name the link's label.
       link.append(el('span', 'btn-text', 'Download'));
       link.addEventListener('click', () => {
-        if (elsewhere) return;
         state.downloading.add(row.url);
         // Let the browser start the download before the row changes.
         setTimeout(() => {

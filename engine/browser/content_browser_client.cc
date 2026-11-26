@@ -315,6 +315,17 @@ void ContentBrowserClient::OnNetworkServiceCreated(
   secure_dns::Apply(network_service);
 }
 
+// A link whose address ends in #pb-download is saved as a download, from the page it is on,
+// whatever its type and wherever it is: the video downloader's Download. Chromium ignores
+// `download` on another site's link and opens the file in a tab, where a site that serves its
+// files only to its own pages refuses it (docs/site-features.md). The fragment never reaches
+// the server, and the file takes its server's name.
+bool ContentBrowserClient::ShouldForceDownloadResource(content::BrowserContext* browser_context,
+                                                       const GURL& url,
+                                                       const std::string& mime_type) {
+  return url.has_ref() && url.ref() == "pb-download";
+}
+
 // Cookies and the HTTP cache are saved in the partition's folder, as Chrome lays a
 // profile out: chromium/Network/Cookies and chromium/Cache. Cookies are stored as
 // Chromium writes them, unencrypted, with no OS keychain. Session cookies are not kept

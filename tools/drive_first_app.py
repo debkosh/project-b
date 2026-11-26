@@ -101,6 +101,16 @@ class Pages(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
+        if self.path.startswith("/video?src="):
+            # A page with another site's video, for the Video downloader (video_download_checks).
+            src = urllib.parse.unquote(self.path.split("=", 1)[1])
+            body = f'<!doctype html><title>Video</title><video controls src="{src}"></video>'.encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
         if self.path in ("/sync-loads", "/sync-worker.js", "/sync-import.js", "/sync-data"):
             # A page that loads synchronously, as WebContainer-style pages do: a synchronous
             # XMLHttpRequest, and a worker's importScripts. Content moves a synchronous load's
@@ -3608,6 +3618,90 @@ def sparks_checks():
         app.close()
 
 
+def video_download_checks():
+    """The built-in Video downloader's Download saves another site's video from the page, as
+    a download, where a site serves its files only to its own pages: a video host's file,
+    asked for with no Referer or from its own address, is refused (docs/site-features.md,
+    #pb-download). The page stays, and the row's button turns to a tick in the accent."""
+    asked = []
+
+    class Files(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            referrer = self.headers.get("Referer", "")
+            asked.append((self.path, referrer))
+            if not referrer.startswith(PAGES):
+                self.send_response(403)
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
+            body = b"\0" * 4096
+            self.send_response(200)
+            self.send_header("Content-Type", "video/mp4")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *a):
+            pass
+
+    files = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Files)
+    threading.Thread(target=files.serve_forever, daemon=True).start()
+    # localhost is another site than the page's 127.0.0.1, as a video host is.
+    video = f"http://localhost:{files.server_address[1]}/pb-clip.mp4"
+    profile = tempfile.mkdtemp(prefix="pb-profile-")
+    app = App(profile)
+    app.close()
+    path = os.path.join(profile, "sparks", "sparks.json")
+    with open(path) as f:
+        kept = json.load(f)
+    for s in kept["sparks"]:
+        script = os.path.join(profile, "sparks", s["id"] + ".user.js")
+        with open(script) as f:
+            code = f.read()
+        s["on"] = "@name         Video downloader" in code
+        if s["on"]:
+            # It runs on https sites; this one's copy runs on the local page too.
+            with open(script, "w") as f:
+                f.write(code.replace("// @match        https://*/*\n", "// @match        https://*/*\n// @match        http://127.0.0.1/*\n", 1))
+    with open(path, "w") as f:
+        json.dump(kept, f)
+    app = App(profile)
+    shadow = "document.getElementById('custom-video-downloader-widget')?.shadowRoot"
+    try:
+        visit(app, PAGES + "video?src=" + urllib.parse.quote(video))
+        found = holds(app, f"!!{shadow}?.querySelector('.fab:not([hidden])')", 15, page=True)
+        check("the Video downloader finds the page's video from another site", found)
+        if not found:
+            return
+        app.js(f"({shadow}.querySelector('.fab').click(), 1)", page=True)
+        link = app.wait(f"{shadow}.querySelector('.row a.btn')?.href", 10, page=True)
+        check("its row's Download is a plain link to the file, ending in #pb-download", link == video + "#pb-download", link)
+        app.js(f"({shadow}.querySelector('.row a.btn').click(), 1)", page=True)
+        listed = os.path.join(profile, "downloads.json")
+        done = []
+        deadline = time.time() + 15
+        while time.time() < deadline and not done:
+            try:
+                with open(listed) as f:
+                    done = [x for x in json.load(f)["downloads"] if x["name"].startswith("pb-clip") and x["state"] == "done"]
+            except (OSError, ValueError, KeyError):
+                pass
+            time.sleep(0.3)
+        check("Download saves it from the page, which the site serves only to its own pages", bool(done) and asked[-1:] and asked[-1][1].startswith(PAGES),
+              {"asked": asked, "done": done})
+        check("and the page stays", app.js("location.pathname", page=True) == "/video")
+        check("the row's button turns to a tick in the accent", holds(app, f"!!{shadow}.querySelector('.row .btn.started')", 5, page=True))
+        for x in done:
+            if x.get("path"):
+                try:
+                    os.remove(x["path"])
+                except OSError:
+                    pass
+    finally:
+        app.close()
+        files.shutdown()
+
+
 def duplicate_checks():
     """Duplicate Tab gives a copy that loads its page, as the tab has it, not one failed
     ERR_BLOCKED_BY_CLIENT: its first navigation once asked Go about it before Go had it
@@ -4185,12 +4279,12 @@ def holds_hit(app, x, y, timeout=5):
 
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
-    parts = {"version": [version_checks], "filling": [filling_checks], "driver": [driver_checks], "browsing": [browsing_checks], "actions": [action_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "leave": [leave_checks], "popups": [popup_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "arshell": [arshell_checks], "webapis": [web_api_checks], "signals": [browser_signal_checks], "proxy": [proxy_checks], "clientcert": [client_cert_checks], "passkeys": [passkey_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks], "viewsource": [view_source_checks], "duplicate": [duplicate_checks], "applink": [app_link_checks], "serverkinds": [web_server_kinds_checks], "securedns": [secure_dns_checks]}
+    parts = {"version": [version_checks], "filling": [filling_checks], "driver": [driver_checks], "browsing": [browsing_checks], "actions": [action_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "leave": [leave_checks], "popups": [popup_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "arshell": [arshell_checks], "webapis": [web_api_checks], "signals": [browser_signal_checks], "proxy": [proxy_checks], "clientcert": [client_cert_checks], "passkeys": [passkey_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks], "viewsource": [view_source_checks], "duplicate": [duplicate_checks], "applink": [app_link_checks], "serverkinds": [web_server_kinds_checks], "securedns": [secure_dns_checks], "videodl": [video_download_checks]}
     # Each name given is a part, run in the order given; none runs them all. A name that
     # isn't a part ends the run before it starts: two names once read as one unknown name
     # and quietly ran every part on the shared desktop (2026-11-26).
     unknown = [a for a in sys.argv[1:] if a not in parts]
     if unknown:
         sys.exit("no part named %s; the parts are: %s" % (", ".join(unknown), " ".join(sorted(parts))))
-    every = [version_checks, driver_checks, timeline_checks, browsing_checks, action_checks, settings_checks, filling_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, leave_checks, popup_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, arshell_checks, browser_signal_checks, proxy_checks, client_cert_checks, secure_dns_checks, web_api_checks, passkey_checks, sparks_checks, links_checks, view_source_checks, duplicate_checks, app_link_checks, web_server_kinds_checks, quit_checks]
+    every = [version_checks, driver_checks, timeline_checks, browsing_checks, action_checks, settings_checks, filling_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, leave_checks, popup_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, arshell_checks, browser_signal_checks, proxy_checks, client_cert_checks, secure_dns_checks, video_download_checks, web_api_checks, passkey_checks, sparks_checks, links_checks, view_source_checks, duplicate_checks, app_link_checks, web_server_kinds_checks, quit_checks]
     run_parts([c for a in sys.argv[1:] for c in parts[a]] if sys.argv[1:] else every)

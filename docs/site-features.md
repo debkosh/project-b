@@ -133,9 +133,10 @@ feature of ours:
   phone and small floating panels on the desktop, Escape closing the innermost.
   - **Video downloader:** nothing until a video is found; then one round button bottom
     right, which opens "Videos on this page": a row per video, its type and size or "Video
-    1", its host, and Download, a plain link with `download`: the page's own download, which
-    our Downloads takes, with its Pause, Cancel and Retry. One from another site opens in a
-    new tab, as its row says. A stream says "Streams can't be saved as one file". "Hide on
+    1", its host, and Download, a plain link to the file ending in `#pb-download` (below):
+    a download from the page, which our Downloads takes, with its Pause, Cancel and Retry,
+    another site's file too. A tap turns it to a tick in the accent. A stream says "Streams
+    can't be saved as one file". "Hide on
     this page" is in the panel's menu.
   - **Screen time limit:** 30 minutes a day on each site its `@match` takes: every site, as
     it comes, and fewer once the person edits its patterns in Settings › Sparks. "Daily limit reached", "Limit
@@ -146,6 +147,15 @@ feature of ours:
     Done ends it. "Show hidden parts (3)" when there are some.
 - **Their storage** is the site's own `localStorage`, as in his originals, so a site can read
   or clear what they keep there.
+- **`#pb-download`:** a link whose address ends in `#pb-download` is saved as a download,
+  from the page it is on, whatever its type, another site's file too, under the name its
+  server gives it (`ContentBrowserClient::ShouldForceDownloadResource`). Chromium ignores
+  `download` on another site's link and opens the file in a tab, whose player asks for it
+  again as from the file's own address; a site that serves its files only to its own pages
+  (a video host, by `Referer`) refused both, and the video downloader's Download failed
+  there while Chrome's own Download, from the page, got it (2026-11-27). The fragment never
+  reaches the server. The suggested name is the server's, not the page's, so a page can't
+  pass a file off under another name, which is why Chromium ignores `download` there.
 - **The phone's welcome** has a step after Make it yours, "Extras for any page": a switch
   for each of the three the profile still has, with its name and `@description`, all off
   ([mock](screenshots/onboarding/mock-p3.png)). The page hears them in its snapshot and as

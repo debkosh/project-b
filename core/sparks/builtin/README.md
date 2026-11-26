@@ -24,9 +24,11 @@ one muted line the host or what the row says, and its Download a round icon butt
   whenever the page adds a player, and on "Look again". `refreshVideoDownloadSources()` in
   the console does the same.
 - **Each row** is one video: its type and height where the page says them ("MP4 · 720p"),
-  else "Video 1", and the host it comes from. Download is a plain download link, so the
-  browser's own Downloads takes it over, with its Pause, Cancel and Retry; a video from
-  another site opens in a new tab instead, as the row says, where it can be saved. A stream
+  else "Video 1", and the host it comes from. Download is a plain link to the file with
+  `#pb-download` on its end, which Project B saves as a download from the page, another
+  site's file too, so the browser's own Downloads takes it over, with its Pause, Cancel and
+  Retry; a right click or a long press on it has the browser's link menu. A tap turns it to
+  a tick in the accent, the row saying "Downloading: see Downloads". A stream
   (`.m3u8`, `.mpd`) can't be saved as one file and has no Download. The row's menu has
   Copy link and Open in new tab.
 - **Its data:** none. It keeps nothing in the site's storage or anywhere else.
