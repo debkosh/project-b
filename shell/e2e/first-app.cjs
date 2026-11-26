@@ -722,10 +722,14 @@ const stopServer = lib.stop;
   const ran = path.join(installed, 'Project B.app/Contents/MacOS/ran');
   // The fake release's shell makes the file before it writes the version into it, so wait for
   // what it says, not for the file; and the helper polls the old process every 0.2 s, which a
-  // loaded machine can stretch.
+  // loaded machine can stretch: once to 10 s, at a load of 12. The helper is started before
+  // the window closes (amarit's macapp Install), so a late start is slow, not lost: when it
+  // fails, the check says whether the helper's shell is still waiting.
   const said = () => (fs.existsSync(ran) ? fs.readFileSync(ran, 'utf8').trim() : '');
-  for (let i = 0; i < 200 && said() !== '0.2.0'; i++) await new Promise((r) => setTimeout(r, 50));
-  check('the new release starts once the old process has exited', said() === '0.2.0', said());
+  const waitedFrom = Date.now();
+  for (let i = 0; i < 600 && said() !== '0.2.0'; i++) await new Promise((r) => setTimeout(r, 50));
+  const helper = () => { try { return execFileSync('pgrep', ['-fl', `relaunch .*${installed}`], { encoding: 'utf8' }).trim(); } catch { return 'none'; } };
+  check('the new release starts once the old process has exited', said() === '0.2.0', `after ${Date.now() - waitedFrom} ms it says "${said()}"; the helper: ${helper()}`);
 
   // A corrupted download is refused and the installed release keeps working.
   served = Buffer.from(good);
