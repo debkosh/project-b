@@ -1418,7 +1418,7 @@ def picker_checks():
 
 
 UPD = "/tmp/pb-update"  # In the guest: the Personal copy's driver pipe and output, for update_checks.
-MANIFEST = "https://github.com/sudiptadeb/project-b/releases/latest/download/releases.json"
+MANIFEST = "https://github.com/debkosh/project-b/releases/latest/download/releases.json"
 
 
 def app_version():

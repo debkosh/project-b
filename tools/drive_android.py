@@ -2995,7 +2995,7 @@ def web_server_kinds():
               "" if ok else "after three tries; " + said)
 
 
-CHANNELS = "https://github.com/sudiptadeb/project-b/releases/download/channels/releases.json"
+CHANNELS = "https://github.com/debkosh/project-b/releases/download/channels/releases.json"
 
 
 def version_installed():
