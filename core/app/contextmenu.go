@@ -270,11 +270,11 @@ func (c *contextMenus) run(m *contextMenu, id string) {
 	case id == "link.copyText":
 		c.e.WriteClipboard(strings.TrimSpace(m.LinkText))
 	case id == "link.download":
-		c.e.DownloadURL(m.Tab, m.Link, false)
+		c.e.DownloadURL(m.Tab, m.Link, "", false)
 	case id == "link.share":
 		c.e.ShareText(c.a.Tabs.WindowOf(m.Tab), m.Link)
 	case id == "image.download":
-		c.e.DownloadURL(m.Tab, m.Src, false)
+		c.e.DownloadURL(m.Tab, m.Src, "", false)
 	case id == "image.copy":
 		c.saveImage(m, 0, func(path string, ok bool) {
 			if ok {
@@ -289,9 +289,9 @@ func (c *contextMenus) run(m *contextMenu, id string) {
 			}
 		})
 	case id == "link.saveAs":
-		c.e.DownloadURL(m.Tab, m.Link, true)
+		c.e.DownloadURL(m.Tab, m.Link, "", true)
 	case id == "image.saveAs":
-		c.e.DownloadURL(m.Tab, m.Src, true)
+		c.e.DownloadURL(m.Tab, m.Src, "", true)
 	case id == "image.newTab":
 		c.a.Tabs.OpenFrom(m.Tab, m.Src, home, false)
 	case id == "image.copyAddress":

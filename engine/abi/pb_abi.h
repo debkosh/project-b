@@ -73,7 +73,8 @@ typedef enum PBEvent {
   PB_EVENT_DOWNLOAD_UPDATED = 18,       // i: download, s: path, s: url, s: mime type,
                                         // i: PBDownloadState, i: bytes received, i: total
                                         // bytes or -1, i: paused, s: why a failed one
-                                        // failed: "connection", "server", "disk" or 
+                                        // failed: "connection", "server", "disk" or "",
+                                        // s: the page it came from, or ""
   PB_EVENT_FILE_CHOOSER = 19,           // i: tab, i: 0 one file, 1 several, 2 a folder,
                                         // 3 a file to save; s: the accept types, comma
                                         // separated; answers s: json, {"allow", "folder"}
@@ -434,8 +435,9 @@ typedef struct PBEngineCalls {
   // Puts plain text on the system clipboard, as a page's Copy would.
   void (*write_clipboard)(const char* text, size_t length);
   // Downloads url as tab's page would, through the Save panel when save_as; tab 0
-  // downloads it as the browser's own.
-  void (*download_url)(int64_t tab, const char* url, int save_as);
+  // downloads it as the browser's own. It comes from referrer, as Retry has it, or, when
+  // that is "", from the page of the tab's last menu.
+  void (*download_url)(int64_t tab, const char* url, const char* referrer, int save_as);
   // Runs a PBDownloadCommand on a running download.
   void (*download_command)(uint32_t download, int32_t command);
   // Answers a page's dialog: OK or not, and a prompt's text.

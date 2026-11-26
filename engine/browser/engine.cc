@@ -30,6 +30,7 @@
 #include "content/public/browser/storage_partition_config.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/stop_find_action.h"
+#include "content/public/common/referrer.h"
 #include "third_party/blink/public/mojom/frame/find_in_page.mojom.h"
 #include "project_b/engine/browser/choose_path.h"
 #include "project_b/engine/browser/dialogs.h"
@@ -278,7 +279,7 @@ void CallWriteClipboard(const char* text, size_t length) {
   g_engine->WriteClipboard(std::string(text, length));
 }
 
-void CallDownloadURL(int64_t tab, const char* url, int save_as) {
+void CallDownloadURL(int64_t tab, const char* url, const char* referrer, int save_as) {
   CheckMainThread();
   // Tab 0 is the browser's own download, as Retry starts one again.
   PageTab* page = tab ? g_engine->tab(tab) : nullptr;
@@ -289,7 +290,14 @@ void CallDownloadURL(int64_t tab, const char* url, int save_as) {
   (page ? page->contents()->GetBrowserContext() : g_engine->browser_context())
       ->GetDownloadManager();
   if (Downloads* downloads = Downloads::Get()) {
-    downloads->DownloadURL(page ? page->contents() : nullptr, GURL(url), save_as);
+    // The page it came from, as Retry has it: already as sent, so sent as it is. Else the
+    // page of the tab's last menu, as Save Link As's in Chrome.
+    const GURL target(url);
+    content::Referrer from(GURL(referrer), network::mojom::ReferrerPolicy::kAlways);
+    if (from.url.is_empty() && page) {
+      from = page->MenuReferrer(target);
+    }
+    downloads->DownloadURL(page ? page->contents() : nullptr, target, from, save_as);
   }
 }
 

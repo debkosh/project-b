@@ -238,6 +238,26 @@ func TestACancelledDownloadStartsOverOnRetry(t *testing.T) {
 	}
 }
 
+// Retry starts one over from the page it came from, as the first time: a site may serve its
+// files only to its own pages, and the engine has forgotten a cancelled one.
+func TestARetryComesFromThePageTheDownloadCameFrom(t *testing.T) {
+	r := startDownloading(t, t.TempDir(), t.TempDir())
+	defer r.stop()
+	r.visit("https://a.test/video")
+	r.show(1)
+	r.e.Fire(1, 0, "download", "https://files.b.test/v.mp4")
+	list := r.downloads(func(l []any) bool { return len(l) == 1 && first(l)["state"] == "progress" })
+	id := first(list)["id"]
+	r.shell(fmt.Sprintf(`{"t":"downloadAction","id":%v,"action":"cancel"}`, id))
+	r.downloads(func(l []any) bool { return len(l) == 1 && first(l)["state"] == "cancelled" })
+	r.shell(fmt.Sprintf(`{"t":"downloadAction","id":%v,"action":"retry"}`, id))
+	r.downloads(func(l []any) bool { return len(l) == 1 && first(l)["state"] == "done" })
+	started := r.e.Started()
+	if len(started) != 2 || started[1].URL != "https://files.b.test/v.mp4" || started[1].Referrer != "https://a.test/video" {
+		t.Fatalf("the retry should come from the page the download came from: %+v", started)
+	}
+}
+
 // A download a tab of the window in front begins tells that window's shell, after the list
 // that has it, so it can show the download begin; one begun in a window behind tells none.
 func TestADownloadBegunInTheWindowInFrontIsAnnounced(t *testing.T) {

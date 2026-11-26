@@ -31,6 +31,7 @@ type downloads struct {
 	next    engine.DownloadID
 	running map[engine.DownloadID]*mockDownload
 	notices []engine.Download // What ShowDownload was asked to show, in order.
+	started []engine.Download // Each download as it started, in order.
 }
 
 func (e *Engine) dl() *downloads {
@@ -42,11 +43,19 @@ func (e *Engine) dl() *downloads {
 	return &e.downloads
 }
 
-func (e *Engine) DownloadURL(tab engine.TabID, u string, saveAs bool) { e.download(tab, u, saveAs) }
+func (e *Engine) DownloadURL(tab engine.TabID, u, referrer string, saveAs bool) {
+	e.download(tab, u, referrer, saveAs)
+}
 
 // download starts one, as a page or Save Link As does: it asks the app where it goes, a
-// Save panel taking what is offered, and reports it until it is done.
-func (e *Engine) download(tab engine.TabID, u string, saveAs bool) {
+// Save panel taking what is offered, and reports it until it is done. It comes from
+// referrer, or from the tab's page when that is "", as the engine's do.
+func (e *Engine) download(tab engine.TabID, u, referrer string, saveAs bool) {
+	if referrer == "" && tab != 0 {
+		if t := e.tabs[tab]; t != nil && t.pos >= 0 && t.pos < len(t.history) {
+			referrer = t.history[t.pos]
+		}
+	}
 	d := e.dl()
 	d.mu.Lock()
 	d.next++
@@ -60,9 +69,10 @@ func (e *Engine) download(tab engine.TabID, u string, saveAs bool) {
 	if t.Path == "" {
 		return
 	}
-	m := &mockDownload{tab: tab, d: engine.Download{ID: id, Path: t.Path, URL: u, Mime: "application/octet-stream", Total: downloadSize}}
+	m := &mockDownload{tab: tab, d: engine.Download{ID: id, Path: t.Path, URL: u, Mime: "application/octet-stream", Total: downloadSize, Referrer: referrer}}
 	d.mu.Lock()
 	d.running[id] = m
+	d.started = append(d.started, m.d)
 	d.mu.Unlock()
 	e.listener.DownloadUpdated(m.d)
 	e.step(m, downloadSize/2)
@@ -159,4 +169,12 @@ func (e *Engine) Notices() []engine.Download {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	return append([]engine.Download(nil), d.notices...)
+}
+
+// Started is each download as it started, in order: its address and the page it came from.
+func (e *Engine) Started() []engine.Download {
+	d := e.dl()
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return append([]engine.Download(nil), d.started...)
 }

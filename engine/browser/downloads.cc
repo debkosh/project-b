@@ -17,6 +17,8 @@
 #include "content/public/browser/download_item_utils.h"
 #include "content/public/browser/download_request_utils.h"
 #include "content/public/browser/web_contents.h"
+#include "content/public/common/referrer.h"
+#include "services/network/public/mojom/referrer_policy.mojom.h"
 #include "net/base/filename_util.h"
 #include "net/traffic_annotation/network_traffic_annotation.h"
 #include "project_b/engine/abi/pb_abi.h"
@@ -215,6 +217,7 @@ void Downloads::Report(download::DownloadItem* item) {
   args.Int(item->GetTotalBytes());
   args.Bool(item->IsPaused());
   args.Str(ReasonOf(item));
+  args.Str(item->GetReferrerUrl().spec());
   hooks::Fire(PB_EVENT_DOWNLOAD_UPDATED, args);
 }
 
@@ -276,7 +279,10 @@ void Downloads::Targeted(uint32_t id,
   std::move(callback).Run(std::move(target));
 }
 
-void Downloads::DownloadURL(content::WebContents* contents, const GURL& url, bool save_as) {
+void Downloads::DownloadURL(content::WebContents* contents,
+                            const GURL& url,
+                            const content::Referrer& referrer,
+                            bool save_as) {
   if (!manager_) {
     return;
   }
@@ -291,6 +297,8 @@ void Downloads::DownloadURL(content::WebContents* contents, const GURL& url, boo
                      contents, url, annotation)
                : std::make_unique<download::DownloadUrlParameters>(url, annotation);
   params->set_prompt(save_as);
+  params->set_referrer(referrer.url);
+  params->set_referrer_policy(content::Referrer::ReferrerPolicyForUrlRequest(referrer.policy));
   manager_->DownloadUrl(std::move(params));
 }
 
@@ -311,9 +319,12 @@ void Downloads::Command(uint32_t id, int32_t command) {
       // new download of its address, and this one goes.
       if (item->GetState() == download::DownloadItem::INTERRUPTED && !item->CanResume()) {
         const GURL url = item->GetURL();
+        // The page it came from, again: a site may serve its files only to its own pages.
+        const content::Referrer referrer(item->GetReferrerUrl(),
+                                         network::mojom::ReferrerPolicy::kAlways);
         item->RemoveObserver(this);
         item->Remove();
-        DownloadURL(nullptr, url, false);
+        DownloadURL(nullptr, url, referrer, false);
         break;
       }
       item->Resume(/*user_resume=*/true);

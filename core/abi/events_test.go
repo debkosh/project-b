@@ -246,7 +246,7 @@ func TestAdapterEventsReachTheListener(t *testing.T) {
 // A download's news carries why a failed one failed, last.
 func TestADownloadsFailureSaysWhy(t *testing.T) {
 	h, r := wired(t)
-	h.Dispatch(DownloadUpdated, pack(4, "/d/f.zip", "https://a.test/f.zip", "application/zip", 3, 500, 1000, false, "connection"))
+	h.Dispatch(DownloadUpdated, pack(4, "/d/f.zip", "https://a.test/f.zip", "application/zip", 3, 500, 1000, false, "connection", "https://a.test/page"))
 	if want := []string{`downloaded 4 /d/f.zip 500/1000 "connection"`}; !reflect.DeepEqual(r.got, want) {
 		t.Fatalf("got %v", r.got)
 	}
