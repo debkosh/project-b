@@ -105,6 +105,12 @@ repack("pak") {
     "$root_gen_dir/third_party/blink/public/resources/blink_resources.pak",
     "$root_gen_dir/third_party/blink/public/resources/blink_scaled_resources_100_percent.pak",
     "$root_gen_dir/third_party/blink/public/strings/blink_strings_en-US.pak",
+
+    # The <permission> element's words, which Blink reads as a page shows one, as
+    # Google's search page does for its voice search button: without them the page's
+    # renderer aborts ("Unable to find resource"). content_shell packs them too.
+    "$root_gen_dir/third_party/blink/public/strings/permission_element_generated_strings.pak",
+    "$root_gen_dir/third_party/blink/public/strings/permission_element_strings_en-US.pak",
     "$root_gen_dir/ui/resources/ui_resources_100_percent.pak",
     "$root_gen_dir/ui/strings/app_locale_settings_en-US.pak",
     "$root_gen_dir/ui/strings/ax_strings_en-US.pak",
@@ -118,6 +124,8 @@ repack("pak") {
     "//third_party/blink/public:resources",
     "//third_party/blink/public:scaled_resources_100_percent",
     "//third_party/blink/public/strings",
+    "//third_party/blink/public/strings:permission_element_generated_strings",
+    "//third_party/blink/public/strings:permission_element_strings",
     "//ui/resources",
     "//ui/strings",
   ]
