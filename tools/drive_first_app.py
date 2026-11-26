@@ -212,9 +212,10 @@ class Pages(http.server.BaseHTTPRequestHandler):
             # Links to itself: in this tab, in a new tab without its opener, as target=_blank
             # is by default and rel=noopener says outright.
             "/store": b'<!doctype html><title>Store</title><a id=link href=/store>Here</a> <a id=blank target=_blank href=/store>Blank</a> <a id=noopener target=_blank rel=noopener href=/store>No opener</a>',
-            # A <permission> element, as Google's search page shows for its voice search: Blink
-            # reads its words from the app's resources, and without them the renderer aborted.
-            "/permission-element": b'<!doctype html><title>Permission</title><permission type=microphone></permission>',
+            # A <usermedia> element, as Google's search page shows for its voice search, on by
+            # default since Chromium 158: Blink reads its words from the app's resources, and
+            # without them the renderer aborted.
+            "/usermedia": b'<!doctype html><title>User media</title><usermedia></usermedia>',
             # Pop-ups: one the page opens on its own as it loads, and one a click opens.
             "/popups": b'<!doctype html><title>Popups</title><button id=tap style="width:200px;height:80px" onclick="window.open(\'/popped-tapped\')">Open</button><script>setTimeout(()=>window.open("/popped-untapped"),300)</script>',
             # The same again, by a path of its own: a page is found by its whole path, query and all.
@@ -3516,17 +3517,14 @@ def web_api_checks():
     title = app.js("document.title", page=True)
     check("a copy button's click puts its text on the clipboard", title == "copied", title)
     check("as the registry's clipboard-async says", (title == "copied") == (status in ("works", "partly")), f"clipboard-async is {status} on {platform}")
-    visit(app, PAGES + "permission-element")
+    visit(app, PAGES + "usermedia")
     time.sleep(3)
     try:
-        known = app.js("document.title === 'Permission' && typeof HTMLPermissionElement", page=True, timeout=5)
+        known = app.js("document.title === 'User media' && typeof HTMLUserMediaElement", page=True, timeout=5)
     except (RuntimeError, TimeoutError):
         known = None
-    # Chromium 158 has the element on Android only: on the desktop it is an unknown tag for
-    # now, read as nothing, and the check is that the page still answers. Once Chromium turns
-    # it on there, the same page reads its words, which the pak holds.
-    check("a page with a <permission> element keeps its renderer, as Google's search page does", known is not None and known is not False,
-          "the page stopped answering" if known is None else f"HTMLPermissionElement is {known}")
+    check("a page with a <usermedia> element keeps its renderer, as Google's search page does", known == "function",
+          "the page stopped answering" if known is None else f"HTMLUserMediaElement is {known}")
     app.close()
 
 
