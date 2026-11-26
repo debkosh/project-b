@@ -1138,7 +1138,8 @@ def bookmark_star():
             key(4)
         except TimeoutError:
             # The screen as it stopped, before the shell is put back, which stops the app.
-            shot("stopped-bookmark_star-" + shell)
+            # Kept here, before the shell is put back, which stops the app.
+            STOPPED["bookmark_star"] = keep_evidence("stopped-bookmark_star-" + shell, "bookmark_star")
             raise
         finally:
             use_shell("")
@@ -1175,7 +1176,8 @@ def settings_ahead():
             close_settings()
             check(shell + ": and its close closes it", "settings" not in screen_parts())
         except TimeoutError:
-            shot("stopped-settings_ahead-" + shell)
+            # Kept here, before the shell is put back, which stops the app.
+            STOPPED["settings_ahead"] = keep_evidence("stopped-settings_ahead-" + shell, "settings_ahead")
             raise
         finally:
             use_shell("")
@@ -2917,6 +2919,10 @@ def keyboard_bars():
             use_shell("")
 
 
+# Whether the app was running when a part stopped, kept by the part itself: see keep_evidence.
+STOPPED = {}
+
+
 def keep_evidence(name, logname=None):
     """A shot as name, and every log buffer, as running- or gone-<logname>.logcat.txt: the app
     has died with nothing in the crash buffer, and has started without drawing its shell, each
@@ -3345,7 +3351,9 @@ def main():
             part()
         except TimeoutError as e:
             # Something the next step needed never came on screen.
-            running = keep_evidence("stopped-" + part.__name__, part.__name__)
+            # A part that puts its shell back stops the app on its way out, so its own
+            # evidence, kept before that, says whether the app was running.
+            running = STOPPED[part.__name__] if part.__name__ in STOPPED else keep_evidence("stopped-" + part.__name__, part.__name__)
             check("%s ran to its end" % part.__name__.replace("_", " "), False, "%s; the app is %s" % (e, "running" if running else "gone"))
     adb("shell", "am", "force-stop", PACKAGE)
     # Its own port forward goes with it, as a run leaves nothing behind on the emulator.
