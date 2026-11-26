@@ -4,12 +4,12 @@ package links
 
 const (
 	// Repo is where GitHub shows the repository's files on main.
-	Repo = "https://github.com/sudiptadeb/project-b/blob/main/"
+	Repo = "https://github.com/debkosh/project-b/blob/main/"
 
 	// Releases is the manifest of both channels, Stable and Dev, on the pre-release tagged
 	// channels, which tools/release.sh publishes (docs/release-channels.md): every platform's
 	// updater reads it. amarit.json's releases says the same (cmd/lib's main_test.go).
-	Releases = "https://github.com/sudiptadeb/project-b/releases/download/channels/releases.json"
+	Releases = "https://github.com/debkosh/project-b/releases/download/channels/releases.json"
 
 	// LinuxVersions names the Flatpak repository's commits by version, published with it on
 	// Pages by tools/linux/flatpak-release.sh, in the repository's own folder: Linux's
