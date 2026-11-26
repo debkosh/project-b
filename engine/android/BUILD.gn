@@ -338,6 +338,7 @@ android_library("java") {
     "java/dev/projectb/browser/GoSystem.java",
     "java/dev/projectb/browser/Passkeys.java",
     "java/dev/projectb/browser/Printing.java",
+    "java/dev/projectb/browser/ProcessEnds.java",
     _chromium_version_java,
   ]
 }

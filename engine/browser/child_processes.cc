@@ -4,6 +4,7 @@
 
 #include "base/process/kill.h"
 #include "base/process/process.h"
+#include "build/build_config.h"
 #include "content/public/browser/browser_child_process_host.h"
 #include "content/public/browser/browser_child_process_host_iterator.h"
 #include "content/public/browser/child_process_data.h"
@@ -31,6 +32,13 @@ const char* Ending(base::TerminationStatus status) {
       return "ran out of memory";
     case base::TERMINATION_STATUS_EVICTED_FOR_MEMORY:
       return "was evicted for memory";
+#if BUILDFLAG(IS_ANDROID)
+    // Android gives no exit status: the process died while the app kept it from memory
+    // kills, a crash or Android ending it anyway. Android's record of its end says which
+    // (ProcessEnds.java, in a crash report).
+    case base::TERMINATION_STATUS_OOM_PROTECTED:
+      return "ended while in use";
+#endif
     default:
       return "exited abnormally";
   }

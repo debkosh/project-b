@@ -880,10 +880,10 @@ func (l WindowLayout) At(x, y float64) Area {
 // process or a utility process. The engine starts another when one is needed.
 type ProcessCrash struct {
 	Type     string // The kind of process, as the engine names it.
-	Status   string // How it ended: "crashed", "was killed", "ran out of memory", "failed to launch", "was evicted for memory" or "exited abnormally".
+	Status   string // How it ended: "crashed", "was killed", "ran out of memory", "failed to launch", "was evicted for memory", "ended while in use" (Android: a crash, or Android ending it for memory, which content can't tell apart) or "exited abnormally".
 	ExitCode int
 	PID      int
-	URL      string // The page a renderer showed, or "".
+	URL      string // The page a renderer showed, or "". crashes.log keeps its origin.
 }
 
 // WindowState is what the engine reports about its native window.

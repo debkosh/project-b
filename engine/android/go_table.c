@@ -23,6 +23,7 @@ static jmethodID go_system_verify_person;
 static jmethodID go_system_cancel_person;
 static jmethodID go_system_scan_code;
 static jmethodID go_system_show_update;
+static jmethodID go_system_process_ends;
 
 // The calling thread's JNIEnv, attaching a thread of Go's that has none; *attached says to
 // detach it after, with detach.
@@ -98,11 +99,35 @@ static void system_show_update(const char* state_json) {
   detach(env, attached);
 }
 
+// GoSystem.processEnds, as malloc'd UTF-8 that Go frees; NULL when Java can't be reached.
+static char* system_process_ends(void) {
+  int attached;
+  JNIEnv* env = attach(&attached);
+  if (env == NULL) {
+    return NULL;
+  }
+  char* out = NULL;
+  jstring text = (jstring)(*env)->CallStaticObjectMethod(env, go_system, go_system_process_ends);
+  if (text != NULL && !(*env)->ExceptionCheck(env)) {
+    const char* chars = (*env)->GetStringUTFChars(env, text, NULL);
+    if (chars != NULL) {
+      out = strdup(chars);
+      (*env)->ReleaseStringUTFChars(env, text, chars);
+    }
+  }
+  if (text != NULL) {
+    (*env)->DeleteLocalRef(env, text);
+  }
+  detach(env, attached);
+  return out;
+}
+
 static const PBSystemCalls system_calls = {
     .verify_person = system_verify_person,
     .cancel_person = system_cancel_person,
     .scan_code = system_scan_code,
     .show_update = system_show_update,
+    .process_ends = system_process_ends,
 };
 
 JNIEXPORT jlong JNICALL Java_dev_projectb_browser_GoCore_table(JNIEnv* env, jclass cls) {
@@ -132,6 +157,7 @@ JNIEXPORT jlong JNICALL Java_dev_projectb_browser_GoCore_table(JNIEnv* env, jcla
     go_system_cancel_person = (*env)->GetStaticMethodID(env, go_system, "cancelPerson", "(I)V");
     go_system_scan_code = (*env)->GetStaticMethodID(env, go_system, "scanCode", "(ILjava/lang/String;)V");
     go_system_show_update = (*env)->GetStaticMethodID(env, go_system, "showUpdate", "(Ljava/lang/String;)V");
+    go_system_process_ends = (*env)->GetStaticMethodID(env, go_system, "processEnds", "()Ljava/lang/String;");
     PBSetSystemCalls(&system_calls);
     // oskit's packages find their Java classes here too (oskit/internal/jni).
     OskitAttach(env);

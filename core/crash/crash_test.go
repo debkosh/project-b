@@ -111,7 +111,7 @@ func TestARunThatDidNotStopIsACrashWithMacOSReport(t *testing.T) {
 func TestAChildProcessCrashIsALineAndNoNotice(t *testing.T) {
 	dir := t.TempDir()
 	m := New(dir, "", noReason)
-	m.ProcessCrashed(engine.ProcessCrash{Type: "renderer", Status: "crashed", ExitCode: 11, PID: 42, URL: "https://p.test/"})
+	m.ProcessCrashed(engine.ProcessCrash{Type: "renderer", Status: "crashed", ExitCode: 11, PID: 42, URL: "https://p.test:8080/search?q=private#x"})
 	m.ProcessCrashed(engine.ProcessCrash{Type: "GPU", Status: "crashed", ExitCode: 11, PID: 43})
 	m.Stop()
 	if New(dir, "", noReason).Last() != "" {
@@ -119,7 +119,7 @@ func TestAChildProcessCrashIsALineAndNoNotice(t *testing.T) {
 	}
 	b, _ := os.ReadFile(filepath.Join(dir, "crashes.log"))
 	lines := strings.Split(strings.TrimSpace(string(b)), "\n")
-	if len(lines) != 2 || !strings.HasSuffix(lines[0], " renderer crashed, exit code 11, pid 42, https://p.test/") || !strings.HasSuffix(lines[1], " GPU crashed, exit code 11, pid 43") {
+	if len(lines) != 2 || !strings.HasSuffix(lines[0], " renderer crashed, exit code 11, pid 42, https://p.test:8080") || !strings.HasSuffix(lines[1], " GPU crashed, exit code 11, pid 43") {
 		t.Fatalf("crashes.log = %q", b)
 	}
 }
