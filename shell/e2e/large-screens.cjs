@@ -63,6 +63,9 @@ const { check, fire, regions, until } = lib;
     return r.active === tab && r.tabs.find((t) => t.id === tab)?.url === 'https://news.example/story';
   };
   check('and keeps the tab and its page', await until(kept));
+  // Go sends a shell nothing until it says it's ready (docs/shells.md), so a right click
+  // before then is lost: the pill shows the page's host only once Mobile has Go's state.
+  await until(async () => (await w.ui.getByRole('textbox', { name: 'Address' }).inputValue().catch(() => '')) === 'news.example', 10000);
 
   // A narrow window with a mouse, as on a tablet: a right click opens Mobile's sheet, whose
   // rows light under the pointer (docs/large-screens.md).
