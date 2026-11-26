@@ -155,7 +155,7 @@ func main() {
 			Profile:       id,
 			BlockedHosts:  strings.Split(*block, ","),
 			SkipWelcome:   *skipWelcome,
-			Platform:      *platform,
+			Platform:      keymapOf(*platform),
 			BrowserHome:   *browserHome,
 			Keychain:      keychainOf(*keychain, *keychainItems),
 			KeychainItems: keychainItemsOf(*keychain, *keychainItems),
@@ -554,6 +554,15 @@ func stream(w http.ResponseWriter, r *http.Request, f *mockengine.Feed, now ...f
 			flusher.Flush()
 		}
 	}
+}
+
+// keymapOf is the keymap a platform follows: Android follows Linux's, as on a phone, where
+// Go names the platform by its keymap (commands.OS); the shells still hear Android.
+func keymapOf(platform string) string {
+	if platform == "android" {
+		return "linux"
+	}
+	return platform
 }
 
 // crashReports is the folder macOS writes its crash reports to, or "" for -platform linux,
