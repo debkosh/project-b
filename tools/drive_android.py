@@ -1566,7 +1566,9 @@ def crash_notice():
     # A crash of the app's own process.
     adb("shell", "kill", "-SEGV", adb("shell", "pidof", PACKAGE).strip().split()[0])
     start_as_it_is()
-    check("a native crash still brings the notice", until(said, 10) is not None)
+    notice = until(said, 10)
+    check("a native crash still brings the notice, naming no macOS report", notice is not None and "macOS" not in (notice.get("text") or ""),
+          notice.get("text") if notice is not None else "no notice")
     shot("36-crash-notice")
     dismiss = named("shell", "Dismiss")
     if dismiss is not None:
