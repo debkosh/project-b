@@ -72,6 +72,18 @@ The README's architecture diagram writes the major by hand ("Chromium 158 conten
 `tools/test.sh mock` fails until it names `CHROMIUM_VERSION`'s major, after 0.3.11 shipped with
 the README still saying 155.
 
+### Resources
+
+Chromium leaves packing its resources to each embedder and keeps no list of what content and
+Blink ask for; a string one asks for and can't find aborts the process that asks. So
+`engine/paks.gni`, the one list desktop and Android pack, is everything content_shell packs
+(its `repack("pak")` in `content/shell/BUILD.gn`), but content_shell's own pages and its test
+resources. `tools/pak_check.py`, in `tools/test.sh mock`, fails when content_shell packs a file
+the list doesn't: after a bump, add each new one with its target, or say in its `LEFT_OUT` why
+not. Before it the list was copied by hand once, and 158's `<usermedia>` element's words were
+never packed: Google's search page, which switches the element on for itself, crashed its
+renderer on Android a second after it showed ("Unable to find resource: 47513", 2026-11-26).
+
 ### What it does, for mac
 
 Chromium is under the engine interface ([engine-interface.md](engine-interface.md)), so it
