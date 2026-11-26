@@ -14,12 +14,14 @@ static inline char* call_process_ends(const PBSystemCalls* c) { return c->proces
 import "C"
 
 import (
+	"fmt"
+	"io"
 	"os"
-	"os/exec"
 	"runtime"
 	"strconv"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"unsafe"
 
 	"github.com/sudiptadeb/oskit/clip"
@@ -98,15 +100,15 @@ func (s *System) OpenFullDiskAccess() {}
 // files under the renderer's own isolated user id (ProcessEnds.java).
 func (s *System) Report(version string) []crash.Section {
 	prop := func(name string) string {
-		out, _ := exec.Command("/system/bin/getprop", name).Output()
-		return strings.TrimSpace(string(out))
+		out, _ := run("/system/bin/getprop", name)
+		return strings.TrimSpace(out)
 	}
 	logcat := func(buffers, lines string) string {
-		out, err := exec.Command("/system/bin/logcat", "-d", "-b", buffers, "-t", lines, "-v", "time").CombinedOutput()
+		out, err := run("/system/bin/logcat", "-d", "-b", buffers, "-t", lines, "-v", "time")
 		if err != nil {
-			out = append(out, []byte("\n(logcat: "+err.Error()+")")...)
+			out += "\n(logcat: " + err.Error() + ")"
 		}
-		return string(out)
+		return out
 	}
 	return []crash.Section{
 		{Title: "Version", Text: "Project B " + version + ", " + runtime.GOOS + "/" + runtime.GOARCH + ", pid " + strconv.Itoa(os.Getpid())},
@@ -117,6 +119,41 @@ func (s *System) Report(version string) []crash.Section {
 		{Title: "The app's last crashes Android kept, newest last (logcat crash buffer)", Text: logcat("crash", "50")},
 		{Title: "How Android says the app's processes ended, newest first (ApplicationExitInfo)", Text: processEnds()},
 	}
+}
+
+// run runs one of the phone's programs and answers what it wrote, its output and its errors
+// together. It starts it with syscall.ForkExec, never os/exec: before its first child, Go's os
+// package tries pidfd_open, which Android 10's seccomp answers with SIGSYS, and Go lets that
+// pass only when its own handler has SIGSYS, which a shared library's Go never installs, so
+// the app ended (Go issue 69065, mended for programs only). ForkExec and Wait4 use no pidfd.
+func run(argv ...string) (string, error) {
+	var p [2]int
+	if err := syscall.Pipe2(p[:], syscall.O_CLOEXEC); err != nil {
+		return "", err
+	}
+	r := os.NewFile(uintptr(p[0]), "output")
+	defer r.Close()
+	none := ^uintptr(0) // no input: the child's 0 is closed
+	pid, err := syscall.ForkExec(argv[0], argv, &syscall.ProcAttr{
+		Env:   os.Environ(),
+		Files: []uintptr{none, uintptr(p[1]), uintptr(p[1])},
+	})
+	syscall.Close(p[1])
+	if err != nil {
+		return "", err
+	}
+	out, _ := io.ReadAll(r)
+	var status syscall.WaitStatus
+	for {
+		_, err = syscall.Wait4(pid, &status, 0, nil)
+		if err != syscall.EINTR {
+			break
+		}
+	}
+	if err == nil && (!status.Exited() || status.ExitStatus() != 0) {
+		err = fmt.Errorf("%s ended with %v", argv[0], status)
+	}
+	return string(out), err
 }
 
 // processEnds is ProcessEnds.java's text, or says Java couldn't give it.
