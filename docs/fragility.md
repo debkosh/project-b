@@ -85,6 +85,21 @@ The seams:
   for another OS. Two so far: saved passwords Linux couldn't show, passkeys Linux couldn't
   save.
 
+## The main checkout's shell packages emptied through a link, 2026-11-26
+
+- **Seen:** the hotfix Dev publish's mock failed at once: the main checkout's
+  shell/node_modules was an empty folder, from 12:32.
+- **Cause:** at 12:32 the tester ran `npm ci` in project-b-r4/shell, whose node_modules was a
+  link to the main checkout's, as eight other worktrees' still are. npm ci clears
+  node_modules entry by entry before it installs, so it emptied the linked folder, then laid a
+  folder of its own in r4.
+- **Seam:** shared node_modules by link, and a command that clears what it installs into.
+- **Fix:** tools/shell-npm-ci.sh runs npm ci only where it's safe: it refuses when
+  shell/node_modules is a link (unlink first; rm removes only the link), and when another
+  worktree's links here (use npm install, which adds and never clears). Never npm ci by hand.
+- **Guard:** the script, tried with a link in place: it refused and the folder kept its 43
+  entries. For the main checkout it names the eight linked worktrees.
+
 ## Test builds that updated themselves mid-run, 2026-11-26
 
 - **Seen:** once Stable 0.3.11 was out, drive runs of branches that sat before the 0.3.11
