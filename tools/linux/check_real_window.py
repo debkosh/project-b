@@ -24,7 +24,7 @@ from PIL import Image, ImageChops, ImageStat
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 APP_ID = "io.github.sudiptadeb.project-b"
-REPO = "https://codeload.github.com/sudiptadeb/project-b/tar.gz/"
+REPO = "https://codeload.github.com/debkosh/project-b/tar.gz/"
 GUEST = "$HOME/pb-real-window"
 
 
