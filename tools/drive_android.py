@@ -105,11 +105,12 @@ PAGES["/apis"] = ("<title>APIs</title><button style='position:fixed;inset:0;widt
                   " .then(() => setTimeout(() => fetch('/apis-alive?' + when), 3000)) }"
                   "run('load'); document.querySelector('button').onclick = () => run('tap')</script>")
 
-# A <permission> element, as Google's search page shows for its voice search: Blink reads its
-# words from the app's resources as it lays it out, and without them the renderer aborted. Says
-# a moment later that it lives, and whether Blink knows the element.
-PAGES["/permission-element"] = ("<title>Permission element</title><permission type=microphone></permission>"
-                                "<script>setTimeout(() => fetch('/permission-alive?' + typeof HTMLPermissionElement), 3000)</script>")
+# A <usermedia> element, as Google's search page shows for its voice search, which Chromium
+# 158 has on by default: Blink reads its words from the app's resources as it lays one out,
+# and without them the renderer aborted ("Unable to find resource: 47513"). Says a moment
+# later that it lives, and whether Blink knows the element.
+PAGES["/usermedia"] = ("<title>User media</title><usermedia></usermedia>"
+                       "<script>setTimeout(() => fetch('/usermedia-alive?' + typeof HTMLUserMediaElement), 3000)</script>")
 
 served = []
 # Each request's host and path, for Links to other sites, which serves two sites.
@@ -2511,10 +2512,11 @@ def web_apis():
     # A fresh start: the tap's calls can leave a dialog of theirs over the page, and the
     # address field out of reach.
     launch()
-    go(BASE + "/permission-element")
-    lived = asked("/permission-alive", 30)
-    known = [s for s in served if s.startswith("/permission-alive")]
-    check("a page with a <permission> element keeps its renderer, as Google's search page does", lived is not None and known[-1].endswith("?function"),
+    since = len(served)
+    go(BASE + "/usermedia")
+    lived = until(lambda: any(s.startswith("/usermedia-alive") for s in served[since:]), 30)
+    known = [s for s in served[since:] if s.startswith("/usermedia-alive")]
+    check("a page with a <usermedia> element keeps its renderer, as Google's search page does", lived is not None and known[-1].endswith("?function"),
           known[-1] if known else "no word from the page")
 
 
