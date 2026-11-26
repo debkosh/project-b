@@ -318,9 +318,9 @@ const rows = computed(() =>
   color: var(--text);
 }
 
-/* Touch: rows a finger hits, a close button as large on every row, as a finger has no
-   hover to show it, and no shortcut hints, which a finger has no keys for
-   (docs/large-screens.md). */
+/* Touch: rows a finger hits, and a close button as large on every row, as a finger has no
+   hover to show it (docs/large-screens.md). Hints follow the keyboard, not the pointer: Go
+   sends no keys while Android has no hardware keyboard. */
 @media (pointer: coarse) and (not (any-pointer: fine)) {
   .row {
     height: 44px;
@@ -329,9 +329,6 @@ const rows = computed(() =>
     width: 32px;
     height: 32px;
     visibility: visible;
-  }
-  .hint {
-    display: none;
   }
 }
 </style>

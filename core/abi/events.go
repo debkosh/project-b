@@ -95,6 +95,7 @@ func (e *Events) adapter(id Event, l engine.Listener, r *reader) (Value, bool) {
 			Bounds:       engine.Rect{X: r.float(), Y: r.float(), W: r.float(), H: r.float()},
 			Minimised:    r.bool(),
 			Zoomed:       r.bool(),
+			NoKeyboard:   r.bool(),
 		})
 	case ShellCrashed:
 		l.ShellCrashed(engine.WindowID(r.int()))

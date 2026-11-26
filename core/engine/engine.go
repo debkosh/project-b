@@ -895,6 +895,8 @@ type WindowState struct {
 	Bounds       Rect // The window's frame on screen, points, y down from the top of the main screen.
 	Minimised    bool
 	Zoomed       bool
+	// NoKeyboard says no hardware keyboard is attached, on Android; a desktop always has one.
+	NoKeyboard bool
 }
 
 // WindowRequest is what the window is asked to do. The first four are what pressing that

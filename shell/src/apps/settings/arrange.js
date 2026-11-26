@@ -17,8 +17,9 @@ const where = {
   // none to choose; Android chooses among its own.
   shell: () => (phone ? !!state.androidShells : !!state.profile),
   profile: () => !!state.profile,
-  keys: () => !phone,
-  keyboard: () => !phone,
+  // Android's keys work with a hardware keyboard attached (docs/large-screens.md).
+  keys: () => !phone || state.hardKeyboard,
+  keyboard: () => !phone || state.hardKeyboard,
   // A phone has no Save panel: a download goes to its Downloads.
   askWhereToSave: () => !phone,
   // A phone saves to its shared Downloads.

@@ -118,7 +118,7 @@ func (r *adapterRecorder) PickerMessage(w engine.WindowID, msg []byte) {
 	r.note(fmt.Sprintf("picker %d %s", w, msg))
 }
 func (r *adapterRecorder) WindowChanged(w engine.WindowID, s engine.WindowState) {
-	r.note(fmt.Sprintf("window %d %gx%g r=%g full=%v", w, s.W, s.H, s.CornerRadius, s.FullScreen))
+	r.note(fmt.Sprintf("window %d %gx%g r=%g full=%v keyboard=%v", w, s.W, s.H, s.CornerRadius, s.FullScreen, !s.NoKeyboard))
 }
 func (r *adapterRecorder) TabFocused(tab engine.TabID)    { r.note(fmt.Sprint("focused ", tab)) }
 func (r *adapterRecorder) WindowClosed(w engine.WindowID) { r.note(fmt.Sprintf("window %d closed", w)) }
@@ -227,6 +227,7 @@ func TestAdapterEventsReachTheListener(t *testing.T) {
 	h, r := wired(t)
 	h.Dispatch(TabOpened, []Value{{I: 0}, {I: 2}, {S: "https://p.test/"}, {S: "a1b2c3d4"}, {I: 1}, {I: 1}, {I: 0}})
 	h.Dispatch(WindowChanged, []Value{{I: 2}, {D: 1100}, {D: 700}, {D: 1}, {D: 2}, {D: 3}, {D: 4}, {D: 20}, {I: 1}})
+	h.Dispatch(WindowChanged, []Value{{I: 2}, {D: 800}, {D: 1280}, {}, {}, {}, {}, {}, {I: 1}, {}, {}, {}, {}, {}, {}, {I: 1}})
 	h.Dispatch(ShellCrashed, []Value{{I: 2}})
 	h.Dispatch(ShellMessage, []Value{{I: 2}, {S: `{"t":"ready"}`}})
 	h.Dispatch(PageMessage, []Value{{I: 2}, {S: "history"}, {S: `{"t":"ready"}`}})
@@ -234,7 +235,7 @@ func TestAdapterEventsReachTheListener(t *testing.T) {
 	h.Dispatch(WindowFocused, []Value{{I: 2}})
 	h.Dispatch(WindowClosed, []Value{{I: 2}})
 	h.Dispatch(ProcessCrashed, []Value{{S: "renderer"}, {S: "crashed"}, {I: 11}, {I: 42}, {S: "https://p.test/"}})
-	if !reflect.DeepEqual(r.got, []string{"opened https://p.test/ in a1b2c3d4 new window true tapped false", "window 2 1100x700 r=20 full=true", "shell 2 crashed", `shell 2 {"t":"ready"}`, `page 2 history {"t":"ready"}`, `picker 2 {"t":"open"}`, "window 2 focused", "window 2 closed", "renderer crashed 11 42 https://p.test/"}) {
+	if !reflect.DeepEqual(r.got, []string{"opened https://p.test/ in a1b2c3d4 new window true tapped false", "window 2 1100x700 r=20 full=true keyboard=true", "window 2 800x1280 r=0 full=true keyboard=false", "shell 2 crashed", `shell 2 {"t":"ready"}`, `page 2 history {"t":"ready"}`, `picker 2 {"t":"open"}`, "window 2 focused", "window 2 closed", "renderer crashed 11 42 https://p.test/"}) {
 		t.Fatalf("got %v", r.got)
 	}
 	if h.Counts()["engine.TabOpened"] != 1 {

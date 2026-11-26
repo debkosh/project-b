@@ -2301,6 +2301,36 @@ func TestOnAndroidTheShellFollowsTheWindowsSize(t *testing.T) {
 	page("shell/pbshell", time.Second)
 }
 
+// On Android the shells show keys, and Settings its Keyboard, only while a hardware keyboard
+// is attached, as the window says. A desktop always has one.
+func TestOnAndroidKeysShowWhileAKeyboardIsAttached(t *testing.T) {
+	defer func(was bool) { shells.OnAndroid = was }(shells.OnAndroid)
+	shells.OnAndroid = true
+	r := start(t, androidProfile(t))
+	defer r.stop()
+	keys := func(some bool) func(m map[string]any) bool {
+		return func(m map[string]any) bool {
+			k, _ := m["keys"].(map[string]any)
+			return m["t"] == "keys" && (len(k) > 0) == some
+		}
+	}
+	sh, stop := r.e.Feeds(1).Shell.Subscribe()
+	defer stop()
+	ch, _ := r.openSettings()
+	r.e.Post(func() { r.a.WindowChanged(1, engine.WindowState{W: 1280, H: 800, NoKeyboard: true}) })
+	r.waitOn(ch, func(m map[string]any) bool { return m["t"] == "hardKeyboard" && m["hardKeyboard"] == false })
+	r.waitOn(sh, keys(false))
+	r.e.Post(func() { r.a.WindowChanged(1, engine.WindowState{W: 1280, H: 800}) })
+	r.waitOn(ch, func(m map[string]any) bool { return m["t"] == "hardKeyboard" && m["hardKeyboard"] == true })
+	r.waitOn(sh, keys(true))
+	shells.OnAndroid = false
+	r2 := start(t, t.TempDir())
+	defer r2.stop()
+	if _, snap2 := r2.openSettings(); snap2["hardKeyboard"] != true {
+		t.Fatalf("a desktop's settings say hardKeyboard %v", snap2["hardKeyboard"])
+	}
+}
+
 // The menu skips a tab's changes it doesn't read, and still follows the ones it does: a tab
 // that began loading while in the background shows Stop when made active, and Stop goes
 // off when it finishes there.

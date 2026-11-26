@@ -220,6 +220,10 @@ func main() {
 		}
 		e.Resize(windowOf(r), width, height)
 	})
+	// A hardware keyboard attached (on=1) or not (on=0), as Android reports one.
+	mux.HandleFunc("POST /mock/window/keyboard", func(w http.ResponseWriter, r *http.Request) {
+		e.SetKeyboard(windowOf(r), r.FormValue("on") == "1")
+	})
 	// When a page's own clock started, its performance.timeOrigin in ms of wall time, which
 	// the real engine gives the timeline as the page's document starts.
 	mux.HandleFunc("POST /mock/origin", func(w http.ResponseWriter, r *http.Request) {

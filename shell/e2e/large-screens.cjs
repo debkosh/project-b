@@ -23,7 +23,16 @@ const { check, fire, regions, until } = lib;
   const row = await w.ui.locator('.sidebar .row.active').boundingBox();
   const button = await w.ui.getByRole('button', { name: 'Menu' }).boundingBox();
   check('a touch screen gets rows and buttons a finger hits', row?.height === 44 && button?.height === 44, `row ${row?.height}, button ${button?.height}`);
-  check('and no shortcut hints', (await w.ui.locator('.sidebar .hint').count()) === 0 || !(await w.ui.locator('.sidebar .hint').first().isVisible()));
+  // Keys show by the keyboard, not the pointer: none with no hardware keyboard, and a hardware
+  // keyboard on a touch screen brings them (docs/large-screens.md).
+  const keyboard = (on) => fetch(`${lib.base}/mock/window/keyboard?window=1&on=${on ? 1 : 0}`, { method: 'POST' });
+  const hint = () => w.ui.locator('.sidebar .hint').first().isVisible().catch(() => false);
+  await keyboard(false);
+  check('with no keyboard, no shortcut hints', await until(async () => !(await hint())));
+  await keyboard(true);
+  check('a keyboard attached shows them', await until(hint));
+  await keyboard(false);
+  check('and taking it away hides them', await until(async () => !(await hint())));
   // Shots for ux: five tabs with pages, the ☰ menu open, and tabs on top.
   const sites = ['https://news.example/', 'https://mail.example/inbox', 'https://docs.example/notes', 'https://shop.example/cart'];
   for (const u of sites) await fetch(`${lib.base}/shell/send?window=1`, { method: 'POST', body: JSON.stringify({ t: 'newTab', text: u }) });

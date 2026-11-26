@@ -42,7 +42,8 @@ typedef enum PBEvent {
                                         // d: y, d: w, d: h, the window buttons; d: corner
                                         // radius; i: full screen; d: x, d: y, d: w, d: h,
                                         // its frame on screen, y down from the top of the
-                                        // main screen; i: minimised; i: zoomed
+                                        // main screen; i: minimised; i: zoomed; i: no
+                                        // hardware keyboard (Android)
   PB_EVENT_PING = 5,                    // nothing; the driver measures the crossing
   PB_EVENT_SHELL_CRASHED = 6,           // i: window; its shell page's renderer died
   // 7 was the settings page's own; every page of ours in a tab now has PB_EVENT_PAGE_MESSAGE.

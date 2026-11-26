@@ -1230,6 +1230,9 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   // no sense there (Tab layout, Keys, the shortcuts) isn't on it.
   await openSettings();
   await until(settingsShown);
+  // A phone has no hardware keyboard, as Android says (docs/large-screens.md).
+  const keyboard = (on) => fetch(`${base}/mock/window/keyboard?window=1&on=${on ? 1 : 0}`, { method: 'POST' });
+  await keyboard(false);
   const phoneContext = await browser.newContext({ viewport: { width: 412, height: 860 }, hasTouch: true });
   page = await phoneContext.newPage();
   watch(page);
@@ -1262,6 +1265,12 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   check('on a phone, the list has every section but Keyboard and Downloads, in order, each with what it is set to', JSON.stringify(await sectionRows.evaluateAll((rs) => rs.map((r) => r.dataset.section))) === JSON.stringify(Object.keys(want)) &&
     (await page.locator('.section-row[data-section="appearance"]').textContent()).includes('System'), JSON.stringify(await sectionRows.evaluateAll((rs) => rs.map((r) => r.dataset.section))));
   await page.screenshot({ path: shot('settings-phone') });
+  // A hardware keyboard attached brings Keyboard shortcuts, and taking it away takes it.
+  const phoneSections = () => sectionRows.evaluateAll((rs) => rs.map((r) => r.dataset.section));
+  await keyboard(true);
+  check('with a keyboard attached, the phone lists Keyboard shortcuts', await until(async () => (await phoneSections()).includes('keyboard')), JSON.stringify(await phoneSections()));
+  await keyboard(false);
+  check('and taking it away takes it off the list', await until(async () => !(await phoneSections()).includes('keyboard')));
   // On the narrowest phone each section's name, and the line under it, stay on one line.
   await page.setViewportSize({ width: 360, height: 860 });
   await settle(page);
@@ -1330,6 +1339,7 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
     await until(() => sectionRows.first().isVisible());
   }
   await phoneContext.close();
+  await keyboard(true);
   await fetch(`${base}/mock/fire`, { method: 'POST', body: new URLSearchParams({ kind: 'key', value: 'closeTab' }) });
   await until(async () => (await regions()).settings === 0);
 

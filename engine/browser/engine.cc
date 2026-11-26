@@ -1018,6 +1018,7 @@ void Engine::ListenToWindow(int64_t id) {
         args.Double(s.bounds.height());
         args.Bool(s.minimised);
         args.Bool(s.zoomed);
+        args.Bool(s.no_keyboard);
         hooks::Fire(PB_EVENT_WINDOW_CHANGED, args);
       },
       id));

@@ -164,6 +164,7 @@ public final class BrowserActivity extends Activity {
     public void onConfigurationChanged(Configuration config) {
         super.onConfigurationChanged(config);
         window.applyTheme();
+        window.hardKeyboardChanged();
     }
 
     /** Escape's press went to the shell, so its release does too. */

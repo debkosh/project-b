@@ -199,6 +199,10 @@ type App struct {
 	imports    *importer
 	// keyIn is which page had the keyboard at the last key press.
 	keyIn engine.Surface
+	// noKeyboard says Android has no hardware keyboard attached: the shells show no keys and
+	// Settings no Keyboard (docs/large-screens.md). Android starts without one until the
+	// window says.
+	noKeyboard bool
 	// lastWindow is the id of the window made last; Go numbers them from 1.
 	lastWindow engine.WindowID
 	quit       func()
@@ -213,7 +217,7 @@ var starters []func(a *App, e engine.Engine, cfg Config)
 // to the engine as its listener.
 func Start(e engine.Engine, cfg Config) *App {
 	e.OpenProfile(cfg.ProfileDir)
-	a := &App{passkeysChanged: func() {}, System: cfg.System, profiles: cfg.Profiles, startedIn: map[engine.DownloadID]engine.WindowID{}, dir: cfg.ProfileDir}
+	a := &App{passkeysChanged: func() {}, System: cfg.System, profiles: cfg.Profiles, startedIn: map[engine.DownloadID]engine.WindowID{}, dir: cfg.ProfileDir, noKeyboard: shells.OnAndroid}
 	a.Crash = crash.New(cfg.ProfileDir, cfg.CrashReports, e.ExitReason)
 	a.Crash.System = func() []crash.Section { return cfg.System.Report(cfg.Update.Version) }
 	a.Session = session.New(cfg.ProfileDir)
@@ -286,7 +290,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	if shells.OnAndroid {
 		shellOS = "android"
 	}
-	a.Shell = shell.New(e, a.Tabs, a.Suggest, a.Window, a.Prefs, a.Update, a.Crash, a.Commands.Run, a.Commands.ShownKeys, shellOS)
+	a.Shell = shell.New(e, a.Tabs, a.Suggest, a.Window, a.Prefs, a.Update, a.Crash, a.Commands.Run, a.shownKeys, shellOS)
 	a.Commands.OnAltTap(func() { a.Shell.MenuBar(a.Tabs.Front(), false) })
 	a.Shell.AddPart(a.workspaceShellPart(e))
 	a.Shell.AddPart(a.pinShellPart())
@@ -397,6 +401,10 @@ func Start(e engine.Engine, cfg Config) *App {
 	if shells.OnAndroid {
 		a.Settings.AddPart(a.androidShellPart())
 	}
+	a.Settings.AddPart(settings.Part{
+		Snapshot: func(into map[string]any) { into["hardKeyboard"] = !a.noKeyboard },
+		Handle:   func(engine.TabID, string, []byte) bool { return false },
+	})
 	// A change to the workspaces reaches every shell at once, for the dots, and every
 	// settings page; the Tab menu reads the list as it opens. The engine hears which is
 	// first, at start and whenever that changes, for the tabs it makes on its own.
@@ -769,6 +777,19 @@ func (a *App) WindowChanged(w engine.WindowID, s engine.WindowState) {
 	a.Window.HandleWindowChanged(w, s)
 	a.fulls.windowChanged(w, s)
 	a.shells.WindowChanged(s)
+	if s.NoKeyboard != a.noKeyboard {
+		a.noKeyboard = s.NoKeyboard
+		a.Shell.KeysChanged()
+		a.Settings.Send(map[string]any{"t": "hardKeyboard", "hardKeyboard": !a.noKeyboard})
+	}
+}
+
+// shownKeys is the key each action shows in the shells, none while no keyboard is attached.
+func (a *App) shownKeys() map[string]string {
+	if a.noKeyboard {
+		return map[string]string{}
+	}
+	return a.Commands.ShownKeys()
 }
 
 func (a *App) ShellCrashed(w engine.WindowID) {

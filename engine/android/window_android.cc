@@ -135,6 +135,13 @@ class BrowserWindow : public content::CompositorClient,
     ReportState();
   }
 
+  void HardKeyboardChanged(JNIEnv* env, jboolean attached) {
+    if (keyboard_ != static_cast<bool>(attached)) {
+      keyboard_ = attached;
+      ReportState();
+    }
+  }
+
   void ContentsMoved(JNIEnv* env,
                      const JavaRef<jobject>& jcontents,
                      int32_t left,
@@ -221,7 +228,8 @@ class BrowserWindow : public content::CompositorClient,
       on_state_.Run({.size = size_,
                      .controls = gfx::RectF(),
                      .corner_radius = 0,
-                     .full_screen = true});
+                     .full_screen = true,
+                     .no_keyboard = !keyboard_});
     }
   }
 
@@ -230,6 +238,7 @@ class BrowserWindow : public content::CompositorClient,
   std::unique_ptr<content::Compositor> compositor_;
   raw_ptr<content::WebContents> shown_ = nullptr;
   gfx::SizeF size_;
+  bool keyboard_ = false;  // A hardware keyboard is attached.
   base::RepeatingCallback<void(const Window::State&)> on_state_;
   int surface_format_ = 0;
 };

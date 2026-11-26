@@ -21,6 +21,8 @@ export const state = reactive({
   addressBarPosition: 'bottom',
   // A phone's shells to choose from, and the one in use: {shell, shells}, null off a phone.
   androidShells: null,
+  // Whether a hardware keyboard is attached: always on a desktop, on Android as the window says.
+  hardKeyboard: true,
   // What a start opens: 'continue', the windows and tabs as they were, or 'fresh', a window opened
   // as the shell opens one.
   start: 'continue',
@@ -168,6 +170,7 @@ export function connect() {
             tabLayout: m.tabLayout,
             addressBarPosition: m.addressBarPosition,
             androidShells: m.androidShells || null,
+            hardKeyboard: m.hardKeyboard !== false,
             theme: m.theme,
             start: m.start,
             searchEngine: m.searchEngine,
@@ -222,6 +225,9 @@ export function connect() {
           break;
         case 'androidShells':
           state.androidShells = m.androidShells;
+          break;
+        case 'hardKeyboard':
+          state.hardKeyboard = m.hardKeyboard;
           break;
         case 'autoUpdate':
           state.autoUpdate = m.autoUpdate;

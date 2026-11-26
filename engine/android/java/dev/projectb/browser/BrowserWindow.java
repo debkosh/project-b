@@ -167,6 +167,22 @@ final class BrowserWindow extends FrameLayout {
         if (getWidth() > 0) {
             BrowserWindowJni.get().sizeChanged(nativeWindow, getWidth() / density, getHeight() / density);
         }
+        hardKeyboardChanged();
+    }
+
+    /**
+     * Whether a hardware keyboard is attached, now and when one comes or goes: with one, the
+     * shells show our keys and Settings its Keyboard (docs/large-screens.md).
+     */
+    void hardKeyboardChanged() {
+        if (nativeWindow == 0) {
+            return;
+        }
+        Configuration config = getResources().getConfiguration();
+        boolean attached =
+                config.keyboard == Configuration.KEYBOARD_QWERTY
+                        && config.hardKeyboardHidden == Configuration.HARDKEYBOARDHIDDEN_NO;
+        BrowserWindowJni.get().hardKeyboardChanged(nativeWindow, attached);
     }
 
     /** Hidden pages are told so, as they are when a tab is hidden. */
@@ -693,6 +709,8 @@ final class BrowserWindow extends FrameLayout {
         void surfaceDestroyed(long nativeBrowserWindow);
 
         void sizeChanged(long nativeBrowserWindow, double width, double height);
+
+        void hardKeyboardChanged(long nativeBrowserWindow, boolean attached);
 
         void pageColorShown(long nativeBrowserWindow, int rgb);
 

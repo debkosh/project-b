@@ -186,6 +186,7 @@ type window struct {
 	w, h              float64        // The window's content size.
 	bounds            engine.Rect    // Its frame on screen.
 	minimised, zoomed bool
+	noKeyboard        bool // No hardware keyboard, as an Android tablet without one.
 	// ours are our tabs whose page this window holds, as the real window holds their
 	// views: the tabs of ours its layout was the last to show, until they close. The dev
 	// window keeps a frame of our page for each.
@@ -298,7 +299,7 @@ func (e *Engine) reportWindow(w engine.WindowID) {
 	if win == nil {
 		return
 	}
-	s := engine.WindowState{W: win.w, H: win.h, FullScreen: win.full, Bounds: win.bounds, Minimised: win.minimised, Zoomed: win.zoomed}
+	s := engine.WindowState{W: win.w, H: win.h, FullScreen: win.full, Bounds: win.bounds, Minimised: win.minimised, Zoomed: win.zoomed, NoKeyboard: win.noKeyboard}
 	if !win.full {
 		if !e.NoControls {
 			s.Controls = Controls
@@ -318,6 +319,16 @@ func (e *Engine) Resize(w engine.WindowID, width, height float64) {
 	e.Post(func() {
 		if win := e.windows[w]; win != nil {
 			win.w, win.h = width, height
+			e.reportWindow(w)
+		}
+	})
+}
+
+// SetKeyboard attaches a hardware keyboard to window w, or takes it away, as Android reports.
+func (e *Engine) SetKeyboard(w engine.WindowID, on bool) {
+	e.Post(func() {
+		if win := e.windows[w]; win != nil {
+			win.noKeyboard = !on
 			e.reportWindow(w)
 		}
 	})

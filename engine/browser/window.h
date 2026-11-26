@@ -80,6 +80,8 @@ class Window {
     gfx::Rect bounds;
     bool minimised;
     bool zoomed;
+    // No hardware keyboard is attached: Android's, as the activity says. A desktop has one.
+    bool no_keyboard = false;
   };
 
   // on_close runs when the window closes, on_key when it becomes the key window, and
