@@ -2677,6 +2677,29 @@ def the_real_web():
     shot("19-real-web-example")
 
 
+def secure_dns():
+    """Secure DNS on the phone (docs/secure-dns.md): Secure only with a provider no one can
+    reach, from prefs.json at the start, and a real page doesn't load, its name looked up
+    nowhere else; set back to Off, the next one does. Over the office's 443-only egress, as
+    the_real_web."""
+    prefs = profile_json("prefs.json")
+    try:
+        profile_file("prefs.json", {**prefs, "secureDns": "secure", "dnsProvider": "custom",
+                                    "dnsCustom": "https://127.0.0.1:9/dns-query{?dns}"})
+        launch()
+        go("example.net")
+        time.sleep(15)
+        check("Secure only, with a provider that can't be reached, a real page doesn't load", not visited("https://example.net/"),
+              str(list(history())[-3:]))
+        shot("19b-secure-dns-unreachable")
+        profile_file("prefs.json", {**prefs, "secureDns": "off"})
+        launch()
+        go("example.org")
+        check("set back to Off, the network's DNS looks it up and it loads", until(lambda: visited("https://example.org/"), 30))
+    finally:
+        profile_file("prefs.json", prefs)
+
+
 def long_press_menu():
     """A long press on a link, a picture and a linked picture, in both Mobile shells, the web
     one and the native one: the dense sheet's tiles, Download putting the file in the phone's
@@ -3077,7 +3100,7 @@ def main():
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
     every = (browsing, mobile_shell, custom_colour, settings_back, talkback_states, bookmark_star, settings_ahead, back_key_chain, page_dialogs, popups, leave, page_camera, downloads, crash_notice, download_notifications, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, passkeys_on_the_phone, passwords_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
-             the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web, long_press_menu, keyboard_bars, welcome_extras, welcome_last_step, web_server_kinds, update_on_the_phone)
+             the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web, secure_dns, long_press_menu, keyboard_bars, welcome_extras, welcome_last_step, web_server_kinds, update_on_the_phone)
     for part in [p for p in every if not sys.argv[1:] or p.__name__ in sys.argv[1:]]:
         # tools/results.py splits a run's memory, CPU and checks by these lines.
         print("--- part " + part.__name__, flush=True)
