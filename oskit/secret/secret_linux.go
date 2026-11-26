@@ -14,7 +14,7 @@ import (
 
 	"github.com/godbus/dbus/v5"
 
-	"github.com/sudiptadeb/oskit/internal/portal"
+	"github.com/debkosh/project-b/oskit/internal/portal"
 )
 
 // ErrNoPortal is a desktop that gave no key: no Secret portal, one with no backend (GNOME

@@ -10,7 +10,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/sudiptadeb/oskit/notify"
+	"github.com/debkosh/project-b/oskit/notify"
 )
 
 func main() { runMain(demo) }

@@ -7,8 +7,8 @@ import (
 
 	"github.com/godbus/dbus/v5"
 
-	"github.com/sudiptadeb/oskit"
-	"github.com/sudiptadeb/oskit/internal/portal"
+	"github.com/debkosh/project-b/oskit"
+	"github.com/debkosh/project-b/oskit/internal/portal"
 )
 
 const (

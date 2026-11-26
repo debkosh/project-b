@@ -12,7 +12,7 @@ import (
 	"strings"
 	"unsafe"
 
-	"github.com/sudiptadeb/oskit"
+	"github.com/debkosh/project-b/oskit"
 )
 
 // mac is the Mac's: NSWorkspace opens and reveals, and is asked about and set as the default

@@ -6,7 +6,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/sudiptadeb/oskit"
+	"github.com/debkosh/project-b/oskit"
 )
 
 // Note is one notification. ID is the app's: showing another with the same ID replaces it,

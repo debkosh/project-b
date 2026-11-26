@@ -90,7 +90,7 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/sudiptadeb/oskit"
+	"github.com/debkosh/project-b/oskit"
 
 	"projectb/abi"
 	"projectb/app"

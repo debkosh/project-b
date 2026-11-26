@@ -9,8 +9,8 @@ import (
 
 	"github.com/godbus/dbus/v5"
 
-	"github.com/sudiptadeb/oskit"
-	"github.com/sudiptadeb/oskit/internal/portal"
+	"github.com/debkosh/project-b/oskit"
+	"github.com/debkosh/project-b/oskit/internal/portal"
 )
 
 // desktopID is the app's desktop file, by which mimeapps.list names it, as SetDesktopID gave.

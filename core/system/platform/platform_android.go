@@ -24,7 +24,7 @@ import (
 	"syscall"
 	"unsafe"
 
-	"github.com/sudiptadeb/oskit/clip"
+	"github.com/debkosh/project-b/oskit/clip"
 
 	"projectb/crash"
 	"projectb/system"
