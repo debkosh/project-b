@@ -72,8 +72,8 @@ type Config struct {
 	URLs         []string
 	BlockedHosts []string
 	Update       update.Config
-	// CrashReports is the folder macOS writes its crash reports to, "" on Linux, which keeps
-	// none for the crash notice to point at.
+	// CrashReports is the folder macOS writes its crash reports to, "" off the Mac, where
+	// none is kept for the crash notice to point at.
 	CrashReports string
 	// DownloadsDir is where downloads go: the user's Downloads folder in the real app, and
 	// a Downloads folder in the profile when it is "".
