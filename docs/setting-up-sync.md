@@ -16,7 +16,7 @@ it is [sync.md](sync.md); this page is only the steps.
 ## What you need
 
 - Project B on each device, from the
-  [latest release](https://github.com/sudiptadeb/project-b/releases/latest).
+  [latest release](https://github.com/debkosh/project-b/releases/latest).
 - **A sync server.** There are two ways to get one:
   - [Option A](#option-a-try-the-small-hosted-server): a small server at
     [memd.debkosh.com/synckosh](https://memd.debkosh.com/synckosh) that you can use to try

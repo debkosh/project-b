@@ -18,7 +18,7 @@ It lives in `core/` because Go embeds it, and `go:embed` can't reach outside the
 and the tools read it from there, as they read `core/flags/registry.json`.
 
 The research it came from, with file and line evidence for every row, is on the branch
-`web-features-research`, in [docs/research/web-features/](https://github.com/sudiptadeb/project-b/tree/web-features-research/docs/research/web-features):
+`web-features-research`, in [docs/research/web-features/](https://github.com/debkosh/project-b/tree/web-features-research/docs/research/web-features):
 `inventory.md` (the 76 features), `tracking.md` (the proposal this follows) and the scripts.
 The inventory is a reading of Chromium 155 and Project B 0.2.61; the registry is kept current.
 
