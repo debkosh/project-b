@@ -1,10 +1,10 @@
 {
   "project": "project-b",
-  "releases": "https://github.com/sudiptadeb/project-b/releases/download/channels/releases.json",
+  "releases": "https://github.com/debkosh/project-b/releases/download/channels/releases.json",
   "auto_update": true,
   "release": {
     "targets": ["darwin/arm64", "android/arm64"],
     "asset": "Project-B-{version}-{os}-{arch}.zip",
-    "url": "https://github.com/sudiptadeb/project-b/releases/download/v{version}/{asset}"
+    "url": "https://github.com/debkosh/project-b/releases/download/v{version}/{asset}"
   }
 }
