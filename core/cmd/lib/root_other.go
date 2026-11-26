@@ -12,6 +12,3 @@ func defaultRoot() string {
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".project-b")
 }
-
-// crashReports is the folder macOS writes its crash reports to.
-func crashReports(home string) string { return filepath.Join(home, "Library/Logs/DiagnosticReports") }
