@@ -95,6 +95,11 @@ type Probe struct {
 	// SeesNothing says the call has no answer a page can see, as adding a link has none.
 	// The probes only check that the renderer lives.
 	SeesNothing bool `json:"sees_nothing,omitempty"`
+	// TapRaces says what the call gives on a tap rides a race the page can't settle: the
+	// browser reads the tap's user activation as the call reaches it, on another pipe from
+	// the one that tells it of the tap and of calls that used the activation up. On a tap the
+	// probes only check that the renderer lives, and the call has no "<platform>_tap".
+	TapRaces bool `json:"tap_races,omitempty"`
 	// Expect is what the call gives, by platform, as the probes write it: absent, resolved,
 	// rejected, pending or killed, then a colon and the error's name or the value's start
 	// when the kind alone doesn't tell (rejected:NotAllowedError, resolved:false). A probe
@@ -239,6 +244,9 @@ func (f *Feature) checkExpect(p Probe) error {
 	}
 	for key, e := range p.Expect {
 		platform := strings.TrimSuffix(key, "_tap")
+		if p.TapRaces && platform != key {
+			return fmt.Errorf("a call with tap_races expects nothing on a tap, not %s", key)
+		}
 		if !slices.Contains(Platforms, platform) {
 			return fmt.Errorf("expect %q isn't a platform, or a platform's _tap", key)
 		}

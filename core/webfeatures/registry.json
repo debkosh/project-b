@@ -559,7 +559,7 @@
     "why": "The site asks first, and its notifications show as the system shows any; Android has no notification service yet, so a page allowed to shows none",
     "needs": ["delegate", "go-manager", "prompt"],
     "owner": "engine/browser/permissions.cc:Permissions",
-    "probe": [{"name": "notification", "expect": {"mac": "resolved:\"default\"", "linux": "resolved:\"default\"", "android": "resolved:\"default\"", "android_tap": "resolved:\"default\""}, "call": "Notification.requestPermission()"}],
+    "probe": [{"name": "notification", "tap_races": true, "expect": {"mac": "resolved:\"default\"", "linux": "resolved:\"default\"", "android": "resolved:\"default\""}, "call": "Notification.requestPermission()"}],
     "test": ["probe:notification", "basics:16"]
   },
   {

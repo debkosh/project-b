@@ -55,7 +55,7 @@ The inventory is a reading of Chromium 155 and Project B 0.2.61; the registry is
 | `needs` | | What it would take to work as in Chrome: `stay-off`, `binder`, `delegate`, `go-manager`, `prompt`, `build` |
 | `owner` | | Our file and function that answers for it; none when nothing of ours does |
 | `disable_blink_features`, `disable_features` | | The Blink runtime features and base features the engine turns off for it |
-| `probe` | | The calls the probes make: `name`, `call`, `expect` (below), and `sees_nothing` for a call with no answer a page can see |
+| `probe` | | The calls the probes make: `name`, `call`, `expect` (below), `sees_nothing` for a call with no answer a page can see, and `tap_races` for one whose answer on a tap rides a race |
 | `test` | | The checks that prove the status: `probe:<name>`, `basics:<number>` (`tools/check_basics.py`), or `check:<a check's name>` |
 
 A probe's `expect` says what its call gives on each platform, as the probes write it: the kind
@@ -95,7 +95,12 @@ colours, nothing to change, and the filter.
 | `unknown` | Not run, and the code doesn't settle it | anything but a killed renderer; the probe prints what it saw |
 
 A call with `sees_nothing` (adding a `<link>`, say) is held only to its renderer living,
-whatever the status.
+whatever the status. So is a call with `tap_races` on a tap, and it has no `android_tap`. The
+browser reads the tap's user activation as the call reaches it, on another pipe from the one
+that tells it of the tap and of the calls that used the activation up, so which comes first
+is a race. `Notification.requestPermission()` on a tap opens the site's prompt when the
+activation is there first, which waits for a person (`pending`), and gives `"default"` when it
+isn't (seen on Android 14, 2026-11-26).
 
 ## Changing it
 

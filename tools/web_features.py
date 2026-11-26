@@ -49,9 +49,10 @@ def probes():
 
 def mismatch(row, probe, platform, seen, when="load"):
     """What is wrong with what a call gave on platform, on load or on a tap, naming its row, or
-    ''. A call that has no answer a page can see is only held to its renderer living."""
+    ''. A call that has no answer a page can see, or whose answer on a tap rides a race
+    (tap_races), is there only held to its renderer living."""
     status = row["status"][platform]
-    if probe.get("sees_nothing"):
+    if probe.get("sees_nothing") or (when == "tap" and probe.get("tap_races")):
         if (seen == "killed") == (status == "kills"):
             return ""
         return "%s gave %s, but %s is %s on %s in the registry" % (probe["name"], seen, row["id"], status, platform)
