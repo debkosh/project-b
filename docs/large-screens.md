@@ -31,6 +31,10 @@ time the window settles on a new size.
   compact height); **wide** is the rest. The height keeps a phone turned sideways (891 by 412
   dp) on Mobile. A window being dragged in desktop mode switches only 40 dp past either line,
   so it doesn't flip back and forth at the edge (ux, 2026-11-24).
+- **The on-screen keyboard doesn't count.** It shortens the window as it comes up, which on a
+  tablet goes under 480 dp: while it is up the height from before it counts, so Standard keeps
+  its field and a phone on its side stays on Mobile. Android tells the keyboard and the size it
+  makes in either order, within the half second the size takes to settle.
 - **It switches once the size has settled**, half a second after the last change, so dragging
   a desktop window's corner doesn't reload the shell on every step.
 - **Switching is the reload shells already do** ([shells.md](shells.md#choosing-a-shell)): the
@@ -126,7 +130,8 @@ same image is next; a desktop system image would be a download, which this spec 
   (`adb shell input mouse` and `input scroll`);
 - keyboard: Ctrl+T opens a tab, Ctrl+W closes it, Ctrl+L puts the caret in the address field,
   Ctrl+Tab moves on, typing in a page isn't taken (`input keyevent --meta`);
-- Go's tests for the class rule (wide, narrow, in between, the settle delay), and
+- Go's tests for the class rule (wide, narrow, in between, the settle delay, the on-screen
+  keyboard), and
   `tools/test.sh mock` with the mock's window resized across the line.
 
 The phone runs stay as they are. This changes the phone shell's choosing, so per

@@ -20,6 +20,11 @@ type shellPick struct {
 	post  func(func())
 	// narrow is the window's size as last settled; sized says one has been reported.
 	narrow, sized bool
+	// keyboard is the soft keyboard being up. width and height are the size that counts,
+	// the height being the one from before the keyboard while it is up, as a window the
+	// keyboard shortens is not a narrow one; before is the height before the last change.
+	keyboard              bool
+	width, height, before float64
 	// waiting is the size not yet settled, and waits counts the reports, so only the last
 	// one's timer takes effect.
 	waiting bool
@@ -72,7 +77,28 @@ func (s *shellPick) WindowChanged(st engine.WindowState) {
 	if !shells.OnAndroid || st.W == 0 || st.H == 0 {
 		return
 	}
-	narrow := shells.Narrow(st.W, st.H, s.narrow)
+	s.width = st.W
+	if !s.keyboard || s.height == 0 {
+		s.before, s.height = s.height, st.H
+	}
+	s.check()
+}
+
+// KeyboardChanged takes the soft keyboard coming up or going. Android may report the size
+// it makes first: a change of shell that size set waiting is then the keyboard's, and the
+// height from before it counts.
+func (s *shellPick) KeyboardChanged(up bool) {
+	if up && !s.keyboard && s.waiting && s.before != 0 {
+		s.height = s.before
+	}
+	s.keyboard = up
+	if s.sized {
+		s.check()
+	}
+}
+
+func (s *shellPick) check() {
+	narrow := shells.Narrow(s.width, s.height, s.narrow)
 	if !s.sized {
 		s.sized, s.narrow = true, narrow
 		s.update()
