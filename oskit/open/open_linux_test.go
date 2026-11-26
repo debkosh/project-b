@@ -12,8 +12,8 @@ import (
 
 	"github.com/godbus/dbus/v5"
 
-	"github.com/sudiptadeb/oskit/internal/portal"
-	"github.com/sudiptadeb/oskit/internal/portaltest"
+	"github.com/debkosh/project-b/oskit/internal/portal"
+	"github.com/debkosh/project-b/oskit/internal/portaltest"
 )
 
 func TestMain(m *testing.M) { os.Exit(portaltest.Run(m)) }

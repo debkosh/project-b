@@ -9,8 +9,8 @@ import "C"
 import (
 	"unsafe"
 
-	"github.com/sudiptadeb/oskit"
-	"github.com/sudiptadeb/oskit/internal/jni"
+	"github.com/debkosh/project-b/oskit"
+	"github.com/debkosh/project-b/oskit/internal/jni"
 )
 
 // android is Android's, through oskit's Open.java: a content:// address opens in the app the

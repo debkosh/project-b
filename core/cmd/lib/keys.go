@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/sudiptadeb/oskit/secret"
+	"github.com/debkosh/project-b/oskit/secret"
 
 	"projectb/keys"
 )

@@ -3,7 +3,7 @@ package open
 import (
 	"sync"
 
-	"github.com/sudiptadeb/oskit"
+	"github.com/debkosh/project-b/oskit"
 )
 
 // Fake is an Opener for tests: it keeps what it was asked to open, and is the default browser

@@ -7,7 +7,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/sudiptadeb/oskit"
+	"github.com/debkosh/project-b/oskit"
 )
 
 // The kinds.

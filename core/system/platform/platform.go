@@ -9,9 +9,9 @@ package platform
 import "C"
 
 import (
-	"github.com/sudiptadeb/oskit/media"
-	"github.com/sudiptadeb/oskit/notify"
-	"github.com/sudiptadeb/oskit/open"
+	"github.com/debkosh/project-b/oskit/media"
+	"github.com/debkosh/project-b/oskit/notify"
+	"github.com/debkosh/project-b/oskit/open"
 
 	"projectb/system"
 )

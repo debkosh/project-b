@@ -11,7 +11,7 @@ require (
 
 require github.com/sudiptadeb/gulal v0.3.0
 
-require github.com/sudiptadeb/oskit v0.0.0
+require github.com/debkosh/project-b/oskit v0.0.0
 
 require (
 	github.com/godbus/dbus/v5 v5.2.4
@@ -32,4 +32,4 @@ require (
 
 replace github.com/debkosh/project-b/browserdata => ../browserdata
 
-replace github.com/sudiptadeb/oskit => ../oskit
+replace github.com/debkosh/project-b/oskit => ../oskit

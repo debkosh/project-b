@@ -17,7 +17,7 @@ later with `git subtree split -P oskit`. Until then it lives here and nothing is
 
 ```
 oskit/
-  go.mod                 module github.com/sudiptadeb/oskit; needs only godbus (Linux)
+  go.mod                 module github.com/debkosh/project-b/oskit; needs only godbus (Linux)
   README.md              what it is, the threading rule, how an app wires it in
   oskit.go               Post (the threading rule) and the shared Question helper
   notify/   notify.go  notify_darwin.go/.m  notify_android.go  notify_linux.go  fake.go
@@ -31,7 +31,7 @@ oskit/
   demo/                  one small app per OS that shows each capability, for deskrig
 ```
 
-- No import of core, ever. core imports oskit through `replace github.com/sudiptadeb/oskit =>
+- No import of core, ever. core imports oskit through `replace github.com/debkosh/project-b/oskit =>
   ../oskit` in core/go.mod, as it does browserdata.
 - Each package is an interface, `New()` for this OS, and `fake.go`: a fake that records calls
   and answers when a test says, built on every OS with no cgo. Tests in core and in oskit run on

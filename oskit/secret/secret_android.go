@@ -11,7 +11,7 @@ import (
 	"errors"
 	"unsafe"
 
-	"github.com/sudiptadeb/oskit/internal/jni"
+	"github.com/debkosh/project-b/oskit/internal/jni"
 )
 
 func init() {

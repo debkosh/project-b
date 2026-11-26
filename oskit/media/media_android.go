@@ -9,7 +9,7 @@ import (
 	"slices"
 	"unsafe"
 
-	"github.com/sudiptadeb/oskit/internal/jni"
+	"github.com/debkosh/project-b/oskit/internal/jni"
 )
 
 // android is Android's runtime permissions, CAMERA and RECORD_AUDIO, through oskit's

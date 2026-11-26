@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/sudiptadeb/oskit/media"
+	"github.com/debkosh/project-b/oskit/media"
 )
 
 // A site's camera, allowed, still needs the OS's own permission: the OS is asked then, and its

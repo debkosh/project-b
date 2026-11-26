@@ -4,7 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 
 /**
- * oskit's Java side (github.com/sudiptadeb/oskit). The app calls attach as its activity is made,
+ * oskit's Java side (github.com/debkosh/project-b/oskit). The app calls attach as its activity is made,
  * before Go asks anything of oskit, and its native code calls Go's OskitAttach once; it hands
  * the activity's intents, permission answers and activity results on with onIntent,
  * onRequestPermissionsResult and onActivityResult.

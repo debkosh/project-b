@@ -14,7 +14,7 @@ Linux half (the desktop portals over D-Bus) and a fake for tests.
 | `media` | The OS's own camera and microphone permission: Android's runtime ask, macOS's Privacy & Security; settings; the return to the front | Mac, Android; Linux allows |
 
 It imports nothing of the app that uses it. Project B's core takes it with
-`replace github.com/sudiptadeb/oskit => ../oskit`; it can leave as a repo of its own with
+`replace github.com/debkosh/project-b/oskit => ../oskit`; it can leave as a repo of its own with
 `git subtree split -P oskit`.
 
 ## Threading

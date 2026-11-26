@@ -11,7 +11,7 @@ import "C"
 import (
 	"unsafe"
 
-	"github.com/sudiptadeb/oskit"
+	"github.com/debkosh/project-b/oskit"
 )
 
 // mac is the Mac's notifications. A Mac's are the app's own to show: macOS asks the person

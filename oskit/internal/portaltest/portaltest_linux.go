@@ -16,7 +16,7 @@ import (
 
 	"github.com/godbus/dbus/v5"
 
-	"github.com/sudiptadeb/oskit/internal/portal"
+	"github.com/debkosh/project-b/oskit/internal/portal"
 )
 
 // Desktop owns the portals' name on the tests' bus; Bus is its address. Nil where there is no
