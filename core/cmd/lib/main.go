@@ -20,6 +20,8 @@ static inline void call_close_tab(const PBEngineCalls* c, int64_t tab) { c->clos
 static inline int call_ask_to_close_tab(const PBEngineCalls* c, int64_t tab) { return c->ask_to_close_tab(tab); }
 static inline void call_open_profile(const PBEngineCalls* c, const char* dir) { c->open_profile(dir); }
 static inline void call_set_block_rules(const PBEngineCalls* c, const char* hosts) { c->set_block_rules(hosts); }
+static inline void call_set_secure_dns(const PBEngineCalls* c, int32_t mode, const char* t) { c->set_secure_dns(mode, t); }
+static inline void call_check_secure_dns(const PBEngineCalls* c, const char* t) { c->check_secure_dns(t); }
 static inline void call_set_ad_rules(const PBEngineCalls* c, const char* hosts, const char* off) { c->set_ad_rules(hosts, off); }
 static inline void call_set_window_page(const PBEngineCalls* c, int64_t window, const char* page) { c->set_window_page(window, page); }
 static inline void call_create_window(const PBEngineCalls* c, int64_t window, int64_t near, const char* page, const PBWindowLayout* layout, const PBRegion* regions, size_t count, const PBVisibleTab* tabs, size_t tab_count) { c->create_window(window, near, page, layout, regions, count, tabs, tab_count); }
@@ -100,6 +102,7 @@ import (
 	"projectb/instance"
 	"projectb/profiles"
 	"projectb/relaunch"
+	"projectb/securedns"
 	"projectb/shellfiles"
 	"projectb/system/platform"
 	"projectb/timeline"
@@ -395,6 +398,18 @@ func (e *nativeEngine) SetBlockRules(r engine.BlockRules) {
 	c := C.CString(strings.Join(r.Hosts, "\n"))
 	defer C.free(unsafe.Pointer(c))
 	C.call_set_block_rules(e.calls, c)
+}
+
+func (e *nativeEngine) SetSecureDNS(mode, template string) {
+	c := C.CString(template)
+	defer C.free(unsafe.Pointer(c))
+	C.call_set_secure_dns(e.calls, C.int32_t(securedns.Number(mode)), c)
+}
+
+func (e *nativeEngine) CheckSecureDNS(template string) {
+	c := C.CString(template)
+	defer C.free(unsafe.Pointer(c))
+	C.call_check_secure_dns(e.calls, c)
 }
 
 func (e *nativeEngine) SetAdRules(r engine.AdRules) {

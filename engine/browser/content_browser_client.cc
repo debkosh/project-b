@@ -26,6 +26,7 @@
 #include "project_b/engine/browser/forms.h"
 #include "project_b/engine/browser/printing.h"
 #include "project_b/engine/browser/proxy_configs.h"
+#include "project_b/engine/browser/secure_dns.h"
 #include "project_b/engine/browser/site_features.h"
 #include "project_b/engine/common/block_rules.h"
 #include "project_b/engine/abi/pb_abi.h"
@@ -304,6 +305,14 @@ base::OnceClosure ContentBrowserClient::SelectClientCertificate(
     std::unique_ptr<content::ClientCertificateDelegate> delegate) {
   delegate->ContinueWithCertificate(nullptr, nullptr);
   return base::OnceClosure();
+}
+
+// A network service just made, or made again after it crashed, hears Secure DNS again, as
+// Chrome's SystemNetworkContextManager tells it (docs/secure-dns.md).
+void ContentBrowserClient::OnNetworkServiceCreated(
+    network::mojom::NetworkService* network_service) {
+  ContentBrowserClientHooks::OnNetworkServiceCreated(network_service);
+  secure_dns::Apply(network_service);
 }
 
 // Cookies and the HTTP cache are saved in the partition's folder, as Chrome lays a

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"projectb/engine"
+	"projectb/securedns"
 )
 
 // loadDelay is how long a mock page takes to load.
@@ -111,6 +112,7 @@ type Engine struct {
 	quitErasure    engine.Erasure
 	profiles       []string
 	rules          []engine.BlockRules
+	secureDNS      []string
 	adRules        engine.AdRules
 	// badCerts is the hosts a test gave a bad certificate. Main thread.
 	badCerts map[string]bool
@@ -246,6 +248,22 @@ func (e *Engine) Profiles() []string { return e.profiles }
 
 // SetBlockRules records the rules. The mock's pages make no requests to refuse.
 func (e *Engine) SetBlockRules(r engine.BlockRules) { e.rules = append(e.rules, r) }
+
+// SetSecureDNS records the mode and template, as "mode template". The mock's pages look
+// nothing up.
+func (e *Engine) SetSecureDNS(mode, template string) {
+	e.secureDNS = append(e.secureDNS, strings.TrimSpace(mode+" "+template))
+}
+
+// SecureDNS is what the app set, in order. On the main thread.
+func (e *Engine) SecureDNS() []string { return e.secureDNS }
+
+// CheckSecureDNS answers that the server looked a name up, but one whose host ends in
+// .invalid, which no server can have, so a test and the shell's contract can show both.
+func (e *Engine) CheckSecureDNS(template string) {
+	ok := !strings.HasSuffix(securedns.Host(template), ".invalid")
+	e.Post(func() { e.listener.SecureDNSChecked(template, ok) })
+}
 
 // SetAdRules keeps the rules, for a test to read. The mock's pages make no requests.
 func (e *Engine) SetAdRules(r engine.AdRules) { e.adRules = r }

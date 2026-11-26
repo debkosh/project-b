@@ -59,6 +59,8 @@ engine_browser_sources = [
   "$engine_dir/browser/printing.h",
   "$engine_dir/browser/proxy_configs.cc",
   "$engine_dir/browser/proxy_configs.h",
+  "$engine_dir/browser/secure_dns.cc",
+  "$engine_dir/browser/secure_dns.h",
   "$engine_dir/browser/shell_page.cc",
   "$engine_dir/browser/shell_page.h",
   "$engine_dir/browser/site_data.cc",

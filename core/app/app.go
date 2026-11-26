@@ -116,6 +116,8 @@ type App struct {
 	// choosingFolder is the window whose folder panel Save to's Change… opened, 0 for
 	// none (download_folder_settings.go). Main thread.
 	choosingFolder engine.WindowID
+	// dns is Secure DNS as the engine has it, and its provider's last check.
+	dns secureDNS
 
 	// System is the OS's door, Config's.
 	System   system.System
@@ -253,6 +255,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Downloads.Load()
 	a.Tabs = tabs.New(e, a.Workspaces, a.Pins)
 	a.Prefs = prefs.New(cfg.ProfileDir)
+	a.startSecureDNS(e)
 	a.shells = newShellPick(a.Prefs, e.Post)
 	a.Flags = flags.New(cfg.ProfileDir)
 	a.Window = window.New(e, shells.Page(a.shells.InUse()), a.Prefs.FrameColor(), themeOf(a.Prefs.Theme()), a.Tabs.Front)
@@ -349,6 +352,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.startFilling(e)
 	a.Settings.AddPart(a.keepCookiesSettingsPart())
 	a.Settings.AddPart(a.downloadFolderSettingsPart(e, cfg.DownloadsDir))
+	a.Settings.AddPart(a.secureDNSSettingsPart())
 	a.Settings.AddPart(a.syncSettingsPart())
 	a.Settings.AddPart(a.helpSettingsPart())
 	a.registerActions(e)

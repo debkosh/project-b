@@ -167,6 +167,7 @@ func (r *adapterRecorder) Thumbnail(engine.TabID, int64)                        
 func (r *adapterRecorder) FolderChosen(engine.WindowID, string)                    {}
 func (r *adapterRecorder) AppLink(engine.TabID, string)                            {}
 func (r *adapterRecorder) ImageSaved(string, bool)                                 {}
+func (r *adapterRecorder) SecureDNSChecked(string, bool)                           {}
 func (r *adapterRecorder) SiteDataListed(string, []engine.SiteData)                {}
 func (r *adapterRecorder) IsPageFullScreen(engine.TabID) bool                      { return false }
 func (r *adapterRecorder) DownloadNotificationCommand(int, engine.DownloadCommand) {}

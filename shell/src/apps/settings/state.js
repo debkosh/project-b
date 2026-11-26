@@ -30,6 +30,12 @@ export const state = reactive({
   // {id, name}.
   searchEngine: '',
   searchEngines: [],
+  // Secure DNS's providers, each {id, name, template}, and the last check of the provider
+  // in use, {host, ok}, host "" before one answers (docs/secure-dns.md). dnsCustomOpen
+  // shows the custom row while Custom is chosen and no template is kept yet.
+  dnsProviders: [],
+  dnsCheck: { host: '', ok: false },
+  dnsCustomOpen: false,
   autoUpdate: true,
   // The channel updates come from, 'stable' or 'dev'.
   channel: 'stable',
@@ -191,6 +197,8 @@ export function connect() {
             passwordCount: m.passwordCount || 0,
             passwordCheck: m.passwordCheck !== false,
             downloadsFolder: m.downloadsFolder || '',
+            dnsProviders: m.dnsProviders || [],
+            dnsCheck: m.dnsCheck || { host: '', ok: false },
             homeFolder: m.homeFolder || '',
             sparks: m.sparks || [],
             siteKinds: m.siteKinds,
@@ -312,6 +320,9 @@ export function connect() {
           break;
         case 'prefs':
           state.prefs = m.prefs;
+          break;
+        case 'dnsCheck':
+          state.dnsCheck = { host: m.host, ok: m.ok };
           break;
         case 'bookmarks':
           state.bookmarks = m.bookmarks;

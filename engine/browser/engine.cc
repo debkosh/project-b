@@ -53,6 +53,7 @@
 #include "project_b/engine/browser/notifications.h"
 #include "project_b/engine/browser/passkeys.h"
 #endif
+#include "project_b/engine/browser/secure_dns.h"
 #include "project_b/engine/browser/shell_page.h"
 #if BUILDFLAG(IS_MAC)
 #include "project_b/engine/browser/mac_app.h"
@@ -632,6 +633,16 @@ void CallSetBlockRules(const char* hosts) {
                                      base::SPLIT_WANT_NONEMPTY));
 }
 
+void CallSetSecureDns(int32_t mode, const char* doh_template) {
+  CheckMainThread();
+  secure_dns::Set(mode, doh_template);
+}
+
+void CallCheckSecureDns(const char* doh_template) {
+  CheckMainThread();
+  secure_dns::Check(g_engine->browser_context(), doh_template);
+}
+
 void CallSetAdRules(const char* hosts, const char* off) {
   CheckMainThread();
   site_features::SetAdRules(
@@ -777,6 +788,8 @@ const PBEngineCalls* Engine::Calls() {
       .app_command = CallAppCommand,
       .set_block_rules = CallSetBlockRules,
       .set_ad_rules = CallSetAdRules,
+      .set_secure_dns = CallSetSecureDns,
+      .check_secure_dns = CallCheckSecureDns,
       .content_hooks = CallContentHooks,
       .post_wakeup = CallPostWakeup,
 #if BUILDFLAG(IS_ANDROID)

@@ -1,11 +1,12 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { phone } from '@/phone.js';
 import Segmented from '@/ui/Segmented.vue';
 import Swatches from '@/ui/Swatches.vue';
 import { framePresets } from '@/ui/colours.js';
 import Row from './Row.vue';
 import { send, setPref, state } from './state.js';
+import { dnsHints, dnsModes, dnsStatus, dnsWords, notDoh, validDoh } from './dns.js';
 
 // The settings that are one row each, by part: what Go owns, shown, and the user's changes
 // sent back. A row changes only when Go says so.
@@ -74,6 +75,47 @@ const quitHint = computed(() => {
   return n ? `Except the ${n === 1 ? 'site' : `${n} sites`} you keep` : 'Every site\'s, as the app quits';
 });
 
+// Secure DNS (docs/secure-dns.md): the mode, the provider, which is Custom while a template
+// is kept for it or the person just chose it, and the template, sent once it is valid and
+// typing has paused. The last check's answer is the provider's line, an error in Secure only,
+// where pages won't load; a custom one's, in Secure only, is the field's error instead.
+const dnsMode = computed(() => state.prefs.secureDns || 'off');
+const custom = computed(() => state.prefs.dnsProvider === 'custom' || state.dnsCustomOpen);
+const dnsName = computed(() =>
+  custom.value ? state.dnsCheck.host : state.dnsProviders.find((p) => p.id === state.prefs.dnsProvider)?.name || '',
+);
+const dnsFailing = computed(() => !!state.dnsCheck.host && !state.dnsCheck.ok && dnsMode.value === 'secure');
+const providerHint = computed(() => (custom.value && dnsFailing.value ? '' : dnsStatus(state.dnsCheck, dnsName.value, dnsMode.value)));
+function chooseProvider(id) {
+  state.dnsCustomOpen = id === 'custom';
+  if (id !== 'custom') setPref('dnsProvider', id);
+  else if (validDoh(customText.value)) setPref('dnsCustom', customText.value.trim());
+}
+const customText = ref(state.prefs.dnsCustom || '');
+watch(
+  () => state.prefs.dnsCustom,
+  (t) => {
+    if (t && validDoh(customText.value) && customText.value.trim() !== t) return;
+    customText.value = t || customText.value;
+  },
+);
+const customTyped = ref(false);
+let pause = 0;
+function typeCustom(t) {
+  customText.value = t;
+  customTyped.value = false;
+  clearTimeout(pause);
+  pause = setTimeout(() => {
+    customTyped.value = true;
+    if (validDoh(t) && t.trim() !== state.prefs.dnsCustom) setPref('dnsCustom', t.trim());
+  }, 600);
+}
+const customError = computed(() => {
+  if (customTyped.value && customText.value.trim() && !validDoh(customText.value)) return notDoh;
+  if (state.prefs.dnsProvider === 'custom' && dnsFailing.value) return dnsStatus(state.dnsCheck, state.dnsCheck.host, 'secure');
+  return '';
+});
+
 const layouts = [
   { value: 'vertical', label: 'Vertical' },
   { value: 'horizontal', label: 'Horizontal' },
@@ -82,7 +124,37 @@ const layouts = [
 </script>
 
 <template>
-  <Row v-if="part === 'theme'" label="Theme">
+  <Row v-if="part === 'secureDns'" label="Secure DNS" :hint="dnsHints[dnsMode]" :words="dnsWords" class="dns-mode">
+    <Segmented label="Secure DNS" :options="dnsModes" :model-value="dnsMode" @update:model-value="setPref('secureDns', $event)" />
+  </Row>
+
+  <Row v-else-if="part === 'dnsProvider'" label="Provider" for="dns-provider" :hint="providerHint" :class="{ 'dns-failing': dnsFailing }">
+    <select id="dns-provider" :value="custom ? 'custom' : state.prefs.dnsProvider" @change="chooseProvider($event.target.value)">
+      <option v-for="p in state.dnsProviders" :key="p.id" :value="p.id">{{ p.name }}</option>
+      <option value="custom">Custom</option>
+    </select>
+  </Row>
+
+  <Row v-else-if="part === 'dnsCustom'" v-slot="{ named }" label="Custom provider" class="dns-custom">
+    <input
+      v-bind="named"
+      id="dns-custom"
+      type="url"
+      class="text-field"
+      :class="{ invalid: customError }"
+      :aria-invalid="customError ? 'true' : undefined"
+      :aria-errormessage="customError ? 'dns-custom-error' : undefined"
+      spellcheck="false"
+      autocapitalize="off"
+      autocomplete="off"
+      placeholder="https://dns.example/dns-query{?dns}"
+      :value="customText"
+      @input="typeCustom($event.target.value)"
+    />
+    <span v-if="customError" id="dns-custom-error" class="text-field-error" role="alert">{{ customError }}</span>
+  </Row>
+
+  <Row v-else-if="part === 'theme'" label="Theme">
     <Segmented label="Theme" :options="themes" :model-value="state.theme" @update:model-value="send({ t: 'setTheme', text: $event })" />
   </Row>
 
@@ -246,6 +318,41 @@ const layouts = [
 .touch .colours :deep(.ui-swatches) {
   flex-basis: 100%;
   flex-wrap: wrap;
+}
+
+/* Secure DNS: on a phone the mode's three parts take a line of their own, in equal parts;
+   the custom template's field and its error take the whole row, under its label. */
+.touch .dns-mode {
+  flex-wrap: wrap;
+  row-gap: 10px;
+}
+.touch .dns-mode :deep(.label) {
+  flex-basis: 100%;
+}
+.touch .dns-mode :deep(.ui-segmented) {
+  display: flex;
+  width: 100%;
+}
+.touch .dns-mode :deep(.ui-segmented > *) {
+  flex: 1;
+}
+.dns-failing :deep(.secondary) {
+  color: var(--danger);
+}
+.dns-custom {
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+.dns-custom :deep(.label) {
+  flex-basis: 100%;
+}
+.dns-custom .text-field {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+.dns-custom .text-field-error {
+  flex-basis: 100%;
+  margin-top: -2px;
 }
 
 /* Save to's folder: its icon before its name. */

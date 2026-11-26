@@ -29,6 +29,10 @@ const where = {
   // things over from.
   import: () => !phone,
   extensions: () => !phone && !!extensionsSection?.shown(),
+  // Secure DNS's provider, once it's on, and the custom template while Custom is chosen.
+  dnsProvider: () => !!state.prefs.secureDns && state.prefs.secureDns !== 'off',
+  dnsCustom: () =>
+    !!state.prefs.secureDns && state.prefs.secureDns !== 'off' && (state.prefs.dnsProvider === 'custom' || state.dnsCustomOpen),
   // The Mac has its own menu bar; a phone has none.
   menuBar: () => !phone && state.keyboard.platform !== 'mac',
   // Linux has one Flatpak branch, Stable, with no Dev to choose (docs/research/linux.md). A
@@ -193,7 +197,7 @@ const sectionList = () => [
     id: 'privacy',
     label: 'Privacy and sites',
     icon: 'privacy',
-    cards: [['clearData', 'blockAds', 'clearOnQuit', 'sites']],
+    cards: [['clearData', 'blockAds', 'clearOnQuit', 'sites'], ['secureDns', 'dnsProvider', 'dnsCustom']],
     summary: () => [state.prefs.blockAds ? 'Ads blocked' : 'Ads shown', lists.sites.summary()].filter((x) => x).join(' · '),
   },
   {

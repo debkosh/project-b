@@ -71,7 +71,7 @@ func TestApplySetsWhatTheValuesHoldThroughTheSetters(t *testing.T) {
 		t.Fatalf("heard %v", heard)
 	}
 	m.Close()
-	if got := New(dir).All(); !reflect.DeepEqual(got, Prefs{TabLayout: TabsHorizontal, FrameColor: "#5b7fd6", Theme: ThemeDark, Shell: "pbshell", PhoneShell: "mwshell", AddressBarPosition: AddressBottom, SearchEngine: "duckduckgo", Start: StartContinue, BookmarksNewTab: true, BookmarksCommandBox: true, BlockAds: true, KeepCookies: []string{}}) {
+	if got := New(dir).All(); !reflect.DeepEqual(got, Prefs{TabLayout: TabsHorizontal, FrameColor: "#5b7fd6", Theme: ThemeDark, Shell: "pbshell", PhoneShell: "mwshell", AddressBarPosition: AddressBottom, SearchEngine: "duckduckgo", Start: StartContinue, BookmarksNewTab: true, BookmarksCommandBox: true, BlockAds: true, KeepCookies: []string{}, SecureDNS: "off", DNSProvider: "cloudflare"}) {
 		t.Fatalf("saved %+v", got)
 	}
 }
@@ -240,5 +240,43 @@ func TestAChangeReachesTheDiskWithoutClose(t *testing.T) {
 			t.Fatal("the change wasn't on disk a second later")
 		}
 		time.Sleep(time.Millisecond)
+	}
+}
+
+// Secure DNS starts Off with Cloudflare chosen for when it's turned on; a mode or provider
+// that isn't one, or a custom template that isn't valid, changes nothing, and a custom one
+// is kept when another provider is chosen. docs/secure-dns.md.
+func TestSecureDNSKeepsOnlyWhatChromiumTakes(t *testing.T) {
+	dir := t.TempDir()
+	m := New(dir)
+	if p := m.All(); p.SecureDNS != "off" || p.DNSProvider != "cloudflare" || m.SecureDNSTemplate() != "" {
+		t.Fatalf("%+v", p)
+	}
+	m.Set("secureDns", "automatic")
+	if m.SecureDNSTemplate() != "https://chrome.cloudflare-dns.com/dns-query" {
+		t.Fatal(m.SecureDNSTemplate())
+	}
+	m.Set("secureDns", "sometimes")
+	m.Set("dnsProvider", "nobody")
+	m.Set("dnsCustom", "http://dns.example/q")
+	if p := m.All(); p.SecureDNS != "automatic" || p.DNSProvider != "cloudflare" || p.DNSCustom != "" {
+		t.Fatalf("%+v", p)
+	}
+	m.Set("dnsCustom", "https://dns.example/q{?dns}")
+	m.Set("secureDns", "secure")
+	if m.SecureDNSTemplate() != "https://dns.example/q{?dns}" {
+		t.Fatal(m.SecureDNSTemplate())
+	}
+	m.Set("dnsProvider", "google")
+	if p := m.All(); p.DNSCustom != "https://dns.example/q{?dns}" || m.SecureDNSTemplate() != "https://dns.google/dns-query{?dns}" {
+		t.Fatalf("%+v", p)
+	}
+	m.Close()
+	if p := New(dir).All(); p.SecureDNS != "secure" || p.DNSProvider != "google" || p.DNSCustom != "https://dns.example/q{?dns}" {
+		t.Fatalf("saved %+v", p)
+	}
+	os.WriteFile(filepath.Join(dir, "prefs.json"), []byte(`{"secureDns":"x","dnsProvider":"custom","dnsCustom":"ftp://a"}`), 0o600)
+	if p := New(dir).All(); p.SecureDNS != "off" || p.DNSProvider != "cloudflare" || p.DNSCustom != "" {
+		t.Fatalf("bad file %+v", p)
 	}
 }
