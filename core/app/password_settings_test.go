@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sudiptadeb/project-b/browserdata"
+	"github.com/debkosh/project-b/browserdata"
 
 	"projectb/app"
 	"projectb/system"

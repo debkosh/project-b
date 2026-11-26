@@ -13,7 +13,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/sudiptadeb/project-b/browserdata"
+	"github.com/debkosh/project-b/browserdata"
 )
 
 func main() {
