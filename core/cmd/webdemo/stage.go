@@ -52,9 +52,9 @@ func (d *demoEngine) WriteClipboard(text string) {
 	d.Engine.WriteClipboard(text)
 }
 
-func (d *demoEngine) DownloadURL(tab engine.TabID, u string, saveAs bool) {
+func (d *demoEngine) DownloadURL(tab engine.TabID, u, referrer string, saveAs bool) {
 	d.say("download " + u + ": the renderer is a stand-in here, so nothing is fetched")
-	d.Engine.DownloadURL(tab, u, saveAs)
+	d.Engine.DownloadURL(tab, u, referrer, saveAs)
 }
 
 func (d *demoEngine) Find(tab engine.TabID, request int, text string, forward, next bool) {

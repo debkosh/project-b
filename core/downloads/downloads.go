@@ -39,6 +39,9 @@ type Item struct {
 	Paused   bool   `json:"paused"`
 	// Reason is why a failed one failed, as engine.Download has it, or "".
 	Reason string `json:"reason,omitempty"`
+	// Referrer is the page it came from, which Retry says again: a site may serve its
+	// files only to its own pages.
+	Referrer string `json:"referrer,omitempty"`
 	// Started is when it joined the list, in Unix seconds; 0 for one listed before the
 	// list kept it, which a clear from a time leaves.
 	Started int64 `json:"started,omitempty"`
@@ -264,6 +267,9 @@ func (m *Manager) Updated(d engine.Download) int {
 		m.byEngine[d.ID] = it
 	}
 	it.retrying = false
+	if d.Referrer != "" {
+		it.Referrer = d.Referrer
+	}
 	it.Path, it.Name = d.Path, filepath.Base(d.Path)
 	it.State, it.Received, it.Total, it.Paused, it.Reason = states[d.State], d.Received, d.Total, d.Paused, d.Reason
 	it.publishing = publishes && it.State == "done"
@@ -457,7 +463,7 @@ func (m *Manager) Act(id int, action string) {
 		if _, ours := m.byEngine[it.engine]; ours && it.State == "failed" {
 			m.e.DownloadCommand(it.engine, engine.DownloadResume)
 		} else {
-			m.e.DownloadURL(0, it.URL, false)
+			m.e.DownloadURL(0, it.URL, it.Referrer, false)
 		}
 	case "copyLink":
 		if it.URL != "" {

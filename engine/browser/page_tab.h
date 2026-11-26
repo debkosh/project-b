@@ -14,6 +14,7 @@
 #include "build/build_config.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/render_widget_host_view.h"
+#include "content/public/common/referrer.h"
 #include "project_b/engine/browser/hooks_gen.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "ui/gfx/geometry/size.h"
@@ -67,6 +68,9 @@ class PageTab : public WebContentsObserverHooks, public WebContentsDelegateHooks
   // as a PNG, telling Go with PB_EVENT_IMAGE_SAVED. The phone's long-press menu shares and
   // copies an image this way, and shows its thumbnail.
   void SaveImage(const GURL& url, const std::string& path, int max_size);
+  // The referrer a download of url from the tab's last menu sends, as Chrome's Save Link As
+  // does: the page the menu was opened on, under its referrer policy.
+  content::Referrer MenuReferrer(const GURL& url) const;
 
  private:
   // content::WebContentsObserver:
@@ -196,6 +200,8 @@ class PageTab : public WebContentsObserverHooks, public WebContentsDelegateHooks
   scoped_refptr<base::RefCountedMemory> thumbnail_;
   // Content's find request numbers to Go's, until each one's final reply.
   std::map<int, int> find_requests_;
+  // The frame the last menu was opened on, and its referrer policy.
+  content::Referrer menu_referrer_;
   base::WeakPtrFactory<PageTab> weak_factory_{this};
 };
 

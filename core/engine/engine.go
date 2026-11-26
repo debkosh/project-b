@@ -264,8 +264,11 @@ type Engine interface {
 	// WriteClipboard puts plain text on the system clipboard.
 	WriteClipboard(text string)
 	// DownloadURL downloads url as tab's page would, through the Save panel when saveAs;
-	// tab 0 downloads it as the browser's own.
-	DownloadURL(tab TabID, url string, saveAs bool)
+	// tab 0 downloads it as the browser's own. It says it comes from referrer, the page
+	// the download first came from, as Retry has it; "" in a tab is the page of the tab's
+	// last menu, as Chrome's Save Link As does: a site may serve its files only to its own
+	// pages.
+	DownloadURL(tab TabID, url, referrer string, saveAs bool)
 	// DownloadCommand acts on a running download.
 	DownloadCommand(id DownloadID, c DownloadCommand)
 	// ShowDownload shows how a download stands where the system shows such things: on a
@@ -784,6 +787,8 @@ type Download struct {
 	// dropped, "server" when the server refused it, "disk" when there was no room for
 	// it, or "" for any other reason.
 	Reason string
+	// Referrer is the page it came from, as it was asked for, or "".
+	Referrer string
 }
 
 // DownloadCommand is what can be done to a running download.

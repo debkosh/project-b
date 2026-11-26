@@ -13,6 +13,7 @@
 #include "base/timer/timer.h"
 #include "build/build_config.h"
 #include "components/download/public/common/download_item.h"
+#include "content/public/common/referrer.h"
 #include "content/public/browser/download_manager.h"
 #include "content/public/browser/download_manager_delegate.h"
 #include "url/gurl.h"
@@ -41,8 +42,12 @@ class Downloads : public content::DownloadManagerDelegate,
   void SetDownloadManager(content::DownloadManager* manager);
 
   // Downloads url as tab's page would, showing the Save panel first when save_as; with
-  // no page, as the browser itself, as Retry does for a download that can't resume.
-  void DownloadURL(content::WebContents* contents, const GURL& url, bool save_as);
+  // no page, as the browser itself, as Retry does for a download that can't resume. It
+  // says it comes from referrer: a site may serve its files only to its own pages.
+  void DownloadURL(content::WebContents* contents,
+                   const GURL& url,
+                   const content::Referrer& referrer,
+                   bool save_as);
   // Runs a PBDownloadCommand on download id.
   void Command(uint32_t id, int32_t command);
 

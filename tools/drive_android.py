@@ -122,6 +122,8 @@ PAGES["/images"] = ("<title>Images</title>" + "".join(
     for c in ("c33", "3c3", "33c")) + "<script>setTimeout(() => fetch('/images-alive'), 3000)</script>")
 
 served = []
+# The /own/ files asked for from anywhere but their page.
+refused = []
 # Each request's host and path, for Links to other sites, which serves two sites.
 seen = []
 # Each request's user agent.
@@ -167,6 +169,16 @@ class Server(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(data)
             return
+        # A file only for the press page, as a site's own files can be: asked for from
+        # anywhere else, with no Referer or another, it is refused.
+        if path.startswith("/own/"):
+            if not self.headers.get("Referer", "").endswith("/press"):
+                refused.append(path)
+                self.send_response(403)
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
+            path = ("/pic/" if path.endswith(".png") else "/dl/") + path[5:]
         if path.startswith("/dl/"):
             data = b"Project B download check\n"
             self.send_response(200)
@@ -238,8 +250,8 @@ PICTURE = png(96, 64)
 # and a field that says what is pasted in it.
 PAGES["/press"] = ("<title>Press</title><style>body{margin:0;font-size:32px}a,img{display:block;height:25vh;width:100%}"
                    "a{line-height:25vh}img{object-fit:cover}#p{height:15vh;border:2px solid #888}</style>"
-                   "<a href=/dl/pb-press-link.txt>The press file</a>"
-                   "<img src=/pic/pb-press-pic.png alt='A picture'>"
+                   "<a href=/own/pb-press-link.txt>The press file</a>"
+                   "<img src=/own/pb-press-pic.png alt='A picture'>"
                    "<a href=/b><img src=/pic/pb-press-linked.png alt='A linked picture'></a>"
                    "<div id=p contenteditable>paste here</div><script>"
                    "p.onpaste=e=>{const f=[...e.clipboardData.items].find(i=>i.kind=='file')?.getAsFile();"
@@ -2799,8 +2811,8 @@ def long_press_menu():
                   until(lambda: tiles("New tab", "In group", "Copy link", "Download", "Share", "Copy link text")) is not None)
             shot("47-long-press-link-" + shell)
             tap(middle(see_named("shell", "Download")))
-            check(shell + ": Download puts the file in the phone's Downloads at once",
-                  until(lambda: landed("pb-press-link", "txt"), 20) is not None)
+            check(shell + ": Download puts the file in the phone's Downloads at once, from its page, as a site that serves its files only to its own pages wants",
+                  until(lambda: landed("pb-press-link", "txt"), 20) is not None, "refused: %s" % refused)
             held("The press file")
             tap(middle(see_named("shell", "Share")))
             check(shell + ": Share opens Android's chooser",
@@ -2826,8 +2838,8 @@ def long_press_menu():
             key(4)  # The keyboard.
             held("A picture")
             tap(middle(see_named("shell", "Download")))
-            check(shell + ": the picture's Download puts it in the phone's Downloads",
-                  until(lambda: landed("pb-press-pic", "png"), 20) is not None)
+            check(shell + ": the picture's Download puts it in the phone's Downloads, from its page",
+                  until(lambda: landed("pb-press-pic", "png"), 20) is not None, "refused: %s" % refused)
             held("A picture")
             tap(middle(see_named("shell", "Share")))
             check(shell + ": the picture's Share opens Android's chooser",

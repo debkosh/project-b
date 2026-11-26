@@ -1057,7 +1057,7 @@ func (e *Engine) Fire(w engine.WindowID, tab engine.TabID, kind, value string) {
 			}
 		case "download":
 			// The page starts a download of value.
-			e.download(shown, value, false)
+			e.download(shown, value, "", false)
 		case "downloadsFail":
 			// Every running download fails where it got to.
 			e.failDownloads()

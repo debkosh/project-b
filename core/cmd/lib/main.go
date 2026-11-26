@@ -39,7 +39,7 @@ static inline double call_get_zoom(const PBEngineCalls* c, int64_t tab) { return
 static inline int64_t call_duplicate_tab(const PBEngineCalls* c, int64_t tab) { return c->duplicate_tab(tab); }
 static inline void call_edit(const PBEngineCalls* c, int32_t command) { c->edit(command); }
 static inline void call_write_clipboard(const PBEngineCalls* c, const char* text, size_t length) { c->write_clipboard(text, length); }
-static inline void call_download_url(const PBEngineCalls* c, int64_t tab, const char* url, int save_as) { c->download_url(tab, url, save_as); }
+static inline void call_download_url(const PBEngineCalls* c, int64_t tab, const char* url, const char* referrer, int save_as) { c->download_url(tab, url, referrer, save_as); }
 static inline void call_download_command(const PBEngineCalls* c, uint32_t download, int32_t command) { c->download_command(download, command); }
 static inline void call_show_download(const PBEngineCalls* c, int64_t id, const char* name, const char* path, int32_t state, int64_t received, int64_t total, int paused) {
   if (c->show_download) c->show_download(id, name, path, state, received, total, paused);
@@ -233,14 +233,16 @@ func (e *nativeEngine) WriteClipboard(text string) {
 	C.call_write_clipboard(e.calls, cs, C.size_t(len(text)))
 }
 
-func (e *nativeEngine) DownloadURL(tab engine.TabID, url string, saveAs bool) {
+func (e *nativeEngine) DownloadURL(tab engine.TabID, url, referrer string, saveAs bool) {
 	cs := C.CString(url)
 	defer C.free(unsafe.Pointer(cs))
+	cr := C.CString(referrer)
+	defer C.free(unsafe.Pointer(cr))
 	save := C.int(0)
 	if saveAs {
 		save = 1
 	}
-	C.call_download_url(e.calls, C.int64_t(tab), cs, save)
+	C.call_download_url(e.calls, C.int64_t(tab), cs, cr, save)
 }
 
 func (e *nativeEngine) DownloadCommand(id engine.DownloadID, c engine.DownloadCommand) {

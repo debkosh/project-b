@@ -742,6 +742,7 @@ void PageTab::DidReceiveFindReply(int request_id,
 // A right click, or a long press, in the page: Go says whether the shell draws the menu.
 bool PageTab::HandleContextMenu(content::RenderFrameHost& render_frame_host,
                                 const content::ContextMenuParams& params) {
+  menu_referrer_ = content::Referrer(params.frame_url.GetAsReferrer(), params.referrer_policy);
   hooks::Args args;
   args.Int(id_);
   args.Double(params.x);
@@ -757,6 +758,10 @@ bool PageTab::HandleContextMenu(content::RenderFrameHost& render_frame_host,
     return true;
   }
   return WebContentsDelegateHooks::HandleContextMenu(render_frame_host, params);
+}
+
+content::Referrer PageTab::MenuReferrer(const GURL& url) const {
+  return content::Referrer::SanitizeForRequest(url, menu_referrer_);
 }
 
 // A person's close ran the page's beforeunload (Engine::AskToCloseTab): its unload runs,
