@@ -992,6 +992,57 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   check('Remove forgets the site', await until(async () => !('https://news.test' in sitesFile()) && !(await sites.textContent()).includes('news.test')));
   check('with none left, the list says so', await until(async () => (await sites.textContent()).includes('No site keeps anything or has asked for a permission yet')));
 
+  // Secure DNS (docs/secure-dns.md): Off to start, with no provider; Automatic chooses
+  // Cloudflare, which the mock's check says answers; a custom template that isn't one is
+  // refused as typed, and one no server has keeps, with its error; Secure only says what it
+  // means; another provider keeps the custom template; and Off hides the provider again.
+  await show('secureDns');
+  const dnsMode = page.getByRole('radiogroup', { name: 'Secure DNS' });
+  const dnsRow = page.locator('.row', { has: dnsMode });
+  const provider = page.getByLabel('Provider', { exact: true });
+  const providerRow = page.locator('.row', { has: provider });
+  check('Secure DNS is Off to start, saying the network can see, with no provider',
+    (await dnsMode.getByRole('radio', { name: 'Off' }).getAttribute('aria-checked')) === 'true' && (await dnsRow.textContent()).includes('Your network can see which sites you look up') && (await provider.count()) === 0);
+  await dnsMode.getByRole('radio', { name: 'Automatic' }).click();
+  check('Automatic is saved with Cloudflare, and the check says it answers',
+    await until(async () => prefsFile().secureDns === 'automatic' && (await provider.inputValue()) === 'cloudflare' && (await providerRow.textContent()).includes('Cloudflare answers')),
+    JSON.stringify(prefsFile()));
+  check('and the mode says what it does', (await dnsRow.textContent()).includes('Encrypted when your provider answers, otherwise as before'));
+  await settle(page);
+  await page.screenshot({ path: shot('settings-secure-dns') });
+  await provider.selectOption('custom');
+  const customField = page.getByLabel('Custom provider', { exact: true });
+  check('Custom shows a field for the template, and changes nothing yet', await until(() => customField.isVisible()) && prefsFile().dnsProvider === 'cloudflare');
+  await customField.fill('http://dns.example/dns-query');
+  check("a template that isn't https is refused as typed, and not saved",
+    await until(async () => (await page.locator('#dns-custom-error').textContent().catch(() => '')).includes('Not a DNS-over-HTTPS address')) && prefsFile().dnsProvider === 'cloudflare');
+  await customField.fill('https://dns.invalid/dns-query{?dns}');
+  check('a valid one is saved as the provider',
+    await until(() => prefsFile().dnsProvider === 'custom' && prefsFile().dnsCustom === 'https://dns.invalid/dns-query{?dns}'), JSON.stringify(prefsFile()));
+  check("in Automatic, one whose server doesn't answer says lookups go the usual way, with no error",
+    await until(async () => (await providerRow.textContent()).includes('Couldn\'t reach dns.invalid, so lookups go the usual way until it answers')) &&
+      (await page.locator('#dns-custom-error').count()) === 0 && !(await customField.evaluate((e) => e.classList.contains('invalid'))));
+  await dnsMode.getByRole('radio', { name: 'Secure only' }).click();
+  check('Secure only is saved, and says sites it can\'t look up won\'t load',
+    await until(async () => prefsFile().secureDns === 'secure' && (await dnsRow.textContent()).includes("Always encrypted. Sites it can't look up this way won't load")));
+  check("and there, one whose server doesn't answer is the field's error: pages may not load",
+    await until(async () => (await page.locator('#dns-custom-error').textContent().catch(() => '')) === 'Couldn\'t reach dns.invalid, so pages may not load') &&
+      (await customField.evaluate((e) => e.classList.contains('invalid'))));
+  await settle(page);
+  await page.screenshot({ path: shot('settings-secure-dns-custom') });
+  await provider.selectOption('google');
+  check('another provider is saved, its check shown, and the custom template kept',
+    await until(async () => prefsFile().dnsProvider === 'google' && (await providerRow.textContent()).includes('Google answers') && (await customField.count()) === 0 && prefsFile().dnsCustom === 'https://dns.invalid/dns-query{?dns}'));
+  await dnsMode.getByRole('radio', { name: 'Off' }).click();
+  check('Off is saved, and the provider goes', await until(async () => prefsFile().secureDns === 'off' && (await provider.count()) === 0));
+  // Search finds it by what people call it: DoH, as well as its name and its providers'.
+  const searchBox = page.getByLabel('Search settings');
+  for (const w of ['doh', 'encrypted dns', 'quad9']) {
+    await searchBox.fill(w);
+    check(`searching "${w}" finds Secure DNS`, await until(() => dnsMode.isVisible()));
+  }
+  await searchBox.fill('');
+
   // Clear browsing data asks from when, all time to start, and what goes: history, cookies
   // and site data, and the cache ticked, History saying how many pages; Escape clears nothing.
   await show('clearData');
@@ -1287,6 +1338,11 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
     }
     if (id === 'workspaces') await phoneCustomColour();
     if (id === 'privacy') {
+      // Secure DNS's three modes take a line of their own, side by side, under its words.
+      const modes = await page.getByRole('radiogroup', { name: 'Secure DNS' }).getByRole('radio').evaluateAll((rs) => rs.map((r) => r.getBoundingClientRect()));
+      const words = await page.locator('.row', { has: page.getByRole('radiogroup', { name: 'Secure DNS' }) }).locator('.label').evaluate((e) => e.getBoundingClientRect());
+      check('on a phone, Secure DNS\'s three modes share a line under its words, in equal parts',
+        modes.length === 3 && modes.every((m) => Math.abs(m.top - modes[0].top) < 2 && m.top >= words.bottom && Math.abs(m.width - modes[0].width) < 2), JSON.stringify(modes));
       check('on a phone Privacy has no Clear cookies when the app quits', (await page.getByRole('switch', { name: /Clear cookies when the app quits/ }).count()) === 0);
       await page.locator('[data-section="sites"]').click();
       check('on a phone, Sites opens its page, and back goes to its section', await until(() => page.getByRole('region', { name: 'Site settings', exact: true }).isVisible()));

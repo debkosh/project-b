@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"projectb/search"
+	"projectb/securedns"
 	"projectb/shells"
 	"projectb/timeline"
 	"projectb/tones"
@@ -94,6 +95,12 @@ type Prefs struct {
 	// DownloadFolder is the folder downloads are saved in, a whole path, "" for the
 	// Downloads folder. A desktop's. docs/settings.md.
 	DownloadFolder string `json:"downloadFolder"`
+	// SecureDNS is where the profile's lookups go (package securedns): Off, Automatic or
+	// Secure; DNSProvider the provider's id, securedns.Custom for DNSCustom's template.
+	// docs/secure-dns.md.
+	SecureDNS   string `json:"secureDns"`
+	DNSProvider string `json:"dnsProvider"`
+	DNSCustom   string `json:"dnsCustom"`
 	// UpdateNoticed is the release whose one-time notice the person has seen, so the shell
 	// shows a ready release's notice once in a profile, not at every start. docs/updates.md.
 	UpdateNoticed string `json:"updateNoticed,omitempty"`
@@ -102,7 +109,8 @@ type Prefs struct {
 // Defaults are the settings before the user changes any.
 func Defaults() Prefs {
 	return Prefs{TabLayout: TabsVertical, FrameColor: tones.Brand, Theme: ThemeSystem, Shell: shells.Default(), PhoneShell: shells.DefaultPhone(), AddressBarPosition: AddressBottom, SearchEngine: search.Default, Start: StartContinue,
-		BookmarksNewTab: true, BookmarksCommandBox: true, BlockAds: true, KeepCookies: []string{}}
+		BookmarksNewTab: true, BookmarksCommandBox: true, BlockAds: true, KeepCookies: []string{},
+		SecureDNS: securedns.Off, DNSProvider: securedns.Default}
 }
 
 func isTheme(t string) bool { return t == ThemeSystem || t == ThemeLight || t == ThemeDark }
@@ -173,6 +181,18 @@ func New(dir string) *Manager {
 				s.BookmarksBarFolder = ""
 			}
 			s.KeepCookies = keptSites(s.KeepCookies)
+			if !securedns.IsMode(s.SecureDNS) {
+				s.SecureDNS = securedns.Off
+			}
+			if !securedns.IsProvider(s.DNSProvider) {
+				s.DNSProvider = securedns.Default
+			}
+			if s.DNSCustom != "" && !securedns.Valid(s.DNSCustom) {
+				s.DNSCustom = ""
+			}
+			if s.DNSProvider == securedns.Custom && s.DNSCustom == "" {
+				s.DNSProvider = securedns.Default
+			}
 			if !isFolder(s.DownloadFolder) {
 				s.DownloadFolder = ""
 			}
@@ -382,6 +402,35 @@ func (m *Manager) SetBookmarksBarFolder(id string) {
 	m.changed()
 }
 
+// SetSecureDNS sets the mode, the provider and, for securedns.Custom, its template, all
+// together, as Settings changes them. A mode or provider that isn't one, or a custom
+// template that isn't valid, changes nothing.
+func (m *Manager) SetSecureDNS(mode, provider, custom string) {
+	if !securedns.IsMode(mode) || !securedns.IsProvider(provider) {
+		return
+	}
+	if provider == securedns.Custom && !securedns.Valid(custom) {
+		return
+	}
+	if provider != securedns.Custom {
+		custom = m.prefs.DNSCustom
+	}
+	if mode == m.prefs.SecureDNS && provider == m.prefs.DNSProvider && custom == m.prefs.DNSCustom {
+		return
+	}
+	m.prefs.SecureDNS, m.prefs.DNSProvider, m.prefs.DNSCustom = mode, provider, custom
+	m.save()
+	m.changed()
+}
+
+// SecureDNSTemplate is the template lookups go to, "" when Secure DNS is Off.
+func (m *Manager) SecureDNSTemplate() string {
+	if m.prefs.SecureDNS == securedns.Off {
+		return ""
+	}
+	return securedns.Template(m.prefs.DNSProvider, m.prefs.DNSCustom)
+}
+
 // SetBlockAds turns the ad blocker on or off on every site.
 func (m *Manager) SetBlockAds(on bool) { m.setSwitch(&m.prefs.BlockAds, on) }
 
@@ -513,6 +562,12 @@ func (m *Manager) Set(name, value string) bool {
 		}
 	case "updateNoticed":
 		m.SetUpdateNoticed(value)
+	case "secureDns":
+		m.SetSecureDNS(value, m.prefs.DNSProvider, m.prefs.DNSCustom)
+	case "dnsProvider":
+		m.SetSecureDNS(m.prefs.SecureDNS, value, m.prefs.DNSCustom)
+	case "dnsCustom":
+		m.SetSecureDNS(m.prefs.SecureDNS, securedns.Custom, value)
 	default:
 		return false
 	}
@@ -549,6 +604,7 @@ func (m *Manager) Apply(values json.RawMessage) error {
 	m.SetClearCookiesOnQuit(p.ClearCookiesOnQuit)
 	m.setKeepCookies(p.KeepCookies)
 	m.SetDownloadFolder(p.DownloadFolder)
+	m.SetSecureDNS(p.SecureDNS, p.DNSProvider, p.DNSCustom)
 	return nil
 }
 

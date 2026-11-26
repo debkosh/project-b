@@ -196,6 +196,13 @@ type Engine interface {
 	// asks NavigationStarting, which decides what the tab shows. The app sets them once,
 	// at start, before any tab.
 	SetBlockRules(r BlockRules)
+	// SetSecureDNS says where every workspace's lookups go: mode is securedns.Off,
+	// Automatic or Secure, and template the DNS-over-HTTPS server's, "" when Off. The app
+	// sets it at start, before any tab, and again whenever it changes. docs/secure-dns.md.
+	SetSecureDNS(mode, template string)
+	// CheckSecureDNS asks template's server alone, over DNS-over-HTTPS, to look a known
+	// name up; SecureDNSChecked follows with template.
+	CheckSecureDNS(template string)
 	// SetAdRules says which hosts the ad blocker keeps a page's requests from, and the
 	// sites, by origin, where it is off. The app sets them at start, before any tab, and
 	// again whenever they change; a page's requests follow the rules of when they start.
@@ -572,6 +579,9 @@ type Listener interface {
 	FolderChosen(w WindowID, path string)
 	// ImageSaved is how SaveImage ended: whether the image is now a PNG at path.
 	ImageSaved(path string, ok bool)
+	// SecureDNSChecked is how CheckSecureDNS ended: whether template's server looked a
+	// name up.
+	SecureDNSChecked(template string, ok bool)
 	// DownloadNotificationCommand is a phone's notification of a download, by the id
 	// ShowDownload gave it, asking to cancel, pause or resume it.
 	DownloadNotificationCommand(id int, c DownloadCommand)

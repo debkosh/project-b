@@ -21,7 +21,7 @@ ship sectioned settings from now on.. i ahve used them and feel sections make be
 | Workspaces | The workspaces |
 | Bookmarks | Where bookmarks show, and the bar |
 | Downloads (desktop) | Save to, Ask where to save each file |
-| Privacy and sites | Clear browsing data, Block ads, Clear cookies when the app quits (desktop), Sites, which opens as a page of its own |
+| Privacy and sites | Clear browsing data, Block ads, Clear cookies when the app quits (desktop), Sites, which opens as a page of its own; Secure DNS, a card of its own |
 | Extensions, or Sparks | Extensions (with its flag on, desktop), and Sparks; named Sparks without extensions |
 | Keyboard (desktop) | Keys, and the keyboard shortcuts |
 | About Project B | The version and its update, Automatic updates, What's new ([About](#about)), Run setup again |
@@ -96,6 +96,9 @@ the version on About's line, and Update ready while one is.
   runs it and ends the run loop once every workspace's erase is done, or after five
   seconds. A crash erases nothing: the next quit does.
 - **Block ads** is the ad blocker on every site ([site-features.md](site-features.md#the-ad-blocker)).
+- **Secure DNS** sends the profile's lookups to a DNS-over-HTTPS provider: Off, Automatic or
+  Secure only, a listed provider or a custom template, and the provider's last check
+  ([secure-dns.md](secure-dns.md)).
 - **Sites** is a row per site, its registrable domain, as Safari's Website Data and
   Chrome's All sites have it (`core/app/site_data_settings.go`): the settings of each of its
   hosts, and what every workspace's storage keeps for them, its cookies and bytes, which the

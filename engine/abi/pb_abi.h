@@ -199,6 +199,8 @@ typedef enum PBEvent {
                                         // phone's shared Downloads, a content:// address,
                                         // or "" when the copy failed; Android only. The
                                         // address is the download's path from then on
+  PB_EVENT_SECURE_DNS_CHECKED = 85,     // s: the template check_secure_dns had, i: 1 when
+                                        // its server looked a name up, 0 when it didn't
   PB_EVENT_PAGE_MESSAGE = 23,           // i: tab, s: the page's name ("settings",
                                         // "history", "bookmarks", "downloads",
                                         // "welcome"), s: json, from the page of ours
@@ -538,6 +540,13 @@ typedef struct PBEngineCalls {
   // one per line, lower case; and the origins of the pages it lets reach them, one per line.
   // Go sets them at start, before any tab, and again whenever they change.
   void (*set_ad_rules)(const char* hosts, const char* off);
+  // Secure DNS (docs/secure-dns.md): mode is net::SecureDnsMode's value, 0 off, 1
+  // automatic, 2 secure, and template the DNS-over-HTTPS server's, "" when off. Go sets it
+  // at start, before any tab, and again whenever it changes; it holds for every workspace.
+  void (*set_secure_dns)(int32_t mode, const char* doh_template);
+  // Asks template's server alone, over DNS-over-HTTPS, to look a known name up, as
+  // Chrome's settings check a provider; PB_EVENT_SECURE_DNS_CHECKED answers.
+  void (*check_secure_dns)(const char* doh_template);
   // What an engine built on Chromium's content layer adds: its generated hooks, the
   // table in pb_content_abi.h. Null in an engine without them.
   const struct PBContentHooks* (*content_hooks)(void);
