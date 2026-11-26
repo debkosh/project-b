@@ -112,14 +112,16 @@ func (s *System) Report(version string, ended []int) []crash.Section {
 	// grants), logcat would give the whole phone's.
 	// logcat's -t counts lines before --uid keeps the app's, so the end is cut here.
 	own := "--uid=" + strconv.Itoa(os.Getuid())
-	mine := lastLines(logcat("-b", "main,system", own), 600)
+	// Every address in the lines cut to its origin, as crashes.log names a page: a report is
+	// for sharing, and a line can name a page's whole address, its search among it.
+	mine := crash.Origins(lastLines(logcat("-b", "main,system", own), 600))
 	return []crash.Section{
 		{Title: "Version", Text: "Project B " + version + ", " + runtime.GOOS + "/" + runtime.GOARCH + ", pid " + strconv.Itoa(os.Getpid())},
 		{Title: "Android", Text: "Android " + prop("ro.build.version.release") + " (API " + prop("ro.build.version.sdk") + "), " +
 			prop("ro.build.fingerprint")},
 		{Title: "Device", Text: prop("ro.product.manufacturer") + " " + prop("ro.product.model") + ", page size " + strconv.Itoa(os.Getpagesize())},
 		{Title: "The app's log, its end (logcat)", Text: mine},
-		{Title: "The app's last crashes Android kept, newest last (logcat crash buffer)", Text: lastLines(logcat("-b", "crash", own), 50)},
+		{Title: "The app's last crashes Android kept, newest last (logcat crash buffer)", Text: crash.Origins(lastLines(logcat("-b", "crash", own), 50))},
 		{Title: "The children that crashed in this run, their own lines, the newest three (logcat, by pid)", Text: childLines(ended)},
 		{Title: "How Android says the app's processes ended, newest first (ApplicationExitInfo)", Text: processEnds()},
 	}
@@ -155,7 +157,7 @@ func childLines(ended []int) string {
 	}
 	var b strings.Builder
 	for _, pid := range ended {
-		lines := strings.TrimSpace(logcat("-b", "main,crash", "-t", "120", "--pid="+strconv.Itoa(pid)))
+		lines := strings.TrimSpace(crash.Origins(logcat("-b", "main,crash", "-t", "120", "--pid="+strconv.Itoa(pid))))
 		if !strings.Contains(lines, "\n") {
 			lines = "(none the app may read: Android shows it a renderer's lines once adb has run " +
 				"pm grant " + packageName() + " android.permission.READ_LOGS)"

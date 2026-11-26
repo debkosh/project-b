@@ -158,3 +158,17 @@ func TestAProcessTheSystemEndedIsNoCrash(t *testing.T) {
 		}
 	}
 }
+
+// A report's lines from a process keep each address's origin alone, as crashes.log does, and
+// leave what only looks like a scheme as it is.
+func TestOriginsCutsEachAddressToItsOrigin(t *testing.T) {
+	in := `11-26 12:47:01.091 I/chromium(23352): [INFO:CONSOLE:1] "failed https://p.test:8080/search?q=private#x", source: https://p.test/a.js (1)
+F/chromium: [FATAL:resource_bundle.cc:1301] Check failed: !data->empty(). Unable to find resource: 47513
+net error for wss://chat.test/room/42?token=s3cret and file:///sdcard/Download/mine.pdf, data:text/html,<b>hi</b> blob:https://p.test/9f2c`
+	want := `11-26 12:47:01.091 I/chromium(23352): [INFO:CONSOLE:1] "failed https://p.test:8080", source: https://p.test (1)
+F/chromium: [FATAL:resource_bundle.cc:1301] Check failed: !data->empty(). Unable to find resource: 47513
+net error for wss://chat.test and file:, data: blob:`
+	if got := Origins(in); got != want {
+		t.Fatalf("Origins =\n%s\nwant\n%s", got, want)
+	}
+}

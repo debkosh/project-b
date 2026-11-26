@@ -25,7 +25,9 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
+	"strings"
 	"time"
 
 	"projectb/engine"
@@ -173,6 +175,29 @@ func (m *Manager) ProcessCrashed(p engine.ProcessCrash) {
 		timeline.Errorf("crash: %v", err)
 	}
 }
+
+// addresses are the addresses in a line of text: a scheme, then what follows it up to a
+// space or a quote; a data: address up to a space, as its content may hold anything.
+var addresses = regexp.MustCompile(`\bdata:\S*|\b[a-zA-Z][a-zA-Z0-9+.-]*:(//)?[^\s"'<>()\[\]]+`)
+
+// Origins is text with each address in it cut to its origin, as crashes.log names a page: a
+// process's own lines, a page's renderer's, can name the page's whole address, its search
+// among it, and a report is for sharing. What only looks like a scheme, as "Check failed:"
+// or a time's "12:47:01", is left as it is, as is the punctuation after an address.
+func Origins(text string) string {
+	return addresses.ReplaceAllStringFunc(text, func(a string) string {
+		trimmed := strings.TrimRight(a, ".,;:!?")
+		u, err := url.Parse(trimmed)
+		if err != nil || !knownScheme[strings.ToLower(u.Scheme)] {
+			return a
+		}
+		return origin(trimmed) + a[len(trimmed):]
+	})
+}
+
+// knownScheme are the schemes whose addresses Origins cuts.
+var knownScheme = map[string]bool{"http": true, "https": true, "ws": true, "wss": true, "file": true,
+	"data": true, "blob": true, "filesystem": true, "chrome": true, "about": true, "content": true, "intent": true}
 
 // origin is the scheme and host of address, "" for none; an address with no host, as data:
 // or about:blank, by its scheme alone.
