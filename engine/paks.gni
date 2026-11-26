@@ -1,0 +1,88 @@
+# The resources the app packs into project_b.pak, desktop and Android alike: everything
+# content_shell packs (content/shell/BUILD.gn, its repack("pak")), as Chromium ships it at
+# this version. Chromium leaves packing to each embedder and keeps no list of what content
+# and Blink ask for, and a string one asks for and can't find aborts its process: Google's
+# page crashed its renderer on Android for want of the <usermedia> element's words, which
+# content_shell packed and we didn't (docs/chromium-upgrade.md, "Resources").
+#
+# Of content_shell's, only two are left out: shell_resources, content_shell's own pages, and
+# web_ui_mojo_test_resources, test-only, which a shipped build can't depend on.
+# tools/pak_check.py fails when content_shell packs a file this list doesn't, so each bump
+# brings Chromium's new ones in.
+
+import("//build/config/ui.gni")
+import("//device/vr/buildflags/buildflags.gni")
+
+project_b_paks = [
+  "$root_gen_dir/base/tracing/protos/tracing_proto_resources.pak",
+  "$root_gen_dir/components/ukm_resources.pak",
+  "$root_gen_dir/content/browser/resources/media/media_internals_resources.pak",
+  "$root_gen_dir/content/browser/webrtc/resources/webrtc_internals_resources.pak",
+  "$root_gen_dir/content/content_resources.pak",
+  "$root_gen_dir/content/gpu_resources.pak",
+  "$root_gen_dir/content/histograms_resources.pak",
+  "$root_gen_dir/content/process_resources.pak",
+  "$root_gen_dir/content/quota_internals_resources.pak",
+  "$root_gen_dir/content/service_worker_resources.pak",
+  "$root_gen_dir/mojo/public/js/mojo_bindings_resources.pak",
+  "$root_gen_dir/net/net_resources.pak",
+  "$root_gen_dir/third_party/blink/public/resources/blink_resources.pak",
+  "$root_gen_dir/third_party/blink/public/resources/blink_scaled_resources_100_percent.pak",
+  "$root_gen_dir/third_party/blink/public/resources/inspector_overlay_resources.pak",
+  "$root_gen_dir/third_party/blink/public/strings/blink_strings_en-US.pak",
+  "$root_gen_dir/third_party/blink/public/strings/permission_element_generated_strings.pak",
+  "$root_gen_dir/third_party/blink/public/strings/permission_element_strings_en-US.pak",
+  "$root_gen_dir/ui/resources/ui_lottie_resources.pak",
+  "$root_gen_dir/ui/resources/ui_resources_100_percent.pak",
+  "$root_gen_dir/ui/strings/app_locale_settings_en-US.pak",
+  "$root_gen_dir/ui/strings/auto_image_annotation_strings_en-US.pak",
+  "$root_gen_dir/ui/strings/ax_strings_en-US.pak",
+  "$root_gen_dir/ui/strings/ui_strings_en-US.pak",
+  "$root_gen_dir/ui/webui/resources/webui_resources.pak",
+
+  # Ours beside content_shell's: components' strings, which our own code asks for.
+  "$root_gen_dir/components/strings/components_strings_en-US.pak",
+]
+
+project_b_pak_deps = [
+  "//base/tracing/protos:chrome_track_event_resources",
+  "//components/strings",
+  "//components/ukm/debug:resources",
+  "//content:content_resources",
+  "//content/browser/resources",
+  "//content/browser/resources/media:resources",
+  "//content/browser/webrtc/resources",
+  "//mojo/public/js:resources",
+  "//net:net_resources",
+  "//third_party/blink/public:devtools_inspector_resources",
+  "//third_party/blink/public:resources",
+  "//third_party/blink/public:scaled_resources_100_percent",
+  "//third_party/blink/public/strings",
+  "//third_party/blink/public/strings:permission_element_generated_strings",
+  "//third_party/blink/public/strings:permission_element_strings",
+  "//ui/resources",
+  "//ui/strings",
+  "//ui/webui/resources",
+]
+
+if (enable_vr) {
+  project_b_paks += [ "$root_gen_dir/content/webxr_internals_resources.pak" ]
+}
+
+if (!is_android) {
+  project_b_paks += [
+    "$root_gen_dir/content/browser/devtools/devtools_resources.pak",
+    "$root_gen_dir/content/browser/tracing/tracing_resources.pak",
+    "$root_gen_dir/content/traces_internals_resources.pak",
+  ]
+  project_b_pak_deps += [
+    "//content/browser/devtools:devtools_resources",
+    "//content/browser/tracing:resources",
+  ]
+}
+
+if (toolkit_views) {
+  project_b_paks +=
+      [ "$root_gen_dir/ui/views/resources/views_resources_100_percent.pak" ]
+  project_b_pak_deps += [ "//ui/views/resources" ]
+}
