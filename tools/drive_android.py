@@ -1587,6 +1587,37 @@ def start_as_it_is():
     see("shell", timeout=60, label="Menu")
 
 
+def relaunch_on_the_phone():
+    """Settings' Relaunch starts the app again on a phone, as Chrome restarts, through the
+    activity (ProcessPhoenix): a flag's change is applied in a new process, in front, with no
+    crash notice; twice, turning Show window regions on and back off. It ran /bin/sh with Go's
+    os/exec, which Android 10 answers with SIGSYS, ending the app, and which a later Android,
+    with no /bin/sh, refused, so the app quit and never came back."""
+    launch()
+    flag = "Show window regions"
+    pending = lambda: find("settings", text=starts("Relaunch to apply"))
+    for state in ("on", "off"):
+        menu("Settings")
+        see("settings", text=SETTINGS_LIST)
+        # The row's words are the switch's label: a tap on them turns it.
+        tap(middle(settings_section("Flags", flag)))
+        see("settings", text=starts("Relaunch to apply"))
+        before = adb("shell", "pidof", PACKAGE).strip()
+        tap(middle(see_named("settings", "Relaunch")))
+        now = until(lambda: (lambda p: p if p and p != before else None)(adb("shell", "pidof", PACKAGE).strip()), 30)
+        see("shell", timeout=60, label="Menu")
+        check("Relaunch with %s %s starts the app again, in a new process, in front" % (flag, state),
+              now is not None and until(in_front, 10) is not None, "pid %s then %s" % (before, now))
+        check("with no crash notice, and nothing left of the restart",
+              find("shell", text=starts("Project B crashed last time")) is None
+              and ":phoenix" not in adb("shell", "ps", "-A", "-o", "NAME"))
+        menu("Settings")
+        see("settings", text=SETTINGS_LIST)
+        settings_section("Flags", flag)
+        check("and the flag's change is applied, nothing left to relaunch", until(lambda: pending() is None, 5) is not None)
+        close_settings()
+
+
 def crash_notice():
     """The "crashed last time" notice comes only after a crash (docs/fragility.md, "A
     crash notice after runs that never crashed"): not after Android ends the app in the
@@ -3076,7 +3107,7 @@ def main():
     clear_data()
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
-    every = (browsing, mobile_shell, custom_colour, settings_back, talkback_states, bookmark_star, settings_ahead, back_key_chain, page_dialogs, popups, leave, page_camera, downloads, crash_notice, download_notifications, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, passkeys_on_the_phone, passwords_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
+    every = (browsing, mobile_shell, custom_colour, settings_back, talkback_states, bookmark_star, settings_ahead, back_key_chain, page_dialogs, popups, leave, page_camera, downloads, crash_notice, relaunch_on_the_phone, download_notifications, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, passkeys_on_the_phone, passwords_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
              the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web, long_press_menu, keyboard_bars, welcome_extras, welcome_last_step, web_server_kinds, update_on_the_phone)
     for part in [p for p in every if not sys.argv[1:] or p.__name__ in sys.argv[1:]]:
         # tools/results.py splits a run's memory, CPU and checks by these lines.
