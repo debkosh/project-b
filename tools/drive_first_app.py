@@ -365,10 +365,16 @@ class App:
              # A first start would open the welcome over the window (docs/onboarding.md):
              # these checks start past it, as its Skip setup does.
              *([] if welcome else ["--skip-welcome"]), *ARGS, *extra],
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace", bufsize=1,
+            # The driver's answers come on stdout and the timeline on stderr, each through
+            # its own pipe: through one, a write over 512 bytes isn't whole, and a timeline
+            # line landed inside a getTabs answer under load (docs/fragility.md).
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, errors="replace", bufsize=1,
         )
         App.running.append(self)
-        threading.Thread(target=self._read, daemon=True).start()
+        self.open_streams = 2
+        self.log_lock = threading.Lock()
+        threading.Thread(target=self._read, args=(self.proc.stdout,), daemon=True).start()
+        threading.Thread(target=self._read, args=(self.proc.stderr,), daemon=True).start()
         self.wait_reply("start", 60)
         self.writer = self._open_fifo()
         # The app prints app.ready once the shell shows Go's state: tests start there, once
@@ -406,10 +412,11 @@ class App:
         os.set_blocking(fd, True)
         return os.fdopen(fd, "w", buffering=1)
 
-    def _read(self):
-        for line in self.proc.stdout:
-            self.log.write(line)
-            self.log.flush()
+    def _read(self, stream):
+        for line in stream:
+            with self.log_lock:
+                self.log.write(line)
+                self.log.flush()
             m = re.match(r"PBDRIVER (\S+) (.*)$", line.rstrip("\n"))
             if m:
                 with self.cond:
@@ -419,9 +426,12 @@ class App:
                 with self.cond:
                     self.replies["app.ready"] = ""
                     self.cond.notify_all()
+        # The app has gone once both pipes have closed, so its last lines are in the log.
         with self.cond:
-            self.replies["exit"] = "exit"
-            self.cond.notify_all()
+            self.open_streams -= 1
+            if self.open_streams == 0:
+                self.replies["exit"] = "exit"
+                self.cond.notify_all()
 
     def wait_reply(self, key, timeout=20):
         deadline = time.time() + timeout
