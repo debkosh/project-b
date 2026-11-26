@@ -39,7 +39,7 @@ type System struct {
 	clicked         func(id, action string)
 	// notes is each notification ShowNotification was given, in order.
 	notes []system.Notification
-	links           func(urls []string)
+	links func(urls []string)
 	// The checks of the person: what each was for, the verdict they get, whether they wait
 	// for AnswerCheck, those waiting, and how many were taken back.
 	// secret is what CopySecret last put on the clipboard as a secret.

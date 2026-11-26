@@ -64,4 +64,3 @@ func updateConfig(c profiles.Choice) update.Config {
 		},
 	}
 }
-
