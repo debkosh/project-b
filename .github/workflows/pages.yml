@@ -25,13 +25,14 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publish:
+  # Built in one job and deployed in the next: deploy-pages looks the artifact up by the run's
+  # artifacts, and in the same job right after the upload GitHub's list didn't have it yet, so
+  # 0.3.12's three runs failed with "No artifacts named github-pages" (and a rerun of the job,
+  # uploading again, then found two).
+  build:
     # A Dev build's channels pre-release is no Stable release.
     if: github.event_name == 'workflow_dispatch' || !github.event.release.prerelease
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     env:
       GH_TOKEN: ${{ github.token }}
       TAG: ${{ inputs.tag || github.event.release.tag_name }}
@@ -75,5 +76,12 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v4
