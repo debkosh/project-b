@@ -83,7 +83,7 @@ The gaps, row by row: [docs/daily-use.md](docs/daily-use.md). What is decided an
 Bookmarks, history, the addresses you type, passkeys and saved passwords sync between your
 devices through a sync server you choose. Every item is sealed on your device before it
 leaves, under a key the server never has: the server stores and hands on what it cannot
-read. The protocol and its library are [synckosh](https://github.com/sudiptadeb/synckosh),
+read. The protocol and its library are [synckosh](https://github.com/debkosh/synckosh),
 a separate project; the detail of what follows is in
 [docs/sync.md](docs/sync.md#who-can-do-what). Setting it up, step by step:
 [docs/setting-up-sync.md](docs/setting-up-sync.md).
@@ -272,7 +272,7 @@ The app's window shows on that person's screen while the group runs, and takes a
 for a few seconds; the copy and paste check replaces what they had copied. Logging in
 over Screen Sharing counts.
 
-First paint looks at the real window through [deskrig](https://github.com/sudiptadeb/deskrig),
+First paint looks at the real window through [deskrig](https://github.com/debkosh/deskrig),
 which takes window captures and gives real clicks and keys from any session, on this Mac or
 in the VM. Install it and allow it once:
 

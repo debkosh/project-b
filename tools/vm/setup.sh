@@ -2,7 +2,7 @@
 # One time: installs Tart and the checks' Python under ~/PW_TOOLS/macos-vm, pulls the macOS
 # image, makes the VM and adds it to deskrig as a target. Needs no sudo. Safe to run again.
 # deskrig itself installs with
-#   curl -fsSL https://raw.githubusercontent.com/sudiptadeb/deskrig/main/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/debkosh/deskrig/main/install.sh | sh
 #
 # PB_VM names the VM, pb-test by default. Each VM is made from the image on its own, so none
 # depends on another; Tart clones the image with APFS's copy-on-write.

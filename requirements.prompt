@@ -29,7 +29,7 @@ Steps, in order, each with how to know it worked
    tools/test.sh mock       # Go's tests, and the shell on the mock engine
    tools/test.sh app        # the real app, through its driver and through ChromeDriver
 7. Only if a person is logged in at this Mac's screen (tools/on_screen.py says):
-   install deskrig (github.com/sudiptadeb/deskrig), then ask them to run deskrig setup
+   install deskrig (github.com/debkosh/deskrig), then ask them to run deskrig setup
    permissions and allow it in System Settings (you can't do that part),
    then tools/test.sh screen. The app's window shows on their screen while it runs.
 8. Report each group's result, with any FAIL lines in full.

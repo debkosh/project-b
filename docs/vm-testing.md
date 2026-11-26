@@ -2,7 +2,7 @@
 
 `tools/drive_first_app.py` runs with no display, so it can't exercise AppKit's event dispatch,
 the window buttons or dragging. `tools/vm/` is for those: a macOS VM with a
-real desktop, driven by [deskrig](https://github.com/sudiptadeb/deskrig): real mouse and keys
+real desktop, driven by [deskrig](https://github.com/debkosh/deskrig): real mouse and keys
 inside the VM, frames from its window. It is the `vm` group of `tools/test.sh`.
 
 ## Status (2026-11-09)
@@ -259,7 +259,7 @@ most two macOS VMs at once. `run.sh` readies a new VM by itself (`prepare.py`, s
 
 What the checks need, and what they say when it's missing:
 
-- **deskrig**, in `~/.local/bin`: `curl -fsSL https://raw.githubusercontent.com/sudiptadeb/deskrig/main/install.sh | sh`.
+- **deskrig**, in `~/.local/bin`: `curl -fsSL https://raw.githubusercontent.com/debkosh/deskrig/main/install.sh | sh`.
   `tools/vm/deskrig.py` is a copy of its Python client.
 - **The VM's own Python**, `~/PW_TOOLS/macos-vm/venv/bin/python`, which `setup.sh` makes with
   numpy and pillow. The system's Python has neither, and `check.py` says so under it.

@@ -1,5 +1,5 @@
 """The VM's screen for check.py and prepare.py: frames in, real mouse and keys out, through
-deskrig (github.com/sudiptadeb/deskrig, a copy of its Python client is deskrig.py here).
+deskrig (github.com/debkosh/deskrig, a copy of its Python client is deskrig.py here).
 
 deskrig sends the input inside the VM, through Tart's guest agent, and keeps the VM's latest
 frame in a mapped file from its window on this Mac, so a picture is never older than the screen

@@ -5,7 +5,7 @@ every device a person links, through a sync server that holds them sealed and ca
 them ([who can do what](#who-can-do-what)). **Built 2026-11-19:** the Go side, then Settings'
 screens and the deep link, as the mocks the ux review approved that day have them ([the
 screens](#the-screens), [the link](#the-link)). The protocol and the library
-are [synckosh](https://github.com/sudiptadeb/synckosh): its SPEC.md is the protocol, and the core
+are [synckosh](https://github.com/debkosh/synckosh): its SPEC.md is the protocol, and the core
 uses its Go `client` package. The store it works over is [store.md](store.md).
 
 ## His decisions

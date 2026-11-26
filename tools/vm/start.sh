@@ -7,7 +7,7 @@ set -eu
 . "$(dirname "$0")/vars.sh"
 
 command -v deskrig > /dev/null || {
-    echo "deskrig isn't installed: curl -fsSL https://raw.githubusercontent.com/sudiptadeb/deskrig/main/install.sh | sh"
+    echo "deskrig isn't installed: curl -fsSL https://raw.githubusercontent.com/debkosh/deskrig/main/install.sh | sh"
     exit 1
 }
 deskrig vm create "$VM" > /dev/null  # Makes the Tart VM a deskrig target; nothing if it is one.

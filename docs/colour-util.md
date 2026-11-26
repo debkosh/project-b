@@ -6,7 +6,7 @@ or a bookmark folder's colour. One util makes them all, from the theme the user 
 they sit with it in light and dark rather than standing out as random colours.
 
 Status: decided. The util became a library of its own, **gulal**
-([github.com/sudiptadeb/gulal](https://github.com/sudiptadeb/gulal), playground at
+([github.com/debkosh/gulal](https://github.com/debkosh/gulal), playground at
 [debkosh.com/gulal](https://debkosh.com/gulal)), with its spec and Go and TypeScript
 implementations. Project B uses it to colour site marks and bookmark folders; the design
 below is how it got there, and gulal's spec is now the contract.

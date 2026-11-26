@@ -19,7 +19,7 @@
 # minute> while VERSION is 0.3.8; its assets go on that pre-release, and the Dev build two back
 # goes: the one before stays, so a rollback is one manifest edit (tools/dev-rollback.sh).
 #
-# Needs gh (logged in) and amarit v0.8.0 or later (go install github.com/sudiptadeb/amarit/cmd/amarit@latest).
+# Needs gh (logged in) and amarit v0.8.0 or later (go install github.com/debkosh/amarit/cmd/amarit@latest).
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
