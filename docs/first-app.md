@@ -249,8 +249,15 @@ report at" macOS's report of that process, with a close button, which sends
   notice names the folder. Nothing waits for it.
 - **Child processes** (renderers, GPU, utility): `engine/browser/child_processes.cc` sends
   each one that ends other than normally to Go, which adds a line to `crashes.log` in the
-  profile: time, type, how it ended, exit code, pid, and a renderer's page. It is kept,
-  and brings up no notice. macOS writes a `project_b_helper` report for these as well.
+  profile: time, type, how it ended, exit code, pid, and the origin of a renderer's page,
+  not its address, which can hold what was searched for. It is kept, and brings up no
+  notice. macOS writes a `project_b_helper` report for these as well. Android gives no
+  exit status: a child that dies while the app keeps it from memory kills, as a page in
+  front, is "ended while in use", a crash or Android ending it anyway, and its crash
+  isn't the app's to read, as it runs under a user id of its own. A crash report there
+  adds Android's record of each process's end (`ProcessEnds.java`, Android 11 and
+  later): ended by a signal (11 a segmentation fault, 6 an abort, 9 a kill) or for low
+  memory, with its memory. Android keeps no tombstone with an isolated process's record.
 
 Go's handlers for SIGSEGV, SIGBUS and SIGFPE are installed when the binary loads, before
 `ContentMain`, which would reset them and, outside official builds, put Chromium's stack

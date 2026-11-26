@@ -13,13 +13,16 @@
 // A desktop says nothing, and there a crash.log left is a crash: a native one leaves
 // nothing in it but its first line.
 //
-// A child process that crashes is one line in crashes.log, which is kept.
+// A child process that crashes is one line in crashes.log, which is kept: when, its kind, how
+// it ended, its pid, and for a renderer the origin of its page, not the whole address, which
+// can hold what was searched for, as a report goes to other people.
 package crash
 
 import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"time"
@@ -159,12 +162,25 @@ func (m *Manager) ProcessCrashed(p engine.ProcessCrash) {
 	}
 	defer f.Close()
 	line := fmt.Sprintf("%s %s %s, exit code %d, pid %d", time.Now().Format(time.DateTime), p.Type, p.Status, p.ExitCode, p.PID)
-	if p.URL != "" {
-		line += ", " + p.URL
+	if o := origin(p.URL); o != "" {
+		line += ", " + o
 	}
 	if _, err := fmt.Fprintln(f, line); err != nil {
 		timeline.Errorf("crash: %v", err)
 	}
+}
+
+// origin is the scheme and host of address, "" for none; an address with no host, as data:
+// or about:blank, by its scheme alone.
+func origin(address string) string {
+	u, err := url.Parse(address)
+	if err != nil || u.Scheme == "" {
+		return ""
+	}
+	if u.Host == "" {
+		return u.Scheme + ":"
+	}
+	return u.Scheme + "://" + u.Host
 }
 
 // Last is the log of the last run's crash, or "" if it didn't crash or the notice was

@@ -9,6 +9,7 @@ static inline void call_show_update(const PBSystemCalls* c, const char* json) { 
 static inline void call_verify_person(const PBSystemCalls* c, int32_t id, const char* title, const char* subtitle) { c->verify_person(id, title, subtitle); }
 static inline void call_cancel_person(const PBSystemCalls* c, int32_t id) { c->cancel_person(id); }
 static inline void call_scan_code(const PBSystemCalls* c, int32_t id, const char* prompt) { c->scan_code(id, prompt); }
+static inline char* call_process_ends(const PBSystemCalls* c) { return c->process_ends(); }
 */
 import "C"
 
@@ -90,9 +91,11 @@ func (s *System) OpenFullDiskAccess() {}
 
 // Report is what a crash report says of this phone: the release, Android's version and the
 // device, the end of the app's own log, where content says why it ended a process (logcat
-// shows an app its own lines), and the app's last crashes Android kept. Android keeps those
-// across runs, days back: apart, each with its date, an old one reads as old rather than as
-// the top of this run's log.
+// shows an app its own lines), the app's last crashes Android kept, and Android's record of
+// each process of the app that ended. Android keeps those across runs, days back: apart, each
+// with its date, an old one reads as old rather than as the top of this run's log. The record
+// is the one word on a renderer's end: it runs under a user id of its own, so its lines aren't
+// the app's, and content can't tell its crash from Android ending it for memory.
 func (s *System) Report(version string) []crash.Section {
 	prop := func(name string) string {
 		out, _ := exec.Command("/system/bin/getprop", name).Output()
@@ -112,7 +115,18 @@ func (s *System) Report(version string) []crash.Section {
 		{Title: "Device", Text: prop("ro.product.manufacturer") + " " + prop("ro.product.model") + ", page size " + strconv.Itoa(os.Getpagesize())},
 		{Title: "The app's log, its end (logcat)", Text: logcat("main,system", "600")},
 		{Title: "The app's last crashes Android kept, newest last (logcat crash buffer)", Text: logcat("crash", "50")},
+		{Title: "How Android says the app's processes ended, newest first (ApplicationExitInfo)", Text: processEnds()},
 	}
+}
+
+// processEnds is ProcessEnds.java's text, or says Java couldn't give it.
+func processEnds() string {
+	c := C.call_process_ends(calls.Load())
+	if c == nil {
+		return "(Java gave nothing: its exception is in the app's log)"
+	}
+	defer C.free(unsafe.Pointer(c))
+	return C.GoString(c)
 }
 
 // DownloadsDir is "" on a phone: a download lands in the profile's own Downloads folder, and

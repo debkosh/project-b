@@ -61,6 +61,12 @@ final class GoSystem {
     }
 
 
+    /** What Android says of the app's processes that ended, for a crash report (ProcessEnds). */
+    @UsedByReflection("go_table.c")
+    static String processEnds() {
+        return ProcessEnds.text();
+    }
+
     // How a check of the person ended, as Go knows it (core/system's Verdict).
     private static final int VERIFIED = 0;
     private static final int DENIED = 1;
