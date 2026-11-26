@@ -123,7 +123,10 @@ func manager(t *testing.T, dir, running, releases string, o *opened) *Manager {
 				return nil
 			}}
 		}}
-	return New(cfg, func(f func()) { f() }, func() {})
+	// The app's post runs each on the main thread, one at a time; here they take turns too, as
+	// the updater's goroutine and the notes' fetch both post.
+	var turn sync.Mutex
+	return New(cfg, func(f func()) { turn.Lock(); defer turn.Unlock(); f() }, func() {})
 }
 
 func eventually(t *testing.T, m *Manager, ok func(State) bool) State {
@@ -145,8 +148,9 @@ func TestANewerReleaseIsReadyAndInstalled(t *testing.T) {
 	s := serve(t, "0.2.0", "")
 	var o opened
 	m := manager(t, t.TempDir(), "0.1.0", s.url, &o)
+	var mu sync.Mutex
 	var heard []string
-	m.OnChanged(func(st State) { heard = append(heard, st.Phase+"/"+st.Check) })
+	m.OnChanged(func(st State) { mu.Lock(); defer mu.Unlock(); heard = append(heard, st.Phase+"/"+st.Check) })
 	m.CheckNow()
 	eventually(t, m, func(st State) bool { return st.Phase == Ready && st.Version == "0.2.0" })
 	// Its notes, beside the manifest, come with it: About shows them as Coming in 0.2.0.
@@ -157,6 +161,8 @@ func TestANewerReleaseIsReadyAndInstalled(t *testing.T) {
 		time.Sleep(20 * time.Millisecond)
 	}
 	if files := o.list(); len(files) != 1 {
+		mu.Lock()
+		defer mu.Unlock()
 		t.Fatalf("installed %v; the page heard %v", files, heard)
 	}
 }
