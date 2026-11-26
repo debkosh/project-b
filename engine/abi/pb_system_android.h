@@ -28,6 +28,9 @@ typedef struct PBSystemCalls {
   // (ProcessEnds.java): each one's reason, signal and memory, renderers' among them. The
   // text is malloc'd, for the caller to free; NULL when it can't be had.
   char* (*process_ends)(void);
+  // Has Android start the app again once it has quit, as Settings' Relaunch asks: the
+  // activity's end, after Go has stopped, hands it to ProcessPhoenix (BrowserActivity.java).
+  void (*relaunch_after_quit)(void);
 } PBSystemCalls;
 
 #endif  // PROJECT_B_ENGINE_ABI_PB_SYSTEM_ANDROID_H_

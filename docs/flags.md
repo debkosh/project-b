@@ -68,7 +68,12 @@ Android builds with `project_b_without = "extensions"`.
 3. From then on the engine reads only its command line. Go reads the same file when it starts,
    so both sides agree.
 4. Relaunch (`core/relaunch`) starts the program again, with its arguments, once this process
-   has exited, then closes the window. The updater uses the same helper.
+   has exited, then closes the window. The updater uses the same helper. On a phone the app
+   quits as it does when its window closes, and Android starts it again, as Chrome restarts:
+   the activity's end hands it to ProcessPhoenix (`engine/android/third_party/process_phoenix`),
+   whose screen, in a process of its own, ends the app's and opens its launcher activity. Go
+   starts no program there: Android 10 ends an app whose Go uses `os/exec`, and a test keeps it
+   out of the Android library.
 
 ## The Extensions flag
 
@@ -111,3 +116,6 @@ The browser passes `--pb-extensions` to every child process it starts, in
 - `tools/drive_extensions.py`: the real app runs extensions from a profile with the flag on;
   with it off, there is no button and the store's page has no store API, and the Flags
   section's switch and Relaunch start the app again on the same profile.
+- `tools/drive_android.py relaunch_on_the_phone`: on a phone, Relaunch after a flag's change
+  starts the app again in a new process, in front, with no crash notice and the change
+  applied, there and back.

@@ -61,6 +61,12 @@ final class GoSystem {
     }
 
 
+    /** Settings' Relaunch: the app starts again once it has quit (BrowserActivity.onDestroy). */
+    @UsedByReflection("go_table.c")
+    static void relaunchAfterQuit() {
+        BrowserActivity.relaunch = true;
+    }
+
     /** What Android says of the app's processes that ended, for a crash report (ProcessEnds). */
     @UsedByReflection("go_table.c")
     static String processEnds() {

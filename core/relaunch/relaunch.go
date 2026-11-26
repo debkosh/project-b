@@ -1,4 +1,4 @@
-//go:build !js
+//go:build !js && !android
 
 // Package relaunch starts copies of the app: this one again once this process has gone,
 // since starting it any earlier would run two copies on one profile, or another copy now,
