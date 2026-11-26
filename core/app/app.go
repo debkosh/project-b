@@ -120,18 +120,18 @@ type App struct {
 	dns secureDNS
 
 	// System is the OS's door, Config's.
-	System   system.System
-	Crash    *crash.Manager
-	Store    *store.Store
-	Tabs     *tabs.Manager
-	History  *history.Manager
-	Suggest  *suggest.Manager
-	Policy   *policy.Manager
-	Window   *window.Manager
-	Prefs    *prefs.Manager
+	System  system.System
+	Crash   *crash.Manager
+	Store   *store.Store
+	Tabs    *tabs.Manager
+	History *history.Manager
+	Suggest *suggest.Manager
+	Policy  *policy.Manager
+	Window  *window.Manager
+	Prefs   *prefs.Manager
 	// shells is the shell the windows load: the shell pref, or on Android the one the
 	// window's size picks.
-	shells *shellPick
+	shells   *shellPick
 	Flags    *flags.Manager
 	Update   *update.Manager
 	Shell    *shell.Manager
