@@ -12,7 +12,7 @@
 # after. Only on the orchestrator's or Sudipta's word: every Dev install reads this manifest.
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-REPO=sudiptadeb/project-b
+REPO=debkosh/project-b
 CHANNELS=channels
 TO=${1:?usage: tools/dev-rollback.sh VERSION}
 WORK=$(mktemp -d)
