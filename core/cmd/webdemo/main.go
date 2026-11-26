@@ -48,6 +48,9 @@ func main() {
 		commands.OS = "linux"
 	}
 	e := mockengine.New()
+	// A phone's windows have no buttons of the OS's, as dev's -platform android: else the
+	// shell keeps a band clear for the Mac's buttons over the top of its window.
+	e.NoControls = shells.OnAndroid
 	e.InlineThumbnails = true
 	sys := mocksystem.New(e.Post)
 	// What the app asks of the engine goes to the stage's log, pbcoreLog, in order and
