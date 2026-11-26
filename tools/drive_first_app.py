@@ -4102,8 +4102,10 @@ def app_link_checks():
     opened = in_settings(app, f"{dialog}?.getAttribute('aria-label')==='Sync with sync.example.test?'", 15)
     check("a press on the sync link opens Settings at Sync with the link's Dialog, the host shown",
           opened and len(settings_tabs()) == 1 and in_settings(app, "(()=>{const r=document.querySelector('[data-part=sync]').getBoundingClientRect();return r.top>=0&&r.top<innerHeight})()"))
-    check("with the address filled in", in_settings(app, "document.getElementById('sync-address').value") == "https://sync.example.test/sync/abc")
-    check("and the host in bold in its title", in_settings(app, f"{dialog}.querySelector('.ui-dialog-title').textContent.trim()") == "Sync with sync.example.test?")
+    # A link's Dialog shows its address as text, not in a field, and draws its title in pieces
+    # beside the one sentence a screen reader is given: what is drawn is read here.
+    check("with the address shown as it is written", in_settings(app, f"{dialog}.querySelector('.address-shown')?.innerText") == "https://sync.example.test/sync/abc")
+    check("and its title drawn once, with the host", in_settings(app, f"{dialog}.querySelector('.ui-dialog-title > [aria-hidden]')?.innerText") == "Sync with sync.example.test?")
     print(app.cmd("capture", os.path.join(OUT, "applink-dialog.png")), flush=True)
     app.cmd("evalsettings", f"[...{dialog}.querySelectorAll('button')].find(b=>b.textContent==='Cancel').click()")
     in_settings(app, f"!{dialog}")
