@@ -2063,6 +2063,13 @@ def sync_on_the_phone():
     view_link(SYNC_LINK)
     check("a sync link from another app opens Settings at Sync with the link's Dialog, while the app runs",
           linked() is not None and settings_text(lambda t: (t or "").startswith("A link asked to set up sync")) is not None)
+    # What a screen reader is given, which the page's own tests can't read: named by its
+    # label, the address was told as "Server address" and never itself, and the title, its
+    # host drawn in pieces, as "Sync with sync. example. test?" (docs/fragility.md, "A sync
+    # link's address nobody heard").
+    told = [n.get("text") for n in screen_parts().get("settings", ET.Element("none")).iter("node") if n.get("class", "").endswith("TextView")]
+    check("a screen reader is told the Dialog's title as one sentence and its address as it is written",
+          [t for t in told if t.startswith("Sync with")] == ["Sync with sync.example.test?"] and [t for t in told if "sync.example.test/" in t] == ["https://sync.example.test/sync/abc"], told)
     shot("sync-link-running")
     stopped()
     view_link(SYNC_LINK)
