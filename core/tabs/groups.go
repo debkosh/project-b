@@ -10,8 +10,8 @@ import (
 
 // A tab group: tabs of one window and one workspace kept together under a name and a
 // colour, which every shell draws its own way (docs/groups.md). A tab is in one group at
-// most. A group that drops below two tabs ends; one made with a single tab stays until a
-// tab leaves it. Groups live in memory with their tabs.
+// most. A group ends when its last tab leaves it: one left with a single tab stays, so the
+// tabs don't jump as a group comes and goes. Groups live in memory with their tabs.
 
 // Group is a copy of one group. Tabs are its tabs' ids in the group's own order.
 type Group struct {
@@ -134,7 +134,7 @@ func (m *Manager) RemoveFromGroup(id engine.TabID) {
 	}
 }
 
-// leaveGroup takes tab id out of its group, which ends if it drops below two tabs.
+// leaveGroup takes tab id out of its group, which ends when it has no tab left.
 func (m *Manager) leaveGroup(id engine.TabID) {
 	t := m.tabs[id]
 	if t == nil || t.Group == "" {
@@ -146,7 +146,7 @@ func (m *Manager) leaveGroup(id engine.TabID) {
 		return
 	}
 	g.Tabs = slices.DeleteFunc(g.Tabs, func(x engine.TabID) bool { return x == id })
-	if len(g.Tabs) < 2 {
+	if len(g.Tabs) == 0 {
 		m.endGroup(g, win)
 	}
 }

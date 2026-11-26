@@ -30,12 +30,13 @@ func TestPinnedTabsComeFirstInThePinsOrder(t *testing.T) {
 	if got := order(m, 1); !slices.Equal(got, []engine.TabID{c, a, b, d}) || m.PinIn(1, "p2") != c || lists != 1 {
 		t.Fatalf("after pinning c: %v, lists %d", got, lists)
 	}
-	if x, _ := m.Get(c); x.Pin != "p2" || x.Group != "" || len(m.GroupsIn(1)) != 0 {
+	// The group keeps d, its last tab, until d goes too.
+	if x, _ := m.Get(c); x.Pin != "p2" || x.Group != "" || len(m.GroupsIn(1)) != 1 {
 		t.Fatalf("c is %+v, groups %+v (was in %s)", x, m.GroupsIn(1), g)
 	}
 	m.Bind(d, "p1")
-	if got := order(m, 1); !slices.Equal(got, []engine.TabID{d, c, a, b}) {
-		t.Fatalf("after pinning d: %v", got)
+	if got := order(m, 1); !slices.Equal(got, []engine.TabID{d, c, a, b}) || len(m.GroupsIn(1)) != 0 {
+		t.Fatalf("after pinning d: %v, groups %+v", got, m.GroupsIn(1))
 	}
 	m.Unbind("p1")
 	if got := order(m, 1); !slices.Equal(got, []engine.TabID{c, d, a, b}) || m.PinIn(1, "p1") != 0 {

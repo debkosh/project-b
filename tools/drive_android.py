@@ -960,10 +960,14 @@ def mobile_shell():
     settings_section("Appearance", "Theme")
     tap(middle(see("settings", text="System")))
     close_settings()
-    # The active favicon in the strip closes its tab at a tap; a group of one then ends.
-    tap(middle(see("shell", label=lambda l: (l or "").startswith("Close Page"), kind="android.widget.Button")))
-    check("a tap on the active favicon in the strip closes its tab, and the group of one left ends",
-          until(lambda: find("shell", label=lambda l: (l or "").startswith("Group ")) is None) is not None)
+    # The active favicon in the strip closes its tab at a tap; the group keeps its last tab, so
+    # the strip stays where it is (docs/groups.md).
+    closing = see("shell", label=lambda l: (l or "").startswith("Close Page"), kind="android.widget.Button")
+    gone = closing.get("content-desc")
+    tap(middle(closing))
+    check("a tap on the active favicon in the strip closes its tab, and the group stays with its last tab",
+          until(lambda: find("shell", label=gone) is None) is not None
+          and find("shell", label=lambda l: (l or "").startswith("Group ")) is not None, gone)
 
 
 def custom_colour():

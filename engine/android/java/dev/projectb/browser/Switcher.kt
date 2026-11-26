@@ -231,7 +231,7 @@ class Switcher(context: Context, private val on: Actions) : FrameLayout(context)
         }
         b.addView(cluster, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         c.addView(b, LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { marginStart = dp(8); marginEnd = dp(8) })
-        c.addView(host(palette, if (g.optString("name").isNotEmpty()) "${members.size} tabs" else ""), LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, dp(28)))
+        c.addView(host(palette, if (g.optString("name").isNotEmpty()) Switcher.tabCount(members.size) else ""), LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, dp(28)))
         asButton(c, "Group $name")
         c.setOnClickListener { on.group(id) }
         return c
@@ -287,8 +287,11 @@ class Switcher(context: Context, private val on: Actions) : FrameLayout(context)
             return (0 until ids.length()).mapNotNull { i -> tabs.firstOrNull { it.getLong("id") == ids.getLong(i) } }
         }
 
+        /** How many tabs, in words: "1 tab", "3 tabs". A group keeps its last tab. */
+        fun tabCount(n: Int): String = if (n == 1) "1 tab" else "$n tabs"
+
         /** What a group is called: its name, else how many tabs it has. */
         fun groupLabel(g: JSONObject): String =
-            g.optString("name").ifEmpty { "${g.optJSONArray("tabs")?.length() ?: 0} tabs" }
+            g.optString("name").ifEmpty { tabCount(g.optJSONArray("tabs")?.length() ?: 0) }
     }
 }

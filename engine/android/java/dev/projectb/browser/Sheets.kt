@@ -129,6 +129,11 @@ fun groupSheet(s: Sheet, palette: Palette, group: JSONObject, members: List<JSON
         answers.addView(b, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, answers.dp(48)))
     }
     fun confirm() {
+        // A group of one: closing it is closing its tab, which never asks.
+        if (members.size == 1) {
+            closeGroup()
+            return
+        }
         AlertDialog.Builder(context)
             .setTitle("Close ${members.size} tabs?")
             .setNegativeButton("Cancel", null)
@@ -137,7 +142,7 @@ fun groupSheet(s: Sheet, palette: Palette, group: JSONObject, members: List<JSON
     }
     answer("New tab", palette.text, newTab)
     answer("Ungroup", palette.text, ungroup)
-    answer("Close group…", palette.danger) { confirm() }
+    answer(if (members.size == 1) "Close group" else "Close group…", palette.danger) { confirm() }
     c.addView(answers)
     if (ask) s.post { confirm() }
 }

@@ -630,7 +630,13 @@ const H = 915;
   await strip.getByRole('button', { name: /^Close / }).tap();
   check('a tap on the active favicon in the strip closes it, and the strip goes to the next in the group', await until(async () => (await regions()).active === g3 && (await stripTabs.count()) === 2));
   await stripTabs.last().click({ button: 'right' });
-  check('a long press on a favicon closes its tab, and a group of one ends', await until(async () => (await regions()).tabs.length === 3 && !(await strip.isVisible())));
+  check('a long press on a favicon closes its tab, and the group stays with its last tab', await until(async () => (await regions()).tabs.length === 3 && (await strip.isVisible()) && (await stripTabs.count()) === 1));
+  // A group of one: Close group closes its tab without asking; here Ungroup ends it, the tab kept.
+  await strip.getByRole('button', { name: /^Group / }).tap();
+  await until(() => groupSheet.isVisible());
+  check('a group of one\'s sheet has Close group, with no question to follow', await groupSheet.getByRole('button', { name: 'Close group', exact: true }).isVisible());
+  await groupSheet.getByRole('button', { name: 'Ungroup' }).tap();
+  check('Ungroup ends it, its tab kept', await until(async () => (await regions()).tabs.length === 3 && !(await strip.isVisible())));
 
   // Add to group, Remove from group, and Close group with its confirm.
   await tabsButton.tap();

@@ -15,7 +15,7 @@ func groupTabs(m *Manager, w engine.WindowID) [][]engine.TabID {
 	return out
 }
 
-func TestAGroupKeepsItsTabsAndEndsBelowTwo(t *testing.T) {
+func TestAGroupKeepsItsTabsAndEndsWithItsLastTab(t *testing.T) {
 	m := oneWindow(&fakeEngine{})
 	a, b, c := m.Create(1), m.Create(1), m.Create(1)
 	lists := 0
@@ -38,13 +38,18 @@ func TestAGroupKeepsItsTabsAndEndsBelowTwo(t *testing.T) {
 	if got := groupTabs(m, 1); len(got) != 1 || !slices.Equal(got[0], []engine.TabID{a, b, c}) {
 		t.Fatalf("groups %v", got)
 	}
+	// Down to one tab, it stays a group; it ends as its last tab leaves.
 	m.RemoveFromGroup(b)
 	m.Close(c)
-	if got := m.GroupsIn(1); len(got) != 0 {
-		t.Fatalf("a group of one is left: %+v", got)
+	if got := groupTabs(m, 1); len(got) != 1 || !slices.Equal(got[0], []engine.TabID{a}) {
+		t.Fatalf("a group of one should stay: %v", got)
 	}
-	if x, _ := m.Get(a); x.Group != "" {
-		t.Fatalf("tab a is still in %q", x.Group)
+	if x, _ := m.Get(a); x.Group != g {
+		t.Fatalf("tab a is in %q", x.Group)
+	}
+	m.RemoveFromGroup(a)
+	if got := m.GroupsIn(1); len(got) != 0 {
+		t.Fatalf("a group with no tabs is left: %+v", got)
 	}
 }
 
@@ -60,10 +65,10 @@ func TestAGroupHoldsOneWorkspaceOfOneWindow(t *testing.T) {
 	if got := groupTabs(m, 1); len(got) != 1 || !slices.Equal(got[0], []engine.TabID{a, b}) {
 		t.Fatalf("groups %v", got)
 	}
-	// Moving to another window takes a tab out, and the group of one left ends.
+	// Moving to another window takes a tab out; the group of one left stays.
 	m.Move(b, 2, 0)
-	if got := m.GroupsIn(1); len(got) != 0 {
-		t.Fatalf("groups %+v", got)
+	if got := groupTabs(m, 1); len(got) != 1 || !slices.Equal(got[0], []engine.TabID{a}) {
+		t.Fatalf("groups %v", got)
 	}
 }
 
