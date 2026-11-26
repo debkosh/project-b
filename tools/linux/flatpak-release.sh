@@ -100,7 +100,7 @@ Title=Project B (beta)
 Url=$url/repo/
 RuntimeRepo=https://dl.flathub.org/repo/flathub.flatpakrepo
 IsRuntime=false
-Homepage=https://github.com/sudiptadeb/project-b
+Homepage=https://github.com/debkosh/project-b
 Comment=A browser with a shell anyone can customise (beta)
 GPGKey=\$pub
 REF
@@ -108,7 +108,7 @@ cat > project-b.flatpakrepo <<REPO
 [Flatpak Repo]
 Title=Project B
 Url=$url/repo/
-Homepage=https://github.com/sudiptadeb/project-b
+Homepage=https://github.com/debkosh/project-b
 Comment=Project B for Linux, beta
 GPGKey=\$pub
 REPO

@@ -64,7 +64,7 @@ os.set_inheritable(f.fileno(), True)
 os.environ["PB_BUILD_LOCKED"] = "1"
 os.execv("/bin/bash", ["/bin/bash"] + sys.argv[2:])' "$ROOT/chromium/src/out/.pb-build.lock" "$0" "$@"
 fi
-REPO=sudiptadeb/project-b
+REPO=debkosh/project-b
 VERSION=$(tr -d '[:space:]' < "$ROOT/VERSION")
 CHANNELS=channels
 DIST=$ROOT/build/dist
