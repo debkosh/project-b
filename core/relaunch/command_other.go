@@ -1,4 +1,4 @@
-//go:build !js && (!linux || android)
+//go:build !js && !linux
 
 package relaunch
 

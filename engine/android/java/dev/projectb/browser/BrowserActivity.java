@@ -6,6 +6,8 @@ import android.content.res.Configuration;
 import android.os.Bundle;
 import android.view.KeyEvent;
 
+import com.jakewharton.processphoenix.ProcessPhoenix;
+
 import io.github.sudiptadeb.oskit.OsKit;
 
 import org.chromium.base.CommandLine;
@@ -197,11 +199,19 @@ public final class BrowserActivity extends Activity {
         }
     }
 
+    // Set by Settings' Relaunch, from Go (GoSystem.relaunchAfterQuit), before it quits.
+    static volatile boolean relaunch;
+
     // Go's state can't outlive the views it describes, so the process ends with the window.
+    // After Settings' Relaunch, Android starts the app again: ProcessPhoenix's screen, in a
+    // process of its own (:phoenix), ends this one, if it's still here, and opens the app's
+    // launcher activity in a new task, as Chrome's restart does. Go has stopped by then, so
+    // the profile is saved, and no program is started from Go, which Android 10 forbids it.
     @Override
     protected void onDestroy() {
         window.stop();
         super.onDestroy();
+        if (relaunch) ProcessPhoenix.triggerRebirth(getApplicationContext());
         System.exit(0);
     }
 }

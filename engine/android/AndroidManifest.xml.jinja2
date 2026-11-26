@@ -65,6 +65,14 @@
             android:theme="@style/zxing_CaptureTheme"
             android:windowSoftInputMode="stateAlwaysHidden" />
 
+        <!-- ProcessPhoenix's screen (third_party/process_phoenix), in a process of its own:
+             after Settings' Relaunch it ends the app's process and starts the app again. -->
+        <activity
+            android:name="com.jakewharton.processphoenix.PhoenixActivity"
+            android:exported="false"
+            android:process=":phoenix"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
         <!-- Lets Android's package installer read a downloaded update. -->
         <provider
             android:name="androidx.core.content.FileProvider"

@@ -10,6 +10,7 @@ static inline void call_verify_person(const PBSystemCalls* c, int32_t id, const 
 static inline void call_cancel_person(const PBSystemCalls* c, int32_t id) { c->cancel_person(id); }
 static inline void call_scan_code(const PBSystemCalls* c, int32_t id, const char* prompt) { c->scan_code(id, prompt); }
 static inline char* call_process_ends(const PBSystemCalls* c) { return c->process_ends(); }
+static inline void call_relaunch_after_quit(const PBSystemCalls* c) { c->relaunch_after_quit(); }
 */
 import "C"
 
@@ -49,6 +50,10 @@ func ShowUpdate(stateJSON string) {
 	defer C.free(unsafe.Pointer(c))
 	C.call_show_update(calls.Load(), c)
 }
+
+// RelaunchAfterQuit has Android start the app again once it has quit: relaunch.Self on a
+// phone, through the activity, as Chrome restarts, with no program started here.
+func RelaunchAfterQuit() { C.call_relaunch_after_quit(calls.Load()) }
 
 func (s *System) Desktop() string { return "" }
 

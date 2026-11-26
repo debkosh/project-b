@@ -24,6 +24,7 @@ static jmethodID go_system_cancel_person;
 static jmethodID go_system_scan_code;
 static jmethodID go_system_show_update;
 static jmethodID go_system_process_ends;
+static jmethodID go_system_relaunch_after_quit;
 
 // The calling thread's JNIEnv, attaching a thread of Go's that has none; *attached says to
 // detach it after, with detach.
@@ -99,6 +100,16 @@ static void system_show_update(const char* state_json) {
   detach(env, attached);
 }
 
+static void system_relaunch_after_quit(void) {
+  int attached;
+  JNIEnv* env = attach(&attached);
+  if (env == NULL) {
+    return;
+  }
+  (*env)->CallStaticVoidMethod(env, go_system, go_system_relaunch_after_quit);
+  detach(env, attached);
+}
+
 // GoSystem.processEnds, as malloc'd UTF-8 that Go frees; NULL when Java can't be reached.
 static char* system_process_ends(void) {
   int attached;
@@ -128,6 +139,7 @@ static const PBSystemCalls system_calls = {
     .scan_code = system_scan_code,
     .show_update = system_show_update,
     .process_ends = system_process_ends,
+    .relaunch_after_quit = system_relaunch_after_quit,
 };
 
 JNIEXPORT jlong JNICALL Java_dev_projectb_browser_GoCore_table(JNIEnv* env, jclass cls) {
@@ -158,6 +170,7 @@ JNIEXPORT jlong JNICALL Java_dev_projectb_browser_GoCore_table(JNIEnv* env, jcla
     go_system_scan_code = (*env)->GetStaticMethodID(env, go_system, "scanCode", "(ILjava/lang/String;)V");
     go_system_show_update = (*env)->GetStaticMethodID(env, go_system, "showUpdate", "(Ljava/lang/String;)V");
     go_system_process_ends = (*env)->GetStaticMethodID(env, go_system, "processEnds", "()Ljava/lang/String;");
+    go_system_relaunch_after_quit = (*env)->GetStaticMethodID(env, go_system, "relaunchAfterQuit", "()V");
     PBSetSystemCalls(&system_calls);
     // oskit's packages find their Java classes here too (oskit/internal/jni).
     OskitAttach(env);

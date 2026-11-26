@@ -289,6 +289,15 @@ android_aar_prebuilt("zxing_embedded_java") {
   ]
 }
 
+# ProcessPhoenix, as published (third_party/process_phoenix/README.md): restarts the app
+# for Settings' Relaunch. Its manifest is passed over, as ZXing's: its screen is listed in
+# ours, and its service, which the app doesn't use, isn't.
+android_aar_prebuilt("process_phoenix_java") {
+  aar_path = "third_party/process_phoenix/process-phoenix-3.0.0.aar"
+  info_path = "third_party/process_phoenix/process-phoenix-3.0.0.info"
+  ignore_manifest = true
+}
+
 _chromium_version_java = "$target_gen_dir/java/dev/projectb/browser/ChromiumVersion.java"
 
 # Chromium's version for Java, from //chrome/VERSION, as base's VersionConstants is made:
@@ -333,6 +342,7 @@ android_library("java") {
     ":oskit_java",
     ":zxing_core_java",
     ":zxing_embedded_java",
+    ":process_phoenix_java",
   ]
   srcjar_deps = [ ":jni_headers" ]
   sources = [
