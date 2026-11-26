@@ -105,6 +105,8 @@ type Manager struct {
 	ready bool
 	// moving is the span waiting for a shell's next layout report, or "".
 	moving string
+	// onKeyboard hears the soft keyboard coming up or going, when set.
+	onKeyboard func(up bool)
 }
 
 // Part is what another manager adds to the shell's contract: its state in the snapshot,
@@ -332,6 +334,9 @@ func (m *Manager) Handle(w engine.WindowID, msg []byte) {
 	case "keyboard":
 		// The phone's soft keyboard coming up or going, which the window reports on this
 		// channel: the shell hears it, and its bars under the page step aside while it is up.
+		if m.onKeyboard != nil {
+			m.onKeyboard(c.On)
+		}
 		m.send(w, map[string]any{"t": "keyboard", "on": c.On})
 	case "run":
 		m.run(c.Text)
@@ -442,6 +447,9 @@ func (m *Manager) OnBack(f func(w engine.WindowID) bool) { m.onBack = f }
 // OnMenuOpened names what hears that a shell's menu opened in a window: a phone's menu
 // sheet says so as it opens, as its Settings is a tap away.
 func (m *Manager) OnMenuOpened(f func(w engine.WindowID)) { m.onMenuOpened = f }
+
+// OnKeyboard names what hears the soft keyboard come up or go, as the window reports it.
+func (m *Manager) OnKeyboard(f func(up bool)) { m.onKeyboard = f }
 
 // SendTo sends one window's shell a message.
 func (m *Manager) SendTo(w engine.WindowID, v any) { m.send(w, v) }

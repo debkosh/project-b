@@ -2301,6 +2301,54 @@ func TestOnAndroidTheShellFollowsTheWindowsSize(t *testing.T) {
 	page("shell/pbshell", time.Second)
 }
 
+// On Android the soft keyboard shortening the window doesn't change its shell: a tablet with
+// it up stays on Standard, as its height before the keyboard counts, and a phone on its side
+// stays on Mobile. Standard on a tablet reloaded as the keyboard came up, and lost its field.
+func TestOnAndroidTheSoftKeyboardDoesntChangeTheShell(t *testing.T) {
+	defer func(was bool) { shells.OnAndroid = was }(shells.OnAndroid)
+	shells.OnAndroid = true
+	r := start(t, androidProfile(t))
+	defer r.stop()
+	page := func(want engine.Page, within time.Duration) {
+		t.Helper()
+		for end := time.Now().Add(within); r.e.PageOf(1) != want; time.Sleep(10 * time.Millisecond) {
+			if time.Now().After(end) {
+				t.Fatalf("the window loads %s, not %s", r.e.PageOf(1), want)
+			}
+		}
+	}
+	keyboard := func(up bool) {
+		r.shell(fmt.Sprintf(`{"t":"keyboard","on":%v}`, up))
+		r.e.Settle()
+	}
+	r.e.Resize(1, 1280, 800)
+	page("shell/pbshell", time.Second)
+	// Android tells the keyboard and the size it makes in either order.
+	for _, sizeFirst := range []bool{false, true} {
+		if sizeFirst {
+			r.e.Resize(1, 1280, 380)
+			keyboard(true)
+		} else {
+			keyboard(true)
+			r.e.Resize(1, 1280, 380)
+		}
+		time.Sleep(700 * time.Millisecond)
+		if r.e.PageOf(1) != "shell/pbshell" {
+			t.Fatalf("the keyboard took a tablet to %s, size first %v", r.e.PageOf(1), sizeFirst)
+		}
+		keyboard(false)
+		r.e.Resize(1, 1280, 800)
+	}
+	r.e.Resize(1, 891, 412)
+	page("shell/mwshell", 2*time.Second)
+	keyboard(true)
+	r.e.Resize(1, 891, 200)
+	time.Sleep(700 * time.Millisecond)
+	if r.e.PageOf(1) != "shell/mwshell" {
+		t.Fatalf("the keyboard took a phone on its side to %s", r.e.PageOf(1))
+	}
+}
+
 // The menu skips a tab's changes it doesn't read, and still follows the ones it does: a tab
 // that began loading while in the background shows Stop when made active, and Stop goes
 // off when it finishes there.
