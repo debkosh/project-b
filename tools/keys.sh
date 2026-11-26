@@ -1,6 +1,6 @@
 # Where Project B's signing keys are, for the scripts that source this. The one rule:
 #
-#   $KEYKOSH_ROOT/project-b  when KEYKOSH_ROOT is set (keykosh, github.com/sudiptadeb/keykosh)
+#   $KEYKOSH_ROOT/project-b  when KEYKOSH_ROOT is set (keykosh, github.com/debkosh/keykosh)
 #   <repo>/.keys             otherwise, for someone with keys of their own (git-ignored)
 #
 # The file names are the same in either: identity.p12, cert.pem, identity.sha1 and

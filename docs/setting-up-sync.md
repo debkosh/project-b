@@ -22,7 +22,7 @@ it is [sync.md](sync.md); this page is only the steps.
     [memd.debkosh.com/synckosh](https://memd.debkosh.com/synckosh) that you can use to try
     sync out.
   - [Option B](#option-b-run-your-own-server): your own. The server is
-    [synckosh](https://github.com/sudiptadeb/synckosh), a Go library, not a ready-made
+    [synckosh](https://github.com/debkosh/synckosh), a Go library, not a ready-made
     program: you put it in a small Go program of your own. One is below.
 - The server must be reachable over `https` from every device. Project B refuses a plain
   `http` address.
@@ -85,8 +85,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/sudiptadeb/synckosh/bolt"
-	"github.com/sudiptadeb/synckosh/server"
+	"github.com/debkosh/synckosh/bolt"
+	"github.com/debkosh/synckosh/server"
 )
 
 func main() {

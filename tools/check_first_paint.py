@@ -8,7 +8,7 @@ way and checks a capture of the real window, taken with deskrig, for that colour
 app's own captures read the page's surface and would pass anyway.
 
 NEEDS A PERSON LOGGED IN at this Mac's screen, and deskrig allowed to record it
-(github.com/sudiptadeb/deskrig; `deskrig setup permissions`). The app has to start inside the desktop session for its
+(github.com/debkosh/deskrig; `deskrig setup permissions`). The app has to start inside the desktop session for its
 window to be on the screen, so start it through on_screen.py:
 
     tools/test.sh screen                                     # with the other real-screen checks

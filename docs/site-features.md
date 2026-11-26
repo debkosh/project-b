@@ -154,7 +154,7 @@ feature of ours:
 
 ### Sparks kept for sync
 
-A spark is an item sync can carry ([synckosh](https://github.com/sudiptadeb/synckosh)'s
+A spark is an item sync can carry ([synckosh](https://github.com/debkosh/synckosh)'s
 SPEC): collection `sparks`, one item per spark, the spark's id inside it, its data the
 source and whether it is on. So each spark has:
 

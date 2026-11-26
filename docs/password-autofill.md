@@ -457,7 +457,7 @@ Each is a proposal for the discussion. The reason follows each one.
 8. **Storage: a simple base first, features on top** (the owner, 2026-11-18: "check the
    synckosh for ideas about sealing and storing secrets... design a simple clean base then add
    features later"). Proposed, the same on both platforms:
-   - **A login is a synckosh item**, as [synckosh](https://github.com/sudiptadeb/synckosh)'s
+   - **A login is a synckosh item**, as [synckosh](https://github.com/debkosh/synckosh)'s
      SPEC defines it: collection `logins`, datatype `login`, a UUIDv7 id, the time of its last
      edit. Plain (the public part): the site's origin and when it was saved. Sealed (the private
      part): the username and the password.

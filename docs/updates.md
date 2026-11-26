@@ -10,7 +10,7 @@ it is doing all along: the download on its way, the release ready, a failure and
 
 | Where | What |
 |---|---|
-| [amarit](https://github.com/sudiptadeb/amarit) `appupdate` | The updater ([amarit's docs/appupdate.md](https://github.com/sudiptadeb/amarit/blob/main/docs/appupdate.md)): the rounds, the download with progress, Cancel and Retry, the release's checks, the stage, the install, the settings every copy shares, and the rollback of a release that won't start. It draws nothing. |
+| [amarit](https://github.com/debkosh/amarit) `appupdate` | The updater ([amarit's docs/appupdate.md](https://github.com/debkosh/amarit/blob/main/docs/appupdate.md)): the rounds, the download with progress, Cancel and Retry, the release's checks, the stage, the install, the settings every copy shares, and the rollback of a release that won't start. It draws nothing. |
 | amarit `macapp` | A Mac bundle: unpacked with `ditto`, refused unless it says it is the manifest's version and its signature, checked in the app through the Security framework, is ours (`macapp.SignedBy` of our signing certificate's SHA-1, compiled in); staged, swapped in with one `renamex_np`, the old one kept in `previous/`. `macapp.Present` puts a progress bar on the Dock icon and posts a notification with Relaunch when a release is ready. |
 | amarit `relaunch` | Starting the new release once this process has gone; waiting for the other copies to end. |
 | `core/update` | What the pages see of it: amarit's state in project-b's words (`words`, `why`), and the commands they send. `CheckInterval` is the one minute. |
