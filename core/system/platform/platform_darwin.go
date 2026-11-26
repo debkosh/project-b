@@ -17,8 +17,8 @@ import (
 	"strings"
 	"unsafe"
 
+	"github.com/debkosh/amarit/macapp"
 	"github.com/debkosh/project-b/oskit/clip"
-	"github.com/sudiptadeb/amarit/macapp"
 
 	"projectb/crash"
 	"projectb/system"

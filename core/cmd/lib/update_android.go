@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"unsafe"
 
-	"github.com/sudiptadeb/amarit/appupdate"
+	"github.com/debkosh/amarit/appupdate"
 
 	"projectb/links"
 	"projectb/profiles"

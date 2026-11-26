@@ -1,5 +1,5 @@
 // Package update keeps the installed app current through amarit's updater
-// (github.com/sudiptadeb/amarit/appupdate): it checks the release manifest on a timer,
+// (github.com/debkosh/amarit/appupdate): it checks the release manifest on a timer,
 // downloads with progress, checks the release, stages it, and installs it when told. The
 // installer is the platform's: a signed bundle swapped in place on a Mac (macapp), the
 // system's package installer on Android. This package is what the app's pages see of it:
@@ -20,8 +20,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sudiptadeb/amarit"
-	"github.com/sudiptadeb/amarit/appupdate"
+	"github.com/debkosh/amarit"
+	"github.com/debkosh/amarit/appupdate"
 
 	"projectb/timeline"
 )

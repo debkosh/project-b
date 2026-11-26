@@ -29,8 +29,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sudiptadeb/synckosh/bolt"
-	"github.com/sudiptadeb/synckosh/server"
+	"github.com/debkosh/synckosh/bolt"
+	"github.com/debkosh/synckosh/server"
 )
 
 func main() {

@@ -3,7 +3,7 @@
 package relaunch
 
 import (
-	amarit "github.com/sudiptadeb/amarit/relaunch"
+	amarit "github.com/debkosh/amarit/relaunch"
 
 	"projectb/instance"
 	"projectb/profiles"

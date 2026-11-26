@@ -4,9 +4,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/sudiptadeb/amarit"
-	"github.com/sudiptadeb/amarit/appupdate"
-	"github.com/sudiptadeb/amarit/macapp"
+	"github.com/debkosh/amarit"
+	"github.com/debkosh/amarit/appupdate"
+	"github.com/debkosh/amarit/macapp"
 
 	"projectb/links"
 	"projectb/profiles"

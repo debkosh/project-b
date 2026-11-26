@@ -10,7 +10,7 @@ import (
 	"os/exec"
 	"syscall"
 
-	amarit "github.com/sudiptadeb/amarit/relaunch"
+	amarit "github.com/debkosh/amarit/relaunch"
 
 	"projectb/timeline"
 )

@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sudiptadeb/amarit/appupdate"
+	"github.com/debkosh/amarit/appupdate"
 
 	"projectb/app"
 	"projectb/commands"

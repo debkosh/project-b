@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sudiptadeb/amarit/appupdate"
+	"github.com/debkosh/amarit/appupdate"
 )
 
 // Each of amarit's failures in the words the pages show, and whether Try again is offered.

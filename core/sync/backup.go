@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/sudiptadeb/synckosh"
+	"github.com/debkosh/synckosh"
 )
 
 // The backup code (docs/sync.md, "Backup code"): a second passphrase, random, that the app

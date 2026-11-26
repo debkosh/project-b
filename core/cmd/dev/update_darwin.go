@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/sudiptadeb/amarit/appupdate"
-	"github.com/sudiptadeb/amarit/macapp"
+	"github.com/debkosh/amarit/appupdate"
+	"github.com/debkosh/amarit/macapp"
 
 	"projectb/update"
 )
