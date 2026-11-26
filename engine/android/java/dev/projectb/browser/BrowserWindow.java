@@ -198,6 +198,11 @@ final class BrowserWindow extends FrameLayout {
         return nativeWindow != 0 && BrowserWindowJni.get().backKey(nativeWindow);
     }
 
+    /** Whether the shell has something open that the back key closes. */
+    boolean shellOpen() {
+        return nativeWindow != 0 && BrowserWindowJni.get().shellOpen(nativeWindow);
+    }
+
     void stop() {
         if (nativeWindow != 0) {
             BrowserWindowJni.get().stop(nativeWindow);
@@ -700,6 +705,8 @@ final class BrowserWindow extends FrameLayout {
                 int height);
 
         boolean backKey(long nativeBrowserWindow);
+
+        boolean shellOpen(long nativeBrowserWindow);
 
         void shellMessage(long nativeBrowserWindow, String json);
 
