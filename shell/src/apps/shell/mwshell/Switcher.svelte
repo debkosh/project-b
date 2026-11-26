@@ -6,7 +6,7 @@
   import BookmarkList from './BookmarkList.svelte';
   import Icon from './Icon.svelte';
   import { gesture } from './gesture.js';
-  import { groupLabel, groupOf } from './groups.js';
+  import { groupLabel, groupOf, tabCount } from './groups.js';
 
   // The tab switcher, over the page: the workspaces as chips while there are two or more, which
   // choose the cards shown, and New tab; then two columns of cards, the active one ringed.
@@ -221,7 +221,7 @@
               ><Favicon {tab} size={28} /></span>
             {/each}
           </div>
-          <span class="host">{g.name ? `${g.tabs.length} tabs` : ''}</span>
+          <span class="host">{g.name ? tabCount(g) : ''}</span>
         </div>
       {/if}
     {/each}

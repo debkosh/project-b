@@ -321,6 +321,21 @@
   // The download bar, which draws Go's download news.
   let downloadBar = $state();
 
+  // Closes a group's tabs; the last ones open a new tab first, as closing the last tab does.
+  function closeGroup(g) {
+    sheet = '';
+    if (g.tabs.length >= go.tabs.length) send({ t: 'newTab', workspace });
+    send({ t: 'closeGroup', group: g.id });
+  }
+
+  // Close group asks first, but not for a group of one: that is closing its tab, which
+  // never asks.
+  function askToCloseGroup(id) {
+    const g = go.groups.find((x) => x.id === id);
+    if (g && g.tabs.length === 1) closeGroup(g);
+    else openGroup(id, true);
+  }
+
   function openGroup(id, ask = false) {
     sheetGroup = id;
     askClose = ask;
@@ -414,7 +429,7 @@
       }}
       ongroup={(id) => openGroup(id)}
       ondrop={(id, to) => send(to.group ? { t: 'addToGroup', id, group: to.group } : { t: 'createGroup', ids: [to.tab, id] })}
-      onclosegroup={(id) => openGroup(id, true)}
+      onclosegroup={askToCloseGroup}
     />
   </div>
   <div class="bars foot" class:away class:over class:full class:aside bind:offsetHeight={footHeight}>
@@ -456,11 +471,7 @@
           send({ t: 'ungroup', group: shownGroup.id });
           sheet = '';
         }}
-        onclosegroup={() => {
-          sheet = '';
-          if (shownGroup.tabs.length >= go.tabs.length) send({ t: 'newTab', workspace });
-          send({ t: 'closeGroup', group: shownGroup.id });
-        }}
+        onclosegroup={() => closeGroup(shownGroup)}
       />
     {/key}
   {:else if sheet === 'folder' && go.bookmarks.some((e) => e.id === sheetFolder)}

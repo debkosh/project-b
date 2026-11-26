@@ -19,8 +19,9 @@ decision, 2026-11-14: a group is Go's, since every shell is expected to have it
 - **One window, one workspace.** A group's tabs are all in its window and in the workspace
   of the tab that started it; Go refuses a tab from elsewhere.
 - **A tab is in one group at most:** joining one takes it out of the other.
-- **A group ends** when it drops below two tabs: one closed, moved to another window,
-  taken out. A group made of one tab stays until a tab leaves it.
+- **A group ends** when its last tab leaves it: closed, moved to another window or taken
+  out. One left with a single tab stays a group, as Chrome's does: ending it as its second
+  last tab closed made the tab strip jump, on a phone most of all (his ask, 2026-11-27).
 - **Colour:** given, or the hue `tones.Next` picks from the window's other groups': the
   swatch used least, farthest from theirs.
 - **A tab a page opens** (`target=_blank`, `window.open`) from a tab in a group joins that

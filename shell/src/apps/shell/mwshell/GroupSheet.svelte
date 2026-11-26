@@ -84,7 +84,12 @@
   <div class="answers">
     <button class="text-button" onclick={onnewtab}>New tab</button>
     <button class="text-button" onclick={onungroup}>Ungroup</button>
-    <button class="text-button danger-text" onclick={() => (asking = true)}>Close group…</button>
+    {#if tabs.length === 1}
+      <!-- A group of one: closing it is closing its tab, which never asks. -->
+      <button class="text-button danger-text" onclick={onclosegroup}>Close group</button>
+    {:else}
+      <button class="text-button danger-text" onclick={() => (asking = true)}>Close group…</button>
+    {/if}
   </div>
 </Sheet>
 
