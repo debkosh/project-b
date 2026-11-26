@@ -56,10 +56,15 @@ trap 'docker exec pb rm -f "$marker"; "$root/tools/colima-vm.sh" down "$hold" >/
 
 docker rm -f pb-linux-run >/dev/null 2>&1 || true
 set +e
+# The tracked files as committed, but VERSION as it is in the working tree: a Dev build writes
+# its version there uncommitted before it builds (docs/releasing.md), and the driver's --version
+# check wants the version the app was built with.
 git -C "$root" archive HEAD | docker run -i --platform linux/arm64 --name pb-linux-run --shm-size=1g \
   -v pb-work:/work:ro \
   -e PB_BIN=/work/chromium/src/out/linux-$CPU/project_b -e PB_ARGS=--no-sandbox \
+  -e PB_VERSION="$(tr -d '[:space:]' < "$root/VERSION")" \
   "$IMAGE" sh -c 'mkdir -p /repo && tar -x -C /repo && cd /repo || exit 2
+    printf "%s\n" "$PB_VERSION" > VERSION
     [ "${1:-}" = --script ] && exec python3 "$2"
     [ $# -gt 0 ] || exec python3 tools/drive_first_app.py
     rc=0
