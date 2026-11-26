@@ -2307,6 +2307,18 @@ def the_page_renderer_dies():
     check("a page whose renderer died is marked Crashed, and the app lives", marked and alive(),
           "marked %s, alive %s, renderers %s killed %s now %s" % (bool(marked), alive(), before, before[1:], renderers()))
     shot("16-after-page-renderer-kill")
+    # Its report says how it ended: content's word for a renderer that died while in use, and
+    # the page's origin, not its address. Before, it said "exited abnormally", next to the
+    # whole address (Sudipta's page crash on Google, 2026-11-26).
+    reports = lambda: set(re.findall(r"project-b-report-[\w-]+\.txt", adb("shell", "ls", "/sdcard/Download/")))
+    had = reports()
+    tap(middle(see("shell", text="Save report")))
+    saved = until(lambda: (reports() - had) or None, 20)
+    report = until(lambda: adb("shell", "cat", "/sdcard/Download/" + sorted(saved)[-1]) or None, 10) if saved else None
+    children = (report or "").split("== Processes that crashed (crashes.log)")[-1].split("\n==")[0]
+    check("a page crash's report says the renderer ended while in use, with its page's origin only",
+          any("renderer ended while in use" in l and l.endswith(", " + url("/a").rsplit("/", 1)[0]) for l in children.splitlines()),
+          children.strip()[-400:] or "no report saved")
     served.clear()
     menu("Reload")
     check("reload recovers after a crash", asked("/a"), str(served))
