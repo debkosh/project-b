@@ -2894,6 +2894,17 @@ def keyboard_bars():
             use_shell("")
 
 
+def keep_evidence(name, logname=None):
+    """A shot as name, and every log buffer, as running- or gone-<logname>.logcat.txt: the app
+    has died with nothing in the crash buffer, and has started without drawing its shell, each
+    now and then. Says whether the app is running."""
+    shot(name)
+    running = alive()
+    with open("%s/%s-%s.logcat.txt" % (OUT, "running" if running else "gone", logname or name), "w") as f:
+        f.write(adb("logcat", "-b", "all", "-d"))
+    return running
+
+
 def open_welcome():
     """A new profile's welcome, past Get started at Pick your style. False when it never got
     there, which it says as a check."""
@@ -2911,6 +2922,10 @@ def open_welcome():
             tap(middle(button))
             time.sleep(2)
     opened = until(started, 30) is not None
+    if not opened:
+        # Kept as a stopped part keeps them: it failed once on emu-29 in a release's drive,
+        # just after welcome_extras passed the same check, and left nothing to look at.
+        keep_evidence("welcome-not-opened")
     check("Get started opens Pick your style", opened)
     return opened
 
@@ -3304,12 +3319,7 @@ def main():
             part()
         except TimeoutError as e:
             # Something the next step needed never came on screen.
-            shot("stopped-" + part.__name__)
-            running = alive()
-            # A part that stops keeps every log buffer: the app has died with nothing in the crash
-            # buffer, and has started without drawing its shell, each now and then.
-            with open("%s/%s-%s.logcat.txt" % (OUT, "running" if running else "gone", part.__name__), "w") as f:
-                f.write(adb("logcat", "-b", "all", "-d"))
+            running = keep_evidence("stopped-" + part.__name__, part.__name__)
             check("%s ran to its end" % part.__name__.replace("_", " "), False, "%s; the app is %s" % (e, "running" if running else "gone"))
     adb("shell", "am", "force-stop", PACKAGE)
     # Its own port forward goes with it, as a run leaves nothing behind on the emulator.
