@@ -11,8 +11,8 @@
   a real window is. Above them is the menu bar the app sets, and on the desktop the app's
   icon, which opens the app as the Dock does.
 
-    ?phone       a phone's: no menu bar or window frame, the app over the whole screen
-                 under a status bar, and a home bar to go back to the home screen.
+    ?phone       a phone's: no menu bar or window frame, the app as one window inset in
+                 the screen under a status bar, and a home bar to go back to the home screen.
     ?launched    the app is open from the start; otherwise its icon opens it, as a person
                  does (the web demo's stage).
 -->
@@ -132,12 +132,15 @@
     #layers .lab .g, #layers .note { color: var(--mint); }
   }
 
-  /* A phone: a status bar, the home screen's icons, and the app over the whole screen. */
-  .phone #menubar { height: 28px; padding: 0 16px; font-weight: 600; font-size: 13px; }
+  /* A phone: a status bar, the home screen's icons, and the app as a window inset evenly,
+     with a thin dark edge (a light one on the dark wall, where dark would not show). */
+  .phone { --phone-edge: #15191b; }
+  @media (prefers-color-scheme: dark) { .phone { --phone-edge: rgba(255, 255, 255, 0.22); } }
+  .phone #menubar { height: 28px; padding: 0 16px; font-weight: 600; font-size: 13px; background: none; border-bottom: 0; backdrop-filter: none; -webkit-backdrop-filter: none; }
   .phone #menus, .phone #menubar .mark { display: none; }
   .phone #icons { inset: 28px 0 0; place-items: start; padding: 36px 0 0 24px; }
   .phone #app-icon img { width: 64px; height: 64px; }
-  .phone .win { border-radius: 0; box-shadow: none; }
+  .phone .win { border-radius: 20px; box-shadow: 0 0 0 2.5px var(--phone-edge), var(--win-shadow); }
   #home-bar { position: absolute; z-index: 1000; left: 50%; bottom: 0; width: 160px; height: 22px; transform: translateX(-50%); border: 0; background: none; padding: 0; cursor: pointer; }
   #home-bar::after { content: ""; display: block; width: 120px; height: 5px; margin: 0 auto; border-radius: 3px; background: var(--text); opacity: 0.55; }
 </style>

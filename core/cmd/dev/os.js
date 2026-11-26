@@ -46,9 +46,11 @@
     let front = 10;
     let quit = false;
 
+    // On a phone the app is a window inset evenly in the screen, 12px from the status bar
+    // and the sides and above the home bar, so it reads as running inside the page.
     const area = () => {
-      const top = phone ? 28 : 30;
-      return { x: 0, y: top, w: innerWidth, h: innerHeight - top - (phone ? 22 : 0) };
+      if (phone) return { x: 12, y: 40, w: innerWidth - 24, h: innerHeight - 40 - 34 };
+      return { x: 0, y: 30, w: innerWidth, h: innerHeight - 30 };
     };
     function rectOf(id, w) {
       const a = area();
