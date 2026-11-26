@@ -111,6 +111,11 @@ PAGES["/apis"] = ("<title>APIs</title><button style='position:fixed;inset:0;widt
 # later that it lives, and whether Blink knows the element.
 PAGES["/usermedia"] = ("<title>User media</title><usermedia></usermedia>"
                        "<script>setTimeout(() => fetch('/usermedia-alive?' + typeof HTMLUserMediaElement), 3000)</script>")
+# Images with no words of their own, which a screen reader asks Chromium to describe, from
+# its accessibility strings; says a moment later that the page lives.
+PAGES["/images"] = ("<title>Images</title>" + "".join(
+    "<img width=160 height=120 src=\"data:image/svg+xml,%%3Csvg xmlns='http://www.w3.org/2000/svg'%%3E%%3Crect width='160' height='120' fill='%%23%s'/%%3E%%3C/svg%%3E\">" % c
+    for c in ("c33", "3c3", "33c")) + "<script>setTimeout(() => fetch('/images-alive'), 3000)</script>")
 
 served = []
 # Each request's host and path, for Links to other sites, which serves two sites.
@@ -1856,6 +1861,15 @@ def talkback_states():
             n = until(lambda: named(name), 10)
             check("and a control named %s says its name" % how, n is not None,
                   None if n is None else (n.get("class", "").rsplit(".", 1)[-1], n.get("text"), n.get("content-desc"), n.get("hint")))
+        # With the screen reader on, pages whose words Chromium gives it from the app's
+        # resources: a <usermedia> element's, and images' with none of their own. Opened by a
+        # link from another app, as a tap is TalkBack's to read, not to press.
+        for path, what in (("/usermedia", "a <usermedia> element"), ("/images", "images with no words of their own")):
+            since = len(served)
+            adb("shell", "am", "start", "-W", "-a", "android.intent.action.VIEW", "-d", url(path), PACKAGE)
+            check("with TalkBack on, a page with %s keeps its renderer" % what,
+                  until(lambda: any(s.startswith(path + "-alive") for s in served[since:]), 30) is not None,
+                  str(served[since:][-4:]))
     finally:
         talkback(False)
 
