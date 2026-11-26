@@ -174,6 +174,23 @@ def serve_pages():
     sys.exit(f"the test pages aren't served at {ALPHA} in the VM")
 
 
+pages_checked = 0.0
+
+
+def pages_alive():
+    """Serves the test pages again if their server has gone. It lives as long as the one tart
+    exec that started it, and in a Stable run's vm group it went mid-run, under three emulator
+    drives, and every later page read "ERR_CONNECTION_REFUSED" (2026-11-26). It looks at most
+    every 10 s, and says when it had to start it again, so a repeat shows in the log."""
+    global pages_checked
+    if time.time() - pages_checked < 10:
+        return
+    pages_checked = time.time()
+    if not guest("/usr/bin/curl", "-fs", "--max-time", "5", ALPHA):
+        print("note: the test page server in the VM had gone; serving the pages again", flush=True)
+        serve_pages()
+
+
 WINDOWS = """
 ObjC.import("CoreGraphics");
 const all = ObjC.deepUnwrap(ObjC.castRefToObject($.CGWindowListCopyWindowInfo(1, 0)));
@@ -425,6 +442,7 @@ def click_on(r, win=None, right=False):
 
 def launch():
     """Opens the app the way Finder does. Returns seconds to the shell's first paint, or None."""
+    pages_alive()
     start = time.time()
     guest("/usr/bin/open", APP)
     need = 80000 * desk.scale * desk.scale  # About half the window's pale shell.
@@ -644,6 +662,7 @@ def window_menu():
 def go_to(url):
     """Cmd+L in the window in front, then the address, which a new tab, as a window starts on,
     loads in place."""
+    pages_alive()
     desk.key("cmd+l")
     time.sleep(0.4)
     desk.type(url)
@@ -653,6 +672,7 @@ def go_to(url):
 def new_tab(url):
     """New Tab the user's way on Standard: Cmd+T goes to a new tab with the command box,
     focused, and url typed there with Enter loads in it."""
+    pages_alive()
     desk.key("cmd+t")
     time.sleep(0.4)
     desk.type(url)
@@ -1879,6 +1899,7 @@ def field_focused():
 
 def type_address(text):
     """Clicks the address field, waits for it to take focus, and goes to text."""
+    pages_alive()
     click_on(V["field"])
     until(field_focused, bool, 5)
     desk.type(text)
