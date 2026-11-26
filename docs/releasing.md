@@ -146,7 +146,10 @@ merge into main while it runs; it reads that checkout. It takes about four minut
 - A release that adds a shell dependency (`shell/package.json`) needs `npm install` in the main
   checkout's `shell/` before `tools/release.sh`, and in any release worktree with its own
   `node_modules`; worktrees that link `shell/node_modules` to the main checkout's share it. Use
-  `npm install`, not `npm ci`, there: other checkouts link to it.
+  `npm install`, not `npm ci`, there: other checkouts link to it. And never `npm ci` in a worktree
+  whose `shell/node_modules` is such a link: it empties the main checkout's through the link (on
+  2026-11-26 a Dev build's mock failed over it); `tools/shell-npm-ci.sh` refuses both cases, and
+  `tools/release.sh` stops at once when vite or playwright is missing.
 - Go holds the shell's built pages (`core/shellfiles`, [layers.md](layers.md#5-the-shell-inside-go)),
   so a shell change rebuilds Go, and the app and the APK carry no `shell/` folder.
 - A Go module marked `// indirect` that core imports directly is rewritten by every build

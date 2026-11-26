@@ -41,6 +41,12 @@ git fetch -q origin main
 if [ "$CHANNEL" = dev ] && { [ -z "${PB_APP_VERSION:-}" ] || [ "${PB_GATED_COMMIT:-}" != "$(git rev-parse HEAD)" ]; }; then
   echo "a Dev build needs PB_APP_VERSION and PB_GATED_COMMIT (main, $(git rev-parse --short HEAD)) from the gate that ran it: see the top of this file"; exit 1
 fi
+# The shell's packages, which the shell build and the mock suite need: on 2026-11-26 they were
+# gone from this checkout (an npm ci in a worktree whose shell/node_modules linked here), and the
+# Dev build's mock failed 40 suites over it instead of saying so.
+for pkg in vite playwright; do
+  [ -d "shell/node_modules/$pkg" ] || { echo "RESULT=failed shell/node_modules has no $pkg: run npm install in this checkout's shell/ (docs/releasing.md, Traps)"; exit 1; }
+done
 # A Dev build's tests, before the build lock: Go's and the mock suite, which build nothing in out/.
 if [ "$CHANNEL" = dev ] && [ "${PB_BUILD_LOCKED:-}" != 1 ]; then
   echo "=== $(date '+%F %T') Go's tests and the mock suite"
