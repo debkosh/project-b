@@ -180,16 +180,28 @@ func TestTheSettingsAreSharedAndDevNeverGoesBack(t *testing.T) {
 	if one.Channel() != Stable || !one.Auto() {
 		t.Fatalf("a new folder follows %q, automatic %v", one.Channel(), one.Auto())
 	}
+	// The listeners are told on the updater's goroutine once its change arrives, which may be
+	// after the folder already says so (Auto, Channel): the test waits for what it heard.
+	var mu sync.Mutex
 	var channels []string
 	var autos []bool
-	one.OnChannelChanged(func(ch string) { channels = append(channels, ch) })
-	one.OnAutoChanged(func(on bool) { autos = append(autos, on) })
+	heard := func() ([]string, []bool) {
+		mu.Lock()
+		defer mu.Unlock()
+		return append([]string(nil), channels...), append([]bool(nil), autos...)
+	}
+	one.OnChannelChanged(func(ch string) { mu.Lock(); channels = append(channels, ch); mu.Unlock() })
+	one.OnAutoChanged(func(on bool) { mu.Lock(); autos = append(autos, on); mu.Unlock() })
 	one.SetChannel("nightly")
 	one.SetChannel(Dev)
-	eventually(t, one, func(st State) bool { return one.Channel() == Dev && st.Check == UpToDate })
+	eventually(t, one, func(st State) bool {
+		ch, _ := heard()
+		return one.Channel() == Dev && st.Check == UpToDate && len(ch) > 0
+	})
 	one.SetAuto(false)
-	eventually(t, one, func(State) bool { return !one.Auto() })
-	if len(channels) != 1 || channels[0] != Dev || len(autos) != 1 || autos[0] {
+	eventually(t, one, func(State) bool { _, au := heard(); return !one.Auto() && len(au) > 0 })
+	time.Sleep(100 * time.Millisecond) // a second, wrong, telling would come in this time
+	if channels, autos := heard(); len(channels) != 1 || channels[0] != Dev || len(autos) != 1 || autos[0] {
 		t.Fatalf("heard channels %v, automatic %v", channels, autos)
 	}
 	other := manager(t, dir, "0.2.1", s.url, &o)
