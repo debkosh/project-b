@@ -583,7 +583,8 @@ def a27(app):
 
 def unsafe_site(app, kind, says):
     """A page our test list for kind names: Go refuses it before any request and the tab's
-    notice is unsafe, "<host> <says>", with Go back and Open anyway; the shell shows it, and
+    notice is unsafe, "<host> <says>", with Go back, or Close tab where there is nothing to go
+    back to, first, and Open anyway; the shell shows it, and
     its Open anyway loads the page. Nothing is sent anywhere: the lists are on the device."""
     lists_arrived(app)
     go(app, P + "/a")
@@ -597,7 +598,7 @@ def unsafe_site(app, kind, says):
     if asked:
         return False, f"the warning came after the page's server was asked for {asked}"
     actions = [(a["id"], bool(a.get("primary"))) for a in notice["actions"]]
-    if not (notice["title"].startswith(host) and notice["title"].endswith(says)) or actions != [("back", True), ("proceed", False)]:
+    if not (notice["title"].startswith(host) and notice["title"].endswith(says)) or actions not in ([("back", True), ("proceed", False)], [("close", True), ("proceed", False)]):
         return False, f"the notice is {notice['title']!r} with {actions}"
     said = wait_for(lambda: app.js(NOTICE), 5)
     if notice["title"] not in said:
