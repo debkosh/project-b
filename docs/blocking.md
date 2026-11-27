@@ -329,6 +329,9 @@ So the package is split by list, and a list that changed sends only its change:
   Browsing ones still come each hour, being small patches.
 - **Only what changed, of the lists that are on:** for each, the patch from the version it
   has, else the whole file.
+- **Decided by the owner, 2026-11-27:** "phones and desktop download the lists obly those
+  whoch changes and builds rhe list and stores it locally as one or more files for quick
+  load on restart". Every platform the same; no ready-made engines in the release.
 - **Compiled on the device, a group at a time.** A group whose lists changed is compiled
   again (`pbblock_compile`) on a background goroutine at low priority, written to disk in the
   library's serialized form, and swapped in. The serialized form never leaves the device, so
