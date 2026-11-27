@@ -21,7 +21,7 @@ type Notice struct {
 	Actions []NoticeAction `json:"actions"`
 }
 
-// NoticeAction is one thing the person can do: "reload", "back" or "proceed".
+// NoticeAction is one thing the person can do: "reload", "back", "close" or "proceed".
 type NoticeAction struct {
 	ID      string `json:"id"`
 	Title   string `json:"title"`
@@ -151,6 +151,10 @@ func (m *Manager) noticeOf(t *Tab) *Notice {
 	}
 	if t.CanGoBack {
 		n.Actions = append(n.Actions, back)
+	} else if n.Kind == "unsafe" {
+		// A dangerous site's notice always has a safe answer first: with nothing to go back
+		// to, as in a tab a link opened, the tab closes, as Chrome's Back to safety does.
+		n.Actions = append(n.Actions, NoticeAction{ID: "close", Title: "Close tab", Primary: true})
 	}
 	if n.Kind == "certificate" && c.passable || n.Kind == "unsafe" {
 		n.Actions = append(n.Actions, NoticeAction{ID: "proceed", Title: "Open anyway"})
@@ -189,6 +193,8 @@ func (m *Manager) NoticeAction(id engine.TabID, action string) {
 		m.eng.Reload(id)
 	case "back":
 		m.eng.GoBack(id)
+	case "close":
+		m.Close(id)
 	case "proceed":
 		// This host passes until the app quits; kept nowhere.
 		if t.Notice.Kind == "unsafe" {

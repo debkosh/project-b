@@ -183,3 +183,26 @@ func TestADangerousSiteIsRefusedUntilThePersonOpensItAnyway(t *testing.T) {
 		t.Fatalf("a good site's danger %+v", tab.Danger)
 	}
 }
+
+// A dangerous site in a tab with nothing to go back to still has a safe answer first:
+// Close tab, which closes it.
+func TestUnsafeNoticeWithNothingBehind(t *testing.T) {
+	e := &loadsEngine{}
+	m := oneWindow(e)
+	id := m.Create(1)
+	m.SetDanger(func(u string) (Danger, bool) {
+		return Danger{Kind: "malware", List: "URLhaus filter"}, hostOf(u) == "harm.test"
+	})
+	if got := m.HandleNavigationStarting(id, 1, "https://harm.test/"); got != engine.NavigationBlock {
+		t.Fatalf("a malware site: %v", got)
+	}
+	tab, _ := m.Get(id)
+	n := tab.Notice
+	if ids := actionIDs(n); n == nil || len(ids) != 2 || ids[0] != "close" || !n.Actions[0].Primary || n.Actions[0].Title != "Close tab" || ids[1] != "proceed" {
+		t.Fatalf("actions %+v", n)
+	}
+	m.NoticeAction(id, "close")
+	if _, ok := m.Get(id); ok {
+		t.Fatal("Close tab left the tab open")
+	}
+}
