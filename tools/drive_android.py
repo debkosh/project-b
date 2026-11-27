@@ -1798,18 +1798,22 @@ def screen_size():
     return int(w), int(h)
 
 
-def system_node(**want):
+def system_node(last=False, **want):
     """The first node on the whole screen whose attributes are as wanted, for another app's
-    window, such as the system's file picker. label is content-desc."""
+    window, such as the system's file picker, or with last the last one. label is
+    content-desc."""
     out = adb("exec-out", "uiautomator", "dump", "/dev/tty")
     if "</hierarchy>" not in out:
         return None
     root = ET.fromstring(out[:out.rindex("</hierarchy>") + len("</hierarchy>")])
     names = {"label": "content-desc"}
+    found = None
     for node in root.iter("node"):
         if all(v(node.get(names.get(k, k)) or "") if callable(v) else node.get(names.get(k, k)) == v for k, v in want.items()):
-            return node
-    return None
+            if not last:
+                return node
+            found = node
+    return found
 
 
 def box_of(bounds):
@@ -1827,7 +1831,17 @@ def pick(name, several=False):
     if until(lambda: system_node(text=name), 5) is None:
         tap(middle(until(lambda: system_node(label="Show roots"))))
         tap(middle(until(lambda: system_node(text="Downloads"))))
-    node = until(lambda: system_node(text=name))
+    # The picker lists only what is on screen, and Downloads can hold many files above this
+    # one: on Android 10, a grid of six showed earlier runs' files, and SiteSparks.zip below
+    # them was never found (Stable 0.3.14). Not in sight, it is searched for by its name, and
+    # the search's title then says the name too, above the results: the last one is the file.
+    listed = lambda: system_node(last=True, text=name, **{"class": lambda c: "EditText" not in c})
+    if until(listed, 5) is None:
+        tap(middle(until(lambda: system_node(label="Search"))))
+        until(lambda: system_node(**{"class": lambda c: "EditText" in c, "focused": "true"}))
+        adb("shell", "input", "text", name)
+        key(66)
+    node = until(listed)
     if several:
         long_press(middle(node))
         tap(middle(until(lambda: system_node(text=lambda t: t.lower() == "select"))))
