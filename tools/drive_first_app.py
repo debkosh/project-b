@@ -813,6 +813,13 @@ def run_parts(parts):
             part()
         except (RuntimeError, TimeoutError, OSError, subprocess.TimeoutExpired) as e:
             traceback.print_exc()
+            # What the app showed when the part stopped, before it is stopped: a wait that ran
+            # out says only what it waited for (fonts_ninja's prompt in gate-sf, 2026-11-28).
+            for i, app in enumerate(App.running):
+                try:
+                    print(app.cmd("capture", os.path.join(OUT, f"stopped-{part.__name__}-{i}.png"), timeout=10), flush=True)
+                except Exception as shot:
+                    print(f"no picture of {part.__name__}'s app {i}: {shot}", flush=True)
             check(f"{part.__name__} ran to its end", False, e)
         for app in App.running[:]:
             app.proc.kill()
