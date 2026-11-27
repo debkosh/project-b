@@ -143,6 +143,10 @@ results = []
 
 class Server(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
+        if self.path.startswith("http://"):
+            # Asked as the phone's proxy, as blocking's test hosts are: the address's path.
+            asked_for = urllib.parse.urlsplit(self.path)
+            self.path = asked_for.path + ("?" + asked_for.query if asked_for.query else "")
         served.append(self.path)
         seen.append(self.headers.get("Host", "").split(":")[0] + self.path)
         agents.append(self.headers.get("User-Agent", ""))
@@ -3017,6 +3021,232 @@ def secure_dns():
         profile_file("prefs.json", prefs)
 
 
+# The block lists (docs/blocking.md), as tools/check_basics.py checks them on the desktop (28
+# and 42 to 48). Our test lists' hosts are all under blocking.test, RFC 6761's .test. A phone
+# takes no switches, so no --host-resolver-rules: while the test lists are checked, the phone's
+# own proxy is this server, through the adb reverse, and the server answers every host. The
+# browser goes to localhost direct, as it never proxies it, and Go fetches the lists itself,
+# not through the browser, so the proxy touches neither.
+LISTED = "blocking.test"
+with open(os.path.join(ROOT, "core/blocking/catalog.json")) as _f:
+    CATALOGUE = json.load(_f)
+_BLOCKER = {g["id"]: g["blocker"] for g in CATALOGUE["groups"]}
+# The person's choices, as prefs.json keeps them: Block ads and Warn before dangerous sites on,
+# the test group's lists on and every other list off, so only ours are fetched.
+TEST_LISTS = {"blockAds": True, "warnDangerous": True,
+              "lists": {l["id"]: l["group"] == "test" for l in CATALOGUE["lists"]}}
+# What each of them loads as: the network blocker's group test, and each safe list on its own.
+TEST_UNITS = {"test"} | {l["id"] for l in CATALOGUE["lists"] if l["group"] == "test" and l["id"].endswith(("-malware", "-phishing"))}
+# What a new profile's lists load as, leaving out those that go by the phone's languages:
+# each network group with a list on, and each safe list on.
+DEFAULT_NETWORK = {l["group"] for l in CATALOGUE["lists"] if _BLOCKER[l["group"]] == "network" and l.get("on") and not l.get("languages")}
+DEFAULT_SAFE = {l["id"] for l in CATALOGUE["lists"] if _BLOCKER[l["group"]] == "safe" and l.get("on") and not l.get("languages")}
+TIMELINE = "/data/data/%s/%s/timeline.log" % (PACKAGE, PROFILE)
+
+PAGES["/listed-images"] = ("<title>Images</title>"
+                           "<img width=96 height=64 src='http://ads.%s/pic/pb-test-ad.png'>"
+                           "<img width=96 height=64 src='http://allowed.ads.%s/pic/pb-test-allowed.png'>" % (LISTED, LISTED))
+PAGES["/hide"] = "<title>Hide</title><p class=pb-test-ad style='font-size:40px'>an ad<p style='font-size:40px'>not an ad"
+PAGES["/unsafe"] = "<title>Unsafe</title><p style='font-size:40px'>a page the dangerous sites' test lists name"
+
+
+def blocking_lines():
+    """The lists manager's lines in this start's timeline (docs/logging.md), as (kind, text)."""
+    out = adb("shell", "cat", TIMELINE)
+    return [(m.group(1), m.group(2)) for m in re.finditer(r"^\s*[\d.]+ (\w+)\s+go\s+blocking: (.*)$", out, re.M)]
+
+
+def every_two_seconds(condition, timeout):
+    """until's, asking only every two seconds: each ask copies the whole timeline off the phone."""
+    deadline = time.time() + timeout
+    while True:
+        value = condition()
+        if value is not None and value is not False:
+            return value
+        if time.time() > deadline:
+            return None
+        time.sleep(2)
+
+
+def lists_ready(units, timeout):
+    """Waits for each of units to be compiled or loaded, as Go says in the timeline, and
+    returns the lists manager's lines then. A TimeoutError names those that came, and the
+    errors."""
+    def ready():
+        lines = blocking_lines()
+        have = {m.group(1) for _, t in lines for m in [re.match(r"(\S+) (compiled from|loaded from) ", t)] if m}
+        return lines if units <= have else None
+    lines = every_two_seconds(ready, timeout)
+    if lines is None:
+        lines = blocking_lines()
+        have = sorted({t.split()[0] for _, t in lines if " compiled from " in t or " loaded from " in t})
+        errors = [t for k, t in lines if k == "error"]
+        raise TimeoutError("the lists didn't load in %d s: wanted %s, loaded %s, errors %s" % (timeout, sorted(units), have, errors[-3:]))
+    # Go hands the safe lists to the navigation gate once the pass that loaded them ends.
+    time.sleep(1)
+    return lines
+
+
+def compiled(lines):
+    """Each unit compiled, with its lists, time and engine's bytes, from the lines."""
+    return [m.groups() for _, t in lines for m in [re.match(r"(\S+) compiled from (\d+) lists in (\S+), (\d+) bytes", t)] if m]
+
+
+def app_memory():
+    """The app's main process, from dumpsys meminfo, in kB: its total PSS, its native heap's
+    PSS, and what malloc holds there (the native heap's Heap Alloc, the row's last but one on
+    every Android)."""
+    pid = next((p for p, name in processes() if name == PACKAGE), None)
+    if pid is None:
+        raise TimeoutError("the app isn't running to be measured")
+    out = adb("shell", "dumpsys", "meminfo", pid)
+    total = re.search(r"TOTAL(?: PSS)?:\s+(\d+)", out)
+    native = re.search(r"Native Heap:\s+(\d+)", out)
+    row = re.search(r"^\s*Native Heap((?:\s+\d+)+)\s*$", out, re.M)
+    if not (total and native and row):
+        raise TimeoutError("dumpsys meminfo %s said no totals: %s" % (pid, out[:300]))
+    return {"pss": int(total.group(1)), "native": int(native.group(1)), "alloc": int(row.group(1).split()[-2])}
+
+
+def said_memory(when, m):
+    print("info: blocking memory, %s: total PSS %.1f MB, native heap PSS %.1f MB, malloc'd %.1f MB"
+          % (when, m["pss"] / 1024, m["native"] / 1024, m["alloc"] / 1024), flush=True)
+
+
+def lists_checked_again():
+    """Waits for the first check of the lists after the start-up wait, which finds the
+    manifest unchanged or takes a new one, so each measure is taken at the same point."""
+    return every_two_seconds(lambda: any(t == "the manifest hasn't changed" or " compiled from " in t for _, t in blocking_lines()), 120)
+
+
+def blocking():
+    """The block lists on the phone. With our test lists on: an image from ads.blocking.test
+    isn't fetched and the site's sheet counts it, while its exception's image is; on
+    hide.blocking.test .pb-test-ad is hidden; malware.blocking.test is refused before it is
+    asked, with the unsafe notice's Go back and Open anyway, and opened anyway, the address
+    says Dangerous. Then, from a new profile's own lists, what they cost: the compile times,
+    and the main process's memory with Warn before dangerous sites on and off, as info."""
+    if adb("shell", "settings", "get", "secure", "enabled_accessibility_services").strip() not in ("", "null"):
+        talkback(False)
+    try:
+        clear_data()
+        adb("shell", "settings", "put", "global", "http_proxy", "127.0.0.1:%d" % PORT)
+        try:
+            test_lists_on_the_phone()
+        finally:
+            adb("shell", "settings", "put", "global", "http_proxy", ":0")
+        default_lists_memory()
+    except TimeoutError:
+        # Kept before the data is cleared, which stops the app.
+        STOPPED["blocking"] = keep_evidence("stopped-blocking", "blocking")
+        raise
+    finally:
+        adb("shell", "settings", "put", "global", "http_proxy", ":0")
+        adb("shell", "cmd", "statusbar", "collapse")
+        # The lists, the test prefs and the app with them: the next run starts as main leaves it.
+        clear_data()
+
+
+def test_lists_on_the_phone():
+    profile_file("prefs.json", TEST_LISTS)
+    launch()
+    lists_ready(TEST_UNITS, 180)
+
+    del seen[:]
+    go(BASE + "/listed-images")
+    until(lambda: "localhost/listed-images" in seen)
+    allowed = until(lambda: any(s.startswith("allowed.ads.%s/" % LISTED) for s in seen), 15)
+    ads = [s for s in seen if s.startswith("ads.%s/" % LISTED)]
+    check("with the test lists on, an image from ads.%s isn't fetched, and its exception's from allowed.ads.%s is" % (LISTED, LISTED),
+          allowed and not ads, "allowed fetched %s, ads fetched %s" % (bool(allowed), ads))
+    # The site's sheet says the tab's count. The site button is "Not secure · Site settings"
+    # on the test server's http page.
+    tap(middle(see("shell", label=lambda label: (label or "").endswith("Site settings"))))
+    counted = lambda: (lambda m: int(m.group(1)) if m else 0)(re.search(r"(\d+) blocked on this page", shown_words("shell")))
+    until(lambda: counted() >= 1, 10)
+    shot("blocking-site-sheet")
+    count = counted()
+    check("the site's sheet counts the blocked image", count >= 1, "it says %d blocked" % count)
+    key(4)
+    until(lambda: "blocked on this page" not in shown_words("shell"), 5)
+
+    # On the test server the same paragraph shows, so the tree is seen to carry it.
+    go(BASE + "/hide")
+    shows = until(lambda: find("page", text="an ad") is not None and find("page", text="not an ad") is not None, 15)
+    check("on localhost, .pb-test-ad shows", shows, shown_words("page")[:200])
+    del seen[:]
+    go("http://hide.%s/hide" % LISTED)
+    until(lambda: "hide.%s/hide" % LISTED in seen)
+    hidden = until(lambda: find("page", text="not an ad") is not None and find("page", text="an ad") is None, 15)
+    shot("blocking-hidden")
+    check("on hide.%s, .pb-test-ad is hidden and the plain paragraph shows" % LISTED, hidden,
+          "asked %s; the page says %s" % (seen[-3:], shown_words("page")[:200]))
+
+    del seen[:]
+    go(BASE + "/a")
+    until(lambda: "localhost/a" in seen)
+    del seen[:]
+    unsafe = "malware.%s" % LISTED
+    go("http://%s/unsafe" % unsafe)
+    said = until(lambda: find("shell", text=lambda t: bool(t) and (unsafe + " may harm your device") in t), 15)
+    back, anyway = named("shell", "Go back"), named("shell", "Open anyway")
+    shot("blocking-unsafe-notice")
+    reached = [s for s in seen if s.startswith(unsafe)]
+    check("%s is refused before it is asked, with the unsafe notice, Go back and Open anyway" % unsafe,
+          said is not None and back is not None and anyway is not None and not reached,
+          "notice %s, Go back %s, Open anyway %s, the server was asked for %s; the shell says %s"
+          % (said is not None, back is not None, anyway is not None, reached, shown_words("shell")[:240]))
+    if anyway is None:
+        return
+    tap(middle(anyway))
+    opened = until(lambda: any(s.startswith(unsafe + "/unsafe") for s in seen) and named("shell", "Open anyway") is None
+                   and find("page", text=lambda t: bool(t) and "test lists name" in t) is not None, 15)
+    marked = until(lambda: find("shell", label=lambda label: (label or "").startswith("Dangerous")), 10)
+    shot("blocking-opened-anyway")
+    check("Open anyway opens it, and the address says Dangerous", opened and marked is not None,
+          "opened %s; the shell says %s" % (bool(opened), shown_words("shell")[:240]))
+
+
+def default_lists_memory():
+    """What a new profile's lists cost: no prefs, so Block ads and Warn before dangerous sites
+    are on, with the catalogue's lists. Measured once they compiled, then from a start that
+    loads them from disk, as every later start does, and from one with Warn before dangerous
+    sites off, so the safe lists' share shows. Only errors fail."""
+    clear_data()
+    launch()
+    lines = lists_ready(DEFAULT_NETWORK | DEFAULT_SAFE, 300)
+    for name, lists, took, size in compiled(lines):
+        print("info: blocking %s compiled from %s lists in %s, %.1f MB" % (name, lists, took, int(size) / 1048576), flush=True)
+    time.sleep(5)
+    said_memory("just compiled", app_memory())
+    errors = [t for k, t in lines if k == "error"]
+
+    launch()
+    lines = lists_ready(DEFAULT_NETWORK | DEFAULT_SAFE, 60)
+    if lists_checked_again() is None:
+        print("note: the lists weren't checked again in 120 s; measured anyway", flush=True)
+    time.sleep(5)
+    on = app_memory()
+    said_memory("loaded from disk, Warn before dangerous sites on", on)
+    errors += [t for k, t in blocking_lines() if k == "error"]
+
+    profile_file("prefs.json", {**profile_json("prefs.json"), "warnDangerous": False})
+    launch()
+    lists_ready(DEFAULT_NETWORK, 60)
+    if lists_checked_again() is None:
+        print("note: the lists weren't checked again in 120 s; measured anyway", flush=True)
+    time.sleep(5)
+    off = app_memory()
+    said_memory("loaded from disk, Warn before dangerous sites off", off)
+    lines = blocking_lines()
+    errors += [t for k, t in lines if k == "error"]
+    safe = sorted({t.split()[0] for _, t in lines if t.split()[0] in DEFAULT_SAFE and " loaded from " in t})
+    print("info: blocking memory, the safe lists' share: total PSS %+.1f MB, native heap PSS %+.1f MB, malloc'd %+.1f MB%s"
+          % ((on["pss"] - off["pss"]) / 1024, (on["native"] - off["native"]) / 1024, (on["alloc"] - off["alloc"]) / 1024,
+             "; yet with it off these still loaded: %s" % safe if safe else ""), flush=True)
+    check("a new profile's lists compile and load with no errors", not errors, "; ".join(errors[:3]))
+
+
 def long_press_menu():
     """A long press on a link, a picture and a linked picture, in both Mobile shells, the web
     one and the native one: the dense sheet's tiles, Download putting the file in the phone's
@@ -3583,7 +3813,7 @@ def main():
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
     every = (browsing, mobile_shell, custom_colour, settings_back, talkback_states, bookmark_star, settings_ahead, back_key_chain, page_dialogs, popups, leave, page_camera, downloads, crash_notice, relaunch_on_the_phone, download_notifications, download_outlives_screen, stream_download, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, passkeys_on_the_phone, passwords_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
-             the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web, secure_dns, long_press_menu, keyboard_bars, page_downloads_ask, welcome_extras, welcome_last_step, web_server_kinds, update_on_the_phone, settings_keeps_its_size, update_notification)
+             the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web, secure_dns, long_press_menu, keyboard_bars, page_downloads_ask, welcome_extras, welcome_last_step, web_server_kinds, update_on_the_phone, settings_keeps_its_size, update_notification, blocking)
     for part in [p for p in every if not sys.argv[1:] or p.__name__ in sys.argv[1:]]:
         # tools/results.py splits a run's memory, CPU and checks by these lines.
         print("--- part " + part.__name__, flush=True)
