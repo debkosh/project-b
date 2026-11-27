@@ -35,6 +35,7 @@ type List struct {
 	Licence   string   `json:"licence"`
 	Home      string   `json:"home"`
 	Brave     string   `json:"brave,omitempty"`
+	Trusted   bool     `json:"trusted,omitempty"` // may use the trusted-* scriptlets; read by the app only
 }
 
 type Source struct {

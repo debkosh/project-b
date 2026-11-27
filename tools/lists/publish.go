@@ -62,16 +62,19 @@ const (
 )
 
 type config struct {
-	catalog      *Catalog
-	out          string // the new files, for the upload
-	keep         string // where the names of every file the release keeps are written
-	prev         store
-	fetch        *fetcher
-	workers      int
-	resourcesURL string // adblock-rust's resources JSON, from Brave
-	ownResources string // a folder of our own scriptlets, *.js
-	key          ed25519.PrivateKey
-	now          func() time.Time
+	catalog       *Catalog
+	out           string // the new files, for the upload
+	keep          string // where the names of every file the release keeps are written
+	prev          store
+	fetch         *fetcher
+	workers       int
+	resources     string // adblock-rust's resources JSON: a file, or an https address
+	resourcesFrom origin // the commits a resources file was built from
+	ownResources  string // a folder of our own scriptlets, *.js
+	key           ed25519.PrivateKey
+	now           func() time.Time
+	// Whether the library takes a list's text; nil takes every one.
+	check func(id string, text []byte) error
 }
 
 // item is one thing the manifest names: a list, or the resources.
@@ -101,17 +104,27 @@ func run(ctx context.Context, c config) (bool, error) {
 			}
 		}
 	}
-	if c.resourcesURL != "" {
-		urls = append(urls, c.resourcesURL)
+	resFile := c.resources != "" && !strings.HasPrefix(c.resources, "https://")
+	if c.resources != "" && !resFile {
+		urls = append(urls, c.resources)
 	}
 	got := c.fetch.fetchAll(ctx, urls, c.workers)
+	if resFile {
+		// Built by the workflow; missing when that failed, which keeps the previous version.
+		b, err := os.ReadFile(c.resources)
+		if err == nil {
+			err = checkText(b, "")
+		}
+		got[c.resources] = fetched{b, err}
+	}
 
 	var items []item
 	for _, l := range c.catalog.Lists {
 		items = append(items, buildList(l, got, prev.Lists[l.ID]))
 	}
-	if c.resourcesURL != "" {
-		it, err := buildResources(c, got[c.resourcesURL], prev.Resources[resourcesID])
+	checkLists(c, items, prev)
+	if c.resources != "" {
+		it, err := buildResources(c, got[c.resources], prev.Resources[resourcesID])
 		if err != nil {
 			return false, err
 		}
@@ -163,7 +176,7 @@ func run(ctx context.Context, c config) (bool, error) {
 			files[n] = b
 		}
 	}
-	licences := licencesText(c.catalog)
+	licences := licencesText(c.catalog, c.resourcesFrom)
 
 	changed := len(files) > 0 || !sameManifest(prev, next) || !bytes.Equal(prev.licences, licences)
 	if !changed {
@@ -320,12 +333,13 @@ func validHost(h string) bool {
 	return true
 }
 
-// buildResources takes Brave's resources JSON and adds our own scriptlets, a file per one.
+// buildResources takes the resources JSON, uBO's and Brave's as the workflow builds it, or
+// Brave's alone, and adds our own scriptlets, a file per one.
 func buildResources(c config, brave fetched, old *Entry) (item, error) {
 	it := item{id: resourcesID, ext: "json"}
 	err := brave.err
 	if err == nil {
-		err = shrunk(brave.body, c.resourcesURL, old)
+		err = shrunk(brave.body, c.resources, old)
 	}
 	var all []json.RawMessage
 	if err == nil {
@@ -369,7 +383,7 @@ func buildResources(c config, brave fetched, old *Entry) (item, error) {
 		return it, err
 	}
 	it.text = append(text, '\n')
-	it.sources = map[string]int64{c.resourcesURL: int64(len(brave.body))}
+	it.sources = map[string]int64{c.resources: int64(len(brave.body))}
 	return it, nil
 }
 
@@ -596,8 +610,12 @@ func writeKeep(path string, m *Manifest) error {
 	return os.WriteFile(path, []byte(strings.Join(names, "\n")+"\n"), 0o644)
 }
 
+// origin is the commits a resources file was built from; empty, Brave's alone from its
+// address.
+type origin struct{ ubo, brave string }
+
 // licencesText is LICENSES.txt: each list's title, licence, home and sources.
-func licencesText(c *Catalog) []byte {
+func licencesText(c *Catalog, res origin) []byte {
 	var b bytes.Buffer
 	b.WriteString("Project B's blocking lists\n\n" +
 		"Each list here is its sources' text, unchanged in meaning: several sources are joined\n" +
@@ -609,10 +627,22 @@ func licencesText(c *Catalog) []byte {
 			fmt.Fprintf(&b, "    %s\n", s.URL)
 		}
 	}
-	b.WriteString("\nResources (resources)\n" +
-		"  The scriptlets and stand-in scripts the lists name: Brave's, from its adblock-resources\n" +
-		"  repository's dist/resources.json, and Project B's own test scriptlet (MIT).\n" +
-		"  Licence: MPL-2.0 (Brave's adblock-resources)\n" +
-		"  Home: https://github.com/brave/adblock-resources\n")
+	b.WriteString("\nResources (resources)\n")
+	if res.ubo == "" {
+		b.WriteString("  The scriptlets and stand-in scripts the lists name: Brave's, from its adblock-resources\n" +
+			"  repository's dist/resources.json, and Project B's own test scriptlet (MIT).\n" +
+			"  Licence: MPL-2.0 (Brave's adblock-resources)\n" +
+			"  Home: https://github.com/brave/adblock-resources\n")
+		return b.Bytes()
+	}
+	brave := "https://github.com/brave/adblock-resources"
+	if res.brave != "" {
+		brave += "/tree/" + res.brave
+	}
+	fmt.Fprintf(&b, "  The scriptlets and stand-in scripts the lists name, put together as Brave does:\n"+
+		"  uBlock Origin's scriptlets and redirect resources, Brave's own from its adblock-resources\n"+
+		"  repository's dist/resources.json, and Project B's own test scriptlet (MIT).\n"+
+		"  uBlock Origin's:\n    Licence: GPL-3.0\n    Home: https://github.com/gorhill/uBlock/tree/%s\n"+
+		"  Brave's:\n    Licence: MPL-2.0\n    Home: %s\n", res.ubo, brave)
 	return b.Bytes()
 }

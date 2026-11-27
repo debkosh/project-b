@@ -5,6 +5,11 @@
 // manifest; -keep gets the name of every file the release keeps, and the workflow deletes the
 // rest. When nothing changed, -out stays empty.
 //
+// The workflow builds the resources from pinned commits of uBlock Origin and Brave and hands
+// them in as a file (-resources); a local run without one takes Brave's alone from its
+// address. With -check, a list that changed is published only once that program, the
+// library's check example, takes it; else its previous version stays.
+//
 //	LISTS_SIGNING_KEY=<base64 seed> go run . -catalog ../../core/blocking/catalog.json \
 //	    -out out -keep keep.txt -prev gh:lists -repo-root ../..
 //	go run . -keygen    # a new key pair: the seed for the secret, the public key (hex) for core
@@ -33,7 +38,10 @@ func main() {
 	prev := flag.String("prev", "", "the release published so far: gh:<tag> (with GITHUB_REPOSITORY), an https base address, or dir:<folder>")
 	repoRoot := flag.String("repo-root", ".", "the checkout, which our own lists' sources are read from")
 	repoRaw := flag.String("repo-raw", "https://raw.githubusercontent.com/debkosh/project-b/main/", "our own lists' address, read from -repo-root instead")
-	resources := flag.String("resources", "https://raw.githubusercontent.com/brave/adblock-resources/master/dist/resources.json", "adblock-rust's resources JSON")
+	resources := flag.String("resources", "https://raw.githubusercontent.com/brave/adblock-resources/master/dist/resources.json", "adblock-rust's resources JSON: a file, as the workflow builds it, or an https address")
+	resUBO := flag.String("resources-ubo", "", "the uBlock Origin commit the -resources file was built from, for LICENSES.txt")
+	resBrave := flag.String("resources-brave", "", "the brave/adblock-resources commit the -resources file was built from, for LICENSES.txt")
+	check := flag.String("check", "", "a program that takes a list's file and fails on one the library can't use (core/blocking/lib's check example)")
 	own := flag.String("own-resources", "tools/lists/resources", "a folder of our own scriptlets, *.js")
 	keygen := flag.Bool("keygen", false, "print a new signing key's seed and public key, and stop")
 	flag.Parse()
@@ -77,8 +85,9 @@ func main() {
 	defer cancel()
 	changed, err := run(ctx, config{
 		catalog: cat, out: *out, keep: *keep, prev: st, workers: 8,
-		fetch:        &fetcher{client: client, maxSize: 64 << 20, repoRaw: *repoRaw, repoRoot: *repoRoot, retryWait: 10 * time.Second},
-		resourcesURL: *resources, ownResources: *own, key: key, now: time.Now,
+		fetch:     &fetcher{client: client, maxSize: 64 << 20, repoRaw: *repoRaw, repoRoot: *repoRoot, retryWait: 10 * time.Second},
+		resources: *resources, resourcesFrom: origin{ubo: *resUBO, brave: *resBrave},
+		ownResources: *own, check: checkWith(*check), key: key, now: time.Now,
 	})
 	if err != nil {
 		log.Fatal(err)

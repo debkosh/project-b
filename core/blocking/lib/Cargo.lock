@@ -312,6 +312,7 @@ version = "0.1.0"
 dependencies = [
  "adblock",
  "arc-swap",
+ "base64",
  "serde",
  "serde_json",
 ]

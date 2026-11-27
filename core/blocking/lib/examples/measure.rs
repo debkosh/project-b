@@ -4,7 +4,7 @@ fn main() {
     let texts: Vec<Vec<u8>> = std::env::args().skip(1).map(|p| std::fs::read(p).unwrap()).collect();
     let refs: Vec<&[u8]> = texts.iter().map(|t| t.as_slice()).collect();
     let t = Instant::now();
-    let data = pbblock::compile(&refs);
+    let data = pbblock::compile(&refs, &[]);
     println!("compile {:?}, serialized {} KB", t.elapsed(), data.len() / 1024);
     let b = unsafe { &*pbblock::pbblock_new() };
     let t = Instant::now();

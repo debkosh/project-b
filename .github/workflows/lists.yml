@@ -4,6 +4,14 @@
 # patch to it from each of its last eight versions, and manifest.json, signed with the one
 # secret, LISTS_SIGNING_KEY. Files the manifest no longer names are deleted.
 #
+# The resources are put together as Brave puts its own together (brave-core-crx-packager's
+# lib/adBlockRustUtils.js), from the pinned commits below: uBlock Origin's redirect resources,
+# read by adblock-rust's own assembler, Brave's dist/resources.json, and uBO's scriptlets, which
+# are ES modules and so are read with node (tools/lists/ubo-scriptlets.mjs). Each list that
+# changed is published only once core/blocking/lib's check example, the library the app pins,
+# takes it; one it doesn't, like one whose download failed, keeps its previous version. A pin
+# moves only by a commit, to a commit at least two weeks old.
+#
 # The release is a pre-release and never the latest, so it never looks like an app release:
 # releases/latest/download (the homepage's DMG and APK links, the VM check) skips pre-releases,
 # pages.yml skips them and lists only full releases, release.sh reads only v<version> tags and
@@ -33,19 +41,50 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       TAG: ${{ github.ref == 'refs/heads/main' && 'lists' || 'lists-draft' }}
+      UBO_COMMIT: aa9236cb351e369cbb68113dbe8175b87f3cd134 # gorhill/uBlock 1.76.0, 2026-11-08
+      BRAVE_RESOURCES_COMMIT: 6da9b247c3368baa8b4f24cd02046e18702a6527 # brave/adblock-resources, 2026-09-03
+      # The toolchain the library builds with (core/blocking/lib/rust-toolchain.toml), for this
+      # machine's target only.
+      RUSTUP_TOOLCHAIN: 1.100.0
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: tools/lists/go.mod
           cache-dependency-path: tools/lists/go.sum
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: The library's check and resources examples
+        working-directory: core/blocking/lib
+        env:
+          # Quicker to build than the app's library, without LTO: the same code and rules.
+          CARGO_PROFILE_RELEASE_LTO: "false"
+          CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "16"
+        run: |
+          rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal --no-self-update
+          cargo build --release --locked --features assembler --example check --example resources
+      - name: The resources, uBlock Origin's and Brave's
+        # A failure leaves no resources.json, and the lists step keeps the previous version.
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          r=$RUNNER_TEMP/res
+          mkdir -p "$r/ubo"
+          curl -fsSL --retry 3 "https://codeload.github.com/gorhill/uBlock/tar.gz/$UBO_COMMIT" | tar -xz -C "$r/ubo" --strip-components 1
+          curl -fsSL --retry 3 -o "$r/brave.json" "https://raw.githubusercontent.com/brave/adblock-resources/$BRAVE_RESOURCES_COMMIT/dist/resources.json"
+          node tools/lists/ubo-scriptlets.mjs "$r/ubo" > "$r/ubo-scriptlets.json"
+          core/blocking/lib/target/release/examples/resources "$r/ubo" "$r/brave.json" "$r/ubo-scriptlets.json" > "$r/resources.json"
+          mv "$r/resources.json" "$RUNNER_TEMP/resources.json"
       - name: The lists
         env:
           LISTS_SIGNING_KEY: ${{ secrets.LISTS_SIGNING_KEY }}
         run: |
           go -C tools/lists build -o "$RUNNER_TEMP/lists" .
           "$RUNNER_TEMP/lists" -catalog core/blocking/catalog.json -out "$RUNNER_TEMP/out" \
-            -keep "$RUNNER_TEMP/keep.txt" -prev "gh:$TAG" -repo-root .
+            -keep "$RUNNER_TEMP/keep.txt" -prev "gh:$TAG" -repo-root . \
+            -resources "$RUNNER_TEMP/resources.json" -resources-ubo "$UBO_COMMIT" -resources-brave "$BRAVE_RESOURCES_COMMIT" \
+            -check "$PWD/core/blocking/lib/target/release/examples/check"
       - name: The release, made on the first run (after the lists, so a missing key leaves none)
         run: |
           if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then

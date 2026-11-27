@@ -15,8 +15,19 @@ arc-swap = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
+[features]
+# The resources example's: adblock-rust's reader of uBO's redirect resources (tools/lists).
+assembler = ["adblock/resource-assembler"]
+
+[[example]]
+name = "resources"
+required-features = ["assembler"]
+
 [profile.release]
 lto = true
 codegen-units = 1
 panic = "abort"
 strip = true
+
+[dev-dependencies]
+base64 = "0.22"

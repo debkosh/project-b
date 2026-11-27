@@ -54,6 +54,10 @@ type rig struct {
 	priv    ed25519.PrivateKey
 	runs    int
 	clock   time.Time
+	// As the workflow sets them; resources empty: the stand-in's address.
+	resources string
+	from      origin
+	check     func(id string, text []byte) error
 }
 
 func newRig(t *testing.T) *rig {
@@ -114,10 +118,14 @@ func (r *rig) publish() (changed bool, out string, m *Manifest) {
 	if err := os.WriteFile(filepath.Join(own, "pb-test.js"), []byte("document.title;\n"), 0o644); err != nil {
 		r.t.Fatal(err)
 	}
+	res := r.resources
+	if res == "" {
+		res = r.srv.URL + "/resources.json"
+	}
 	changed, err := run(context.Background(), config{
 		catalog: r.cat, out: out, keep: keep, prev: dirStore(r.release), workers: 4,
-		fetch:        &fetcher{client: r.srv.Client(), maxSize: 1 << 20, retryWait: time.Millisecond},
-		resourcesURL: r.srv.URL + "/resources.json", ownResources: own, key: r.priv,
+		fetch:     &fetcher{client: r.srv.Client(), maxSize: 1 << 20, retryWait: time.Millisecond},
+		resources: res, resourcesFrom: r.from, ownResources: own, check: r.check, key: r.priv,
 		now: func() time.Time { return r.clock },
 	})
 	if err != nil {
@@ -350,6 +358,74 @@ func TestFirstFailureLeavesTheListOut(t *testing.T) {
 	}
 	if _, ok := m.Lists["a"]; !ok {
 		t.Fatal("a is missing")
+	}
+}
+
+// A list the library doesn't take keeps its previous version; on the first run it is left out.
+func TestCheckKeepsThePreviousText(t *testing.T) {
+	r := newRig(t)
+	prog := filepath.Join(t.TempDir(), "check")
+	// Takes a list only if it has no line "bad".
+	if err := os.WriteFile(prog, []byte("#!/bin/sh\n! grep -qx bad \"$1\"\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	var mu sync.Mutex
+	checked := map[string]int{}
+	inner := checkWith(prog)
+	r.check = func(id string, text []byte) error {
+		mu.Lock()
+		checked[id]++
+		mu.Unlock()
+		return inner(id, text)
+	}
+	r.src.set("/c2.txt", "bad\n")
+	_, _, m := r.publish()
+	if _, ok := m.Lists["c"]; ok {
+		t.Fatal("c was published though the check failed it")
+	}
+	if m.Lists["a"] == nil || m.Lists["b"] == nil {
+		t.Fatal("a list the check takes is missing")
+	}
+	first := m.Lists["a"]
+	r.src.set("/a.txt", bigList("a", 1)+"bad\n")
+	r.src.set("/c2.txt", "##.c2\n")
+	_, _, m = r.publish()
+	if m.Lists["a"].SHA256 != first.SHA256 {
+		t.Fatal("a took a text the check failed")
+	}
+	if m.Lists["c"] == nil {
+		t.Fatal("c, fixed, is still missing")
+	}
+	if checked["b"] != 1 {
+		t.Fatalf("b, unchanged, was checked %d times", checked["b"])
+	}
+}
+
+// The workflow's resources file: taken as it is, named in LICENSES.txt with its commits, and
+// when it is missing the previous version stays.
+func TestResourcesFromAFile(t *testing.T) {
+	r := newRig(t)
+	r.resources = filepath.Join(t.TempDir(), "resources.json")
+	r.from = origin{ubo: "aa9236cb351e369cbb68113dbe8175b87f3cd134", brave: "6da9b247c3368baa8b4f24cd02046e18702a6527"}
+	body := `[{"name":"set-constant.js","aliases":["set.js"],"kind":{"mime":"application/javascript"},"content":"ZnVuY3Rpb24gc2V0Q29uc3RhbnQoKXt9","dependencies":[]}]`
+	if err := os.WriteFile(r.resources, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, out, m := r.publish()
+	var res []map[string]any
+	if err := json.Unmarshal(r.whole(m.Resources["resources"]), &res); err != nil || len(res) != 2 || res[0]["name"] != "set-constant.js" || res[1]["name"] != "pb-test.js" {
+		t.Fatalf("resources: %v %v", res, err)
+	}
+	lic, _ := os.ReadFile(filepath.Join(out, licencesName))
+	if !strings.Contains(string(lic), "uBlock Origin's:\n    Licence: GPL-3.0\n    Home: https://github.com/gorhill/uBlock/tree/aa9236cb351e369cbb68113dbe8175b87f3cd134\n") ||
+		!strings.Contains(string(lic), "https://github.com/brave/adblock-resources/tree/6da9b247c3368baa8b4f24cd02046e18702a6527") {
+		t.Fatalf("LICENSES.txt:\n%s", lic)
+	}
+	was := m.Resources["resources"]
+	os.Remove(r.resources)
+	_, _, m = r.publish()
+	if m.Resources["resources"] == nil || m.Resources["resources"].SHA256 != was.SHA256 {
+		t.Fatal("a missing resources file didn't keep the previous version")
 	}
 }
 
