@@ -29,6 +29,7 @@ body{margin:0;font:14px/1.4 -apple-system,"Helvetica Neue",Arial,sans-serif;colo
 .sw{width:36px;height:20px;border-radius:10px;background:#c9d2d6;position:relative;flex:none}
 .sw::after{content:"";position:absolute;left:3px;top:3px;width:14px;height:14px;border-radius:50%;background:#fff}
 .sw.on{background:var(--accent)}.sw.on::after{left:19px}
+.div{width:1px;height:28px;background:var(--line);flex:none}
 .chev{width:16px;color:var(--muted);flex:none;text-align:center}
 .back{color:var(--accent);font-size:13px;margin-bottom:4px}
 h1{font-size:18px;margin:0 0 4px;font-weight:600}
@@ -53,7 +54,7 @@ h1{font-size:18px;margin:0 0 4px;font-weight:600}
 .notice h2{margin:0;font-size:20px}
 .notice p{margin:0;color:var(--muted)}
 .notice .acts{display:flex;gap:8px;margin-top:8px}
-.notice .btn.p{background:var(--warn)}
+.notice .btn.p{background:var(--accent)}
 .notice .btn.o{border:1px solid var(--line)}
 /* phone */
 .phone{width:390px;height:780px;border:10px solid #1f2326;border-radius:44px;background:var(--bg);overflow:hidden;display:flex;flex-direction:column}
@@ -68,11 +69,11 @@ h1{font-size:18px;margin:0 0 4px;font-weight:600}
 <div class="mock" id="l1"><div class="win"><div class="title">Settings</div><div class="settings">
   <div class="nav"><div>General</div><div class="on">Privacy and sites</div><div>Workspaces</div><div>Keyboard</div><div>Flags</div></div>
   <div class="main"><div class="col">
-    <div class="sec">Blocking</div>
+    <div class="sec">Protection</div>
     <div class="card">
-      <div class="row"><div class="grow">Block ads<div class="sub">Ads and trackers, on every site. Each site can turn it off from its panel.</div></div><div class="sw on"></div></div>
-      <div class="row"><div class="grow">Warn before dangerous sites<div class="sub">Sites known for malware or phishing, checked on this device. Nothing is sent anywhere.</div></div><div class="sw on"></div></div>
-      <div class="row"><div class="grow">Lists<div class="sub">14 of 52 lists on · updated 20 minutes ago</div></div><div class="chev">›</div></div>
+      <div class="row"><div class="grow">Block ads<div class="sub">Ads and trackers, from public lists kept up to date</div></div><div class="sw on"></div></div>
+      <div class="row"><div class="grow">Warn before dangerous sites<div class="sub">Malware and phishing, checked on this device; nothing is sent anywhere</div></div><div class="sw on"></div></div>
+      <div class="row"><div class="grow">Block lists<div class="sub">14 of 52 lists on · updated 20 minutes ago</div></div><div class="chev">›</div></div>
     </div>
     <div class="sec">Sites</div>
     <div class="card"><div class="row"><div class="grow">Site settings</div><div class="chev">›</div></div></div>
@@ -84,28 +85,29 @@ h1{font-size:18px;margin:0 0 4px;font-weight:600}
   <div class="nav"><div>General</div><div class="on">Privacy and sites</div><div>Workspaces</div><div>Keyboard</div><div>Flags</div></div>
   <div class="main"><div class="col">
     <div class="back">‹ Privacy and sites</div>
-    <h1>Lists</h1>
+    <h1>Block lists</h1>
     <p class="lead">Public lists of what to block, updated every hour. Turn a group on or off, or open it to choose its lists.</p>
     <div class="card">
-      <div class="row"><div class="chev">›</div><div class="grow">Ads<div class="sub">5 of 5 on</div></div><div class="sw on"></div></div>
-      <div class="row"><div class="chev">⌄</div><div class="grow">Trackers<div class="sub">3 of 4 on</div></div><div class="sw on"></div></div>
+      <div class="row"><div class="chev">›</div><div class="grow">Ads<div class="sub">Ad networks and ad servers · 5 of 5 on</div></div><div class="sw on"></div></div>
+      <div class="row"><div class="chev">⌄</div><div class="grow">Trackers<div class="sub">Scripts and pixels that follow you across sites · 3 of 4 on</div></div><div class="sw on"></div></div>
       <div class="row in"><div class="grow">EasyPrivacy<div class="sub">Tracking scripts and pixels · easylist.to</div></div><div class="meta">2 h ago · 1.5 MB</div><div class="sw on"></div></div>
       <div class="row in"><div class="grow">uBlock Origin: Privacy<div class="sub">Trackers the other lists miss · github.com/uBlockOrigin</div></div><div class="meta">1 day ago · 190 KB</div><div class="sw on"></div></div>
       <div class="row in"><div class="grow">Peter Lowe's list<div class="sub">Ad and tracking servers · pgl.yoyo.org</div></div><div class="meta">3 days ago · 90 KB</div><div class="sw on"></div></div>
       <div class="row in"><div class="grow">AdGuard Tracking Protection<div class="sub">More trackers, a few false alarms · adguard.com</div></div><div class="meta">5 h ago · 1.1 MB</div><div class="sw"></div></div>
-      <div class="row"><div class="chev">›</div><div class="grow">Regional<div class="sub">1 of 38 on · English</div></div><div class="sw on"></div></div>
+      <div class="row"><div class="chev">›</div><div class="grow">Regional<div class="sub">Ads on sites in your languages · 1 of 38 on</div></div><div class="sw on"></div></div>
       <div class="row"><div class="chev">›</div><div class="grow">Annoyances<div class="sub">Cookie notices, pop-ups, social widgets · 0 of 4 on</div></div><div class="sw"></div></div>
       <div class="row"><div class="chev">›</div><div class="grow">Extreme<div class="sub">These block more and may break some sites · 0 of 3 on</div></div><div class="sw"></div></div>
     </div>
     <div class="sec">Dangerous sites</div>
+    <div class="sub" style="font-size:12px;color:var(--muted);margin:-4px 0 4px">Used while Warn before dangerous sites is on.</div>
     <div class="card">
-      <div class="row"><div class="chev">›</div><div class="grow">Malware<div class="sub">2 of 2 on · updated 20 minutes ago</div></div><div class="sw on"></div></div>
-      <div class="row"><div class="chev">›</div><div class="grow">Phishing<div class="sub">2 of 2 on · updated 20 minutes ago</div></div><div class="sw on"></div></div>
+      <div class="row"><div class="chev">›</div><div class="grow">Malware<div class="sub">Sites that spread harmful software · 2 of 2 on</div></div><div class="sw on"></div></div>
+      <div class="row"><div class="chev">›</div><div class="grow">Phishing<div class="sub">Sites that pretend to be others to get passwords · 2 of 2 on</div></div><div class="sw on"></div></div>
     </div>
   </div></div>
 </div>
-<div class="note" style="left:998px;top:330px;width:176px">A group's switch turns all its lists on or off; a list's own switch leaves the rest. Regional follows the app's languages until a list is changed by hand.</div>
-<div class="note" style="left:998px;top:660px;width:176px">Greyed, with their switches off to the touch, while Warn before dangerous sites is off.</div>
+<div class="note" style="left:998px;top:330px;width:176px">A group's switch is on while any of its lists is on. Off turns all its lists off; on brings back the group's defaults (Regional: the app's languages), not every list.</div>
+<div class="note" style="left:998px;top:660px;width:176px">While Warn is off, this section is greyed and its line reads "Turn on Warn before dangerous sites to use these".</div>
 </div></div>
 
 <!-- l3: the welcome's Protection step -->
@@ -126,7 +128,7 @@ h1{font-size:18px;margin:0 0 4px;font-weight:600}
 <!-- l4: the unsafe-site notice -->
 <div class="mock" id="l4"><div class="win">
   <div class="tabbar"><div style="width:72px;display:flex;gap:8px"><i style="width:12px;height:12px;border-radius:50%;background:#ec6a5e"></i><i style="width:12px;height:12px;border-radius:50%;background:#f4bf4f"></i><i style="width:12px;height:12px;border-radius:50%;background:#61c554"></i></div>
-    <div class="field"><span class="bad">Dangerous</span>login-bank-verify.example</div></div>
+    <div class="field"><span class="bad" style="font-size:12px;font-weight:500;display:inline-flex;gap:4px;align-items:center;padding:2px 6px;border-radius:6px;background:var(--warn-tint)">⚠ Dangerous</span>login-bank-verify.example</div></div>
   <div class="page"><div class="notice" role="alert">
     <div class="ico">!</div>
     <h2>login-bank-verify.example may be trying to steal your information</h2>
@@ -135,23 +137,24 @@ h1{font-size:18px;margin:0 0 4px;font-weight:600}
   </div></div>
 </div></div>
 
-<!-- l5: the Lists page on a phone -->
+<!-- l5: the Block lists page on a phone -->
 <div class="mock" id="l5"><div class="phone">
-  <div class="hdr"><span style="color:var(--accent)">‹</span> Lists</div>
+  <div class="hdr"><span style="color:var(--accent)">‹</span> Block lists</div>
   <div class="body">
+    <p class="lead" style="margin:0 4px 4px">Public lists of what to block, updated every hour. Tap a group to choose its lists.</p>
     <div class="card">
-      <div class="row"><div class="grow">Ads<div class="sub">5 of 5 on</div></div><div class="sw on"></div></div>
-      <div class="row"><div class="grow">Trackers<div class="sub">3 of 4 on</div></div><div class="sw on"></div></div>
-      <div class="row"><div class="grow">Regional<div class="sub">1 of 38 on · English</div></div><div class="sw on"></div></div>
-      <div class="row"><div class="grow">Annoyances<div class="sub">0 of 4 on</div></div><div class="sw"></div></div>
-      <div class="row"><div class="grow">Extreme<div class="sub">May break some sites · 0 of 3 on</div></div><div class="sw"></div></div>
+      <div class="row"><div class="grow">Ads<div class="sub">Ad networks and ad servers · 5 of 5 on</div></div><div class="div"></div><div class="sw on"></div></div>
+      <div class="row"><div class="grow">Trackers<div class="sub">Scripts and pixels that follow you · 3 of 4 on</div></div><div class="div"></div><div class="sw on"></div></div>
+      <div class="row"><div class="grow">Regional<div class="sub">Ads on sites in your languages · 1 of 38 on</div></div><div class="div"></div><div class="sw on"></div></div>
+      <div class="row"><div class="grow">Annoyances<div class="sub">Cookie notices, pop-ups, social widgets · 0 of 4 on</div></div><div class="div"></div><div class="sw"></div></div>
+      <div class="row"><div class="grow">Extreme<div class="sub">These block more and may break some sites · 0 of 3 on</div></div><div class="div"></div><div class="sw"></div></div>
     </div>
     <div class="sec" style="margin:8px 4px 0">Dangerous sites</div>
+    <div class="sub" style="font-size:12px;color:var(--muted);margin:0 4px">Used while Warn before dangerous sites is on.</div>
     <div class="card">
-      <div class="row"><div class="grow">Malware<div class="sub">2 of 2 on</div></div><div class="sw on"></div></div>
-      <div class="row"><div class="grow">Phishing<div class="sub">2 of 2 on</div></div><div class="sw on"></div></div>
+      <div class="row"><div class="grow">Malware<div class="sub">Sites that spread harmful software · 2 of 2 on</div></div><div class="div"></div><div class="sw on"></div></div>
+      <div class="row"><div class="grow">Phishing<div class="sub">Sites that pretend to be others · 2 of 2 on</div></div><div class="div"></div><div class="sw on"></div></div>
     </div>
-    <div class="sub" style="padding:4px;color:var(--muted);font-size:12px">Tap a group for its lists. Updated 20 minutes ago.</div>
   </div>
 </div></div>
 
