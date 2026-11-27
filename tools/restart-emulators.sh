@@ -28,6 +28,13 @@ for emulator in "$@"; do
         prefs=/data/data/com.google.android.inputmethod.latin/shared_prefs/com.google.android.inputmethod.latin_preferences.xml
         "$ADB" -s "$serial" shell "[ -f $prefs ] && { grep -q auto_correction $prefs || sed -i 's|</map>|    <boolean name=\"auto_correction\" value=\"false\" />\n</map>|' $prefs; sed -i 's|name=\"auto_correction\" value=\"true\"|name=\"auto_correction\" value=\"false\"|' $prefs; am force-stop com.google.android.inputmethod.latin; }" >/dev/null 2>&1
         "$ADB" -s "$serial" logcat -c
+        # Recent apps survive a restart. Seven old Files tasks there made download_outlives_screen's
+        # swipe hit the wrong card, and the app "never ended" (2026-11-27), so remove every task
+        # but home. Android 10 lists TaskRecord{...} with its own ids and is left alone.
+        "$ADB" -s "$serial" shell dumpsys activity recents | tr -d '\r' | grep "Recent #" | grep -v "type=home" |
+            sed -nE 's/.* Task\{[0-9a-f]+ #([0-9]+) .*/\1/p' | while read -r task; do
+            "$ADB" -s "$serial" shell am stack remove "$task" </dev/null >/dev/null 2>&1
+        done
         # A release's launch check leaves the app uninstalled; with no app to start, its GPU
         # goes unchecked, and restarting the emulator again can't change that.
         if [ -z "$("$ADB" -s "$serial" shell pm list packages "$PACKAGE" | tr -d '\r')" ]; then
