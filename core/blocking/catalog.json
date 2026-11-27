@@ -291,25 +291,6 @@
       "brave": "9FCEECEC-52B4-4487-8E57-8781E82C91D0"
     },
     {
-      "id": "regional-bg",
-      "title": "Bulgarian",
-      "about": "Ads on Bulgarian sites.",
-      "group": "regional",
-      "on": false,
-      "languages": [
-        "bg"
-      ],
-      "sources": [
-        {
-          "url": "https://stanev.org/abp/adblock_bg.txt",
-          "format": "standard"
-        }
-      ],
-      "licence": "unconfirmed",
-      "home": "https://stanev.org/abp",
-      "brave": "FD176DD1-F9A0-4469-B43E-B1764893DD5C"
-    },
-    {
       "id": "regional-zh",
       "title": "Chinese",
       "about": "Ads on Chinese sites.",
@@ -327,83 +308,6 @@
       "licence": "GPL-3.0",
       "home": "https://github.com/AdguardTeam/AdguardFilters",
       "brave": "92AA0D3B-34AC-4657-9A5C-DBAD339AF8E2"
-    },
-    {
-      "id": "regional-cs-sk",
-      "title": "Czech and Slovak",
-      "about": "Ads on Czech and Slovak sites.",
-      "group": "regional",
-      "on": false,
-      "languages": [
-        "cs",
-        "sk"
-      ],
-      "sources": [
-        {
-          "url": "https://raw.githubusercontent.com/tomasko126/easylistczechandslovak/master/filters.txt",
-          "format": "standard"
-        }
-      ],
-      "licence": "CC-BY-SA-4.0",
-      "home": "https://github.com/tomasko126/easylistczechandslovak",
-      "brave": "7CCB6921-7FDA-4A9B-B70A-12DD0A8F08EA"
-    },
-    {
-      "id": "regional-nl",
-      "title": "Dutch",
-      "about": "Ads on Dutch sites.",
-      "group": "regional",
-      "on": false,
-      "languages": [
-        "nl"
-      ],
-      "sources": [
-        {
-          "url": "https://filters.adtidy.org/extension/ublock/filters/8.txt",
-          "format": "standard"
-        }
-      ],
-      "licence": "GPL-3.0",
-      "home": "https://github.com/AdguardTeam/AdguardFilters",
-      "brave": "9D644676-4784-4982-B94D-C9AB19098D2A"
-    },
-    {
-      "id": "regional-et",
-      "title": "Estonian",
-      "about": "Ads on Estonian sites.",
-      "group": "regional",
-      "on": false,
-      "languages": [
-        "et"
-      ],
-      "sources": [
-        {
-          "url": "https://ubo-et.lepik.io/list.txt",
-          "format": "standard"
-        }
-      ],
-      "licence": "CC0-1.0",
-      "home": "https://github.com/sander85/uBO-et",
-      "brave": "0783DBFD-B5E0-4982-9B4A-711BDDB925B7"
-    },
-    {
-      "id": "regional-fi",
-      "title": "Finnish",
-      "about": "Ads on Finnish sites.",
-      "group": "regional",
-      "on": false,
-      "languages": [
-        "fi"
-      ],
-      "sources": [
-        {
-          "url": "https://raw.githubusercontent.com/finnish-easylist-addition/finnish-easylist-addition/gh-pages/Finland_adb.txt",
-          "format": "standard"
-        }
-      ],
-      "licence": "Unlicense",
-      "home": "https://github.com/finnish-easylist-addition/finnish-easylist-addition",
-      "brave": "1C6D8556-3400-4358-B9AD-72689D7B2C46"
     },
     {
       "id": "regional-fr",
@@ -444,48 +348,6 @@
       "brave": "E71426E7-E898-401C-A195-177945415F38"
     },
     {
-      "id": "regional-el",
-      "title": "Greek",
-      "about": "Ads on Greek sites.",
-      "group": "regional",
-      "on": false,
-      "languages": [
-        "el"
-      ],
-      "sources": [
-        {
-          "url": "https://raw.githubusercontent.com/kargig/greek-adblockplus-filter/master/void-gr-filters.txt",
-          "format": "standard"
-        }
-      ],
-      "licence": "CC-BY-SA-4.0",
-      "home": "https://github.com/kargig/greek-adblockplus-filter",
-      "brave": "6C0F4C7F-969B-48A0-897A-14583015A587"
-    },
-    {
-      "id": "regional-he",
-      "title": "Hebrew",
-      "about": "Ads on Hebrew sites.",
-      "group": "regional",
-      "on": false,
-      "languages": [
-        "he"
-      ],
-      "sources": [
-        {
-          "url": "https://raw.githubusercontent.com/easylist/EasyListHebrew/master/EasyListHebrew.txt",
-          "format": "standard"
-        },
-        {
-          "url": "https://raw.githubusercontent.com/easylist/EasyListHebrew/refs/heads/master/EasyListHebrew-uBO.txt",
-          "format": "standard"
-        }
-      ],
-      "licence": "GPL-3.0-or-later OR CC-BY-SA-3.0",
-      "home": "https://github.com/easylist/EasyListHebrew",
-      "brave": "85F65E06-D7DA-4144-B6A5-E1AA965D1E47"
-    },
-    {
       "id": "regional-in",
       "title": "Indian languages",
       "about": "Ads on Indian languages sites.",
@@ -511,45 +373,6 @@
       "licence": "GPL-3.0-or-later OR CC-BY-SA-3.0",
       "home": "https://easylist.to/",
       "brave": "4C07DB6B-6377-4347-836D-68702CF1494A"
-    },
-    {
-      "id": "regional-hu",
-      "title": "Hungarian",
-      "about": "Ads on Hungarian sites.",
-      "group": "regional",
-      "on": false,
-      "languages": [
-        "hu"
-      ],
-      "sources": [
-        {
-          "url": "https://cdn.jsdelivr.net/gh/hufilter/hufilter@gh-pages/hufilter-ublock.txt",
-          "format": "standard"
-        }
-      ],
-      "licence": "CC-BY-4.0",
-      "home": "https://hufilter.hu",
-      "brave": "EDEEE15A-6FA9-4FAC-8CA8-3565508EAAC3"
-    },
-    {
-      "id": "regional-is",
-      "title": "Icelandic",
-      "about": "Ads on Icelandic sites.",
-      "group": "regional",
-      "on": false,
-      "languages": [
-        "is"
-      ],
-      "sources": [
-        {
-          "url": "https://raw.githubusercontent.com/brave/adblock-lists/master/custom/is.txt",
-          "format": "standard"
-        }
-      ],
-      "licence": "MPL-2.0",
-      "home": "https://github.com/brave/adblock-lists",
-      "brave": "48796273-E783-431E-B864-44D3DCEA66DC",
-      "trusted": true
     },
     {
       "id": "regional-id",
@@ -628,86 +451,6 @@
       "brave": "45B3ED40-C607-454F-A623-195FDD084637"
     },
     {
-      "id": "regional-lv",
-      "title": "Latvian",
-      "about": "Ads on Latvian sites.",
-      "group": "regional",
-      "on": false,
-      "languages": [
-        "lv"
-      ],
-      "sources": [
-        {
-          "url": "https://raw.githubusercontent.com/Latvian-List/adblock-latvian/master/lists/latvian-list.txt",
-          "format": "standard"
-        }
-      ],
-      "licence": "CC-BY-SA-4.0",
-      "home": "https://github.com/Latvian-List/adblock-latvian",
-      "brave": "15B64333-BAF9-4B77-ADC8-935433CD6F4C"
-    },
-    {
-      "id": "regional-lt",
-      "title": "Lithuanian",
-      "about": "Ads on Lithuanian sites.",
-      "group": "regional",
-      "on": false,
-      "languages": [
-        "lt"
-      ],
-      "sources": [
-        {
-          "url": "https://raw.githubusercontent.com/EasyList-Lithuania/easylist_lithuania/master/easylistlithuania.txt",
-          "format": "standard"
-        }
-      ],
-      "licence": "GPL-3.0",
-      "home": "https://github.com/EasyList-Lithuania/easylist_lithuania",
-      "brave": "4E8B1A63-DEBE-4B8B-AD78-3811C632B353"
-    },
-    {
-      "id": "regional-mk",
-      "title": "Macedonian",
-      "about": "Ads on Macedonian sites.",
-      "group": "regional",
-      "on": false,
-      "languages": [
-        "mk"
-      ],
-      "sources": [
-        {
-          "url": "https://raw.githubusercontent.com/DeepSpaceHarbor/Macedonian-adBlock-Filters/master/Filters",
-          "format": "standard"
-        }
-      ],
-      "licence": "MIT",
-      "home": "https://github.com/DeepSpaceHarbor/Macedonian-adBlock-Filters",
-      "brave": "7BC951C6-B0B8-4223-97FC-3C22605734FC"
-    },
-    {
-      "id": "regional-nordic",
-      "title": "Nordic",
-      "about": "Ads on Nordic sites.",
-      "group": "regional",
-      "on": false,
-      "languages": [
-        "nb",
-        "nn",
-        "no",
-        "da",
-        "is"
-      ],
-      "sources": [
-        {
-          "url": "https://raw.githubusercontent.com/DandelionSprout/adfilt/master/NorwegianList.txt",
-          "format": "standard"
-        }
-      ],
-      "licence": "LicenseRef-Dandelicence-1.4",
-      "home": "https://github.com/DandelionSprout/adfilt",
-      "brave": "8BEDBAA8-4FE2-4FEA-82F2-81B8124A4A74"
-    },
-    {
       "id": "regional-fa",
       "title": "Persian",
       "about": "Ads on Persian sites.",
@@ -755,48 +498,6 @@
       "brave": "C3C2F394-D7BB-4BC2-9793-E0F13B2B5971"
     },
     {
-      "id": "regional-pl",
-      "title": "Polish",
-      "about": "Ads on Polish sites.",
-      "group": "regional",
-      "on": false,
-      "languages": [
-        "pl"
-      ],
-      "sources": [
-        {
-          "url": "https://raw.githubusercontent.com/MajkiIT/polish-ads-filter/master/polish-adblock-filters/adblock.txt",
-          "format": "standard"
-        }
-      ],
-      "licence": "CC-BY-NC-SA-4.0",
-      "home": "https://github.com/MajkiIT/polish-ads-filter",
-      "brave": "BF9234EB-4CB7-4CED-9FCB-F1FD31B0666C"
-    },
-    {
-      "id": "regional-ro",
-      "title": "Romanian",
-      "about": "Ads on Romanian sites.",
-      "group": "regional",
-      "on": false,
-      "languages": [
-        "ro"
-      ],
-      "sources": [
-        {
-          "url": "https://raw.githubusercontent.com/tcptomato/ROad-Block/master/road-block-filters-light.txt",
-          "format": "standard"
-        },
-        {
-          "url": "https://raw.githubusercontent.com/tcptomato/ROad-Block/master/road-ubo.txt",
-          "format": "standard"
-        }
-      ],
-      "licence": "MIT",
-      "home": "https://github.com/tcptomato/ROad-Block",
-      "brave": "AD3E8454-F376-11E8-8EB2-F2801F1B9FD1"
-    },
-    {
       "id": "regional-ru-adguard",
       "title": "Russian (AdGuard)",
       "about": "Ads on Russian sites, AdGuard's list.",
@@ -839,25 +540,6 @@
       "brave": "80470EEC-970F-4F2C-BF6B-4810520C72E6"
     },
     {
-      "id": "regional-sl",
-      "title": "Slovenian",
-      "about": "Ads on Slovenian sites.",
-      "group": "regional",
-      "on": false,
-      "languages": [
-        "sl"
-      ],
-      "sources": [
-        {
-          "url": "https://raw.githubusercontent.com/betterwebleon/slovenian-list/master/filters.txt",
-          "format": "standard"
-        }
-      ],
-      "licence": "Unlicense",
-      "home": "https://github.com/betterwebleon/slovenian-list",
-      "brave": "418D293D-72A8-4A28-8718-A1EE40A45AAF"
-    },
-    {
       "id": "regional-es",
       "title": "Spanish",
       "about": "Ads on Spanish sites.",
@@ -895,25 +577,6 @@
       "licence": "GPL-3.0",
       "home": "https://github.com/AdguardTeam/AdguardFilters",
       "brave": "1FEAF960-F377-11E8-8EB2-F2801F1B9FD1"
-    },
-    {
-      "id": "regional-sv",
-      "title": "Swedish",
-      "about": "Ads on Swedish sites.",
-      "group": "regional",
-      "on": false,
-      "languages": [
-        "sv"
-      ],
-      "sources": [
-        {
-          "url": "https://raw.githubusercontent.com/lassekongo83/Frellwits-filter-lists/master/Frellwits-Swedish-Filter.txt",
-          "format": "standard"
-        }
-      ],
-      "licence": "GPL-3.0",
-      "home": "https://github.com/lassekongo83/Frellwits-filter-lists",
-      "brave": "7DC2AC80-5BBC-49B8-B473-A31A1145CAC1"
     },
     {
       "id": "regional-th",
@@ -1377,6 +1040,91 @@
       "brave": "61C6046C-B040-4CE4-8C8E-F3E8F316AA72",
       "title": "Adblock Only Mode supplemental list",
       "reason": "For a mode of Brave's that we don't have."
+    },
+    {
+      "brave": "FD176DD1-F9A0-4469-B43E-B1764893DD5C",
+      "title": "Bulgarian",
+      "reason": "A language with fewer than about 50 million speakers; we carry the larger ones."
+    },
+    {
+      "brave": "7CCB6921-7FDA-4A9B-B70A-12DD0A8F08EA",
+      "title": "Czech and Slovak",
+      "reason": "A language with fewer than about 50 million speakers; we carry the larger ones."
+    },
+    {
+      "brave": "9D644676-4784-4982-B94D-C9AB19098D2A",
+      "title": "Dutch",
+      "reason": "A language with fewer than about 50 million speakers; we carry the larger ones."
+    },
+    {
+      "brave": "0783DBFD-B5E0-4982-9B4A-711BDDB925B7",
+      "title": "Estonian",
+      "reason": "A language with fewer than about 50 million speakers; we carry the larger ones."
+    },
+    {
+      "brave": "1C6D8556-3400-4358-B9AD-72689D7B2C46",
+      "title": "Finnish",
+      "reason": "A language with fewer than about 50 million speakers; we carry the larger ones."
+    },
+    {
+      "brave": "6C0F4C7F-969B-48A0-897A-14583015A587",
+      "title": "Greek",
+      "reason": "A language with fewer than about 50 million speakers; we carry the larger ones."
+    },
+    {
+      "brave": "85F65E06-D7DA-4144-B6A5-E1AA965D1E47",
+      "title": "Hebrew",
+      "reason": "A language with fewer than about 50 million speakers; we carry the larger ones."
+    },
+    {
+      "brave": "EDEEE15A-6FA9-4FAC-8CA8-3565508EAAC3",
+      "title": "Hungarian",
+      "reason": "A language with fewer than about 50 million speakers; we carry the larger ones."
+    },
+    {
+      "brave": "48796273-E783-431E-B864-44D3DCEA66DC",
+      "title": "Icelandic",
+      "reason": "A language with fewer than about 50 million speakers; we carry the larger ones."
+    },
+    {
+      "brave": "15B64333-BAF9-4B77-ADC8-935433CD6F4C",
+      "title": "Latvian",
+      "reason": "A language with fewer than about 50 million speakers; we carry the larger ones."
+    },
+    {
+      "brave": "4E8B1A63-DEBE-4B8B-AD78-3811C632B353",
+      "title": "Lithuanian",
+      "reason": "A language with fewer than about 50 million speakers; we carry the larger ones."
+    },
+    {
+      "brave": "7BC951C6-B0B8-4223-97FC-3C22605734FC",
+      "title": "Macedonian",
+      "reason": "A language with fewer than about 50 million speakers; we carry the larger ones."
+    },
+    {
+      "brave": "8BEDBAA8-4FE2-4FEA-82F2-81B8124A4A74",
+      "title": "Nordic",
+      "reason": "A language with fewer than about 50 million speakers; we carry the larger ones."
+    },
+    {
+      "brave": "BF9234EB-4CB7-4CED-9FCB-F1FD31B0666C",
+      "title": "Polish",
+      "reason": "Its licence (CC-BY-NC-SA-4.0) doesn't allow commercial use."
+    },
+    {
+      "brave": "AD3E8454-F376-11E8-8EB2-F2801F1B9FD1",
+      "title": "Romanian",
+      "reason": "A language with fewer than about 50 million speakers; we carry the larger ones."
+    },
+    {
+      "brave": "418D293D-72A8-4A28-8718-A1EE40A45AAF",
+      "title": "Slovenian",
+      "reason": "A language with fewer than about 50 million speakers; we carry the larger ones."
+    },
+    {
+      "brave": "7DC2AC80-5BBC-49B8-B473-A31A1145CAC1",
+      "title": "Swedish",
+      "reason": "A language with fewer than about 50 million speakers; we carry the larger ones."
     }
   ]
 }
