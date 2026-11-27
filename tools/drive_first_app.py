@@ -57,6 +57,7 @@ import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 import links_page  # noqa: E402
+import mp4_length  # noqa: E402
 from server_kinds import SERVER_KINDS  # noqa: E402
 import timeline  # noqa: E402
 import web_features  # noqa: E402
@@ -105,6 +106,24 @@ class Pages(http.server.BaseHTTPRequestHandler):
             # A page with another site's video, for the Video downloader (video_download_checks).
             src = urllib.parse.unquote(self.path.split("=", 1)[1])
             body = f'<!doctype html><title>Video</title><video controls src="{src}"></video>'.encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        if self.path.startswith("/stream?") or self.path.startswith("/length?"):
+            # A page whose player loaded a stream it names nowhere, beside a plain link to
+            # another's playlist; and a page that plays a saved video back, to say how long it
+            # is (stream_checks).
+            q = urllib.parse.parse_qs(self.path.split("?", 1)[1])
+            if self.path.startswith("/stream?"):
+                body = (f'<!doctype html><title>Stream</title><video id=v></video>'
+                        f'<a id=plain href="{q["linked"][0]}" style="display:block;padding:12px">A playlist</a>'
+                        f'<script>fetch("{q["played"][0]}").then((r) => r.text()).then(() => {{ document.title = "played" }})</script>').encode()
+            else:
+                body = (f'<!doctype html><title>Length</title><video id=v muted src="{q["src"][0]}"></video>'
+                        '<script>v.onloadedmetadata = () => { document.title = "length " + v.duration + " " + v.videoWidth }; v.onerror = () => { document.title = "length failed" }</script>').encode()
             self.send_response(200)
             self.send_header("Content-Type", "text/html")
             self.send_header("Content-Length", str(len(body)))
@@ -3702,6 +3721,153 @@ def video_download_checks():
         files.shutdown()
 
 
+def stream_checks():
+    """A streamed video saves as one MP4 (docs/video-streams.md): from the Video downloader's
+    row for a stream the page's player loaded, a master playlist with separate sound, and from
+    a plain link to a playlist, each fetched as from the page, which the video's host serves
+    only to its own pages. The second, started with no click, asks first, as a page's
+    downloads do after its first. Each MP4 has picture and sound, its index first, and plays
+    back at its stream's length."""
+    streams = os.path.join(ROOT, "core", "streams", "testdata")
+    asked = []
+    saved = {}
+
+    class Host(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            path = urllib.parse.urlparse(self.path).path
+            referrer = self.headers.get("Referer", "")
+            asked.append((path, referrer))
+            if path.startswith("/saved/"):
+                file = saved.get(urllib.parse.unquote(path[7:]), "")
+            else:
+                file = os.path.normpath(os.path.join(streams, path.lstrip("/")))
+                if not referrer.startswith(PAGES) or not file.startswith(streams):
+                    file = ""
+            if not file or not os.path.isfile(file):
+                self.send_response(403)
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
+            with open(file, "rb") as f:
+                body = f.read()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/vnd.apple.mpegurl" if file.endswith(".m3u8") else "video/mp4" if path.startswith("/saved/") else "application/octet-stream")
+            # A playlist a site means to be saved says so: with no such word a link to one opens
+            # in the tab, where Chromium's own player plays it, and nothing is downloaded.
+            if "attached" in urllib.parse.urlparse(self.path).query:
+                self.send_header("Content-Disposition", "attachment")
+            # The page's player reads the playlists from its script, as the spark does.
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *a):
+            pass
+
+    host = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Host)
+    threading.Thread(target=host.serve_forever, daemon=True).start()
+    # localhost is another site than the page's 127.0.0.1, as a video host is.
+    cdn = f"http://localhost:{host.server_address[1]}"
+    profile = tempfile.mkdtemp(prefix="pb-profile-")
+    app = App(profile)
+    app.close()
+    path = os.path.join(profile, "sparks", "sparks.json")
+    with open(path) as f:
+        kept = json.load(f)
+    for s in kept["sparks"]:
+        script = os.path.join(profile, "sparks", s["id"] + ".user.js")
+        with open(script) as f:
+            code = f.read()
+        s["on"] = "@name         Video downloader" in code
+        if s["on"]:
+            # It runs on https sites; this one's copy runs on the local page too.
+            with open(script, "w") as f:
+                f.write(code.replace("// @match        https://*/*\n", "// @match        https://*/*\n// @match        http://127.0.0.1/*\n", 1))
+    with open(path, "w") as f:
+        json.dump(kept, f)
+
+    def done(name, timeout=40):
+        """The finished download of that name in the profile's list, or None."""
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            try:
+                with open(os.path.join(profile, "downloads.json")) as f:
+                    rows = [x for x in json.load(f)["downloads"] if x["name"] == name]
+            except (OSError, ValueError, KeyError):
+                rows = []
+            if rows and rows[0]["state"] != "progress":
+                return rows[0]
+            time.sleep(0.3)
+        return None
+
+    def whole(row, seconds, what):
+        """Checks the MP4 a finished row saved: both tracks, its index first, and its length,
+        read from the file and played back in a page."""
+        ok = bool(row) and row.get("state") == "done" and os.path.isfile(row.get("path", ""))
+        check(f"{what} saves as one MP4, in its row", ok, row)
+        if not ok:
+            return
+        got = mp4_length.read(row["path"])
+        check("with picture and sound, its index first, as long as its stream",
+              got["tracks"] == ["vide", "soun"] and got["index_first"] and abs(got["seconds"] - seconds) < 0.15, got)
+        saved[row["name"]] = row["path"]
+        visit(app, PAGES + "length?src=" + urllib.parse.quote(f"{cdn}/saved/{urllib.parse.quote(row['name'])}"))
+        title = ""
+        try:
+            title = app.wait("document.title.startsWith('length ')&&document.title", 20, page=True)
+        except TimeoutError:
+            pass
+        length = title.split()
+        check("and it plays back at that length, at its picture's size",
+              len(length) == 3 and length[1] != "failed" and abs(float(length[1]) - seconds) < 0.15 and length[2] == "160", title)
+        try:
+            os.remove(row["path"])
+        except OSError:
+            pass
+
+    app = App(profile)
+    shadow = "document.getElementById('custom-video-downloader-widget')?.shadowRoot"
+    page = PAGES + "stream?played=" + urllib.parse.quote(cdn + "/split/master.m3u8") + "&linked=" + urllib.parse.quote(cdn + "/ts/index.m3u8?attached")
+    # The row of the stream the page's player loaded, wherever it is in the list.
+    row = f"[...({shadow}?.querySelectorAll('.row')||[])].find((r)=>r.querySelector('a.btn')?.href.includes('/split/master.m3u8'))"
+    try:
+        visit(app, page)
+        found = holds(app, f"({row})?.querySelector('a.btn').href==={json.dumps(cdn + '/split/master.m3u8#pb-download')}", 20, page=True)
+        check("the Video downloader finds the stream the page's player loaded, with a Download for it", found,
+              app.js(f"{shadow}?.querySelector('.list')?.textContent", page=True))
+        if not found:
+            return
+        said = app.js(f"({row}).querySelector('.label').textContent", page=True)
+        check("its row says it is a video, at its best quality", said == "Video · 90p", said)
+        check("what the page loaded comes before what it only links",
+              holds(app, f"{shadow}.querySelectorAll('.row').length===2&&{shadow}.querySelector('.row a.btn').href.includes('/split/master.m3u8')", 15, page=True),
+              app.js(f"[...{shadow}.querySelectorAll('.row a.btn')].map((a)=>a.href)", page=True))
+        app.js(f"(({row}).querySelector('a.btn').click(), 1)", page=True)
+        first = done("master.mp4")
+        check("and the page stays", app.js("location.pathname", page=True) == "/stream")
+        pieces = [(p, r) for p, r in asked if p.endswith(".m4s")]
+        check("its picture's and its sound's pieces are fetched as from the page, which the host serves only to its own pages",
+              len(pieces) == 7 and all(r.startswith(PAGES) for _, r in pieces) and not any("small" in p or "lesser" in p for p, _ in asked), asked)
+        whole(first, 3.0, "a stream found by the Video downloader")
+
+        # A plain link to a playlist, pressed by the page itself: its second download with no
+        # click, which asks first.
+        visit(app, page)
+        holds(app, "document.title==='played'", 15, page=True)
+        app.js("(document.getElementById('plain').click(), 1)", page=True)
+        many = "document.querySelector('[role=dialog][aria-label$=\"wants to download several files\"]')"
+        asks = holds(app, f"!!{many}", 15)
+        check("a second download the page starts with no click asks first: site wants to download several files", asks)
+        if asks:
+            app.js(f"([...{many}.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Allow').click(), 1)")
+        second = done("index.mp4")
+        whole(second, 4.0, "a plain link to a playlist, once allowed,")
+    finally:
+        app.close()
+        host.shutdown()
+
+
 def duplicate_checks():
     """Duplicate Tab gives a copy that loads its page, as the tab has it, not one failed
     ERR_BLOCKED_BY_CLIENT: its first navigation once asked Go about it before Go had it
@@ -4281,12 +4447,12 @@ def holds_hit(app, x, y, timeout=5):
 
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
-    parts = {"version": [version_checks], "filling": [filling_checks], "driver": [driver_checks], "browsing": [browsing_checks], "actions": [action_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "leave": [leave_checks], "popups": [popup_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "arshell": [arshell_checks], "webapis": [web_api_checks], "signals": [browser_signal_checks], "proxy": [proxy_checks], "clientcert": [client_cert_checks], "passkeys": [passkey_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks], "viewsource": [view_source_checks], "duplicate": [duplicate_checks], "applink": [app_link_checks], "serverkinds": [web_server_kinds_checks], "securedns": [secure_dns_checks], "videodl": [video_download_checks]}
+    parts = {"version": [version_checks], "filling": [filling_checks], "driver": [driver_checks], "browsing": [browsing_checks], "actions": [action_checks], "settings": [settings_checks], "timeline": [timeline_checks], "cookies": [cookie_checks], "visible": [visible_tabs_checks], "windows": [window_checks], "empty": [last_tab_checks], "leave": [leave_checks], "popups": [popup_checks], "move": [move_checks], "bounds": [bounds_checks], "profiles": [profile_checks], "copies": [copies_checks], "picker": [picker_checks], "relaunch": [relaunch_checks], "workspaces": [workspace_checks, workspace_menu_checks, workspace_delete_checks], "sitedata": [site_data_checks], "quiterase": [quit_erasure_checks], "shells": [shell_checks], "arshell": [arshell_checks], "webapis": [web_api_checks], "signals": [browser_signal_checks], "proxy": [proxy_checks], "clientcert": [client_cert_checks], "passkeys": [passkey_checks], "sparks": [sparks_checks], "quit": [quit_checks], "internal": [internal_checks], "links": [links_checks], "viewsource": [view_source_checks], "duplicate": [duplicate_checks], "applink": [app_link_checks], "serverkinds": [web_server_kinds_checks], "securedns": [secure_dns_checks], "videodl": [video_download_checks], "streams": [stream_checks]}
     # Each name given is a part, run in the order given; none runs them all. A name that
     # isn't a part ends the run before it starts: two names once read as one unknown name
     # and quietly ran every part on the shared desktop (2026-11-26).
     unknown = [a for a in sys.argv[1:] if a not in parts]
     if unknown:
         sys.exit("no part named %s; the parts are: %s" % (", ".join(unknown), " ".join(sorted(parts))))
-    every = [version_checks, driver_checks, timeline_checks, browsing_checks, action_checks, settings_checks, filling_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, leave_checks, popup_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, arshell_checks, browser_signal_checks, proxy_checks, client_cert_checks, secure_dns_checks, video_download_checks, web_api_checks, passkey_checks, sparks_checks, links_checks, view_source_checks, duplicate_checks, app_link_checks, web_server_kinds_checks, quit_checks]
+    every = [version_checks, driver_checks, timeline_checks, browsing_checks, action_checks, settings_checks, filling_checks, internal_checks, visible_tabs_checks, window_checks, last_tab_checks, leave_checks, popup_checks, move_checks, bounds_checks, profile_checks, copies_checks, picker_checks, relaunch_checks, cookie_checks, workspace_checks, workspace_menu_checks, workspace_delete_checks, site_data_checks, quit_erasure_checks, shell_checks, arshell_checks, browser_signal_checks, proxy_checks, client_cert_checks, secure_dns_checks, video_download_checks, stream_checks, web_api_checks, passkey_checks, sparks_checks, links_checks, view_source_checks, duplicate_checks, app_link_checks, web_server_kinds_checks, quit_checks]
     run_parts([c for a in sys.argv[1:] for c in parts[a]] if sys.argv[1:] else every)

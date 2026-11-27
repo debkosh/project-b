@@ -135,8 +135,13 @@ feature of ours:
     right, which opens "Videos on this page": a row per video, its type and size or "Video
     1", its host, and Download, a plain link to the file ending in `#pb-download` (below):
     a download from the page, which our Downloads takes, with its Pause, Cancel and Retry,
-    another site's file too. A tap turns it to a tick in the accent. A stream says "Streams
-    can't be saved as one file". "Hide on
+    another site's file too. A tap turns it to a tick in the accent. A stream (HLS) has a
+    row too, found from the playlists the page loaded (its resource timing), `og:video`, a
+    `VideoObject`'s `contentUrl` and its player's settings; the spark reads each playlist,
+    and the row's Download is a plain link to it, which the app saves as one MP4
+    ([video-streams.md](video-streams.md)): a master playlist is one row with its qualities
+    in its menu, a live one says "Live: can't be saved yet" and a protected one "Protected:
+    can't be saved". A DASH stream still says "Streams can't be saved as one file". "Hide on
     this page" is in the panel's menu.
   - **Screen time limit:** 30 minutes a day on each site its `@match` takes: every site, as
     it comes, and fewer once the person edits its patterns in Settings › Sparks. "Daily limit reached", "Limit

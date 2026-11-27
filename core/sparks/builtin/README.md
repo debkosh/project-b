@@ -23,19 +23,45 @@ one muted line the host or what the row says, and its Download a round icon butt
   that look like video files, and video URLs in the page's own scripts. It looks again
   whenever the page adds a player, and on "Look again". `refreshVideoDownloadSources()` in
   the console does the same.
+- **Streams** (docs/video-streams.md). Most sites play a stream through their own script,
+  so the video's source is a `blob:` address and its playlist is named nowhere in the page.
+  It finds every playlist (`.m3u8`) the page loaded, from the page's resource timing
+  (`performance.getEntriesByType('resource')`, and a buffered `PerformanceObserver` for
+  those loaded later, as by a player that waits for play), and the page's own description
+  of its video: `og:video`, a `VideoObject`'s `contentUrl`, and playlist addresses in
+  player settings written into the page. A player that fetches from a worker isn't in the
+  page's timing, and is missed. It fetches each playlist itself, as the page's player did,
+  and reads it (`parsePlaylist`, `readStream`): a master playlist is one row, named by its
+  best quality ("Video · 1080p", or "Video" where it has none: a stream is a video to the
+  person, never a "stream"), and the playlists it names get no rows of their own.
+  A live stream's row says "Live: can't be saved yet" and a protected one's "Protected:
+  can't be saved", with no Download. One whose playlist can't be read keeps its Download,
+  and the browser says what it is.
+- **Their order:** what the page really loaded comes before what it only links. The
+  script's own fetch of a playlist it found in a link shows in the page's timing too, and
+  doesn't count as the page loading it.
 - **Each row** is one video: its type and height where the page says them ("MP4 · 720p"),
   else "Video 1", and the host it comes from. Download is a plain link to the file with
   `#pb-download` on its end, which Project B saves as a download from the page, another
   site's file too, so the browser's own Downloads takes it over, with its Pause, Cancel and
   Retry; a right click or a long press on it has the browser's link menu. A tap turns it to
-  a tick in the accent, the row saying "Downloading: see Downloads". A stream
-  (`.m3u8`, `.mpd`) can't be saved as one file and has no Download. The row's menu has
-  Copy link and Open in new tab.
+  a tick in the accent, the row saying "Downloading: see Downloads". A stream's Download
+  is the same plain link, to its playlist: Project B saves a playlist as one MP4. For a
+  master playlist it is the best quality's own playlist, and the row's menu lists each
+  quality, best first, "Download 720p", each a plain link to that quality's playlist; when
+  the stream's sound is a playlist of its own, a quality's playlist alone would be silent,
+  so Download is the master playlist, which Project B saves at its best with its sound, and
+  no other quality is offered. A DASH stream (`.mpd`) can't be saved as one file and has no
+  Download. The row's menu has Copy link and Open in new tab.
 - **Its data:** none. It keeps nothing in the site's storage or anywhere else.
   "Hide on this page", in the panel's menu, removes it until the page loads again.
 - **To change:** the `@match` line (which sites it runs on), the lists of player selectors
-  and attributes in `collectSources`, `looksVideoLike` (what counts as a video URL), and
-  the colours at the top of `STYLES`.
+  and attributes in `collectSources`, `looksVideoLike` (what counts as a video URL),
+  `STREAM_NOTES` (what a stream with no Download says), and the colours at the top of
+  `STYLES`.
+- **Its test:** `node shell/e2e/video-downloader.cjs` runs it in a browser on pages served
+  for it, with core/streams' test streams; the real app's is `tools/drive_first_app.py
+  videodl streams`.
 
 ## Screen time limit
 

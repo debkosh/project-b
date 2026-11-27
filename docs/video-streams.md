@@ -55,6 +55,12 @@ The spark keeps what it finds today, and adds streams:
   Download.
 - **Download** is a plain link to the chosen quality's media playlist with `#pb-download`,
   as a file's is today.
+- **As built, where the sound is separate.** A quality's media playlist alone has no sound
+  when the master playlist names the sound as a playlist of its own (`EXT-X-MEDIA` with a
+  `URI`), and a plain link can name only one playlist. So for such a stream the row's
+  Download is the master playlist, which the app saves at its best quality with its sound,
+  and the menu offers no other quality. Offering the lesser ones with their sound needs a
+  way for a link to say which quality of a master is meant: open, for the owner.
 
 ## Saving a stream (the app)
 

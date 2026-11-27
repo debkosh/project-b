@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Video downloader
 // @description  Finds the videos on a page so you can save one
-// @version      1.0
+// @version      1.1
 // @namespace    https://github.com/sudiptadeb/project-b
 // @match        https://*/*
 // @run-at       document-end
@@ -20,10 +20,22 @@
   }
 
   const VIDEO_EXT_RE = /\.(mp4|m4v|webm|ogv|ogg|mov|m3u8|mpd)(?:[?#]|$)/i;
-  const URL_LIKE_RE = /https?:\\?\/\\?\/[^\s"'<>]+/gi;
+  const URL_LIKE_RE = /https?:(?:\\?\/|\\u002f){2}[^\s"'<>]+/gi;
+  // A playlist of a streamed video (HLS), by its address's path.
+  const PLAYLIST_RE = /\.m3u8(?![a-z0-9])/i;
 
   const state = {
     sources: [],
+    // What each stream's playlist says, by its address: see readStream.
+    streams: new Map(),
+    // Playlists the page loaded, from its resource timing, in the order they came.
+    loaded: new Set(),
+    // The timing lists the script's own fetches too, each playlist it reads: fetched counts
+    // every fetch of a playlist seen there (seen keeps each entry from counting twice), and
+    // own the script's, so one the page loaded is one fetched more often than the script did.
+    fetched: new Map(),
+    own: new Map(),
+    seen: new Set(),
     open: false,
     menu: null, // { trigger } while a menu is open
     shownKey: null, // what the list shows now
@@ -33,6 +45,7 @@
 
   let refreshTimer = null;
   let observer = null;
+  let loads = null;
 
   // ---- Finding videos (as the original) ----
 
@@ -41,6 +54,7 @@
 
     let url = raw
       .trim()
+      .replace(/\\u002f/gi, '/')
       .replace(/\\\//g, '/')
       .replace(/&amp;/g, '&')
       .replace(/[)"'<>;,]+$/g, '');
@@ -216,6 +230,45 @@
       });
     });
 
+    // 6. The page's own description of its video: og:video, and a VideoObject's contentUrl.
+    document.querySelectorAll('meta[property^="og:video"], meta[name^="og:video"]').forEach((meta) => {
+      const what = meta.getAttribute('property') || meta.getAttribute('name');
+      if (what === 'og:video' || what === 'og:video:url' || what === 'og:video:secure_url') {
+        addSource(map, meta.getAttribute('content'), 'og:video', 60, true);
+      }
+    });
+    document.querySelectorAll('script[type="application/ld+json"]').forEach((script) => {
+      let data;
+      try {
+        data = JSON.parse(script.textContent || '');
+      } catch {
+        return;
+      }
+      const walk = (node, depth) => {
+        if (!node || typeof node !== 'object' || depth > 6) return;
+        if (Array.isArray(node)) {
+          node.forEach((item) => walk(item, depth + 1));
+          return;
+        }
+        const type = [].concat(node['@type'] || []);
+        if (type.includes('VideoObject') && typeof node.contentUrl === 'string') {
+          addSource(map, node.contentUrl, 'VideoObject contentUrl', 60, true);
+        }
+        Object.values(node).forEach((value) => walk(value, depth + 1));
+      };
+      walk(data, 0);
+    });
+
+    // 7. Every playlist the page loaded, its player's own fetches among them: most sites
+    // play a stream through their own script, and its address is nowhere in the page.
+    noteLoaded(performance.getEntriesByType('resource'));
+    state.loaded.forEach((url) => addSource(map, url, 'loaded by the page', 90, false));
+
+    // A stream's playlist is read, to say what it is.
+    map.forEach((item) => {
+      if (isPlaylist(item.url)) readStream(item.url);
+    });
+
     state.sources = [...map.values()]
       .map((item) => ({
         url: item.url,
@@ -225,6 +278,162 @@
       .sort((a, b) => b.priority - a.priority);
 
     updateUI();
+  }
+
+  // ---- Streams ----
+
+  function isPlaylist(url) {
+    try {
+      return PLAYLIST_RE.test(new URL(url).pathname);
+    } catch {
+      return false;
+    }
+  }
+
+  // noteLoaded keeps the playlists among the resources the page loaded.
+  function noteLoaded(entries) {
+    entries.forEach((entry) => {
+      const url = normalizeUrl(entry.name);
+      const key = `${entry.name} ${entry.startTime}`;
+      if (!url || !isPlaylist(url) || state.seen.has(key)) return;
+      state.seen.add(key);
+      state.fetched.set(url, (state.fetched.get(url) || 0) + 1);
+    });
+    // Not the script's own fetch of a playlist it found elsewhere, as in a link: that is no
+    // sign the page loaded it.
+    let added = false;
+    state.fetched.forEach((count, url) => {
+      if (count > (state.own.get(url) || 0) && !state.loaded.has(url)) {
+        state.loaded.add(url);
+        added = true;
+      }
+    });
+    return added;
+  }
+
+  // A tag's attributes, as HLS writes them: NAME=value or NAME="value", comma separated.
+  function attributes(line) {
+    const out = {};
+    const re = /([A-Z0-9-]+)=("[^"]*"|[^,]*)/g;
+    let m;
+    while ((m = re.exec(line.slice(line.indexOf(':') + 1)))) {
+      out[m[1]] = m[2].replace(/^"|"$/g, '');
+    }
+    return out;
+  }
+
+  // A key the browser never opens: any method but NONE and AES-128, or a key format other
+  // than the plain one (FairPlay, Widevine, PlayReady).
+  function lockedBy(line) {
+    const a = attributes(line);
+    const method = (a.METHOD || 'NONE').toUpperCase();
+    if (method !== 'NONE' && method !== 'AES-128') return true;
+    return !!a.KEYFORMAT && a.KEYFORMAT.toLowerCase() !== 'identity';
+  }
+
+  // parsePlaylist reads an HLS playlist fetched from base. A master playlist gives its
+  // qualities, best first (the largest picture, then the greatest bandwidth), each with its
+  // own playlist's address, whether its sound is a playlist of its own, and every playlist
+  // it names; a media playlist says whether it is live. Either says whether it is protected.
+  function parsePlaylist(text, base) {
+    const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).map((line) => line.trim());
+    if (!lines[0] || !lines[0].startsWith('#EXTM3U')) return null;
+    const out = { master: false, live: false, protected: false, qualities: [], names: [] };
+    const resolve = (ref) => {
+      try {
+        return new URL(ref, base).href;
+      } catch {
+        return '';
+      }
+    };
+    const sound = new Set();
+    let ended = false;
+    let pieces = 0;
+    lines.forEach((line, i) => {
+      if (line.startsWith('#EXT-X-KEY:') || line.startsWith('#EXT-X-SESSION-KEY:')) {
+        out.protected = out.protected || lockedBy(line);
+      } else if (line.startsWith('#EXT-X-STREAM-INF:')) {
+        out.master = true;
+        const a = attributes(line);
+        const next = lines.slice(i + 1).find((l) => l && !l.startsWith('#'));
+        const url = next ? resolve(next) : '';
+        if (!url) return;
+        const size = (a.RESOLUTION || '').toLowerCase().split('x').map(Number);
+        const quality = { url, width: size[0] || 0, height: size[1] || 0, bandwidth: Number(a.BANDWIDTH) || 0, audio: a.AUDIO || '' };
+        out.qualities.push(quality);
+        out.names.push(url);
+      } else if (line.startsWith('#EXT-X-MEDIA:') || line.startsWith('#EXT-X-I-FRAME-STREAM-INF:')) {
+        out.master = true;
+        const a = attributes(line);
+        if (a.URI) out.names.push(resolve(a.URI));
+        if (a.URI && a.TYPE === 'AUDIO' && a['GROUP-ID']) sound.add(a['GROUP-ID']);
+      } else if (line.startsWith('#EXTINF:')) {
+        pieces++;
+      } else if (line.startsWith('#EXT-X-ENDLIST')) {
+        ended = true;
+      }
+    });
+    if (out.master) {
+      out.qualities.sort((a, b) => b.width * b.height - a.width * a.height || b.bandwidth - a.bandwidth);
+      const seen = new Map();
+      out.qualities.forEach((q) => {
+        q.split = sound.has(q.audio);
+        q.label = q.height ? `${q.height}p` : q.bandwidth ? `${Math.round(q.bandwidth / 1000)} kbps` : 'Video';
+        q.short = q.label;
+        seen.set(q.label, (seen.get(q.label) || 0) + 1);
+      });
+      // Two of one height are told apart by their bandwidth.
+      out.qualities.forEach((q) => {
+        if (seen.get(q.label) > 1 && q.height && q.bandwidth) q.label += ` · ${(q.bandwidth / 1e6).toFixed(1)} Mbps`;
+      });
+    } else {
+      out.live = pieces > 0 && !ended;
+    }
+    return out;
+  }
+
+  // readStream fetches a stream's playlist, once, as the page's player did, and keeps what
+  // it says in state.streams: { status, qualities, names, save }. status is 'checking' until
+  // it is read; then 'ok', 'live' or 'protected', or 'unknown' when it couldn't be read, in
+  // which case the browser finds out on Download. save is the address Download saves. A
+  // master playlist's best quality is read too, since only that says whether it is live.
+  function readStream(url) {
+    if (state.streams.has(url)) return;
+    const info = { status: 'checking', qualities: [], names: [], save: url };
+    state.streams.set(url, info);
+    // A playlist that doesn't answer in a while is left to the browser to find out.
+    const read = (address) => {
+      state.own.set(address, (state.own.get(address) || 0) + 1);
+      return fetch(address, { signal: AbortSignal.timeout?.(8000) });
+    };
+    const readList = (address) => read(address).then((response) => {
+      if (!response.ok) throw new Error(String(response.status));
+      return response.text().then((text) => parsePlaylist(text, response.url || address));
+    });
+    const settle = (status) => {
+      info.status = status;
+      updateUI();
+    };
+    readList(url).then((list) => {
+      if (!list) return settle('unknown');
+      if (list.protected) return settle('protected');
+      if (!list.master) return settle(list.live ? 'live' : 'ok');
+      info.names = list.names;
+      if (!list.qualities.length) return settle('unknown');
+      const best = list.qualities[0];
+      // With sound in a playlist of its own, only the whole stream's playlist joins the two:
+      // the browser saves its best quality with its sound. Otherwise each quality's own
+      // playlist is a whole video, and each can be saved.
+      if (best.split) {
+        info.qualities = [{ label: best.short, short: best.short, url }];
+      } else {
+        info.qualities = list.qualities.map((q) => ({ label: q.label, short: q.short, url: q.url }));
+        info.save = best.url;
+      }
+      return readList(best.url).then((media) => {
+        settle(media && media.protected ? 'protected' : media && media.live ? 'live' : 'ok');
+      }, () => settle('ok'));
+    }).catch(() => settle('unknown'));
   }
 
   function copyText(text) {
@@ -251,6 +460,13 @@
   function isStream(url) {
     return /\.(m3u8|mpd)(?:[?#]|$)/i.test(url) || url.toLowerCase().includes('.m3u8');
   }
+
+  // What a stream's row says under its name when it has no Download.
+  const STREAM_NOTES = {
+    checking: 'Checking the video',
+    live: "Live: can't be saved yet",
+    protected: "Protected: can't be saved",
+  };
 
   function typeName(url) {
     try {
@@ -306,17 +522,31 @@
 
   function describe(sources) {
     const hints = qualityHints();
-    return sources.map((source, index) => {
+    // A playlist a master playlist names is that stream's quality or its sound, not a video
+    // of its own: the master's row offers it.
+    const named = new Set();
+    state.streams.forEach((info) => info.names.forEach((url) => named.add(url)));
+    return sources.filter((source) => !named.has(source.url)).map((source, index) => {
       const stream = isStream(source.url);
-      const type = stream ? 'Stream' : typeName(source.url);
-      const quality = qualityOf(source.url, hints);
+      // A stream is a video to the person, as a file is: "Video", with its quality when known.
+      const type = stream ? 'Video' : typeName(source.url);
+      const info = state.streams.get(source.url);
+      const quality = info && info.qualities.length ? info.qualities[0].short : qualityOf(source.url, hints);
       const name = type || `Video ${index + 1}`;
-      return {
+      const row = {
         url: source.url,
-        label: quality ? `${name} · ${quality}` : name,
+        label: quality && quality !== 'Video' ? `${name} · ${quality}` : name,
         host: hostOf(source.url),
         stream,
       };
+      if (info) {
+        // A playlist (HLS), which the browser saves as one MP4: its Download saves the best
+        // quality, and its menu each of the others.
+        row.status = info.status;
+        row.save = info.save;
+        row.qualities = info.qualities;
+      }
+      return row;
     });
   }
 
@@ -449,7 +679,7 @@
     @media (hover: hover) {
       .icon-btn:hover { background: var(--hover); color: var(--text); }
       .btn.quiet:hover { background: var(--hover); }
-      .menu button:hover { background: var(--hover); }
+      .menu button:hover, .menu a:hover { background: var(--hover); }
     }
 
     .list { margin: 0; padding: 0; list-style: none; overflow: auto; }
@@ -492,22 +722,24 @@
       border-radius: 8px;
       box-shadow: var(--shadow);
     }
-    .menu button {
+    .menu button, .menu a {
       width: 100%;
       height: 32px;
       padding: 0 10px;
       border: 0;
       border-radius: 6px;
       background: transparent;
+      color: inherit;
       display: flex;
       align-items: center;
       gap: 10px;
       text-align: left;
+      text-decoration: none;
       white-space: nowrap;
       cursor: pointer;
     }
-    .menu button svg { color: var(--muted); }
-    .menu button:focus-visible { background: var(--hover); outline: none; }
+    .menu button svg, .menu a svg { color: var(--muted); }
+    .menu button:focus-visible, .menu a:focus-visible { background: var(--hover); outline: none; }
 
     /* A phone (docs/design-system.md, On a phone): a sheet beside the page, which it leaves
        undimmed; a one-line head; a 56px row per video with one muted line, its Download a
@@ -546,7 +778,7 @@
       .row .btn:active { background: var(--accent); color: var(--on-accent); }
       .row .btn.started { background: transparent; color: var(--accent); }
       .row .btn .btn-text { display: none; }
-      .menu button { height: 44px; padding: 0 12px; }
+      .menu button, .menu a { height: 44px; padding: 0 12px; }
     }
     @media (prefers-reduced-motion: reduce) {
       .panel { animation: none; }
@@ -609,8 +841,12 @@
     text.append(el('div', 'label', row.label), sub);
     li.append(text);
 
-    if (row.stream) {
-      text.append(el('div', 'note', "Streams can't be saved as one file"));
+    const saves = row.save || row.url;
+    if (row.stream && !row.status) {
+      // A stream with no playlist the browser reads (DASH).
+      text.append(el('div', 'note', "This video can't be saved"));
+    } else if (row.status && STREAM_NOTES[row.status]) {
+      text.append(el('div', 'note', STREAM_NOTES[row.status]));
     } else if (state.downloading.has(row.url)) {
       text.append(el('div', 'note', 'Downloading: see Downloads'));
       // The button turns to a tick in the accent, a status rather than a button, so the tap
@@ -628,8 +864,8 @@
       // file and opens it in a tab, where a site that serves its files only to its own
       // pages refuses it (docs/site-features.md).
       const link = el('a', 'btn quiet');
-      link.href = savedFrom(row.url);
-      link.download = guessFilename(row.url);
+      link.href = savedFrom(saves);
+      link.download = guessFilename(saves);
       link.setAttribute('aria-label', `Download ${row.label}`);
       link.innerHTML = icon('download');
       // A phone shows the icon alone, its name the link's label.
@@ -648,7 +884,21 @@
 
     const more = moreButton(`Actions for ${row.label}`);
     more.addEventListener('click', () => {
+      // A stream's other qualities, each a plain link as Download is.
+      const qualities = row.status === 'ok' && !state.downloading.has(row.url) && row.qualities.length > 1 ? row.qualities : [];
+      // (A stream whose playlist couldn't be read has none to list.)
       toggleMenu(more, [
+        ...qualities.map((quality) => ({
+          icon: 'download',
+          label: `Download ${quality.label}`,
+          href: savedFrom(quality.url),
+          run: () => {
+            state.downloading.add(row.url);
+            setTimeout(() => {
+              if (li.isConnected) li.replaceWith(renderRow(row));
+            }, 0);
+          },
+        })),
         {
           icon: 'copy',
           label: 'Copy link',
@@ -693,7 +943,7 @@
 
     const rows = describe(state.sources);
     title.textContent = rows.length === 1 ? '1 video on this page' : rows.length ? `${rows.length} videos on this page` : 'Videos on this page';
-    const key = JSON.stringify(rows.map((row) => [row.url, row.label]));
+    const key = JSON.stringify(rows.map((row) => [row.url, row.label, row.status, row.save, row.qualities]));
     if (key === state.shownKey) return;
     state.shownKey = key;
     // Don't pull a row out from under an open menu: show the new list when it closes.
@@ -733,8 +983,11 @@
     menu.replaceChildren();
     menu.setAttribute('aria-label', trigger.getAttribute('aria-label'));
     items.forEach((item) => {
-      const button = el('button');
-      button.type = 'button';
+      // An item with an address is a plain link, so the browser follows it itself, and a
+      // right click or a long press has the browser's own menu for it.
+      const button = el(item.href ? 'a' : 'button');
+      if (item.href) button.href = item.href;
+      else button.type = 'button';
       button.setAttribute('role', 'menuitem');
       button.innerHTML = icon(item.icon);
       button.append(item.label);
@@ -757,7 +1010,7 @@
 
     state.menu = { trigger };
     trigger.setAttribute('aria-expanded', 'true');
-    menu.querySelector('button').focus();
+    menu.querySelector('button, a').focus();
   }
 
   function closeMenu(returnFocus) {
@@ -797,7 +1050,7 @@
   menu.addEventListener('keydown', (event) => {
     if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
     event.preventDefault();
-    const items = [...menu.querySelectorAll('button')];
+    const items = [...menu.querySelectorAll('button, a')];
     const at = items.indexOf(shadow.activeElement);
     const step = event.key === 'ArrowDown' ? 1 : -1;
     items[(at + step + items.length) % items.length].focus();
@@ -829,6 +1082,7 @@
 
   function teardown() {
     observer?.disconnect();
+    loads?.disconnect();
     clearTimeout(refreshTimer);
     document.removeEventListener('click', onDocumentClick);
     document.removeEventListener('keydown', onKeydown, true);
@@ -872,6 +1126,20 @@
       'data-dash',
     ],
   });
+
+  // A playlist the page loads later, as a player that waits for play does, shows up as it
+  // loads; those loaded before the script ran come at once (buffered).
+  try {
+    loads = new PerformanceObserver((list) => {
+      if (noteLoaded(list.getEntries())) {
+        clearTimeout(refreshTimer);
+        refreshTimer = setTimeout(collectSources, 200);
+      }
+    });
+    loads.observe({ type: 'resource', buffered: true });
+  } catch {
+    // No resource timing here: the page's own elements and scripts are still read.
+  }
 
   // Optional manual refresh from console:
   window.refreshVideoDownloadSources = collectSources;

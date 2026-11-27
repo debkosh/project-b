@@ -37,9 +37,12 @@ import zlib
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 import links_page  # noqa: E402
+import mp4_length  # noqa: E402
 import web_features  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# The small streams core/streams' tests save, served to the phone (stream_download).
+STREAMS = os.path.join(ROOT, "core", "streams", "testdata")
 SDK = os.path.expanduser("~/Library/Android/sdk")
 ADB = [SDK + "/platform-tools/adb", "-s", os.environ.get("ADB_SERIAL", "emulator-5600")]
 APK = os.environ.get("PB_APK") or ROOT + "/build/android/project-b-content.apk"
@@ -221,6 +224,30 @@ class Server(http.server.BaseHTTPRequestHandler):
                     time.sleep(0.5)
             except OSError:
                 pass  # Cancelled, or the app stopped.
+            return
+        # A streamed video, core/streams' test streams (docs/video-streams.md): /stream/ as
+        # they are, /slowstream/ with each piece held back five seconds, so the stream runs
+        # long enough to outlive the app's screen.
+        if path.startswith("/stream/") or path.startswith("/slowstream/"):
+            name = path.split("/", 2)[2]
+            file = os.path.normpath(os.path.join(STREAMS, name))
+            if not file.startswith(STREAMS) or not os.path.isfile(file):
+                self.send_response(404)
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
+            with open(file, "rb") as f:
+                data = f.read()
+            if path.startswith("/slowstream/") and not file.endswith(".m3u8"):
+                time.sleep(5)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/vnd.apple.mpegurl" if file.endswith(".m3u8") else "application/octet-stream")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            try:
+                self.wfile.write(data)
+            except OSError:
+                pass
             return
         if path == "/to-blocked":
             self.send_response(302)
@@ -1403,6 +1430,56 @@ def download_outlives_screen():
     ended = until(lambda: not adb("shell", "pidof", PACKAGE).strip(), 30)
     check("and with the download done and no screen, the app ends", ended is not None)
     adb("shell", "rm", "-f", "/sdcard/Download/" + name)
+
+
+def stream_download():
+    """A streamed video saves as one MP4 on a phone (docs/video-streams.md): a playlist's
+    address, gone to, lands in the phone's Downloads as an MP4 under the playlist's name,
+    with picture and sound and its stream's length, and its notification says Downloaded;
+    the playlist itself never reaches the phone's Downloads. And a stream outlives the app's
+    screen as a running download does: swiped away while its pieces come, the app runs on
+    with no screen, the MP4 still arrives, and then the app ends."""
+    adb("shell", "pm", "grant", PACKAGE, "android.permission.POST_NOTIFICATIONS")
+    files = lambda: adb("shell", "ls", "-1", "/sdcard/Download/").splitlines()
+    for stale in [f for f in files() if f.startswith("index") and (f.endswith(".mp4") or f.endswith(".m3u8"))]:
+        adb("shell", "rm", "-f", "/sdcard/Download/" + stale)
+    launch()
+    go(BASE + "/a")
+    asked("/a")
+    go(BASE + "/stream/ts/index.m3u8")
+    check("a playlist's address keeps the page where it was", until(lambda: find("page", text="to b")) is not None)
+    stored = until(lambda: "index.mp4" in files(), 40)
+    check("the stream reaches the phone's Downloads as one MP4, under its playlist's name", stored is not None, files()[-8:])
+    check("and its playlist doesn't", not any(f.startswith("index") and not f.endswith(".mp4") for f in files()), files()[-8:])
+    said = until(lambda: (notification_of("index.mp4") or "").startswith("Downloaded") or None, 15)
+    check("its notification says it is downloaded", said is not None, str(notification_of("index.mp4")))
+    local = os.path.join(OUT, "stream-index.mp4")
+    adb("pull", "/sdcard/Download/index.mp4", local)
+    got = mp4_length.read(local) if os.path.isfile(local) else {}
+    check("the MP4 has picture and sound, its index first, and is as long as its stream, 4 seconds",
+          got.get("tracks") == ["vide", "soun"] and got.get("index_first") and abs(got.get("seconds", 0) - 4.0) < 0.15, got)
+    menu("Downloads")
+    row = until(lambda: find("page", text=lambda t: (t or "").startswith("index.mp4")))
+    check("the Downloads page lists it by the MP4's name", row is not None)
+    press("Close Downloads")
+    adb("shell", "rm", "-f", "/sdcard/Download/index.mp4")
+
+    # Its pieces coming slowly, about 20 seconds in all, longer than a swipe away takes: swiped
+    # away meanwhile.
+    launch()
+    go(BASE + "/a")
+    asked("/a")
+    go(BASE + "/slowstream/fmp4/index.m3u8")
+    until(lambda: notification_of("index.mp4") is not None, 15)
+    swipe_away()
+    time.sleep(3)
+    pid = adb("shell", "pidof", PACKAGE).strip()
+    check("swiped away while a stream's pieces come, the app runs on with no screen", bool(pid) and "BrowserActivity" not in in_front_now(), in_front_now())
+    stored = until(lambda: any(re.fullmatch(r"index( \(\d+\))?\.mp4", f) for f in files()), 60)
+    check("and the MP4 still reaches the phone's Downloads", stored is not None, files()[-8:])
+    ended = until(lambda: not adb("shell", "pidof", PACKAGE).strip(), 30)
+    check("and with the stream saved and no screen, the app ends", ended is not None)
+    adb("shell", "rm", "-f", "/sdcard/Download/index.mp4")
 
 
 def notification_of(name):
@@ -3500,7 +3577,7 @@ def main():
     clear_data()
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
-    every = (browsing, mobile_shell, custom_colour, settings_back, talkback_states, bookmark_star, settings_ahead, back_key_chain, page_dialogs, popups, leave, page_camera, downloads, crash_notice, relaunch_on_the_phone, download_notifications, download_outlives_screen, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, passkeys_on_the_phone, passwords_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
+    every = (browsing, mobile_shell, custom_colour, settings_back, talkback_states, bookmark_star, settings_ahead, back_key_chain, page_dialogs, popups, leave, page_camera, downloads, crash_notice, relaunch_on_the_phone, download_notifications, download_outlives_screen, stream_download, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, passkeys_on_the_phone, passwords_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
              the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web, secure_dns, long_press_menu, keyboard_bars, page_downloads_ask, welcome_extras, welcome_last_step, web_server_kinds, update_on_the_phone, settings_keeps_its_size, update_notification)
     for part in [p for p in every if not sys.argv[1:] or p.__name__ in sys.argv[1:]]:
         # tools/results.py splits a run's memory, CPU and checks by these lines.
