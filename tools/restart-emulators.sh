@@ -35,6 +35,11 @@ for emulator in "$@"; do
             sed -nE 's/.* Task\{[0-9a-f]+ #([0-9]+) .*/\1/p' | while read -r task; do
             "$ADB" -s "$serial" shell am stack remove "$task" </dev/null >/dev/null 2>&1
         done
+        # Downloads emptied: the drives' downloads and pushed files stay across restarts, and
+        # 174 of them on Android 10 put file_inputs' SiteSparks.zip below the picker's screen
+        # (Stable 0.3.14). Through the media index first, as a plain rm leaves its rows, then the
+        # files, then the download manager's own list. Only test files are ever there.
+        "$ADB" -s "$serial" shell "content delete --uri content://media/external/file --where \"_data LIKE '/storage/emulated/0/Download/%'\"; rm -rf /sdcard/Download/*; pm clear com.android.providers.downloads" >/dev/null 2>&1
         # A release's launch check leaves the app uninstalled; with no app to start, its GPU
         # goes unchecked, and restarting the emulator again can't change that.
         if [ -z "$("$ADB" -s "$serial" shell pm list packages "$PACKAGE" | tr -d '\r')" ]; then
