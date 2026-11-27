@@ -28,6 +28,14 @@ if ! flock -n 9; then
 fi
 
 [ -x /usr/local/go/bin/go ] || curl -fsSL "https://go.dev/dl/go$GO_VERSION.linux-amd64.tar.gz" | tar -C /usr/local -xz
+# Rust, for the blocker's library (core/blocking/lib, docs/blocking.md), in the container's own
+# home; the Linux build in this container uses it too. rustup-init is checked against its hash.
+if [ ! -x "$HOME/.cargo/bin/cargo" ]; then
+  curl -fsSL -o /tmp/rustup-init https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init
+  echo "b1c8cb14e30889e7e2999e6b69e62d9e9b9ffc0f4df8180564d306d9680e6c55  /tmp/rustup-init" | sha256sum -c -
+  chmod +x /tmp/rustup-init && /tmp/rustup-init -y --no-modify-path --profile minimal --default-toolchain 1.100.0
+fi
+"$HOME/.cargo/bin/rustup" target add aarch64-linux-android aarch64-unknown-linux-gnu x86_64-unknown-linux-gnu
 
 # GN builds a copy of the tree in which a file is rewritten only when its content changes. Ninja
 # goes by file times, so building another checkout straight from where it is could leave an
