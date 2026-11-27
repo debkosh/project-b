@@ -221,7 +221,7 @@ func TestSettingsSetsAnAskableKindForASite(t *testing.T) {
 	if m.Status(0, "https://meet.test", Camera) != A || len(m.Sites()) != 0 {
 		t.Fatalf("reset kept %+v", m.Sites())
 	}
-	if s := Settable(); len(s) != 7 || s[3].Kind != Ads || s[4].Kind != Links || s[5].Kind != Popups || s[5].Value != Block || s[4].Value != Allow || s[6].Kind != Sparks || s[0].Kind != Camera || s[0].Title != "Camera" {
+	if s := Settable(); len(s) != 8 || s[7].Kind != DownloadNames || s[7].Value != AsSettings || s[3].Kind != Ads || s[4].Kind != Links || s[5].Kind != Popups || s[5].Value != Block || s[4].Value != Allow || s[6].Kind != Sparks || s[0].Kind != Camera || s[0].Title != "Camera" {
 		t.Fatalf("settable %+v", s)
 	}
 }
@@ -408,5 +408,28 @@ func TestAllowedDownloadsGoAndAnotherPageStartsAfresh(t *testing.T) {
 	ask(m, 8, 2, "https://shop.test", false, Downloads)
 	if len(m.Prompts()) != 1 {
 		t.Fatal("a reload gave the page another download with no click")
+	}
+}
+
+// How a site's downloads are named: as Settings has it unless the site has a way of its own.
+func TestASitesOwnWayOfNamingDownloads(t *testing.T) {
+	dir := t.TempDir()
+	m, _, _ := setup(t, dir)
+	const films = "https://films.test"
+	if v := m.Value(films, DownloadNames); v != AsSettings {
+		t.Fatalf("with no setting: %q", v)
+	}
+	m.Set(films, DownloadNames, "title")
+	m.Set(films, DownloadNames, "whenever") // not one of its ways: ignored
+	if v := m.Value(films, DownloadNames); v != "title" || m.Value("https://other.test", DownloadNames) != AsSettings {
+		t.Fatalf("set to title: %q", v)
+	}
+	again, _, _ := setup(t, dir)
+	if v := again.Value(films, DownloadNames); v != "title" {
+		t.Fatalf("after a restart: %q", v)
+	}
+	again.Set(films, DownloadNames, AsSettings)
+	if len(again.Sites()) != 0 {
+		t.Fatalf("back as Settings has it, it kept %+v", again.Sites())
 	}
 }

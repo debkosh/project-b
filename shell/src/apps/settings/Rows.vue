@@ -116,6 +116,18 @@ const customError = computed(() => {
   return '';
 });
 
+// How a download is named (docs/daily-driver.md, "Naming downloads").
+const namings = [
+  { value: 'auto', label: 'Automatic' },
+  { value: 'title', label: 'Title and file name' },
+  { value: 'file', label: "File's own name" },
+];
+const namingHints = {
+  auto: 'A file keeps its own name unless that looks random; then it is named after its video or its page',
+  title: 'Every file is named after its page and its own name, as "Title – name"',
+  file: 'Every file keeps the name its site gave it',
+};
+
 const layouts = [
   { value: 'vertical', label: 'Vertical' },
   { value: 'horizontal', label: 'Horizontal' },
@@ -300,6 +312,13 @@ const layouts = [
       :aria-checked="String(!!state.prefs.askWhereToSave)"
       @change="setPref('askWhereToSave', $event.target.checked)"
     />
+  </Row>
+
+  <!-- A select, as a choice among ways that each need a few words is (design-system.md). -->
+  <Row v-else-if="part === 'nameDownloads'" label="Name downloads" :hint="namingHints[state.prefs.nameDownloads] || namingHints.auto" for="name-downloads">
+    <select id="name-downloads" :value="state.prefs.nameDownloads || 'auto'" @change="setPref('nameDownloads', $event.target.value)">
+      <option v-for="n in namings" :key="n.value" :value="n.value">{{ n.label }}</option>
+    </select>
   </Row>
 
   <!-- The welcome again: marked unfinished, and the app closes, for the next start to open

@@ -38,6 +38,9 @@ const (
 	Popups = "popups"
 	// Sparks is whether the person's sparks run on the site's pages, all of them or none.
 	Sparks = "sparks"
+	// DownloadNames is how the site's downloads are named, where that isn't as Settings'
+	// Name downloads has it (docs/daily-driver.md, "Naming downloads").
+	DownloadNames = "download-names"
 	// Downloads is a page starting a download (docs/video-streams.md), which the engine asks
 	// about as a page's request: one started by a click goes, and so does the first a page
 	// starts by itself; a later one with no click asks, and the answer holds for the site
@@ -102,7 +105,12 @@ var Kinds = []Kind{
 	// Allow and Block in Links' order, so the two rows' choices sit alike.
 	{Name: Popups, Title: "Pop-ups", Choices: []string{Allow, Block}, Initial: Block},
 	{Name: Sparks, Title: "Sparks", Choices: []string{On, Off}},
+	// As Settings has it, or one of Settings' three ways for this site alone.
+	{Name: DownloadNames, Title: "Name downloads", Choices: []string{AsSettings, "auto", "title", "file"}},
 }
+
+// AsSettings is a site's value of a kind that follows the setting for every site.
+const AsSettings = "default"
 
 func adsChoices() []string {
 	if AdsDefault == On {

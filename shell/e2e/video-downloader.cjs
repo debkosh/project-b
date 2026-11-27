@@ -63,15 +63,27 @@ const pages = (cdn) => ({
     <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"VideoObject","name":"A film","contentUrl":"${cdn}/fmp4/index.m3u8"}]}</script>
     <script>var player = {"sources":[{"file":"${cdn.replace(/\//g, '\\/')}\\/aes\\/index.m3u8"}]};</script>`,
   '/late': `<!doctype html><title>Late</title><button id=play onclick="fetch('${cdn}' + '/qualities.m3u' + '8').then((r) => r.text())">Play</button>`,
+  // A DASH player: its playlist loaded by its script, and others linked.
+  '/dash': `<!doctype html><title>DASH</title><video id=v></video><a href="${cdn}/live.mpd">live</a><a href="${cdn}/locked.mpd">locked</a><a href="${cdn}/two.mpd">two</a><script>
+    fetch('${cdn}/dash/template/manifest.mpd').then((r) => r.text()).then(() => { document.title = 'loaded'; });
+  </script>`,
+  // A video's title, for the browser to name its file after: its own label, then its
+  // caption, then the nearest heading above it, then the page's og:title.
+  '/titled': `<!doctype html><title>Titled</title><meta property="og:title" content="The page's own title">
+    <h1>Films</h1>
+    <section><h2>Wrong: after its video</h2></section>
+    <video src="${cdn}/labelled.mp4" aria-label="Big Buck Bunny: the trailer"></video>
+    <figure><video src="${cdn}/captioned.mp4" title=""></video><figcaption>  A caption,
+      on two lines </figcaption></figure>
+    <article><h2>Sintel &amp; friends / part 2</h2><div><p>About it</p><div><video src="${cdn}/headed.mp4"></video></div></div></article>
+    <script>fetch('${cdn}' + '/qualities.m3u' + '8').then((r) => r.text()).then(() => { document.title = 'loaded'; });</script>`,
+  '/untitled': `<!doctype html><title>Untitled</title><video src="${cdn}/plain.mp4"></video>`,
+  '/og': `<!doctype html><title>Og</title><meta property="og:title" content="Only the page says"><video src="${cdn}/plain.mp4"></video>`,
   // A stream the page's player loaded, beside a link to another's playlist, the link first
   // in the page.
   '/both': `<!doctype html><title>Both</title><video id=v aria-label="Sound and picture"></video>
     <a id=plain href="${cdn}/ts/index.m3u8" style="display:block;padding:12px">A playlist</a>
     <script>fetch("${cdn}" + "/split/master.m3u" + "8").then((r) => r.text()).then(() => { document.body.dataset.played = "yes" })</script>`,
-  // A DASH player: its playlist loaded by its script, and others linked.
-  '/dash': `<!doctype html><title>DASH</title><video id=v></video><a href="${cdn}/live.mpd">live</a><a href="${cdn}/locked.mpd">locked</a><a href="${cdn}/two.mpd">two</a><script>
-    fetch('${cdn}/dash/template/manifest.mpd').then((r) => r.text()).then(() => { document.title = 'loaded'; });
-  </script>`,
   '/unsaved': `<!doctype html><title>Unsaved</title><a href="${cdn}/live.m3u8">live</a><a href="${cdn}/locked.m3u8">locked</a><a href="${cdn}/live-master.m3u8">live, by its master</a><a href="${cdn}/gone.m3u8">gone</a>`,
 });
 
@@ -184,12 +196,6 @@ function serve(handler) {
     JSON.stringify(items.slice(0, 2)) === JSON.stringify([{ words: 'Download 90p', href: `${cdn}/ts/index.m3u8#pb-download` }, { words: 'Download 54p', href: `${cdn}/small/index.m3u8#pb-download` }]) &&
     items.slice(2).map((i) => i.words).join('|') === 'Copy link|Open in new tab', items);
 
-  // What the page really loaded comes before what it only links.
-  await open('/both', "document.body.dataset.played === 'yes'");
-  await settled(2);
-  r = (await rows()) || [];
-  check('a stream the page loaded comes before one it only links', r.length === 2 && r[0].download.startsWith(`${cdn}/split/master.m3u8#`) && r[1].download.startsWith(`${cdn}/ts/index.m3u8#`), r);
-
   // Live and protected streams, and one whose playlist can't be read.
   await open('/unsaved');
   check('live and protected streams are found', await settled(4), await rows());
@@ -199,9 +205,36 @@ function serve(handler) {
   check('a live stream says "Live: can\'t be saved yet", by its own playlist or its master\'s best, and a protected one "Protected: can\'t be saved"',
     JSON.stringify(notes) === JSON.stringify(['', "Live: can't be saved yet", "Live: can't be saved yet", "Protected: can't be saved"]), r);
   check('and neither has a Download; one whose playlist can\'t be read keeps its Download, for the browser to find out',
-    r.filter((row) => row.note).every((row) => !row.download) && r.filter((row) => !row.note).length === 1 && by('gone.m3u8')?.download === `${cdn}/gone.m3u8#pb-download`, r);
+    r.filter((row) => row.note).every((row) => !row.download) && r.filter((row) => !row.note).length === 1 && by('gone.m3u8')?.download === `${cdn}/gone.m3u8#pb-download=gone`, r);
   items = await menuOf(0);
   check('a row with no Download still has Copy link and Open in new tab', items.map((i) => i.words).join('|') === 'Copy link|Open in new tab', items);
+
+  // A video's title rides in its link, for the browser to name the file after.
+  await open('/titled', "document.title === 'loaded'");
+  await settled(4);
+  r = (await rows()) || [];
+  const titled = (name) => decodeURIComponent((r.find((row) => row.download.includes(name))?.download || '').split('#')[1] || '');
+  check('a video\'s own label is the title its Download carries, after #pb-download=', titled('labelled.mp4') === 'pb-download=Big Buck Bunny: the trailer', r);
+  check('with no label, its caption', titled('captioned.mp4') === 'pb-download=A caption, on two lines', titled('captioned.mp4'));
+  check('with neither, the nearest heading above it', titled('headed.mp4') === 'pb-download=Sintel & friends / part 2', titled('headed.mp4'));
+  check('the title is percent-encoded in the link', r.find((row) => row.download.includes('headed.mp4'))?.download === `${cdn}/headed.mp4#pb-download=Sintel%20%26%20friends%20%2F%20part%202`, r);
+  check('a stream its player loaded goes by the page\'s main video\'s title', titled('index.m3u8').startsWith('pb-download=') && titled('index.m3u8').length > 'pb-download='.length, titled('index.m3u8'));
+  items = await menuOf(r.findIndex((row) => row.download.includes('index.m3u8')));
+  check('and each quality in its menu carries it too', items.slice(0, 2).every((i) => i.href.includes('#pb-download=')), items);
+  await open('/og');
+  await settled(1);
+  check('a video with nothing of its own goes by the page\'s og:title', ((await rows()) || [])[0]?.download === `${cdn}/plain.mp4#pb-download=Only%20the%20page%20says`, await rows());
+  await open('/untitled');
+  await settled(1);
+  check('and with no title anywhere, its link is the plain #pb-download', ((await rows()) || [])[0]?.download === `${cdn}/plain.mp4#pb-download`, await rows());
+
+  // What the page really loaded comes before what it only links.
+  await open('/both', "document.body.dataset.played === 'yes'");
+  await settled(2);
+  r = (await rows()) || [];
+  check('a stream the page loaded comes before one it only links', r.length === 2 && r[0].download.startsWith(`${cdn}/split/master.m3u8#`) && r[1].download.startsWith(`${cdn}/ts/index.m3u8#`), r);
+  check('the loaded one goes by the video\'s own label, and the linked one by its link\'s words',
+    r[0]?.download === `${cdn}/split/master.m3u8#pb-download=Sound%20and%20picture` && r[1]?.download === `${cdn}/ts/index.m3u8#pb-download=A%20playlist`, r);
 
   // DASH: one playlist for every quality.
   await open('/dash', "document.title === 'loaded'");

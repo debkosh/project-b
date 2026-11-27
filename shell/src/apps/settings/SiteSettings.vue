@@ -90,7 +90,8 @@ const choices = [
 ];
 // One of our own kinds has no Ask: a site without a setting has its default, the kind's value.
 const valueOf = (o, k) => settingsOf(o).find((x) => x.kind === k.kind)?.value || k.value || '';
-const ourWords = { on: 'On', off: 'Off', allow: 'Allow', block: 'Block' };
+// A site's own way of naming its downloads is one of Settings' three, or as Settings has it.
+const ourWords = { on: 'On', off: 'Off', allow: 'Allow', block: 'Block', default: 'As in Settings', auto: 'Automatic', title: 'Title and file name', file: "File's own name" };
 const choicesOf = (k) => (k.choices ? k.choices.map((v) => ({ value: v, label: ourWords[v] || v })) : choices);
 const set = (origin, kind, value) => send({ t: 'setSiteSetting', origin, kind, value });
 

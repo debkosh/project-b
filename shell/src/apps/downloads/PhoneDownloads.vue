@@ -101,7 +101,9 @@ function actions(d) {
     // No Retry where trying again can't help: a protected video, a format not read.
     tiles = [...(d.url && !d.noRetry ? [{ icon: 'retry', label: 'Retry', run: () => act(d.id, 'retry') }] : []), ...link];
   }
-  sheet.value = { id: d.id, name: d.name, detail: d.url ? withoutScheme(d.url) : d.from || '', tiles, rows };
+  // One named after its page says the name its server gave it, after where it came from.
+  const from = d.url ? withoutScheme(d.url) : d.from || '';
+  sheet.value = { id: d.id, name: d.name, detail: d.original ? `${from} · from ${d.original}` : from, tiles, rows };
 }
 function pageActions() {
   sheet.value = {

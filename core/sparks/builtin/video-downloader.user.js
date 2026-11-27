@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Video downloader
 // @description  Finds the videos on a page so you can save one
-// @version      1.2
+// @version      1.3
 // @namespace    https://github.com/sudiptadeb/project-b
 // @match        https://*/*
 // @run-at       document-end
@@ -94,15 +94,72 @@
   }
 
   // The address Project B saves as a download from this page: the file's, its fragment
-  // swapped for #pb-download, which no server sees.
-  function savedFrom(url) {
+  // swapped for #pb-download, which no server sees. With a title, #pb-download=<title>:
+  // Project B names the file after it when the file's own name says nothing, an id or
+  // "master" (its ending stays the file's own).
+  function savedFrom(url, title) {
     try {
       const u = new URL(url, location.href);
-      u.hash = 'pb-download';
+      u.hash = title ? `pb-download=${encodeURIComponent(title)}` : 'pb-download';
       return u.href;
     } catch {
       return url;
     }
+  }
+
+  function textOf(node) {
+    return (node?.textContent || '').replace(/\s+/g, ' ').trim();
+  }
+
+  // The nearest heading before an element: among what comes before it, then before each
+  // of the elements it is in.
+  function headingAbove(el) {
+    for (let node = el; node && node !== document.documentElement; node = node.parentElement) {
+      for (let prev = node.previousElementSibling; prev; prev = prev.previousElementSibling) {
+        if (prev.id === ROOT_ID) continue;
+        const heading = /^H[1-6]$/.test(prev.tagName) ? prev : [...prev.querySelectorAll('h1,h2,h3,h4,h5,h6')].pop();
+        if (heading && textOf(heading)) return textOf(heading);
+      }
+    }
+    return '';
+  }
+
+  // The title a video goes by on its page: its own label or title, then its caption, then
+  // the nearest heading above it, then the page's og:title. '' when the page gives none.
+  // A link's own words are its title: nearer than anything about the page's video.
+  function titleNear(video) {
+    const tries = [];
+    if (video && video.tagName === 'A') {
+      tries.push(video.getAttribute('aria-label'), textOf(video), video.getAttribute('title'));
+    } else if (video) {
+      tries.push(video.getAttribute('aria-label'), video.getAttribute('title'));
+      const by = video.getAttribute('aria-labelledby');
+      if (by) tries.push(by.split(/\s+/).map((id) => textOf(document.getElementById(id))).join(' '));
+      tries.push(textOf(video.closest('figure')?.querySelector('figcaption')));
+      tries.push(headingAbove(video));
+    }
+    tries.push(document.querySelector('meta[property="og:title"], meta[name="og:title"]')?.getAttribute('content'));
+    for (const text of tries) {
+      const title = (text || '').replace(/\s+/g, ' ').trim();
+      if (title) return title.slice(0, 150);
+    }
+    return '';
+  }
+
+  // The page's main video: the largest on it, for a source no element names, as a stream
+  // its player loaded.
+  function mainVideo() {
+    let best = null;
+    let size = -1;
+    document.querySelectorAll('video').forEach((video) => {
+      if (video.closest?.(`#${ROOT_ID}`)) return;
+      const rect = video.getBoundingClientRect();
+      if (rect.width * rect.height > size) {
+        best = video;
+        size = rect.width * rect.height;
+      }
+    });
+    return best;
   }
 
   function guessFilename(url) {
@@ -115,7 +172,8 @@
     }
   }
 
-  function addSource(map, rawUrl, label, priority, requireVideoLike = true) {
+  // video is the element the source is of, when one is: its video, or the link to it.
+  function addSource(map, rawUrl, label, priority, requireVideoLike = true, video = null) {
     const url = normalizeUrl(rawUrl);
 
     if (!url) return;
@@ -128,22 +186,24 @@
         url,
         labels: new Set([label]),
         priority,
+        video,
       });
     } else {
       const existing = map.get(key);
       existing.labels.add(label);
       existing.priority = Math.max(existing.priority, priority);
+      existing.video = existing.video || video;
     }
   }
 
   function collectFromVideo(map, video, label, priority) {
     if (!video || video.closest?.(`#${ROOT_ID}`)) return;
 
-    addSource(map, video.currentSrc, `${label}: currentSrc`, priority + 5, false);
-    addSource(map, video.src, `${label}: src`, priority + 4, false);
+    addSource(map, video.currentSrc, `${label}: currentSrc`, priority + 5, false, video);
+    addSource(map, video.src, `${label}: src`, priority + 4, false, video);
 
     video.querySelectorAll('source[src]').forEach((source) => {
-      addSource(map, source.src || source.getAttribute('src'), `${label}: <source>`, priority + 3, false);
+      addSource(map, source.src || source.getAttribute('src'), `${label}: <source>`, priority + 3, false, video);
     });
 
     [
@@ -156,7 +216,7 @@
       'data-hls',
       'data-dash',
     ].forEach((attr) => {
-      addSource(map, video.getAttribute(attr), `${label}: ${attr}`, priority + 1, true);
+      addSource(map, video.getAttribute(attr), `${label}: ${attr}`, priority + 1, true, video);
     });
   }
 
@@ -191,7 +251,7 @@
     // 3. Links that look like video files/playlists.
     document.querySelectorAll('a[href]').forEach((a) => {
       if (a.closest?.(`#${ROOT_ID}`)) return;
-      addSource(map, a.href || a.getAttribute('href'), 'page link', 55, true);
+      addSource(map, a.href || a.getAttribute('href'), 'page link', 55, true, a);
     });
 
     // 4. Common media-related attributes.
@@ -269,11 +329,13 @@
       if (isPlaylist(item.url)) readStream(item.url);
     });
 
+    const main = mainVideo();
     state.sources = [...map.values()]
       .map((item) => ({
         url: item.url,
         labels: [...item.labels],
         priority: item.priority,
+        title: titleNear(item.video || main),
       }))
       .sort((a, b) => b.priority - a.priority);
 
@@ -572,6 +634,7 @@
         label: quality && quality !== 'Video' ? `${name} · ${quality}` : name,
         host: hostOf(source.url),
         stream,
+        title: source.title,
       };
       if (info) {
         // A playlist (HLS or DASH), which the browser saves as one MP4: its Download saves
@@ -898,7 +961,7 @@
       // file and opens it in a tab, where a site that serves its files only to its own
       // pages refuses it (docs/site-features.md).
       const link = el('a', 'btn quiet');
-      link.href = savedFrom(saves);
+      link.href = savedFrom(saves, row.title);
       link.download = guessFilename(saves);
       link.setAttribute('aria-label', `Download ${row.label}`);
       link.innerHTML = icon('download');
@@ -925,7 +988,7 @@
         ...qualities.map((quality) => ({
           icon: 'download',
           label: `Download ${quality.label}`,
-          href: savedFrom(quality.url),
+          href: savedFrom(quality.url, row.title),
           run: () => {
             state.downloading.add(row.url);
             setTimeout(() => {
@@ -977,7 +1040,7 @@
 
     const rows = describe(state.sources);
     title.textContent = rows.length === 1 ? '1 video on this page' : rows.length ? `${rows.length} videos on this page` : 'Videos on this page';
-    const key = JSON.stringify(rows.map((row) => [row.url, row.label, row.status, row.save, row.qualities]));
+    const key = JSON.stringify(rows.map((row) => [row.url, row.label, row.status, row.save, row.qualities, row.title]));
     if (key === state.shownKey) return;
     state.shownKey = key;
     // Don't pull a row out from under an open menu: show the new list when it closes.

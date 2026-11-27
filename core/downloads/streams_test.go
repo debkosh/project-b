@@ -371,3 +371,33 @@ func TestADASHPlaylistDownloadBecomesAnMP4(t *testing.T) {
 		t.Fatalf("%+v", it)
 	}
 }
+
+// A stream whose playlist's name says nothing is named after better text, with the MP4's
+// ending whatever the text ends in, and keeps the playlist's own name beside it.
+func TestAStreamIsNamedAfterItsPage(t *testing.T) {
+	r := newStreamRig(t)
+	r.on(func() {
+		r.m.NameBy(func(q engine.DownloadRequest) Naming {
+			return Naming{Mode: NamesAuto, Linked: LinkedTitle(q.URL), Title: "A page of films"}
+		})
+	})
+	r.download(1, "/ts/index.m3u8", "index.m3u8", "application/vnd.apple.mpegurl")
+	if it := r.until("done", func(it Item) bool { return it.State != "progress" }); it.State != "done" || it.Name != "A page of films.mp4" || it.Original != "index.m3u8" || it.Path != filepath.Join(r.dir, "A page of films.mp4") {
+		t.Fatalf("%+v", it)
+	}
+	r.on(func() {
+		r.m.NameBy(func(q engine.DownloadRequest) Naming {
+			return Naming{Mode: NamesAuto, Linked: "Big Buck Bunny.m3u8", Title: "A page of films"}
+		})
+	})
+	r.download(2, "/fmp4/index.m3u8", "index.m3u8", "application/vnd.apple.mpegurl")
+	if it := r.until("done", func(it Item) bool { return it.State != "progress" }); it.State != "done" || it.Name != "Big Buck Bunny.m3u8.mp4" || it.Original != "index.m3u8" {
+		t.Fatalf("%+v", it)
+	}
+	// One whose name says something keeps it, with the MP4's ending.
+	r.extra["/ts/holiday-in-goa.m3u8"] = "#EXTM3U\n#EXT-X-TARGETDURATION:1\n#EXTINF:1.0,\npiece0.ts\n#EXT-X-ENDLIST\n"
+	r.download(3, "/ts/holiday-in-goa.m3u8", "holiday-in-goa.m3u8", "application/vnd.apple.mpegurl")
+	if it := r.until("done", func(it Item) bool { return it.State != "progress" }); it.Name != "holiday-in-goa.mp4" || it.Original != "" {
+		t.Fatalf("%+v", it)
+	}
+}

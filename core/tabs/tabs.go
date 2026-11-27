@@ -1208,6 +1208,21 @@ func (m *Manager) allowed(u string) bool {
 	return true
 }
 
+// Shown is the page a tab shows now, its address and its title, whatever a navigation under
+// way has put in their place meanwhile: a link that becomes a download changes the tab's
+// address and clears its title for a moment. Nothing for a tab that is gone or one of ours.
+func (m *Manager) Shown(id engine.TabID) (address, title string) {
+	t := m.tabs[id]
+	if t == nil || t.Page != "" {
+		return "", ""
+	}
+	title = t.Title
+	if title == "" {
+		title = t.shownTitle
+	}
+	return t.committed, title
+}
+
 // HandleNavigationFinished records a committed navigation. One older than the latest
 // started leaves the tab as it is: a new tab's blank page can commit after the user's
 // navigation began, and the address that navigation is going to shows until it commits or

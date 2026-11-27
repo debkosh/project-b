@@ -410,3 +410,94 @@ func TestOpenShowsAPageHereAndHandsAZipToTheOS(t *testing.T) {
 		t.Fatalf("the OS opened %v; want only the zip", r.sys.Opened())
 	}
 }
+
+// A download whose name says nothing is named after better text (docs/daily-driver.md,
+// "Naming downloads"): the title its link carries, else its page's title; its ending stays
+// its own, and its row keeps the name its server gave it. Settings' Name downloads chooses
+// the way, and a site's own setting goes before it.
+func TestADownloadWithARandomNameIsNamedAfterItsPage(t *testing.T) {
+	profile, dir := t.TempDir(), t.TempDir()
+	r := startDownloading(t, profile, dir)
+	defer func() { r.stop() }()
+	r.visit("https://films.test/watch/big-buck-bunny")
+	r.show(1)
+	r.e.Fire(1, 0, "title", "Big Buck Bunny - Films")
+	n := 0
+	get := func(address string) map[string]any {
+		t.Helper()
+		n++
+		r.e.Fire(1, 0, "download", address)
+		return first(r.downloads(func(l []any) bool { return len(l) == n && first(l)["state"] == "done" }))
+	}
+	// A name that says something stays, with nothing kept beside it.
+	if d := get("https://cdn.test/files/holiday-in-goa.zip"); d["name"] != "holiday-in-goa.zip" || d["original"] != nil {
+		t.Fatalf("a name that says something: %v", d)
+	}
+	// A random one is named after the page's title, its own ending kept.
+	if d := get("https://cdn.test/files/9f86d081884c7d65.zip"); d["name"] != "Big Buck Bunny - Films.zip" || d["original"] != "9f86d081884c7d65.zip" || d["path"] != filepath.Join(dir, "Big Buck Bunny - Films.zip") {
+		t.Fatalf("a random name: %v", d)
+	}
+	// The same again is numbered, as any name taken is.
+	if d := get("https://cdn.test/files/1697040000.zip"); d["name"] != "Big Buck Bunny - Films (1).zip" || d["original"] != "1697040000.zip" {
+		t.Fatalf("the same title again: %v", d)
+	}
+	// The title its link carries goes first, and only its name is taken from it.
+	if d := get("https://cdn.test/files/video.bin#pb-download=" + url.PathEscape("Trailer: one/two.exe")); d["name"] != "Trailer one two.exe.bin" || d["original"] != "video.bin" {
+		t.Fatalf("a title in the link: %v", d)
+	}
+	// The plain link still downloads, and is named by the page.
+	if d := get("https://cdn.test/files/master.bin#pb-download"); d["name"] != "Big Buck Bunny - Films.bin" {
+		t.Fatalf("a plain #pb-download: %v", d)
+	}
+
+	// Cancelled and tried again, it starts over under the name it had, not its server's.
+	r.e.Fire(1, 0, "download", "https://cdn.test/files/0f3a9c2e7b1d4f68.iso")
+	n++
+	running := first(r.downloads(func(l []any) bool { return len(l) == n && first(l)["state"] == "progress" }))
+	r.shell(fmt.Sprintf(`{"t":"downloadAction","id":%v,"action":"cancel"}`, running["id"]))
+	r.downloads(func(l []any) bool { return first(l)["state"] == "cancelled" })
+	r.shell(fmt.Sprintf(`{"t":"downloadAction","id":%v,"action":"retry"}`, running["id"]))
+	if d := first(r.downloads(func(l []any) bool { return len(l) == n && first(l)["state"] == "done" })); d["id"] != running["id"] || d["name"] != "Big Buck Bunny - Films.iso" || d["original"] != "0f3a9c2e7b1d4f68.iso" {
+		t.Fatalf("tried again: %v", d)
+	}
+
+	// Settings: File's own name never renames; Title and file name always does.
+	r.settings(`{"t":"setPref","name":"nameDownloads","value":"file"}`)
+	if d := get("https://cdn.test/files/a1b2c3d4e5f6.zip"); d["name"] != "a1b2c3d4e5f6.zip" || d["original"] != nil {
+		t.Fatalf("File's own name: %v", d)
+	}
+	r.settings(`{"t":"setPref","name":"nameDownloads","value":"title"}`)
+	if d := get("https://cdn.test/files/notes.txt"); d["name"] != "Big Buck Bunny - Films – notes.txt" || d["original"] != "notes.txt" {
+		t.Fatalf("Title and file name: %v", d)
+	}
+	r.settings(`{"t":"setPref","name":"nameDownloads","value":"sometimes"}`)
+	if got := r.a.Prefs.All().NameDownloads; got != "title" {
+		t.Fatalf("a way that isn't one was kept: %q", got)
+	}
+	// The site's own setting goes before Settings', for that site alone.
+	r.settings(`{"t":"setSiteSetting","origin":"https://films.test","kind":"download-names","value":"file"}`)
+	if d := get("https://cdn.test/files/0001.zip"); d["name"] != "0001.zip" || d["original"] != nil {
+		t.Fatalf("the site's own File's own name: %v", d)
+	}
+	r.settings(`{"t":"setSiteSetting","origin":"https://films.test","kind":"download-names","value":"auto"}`)
+	if d := get("https://cdn.test/files/0002.zip"); d["name"] != "Big Buck Bunny - Films (2).zip" {
+		t.Fatalf("the site's own Automatic: %v", d)
+	}
+	r.settings(`{"t":"setSiteSetting","origin":"https://films.test","kind":"download-names","value":"default"}`)
+	if d := get("https://cdn.test/files/0003.zip"); d["name"] != "Big Buck Bunny - Films – 0003.zip" {
+		t.Fatalf("back to Settings' way: %v", d)
+	}
+	// Kept: the row's original name outlives a restart.
+	r.stop()
+	r = startDownloading(t, profile, dir)
+	again := r
+	var kept string
+	for _, d := range again.a.Downloads.List() {
+		if d.Name == "Big Buck Bunny - Films.zip" {
+			kept = d.Original
+		}
+	}
+	if kept != "9f86d081884c7d65.zip" || again.a.Prefs.All().NameDownloads != "title" {
+		t.Fatalf("kept %q, %q", kept, again.a.Prefs.All().NameDownloads)
+	}
+}

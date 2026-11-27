@@ -104,7 +104,9 @@ The spark keeps what it finds today, and adds streams:
   later. A part none of them covers well is written as a separate module of ours, with its
   own tests.
 - **Its name** is the server's or the playlist's, with `.mp4`, never one the page chose, so a
-  page can't pass a file off under another name.
+  page can't pass a file off under another name. One that says nothing, as `master` or an
+  id does, is named after the video or its page instead, its ending still `.mp4`
+  ([daily-driver.md](daily-driver.md#downloads), "Naming downloads", the same day).
 - **In Downloads** it is a download like any other: its row by its name, progress counted in
   pieces received, Pause, Resume, Cancel and Retry, Open and Show in Finder once done. On
   Android it keeps going with no screen, as a download does (docs/daily-driver.md), and it

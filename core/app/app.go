@@ -257,6 +257,18 @@ func Start(e engine.Engine, cfg Config) *App {
 		t, _ := a.Tabs.Get(tab)
 		return t.Workspace
 	})
+	// A download whose name says nothing is named after its page (docs/daily-driver.md,
+	// "Naming downloads"), as Settings' Name downloads has it, or its site's own setting.
+	a.Downloads.NameBy(func(r engine.DownloadRequest) downloads.Naming {
+		page, title := a.Tabs.Shown(r.Tab)
+		how := a.Prefs.All().NameDownloads
+		if o := sites.Origin(page); o != "" {
+			if own := a.Sites.Value(o, sites.DownloadNames); own != sites.AsSettings {
+				how = own
+			}
+		}
+		return downloads.Naming{Mode: how, Linked: downloads.LinkedTitle(r.URL), Title: title, Page: page}
+	})
 	// A downloaded page, PDF, image or text opens in a tab here; anything else goes to the OS.
 	a.Downloads.OpenHere(func(address string) {
 		a.Window.Request(a.Tabs.Front(), engine.WindowFront)

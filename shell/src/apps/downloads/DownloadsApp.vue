@@ -95,6 +95,11 @@ const share = (d) => (d.total > 0 ? Math.min(1, d.received / d.total) : 0);
               </dd>
               <dd v-else><span class="value">{{ d.from || 'This app' }}</span></dd>
             </div>
+            <!-- One named after its page keeps the name its server gave it. -->
+            <div v-if="d.original">
+              <dt>Named</dt>
+              <dd><span class="value">from {{ d.original }}</span></dd>
+            </div>
             <div v-if="d.path">
               <dt>{{ d.state === 'done' ? 'Saved in' : 'Saving to' }}</dt>
               <dd><span class="value">{{ savedIn(d) }}</span></dd>

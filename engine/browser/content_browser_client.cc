@@ -315,15 +315,17 @@ void ContentBrowserClient::OnNetworkServiceCreated(
   secure_dns::Apply(network_service);
 }
 
-// A link whose address ends in #pb-download is saved as a download, from the page it is on,
-// whatever its type and wherever it is: the video downloader's Download. Chromium ignores
+// A link whose address ends in #pb-download, or #pb-download=<a title for it>, is saved as
+// a download, from the page it is on, whatever its type and wherever it is: the video
+// downloader's Download. The title is only a name Go may give the file when its own says
+// nothing (docs/daily-driver.md, "Naming downloads"). Chromium ignores
 // `download` on another site's link and opens the file in a tab, where a site that serves its
 // files only to its own pages refuses it (docs/site-features.md). The fragment never reaches
 // the server, and the file takes its server's name.
 bool ContentBrowserClient::ShouldForceDownloadResource(content::BrowserContext* browser_context,
                                                        const GURL& url,
                                                        const std::string& mime_type) {
-  return url.has_ref() && url.ref() == "pb-download";
+  return url.has_ref() && (url.ref() == "pb-download" || url.ref().starts_with("pb-download="));
 }
 
 // Cookies and the HTTP cache are saved in the partition's folder, as Chrome lays a

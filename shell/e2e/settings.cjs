@@ -520,6 +520,19 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   await askWhere.click();
   await until(() => prefsFile().askWhereToSave === false);
 
+  // Name downloads: Automatic to start, and each of the three ways is saved.
+  await show('nameDownloads');
+  const naming = page.getByRole('combobox', { name: 'Name downloads' });
+  const namingHint = () => page.locator('.row', { has: naming }).textContent();
+  check('Name downloads is a select, Automatic to start, with what that does under it', (await naming.inputValue()) === 'auto' && (await namingHint()).includes('unless that looks random') &&
+    JSON.stringify(await naming.locator('option').allTextContents()) === JSON.stringify(['Automatic', 'Title and file name', "File's own name"]));
+  await naming.selectOption({ label: 'Title and file name' });
+  check('Title and file name is saved, and the line under it says what it does', (await until(() => prefsFile().nameDownloads === 'title')) && (await until(async () => (await namingHint()).includes('Title – name'))));
+  await naming.selectOption({ label: "File's own name" });
+  check("and File's own name", (await until(() => prefsFile().nameDownloads === 'file')) && (await until(async () => (await namingHint()).includes('keeps the name its site gave it'))));
+  await naming.selectOption({ label: 'Automatic' });
+  await until(() => prefsFile().nameDownloads === 'auto');
+
   // Save to: the Downloads folder to start; Change… takes the folder the system's panel
   // chose, here the mock's, and Use Downloads goes back.
   await show('downloadFolder');
@@ -958,6 +971,12 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   check('Block there sets it for the site', await until(() => sitesFile()['https://meet.test']?.links === 'block'), JSON.stringify(sitesFile()));
   await siteRadio('Links to other sites', 'Allow').click();
   check('and Allow, the default, forgets it', await until(() => !('links' in (sitesFile()['https://meet.test'] || {}))), JSON.stringify(sitesFile()));
+  // How the site's downloads are named: as in Settings, or a way of the site's own.
+  check('the site\'s view has Name downloads, as in Settings', (await siteRadio('Name downloads', 'As in Settings').getAttribute('aria-checked')) === 'true');
+  await siteRadio('Name downloads', "File's own name").click();
+  check('a way of its own is set for the site', await until(() => sitesFile()['https://meet.test']?.['download-names'] === 'file'), JSON.stringify(sitesFile()));
+  await siteRadio('Name downloads', 'As in Settings').click();
+  check('and As in Settings forgets it', await until(() => !('download-names' in (sitesFile()['https://meet.test'] || {}))), JSON.stringify(sitesFile()));
   // Block ads, off on every site: a site's view has no switch of its own for it.
   await show('blockAds');
   const blockAds = page.getByRole('switch', { name: /Block ads/ });
@@ -1294,7 +1313,8 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   await page.screenshot({ path: shot('settings-phone-search') });
   await phoneSearch.fill('');
   // The phone's page is the list of sections; each opens, with a way back. A phone has no
-  // Keyboard, nor Downloads, whose two rows are a desktop's.
+  // Keyboard, and its Downloads has only how files are named: its other two rows are a
+  // desktop's.
   const sectionRows = page.locator('.section-row');
   const want = {
     profile: () => page.getByLabel('Profile name'),
@@ -1304,14 +1324,15 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
     start: () => page.getByRole('radiogroup', { name: 'On start, open' }),
     workspaces: () => page.getByRole('region', { name: 'Workspaces', exact: true }),
     bookmarks: () => page.getByRole('region', { name: 'Bookmarks', exact: true }),
+    downloads: () => page.getByRole('combobox', { name: 'Name downloads' }),
     privacy: () => page.locator('[data-section="sites"]'),
     extensions: () => page.getByRole('region', { name: 'Sparks', exact: true }),
     about: () => page.getByRole('switch', { name: /Automatic updates/ }),
     flags: () => page.getByRole('region', { name: 'Flags', exact: true }),
     webFeatures: () => page.locator('.web-features'),
   };
-  check('on a phone, the list has every section but Keyboard and Downloads, in order, each with what it is set to', JSON.stringify(await sectionRows.evaluateAll((rs) => rs.map((r) => r.dataset.section))) === JSON.stringify(Object.keys(want)) &&
-    (await page.locator('.section-row[data-section="appearance"]').textContent()).includes('System'), JSON.stringify(await sectionRows.evaluateAll((rs) => rs.map((r) => r.dataset.section))));
+  check('on a phone, the list has every section but Keyboard, in order, each with what it is set to, Downloads how its files are named', JSON.stringify(await sectionRows.evaluateAll((rs) => rs.map((r) => r.dataset.section))) === JSON.stringify(Object.keys(want)) &&
+    (await page.locator('.section-row[data-section="appearance"]').textContent()).includes('System') && (await page.locator('.section-row[data-section="downloads"]').textContent()).includes('Named automatically'), JSON.stringify(await sectionRows.evaluateAll((rs) => rs.map((r) => r.dataset.section))));
   await page.screenshot({ path: shot('settings-phone') });
   // On the narrowest phone each section's name, and the line under it, stay on one line.
   await page.setViewportSize({ width: 360, height: 860 });

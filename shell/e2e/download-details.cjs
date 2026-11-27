@@ -128,6 +128,19 @@ async function phonePage(page, w) {
   check("a playlist's row goes by its MP4's name, and one that can't be saved says why, as a failed download does",
     await until(async () => (await film.innerText().catch(() => '')).includes("Failed: this video's format can't be saved yet")), await film.innerText().catch(() => 'no row'));
   check("with no Retry, as trying again can't help", (await film.getByRole('button', { name: /^Retry/ }).count()) === 0);
+  // A download whose name says nothing is named after its page, and its details keep the
+  // name its server gave it (docs/daily-driver.md, "Naming downloads").
+  const tab = (await regions()).active;
+  await fire('navigate', 'https://films.example/watch', { tab });
+  await until(async () => {
+    const t = (await regions()).tabs.find((x) => x.id === tab);
+    return t?.url === 'https://films.example/watch' && !t.loading && t.title === 'Mock films.example';
+  });
+  await fire('download', 'https://cdn.example/files/9f86d081884c7d65.zip', { tab });
+  const named = panel.getByRole('listitem', { name: 'Mock films.example.zip' });
+  check('a download with a random name is named after its page, its ending its own', await until(() => named.isVisible()));
+  await named.getByRole('button', { name: 'Details of Mock films.example.zip' }).click();
+  check('and its details say the name it came by', await until(async () => (await named.locator('dl').innerText()).replace(/\s+/g, ' ').includes('Named from 9f86d081884c7d65.zip')), await named.locator('dl').innerText().catch(() => ''));
   await shots(w.page, 'panel', async () => {
     const b = await panel.boundingBox();
     return { x: b.x - 16, y: b.y - 56, width: b.width + 32, height: b.height + 72 };

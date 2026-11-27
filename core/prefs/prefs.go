@@ -101,6 +101,10 @@ type Prefs struct {
 	SecureDNS   string `json:"secureDns"`
 	DNSProvider string `json:"dnsProvider"`
 	DNSCustom   string `json:"dnsCustom"`
+	// NameDownloads is how a download is named (docs/daily-driver.md, "Naming downloads"):
+	// "auto", its own name unless that looks random, "title", after the page's title and
+	// its own name, or "file", always its own name.
+	NameDownloads string `json:"nameDownloads"`
 	// UpdateNoticed is the release whose one-time notice the person has seen, so the shell
 	// shows a ready release's notice once in a profile, not at every start. docs/updates.md.
 	UpdateNoticed string `json:"updateNoticed,omitempty"`
@@ -110,8 +114,17 @@ type Prefs struct {
 func Defaults() Prefs {
 	return Prefs{TabLayout: TabsVertical, FrameColor: tones.Brand, Theme: ThemeSystem, Shell: shells.Default(), PhoneShell: shells.DefaultPhone(), AddressBarPosition: AddressBottom, SearchEngine: search.Default, Start: StartContinue,
 		BookmarksNewTab: true, BookmarksCommandBox: true, BlockAds: true, KeepCookies: []string{},
-		SecureDNS: securedns.Off, DNSProvider: securedns.Default}
+		SecureDNS: securedns.Off, DNSProvider: securedns.Default, NameDownloads: NamesAuto}
 }
+
+// How downloads are named: NameDownloads' values, as core/downloads has them.
+const (
+	NamesAuto  = "auto"
+	NamesTitle = "title"
+	NamesFile  = "file"
+)
+
+func isNaming(v string) bool { return v == NamesAuto || v == NamesTitle || v == NamesFile }
 
 func isTheme(t string) bool { return t == ThemeSystem || t == ThemeLight || t == ThemeDark }
 
@@ -164,6 +177,9 @@ func New(dir string) *Manager {
 			}
 			if s.Start != StartContinue && s.Start != StartFresh {
 				s.Start = StartContinue
+			}
+			if !isNaming(s.NameDownloads) {
+				s.NameDownloads = NamesAuto
 			}
 			if _, ok := search.Get(s.SearchEngine); !ok {
 				s.SearchEngine = search.Default
@@ -440,6 +456,16 @@ func (m *Manager) SetShowMenuBar(on bool) { m.setSwitch(&m.prefs.ShowMenuBar, on
 // SetAskWhereToSave turns on or off asking where each download goes.
 func (m *Manager) SetAskWhereToSave(on bool) { m.setSwitch(&m.prefs.AskWhereToSave, on) }
 
+// SetNameDownloads sets how downloads are named. Anything but the three ways is ignored.
+func (m *Manager) SetNameDownloads(how string) {
+	if !isNaming(how) || how == m.prefs.NameDownloads {
+		return
+	}
+	m.prefs.NameDownloads = how
+	m.save()
+	m.changed()
+}
+
 // SetDownloadFolder saves downloads in a folder, a whole path, from now on, or in the
 // Downloads folder for "".
 func (m *Manager) SetDownloadFolder(dir string) {
@@ -550,6 +576,8 @@ func (m *Manager) Set(name, value string) bool {
 		if value == "true" || value == "false" {
 			m.SetAskWhereToSave(value == "true")
 		}
+	case "nameDownloads":
+		m.SetNameDownloads(value)
 	case "showMenuBar":
 		if value == "true" || value == "false" {
 			m.SetShowMenuBar(value == "true")
@@ -601,6 +629,7 @@ func (m *Manager) Apply(values json.RawMessage) error {
 	m.SetBookmarksBarFolder(p.BookmarksBarFolder)
 	m.SetBlockAds(p.BlockAds)
 	m.SetAskWhereToSave(p.AskWhereToSave)
+	m.SetNameDownloads(p.NameDownloads)
 	m.SetClearCookiesOnQuit(p.ClearCookiesOnQuit)
 	m.setKeepCookies(p.KeepCookies)
 	m.SetDownloadFolder(p.DownloadFolder)

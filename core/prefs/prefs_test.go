@@ -71,7 +71,7 @@ func TestApplySetsWhatTheValuesHoldThroughTheSetters(t *testing.T) {
 		t.Fatalf("heard %v", heard)
 	}
 	m.Close()
-	if got := New(dir).All(); !reflect.DeepEqual(got, Prefs{TabLayout: TabsHorizontal, FrameColor: "#5b7fd6", Theme: ThemeDark, Shell: "pbshell", PhoneShell: "mwshell", AddressBarPosition: AddressBottom, SearchEngine: "duckduckgo", Start: StartContinue, BookmarksNewTab: true, BookmarksCommandBox: true, BlockAds: true, KeepCookies: []string{}, SecureDNS: "off", DNSProvider: "cloudflare"}) {
+	if got := New(dir).All(); !reflect.DeepEqual(got, Prefs{TabLayout: TabsHorizontal, FrameColor: "#5b7fd6", Theme: ThemeDark, Shell: "pbshell", PhoneShell: "mwshell", AddressBarPosition: AddressBottom, SearchEngine: "duckduckgo", Start: StartContinue, BookmarksNewTab: true, BookmarksCommandBox: true, BlockAds: true, KeepCookies: []string{}, SecureDNS: "off", DNSProvider: "cloudflare", NameDownloads: NamesAuto}) {
 		t.Fatalf("saved %+v", got)
 	}
 }

@@ -118,9 +118,9 @@ class Pages(http.server.BaseHTTPRequestHandler):
             # is (stream_checks).
             q = urllib.parse.parse_qs(self.path.split("?", 1)[1])
             if self.path.startswith("/stream?"):
-                body = (f'<!doctype html><title>Stream</title><video id=v></video>'
+                body = (f'<!doctype html><title>Holiday film</title><video id=v aria-label="Sound and picture"></video>'
                         f'<a id=plain href="{q["linked"][0]}" style="display:block;padding:12px">A playlist</a>'
-                        f'<script>fetch("{q["played"][0]}").then((r) => r.text()).then(() => {{ document.title = "played" }})</script>').encode()
+                        f'<script>fetch("{q["played"][0]}").then((r) => r.text()).then(() => {{ document.body.dataset.played = "yes" }})</script>').encode()
             else:
                 body = (f'<!doctype html><title>Length</title><video id=v muted src="{q["src"][0]}"></video>'
                         '<script>v.onloadedmetadata = () => { document.title = "length " + v.duration + " " + v.videoWidth }; v.onerror = () => { document.title = "length failed" }</script>').encode()
@@ -3834,7 +3834,8 @@ def stream_checks():
     row = f"[...({shadow}?.querySelectorAll('.row')||[])].find((r)=>r.querySelector('a.btn')?.href.includes('/split/master.m3u8'))"
     try:
         visit(app, page)
-        found = holds(app, f"({row})?.querySelector('a.btn').href==={json.dumps(cdn + '/split/master.m3u8#pb-download')}", 20, page=True)
+        # Its link carries the video's own label, for the file's name.
+        found = holds(app, f"({row})?.querySelector('a.btn').href==={json.dumps(cdn + '/split/master.m3u8#pb-download=Sound%20and%20picture')}", 20, page=True)
         check("the Video downloader finds the stream the page's player loaded, with a Download for it", found,
               app.js(f"{shadow}?.querySelector('.list')?.textContent", page=True))
         if not found:
@@ -3845,7 +3846,11 @@ def stream_checks():
               holds(app, f"{shadow}.querySelectorAll('.row').length===2&&{shadow}.querySelector('.row a.btn').href.includes('/split/master.m3u8')", 15, page=True),
               app.js(f"[...{shadow}.querySelectorAll('.row a.btn')].map((a)=>a.href)", page=True))
         app.js(f"(({row}).querySelector('a.btn').click(), 1)", page=True)
-        first = done("master.mp4")
+        # "master" says nothing: the MP4 goes by the title the link carried, and keeps the
+        # playlist's own name beside it (docs/daily-driver.md, "Naming downloads").
+        first = done("Sound and picture.mp4")
+        check("a stream whose playlist is named master is named after its video, and keeps the name it came by",
+              bool(first) and first.get("original") == "master.m3u8", first)
         check("and the page stays", app.js("location.pathname", page=True) == "/stream")
         pieces = [(p, r) for p, r in asked if p.endswith(".m4s")]
         check("its picture's and its sound's pieces are fetched as from the page, which the host serves only to its own pages",
@@ -3855,21 +3860,25 @@ def stream_checks():
         # A plain link to a playlist, pressed by the page itself: its second download with no
         # click, which asks first.
         visit(app, page)
-        holds(app, "document.title==='played'", 15, page=True)
+        holds(app, "document.body.dataset.played==='yes'", 15, page=True)
         app.js("(document.getElementById('plain').click(), 1)", page=True)
         many = "document.querySelector('[role=dialog][aria-label$=\"wants to download several files\"]')"
         asks = holds(app, f"!!{many}", 15)
         check("a second download the page starts with no click asks first: site wants to download several files", asks)
         if asks:
             app.js(f"([...{many}.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Allow').click(), 1)")
-        second = done("index.mp4")
+        # A plain link carries no title: "index" is named after the page.
+        second = done("Holiday film.mp4")
+        check("a plain link's stream named index is named after its page's title", bool(second) and second.get("original") == "index.m3u8", second)
         whole(second, 4.0, "a plain link to a playlist, once allowed,")
 
         # DASH, from a plain link: the site's downloads are allowed now, so it asks nothing.
         visit(app, PAGES + "stream?played=" + urllib.parse.quote(cdn + "/split/master.m3u8") + "&linked=" + urllib.parse.quote(cdn + "/dash/template/manifest.mpd"))
-        holds(app, "document.title==='played'", 15, page=True)
+        holds(app, "document.body.dataset.played==='yes'", 15, page=True)
         app.js("(document.getElementById('plain').click(), 1)", page=True)
+        # "manifest" is a name of its own, and stays.
         third = done("manifest.mp4")
+        check("a name that says something stays, with nothing kept beside it", bool(third) and not third.get("original"), third)
         check("once allowed, the site's next download with no click asks nothing", not app.js(f"!!{many}"))
         whole(third, 3.0, "a plain link to a DASH playlist")
     finally:

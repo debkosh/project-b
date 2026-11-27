@@ -54,6 +54,9 @@ type Item struct {
 	// Referrer is the page it came from, which Retry says again: a site may serve its
 	// files only to its own pages.
 	Referrer string `json:"referrer,omitempty"`
+	// Original is the name its server gave it, for one named after better text instead
+	// (naming.go); "" for one that kept its name.
+	Original string `json:"original,omitempty"`
 	// Started is when it joined the list, in Unix seconds; 0 for one listed before the
 	// list kept it, which a clear from a time leaves.
 	Started int64 `json:"started,omitempty"`
@@ -123,6 +126,8 @@ type Manager struct {
 	// as the app starts (Streams). Without them no download is read as a stream.
 	fetcher     streams.Fetcher
 	workspaceOf func(engine.TabID) string
+	// naming says what a download is named by: nil, each keeps its server's name.
+	naming func(engine.DownloadRequest) Naming
 	// jobs counts the streams started, for each one's folder.
 	jobs int
 }
@@ -191,6 +196,8 @@ type began struct {
 	name      string
 	// dir is the folder the MP4 goes in, when it isn't the Downloads folder itself.
 	dir string
+	// original is the name its server gave it, when it goes by another.
+	original string
 }
 
 // New returns a manager for the profile folder profile, saving files into dir.
@@ -300,9 +307,39 @@ func (m *Manager) Target(r engine.DownloadRequest) engine.DownloadTarget {
 	// What an extension asked of it: its name, in a folder under the Downloads folder, and
 	// what to do when that is taken.
 	dir, name, prompt, overwrite := m.dir, cleanName(r.Name), r.SaveAs, false
-	if it := m.claim(r); it != nil && it.asked != nil {
+	// The file's own name, and its own ending whatever it is named after: a stream's is
+	// its MP4's.
+	kind := streams.None
+	if m.fetcher != nil {
+		kind = streams.KindOf(r.Mime, r.URL)
+	}
+	original := name
+	if kind != streams.None {
+		name = streams.NameOf(name)
+	}
+	claimed := m.claim(r)
+	switch {
+	case claimed != nil && claimed.asked != nil:
+		// An extension's download is named as the extension said, or as its server did.
+		original = ""
+	case claimed != nil && claimed.Original != "":
+		// Retried, it keeps the name it had.
+		name, original = claimed.Name, claimed.Original
+	case m.naming != nil:
+		if better, renamed := m.naming(r).Name(name); renamed {
+			name = better
+		} else {
+			original = ""
+		}
+	default:
+		original = ""
+	}
+	if it := claimed; it != nil && it.asked != nil {
 		if it.asked.name != "" {
 			dir, name = filepath.Join(m.dir, filepath.Dir(it.asked.name)), cleanName(it.asked.name)
+			if kind != streams.None {
+				name = streams.NameOf(name)
+			}
 			if err := os.MkdirAll(dir, 0o755); err != nil {
 				timeline.Errorf("downloads: %v", err)
 				return engine.DownloadTarget{}
@@ -320,15 +357,18 @@ func (m *Manager) Target(r engine.DownloadRequest) engine.DownloadTarget {
 		return m.freeIn(dir, name)
 	}
 	if m.fetcher == nil {
+		if original != "" {
+			m.began[r.ID] = began{original: original}
+		}
 		return engine.DownloadTarget{Path: place(name), Prompt: prompt}
 	}
-	b := began{workspace: m.workspaceOf(r.Tab)}
+	b := began{workspace: m.workspaceOf(r.Tab), original: original}
 	// A stream's playlist goes to a folder of the app's own and is read from there: the
 	// Downloads folder gets the MP4, under the playlist's name. No Save panel asks about it.
-	if kind := streams.KindOf(r.Mime, r.URL); kind != streams.None {
+	if kind != streams.None {
 		lists := filepath.Join(m.streamsDir(), "playlists")
 		if err := os.MkdirAll(lists, 0o700); err == nil {
-			b.stream, b.name = kind, streams.NameOf(name)
+			b.stream, b.name = kind, name
 			if dir != m.dir {
 				b.dir = dir
 			}
@@ -342,6 +382,10 @@ func (m *Manager) Target(r engine.DownloadRequest) engine.DownloadTarget {
 
 // streamsDir is the folder the streams being saved work in, in the profile.
 func (m *Manager) streamsDir() string { return filepath.Join(filepath.Dir(m.file), "streams") }
+
+// NameBy has each download named by what by says of it, as it begins (naming.go): the way
+// Settings and its site have, and the better texts for a name that says nothing.
+func (m *Manager) NameBy(by func(engine.DownloadRequest) Naming) { m.naming = by }
 
 // IsStream says an engine download is a stream's playlist, as its Target saw.
 func (m *Manager) IsStream(id engine.DownloadID) bool { return m.began[id].stream != streams.None }
@@ -423,9 +467,12 @@ func (m *Manager) Updated(d engine.Download) int {
 	if d.Referrer != "" {
 		it.Referrer = d.Referrer
 	}
-	b := m.began[d.ID]
+	b, known := m.began[d.ID]
 	if d.State != engine.DownloadProgress {
 		delete(m.began, d.ID)
+	}
+	if known {
+		it.Original = b.original
 	}
 	// A stream's playlist, by its type or address, or once it is all here by how it starts.
 	if b.stream == streams.None && d.State == engine.DownloadDone && m.fetcher != nil {

@@ -299,6 +299,11 @@ onUnmounted(() => {
                 <button type="button" class="text-button quiet copy" @click="copyLink(d)">{{ copied === d.id ? 'Copied' : 'Copy link' }}</button>
               </dd>
               <dd v-else><span class="value">{{ d.from || 'This app' }}</span></dd>
+              <!-- One named after its page keeps the name its server gave it. -->
+              <template v-if="d.original">
+                <dt>Named</dt>
+                <dd><span class="value">from {{ d.original }}</span></dd>
+              </template>
               <template v-if="d.path">
                 <dt>{{ d.state === 'done' ? 'Saved in' : 'Saving to' }}</dt>
                 <dd><span class="value">{{ folder(d.path) }}</span></dd>

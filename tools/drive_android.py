@@ -242,6 +242,10 @@ class Server(http.server.BaseHTTPRequestHandler):
                 time.sleep(5)
             self.send_response(200)
             self.send_header("Content-Type", "application/vnd.apple.mpegurl" if file.endswith(".m3u8") else "application/octet-stream")
+            if file.endswith(".m3u8"):
+                # A name of its own, so the MP4 keeps it: one that says nothing, as "index",
+                # is named after the page instead (docs/daily-driver.md, "Naming downloads").
+                self.send_header("Content-Disposition", 'attachment; filename="pb-film.m3u8"')
             self.send_header("Content-Length", str(len(data)))
             self.end_headers()
             try:
@@ -1441,28 +1445,28 @@ def stream_download():
     with no screen, the MP4 still arrives, and then the app ends."""
     adb("shell", "pm", "grant", PACKAGE, "android.permission.POST_NOTIFICATIONS")
     files = lambda: adb("shell", "ls", "-1", "/sdcard/Download/").splitlines()
-    for stale in [f for f in files() if f.startswith("index") and (f.endswith(".mp4") or f.endswith(".m3u8"))]:
-        adb("shell", "rm", "-f", "/sdcard/Download/" + stale)
+    for stale in [f for f in files() if f.startswith("pb-film")]:
+        adb("shell", "rm", "-f", shlex.quote("/sdcard/Download/" + stale))
     launch()
     go(BASE + "/a")
     asked("/a")
     go(BASE + "/stream/ts/index.m3u8")
     check("a playlist's address keeps the page where it was", until(lambda: find("page", text="to b")) is not None)
-    stored = until(lambda: "index.mp4" in files(), 40)
+    stored = until(lambda: "pb-film.mp4" in files(), 40)
     check("the stream reaches the phone's Downloads as one MP4, under its playlist's name", stored is not None, files()[-8:])
-    check("and its playlist doesn't", not any(f.startswith("index") and not f.endswith(".mp4") for f in files()), files()[-8:])
-    said = until(lambda: (notification_of("index.mp4") or "").startswith("Downloaded") or None, 15)
-    check("its notification says it is downloaded", said is not None, str(notification_of("index.mp4")))
-    local = os.path.join(OUT, "stream-index.mp4")
-    adb("pull", "/sdcard/Download/index.mp4", local)
+    check("and its playlist doesn't", not any(f.startswith("pb-film") and not f.endswith(".mp4") for f in files()), files()[-8:])
+    said = until(lambda: (notification_of("pb-film.mp4") or "").startswith("Downloaded") or None, 15)
+    check("its notification says it is downloaded", said is not None, str(notification_of("pb-film.mp4")))
+    local = os.path.join(OUT, "stream-pb-film.mp4")
+    adb("pull", "/sdcard/Download/pb-film.mp4", local)
     got = mp4_length.read(local) if os.path.isfile(local) else {}
     check("the MP4 has picture and sound, its index first, and is as long as its stream, 4 seconds",
           got.get("tracks") == ["vide", "soun"] and got.get("index_first") and abs(got.get("seconds", 0) - 4.0) < 0.15, got)
     menu("Downloads")
-    row = until(lambda: find("page", text=lambda t: (t or "").startswith("index.mp4")))
+    row = until(lambda: find("page", text=lambda t: (t or "").startswith("pb-film.mp4")))
     check("the Downloads page lists it by the MP4's name", row is not None)
     press("Close Downloads")
-    adb("shell", "rm", "-f", "/sdcard/Download/index.mp4")
+    adb("shell", "rm", "-f", "/sdcard/Download/pb-film.mp4")
 
     # Its pieces coming slowly, about 20 seconds in all, longer than a swipe away takes: swiped
     # away meanwhile.
@@ -1470,16 +1474,17 @@ def stream_download():
     go(BASE + "/a")
     asked("/a")
     go(BASE + "/slowstream/fmp4/index.m3u8")
-    until(lambda: notification_of("index.mp4") is not None, 15)
+    # Its name may be numbered, as "pb-film (1).mp4", when Android still holds an earlier one.
+    until(lambda: "pb-film" in adb("shell", "dumpsys", "notification", "--noredact"), 15)
     swipe_away()
     time.sleep(3)
     pid = adb("shell", "pidof", PACKAGE).strip()
     check("swiped away while a stream's pieces come, the app runs on with no screen", bool(pid) and "BrowserActivity" not in in_front_now(), in_front_now())
-    stored = until(lambda: any(re.fullmatch(r"index( \(\d+\))?\.mp4", f) for f in files()), 60)
+    stored = until(lambda: any(re.fullmatch(r"pb-film( \(\d+\))?\.mp4", f) for f in files()), 60)
     check("and the MP4 still reaches the phone's Downloads", stored is not None, files()[-8:])
     ended = until(lambda: not adb("shell", "pidof", PACKAGE).strip(), 30)
     check("and with the stream saved and no screen, the app ends", ended is not None)
-    adb("shell", "rm", "-f", "/sdcard/Download/index.mp4")
+    adb("shell", "rm", "-f", "/sdcard/Download/pb-film.mp4")
 
 
 def notification_of(name):

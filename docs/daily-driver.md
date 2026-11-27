@@ -258,6 +258,38 @@ it shows: the engine ends it as a failure with no failure named, at that page's 
 Go puts the tab's address back. Before, the tab kept the download's address, and a restart
 loaded it and downloaded the file again.
 
+**Naming downloads** (the owner, 2026-11-27). A streaming server names its files
+`master.m3u8` or by an id, and so do many others, and a folder of such names says nothing.
+
+- **When a name looks random.** A download's name, without its ending, looks random when
+  every part of it, split at `-`, `_`, `.`, spaces and brackets, is one of: digits only; hex
+  of 8 characters or more, or a UUID; a jumble of 16 or more letters and digits mixed, of
+  about 4 bits to a character (3.5 or more of Shannon entropy) with no run that reads as a
+  word; or a generic word: video, index, master, playlist, download, file, media, stream,
+  output, chunk, seg, segment (`downloads.LooksRandom`).
+- **The better text**, the first there is: (a) the title the video downloader spark passes
+  for its video, the video's `aria-label` or `title`, then its `figcaption`, then the
+  nearest heading above it, then `og:title`, which rides in the spark's link as
+  `#pb-download=<the title, percent-encoded>` (the plain `#pb-download` works as it did);
+  (b) the title of the tab's page, for any download, plain links and long presses among
+  them; (c) the page's host and the words of its path.
+- **Only the name comes from the page.** The ending is always the file's own: `.mp4` for a
+  stream, else the server's name's or its type's. Slashes, control characters and the
+  characters a file system keeps for itself are taken out, the name is cut to about 120
+  characters, and one that is taken gets ` (1)`, ` (2)` as any does.
+- **Settings › Downloads, Name downloads** (`nameDownloads`), a select with what the way
+  chosen does on the line under it (ux, 2026-11-27), on a phone too: **Automatic**,
+  the default, keeps a file's name unless it looks random; **Title and file name** names
+  every file "Title – original.ext", by (a) or (b); **File's own name** never renames.
+- **Each site** can have its own way in its site settings, Name downloads: As in Settings,
+  or one of the three (`core/sites`, `download-names`), by the origin of the page the
+  download came from.
+- **The row** of a renamed download keeps the name its server gave it (`original`), and
+  its Details say "Named: from *original name*"; on a phone its sheet's head says it after
+  the address. Retried, it keeps the name it had.
+- An extension's download (`chrome.downloads.download`) is named as the extension said, or
+  as its server did: it came from no page.
+
 **A page starting downloads** (docs/video-streams.md). A page's download asks its tab
 first, as Chrome's does (`DownloadManagerDelegate::CheckDownloadAllowed`, then the tab's
 `WebContentsDelegate::CanDownload`): the engine sends Go a request of our own kind,

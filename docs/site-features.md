@@ -159,7 +159,9 @@ feature of ours:
   again as from the file's own address; a site that serves its files only to its own pages
   (a video host, by `Referer`) refused both, and the video downloader's Download failed
   there while Chrome's own Download, from the page, got it (2026-11-27). The fragment never
-  reaches the server. The suggested name is the server's, not the page's, so a page can't
+  reaches the server. `#pb-download=<a title, percent-encoded>` is the same link carrying a
+  title for its file, which the app uses only when the file's own name says nothing
+  (docs/daily-driver.md, "Naming downloads"): the name alone, never the ending. The suggested name is the server's, not the page's, so a page can't
   pass a file off under another name, which is why Chromium ignores `download` there.
 - **The phone's welcome** has a step after Make it yours, "Extras for any page": a switch
   for each of the three the profile still has, with its name and `@description`, all off

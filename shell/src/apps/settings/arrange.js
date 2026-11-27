@@ -186,8 +186,11 @@ const sectionList = () => [
     id: 'downloads',
     label: 'Downloads',
     icon: 'download',
-    cards: [['downloadFolder', 'askWhereToSave']],
+    cards: [['downloadFolder', 'askWhereToSave', 'nameDownloads']],
     summary: () => {
+      // A phone saves to its Downloads and has no Save panel: the section is how its
+      // downloads are named.
+      if (phone) return { title: 'Named by title and file name', file: "Named by the file's own name" }[state.prefs.nameDownloads] || 'Named automatically';
       if (state.prefs.askWhereToSave) return 'Ask where to save each file';
       const f = state.prefs.downloadFolder;
       return f ? `To ${f.split('/').filter((x) => x).pop() || f}` : 'To the Downloads folder';

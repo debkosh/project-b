@@ -55,6 +55,13 @@ one muted line the host or what the row says, and its Download a round icon butt
   so Download is the master playlist, which Project B saves at its best with its sound, and
   no other quality is offered. A DASH stream's Download is its one playlist, saved at its
   best, for the same reason. The row's menu has Copy link and Open in new tab.
+- **A video's title** rides in its link, `#pb-download=<title>`, for Project B to name the
+  file after when the file's own name says nothing, an id or `master` (its ending stays the
+  file's own): the video's `aria-label` or `title`, then its `figcaption`, then the nearest
+  heading above it, then the page's `og:title` (`titleNear`). A stream its player loaded,
+  which no element names, goes by the page's largest video's; one the page only links, by
+  the link's own words, which are nearer. With none, the link is the
+  plain `#pb-download`.
 - **Its data:** none. It keeps nothing in the site's storage or anywhere else.
   "Hide on this page", in the panel's menu, removes it until the page loads again.
 - **To change:** the `@match` line (which sites it runs on), the lists of player selectors
