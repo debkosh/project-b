@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unsafe"
 
 	"projectb/engine"
 	"projectb/securedns"
@@ -113,7 +114,11 @@ type Engine struct {
 	profiles       []string
 	rules          []engine.BlockRules
 	secureDNS      []string
-	adRules        engine.AdRules
+	// blocker is the blocker's table the app last set, nil for none; blockerChanges counts
+	// BlockerChanged; blockingOff is the origins last set. Main thread.
+	blocker        unsafe.Pointer
+	blockerChanges int
+	blockingOff    []string
 	// badCerts is the hosts a test gave a bad certificate. Main thread.
 	badCerts map[string]bool
 	// printed is the tabs whose pages the app printed, in order. Under mu.
@@ -266,11 +271,24 @@ func (e *Engine) CheckSecureDNS(template string) {
 	e.Post(func() { e.listener.SecureDNSChecked(template, ok) })
 }
 
-// SetAdRules keeps the rules, for a test to read. The mock's pages make no requests.
-func (e *Engine) SetAdRules(r engine.AdRules) { e.adRules = r }
+// SetBlocker keeps the blocker's table, for a test to read. The mock's pages make no
+// requests.
+func (e *Engine) SetBlocker(hooks unsafe.Pointer) { e.blocker = hooks }
 
-// AdRules is what the app last set.
-func (e *Engine) AdRules() engine.AdRules { return e.adRules }
+// Blocker is the table the app last set, nil for none. Main thread.
+func (e *Engine) Blocker() unsafe.Pointer { return e.blocker }
+
+// BlockerChanged counts the app's word that the rules changed.
+func (e *Engine) BlockerChanged() { e.blockerChanges++ }
+
+// BlockerChanges is how many times the app said the rules changed. Main thread.
+func (e *Engine) BlockerChanges() int { return e.blockerChanges }
+
+// SetBlockingOff keeps the origins where the blocker is off.
+func (e *Engine) SetBlockingOff(origins []string) { e.blockingOff = slices.Clone(origins) }
+
+// BlockingOff is the origins the app last set. Main thread.
+func (e *Engine) BlockingOff() []string { return e.blockingOff }
 
 // BlockRules are the rules the app set, in order. On the main thread.
 func (e *Engine) BlockRules() []engine.BlockRules { return e.rules }

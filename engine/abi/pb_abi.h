@@ -415,6 +415,37 @@ typedef enum PBTimelineKind {
 
 // What Go can ask the adapter to do. Handed over once, at start. A window is named by
 // Go's id for it, 1 for the first.
+// A blocker's functions (docs/blocking.md), the one table in this interface whose
+// functions the engine calls on any thread: never on the main thread's behalf, never
+// blocking, never reaching Go. Strings returned are freed with free_string.
+typedef struct PBBlockerHooks {
+  void* blocker;
+  // A request of a page: its address, the address of the page's site (its top frame's, as
+  // cookies see it), and its kind in adblock's words: script, image, stylesheet, xhr,
+  // sub_frame, font, media, websocket, ping or other. PB_BLOCKER_ALLOW, _BLOCK, or
+  // _REDIRECT with *redirect set to what loads instead.
+  int32_t (*request)(void* blocker, const char* url, const char* source, const char* type,
+                     char** redirect);
+  // What a frame at url hides and runs, as JSON: {"hide": [selectors], "procedural":
+  // [actions], "exceptions": [selectors], "scripts": [sources], "generichide": bool}; null
+  // for nothing. Asked once per frame load, before its document starts.
+  char* (*page)(void* blocker, const char* url);
+  // The watcher's question, JSON {"classes": [...], "ids": [...]}, for the page at
+  // page_url; the answer a JSON array of selectors to hide.
+  char* (*hide)(void* blocker, const char* page_url, const char* query);
+  void (*free_string)(char* s);
+  // The watcher: a script the engine runs at document start in every frame where the
+  // blocker is on, in a world of its own, with one function bound there,
+  // __pbBlockerAsk(json, callback), which asks hide and calls back with its answer.
+  const char* watcher_script;
+} PBBlockerHooks;
+
+enum {
+  PB_BLOCKER_ALLOW = 0,
+  PB_BLOCKER_BLOCK = 1,
+  PB_BLOCKER_REDIRECT = 2,
+};
+
 typedef struct PBEngineCalls {
   // Makes the profile's context, with Chromium's files in the profile folder dir, and the
   // extension runtime with it. Go calls it once, as the copy becomes that profile's, before
@@ -572,10 +603,16 @@ typedef struct PBEngineCalls {
   // case: the page, its frames, its subresources and its WebSockets. Go sets them once, at
   // start, before any tab.
   void (*set_block_rules)(const char* hosts);
-  // The ad blocker's rules: the hosts it keeps a page's requests from, and any under them,
-  // one per line, lower case; and the origins of the pages it lets reach them, one per line.
-  // Go sets them at start, before any tab, and again whenever they change.
-  void (*set_ad_rules)(const char* hosts, const char* off);
+  // The blocker (docs/blocking.md): its table, or null for none, when Block ads is off. Go
+  // sets it at start, before any tab, and again whenever it is turned on or off; the table
+  // stays valid until the next call. The engine asks it of a page's requests, and of each
+  // frame's parts, and runs its watcher.
+  void (*set_blocker)(const PBBlockerHooks* hooks);
+  // The blocker's rules changed: every renderer forgets the answers it kept.
+  void (*blocker_changed)(void);
+  // The origins of the pages where the blocker is off, one per line: their requests and
+  // parts aren't asked about at all. Go sets them at start and whenever they change.
+  void (*set_blocking_off)(const char* origins);
   // Secure DNS (docs/secure-dns.md): mode is net::SecureDnsMode's value, 0 off, 1
   // automatic, 2 secure, and template the DNS-over-HTTPS server's, "" when off. Go sets it
   // at start, before any tab, and again whenever it changes; it holds for every workspace.

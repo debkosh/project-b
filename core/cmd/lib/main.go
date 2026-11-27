@@ -22,7 +22,9 @@ static inline void call_open_profile(const PBEngineCalls* c, const char* dir) { 
 static inline void call_set_block_rules(const PBEngineCalls* c, const char* hosts) { c->set_block_rules(hosts); }
 static inline void call_set_secure_dns(const PBEngineCalls* c, int32_t mode, const char* t) { c->set_secure_dns(mode, t); }
 static inline void call_check_secure_dns(const PBEngineCalls* c, const char* t) { c->check_secure_dns(t); }
-static inline void call_set_ad_rules(const PBEngineCalls* c, const char* hosts, const char* off) { c->set_ad_rules(hosts, off); }
+static inline void call_set_blocker(const PBEngineCalls* c, const PBBlockerHooks* hooks) { c->set_blocker(hooks); }
+static inline void call_blocker_changed(const PBEngineCalls* c) { c->blocker_changed(); }
+static inline void call_set_blocking_off(const PBEngineCalls* c, const char* origins) { c->set_blocking_off(origins); }
 static inline void call_set_window_page(const PBEngineCalls* c, int64_t window, const char* page) { c->set_window_page(window, page); }
 static inline void call_create_window(const PBEngineCalls* c, int64_t window, int64_t near, const char* page, const PBWindowLayout* layout, const PBRegion* regions, size_t count, const PBVisibleTab* tabs, size_t tab_count) { c->create_window(window, near, page, layout, regions, count, tabs, tab_count); }
 static inline void call_set_window_bounds(const PBEngineCalls* c, int64_t window, double x, double y, double w, double h) { c->set_window_bounds(window, x, y, w, h); }
@@ -418,11 +420,18 @@ func (e *nativeEngine) CheckSecureDNS(template string) {
 	C.call_check_secure_dns(e.calls, c)
 }
 
-func (e *nativeEngine) SetAdRules(r engine.AdRules) {
-	hosts, off := C.CString(strings.Join(r.Hosts, "\n")), C.CString(strings.Join(r.Off, "\n"))
-	defer C.free(unsafe.Pointer(hosts))
-	defer C.free(unsafe.Pointer(off))
-	C.call_set_ad_rules(e.calls, hosts, off)
+// SetBlocker hands the engine the blocker's table: C memory the blocking package keeps
+// for the life of the process, or nil for none.
+func (e *nativeEngine) SetBlocker(hooks unsafe.Pointer) {
+	C.call_set_blocker(e.calls, (*C.PBBlockerHooks)(hooks))
+}
+
+func (e *nativeEngine) BlockerChanged() { C.call_blocker_changed(e.calls) }
+
+func (e *nativeEngine) SetBlockingOff(origins []string) {
+	c := C.CString(strings.Join(origins, "\n"))
+	defer C.free(unsafe.Pointer(c))
+	C.call_set_blocking_off(e.calls, c)
 }
 
 func (e *nativeEngine) SetWindowLayout(w engine.WindowID, l engine.WindowLayout) {

@@ -288,8 +288,11 @@ and individual lists".
 - **The Lists page:** the groups, in the table's order, each a row with its switch and how
   many of its lists are on. Opened, a group shows its lists, each a row with its own switch,
   its title, one line on what it blocks, its home, when it last changed and its size.
-  A group's switch turns all of its lists on or off; a list's own switch leaves the rest of
-  its group as it is. Extreme carries one line: "These block more and may break some sites."
+  A list's own switch leaves the rest of its group as it is. **A group's switch** (ux's
+  rule, the owner's "nice go ahead", 2026-11-27) is on while any of its lists is on, and its
+  count says when only some are; off turns all its lists off; on brings back the group's
+  defaults, for Regional the app's languages, not every list. Each group's line is what it
+  blocks, then " · N of M on", the count never broken across lines. Extreme carries one line: "These block more and may break some sites."
   The Safe Browsing groups show under Warn before dangerous sites, greyed while it is off.
   The test group is never shown.
 - **The welcome** offers both, on the Protection step: the ad blocker and Warn before

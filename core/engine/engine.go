@@ -25,6 +25,7 @@ import (
 	"net/netip"
 	"strings"
 	"time"
+	"unsafe"
 )
 
 // TabID identifies a tab across the boundary. Content's own objects never cross it.
@@ -204,10 +205,17 @@ type Engine interface {
 	// CheckSecureDNS asks template's server alone, over DNS-over-HTTPS, to look a known
 	// name up; SecureDNSChecked follows with template.
 	CheckSecureDNS(template string)
-	// SetAdRules says which hosts the ad blocker keeps a page's requests from, and the
-	// sites, by origin, where it is off. The app sets them at start, before any tab, and
-	// again whenever they change; a page's requests follow the rules of when they start.
-	SetAdRules(r AdRules)
+	// SetBlocker hands the engine the blocker (docs/blocking.md): hooks is the address of
+	// its PBBlockerHooks table, which stays valid until the next call, or nil for none, when
+	// Block ads is off. The app sets it at start, before any tab, and whenever it is turned
+	// on or off.
+	SetBlocker(hooks unsafe.Pointer)
+	// BlockerChanged says the blocker's rules changed, so the engine forgets the answers it
+	// kept; a page's requests follow the rules of when they start.
+	BlockerChanged()
+	// SetBlockingOff says the sites, by origin, where the blocker is off: their pages' requests
+	// and parts aren't asked about. The app sets them at start and whenever they change.
+	SetBlockingOff(origins []string)
 	// CreateTab makes a hidden tab in a workspace, by the app's id for it: "" is the
 	// profile's own storage, which a profile's first workspace, Main, has. A window's layout
 	// shows it. A workspace keeps its own cookies and site storage, and a tab stays in its
@@ -420,13 +428,6 @@ type Engine interface {
 type BlockRules struct {
 	// Hosts are blocked with every host under them, each lower case.
 	Hosts []string
-}
-
-// AdRules are the ad blocker's: the hosts it keeps requests from, and any under them, and
-// the origins of the pages it lets reach them.
-type AdRules struct {
-	Hosts []string
-	Off   []string
 }
 
 // Script is one of the person's scripts for a page: its id, its source, and when it runs,
