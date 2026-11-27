@@ -10,7 +10,6 @@ The Mac's own arguments are its deployment target, then the build flags built in
 build tag. Linux's are clang and the sysroot, then the build flags. Android's are clang, the
 NDK, the minimum SDK and the app's version."""
 
-import glob
 import os
 import shutil
 import subprocess
@@ -33,6 +32,30 @@ RUST_TRIPLE = {
 # web shell for a narrow window, and the desktop shells it lists for a wide one, the
 # registry's "android": true (docs/large-screens.md). Android loads no other shell.
 ANDROID_PAGES = ("settings", "downloads", "history", "bookmarks", "welcome", "shell/mwshell", "shell/pbshell")
+
+
+def build_libunwind(clang, sysroot, min_sdk, src, build_dir):
+    """Builds libunwind.a for Android from Chromium's libunwind with its clang, into a folder of
+    build_dir, which it returns; Rust's standard library links it (-lunwind)."""
+    unwind = os.path.join(src, "third_party/libunwind/src")
+    out = os.path.join(build_dir, "pbblock", "libunwind")
+    os.makedirs(out, exist_ok=True)
+    objects = []
+    for name in ["Unwind-EHABI.cpp", "libunwind.cpp", "Unwind-sjlj.c", "UnwindLevel1-gcc-ext.c",
+                 "UnwindLevel1.c", "UnwindRegistersRestore.S", "UnwindRegistersSave.S"]:
+        extra = ["-std=c++17", "-nostdinc++", "-fno-exceptions", "-fno-rtti"] if name.endswith(".cpp") else []
+        obj = os.path.join(out, name + ".o")
+        subprocess.check_call([clang, "--target=aarch64-linux-android" + min_sdk, "--sysroot=" + sysroot,
+                               "-c", "-O2", "-fPIC", "-funwind-tables", "-fstrict-aliasing",
+                               "-D_LIBUNWIND_IS_NATIVE_ONLY", "-D_LIBUNWIND_DISABLE_VISIBILITY_ANNOTATIONS",
+                               "-I" + os.path.join(unwind, "include")] + extra +
+                              [os.path.join(unwind, "src", name), "-o", obj])
+        objects.append(obj)
+    archive = os.path.join(out, "libunwind.a")
+    if os.path.exists(archive):
+        os.remove(archive)
+    subprocess.check_call([os.path.join(os.path.dirname(clang), "llvm-ar"), "rcs", archive] + objects)
+    return out
 
 
 def build_pbblock(repo, build_dir, lib_dir, target_os, target_cpu, linker=None, link_args=()):
@@ -172,11 +195,12 @@ def main():
                             "--sysroot=" + sysroot]),
             "HOME": build_dir,
         })
-        # Beside libcore.so, in the APK's lib/arm64-v8a. Rust's standard library links the
-        # NDK's libunwind, which sits with its clang's runtime, not in the sysroot; 16 KB
-        # pages as libcore's.
-        runtime = glob.glob(os.path.join(os.path.abspath(ndk),
-                                         "toolchains/llvm/prebuilt/linux-x86_64/lib/clang/*/lib/linux/aarch64"))
+        # Beside libcore.so, in the APK's lib/arm64-v8a, with 16 KB pages as libcore's. Rust's
+        # standard library links libunwind, which Chromium's copy of the NDK doesn't have for
+        # Android: it is built here from Chromium's own libunwind, as Chromium builds it
+        # (buildtools/third_party/libunwind), with Chromium's clang.
+        runtime = [build_libunwind(os.path.abspath(clang), sysroot, min_sdk,
+                                   os.path.abspath(os.path.join(ndk, "../../..")), build_dir)]
         pbblock = build_pbblock(
             repo, build_dir, os.path.dirname(os.path.join(build_dir, out)), target_os, target_cpu,
             linker=os.path.abspath(clang),
