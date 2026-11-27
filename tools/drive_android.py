@@ -2531,6 +2531,14 @@ def passwords_on_the_phone():
         tap(middle(fields()[1]))
         time.sleep(1)
         type_text(save_password)
+        # Android 10's keyboard once made it "saver@example.orgs" as the focus moved on, and the
+        # page saved what it held: the username is read back, and typed again from empty.
+        if fields()[0].get("text") != save_user:
+            tap(middle(fields()[0]))
+            adb("shell", "input", "keyevent", "123", *["67"] * (len(save_user) + 10))
+            type_text(save_user)
+            tap(middle(fields()[1]))
+            time.sleep(1)
         served.clear()
         tap(middle(see("page", text="Go on")))
         check("the sign-in's button sends its form, and the tab goes on", asked("/signed-in"), str(served))
