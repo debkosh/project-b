@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Blocking mocks</title>
+<style>
+:root{--frame:#d5e3e3;--accent:#3f8f8f;--on-accent:#fff;--accent-tint:rgba(63,143,143,.08);--accent-soft:rgba(63,143,143,.18);--bg:#e8f0f0;--surface:#fff;--text:#1f2326;--muted:#5c6670;--line:rgba(15,20,25,.1);--warn:#b3261e;--warn-tint:#fbeceb}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.4 -apple-system,"Helvetica Neue",Arial,sans-serif;color:var(--text);background:#f1f2f4;-webkit-font-smoothing:antialiased}
+.mock{display:none;padding:24px}.mock.on{display:block}
+.win{width:1180px;height:760px;border:4px solid var(--frame);border-radius:14px;background:var(--bg);overflow:hidden;display:flex;flex-direction:column;position:relative}
+.settings{display:flex;flex:1;min-height:0}
+.nav{width:216px;padding:56px 12px 12px;display:flex;flex-direction:column;gap:2px}
+.nav div{height:34px;border-radius:8px;display:flex;align-items:center;padding:0 12px;font-size:14px}
+.nav .on{background:var(--accent-soft)}
+.title{position:absolute;left:96px;top:16px;font-size:16px;font-weight:600}
+.main{flex:1;padding:56px 24px 24px;overflow:hidden}
+.col{width:720px;display:flex;flex-direction:column;gap:8px}
+.sec{font-size:13px;color:var(--muted);margin:16px 0 4px}
+.sec:first-child{margin-top:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px}
+.row{min-height:48px;display:flex;align-items:center;gap:12px;padding:8px 16px;border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.row .grow{flex:1;min-width:0}
+.row .sub{font-size:12px;color:var(--muted)}
+.row .meta{font-size:12px;color:var(--muted);white-space:nowrap}
+.row.in{padding-left:44px}
+.row.dim{opacity:.45}
+.sw{width:36px;height:20px;border-radius:10px;background:#c9d2d6;position:relative;flex:none}
+.sw::after{content:"";position:absolute;left:3px;top:3px;width:14px;height:14px;border-radius:50%;background:#fff}
+.sw.on{background:var(--accent)}.sw.on::after{left:19px}
+.chev{width:16px;color:var(--muted);flex:none;text-align:center}
+.back{color:var(--accent);font-size:13px;margin-bottom:4px}
+h1{font-size:18px;margin:0 0 4px;font-weight:600}
+.lead{color:var(--muted);font-size:13px;margin:0 0 12px}
+.note{position:absolute;width:260px;background:#fff7d1;border:1px solid #e9d98a;border-radius:6px;padding:8px 10px;font-size:12px;color:#5b4b00}
+.tag{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 4px;margin-left:6px}
+/* welcome */
+.wel{flex:1;background:#f4f6f6;display:flex;flex-direction:column;align-items:center;padding-top:40px}
+.steps{display:flex;gap:6px;margin-bottom:40px}.steps i{width:28px;height:3px;border-radius:2px;background:#d9dee0}.steps i.on{background:var(--text)}
+.wcol{width:720px}
+.wcol h1{font-size:24px}
+.foot{position:absolute;bottom:32px;left:228px;right:228px;display:flex;justify-content:space-between;align-items:center}
+.btn{height:36px;padding:0 18px;border-radius:6px;display:inline-flex;align-items:center;font-weight:500}
+.btn.p{background:var(--text);color:#fff}.btn.q{color:var(--muted)}
+/* notice */
+.tabbar{height:48px;display:flex;align-items:center;gap:8px;padding:0 12px}
+.field{flex:1;height:32px;border:1px solid var(--line);background:var(--surface);border-radius:8px;display:flex;align-items:center;padding:0 12px;font-size:13px}
+.field .bad{color:var(--warn);font-weight:600;margin-right:8px}
+.page{flex:1;margin:0 4px 4px;background:var(--surface);border-radius:8px;box-shadow:inset 0 0 0 1px var(--line);display:flex;align-items:center;justify-content:center}
+.notice{width:520px;display:flex;flex-direction:column;gap:12px}
+.notice .ico{width:44px;height:44px;border-radius:50%;background:var(--warn-tint);color:var(--warn);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:22px}
+.notice h2{margin:0;font-size:20px}
+.notice p{margin:0;color:var(--muted)}
+.notice .acts{display:flex;gap:8px;margin-top:8px}
+.notice .btn.p{background:var(--warn)}
+.notice .btn.o{border:1px solid var(--line)}
+/* phone */
+.phone{width:390px;height:780px;border:10px solid #1f2326;border-radius:44px;background:var(--bg);overflow:hidden;display:flex;flex-direction:column}
+.phone .hdr{height:56px;display:flex;align-items:center;padding:0 16px;gap:12px;font-size:17px;font-weight:600;margin-top:28px}
+.phone .body{padding:0 12px;display:flex;flex-direction:column;gap:8px}
+.phone .row{min-height:56px}
+</style>
+</head>
+<body>
+
+<!-- l1: Settings, Privacy -->
+<div class="mock" id="l1"><div class="win"><div class="title">Settings</div><div class="settings">
+  <div class="nav"><div>General</div><div class="on">Privacy and sites</div><div>Workspaces</div><div>Keyboard</div><div>Flags</div></div>
+  <div class="main"><div class="col">
+    <div class="sec">Blocking</div>
+    <div class="card">
+      <div class="row"><div class="grow">Block ads<div class="sub">Ads and trackers, on every site. Each site can turn it off from its panel.</div></div><div class="sw on"></div></div>
+      <div class="row"><div class="grow">Warn before dangerous sites<div class="sub">Sites known for malware or phishing, checked on this device. Nothing is sent anywhere.</div></div><div class="sw on"></div></div>
+      <div class="row"><div class="grow">Lists<div class="sub">14 of 52 lists on · updated 20 minutes ago</div></div><div class="chev">›</div></div>
+    </div>
+    <div class="sec">Sites</div>
+    <div class="card"><div class="row"><div class="grow">Site settings</div><div class="chev">›</div></div></div>
+  </div></div>
+</div></div></div>
+
+<!-- l2: the Lists page, Trackers open -->
+<div class="mock" id="l2"><div class="win"><div class="title">Settings</div><div class="settings">
+  <div class="nav"><div>General</div><div class="on">Privacy and sites</div><div>Workspaces</div><div>Keyboard</div><div>Flags</div></div>
+  <div class="main"><div class="col">
+    <div class="back">‹ Privacy and sites</div>
+    <h1>Lists</h1>
+    <p class="lead">Public lists of what to block, updated every hour. Turn a group on or off, or open it to choose its lists.</p>
+    <div class="card">
+      <div class="row"><div class="chev">›</div><div class="grow">Ads<div class="sub">5 of 5 on</div></div><div class="sw on"></div></div>
+      <div class="row"><div class="chev">⌄</div><div class="grow">Trackers<div class="sub">3 of 4 on</div></div><div class="sw on"></div></div>
+      <div class="row in"><div class="grow">EasyPrivacy<div class="sub">Tracking scripts and pixels · easylist.to</div></div><div class="meta">2 h ago · 1.5 MB</div><div class="sw on"></div></div>
+      <div class="row in"><div class="grow">uBlock Origin: Privacy<div class="sub">Trackers the other lists miss · github.com/uBlockOrigin</div></div><div class="meta">1 day ago · 190 KB</div><div class="sw on"></div></div>
+      <div class="row in"><div class="grow">Peter Lowe's list<div class="sub">Ad and tracking servers · pgl.yoyo.org</div></div><div class="meta">3 days ago · 90 KB</div><div class="sw on"></div></div>
+      <div class="row in"><div class="grow">AdGuard Tracking Protection<div class="sub">More trackers, a few false alarms · adguard.com</div></div><div class="meta">5 h ago · 1.1 MB</div><div class="sw"></div></div>
+      <div class="row"><div class="chev">›</div><div class="grow">Regional<div class="sub">1 of 38 on · English</div></div><div class="sw on"></div></div>
+      <div class="row"><div class="chev">›</div><div class="grow">Annoyances<div class="sub">Cookie notices, pop-ups, social widgets · 0 of 4 on</div></div><div class="sw"></div></div>
+      <div class="row"><div class="chev">›</div><div class="grow">Extreme<div class="sub">These block more and may break some sites · 0 of 3 on</div></div><div class="sw"></div></div>
+    </div>
+    <div class="sec">Dangerous sites</div>
+    <div class="card">
+      <div class="row"><div class="chev">›</div><div class="grow">Malware<div class="sub">2 of 2 on · updated 20 minutes ago</div></div><div class="sw on"></div></div>
+      <div class="row"><div class="chev">›</div><div class="grow">Phishing<div class="sub">2 of 2 on · updated 20 minutes ago</div></div><div class="sw on"></div></div>
+    </div>
+  </div></div>
+</div>
+<div class="note" style="left:998px;top:330px;width:176px">A group's switch turns all its lists on or off; a list's own switch leaves the rest. Regional follows the app's languages until a list is changed by hand.</div>
+<div class="note" style="left:998px;top:660px;width:176px">Greyed, with their switches off to the touch, while Warn before dangerous sites is off.</div>
+</div></div>
+
+<!-- l3: the welcome's Protection step -->
+<div class="mock" id="l3"><div class="win"><div class="wel">
+  <div class="steps"><i></i><i></i><i class="on"></i><i></i><i></i><i></i></div>
+  <div class="wcol">
+    <h1>Protection</h1><p class="lead">You can change any of these later in Settings.</p>
+    <div class="card">
+      <div class="row"><div class="grow">Block ads<div class="sub">Ads and trackers, from public lists kept up to date</div></div><div class="sw on"></div></div>
+      <div class="row"><div class="grow">Warn before dangerous sites<div class="sub">Malware and phishing, checked on this device; nothing is sent anywhere</div></div><div class="sw on"></div></div>
+      <div class="row"><div class="grow">Search engine</div><div class="meta">DuckDuckGo ⌄</div></div>
+      <div class="row"><div class="grow">Automatic updates</div><div class="sw on"></div></div>
+    </div>
+  </div>
+  <div class="foot"><span class="btn q">Back</span><span class="btn p">Next</span></div>
+</div></div></div>
+
+<!-- l4: the unsafe-site notice -->
+<div class="mock" id="l4"><div class="win">
+  <div class="tabbar"><div style="width:72px;display:flex;gap:8px"><i style="width:12px;height:12px;border-radius:50%;background:#ec6a5e"></i><i style="width:12px;height:12px;border-radius:50%;background:#f4bf4f"></i><i style="width:12px;height:12px;border-radius:50%;background:#61c554"></i></div>
+    <div class="field"><span class="bad">Dangerous</span>login-bank-verify.example</div></div>
+  <div class="page"><div class="notice" role="alert">
+    <div class="ico">!</div>
+    <h2>login-bank-verify.example may be trying to steal your information</h2>
+    <p>It is on the Phishing URL Blocklist, a public list of sites that pretend to be others to get passwords and card numbers.</p>
+    <div class="acts"><span class="btn p">Go back</span><span class="btn o">Open anyway</span></div>
+  </div></div>
+</div></div>
+
+<!-- l5: the Lists page on a phone -->
+<div class="mock" id="l5"><div class="phone">
+  <div class="hdr"><span style="color:var(--accent)">‹</span> Lists</div>
+  <div class="body">
+    <div class="card">
+      <div class="row"><div class="grow">Ads<div class="sub">5 of 5 on</div></div><div class="sw on"></div></div>
+      <div class="row"><div class="grow">Trackers<div class="sub">3 of 4 on</div></div><div class="sw on"></div></div>
+      <div class="row"><div class="grow">Regional<div class="sub">1 of 38 on · English</div></div><div class="sw on"></div></div>
+      <div class="row"><div class="grow">Annoyances<div class="sub">0 of 4 on</div></div><div class="sw"></div></div>
+      <div class="row"><div class="grow">Extreme<div class="sub">May break some sites · 0 of 3 on</div></div><div class="sw"></div></div>
+    </div>
+    <div class="sec" style="margin:8px 4px 0">Dangerous sites</div>
+    <div class="card">
+      <div class="row"><div class="grow">Malware<div class="sub">2 of 2 on</div></div><div class="sw on"></div></div>
+      <div class="row"><div class="grow">Phishing<div class="sub">2 of 2 on</div></div><div class="sw on"></div></div>
+    </div>
+    <div class="sub" style="padding:4px;color:var(--muted);font-size:12px">Tap a group for its lists. Updated 20 minutes ago.</div>
+  </div>
+</div></div>
+
+<script>
+const m = new URLSearchParams(location.search).get('m') || 'l1';
+document.getElementById(m).classList.add('on');
+</script>
+</body>
+</html>
