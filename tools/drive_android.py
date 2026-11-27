@@ -613,6 +613,18 @@ def page_top():
     return (left + right) // 2, top + 10
 
 
+def install_apk(apk):
+    """Installs apk over the app, -d letting an older one go over a newer, as comparing
+    releases needs, never incremental: adb picks it on some emulators, and the app then dies
+    of SIGBUS in libproject_b_content.so at every start, as its library pages arrive late.
+    The app is stopped first. Android 17 updates a running app by putting a placeholder in its
+    task and starting the app again once the update is in; the next part's clear_data killed
+    that start, and its own start came while that process went and never attached: gate-sf's
+    settings_keeps_its_size, after update_on_the_phone's reinstall, 2026-11-28."""
+    adb("shell", "am", "force-stop", PACKAGE)
+    return adb("install", "-r", "-d", "--no-incremental", apk)
+
+
 def clear_data():
     """The app's data cleared, then its automatic updates turned off, as a person can in
     Settings: a test build older than the published release found that release at its first
@@ -3661,7 +3673,7 @@ def update_ready(part, channel=None):
     if not old:
         print("note: %s needs PB_UPDATE_FROM, an older signed APK of a published channel; skipped" % part, flush=True)
         return None
-    if "Success" not in adb("install", "-r", "-d", "--no-incremental", old):
+    if "Success" not in install_apk(old):
         check("the older build installs to update from", False, old)
         return None
     adb("shell", "pm", "clear", PACKAGE)
@@ -3739,7 +3751,7 @@ def update_on_the_phone():
         stopped_here("update_on_the_phone")
         raise
     finally:
-        adb("install", "-r", "-d", "--no-incremental", APK)
+        install_apk(APK)
         clear_data()
 
 
@@ -3859,7 +3871,7 @@ def update_notification():
         raise
     finally:
         adb("shell", "cmd", "statusbar", "collapse")
-        adb("install", "-r", "-d", "--no-incremental", APK)
+        install_apk(APK)
         clear_data()
 
 
@@ -3873,10 +3885,7 @@ def main():
     # Removed however the run ends, an error outside a part's own too: runs that ended so
     # left their reverses on the emulator for the next session to find (2026-11-22).
     atexit.register(lambda: adb("reverse", "--remove", "tcp:%d" % PORT))
-    # -d: an older APK goes over a newer one, as comparing releases needs.
-    # Never incremental: adb picks it on some emulators, and the app then dies of SIGBUS in
-    # libproject_b_content.so at every start, as its library pages arrive late.
-    if "Success" not in adb("install", "-r", "-d", "--no-incremental", APK):
+    if "Success" not in install_apk(APK):
         sys.exit("can't install %s" % APK)
     clear_data()
 
