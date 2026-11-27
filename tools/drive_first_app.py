@@ -3723,8 +3723,8 @@ def video_download_checks():
 
 def stream_checks():
     """A streamed video saves as one MP4 (docs/video-streams.md): from the Video downloader's
-    row for a stream the page's player loaded, a master playlist with separate sound, and from
-    a plain link to a playlist, each fetched as from the page, which the video's host serves
+    row for a stream the page's player loaded, a master playlist with separate sound, from
+    a plain link to a playlist, and from one to a DASH playlist, each fetched as from the page, which the video's host serves
     only to its own pages. The second, started with no click, asks first, as a page's
     downloads do after its first. Each MP4 has picture and sound, its index first, and plays
     back at its stream's length."""
@@ -3751,7 +3751,8 @@ def stream_checks():
             with open(file, "rb") as f:
                 body = f.read()
             self.send_response(200)
-            self.send_header("Content-Type", "application/vnd.apple.mpegurl" if file.endswith(".m3u8") else "video/mp4" if path.startswith("/saved/") else "application/octet-stream")
+            self.send_header("Content-Type", "application/vnd.apple.mpegurl" if file.endswith(".m3u8") else "application/dash+xml" if file.endswith(".mpd")
+                             else "video/mp4" if path.startswith("/saved/") else "application/octet-stream")
             # A playlist a site means to be saved says so: with no such word a link to one opens
             # in the tab, where Chromium's own player plays it, and nothing is downloaded.
             if "attached" in urllib.parse.urlparse(self.path).query:
@@ -3863,6 +3864,14 @@ def stream_checks():
             app.js(f"([...{many}.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Allow').click(), 1)")
         second = done("index.mp4")
         whole(second, 4.0, "a plain link to a playlist, once allowed,")
+
+        # DASH, from a plain link: the site's downloads are allowed now, so it asks nothing.
+        visit(app, PAGES + "stream?played=" + urllib.parse.quote(cdn + "/split/master.m3u8") + "&linked=" + urllib.parse.quote(cdn + "/dash/template/manifest.mpd"))
+        holds(app, "document.title==='played'", 15, page=True)
+        app.js("(document.getElementById('plain').click(), 1)", page=True)
+        third = done("manifest.mp4")
+        check("once allowed, the site's next download with no click asks nothing", not app.js(f"!!{many}"))
+        whole(third, 3.0, "a plain link to a DASH playlist")
     finally:
         app.close()
         host.shutdown()

@@ -25,15 +25,17 @@ one muted line the host or what the row says, and its Download a round icon butt
   the console does the same.
 - **Streams** (docs/video-streams.md). Most sites play a stream through their own script,
   so the video's source is a `blob:` address and its playlist is named nowhere in the page.
-  It finds every playlist (`.m3u8`) the page loaded, from the page's resource timing
+  It finds every playlist (HLS's `.m3u8`, DASH's `.mpd`) the page loaded, from the page's resource timing
   (`performance.getEntriesByType('resource')`, and a buffered `PerformanceObserver` for
   those loaded later, as by a player that waits for play), and the page's own description
   of its video: `og:video`, a `VideoObject`'s `contentUrl`, and playlist addresses in
   player settings written into the page. A player that fetches from a worker isn't in the
   page's timing, and is missed. It fetches each playlist itself, as the page's player did,
-  and reads it (`parsePlaylist`, `readStream`): a master playlist is one row, named by its
-  best quality ("Video · 1080p", or "Video" where it has none: a stream is a video to the
-  person, never a "stream"), and the playlists it names get no rows of their own.
+  and reads it (`parsePlaylist` for HLS, `parseManifest` for DASH, `readStream`): a master
+  playlist is one row, named by its best quality ("Video · 1080p", or "Video" where it has
+  none: a stream is a video to the person, never a "stream"), and the playlists it names get
+  no rows of their own; a DASH playlist, which holds every quality itself, is a row by its
+  best picture.
   A live stream's row says "Live: can't be saved yet" and a protected one's "Protected:
   can't be saved", with no Download. One whose playlist can't be read keeps its Download,
   and the browser says what it is.
@@ -51,8 +53,8 @@ one muted line the host or what the row says, and its Download a round icon butt
   quality, best first, "Download 720p", each a plain link to that quality's playlist; when
   the stream's sound is a playlist of its own, a quality's playlist alone would be silent,
   so Download is the master playlist, which Project B saves at its best with its sound, and
-  no other quality is offered. A DASH stream (`.mpd`) can't be saved as one file and has no
-  Download. The row's menu has Copy link and Open in new tab.
+  no other quality is offered. A DASH stream's Download is its one playlist, saved at its
+  best, for the same reason. The row's menu has Copy link and Open in new tab.
 - **Its data:** none. It keeps nothing in the site's storage or anywhere else.
   "Hide on this page", in the panel's menu, removes it until the page loads again.
 - **To change:** the `@match` line (which sites it runs on), the lists of player selectors

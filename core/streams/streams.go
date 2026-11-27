@@ -5,12 +5,13 @@
 // when they are locked with AES-128, and repacked, with no re-encoding, into a regular MP4
 // with its index at the front.
 //
-// The parts: a playlist is read into a Plan, the pieces to fetch for each track (hls.go);
+// The parts: a playlist is read into a Plan, the pieces to fetch for each track (hls.go,
+// and dash.go for DASH's);
 // a Job fetches them, a few at a time, through the engine's own network (job.go, core/fetch);
 // each piece, an MPEG-TS file or a fragment of MP4, is added to one working file of MP4
 // fragments (ts.go, work.go); and at the end that file is made into the MP4 (work.go).
-// Playlists are read with Eyevinn's hls-m3u8, MPEG-TS with bluenviron's mediacommon, and
-// MP4 is read and written with Eyevinn's mp4ff.
+// Playlists are read with Eyevinn's hls-m3u8 and dash-mpd, MPEG-TS with bluenviron's
+// mediacommon, and MP4 is read and written with Eyevinn's mp4ff.
 package streams
 
 import (
@@ -63,34 +64,72 @@ const (
 	None Kind = ""
 	// HLS is a playlist of HTTP Live Streaming, a text file starting #EXTM3U.
 	HLS Kind = "hls"
+	// DASH is a playlist of MPEG-DASH, an XML file whose root is MPD.
+	DASH Kind = "dash"
 )
 
 // KindOf says whether a download is a stream's playlist, from its type and its address
-// alone, as known before any of it has arrived: an HLS playlist's type, or an address
-// ending in .m3u8.
+// alone, as known before any of it has arrived: an HLS playlist's type or an address ending
+// in .m3u8, or DASH's type, application/dash+xml, or an address ending in .mpd.
 func KindOf(mime, address string) Kind {
 	mime = strings.ToLower(strings.TrimSpace(strings.SplitN(mime, ";", 2)[0]))
 	if hlsTypes[mime] {
 		return HLS
 	}
-	if u, err := url.Parse(address); err == nil && strings.EqualFold(path.Ext(u.Path), ".m3u8") {
-		return HLS
+	if mime == "application/dash+xml" {
+		return DASH
+	}
+	if u, err := url.Parse(address); err == nil {
+		switch strings.ToLower(path.Ext(u.Path)) {
+		case ".m3u8":
+			return HLS
+		case ".mpd":
+			return DASH
+		}
 	}
 	return None
 }
 
-// Sniff says whether a file's first bytes are a playlist's: #EXTM3U, after any byte order
-// mark, for one whose type and address didn't say.
+// Sniff says whether a file's first bytes are a playlist's, for one whose type and address
+// didn't say: #EXTM3U, after any byte order mark, or XML whose root element is MPD, after
+// its declaration and any comments.
 func Sniff(head []byte) Kind {
 	head = bytes.TrimPrefix(head, []byte("\xef\xbb\xbf"))
 	if bytes.HasPrefix(head, []byte("#EXTM3U")) {
 		return HLS
 	}
-	return None
+	for {
+		head = bytes.TrimLeft(head, " \t\r\n")
+		var end string
+		switch {
+		case bytes.HasPrefix(head, []byte("<?")):
+			end = "?>"
+		case bytes.HasPrefix(head, []byte("<!--")):
+			end = "-->"
+		default:
+			if rest, ok := bytes.CutPrefix(head, []byte("<MPD")); ok && len(rest) > 0 && bytes.IndexByte([]byte(" \t\r\n>"), rest[0]) >= 0 {
+				return DASH
+			}
+			return None
+		}
+		at := bytes.Index(head, []byte(end))
+		if at < 0 {
+			return None
+		}
+		head = head[at+len(end):]
+	}
 }
 
 // SniffLength is how many of a file's first bytes Sniff needs.
-const SniffLength = 16
+const SniffLength = 1024
+
+// Read reads a playlist of kind fetched from the address base.
+func Read(kind Kind, body []byte, base string) (*Plan, error) {
+	if kind == DASH {
+		return ReadDASH(body, base)
+	}
+	return ReadHLS(body, base)
+}
 
 // NameOf is the name a stream's MP4 goes by: the playlist's own, as its server or its
 // address gave it, with .mp4 in place of its ending.

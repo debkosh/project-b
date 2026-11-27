@@ -30,6 +30,20 @@ type Rendition struct {
 	SoundOnly   bool
 	PictureOnly bool
 	Pieces      []Piece
+	// Indexed are pieces still to be known: files whose own index says where their pieces
+	// are (DASH's SegmentBase), each read before the pieces are fetched.
+	Indexed []Indexed
+}
+
+// Indexed is a file cut into pieces by an index inside it, a sidx box: the bytes of URL
+// that hold the index, the file's header piece, and the run its pieces are of. Its pieces
+// go into the rendition's at At.
+type Indexed struct {
+	URL   string
+	Range string
+	Init  *Part
+	Run   int
+	At    int
 }
 
 // Piece is one piece to fetch, with the header piece it needs first, if any, and its lock.

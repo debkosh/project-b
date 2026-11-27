@@ -1,8 +1,8 @@
 # Video streams
 
-Saving a streamed video (HLS, `.m3u8`) as one MP4, from any page, whatever player the page
-uses. Agreed with the owner on 2026-11-27. DASH (`.mpd`) comes next, on the same pieces;
-DRM-protected video is never saved.
+Saving a streamed video (HLS, `.m3u8`, and DASH, `.mpd`) as one MP4, from any page,
+whatever player the page uses. Agreed with the owner on 2026-11-27; DASH, on the same
+pieces, the same day ([DASH](#dash), below). DRM-protected video is never saved.
 
 ## How a stream works
 
@@ -110,6 +110,42 @@ The spark keeps what it finds today, and adds streams:
   Android it keeps going with no screen, as a download does (docs/daily-driver.md), and it
   lands in the shared Downloads.
 
+## DASH
+
+The other common kind of stream (the owner, 2026-11-27: "DASH (.mpd), on the same pieces as
+HLS"). Its playlist is one XML file, an MPD, that names every quality: each a
+`Representation` in an `AdaptationSet`, the picture's and the sound's apart, each cut into
+MP4 fragments with a header piece.
+
+- **When.** A download whose type is `application/dash+xml`, or whose address ends in
+  `.mpd`, or whose body is XML with an `MPD` root, is a stream, as an HLS playlist is.
+- **Which quality.** The best picture, the `Representation` of the greatest height and
+  then the greatest bandwidth, and the best sound: the greatest bandwidth of the first
+  `AdaptationSet` with sound, the stream's own first language. Only those in MP4; WebM
+  ones are passed over. The two are joined into one regular MP4 with its index first.
+- **Its pieces** are named in any of DASH's ways: a `SegmentTemplate` with `$Number$` or
+  `$Time$` (and `$RepresentationID$`, `$Bandwidth$`, a width as `$Number%05d$`), with one
+  length for every piece or a `SegmentTimeline`; a `SegmentList`; or a `SegmentBase`, one
+  file whose own index, a `sidx` box at the byte range the playlist gives, says where each
+  piece is, each then fetched by its byte range. What a `Representation` leaves out, its
+  `AdaptationSet` and its `Period` give, `BaseURL`s too. Each `Period` goes on where the
+  one before ended.
+- **Refused, in the row,** in the same words: live (`type="dynamic"`), "Failed: live videos
+  can't be saved yet"; protected, any `ContentProtection` element anywhere, or pieces whose
+  header says they are encrypted, "Failed: this video is protected", with no Retry.
+- **The same fetch rules** as HLS: as from the page, only `http` and `https`, and nothing
+  on this computer or its network for a playlist from the internet.
+- **The spark** offers a `.mpd` stream as it does an HLS one: found from the page's
+  resource timing and its own description, read by the spark, its row named by its best
+  picture, live and protected ones with no Download. One address holds every quality, so
+  the row offers the best only, as for an HLS stream whose sound is separate.
+- **Read with** Eyevinn's `dash-mpd` (MIT); the index and the fragments with `mp4ff`.
+- **Guards:** core/streams' tests on small streams made with ffmpeg's DASH writer, each
+  MP4 held frame by frame to what ffmpeg makes of the same pieces: a template by number,
+  a timeline, the same by `$Time$`, a `SegmentList` of byte ranges and a `SegmentBase`
+  with its index; the choice of quality and each way of naming pieces; live, protected by
+  the playlist and by the pieces themselves; and the fetch's rules.
+
 ## How it is built
 
 **The fetch** (`fetch` and `cancel_fetch` in `pb_abi.h`, `engine/browser/fetch.cc`, Go's
@@ -150,9 +186,11 @@ shows the stream's row as running until its MP4 is made.
 
 **The job** (`core/streams/job.go`). It reads the playlist (`hls.go`, with hls-m3u8): a
 master's best quality, whose own playlist it fetches, and its separate sound's; live and
-protected ones end there. Then the pieces, 4 at a time, each to a file in the job's folder,
+protected ones end there. A DASH playlist (`dash.go`, with dash-mpd) gives its picture's
+and its sound's pieces at once, but for a file that keeps its own index, which is fetched
+and read first. Then the pieces, 4 at a time, each to a file in the job's folder,
 picture and sound turn about, at most 8 ahead of what is repacked; a key or a header piece
-(`EXT-X-MAP`) is fetched once. A piece that fails is asked for 3 times. Each playlist's
+(`EXT-X-MAP`, DASH's initialization) is fetched once. A piece that fails is asked for 3 times. Each playlist's
 pieces are asked from where that playlist's server is. Pause stops the fetches under way
 and keeps what is in; Resume asks for them again; Cancel and Retry throw the folder away,
 and Retry starts over from the playlist's address. Progress is the pieces in, of how many;
@@ -172,8 +210,9 @@ writes the regular MP4, its index first and 64-bit offsets when it is large, cop
 samples as they are, and the job's folder goes.
 
 **Not yet:** sound other than AAC in MPEG-TS (AC-3, MP3), sound-only pieces that are bare
-AAC or MP3 files, and MP4 fragments whose header changes its codec partway: each fails as
-"This video's format can't be saved yet". With Ask where to save on, a stream's MP4 still
+AAC or MP3 files, MP4 fragments whose header changes its codec partway, DASH in WebM, and a
+DASH index of indexes: each fails as "This video's format can't be saved yet" (a stream
+with nothing in MP4, as "This video has nothing to save"). With Ask where to save on, a stream's MP4 still
 goes to the Downloads folder.
 
 ## A page starting downloads

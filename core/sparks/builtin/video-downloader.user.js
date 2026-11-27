@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Video downloader
 // @description  Finds the videos on a page so you can save one
-// @version      1.1
+// @version      1.2
 // @namespace    https://github.com/sudiptadeb/project-b
 // @match        https://*/*
 // @run-at       document-end
@@ -21,8 +21,8 @@
 
   const VIDEO_EXT_RE = /\.(mp4|m4v|webm|ogv|ogg|mov|m3u8|mpd)(?:[?#]|$)/i;
   const URL_LIKE_RE = /https?:(?:\\?\/|\\u002f){2}[^\s"'<>]+/gi;
-  // A playlist of a streamed video (HLS), by its address's path.
-  const PLAYLIST_RE = /\.m3u8(?![a-z0-9])/i;
+  // A playlist of a streamed video, HLS's or DASH's, by its address's path.
+  const PLAYLIST_RE = /\.(m3u8|mpd)(?![a-z0-9])/i;
 
   const state = {
     sources: [],
@@ -392,6 +392,35 @@
     return out;
   }
 
+  // parseManifest reads a DASH playlist, an MPD: whether it is live (type="dynamic") or
+  // protected (any ContentProtection), and its best picture, the greatest height and then
+  // the greatest bandwidth, which is what the browser saves, with the best sound. One
+  // address holds every quality, so only the best is offered.
+  function parseManifest(text) {
+    let doc;
+    try {
+      doc = new DOMParser().parseFromString(text, 'application/xml');
+    } catch {
+      return null;
+    }
+    const root = doc.documentElement;
+    if (!root || root.localName !== 'MPD') return null;
+    const out = { master: true, live: root.getAttribute('type') === 'dynamic', protected: false, qualities: [], names: [], whole: true };
+    const all = [...root.getElementsByTagName('*')];
+    out.protected = all.some((node) => node.localName === 'ContentProtection');
+    all.filter((node) => node.localName === 'Representation').forEach((rep) => {
+      const set = rep.parentElement;
+      const type = (rep.getAttribute('mimeType') || set.getAttribute('mimeType') || '').toLowerCase();
+      const picture = set.getAttribute('contentType') === 'video' || type.startsWith('video/');
+      if (!picture || (type && !type.includes('mp4'))) return;
+      const height = Number(rep.getAttribute('height') || set.getAttribute('height') || set.getAttribute('maxHeight')) || 0;
+      const bandwidth = Number(rep.getAttribute('bandwidth')) || 0;
+      out.qualities.push({ height, bandwidth, label: height ? `${height}p` : 'Video', short: height ? `${height}p` : 'Video' });
+    });
+    out.qualities.sort((a, b) => b.height - a.height || b.bandwidth - a.bandwidth);
+    return out;
+  }
+
   // readStream fetches a stream's playlist, once, as the page's player did, and keeps what
   // it says in state.streams: { status, qualities, names, save }. status is 'checking' until
   // it is read; then 'ok', 'live' or 'protected', or 'unknown' when it couldn't be read, in
@@ -408,7 +437,7 @@
     };
     const readList = (address) => read(address).then((response) => {
       if (!response.ok) throw new Error(String(response.status));
-      return response.text().then((text) => parsePlaylist(text, response.url || address));
+      return response.text().then((text) => parsePlaylist(text, response.url || address) || parseManifest(text));
     });
     const settle = (status) => {
       info.status = status;
@@ -417,6 +446,11 @@
     readList(url).then((list) => {
       if (!list) return settle('unknown');
       if (list.protected) return settle('protected');
+      if (list.whole) {
+        // DASH: one playlist for every quality, which the browser saves at its best.
+        if (list.qualities.length) info.qualities = [{ label: list.qualities[0].label, short: list.qualities[0].short, url }];
+        return settle(list.live ? 'live' : 'ok');
+      }
       if (!list.master) return settle(list.live ? 'live' : 'ok');
       info.names = list.names;
       if (!list.qualities.length) return settle('unknown');
@@ -540,8 +574,8 @@
         stream,
       };
       if (info) {
-        // A playlist (HLS), which the browser saves as one MP4: its Download saves the best
-        // quality, and its menu each of the others.
+        // A playlist (HLS or DASH), which the browser saves as one MP4: its Download saves
+        // the best quality, and its menu each of the others, where each has an address.
         row.status = info.status;
         row.save = info.save;
         row.qualities = info.qualities;
@@ -843,7 +877,7 @@
 
     const saves = row.save || row.url;
     if (row.stream && !row.status) {
-      // A stream with no playlist the browser reads (DASH).
+      // A stream whose address isn't a playlist's the script reads.
       text.append(el('div', 'note', "This video can't be saved"));
     } else if (row.status && STREAM_NOTES[row.status]) {
       text.append(el('div', 'note', STREAM_NOTES[row.status]));

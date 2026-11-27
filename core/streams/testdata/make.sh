@@ -12,6 +12,10 @@
 #   split/    a master playlist whose picture and sound are separate playlists of MP4
 #             fragments, and a second, smaller quality
 #   small/    the smaller quality's pieces, MPEG-TS
+#   dash/     the same picture and tone as DASH, picture and sound each a Representation:
+#             template/ a SegmentTemplate of $Number$ and a duration; timeline/ one with a
+#             SegmentTimeline; single/ each in one file, as a SegmentList of byte ranges
+#             (manifest.mpd) and as a SegmentBase whose sidx index says them (base.mpd)
 set -euo pipefail
 cd "$(dirname "$0")"
 FFMPEG=${FFMPEG:-ffmpeg}
@@ -22,7 +26,8 @@ video="-c:v libx264 -preset veryslow -pix_fmt yuv420p -g 25 -keyint_min 25 -sc_t
 audio="-c:a aac -b:a 16k -ac 1"
 exact="-fflags +bitexact -flags:v +bitexact -flags:a +bitexact -map_metadata -1"
 
-for d in ts fmp4 aes split small; do rm -rf "${d:?}"; mkdir "$d"; done
+for d in ts fmp4 aes split small dash; do rm -rf "${d:?}"; mkdir "$d"; done
+mkdir dash/template dash/timeline dash/single
 
 # ts: 4 seconds in 1 second pieces.
 ff $(picture 160x90) $(tone) -t 4 $video $audio $exact \
@@ -87,6 +92,51 @@ video.m3u8
 video.m3u8?lesser
 LIST
 
+# dash: 3 seconds in 1 second pieces, in each form ffmpeg's DASH writer has.
+dash() { # folder, then the writer's options
+  local to=$1
+  shift
+  (cd "dash/$to" && ff $(picture 160x90) $(tone) -t 3 $video $audio $exact -f dash -seg_duration 1 "$@" manifest.mpd)
+}
+dash template -use_template 1 -use_timeline 0
+dash timeline -use_template 1 -use_timeline 1
+dash single -single_file 1 -global_sidx 1
+# The single files again as a SegmentBase: each file's header piece is its ftyp and moov,
+# and the sidx box after them is its index.
+python3 - <<'PY'
+import struct
+def boxes(path):
+    data = open(path, "rb").read()
+    at, out = 0, []
+    while at + 8 <= len(data):
+        size, kind = struct.unpack(">I4s", data[at:at + 8])
+        out.append((kind.decode(), at, at + size))
+        at += size
+    return out
+def base(n):
+    b = boxes("dash/single/manifest-stream%d.mp4" % n)
+    moov = next(x for x in b if x[0] == "moov")
+    sidx = next(x for x in b if x[0] == "sidx")
+    return ('<BaseURL>manifest-stream%d.mp4</BaseURL>\n\t\t\t\t<SegmentBase indexRange="%d-%d" indexRangeExact="true">\n\t\t\t\t\t<Initialization range="0-%d" />\n\t\t\t\t</SegmentBase>'
+            % (n, sidx[1], sidx[2] - 1, moov[2] - 1))
+open("dash/single/base.mpd", "w").write("""<?xml version="1.0" encoding="utf-8"?>
+<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" profiles="urn:mpeg:dash:profile:isoff-on-demand:2011" type="static" mediaPresentationDuration="PT3.0S" minBufferTime="PT2.0S">
+	<Period id="0" start="PT0.0S">
+		<AdaptationSet id="0" contentType="video" maxWidth="160" maxHeight="90">
+			<Representation id="0" mimeType="video/mp4" codecs="avc1.64000c" bandwidth="30000" width="160" height="90">
+				%s
+			</Representation>
+		</AdaptationSet>
+		<AdaptationSet id="1" contentType="audio">
+			<Representation id="1" mimeType="audio/mp4" codecs="mp4a.40.2" bandwidth="16000" audioSamplingRate="44100">
+				%s
+			</Representation>
+		</AdaptationSet>
+	</Period>
+</MPD>
+""" % (base(0), base(1)))
+PY
+
 # What ffmpeg makes of each as one MP4, for expect.json.
 ref=$(mktemp -d)
 trap 'rm -rf "${ref:?}"' EXIT
@@ -94,5 +144,15 @@ ff -i ts/index.m3u8 -c copy "$ref/ts.mp4"
 ff -i fmp4/index.m3u8 -c copy "$ref/fmp4.mp4"
 ff -i split/video.m3u8 -i split/audio.m3u8 -c copy "$ref/split.mp4"
 ff -i small/index.m3u8 -c copy "$ref/small.mp4"
-(cd ../.. && go run ./streams/mp4check/expect "$ref/ts.mp4" "$ref/fmp4.mp4" "$ref/split.mp4" "$ref/small.mp4") > expect.json
+# DASH's, from each Representation's pieces in a row, as many as its playlist names: the
+# template's sound has a last short piece its playlist's length leaves out.
+cat dash/template/init-stream0.m4s dash/template/chunk-stream0-0000[123].m4s > "$ref/tv.mp4"
+cat dash/template/init-stream1.m4s dash/template/chunk-stream1-0000[123].m4s > "$ref/ta.mp4"
+ff -i "$ref/tv.mp4" -i "$ref/ta.mp4" -c copy "$ref/dash-template.mp4"
+cat dash/timeline/init-stream0.m4s dash/timeline/chunk-stream0-*.m4s > "$ref/lv.mp4"
+cat dash/timeline/init-stream1.m4s dash/timeline/chunk-stream1-*.m4s > "$ref/la.mp4"
+ff -i "$ref/lv.mp4" -i "$ref/la.mp4" -c copy "$ref/dash-timeline.mp4"
+ff -i dash/single/manifest-stream0.mp4 -i dash/single/manifest-stream1.mp4 -c copy "$ref/dash-single.mp4"
+(cd ../.. && go run ./streams/mp4check/expect "$ref/ts.mp4" "$ref/fmp4.mp4" "$ref/split.mp4" "$ref/small.mp4" \
+  "$ref/dash-template.mp4" "$ref/dash-timeline.mp4" "$ref/dash-single.mp4") > expect.json
 du -sh . | cut -f1

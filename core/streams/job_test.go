@@ -37,8 +37,9 @@ type rig struct {
 	// slow holds each piece back this long; fail answers a path with 503 this many times.
 	slow time.Duration
 	fail map[string]int
-	// extra are playlists written for a test, by path.
+	// extra are playlists written for a test, by path; alias other paths for a file.
 	extra map[string]string
+	alias map[string]string
 
 	fetches map[engine.FetchID]context.CancelFunc
 	wanted  []engine.FetchRequest
@@ -47,7 +48,7 @@ type rig struct {
 func newRig(t *testing.T) *rig {
 	t.Helper()
 	r := &rig{t: t, posted: make(chan func(), 1024), dir: t.TempDir(), from: map[string]string{}, fail: map[string]int{},
-		extra: map[string]string{}, fetches: map[engine.FetchID]context.CancelFunc{}}
+		extra: map[string]string{}, alias: map[string]string{}, fetches: map[engine.FetchID]context.CancelFunc{}}
 	files := http.FileServer(http.Dir("testdata"))
 	r.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, q *http.Request) {
 		r.mu.Lock()
@@ -68,6 +69,9 @@ func newRig(t *testing.T) *rig {
 			w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
 			w.Write([]byte(body))
 			return
+		}
+		if to, ok := r.alias[q.URL.Path]; ok {
+			q.URL.Path = to
 		}
 		if slow > 0 && !strings.HasSuffix(q.URL.Path, ".m3u8") {
 			time.Sleep(slow)
@@ -149,6 +153,9 @@ func (r *rig) start(path string, space engine.AddressSpace, fetched bool) *saved
 	r.t.Helper()
 	s := &saved{out: filepath.Join(r.dir, "out.mp4")}
 	src := Source{URL: r.server.URL + path, Page: "https://video.test/watch?v=1", Workspace: "w1", Space: space}
+	if strings.HasSuffix(path, ".mpd") {
+		src.Kind = DASH
+	}
 	if !fetched {
 		body, ok := r.extra[path]
 		if !ok {

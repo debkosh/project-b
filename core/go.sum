@@ -1,3 +1,7 @@
+aqwari.net/xml v0.0.0-20210331023308-d9421b293817 h1:+3Rh5EaTzNLnzWx3/uy/mAaH/dGI7svJ6e0oOIDcPuE=
+aqwari.net/xml v0.0.0-20210331023308-d9421b293817/go.mod h1:c7kkWzc7HS/t8Q2DcVY8P2d1dyWNEhEVT5pL0ZHO11c=
+github.com/Eyevinn/dash-mpd v0.19.0 h1:F9jvM375LKMZKPqa8VM9oD1Rsf8kvR3G6UGvL9ypJx0=
+github.com/Eyevinn/dash-mpd v0.19.0/go.mod h1:JcVboFRgbxl5gK/ppYzS5z35VsRi8wbwiZIOpDy6zmA=
 github.com/Eyevinn/hls-m3u8 v0.6.5 h1:qcX5h+kh3RDUQsvWzS0G8NdLquHi6eY3Ap67ywzIjgY=
 github.com/Eyevinn/hls-m3u8 v0.6.5/go.mod h1:9jzVfwCo1+TC6yz+TKDBt9gIshzI9fhVE7M5AhcOSnQ=
 github.com/Eyevinn/mp4ff v0.64.0 h1:9uKPANQjulMzv13BiNVEI/JKUV4d9tko5XqJH2dsWbg=
@@ -6,6 +10,8 @@ github.com/asticode/go-astikit v0.30.0 h1:DkBkRQRIxYcknlaU7W7ksNfn4gMFsB0tqMJflx
 github.com/asticode/go-astikit v0.30.0/go.mod h1:h4ly7idim1tNhaVkdVBeXQZEE3L0xblP7fCWbgwipF0=
 github.com/asticode/go-astits v1.17.0 h1:KrDxalNhZ/GJkbgVweD5xxCA9XoaW7tHuFiJB/sAZxs=
 github.com/asticode/go-astits v1.17.0/go.mod h1:psImoC1BhcAWIsyM/RnbO1OgUW+XSf8fZpFvF5McDyo=
+github.com/barkimedes/go-deepcopy v0.0.0-20220514131651-17c30cfc62df h1:GSoSVRLoBaFpOOds6QyY1L8AX7uoY+Ln3BHc22W40X0=
+github.com/barkimedes/go-deepcopy v0.0.0-20220514131651-17c30cfc62df/go.mod h1:hiVxq5OP2bUGBRNS3Z/bt/reCLFNbdcST6gISi1fiOM=
 github.com/bluenviron/mediacommon/v2 v2.10.0 h1:VPQxQQY6ih3H7RyERp5KKkkcw0hsU0+dVePugYNsgh4=
 github.com/bluenviron/mediacommon/v2 v2.10.0/go.mod h1:0fLCC4wHBUnC+Oz5EM+6edO97WAGNM18VAdpu34oltY=
 github.com/debkosh/amarit v0.12.0 h1:BNjkC5D8Bf9C5XArh4zbcpbasOZAQd7zZDpBPDcj0io=
@@ -20,6 +26,8 @@ github.com/go-test/deep v1.1.0 h1:WOcxcdHcvdgThNXjw0t76K42FXTU7HpNQWHpA2HHNlg=
 github.com/go-test/deep v1.1.0/go.mod h1:5C2ZWiW0ErCdrYzpqxLbTX7MG14M9iiw8DgHncVwcsE=
 github.com/godbus/dbus/v5 v5.2.4 h1:F2gUCy++NMIxGmo9J+z5le/+ZC8W1OgeR51P4i9ZB/U=
 github.com/godbus/dbus/v5 v5.2.4/go.mod h1:3AAv2+hPq5rdnr5txxxRwiGjPXamgoIHgz9FPBfOp3c=
+github.com/google/go-cmp v0.6.0 h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=
+github.com/google/go-cmp v0.6.0/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
 github.com/matryer/is v1.4.1 h1:55ehd8zaGABKLXQUe2awZ99BD/PTc2ls+KV/dXphgEQ=
 github.com/matryer/is v1.4.1/go.mod h1:8I/i5uYgLzgsgEloJE1U6xx5HkBQpAZvepWuujKwMRU=
 github.com/mattn/go-sqlite3 v1.14.53 h1:mnTM0owzUMrKuLo+0w51NUiB0ir2Fo7kFXlPt/l3BGs=

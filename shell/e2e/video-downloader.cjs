@@ -2,7 +2,7 @@
 // core/sparks/builtin/README.md), run in a real browser on pages served here, with
 // core/streams' test streams: a playlist the page's player loaded and names nowhere, the
 // page's own description of its video, a player that loads nothing until play, a master
-// playlist's qualities, and live and protected streams, which have no Download.
+// playlist's qualities, live and protected streams, which have no Download, and DASH.
 // Run: node shell/e2e/video-downloader.cjs   (from the repo root)
 
 const fs = require('fs');
@@ -41,6 +41,12 @@ const lists = {
   '/qualities.m3u8': '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=30000,RESOLUTION=96x54\nsmall/index.m3u8\n#EXT-X-STREAM-INF:BANDWIDTH=60000,RESOLUTION=160x90\nts/index.m3u8\n',
   '/live-master.m3u8': '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=60000,RESOLUTION=160x90\nlive-best.m3u8\n',
   '/live-best.m3u8': head + piece,
+  '/live.mpd': '<?xml version="1.0"?><MPD xmlns="urn:mpeg:dash:schema:mpd:2011" type="dynamic"><Period id="0"><AdaptationSet contentType="video"><Representation id="0" mimeType="video/mp4" bandwidth="30000" height="90"/></AdaptationSet></Period></MPD>',
+  '/locked.mpd': '<?xml version="1.0"?><MPD xmlns="urn:mpeg:dash:schema:mpd:2011" type="static"><Period id="0"><AdaptationSet contentType="video"><ContentProtection schemeIdUri="urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"/><Representation id="0" mimeType="video/mp4" bandwidth="30000" height="90"/></AdaptationSet></Period></MPD>',
+  // Two pictures, the lesser first, and one in WebM, which isn't saved.
+  '/two.mpd': '<?xml version="1.0"?><MPD xmlns="urn:mpeg:dash:schema:mpd:2011" type="static" mediaPresentationDuration="PT3S"><Period id="0"><AdaptationSet contentType="video">' +
+    '<Representation id="a" mimeType="video/mp4" bandwidth="30000" width="640" height="360"/><Representation id="b" mimeType="video/mp4" bandwidth="90000" width="1280" height="720"/>' +
+    '<Representation id="c" mimeType="video/webm" bandwidth="900000" width="3840" height="2160"/></AdaptationSet></Period></MPD>',
 };
 
 const pages = (cdn) => ({
@@ -62,6 +68,10 @@ const pages = (cdn) => ({
   '/both': `<!doctype html><title>Both</title><video id=v aria-label="Sound and picture"></video>
     <a id=plain href="${cdn}/ts/index.m3u8" style="display:block;padding:12px">A playlist</a>
     <script>fetch("${cdn}" + "/split/master.m3u" + "8").then((r) => r.text()).then(() => { document.body.dataset.played = "yes" })</script>`,
+  // A DASH player: its playlist loaded by its script, and others linked.
+  '/dash': `<!doctype html><title>DASH</title><video id=v></video><a href="${cdn}/live.mpd">live</a><a href="${cdn}/locked.mpd">locked</a><a href="${cdn}/two.mpd">two</a><script>
+    fetch('${cdn}/dash/template/manifest.mpd').then((r) => r.text()).then(() => { document.title = 'loaded'; });
+  </script>`,
   '/unsaved': `<!doctype html><title>Unsaved</title><a href="${cdn}/live.m3u8">live</a><a href="${cdn}/locked.m3u8">locked</a><a href="${cdn}/live-master.m3u8">live, by its master</a><a href="${cdn}/gone.m3u8">gone</a>`,
 });
 
@@ -91,7 +101,7 @@ function serve(handler) {
       res.end();
       return;
     }
-    res.setHeader('Content-Type', file.endsWith('.m3u8') ? 'application/vnd.apple.mpegurl' : 'application/octet-stream');
+    res.setHeader('Content-Type', file.endsWith('.m3u8') ? 'application/vnd.apple.mpegurl' : file.endsWith('.mpd') ? 'application/dash+xml' : 'application/octet-stream');
     res.end(fs.readFileSync(file));
   });
   const cdn = `http://localhost:${cdnServer.address().port}`;
@@ -192,6 +202,19 @@ function serve(handler) {
     r.filter((row) => row.note).every((row) => !row.download) && r.filter((row) => !row.note).length === 1 && by('gone.m3u8')?.download === `${cdn}/gone.m3u8#pb-download`, r);
   items = await menuOf(0);
   check('a row with no Download still has Copy link and Open in new tab', items.map((i) => i.words).join('|') === 'Copy link|Open in new tab', items);
+
+  // DASH: one playlist for every quality.
+  await open('/dash', "document.title === 'loaded'");
+  check('a DASH playlist the player loaded, and those the page links, are found', await settled(4), await rows());
+  r = (await rows()) || [];
+  const dash = (name) => r.find((row) => row.download.includes(name)) || {};
+  check('a DASH stream\'s row is by its best picture, its Download a plain link to its playlist',
+    dash('manifest.mpd').label === 'Video · 90p' && dash('manifest.mpd').download === `${cdn}/dash/template/manifest.mpd#pb-download` &&
+    dash('two.mpd').label === 'Video · 720p', r);
+  check('a live DASH stream and a protected one say so, with no Download',
+    JSON.stringify(r.filter((row) => !row.download).map((row) => row.note).sort()) === JSON.stringify(["Live: can't be saved yet", "Protected: can't be saved"]), r);
+  items = await menuOf(r.findIndex((row) => row.download.includes('two.mpd')));
+  check('one address holds every quality, so its menu lists none', items.map((i) => i.words).join('|') === 'Copy link|Open in new tab', items);
 
   check('no errors in the pages', errors.length === 0, errors);
   await browser.close();

@@ -104,7 +104,7 @@ func (m *Manager) startStream(it *Item, body []byte) {
 	// later.
 	m.jobs++
 	it.job = streams.Start(streams.Config{
-		Source:  streams.Source{URL: it.URL, Body: body, Page: it.Referrer, Workspace: it.Workspace, Space: engine.AddressSpace(it.Space)},
+		Source:  streams.Source{Kind: streams.Kind(it.Stream), URL: it.URL, Body: body, Page: it.Referrer, Workspace: it.Workspace, Space: engine.AddressSpace(it.Space)},
 		Fetcher: m.fetcher,
 		Post:    m.e.Post,
 		Dir:     filepath.Join(m.streamsDir(), fmt.Sprintf("job-%d-%d", it.ID, m.jobs)),

@@ -334,3 +334,40 @@ func TestAStreamsRowPausesResumesCancelsAndRetries(t *testing.T) {
 		t.Fatalf("the jobs left %v", left)
 	}
 }
+
+// A DASH playlist's download, by its type, its address or how it starts, becomes its
+// stream's MP4 in the same way.
+func TestADASHPlaylistDownloadBecomesAnMP4(t *testing.T) {
+	r := newStreamRig(t)
+	r.download(1, "/dash/template/manifest.mpd", "manifest.mpd", "application/dash+xml")
+	it := r.until("done", func(it Item) bool { return it.State != "progress" })
+	if it.State != "done" || it.Name != "manifest.mp4" || it.Stream != "dash" || it.Path != filepath.Join(r.dir, "manifest.mp4") {
+		t.Fatalf("%+v", it)
+	}
+	// One with nothing in its type or its address to say so, known by its root element once
+	// it is here, and taken out of the Downloads folder again.
+	b, _ := os.ReadFile("../streams/testdata/dash/single/base.mpd")
+	r.extra["/dash/single/film"] = string(b)
+	target := r.download(2, "/dash/single/film", "film", "text/xml")
+	if target != filepath.Join(r.dir, "film") {
+		t.Fatalf("it went to %s", target)
+	}
+	if it := r.until("done", func(it Item) bool { return it.State != "progress" }); it.State != "done" || it.Name != "film.mp4" || it.Stream != "dash" {
+		t.Fatalf("%+v", it)
+	}
+	// Retry, after a restart's worth of state: from its address, as DASH.
+	var id int
+	r.on(func() { id = r.m.List()[0].ID; r.m.Act(id, "retry") })
+	if it := r.until("done again", func(it Item) bool { return it.State == "done" && it.Name == "film (1).mp4" }); it.Stream != "dash" {
+		t.Fatalf("%+v", it)
+	}
+	if _, err := os.Stat(target); err == nil {
+		t.Fatal("the playlist stayed in the Downloads folder")
+	}
+	// A live one says so.
+	r.extra["/live.mpd"] = `<?xml version="1.0"?><MPD xmlns="urn:mpeg:dash:schema:mpd:2011" type="dynamic"><Period id="0"/></MPD>`
+	r.download(3, "/live.mpd", "live.mpd", "application/dash+xml")
+	if it := r.until("failed", func(it Item) bool { return it.State == "failed" }); it.Reason != "live" {
+		t.Fatalf("%+v", it)
+	}
+}

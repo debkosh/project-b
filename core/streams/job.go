@@ -1,7 +1,6 @@
 package streams
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -16,11 +15,12 @@ type Fetcher interface {
 	Fetch(r engine.FetchRequest, done func(engine.Fetched)) (cancel func())
 }
 
-// Source is the stream to save: its playlist's address, what the playlist holds when a
-// download brought it (nil has the job fetch it), the page it is fetched as from and the
-// workspace whose storage it is fetched in, and where the playlist's server is, which is
-// where its pieces are asked from.
+// Source is the stream to save: the kind of its playlist (HLS when none is said), the
+// playlist's address, what the playlist holds when a download brought it (nil has the job
+// fetch it), the page it is fetched as from and the workspace whose storage it is fetched
+// in, and where the playlist's server is, which is where its pieces are asked from.
 type Source struct {
+	Kind      Kind
 	URL       string
 	Body      []byte
 	Page      string
@@ -242,13 +242,17 @@ func (j *Job) small(address, span string, from engine.AddressSpace, then func(bo
 // read takes the stream's playlist: a media playlist's pieces, or a master playlist's best
 // quality, whose own playlists are fetched next, each from where the master's server is.
 func (j *Job) read(body []byte, base string, space engine.AddressSpace) {
-	plan, err := ReadHLS(body, base)
+	plan, err := Read(j.c.Kind, body, base)
 	if err != nil {
 		j.fail(err)
 		return
 	}
 	if len(plan.Next) == 0 {
-		j.begin(plan.Renditions, []engine.AddressSpace{space})
+		from := make([]engine.AddressSpace, len(plan.Renditions))
+		for i := range from {
+			from[i] = space
+		}
+		j.index(plan.Renditions, from)
 		return
 	}
 	renditions := make([]Rendition, len(plan.Next))
@@ -279,6 +283,48 @@ func (j *Job) read(body []byte, base string, space engine.AddressSpace) {
 		})
 		if j.over {
 			return
+		}
+	}
+}
+
+// index reads the index of each file that keeps its own (DASH's SegmentBase), whose pieces
+// take their place among the rendition's, and then starts on the pieces.
+func (j *Job) index(renditions []Rendition, from []engine.AddressSpace) {
+	left := 0
+	for _, r := range renditions {
+		left += len(r.Indexed)
+	}
+	if left == 0 {
+		j.begin(renditions, from)
+		return
+	}
+	found := make([][][]Piece, len(renditions))
+	for r := range renditions {
+		found[r] = make([][]Piece, len(renditions[r].Indexed))
+		for i, x := range renditions[r].Indexed {
+			j.small(x.URL, x.Range, from[r], func(body []byte, _ engine.Fetched) {
+				pieces, err := indexed(x, body)
+				if err != nil {
+					j.fail(err)
+					return
+				}
+				found[r][i] = pieces
+				if left--; left > 0 {
+					return
+				}
+				for r := range renditions {
+					// From the last, so each one's place among the pieces still holds.
+					for i := len(found[r]) - 1; i >= 0; i-- {
+						at := renditions[r].Indexed[i].At
+						renditions[r].Pieces = append(renditions[r].Pieces[:at:at], append(found[r][i], renditions[r].Pieces[at:]...)...)
+					}
+					renditions[r].Indexed = nil
+				}
+				j.begin(renditions, from)
+			})
+			if j.over {
+				return
+			}
 		}
 	}
 }
@@ -449,8 +495,20 @@ func (j *Job) repack(r int, p Piece, path string, key, init []byte) (int64, erro
 		}
 		return size, m.add(p.Run, data)
 	}
-	if init == nil || !isFragment(data) {
+	if !isFragment(data) {
 		return size, ErrFormat
+	}
+	if init == nil {
+		// A whole file of fragments: its header piece is its own start, up to the first
+		// fragment.
+		at := firstFragment(data)
+		if at == 0 {
+			return size, ErrFormat
+		}
+		if err := j.w.addInit(r, j.renditions[r], data[:at]); err != nil {
+			return size, err
+		}
+		return size, j.w.append(r, p.Run, data[at:], false)
 	}
 	if j.inits[r] != p.Init {
 		if err := j.w.addInit(r, j.renditions[r], init); err != nil {
@@ -463,18 +521,37 @@ func (j *Job) repack(r int, p Piece, path string, key, init []byte) (int64, erro
 
 // isFragment says a piece is MP4 boxes that hold a fragment: a moof somewhere at its top.
 func isFragment(data []byte) bool {
-	for len(data) >= 8 {
-		size := int(uint32(data[0])<<24 | uint32(data[1])<<16 | uint32(data[2])<<8 | uint32(data[3]))
-		kind := data[4:8]
-		if bytes.Equal(kind, []byte("moof")) {
-			return true
+	_, ok := fragmentAt(data)
+	return ok
+}
+
+// firstFragment is where a file's first fragment starts, after its header: 0 when it has
+// no header before it.
+func firstFragment(data []byte) int {
+	at, _ := fragmentAt(data)
+	return at
+}
+
+// fragmentAt walks a piece's boxes to its first moof, with any styp, sidx, emsg or prft
+// just before it.
+func fragmentAt(data []byte) (int, bool) {
+	at, start := 0, 0
+	for len(data)-at >= 8 {
+		size := int(uint32(data[at])<<24 | uint32(data[at+1])<<16 | uint32(data[at+2])<<8 | uint32(data[at+3]))
+		kind := string(data[at+4 : at+8])
+		if kind == "moof" {
+			return start, true
 		}
-		if bytes.Equal(kind, []byte("mdat")) || size < 8 || size > len(data) {
-			return false
+		if kind == "mdat" || size < 8 || size > len(data)-at {
+			return 0, false
 		}
-		data = data[size:]
+		at += size
+		// What belongs to the fragment that follows stays with it.
+		if kind != "styp" && kind != "sidx" && kind != "emsg" && kind != "prft" {
+			start = at
+		}
 	}
-	return false
+	return 0, false
 }
 
 // repacked is the goroutine's news of one piece.
