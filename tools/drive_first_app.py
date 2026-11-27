@@ -2163,16 +2163,32 @@ def picker_checks():
     plain = picker.cmd("dockdot")
     check_mac("its Dock icon has no profile's dot", plain != "#5b7fd6", plain)
     used = listed()[0]["lastUsed"]
+    # Watched from the click, while the picker copy quits, not only after: a look made after
+    # that alone saw no copy at all in 1 run of gate-vs's 4, under load.
+    seen, watching = set(), threading.Event()
+    def watch():
+        while not watching.is_set():
+            seen.update(copies_on(root, "default"))
+            time.sleep(0.05)
+    watcher = threading.Thread(target=watch, daemon=True)
+    watcher.start()
     picker.js("document.querySelector('.row').click(), 1")
     check("choosing a profile quits the picker copy", picker.proc.wait(timeout=30) == 0)
     App.running.remove(picker)
-    opened = started_on("default")
-    check("and opens the profile in a copy of its own", len(opened) == 1, opened)
+    deadline = time.time() + 30
+    while not seen and time.time() < deadline:
+        time.sleep(0.1)
+    watching.set()
+    watcher.join()
+    opened = copies_on(root, "default")
     if "--no-sandbox" in ARGS:
         # The copy the picker starts has only its profile's switches, not the run's, and
-        # Linux's headless container can't start one without --no-sandbox.
+        # Linux's headless container can't start one without --no-sandbox: it ends at once,
+        # and even watched from the click it was seen in 2 runs of 3 only.
+        print("skip and opens the profile in a copy of its own (the app-started copy misses --no-sandbox in the container)", flush=True)
         print("skip which starts on it: the list says it was used now (the app-started copy misses --no-sandbox in the container)", flush=True)
     else:
+        check("and opens the profile in a copy of its own", len(seen) == 1, sorted(seen))
         deadline = time.time() + 30
         while listed()[0]["lastUsed"] == used and time.time() < deadline:
             time.sleep(0.1)
