@@ -409,6 +409,9 @@ So the package is split by list, and a list that changed sends only its change:
   0.2 MB, URLhaus 15.1 MB, phishing 2.9 MB). The app's total PSS, loaded from disk, is 164 MB
   with Warn before dangerous sites on and 130 MB with it off: the Safe Browsing lists cost
   about 34 MB, 18 MB of it native heap, nearly all URLhaus.
+- **Decided by the owner, 2026-11-27:** URLhaus stays on by default on phones too: "on by
+  default... option during walkthrough can be added whne we next refresh the walkthrough".
+  A choice of it in the welcome waits for the walkthrough's next refresh.
 - **Loaded by copy.** adblock-rust copies the serialized engine into its own memory, so a
   group costs about its file's size in the browser process; mapping the file would save
   nothing.
