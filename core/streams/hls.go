@@ -70,9 +70,10 @@ type Part struct {
 }
 
 // ReadHLS reads an HLS playlist fetched from the address base. A master playlist gives the
-// playlists to read next, its best quality first; a media playlist gives its pieces. A live
-// one is ErrLive and a protected one ErrProtected.
-func ReadHLS(body []byte, base string) (*Plan, error) {
+// playlists to read next, its chosen quality's first: its best, or with a height asked for
+// (0 is none) the one closest to it; a media playlist gives its pieces. A live one is
+// ErrLive and a protected one ErrProtected.
+func ReadHLS(body []byte, base string, height int) (*Plan, error) {
 	from, err := url.Parse(base)
 	if err != nil {
 		return nil, ErrFormat
@@ -86,7 +87,7 @@ func ReadHLS(body []byte, base string) (*Plan, error) {
 		return nil, fmt.Errorf("%w: %v", ErrFormat, err)
 	}
 	if kind == m3u8.MASTER {
-		return readMaster(list.(*m3u8.MasterPlaylist), from)
+		return readMaster(list.(*m3u8.MasterPlaylist), from, height)
 	}
 	r, err := readMedia(list.(*m3u8.MediaPlaylist), from)
 	if err != nil {
@@ -95,9 +96,12 @@ func ReadHLS(body []byte, base string) (*Plan, error) {
 	return &Plan{Renditions: []Rendition{*r}}, nil
 }
 
-// readMaster chooses a master playlist's best quality: the highest resolution, then the
-// highest bandwidth, and its sound's playlist when the quality names a separate one.
-func readMaster(m *m3u8.MasterPlaylist, from *url.URL) (*Plan, error) {
+// readMaster chooses a master playlist's quality, and its sound's playlist when the quality
+// names a separate one. The best is the highest resolution, then the highest bandwidth.
+// With a height asked for, it is the quality whose height is closest to it, the smaller of
+// two as close, and the highest bandwidth of that height; a playlist that gives no heights
+// is saved at its best.
+func readMaster(m *m3u8.MasterPlaylist, from *url.URL, height int) (*Plan, error) {
 	for _, k := range m.SessionKeys {
 		if k != nil && protected(*k) {
 			return nil, ErrProtected
@@ -120,6 +124,18 @@ func readMaster(m *m3u8.MasterPlaylist, from *url.URL) (*Plan, error) {
 		return variants[i].Bandwidth > variants[j].Bandwidth
 	})
 	best := variants[0]
+	if height > 0 {
+		// Best first, so the first of a height is its highest bandwidth.
+		var found *m3u8.Variant
+		for _, v := range variants {
+			if h := heightOf(v.Resolution); h > 0 && (found == nil || closer(h, heightOf(found.Resolution), height)) {
+				found = v
+			}
+		}
+		if found != nil {
+			best = found
+		}
+	}
 	plan := &Plan{Next: []string{resolve(from, best.URI)}}
 	if best.Audio != "" {
 		var sound *m3u8.Alternative
@@ -137,6 +153,29 @@ func readMaster(m *m3u8.MasterPlaylist, from *url.URL) (*Plan, error) {
 		}
 	}
 	return plan, nil
+}
+
+// closer says whether a height is closer to the one asked for than another is: by less
+// distance, or by being the smaller at the same distance.
+func closer(h, than, asked int) bool {
+	a, b := h-asked, than-asked
+	if a < 0 {
+		a = -a
+	}
+	if b < 0 {
+		b = -b
+	}
+	return a < b || a == b && h < than
+}
+
+// heightOf is the height a RESOLUTION of "WxH" gives, 0 for none.
+func heightOf(resolution string) int {
+	_, h, ok := strings.Cut(strings.ToLower(resolution), "x")
+	if !ok {
+		return 0
+	}
+	n, _ := strconv.Atoi(strings.TrimSpace(h))
+	return max(n, 0)
 }
 
 // pixels is how many pixels a RESOLUTION of "WxH" has, 0 for none.

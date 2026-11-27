@@ -35,7 +35,7 @@ next/1.m4s?sig=1
 #EXTINF:4,
 next/2.m4s
 #EXT-X-ENDLIST
-`), "https://cdn.test/films/a/index.m3u8?token=9")
+`), "https://cdn.test/films/a/index.m3u8?token=9", 0)
 	if err != nil || len(plan.Renditions) != 1 || len(plan.Next) != 0 {
 		t.Fatalf("%+v, %v", plan, err)
 	}

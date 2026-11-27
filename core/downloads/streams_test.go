@@ -401,3 +401,44 @@ func TestAStreamIsNamedAfterItsPage(t *testing.T) {
 		t.Fatalf("%+v", it)
 	}
 }
+
+// A link that asks for a quality, &q=<height> after its title, has its master playlist
+// saved at the quality closest to it, under the title; the same link with none, at its best.
+func TestAStreamIsSavedAtTheQualityItsLinkAsksFor(t *testing.T) {
+	r := newStreamRig(t)
+	r.on(func() {
+		r.m.NameBy(func(q engine.DownloadRequest) Naming {
+			return Naming{Mode: NamesAuto, Linked: LinkedTitle(q.URL), Title: "A page of films"}
+		})
+	})
+	master, err := os.ReadFile("../streams/testdata/split/master.m3u8")
+	if err != nil {
+		t.Fatal(err)
+	}
+	asked := func() string {
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		got := strings.Join(r.asked, " ")
+		r.asked = nil
+		return got
+	}
+	// 54 and 90 are its heights: 60 is closer to 54.
+	lesser := "/split/master.m3u8#pb-download=A%20small%20film&q=60"
+	r.extra[lesser] = string(master)
+	r.download(1, lesser, "master.m3u8", "application/vnd.apple.mpegurl")
+	if it := r.until("done", func(it Item) bool { return it.State != "progress" }); it.State != "done" || it.Name != "A small film.mp4" {
+		t.Fatalf("%+v", it)
+	}
+	if got := asked(); !strings.Contains(got, "/small/index.m3u8") || strings.Contains(got, "/split/video") {
+		t.Fatalf("asked for %s", got)
+	}
+	best := "/split/master.m3u8#pb-download=A%20film"
+	r.extra[best] = string(master)
+	r.download(2, best, "master.m3u8", "application/vnd.apple.mpegurl")
+	if it := r.until("done", func(it Item) bool { return it.State != "progress" }); it.State != "done" || it.Name != "A film.mp4" {
+		t.Fatalf("%+v", it)
+	}
+	if got := asked(); !strings.Contains(got, "/split/video.m3u8") || !strings.Contains(got, "/split/audio.m3u8") || strings.Contains(got, "/small/") {
+		t.Fatalf("asked for %s", got)
+	}
+}

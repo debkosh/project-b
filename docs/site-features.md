@@ -180,7 +180,11 @@ feature of ours:
   there while Chrome's own Download, from the page, got it (2026-11-27). The fragment never
   reaches the server. `#pb-download=<a title, percent-encoded>` is the same link carrying a
   title for its file, which the app uses only when the file's own name says nothing
-  (docs/daily-driver.md, "Naming downloads"): the name alone, never the ending. The suggested name is the server's, not the page's, so a page can't
+  (docs/daily-driver.md, "Naming downloads"): the name alone, never the ending. A stream's
+  link may end `&q=<height>` after the title (`#pb-download=<title>&q=720`, or
+  `#pb-download=&q=720` with none), the quality it would like of a playlist that holds
+  several: the app saves the one closest to it (docs/video-streams.md, "A quality asked
+  for"). The suggested name is the server's, not the page's, so a page can't
   pass a file off under another name, which is why Chromium ignores `download` there.
 - **The phone's welcome** has a step after Make it yours, "Extras for any page": a switch
   for each of the three system sparks, with its name and `@description`, all off

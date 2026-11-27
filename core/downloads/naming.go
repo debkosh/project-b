@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -149,20 +150,43 @@ func reads(run string) bool {
 // LinkedTitle is the title a download's address carries for it after #pb-download=, as a
 // page's video downloader writes it, or "".
 func LinkedTitle(address string) string {
+	title, _ := linked(address)
+	return title
+}
+
+// LinkedQuality is the height a download's address asks its stream to be saved at, the
+// &q=<height> that ends its #pb-download=<title>, or 0 for none: the best.
+func LinkedQuality(address string) int {
+	_, height := linked(address)
+	return height
+}
+
+// linked reads what an address carries after #pb-download=: a title, percent-encoded, and
+// then, or alone, &q= and a height in digits, the last thing in it. A title's own & is
+// percent-encoded, so one that isn't starts the quality only where digits alone follow.
+func linked(address string) (title string, height int) {
 	u, err := url.Parse(address)
 	if err != nil {
-		return ""
+		return "", 0
 	}
 	// The fragment as written: its title is percent-encoded.
 	raw, ok := strings.CutPrefix(u.EscapedFragment(), "pb-download=")
 	if !ok {
-		return ""
+		return "", 0
 	}
-	title, err := url.PathUnescape(raw)
+	if at := strings.LastIndex(raw, "&q="); at >= 0 {
+		// No more digits than a height has, and never 0.
+		if q := raw[at+len("&q="):]; len(q) <= 5 {
+			if n, err := strconv.ParseUint(q, 10, 32); err == nil && n > 0 {
+				raw, height = raw[:at], int(n)
+			}
+		}
+	}
+	title, err = url.PathUnescape(raw)
 	if err != nil {
-		return ""
+		return "", height
 	}
-	return title
+	return title, height
 }
 
 // Name is the name a download whose server calls it original goes by, and whether that is

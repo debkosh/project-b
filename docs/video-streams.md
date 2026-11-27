@@ -74,6 +74,19 @@ The spark keeps what it finds today, and adds streams:
   Chromium plays none.
 - **Which quality.** A media playlist is saved as it is. A master playlist is saved at its
   best quality: the highest resolution, then the highest bandwidth.
+- **A quality asked for.** The link that starts the download may say which quality it
+  wants, as a height: `#pb-download=<title>&q=<height>`, the title percent-encoded as
+  before and `&q=` with the height in digits the last thing in it; `#pb-download=&q=720`
+  where there is no title. The plain `#pb-download` and `#pb-download=<title>` mean what
+  they did, the best. A title's own `&` is percent-encoded, and anything after `&q=` but
+  digits leaves it all the title. A master playlist is then saved at the quality whose
+  height is closest to the one asked for, above or below; of two as close, the smaller; of
+  two of that height, the greater bandwidth. Its separate sound is joined as for the best.
+  A playlist that gives no heights is saved at its best, and a media playlist as it is. It
+  is a wish, not a rule, and only a height: the page can ask for nothing the playlist
+  doesn't hold (the owner, 2026-11-27: "closest to the chosen height; a tie goes to the
+  smaller"). Read in `core/downloads/naming.go` (`LinkedQuality`), chosen in
+  `core/streams` (`readMaster`, and `best` for DASH).
 - **Refused, plainly, in the download's row,** worded as any failed download is (ux,
   2026-11-27), and in a phone's bar as "Couldn't download *name*: live videos can't be
   saved yet" and so on:
@@ -125,6 +138,9 @@ MP4 fragments with a header piece.
   then the greatest bandwidth, and the best sound: the greatest bandwidth of the first
   `AdaptationSet` with sound, the stream's own first language. Only those in MP4; WebM
   ones are passed over. The two are joined into one regular MP4 with its index first.
+  With a quality asked for in the link (`&q=<height>`, above), the picture is the
+  `Representation` closest to that height by the same rule, in each `Period`, and the
+  sound is still the best.
 - **Its pieces** are named in any of DASH's ways: a `SegmentTemplate` with `$Number$` or
   `$Time$` (and `$RepresentationID$`, `$Bandwidth$`, a width as `$Number%05d$`), with one
   length for every piece or a `SegmentTimeline`; a `SegmentList`; or a `SegmentBase`, one
@@ -233,6 +249,10 @@ prompts do, "*site* wants to download several files", with Block and Allow (ux, 
   MP4 fragments, AES-128, separate sound, master playlists, live, protected), checking the
   quality chosen, the refusals, and that the MP4 has every frame in order, its length and
   both tracks.
+- The quality asked for: core/streams' tests of the closest height from above and below, a
+  tie to the smaller, none meaning the best, and a lesser quality saved with its separate
+  sound, for HLS and DASH; core/downloads' tests of the link's forms, old and new, and of
+  a row saved at the quality its link asks for.
 - The fetch's rules: a test that a piece on a private address from a public playlist is
   refused, and that only `http` and `https` are fetched.
 - The page-download limit: a test of first, second and clicked downloads.

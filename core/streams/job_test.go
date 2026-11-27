@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -40,6 +41,8 @@ type rig struct {
 	// extra are playlists written for a test, by path; alias other paths for a file.
 	extra map[string]string
 	alias map[string]string
+	// height is the quality the next stream started is asked for at, 0 for its best.
+	height int
 
 	fetches map[engine.FetchID]context.CancelFunc
 	wanted  []engine.FetchRequest
@@ -152,7 +155,7 @@ type saved struct {
 func (r *rig) start(path string, space engine.AddressSpace, fetched bool) *saved {
 	r.t.Helper()
 	s := &saved{out: filepath.Join(r.dir, "out.mp4")}
-	src := Source{URL: r.server.URL + path, Page: "https://video.test/watch?v=1", Workspace: "w1", Space: space}
+	src := Source{URL: r.server.URL + path, Page: "https://video.test/watch?v=1", Workspace: "w1", Space: space, Height: r.height}
 	if strings.HasSuffix(path, ".mpd") {
 		src.Kind = DASH
 	}
@@ -377,10 +380,93 @@ func TestTheBestQuality(t *testing.T) {
 		{"#EXT-X-STREAM-INF:BANDWIDTH=500,RESOLUTION=1920x1080\na.m3u8\n#EXT-X-STREAM-INF:BANDWIDTH=800,RESOLUTION=1920x1080\nb.m3u8\n", "b.m3u8"},
 		{"#EXT-X-STREAM-INF:BANDWIDTH=300\na.m3u8\n#EXT-X-STREAM-INF:BANDWIDTH=800\nb.m3u8\n#EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=9000,RESOLUTION=3840x2160,URI=\"i.m3u8\"\n", "b.m3u8"},
 	} {
-		plan, err := ReadHLS([]byte("#EXTM3U\n"+c.list), "https://cdn.test/v/master.m3u8?token=1")
+		plan, err := ReadHLS([]byte("#EXTM3U\n"+c.list), "https://cdn.test/v/master.m3u8?token=1", 0)
 		if err != nil || len(plan.Next) != 1 || plan.Next[0] != "https://cdn.test/v/"+c.best {
 			t.Errorf("%q: %+v, %v", c.list, plan, err)
 		}
+	}
+}
+
+// With a height asked for, a master playlist's quality is the one whose height is closest to
+// it, above or below, the smaller of two as close, and the highest bandwidth of that
+// height; with none it is the best, as it is where the playlist gives no heights.
+func TestTheQualityClosestToTheHeightAskedFor(t *testing.T) {
+	const ladder = "#EXT-X-STREAM-INF:BANDWIDTH=900,RESOLUTION=640x360\n360.m3u8\n" +
+		"#EXT-X-STREAM-INF:BANDWIDTH=500,RESOLUTION=1920x1080\n1080.m3u8\n" +
+		"#EXT-X-STREAM-INF:BANDWIDTH=300,RESOLUTION=1280x720\n720-low.m3u8\n" +
+		"#EXT-X-STREAM-INF:BANDWIDTH=700,RESOLUTION=1280x720\n720.m3u8\n" +
+		"#EXT-X-STREAM-INF:BANDWIDTH=9000\nno-height.m3u8\n"
+	for _, c := range []struct {
+		list   string
+		height int
+		want   string
+	}{
+		{ladder, 0, "1080.m3u8"},
+		{ladder, 1080, "1080.m3u8"},
+		{ladder, 720, "720.m3u8"},
+		// Closest from above and from below.
+		{ladder, 480, "360.m3u8"},
+		{ladder, 600, "720.m3u8"},
+		{ladder, 800, "720.m3u8"},
+		{ladder, 1000, "1080.m3u8"},
+		// As close to 360 as to 720, and to 720 as to 1080: the smaller.
+		{ladder, 540, "360.m3u8"},
+		{ladder, 900, "720.m3u8"},
+		// Beyond either end.
+		{ladder, 144, "360.m3u8"},
+		{ladder, 2160, "1080.m3u8"},
+		// No heights to go by: the best.
+		{"#EXT-X-STREAM-INF:BANDWIDTH=300\na.m3u8\n#EXT-X-STREAM-INF:BANDWIDTH=800\nb.m3u8\n", 360, "b.m3u8"},
+	} {
+		plan, err := ReadHLS([]byte("#EXTM3U\n"+c.list), "https://cdn.test/v/master.m3u8?token=1", c.height)
+		if err != nil || len(plan.Next) != 1 || plan.Next[0] != "https://cdn.test/v/"+c.want {
+			t.Errorf("asked for %d: %+v, %v, want %s", c.height, plan, err, c.want)
+		}
+	}
+	// A lesser quality's own sound is the one that goes with it.
+	plan, err := ReadHLS([]byte("#EXTM3U\n"+
+		"#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID=\"hi\",NAME=\"Hi\",DEFAULT=YES,URI=\"sound-hi.m3u8\"\n"+
+		"#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID=\"lo\",NAME=\"Lo\",DEFAULT=YES,URI=\"sound-lo.m3u8\"\n"+
+		"#EXT-X-STREAM-INF:BANDWIDTH=500,RESOLUTION=1920x1080,AUDIO=\"hi\"\n1080.m3u8\n"+
+		"#EXT-X-STREAM-INF:BANDWIDTH=300,RESOLUTION=854x480,AUDIO=\"lo\"\n480.m3u8\n"), "https://cdn.test/v/master.m3u8", 360)
+	if want := []string{"https://cdn.test/v/480.m3u8", "https://cdn.test/v/sound-lo.m3u8"}; err != nil || !reflect.DeepEqual(plan.Next, want) {
+		t.Errorf("%+v, %v, want %v", plan, err, want)
+	}
+}
+
+// A master playlist saved at a lesser quality still has its separate sound joined to it,
+// and with no height asked for it is saved at its best.
+func TestALesserQualityIsSavedWithItsSound(t *testing.T) {
+	r := newRig(t)
+	// The better picture is whole in itself; the lesser has its sound in a playlist apart.
+	r.extra["/master.m3u8"] = "#EXTM3U\n#EXT-X-VERSION:7\n" +
+		"#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID=\"sound\",NAME=\"Tone\",DEFAULT=YES,URI=\"split/audio.m3u8\"\n" +
+		"#EXT-X-STREAM-INF:BANDWIDTH=900000,RESOLUTION=1920x1080\nts/index.m3u8\n" +
+		"#EXT-X-STREAM-INF:BANDWIDTH=60000,RESOLUTION=640x360,AUDIO=\"sound\"\nsplit/video.m3u8\n"
+	r.height = 480
+	s := r.save("/master.m3u8", engine.SpaceLoopback)
+	if s.err != nil {
+		t.Fatal(s.err)
+	}
+	got := sameTracks(t, s.out, expected(t, "split"), true)
+	if got.Tracks[0].Kind != "vide" || got.Tracks[1].Kind != "soun" {
+		t.Errorf("tracks %s, %s", got.Tracks[0].Kind, got.Tracks[1].Kind)
+	}
+	asked := strings.Join(r.requests(), " ")
+	if !strings.Contains(asked, "/split/video.m3u8 ") || !strings.Contains(asked, "/split/audio.m3u8 ") || strings.Contains(asked, "/ts/") {
+		t.Errorf("asked for %s", asked)
+	}
+
+	// The same playlist with no height asked for: its best.
+	r = newRig(t)
+	r.extra["/master.m3u8"] = "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=900000,RESOLUTION=1920x1080\nts/index.m3u8\n#EXT-X-STREAM-INF:BANDWIDTH=60000,RESOLUTION=640x360\nsmall/index.m3u8\n"
+	s = r.save("/master.m3u8", engine.SpaceLoopback)
+	if s.err != nil {
+		t.Fatal(s.err)
+	}
+	same(t, s.out, expected(t, "ts"))
+	if asked := strings.Join(r.requests(), " "); strings.Contains(asked, "small") {
+		t.Errorf("asked for %s", asked)
 	}
 }
 

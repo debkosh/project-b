@@ -123,12 +123,13 @@ func Sniff(head []byte) Kind {
 // SniffLength is how many of a file's first bytes Sniff needs.
 const SniffLength = 1024
 
-// Read reads a playlist of kind fetched from the address base.
-func Read(kind Kind, body []byte, base string) (*Plan, error) {
+// Read reads a playlist of kind fetched from the address base, for the quality closest to
+// height, or with 0 the best.
+func Read(kind Kind, body []byte, base string, height int) (*Plan, error) {
 	if kind == DASH {
-		return ReadDASH(body, base)
+		return ReadDASH(body, base, height)
 	}
-	return ReadHLS(body, base)
+	return ReadHLS(body, base, height)
 }
 
 // NameOf is the name a stream's MP4 goes by: the playlist's own, as its server or its

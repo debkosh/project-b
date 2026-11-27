@@ -106,4 +106,33 @@ func TestOnlyTheNameComesFromThePage(t *testing.T) {
 			t.Errorf("%s carries %q, want %q", address, got, want)
 		}
 	}
+	// A quality rides after the title, &q= and a height, or alone; the forms without one
+	// read as they did.
+	for address, want := range map[string]struct {
+		title  string
+		height int
+	}{
+		"https://cdn.test/v/master.m3u8#pb-download":                          {"", 0},
+		"https://cdn.test/v/master.m3u8#pb-download=Big%20Buck%20Bunny":       {"Big Buck Bunny", 0},
+		"https://cdn.test/v/master.m3u8#pb-download=Big%20Buck%20Bunny&q=720": {"Big Buck Bunny", 720},
+		"https://cdn.test/v/master.m3u8?a=1#pb-download=&q=480":               {"", 480},
+		"https://cdn.test/v/master.m3u8#pb-download&q=480":                    {"", 0},
+		"https://cdn.test/v/master.m3u8#q=480":                                {"", 0},
+		// A title's own & and = are percent-encoded, and stay the title's.
+		"https://cdn.test/v/master.m3u8#pb-download=R%26q%3D360&q=1080": {"R&q=360", 1080},
+		"https://cdn.test/v/master.m3u8#pb-download=R%26q%3D360":        {"R&q=360", 0},
+		// Only digits, the last thing in it, are a quality: anything else is the title.
+		"https://cdn.test/v/master.m3u8#pb-download=Tom%20&%20Jerry": {"Tom & Jerry", 0},
+		"https://cdn.test/v/master.m3u8#pb-download=A&q=best":        {"A&q=best", 0},
+		"https://cdn.test/v/master.m3u8#pb-download=A&q=720&more":    {"A&q=720&more", 0},
+		"https://cdn.test/v/master.m3u8#pb-download=A&q=0":           {"A&q=0", 0},
+		"https://cdn.test/v/master.m3u8#pb-download=A&q=-720":        {"A&q=-720", 0},
+		"https://cdn.test/v/master.m3u8#pb-download=A&q=1234567":     {"A&q=1234567", 0},
+		"https://cdn.test/v/master.m3u8#pb-download=A&q=360&q=720":   {"A&q=360", 720},
+		"https://cdn.test/v/master.m3u8#pb-download=%zz&q=720":       {"", 0},
+	} {
+		if title, height := LinkedTitle(address), LinkedQuality(address); title != want.title || height != want.height {
+			t.Errorf("%s carries %q at %d, want %q at %d", address, title, height, want.title, want.height)
+		}
+	}
 }

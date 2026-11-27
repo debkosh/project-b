@@ -18,7 +18,9 @@ type Fetcher interface {
 // Source is the stream to save: the kind of its playlist (HLS when none is said), the
 // playlist's address, what the playlist holds when a download brought it (nil has the job
 // fetch it), the page it is fetched as from and the workspace whose storage it is fetched
-// in, and where the playlist's server is, which is where its pieces are asked from.
+// in, and where the playlist's server is, which is where its pieces are asked from. Height
+// is the quality wanted of a playlist that holds several, the one closest to it (the smaller
+// of two as close); 0 is the best.
 type Source struct {
 	Kind      Kind
 	URL       string
@@ -26,6 +28,7 @@ type Source struct {
 	Page      string
 	Workspace string
 	Space     engine.AddressSpace
+	Height    int
 }
 
 // Config is a job's source, where it works and where the MP4 goes, and what it tells.
@@ -239,10 +242,10 @@ func (j *Job) small(address, span string, from engine.AddressSpace, then func(bo
 	})
 }
 
-// read takes the stream's playlist: a media playlist's pieces, or a master playlist's best
-// quality, whose own playlists are fetched next, each from where the master's server is.
+// read takes the stream's playlist: a media playlist's pieces, or a master playlist's
+// quality, its best or the one closest to the height wanted, whose own playlists are fetched next, each from where the master's server is.
 func (j *Job) read(body []byte, base string, space engine.AddressSpace) {
-	plan, err := Read(j.c.Kind, body, base)
+	plan, err := Read(j.c.Kind, body, base, j.c.Height)
 	if err != nil {
 		j.fail(err)
 		return
@@ -260,7 +263,7 @@ func (j *Job) read(body []byte, base string, space engine.AddressSpace) {
 	left := len(plan.Next)
 	for i, next := range plan.Next {
 		j.small(next, "", space, func(body []byte, got engine.Fetched) {
-			p, err := ReadHLS(body, got.URL)
+			p, err := ReadHLS(body, got.URL, 0)
 			if err == nil && len(p.Renditions) != 1 {
 				err = ErrFormat
 			}

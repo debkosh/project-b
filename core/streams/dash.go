@@ -13,12 +13,13 @@ import (
 )
 
 // ReadDASH reads a DASH playlist (an MPD) fetched from the address base: its best picture,
-// the Representation of the greatest height and then the greatest bandwidth, and its best
-// sound, each a rendition of MP4 fragments. A live one (type="dynamic") is ErrLive, and one
+// the Representation of the greatest height and then the greatest bandwidth, or with a
+// height asked for (0 is none) the one closest to it, and its best sound, each a rendition
+// of MP4 fragments. A live one (type="dynamic") is ErrLive, and one
 // with any ContentProtection is ErrProtected. Each Period is a run of its own. Pieces are
 // named by a SegmentTemplate ($Number$ or $Time$, with a duration or a SegmentTimeline), a
 // SegmentList, or a SegmentBase, whose pieces the file's own index gives (Indexed).
-func ReadDASH(body []byte, base string) (*Plan, error) {
+func ReadDASH(body []byte, base string, height int) (*Plan, error) {
 	from, err := url.Parse(base)
 	if err != nil {
 		return nil, ErrFormat
@@ -57,7 +58,7 @@ func ReadDASH(body []byte, base string) (*Plan, error) {
 			length = d.Seconds()
 		}
 		at := within(from, p.BaseURLs)
-		v, a := best(p, "video"), best(p, "audio")
+		v, a := best(p, "video", height), best(p, "audio", 0)
 		for _, c := range []struct {
 			into *Rendition
 			rep  *mpd.RepresentationType
@@ -100,14 +101,23 @@ func within(from *url.URL, bases []*mpd.BaseURLType) *url.URL {
 // best is a period's best Representation of a kind, "video" or "audio", among those in
 // MP4: for a picture the greatest height and then the greatest bandwidth; for sound the
 // greatest bandwidth of the first AdaptationSet that has sound, the stream's own first
-// choice of language.
-func best(p *mpd.Period, kind string) *mpd.RepresentationType {
+// choice of language. With a height asked for, the picture is the one whose height is
+// closest to it, the smaller of two as close, and the greatest bandwidth of that height;
+// where none says its height, the best.
+func best(p *mpd.Period, kind string, asked int) *mpd.RepresentationType {
+	if asked > 0 {
+		for _, a := range p.AdaptationSets {
+			for _, r := range a.Representations {
+				if height(r) > 0 {
+					return closest(p, kind, asked)
+				}
+			}
+		}
+	}
 	var found *mpd.RepresentationType
 	for _, a := range p.AdaptationSets {
 		for _, r := range a.Representations {
-			mime := strings.ToLower(r.GetMimeType())
-			is := strings.EqualFold(string(a.ContentType), kind) || strings.HasPrefix(mime, kind+"/")
-			if !is || mime != "" && !strings.Contains(mime, "mp4") {
+			if !isKind(a, r, kind) {
 				continue
 			}
 			if found == nil || height(r) > height(found) || height(r) == height(found) && r.Bandwidth > found.Bandwidth {
@@ -119,6 +129,30 @@ func best(p *mpd.Period, kind string) *mpd.RepresentationType {
 		}
 	}
 	return found
+}
+
+// closest is a period's Representation of a kind in MP4 whose height is closest to asked.
+func closest(p *mpd.Period, kind string, asked int) *mpd.RepresentationType {
+	var found *mpd.RepresentationType
+	for _, a := range p.AdaptationSets {
+		for _, r := range a.Representations {
+			if !isKind(a, r, kind) || height(r) == 0 {
+				continue
+			}
+			h := int(height(r))
+			if found == nil || closer(h, int(height(found)), asked) || h == int(height(found)) && r.Bandwidth > found.Bandwidth {
+				found = r
+			}
+		}
+	}
+	return found
+}
+
+// isKind says whether a Representation is of a kind, "video" or "audio", and in MP4.
+func isKind(a *mpd.AdaptationSetType, r *mpd.RepresentationType, kind string) bool {
+	mime := strings.ToLower(r.GetMimeType())
+	is := strings.EqualFold(string(a.ContentType), kind) || strings.HasPrefix(mime, kind+"/")
+	return is && (mime == "" || strings.Contains(mime, "mp4"))
 }
 
 func height(r *mpd.RepresentationType) uint32 {

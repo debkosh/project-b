@@ -234,7 +234,7 @@ func TestWhatADASHPlaylistNames(t *testing.T) {
 			<Representation id="fr" mimeType="audio/mp4" bandwidth="256000"><BaseURL>fr/</BaseURL><SegmentList><SegmentURL media="1.m4s"/></SegmentList></Representation>
 		</AdaptationSet>
 		<AdaptationSet contentType="text"><Representation id="subs" mimeType="application/mp4" bandwidth="1000"><SegmentTemplate duration="2000"/></Representation></AdaptationSet>`)),
-		"https://cdn.test/v/manifest.mpd?token=1")
+		"https://cdn.test/v/manifest.mpd?token=1", 0)
 	if err != nil || len(plan.Renditions) != 2 || !plan.Renditions[0].PictureOnly || !plan.Renditions[1].SoundOnly {
 		t.Fatalf("%+v, %v", plan, err)
 	}
@@ -261,7 +261,7 @@ func TestWhatADASHPlaylistNames(t *testing.T) {
 		<Period id="b" duration="PT2S"><AdaptationSet mimeType="video/mp4"><Representation id="v" bandwidth="1" height="90">
 			<SegmentTemplate timescale="10" duration="10" media="b-$Number$$$.m4s" initialization="b.mp4"/>
 		</Representation></AdaptationSet></Period>
-	</MPD>`), "https://cdn.test/manifest.mpd")
+	</MPD>`), "https://cdn.test/manifest.mpd", 0)
 	if err != nil || len(plan.Renditions) != 1 || plan.Renditions[0].PictureOnly {
 		t.Fatalf("%+v, %v", plan, err)
 	}
@@ -272,11 +272,61 @@ func TestWhatADASHPlaylistNames(t *testing.T) {
 		t.Errorf("runs %d, %d, header %+v", p[3].Run, p[4].Run, p[4].Init)
 	}
 	// Nothing in MP4 to save, and what isn't a playlist.
-	if _, err := ReadDASH([]byte(mpdOf(`type="static" mediaPresentationDuration="PT2S"`, `<AdaptationSet contentType="video"><Representation id="w" mimeType="video/webm" bandwidth="1" height="90"><SegmentTemplate duration="1" media="$Number$.webm"/></Representation></AdaptationSet>`)), "https://cdn.test/m.mpd"); !errors.Is(err, ErrEmpty) {
+	if _, err := ReadDASH([]byte(mpdOf(`type="static" mediaPresentationDuration="PT2S"`, `<AdaptationSet contentType="video"><Representation id="w" mimeType="video/webm" bandwidth="1" height="90"><SegmentTemplate duration="1" media="$Number$.webm"/></Representation></AdaptationSet>`)), "https://cdn.test/m.mpd", 0); !errors.Is(err, ErrEmpty) {
 		t.Errorf("only WebM: %v", err)
 	}
-	if _, err := ReadDASH([]byte("<html><body>MPD</body></html>"), "https://cdn.test/m.mpd"); !errors.Is(err, ErrFormat) {
+	if _, err := ReadDASH([]byte("<html><body>MPD</body></html>"), "https://cdn.test/m.mpd", 0); !errors.Is(err, ErrFormat) {
 		t.Errorf("a page: %v", err)
+	}
+}
+
+// With a height asked for, a DASH stream's picture is the Representation whose height is
+// closest to it, the smaller of two as close and the greatest bandwidth of that height,
+// among those in MP4, and its best sound is joined all the same; with none, the best.
+func TestTheDASHQualityClosestToTheHeightAskedFor(t *testing.T) {
+	list := mpdOf(`type="static" mediaPresentationDuration="PT2S"`, `
+		<AdaptationSet contentType="video">
+			<SegmentTemplate duration="2" initialization="$RepresentationID$/init.mp4" media="$RepresentationID$/$Number$.m4s"/>
+			<Representation id="360" mimeType="video/mp4" bandwidth="900000" width="640" height="360"/>
+			<Representation id="webm" mimeType="video/webm" bandwidth="9000000" width="854" height="480"/>
+			<Representation id="1080" mimeType="video/mp4" bandwidth="500000" width="1920" height="1080"/>
+			<Representation id="720-low" mimeType="video/mp4" bandwidth="100000" width="1280" height="720"/>
+			<Representation id="720" mimeType="video/mp4" bandwidth="300000" width="1280" height="720"/>
+		</AdaptationSet>
+		<AdaptationSet contentType="audio">
+			<SegmentTemplate duration="2" initialization="$RepresentationID$/init.mp4" media="$RepresentationID$/$Number$.m4s"/>
+			<Representation id="a1" mimeType="audio/mp4" bandwidth="64000"/>
+			<Representation id="a2" mimeType="audio/mp4" bandwidth="128000"/>
+		</AdaptationSet>`)
+	for _, c := range []struct {
+		height int
+		want   string
+	}{
+		{0, "1080"}, {1080, "1080"}, {720, "720"}, {360, "360"},
+		// Closest from above and from below; WebM's 480 is passed over.
+		{480, "360"}, {600, "720"}, {800, "720"}, {1000, "1080"},
+		// As close to both: the smaller.
+		{540, "360"}, {900, "720"},
+		{144, "360"}, {2160, "1080"},
+	} {
+		plan, err := ReadDASH([]byte(list), "https://cdn.test/v/manifest.mpd", c.height)
+		if err != nil || len(plan.Renditions) != 2 || !plan.Renditions[0].PictureOnly || !plan.Renditions[1].SoundOnly {
+			t.Fatalf("asked for %d: %+v, %v", c.height, plan, err)
+		}
+		if got := plan.Renditions[0].Pieces[0].URL; got != "https://cdn.test/v/"+c.want+"/1.m4s" {
+			t.Errorf("asked for %d: the picture is %s, want %s", c.height, got, c.want)
+		}
+		if got := plan.Renditions[1].Pieces[0].URL; got != "https://cdn.test/v/a2/1.m4s" {
+			t.Errorf("asked for %d: the sound is %s", c.height, got)
+		}
+	}
+	// Where no Representation says its height, the best.
+	plan, err := ReadDASH([]byte(mpdOf(`type="static" mediaPresentationDuration="PT2S"`, `
+		<AdaptationSet contentType="video"><SegmentTemplate duration="2" media="$RepresentationID$/$Number$.m4s"/>
+			<Representation id="less" mimeType="video/mp4" bandwidth="1000"/><Representation id="more" mimeType="video/mp4" bandwidth="9000"/>
+		</AdaptationSet>`)), "https://cdn.test/v/manifest.mpd", 360)
+	if err != nil || plan.Renditions[0].Pieces[0].URL != "https://cdn.test/v/more/1.m4s" {
+		t.Errorf("%+v, %v", plan, err)
 	}
 }
 
