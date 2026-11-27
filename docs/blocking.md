@@ -404,6 +404,11 @@ So the package is split by list, and a list that changed sends only its change:
   compile in 51 ms to a 6.4 MB engine, which loads in 1 ms; a request check takes 1.7 µs,
   a page's parts 85 µs. The library is 2.9 MB on the Mac and 3.3 MB for Android arm64 before
   the APK's compression. A phone is perhaps five to ten times slower; to be measured on one.
+- **Measured on a phone** (emu-37, Android 17, 2026-11-27, drive_android's blocking part):
+  the default lists compile in 2 to 91 ms a group (ads 5.7 MB, trackers 2.7 MB, uBO badware
+  0.2 MB, URLhaus 15.1 MB, phishing 2.9 MB). The app's total PSS, loaded from disk, is 164 MB
+  with Warn before dangerous sites on and 130 MB with it off: the Safe Browsing lists cost
+  about 34 MB, 18 MB of it native heap, nearly all URLhaus.
 - **Loaded by copy.** adblock-rust copies the serialized engine into its own memory, so a
   group costs about its file's size in the browser process; mapping the file would save
   nothing.
