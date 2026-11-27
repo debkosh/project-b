@@ -44,6 +44,8 @@ ADB = [SDK + "/platform-tools/adb", "-s", os.environ.get("ADB_SERIAL", "emulator
 APK = os.environ.get("PB_APK") or ROOT + "/build/android/project-b-content.apk"
 PACKAGE = "dev.projectb.browser"
 ACTIVITY = ".BrowserActivity"
+# The app's name, as the launcher and the recent apps show it.
+APP_NAME = "Project B"
 PROFILE = "app_project_b/profile"
 OUT = os.environ.get("OUT", ROOT + "/build/android-drive-content")
 FIELD = "android.widget.EditText"  # The address field is the shell's only text field.
@@ -1284,12 +1286,74 @@ def in_front_now():
     return adb("shell", "dumpsys", "window", "displays").split("mCurrentFocus", 1)[-1].split("\n", 1)[0]
 
 
+def in_recents():
+    """Whether the app has a task in the recent apps. Android 10 writes a task's app as
+    A=<package>, later ones as A=<uid>:<package>."""
+    said = adb("shell", "dumpsys", "activity", "recents")
+    return re.search(r"Recent #\d+: Task\w*\{[^\n]*A=(\d+:)?" + re.escape(PACKAGE) + r"[ }]", said) is not None
+
+
+def recent_cards():
+    """The cards in the recent apps on screen, each a (node, title) pair, the title None where
+    the launcher names none, as Android 10's. Empty while the screen can't be read."""
+    out = adb("exec-out", "uiautomator", "dump", "/dev/tty")
+    if "</hierarchy>" not in out:
+        return []
+    root = ET.fromstring(out[:out.rindex("</hierarchy>") + len("</hierarchy>")])
+    cards = []
+    for node in root.iter("node"):
+        rid = node.get("resource-id", "")
+        if rid.endswith(":id/task_view_single") or (rid.endswith(":id/snapshot") and not cards_hold(cards, node)):
+            titles = [t.get("text") or t.get("content-desc") for t in node.iter("node") if t.get("resource-id", "").endswith(":id/icon_title")]
+            cards.append((node, titles[0] if titles else None))
+    return cards
+
+
+def cards_hold(cards, node):
+    """Whether node lies inside one of the cards already found."""
+    l, t, r, b = box(node)
+    return any(cl <= l and ct <= t and r <= cr and b <= cb for cl, ct, cr, cb in (box(c) for c, _ in cards))
+
+
 def swipe_away():
-    """Swipes the app away from the recent apps, as a person closes it."""
-    adb("shell", "input", "keyevent", "KEYCODE_APP_SWITCH")
-    time.sleep(2)
-    adb("shell", "input", "swipe", "540", "1200", "540", "200", "300")
-    until(lambda: "BrowserActivity" not in in_front_now(), 10)
+    """Swipes the app away from the recent apps, as a person closes it, and makes sure it went.
+    Android 17's launcher may open the recent apps at their oldest end, with another app's card
+    in the middle, a slow drag there springs back, and with other emulators busy its dismissal
+    may be dropped: the swipe took another app's card, or none, and the app ran on in front of
+    nothing, so a check of what it does once closed passed or failed for an app that was never
+    closed. The recent apps are opened from Home, so that the app's card is its picture, not
+    the app still drawing under it, whose dismissal Android 17 dropped again and again; its
+    card is found by the app's name where the launcher names cards, else it is the one in the
+    middle, as on Android 10, whose recent apps open on the app; it is flicked, and the whole
+    is done again while the app is still among the recent apps."""
+    for _ in range(4):
+        adb("shell", "input", "keyevent", "KEYCODE_HOME")
+        time.sleep(1)
+        adb("shell", "input", "keyevent", "KEYCODE_APP_SWITCH")
+        card = None
+        for _ in range(12):
+            # The recent apps still opening or scrolling: the cards move between two reads.
+            cards = until(lambda: recent_cards(), 10) or []
+            time.sleep(1)
+            again = recent_cards()
+            if not cards or [box(c) for c, _ in cards] != [box(c) for c, _ in again]:
+                continue
+            named = [c for c, title in again if title == APP_NAME]
+            if named:
+                card = named[0]
+                break
+            if all(title is None for _, title in again):
+                card = next((c for c, _ in again if box(c)[0] < 540 < box(c)[2]), None)
+                break
+            # The newest card is at the end away from Clear all.
+            adb("shell", "input", "swipe", "900", "1100", "100", "1100", "150")
+        if card is None:
+            continue
+        x, y = middle(card)
+        adb("shell", "input", "swipe", str(x), str(y), str(x), "50", "120")
+        if until(lambda: not in_recents(), 6):
+            return
+    raise TimeoutError("the app's card never left the recent apps")
 
 
 def download_outlives_screen():
