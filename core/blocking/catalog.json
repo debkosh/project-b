@@ -1,0 +1,1368 @@
+{
+  "groups": [
+    {
+      "id": "ads",
+      "title": "Ads",
+      "about": "Ads, and the scripts and frames that serve them.",
+      "blocker": "network",
+      "shown": true
+    },
+    {
+      "id": "trackers",
+      "title": "Trackers",
+      "about": "Scripts and pixels that follow you from site to site.",
+      "blocker": "network",
+      "shown": true
+    },
+    {
+      "id": "regional",
+      "title": "Regional",
+      "about": "Ads on sites in one language or country. The lists for your languages are on.",
+      "blocker": "network",
+      "shown": true
+    },
+    {
+      "id": "annoyances",
+      "title": "Annoyances",
+      "about": "Cookie notices, pop-ups, newsletter boxes, app banners and social widgets.",
+      "blocker": "network",
+      "shown": true
+    },
+    {
+      "id": "extreme",
+      "title": "Extreme",
+      "about": "These block more and may break some sites.",
+      "blocker": "network",
+      "shown": true
+    },
+    {
+      "id": "malware",
+      "title": "Dangerous sites: malware",
+      "about": "Sites that spread malware or unwanted software.",
+      "blocker": "safe",
+      "shown": true
+    },
+    {
+      "id": "phishing",
+      "title": "Dangerous sites: phishing",
+      "about": "Sites that try to steal your passwords or payment details.",
+      "blocker": "safe",
+      "shown": true
+    },
+    {
+      "id": "test",
+      "title": "Test",
+      "about": "Our own test lists, for the app's checks.",
+      "blocker": "both",
+      "shown": false
+    }
+  ],
+  "lists": [
+    {
+      "id": "easylist",
+      "title": "EasyList",
+      "about": "The main list of ads on English-language and international sites.",
+      "group": "ads",
+      "on": true,
+      "sources": [
+        {
+          "url": "https://easylist.to/easylist/easylist.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "GPL-3.0-or-later OR CC-BY-SA-3.0",
+      "home": "https://easylist.to/",
+      "brave": "default"
+    },
+    {
+      "id": "ubo-filters",
+      "title": "uBlock Origin filters",
+      "about": "uBlock Origin's own ad rules, with its fixes for sites that fight ad blockers.",
+      "group": "ads",
+      "on": true,
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters.txt",
+          "format": "standard"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters-2020.txt",
+          "format": "standard"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters-2021.txt",
+          "format": "standard"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters-2022.txt",
+          "format": "standard"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters-2023.txt",
+          "format": "standard"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters-2024.txt",
+          "format": "standard"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters-2025.txt",
+          "format": "standard"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters-2026.txt",
+          "format": "standard"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters-general.txt",
+          "format": "standard"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/ubo-link-shorteners.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "GPL-3.0",
+      "home": "https://github.com/uBlockOrigin/uAssets",
+      "brave": "default"
+    },
+    {
+      "id": "ubo-unbreak",
+      "title": "uBlock Origin unbreak",
+      "about": "Exceptions and quick fixes for sites the other lists break.",
+      "group": "ads",
+      "on": true,
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/unbreak.txt",
+          "format": "standard"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/quick-fixes.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "GPL-3.0",
+      "home": "https://github.com/uBlockOrigin/uAssets",
+      "brave": "default"
+    },
+    {
+      "id": "brave-unbreak",
+      "title": "Brave unbreak",
+      "about": "Brave's exceptions for sites the other lists break.",
+      "group": "ads",
+      "on": true,
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/brave/adblock-lists/master/brave-unbreak.txt",
+          "format": "standard"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/brave/adblock-lists/master/brave-lists/brave-unbreak.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "MPL-2.0",
+      "home": "https://github.com/brave/adblock-lists",
+      "brave": "default"
+    },
+    {
+      "id": "brave-firstparty",
+      "title": "Brave first-party ads",
+      "about": "Ads a site serves from its own address, which the other lists leave alone.",
+      "group": "ads",
+      "on": true,
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/brave/adblock-lists/master/brave-lists/brave-firstparty.txt",
+          "format": "standard"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/brave/adblock-lists/master/brave-lists/brave-firstparty-regional.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "MPL-2.0",
+      "home": "https://github.com/brave/adblock-lists",
+      "brave": "E99CBD02-FFD1-4651-9BDD-6A9ED7B87819"
+    },
+    {
+      "id": "pb-hosts",
+      "title": "Project B hosts",
+      "about": "Project B's own short list of hosts that serve only ads or tracking.",
+      "group": "ads",
+      "on": true,
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/debkosh/project-b/main/core/adblock/hosts.txt",
+          "format": "hosts"
+        }
+      ],
+      "licence": "MIT",
+      "home": "https://github.com/debkosh/project-b"
+    },
+    {
+      "id": "easyprivacy",
+      "title": "EasyPrivacy",
+      "about": "Tracking scripts, pixels and analytics.",
+      "group": "trackers",
+      "on": true,
+      "sources": [
+        {
+          "url": "https://easylist.to/easylist/easyprivacy.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "GPL-3.0-or-later OR CC-BY-SA-3.0",
+      "home": "https://easylist.to/",
+      "brave": "4D715457-307C-4383-8873-73A2FD263F71"
+    },
+    {
+      "id": "ubo-privacy",
+      "title": "uBlock Origin privacy",
+      "about": "uBlock Origin's rules against tracking and fingerprinting.",
+      "group": "trackers",
+      "on": true,
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/privacy.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "GPL-3.0",
+      "home": "https://github.com/uBlockOrigin/uAssets",
+      "brave": "4D715457-307C-4383-8873-73A2FD263F71"
+    },
+    {
+      "id": "peter-lowe",
+      "title": "Peter Lowe's list",
+      "about": "A long-kept list of ad and tracking servers.",
+      "group": "trackers",
+      "on": true,
+      "sources": [
+        {
+          "url": "https://pgl.yoyo.org/adservers/serverlist.php?hostformat=hosts&showintro=1&mimetype=plaintext",
+          "format": "hosts"
+        }
+      ],
+      "licence": "unconfirmed",
+      "home": "https://pgl.yoyo.org/adservers/"
+    },
+    {
+      "id": "brave-sugarcoat",
+      "title": "Brave SugarCoat",
+      "about": "Tracking scripts some sites need, swapped for harmless stand-ins.",
+      "group": "trackers",
+      "on": true,
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/brave/adblock-lists/master/brave-lists/brave-sugarcoat.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "MPL-2.0",
+      "home": "https://github.com/brave-experiments/sugarcoat-pipeline",
+      "brave": "default"
+    },
+    {
+      "id": "regional-ar",
+      "title": "Arabic",
+      "about": "Ads on Arabic sites.",
+      "group": "regional",
+      "on": false,
+      "languages": [
+        "ar"
+      ],
+      "sources": [
+        {
+          "url": "https://easylist-downloads.adblockplus.org/Liste_AR.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "CC-BY-SA-3.0",
+      "home": "https://code.google.com/p/liste-ar-adblock/",
+      "brave": "9FCEECEC-52B4-4487-8E57-8781E82C91D0"
+    },
+    {
+      "id": "regional-bg",
+      "title": "Bulgarian",
+      "about": "Ads on Bulgarian sites.",
+      "group": "regional",
+      "on": false,
+      "languages": [
+        "bg"
+      ],
+      "sources": [
+        {
+          "url": "https://stanev.org/abp/adblock_bg.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "unconfirmed",
+      "home": "https://stanev.org/abp",
+      "brave": "FD176DD1-F9A0-4469-B43E-B1764893DD5C"
+    },
+    {
+      "id": "regional-zh",
+      "title": "Chinese",
+      "about": "Ads on Chinese sites.",
+      "group": "regional",
+      "on": false,
+      "languages": [
+        "zh"
+      ],
+      "sources": [
+        {
+          "url": "https://filters.adtidy.org/extension/ublock/filters/224.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "GPL-3.0",
+      "home": "https://github.com/AdguardTeam/AdguardFilters",
+      "brave": "92AA0D3B-34AC-4657-9A5C-DBAD339AF8E2"
+    },
+    {
+      "id": "regional-cs-sk",
+      "title": "Czech and Slovak",
+      "about": "Ads on Czech and Slovak sites.",
+      "group": "regional",
+      "on": false,
+      "languages": [
+        "cs",
+        "sk"
+      ],
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/tomasko126/easylistczechandslovak/master/filters.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "CC-BY-SA-4.0",
+      "home": "https://github.com/tomasko126/easylistczechandslovak",
+      "brave": "7CCB6921-7FDA-4A9B-B70A-12DD0A8F08EA"
+    },
+    {
+      "id": "regional-nl",
+      "title": "Dutch",
+      "about": "Ads on Dutch sites.",
+      "group": "regional",
+      "on": false,
+      "languages": [
+        "nl"
+      ],
+      "sources": [
+        {
+          "url": "https://filters.adtidy.org/extension/ublock/filters/8.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "GPL-3.0",
+      "home": "https://github.com/AdguardTeam/AdguardFilters",
+      "brave": "9D644676-4784-4982-B94D-C9AB19098D2A"
+    },
+    {
+      "id": "regional-et",
+      "title": "Estonian",
+      "about": "Ads on Estonian sites.",
+      "group": "regional",
+      "on": false,
+      "languages": [
+        "et"
+      ],
+      "sources": [
+        {
+          "url": "https://ubo-et.lepik.io/list.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "CC0-1.0",
+      "home": "https://github.com/sander85/uBO-et",
+      "brave": "0783DBFD-B5E0-4982-9B4A-711BDDB925B7"
+    },
+    {
+      "id": "regional-fi",
+      "title": "Finnish",
+      "about": "Ads on Finnish sites.",
+      "group": "regional",
+      "on": false,
+      "languages": [
+        "fi"
+      ],
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/finnish-easylist-addition/finnish-easylist-addition/gh-pages/Finland_adb.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "Unlicense",
+      "home": "https://github.com/finnish-easylist-addition/finnish-easylist-addition",
+      "brave": "1C6D8556-3400-4358-B9AD-72689D7B2C46"
+    },
+    {
+      "id": "regional-fr",
+      "title": "French",
+      "about": "Ads on French sites.",
+      "group": "regional",
+      "on": false,
+      "languages": [
+        "fr"
+      ],
+      "sources": [
+        {
+          "url": "https://filters.adtidy.org/extension/ublock/filters/16.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "GPL-3.0",
+      "home": "https://github.com/AdguardTeam/AdguardFilters",
+      "brave": "9852EFC4-99E4-4F2D-A915-9C3196C7A1DE"
+    },
+    {
+      "id": "regional-de",
+      "title": "German",
+      "about": "Ads on German sites.",
+      "group": "regional",
+      "on": false,
+      "languages": [
+        "de"
+      ],
+      "sources": [
+        {
+          "url": "https://easylist-downloads.adblockplus.org/easylistgermany.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "GPL-3.0-or-later OR CC-BY-SA-3.0",
+      "home": "https://easylist.to/",
+      "brave": "E71426E7-E898-401C-A195-177945415F38"
+    },
+    {
+      "id": "regional-el",
+      "title": "Greek",
+      "about": "Ads on Greek sites.",
+      "group": "regional",
+      "on": false,
+      "languages": [
+        "el"
+      ],
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/kargig/greek-adblockplus-filter/master/void-gr-filters.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "CC-BY-SA-4.0",
+      "home": "https://github.com/kargig/greek-adblockplus-filter",
+      "brave": "6C0F4C7F-969B-48A0-897A-14583015A587"
+    },
+    {
+      "id": "regional-he",
+      "title": "Hebrew",
+      "about": "Ads on Hebrew sites.",
+      "group": "regional",
+      "on": false,
+      "languages": [
+        "he"
+      ],
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/easylist/EasyListHebrew/master/EasyListHebrew.txt",
+          "format": "standard"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/easylist/EasyListHebrew/refs/heads/master/EasyListHebrew-uBO.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "GPL-3.0-or-later OR CC-BY-SA-3.0",
+      "home": "https://github.com/easylist/EasyListHebrew",
+      "brave": "85F65E06-D7DA-4144-B6A5-E1AA965D1E47"
+    },
+    {
+      "id": "regional-in",
+      "title": "Indian languages",
+      "about": "Ads on Indian languages sites.",
+      "group": "regional",
+      "on": false,
+      "languages": [
+        "hi",
+        "bn",
+        "gu",
+        "kn",
+        "ml",
+        "mr",
+        "pa",
+        "ta",
+        "te"
+      ],
+      "sources": [
+        {
+          "url": "https://easylist-downloads.adblockplus.org/indianlist.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "GPL-3.0-or-later OR CC-BY-SA-3.0",
+      "home": "https://easylist.to/",
+      "brave": "4C07DB6B-6377-4347-836D-68702CF1494A"
+    },
+    {
+      "id": "regional-hu",
+      "title": "Hungarian",
+      "about": "Ads on Hungarian sites.",
+      "group": "regional",
+      "on": false,
+      "languages": [
+        "hu"
+      ],
+      "sources": [
+        {
+          "url": "https://cdn.jsdelivr.net/gh/hufilter/hufilter@gh-pages/hufilter-ublock.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "CC-BY-4.0",
+      "home": "https://hufilter.hu",
+      "brave": "EDEEE15A-6FA9-4FAC-8CA8-3565508EAAC3"
+    },
+    {
+      "id": "regional-is",
+      "title": "Icelandic",
+      "about": "Ads on Icelandic sites.",
+      "group": "regional",
+      "on": false,
+      "languages": [
+        "is"
+      ],
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/brave/adblock-lists/master/custom/is.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "MPL-2.0",
+      "home": "https://github.com/brave/adblock-lists",
+      "brave": "48796273-E783-431E-B864-44D3DCEA66DC"
+    },
+    {
+      "id": "regional-id",
+      "title": "Indonesian",
+      "about": "Ads on Indonesian sites.",
+      "group": "regional",
+      "on": false,
+      "languages": [
+        "id"
+      ],
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/heradhis/indonesianadblockrules/master/subscriptions/abpindo.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "GPL-3.0-or-later OR CC-BY-SA-3.0",
+      "home": "https://github.com/ABPindo/indonesianadblockrules",
+      "brave": "93123971-5AE6-47BA-93EA-BE1E4682E2B6"
+    },
+    {
+      "id": "regional-it",
+      "title": "Italian",
+      "about": "Ads on Italian sites.",
+      "group": "regional",
+      "on": false,
+      "languages": [
+        "it"
+      ],
+      "sources": [
+        {
+          "url": "https://easylist-downloads.adblockplus.org/easylistitaly.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "GPL-3.0-or-later OR CC-BY-SA-3.0",
+      "home": "https://easylist.to/",
+      "brave": "AB1A661D-E946-4F29-B47F-CA3885F6A9F7"
+    },
+    {
+      "id": "regional-ja",
+      "title": "Japanese",
+      "about": "Ads on Japanese sites.",
+      "group": "regional",
+      "on": false,
+      "languages": [
+        "ja"
+      ],
+      "sources": [
+        {
+          "url": "https://filters.adtidy.org/extension/ublock/filters/7.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "GPL-3.0",
+      "home": "https://github.com/AdguardTeam/AdguardFilters",
+      "brave": "03F91310-9244-40FA-BCF6-DA31B832F34D"
+    },
+    {
+      "id": "regional-ko",
+      "title": "Korean",
+      "about": "Ads on Korean sites.",
+      "group": "regional",
+      "on": false,
+      "languages": [
+        "ko"
+      ],
+      "sources": [
+        {
+          "url": "https://cdn.jsdelivr.net/npm/@filteringdev/filterslists-ko@latest/dist/filterslist-uBlockOrigin-classic.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "GPL-3.0",
+      "home": "https://github.com/FilteringDev/filterslists-KO",
+      "brave": "45B3ED40-C607-454F-A623-195FDD084637"
+    },
+    {
+      "id": "regional-lv",
+      "title": "Latvian",
+      "about": "Ads on Latvian sites.",
+      "group": "regional",
+      "on": false,
+      "languages": [
+        "lv"
+      ],
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/Latvian-List/adblock-latvian/master/lists/latvian-list.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "CC-BY-SA-4.0",
+      "home": "https://github.com/Latvian-List/adblock-latvian",
+      "brave": "15B64333-BAF9-4B77-ADC8-935433CD6F4C"
+    },
+    {
+      "id": "regional-lt",
+      "title": "Lithuanian",
+      "about": "Ads on Lithuanian sites.",
+      "group": "regional",
+      "on": false,
+      "languages": [
+        "lt"
+      ],
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/EasyList-Lithuania/easylist_lithuania/master/easylistlithuania.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "GPL-3.0",
+      "home": "https://github.com/EasyList-Lithuania/easylist_lithuania",
+      "brave": "4E8B1A63-DEBE-4B8B-AD78-3811C632B353"
+    },
+    {
+      "id": "regional-mk",
+      "title": "Macedonian",
+      "about": "Ads on Macedonian sites.",
+      "group": "regional",
+      "on": false,
+      "languages": [
+        "mk"
+      ],
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/DeepSpaceHarbor/Macedonian-adBlock-Filters/master/Filters",
+          "format": "standard"
+        }
+      ],
+      "licence": "MIT",
+      "home": "https://github.com/DeepSpaceHarbor/Macedonian-adBlock-Filters",
+      "brave": "7BC951C6-B0B8-4223-97FC-3C22605734FC"
+    },
+    {
+      "id": "regional-nordic",
+      "title": "Nordic",
+      "about": "Ads on Nordic sites.",
+      "group": "regional",
+      "on": false,
+      "languages": [
+        "nb",
+        "nn",
+        "no",
+        "da",
+        "is"
+      ],
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/DandelionSprout/adfilt/master/NorwegianList.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "LicenseRef-Dandelicence-1.4",
+      "home": "https://github.com/DandelionSprout/adfilt",
+      "brave": "8BEDBAA8-4FE2-4FEA-82F2-81B8124A4A74"
+    },
+    {
+      "id": "regional-fa",
+      "title": "Persian",
+      "about": "Ads on Persian sites.",
+      "group": "regional",
+      "on": false,
+      "languages": [
+        "fa"
+      ],
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/MasterKia/PersianBlocker/main/PersianBlocker-Deprecated.txt",
+          "format": "standard"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/MasterKia/PersianBlocker/main/PersianBlockerAds.txt",
+          "format": "standard"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/MasterKia/PersianBlocker/main/PersianBlockerTrackers.txt",
+          "format": "standard"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/MasterKia/PersianBlocker/main/PersianBlockerCensor.txt",
+          "format": "standard"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/MasterKia/PersianBlocker/main/PersianBlockerHalfPrice.txt",
+          "format": "standard"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/MasterKia/PersianBlocker/main/PersianBlockerMalware.txt",
+          "format": "standard"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/MasterKia/PersianBlocker/main/PersianBlockerPhishing.txt",
+          "format": "standard"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/MasterKia/PersianBlocker/main/PersianBlockerMobile.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "AGPL-3.0",
+      "home": "https://github.com/MasterKia/PersianBlocker",
+      "brave": "C3C2F394-D7BB-4BC2-9793-E0F13B2B5971"
+    },
+    {
+      "id": "regional-pl",
+      "title": "Polish",
+      "about": "Ads on Polish sites.",
+      "group": "regional",
+      "on": false,
+      "languages": [
+        "pl"
+      ],
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/MajkiIT/polish-ads-filter/master/polish-adblock-filters/adblock.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "CC-BY-NC-SA-4.0",
+      "home": "https://github.com/MajkiIT/polish-ads-filter",
+      "brave": "BF9234EB-4CB7-4CED-9FCB-F1FD31B0666C"
+    },
+    {
+      "id": "regional-ro",
+      "title": "Romanian",
+      "about": "Ads on Romanian sites.",
+      "group": "regional",
+      "on": false,
+      "languages": [
+        "ro"
+      ],
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/tcptomato/ROad-Block/master/road-block-filters-light.txt",
+          "format": "standard"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/tcptomato/ROad-Block/master/road-ubo.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "MIT",
+      "home": "https://github.com/tcptomato/ROad-Block",
+      "brave": "AD3E8454-F376-11E8-8EB2-F2801F1B9FD1"
+    },
+    {
+      "id": "regional-ru-adguard",
+      "title": "Russian (AdGuard)",
+      "about": "Ads on Russian sites, AdGuard's list.",
+      "group": "regional",
+      "on": false,
+      "languages": [],
+      "sources": [
+        {
+          "url": "https://filters.adtidy.org/extension/ublock/filters/1.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "GPL-3.0",
+      "home": "https://github.com/AdguardTeam/AdguardFilters",
+      "brave": "1088D292-2369-4D40-9BDF-C7DC03C05966"
+    },
+    {
+      "id": "regional-ru",
+      "title": "Russian, Ukrainian and Belarusian",
+      "about": "Ads on Russian, Ukrainian and Belarusian sites.",
+      "group": "regional",
+      "on": false,
+      "languages": [
+        "ru",
+        "uk",
+        "be"
+      ],
+      "sources": [
+        {
+          "url": "https://easylist-downloads.adblockplus.org/advblock.txt",
+          "format": "standard"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/easylist/ruadlist/master/js-fixes-experimental.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "CC-BY-3.0 (JS fixes: unconfirmed)",
+      "home": "https://github.com/easylist/ruadlist",
+      "brave": "80470EEC-970F-4F2C-BF6B-4810520C72E6"
+    },
+    {
+      "id": "regional-sl",
+      "title": "Slovenian",
+      "about": "Ads on Slovenian sites.",
+      "group": "regional",
+      "on": false,
+      "languages": [
+        "sl"
+      ],
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/betterwebleon/slovenian-list/master/filters.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "Unlicense",
+      "home": "https://github.com/betterwebleon/slovenian-list",
+      "brave": "418D293D-72A8-4A28-8718-A1EE40A45AAF"
+    },
+    {
+      "id": "regional-es",
+      "title": "Spanish",
+      "about": "Ads on Spanish sites.",
+      "group": "regional",
+      "on": false,
+      "languages": [
+        "es"
+      ],
+      "sources": [
+        {
+          "url": "https://easylist-downloads.adblockplus.org/easylistspanish.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "GPL-3.0-or-later OR CC-BY-SA-3.0",
+      "home": "https://easylist.to/",
+      "brave": "AE657374-1851-4DC4-892B-9212B13B15A7"
+    },
+    {
+      "id": "regional-es-pt",
+      "title": "Spanish and Portuguese",
+      "about": "Ads on Spanish and Portuguese sites.",
+      "group": "regional",
+      "on": false,
+      "languages": [
+        "es",
+        "pt"
+      ],
+      "sources": [
+        {
+          "url": "https://filters.adtidy.org/extension/ublock/filters/9.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "GPL-3.0",
+      "home": "https://github.com/AdguardTeam/AdguardFilters",
+      "brave": "1FEAF960-F377-11E8-8EB2-F2801F1B9FD1"
+    },
+    {
+      "id": "regional-sv",
+      "title": "Swedish",
+      "about": "Ads on Swedish sites.",
+      "group": "regional",
+      "on": false,
+      "languages": [
+        "sv"
+      ],
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/lassekongo83/Frellwits-filter-lists/master/Frellwits-Swedish-Filter.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "GPL-3.0",
+      "home": "https://github.com/lassekongo83/Frellwits-filter-lists",
+      "brave": "7DC2AC80-5BBC-49B8-B473-A31A1145CAC1"
+    },
+    {
+      "id": "regional-th",
+      "title": "Thai",
+      "about": "Ads on Thai sites.",
+      "group": "regional",
+      "on": false,
+      "languages": [
+        "th"
+      ],
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/easylist-thailand/easylist-thailand/master/subscription/easylist-thailand.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "Apache-2.0",
+      "home": "https://easylist-thailand.github.io/",
+      "brave": "658F092A-F377-11E8-8EB2-F2801F1B9FD1"
+    },
+    {
+      "id": "regional-tr",
+      "title": "Turkish",
+      "about": "Ads on Turkish sites.",
+      "group": "regional",
+      "on": false,
+      "languages": [
+        "tr"
+      ],
+      "sources": [
+        {
+          "url": "https://filters.adtidy.org/extension/ublock/filters/13.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "GPL-3.0",
+      "home": "https://github.com/AdguardTeam/AdguardFilters",
+      "brave": "1BE19EFD-9191-4560-878E-30ECA72B5B3C"
+    },
+    {
+      "id": "regional-vi",
+      "title": "Vietnamese",
+      "about": "Ads on Vietnamese sites.",
+      "group": "regional",
+      "on": false,
+      "languages": [
+        "vi"
+      ],
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/abpvn/abpvn/master/filter/abpvn_ublock.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "GPL-3.0",
+      "home": "https://abpvn.com/",
+      "brave": "6A0209AC-9869-4FD6-A9DF-039B4200D52C"
+    },
+    {
+      "id": "cookie-notices",
+      "title": "Cookie notices",
+      "about": "Cookie and consent banners.",
+      "group": "annoyances",
+      "on": false,
+      "sources": [
+        {
+          "url": "https://secure.fanboy.co.nz/fanboy-cookiemonster_ubo.txt",
+          "format": "standard"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/annoyances-cookies.txt",
+          "format": "standard"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/brave/adblock-lists/master/brave-lists/brave-cookie-specific.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "CC-BY-3.0 (Fanboy's), GPL-3.0 (uBlock Origin's), MPL-2.0 (Brave's)",
+      "home": "https://easylist.to/",
+      "brave": "AC023D22-AE88-4060-A978-4FEEEC4221693"
+    },
+    {
+      "id": "distractions",
+      "title": "Distractions",
+      "about": "Pop-ups, overlays, sticky bars and other page clutter.",
+      "group": "annoyances",
+      "on": false,
+      "sources": [
+        {
+          "url": "https://secure.fanboy.co.nz/fanboy-annoyance_ubo.txt",
+          "format": "standard"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/annoyances-others.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "CC-BY-3.0 (Fanboy's), GPL-3.0 (uBlock Origin's)",
+      "home": "https://easylist.to/",
+      "brave": "67E792D4-AE03-4D1A-9EDE-80E01C81F9B8"
+    },
+    {
+      "id": "newsletters",
+      "title": "Newsletter pop-ups",
+      "about": "Boxes that ask for your email address.",
+      "group": "annoyances",
+      "on": false,
+      "sources": [
+        {
+          "url": "https://secure.fanboy.co.nz/fanboy-newsletter.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "CC-BY-3.0",
+      "home": "https://easylist.to/",
+      "brave": "690FF3B4-8B6B-4709-8505-FEC6643D7BD9"
+    },
+    {
+      "id": "app-banners",
+      "title": "App banners",
+      "about": "Banners asking you to install a site's app.",
+      "group": "annoyances",
+      "on": false,
+      "sources": [
+        {
+          "url": "https://secure.fanboy.co.nz/fanboy-mobile-notifications.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "CC-BY-3.0",
+      "home": "https://easylist.to/",
+      "brave": "2F3DCE16-A19A-493C-A88F-2E110FBD37D6"
+    },
+    {
+      "id": "social",
+      "title": "Social widgets",
+      "about": "Like and share buttons and embedded social posts.",
+      "group": "annoyances",
+      "on": false,
+      "sources": [
+        {
+          "url": "https://easylist-downloads.adblockplus.org/fanboy-social.txt",
+          "format": "standard"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/brave/adblock-lists/master/brave-lists/brave-social.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "CC-BY-3.0 (Fanboy's), MPL-2.0 (Brave's)",
+      "home": "https://easylist.to/",
+      "brave": "7911A1CB-304E-4CDB-ABB3-E2A94A37E4DD"
+    },
+    {
+      "id": "chat-apps",
+      "title": "Chat widgets",
+      "about": "Support and sales chat bubbles.",
+      "group": "annoyances",
+      "on": false,
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/easylist/easylist/master/fanboy-addon/fanboy_chatapps_third-party.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "CC-BY-3.0",
+      "home": "https://easylist.to/",
+      "brave": "1ED1870B-997C-4BFE-AEBC-B67D679BAF3B"
+    },
+    {
+      "id": "ai-suggestions",
+      "title": "AI suggestions",
+      "about": "AI prompts and suggestion boxes added to sites.",
+      "group": "annoyances",
+      "on": false,
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/easylist/easylist/refs/heads/master/fanboy-addon/fanboy_ai_suggestions.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "CC-BY-3.0",
+      "home": "https://easylist.to/",
+      "brave": "6b91e355-1421-4c03-9a30-911b4d0fb277"
+    },
+    {
+      "id": "cjx-annoyances",
+      "title": "Chinese sites' annoyances",
+      "about": "Pop-ups and clutter on Chinese sites.",
+      "group": "annoyances",
+      "on": false,
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/cjx82630/cjxlist/master/cjx-annoyance.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "LGPL-3.0",
+      "home": "https://github.com/cjx82630/cjxlist",
+      "brave": "CC98E4BA-9257-4386-A1BC-1BBF6980324F"
+    },
+    {
+      "id": "url-tracking",
+      "title": "Tracking in addresses",
+      "about": "Removes tracking codes from the addresses of links.",
+      "group": "extreme",
+      "on": false,
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/AdguardTeam/FiltersRegistry/master/filters/filter_17_TrackParam/filter.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "GPL-3.0",
+      "home": "https://github.com/AdguardTeam/AdguardFilters",
+      "brave": "E2FA7D98-0BD5-493E-8AF4-950604ADE9CB"
+    },
+    {
+      "id": "ubo-resource-abuse",
+      "title": "Resource abuse",
+      "about": "Scripts that mine cryptocurrency or misuse your device.",
+      "group": "extreme",
+      "on": false,
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/resource-abuse.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "GPL-3.0",
+      "home": "https://github.com/uBlockOrigin/uAssets",
+      "brave": "default"
+    },
+    {
+      "id": "brave-experimental",
+      "title": "Brave experimental",
+      "about": "Brave's rules still on trial.",
+      "group": "extreme",
+      "on": false,
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/brave/adblock-lists/master/brave-lists/experimental.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "MPL-2.0",
+      "home": "https://github.com/brave/adblock-lists",
+      "brave": "564C3B75-8731-404C-AD7C-5683258BA0B0"
+    },
+    {
+      "id": "ubo-badware",
+      "title": "uBlock Origin badware risks",
+      "about": "Sites known for scams, fake downloads and unwanted software.",
+      "group": "malware",
+      "on": true,
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/badware.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "GPL-3.0",
+      "home": "https://github.com/uBlockOrigin/uAssets",
+      "brave": "default"
+    },
+    {
+      "id": "urlhaus",
+      "title": "Malicious URL Blocklist",
+      "about": "Addresses that serve malware, from abuse.ch's URLhaus.",
+      "group": "malware",
+      "on": true,
+      "sources": [
+        {
+          "url": "https://malware-filter.gitlab.io/malware-filter/urlhaus-filter-vivaldi-online.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "CC0-1.0 AND MIT (URLhaus data: CC0-1.0)",
+      "home": "https://gitlab.com/malware-filter/urlhaus-filter"
+    },
+    {
+      "id": "phishing-filter",
+      "title": "Phishing URL Blocklist",
+      "about": "Phishing sites, from OpenPhish, PhishTank and IPThreat.",
+      "group": "phishing",
+      "on": true,
+      "sources": [
+        {
+          "url": "https://malware-filter.gitlab.io/malware-filter/phishing-filter-vivaldi.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "CC-BY-SA-4.0",
+      "home": "https://gitlab.com/malware-filter/phishing-filter"
+    },
+    {
+      "id": "phishing-database",
+      "title": "Phishing.Database",
+      "about": "A large list of phishing sites' hosts, checked often.",
+      "group": "phishing",
+      "on": false,
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/Phishing-Database/Phishing.Database/master/phishing-domains-ACTIVE.txt",
+          "format": "hosts"
+        }
+      ],
+      "licence": "MIT",
+      "home": "https://github.com/Phishing-Database/Phishing.Database"
+    },
+    {
+      "id": "pb-test",
+      "title": "Project B test",
+      "about": "Rules for the test hosts under blocking.test.",
+      "group": "test",
+      "on": false,
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/debkosh/project-b/main/core/blocking/testlist.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "MIT",
+      "home": "https://github.com/debkosh/project-b"
+    },
+    {
+      "id": "pb-test-malware",
+      "title": "Project B test: malware",
+      "about": "A test host the malware check warns about.",
+      "group": "test",
+      "on": false,
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/debkosh/project-b/main/tools/lists/test-malware.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "MIT",
+      "home": "https://github.com/debkosh/project-b"
+    },
+    {
+      "id": "pb-test-phishing",
+      "title": "Project B test: phishing",
+      "about": "A test host the phishing check warns about.",
+      "group": "test",
+      "on": false,
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/debkosh/project-b/main/tools/lists/test-phishing.txt",
+          "format": "standard"
+        }
+      ],
+      "licence": "MIT",
+      "home": "https://github.com/debkosh/project-b"
+    }
+  ],
+  "ignored": [
+    {
+      "brave": "default",
+      "source": "https://raw.githubusercontent.com/brave/adblock-lists/master/brave-lists/brave-specific.txt",
+      "title": "Brave Default Adblock Filters: Brave Specific",
+      "reason": "Rules for Brave's own sites and features."
+    },
+    {
+      "brave": "default",
+      "source": "https://raw.githubusercontent.com/brave/adblock-lists/master/brave-lists/brave-android-specific.txt",
+      "title": "Brave Default Adblock Filters: Brave Android-Specific Rules",
+      "reason": "Brave's fixes for its own Android app."
+    },
+    {
+      "brave": "default",
+      "source": "https://malware-filter.gitlab.io/malware-filter/urlhaus-filter-agh-online.txt",
+      "title": "Brave Default Adblock Filters: URLhaus (AdGuard Home)",
+      "reason": "We take the same project's Vivaldi/Brave file, which has whole addresses too, in list urlhaus."
+    },
+    {
+      "brave": "9F38E77A-64AA-4C5F-AF37-727CAE1266FF",
+      "title": "Brave IOS-Specific Filters",
+      "reason": "Brave's fixes for its own iOS app."
+    },
+    {
+      "brave": "A5E6EC21-F01F-4547-9F0A-1EE1C3F2AE8D",
+      "title": "Allow Facebook Embeds",
+      "reason": "Exceptions for Brave's own embed switches, which we don't have; our Social widgets list is off."
+    },
+    {
+      "brave": "84960ADD-1CC1-419F-81FC-9F116F5205CC",
+      "title": "Allow X/Twitter Embeds",
+      "reason": "Exceptions for Brave's own embed switches, which we don't have; our Social widgets list is off."
+    },
+    {
+      "brave": "FB626316-6CC8-4447-884B-F5A37C29B0AE",
+      "title": "Allow LinkedIn Embeds",
+      "reason": "Exceptions for Brave's own embed switches, which we don't have; our Social widgets list is off."
+    },
+    {
+      "brave": "AC023D22-AE88-4060-A978-4FEEEC4221693",
+      "default_enabled": true,
+      "title": "Cookie notice blocker",
+      "reason": "Annoyances start off (docs/blocking.md); Brave turns this one on."
+    },
+    {
+      "brave": "2F3DCE16-A19A-493C-A88F-2E110FBD37D6",
+      "default_enabled": true,
+      "title": "Mobile app promo blocker",
+      "reason": "Annoyances start off (docs/blocking.md); Brave turns this one on."
+    },
+    {
+      "brave": "9E8EC586-4E17-4E5E-99D7-35172C4CEA74",
+      "title": "YouTube Shorts blocker",
+      "reason": "Changes how one site looks rather than blocking ads or annoyances; a later question."
+    },
+    {
+      "brave": "5c6a6c95-b60a-4695-9efb-539359022531",
+      "title": "YouTube Playables blocker",
+      "reason": "Changes how one site looks rather than blocking ads or annoyances; a later question."
+    },
+    {
+      "brave": "2D57ADED-3531-419A-9DED-7F8868BC1561",
+      "title": "YouTube recommendations blocker (mobile-only)",
+      "reason": "Changes how one site looks rather than blocking ads or annoyances; a later question."
+    },
+    {
+      "brave": "7f11b964-4f36-4e06-9d75-bd16381b9386",
+      "title": "YouTube autodubbed videos blocker",
+      "reason": "Changes how one site looks rather than blocking ads or annoyances; a later question."
+    },
+    {
+      "brave": "d579f370-6de3-4507-aa9a-cee4227e59f5",
+      "title": "YouTube end video elements blocker",
+      "reason": "Changes how one site looks rather than blocking ads or annoyances; a later question."
+    },
+    {
+      "brave": "49958da7-f532-4a84-a765-9501729b8e75",
+      "title": "YouTube members-only video blocker",
+      "reason": "Changes how one site looks rather than blocking ads or annoyances; a later question."
+    },
+    {
+      "brave": "BD308B90-D3BB-4041-9114-22E096B0BA77",
+      "title": "YouTube distractions elements blocker (mobile-only)",
+      "reason": "Changes how one site looks rather than blocking ads or annoyances; a later question."
+    },
+    {
+      "brave": "3afa9d35-d837-45b5-b742-b3d0fe94e77c",
+      "title": "YouTube thumbnail image blocker",
+      "reason": "Changes how one site looks rather than blocking ads or annoyances; a later question."
+    },
+    {
+      "brave": "F61D6B7B-4110-4EA4-9C81-38FB4CE90AEC",
+      "title": "Porn blocker",
+      "reason": "A content filter, not ads or annoyances; a later question."
+    },
+    {
+      "brave": "61C6046C-B040-4CE4-8C8E-F3E8F316AA72",
+      "title": "Adblock Only Mode supplemental list",
+      "reason": "For a mode of Brave's that we don't have."
+    }
+  ]
+}

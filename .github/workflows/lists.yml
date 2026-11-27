@@ -1,0 +1,79 @@
+# Publishes the blocking lists the app downloads (docs/blocking.md, "Building and publishing
+# them"). Every hour, tools/lists downloads each source in core/blocking/catalog.json and the
+# resources, and puts on the release tagged lists every list that changed: its whole text, a
+# patch to it from each of its last eight versions, and manifest.json, signed with the one
+# secret, LISTS_SIGNING_KEY. Files the manifest no longer names are deleted.
+#
+# The release is a pre-release and never the latest, so it never looks like an app release:
+# releases/latest/download (the homepage's DMG and APK links, the VM check) skips pre-releases,
+# pages.yml skips them and lists only full releases, release.sh reads only v<version> tags and
+# the channels release, and amarit reads channels/releases.json.
+#
+# A run by hand on another branch publishes to the draft release lists-draft instead, from the
+# branch's catalogue and test lists. A draft's files need a token to download (gh release
+# download lists-draft).
+name: Lists
+
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: lists-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ github.ref == 'refs/heads/main' && 'lists' || 'lists-draft' }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: tools/lists/go.mod
+          cache-dependency-path: tools/lists/go.sum
+      - name: The lists
+        env:
+          LISTS_SIGNING_KEY: ${{ secrets.LISTS_SIGNING_KEY }}
+        run: |
+          go -C tools/lists build -o "$RUNNER_TEMP/lists" .
+          "$RUNNER_TEMP/lists" -catalog core/blocking/catalog.json -out "$RUNNER_TEMP/out" \
+            -keep "$RUNNER_TEMP/keep.txt" -prev "gh:$TAG" -repo-root .
+      - name: The release, made on the first run (after the lists, so a missing key leaves none)
+        run: |
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            if [ "$TAG" = lists ]; then kind=--prerelease; else kind=--draft; fi
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" "$kind" --latest=false --target "$GITHUB_SHA" \
+              --title "Blocking lists" \
+              --notes "The ad blocking and Safe Browsing lists Project B downloads, updated every hour (docs/blocking.md). Not an app release: the app is in the other releases."
+          fi
+      - name: Upload what changed
+        run: |
+          out=$RUNNER_TEMP/out
+          if [ ! -f "$out/manifest.json" ]; then
+            echo "nothing changed"
+            exit 0
+          fi
+          # The lists and patches first, then the manifest with its signature, so the manifest
+          # never names a file that isn't there yet.
+          find "$out" -type f ! -name 'manifest.json*' -print0 |
+            xargs -0 -r -n 40 gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber
+          gh release upload "$TAG" "$out/manifest.json.sig" "$out/manifest.json" --repo "$GITHUB_REPOSITORY" --clobber
+      - name: Delete what the manifest no longer names
+        run: |
+          keep=$RUNNER_TEMP/keep.txt
+          grep -qx manifest.json "$keep" || { echo "keep.txt names no manifest.json: deleting nothing"; exit 1; }
+          id=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq ".[] | select(.tag_name == \"$TAG\") | .id" | head -1)
+          gh api --paginate "repos/$GITHUB_REPOSITORY/releases/$id/assets?per_page=100" --jq '.[].name' > "$RUNNER_TEMP/assets.txt"
+          stale=$(grep -vxF -f "$keep" "$RUNNER_TEMP/assets.txt" || true)
+          for n in $stale; do
+            gh release delete-asset "$TAG" "$n" --repo "$GITHUB_REPOSITORY" -y
+          done
+          echo "$(wc -l < "$RUNNER_TEMP/assets.txt") files, $(printf '%s' "$stale" | grep -c . || true) deleted"

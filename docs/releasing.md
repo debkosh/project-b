@@ -26,6 +26,8 @@ in a worktree of its own (main's checkout stays on main, since the release reads
 - Then, once per release candidate: `go vet` and `go test ./...` in `core`, with `-tags sqlite_fts5` as every Go build has it ([store.md](store.md#how-it-works)),, `tools/build.sh`,
   `tools/test.sh mock`, `tools/package.sh` into a copy, and `tools/build.sh android arm64` then
   `tools/package.sh android` for the APK. Push the branch so the owners can rebase onto it.
+- Read the `lists-vs-brave:` lines `tools/release.sh` prints and send any change they call for in
+  `core/blocking/catalog.json` as its own commit ([blocking.md](blocking.md#the-catalogue)).
 - A release that waits on a fix stays open; new work goes into the next one instead, so the
   test run isn't started over. While the candidate hasn't been tested yet, a branch that
   applies cleanly and adds no engine or Android risk can still join it.

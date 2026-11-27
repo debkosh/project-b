@@ -122,6 +122,8 @@ prune_dev_files() {
   done
 }
 
+# The blocking catalogue against Brave's, for the releaser to read; it never stops a release.
+python3 -I tools/lists-vs-brave.py || true
 echo "=== $(date '+%F %T') release build"
 RELEASE=1 OUT=out/rel tools/build.sh | tail -3
 echo "=== $(date '+%F %T') package"

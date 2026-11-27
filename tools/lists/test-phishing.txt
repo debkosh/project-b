@@ -1,0 +1,3 @@
+! Title: Project B test: phishing
+! A test host the phishing check warns about (list pb-test-phishing, group test, never shown).
+||phishing.blocking.test^$document
