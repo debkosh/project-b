@@ -34,14 +34,26 @@ declare_args() {
 # process loads. It holds the shell's pages (core/shellfiles), so it comes after them, and a
 # change to the shell rebuilds it. Linux's pages are built on the Mac first
 # (tools/build.sh linux), as Android's are, so there it waits on no action.
+#
+# The blocker's library, libpbblock (docs/blocking.md), is built with it, beside it: a Rust
+# shared library, as a static one would bring a second copy of Rust's standard library
+# beside Chromium's own, which clash at the link. Only the core links it, and only the
+# processes that load the core map it: on the Mac the main binary, which links libcore.a,
+# finds it as @rpath/libpbblock.dylib, in the app's Frameworks or beside it in the build
+# folder; on Linux libcore.so finds it beside itself.
 if (is_mac) {
   _core = "$target_gen_dir/libcore.a"
+  _pbblock = "$target_gen_dir/libpbblock.dylib"
 } else {
   _core = "$root_out_dir/libcore.so"
+  _pbblock = "$root_out_dir/libpbblock.so"
 }
 action("core") {
   script = "build_go.py"
-  outputs = [ _core ]
+  outputs = [
+    _core,
+    _pbblock,
+  ]
   depfile = "$target_gen_dir/core.d"
   args = [
     project_b_go,
@@ -85,15 +97,27 @@ if (is_mac) {
 }
 
 if (is_mac) {
+  # The blocker's library beside the binaries, where the main binary finds it in the build
+  # folder (@executable_path); tools/package.sh puts it in the app's Frameworks.
+  copy("pbblock") {
+    sources = [ _pbblock ]
+    outputs = [ "$root_out_dir/libpbblock.dylib" ]
+    deps = [ ":core" ]
+  }
+
   source_set("core_lib") {
-    public_deps = [ ":core" ]
+    public_deps = [
+      ":core",
+      ":pbblock",
+    ]
     # What the archive's cgo needs, which a c-archive leaves to the binary that links it:
     # browserdata reads other browsers' databases with macOS's own SQLite, core/system asks
     # AppKit for the Dock, Finder and the default browser, oskit's notify the notification
     # centre for a page's notifications, and oskit's media AVFoundation for the camera and
-    # microphone permission.
+    # microphone permission; and the blocker's library, whose functions core calls.
     libs = [
       "$target_gen_dir/libcore.a",
+      "$root_out_dir/libpbblock.dylib",
       "sqlite3",
     ]
     frameworks = [
@@ -447,7 +471,8 @@ if (is_mac) {
     ]
   }
 
-  # The wrapper, the main process: it starts the Go core, then the engine.
+  # The wrapper, the main process: it starts the Go core, then the engine. Its rpath finds
+  # the blocker's library too, which only it links: the helper has no Go, so no blocker.
   executable("project_b") {
     sources = [
       "abi/pb_exports.h",
@@ -479,8 +504,9 @@ if (is_mac) {
 } else {
   # Linux: one binary, the wrapper with the engine linked in, as Blink and V8 can't go in a
   # shared library outside a component build; and the Go core beside it, libcore.so, which
-  # only the browser process loads (app/main_linux.cc). A child, started with --type, never
-  # loads it, so no child maps Go (docs/research/linux.md, 3).
+  # only the browser process loads (app/main_linux.cc), with the blocker's library,
+  # libpbblock.so, which libcore.so loads from beside itself. A child, started with --type,
+  # never loads either, so no child maps Go or the blocker (docs/research/linux.md, 3).
   source_set("project_b_content") {
     sources = [
       "abi/pb_main.h",

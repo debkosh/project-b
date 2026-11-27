@@ -97,6 +97,7 @@ mkdir -p "$MACOS" "$RESOURCES" "$LIBRARIES" "$FRAMEWORKS" "$HELPER_APP/Contents/
 cp "$FROM/project_b" "$MACOS/"
 cp "$FROM/project_b_helper" "$HELPER"
 cp "$FROM/libproject_b_content.dylib" "$FRAMEWORKS/"
+cp "$FROM/libpbblock.dylib" "$FRAMEWORKS/"   # the blocker's library (docs/blocking.md)
 cp "$FROM/commit" "$RESOURCES/commit"   # what tools/results.py says was tested
 cp "$ROOT/engine/mac/AppIcon.icns" "$RESOURCES/"   # the app's icon, made from engine/mac/icon*.svg
 cp "$FROM/project_b.pak" "$FROM/icudtl.dat" "$FROM/snapshot_blob.bin" "$FROM"/v8_context_snapshot.*.bin "$RESOURCES/"

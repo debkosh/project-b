@@ -15,7 +15,6 @@
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_contents_observer.h"
 #include "content/public/browser/web_contents_user_data.h"
-#include "ipc/ipc_channel_proxy.h"
 #include "mojo/public/cpp/bindings/associated_remote.h"
 #include "net/base/net_errors.h"
 #include "services/network/public/cpp/resource_request.h"
@@ -25,6 +24,7 @@
 #include "third_party/blink/public/common/loader/url_loader_throttle.h"
 #include "url/url_constants.h"
 #include "project_b/engine/abi/pb_abi.h"
+#include "project_b/engine/browser/blocker.h"
 #include "project_b/engine/browser/hooks.h"
 #include "project_b/engine/mojom/project_b.mojom.h"
 #include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
@@ -34,26 +34,6 @@ namespace project_b {
 namespace site_features {
 
 namespace {
-
-struct AdRules {
-  std::vector<std::string> hosts;
-  std::vector<std::string> off;
-};
-
-AdRules& Rules() {
-  static base::NoDestructor<AdRules> rules;
-  return *rules;
-}
-
-void Send(content::RenderProcessHost* host) {
-  IPC::ChannelProxy* channel = host->GetChannel();
-  if (!channel) {
-    return;
-  }
-  mojo::AssociatedRemote<mojom::Renderer> renderer;
-  channel->GetRemoteAssociatedInterface(&renderer);
-  renderer->SetAdRules(Rules().hosts, Rules().off);
-}
 
 // The sparks Go says run in a frame of the tab at url, the tab's own frame when main_frame.
 std::vector<mojom::SparkPtr> SparksFor(content::WebContents* contents,
@@ -150,13 +130,14 @@ class PolicyEasing : public blink::URLLoaderThrottle {
   const bool main_frame_;
 };
 
-// One web tab's: its frames' sparks, and its blocked requests.
+// One web tab's: its frames' sparks and blocked parts, and its blocked requests.
 class Follower : public content::WebContentsObserver,
                  public content::WebContentsUserData<Follower> {
  public:
   ~Follower() override = default;
 
   void ReadyToCommitNavigation(content::NavigationHandle* handle) override {
+    blocker::ReadyToCommit(handle);
     const GURL& url = handle->GetURL();
     std::vector<mojom::SparkPtr> sparks =
         SparksFor(&GetWebContents(), url, handle->IsInPrimaryMainFrame());
@@ -212,20 +193,6 @@ Reports& TheReports() {
 }
 
 }  // namespace
-
-void SetAdRules(std::vector<std::string> hosts, std::vector<std::string> off) {
-  Rules() = AdRules{std::move(hosts), std::move(off)};
-  for (auto it = content::RenderProcessHost::AllHostsIterator(); !it.IsAtEnd();
-       it.Advance()) {
-    if (it.GetCurrentValue()->IsInitializedAndNotDead()) {
-      Send(it.GetCurrentValue());
-    }
-  }
-}
-
-void RendererLaunching(content::RenderProcessHost* host) {
-  Send(host);
-}
 
 void ExposeTo(blink::AssociatedInterfaceRegistry* registry,
               content::RenderProcessHost* host) {

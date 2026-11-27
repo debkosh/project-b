@@ -23,6 +23,7 @@
 #include "services/network/public/cpp/resource_request.h"
 #include "services/network/public/mojom/websocket.mojom.h"
 #include "third_party/blink/public/common/loader/url_loader_throttle.h"
+#include "project_b/engine/browser/blocker.h"
 #include "project_b/engine/browser/forms.h"
 #include "project_b/engine/browser/printing.h"
 #include "project_b/engine/browser/proxy_configs.h"
@@ -136,6 +137,7 @@ void ContentBrowserClient::ExposeInterfacesToRenderer(
     blink::AssociatedInterfaceRegistry* associated_registry,
     content::RenderProcessHost* render_process_host) {
   site_features::ExposeTo(associated_registry, render_process_host);
+  blocker::ExposeTo(registry);
 }
 
 void ContentBrowserClient::RegisterAssociatedInterfaceBindersForRenderFrameHost(
@@ -148,7 +150,7 @@ void ContentBrowserClient::RegisterAssociatedInterfaceBindersForRenderFrameHost(
 
 void ContentBrowserClient::RenderProcessWillLaunch(
     content::RenderProcessHost* host) {
-  site_features::RendererLaunching(host);
+  blocker::RendererLaunching(host);
   forms::RendererLaunching(host);
   ContentBrowserClientHooks::RenderProcessWillLaunch(host);
 }
@@ -181,8 +183,9 @@ void ContentBrowserClient::CreateWebSocket(
                          mojo::NullRemote(), std::move(options.header_client));
 }
 
-// Every navigation gets the gate, which asks Go about a tab's top-level ones, and the
-// generated throttle, whose hooks cross to Go only when something subscribed to them.
+// Every navigation gets the gate, which asks Go about a tab's top-level ones, the
+// generated throttle, whose hooks cross to Go only when something subscribed to them, and
+// the blocker's, which asks what a frame's page hides and runs as its response arrives.
 std::vector<std::unique_ptr<blink::URLLoaderThrottle>>
 ContentBrowserClient::CreateURLLoaderThrottles(
     const network::ResourceRequest& request,
@@ -204,6 +207,7 @@ void ContentBrowserClient::CreateThrottlesForNavigation(
     content::NavigationThrottleRegistry& registry) {
   registry.AddThrottle(std::make_unique<events::Gate>(registry));
   registry.AddThrottle(std::make_unique<NavigationThrottleHooks>(registry));
+  blocker::AddThrottle(registry);
 }
 
 // Content's certificate errors as Go names them; the rest are "invalid".

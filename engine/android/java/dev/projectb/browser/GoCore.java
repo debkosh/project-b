@@ -4,10 +4,12 @@ package dev.projectb.browser;
  * The Go core. Loading this library is what starts Go's runtime, and that has to happen in the main
  * process only, so only BrowserActivity touches this class. An activity with no android:process
  * never runs in a renderer or a GPU process. Content's own loader doesn't know about this library,
- * so nothing loads it on a child's way up.
+ * so nothing loads it on a child's way up. The blocker's library, which the core links
+ * (docs/blocking.md), loads first, so the core finds it in the process.
  */
 final class GoCore {
     static {
+        System.loadLibrary("pbblock");
         System.loadLibrary("project_b_go");
     }
 

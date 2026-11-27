@@ -1,6 +1,8 @@
-// What the browser process tells a renderer of ours: the ad blocker's rules for all its
-// pages, and a frame's sparks for the page about to commit in it (docs/site-features.md);
-// and the form script with its messages, both ways (docs/password-autofill.md).
+// What the browser process tells a renderer of ours: whether there is a blocker, its
+// watcher and the sites where it is off, for all its pages, and a frame's sparks and
+// blocked parts for the page about to commit in it (docs/site-features.md,
+// docs/blocking.md); the form script with its messages, both ways
+// (docs/password-autofill.md); and what a renderer asks of the blocker.
 module project_b.mojom;
 
 import "mojo/public/mojom/base/unguessable_token.mojom";
@@ -17,9 +19,14 @@ struct Spark {
 
 // Every renderer's, on its channel.
 interface Renderer {
-  // The hosts the ad blocker keeps requests from, and any under them, lower case; and the
-  // origins of the pages it lets reach them.
-  SetAdRules(array<string> hosts, array<string> off);
+  // Whether there is a blocker, and the watcher's script, which each frame where the
+  // blocker is on runs at document start in a world of its own. The renderer forgets the
+  // answers it kept.
+  SetBlocker(bool on, string watcher_script);
+  // The blocker's rules changed: the renderer forgets the answers it kept.
+  BlockerChanged();
+  // The origins of the pages where the blocker is off: their requests aren't asked about.
+  SetBlockingOff(array<string> origins);
   // The form script, which each frame of a web page runs at document start in a world of
   // its own.
   SetFormScript(string source);
@@ -29,6 +36,29 @@ interface Renderer {
 interface AdReports {
   // The ad blocker refused a request of the frame's, named by its frame token.
   Blocked(mojo_base.mojom.UnguessableToken frame);
+};
+
+// A request's verdicts, PB_BLOCKER_ALLOW, _BLOCK and _REDIRECT in pb_abi.h.
+const int32 kBlockerAllow = 0;
+const int32 kBlockerBlock = 1;
+const int32 kBlockerRedirect = 2;
+
+// The browser's, one pipe per renderer, answered on a sequence of its own in the browser
+// (engine/browser/blocker.cc), never the main thread: what a renderer asks of the blocker.
+interface Blocker {
+  // A request of a page: its address, the address of the page's site, and its kind in
+  // adblock's words.
+  Check(string url, string source, string type) => (int32 verdict);
+  // The watcher's question for the page at page_url, JSON {"classes": [...], "ids": [...]};
+  // the answer a JSON array of selectors to hide.
+  Hide(string page_url, string query) => (string selectors);
+};
+
+// Each frame's, on its channel, told before a page commits in the frame: what the blocker
+// hides and runs in the page at url, as the blocker's page hook gives it (pb_abi.h), "" for
+// nothing but the watcher. Not told at all, the frame runs none of it.
+interface BlockerFrame {
+  SetPage(string url, string parts);
 };
 
 // Each frame's, on its channel, told before a page commits in the frame.

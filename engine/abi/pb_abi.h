@@ -413,13 +413,19 @@ typedef enum PBTimelineKind {
   PB_TIMELINE_ERROR = 5,
 } PBTimelineKind;
 
-// What Go can ask the adapter to do. Handed over once, at start. A window is named by
-// Go's id for it, 1 for the first.
 // A blocker's functions (docs/blocking.md), the one table in this interface whose
 // functions the engine calls on any thread: never on the main thread's behalf, never
 // blocking, never reaching Go. Strings returned are freed with free_string.
+// Chromium's compiler check, that a C++ class's pointer fields are its raw_ptr, leaves this
+// C table's one alone: the field is the blocker's own, passed back to it, never followed.
+#if defined(__clang__)
+#define PB_RAW_POINTER __attribute__((annotate("raw_ptr_exclusion")))
+#else
+#define PB_RAW_POINTER
+#endif
+
 typedef struct PBBlockerHooks {
-  void* blocker;
+  PB_RAW_POINTER void* blocker;
   // A request of a page: its address, the address of the page's site (its top frame's, as
   // cookies see it), and its kind in adblock's words: script, image, stylesheet, xhr,
   // sub_frame, font, media, websocket, ping or other. PB_BLOCKER_ALLOW, _BLOCK, or
@@ -436,7 +442,9 @@ typedef struct PBBlockerHooks {
   void (*free_string)(char* s);
   // The watcher: a script the engine runs at document start in every frame where the
   // blocker is on, in a world of its own, with one function bound there,
-  // __pbBlockerAsk(json, callback), which asks hide and calls back with its answer.
+  // __pbBlockerAsk(json, callback), which asks hide and calls back with its answer. The
+  // engine hides what the answer names itself, in the frame's stylesheet of the user's,
+  // before the callback, so the watcher only asks.
   const char* watcher_script;
 } PBBlockerHooks;
 
@@ -446,6 +454,8 @@ enum {
   PB_BLOCKER_REDIRECT = 2,
 };
 
+// What Go can ask the adapter to do. Handed over once, at start. A window is named by
+// Go's id for it, 1 for the first.
 typedef struct PBEngineCalls {
   // Makes the profile's context, with Chromium's files in the profile folder dir, and the
   // extension runtime with it. Go calls it once, as the copy becomes that profile's, before

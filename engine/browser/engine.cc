@@ -43,6 +43,7 @@
 #include "project_b/engine/abi/pb_content_abi.h"
 #include "project_b/engine/browser/printing.h"
 #include "project_b/engine/browser/site_data.h"
+#include "project_b/engine/browser/blocker.h"
 #include "project_b/engine/browser/site_features.h"
 #include "project_b/engine/common/block_rules.h"
 #include "project_b/engine/browser/hooks.h"
@@ -668,13 +669,20 @@ void CallCheckSecureDns(const char* doh_template) {
   secure_dns::Check(g_engine->browser_context(), doh_template);
 }
 
-void CallSetAdRules(const char* hosts, const char* off) {
+void CallSetBlocker(const PBBlockerHooks* hooks) {
   CheckMainThread();
-  site_features::SetAdRules(
-      base::SplitString(hosts, "\n", base::TRIM_WHITESPACE,
-                        base::SPLIT_WANT_NONEMPTY),
-      base::SplitString(off, "\n", base::TRIM_WHITESPACE,
-                        base::SPLIT_WANT_NONEMPTY));
+  blocker::Set(hooks);
+}
+
+void CallBlockerChanged() {
+  CheckMainThread();
+  blocker::Changed();
+}
+
+void CallSetBlockingOff(const char* origins) {
+  CheckMainThread();
+  blocker::SetOff(base::SplitString(origins ? origins : "", "\n", base::TRIM_WHITESPACE,
+                                    base::SPLIT_WANT_NONEMPTY));
 }
 
 const PBContentHooks* CallContentHooks() {
@@ -812,7 +820,9 @@ const PBEngineCalls* Engine::Calls() {
       .set_menu = CallSetMenu,
       .app_command = CallAppCommand,
       .set_block_rules = CallSetBlockRules,
-      .set_ad_rules = CallSetAdRules,
+      .set_blocker = CallSetBlocker,
+      .blocker_changed = CallBlockerChanged,
+      .set_blocking_off = CallSetBlockingOff,
       .set_secure_dns = CallSetSecureDns,
       .check_secure_dns = CallCheckSecureDns,
       .content_hooks = CallContentHooks,

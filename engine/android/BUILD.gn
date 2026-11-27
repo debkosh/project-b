@@ -132,11 +132,15 @@ shared_library_with_jni("libproject_b_content") {
   remove_uncalled_jni = true
 }
 
-# The Go core. Off every list, through loadable_modules below, so only the explicit load in
-# GoCore.java brings it into a process.
+# The Go core, and the blocker's library it links, libpbblock.so (docs/blocking.md), built
+# with it, beside it. Off every list, through loadable_modules below, so only the explicit
+# loads in GoCore.java bring them into a process: the blocker's first, as the core needs it.
 action("core") {
   script = "//project_b/engine/build_go.py"
-  outputs = [ "$root_out_dir/libcore.so" ]
+  outputs = [
+    "$root_out_dir/libcore.so",
+    "$root_out_dir/libpbblock.so",
+  ]
   depfile = "$target_gen_dir/core.d"
   args = [
     project_b_go,
@@ -331,6 +335,7 @@ android_apk("project_b_apk") {
   shared_libraries = [ ":libproject_b_content" ]
   loadable_modules = [
     "$root_out_dir/libcore.so",
+    "$root_out_dir/libpbblock.so",
     "$root_out_dir/libproject_b_go.so",
   ]
   srcjar_deps = [ ":libproject_b_content__jni_registration" ]

@@ -8,9 +8,11 @@
 namespace project_b {
 
 // What every renderer of ours does: refuse a page's requests to a blocked host
-// (block_rules.h) and, unless it is off for the page, to an ad host (ad_rules.h), whether a
-// frame or a worker makes them; and run the person's sparks in a frame's page. A build with
-// extensions derives its renderer client from this one, and calls its overrides.
+// (block_rules.h) and, unless it is off for the page, those the blocker refuses
+// (blocker_client.h), whether a frame or a worker makes them; put in what the blocker hides
+// and runs in a frame's page, and its watcher; and run the form script and the person's
+// sparks in a frame's page. A build with extensions derives its renderer client from this
+// one, and calls its overrides.
 class RendererClient : public content::ContentRendererClient {
  public:
   RendererClient();

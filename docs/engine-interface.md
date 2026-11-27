@@ -12,7 +12,9 @@ that would own the window itself doesn't fit.
 
 - **Go:** `core/engine/engine.go`. `Engine` is what the app asks of an engine, and `Listener` is
   what an engine tells the app. Every call both ways is on the main thread; a goroutine gets
-  back onto it with `Engine.Post`.
+  back onto it with `Engine.Post`. The one exception is the blocker's table
+  (`PBBlockerHooks`, `set_blocker`, [blocking.md](blocking.md#the-engines-hooks)): the
+  engine calls its functions on any thread, so they never block and never reach Go.
 - **C:** `engine/abi/pb_abi.h`. `PBEngineCalls` is the engine's table, `PBGoCalls` is Go's,
   and `PBEvent` lists the events. Everything the engine tells Go is one call,
   `hook(event, values)`. `core/abi` turns the events into `Listener` calls, and
@@ -41,7 +43,8 @@ the process's run loop from there, and calls Go in this order:
 
 ## What an engine must implement
 
-**Calls** (`Engine`): profile and policy (`OpenProfile`, `SetBlockRules`); tabs and
+**Calls** (`Engine`): profile and policy (`OpenProfile`, `SetBlockRules`); the blocker
+(`SetBlocker`, `BlockerChanged`, `SetBlockingOff`); tabs and
 navigation; workspaces (`CreateTab(workspace)`, `SetFirstWorkspace`, `EraseWorkspace`);
 windows and their layout (`CreateWindow`, `SetWindowLayout`, `RequestWindow`,
 `SetWindowBounds`, `SetWindowMode`, `FocusTab`, `FocusShell`); the shell's, the picker's and our

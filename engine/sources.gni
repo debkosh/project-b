@@ -8,10 +8,10 @@ engine_dir = "//project_b/engine"
 
 # What every process needs, on every OS.
 engine_common_sources = [
-  "$engine_dir/common/ad_rules.cc",
-  "$engine_dir/common/ad_rules.h",
   "$engine_dir/common/block_rules.cc",
   "$engine_dir/common/block_rules.h",
+  "$engine_dir/common/blocker_client.cc",
+  "$engine_dir/common/blocker_client.h",
   "$engine_dir/common/content_client.cc",
   "$engine_dir/common/content_client.h",
   "$engine_dir/common/main_delegate.cc",
@@ -27,6 +27,8 @@ engine_common_sources = [
 
 # The browser process's adapter, on every OS.
 engine_browser_sources = [
+  "$engine_dir/browser/blocker.cc",
+  "$engine_dir/browser/blocker.h",
   "$engine_dir/browser/browser_context.cc",
   "$engine_dir/browser/browser_context.h",
   "$engine_dir/browser/browser_main_parts.h",

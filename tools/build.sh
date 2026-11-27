@@ -356,7 +356,7 @@ ls -la "$OUT/project_b" "$OUT/project_b_helper" "$OUT/libproject_b_content.dylib
 # the test tools default to build/pb/project_b.
 APP_COPY=$ROOT/build/$(basename "$OUT")
 rm -rf "$APP_COPY" && mkdir -p "$APP_COPY"
-cp -c "$OUT/project_b" "$OUT/project_b_helper" "$OUT/libproject_b_content.dylib" \
+cp -c "$OUT/project_b" "$OUT/project_b_helper" "$OUT/libproject_b_content.dylib" "$OUT/libpbblock.dylib" \
       "$OUT/project_b.pak" "$OUT/icudtl.dat" "$OUT/snapshot_blob.bin" "$OUT"/v8_context_snapshot.*.bin \
       "$OUT/libEGL.dylib" "$OUT/libGLESv2.dylib" "$OUT/libvk_swiftshader.dylib" "$OUT/libvulkan.dylib" \
       "$OUT/vk_swiftshader_icd.json" "$APP_COPY/" || { echo "RESULT=failed copy to $APP_COPY"; exit 1; }

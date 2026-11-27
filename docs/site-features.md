@@ -298,7 +298,7 @@ On by default (one constant in Go, while the owner decides), switchable per site
 panel: it's what a person expects of a browser they choose today, and a site that breaks is
 one switch away. **Block ads** in Settings (Privacy; Privacy and sites in the sections layout)
 turns it off or on for every site: a pref, `blockAds`, on by default. Off, Go hands the engine
-rules with no hosts, so nothing is kept from any page, and leaves the `ads` setting out of
+no blocker (`set_blocker(NULL)`), so nothing is asked or kept from any page, and leaves the `ads` setting out of
 each open site's settings, so the panel has no switch, nor a site's view in Settings; each
 site's own setting is kept, and counts again once it is on.
 
@@ -306,14 +306,20 @@ site's own setting is kept, and counts again once it is on.
   hosts, kept by hand and bundled in the app, a few hundred hosts that serve only ads or
   tracking, so no site's own content goes with them. Updated with the app. A larger
   published list (EasyList's hosts) is a later step, once its licence is settled.
-- **The engine blocks**, beside the policy's block rules: Go hands over the hosts and the
-  origins where the blocker is off (`set_ad_rules`, at start and on each change), the
-  browser passes them to every renderer over `project_b.mojom.Renderer`, and each
-  renderer's request throttle refuses a request to a listed host, or one under it, from a
-  page whose site isn't the host's own and where the blocker isn't off. A refused
-  request fails as `ERR_BLOCKED_BY_CLIENT` (the policy's as `ERR_BLOCKED_BY_ADMINISTRATOR`),
+- **The engine blocks**, beside the policy's block rules, with the blocker Go hands it
+  ([blocking.md](blocking.md#the-engines-hooks)): a table of the blocker's functions
+  (`set_blocker`, `PBBlockerHooks`), which the engine calls on its own sequence in the
+  browser, never on the main thread; `blocker_changed` when the rules change; and the
+  origins where it is off (`set_blocking_off`, at start and on each change). The browser
+  tells every renderer whether there is a blocker and where it is off over
+  `project_b.mojom.Renderer`. Each renderer's request throttle asks the browser about a
+  request of a page where the blocker is on (`project_b.mojom.Blocker`), keeping the last
+  512 answers, and refuses those it blocks. A refused request fails as
+  `ERR_BLOCKED_BY_CLIENT` (the policy's as `ERR_BLOCKED_BY_ADMINISTRATOR`, checked first),
   which the browser counts for the tab (`PB_EVENT_AD_BLOCKED`, 48), and Go clears at the
-  tab's next page.
+  tab's next page. As a frame's page arrives, the browser asks what it hides and runs, and
+  the frame puts that in at document start, with the blocker's watcher
+  (`project_b.mojom.BlockerFrame`, `engine/browser/blocker.cc`).
 
 ## Pop-ups
 
@@ -365,5 +371,5 @@ sync, and enterprise policy lists. Each is a later step, if wanted.
 ## One release
 
 All four in one release, as the owner asked: the Go and the adapter's parts are shared by
-the Mac and Android (`engine/browser/site_features.cc`, `engine/common/ad_rules.cc`, the
-renderer client and `engine/mojom`).
+the Mac and Android (`engine/browser/site_features.cc`, `engine/browser/blocker.cc`,
+`engine/common/blocker_client.cc`, the renderer client and `engine/mojom`).
