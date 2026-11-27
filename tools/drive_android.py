@@ -1139,9 +1139,7 @@ def bookmark_star():
             check(shell + ": and the star is off again", see("shell", label="Bookmark") is not None)
             key(4)
         except TimeoutError:
-            # The screen as it stopped, before the shell is put back, which stops the app.
-            # Kept here, before the shell is put back, which stops the app.
-            STOPPED["bookmark_star"] = keep_evidence("stopped-bookmark_star-" + shell, "bookmark_star")
+            stopped_here("bookmark_star", "bookmark_star-" + shell)
             raise
         finally:
             use_shell("")
@@ -1178,8 +1176,7 @@ def settings_ahead():
             close_settings()
             check(shell + ": and its close closes it", "settings" not in screen_parts())
         except TimeoutError:
-            # Kept here, before the shell is put back, which stops the app.
-            STOPPED["settings_ahead"] = keep_evidence("stopped-settings_ahead-" + shell, "settings_ahead")
+            stopped_here("settings_ahead", "settings_ahead-" + shell)
             raise
         finally:
             use_shell("")
@@ -1841,6 +1838,9 @@ def file_inputs():
     find_in_page's page (its 1/2 flake)."""
     try:
         file_input_checks()
+    except TimeoutError:
+        stopped_here("file_inputs")
+        raise
     finally:
         adb("shell", "am", "force-stop", PACKAGE)
         clear_data()
@@ -2970,6 +2970,9 @@ def long_press_menu():
             check(shell + ": every control of the sheet is 48dp or more each way", not small, ", ".join(small))
             key(4)
             check(shell + ": the back key closes it", until(lambda: named("shell", "Copy image") is None, 5) is not None)
+        except TimeoutError:
+            stopped_here("long_press_menu", "long_press_menu-" + shell)
+            raise
         finally:
             use_shell("")
 
@@ -3016,12 +3019,22 @@ def keyboard_bars():
             see("shell", kind=FIELD, focused="true")
             check(shell + ": the address field in edit keeps the toolbar with the keyboard up",
                   until(lambda: keyboard_shown(), 10) is not None and find("shell", kind=FIELD, focused="true") is not None)
+        except TimeoutError:
+            stopped_here("keyboard_bars", "keyboard_bars-" + shell)
+            raise
         finally:
             use_shell("")
 
 
 # Whether the app was running when a part stopped, kept by the part itself: see keep_evidence.
 STOPPED = {}
+
+
+def stopped_here(part, label=None):
+    """Keeps a stopped part's evidence while the app is as the step left it. Called from the
+    part's own except, before its finally puts the shell back, clears the data or stops the
+    app: kept after that, by the run, it always said "the app is gone"."""
+    STOPPED[part] = keep_evidence("stopped-" + (label or part), part)
 
 
 def keep_evidence(name, logname=None):
@@ -3303,6 +3316,9 @@ def update_on_the_phone():
             launch()
             check("the updated app starts and shows its shell", find("shell", label="Menu") is not None)
             shot("updated")
+    except TimeoutError:
+        stopped_here("update_on_the_phone")
+        raise
     finally:
         adb("install", "-r", "-d", "--no-incremental", APK)
         clear_data()
@@ -3419,6 +3435,9 @@ def update_notification():
         blocked = [l for l in adb("logcat", "-d").splitlines() if re.search(r"Background activity|Abort background activity|BAL_BLOCK", l)][:3]
         check("Install in the notification, the app in the background, opens Android's package installer", shown is not None,
               "in front: %s%s" % (in_front_now().strip(), "; " + " / ".join(blocked) if blocked else ""))
+    except TimeoutError:
+        stopped_here("update_notification")
+        raise
     finally:
         adb("shell", "cmd", "statusbar", "collapse")
         adb("install", "-r", "-d", "--no-incremental", APK)
