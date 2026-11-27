@@ -789,9 +789,9 @@
     "id": "safe-browsing",
     "name": "Safe Browsing",
     "api": "Malware and phishing warnings",
-    "status": {"mac": "absent", "linux": "absent", "android": "absent"},
-    "why": "Safe Browsing is Chrome's service",
+    "status": {"mac": "works", "linux": "absent", "android": "absent"},
+    "why": "Our own, from open lists checked on the device (docs/blocking.md); Linux and Android until their runs pass",
     "needs": ["build"],
-    "test": ["basics:28"]
+    "test": ["basics:28", "basics:42"]
   }
 ]
