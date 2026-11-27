@@ -266,7 +266,7 @@ each group:
 |---|---|---|---|
 | Ads | network and page | EasyList, uBO filters, uBO unbreak, Brave's unbreak | yes |
 | Trackers | network and page | EasyPrivacy, uBO privacy, Peter Lowe's | yes |
-| Regional | network and page | one per language: the app's languages' on, the rest off | the app's languages' |
+| Regional | network and page | one per language with about 50 million speakers or more: the app's languages' on, the rest off | the app's languages' |
 | Annoyances | network and page | cookie notices, pop-ups, social widgets (Fanboy's, uBO annoyances) | no |
 | Extreme | network and page | AdGuard URL tracking, uBO's resource abuse, and any list that breaks sites often | no |
 | Dangerous sites: malware | Safe Browsing | uBO badware, URLhaus filter | yes |
@@ -274,6 +274,14 @@ each group:
 | test | both | our own list: one test address per hook, for the checks; never shown | only in tests |
 
 Our own `hosts.txt` stays as the built-in list (below) and as list `pb-hosts` in group ads.
+
+**What we leave out.** The owner, 2026-11-27: "don't include non commercial lists... also we
+can skip non popular regions". So no list whose licence forbids commercial use (Polish, which
+is CC-BY-NC-SA-4.0), and no regional list for a language with fewer than about 50 million
+speakers (Bulgarian, Czech and Slovak, Dutch, Estonian, Finnish, Greek, Hebrew, Hungarian,
+Icelandic, Latvian, Lithuanian, Macedonian, Nordic, Romanian, Slovenian, Swedish). Each is in
+the catalogue's `ignored` with its reason, so the release's check against Brave stays quiet
+about them.
 
 ### The person's choices
 
