@@ -142,7 +142,7 @@ nothing at all.
   to Rust, no Go, no thread hop.
 - **The answer.** Allow resumes the request. Block fails it as `ERR_BLOCKED_BY_CLIENT` and
   counts it for the tab, as now. Redirect is in the interface from the start but treated as
-  block until step 4 (below): a page script that a list replaces with a harmless stand-in is
+  block until the resources file is served (below): a page script that a list replaces with a harmless stand-in is
   blocked instead.
 - **The administrator's block rules** (`block_rules`) stay in the throttle, checked first,
   in the renderer, unchanged.
@@ -165,7 +165,7 @@ remembered, plus the check:
   would add the delay the batch saves. Mojo already carries several in flight.
 - **Not asked at all:** our own pages, `data:`, `blob:`, `file:` and the app's scheme; any
   request on a page where blocking is off; everything when Block ads is off (no hooks).
-- **The gate.** Before step 1 ships, `docs/benchmarks.md` gains a page-load run (the
+- **The gate.** Before the branch ships, `docs/benchmarks.md` gains a page-load run (the
   benchmark pages, cold and warm, on the Mac and on emu-37 and a real phone) with the list
   set on and with Block ads off. If the median load is more than 5% slower than with the
   hosts list today, the check moves into the browser's URL loader factory (a proxy, as
@@ -221,8 +221,8 @@ remembered, plus the check:
 - **What it can't do.** Lists are hours old, and many phishing pages live for hours. It
   catches what the public lists know, which is less than a service that asks about every
   address as it opens. It sends nothing anywhere: the whole check is on the device.
-- **A switch,** "Warn before dangerous sites", in Settings, Privacy, on by default. Off, Go
-  doesn't ask and the lists aren't downloaded.
+- **A switch,** "Warn before dangerous sites", in Settings, Privacy and in the welcome, on by
+  default. Off, Go doesn't ask and the lists aren't downloaded.
 
 ## The lists
 
@@ -257,31 +257,49 @@ check if it needs to change our list".
 }
 ```
 
-**Groups,** each one loaded engine:
+**Groups,** each one loaded engine. The owner: "extreme once on a seperate group", so the
+lists that break sites more often are a group of their own, off, rather than a tier inside
+each group:
 
-| Group | Blocker | Standard (on) | Strict (opt-in) |
+| Group | Blocker | Lists | On at first |
 |---|---|---|---|
-| ads | network and page | EasyList, uBO filters, uBO unbreak, Brave's unbreak | none yet |
-| trackers | network and page | EasyPrivacy, uBO privacy, Peter Lowe's | AdGuard URL tracking |
-| annoyances | network and page | none | cookie notices, pop-ups, social widgets (Fanboy, uBO annoyances) |
-| regional | network and page | the list for each of the app's languages | other regions, by hand |
-| badware | Safe Browsing | uBO badware, URLhaus filter | none |
-| phishing | Safe Browsing | Phishing URL Blocklist (phishing-filter) | none |
-| test | both | our own list: one test address per hook, so the checks have something to hit | none |
+| Ads | network and page | EasyList, uBO filters, uBO unbreak, Brave's unbreak | yes |
+| Trackers | network and page | EasyPrivacy, uBO privacy, Peter Lowe's | yes |
+| Regional | network and page | one per language: the app's languages' on, the rest off | the app's languages' |
+| Annoyances | network and page | cookie notices, pop-ups, social widgets (Fanboy's, uBO annoyances) | no |
+| Extreme | network and page | AdGuard URL tracking, uBO's resource abuse, and any list that breaks sites often | no |
+| Dangerous sites: malware | Safe Browsing | uBO badware, URLhaus filter | yes |
+| Dangerous sites: phishing | Safe Browsing | Phishing URL Blocklist, Phishing.Database | yes |
+| test | both | our own list: one test address per hook, for the checks; never shown | only in tests |
 
 Our own `hosts.txt` stays as the built-in list (below) and as list `pb-hosts` in group ads.
 
 ### The person's choices
 
-- Settings, Privacy, **Block ads**: as today, all of the network and page rules on or off.
-- Under it, **Lists**: each group with a switch and, opened, its lists with theirs; Strict
-  lists marked as such, with one line on what they may break. Regional lists follow the
-  app's languages unless the person picks.
-- **Warn before dangerous sites**: Safe Browsing.
-- The site panel's switch stays as it is, and turns off requests and page parts for that
+The owner, 2026-11-27: "warning default on but welcome screen offers choice same as the
+adblocker... also we should be able to configure the lists i want... shown cleanly as groups
+and individual lists".
+
+- **Settings, Privacy:**
+  - **Block ads**, as today: all of the network and page rules on or off.
+  - **Warn before dangerous sites**: Safe Browsing, on by default.
+  - **Lists**, one row that opens a page of its own.
+- **The Lists page:** the groups, in the table's order, each a row with its switch and how
+  many of its lists are on. Opened, a group shows its lists, each a row with its own switch,
+  its title, one line on what it blocks, its home, when it last changed and its size.
+  A group's switch turns all of its lists on or off; a list's own switch leaves the rest of
+  its group as it is. Extreme carries one line: "These block more and may break some sites."
+  The Safe Browsing groups show under Warn before dangerous sites, greyed while it is off.
+  The test group is never shown.
+- **The welcome** offers both, on the Protection step: the ad blocker and Warn before
+  dangerous sites, each a switch, both on ([onboarding.md](onboarding.md)).
+- **The site panel's switch** stays as it is, and turns off requests and page parts for that
   site. Safe Browsing has no per-site switch; Open anyway is the way past one warning.
-- Prefs per profile, as every pref (one process per profile, [profiles.md](profiles.md)).
-- UI for ux to review before it is built.
+- Prefs per profile, as every pref (one process per profile, [profiles.md](profiles.md)):
+  `blockAds`, `warnDangerous`, and `lists`, only the lists the person changed from the
+  catalogue's default, so a list the catalogue adds later takes its own default.
+- The Lists page, the welcome's switches and the unsafe-site notice go to ux for review
+  before they are built, with mocks.
 
 ### Building and publishing them
 
@@ -365,14 +383,14 @@ So the package is split by list, and a list that changed sends only its change:
 | App size | `libpbblock` about 2 to 3 MB | about 2 to 3 MB in the APK, arm64 only; no list data in the APK |
 | Download | the standard set's texts compressed, a few MB, once; after that the patches, tens of kilobytes a day | the same; over a metered connection, at most once a day |
 | Compiling | a changed group, in the background, under a second (to be measured) | a few seconds at low priority for the whole set on the first run (Brave compiles its lists on phones too); a changed group after that |
-| Memory | the standard set's engines, in the browser process only: about 15 to 20 MB (Brave's figure for its default set after its 2026 FlatBuffers work, which cut it by three quarters) | the same, once; strict lists add to it, so the Lists page shows each group's size |
+| Memory | the standard set's engines, in the browser process only: about 15 to 20 MB (Brave's figure for its default set after its 2026 FlatBuffers work, which cut it by three quarters) | the same, once; Annoyances and Extreme add to it, so the Lists page shows each group's size |
 | In each renderer | the 512 remembered answers and each frame's stylesheet: kilobytes | the same |
 
 - **One copy.** The rules live only in the browser process. Putting a blocker in each
   renderer would save the round trip but cost a copy per renderer, which a phone can't pay.
 - **Read in place.** If adblock-rust reads its serialized engine without copying it, Go maps
   the file instead of reading it, so the system can drop and reread those pages under
-  memory pressure. To be checked against its API in step 1.
+  memory pressure. To be checked against its API first.
 - **The phone's checks** run with the same numbers in `docs/benchmarks.md`: page load,
   memory of the browser process with the standard set, and start-up time, on emu-37 and a
   real phone.
@@ -391,22 +409,23 @@ So the package is split by list, and a list that changed sends only its change:
 - **A licences page** in the app (Settings, About, Licences; there is none today) lists
   adblock-rust and its crates, and each list in use with its licence and home. Chromium's
   own notices go on the same page when it is made.
-- **Before step 1 ships,** the owner reads the licences table once; this is the reading of a
+- **Before the branch ships,** the owner reads the licences table once; this is the reading of a
   developer, not a lawyer's.
 
-## Steps
+## Delivery
 
-1. **Requests:** `libpbblock`, its build on the three platforms, the blocker table and
-   throttle, the lists manager with the built-in list, the catalogue and its check against
-   Brave's, the workflow with its patches, the signing key; groups ads and trackers; the
-   page-load gate.
-2. **Safe Browsing:** the second blocker, badware and phishing groups, the notice, the
-   switch; basics check 28 changed to our own test list's address.
-3. **Page parts:** page extras at commit, scriptlets, the watcher.
-4. **Strict lists and stand-ins:** annoyances, the strict tier in Settings, and redirect
-   answers served by the engine from the resources file.
+The owner: "build it in one go". One branch, handed to release once, with all of it:
+`libpbblock` and its build on the three platforms; the blocker table and the throttle; page
+parts at commit, scriptlets and the watcher; Safe Browsing and its notice; redirect answers
+served by the engine from the resources file; the lists manager with the built-in list; the
+catalogue and its check against Brave's; the workflow with its patches and the signing key;
+the settings, the Lists page and the welcome's switches; the page-load gate passed. Inside
+the branch the work goes in that order, one change per commit, and the engine's part first,
+as it is the one that needs a content build.
 
-Each step has a `Notes:` line ("Ads and trackers are blocked from up-to-date public lists").
+Its `Notes:` lines: "Ads and trackers are blocked from up-to-date public lists, which you
+choose in Settings", "Hides the empty spaces ads leave on pages", "Warns before opening a
+site known for malware or phishing, checked on your device".
 
 ## Tests
 
