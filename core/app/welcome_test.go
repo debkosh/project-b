@@ -220,8 +220,8 @@ func TestHowYouWorkMakesTheWorkspacesAndChoosesTheKeys(t *testing.T) {
 	}
 }
 
-// A profile's first start gives it the built-in sparks, off. The welcome's page hears them,
-// for the phone's Extras for any page, and a switch there turns one on.
+// The system sparks start off. The welcome's page hears them, for the phone's Extras for
+// any page, and a switch there turns one on.
 func TestTheWelcomeOffersTheBuiltInSparks(t *testing.T) {
 	dir := t.TempDir()
 	r := startMade(t, dir, true)
@@ -250,7 +250,7 @@ func TestTheWelcomeOffersTheBuiltInSparks(t *testing.T) {
 		t.Fatalf("after the switch %v", m["sparks"])
 	}
 	var on bool
-	r.main(func() { on = r.a.Sparks.List()[1].On })
+	r.main(func() { on = r.a.Sparks.System()[1].On })
 	if !on {
 		t.Fatal("Screen time limit isn't on")
 	}

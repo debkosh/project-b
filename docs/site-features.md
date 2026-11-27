@@ -82,9 +82,10 @@ the page's own world, as other userscript managers run a script that asks for no
   connections.
 - **Settings** gets a Sparks section: New on its heading line, with a ⋯ menu of Import…
   and Export… beside it, the count of 25 under it, and a row for each spark: its name,
-  where it runs ("every site" for `<all_urls>`), its switch, and a menu (⋯, or a
+  where it runs ("every site" for `<all_urls>` and `*://*/*`, `https://*/*` or `http://*/*`), its switch, and a menu (⋯, or a
   right-click) of Edit…, Export and Delete. A tap on the row edits it. New and Edit open
-  the editor, a plain text area for the first version, under the list.
+  the editor, a plain text area for the first version, under the list. The system sparks
+  are a short group of their own under the person's, headed "Built in" (below).
 - **Import…** takes any number of files at once, from the system's picker on the Mac and on
   a phone: each `.user.js`, and each `.zip` of them. A zip gives every `.user.js` in it, at
   any depth, and leaves out the rest, such as a Mac's `__MACOSX` folder, hidden files and
@@ -103,7 +104,7 @@ the page's own world, as other userscript managers run a script that asks for no
   it once ("Added dhd 2 · 3 already here"), and a row for each spark gives its name and
   what became of it, or why it was not imported.
 - **Export**: a row's Export downloads that spark's `.user.js`. Export… is a dialog listing
-  every spark that reads, ticked, under All; Export N sparks downloads `Sparks.zip` of
+  every spark that reads, the system sparks too, ticked, under All; Export N sparks downloads `Sparks.zip` of
   those ticked (`sparkExport`, `sparkZip`): each kept file as it is, named by its spark,
   which Import here and other userscript managers read back. Both go through our
   downloads.
@@ -114,13 +115,31 @@ Three of the owner's sparks come with the app, to give a feel of what sparks do:
 downloader** (his `dhd`), **Screen time limit** and **Page cleanup**. They are samples, not a
 feature of ours:
 
-- **Added once, off.** A profile's first start on the version that has them, a new one or
-  one updated to it, adds the three to its sparks, off, after any it has, while there is room
-  for 25. A profile notes that it has had them, so they never come back once deleted, and an
-  update never changes them (`AddBuiltins`, `core/sparks/builtin.go`; `sparks.json` keeps
-  the ids they were given as).
-- **Then they are the person's.** Each is an ordinary spark: on or off, Edit…, Export,
-  Delete, and its switches for each site, as any other. Nothing marks it as ours.
+- **System sparks: the app's, always.** Their source is the app's own embedded file, read
+  as the app starts and never kept in the profile, so an update brings their fixes
+  (`core/sparks/builtin.go`). The profile keeps only whether each is on, in `sparks.json`'s
+  `system`, by a fixed id that is its file's name: `video-downloader`, `screen-time-limit`,
+  `page-cleanup`. They start off, and don't count toward the 25.
+- **They run as any spark does** when on: matched by their own headers, after the person's
+  sparks, named in the site panel and the phone's site sheet, off with the rest where a
+  site's sparks are off, and in Export… and `Sparks.zip`.
+- **In Settings › Sparks** they are their own short group under the person's sparks,
+  headed "Built in", with a muted line, "Come with Project B and update with it. Duplicate
+  one to change it.", each row's second line its `@description` and where it runs, and its
+  switch and a menu of View source, Duplicate and Export: no Edit… and no Delete, as turning
+  one off is how it goes away. A tap on the row is View source: a plain code block in the
+  editor's place, tagged Read only, its text selectable, with Close and Duplicate; it
+  scrolls into view and takes the focus, and Escape closes it. Go refuses an edit of one
+  (`sparkUpdate`) and leaves it on a delete.
+- **Duplicate** (`sparkDuplicate`) keeps a copy as the person's own, an ordinary spark to
+  edit or delete, on, named "Video downloader copy" (its header's `@name` rewritten; "copy
+  2" when that is taken), and turns the system one off so a page never gets both.
+- **An import never replaces one.** A file whose spark has a system spark's `@name` is
+  added as the person's own, renamed as a clash's Rename does, "Video downloader 2", with no
+  question; one that is the system spark's own file, as an export of it, is already here.
+- **Before they were system sparks** a profile was given copies of them, once,
+  noted in `sparks.json`'s `builtins`. Those copies stay as the person's own sparks, and the
+  note is read past and dropped at the next write; nothing else is done with them.
 - **Their sources** live in `core/sparks/builtin/` as `.user.js` files, embedded in the app,
   each with `@name`, `@description`, `@version` and `@namespace`, and a short doc beside it
   (`core/sparks/builtin/README.md`). They are the owner's originals cleaned up after a UX
@@ -144,7 +163,7 @@ feature of ours:
     can't be saved". "Hide on
     this page" is in the panel's menu.
   - **Screen time limit:** 30 minutes a day on each site its `@match` takes: every site, as
-    it comes, and fewer once the person edits its patterns in Settings › Sparks. "Daily limit reached", "Limit
+    it comes, and fewer in a copy the person makes with Duplicate and edits. "Daily limit reached", "Limit
     reached again" and "It's late", one message each; "More time…" leads to the sum, then
     "How much more?". The countdown shows only in the last 5 minutes.
   - **Page cleanup:** a 40px button docked to the edge; "Hide parts of this page" outlines
@@ -164,7 +183,7 @@ feature of ours:
   (docs/daily-driver.md, "Naming downloads"): the name alone, never the ending. The suggested name is the server's, not the page's, so a page can't
   pass a file off under another name, which is why Chromium ignores `download` there.
 - **The phone's welcome** has a step after Make it yours, "Extras for any page": a switch
-  for each of the three the profile still has, with its name and `@description`, all off
+  for each of the three system sparks, with its name and `@description`, all off
   ([mock](screenshots/onboarding/mock-p3.png)). The page hears them in its snapshot and as
   `sparks`, and a switch sends `setSparkOn {id, on}`. The desktop shows them in Settings ›
   Sparks only.
@@ -181,7 +200,7 @@ source and whether it is on. So each spark has:
   switch last changed it. The list's order is the order they were added in; a place key
   comes when sparks can be moved.
 
-`sparks.json` is `{version: 2, sparks: [{id, on, added, modified}], builtins: [id]}`. The
+`sparks.json` is `{version: 2, sparks: [{id, on, added, modified}], system: {id: on}}`. The
 first version, a list of `{id, on}`, reads in its order, each added a millisecond after the
 one before, and is written as version 2 at the next change.
 

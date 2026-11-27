@@ -20,10 +20,6 @@ func TestSettingsImportsAndExportsSparks(t *testing.T) {
 	defer r.stop()
 	got, _ := r.openSettings()
 	r.main(func() {
-		// A profile with only its own sparks: the built-in ones deleted.
-		for _, s := range r.a.Sparks.Builtins() {
-			r.a.Sparks.Remove(s.ID)
-		}
 		r.a.Sparks.Add(sparkSource("Kept", "https://a.test/*"))
 	})
 
@@ -66,7 +62,8 @@ func TestSettingsImportsAndExportsSparks(t *testing.T) {
 	z := r.waitOn(got, func(m map[string]any) bool { return m["t"] == "sparkZip" })
 	data, _ := base64.StdEncoding.DecodeString(z["data"].(string))
 	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
-	if err != nil || z["count"] != 3.0 || len(zr.File) != 3 || zr.File[2].Name != "Kept 2.user.js" {
+	// Every spark: the person's, then the system sparks.
+	if err != nil || z["count"] != 6.0 || len(zr.File) != 6 || zr.File[2].Name != "Kept 2.user.js" || zr.File[3].Name != "Video downloader.user.js" {
 		t.Fatalf("zip %v %v", z["count"], err)
 	}
 }

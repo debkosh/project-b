@@ -1,5 +1,5 @@
 <script setup>
-import { computed, inject, ref, watch } from 'vue';
+import { computed, inject, nextTick, ref, watch } from 'vue';
 import Dialog from '@/ui/Dialog.vue';
 import RowMenu from '@/ui/RowMenu.vue';
 import Segmented from '@/ui/Segmented.vue';
@@ -7,7 +7,11 @@ import { send, state } from './state.js';
 
 // Sparks (docs/site-features.md): the person's scripts for pages, which Go keeps, parses and
 // matches. Each row has its switch and a menu: Edit…, Export and Delete; a tap on the row
-// edits it too. New opens an empty editor. Import… takes .user.js files and zips of them in
+// edits it too. The system sparks, the app's own, are a group of their own under them,
+// Built in: each has its switch and a menu of View source, Duplicate and Export; a tap
+// views its source, read only, in a code block in the editor's place, with Duplicate, which
+// keeps a copy as the person's own, on, and turns the built-in one off; Escape or Close puts
+// it away. New opens an empty editor. Import… takes .user.js files and zips of them in
 // one dialog: Go reads them, the dialog asks about each spark the profile already has
 // (replace it, keep both under a new name, or ignore it), then says what was done. Export…
 // is a dialog that picks the sparks for a zip. A save that Go refuses says why under the
@@ -27,12 +31,15 @@ const template = `// ==UserScript==
 `;
 
 // The editor: null when closed; else the spark it edits ('' for a new one) and its text.
+// viewing is a system spark's source, shown read only.
 const editing = ref(null);
+const viewing = ref(false);
 const text = ref('');
 const saving = ref(false);
 
 function startNew(source = template) {
   editing.value = '';
+  viewing.value = false;
   text.value = source;
   state.sparkProblem = null;
 }
@@ -49,10 +56,12 @@ watch(
     if (!s || wanted.value?.id !== s.id) return;
     const then = wanted.value.then;
     wanted.value = null;
-    if (then === 'edit') {
+    if (then === 'edit' || then === 'view') {
       editing.value = s.id;
+      viewing.value = then === 'view';
       text.value = s.source;
       state.sparkProblem = null;
+      if (viewing.value) showViewer();
     } else {
       download(s.fileName, new Blob([s.source], { type: 'text/javascript' }));
     }
@@ -73,6 +82,30 @@ function save() {
   if (editing.value) send({ t: 'sparkUpdate', id: editing.value, source: text.value });
   else send({ t: 'sparkAdd', source: text.value });
 }
+// The viewer, once open, is scrolled into view and takes the focus, so Escape closes it. It
+// is in the list's v-for, so a function ref keeps the one element.
+let viewer = null;
+async function showViewer() {
+  await nextTick();
+  viewer?.scrollIntoView({ block: 'nearest' });
+  viewer?.focus({ preventScroll: true });
+}
+function closeViewer() {
+  editing.value = null;
+}
+// Escape in the viewer closes it, and goes no further.
+function escape(e) {
+  if (!viewing.value) return;
+  e.stopPropagation();
+  closeViewer();
+}
+
+// Duplicate: Go keeps the copy and turns the system spark off; the view then closes.
+function duplicate(id) {
+  saving.value = true;
+  state.sparkProblem = null;
+  send({ t: 'sparkDuplicate', id });
+}
 watch(
   () => state.sparkProblem,
   (p) => {
@@ -85,6 +118,13 @@ watch(
 // The row menus by spark id, so a right-click on a row opens its menu.
 const menus = {};
 function items(s) {
+  if (s.system) {
+    return [
+      { label: 'View source', run: () => ask(s.id, 'view') },
+      { label: 'Duplicate', run: () => duplicate(s.id), disabled: full.value },
+      { label: 'Export', run: () => ask(s.id, 'export') },
+    ];
+  }
   return [
     { label: 'Edit…', run: () => ask(s.id, 'edit') },
     { label: 'Export', run: () => ask(s.id, 'export'), disabled: !!s.error },
@@ -92,9 +132,9 @@ function items(s) {
     { label: 'Delete', danger: true, run: () => send({ t: 'sparkRemove', id: s.id }) },
   ];
 }
-// A tap on a row, outside its switch and its menu, edits it.
+// A tap on a row, outside its switch and its menu, edits it, or views a system spark's.
 function rowClick(s, e) {
-  if (!e.target.closest('input, button, .ui-row-menu')) ask(s.id, 'edit');
+  if (!e.target.closest('input, button, .ui-row-menu')) ask(s.id, s.system ? 'view' : 'edit');
 }
 
 // Import. Each file goes to Go as base64; one over Go's 8 MB goes as its size alone, for Go
@@ -196,10 +236,11 @@ const importTitle = computed(() => {
   return step.value === 'done' ? outcome.value : 'Importing…';
 });
 
-// Export…: every spark ticked to start with; the zip Go makes is downloaded.
+// Export…: every spark ticked to start with, the built-in ones too; the zip Go makes is
+// downloaded.
 const exporting = ref(false);
 const chosen = ref([]);
-const exportable = computed(() => state.sparks.filter((s) => !s.error));
+const exportable = computed(() => [...state.sparks, ...state.systemSparks].filter((s) => !s.error));
 const all = computed(() => chosen.value.length === exportable.value.length);
 const some = computed(() => chosen.value.length > 0 && !all.value);
 function startExport() {
@@ -230,8 +271,20 @@ const more = computed(() => [
 ]);
 
 const full = computed(() => state.sparks.length >= 25);
-// Where it runs: its patterns as written, but <all_urls>, which reads as code.
-const where = (s) => (s.match || []).map((m) => (m === '<all_urls>' ? 'every site' : m)).join(', ');
+// The parts of the list in order: the person's sparks, then Built in, the editor under the
+// group of the spark it shows.
+const parts = computed(() => {
+  const own = { key: 'own', list: state.sparks };
+  const system = { key: 'system', title: 'Built in', list: state.systemSparks };
+  if (editing.value === null) return [own, system];
+  return viewing.value ? [own, system, { key: 'editor' }] : [own, { key: 'editor' }, system];
+});
+// Where it runs: its patterns as written, but those that take every site, which read as
+// code: <all_urls>, and any scheme's *://*/*, said once. A built-in's line is its
+// description first.
+const everySite = /^(<all_urls>|(\*|https?):\/\/\*\/\*)$/;
+const where = (s) => [...new Set((s.match || []).map((m) => (everySite.test(m) ? 'every site' : m)))].join(', ');
+const line = (s) => (s.system && s.description ? `${s.description} · ${where(s)}` : where(s));
 </script>
 
 <template>
@@ -251,41 +304,60 @@ const where = (s) => (s.match || []).map((m) => (m === '<all_urls>' ? 'every sit
       Your own scripts for the pages they match, run in the page itself.
       {{ state.sparks.length ? `${state.sparks.length} of 25.` : 'No sparks yet.' }}
     </p>
-    <div v-if="state.sparks.length" class="card">
+    <template v-for="part in parts" :key="part.key">
       <div
-        v-for="s in state.sparks"
-        :key="s.id"
-        class="row spark"
+        v-if="part.key === 'editor'"
+        class="card editor"
         role="group"
-        :aria-label="s.name || 'A spark that has a problem'"
-        @click="rowClick(s, $event)"
-        @contextmenu.prevent="menus[s.id]?.open()"
+        :aria-label="viewing ? 'View spark' : editing ? 'Edit spark' : 'New spark'"
+        @keydown.esc="escape"
       >
-        <span class="label">
-          <span class="name" :title="s.name">{{ s.name || 'A spark that has a problem' }}</span>
-          <span class="secondary" :class="{ failed: s.error }">{{ s.error || where(s) }}</span>
-        </span>
-        <input
-          type="checkbox"
-          role="switch"
-          class="switch"
-          :aria-label="`${s.name} on`"
-          :checked="s.on"
-          :aria-checked="String(s.on)"
-          @change="send({ t: 'sparkSetOn', id: s.id, on: $event.target.checked })"
-        />
-        <RowMenu :ref="(m) => (menus[s.id] = m)" :items="items(s)" :label="`Actions for ${s.name || 'the spark'}`" />
+        <div v-if="viewing" :ref="(el) => (viewer = el)" class="viewer" tabindex="-1">
+          <span class="tag">Read only</span>
+          <pre class="code" tabindex="0" aria-label="Spark source">{{ text }}</pre>
+        </div>
+        <textarea v-else v-model="text" aria-label="Spark source" spellcheck="false" rows="16"></textarea>
+        <p v-if="state.sparkProblem" class="problem" role="alert">{{ state.sparkProblem }}</p>
+        <div v-if="viewing" class="buttons">
+          <button type="button" class="text-button" @click="closeViewer">Close</button>
+          <button type="button" class="text-button primary" :disabled="saving || full" @click="duplicate(editing)">Duplicate</button>
+        </div>
+        <div v-else class="buttons">
+          <button type="button" class="text-button" @click="editing = null">Cancel</button>
+          <button type="button" class="text-button primary" :disabled="saving" @click="save">Save</button>
+        </div>
       </div>
-    </div>
-
-    <div v-if="editing !== null" class="card editor" role="group" :aria-label="editing ? 'Edit spark' : 'New spark'">
-      <textarea v-model="text" aria-label="Spark source" spellcheck="false" rows="16"></textarea>
-      <p v-if="state.sparkProblem" class="problem" role="alert">{{ state.sparkProblem }}</p>
-      <div class="buttons">
-        <button type="button" class="text-button" @click="editing = null">Cancel</button>
-        <button type="button" class="text-button primary" :disabled="saving" @click="save">Save</button>
-      </div>
-    </div>
+      <template v-else-if="part.list.length">
+        <h3 v-if="part.title" :id="`sparks-${part.key}`" class="group">{{ part.title }}</h3>
+        <p v-if="part.title" class="group-note">Come with Project B and update with it. Duplicate one to change it.</p>
+        <div class="card" :role="part.title ? 'group' : undefined" :aria-labelledby="part.title ? `sparks-${part.key}` : undefined">
+          <div
+            v-for="s in part.list"
+            :key="s.id"
+            class="row spark"
+            role="group"
+            :aria-label="s.name || 'A spark that has a problem'"
+            @click="rowClick(s, $event)"
+            @contextmenu.prevent="menus[s.id]?.open()"
+          >
+            <span class="label">
+              <span class="name" :title="s.name">{{ s.name || 'A spark that has a problem' }}</span>
+              <span class="secondary" :class="{ failed: s.error }">{{ s.error || line(s) }}</span>
+            </span>
+            <input
+              type="checkbox"
+              role="switch"
+              class="switch"
+              :aria-label="`${s.name} on`"
+              :checked="s.on"
+              :aria-checked="String(s.on)"
+              @change="send({ t: 'sparkSetOn', id: s.id, on: $event.target.checked })"
+            />
+            <RowMenu :ref="(m) => (menus[s.id] = m)" :items="items(s)" :label="`Actions for ${s.name || 'the spark'}`" />
+          </div>
+        </div>
+      </template>
+    </template>
 
     <Dialog v-if="step" :title="importTitle" @close="closeImport">
       <template v-if="step === 'clashes'">
@@ -357,6 +429,51 @@ const where = (s) => (s.match || []).map((m) => (m === '<all_urls>' ? 'every sit
   margin: 4px 0 12px;
   color: var(--muted);
   font-size: calc(13rem / 16);
+}
+
+/* Built in: a short group under the person's sparks, named as a list's day is, with a
+   muted line on what it is. */
+.group {
+  margin: 16px 0 2px;
+  color: var(--muted);
+  font-size: calc(12rem / 16);
+  font-weight: 500;
+}
+
+.group-note {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: calc(12rem / 16);
+}
+
+/* A system spark's source: a plain code block, plainly not a field, its text selectable. */
+.viewer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  outline: none;
+}
+
+.code {
+  box-sizing: border-box;
+  width: 100%;
+  max-height: calc(384rem / 16);
+  margin: 0;
+  padding: 8px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: calc(12rem / 16)/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: pre;
+  user-select: text;
+}
+
+.code:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: none;
 }
 
 .spark {

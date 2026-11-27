@@ -4,8 +4,9 @@
 // package keeps them, reads their headers and says which run on a frame's address; the
 // engine puts them in the page. They live in the profile folder's sparks folder: each
 // spark's source as <id>.user.js, and sparks.json for the list, in order, with whether
-// each is on and when it was added and last changed, and the built-in sparks it was given,
-// so that sync can carry each as an item (docs/site-features.md).
+// each is on and when it was added and last changed, so that sync can carry each as an
+// item, and whether each system spark is on (docs/site-features.md). The system sparks'
+// sources are the app's own (builtin.go).
 package sparks
 
 import (
@@ -23,7 +24,7 @@ import (
 	"projectb/timeline"
 )
 
-// MaxSparks is how many sparks a profile keeps.
+// MaxSparks is how many sparks a profile keeps, the system sparks not counted.
 const MaxSparks = 25
 
 // Spark is one spark as the list shows it. A spark whose file no longer reads has only its
@@ -38,6 +39,8 @@ type Spark struct {
 	NoFrames     bool     `json:"noFrames,omitempty"`
 	On           bool     `json:"on"`
 	Error        string   `json:"error,omitempty"`
+	// System is a system spark's: its source is the app's, and only its switch changes.
+	System bool `json:"system,omitempty"`
 }
 
 // Script is a spark for the engine to put in a page: its source, and when it runs.
@@ -61,6 +64,8 @@ type entry struct {
 	exclude  []matcher
 	// err is why the source doesn't read, "" when it does.
 	err string
+	// system is a system spark, whose source is the app's file.
+	system bool
 }
 
 // listed is one spark in sparks.json.
@@ -72,12 +77,14 @@ type listed struct {
 }
 
 // kept is sparks.json: version 2. Version 1, what a profile had before, is the list alone,
-// with only each one's id and switch.
+// with only each one's id and switch. A builtins list, the ids of the copies of the
+// built-in sparks a profile was given before they were system sparks, is read past: those
+// copies are the person's own sparks.
 type kept struct {
 	Version int      `json:"version"`
 	Sparks  []listed `json:"sparks"`
-	// Builtins is the ids the built-in sparks were added as, once; nil until they were.
-	Builtins []string `json:"builtins,omitempty"`
+	// System is whether each system spark is on, by its id.
+	System map[string]bool `json:"system,omitempty"`
 }
 
 // now is the time in Unix milliseconds, a variable for the tests.
@@ -86,15 +93,16 @@ var now = func() int64 { return time.Now().UnixMilli() }
 // Manager keeps one profile's sparks. It is not safe for concurrent use: every call comes
 // from one thread.
 type Manager struct {
-	dir       string
+	dir string
+	// list is the person's sparks; system the app's.
 	list      []*entry
-	builtins  []string
+	system    []*entry
 	onChanged []func()
 }
 
 // New reads the sparks kept in the profile folder dir. A missing folder is no sparks.
 func New(dir string) *Manager {
-	m := &Manager{dir: filepath.Join(dir, "sparks")}
+	m := &Manager{dir: filepath.Join(dir, "sparks"), system: systemSparks()}
 	b, err := os.ReadFile(m.listPath())
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
@@ -117,7 +125,9 @@ func New(dir string) *Manager {
 		timeline.Errorf("sparks: %s: %v", m.listPath(), err)
 		return m
 	}
-	m.builtins = k.Builtins
+	for _, e := range m.system {
+		e.on = k.System[e.id]
+	}
 	for _, l := range k.Sparks {
 		if !validID(l.ID) || m.find(l.ID) != nil {
 			continue
@@ -133,7 +143,7 @@ func New(dir string) *Manager {
 	return m
 }
 
-// List is every spark, in order.
+// List is the person's sparks, in order; System is the app's.
 func (m *Manager) List() []Spark {
 	out := make([]Spark, len(m.list))
 	for i, e := range m.list {
@@ -155,9 +165,13 @@ func (m *Manager) Add(source string) (Spark, error) {
 	return e.spark(), nil
 }
 
-// Update puts a new source in place of a spark's, which mends one that didn't read.
+// Update puts a new source in place of a spark's, which mends one that didn't read. A
+// system spark's is refused.
 func (m *Manager) Update(id, source string) error {
 	e := m.find(id)
+	if e == nil && m.any(id) != nil {
+		return errSystem
+	}
 	if e == nil {
 		return errors.New("There is no such spark.")
 	}
@@ -168,7 +182,8 @@ func (m *Manager) Update(id, source string) error {
 	return nil
 }
 
-// Remove takes a spark out of the list and deletes its file.
+// Remove takes a spark out of the list and deletes its file. A system spark stays: it is
+// turned off instead.
 func (m *Manager) Remove(id string) {
 	i := slices.IndexFunc(m.list, func(e *entry) bool { return e.id == id })
 	if i < 0 {
@@ -181,9 +196,9 @@ func (m *Manager) Remove(id string) {
 	}
 }
 
-// SetOn switches a spark on or off.
+// SetOn switches a spark on or off, a system spark too.
 func (m *Manager) SetOn(id string, on bool) {
-	e := m.find(id)
+	e := m.any(id)
 	if e == nil || e.on == on {
 		return
 	}
@@ -194,7 +209,7 @@ func (m *Manager) SetOn(id string, on bool) {
 
 // Source is a spark's source, and whether there is such a spark with one.
 func (m *Manager) Source(id string) (string, bool) {
-	e := m.find(id)
+	e := m.any(id)
 	if e == nil || e.source == "" && e.err != "" {
 		return "", false
 	}
@@ -205,7 +220,7 @@ func (m *Manager) Source(id string) (string, bool) {
 // won't take in a name left out, and .user.js.
 func (m *Manager) FileName(id string) string {
 	name := ""
-	if e := m.find(id); e != nil {
+	if e := m.any(id); e != nil {
 		name = e.meta.Name
 	}
 	var b strings.Builder
@@ -226,7 +241,7 @@ func (m *Manager) FileName(id string) string {
 
 // Matching is every spark, on or off, whose header takes the address of a frame: the tab's
 // page when mainFrame, else a frame inside it, which a @noframes spark leaves alone. They
-// are in list order. Which of them run is the caller's: those on, and not switched off
+// are the person's, in order, then the system sparks. Which of them run is the caller's: those on, and not switched off
 // for the site.
 func (m *Manager) Matching(url string, mainFrame bool) []Spark {
 	var out []Spark
@@ -253,7 +268,7 @@ func (m *Manager) matching(url string, mainFrame bool) []*entry {
 		return nil
 	}
 	var out []*entry
-	for _, e := range m.list {
+	for _, e := range m.all() {
 		if e.err == "" && (mainFrame || !e.meta.NoFrames) && e.matches(t) {
 			out = append(out, e)
 		}
@@ -315,9 +330,27 @@ func (e *entry) spark() Spark {
 		NoFrames:     e.meta.NoFrames,
 		On:           e.on,
 		Error:        e.err,
+		System:       e.system,
 	}
 }
 
+// all is the person's sparks, then the system sparks.
+func (m *Manager) all() []*entry { return append(slices.Clip(m.list), m.system...) }
+
+// any is the spark of that id, the person's or a system one, or nil.
+func (m *Manager) any(id string) *entry {
+	if e := m.find(id); e != nil {
+		return e
+	}
+	for _, e := range m.system {
+		if e.id == id {
+			return e
+		}
+	}
+	return nil
+}
+
+// find is the person's spark of that id, or nil.
 func (m *Manager) find(id string) *entry {
 	for _, e := range m.list {
 		if e.id == id {
@@ -378,9 +411,12 @@ func (m *Manager) listPath() string { return filepath.Join(m.dir, "sparks.json")
 func (m *Manager) sourcePath(id string) string { return filepath.Join(m.dir, id+".user.js") }
 
 func (m *Manager) changed() {
-	k := kept{Version: 2, Sparks: make([]listed, len(m.list)), Builtins: m.builtins}
+	k := kept{Version: 2, Sparks: make([]listed, len(m.list)), System: map[string]bool{}}
 	for i, e := range m.list {
 		k.Sparks[i] = listed{ID: e.id, On: e.on, Added: e.added, Modified: e.modified}
+	}
+	for _, e := range m.system {
+		k.System[e.id] = e.on
 	}
 	b, _ := json.MarshalIndent(k, "", "  ")
 	if err := os.MkdirAll(m.dir, 0o700); err != nil {

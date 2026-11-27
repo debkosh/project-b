@@ -61,7 +61,7 @@ func newWelcome(a *App, e engine.Engine, dir string) *welcome {
 	a.Prefs.OnThemeChanged(func(t string) { w.sendAll(map[string]any{"t": "theme", "theme": t}) })
 	a.Window.OnColorChanged(func(c string) { w.sendAll(map[string]any{"t": "tones", "tones": tones.Of(c)}) })
 	a.Update.OnAutoChanged(func(on bool) { w.sendAll(map[string]any{"t": "autoUpdate", "autoUpdate": on}) })
-	a.Sparks.OnChanged(func() { w.sendAll(map[string]any{"t": "sparks", "sparks": a.Sparks.Builtins()}) })
+	a.Sparks.OnChanged(func() { w.sendAll(map[string]any{"t": "sparks", "sparks": a.Sparks.System()}) })
 	// The whole window is the welcome's only while its tab is there.
 	a.Tabs.OnListChanged(func() {
 		if _, ok := a.Tabs.Get(w.whole); w.whole != 0 && !ok {
@@ -183,7 +183,7 @@ func (w *welcome) handle(tab engine.TabID, msg []byte) {
 	case "setAutoUpdate":
 		w.a.Update.SetAuto(m.On)
 	case "setSparkOn":
-		// The phone's Extras for any page switches the built-in sparks.
+		// The phone's Extras for any page switches the system sparks.
 		w.a.Sparks.SetOn(m.ID, m.On)
 	case "useKeymap":
 		if slices.Contains(welcomeKeymaps, m.Value) {
@@ -267,7 +267,7 @@ func (w *welcome) snapshot(tab engine.TabID) map[string]any {
 	s["platform"] = w.a.Commands.Platform()
 	s["desktop"] = w.a.System.Desktop()
 	s["workspaces"] = w.a.Workspaces.List()
-	s["sparks"] = w.a.Sparks.Builtins()
+	s["sparks"] = w.a.Sparks.System()
 	// The Protection step's switches, each a pref the page sets with setPref; their values
 	// are the prefs' (docs/blocking.md).
 	s["protection"] = []welcomeSwitch{

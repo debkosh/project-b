@@ -76,7 +76,6 @@ These are needed for the first window, or for a start to go right:
   the first window's page (`a.Blocking.Load`), the built-in hosts standing in for any group not
   compiled yet. Nothing is downloaded at start: the lists are fetched through
   `later.Run(a.Blocking.Start)`, then every hour ([blocking.md](blocking.md#fetching-them)).
-- The built-in sparks, on a profile's first start.
 - Extensions, when their flag is on: Chromium loads them as the profile opens.
 - What the engine is told about quit erasure.
 - On Linux, the dark-mode watch.

@@ -1171,19 +1171,59 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
     await sparksRegion.getByRole('group', { name, exact: true }).getByRole('button', { name: `Actions for ${name}` }).click();
     await page.getByRole('menuitem', { name: item, exact: true }).click();
   };
-  // A new profile has the three built-in sparks, off, as its own: Delete takes them away.
+  // A new profile has none of its own, and the three system sparks, off, in their own
+  // group, Built in, under the person's: each viewed, duplicated or exported, never edited
+  // or deleted.
   const builtins = ['Video downloader', 'Screen time limit', 'Page cleanup'];
-  check('a new profile lists the built-in sparks, each off', await until(async () => {
+  const builtIn = sparksRegion.getByRole('group', { name: 'Built in', exact: true });
+  check('a new profile has no sparks of its own, and Built in lists the three system sparks, each off', await until(async () => {
     for (const name of builtins) {
-      const r = sparksRegion.getByRole('group', { name, exact: true });
+      const r = builtIn.getByRole('group', { name, exact: true });
       if (!(await r.isVisible()) || (await r.getByRole('switch').isChecked())) return false;
     }
-    return (await sparksRegion.textContent()).includes('3 of 25.');
+    return (await sparksRegion.textContent()).includes('No sparks yet') && (await builtIn.getByRole('group').count()) === 3;
   }));
-  for (const name of builtins) await menuOf(name, 'Delete');
-  check('Sparks says there are none once they are deleted', await until(async () => (await sparksRegion.textContent()).includes('No sparks yet')));
-  await page.getByRole('button', { name: 'New', exact: true }).click();
+  check('under Built in, a muted line says what they are', (await sparksRegion.locator('.group-note').textContent()).trim() === 'Come with Project B and update with it. Duplicate one to change it.');
+  check('a built-in\'s line is its description, then where it runs, every site said as words', (await builtIn.getByRole('group', { name: 'Video downloader', exact: true }).locator('.secondary').textContent()).trim() === 'Finds the videos on a page so you can save one · every site');
+  const video = builtIn.getByRole('group', { name: 'Video downloader', exact: true });
+  await video.click({ button: 'right' });
+  check('a system spark\'s menu: View source, Duplicate and Export, no Edit… or Delete', await until(async () => (await page.getByRole('menuitem').allTextContents()).map((t) => t.trim()).join('|') === 'View source|Duplicate|Export'));
+  await page.keyboard.press('Escape');
+  await video.getByRole('switch').click();
+  check('its switch turns it on', await until(() => video.getByRole('switch').isChecked()));
   const source = sparksRegion.getByRole('textbox', { name: 'Spark source' });
+  const view = sparksRegion.getByRole('group', { name: 'View spark' });
+  const code = view.locator('pre.code');
+  await video.locator('.name').click();
+  check('a tap on it shows its source in a code block, tagged Read only, with Duplicate and no field or Save', await until(async () => ((await code.textContent().catch(() => '')) || '').includes('@name         Video downloader')) &&
+    (await view.locator('.tag').textContent()).trim() === 'Read only' && (await view.locator('textarea').count()) === 0 &&
+    (await view.getByRole('button', { name: 'Duplicate' }).isVisible()) && (await view.getByRole('button', { name: 'Save' }).count()) === 0);
+  check('the code block is plain: a hairline, no resize handle, its text selectable', await code.evaluate((e) => {
+    const c = getComputedStyle(e);
+    return c.borderTopWidth === '1px' && c.resize === 'none' && c.userSelect !== 'none';
+  }));
+  check('the viewer is in view and has the focus', await until(async () => (await view.evaluate((v) => v.contains(document.activeElement))) &&
+    (await code.evaluate((e) => { const r = e.getBoundingClientRect(); return r.top >= 0 && r.top < innerHeight; }))));
+  await settle(page);
+  await page.screenshot({ path: shot('settings-sparks-builtin-view') });
+  await page.keyboard.press('Escape');
+  check('Escape closes the viewer, and leaves settings open', await until(async () => (await view.count()) === 0) && (await sparksRegion.isVisible()));
+  await video.locator('.name').click();
+  await until(() => view.isVisible());
+  await view.getByRole('button', { name: 'Duplicate' }).click();
+  const copy = sparksRegion.getByRole('group', { name: 'Video downloader copy', exact: true });
+  check('Duplicate adds "Video downloader copy" as the person\'s own, on, and turns the built-in one off', await until(async () =>
+    (await copy.isVisible()) && (await copy.getByRole('switch').isChecked()) && !(await video.getByRole('switch').isChecked()) &&
+    (await builtIn.getByRole('group', { name: 'Video downloader copy' }).count()) === 0 && (await sparksRegion.textContent()).includes('1 of 25.')));
+  check('and the view closes', await until(async () => (await view.count()) === 0));
+  await copy.locator('.name').click();
+  check('the copy edits, its header named as the copy', await until(async () => (await source.inputValue().catch(() => '')).includes('@name         Video downloader copy') && (await source.getAttribute('readonly')) === null));
+  await sparksRegion.getByRole('button', { name: 'Cancel' }).click();
+  await settle(page);
+  await page.screenshot({ path: shot('settings-sparks-builtin') });
+  await menuOf('Video downloader copy', 'Delete');
+  check('Sparks says there are none once it is deleted, Built in still there', await until(async () => (await sparksRegion.textContent()).includes('No sparks yet') && (await video.isVisible())));
+  await page.getByRole('button', { name: 'New', exact: true }).click();
   await source.fill('// ==UserScript==\n// @name Nameless match\n// ==/UserScript==\n');
   await sparksRegion.getByRole('button', { name: 'Save' }).click();
   check('a spark without @match is refused, saying why', await until(async () => /@match/.test((await sparksRegion.getByRole('alert').textContent().catch(() => '')) || '')));
@@ -1245,8 +1285,8 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
     }
     return true;
   }));
-  check('a match of <all_urls> reads as every site, a real pattern as it is', (await sparksRegion.getByRole('group', { name: 'Page Cleanup' }).textContent()).includes('every site') &&
-    (await sparksRegion.getByRole('group', { name: 'dhd', exact: true }).textContent()).includes('https://*/*'));
+  check('a match of <all_urls> or https://*/* reads as every site, for his as for the built-in ones', (await sparksRegion.getByRole('group', { name: 'Page Cleanup', exact: true }).textContent()).includes('every site') &&
+    (await sparksRegion.getByRole('group', { name: 'dhd', exact: true }).locator('.secondary').textContent()).trim() === 'every site');
   await dialog.getByRole('button', { name: 'Done' }).click();
   check('Done closes it', await until(async () => (await dialog.count()) === 0));
 
@@ -1296,18 +1336,19 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   await page.getByRole('menuitem', { name: 'Export…' }).click();
   const exporting = page.getByRole('dialog', { name: 'Export sparks' });
   const allBox = exporting.getByRole('checkbox', { name: 'All' });
-  check('Export… lists every spark, ticked, under All', await until(async () => (await exporting.getByRole('checkbox').count()) === 5 && (await allBox.isChecked()) && (await exporting.getByRole('button', { name: 'Export 4 sparks' }).isVisible())));
-  await exporting.getByRole('checkbox', { name: 'Page Cleanup' }).uncheck();
+  check('Export… lists every spark, the built-in ones too, ticked, under All', await until(async () => (await exporting.getByRole('checkbox').count()) === 8 && (await allBox.isChecked()) &&
+    (await exporting.getByRole('checkbox', { name: 'Screen time limit' }).isChecked()) && (await exporting.getByRole('button', { name: 'Export 7 sparks' }).isVisible())));
+  await exporting.getByRole('checkbox', { name: 'Page Cleanup', exact: true }).uncheck();
   check('All is mixed when some are ticked', await allBox.evaluate((b) => b.indeterminate && !b.checked));
   await settle(page);
   await page.screenshot({ path: shot('settings-sparks-export') });
-  const [download] = await Promise.all([page.waitForEvent('download'), exporting.getByRole('button', { name: 'Export 3 sparks' }).click()]);
+  const [download] = await Promise.all([page.waitForEvent('download'), exporting.getByRole('button', { name: 'Export 6 sparks' }).click()]);
   const zipped = fs.readFileSync(await download.path());
   const zipNames = [...zipped.toString('latin1').matchAll(/PK\x01\x02[\s\S]{42}([^\x00]*?\.user\.js)/g)].map((m) => m[1]);
-  check('it downloads Sparks.zip of the ticked ones', download.suggestedFilename() === 'Sparks.zip' && zipNames.join('|') === 'Limit Screen Time.user.js|dhd.user.js|dhd 2.user.js');
+  check('it downloads Sparks.zip of the ticked ones', download.suggestedFilename() === 'Sparks.zip' && zipNames.join('|') === 'Limit Screen Time.user.js|dhd.user.js|dhd 2.user.js|Video downloader.user.js|Screen time limit.user.js|Page cleanup.user.js');
   for (const name of ['Limit Screen Time', 'Page Cleanup', 'dhd', 'dhd 2']) await menuOf(name, 'Delete');
   await picker.setInputFiles([{ name: 'Sparks.zip', mimeType: 'application/zip', buffer: zipped }]);
-  check('and Import… reads that zip back', await until(async () => (await dialog.getAttribute('aria-label').catch(() => '')) === 'Added 3 sparks'));
+  check('and Import… reads that zip back, the built-in ones already here', await until(async () => (await dialog.getAttribute('aria-label').catch(() => '')) === 'Added 3 sparks · 3 already here'));
   await dialog.getByRole('button', { name: 'Done' }).click();
   for (const name of ['Limit Screen Time', 'dhd', 'dhd 2']) await menuOf(name, 'Delete');
   check('and they delete', await until(async () => (await sparksRegion.textContent()).includes('No sparks yet')));

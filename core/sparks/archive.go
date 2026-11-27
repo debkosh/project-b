@@ -117,16 +117,16 @@ func inZip(name string) bool {
 	return true
 }
 
-// Zip is a zip of the sparks ids names, every spark when it names none, in list order,
-// each as the .user.js it is kept as, by its name: what Unpack, and other browsers'
-// userscript managers, read back. A spark whose file doesn't read is left out. It says
-// how many are in it.
+// Zip is a zip of the sparks ids names, every spark when it names none: the person's in
+// order, then the system sparks, each as the .user.js it is kept as, by its name: what
+// Unpack, and other browsers' userscript managers, read back. A spark whose file doesn't
+// read is left out. It says how many are in it.
 func (m *Manager) Zip(ids []string) ([]byte, int) {
 	var buf bytes.Buffer
 	w := zip.NewWriter(&buf)
 	used := map[string]bool{}
 	n := 0
-	for _, e := range m.list {
+	for _, e := range m.all() {
 		if e.err != "" || len(ids) > 0 && !slices.Contains(ids, e.id) {
 			continue
 		}

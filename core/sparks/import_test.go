@@ -192,26 +192,28 @@ func TestZipReadsBack(t *testing.T) {
 	m.Add(script("@name twin", "@namespace x", "@match <all_urls>"))
 	c, _ := m.Add(script("@name A/B", "@match <all_urls>"))
 
+	// Every spark is the person's and then the system sparks.
 	data, n := m.Zip(nil)
 	r, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
-	if err != nil || n != 3 {
+	if err != nil || n != 6 {
 		t.Fatal(n, err)
 	}
 	var files []string
 	for _, f := range r.File {
 		files = append(files, f.Name)
 	}
-	if !slices.Equal(files, []string{"Twin.user.js", "twin (2).user.js", "A-B.user.js"}) {
+	if !slices.Equal(files, []string{"Twin.user.js", "twin (2).user.js", "A-B.user.js",
+		"Video downloader.user.js", "Screen time limit.user.js", "Page cleanup.user.js"}) {
 		t.Fatalf("files %q", files)
 	}
 	found, skipped := Unpack([]Picked{{Name: "sparks.zip", Data: data}})
-	if len(found) != 3 || len(skipped) != 0 {
+	if len(found) != 6 || len(skipped) != 0 {
 		t.Fatalf("read back %v %+v", names(found), skipped)
 	}
 	if im := New(t.TempDir()).Prepare(found, nil); len(im.Clashes()) != 0 {
 		t.Fatal(im.Clashes())
 	}
-	if im := m.Prepare(found, nil); len(im.found) != 0 || len(im.unchanged) != 3 {
+	if im := m.Prepare(found, nil); len(im.found) != 0 || len(im.unchanged) != 6 {
 		t.Fatalf("an export imported again is skipped: %+v", im)
 	}
 

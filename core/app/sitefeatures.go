@@ -16,14 +16,18 @@ import (
 // startSiteFeatures gives settings the Sparks section. The ad blocker's rules are the
 // block lists' (blocking.go).
 func (a *App) startSiteFeatures(e engine.Engine) {
+	// The person's sparks, and the system sparks, which settings lists apart, as Built in.
 	a.Sparks.OnChanged(func() {
-		a.Settings.Send(map[string]any{"t": "sparks", "sparks": a.Sparks.List()})
+		a.Settings.Send(map[string]any{"t": "sparks", "sparks": a.Sparks.List(), "systemSparks": a.Sparks.System()})
 	})
 	// An import waiting on the person to settle its clashes: one at a time, as settings
 	// is one page.
 	var importing *sparks.Import
 	a.Settings.AddPart(settings.Part{
-		Snapshot: func(into map[string]any) { into["sparks"] = a.Sparks.List() },
+		Snapshot: func(into map[string]any) {
+			into["sparks"] = a.Sparks.List()
+			into["systemSparks"] = a.Sparks.System()
+		},
 		Handle: func(tab engine.TabID, t string, msg []byte) bool {
 			var c struct {
 				ID     string `json:"id"`
@@ -48,6 +52,9 @@ func (a *App) startSiteFeatures(e engine.Engine) {
 				_, err = a.Sparks.Add(c.Source)
 			case "sparkUpdate":
 				err = a.Sparks.Update(c.ID, c.Source)
+			case "sparkDuplicate":
+				// A copy as the person's own, on, and the one it copies off.
+				_, err = a.Sparks.Duplicate(c.ID)
 			case "sparkRemove":
 				a.Sparks.Remove(c.ID)
 				return true

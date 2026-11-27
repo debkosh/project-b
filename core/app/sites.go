@@ -44,8 +44,6 @@ func (a *App) startSites(e engine.Engine, dir string) {
 		a.Sites.UseOS(mediaOf{a.System}, name)
 	}
 	a.Sparks = sparks.New(dir)
-	// A profile's first start on a version with the built-in sparks gives it them, off.
-	a.Sparks.AddBuiltins()
 	a.startSiteFeatures(e)
 	// sendOpen sends every shell the settings of each site a tab is open on, set below.
 	var sendOpen func()

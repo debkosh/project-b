@@ -3597,8 +3597,9 @@ def sparks_checks():
     start can replace what the page calls. On a page whose policy allows only its own
     styles, the policy's style rules give way where a spark runs, so its <style> applies,
     and the owner's sparks, as he wrote them (core/sparks/testdata/site-sparks), draw there.
-    On a page that wants Trusted Types, they give way too, so a spark's innerHTML works. A
-    profile is given the built-in sparks, off, and one switched on runs."""
+    On a page that wants Trusted Types, they give way too, so a spark's innerHTML works. The
+    system sparks are never copied into the profile, start off, and one switched on runs the
+    app's own file."""
     profile = tempfile.mkdtemp(prefix="pb-profile-")
     os.makedirs(os.path.join(profile, "sparks"))
     probe = ("// ==UserScript==\n// @name Probe\n// @match <all_urls>\n// ==/UserScript==\n"
@@ -3644,21 +3645,37 @@ def sparks_checks():
     html = app.js("document.documentElement.dataset.html", page=True)
     check("a spark's innerHTML works on a page that wants Trusted Types", html == "set", html)
     app.close()
-    # The profile was given the built-in sparks, off; Page cleanup switched on draws its
-    # button on the strict page too.
+    # The system sparks are the app's: none was copied into the profile, and none ran, as
+    # each starts off. Page cleanup switched on draws its button on the strict page too.
     path = os.path.join(profile, "sparks", "sparks.json")
     with open(path) as f:
         kept = json.load(f)
-    builtins = [s for s in kept["sparks"] if s["id"] in kept.get("builtins", [])]
-    check("the profile was given the three built-in sparks, each off", len(builtins) == 3 and not any(s["on"] for s in builtins), kept)
-    if len(builtins) == 3:
-        builtins[2]["on"] = True
-        with open(path, "w") as f:
-            json.dump(kept, f)
-        app = App(profile)
-        visit(app, PAGES + "strict")
-        check("Page cleanup, built in and switched on, draws its button there", holds(app, "!!document.getElementById('pb-page-cleanup')", page=True))
-        app.close()
+    listed = [s["id"] for s in (kept["sparks"] if isinstance(kept, dict) else kept)]
+    files = sorted(f for f in os.listdir(os.path.join(profile, "sparks")) if f.endswith(".user.js"))
+    check("no system spark was copied into the profile, and none is on",
+          sorted(listed) == sorted(sources) and files == sorted(sid + ".user.js" for sid in sources) and
+          not any((kept.get("system") or {}).values() if isinstance(kept, dict) else []), kept)
+    with open(path, "w") as f:
+        json.dump({"version": 2, "sparks": [{"id": sid, "on": True, "added": 1, "modified": 1} for sid in sources],
+                   "system": {"page-cleanup": True}}, f)
+    app = App(profile)
+    visit(app, PAGES + "strict")
+    check("Page cleanup, built in and switched on, draws its button there", holds(app, "!!document.getElementById('pb-page-cleanup')", page=True))
+    app.close()
+
+
+def video_downloader_copy(profile):
+    """Keeps the Video downloader in the profile as the person's own copy, on, which runs on
+    the local pages too: the system spark runs on https sites only, and its source is the
+    app's, so a copy is how a test widens it, as Duplicate makes one."""
+    with open(os.path.join(ROOT, "core/sparks/builtin/video-downloader.user.js")) as f:
+        code = f.read()
+    code = code.replace("// @match        https://*/*\n", "// @match        https://*/*\n// @match        http://127.0.0.1/*\n", 1)
+    os.makedirs(os.path.join(profile, "sparks"), exist_ok=True)
+    with open(os.path.join(profile, "sparks", "0000000f.user.js"), "w") as f:
+        f.write(code)
+    with open(os.path.join(profile, "sparks", "sparks.json"), "w") as f:
+        json.dump({"version": 2, "sparks": [{"id": "0000000f", "on": True, "added": 1, "modified": 1}]}, f)
 
 
 def video_download_checks():
@@ -3694,20 +3711,7 @@ def video_download_checks():
     profile = tempfile.mkdtemp(prefix="pb-profile-")
     app = App(profile)
     app.close()
-    path = os.path.join(profile, "sparks", "sparks.json")
-    with open(path) as f:
-        kept = json.load(f)
-    for s in kept["sparks"]:
-        script = os.path.join(profile, "sparks", s["id"] + ".user.js")
-        with open(script) as f:
-            code = f.read()
-        s["on"] = "@name         Video downloader" in code
-        if s["on"]:
-            # It runs on https sites; this one's copy runs on the local page too.
-            with open(script, "w") as f:
-                f.write(code.replace("// @match        https://*/*\n", "// @match        https://*/*\n// @match        http://127.0.0.1/*\n", 1))
-    with open(path, "w") as f:
-        json.dump(kept, f)
+    video_downloader_copy(profile)
     app = App(profile)
     shadow = "document.getElementById('custom-video-downloader-widget')?.shadowRoot"
     try:
@@ -3797,20 +3801,7 @@ def stream_checks():
     profile = tempfile.mkdtemp(prefix="pb-profile-")
     app = App(profile)
     app.close()
-    path = os.path.join(profile, "sparks", "sparks.json")
-    with open(path) as f:
-        kept = json.load(f)
-    for s in kept["sparks"]:
-        script = os.path.join(profile, "sparks", s["id"] + ".user.js")
-        with open(script) as f:
-            code = f.read()
-        s["on"] = "@name         Video downloader" in code
-        if s["on"]:
-            # It runs on https sites; this one's copy runs on the local page too.
-            with open(script, "w") as f:
-                f.write(code.replace("// @match        https://*/*\n", "// @match        https://*/*\n// @match        http://127.0.0.1/*\n", 1))
-    with open(path, "w") as f:
-        json.dump(kept, f)
+    video_downloader_copy(profile)
 
     def done(name, timeout=40):
         """The finished download of that name in the profile's list, or None."""

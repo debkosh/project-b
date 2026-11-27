@@ -21,7 +21,7 @@ document.title = 'Welcome';
 
 // Bring your things over, the import wizard, and How you work, the workspaces and the
 // keys, are the desktop's: a phone keeps each app's data from the others, and has neither.
-// Extras for any page, the built-in sparks the profile still has, is the phone's.
+// Extras for any page, the system sparks, is the phone's.
 const steps = computed(() =>
   state.phone
     ? ['hello', 'style', ...(state.sparks.length ? ['extras'] : []), 'protection', 'done']
@@ -235,7 +235,7 @@ onMounted(() => heading.value?.focus());
 
       <section v-else-if="step === 'extras'" class="extras" aria-labelledby="extras">
         <h1 id="extras" ref="heading" tabindex="-1">Extras for any page</h1>
-        <p class="sub">Small scripts that add to the pages you visit. Turn on any you like, and change or remove them later in Settings&nbsp;›&nbsp;Sparks.</p>
+        <p class="sub">Small scripts that add to the pages you visit. Turn on any you like, here or later in Settings&nbsp;›&nbsp;Sparks.</p>
         <div class="card">
           <label v-for="s in state.sparks" :key="s.id" class="row">
             <span class="spark">

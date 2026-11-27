@@ -1975,7 +1975,8 @@ def file_inputs():
 
 def file_input_checks():
     """A page's file input opens the phone's own picker, and the file picked reaches the page
-    by its own name; Settings' Sparks Import… picks a zip of sparks there and imports them.
+    by its own name; Settings' Sparks Import… picks a zip of sparks there and imports them,
+    and the system sparks show under them, Built in, where a switch turns one on in Go.
     Content said no to every file input on Android until the window asked Go and opened the
     picker, as the Mac's does."""
     sparks = os.path.join(ROOT, "core/sparks/testdata/site-sparks")
@@ -2041,6 +2042,7 @@ def file_input_checks():
     check("and a zip of sparks picked there imports them", see("settings", text="Added 3 sparks") is not None)
     shot("41-sparks-imported")
     tap(middle(see("settings", text="Done")))
+    built_in_sparks()
     close_settings()
     # Through the media index, not rm: rm leaves its row, and the app's next download of that
     # name then died copying into Downloads on the stale row (Downloads.copyToShared).
@@ -3438,21 +3440,65 @@ def open_welcome():
     return opened
 
 
+def system_sparks_on():
+    """Whether each system spark is on, in Go, by its id: sparks.json's system, {} before
+    one was switched."""
+    try:
+        kept = json.loads(adb("shell", "cat", "/data/data/%s/%s/sparks/sparks.json" % (PACKAGE, PROFILE)))
+    except ValueError:
+        return {}
+    return (kept.get("system") or {}) if isinstance(kept, dict) else {}
+
+
+def built_in_sparks():
+    """In Settings' Sparks, under the person's sparks: the system sparks, the app's own, in
+    their group, Built in, each off; a switch there turns the Video downloader on in Go, and
+    off again."""
+    left, top, right, bottom = box(see("settings"))
+    across, high = (left + right) // 2, bottom - top
+    for _ in range(4):
+        if find("settings", text="Built in") is not None and find("settings", text="Page cleanup") is not None:
+            break
+        adb("shell", "input", "swipe", str(across), str(top + high * 3 // 4), str(across), str(top + high // 4), "300")
+        time.sleep(1)
+    shown = all(find("settings", text=n) is not None for n in ("Built in", "Video downloader", "Screen time limit", "Page cleanup"))
+    check("Settings' Sparks lists the system sparks under the person's, headed Built in, each off",
+          shown and not any(system_sparks_on().values()), system_sparks_on())
+    shot("41a-sparks-built-in")
+
+    def switch_of(name):
+        """The switch on the row of the spark of that name: the one level with its name."""
+        row = find("settings", text=name)
+        if row is None:
+            return None
+        _, t, _, b = box(row)
+        return find("settings", kind="android.widget.Switch",
+                    bounds=lambda v: v is not None and box_of(v)[1] <= b and box_of(v)[3] >= t)
+    switch = switch_of("Video downloader")
+    if switch is None:
+        check("the Video downloader's row has its switch", False)
+        return
+    tap(middle(switch))
+    check("its switch turns the Video downloader on, in Go",
+          until(lambda: system_sparks_on().get("video-downloader") is True, 5) is not None, system_sparks_on())
+    tap(middle(switch_of("Video downloader")))
+    check("and off again", until(lambda: system_sparks_on().get("video-downloader") is False, 5) is not None, system_sparks_on())
+
+
 def welcome_extras():
     """A new profile's welcome on a phone: after Pick your style, Extras for any page offers
-    the built-in sparks, each off, by name and line; a switch turns one on in Go."""
+    the system sparks, each off, by name and line; a switch turns one on in Go."""
     if not open_welcome():
         return
     tap(middle(see("page", text="Continue")))
     see("page", text="Extras for any page")
     names = ["Video downloader", "Screen time limit", "Page cleanup"]
     # Android reads a page's switch as a Switch, but not as checkable: whether it is on is
-    # Go's, in sparks.json.
+    # Go's, in sparks.json, by each system spark's id.
     switches = lambda: [n for n in screen_parts()["page"].iter("node") if n.get("class") == "android.widget.Switch"]
-    kept = lambda: json.loads(adb("shell", "cat", "/data/data/%s/%s/sparks/sparks.json" % (PACKAGE, PROFILE)))
-    ons = lambda: [s["on"] for s in kept()["sparks"] if s["id"] in kept()["builtins"]]
+    ons = lambda: [system_sparks_on().get(i, False) for i in ("video-downloader", "screen-time-limit", "page-cleanup")]
     shown = all(find("page", text=n) is not None for n in names)
-    check("after Pick your style, Extras for any page offers the three built-in sparks, each off",
+    check("after Pick your style, Extras for any page offers the three system sparks, each off",
           shown and len(switches()) == 3 and ons() == [False, False, False], ons())
     shot("45-welcome-extras")
     tap(middle(switches()[1]))
@@ -3503,7 +3549,7 @@ def welcome_last_step():
     try:
         if not open_welcome():
             return
-        # Extras for any page when the profile has built-in sparks, then Protection, then the
+        # Extras for any page, the system sparks, then Protection, then the
         # last step.
         for _ in range(4):
             if find("page", text="You're set") is not None:

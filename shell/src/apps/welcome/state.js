@@ -40,7 +40,7 @@ export const state = reactive({
   platform: 'mac',
   // The profile's workspaces, each {id, name, color}.
   workspaces: [],
-  // The built-in sparks the profile still has, each {id, name, description, on}.
+  // The system sparks, the app's own, each {id, name, description, on}.
   sparks: [],
   // The Protection step's switches, each {pref, title, about}: a pref of prefs, set with
   // setPref (docs/blocking.md).

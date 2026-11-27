@@ -12,7 +12,8 @@ import (
 
 // Importing sparks (docs/site-features.md): the files picked are unpacked into the sparks
 // in them, each one the profile already keeps, by @name and @namespace, is a clash the
-// person settles, and then they are kept.
+// person settles, and then they are kept. One with a system spark's @name never replaces
+// it: it is added as the person's own under a name no spark has, as Rename does.
 
 // Choice is how the person settles a clash.
 type Choice string
@@ -46,6 +47,10 @@ type Import struct {
 	// kept is the id of the spark each clash is with, by its index in found.
 	kept    map[int]string
 	clashes []Clash
+	// renames is the name each clash, and each spark named as a system spark is, is added
+	// under when renamed, by its index in found; beside is those named as a system spark.
+	renames map[int]string
+	beside  map[int]bool
 }
 
 // Imported is what an import did: the names of the sparks it added, replaced, renamed,
@@ -67,11 +72,12 @@ type Renamed struct {
 	To   string `json:"to"`
 }
 
-// Prepare sorts what Unpack found. A spark the profile keeps with the same source, or
-// one the same import holds twice, is skipped; one it keeps with another source is a
-// clash. The rest are added when the import is kept.
+// Prepare sorts what Unpack found. A spark the profile keeps with the same source, a
+// system spark's own file, or one the same import holds twice, is skipped; one it keeps
+// with another source is a clash; one with a system spark's name and another source is
+// renamed. The rest are added when the import is kept.
 func (m *Manager) Prepare(found []Found, skipped []Skipped) *Import {
-	im := &Import{skipped: skipped, kept: map[int]string{}}
+	im := &Import{skipped: skipped, kept: map[int]string{}, renames: map[int]string{}, beside: map[int]bool{}}
 	if im.skipped == nil {
 		im.skipped = []Skipped{}
 	}
@@ -84,35 +90,50 @@ func (m *Manager) Prepare(found []Found, skipped []Skipped) *Import {
 		}
 		seen[k] = true
 		e := m.same(f.meta)
-		if e != nil && e.source == f.Source {
+		s := m.systemNamed(f.meta.Name)
+		if e != nil && e.source == f.Source || e == nil && s != nil && s.source == f.Source {
 			im.unchanged = append(im.unchanged, f.meta.Name)
 			continue
 		}
 		i := len(im.found)
 		im.found = append(im.found, f)
-		if e != nil {
+		switch {
+		case e != nil:
 			im.kept[i] = e.id
 			im.clashes = append(im.clashes, Clash{
 				Index: i, File: f.File, Name: f.meta.Name,
 				Version: f.meta.Version, KeptVersion: e.meta.Version,
 			})
+		case s != nil:
+			im.beside[i] = true
 		}
 	}
 	// Each rename's new name is free of every spark kept and of the rest of the import.
-	taken := map[string]bool{}
-	for _, e := range m.list {
-		taken[key(e.meta)] = true
-	}
+	taken := m.taken()
 	for _, f := range im.found {
 		taken[key(f.meta)] = true
 	}
-	for i := range im.clashes {
-		f := im.found[im.clashes[i].Index]
+	for i, f := range im.found {
+		if _, clash := im.kept[i]; !clash && !im.beside[i] {
+			continue
+		}
 		name := freeName(f.meta, taken)
 		taken[key(Meta{Name: name, Namespace: f.meta.Namespace})] = true
-		im.clashes[i].RenameTo = name
+		im.renames[i] = name
+	}
+	for i := range im.clashes {
+		im.clashes[i].RenameTo = im.renames[im.clashes[i].Index]
 	}
 	return im
+}
+
+// taken is the key of every spark, the person's and the system's.
+func (m *Manager) taken() map[string]bool {
+	taken := map[string]bool{}
+	for _, e := range m.all() {
+		taken[key(e.meta)] = true
+	}
+	return taken
 }
 
 // Clashes is the sparks of the import the person has to choose for.
@@ -123,14 +144,13 @@ func (im *Import) Clashes() []Clash { return im.clashes }
 func (m *Manager) Keep(im *Import, choices map[int]Choice) Imported {
 	out := Imported{Added: []string{}, Replaced: []string{}, Renamed: []Renamed{}, Ignored: []string{},
 		Unchanged: append([]string{}, im.unchanged...), Skipped: im.skipped}
-	renames := map[int]string{}
-	for _, c := range im.clashes {
-		renames[c.Index] = c.RenameTo
-	}
 	changed := false
 	for i, f := range im.found {
 		source, name := f.Source, f.meta.Name
-		if id, ok := im.kept[i]; ok {
+		if im.beside[i] {
+			name = im.renames[i]
+			source = renamed(source, name)
+		} else if id, ok := im.kept[i]; ok {
 			choice := choices[i]
 			if e := m.find(id); e != nil && choice == Replace {
 				if err := m.put(e, source); err != nil {
@@ -143,7 +163,7 @@ func (m *Manager) Keep(im *Import, choices map[int]Choice) Imported {
 			}
 			switch choice {
 			case Rename:
-				name = renames[i]
+				name = im.renames[i]
 				source = renamed(source, name)
 			case Replace:
 				// The kept one went while the person chose: this one is added.
@@ -187,17 +207,20 @@ func key(meta Meta) string { return meta.Namespace + "\x00" + meta.Name }
 // name cut short to stay within MaxName.
 func freeName(meta Meta, taken map[string]bool) string {
 	for n := 2; ; n++ {
-		suffix := fmt.Sprintf(" %d", n)
-		base := meta.Name
-		for utf8.RuneCountInString(base)+len(suffix) > MaxName {
-			_, size := utf8.DecodeLastRuneInString(base)
-			base = base[:len(base)-size]
-		}
-		name := strings.TrimRight(base, " ") + suffix
+		name := fit(meta.Name, fmt.Sprintf(" %d", n))
 		if !taken[key(Meta{Name: name, Namespace: meta.Namespace})] {
 			return name
 		}
 	}
+}
+
+// fit is base with suffix after it, base cut short to stay within MaxName.
+func fit(base, suffix string) string {
+	for utf8.RuneCountInString(base)+utf8.RuneCountInString(suffix) > MaxName {
+		_, size := utf8.DecodeLastRuneInString(base)
+		base = base[:len(base)-size]
+	}
+	return strings.TrimRight(base, " ") + suffix
 }
 
 // renamed is source with its header's @name set to name.

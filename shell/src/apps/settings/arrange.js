@@ -81,8 +81,9 @@ export const lists = {
     label: 'Sparks',
     hint: 'Your own scripts for the pages they match',
     summary: () => {
-      const on = state.sparks.filter((s) => s.on).length;
-      return state.sparks.length ? `${on} on` : '';
+      const all = [...state.sparks, ...state.systemSparks];
+      const on = all.filter((s) => s.on).length;
+      return all.length ? `${on} on` : '';
     },
   },
   extensions: {

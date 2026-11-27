@@ -1,9 +1,14 @@
 # The built-in sparks
 
 Three of the owner's sparks, cleaned up, that come with the app to give a feel of what sparks
-do (docs/site-features.md, "The built-in sparks"). A profile is given them once, off, by
-`AddBuiltins` (`core/sparks/builtin.go`); from then on each is the person's own spark, to turn
-on, edit, export or delete. An update never changes them. Each stands alone: a floating
+do (docs/site-features.md, "The built-in sparks"). They are system sparks
+(`core/sparks/builtin.go`): the app runs these files as they are in the app, never a copy in
+the profile, so a fix here reaches every install with the next update. The profile keeps only
+whether each is on, by its file's name (`video-downloader`); each starts off. Settings ›
+Sparks lists them under Built in, to turn on, view, export or Duplicate into the person's own
+copy to edit; they can't be edited or deleted. A change here changes the spark for everyone
+who has it on, so keep each one's `@name` (an import matches by it) and its storage keys as
+they are. Each stands alone: a floating
 overlay in a shadow root of its own, with its own look in light and dark, and nothing from the
 browser. His originals, which the runtime still runs unchanged, are in
 `core/sparks/testdata/site-sparks/`.

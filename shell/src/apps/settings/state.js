@@ -109,8 +109,10 @@ export const state = reactive({
   // last save, '' when it took, null before one. An import's sparks the profile already
   // has, [{index, file, name, version, keptVersion, renameTo}], and then what it did,
   // {added, replaced, renamed, skipped: [{file, name, reason}]}; and the last export's zip,
-  // {data (base64), count, fileName}.
+  // {data (base64), count, fileName}. The system sparks, the app's own, are apart, each with
+  // system: true.
   sparks: [],
+  systemSparks: [],
   sparkSource: null,
   sparkProblem: null,
   sparkClashes: null,
@@ -206,6 +208,7 @@ export function connect() {
             dnsCheck: m.dnsCheck || { host: '', ok: false },
             homeFolder: m.homeFolder || '',
             sparks: m.sparks || [],
+            systemSparks: m.systemSparks || [],
             siteKinds: m.siteKinds,
             siteConnections: m.siteConnections,
             blocking: m.blocking || state.blocking,
@@ -286,6 +289,7 @@ export function connect() {
           break;
         case 'sparks':
           state.sparks = m.sparks;
+          state.systemSparks = m.systemSparks || [];
           break;
         case 'sparkSource':
           state.sparkSource = { id: m.id, source: m.source, fileName: m.fileName };
