@@ -80,8 +80,9 @@ const cards = computed(() => props.section.cards.map((c) => (typeof c === 'strin
 </template>
 
 <style scoped>
-/* A heading that starts a section keeps a heading's room under the section's own title. */
+/* A heading that starts a section keeps a heading's room, 16px, under the section's own
+   title, on a phone too (settings.cjs, "headings and cards have room above them"). */
 h2.leads {
-  margin-top: 8px;
+  margin-top: 16px;
 }
 </style>
