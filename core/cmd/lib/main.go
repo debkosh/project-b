@@ -66,7 +66,7 @@ static inline void call_focus_tab(const PBEngineCalls* c, int64_t tab) { c->focu
 static inline void call_focus_shell(const PBEngineCalls* c, int64_t window) { c->focus_shell(window); }
 static inline void call_send_to_shell(const PBEngineCalls* c, int64_t window, const char* json, size_t length) { c->send_to_shell(window, json, length); }
 static inline void call_set_shell_back(const PBEngineCalls* c, int64_t window, int on) { c->set_shell_back(window, on); }
-static inline void call_publish_file(const PBEngineCalls* c, const char* path) { c->publish_file(path); }
+static inline void call_publish_file(const PBEngineCalls* c, const char* path, const char* mime) { c->publish_file(path, mime); }
 static inline void call_share_file(const PBEngineCalls* c, int64_t window, const char* path, double x, double y, double w, double h) { c->share_file(window, path, x, y, w, h); }
 static inline void call_share_text(const PBEngineCalls* c, int64_t window, const char* text) { c->share_text(window, text); }
 static inline void call_save_image(const PBEngineCalls* c, int64_t tab, const char* url, const char* path, int32_t max_size) { c->save_image(tab, url, path, max_size); }
@@ -517,10 +517,11 @@ func (e *nativeEngine) CopyImage(path string) {
 	C.call_copy_image(e.calls, p)
 }
 
-func (e *nativeEngine) PublishFile(path string) {
-	p := C.CString(path)
+func (e *nativeEngine) PublishFile(path, mime string) {
+	p, t := C.CString(path), C.CString(mime)
 	defer C.free(unsafe.Pointer(p))
-	C.call_publish_file(e.calls, p)
+	defer C.free(unsafe.Pointer(t))
+	C.call_publish_file(e.calls, p, t)
 }
 
 func (e *nativeEngine) SendToShell(w engine.WindowID, msg []byte) {

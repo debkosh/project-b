@@ -83,6 +83,12 @@ var whyFailed = map[string]string{
 	"connection": "the connection stopped",
 	"server":     "the server refused it",
 	"disk":       "not enough disk space",
+	// A streamed video that can't be saved (docs/video-streams.md).
+	"live":      "live videos can't be saved yet",
+	"protected": "this video is protected",
+	"format":    "this video's format can't be saved yet",
+	"refused":   "part of this video is at an address that can't be fetched",
+	"empty":     "this video has nothing in it to save",
 }
 
 // changed is the news in a new list, oldest first, so the newest is said last. offer is
@@ -136,6 +142,10 @@ func (n *downloadNews) changed(list []downloads.Item, offer bool) []map[string]a
 			}
 			m["mark"] = "warn"
 			m["actions"] = []act{{"retry", "Retry"}}
+			if d.NoRetry {
+				// Trying again can't help: a protected video, or a format the app can't repack.
+				m["actions"] = []act{}
+			}
 			m["lasts"] = 2000
 		default:
 			// Cancelled: a bar saying it puts itself away.

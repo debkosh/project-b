@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"testing"
 
 	"projectb/downloads"
@@ -37,6 +38,21 @@ func TestDownloadNews(t *testing.T) {
 	got = said([]downloads.Item{small, big, old}, false)
 	if len(got) != 2 || got[0] != "done: big.bin downloaded" || got[1] != "failed: Couldn't download small.bin: the server refused it" {
 		t.Fatalf("an end and a failure, oldest first, said %q", got)
+	}
+	// A stream that can't be saved says why as any failure does, and one that trying again
+	// can't help has no Retry.
+	film := downloads.Item{ID: 9, Name: "film.mp4", State: "progress", Stream: "hls"}
+	said([]downloads.Item{film, small, big, old}, false)
+	film.State, film.Reason = "failed", "live"
+	if got := said([]downloads.Item{film, small, big, old}, false); len(got) != 1 || got[0] != "failed: Couldn't download film.mp4: live videos can't be saved yet" {
+		t.Fatalf("a live stream said %q", got)
+	}
+	film.State = "progress"
+	said([]downloads.Item{film, small, big, old}, false)
+	film.State, film.Reason, film.NoRetry = "failed", "protected", true
+	news := n.changed([]downloads.Item{film, small, big, old}, false)
+	if len(news) != 1 || wordsOf(news[0]) != "Couldn't download film.mp4: this video is protected" || fmt.Sprint(news[0]["actions"]) != "[]" {
+		t.Fatalf("a protected stream said %v", news)
 	}
 	report := downloads.Item{ID: 4, Name: "crash.log", From: "Crash report", State: "done"}
 	if got := said([]downloads.Item{report, small, big, old}, false); len(got) != 1 || got[0] != "done: Crash report saved to Downloads" {

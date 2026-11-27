@@ -238,6 +238,36 @@ func TestACancelledDownloadStartsOverOnRetry(t *testing.T) {
 	}
 }
 
+// A download that is a stream's playlist is dropped from the engine once it is read, but
+// never from inside the engine's news of it: the engine is telling the download's observers
+// then, and taking the download away under them crashed the app (2026-11-27). No command
+// the app gives a download comes from inside its news.
+func TestNoDownloadCommandComesFromInsideADownloadsNews(t *testing.T) {
+	r := startDownloading(t, t.TempDir(), t.TempDir())
+	defer r.stop()
+	r.visit("https://a.test/")
+	r.show(1)
+	// The mock engine's file is no playlist: the row fails, the playlist read and dropped.
+	r.e.Fire(1, 0, "download", "https://a.test/watch/film.m3u8")
+	d := first(r.downloads(func(l []any) bool { return len(l) == 1 && first(l)["state"] == "failed" }))
+	if d["name"] != "film.mp4" || d["reason"] != "format" || d["noRetry"] != true {
+		t.Fatalf("the stream's row: %v", d)
+	}
+	// And the everyday ones: cancelled, tried again, removed while it runs.
+	r.e.Fire(1, 0, "download", "https://a.test/big.iso")
+	id := first(r.downloads(func(l []any) bool { return len(l) == 2 && first(l)["state"] == "progress" }))["id"]
+	r.shell(fmt.Sprintf(`{"t":"downloadAction","id":%v,"action":"cancel"}`, id))
+	r.downloads(func(l []any) bool { return first(l)["state"] == "cancelled" })
+	r.shell(fmt.Sprintf(`{"t":"downloadAction","id":%v,"action":"retry"}`, id))
+	r.downloads(func(l []any) bool { return first(l)["state"] == "progress" })
+	r.shell(fmt.Sprintf(`{"t":"downloadAction","id":%v,"action":"remove"}`, id))
+	r.downloads(func(l []any) bool { return len(l) == 1 })
+	r.e.Settle()
+	if got := r.e.ReentrantDownloadCommands(); len(got) != 0 {
+		t.Fatalf("commands given from inside a download's news: %v", got)
+	}
+}
+
 // Retry starts one over from the page it came from, as the first time: a site may serve its
 // files only to its own pages, and the engine has forgotten a cancelled one.
 func TestARetryComesFromThePageTheDownloadCameFrom(t *testing.T) {

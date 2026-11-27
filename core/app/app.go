@@ -251,6 +251,12 @@ func Start(e engine.Engine, cfg Config) *App {
 	}
 	a.Downloads = downloads.New(e, cfg.System, cfg.ProfileDir, cfg.DownloadsDir)
 	a.Fetches = fetch.New(e)
+	// A download that is a streamed video's playlist is saved as one MP4, its pieces fetched
+	// as from its page, in its tab's workspace (docs/video-streams.md).
+	a.Downloads.Streams(a.Fetches, func(tab engine.TabID) string {
+		t, _ := a.Tabs.Get(tab)
+		return t.Workspace
+	})
 	// A downloaded page, PDF, image or text opens in a tab here; anything else goes to the OS.
 	a.Downloads.OpenHere(func(address string) {
 		a.Window.Request(a.Tabs.Front(), engine.WindowFront)
@@ -829,7 +835,8 @@ func (a *App) DownloadTarget(r engine.DownloadRequest) engine.DownloadTarget {
 		return engine.DownloadTarget{}
 	}
 	t := a.Downloads.Target(r)
-	t.Prompt = t.Prompt || t.Path != "" && a.Prefs.All().AskWhereToSave
+	// A stream's playlist is the app's to read, wherever its MP4 goes: no panel asks of it.
+	t.Prompt = !a.Downloads.IsStream(r.ID) && (t.Prompt || t.Path != "" && a.Prefs.All().AskWhereToSave)
 	if w := a.Tabs.WindowOf(r.Tab); t.Path != "" && w != 0 && w == a.Tabs.Front() {
 		a.startedIn[r.ID] = w
 	}

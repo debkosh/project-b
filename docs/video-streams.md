@@ -61,13 +61,23 @@ The spark keeps what it finds today, and adds streams:
 - **When.** A download whose type is `application/vnd.apple.mpegurl` or
   `application/x-mpegurl`, or whose address ends in `.m3u8`, or whose first bytes are
   `#EXTM3U`, is a stream. The app reads the playlist instead of keeping the text file.
+  A plain click on a link to an HLS playlist is a download only when its server says so
+  (`Content-Disposition: attachment`): otherwise the link opens in the tab and Chromium's
+  own player plays it there, as a link to any video file does, and the stream is saved from
+  the spark's Download or the link's menu. A DASH playlist's link always downloads, since
+  Chromium plays none.
 - **Which quality.** A media playlist is saved as it is. A master playlist is saved at its
   best quality: the highest resolution, then the highest bandwidth.
-- **Refused, plainly, in the download's row:**
-  - Live (no `#EXT-X-ENDLIST`): "Live streams can't be saved yet".
+- **Refused, plainly, in the download's row,** worded as any failed download is (ux,
+  2026-11-27), and in a phone's bar as "Couldn't download *name*: live videos can't be
+  saved yet" and so on:
+  - Live (no `#EXT-X-ENDLIST`): "Failed: live videos can't be saved yet". It keeps Retry,
+    for when the stream has ended.
   - Protected: any key method other than `NONE` or `AES-128`, or a `KEYFORMAT` other than
-    `identity` (FairPlay, Widevine, PlayReady): "This video is protected and can't be
-    saved". DRM is out for good.
+    `identity` (FairPlay, Widevine, PlayReady): "Failed: this video is protected", with no
+    Retry. DRM is out for good.
+  - A stream of pieces the app can't repack: "Failed: this video's format can't be saved
+    yet", with no Retry.
 - **Fetching.** Every playlist, piece and key is fetched through Chromium's own network, in
   the tab's storage partition, as from the page: its origin as the initiator, its site as
   the site for cookies, its address as the referrer. Chromium decides which cookies go to
@@ -118,6 +128,47 @@ address at the connection, a redirect's too, as it does for a page
 `core/fetch` holds both rules on its side as well: an address that isn't `http` or `https`
 never reaches the engine, and an answer from a more private address than was asked from is
 thrown away.
+
+**Which download is a stream** (`core/downloads/streams.go`). When the engine asks where a
+download goes, its type or its address may already say it is a playlist: it then goes to a
+folder of the app's own in the profile, never the Downloads folder, with no Save panel, and
+its row shows the MP4's name from the start. One that only its first bytes give away is
+known once it is all here, and its file is taken out of the Downloads folder again. So that
+this works on a phone too, the engine no longer hands a finished download to the system by
+itself: Go asks for each one it keeps (`publish_file`), and never for a playlist. Either
+way the playlist's text is read, its file removed, the engine's download dropped, and the
+row goes on as the stream's, under the same id, so a phone's notification for it carries
+on and the app stays alive behind it with no screen, exactly as for a running download:
+Android counts a download as running from what Go shows of it (`show_download`), and Go
+shows the stream's row as running until its MP4 is made.
+
+**The job** (`core/streams/job.go`). It reads the playlist (`hls.go`, with hls-m3u8): a
+master's best quality, whose own playlist it fetches, and its separate sound's; live and
+protected ones end there. Then the pieces, 4 at a time, each to a file in the job's folder,
+picture and sound turn about, at most 8 ahead of what is repacked; a key or a header piece
+(`EXT-X-MAP`) is fetched once. A piece that fails is asked for 3 times. Each playlist's
+pieces are asked from where that playlist's server is. Pause stops the fetches under way
+and keeps what is in; Resume asks for them again; Cancel and Retry throw the folder away,
+and Retry starts over from the playlist's address. Progress is the pieces in, of how many;
+the row shows it in bytes, the bytes in and what the whole comes to at that rate, so the
+bar moves by pieces and the sizes mean something.
+
+**Repacking** (`ts.go`, `work.go`). Everything becomes one working file of MP4 fragments,
+picture and sound side by side as they arrive. A piece that is already a fragment is added
+as it is. An MPEG-TS piece is read with mediacommon (H.264 or H.265, and AAC) and written
+as fragments with mp4ff, each sample with the piece's own stamps; a picture's last sample
+waits for the next piece to say how long it lasts; other parameter sets after a
+discontinuity get a sample entry of their own. At the end the times are set, with nothing
+re-encoded: each run between discontinuities starts where the last ended, every track moved
+by the same amount, the stream's own edits honoured (a picture's reordering delay, a wait
+before a track), and the earliest track starting at nothing. mp4ff's `Defragment` then
+writes the regular MP4, its index first and 64-bit offsets when it is large, copying the
+samples as they are, and the job's folder goes.
+
+**Not yet:** sound other than AAC in MPEG-TS (AC-3, MP3), sound-only pieces that are bare
+AAC or MP3 files, and MP4 fragments whose header changes its codec partway: each fails as
+"This video's format can't be saved yet". With Ask where to save on, a stream's MP4 still
+goes to the Downloads folder.
 
 ## A page starting downloads
 

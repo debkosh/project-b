@@ -98,7 +98,8 @@ function actions(d) {
       ...link,
     ];
   } else {
-    tiles = [...(d.url ? [{ icon: 'retry', label: 'Retry', run: () => act(d.id, 'retry') }] : []), ...link];
+    // No Retry where trying again can't help: a protected video, a format not read.
+    tiles = [...(d.url && !d.noRetry ? [{ icon: 'retry', label: 'Retry', run: () => act(d.id, 'retry') }] : []), ...link];
   }
   sheet.value = { id: d.id, name: d.name, detail: d.url ? withoutScheme(d.url) : d.from || '', tiles, rows };
 }
@@ -152,7 +153,7 @@ watch(
                 <span v-if="d.state === 'progress'" class="bar" :class="{ unknown: d.total <= 0 }"><i :style="{ width: d.total > 0 ? `${share(d) * 100}%` : '' }"></i></span>
               </span>
             </button>
-            <button v-if="d.state === 'failed' && d.url" type="button" class="retry" @click="act(d.id, 'retry')">Retry</button>
+            <button v-if="d.state === 'failed' && d.url && !d.noRetry" type="button" class="retry" @click="act(d.id, 'retry')">Retry</button>
             <button type="button" class="icon" :aria-label="`Actions for ${d.name}`" @click="actions(d)"><LineIcon name="more" /></button>
           </li>
         </ul>

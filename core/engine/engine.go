@@ -375,11 +375,14 @@ type Engine interface {
 	// CopyImage puts the image file at path on the system's clipboard: Android's. Nothing
 	// on the Mac, whose menus don't offer it.
 	CopyImage(path string)
-	// PublishFile takes a file Go put in the downloads folder itself, finished, such as a
-	// saved crash report, as a finished download of the engine's is taken: on a phone it
-	// is copied into the shared Downloads, and opened from there; on the Mac, where the
-	// folder is the user's own Downloads, nothing is to be done.
-	PublishFile(path string)
+	// PublishFile hands a finished file in the downloads folder to the system: a finished
+	// download, a stream's MP4, or a file Go put there itself, such as a saved crash report.
+	// On a phone it is copied into the shared Downloads, DownloadPublished saying where, and
+	// opened from there; on the Mac, where the folder is the user's own Downloads, nothing
+	// is to be done. Go asks once it knows the file is one to keep: a download that turns
+	// out to be a stream's playlist is read instead (docs/video-streams.md).
+	// mime is its type, or "" for the phone to tell from its name.
+	PublishFile(path, mime string)
 	// DeleteDownload deletes a finished download's copy in a phone's shared Downloads, by
 	// the downloads folder's path for it: false when there is none. A desktop's downloads
 	// are the user's own files, and it answers false.

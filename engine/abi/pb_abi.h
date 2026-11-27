@@ -556,10 +556,13 @@ typedef struct PBEngineCalls {
   // Puts the image file at path on the system's clipboard, as a page's Copy image would:
   // Android's; nothing on the Mac, whose menus don't offer it.
   void (*copy_image)(const char* path);
-  // Takes a file Go put in the downloads folder itself, finished, such as a saved crash
-  // report, as a finished download is taken: on a phone, copied into the shared Downloads
-  // and opened from there; nothing on the Mac.
-  void (*publish_file)(const char* path);
+  // Hands a finished file in the downloads folder to the system: a finished download, a
+  // stream's MP4, or a file Go put there itself, such as a saved crash report. On a phone it
+  // is copied into the shared Downloads, PB_EVENT_DOWNLOAD_PUBLISHED saying where, and opened
+  // from there; nothing on the Mac. mime_type is its type, or "" for the phone to tell from
+  // its name. Go asks for each finished download it keeps: one that is a stream's playlist
+  // is read instead (docs/video-streams.md).
+  void (*publish_file)(const char* path, const char* mime_type);
   // Delivers one message to the page of ours a tab shows: settings, history, bookmarks or downloads.
   void (*send_to_page)(int64_t tab, const char* json, size_t length);
   // Replaces the native menu bar: json is Go's engine.Menu.

@@ -30,8 +30,13 @@ type downloads struct {
 	mu      sync.Mutex
 	next    engine.DownloadID
 	running map[engine.DownloadID]*mockDownload
-	notices []engine.Download // What ShowDownload was asked to show, in order.
-	started []engine.Download // Each download as it started, in order.
+	// telling counts the listener's DownloadUpdated calls under way, and reentrant the
+	// commands that came from inside one: the real engine is in the middle of telling a
+	// download's observers then, and may not change the download.
+	telling   int
+	reentrant []engine.DownloadCommand
+	notices   []engine.Download // What ShowDownload was asked to show, in order.
+	started   []engine.Download // Each download as it started, in order.
 }
 
 func (e *Engine) dl() *downloads {
@@ -74,7 +79,7 @@ func (e *Engine) download(tab engine.TabID, u, referrer string, saveAs bool) {
 	d.running[id] = m
 	d.started = append(d.started, m.d)
 	d.mu.Unlock()
-	e.listener.DownloadUpdated(m.d)
+	e.told(m.d)
 	e.step(m, downloadSize/2)
 }
 
@@ -90,7 +95,7 @@ func (e *Engine) step(m *mockDownload, received int64) {
 				os.WriteFile(m.d.Path, make([]byte, downloadSize), 0o644)
 				m.d.State = engine.DownloadDone
 			}
-			e.listener.DownloadUpdated(m.d)
+			e.told(m.d)
 			if m.d.State == engine.DownloadProgress {
 				e.step(m, downloadSize)
 			}
@@ -98,9 +103,28 @@ func (e *Engine) step(m *mockDownload, received int64) {
 	})
 }
 
+// told tells the app a download's news. Main thread.
+func (e *Engine) told(d engine.Download) {
+	e.downloads.telling++
+	defer func() { e.downloads.telling-- }()
+	e.listener.DownloadUpdated(d)
+}
+
+// ReentrantDownloadCommands are the commands the app gave from inside a download's news,
+// which the real engine must never be given. Any goroutine.
+func (e *Engine) ReentrantDownloadCommands() []engine.DownloadCommand {
+	d := e.dl()
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return append([]engine.DownloadCommand{}, d.reentrant...)
+}
+
 func (e *Engine) DownloadCommand(id engine.DownloadID, c engine.DownloadCommand) {
 	d := e.dl()
 	d.mu.Lock()
+	if d.telling > 0 {
+		d.reentrant = append(d.reentrant, c)
+	}
 	m := d.running[id]
 	d.mu.Unlock()
 	failed := m != nil && m.d.State == engine.DownloadFailed
@@ -123,7 +147,7 @@ func (e *Engine) DownloadCommand(id engine.DownloadID, c engine.DownloadCommand)
 		d.mu.Unlock()
 		return
 	}
-	e.listener.DownloadUpdated(m.d)
+	e.told(m.d)
 }
 
 // stallDownloads stops every running download's bytes where they are, still running.
@@ -152,7 +176,7 @@ func (e *Engine) failDownloads() {
 	}
 	d.mu.Unlock()
 	for _, m := range failing {
-		e.listener.DownloadUpdated(m.d)
+		e.told(m.d)
 	}
 }
 

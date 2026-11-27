@@ -44,7 +44,17 @@ const progress = computed(() => {
 });
 
 // Why one failed, in plain words, from the engine's reason (docs/daily-driver.md).
-const failedWords = { connection: 'Failed: the connection stopped', server: 'Failed: the server refused it', disk: 'Failed: not enough disk space' };
+const failedWords = {
+  connection: 'Failed: the connection stopped',
+  server: 'Failed: the server refused it',
+  disk: 'Failed: not enough disk space',
+  // A streamed video that can't be saved (docs/video-streams.md).
+  live: "Failed: live videos can't be saved yet",
+  protected: 'Failed: this video is protected',
+  format: "Failed: this video's format can't be saved yet",
+  refused: "Failed: part of this video is at an address that can't be fetched",
+  empty: 'Failed: this video has nothing in it to save',
+};
 
 function status(d) {
   switch (d.state) {
@@ -262,7 +272,8 @@ onUnmounted(() => {
                 <!-- Retry throws away what arrived, so it sits apart from the everyday two. -->
                 <button type="button" class="text-button quiet apart" @click="downloadAction(d.id, 'retry')">Retry</button>
               </template>
-              <template v-else-if="d.url">
+              <!-- No Retry where trying again can't help: a protected video, a format not read. -->
+              <template v-else-if="d.url && !d.noRetry">
                 <button type="button" class="text-button quiet" @click="downloadAction(d.id, 'retry')">Retry</button>
               </template>
               <button

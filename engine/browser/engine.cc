@@ -309,10 +309,9 @@ void CallDownloadCommand(uint32_t download, int32_t command) {
   }
 }
 
-void CallPublishFile(const char* path) {
+void CallPublishFile(const char* path, const char* mime_type) {
   CheckMainThread();
-  // No type: the phone tells it from the file's extension.
-  PublishFile(base::FilePath::FromUTF8Unsafe(path), std::string());
+  PublishFile(base::FilePath::FromUTF8Unsafe(path), mime_type);
 }
 
 void CallAnswerDialog(int64_t dialog, int ok, const char* text) {

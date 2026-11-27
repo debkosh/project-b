@@ -119,7 +119,12 @@ or `failed`, and `reason` why a failed one failed, from content's interrupt reas
 a timeout among them), `server` (the server refused it) or `disk` (no room), or none. The
 shell says it in plain words: "Failed: the connection stopped", "Failed: the server
 refused it", "Failed: not enough disk space", or "Failed" for any other reason; Mobile's
-download bar, "Couldn't download x.zip: the connection stopped" and so on. A file the app made itself and kept as a finished download, a saved crash report,
+download bar, "Couldn't download x.zip: the connection stopped" and so on. A streamed
+video that can't be saved (docs/video-streams.md), whose row is a download like any other,
+marked `stream`, has reasons of its own, `live`, `protected`, `format`, `refused` and
+`empty`: "Failed: live videos can't be saved yet", "Failed: this video is protected",
+"Failed: this video's format can't be saved yet". One marked `noRetry`, a protected video
+or a format the app can't repack, has no Retry: trying again can't help. A file the app made itself and kept as a finished download, a saved crash report,
 has no `url` and says what it is in `from` instead. Go keeps the finished ones in the profile's `downloads.json`, the last 100, so the
 list is there after a restart; one still running when the app quit comes back `failed`.
 The shell asks for one action at a time, `downloadAction {id, action}`: `open` the file,
@@ -200,7 +205,9 @@ offer it. Share (`downloadAction` `share`) hands the copy in the phone's Downloa
 the system's share sheet. The back key closes the search or the sheet first.
 
 **Android.** There is no Save panel: a download goes where Go says, the profile's own
-Downloads folder. Once done, the engine copies it into the phone's shared Downloads through
+Downloads folder. Once done, Go hands it to the system (`publish_file`, with its type: a
+download that turns out to be a stream's playlist is read instead, docs/video-streams.md),
+and the engine copies it into the phone's shared Downloads through
 MediaStore, where the Files app and other apps find it, removes the app's own copy, and tells
 Go the copy's content:// address (`PB_EVENT_DOWNLOAD_PUBLISHED`), which is the download's path
 from then on, as Chromium's is. Open (oskit/open) opens that address with the app the phone

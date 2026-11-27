@@ -28,7 +28,17 @@
   }
 
   // Why one failed, in plain words, from the engine's reason (docs/daily-driver.md).
-  const failedWords = { connection: 'Failed: the connection stopped', server: 'Failed: the server refused it', disk: 'Failed: not enough disk space' };
+  const failedWords = {
+    connection: 'Failed: the connection stopped',
+    server: 'Failed: the server refused it',
+    disk: 'Failed: not enough disk space',
+    // A streamed video that can't be saved (docs/video-streams.md).
+    live: "Failed: live videos can't be saved yet",
+    protected: 'Failed: this video is protected',
+    format: "Failed: this video's format can't be saved yet",
+    refused: "Failed: part of this video is at an address that can't be fetched",
+    empty: 'Failed: this video has nothing in it to save',
+  };
 
   function status(d) {
     if (d.state === 'progress') return (d.paused ? 'Paused, ' : '') + (d.total > 0 ? `${size(d.received)} of ${size(d.total)}` : size(d.received));
@@ -101,7 +111,8 @@
                 <!-- Retry throws away what arrived, so it sits apart from the everyday two. -->
                 <button type="button" class="text-button quiet apart" onclick={() => downloadAction(d.id, 'retry')}>Retry</button>
               {:else}
-                <button type="button" class="text-button quiet" onclick={() => downloadAction(d.id, 'retry')}>Retry</button>
+                <!-- No Retry where trying again can't help: a protected video, a format not read. -->
+                {#if !d.noRetry}<button type="button" class="text-button quiet" onclick={() => downloadAction(d.id, 'retry')}>Retry</button>{/if}
                 <button type="button" class="text-button quiet" onclick={() => downloadAction(d.id, 'copyLink')}>Copy link</button>
               {/if}
               <button type="button" class="icon-button remove" aria-label="Remove {d.name} from the list" title="Remove from the list" onclick={() => downloadAction(d.id, 'remove')}>

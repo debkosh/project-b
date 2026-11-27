@@ -14,6 +14,9 @@ require github.com/debkosh/gulal v0.3.1
 require github.com/debkosh/project-b/oskit v0.0.0
 
 require (
+	github.com/Eyevinn/hls-m3u8 v0.6.5
+	github.com/Eyevinn/mp4ff v0.64.0
+	github.com/bluenviron/mediacommon/v2 v2.10.0
 	github.com/debkosh/amarit/flatpak v0.12.0
 	github.com/debkosh/synckosh v0.3.1
 	github.com/godbus/dbus/v5 v5.2.4
@@ -24,6 +27,8 @@ require (
 )
 
 require (
+	github.com/asticode/go-astikit v0.30.0 // indirect
+	github.com/asticode/go-astits v1.17.0 // indirect
 	github.com/ncruces/go-sqlite3-wasm/v6 v6.5.35401 // indirect
 	github.com/ncruces/julianday v1.0.0 // indirect
 	go.etcd.io/bbolt v1.5.0 // indirect

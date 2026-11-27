@@ -8,6 +8,7 @@
 #include "base/check.h"
 #include "base/functional/bind.h"
 #include "base/json/json_reader.h"
+#include "base/task/sequenced_task_runner.h"
 #include "base/task/thread_pool.h"
 #include "base/values.h"
 #include "components/download/public/common/download_interrupt_reasons.h"
@@ -182,13 +183,10 @@ void Downloads::OnDownloadCreated(content::DownloadManager* manager,
 
 void Downloads::OnDownloadUpdated(download::DownloadItem* item) {
   Watch(item);
-  // A finished file is handed on first, so what Go does on hearing it is done, such as a
-  // phone's notification that opens it, comes after the copy it opens.
+  // Go hands a finished file to the system itself (publish_file), once it knows the file
+  // is one to keep: a stream's playlist is read instead.
   if (item->IsDone()) {
     item->RemoveObserver(this);
-    if (item->GetState() == download::DownloadItem::COMPLETE) {
-      PublishFile(item->GetTargetFilePath(), item->GetMimeType());
-    }
   }
   // Nothing until Go has placed it: its path is what the list shows.
   if (!item->GetTargetFilePath().empty()) {
@@ -335,7 +333,16 @@ void Downloads::DownloadURL(content::WebContents* contents,
   manager_->DownloadUrl(std::move(params));
 }
 
+// Go may ask from inside its own handling of a download's news, as it does to drop a
+// playlist it has read: content is in the middle of telling the item's observers then, and
+// an item may not be removed or changed meanwhile. So no command runs inside the call that
+// asks for it: each is posted, and runs in its turn.
 void Downloads::Command(uint32_t id, int32_t command) {
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE, base::BindOnce(&Downloads::Run, weak_factory_.GetWeakPtr(), id, command));
+}
+
+void Downloads::Run(uint32_t id, int32_t command) {
   download::DownloadItem* item = manager_ ? manager_->GetDownload(id) : nullptr;
   if (!item) {
     return;

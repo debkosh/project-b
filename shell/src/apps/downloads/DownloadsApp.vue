@@ -69,7 +69,8 @@ const share = (d) => (d.total > 0 ? Math.min(1, d.received / d.total) : 0);
             <button type="button" class="text-button quiet open" @click="act(d.id, 'open')">Open</button>
             <button type="button" class="text-button quiet" @click="act(d.id, 'reveal')">{{ reveal }}</button>
           </template>
-          <template v-else-if="d.url">
+          <!-- No Retry where trying again can't help: a protected video, a format not read. -->
+          <template v-else-if="d.url && !d.noRetry">
             <button type="button" class="text-button quiet" @click="act(d.id, 'retry')">Retry</button>
           </template>
           <button

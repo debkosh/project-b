@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"projectb/engine"
+	"projectb/streams"
 	"projectb/system"
 	"projectb/timeline"
 )
@@ -37,8 +38,19 @@ type Item struct {
 	Received int64  `json:"received"`
 	Total    int64  `json:"total"`
 	Paused   bool   `json:"paused"`
-	// Reason is why a failed one failed, as engine.Download has it, or "".
+	// Reason is why a failed one failed, as engine.Download has it, or ""; for a stream that
+	// can't be saved, streams.Reason's: "live", "protected", "format", "refused" or "empty".
 	Reason string `json:"reason,omitempty"`
+	// NoRetry says trying a failed one again can't help, so it has no Retry: a protected
+	// stream, or one of a format the app can't repack.
+	NoRetry bool `json:"noRetry,omitempty"`
+	// Stream is the kind of playlist of a streamed video saved as one MP4
+	// (docs/video-streams.md, streams.go), "" for a file. Workspace is the workspace whose
+	// storage it is fetched in, and Space where its playlist's server is, an
+	// engine.AddressSpace: what Retry starts it over with.
+	Stream    string `json:"stream,omitempty"`
+	Workspace string `json:"workspace,omitempty"`
+	Space     int    `json:"space,omitempty"`
 	// Referrer is the page it came from, which Retry says again: a site may serve its
 	// files only to its own pages.
 	Referrer string `json:"referrer,omitempty"`
@@ -50,6 +62,8 @@ type Item struct {
 	engine engine.DownloadID
 	// retrying is set by Retry until the engine's download for it shows up.
 	retrying bool
+	// job is the stream being saved, while it is.
+	job *streams.Job
 	// publishing is set, on a phone, from done until the engine has said where its copy in
 	// the shared Downloads is (Published); waiting is what Open and Share asked meanwhile,
 	// done with that copy once it is there.
@@ -97,11 +111,35 @@ type Manager struct {
 	// cancel coming back, is no longer any row's.
 	stopped map[engine.DownloadID]bool
 	offered bool
+
+	// began is what is known of each engine download from when it began until it ends.
+	began map[engine.DownloadID]began
+	// fetcher fetches a stream's pieces, and workspaceOf is the workspace a tab is in: set
+	// as the app starts (Streams). Without them no download is read as a stream.
+	fetcher     streams.Fetcher
+	workspaceOf func(engine.TabID) string
+	// jobs counts the streams started, for each one's folder.
+	jobs int
+}
+
+// began is an engine download as it began: the workspace of the tab it began in, and for
+// one that is a stream's playlist by its type or address, the kind and the MP4's name.
+type began struct {
+	workspace string
+	stream    streams.Kind
+	name      string
 }
 
 // New returns a manager for the profile folder profile, saving files into dir.
 func New(e engine.Engine, sys system.System, profile, dir string) *Manager {
-	return &Manager{e: e, sys: sys, file: filepath.Join(profile, "downloads.json"), dir: dir, next: 1, byEngine: map[engine.DownloadID]*Item{}, stopped: map[engine.DownloadID]bool{}}
+	return &Manager{e: e, sys: sys, file: filepath.Join(profile, "downloads.json"), dir: dir, next: 1, byEngine: map[engine.DownloadID]*Item{}, stopped: map[engine.DownloadID]bool{}, began: map[engine.DownloadID]began{}}
+}
+
+// Streams has a download that is a streamed video's playlist saved as one MP4
+// (docs/video-streams.md): its pieces are fetched through f, as from the page it came from,
+// in the workspace of the tab it began in, which workspaceOf says. Set as the app starts.
+func (m *Manager) Streams(f streams.Fetcher, workspaceOf func(engine.TabID) string) {
+	m.fetcher, m.workspaceOf = f, workspaceOf
 }
 
 // OpenHere is how Open opens a file the engine shows itself: in a new tab of the app's own,
@@ -138,6 +176,8 @@ func (m *Manager) Dir() string { return m.dir }
 
 // Load reads the list kept from the last run.
 func (m *Manager) Load() {
+	// What a stream being saved when the app last ended left behind.
+	os.RemoveAll(m.streamsDir())
 	b, err := os.ReadFile(m.file)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
@@ -194,8 +234,29 @@ func (m *Manager) Target(r engine.DownloadRequest) engine.DownloadTarget {
 		timeline.Errorf("downloads: %v", err)
 		return engine.DownloadTarget{}
 	}
+	if m.fetcher == nil {
+		return engine.DownloadTarget{Path: m.free(cleanName(r.Name)), Prompt: r.SaveAs}
+	}
+	b := began{workspace: m.workspaceOf(r.Tab)}
+	// A stream's playlist goes to a folder of the app's own and is read from there: the
+	// Downloads folder gets the MP4, under the playlist's name. No Save panel asks about it.
+	if kind := streams.KindOf(r.Mime, r.URL); kind != streams.None {
+		dir := filepath.Join(m.streamsDir(), "playlists")
+		if err := os.MkdirAll(dir, 0o700); err == nil {
+			b.stream, b.name = kind, streams.NameOf(cleanName(r.Name))
+			m.began[r.ID] = b
+			return engine.DownloadTarget{Path: filepath.Join(dir, fmt.Sprintf("%d", r.ID))}
+		}
+	}
+	m.began[r.ID] = b
 	return engine.DownloadTarget{Path: m.free(cleanName(r.Name)), Prompt: r.SaveAs}
 }
+
+// streamsDir is the folder the streams being saved work in, in the profile.
+func (m *Manager) streamsDir() string { return filepath.Join(filepath.Dir(m.file), "streams") }
+
+// IsStream says an engine download is a stream's playlist, as its Target saw.
+func (m *Manager) IsStream(id engine.DownloadID) bool { return m.began[id].stream != streams.None }
 
 // cleanName is a file name with no folder in it.
 func cleanName(name string) string {
@@ -249,6 +310,7 @@ func (m *Manager) Updated(d engine.Download) int {
 	if m.stopped[d.ID] {
 		if d.State != engine.DownloadProgress {
 			delete(m.stopped, d.ID)
+			delete(m.began, d.ID)
 		}
 		return 0
 	}
@@ -270,9 +332,28 @@ func (m *Manager) Updated(d engine.Download) int {
 	if d.Referrer != "" {
 		it.Referrer = d.Referrer
 	}
+	b := m.began[d.ID]
+	if d.State != engine.DownloadProgress {
+		delete(m.began, d.ID)
+	}
+	// A stream's playlist, by its type or address, or once it is all here by how it starts.
+	if b.stream == streams.None && d.State == engine.DownloadDone && m.fetcher != nil {
+		if b.stream = sniff(d.Path); b.stream != streams.None {
+			b.name = streams.NameOf(filepath.Base(d.Path))
+		}
+	}
+	if b.stream != streams.None {
+		m.playlist(it, d, b)
+		return it.ID
+	}
 	it.Path, it.Name = d.Path, filepath.Base(d.Path)
 	it.State, it.Received, it.Total, it.Paused, it.Reason = states[d.State], d.Received, d.Total, d.Paused, d.Reason
 	it.publishing = publishes && it.State == "done"
+	// A finished file is handed to the system first, so what showing it done does, such as a
+	// phone's notification that opens it, comes after the copy it opens.
+	if it.State == "done" {
+		m.e.PublishFile(d.Path, d.Mime)
+	}
 	m.e.ShowDownload(it.ID, d)
 	// A failed download stays the engine's: it may resume, by itself or by Retry.
 	if it.State == "done" || it.State == "cancelled" {
@@ -301,7 +382,7 @@ func (m *Manager) Keep(src, from string) (int, error) {
 	m.next++
 	m.list = append([]*Item{it}, m.list...)
 	it.publishing = publishes
-	m.e.PublishFile(path)
+	m.e.PublishFile(path, "")
 	m.e.ShowDownload(it.ID, engine.Download{Path: path, State: engine.DownloadDone, Received: size, Total: size})
 	m.save()
 	m.changed()
@@ -420,6 +501,9 @@ func (m *Manager) Act(id int, action string) {
 		return
 	}
 	live := it.State == "progress"
+	if it.Stream != "" && m.actStream(it, action) {
+		return
+	}
 	switch action {
 	case "open":
 		if it.State == "done" {

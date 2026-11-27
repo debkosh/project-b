@@ -121,6 +121,13 @@ async function phonePage(page, w) {
   // A press on the control makes the panel that peeked the person's.
   await w.ui.getByRole('button', { name: 'Downloads' }).click();
   await details(panel, { savedIn: path.dirname(saved) });
+  // A streamed video's playlist is saved as one MP4 in its row (docs/video-streams.md). The
+  // mock engine's file is no playlist, so its row, under the MP4's name, says why not.
+  await fire('download', 'https://example.com/watch/film.m3u8');
+  const film = panel.getByRole('listitem', { name: 'film.mp4' });
+  check("a playlist's row goes by its MP4's name, and one that can't be saved says why, as a failed download does",
+    await until(async () => (await film.innerText().catch(() => '')).includes("Failed: this video's format can't be saved yet")), await film.innerText().catch(() => 'no row'));
+  check("with no Retry, as trying again can't help", (await film.getByRole('button', { name: /^Retry/ }).count()) === 0);
   await shots(w.page, 'panel', async () => {
     const b = await panel.boundingBox();
     return { x: b.x - 16, y: b.y - 56, width: b.width + 32, height: b.height + 72 };

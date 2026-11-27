@@ -48,7 +48,8 @@ class Downloads : public content::DownloadManagerDelegate,
                    const GURL& url,
                    const content::Referrer& referrer,
                    bool save_as);
-  // Runs a PBDownloadCommand on download id.
+  // Runs a PBDownloadCommand on download id, in its turn after the call that asks: never
+  // from inside an item's news to its observers, where Go may be asking from.
   void Command(uint32_t id, int32_t command);
 
   // content::DownloadManagerDelegate:
@@ -79,6 +80,7 @@ class Downloads : public content::DownloadManagerDelegate,
   void OnDownloadDestroyed(download::DownloadItem* item) override;
 
  private:
+  void Run(uint32_t id, int32_t command);
   void Report(download::DownloadItem* item);
   void Targeted(uint32_t id,
                 download::DownloadTargetCallback callback,
@@ -106,7 +108,7 @@ void ChooseSavePath(content::WebContents* contents,
                     const base::FilePath& suggested,
                     base::OnceCallback<void(const base::FilePath&)> chosen);
 // Hands a finished download, or a file Go kept as one, to the system where other apps find
-// it: on a phone, a copy in the shared Downloads, through which it is then opened. Nothing on
+// it, when Go asks (publish_file): on a phone, a copy in the shared Downloads, through which it is then opened. Nothing on
 // a desktop, where it already is in the user's Downloads folder.
 void PublishFile(const base::FilePath& path, const std::string& mime_type);
 #if BUILDFLAG(IS_ANDROID)

@@ -899,7 +899,7 @@ func (e *Engine) Deleted() []string {
 	return append([]string(nil), e.deleted...)
 }
 
-func (e *Engine) PublishFile(path string) {
+func (e *Engine) PublishFile(path, mime string) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.published = path
