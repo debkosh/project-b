@@ -1,11 +1,14 @@
 // ==UserScript==
 // @name         Video downloader
 // @description  Finds the videos on a page so you can save one
-// @version      1.3
+// @version      1.4
 // @namespace    https://github.com/sudiptadeb/project-b
 // @match        https://*/*
 // @run-at       document-end
 // ==/UserScript==
+
+// Kept in the site's own localStorage: video_downloader_quality, the quality last chosen
+// there for saving several videos at once (1080, 720, 480 or 360; nothing for Best).
 
 (function () {
   'use strict';
@@ -23,6 +26,8 @@
   const URL_LIKE_RE = /https?:(?:\\?\/|\\u002f){2}[^\s"'<>]+/gi;
   // A playlist of a streamed video, HLS's or DASH's, by its address's path.
   const PLAYLIST_RE = /\.(m3u8|mpd)(?![a-z0-9])/i;
+  // A piece of a streamed video, by its address's path.
+  const PIECE_RE = /\.(ts|m4s|m4v|m4a|mp4|aac|cmfv|cmfa)$/i;
 
   const state = {
     sources: [],
@@ -36,12 +41,46 @@
     fetched: new Map(),
     own: new Map(),
     seen: new Set(),
+    // When the page last fetched a piece of video from each folder, by the folder's address:
+    // the stream in use is the one still being fetched from (inUse).
+    pieces: new Map(),
     open: false,
     menu: null, // { trigger } while a menu is open
     shownKey: null, // what the list shows now
     pending: null, // rows to show once the open menu closes
     downloading: new Set(),
+    rows: [], // what the list shows, as describe gives it
+    // 'select' while rows are ticked to save several, 'confirm' while Download all asks.
+    mode: null,
+    picked: new Set(), // the ticked rows' addresses
+    batch: [], // the timers of downloads still to start
   };
+
+  // The qualities several videos can be saved at, as heights: 0 is each one's best.
+  const QUALITIES = [0, 1080, 720, 480, 360];
+  const QUALITY_KEY = 'video_downloader_quality';
+  // How long after one download of several the next starts.
+  const BATCH_GAP = 400;
+
+  // The quality last chosen on this site, kept in its own storage; Best where the site
+  // keeps none or has none to keep it in.
+  let quality = 0;
+  try {
+    const kept = Number(localStorage.getItem(QUALITY_KEY));
+    if (QUALITIES.includes(kept)) quality = kept;
+  } catch {
+    // No storage here.
+  }
+
+  function chooseQuality(height) {
+    quality = QUALITIES.includes(height) ? height : 0;
+    try {
+      if (quality) localStorage.setItem(QUALITY_KEY, String(quality));
+      else localStorage.removeItem(QUALITY_KEY);
+    } catch {
+      // Chosen until the page goes, then.
+    }
+  }
 
   let refreshTimer = null;
   let observer = null;
@@ -96,11 +135,13 @@
   // The address Project B saves as a download from this page: the file's, its fragment
   // swapped for #pb-download, which no server sees. With a title, #pb-download=<title>:
   // Project B names the file after it when the file's own name says nothing, an id or
-  // "master" (its ending stays the file's own).
-  function savedFrom(url, title) {
+  // "master" (its ending stays the file's own). With a height, &q=<height> after the title:
+  // the quality wanted of a playlist that holds several, of which Project B saves the
+  // closest (docs/video-streams.md, "A quality asked for").
+  function savedFrom(url, title, height) {
     try {
       const u = new URL(url, location.href);
-      u.hash = title ? `pb-download=${encodeURIComponent(title)}` : 'pb-download';
+      u.hash = title || height ? `pb-download=${encodeURIComponent(title || '')}${height ? `&q=${height}` : ''}` : 'pb-download';
       return u.href;
     } catch {
       return url;
@@ -352,11 +393,33 @@
     }
   }
 
-  // noteLoaded keeps the playlists among the resources the page loaded.
+  function isPiece(url) {
+    try {
+      return PIECE_RE.test(new URL(url).pathname);
+    } catch {
+      return false;
+    }
+  }
+
+  // The folder an address is in: the address up to its path's last slash.
+  function folderOf(url) {
+    try {
+      const u = new URL(url);
+      return u.origin + u.pathname.slice(0, u.pathname.lastIndexOf('/') + 1);
+    } catch {
+      return '';
+    }
+  }
+
+  // noteLoaded keeps the playlists among the resources the page loaded, and when a piece of
+  // video was last fetched from each folder.
   function noteLoaded(entries) {
     entries.forEach((entry) => {
       const url = normalizeUrl(entry.name);
       const key = `${entry.name} ${entry.startTime}`;
+      // A piece of video says which folder the page's player is fetching from now.
+      const folder = url && isPiece(url) ? folderOf(url) : '';
+      if (folder && !(state.pieces.get(folder) > entry.startTime)) state.pieces.set(folder, entry.startTime);
       if (!url || !isPlaylist(url) || state.seen.has(key)) return;
       state.seen.add(key);
       state.fetched.set(url, (state.fetched.get(url) || 0) + 1);
@@ -455,9 +518,9 @@
   }
 
   // parseManifest reads a DASH playlist, an MPD: whether it is live (type="dynamic") or
-  // protected (any ContentProtection), and its best picture, the greatest height and then
-  // the greatest bandwidth, which is what the browser saves, with the best sound. One
-  // address holds every quality, so only the best is offered.
+  // protected (any ContentProtection), and its pictures, best first: the greatest height
+  // and then the greatest bandwidth, which is what the browser saves, with the best sound.
+  // One address holds every quality (whole).
   function parseManifest(text) {
     let doc;
     try {
@@ -486,11 +549,23 @@
   // readStream fetches a stream's playlist, once, as the page's player did, and keeps what
   // it says in state.streams: { status, qualities, names, save }. status is 'checking' until
   // it is read; then 'ok', 'live' or 'protected', or 'unknown' when it couldn't be read, in
-  // which case the browser finds out on Download. save is the address Download saves. A
-  // master playlist's best quality is read too, since only that says whether it is live.
+  // which case the browser finds out on Download. save is the address Download saves. Each
+  // quality is { label, short, height, url } and, where one address holds them all (whole),
+  // q, the height its link asks for. A master playlist's best quality is read too, since
+  // only that says whether it is live.
   function readStream(url) {
     if (state.streams.has(url)) return;
-    const info = { status: 'checking', qualities: [], names: [], save: url };
+    const info = { status: 'checking', qualities: [], names: [], save: url, whole: false };
+    // The qualities of a playlist whose one address holds them all: the best, which the
+    // address alone saves, and then one of each other height, which the address asks for.
+    const byHeight = (qualities) => {
+      const heights = new Set();
+      return qualities.filter((q, i) => {
+        if (i && (!q.height || heights.has(q.height))) return false;
+        heights.add(q.height);
+        return true;
+      }).map((q, i) => ({ label: q.short, short: q.short, height: q.height, url, q: i ? q.height : 0 }));
+    };
     state.streams.set(url, info);
     // A playlist that doesn't answer in a while is left to the browser to find out.
     const read = (address) => {
@@ -509,8 +584,10 @@
       if (!list) return settle('unknown');
       if (list.protected) return settle('protected');
       if (list.whole) {
-        // DASH: one playlist for every quality, which the browser saves at its best.
-        if (list.qualities.length) info.qualities = [{ label: list.qualities[0].label, short: list.qualities[0].short, url }];
+        // DASH: one playlist for every quality, which the browser saves at its best, or at
+        // the height its link asks for.
+        info.whole = true;
+        info.qualities = byHeight(list.qualities);
         return settle(list.live ? 'live' : 'ok');
       }
       if (!list.master) return settle(list.live ? 'live' : 'ok');
@@ -518,12 +595,14 @@
       if (!list.qualities.length) return settle('unknown');
       const best = list.qualities[0];
       // With sound in a playlist of its own, only the whole stream's playlist joins the two:
-      // the browser saves its best quality with its sound. Otherwise each quality's own
-      // playlist is a whole video, and each can be saved.
-      if (best.split) {
-        info.qualities = [{ label: best.short, short: best.short, url }];
+      // the browser saves its best quality with its sound, or the one closest to the height
+      // its link asks for. Otherwise each quality's own playlist is a whole video, and each
+      // can be saved.
+      if (list.qualities.some((q) => q.split)) {
+        info.whole = true;
+        info.qualities = byHeight(list.qualities);
       } else {
-        info.qualities = list.qualities.map((q) => ({ label: q.label, short: q.short, url: q.url }));
+        info.qualities = list.qualities.map((q) => ({ label: q.label, short: q.short, height: q.height, url: q.url }));
         info.save = best.url;
       }
       return readList(best.url).then((media) => {
@@ -622,7 +701,7 @@
     // of its own: the master's row offers it.
     const named = new Set();
     state.streams.forEach((info) => info.names.forEach((url) => named.add(url)));
-    return sources.filter((source) => !named.has(source.url)).map((source, index) => {
+    const rows = sources.filter((source) => !named.has(source.url)).map((source, index) => {
       const stream = isStream(source.url);
       // A stream is a video to the person, as a file is: "Video", with its quality when known.
       const type = stream ? 'Video' : typeName(source.url);
@@ -642,9 +721,90 @@
         row.status = info.status;
         row.save = info.save;
         row.qualities = info.qualities;
+        row.whole = info.whole;
       }
       return row;
     });
+    // A page of episodes loads or names several videos, and each takes the one title near
+    // the player, the show's: the files come out "Show", "Show (1)". The one in use, where
+    // that can be told, takes the page's own title instead, which says the episode. A row
+    // whose title is its own alone keeps it.
+    const used = inUse(rows);
+    const page = used ? pageTitle() : '';
+    const row = page && rows.find((r) => r.url === used);
+    if (row && rows.some((other) => other !== row && other.title === row.title)) row.title = page;
+    return rows;
+  }
+
+  // The address of the row whose video the page is playing, or '' where that can't be told.
+  // In order: (1) the one video on the page that is playing, or the one that has played,
+  // has a row's address as its own source, which is certain; a player that feeds the video
+  // itself (Media Source) leaves it a blob: address, so (2) the folder the page last
+  // fetched a piece of video from holds one row's playlist, the stream still being fetched:
+  // a stream only loaded ahead stops after its playlist or a first piece, while the one
+  // playing goes on asking for pieces, and a folder holding two rows' playlists says
+  // nothing; and (3) the page loaded one of the rows' playlists and only names the rest.
+  function inUse(rows) {
+    const played = [...document.querySelectorAll('video')].filter((video) =>
+      !video.closest?.(`#${ROOT_ID}`) && (video.currentTime > 0 || (!video.paused && video.readyState > 2)));
+    const playing = played.filter((video) => !video.paused);
+    const video = playing.length === 1 ? playing[0] : played.length === 1 ? played[0] : null;
+    const source = video ? normalizeUrl(video.currentSrc) : '';
+    if (source && rows.some((row) => row.url === source)) return source;
+
+    const playlists = rows.filter((row) => isPlaylist(row.url));
+    let folder = '';
+    let last = -1;
+    state.pieces.forEach((at, where) => {
+      if (at > last && playlists.some((row) => folderOf(row.url) === where)) {
+        folder = where;
+        last = at;
+      }
+    });
+    const within = playlists.filter((row) => folderOf(row.url) === folder);
+    if (within.length === 1) return within[0].url;
+    if (within.length > 1) return '';
+
+    const loaded = playlists.filter((row) => state.loaded.has(row.url));
+    return loaded.length === 1 && playlists.length > 1 ? loaded[0].url : '';
+  }
+
+  // The page's own title, without its site's name where that ends it after a dash or a bar:
+  // only what matches og:site_name or the host is taken off, so a title's own last part
+  // stays.
+  function pageTitle() {
+    let title = (document.title || '').replace(/\s+/g, ' ').trim();
+    const flat = (text) => (text || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+    const host = location.hostname.replace(/^www\./, '');
+    const site = [document.querySelector('meta[property="og:site_name"], meta[name="og:site_name"]')?.getAttribute('content'), host, host.split('.')[0]].map(flat).filter(Boolean);
+    const parts = title.match(/^(.*\S)\s+[-\u2013\u2014|\u00b7]\s+(\S.*)$/);
+    if (parts && site.includes(flat(parts[2]))) title = parts[1];
+    return title.slice(0, 150);
+  }
+
+  // Whether a row has a Download: not a stream that can't be saved, live or protected, one
+  // still being read, or one already downloading.
+  function saveable(row) {
+    if (row.stream && !row.status) return false;
+    return !STREAM_NOTES[row.status] && !state.downloading.has(row.url);
+  }
+
+  // The address that saves a row at the quality wanted, a height, or at its best for 0. A
+  // file is saved as it is. A stream is saved at the quality closest to the height, the
+  // smaller of two as close: that quality's own playlist where each is a whole video, and
+  // where one address holds them all, or the playlist couldn't be read, the address with
+  // the height, for Project B to choose by the same rule.
+  function savedAt(row, height) {
+    if (!height || !row.status) return savedFrom(row.save || row.url, row.title);
+    if (row.whole || row.status === 'unknown') return savedFrom(row.url, row.title, height);
+    let pick = null;
+    row.qualities.forEach((q) => {
+      if (!q.height) return;
+      const by = Math.abs(q.height - height);
+      const than = pick ? Math.abs(pick.height - height) : Infinity;
+      if (by < than || (by === than && q.height < pick.height)) pick = q;
+    });
+    return savedFrom(pick ? pick.url : row.save || row.url, row.title);
   }
 
   // ---- The widget ----
@@ -657,6 +817,8 @@
     copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
     open: '<path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/>',
     refresh: '<path d="M20 12a8 8 0 1 1-2.3-5.7L20 8.5"/><path d="M20 4v4.5h-4.5"/>',
+    select: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/>',
+    chevron: '<path d="m6 9 6 6 6-6"/>',
     hide: '<path d="M9.9 5.2A9.6 9.6 0 0 1 12 5c5 0 8.5 4.5 9.5 7a14 14 0 0 1-2.4 3.4"/><path d="M6.6 6.6C4.5 8 3 10.2 2.5 12c1 2.5 4.5 7 9.5 7a9.4 9.4 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="m3 3 18 18"/>',
   };
 
@@ -807,7 +969,48 @@
     .btn.quiet:active { background: var(--accent); color: var(--on-accent); border-color: transparent; }
     /* A status, not a button: the quiet button's outline, its tick and word in the accent. */
     .btn.started { background: transparent; color: var(--accent); border: 1px solid var(--accent); cursor: default; }
+    .btn:disabled { opacity: 0.5; cursor: default; }
+    .head { min-height: 45px; }
+    .head .btn { height: 28px; padding: 0 10px; margin-right: 4px; }
+    /* The All box stands where each row's box does. */
+    .tick.pick-every { margin-right: 10px; }
     .empty { padding: 16px; }
+
+    /* Saving several: the bar under the head, with the quality and what it asks, and a tick
+       box on each row. */
+    .bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 6px 8px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .ask { flex: 1 0 100%; margin: 0; font-weight: 500; }
+    .gap { flex: 1; }
+    .hint { flex: 1 0 100%; margin: 0; padding-right: 10px; font-size: 12px; color: var(--muted); }
+    .quality { min-width: 0; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+    .choice { position: relative; display: inline-flex; align-items: center; }
+    .choice select {
+      appearance: none;
+      -webkit-appearance: none;
+      height: 32px;
+      margin: 0;
+      padding: 0 30px 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--text);
+      font: inherit;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .choice svg { position: absolute; right: 8px; color: var(--muted); pointer-events: none; }
+    .pick { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding-right: 10px; cursor: pointer; }
+    .tick { width: 18px; height: 18px; margin: 0; flex: none; accent-color: var(--accent); cursor: pointer; }
+    .tick:focus-visible { outline-offset: 3px; }
+    .tick:disabled { cursor: default; }
+    .tick:disabled + .text .label { color: var(--muted); }
     .empty p { margin: 0 0 12px; color: var(--muted); }
 
     .menu {
@@ -857,10 +1060,18 @@
       .head { padding: 4px 4px 4px 16px; }
       .icon-btn { width: 48px; height: 48px; border-radius: 50%; }
       .icon-btn svg, .row .btn svg { width: 20px; height: 20px; }
-      .btn { height: 44px; padding: 0 16px; }
+      .btn, .head .btn { height: 44px; padding: 0 16px; }
+      .head { min-height: 57px; }
+      .head .btn { padding: 0 12px; margin-right: 8px; }
+      .bar { padding: 4px 8px 8px 16px; }
+      .choice select { height: 44px; }
+      .pick { min-height: 48px; }
+      .tick { width: 20px; height: 20px; }
       .row { min-height: 56px; padding: 4px 4px 4px 16px; gap: 0; }
       .row + .row { border-top: 0; }
-      .text:has(.note) .sub { display: none; }
+      /* One muted line: what the row says in place of its host, but for a row that can't
+         be saved, which keeps its host as on the desktop. */
+      .row:not(.unsaved) .text:has(.note) .sub { display: none; }
       .row .btn {
         width: 48px;
         height: 48px;
@@ -896,12 +1107,25 @@
         aria-haspopup="dialog" aria-expanded="false" hidden>${icon('download')}</button>
       <div class="panel" role="dialog" aria-label="Videos on this page" tabindex="-1" hidden>
         <div class="head">
-          <h2 class="title">Videos on this page</h2>
+          <input class="tick pick-every" type="checkbox" aria-label="All" title="All" hidden>
+          <h2 class="title" aria-live="polite">Videos on this page</h2>
+          <button class="btn quiet pick-done" type="button" hidden>Done</button>
           <button class="icon-btn panel-more" type="button" aria-label="More actions"
             aria-haspopup="menu" aria-expanded="false">${icon('more')}</button>
           <button class="icon-btn panel-close" type="button" aria-label="Close">${icon('close')}</button>
         </div>
+        <div class="bar" hidden>
+          <p class="ask" hidden></p>
+          <label class="quality">Quality
+            <span class="choice"><select class="quality-choice" aria-label="Quality">${QUALITIES.map((height) => `<option value="${height}">${height ? `${height}p` : 'Best'}</option>`).join('')}</select>${icon('chevron')}</span>
+          </label>
+          <span class="gap"></span>
+          <button class="btn quiet bar-cancel" type="button" hidden>Cancel</button>
+          <button class="btn bar-go" type="button">Download</button>
+          <p class="hint" hidden>Your browser will ask once to allow several downloads from this site.</p>
+        </div>
         <ul class="list"></ul>
+        <a class="batch-link" tabindex="-1" aria-hidden="true" hidden></a>
       </div>
       <div class="menu" role="menu" hidden></div>
     </div>
@@ -913,6 +1137,17 @@
   const list = shadow.querySelector('.list');
   const menu = shadow.querySelector('.menu');
   const panelMore = shadow.querySelector('.panel-more');
+  const panelClose = shadow.querySelector('.panel-close');
+  const pickEvery = shadow.querySelector('.pick-every');
+  const pickDone = shadow.querySelector('.pick-done');
+  const qualityLabel = shadow.querySelector('.quality');
+  const hint = shadow.querySelector('.hint');
+  const bar = shadow.querySelector('.bar');
+  const ask = shadow.querySelector('.ask');
+  const qualityChoice = shadow.querySelector('.quality-choice');
+  const barCancel = shadow.querySelector('.bar-cancel');
+  const barGo = shadow.querySelector('.bar-go');
+  const batchLink = shadow.querySelector('.batch-link');
 
   function el(tag, className, text) {
     const node = document.createElement(tag);
@@ -931,7 +1166,40 @@
     return button;
   }
 
+  // What a row with no Download says under its name.
+  function noteOf(row) {
+    // A stream whose address isn't a playlist's the script reads.
+    if (row.stream && !row.status) return "This video can't be saved";
+    if (row.status && STREAM_NOTES[row.status]) return STREAM_NOTES[row.status];
+    return state.downloading.has(row.url) ? 'Downloading: see Downloads' : '';
+  }
+
+  // A row while several are chosen: a tick box, the row its label, and no actions. One with
+  // no Download can't be ticked.
+  function renderPick(row) {
+    const li = el('li', 'row');
+    const pick = el('label', 'pick');
+    const tick = el('input', 'tick');
+    tick.type = 'checkbox';
+    tick.setAttribute('aria-label', `Select ${row.label}`);
+    tick.disabled = !saveable(row);
+    tick.checked = !tick.disabled && state.picked.has(row.url);
+    tick.addEventListener('change', () => {
+      if (tick.checked) state.picked.add(row.url);
+      else state.picked.delete(row.url);
+      drawHead();
+    });
+    const text = el('div', 'text');
+    text.append(el('div', 'label', row.label), el('div', 'sub', row.host));
+    if (noteOf(row)) text.append(el('div', 'note', noteOf(row)));
+    if (tick.disabled && !state.downloading.has(row.url)) li.classList.add('unsaved');
+    pick.append(tick, text);
+    li.append(pick);
+    return li;
+  }
+
   function renderRow(row) {
+    if (state.mode === 'select') return renderPick(row);
     const li = el('li', 'row');
     const text = el('div', 'text');
     const sub = el('div', 'sub', row.host);
@@ -939,11 +1207,9 @@
     li.append(text);
 
     const saves = row.save || row.url;
-    if (row.stream && !row.status) {
-      // A stream whose address isn't a playlist's the script reads.
-      text.append(el('div', 'note', "This video can't be saved"));
-    } else if (row.status && STREAM_NOTES[row.status]) {
-      text.append(el('div', 'note', STREAM_NOTES[row.status]));
+    if (!saveable(row) && !state.downloading.has(row.url)) {
+      text.append(el('div', 'note', noteOf(row)));
+      li.classList.add('unsaved');
     } else if (state.downloading.has(row.url)) {
       text.append(el('div', 'note', 'Downloading: see Downloads'));
       // The button turns to a tick in the accent, a status rather than a button, so the tap
@@ -981,14 +1247,15 @@
 
     const more = moreButton(`Actions for ${row.label}`);
     more.addEventListener('click', () => {
-      // A stream's other qualities, each a plain link as Download is.
+      // A stream's qualities, each a plain link as Download is.
       const qualities = row.status === 'ok' && !state.downloading.has(row.url) && row.qualities.length > 1 ? row.qualities : [];
       // (A stream whose playlist couldn't be read has none to list.)
       toggleMenu(more, [
         ...qualities.map((quality) => ({
           icon: 'download',
           label: `Download ${quality.label}`,
-          href: savedFrom(quality.url, row.title),
+          // Where one address holds every quality, it asks for this one's height.
+          href: savedFrom(quality.url, row.title, quality.q),
           run: () => {
             state.downloading.add(row.url);
             setTimeout(() => {
@@ -1039,8 +1306,16 @@
     fab.hidden = !state.sources.length && !state.open;
 
     const rows = describe(state.sources);
-    title.textContent = rows.length === 1 ? '1 video on this page' : rows.length ? `${rows.length} videos on this page` : 'Videos on this page';
-    const key = JSON.stringify(rows.map((row) => [row.url, row.label, row.status, row.save, row.qualities, row.title]));
+    state.rows = rows;
+    // A ticked row that has gone, or has no Download any more, is no longer chosen; with
+    // nothing left to save, nothing is being chosen or asked.
+    const left = new Set(rows.filter(saveable).map((row) => row.url));
+    state.picked.forEach((url) => {
+      if (!left.has(url)) state.picked.delete(url);
+    });
+    if (!left.size) state.mode = null;
+    drawHead();
+    const key = JSON.stringify([state.mode, rows.map((row) => [row.url, row.label, row.status, row.save, row.qualities, row.title])]);
     if (key === state.shownKey) return;
     state.shownKey = key;
     // Don't pull a row out from under an open menu: show the new list when it closes.
@@ -1051,11 +1326,97 @@
     }
   }
 
+  // The rows a press of the bar's Download would save: every one with a Download while
+  // Download all asks, the ticked ones while they are chosen.
+  function chosen() {
+    return state.rows.filter((row) => saveable(row) && (state.mode === 'confirm' || state.picked.has(row.url)));
+  }
+
+  // Whether the quality is a choice for some of the rows: a stream of more than one, or one
+  // whose playlist couldn't be read, as where its server lets no page's script read it.
+  // That one may hold several, and Project B, which can read it, saves the closest.
+  function hasQualities(rows) {
+    return rows.some((row) => row.status === 'unknown' || (row.status && row.qualities.length > 1));
+  }
+
+  // The head, and the bar under it while several are being saved: an All box, mixed while
+  // only some are ticked, "3 selected" and Done, with Download; or "Download 3 videos?"
+  // with Cancel. The quality shows where it is a choice, and a line says what the browser
+  // will ask before more than one is saved: the script can't tell whether the site is
+  // allowed already, so it says so each time.
+  function drawHead() {
+    const rows = state.rows;
+    const all = rows.filter(saveable);
+    const selecting = state.mode === 'select';
+    const asking = state.mode === 'confirm';
+    const saving = state.mode ? chosen() : [];
+    const picked = selecting ? saving.length : 0;
+    title.textContent = selecting ? `${picked} selected`
+      : rows.length === 1 ? '1 video on this page' : rows.length ? `${rows.length} videos on this page` : 'Videos on this page';
+    pickEvery.hidden = !selecting;
+    pickEvery.checked = picked > 0 && picked === all.length;
+    pickEvery.indeterminate = picked > 0 && picked < all.length;
+    pickDone.hidden = !selecting;
+    panelMore.hidden = selecting;
+    panelClose.hidden = selecting;
+    bar.hidden = !state.mode;
+    ask.hidden = !asking;
+    ask.textContent = all.length === 1 ? 'Download 1 video?' : `Download ${all.length} videos?`;
+    qualityLabel.hidden = !hasQualities(saving);
+    barCancel.hidden = !asking;
+    barGo.disabled = selecting && !picked;
+    hint.hidden = saving.length < 2;
+    qualityChoice.value = String(quality);
+  }
+
+  // Draws the list again, as when the way it is shown changes.
+  function redraw() {
+    state.shownKey = null;
+    updateUI();
+  }
+
+  function setMode(mode) {
+    closeMenu(false);
+    state.mode = mode;
+    state.picked.clear();
+    redraw();
+  }
+
+  // Leaves choosing or asking, back to the plain list.
+  function leaveMode() {
+    setMode(null);
+    if (state.open) panelMore.focus();
+  }
+
+  // Starts each row's download, one after another a moment apart, at the quality chosen:
+  // each a click on a plain link, as a row's own Download is. After a page's first, Project
+  // B asks whether the site may download several files.
+  function saveSeveral(rows) {
+    // With no quality to choose among them, each is saved as it is.
+    const height = hasQualities(rows) ? quality : 0;
+    rows.forEach((row, i) => {
+      const start = () => {
+        batchLink.href = savedAt(row, height);
+        batchLink.download = guessFilename(row.save || row.url);
+        // A click sent to the link, which the browser follows as it does a person's: not
+        // click(), which a site's own script may have replaced, as one that opens an
+        // advertisement on every click does, and then nothing is followed.
+        batchLink.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, composed: true, view: window }));
+        state.downloading.add(row.url);
+        redraw();
+      };
+      if (i) state.batch.push(setTimeout(start, i * BATCH_GAP));
+      else start();
+    });
+  }
+
   function firstControl() {
     return list.querySelector('a, button') || shadow.querySelector('.panel-close');
   }
 
   function openPanel() {
+    // Which video is in use may have changed since the page was last read.
+    collectSources();
     state.open = true;
     panel.hidden = false;
     fab.setAttribute('aria-expanded', 'true');
@@ -1065,6 +1426,7 @@
   function closePanel(returnFocus) {
     if (!state.open) return;
     closeMenu(false);
+    if (state.mode) setMode(null);
     state.open = false;
     panel.hidden = true;
     fab.setAttribute('aria-expanded', 'false');
@@ -1128,14 +1490,51 @@
     if (state.open) closePanel(true);
     else openPanel();
   });
-  shadow.querySelector('.panel-close').addEventListener('click', () => closePanel(true));
+  panelClose.addEventListener('click', () => closePanel(true));
+  pickDone.addEventListener('click', () => leaveMode());
   panelMore.addEventListener('click', () => {
+    // Saving several, where there are several to save.
+    const count = state.rows.filter(saveable).length;
     toggleMenu(panelMore, [
+      ...(count > 1 ? [
+        {
+          icon: 'download',
+          label: `Download all (${count})`,
+          run: () => {
+            setMode('confirm');
+            barGo.focus();
+          },
+        },
+        {
+          icon: 'select',
+          label: 'Select',
+          run: () => {
+            setMode('select');
+            (list.querySelector('.tick:not(:disabled)') || pickDone).focus();
+          },
+        },
+      ] : []),
       { icon: 'refresh', label: 'Look again', run: () => collectSources() },
       { icon: 'hide', label: 'Hide on this page', run: () => destroyWidget() },
     ]);
   });
   list.addEventListener('scroll', () => closeMenu(false));
+
+  // All ticks every row that can be saved, and unticks them once they all are.
+  pickEvery.addEventListener('change', () => {
+    const all = state.rows.filter(saveable);
+    const every = all.every((row) => state.picked.has(row.url));
+    state.picked.clear();
+    if (!every) all.forEach((row) => state.picked.add(row.url));
+    redraw();
+  });
+  qualityChoice.addEventListener('change', () => chooseQuality(Number(qualityChoice.value)));
+  barCancel.addEventListener('click', () => leaveMode());
+  barGo.addEventListener('click', () => {
+    const rows = chosen();
+    leaveMode();
+    saveSeveral(rows);
+  });
 
   // A tap anywhere else in the widget closes an open menu.
   shadow.addEventListener('click', (event) => {
@@ -1160,12 +1559,14 @@
     closePanel(false);
   }
 
-  // Escape closes the innermost: the menu, then the panel.
+  // Escape closes the innermost: the menu, then choosing several or what Download all
+  // asks, then the panel.
   function onKeydown(event) {
     if (event.key !== 'Escape' || (!state.menu && !state.open)) return;
     event.preventDefault();
     event.stopPropagation();
     if (state.menu) closeMenu(true);
+    else if (state.mode) leaveMode();
     else closePanel(true);
   }
 
@@ -1181,6 +1582,7 @@
     observer?.disconnect();
     loads?.disconnect();
     clearTimeout(refreshTimer);
+    state.batch.forEach((timer) => clearTimeout(timer));
     document.removeEventListener('click', onDocumentClick);
     document.removeEventListener('keydown', onKeydown, true);
     window.removeEventListener('resize', onResize);

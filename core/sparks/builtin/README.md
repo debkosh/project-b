@@ -21,7 +21,8 @@ little higher, clear of a site's own bottom bar). The button opens "Videos on th
 headed with how many it found ("2 videos on this page"): a small panel above the button on
 the desktop; on a phone, a sheet along the bottom that leaves the page undimmed, as a panel
 used beside the page does (docs/design-system.md, On a phone), with a 56px row per video, its
-one muted line the host or what the row says, and its Download a round icon button.
+one muted line the host or what the row says (a row that can't be saved keeps its host over
+what it says, as on the desktop), and its Download a round icon button.
 
 - **What it finds**, as the owner's original does: the page's `<video>` and `<source>`
   elements (first the players it knows, such as Fluid Player), links and media attributes
@@ -58,8 +59,36 @@ one muted line the host or what the row says, and its Download a round icon butt
   quality, best first, "Download 720p", each a plain link to that quality's playlist; when
   the stream's sound is a playlist of its own, a quality's playlist alone would be silent,
   so Download is the master playlist, which Project B saves at its best with its sound, and
-  no other quality is offered. A DASH stream's Download is its one playlist, saved at its
-  best, for the same reason. The row's menu has Copy link and Open in new tab.
+  each lesser quality in the menu is the master playlist asked for at that height,
+  `#pb-download=<title>&q=<height>`, of which Project B saves the closest with its sound
+  (docs/video-streams.md, "A quality asked for"). A DASH stream's Download is its one
+  playlist, saved at its best, and its menu's lesser qualities ask for their heights the
+  same way. One of each height is listed. The row's menu has Copy link and Open in new tab.
+- **Several at once.** Where two or more rows have a Download, the panel's menu has
+  "Download all (4)" and "Select". Download all asks once, in a bar under the head,
+  "Download 4 videos?", with Cancel and Download. Select puts a tick box on each row in
+  place of its actions; the head is an All box where the rows' boxes stand, mixed while
+  only some are ticked, then "3 selected", and Done in place of the close button; the bar
+  has Download, and Done or Escape goes back to the list. A live or protected row, one
+  that can't be saved and one already downloading can't be ticked and aren't counted.
+  Under the bar's buttons, while more than one would be saved, a muted line says "Your
+  browser will ask once to allow several downloads from this site.": the script can't
+  tell whether the site is allowed already, so it says so each time (ux, 2026-11-27).
+  **The quality** shows in the bar only where it is a choice, when one of the videos to
+  save is a stream of more than one quality, or one whose playlist the script couldn't
+  read, as on a video server that sends no `Access-Control-Allow-Origin`: Project B can
+  read it, so it may hold several, and its link carries `&q=` (`hasQualities`); with none, each is saved as
+  it is, whatever the site has kept. It is Best, 1080p, 720p, 480p or 360p: each
+  stream is saved at the quality closest to that height, above or below, the smaller of
+  two as close (`savedAt`). Where each quality has a playlist of its own, the link is that
+  one's; where one address holds them all (sound apart, DASH) or the playlist couldn't be
+  read, it is the address with `&q=<height>`, and Project B chooses by the same rule. A
+  plain file is saved as it is. The downloads start one after another, 400 ms apart
+  (`BATCH_GAP`), each a click on a plain link as a row's Download is (sent to the link as
+  an event, never by `click()`, which a site's script may have replaced), named from its title
+  the same way, its row turning to "Downloading: see Downloads". Only the first has the
+  person's click behind it, so Project B asks "*site* wants to download several files"
+  before the rest, as for any page.
 - **A video's title** rides in its link, `#pb-download=<title>`, for Project B to name the
   file after when the file's own name says nothing, an id or `master` (its ending stays the
   file's own): the video's `aria-label` or `title`, then its `figcaption`, then the nearest
@@ -67,14 +96,33 @@ one muted line the host or what the row says, and its Download a round icon butt
   which no element names, goes by the page's largest video's; one the page only links, by
   the link's own words, which are nearer. With none, the link is the
   plain `#pb-download`.
-- **Its data:** none. It keeps nothing in the site's storage or anywhere else.
+- **A page of episodes** names or loads several videos, and each takes the one title near
+  the player, the show's, so the files came out "Show", "Show (1)". The row in use, where
+  that can be told and its title is another row's too, takes the page's own title, which
+  says the episode (`inUse`, `pageTitle`). In use is, in order: the row whose address is
+  the source of the one video that is playing or has played, which is certain; for a
+  player that feeds the video itself, whose source is a `blob:`, the one row whose
+  playlist is in the folder the page last fetched a piece of video from (resource timing,
+  kept as it comes in `state.pieces`), since a stream loaded ahead stops after its
+  playlist while the one playing goes on asking for pieces; and failing both, the one
+  playlist the page loaded where it only names the rest. Two rows' playlists in one
+  folder, pieces kept elsewhere, or nothing loaded: it can't tell, and every row keeps
+  its title. The page's title loses its site's name where that ends it after a dash or
+  a bar, matched to `og:site_name` or the host; any other last part stays. The panel
+  reads the page again each time it opens.
+- **Its data:** one value in the site's own `localStorage`, as Page cleanup keeps its own:
+  `video_downloader_quality`, the quality last chosen there for saving several (`1080`,
+  `720`, `480` or `360`; removed for Best), so each site keeps its own and can read or
+  clear it. Nothing else, there or anywhere.
   "Hide on this page", in the panel's menu, removes it until the page loads again.
 - **To change:** the `@match` line (which sites it runs on), the lists of player selectors
   and attributes in `collectSources`, `looksVideoLike` (what counts as a video URL),
-  `STREAM_NOTES` (what a stream with no Download says), and the colours at the top of
-  `STYLES`.
+  `STREAM_NOTES` (what a stream with no Download says), `QUALITIES` (the heights offered
+  for several) and `BATCH_GAP` (the wait between their starts), and the colours at the top
+  of `STYLES`.
 - **Its test:** `node shell/e2e/video-downloader.cjs` runs it in a browser on pages served
-  for it, with core/streams' test streams; the real app's is `tools/drive_first_app.py
+  for it, with core/streams' test streams, saving several among them (the links followed,
+  their quality, title and spacing); the real app's is `tools/drive_first_app.py
   videodl streams`.
 
 ## Screen time limit

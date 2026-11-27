@@ -160,7 +160,19 @@ feature of ours:
     and the row's Download is a plain link to it, which the app saves as one MP4
     ([video-streams.md](video-streams.md)): a master playlist is one row with its qualities
     in its menu, a live one says "Live: can't be saved yet" and a protected one "Protected:
-    can't be saved". "Hide on
+    can't be saved". Where the stream's sound is a playlist of its own, or it is DASH, a
+    lesser quality in the menu is the same playlist asked for at that height
+    (`&q=<height>`, below). With two or more to save, the panel's menu has "Download all
+    (4)", which asks once, "Download 4 videos?", and "Select", which puts a tick box on
+    each row under a head with an All box, "3 selected" and Done, and a bar with
+    Download; live and protected rows can't be ticked. Both say first that the browser
+    will ask once to allow several downloads from the site, and, where a stream of several
+    qualities is among them, have a quality, Best, 1080p, 720p, 480p or 360p, kept for the
+    site: each stream is saved at the one closest to it, the smaller of two
+    as close, and a plain file as it is. The downloads start one after another, a moment
+    apart, each a plain link's click, so after the first the app asks whether the site may
+    download several files (the owner's spec, 2026-11-27;
+    `core/sparks/builtin/README.md`). "Hide on
     this page" is in the panel's menu.
   - **Screen time limit:** 30 minutes a day on each site its `@match` takes: every site, as
     it comes, and fewer in a copy the person makes with Duplicate and edits. "Daily limit reached", "Limit
@@ -170,7 +182,8 @@ feature of ours:
     what is under the finger or pointer, a tap hides it at once with "Hidden. Undo", and
     Done ends it. "Show hidden parts (3)" when there are some.
 - **Their storage** is the site's own `localStorage`, as in his originals, so a site can read
-  or clear what they keep there.
+  or clear what they keep there. The video downloader keeps one value, the quality last
+  chosen for saving several.
 - **`#pb-download`:** a link whose address ends in `#pb-download` is saved as a download,
   from the page it is on, whatever its type, another site's file too, under the name its
   server gives it (`ContentBrowserClient::ShouldForceDownloadResource`). Chromium ignores

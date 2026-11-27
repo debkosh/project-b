@@ -58,9 +58,23 @@ The spark keeps what it finds today, and adds streams:
 - **As built, where the sound is separate.** A quality's media playlist alone has no sound
   when the master playlist names the sound as a playlist of its own (`EXT-X-MEDIA` with a
   `URI`), and a plain link can name only one playlist. So for such a stream the row's
-  Download is the master playlist, which the app saves at its best quality with its sound,
-  and the menu offers no other quality. Offering the lesser ones with their sound needs a
-  way for a link to say which quality of a master is meant: open, for the owner.
+  Download is the master playlist, which the app saves at its best quality with its sound.
+  A link can now say which quality of a master is meant (`&q=<height>`, "A quality asked
+  for", below), so the menu lists each lesser height as the master playlist asked for at
+  it, and the app saves that one with its sound.
+- **Several at once** (the owner's spec, 2026-11-27). With two or more to save, the
+  panel's menu has "Download all (N)", which asks once, and "Select", with a tick box on
+  each row; live and protected rows are left out. Both take a quality, shown where one of
+  the videos is a stream of several, or one the spark couldn't read (a video server that
+  sends no `Access-Control-Allow-Origin`), which the app can and so may hold several: Best, 1080p, 720p,
+  480p or 360p, remembered for the site in its own `localStorage`. Each stream is saved at
+  the quality closest to the chosen height, a tie going to the smaller: by that quality's
+  own playlist where it has one, and otherwise by the stream's one address with
+  `&q=<height>`, the app choosing by the same rule. A plain MP4 is saved as it is. Each
+  download is a click on a plain link, as a row's Download is, 400 ms after the last, with
+  no API of ours behind it; the page-download limit ([A page starting
+  downloads](#a-page-starting-downloads)) holds for them as for any page's, so the app
+  asks before the second, which the panel says before it starts.
 
 ## Saving a stream (the app)
 
@@ -156,7 +170,8 @@ MP4 fragments with a header piece.
 - **The spark** offers a `.mpd` stream as it does an HLS one: found from the page's
   resource timing and its own description, read by the spark, its row named by its best
   picture, live and protected ones with no Download. One address holds every quality, so
-  the row offers the best only, as for an HLS stream whose sound is separate.
+  the row's Download is the best and its menu's lesser heights are the same address with
+  `&q=<height>`, as for an HLS stream whose sound is separate.
 - **Read with** Eyevinn's `dash-mpd` (MIT); the index and the fragments with `mp4ff`.
 - **Guards:** core/streams' tests on small streams made with ffmpeg's DASH writer, each
   MP4 held frame by frame to what ffmpeg makes of the same pieces: a template by number,
