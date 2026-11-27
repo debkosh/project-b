@@ -74,7 +74,9 @@ typedef enum PBEvent {
                                         // i: PBDownloadState, i: bytes received, i: total
                                         // bytes or -1, i: paused, s: why a failed one
                                         // failed: "connection", "server", "disk" or "",
-                                        // s: the page it came from, or ""
+                                        // s: the page it came from, or "", s: the
+                                        // address of the server it came from, an IP,
+                                        // or ""
   PB_EVENT_FILE_CHOOSER = 19,           // i: tab, i: 0 one file, 1 several, 2 a folder,
                                         // 3 a file to save; s: the accept types, comma
                                         // separated; answers s: json, {"allow", "folder"}
@@ -206,6 +208,13 @@ typedef enum PBEvent {
                                         // address is the download's path from then on
   PB_EVENT_SECURE_DNS_CHECKED = 85,     // s: the template check_secure_dns had, i: 1 when
                                         // its server looked a name up, 0 when it didn't
+  PB_EVENT_FETCHED = 86,                // i: fetch, as fetch had it, i: PBFetchResult,
+                                        // i: the HTTP status or 0, i: the PBAddressSpace
+                                        // of the server that answered, s: the address
+                                        // that answered, after any redirects, s: mime
+                                        // type, s: the file name the server gave it, or
+                                        // "". How a fetch ended, its file whole at its
+                                        // path when it is PB_FETCH_OK and gone otherwise
   PB_EVENT_PAGE_MESSAGE = 23,           // i: tab, s: the page's name ("settings",
                                         // "history", "bookmarks", "downloads",
                                         // "welcome"), s: json, from the page of ours
@@ -262,6 +271,24 @@ typedef enum PBDownloadCommand {
   PB_DOWNLOAD_REMOVE = 4,
   PB_DOWNLOAD_OPEN = 5,  // a tap on a finished download's notification: Open, as Go's list's
 } PBDownloadCommand;
+
+// Where on the network an address is, as Chromium's local network access sorts them: this
+// computer, the network it is on, or the internet. Matches engine.AddressSpace.
+typedef enum PBAddressSpace {
+  PB_SPACE_ANY = 0,  // for fetch's from only: the person's own request, refused nothing
+  PB_SPACE_LOOPBACK = 1,
+  PB_SPACE_LOCAL = 2,
+  PB_SPACE_PUBLIC = 3,
+} PBAddressSpace;
+
+// How a fetch ended. Matches engine.FetchResult.
+typedef enum PBFetchResult {
+  PB_FETCH_OK = 0,
+  PB_FETCH_REFUSED = 1,     // not http or https, or its server is on a more private
+                            // address than the request was made from
+  PB_FETCH_CONNECTION = 2,  // its connection failed or dropped
+  PB_FETCH_SERVER = 3,      // the server answered with an error
+} PBFetchResult;
 
 // A permission's state. Matches engine.PermissionStatus.
 typedef enum PBPermissionStatus {
@@ -603,6 +630,25 @@ typedef struct PBEngineCalls {
   // tab's frame, by the names PB_EVENT_FORM_MESSAGE gave. 1 when it went; 0 when that
   // document isn't the frame's any more, which gets nothing.
   int (*form_send)(int64_t tab, const char* frame, const char* document, const char* kind, const char* json);
+  // Fetches url into a new file at path, as a page at the address page in workspace would
+  // (docs/video-streams.md): through Chromium's own network in the workspace's storage, so
+  // it decides which cookies go and Go sees none, with the page's origin as the initiator,
+  // its site as the site for cookies and its address as the referrer; with page "", as the
+  // person's own request of url. Only http and https. from is the PBAddressSpace the request
+  // is made from, as the one the playlist naming url came from: the network service refuses
+  // a server on a more private address, as Chromium's local network access does for a page;
+  // PB_SPACE_ANY refuses none. range is "first-last", bytes of it, or "" for all.
+  // PB_EVENT_FETCHED follows with fetch, Go's number for it, once, unless cancel_fetch
+  // comes first.
+  void (*fetch)(int64_t fetch,
+                const char* workspace,
+                const char* page,
+                const char* url,
+                const char* path,
+                const char* range,
+                int32_t from);
+  // Stops a fetch, whose file goes; nothing is told of it after.
+  void (*cancel_fetch)(int64_t fetch);
 } PBEngineCalls;
 
 // What the adapter can tell the Go core, once PBInit (pb_exports.h) has said this copy runs.

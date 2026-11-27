@@ -136,6 +136,9 @@ func (r *adapterRecorder) DownloadTarget(d engine.DownloadRequest) engine.Downlo
 }
 func (r *adapterRecorder) DownloadUpdated(d engine.Download) {
 	r.note(fmt.Sprintf("downloaded %d %s %d/%d %q", d.ID, d.Path, d.Received, d.Total, d.Reason))
+	if d.Server != "" {
+		r.note("from " + d.Server)
+	}
 }
 
 func (r *adapterRecorder) FileChooser(q engine.FileChooserRequest) engine.FileChooserAnswer {
@@ -163,11 +166,14 @@ func (r *adapterRecorder) FindReply(tab engine.TabID, request, matches, active i
 func (r *adapterRecorder) PageFullScreen(tab engine.TabID, on bool) {
 	r.note(fmt.Sprintf("full screen %d %v", tab, on))
 }
-func (r *adapterRecorder) Thumbnail(engine.TabID, int64)                           {}
-func (r *adapterRecorder) FolderChosen(engine.WindowID, string)                    {}
-func (r *adapterRecorder) AppLink(engine.TabID, string)                            {}
-func (r *adapterRecorder) ImageSaved(string, bool)                                 {}
-func (r *adapterRecorder) SecureDNSChecked(string, bool)                           {}
+func (r *adapterRecorder) Thumbnail(engine.TabID, int64)        {}
+func (r *adapterRecorder) FolderChosen(engine.WindowID, string) {}
+func (r *adapterRecorder) AppLink(engine.TabID, string)         {}
+func (r *adapterRecorder) ImageSaved(string, bool)              {}
+func (r *adapterRecorder) SecureDNSChecked(string, bool)        {}
+func (r *adapterRecorder) Fetched(f engine.Fetched) {
+	r.note(fmt.Sprintf("fetched %+v", f))
+}
 func (r *adapterRecorder) SiteDataListed(string, []engine.SiteData)                {}
 func (r *adapterRecorder) IsPageFullScreen(engine.TabID) bool                      { return false }
 func (r *adapterRecorder) DownloadNotificationCommand(int, engine.DownloadCommand) {}
@@ -249,6 +255,20 @@ func TestADownloadsFailureSaysWhy(t *testing.T) {
 	h.Dispatch(DownloadUpdated, pack(4, "/d/f.zip", "https://a.test/f.zip", "application/zip", 3, 500, 1000, false, "connection", "https://a.test/page"))
 	if want := []string{`downloaded 4 /d/f.zip 500/1000 "connection"`}; !reflect.DeepEqual(r.got, want) {
 		t.Fatalf("got %v", r.got)
+	}
+}
+
+// A finished download says which server it came from, and a fetch how it ended.
+func TestADownloadsServerAndAFetchsEnd(t *testing.T) {
+	h, r := wired(t)
+	h.Dispatch(DownloadUpdated, pack(4, "/d/v.m3u8", "https://a.test/v.m3u8", "application/vnd.apple.mpegurl", 1, 500, 500, false, "", "https://a.test/page", "203.0.113.7"))
+	h.Dispatch(Fetched, pack(9, 1, 0, 2, "http://192.168.1.1/k", "", ""))
+	h.Dispatch(Fetched, pack(10, 0, 200, 3, "https://cdn.test/1.ts", "video/mp2t", "one.ts"))
+	want := []string{`downloaded 4 /d/v.m3u8 500/500 ""`, "from 203.0.113.7",
+		"fetched {ID:9 Outcome:1 Status:0 Space:2 URL:http://192.168.1.1/k Mime: Name:}",
+		"fetched {ID:10 Outcome:0 Status:200 Space:3 URL:https://cdn.test/1.ts Mime:video/mp2t Name:one.ts}"}
+	if !reflect.DeepEqual(r.got, want) {
+		t.Fatalf("got %q", r.got)
 	}
 }
 

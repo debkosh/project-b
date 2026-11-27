@@ -70,6 +70,10 @@ static inline void call_publish_file(const PBEngineCalls* c, const char* path) {
 static inline void call_share_file(const PBEngineCalls* c, int64_t window, const char* path, double x, double y, double w, double h) { c->share_file(window, path, x, y, w, h); }
 static inline void call_share_text(const PBEngineCalls* c, int64_t window, const char* text) { c->share_text(window, text); }
 static inline void call_save_image(const PBEngineCalls* c, int64_t tab, const char* url, const char* path, int32_t max_size) { c->save_image(tab, url, path, max_size); }
+static inline void call_fetch(const PBEngineCalls* c, int64_t fetch, const char* workspace, const char* page, const char* url, const char* path, const char* range, int32_t from) {
+	c->fetch(fetch, workspace, page, url, path, range, from);
+}
+static inline void call_cancel_fetch(const PBEngineCalls* c, int64_t fetch) { c->cancel_fetch(fetch); }
 static inline void call_copy_image(const PBEngineCalls* c, const char* path) { c->copy_image(path); }
 static inline const PBContentHooks* call_content_hooks(const PBEngineCalls* c) { return c->content_hooks ? c->content_hooks() : NULL; }
 static inline void call_set_subscribed(const PBContentHooks* h, int32_t hook, int on) { h->set_subscribed(hook, on); }
@@ -491,6 +495,20 @@ func (e *nativeEngine) SaveImage(tab engine.TabID, url, path string, maxSize int
 	defer C.free(unsafe.Pointer(u))
 	defer C.free(unsafe.Pointer(p))
 	C.call_save_image(e.calls, C.int64_t(tab), u, p, C.int32_t(maxSize))
+}
+
+func (e *nativeEngine) Fetch(f engine.FetchRequest) {
+	workspace, page, u, p, r := C.CString(f.Workspace), C.CString(f.Page), C.CString(f.URL), C.CString(f.Path), C.CString(f.Range)
+	defer C.free(unsafe.Pointer(workspace))
+	defer C.free(unsafe.Pointer(page))
+	defer C.free(unsafe.Pointer(u))
+	defer C.free(unsafe.Pointer(p))
+	defer C.free(unsafe.Pointer(r))
+	C.call_fetch(e.calls, C.int64_t(f.ID), workspace, page, u, p, r, C.int32_t(f.From))
+}
+
+func (e *nativeEngine) CancelFetch(id engine.FetchID) {
+	C.call_cancel_fetch(e.calls, C.int64_t(id))
 }
 
 func (e *nativeEngine) CopyImage(path string) {

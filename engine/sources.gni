@@ -42,6 +42,8 @@ engine_browser_sources = [
   "$engine_dir/browser/engine.h",
   "$engine_dir/browser/events.cc",
   "$engine_dir/browser/events.h",
+  "$engine_dir/browser/fetch.cc",
+  "$engine_dir/browser/fetch.h",
   "$engine_dir/browser/file_chooser.cc",
   "$engine_dir/browser/file_chooser.h",
   "$engine_dir/browser/forms.cc",

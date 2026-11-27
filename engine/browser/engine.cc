@@ -36,6 +36,7 @@
 #include "project_b/engine/browser/dialogs.h"
 #include "project_b/engine/browser/downloads.h"
 #include "project_b/engine/browser/exit_reason.h"
+#include "project_b/engine/browser/fetch.h"
 #include "project_b/engine/browser/forms.h"
 #include "project_b/engine/browser/go.h"
 #include "base/strings/string_split.h"
@@ -620,6 +621,23 @@ void CallSaveImage(int64_t tab, const char* url, const char* path, int32_t max_s
   hooks::Fire(PB_EVENT_IMAGE_SAVED, args);
 }
 
+void CallFetch(int64_t fetch,
+               const char* workspace,
+               const char* page,
+               const char* url,
+               const char* path,
+               const char* range,
+               int32_t from) {
+  CheckMainThread();
+  Fetch(fetch, g_engine->PartitionFor(workspace), GURL(page), GURL(url),
+        base::FilePath::FromUTF8Unsafe(path), range, from);
+}
+
+void CallCancelFetch(int64_t fetch) {
+  CheckMainThread();
+  CancelFetch(fetch);
+}
+
 void CallCopyImage(const char* path) {
   CheckMainThread();
   CopyImageFile(path);
@@ -820,6 +838,8 @@ const PBEngineCalls* Engine::Calls() {
 #endif
       .set_form_script = CallSetFormScript,
       .form_send = CallFormSend,
+      .fetch = CallFetch,
+      .cancel_fetch = CallCancelFetch,
   };
   return &calls;
 }
@@ -1247,12 +1267,17 @@ void Engine::SetQuitErasure(std::vector<std::string> workspaces, Erasure erasure
   quit_erasure_ = std::move(erasure);
 }
 
+content::StoragePartition* Engine::PartitionFor(const std::string& workspace) {
+  if (!browser_context_) {
+    return nullptr;
+  }
+  return workspace.empty() ? browser_context_->GetDefaultStoragePartition()
+                           : browser_context_->GetStoragePartition(
+                                 PartitionOf(browser_context_, workspace));
+}
+
 void Engine::ListSiteData(const std::string& workspace) {
-  site_data::List(
-      workspace.empty() ? browser_context_->GetDefaultStoragePartition()
-                        : browser_context_->GetStoragePartition(
-                              PartitionOf(browser_context_, workspace)),
-      workspace);
+  site_data::List(PartitionFor(workspace), workspace);
 }
 
 // The profile's own storage is the context's default partition, which the remover

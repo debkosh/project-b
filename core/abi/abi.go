@@ -50,6 +50,7 @@ const (
 	// DownloadPublished is Android's.
 	DownloadPublished Event = 84
 	SecureDNSChecked  Event = 85
+	Fetched           Event = 86
 )
 
 var names = map[Event]string{
@@ -77,6 +78,7 @@ var names = map[Event]string{
 	DownloadAction:         "engine.DownloadNotificationCommand",
 	DownloadPublished:      "engine.DownloadPublished",
 	SecureDNSChecked:       "engine.SecureDNSChecked",
+	Fetched:                "engine.Fetched",
 }
 
 // linksAndImagesOnly is a phone's way: only a long press on a link or an image is the
@@ -173,6 +175,9 @@ func (e *Events) Dispatch(id Event, args []Value) (Value, bool) {
 		l.DownloadPublished(r.str(), r.str())
 	case SecureDNSChecked:
 		l.SecureDNSChecked(r.str(), r.bool())
+	case Fetched:
+		l.Fetched(engine.Fetched{ID: engine.FetchID(r.int()), Outcome: engine.FetchOutcome(r.int()), Status: int(r.int()),
+			Space: engine.AddressSpace(r.int()), URL: r.str(), Mime: r.str(), Name: r.str()})
 	default:
 		return e.adapter(id, l, r)
 	}

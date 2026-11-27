@@ -22,6 +22,7 @@ package engine
 
 import (
 	"errors"
+	"net/netip"
 	"strings"
 	"time"
 )
@@ -365,6 +366,12 @@ type Engine interface {
 	// it, scaled down to at most maxSize pixels on its longer side (0 keeps its size), and
 	// writes it at path as a PNG; ImageSaved follows with path.
 	SaveImage(tab TabID, url, path string, maxSize int)
+	// Fetch fetches an address into a file as a page would, through the engine's own network
+	// (docs/video-streams.md); Fetched follows with its id, once, unless CancelFetch comes
+	// first.
+	Fetch(f FetchRequest)
+	// CancelFetch stops a fetch, whose file goes; nothing is told of it after.
+	CancelFetch(id FetchID)
 	// CopyImage puts the image file at path on the system's clipboard: Android's. Nothing
 	// on the Mac, whose menus don't offer it.
 	CopyImage(path string)
@@ -582,6 +589,9 @@ type Listener interface {
 	FolderChosen(w WindowID, path string)
 	// ImageSaved is how SaveImage ended: whether the image is now a PNG at path.
 	ImageSaved(path string, ok bool)
+	// Fetched is how a Fetch ended: its file is whole at its path when it is FetchOK, and
+	// gone otherwise.
+	Fetched(f Fetched)
 	// SecureDNSChecked is how CheckSecureDNS ended: whether template's server looked a
 	// name up.
 	SecureDNSChecked(template string, ok bool)
@@ -789,6 +799,100 @@ type Download struct {
 	Reason string
 	// Referrer is the page it came from, as it was asked for, or "".
 	Referrer string
+	// Server is the address of the server it came from, an IP, or "" when it isn't known.
+	Server string
+}
+
+// AddressSpace is where on the network an address is, as Chromium's local network access
+// sorts them. Matches PBAddressSpace.
+type AddressSpace int
+
+const (
+	// SpaceAny is only where a fetch is made from: the person's own request, which is
+	// refused nothing.
+	SpaceAny AddressSpace = iota
+	// SpaceLoopback is this computer.
+	SpaceLoopback
+	// SpaceLocal is the network this computer is on: a router, a printer, another computer.
+	SpaceLocal
+	// SpacePublic is the internet.
+	SpacePublic
+)
+
+// SpaceOf is the address space of a server's IP address: public for one that doesn't read
+// as an address, as Chromium's checks take what they don't know.
+func SpaceOf(address string) AddressSpace {
+	ip, err := netip.ParseAddr(strings.Trim(address, "[]"))
+	if err != nil {
+		return SpacePublic
+	}
+	ip = ip.Unmap()
+	switch {
+	case ip.IsLoopback():
+		return SpaceLoopback
+	case ip.IsPrivate(), ip.IsLinkLocalUnicast(), ip.IsUnspecified(), cgnat.Contains(ip):
+		return SpaceLocal
+	}
+	return SpacePublic
+}
+
+// cgnat is the shared address space between a carrier and its customers (RFC 6598), local as
+// Chromium has it.
+var cgnat = netip.MustParsePrefix("100.64.0.0/10")
+
+// MorePrivate says a server in space to is on a more private address than a request made
+// from space from may reach: this computer or its network from the internet. This computer
+// and its network count as one, as in Chromium's check.
+func MorePrivate(to, from AddressSpace) bool {
+	return from == SpacePublic && (to == SpaceLoopback || to == SpaceLocal)
+}
+
+// FetchID is Go's number for a fetch.
+type FetchID int64
+
+// FetchRequest is an address to fetch into a new file at Path, as a page at the address
+// Page in Workspace would: through the engine's own network in the workspace's storage,
+// which decides the cookies that go, with the page's origin as the request's initiator, its
+// site as the site for cookies and its address as the referrer; with Page "", as the
+// person's own request. Only http and https. From is the address space the request is made
+// from, as the one the playlist that names URL came from: the engine's network refuses a
+// server on a more private address; SpaceAny refuses none. Range is "first-last", bytes of
+// it, or "" for all.
+type FetchRequest struct {
+	ID        FetchID
+	Workspace string
+	Page      string
+	URL       string
+	Path      string
+	Range     string
+	From      AddressSpace
+}
+
+// FetchOutcome is how a fetch ended. Matches PBFetchResult.
+type FetchOutcome int
+
+const (
+	FetchOK FetchOutcome = iota
+	// FetchRefused: not http or https, or its server is on a more private address than the
+	// request was made from.
+	FetchRefused
+	// FetchConnection: its connection failed or dropped.
+	FetchConnection
+	// FetchServer: the server answered with an error.
+	FetchServer
+)
+
+// Fetched is how a fetch ended: the HTTP status, 0 for none, the address space of the
+// server that answered, the address that answered after any redirects, its type, and the
+// file name the server gave it, or "".
+type Fetched struct {
+	ID      FetchID
+	Outcome FetchOutcome
+	Status  int
+	Space   AddressSpace
+	URL     string
+	Mime    string
+	Name    string
 }
 
 // DownloadCommand is what can be done to a running download.

@@ -19,6 +19,7 @@
 
 namespace content {
 class BrowserContext;
+class StoragePartition;
 class WebContents;
 }  // namespace content
 
@@ -192,6 +193,8 @@ class Engine {
   void EraseWorkspace(const std::string& workspace, Erasure erasure);
   // What Quit erases first, in each of the workspaces, as Go last said.
   void SetQuitErasure(std::vector<std::string> workspaces, Erasure erasure);
+  // A workspace's storage: the profile's own for "", null before the profile is open.
+  content::StoragePartition* PartitionFor(const std::string& workspace);
   // Counts what a workspace's storage holds, by host, for PB_EVENT_SITE_DATA.
   void ListSiteData(const std::string& workspace);
   void CloseTab(int64_t tab);

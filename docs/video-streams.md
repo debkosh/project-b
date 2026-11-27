@@ -94,6 +94,31 @@ The spark keeps what it finds today, and adds streams:
   Android it keeps going with no screen, as a download does (docs/daily-driver.md), and it
   lands in the shared Downloads.
 
+## How it is built
+
+**The fetch** (`fetch` and `cancel_fetch` in `pb_abi.h`, `engine/browser/fetch.cc`, Go's
+`core/fetch`). Go asks the engine to fetch one address into a file, as a page at an address
+in a workspace would, and hears how it ended (`PB_EVENT_FETCHED`: done, refused, the
+connection, or the server, with the HTTP status, the address space of the server that
+answered, the address after redirects, the type and the server's name for the file). It is
+asked by the page's address and its workspace, not by a tab, so a stream goes on when its tab
+closes, as a download does. The request goes through the workspace's own network
+(`GetURLLoaderFactoryForBrowserProcess`, a `SimpleURLLoader` writing the file) with the
+page's origin as its initiator, the page's site as its site for cookies and its isolation
+info, and the page's address as its referrer under the web's default policy, with
+credentials included and no CORS asked, as a page's own request for another site's file. So
+the cookies are Chromium's to choose, and none reaches Go.
+
+It is made from an address space, the one the playlist that named the address came from
+(this computer, its network, or the internet; a download says which server it came from,
+`PB_EVENT_DOWNLOAD_UPDATED`'s last value). The request carries that as its client security
+state with the policy that blocks, so the network service refuses a server on a more private
+address at the connection, a redirect's too, as it does for a page
+(`LocalNetworkAccessChecker`). The person's own request, with no page, carries none. Go's
+`core/fetch` holds both rules on its side as well: an address that isn't `http` or `https`
+never reaches the engine, and an answer from a more private address than was asked from is
+thrown away.
+
 ## A page starting downloads
 
 Today nothing limits the downloads a page starts by itself. Chrome lets a site's first

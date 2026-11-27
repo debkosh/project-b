@@ -250,6 +250,7 @@ void Downloads::Report(download::DownloadItem* item) {
   args.Bool(item->IsPaused());
   args.Str(ReasonOf(item));
   args.Str(item->GetReferrerUrl().spec());
+  args.Str(item->GetRemoteAddress());
   hooks::Fire(PB_EVENT_DOWNLOAD_UPDATED, args);
 }
 

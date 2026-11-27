@@ -143,6 +143,7 @@ type Engine struct {
 	edits      []engine.EditCommand
 	clipboard  string
 	downloads  downloads
+	fetches    fetches
 	chooser    []engine.FileChooserAnswer
 	dialogs    dialogs
 	finds      finds

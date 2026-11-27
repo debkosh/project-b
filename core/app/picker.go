@@ -218,6 +218,7 @@ func (p *Picker) Thumbnail(engine.TabID, int64)                           {}
 func (p *Picker) FolderChosen(engine.WindowID, string)                    {}
 func (p *Picker) ImageSaved(string, bool)                                 {}
 func (p *Picker) SecureDNSChecked(string, bool)                           {}
+func (p *Picker) Fetched(engine.Fetched)                                  {}
 func (p *Picker) SiteDataListed(string, []engine.SiteData)                {}
 func (p *Picker) DevToolsCommand(string, []byte) (any, error)             { return nil, engine.ErrUnknownCommand }
 func (p *Picker) DownloadNotificationCommand(int, engine.DownloadCommand) {}

@@ -13,6 +13,7 @@ import (
 	"projectb/crash"
 	"projectb/downloads"
 	"projectb/engine"
+	"projectb/fetch"
 	"projectb/flags"
 	"projectb/history"
 	"projectb/keys"
@@ -145,6 +146,8 @@ type App struct {
 	ShellData *shelldata.Manager
 	// Downloads is the profile's downloads.
 	Downloads *downloads.Manager
+	// Fetches fetches addresses into files as a page would (docs/video-streams.md).
+	Fetches *fetch.Manager
 	// Sites is each site's settings, what it may use among them, and the prompts open for the rest.
 	Sites *sites.Manager
 	// Sparks are the person's scripts for pages (docs/site-features.md).
@@ -247,6 +250,7 @@ func Start(e engine.Engine, cfg Config) *App {
 		cfg.DownloadsDir = filepath.Join(cfg.ProfileDir, "Downloads")
 	}
 	a.Downloads = downloads.New(e, cfg.System, cfg.ProfileDir, cfg.DownloadsDir)
+	a.Fetches = fetch.New(e)
 	// A downloaded page, PDF, image or text opens in a tab here; anything else goes to the OS.
 	a.Downloads.OpenHere(func(address string) {
 		a.Window.Request(a.Tabs.Front(), engine.WindowFront)
@@ -676,6 +680,9 @@ func (a *App) ContextMenu(tab engine.TabID, m engine.ContextMenu) {
 }
 
 func (a *App) ImageSaved(path string, ok bool) { a.menus.imageSaved(path, ok) }
+
+// Fetched is how a fetch of the engine's ended, for whoever asked.
+func (a *App) Fetched(f engine.Fetched) { a.Fetches.Fetched(f) }
 
 func (a *App) ScrollDirectionChanged(tab engine.TabID, down bool) {
 	a.Shell.ScrollDirectionChanged(tab, down)

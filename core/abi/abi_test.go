@@ -69,6 +69,7 @@ func (r *recorder) FolderChosen(w engine.WindowID, path string) {
 	r.note("folder %d %s", w, path)
 }
 func (r *recorder) AppLink(tab engine.TabID, url string) { r.note("app link %d %s", tab, url) }
+func (r *recorder) Fetched(f engine.Fetched)             { r.note("fetched %d %d", f.ID, f.Outcome) }
 func (r *recorder) ImageSaved(path string, ok bool) {
 	r.note("image saved %s %v", path, ok)
 }
