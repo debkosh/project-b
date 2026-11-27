@@ -52,6 +52,10 @@ type List struct {
 	Licence   string   `json:"licence"`
 	Home      string   `json:"home"`
 	Brave     string   `json:"brave,omitempty"`
+	// Trusted is a list whose rules may use the trusted-* scriptlets, which set cookies and
+	// rewrite what a page fetches: uBlock Origin's own and Brave's own, as uBO allows only
+	// its own.
+	Trusted bool `json:"trusted,omitempty"`
 }
 
 // Source is where the workflow fetches a list from, and its format: "standard" or "hosts".

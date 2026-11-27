@@ -32,7 +32,9 @@ PBBlocker* pbblock_new(void);
 // Builds one group's engine, in the library's own serialized form, from its lists' texts:
 // lists and lens hold n pointers and lengths. 1 with *out and *out_len set, to be freed
 // with pbblock_free_data; 0 for nothing.
-int pbblock_compile(const uint8_t* const* lists, const size_t* lens, size_t n,
+// trusted holds n flags, 1 for a list whose rules may use the trusted-* scriptlets, or is
+// null for none.
+int pbblock_compile(const uint8_t* const* lists, const size_t* lens, const uint8_t* trusted, size_t n,
                     uint8_t** out, size_t* out_len);
 void pbblock_free_data(uint8_t* data, size_t len);
 

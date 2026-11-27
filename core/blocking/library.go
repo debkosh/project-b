@@ -17,8 +17,9 @@ import (
 type Library interface {
 	// New makes a blocker, which lives as long as the process.
 	New() Blocker
-	// Compile builds one group's engine, in the library's own form, from its lists' texts.
-	Compile(texts [][]byte) ([]byte, error)
+	// Compile builds one group's engine, in the library's own form, from its lists' texts;
+	// a trusted list's rules may use the trusted-* scriptlets (catalogue's "trusted").
+	Compile(texts [][]byte, trusted []bool) ([]byte, error)
 }
 
 // Blocker is one blocker of the library: its groups, each one compiled engine, swapped
@@ -61,7 +62,7 @@ func (Plain) New() Blocker {
 	return b
 }
 
-func (Plain) Compile(texts [][]byte) ([]byte, error) {
+func (Plain) Compile(texts [][]byte, trusted []bool) ([]byte, error) {
 	out := []byte(PlainVersion)
 	for _, t := range texts {
 		out = append(out, t...)

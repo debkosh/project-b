@@ -17,7 +17,7 @@ func TestTheLibraryBlocksRequestsAndAnswersSafeBrowsing(t *testing.T) {
 	engine, err := lib.Compile([][]byte{
 		[]byte("||ads.test^$third-party\n||harm.test^\n"),
 		[]byte("|https://steal.test/login|$document\n||cdn.test/x.js^\n"),
-	})
+	}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -14,7 +14,7 @@ use std::sync::{Arc, Mutex};
 
 use adblock::lists::{FilterSet, ParseOptions};
 use adblock::request::Request;
-use adblock::resources::Resource;
+use adblock::resources::{PermissionMask, Resource};
 use adblock::Engine;
 use arc_swap::ArcSwap;
 use serde::Deserialize;
@@ -162,11 +162,20 @@ fn sorted(set: HashSet<String>) -> Vec<String> {
     v
 }
 
-/// Builds the serialized engine of one group from its lists' texts.
-pub fn compile(lists: &[&[u8]]) -> Vec<u8> {
+/// The permission a trusted list's rules carry: they may use the scriptlets marked with it,
+/// uBlock Origin's trusted-* ones, which set cookies and rewrite what a page fetches. uBO
+/// lets only its own lists use them, and so do we (core/blocking/catalog.json, "trusted").
+pub const TRUSTED: PermissionMask = PermissionMask::from_bits(0b0000_0001);
+
+/// Builds the serialized engine of one group from its lists' texts, each trusted or not.
+pub fn compile(lists: &[&[u8]], trusted: &[bool]) -> Vec<u8> {
     let mut set = FilterSet::new(false);
-    for text in lists {
-        set.add_filter_list(String::from_utf8_lossy(text).into_owned(), ParseOptions::default());
+    for (i, text) in lists.iter().enumerate() {
+        let mut opts = ParseOptions::default();
+        if trusted.get(i).copied().unwrap_or(false) {
+            opts.permissions = TRUSTED;
+        }
+        set.add_filter_list(String::from_utf8_lossy(text).into_owned(), opts);
     }
     Engine::new_with_filter_set(set).serialize()
 }
@@ -190,11 +199,13 @@ pub extern "C" fn pbblock_new() -> *mut Blocker {
 }
 
 /// # Safety
-/// b from pbblock_new; lists and lens hold n pointers and lengths.
+/// lists and lens hold n pointers and lengths; trusted holds n flags, 1 for a trusted list,
+/// or is null for none.
 #[no_mangle]
 pub unsafe extern "C" fn pbblock_compile(
     lists: *const *const u8,
     lens: *const usize,
+    trusted: *const u8,
     n: usize,
     out: *mut *mut u8,
     out_len: *mut usize,
@@ -205,7 +216,12 @@ pub unsafe extern "C" fn pbblock_compile(
     let texts: Vec<&[u8]> = (0..n)
         .map(|i| slice::from_raw_parts(*lists.add(i), *lens.add(i)))
         .collect();
-    let data = compile(&texts).into_boxed_slice();
+    let flags: Vec<bool> = if trusted.is_null() {
+        vec![false; n]
+    } else {
+        (0..n).map(|i| *trusted.add(i) != 0).collect()
+    };
+    let data = compile(&texts, &flags).into_boxed_slice();
     *out_len = data.len();
     *out = Box::into_raw(data) as *mut u8;
     1
@@ -333,7 +349,7 @@ mod tests {
 
     fn blocker(list: &str) -> Blocker {
         let b = Blocker::new();
-        assert!(b.load("ads", &compile(&[list.as_bytes()])));
+        assert!(b.load("ads", &compile(&[list.as_bytes()], &[])));
         b
     }
 
@@ -348,7 +364,7 @@ mod tests {
     #[test]
     fn an_exception_in_one_group_stays_there() {
         let b = blocker("||ads.test^\n");
-        assert!(b.load("unbreak", &compile(&[b"@@||ads.test/ok.js\n"])));
+        assert!(b.load("unbreak", &compile(&[b"@@||ads.test/ok.js\n"], &[])));
         assert_eq!(b.request("https://ads.test/ok.js", "https://site.test/", "script").0, BLOCK);
     }
 
@@ -368,6 +384,30 @@ mod tests {
         b.put("ads", None);
         assert_eq!(b.request("https://ads.test/", "https://site.test/", "script").0, ALLOW);
         assert_eq!(held.len(), 1);
+    }
+
+    #[test]
+    fn only_a_trusted_list_runs_a_trusted_scriptlet() {
+        use adblock::resources::{MimeType, ResourceType};
+        use base64::Engine as _;
+        let res = |name: &str, permission| Resource {
+            name: name.into(),
+            aliases: vec![],
+            kind: ResourceType::Mime(MimeType::ApplicationJavascript),
+            content: base64::engine::general_purpose::STANDARD.encode(format!("/*{name}*/")),
+            dependencies: vec![],
+            permission,
+        };
+        let b = Blocker::new();
+        *b.resources.lock().unwrap() = vec![res("trusted-x.js", TRUSTED), res("plain-x.js", PermissionMask::default())];
+        let rules = b"site.test##+js(trusted-x)\nsite.test##+js(plain-x)\n";
+        assert!(b.load("untrusted", &compile(&[rules], &[false])));
+        let page = b.page("https://site.test/");
+        let script = page["scripts"][0].as_str().unwrap_or("");
+        assert!(script.contains("plain-x") && !script.contains("trusted-x"), "{script}");
+        assert!(b.load("untrusted", &compile(&[rules], &[true])));
+        let page = b.page("https://site.test/");
+        assert!(page["scripts"][0].as_str().unwrap_or("").contains("trusted-x"));
     }
 
     #[test]

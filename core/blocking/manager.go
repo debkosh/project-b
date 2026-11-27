@@ -375,7 +375,11 @@ var engineKey = regexp.MustCompile(`^[0-9a-f]{16}\.engine$`)
 func key(lists []List, texts map[string]string) string {
 	var lines []string
 	for _, l := range lists {
-		lines = append(lines, l.ID+":"+texts[l.ID])
+		line := l.ID + ":" + texts[l.ID]
+		if l.Trusted {
+			line += ":trusted"
+		}
+		lines = append(lines, line)
 	}
 	slices.Sort(lines)
 	sum := sha256.Sum256([]byte(strings.Join(lines, "\n")))

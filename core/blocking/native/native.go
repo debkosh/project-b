@@ -25,8 +25,8 @@ static PBBlockerHooks* hooks(PBBlocker* b, const char* watcher) {
   return h;
 }
 
-static int compile(uint8_t** texts, size_t* lens, size_t n, uint8_t** out, size_t* out_len) {
-  return pbblock_compile((const uint8_t* const*)texts, lens, n, out, out_len);
+static int compile(uint8_t** texts, size_t* lens, uint8_t* trusted, size_t n, uint8_t** out, size_t* out_len) {
+  return pbblock_compile((const uint8_t* const*)texts, lens, trusted, n, out, out_len);
 }
 */
 import "C"
@@ -45,7 +45,7 @@ type Library struct{}
 
 func (Library) New() blocking.Blocker { return &blocker{b: C.pbblock_new()} }
 
-func (Library) Compile(texts [][]byte) ([]byte, error) {
+func (Library) Compile(texts [][]byte, trusted []bool) ([]byte, error) {
 	n := len(texts)
 	// The texts are copied to C memory: cgo lets no Go pointer to Go pointers cross.
 	ptrs := (*[1 << 28]*C.uint8_t)(C.calloc(C.size_t(max(n, 1)), C.size_t(unsafe.Sizeof((*C.uint8_t)(nil)))))[:n:n]
@@ -57,13 +57,19 @@ func (Library) Compile(texts [][]byte) ([]byte, error) {
 		C.free(unsafe.Pointer(unsafe.SliceData(ptrs)))
 		C.free(unsafe.Pointer(unsafe.SliceData(lens)))
 	}()
+	flags := make([]byte, max(n, 1))
 	for i, t := range texts {
 		ptrs[i] = (*C.uint8_t)(C.CBytes(t))
 		lens[i] = C.size_t(len(t))
+		if i < len(trusted) && trusted[i] {
+			flags[i] = 1
+		}
 	}
+	cflags := (*C.uint8_t)(C.CBytes(flags))
+	defer C.free(unsafe.Pointer(cflags))
 	var out *C.uint8_t
 	var outLen C.size_t
-	if C.compile(unsafe.SliceData(ptrs), unsafe.SliceData(lens), C.size_t(n), &out, &outLen) == 0 {
+	if C.compile(unsafe.SliceData(ptrs), unsafe.SliceData(lens), cflags, C.size_t(n), &out, &outLen) == 0 {
 		return nil, errors.New("libpbblock compiled nothing")
 	}
 	defer C.pbblock_free_data(out, outLen)

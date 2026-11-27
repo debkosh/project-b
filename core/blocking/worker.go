@@ -274,7 +274,7 @@ func (w *worker) setBuiltin() bool {
 	for _, h := range w.m.s.Hosts {
 		rules.WriteString("||" + h + "^$third-party\n")
 	}
-	engine, err := w.m.s.Library.Compile([][]byte{[]byte(rules.String())})
+	engine, err := w.m.s.Library.Compile([][]byte{[]byte(rules.String())}, nil)
 	if err != nil || !w.m.network.Load(Builtin, engine) {
 		errorf("the built-in hosts didn't load: %v", err)
 		w.builtin = false
@@ -303,6 +303,7 @@ func (w *worker) loadEngine(u unit, k string) bool {
 // compile compiles a unit's texts, keeps the engine and loads it.
 func (w *worker) compile(u unit, k string) bool {
 	var texts [][]byte
+	var trusted []bool
 	for _, l := range u.lists {
 		b, err := os.ReadFile(w.textPath(l.ID))
 		if err != nil {
@@ -310,9 +311,10 @@ func (w *worker) compile(u unit, k string) bool {
 			return false
 		}
 		texts = append(texts, b)
+		trusted = append(trusted, l.Trusted)
 	}
 	began := time.Now()
-	engine, err := w.m.s.Library.Compile(texts)
+	engine, err := w.m.s.Library.Compile(texts, trusted)
 	if err != nil {
 		errorf("%s didn't compile: %v", u.name, err)
 		return false

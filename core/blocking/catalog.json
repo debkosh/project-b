@@ -124,7 +124,8 @@
       ],
       "licence": "GPL-3.0",
       "home": "https://github.com/uBlockOrigin/uAssets",
-      "brave": "default"
+      "brave": "default",
+      "trusted": true
     },
     {
       "id": "ubo-unbreak",
@@ -144,7 +145,8 @@
       ],
       "licence": "GPL-3.0",
       "home": "https://github.com/uBlockOrigin/uAssets",
-      "brave": "default"
+      "brave": "default",
+      "trusted": true
     },
     {
       "id": "brave-unbreak",
@@ -164,7 +166,8 @@
       ],
       "licence": "MPL-2.0",
       "home": "https://github.com/brave/adblock-lists",
-      "brave": "default"
+      "brave": "default",
+      "trusted": true
     },
     {
       "id": "brave-firstparty",
@@ -184,7 +187,8 @@
       ],
       "licence": "MPL-2.0",
       "home": "https://github.com/brave/adblock-lists",
-      "brave": "E99CBD02-FFD1-4651-9BDD-6A9ED7B87819"
+      "brave": "E99CBD02-FFD1-4651-9BDD-6A9ED7B87819",
+      "trusted": true
     },
     {
       "id": "pb-hosts",
@@ -199,7 +203,8 @@
         }
       ],
       "licence": "MIT",
-      "home": "https://github.com/debkosh/project-b"
+      "home": "https://github.com/debkosh/project-b",
+      "trusted": true
     },
     {
       "id": "easyprivacy",
@@ -231,7 +236,8 @@
       ],
       "licence": "GPL-3.0",
       "home": "https://github.com/uBlockOrigin/uAssets",
-      "brave": "4D715457-307C-4383-8873-73A2FD263F71"
+      "brave": "4D715457-307C-4383-8873-73A2FD263F71",
+      "trusted": true
     },
     {
       "id": "peter-lowe",
@@ -262,7 +268,8 @@
       ],
       "licence": "MPL-2.0",
       "home": "https://github.com/brave-experiments/sugarcoat-pipeline",
-      "brave": "default"
+      "brave": "default",
+      "trusted": true
     },
     {
       "id": "regional-ar",
@@ -541,7 +548,8 @@
       ],
       "licence": "MPL-2.0",
       "home": "https://github.com/brave/adblock-lists",
-      "brave": "48796273-E783-431E-B864-44D3DCEA66DC"
+      "brave": "48796273-E783-431E-B864-44D3DCEA66DC",
+      "trusted": true
     },
     {
       "id": "regional-id",
@@ -1138,7 +1146,8 @@
       ],
       "licence": "GPL-3.0",
       "home": "https://github.com/uBlockOrigin/uAssets",
-      "brave": "default"
+      "brave": "default",
+      "trusted": true
     },
     {
       "id": "brave-experimental",
@@ -1154,7 +1163,8 @@
       ],
       "licence": "MPL-2.0",
       "home": "https://github.com/brave/adblock-lists",
-      "brave": "564C3B75-8731-404C-AD7C-5683258BA0B0"
+      "brave": "564C3B75-8731-404C-AD7C-5683258BA0B0",
+      "trusted": true
     },
     {
       "id": "ubo-badware",
@@ -1170,7 +1180,8 @@
       ],
       "licence": "GPL-3.0",
       "home": "https://github.com/uBlockOrigin/uAssets",
-      "brave": "default"
+      "brave": "default",
+      "trusted": true
     },
     {
       "id": "urlhaus",
@@ -1230,7 +1241,8 @@
         }
       ],
       "licence": "MIT",
-      "home": "https://github.com/debkosh/project-b"
+      "home": "https://github.com/debkosh/project-b",
+      "trusted": true
     },
     {
       "id": "pb-test-malware",
@@ -1245,7 +1257,8 @@
         }
       ],
       "licence": "MIT",
-      "home": "https://github.com/debkosh/project-b"
+      "home": "https://github.com/debkosh/project-b",
+      "trusted": true
     },
     {
       "id": "pb-test-phishing",
@@ -1260,7 +1273,8 @@
         }
       ],
       "licence": "MIT",
-      "home": "https://github.com/debkosh/project-b"
+      "home": "https://github.com/debkosh/project-b",
+      "trusted": true
     }
   ],
   "ignored": [

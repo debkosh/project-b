@@ -449,7 +449,7 @@ func TestTheChoicesAndTheirDefaults(t *testing.T) {
 func TestPlainReadsTheTestsRules(t *testing.T) {
 	lib := blocking.Plain{}
 	b := lib.New()
-	engine, _ := lib.Compile([][]byte{[]byte("||ads.test^$third-party\n||harm.test^\n|https://steal.test/login|$document\n|https://cdn.test/x.js|\n! a comment\n")})
+	engine, _ := lib.Compile([][]byte{[]byte("||ads.test^$third-party\n||harm.test^\n|https://steal.test/login|$document\n|https://cdn.test/x.js|\n! a comment\n")}, nil)
 	if !b.Load("test", engine) {
 		t.Fatal("load")
 	}
