@@ -325,8 +325,15 @@ So the package is split by list, and a list that changed sends only its change:
   the old text as its dictionary ("patch from", klauspost/compress in Go on both sides, so
   no diff format of our own). A day's change to EasyList is then kilobytes, not its whole
   megabyte. An app further behind than eight versions takes the whole file.
-- **The resources,** `resources-<sha>.json.zst`, the scriptlets and stand-ins (uBO's, from
-  Brave's repo), published and patched the same way.
+- **The resources,** `resources-<sha>.json.zst`, the scriptlets and stand-ins, published and
+  patched the same way: put together as Brave does, from pinned commits of uBlock Origin
+  (its redirect resources, read by adblock-rust's assembler, and its scriptlets, read with
+  node, `tools/lists/ubo-scriptlets.mjs`) and of Brave's `dist/resources.json`
+  (`core/blocking/lib/examples/resources.rs`).
+- **Trusted lists.** uBO's `trusted-*` scriptlets set cookies and rewrite what a page
+  fetches, so, as uBO allows only its own lists to use them, only a list the catalogue marks
+  `trusted`, one all of whose sources are uBO's or Brave's own, may; the library compiles
+  each list with or without that permission.
 - **`manifest.json`**: each list's current SHA-256 and size, and the patches there are to it.
   **`manifest.json.sig`**: its Ed25519 signature. **`LICENSES.txt`**: each list's licence and
   home. Files no manifest of the last eight names are deleted from the release.
