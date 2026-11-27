@@ -38,6 +38,11 @@ const (
 	Popups = "popups"
 	// Sparks is whether the person's sparks run on the site's pages, all of them or none.
 	Sparks = "sparks"
+	// Downloads is a page starting a download (docs/video-streams.md), which the engine asks
+	// about as a page's request: one started by a click goes, and so does the first a page
+	// starts by itself; a later one with no click asks, and the answer holds for the site
+	// until the app quits.
+	Downloads = "automatic-downloads"
 )
 
 // Kind is one kind of per-site setting, in our terms.
@@ -55,6 +60,9 @@ type Kind struct {
 	Gesture bool
 	// Once offers Allow this time.
 	Once bool
+	// Session: its answer holds for the site until the app quits, kept in no file, and
+	// settings has no row for it.
+	Session bool
 	// Choices are the values one of our own kinds takes, in the order settings shows them;
 	// Initial is its default, the first choice when it names none.
 	Choices []string
@@ -88,6 +96,7 @@ var Kinds = []Kind{
 	{Name: Notifications, Title: "Notifications", Requested: true, Askable: true, Gesture: true},
 	// As every browser grants it: Blink holds it to a focused page.
 	{Name: ClipboardWrite, Title: "Clipboard", Requested: true, Default: engine.PermissionGranted},
+	{Name: Downloads, Title: "Automatic downloads", Requested: true, Askable: true, Session: true},
 	{Name: Ads, Title: "Ad blocker", Choices: adsChoices()},
 	{Name: Links, Title: "Links to other sites", Choices: []string{Allow, Block}},
 	// Allow and Block in Links' order, so the two rows' choices sit alike.
@@ -180,6 +189,11 @@ type Manager struct {
 	tabs   Tabs
 	// sites is origin → kind → Allow or Block.
 	sites map[string]map[string]string
+	// session is the same for the kinds whose answer holds only until the app quits.
+	session map[string]map[string]string
+	// downloaded is the origin of each tab's page once it has started a download: its next
+	// with no click asks.
+	downloaded map[engine.TabID]string
 	// open is each tab's prompt, and waiting the requests behind it, in order.
 	open    map[engine.TabID]*Prompt
 	waiting map[engine.TabID][]engine.PermissionRequest
@@ -239,14 +253,16 @@ type onceGrant struct {
 // statuses go back to the engine.
 func New(dir string, t Tabs, answer func(engine.PermissionID, []engine.PermissionStatus)) *Manager {
 	m := &Manager{
-		path:    filepath.Join(dir, "sites.json"),
-		answer:  answer,
-		tabs:    t,
-		sites:   map[string]map[string]string{},
-		open:    map[engine.TabID]*Prompt{},
-		waiting: map[engine.TabID][]engine.PermissionRequest{},
-		once:    map[engine.TabID]onceGrant{},
-		quiet:   map[engine.TabID]string{},
+		path:       filepath.Join(dir, "sites.json"),
+		answer:     answer,
+		tabs:       t,
+		sites:      map[string]map[string]string{},
+		session:    map[string]map[string]string{},
+		downloaded: map[engine.TabID]string{},
+		open:       map[engine.TabID]*Prompt{},
+		waiting:    map[engine.TabID][]engine.PermissionRequest{},
+		once:       map[engine.TabID]onceGrant{},
+		quiet:      map[engine.TabID]string{},
 	}
 	b, err := os.ReadFile(m.path)
 	switch {
@@ -283,10 +299,15 @@ func (m *Manager) OnSitesChanged(f func()) { m.onSites = append(m.onSites, f) }
 // Status is a kind's state for origin in tab's page, 0 for a page in no tab, such as a
 // worker's: what a page reads, and what answers a request with no prompt.
 func (m *Manager) Status(tab engine.TabID, origin, kind string) engine.PermissionStatus {
-	if k, ok := kindOf(kind); !ok || !k.Requested || !k.Askable {
+	k, ok := kindOf(kind)
+	if !ok || !k.Requested || !k.Askable {
 		return Default(kind)
 	}
-	switch m.sites[origin][kind] {
+	decided := m.sites[origin][kind]
+	if k.Session {
+		decided = m.session[origin][kind]
+	}
+	switch decided {
 	case Allow:
 		return engine.PermissionGranted
 	case Block:
@@ -304,6 +325,10 @@ func (m *Manager) Request(r engine.PermissionRequest) {
 	answers := map[string]engine.PermissionStatus{}
 	var ask []string
 	for _, k := range r.Kinds {
+		if k == Downloads && m.downloadGoes(r) {
+			answers[k] = engine.PermissionGranted
+			continue
+		}
 		s := m.Status(r.Tab, r.Origin, k)
 		// A page in no tab has nowhere to show a prompt, and some kinds need a press.
 		if s == engine.PermissionAsk && (r.Tab == 0 || (gesture(k) && !r.Gesture)) {
@@ -337,6 +362,34 @@ func (m *Manager) Request(r engine.PermissionRequest) {
 	m.open[r.Tab] = p
 	m.changed()
 }
+
+// downloadGoes says a download a tab's page starts goes with no question: one started by a
+// click, and the first the page starts, as Chrome has it. Either way the page has had its
+// one: the next with no click is for the site's answer, or a prompt.
+func (m *Manager) downloadGoes(r engine.PermissionRequest) bool {
+	if r.Tab == 0 {
+		return r.Gesture
+	}
+	first := m.downloaded[r.Tab] != r.Origin
+	m.downloaded[r.Tab] = r.Origin
+	return r.Gesture || first
+}
+
+// Committed is a tab showing another page: on another origin, its page's first download is
+// still to come, and a question about the last page's downloads goes. Such a question
+// outlives TabChanged, since a link that becomes a download changes the tab's address for a
+// moment and nothing else.
+func (m *Manager) Committed(tab engine.TabID, u string) {
+	if o, ok := m.downloaded[tab]; ok && Origin(u) != o {
+		delete(m.downloaded, tab)
+	}
+	if p := m.open[tab]; p != nil && p.downloads() && Origin(u) != p.Origin {
+		m.dropTab(tab)
+	}
+}
+
+// downloads says the prompt asks about a page's downloads.
+func (p *Prompt) downloads() bool { return slices.Contains(p.Kinds, Downloads) }
 
 // Answer is the person's choice on prompt id: Allow, Once, Block or Dismiss. An answer to a
 // prompt no longer open is ignored.
@@ -431,7 +484,7 @@ func (m *Manager) Set(origin, kind, value string) {
 		}
 		return
 	}
-	if !k.Askable {
+	if !k.Askable || k.Session {
 		return
 	}
 	switch value {
@@ -473,7 +526,7 @@ func (m *Manager) SettingsOf(origin string) []Setting {
 func Settable() []Setting {
 	list := []Setting{}
 	for _, k := range Kinds {
-		if k.Askable || len(k.Choices) > 0 {
+		if k.Askable && !k.Session || len(k.Choices) > 0 {
 			s := Setting{Kind: k.Name, Title: k.Title, Choices: k.Choices}
 			if len(k.Choices) > 0 {
 				s.Value = k.initial()
@@ -511,7 +564,7 @@ func (m *Manager) TabChanged(tab engine.TabID, u string) {
 	if q, ok := m.quiet[tab]; ok && page(u) != q {
 		delete(m.quiet, tab)
 	}
-	if p := m.open[tab]; p != nil && page(u) != p.url {
+	if p := m.open[tab]; p != nil && !p.downloads() && page(u) != p.url {
 		m.dropTab(tab)
 	}
 }
@@ -520,6 +573,7 @@ func (m *Manager) TabChanged(tab engine.TabID, u string) {
 func (m *Manager) TabClosed(tab engine.TabID) {
 	delete(m.once, tab)
 	delete(m.quiet, tab)
+	delete(m.downloaded, tab)
 	m.dropTab(tab)
 }
 
@@ -640,13 +694,22 @@ func (m *Manager) byID(id int) *Prompt {
 }
 
 func (m *Manager) keep(origin string, kinds []string, decision string) {
-	if m.sites[origin] == nil {
-		m.sites[origin] = map[string]string{}
-	}
+	kept := false
 	for _, k := range kinds {
-		m.sites[origin][k] = decision
+		into := m.sites
+		if kind, _ := kindOf(k); kind.Session {
+			into = m.session
+		} else {
+			kept = true
+		}
+		if into[origin] == nil {
+			into[origin] = map[string]string{}
+		}
+		into[origin][k] = decision
 	}
-	m.save()
+	if kept {
+		m.save()
+	}
 }
 
 func (m *Manager) save() {

@@ -101,7 +101,8 @@ download go and asks before more go without a click ("This site is trying to dow
 multiple files", Allow or Block), and so does the app now
 (`WebContentsDelegate::CanDownload`). A download started by a click goes, as it does. The
 answer holds for the site until the app quits. This comes first, as its own change, and
-holds for every download, streams among them.
+holds for every download, streams among them. The app's own question reads as its other
+prompts do, "*site* wants to download several files", with Block and Allow (ux, 2026-11-27).
 
 ## Guards
 

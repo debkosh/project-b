@@ -515,3 +515,41 @@ fun bookmarkSheet(s: Sheet, palette: Palette, bookmark: JSONObject, added: Boole
     button("Done", true) { done() }
     c.addView(buttons)
 }
+
+/**
+ * A site's question about its downloads (docs/video-streams.md), as the Mobile shell's
+ * PermissionSheet has a site's question: a glyph and "site wants to download several files",
+ * the site in bold, then the answers as full-width 48dp rows, Block and then Allow, the
+ * primary, nearest the thumb. Closing the sheet any other way is no answer.
+ */
+fun downloadsAskSheet(s: Sheet, palette: Palette, host: String, answer: (String) -> Unit) {
+    val context = s.context
+    val head = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
+    head.setPadding(head.dp(20), head.dp(4), head.dp(20), head.dp(8))
+    head.addView(IconView(context, "download", palette.icon), LinearLayout.LayoutParams(head.dp(24), head.dp(24)).apply { marginEnd = head.dp(12) })
+    head.addView(label(context, 15f, palette.text).apply {
+        text = android.text.SpannableString("$host wants to download several files").apply {
+            setSpan(android.text.style.StyleSpan(android.graphics.Typeface.BOLD), 0, host.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
+    }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+    s.content.addView(head)
+    val buttons = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+    buttons.setPadding(buttons.dp(20), buttons.dp(8), buttons.dp(20), buttons.dp(4))
+    fun button(text: String, choice: String, primary: Boolean) {
+        val b = label(context, 15f, if (primary) palette.onAccent else palette.text, bold = primary).apply {
+            this.text = text
+            gravity = Gravity.CENTER
+            isClickable = true
+            setOnClickListener { answer(choice) }
+            background = android.graphics.drawable.StateListDrawable().apply {
+                addState(intArrayOf(android.R.attr.state_pressed), rounded(if (primary) Palette.alpha(palette.accent, 0.85f) else palette.press, dpf(10)))
+                addState(intArrayOf(), rounded(if (primary) palette.accent else android.graphics.Color.TRANSPARENT, dpf(10)))
+            }
+        }
+        asButton(b, text)
+        buttons.addView(b, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, buttons.dp(48)).apply { topMargin = buttons.dp(8) })
+    }
+    button("Block", "block", false)
+    button("Allow", "allow", true)
+    s.content.addView(buttons)
+}

@@ -713,6 +713,21 @@ const noNoticeYet = {
         await os.getByRole('button', { name: 'Not now' }).click();
         rule(30, 'Not now denies the page, and the prompt goes', JSON.stringify(await answered(6)) === '[2]' && (await until(async () => (await os.count()) === 0)));
         await fire('mediaOS', 'refuse');
+        // A page's downloads (docs/video-streams.md): the engine asks about each as a request
+        // of the kind automatic-downloads, from a click or not.
+        await fire('navigate', 'https://files.test/list', { tab });
+        await loaded(tab, 'https://files.test/list');
+        const many = asked('files.test', 'download several files');
+        await fire('permissionQuiet', 'automatic-downloads', { tab });
+        rule(30, "a page's first download with no click goes, unasked", JSON.stringify(await answered(7)) === '[1]' && (await many.count()) === 0);
+        await fire('permissionQuiet', 'automatic-downloads', { tab });
+        rule(30, 'its second with no click asks, "site wants to download several files", with Block and Allow', (await until(() => many.isVisible())) && (await many.innerText()).includes('files.test') && (await many.getByRole('button', { name: 'Allow', exact: true }).count()) === 1 && (await many.getByRole('button', { name: 'Block', exact: true }).count()) === 1 && (await regions()).permissions.length === 7);
+        await fire('permission', 'automatic-downloads', { tab });
+        rule(30, 'one started by a click goes meanwhile', JSON.stringify(await answered(8)) === '[1]');
+        await many.getByRole('button', { name: 'Allow', exact: true }).click();
+        const let9 = JSON.stringify(await answered(9)) === '[1]';
+        await fire('permissionQuiet', 'automatic-downloads', { tab });
+        rule(30, "Allow lets it go, and the site's later ones with no question", let9 && JSON.stringify(await answered(10)) === '[1]' && (await many.count()) === 0);
       } catch (e) {
         rule(30, 'its checks ran to their end', false, e.message.split('\n')[0]);
       }

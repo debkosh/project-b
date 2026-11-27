@@ -38,6 +38,7 @@
 #include "project_b/engine/browser/window.h"
 #include "project_b/engine/browser/dialogs.h"
 #include "project_b/engine/browser/file_chooser.h"
+#include "third_party/blink/public/common/input/web_input_event.h"
 #include "third_party/blink/public/mojom/context_menu/context_menu.mojom.h"
 #include "third_party/blink/public/mojom/favicon/favicon_url.mojom.h"
 #include "third_party/skia/include/core/SkColor.h"
@@ -812,6 +813,27 @@ void PageTab::RequestMediaAccessPermission(
     const content::MediaStreamRequest& request,
     content::MediaResponseCallback callback) {
   Permissions::RequestMediaAccess(web_contents, request, std::move(callback));
+}
+
+// Scrolling is no click, as in Chrome's DownloadRequestLimiter.
+void PageTab::DidGetUserInteraction(const blink::WebInputEvent& event) {
+  if (event.GetType() != blink::WebInputEvent::Type::kGestureScrollBegin) {
+    clicked_ = true;
+  }
+  WebContentsObserverHooks::DidGetUserInteraction(event);
+}
+
+void PageTab::CanDownload(const GURL& url,
+                          const std::string& request_method,
+                          base::OnceCallback<void(bool)> callback) {
+  // Our own pages download what the person asked of them, such as an exported spark.
+  if (internal()) {
+    std::move(callback).Run(true);
+    return;
+  }
+  const bool clicked = clicked_;
+  clicked_ = false;
+  Permissions::AskDownload(contents_.get(), clicked, std::move(callback));
 }
 
 bool PageTab::TakeFocus(content::WebContents* source, bool reverse) {

@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "base/functional/callback.h"
 #include "content/public/browser/permission_controller_delegate.h"
 #include "content/public/browser/web_contents_delegate.h"
 
@@ -24,6 +25,14 @@ class Permissions : public content::PermissionControllerDelegate {
   // Go's answer to a request: a PBPermissionStatus for each of its kinds. A request
   // answered already is ignored.
   static void Answer(uint32_t request, const int32_t* statuses, size_t count);
+
+  // A page's download about to start (docs/video-streams.md), asked of Go as a request of
+  // our own kind, "automatic-downloads", from the origin of contents' page: clicked says a
+  // click or a key reached the page since its last download. allowed hears whether it goes;
+  // Go may ask the person first.
+  static void AskDownload(content::WebContents* contents,
+                          bool clicked,
+                          base::OnceCallback<void(bool)> allowed);
 
   // Whether a page may see its devices' names (enumerateDevices): as it may use them.
   static bool CheckMediaAccess(content::RenderFrameHost* frame,

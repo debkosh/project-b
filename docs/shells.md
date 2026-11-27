@@ -521,7 +521,9 @@ it there; a phone shell may be left out of a rule for a desktop feature.
     while the active tab has a prompt in `permissionPrompts`, the shell shows a `dialog`
     named by its question, "*site* wants to use your camera and microphone", with buttons
     named Block and Allow, or, where `once`, Block, Always allow and Allow this time; an
-    Allow grants it, Block denies it, and Escape dismisses it. Standard, Fox, Minimal and
+    Allow grants it, Block denies it, and Escape dismisses it. A page's downloads with no
+    click, after its first (kind `automatic-downloads`, docs/video-streams.md), ask as
+    "*site* wants to download several files", with Block and Allow. Standard, Fox, Minimal and
     Terminal have it. Not yet in Curve, whose own session brings it, nor in Mobile,
     which gets it as a sheet from the Android session, nor in Mobile Native, from its session.
 31. **A site's settings are one press away on a web page:** a control named Site settings

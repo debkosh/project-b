@@ -85,6 +85,10 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
     // for once the menu's Bookmark bookmarked the page, {id, new}.
     private var bookmarks = listOf<JSONObject>()
     private var marked: JSONObject? = null
+    // The questions sites wait on, Go's permissionPrompts, one a tab at most; and the one
+    // about a page's downloads whose sheet is open, until it is answered.
+    private var prompts = listOf<JSONObject>()
+    private var asking: JSONObject? = null
     private var find: JSONObject? = null
     private var pageFullScreen = 0L
     // The page dialog shown, by its id, so a dialog is drawn once and answered once.
@@ -268,9 +272,20 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
             "snapshot" -> {
                 take(m)
                 snapshotted = true
+                ask()
                 draw()
             }
-            "tabs", "theme", "windowColor", "addressBarPosition", "workspaces", "update", "crashLog",
+            // A site's question, come or gone; and another tab made active, whose own shows.
+            "permissionPrompts" -> {
+                take(m)
+                ask()
+            }
+            "tabs" -> {
+                take(m)
+                ask()
+                draw()
+            }
+            "theme", "windowColor", "addressBarPosition", "workspaces", "update", "crashLog",
             "dialogs", "bookmarks", "find", "pageFullScreen" -> {
                 take(m)
                 draw()
@@ -386,6 +401,7 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
         list("dialogs")?.let { dialogs = it }
         list("downloads")?.let { downloads = it }
         list("bookmarks")?.let { bookmarks = it }
+        list("permissionPrompts")?.let { prompts = it }
         if (m.has("find")) find = m.optJSONObject("find")
         if (m.has("pageFullScreen")) pageFullScreen = m.optLong("pageFullScreen")
     }
@@ -680,6 +696,12 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
 
     // Opens what is over the page, or closes it with "". The back key closes it first.
     private fun open(name: String) {
+        // The downloads question closed with no answer, by the back key, a tap outside or
+        // another sheet: Go hears it was dismissed, so the page's download isn't left waiting.
+        if (sheet == "ask" && name != "ask") {
+            asking?.let { answerAsk(it, "dismiss") }
+            asking = null
+        }
         sheet = name
         if (name.isNotEmpty() && editing) leave()
         // A sheet's field with the keyboard, as the bookmark's name after its Enter: taking the
@@ -695,11 +717,49 @@ class MobileNativeShell(context: Context, private val sender: ShellSender) :
             "card" -> cardSheet()
             "link" -> linkSheetView()
             "bookmark" -> bookmarkSheetView()
+            "ask" -> askSheetView()
             else -> null
         }
         if (made != null) sheets.addView(made, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         backClosesNow()
         draw()
+    }
+
+    // A page starting downloads with no click, after its first (docs/video-streams.md): Go
+    // asks, as it asks for a site's camera, with a prompt of kind automatic-downloads on the
+    // page's tab. The active tab's shows as a sheet, "site wants to download several files"
+    // with Block and Allow, as the Mobile shell's does; unanswered, the download never
+    // starts. A site's other questions aren't drawn by this shell yet.
+    private fun ask() {
+        val p = prompts.firstOrNull {
+            it.optLong("tab") == active && it.optString("os").isEmpty() &&
+                (it.optJSONArray("kinds")?.let { k -> (0 until k.length()).any { i -> k.optString(i) == "automatic-downloads" } } ?: false)
+        }
+        when {
+            p != null && (sheet != "ask" || asking?.optInt("id") != p.optInt("id")) -> {
+                asking = p
+                open("ask")
+            }
+            p == null && sheet == "ask" -> {
+                asking = null
+                open("")
+            }
+        }
+    }
+
+    private fun answerAsk(p: JSONObject, choice: String) =
+        send(JSONObject().put("t", "permissionAnswer").put("id", p.optInt("id")).put("choice", choice))
+
+    private fun askSheetView(): View? {
+        val p = asking ?: return null
+        val host = p.optString("origin").removePrefix("https://")
+        val s = Sheet(context, "$host wants to download several files", palette) { open("") }
+        downloadsAskSheet(s, palette, host) { choice ->
+            answerAsk(p, choice)
+            asking = null
+            open("")
+        }
+        return s
     }
 
     private fun backClosesNow() {

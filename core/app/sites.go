@@ -79,6 +79,7 @@ func (a *App) startSites(e engine.Engine, dir string) {
 	a.Tabs.OnChanged(func(tabs.Tab) { sendOpen() })
 	a.Tabs.OnListChanged(sendOpen)
 	a.Tabs.OnChanged(func(t tabs.Tab) { a.Sites.TabChanged(t.ID, t.URL) })
+	a.Tabs.OnNavigationFinished(func(t tabs.Tab) { a.Sites.Committed(t.ID, t.URL) })
 	a.Tabs.SetPageGuard(a.pageMay)
 	// The site view's connection row follows the open pages.
 	var connections string

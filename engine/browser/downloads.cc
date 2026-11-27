@@ -17,6 +17,7 @@
 #include "content/public/browser/download_item_utils.h"
 #include "content/public/browser/download_request_utils.h"
 #include "content/public/browser/web_contents.h"
+#include "content/public/browser/web_contents_delegate.h"
 #include "content/public/common/referrer.h"
 #include "services/network/public/mojom/referrer_policy.mojom.h"
 #include "net/base/filename_util.h"
@@ -141,6 +142,37 @@ void Downloads::ManagerGoingDown(content::DownloadManager* manager) {
 
 void Downloads::GetNextId(content::DownloadIdCallback callback) {
   std::move(callback).Run(next_id_++);
+}
+
+void Downloads::CheckDownloadAllowed(
+    const content::WebContents::Getter& web_contents_getter,
+    const GURL& url,
+    const std::string& request_method,
+    std::optional<url::Origin> request_initiator,
+    bool from_download_cross_origin_redirect,
+    bool content_initiated,
+    const std::string& mime_type,
+    std::optional<ui::PageTransition> page_transition,
+    content::CheckDownloadAllowedCallback check_download_allowed_cb) {
+  content::WebContents* contents = web_contents_getter.Run();
+  // Only a download the page itself starts is asked about: one the browser starts is the
+  // person's own. A download the browser begins (Download Link, Download Image, Retry)
+  // comes with no transition and isn't content-initiated. A navigation that became a
+  // download always says content_initiated false, and its transition doesn't tell either
+  // (a script's location.href, on a phone, went with one no page can make), so its
+  // initiator does: a navigation a page made has the page's origin, and one the browser
+  // made (an address typed or opened, a bookmark) has none. A download another server's
+  // redirect handed on was asked about when it began.
+  const bool browser_started = page_transition.has_value()
+                                   ? !request_initiator.has_value()
+                                   : !content_initiated;
+  if (browser_started || !contents || !contents->GetDelegate() ||
+      from_download_cross_origin_redirect) {
+    std::move(check_download_allowed_cb).Run(true);
+    return;
+  }
+  contents->GetDelegate()->CanDownload(url, request_method,
+                                       std::move(check_download_allowed_cb));
 }
 
 void Downloads::OnDownloadCreated(content::DownloadManager* manager,

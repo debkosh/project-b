@@ -299,3 +299,114 @@ func TestEachSparksOwnSwitchGoes(t *testing.T) {
 		t.Fatalf("%+v", s)
 	}
 }
+
+// A page's downloads (docs/video-streams.md): its first with no click goes, a later one with
+// no click asks, and one started by a click goes. The answer holds for the site, in every
+// tab, until the app quits: it is kept in no file, and settings has no row for it.
+func TestAPagesDownloadsWithNoClickAskAfterTheFirst(t *testing.T) {
+	dir := t.TempDir()
+	m, tabs, got := setup(t, dir)
+	const news = "https://news.test"
+	ask(m, 1, 2, news, false, Downloads)
+	want(t, got, 1, G)
+	if len(m.Prompts()) != 0 {
+		t.Fatal("the first download asked")
+	}
+	ask(m, 2, 2, news, false, Downloads)
+	p := m.Prompts()
+	if len(p) != 1 || p[0].Tab != 2 || p[0].Origin != news || !reflect.DeepEqual(p[0].Kinds, []string{Downloads}) || p[0].Once || got[2] != nil {
+		t.Fatalf("the second with no click: prompts %+v, answered %v", p, got[2])
+	}
+	// One started by a click goes meanwhile; it waits behind no question.
+	ask(m, 3, 2, news, true, Downloads)
+	want(t, got, 3, G)
+	// A link that becomes a download changes the tab's address for a moment: the question stays.
+	m.TabChanged(2, "https://cdn.test/file.zip")
+	m.TabChanged(2, "https://news.test/")
+	if len(m.Prompts()) != 1 {
+		t.Fatal("the question went with the download's own address")
+	}
+	m.Answer(p[0].ID, Dismiss)
+	want(t, got, 2, A)
+	// Closed with no answer, the next asks again; Block then holds, with no question.
+	ask(m, 4, 2, news, false, Downloads)
+	p = m.Prompts()
+	if len(p) != 1 {
+		t.Fatalf("prompts %+v", p)
+	}
+	m.Answer(p[0].ID, Block)
+	want(t, got, 4, D)
+	ask(m, 5, 2, news, false, Downloads)
+	want(t, got, 5, D)
+	// A click still downloads on a blocked site, and so does another tab's first.
+	ask(m, 6, 2, news, true, Downloads)
+	want(t, got, 6, G)
+	tabs[3] = "https://news.test/other"
+	ask(m, 7, 3, news, false, Downloads)
+	want(t, got, 7, G)
+	ask(m, 8, 3, news, false, Downloads)
+	want(t, got, 8, D)
+	if len(m.Sites()) != 0 {
+		t.Fatalf("the answer was kept as a setting: %+v", m.Sites())
+	}
+	for _, s := range Settable() {
+		if s.Kind == Downloads {
+			t.Fatal("settings offers it")
+		}
+	}
+	if _, err := os.Stat(filepath.Join(dir, "sites.json")); err == nil {
+		t.Fatal("the answer went into sites.json")
+	}
+	// After a quit, the site asks again.
+	again, _, got2 := setup(t, dir)
+	ask(again, 1, 2, news, false, Downloads)
+	ask(again, 2, 2, news, false, Downloads)
+	if len(again.Prompts()) != 1 || got2[2] != nil {
+		t.Fatal("the answer outlived the app")
+	}
+}
+
+// Allow lets every later download of the site go, the ones waiting behind the question too;
+// a page on another origin has its own first, and a question goes when its tab shows
+// another site's page.
+func TestAllowedDownloadsGoAndAnotherPageStartsAfresh(t *testing.T) {
+	m, _, got := setup(t, t.TempDir())
+	const news = "https://news.test"
+	ask(m, 1, 2, news, false, Downloads)
+	ask(m, 2, 2, news, false, Downloads)
+	ask(m, 3, 2, news, false, Downloads)
+	if got[2] != nil || got[3] != nil {
+		t.Fatal("answered before the person did")
+	}
+	m.Answer(m.Prompts()[0].ID, Allow)
+	want(t, got, 2, G)
+	want(t, got, 3, G)
+	ask(m, 4, 2, news, false, Downloads)
+	want(t, got, 4, G)
+	// The tab goes to another site: its first goes, its second asks, and leaving drops that.
+	m.Committed(2, "https://shop.test/")
+	ask(m, 5, 2, "https://shop.test", false, Downloads)
+	want(t, got, 5, G)
+	ask(m, 6, 2, "https://shop.test", false, Downloads)
+	if len(m.Prompts()) != 1 {
+		t.Fatal("the second on the new site didn't ask")
+	}
+	m.Committed(2, "https://shop.test/basket")
+	if len(m.Prompts()) != 1 {
+		t.Fatal("the question went with a page of the same site")
+	}
+	m.Committed(2, "https://news.test/")
+	want(t, got, 6, A)
+	if len(m.Prompts()) != 0 {
+		t.Fatal("the question stayed on another site's page")
+	}
+	// A reload of the page is the same site's: no new first.
+	m.Committed(2, "https://shop.test/")
+	ask(m, 7, 2, "https://shop.test", false, Downloads)
+	want(t, got, 7, G)
+	m.Committed(2, "https://shop.test/")
+	ask(m, 8, 2, "https://shop.test", false, Downloads)
+	if len(m.Prompts()) != 1 {
+		t.Fatal("a reload gave the page another download with no click")
+	}
+}

@@ -1,5 +1,5 @@
 <script>
-  import { answerPermission, osLine, osTitle, permissionAsk, permissionHost } from '@/sdk/sites.js';
+  import { answerPermission, osLine, osTitle, permissionAsk, permissionGlyph, permissionHost } from '@/sdk/sites.js';
   import Sheet from './Sheet.svelte';
 
   // A site asking to use its camera, microphone or notifications, on a phone
@@ -11,7 +11,7 @@
   // may ask again; the page stays usable behind it.
   let { prompt } = $props();
   const question = $derived(prompt.os ? osTitle(prompt) : `${permissionHost(prompt)} wants to ${permissionAsk(prompt)}`);
-  const glyph = $derived(prompt.kinds.includes('camera') ? 'camera' : prompt.kinds.includes('microphone') ? 'microphone' : 'bell');
+  const glyph = $derived(permissionGlyph(prompt));
   const answer = (choice) => answerPermission(prompt, choice);
 </script>
 
@@ -25,6 +25,8 @@
       {:else if glyph === 'microphone'}
         <rect x="5.75" y="1.75" width="4.5" height="8" rx="2.25" />
         <path d="M3.5 7.5a4.5 4.5 0 0 0 9 0M8 12v2.25" />
+      {:else if glyph === 'download'}
+        <path d="M8 2.25v8M4.75 7.25 8 10.5l3.25-3.25M3 13.25h10" />
       {:else}
         <path d="M4 11.5V7a4 4 0 0 1 8 0v4.5l1 1H3zM6.5 14h3" />
       {/if}

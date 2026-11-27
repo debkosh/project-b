@@ -22,6 +22,7 @@ import json
 import mimetypes
 import os
 import re
+import shlex
 import shutil
 import sqlite3
 import subprocess
@@ -52,6 +53,10 @@ FIELD = "android.widget.EditText"  # The address field is the shell's only text 
 
 PAGES = {
     "/a": "<title>Page A</title><a href=/b style='display:block;height:200px;font-size:40px'>to b</a>",
+    # A page that starts two downloads by itself, the second a while after the first
+    # (page_downloads_ask).
+    "/two-files": "<title>Two files</title><script>location.href='/dl/pb-ask-one.zip';"
+                  "setTimeout(function(){location.href='/dl/pb-ask-two.zip'},3000)</script>two files",
     "/b": "<title>Page B \U0001F642</title>b",
     "/c": "<title>Page C</title>c",
     "/tap": "<title>Tap</title><button style='position:fixed;left:0;top:0;width:100%;height:200px'"
@@ -1409,6 +1414,39 @@ def notification_of(name):
             said = re.search(r"android\.text=String \(([^)]*)\)", record)
             return said.group(1) if said else ""
     return None
+
+
+def page_downloads_ask():
+    """A page's downloads with no tap ask after its first (docs/video-streams.md), in both
+    Mobile shells, the web one and the native one: the first goes; the second waits on a
+    sheet, "site wants to download several files", and Allow lets it go."""
+    files = lambda: adb("shell", "ls", "-1", "/sdcard/Download/").splitlines()
+    # A file rm takes away keeps its row in Android's media store, so the next one of that
+    # name lands as "name (1)": either counts.
+    has = lambda stem: any(re.fullmatch(re.escape(stem) + r"( \(\d+\))?\.zip", f) for f in files())
+    for shell in ("mwshell", "mkshell"):
+        for stale in [f for f in files() if f.startswith("pb-ask-")]:
+            adb("shell", "rm", "-f", shlex.quote("/sdcard/Download/" + stale))
+        use_shell(shell)
+        try:
+            launch()
+            go(BASE + "/two-files")
+            first = until(lambda: has("pb-ask-one"), 20)
+            check(shell + ": a page's first download with no tap goes", first is not None, files()[-6:])
+            asks = until(lambda: find("shell", text=lambda t: "wants to download several files" in (t or "")) or
+                         find("shell", label=lambda t: "wants to download several files" in (t or "")), 20)
+            check(shell + ": its second asks first, on a sheet: site wants to download several files",
+                  asks is not None and not has("pb-ask-two"), files()[-6:])
+            shot("28-downloads-ask-" + shell)
+            if asks is not None:
+                tap(middle(see_named("shell", "Allow")))
+            second = until(lambda: has("pb-ask-two"), 20)
+            check(shell + ": Allow lets it go, and the sheet goes",
+                  second is not None and until(lambda: find("shell", text=lambda t: "wants to download several files" in (t or "")) is None, 10) is not None, files()[-6:])
+        finally:
+            use_shell("")
+            for stale in [f for f in files() if f.startswith("pb-ask-")]:
+                adb("shell", "rm", "-f", shlex.quote("/sdcard/Download/" + stale))
 
 
 def downloads():
@@ -3463,7 +3501,7 @@ def main():
 
     # Each part starts the app again, so one that the app doesn't survive costs only itself.
     every = (browsing, mobile_shell, custom_colour, settings_back, talkback_states, bookmark_star, settings_ahead, back_key_chain, page_dialogs, popups, leave, page_camera, downloads, crash_notice, relaunch_on_the_phone, download_notifications, download_outlives_screen, file_inputs, page_full_screen, find_in_page, page_paints, history_after_a_restart, links_from_other_apps, sync_on_the_phone, passkeys_on_the_phone, passwords_on_the_phone, where_go_runs, the_page_renderer_dies, the_shell_renderer_dies,
-             the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web, secure_dns, long_press_menu, keyboard_bars, welcome_extras, welcome_last_step, web_server_kinds, update_on_the_phone, settings_keeps_its_size, update_notification)
+             the_gpu_process_dies, a_page_spins, web_apis, links_to_other_sites, the_real_web, secure_dns, long_press_menu, keyboard_bars, page_downloads_ask, welcome_extras, welcome_last_step, web_server_kinds, update_on_the_phone, settings_keeps_its_size, update_notification)
     for part in [p for p in every if not sys.argv[1:] or p.__name__ in sys.argv[1:]]:
         # tools/results.py splits a run's memory, CPU and checks by these lines.
         print("--- part " + part.__name__, flush=True)

@@ -23,6 +23,8 @@ export function permissionHost(prompt) {
 // permissionAsk is what the site asks for, as the end of a sentence: "use your camera and
 // microphone", "show notifications".
 export function permissionAsk(prompt) {
+  // A page starting downloads with no click, after its first (docs/video-streams.md).
+  if (prompt.kinds.includes('automatic-downloads')) return 'download several files';
   const use = [];
   if (prompt.kinds.includes('camera')) use.push('camera');
   if (prompt.kinds.includes('microphone')) use.push('microphone');
@@ -30,6 +32,16 @@ export function permissionAsk(prompt) {
   if (use.length) parts.push('use your ' + use.join(' and '));
   if (prompt.kinds.includes('notifications')) parts.push('show notifications');
   return parts.join(' and ');
+}
+
+// permissionGlyph is the picture of what is asked: a camera, a microphone, a download or a
+// bell.
+export function permissionGlyph(prompt) {
+  const k = prompt.kinds;
+  if (k.includes('camera')) return 'camera';
+  if (k.includes('microphone')) return 'microphone';
+  if (k.includes('automatic-downloads')) return 'download';
+  return 'bell';
 }
 
 // A prompt with os set is the OS refusing what the site is allowed, its camera or microphone

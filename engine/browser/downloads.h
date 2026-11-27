@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <map>
+#include <optional>
 #include <string>
 
 #include "base/files/file_path.h"
@@ -16,11 +17,10 @@
 #include "content/public/common/referrer.h"
 #include "content/public/browser/download_manager.h"
 #include "content/public/browser/download_manager_delegate.h"
+#include "content/public/browser/web_contents.h"
+#include "ui/base/page_transition_types.h"
 #include "url/gurl.h"
-
-namespace content {
-class WebContents;
-}  // namespace content
+#include "url/origin.h"
 
 namespace project_b {
 
@@ -56,6 +56,18 @@ class Downloads : public content::DownloadManagerDelegate,
   bool DetermineDownloadTarget(download::DownloadItem* item,
                                download::DownloadTargetCallback* callback) override;
   void GetNextId(content::DownloadIdCallback callback) override;
+  // A page's download about to start: its tab is asked, WebContentsDelegate::CanDownload,
+  // as Chrome asks its tab's limiter (docs/video-streams.md).
+  void CheckDownloadAllowed(
+      const content::WebContents::Getter& web_contents_getter,
+      const GURL& url,
+      const std::string& request_method,
+      std::optional<url::Origin> request_initiator,
+      bool from_download_cross_origin_redirect,
+      bool content_initiated,
+      const std::string& mime_type,
+      std::optional<ui::PageTransition> page_transition,
+      content::CheckDownloadAllowedCallback check_download_allowed_cb) override;
 
   // content::DownloadManager::Observer:
   void OnDownloadCreated(content::DownloadManager* manager,

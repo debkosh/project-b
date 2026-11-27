@@ -83,6 +83,7 @@ class PageTab : public WebContentsObserverHooks, public WebContentsDelegateHooks
   void DidChangeVerticalScrollDirection(
       viz::VerticalScrollDirection scroll_direction) override;
   void DidChangeVisibleSecurityState() override;
+  void DidGetUserInteraction(const blink::WebInputEvent& event) override;
   void TitleWasSet(content::NavigationEntry* entry) override;
   void OnWebContentsFocused(
       content::RenderWidgetHost* render_widget_host) override;
@@ -173,6 +174,11 @@ class PageTab : public WebContentsObserverHooks, public WebContentsDelegateHooks
       const std::vector<blink::mojom::ColorSuggestionPtr>& suggestions)
       override;
 #endif
+  // A download the page is about to start, which the profile's Downloads asks about as
+  // Chrome's asks its tab (docs/video-streams.md): Go decides, and may ask the person.
+  void CanDownload(const GURL& url,
+                   const std::string& request_method,
+                   base::OnceCallback<void(bool)> callback) override;
   // getUserMedia, and whether a page may see its devices' names: Go decides.
   bool CheckMediaAccessPermission(content::RenderFrameHost* render_frame_host,
                                   const url::Origin& security_origin,
@@ -200,6 +206,9 @@ class PageTab : public WebContentsObserverHooks, public WebContentsDelegateHooks
   scoped_refptr<base::RefCountedMemory> thumbnail_;
   // Content's find request numbers to Go's, until each one's final reply.
   std::map<int, int> find_requests_;
+  // A click, a tap or a key reached the page since its last download: that download was
+  // started by the person, as Chrome's limit on a page's downloads counts it.
+  bool clicked_ = false;
   // The frame the last menu was opened on, and its referrer policy.
   content::Referrer menu_referrer_;
   base::WeakPtrFactory<PageTab> weak_factory_{this};

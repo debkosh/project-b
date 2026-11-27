@@ -251,6 +251,21 @@ it shows: the engine ends it as a failure with no failure named, at that page's 
 Go puts the tab's address back. Before, the tab kept the download's address, and a restart
 loaded it and downloaded the file again.
 
+**A page starting downloads** (docs/video-streams.md). A page's download asks its tab
+first, as Chrome's does (`DownloadManagerDelegate::CheckDownloadAllowed`, then the tab's
+`WebContentsDelegate::CanDownload`): the engine sends Go a request of our own kind,
+`automatic-downloads`, as a permission's (`PB_EVENT_PERMISSION_REQUEST`), from the origin of
+the tab's page, its gesture a click, a tap or a key on the page since its last download
+(scrolling is none). `core/sites` decides: one from a click goes, and so does the first a
+page starts by itself; a later one with no click is a prompt, "*site* wants to download
+several files" with Block and Allow, worded as the other prompts are (ux, 2026-11-27), in
+the shell's place for a site's question; the native Mobile shell, which draws no other
+question of a site's yet, shows this one as a sheet (`downloadsAskSheet`). The answer holds for the origin, in every tab, until the app quits: it is in
+no file and settings has no row for it. Closed with no answer, the download doesn't start
+and the next asks again. A tab that shows another site's page has its first again, and the
+question goes with it. Save Link As, Retry and our own pages' downloads are the person's and
+never ask.
+
 ## File upload
 
 The panel is the system's own, so no shell draws anything. A page's `<input type=file>`

@@ -200,6 +200,31 @@ void Permissions::Answer(uint32_t request, const int32_t* statuses, size_t count
   std::move(pending.callback).Run(results);
 }
 
+// static
+void Permissions::AskDownload(content::WebContents* contents,
+                              bool clicked,
+                              base::OnceCallback<void(bool)> allowed) {
+  uint32_t id = ++g_last_request;
+  PendingRequests()[id] = {
+      base::BindOnce(
+          [](base::OnceCallback<void(bool)> allowed,
+             const std::vector<content::PermissionResult>& results) {
+            std::move(allowed).Run(
+                !results.empty() &&
+                results[0].status == blink::mojom::PermissionStatus::GRANTED);
+          },
+          std::move(allowed)),
+      1};
+  hooks::Args args;
+  args.Int(id);
+  args.Int(hooks::TabOf(contents));
+  args.Str(contents->GetPrimaryMainFrame()->GetLastCommittedOrigin().Serialize());
+  args.Str("automatic-downloads");
+  args.Bool(clicked);
+  // Go answers with Answer, perhaps from inside this call.
+  hooks::Fire(PB_EVENT_PERMISSION_REQUEST, args);
+}
+
 blink::mojom::PermissionStatus Permissions::StatusOf(
     const blink::mojom::PermissionDescriptorPtr& descriptor,
     int64_t tab,

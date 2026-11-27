@@ -102,7 +102,11 @@ typedef enum PBEvent {
                                         // asking, s: its kinds, comma-separated, as the
                                         // Permissions API names them, i: a user gesture
                                         // led to it. No answer: Go answers with
-                                        // answer_permission, now or later
+                                        // answer_permission, now or later. One kind is
+                                        // ours: "automatic-downloads", a download the
+                                        // tab's page is about to start, which goes only
+                                        // when granted; its gesture is a click, a tap or a
+                                        // key on the page since its last download
   PB_EVENT_PERMISSION_STATUS = 41,      // i: tab or 0, s: origin, s: kind; answers i: a
                                         // PBPermissionStatus
   PB_EVENT_NOTIFICATION_SHOW = 42,      // s: notification, s: origin, s: the page showing
