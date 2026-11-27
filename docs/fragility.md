@@ -1266,3 +1266,23 @@ notes and a hint at first start. A Developer ID's Team ID would give a stable `t
 
 **The check.** `tools/vm/run.sh <0.3.9 DMG> upgrade` (PB_VM=pb-secret, PB_UPGRADE_TO=<new DMG>) prints
 the item's partition list before and after the update.
+
+## A long stream failed on a phone's connection, 2026-11-28
+
+- **Seen:** a 200 MB HLS stream of 42 pieces, saved on the phone over 5G, failed with
+  "Couldn't download ... (3).mp4: the connection stopped". Its Retry started over from
+  nothing. On a Mac's network the same stream saved.
+- **Cause:** the site's pieces come through a Cloudflare proxy that is slow and now and
+  then fails: a cold piece takes 15 seconds, and one answered 525 after 41. The job asked a
+  failed piece again at once, 3 times in all, with 4 still fetched at a time, and then
+  ended, throwing its folder away, so one bad piece in 42 lost the lot.
+- **Seam:** a stream's job against a server and a connection that fail for a while.
+- **Fix:** the stream-retries branch: a part that fails at the connection or at a status
+  that may pass (408, 425, 429, 5xx gateway errors, Cloudflare's 52x) waits 1, 2, 4, 8, 16,
+  then 30 seconds between tries, 8 in all, with one fetched at a time after a failure and
+  more as they come in; one that still fails holds the job paused with its folder, and
+  Retry goes on from there. A 403, 404 or 410 still fails at once.
+- **Guard:** core/streams' tests of the waits, the statuses, Pause and Cancel during a wait,
+  the limit, and a stopped job's Resume fetching only what isn't in; core/downloads' test
+  that a failed row's Retry fetches only the missing piece, and that Retry after Cancel
+  starts over.

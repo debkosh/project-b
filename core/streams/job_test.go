@@ -1,6 +1,7 @@
 package streams
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -35,9 +37,12 @@ type rig struct {
 	// asked are the paths the server was asked for, in order, and from the Referer of each.
 	asked []string
 	from  map[string]string
-	// slow holds each piece back this long; fail answers a path with 503 this many times.
-	slow time.Duration
-	fail map[string]int
+	// slow holds each piece back this long; fail answers a path with 503, or the status
+	// status gives it, this many times, and drop closes the connection on it so many times.
+	slow   time.Duration
+	fail   map[string]int
+	status map[string]int
+	drop   map[string]int
 	// extra are playlists written for a test, by path; alias other paths for a file.
 	extra map[string]string
 	alias map[string]string
@@ -46,12 +51,57 @@ type rig struct {
 
 	fetches map[engine.FetchID]context.CancelFunc
 	wanted  []engine.FetchRequest
+
+	// The job's clock, main thread: the waits it asked for, in order, and with hold those not
+	// yet over, which tick ends; without, each is over at once.
+	waits  []time.Duration
+	hold   bool
+	timers []func()
+	// counted counts the pieces under way, when a test sets it.
+	counted *counting
+}
+
+// after is the job's timer on the rig's clock.
+func (r *rig) after(d time.Duration, f func()) func() {
+	r.waits = append(r.waits, d)
+	stopped := false
+	fire := func() {
+		if !stopped {
+			f()
+		}
+	}
+	if r.hold {
+		r.timers = append(r.timers, fire)
+	} else {
+		r.posted <- fire
+	}
+	return func() { stopped = true }
+}
+
+// tick ends every wait under way.
+func (r *rig) tick() {
+	timers := r.timers
+	r.timers = nil
+	for _, fire := range timers {
+		r.posted <- fire
+	}
+}
+
+// count is how often the server was asked for path.
+func (r *rig) count(path string) int {
+	n := 0
+	for _, a := range r.requests() {
+		if a == path {
+			n++
+		}
+	}
+	return n
 }
 
 func newRig(t *testing.T) *rig {
 	t.Helper()
 	r := &rig{t: t, posted: make(chan func(), 1024), dir: t.TempDir(), from: map[string]string{}, fail: map[string]int{},
-		extra: map[string]string{}, alias: map[string]string{}, fetches: map[engine.FetchID]context.CancelFunc{}}
+		status: map[string]int{}, drop: map[string]int{}, extra: map[string]string{}, alias: map[string]string{}, fetches: map[engine.FetchID]context.CancelFunc{}}
 	files := http.FileServer(http.Dir("testdata"))
 	r.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, q *http.Request) {
 		r.mu.Lock()
@@ -62,10 +112,22 @@ func newRig(t *testing.T) *rig {
 		if failing {
 			r.fail[q.URL.Path]--
 		}
+		status := cmp.Or(r.status[q.URL.Path], http.StatusServiceUnavailable)
+		dropping := r.drop[q.URL.Path] > 0
+		if dropping {
+			r.drop[q.URL.Path]--
+		}
 		body, written := r.extra[q.URL.Path]
 		r.mu.Unlock()
+		if dropping {
+			c, _, err := w.(http.Hijacker).Hijack()
+			if err == nil {
+				c.Close()
+			}
+			return
+		}
 		if failing {
-			http.Error(w, "busy", http.StatusServiceUnavailable)
+			http.Error(w, "busy", status)
 			return
 		}
 		if written {
@@ -148,6 +210,8 @@ type saved struct {
 	done     bool
 	err      error
 	progress []Progress
+	// stopped is why the job stopped for a part that kept failing, the last time it did.
+	stopped error
 }
 
 // start starts saving the stream at path on the rig's server, its playlist already in hand
@@ -170,10 +234,11 @@ func (r *rig) start(path string, space engine.AddressSpace, fetched bool) *saved
 		}
 		src.Body = []byte(body)
 	}
-	s.job = Start(Config{Source: src, Fetcher: r.fetch, Post: func(f func()) { r.posted <- f },
+	s.job = Start(Config{Source: src, Fetcher: r.fetcher(), Post: func(f func()) { r.posted <- f }, After: r.after,
 		Dir: filepath.Join(r.dir, "work"), Out: s.out,
 		Changed: func(p Progress) { s.progress = append(s.progress, p) },
-		Done:    func(err error) { s.done, s.err = true, err }})
+		Done:    func(err error) { s.done, s.err = true, err },
+		Stopped: func(err error) { s.stopped = err }})
 	return s
 }
 
@@ -630,29 +695,242 @@ func TestCancel(t *testing.T) {
 	}
 }
 
-// A piece that fails is asked for again; one that keeps failing fails the job, saying why.
-func TestAFailingPieceIsAskedForAgain(t *testing.T) {
+// counting is the rig's fetch, counting the pieces under way: seen is how many were as each
+// was asked for, and limits the job's limit then; failed is where in seen the first that
+// failed came back, and dropped the limit just after.
+type counting struct {
+	f       Fetcher
+	job     **Job
+	live    int
+	seen    []int
+	limits  []int
+	failed  int
+	dropped int
+}
+
+func (c *counting) Fetch(q engine.FetchRequest, done func(engine.Fetched)) func() {
+	if !strings.Contains(q.URL, "piece") {
+		return c.f.Fetch(q, done)
+	}
+	c.seen = append(c.seen, c.live)
+	c.limits = append(c.limits, (*c.job).limit)
+	c.live++
+	over := false
+	cancel := c.f.Fetch(q, func(got engine.Fetched) {
+		over = true
+		c.live--
+		failed := got.Outcome != engine.FetchOK && c.failed < 0
+		if failed {
+			c.failed = len(c.seen)
+		}
+		done(got)
+		if failed {
+			c.dropped = (*c.job).limit
+		}
+	})
+	return func() {
+		if !over {
+			over = true
+			c.live--
+		}
+		cancel()
+	}
+}
+
+// fetcher is the job's fetch: counted when the test counts.
+func (r *rig) fetcher() Fetcher {
+	if r.counted != nil {
+		return r.counted
+	}
+	return r.fetch
+}
+
+// A piece whose connection drops is asked for again, after a wait that grows: 1 second,
+// then 2, and the stream is saved whole.
+func TestAPieceThatFailsWaitsLongerEachTime(t *testing.T) {
 	r := newRig(t)
-	r.fail["/ts/piece1.ts"] = 2
+	r.drop["/ts/piece1.ts"] = 2
 	s := r.save("/ts/index.m3u8", engine.SpaceLoopback)
+	if s.err != nil || s.stopped != nil {
+		t.Fatal(s.err, s.stopped)
+	}
+	same(t, s.out, expected(t, "ts"))
+	if want := []time.Duration{time.Second, 2 * time.Second}; !reflect.DeepEqual(r.waits, want) {
+		t.Errorf("waited %v, want %v", r.waits, want)
+	}
+	if n := r.count("/ts/piece1.ts"); n != 3 {
+		t.Errorf("the piece was asked for %d times", n)
+	}
+	// Every try waits longer, up to 30 seconds, and 8 are made in all.
+	var waits []time.Duration
+	for tried := 1; tried < tries; tried++ {
+		waits = append(waits, wait(tried))
+	}
+	if want := []time.Duration{1, 2, 4, 8, 16, 30, 30}; len(waits) != len(want) || tries != 8 {
+		t.Fatalf("waits %v", waits)
+	} else {
+		for i := range want {
+			if waits[i] != want[i]*time.Second {
+				t.Fatalf("waits %v", waits)
+			}
+		}
+	}
+}
+
+// A server that is busy or can't reach its own (503, Cloudflare's 525) is asked again; one
+// that says the piece isn't there (404, 403, 410) fails the job at once, saying why.
+func TestABusyServerIsAskedAgainAndAMissingPieceFailsAtOnce(t *testing.T) {
+	for _, status := range []int{503, 525, 429, 502} {
+		r := newRig(t)
+		r.fail["/ts/piece2.ts"], r.status["/ts/piece2.ts"] = 2, status
+		s := r.save("/ts/index.m3u8", engine.SpaceLoopback)
+		if s.err != nil || s.stopped != nil {
+			t.Fatalf("%d: %v %v", status, s.err, s.stopped)
+		}
+		same(t, s.out, expected(t, "ts"))
+		if len(r.waits) != 2 || r.count("/ts/piece2.ts") != 3 {
+			t.Errorf("%d: waited %v, asked %d times", status, r.waits, r.count("/ts/piece2.ts"))
+		}
+	}
+	for _, status := range []int{404, 403, 410} {
+		r := newRig(t)
+		r.fail["/ts/piece2.ts"], r.status["/ts/piece2.ts"] = 1, status
+		s := r.save("/ts/index.m3u8", engine.SpaceLoopback)
+		var failed *FetchError
+		if reason, again := Reason(s.err); !errors.As(s.err, &failed) || reason != "server" || !again || s.stopped != nil {
+			t.Fatalf("%d: %v, stopped %v", status, s.err, s.stopped)
+		}
+		if len(r.waits) != 0 || r.count("/ts/piece2.ts") != 1 {
+			t.Errorf("%d: waited %v, asked %d times", status, r.waits, r.count("/ts/piece2.ts"))
+		}
+		r.idle(200 * time.Millisecond)
+		if left, _ := filepath.Glob(filepath.Join(r.dir, "*")); len(left) != 0 {
+			t.Fatalf("%d: failed, it left %v", status, left)
+		}
+	}
+}
+
+// Pause during a wait stops it: nothing is asked for when the wait would have ended, and
+// Resume goes on to the whole MP4. Cancel during one leaves nothing behind.
+func TestPauseAndCancelDuringAWait(t *testing.T) {
+	r := newRig(t)
+	r.hold = true
+	r.fail["/ts/piece1.ts"] = 1
+	s := r.start("/ts/index.m3u8", engine.SpaceLoopback, false)
+	r.run(func() bool { return len(r.timers) == 1 })
+	s.job.Pause()
+	r.tick()
+	r.idle(300 * time.Millisecond)
+	asked := r.count("/ts/piece1.ts")
+	if asked != 1 || s.done {
+		t.Fatalf("paused in its wait, the piece was asked for %d times, done %v", asked, s.done)
+	}
+	s.job.Resume()
+	r.run(func() bool { return s.done })
 	if s.err != nil {
 		t.Fatal(s.err)
 	}
 	same(t, s.out, expected(t, "ts"))
+	if n := r.count("/ts/piece1.ts"); n != 2 {
+		t.Errorf("the piece was asked for %d times", n)
+	}
 
 	r = newRig(t)
-	r.fail["/ts/piece1.ts"] = 3
-	s = r.save("/ts/index.m3u8", engine.SpaceLoopback)
-	var failed *FetchError
-	if reason, again := Reason(s.err); !errors.As(s.err, &failed) || reason != "server" || !again {
-		t.Fatalf("%v", s.err)
+	r.hold = true
+	r.fail["/ts/piece1.ts"] = 1
+	s = r.start("/ts/index.m3u8", engine.SpaceLoopback, false)
+	r.run(func() bool { return len(r.timers) == 1 })
+	s.job.Cancel()
+	r.tick()
+	r.idle(400 * time.Millisecond)
+	if left, _ := filepath.Glob(filepath.Join(r.dir, "*")); s.done || len(left) != 0 || r.count("/ts/piece1.ts") != 1 {
+		t.Fatalf("cancelled in its wait: done %v, left %v, asked %d times", s.done, left, r.count("/ts/piece1.ts"))
 	}
-	if _, err := os.Stat(s.out); err == nil {
-		t.Fatal("a failed job left a file")
+}
+
+// After a piece fails, one is fetched at a time, and one more at once after each that
+// comes in, up to 4 again.
+func TestFewerAreFetchedAtOnceWhilePiecesFail(t *testing.T) {
+	r := newRig(t)
+	r.slow = 30 * time.Millisecond
+	var job *Job
+	r.counted = &counting{f: r.fetch, job: &job, failed: -1}
+	// Three runs of the same four pieces: piece1 fails the first time it is asked for.
+	run := "#EXTINF:1.0,\npiece0.ts\n#EXTINF:1.0,\npiece1.ts\n#EXTINF:1.0,\npiece2.ts\n#EXTINF:1.0,\npiece3.ts\n"
+	r.extra["/ts/three.m3u8"] = head + run + "#EXT-X-DISCONTINUITY\n" + run + "#EXT-X-DISCONTINUITY\n" + run + "#EXT-X-ENDLIST\n"
+	r.fail["/ts/piece1.ts"] = 1
+	s := r.start("/ts/three.m3u8", engine.SpaceLoopback, false)
+	job = s.job
+	r.run(func() bool { return s.done })
+	if s.err != nil {
+		t.Fatal(s.err)
+	}
+	c := r.counted
+	if c.failed < 0 || slices.Max(c.seen[:c.failed]) != together-1 || c.dropped != 1 {
+		t.Fatalf("under way as each was asked for: %v, the failure at %d, the limit then %d", c.seen, c.failed, c.dropped)
+	}
+	// Never more under way than the limit; after the failure, it grows back from 1 to 4,
+	// one at a time, and 4 are under way again.
+	for i := range c.seen {
+		if c.seen[i] >= c.limits[i] {
+			t.Fatalf("%d under way with a limit of %d: %v, %v", c.seen[i], c.limits[i], c.seen, c.limits)
+		}
+	}
+	after := c.limits[c.failed:]
+	if len(after) == 0 || after[0] >= together || after[len(after)-1] != together || slices.Max(c.seen[c.failed:]) != together-1 {
+		t.Fatalf("limits after the failure: %v, under way %v", after, c.seen[c.failed:])
+	}
+	for i := 1; i < len(after); i++ {
+		if after[i] > after[i-1]+1 {
+			t.Fatalf("limits after the failure: %v", after)
+		}
+	}
+}
+
+// A piece that fails at every try stops the job, saying why, with what it has kept; Resume,
+// as a Retry, fetches only the pieces not yet in, and the MP4 is whole.
+func TestAStoppedJobGoesOnWhereItStopped(t *testing.T) {
+	r := newRig(t)
+	r.fail["/ts/piece2.ts"] = tries
+	s := r.start("/ts/index.m3u8", engine.SpaceLoopback, false)
+	r.run(func() bool { return s.stopped != nil })
+	var failed *FetchError
+	if reason, again := Reason(s.stopped); !errors.As(s.stopped, &failed) || reason != "server" || !again || s.done {
+		t.Fatalf("stopped %v, done %v", s.stopped, s.done)
+	}
+	if len(r.waits) != tries-1 || !s.job.Paused() || !s.job.Kept() {
+		t.Fatalf("waited %v; paused %v, kept %v", r.waits, s.job.Paused(), s.job.Kept())
 	}
 	r.idle(200 * time.Millisecond)
-	if left, _ := filepath.Glob(filepath.Join(r.dir, "*")); len(left) != 0 {
-		t.Fatalf("failed, it left %v", left)
+	before := r.requests()
+	in := s.job.Progress().Pieces
+	if in < 2 || r.count("/ts/piece2.ts") != tries {
+		t.Fatalf("%d pieces in, asked for %v", in, before)
+	}
+	s.job.Resume()
+	r.run(func() bool { return s.done })
+	if s.err != nil {
+		t.Fatal(s.err)
+	}
+	same(t, s.out, expected(t, "ts"))
+	// Only what wasn't in: piece2, the others being repacked or fetched and waiting for it.
+	if again := r.requests()[len(before):]; !reflect.DeepEqual(again, []string{"/ts/piece2.ts"}) {
+		t.Fatalf("with %d in, Retry asked for %v", in, again)
+	}
+	for _, p := range []string{"/ts/piece0.ts", "/ts/piece1.ts", "/ts/piece3.ts"} {
+		if n := r.count(p); n != 1 {
+			t.Fatalf("%s was asked for %d times", p, n)
+		}
+	}
+	// A cancelled job keeps nothing to go on from.
+	r = newRig(t)
+	r.fail["/ts/piece2.ts"] = tries
+	s = r.start("/ts/index.m3u8", engine.SpaceLoopback, false)
+	r.run(func() bool { return s.stopped != nil })
+	s.job.Cancel()
+	r.idle(300 * time.Millisecond)
+	if left, _ := filepath.Glob(filepath.Join(r.dir, "*")); s.job.Kept() || len(left) != 0 || s.done {
+		t.Fatalf("cancelled when stopped: kept %v, left %v, done %v", s.job.Kept(), left, s.done)
 	}
 }
 

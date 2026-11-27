@@ -125,8 +125,10 @@ type Manager struct {
 	workspaceOf func(engine.TabID) string
 	// naming says what a download is named by: nil, each keeps its server's name.
 	naming func(engine.DownloadRequest) Naming
-	// jobs counts the streams started, for each one's folder.
-	jobs int
+	// jobs counts the streams started, for each one's folder; after is the streams' timer
+	// for their waits between tries, nil for a real one (tests set it).
+	jobs  int
+	after func(time.Duration, func()) func()
 }
 
 // asked is what Download was asked beside the address: a name under the folder, "" for the
@@ -698,8 +700,15 @@ func (m *Manager) drop(gone func(*Item) bool) {
 	for _, x := range m.list {
 		if !gone(x) {
 			kept = append(kept, x)
-		} else if m.byEngine[x.engine] == x {
+			continue
+		}
+		if m.byEngine[x.engine] == x {
 			delete(m.byEngine, x.engine)
+		}
+		// A failed stream's job, held for a Retry, goes with its row.
+		if x.job != nil {
+			x.job.Cancel()
+			x.job = nil
 		}
 	}
 	m.list = kept

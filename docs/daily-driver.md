@@ -123,7 +123,10 @@ download bar, "Couldn't download x.zip: the connection stopped" and so on. A str
 video that can't be saved (docs/video-streams.md), whose row is a download like any other,
 marked `stream`, has reasons of its own, `live`, `protected`, `format`, `refused` and
 `empty`: "Failed: live videos can't be saved yet", "Failed: this video is protected",
-"Failed: this video's format can't be saved yet". One marked `noRetry`, a protected video
+"Failed: this video's format can't be saved yet". A stream whose pieces kept failing at
+the connection or at a busy server fails as `connection` or `server`, and its Retry goes on
+where it stopped, keeping the pieces already in, until the app restarts
+(docs/video-streams.md, When pieces fail). One marked `noRetry`, a protected video
 or a format the app can't repack, has no Retry: trying again can't help. A file the app made itself and kept as a finished download, a saved crash report,
 has no `url` and says what it is in `from` instead. Go keeps the finished ones in the profile's `downloads.json`, the last 100, so the
 list is there after a restart; one still running when the app quit comes back `failed`.

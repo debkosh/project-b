@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"projectb/engine"
 )
@@ -37,14 +38,21 @@ type Config struct {
 	Fetcher Fetcher
 	// Post runs f on the main thread, soon: engine.Post.
 	Post func(f func())
+	// After runs f on the main thread once d has passed, unless the stop it returns is
+	// called first: a wait before a piece is asked for again. nil is a timer posting f.
+	After func(d time.Duration, f func()) (stop func())
 	// Dir is a folder of the job's own, made and removed by it; Out is the MP4's path.
 	Dir string
 	Out string
 	// Changed is told each time a piece is in; Done once, with nil when the MP4 is at Out,
 	// or why it isn't: ErrLive, ErrProtected, ErrFormat, ErrRefused, ErrEmpty, a *FetchError,
-	// or a file's error. Neither is called after Cancel. Main thread.
+	// or a file's error. Stopped is told, with a *FetchError, when a part still fails after
+	// every try at a connection or a server that may be back later: the job is paused then,
+	// keeping what is in, and Resume goes on from there with the tries anew, as a Retry;
+	// with no Stopped, that ends the job with Done. None is called after Cancel. Main thread.
 	Changed func(Progress)
 	Done    func(err error)
+	Stopped func(err error)
 }
 
 // Progress is how far a job has got: the pieces in, of how many, and their bytes.
@@ -55,12 +63,37 @@ type Progress struct {
 }
 
 // together is how many pieces are fetched at a time, ahead how many may wait to be repacked
-// before more are fetched, and tries how often one piece is asked for.
+// before more are fetched, and tries how often one part is asked for, at a connection that
+// failed or a server that may be back soon, each try waiting longer: 1 second after the
+// first, then twice as long each time, at most longest.
 const (
 	together = 4
 	ahead    = 8
-	tries    = 3
+	tries    = 8
+	first    = time.Second
+	longest  = 30 * time.Second
 )
+
+// wait is how long a part that has failed tried times waits before it is asked for again.
+func wait(tried int) time.Duration {
+	if tried > 5 {
+		return longest
+	}
+	return min(first<<(tried-1), longest)
+}
+
+// passing says a server's answer may be different soon: it timed out (408), it wasn't
+// ready (425), too many were asked (429), it or the server behind it failed or is busy
+// (500, 502, 503, 504), or Cloudflare couldn't reach the server it stands in front of
+// (520 to 527, 530). Any other, as 403, 404 or 410, fails at once. The engine's fetch tells
+// the status alone, not the headers, so a Retry-After isn't known: the waits are the job's.
+func passing(status int) bool {
+	switch status {
+	case 408, 425, 429, 500, 502, 503, 504, 530:
+		return true
+	}
+	return status >= 520 && status <= 527
+}
 
 // Job saves one stream. Every method is for the main thread; the repacking runs on a
 // goroutine of the job's own, one piece at a time, in the playlist's order.
@@ -76,8 +109,12 @@ type Job struct {
 	handed     []int
 	attempts   map[string]int
 	parts      map[*Part]*part
-	// running are the fetches under way, by a number, each with what puts it back in line.
+	// running are the fetches under way, by a number, each with what puts it back in line;
+	// waits the parts waiting to be asked for again, by the same number. limit is how many
+	// may be under way at once: 1 after a part fails, one more after each that comes in.
 	running map[int]running
+	waits   map[int]running
+	limit   int
 	last    int
 	// waiting are the keys, header pieces and playlists to ask for again once the job goes on.
 	waiting []func()
@@ -109,8 +146,14 @@ type part struct {
 
 // Start begins saving the stream.
 func Start(c Config) *Job {
+	if c.After == nil {
+		c.After = func(d time.Duration, f func()) func() {
+			t := time.AfterFunc(d, func() { c.Post(f) })
+			return func() { t.Stop() }
+		}
+	}
 	j := &Job{c: c, attempts: map[string]int{}, parts: map[*Part]*part{}, running: map[int]running{},
-		muxes: map[int]*tsMux{}, inits: map[int]*Part{}, quit: make(chan struct{})}
+		waits: map[int]running{}, limit: together, muxes: map[int]*tsMux{}, inits: map[int]*Part{}, quit: make(chan struct{})}
 	if err := os.MkdirAll(c.Dir, 0o700); err != nil {
 		c.Post(func() { j.fail(err) })
 		return j
@@ -140,20 +183,33 @@ func (j *Job) Pause() {
 		return
 	}
 	j.paused = true
-	for id, r := range j.running {
-		delete(j.running, id)
-		r.cancel()
-		r.again()
+	for _, under := range []map[int]running{j.running, j.waits} {
+		for id, r := range under {
+			delete(under, id)
+			r.cancel()
+			r.again()
+		}
 	}
 }
 
-// Resume goes on from where Pause stopped.
+// Resume goes on from where Pause, or a part that kept failing, stopped: each part has its
+// tries anew.
 func (j *Job) Resume() {
 	if j.over || !j.paused {
 		return
 	}
 	j.paused = false
+	clear(j.attempts)
 	j.pump()
+}
+
+// Kept says a paused job still has its folder, so Resume can go on where it stopped.
+func (j *Job) Kept() bool {
+	if j.over || !j.paused {
+		return false
+	}
+	_, err := os.Stat(j.c.Dir)
+	return err == nil
 }
 
 // Cancel stops the job for good and removes what it made. Nothing is told after it.
@@ -165,9 +221,11 @@ func (j *Job) end() {
 		return
 	}
 	j.over = true
-	for id, r := range j.running {
-		delete(j.running, id)
-		r.cancel()
+	for _, under := range []map[int]running{j.running, j.waits} {
+		for id, r := range under {
+			delete(under, id)
+			r.cancel()
+		}
 	}
 	if j.tasks == nil {
 		os.RemoveAll(j.c.Dir)
@@ -199,30 +257,57 @@ func (j *Job) fetch(address, span, name string, from engine.AddressSpace, again 
 				os.Remove(path)
 				return
 			}
-			switch got.Outcome {
-			case engine.FetchOK:
+			reason := "connection"
+			if got.Outcome == engine.FetchServer {
+				reason = "server"
+			}
+			switch {
+			case got.Outcome == engine.FetchOK:
+				j.limit = min(j.limit+1, together)
 				done(path, got)
-			case engine.FetchRefused:
+			case got.Outcome == engine.FetchRefused:
 				j.fail(ErrRefused)
+			case got.Outcome == engine.FetchServer && !passing(got.Status):
+				j.fail(&FetchError{Reason: reason, URL: address})
 			default:
-				// A piece that fails is asked for again, a few times.
+				// A part that fails is asked for again after a wait, longer each time, with
+				// fewer fetched at once meanwhile; one that still fails stops the job.
+				os.Remove(path)
+				j.limit = 1
 				j.attempts[address+" "+span]++
-				if j.attempts[address+" "+span] < tries {
+				tried := j.attempts[address+" "+span]
+				if tried >= tries {
 					again()
-					j.pump()
+					j.stop(&FetchError{Reason: reason, URL: address})
 					return
 				}
-				reason := "connection"
-				if got.Outcome == engine.FetchServer {
-					reason = "server"
-				}
-				j.fail(&FetchError{Reason: reason, URL: address})
+				j.last++
+				wid := j.last
+				stop := j.c.After(wait(tried), func() {
+					if _, ok := j.waits[wid]; !ok {
+						return
+					}
+					delete(j.waits, wid)
+					again()
+					j.pump()
+				})
+				j.waits[wid] = running{cancel: stop, again: again}
 			}
 		})
 	// One refused at once has ended before Fetch returned.
 	if !ended && !j.over {
 		j.running[id] = running{cancel: cancel, again: again}
 	}
+}
+
+// stop pauses the job for a part that kept failing and says why, so a Retry can go on.
+func (j *Job) stop(err error) {
+	if j.c.Stopped == nil {
+		j.fail(err)
+		return
+	}
+	j.Pause()
+	j.c.Stopped(err)
 }
 
 // small fetches a file the job reads whole: a playlist, a key or a header piece.
@@ -400,7 +485,7 @@ func (j *Job) need(r int, p *Part) bool {
 	return false
 }
 
-// pump fetches more pieces while fewer than together are on their way: the next of the
+// pump fetches more pieces while fewer than the limit are on their way: the next of the
 // rendition that is least far on, so picture and sound come in side by side.
 func (j *Job) pump() {
 	if j.over || j.paused {
@@ -411,7 +496,7 @@ func (j *Job) pump() {
 	for _, again := range waiting {
 		again()
 	}
-	for !j.over && !j.paused && len(j.running) < together {
+	for !j.over && !j.paused && len(j.running) < j.limit {
 		best := -1
 		for r := range j.renditions {
 			if len(j.todo[r]) == 0 || j.todo[r][0]-j.handed[r] >= ahead {

@@ -2,6 +2,8 @@ package downloads
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -15,6 +17,7 @@ import (
 	"projectb/fetch"
 	"projectb/mockengine"
 	"projectb/mocksystem"
+	"projectb/streams/mp4check"
 )
 
 // streamRig is a manager whose streams are fetched from a server of core/streams' test
@@ -35,13 +38,15 @@ type streamRig struct {
 	// playlist, so they come in one at a time, in order.
 	slow  time.Duration
 	extra map[string]string
-	live  map[engine.FetchID]context.CancelFunc
-	asks  []engine.FetchRequest
+	// fail answers a path with 503 this many times.
+	fail map[string]int
+	live map[engine.FetchID]context.CancelFunc
+	asks []engine.FetchRequest
 }
 
 func newStreamRig(t *testing.T) *streamRig {
 	t.Helper()
-	r := &streamRig{t: t, e: mockengine.New(), profile: t.TempDir(), dir: t.TempDir(), extra: map[string]string{}, live: map[engine.FetchID]context.CancelFunc{}}
+	r := &streamRig{t: t, e: mockengine.New(), profile: t.TempDir(), dir: t.TempDir(), extra: map[string]string{}, fail: map[string]int{}, live: map[engine.FetchID]context.CancelFunc{}}
 	files := http.FileServer(http.Dir("../streams/testdata"))
 	r.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, q *http.Request) {
 		r.mu.Lock()
@@ -51,7 +56,15 @@ func newStreamRig(t *testing.T) *streamRig {
 		if name := filepath.Base(q.URL.Path); strings.HasPrefix(name, "piece") {
 			slow *= time.Duration(name[5] - '0' + 1)
 		}
+		failing := r.fail[q.URL.Path] > 0
+		if failing {
+			r.fail[q.URL.Path]--
+		}
 		r.mu.Unlock()
+		if failing {
+			http.Error(w, "busy", http.StatusServiceUnavailable)
+			return
+		}
 		if written {
 			w.Write([]byte(body))
 			return
@@ -65,6 +78,16 @@ func newStreamRig(t *testing.T) *streamRig {
 	go r.e.Run()
 	r.fetch = fetch.New(r)
 	r.m = New(r.e, mocksystem.New(func(f func()) { f() }), r.profile, r.dir)
+	// The waits between a piece's tries are over at once.
+	r.m.after = func(_ time.Duration, f func()) func() {
+		stopped := false
+		r.e.Post(func() {
+			if !stopped {
+				f()
+			}
+		})
+		return func() { stopped = true }
+	}
 	r.m.Streams(r.fetch, func(tab engine.TabID) string {
 		if tab == 7 {
 			return "work"
@@ -450,5 +473,117 @@ func TestAStreamIsSavedAtTheQualityItsLinkAsksFor(t *testing.T) {
 	}
 	if got := asked(); !strings.Contains(got, "/split/video.m3u8") || !strings.Contains(got, "/split/audio.m3u8") || strings.Contains(got, "/small/") {
 		t.Fatalf("asked for %s", got)
+	}
+}
+
+// A stream whose piece fails at every try fails in its row, "the server refused it", with
+// Retry, and Retry goes on where it stopped: it fetches only that piece, and the MP4 is
+// whole. Cancel throws what was in away, and Retry after it starts over.
+func TestARetryOfAFailedStreamGoesOnWhereItStopped(t *testing.T) {
+	r := newStreamRig(t)
+	r.fail["/ts/piece2.ts"] = 8
+	r.download(1, "/ts/index.m3u8", "index.m3u8", "application/vnd.apple.mpegurl")
+	it := r.until("failed", func(it Item) bool { return it.State == "failed" })
+	if it.Reason != "server" || it.NoRetry || it.Paused || it.Received == 0 {
+		t.Fatalf("%+v", it)
+	}
+	if left, _ := filepath.Glob(filepath.Join(r.profile, "streams", "job-*")); len(left) != 1 {
+		t.Fatalf("the failed job's folder: %v", left)
+	}
+	asked := func() []string {
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		got := r.asked
+		r.asked = nil
+		return got
+	}
+	count := func(asked []string, path string) (n int) {
+		for _, a := range asked {
+			if a == path {
+				n++
+			}
+		}
+		return n
+	}
+	first := asked()
+	if count(first, "/ts/piece2.ts") != 8 || count(first, "/ts/piece0.ts") != 1 || count(first, "/ts/piece3.ts") != 1 {
+		t.Fatalf("asked for %v", first)
+	}
+	r.on(func() { r.m.Act(1, "retry") })
+	done := r.until("done after Retry", func(it Item) bool { return it.State == "done" })
+	if done.Path != filepath.Join(r.dir, "index.mp4") || done.Reason != "" {
+		t.Fatalf("%+v", done)
+	}
+	if again := asked(); strings.Join(again, " ") != "/ts/piece2.ts" {
+		t.Fatalf("Retry asked for %v", again)
+	}
+	sameFrames(t, done.Path, "ts")
+
+	// Cancel, then Retry: from the playlist, every piece again.
+	r.mu.Lock()
+	r.fail["/fmp4/piece2.m4s"] = 8
+	r.mu.Unlock()
+	r.download(2, "/fmp4/index.m3u8", "clip.m3u8", "application/vnd.apple.mpegurl")
+	r.until("failed", func(it Item) bool { return it.State == "failed" })
+	asked()
+	r.on(func() { r.m.Act(2, "cancel") })
+	if it := r.row(); it.State != "cancelled" {
+		t.Fatalf("%+v", it)
+	}
+	for end := time.Now().Add(5 * time.Second); time.Now().Before(end); time.Sleep(10 * time.Millisecond) {
+		if left, _ := filepath.Glob(filepath.Join(r.profile, "streams", "job-*")); len(left) == 0 {
+			break
+		}
+	}
+	if left, _ := filepath.Glob(filepath.Join(r.profile, "streams", "job-*")); len(left) != 0 {
+		t.Fatalf("cancelled, it left %v", left)
+	}
+	r.on(func() { r.m.Act(2, "retry") })
+	if it := r.until("done", func(it Item) bool { return it.State == "done" }); it.Name != "clip.mp4" {
+		t.Fatalf("%+v", it)
+	}
+	again := asked()
+	if !strings.HasPrefix(strings.Join(again, " "), "/fmp4/index.m3u8 ") || count(again, "/fmp4/init.mp4") != 1 {
+		t.Fatalf("Retry after Cancel asked for %v", again)
+	}
+	for i := range 4 {
+		if n := count(again, fmt.Sprintf("/fmp4/piece%d.m4s", i)); n != 1 {
+			t.Fatalf("Retry after Cancel asked for piece%d %d times: %v", i, n, again)
+		}
+	}
+	sameFrames(t, filepath.Join(r.dir, "clip.mp4"), "fmp4")
+}
+
+// sameFrames holds the MP4 at path to core/streams' expect.json for the stream named: a
+// regular MP4 with its index first, the same tracks, and in each every frame, in order and
+// whole.
+func sameFrames(t *testing.T, path, name string) {
+	t.Helper()
+	b, err := os.ReadFile("../streams/testdata/expect.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	all := map[string]*mp4check.File{}
+	if err := json.Unmarshal(b, &all); err != nil {
+		t.Fatal(err)
+	}
+	want := all[name]
+	got, err := mp4check.Read(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.MoovFirst || got.Fragmented || len(got.Tracks) != len(want.Tracks) {
+		t.Fatalf("index first %v, fragmented %v, %d tracks, want %d", got.MoovFirst, got.Fragmented, len(got.Tracks), len(want.Tracks))
+	}
+	for i, w := range want.Tracks {
+		g := got.Tracks[i]
+		if g.Kind != w.Kind || g.Codec != w.Codec || len(g.Frames) != len(w.Frames) {
+			t.Fatalf("track %d is %s %s with %d frames, want %s %s with %d", i, g.Kind, g.Codec, len(g.Frames), w.Kind, w.Codec, len(w.Frames))
+		}
+		for n, f := range w.Frames {
+			if g.Frames[n].Sum != f.Sum || g.Frames[n].Sync != f.Sync {
+				t.Fatalf("%s frame %d isn't the stream's", w.Kind, n)
+			}
+		}
 	}
 }

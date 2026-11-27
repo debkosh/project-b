@@ -223,10 +223,30 @@ protected ones end there. A DASH playlist (`dash.go`, with dash-mpd) gives its p
 and its sound's pieces at once, but for a file that keeps its own index, which is fetched
 and read first. Then the pieces, 4 at a time, each to a file in the job's folder,
 picture and sound turn about, at most 8 ahead of what is repacked; a key or a header piece
-(`EXT-X-MAP`, DASH's initialization) is fetched once. A piece that fails is asked for 3 times. Each playlist's
-pieces are asked from where that playlist's server is. Pause stops the fetches under way
-and keeps what is in; Resume asks for them again; Cancel and Retry throw the folder away,
-and Retry starts over from the playlist's address. Progress is the pieces in, of how many;
+(`EXT-X-MAP`, DASH's initialization) is fetched once. Each playlist's pieces are asked from
+where that playlist's server is. Pause stops the fetches under way and keeps what is in;
+Resume asks for them again; Cancel throws the folder away.
+
+**When pieces fail.** A part (a piece, a key, a header piece or a playlist) whose connection
+fails or drops, or whose server answers with a status that may pass, is asked for again
+after a wait: 1 second, then 2, 4, 8, 16, then 30, 8 tries in all. The statuses that may
+pass are 408, 425, 429, 500, 502, 503, 504 and Cloudflare's 520 to 527 and 530 (its edge
+couldn't reach the site's own server, as a site behind a Cloudflare proxy gives now and
+then). Any other error status, as 403, 404 or 410, fails the stream at once, "the server
+refused it". The engine's fetch tells Go the status and not the headers, so a server's
+`Retry-After` isn't known and the waits are the job's own. While parts fail, fewer are
+fetched at once: one after a failure, then one more after each that comes in, back up to
+4. Pause or Cancel during a wait stops it, and a Resume asks for the part at once. A
+part that still fails after its 8 tries stops the job, and the row fails, "the connection
+stopped" or "the server refused it", with Retry. The job is held, paused, with its folder:
+the pieces fetched and repacked stay, and Retry goes on where it stopped, as Resume does
+after a Pause, each part with its 8 tries anew, fetching only what isn't in. Cancel, Remove
+or clearing the list throws the held job away, and a Retry after Cancel starts over from
+the playlist's address, as does a Retry of one that failed for any other reason. A
+restart doesn't keep a held job: the app clears the streams' working folder as it starts,
+so a Retry after a restart starts over too (the owner, 2026-11-28: a 200 MB stream through
+a slow, now and then failing proxy, on a phone's connection, failed with "the connection
+stopped" after 3 quick tries of one piece, and its Retry threw away what was in). Progress is the pieces in, of how many;
 the row shows it in bytes, the bytes in and what the whole comes to at that rate, so the
 bar moves by pieces and the sizes mean something.
 

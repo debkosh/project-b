@@ -15,7 +15,7 @@ import (
 // playlist isn't kept: once the engine has it, its row goes on as the stream, a job of
 // core/streams that fetches the pieces and repacks them, under the playlist's name with
 // .mp4. The row is a download like any other: progress, Pause, Resume, Cancel and Retry,
-// and on a phone its notification, which keeps the app running with no screen as a running
+// a Retry of one whose pieces kept failing going on where it stopped, and on a phone its notification, which keeps the app running with no screen as a running
 // download's does, and its copy in the shared Downloads once done.
 
 // playlistLimit is the most a playlist may hold: a day of two-second pieces is a few MB.
@@ -85,8 +85,8 @@ func (m *Manager) show(it *Item) {
 	m.e.ShowDownload(it.ID, engine.Download{Name: it.Name, Path: it.Path, State: state, Received: it.Received, Total: it.Total, Paused: it.Paused})
 }
 
-// startStream starts saving the stream in it's row: from the playlist in hand, or with none
-// by fetching it again, as Retry does.
+// startStream starts saving the stream in its row: from the playlist in hand, or with none
+// by fetching it again, as Retry does when the last job isn't held.
 func (m *Manager) startStream(it *Item, body []byte) {
 	if err := os.MkdirAll(m.dir, 0o755); err != nil {
 		timeline.Errorf("downloads: %v", err)
@@ -106,6 +106,7 @@ func (m *Manager) startStream(it *Item, body []byte) {
 		Source:  streams.Source{Kind: streams.Kind(it.Stream), URL: it.URL, Body: body, Page: it.Referrer, Workspace: it.Workspace, Space: engine.AddressSpace(it.Space), Height: LinkedQuality(it.URL)},
 		Fetcher: m.fetcher,
 		Post:    m.e.Post,
+		After:   m.after,
 		Dir:     filepath.Join(m.streamsDir(), fmt.Sprintf("job-%d-%d", it.ID, m.jobs)),
 		Out:     it.Path,
 		Changed: func(p streams.Progress) {
@@ -136,6 +137,16 @@ func (m *Manager) startStream(it *Item, body []byte) {
 			m.save()
 			m.changed()
 		},
+		// Pieces that kept failing at the connection or a busy server: the row fails, and
+		// the job holds what it has fetched and repacked for a Retry to go on from.
+		Stopped: func(err error) {
+			it.State, it.Paused = "failed", false
+			it.Reason, _ = streams.Reason(err)
+			timeline.Warnf("downloads: a stream stopped: %v", err)
+			m.show(it)
+			m.save()
+			m.changed()
+		},
 	})
 	m.show(it)
 	m.changed()
@@ -154,7 +165,7 @@ func (m *Manager) actStream(it *Item, action string) bool {
 		m.show(it)
 		m.save()
 	case "pause", "resume":
-		if it.job == nil {
+		if it.job == nil || it.State != "progress" {
 			return false
 		}
 		if it.Paused = action == "pause"; it.Paused {
@@ -164,9 +175,17 @@ func (m *Manager) actStream(it *Item, action string) bool {
 		}
 		m.show(it)
 	case "retry":
-		// Not a running one, which has Pause and Cancel: it starts over from its playlist's
+		// Not a running one, which has Pause and Cancel. One whose job is held, with its
+		// folder, goes on where it stopped; any other starts over from its playlist's
 		// address, in this row, under the same name.
 		if it.URL == "" || m.fetcher == nil || it.NoRetry || it.State == "progress" {
+			return true
+		}
+		if it.job != nil && it.job.Kept() {
+			it.State, it.Reason = "progress", ""
+			it.job.Resume()
+			m.show(it)
+			m.changed()
 			return true
 		}
 		if it.job != nil {
