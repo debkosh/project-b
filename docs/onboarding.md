@@ -33,8 +33,9 @@ And on the second mocks, 2026-11-17:
 - **The same page opens again later in a tab** of ours, inside the browser, from Settings' Run
   setup again ([mock](screenshots/onboarding/mock-d7.png)).
 - **No Safe Browsing from Google.** "no safebtowsing should not use google... we should have
-  discussed the implementation". It is out of the onboarding; nothing in the app does Safe
-  Browsing today, and how it would work is for a discussion first.
+  discussed the implementation". Safe Browsing came later from open lists, checked on the
+  device and telling nobody what is opened ([blocking.md](blocking.md#3-safe-browsing)),
+  and the Protection step offers it as Warn before dangerous sites.
 - **Approved:** no "How you work" step, five steps on the desktop; the style step offers tabs on
   the side, on top, and Curve. Changed 2026-11-18, the owner: "it should show the stuff we have
   built so shell and keyboard stays". So the style step shows the shells as they look, and How
@@ -192,10 +193,14 @@ Each slice goes out through a release of its own.
 - **The splash** plays once over the whole window: the mark grows and draws itself, the name
   fades in, and the welcome comes; less motion skips it. The hello's window rises from the
   page's foot, its frame turning through the presets as it waits.
-- **Protection** offers the search engine and automatic updates, and shows the ad blocker on.
-  Not here yet: a switch for the ad blocker and for Links to other sites across every site
-  (Settings has Block ads for every site since 2026-11-18; links are each a site's own
-  setting, allowed), and the keys like Chrome's or Project B's (Settings' Keys has it).
+- **Protection** offers the search engine and automatic updates, and two switches, both on,
+  each with Go's line under it (`state.protection`, `core/app/welcome.go`): **Block ads**,
+  "Ads and trackers, from public lists kept up to date", and **Warn before dangerous
+  sites**, "Malware and phishing, checked on this device; nothing is sent anywhere", the
+  prefs `blockAds` and `warnDangerous` that Settings' Protection has too
+  ([blocking.md](blocking.md#the-persons-choices)). Not here yet: a switch for Links to
+  other sites across every site (links are each a site's own setting, allowed), and the keys
+  like Chrome's or Project B's (Settings' Keys has it).
 - **Run setup again,** in Settings' Profile, marks
   the welcome unfinished in `welcome.json` and closes the app. The next start opens it over the
   whole window, as a first start does, with the tabs On start, open brings back under it. It

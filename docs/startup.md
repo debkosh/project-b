@@ -72,7 +72,10 @@ These are needed for the first window, or for a start to go right:
 - Crash: renaming the last `crash.log`.
 - The store, prefs, session and timeline writers.
 - The one-time `history.jsonl` migration, the downloads list and the shortcuts.
-- The ad blocker's rules, which are built in, so nothing is downloaded.
+- The ad blocker and Safe Browsing: the groups' compiled engines, loaded from disk before
+  the first window's page (`a.Blocking.Load`), the built-in hosts standing in for any group not
+  compiled yet. Nothing is downloaded at start: the lists are fetched through
+  `later.Run(a.Blocking.Start)`, then every hour ([blocking.md](blocking.md#fetching-them)).
 - The built-in sparks, on a profile's first start.
 - Extensions, when their flag is on: Chromium loads them as the profile opens.
 - What the engine is told about quit erasure.

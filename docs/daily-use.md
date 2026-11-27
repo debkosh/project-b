@@ -37,7 +37,7 @@ and Android, in the web-features registry: [web-features.md](web-features.md).
 
 | Feature | Status | Plan |
 |---|---|---|
-| Safe Browsing warnings | missing: the test malware page loads (basics 28) | needs discussion |
+| Safe Browsing warnings | works on the Mac: the test malware and phishing pages are refused with a warning, Go back and Open anyway (basics 28 and 42), from our open lists checked on the device; Linux and Android until their runs pass | done ([blocking.md](blocking.md#3-safe-browsing)) |
 | "Not secure" on http pages | Standard writes it in words at the address field's start, in `--danger`; the phone shells don't yet (basics 9) | approved (UX comparison item 7); the phone's next |
 | The address bar hides a password in a URL | missing: it shows it (basics 8) | needs discussion |
 | Popup blocking | missing: `window.open` without a click opens a tab (basics 6) | needs discussion |

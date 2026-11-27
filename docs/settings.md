@@ -21,7 +21,7 @@ ship sectioned settings from now on.. i ahve used them and feel sections make be
 | Workspaces | The workspaces |
 | Bookmarks | Where bookmarks show, and the bar |
 | Downloads (desktop) | Save to, Ask where to save each file |
-| Privacy and sites | Clear browsing data, Block ads, Clear cookies when the app quits (desktop), Sites, which opens as a page of its own; Secure DNS, a card of its own |
+| Privacy and sites | Protection, a card under its heading: Block ads, Warn before dangerous sites, and Block lists, which opens as a page of its own; Clear browsing data, Clear cookies when the app quits (desktop), Sites, which opens as a page of its own; Secure DNS, a card of its own |
 | Extensions, or Sparks | Extensions (with its flag on, desktop), and Sparks; named Sparks without extensions |
 | Keyboard (desktop) | Keys, and the keyboard shortcuts |
 | About Project B | The version and its update, Automatic updates, What's new ([About](#about)), Run setup again |
@@ -95,7 +95,24 @@ the version on About's line, and Update ready while one is.
   `core/app/quit_erasure.go`); the engine's quit, from Cmd+Q, the Dock, a logout or Go,
   runs it and ends the run loop once every workspace's erase is done, or after five
   seconds. A crash erases nothing: the next quit does.
-- **Block ads** is the ad blocker on every site ([site-features.md](site-features.md#the-ad-blocker)).
+- **Protection** comes first, a card under that heading ([blocking.md](blocking.md#the-persons-choices)):
+  - **Block ads** is the ad blocker on every site, "Ads and trackers, from public lists
+    kept up to date" ([site-features.md](site-features.md#the-ad-blocker)).
+  - **Warn before dangerous sites** is Safe Browsing, "Malware and phishing, checked on this
+    device; nothing is sent anywhere", on by default (the pref `warnDangerous`). Off, Go
+    asks nothing and those lists aren't downloaded.
+  - **Block lists** says how many lists are on and when they were updated ("N of M lists
+    on · updated 20 minutes ago", or "not downloaded yet"), and opens a page of its own.
+- **The Block lists page** (`BlockLists.vue`, the address `blockLists`): a line on what the
+  lists are, then the groups, each a row with its switch and a line of what it blocks and
+  " · N of M on", the count never broken. A group opened shows its lists, each with its
+  title, what it blocks, its home and its own switch, and when it last changed and its size,
+  or Not downloaded yet. A group's switch is on while any of its lists is on; off turns all
+  of them off, on brings back the group's defaults (`setBlockGroup`); a list's switch
+  leaves the rest of its group be (`setBlockList`). Go keeps only the lists changed from the
+  catalogue's default, the pref `lists`. The Safe Browsing groups, Malware and Phishing, are
+  under Dangerous sites, greyed while Warn before dangerous sites is off. The test group
+  never shows. On a phone a tap on a group's words opens it, a hairline before its switch.
 - **Secure DNS** sends the profile's lookups to a DNS-over-HTTPS provider: Off, Automatic or
   Secure only, a listed provider or a custom template, and the provider's last check
   ([secure-dns.md](secure-dns.md)).
@@ -162,7 +179,7 @@ a card's parts is drawn as the row that opens it. `arrange.js` also says where e
 What the page shows is an address, `state.section`, which Go may name as it opens the page
 (`OpenSection`): a section (`profile`, `appearance`, `start`, `privacy`, `about`, ...), a part
 (`import`, `sync`, `flags`, `version`), or a list (`workspaces`, `sites`, `sites/<site>`,
-`sites/<origin>`, `keyboard`, `sparks`, `extensions`, `webFeatures`). The page shows the
+`sites/<origin>`, `blockLists`, `keyboard`, `sparks`, `extensions`, `webFeatures`). The page shows the
 section that is it or holds it, or a list's own page, as Sites'. The site panel's Details
 opens `sites/<origin>`, the page of that origin's site with that origin's settings whether
 or not it has any, an extension's Manage opens `extensions`, and a `project-b://sync` link opens
@@ -175,7 +192,9 @@ Settings ([shells.md](shells.md#back-on-our-pages)).
 `shell/e2e/settings.cjs` drives the page on the mock engine; it goes to each part as a person
 does, by the list of sections and the rows that open the lists; checks the status line (not the default browser, Make default
 browser, then the default) and About (the version, Check for updates reaching the release
-server once, and a download's Cancel and Retry in its row at a phone's width), Block ads, Ask
+server once, and a download's Cancel and Retry in its row at a phone's width), Protection's
+rows and the Block lists page (a group opened, a list and a group switched, Dangerous sites
+greyed with Warn before dangerous sites off, the test group never shown), Block ads, Ask
 where to save, Save to with a folder chosen and Use Downloads, Clear browsing data's dialog,
 Sites with what two
 sites keep, a site's Clear data and a site's page with its Clear, and Clear cookies when

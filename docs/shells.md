@@ -97,7 +97,7 @@ of it.
 | `@/sdk/find.js` | `findText(tab, text)`, `findNext(tab, forward)` and `closeFind(tab)`, for `state.find`, each naming the tab whose bar it is. `@/ui/FindBar.vue` draws the bar, hung from the top right of the box that holds the page; a shell gives `connect({ focusFind: () => findBar.focus() })`, `findBar` from `@/ui/find.js`. |
 | `@/sdk/dialogs.js` | `answerDialog(id, ok, text, password)`, `answerPasskey(id, action, text)` for a passkey request's step ([passkeys.md](passkeys.md); `@/ui/PasskeyCard.vue` and `.svelte` draw one), and `dialogFor(state, tab)`, the dialog a tab's page waits on. `@/ui/PageDialog.vue` draws a page's dialog and a site's sign-in over the box that holds the active page, which is `position: relative`. |
 | `@/sdk/downloads.js` | What a shell sends about `state.downloads`: `downloadAction(id, action)` and `clearDownloads()`. `@/ui/Downloads.vue` is the Downloads button, shown once there is one, with its list; with `peek`, the list also opens by itself when a download begins, for a shell that gives `connect({ downloadStarted: () => downloadsPanel.started() })`, `downloadsPanel` from `@/ui/downloads.js`. |
-| `@/sdk/sites.js` | A site's settings ([daily-driver.md](daily-driver.md#permissions)): the permission prompts, `promptFor(state, tab)`, `answerPermission(prompt, choice)`, and the words `permissionHost(prompt)` and `permissionAsk(prompt)`; and `hasSite(tab)` and `openSiteSettings()`. `@/ui/PermissionPrompt.vue` draws a prompt in the design system's look. |
+| `@/sdk/sites.js` | A site's settings ([daily-driver.md](daily-driver.md#permissions)): the permission prompts, `promptFor(state, tab)`, `answerPermission(prompt, choice)`, and the words `permissionHost(prompt)` and `permissionAsk(prompt)`; `hasSite(tab)` and `openSiteSettings()`; and `siteMark(tab)`, the word the site control says before Site settings: Dangerous for a tab with a `danger`, Not secure for one whose `connection` isn't secure, `''` for neither. `@/ui/PermissionPrompt.vue` draws a prompt in the design system's look. |
 | `@/sdk/notice.js` | A tab's notice, `tab.notice`: `runNotice(tab, action)`. `@/ui/PageNotice.vue` draws one in the design system's look. |
 | `@/sdk/menu.js` | The shell's own menu, `state.menu`: `requestMenu()` as it opens, and `runMenuItem(item)` ([menus-shortcuts.md](menus-shortcuts.md#the-shells-menu)). Both adapters give them too. |
 | `@/sdk/pins.js` | What a shell sends about `state.pins`, the profile's pinned tabs, and each tab's `pin`: `pinTab(id)`, `unpin(pin)` and `openPin(pin)` ([windows.md](windows.md#pinned-tabs)). Both adapters give them too. |
@@ -175,7 +175,7 @@ nothing. Its `actions` is every action in the menus that can run then, `{id, tit
 the menus' order, for a shell that lists them to run by name (`run`).
 
 A tab is `{id, url, title, loading, progress, blocked, crashed, error, errorCode, favicon,
-thumb, canGoBack, canGoForward, workspace, group, page, pin, connection, connectionNote, notice}`,
+thumb, canGoBack, canGoForward, workspace, group, page, pin, connection, connectionNote, notice, danger}`,
 `thumb` the address of a picture of its page as it last looked, a small image for an `<img>`
 that changes with each new picture, absent before the first and once the tab commits a page at
 another address (a reload or a new `#fragment` keeps it); a shell shows the favicon without it.
@@ -194,7 +194,13 @@ but it is in no workspace and no group: its `workspace` is the one it was opened
 New Tab from it goes, so `workspaceOf` gives a shell no dot for it. Rule 19 says how a shell
 shows it. `notice` is what to draw over its page while it has nothing to show, `{kind,
 title, detail, actions}`, absent otherwise
-([daily-driver.md](daily-driver.md#error-pages-and-certificate-warnings)). The snapshot also has `running` (the version), `platform`
+([daily-driver.md](daily-driver.md#error-pages-and-certificate-warnings)); its `kind` is
+`failed`, `crashed`, `blocked`, `certificate` or `unsafe`, the last a site the dangerous
+sites' lists name, with Go back first and Open anyway ([blocking.md](blocking.md)).
+`danger` is what those lists say of its page's site, `{kind, list}`, `kind` `malware` or
+`phishing` and `list` the title of the list that named it, while its page is that site's,
+refused or opened anyway (as Not secure stays after a certificate is passed); absent for a
+site they don't name. The snapshot also has `running` (the version), `platform`
 (`mac`, as the keymap names it) and `data`, and `extensions` only while their flag is on.
 
 - `controls` is `{x, y, w, h}`, where the native window buttons are, zero size when there
@@ -531,9 +537,13 @@ it there; a phone shell may be left out of a rule for a desktop feature.
     the site panel where the shell has one (rule 33). Not yet in the shells rule 30 lists.
 32. **A page with nothing to show says why:** while the active tab has a `notice`, the
     shell covers its page with an `alert` holding Go's title, its detail, and a button for
-    each of its actions, by Go's titles, which sends `noticeAction`. Standard, Fox, Minimal
-    and Terminal have it. Not yet in Curve, whose own session brings it; Mobile and
-    Mobile Native draw a notice of their own until their sessions move them to Go's.
+    each of its actions, by Go's titles, which sends `noticeAction`. A dangerous site's
+    notice (`unsafe`) has Go back, which leaves it, and Open anyway; opened anyway, the
+    site control in the address field is named "Dangerous · Site settings" and shows the
+    word with the warning mark in `--danger`, where Not secure shows (`siteMark`).
+    Standard, Fox, Minimal, Terminal and Mobile have it. Not yet in Curve, whose own
+    session brings it, nor in Mobile Native, which draws a notice of its own until its
+    session moves it to Go's; both are parked, so neither shows Dangerous yet.
 
 33. **The site panel** ([site-features.md](site-features.md)): the Site settings control
     opens a `dialog` named Site settings for the site's host over the page, drawn from
@@ -1009,7 +1019,9 @@ address field, and a menu button at the far right, in our tones.
   sheet (`backCloses` is on while one shows).
 - **A page that failed, crashed or was blocked** gets a notice over it rather than a blank:
   one sentence (Can't find example.com, This page crashed, example.com is blocked), the
-  error's own name under it, and Try again or Reload.
+  error's own name under it, and Try again or Reload. A dangerous site's (`unsafe`) says
+  what it may do and which list named it, its mark in `--danger`, with Go back first and
+  Open anyway.
 - **Share report**, on the last run's crash notice and on a crashed page's notice, hands
   one text report to the phone's share sheet (`shareReport`); **Save** beside it puts that
   report in the phone's Downloads (`saveReport`), as the share sheet may offer nowhere to save it.
@@ -1018,7 +1030,9 @@ address field, and a menu button at the far right, in our tones.
 - **Not secure** in words at the pill's start, with the warning mark, in `--danger`, when
   the active tab's `connection` isn't secure: an http page, or a certificate passed with
   Open anyway, as Chrome does. It is the site's mark, named "Not secure · Site settings",
-  and opens the site's sheet, which says why. A secure page keeps the lock.
+  and opens the site's sheet, which says why. A secure page keeps the lock. A site the
+  dangerous sites' lists name says **Dangerous** the same way, refused or opened anyway,
+  named "Dangerous · Site settings", and its sheet says first which list named it.
 - **The switcher** lies over the page, the bar still under it: a card per tab in two
   columns, the workspaces as chips that choose which cards show and where + opens a tab.
   Its cards are the tabs' `role="tab"` elements, kept in the document while it is closed.

@@ -302,10 +302,14 @@ no blocker (`set_blocker(NULL)`), so nothing is asked or kept from any page, and
 each open site's settings, so the panel has no switch, nor a site's view in Settings; each
 site's own setting is kept, and counts again once it is on.
 
-- **The rules are Go's** (`core/adblock`): a list of ad network, ad server and tracker
-  hosts, kept by hand and bundled in the app, a few hundred hosts that serve only ads or
-  tracking, so no site's own content goes with them. Updated with the app. A larger
-  published list (EasyList's hosts) is a later step, once its licence is settled.
+- **The rules come from the block lists** ([blocking.md](blocking.md#the-lists)): public
+  lists such as EasyList, EasyPrivacy and uBlock Origin's, in groups the person chooses in
+  Settings' Block lists, fetched from our signed lists release and compiled on the device by
+  `core/blocking` into the blocker's engines: which requests go, which parts of a page are
+  hidden, and the scriptlets a page runs. The built-in hosts (`core/adblock`, a few hundred
+  ad and tracker hosts kept by hand and bundled in the app) are the first-run fallback:
+  they stand in for the ads group until its lists arrive, or while its engine is compiled
+  again, so blocking is never weaker with no network.
 - **The engine blocks**, beside the policy's block rules, with the blocker Go hands it
   ([blocking.md](blocking.md#the-engines-hooks)): a table of the blocker's functions
   (`set_blocker`, `PBBlockerHooks`), which the engine calls on its own sequence in the

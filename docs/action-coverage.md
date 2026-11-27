@@ -4,7 +4,7 @@ Every action a person can take, where the app offers it, and the tests that do i
 `tools/action_coverage.py` from the code; `tools/test.sh mock` fails while an action has no
 test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 
-**232 actions and messages, 225 with a test, 7 exempt with a reason, 0 with none; 28 of Go's actions done by no test of the real app.**
+**235 actions and messages, 228 with a test, 7 exempt with a reason, 0 with none; 28 of Go's actions done by no test of the real app.**
 
 ## Go's actions: the menu bar, keys and the shells' own menus
 
@@ -12,12 +12,12 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 |---|---|---|---|
 | `address.focus` Open Location… | menu bar, keys (arshell, chrome, firefox, project-b), arshell, page:welcome | yes | `drive_first_app.py` |
 | `app.about` About Project B | menu bar, keys (arshell, chrome, firefox, project-b) | yes | `menu_test.go`, `barmenu_test.go`, `shellmenu_test.go`, `menu-bar.cjs` and 1 more |
-| `app.checkUpdate` Check for Updates… | menu bar, keys (arshell, chrome, firefox, project-b) | **no** | `barmenu_test.go` |
+| `app.checkUpdate` Check for Updates… | menu bar, keys (arshell, chrome, firefox, project-b) | **no** | `barmenu_test.go`, `imports.cjs` |
 | `app.hide` Hide Project B | menu bar, keys (arshell, chrome, firefox, project-b) | **no** | `barmenu_test.go`, `commands_test.go` |
 | `app.hideOthers` Hide Others | menu bar, keys (arshell, chrome, firefox, project-b) | **no** | exempt: macOS's own: AppKit hides the other apps |
 | `app.menuBar` Open the Menu Bar |  | **no** | `commands_test.go`, `menu-bar.cjs` |
 | `app.quit` Quit Project B | menu bar | **no** | `menu_test.go`, `barmenu_test.go`, `commands_test.go`, `shellmenu_test.go` and 2 more |
-| `app.settings` Settings… | menu bar, arshell, fxshell, mnshell, mwshell, pbshell, tmshell, mkshell | yes | `app_test.go`, `menu_test.go`, `settings_prepare_test.go`, `welcome_test.go` and 17 more |
+| `app.settings` Settings… | menu bar, arshell, fxshell, mnshell, mwshell, pbshell, tmshell, mkshell | yes | `app_test.go`, `menu_test.go`, `settings_prepare_test.go`, `welcome_test.go` and 18 more |
 | `app.showAll` Show All | menu bar, keys (arshell, chrome, firefox, project-b) | **no** | exempt: macOS's own: AppKit shows the hidden apps |
 | `arshell.commandBar` Open Command Bar | menu bar, keys (arshell), arshell | yes | `app_test.go`, `settings.cjs`, `arshell.cjs`, `drive_first_app.py` |
 | `arshell.copyAddress` Copy Address | menu bar, keys (arshell, chrome, firefox, project-b), arshell | yes | `arshell.cjs`, `check_clipboard.py`, `drive_first_app.py` |
@@ -37,10 +37,10 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `arshell.spacePrevious` Previous Space | menu bar, keys (arshell), arshell | **no** | `arshell.cjs` |
 | `arshell.splitAdd` Add to Split View | menu bar, keys (arshell, chrome, firefox, project-b), arshell | **no** | `settings.cjs`, `arshell.cjs` |
 | `arshell.splitRemove` Separate Split View | menu bar, keys (arshell, chrome, firefox, project-b), arshell | **no** | `arshell.cjs` |
-| `bookmarks.show` Bookmark Manager | menu bar, keys (arshell, chrome, firefox, project-b), mwshell, pbshell, page:welcome | yes | `pages_test.go`, `pages.cjs`, `mwshell.cjs`, `drive_first_app.py` |
+| `bookmarks.show` Bookmark Manager | menu bar, keys (arshell, chrome, firefox, project-b), mwshell, pbshell, page:welcome | yes | `pages_test.go`, `font-scale.cjs`, `pages.cjs`, `mwshell.cjs` and 1 more |
 | `bookmarks.toggle` Bookmark This Page… | menu bar, keys (arshell, chrome, firefox, project-b) | **no** | `pages_test.go`, `pages.cjs` |
 | `dev.viewSource` View Source | menu bar, keys (arshell, chrome, firefox, project-b), page:welcome | yes | `app_test.go`, `drive_first_app.py` |
-| `downloads.show` Downloads | menu bar, keys (arshell, chrome, firefox, project-b), mwshell, page:welcome, mkshell | yes | `download_folder_settings_test.go`, `menu_test.go`, `pages_test.go`, `welcome_test.go` and 9 more |
+| `downloads.show` Downloads | menu bar, keys (arshell, chrome, firefox, project-b), mwshell, page:welcome, mkshell | yes | `download_folder_settings_test.go`, `menu_test.go`, `pages_test.go`, `welcome_test.go` and 10 more |
 | `edit.copy` Copy | menu bar, keys (arshell, chrome, firefox, project-b), mnshell, ui | yes | `contextmenu_test.go`, `menu_test.go`, `barmenu_test.go`, `shellmenu_test.go` and 3 more |
 | `edit.cut` Cut | menu bar, keys (arshell, chrome, firefox, project-b) | **no** | `contextmenu_test.go`, `pbshell.cjs` |
 | `edit.delete` Delete | menu bar, keys (arshell, chrome, firefox, project-b) | yes | `download-details.cjs`, `pages.cjs`, `passkey-settings.cjs`, `password-settings.cjs` and 4 more |
@@ -54,7 +54,7 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `find.previous` Find Previous | menu bar, keys (arshell, chrome, firefox, project-b), arshell, mnshell, ui | yes | `drive_first_app.py` |
 | `focus.nextPane` Focus Next Pane | menu bar, keys (arshell, chrome, firefox, project-b) | yes | `drive_first_app.py` |
 | `focus.previousPane` Focus Previous Pane | menu bar, keys (arshell, chrome, firefox, project-b) | yes | `drive_first_app.py` |
-| `history.show` Show All History | menu bar, keys (arshell, chrome, firefox, project-b), mwshell, page:welcome | yes | `pages_test.go`, `pages.cjs`, `drive_first_app.py` |
+| `history.show` Show All History | menu bar, keys (arshell, chrome, firefox, project-b), mwshell, page:welcome | yes | `pages_test.go`, `font-scale.cjs`, `pages.cjs`, `drive_first_app.py` |
 | `nav.back` Back | menu bar, keys (arshell, chrome, firefox, project-b), arshell, fxshell, mnshell, ui | yes | `download-details.cjs`, `first-app.cjs`, `imports.cjs`, `shell-contract.cjs` and 6 more |
 | `nav.forward` Forward | menu bar, keys (arshell, chrome, firefox, project-b), arshell, fxshell, mnshell, ui | yes | `first-app.cjs`, `shell-contract.cjs`, `mwshell.cjs`, `pbshell.cjs` and 2 more |
 | `nav.reload` Reload This Page | menu bar, keys (arshell, chrome, firefox, project-b), arshell, fxshell, mnshell, ui | yes | `menu_test.go`, `commands_test.go`, `settings.cjs`, `mwshell.cjs` and 1 more |
@@ -168,13 +168,13 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `moveBookmark` | page:bookmarks | **no** | `pages_test.go` |
 | `moveTab` | pbshell, tmshell | **no** | `app_test.go` |
 | `moveWorkspace` | page:settings | **no** | `app_test.go` |
-| `navigate` | arshell, fxshell, mkshell, mnshell, mwshell, pbshell, tmshell | yes | `app_test.go`, `contextmenu_test.go`, `dialogs_test.go`, `files_test.go` and 18 more |
+| `navigate` | arshell, fxshell, mkshell, mnshell, mwshell, pbshell, tmshell | yes | `app_test.go`, `blocking_test.go`, `contextmenu_test.go`, `dialogs_test.go` and 19 more |
 | `newFolder` | page:bookmarks | **no** | `pages_test.go`, `mwshell.cjs` |
-| `newTab` | arshell, fxshell, mkshell, mnshell, mwshell, pbshell, tmshell | yes | `app_test.go`, `fullscreen_test.go`, `pins_test.go`, `session_test.go` and 19 more |
+| `newTab` | arshell, fxshell, mkshell, mnshell, mwshell, pbshell, tmshell | yes | `app_test.go`, `fullscreen_test.go`, `pins_test.go`, `session_test.go` and 21 more |
 | `notificationsOffered` | mkshell, mwshell | **no** | `download_offer_test.go` |
 | `open` | page:bookmarks, page:history, page:picker | **no** | `events_test.go`, `pages_test.go`, `picker_test.go` |
 | `openAccess` | ui | **no** | `imports_test.go` |
-| `openHelp` | page:settings | **no** | `help_settings_test.go` |
+| `openHelp` | page:settings | **no** | `help_settings_test.go`, `password-settings.cjs` |
 | `openInWorkspace` | page:settings | **no** | `app_test.go` |
 | `passkeyDelete` | page:settings | **no** | `passkey-settings.cjs` |
 | `passkeysList` | page:settings | **no** | `passkey-settings.cjs` |
@@ -206,19 +206,23 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `search` | page:history | **no** | `pages_test.go` |
 | `setAddressBarPosition` | page:settings | **no** | `settings_messages_test.go` |
 | `setAutoUpdate` | page:settings, page:welcome | **no** | `app_test.go` |
+| `setBlockGroup` | page:settings | **no** | `blocking_test.go`, `settings.cjs` |
+| `setBlockList` | page:settings | **no** | `blocking_test.go`, `settings.cjs` |
 | `setChannel` | page:settings | **no** | `app_test.go` |
 | `setFlag` | page:settings | **no** | `settings_messages_test.go` |
 | `setFrameColor` | page:settings | **no** | `app_test.go` |
 | `setHidden` | page:settings | **no** | `settings_messages_test.go` |
-| `setPref` | page:settings, page:welcome | **no** | `app_test.go`, `bookmark_settings_test.go`, `download_folder_settings_test.go`, `downloads_test.go` and 6 more |
+| `setOneShell` | page:settings | **no** | `app_test.go` |
+| `setPhoneShell` | page:settings | **no** | `app_test.go` |
+| `setPref` | page:settings, page:welcome | yes | `app_test.go`, `blocking_test.go`, `bookmark_settings_test.go`, `download_folder_settings_test.go` and 9 more |
 | `setProfileName` | page:settings | **no** | `profile_test.go` |
 | `setReserve` | page:settings | **no** | `settings_messages_test.go` |
 | `setSearchEngine` | page:settings, page:welcome | **no** | `settings_messages_test.go` |
-| `setShell` | page:settings | **no** | `app_test.go`, `settings.cjs` |
-| `setSiteSetting` | page:settings | yes | `settings_messages_test.go`, `sitefeatures_test.go`, `drive_first_app.py` |
+| `setShell` | page:settings | **no** | `settings.cjs` |
+| `setSiteSetting` | page:settings | yes | `settings_messages_test.go`, `sitefeatures_test.go`, `check_basics.py`, `drive_first_app.py` |
 | `setSparkOn` | page:welcome | **no** | `welcome_test.go` |
 | `setStart` | page:settings | **no** | `settings_messages_test.go` |
-| `setTabLayout` | page:settings, pbshell | **no** | `app_test.go` |
+| `setTabLayout` | page:settings, pbshell | **no** | `app_test.go`, `large-screens.cjs` |
 | `setTheme` | page:settings | **no** | `app_test.go` |
 | `setWorkspaces` | page:welcome | **no** | `welcome_test.go` |
 | `shareReport` | mkshell, mwshell, pbshell | **no** | `crash-report.cjs` |
@@ -240,7 +244,6 @@ test and no reason in `tools/action-coverage-exempt.json` (roles/tester.md).
 | `syncDisconnect` | page:settings | **no** | `sync.cjs` |
 | `syncGetBucket` | page:settings | **no** | `sync_settings_test.go`, `sync.cjs` |
 | `syncNow` | page:settings | yes | `sync.cjs`, `drive_android.py` |
-| `syncPropose` | page:settings | **no** | `sync_settings_test.go` |
 | `syncStartFresh` | page:settings | **no** | `sync.cjs` |
 | `timeline` | mkshell | **no** | `timeline_test.go` |
 | `ungroup` | arshell, mkshell, mwshell | **no** | `tmshell.cjs` |
