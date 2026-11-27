@@ -86,6 +86,20 @@ const bars = async (w) => (await w.ui.getByRole('tab').first().isVisible()) || (
   await welcome.getByRole('checkbox', { name: 'Travel', exact: true }).uncheck();
   await welcome.getByRole('button', { name: 'Continue' }).click();
   check('taken again, one no longer ticked goes', await until(() => JSON.stringify(spaces().map((x) => x.name)) === JSON.stringify(['Personal', 'Work'])), JSON.stringify(spaces()));
+  // Protection (docs/blocking.md): Block ads and Warn before dangerous sites, each a switch
+  // with its line, both on; one turned off is the profile's pref at once.
+  const prefs = () => JSON.parse(fs.readFileSync(path.join(lib.profile, 'prefs.json'), 'utf8'));
+  const blockAds = welcome.getByRole('switch', { name: 'Block ads' });
+  const warn = welcome.getByRole('switch', { name: 'Warn before dangerous sites' });
+  check('Protection offers Block ads and Warn before dangerous sites, both on, each with its line',
+    await until(() => welcome.getByRole('heading', { name: 'Protection' }).isVisible()) && (await blockAds.isChecked()) && (await warn.isChecked()) &&
+    (await welcome.getByText('Ads and trackers, from public lists kept up to date').isVisible()) && (await welcome.getByText('Malware and phishing, checked on this device; nothing is sent anywhere').isVisible()));
+  await settle(w.page);
+  await w.page.screenshot({ path: path.join(lib.out, 'welcome-protection.png') });
+  await warn.click();
+  check('Warn before dangerous sites off is the profile\'s pref', await until(() => prefs().warnDangerous === false && prefs().blockAds === true));
+  await warn.click();
+  check('and on again', await until(() => prefs().warnDangerous === true));
   await welcome.getByRole('button', { name: 'Continue' }).click();
   // Make default browser asks the system, which the mock answers yes for.
   await welcome.getByRole('button', { name: 'Make default browser' }).click();

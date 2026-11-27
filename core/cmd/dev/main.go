@@ -15,6 +15,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -178,6 +179,7 @@ func main() {
 			e.SetListener(p)
 		} else {
 			a = start(*profile, *id)
+			mockDangerous(a)
 			if !*passwordStore {
 				a.UsePasswordStore(nil)
 			}
@@ -581,4 +583,23 @@ func lockedKeyring(locked bool) keys.Device {
 		return nil
 	}
 	return func(bool) ([]byte, error) { return nil, keys.ErrKeyring }
+}
+
+// mockDangerous makes the hosts the test lists name dangerous sites
+// (tools/lists/test-malware.txt, test-phishing.txt), as the lists manager would once it had
+// them: the mock downloads no lists. They are refused while Warn before dangerous sites is
+// on, so the shells' tests see the unsafe notice and Dangerous in the address field.
+func mockDangerous(a *app.App) {
+	lists := map[string]tabs.Danger{
+		"malware.blocking.test":  {Kind: "malware", List: "Project B test: malware"},
+		"phishing.blocking.test": {Kind: "phishing", List: "Project B test: phishing"},
+	}
+	a.Tabs.SetDanger(func(u string) (tabs.Danger, bool) {
+		p, err := url.Parse(u)
+		if err != nil || !a.Prefs.All().WarnDangerous {
+			return tabs.Danger{}, false
+		}
+		d, ok := lists[p.Hostname()]
+		return d, ok
+	})
 }

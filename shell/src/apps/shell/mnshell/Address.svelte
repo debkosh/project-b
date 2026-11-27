@@ -1,15 +1,15 @@
 <script>
   import { focusPage, send, shell } from '@/sdk/svelte.svelte.js';
-  import { openSiteSettings } from '@/sdk/sites.js';
+  import { openSiteSettings, siteMark } from '@/sdk/sites.js';
 
   // The address field: url, the active tab's address, until something is typed in it.
   // Typing asks Go for suggestions, listed in a panel under it: Up and Down choose one,
   // Enter or a click goes. Escape puts the address back and gives the page the keyboard.
   // tab is the active tab: on a web page, a button at the field's end opens its site's
-  // settings, and says when the page isn't secure.
+  // settings, and says when the page is a dangerous site's or isn't secure.
   let { url, tab } = $props();
   const site = $derived(/^https?:\/\//.test(tab?.url || ''));
-  const insecure = $derived(!!tab?.connection && tab.connection !== 'secure');
+  const marked = $derived(siteMark(tab));
   let input;
   // Whether the field holds what was typed since it took the keyboard.
   let edited = $state(false);
@@ -109,7 +109,7 @@
     }}
   />
   {#if site}
-    <button class="words settings" class:insecure aria-label={insecure ? 'Not secure · Site settings' : 'Site settings'} title={tab.connectionNote || 'Site settings'} onmousedown={(e) => e.preventDefault()} onclick={() => openSiteSettings()}>{insecure ? 'Not secure' : 'Site'}</button>
+    <button class="words settings" class:insecure={!!marked} aria-label={marked ? `${marked} · Site settings` : 'Site settings'} title={tab.danger ? 'Dangerous · Site settings' : tab.connectionNote || 'Site settings'} onmousedown={(e) => e.preventDefault()} onclick={() => openSiteSettings()}>{marked || 'Site'}</button>
   {/if}
   {#if open}
     <!-- The keyboard stays in the field, which chooses with Up and Down: a press on the

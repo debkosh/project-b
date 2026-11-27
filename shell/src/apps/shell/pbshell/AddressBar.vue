@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { activeTab, bookmark, chooseSuggestion, focusPage, isBookmarked, send, state, suggest, tabLabel, typedFirst } from '@/sdk/vue.js';
 import SuggestionList from './SuggestionList.vue';
-import { hasSite, openSite, popupsWord, promptFor } from '@/sdk/sites.js';
+import { hasSite, openSite, popupsWord, promptFor, siteMark } from '@/sdk/sites.js';
 import PermissionPrompt from '@/ui/PermissionPrompt.vue';
 import { pushEscape } from '@/ui/escape.js';
 import SitePanel from '@/ui/SitePanel.vue';
@@ -55,14 +55,17 @@ const site = computed(() => openSite(state, activeTab.value));
 // the field, with a close control; there is nothing to type.
 const ours = computed(() => !!activeTab.value.page);
 // What the slot shows: the page's own icon on a tab of ours, the site's settings on a web
-// page, marked when its connection is anything but secure, and search with no site or while
-// the field is being typed in.
+// page, marked when the dangerous sites' lists name it (opened anyway too) or its
+// connection is anything but secure, and search with no site or while the field is being
+// typed in.
 const slot = computed(() => {
   const t = activeTab.value;
   if (ours.value) return 'page';
   if (focused.value || !hasSite(t)) return 'search';
-  return t.connection && t.connection !== 'secure' ? 'insecure' : 'site';
+  return siteMark(t) ? 'marked' : 'site';
 });
+// A marked slot's words, which start its name.
+const siteWord = computed(() => (slot.value === 'marked' ? siteMark(activeTab.value) : ''));
 
 const status = computed(() => {
   const t = activeTab.value;
@@ -323,20 +326,21 @@ function closeMarked() {
       v-else-if="slot !== 'search'"
       type="button"
       class="slot site"
-      :class="{ insecure: slot === 'insecure' }"
-      :aria-label="slot === 'insecure' ? 'Not secure · Site settings' : 'Site settings'"
-      :title="slot === 'insecure' ? 'Not secure · Site settings' : 'Site settings'"
+      :class="{ insecure: siteWord }"
+      :aria-label="siteWord ? `${siteWord} · Site settings` : 'Site settings'"
+      :title="siteWord ? `${siteWord} · Site settings` : 'Site settings'"
       @mousedown.prevent
       :aria-expanded="panel"
       @click="panel = !panel"
     >
       <!-- Not secure says so in words, as Chrome and Edge do: an http page, or a certificate
-           passed with Open anyway. -->
-      <template v-if="slot === 'insecure'">
+           passed with Open anyway; and Dangerous the same way, for a site the dangerous
+           sites' lists name, refused or opened anyway. -->
+      <template v-if="siteWord">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M8 2.5 14 13H2zM8 6.5v3M8 11.2v.1" />
         </svg>
-        <span class="words" aria-hidden="true">Not secure</span>
+        <span class="words" aria-hidden="true">{{ siteWord }}</span>
       </template>
       <svg v-else width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
         <path d="M2.5 5h5M11.5 5h2M2.5 11h2M8.5 11h5" />

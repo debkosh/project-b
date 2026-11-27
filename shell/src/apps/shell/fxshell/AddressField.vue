@@ -3,7 +3,7 @@ import { paint } from '@/ui/hues.js';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { addressField } from './address.js';
 import { activeTab, focusPage, send, state, workspaceOf } from '@/sdk/vue.js';
-import { hasSite, openSite, popupsWord, promptFor } from '@/sdk/sites.js';
+import { hasSite, openSite, popupsWord, promptFor, siteMark } from '@/sdk/sites.js';
 import PermissionPrompt from '@/ui/PermissionPrompt.vue';
 import SitePanel from '@/ui/SitePanel.vue';
 
@@ -163,6 +163,8 @@ const prompt = computed(() => promptFor(state, state.active));
 const panel = ref(false);
 watch(() => state.active, () => (panel.value = false));
 const site = computed(() => openSite(state, activeTab.value));
+// Dangerous or Not secure: the site control's warning, and the start of its name.
+const marked = computed(() => siteMark(activeTab.value));
 </script>
 
 <template>
@@ -171,14 +173,14 @@ const site = computed(() => openSite(state, activeTab.value));
       v-if="hasSite(activeTab)"
       type="button"
       class="site"
-      :class="{ insecure: activeTab.connection && activeTab.connection !== 'secure' }"
-      :aria-label="activeTab.connection && activeTab.connection !== 'secure' ? 'Not secure · Site settings' : 'Site settings'"
-      :title="activeTab.connectionNote || 'Site settings'"
+      :class="{ insecure: marked }"
+      :aria-label="marked ? `${marked} · Site settings` : 'Site settings'"
+      :title="activeTab.danger ? 'Dangerous · Site settings' : activeTab.connectionNote || 'Site settings'"
       @mousedown.prevent
       :aria-expanded="panel"
       @click="panel = !panel"
     >
-      <svg v-if="activeTab.connection && activeTab.connection !== 'secure'" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <svg v-if="marked" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M8 2.25 14.25 13.25H1.75z" />
         <path d="M8 6.5v3M8 11.5v.01" />
       </svg>

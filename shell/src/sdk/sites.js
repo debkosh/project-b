@@ -105,6 +105,15 @@ export function hasSite(tab) {
   return /^https?:\/\//.test(tab?.url || '');
 }
 
+// siteMark is the word the site control says before Site settings, in --danger with the
+// warning mark: Dangerous for a site the dangerous sites' lists name, Go's tab.danger,
+// refused or opened anyway (docs/blocking.md); Not secure for a page whose connection
+// isn't; '' for neither. The control is then named "<word> · Site settings".
+export function siteMark(tab) {
+  if (tab?.danger) return 'Dangerous';
+  return tab?.connection && tab.connection !== 'secure' ? 'Not secure' : '';
+}
+
 // The site panel (docs/site-features.md). Go sends state.openSites: by origin, each site a
 // web tab is open on, {settings: [{kind, title, value, choices?}], sparks: [{id, name, on}]}.
 // Settings with choices are ours (ads: on or off; links: allow or block; popups: block or

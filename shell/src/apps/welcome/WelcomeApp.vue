@@ -259,10 +259,20 @@ onMounted(() => heading.value?.focus());
       <section v-else-if="step === 'protection'" class="protection" aria-labelledby="protection">
         <h1 id="protection" ref="heading" tabindex="-1">Protection</h1>
         <div class="card">
-          <div class="row">
-            <span class="label">Ad blocker</span>
-            <span class="state">On</span>
-          </div>
+          <!-- Block ads and Warn before dangerous sites, Go's words, each a pref. -->
+          <label v-for="p in state.protection" :key="p.pref" class="row switch-row">
+            <span class="label">{{ p.title }}<small :id="`protection-${p.pref}`">{{ p.about }}</small></span>
+            <input
+              type="checkbox"
+              role="switch"
+              class="switch"
+              :aria-label="p.title"
+              :aria-describedby="`protection-${p.pref}`"
+              :checked="!!state.prefs[p.pref]"
+              :aria-checked="String(!!state.prefs[p.pref])"
+              @change="setPref(p.pref, String($event.target.checked))"
+            />
+          </label>
           <label class="row">
             <span class="label">Search engine</span>
             <select :value="state.prefs.searchEngine" @change="send({ t: 'setSearchEngine', value: $event.target.value })">
@@ -642,6 +652,18 @@ h1 {
 
 .keychain {
   padding: 12px 16px;
+}
+
+/* A switch's row: its words, and Go's line under them. */
+.switch-row {
+  padding: 8px 16px;
+}
+
+.switch-row small {
+  display: block;
+  color: var(--muted);
+  font-size: calc(12rem / 16);
+  font-weight: 400;
 }
 
 .keychain small {

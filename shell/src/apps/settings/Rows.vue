@@ -50,13 +50,6 @@ const starts = [
   { value: 'fresh', label: 'Start fresh' },
 ];
 
-// Block ads says which sites have it off, which the switch leaves be.
-const adsHint = computed(() => {
-  if (!state.prefs.blockAds) return 'Off on every site';
-  const n = state.siteSettings.filter((s) => s.settings.some((x) => x.kind === 'ads' && x.value === 'off')).length;
-  return n ? `On every site, but ${n === 1 ? 'the one' : `the ${n}`} you turned it off for` : 'On every site';
-});
-
 // Save to: the folder downloads go to, the pref's or the Downloads folder Go named, by its
 // own name, the whole path under it with the home folder as ~, and a long one cut in the
 // middle, which keeps both ends.
@@ -254,8 +247,9 @@ const layouts = [
     <Segmented label="Updates from" :options="channels" :model-value="state.channel" @update:model-value="send({ t: 'setChannel', text: $event })" />
   </Row>
 
-  <!-- The ad blocker on every site; each site can still turn it off for itself. -->
-  <Row v-else-if="part === 'blockAds'" v-slot="{ named }" tag="label" label="Block ads" :hint="adsHint">
+  <!-- Protection (docs/blocking.md): the ad blocker on every site, each site still able to
+       turn it off for itself, and Safe Browsing, in the welcome's words. -->
+  <Row v-else-if="part === 'blockAds'" v-slot="{ named }" tag="label" label="Block ads" hint="Ads and trackers, from public lists kept up to date">
     <input
       v-bind="named"
       type="checkbox"
@@ -264,6 +258,18 @@ const layouts = [
       :checked="!!state.prefs.blockAds"
       :aria-checked="String(!!state.prefs.blockAds)"
       @change="setPref('blockAds', $event.target.checked)"
+    />
+  </Row>
+
+  <Row v-else-if="part === 'warnDangerous'" v-slot="{ named }" tag="label" label="Warn before dangerous sites" hint="Malware and phishing, checked on this device; nothing is sent anywhere">
+    <input
+      v-bind="named"
+      type="checkbox"
+      role="switch"
+      class="switch"
+      :checked="!!state.prefs.warnDangerous"
+      :aria-checked="String(!!state.prefs.warnDangerous)"
+      @change="setPref('warnDangerous', $event.target.checked)"
     />
   </Row>
 

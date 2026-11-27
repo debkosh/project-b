@@ -149,6 +149,9 @@ func TestADangerousSiteIsRefusedUntilThePersonOpensItAnyway(t *testing.T) {
 	if tab.Blocked {
 		t.Fatal("a dangerous site is a blocked one")
 	}
+	if d := tab.Danger; d == nil || *d != (Danger{Kind: "phishing", List: "Phishing URL Blocklist"}) {
+		t.Fatalf("the refused tab's danger %+v", d)
+	}
 	m.HandleNavigationStarting(id, 3, "https://harm.test/")
 	if tab, _ := m.Get(id); tab.Notice == nil || tab.Notice.Title != "harm.test may harm your device" {
 		t.Fatalf("malware: %+v", tab.Notice)
@@ -165,9 +168,18 @@ func TestADangerousSiteIsRefusedUntilThePersonOpensItAnyway(t *testing.T) {
 	if tab, _ := m.Get(id); tab.Notice != nil {
 		t.Fatalf("notice after Open anyway: %+v", tab.Notice)
 	}
+	// Opened anyway, its pages are still dangerous, for the address field's Dangerous.
+	if tab, _ := m.Get(id); tab.Danger == nil || *tab.Danger != (Danger{Kind: "malware", List: "URLhaus filter"}) {
+		t.Fatalf("danger after Open anyway: %+v", tab.Danger)
+	}
 	// The other host is still refused, and asked again.
 	before := asked
 	if got := m.HandleNavigationStarting(id, 5, "https://steal.test/"); got != engine.NavigationBlock || asked != before+1 {
 		t.Fatalf("another host: %v", got)
+	}
+	// A site the lists don't name has none.
+	m.HandleNavigationStarting(id, 6, "https://good.test/")
+	if tab, _ := m.Get(id); tab.Danger != nil {
+		t.Fatalf("a good site's danger %+v", tab.Danger)
 	}
 }

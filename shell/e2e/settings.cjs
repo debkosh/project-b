@@ -977,18 +977,80 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
   check('a way of its own is set for the site', await until(() => sitesFile()['https://meet.test']?.['download-names'] === 'file'), JSON.stringify(sitesFile()));
   await siteRadio('Name downloads', 'As in Settings').click();
   check('and As in Settings forgets it', await until(() => !('download-names' in (sitesFile()['https://meet.test'] || {}))), JSON.stringify(sitesFile()));
+  // Protection (docs/blocking.md): Block ads and Warn before dangerous sites, each with the
+  // welcome's line, and Block lists, a row that opens its own page: the groups, each with its
+  // switch and a line of what it blocks and how many of its lists are on, one opened to its
+  // lists and one of them switched off, a group switched off and on again, and Dangerous
+  // sites greyed while Warn before dangerous sites is off. The test group never shows.
+  const blockLists = async () => {
+    await show('blockLists');
+    const protection = page.getByRole('region', { name: 'Protection' });
+    check('Privacy and sites has Protection: Block ads, Warn before dangerous sites and Block lists, each with its line',
+      await until(async () => {
+        const t = await protection.textContent();
+        return t.includes('Ads and trackers, from public lists kept up to date') && t.includes('Malware and phishing, checked on this device; nothing is sent anywhere') && /\d+ of \d+ lists on · not downloaded yet/.test(t);
+      }), await protection.textContent());
+    const warn = protection.getByRole('switch', { name: 'Warn before dangerous sites' });
+    check('Warn before dangerous sites is on by default', await warn.isChecked());
+    await settle(page);
+    await page.screenshot({ path: shot('settings-protection') });
+    await protection.locator('[data-section="blockLists"]').click();
+    const lists = page.locator('.block-lists');
+    check('Block lists opens a page of its own, its intro under the title',
+      await until(() => page.getByText('Public lists of what to block, updated every hour. Turn a group on or off, or open it to choose its lists.').isVisible()) &&
+      (await page.locator('.list-page .list-title').textContent()) === 'Block lists');
+    const line = (id) => lists.locator(`[data-group="${id}"] .secondary`).textContent();
+    check('each group has its switch and a line of what it blocks, then how many of its lists are on',
+      (await lists.getByRole('switch', { name: 'Trackers', exact: true }).isChecked()) && (await line('trackers')) === 'Scripts and pixels that follow you from site to site · 4 of 4 on' &&
+      !(await lists.getByRole('switch', { name: 'Annoyances', exact: true }).isChecked()) && (await line('annoyances')).endsWith('· 0 of 8 on'), await line('trackers'));
+    check('the count never breaks across lines', await lists.locator('[data-group="trackers"] .count').evaluate((e) => getComputedStyle(e).whiteSpace === 'nowrap'));
+    check('the test group and its lists never show', !(await lists.textContent()).includes('Project B test'));
+    // A group opened, and one of its lists switched off by its own switch.
+    await lists.getByRole('button', { name: 'Trackers', exact: true }).click();
+    const peter = lists.getByRole('switch', { name: 'Peter Lowe\'s list', exact: true });
+    check('a group opened shows its lists, each with its title, what it blocks and its home, and its switch',
+      await until(() => peter.isVisible()) && (await lists.locator('[data-list="peter-lowe"] .secondary').textContent()).endsWith('· pgl.yoyo.org') &&
+      (await lists.locator('[data-list="peter-lowe"] .meta').textContent()) === 'Not downloaded yet' && (await peter.isChecked()));
+    await peter.click(); // does: setBlockList
+    check('a list switched off is kept, and its group\'s count says so', await until(async () => prefsFile().lists?.['peter-lowe'] === false && (await line('trackers')).endsWith('· 3 of 4 on')) &&
+      (await lists.getByRole('switch', { name: 'Trackers', exact: true }).isChecked()), JSON.stringify(prefsFile().lists));
+    await settle(page);
+    await page.screenshot({ path: shot('settings-block-lists') });
+    // A group's switch: off turns all its lists off, on brings back its defaults (Go's rule).
+    await lists.getByRole('switch', { name: 'Trackers', exact: true }).click(); // does: setBlockGroup
+    check('a group switched off turns all its lists off', await until(async () => (await line('trackers')).endsWith('· 0 of 4 on') && !(await peter.isChecked())));
+    await lists.getByRole('switch', { name: 'Trackers', exact: true }).click();
+    check('and on brings back its defaults', await until(async () => (await line('trackers')).endsWith('· 4 of 4 on') && (await peter.isChecked()) && !('peter-lowe' in (prefsFile().lists || {}))), JSON.stringify(prefsFile().lists));
+    const dangerous = page.getByRole('region', { name: 'Dangerous sites' });
+    check('Dangerous sites are a section of their own, used while Warn before dangerous sites is on',
+      (await dangerous.getByText('Used while Warn before dangerous sites is on.').isVisible()) && (await dangerous.getByRole('switch', { name: 'Malware', exact: true }).isChecked()) &&
+      (await dangerous.getByRole('switch', { name: 'Phishing', exact: true }).isChecked()));
+    await show('warnDangerous');
+    await warn.click();
+    await until(() => prefsFile().warnDangerous === false);
+    await protection.locator('[data-section="blockLists"]').click();
+    check('with Warn before dangerous sites off, they are greyed, and say to turn it on',
+      await until(() => dangerous.getByText('Turn on Warn before dangerous sites to use these').isVisible()) && (await dangerous.locator('.card').evaluate((e) => getComputedStyle(e).opacity)) === '0.5');
+    await settle(page);
+    await page.screenshot({ path: shot('settings-block-lists-warn-off'), fullPage: true });
+    await show('warnDangerous');
+    await warn.click();
+    await until(() => prefsFile().warnDangerous === true);
+  };
+
   // Block ads, off on every site: a site's view has no switch of its own for it.
   await show('blockAds');
   const blockAds = page.getByRole('switch', { name: /Block ads/ });
   check('Block ads is on every site by default', await blockAds.isChecked());
   await blockAds.click();
-  check('off, it is saved, and says so', await until(async () => prefsFile().blockAds === false && (await page.locator('.row', { has: blockAds }).textContent()).includes('Off on every site')));
+  check('off, it is saved', await until(async () => prefsFile().blockAds === false && !(await blockAds.isChecked())));
   await show('sites');
   await sites.getByRole('button', { name: 'meet.test', exact: true }).click();
   check('and a site\'s view has no ad blocker of its own', await until(() => siteRadio('Camera', 'Ask').isVisible()) && (await site.getByRole('radiogroup', { name: 'Ad blocker' }).count()) === 0);
   await show('blockAds');
   await blockAds.click();
   await until(() => prefsFile().blockAds === true);
+  await blockLists();
   await show('sites');
   await sites.getByRole('button', { name: 'meet.test', exact: true }).click();
   await until(() => siteRadio('Camera', 'Ask').isVisible());
@@ -1367,6 +1429,23 @@ fs.writeFileSync(path.join(profile, 'sites.json'), JSON.stringify({
       check('on a phone Privacy has no Clear cookies when the app quits', (await page.getByRole('switch', { name: /Clear cookies when the app quits/ }).count()) === 0);
       await page.locator('[data-section="sites"]').click();
       check('on a phone, Sites opens its page, and back goes to its section', await until(() => page.getByRole('region', { name: 'Site settings', exact: true }).isVisible()));
+      await page.locator('.list-page .list-head .back').click();
+      await until(() => there().isVisible());
+      // Block lists on a phone: the intro under the title, a tap on a group's words opens
+      // it, and a hairline before each switch keeps the switch apart.
+      await page.locator('[data-section="blockLists"]').click();
+      const lists = page.locator('.block-lists');
+      check('on a phone, Block lists opens its page, the intro under its title',
+        await until(() => page.getByText('Public lists of what to block, updated every hour. Tap a group to choose its lists.').isVisible()));
+      const ads = lists.locator('[data-group="ads"]');
+      check('each group\'s switch has a hairline before it, and no chevron', (await ads.locator('.divider').count()) === 1 && (await ads.locator('.chevron').count()) === 0);
+      await ads.locator('.name').click();
+      check('a tap on a group\'s words opens it, and leaves its switch as it was',
+        await until(() => lists.getByRole('switch', { name: 'EasyList', exact: true }).isVisible()) && (await lists.getByRole('switch', { name: 'Ads', exact: true }).isChecked()));
+      const wraps = await lists.locator('.count').evaluateAll((cs) => cs.filter((c) => c.getClientRects().length > 1).map((c) => c.textContent));
+      check('no group\'s count breaks across lines', wraps.length === 0, wraps.join(' | '));
+      await settle(page);
+      await page.screenshot({ path: shot('settings-block-lists-phone'), fullPage: true });
       await page.locator('.list-page .list-head .back').click();
       await until(() => there().isVisible());
     }

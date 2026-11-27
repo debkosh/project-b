@@ -4,7 +4,7 @@
   import { inFolder } from '@/ui/bookmarks.js';
   import Icon from './Icon.svelte';
   import Mark from './Mark.svelte';
-  import { popupsWord } from '@/sdk/sites.js';
+  import { popupsWord, siteMark } from '@/sdk/sites.js';
   import { nextQuery } from './queries.js';
 
   // The address pill. At rest it shows the host and the page's lock; a tap turns it into
@@ -74,8 +74,9 @@
   const secure = $derived(status ? 'warn' : tab.url.startsWith('https:') ? 'lock' : tab.url.startsWith('http:') ? 'warn' : '');
   // A page that reached the tab over a connection that isn't secure, an http page or a
   // certificate passed with Open anyway, says so in words at the pill's start, as Chrome
-  // does; the words are part of the site's mark, which opens the site's sheet.
-  const insecure = $derived(!status && !!tab.connection && tab.connection !== 'secure');
+  // does; the words are part of the site's mark, which opens the site's sheet. A site the
+  // dangerous sites' lists name says Dangerous the same way, refused or opened anyway.
+  const marked = $derived(status ? '' : siteMark(tab));
   // Each row's icon says its kind, so a typed list has no headings.
   const kindIcons = { tab: 'tab', history: 'history', bookmark: 'star', search: 'search', address: 'globe', closed: 'closed' };
   // The list from the field outwards: under a field on top, over one at the bottom with
@@ -248,8 +249,8 @@
 </script>
 
 <div class="address" class:editing>
-  {#if !editing && insecure}
-    <button type="button" class="mark insecure" aria-label="Not secure · Site settings" onclick={onsite}><Icon name="warn" size={16} /><span aria-hidden="true">Not secure</span></button>
+  {#if !editing && marked}
+    <button type="button" class="mark insecure" aria-label="{marked} · Site settings" onclick={onsite}><Icon name="warn" size={16} /><span aria-hidden="true">{marked}</span></button>
   {:else if !editing && secure}
     <button type="button" class="mark" aria-label="Site settings" onclick={onsite}><Icon name={secure} size={16} /></button>
   {/if}

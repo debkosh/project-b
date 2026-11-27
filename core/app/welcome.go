@@ -271,8 +271,8 @@ func (w *welcome) snapshot(tab engine.TabID) map[string]any {
 	// The Protection step's switches, each a pref the page sets with setPref; their values
 	// are the prefs' (docs/blocking.md).
 	s["protection"] = []welcomeSwitch{
-		{Pref: "blockAds", Title: "Block ads and trackers", About: "From up-to-date public lists, which you can choose in Settings."},
-		{Pref: "warnDangerous", Title: "Warn before dangerous sites", About: "Sites known for malware or phishing, checked on this device."},
+		{Pref: "blockAds", Title: "Block ads", About: "Ads and trackers, from public lists kept up to date"},
+		{Pref: "warnDangerous", Title: "Warn before dangerous sites", About: "Malware and phishing, checked on this device; nothing is sent anywhere"},
 	}
 	w.a.imports.snapshot(s)
 	return s

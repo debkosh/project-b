@@ -42,6 +42,9 @@ export const state = reactive({
   workspaces: [],
   // The built-in sparks the profile still has, each {id, name, description, on}.
   sparks: [],
+  // The Protection step's switches, each {pref, title, about}: a pref of prefs, set with
+  // setPref (docs/blocking.md).
+  protection: [],
 });
 
 export function setPref(name, value) {
@@ -72,6 +75,7 @@ export function connect() {
             platform: m.platform,
             workspaces: m.workspaces || [],
             sparks: m.sparks || [],
+            protection: m.protection || [],
           });
           break;
         case 'prefs':

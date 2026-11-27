@@ -118,9 +118,14 @@ export const state = reactive({
   sparkZip: null,
   // The kinds of setting settings can set for a site, in order, each {kind, title}.
   siteKinds: [],
-  // How each site's open pages reached them, by origin: {connection, note}, connection
-  // 'secure' or 'insecure', note why in one line.
+  // How each site's open pages reached them, by origin: {connection, note, danger},
+  // connection 'secure' or 'insecure', note why in one line, danger {kind, list} while the
+  // dangerous sites' lists name one of them.
   siteConnections: {},
+  // The block lists (docs/blocking.md), as Go shows them: {downloaded, published, groups},
+  // each group {id, title, about, blocker, on, onCount, total, lists}, each list {id, title,
+  // about, home, licence, on, changed, size, downloaded}. The test group is never in it.
+  blocking: { downloaded: false, groups: [] },
   // Go's prefs, all of them, by their names in the file, as a shell has them: what setPref
   // sets. Bookmarks reads where bookmarks show from them.
   prefs: {},
@@ -203,6 +208,7 @@ export function connect() {
             sparks: m.sparks || [],
             siteKinds: m.siteKinds,
             siteConnections: m.siteConnections,
+            blocking: m.blocking || state.blocking,
             prefs: m.prefs || {},
             bookmarks: m.bookmarks || [],
             sync: m.sync || state.sync,
@@ -274,6 +280,9 @@ export function connect() {
           break;
         case 'siteConnections':
           state.siteConnections = m.siteConnections;
+          break;
+        case 'blocking':
+          state.blocking = m.blocking;
           break;
         case 'sparks':
           state.sparks = m.sparks;

@@ -42,7 +42,7 @@ const rules = {
   30: 'A site asking for its camera, microphone or notifications in the active tab brings a dialog named by its question, with Block and Allow, or Block, Always allow and Allow this time; an Allow grants it, Block denies it, Escape dismisses it',
   31: 'On a web page, a control named Site settings opens settings on that site, at once or from its panel\'s Details',
   33: 'The Site settings control opens a panel over the page, a dialog named Site settings for the site\'s host, with a switch named Ad blocker, a switch named Sparks with the names of the sparks that run on the page, and a choice of Links to other sites, Allow or Block, each Go\'s and each changing Go\'s setting; a change that applies when the page loads again says so, with a Reload button; Escape closes it; a popup Links to other sites closed shows in the address field as a button named by its count, which opens the panel; a pop-up opened with no tap closes and counts too, under the panel\'s choice of Pop-ups, Block by default or Allow, beside Open it, which opens the last one in a tab',
-  32: 'A page that failed to load, or has a bad certificate, is covered by an alert with Go\'s sentence and its actions as buttons; Try again loads it again, and Open anyway opens it',
+  32: 'A page that failed to load, has a bad certificate or is a dangerous site\'s is covered by an alert with Go\'s sentence and its actions as buttons; Try again loads it again, Go back leaves a dangerous site, and Open anyway opens it, a dangerous one with a control named Dangerous · Site settings',
 };
 
 // The desktop shells that don't draw the right-click menu yet, and who brings it to each
@@ -886,6 +886,32 @@ const noNoticeYet = {
         rule(32, 'a bad certificate brings an alert that says what is wrong with it', await until(() => warning.isVisible()));
         await warning.getByRole('button', { name: 'Open anyway' }).click();
         rule(32, 'Open anyway opens the page, which is then not secure', (await loaded('https://old.test/')) && (await tabNow()).connection === 'insecure' && (await until(async () => (await ui.getByRole('alert').count()) === 0)));
+        // A site the dangerous sites' lists name (the dev app's test hosts, as
+        // tools/lists/test-phishing.txt has them): the unsafe notice, Go back first.
+        const unsafe = alert('phishing.blocking.test may be trying to steal your information');
+        await fire('navigate', 'https://phishing.blocking.test/login', { tab });
+        rule(32, 'a dangerous site brings an alert that says what it may do, and which list named it',
+          (await until(() => unsafe.isVisible())) && (await unsafe.textContent()).includes('Project B test: phishing lists it as a phishing site.'));
+        const goBack = unsafe.getByRole('button', { name: 'Go back' });
+        const openAnyway = unsafe.getByRole('button', { name: 'Open anyway' });
+        rule(32, 'with Go back first, then Open anyway', (await goBack.isVisible()) && (await openAnyway.isVisible()) &&
+          (await unsafe.getByRole('button').evaluateAll((bs) => bs.map((b) => b.textContent.trim()))).join(',') === 'Go back,Open anyway');
+        await goBack.click();
+        rule(32, 'Go back leaves it, and the alert goes', await until(async () => {
+          const t = await tabNow();
+          return !t.loading && !t.notice && !t.url.includes('blocking.test') && (await ui.getByRole('alert').count()) === 0;
+        }));
+        await fire('navigate', 'https://phishing.blocking.test/login', { tab });
+        await until(() => unsafe.isVisible());
+        await unsafe.getByRole('button', { name: 'Open anyway' }).click();
+        rule(32, 'Open anyway opens a dangerous site', (await loaded('https://phishing.blocking.test/login')) && (await until(async () => (await ui.getByRole('alert').count()) === 0)));
+        // Opened anyway, the site's control says Dangerous, as Not secure stays after a
+        // certificate is passed.
+        await fire('focusTab', '', { tab });
+        rule(32, 'and the address field\'s site control is named Dangerous · Site settings', await until(async () => (await tabNow()).danger?.list === 'Project B test: phishing' &&
+          (await ui.getByRole('button', { name: 'Dangerous · Site settings' }).first().isVisible())));
+        await settle(page);
+        await page.screenshot({ path: path.join(__dirname, `../../build/e2e/dangerous-${id}.png`) });
       } catch (e) {
         rule(32, 'its checks ran to their end', false, e.message.split('\n')[0]);
       }

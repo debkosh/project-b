@@ -279,24 +279,31 @@ func (a *App) notificationClicked(e engine.Engine, id string) {
 	}
 }
 
-// siteConnection is how a site's open pages reached it, for its site view.
+// siteConnection is how a site's open pages reached it, for its site view, and what the
+// dangerous sites' lists say of it, for the view's first row.
 type siteConnection struct {
-	Connection string `json:"connection"`
-	Note       string `json:"note,omitempty"`
+	Connection string       `json:"connection"`
+	Note       string       `json:"note,omitempty"`
+	Danger     *tabs.Danger `json:"danger,omitempty"`
 }
 
 // siteConnections is, by origin, how the open pages of each site reached them: insecure
-// when any of them did, and why.
+// when any of them did, and why; and dangerous when the lists name any of them.
 func (a *App) siteConnections() map[string]siteConnection {
 	out := map[string]siteConnection{}
 	for _, t := range a.Tabs.All() {
 		o := sites.Origin(t.URL)
-		if o == "" || t.Connection == "" {
+		if o == "" || t.Connection == "" && t.Danger == nil {
 			continue
 		}
-		if have, ok := out[o]; !ok || have.Connection == "secure" {
-			out[o] = siteConnection{Connection: t.Connection, Note: t.ConnectionNote}
+		c := out[o]
+		if t.Connection != "" && c.Connection != "insecure" {
+			c.Connection, c.Note = t.Connection, t.ConnectionNote
 		}
+		if t.Danger != nil {
+			c.Danger = t.Danger
+		}
+		out[o] = c
 	}
 	return out
 }

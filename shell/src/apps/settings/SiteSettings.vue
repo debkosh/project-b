@@ -100,6 +100,8 @@ const kinds = computed(() => state.siteKinds.filter((k) => k.kind !== 'ads' || s
 
 // How an origin's open pages reached it; nothing when none is open.
 const connectionOf = (o) => state.siteConnections[o] || null;
+// What the dangerous sites' lists say of a site, in the notice's words.
+const dangerNote = (d) => `${d.list} lists it as a ${d.kind} site`;
 
 // Clearing a site's data, or every site's, asks first: the site by name, or '*' for all.
 const clearing = ref('');
@@ -155,7 +157,18 @@ const uid = useId();
     <template v-for="o in origins" :key="o">
       <h3 v-if="origins.length > 1" class="host" :title="o">{{ host(o) }}</h3>
       <div class="card" :aria-label="origins.length > 1 ? host(o) : undefined" :role="origins.length > 1 ? 'group' : undefined">
-        <div v-if="connectionOf(o)" class="row connection" :class="connectionOf(o).connection">
+        <!-- A site the dangerous sites' lists name says so first, and which list. -->
+        <div v-if="connectionOf(o)?.danger" class="row connection insecure dangerous">
+          <svg class="glyph" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M8 2.25 14.25 13.25H1.75z" />
+            <path d="M8 6.5v3M8 11.5v.01" />
+          </svg>
+          <span class="label">
+            Dangerous
+            <span class="secondary">{{ dangerNote(connectionOf(o).danger) }}</span>
+          </span>
+        </div>
+        <div v-if="connectionOf(o)?.connection" class="row connection" :class="connectionOf(o).connection">
           <svg class="glyph" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <template v-if="connectionOf(o).connection === 'secure'">
               <rect x="3.25" y="7" width="9.5" height="6.5" rx="1.5" />

@@ -71,8 +71,22 @@ func TestADangerousSiteGetsTheUnsafeNotice(t *testing.T) {
 	r.waitForTab(func(tab map[string]any) bool {
 		return tab["url"] == "https://harm.test/download" && tab["loading"] == false && notice(tab) == nil
 	})
-	// The host passes from now on, until the app quits.
-	r.visit("https://harm.test/other")
+	// The host passes from now on, until the app quits, and its pages say they are
+	// dangerous, for the shells' Dangerous in the address field.
+	danger := func(d any) bool {
+		m, _ := d.(map[string]any)
+		return m["kind"] == "malware" && m["list"] == "URLhaus filter"
+	}
+	r.shell(`{"t":"navigate","text":"https://harm.test/other"}`)
+	r.waitForTab(func(tab map[string]any) bool {
+		return tab["url"] == "https://harm.test/other" && tab["loading"] == false && notice(tab) == nil && danger(tab["danger"])
+	})
+	// The site view's first row says which list named the site.
+	got, snap := r.openSettings()
+	if c, _ := snap["siteConnections"].(map[string]any)["https://harm.test"].(map[string]any); !danger(c["danger"]) {
+		t.Fatalf("harm.test's site view %v", snap["siteConnections"])
+	}
+	r.main(func() { r.a.Tabs.Activate(1) })
 
 	r.shell(`{"t":"navigate","text":"https://steal.test/login"}`)
 	tab = r.waitForTab(func(tab map[string]any) bool { return notice(tab) != nil && len(notice(tab)["actions"].([]any)) == 2 })
@@ -82,7 +96,6 @@ func TestADangerousSiteGetsTheUnsafeNotice(t *testing.T) {
 	r.shell(`{"t":"noticeAction","id":1,"action":"back"}`)
 	r.waitForTab(func(tab map[string]any) bool { return tab["url"] != "https://steal.test/login" && notice(tab) == nil })
 
-	got, _ := r.openSettings()
 	r.settings(`{"t":"setPref","name":"warnDangerous","value":"false"}`)
 	r.waitOn(got, func(m map[string]any) bool {
 		return m["t"] == "prefs" && m["prefs"].(map[string]any)["warnDangerous"] == false

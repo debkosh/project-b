@@ -58,7 +58,8 @@
     color: var(--muted);
   }
 
-  [data-kind='certificate'] .mark {
+  [data-kind='certificate'] .mark,
+  [data-kind='unsafe'] .mark {
     color: var(--danger);
   }
 

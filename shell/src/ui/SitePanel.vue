@@ -16,8 +16,12 @@ const emit = defineEmits(['close']);
 
 const origin = computed(() => siteOrigin(props.tab));
 const host = computed(() => origin.value.replace(/^https?:\/\//, ''));
-const secure = computed(() => props.tab.connection === 'secure');
+// A site the dangerous sites' lists name is never shown as secure: its first line says
+// which list named it.
+const secure = computed(() => props.tab.connection === 'secure' && !props.tab.danger);
 const connection = computed(() => {
+  const d = props.tab.danger;
+  if (d) return `Dangerous: ${d.list} lists it as a ${d.kind} site`;
   if (secure.value) return 'Connection is secure';
   return props.tab.connectionNote ? `Not secure: ${props.tab.connectionNote}` : 'Not secure';
 });

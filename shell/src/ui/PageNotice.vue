@@ -1,10 +1,11 @@
 <script setup>
 import { runNotice } from '@/sdk/notice.js';
 
-// Over a page that failed, crashed, was blocked or has a bad certificate, which otherwise
-// shows blank (docs/daily-driver.md): Go's sentence, its second line, and its actions as
-// buttons, the primary one first. An alert, on the bar's colour, filling its place: the
-// caller puts it over the tab's page and marks it the shell's.
+// Over a page that failed, crashed, was blocked, has a bad certificate or is a dangerous
+// site's, which otherwise shows blank (docs/daily-driver.md, docs/blocking.md): Go's
+// sentence, its second line, and its actions as buttons, the primary one first. An alert,
+// on the bar's colour, filling its place: the caller puts it over the tab's page and marks
+// it the shell's.
 defineProps({ tab: Object });
 </script>
 
@@ -50,7 +51,10 @@ defineProps({ tab: Object });
   color: var(--muted);
 }
 
-.ui-notice[data-kind='certificate'] .ui-notice-mark {
+/* A bad certificate and a dangerous site are warnings, the mark in --danger; Go back stays
+   the accent's primary, so the safe way out is the one that stands out. */
+.ui-notice[data-kind='certificate'] .ui-notice-mark,
+.ui-notice[data-kind='unsafe'] .ui-notice-mark {
   color: var(--danger);
 }
 

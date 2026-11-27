@@ -7,6 +7,7 @@ import { phone } from '@/phone.js';
 import { framePresets } from '@/ui/colours.js';
 import { size } from '@/ui/size.js';
 import { state } from './state.js';
+import { listsLine } from './blocking.js';
 
 // Where a part shows: desktop only, phone only, or both; and whether the page has what it
 // needs. Parts not named here show everywhere, always.
@@ -95,6 +96,14 @@ export const lists = {
     hint: 'What synced, and when',
     summary: () => '',
     within: 'sync',
+  },
+  // The block lists (docs/blocking.md): how many are on, and when they were last updated.
+  blockLists: {
+    label: 'Block lists',
+    get hint() {
+      return listsLine();
+    },
+    summary: () => '',
   },
   webFeatures: {
     label: 'Web features',
@@ -200,7 +209,7 @@ const sectionList = () => [
     id: 'privacy',
     label: 'Privacy and sites',
     icon: 'privacy',
-    cards: [['clearData', 'blockAds', 'clearOnQuit', 'sites'], ['secureDns', 'dnsProvider', 'dnsCustom']],
+    cards: [{ heading: 'Protection', rows: ['blockAds', 'warnDangerous', 'blockLists'] }, ['clearData', 'clearOnQuit', 'sites'], ['secureDns', 'dnsProvider', 'dnsCustom']],
     summary: () => [state.prefs.blockAds ? 'Ads blocked' : 'Ads shown', lists.sites.summary()].filter((x) => x).join(' · '),
   },
   {

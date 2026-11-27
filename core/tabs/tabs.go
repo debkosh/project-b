@@ -61,6 +61,9 @@ type Tab struct {
 	ConnectionNote string `json:"connectionNote,omitempty"`
 	// Notice is what a shell draws over its page while it has nothing to show (notice.go).
 	Notice *Notice `json:"notice,omitempty"`
+	// Danger is what the dangerous sites' lists say of its page's site, refused or opened
+	// anyway (notice.go), nil for one they don't name.
+	Danger *Danger `json:"danger,omitempty"`
 	// AdsBlocked is how many requests of its page the ad blocker kept from their hosts.
 	AdsBlocked int `json:"adsBlocked,omitempty"`
 	// PopupsBlocked is how many tabs its page opened that Go closed as they opened: pop-ups,
@@ -175,10 +178,10 @@ type Manager struct {
 	passed       map[string]bool
 	// danger asks whether an address is a dangerous site's (SetDanger); unsafe is each tab's
 	// refused dangerous site, until it navigates again; passedUnsafe the hosts the person
-	// chose to open anyway, until the app quits.
+	// chose to open anyway, with what the lists said of each, until the app quits.
 	danger       func(url string) (Danger, bool)
 	unsafe       map[engine.TabID]*unsafeSite
-	passedUnsafe map[string]bool
+	passedUnsafe map[string]Danger
 	// waiting is each restored tab not shown yet, with the address it loads when it is
 	// first made active. Until then it has its address and title, and the blank page.
 	waiting map[engine.TabID]string
@@ -229,7 +232,7 @@ type window struct {
 // New returns a manager with no windows, on the profile's workspaces and pins.
 func New(eng engine.Engine, w Workspaces, p Pins) *Manager {
 	o := own{Engine: eng, issued: map[engine.TabID]string{}}
-	return &Manager{eng: o, own: o, workspaces: w, pins: p, search: defaultEngine().For, tabs: map[engine.TabID]*Tab{}, windowOf: map[engine.TabID]engine.WindowID{}, windows: map[engine.WindowID]*window{}, certificates: map[engine.TabID]*certificate{}, passed: map[string]bool{}, unsafe: map[engine.TabID]*unsafeSite{}, passedUnsafe: map[string]bool{}, waiting: map[engine.TabID]string{}, asked: map[engine.TabID]bool{}}
+	return &Manager{eng: o, own: o, workspaces: w, pins: p, search: defaultEngine().For, tabs: map[engine.TabID]*Tab{}, windowOf: map[engine.TabID]engine.WindowID{}, windows: map[engine.WindowID]*window{}, certificates: map[engine.TabID]*certificate{}, passed: map[string]bool{}, unsafe: map[engine.TabID]*unsafeSite{}, passedUnsafe: map[string]Danger{}, waiting: map[engine.TabID]string{}, asked: map[engine.TabID]bool{}}
 }
 
 // defaultEngine is the engine a manager searches with until SetSearch says another.
@@ -1193,7 +1196,7 @@ func (m *Manager) HandleNavigationStarting(id engine.TabID, nav int64, u string)
 		return engine.NavigationElsewhere
 	}
 	t.started = nav
-	t.URL, t.Error, t.ErrorCode, t.Crashed = address(u), "", "", false
+	t.URL, t.Error, t.ErrorCode, t.Crashed, t.Danger = address(u), "", "", false, nil
 	delete(m.certificates, id)
 	delete(m.unsafe, id)
 	if t.Page == "" && !m.allowed(u) {
@@ -1201,7 +1204,7 @@ func (m *Manager) HandleNavigationStarting(id engine.TabID, nav int64, u string)
 		m.changed(t)
 		return engine.NavigationBlock
 	}
-	if t.Page == "" && m.isDangerous(id, u) {
+	if t.Page == "" && m.isDangerous(t, u) {
 		t.Loading = false
 		m.changed(t)
 		return engine.NavigationBlock

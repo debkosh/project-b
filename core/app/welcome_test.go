@@ -50,8 +50,13 @@ func TestTheStartThatMadeTheProfileOpensTheWelcomeOverTheWholeWindow(t *testing.
 	defer stop()
 	say := func(msg string) { r.e.Post(func() { r.a.PageMessage(tab, "welcome", []byte(msg)) }) }
 	say(`{"t":"ready"}`)
-	if page := next(t, got, "snapshot"); page["whole"] != true || len(page["layouts"].([]any)) != 3 {
+	page := next(t, got, "snapshot")
+	if page["whole"] != true || len(page["layouts"].([]any)) != 3 {
 		t.Fatalf("the page's snapshot: %v", page)
+	}
+	// The Protection step's two switches, each a pref, in the words Settings uses.
+	if p, _ := json.Marshal(page["protection"]); string(p) != `[{"about":"Ads and trackers, from public lists kept up to date","pref":"blockAds","title":"Block ads"},{"about":"Malware and phishing, checked on this device; nothing is sent anywhere","pref":"warnDangerous","title":"Warn before dangerous sites"}]` {
+		t.Fatalf("the Protection step's switches: %s", p)
 	}
 	say(`{"t":"setPref","name":"frameColor","value":"#5b7fd6"}`)
 	if m := next(t, got, "tones"); m["tones"].(map[string]any)["light"].(map[string]any)["--frame"] != "#5b7fd6" {

@@ -1,6 +1,7 @@
 <script setup>
 import { computed, inject, provide } from 'vue';
 import { extensionsSection } from '@extensions';
+import BlockLists from './BlockLists.vue';
 import Bookmarks from './Bookmarks.vue';
 import ClearData from './ClearData.vue';
 import Flags from './Flags.vue';
@@ -34,6 +35,7 @@ provide('settingsTitled', props.titled || inject('settingsTitled', false));
 provide('settingsSection', props.section);
 
 const blocks = {
+  blockLists: BlockLists,
   bookmarks: Bookmarks,
   flags: Flags,
   import: Import,
@@ -62,7 +64,7 @@ const cards = computed(() => props.section.cards.map((c) => (typeof c === 'strin
     </div>
     <component :is="blocks[card]" v-else-if="typeof card === 'string'" class="block" :data-part="card" />
     <section v-else class="block" :aria-label="card.heading || undefined">
-      <h2 v-if="card.heading">{{ card.heading }}</h2>
+      <h2 v-if="card.heading" :class="{ leads: i === 0 }">{{ card.heading }}</h2>
       <div class="card">
         <template v-for="p in card.rows" :key="p">
           <Row v-if="lists[p]" :label="lists[p].label" :hint="lists[p].hint" :summary="lists[p].summary()" :opens="p" />
@@ -76,3 +78,10 @@ const cards = computed(() => props.section.cards.map((c) => (typeof c === 'strin
     </section>
   </template>
 </template>
+
+<style scoped>
+/* A heading that starts a section keeps a heading's room under the section's own title. */
+h2.leads {
+  margin-top: 8px;
+}
+</style>

@@ -58,10 +58,11 @@ func hostOf(u string) string {
 }
 
 // Danger is what the Safe Browsing lists say of a dangerous site (docs/blocking.md): Kind
-// "malware" or "phishing", and the title of the list that said so.
+// "malware" or "phishing", and the title of the list that said so. A tab has it while its
+// page is one, refused or opened anyway, for the shells' Dangerous in the address field.
 type Danger struct {
-	Kind string
-	List string
+	Kind string `json:"kind"`
+	List string `json:"list"`
 }
 
 // unsafeSite is a tab's refused dangerous site: its address and what the lists say of it.
@@ -81,10 +82,15 @@ var unsafeTitles = map[string]string{
 // says so, unless the person chose to open its host anyway since the app started.
 func (m *Manager) SetDanger(f func(url string) (Danger, bool)) { m.danger = f }
 
-// isDangerous asks the question for tab id's navigation to u, and keeps a yes for its
-// notice.
-func (m *Manager) isDangerous(id engine.TabID, u string) bool {
-	if m.danger == nil || m.passedUnsafe[hostOf(u)] {
+// isDangerous asks the question for tab t's navigation to u, and keeps a yes for its
+// notice. Either way t's Danger is what the lists say of u: a host opened anyway keeps
+// what they said of it, as Not secure stays after a certificate is passed.
+func (m *Manager) isDangerous(t *Tab, u string) bool {
+	if m.danger == nil {
+		return false
+	}
+	if d, ok := m.passedUnsafe[hostOf(u)]; ok {
+		t.Danger = &d
 		return false
 	}
 	d, ok := m.danger(u)
@@ -94,7 +100,8 @@ func (m *Manager) isDangerous(id engine.TabID, u string) bool {
 	if unsafeTitles[d.Kind] == "" {
 		d.Kind = "malware"
 	}
-	m.unsafe[id] = &unsafeSite{url: address(u), Danger: d}
+	m.unsafe[t.ID] = &unsafeSite{url: address(u), Danger: d}
+	t.Danger = &d
 	return true
 }
 
@@ -187,9 +194,9 @@ func (m *Manager) NoticeAction(id engine.TabID, action string) {
 		if t.Notice.Kind == "unsafe" {
 			// The refused navigation left no entry of its own to reload, so its address
 			// loads again.
-			u := m.unsafe[id].url
-			m.passedUnsafe[hostOf(u)] = true
-			m.loadURL(id, u)
+			u := m.unsafe[id]
+			m.passedUnsafe[hostOf(u.url)] = u.Danger
+			m.loadURL(id, u.url)
 			return
 		}
 		m.passed[hostOf(m.certificates[id].url)] = true

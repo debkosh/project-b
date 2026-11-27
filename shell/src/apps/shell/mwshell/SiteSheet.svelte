@@ -20,7 +20,17 @@
   const sparksOn = $derived(siteSetting(site, 'sparks'));
   // The sparks that run here while the site's sparks are on, by name.
   const sparks = $derived(site?.sparks || []);
-  const secure = $derived(tab.connection === 'secure');
+  // A site the dangerous sites' lists name says first which list named it.
+  const secure = $derived(tab.connection === 'secure' && !tab.danger);
+  const said = $derived(
+    tab.danger
+      ? `Dangerous: ${tab.danger.list} lists it as a ${tab.danger.kind} site`
+      : secure
+        ? 'Connection is secure'
+        : tab.connectionNote
+          ? `Not secure: ${tab.connectionNote}`
+          : 'Not secure',
+  );
   // The blocker and a spark change what a page gets as it loads.
   let reload = $state(false);
 
@@ -50,7 +60,7 @@
 <Sheet label="Site settings for {host}" {onclose}>
   <div class="head">
     <h2>{host}</h2>
-    <p>{secure ? 'Connection is secure' : tab.connectionNote ? `Not secure: ${tab.connectionNote}` : 'Not secure'}</p>
+    <p>{said}</p>
   </div>
   {#if ads}
     <label class="row">
