@@ -76,8 +76,11 @@ compiled again, and a new list needs no build at all.
 - **Its C interface** (`core/blocking/lib/pbblock.h`), in outline:
 
 ```c
-// Loading, from Go, on any one thread.
+// Loading, from Go, on any one thread. compile turns a group's list texts into the
+// library's own serialized form, which Go keeps on disk and loads at the next start.
 PBBlocker* pbblock_new(void);
+int  pbblock_compile(const uint8_t* const* lists, const size_t* lens, size_t n,
+                     uint8_t** out, size_t* out_len);
 int  pbblock_load(PBBlocker*, const char* group, const uint8_t* data, size_t len);
 void pbblock_unload(PBBlocker*, const char* group);
 int  pbblock_resources(PBBlocker*, const uint8_t* json, size_t len);
@@ -214,11 +217,21 @@ remembered, plus the check:
 
 ### The catalogue
 
-`core/blocking/catalog.json`, in the repo, kept by hand, started once from Brave's public
-catalogue ([brave/adblock-resources](https://github.com/brave/adblock-resources),
-`filter_lists/list_catalog.json`, 99 sources: uBlock Origin's, EasyList, EasyPrivacy, the
-regional lists). A script, `tools/catalog-from-brave.py`, prints Brave's catalogue in our
-form for a person to compare; it never writes ours.
+**Decided by the owner, 2026-11-27:** "lets then maintain the list ourselves and during a
+release we check that against brave for any aditions and removals and the releaser can
+check if it needs to change our list".
+
+- **Ours, kept by hand:** `core/blocking/catalog.json`, in the repo, started once from
+  Brave's public catalogue ([brave/adblock-resources](https://github.com/brave/adblock-resources),
+  `filter_lists/list_catalog.json`, 99 sources: uBlock Origin's, EasyList, EasyPrivacy, the
+  regional lists). Only a commit changes it; the workflow reads it and never writes it.
+- **Checked against Brave's at each release.** `tools/lists-vs-brave.py` fetches Brave's
+  catalogue and prints what differs from ours: lists Brave added or dropped, lists it turned
+  on or off by default, and sources whose address moved. `release.sh` runs it and shows the
+  result. It never stops a release: the releaser reads it and, where ours should follow, sends
+  the catalogue change as its own commit. Lists we chose to leave out are named in the
+  catalogue's `ignored` section with a reason, so the check doesn't raise them again.
+  `docs/releasing.md` and `roles/release.md` gain the step.
 
 ```json
 {
@@ -261,26 +274,34 @@ Our own `hosts.txt` stays as the built-in list (below) and as list `pb-hosts` in
 
 ### Building and publishing them
 
+The owner: "the apps cna then download our signed package.. we need to keep it so that
+deltas can be downlaoded or we split those up so small change should not send the whole
+thing".
+
+So the package is split by list, and a list that changed sends only its change:
+
 - **A scheduled workflow,** `.github/workflows/lists.yml`, every six hours and by hand. It
   reads the catalogue, downloads each source (refusing one that shrank by more than half or
-  failed to parse, and keeping the last good one), builds each group's serialized engine
-  with the same `libpbblock` the app pins (`tools/pbblock-build`, a small Rust binary in the
-  same crate), and publishes a release, tag `lists`, replaced each time:
-  - `manifest.json`: for each group, its lists' versions, the file's name, size and
-    SHA-256, and the library's format version;
-  - `<group>-<format>.dat`: the serialized engine, compressed;
-  - `resources-<format>.json`: the scriptlets and stand-ins (uBO's, from Brave's repo);
-  - `LICENSES.txt`: each list's licence and home;
-  - `manifest.json.sig`: the manifest's Ed25519 signature.
+  failed to parse, and keeping the last good one), checks each parses with the `libpbblock`
+  the app pins, and publishes the release, tag `lists`.
+- **One file per list, as text.** Each list is its own file, `<list>-<sha>.txt.zst`, named
+  by its content's SHA-256 and compressed with zstd. Text, not the library's serialized form:
+  a few changed lines stay a few changed lines, where a rebuilt engine changes all through.
+- **A patch per change.** For each list that changed, the workflow also publishes a patch
+  from each of its last eight versions to the new one, `<list>-<old>-<new>.zst`: zstd with
+  the old text as its dictionary ("patch from", klauspost/compress in Go on both sides, so
+  no diff format of our own). A day's change to EasyList is then kilobytes, not its whole
+  megabyte. An app further behind than eight versions takes the whole file.
+- **The resources,** `resources-<sha>.json.zst`, the scriptlets and stand-ins (uBO's, from
+  Brave's repo), published and patched the same way.
+- **`manifest.json`**: each list's current SHA-256 and size, and the patches there are to it.
+  **`manifest.json.sig`**: its Ed25519 signature. **`LICENSES.txt`**: each list's licence and
+  home. Files no manifest of the last eight names are deleted from the release.
 - **Signed.** Lists carry scripts that run in every page, so the app takes only a manifest
   signed with our key, whose public half is compiled into core (Go's `crypto/ed25519`). The
   private key is in the kosh (`project-b/lists-signing.key`) and is the workflow's one
-  secret. A file whose SHA-256 differs from the signed manifest's is thrown away.
-- **The format version.** adblock-rust's serialized form changes between its versions. The
-  manifest names the format each `.dat` was built for; an app takes only its own. A release
-  of the app that moves to a new library version is published after the workflow builds
-  that format, so the files are there when it starts. The workflow builds every format a
-  supported release uses, the current Stable's and Dev's, no more.
+  secret. Every list the app ends with, whole or patched, must match the signed manifest's
+  SHA-256, or it is thrown away and the whole file fetched.
 - **Only GitHub.** No server of ours. The app fetches
   `github.com/debkosh/project-b/releases/download/lists/...`.
 
@@ -288,17 +309,24 @@ Our own `hosts.txt` stays as the built-in list (below) and as list `pb-hosts` in
 
 - **After the shared start-up wait** ([startup.md](startup.md)): `later.Run(lists.Start)`.
   Then every twelve hours while the app runs. It asks for `manifest.json` with the last
-  ETag, so most checks are one small reply that nothing changed, and downloads only groups
-  whose SHA-256 changed and that the person has on.
-- **On disk,** in the app's shared folder beside the profiles list (`lists/`), so profiles
-  share one download. A file is written aside and renamed into place; two profiles fetching
-  at once only fetch twice.
-- **Loaded at start,** before the first window's page, from the files on disk. A serialized
-  engine loads in milliseconds (it is a FlatBuffer, read in place), so this is start-up work
-  in the same sense as the hosts list today. New files mid-run are loaded at once and swapped
-  in; open pages keep the page rules they had until they load again.
-- **Turning a group on** fetches it then, not after the wait: it is something the person
-  did.
+  ETag, so most checks are one small reply that nothing changed.
+- **Only what changed, of the lists that are on:** for each, the patch from the version it
+  has, else the whole file.
+- **Compiled on the device, a group at a time.** A group whose lists changed is compiled
+  again (`pbblock_compile`) on a background goroutine at low priority, written to disk in the
+  library's serialized form, and swapped in. The serialized form never leaves the device, so
+  a new library version only means the app compiles once more after the update; no release
+  waits on the lists.
+- **On disk,** in the app's shared folder beside the profiles list (`lists/`): the texts and
+  each group's compiled engine. Profiles share them. A file is written aside and renamed into
+  place; two profiles fetching at once only fetch twice.
+- **Loaded at start,** before the first window's page, from the compiled engines on disk. A
+  serialized engine loads in milliseconds (a FlatBuffer, read in place), start-up work in
+  the same sense as the hosts list today. One compiled by another library version is left
+  unloaded and compiled again after the start-up wait; until then that group's rules are off,
+  the built-in hosts stay on.
+- **Turning a group on** fetches and compiles it then, not after the wait: it is something
+  the person did.
 
 ### The first run, and offline
 
@@ -315,7 +343,8 @@ Our own `hosts.txt` stays as the built-in list (below) and as list `pb-hosts` in
 | | Desktop | Android |
 |---|---|---|
 | App size | `libpbblock` about 2 to 3 MB | about 2 to 3 MB in the APK, arm64 only; no list data in the APK |
-| Download | the standard set compressed, a few MB on the first run; changes after | the same; over a metered connection, at most once a day |
+| Download | the standard set's texts compressed, a few MB, once; after that the patches, tens of kilobytes a day | the same; over a metered connection, at most once a day |
+| Compiling | a changed group, in the background, under a second (to be measured) | a few seconds at low priority for the whole set on the first run (Brave compiles its lists on phones too); a changed group after that |
 | Memory | the standard set's engines, in the browser process only: about 15 to 20 MB (Brave's figure for its default set after its 2026 FlatBuffers work, which cut it by three quarters) | the same, once; strict lists add to it, so the Lists page shows each group's size |
 | In each renderer | the 512 remembered answers and each frame's stylesheet: kilobytes | the same |
 
@@ -348,8 +377,9 @@ Our own `hosts.txt` stays as the built-in list (below) and as list `pb-hosts` in
 ## Steps
 
 1. **Requests:** `libpbblock`, its build on the three platforms, the blocker table and
-   throttle, the lists manager with the built-in list, the catalogue, the workflow and the
-   signing key; groups ads and trackers; the page-load gate.
+   throttle, the lists manager with the built-in list, the catalogue and its check against
+   Brave's, the workflow with its patches, the signing key; groups ads and trackers; the
+   page-load gate.
 2. **Safe Browsing:** the second blocker, badware and phishing groups, the notice, the
    switch; basics check 28 changed to our own test list's address.
 3. **Page parts:** page extras at commit, scriptlets, the watcher.
@@ -361,19 +391,22 @@ Each step has a `Notes:` line ("Ads and trackers are blocked from up-to-date pub
 ## Tests
 
 - **Go,** with the mock engine: the manifest's signature and hashes, a damaged or unsigned
-  file refused, the format version, the swap, the ETag, the choices, the first-run hosts.
+  file refused, a patch applied and a bad patch falling back to the whole file, an engine of
+  another library version compiled again, the swap, the ETag, the choices, the first-run
+  hosts. `tools/lists-vs-brave.py` against a saved copy of Brave's catalogue.
 - **Rust:** `cargo test` on `libpbblock`'s C interface, and that a snapshot holds across a
   swap.
 - **The real app:** a test page under our own test list's addresses, for each hook: a
   request blocked and counted, an element hidden, a scriptlet run, a generic class hidden,
   an unsafe-site notice with Go back and Open anyway; the per-site switch and Block ads off
   for each. Desktop drivers and `drive_android`.
-- **The workflow:** a run on a branch builds every group and publishes to a draft release.
+- **The workflow:** a run on a branch publishes to a draft release, twice, so the second
+  has patches; an app pointed at the draft takes the patches.
 
 ## Not doing
 
 - No Google Safe Browsing, nor any service that is told the addresses a person opens.
 - No blocker inside the engine or in renderers.
 - No server of ours for the lists.
-- No list text compiled on the device: the workflow builds the engines. A list the person
-  adds by address is a later question.
+- No catalogue that follows Brave's by itself: the releaser decides each change.
+- A list the person adds by address is a later question.
