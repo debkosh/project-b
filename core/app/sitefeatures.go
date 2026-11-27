@@ -4,9 +4,7 @@ import (
 	"encoding/json"
 	"slices"
 
-	"projectb/adblock"
 	"projectb/engine"
-	"projectb/prefs"
 	"projectb/settings"
 	"projectb/sites"
 	"projectb/sparks"
@@ -15,27 +13,9 @@ import (
 // The ad blocker and Sparks (docs/site-features.md): Go keeps the rules and the scripts and
 // decides what each page gets; the engine carries it out.
 
-// startSiteFeatures hands the engine the ad blocker's rules, again whenever a site switches
-// it or the blocker is switched on every site, and gives settings the Sparks section. Off on
-// every site, the rules have no hosts, so nothing is kept from any page.
+// startSiteFeatures gives settings the Sparks section. The ad blocker's rules are the
+// block lists' (blocking.go).
 func (a *App) startSiteFeatures(e engine.Engine) {
-	hosts := adblock.Hosts()
-	var last *engine.AdRules
-	setRules := func() {
-		now := engine.AdRules{Hosts: []string{}, Off: a.adsOff()}
-		if a.Prefs.All().BlockAds {
-			now.Hosts = hosts
-		}
-		if last != nil && slices.Equal(now.Hosts, last.Hosts) && slices.Equal(now.Off, last.Off) {
-			return
-		}
-		last = &now
-		e.SetAdRules(now)
-	}
-	setRules()
-	a.Sites.OnSitesChanged(setRules)
-	a.Prefs.OnChanged(func(prefs.Prefs) { setRules() })
-
 	a.Sparks.OnChanged(func() {
 		a.Settings.Send(map[string]any{"t": "sparks", "sparks": a.Sparks.List()})
 	})

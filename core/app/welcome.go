@@ -223,6 +223,14 @@ func (a *App) notificationsAnswered(allowed bool) {
 	a.welcome.sendAll(map[string]any{"t": "notifications", "notifications": allowed})
 }
 
+// welcomeSwitch is one of the Protection step's switches: the pref it sets, and what it
+// says.
+type welcomeSwitch struct {
+	Pref  string `json:"pref"`
+	Title string `json:"title"`
+	About string `json:"about"`
+}
+
 // welcomeShell is a way to work the style step offers: a shell, and for Standard where
 // its tabs go.
 type welcomeShell struct {
@@ -260,6 +268,12 @@ func (w *welcome) snapshot(tab engine.TabID) map[string]any {
 	s["desktop"] = w.a.System.Desktop()
 	s["workspaces"] = w.a.Workspaces.List()
 	s["sparks"] = w.a.Sparks.Builtins()
+	// The Protection step's switches, each a pref the page sets with setPref; their values
+	// are the prefs' (docs/blocking.md).
+	s["protection"] = []welcomeSwitch{
+		{Pref: "blockAds", Title: "Block ads and trackers", About: "From up-to-date public lists, which you can choose in Settings."},
+		{Pref: "warnDangerous", Title: "Warn before dangerous sites", About: "Sites known for malware or phishing, checked on this device."},
+	}
 	w.a.imports.snapshot(s)
 	return s
 }

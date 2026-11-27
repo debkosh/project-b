@@ -13,7 +13,7 @@ import (
 
 // Notice is what a tab shows in place of its page.
 type Notice struct {
-	// Kind is "failed", "crashed", "blocked" or "certificate".
+	// Kind is "failed", "crashed", "blocked", "certificate" or "unsafe".
 	Kind string `json:"kind"`
 	// Title is one plain sentence; Detail a second line, "" for none.
 	Title   string         `json:"title"`
@@ -57,9 +57,54 @@ func hostOf(u string) string {
 	return strings.TrimPrefix(p.Host, "www.")
 }
 
+// Danger is what the Safe Browsing lists say of a dangerous site (docs/blocking.md): Kind
+// "malware" or "phishing", and the title of the list that said so.
+type Danger struct {
+	Kind string
+	List string
+}
+
+// unsafeSite is a tab's refused dangerous site: its address and what the lists say of it.
+type unsafeSite struct {
+	url string
+	Danger
+}
+
+// unsafeTitles say what a dangerous site may do, after its host, by kind.
+var unsafeTitles = map[string]string{
+	"malware":  " may harm your device",
+	"phishing": " may be trying to steal your information",
+}
+
+// SetDanger gives the tabs the question each web tab's navigation asks, after the policy's
+// gates: whether its address is a dangerous site's. One is refused, and the tab's notice
+// says so, unless the person chose to open its host anyway since the app started.
+func (m *Manager) SetDanger(f func(url string) (Danger, bool)) { m.danger = f }
+
+// isDangerous asks the question for tab id's navigation to u, and keeps a yes for its
+// notice.
+func (m *Manager) isDangerous(id engine.TabID, u string) bool {
+	if m.danger == nil || m.passedUnsafe[hostOf(u)] {
+		return false
+	}
+	d, ok := m.danger(u)
+	if !ok {
+		return false
+	}
+	if unsafeTitles[d.Kind] == "" {
+		d.Kind = "malware"
+	}
+	m.unsafe[id] = &unsafeSite{url: address(u), Danger: d}
+	return true
+}
+
 // noticeOf is t's notice now, nil while its page has something to show or is loading.
 func (m *Manager) noticeOf(t *Tab) *Notice {
-	if t.URL == "" || t.Loading || !(t.Crashed || t.Blocked || t.Error != "") {
+	u := m.unsafe[t.ID]
+	if u != nil && u.url != t.URL {
+		u = nil
+	}
+	if t.URL == "" || t.Loading || !(t.Crashed || t.Blocked || t.Error != "" || u != nil) {
 		return nil
 	}
 	host := hostOf(t.URL)
@@ -67,6 +112,9 @@ func (m *Manager) noticeOf(t *Tab) *Notice {
 	n := &Notice{Actions: []NoticeAction{}}
 	c := m.certificates[t.ID]
 	switch {
+	case u != nil:
+		n.Kind, n.Title, n.Detail = "unsafe", host+unsafeTitles[u.Kind], u.List+" lists it as a "+u.Kind+" site."
+		back.Primary = true
 	case t.Blocked:
 		n.Kind, n.Title = "blocked", host+" is blocked"
 		back.Primary = true
@@ -97,7 +145,7 @@ func (m *Manager) noticeOf(t *Tab) *Notice {
 	if t.CanGoBack {
 		n.Actions = append(n.Actions, back)
 	}
-	if n.Kind == "certificate" && c.passable {
+	if n.Kind == "certificate" && c.passable || n.Kind == "unsafe" {
 		n.Actions = append(n.Actions, NoticeAction{ID: "proceed", Title: "Open anyway"})
 	}
 	return n
@@ -135,7 +183,15 @@ func (m *Manager) NoticeAction(id engine.TabID, action string) {
 	case "back":
 		m.eng.GoBack(id)
 	case "proceed":
-		// This host's certificate errors pass until the app quits; kept nowhere.
+		// This host passes until the app quits; kept nowhere.
+		if t.Notice.Kind == "unsafe" {
+			// The refused navigation left no entry of its own to reload, so its address
+			// loads again.
+			u := m.unsafe[id].url
+			m.passedUnsafe[hostOf(u)] = true
+			m.loadURL(id, u)
+			return
+		}
 		m.passed[hostOf(m.certificates[id].url)] = true
 		m.eng.Reload(id)
 	}

@@ -104,3 +104,70 @@ func TestABadCertificateIsRefusedUntilThePersonPassesItsHost(t *testing.T) {
 		}
 	}
 }
+
+// loadsEngine records the addresses loaded.
+type loadsEngine struct {
+	fakeEngine
+	loaded []string
+}
+
+func (f *loadsEngine) LoadURL(_ engine.TabID, u string) { f.loaded = append(f.loaded, u) }
+
+// A site the Safe Browsing lists name is refused, and its notice says why and which list
+// said so, with Go back first; Open anyway lets its host through until the app quits and
+// loads it again.
+func TestADangerousSiteIsRefusedUntilThePersonOpensItAnyway(t *testing.T) {
+	e := &loadsEngine{}
+	m := oneWindow(e)
+	id := m.Create(1)
+	asked := 0
+	m.SetDanger(func(u string) (Danger, bool) {
+		asked++
+		switch hostOf(u) {
+		case "steal.test":
+			return Danger{Kind: "phishing", List: "Phishing URL Blocklist"}, true
+		case "harm.test":
+			return Danger{Kind: "malware", List: "URLhaus filter"}, true
+		}
+		return Danger{}, false
+	})
+	m.HandleNavigationStarting(id, 1, "https://good.test/")
+	m.HandleNavigationFinished(id, 1, "https://good.test/")
+	m.HandleHistoryChanged(id, true, false)
+	if got := m.HandleNavigationStarting(id, 2, "https://www.steal.test/login"); got != engine.NavigationBlock {
+		t.Fatalf("a phishing site: %v", got)
+	}
+	tab, _ := m.Get(id)
+	n := tab.Notice
+	if n == nil || n.Kind != "unsafe" || n.Title != "steal.test may be trying to steal your information" ||
+		n.Detail != "Phishing URL Blocklist lists it as a phishing site." {
+		t.Fatalf("notice %+v", n)
+	}
+	if ids := actionIDs(n); len(ids) != 2 || ids[0] != "back" || !n.Actions[0].Primary || n.Actions[0].Title != "Go back" || ids[1] != "proceed" || n.Actions[1].Title != "Open anyway" {
+		t.Fatalf("actions %+v", n.Actions)
+	}
+	if tab.Blocked {
+		t.Fatal("a dangerous site is a blocked one")
+	}
+	m.HandleNavigationStarting(id, 3, "https://harm.test/")
+	if tab, _ := m.Get(id); tab.Notice == nil || tab.Notice.Title != "harm.test may harm your device" {
+		t.Fatalf("malware: %+v", tab.Notice)
+	}
+
+	m.NoticeAction(id, "proceed")
+	if len(e.loaded) != 1 || e.loaded[0] != "https://harm.test/" {
+		t.Fatalf("Open anyway loaded %v", e.loaded)
+	}
+	if got := m.HandleNavigationStarting(id, 4, "https://harm.test/other"); got != engine.NavigationProceed {
+		t.Fatalf("after Open anyway: %v", got)
+	}
+	m.HandleNavigationFinished(id, 4, "https://harm.test/other")
+	if tab, _ := m.Get(id); tab.Notice != nil {
+		t.Fatalf("notice after Open anyway: %+v", tab.Notice)
+	}
+	// The other host is still refused, and asked again.
+	before := asked
+	if got := m.HandleNavigationStarting(id, 5, "https://steal.test/"); got != engine.NavigationBlock || asked != before+1 {
+		t.Fatalf("another host: %v", got)
+	}
+}

@@ -8,6 +8,7 @@ import (
 
 	"github.com/debkosh/project-b/browserdata"
 
+	"projectb/blocking"
 	"projectb/bookmarks"
 	"projectb/commands"
 	"projectb/crash"
@@ -73,6 +74,10 @@ type Config struct {
 	URLs         []string
 	BlockedHosts []string
 	Update       update.Config
+	// Blocking is the block lists' library, catalogue, languages and release
+	// (docs/blocking.md): the real app's libpbblock and the release's address, Plain and
+	// no downloads when left zero, as in the tests and the mock. The app fills in the rest.
+	Blocking blocking.Setup
 	// CrashReports is the folder macOS writes its crash reports to, "" off the Mac, where
 	// none is kept for the crash notice to point at.
 	CrashReports string
@@ -152,6 +157,8 @@ type App struct {
 	Sites *sites.Manager
 	// Sparks are the person's scripts for pages (docs/site-features.md).
 	Sparks *sparks.Manager
+	// Blocking is the block lists, the ad blocker's and Safe Browsing's (docs/blocking.md).
+	Blocking *blocking.Manager
 	// Session is the profile's windows and tabs as the last run left them, and as they are.
 	Session *session.Manager
 	// Bookmarks is the profile's bookmarks.
@@ -344,6 +351,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	a.Settings.OnRelaunch(func() { relaunch.Self(); a.quit() })
 	a.Settings.AddPart(a.workspaceSettingsPart(e))
 	a.startSites(e, cfg.ProfileDir)
+	a.startBlocking(e, cfg)
 	a.Settings.AddPart(a.startSettingsPart())
 	a.welcome = newWelcome(a, e, cfg.ProfileDir)
 	a.Shell.AddPart(a.welcome.shellPart())
@@ -533,6 +541,7 @@ func Start(e engine.Engine, cfg Config) *App {
 	later.Begin(e.Post)
 	later.Run(a.Update.Start)
 	later.Run(a.Sync.Wanted)
+	later.Run(a.Blocking.Start)
 	return a
 }
 
@@ -655,6 +664,7 @@ func (a *App) Stop() {
 	later.Stop()
 	a.Update.Close()
 	a.Sync.Stop()
+	a.Blocking.Stop()
 	a.Store.Close()
 	a.Session.Close()
 	a.Prefs.Close()

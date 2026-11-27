@@ -6,6 +6,7 @@ package prefs
 
 import (
 	"encoding/json"
+	"maps"
 	"os"
 	"path/filepath"
 	"projectb/search"
@@ -81,6 +82,13 @@ type Prefs struct {
 	// anything, whatever a site's own switch says, and the site panel has no switch.
 	// docs/site-features.md.
 	BlockAds bool `json:"blockAds"`
+	// WarnDangerous is Safe Browsing: a site the dangerous sites' lists name is refused, with
+	// a warning, before it opens; off, nothing is asked and those lists aren't downloaded.
+	// BlockLists is the block lists the person turned on or off, by id, only where that
+	// differs from the catalogue's default, so a list it adds later takes its own.
+	// docs/blocking.md.
+	WarnDangerous bool            `json:"warnDangerous"`
+	BlockLists    map[string]bool `json:"lists"`
 	// AskWhereToSave sends every download through the Save panel, as Save Link As does,
 	// rather than straight to the downloads folder. docs/daily-driver.md.
 	AskWhereToSave bool `json:"askWhereToSave"`
@@ -113,7 +121,7 @@ type Prefs struct {
 // Defaults are the settings before the user changes any.
 func Defaults() Prefs {
 	return Prefs{TabLayout: TabsVertical, FrameColor: tones.Brand, Theme: ThemeSystem, Shell: shells.Default(), PhoneShell: shells.DefaultPhone(), AddressBarPosition: AddressBottom, SearchEngine: search.Default, Start: StartContinue,
-		BookmarksNewTab: true, BookmarksCommandBox: true, BlockAds: true, KeepCookies: []string{},
+		BookmarksNewTab: true, BookmarksCommandBox: true, BlockAds: true, WarnDangerous: true, BlockLists: map[string]bool{}, KeepCookies: []string{},
 		SecureDNS: securedns.Off, DNSProvider: securedns.Default, NameDownloads: NamesAuto}
 }
 
@@ -197,6 +205,7 @@ func New(dir string) *Manager {
 				s.BookmarksBarFolder = ""
 			}
 			s.KeepCookies = keptSites(s.KeepCookies)
+			s.BlockLists = blockLists(s.BlockLists)
 			if !securedns.IsMode(s.SecureDNS) {
 				s.SecureDNS = securedns.Off
 			}
@@ -219,7 +228,11 @@ func New(dir string) *Manager {
 }
 
 // All returns a copy of every setting.
-func (m *Manager) All() Prefs { return m.prefs }
+func (m *Manager) All() Prefs {
+	p := m.prefs
+	p.BlockLists = maps.Clone(p.BlockLists)
+	return p
+}
 
 // TabLayout says where the tabs go: TabsVertical or TabsHorizontal.
 func (m *Manager) TabLayout() string { return m.prefs.TabLayout }
@@ -450,6 +463,31 @@ func (m *Manager) SecureDNSTemplate() string {
 // SetBlockAds turns the ad blocker on or off on every site.
 func (m *Manager) SetBlockAds(on bool) { m.setSwitch(&m.prefs.BlockAds, on) }
 
+// SetWarnDangerous turns Safe Browsing on or off.
+func (m *Manager) SetWarnDangerous(on bool) { m.setSwitch(&m.prefs.WarnDangerous, on) }
+
+// SetBlockLists keeps the lists the person turned on or off, by id: only those that
+// differ from the catalogue's default, which the caller knows.
+func (m *Manager) SetBlockLists(lists map[string]bool) {
+	lists = blockLists(lists)
+	if maps.Equal(lists, m.prefs.BlockLists) {
+		return
+	}
+	m.prefs.BlockLists = lists
+	m.save()
+	m.changed()
+}
+
+// blockLists is a copy of lists, none named "".
+func blockLists(lists map[string]bool) map[string]bool {
+	out := maps.Clone(lists)
+	if out == nil {
+		return map[string]bool{}
+	}
+	delete(out, "")
+	return out
+}
+
 // SetShowMenuBar turns the menu bar always shown on or off.
 func (m *Manager) SetShowMenuBar(on bool) { m.setSwitch(&m.prefs.ShowMenuBar, on) }
 
@@ -572,6 +610,10 @@ func (m *Manager) Set(name, value string) bool {
 		if value == "true" || value == "false" {
 			m.SetBlockAds(value == "true")
 		}
+	case "warnDangerous":
+		if value == "true" || value == "false" {
+			m.SetWarnDangerous(value == "true")
+		}
 	case "askWhereToSave":
 		if value == "true" || value == "false" {
 			m.SetAskWhereToSave(value == "true")
@@ -628,6 +670,8 @@ func (m *Manager) Apply(values json.RawMessage) error {
 	m.SetBookmarks("bar", p.BookmarksBar)
 	m.SetBookmarksBarFolder(p.BookmarksBarFolder)
 	m.SetBlockAds(p.BlockAds)
+	m.SetWarnDangerous(p.WarnDangerous)
+	m.SetBlockLists(p.BlockLists)
 	m.SetAskWhereToSave(p.AskWhereToSave)
 	m.SetNameDownloads(p.NameDownloads)
 	m.SetClearCookiesOnQuit(p.ClearCookiesOnQuit)

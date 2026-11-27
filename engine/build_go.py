@@ -10,6 +10,7 @@ The Mac's own arguments are its deployment target, then the build flags built in
 build tag. Linux's are clang and the sysroot, then the build flags. Android's are clang, the
 NDK, the minimum SDK and the app's version."""
 
+import glob
 import os
 import shutil
 import subprocess
@@ -19,10 +20,63 @@ import sys
 GOOS = {"mac": "darwin", "linux": "linux", "android": "android"}
 GOARCH = {"arm64": "arm64", "x64": "amd64"}
 
+# Rust's names for the target, for libpbblock (core/blocking/lib).
+RUST_TRIPLE = {
+    ("mac", "arm64"): "aarch64-apple-darwin",
+    ("mac", "x64"): "x86_64-apple-darwin",
+    ("linux", "arm64"): "aarch64-unknown-linux-gnu",
+    ("linux", "x64"): "x86_64-unknown-linux-gnu",
+    ("android", "arm64"): "aarch64-linux-android",
+}
+
 # What Android serves of the shell's built pages, under shell/dist: our pages, the phone's
 # web shell for a narrow window, and the desktop shells it lists for a wide one, the
 # registry's "android": true (docs/large-screens.md). Android loads no other shell.
 ANDROID_PAGES = ("settings", "downloads", "history", "bookmarks", "welcome", "shell/mwshell", "shell/pbshell")
+
+
+def build_pbblock(repo, build_dir, lib_dir, target_os, target_cpu, linker=None, link_args=()):
+    """Builds libpbblock, the blocker's library (docs/blocking.md), with cargo for the target,
+    into a target folder under the build's out folder, and copies it into lib_dir, beside
+    libcore: libpbblock.dylib on the Mac, with the install name @rpath/libpbblock.dylib, else
+    libpbblock.so with that soname. linker and link_args are the C linker for the target and
+    what it needs, as Go's cgo has them; none on the Mac, whose own linker cargo uses."""
+    crate = os.path.join(repo, "core", "blocking", "lib")
+    cargo = shutil.which("cargo") or os.path.expanduser("~/.cargo/bin/cargo")
+    if not os.path.exists(cargo):
+        sys.exit("engine/build_go.py: libpbblock (core/blocking/lib) needs Rust, and this machine "
+                 "has no cargo, on PATH or in ~/.cargo/bin. The toolchain is pinned in "
+                 "core/blocking/lib/rust-toolchain.toml; install rustup where the build runs "
+                 "(the Linux container pb has none unless it was added).")
+    triple = RUST_TRIPLE[(target_os, target_cpu)]
+    target_dir = os.path.join(build_dir, "pbblock")
+    # cargo and rustup find their toolchains in the real home, not the build's.
+    env = dict(os.environ)
+    env["PATH"] = os.path.dirname(cargo) + ":" + env.get("PATH", "/usr/bin:/bin")
+    if target_os == "mac":
+        flags = ["-Wl,-install_name,@rpath/libpbblock.dylib"]
+        name = "libpbblock.dylib"
+    else:
+        flags = ["-Wl,-soname,libpbblock.so"] + list(link_args)
+        name = "libpbblock.so"
+    var = "CARGO_TARGET_" + triple.upper().replace("-", "_")
+    if linker:
+        env[var + "_LINKER"] = linker
+    env[var + "_RUSTFLAGS"] = " ".join("-Clink-arg=" + f for f in flags)
+    try:
+        # From the crate's folder, so rustup takes its rust-toolchain.toml.
+        subprocess.check_call(
+            [cargo, "build", "--release", "--locked", "--target", triple,
+             "--target-dir", target_dir], cwd=crate, env=env)
+    except (subprocess.CalledProcessError, OSError) as e:
+        sys.exit(f"engine/build_go.py: building libpbblock (core/blocking/lib) for {triple} "
+                 f"with {cargo} failed ({e}). It needs the Rust toolchain of "
+                 "core/blocking/lib/rust-toolchain.toml with the target " + triple +
+                 " (rustup target add " + triple + "), and the crates of Cargo.lock, which "
+                 "cargo fetches; the Linux container pb has no Rust unless it was added.")
+    os.makedirs(lib_dir, exist_ok=True)
+    shutil.copy2(os.path.join(target_dir, triple, "release", name), os.path.join(lib_dir, name))
+    return lib_dir
 
 
 def main():
@@ -66,6 +120,11 @@ def main():
             "CGO_LDFLAGS": f"-mmacosx-version-min={deployment_target}",
             "MACOSX_DEPLOYMENT_TARGET": deployment_target,
         })
+        # Beside libcore.a, where the main binary's link and the bundle take it.
+        os.environ["MACOSX_DEPLOYMENT_TARGET"] = deployment_target
+        pbblock = build_pbblock(repo, build_dir, os.path.dirname(os.path.join(build_dir, out)),
+                                target_os, target_cpu)
+        env["CGO_LDFLAGS"] += " -L" + pbblock
     elif target_os == "linux":
         clang, sysroot, built = rest[0], rest[1], rest[2:]
         tags += built
@@ -87,6 +146,12 @@ def main():
             "CGO_CFLAGS": "-O2",
             "HOME": build_dir,
         })
+        # Beside libcore.so, which finds it there by its rpath.
+        pbblock = build_pbblock(
+            repo, build_dir, os.path.dirname(os.path.join(build_dir, out)), target_os, target_cpu,
+            linker=os.path.abspath(clang),
+            link_args=["--target=" + triple, "--sysroot=" + os.path.abspath(sysroot), "-fuse-ld=lld"])
+        env["CGO_LDFLAGS"] = "-L" + pbblock + " -Wl,-rpath,$ORIGIN"
         mode = "c-shared"
         ldflags += " -extldflags '-fuse-ld=lld -Wl,-soname,libcore.so'"
     else:
@@ -107,6 +172,17 @@ def main():
                             "--sysroot=" + sysroot]),
             "HOME": build_dir,
         })
+        # Beside libcore.so, in the APK's lib/arm64-v8a. Rust's standard library links the
+        # NDK's libunwind, which sits with its clang's runtime, not in the sysroot; 16 KB
+        # pages as libcore's.
+        runtime = glob.glob(os.path.join(os.path.abspath(ndk),
+                                         "toolchains/llvm/prebuilt/linux-x86_64/lib/clang/*/lib/linux/aarch64"))
+        pbblock = build_pbblock(
+            repo, build_dir, os.path.dirname(os.path.join(build_dir, out)), target_os, target_cpu,
+            linker=os.path.abspath(clang),
+            link_args=["--target=aarch64-linux-android" + min_sdk, "--sysroot=" + sysroot,
+                       "-fuse-ld=lld", "-Wl,-z,max-page-size=16384"] + ["-L" + d for d in runtime])
+        env["CGO_LDFLAGS"] = "-L" + pbblock
         tags = ["sqlite_fts5"]
         mode = "c-shared"
         # Phones with 16 KB memory pages refuse libraries aligned for 4 KB. The soname is how
@@ -116,6 +192,8 @@ def main():
                    " -extldflags '-fuse-ld=lld --unwindlib=none"
                    " -Wl,-z,max-page-size=16384 -Wl,-soname,libcore.so'")
     open(os.path.join(dist, ".keep"), "w").close()
+    # The blocker's library, built above (core/blocking/native).
+    tags.append("pbblock")
 
     # sqlite_fts5 always: the store's search needs SQLite's FTS5 (docs/store.md).
     subprocess.check_call(
@@ -130,13 +208,20 @@ def main():
         for root, _, files in os.walk(top):
             # Test data, and oskit's demo app, which core doesn't link and whose built bundle
             # is no input of the library.
-            if {"testdata", "demo"} & set(os.path.relpath(root, top).split(os.sep)):
+            parts = os.path.relpath(root, top).split(os.sep)
+            if {"testdata", "demo"} & set(parts):
+                continue
+            # libpbblock's own build folder, cargo's.
+            if module == "core" and parts[:3] == ["blocking", "lib", "target"]:
                 continue
             # Each folder too: a Go file added or removed changes its folder's time, and ninja,
             # which knows only the files that were there last time, would keep the old library.
             deps.append(os.path.join(link, module, os.path.relpath(root, top)))
             for name in files:
-                if (name.endswith((".go", ".mod", ".json", ".c", ".h", ".m"))
+                rust = module == "core" and parts[:2] == ["blocking", "lib"] and name.endswith((".rs", ".toml", ".lock"))
+                # The blocker's watcher, which Go embeds (core/blocking/page).
+                watcher = module == "core" and parts[:2] == ["blocking", "page"] and name.endswith(".js")
+                if (rust or watcher or name.endswith((".go", ".mod", ".json", ".c", ".h", ".m"))
                         and not name.endswith("_test.go")):
                     rel = os.path.relpath(os.path.join(root, name), top)
                     deps.append(os.path.join(link, module, rel))

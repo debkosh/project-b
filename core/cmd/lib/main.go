@@ -102,6 +102,7 @@ import (
 
 	"projectb/abi"
 	"projectb/app"
+	"projectb/blocking"
 	"projectb/cmdline"
 	"projectb/content"
 	"projectb/engine"
@@ -787,6 +788,7 @@ func startProfile(c profiles.Choice) {
 		DownloadsDir: platform.DownloadsDir(home),
 		System:       platform.New(),
 		DeviceKey:    deviceKeyFor(c),
+		Blocking:     blocking.Setup{Library: blockingLibrary(), BaseURL: blocking.Releases, Languages: languages()},
 	})
 	events.Listen(theApp)
 	owner.Serve(func(urls []string) { native.Post(func() { theApp.Handover(urls) }) }, quit)

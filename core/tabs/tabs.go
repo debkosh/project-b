@@ -173,6 +173,12 @@ type Manager struct {
 	// the hosts whose certificate errors the person chose to pass, until the app quits.
 	certificates map[engine.TabID]*certificate
 	passed       map[string]bool
+	// danger asks whether an address is a dangerous site's (SetDanger); unsafe is each tab's
+	// refused dangerous site, until it navigates again; passedUnsafe the hosts the person
+	// chose to open anyway, until the app quits.
+	danger       func(url string) (Danger, bool)
+	unsafe       map[engine.TabID]*unsafeSite
+	passedUnsafe map[string]bool
 	// waiting is each restored tab not shown yet, with the address it loads when it is
 	// first made active. Until then it has its address and title, and the blank page.
 	waiting map[engine.TabID]string
@@ -223,7 +229,7 @@ type window struct {
 // New returns a manager with no windows, on the profile's workspaces and pins.
 func New(eng engine.Engine, w Workspaces, p Pins) *Manager {
 	o := own{Engine: eng, issued: map[engine.TabID]string{}}
-	return &Manager{eng: o, own: o, workspaces: w, pins: p, search: defaultEngine().For, tabs: map[engine.TabID]*Tab{}, windowOf: map[engine.TabID]engine.WindowID{}, windows: map[engine.WindowID]*window{}, certificates: map[engine.TabID]*certificate{}, passed: map[string]bool{}, waiting: map[engine.TabID]string{}, asked: map[engine.TabID]bool{}}
+	return &Manager{eng: o, own: o, workspaces: w, pins: p, search: defaultEngine().For, tabs: map[engine.TabID]*Tab{}, windowOf: map[engine.TabID]engine.WindowID{}, windows: map[engine.WindowID]*window{}, certificates: map[engine.TabID]*certificate{}, passed: map[string]bool{}, unsafe: map[engine.TabID]*unsafeSite{}, passedUnsafe: map[string]bool{}, waiting: map[engine.TabID]string{}, asked: map[engine.TabID]bool{}}
 }
 
 // defaultEngine is the engine a manager searches with until SetSearch says another.
@@ -295,6 +301,7 @@ func (m *Manager) RemoveWindow(w engine.WindowID) {
 		t := *m.tabs[id]
 		delete(m.tabs, id)
 		delete(m.certificates, id)
+		delete(m.unsafe, id)
 		delete(m.waiting, id)
 		delete(m.windowOf, id)
 		m.eng.CloseTab(id)
@@ -693,6 +700,7 @@ func (m *Manager) close(id engine.TabID, recent bool) {
 	t := *m.tabs[id]
 	delete(m.tabs, id)
 	delete(m.certificates, id)
+	delete(m.unsafe, id)
 	delete(m.waiting, id)
 	delete(m.asked, id)
 	m.eng.CloseTab(id)
@@ -1187,8 +1195,14 @@ func (m *Manager) HandleNavigationStarting(id engine.TabID, nav int64, u string)
 	t.started = nav
 	t.URL, t.Error, t.ErrorCode, t.Crashed = address(u), "", "", false
 	delete(m.certificates, id)
+	delete(m.unsafe, id)
 	if t.Page == "" && !m.allowed(u) {
 		t.Blocked, t.Loading = true, false
+		m.changed(t)
+		return engine.NavigationBlock
+	}
+	if t.Page == "" && m.isDangerous(id, u) {
+		t.Loading = false
 		m.changed(t)
 		return engine.NavigationBlock
 	}

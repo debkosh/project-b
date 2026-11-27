@@ -71,7 +71,7 @@ func TestApplySetsWhatTheValuesHoldThroughTheSetters(t *testing.T) {
 		t.Fatalf("heard %v", heard)
 	}
 	m.Close()
-	if got := New(dir).All(); !reflect.DeepEqual(got, Prefs{TabLayout: TabsHorizontal, FrameColor: "#5b7fd6", Theme: ThemeDark, Shell: "pbshell", PhoneShell: "mwshell", AddressBarPosition: AddressBottom, SearchEngine: "duckduckgo", Start: StartContinue, BookmarksNewTab: true, BookmarksCommandBox: true, BlockAds: true, KeepCookies: []string{}, SecureDNS: "off", DNSProvider: "cloudflare", NameDownloads: NamesAuto}) {
+	if got := New(dir).All(); !reflect.DeepEqual(got, Prefs{TabLayout: TabsHorizontal, FrameColor: "#5b7fd6", Theme: ThemeDark, Shell: "pbshell", PhoneShell: "mwshell", AddressBarPosition: AddressBottom, SearchEngine: "duckduckgo", Start: StartContinue, BookmarksNewTab: true, BookmarksCommandBox: true, BlockAds: true, WarnDangerous: true, BlockLists: map[string]bool{}, KeepCookies: []string{}, SecureDNS: "off", DNSProvider: "cloudflare", NameDownloads: NamesAuto}) {
 		t.Fatalf("saved %+v", got)
 	}
 }
@@ -278,5 +278,24 @@ func TestSecureDNSKeepsOnlyWhatChromiumTakes(t *testing.T) {
 	os.WriteFile(filepath.Join(dir, "prefs.json"), []byte(`{"secureDns":"x","dnsProvider":"custom","dnsCustom":"ftp://a"}`), 0o600)
 	if p := New(dir).All(); p.SecureDNS != "off" || p.DNSProvider != "cloudflare" || p.DNSCustom != "" {
 		t.Fatalf("bad file %+v", p)
+	}
+}
+
+// Safe Browsing is on by default, and the block lists the person changed are kept, as they
+// set them, and come back at the next start.
+func TestWarnDangerousAndTheBlockListsAreKept(t *testing.T) {
+	dir := t.TempDir()
+	m := New(dir)
+	if p := m.All(); !p.WarnDangerous || len(p.BlockLists) != 0 {
+		t.Fatalf("defaults %v %v", p.WarnDangerous, p.BlockLists)
+	}
+	m.Set("warnDangerous", "false")
+	m.SetBlockLists(map[string]bool{"easylist": false, "fanboy-annoyance": true, "": true})
+	all := m.All()
+	all.BlockLists["easylist"] = true // a copy: the manager's own stays as set
+	m.Close()
+	p := New(dir).All()
+	if p.WarnDangerous || !reflect.DeepEqual(p.BlockLists, map[string]bool{"easylist": false, "fanboy-annoyance": true}) {
+		t.Fatalf("after a start %v %v", p.WarnDangerous, p.BlockLists)
 	}
 }

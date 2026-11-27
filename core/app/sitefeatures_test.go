@@ -3,6 +3,9 @@ package app_test
 import (
 	"slices"
 	"testing"
+	"unsafe"
+
+	"projectb/blocking"
 
 	"projectb/engine"
 	"projectb/sites"
@@ -181,21 +184,30 @@ type tabsTab struct {
 	last  string
 }
 
-// The engine has the ad blocker's hosts from the start, and the sites it is off for as each
-// switches; a blocked request counts on the tab until its next page. Off on every site, the
-// engine has no hosts and the site panel no switch.
-func TestTheAdBlockersRulesReachTheEngineAndItsCountTheTab(t *testing.T) {
+// The engine has the blocker from the start, with the built-in hosts in it until the lists
+// come, and the sites it is off for as each switches; a blocked request counts on the tab
+// until its next page. Off on every site, the engine has no blocker and the site panel no
+// switch.
+func TestTheBlockerReachesTheEngineAndItsCountTheTab(t *testing.T) {
 	r := start(t, t.TempDir())
 	defer r.stop()
-	var rules engine.AdRules
-	r.main(func() { rules = r.e.AdRules() })
-	if !slices.Contains(rules.Hosts, "doubleclick.net") || len(rules.Off) != 0 {
-		t.Fatalf("at start %d hosts, off %v", len(rules.Hosts), rules.Off)
+	var hooks unsafe.Pointer
+	var off []string
+	read := func() { r.main(func() { hooks, off = r.e.Blocker(), r.e.BlockingOff() }) }
+	read()
+	if hooks == nil || len(off) != 0 {
+		t.Fatalf("at start: blocker %v, off %v", hooks, off)
+	}
+	if v := r.a.Blocking.Network().Request("https://ads.doubleclick.net/x.js", "https://news.test/", "script"); v != blocking.BlockIt {
+		t.Fatalf("a built-in host: %d", v)
+	}
+	if v := r.a.Blocking.Network().Request("https://doubleclick.net/", "https://doubleclick.net/", "document"); v != blocking.Allow {
+		t.Fatalf("a built-in host's own page: %d", v)
 	}
 	r.shell(`{"t":"setSiteSetting","origin":"https://news.test","kind":"ads","value":"off"}`)
-	r.main(func() { rules = r.e.AdRules() })
-	if !slices.Equal(rules.Off, []string{"https://news.test"}) {
-		t.Fatalf("off %v", rules.Off)
+	read()
+	if !slices.Equal(off, []string{"https://news.test"}) {
+		t.Fatalf("off %v", off)
 	}
 	r.visit("https://news.test/")
 	r.main(func() { r.a.AdBlocked(1); r.a.AdBlocked(1) })
@@ -205,16 +217,16 @@ func TestTheAdBlockersRulesReachTheEngineAndItsCountTheTab(t *testing.T) {
 		return tab["url"] == "https://news.test/next" && tab["adsBlocked"] == nil
 	})
 
-	// Off on every site, Settings' Block ads: the rules have no hosts, and the panel no
-	// switch; on again, the hosts and each site's own come back.
+	// Off on every site, Settings' Block ads: the engine has no blocker, and the panel no
+	// switch; on again, the blocker and each site's own come back.
 	got, _ := r.openSettings()
 	r.settings(`{"t":"setPref","name":"blockAds","value":"false"}`)
 	r.waitOn(got, func(m map[string]any) bool {
 		return m["t"] == "prefs" && m["prefs"].(map[string]any)["blockAds"] == false
 	})
-	r.main(func() { rules = r.e.AdRules() })
-	if len(rules.Hosts) != 0 {
-		t.Fatalf("off on every site, %d hosts", len(rules.Hosts))
+	read()
+	if hooks != nil {
+		t.Fatal("off on every site, the engine has a blocker")
 	}
 	hasAds := func(m map[string]any) bool {
 		site, _ := m["openSites"].(map[string]any)["https://news.test"].(map[string]any)
@@ -228,8 +240,8 @@ func TestTheAdBlockersRulesReachTheEngineAndItsCountTheTab(t *testing.T) {
 	r.waitFor(func(m map[string]any) bool { return m["t"] == "openSites" && !hasAds(m) })
 	r.settings(`{"t":"setPref","name":"blockAds","value":"true"}`)
 	r.waitFor(func(m map[string]any) bool { return m["t"] == "openSites" && hasAds(m) })
-	r.main(func() { rules = r.e.AdRules() })
-	if !slices.Contains(rules.Hosts, "doubleclick.net") || !slices.Equal(rules.Off, []string{"https://news.test"}) {
-		t.Fatalf("on again: %d hosts, off %v", len(rules.Hosts), rules.Off)
+	read()
+	if hooks == nil || !slices.Equal(off, []string{"https://news.test"}) {
+		t.Fatalf("on again: blocker %v, off %v", hooks, off)
 	}
 }
