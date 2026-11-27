@@ -3813,6 +3813,15 @@ def stream_checks():
         check("with picture and sound, its index first, as long as its stream",
               got["tracks"] == ["vide", "soun"] and got["index_first"] and abs(got["seconds"] - seconds) < 0.15, got)
         saved[row["name"]] = row["path"]
+        # The Linux build leaves H.264 and AAC out (docs/web-features-audit.md, codecs-h264),
+        # so its pages play no MP4 of these: the file's own reading above is the check there.
+        if LINUX:
+            print("skip and it plays back at that length, at its picture's size (the Linux build plays no H.264)", flush=True)
+            try:
+                os.remove(row["path"])
+            except OSError:
+                pass
+            return
         visit(app, PAGES + "length?src=" + urllib.parse.quote(f"{cdn}/saved/{urllib.parse.quote(row['name'])}"))
         title = ""
         try:
