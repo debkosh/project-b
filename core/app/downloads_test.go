@@ -369,8 +369,9 @@ func TestASavedReportIsAFinishedDownload(t *testing.T) {
 	}
 }
 
-// Retry on a running download stops it and starts it over, in the same row.
-func TestARunningDownloadStartsOverOnRetry(t *testing.T) {
+// A running download has no Retry: one asked for does nothing, as any action that doesn't
+// fit a row's state. Cancelled, its Retry starts it over in the same row.
+func TestARunningDownloadIgnoresRetry(t *testing.T) {
 	r := startDownloading(t, t.TempDir(), t.TempDir())
 	defer r.stop()
 	r.visit("https://a.test/")
@@ -379,6 +380,16 @@ func TestARunningDownloadStartsOverOnRetry(t *testing.T) {
 	r.e.Fire(1, 0, "downloadsStall", "")
 	list := r.downloads(func(l []any) bool { return len(l) == 1 && first(l)["state"] == "progress" })
 	id := first(list)["id"]
+	r.shell(fmt.Sprintf(`{"t":"downloadAction","id":%v,"action":"retry"}`, id))
+	r.e.Settle()
+	if n := len(r.e.Started()); n != 1 {
+		t.Fatalf("a retry of a running download started %d downloads, want the one", n)
+	}
+	r.shell(fmt.Sprintf(`{"t":"downloadAction","id":%v,"action":"cancel"}`, id))
+	list = r.downloads(func(l []any) bool { return len(l) == 1 && first(l)["state"] == "cancelled" })
+	if first(list)["id"] != id {
+		t.Fatalf("Retry should have left the running row as it was, then Cancel ended it: %v", list)
+	}
 	r.shell(fmt.Sprintf(`{"t":"downloadAction","id":%v,"action":"retry"}`, id))
 	list = r.downloads(func(l []any) bool { return len(l) == 1 && first(l)["state"] == "done" })
 	if first(list)["id"] != id || first(list)["name"] != "big.iso" {

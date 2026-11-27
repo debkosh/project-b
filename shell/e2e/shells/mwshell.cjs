@@ -1114,14 +1114,16 @@ const H = 915;
   check('a press on it reaches the shell', (await regions({ x: barBox.x + 40, y: barBox.y + barBox.height / 2 })).hit === 'shell');
   await dlBar.getByRole('button', { name: 'Open' }).tap();
   check('Open opens the file, as the Downloads page\'s Open does, and the bar goes', await until(async () => ((await regions()).openedFiles || []).some((f) => f.endsWith('big.zip')) && !(await dlBar.isVisible())), JSON.stringify((await regions()).openedFiles));
-  // A download whose bytes stop: Cancel and Retry on the bar while it runs; Retry starts it
-  // over.
+  // A download whose bytes stop: Pause and Cancel on the bar while it runs, and no Retry,
+  // which is for one that failed; Cancel stops it, and the bar goes.
   await fire('download', 'https://example.com/files/stalled.zip');
   await fire('downloadsStall');
-  check('a running download has Cancel and Retry on its bar', await until(async () => (await barSaid()).at(-1) === 'Downloading stalled.zip' &&
-    (await dlBar.getByRole('button', { name: 'Cancel' }).isVisible()) && (await dlBar.getByRole('button', { name: 'Retry' }).isVisible())), JSON.stringify(await barSaid()));
-  await dlBar.getByRole('button', { name: 'Retry' }).tap();
-  check('Retry gets it', await until(async () => (await barSaid()).at(-1) === 'stalled.zip downloaded'), JSON.stringify(await barSaid()));
+  const barButtons = () => dlBar.getByRole('button').allTextContents().then((l) => l.map((t) => t.trim()));
+  check('a running download has Pause and Cancel on its bar, and no Retry', await until(async () => (await barSaid()).at(-1) === 'Downloading stalled.zip' &&
+    (await dlBar.isVisible()) && JSON.stringify(await barButtons()) === '["Pause","Cancel"]'), JSON.stringify([await barSaid(), await barButtons().catch(() => [])]));
+  await shots('download-running');
+  await dlBar.getByRole('button', { name: 'Cancel' }).tap();
+  check('Cancel stops it, and the bar goes', await until(async () => !(await dlBar.isVisible())), JSON.stringify(await barSaid()));
   await fire('download', 'https://example.com/files/broken.zip');
   await fire('downloadsFail');
   check('a download that fails says so, with Retry', await until(async () => (await barSaid()).at(-1) === "Couldn't download broken.zip: the connection stopped" && (await dlBar.getByRole('button', { name: 'Retry' }).isVisible())), JSON.stringify(await barSaid()));

@@ -31,8 +31,17 @@ func TestDownloadNews(t *testing.T) {
 		t.Fatalf("nothing new said %q", got)
 	}
 	small := downloads.Item{ID: 3, Name: "small.bin", State: "progress"}
-	if got := said([]downloads.Item{small, big, old}, false); len(got) != 1 || got[0] != "progress: Downloading small.bin" {
-		t.Fatalf("a start once offered said %q", got)
+	news := n.changed([]downloads.Item{small, big, old}, false)
+	if len(news) != 1 || wordsOf(news[0]) != "Downloading small.bin" {
+		t.Fatalf("a start once offered said %v", news)
+	}
+	// A running one has Pause and Cancel only: Retry is for one that failed.
+	if got := fmt.Sprint(news[0]["actions"]); got != "[{pause Pause} {cancel Cancel}]" {
+		t.Fatalf("a running download's bar has %s", got)
+	}
+	paused := downloads.Item{ID: 5, Name: "paused.bin", State: "progress", Paused: true}
+	if news := n.changed([]downloads.Item{paused, small, big, old}, false); len(news) != 1 || fmt.Sprint(news[0]["actions"]) != "[{resume Resume} {cancel Cancel}]" {
+		t.Fatalf("a paused download's bar has %v", news)
 	}
 	big.State, small.State, small.Reason = "done", "failed", "server"
 	got = said([]downloads.Item{small, big, old}, false)
@@ -50,7 +59,7 @@ func TestDownloadNews(t *testing.T) {
 	film.State = "progress"
 	said([]downloads.Item{film, small, big, old}, false)
 	film.State, film.Reason, film.NoRetry = "failed", "protected", true
-	news := n.changed([]downloads.Item{film, small, big, old}, false)
+	news = n.changed([]downloads.Item{film, small, big, old}, false)
 	if len(news) != 1 || wordsOf(news[0]) != "Couldn't download film.mp4: this video is protected" || fmt.Sprint(news[0]["actions"]) != "[]" {
 		t.Fatalf("a protected stream said %v", news)
 	}

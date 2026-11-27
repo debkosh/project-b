@@ -153,7 +153,7 @@ feature of ours:
   - **Video downloader:** nothing until a video is found; then one round button bottom
     right, which opens "Videos on this page": a row per video, its type and size or "Video
     1", its host, and Download, a plain link to the file ending in `#pb-download` (below):
-    a download from the page, which our Downloads takes, with its Pause, Cancel and Retry,
+    a download from the page, which our Downloads takes, with its Pause and Cancel, and Retry once it failed,
     another site's file too. A tap turns it to a tick in the accent. A stream (HLS or DASH) has a
     row too, found from the playlists the page loaded (its resource timing), `og:video`, a
     `VideoObject`'s `contentUrl` and its player's settings; the spark reads each playlist,

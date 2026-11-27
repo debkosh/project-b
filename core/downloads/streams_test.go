@@ -313,15 +313,25 @@ func TestAStreamsRowPausesResumesCancelsAndRetries(t *testing.T) {
 	if !strings.HasPrefix(asked, "/ts/index.m3u8 ") {
 		t.Fatalf("Retry asked for %s", asked)
 	}
-	// And a running one: Retry throws away what it has and starts over.
+	// A running one has no Retry: one asked for does nothing, and it goes on to its end
+	// without fetching its playlist again.
 	r.mu.Lock()
 	r.slow = 120 * time.Millisecond
 	r.mu.Unlock()
 	r.download(2, "/fmp4/index.m3u8", "clip.m3u8", "application/vnd.apple.mpegurl")
 	second := r.until("under way", func(it Item) bool { return it.Received > 0 })
+	r.mu.Lock()
+	r.asked = nil
+	r.mu.Unlock()
 	r.on(func() { r.m.Act(second.ID, "retry") })
 	if got := r.until("done", func(it Item) bool { return it.State == "done" }); got.ID != second.ID || got.Name != "clip.mp4" {
 		t.Fatalf("%+v", got)
+	}
+	r.mu.Lock()
+	again := strings.Contains(" "+strings.Join(r.asked, " "), " /fmp4/index.m3u8")
+	r.mu.Unlock()
+	if again {
+		t.Fatalf("a running stream started over on Retry")
 	}
 	// Each job's folder goes a moment after its end, on the job's own goroutine.
 	var left []string

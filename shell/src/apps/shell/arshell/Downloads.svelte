@@ -109,8 +109,6 @@
               {:else if d.state === 'progress'}
                 <button type="button" class="text-button quiet" onclick={() => downloadAction(d.id, d.paused ? 'resume' : 'pause')}>{d.paused ? 'Resume' : 'Pause'}</button>
                 <button type="button" class="text-button quiet" onclick={() => downloadAction(d.id, 'cancel')}>Cancel</button>
-                <!-- Retry throws away what arrived, so it sits apart from the everyday two. -->
-                <button type="button" class="text-button quiet apart" onclick={() => downloadAction(d.id, 'retry')}>Retry</button>
               {:else}
                 <!-- No Retry where trying again can't help: a protected video, a format not read. -->
                 {#if !d.noRetry}<button type="button" class="text-button quiet" onclick={() => downloadAction(d.id, 'retry')}>Retry</button>{/if}
@@ -238,9 +236,4 @@
     padding: 0 8px;
     font-size: 12px;
   }
-
-/* Retry, a little apart from Pause and Cancel: it throws away what has arrived. */
-.apart {
-  margin-left: 12px;
-}
 </style>

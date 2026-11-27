@@ -100,8 +100,7 @@ func (m *Manager) startStream(it *Item, body []byte) {
 		it.Name = filepath.Base(it.Path)
 	}
 	it.State, it.Paused, it.Reason, it.NoRetry, it.Received, it.Total = "progress", false, "", false, 0, -1
-	// A folder of its own for each start: one stopped by Retry removes its folder a moment
-	// later.
+	// A folder of its own for each start: an earlier start's goes a moment after its end.
 	m.jobs++
 	it.job = streams.Start(streams.Config{
 		Source:  streams.Source{Kind: streams.Kind(it.Stream), URL: it.URL, Body: body, Page: it.Referrer, Workspace: it.Workspace, Space: engine.AddressSpace(it.Space), Height: LinkedQuality(it.URL)},
@@ -165,16 +164,15 @@ func (m *Manager) actStream(it *Item, action string) bool {
 		}
 		m.show(it)
 	case "retry":
-		if it.URL == "" || m.fetcher == nil || it.NoRetry {
+		// Not a running one, which has Pause and Cancel: it starts over from its playlist's
+		// address, in this row, under the same name.
+		if it.URL == "" || m.fetcher == nil || it.NoRetry || it.State == "progress" {
 			return true
 		}
-		// Whatever it has is thrown away, and the stream starts over from its playlist's
-		// address, in this row, under the same name.
 		if it.job != nil {
 			it.job.Cancel()
 			it.job = nil
 		}
-		m.letGo(it)
 		m.startStream(it, nil)
 		return true
 	case "remove":

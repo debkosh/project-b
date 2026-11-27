@@ -154,16 +154,19 @@ const { check, fire, regions, settle, until } = lib;
   check('Open asks Go to open it', await until(async () => (await regions()).openedFiles?.length === 1));
   await page.keyboard.press('Escape');
   check('Escape closes the list', await until(async () => (await list.count()) === 0));
-  // A download whose bytes stop: while it runs, Pause, Cancel and Retry, which starts it
-  // over in the same row.
+  // A download whose bytes stop: while it runs, Pause and Cancel only, no Retry; cancelled,
+  // Retry, which starts it over in the same row.
   await fire('download', 'https://a.test/files/stalled.pdf');
   await fire('downloadsStall');
   await until(() => list.isVisible(), 2000);
   await list.hover();
   const stalled = list.getByRole('listitem', { name: 'stalled.pdf' });
   const has = async (name) => (await stalled.getByRole('button', { name, exact: true }).count()) === 1;
-  check('a running download offers Pause, Cancel and Retry', await until(async () => (await has('Pause')) && (await has('Cancel')) && (await has('Retry'))));
+  check('a running download offers Pause and Cancel, and no Retry', await until(async () => (await has('Pause')) && (await has('Cancel'))) &&
+    (await stalled.getByRole('button', { name: 'Retry', exact: true }).count()) === 0, await stalled.textContent());
   await shoot('downloads-running');
+  await stalled.getByRole('button', { name: 'Cancel', exact: true }).click();
+  check('cancelled, it offers Retry', await until(async () => (await stalled.textContent()).includes('Cancelled') && (await has('Retry'))), await stalled.textContent());
   await stalled.getByRole('button', { name: 'Retry', exact: true }).click();
   check('Retry gets it, in the same row', await until(() => has('Open'), 5000));
   // One that fails says why, in plain words, from the engine's reason.

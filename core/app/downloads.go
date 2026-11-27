@@ -121,9 +121,13 @@ func (n *downloadNews) changed(list []downloads.Item, offer bool) []map[string]a
 				offer = false
 			} else {
 				m["words"] = "Downloading " + d.Name
-				// Every progress has Retry and Cancel (docs/ux-guide.md); Pause is on the
-				// Downloads page, which has the room.
-				m["actions"] = []act{{"cancel", "Cancel"}, {"retry", "Retry"}}
+				// A running one has Pause (or Resume) and Cancel only; Retry is for one that
+				// failed or was cancelled, and the engine's silence watch fails a stuck one.
+				pause := act{"pause", "Pause"}
+				if d.Paused {
+					pause = act{"resume", "Resume"}
+				}
+				m["actions"] = []act{pause, {"cancel", "Cancel"}}
 				m["lasts"] = 2000
 			}
 		case "done":

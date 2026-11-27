@@ -140,13 +140,12 @@ it through oskit/open (his call, 2026-11-22).
 
 **The shell.** A control named Downloads shows once the list has one, and opens the list:
 each download a `listitem` by its file name, its progress while it runs, Open and Show in
-Finder once done, Pause (or Resume), Cancel and Retry while it runs, and Retry once it failed
-or was cancelled. Every progress has Retry and Cancel while it runs (the UX guide,
-`docs/ux-guide.md`); Retry sits a little apart from Pause and Cancel, as it throws away what
-has arrived: Go stops the engine's copy, whose late news it then ignores, and starts the
-address over in the same row, under the same name. A running row has no remove button,
-Cancel being there. Mobile's download bar has Cancel and Retry while one runs, and its
-Downloads page has Pause too. Standard
+Finder once done, Pause (or Resume) and Cancel while it runs, and Retry only once it failed
+or was cancelled. A running download has no Retry (owner, 2026-11-27: "We only have pause
+and cancel and retry only when canceled or error"): one that gets stuck fails by itself
+after 30 seconds with nothing (below, "A connection that goes silent"), and its Retry shows
+then. A running row has no remove button, Cancel being there. Mobile's download bar has
+Pause (or Resume) and Cancel while one runs, as its Downloads page does. Standard
 puts the control in its toolbar and shows a download's progress on it; Open and Show in
 Finder are icons there, so the name has the row. The contract's rule 17 checks it, by role
 and name.

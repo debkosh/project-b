@@ -62,8 +62,6 @@ const share = (d) => (d.total > 0 ? Math.min(1, d.received / d.total) : 0);
           <template v-if="d.state === 'progress'">
             <button type="button" class="text-button quiet" @click="act(d.id, d.paused ? 'resume' : 'pause')">{{ d.paused ? 'Resume' : 'Pause' }}</button>
             <button type="button" class="text-button quiet" @click="act(d.id, 'cancel')">Cancel</button>
-            <!-- Retry throws away what arrived, so it sits apart from the everyday two. -->
-            <button type="button" class="text-button quiet apart" @click="act(d.id, 'retry')">Retry</button>
           </template>
           <template v-else-if="d.state === 'done'">
             <button type="button" class="text-button quiet open" @click="act(d.id, 'open')">Open</button>
@@ -381,10 +379,5 @@ body {
 
 .touch .clear {
   height: 48px;
-}
-
-/* Retry, a little apart from Pause and Cancel: it throws away what has arrived. */
-.apart {
-  margin-left: 12px;
 }
 </style>

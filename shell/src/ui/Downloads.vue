@@ -269,8 +269,6 @@ onUnmounted(() => {
               <template v-else-if="d.state === 'progress'">
                 <button type="button" class="text-button quiet" @click="downloadAction(d.id, d.paused ? 'resume' : 'pause')">{{ d.paused ? 'Resume' : 'Pause' }}</button>
                 <button type="button" class="text-button quiet" @click="downloadAction(d.id, 'cancel')">Cancel</button>
-                <!-- Retry throws away what arrived, so it sits apart from the everyday two. -->
-                <button type="button" class="text-button quiet apart" @click="downloadAction(d.id, 'retry')">Retry</button>
               </template>
               <!-- No Retry where trying again can't help: a protected video, a format not read. -->
               <template v-else-if="d.url && !d.noRetry">
@@ -495,10 +493,5 @@ li.failed .name {
   margin-left: 4px;
   padding: 0 6px;
   color: var(--accent);
-}
-
-/* Retry, a little apart from Pause and Cancel: it throws away what has arrived. */
-.apart {
-  margin-left: 12px;
 }
 </style>

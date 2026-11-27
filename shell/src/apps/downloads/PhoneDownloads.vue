@@ -94,7 +94,6 @@ function actions(d) {
     tiles = [
       d.paused ? { icon: 'play', label: 'Resume', run: () => act(d.id, 'resume') } : { icon: 'pause', label: 'Pause', run: () => act(d.id, 'pause') },
       { icon: 'stop', label: 'Cancel', run: () => act(d.id, 'cancel') },
-      ...(d.url ? [{ icon: 'retry', label: 'Retry', run: () => act(d.id, 'retry') }] : []),
       ...link,
     ];
   } else {
