@@ -195,6 +195,17 @@ remembered, plus the check:
 ### 3. Safe Browsing
 
 - **A second blocker,** loaded with the badware and phishing lists only.
+- **Open lists only, ours to keep.** The owner: "lets try to do the same for safebrowsing...
+  we cannot and should not send data to google... so we maintain some opne lists". The
+  badware and phishing groups sit in the same catalogue, kept the same way, published and
+  patched the same way. To start, after each one's licence is read: uBO badware (GPL-3.0),
+  URLhaus filter (from abuse.ch's URLhaus), Phishing URL Blocklist (phishing-filter,
+  CC-BY-SA-4.0, from OpenPhish, PhishTank and others), and Phishing.Database (MIT) as a
+  candidate. No list that needs an account or an API key, or that asks to be told what was
+  checked.
+- **Checked at each release too.** With no Brave catalogue to compare against here,
+  `tools/lists-vs-brave.py` reports for these groups each list's last change and size, so a
+  list that stopped updating or shrank sharply is seen and replaced.
 - **Asked by Go, at the gate it already has.** Every navigation of a tab's main frame, and
   each of its redirects, already asks Go (`PB_EVENT_NAVIGATION_STARTING`,
   `engine/browser/events.cc`). Go's handler asks the Safe Browsing blocker whether the
@@ -280,7 +291,7 @@ thing".
 
 So the package is split by list, and a list that changed sends only its change:
 
-- **A scheduled workflow,** `.github/workflows/lists.yml`, every six hours and by hand. It
+- **A scheduled workflow,** `.github/workflows/lists.yml`, every hour and by hand. It
   reads the catalogue, downloads each source (refusing one that shrank by more than half or
   failed to parse, and keeping the last good one), checks each parses with the `libpbblock`
   the app pins, and publishes the release, tag `lists`.
@@ -299,8 +310,12 @@ So the package is split by list, and a list that changed sends only its change:
   home. Files no manifest of the last eight names are deleted from the release.
 - **Signed.** Lists carry scripts that run in every page, so the app takes only a manifest
   signed with our key, whose public half is compiled into core (Go's `crypto/ed25519`). The
-  private key is in the kosh (`project-b/lists-signing.key`) and is the workflow's one
-  secret. Every list the app ends with, whole or patched, must match the signed manifest's
+  owner: "the keys can be stored in our keykosh or reuse the app sogning keys if possible".
+  A new key of its own, `lists-signing.key`, sealed in the kosh beside the app's, and the
+  workflow's one secret. Not the app's keys: the workflow runs on GitHub every hour, so its
+  key sits in GitHub's secrets, and the APK's keystore, the Mac identity or the Linux repo
+  key there would let whoever took it sign app updates. This one can only sign lists, and a
+  new one goes out in the next app. Every list the app ends with, whole or patched, must match the signed manifest's
   SHA-256, or it is thrown away and the whole file fetched.
 - **Only GitHub.** No server of ours. The app fetches
   `github.com/debkosh/project-b/releases/download/lists/...`.
@@ -308,8 +323,10 @@ So the package is split by list, and a list that changed sends only its change:
 ### Fetching them
 
 - **After the shared start-up wait** ([startup.md](startup.md)): `later.Run(lists.Start)`.
-  Then every twelve hours while the app runs. It asks for `manifest.json` with the last
-  ETag, so most checks are one small reply that nothing changed.
+  Then every hour while the app runs, so a phishing list is at most about two hours old. It
+  asks for `manifest.json` with the last ETag, so most checks are one small reply that
+  nothing changed. On a metered connection the ad lists come at most once a day; the Safe
+  Browsing ones still come each hour, being small patches.
 - **Only what changed, of the lists that are on:** for each, the patch from the version it
   has, else the whole file.
 - **Compiled on the device, a group at a time.** A group whose lists changed is compiled
