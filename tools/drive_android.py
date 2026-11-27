@@ -230,8 +230,8 @@ class Server(http.server.BaseHTTPRequestHandler):
                 pass  # Cancelled, or the app stopped.
             return
         # A streamed video, core/streams' test streams (docs/video-streams.md): /stream/ as
-        # they are, /slowstream/ with each piece held back five seconds, so the stream runs
-        # long enough to outlive the app's screen.
+        # they are, /slowstream/ with each piece held back until the driver lets them go
+        # (PIECES_GO), so the stream is still running when the app's screen has gone.
         if path.startswith("/stream/") or path.startswith("/slowstream/"):
             name = path.split("/", 2)[2]
             file = os.path.normpath(os.path.join(STREAMS, name))
@@ -243,7 +243,7 @@ class Server(http.server.BaseHTTPRequestHandler):
             with open(file, "rb") as f:
                 data = f.read()
             if path.startswith("/slowstream/") and not file.endswith(".m3u8"):
-                time.sleep(5)
+                PIECES_GO.wait(120)
             self.send_response(200)
             self.send_header("Content-Type", "application/vnd.apple.mpegurl" if file.endswith(".m3u8") else "application/octet-stream")
             if file.endswith(".m3u8"):
@@ -385,6 +385,8 @@ PAGES["/full"] = ("<title>Full</title><button id=f style='position:fixed;inset:0
 PAGES["/paint"] = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "android-paint-page.html")).read().replace("<!doctype html>", "")
 
 
+# Set when /slowstream/'s pieces may come (stream_download).
+PIECES_GO = threading.Event()
 server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Server)
 threading.Thread(target=server.serve_forever, daemon=True).start()
 PORT = server.server_port
@@ -1472,18 +1474,24 @@ def stream_download():
     press("Close Downloads")
     adb("shell", "rm", "-f", "/sdcard/Download/pb-film.mp4")
 
-    # Its pieces coming slowly, about 20 seconds in all, longer than a swipe away takes: swiped
-    # away meanwhile.
-    launch()
-    go(BASE + "/a")
-    asked("/a")
-    go(BASE + "/slowstream/fmp4/index.m3u8")
-    # Its name may be numbered, as "pb-film (1).mp4", when Android still holds an earlier one.
-    until(lambda: "pb-film" in adb("shell", "dumpsys", "notification", "--noredact"), 15)
-    swipe_away()
-    time.sleep(3)
-    pid = adb("shell", "pidof", PACKAGE).strip()
-    check("swiped away while a stream's pieces come, the app runs on with no screen", bool(pid) and "BrowserActivity" not in in_front_now(), in_front_now())
+    # Its pieces held back until the app has been swiped away and seen running on. They came
+    # five seconds each, and four at a time the stream was saved in 10 s, while Android 17's
+    # swipe away took 20 s on a busy emulator: the app, its download over, rightly ended with
+    # its screen, and the check failed for an app that had done as it should.
+    PIECES_GO.clear()
+    try:
+        launch()
+        go(BASE + "/a")
+        asked("/a")
+        go(BASE + "/slowstream/fmp4/index.m3u8")
+        # Its name may be numbered, as "pb-film (1).mp4", when Android still holds an earlier one.
+        until(lambda: "pb-film" in adb("shell", "dumpsys", "notification", "--noredact"), 15)
+        swipe_away()
+        time.sleep(3)
+        pid = adb("shell", "pidof", PACKAGE).strip()
+        check("swiped away while a stream's pieces come, the app runs on with no screen", bool(pid) and "BrowserActivity" not in in_front_now(), in_front_now())
+    finally:
+        PIECES_GO.set()
     stored = until(lambda: any(re.fullmatch(r"pb-film( \(\d+\))?\.mp4", f) for f in files()), 60)
     check("and the MP4 still reaches the phone's Downloads", stored is not None, files()[-8:])
     ended = until(lambda: not adb("shell", "pidof", PACKAGE).strip(), 30)
