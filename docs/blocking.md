@@ -65,10 +65,11 @@ compiled again, and a new list needs no build at all.
   binary; a Rust static library linked beside it would bring a second copy, and the two
   clash at link time. A shared library keeps its Rust to itself and exports only C symbols.
 - **Built with core.** `engine/build_go.py` runs `cargo build --release --locked` for the
-  target (the NDK's clang as the linker on Android, as it does for Go), with the crates
-  vendored in the repo (`cargo vendor`) so a build needs no network. A change to it rebuilds
-  core and relinks, as a Go change does today. The Rust toolchain is pinned in
-  `rust-toolchain.toml`, beside Chromium's own, which we don't use for it.
+  target (the NDK's clang as the linker on Android, as it does for Go). The crates are pinned
+  by `Cargo.lock` and its checksums and fetched as Go's modules are, not copied into the
+  repo. A change to it rebuilds core and relinks, as a Go change does today. The Rust
+  toolchain is pinned in `core/blocking/lib/rust-toolchain.toml` (1.100.0), apart from
+  Chromium's own, whose standard library is built inside the content build.
 - **Core links it**, and is the only part that does: Go calls it through cgo for the lists
   manager and for Safe Browsing, and hands the engine the addresses of its hot-path functions
   as one table (below). Replacing the library means another library with the same C
@@ -388,9 +389,14 @@ So the package is split by list, and a list that changed sends only its change:
 
 - **One copy.** The rules live only in the browser process. Putting a blocker in each
   renderer would save the round trip but cost a copy per renderer, which a phone can't pay.
-- **Read in place.** If adblock-rust reads its serialized engine without copying it, Go maps
-  the file instead of reading it, so the system can drop and reread those pages under
-  memory pressure. To be checked against its API first.
+- **Measured on the Mac** (M-series, adblock-rust 0.13.5, `cargo run --release --example
+  measure`): EasyList, EasyPrivacy and uBO's filters and privacy lists, 4.3 MB of text,
+  compile in 51 ms to a 6.4 MB engine, which loads in 1 ms; a request check takes 1.7 µs,
+  a page's parts 85 µs. The library is 2.9 MB on the Mac and 3.3 MB for Android arm64 before
+  the APK's compression. A phone is perhaps five to ten times slower; to be measured on one.
+- **Loaded by copy.** adblock-rust copies the serialized engine into its own memory, so a
+  group costs about its file's size in the browser process; mapping the file would save
+  nothing.
 - **The phone's checks** run with the same numbers in `docs/benchmarks.md`: page load,
   memory of the browser process with the standard set, and start-up time, on emu-37 and a
   real phone.
