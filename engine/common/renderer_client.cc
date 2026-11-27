@@ -125,6 +125,7 @@ class BlockThrottle : public blink::URLLoaderThrottle {
     if (question_) {
       question_ = blocker_client::RedirectedTo(*question_, redirect_info->new_url);
     }
+    redirected_ = true;
     Ask(defer);
   }
 
@@ -136,7 +137,7 @@ class BlockThrottle : public blink::URLLoaderThrottle {
       return;
     }
     if (std::optional<int32_t> verdict = blocker_client::Remembered(*question_)) {
-      if (Blocks(*verdict)) {
+      if (*verdict != mojom::kBlockerAllow) {
         Refuse();
       }
       return;
@@ -146,22 +147,30 @@ class BlockThrottle : public blink::URLLoaderThrottle {
                                                    weak_factory_.GetWeakPtr()));
   }
 
+  // A redirect goes on, counted as a block is: the browser kept the stand-in the blocker
+  // gave, and serves it in front of the network as the request reaches it, so the request
+  // never goes out (engine/browser/blocker.cc, StandInFactory). Only as the request
+  // starts, though: the network follows a redirect of a request itself, past the browser,
+  // so a redirect answered then is a block.
   void Answered(int32_t verdict) {
-    if (Blocks(verdict)) {
-      Refuse();
-    } else {
+    if (verdict == mojom::kBlockerAllow) {
       delegate_->Resume();
+    } else if (verdict == mojom::kBlockerRedirect && !redirected_) {
+      Count();
+      delegate_->Resume();
+    } else {
+      Refuse();
     }
   }
 
-  // A redirect, a stand-in the blocker would load instead, is refused as a block until the
-  // engine serves the resources file (docs/blocking.md, Requests).
-  static bool Blocks(int32_t verdict) { return verdict != mojom::kBlockerAllow; }
-
-  void Refuse() {
+  void Count() {
     if (frame_) {
       Reporter::Get().Blocked(*frame_);
     }
+  }
+
+  void Refuse() {
+    Count();
     delegate_->CancelWithError(net::ERR_BLOCKED_BY_CLIENT);
   }
 
@@ -170,6 +179,8 @@ class BlockThrottle : public blink::URLLoaderThrottle {
   // What the blocker is asked of the request, and of each of its redirects; none when the
   // request isn't asked about.
   std::optional<blocker_client::Question> question_;
+  // Whether the request was redirected.
+  bool redirected_ = false;
   base::WeakPtrFactory<BlockThrottle> weak_factory_{this};
 };
 

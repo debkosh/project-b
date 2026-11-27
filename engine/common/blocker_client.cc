@@ -214,7 +214,10 @@ void Ask(const Question& question, base::OnceCallback<void(int32_t)> answer) {
                       {
                         State& state = Get();
                         base::AutoLock hold(state.lock);
-                        if (state.generation == generation) {
+                        // A redirect is asked each time, so the browser has its
+                        // stand-in at hand when the request reaches it.
+                        if (state.generation == generation &&
+                            verdict != mojom::kBlockerRedirect) {
                           state.answers.Put(std::move(key), verdict);
                         }
                       }

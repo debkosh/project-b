@@ -45,6 +45,25 @@ class ContentBrowserClient : public ContentBrowserClientHooks {
       blink::AssociatedInterfaceRegistry& associated_registry) override;
   void AppendExtraCommandLineSwitches(base::CommandLine* command_line,
                                       int child_process_id) override;
+  // The blocker's stand-ins are served in front of the network (blocker.h). A build with
+  // extensions calls it first from its own.
+  void WillCreateURLLoaderFactory(
+      content::BrowserContext* browser_context,
+      content::RenderFrameHost* frame,
+      int render_process_id,
+      URLLoaderFactoryType type,
+      const url::Origin& request_initiator,
+      const net::IsolationInfo& isolation_info,
+      std::optional<int64_t> navigation_id,
+      ukm::SourceIdObj ukm_source_id,
+      network::URLLoaderFactoryBuilder& factory_builder,
+      mojo::PendingRemote<network::mojom::TrustedURLLoaderHeaderClient>*
+          header_client,
+      bool* bypass_redirect_checks,
+      bool* disable_secure_dns,
+      network::mojom::URLLoaderFactoryOverridePtr* factory_override,
+      scoped_refptr<base::SequencedTaskRunner> navigation_response_task_runner,
+      bool is_for_network_service) override;
 
  private:
   std::unique_ptr<content::BrowserMainParts> CreateBrowserMainParts(

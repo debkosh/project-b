@@ -53,7 +53,7 @@ std::optional<Question> RedirectedTo(const Question& first, const GURL& url);
 // Whether it is asked now: there is a blocker, and it isn't off for the page.
 bool Asks(const Question& question);
 
-// The answer kept for the same question, if any.
+// The answer kept for the same question, if any: an allow or a block, never a redirect.
 std::optional<int32_t> Remembered(const Question& question);
 // Asks the browser, keeps the answer, and calls back with it on the calling sequence.
 void Ask(const Question& question, base::OnceCallback<void(int32_t)> answer);

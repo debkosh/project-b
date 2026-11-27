@@ -9,9 +9,12 @@
 #ifndef PROJECT_B_ENGINE_BROWSER_BLOCKER_H_
 #define PROJECT_B_ENGINE_BROWSER_BLOCKER_H_
 
+#include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
+#include "content/public/browser/content_browser_client.h"
 #include "project_b/engine/abi/pb_abi.h"
 
 namespace content {
@@ -19,6 +22,10 @@ class NavigationHandle;
 class NavigationThrottleRegistry;
 class RenderProcessHost;
 }  // namespace content
+
+namespace network {
+class URLLoaderFactoryBuilder;
+}
 
 namespace service_manager {
 template <typename... BinderArgs>
@@ -43,6 +50,12 @@ void ExposeTo(service_manager::BinderRegistry* registry);
 // is asked about as a request of the page, and every frame's page there waits at its
 // response while the blocker says what the page hides and runs.
 void AddThrottle(content::NavigationThrottleRegistry& registry);
+// A loader factory for a navigation or for a renderer's requests is being made: the
+// blocker's stand-ins are served in front of it, for the requests it redirects, so they
+// never go out. Main thread.
+void WillCreateURLLoaderFactory(content::ContentBrowserClient::URLLoaderFactoryType type,
+                                std::optional<int64_t> navigation,
+                                network::URLLoaderFactoryBuilder& factory_builder);
 // The page is about to commit in its frame: the frame is told what the blocker said, on
 // the frame's own channel, so it has it before its document starts.
 void ReadyToCommit(content::NavigationHandle* handle);

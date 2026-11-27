@@ -148,6 +148,26 @@ void ContentBrowserClient::RegisterAssociatedInterfaceBindersForRenderFrameHost(
   printing::BindFrame(render_frame_host, associated_registry);
 }
 
+void ContentBrowserClient::WillCreateURLLoaderFactory(
+    content::BrowserContext* browser_context,
+    content::RenderFrameHost* frame,
+    int render_process_id,
+    URLLoaderFactoryType type,
+    const url::Origin& request_initiator,
+    const net::IsolationInfo& isolation_info,
+    std::optional<int64_t> navigation_id,
+    ukm::SourceIdObj ukm_source_id,
+    network::URLLoaderFactoryBuilder& factory_builder,
+    mojo::PendingRemote<network::mojom::TrustedURLLoaderHeaderClient>*
+        header_client,
+    bool* bypass_redirect_checks,
+    bool* disable_secure_dns,
+    network::mojom::URLLoaderFactoryOverridePtr* factory_override,
+    scoped_refptr<base::SequencedTaskRunner> navigation_response_task_runner,
+    bool is_for_network_service) {
+  blocker::WillCreateURLLoaderFactory(type, navigation_id, factory_builder);
+}
+
 void ContentBrowserClient::RenderProcessWillLaunch(
     content::RenderProcessHost* host) {
   blocker::RendererLaunching(host);

@@ -330,6 +330,11 @@ void ExtensionsContentBrowserClient::WillCreateURLLoaderFactory(
     network::mojom::URLLoaderFactoryOverridePtr* factory_override,
     scoped_refptr<base::SequencedTaskRunner> navigation_response_task_runner,
     bool is_for_network_service) {
+  ContentBrowserClient::WillCreateURLLoaderFactory(
+      browser_context, frame, render_process_id, type, request_initiator, isolation_info,
+      navigation_id, ukm_source_id, factory_builder, header_client, bypass_redirect_checks,
+      disable_secure_dns, factory_override, navigation_response_task_runner,
+      is_for_network_service);
   if (!HasExtensions(browser_context)) {
     return;
   }

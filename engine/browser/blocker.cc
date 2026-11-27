@@ -1,10 +1,14 @@
 #include "project_b/engine/browser/blocker.h"
 
+#include <algorithm>
 #include <memory>
 #include <optional>
+#include <tuple>
 #include <utility>
 
 #include "base/containers/flat_set.h"
+#include "base/containers/lru_cache.h"
+#include "base/containers/span.h"
 #include "base/functional/bind.h"
 #include "base/memory/weak_ptr.h"
 #include "base/no_destructor.h"
@@ -20,10 +24,24 @@
 #include "ipc/ipc_channel_proxy.h"
 #include "mojo/public/cpp/bindings/associated_remote.h"
 #include "mojo/public/cpp/bindings/receiver_set.h"
+#include "mojo/public/cpp/bindings/remote.h"
+#include "mojo/public/cpp/bindings/self_owned_receiver.h"
+#include "mojo/public/cpp/system/data_pipe.h"
+#include "net/base/data_url.h"
 #include "net/base/net_errors.h"
 #include "net/base/schemeful_site.h"
+#include "net/http/http_response_headers.h"
+#include "net/http/http_util.h"
 #include "project_b/engine/browser/hooks.h"
+#include "project_b/engine/common/blocker_client.h"
 #include "project_b/engine/mojom/project_b.mojom.h"
+#include "services/network/public/cpp/resource_request.h"
+#include "services/network/public/cpp/url_loader_completion_status.h"
+#include "services/network/public/cpp/url_loader_factory_builder.h"
+#include "services/network/public/mojom/fetch_api.mojom-shared.h"
+#include "services/network/public/mojom/url_loader.mojom.h"
+#include "services/network/public/mojom/url_loader_factory.mojom.h"
+#include "services/network/public/mojom/url_response_head.mojom.h"
 #include "services/service_manager/public/cpp/binder_registry.h"
 #include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
 #include "url/gurl.h"
@@ -102,20 +120,200 @@ std::string PageOf(const std::string& url) {
   return Take(*hooks, hooks->page(hooks->blocker, url.c_str()));
 }
 
-// The verdict on a request (pb_abi.h). On the blocker's sequence.
-int32_t VerdictOn(const std::string& url, const std::string& source, const std::string& type) {
+// The stand-ins the blocker gave for requests it redirects, each a data: address, kept on
+// the blocker's sequence until the request reaches the browser's loader factory
+// (StandInFactory, below), which serves it there and the request never goes out. A page's
+// requests are kept by their question, (url, source, type), as a renderer asked it: the
+// same question has the same answer while the rules stand, so the entries are forgotten
+// only when the rules, the blocker or the sites where it is off change. A frame's own
+// navigation is kept by its navigation's id.
+struct StandIns {
+  base::LRUCache<std::tuple<std::string, std::string, std::string>, std::string> requests{256};
+  base::LRUCache<int64_t, std::string> navigations{64};
+};
+
+StandIns& TheStandIns() {
+  static base::NoDestructor<StandIns> stand_ins;
+  return *stand_ins;
+}
+
+void ForgetStandIns() {
+  Sequence()->PostTask(FROM_HERE, base::BindOnce([] {
+                         TheStandIns().requests.Clear();
+                         TheStandIns().navigations.Clear();
+                       }));
+}
+
+// The blocker's verdict on a request, and what loads instead when it redirects.
+struct Verdict {
+  int32_t verdict = PB_BLOCKER_ALLOW;
+  std::string redirect;
+};
+
+// On the blocker's sequence. A redirect to anything but a data: address, which is what the
+// resources file gives, can't be served, and is a block.
+Verdict VerdictOn(const std::string& url, const std::string& source, const std::string& type) {
   std::optional<PBBlockerHooks> hooks = Hooks();
   if (!hooks || !hooks->request) {
-    return PB_BLOCKER_ALLOW;
+    return Verdict();
   }
   char* redirect = nullptr;
-  const int32_t verdict =
+  Verdict v;
+  v.verdict =
       hooks->request(hooks->blocker, url.c_str(), source.c_str(), type.c_str(), &redirect);
-  // What a redirect would load instead isn't served yet, so it is blocked
-  // (docs/blocking.md, Requests).
-  Take(*hooks, redirect);
-  return verdict;
+  v.redirect = Take(*hooks, redirect);
+  if (v.verdict == PB_BLOCKER_REDIRECT && !GURL(v.redirect).SchemeIs(url::kDataScheme)) {
+    v.verdict = PB_BLOCKER_BLOCK;
+  }
+  return v;
 }
+
+// A loader that has said all it has to: it stays until its client lets it go.
+class ServedLoader : public network::mojom::URLLoader {
+ public:
+  void FollowRedirect(network::HttpRequestHeadersUpdateParams headers_update_params,
+                      const std::optional<GURL>& new_url) override {}
+  void SetPriority(net::RequestPriority priority, int32_t intra_priority_value) override {}
+};
+
+// Answers request with the stand-in at data_url, as the network would have answered it:
+// the same response type the network's CORS check gives a response that passes it. A
+// stand-in is harmless by design, so a request in cors mode passes, and one in no-cors
+// mode from another origin, as a classic script's or an image's, is opaque, which still
+// runs or draws. The network, and its CORS check, never see the request.
+void Serve(mojo::PendingReceiver<network::mojom::URLLoader> loader,
+           const network::ResourceRequest& request,
+           const std::string& data_url,
+           mojo::PendingRemote<network::mojom::URLLoaderClient> pending_client) {
+  mojo::Remote<network::mojom::URLLoaderClient> client(std::move(pending_client));
+  std::string mime_type, charset, data;
+  if (!net::DataURL::Parse(GURL(data_url), &mime_type, &charset, &data)) {
+    client->OnComplete(network::URLLoaderCompletionStatus(net::ERR_BLOCKED_BY_CLIENT));
+    return;
+  }
+  std::string raw = "HTTP/1.1 200 OK\nContent-Type: " + mime_type;
+  if (!charset.empty()) {
+    raw += ";charset=" + charset;
+  }
+  auto head = network::mojom::URLResponseHead::New();
+  const bool same_origin =
+      request.mode == network::mojom::RequestMode::kNavigate ||
+      (request.request_initiator && request.request_initiator->IsSameOriginWith(request.url));
+  if (same_origin) {
+    head->response_type = network::mojom::FetchResponseType::kBasic;
+  } else if (request.mode == network::mojom::RequestMode::kNoCors) {
+    head->response_type = network::mojom::FetchResponseType::kOpaque;
+  } else {
+    head->response_type = network::mojom::FetchResponseType::kCors;
+    if (request.request_initiator) {
+      raw += "\nAccess-Control-Allow-Origin: " + request.request_initiator->Serialize();
+      raw += "\nAccess-Control-Allow-Credentials: true";
+    }
+  }
+  head->headers =
+      base::MakeRefCounted<net::HttpResponseHeaders>(net::HttpUtil::AssembleRawHeaders(raw));
+  head->mime_type = mime_type;
+  head->charset = charset;
+  head->content_length = data.size();
+  head->request_time = head->response_time = base::Time::Now();
+  mojo::ScopedDataPipeProducerHandle producer;
+  mojo::ScopedDataPipeConsumerHandle consumer;
+  if (mojo::CreateDataPipe(std::max<uint32_t>(data.size(), 1), producer, consumer) !=
+          MOJO_RESULT_OK ||
+      (!data.empty() && producer->WriteAllData(base::as_byte_span(data)) != MOJO_RESULT_OK)) {
+    client->OnComplete(network::URLLoaderCompletionStatus(net::ERR_INSUFFICIENT_RESOURCES));
+    return;
+  }
+  producer.reset();
+  client->OnReceiveResponse(std::move(head), std::move(consumer), std::nullopt);
+  network::URLLoaderCompletionStatus status(net::OK);
+  status.decoded_body_length = base::ByteSize(data.size());
+  status.encoded_body_length = base::ByteSize(data.size());
+  client->OnComplete(status);
+  mojo::MakeSelfOwnedReceiver(std::make_unique<ServedLoader>(), std::move(loader));
+}
+
+// Sits in front of the network for a renderer's requests or a navigation's, on the
+// blocker's sequence: a request the blocker redirected gets its stand-in here, and every
+// other goes on to the network as it came, its pipes handed over, so the network talks to
+// the renderer directly from then on.
+class StandInFactory : public network::mojom::URLLoaderFactory {
+ public:
+  // navigation: the id of the navigation the factory loads, if it is a navigation's.
+  static void Bind(mojo::PendingReceiver<network::mojom::URLLoaderFactory> receiver,
+                   mojo::PendingRemote<network::mojom::URLLoaderFactory> network,
+                   std::optional<int64_t> navigation) {
+    auto* factory = new StandInFactory(std::move(network), navigation);
+    factory->receivers_.Add(factory, std::move(receiver));
+  }
+
+  void CreateLoaderAndStart(
+      mojo::PendingReceiver<network::mojom::URLLoader> loader,
+      int32_t request_id,
+      uint32_t options,
+      const network::ResourceRequest& request,
+      mojo::PendingRemote<network::mojom::URLLoaderClient> client,
+      const net::MutableNetworkTrafficAnnotationTag& traffic_annotation) override {
+    if (std::optional<std::string> stand_in = StandInFor(request)) {
+      Serve(std::move(loader), request, *stand_in, std::move(client));
+      return;
+    }
+    network_->CreateLoaderAndStart(std::move(loader), request_id, options, request,
+                                   std::move(client), traffic_annotation);
+  }
+
+  void Clone(mojo::PendingReceiver<network::mojom::URLLoaderFactory> receiver) override {
+    receivers_.Add(this, std::move(receiver));
+  }
+
+ private:
+  StandInFactory(mojo::PendingRemote<network::mojom::URLLoaderFactory> network,
+                 std::optional<int64_t> navigation)
+      : network_(std::move(network)), navigation_(navigation) {
+    receivers_.set_disconnect_handler(base::BindRepeating(
+        &StandInFactory::Disconnected, base::Unretained(this)));
+    network_.set_disconnect_handler(
+        base::BindOnce(&StandInFactory::Gone, base::Unretained(this)));
+  }
+  ~StandInFactory() override = default;
+
+  std::optional<std::string> StandInFor(const network::ResourceRequest& request) {
+    StandIns& stand_ins = TheStandIns();
+    if (navigation_) {
+      auto it = stand_ins.navigations.Peek(*navigation_);
+      if (it == stand_ins.navigations.end()) {
+        return std::nullopt;
+      }
+      std::string stand_in = std::move(it->second);
+      stand_ins.navigations.Erase(it);
+      return stand_in;
+    }
+    if (stand_ins.requests.empty()) {
+      return std::nullopt;
+    }
+    std::optional<blocker_client::Question> question = blocker_client::QuestionFor(request);
+    if (!question) {
+      return std::nullopt;
+    }
+    auto it = stand_ins.requests.Get(
+        std::make_tuple(question->url, question->source, question->type));
+    if (it == stand_ins.requests.end()) {
+      return std::nullopt;
+    }
+    return it->second;
+  }
+
+  void Disconnected() {
+    if (receivers_.empty()) {
+      delete this;
+    }
+  }
+  void Gone() { delete this; }
+
+  mojo::ReceiverSet<network::mojom::URLLoaderFactory> receivers_;
+  mojo::Remote<network::mojom::URLLoaderFactory> network_;
+  const std::optional<int64_t> navigation_;
+};
 
 // The renderers' questions, on the blocker's sequence: each renderer's pipe is bound here.
 class Answers : public mojom::Blocker {
@@ -133,7 +331,11 @@ class Answers : public mojom::Blocker {
              const std::string& source,
              const std::string& type,
              CheckCallback callback) override {
-    std::move(callback).Run(VerdictOn(url, source, type));
+    Verdict v = VerdictOn(url, source, type);
+    if (v.verdict == PB_BLOCKER_REDIRECT) {
+      TheStandIns().requests.Put(std::make_tuple(url, source, type), std::move(v.redirect));
+    }
+    std::move(callback).Run(v.verdict);
   }
 
   void Hide(const std::string& page_url,
@@ -190,8 +392,8 @@ class FrameThrottle : public content::NavigationThrottle {
   explicit FrameThrottle(content::NavigationThrottleRegistry& registry)
       : content::NavigationThrottle(registry) {}
 
-  ThrottleCheckResult WillStartRequest() override { return AskOfFrame(); }
-  ThrottleCheckResult WillRedirectRequest() override { return AskOfFrame(); }
+  ThrottleCheckResult WillStartRequest() override { return AskOfFrame(/*redirect=*/false); }
+  ThrottleCheckResult WillRedirectRequest() override { return AskOfFrame(/*redirect=*/true); }
 
   ThrottleCheckResult WillProcessResponse() override {
     content::NavigationHandle* handle = navigation_handle();
@@ -214,7 +416,24 @@ class FrameThrottle : public content::NavigationThrottle {
            !TheOff().sites.contains(PageSiteOf(handle));
   }
 
-  ThrottleCheckResult AskOfFrame() {
+  // A frame redirected keeps its stand-in for its navigation, where the navigation's loader
+  // factory serves it (StandInFactory). A redirect answered for a redirect of the frame's
+  // can't be: the network follows that redirect itself, so it is a block.
+  static int32_t FrameVerdict(int64_t navigation,
+                              const std::string& url,
+                              const std::string& source,
+                              bool redirect) {
+    Verdict v = VerdictOn(url, source, "sub_frame");
+    if (v.verdict == PB_BLOCKER_REDIRECT) {
+      if (redirect) {
+        return PB_BLOCKER_BLOCK;
+      }
+      TheStandIns().navigations.Put(navigation, std::move(v.redirect));
+    }
+    return v.verdict;
+  }
+
+  ThrottleCheckResult AskOfFrame(bool redirect) {
     content::NavigationHandle* handle = navigation_handle();
     if (handle->IsInOutermostMainFrame() || !Asked(handle)) {
       return PROCEED;
@@ -225,11 +444,13 @@ class FrameThrottle : public content::NavigationThrottle {
     }
     Sequence()->PostTaskAndReplyWithResult(
         FROM_HERE,
-        base::BindOnce(&VerdictOn, handle->GetURL().spec(), source.spec(), "sub_frame"),
+        base::BindOnce(&FrameVerdict, handle->GetNavigationId(), handle->GetURL().spec(),
+                       source.spec(), redirect),
         base::BindOnce(&FrameThrottle::FrameAnswered, weak_factory_.GetWeakPtr()));
     return DEFER;
   }
 
+  // A redirect is counted for the tab as a block is, and goes on to its stand-in.
   void FrameAnswered(int32_t verdict) {
     if (verdict == PB_BLOCKER_ALLOW) {
       Resume();
@@ -238,6 +459,10 @@ class FrameThrottle : public content::NavigationThrottle {
     hooks::Args args;
     args.Int(hooks::TabOf(navigation_handle()->GetWebContents()));
     hooks::Fire(PB_EVENT_AD_BLOCKED, args);
+    if (verdict == PB_BLOCKER_REDIRECT) {
+      Resume();
+      return;
+    }
     CancelDeferredNavigation(
         ThrottleCheckResult(BLOCK_REQUEST_AND_COLLAPSE, net::ERR_BLOCKED_BY_CLIENT));
   }
@@ -304,10 +529,12 @@ void Set(const PBBlockerHooks* hooks) {
       table.watcher.clear();
     }
   }
+  ForgetStandIns();
   TellEach(&TellBlocker);
 }
 
 void Changed() {
+  ForgetStandIns();
   TellEach([](mojom::Renderer& renderer) { renderer.BlockerChanged(); });
 }
 
@@ -318,6 +545,7 @@ void SetOff(const std::vector<std::string>& origins) {
   for (const std::string& origin : origins) {
     off.sites.insert(net::SchemefulSite(GURL(origin)));
   }
+  ForgetStandIns();
   TellEach(&TellOff);
 }
 
@@ -338,6 +566,21 @@ void ExposeTo(service_manager::BinderRegistry* registry) {
 
 void AddThrottle(content::NavigationThrottleRegistry& registry) {
   registry.AddThrottle(std::make_unique<FrameThrottle>(registry));
+}
+
+void WillCreateURLLoaderFactory(content::ContentBrowserClient::URLLoaderFactoryType type,
+                                std::optional<int64_t> navigation,
+                                network::URLLoaderFactoryBuilder& factory_builder) {
+  using Type = content::ContentBrowserClient::URLLoaderFactoryType;
+  if (type != Type::kNavigation && type != Type::kDocumentSubResource &&
+      type != Type::kWorkerSubResource && type != Type::kServiceWorkerSubResource) {
+    return;
+  }
+  auto [receiver, network] = factory_builder.Append();
+  Sequence()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&StandInFactory::Bind, std::move(receiver), std::move(network),
+                     type == Type::kNavigation ? navigation : std::nullopt));
 }
 
 void ReadyToCommit(content::NavigationHandle* handle) {
