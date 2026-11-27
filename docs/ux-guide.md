@@ -12,6 +12,10 @@ guide has the rules every feature follows.
   moving for long enough ends as failed, with Try again. 2026-11-18, after the updater sat at
   "Downloading 0.2.85… 38%" overnight with nothing to press: "just have retry or cancel button
   whenever we show a progress, seems like a good starting rule to evolve from".
+- **A download has Pause and Cancel** while it runs, and Retry only once it is cancelled or
+  has failed. It can pause, and a silent one fails by itself after 30 seconds, so Retry on a
+  running one only threw away what had arrived. 2026-11-27: "We only have pause and cancel
+  and retry only when canceled or error".
 - The buttons are quiet text buttons beside the progress, in place of what can't be pressed
   while it runs (Settings' Check for updates, for one).
 - **Stalled means 30 seconds with nothing arriving**, the same for the updater, downloads and
@@ -22,8 +26,6 @@ guide has the rules every feature follows.
 - **Waiting on the person is not stalling:** while we wait for their answer, macOS's keychain
   question during an import, for one, no clock runs, the line says what it waits for, and
   Cancel still works.
-- Retry throws away what has arrived, so it sits last and a little apart from Pause and
-  Cancel, where a slip doesn't land on it.
 
 ## Settings
 
