@@ -7,7 +7,7 @@
 ! An exception: a request to it goes through, though the rule above covers it.
 @@||allowed.ads.blocking.test^
 ! A script from it is answered with our stand-in, pb-test.js.
-||redirect.blocking.test/script.js$script,redirect=pb-test.js
+||redirect.blocking.test^$script,redirect=pb-test.js
 ! On this host only, elements of class pb-test-ad are hidden.
 hide.blocking.test##.pb-test-ad
 ! On any site, elements of class pb-test-generic are hidden (the generic watcher's rule).

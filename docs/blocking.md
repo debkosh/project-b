@@ -454,7 +454,10 @@ site known for malware or phishing, checked on your device".
 - **The real app:** a test page under our own test list's addresses, for each hook: a
   request blocked and counted, an element hidden, a scriptlet run, a generic class hidden,
   an unsafe-site notice with Go back and Open anyway; the per-site switch and Block ads off
-  for each. Desktop drivers and `drive_android`.
+  for each. Desktop drivers and `drive_android`. On the desktop, `tools/check_basics.py`
+  28 and 42 to 48: each starts with a `prefs.json` that turns the test group's lists on and
+  every other list off, maps `*.blocking.test` to its own server, and waits up to 90 s for
+  the timeline to say each test unit compiled.
 - **The workflow:** a run on a branch publishes to a draft release, twice, so the second
   has patches; an app pointed at the draft takes the patches.
 

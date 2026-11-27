@@ -33,6 +33,10 @@ d.OUT = OUT
 INPUT, VALUE, ROWS, TITLE, READY = d.INPUT, d.VALUE, d.ROWS, d.ACTIVE_ROW_TITLE, d.TAB_READY
 # A page's dialog, a sign-in too, as the shell draws it.
 DIALOG = "document.querySelector('[role=alertdialog]')"
+# Our test list's hosts (core/blocking/testlist.txt, tools/lists/test-*.txt) are all under
+# it, RFC 6761's .test, which the checks that use them map to this machine.
+LISTED = "blocking.test"
+LISTED_HOSTS = f"--host-resolver-rules=MAP *.{LISTED} 127.0.0.1"
 
 results = []  # (area, name, "ok" | "FAIL" | "NOT WRITTEN", detail)
 seen = []  # (Host header, path) of every request the pages' server answered
@@ -62,6 +66,15 @@ PAGE = {
 async function go(){document.title='pending';const x=c.getContext('2d');x.fillRect(0,0,64,64);
 v.srcObject=c.captureStream();await v.play();
 v.requestPictureInPicture().then(()=>document.title='pip',e=>document.title=e.name)}</script>""",
+    # Our test list's pages (core/blocking/testlist.txt), served under its hosts and here.
+    "/hide": "<title>Hide</title><p class=pb-test-ad id=ad>an ad<p id=plain>not an ad",
+    # A class every site hides, there at the load and added a second later, for the watcher;
+    # and the class hidden only on hide.blocking.test, which shows here.
+    "/generic": """<title>Generic</title><p class=pb-test-generic id=g1>generic<p class=pb-test-ad id=ad>an ad elsewhere
+<script>setTimeout(()=>{const p=document.createElement('p');p.className='pb-test-generic';p.id='g2';p.textContent='later';document.body.append(p)},1000)</script>""",
+    # The page's own first script keeps in its title what the scriptlet had done before it.
+    "/scriptlet": "<title>Scriptlet</title><script>document.title=document.documentElement.dataset.pbTestScriptlet||'not yet'</script>",
+    "/unsafe": "<title>Unsafe</title><p>a page the dangerous sites' test lists name",
 }
 
 
@@ -83,6 +96,12 @@ class Pages(http.server.BaseHTTPRequestHandler):
             return self.page("a file", 200, [("Content-Disposition", f"attachment; filename={DL_NAME}")], "text/plain")
         if path == "/blocked-image":
             return self.page(f"<title>Image</title><img src='http://{d.BLOCKED}:{PORT}/pixel'>")
+        if path == "/listed-images":
+            # One the test list blocks, and one under it its exception lets through.
+            return self.page(f"<title>Images</title><img src='http://ads.{LISTED}:{PORT}/pixel'><img src='http://allowed.ads.{LISTED}:{PORT}/pixel'>")
+        if path == "/listed-script":
+            # The test list answers it with its stand-in, which marks the root as the scriptlet does.
+            return self.page(f"<title>Script</title><script src='http://redirect.{LISTED}:{PORT}/script.js'></script>")
         self.page(PAGE.get(path, "<title>Pages</title>"))
 
     def page(self, body, status=200, headers=(), kind="text/html"):
@@ -127,8 +146,14 @@ def closed_port():
     return port
 
 
-def start(extra=(), profile=None):
-    return d.App(profile or tempfile.mkdtemp(prefix="pb-basics-"), extra)
+def start(extra=(), profile=None, prefs=None):
+    """Starts the app on profile, a new one when None, with prefs written as its prefs.json
+    first, as the person's choices are kept."""
+    profile = profile or tempfile.mkdtemp(prefix="pb-basics-")
+    if prefs:
+        with open(os.path.join(profile, "prefs.json"), "w") as f:
+            json.dump(prefs, f)
+    return d.App(profile, extra)
 
 
 def ready(app):
@@ -206,6 +231,72 @@ def cdp_click(s, x, y, button="left", modifiers=0):
 
 def middle(app, selector):
     return app.js(f"(()=>{{const r=document.querySelector({json.dumps(selector)}).getBoundingClientRect();return [r.x+r.width/2,r.y+r.height/2]}})()", page=True)
+
+
+# The block lists (docs/blocking.md). The app fetches the signed lists from our lists release
+# after the start-up wait, compiles them and loads them. Our own test lists, catalog.json's
+# group test, are there but off unless turned on.
+LISTS_WAIT = 90  # Seconds the lists may take to arrive and load.
+with open(os.path.join(ROOT, "core/blocking/catalog.json")) as _f:
+    _CATALOGUE = json.load(_f)
+# The person's choices, as prefs.json keeps them: Block ads and Warn before dangerous sites on,
+# the test group's lists on and every other list off, so only ours are fetched.
+TEST_LISTS = {"blockAds": True, "warnDangerous": True,
+              "lists": {l["id"]: l["group"] == "test" for l in _CATALOGUE["lists"]}}
+# What each of them loads as: the network blocker's group test, and each safe list on its own.
+TEST_UNITS = {"test"} | {l["id"] for l in _CATALOGUE["lists"] if l["group"] == "test" and l["id"].endswith(("-malware", "-phishing"))}
+
+
+def test_lists(fn):
+    """Marks a check whose app starts with the test lists turned on, and which may take
+    LISTS_WAIT longer than another."""
+    fn.prefs = TEST_LISTS
+    fn.longer = LISTS_WAIT
+    return fn
+
+
+def lists_arrived(app):
+    """Waits for the test lists to arrive and load. Go says in the timeline as it compiles
+    each unit, the safe lists, then the network group test, the catalogue's last, and only
+    then hands the safe lists to the navigation gate, so a moment is given after the last."""
+    since, have, errors = 0, set(), []
+    deadline = time.time() + LISTS_WAIT
+    while time.time() < deadline:
+        entries = json.loads(app.cmd("timeline", since))["result"]["entries"] or []
+        for e in entries:
+            text = e.get("text", "")
+            m = re.match(r"blocking: (\S+) (compiled from|loaded from) ", text)
+            if m:
+                have.add(m.group(1))
+            elif e.get("kind") == "error" and text.startswith("blocking: "):
+                errors.append(text)
+            since = max(since, e.get("seq", 0))
+        if TEST_UNITS <= have:
+            time.sleep(0.3)
+            return
+        time.sleep(0.5)
+    raise TimeoutError(f"the test lists didn't load in {LISTS_WAIT} s: loaded {sorted(have)}, errors {errors[-3:]}")
+
+
+def active_tab(app):
+    """Go's active tab, as ProjectB.getTabs answers: its notice, its adsBlocked count."""
+    r = json.loads(app.cmd("projectb", "getTabs", "{}"))["result"]
+    return next((t for t in r["tabs"] if t["id"] == r["active"]), {})
+
+
+def shown(app, selector):
+    """Whether an element of the page is there and drawn, not display none."""
+    return app.js(f"(e=>!!e&&getComputedStyle(e).display!=='none')(document.querySelector({json.dumps(selector)}))", page=True)
+
+
+def wait_for(f, timeout):
+    """Polls f until it is truthy or timeout seconds pass; its last answer."""
+    deadline = time.time() + timeout
+    while True:
+        got = f()
+        if got or time.time() > deadline:
+            return got
+        time.sleep(0.1)
 
 
 # One function per area: it returns (ok, detail), or NOT WRITTEN via not_written().
@@ -490,11 +581,36 @@ def a27(app):
     return not leaked, f"an image from the blocked host {d.BLOCKED} was fetched"
 
 
+def unsafe_site(app, kind, says):
+    """A page our test list for kind names: Go refuses it before any request and the tab's
+    notice is unsafe, "<host> <says>", with Go back and Open anyway; the shell shows it, and
+    its Open anyway loads the page. Nothing is sent anywhere: the lists are on the device."""
+    lists_arrived(app)
+    go(app, P + "/a")
+    host = f"{kind}.{LISTED}"
+    seen.clear()
+    go(app, f"http://{host}:{PORT}/unsafe", wait=False)
+    notice = wait_for(lambda: active_tab(app).get("notice"), 10) or {}
+    asked = [p for h, p in seen if h.startswith(host)]
+    if notice.get("kind") != "unsafe":
+        return False, f"{host} opened with no warning: notice {notice}, the server was asked for {asked}"
+    if asked:
+        return False, f"the warning came after the page's server was asked for {asked}"
+    actions = [(a["id"], bool(a.get("primary"))) for a in notice["actions"]]
+    if not (notice["title"].startswith(host) and notice["title"].endswith(says)) or actions != [("back", True), ("proceed", False)]:
+        return False, f"the notice is {notice['title']!r} with {actions}"
+    said = wait_for(lambda: app.js(NOTICE), 5)
+    if notice["title"] not in said:
+        return False, f"Go's notice is {notice['title']!r}, the shell shows {said!r}"
+    if not app.js(PRESS.format(name=json.dumps("Open anyway"))):
+        return False, f"the shell's warning offers no Open anyway: {said!r}"
+    opened = wait_for(lambda: title(app) == "Unsafe" and not active_tab(app).get("notice"), 15)
+    return opened and any(h.startswith(host) for h, _ in seen), f"Open anyway left {title(app)!r}, notice {active_tab(app).get('notice')}"
+
+
+@test_lists
 def a28(app):
-    go(app, "https://testsafebrowsing.appspot.com/s/malware.html")
-    time.sleep(1)
-    text = page_text(app) or ""
-    return "Malware Page Example" not in text, "Safe Browsing's test malware page loaded with no warning"
+    return unsafe_site(app, "malware", " may harm your device")
 
 
 def a29(app):
@@ -629,6 +745,94 @@ def a41(app):
     return can in ("probably", "maybe") and played, f"canPlayType {can!r}, played {played}, error {error}"
 
 
+@test_lists
+def a42(app):
+    return unsafe_site(app, "phishing", " may be trying to steal your information")
+
+
+def listed_images(app):
+    """Loads a page with an image from ads.blocking.test, which the test list blocks, and one
+    from allowed.ads.blocking.test, which its exception lets through, once the lists are in:
+    whether each was fetched, and the tab's blocked count."""
+    lists_arrived(app)
+    seen.clear()
+    go(app, P + "/listed-images")
+    count = wait_for(lambda: active_tab(app).get("adsBlocked", 0), 5)
+    fetched = lambda host: any(h.startswith(host) for h, _ in seen)
+    return fetched(f"ads.{LISTED}"), fetched(f"allowed.ads.{LISTED}"), count
+
+
+@test_lists
+def a43(app):
+    blocked, _, count = listed_images(app)
+    return not blocked and count >= 1, f"the image from ads.{LISTED} was {'fetched' if blocked else 'blocked'}, and the tab counts {count} blocked"
+
+
+@test_lists
+def a44(app):
+    blocked, allowed, _ = listed_images(app)
+    return allowed and not blocked, f"allowed.ads.{LISTED} fetched {allowed}, ads.{LISTED} fetched {blocked}"
+
+
+@test_lists
+def a45(app):
+    # The script's own host is never asked: the stand-in runs in its place.
+    lists_arrived(app)
+    seen.clear()
+    go(app, P + "/listed-script")
+    asked = any(h.startswith(f"redirect.{LISTED}") for h, _ in seen)
+    ran = app.js("document.documentElement.dataset.pbTestScriptlet||''", page=True)
+    return not asked and ran == "ran", f"redirect.{LISTED} was asked {asked}, the stand-in's mark is {ran!r}"
+
+
+@test_lists
+def a46(app):
+    lists_arrived(app)
+    go(app, f"http://hide.{LISTED}:{PORT}/hide")
+    if not wait_for(lambda: not shown(app, "#ad"), 3) or not shown(app, "#plain"):
+        return False, f"on hide.{LISTED}, .pb-test-ad shows {shown(app, '#ad')} and the plain paragraph {shown(app, '#plain')}"
+    go(app, P + "/generic")
+    # The second is added a second after the load, so the watcher sees it later.
+    gone = wait_for(lambda: not shown(app, "#g1") and app.js("!!document.getElementById('g2')", page=True) and not shown(app, "#g2"), 5)
+    return gone and shown(app, "#ad"), f"on {P}, .pb-test-generic shows {shown(app, '#g1')} and once added later {shown(app, '#g2')}; .pb-test-ad, hidden only on hide.{LISTED}, shows {shown(app, '#ad')}"
+
+
+@test_lists
+def a47(app):
+    lists_arrived(app)
+    go(app, f"http://scriptlet.{LISTED}:{PORT}/scriptlet")
+    ran = app.js("document.documentElement.dataset.pbTestScriptlet||''", page=True)
+    first = app.js("document.title", page=True)
+    return ran == "ran" and first == "ran", f"the root's data-pb-test-scriptlet is {ran!r}, and the page's first script saw {first!r}"
+
+
+@test_lists
+def a48(app):
+    # The site panel's switch, as it sends it; sites.json keeps it once Go has it, and Go has
+    # then told the engine.
+    lists_arrived(app)
+    origin = f"http://hide.{LISTED}:{PORT}"
+    go(app, origin + "/hide")
+    if not wait_for(lambda: not shown(app, "#ad"), 3):
+        return False, "with the blocker on, .pb-test-ad already shows"
+    app.js(f"(chrome.send('shell',[{json.dumps(json.dumps({'t': 'setSiteSetting', 'origin': origin, 'kind': 'ads', 'value': 'off'}))}]),1)")
+
+    def kept():
+        try:
+            return json.load(open(os.path.join(app.profile, "sites.json"))).get(origin, {}).get("ads") == "off"
+        except (OSError, ValueError):
+            return False
+    if not wait_for(kept, 10):
+        return False, f"Go never kept ads off for {origin}"
+    # Each reload is a fresh page, which the renderers then load with the blocker off.
+    for _ in range(3):
+        app.cmd("key", "cmd+r")
+        loads(app)
+        if shown(app, "#ad"):
+            return True, ""
+    return False, f"with the site's blocker off, .pb-test-ad stays hidden after three reloads"
+
+
 AREAS = [
     (1, "window lifecycle: a page's beforeunload asks before its tab closes", a01, ()),
     (2, "tab lifecycle: a tab closes while it is still loading", a02, ()),
@@ -657,7 +861,7 @@ AREAS = [
     (25, "internal pages: a tab can't navigate to chrome://shell/pbshell/", a25, ()),
     (26, "proxy: --proxy-server carries the request", a26, ("--proxy-server=PROXY",)),
     (27, "URL policy: a blocked host's image isn't fetched", a27, ("--host-resolver-rules=MAP blocked.test 127.0.0.1",)),
-    (28, "Safe Browsing: a malware test page warns", a28, ()),
+    (28, "Safe Browsing: a site the malware test list names warns before it is asked, and Open anyway opens it", a28, (LISTED_HOSTS,)),
     (29, "shell bridge: pages have no chrome.send", a29, ()),
     (30, "renderer crash: a crashed tab comes back on reload", a30, ()),
     (31, "Go-side faults: a panic crashes the app and is logged", a31, ("--remote-debugging-port=0",)),
@@ -671,6 +875,13 @@ AREAS = [
     (39, "DevTools: off unless the switch is given", a39, ()),
     (40, "find in page: Cmd+F counts the matches and Enter moves to the next", a40, ()),
     (41, "video: an H.264 MP4 plays", a41, ()),
+    (42, "Safe Browsing: a site the phishing test list names warns before it is asked, and Open anyway opens it", a42, (LISTED_HOSTS,)),
+    (43, "block lists: an image the test list blocks isn't fetched, and the tab counts it", a43, (LISTED_HOSTS,)),
+    (44, "block lists: an image the test list's exception lets through is fetched", a44, (LISTED_HOSTS,)),
+    (45, "block lists: a script the test list redirects is answered with its stand-in", a45, (LISTED_HOSTS,)),
+    (46, "block lists: page parts hidden, on their host and on any site, those added later too", a46, (LISTED_HOSTS,)),
+    (47, "block lists: the test list's scriptlet runs before the page's own scripts", a47, (LISTED_HOSTS,)),
+    (48, "block lists: with the site's blocker off, its page parts show", a48, (LISTED_HOSTS,)),
 ]
 
 
@@ -682,7 +893,7 @@ def attempt(fn, extra, out):
     try:
         app = None
         if fn not in (a11, a34, a38):
-            app = start(extra)
+            app = start(extra, prefs=getattr(fn, "prefs", None))
             app.profile = app.proc.args[1].split("=", 1)[1]
             ready(app)
         ok, detail = fn(app)
@@ -698,9 +909,10 @@ def run(area, name, fn, extra):
     out = []
     t = threading.Thread(target=attempt, args=(fn, extra, out), daemon=True)
     t.start()
-    t.join(STUCK)
+    stuck = STUCK + getattr(fn, "longer", 0)
+    t.join(stuck)
     if t.is_alive() or not out:
-        out = ["FAIL", f"stuck for {STUCK} s"]
+        out = ["FAIL", f"stuck for {stuck} s"]
     # Every app the check started and left running is closed, or killed if it won't close.
     for app in list(d.App.running):
         try:
