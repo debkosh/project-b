@@ -64,6 +64,11 @@ type Item struct {
 	retrying bool
 	// job is the stream being saved, while it is.
 	job *streams.Job
+	// asked is what whoever started it through Download asked of it, until the engine's
+	// download for it shows up; into is the folder a stream's MP4 goes in when that isn't
+	// the Downloads folder itself.
+	asked *asked
+	into  string
 	// publishing is set, on a phone, from done until the engine has said where its copy in
 	// the shared Downloads is (Published); waiting is what Open and Share asked meanwhile,
 	// done with that copy once it is there.
@@ -122,12 +127,70 @@ type Manager struct {
 	jobs int
 }
 
+// asked is what Download was asked beside the address: a name under the folder, "" for the
+// server's own, what to do when that name is taken, "uniquify" (a number is added, the
+// default), "overwrite" or "prompt", and whether the Save panel shows first.
+type asked struct {
+	name     string
+	conflict string
+	saveAs   bool
+}
+
+// Download starts a download of an address as the browser's own, as an extension's
+// chrome.downloads.download asks (docs/extensions.md), and returns its id in the list at
+// once: its row is there from now, and the engine's download joins it when it shows up. A
+// playlist's address becomes a stream's MP4, as from anywhere (docs/video-streams.md).
+// name is a path under the folder to save it as, "" for the server's own name; conflict
+// says what to do when that is taken.
+func (m *Manager) Download(address, name string, saveAs bool, conflict string) int {
+	shown := filepath.Base(name)
+	if name == "" {
+		shown = "download"
+		if u, err := url.Parse(address); err == nil && filepath.Base(u.Path) != "/" && filepath.Base(u.Path) != "." {
+			shown = cleanName(filepath.Base(u.Path))
+		}
+	}
+	it := &Item{ID: m.next, Name: shown, URL: address, State: "progress", Total: -1, Started: time.Now().Unix(),
+		retrying: true, asked: &asked{name: name, conflict: conflict, saveAs: saveAs}}
+	m.next++
+	m.list = append([]*Item{it}, m.list...)
+	m.changed()
+	m.e.DownloadURL(0, address, "", saveAs)
+	return it.ID
+}
+
+// claim gives an engine download that began in no tab, as the browser's own do, the row
+// waiting for it: one retried or asked for at its address, or, when a redirect has changed
+// the address, the one asked for longest ago.
+func (m *Manager) claim(r engine.DownloadRequest) *Item {
+	if r.Tab != 0 {
+		return nil
+	}
+	var it *Item
+	for _, x := range m.list {
+		if x.retrying && m.byEngine[x.engine] != x && (x.URL == r.URL || x.asked != nil && (it == nil || it.URL != r.URL)) {
+			it = x
+			if x.URL == r.URL {
+				break
+			}
+		}
+	}
+	if it != nil {
+		delete(m.byEngine, it.engine)
+		it.engine = r.ID
+		m.byEngine[r.ID] = it
+	}
+	return it
+}
+
 // began is an engine download as it began: the workspace of the tab it began in, and for
 // one that is a stream's playlist by its type or address, the kind and the MP4's name.
 type began struct {
 	workspace string
 	stream    streams.Kind
 	name      string
+	// dir is the folder the MP4 goes in, when it isn't the Downloads folder itself.
+	dir string
 }
 
 // New returns a manager for the profile folder profile, saving files into dir.
@@ -234,22 +297,47 @@ func (m *Manager) Target(r engine.DownloadRequest) engine.DownloadTarget {
 		timeline.Errorf("downloads: %v", err)
 		return engine.DownloadTarget{}
 	}
+	// What an extension asked of it: its name, in a folder under the Downloads folder, and
+	// what to do when that is taken.
+	dir, name, prompt, overwrite := m.dir, cleanName(r.Name), r.SaveAs, false
+	if it := m.claim(r); it != nil && it.asked != nil {
+		if it.asked.name != "" {
+			dir, name = filepath.Join(m.dir, filepath.Dir(it.asked.name)), cleanName(it.asked.name)
+			if err := os.MkdirAll(dir, 0o755); err != nil {
+				timeline.Errorf("downloads: %v", err)
+				return engine.DownloadTarget{}
+			}
+			_, err := os.Stat(filepath.Join(dir, name))
+			overwrite = it.asked.conflict == "overwrite"
+			prompt = prompt || it.asked.conflict == "prompt" && err == nil
+		}
+		prompt = prompt || it.asked.saveAs
+	}
+	place := func(name string) string {
+		if overwrite {
+			return filepath.Join(dir, name)
+		}
+		return m.freeIn(dir, name)
+	}
 	if m.fetcher == nil {
-		return engine.DownloadTarget{Path: m.free(cleanName(r.Name)), Prompt: r.SaveAs}
+		return engine.DownloadTarget{Path: place(name), Prompt: prompt}
 	}
 	b := began{workspace: m.workspaceOf(r.Tab)}
 	// A stream's playlist goes to a folder of the app's own and is read from there: the
 	// Downloads folder gets the MP4, under the playlist's name. No Save panel asks about it.
 	if kind := streams.KindOf(r.Mime, r.URL); kind != streams.None {
-		dir := filepath.Join(m.streamsDir(), "playlists")
-		if err := os.MkdirAll(dir, 0o700); err == nil {
-			b.stream, b.name = kind, streams.NameOf(cleanName(r.Name))
+		lists := filepath.Join(m.streamsDir(), "playlists")
+		if err := os.MkdirAll(lists, 0o700); err == nil {
+			b.stream, b.name = kind, streams.NameOf(name)
+			if dir != m.dir {
+				b.dir = dir
+			}
 			m.began[r.ID] = b
-			return engine.DownloadTarget{Path: filepath.Join(dir, fmt.Sprintf("%d", r.ID))}
+			return engine.DownloadTarget{Path: filepath.Join(lists, fmt.Sprintf("%d", r.ID))}
 		}
 	}
 	m.began[r.ID] = b
-	return engine.DownloadTarget{Path: m.free(cleanName(r.Name)), Prompt: r.SaveAs}
+	return engine.DownloadTarget{Path: place(name), Prompt: prompt}
 }
 
 // streamsDir is the folder the streams being saved work in, in the profile.
@@ -271,7 +359,10 @@ func cleanName(name string) string {
 // name, then name (1), name (2) and so on, before its extension. A phone moves a finished
 // download's file to the shared Downloads, so its path is empty again, but its name stays the
 // download's (taken): two of one name are told apart in the list, as in the shared Downloads.
-func (m *Manager) free(name string) string {
+func (m *Manager) free(name string) string { return m.freeIn(m.dir, name) }
+
+// freeIn is free in a folder under the Downloads folder.
+func (m *Manager) freeIn(dir, name string) string {
 	ext := filepath.Ext(name)
 	stem := strings.TrimSuffix(name, ext)
 	for n := 0; ; n++ {
@@ -279,7 +370,7 @@ func (m *Manager) free(name string) string {
 		if n > 0 {
 			try = fmt.Sprintf("%s (%d)%s", stem, n, ext)
 		}
-		p := filepath.Join(m.dir, try)
+		p := filepath.Join(dir, try)
 		if _, err := os.Stat(p); err == nil {
 			continue
 		}
@@ -328,7 +419,7 @@ func (m *Manager) Updated(d engine.Download) int {
 		it.engine = d.ID
 		m.byEngine[d.ID] = it
 	}
-	it.retrying = false
+	it.retrying, it.asked = false, nil
 	if d.Referrer != "" {
 		it.Referrer = d.Referrer
 	}

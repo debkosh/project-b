@@ -1,6 +1,10 @@
 // The permissions Chrome declares outside //extensions that we honour. The rules are
 // Chrome's, from chrome/common/extensions/api/_permission_features.json.
 {
+  "downloads": {
+    "channel": "stable",
+    "extension_types": ["extension"]
+  },
   "scripting": {
     "channel": "stable",
     "extension_types": ["extension"],

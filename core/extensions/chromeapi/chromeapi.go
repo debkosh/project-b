@@ -1,7 +1,7 @@
 //go:build extensions
 
 // Package chromeapi answers the chrome.* calls that are about the browser itself: tabs,
-// windows, action and commands. Chromium's extension runtime carries a call here with
+// windows, action, commands and downloads. Chromium's extension runtime carries a call here with
 // its name and its arguments as JSON, and this package answers from Go's own tabs and
 // windows, in the shapes Chrome's API documents. Everything shaped by Chrome's API is in
 // this package and nowhere else in core/.
@@ -58,6 +58,8 @@ type API struct {
 	windows *window.Manager
 	open    Opener
 	ext     *extensions.Manager
+	// downloads starts downloads (downloads.go), nil until SetDownloader.
+	downloads Downloader
 
 	// What the extensions were last told about the tabs: each tab, the window it is in,
 	// and each window's active tab.

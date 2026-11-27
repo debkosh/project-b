@@ -174,9 +174,13 @@ if (project_b_extensions) {
   project_b_go_apis = [
     "action",
     "commands",
+    "downloads",
     "tabs",
     "windows",
   ]
+
+  # Those of them whose schema Chrome writes as WebIDL, not JSON.
+  project_b_go_webidl_apis = [ "downloads" ]
   _go_apis_inc = []
   foreach(api, project_b_go_apis) {
     _go_apis_inc += [ "\"$api\"," ]
@@ -186,7 +190,11 @@ if (project_b_extensions) {
   generated_json_strings("extension_api_schemas") {
     sources = []
     foreach(api, project_b_go_apis) {
-      sources += [ "//chrome/common/extensions/api/$api.json" ]
+      if (filter_include([ api ], project_b_go_webidl_apis) != []) {
+        sources += [ "//chrome/common/extensions/api/$api.webidl" ]
+      } else {
+        sources += [ "//chrome/common/extensions/api/$api.json" ]
+      }
     }
 
     # The compiler writes beside the schemas' folder as seen from root, and this puts

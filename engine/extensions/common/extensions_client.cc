@@ -48,6 +48,7 @@ class APIProvider : public extensions::ExtensionsAPIProvider {
     using extensions::APIPermissionInfo;
     using extensions::mojom::APIPermissionID;
     static constexpr APIPermissionInfo::InitInfo permissions[] = {
+        {APIPermissionID::kDownloads, "downloads"},
         {APIPermissionID::kScripting, "scripting",
          APIPermissionInfo::kFlagRequiresManagementUIWarning},
         {APIPermissionID::kTab, "tabs",

@@ -4,6 +4,7 @@ package app
 
 import (
 	"encoding/json"
+	"errors"
 
 	"projectb/engine"
 	"projectb/extensions"
@@ -33,6 +34,7 @@ func startExtensions(a *App, e engine.Engine, cfg Config) {
 	eng := e.(engine.Extensions)
 	m := extensions.New(eng, cfg.ProfileDir, a.Tabs.ActiveID)
 	api := chromeapi.New(eng, a.Tabs, a.Window, a, m)
+	api.SetDownloader(extensionDownloads{a})
 	extensionManagers[a] = m
 	eng.SetExtensionsListener(&extensionEvents{m, api})
 
@@ -54,6 +56,17 @@ func startExtensions(a *App, e engine.Engine, cfg Config) {
 	m.OnChanged(func() { a.Settings.Send(map[string]any{"t": "extensions", "extensions": m.View()}) })
 	a.imports.store = importStore{m}
 	a.Settings.AddPart(extensionsSettingsPart(a, m))
+}
+
+// extensionDownloads starts an extension's download (chrome.downloads.download) in the
+// app's own downloads, where policy allows its address.
+type extensionDownloads struct{ a *App }
+
+func (d extensionDownloads) Download(address, name string, saveAs bool, conflict string) (int, error) {
+	if !d.a.Policy.IsAllowedURL(address) {
+		return 0, errors.New("This address is blocked")
+	}
+	return d.a.Downloads.Download(address, name, saveAs, conflict), nil
 }
 
 // extensionEvents is the engine's extension listener: each function only forwards.

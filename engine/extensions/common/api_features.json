@@ -10,6 +10,10 @@
     "dependencies": ["manifest:commands"],
     "contexts": ["privileged_extension"]
   },
+  "downloads": {
+    "dependencies": ["permission:downloads"],
+    "contexts": ["privileged_extension"]
+  },
   "tabs": {
     "channel": "stable",
     "extension_types": ["extension"],

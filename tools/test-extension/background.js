@@ -48,6 +48,14 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     })().catch((error) => respond({ error: error.message }));
     return true;
   }
+  if (message.type === 'download') {
+    // A file of the page's own site, saved under a name of the extension's choosing.
+    chrome.downloads.download({ url: message.url, filename: message.filename }).then(
+      (id) => respond({ id }),
+      (error) => respond({ error: error.message }),
+    );
+    return true;
+  }
   if (message.type === 'state') {
     // A popup opened: the icon becomes one drawn here, a green square.
     const canvas = new OffscreenCanvas(16, 16);

@@ -275,6 +275,30 @@ def extension_checks():
     visit(app, PAGE)
     check("uBlock Origin Lite blocks a known ad host", fetch_ad(app) == "blocked")
 
+    # chrome.downloads.download: a row in Downloads like any other, under the name asked
+    # for, its id the call's answer.
+    name = "pb-extension-%d.html" % int(time.time())
+    visit(app, PAGE + "?download=" + TEST_ID + "&as=" + name)
+    app.wait("!!document.documentElement.dataset.pbDownload", 20, page=True)
+    started = json.loads(app.js("document.documentElement.dataset.pbDownload", page=True))
+    saved = []
+    deadline = time.time() + 20
+    while time.time() < deadline and not saved:
+        try:
+            with open(os.path.join(profile, "downloads.json")) as f:
+                saved = [d for d in json.load(f)["downloads"] if d["name"] == name and d["state"] == "done"]
+        except (OSError, ValueError, KeyError):
+            pass
+        time.sleep(0.3)
+    check("chrome.downloads.download saves the file under the name asked for, and answers its id in Downloads",
+          bool(saved) and started.get("id") == saved[0]["id"] and os.path.isfile(saved[0].get("path", "")), (started, saved))
+    for d in saved:
+        try:
+            os.remove(d["path"])
+        except OSError:
+            pass
+    visit(app, PAGE)
+
     # Pinning.
     check("no button is pinned at first", buttons(app) == [])
     pin(app, TEST_NAME, True)

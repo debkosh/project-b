@@ -37,7 +37,7 @@ func sniff(path string) streams.Kind {
 // the MP4's name from the start, and once the playlist is here the stream's job takes over.
 func (m *Manager) playlist(it *Item, d engine.Download, b began) {
 	it.Stream, it.Workspace, it.Space = string(b.stream), b.workspace, int(engine.SpaceOf(d.Server))
-	it.Name, it.Path, it.NoRetry = b.name, "", false
+	it.Name, it.Path, it.NoRetry, it.into = b.name, "", false, b.dir
 	it.State, it.Received, it.Total, it.Paused, it.Reason = states[d.State], 0, -1, d.Paused, d.Reason
 	if d.State == engine.DownloadProgress {
 		m.show(it)
@@ -92,7 +92,11 @@ func (m *Manager) startStream(it *Item, body []byte) {
 		timeline.Errorf("downloads: %v", err)
 	}
 	if it.Path == "" || it.State == "done" {
-		it.Path = m.free(cleanName(it.Name))
+		dir := m.dir
+		if it.into != "" {
+			dir = it.into
+		}
+		it.Path = m.freeIn(dir, cleanName(it.Name))
 		it.Name = filepath.Base(it.Path)
 	}
 	it.State, it.Paused, it.Reason, it.NoRetry, it.Received, it.Total = "progress", false, "", false, 0, -1

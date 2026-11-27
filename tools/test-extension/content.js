@@ -24,6 +24,15 @@ if (location.search === '?capture') {
   });
 }
 
+// On a page asking it by id, a download of the page itself through chrome.downloads, under
+// the name the page gives.
+if (new URLSearchParams(location.search).get('download') === chrome.runtime.id) {
+  const filename = new URLSearchParams(location.search).get('as');
+  chrome.runtime.sendMessage({ type: 'download', url: location.origin + '/pb-extension-file', filename }).then((answer) => {
+    document.documentElement.dataset.pbDownload = JSON.stringify(answer);
+  });
+}
+
 // On a page asking it by id, what the extension saw of a second window. The packaged copy
 // and the unpacked one both run here, and only one may open a window.
 if (new URLSearchParams(location.search).get('windows') === chrome.runtime.id) {

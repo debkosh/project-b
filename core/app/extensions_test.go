@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"projectb/downloads"
 	"projectb/engine"
 	"projectb/extensions"
 	"projectb/flags"
@@ -635,5 +636,92 @@ func TestActionAPI(t *testing.T) {
 	r.call("action.setIcon", `[{"icon":"data:image/png;base64,BBBB"}]`, 0)
 	if b := button(); !b.Enabled || b.Icon != "data:image/png;base64,BBBB" {
 		t.Fatalf("button: %+v", b)
+	}
+}
+
+// chrome.downloads.download starts a download in the app's own Downloads and answers its id
+// at once: the row is there from then, the file goes under the Downloads folder by the
+// name asked for, and a playlist's address becomes a stream's MP4 as from anywhere
+// (docs/video-streams.md).
+func TestAnExtensionDownloads(t *testing.T) {
+	r := startExtensions(t, t.TempDir())
+	defer r.stop()
+	r.install()
+	// The list, on the main thread: asked from the test, or from inside until, which is on
+	// it already.
+	main := false
+	rows := func() []downloads.Item {
+		if main {
+			return r.a.Downloads.List()
+		}
+		var l []downloads.Item
+		r.on(func() { l = r.a.Downloads.List() })
+		return l
+	}
+	row := func(id int) downloads.Item {
+		for _, d := range rows() {
+			if d.ID == id {
+				return d
+			}
+		}
+		return downloads.Item{}
+	}
+	until := func(what string, ok func() bool) {
+		t.Helper()
+		r.until(what, func() bool {
+			main = true
+			defer func() { main = false }()
+			return ok()
+		})
+	}
+	var id int
+	json.Unmarshal(r.call("downloads.download", `[{"url":"https://example.org/files/report.zip"}]`, 0).Result, &id)
+	if id == 0 || row(id).URL != "https://example.org/files/report.zip" {
+		t.Fatalf("answered %d, rows %+v", id, rows())
+	}
+	until("the download", func() bool { return row(id).State == "done" })
+	dir := r.a.Downloads.Dir()
+	if d := row(id); d.Name != "report.zip" || d.Path != filepath.Join(dir, "report.zip") || len(rows()) != 1 {
+		t.Fatalf("%+v of %d rows", d, len(rows()))
+	}
+	// A name of the extension's own, in a folder under Downloads; taken, it gets a number,
+	// or is written over when the extension says so.
+	var kept, again, over int
+	json.Unmarshal(r.call("downloads.download", `[{"url":"https://example.org/files/a.bin","filename":"kept/notes.txt"}]`, 0).Result, &kept)
+	until("the named download", func() bool { return row(kept).State == "done" })
+	json.Unmarshal(r.call("downloads.download", `[{"url":"https://example.org/files/b.bin","filename":"kept/notes.txt"}]`, 0).Result, &again)
+	until("the same name again", func() bool { return row(again).State == "done" })
+	json.Unmarshal(r.call("downloads.download", `[{"url":"https://example.org/files/c.bin","filename":"kept/notes.txt","conflictAction":"overwrite"}]`, 0).Result, &over)
+	until("the same name, written over", func() bool { return row(over).State == "done" })
+	if a, b, c := row(kept), row(again), row(over); a.Path != filepath.Join(dir, "kept", "notes.txt") || b.Path != filepath.Join(dir, "kept", "notes (1).txt") || c.Path != a.Path || kept == again || again == over {
+		t.Fatalf("kept %q, again %q, over %q", a.Path, b.Path, c.Path)
+	}
+	// A playlist's address is a stream: its row goes by the MP4's name. The mock engine's
+	// file is no playlist, and the row says so.
+	var film int
+	json.Unmarshal(r.call("downloads.download", `[{"url":"https://example.org/watch/film.m3u8","filename":"Films/night.m3u8"}]`, 0).Result, &film)
+	until("the stream's row", func() bool { return row(film).State == "failed" })
+	if d := row(film); d.Stream != "hls" || d.Name != "night.mp4" || d.Reason != "format" || !d.NoRetry {
+		t.Fatalf("%+v", d)
+	}
+	// What Chrome refuses, in its words: a bad address, a name that leaves the folder.
+	for args, want := range map[string]string{
+		`[{"url":"notes.txt"}]`:                                        "Invalid URL",
+		`[{"url":"file:///etc/passwd"}]`:                               "Invalid URL",
+		`[{"url":"javascript:alert(1)"}]`:                              "Invalid URL",
+		`[{"url":"https://example.org/a","filename":"../a"}]`:          "Invalid filename",
+		`[{"url":"https://example.org/a","filename":"/tmp/a"}]`:        "Invalid filename",
+		`[{"url":"https://example.org/a","filename":"a/../../b"}]`:     "Invalid filename",
+		`[{"url":"https://example.org/a","filename":""}]`:              "Invalid filename",
+		`[{"url":"https://example.org/a","conflictAction":"replace"}]`: "Invalid conflictAction",
+		`[{"url":"https://example.org/a","method":"POST","body":"x"}]`: "downloads.download with a method, headers or a body is not available in Project B",
+	} {
+		if got := r.x.Call(testExtensionID, "downloads.download", args, 0).Error; got != want {
+			t.Errorf("%s: %q, want %q", args, got, want)
+		}
+	}
+	before := len(rows())
+	if got := r.x.Call(testExtensionID, "downloads.search", `[{}]`, 0).Error; got != "downloads.search is not available in Project B" || len(rows()) != before {
+		t.Errorf("downloads.search: %q", got)
 	}
 }

@@ -130,7 +130,7 @@ the one started in between.
 
 ## The bridge to Go
 
-**One function.** Every function of `tabs`, `windows`, `action` and `commands` is registered as
+**One function.** Every function of `tabs`, `windows`, `action`, `commands` and `downloads` is registered as
 the same C++ class, `GoFunction`. It has no logic: the function's name, its arguments as a JSON
 list, the calling extension and the tab the caller runs in go to Go in one `hook` crossing, and
 Go's answer, a result or an error, goes back. The names come from Chrome's schemas at start, so
@@ -158,6 +158,7 @@ What Go answers today:
 | `windows` | `get`, `getCurrent`, `getLastFocused`, `getAll`, `create` (`url`, one or a list, or `tabId`, with `left`, `top`, `width`, `height`, `state`), `update` (`focused`, the frame, `state`), `remove`; the events `onCreated`, `onRemoved`, `onFocusChanged`, `onBoundsChanged`, and `tabs.onDetached` and `onAttached` for a tab moved between windows |
 | `action` | `setTitle`, `getTitle`, `setBadgeText`, `getBadgeText`, `setBadgeBackgroundColor`, `getBadgeBackgroundColor`, `setBadgeTextColor`, `getBadgeTextColor`, `setPopup`, `getPopup`, `setIcon` (by `path` or `imageData`), `enable`, `disable`, `isEnabled`, `getUserSettings` |
 | `commands` | `getAll` |
+| `downloads` | `download` (`url`, http or https; `filename`, a path under the Downloads folder; `saveAs`; `conflictAction`), with the `downloads` permission. It answers the download's id in Go's own list at once, its row there from then, and a playlist's address is saved as the stream's MP4 ([video-streams.md](video-streams.md)). A method, headers or a body aren't taken yet, and the rest of the API, its events too, isn't there |
 
 Two things cross differently, because only C++ can do them. `action.setIcon` names a file inside
 the extension, so the engine reads it and gives Go the picture as a data: URL (an engine
@@ -174,7 +175,9 @@ An API of the browser itself, one Chrome implements in `//chrome`, is answered i
 one, say `bookmarks`, is three places, each holding only what is new:
 
 1. **Its name** in `project_b_go_apis` in `engine/BUILD.gn`. That pulls in Chrome's schema,
-   `chrome/common/extensions/api/bookmarks.json`, and registers each of its functions.
+   `chrome/common/extensions/api/bookmarks.json`, and registers each of its functions. One
+   whose schema Chrome writes as WebIDL, as `downloads.webidl`, is named in
+   `project_b_go_webidl_apis` too.
 2. **Where it appears**, a row in `engine/extensions/common/api_features.json`, copied from
    Chrome's `_api_features.json`; and its permission in `permission_features.json` and
    `extensions_client.cc`, if it has one.
