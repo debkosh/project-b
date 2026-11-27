@@ -1551,6 +1551,9 @@ def page_camera():
         if said is not None:
             tap(middle(find("shell", text="Not now")))
         check("and Not now denies the page", asked("/said?camera=NotAllowedError", 15), str(served[-5:]))
+    except TimeoutError:
+        stopped_here("page_camera")
+        raise
     finally:
         # The next run sees Android's question again.
         for p in (camera, "android.permission.RECORD_AUDIO"):
@@ -2551,6 +2554,9 @@ def passwords_on_the_phone():
         finger(middle(chip))
         check("and fills with the password that was saved", asked("/said?filled=" + urllib.parse.quote(save_user + " " + save_password)), str(served))
         shot("passwords-saved-filled")
+    except TimeoutError:
+        stopped_here("passwords_on_the_phone")
+        raise
     finally:
         adb("shell", "locksettings", "clear", "--old", pin)
         check("the PIN is cleared after the run", until(lambda: "true" in adb("shell", "locksettings", "get-disabled").lower()) is not None, adb("shell", "locksettings", "get-disabled"))
@@ -3032,8 +3038,9 @@ STOPPED = {}
 
 def stopped_here(part, label=None):
     """Keeps a stopped part's evidence while the app is as the step left it. Called from the
-    part's own except, before its finally puts the shell back, clears the data or stops the
-    app: kept after that, by the run, it always said "the app is gone"."""
+    part's own except, before its finally puts the shell back, clears the data, stops the
+    app or revokes a permission, which Android stops the app for: kept after that, by the
+    run, it always said "the app is gone"."""
     STOPPED[part] = keep_evidence("stopped-" + (label or part), part)
 
 
