@@ -977,8 +977,12 @@ address field, and a menu button at the far right, in our tones.
   strip and the toolbar, or under the toolbar on top
   ([bookmark-folders.md](bookmark-folders.md#on-the-mobile-web-shell)).
 - **A download you can see.** A download that starts while the app is showing raises a
-  small bar over the foot of the page, just above the toolbar: "Downloading big.zip", with
-Pause (Resume while it is paused) and Cancel, and no Retry while it runs. When
+  small bar over the foot of the page, just above the toolbar: "big.zip", its name whole,
+  with Pause (Resume while it is paused) and Cancel, and no Retry while it runs. Pause,
+  Resume, Cancel and Retry are 44px round icons (two bars, a triangle, a square and a
+  circular arrow), each named for TalkBack by Go's word and showing it when held
+  (ui/holdName.js in the web shell, Android's tooltip in the native one); Open and Allow
+  stay words. When
   it ends while the bar or the app is showing, the bar says "big.zip downloaded" with Open,
   which does what the Downloads page's Open does (`downloadAction` `open`), or "Couldn't
   download big.zip" with Retry (`retry`). Each goes after 2 seconds (design-system.md, "On

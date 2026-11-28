@@ -32,10 +32,10 @@ func TestDownloadNews(t *testing.T) {
 	}
 	small := downloads.Item{ID: 3, Name: "small.bin", State: "progress"}
 	news := n.changed([]downloads.Item{small, big, old}, false)
-	if len(news) != 1 || wordsOf(news[0]) != "Downloading small.bin" {
+	if len(news) != 1 || wordsOf(news[0]) != "small.bin" {
 		t.Fatalf("a start once offered said %v", news)
 	}
-	// A running one has Pause and Cancel only: Retry is for one that failed.
+	// A running one is its name alone, with Pause and Cancel only: Retry is for one that failed.
 	if got := fmt.Sprint(news[0]["actions"]); got != "[{pause Pause} {cancel Cancel}]" {
 		t.Fatalf("a running download's bar has %s", got)
 	}

@@ -598,3 +598,26 @@ input[type='checkbox'] {
   flex: none;
   color: var(--icon, var(--muted));
 }
+
+/* An icon button's name, held on a phone (ui/holdName.js), as Android's own tooltip: the text
+   colour as its ground, the surface's as its words, so it reads in light and dark. */
+.hold-name {
+  position: fixed;
+  z-index: 1000;
+  max-width: calc(100vw - 16px);
+  padding: 6px 12px;
+  box-sizing: border-box;
+  border-radius: 4px;
+  background: var(--text);
+  color: var(--surface);
+  box-shadow: var(--shadow-float);
+  font-size: calc(14rem / 16);
+  line-height: calc(18rem / 16);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: hold-name var(--motion) var(--ease);
+}
+
+@keyframes hold-name {
+  from { opacity: 0; }
+}

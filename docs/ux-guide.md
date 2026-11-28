@@ -17,7 +17,11 @@ guide has the rules every feature follows.
   running one only threw away what had arrived. 2026-11-27: "We only have pause and cancel
   and retry only when canceled or error".
 - The buttons are quiet text buttons beside the progress, in place of what can't be pressed
-  while it runs (Settings' Check for updates, for one).
+  while it runs (Settings' Check for updates, for one). **On a phone a download's are icons**,
+  in its bar and on the Downloads page: Pause two bars, Resume a triangle in their place,
+  Cancel a square, as stop (a cross is Remove from list), Retry a circular arrow; each a 44px
+  round button named for TalkBack and showing its name when held. The name takes the room,
+  with no "Downloading" before it. 2026-11-28, approved with the ux review.
 - **Stalled means 30 seconds with nothing arriving**, the same for the updater, downloads and
   imports. The updater and an import read "Stopped: nothing arrived for 30 seconds". A
   download is watched by the engine itself, which tries a new connection first, then fails

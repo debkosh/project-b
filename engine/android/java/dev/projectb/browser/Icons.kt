@@ -44,6 +44,9 @@ object Icons {
         "down" to "M6 9l6 6 6-6",
         "find" to "M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13zM15.5 15.5L20 20",
         "play" to "M8 6l10 6-10 6z",
+        // A download's Cancel, a square as stop is (a cross is Remove), and its Retry.
+        "square" to "M7 7h10v10H7z",
+        "retry" to "M19 12a7 7 0 1 1-2.05-4.95M19 4.5V8h-3.5",
         "star" to "M12 4l2.4 5 5.4.6-4 3.7 1.1 5.3L12 16l-4.9 2.6 1.1-5.3-4-3.7 5.4-.6z",
         "share" to "M18 7.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM6 14.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM18 21.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4",
         "text" to "M5 6h14M5 12h14M5 18h9",

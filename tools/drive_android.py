@@ -1778,7 +1778,7 @@ def download_notifications():
         name = "pb-slow-%s-%d.bin" % (shell, int(time.time()))
         go(BASE + "/slow/" + name)
         if not asks:
-            said = until(lambda: find("shell", text=lambda t: (t or "").startswith("Downloading " + name)), 10)
+            said = until(lambda: find("shell", text=lambda t: (t or "").startswith(name)), 10)
             check("%s: before Android 13 the first download's bar shows it with no offer, as notifications need no leave" % shell,
                   said is not None and find("shell", text="Show progress in notifications?") is None,
                   said.get("text") if said is not None else None)
@@ -1818,7 +1818,7 @@ def download_notifications():
     asked("/a")
     name = "pb-again-%d.bin" % int(time.time())
     go(BASE + "/slow/" + name)
-    said = until(lambda: find("shell", text=lambda t: (t or "").startswith("Downloading " + name)), 10)
+    said = until(lambda: find("shell", text=lambda t: (t or "").startswith(name)), 10)
     check("once shown, the offer never comes again", said is not None and "notifications" not in said.get("text", ""),
           said.get("text") if said is not None else None)
     # The notification: sizes and time left, with Pause and Cancel.

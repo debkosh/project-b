@@ -290,6 +290,9 @@ class DownloadBar(
     private val held: (Boolean) -> Unit,
 ) : LinearLayout(context) {
     private val mark = IconView(context, "download", 0)
+    // A running one's Pause (Resume) and Cancel, and a failed one's Retry, are icons, as the
+    // web shell's, so the name has the room; Open and Allow stay words.
+    private val icons = mapOf("pause" to "pause", "resume" to "play", "cancel" to "square", "retry" to "retry")
     private val words = label(context, 14f, 0)
     // The question an offer asks, on its own line, so a long name never hides it.
     private val ask = label(context, 14f, 0)
@@ -334,8 +337,23 @@ class DownloadBar(
         val actions = m.optJSONArray("actions")
         for (i in 0 until (actions?.length() ?: 0)) {
             val a = actions!!.getJSONObject(i)
-            addView(textButton(context, palette, a.optString("label"), color = palette.icon) { act(m, a.optString("action")) },
-                LayoutParams(LayoutParams.WRAP_CONTENT, dp(48)))
+            val action = a.optString("action")
+            val name = a.optString("label")
+            val icon = icons[action]
+            if (icon == null) {
+                addView(textButton(context, palette, name, color = palette.icon) { act(m, action) },
+                    LayoutParams(LayoutParams.WRAP_CONTENT, dp(48)))
+                continue
+            }
+            // Pause (Resume), Cancel and Retry: a 44dp round icon in a 48dp target, named by
+            // Go's word for TalkBack and in Android's tooltip on a long press.
+            addView(IconButton(context, icon, name).apply {
+                ink = palette.icon
+                press = palette.press
+                ring = 22f
+                tooltipText = name
+                setOnClickListener { act(m, action) }
+            }, LayoutParams(dp(48), dp(48)))
         }
         visibility = VISIBLE
         if (!reducedMotion(context)) {

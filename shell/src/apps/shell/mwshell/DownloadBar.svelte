@@ -1,6 +1,7 @@
 <script>
   import { untrack } from 'svelte';
   import { downloadAction, send, shell } from '@/sdk/svelte.svelte.js';
+  import { holdName } from '@/ui/holdName.js';
   import Icon from './Icon.svelte';
 
   // A download seen as it happens (docs/shells.md, "A download you can see"): a small bar
@@ -17,7 +18,11 @@
   // only; shown once, it never comes again. News goes after Go's time for it, 2 seconds, a
   // question 8; a press keeps it while held. A tap anywhere else, or a swipe down or
   // sideways on it, puts it away. The find bar is in the toolbar's place, under it.
+  // A running one's Pause (Resume) and Cancel, and a failed one's Retry, are 44px round icon
+  // buttons in 48px targets, named by Go's word for TalkBack and when held (ui/holdName.js), so the name has
+  // the room; Open and Allow stay words.
   let { hidden, away } = $props();
+  const icons = { pause: 'pause', resume: 'play', cancel: 'square', retry: 'retry' };
 
   // The news shown: Go's message, or null.
   let said = $state(null);
@@ -99,9 +104,15 @@
         <span class="words" class:asking={!!said.ask}>{said.words}</span>
         {#if said.ask}<span class="ask">{said.ask}</span>{/if}
       </span>
-      {#each said.actions as a (a.action)}
-        <button onclick={() => act(a.action)}>{a.label}</button>
-      {/each}
+      <span class="acts">
+        {#each said.actions as a (a.action)}
+          {#if icons[a.action]}
+            <button class="round" data-action={a.action} aria-label={a.label} use:holdName={a.label} onclick={() => act(a.action)}><Icon name={icons[a.action]} /></button>
+          {:else}
+            <button onclick={() => act(a.action)}>{a.label}</button>
+          {/if}
+        {/each}
+      </span>
     </div>
   {/if}
 </div>
@@ -177,6 +188,12 @@
     text-overflow: ellipsis;
   }
 
+  .acts {
+    flex: none;
+    display: flex;
+    align-items: center;
+  }
+
   button {
     flex: none;
     height: 48px;
@@ -189,8 +206,26 @@
     font-weight: 600;
   }
 
+  /* An icon button: a 44px round button in the shell's 48px target, its press circle inside
+     a clear 2px edge. */
+  .round {
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    border: 2px solid transparent;
+    border-radius: 50%;
+    background-clip: padding-box;
+  }
+
   button:active {
     background: var(--accent-tint);
+  }
+
+  /* The tint's shorthand resets the clip: kept, the circle stays 44px. */
+  .round:active {
+    background-clip: padding-box;
   }
 
   button:focus-visible {

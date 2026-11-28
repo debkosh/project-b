@@ -36,6 +36,12 @@
     share: 'M18 7.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM6 14.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM18 21.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4',
     text: 'M5 6h14M5 12h14M5 18h9',
     folder: 'M3.5 7a1.5 1.5 0 0 1 1.5-1.5h4.5l2 2H19a1.5 1.5 0 0 1 1.5 1.5v8.5A1.5 1.5 0 0 1 19 19H5a1.5 1.5 0 0 1-1.5-1.5z',
+    // A download's buttons, as media's: Pause's two bars, Resume's triangle in their place,
+    // Cancel a square, as stop is (a cross is Remove on a finished one), and Retry's arrow.
+    pause: 'M9 6v12M15 6v12',
+    play: 'M8 5.5l10 6.5-10 6.5z',
+    square: 'M7 7h10v10H7z',
+    retry: 'M19 12a7 7 0 1 1-2.05-4.95M19 4.5V8h-3.5',
   };
 </script>
 

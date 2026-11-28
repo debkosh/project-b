@@ -4,6 +4,7 @@ import ActionSheet from '@/ui/ActionSheet.vue';
 import Dialog from '@/ui/Dialog.vue';
 import LineIcon from '@/ui/LineIcon.vue';
 import { find } from '@/ui/filter.js';
+import { vHoldName } from '@/ui/holdName.js';
 import { pageHistory, pushEscape } from '@/ui/escape.js';
 import { act, clear, send, state } from './state.js';
 import { hostOf, status } from './words.js';
@@ -11,7 +12,8 @@ import { hostOf, status } from './words.js';
 // The Downloads page on a phone (docs/design-system.md, "On a phone"; docs/daily-driver.md):
 // a 52px bar with ←, the title, Search and ⋮; the downloads newest first, in groups by the
 // day each started; one 56px row each, its kind's icon, the name and one --muted line. A tap
-// opens a finished one; a failed one carries Retry in its row; everything else is in its ⋮,
+// opens a finished one; a failed one carries Retry in its row, an icon named when held, as
+// the download bar's; everything else is in its ⋮,
 // a sheet of actions. ← leaves the page, as the back key does; the back key closes the search
 // and a sheet first (ui/escape.js).
 pageHistory(() => '', () => {});
@@ -154,7 +156,7 @@ watch(
                 <span v-if="d.state === 'progress'" class="bar" :class="{ unknown: d.total <= 0 }"><i :style="{ width: d.total > 0 ? `${share(d) * 100}%` : '' }"></i></span>
               </span>
             </button>
-            <button v-if="d.state === 'failed' && d.url && !d.noRetry" type="button" class="retry" @click="act(d.id, 'retry')">Retry</button>
+            <button v-if="d.state === 'failed' && d.url && !d.noRetry" v-hold-name="'Retry'" type="button" class="retry" aria-label="Retry" @click="act(d.id, 'retry')"><LineIcon name="retry" /></button>
             <button type="button" class="icon" :aria-label="`Actions for ${d.name}`" @click="actions(d)"><LineIcon name="more" /></button>
           </li>
         </ul>
@@ -338,22 +340,31 @@ ul {
   width: 30%;
 }
 
+/* Retry, an icon as the download bar's (ui/holdName.js names it when held): a 44px round
+   button in a 48px target, its press circle inside a clear 2px edge. */
 .retry {
   flex: none;
+  display: grid;
+  place-items: center;
+  width: 48px;
   height: 48px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 8px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
   background: none;
+  background-clip: padding-box;
   color: var(--icon);
-  font: inherit;
-  font-weight: 600;
 }
 
 .main:active,
 .icon:active,
 .retry:active {
   background: var(--accent-tint);
+}
+
+/* The tint's shorthand resets the clip: kept, Retry's circle stays 44px. */
+.retry:active {
+  background-clip: padding-box;
 }
 
 .main:focus-visible,

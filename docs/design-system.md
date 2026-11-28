@@ -352,7 +352,9 @@ The owner, 2026-11-19: phone overlays were big and bulky, and felt bolted on ove
 has little room. A phone shows as much page as it can.
 
 - **News is a one-line bar above the toolbar,** 48px: a download started, finished or failed,
-  in words and at most one action (Open, Retry). It hides itself after 2 s; a swipe down or
+  in words and at most one action (Open, Retry); a running one has two, Pause and Cancel.
+  A download's Pause, Resume, Cancel and Retry are 44px round icons named when held
+  ([ux-guide.md](ux-guide.md#anything-that-takes-time)), Open and Allow words. It hides itself after 2 s; a swipe down or
   sideways puts it away sooner, and a press keeps it while held. A question (Allow
   notifications) stays until it is answered, or 8 s. News never goes in the address field.
 - **A sheet of actions has a one-line head** (the name, the address under it in `--muted`),

@@ -104,6 +104,56 @@ async function phonePage(page, w) {
   check('and deletes it, gone from the list', await until(async () => (await row.count()) === 0 && ((await regions()).deleted || []).some((f) => f.endsWith('quarterly-report.zip'))), JSON.stringify((await regions()).deleted));
 }
 
+// Holds el for a long press, as a finger does, and says what the name shown then says.
+async function hold(w, el) {
+  const b = await el.boundingBox();
+  await w.page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+  await w.page.mouse.down();
+  await w.page.waitForTimeout(700);
+  const tip = w.page.frameLocator('iframe.our-page[data-page="downloads"]').getByRole('tooltip');
+  const said = (await tip.count()) ? (await tip.textContent()).trim() : '';
+  await w.page.mouse.up();
+  return said;
+}
+
+// A phone's rows while one runs and once it fails (docs/ux-guide.md, "Anything that takes
+// time"): a running row keeps Pause and Cancel in its ⋮, Cancel's a square, and has no
+// Retry; a failed one carries Retry in its row as an icon, named for TalkBack and when held,
+// and a hold shows the name without trying again.
+async function phoneRows(page, w) {
+  await fire('download', 'https://example.com/files/a-long-name-for-a-stalled-download-2026.zip');
+  await fire('downloadsStall');
+  const row = page.getByRole('listitem', { name: 'a-long-name-for-a-stalled-download-2026.zip' });
+  check('a running row shows', await until(() => row.isVisible()));
+  check('with no Retry in it, its actions in its ⋮', (await row.getByRole('button', { name: 'Retry' }).count()) === 0 &&
+    JSON.stringify(await row.getByRole('button').evaluateAll((l) => l.map((b) => b.getAttribute('aria-label') || b.textContent.trim()))) ===
+    JSON.stringify(['a-long-name-for-a-stalled-download-2026.zip' + (await row.locator('.line').textContent()), 'Actions for a-long-name-for-a-stalled-download-2026.zip']),
+    JSON.stringify(await row.getByRole('button').evaluateAll((l) => l.map((b) => b.getAttribute('aria-label') || b.textContent.trim()))));
+  check('and no word Downloading', !(await row.innerText()).includes('Downloading'), await row.innerText());
+  await shots(w.page, 'page-running');
+  await row.getByRole('button', { name: 'Actions for a-long-name-for-a-stalled-download-2026.zip' }).click();
+  const sheet = page.getByRole('dialog', { name: 'a-long-name-for-a-stalled-download-2026.zip' });
+  await risen(sheet);
+  const tiles = await sheet.getByRole('button').allInnerTexts();
+  check('its sheet has Pause, Cancel and Copy link only', JSON.stringify(tiles) === JSON.stringify(['Pause', 'Cancel', 'Copy link']), JSON.stringify(tiles));
+  check("and Cancel's icon is a square, not a cross", (await sheet.getByRole('button', { name: 'Cancel' }).locator('path').getAttribute('d')) === 'M7 7h10v10H7z');
+  await page.locator('.ui-sheet-backdrop').click({ position: { x: 20, y: 20 } });
+  await until(async () => !(await sheet.isVisible()));
+  await fire('downloadsFail');
+  const retry = row.getByRole('button', { name: 'Retry' });
+  check('a failed row carries Retry, an icon named Retry', await until(() => retry.isVisible()) && (await retry.textContent()).trim() === '' &&
+    (await retry.locator('path').getAttribute('d')) === 'M19 12a7 7 0 1 1-2.05-4.95M19 4.5V8h-3.5');
+  const r = await retry.boundingBox();
+  check('a 48px target', Math.round(r.width) === 48 && Math.round(r.height) === 48, JSON.stringify(r));
+  await shots(w.page, 'page-failed');
+  check('held, it shows its name', (await hold(w, retry)) === 'Retry');
+  await shots(w.page, 'page-hold');
+  check('and the hold does not try again', (await row.innerText()).includes('Failed'), await row.innerText());
+  await until(async () => (await page.getByRole('tooltip').count()) === 0, 4000);
+  await retry.click();
+  check('a tap on Retry tries again', await until(async () => !(await row.innerText()).includes('Failed')), await row.innerText());
+}
+
 (async () => {
   const browser = await chromium.launch();
 
@@ -162,6 +212,7 @@ async function phonePage(page, w) {
   await until(() => page.getByRole('listitem', { name: 'quarterly-report.zip' }).isVisible());
   await shots(w.page, 'page');
   await phonePage(page, w);
+  await phoneRows(page, w);
   check('no errors in the page', w.errors.length === 0, w.errors.join(' | '));
 
   await browser.close();

@@ -1063,7 +1063,7 @@ const H = 915;
   check('and the back key answers it no too', await until(async () => (await answers()).at(-1).ok === false && (await ask.count()) === 0));
 
   // A download seen as it happens: a bar over the foot of the page, above the toolbar,
-  // "Downloading big.zip", then "big.zip downloaded" with Open; a failed one says so with
+  // "big.zip", its name alone, then "big.zip downloaded" with Open; a failed one says so with
   // Retry. What it says is kept as it changes, as a mock download takes a moment. The
   // first, while notifications aren't allowed, offers them, once, with Allow only.
   const dlBar = ui.getByRole('group', { name: 'Download' });
@@ -1102,7 +1102,7 @@ const H = 915;
   await fire('downloadsFail');
   await until(async () => (await barSaid()).at(-1) === "Couldn't download offered.zip: the connection stopped");
   await fire('download', 'https://example.com/files/big.zip');
-  check('a download starting says Downloading big.zip in a bar, with no offer again', await until(async () => (await barSaid()).includes('Downloading big.zip')), JSON.stringify(await barSaid()));
+  check('a download starting says big.zip in a bar, its name alone, with no offer again', await until(async () => (await barSaid()).includes('big.zip')), JSON.stringify(await barSaid()));
   check('and once done, big.zip downloaded, with Open', await until(async () => (await barSaid()).at(-1) === 'big.zip downloaded' && (await dlBar.getByRole('button', { name: 'Open' }).isVisible())), JSON.stringify(await barSaid()));
   // Where it ends once it has risen.
   const barBox = await dlBar.evaluate(async (el) => {
@@ -1115,18 +1115,55 @@ const H = 915;
   await dlBar.getByRole('button', { name: 'Open' }).tap();
   check('Open opens the file, as the Downloads page\'s Open does, and the bar goes', await until(async () => ((await regions()).openedFiles || []).some((f) => f.endsWith('big.zip')) && !(await dlBar.isVisible())), JSON.stringify((await regions()).openedFiles));
   // A download whose bytes stop: Pause and Cancel on the bar while it runs, and no Retry,
-  // which is for one that failed; Cancel stops it, and the bar goes.
-  await fire('download', 'https://example.com/files/stalled.zip');
+  // which is for one that failed; Cancel stops it, and the bar goes. On a phone they are
+  // icons (docs/ux-guide.md): Pause two bars, Cancel a square, as stop is, since a cross is
+  // Remove; each named for TalkBack and when held, the name whole with no "Downloading".
+  const stalled = 'a-long-name-for-a-stalled-download-of-2026.zip';
+  await fire('download', `https://example.com/files/${stalled}`);
   await fire('downloadsStall');
-  const barButtons = () => dlBar.getByRole('button').allTextContents().then((l) => l.map((t) => t.trim()));
-  check('a running download has Pause and Cancel on its bar, and no Retry', await until(async () => (await barSaid()).at(-1) === 'Downloading stalled.zip' &&
+  const barButtons = () => dlBar.getByRole('button').evaluateAll((l) => l.map((b) => b.getAttribute('aria-label') || b.textContent.trim()));
+  check('a running download has Pause and Cancel on its bar, and no Retry', await until(async () => (await barSaid()).at(-1) === stalled &&
     (await dlBar.isVisible()) && JSON.stringify(await barButtons()) === '["Pause","Cancel"]'), JSON.stringify([await barSaid(), await barButtons().catch(() => [])]));
+  // The bar goes 2 seconds after its news: held, on its words, it stays for the checks and
+  // the pictures, as it does for a finger.
+  const held = await barPressable(64, 24);
+  await page.mouse.move(held.x + 64, held.y + 24);
+  await page.mouse.down();
+  check('its name whole, with no word Downloading', !(await dlBar.innerText()).includes('Downloading') &&
+    (await dlBar.locator('.words').evaluate((el) => el.scrollHeight <= el.clientHeight + 1)), await dlBar.innerText());
+  const iconOf = (name) => dlBar.getByRole('button', { name }).locator('path').getAttribute('d');
+  check('Pause and Cancel are icons, no words: two bars, and a square for Cancel, not a cross',
+    (await dlBar.getByRole('button').allTextContents()).every((t) => !t.trim()) &&
+    (await iconOf('Pause')) === 'M9 6v12M15 6v12' && (await iconOf('Cancel')) === 'M7 7h10v10H7z',
+    JSON.stringify([await iconOf('Pause'), await iconOf('Cancel')]));
+  const round = await dlBar.getByRole('button', { name: 'Cancel' }).evaluate((el) => {
+    const c = getComputedStyle(el);
+    return { w: el.offsetWidth, h: el.offsetHeight, r: c.borderRadius, edge: c.borderTopWidth };
+  });
+  check('each a 44px round button in a 48px target', round.w === 48 && round.h === 48 && round.r === '50%' && round.edge === '2px', JSON.stringify(round));
   await shots('download-running');
+  await page.mouse.up();
+  // Held, Pause shows its name, as Android's tooltip, and the lift doesn't press it: the bar
+  // stays, where a press would put it away.
+  const pauseBox = await dlBar.getByRole('button', { name: 'Pause' }).boundingBox();
+  await page.mouse.move(pauseBox.x + 24, pauseBox.y + 24);
+  await page.mouse.down();
+  await page.waitForTimeout(700);
+  const named = await ui.getByRole('tooltip').textContent().catch(() => '');
+  check('held, Pause shows its name over it', named === 'Pause', named);
+  for (const scheme of ['light', 'dark']) {
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.screenshot({ path: path.join(lib.out, `${id}-download-hold-${scheme}.png`) });
+  }
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.mouse.up();
+  check('and the lift does not pause it: the bar stays, with Pause', (await dlBar.isVisible()) && JSON.stringify(await barButtons()) === '["Pause","Cancel"]', JSON.stringify(await barButtons().catch(() => [])));
   await dlBar.getByRole('button', { name: 'Cancel' }).tap();
   check('Cancel stops it, and the bar goes', await until(async () => !(await dlBar.isVisible())), JSON.stringify(await barSaid()));
   await fire('download', 'https://example.com/files/broken.zip');
   await fire('downloadsFail');
   check('a download that fails says so, with Retry', await until(async () => (await barSaid()).at(-1) === "Couldn't download broken.zip: the connection stopped" && (await dlBar.getByRole('button', { name: 'Retry' }).isVisible())), JSON.stringify(await barSaid()));
+  check('Retry alone, an icon: a circular arrow', JSON.stringify(await barButtons()) === '["Retry"]' && (await iconOf('Retry')) === 'M19 12a7 7 0 1 1-2.05-4.95M19 4.5V8h-3.5', JSON.stringify(await barButtons()));
   await dlBar.getByRole('button', { name: 'Retry' }).tap();
   check('Retry runs it again, and the bar says so as it ends', await until(async () => (await barSaid()).at(-1) === 'broken.zip downloaded' && (await dlBar.isVisible())), JSON.stringify(await barSaid()));
   const b = await barPressable(40, 10);
@@ -1199,7 +1236,7 @@ const H = 915;
   await press(aLink, 'Share');
   check('Share hands the link to the share sheet', await until(async () => (await regions()).sharedText === aLink.link), (await regions()).sharedText);
   await press(aLink, 'Download');
-  check('Download starts it at once, with no Save As', await until(async () => (await barSaid()).includes('Downloading press.zip')), JSON.stringify(await barSaid()));
+  check('Download starts it at once, with no Save As', await until(async () => (await barSaid()).includes('press.zip')), JSON.stringify(await barSaid()));
   await page.mouse.click(4, H - 24);
   await until(async () => !(await dlBar.isVisible()));
 

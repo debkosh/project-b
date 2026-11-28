@@ -120,7 +120,10 @@ func (n *downloadNews) changed(list []downloads.Item, offer bool) []map[string]a
 				m["lasts"] = 8000
 				offer = false
 			} else {
-				m["words"] = "Downloading " + d.Name
+				// The name alone, whole: on a phone the buttons are icons, Pause and Cancel,
+				// which say it is running, so "Downloading" only cut a long name short. The
+				// offer above keeps it, having no Pause or Cancel to say so.
+				m["words"] = d.Name
 				// A running one has Pause (or Resume) and Cancel only; Retry is for one that
 				// failed or was cancelled, and the engine's silence watch fails a stuck one.
 				pause := act{"pause", "Pause"}

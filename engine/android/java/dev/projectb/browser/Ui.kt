@@ -133,6 +133,9 @@ open class IconButton(context: Context, var icon: String, name: String) : View(c
         set(v) { field = v; invalidate() }
     var press = Color.TRANSPARENT
     var iconSize = 20f
+    // The press circle's radius in dp: 20, a 40dp circle, or half the button where it is its
+    // own circle, as the download bar's 44dp ones.
+    var ring = 20f
 
     private val behind = Paint(Paint.ANTI_ALIAS_FLAG)
 
@@ -144,7 +147,7 @@ open class IconButton(context: Context, var icon: String, name: String) : View(c
     override fun onDraw(canvas: Canvas) {
         if (isPressed) {
             behind.color = press
-            canvas.drawCircle(width / 2f, height / 2f, dpf(20), behind)
+            canvas.drawCircle(width / 2f, height / 2f, dpf(ring), behind)
         }
         val c = if (isEnabled) ink else Palette.alpha(ink, 0.38f)
         drawIcon(canvas, c)
